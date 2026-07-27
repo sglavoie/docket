@@ -15,77 +15,49 @@ save the combination once and load it with a couple of keystrokes.
 There are two modes: snapshot (flat filter state) and criteria
 (compound rules like smart lists). Both are managed uniformly.
 
-# Creating a Saved Filter
+# Managing Saved Filters
 
-Set up the filters and sort order you want, then press Fv followed
-by s (or use the command palette). A dialog asks for a name. Once
-saved, the filter name appears as a badge in the filter bar whenever
-it is active. Press Fv then c to create a criteria-mode filter.
-
-# Loading a Saved Filter
-
-Press Fv then l to open the command palette pre-filtered to saved
-filters. Select a filter and press Enter to apply it. The view
-immediately updates to match the saved filter state.
-You can also type :sv in the command palette to browse saved filters.
-
-# Deleting a Saved Filter
-
-Press Fv then d to open the saved filters palette. Select the filter
-you want to remove, press Tab to open the action menu, then choose
-Delete. The filter is removed from the config file.
+Press : to open Finder. Finder lists saved filters alongside the
+operations that create, edit, and delete their definitions. Search
+for the filter or operation by name, then press Enter. Applying a
+saved filter updates the Outliner immediately and shows its name in
+the filter bar.
 
 # Storage
 
-Saved filters are stored in the tt config file (~/.tt/.tt.json, or iCloud Drive when available) and
-are available across all projects. Snapshot filters capture
-type/status/priority/tag/section/due-date/attribute/score filters,
-sort field and direction, and the active pinned tag tab. Criteria
+Saved filters are stored in the portable planning domain and are
+available across all projects. Snapshot filters capture
+type/state/priority/tag/due-date/attribute/score filters,
+sort field and direction. Criteria
 filters store compound rules with AND/OR logic.`,
 		},
 		{
-			Title:    "Sections (GTD)",
+			Title:    "Planning Horizons",
 			Category: "Concepts",
-			Content: `# Section Overview
+			Content: `# State Groups
 
-Sections follow the Getting Things Done methodology to organize
-your workflow. Each task belongs to one built-in section that
-indicates where it sits in your process.
+All mode presents open work in a stable order: Today, In Progress,
+Inbox, Next, Backlog, Review, Waiting, Paused, and Someday. Today
+is a synthetic, deduplicated planning group. The other groups are
+presentations of canonical task states.
 
-# Available Sections
+# Today, Next, And Backlog
 
-Active contains tasks you are working on right now. Next holds
-tasks queued up to start soon. Inbox is for unsorted incoming
-tasks. Waiting is for tasks blocked on external input. Standby
-holds tasks that have ongoing work but are temporarily paused,
-for example when more urgent work arrived. Someday captures
-tasks you might do eventually. Review holds tasks awaiting
-code review, QA, or approval.
+Today is the short daily plan. Next is the deliberate on-deck
+shortlist and is exactly the next workflow state. Backlog is ready
+work outside Today. Today and Next are mutually exclusive.
 
-# Active And Next
+Press t to toggle Today, n to toggle Next, and b to move work back
+to Backlog. J/K reorder only within one project and a manually
+ordered All, Inbox, Next, or Backlog sequence.
 
-Active is the section for work you are working on right now.
-A task is on Next exactly when its workflow state is StateNext,
-so pressing q to queue it moves the task into StateNext. The
-persisted order index is ordering-only and never decides
-membership. Manage Next from the Outliner.
+# Tags And Discovery
 
-Next and Today are mutually exclusive planning horizons, and
-both are distinct from the ranked Backlog.
-
-Tasks in Someday are excluded from stale notifications — they
-will not appear in the notification center for being inactive.
-
-# Tags And Pinned Tags
-
-Use tags for flexible grouping across sections: team, area,
-initiative, customer, or any other label you need. Tags do not
-move a task through the workflow.
-
-Pinned tags turn important tags into top-bar filters. In project
-views, Ctrl+T opens the project tag manager so you can pin or unpin
-project tags. In cross-project views, Ctrl+T opens the global tag
-manager for cross-project pinned tag tabs.`,
+Use tags for flexible grouping by team, area, initiative, or
+customer without moving a task through its workflow. Press T from
+the Outliner to manage tags in the active scope. Finder exposes
+pinned items, recent destinations, and saved filters without
+turning them into permanent modes.`,
 		},
 		{
 			Title:    "Workflow States",
@@ -108,17 +80,12 @@ Every task has exactly one workflow state:
 done and canceled are terminal. Reopening either returns the task
 to inbox so it can be triaged again.
 
-# Comma-Prefix Mappings
+# Changing State
 
-The TUI comma prefix exposes the current direct transitions:
-
-  ,s  in_progress     ,d  done
-  ,b  waiting         ,o  inbox (reopen)
-  ,x  canceled        ,r  review
-  ,S  paused          ,m  someday
-
-Use the CLI task state command for any explicit state, including
-ready and next.`,
+Use s to start the selected task and d to complete it. Space opens
+the task action sheet, whose state picker exposes every canonical
+state. Use the CLI task state command for an explicit scripted
+transition.`,
 		},
 		{
 			Title:    "Scoring",
@@ -179,9 +146,9 @@ reappears automatically when the snooze period expires.
 
 # How Snoozed Tasks Reappear
 
-Snoozed tasks are excluded from normal Outliner perspectives.
-When the snooze time passes, the task returns to its previous
-section and appears in your task list again.
+Snoozed tasks are excluded from normal active-work modes.
+When the snooze time passes, the task appears in its canonical
+state group again.
 
 # Use Cases
 

@@ -31,8 +31,8 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 	if blocked.State() != StateInbox {
 		t.Errorf("blocked task should be unblocked to inbox, got %s", blocked.State())
 	}
-	if !blocked.InSection(SectionInbox) {
-		t.Errorf("auto-unblocked task should be in Inbox for re-triage, got %q", SectionForState(blocked.State()))
+	if !blocked.IsInState(StateInbox) {
+		t.Errorf("auto-unblocked task should be in Inbox for re-triage, got %q", blocked.State())
 	}
 	if blocked.CompletedAt != nil {
 		t.Error("auto-unblocked task should have CompletedAt cleared")

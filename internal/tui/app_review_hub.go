@@ -25,43 +25,42 @@ func (m *AppModel) ensureReviewHub() *ReviewHubModel {
 // destination. The route remains authoritative while PresentationID identifies
 // its implementation renderer.
 func (m *AppModel) activateReviewHub(module ReviewModule, project *models.Project) tea.Cmd {
+	return m.activateReviewHubWithProjectSet(module, project, ProjectSetScope{})
+}
+
+func (m *AppModel) activateReviewHubWithProjectSet(
+	module ReviewModule,
+	project *models.Project,
+	projectSet ProjectSetScope,
+) tea.Cmd {
+	route, err := NewRoute(SecondaryTool, ReviewParams{Module: module, ProjectSet: projectSet})
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+	params := route.Params().(ReviewParams)
+
 	hub := m.ensureReviewHub()
 	hub.SetPlanningIndicators(m.focusQueueIDs, m.dailyPlanIDs)
-	if err := hub.Activate(module, project); err != nil {
+	if err := hub.ActivateParams(params, project); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
-	presentation, _ := reviewModulePresentation(module, project)
 	active := hub.ActiveModuleView()
 	if active != nil {
 		active.SetSize(m.width, m.height-2)
 		m.wireSecondaryCoordinators(active)
-		m.registerReviewModulePresentation(module, project, active)
+		m.registerReviewModulePresentation(params.Module, project, active)
 	}
 	m.metricsDashboard = hub.metrics
 	m.roadmap = hub.roadmap
 
-	if !m.typedNavigation {
-		view := View(hub)
-		if active != nil {
-			view = active
-		}
-		m.showView(presentation, view)
-		return view.Init()
-	}
-
-	route, err := NewRoute(SecondaryTool, ReviewParams{Module: module})
-	if err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
-	}
 	if err := m.navigation.PushChild(route, m.currentFocusTarget()); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 	if m.startupRoute != nil && m.startupRoute.ID() == SecondaryTool {
 		m.startupRoute = nil
-		m.startupView = ViewDashboard
+		m.startupView = ViewCrossProjectOutliner
 	}
-	m.syncPresentationStack()
 	m.setAccentOnView(hub)
 	if active != nil {
 		m.setAccentOnView(active)

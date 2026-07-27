@@ -51,7 +51,7 @@ func (m *SettingsModel) SetSize(width, height int) {
 func (m *SettingsModel) SupportsHelpShortcut() bool { return true }
 
 func (m *SettingsModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewSettings)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *SettingsModel) Init() tea.Cmd {
@@ -135,20 +135,22 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	s.MaxPinnedBarItems = &maxPinned
 	maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
 	s.MaxRecentTaskVisits = &maxRecentVisits
-	sectionLimitActive, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
-	s.SetLegacySectionLimit("", sectionLimitActive)
-	sectionLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
-	s.SetLegacySectionLimit(models.SectionNext, sectionLimitNext)
-	sectionLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
-	s.SetLegacySectionLimit(models.SectionInbox, sectionLimitInbox)
-	sectionLimitStandby, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
-	s.SetLegacySectionLimit(models.SectionStandby, sectionLimitStandby)
-	sectionLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
-	s.SetLegacySectionLimit(models.SectionWaiting, sectionLimitWaiting)
-	sectionLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
-	s.SetLegacySectionLimit(models.SectionSomeday, sectionLimitSomeday)
-	sectionLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
-	s.SetLegacySectionLimit(models.SectionReview, sectionLimitReview)
+	groupLimitBacklog, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitActiveInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupBacklog, groupLimitBacklog)
+	groupLimitInProgress := groupLimitBacklog
+	s.SetStateGroupLimit(models.StateGroupInProgress, groupLimitInProgress)
+	groupLimitNext, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitNextInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupNext, groupLimitNext)
+	groupLimitInbox, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitInboxInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupInbox, groupLimitInbox)
+	groupLimitPaused, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitStandbyInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupPaused, groupLimitPaused)
+	groupLimitWaiting, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitWaitingInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupWaiting, groupLimitWaiting)
+	groupLimitSomeday, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitSomedayInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupSomeday, groupLimitSomeday)
+	groupLimitReview, _ := strconv.Atoi(strings.TrimSpace(m.sectionLimitReviewInput.Value()))
+	s.SetStateGroupLimit(models.StateGroupReview, groupLimitReview)
 	mach.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 	mach.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 	mach.ExternalEditor = strings.TrimSpace(m.externalEditorInput.Value())

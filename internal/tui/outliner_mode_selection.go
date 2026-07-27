@@ -5,49 +5,27 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// workModeCycleOrder is the canonical four-item Work cycle driven by Tab /
-// Shift+Tab. It is deliberately independent from the h/l workflow-perspective
-// rotation: Tab moves between work horizons, h/l rotates GTD workflow lenses.
-var workModeCycleOrder = []OutlinerModeID{
-	ModeNext,
-	ModeBacklog,
-	ModeActive,
-	ModeAll,
-}
-
-// activeOutlinerMode derives the current mode-catalog identity from the
-// outliner's live state. It is the single source of truth for the mode label,
-// tab-bar highlight, and Tab cycling, mapping the existing
-// perspective/smart-focus/lens/priority machinery onto the unified catalog so
-// no second selection variable can drift out of sync.
-func (m *OutlinerModel) activeOutlinerMode() OutlinerModeID {
-	switch {
-	case m.reviewMode == reviewDaily:
-		return ModeDailyReview
-	case m.reviewMode == reviewActivity:
-		return ModeActivity
-	case m.workNextMode:
-		return ModeNext
-	case m.workBacklogMode:
-		return ModeBacklog
-	case m.project == nil && m.crossPriorityMode:
-		return ModePriorityLens
-	case m.lens == OutlinerLensDueDate:
-		return ModeDueDateLens
-	case m.smartFocus != nil:
-		if mode, ok := OutlinerModeForSmartFocus(*m.smartFocus); ok {
-			return mode.ID
-		}
-		return ModeAll
-	default:
-		if mode, ok := OutlinerModeForPerspective(m.activePerspective); ok {
-			return mode.ID
-		}
-		return ModeAll
+// workModeCycleOrder is derived from the catalog's stable TabIndex metadata so
+// picker order, persisted identity, and keyboard cycling cannot drift.
+var workModeCycleOrder = func() []OutlinerModeID {
+	modes := OutlinerTabModes()
+	ids := make([]OutlinerModeID, len(modes))
+	for i, mode := range modes {
+		ids[i] = mode.ID
 	}
+	return ids
+}()
+
+// activeOutlinerMode returns the sole mode identity owned by the Outliner.
+func (m *OutlinerModel) activeOutlinerMode() OutlinerModeID {
+	if _, ok := OutlinerModeByID(m.primaryMode); ok {
+		return m.primaryMode
+	}
+	return ModeAll
 }
 
 // activeOutlinerModeEntry returns the catalog entry for the active mode.
@@ -121,8 +99,7 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 	m.clampCursor()
 }
 
-// selectOutlinerMode applies the named catalog mode, translating it into the
-// underlying perspective/smart-focus/lens/priority state. It is the sole entry
+// selectOutlinerMode applies the named catalog mode. It is the sole entry
 // point used by Tab cycling, eligible mode-picker selections, startup, and any
 // command that jumps directly to a mode. It captures the selected task identity
 // before rebuilding and restores it afterward (see restoreModeCursor) so an
@@ -135,130 +112,16 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	anchor := m.captureModeCursor()
 	defer m.restoreModeCursor(anchor)
 
-	transitionTarget := mode
-	// The legacy single-project Priority action is implemented by the
-	// High Priority tree focus with an explicit score sort. The global Outliner
-	// has the true fixed-order Priority lens.
-	if mode.PriorityLens && m.project != nil {
-		transitionTarget, _ = OutlinerModeByID(ModeHighPriority)
+	m.applyOutlinerModeTransition(mode)
+	m.primaryMode = mode.ID
+	if mode.RowStrategy == RowStrategyReview {
+		m.zoomStack = nil
+		m.crossZoomStack = nil
+		m.resetViewScrollOffset()
 	}
-	m.applyOutlinerModeTransition(transitionTarget)
-
-	switch mode.RowStrategy {
-	case RowStrategyBacklog:
-		m.applyWorkComputedMode(false, true)
-	case RowStrategyNext:
-		// Global Next is a purpose-built computed horizon: one ungrouped
-		// workspace-wide sequence ordered by the durable focus queue. A single
-		// project keeps Next as its persisted perspective, whose applyFocusOrdering
-		// already orders StateNext tasks by the focus queue within the tree.
-		if m.project == nil {
-			// Keep the persisted perspective mirror in sync for project-focus
-			// consumers while the global/scoped Outliner renders the computed
-			// focus-queue horizon.
-			m.activatePerspective(mode.Perspective)
-			m.applyWorkComputedMode(true, false)
-		} else {
-			m.activatePerspective(mode.Perspective)
-			m.lens = OutlinerLensTree
-		}
-	case RowStrategyPerspective:
-		m.activatePerspective(mode.Perspective)
-		m.lens = OutlinerLensTree
-	case RowStrategySmartFocus:
-		m.applySmartFocusMode(*mode.SmartFocus)
-	case RowStrategyLens:
-		if mode.PriorityLens {
-			m.applyPriorityLensMode()
-			break
-		}
-		m.clearComputedModes()
-		// The Due Date lens composes only with the always-on common filters
-		// (search, pinned tag, sections, actionable, saved criteria). Clear the
-		// smart focus so the schedule is not silently narrowed by a stale smart
-		// predicate; the assignments below drop the computed, review, and
-		// priority discriminators without re-entering another transition path.
-		m.smartFocus = nil
-		m.crossPriorityMode = false
-		m.lens = OutlinerLensDueDate
-		m.crossForceRebuild = true
-	case RowStrategyReview:
-		switch mode.ID {
-		case ModeActivity:
-			m.applyReviewMode(reviewActivity)
-		default:
-			m.applyReviewMode(reviewDaily)
-		}
-	}
-
+	m.crossForceRebuild = true
 	m.rebuildRows()
 	return m, nil
-}
-
-// clearComputedModes drops the session-only computed horizons so a normal
-// perspective/smart-focus/lens selection takes over cleanly.
-func (m *OutlinerModel) clearComputedModes() {
-	m.workNextMode = false
-	m.workBacklogMode = false
-	m.reviewMode = reviewNone
-}
-
-// applyWorkComputedMode switches into one of the two purpose-built work
-// horizons (Next, Backlog). These are flat, fixed-order lists computed from the
-// focus queue / cross-project ranker, so any active zoom or
-// saved filter is cleared to avoid scoping the computed rows to a stale
-// subtree.
-func (m *OutlinerModel) applyWorkComputedMode(next, backlog bool) {
-	m.smartFocus = nil
-	m.crossPriorityMode = false
-	m.activeSavedFilter = ""
-	m.activeCriteriaFilter = nil
-	m.lens = OutlinerLensTree
-	m.workNextMode = next
-	m.workBacklogMode = backlog
-	m.reviewMode = reviewNone
-	m.zoomStack = nil
-	m.crossZoomStack = nil
-	m.crossForceRebuild = true
-	m.cursor = 0
-}
-
-// applySmartFocusMode switches to a smart-focus mode (Due Soon, High Priority,
-// Blocked, Parked, Pinned, Recently Visited) reusing the shared matchesSmartFocus
-// predicate.
-func (m *OutlinerModel) applySmartFocusMode(focus OutlinerFocus) {
-	m.clearComputedModes()
-	m.crossPriorityMode = false
-	m.activeSavedFilter = ""
-	m.activeCriteriaFilter = nil
-	m.lens = OutlinerLensTree
-	f := focus
-	m.smartFocus = &f
-	m.crossForceRebuild = true
-	m.cursor = 0
-}
-
-// applyPriorityLensMode selects the Priority lens. In the cross-project outliner
-// this is the grouped session-only Priority mode; in a single project it is the
-// High Priority focus sorted by score, mirroring the historical `p` shortcut.
-func (m *OutlinerModel) applyPriorityLensMode() {
-	m.clearComputedModes()
-	if m.project == nil {
-		if !m.crossPriorityMode {
-			m.enterCrossPriorityMode()
-		}
-		return
-	}
-	m.crossPriorityMode = false
-	m.activeSavedFilter = ""
-	m.activeCriteriaFilter = nil
-	m.lens = OutlinerLensTree
-	focus := OutlinerHighPriority
-	m.smartFocus = &focus
-	m.sort = SortState{Field: SortByScore, Ascending: true}
-	m.treeSort = m.sort
-	m.crossForceRebuild = true
-	m.cursor = 0
 }
 
 // cycleWorkMode advances the active mode by delta within the four-item Work
@@ -291,15 +154,13 @@ func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 	return m.selectOutlinerMode(target)
 }
 
-// isComputedOrderMode reports whether the rows are currently a flat, computed
-// list whose order the engine owns, so a structural J/K move cannot apply. It
-// keys off the live render state rather than the catalog OrderPolicy. The global
-// Next horizon is computed-order too, but its J/K reorders the durable planning
-// list (see isPlanningReorderMode) rather than being unavailable.
-func (m *OutlinerModel) isComputedOrderMode() bool {
-	return m.workNextMode || m.workBacklogMode || m.reviewModeActive() ||
-		(m.project == nil && m.crossPriorityMode) ||
-		m.lens == OutlinerLensDueDate
+func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
+	switch mode {
+	case ModeAll, ModeInbox, ModeNext, ModeBacklog:
+		return true
+	default:
+		return false
+	}
 }
 
 // orderingUnavailableStatus explains why J/K cannot reorder rows in the active
@@ -307,7 +168,7 @@ func (m *OutlinerModel) isComputedOrderMode() bool {
 func (m *OutlinerModel) orderingUnavailableStatus() {
 	mode := m.activeOutlinerModeEntry()
 	m.setStatus(fmt.Sprintf(
-		"Ordering is automatic in %s mode — J/K reorder tasks only in tree modes (Active, All, workflow, smart)",
+		"Ordering is automatic in %s mode — J/K reorder only within one project in All, Inbox, Next, or Backlog",
 		mode.Label,
 	))
 }
@@ -334,6 +195,12 @@ func (m *OutlinerModel) workModeFilterPredicate(proj *models.Project) func(*mode
 	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
 	criteria := m.activeCriteriaFilter
 	actionable := m.filter.Actionable
+	var planning *config.PlanningState
+	var automation *config.AutomationConfig
+	if m.runtime != nil {
+		planning = m.runtime.Planning()
+		automation = m.runtime.Automation()
+	}
 
 	return func(t *models.Task) bool {
 		if t == nil {
@@ -342,13 +209,13 @@ func (m *OutlinerModel) workModeFilterPredicate(proj *models.Project) func(*mode
 		if pinnedTag != "" && !t.HasTag(pinnedTag) {
 			return false
 		}
-		if query != "" && !matchesSearch(t, query, m.runtime.Planning()) {
+		if query != "" && !matchesSearch(t, query, planning) {
 			return false
 		}
-		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, m.runtime.Automation()) {
+		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, automation) {
 			return false
 		}
-		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, m.runtime.Automation()) {
+		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, automation) {
 			return false
 		}
 		if actionable && !taskIsActionableState(t, proj) {

@@ -221,6 +221,7 @@ func resetQuickAddVars() {
 	addParentFlag = ""
 	addPriority = 0
 	addTags = nil
+	addStateFlag = ""
 	addIsEpic = false
 	addIsStory = false
 	addIsBug = false

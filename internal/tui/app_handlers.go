@@ -5,54 +5,27 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-const maxOutlinerToggleStateEntries = 50
-
-// saveOutlinerToggleState captures the current outliner's section/fold state
-// into the per-project cache so it can be restored after recreation.
-func (m *AppModel) saveOutlinerToggleState() {
-	if m.outliner != nil && m.outliner.project != nil {
-		id := m.outliner.project.ID
-		m.outlinerToggleStates[id] = m.outliner.SaveToggleState()
-		for len(m.outlinerToggleStates) > maxOutlinerToggleStateEntries {
-			for k := range m.outlinerToggleStates {
-				if k != id {
-					delete(m.outlinerToggleStates, k)
-					break
-				}
-			}
-		}
-	}
-}
-
-// restoreOutlinerToggleState applies any cached section/fold state to the
-// current outliner for its project.
-func (m *AppModel) restoreOutlinerToggleState() {
-	if m.outliner != nil && m.outliner.project != nil {
-		if state, ok := m.outlinerToggleStates[m.outliner.project.ID]; ok {
-			m.outliner.RestoreToggleState(state)
-		}
-	}
-}
-
-// Presentation filters and layout are owned by their live view models. These
-// navigation hooks retain only the in-memory fold cache used when a project
-// view is recreated during the same session.
+// Persist the canonical mode/lifecycle-filter DTO for the active Outliner
+// scope. Typed navigation continues to own scope and route hierarchy.
 func (m *AppModel) saveOutlinerFilterState() {
-	m.saveOutlinerToggleState()
-}
-
-func (m *AppModel) restoreOutlinerFilterState() {
-	m.restoreOutlinerToggleState()
+	outliner := m.crossOutliner
+	if outliner == nil {
+		return
+	}
+	if err := outliner.persistActiveRouteState(); err != nil {
+		logging.Warn("failed to persist Outliner route state: %v", err)
+	}
 }
 
 // reloadAndRefreshProjectTree reloads the project from storage and refreshes the
 // per-project outliner view. Preserves filter/sort state across the reload.
 func (m *AppModel) reloadAndRefreshProjectTree() {
-	if m.outliner != nil && m.currentProject != nil {
-		m.switchToProject(m.currentProject, true)
+	if m.crossOutliner != nil {
+		rebuildOutlinerPreservingCursor(m.crossOutliner)
 	}
 }
 
@@ -81,41 +54,4 @@ func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []str
 	}
 	cmd := m.secondaryFeatures.Bulk.SetTagsLocators(locators, selectedTags)
 	return finalizeLocatedBatchResult(cmd, locators, fmt.Sprintf("Tagged %d tasks", len(locators)))
-}
-
-// processMessage routes a message through the app's handler chain.
-// Used by CommandPaletteExecuteMsg to process the inner message synchronously.
-func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
-	// Handle QuitMsg directly since it's not in the handler chains
-	if _, ok := msg.(QuitMsg); ok {
-		m.saveProjectViewState()
-		m.saveOutlinerFilterState()
-		m.quitting = true
-		return true, tea.Quit
-	}
-	if handled, cmd := m.handleProjectMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleTaskMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleViewMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleTagMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleAttrFilterMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleSectionMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleInboxMessages(msg); handled {
-		return true, cmd
-	}
-	if handled, cmd := m.handleClipboardMessages(msg); handled {
-		return true, cmd
-	}
-	return false, nil
 }

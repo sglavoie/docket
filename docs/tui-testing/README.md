@@ -1,368 +1,225 @@
-# TUI Review Harness (`tt tui-test`)
+# TUI review harness
 
-`tt tui-test` is a hidden, repo-native surface for LLM-driven review of the Bubble
-Tea TUI. It drives the real `AppModel` in-process against isolated fixture data
-(or a copy of real config/data) and returns normalized JSON observations. It is
-meant for automated review, CI, and development — not day-to-day use — so it is
-hidden from `tt --help` and the generated CLI reference.
+`tt tui-test` is a hidden, repository-native interface for automated and
+LLM-assisted review of the real Bubble Tea application. It runs the same
+`AppModel`, operation registry, typed navigation, persistence, and rendering as
+the interactive TUI, but drives them in-process and returns normalized JSON.
 
-There is no PTY in v1: actions are applied directly to the model and the rendered
-screen is captured and normalized. This keeps runs fast and deterministic.
+The harness is intended for tests and review tooling. It is hidden from normal
+CLI help and from the generated CLI reference.
+
+## Safety
+
+Built-in fixtures are created in isolated temporary workspaces. Scenario
+mutations never touch the user's workspace.
+
+Copied-workspace mode first copies the selected workspace into a temporary
+directory, assigns the copy a fresh workspace identity, and runs against that
+copy. The source remains read-only. Use `--keep-workspace` only when you need to
+inspect the disposable copy after a run.
+
+External integrations such as `fzf` and `glow` are disabled in harness
+workspaces, so runs stay headless and deterministic.
 
 ## Fixtures
 
-Every run starts from an isolated, throwaway workspace. Built-in fixtures give you
-reliable, pre-populated data to drive against:
-
-| Fixture    | What it exercises                                                       |
-| ---------- | ----------------------------------------------------------------------- |
-| `empty`    | Zero-task onboarding surface (the Outliner capture hint).               |
-| `rich`     | A full task hierarchy: every type, status, priority, and GTD sections.  |
-| `alerts`   | Overdue / due-soon / high-priority-blocked work that trips alerts.      |
-| `workflow` | Tasks spread across workflow stages for the stage-oriented views.       |
-| `narrow`   | Long titles and tags that stress layout at narrow widths.               |
-| `contexts` | Projects spread across several context labels, so a context scope has something to narrow away. |
-
-List them at runtime:
+List fixtures with:
 
 ```bash
-tt tui-test fixtures            # one name per line
-tt tui-test fixtures --json     # {"fixtures":[...]}
+tt tui-test fixtures
+tt tui-test fixtures --json
 ```
 
-## Running a scenario
+| Fixture | Purpose |
+| --- | --- |
+| `empty` | Empty workspace behavior. |
+| `fresh` | First-run onboarding and System Inbox capture. |
+| `rich` | Hierarchy, all canonical workflow states, dates, tags, and relationships. |
+| `alerts` | Overdue, blocked, waiting, and multi-item Inbox behavior. |
+| `workflow` | Workflow rules and automation editors. |
+| `narrow` | Long content for responsive-layout audits. |
+| `contexts` | Regular/custom contexts plus active, archived, and trashed projects. |
 
-A scenario is a JSON file describing an ordered list of actions to drive against
-the app. Run one and inspect the result:
+## Run a scenario
 
 ```bash
-tt tui-test run --fixture rich --scenario scenario.json --json
+tt tui-test run \
+  --scenario docs/tui-testing/scenarios/daily-loop.json \
+  --json
 ```
 
 Useful flags:
 
-| Flag               | Purpose                                                                        |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `--fixture NAME`   | Built-in fixture to load (default `rich`). Mutually exclusive with `--config`. |
-| `--size WxH`       | Initial terminal size (default `100x30`). Overrides the scenario's own `size`. |
-| `--scenario PATH`  | Path to the scenario JSON file (required).                                      |
-| `--json`           | Emit the structured result instead of a human summary.                         |
-| `--observations`   | Include the per-action observation list (large payload).                       |
-| `--ansi`           | Include the raw styled (ANSI) screen alongside the plain screen.               |
-| `--drain-timeout`  | Per-command async drain budget (`0` uses the default).                         |
-| `--keep-workspace` | Keep the temp workspace and print its path to stderr.                          |
-
-Exit codes: `0` every action/assertion passed, `1` a scenario action/assertion
-failed, `2` invalid CLI input or an unparseable/invalid scenario. On failure the
-result JSON still prints, carrying the failing action and the failure-point
-screen under `error`.
-
-When grepping the `--json` result for the pass flag, remember that
-`run --scenario --json` is **pretty-printed** (`json.MarshalIndent`), so it emits
-`"ok": true` with a **space after the colon**. A bare `grep -o '"ok":[a-z]*'`
-matches nothing against that output and silently reports a false "clean". Match
-`"ok": *true` (allowing the space) or parse the JSON instead:
-
-```bash
-tt tui-test run --scenario scenario.json --json | grep -o '"ok": *true'
+```text
+--fixture <name>       override the scenario fixture
+--size <WxH>           override the scenario size
+--observations         include every per-action observation
+--ansi                 include styled output as well as plain output
+--drain-timeout <dur>  override the per-command async budget
+--keep-workspace       retain the temporary workspace and print its path
 ```
 
-(The compact `"ok":true` form — no space — belongs to the NDJSON interactive
-protocol under [Interactive session mode](#interactive-session-mode-ndjson),
-not to scenario runs.)
+A passing JSON result includes `"ok": true`, the scenario name, the action
+count, and the final observation. A failed result identifies the action index,
+its optional label, the reason, and the failure-point observation. Process exit
+codes are:
 
-### Scenario format
+| Code | Meaning |
+| --- | --- |
+| `0` | Every action and assertion passed. |
+| `1` | A scenario action or assertion failed. |
+| `2` | CLI input or scenario JSON was invalid. |
+
+## Scenario format
 
 ```json
 {
-  "name": "open-all",
+  "name": "finder-search",
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "resize", "width": 100, "height": 35 },
-    { "type": "command", "label": "reset to global All", "command": "outliner root" },
-    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "@ All" },
-    { "type": "assert", "assert": "contains", "value": "Today" },
+    { "type": "key", "label": "open Finder", "key": ":" },
+    { "type": "text", "label": "find Today", "text": "today" },
+    { "type": "assert", "assert": "view", "value": "Finder" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
 ```
 
-`fixture` and `size` are optional and make a scenario self-contained; the CLI
-`--fixture` / `--size` flags override them when passed. Scenarios are validated
-strictly before any action runs — unknown fields, unknown action types, malformed
-sizes, invalid keys, and empty scenarios all fail up front.
+Unknown fields, malformed sizes, invalid keys, empty text actions, unknown
+assertions, and trailing JSON are rejected before execution.
 
-Action types:
+### Actions
 
-| `type`    | Fields                        | Effect                                                              |
-| --------- | ----------------------------- | ------------------------------------------------------------------ |
-| `key`     | `key`                         | Send one key press (see key syntax below).                         |
-| `text`    | `text`                        | Type a literal string as a sequence of key presses.                |
-| `command` | `command`                     | Invoke a registered TUI command by name through the driver (see below). |
-| `resize`  | `width`, `height`             | Change the simulated terminal size.                                |
-| `wait`    | —                             | Drain previously abandoned async work (long-running commands).     |
-| `assert`  | `assert`, `value`             | Check an invariant against a fresh observation (see below).        |
+| Type | Fields | Behavior |
+| --- | --- | --- |
+| `key` | `key` | Send one parsed key press. |
+| `text` | `text` | Type literal runes into the active input. |
+| `resize` | `width`, `height` | Resize the simulated terminal. |
+| `wait` | none | Drain pending asynchronous work with a bounded wait. |
+| `command` | `command` | Execute an applicable operation by stable ID or label. |
+| `assert` | `assert`, optional `value` | Check the current normalized observation. |
 
-Every action also accepts an optional `label`, echoed back in the failure error so
-a failing step names the intent an author gave it (e.g. `"open Today focus"`)
-instead of only the raw action index.
+`label` is optional on every action and should describe user intent, such as
+`"triage the first Inbox task to Next"`. Failure output repeats it.
 
-Chorded keys such as `ctrl+x` are sent as one key action. Prefix grammars inside
-a view are sent one key at a time. `:` (command palette) is a single key.
+Key names are case-sensitive where the TUI contract is case-sensitive:
 
-The `command` action invokes a registered command directly, without opening the
-command-palette UI or replaying its shortcut keys. The `command` field is the
-command **name** — the same string returned as `available_commands[].name` for
-the active view. Matching is case-insensitive against those names only; shortcuts
-and aliases are metadata and are **not** accepted as identifiers. The command must
-be exposed by the active view (a view-scoped command is rejected on other views),
-and unknown, unavailable, or unhandled commands fail the action. This lets a
-review host discover an action via `available_commands` and then run it by name:
-
-```json
-{ "type": "command", "label": "invoke help command", "command": "help" }
+```text
+a e s d b t n v
+N R T !
+tab shift+tab enter space esc
+up down left right
+ctrl+r ctrl+esc ctrl+c
+pgup pgdown home end
 ```
 
-Key syntax (`parseUITestKey`):
+Prefer real public keys for user workflow coverage. A `command` action uses the
+same `OperationRegistry` and `OperationExecutor` as production. Explicit
+scenario commands gain `CapabilityHarness`, which permits setup-only deep links
+that are intentionally absent from Finder, help, and `available_commands`.
 
-- Printable runes: `"a"`, `"A"`, `"1"`, `"!"`.
-- Named keys: `enter`/`return`, `esc`/`escape`, `tab`, `space`, `backspace`.
-- Arrows: `up`, `down`, `left`, `right`.
-- Pages: `pgup`/`pageup`, `pgdown`/`pagedown` (drive full-page scrolling, e.g. the Quick Capture syntax reference).
-- Modifiers joined with `+`: `ctrl+x`, `ctrl+p`, `shift+tab`, `ctrl+shift+a`.
+### Assertions
 
-Assertion kinds (`assert`):
+| Assertion | Value | Meaning |
+| --- | --- | --- |
+| `contains` | substring | Plain screen contains the value. |
+| `not_contains` | substring | Plain screen does not contain the value. |
+| `view` | view name | `current_view` equals the value. |
+| `status_contains` | substring | The current informational/status line contains the value. |
+| `no_layout_issues` | none | No overflow, invalid UTF-8, or height audit issue exists. |
 
-| `assert`           | `value`                         | Passes when                                                |
-| ------------------ | ------------------------------- | ---------------------------------------------------------- |
-| `contains`         | substring                       | the plain screen contains `value`.                         |
-| `not_contains`     | substring                       | the plain screen does not contain `value`.                 |
-| `view`             | view name                       | the current view equals `value`. The Outliner root reports `CrossProjectOutliner`; children report their own identifiers (e.g. `TaskDetail`, `CommandPalette`, `Settings`). |
-| `status_contains`  | substring                       | the status line contains `value`.                          |
-| `no_layout_issues` | (ignored)                       | no normalization/layout issues were detected.              |
+Assertions always observe freshly rendered state. Use `wait` after mutations
+when the scenario needs the committed reload or the status timeout rather than
+the immediate optimistic frame.
 
-> The Outliner root needs a reasonably tall terminal to render without overflow —
-> use at least `100x35` for clean `no_layout_issues` assertions on the root.
-> Smaller sizes legitimately report `height_overflow` / `width_overflow`.
+## Committed final-application contracts
 
-#### Layout issue kinds
+Every JSON file in `docs/tui-testing/scenarios/` is replayed by
+`TestExampleScenariosPass` and `./scripts/run_tui_scenarios.sh`.
 
-`no_layout_issues` fails when the observation records any `layout_issues[]`
-entry. Each entry has a `kind`; the harness detects these:
+The primary daily-loop contracts are:
 
-| `kind`                    | Detected by                | Meaning                                                                 |
-| ------------------------- | -------------------------- | ----------------------------------------------------------------------- |
-| `invalid_utf8`            | `normalizeScreen` (geometry) | A rendered cell held bytes that were not valid UTF-8.                    |
-| `width_overflow`          | `normalizeScreen` (geometry) | A line exceeded the terminal width.                                     |
-| `height_overflow`         | `normalizeScreen` (geometry) | The rendered screen exceeded the terminal height.                       |
-| `required_text_truncated` | render audit (in-render)   | A renderer had to clip text it was supposed to show in full.            |
-
-The first three are **geometry** issues: `normalizeScreen` catches them after the
-fact because they leave a visible trace (a too-wide line, a too-tall screen,
-invalid bytes). The last one is a **render-audit** issue with no geometric trace —
-required chrome text (footer help, layout titles, indicators) that a renderer
-truncated with `ansi.Truncate` to make it fit still leaves the screen within its
-terminal bounds. Render sites report those clips through
-`recordRequiredTextTruncation` while `UITestDriver.Observe` wraps the render in a
-`withRenderAudit` context, so `required_text_truncated` surfaces text that would
-otherwise be silently cut. Dense data (task titles, file paths, previews, list
-rows) is truncated *intentionally* and does not record this issue; only required
-chrome does. A `required_text_truncated` failure means the layout is too narrow
-for the chrome it must show — widen the terminal, wrap the text (as the shared
-footer does), or relocate/shorten the clipped chrome; do not silence the audit.
-
-### Example scenarios
-
-The [`scenarios/`](scenarios/) directory holds committed, verified examples:
-
-| File                            | Demonstrates                                              |
-| ------------------------------- | -------------------------------------------------------- |
-| `open-all.json`                 | Reset to global All and assert its built-in Today section. |
-| `reference-review-shortcuts.json` | Open Reference and exercise Review destination modules. |
-| `fresh-install-alerts-quiet.json` | Open first-use notifications and assert review reminders stay quiet. |
-| `command-palette-search.json`   | Open the command palette (`:`) and type a search query.  |
-| `command-palette-all-blockers.json` | Execute the `all blockers` palette alias and assert the global blockers view. |
-| `command-palette-task-actions-narrow-layout.json` | Open task action mode on the long-title narrow fixture at `72x20`. |
-| `command-action-help.json`      | Invoke the `help` command by name (no palette) and assert its view. |
-| `navigate-outliner.json`        | Open the global All mode, move the cursor, and re-sort the Outline. |
-| `scope-picker-search-commit.json` | Fuzzy-search project scopes, commit and retain the query with state-specific help, then act on the filtered project. |
-| `resize-stress.json`            | Resize through extremes and confirm a clean settle.      |
-| `baseline-layout.json`          | Assert no layout issues across baseline Outliner sizes.  |
-| `dashboard-search-alerts-minimum-layout.json` | Assert the alert-heavy fixture root renders cleanly at `60x20`. |
-| `attr-filter-picker-minimum-layout.json` | Open Attribute Filter Picker at `60x20` and assert no layout issues. |
-| `task-detail-narrow-layout.json` | Open TaskDetail on the narrow fixture at `60x20`; assert no layout issues and that the wrapped footer keeps the `c: comments`, `D: decisions`, `H: toggle history`, and `Esc: close` hints. |
-| `settings-minimum-layout.json`  | Open Settings at `72x20` and assert no layout issues.    |
-| `metrics-minimum-layout.json`   | Open Metrics at `72x20` and assert no layout issues.     |
-| `message-log-export-project-minimum-layout.json` | Export a project, open the Message Log at `60x20`, and assert no layout issues. |
-| `notifications-minimum-layout.json` | Open the alert-heavy Notification Center at `72x20` and assert no layout issues. |
-| `task-template-creator-minimum-layout.json` | Open Task Template Creator at `72x20` and assert no layout issues. |
-| `project-creator-minimum-layout.json` | Open Project Creator at `72x20` and assert no layout issues. |
-| `project-editor-minimum-layout.json` | Open Project Editor at `72x20` and assert no layout issues. |
-| `recent-tasks-empty-status.json` | Open Recent Tasks with no visits and assert the empty-state status. |
-| `workflow-rule-creator-minimum-layout.json` | Open Workflow Rule Creator at `72x20` and assert no layout issues. |
-| `inbox-processor-minimum-layout.json` | Open Inbox Processor at `72x20` and assert no layout issues. |
-| `global-inbox-processor-minimum-layout.json` | Open Global Inbox Processor at `72x20` and assert no layout issues. |
-| `date-input-minimum-layout.json` | Open the Set Due Date input at `72x20` and assert no layout issues. |
-| `snooze-input-minimum-layout.json` | Open the Snooze Task input at `72x20` and assert no layout issues. |
-| `quick-capture-minimum-layout.json` | Open Quick Capture over a project outliner at `60x20`, expand the grouped `Capture Syntax` reference, scroll it by line (`ctrl+j`) and page (`pgdown`), and assert no layout issues with the wrapped contextual footer. |
-| `context-hub-open.json`         | Open the Context Hub with `C` and assert its grouped list, active All scope, and preview counts. |
-| `context-hub-regular-search-apply.json` | Search the hub for a project-context label, keep the query, apply it, and assert the Outliner narrowed to that label's projects. |
-| `context-hub-custom-create-apply.json` | Create a custom context inline (name plus two members), then apply it and assert the scoped Outliner title and rows. |
-| `context-hub-custom-edit-membership.json` | Reopen a saved custom context with `e`, add a member, save with `Ctrl+S`, and assert the updated count. |
-| `context-hub-delete-active-custom.json` | Delete the *active* custom context and assert the hub and Outliner both fall back to All. |
-| `context-hub-minimum-layout.json` | Open the Context Hub and its inline editor at `60x20`, save with a status message showing, resize to `120x40`, and assert no layout issues throughout. |
-
-Run any of them:
-
-```bash
-tt tui-test run --scenario docs/tui-testing/scenarios/open-all.json --json
-```
-
-Replay every committed scenario with the same one-command gate used by CI:
-
-```bash
-just tui-scenarios
-```
-
-### Consolidated outcome matrix
-
-| Outcome | Committed scenario coverage |
+| Behavior | Scenarios |
 | --- | --- |
-| Fresh install and post-migration startup | `fresh-install-default.json`, `fresh-install-capture.json`, `fresh-install-alerts-quiet.json` |
-| Outliner root and onboarding | `baseline-layout.json`, `dashboard-search-alerts-minimum-layout.json` |
-| Outliner All root and Today section | `open-all.json` |
-| Outliner project scopes and focus/sort translation | `navigate-outliner.json`, `scope-picker-search-commit.json` |
-| Review modules | `reference-review-shortcuts.json`, `metrics-minimum-layout.json`, `roadmap-tabs-minimum-layout.json` |
-| Manage modules | `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json`, `settings-minimum-layout.json` |
-| Context Hub browse, apply, and inline CRUD | `context-hub-open.json`, `context-hub-regular-search-apply.json`, `context-hub-custom-create-apply.json`, `context-hub-custom-edit-membership.json`, `context-hub-delete-active-custom.json`, `context-hub-minimum-layout.json` |
-| Detail and Composer | `task-detail-narrow-layout.json`, `quick-capture-minimum-layout.json`, `task-form-edit-standard-layout.json` |
-| Palette, Recent, Pinned aliases, and reference overlays | `command-palette-search.json`, `recent-tasks-empty-status.json`, `command-action-help.json` |
-| Picker/form overlays | `attr-filter-picker-minimum-layout.json`, `date-input-minimum-layout.json`, `workflow-rule-creator-minimum-layout.json` |
-| Undo/redo and mutation refresh | capture, inbox, multiselect, and message-log scenarios exercise the shared transaction refresh path; ledger selection parity is asserted by the operation-ledger suite |
-| Narrow/responsive layouts | every `*-minimum-layout.json`, `*-narrow-layout.json`, and `resize-stress.json` scenario |
+| All over All Projects and responsive root | `open-all.json`, `baseline-layout.json`, `outliner-alerts-minimum-layout.json`, `resize-stress.json` |
+| Capture → Inbox | `fresh-install-capture.json`, `task-composer-minimum-layout.json` |
+| Inbox auto-advance and `n`/`b`/`t`/`s`/`d` loop | `daily-loop.json` |
+| Exact ten-mode catalog and Tab modes | `mode-catalog.json`, `navigate-outliner.json` |
+| Contextual action sheet and value picker | `date-input-minimum-layout.json`, `snooze-input-minimum-layout.json` |
+| Multi-select and bulk action sheet | `outliner-multiselect-minimum-layout.json`, `outliner-multiselect-narrow-layout.json` |
+| Scope Hub browse, search, mutation, and narrow layout | `context-hub-open.json`, `scope-hub-search-commit.json`, `context-hub-*.json` |
+| Empty Finder shortlist and typed search | `finder-shortlist.json`, `finder-search.json`, `finder-task-actions-narrow-layout.json` |
+| Promoted Notes, Weekly Review, Tags, and Notifications | `promoted-tools.json`, `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json` |
+| Global/project Inbox responsive layouts | `global-inbox-mode-*.json`, `project-inbox-mode-*.json` |
+| Visible search and narrow task detail | `visible-search-minimum-layout.json`, `task-detail-narrow-layout.json` |
 
-Legacy machine/config payload migration is fixture-driven in the config suite;
-the fresh-install scenarios exercise the resulting canonical runtime state.
+Additional committed scenarios cover Settings, project creation/editing,
+templates, workflow editors, Roadmap, Metrics, messages, reference content, and
+other retained secondary tools. These are typed children or overlays of the
+Outliner; they are not alternate task roots.
 
-## Interactive session mode (NDJSON)
+## Interactive NDJSON session
 
-`tt tui-test session` keeps a single driver alive and speaks newline-delimited
-JSON: one request object per line on stdin, one response object per line on
-stdout. State persists across requests, so it is the right tool for exploratory,
-multi-step review where each step depends on the last. Logs, prompts, and human
-text go to **stderr only** — stdout stays pure NDJSON.
+Session mode keeps one driver alive and reads one request per line:
 
 ```bash
 tt tui-test session --fixture rich --size 100x35
 ```
 
-Request — either a driver `action` or a session `command`, never both:
+Action request:
 
 ```json
-{"id":"1","action":{"type":"resize","width":100,"height":35}}
+{"id":"1","action":{"type":"key","key":":"}}
+```
+
+Control requests:
+
+```json
 {"id":"2","command":"observe"}
-{"id":"3","action":{"type":"key","key":":"}}
-{"id":"4","command":"reset"}
-{"id":"5","command":"quit"}
+{"id":"3","command":"reset"}
+{"id":"4","command":"quit"}
 ```
 
-Session commands:
+Each response repeats `id` and returns either an observation or a structured
+error. Standard output is pure NDJSON; diagnostics go to standard error.
 
-| `command` | Effect                                                                 |
-| --------- | ---------------------------------------------------------------------- |
-| `observe` | Return a fresh observation without changing state.                     |
-| `reset`   | Rebuild a fresh driver/workspace from the same fixture or config.      |
-| `quit`    | Return a final observation and end the session.                        |
+## Observation contract
 
-The top-level session `"command"` (`observe`/`reset`/`quit`) controls the NDJSON
-loop itself and is a distinct field from the driver action type `"command"`. To
-invoke a TUI command in session mode, send it as an action, not as a session
-command:
+An observation contains:
 
-```json
-{"id":"6","action":{"type":"command","command":"help"}}
+| Field | Meaning |
+| --- | --- |
+| `current_view` | Active presentation identity, such as `CrossProjectOutliner`, `Finder`, or `TaskDetail`. |
+| `view_stack` | Current typed presentation path. |
+| `width`, `height` | Simulated terminal dimensions. |
+| `plain_screen` | ANSI-free rendered screen. |
+| `ansi_screen` | Optional styled screen when `--ansi` is set. |
+| `status`, `status_is_info`, `error` | Shell feedback state. |
+| `layout_issues` | Structured render audit failures. |
+| `pending_async` | Commands still pending after the bounded drain. |
+| `snapshot` | Small view-specific semantic state. |
+| `available_commands` | Applicable production operations sorted by name. |
+
+Snapshots expose high-signal values only. The Outliner snapshot includes its
+mode, cursor, row count, scope/search state, and selected task when applicable.
+Finder and list surfaces expose bounded semantic state rather than entire task
+or project objects.
+
+`available_commands` is derived from the active input-strategy projection of
+`OperationRegistry`; dormant harness-only deep links are excluded.
+
+## Add or update a scenario
+
+1. Start from the smallest fixture that contains the required behavior.
+2. Use public keys for acceptance behavior and harness commands only for setup.
+3. Assert stable semantic labels, not color or exact full-screen snapshots.
+4. Include `no_layout_issues` at every important narrow/resized state.
+5. Give mutation steps intent labels and wait only when committed state is
+   required.
+6. Run the file directly, then replay the complete committed set:
+
+```bash
+tt tui-test run --scenario docs/tui-testing/scenarios/<name>.json --json
+./scripts/run_tui_scenarios.sh
 ```
-
-Each request carries either a session `"command"` or an `"action"`, never both.
-
-Response:
-
-```json
-{"id":"1","ok":true,"observation":{...}}
-{"id":"3","ok":false,"observation":{...},"error":{"kind":"action_failed","reason":"..."}}
-```
-
-Error kinds are stable strings you can branch on: `bad_request`,
-`unknown_command`, `reset_failed`, `action_failed`. On a failed action the
-response still carries the failure-point `observation`.
-
-## Observation fields
-
-Both `run` and `session` return the same normalized observation shape. Fields
-marked *omitempty* are absent when empty.
-
-| Field                | Meaning                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| `current_view`       | Name of the active view (the Outliner root reports `CrossProjectOutliner`; e.g. `TaskDetail`, `CommandPalette`). |
-| `view_stack`         | The navigation stack from root to the active view.                                   |
-| `width` / `height`   | The simulated terminal size.                                                         |
-| `plain_screen`       | The rendered screen with styling stripped and invalid UTF-8 sanitized.               |
-| `ansi_screen`        | *(omitempty)* The raw styled screen; present only with `--ansi` / `IncludeANSI`.     |
-| `status`             | *(omitempty)* The current status-line message.                                       |
-| `status_is_info`     | *(omitempty)* True when the status is an informational (not error) message.          |
-| `error`              | *(omitempty)* The current error message shown to the user, if any.                   |
-| `layout_issues`      | *(omitempty)* Detected normalization/layout problems — each `{kind, message, line}`. |
-| `pending_async`      | *(omitempty)* Count of commands still outstanding after the drain budget (drain with a `wait` action). |
-| `snapshot`           | *(omitempty)* A compact semantic map of the active view's state (see below).         |
-| `available_commands` | *(omitempty)* Commands the active view exposes, sorted by name.                       |
-
-`layout_issue.kind` values include `invalid_utf8`, `width_overflow` (a line wider
-than the terminal), and `height_overflow` (more rendered lines than the terminal
-height). `line` is 1-based, or `0` for screen-wide issues.
-
-### `snapshot`
-
-A compact, stable per-view semantic map — high-signal fields only (counts,
-cursor, selected-item title, active mode/tab/perspective), never whole task or
-project structs. It is present only for views that implement it: the **Outliner**
-(the sole root, whose `current_view` is `CrossProjectOutliner`) and the
-**CommandPalette**. Keys vary by view and are defined in
-`internal/tui/uitest_snapshot.go` — consult that file for the authoritative set.
-Examples:
-
-- Outliner: `{cross_project, cursor, perspective, row_count}`
-- CommandPalette: `{action_mode, cursor, query, result_count, selected_category, selected_item}`
-
-Because snapshot rows/columns are rebuilt lazily during a render, the driver
-always renders the active view before reading the snapshot — live scenarios need
-no special handling.
-
-### `available_commands`
-
-Each entry is `{name, shortcut, category, aliases}` for a command the active view
-exposes, sorted by name for stable output. This lets a review host discover the
-available actions without scraping help text. `shortcut` and `aliases` are
-*omitempty*. The Outliner root exposes dozens of commands; some views (e.g. the
-palette itself) expose none, in which case the field is absent.
-
-## Safety guarantees
-
-Both modes are read-only with respect to your real data:
-
-- **Fixture mode** builds a fresh, isolated temp workspace (temp data dir + config)
-  and drives the app there. External tool integrations (fzf, glow) are disabled so
-  the run stays fully headless. The workspace is removed when the run ends (pass
-  `--keep-workspace` to keep it and print its path).
-- **Copied-config mode** (`--config PATH`, or the inherited persistent `--config`)
-  stages the source config bytes into a temp workspace, copies the data dir into
-  temp storage, and rewrites `data_dir` + project paths onto the copy before
-  launching. Projects whose data directory lives **outside** the data dir are
-  copied too — each is staged into its own subdirectory under the temp workspace
-  and repointed onto that copy — so no source project directory is driven in
-  place. The **source config and task files are never mutated** — the copy
-  absorbs every write (including first-load config migrations). This is verified
-  end to end in the test suite. `--config` and `--fixture` are mutually exclusive.
-
-Direct live writes to your real data directory are out of scope for v1.

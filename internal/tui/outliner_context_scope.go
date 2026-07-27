@@ -58,16 +58,6 @@ func (m *OutlinerModel) refreshContextScopeProjects() {
 	m.contextScopeProjectIDs = admitted
 }
 
-// contextScopeSkipsProject reports whether a loaded project falls outside the
-// active Context. A project drill-in scope wins: drilling into a project always
-// shows it, even when it is not a Context member.
-func (m *OutlinerModel) contextScopeSkipsProject(projectID string) bool {
-	if m.activeContext.IsAll() || m.scopedProjectID != "" {
-		return false
-	}
-	return !m.contextScopeProjectIDs[projectID]
-}
-
 // contextScopeProjects narrows loadedProjects to the active Context, preserving
 // load order. Under the All context it returns loadedProjects unchanged.
 func (m *OutlinerModel) contextScopeProjects() []*models.Project {

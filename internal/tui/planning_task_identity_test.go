@@ -27,7 +27,6 @@ func duplicatePlanningProjects(t *testing.T) (*models.Project, *models.Project, 
 		task.WorkflowState = models.StateNext
 		project.Tasks = []*models.Task{task}
 		project.NextShortID = 2
-		project.EnsureDefaultSections()
 		project.BuildTaskTree()
 		return project, task
 	}

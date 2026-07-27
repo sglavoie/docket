@@ -91,7 +91,7 @@ func TestResolveAllDependencies_OmitsAmbiguousPlainID(t *testing.T) {
 
 func TestCollectAllIncompleteTasks_ExcludesComplete(t *testing.T) {
 	todo := newTask("todo")
-	done := withStatus(newTask("done"), models.StatusDone)
+	done := withStatus(newTask("done"), models.StateDone)
 	p := makeProject("proj1", "p1", todo, done)
 
 	result := CollectAllIncompleteTasks([]*models.Project{p})

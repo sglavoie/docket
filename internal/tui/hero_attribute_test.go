@@ -51,7 +51,7 @@ func TestPickHeroAttribute(t *testing.T) {
 			want:    HeroBlocked,
 		},
 		{
-			name: "explicit StatusBlocked + P1 → HeroBlocked",
+			name: "explicit StateWaiting + P1 → HeroBlocked",
 			task: &models.Task{
 				ID:            "t-status-blocked",
 				WorkflowState: models.StateWaiting,
@@ -61,7 +61,7 @@ func TestPickHeroAttribute(t *testing.T) {
 			want:    HeroBlocked,
 		},
 		{
-			name: "explicit StatusBlocked without deps still → HeroBlocked",
+			name: "explicit StateWaiting without deps still → HeroBlocked",
 			task: &models.Task{
 				ID:            "t-status-blocked-only",
 				WorkflowState: models.StateWaiting,
@@ -178,7 +178,7 @@ func TestDueIsInlineHeroHonorsQuietStates(t *testing.T) {
 	}
 	for _, task := range []*models.Task{done, canceled, dimmed} {
 		if dueIsInlineHero(task) {
-			t.Fatalf("%s task should not be eligible for inline due hero", models.LegacyStatusForState(task.State()))
+			t.Fatalf("%s task should not be eligible for inline due hero", task.State())
 		}
 	}
 }

@@ -28,14 +28,7 @@ type outlinerScopeFrame struct {
 	cursor           int
 	viewScrollOffset int
 
-	// Mode discriminators — the full set consumed by activeOutlinerMode().
-	activePerspective int
-	smartFocus        *OutlinerFocus
-	lens              OutlinerLens
-	workNextMode      bool
-	workBacklogMode   bool
-	crossPriorityMode bool
-	reviewMode        reviewModeKind
+	primaryMode OutlinerModeID
 
 	// Filter / search / saved-filter / pinned-tag narrowing.
 	filter               FilterState
@@ -85,15 +78,6 @@ func cloneSavedFilter(f *config.SavedFilter) *config.SavedFilter {
 	return &dup
 }
 
-// cloneOutlinerFocus copies the smart-focus discriminator behind a fresh pointer.
-func cloneOutlinerFocus(f *OutlinerFocus) *OutlinerFocus {
-	if f == nil {
-		return nil
-	}
-	dup := *f
-	return &dup
-}
-
 // captureScopeFrame snapshots the current restorable state into a frame. Every
 // mutable map/pointer/slice is deep-copied so the frame is fully independent of
 // the live model.
@@ -102,13 +86,7 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		scopedProjectID:      m.scopedProjectID,
 		cursor:               m.cursor,
 		viewScrollOffset:     m.viewScrollOffset,
-		activePerspective:    m.activePerspective,
-		smartFocus:           cloneOutlinerFocus(m.smartFocus),
-		lens:                 m.lens,
-		workNextMode:         m.workNextMode,
-		workBacklogMode:      m.workBacklogMode,
-		crossPriorityMode:    m.crossPriorityMode,
-		reviewMode:           m.reviewMode,
+		primaryMode:          m.primaryMode,
 		filter:               cloneFilterState(m.filter),
 		searchActive:         m.HasActiveSearch(),
 		searchQuery:          m.SearchQuery(),
@@ -130,13 +108,7 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.scopedProjectID = f.scopedProjectID
 	m.cursor = f.cursor
 	m.viewScrollOffset = f.viewScrollOffset
-	m.activePerspective = f.activePerspective
-	m.smartFocus = cloneOutlinerFocus(f.smartFocus)
-	m.lens = f.lens
-	m.workNextMode = f.workNextMode
-	m.workBacklogMode = f.workBacklogMode
-	m.crossPriorityMode = f.crossPriorityMode
-	m.reviewMode = f.reviewMode
+	m.primaryMode = f.primaryMode
 	m.filter = cloneFilterState(f.filter)
 	m.SetSearchActive(f.searchActive)
 	m.SetSearchQuery(f.searchQuery)
@@ -168,35 +140,6 @@ func (m *OutlinerModel) scopeProjects() []*models.Project {
 	return nil
 }
 
-// scopedTagFilterMsg builds the tag-filter picker payload for the outliner's
-// current scope. Catalog tags and task counts both come from scopeProjects(), so
-// an active Context (or drill-in scope) can never offer a tag whose only tasks
-// live outside the scoped project set. Keyboard and command-palette entry points
-// share this builder so the two can't drift apart.
-func (m *OutlinerModel) scopedTagFilterMsg() ShowTagFilterMsg {
-	if m.project != nil {
-		return ShowTagFilterMsg{
-			Tags:     BuildProjectTagList(m.project, false),
-			Selected: m.filter.Tags,
-			Source:   ViewOutliner,
-			Title:    "Filter by Tags",
-		}
-	}
-	return ShowTagFilterMsg{
-		Tags:     BuildProjectsTagList(m.scopeProjects(), false),
-		Selected: m.filter.Tags,
-		Source:   ViewCrossProjectOutliner,
-		Title:    "Filter by Tags",
-	}
-}
-
-// scopeSkipProject reports whether a loaded project must be skipped by the
-// row-building loops because a single-project scope is active and this is not
-// the scoped project.
-func (m *OutlinerModel) scopeSkipProject(projectID string) bool {
-	return m.scopedProjectID != "" && projectID != m.scopedProjectID
-}
-
 // scopedProject resolves the currently scoped project from loadedProjects, or
 // nil when unscoped or the project is no longer loaded.
 func (m *OutlinerModel) scopedProject() *models.Project {
@@ -217,28 +160,19 @@ func (m *OutlinerModel) isProjectScoped() bool {
 	return m.project == nil && m.scopedProjectID != ""
 }
 
-// scopeChainNames returns the ordered list of scoped project display names, from
-// the outermost pushed scope to the currently active scope. It is empty at the
-// base all-projects scope. Nested scopes yield one entry per level so the scope
-// chrome can render the full depth (e.g. Alpha › Beta). Each stacked frame's
-// scopedProjectID is the scope that was active before that push; the base frame
-// carries an empty scopedProjectID and is naturally excluded.
+// scopeChainNames returns the active project focus name. The scope model admits
+// one base (All or a context) plus at most one project focus, so the chrome can
+// never render a nested project chain.
 func (m *OutlinerModel) scopeChainNames() []string {
-	var names []string
-	for _, frame := range m.scopeStack {
-		if frame.scopedProjectID != "" {
-			names = append(names, m.projectDisplayNameByID(frame.scopedProjectID))
-		}
-	}
 	if m.scopedProjectID != "" {
-		names = append(names, m.projectDisplayNameByID(m.scopedProjectID))
+		return []string{m.projectDisplayNameByID(m.scopedProjectID)}
 	}
-	return names
+	return nil
 }
 
-// pushProjectScope enters a single-project scope, saving the previous scope so
-// Esc restores it. Fresh scopes reset cursor/scroll and clear any cross-project
-// zoom so the scoped project renders from its roots.
+// pushProjectScope enters or replaces the one project focus. The first focus
+// captures the base state; later project choices replace the focus in place
+// without stacking, so one Esc always returns to that base context.
 func (m *OutlinerModel) pushProjectScope(projectID string) {
 	if projectID == "" || m.project != nil {
 		return
@@ -246,7 +180,22 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	if projectID == m.scopedProjectID {
 		return
 	}
-	m.scopeStack = append(m.scopeStack, m.captureScopeFrame())
+	_ = m.persistActiveRouteState()
+	if m.scopedProjectID == "" {
+		// Starting from a base scope creates the sole restorable frame.
+		m.scopeStack = []outlinerScopeFrame{m.captureScopeFrame()}
+	} else {
+		// Replacing a project focus retains only the original base frame. The
+		// defensive branch repairs older nested state without making it visible.
+		switch {
+		case len(m.scopeStack) > 0:
+			m.scopeStack = m.scopeStack[:1]
+		default:
+			base := m.captureScopeFrame()
+			base.scopedProjectID = ""
+			m.scopeStack = []outlinerScopeFrame{base}
+		}
+	}
 	m.scopedProjectID = projectID
 	m.crossZoomStack = nil
 	m.cursor = 0
@@ -254,17 +203,18 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.clampCursor()
+	m.applyOutlinerRouteState(m.projectRouteState(projectID))
 }
 
-// popProjectScope restores the nearest saved scope frame. It reports whether a
-// scope was actually popped so the Esc cascade can fall through to the next step
-// when the outliner is already at the base all-projects scope.
+// popProjectScope restores the captured base scope. It reports whether a focus
+// was active so the Esc cascade can fall through at the base.
 func (m *OutlinerModel) popProjectScope() bool {
-	if len(m.scopeStack) == 0 {
+	if m.scopedProjectID == "" || len(m.scopeStack) == 0 {
 		return false
 	}
-	frame := m.scopeStack[len(m.scopeStack)-1]
-	m.scopeStack = m.scopeStack[:len(m.scopeStack)-1]
+	_ = m.persistActiveRouteState()
+	frame := m.scopeStack[0]
+	m.scopeStack = nil
 	m.restoreScopeFrame(frame)
 	return true
 }
@@ -276,6 +226,7 @@ func (m *OutlinerModel) clearProjectScope() bool {
 	if m.scopedProjectID == "" && len(m.scopeStack) == 0 {
 		return false
 	}
+	_ = m.persistActiveRouteState()
 	if len(m.scopeStack) > 0 {
 		base := m.scopeStack[0]
 		m.scopeStack = nil
@@ -298,6 +249,12 @@ func (m *OutlinerModel) clearProjectScope() bool {
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
 // leave the root silently narrowed by a stale context, filter, tag, or sort.
 func (m *OutlinerModel) resetToGlobalAll() {
+	m.modePicker = nil
+	m.confirm.Cancel()
+	m.quickEdit.Exit()
+	m.crossQuickEditProject = nil
+	m.scoreFilterInput.active = false
+	m.scoreFilterInput.Input.Blur()
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.clearContextScope()
@@ -323,11 +280,9 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.clampCursor()
 }
 
-// reconcileProjectScope keeps the scope stack valid after a reload or external
-// mutation. If the scoped project (or any stacked scope's project) has vanished
-// from loadedProjects, it unwinds to the nearest still-valid scope and reports a
-// human message describing the fallback. Returns ("", false) when no repair was
-// needed.
+// reconcileProjectScope keeps the one focus valid after a reload or external
+// mutation. If it vanished, the captured base is restored. Returns ("", false)
+// when no repair was needed.
 func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	if m.project != nil || m.scopedProjectID == "" {
 		return "", false
@@ -335,21 +290,13 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	if m.scopedProject() != nil {
 		return "", false
 	}
-	// The active scope disappeared. Pop frames until we land on a valid scope
-	// (or the base all-projects scope, whose scopedProjectID is "").
-	for len(m.scopeStack) > 0 {
-		frame := m.scopeStack[len(m.scopeStack)-1]
-		m.scopeStack = m.scopeStack[:len(m.scopeStack)-1]
-		if frame.scopedProjectID == "" || m.projectIsLoaded(frame.scopedProjectID) {
-			m.restoreScopeFrame(frame)
-			label := "all projects"
-			if frame.scopedProjectID != "" {
-				label = m.projectDisplayNameByID(frame.scopedProjectID)
-			}
-			return "Scoped project no longer exists — returned to " + label, true
-		}
+	if len(m.scopeStack) > 0 {
+		frame := m.scopeStack[0]
+		m.scopeStack = nil
+		m.restoreScopeFrame(frame)
+		return "Focused project no longer exists — returned to the base scope", true
 	}
-	// No valid frame remained; fall back to the base all-projects scope.
+	// No captured frame remained; fall back to the active context base in place.
 	m.scopedProjectID = ""
 	m.crossZoomStack = nil
 	m.cursor = 0
@@ -357,7 +304,7 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.clampCursor()
-	return "Scoped project no longer exists — returned to all projects", true
+	return "Focused project no longer exists — returned to the base scope", true
 }
 
 // projectIsLoaded reports whether a project ID is present in loadedProjects.

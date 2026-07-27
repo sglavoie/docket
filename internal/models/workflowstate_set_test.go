@@ -135,8 +135,8 @@ func TestWorkflowStateSetJSONNullAndZeroMarshalAsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWorkflowStateSet: %v", err)
 	}
-	if err := json.Unmarshal([]byte(`null`), &set); err != nil {
-		t.Fatalf("Unmarshal(null): %v", err)
+	if unmarshalErr := json.Unmarshal([]byte(`null`), &set); unmarshalErr != nil {
+		t.Fatalf("Unmarshal(null): %v", unmarshalErr)
 	}
 	if !set.IsEmpty() {
 		t.Fatalf("Unmarshal(null) = %v, want empty", set.Values())

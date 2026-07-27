@@ -22,9 +22,9 @@ type OutlinerModeRow struct {
 	Depth      int    // 0 for roots; n for n-th level Today descendant
 }
 
-// OutlinerModeInput bundles the cross-project data a row strategy needs. It is
-// the single seam through which Today, Next, and Backlog receive their inputs so
-// the strategies stay pure and testable.
+// OutlinerModeInput bundles the scoped data a canonical row strategy needs. It
+// is the single seam through which the ten modes receive their inputs so the
+// membership and fixed-order strategies stay pure and testable.
 type OutlinerModeInput struct {
 	Projects     []*models.Project
 	DailyPlanIDs map[TaskIdentity]bool
@@ -53,7 +53,8 @@ type OutlinerModeInput struct {
 	TaskExclude func(task *models.Task, project *models.Project) bool
 	// Now is the reference time for the snooze check; the zero value uses
 	// time.Now().
-	Now time.Time
+	Now            time.Time
+	IncludeSnoozed bool
 }
 
 func (in OutlinerModeInput) now() time.Time {
@@ -63,10 +64,9 @@ func (in OutlinerModeInput) now() time.Time {
 	return in.Now
 }
 
-// BuildTodayModeRows realizes the Today section: every daily-plan task (including
-// completed tasks) as a root, ordered by state activeness then daily-plan
-// position, with descendants expanded open-before-completed. It ports the
-// Planner's loadItems/expandTodayChildren semantics verbatim.
+// BuildTodayModeRows realizes the Today section: every canonically eligible
+// daily-plan task as a root, ordered by state activeness then daily-plan
+// position, with descendants expanded open-before-completed.
 func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	var roots []OutlinerModeRow
 	for _, project := range in.Projects {
@@ -78,7 +78,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 			tasks = candidates
 		}
 		for _, task := range tasks {
-			if task == nil {
+			if !planningTodayEligible(task) {
 				continue
 			}
 			if in.TaskExclude != nil && in.TaskExclude(task, project) {
@@ -152,21 +152,25 @@ func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	return rows
 }
 
-// BuildBacklogModeRows realizes the Backlog horizon: actionable work minus Today
-// (daily plan) and Next (StateNext), ranked by the shared cross-project scorer.
-// The Today/Next exclusion happens before ranking so the visible order is
-// invariant to how many same-project tasks sit in Today or Next.
+// BuildBacklogModeRows realizes the Backlog horizon: exact StateReady work minus
+// Today, ranked by the shared cross-project scorer. StateNext and InProgress
+// have their own canonical groups and never enter Backlog.
 func BuildBacklogModeRows(in OutlinerModeInput) []OutlinerModeRow {
-	actionable := focus.CollectActionableTasksAt(in.Projects, in.now())
-	candidates := make([]focus.FocusTask, 0, len(actionable))
-	for _, ft := range actionable {
-		if ft.Task == nil || ft.Project == nil {
+	now := in.now()
+	var candidates []focus.FocusTask
+	for _, project := range in.Projects {
+		if project == nil {
 			continue
 		}
-		if in.DailyPlanIDs[taskIdentityFor(ft.Task, ft.Project)] || ft.Task.IsInState(models.StateNext) {
-			continue
+		for _, task := range project.Tasks {
+			if task == nil || task.IsSnoozedAt(now) || !task.IsInState(models.StateReady) {
+				continue
+			}
+			if in.DailyPlanIDs[taskIdentityFor(task, project)] {
+				continue
+			}
+			candidates = append(candidates, focus.FocusTask{Task: task, Project: project})
 		}
-		candidates = append(candidates, ft)
 	}
 
 	ranked := focus.RankCrossProjectTasks(candidates, nil, in.Scorer)

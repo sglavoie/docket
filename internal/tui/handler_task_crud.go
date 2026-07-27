@@ -57,11 +57,7 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 		}
 	}
 	// No templates or skipped, go directly to the compact task composer.
-	if m.typedNavigation {
-		return true, m.openTaskComposer(m.createComposerPreset(project, msg.ParentTask), ViewTaskForm)
-	}
-	m.showView(ViewTaskForm, NewTaskFormModelCreate(project, m.runtime, msg.ParentTask))
-	return true, nil
+	return true, m.openTaskComposer(m.createComposerPreset(project, msg.ParentTask))
 }
 
 // handleEditTask handles the EditTaskMsg.
@@ -71,11 +67,8 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 		project = m.currentProject
 	}
 	if project != nil && msg.Task != nil {
-		if m.typedNavigation {
-			preset := TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: msg.Task}
-			return true, m.openTaskComposer(preset, ViewTaskForm)
-		}
-		m.showView(ViewTaskForm, NewTaskFormModelEdit(project, msg.Task, m.runtime))
+		preset := TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: msg.Task}
+		return true, m.openTaskComposer(preset)
 	}
 	return true, nil
 }
@@ -84,7 +77,7 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	// Capture whether this creation originated from the Quick Capture view and the
 	// pre-capture task count before handleWithRefresh pops the view / reloads.
-	fromQuickCapture := m.currentView() == ViewQuickCapture
+	fromQuickCapture := m.taskComposer != nil && m.taskComposer.preset.Kind == ComposerGlobal
 	preCaptureCount := 0
 	if m.currentProject != nil {
 		preCaptureCount = len(m.currentProject.Tasks)
@@ -118,30 +111,19 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	}
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
-	// Navigate every matching project view using the task pointer owned by that
-	// view's freshly reloaded project. Registered views may own project objects
-	// distinct from m.currentProject, so routing through only one cached pointer
-	// can leave a view's Inbox collapsed and its cursor on the pre-capture task.
 	if msg.Task != nil {
-		projectID := ""
-		if msg.Project != nil {
-			projectID = msg.Project.ID
-		} else if msg.Result != nil {
-			projectID = msg.Result.ProjectID
+		project := msg.Project
+		if project == nil && msg.Result != nil {
+			project = m.projectByID(msg.Result.ProjectID)
 		}
-		for _, outliner := range m.registeredProjectOutliners() {
-			if projectID != "" && outliner.project.ID != projectID {
-				continue
-			}
-			if fresh := outliner.project.GetTaskByID(msg.Task.ID); fresh != nil {
-				outliner.NavigateToTask(fresh)
-			}
+		if m.crossOutliner != nil && project != nil {
+			m.crossOutliner.NavigateToTaskInProject(msg.Task, project)
 		}
 	}
 
 	// Set status message showing section
 	if msg.Task != nil {
-		if bucket := taskSectionBucket(msg.Task); bucket != "" {
+		if bucket := taskStateGroupLabel(msg.Task); bucket != "" {
 			m.setSuccessStatus(fmt.Sprintf("Created in %s", bucket))
 		}
 	}
@@ -156,9 +138,8 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		}
 	}
 
-	// Delegate to current view (e.g., inbox processor) so it can reload its state
+	// Delegate to the current view so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
-	m.syncInboxProcessor()
 
 	// If open-after requested, re-lookup the task (stale after reload) and open
 	if msg.Task != nil && (msg.OpenContent || msg.OpenDetail) {
@@ -198,7 +179,7 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 
 	// Re-resolve the live task pointer AFTER handleWithRefresh, which reloads the
 	// current project and replaces every task pointer. Resolving earlier would
-	// hand delegated views (task detail, inbox processor) an orphaned pointer.
+	// hand delegated views an orphaned pointer.
 	if msg.Result != nil {
 		project := m.currentProject
 		if project == nil || project.ID != msg.Result.ProjectID {
@@ -209,9 +190,8 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 		}
 	}
 
-	// Delegate to current view (e.g., inbox processor) so it can reload its state
+	// Delegate to the current view so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
-	m.syncInboxProcessor()
 	return true, tea.Batch(refreshCmd, cmd)
 }
 

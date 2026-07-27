@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -76,6 +77,9 @@ func (m *AppModel) handleAskMessage(raw tea.Msg) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
+	if handled, cmd := m.handleOperationOverlayMessage(msg); handled {
+		return true, cmd
+	}
 	if handled, cmd := m.handleGlobalInputMessage(msg); handled {
 		return true, cmd
 	}
@@ -140,9 +144,6 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.crossOutliner.handleCrossProjectsLoaded(msg)
 	case retryMachineDomainRepairMsg:
 		return true, m.retryMachineDomainRepair()
-	case RecordRepeatableActionMsg:
-		m.lastRepeatableAction = msg.Action
-		return true, nil
 	default:
 		return false, nil
 	}
@@ -210,12 +211,18 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // affected project is reloaded from disk before the shared post-save refresh
 // runs, keeping every open view consistent with the committed transaction.
 func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
+	triagedInbox := m.activeInboxTriage() &&
+		msg.Action == "Change State" &&
+		msg.Result.State != models.StateInbox
 	m.reloadProjectByID(msg.Result.ProjectID)
 	if msg.PlanningChanged && m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
 	}
 	m.refreshLoadedTaskWorkspace()
 	m.observeLoadedProjectMilestones(msg.Result.ProjectID)
+	if triagedInbox {
+		m.markInboxTriaged()
+	}
 	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 }
 
@@ -225,6 +232,9 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 // project, so each affected project's in-memory copy is reloaded from disk before
 // the shared post-save refresh runs, keeping every open view consistent.
 func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) tea.Cmd {
+	triagedInbox := m.activeInboxTriage() &&
+		msg.Action == "Bulk Transition" &&
+		len(msg.TouchedProjectIDs) > 0
 	for _, projectID := range msg.TouchedProjectIDs {
 		m.reloadProjectByID(projectID)
 	}
@@ -268,28 +278,21 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 		m.rebuildPlanningFromRuntime()
 	}
 	m.observeLoadedProjectMilestones(msg.TouchedProjectIDs...)
+	if triagedInbox {
+		m.markInboxTriaged()
+	}
 	// Credit the Weekly Review completion summary for a committed delete it
 	// originated. A no-op for every other origin (the count is armed only for a
 	// Weekly Review-origin delete in confirmTaskDelete) and for an unrelated batch
 	// whose token does not match the armed request.
 	m.applyPendingWeeklyReviewDelete(msg.DeleteRequestToken, msg.RemovedTaskIDs)
 	saveCmd := m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
-	// Apply inbox processor bookkeeping only after the committed views have been
-	// refreshed above (so the queue rebuild reads committed project data). A
-	// no-op for non-inbox origins and for a batch whose token does not match the
-	// armed request.
-	if inboxCmd := m.applyPendingInboxDelete(msg.DeleteRequestToken, msg.RemovedTaskLocators, msg.RemovedTaskIDs); inboxCmd != nil {
-		return tea.Batch(saveCmd, inboxCmd)
-	}
 	return saveCmd
 }
 
 func (m *AppModel) refreshLoadedTaskWorkspace() {
-	if m.outliner != nil {
-		m.outliner.rebuildRows()
-	}
 	if m.crossOutliner != nil {
-		m.crossOutliner.rebuildRows()
+		rebuildOutlinerPreservingCursor(m.crossOutliner)
 	}
 }
 
@@ -349,12 +352,7 @@ func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) persistOutlinerFilterState() {
 	// Persist filter state immediately so navigation (e.g. go drill-down
 	// from cross-outliner) reads the up-to-date cleared/changed values.
-	switch m.currentView() { //nolint:exhaustive
-	case ViewCrossProjectOutliner:
-		return
-	default:
-		m.saveOutlinerFilterState()
-	}
+	m.saveOutlinerFilterState()
 }
 
 func (m *AppModel) handleSaveTimeout() tea.Cmd {
@@ -416,8 +414,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 		m.reviewHub.SetPlanningIndicators(m.focusQueueIDs, m.dailyPlanIDs)
 		m.reviewHub.Refresh()
 	}
-	m.reloadRegisteredProjectOutliners(storage.LoadProject)
-	m.rebuildRegisteredProjectOutliners()
 	var saveCmds []tea.Cmd
 	if reloadCrossProject {
 		if reloadCmd := m.requestCrossProjectOutlinerReload(); reloadCmd != nil {
@@ -448,9 +444,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 			}
 		}
 		m.refreshLinkedTaskSelectorAfterReload()
-	}
-	if m.globalInboxProcessor != nil {
-		m.globalInboxProcessor.loadAllInboxTasks()
 	}
 	return saveCmds
 }

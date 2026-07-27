@@ -111,6 +111,20 @@ func (f SavedFilter) Validate() error {
 	return nil
 }
 
+// ValidateForAuthoring rejects lifecycle compatibility shapes retained only for
+// the versioned v3-to-v4 persistence migration.
+func (f SavedFilter) ValidateForAuthoring() error {
+	if f.legacyLifecycleDecoded {
+		return fmt.Errorf("saved filter uses retired status or section lifecycle input; use filter_states or state criteria")
+	}
+	for i, criterion := range f.Criteria {
+		if criterion.legacyLifecycleDecoded {
+			return fmt.Errorf("criterion %d uses retired status or section lifecycle input; use state", i)
+		}
+	}
+	return f.Validate()
+}
+
 // MarshalJSON persists only canonical lifecycle fields.
 func (f SavedFilter) MarshalJSON() ([]byte, error) {
 	f.normalizeLifecycle()

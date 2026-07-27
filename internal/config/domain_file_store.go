@@ -324,6 +324,26 @@ func (s *DomainFileStore) persistLoadedMigration(kind domainKind, payload any, l
 	return revisionOf(data), nil
 }
 
+// persistCurrentSyncedCleanup keeps v3 payload rewrites under the bundle
+// migration transaction. Direct domain loads may still return a canonicalized
+// in-memory value, but only a catalog already stamped at the current payload
+// version permits a maintenance rewrite of one synced domain.
+func (s *DomainFileStore) persistCurrentSyncedCleanup(
+	kind domainKind,
+	payload any,
+	loadedRevision string,
+) (string, error) {
+	catalog := NewWorkspaceCatalog()
+	catalogRevision, err := s.load(domainCatalog, catalog)
+	if err != nil {
+		return loadedRevision, err
+	}
+	if catalogRevision == "" || catalog.SchemaVersion != CurrentConfigVersion {
+		return loadedRevision, nil
+	}
+	return s.persistLoadedMigration(kind, payload, loadedRevision)
+}
+
 func decodeEnvelope(data []byte) (domainEnvelope, error) {
 	var env domainEnvelope
 	if err := json.Unmarshal(data, &env); err != nil {
@@ -615,7 +635,7 @@ func (s *DomainFileStore) LoadPlanningChecked() (*PlanningState, string, error) 
 		return nil, rev, err
 	}
 	if changed {
-		rev, err = s.persistLoadedMigration(domainPlanning, out, rev)
+		rev, err = s.persistCurrentSyncedCleanup(domainPlanning, out, rev)
 		if err != nil {
 			return nil, rev, err
 		}
@@ -657,7 +677,7 @@ func (s *DomainFileStore) LoadSettingsChecked() (*Settings, string, error) {
 		return nil, rev, err
 	}
 	if changed {
-		rev, err = s.persistLoadedMigration(domainSettings, out, rev)
+		rev, err = s.persistCurrentSyncedCleanup(domainSettings, out, rev)
 		if err != nil {
 			return nil, rev, err
 		}
@@ -695,7 +715,7 @@ func (s *DomainFileStore) LoadAutomationChecked() (*AutomationConfig, string, er
 		return nil, "", err
 	}
 	if out.MigrateTaskTemplateStates() {
-		rev, err = s.persistLoadedMigration(domainAutomation, out, rev)
+		rev, err = s.persistCurrentSyncedCleanup(domainAutomation, out, rev)
 		if err != nil {
 			return nil, rev, err
 		}

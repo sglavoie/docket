@@ -117,9 +117,6 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 	if _, err := svc.ProjectTags(projectID); err != nil {
 		t.Fatalf("ProjectTags: %v", err)
 	}
-	if _, err := svc.ProjectSections(projectID); err != nil {
-		t.Fatalf("ProjectSections: %v", err)
-	}
 }
 
 // TestArtifactsValidation covers the request-validation branches that reject a

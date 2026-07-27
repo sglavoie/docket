@@ -9,21 +9,18 @@ import (
 )
 
 // SandboxResetCounts is the presentation-neutral inventory cleared or restored
-// to defaults by one sandbox reset transaction. SectionLayout and
-// ShortIDCounter are zero-or-one state changes; SectionColors counts mappings.
+// to defaults by one sandbox reset transaction.
 type SandboxResetCounts struct {
 	Tasks          int
 	Notes          int
 	Tags           int
 	PinnedTags     int
-	SectionLayout  int
-	SectionColors  int
 	ShortIDCounter int
 }
 
 // Total returns the total number of user-visible items represented by c.
 func (c SandboxResetCounts) Total() int {
-	return c.Tasks + c.Notes + c.Tags + c.PinnedTags + c.SectionLayout + c.SectionColors + c.ShortIDCounter
+	return c.Tasks + c.Notes + c.Tags + c.PinnedTags + c.ShortIDCounter
 }
 
 // Empty reports whether a sandbox reset would have no user-visible effect.
@@ -100,8 +97,6 @@ func (s *Service) ResetSandbox(projectID string) (SandboxResetResult, error) {
 	reset := *plan.project
 	reset.Tasks = []*models.Task{}
 	reset.NextShortID = 1
-	reset.Sections = []string{models.SectionNext}
-	reset.SectionColors = make(map[string]string)
 	reset.Tags = []string{}
 	reset.PinnedTags = []string{}
 
@@ -149,15 +144,9 @@ func (s *Service) loadSandboxResetPlan(projectID string) (sandboxResetPlan, erro
 			Notes:          len(notes),
 			Tags:           len(project.AllTags()),
 			PinnedTags:     len(project.PinnedTagList()),
-			SectionLayout:  sandboxSectionLayoutChange(project),
-			SectionColors:  len(project.SectionColors),
 			ShortIDCounter: boolCount(project.NextShortID != 1),
 		},
 	}, nil
-}
-
-func sandboxSectionLayoutChange(project *models.Project) int {
-	return boolCount(len(project.Sections) != 1 || project.Sections[0] != models.SectionNext)
 }
 
 func boolCount(changed bool) int {

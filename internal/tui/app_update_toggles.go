@@ -9,44 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func (m *AppModel) handleQuickSwitchToggle() tea.Cmd {
-	return m.toggleQuickSwitch()
-}
-
-func (m *AppModel) toggleQuickSwitch() tea.Cmd {
-	if m.showQuickSwitch {
-		m.closeQuickSwitchOverlay()
-		return nil
-	}
-	m.openQuickSwitch()
-	if len(m.recentTaskVisits) == 0 {
-		m.closeQuickSwitchOverlay()
-		m.setInfoStatus("No recent tasks for quick-switch")
-		return defaultStatusTimeout()
-	}
-	m.pushTypedOverlay(OverlayRecent, "recent-tasks")
-	return nil
-}
-
-func (m *AppModel) handlePinnedPopupToggle() tea.Cmd {
-	m.pinnedPopupItems = m.collectPinnedTasks()
-	if len(m.pinnedPopupItems) == 0 {
-		m.setInfoStatus("No pinned tasks — press tp on a task to pin it")
-		return defaultStatusTimeout()
-	}
-	m.showPinnedPopup = !m.showPinnedPopup
-	if m.showPinnedPopup {
-		m.pushTypedOverlay(OverlayPinned, "pinned-tasks")
-	} else {
-		m.closePinnedTasksOverlay()
-	}
-	m.pinnedPopupCursor = 0
-	m.pinnedPopupFilter = ""
-	m.pinnedPopupFiltering = false
-	m.rebuildPinnedPopupFilter()
-	return nil
-}
-
 // handleUndoToggle reverses the most recent q/w planning toggle as one logical
 // action (workflow state + Next order index / Daily Plan entry). It fires
 // wherever a toggle was just recorded — the same task views where q/w work — so

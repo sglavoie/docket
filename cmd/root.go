@@ -46,6 +46,7 @@ Examples:
 		cmd.SilenceUsage = true
 		return nil
 	},
+	Args: validateRootArgs,
 	RunE: runRoot,
 }
 
@@ -73,6 +74,7 @@ func init() {
 	cobra.OnInitialize(initConfig, initNoColor)
 	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
+	rootCmd.SetFlagErrorFunc(lifecycleFlagError)
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "deprecated: isolate a workspace at this config file's directory")

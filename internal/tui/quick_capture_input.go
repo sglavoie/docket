@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // Autocomplete mode constants
@@ -22,13 +23,12 @@ const (
 	acModePriority             // Completing a !priority
 	acModeDate                 // Completing a @date
 	acModeRecur                // Completing a ~recurrence
-	acModeSection              // Completing a /section
-	acModeStatus               // Completing a $status
+	acModeStatus               // Completing a $state
 	acModeProject              // Completing a %project
-	acModeHas                  // has:property filter (global search)
-	acModeIs                   // is:state filter (global search)
-	acModeNo                   // no:property filter (global search)
-	acModeSearchProject        // p:project filter (global search)
+	acModeHas                  // has:property filter (visible search)
+	acModeIs                   // is:property filter (visible search)
+	acModeNo                   // no:property filter (visible search)
+	acModeSearchProject        // p:project filter (visible search)
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -38,17 +38,18 @@ const acVisibleCount = 7
 type quickCaptureResult struct {
 	title             string
 	taskType          models.TaskType
+	taskTypeSet       bool
 	priority          int
+	prioritySet       bool
 	tags              []string
 	dueDate           *time.Time
 	parentID          *string
 	recurrence        *models.RecurrencePattern
-	section           string            // Target section (empty = Inbox)
-	status            models.TaskStatus // Initial status (empty = todo)
-	activate          bool              // Whether to activate task (for $start)
-	targetProjectID   *string           // Target project ID for cross-project capture
-	targetProjectName string            // Target project name (for preview display)
-	aliasesUsed       []string          // Alias forms used, e.g. ["tag:", "pri:"]
+	state             models.WorkflowState
+	stateSet          bool
+	targetProjectID   *string  // Target project ID for cross-project capture
+	targetProjectName string   // Target project name (for preview display)
+	aliasesUsed       []string // Alias forms used, e.g. ["tag:", "pri:"]
 }
 
 // quickCaptureTriggers defines the trigger characters for quick capture autocomplete.
@@ -59,13 +60,12 @@ var quickCaptureTriggers = []ACTrigger{
 	{'!', acModePriority},
 	{'@', acModeDate},
 	{'~', acModeRecur},
-	{'/', acModeSection},
 	{'$', acModeStatus},
 	{'%', acModeProject},
 }
 
-// quickCaptureInput encapsulates the autocomplete, preview, and parsing
-// infrastructure shared between QuickCaptureModel and LinkedTaskCreatorModel.
+// quickCaptureInput encapsulates the compact Task Composer's autocomplete,
+// preview, and parsing infrastructure.
 type quickCaptureInput struct {
 	input textarea.Model
 	err   error
@@ -74,7 +74,6 @@ type quickCaptureInput struct {
 	ac           AutocompleteState
 	tagCache     []string
 	parentCache  []*models.Task
-	sectionCache []string
 	projectCache []*models.Project
 	triggers     []ACTrigger // Active triggers (may exclude %project)
 
@@ -131,7 +130,7 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	return qci
 }
 
-// initCaches builds tag, parent, section, and project caches for autocomplete.
+// initCaches builds tag, parent, and project caches for autocomplete.
 func (q *quickCaptureInput) initCaches() {
 	// Cache all tags from the project
 	q.tagCache = CollectTagNamesForProject(q.project)
@@ -144,9 +143,6 @@ func (q *quickCaptureInput) initCaches() {
 		}
 	}
 
-	// Cache only built-in GTD sections.
-	q.sectionCache = gtdSections(q.project.GetSections())
-
 	// Cache non-archived projects for cross-project capture
 	q.projectCache = make([]*models.Project, 0)
 	if q.allProjects != nil {
@@ -156,11 +152,6 @@ func (q *quickCaptureInput) initCaches() {
 			}
 		}
 	}
-}
-
-// resizeTextarea applies standard form resize logic to the textarea.
-func (q *quickCaptureInput) resizeTextarea(width int) {
-	formFactory.ResizeTextarea(&q.input, width)
 }
 
 // ensureSyntaxViewport lazily constructs the syntax help viewport so callers can
@@ -305,8 +296,6 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getDateSuggestions(partial)
 	case acModeRecur:
 		items = q.getRecurrenceSuggestions(partial)
-	case acModeSection:
-		items = q.getSectionSuggestions(partial)
 	case acModeStatus:
 		items = q.getStatusSuggestions(partial)
 	case acModeProject:
@@ -343,7 +332,7 @@ type previewGroup struct {
 
 // previewGroups builds the populated preview groups from the parsed result, or
 // reports ok=false when there is nothing to preview. It is the single source of
-// the recognized task, route, schedule, status, priority, tag, project, and
+// the recognized task, route, schedule, state, priority, tag, project, and
 // alias information shown by both preview renderers.
 func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if q.preview == nil || q.preview.title == "" {
@@ -352,20 +341,15 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 
 	typeStyle := GetTypeStyle(string(q.preview.taskType))
 	taskChunks := []string{typeStyle.Render(q.preview.taskType.Icon()) + " " + q.preview.title}
-	if q.preview.status != "" && q.preview.status != models.StatusTodo {
-		taskChunks = append(taskChunks, q.preview.status.Icon()+" $"+statusShortcut(q.preview.status))
-	}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 
-	var routeChunks []string
-	switch {
-	case q.preview.section == "":
-		routeChunks = append(routeChunks, "Inbox (default)")
-	case !models.IsGTDSection(q.preview.section):
-		routeChunks = append(routeChunks, "/"+q.preview.section+" → Inbox")
-	default:
-		routeChunks = append(routeChunks, "/"+q.preview.section)
+	state := models.StateInbox
+	stateLabel := "$" + state.String() + " (default)"
+	if q.preview.stateSet {
+		state = q.preview.state
+		stateLabel = "$" + state.String()
 	}
+	routeChunks := []string{state.Icon() + " " + stateLabel}
 	if q.preview.targetProjectName != "" {
 		routeChunks = append(routeChunks, "→ "+q.preview.targetProjectName)
 	}
@@ -568,138 +552,62 @@ type syntaxGuideGroup struct {
 // (which skips project syntax) never advertises it. Task-type examples omit
 // `note` because it is not a valid models.TaskType.
 func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
-	// Derive task-type forms and validation inputs from the authoritative model
-	// list so the invalid `note` type can never drift back into the guide.
-	typeForms := make([]string, 0, len(models.AllTaskTypes()))
-	typeValidation := make([]string, 0, len(models.AllTaskTypes())+1)
-	for _, tt := range models.AllTaskTypes() {
-		name := string(tt)
-		typeForms = append(typeForms, "^"+name)
-		typeValidation = append(typeValidation, "Sample ^"+name)
+	groupOrder := []string{"Basics", "Priority & Tags", "Schedule", "Placement", "State", "Project Routing"}
+	byGroup := make(map[string][]syntaxGuideEntry)
+	for _, def := range textgrammar.Definitions(textgrammar.SurfaceCapture) {
+		if def.Legacy || (q.skipProjectSyntax && def.Field == textgrammar.FieldProject) {
+			continue
+		}
+		entry := syntaxGuideEntry{
+			forms:    strings.Join(def.Forms, " · "),
+			desc:     def.Description,
+			examples: strings.Join(def.Examples, "  "),
+		}
+		switch def.Field {
+		case textgrammar.FieldTaskType:
+			for _, value := range def.Values {
+				entry.validation = append(entry.validation, "Sample ^"+value)
+			}
+			entry.validation = append(entry.validation, "Sample type:task")
+		case textgrammar.FieldPriority:
+			for _, value := range def.Values {
+				entry.validation = append(entry.validation, "Task !"+value)
+			}
+			entry.validation = append(entry.validation, "Task pri:2", "Task priority:high")
+		case textgrammar.FieldTag:
+			entry.validation = []string{"Task #backend", "Task #urgent #api", "Task tag:backend"}
+		case textgrammar.FieldDue:
+			entry.validation = []string{
+				"Task @tomorrow", "Task @friday", "Task @+3d", "Task @next monday",
+				"Task @in 2 weeks", "Task @2025-12-31", "Task due:2w",
+			}
+		case textgrammar.FieldRecurrence:
+			entry.validation = []string{
+				"Task ~daily", "Task ~weekly", "Task ~biweekly", "Task ~monthly",
+				"Task ~yearly", "Task ~2d", "Task recur:weekly", "Task ~weekly:mon,fri", "Task ~daily~",
+			}
+		case textgrammar.FieldParent:
+			entry.validation = []string{"Subtask >1", "Subtask >Login", "Subtask parent:2"}
+		case textgrammar.FieldState:
+			for _, value := range def.Values {
+				entry.validation = append(entry.validation, "Task $"+value)
+			}
+		case textgrammar.FieldProject:
+			entry.validation = []string{
+				"Task %" + syntaxGuideProjectSlug,
+				"Task p:" + syntaxGuideProjectSlug,
+				"Task proj:" + syntaxGuideProjectSlug,
+			}
+		default:
+		}
+		byGroup[def.Group] = append(byGroup[def.Group], entry)
 	}
-	typeValidation = append(typeValidation, "Sample type:task")
 
-	groups := []syntaxGuideGroup{
-		{
-			name: "Basics",
-			entries: []syntaxGuideEntry{
-				{
-					forms:      "^type · type:",
-					desc:       "Task type",
-					examples:   strings.Join(typeForms, "  "),
-					validation: typeValidation,
-				},
-			},
-		},
-		{
-			name: "Priority & Tags",
-			entries: []syntaxGuideEntry{
-				{
-					forms:    "! · pri: · priority:",
-					desc:     "Priority (1-5)",
-					examples: "!1  !urgent  !normal  !low  pri:2  priority:high",
-					validation: []string{
-						"Task !1", "Task !2", "Task !3", "Task !4", "Task !5",
-						"Task !critical", "Task !urgent", "Task !high",
-						"Task !normal", "Task !medium", "Task !low", "Task !lowest",
-						"Task !c", "Task !cr", "Task !u", "Task !ur", "Task !h", "Task !hi",
-						"Task !n", "Task !no", "Task !m", "Task !me", "Task !med",
-						"Task !l", "Task !lo",
-						"Task pri:2", "Task priority:high",
-					},
-				},
-				{
-					forms:    "# · tag:",
-					desc:     "Add tag",
-					examples: "#backend  #urgent  tag:api  (repeatable)",
-					validation: []string{
-						"Task #backend", "Task #urgent #api",
-						"Task tag:backend", "Task tag:api #frontend",
-					},
-				},
-			},
-		},
-		{
-			name: "Schedule",
-			entries: []syntaxGuideEntry{
-				{
-					forms:    "@ · due:",
-					desc:     "Due date",
-					examples: "@tomorrow  @friday  @+3d  @next monday  due:2w",
-					validation: []string{
-						"Task @tomorrow", "Task @friday", "Task @+3d", "Task @+1w",
-						"Task @next monday", "Task @in 2 weeks", "Task @2025-12-31",
-						"Task due:tomorrow", "Task due:friday", "Task due:2w",
-					},
-				},
-				{
-					forms:    "~ · recur:",
-					desc:     "Recurrence",
-					examples: "~daily  ~weekly  ~biweekly  ~2w  recur:monthly  ~weekly:mon,fri  ~daily~",
-					validation: []string{
-						"Task ~daily", "Task ~weekly", "Task ~biweekly",
-						"Task ~monthly", "Task ~yearly", "Task ~2d", "Task ~3w",
-						"Task recur:weekly", "Task ~weekly:mon,fri", "Task ~2w:mon,thu",
-						"Task ~daily~", "Task ~weekly:fri~",
-					},
-				},
-			},
-		},
-		{
-			name: "Placement",
-			entries: []syntaxGuideEntry{
-				{
-					forms:    "/ · sec: · section:",
-					desc:     "Section",
-					examples: "/next  /inbox  /waiting  /someday  sec:review  (else → Inbox)",
-					validation: []string{
-						"Task /next", "Task /inbox", "Task /waiting",
-						"Task /someday", "Task /review", "Task /standby",
-						"Task sec:next", "Task section:waiting",
-					},
-				},
-				{
-					forms:    "> · parent:",
-					desc:     "Parent task",
-					examples: ">1  >Login  parent:2  (short ID or title)",
-					validation: []string{
-						"Subtask >1", "Subtask >Login", "Subtask parent:2",
-					},
-				},
-			},
-		},
-		{
-			name: "Status",
-			entries: []syntaxGuideEntry{
-				{
-					forms:    "$ · status:",
-					desc:     "Initial status",
-					examples: "$start  $blocked  $review  $standby  $maybe  $done  $canceled  status:done",
-					validation: []string{
-						"Task $start", "Task $blocked", "Task $review",
-						"Task $standby", "Task $hold", "Task $maybe",
-						"Task $done", "Task $canceled", "Task status:done",
-					},
-				},
-			},
-		},
-	}
-	if !q.skipProjectSyntax {
-		groups = append(groups, syntaxGuideGroup{
-			name: "Project Routing",
-			entries: []syntaxGuideEntry{
-				{
-					forms:    "% · p: · proj:",
-					desc:     "Target project",
-					examples: "%slug  p:slug  proj:name  (slug or name)",
-					validation: []string{
-						"Task %" + syntaxGuideProjectSlug,
-						"Task p:" + syntaxGuideProjectSlug,
-						"Task proj:" + syntaxGuideProjectSlug,
-					},
-				},
-			},
-		})
+	groups := make([]syntaxGuideGroup, 0, len(groupOrder))
+	for _, name := range groupOrder {
+		if entries := byGroup[name]; len(entries) > 0 {
+			groups = append(groups, syntaxGuideGroup{name: name, entries: entries})
+		}
 	}
 	return groups
 }
@@ -820,35 +728,7 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
-// statusShortcut maps a TaskStatus back to its quick-capture keyword.
-func statusShortcut(s models.TaskStatus) string {
-	switch s {
-	case models.StatusInProgress:
-		return "start"
-	case models.StatusReview:
-		return "review"
-	case models.StatusStandby:
-		return "standby"
-	case models.StatusBlocked:
-		return "blocked"
-	case models.StatusDone:
-		return "done"
-	case models.StatusCanceled:
-		return "canceled"
-	case models.StatusMaybe:
-		return "maybe"
-	default:
-		return string(s)
-	}
-}
-
 // isAutocompleteActive returns whether autocomplete is currently showing.
 func (q *quickCaptureInput) isAutocompleteActive() bool {
 	return q.ac.IsActive()
-}
-
-// inputValue returns the current text value, newlines replaced with spaces and trimmed.
-func (q *quickCaptureInput) inputValue() string {
-	input := strings.ReplaceAll(q.input.Value(), "\n", " ")
-	return strings.TrimSpace(input)
 }

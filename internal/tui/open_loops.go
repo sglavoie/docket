@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // OpenLoops surfaces unresolved-task counts (Zeigarnik Effect). These are the
@@ -65,7 +66,7 @@ func ComputeOpenLoops(rs *config.RuntimeState, dailyPlanIDs map[TaskIdentity]boo
 				continue
 			}
 
-			if isProcessableInboxTask(task) {
+			if task.IsInState(models.StateInbox) && !task.IsSnoozed() {
 				out.Inbox++
 			}
 			if task.IsOverdue() {

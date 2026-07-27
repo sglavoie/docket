@@ -28,7 +28,7 @@ Dependencies pointing to tasks that remain in the source project are cleared.
 Use --force to skip the confirmation when dependencies will be cleared.
 
 Short IDs are regenerated in the destination project.
-Sections are preserved if they are built-in GTD sections, otherwise reset to Next.
+Canonical workflow state is preserved.
 
 Examples:
   tt task move-to 5 work        # Move task #5 to the "work" project

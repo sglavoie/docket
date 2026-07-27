@@ -288,15 +288,13 @@ func resolvedDocument(bundle *ConflictBundle, resolution ConflictResolution, mer
 // project sections/colors are decode-only and receive runtime defaults.
 func projectFromDocument(identity *models.Project, doc *ProjectDocument) *models.Project {
 	return &models.Project{
-		ID:            identity.ID,
-		Name:          identity.Name,
-		Slug:          identity.Slug,
-		Path:          identity.Path,
-		Tasks:         doc.Tasks,
-		Sections:      []string{models.SectionNext},
-		SectionColors: map[string]string{},
-		Tags:          doc.Tags,
-		PinnedTags:    doc.PinnedTags,
+		ID:         identity.ID,
+		Name:       identity.Name,
+		Slug:       identity.Slug,
+		Path:       identity.Path,
+		Tasks:      doc.Tasks,
+		Tags:       doc.Tags,
+		PinnedTags: doc.PinnedTags,
 	}
 }
 

@@ -15,6 +15,10 @@ import (
 
 var errClipboardUnsupported = errors.New("clipboard not supported on this OS")
 
+func resolveTaskInProject(project *models.Project, taskID string) *models.Task {
+	return project.GetTaskByID(taskID)
+}
+
 type taskItemPanelModeHandlers struct {
 	expanded       bool
 	confirmActive  bool
@@ -100,8 +104,6 @@ func updateTaskItemPanelNormalMode(
 	state *InteractiveViewState,
 	handleNormalKey func(string) tea.Cmd,
 ) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		state.cursorFlash = false
@@ -110,15 +112,6 @@ func updateTaskItemPanelNormalMode(
 		base.SetSize(msg.Width, msg.Height)
 		return self, nil
 	case tea.KeyPressMsg:
-		if state.SkipModifierInPrefix(msg) {
-			return self, nil
-		}
-		if state.pendingPrefix == "g" {
-			state.pendingPrefix = ""
-			_, cmd = handleGotoTopPrefix(msg.String(), &state.cursor, &state.cursorFlash)
-			return self, cmd
-		}
-
 		return self, handleNormalKey(msg.String())
 	}
 
@@ -154,8 +147,8 @@ func (a taskItemPanelActions) handleNormalKey(state *InteractiveViewState, key s
 		a.moveCursorDown()
 	case "k", "up":
 		a.moveCursorUp()
-	case "g":
-		state.pendingPrefix = "g"
+	case "home":
+		a.jumpToTop()
 	case "G":
 		a.moveCursorBottom()
 	case "a", "n":
@@ -217,13 +210,10 @@ func buildTaskItemPanelKeyMap(viewName string, actions taskItemPanelActions, ext
 		}, keymap.WithGate(func() bool { return !inInputMode() })),
 	}
 
-	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
-		JumpToTop: func() (tea.Model, tea.Cmd) {
-			actions.jumpToTop()
-			return actions.model, nil
-		},
-		GoToProject: nil,
-	})...)
+	entries = append(entries, keymap.Bind("home", "Jump to first", "Navigation", func() (tea.Model, tea.Cmd) {
+		actions.jumpToTop()
+		return actions.model, nil
+	}, keymap.WithGate(func() bool { return !inInputMode() })))
 
 	entries = append(entries,
 		keymap.Bind("a", fmt.Sprintf("Add %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {

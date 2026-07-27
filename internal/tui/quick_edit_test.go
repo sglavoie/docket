@@ -70,24 +70,23 @@ func TestParseQuickEdit_ClearDueDate(t *testing.T) {
 	}
 }
 
-func TestParseQuickEdit_Status(t *testing.T) {
+func TestParseQuickEdit_State(t *testing.T) {
 	project := &models.Project{Name: "test"}
 	task := &models.Task{Title: "Original", WorkflowState: models.StateReady}
 
-	result, err := parseQuickEdit("Task $start", task, project)
+	result, err := parseQuickEdit("Task $in_progress", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !result.statusSet || result.status != models.StatusInProgress {
-		t.Errorf("expected status in_progress, got %s (set=%v)", result.status, result.statusSet)
+	if !result.stateSet || result.state != models.StateInProgress {
+		t.Errorf("expected state in_progress, got %s (set=%v)", result.state, result.stateSet)
 	}
 }
 
-func TestParseQuickEdit_Section(t *testing.T) {
+func TestParseQuickEdit_RetiredSectionTokenRemainsTitleText(t *testing.T) {
 	project := &models.Project{
-		Name:     "test",
-		Sections: []string{"Inbox", "Waiting"},
+		Name: "test",
 	}
 	task := &models.Task{Title: "Original"}
 
@@ -96,22 +95,8 @@ func TestParseQuickEdit_Section(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !result.sectionSet || result.section != "Inbox" {
-		t.Errorf("expected section 'Inbox', got '%s' (set=%v)", result.section, result.sectionSet)
-	}
-}
-
-func TestParseQuickEdit_ClearSection(t *testing.T) {
-	project := &models.Project{Name: "test"}
-	task := &models.Task{Title: "Original", WorkflowState: models.StateInbox}
-
-	result, err := parseQuickEdit("Task /active", task, project)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !result.sectionSet || result.section != "" {
-		t.Errorf("expected empty section (Active), got '%s' (set=%v)", result.section, result.sectionSet)
+	if result.title != "Task /inbox" {
+		t.Errorf("retired section token parsed as metadata: title=%q", result.title)
 	}
 }
 
@@ -127,12 +112,11 @@ func TestParseQuickEdit_EmptyTitle(t *testing.T) {
 
 func TestParseQuickEdit_Combined(t *testing.T) {
 	project := &models.Project{
-		Name:     "test",
-		Sections: []string{"Inbox"},
+		Name: "test",
 	}
 	task := &models.Task{Title: "Original", Priority: 3}
 
-	result, err := parseQuickEdit("New title !2 #urgent @tomorrow /inbox $start", task, project)
+	result, err := parseQuickEdit("New title !2 #urgent @tomorrow $in_progress", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -149,11 +133,8 @@ func TestParseQuickEdit_Combined(t *testing.T) {
 	if result.dueDate == nil {
 		t.Error("expected due date to be set")
 	}
-	if result.section != "Inbox" {
-		t.Errorf("expected section 'Inbox', got '%s'", result.section)
-	}
-	if result.status != models.StatusInProgress {
-		t.Errorf("expected status in_progress, got %s", result.status)
+	if result.state != models.StateInProgress {
+		t.Errorf("expected state in_progress, got %s", result.state)
 	}
 }
 
@@ -194,24 +175,22 @@ func TestParseQuickEdit_DottedTags(t *testing.T) {
 	}
 }
 
-func TestParseQuickEdit_StandbyStatus(t *testing.T) {
+func TestParseQuickEdit_PausedStateAndRetiredAliases(t *testing.T) {
 	project := &models.Project{Name: "test"}
 	task := &models.Task{Title: "Original", WorkflowState: models.StateInProgress}
 
-	result, err := parseQuickEdit("Task $standby", task, project)
+	result, err := parseQuickEdit("Task $paused", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !result.statusSet || result.status != models.StatusStandby {
-		t.Errorf("expected status standby, got %s (set=%v)", result.status, result.statusSet)
+	if !result.stateSet || result.state != models.StatePaused {
+		t.Errorf("expected state paused, got %s (set=%v)", result.state, result.stateSet)
 	}
 
-	result, err = parseQuickEdit("Task $hold", task, project)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !result.statusSet || result.status != models.StatusStandby {
-		t.Errorf("expected status standby from $hold, got %s (set=%v)", result.status, result.statusSet)
+	for _, retired := range []string{"$standby", "$hold"} {
+		if _, err = parseQuickEdit("Task "+retired, task, project); err == nil {
+			t.Errorf("expected retired alias %s to be rejected", retired)
+		}
 	}
 }
 
@@ -237,8 +216,8 @@ func TestApplyQuickEdit(t *testing.T) {
 		tagsToRemove: []string{"old"},
 		dueDate:      &tomorrow,
 		dueDateSet:   true,
-		status:       models.StatusInProgress,
-		statusSet:    true,
+		state:        models.StateInProgress,
+		stateSet:     true,
 	}
 
 	if statusErr := applyQuickEdit(task, project, result); statusErr != "" {
@@ -258,7 +237,7 @@ func TestApplyQuickEdit(t *testing.T) {
 		t.Error("expected due date to be set")
 	}
 	if task.State() != models.StateInProgress {
-		t.Errorf("expected status in_progress, got %s", models.LegacyStatusForState(task.State()))
+		t.Errorf("expected status in_progress, got %s", task.State())
 	}
 }
 
@@ -281,8 +260,8 @@ func TestApplyQuickEdit_InvalidStatusDoesNotMutate(t *testing.T) {
 		priority:    1,
 		prioritySet: true,
 		tagsToAdd:   []string{"new"},
-		status:      models.StatusInProgress,
-		statusSet:   true,
+		state:       models.StateInProgress,
+		stateSet:    true,
 	}
 
 	statusErr := applyQuickEdit(task, project, result)
@@ -306,7 +285,7 @@ func TestApplyQuickEdit_InvalidStatusDoesNotMutate(t *testing.T) {
 }
 
 func TestRenderQuickEditPreview(t *testing.T) {
-	original := &quickEditResult{title: "Original", priority: 3, section: "Inbox"}
+	original := &quickEditResult{title: "Original", priority: 3, state: models.StateInbox, stateSet: true}
 
 	// Priority change
 	result := &quickEditResult{
@@ -343,42 +322,18 @@ func TestRenderQuickEditPreview(t *testing.T) {
 	}
 }
 
-func TestQuickEditComponent_NonGTDSectionIgnoredInOriginal(t *testing.T) {
+func TestQuickEditComponent_CanonicalStatePreservedInOriginal(t *testing.T) {
 	task := &models.Task{
 		ID:            "test-id",
 		Title:         "Test Task",
 		Priority:      3,
-		WorkflowState: models.StateReady,
-	}
-	task.SetSection("Sprint-1")
-	if models.SectionForState(task.State()) != "" {
-		t.Fatalf("precondition: expected Section=\"\", got %q", models.SectionForState(task.State()))
+		WorkflowState: models.StateWaiting,
 	}
 
 	comp := NewQuickEditComponent()
 	comp.Enter(task, false)
 
-	if comp.GetOriginal().section != "" {
-		t.Errorf("expected original.section empty, got %q", comp.GetOriginal().section)
-	}
-	if comp.GetPreview().section != "" {
-		t.Errorf("expected preview.section empty, got %q", comp.GetPreview().section)
-	}
-}
-
-func TestQuickEditComponent_GTDSection_PreservedInOriginal(t *testing.T) {
-	task := &models.Task{
-		ID:            "test-id",
-		Title:         "Test Task",
-		Priority:      3,
-		WorkflowState: models.StateReady,
-	}
-	task.SetSection("Waiting")
-
-	comp := NewQuickEditComponent()
-	comp.Enter(task, false)
-
-	if comp.GetOriginal().section != "Waiting" {
-		t.Errorf("expected original.section=%q, got %q", "Waiting", comp.GetOriginal().section)
+	if comp.GetOriginal().state != models.StateWaiting {
+		t.Errorf("expected original.state=%q, got %q", models.StateWaiting, comp.GetOriginal().state)
 	}
 }

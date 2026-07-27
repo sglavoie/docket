@@ -360,12 +360,10 @@ func mergeTaskOrder(base, local, current *ProjectDocument, survivors map[string]
 // so a genuine invariant break surfaces instead of being papered over.
 func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 	project := &models.Project{
-		Name:          doc.ProjectName,
-		Tasks:         doc.Tasks,
-		Sections:      []string{models.SectionNext},
-		SectionColors: map[string]string{},
-		Tags:          doc.Tags,
-		PinnedTags:    doc.PinnedTags,
+		Name:       doc.ProjectName,
+		Tasks:      doc.Tasks,
+		Tags:       doc.Tags,
+		PinnedTags: doc.PinnedTags,
 	}
 
 	var conflicts []MergeConflict

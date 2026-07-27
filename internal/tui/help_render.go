@@ -31,20 +31,17 @@ var helpIntentOrder = []string{
 // Categories absent from this map fall through to per-key classification in
 // intentForItem.
 var helpCategoryIntent = map[string]string{
-	"Status":              "Resolve",
-	"Priority":            "Resolve",
-	"Recurrence":          "Resolve",
-	"Move (m prefix)":     "Route & Schedule",
-	"Due Date":            "Route & Schedule",
-	"Snooze":              "Route & Schedule",
-	"Linked Tasks":        "Refine",
-	"Folds":               "View Controls",
-	"Filters":             "View Controls",
-	"Task (t prefix)":     "Task & Blockers",
-	"Blockers (b prefix)": "Task & Blockers",
-	"Task Operations":     "Task & Blockers",
-	"Clipboard":           "Other",
-	"Notes":               "Other",
+	"Status":          "Resolve",
+	"Priority":        "Resolve",
+	"Recurrence":      "Resolve",
+	"Due Date":        "Route & Schedule",
+	"Snooze":          "Route & Schedule",
+	"Linked Tasks":    "Refine",
+	"Folds":           "View Controls",
+	"Filters":         "View Controls",
+	"Task Operations": "Task & Blockers",
+	"Clipboard":       "Other",
+	"Notes":           "Other",
 }
 
 // helpCrossViewJumpKeys lists key strings that jump from any current view to
@@ -52,22 +49,7 @@ var helpCategoryIntent = map[string]string{
 // crowd the primary actions in first-level help.
 var helpCrossViewJumpKeys = map[string]bool{
 	":":        true,
-	"|":        true,
-	"#":        true,
-	"ctrl+x":   true,
 	"ctrl+esc": true,
-}
-
-// helpPrimaryTriageKeys lists direct keys promoted into the Triage intent
-// regardless of their raw Category. Mirrors keymap.TriagePrimaryGroup plus the
-// help-toggle key.
-var helpPrimaryTriageKeys = map[string]bool{
-	"n": true,
-	"e": true,
-	"D": true,
-	"T": true,
-	"u": true,
-	"?": true,
 }
 
 // helpNavigateKeys lists direct keys that always belong in the Navigate
@@ -95,26 +77,9 @@ var helpNavigateKeys = map[string]bool{
 }
 
 // intentForItem classifies a HelpItem into one of helpIntentOrder buckets.
-// Key matches take precedence over Category mapping. Promotion of the primary
-// triage vocabulary is source-view-aware: helpPrimaryTriageKeys are only
-// elevated to "Triage" when the help originates from an inbox processor view,
-// because those keys describe the triage action vocabulary there. On other
-// surfaces (notably the Dashboard) the same keys mean different things and
-// must not be advertised as triage. Dashboard's `O` is the lone exception —
-// it opens inbox triage, so it deserves the Triage label even though its raw
-// Category is generic.
+// Key matches take precedence over Category mapping.
 func intentForItem(item HelpItem, sourceView PresentationID) string {
-	if sourceView == ViewFocusBoard {
-		if intent, ok := focusBoardPipelineIntentForItem(item.Key); ok {
-			return intent
-		}
-	}
-	if isInboxProcessorSourceView(sourceView) && helpPrimaryTriageKeys[item.Key] {
-		return "Triage"
-	}
-	if sourceView == ViewDashboard && item.Key == "O" {
-		return "Triage"
-	}
+	_ = sourceView
 	switch item.Key {
 	case "1", "2", "3", "4", "5":
 		return "Resolve"
@@ -135,30 +100,6 @@ func intentForItem(item HelpItem, sourceView PresentationID) string {
 		return "Jump to View"
 	}
 	return "Other"
-}
-
-func focusBoardPipelineIntentForItem(key string) (string, bool) {
-	switch key {
-	case "a":
-		return "Capture", true
-	case "v", "/":
-		return "Triage", true
-	case "p", "J", "K":
-		return "Plan", true
-	case "enter", "x", "u":
-		return "Work", true
-	case "shift+enter":
-		return "Review", true
-	default:
-		return "", false
-	}
-}
-
-// isInboxProcessorSourceView reports whether the help originates from one of
-// the inbox processor views, which are the only surfaces where the primary
-// triage key vocabulary should be promoted into the "Triage" intent bucket.
-func isInboxProcessorSourceView(v PresentationID) bool {
-	return v == ViewInboxProcessor || v == ViewGlobalInboxProcessor
 }
 
 // renderByIntentContent renders first-level (per-view) help grouped by user

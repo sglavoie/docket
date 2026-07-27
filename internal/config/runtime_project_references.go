@@ -32,6 +32,16 @@ func (rs *RuntimeState) ExtractProjectReferences(id, slug string) ProjectReferen
 			refs.RecentTaskVisits = append(refs.RecentTaskVisits, visit)
 		}
 	}
+	for _, destination := range machine.RecentDestinations {
+		projectDestination := destination.Kind == RecentDestinationProject && matches(destination.ID)
+		if projectDestination || matches(destination.ProjectID) {
+			refs.RecentDestinations = append(refs.RecentDestinations, destination)
+		}
+	}
+	if route, ok := lookupProjectKey(machine.ProjectRoutes, id, slug); ok {
+		route = NormalizeOutlinerRouteState(route)
+		refs.OutlinerRoute = &route
+	}
 	refs.CustomContextKeys = contextKeysContaining(machine.CustomContexts, matches)
 	return refs
 }
@@ -114,7 +124,11 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 	if m == nil || projectID == "" {
 		return false
 	}
-	changed := refs.WasCurrent || len(refs.RecentTaskVisits) > 0 || len(refs.CustomContextKeys) > 0
+	changed := refs.WasCurrent ||
+		len(refs.RecentTaskVisits) > 0 ||
+		len(refs.RecentDestinations) > 0 ||
+		refs.OutlinerRoute != nil ||
+		len(refs.CustomContextKeys) > 0
 	if refs.WasCurrent {
 		m.CurrentProject = projectID
 	}
@@ -130,6 +144,26 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 		}
 		m.RecentTaskVisits = append(m.RecentTaskVisits, visit)
 		existingVisits[locator] = true
+	}
+
+	restoredDestinations := make([]RecentDestination, 0, len(refs.RecentDestinations))
+	for _, destination := range refs.RecentDestinations {
+		if destination.Kind == RecentDestinationProject {
+			destination.ID = projectID
+		}
+		if destination.ProjectID != "" {
+			destination.ProjectID = projectID
+		}
+		restoredDestinations = append(restoredDestinations, destination)
+	}
+	if len(restoredDestinations) > 0 {
+		m.SetRecentDestinations(append(restoredDestinations, m.RecentDestinations...))
+	}
+	if refs.OutlinerRoute != nil {
+		if m.ProjectRoutes == nil {
+			m.ProjectRoutes = make(map[string]OutlinerRouteState)
+		}
+		m.ProjectRoutes[projectID] = NormalizeOutlinerRouteState(*refs.OutlinerRoute)
 	}
 
 	for _, key := range refs.CustomContextKeys {

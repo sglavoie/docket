@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x40",
   "actions": [
-    { "type": "command", "label": "open Global Notes", "command": "global notes" },
+    { "type": "key", "label": "open global scratch notes", "key": "N" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "shrink to the minimum supported height", "width": 60, "height": 20 },

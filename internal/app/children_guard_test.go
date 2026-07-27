@@ -11,13 +11,13 @@ import (
 // parentWithChild builds a parent task and a child pointing at it (both leaf
 // task types, matching the harness's built-tree semantics), returning the
 // project seeded with both plus the live pointers.
-func parentWithChild(childStatus models.TaskStatus) (*models.Project, *models.Task, *models.Task) {
+func parentWithChild(childStatus models.WorkflowState) (*models.Project, *models.Task, *models.Task) {
 	parent := newTask("p", 1, "parent")
 	child := newTask("c", 2, "child")
 	pid := "p"
 	child.ParentID = &pid
-	child.WorkflowState = models.DeriveWorkflowState(childStatus, "", "")
-	if childStatus.IsComplete() {
+	child.WorkflowState = childStatus
+	if childStatus.IsTerminal() {
 		child.Complete()
 	}
 	project := newProject("proj-1", "Alpha", parent, child)
@@ -25,7 +25,7 @@ func parentWithChild(childStatus models.TaskStatus) (*models.Project, *models.Ta
 }
 
 func TestTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
-	project, _, _ := parentWithChild(models.StatusTodo)
+	project, _, _ := parentWithChild(models.StateReady)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -46,7 +46,7 @@ func TestTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
 }
 
 func TestTransitionCancelBlockedByIncompleteChild(t *testing.T) {
-	project, _, _ := parentWithChild(models.StatusTodo)
+	project, _, _ := parentWithChild(models.StateReady)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -60,7 +60,7 @@ func TestTransitionCancelBlockedByIncompleteChild(t *testing.T) {
 }
 
 func TestTransitionCompleteAllowedWhenChildrenComplete(t *testing.T) {
-	project, _, _ := parentWithChild(models.StatusDone)
+	project, _, _ := parentWithChild(models.StateDone)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -74,7 +74,7 @@ func TestTransitionCompleteAllowedWhenChildrenComplete(t *testing.T) {
 }
 
 func TestTransitionNonterminalNotGatedByChildren(t *testing.T) {
-	project, _, _ := parentWithChild(models.StatusTodo)
+	project, _, _ := parentWithChild(models.StateReady)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -86,7 +86,7 @@ func TestTransitionNonterminalNotGatedByChildren(t *testing.T) {
 }
 
 func TestBulkTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
-	project, _, _ := parentWithChild(models.StatusTodo)
+	project, _, _ := parentWithChild(models.StateReady)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 

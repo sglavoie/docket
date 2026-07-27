@@ -12,15 +12,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// contextHubWideWidth is the width at which the hub splits into a browse list
-// and a scope preview. Below it the preview is dropped rather than squeezed.
-const contextHubWideWidth = 81
-
 // contextHubFooterLabel is the footer's right-hand label. Help variants are
 // measured against it so the pair always shares a single line: the shell swaps a
 // full-height view's last two lines for the status bar, so help wrapped onto a
 // third line would leave an orphaned separator behind that swap.
-const contextHubFooterLabel = "Contexts"
+const contextHubFooterLabel = "Scope Hub"
 
 // ContextHubModel is the Manage-hosted surface for browsing, applying, and
 // editing the active project context. It renders the shared
@@ -30,18 +26,24 @@ const contextHubFooterLabel = "Contexts"
 // commit through ContextMutator.
 type ContextHubModel struct {
 	BaseSearchableView
-	runtime    *config.RuntimeState
-	mutator    *ContextMutator
-	summaries  []ContextScopeSummary
-	filtered   []ContextScopeSummary
-	active     ContextScope
-	cursor     int
-	scroll     int
-	taskCounts map[string]int
+	runtime          *config.RuntimeState
+	mutator          *ContextMutator
+	summaries        []ContextScopeSummary
+	filtered         []ContextScopeSummary
+	active           ContextScope
+	cursor           int
+	scroll           int
+	taskCounts       map[string]int
+	surface          *ListSurfaceModel
+	actions          *scopeHubActionSheet
+	registry         *OperationRegistry
+	executor         *OperationExecutor
+	focusedProjectID string
 
 	editor         *contextEditor
 	confirm        ConfirmDialog
 	pendingDelete  ContextScope
+	pendingPurge   scopeHubActionTarget
 	confirmDiscard bool
 	discardOverlay ConfirmDialog
 	notice         string
@@ -63,12 +65,7 @@ func NewContextHubModel(runtime *config.RuntimeState, manager *config.Manager, s
 	}
 	m.InitSearchInput("Search contexts and projects", 64, 32)
 	m.filtered = m.summaries
-	for i, summary := range m.filtered {
-		if summary.Scope == active {
-			m.cursor = i
-			break
-		}
-	}
+	m.rebuildScopeSurface(contextScopeListItemID(active))
 	return m
 }
 
@@ -85,9 +82,11 @@ func (m *ContextHubModel) SetLoadedProjects(projects []*models.Project) {
 	}
 	if len(counts) == 0 {
 		m.taskCounts = nil
+		m.rebuildScopeSurface(m.currentScopeHubItemID())
 		return
 	}
 	m.taskCounts = counts
+	m.rebuildScopeSurface(m.currentScopeHubItemID())
 }
 
 func (m *ContextHubModel) Init() tea.Cmd { return nil }
@@ -107,19 +106,35 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	confirmAction := m.confirm.Action()
 	if confirmed, handled := m.confirm.HandleKey(key.String()); handled {
 		if !confirmed {
 			m.pendingDelete = ContextScope{}
+			m.pendingPurge = scopeHubActionTarget{}
 			return m, nil
+		}
+		if confirmAction == scopeHubConfirmPurge {
+			target := m.pendingPurge
+			m.pendingPurge = scopeHubActionTarget{}
+			if target.TrashEntryID == "" {
+				return m, nil
+			}
+			return m, func() tea.Msg {
+				return PurgeFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
+			}
 		}
 		return m, m.deleteConfirmedContext()
 	}
 	if m.editor != nil {
 		return m.updateEditor(key)
 	}
+	if m.actions != nil {
+		return m.updateScopeHubActions(key)
+	}
 	if model, cmd, handled := m.HandleSearchMode(key, m, m.applyFilter); handled {
 		return model, cmd
 	}
+	m.syncScopeSurfaceCursorFromLegacy()
 	m.notice = ""
 	switch key.String() {
 	case "/":
@@ -136,7 +151,11 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "g", "home":
 		m.setCursor(0)
 	case "G", "end":
-		m.setCursor(len(m.filtered) - 1)
+		last := len(m.filtered) - 1
+		if m.surface != nil {
+			last = len(m.surface.Matches()) - 1
+		}
+		m.setCursor(last)
 	case "n":
 		m.openEditor("")
 	case "e":
@@ -145,17 +164,10 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renameSelected()
 	case "d":
 		m.requestDeleteSelected()
+	case " ", "space":
+		m.openScopeHubActions()
 	case "enter":
-		if m.cursor < 0 || m.cursor >= len(m.filtered) {
-			return m, nil
-		}
-		scope := m.filtered[m.cursor].Scope
-		return m, func() tea.Msg {
-			return ContextScopeSelectedMsg{
-				SelectedContext: scope.Name,
-				IsCustomContext: scope.IsCustom(),
-			}
-		}
+		return m, m.activateScopeHubCurrent()
 	}
 	return m, nil
 }
@@ -171,7 +183,18 @@ func (m *ContextHubModel) SetSize(width, height int) {
 }
 
 func (m *ContextHubModel) setCursor(index int) {
-	m.cursor = min(max(index, 0), max(len(m.filtered)-1, 0))
+	if m.surface == nil {
+		m.cursor = min(max(index, 0), max(len(m.filtered)-1, 0))
+		return
+	}
+	matches := m.surface.Matches()
+	if len(matches) == 0 {
+		m.cursor = -1
+		return
+	}
+	index = min(max(index, 0), len(matches)-1)
+	m.surface.SetCursorToID(matches[index].Item.ID)
+	m.cursor = m.surface.Cursor()
 }
 
 // applyFilter narrows the browse list to the scopes whose own name or whose
@@ -197,14 +220,21 @@ func (m *ContextHubModel) applyFilter() {
 		m.filtered = filtered
 	}
 
-	m.cursor = 0
+	if m.surface != nil {
+		m.surface.SetQuery(m.SearchQuery())
+		m.cursor = m.surface.Cursor()
+	} else {
+		m.cursor = 0
+	}
 	m.scroll = 0
 	if !hadSelection {
 		return
 	}
 	for i, summary := range m.filtered {
 		if summary.Scope == selected {
-			m.cursor = i
+			if m.surface == nil {
+				m.cursor = i
+			}
 			return
 		}
 	}
@@ -223,10 +253,11 @@ func (m *ContextHubModel) scopeMatches(scope ContextScope, query string) bool {
 }
 
 func (m *ContextHubModel) View() tea.View {
+	m.syncScopeSurfaceCursorFromLegacy()
 	width := max(m.width, 1)
 	height := max(m.height, 1)
 
-	title := renderFullscreenTitle("Contexts", m.subtitle(), m.AccentColor())
+	title := renderFullscreenTitle("Scope Hub", m.subtitle(), m.AccentColor())
 	footer := renderStatusBarFooter(
 		HelpStyle.Render(m.footerHelp(width)),
 		MutedStyle.Render(contextHubFooterLabel),
@@ -251,52 +282,17 @@ func (m *ContextHubModel) renderContent(width, height int) string {
 	if m.editor != nil {
 		return m.editorView(width, height)
 	}
-	if width < contextHubWideWidth {
-		return m.renderList(width, height)
+	if m.actions != nil {
+		return m.renderScopeHubActions(width, height)
 	}
-	listWidth := max(width*45/100, 1)
-	previewWidth := max(width-listWidth-SeparatorWidth, 1)
-
-	listPane := lipgloss.NewStyle().Width(listWidth).Height(height).
-		Render(m.renderList(listWidth, height))
-	previewPane := lipgloss.NewStyle().Width(previewWidth).Height(height).
-		Render(fitBlockHeight(m.renderPreview(previewWidth), height))
-	separator := SeparatorStyle.Render(strings.TrimRight(strings.Repeat("│\n", height), "\n"))
-	return lipgloss.JoinHorizontal(lipgloss.Top, listPane, " ", separator, " ", previewPane)
-}
-
-// renderList renders the grouped browse list: All, then custom contexts, then
-// regular project-context labels, with a bounded window around the cursor.
-func (m *ContextHubModel) renderList(paneWidth, paneHeight int) string {
-	if len(m.filtered) == 0 {
-		if m.SearchQuery() != "" {
-			return renderEmptyState(
-				fmt.Sprintf("No contexts match %q.", m.SearchQuery()),
-				"Esc clears the search.",
-			)
-		}
-		return renderEmptyState("No contexts defined.", "Every project without a context is still in All.")
-	}
-
-	lines := make([]string, 0, len(m.filtered)+6)
-	cursorLine := 0
-	group := ContextScopeKind(-1)
-	for i, summary := range m.filtered {
-		if summary.Scope.Kind != group {
-			if len(lines) > 0 {
-				lines = append(lines, "")
-			}
-			group = summary.Scope.Kind
-			lines = append(lines, SectionHeaderStyle.Render(contextHubGroupTitle(group)))
-		}
-		if i == m.cursor {
-			cursorLine = len(lines)
-		}
-		lines = append(lines, m.renderRow(i, summary, paneWidth))
-	}
-	visible, scroll := contextHubWindow(lines, cursorLine, m.scroll, paneHeight)
-	m.scroll = scroll
-	return strings.Join(visible, "\n")
+	rendered := NewListSurfaceRenderer(ListSurfaceRenderConfig{
+		Width:       width,
+		Height:      height,
+		Layout:      ListSurfaceLayoutAuto,
+		ShowPreview: true,
+		HideHelp:    true,
+	}).Render(m.surface)
+	return rendered.Content
 }
 
 // contextHubWindow returns the rows of lines visible in a height-row viewport
@@ -342,56 +338,6 @@ func clampWindowScroll(scroll, cursorLine, window, total int) int {
 	return min(max(scroll, 0), max(total-window, 0))
 }
 
-func (m *ContextHubModel) renderRow(index int, summary ContextScopeSummary, paneWidth int) string {
-	name := contextScopeDisplayName(summary.Scope)
-	if summary.Scope == m.active {
-		name += " (active)"
-	}
-	detail := "  " + MutedStyle.Render(contextHubRowDetail(summary))
-	if index != m.cursor {
-		return truncateToVisualWidth("  "+BoldStyle.Render(name)+detail, paneWidth)
-	}
-	line := IconCursorRight + " " + SelectedItemTextStyle.Render(name) + detail
-	return SelectionRowStyle.Width(paneWidth).Render(truncateToVisualWidth(line, paneWidth))
-}
-
-// renderPreview describes the highlighted scope: what it is, how many projects
-// it resolves to, and which projects the Outliner would show.
-func (m *ContextHubModel) renderPreview(paneWidth int) string {
-	if m.cursor < 0 || m.cursor >= len(m.filtered) {
-		return MutedStyle.Render("No context selected.")
-	}
-	summary := m.filtered[m.cursor]
-
-	var b strings.Builder
-	b.WriteString(BoldStyle.Render(truncateToVisualWidth(contextScopeDisplayName(summary.Scope), paneWidth)))
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(contextHubScopeKindLabel(summary.Scope)))
-	b.WriteString("\n\n")
-	// The counts are the preview's whole point, so they wrap rather than clip:
-	// at 100 columns the custom-context line (active, archived, missing, tasks)
-	// is wider than the preview pane.
-	b.WriteString(MutedStyle.Render(strings.Join(wrapText(m.previewCounts(summary), paneWidth), "\n")))
-	b.WriteString("\n\n")
-
-	projects := summary.Scope.Projects(m.runtime)
-	if len(projects) == 0 {
-		b.WriteString(renderEmptyState(
-			"No active projects in this context.",
-			"Applying it leaves the Outliner empty.",
-		))
-		return b.String()
-	}
-
-	b.WriteString(SectionHeaderStyle.Render("Projects"))
-	b.WriteString("\n")
-	for _, project := range projects {
-		b.WriteString(m.renderPreviewProject(project, paneWidth))
-		b.WriteString("\n")
-	}
-	return b.String()
-}
-
 func (m *ContextHubModel) previewCounts(summary ContextScopeSummary) string {
 	parts := []string{fmt.Sprintf("%d active project(s)", summary.ActiveProjectCount)}
 	if summary.Scope.IsCustom() {
@@ -415,24 +361,16 @@ func (m *ContextHubModel) previewCounts(summary ContextScopeSummary) string {
 	return strings.Join(parts, " · ")
 }
 
-func (m *ContextHubModel) renderPreviewProject(project *models.Project, paneWidth int) string {
-	if project == nil {
-		return ""
-	}
-	if m.taskCounts == nil {
-		return truncateToVisualWidth("  "+project.Name, paneWidth)
-	}
-	count := fmt.Sprintf("  %d task(s)", m.taskCounts[project.ID])
-	name := truncateToVisualWidth("  "+project.Name, max(paneWidth-lipgloss.Width(count), 1))
-	return name + MutedStyle.Render(count)
-}
-
 func (m *ContextHubModel) renderSearchBar() string {
 	switch {
 	case m.HasActiveSearch():
 		return "/" + m.SearchInputView()
 	case m.SearchQuery() != "":
-		return "/" + m.SearchQuery() + MutedStyle.Render(fmt.Sprintf("  (%d matches)", len(m.filtered)))
+		matches := len(m.filtered)
+		if m.surface != nil {
+			matches = len(m.surface.Matches())
+		}
+		return "/" + m.SearchQuery() + MutedStyle.Render(fmt.Sprintf("  (%d matches)", matches))
 	default:
 		return ""
 	}
@@ -453,7 +391,14 @@ func (m *ContextHubModel) subtitle() string {
 			regular++
 		}
 	}
-	return fmt.Sprintf("%d custom · %d project contexts", custom, regular)
+	activeProjects, archivedProjects, trash := m.scopeHubLifecycleCounts()
+	return fmt.Sprintf(
+		"%d base scopes · %d active · %d archived · %d trash",
+		1+custom+regular,
+		activeProjects,
+		archivedProjects,
+		trash,
+	)
 }
 
 // footerHelp returns the widest help variant that still fits beside the footer
@@ -475,15 +420,21 @@ func (m *ContextHubModel) footerHelpVariants() []string {
 	switch {
 	case m.editor != nil:
 		return m.editorFooterHelpVariants()
+	case m.actions != nil:
+		return m.scopeHubActionFooterHelpVariants()
 	case m.HasActiveSearch():
 		return []string{"Enter keep filter · Esc clear"}
 	case m.SearchQuery() != "":
-		return []string{"j/k choose · Enter apply · Esc clear search"}
+		return []string{
+			"j/k choose · Enter activate · Space actions · Esc clear search",
+			"j/k · Enter · Space actions · Esc clear",
+			"Enter · Space · Esc clear",
+		}
 	}
 	return []string{
-		"j/k choose · Enter apply · n new · e edit · r rename · d delete · / search",
-		"j/k · Enter apply · n new · e edit · r rename · d delete · / search",
-		"j/k · Enter apply · n/e/r/d · / search",
+		"j/k choose · Enter activate · Space actions · / search",
+		"j/k · Enter activate · Space actions · / search",
+		"j/k · Enter · Space · /",
 	}
 }
 
@@ -492,17 +443,6 @@ func contextScopeDisplayName(scope ContextScope) string {
 		return "All"
 	}
 	return scope.Name
-}
-
-func contextHubGroupTitle(kind ContextScopeKind) string {
-	switch kind {
-	case ContextScopeCustom:
-		return "Custom Contexts"
-	case ContextScopeRegular:
-		return "Regular Contexts"
-	default:
-		return "All"
-	}
 }
 
 func contextHubScopeKindLabel(scope ContextScope) string {
@@ -535,18 +475,18 @@ func contextHubRowDetail(summary ContextScopeSummary) string {
 
 func (m *ContextHubModel) IsFullHeight() bool { return true }
 
-// HasTextInput reports true for the whole editor, not just its focused input:
-// the shell's q/w/u/y/#/|/: interceptors and the Manage hub's `v` interceptor
-// would otherwise swallow the editor's own single-letter keys.
+// HasTextInput reports true for the whole editor or action sheet, not just a
+// focused input: the shell's q/w/u/y/#/|/: interceptors and the Manage hub's
+// `v` interceptor must not mutate or replace the view beneath either modal.
 func (m *ContextHubModel) HasTextInput() bool {
-	if m.editor != nil {
+	if m.editor != nil || m.actions != nil {
 		return true
 	}
 	return m.DefaultHasTextInput()
 }
 
 func (m *ContextHubModel) ShouldCaptureEsc() bool {
-	return m.editor != nil || m.confirm.IsActive() || m.confirmDiscard ||
+	return m.editor != nil || m.actions != nil || m.confirm.IsActive() || m.confirmDiscard ||
 		m.SearchShouldCaptureEsc() || m.SearchQuery() != ""
 }
 
@@ -559,7 +499,7 @@ func (m *ContextHubModel) GetConfirmDialog() *ConfirmDialog {
 	return &m.confirm
 }
 
-func (m *ContextHubModel) StatusBarLabel() string { return "Contexts" }
+func (m *ContextHubModel) StatusBarLabel() string { return "Scope Hub" }
 
 func (m *ContextHubModel) GetHelpItems() []HelpItem {
 	if m.editor != nil {
@@ -567,13 +507,10 @@ func (m *ContextHubModel) GetHelpItems() []HelpItem {
 	}
 	return []HelpItem{
 		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
-		{Key: "g/G", Description: "Jump to first or last context", Category: "Navigation"},
-		{Key: "/", Description: "Search contexts and project names", Category: "Filters"},
-		{Key: "enter", Description: "Apply the selected context", Category: "Actions"},
-		{Key: "n", Description: "New custom context", Category: "Actions"},
-		{Key: "e", Description: "Edit the selected context's membership", Category: "Actions"},
-		{Key: "r", Description: "Rename the selected context", Category: "Actions"},
-		{Key: "d", Description: "Delete the selected context", Category: "Actions"},
+		{Key: "g/G", Description: "Jump to the first or last scope item", Category: "Navigation"},
+		{Key: "/", Description: "Search scopes, projects, and trash", Category: "Filters"},
+		{Key: "enter", Description: "Activate a base scope or project focus", Category: "Actions"},
+		{Key: "space", Description: "Open contextual administration actions", Category: "Actions"},
 		{Key: "esc", Description: "Return to the Outliner", Category: "Navigation"},
 	}
 }

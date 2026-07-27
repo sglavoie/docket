@@ -1,166 +1,38 @@
 package tui
 
-import (
-	"maps"
-)
-
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
-func (m *OutlinerModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	var prefix string
-	if m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix() {
-		prefix = m.Dispatcher.PendingPrefix()
-	} else {
-		prefix = m.pendingPrefix
-	}
-	if prefix == "" {
+func (m *OutlinerModel) HandledKeys() []string {
+	if m.operationRegistry == nil {
 		return nil
 	}
-	return &PrefixPopupInfo{
-		Prefix: prefix,
-		Hints:  m.buildPrefixHints(),
-	}
+	return m.operationRegistry.HandledKeysForInputStrategy(InputStrategySimplified)
 }
 
-// OutlinerNavigationPrefixHints contains "g" prefix hints for the outliner view.
-var OutlinerNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first", Detail: "Jump to first item"},
-	{Key: "h", Description: "history", Detail: "Show task activity log"},
-	{Key: "l", Description: "activity", Detail: "Show project recent activity"},
-	{Key: "d", Description: "due date", Detail: "Cycle due date filter"},
-	{Key: "z", Description: "snoozed", Detail: "Jump to Snoozed perspective"},
-}
-
-// CrossProjectNavigationPrefixHints contains "g" prefix hints for the cross-project outliner.
-var CrossProjectNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first", Detail: "Jump to first item"},
-	{Key: "o", Description: "drill down", Detail: "Open task's project outliner"},
-	{Key: "d", Description: "due date", Detail: "Cycle due date filter"},
-	{Key: "z", Description: "snoozed", Detail: "Jump to Snoozed perspective"},
-}
-
-// buildPrefixHints returns the hints map for all supported prefix keys.
-func (m *OutlinerModel) buildPrefixHints() PrefixHints {
-	currentPriority := m.currentTaskPrefixContext()
-	hints := CommonTaskActionPrefixHints(currentPriority)
-	hints["t"] = buildOutlinerTaskPrefixHints(m.project == nil)
-	hints["b"] = BlockerPrefixHints
-	hints["g"] = outlinerNavigationHints(m.project == nil)
-	hints["m"] = ProjectTreeMovePrefixHints // override: outliner uses tree moves
-	hints["f"] = OutlinerFoldPrefixHints
-
-	activePrefix := m.currentPrefixHint()
-
-	// Add filter hints
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter.CommonFilterState, m.runtime.Machine(), true, true, true))
-	m.addOutlinerFilterHints(hints)
-
-	// Add saved filter sub-prefix hints
-	hints["Fv"] = SavedFilterPrefixHints
-
-	m.addOutlinerStatusHints(hints, activePrefix)
-
-	return hints
-}
-
-func (m *OutlinerModel) currentTaskPrefixContext() int {
-	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].task == nil {
-		return 0
-	}
-	return m.rows[m.cursor].task.Priority
-}
-
-func buildOutlinerTaskPrefixHints(crossProject bool) []PrefixHint {
-	if !crossProject {
-		return TaskPrefixHints
-	}
-	return annotatePrefixHints(TaskPrefixHints, func(hint *PrefixHint) {
-		if hint.Key == "n" || hint.Key == "N" {
-			hint.Disabled = true
-		}
-	})
-}
-
-func outlinerNavigationHints(crossProject bool) []PrefixHint {
-	if crossProject {
-		return CrossProjectNavigationPrefixHints
-	}
-	return OutlinerNavigationPrefixHints
-}
-
-func (m *OutlinerModel) currentPrefixHint() string {
-	if m.Dispatcher != nil && m.Dispatcher.HasPendingPrefix() {
-		return m.Dispatcher.PendingPrefix()
-	}
-	return m.pendingPrefix
-}
-
-func (m *OutlinerModel) addOutlinerFilterHints(hints PrefixHints) {
-	fHints, ok := hints["F"]
-	if !ok {
-		return
-	}
-
-	completedDetail := "off"
-	if m.activePerspective == PerspectiveCompleted {
-		completedDetail = "on"
-	}
-	actionableDetail := "off"
-	if m.filter.Actionable {
-		actionableDetail = "on"
-	}
-
-	fHints = append(fHints,
-		PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == PerspectiveCompleted},
-		PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.filter.Actionable},
-		PrefixHint{Key: "@", Description: "section", Detail: "selector"},
-		PrefixHint{Key: "D", Description: "columns"},
-		PrefixHint{Key: "v", Description: "saved filters"},
-	)
-	sortPrefixHintsLowercaseFirst(fHints)
-	hints["F"] = fHints
-}
-
-func (m *OutlinerModel) addOutlinerStatusHints(hints PrefixHints, activePrefix string) {
-	if activePrefix != "," || len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].task == nil {
-		return
-	}
-
-	task := m.rows[m.cursor].task
-	currentState := task.State()
-	notRecurring := task.Recurrence == nil
-	hints[","] = annotatePrefixHints(StatusPrefixHints, func(hint *PrefixHint) {
-		switch hint.Key {
-		case "k", "D":
-			if notRecurring {
-				hint.Disabled = true
-			}
-		default:
-			if stateForHint, ok := StateForPrefixKey(hint.Key); ok && currentState == stateForHint {
-				hint.Active = true
-			}
-		}
-	})
-}
-
-func annotatePrefixHints(src []PrefixHint, annotate func(*PrefixHint)) []PrefixHint {
-	annotated := make([]PrefixHint, len(src))
-	copy(annotated, src)
-	for i := range annotated {
-		annotate(&annotated[i])
-	}
-	return annotated
-}
-
-// HandledKeys returns all keys OutlinerModel can handle.
-func (m *OutlinerModel) HandledKeys() []string {
-	return m.buildKeyMap().HandledKeys()
-}
-
-// GetHelpItems returns help items for the outliner view.
-// In cross-project mode (project == nil), returns bindings for ViewCrossProjectOutliner.
 func (m *OutlinerModel) GetHelpItems() []HelpItem {
-	if m.project == nil {
-		return GetKeybindingRegistry().GetForView(ViewCrossProjectOutliner)
+	if m.operationRegistry == nil {
+		return nil
 	}
-	return GetKeybindingRegistry().GetForView(ViewOutliner)
+	return m.operationRegistry.HelpItemsForInputStrategy(
+		InputStrategySimplified,
+		m.operationCommandContext(),
+	)
+}
+
+func (m *OutlinerModel) ContextualFooter() (StatusBarFooterSpec, bool) {
+	if m.operationRegistry == nil {
+		return StatusBarFooterSpec{}, false
+	}
+	hints := m.operationRegistry.FooterHintsForInputStrategy(
+		InputStrategySimplified,
+		m.operationCommandContext(),
+		8,
+	)
+	if hints == "" {
+		return StatusBarFooterSpec{}, false
+	}
+	if m.runtime != nil {
+		if right := onboardingStatus(m.runtime.Settings().GetOnboardingProgress()); right != "" {
+			hints += " · " + right
+		}
+	}
+	return StatusBarFooterSpec{Left: hints}, true
 }

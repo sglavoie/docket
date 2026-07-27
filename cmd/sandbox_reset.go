@@ -18,7 +18,7 @@ var sandboxResetCmd = &cobra.Command{
 	Long: `Clear all tasks, notes, tags, and pinned tags from the sandbox project.
 
 This resets the sandbox to a clean state by removing all tasks, notes, and tag
-metadata, then resetting to the default "Next" section only. The reset commits
+metadata. The reset commits
 as one workspace transaction, so 'tt undo' restores the complete prior state.
 
 Use --force to skip the confirmation prompt.
@@ -100,12 +100,6 @@ func sandboxResetParts(counts app.SandboxResetCounts) []string {
 	}
 	if counts.PinnedTags > 0 {
 		parts = append(parts, Pluralize(counts.PinnedTags, "pinned tag", "pinned tags"))
-	}
-	if counts.SectionLayout > 0 {
-		parts = append(parts, "section layout")
-	}
-	if counts.SectionColors > 0 {
-		parts = append(parts, Pluralize(counts.SectionColors, "section color", "section colors"))
 	}
 	if counts.ShortIDCounter > 0 {
 		parts = append(parts, "short-ID counter")

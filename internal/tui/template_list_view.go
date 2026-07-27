@@ -189,7 +189,7 @@ func (m *TaskTemplatesModel) renderHelpText() string {
 
 // GetHelpItems returns help items for this view.
 func (m *TaskTemplatesModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewTaskTemplates)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 // HasTextInput returns true when search is active.

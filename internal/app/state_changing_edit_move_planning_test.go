@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -9,20 +10,17 @@ import (
 )
 
 // formEditReplacing builds a full-form EditRequest that replaces every editable
-// field from the task while overriding the section, mirroring how the task form
-// (and the Outliner cross-project quick edit) always writes the complete post-edit
-// field set. Changing the section changes the derived workflow state, which is the
-// transition the planning reconciliation must fold in.
-func formEditReplacing(task *models.Task, section string) app.EditRequest {
+// field while applying an explicit canonical workflow state.
+func formEditReplacing(task *models.Task, state models.WorkflowState) app.EditRequest {
 	return app.EditRequest{
 		TaskID: task.ID,
 		Form: &app.FormEdit{
 			Title:    task.Title,
 			Type:     task.Type,
 			Priority: task.Priority,
-			Section:  section,
 			Tags:     []string{},
 		},
+		WorkflowState: &state,
 	}
 }
 
@@ -40,9 +38,9 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
 		planning.SetDailyPlan([]config.DailyPlanItem{{TaskID: task.ID, ProjectID: project.ID, PlannedDate: "2026-07-19"}})
-		svc := newTestService(repo).WithPlanningArtifacts(exclusivityBuilder(planning))
+		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
-		if _, err := svc.Edit(formEditReplacing(task, models.SectionNext)); err != nil {
+		if _, err := svc.Edit(formEditReplacing(task, models.StateNext)); err != nil {
 			t.Fatalf("Edit: %v", err)
 		}
 		if got := project.GetTaskByID(task.ID).State(); got != models.StateNext {
@@ -60,9 +58,9 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
 		planning.SetFocusQueue([]config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}})
-		svc := newTestService(repo).WithPlanningArtifacts(exclusivityBuilder(planning))
+		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
-		if _, err := svc.Edit(formEditReplacing(task, models.SectionWaiting)); err != nil {
+		if _, err := svc.Edit(formEditReplacing(task, models.StateWaiting)); err != nil {
 			t.Fatalf("Edit: %v", err)
 		}
 		if got := project.GetTaskByID(task.ID).State(); got != models.StateWaiting {
@@ -80,9 +78,9 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
 		planning.SetDailyPlan([]config.DailyPlanItem{{TaskID: task.ID, ProjectID: project.ID, PlannedDate: "2026-07-19"}})
-		svc := newTestService(repo).WithPlanningArtifacts(exclusivityBuilder(planning))
+		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
-		if _, err := svc.EditWithWorkflow(formEditReplacing(task, models.SectionNext), app.SingleTaskWorkflowOptions{}); err != nil {
+		if _, err := svc.EditWithWorkflow(formEditReplacing(task, models.StateNext), app.SingleTaskWorkflowOptions{}); err != nil {
 			t.Fatalf("EditWithWorkflow: %v", err)
 		}
 		if got := project.GetTaskByID(task.ID).State(); got != models.StateNext {
@@ -93,7 +91,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		}
 	})
 
-	t.Run("MoveToProjectInSection applies the destination section state", func(t *testing.T) {
+	t.Run("MoveToProject preserves the canonical state", func(t *testing.T) {
 		task := newTask("task-1", 1, "Mover")
 		task.ApplyWorkflowState(models.StateReady)
 		src := newProject("src", "Source", task)
@@ -101,9 +99,9 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		repo := newFakeRepo(src, dest)
 		svc := newTestService(repo)
 
-		res, err := svc.MoveToProjectInSection(task.ID, dest.ID, models.SectionNext)
+		res, err := svc.MoveToProject(task.ID, dest.ID)
 		if err != nil {
-			t.Fatalf("MoveToProjectInSection: %v", err)
+			t.Fatalf("MoveToProject: %v", err)
 		}
 		if res.DestProjectID != dest.ID {
 			t.Fatalf("dest project = %s, want %s", res.DestProjectID, dest.ID)
@@ -112,10 +110,32 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		if moved == nil {
 			t.Fatal("moved task not found in destination project")
 		}
-		// The move applies the destination section before relocating, so the moved
-		// root holds StateNext — the final state the TUI reconciles Today/Next against.
-		if got := moved.State(); got != models.StateNext {
-			t.Fatalf("moved task state = %s, want next", got)
+		if got := moved.State(); got != models.StateReady {
+			t.Fatalf("moved task state = %s, want ready", got)
 		}
 	})
+}
+
+func TestWorkflowEditStateChangeUsesCanonicalTransitionGuards(t *testing.T) {
+	target := newTask("target", 1, "Target")
+	blocker := newTask("blocker", 2, "Blocker")
+	target.DependsOn = []string{blocker.ID}
+	project := newProject("proj", "Proj", target, blocker)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+	done := models.StateDone
+
+	_, err := svc.EditWithWorkflow(app.EditRequest{
+		TaskID:        target.ID,
+		WorkflowState: &done,
+	}, app.SingleTaskWorkflowOptions{})
+	if !errors.Is(err, app.ErrDependencyBlocked) {
+		t.Fatalf("EditWithWorkflow error = %v, want ErrDependencyBlocked", err)
+	}
+	if got := project.GetTaskByID(target.ID).State(); got != models.StateReady {
+		t.Fatalf("target state = %q, want unchanged ready", got)
+	}
+	if len(repo.commits) != 0 {
+		t.Fatalf("commits = %d, want none for rejected transition", len(repo.commits))
+	}
 }

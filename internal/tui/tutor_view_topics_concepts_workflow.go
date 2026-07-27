@@ -30,7 +30,7 @@ See Blockers (Project-level) for project-level impediments.`,
 			Content: `# The Suggestion Engine
 
 The "Backlog" engine ranks tasks across all active projects
-using a weighted formula that considers priority, due dates, status,
+using a weighted formula that considers priority, due dates, state,
 activity recency, unblocking potential, and scoring profiles.
 
 # Next (the on-deck shortlist)
@@ -42,7 +42,7 @@ itself, not a separate flag layered on top. The persisted order index is
 ordering-only: it records the sequence of Next tasks and never decides
 membership.
 
-Manage Next from the Outliner. Press q on a task to
+Manage Next from the Outliner. Press n on a task to
 toggle StateNext membership, and J/K to reorder the selected Next task
 without changing its state. Today and
 Next are mutually exclusive: a task lives in at most one horizon. The
@@ -69,16 +69,16 @@ stories use ###, and leaf tasks use #### (relative to their
 parent depth).
 
   ## Epic: User Authentication
-  <!-- id: abc123, status: in_progress, priority: 1 -->
+  <!-- id: abc123, state: in_progress, priority: 1 -->
 
   Description of the epic goes here.
 
   ### Story: Login Flow
-  <!-- id: def456, status: todo, priority: 2 -->
+  <!-- id: def456, state: ready, priority: 2 -->
 
 # Metadata in HTML Comments
 
-Task metadata like ID, status, priority, tags, and dates is
+Task metadata like ID, state, priority, tags, and dates is
 stored in HTML comments immediately after the heading. This
 keeps the markdown readable while preserving all task data.`,
 		},
@@ -162,7 +162,7 @@ editor header.
 # How It Works
 
 When you complete a recurring task, tt creates a new copy with
-the status reset to todo and the due date advanced by the
+the state reset to inbox for triage and the due date advanced by the
 recurrence interval. The completed instance remains in your
 history.`,
 		},

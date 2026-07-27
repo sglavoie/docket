@@ -1,9 +1,12 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
+)
 
 // parseQuickCapture extracts metadata from the input string.
-// Syntax: "^bug Task title !1 #backend #urgent @tomorrow >3 %projectname"
+// Syntax: "^bug Task title !1 #backend #urgent @tomorrow $inbox >3 %projectname"
 // When skipProject is true, %project syntax is ignored (treated as literal text).
 func parseQuickCapture(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, error) {
 	parser := newQuickCaptureParser(input, project, allProjects, skipProject, true)
@@ -23,30 +26,9 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 }
 
 func (p *quickCaptureParser) parse() {
-	for _, step := range []func() bool{
-		p.parseTaskTypeAlias,
-		p.parseTaskType,
-		p.parsePriorityAlias,
-		p.parsePriority,
-		p.parseTagAlias,
-		p.parseTags,
-		p.parseDueDate,
-		p.parseDueDateAlias,
-		p.parseRecurrenceAlias,
-		p.parseRecurrence,
-		p.parseProjectAlias,
-		p.parseProject,
-		p.parseParentAlias,
-		p.parseParent,
-		p.parseSectionAlias,
-		p.parseSection,
-		p.parseStatusAlias,
-		p.parseStatus,
-	} {
-		if !step() {
-			return
-		}
+	p.applySharedTokens(textgrammar.Parse(p.input, textgrammar.SurfaceCapture))
+	if p.err != nil {
+		return
 	}
-
 	p.finalizeTitle()
 }

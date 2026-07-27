@@ -16,10 +16,10 @@ func TestCompletion(t *testing.T) {
 		canceled := now.AddDate(0, 0, -1)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done1), nil),
-			makeTask(models.StatusDone, timePtr(done2), nil),
-			makeTask(models.StatusCanceled, timePtr(canceled), nil),
-			makeTask(models.StatusTodo, nil, nil),
+			makeTask(models.StateDone, timePtr(done1), nil),
+			makeTask(models.StateDone, timePtr(done2), nil),
+			makeTask(models.StateCanceled, timePtr(canceled), nil),
+			makeTask(models.StateReady, nil, nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -43,8 +43,8 @@ func TestCompletion(t *testing.T) {
 		recent := now.AddDate(0, 0, -2)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(old), nil),
-			makeTask(models.StatusDone, timePtr(recent), nil),
+			makeTask(models.StateDone, timePtr(old), nil),
+			makeTask(models.StateDone, timePtr(recent), nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -62,9 +62,9 @@ func TestCompletion(t *testing.T) {
 		futureCanceled := now.Add(4 * time.Hour)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(recent), nil),
-			makeTask(models.StatusDone, timePtr(futureDone), nil),
-			makeTask(models.StatusCanceled, timePtr(futureCanceled), nil),
+			makeTask(models.StateDone, timePtr(recent), nil),
+			makeTask(models.StateDone, timePtr(futureDone), nil),
+			makeTask(models.StateCanceled, timePtr(futureCanceled), nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -96,7 +96,7 @@ func TestCompletion(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 		tasks := []*models.Task{
 			nil,
-			makeTask(models.StatusDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)

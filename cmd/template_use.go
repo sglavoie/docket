@@ -19,7 +19,7 @@ var templateUseCmd = &cobra.Command{
 	Short: "Create a task from a template",
 	Long: `Create a new task using a template.
 
-The template defines the task type, priority, tags, section, and checklist items.
+The template defines the task type, priority, tags, state, and checklist items.
 If a title is provided, it will be used; otherwise, the template name is used.
 
 Checklist items are created automatically based on the template definition.
@@ -31,6 +31,7 @@ with a default value.
 FLAGS
   --skip-optional  Don't create optional children
   --parent         Parent task ID for the new task
+  --state          Override the template's canonical workflow state
   --var            Set a template variable (name=value), repeatable
 
 EXAMPLES
@@ -59,6 +60,7 @@ EXAMPLES
 var (
 	templateUseSkipOptional bool
 	templateUseParent       string
+	templateUseState        string
 	templateUseVars         []string
 )
 
@@ -67,7 +69,9 @@ func init() {
 
 	templateUseCmd.Flags().BoolVar(&templateUseSkipOptional, "skip-optional", false, "don't create optional children")
 	templateUseCmd.Flags().StringVar(&templateUseParent, "parent", "", "parent task ID or short ID")
+	templateUseCmd.Flags().StringVar(&templateUseState, "state", "", "override the template's canonical workflow state")
 	templateUseCmd.Flags().StringArrayVar(&templateUseVars, "var", nil, "set template variable (name=value), repeatable")
+	_ = templateUseCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 }
 
 func runTemplateUse(cmd *cobra.Command, args []string) error {
@@ -116,8 +120,15 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("template %q: %w", t.Name, err)
 	}
-	if err := t.Validate(); err != nil {
-		return fmt.Errorf("invalid template %q: %w", t.Name, err)
+	if validateErr := t.Validate(); validateErr != nil {
+		return fmt.Errorf("invalid template %q: %w", t.Name, validateErr)
+	}
+	creationState := t.EffectiveState()
+	if stagedLifecycleFlagProvided(cmd, "state", templateUseState) {
+		creationState, err = parseCanonicalWorkflowStateInput("state", templateUseState)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Load current project (only its identity and parent-resolution context are
@@ -173,7 +184,7 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 				Priority:    t.GetEffectivePriority(),
 				Tags:        t.Tags,
 				Description: t.Description,
-				State:       t.EffectiveState(),
+				State:       creationState,
 				ParentID:    parentID,
 				Checklist:   t.Checklist,
 				Artifacts:   arts,

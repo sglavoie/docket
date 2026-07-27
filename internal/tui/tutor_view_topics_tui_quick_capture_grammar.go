@@ -1,100 +1,76 @@
 package tui
 
+import (
+	"strings"
+
+	"github.com/sglavoie/tt/internal/textgrammar"
+)
+
 func tutorTUIQuickCaptureGrammarTopic() TutorTopic {
+	stateTokens := "$" + strings.Join(textgrammar.StateNames(), " $")
+	typeTokens := "^" + strings.Join(textgrammar.TaskTypeNames(), " ^")
+
 	return TutorTopic{
-		Title:    "Quick Capture Grammar",
+		Title:    "Task Composer Grammar",
 		Category: "TUI",
-		Content: `# Opening Quick Capture
+		Content: `# Opening the Task Composer
 
-Press Ctrl+N from any non-text control to open the Task Composer. The
-placeholder reads "Type a task title…" — start
-typing the title, then add sigils as needed. Press ? to toggle
-the grouped syntax reference — Basics, Priority & Tags,
-Schedule, Placement, Status, and Project Routing (the footer
-hint reads "?: syntax").
+Press a from the Outliner to open the Task Composer. Start with a
+title, then add inline metadata. Press ? to toggle the grammar
+reference. Capture and search share the same canonical state names
+and token definitions.
 
-The Linked Task Creator (blockers, dependents, subtasks,
-follow-ups) shares the same calm placeholder, the same ?-gated
-syntax guide, and the same sigils — except %project, which is
-not offered because linked tasks always belong to the parent's
-project.
+# Live Preview
 
-# Scrollable Syntax Reference
+The preview groups every recognized field:
 
-The composer (title, context, and three-row textarea) stays
-fixed while you type. The grouped "Capture Syntax" reference
-opens in a bounded pane you scroll on its own: Ctrl+J/K move it
-by line and PgUp/PgDn move it by page. Direct j/k keep editing
-the title. Esc closes autocomplete first, then the syntax pane,
-and only then cancels the capture.
-
-# Live Preview Groups
-
-As you type, the preview below the input organizes the parsed
-task into labeled groups so you can see exactly which sigil
-populates which field:
-
-  Task        Task type + title (and any $status override)
-  Route       /section (defaults to Inbox) and → ProjectName
-              (global capture)
+  Task        Task type + title + exact $state
+  Route       Target project (capture defaults to Inbox)
   Schedule    @due date and ~recurrence
   Metadata    !priority and #tags
-  Aliases     Any long-form aliases you used (e.g. due:fri)
+  Aliases     Any long-form compatibility aliases used
 
-The Aliases row is a dedicated line — long-form aliases never
-appear as an inline suffix on the title.
+# Canonical Sigils
 
-# Sigils By Group
-
-  Task group
-    ^type       Task type: ^epic ^story ^task ^bug ^idea
+  Task
+    ^type       Task type: ` + typeTokens + `
                 Alias: type:bug
-    $status     Initial status: $start $blocked $done $review
-                $standby $hold $maybe $canceled
-                Alias: status:done
+    $state      Canonical state: ` + stateTokens + `
+                Alias: state:ready
 
-  Route group
-    /section    Section (defaults to Inbox if omitted):
-                /inbox /next /waiting /someday
-                Alias: sec:next
-    %project    Target project (slug or name): %myproject
-                Alias: p:myproject  (omitted in global capture
-                and in the Linked Task Creator)
+  Routing
+    %project    Target project: %myproject
+                Aliases: p:myproject  proj:myproject
+    >parent     Parent task: >42 >Login
+                Alias: parent:42
 
-  Schedule group
+  Schedule
     @date       Due date: @tomorrow @friday @+3d
-                Alias: due:fri  due:3d
+                Alias: due:fri
     ~recur      Recurrence: ~daily ~weekly ~2w ~monthly
                 Alias: recur:weekly
 
-  Metadata group
-    !N/!word    Priority (1-5): !1 !urgent !high !normal !low
-                Alias: pri:2
-    #tag        Add a tag (multiple allowed): #backend #urgent
+  Metadata
+    !priority   Priority: !1 !urgent !high !normal !low
+                Aliases: pri:2  priority:high
+    #tag        Add tags: #backend #urgent
                 Alias: tag:backend
 
-  Hierarchy (no dedicated group; affects parenting)
-    >parent     Parent task (short ID or title prefix): >42 >Login
-                Alias: parent:42
+# Canonical Lifecycle
+
+Use only $state tokens for lifecycle metadata. Every created task
+has one canonical state; omission defaults to Inbox.
 
 # Worked Examples
 
-  Buy milk @tomorrow !2 #errand
-    Task: Buy milk · Route: Inbox (default)
-    Schedule: tomorrow · Metadata: !2 #errand
+  Buy milk @tomorrow !2 #errand $ready
+  ^bug Login spinner !1 #frontend $in_progress
+  Pair with Alex ~weekly $waiting
 
-  ^bug Login spinner !1 #frontend @eod $start
-    Task: bug "Login spinner" (status: in_progress)
-    Route: Inbox (default) · Schedule: end of day
-    Metadata: !1 #frontend
+# Search Equivalents
 
-  Pair with Alex ~weekly /waiting
-    Task: Pair with Alex · Route: /waiting
-    Schedule: weekly recurrence
-
-# Palette Search Equivalents
-
-Palette search uses field prefixes to find existing tasks,
-projects, tags, sections, commands, and notes.`,
+Structured search uses the same $state, !priority, #tag, ^type, @due,
+and project token definitions. State filters are exact: $ready matches
+ready tasks without collapsing into inbox or next.`,
 	}
 }

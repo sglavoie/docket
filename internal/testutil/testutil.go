@@ -118,15 +118,14 @@ func NewTestTask(title string, taskType models.TaskType) *models.Task {
 	return task
 }
 
-// NewTestTaskWithStatus creates a task whose workflow state corresponds to the
-// given legacy status (mapped through the canonical loader-upgrade rules).
-func NewTestTaskWithStatus(title string, status models.TaskStatus) *models.Task {
+// NewTestTaskWithState creates a task in the requested canonical workflow state.
+func NewTestTaskWithState(title string, state models.WorkflowState) *models.Task {
 	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
 	if err != nil {
-		panic(fmt.Sprintf("NewTestTaskWithStatus(%q): %v", title, err))
+		panic(fmt.Sprintf("NewTestTaskWithState(%q): %v", title, err))
 	}
-	task.WorkflowState = models.DeriveWorkflowState(status, "", "")
-	if status == models.StatusDone {
+	task.WorkflowState = state
+	if state == models.StateDone {
 		now := time.Now()
 		task.CompletedAt = &now
 	}
@@ -151,12 +150,11 @@ func AssertTaskCount(t *testing.T, project *models.Project, expected int) {
 	}
 }
 
-// AssertTaskStatus checks that a task's workflow state corresponds to the
-// expected legacy status (derived from State() through LegacyStatusForState).
-func AssertTaskStatus(t *testing.T, task *models.Task, expected models.TaskStatus) {
+// AssertTaskState checks a task's canonical workflow state.
+func AssertTaskState(t *testing.T, task *models.Task, expected models.WorkflowState) {
 	t.Helper()
-	if got := models.LegacyStatusForState(task.State()); got != expected {
-		t.Errorf("expected status %s, got %s", expected, got)
+	if got := task.State(); got != expected {
+		t.Errorf("expected state %s, got %s", expected, got)
 	}
 }
 

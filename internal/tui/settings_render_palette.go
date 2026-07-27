@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // renderColorInputField renders a hex color input with swatch and validation error.
@@ -133,21 +134,23 @@ func (m *SettingsModel) renderColorPreviewPane(width int) string {
 	b.WriteString(SelectedStyle.Render(IconCursorRight + " Selected cursor row"))
 	b.WriteString("\n\n")
 
-	b.WriteString(MutedStyle.Render("View Modes"))
+	b.WriteString(MutedStyle.Render("State Groups"))
 	b.WriteString("\n")
-	b.WriteString(ViewModeActiveStyle.Render("Active"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupBacklog).Render("Backlog"))
 	b.WriteString(" ")
-	b.WriteString(ViewModeNextStyle.Render("Next"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupNext).Render("Next"))
 	b.WriteString(" ")
-	b.WriteString(ViewModeInboxStyle.Render("Inbox"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupInbox).Render("Inbox"))
 	b.WriteString(" ")
-	b.WriteString(ViewModeWaitingStyle.Render("Waiting"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupInProgress).Render("In Progress"))
 	b.WriteString("\n")
-	b.WriteString(ViewModeSomedayStyle.Render("Someday"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupWaiting).Render("Waiting"))
 	b.WriteString(" ")
-	b.WriteString(ViewModeReviewStyle.Render("Review"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupReview).Render("Review"))
 	b.WriteString(" ")
-	b.WriteString(ViewModeStandbyStyle.Render("Standby"))
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupPaused).Render("Paused"))
+	b.WriteString(" ")
+	b.WriteString(GetWorkflowStateGroupStyle(models.StateGroupSomeday).Render("Someday"))
 	b.WriteString("\n\n")
 
 	b.WriteString(lipgloss.NewStyle().Foreground(ColorBorder).Render(strings.Repeat("─", min(width-4, 20)) + " Border"))

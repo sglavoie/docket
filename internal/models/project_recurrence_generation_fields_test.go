@@ -241,7 +241,6 @@ func TestGenerateRecurringInstances_NewInstanceProperties(t *testing.T) {
 		Name:        "Props Project",
 		Tasks:       []*Task{task},
 		NextShortID: 2,
-		Sections:    []string{SectionInbox, SectionNext},
 	}
 
 	project.GenerateRecurringInstances()

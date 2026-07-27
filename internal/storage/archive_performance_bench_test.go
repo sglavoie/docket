@@ -217,8 +217,8 @@ func makeArchiveBenchTasks(b *testing.B, prefix string, count int, completed boo
 			task.WorkflowState = models.StateDone
 			task.CompletedAt = &completedAt
 			task.Activity = []*models.ActivityEntry{
-				{Timestamp: startedAt, Field: "status", OldValue: string(models.StatusTodo), NewValue: string(models.StatusInProgress)},
-				{Timestamp: completedAt, Field: "status", OldValue: string(models.StatusInProgress), NewValue: string(models.StatusDone)},
+				{Timestamp: startedAt, Field: "status", OldValue: string(models.StateReady), NewValue: string(models.StateInProgress)},
+				{Timestamp: completedAt, Field: "status", OldValue: string(models.StateInProgress), NewValue: string(models.StateDone)},
 			}
 		}
 		tasks = append(tasks, task)

@@ -179,7 +179,7 @@ func (s *Service) buildApplyTemplate(snap Snapshot, req ApplyTemplateRequest, no
 			for _, tag := range task.Tags {
 				childTask.AddTag(tag)
 			}
-			if stateErr := s.initializeCreatedTask(project, childTask, task.State()); stateErr != nil {
+			if stateErr := s.initializeCreatedTask(childTask, task.State()); stateErr != nil {
 				return TaskRef{}, "", 0, stateErr
 			}
 			project.Tasks = append(project.Tasks, childTask)

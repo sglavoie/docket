@@ -406,7 +406,7 @@ func (m *TaskTemplateCreatorModel) saveTemplate() tea.Cmd {
 	}
 
 	// Validate
-	if err := t.Validate(); err != nil {
+	if err := t.ValidateForAuthoring(); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 

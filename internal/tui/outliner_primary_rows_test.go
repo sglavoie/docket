@@ -1,0 +1,188 @@
+package tui
+
+import (
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+)
+
+func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
+	return &models.Task{
+		ID:            id,
+		Title:         id,
+		Type:          models.TaskTypeTask,
+		WorkflowState: state,
+		UpdatedAt:     time.Now(),
+	}
+}
+
+func primaryRowsProject(id string, tasks ...*models.Task) *models.Project {
+	project := &models.Project{ID: id, Name: id, Slug: id, Tasks: tasks}
+	project.BuildTaskTree()
+	return project
+}
+
+func primaryRowsOutliner(projects ...*models.Project) (*OutlinerModel, *config.RuntimeState) {
+	runtime := testConfigWithProjects(projects...)
+	outliner := NewOutlinerModel(nil, nil, runtime)
+	outliner.loadedProjects = projects
+	return outliner, runtime
+}
+
+func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
+	tasks := []*models.Task{
+		primaryRowsTask("in-progress", models.StateInProgress),
+		primaryRowsTask("inbox", models.StateInbox),
+		primaryRowsTask("next", models.StateNext),
+		primaryRowsTask("today", models.StateReady),
+		primaryRowsTask("backlog", models.StateReady),
+		primaryRowsTask("review", models.StateReview),
+		primaryRowsTask("waiting", models.StateWaiting),
+		primaryRowsTask("paused", models.StatePaused),
+		primaryRowsTask("someday", models.StateSomeday),
+		primaryRowsTask("done", models.StateDone),
+		primaryRowsTask("canceled", models.StateCanceled),
+		primaryRowsTask("snoozed", models.StateReady),
+	}
+	future := time.Now().AddDate(0, 0, 2)
+	tasks[len(tasks)-1].SnoozedUntil = &future
+	project := primaryRowsProject("alpha", tasks...)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{{
+		ProjectID: project.ID,
+		TaskID:    "today",
+	}})
+
+	outliner.selectOutlinerMode(ModeAll)
+
+	var groups []models.WorkflowStateGroup
+	for _, row := range outliner.rows {
+		if row.IsSectionHeader {
+			groups = append(groups, row.StateGroup)
+		}
+	}
+	wantGroups := models.AllModeWorkflowStateGroups()
+	if !slices.Equal(groups, wantGroups) {
+		t.Fatalf("All group order = %v, want %v", groups, wantGroups)
+	}
+	if got := countTaskRows(outliner, "today"); got != 1 {
+		t.Fatalf("Today task row count = %d, want one deduplicated row", got)
+	}
+	if row, ok := findPlanningTaskRow(outliner, "today"); !ok || !row.IsTodaySection {
+		t.Fatalf("Today task row = %+v found=%t, want synthetic Today membership", row, ok)
+	}
+	for _, hidden := range []string{"done", "canceled", "snoozed"} {
+		if got := countTaskRows(outliner, hidden); got != 0 {
+			t.Errorf("default All rendered %q %d time(s), want hidden", hidden, got)
+		}
+	}
+	for _, row := range outliner.rows {
+		if row.IsSectionHeader && row.SectionName != row.StateGroup.Label() {
+			t.Errorf("group %q label = %q, want canonical %q", row.StateGroup, row.SectionName, row.StateGroup.Label())
+		}
+	}
+}
+
+func TestPrimaryAllExplicitFiltersOverrideTerminalAndSnoozedDefaults(t *testing.T) {
+	done := primaryRowsTask("done", models.StateDone)
+	canceled := primaryRowsTask("canceled", models.StateCanceled)
+	snoozed := primaryRowsTask("snoozed", models.StateReady)
+	future := time.Now().AddDate(0, 0, 2)
+	snoozed.SnoozedUntil = &future
+	project := primaryRowsProject("alpha", done, canceled, snoozed)
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.selectOutlinerMode(ModeAll)
+
+	outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled), true)
+	outliner.rebuildRows()
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"done", "canceled"}) {
+		t.Fatalf("terminal-filter rows = %v, want done/canceled", got)
+	}
+	var terminalGroups []models.WorkflowStateGroup
+	for _, row := range outliner.rows {
+		if row.IsSectionHeader {
+			terminalGroups = append(terminalGroups, row.StateGroup)
+		}
+	}
+	if !slices.Equal(terminalGroups, []models.WorkflowStateGroup{models.StateGroupDone, models.StateGroupCanceled}) {
+		t.Fatalf("terminal groups = %v, want Done then Canceled", terminalGroups)
+	}
+
+	clearCommonFilters(&outliner.filter.CommonFilterState)
+	outliner.filter.Snoozed = true
+	outliner.rebuildRows()
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"snoozed"}) {
+		t.Fatalf("snoozed-filter rows = %v, want snoozed Ready task", got)
+	}
+}
+
+func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
+	alphaNext := primaryRowsTask("alpha-next", models.StateNext)
+	alphaNextChild := primaryRowsTask("alpha-next-child", models.StateNext)
+	alphaNextChild.ParentID = &alphaNext.ID
+	alphaInbox := primaryRowsTask("alpha-inbox", models.StateInbox)
+	alphaReady := primaryRowsTask("alpha-ready", models.StateReady)
+	alphaToday := primaryRowsTask("alpha-today", models.StateReady)
+	alphaProgress := primaryRowsTask("alpha-progress", models.StateInProgress)
+	alpha := primaryRowsProject(
+		"alpha",
+		alphaNext,
+		alphaNextChild,
+		alphaInbox,
+		alphaReady,
+		alphaToday,
+		alphaProgress,
+	)
+	betaNext := primaryRowsTask("beta-next", models.StateNext)
+	betaInbox := primaryRowsTask("beta-inbox", models.StateInbox)
+	beta := primaryRowsProject("beta", betaNext, betaInbox)
+	outliner, runtime := primaryRowsOutliner(alpha, beta)
+	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{
+		{ProjectID: beta.ID, TaskID: betaNext.ID},
+		{ProjectID: alpha.ID, TaskID: alphaNext.ID},
+		{ProjectID: alpha.ID, TaskID: alphaNextChild.ID},
+	})
+	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{{
+		ProjectID: alpha.ID,
+		TaskID:    alphaToday.ID,
+	}})
+
+	outliner.selectOutlinerMode(ModeNext)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+		betaNext.ID,
+		alphaNext.ID,
+		alphaNextChild.ID,
+	}) {
+		t.Fatalf("Next rows = %v, want FocusQueue order with hierarchy intact", got)
+	}
+	for _, row := range outliner.rows {
+		if row.isTaskRow() && row.ProjectID == "" {
+			t.Fatalf("cross-project Next row %q lost qualified project identity", row.task.ID)
+		}
+	}
+
+	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
+	outliner.rebuildRows()
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaNext.ID, alphaNext.ID}) {
+		t.Fatalf("collapsed Next rows = %v, want child hidden by shared fold state", got)
+	}
+
+	outliner.selectOutlinerMode(ModeInbox)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaInbox.ID, betaInbox.ID}) {
+		t.Fatalf("Inbox rows = %v, want exact StateInbox membership", got)
+	}
+
+	outliner.selectOutlinerMode(ModeBacklog)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaReady.ID}) {
+		t.Fatalf("Backlog rows = %v, want Ready excluding Today only", got)
+	}
+
+	outliner.scopedProjectID = beta.ID
+	outliner.selectOutlinerMode(ModeInbox)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaInbox.ID}) {
+		t.Fatalf("project-scoped Inbox rows = %v, want beta only", got)
+	}
+}

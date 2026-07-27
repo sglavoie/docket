@@ -51,6 +51,10 @@ func (m *AppModel) removeFromDailyPlan(identity TaskIdentity) {
 // committed save) and schedules the status-line timeout, without clearing the
 // toggle-undo history the toggle just recorded.
 func (m *AppModel) queueToggleResultCmd() tea.Cmd {
+	// Planning actions commit synchronously before returning here. Rebuild the
+	// loaded Outliner immediately so Inbox/Next/Backlog rows disappear and the
+	// cursor advances before the next render, without waiting for an async reload.
+	m.refreshLoadedTaskWorkspace()
 	cmds := m.refreshTaskViewsAfterPlanningMutation()
 	cmds = append(cmds, defaultStatusTimeout())
 	return tea.Batch(cmds...)

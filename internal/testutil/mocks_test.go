@@ -103,7 +103,7 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	task.RelatedTo = []string{"rel-1"}
 	task.Comments = []*models.Comment{{Text: "comment"}}
 	task.Decisions = []*models.Decision{{Text: "decision"}}
-	task.Activity = []*models.ActivityEntry{{Field: "status", NewValue: string(models.StatusTodo)}}
+	task.Activity = []*models.ActivityEntry{{Field: "status", NewValue: string(models.StateReady)}}
 	task.Checklist = []models.ChecklistItem{{Text: "step"}}
 	task.Attachments = []models.Attachment{{Filename: "notes.md"}}
 	task.Recurrence = &models.RecurrencePattern{
@@ -124,7 +124,7 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	task.RelatedTo[0] = "rel-2"
 	task.Comments[0].Text = "mutated"
 	task.Decisions[0].Text = "mutated"
-	task.Activity[0].NewValue = string(models.StatusDone)
+	task.Activity[0].NewValue = string(models.StateDone)
 	task.Checklist[0].Text = "mutated"
 	task.Attachments[0].Filename = "mutated.md"
 	task.Recurrence.Interval = 1
@@ -139,7 +139,7 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 		saved.RelatedTo[0] != "rel-1" ||
 		saved.Comments[0].Text != "comment" ||
 		saved.Decisions[0].Text != "decision" ||
-		saved.Activity[0].NewValue != string(models.StatusTodo) ||
+		saved.Activity[0].NewValue != string(models.StateReady) ||
 		saved.Checklist[0].Text != "step" ||
 		saved.Attachments[0].Filename != "notes.md" ||
 		saved.Recurrence.Interval != 2 ||

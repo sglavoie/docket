@@ -1,15 +1,10 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // ZoomEntry records the state at a single zoom level so cursor position can
@@ -49,20 +44,19 @@ type OutlinerModel struct {
 	crossZoomStack []CrossProjectZoomEntry // Zoom stack for cross-project mode (m.project == nil)
 	zoomNotice     string                  // Transient message shown when zoom target is removed
 
-	rows              []outlinerRow  // Flattened rows, rebuilt on each render
-	activePerspective int            // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
-	smartFocus        *OutlinerFocus // Optional base predicate for non-perspective task focuses.
+	rows []outlinerRow // Flattened rows, rebuilt on each render
+	// primaryMode is the authoritative canonical row-strategy identity.
+	primaryMode OutlinerModeID
 
 	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
 	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
-	lens     OutlinerLens
 
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
 
 	pinnedTagTab      map[string]int        // Active pinned tag tab index per projectID (0 = All)
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
-	collapsedSections map[string]bool       // Section collapse state for All perspective
+	collapsedSections map[string]bool       // Section collapse state for All mode
 
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 
@@ -107,21 +101,10 @@ type OutlinerModel struct {
 	crossReloadTaskID     string            // Cursor task captured before an async reload; restored after rows rebuild
 
 	// Memoization guard for crossProjectRebuildRows
-	crossLastPerspective     int
 	crossLastRowsFingerprint string
 	crossLastZoomDepth       int
 	crossLastTaskCount       int
 	crossForceRebuild        bool // When true, bypasses the memoization guard on next rebuild
-
-	// crossPriorityMode is the session-only Priority mode for the cross-project
-	// outliner. It replaces the perspective/tree row builder with priority-grouped
-	// rows while reusing project badges, filters, and mutation paths. Not persisted.
-	crossPriorityMode bool
-
-	// crossPriorityCollapsedGroups tracks collapsed state per priority group while
-	// crossPriorityMode is active. Session-only; reset on every mode entry so
-	// Blocked/Waiting starts collapsed by default.
-	crossPriorityCollapsedGroups map[PriorityGroup]bool
 
 	// scopedProjectID names the single project the global outliner is currently
 	// scoped to. Empty means the authoritative all-projects scope. Only
@@ -136,23 +119,6 @@ type OutlinerModel struct {
 	// bottom of the stack is the base all-projects frame.
 	scopeStack []outlinerScopeFrame
 
-	// workNextMode / workBacklogMode select the two purpose-built work horizons
-	// (Next, Backlog) from the unified mode catalog. Like
-	// crossPriorityMode they are session-only computed modes: when set, rebuildRows
-	// delegates to the mode-row strategies instead of the perspective/tree builder.
-	// workNextMode is only ever set in the global (cross-project) Outliner; a single
-	// project keeps Next as its persisted perspective. All default false so every
-	// existing perspective/smart-focus path is unchanged.
-	workNextMode    bool
-	workBacklogMode bool
-
-	// reviewMode selects the Daily Review or Activity computed mode. Like the
-	// other computed modes it is session-only: when non-zero, the rebuild path
-	// delegates to the review row builders (buildDailyReviewRows /
-	// buildActivityRows) which emit collapsible section headers plus task rows.
-	// reviewNone leaves every perspective/smart-focus/work path unchanged.
-	reviewMode reviewModeKind
-
 	// reviewCollapsedSections tracks which review section headers are collapsed,
 	// keyed by the header's CollapseKey ("_rv:*" sentinel). Session-only, shared
 	// by both review modes; distinct key spaces keep Daily Review and Activity
@@ -162,6 +128,10 @@ type OutlinerModel struct {
 	// modePicker is the inline searchable, categorized mode selector opened with
 	// P. Nil when closed; when non-nil it intercepts key input in handleKeyMsg.
 	modePicker *outlinerModePicker
+
+	// operationRegistry projects help, handled keys, and footer hints from the
+	// same operation metadata used by shell dispatch.
+	operationRegistry *OperationRegistry
 
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops
@@ -181,8 +151,6 @@ func (m *OutlinerModel) SetSize(width, height int) {
 	m.resetViewScrollOffset()
 }
 
-// primaryProjectView interface implementation for shared key dispatch.
-func (m *OutlinerModel) getProject() *models.Project { return m.project }
 func (m *OutlinerModel) getCursorTask() *models.Task {
 	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
 		row := m.rows[m.cursor]
@@ -192,26 +160,13 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 	}
 	return nil
 }
-func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
-	m.resetViewScrollOffset()
-	if m.project == nil {
-		return m.reloadCrossProjects()
-	}
-	if err := storage.LoadProject(m.project); err != nil {
-		logging.Warn("failed to load project %s: %v", m.project.Name, err)
-		m.rebuildRows()
-		return func() tea.Msg { return StatusMsg(fmt.Sprintf("Failed to reload project: %v", err)) }
-	}
-	m.rebuildRows()
-	return nil
-}
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfgManager, runtime),
 		project:           project,
-		activePerspective: 1,
+		primaryMode:       ModeAll,
 		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
@@ -223,8 +178,6 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		columnConfig:      NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
-	km := m.buildKeyMap()
-	m.Dispatcher = keymap.NewDispatcher(km)
 	return m
 }
 

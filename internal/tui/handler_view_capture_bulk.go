@@ -1,111 +1,13 @@
 package tui
 
-import (
-	"strings"
+import tea "charm.land/bubbletea/v2"
 
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-)
-
-// handleCaptureAndBulkMessages handles quick capture, bulk capture, bulk edit, and palette bulk messages.
+// handleCaptureAndBulkMessages handles the Task Composer.
 func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowTaskComposerMsg:
-		if m.typedNavigation {
-			compat := msg.CompatView
-			if compat == ViewDashboard {
-				compat = ViewTaskForm
-			}
-			return true, m.openTaskComposer(msg.Preset, compat)
-		}
-		return true, nil
+		return true, m.openTaskComposer(msg.Preset)
 
-	case ShowQuickCaptureMsg:
-		if m.typedNavigation {
-			preset, ok := m.captureComposerPreset(msg)
-			if ok {
-				return true, m.openTaskComposer(preset, ViewQuickCapture)
-			}
-			return true, nil
-		}
-		// Contextual entry points (dashboard, Outliner, and
-		// their palette commands) supply the owning project. Context-free capture
-		// falls back to the visible system Inbox and may still be rerouted with
-		// %project inside the capture input.
-		project := msg.Project
-		if project == nil {
-			project = m.projectByID(m.runtime.Catalog().SystemInboxProjectID)
-		}
-		if project != nil {
-			var parts []string
-			if msg.SuggestedTag != "" {
-				parts = append(parts, "#"+msg.SuggestedTag)
-			}
-			if msg.SuggestedSection != "" {
-				parts = append(parts, "/"+msg.SuggestedSection)
-			}
-			initialText := strings.Join(parts, " ")
-			allProjects := m.activeProjects()
-			if len(allProjects) == 0 {
-				allProjects = msg.AllProjects
-			}
-			model := NewQuickCaptureModel(project, allProjects, false, initialText)
-			m.showView(ViewQuickCapture, model)
-		}
-		return true, nil
-
-	case ShowBulkCaptureMsg:
-		if m.typedNavigation {
-			if msg.Project != nil {
-				preset := TaskComposerPreset{
-					Kind:            ComposerProject,
-					Project:         msg.Project,
-					AllProjects:     m.activeProjects(),
-					PreferMultiline: true,
-					Shared:          TaskComposerSharedAttributes{Section: models.SectionInbox},
-				}
-				return true, m.openTaskComposer(preset, ViewBulkCapture)
-			}
-			return true, nil
-		}
-		if msg.Project != nil {
-			m.showView(ViewBulkCapture, NewBulkCaptureModel(msg.Project))
-		}
-		return true, nil
-
-	case ShowBulkEditMsg:
-		if len(msg.Tasks) > 0 && msg.Project != nil {
-			m.showView(ViewBulkEdit, NewBulkEditModel(msg.Tasks, msg.Project))
-		}
-		return true, nil
-
-	case BulkEditDoneMsg:
-		m.popView()
-		// project-view bulk/quick actions are handled by the outliner keymap
-		return true, nil
-
-	case PaletteBulkPriorityMsg:
-		if len(msg.Tasks) > 0 {
-			m.pendingBulkTasks = msg.Tasks
-			m.showView(ViewPriorityPicker, NewPriorityPickerModel(msg.Tasks[0].Task, msg.Tasks[0].Project))
-		}
-		return true, nil
-
-	case PaletteBulkTagMsg:
-		if len(msg.Tasks) > 0 {
-			refs := validTaskProjectRefs(msg.Tasks)
-			if len(refs) > 0 {
-				m.showView(ViewBulkTagSelector, NewBulkTagSelectorModel(refs))
-			}
-		}
-		return true, nil
-
-	case PaletteBulkDueDateMsg:
-		if len(msg.Tasks) > 0 {
-			return m.handleSetDueDate(SetDueDateMsg{TaskRefs: msg.Tasks})
-		}
-		return true, nil
 	}
 
 	return false, nil

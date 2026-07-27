@@ -242,8 +242,8 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		if !strings.Contains(result, "# Task #42: My Task") {
 			t.Error("output should contain header with type, short ID, and title")
 		}
-		if !strings.Contains(result, "| Status |") {
-			t.Error("output should contain status row")
+		if !strings.Contains(result, "| State |") {
+			t.Error("output should contain state row")
 		}
 		if !strings.Contains(result, "| Priority | 2 |") {
 			t.Error("output should contain priority row")

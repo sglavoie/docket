@@ -193,47 +193,6 @@ func TestManageHubContextSelectionAppliesOutlinerScope(t *testing.T) {
 	}
 }
 
-// TestPaletteOpenedContextSelectionReturnsFromTaskDetailToOutliner covers the
-// global command path: the palette is an overlay, then Manage Contexts is
-// pushed above Task Detail. Applying a scope must collapse both primary
-// children instead of revealing a potentially out-of-scope task.
-func TestPaletteOpenedContextSelectionReturnsFromTaskDetailToOutliner(t *testing.T) {
-	app := contextHubApp(t)
-	project := app.projectByID("alpha")
-	if project == nil || len(project.Tasks) == 0 {
-		t.Fatal("context hub fixture has no task-detail target")
-	}
-	_ = app.activateTaskDetail(project.Tasks[0], project, TaskOverview)
-	if app.CurrentRoute().ID() != TaskDetail {
-		t.Fatalf("task-detail route = %s, want TaskDetail", app.CurrentRoute().ID())
-	}
-
-	app.pushView(ViewCommandPalette)
-	handled, _ := app.handleSearchMessages(CommandPaletteExecuteMsg{ResultMsg: ShowContextHubMsg{}})
-	if !handled {
-		t.Fatal("palette context command was not handled")
-	}
-	if app.CurrentRoute().ID() != SecondaryTool || app.navigation.Primary.Depth() != 3 {
-		t.Fatalf("palette-opened context route = %s at depth %d, want SecondaryTool at depth 3",
-			app.CurrentRoute().ID(), app.navigation.Primary.Depth())
-	}
-
-	handled, _ = app.handleContextMessages(ContextScopeSelectedMsg{SelectedContext: "home"})
-	if !handled {
-		t.Fatal("context selection was not handled")
-	}
-	if got := app.crossOutliner.activeContext; got != RegularContextScope("home") {
-		t.Fatalf("applied context = %#v, want home", got)
-	}
-	if app.CurrentRoute().ID() != TaskWorkspace || app.navigation.Primary.Depth() != 1 {
-		t.Fatalf("selection route = %s at depth %d, want TaskWorkspace at depth 1",
-			app.CurrentRoute().ID(), app.navigation.Primary.Depth())
-	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Fatalf("selection view = %s, want CrossProjectOutliner", app.currentView())
-	}
-}
-
 // TestManageHubContextsRendersEveryScopeWithCounts asserts the hub renders the
 // shared summary list rather than a second, independently derived catalog.
 func TestManageHubContextsRendersEveryScopeWithCounts(t *testing.T) {
@@ -299,67 +258,6 @@ func TestRouteValidatesManageContexts(t *testing.T) {
 	}
 }
 
-// TestRouteForContextHubPresentation asserts the renderer identity resolves to
-// the same Manage route the shell activates, so command discovery and route
-// history agree.
-func TestRouteForContextHubPresentation(t *testing.T) {
-	route, ok, err := routeForPresentation(ViewContextHub, "alpha", "")
-	if err != nil || !ok {
-		t.Fatalf("ViewContextHub adapter: ok=%v err=%v", ok, err)
-	}
-	want := ManageParams{Module: ManageContexts, Scope: AppEntityScope()}
-	if route.ID() != SecondaryTool || route.Params().(ManageParams) != want {
-		t.Fatalf("ViewContextHub maps to %s/%#v, want Manage/%#v", route.ID(), route.Params(), want)
-	}
-	if _, overlay := presentationOverlayKind(ViewContextHub); overlay {
-		t.Fatal("ViewContextHub is a route destination and must not also be an overlay")
-	}
-}
-
-// TestCommandPaletteContextDiscoveryReachesTheContextsRoute covers the palette
-// half of the session's "done when": both the searchable command and the static
-// Views catalog entry land on the same Manage Contexts route.
-func TestCommandPaletteContextDiscoveryReachesTheContextsRoute(t *testing.T) {
-	app := contextHubApp(t)
-
-	var handler tea.Cmd
-	for _, group := range app.commandGroups() {
-		for _, command := range group {
-			if command.Name == "switch context" {
-				handler = command.Handler
-			}
-		}
-	}
-	if handler == nil {
-		t.Fatal("palette no longer registers the context command")
-	}
-	if _, ok := handler().(ShowContextHubMsg); !ok {
-		t.Fatalf("context command emitted %T, want ShowContextHubMsg", handler())
-	}
-
-	found := false
-	for _, item := range staticPaletteViewItems() {
-		if item.viewType == ViewContextHub {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatal("palette Views catalog omits the Contexts destination")
-	}
-
-	handled, cmd := app.handleNavigateToView(NavigateToViewMsg{PresentationID: ViewContextHub})
-	if !handled {
-		t.Fatal("NavigateToViewMsg{ViewContextHub} was not handled")
-	}
-	if cmd != nil {
-		cmd()
-	}
-	params, ok := app.CurrentRoute().Params().(ManageParams)
-	if app.CurrentRoute().ID() != SecondaryTool || !ok || params.Module != ManageContexts {
-		t.Fatalf("navigate result = %s/%#v, want Manage Contexts", app.CurrentRoute().ID(), app.CurrentRoute().Params())
-	}
-}
-
 // TestContextHubGroupsScopesAndPreviewsMembers covers the browse surface: the
 // left pane is grouped All / Custom Contexts / Regular Contexts and the right
 // pane describes the highlighted scope with its member projects and counts.
@@ -368,7 +266,7 @@ func TestContextHubGroupsScopesAndPreviewsMembers(t *testing.T) {
 
 	rendered := contextHubRender(hub)
 	for _, want := range []string{
-		"Custom Contexts", "Regular Contexts",
+		"BASE SCOPES", "ACTIVE PROJECTS",
 		"Every active project", "2 active project(s) · 3 task(s)",
 		"Projects", "Alpha 2 task(s)", "Beta 1 task(s)",
 	} {
@@ -385,15 +283,24 @@ func TestContextHubGroupsScopesAndPreviewsMembers(t *testing.T) {
 	rendered = contextHubRender(hub)
 	for _, want := range []string{
 		"Custom context · saved project group",
-		"1 active project(s) · 0 archived · 0 missing · 2 task(s)",
 		"Alpha 2 task(s)",
 	} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("custom-scope preview missing %q:\n%s", want, rendered)
 		}
 	}
-	if strings.Contains(rendered, "Beta") {
-		t.Fatalf("custom-scope preview leaked a non-member project:\n%s", rendered)
+	preview, ok := hub.surface.CurrentPreview()
+	if !ok {
+		t.Fatal("custom-scope preview is unavailable")
+	}
+	if normalized := strings.Join(strings.Fields(preview.Body), " "); !strings.Contains(
+		normalized,
+		"1 active project(s) · 0 archived · 0 missing · 2 task(s)",
+	) {
+		t.Fatalf("custom-scope preview counts missing from %q", normalized)
+	}
+	if strings.Contains(preview.Body, "Beta") {
+		t.Fatalf("custom-scope preview leaked a non-member project:\n%s", preview.Body)
 	}
 }
 

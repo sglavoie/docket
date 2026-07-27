@@ -687,7 +687,6 @@ func buildSourceConfig(t *testing.T, projectName, taskTitle string) string {
 		t.Fatalf("new project: %v", err)
 	}
 	project.Path = cfg.ProjectPath(project.Slug)
-	project.EnsureDefaultSections()
 	task, err := models.NewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, taskTitle)
 	if err != nil {
 		t.Fatalf("new task: %v", err)

@@ -1,0 +1,26 @@
+{
+  "name": "release-hardening-layout",
+  "fixture": "release",
+  "size": "180x50",
+  "actions": [
+    { "type": "command", "label": "reset the large catalog to All over All Projects", "command": "Reset to All Projects" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "open Finder over the large catalog", "key": ":" },
+    { "type": "text", "label": "search for the Unicode acceptance row", "text": "国際化" },
+    { "type": "assert", "assert": "contains", "value": "国際化" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "narrow Finder with double-width text", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to the large Outliner", "key": "esc" },
+    { "type": "resize", "label": "minimum-height Outliner review", "width": 80, "height": 12 },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "wide release review", "width": 220, "height": 60 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "repeat narrow resize after wide rendering", "width": 66, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "settle at the standard review size", "width": 120, "height": 40 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

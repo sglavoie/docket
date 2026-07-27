@@ -272,8 +272,9 @@ func (m *WorkflowWizardModel) renderNameReviewStep() string {
 func (m *WorkflowWizardModel) triggerValueInputHint() string {
 	field := m.selectedTriggerField()
 	switch field {
-	case workflow.FieldStatus:
-		return "e.g. todo, in_progress, maybe, done, blocked, canceled"
+	case workflow.FieldState, workflow.FieldParentState, workflow.FieldAllTasksState,
+		workflow.FieldMajorityTaskState, workflow.FieldHasTasksWithState:
+		return "e.g. inbox, ready, next, in_progress, waiting, paused, review, someday, done, canceled"
 	case workflow.FieldPriority, workflow.FieldLevel, workflow.FieldDueDays,
 		workflow.FieldCreatedDays, workflow.FieldUpdatedDays, workflow.FieldBlockerCount,
 		workflow.FieldDependencyCount, workflow.FieldChildrenProgress,
@@ -287,9 +288,8 @@ func (m *WorkflowWizardModel) triggerValueInputHint() string {
 		workflow.FieldHasTags, workflow.FieldDescriptionEmpty, workflow.FieldHasChildren,
 		workflow.FieldAllChildrenDone, workflow.FieldIsBlocked, workflow.FieldHasInProgressTasks:
 		return "true or false"
-	case workflow.FieldStatusChanged, workflow.FieldSectionChanged,
-		workflow.FieldPriorityChanged, workflow.FieldTypeChanged:
-		return "transition pattern: old->new, *->done, blocked->*"
+	case workflow.FieldStateChanged, workflow.FieldPriorityChanged, workflow.FieldTypeChanged:
+		return "transition pattern: old->new, *->done, waiting->*"
 	case workflow.FieldTagAdded, workflow.FieldTagRemoved:
 		return "tag name (e.g. urgent)"
 	case workflow.FieldDueDateChanged:
@@ -305,12 +305,10 @@ func (m *WorkflowWizardModel) triggerValueInputHint() string {
 func (m *WorkflowWizardModel) actionValueInputHint() string {
 	action := m.selectedActionType()
 	switch action {
-	case workflow.ActionSetStatus:
-		return "e.g. todo, in_progress, maybe, done, blocked, canceled"
+	case workflow.ActionSetState:
+		return "e.g. inbox, ready, next, in_progress, waiting, paused, review, someday, done, canceled"
 	case workflow.ActionSetPriority:
 		return "numeric: 1 (highest) to 99, 0 = unset"
-	case workflow.ActionSetSection:
-		return "section name (e.g. Active, Next, Inbox) or leave empty for Active"
 	case workflow.ActionAddTag, workflow.ActionRemoveTag, workflow.ActionCascadeTag, workflow.ActionInheritTag:
 		return "tag name (e.g. urgent, feature)"
 	case workflow.ActionSetDueRelative, workflow.ActionSetSnooze:

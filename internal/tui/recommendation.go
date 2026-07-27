@@ -93,7 +93,7 @@ const (
 	// awaiting GTD-style triage.
 	ReasonInboxNeedsTriage RecommendationReason = "inbox needs triage"
 
-	// ReasonBlocked — task status is models.StatusBlocked or at least one
+	// ReasonBlocked — task state is waiting or at least one
 	// dependency is incomplete or missing.
 	ReasonBlocked RecommendationReason = "blocked"
 
@@ -236,23 +236,23 @@ func (t CockpitTarget) IsEmpty() bool {
 type CockpitCommand string
 
 const (
-	CockpitCommandNone               CockpitCommand = ""
-	CockpitCommandOpenTask           CockpitCommand = "open_task"
-	CockpitCommandCompleteTask       CockpitCommand = "complete_task"
-	CockpitCommandDismissTask        CockpitCommand = "dismiss_task"
-	CockpitCommandPrioritizeTask     CockpitCommand = "prioritize_task"
-	CockpitCommandPlanToday          CockpitCommand = "plan_today"
-	CockpitCommandPlanMore           CockpitCommand = "plan_more"
-	CockpitCommandTriageInbox        CockpitCommand = "triage_inbox"
-	CockpitCommandUnblockTask        CockpitCommand = "unblock_task"
-	CockpitCommandQuickCapture       CockpitCommand = "quick_capture"
-	CockpitCommandSearchFilter       CockpitCommand = "search_filter"
-	CockpitCommandNewProject         CockpitCommand = "new_project"
-	CockpitCommandSwitchTab          CockpitCommand = "switch_tab"
-	CockpitCommandCloseView          CockpitCommand = "close_view"
-	CockpitCommandOpenDestination    CockpitCommand = "open_destination_switcher"
-	CockpitCommandOpenCommandPalette CockpitCommand = "open_command_palette"
-	CockpitCommandShowHelp           CockpitCommand = "show_help"
+	CockpitCommandNone            CockpitCommand = ""
+	CockpitCommandOpenTask        CockpitCommand = "open_task"
+	CockpitCommandCompleteTask    CockpitCommand = "complete_task"
+	CockpitCommandDismissTask     CockpitCommand = "dismiss_task"
+	CockpitCommandPrioritizeTask  CockpitCommand = "prioritize_task"
+	CockpitCommandPlanToday       CockpitCommand = "plan_today"
+	CockpitCommandPlanMore        CockpitCommand = "plan_more"
+	CockpitCommandTriageInbox     CockpitCommand = "triage_inbox"
+	CockpitCommandUnblockTask     CockpitCommand = "unblock_task"
+	CockpitCommandQuickCapture    CockpitCommand = "quick_capture"
+	CockpitCommandSearchFilter    CockpitCommand = "search_filter"
+	CockpitCommandNewProject      CockpitCommand = "new_project"
+	CockpitCommandSwitchTab       CockpitCommand = "switch_tab"
+	CockpitCommandCloseView       CockpitCommand = "close_view"
+	CockpitCommandOpenDestination CockpitCommand = "open_destination_switcher"
+	CockpitCommandOpenFinder      CockpitCommand = "open_finder"
+	CockpitCommandShowHelp        CockpitCommand = "show_help"
 )
 
 // IsValid reports whether c is one of the known cockpit commands.
@@ -273,7 +273,7 @@ func (c CockpitCommand) IsValid() bool {
 		CockpitCommandSwitchTab,
 		CockpitCommandCloseView,
 		CockpitCommandOpenDestination,
-		CockpitCommandOpenCommandPalette,
+		CockpitCommandOpenFinder,
 		CockpitCommandShowHelp:
 		return true
 	}
@@ -517,7 +517,7 @@ func cockpitActionCanUnblock(action RecommendedAction) bool {
 func cockpitEscapeActions() []CockpitAction {
 	return []CockpitAction{
 		actionOpenDestination(),
-		actionOpenCommandPalette(),
+		actionOpenFinder(),
 		actionShowHelp(),
 	}
 }
@@ -574,8 +574,8 @@ func actionOpenDestination() CockpitAction {
 	return CockpitAction{Command: CockpitCommandOpenDestination, Key: "ctrl+g", Label: "go"}
 }
 
-func actionOpenCommandPalette() CockpitAction {
-	return CockpitAction{Command: CockpitCommandOpenCommandPalette, Key: ":", Label: "cmd"}
+func actionOpenFinder() CockpitAction {
+	return CockpitAction{Command: CockpitCommandOpenFinder, Key: ":", Label: "find"}
 }
 
 func actionShowHelp() CockpitAction {

@@ -80,9 +80,6 @@ func newSession4LifecycleFixture(
 	}
 
 	cross := attachSession4CrossOutliner(t, app)
-	if typed {
-		app.enableTypedNavigation()
-	}
 	return &session4LifecycleFixture{
 		app:     app,
 		cross:   cross,
@@ -105,7 +102,7 @@ func attachSession4CrossOutliner(t *testing.T, app *AppModel) *OutlinerModel {
 	}
 	app.crossOutliner = cross
 	app.views.Register(ViewCrossProjectOutliner, cross)
-	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
+	setTestPresentationPath(app, ViewDashboard, ViewCrossProjectOutliner)
 	return cross
 }
 
@@ -186,7 +183,7 @@ func session4DiskProject(t *testing.T, dataDir, projectID string) *models.Projec
 	if err != nil {
 		t.Fatalf("reload lifecycle runtime: %v", err)
 	}
-	return session3ProjectByID(t, runtime.AllProjects(), projectID)
+	return testProjectByID(t, runtime.AllProjects(), projectID)
 }
 
 //nolint:gocyclo // A single table-driven lifecycle matrix keeps reload invariants comparable.
@@ -512,7 +509,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t, false, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewCrossProjectOutliner, "Help"))
-				fixture.app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner, ViewHelp}
+				setTestPresentationPath(fixture.app, ViewDashboard, ViewCrossProjectOutliner, ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
 				if fixture.cross.crossLoading {

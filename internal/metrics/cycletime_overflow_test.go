@@ -67,8 +67,8 @@ func TestCycleTimeManyTasksDoesNotOverflow(t *testing.T) {
 	for i := range tasks {
 		done := now.AddDate(0, 0, -1)
 		start := done.Add(-cycle)
-		tasks[i] = makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-			{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+		tasks[i] = makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+			{Timestamp: start, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 		})
 	}
 

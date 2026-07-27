@@ -13,9 +13,9 @@ import (
 func TestGetCompletedTasks_NoneCompleted(t *testing.T) {
 	project := testutil.NewTestProject("No Completed")
 
-	task1 := testutil.NewTestTaskWithStatus("Task A", models.StatusTodo)
-	task2 := testutil.NewTestTaskWithStatus("Task B", models.StatusTodo)
-	task3 := testutil.NewTestTaskWithStatus("Task C", models.StatusTodo)
+	task1 := testutil.NewTestTaskWithState("Task A", models.StateReady)
+	task2 := testutil.NewTestTaskWithState("Task B", models.StateReady)
+	task3 := testutil.NewTestTaskWithState("Task C", models.StateReady)
 	project.Tasks = []*models.Task{task1, task2, task3}
 
 	completed := project.GetCompletedTasks()
@@ -80,12 +80,12 @@ func TestTaskArchivePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 func TestGetCompletedTasks_SomeCompleted(t *testing.T) {
 	project := testutil.NewTestProject("Some Completed")
 
-	todo := testutil.NewTestTaskWithStatus("Todo Task", models.StatusTodo)
-	inProgress := testutil.NewTestTaskWithStatus("In Progress Task", models.StatusInProgress)
-	done := testutil.NewTestTaskWithStatus("Done Task", models.StatusDone)
-	canceled := testutil.NewTestTaskWithStatus("Canceled Task", models.StatusCanceled)
-	blocked := testutil.NewTestTaskWithStatus("Blocked Task", models.StatusBlocked)
-	review := testutil.NewTestTaskWithStatus("Review Task", models.StatusReview)
+	todo := testutil.NewTestTaskWithState("Todo Task", models.StateReady)
+	inProgress := testutil.NewTestTaskWithState("In Progress Task", models.StateInProgress)
+	done := testutil.NewTestTaskWithState("Done Task", models.StateDone)
+	canceled := testutil.NewTestTaskWithState("Canceled Task", models.StateCanceled)
+	blocked := testutil.NewTestTaskWithState("Blocked Task", models.StateWaiting)
+	review := testutil.NewTestTaskWithState("Review Task", models.StateReview)
 	project.Tasks = []*models.Task{todo, inProgress, done, canceled, blocked, review}
 
 	completed := project.GetCompletedTasks()
@@ -93,7 +93,7 @@ func TestGetCompletedTasks_SomeCompleted(t *testing.T) {
 
 	for _, task := range completed {
 		if !task.IsComplete() {
-			t.Errorf("expected completed task, got status %s", models.LegacyStatusForState(task.State()))
+			t.Errorf("expected completed task, got status %s", task.State())
 		}
 	}
 }
@@ -101,9 +101,9 @@ func TestGetCompletedTasks_SomeCompleted(t *testing.T) {
 func TestGetCompletedTasks_AllCompleted(t *testing.T) {
 	project := testutil.NewTestProject("All Completed")
 
-	done1 := testutil.NewTestTaskWithStatus("Done 1", models.StatusDone)
-	done2 := testutil.NewTestTaskWithStatus("Done 2", models.StatusDone)
-	done3 := testutil.NewTestTaskWithStatus("Done 3", models.StatusDone)
+	done1 := testutil.NewTestTaskWithState("Done 1", models.StateDone)
+	done2 := testutil.NewTestTaskWithState("Done 2", models.StateDone)
+	done3 := testutil.NewTestTaskWithState("Done 3", models.StateDone)
 	project.Tasks = []*models.Task{done1, done2, done3}
 
 	completed := project.GetCompletedTasks()
@@ -113,7 +113,7 @@ func TestGetCompletedTasks_AllCompleted(t *testing.T) {
 func TestGetCompletedTasks_AfterCompletingTask(t *testing.T) {
 	project := testutil.NewTestProject("After Completing")
 
-	task := testutil.NewTestTaskWithStatus("Todo Task", models.StatusTodo)
+	task := testutil.NewTestTaskWithState("Todo Task", models.StateReady)
 	project.Tasks = []*models.Task{task}
 
 	// Before completing, no completed tasks
@@ -122,7 +122,7 @@ func TestGetCompletedTasks_AfterCompletingTask(t *testing.T) {
 
 	// Complete the task
 	task.Complete()
-	testutil.AssertTaskStatus(t, task, models.StatusDone)
+	testutil.AssertTaskState(t, task, models.StateDone)
 
 	// Now it should appear in completed tasks
 	completed = project.GetCompletedTasks()
@@ -138,7 +138,7 @@ func TestGetCompletedTasks_CanceledTaskIncluded(t *testing.T) {
 
 	// Cancel the task
 	task.Cancel()
-	testutil.AssertTaskStatus(t, task, models.StatusCanceled)
+	testutil.AssertTaskState(t, task, models.StateCanceled)
 
 	completed := project.GetCompletedTasks()
 	testutil.AssertEqual(t, len(completed), 1)
@@ -148,10 +148,10 @@ func TestGetCompletedTasks_CanceledTaskIncluded(t *testing.T) {
 func TestArchiveRemovesCompletedFromProject(t *testing.T) {
 	project := testutil.NewTestProject("Archive Test")
 
-	active1 := testutil.NewTestTaskWithStatus("Active 1", models.StatusTodo)
-	active2 := testutil.NewTestTaskWithStatus("Active 2", models.StatusInProgress)
-	done := testutil.NewTestTaskWithStatus("Done Task", models.StatusDone)
-	canceled := testutil.NewTestTaskWithStatus("Canceled Task", models.StatusCanceled)
+	active1 := testutil.NewTestTaskWithState("Active 1", models.StateReady)
+	active2 := testutil.NewTestTaskWithState("Active 2", models.StateInProgress)
+	done := testutil.NewTestTaskWithState("Done Task", models.StateDone)
+	canceled := testutil.NewTestTaskWithState("Canceled Task", models.StateCanceled)
 	project.Tasks = []*models.Task{active1, active2, done, canceled}
 
 	testutil.AssertTaskCount(t, project, 4)
@@ -177,7 +177,7 @@ func TestArchiveRemovesCompletedFromProject(t *testing.T) {
 	testutil.AssertTaskCount(t, project, 2)
 	for _, task := range project.Tasks {
 		if task.IsComplete() {
-			t.Errorf("expected only active tasks, found %s with status %s", task.Title, models.LegacyStatusForState(task.State()))
+			t.Errorf("expected only active tasks, found %s with status %s", task.Title, task.State())
 		}
 	}
 }

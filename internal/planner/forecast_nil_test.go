@@ -18,7 +18,7 @@ func TestWeightedVelocity_NilTaskEntries(t *testing.T) {
 	}()
 
 	throughput := metrics.ThroughputResult{Total: 1, AvgPerDay: 1.0}
-	completed := withStatus(withEffort(newTask("c"), models.EffortMedium), models.StatusDone)
+	completed := withStatus(withEffort(newTask("c"), models.EffortMedium), models.StateDone)
 
 	_ = WeightedVelocity(throughput, []*models.Task{nil, completed, nil})
 }

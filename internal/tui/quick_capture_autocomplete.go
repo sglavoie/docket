@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // getTagSuggestions returns matching tags for the partial query.
@@ -67,9 +68,12 @@ func captureTypeIcon(t models.TaskType) string {
 func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
-
-	for _, t := range models.AllTaskTypes() {
-		name := string(t)
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTaskType)
+	for _, name := range def.Values {
+		t, ok := models.ParseTaskType(name)
+		if !ok {
+			continue
+		}
 		if partial == "" || strings.Contains(name, partialLower) {
 			suggestions = append(suggestions, ACSuggestion{
 				Display: fmt.Sprintf("^%s %s", name, captureTypeIcon(t)),
@@ -82,23 +86,24 @@ func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
 
 // getPrioritySuggestions returns matching priority options for the partial query.
 func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
-	priorities := []struct {
-		value string
-		desc  string
-	}{
-		{"1", "Urgent"},
-		{"2", "High"},
-		{"3", "Normal"},
-		{"4", "Low"},
-		{"5", "Lowest"},
+	descriptions := map[string]string{
+		"1": "Urgent",
+		"2": "High",
+		"3": "Normal",
+		"4": "Low",
+		"5": "Lowest",
 	}
-
 	var suggestions []ACSuggestion
-	for _, p := range priorities {
-		if partial == "" || strings.HasPrefix(p.value, partial) {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
+	for _, value := range def.Values {
+		desc, canonical := descriptions[value]
+		if !canonical {
+			continue
+		}
+		if partial == "" || strings.HasPrefix(value, partial) {
 			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("!%s (%s)", p.value, p.desc),
-				Value:   p.value,
+				Display: fmt.Sprintf("!%s (%s)", value, desc),
+				Value:   value,
 			})
 		}
 	}
@@ -107,34 +112,14 @@ func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestio
 
 // getDateSuggestions returns common due date options for the partial query.
 func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
-	options := []struct {
-		value string
-		desc  string
-	}{
-		{"today", "today"},
-		{"tomorrow", "tomorrow"},
-		{"+1d", "in 1 day"},
-		{"+3d", "in 3 days"},
-		{"+1w", "in 1 week"},
-		{"+2w", "in 2 weeks"},
-		{"+1m", "in 1 month"},
-		{"monday", "next Monday"},
-		{"friday", "next Friday"},
-		{"next monday", "next Monday (7+ days)"},
-		{"next friday", "next Friday (7+ days)"},
-		{"in 3 days", "3 days from now"},
-		{"in 1 week", "1 week from now"},
-		{"in 2 weeks", "2 weeks from now"},
-	}
-
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
-
-	for _, o := range options {
-		if partial == "" || strings.Contains(o.value, partialLower) {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
+	for _, value := range def.Values {
+		if partial == "" || strings.Contains(value, partialLower) {
 			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("@%s (%s)", o.value, o.desc),
-				Value:   o.value,
+				Display: "@" + value,
+				Value:   value,
 			})
 		}
 	}
@@ -143,76 +128,38 @@ func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 
 // getRecurrenceSuggestions returns recurrence pattern options for the partial query.
 func (q *quickCaptureInput) getRecurrenceSuggestions(partial string) []ACSuggestion {
-	options := []struct {
-		value string
-		desc  string
-	}{
-		{"daily", "every day"},
-		{"weekly", "every week"},
-		{"biweekly", "every 2 weeks"},
-		{"monthly", "every month"},
-		{"2d", "every 2 days"},
-		{"3d", "every 3 days"},
-		{"2w", "every 2 weeks"},
-		{"3w", "every 3 weeks"},
-	}
-
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
-
-	for _, o := range options {
-		if partial == "" || strings.Contains(o.value, partialLower) {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldRecurrence)
+	for _, value := range def.Values {
+		if partial == "" || strings.Contains(value, partialLower) {
 			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("~%s (%s)", o.value, o.desc),
-				Value:   o.value,
+				Display: "~" + value,
+				Value:   value,
 			})
 		}
 	}
 	return suggestions
 }
 
-// getSectionSuggestions returns matching sections for the partial query.
-func (q *quickCaptureInput) getSectionSuggestions(partial string) []ACSuggestion {
-	var suggestions []ACSuggestion
-	partialLower := strings.ToLower(partial)
-
-	for _, section := range q.sectionCache {
-		if partial == "" || strings.Contains(strings.ToLower(section), partialLower) {
-			suggestions = append(suggestions, ACSuggestion{
-				Display: "/" + section,
-				Value:   section,
-			})
-		}
-	}
-	return suggestions
-}
-
-// getStatusSuggestions returns matching status options for the partial query.
+// getStatusSuggestions is the retained component hook for canonical states.
 func (q *quickCaptureInput) getStatusSuggestions(partial string) []ACSuggestion {
-	statuses := []struct {
-		name string
-		icon string
-		desc string
-	}{
-		{"start", icons.Get("status.in_progress"), "in progress + activate"},
-		{"review", icons.Get("status.review"), "send to review"},
-		{"standby", icons.Get("status.standby"), "put on hold"},
-		{"maybe", icons.Get("status.maybe"), "tentative / someday"},
-		{"blocked", icons.Get("blocked_dot"), "blocked"},
-		{"done", icons.Get("status.done"), "completed"},
-		{"canceled", icons.Get("status.canceled"), "canceled"},
-	}
+	return canonicalStateSuggestions(partial, true)
+}
 
-	var suggestions []ACSuggestion
+func canonicalStateSuggestions(partial string, withDescription bool) []ACSuggestion {
+	suggestions := make([]ACSuggestion, 0, len(textgrammar.StateNames()))
 	partialLower := strings.ToLower(partial)
-
-	for _, s := range statuses {
-		if partial == "" || strings.Contains(s.name, partialLower) {
-			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("$%s %s (%s)", s.name, s.icon, s.desc),
-				Value:   s.name,
-			})
+	for _, name := range textgrammar.StateNames() {
+		if partial != "" && !strings.Contains(name, partialLower) {
+			continue
 		}
+		state, _ := models.ParseWorkflowState(name)
+		display := fmt.Sprintf("$%s %s", name, state.Icon())
+		if withDescription {
+			display += " (" + textgrammar.StateDescription(state) + ")"
+		}
+		suggestions = append(suggestions, ACSuggestion{Display: display, Value: name})
 	}
 	return suggestions
 }

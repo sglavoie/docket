@@ -4,8 +4,8 @@ import tea "charm.land/bubbletea/v2"
 
 // handleViewActionMessages handles task action views such as priority, capture, blockers, and attachments.
 func (m *AppModel) handleViewActionMessages(msg tea.Msg) (bool, tea.Cmd) {
-	if handled, cmd := m.handleGlobalPickerMessages(msg); handled {
-		return handled, cmd
+	if scope, ok := msg.(ApplyProjectScopeMsg); ok {
+		return m.applyProjectScope(scope)
 	}
 	return m.handleCaptureAndBulkMessages(msg)
 }

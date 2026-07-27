@@ -6,15 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/icons"
 )
 
-// WorkflowState is the single canonical lifecycle state of a task. It replaces
-// the legacy Status/Section/Stage/Active quadruplet as the authoritative model
-// of where a task sits in its workflow.
-//
-// Introduced in session 7. During the migration window the legacy fields remain
-// on the Task struct as storage, and WorkflowState is derived from them through
-// the isolated adapter in task_workflowstate.go (see DeriveWorkflowState and
-// Task.State). The legacy fields are removed in session 33, after which
-// WorkflowState becomes a stored field rather than a derived one.
+// WorkflowState is the single canonical lifecycle state of a task.
 type WorkflowState string
 
 const (
@@ -83,10 +75,7 @@ func (s WorkflowState) String() string {
 	return string(s)
 }
 
-// Icon returns a one-character indicator for the state, reusing the status
-// icon set. The three todo-ish planning states (inbox, ready, next) share the
-// todo icon; waiting deliberately shows the blocked icon because the legacy
-// blocked status and Waiting section collapse into the one waiting state.
+// Icon returns a one-character indicator for the state.
 func (s WorkflowState) Icon() string {
 	switch s {
 	case StateInbox, StateReady, StateNext:

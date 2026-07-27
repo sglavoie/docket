@@ -51,11 +51,8 @@ func (m *AppModel) handleLinkedTaskBatchCreated(msg LinkedTaskBatchCreatedMsg) (
 // handleCreateLinkedTask handles the CreateLinkedTaskMsg.
 func (m *AppModel) handleCreateLinkedTask(msg CreateLinkedTaskMsg) (bool, tea.Cmd) {
 	if msg.SourceTask != nil && msg.Project != nil {
-		if m.typedNavigation {
-			preset := linkedComposerPreset(msg.Project, msg.SourceTask, msg.LinkType)
-			return true, m.openTaskComposer(preset, ViewLinkedTaskCreator)
-		}
-		m.showView(ViewLinkedTaskCreator, NewLinkedTaskCreatorModel(msg.SourceTask, msg.Project, msg.LinkType))
+		preset := linkedComposerPreset(msg.Project, msg.SourceTask, msg.LinkType)
+		return true, m.openTaskComposer(preset)
 	}
 	return true, nil
 }
@@ -89,8 +86,8 @@ func (m *AppModel) handleLinkedTaskCreated(msg LinkedTaskCreatedMsg) (bool, tea.
 	m.setSuccessStatus(fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID))
 
 	// Jump to new task if configured
-	if m.runtime.Settings().GetLinkedTaskJumpToNew() && m.outliner != nil && msg.NewTask != nil {
-		m.outliner.NavigateToTaskInProject(msg.NewTask, m.outliner.project)
+	if m.runtime.Settings().GetLinkedTaskJumpToNew() && m.crossOutliner != nil && msg.NewTask != nil {
+		m.crossOutliner.NavigateToTaskInProject(msg.NewTask, msg.Project)
 	}
 
 	if msg.NewTask != nil && (msg.OpenContent || msg.OpenDetail) {

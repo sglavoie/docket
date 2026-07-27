@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -18,7 +19,6 @@ type ShowReviewHubMsg struct {
 }
 
 var reviewModuleNames = [...]string{
-	"Review",
 	"Daily Review",
 	"Weekly Review",
 	"Activity",
@@ -35,19 +35,20 @@ func (module ReviewModule) String() string {
 
 // ReviewHubModel is the sole live Review destination. Existing review models
 // remain responsible for their calculations, mutations, and rendering; the hub
-// owns their lifecycle, landing navigation, scope, and module return semantics.
+// owns their lifecycle, scope, and module return semantics.
 type ReviewHubModel struct {
 	BaseView
 	runtime       *config.RuntimeState
 	configManager *config.Manager
 	wire          func(View)
 
-	module  ReviewModule
+	params  ReviewParams
 	project *models.Project
 
 	// Daily Review and Activity are Outliner computed modes, not hub submodels,
 	// so the hub only owns the remaining direct review tools.
 	weekly         *WeeklyReviewModel
+	weeklyScopeID  string
 	metrics        *MetricsDashboardModel
 	metricsScopeID string
 	roadmap        *RoadmapModel
@@ -62,7 +63,7 @@ func NewReviewHubModel(runtime *config.RuntimeState, manager *config.Manager, wi
 		runtime:       runtime,
 		configManager: manager,
 		wire:          wire,
-		module:        ReviewLanding,
+		params:        ReviewParams{Module: ReviewDaily},
 	}
 }
 
@@ -96,24 +97,35 @@ func (m *ReviewHubModel) View() tea.View {
 // A nil project selects app scope; project-aware modules are recreated only
 // when their requested scope changes, preserving in-module state otherwise.
 func (m *ReviewHubModel) Activate(module ReviewModule, project *models.Project) error {
-	if module > ReviewRoadmap {
-		return fmt.Errorf("unknown review module: %d", module)
+	return m.ActivateParams(ReviewParams{Module: module}, project)
+}
+
+// ActivateParams switches the hub using canonical typed route parameters. The
+// project pointer remains a retained adapter for project-aware Metrics and
+// Roadmap models; Weekly Review consumes the route's exact project set.
+func (m *ReviewHubModel) ActivateParams(params ReviewParams, project *models.Project) error {
+	route, err := NewRoute(SecondaryTool, params)
+	if err != nil {
+		return err
 	}
-	m.module = module
+	params = route.Params().(ReviewParams)
+	if params.Module > ReviewRoadmap {
+		return fmt.Errorf("unknown review module: %d", params.Module)
+	}
+	m.params = params
 	m.project = project
-	if module == ReviewLanding {
-		return nil
-	}
 
 	scopeID := reviewScopeID(project)
 	var view View
-	switch module {
-	case ReviewLanding, ReviewDaily, ReviewActivity:
-		// Landing has no renderer, and Daily Review / Activity are Outliner modes.
+	switch params.Module {
+	case ReviewDaily, ReviewActivity:
+		// Daily Review and Activity are Outliner modes.
 		return nil
 	case ReviewWeekly:
-		if m.weekly == nil {
-			m.weekly = NewWeeklyReviewModel(m.runtime, m.configManager)
+		weeklyScopeID := projectSetScopeID(params.ProjectSet)
+		if m.weekly == nil || m.weeklyScopeID != weeklyScopeID {
+			m.weekly = NewWeeklyReviewModelForProjectSet(m.runtime, m.configManager, params.ProjectSet)
+			m.weeklyScopeID = weeklyScopeID
 			m.wireModule(m.weekly)
 		}
 		m.weekly.queueIDs, m.weekly.dailyPlanIDs = m.queueIDs, m.dailyPlanIDs
@@ -157,6 +169,14 @@ func reviewScopeID(project *models.Project) string {
 	return "project:" + project.ID
 }
 
+func projectSetScopeID(scope ProjectSetScope) string {
+	scope = canonicalProjectSetScope(scope)
+	if !scope.Explicit {
+		return "app"
+	}
+	return "set:" + strings.Join(scope.ProjectIDs(), "\x1f")
+}
+
 func (m *ReviewHubModel) wireModule(view View) {
 	if m.wire != nil {
 		m.wire(view)
@@ -164,8 +184,8 @@ func (m *ReviewHubModel) wireModule(view View) {
 }
 
 func (m *ReviewHubModel) replaceActiveModule(view View) {
-	switch m.module {
-	case ReviewLanding, ReviewDaily, ReviewActivity:
+	switch m.params.Module {
+	case ReviewDaily, ReviewActivity:
 	case ReviewWeekly:
 		m.weekly, _ = view.(*WeeklyReviewModel)
 	case ReviewMetrics:
@@ -176,8 +196,8 @@ func (m *ReviewHubModel) replaceActiveModule(view View) {
 }
 
 func (m *ReviewHubModel) ActiveModuleView() View {
-	switch m.module {
-	case ReviewLanding, ReviewDaily, ReviewActivity:
+	switch m.params.Module {
+	case ReviewDaily, ReviewActivity:
 		return nil
 	case ReviewWeekly:
 		if m.weekly != nil {
@@ -195,7 +215,9 @@ func (m *ReviewHubModel) ActiveModuleView() View {
 	return nil
 }
 
-func (m *ReviewHubModel) Module() ReviewModule { return m.module }
+func (m *ReviewHubModel) Module() ReviewModule { return m.params.Module }
+
+func (m *ReviewHubModel) Params() ReviewParams { return m.params }
 
 func (m *ReviewHubModel) ProjectScope() *models.Project { return m.project }
 
@@ -252,20 +274,6 @@ func (m *ReviewHubModel) HasTextInput() bool {
 
 func (m *ReviewHubModel) IsFullHeight() bool { return true }
 
-func (m *ReviewHubModel) HasPendingPrefix() bool {
-	if provider, ok := m.ActiveModuleView().(PendingPrefixView); ok {
-		return provider.HasPendingPrefix()
-	}
-	return false
-}
-
-func (m *ReviewHubModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if provider, ok := m.ActiveModuleView().(PrefixPopupProvider); ok {
-		return provider.GetPrefixPopupInfo()
-	}
-	return nil
-}
-
 func (m *ReviewHubModel) GetConfirmDialog() *ConfirmDialog {
 	if provider, ok := m.ActiveModuleView().(ConfirmDialogProvider); ok {
 		return provider.GetConfirmDialog()
@@ -308,20 +316,21 @@ func (m *ReviewHubModel) GetHelpItems() []HelpItem {
 	return nil
 }
 
-func (m *ReviewHubModel) StatusBarLabel() string { return m.module.String() }
+func (m *ReviewHubModel) StatusBarLabel() string { return m.params.Module.String() }
 
 func (m *ReviewHubModel) SupportsTaskUndoRedo() bool {
-	return m.module == ReviewWeekly
+	return m.params.Module == ReviewWeekly
 }
 
 func (m *ReviewHubModel) CommandContext() CommandContext {
-	if view, ok := reviewModulePresentation(m.module, m.project); ok && m.module != ReviewLanding {
+	if view, ok := reviewModulePresentation(m.params.Module, m.project); ok {
 		ctx := PresentationCommandContext(view)
 		if m.project != nil {
 			ctx.Scope = ScopeProject
 			delete(ctx.Capabilities, CapabilityAppScope)
 			ctx.Capabilities.Add(CapabilityProjectScope)
 		}
+		ctx.ScopeProjectIDs = m.ScopeProjectIDs()
 		return ctx
 	}
 	return CommandContext{
@@ -332,6 +341,22 @@ func (m *ReviewHubModel) CommandContext() CommandContext {
 			CapabilityAppScope,
 		),
 	}
+}
+
+// ScopeProjectIDs returns the exact project set captured by Weekly Review's
+// route, or the retained project/app scope for the other review tools.
+func (m *ReviewHubModel) ScopeProjectIDs() []string {
+	if m.project != nil {
+		return []string{m.project.ID}
+	}
+	projects := projectsInProjectSet(m.runtime.ActiveProjects(), m.params.ProjectSet)
+	ids := make([]string, 0, len(projects))
+	for _, project := range projects {
+		if project != nil {
+			ids = append(ids, project.ID)
+		}
+	}
+	return normalizedProjectIDs(ids)
 }
 
 func (m *ReviewHubModel) Refresh() {

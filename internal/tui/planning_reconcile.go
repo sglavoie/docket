@@ -39,6 +39,14 @@ func dailyPlanContains(planning *config.PlanningState, identity TaskIdentity) bo
 // and gives isolated in-memory UI tests the same app-owned state/invariant logic
 // without manufacturing a filesystem repository.
 func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.PlanningAction) (*models.Task, *models.Project, error) {
+	triagingInbox := false
+	if m.activeInboxTriage() {
+		if project := m.projectByID(projectID); project != nil {
+			if task := project.GetTaskByID(taskID); task != nil {
+				triagingInbox = task.State() == models.StateInbox
+			}
+		}
+	}
 	if m.appService != nil && m.configManager != nil {
 		stateChanged := false
 		if project := m.projectByID(projectID); project != nil {
@@ -48,6 +56,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 					stateChanged = task.State() == models.StateInbox || task.State() == models.StateNext
 				case app.PlanningAddNext:
 					stateChanged = task.State() != models.StateNext
+				case app.PlanningRemoveToday:
 				case app.PlanningRemoveNext:
 					stateChanged = task.State() == models.StateNext
 				case app.PlanningBacklog:
@@ -69,6 +78,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		}
 		if stateChanged {
 			m.reloadProjectByID(res.ProjectID)
+			m.reloadCrossProjectOutlinerProject(res.ProjectID)
 		}
 		m.refreshRuntime()
 		m.rebuildPlanningFromRuntime()
@@ -79,7 +89,11 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		if project == nil {
 			return nil, nil, nil
 		}
-		return project.GetTaskByID(taskID), project, nil
+		task := project.GetTaskByID(taskID)
+		if triagingInbox && task != nil && task.State() != models.StateInbox {
+			m.markInboxTriaged()
+		}
+		return task, project, nil
 	}
 
 	project := m.projectByID(projectID)
@@ -104,6 +118,9 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 			Targets: []app.PlanningReconcileTarget{target},
 		})
 		m.rebuildPlanningFromRuntime()
+	}
+	if triagingInbox && task.State() != models.StateInbox {
+		m.markInboxTriaged()
 	}
 	return task, project, nil
 }

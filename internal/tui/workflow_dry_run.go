@@ -485,5 +485,5 @@ func (m *WorkflowDryRunModel) isWideScreen() bool {
 
 // GetHelpItems returns help items for this view.
 func (m *WorkflowDryRunModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewWorkflowDryRun)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }

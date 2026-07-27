@@ -79,7 +79,7 @@ func TestTopologicalSingleNode(t *testing.T) {
 
 // TestTopologicalMixedCompleteIncomplete verifies complete tasks are excluded.
 func TestTopologicalMixedCompleteIncomplete(t *testing.T) {
-	done := withStatus(newTask("done"), models.StatusDone)
+	done := withStatus(newTask("done"), models.StateDone)
 	todo := withDep(newTask("todo"), "done") // depends on a complete task
 
 	order, err := TopologicalSort([]*models.Task{done, todo})

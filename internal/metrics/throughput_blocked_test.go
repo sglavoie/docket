@@ -15,9 +15,9 @@ func TestThroughput(t *testing.T) {
 		canceled := now.AddDate(0, 0, -1)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), nil),
-			makeTask(models.StatusDone, timePtr(done), nil),
-			makeTask(models.StatusCanceled, timePtr(canceled), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
+			makeTask(models.StateCanceled, timePtr(canceled), nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -33,7 +33,7 @@ func TestThroughput(t *testing.T) {
 		tasks := make([]*models.Task, 7)
 		for i := range tasks {
 			done := now.AddDate(0, 0, -i)
-			tasks[i] = makeTask(models.StatusDone, timePtr(done), nil)
+			tasks[i] = makeTask(models.StateDone, timePtr(done), nil)
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -59,7 +59,7 @@ func TestThroughput(t *testing.T) {
 		tasks := make([]*models.Task, 7)
 		for i := range tasks {
 			done := dstNow.AddDate(0, 0, -i)
-			tasks[i] = makeTask(models.StatusDone, timePtr(done), nil)
+			tasks[i] = makeTask(models.StateDone, timePtr(done), nil)
 		}
 
 		buckets := timeBuckets(cutoff, dstNow, granularityDay)
@@ -75,8 +75,8 @@ func TestThroughput(t *testing.T) {
 		future := now.Add(2 * time.Hour)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(recent), nil),
-			makeTask(models.StatusDone, timePtr(future), nil),
+			makeTask(models.StateDone, timePtr(recent), nil),
+			makeTask(models.StateDone, timePtr(future), nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -99,7 +99,7 @@ func TestThroughput(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 		tasks := []*models.Task{
 			nil,
-			makeTask(models.StatusDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
 		}
 
 		cutoff := TimeRange7d.Cutoff(now)
@@ -119,9 +119,9 @@ func TestBlocked(t *testing.T) {
 		blockedAt := now.AddDate(0, 0, -5)
 		unblockedAt := now.AddDate(0, 0, -3)
 
-		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			{Timestamp: unblockedAt, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		task := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: blockedAt, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			{Timestamp: unblockedAt, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 		})
 
 		result := computeBlocked([]*models.Task{task}, now, nil)
@@ -143,8 +143,8 @@ func TestBlocked(t *testing.T) {
 	t.Run("currently blocked extends to now", func(t *testing.T) {
 		blockedAt := now.AddDate(0, 0, -2)
 
-		task := makeTask(models.StatusBlocked, nil, []*models.ActivityEntry{
-			{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		task := makeTask(models.StateWaiting, nil, []*models.ActivityEntry{
+			{Timestamp: blockedAt, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
 		})
 
 		result := computeBlocked([]*models.Task{task}, now, nil)
@@ -161,11 +161,11 @@ func TestBlocked(t *testing.T) {
 	})
 
 	t.Run("multiple blocked periods", func(t *testing.T) {
-		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: now.AddDate(0, 0, -10), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			{Timestamp: now.AddDate(0, 0, -8), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
-			{Timestamp: now.AddDate(0, 0, -5), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			{Timestamp: now.AddDate(0, 0, -3), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		task := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: now.AddDate(0, 0, -10), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			{Timestamp: now.AddDate(0, 0, -8), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
+			{Timestamp: now.AddDate(0, 0, -5), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			{Timestamp: now.AddDate(0, 0, -3), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 		})
 
 		result := computeBlocked([]*models.Task{task}, now, nil)
@@ -185,9 +185,9 @@ func TestBlocked(t *testing.T) {
 		blockedAt := now.AddDate(0, 0, -5)
 		unblockedAt := now.AddDate(0, 0, -3)
 
-		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: unblockedAt, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
-			{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		task := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: unblockedAt, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
+			{Timestamp: blockedAt, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
 		})
 
 		result := computeBlocked([]*models.Task{task}, now, nil)
@@ -209,8 +209,8 @@ func TestBlocked(t *testing.T) {
 	t.Run("pruned end transition is skipped", func(t *testing.T) {
 		blockedAt := now.AddDate(0, 0, -5)
 
-		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+		task := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: blockedAt, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
 		})
 
 		result := computeBlocked([]*models.Task{task}, now, nil)
@@ -221,9 +221,9 @@ func TestBlocked(t *testing.T) {
 	})
 
 	t.Run("never blocked tasks are excluded", func(t *testing.T) {
-		task := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: now.AddDate(0, 0, -5), Field: "status", OldValue: "todo", NewValue: "in_progress"},
-			{Timestamp: now.AddDate(0, 0, -1), Field: "status", OldValue: "in_progress", NewValue: "done"},
+		task := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: now.AddDate(0, 0, -5), Field: "state", OldValue: "todo", NewValue: "in_progress"},
+			{Timestamp: now.AddDate(0, 0, -1), Field: "state", OldValue: "in_progress", NewValue: "done"},
 		})
 
 		result := computeBlocked([]*models.Task{task}, now, nil)
@@ -237,15 +237,15 @@ func TestBlocked(t *testing.T) {
 	})
 
 	t.Run("sorted by total blocked descending", func(t *testing.T) {
-		task1 := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: now.AddDate(0, 0, -3), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			{Timestamp: now.AddDate(0, 0, -2), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		task1 := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: now.AddDate(0, 0, -3), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			{Timestamp: now.AddDate(0, 0, -2), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 		})
 		task1.ID = "short-block"
 
-		task2 := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: now.AddDate(0, 0, -10), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			{Timestamp: now.AddDate(0, 0, -2), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		task2 := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: now.AddDate(0, 0, -10), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			{Timestamp: now.AddDate(0, 0, -2), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 		})
 		task2.ID = "long-block"
 
@@ -264,9 +264,9 @@ func TestBlocked(t *testing.T) {
 		// deterministic ordering across repeated invocations so the UI list
 		// does not shuffle rows on each refresh.
 		mkBlocked := func(id string) *models.Task {
-			tsk := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-				{Timestamp: now.AddDate(0, 0, -4), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-				{Timestamp: now.AddDate(0, 0, -2), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+			tsk := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+				{Timestamp: now.AddDate(0, 0, -4), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+				{Timestamp: now.AddDate(0, 0, -2), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 			})
 			tsk.ID = id
 			return tsk
@@ -304,8 +304,8 @@ func TestThroughputAllTimeAvgPerDayConsistent(t *testing.T) {
 	old := now.AddDate(-2, 0, 0)
 	recent := now.AddDate(0, 0, -7)
 	tasks := []*models.Task{
-		makeTask(models.StatusDone, timePtr(old), nil),
-		makeTask(models.StatusDone, timePtr(recent), nil),
+		makeTask(models.StateDone, timePtr(old), nil),
+		makeTask(models.StateDone, timePtr(recent), nil),
 	}
 
 	cutoff := TimeRangeAll.Cutoff(now)
@@ -331,7 +331,7 @@ func TestThroughputAllTimeAvgPerDayConsistent(t *testing.T) {
 func TestThroughputBoundaryTaskCountedInBucket(t *testing.T) {
 	now := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC) // exactly midnight
 	tasks := []*models.Task{
-		makeTask(models.StatusDone, timePtr(now), nil),
+		makeTask(models.StateDone, timePtr(now), nil),
 	}
 	cutoff := TimeRange7d.Cutoff(now)
 	buckets := timeBuckets(cutoff, now, granularityDay)
@@ -352,15 +352,15 @@ func TestThroughputBoundaryTaskCountedInBucket(t *testing.T) {
 func TestComputeAllAt_BlockedHonorsTimeRange(t *testing.T) {
 	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 
-	oldBlocked := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-		{Timestamp: now.AddDate(0, 0, -40), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-		{Timestamp: now.AddDate(0, 0, -35), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+	oldBlocked := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+		{Timestamp: now.AddDate(0, 0, -40), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+		{Timestamp: now.AddDate(0, 0, -35), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 	})
 	oldBlocked.ID = "old-blocked"
 
-	recentBlocked := makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-		{Timestamp: now.AddDate(0, 0, -5), Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-		{Timestamp: now.AddDate(0, 0, -2), Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+	recentBlocked := makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+		{Timestamp: now.AddDate(0, 0, -5), Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+		{Timestamp: now.AddDate(0, 0, -2), Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 	})
 	recentBlocked.ID = "recent-blocked"
 

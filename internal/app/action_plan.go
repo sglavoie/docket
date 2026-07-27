@@ -766,7 +766,7 @@ func (s *Service) applyPlannedAction(snap Snapshot, action Action, touched map[s
 		if action.State != nil {
 			state = *action.State
 		}
-		if err := s.initializeCreatedTask(project, task, state); err != nil {
+		if err := s.initializeCreatedTask(task, state); err != nil {
 			return err
 		}
 		project.Tasks = append(project.Tasks, task)
@@ -1001,16 +1001,9 @@ func cloneActionSnapshot(source Snapshot) (Snapshot, error) {
 			}
 			clone.Tasks = append(clone.Tasks, &copyTask)
 		}
-		clone.Sections = append([]string(nil), project.Sections...)
 		clone.Tags = append([]string(nil), project.Tags...)
 		clone.PinnedTags = append([]string(nil), project.PinnedTags...)
 		clone.Warnings = append([]string(nil), project.Warnings...)
-		if project.SectionColors != nil {
-			clone.SectionColors = make(map[string]string, len(project.SectionColors))
-			for key, value := range project.SectionColors {
-				clone.SectionColors[key] = value
-			}
-		}
 		clone.BuildTaskTree()
 		clones = append(clones, &clone)
 		revisions[clone.ID] = source.Revision(clone.ID)

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -11,14 +9,6 @@ import (
 // handleKeyMsg dispatches key events for the task detail view.
 func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
-
-	// Handle pending prefix keys
-	if m.SkipModifierInPrefix(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		return m.handlePrefixKey(key)
-	}
 
 	if m.task == nil {
 		return m, nil
@@ -57,14 +47,6 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		// Re-clamp scroll: total lines change when the History cluster
 		// expands or collapses, so the previous offset may now exceed bounds.
 		m.clampScroll()
-		return m, nil
-
-	// Prefix keys
-	case ",":
-		m.pendingPrefix = ","
-		return m, nil
-	case "!":
-		m.pendingPrefix = "!"
 		return m, nil
 
 	// Tab launchers. These change the mode of the current typed Task Detail
@@ -133,100 +115,13 @@ func (m *TaskDetailModel) selectTab(tab TaskDetailTab) (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return TaskDetailTabChangedMsg{Tab: tab} }
 }
 
-// handlePrefixKey handles keys after a prefix character.
-func (m *TaskDetailModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
-	prefix := m.pendingPrefix
-	m.pendingPrefix = ""
-
-	switch prefix {
-	case ",":
-		return m.handleStatusPrefix(key)
-	case "!":
-		return m.handlePriorityPrefix(key)
-	}
-
-	return m, nil
-}
-
-// handleStatusPrefix handles status change keys after the "," prefix.
-func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	if m.task == nil {
-		return m, nil
-	}
-
-	targetState, ok := StateForPrefixKey(key)
-	if !ok {
-		return m, nil
-	}
-
-	// Preflight the coordinator guards so an invalid transition surfaces a status
-	// message (not an error toast) and no flash fires, then dispatch the
-	// single-task coordinator (one ledger-backed transaction; the shell owns
-	// reload + toast and refreshes this view via refreshAfterReload).
-	if msg := models.CanTransitionState(m.task.State(), targetState); msg != "" {
-		return m, func() tea.Msg { return StatusMsg(msg) }
-	}
-	if targetState == models.StateDone && m.project.HasIncompleteDependencies(m.task) {
-		return m, func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("cannot complete: has incomplete dependencies")} }
-	}
-	if targetState.IsTerminal() {
-		if incomplete := m.task.IncompleteChildren(); len(incomplete) > 0 {
-			verb := "complete"
-			if targetState == models.StateCanceled {
-				verb = "cancel"
-			}
-			msg := fmt.Sprintf("cannot %s #%d: has %d incomplete children", verb, m.task.ShortID, len(incomplete))
-			return m, func() tea.Msg { return StatusMsg(msg) }
-		}
-	}
-
-	cmd := m.taskItem.Transition(taskIdentityFor(m.task, m.project), targetState)
-	msg := cmd()
-	if em, ok := msg.(TransactionErrorMsg); ok {
-		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }
-	}
-
-	if targetState == models.StateDone {
-		m.setCompletionFlash()
-		return m, tea.Batch(func() tea.Msg { return msg }, completionFlashScheduler())
-	}
-	m.setMutationFlash(stateMutationFlashBg(targetState))
-	return m, tea.Batch(func() tea.Msg { return msg }, mutationFlashTimeout())
-}
-
-// handlePriorityPrefix handles priority keys after the "!" prefix.
-func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) {
-	if m.task == nil {
-		return m, nil
-	}
-
-	priority, ok := PriorityForPrefixKey(key)
-	if !ok {
-		return m, nil
-	}
-	if m.task.Priority == priority {
-		return m, nil
-	}
-
-	// Route through the single-task coordinator (one ledger-backed transaction;
-	// the shell owns reload + toast and refreshes this view via refreshAfterReload).
-	cmd := m.taskItem.SetPriority(taskIdentityFor(m.task, m.project), priority)
-	msg := cmd()
-	if em, ok := msg.(TransactionErrorMsg); ok {
-		return m, func() tea.Msg { return ErrorMsg{Err: em.Err} }
-	}
-	return m, func() tea.Msg { return msg }
-}
-
 // getTaskRef returns the task and project for the current detail view.
 func (m *TaskDetailModel) getTaskRef() (*models.Task, *models.Project) {
 	return m.task, m.project
 }
 
 // HandledKeys returns every key the task detail view's Update can process.
-// Matches the cases in handleKeyMsg plus prefix entry keys; status/priority
-// suffix keys are reachable only via the "," and "!" prefixes and are not
-// listed individually here.
+// Matches the direct cases in handleKeyMsg.
 func (m *TaskDetailModel) HandledKeys() []string {
 	return []string{
 		"esc", "enter",
@@ -234,7 +129,6 @@ func (m *TaskDetailModel) HandledKeys() []string {
 		"ctrl+d", "ctrl+u",
 		"G", "tab", "shift+tab",
 		"H",
-		",", "!",
 		"c", "l", "a", "h", "p", "S", "D", "d",
 		"P", "o", "O", "e", "g",
 		"?",
@@ -244,12 +138,29 @@ func (m *TaskDetailModel) HandledKeys() []string {
 // GetHelpItems returns the help items for the task detail view.
 func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 	if m.tab != TaskOverview {
-		items := GetKeybindingRegistry().GetForView(taskDetailPresentation(m.tab))
+		var items []HelpItem
+		switch m.tab {
+		case TaskOverview:
+		case TaskChecklist:
+			items = helpItemsFromKeyMap(m.checklist.buildKeyMap())
+		case TaskComments:
+			items = helpItemsFromKeyMap(m.comments.buildKeyMap())
+		case TaskDecisions:
+			items = helpItemsFromKeyMap(m.decisions.buildKeyMap())
+		case TaskAttachments:
+			items = helpItemsFromKeyMap(m.attachments.buildKeyMap())
+		case TaskActivity:
+			items = []HelpItem{
+				{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
+				{Key: "Esc", Description: "Close activity", Category: "Navigation"},
+			}
+		default:
+		}
 		return append(items, HelpItem{
 			Key: "Tab/Shift+Tab", Description: "Next/previous detail tab", Category: "Navigation",
 		})
 	}
-	items := GetKeybindingRegistry().GetAppLevelForView(ViewTaskDetail)
+	items := getGlobalHelpItems()
 	return append(items, []HelpItem{
 		{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
 		{Key: "Tab/Shift+Tab", Description: "Next/previous detail tab", Category: "Navigation"},

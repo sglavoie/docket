@@ -79,7 +79,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(task, task.State() == models.StateNext)
+		return displayTaskShowJSON(task)
 	}
 
 	if out.Quiet {
@@ -108,7 +108,7 @@ func displayTaskDetail(task *models.Task) {
 
 	// Metadata
 	fmt.Printf("%s %s %s\n",
-		labelStyle.Render("Status:"),
+		labelStyle.Render("State:"),
 		task.State().Icon(),
 		valueStyle.Render(string(task.State())))
 
@@ -182,12 +182,10 @@ type taskShowJSONEntry struct {
 	Type            string                    `json:"type"`
 	Title           string                    `json:"title"`
 	Description     string                    `json:"description"`
-	Status          string                    `json:"status"`
 	State           string                    `json:"state"`
 	Priority        int                       `json:"priority"`
 	ParentID        *string                   `json:"parent_id"`
 	Tags            []string                  `json:"tags"`
-	Section         string                    `json:"section"`
 	CreatedAt       time.Time                 `json:"created_at"`
 	UpdatedAt       time.Time                 `json:"updated_at"`
 	CompletedAt     *time.Time                `json:"completed_at"`
@@ -197,10 +195,8 @@ type taskShowJSONEntry struct {
 	RelatedTo       []string                  `json:"related_to"`
 	Pinned          bool                      `json:"pinned"`
 	PinnedAt        *time.Time                `json:"pinned_at,omitempty"`
-	Queued          bool                      `json:"queued"`
 	Dimmed          bool                      `json:"dimmed"`
 	SnoozedUntil    *time.Time                `json:"snoozed_until"`
-	Stage           string                    `json:"stage,omitempty"`
 	Source          string                    `json:"source,omitempty"`
 	URL             string                    `json:"url,omitempty"`
 	Recurrence      *models.RecurrencePattern `json:"recurrence"`
@@ -217,7 +213,7 @@ type taskShowJSONEntry struct {
 	EpicAttrs       *models.EpicAttrs         `json:"epic_attrs,omitempty"`
 }
 
-func displayTaskShowJSON(task *models.Task, queued bool) error {
+func displayTaskShowJSON(task *models.Task) error {
 	tags := task.Tags
 	if tags == nil {
 		tags = []string{}
@@ -265,12 +261,10 @@ func displayTaskShowJSON(task *models.Task, queued bool) error {
 		Type:            task.Type.String(),
 		Title:           task.Title,
 		Description:     task.Description,
-		Status:          models.LegacyStatusForState(task.State()).String(),
 		State:           task.State().String(),
 		Priority:        task.Priority,
 		ParentID:        task.ParentID,
 		Tags:            tags,
-		Section:         models.SectionForState(task.State()),
 		CreatedAt:       task.CreatedAt,
 		UpdatedAt:       task.UpdatedAt,
 		CompletedAt:     task.CompletedAt,
@@ -280,7 +274,6 @@ func displayTaskShowJSON(task *models.Task, queued bool) error {
 		RelatedTo:       relatedTo,
 		Pinned:          task.Pinned,
 		PinnedAt:        task.PinnedAt,
-		Queued:          queued,
 		Dimmed:          task.Dimmed,
 		SnoozedUntil:    task.SnoozedUntil,
 		Source:          task.Source,

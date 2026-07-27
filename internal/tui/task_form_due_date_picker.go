@@ -17,6 +17,21 @@ type TaskFormDueDatePickedMsg struct {
 	Date *time.Time
 }
 
+type formDueDatePreset struct {
+	key         string
+	label       string
+	daysFromNow int
+	isClear     bool
+}
+
+var formDueDatePresets = []formDueDatePreset{
+	{key: "t", label: "today", daysFromNow: 0},
+	{key: "m", label: "tomorrow", daysFromNow: 1},
+	{key: "w", label: "+week", daysFromNow: 7},
+	{key: "n", label: "+month", daysFromNow: 30},
+	{key: "0", label: "clear", isClear: true},
+}
+
 type formDueDatePicker struct {
 	cursor int
 }
@@ -25,7 +40,7 @@ func newFormDueDatePicker(current *time.Time) *formDueDatePicker {
 	cursor := 0
 	if current == nil {
 		// Pre-select "clear"
-		for i, e := range dueDatePickerEntries {
+		for i, e := range formDueDatePresets {
 			if e.isClear {
 				cursor = i
 				break
@@ -33,7 +48,7 @@ func newFormDueDatePicker(current *time.Time) *formDueDatePicker {
 		}
 	} else {
 		today := util.StartOfDay(time.Now())
-		for i, e := range dueDatePickerEntries {
+		for i, e := range formDueDatePresets {
 			if e.isClear {
 				continue
 			}
@@ -49,7 +64,7 @@ func newFormDueDatePicker(current *time.Time) *formDueDatePicker {
 // handleKey processes a key press.
 // Returns (cmd, dismiss, resultMsg). dismiss=true closes the overlay.
 func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
-	toMsg := func(e dueDatePickerEntry) tea.Msg {
+	toMsg := func(e formDueDatePreset) tea.Msg {
 		if e.isClear {
 			return TaskFormDueDatePickedMsg{Date: nil}
 		}
@@ -60,20 +75,20 @@ func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.M
 	case "esc":
 		return nil, true, nil
 	case "enter":
-		return nil, true, toMsg(dueDatePickerEntries[p.cursor])
+		return nil, true, toMsg(formDueDatePresets[p.cursor])
 	case "up", "k":
 		if p.cursor > 0 {
 			p.cursor--
 		}
 		return nil, false, nil
 	case "down", "j":
-		if p.cursor < len(dueDatePickerEntries)-1 {
+		if p.cursor < len(formDueDatePresets)-1 {
 			p.cursor++
 		}
 		return nil, false, nil
 	default:
 		key := msg.String()
-		for _, e := range dueDatePickerEntries {
+		for _, e := range formDueDatePresets {
 			if key == e.key {
 				return nil, true, toMsg(e)
 			}
@@ -102,14 +117,14 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	today := util.StartOfDay(time.Now())
 	currentEntryIdx := -1
 	if current == nil {
-		for i, e := range dueDatePickerEntries {
+		for i, e := range formDueDatePresets {
 			if e.isClear {
 				currentEntryIdx = i
 				break
 			}
 		}
 	} else {
-		for i, e := range dueDatePickerEntries {
+		for i, e := range formDueDatePresets {
 			if e.isClear {
 				continue
 			}
@@ -121,7 +136,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	}
 
 	var content strings.Builder
-	for i, e := range dueDatePickerEntries {
+	for i, e := range formDueDatePresets {
 		isCurrent := i == currentEntryIdx
 		keyHint := MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
 		currentMark := "  "
@@ -137,7 +152,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 			line = SelectedStyle.Render(line)
 		}
 		content.WriteString(line)
-		if i < len(dueDatePickerEntries)-1 {
+		if i < len(formDueDatePresets)-1 {
 			content.WriteString("\n")
 		}
 	}

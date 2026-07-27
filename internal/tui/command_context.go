@@ -8,9 +8,18 @@ type Capability string
 
 const (
 	CapabilityCommandDiscovery Capability = "command-discovery"
-	CapabilityAppScope         Capability = "scope:app"
-	CapabilityProjectScope     Capability = "scope:project"
-	CapabilityTaskScope        Capability = "scope:task"
+	// CapabilitySimplifiedInput exposes the staged final key grammar without
+	// making its operations visible to the legacy command adapter.
+	CapabilitySimplifiedInput Capability = "input:simplified"
+	// CapabilityScopeHub limits scope/context/project lifecycle operations to
+	// the one routed Scope Hub that supplies their frozen targets.
+	CapabilityScopeHub Capability = "surface:scope-hub"
+	// CapabilityHarness exposes setup-only operations to semantic scenario
+	// commands without advertising them in Finder, help, or direct input.
+	CapabilityHarness      Capability = "surface:test-harness"
+	CapabilityAppScope     Capability = "scope:app"
+	CapabilityProjectScope Capability = "scope:project"
+	CapabilityTaskScope    Capability = "scope:task"
 )
 
 // CapabilitySet is the active route/overlay capability set.
@@ -52,6 +61,14 @@ func (s CapabilitySet) Add(capabilities ...Capability) {
 // cursor or row position.
 type SelectionContext struct {
 	Tasks []TaskIdentity
+	// Entities mirrors Tasks with the lifecycle and project mutability facts
+	// needed to decide whether an operation applies to every selected target.
+	// It stays pointer-free so a frozen action sheet cannot be retargeted by a
+	// later row rebuild.
+	Entities []EntityContext
+	// Visual distinguishes an explicit visual selection (including one selected
+	// task) from the ordinary cursor fallback used by selected-target operations.
+	Visual bool
 }
 
 // Count returns the number of selected tasks.
@@ -78,6 +95,10 @@ type CommandContext struct {
 	Capabilities CapabilitySet
 	Selection    SelectionContext
 	Entity       EntityContext
+	// ScopeProjectIDs is the stable project set admitted by the active scope.
+	// It lets operation execution resolve scoped-project targets without
+	// depending on renderer models or palette-specific messages.
+	ScopeProjectIDs []string
 }
 
 // presentationCapability scopes mature renderer commands without affecting

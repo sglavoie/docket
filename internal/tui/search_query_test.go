@@ -128,58 +128,58 @@ func TestParseSearchQuery_PriorityAbbreviations(t *testing.T) {
 	}
 }
 
-func TestParseSearchQuery_AllStatuses(t *testing.T) {
+func TestParseSearchQuery_CanonicalStates(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
-		wantStatus []models.TaskStatus
-		wantText   string
+		name      string
+		input     string
+		wantState []models.WorkflowState
+		wantText  string
 	}{
 		{
-			name:       "todo status",
-			input:      "$todo",
-			wantStatus: []models.TaskStatus{models.StatusTodo},
+			name:      "inbox state",
+			input:     "$inbox",
+			wantState: []models.WorkflowState{models.StateInbox},
 		},
 		{
-			name:       "in_progress status",
-			input:      "$in_progress",
-			wantStatus: []models.TaskStatus{models.StatusInProgress},
+			name:      "in_progress state",
+			input:     "$in_progress",
+			wantState: []models.WorkflowState{models.StateInProgress},
 		},
 		{
-			name:       "review status",
-			input:      "$review",
-			wantStatus: []models.TaskStatus{models.StatusReview},
+			name:      "review state",
+			input:     "$review",
+			wantState: []models.WorkflowState{models.StateReview},
 		},
 		{
-			name:       "standby status",
-			input:      "$standby",
-			wantStatus: []models.TaskStatus{models.StatusStandby},
+			name:      "paused state",
+			input:     "$paused",
+			wantState: []models.WorkflowState{models.StatePaused},
 		},
 		{
-			name:       "done status",
-			input:      "$done",
-			wantStatus: []models.TaskStatus{models.StatusDone},
+			name:      "done state",
+			input:     "$done",
+			wantState: []models.WorkflowState{models.StateDone},
 		},
 		{
-			name:       "blocked status",
-			input:      "$blocked",
-			wantStatus: []models.TaskStatus{models.StatusBlocked},
+			name:      "waiting state",
+			input:     "$waiting",
+			wantState: []models.WorkflowState{models.StateWaiting},
 		},
 		{
-			name:       "canceled status",
-			input:      "$canceled",
-			wantStatus: []models.TaskStatus{models.StatusCanceled},
+			name:      "canceled state",
+			input:     "$canceled",
+			wantState: []models.WorkflowState{models.StateCanceled},
 		},
 		{
-			name:       "status with text",
-			input:      "fix bug $review",
-			wantStatus: []models.TaskStatus{models.StatusReview},
-			wantText:   "fix bug",
+			name:      "state with text",
+			input:     "fix bug $review",
+			wantState: []models.WorkflowState{models.StateReview},
+			wantText:  "fix bug",
 		},
 		{
-			name:       "multiple statuses",
-			input:      "$review $standby",
-			wantStatus: []models.TaskStatus{models.StatusReview, models.StatusStandby},
+			name:      "multiple states",
+			input:     "$review $paused",
+			wantState: []models.WorkflowState{models.StateReview, models.StatePaused},
 		},
 	}
 
@@ -187,15 +187,14 @@ func TestParseSearchQuery_AllStatuses(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ParseSearchQuery(tt.input)
 
-			if len(result.Statuses) != len(tt.wantStatus) {
-				t.Fatalf("ParseSearchQuery(%q).Statuses = %v, want %v", tt.input, result.Statuses, tt.wantStatus)
+			if len(result.States) != len(tt.wantState) {
+				t.Fatalf("ParseSearchQuery(%q).States = %v, want %v", tt.input, result.States, tt.wantState)
 			}
-			for i, s := range result.Statuses {
-				if s != tt.wantStatus[i] {
-					t.Errorf("ParseSearchQuery(%q).Statuses[%d] = %q, want %q", tt.input, i, s, tt.wantStatus[i])
+			for i, s := range result.States {
+				if s != tt.wantState[i] {
+					t.Errorf("ParseSearchQuery(%q).States[%d] = %q, want %q", tt.input, i, s, tt.wantState[i])
 				}
 			}
-
 			if result.TextQuery != tt.wantText {
 				t.Errorf("ParseSearchQuery(%q).TextQuery = %q, want %q", tt.input, result.TextQuery, tt.wantText)
 			}
@@ -203,58 +202,10 @@ func TestParseSearchQuery_AllStatuses(t *testing.T) {
 	}
 }
 
-func TestTaskMatchesFilters_SectionMatchesGTDOnly(t *testing.T) {
-	gtdTask := &models.Task{
-		Title:         "GTD task",
-		WorkflowState: models.StateNext,
-	}
-	activeTask := &models.Task{
-		Title: "Active task",
-	}
-	bothTask := &models.Task{
-		Title:         "Both task",
-		WorkflowState: models.StateNext,
-	}
-
-	tests := []struct {
-		name    string
-		task    *models.Task
-		section string
-		want    bool
-	}{
-		{"GTD section matches GTD task", gtdTask, "Next", true},
-		{"GTD section does not match empty task", activeTask, "Next", false},
-		{"non-GTD section does not match empty task", activeTask, "Design", false},
-		{"non-GTD section does not match GTD task", gtdTask, "Design", false},
-		{"non-GTD section does not match task with GTD section", bothTask, "Design", false},
-		{"GTD section matches task with both", bothTask, "Next", true},
-		{"case insensitive non-GTD section does not match", activeTask, "design", false},
-		{"no section filter matches all", gtdTask, "", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			filters := &ParsedSearchQuery{Section: tt.section}
-			got := TaskMatchesFilters(tt.task, filters)
-			if got != tt.want {
-				t.Errorf("TaskMatchesFilters(section=%q) = %v, want %v", tt.section, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestTaskMatchesFilters_SectionViaSearchQuery(t *testing.T) {
-	task := &models.Task{
-		Title:         "My task",
-		WorkflowState: models.StateReady,
-	}
-
+func TestParseSearchQuery_RetiredSectionSyntaxRemainsText(t *testing.T) {
 	filters := ParseSearchQuery("/Design")
-	if filters.Section != "Design" {
-		t.Fatalf("ParseSearchQuery(/Design).Section = %q, want %q", filters.Section, "Design")
-	}
-	if TaskMatchesFilters(task, filters) {
-		t.Error("TaskMatchesFilters should not match non-GTD section via /Design search query")
+	if filters.TextQuery != "/Design" {
+		t.Fatalf("ParseSearchQuery(/Design) text = %q; want literal text", filters.TextQuery)
 	}
 }
 
@@ -270,14 +221,8 @@ func TestParseSearchQuery_RetiresQueueMembershipFilters(t *testing.T) {
 	}
 
 	filters := ParseSearchQuery("/Active")
-	if filters.Section != "Active" {
-		t.Fatalf("ParseSearchQuery(/Active).Section = %q, want Active", filters.Section)
-	}
-	if !TaskMatchesFilters(&models.Task{WorkflowState: models.StateReady}, filters) {
-		t.Error("/Active should match the built-in Active section")
-	}
-	if TaskMatchesFilters(&models.Task{WorkflowState: models.StateNext}, filters) {
-		t.Error("/Active should not match tasks in another built-in section")
+	if filters.TextQuery != "/Active" {
+		t.Fatalf("ParseSearchQuery(/Active) text = %q; want literal text", filters.TextQuery)
 	}
 }
 
@@ -464,10 +409,9 @@ func TestHasTaskOnlyFilters(t *testing.T) {
 		{"is state only", &ParsedSearchQuery{IsState: []string{"pinned"}}, false},
 		{"tags only", &ParsedSearchQuery{Tags: []string{"backend"}}, false},
 		{"priorities", &ParsedSearchQuery{Priorities: []int{1}}, true},
-		{"statuses", &ParsedSearchQuery{Statuses: []models.TaskStatus{models.StatusTodo}}, true},
+		{"states", &ParsedSearchQuery{States: []models.WorkflowState{models.StateReady}}, true},
 		{"types", &ParsedSearchQuery{Types: []models.TaskType{models.TaskTypeBug}}, true},
 		{"due date", &ParsedSearchQuery{DueDateFilter: "today"}, true},
-		{"section", &ParsedSearchQuery{Section: "next"}, true},
 		{"task-only + shared", &ParsedSearchQuery{Priorities: []int{1}, Tags: []string{"x"}}, true},
 	}
 
@@ -480,18 +424,18 @@ func TestHasTaskOnlyFilters(t *testing.T) {
 	}
 }
 
-func TestParseSearchQuery_CaseInsensitiveStatusAndDueDate(t *testing.T) {
+func TestParseSearchQuery_CaseInsensitiveStateAndDueDate(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
-		wantStatus []models.TaskStatus
-		wantDue    string
-		wantText   string
+		name      string
+		input     string
+		wantState []models.WorkflowState
+		wantDue   string
+		wantText  string
 	}{
-		{"uppercase status", "$TODO", []models.TaskStatus{models.StatusTodo}, "", ""},
-		{"mixed case status", "$Todo", []models.TaskStatus{models.StatusTodo}, "", ""},
-		{"uppercase in_progress", "$IN_PROGRESS", []models.TaskStatus{models.StatusInProgress}, "", ""},
-		{"mixed case Review", "$Review", []models.TaskStatus{models.StatusReview}, "", ""},
+		{"uppercase state", "$INBOX", []models.WorkflowState{models.StateInbox}, "", ""},
+		{"mixed case state", "$Ready", []models.WorkflowState{models.StateReady}, "", ""},
+		{"uppercase in_progress", "$IN_PROGRESS", []models.WorkflowState{models.StateInProgress}, "", ""},
+		{"mixed case Review", "$Review", []models.WorkflowState{models.StateReview}, "", ""},
 		{"uppercase due date", "@TODAY", nil, "today", ""},
 		{"mixed case due date", "@Today", nil, "today", ""},
 		{"uppercase overdue", "@OVERDUE", nil, "overdue", ""},
@@ -500,12 +444,12 @@ func TestParseSearchQuery_CaseInsensitiveStatusAndDueDate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := ParseSearchQuery(tt.input)
-			if len(r.Statuses) != len(tt.wantStatus) {
-				t.Fatalf("Statuses = %v, want %v", r.Statuses, tt.wantStatus)
+			if len(r.States) != len(tt.wantState) {
+				t.Fatalf("States = %v, want %v", r.States, tt.wantState)
 			}
-			for i, s := range r.Statuses {
-				if s != tt.wantStatus[i] {
-					t.Errorf("Statuses[%d] = %q, want %q", i, s, tt.wantStatus[i])
+			for i, s := range r.States {
+				if s != tt.wantState[i] {
+					t.Errorf("States[%d] = %q, want %q", i, s, tt.wantState[i])
 				}
 			}
 			if r.DueDateFilter != tt.wantDue {

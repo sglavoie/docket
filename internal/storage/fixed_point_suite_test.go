@@ -14,30 +14,30 @@ import (
 func TestRoundTrip_KitchenSinkParseWriteFixedPoint(t *testing.T) {
 	project := newStorageFixedPointProject(t, "", "peer-project")
 
-	seed := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
+	seed := WriteTasksMarkdownWithProjectMetadata(project.Name, project.Tasks, project.Tags, project.PinnedTags)
 
-	result1, err := ParseTasksMarkdownWithSections(seed)
+	result1, err := ParseTasksMarkdownDocument(seed)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections(seed): %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument(seed): %v", err)
 	}
 	if len(result1.Warnings) != 0 {
 		t.Fatalf("expected no parse warnings on first parse, got %v", result1.Warnings)
 	}
 
-	written1 := WriteTasksMarkdownWithSections(result1.ProjectName, result1.Tasks, result1.Sections, result1.SectionColors)
+	written1 := WriteTasksMarkdownWithProjectMetadata(result1.ProjectName, result1.Tasks, result1.Tags, result1.PinnedTags)
 	if written1 != seed {
 		t.Fatalf("parse -> write changed canonical markdown:\n--- seed ---\n%s\n--- written1 ---\n%s", seed, written1)
 	}
 
-	result2, err := ParseTasksMarkdownWithSections(written1)
+	result2, err := ParseTasksMarkdownDocument(written1)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections(written1): %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument(written1): %v", err)
 	}
 	if len(result2.Warnings) != 0 {
 		t.Fatalf("expected no parse warnings on second parse, got %v", result2.Warnings)
 	}
 
-	written2 := WriteTasksMarkdownWithSections(result2.ProjectName, result2.Tasks, result2.Sections, result2.SectionColors)
+	written2 := WriteTasksMarkdownWithProjectMetadata(result2.ProjectName, result2.Tasks, result2.Tags, result2.PinnedTags)
 	if written2 != written1 {
 		t.Fatalf("parse -> write -> parse -> write did not reach fixed point:\n--- written1 ---\n%s\n--- written2 ---\n%s", written1, written2)
 	}
@@ -45,8 +45,6 @@ func TestRoundTrip_KitchenSinkParseWriteFixedPoint(t *testing.T) {
 	if result1.ProjectName != project.Name {
 		t.Fatalf("project name = %q, want %q", result1.ProjectName, project.Name)
 	}
-	assertSectionsAndColors(t, result1.Sections, []string{models.SectionNext}, result1.SectionColors, map[string]string{})
-	assertSectionsAndColors(t, result2.Sections, []string{models.SectionNext}, result2.SectionColors, map[string]string{})
 	assertKitchenSinkRoundTrip(t, result1.Tasks, project.Tasks)
 	assertKitchenSinkRoundTrip(t, result2.Tasks, project.Tasks)
 }
@@ -85,7 +83,6 @@ func TestRoundTrip_KitchenSinkSaveLoadSaveFixedPoint(t *testing.T) {
 		t.Fatalf("expected no load warnings, got %v", result.Warnings)
 	}
 
-	assertSectionsAndColors(t, loaded.GetSections(), project.GetSections(), loaded.SectionColors, map[string]string{})
 	assertKitchenSinkRoundTrip(t, loaded.Tasks, project.Tasks)
 	assertLoadedHierarchy(t, loaded.Tasks)
 
@@ -116,20 +113,6 @@ func newStorageFixedPointProject(t *testing.T, projectPath, peerSlug string) *mo
 	project := testutil.NewTestProject("Storage Fixed Point")
 	project.Slug = "storage-fixed-point"
 	project.Path = projectPath
-	project.Sections = []string{
-		models.SectionNext,
-		models.SectionInbox,
-		models.SectionWaiting,
-		models.SectionSomeday,
-		models.SectionReview,
-		models.SectionStandby,
-		models.SectionCompleted,
-	}
-	project.SectionColors = map[string]string{
-		models.SectionInbox:   "blue",
-		models.SectionWaiting: "orange",
-	}
-
 	epic, err := models.NewTask("epic-fixed", 1, models.TaskTypeEpic, "Storage invariants")
 	if err != nil {
 		t.Fatal(err)
@@ -425,16 +408,6 @@ func assertTaskTimePtrField(t *testing.T, taskID, field string, got, want *time.
 	t.Helper()
 	if !equalTimePtr(got, want) {
 		t.Errorf("%s %s = %v, want %v", taskID, field, got, want)
-	}
-}
-
-func assertSectionsAndColors(t *testing.T, gotSections, wantSections []string, gotColors, wantColors map[string]string) {
-	t.Helper()
-	if !reflect.DeepEqual(gotSections, wantSections) {
-		t.Fatalf("sections = %v, want %v", gotSections, wantSections)
-	}
-	if !reflect.DeepEqual(gotColors, wantColors) {
-		t.Fatalf("section colors = %#v, want %#v", gotColors, wantColors)
 	}
 }
 

@@ -15,7 +15,7 @@ var taskParkCmd = &cobra.Command{
 	Short: "Park a task with a resume note",
 	Long: `Park a task with an optional one-line resume note.
 
-Parking records where you left off without changing task status.
+Parking records where you left off without changing task workflow state.
 If no ID is specified, opens an interactive selector.
 
 Examples:

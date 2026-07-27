@@ -28,9 +28,4 @@ var (
 
 	HelpFilterActiveStyle = lipgloss.NewStyle().
 				Foreground(ColorWarning)
-
-	FocusModeStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
-			Bold(true).
-			Background(ColorBackground)
 )

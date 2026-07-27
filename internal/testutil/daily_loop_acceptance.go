@@ -8,7 +8,7 @@ import "github.com/sglavoie/tt/internal/models"
 // migration tests can share one acceptance matrix.
 type LegacyLifecycleFixture struct {
 	ID      string
-	Status  models.TaskStatus
+	Status  string
 	Section string
 	Stage   string
 	Active  bool
@@ -20,20 +20,20 @@ type LegacyLifecycleFixture struct {
 // internal/storage/testdata/legacy_workspace.
 func DailyLoopLegacyLifecycleFixtures() []LegacyLifecycleFixture {
 	return []LegacyLifecycleFixture{
-		{ID: "legacy-cancel-1", Status: models.StatusCanceled, State: models.StateCanceled},
-		{ID: "legacy-done-1", Status: models.StatusDone, State: models.StateDone},
-		{ID: "legacy-done-2", Status: models.StatusTodo, Section: models.SectionCompleted, State: models.StateDone},
-		{ID: "legacy-review-1", Status: models.StatusReview, State: models.StateReview},
-		{ID: "legacy-review-section-1", Status: models.StatusTodo, Section: models.SectionReview, State: models.StateReview},
-		{ID: "legacy-inprogress-1", Status: models.StatusInProgress, State: models.StateInProgress},
-		{ID: "legacy-blocked-1", Status: models.StatusBlocked, State: models.StateWaiting},
-		{ID: "legacy-waiting-1", Status: models.StatusTodo, Section: models.SectionWaiting, State: models.StateWaiting},
-		{ID: "legacy-standby-1", Status: models.StatusStandby, Section: models.SectionStandby, State: models.StatePaused},
-		{ID: "legacy-maybe-1", Status: models.StatusMaybe, Section: models.SectionSomeday, State: models.StateSomeday},
-		{ID: "legacy-inbox-1", Status: models.StatusTodo, Section: models.SectionInbox, State: models.StateInbox},
-		{ID: "legacy-next-1", Status: models.StatusTodo, Section: models.SectionNext, State: models.StateNext},
-		{ID: "legacy-active-1", Status: models.StatusTodo, Active: true, State: models.StateReady},
-		{ID: "legacy-stage-1", Status: models.StatusTodo, Stage: "Brainstorm", State: models.StateReady},
+		{ID: "legacy-cancel-1", Status: "canceled", State: models.StateCanceled},
+		{ID: "legacy-done-1", Status: "done", State: models.StateDone},
+		{ID: "legacy-done-2", Status: "todo", Section: "Completed", State: models.StateDone},
+		{ID: "legacy-review-1", Status: "review", State: models.StateReview},
+		{ID: "legacy-review-section-1", Status: "todo", Section: "Review", State: models.StateReview},
+		{ID: "legacy-inprogress-1", Status: "in_progress", State: models.StateInProgress},
+		{ID: "legacy-blocked-1", Status: "blocked", State: models.StateWaiting},
+		{ID: "legacy-waiting-1", Status: "todo", Section: "Waiting", State: models.StateWaiting},
+		{ID: "legacy-standby-1", Status: "standby", Section: "Standby", State: models.StatePaused},
+		{ID: "legacy-maybe-1", Status: "maybe", Section: "Someday", State: models.StateSomeday},
+		{ID: "legacy-inbox-1", Status: "todo", Section: "Inbox", State: models.StateInbox},
+		{ID: "legacy-next-1", Status: "todo", Section: "Next", State: models.StateNext},
+		{ID: "legacy-active-1", Status: "todo", Active: true, State: models.StateReady},
+		{ID: "legacy-stage-1", Status: "todo", Stage: "Brainstorm", State: models.StateReady},
 	}
 }
 
@@ -43,7 +43,7 @@ func DailyLoopLegacyLifecycleFixtures() []LegacyLifecycleFixture {
 // cross-package acceptance seam.
 type WorkflowStateAcceptance struct {
 	State         models.WorkflowState
-	LegacyStatus  models.TaskStatus
+	LegacyStatus  string
 	LegacySection string
 	LegacyStage   string
 	Terminal      bool
@@ -53,16 +53,16 @@ type WorkflowStateAcceptance struct {
 // accepted public order.
 func DailyLoopWorkflowStateAcceptance() []WorkflowStateAcceptance {
 	return []WorkflowStateAcceptance{
-		{State: models.StateInbox, LegacyStatus: models.StatusTodo, LegacySection: models.SectionInbox},
-		{State: models.StateReady, LegacyStatus: models.StatusTodo},
-		{State: models.StateNext, LegacyStatus: models.StatusTodo, LegacySection: models.SectionNext},
-		{State: models.StateInProgress, LegacyStatus: models.StatusInProgress},
-		{State: models.StateWaiting, LegacyStatus: models.StatusBlocked, LegacySection: models.SectionWaiting},
-		{State: models.StatePaused, LegacyStatus: models.StatusStandby, LegacySection: models.SectionStandby},
-		{State: models.StateReview, LegacyStatus: models.StatusReview, LegacySection: models.SectionReview, LegacyStage: models.SectionReview},
-		{State: models.StateSomeday, LegacyStatus: models.StatusMaybe, LegacySection: models.SectionSomeday},
-		{State: models.StateDone, LegacyStatus: models.StatusDone, LegacySection: models.SectionCompleted, Terminal: true},
-		{State: models.StateCanceled, LegacyStatus: models.StatusCanceled, Terminal: true},
+		{State: models.StateInbox, LegacyStatus: "todo", LegacySection: "Inbox"},
+		{State: models.StateReady, LegacyStatus: "todo"},
+		{State: models.StateNext, LegacyStatus: "todo", LegacySection: "Next"},
+		{State: models.StateInProgress, LegacyStatus: "in_progress"},
+		{State: models.StateWaiting, LegacyStatus: "blocked", LegacySection: "Waiting"},
+		{State: models.StatePaused, LegacyStatus: "standby", LegacySection: "Standby"},
+		{State: models.StateReview, LegacyStatus: "review", LegacySection: "Review", LegacyStage: "Review"},
+		{State: models.StateSomeday, LegacyStatus: "maybe", LegacySection: "Someday"},
+		{State: models.StateDone, LegacyStatus: "done", LegacySection: "Completed", Terminal: true},
+		{State: models.StateCanceled, LegacyStatus: "canceled", Terminal: true},
 	}
 }
 

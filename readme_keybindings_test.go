@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -45,243 +44,174 @@ func TestReadFileForContractTestUsesStableBaseDir(t *testing.T) {
 	}
 }
 
-func TestREADMECommandPaletteBindingStaysCurrent(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
-
-	forbidden := []*regexp.Regexp{
-		regexp.MustCompile(`(?i)###\s*command palette\s*\(\s*ctrl\+p\s*\)`),
-		regexp.MustCompile("(?i)command palette:\\s*`?ctrl\\+p`?"),
-		regexp.MustCompile("(?i)`?ctrl\\+p`?\\s*:\\s*command palette"),
-	}
-
-	for _, pattern := range forbidden {
-		if pattern.MatchString(content) {
-			t.Fatalf("README contains stale command palette binding text matching %q", pattern.String())
+func requireDocumentationText(t *testing.T, content string, required []string) {
+	t.Helper()
+	content = strings.Join(strings.Fields(content), " ")
+	for _, needle := range required {
+		if !strings.Contains(content, strings.Join(strings.Fields(needle), " ")) {
+			t.Errorf("documentation missing %q", needle)
 		}
-	}
-
-	// The lean README mentions `:` for the command palette inline;
-	// detailed keybinding docs live in-app (tutor / ? help).
-	if !strings.Contains(content, "`:`") {
-		t.Fatal("README should mention the `:` command palette shortcut")
 	}
 }
 
-func TestREADMEDescribesOutlinerAllDefault(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+func rejectDocumentationText(t *testing.T, content string, forbidden []string) {
+	t.Helper()
+	content = strings.Join(strings.Fields(content), " ")
+	for _, needle := range forbidden {
+		if strings.Contains(content, strings.Join(strings.Fields(needle), " ")) {
+			t.Errorf("documentation contains retired text %q", needle)
+		}
+	}
+}
 
-	required := []string{
+func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
 		"`tt` opens on the Outliner in global All by default",
 		"press `Ctrl+Esc` to return to that root from anywhere",
-	}
-	for _, needle := range required {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing Outliner All default text: %q", needle)
-		}
-	}
-
-	// The retired Home/Ctrl+G destination model must not reappear in user-facing copy.
-	for _, stale := range []string{
-		"opens on Home by default",
-		"Press `Ctrl+G` for Home",
-		"Open the TUI on Home",
-	} {
-		if strings.Contains(content, stale) {
-			t.Fatalf("README contains retired Home/Ctrl+G navigation text: %q", stale)
-		}
-	}
+		"capture, triage, plan, execute, and complete",
+		"`Tab` cycles All → Inbox → Next → Backlog",
+		"All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked,",
+		"Daily Review, and Activity",
+		"Today, In Progress, Inbox, Next, Backlog, Review,",
+		"Waiting, Paused, and Someday",
+	})
+	rejectDocumentationText(t, content, []string{
+		"Next → Backlog → Active → All",
+		"workflow perspective",
+		"Command Palette",
+		"command palette",
+		"Inbox Processor",
+		"prefix menu",
+		"`Ctrl+X`",
+		"`Ctrl+G`",
+		"`q` to toggle",
+		"`w` to toggle",
+	})
 }
 
-func TestREADMEDescribesSessionOnlyContextScope(t *testing.T) {
+func TestREADMEDocumentsStableKeysAndActionSheets(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
-
-	required := []string{
-		"Press `C` to open Contexts",
-		"The active context is the Outliner's project scope for the current session",
-		"is never persisted across runs",
-		"Custom contexts name a hand-picked group of projects and stay machine-local",
-	}
-	for _, needle := range required {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing session-only context scope text: %q", needle)
-		}
-	}
-
-	// The retired ad-hoc project-subset filter must not reappear in user-facing copy.
-	lowered := strings.ToLower(content)
-	for _, stale := range []string{"`f p`", "filter by project", "project filter"} {
-		if strings.Contains(lowered, stale) {
-			t.Fatalf("README contains retired project-filter text: %q", stale)
-		}
-	}
+	requireDocumentationText(t, content, []string{
+		"`a` capture, `e` edit, `s` start, `d` done, `b` Backlog, `t` Today, `n` Next, `Space` actions",
+		"`/` visible search, `:` Finder, `m` modes, `c` Scope Hub, `v` multi-select",
+		"`N` Notes, `R` Weekly Review, `T` Tags, `!` Notifications",
+		"`u` undo, `Ctrl+R` redo, `Esc` back, `Ctrl+Esc` reset, `?` help, `Ctrl+C` quit",
+		"In multi-select, `Space` toggles the current task and `Enter` opens bulk actions",
+		"Delete is available only from an action sheet and always requires confirmation",
+	})
 }
 
-func TestREADMEUsesUppercaseVMultiSelectBinding(t *testing.T) {
+func TestREADMEDocumentsScopeFinderAndPromotedTools(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
-
-	// The lean README no longer lists individual keybindings;
-	// just ensure stale lowercase binding isn't present.
-	if strings.Contains(content, "`v`: Toggle multi-select mode") {
-		t.Fatal("README contains stale lowercase multi-select binding")
-	}
+	requireDocumentationText(t, content, []string{
+		"Press `c` to open the Scope Hub",
+		"Scope is session-owned and never persisted across runs",
+		"Notes opens project notes in project focus and global scratch notes in a base scope",
+		"Weekly Review and Tags receive the active scope's project set",
+		"Notifications remains global",
+		"Press `:` for Finder",
+		"Empty Finder input shows a short, bounded list of recent destinations",
+		"Pinned, recent, and saved-filter entries are discovery results",
+	})
+	rejectDocumentationText(t, strings.ToLower(content), []string{
+		"`f p`",
+		"project filter popup",
+		"saved-filter tabs",
+		"pinned tag tabs",
+	})
 }
 
-func TestREADMECLIContractStaysCurrent(t *testing.T) {
+func TestREADMEDocumentsCanonicalStateAndPlanning(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"inbox  ready  next  in_progress  waiting",
+		"paused  review  someday  done  canceled",
+		"Dependency blocking is derived",
+		"`b` sets Ready and removes Today and Next membership",
+		"`n` sets Next and removes Today",
+		"`t` toggles Today",
+		"Today and Next are mutually exclusive",
+		"Focus Queue is only an optional ordering index",
+		"Lifecycle input uses `$state` or `state:<value>`",
+	})
+	rejectDocumentationText(t, content, []string{
+		"Active section",
+		"Standby",
+		"task status",
+		"--section",
+		"--status",
+		"/inbox",
+		"/next",
+	})
+}
 
-	// Ensure stale patterns from the old exhaustive README are gone.
-	forbidden := []string{
-		"tt project new [name]",
-		"tt project show <name|id>",
-		"tt project edit <name|id>",
-		"tt project archive <name|id>",
-		"tt project delete <name|id>",
-		"tt project open <name|id>",
-		"tt project pin <name|id>",
-		"interactive if no name",
-		"tt task move-to <id> <target-id>",
-		"tt task depends add <id> <blocker-id>",
-		"tt note add [title]",
-		"--tags <t1,t2>",
-		"Configuration is stored at `~/.tt.json`",
-	}
-
-	for _, needle := range forbidden {
-		if strings.Contains(content, needle) {
-			t.Fatalf("README contains stale CLI contract text: %q", needle)
-		}
-	}
-
-	// The lean README mentions the data directory and key commands,
-	// but no longer has an exhaustive CLI reference.
-	required := []string{
-		"~/.tt/",
-		"iCloud Drive",
-		"never synced",
-		"tt task add",
-		"tt project",
+func TestREADMECLIAndStorageContractStaysCurrent(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"tt task add \"Deploy\" --state next",
+		"tt task list --state ready",
+		"tt task state in_progress 12",
+		"tt task reopen 12 # Return terminal work to Inbox",
 		"tt task archive list",
 		"completed.md",
 		".completed.index.json",
-	}
-
-	for _, needle := range required {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing expected text: %q", needle)
-		}
-	}
-}
-
-func TestREADMEUndoCommandDescribesMutation(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
-
-	if strings.Contains(content, "tt undo                         # Inspect undo history") {
-		t.Fatal("README describes mutating undo command as a read-only history inspection")
-	}
-
-	if !strings.Contains(content, "tt undo                         # Restore previous task state") {
-		t.Fatal("README should describe tt undo as restoring previous task state")
-	}
-}
-
-func TestREADMEDocumentsParkedFiltering(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
-
-	required := []string{
-		"tt task list --parked",
-		"`Fk`",
-		"Filter parked tasks",
-		"Task Workspace exposes fixed built-in focuses such as Active, Parked",
-		"saved filters change query semantics",
-		"without becoming navigation tabs",
-	}
-	for _, needle := range required {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("README missing parked filtering text: %q", needle)
-		}
-	}
-
-	for _, stale := range []string{"built-in All Tasks tabs", "saved-filter tabs behind `More…`"} {
-		if strings.Contains(content, stale) {
-			t.Fatalf("README contains retired tab-navigation text: %q", stale)
-		}
-	}
+		"tt undo # Restore previous task state",
+		"local `~/.tt/` workspace by default",
+		"iCloud is used only after explicit selection",
+		"not converted automatically",
+		"`--force` skips only the confirmation prompt",
+		"docs/architecture.md",
+		"just tui-scenarios",
+	})
+	rejectDocumentationText(t, content, []string{
+		"Configuration is stored at `~/.tt.json`",
+		"tt task move-to <id> <target-id>",
+		"tt task depends add <id> <blocker-id>",
+	})
 }
 
 func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "cmd/cli-reference.md")
 
-	forbidden := []string{
+	rejectDocumentationText(t, content, []string{
 		"config file path (default: ~/.tt.json)",
 		"config file path (default: ~/.tt/.tt.json)",
 		"'editor' field in ~/.tt.json",
 		"'editor' field in ~/.tt/.tt.json",
-		"The project directory is moved to ~/.tt/trash/ and can be restored later.",
-		"Export a project to a human-readable Markdown file in ~/.tt/exports/<slug>.md.",
 		"Usage: tt project archive [name|id] [flags]",
 		"Usage: tt project delete [name|id] [flags]",
-		"Usage: tt project open [name|id] [flags]",
-		"Usage: tt project pin [name|id] [flags]",
-		"Usage: tt project show [name|id] [flags]",
-		"Usage: tt project unarchive [name|id] [flags]",
-		"The project directory is moved to ~/.tt-data/.trash/ and can be restored later.",
-		"Projects can be specified by name, slug, or ID.",
-		"tt select my-project   # Select by name/slug directly",
-		"Manage focus board actions",
-		"Commands for managing focus board actions",
-		"Add a new action to the focus board",
 		"Tasks are added to the daily plan by pressing 'w'",
-		"Show the Planner's Next shortlist",
-		"Plan work from the Today cockpit",
-		"';q' opens Planner/Next",
-		"';w' opens Planner/Today",
-		// The legacy --config help predates the local-first workspace flow: the
-		// flag is now a deprecated isolation alias and --data-dir is canonical.
-		"config file path (default: ~/.tt/.tt.json, or the iCloud Drive tt folder when available)",
-	}
+		"Press 'q' to toggle",
+		"Press 'w' on a task",
+		"built-in Today section",
+		"Sections are preserved if they are built-in GTD sections",
+		"changes to status, priority, section",
+		"Set one or more tasks back to todo status",
+		"Tags group tasks across the built-in GTD sections",
+		"cross-project tag tabs",
+	})
 
-	for _, needle := range forbidden {
-		if strings.Contains(content, needle) {
-			t.Fatalf("CLI reference contains stale generated text: %q", needle)
-		}
-	}
-
-	required := []string{
-		// Local-first workspace flow: --config is a deprecated isolation alias,
-		// --data-dir is the canonical selector, and `tt workspace` relocates data.
+	requireDocumentationText(t, content, []string{
 		"deprecated: isolate a workspace at this config file's directory",
 		"workspace data directory (env TT_DATA_DIR; default: ~/.tt",
 		"## tt workspace",
-		"## tt workspace location",
-		"## tt workspace move",
 		"Usage: tt workspace move <destination> [flags]",
 		"'editor' field in the tt config file",
-		"The project directory is moved to the trash/ folder in your tt data directory and can be restored later.",
-		"Export a project to a human-readable Markdown file in the exports/ folder of your tt data directory.",
 		"## tt task archive list",
 		"Usage: tt task archive show <id-or-prefix> [flags]",
-		"## tt task archive rebuild-index",
 		"completed.md and completed.N.md",
 		"Usage: tt project archive <slug-or-id> [flags]",
-		"Usage: tt project delete <slug-or-id> [flags]",
-		"Usage: tt project open [slug-or-id] [flags]",
-		"Usage: tt project pin <slug-or-id> [flags]",
-		"Usage: tt project show [slug-or-id] [flags]",
-		"Usage: tt project unarchive <slug-or-id> [flags]",
 		"Projects can be specified by slug or ID.",
-		"tt select my-project   # Select by slug or ID directly",
 		"Show the Outliner's Next shortlist (StateNext tasks)",
-		"press Tab to cycle the Outliner's work modes",
-		"Press 'q' to toggle",
+		"Press 'n' to toggle",
 		"selected task's Next membership",
-		"built-in Today section at the top of the Outliner's",
+		"synthetic Today group at the top of the Outliner's",
+		"Press 't' on a task",
+		"Canonical workflow state is preserved",
+		"records changes to state, priority, tags",
+		"Reopen one or more terminal tasks in Inbox for triage",
 		"tt task list --parked     # Show parked tasks only",
 		"--parked bool    show parked tasks only",
-	}
-
-	for _, needle := range required {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("CLI reference missing expected generated text: %q", needle)
-		}
-	}
+	})
 }

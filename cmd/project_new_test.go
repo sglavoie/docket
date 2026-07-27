@@ -323,37 +323,6 @@ func TestProjectSlugUniqueness(t *testing.T) {
 	testutil.AssertEqual(t, project1.Slug, newSlug)
 }
 
-func TestProjectSections(t *testing.T) {
-	project, err := models.NewProject("test-id", "Test", "/path")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Initially has Next section by default
-	testutil.AssertEqual(t, len(project.Sections), 1)
-	if !project.HasSection(models.SectionNext) {
-		t.Error("project should have default Next section")
-	}
-
-	// Ensure a built-in section
-	project.EnsureSection(models.SectionInbox)
-	if !project.HasSection(models.SectionInbox) {
-		t.Error("project should have Inbox section")
-	}
-
-	// Ensure same section again - should not duplicate
-	project.EnsureSection(models.SectionInbox)
-	inboxCount := 0
-	for _, s := range project.Sections {
-		if s == models.SectionInbox {
-			inboxCount++
-		}
-	}
-	if inboxCount != 1 {
-		t.Errorf("expected 1 Inbox section, got %d", inboxCount)
-	}
-}
-
 func TestProjectAddTask(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 

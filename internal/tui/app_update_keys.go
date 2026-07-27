@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"time"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
@@ -12,34 +10,6 @@ import (
 // currentViewAsModel returns the current view as a tea.Model for interface assertions.
 func (m *AppModel) currentViewAsModel() tea.Model {
 	return m.activeView()
-}
-
-// handleGlobalClipboard handles y/Y/ctrl+y clipboard operations for the current view.
-// Returns (handled, cmd). If the view doesn't support clipboard, returns (false, nil)
-// so the key falls through to the view's own Update().
-func (m *AppModel) handleGlobalClipboard(key string) (bool, tea.Cmd) {
-	type multiSelector interface {
-		getCursorTask() *models.Task
-		getMultiSelectedTasks() []*models.Task
-		clearMultiSelect()
-	}
-	if mv, ok := m.currentViewAsModel().(multiSelector); ok {
-		return handleClipboardKey(key,
-			func() *models.Task { return mv.getCursorTask() },
-			func() []*models.Task { return mv.getMultiSelectedTasks() },
-			mv.clearMultiSelect,
-		)
-	}
-
-	type taskRefProvider interface {
-		getTaskRef() (*models.Task, *models.Project)
-	}
-	if tv, ok := m.currentViewAsModel().(taskRefProvider); ok {
-		task, _ := tv.getTaskRef()
-		return handleClipboardKey(key, func() *models.Task { return task }, nil, nil)
-	}
-
-	return false, nil
 }
 
 type taskReferenceProvider interface {
@@ -145,221 +115,25 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	if handled, cmd := m.handleInvalidManageProjectScope(); handled {
 		return true, cmd
 	}
-	if m.currentView() != ViewDashboard || m.activeOutlinerRoute() {
-		if handled, cmd := m.validateCurrentProject(); handled {
-			return true, tea.Batch(cmd, defaultStatusTimeout())
-		}
+	if handled, cmd := m.validateCurrentProject(); handled {
+		return true, tea.Batch(cmd, defaultStatusTimeout())
 	}
-	// The exact non-preemptive global map is suppressed while the active
-	// control captures text. Ctrl+C, Ctrl+Esc, and Esc were handled above.
-	switch key {
-	case "ctrl+n":
-		if !m.typedNavigation {
-			break
-		}
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowQuickCaptureMsg{} }
-		}
-	case "ctrl+x":
-		if !m.hasActiveTextInput() {
-			// The Outliner is the sole primary root, so Ctrl+X always opens the
-			// unified scope/administration picker (All Projects, Active, Archived,
-			// Trash) in place without leaving the view.
-			return true, func() tea.Msg {
-				return ShowScopePickerMsg{}
-			}
-		}
-	case ":":
-		if !m.hasActiveTextInput() {
-			return true, func() tea.Msg { return ShowCommandPaletteMsg{} }
-		}
-	case "?":
-		if !m.hasActiveTextInput() {
-			view := m.currentView()
-			items := GetKeybindingRegistry().GetForView(view)
-			viewName := view.String()
-			if review, ok := m.activeView().(*ReviewHubModel); ok {
-				items = review.GetHelpItems()
-				viewName = review.StatusBarLabel()
-			} else if manage, ok := m.activeView().(*ManageHubModel); ok {
-				items = manage.GetHelpItems()
-				viewName = manage.StatusBarLabel()
-			} else if detail, ok := m.activeView().(*TaskDetailModel); ok {
-				items = detail.GetHelpItems()
-				viewName = detail.StatusBarLabel()
-			}
-			return true, func() tea.Msg {
-				return ShowHelpMsg{SourceView: view, ViewName: viewName, Items: items}
-			}
-		}
-	case "|":
-		if !m.hasActiveTextInput() {
-			return true, m.handleQuickSwitchToggle()
-		}
-	case "#":
-		if !m.hasActiveTextInput() && !m.hasActivePendingPrefix() {
-			return true, m.handlePinnedPopupToggle()
-		}
-	case "q":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
-			break
-		}
-		// The Outliner is the sole primary root, so q must reach the durable
-		// Next-membership toggle here (the view has no local q binding). Only the
-		// retired Planner keeps its own Today-grammar handling.
-		if m.currentView() == ViewFocusBoard {
-			break
-		}
-		if cmd := m.toggleQueue(); cmd != nil {
-			return true, cmd
-		}
-		return true, nil
-	case "w":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() {
-			break
-		}
-		// As with q, w drives the durable Today-membership toggle from the
-		// Outliner root; the retired Planner is the only exception.
-		if m.currentView() == ViewFocusBoard {
-			break
-		}
-		if cmd := m.toggleDailyPlan(); cmd != nil {
-			return true, cmd
-		}
-	case "u":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
-			break
-		}
-		// Inline undo toast: when an undo-available toast is on screen,
-		// `u` triggers its callback rather than the view-local undo
-		// (queue/daily-plan toggle). The toast wins because it is the
-		// most recent destructive action the user just took.
-		if m.statusUndoCb != nil && time.Now().Before(m.statusExpiresAt) {
-			cb := m.statusUndoCb
-			m.clearStatus()
-			return true, cb()
-		}
-		if cmd := m.handleUndoToggle(); cmd != nil {
-			return true, cmd
-		}
-		if cmd := m.handleGlobalTaskUndo(); cmd != nil {
-			return true, cmd
-		}
-		if m.currentViewUsesTodaySimpleGrammar() {
-			return true, nil
-		}
-	case "ctrl+r":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
-			break
-		}
-		if cmd := m.handleRedoToggle(); cmd != nil {
-			return true, cmd
-		}
-		if cmd := m.handleGlobalTaskRedo(); cmd != nil {
-			return true, cmd
-		}
-	case "y", "Y", "ctrl+y":
-		if m.currentViewUsesTodaySimpleGrammar() {
-			break
-		}
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
-			break
-		}
-		if m.activeTaskDetail() && m.taskDetail.Tab() != TaskOverview {
-			break
-		}
-		if handled, cmd := m.handleGlobalClipboard(msg.String()); handled {
-			return true, cmd
-		}
-	case "X":
-		// Uppercase X is canonical task deletion. Task Workspace and Planner route
-		// it through their own capability dispatchers; Task Detail has no item-level
-		// dispatcher for it, so the shell intercepts X across the Overview and every
-		// embedded tab and emits the canonical request. Armed confirmations, text
-		// inputs, pending prefixes, and modal overlays were already handled above,
-		// so a live text field or open picker never reaches here.
-		if !m.activeTaskDetail() {
-			break
-		}
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() {
-			break
-		}
-		task, project := m.taskDetail.getTaskRef()
-		if task == nil || project == nil {
-			break
-		}
-		return true, func() tea.Msg {
-			return TaskDeleteRequestedMsg{
-				Refs:   []TaskProjectRef{{Task: task, Project: project}},
-				Origin: ViewTaskDetail,
-			}
-		}
-	case "enter", "shift+enter":
-		if m.hasActiveTextInput() || m.hasActivePendingPrefix() || m.hasActiveConfirmDialog() || m.hasActiveMultiSelect() {
-			break
-		}
-		if m.activeTaskDetail() {
-			break
-		}
-		task, project := m.getCurrentCursorTaskAndProject()
-		if task == nil {
-			// Shift+Enter on a focused Outliner project header opens that
-			// project's contextual administration menu (preview + lifecycle
-			// commands) instead of peeking a task.
-			if key == "shift+enter" {
-				if p := m.crossOutlinerHeaderProject(); p != nil {
-					m.projectAdminMenu = newProjectAdminMenu(p)
-					return true, nil
-				}
-			}
-			return false, nil
-		}
-		if key == "shift+enter" {
-			m.activatePeek(task, project)
-			return true, nil
-		}
-		return true, func() tea.Msg { return ShowTaskDetailMsg{Task: task, Project: project} }
-	case ".":
-		if m.activeOutlinerRoute() {
-			break
-		}
-		if !m.hasActiveTextInput() && m.lastRepeatableAction != nil {
-			if pv, ok := m.currentViewAsModel().(prefixableView); ok {
-				if pv.getCursorTask() != nil {
-					return true, m.lastRepeatableAction.apply(pv)
-				}
-			}
-		}
+	view := m.currentView()
+	if key == ":" &&
+		view != ViewCrossProjectOutliner &&
+		!m.hasActiveTextInput() &&
+		!m.hasActiveConfirmDialog() {
+		return true, func() tea.Msg { return ShowFinderMsg{} }
 	}
-
+	if handled, cmd := m.handleSimplifiedInputKey(msg); handled {
+		return true, cmd
+	}
 	return false, nil
 }
 
-func (m *AppModel) currentViewUsesTodaySimpleGrammar() bool {
-	return m.currentView() == ViewFocusBoard
-}
-
-func (m *AppModel) handleGlobalTaskUndo() tea.Cmd {
-	return m.handleGlobalTaskUndoRedo(false)
-}
-
-func (m *AppModel) handleGlobalTaskRedo() tea.Cmd {
-	return m.handleGlobalTaskUndoRedo(true)
-}
-
-func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
-	if !m.currentViewSupportsGlobalTaskUndoRedo() {
-		return nil
-	}
-	_, project := m.getCurrentCursorTaskAndProject()
-	return m.performGlobalTaskUndoRedoForProject(project, redo)
-}
-
 // performGlobalTaskUndoRedoForProject applies the shell-owned ledger-vs-legacy
-// restore selection for the cursor project. It is the single seam shared by the
-// direct u/ctrl+r keys (via handleGlobalTaskUndoRedo) and the Task Workspace /
-// Planner palette adapters (via shellOwnedPaletteAction), so palette undo/redo
-// cannot drift from the keyboard behavior.
+// restore selection for the cursor project. Operation handlers share this seam
+// so action-sheet undo/redo cannot drift from the keyboard behavior.
 //
 // Application-service mutations commit to the durable workspace ledger, while a
 // few remaining paths (task archive) still record legacy per-project snapshots.
@@ -368,6 +142,9 @@ func (m *AppModel) handleGlobalTaskUndoRedo(redo bool) tea.Cmd {
 // shadows it.
 func (m *AppModel) performGlobalTaskUndoRedoForProject(project *models.Project, redo bool) tea.Cmd {
 	if project == nil {
+		if m.workspaceLedgerRestoreIsNewest(nil, redo) {
+			return m.handleLedgerTaskUndoRedo(redo)
+		}
 		return nil
 	}
 	if m.workspaceLedgerRestoreIsNewest(project, redo) {
@@ -390,14 +167,6 @@ func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
 	case ViewDailyReview,
 		ViewWeeklyReview,
 		ViewRecentActivity,
-		ViewFocusBoard,
-		// The single-project Outliner and Task Detail commit their mutations
-		// through the same workspace ledger as the views above, so their u/ctrl+r
-		// must select and restore that durable transaction (with the legacy
-		// per-project fallback retained only when it is genuinely newer). The
-		// cross-project Outliner keeps its own crossHandleUndo path and is
-		// intentionally excluded here.
-		ViewOutliner,
 		ViewTaskDetail:
 		return true
 	default:
@@ -425,32 +194,26 @@ func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if m.showQuickSwitch {
-		_, cmd := m.handleQuickSwitchKey(msg)
+	if m.operationValuePicker != nil {
+		dismiss, cmd := dispatchOverlayKey(m.operationValuePicker, msg)
+		if dismiss {
+			// The result message decides whether the sheet beneath should also
+			// close; cancellation returns to it.
+			m.operationValuePicker = nil
+		}
 		return true, cmd
 	}
-	if m.showPinnedPopup {
-		_, cmd := m.handlePinnedPopupKey(msg)
+	if m.taskActionSheet != nil {
+		dismiss, cmd := dispatchOverlayKey(m.taskActionSheet, msg)
+		if dismiss {
+			m.taskActionSheet = nil
+		}
 		return true, cmd
 	}
 	if m.quickNoteOverlay != nil {
 		dismiss, cmd := dispatchOverlayKey(m.quickNoteOverlay, msg)
 		if dismiss {
 			m.quickNoteOverlay = nil
-		}
-		return true, cmd
-	}
-	if m.globalProjectPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.globalProjectPicker, msg)
-		if dismiss {
-			m.globalProjectPicker = nil
-		}
-		return true, cmd
-	}
-	if m.scopePicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.scopePicker, msg)
-		if dismiss {
-			m.scopePicker = nil
 		}
 		return true, cmd
 	}
@@ -461,62 +224,5 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		return true, cmd
 	}
-	if m.globalTaskPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.globalTaskPicker, msg)
-		if dismiss {
-			m.globalTaskPicker = nil
-		}
-		return true, cmd
-	}
-	if m.statusQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.statusQuickPicker, msg)
-		if dismiss {
-			m.statusQuickPicker = nil
-		}
-		return true, cmd
-	}
-	if m.sectionQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.sectionQuickPicker, msg)
-		if dismiss {
-			m.sectionQuickPicker = nil
-		}
-		return true, cmd
-	}
-	if m.linkTypeQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.linkTypeQuickPicker, msg)
-		if dismiss {
-			m.linkTypeQuickPicker = nil
-		}
-		return true, cmd
-	}
-	if m.linkModeQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.linkModeQuickPicker, msg)
-		if dismiss {
-			m.linkModeQuickPicker = nil
-		}
-		return true, cmd
-	}
-	if m.priorityQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.priorityQuickPicker, msg)
-		if dismiss {
-			m.priorityQuickPicker = nil
-		}
-		return true, cmd
-	}
-	if m.dueDateQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.dueDateQuickPicker, msg)
-		if dismiss {
-			m.dueDateQuickPicker = nil
-		}
-		return true, cmd
-	}
-	if m.sectionChangeQuickPicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.sectionChangeQuickPicker, msg)
-		if dismiss {
-			m.sectionChangeQuickPicker = nil
-		}
-		return true, cmd
-	}
-
 	return false, nil
 }

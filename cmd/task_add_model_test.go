@@ -133,18 +133,13 @@ func TestTaskSectionAssignment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Default section should be empty (Active view)
-	testutil.AssertEqual(t, models.SectionForState(task.State()), "")
+	// New tasks start in the canonical ready state at the model layer.
+	testutil.AssertEqual(t, task.State(), models.StateReady)
 
 	// Assign to GTD section
-	task.SetSection(models.SectionInbox)
-	testutil.AssertEqual(t, models.SectionForState(task.State()), models.SectionInbox)
+	task.ApplyWorkflowState(models.StateInbox)
+	testutil.AssertEqual(t, task.State(), models.StateInbox)
 
-	// Ensure non-GTD section is ignored
-	project.EnsureSection("Active")
-	if project.HasSection("Active") {
-		t.Error("project should not have 'Active' section after EnsureSection")
-	}
 }
 
 func TestTaskShortIDAssignment(t *testing.T) {
@@ -174,9 +169,8 @@ func TestNewTaskDefaults(t *testing.T) {
 	testutil.AssertEqual(t, task.ShortID, 42)
 	testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 	testutil.AssertEqual(t, task.Title, "Test Title")
-	testutil.AssertEqual(t, models.LegacyStatusForState(task.State()), models.StatusTodo)
+	testutil.AssertEqual(t, task.State(), models.StateReady)
 	testutil.AssertEqual(t, task.Priority, 3)
-	testutil.AssertEqual(t, models.SectionForState(task.State()), "") // Empty section = Active view
 	testutil.AssertEqual(t, task.Description, "")
 
 	if task.ParentID != nil {

@@ -35,15 +35,8 @@ func (a RuleAction) String() string {
 	switch a.ActionType {
 	case ActionSetState:
 		return fmt.Sprintf("set state to %s", a.Value)
-	case ActionSetStatus:
-		return fmt.Sprintf("set status to %s", a.Value)
 	case ActionSetPriority:
 		return fmt.Sprintf("set priority to %s", a.Value)
-	case ActionSetSection:
-		if a.Value == "" {
-			return "move to Active"
-		}
-		return fmt.Sprintf("move to %s", a.Value)
 	case ActionAddTag:
 		return fmt.Sprintf("add tag #%s", a.Value)
 	case ActionRemoveTag:

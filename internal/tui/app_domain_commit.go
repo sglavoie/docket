@@ -288,6 +288,8 @@ func cloneMachineState(m *config.MachineState) *config.MachineState {
 	cp := *m
 	cp.RecentTaskVisits = slices.Clone(m.RecentTaskVisits)
 	cp.RecentPaletteItems = slices.Clone(m.RecentPaletteItems)
+	cp.RecentDestinations = slices.Clone(m.RecentDestinations)
+	cp.ProjectRoutes = maps.Clone(m.ProjectRoutes)
 
 	cp.CustomContexts = cloneStringSliceMap(m.CustomContexts)
 	return &cp

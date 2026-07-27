@@ -362,35 +362,14 @@ type MoveResult struct {
 // is deliberately NOT part of this transaction; the adapter updates it separately
 // after a successful commit.
 func (s *Service) MoveToProject(taskID, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	return s.moveToProject(taskID, TaskLocator{}, destProjectID, nil, artifacts)
+	return s.moveToProject(taskID, TaskLocator{}, destProjectID, artifacts)
 }
 
 func (s *Service) MoveToProjectByLocator(locator TaskLocator, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	return s.moveToProject("", locator, destProjectID, nil, artifacts)
+	return s.moveToProject("", locator, destProjectID, artifacts)
 }
 
-// MoveToProjectInSection is MoveToProject with an explicit destination section
-// applied to the moved root task before relocation, so the TUI global move flow
-// (which lets the user pick the destination section) commits the section choice
-// as part of the same atomic move transaction. An empty section falls back to the
-// section-preserving default that MoveTaskToProject applies.
-func (s *Service) MoveToProjectInSection(taskID, destProjectID, section string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	var destSection *string
-	if strings.TrimSpace(section) != "" {
-		destSection = &section
-	}
-	return s.moveToProject(taskID, TaskLocator{}, destProjectID, destSection, artifacts)
-}
-
-func (s *Service) MoveToProjectInSectionByLocator(locator TaskLocator, destProjectID, section string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	var destSection *string
-	if strings.TrimSpace(section) != "" {
-		destSection = &section
-	}
-	return s.moveToProject("", locator, destProjectID, destSection, artifacts)
-}
-
-func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectID string, destSection *string, artifacts []storage.ArtifactChange) (MoveResult, error) {
+func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectID string, artifacts []storage.ArtifactChange) (MoveResult, error) {
 	if strings.TrimSpace(destProjectID) == "" {
 		return MoveResult{}, invalidInput("destination", "project id is required")
 	}
@@ -407,13 +386,6 @@ func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectI
 		return MoveResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, destProjectID)
 	}
 	destRev := snap.Revision(dest.ID)
-
-	// Apply the chosen destination section before the move so MoveTaskToProject's
-	// built-in-section preservation carries it into the destination project — the
-	// same ordering the legacy TUI handler used (set section, then move).
-	if destSection != nil {
-		ref.Task.SetSection(*destSection)
-	}
 
 	moveRes, err := src.MoveTaskToProject(ref.Task, dest)
 	if err != nil {

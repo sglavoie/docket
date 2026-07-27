@@ -49,7 +49,7 @@ func (p ProjectPickerItem) ItemID() string {
 
 // ProjectSelectorModel provides fuzzy-find selection of projects for task move.
 type ProjectSelectorModel struct {
-	*BasePicker[ProjectPickerItem]
+	*ListSurfaceAdapter[ProjectPickerItem]
 	task          *models.Task
 	sourceProject *models.Project
 	alwaysSearch  *alwaysSearchSinglePicker[ProjectPickerItem]
@@ -70,7 +70,7 @@ func NewProjectSelectorModel(projects []*models.Project, task *models.Task, sour
 		items[i] = ProjectPickerItem{Project: p}
 	}
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Move to Project",
 		EmptyMessage:   "No other projects available.",
 		NoMatchMessage: "No matching projects.",
@@ -79,11 +79,11 @@ func NewProjectSelectorModel(projects []*models.Project, task *models.Task, sour
 	})
 
 	m := &ProjectSelectorModel{
-		BasePicker:    picker,
-		task:          task,
-		sourceProject: sourceProject,
+		ListSurfaceAdapter: picker,
+		task:               task,
+		sourceProject:      sourceProject,
 	}
-	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.ListSurfaceAdapter, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
 		AllItems: items,
 		CancelMsg: func() tea.Msg {
 			return CloseProjectSelectorMsg{}
@@ -169,22 +169,22 @@ func (m *ProjectSelectorModel) renderList() string {
 		// Account for title, task info, input, footer
 		m.Height()-12, 5)
 
-	totalItems := len(m.Filtered)
+	totalItems := len(m.FilteredItems())
 
 	if totalItems == 0 {
 		return MutedStyle.Render("No matching projects.")
 	}
 
-	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
+	scrollOffset := calcScrollOffset(m.CursorIndex(), maxVisible)
 
 	// Render projects
-	for i, item := range m.Filtered {
+	for i, item := range m.FilteredItems() {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {
 			continue
 		}
 
 		cursor := "  "
-		if m.Cursor == i {
+		if m.CursorIndex() == i {
 			cursor = "  "
 		}
 
@@ -201,7 +201,7 @@ func (m *ProjectSelectorModel) renderList() string {
 		// Build line
 		line := fmt.Sprintf("%s%s %s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge, MutedStyle.Render(taskCount))
 
-		if m.Cursor == i {
+		if m.CursorIndex() == i {
 			line = SelectedItemTextStyle.Render(line)
 		}
 

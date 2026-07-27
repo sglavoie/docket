@@ -21,9 +21,9 @@ const (
 )
 
 // InteractiveViewState provides common interactive state for views that
-// support cursor navigation, prefix key sequences, status messages, and
+// support cursor navigation, status messages, and
 // confirmation dialogs. Embed this in view models to eliminate duplicate
-// field declarations and HasPendingPrefix() methods.
+// field declarations.
 type InteractiveViewState struct {
 	cursor            int
 	viewScrollOffset  int
@@ -31,12 +31,9 @@ type InteractiveViewState struct {
 	mutationFlash     bool
 	mutationFlashBg   color.Color
 	mutationFlashKind FlashKind
-	pendingPrefix     string
 	statusMessage     string
 	confirm           ConfirmDialog
 	// Dispatcher is the declarative keymap dispatcher for this view.
-	// When non-nil it is the authoritative source of prefix state;
-	// pendingPrefix is kept for views not yet migrated.
 	Dispatcher *keymap.Dispatcher
 }
 
@@ -50,32 +47,11 @@ func (s *InteractiveViewState) clearStatus() {
 	s.statusMessage = ""
 }
 
-// HasPendingPrefix returns true if waiting for second key in a prefix sequence.
-func (s *InteractiveViewState) HasPendingPrefix() bool {
-	if s.Dispatcher != nil {
-		return s.Dispatcher.HasPendingPrefix()
-	}
-	return s.pendingPrefix != ""
-}
-
-// SkipModifierInPrefix returns true when a prefix is pending and the key event
-// is a bare modifier press (Shift, Ctrl, Alt, etc.). Views should call this
-// before dispatching prefix keys and return early to keep the popup open.
-func (s *InteractiveViewState) SkipModifierInPrefix(msg tea.KeyPressMsg) bool {
-	if s.Dispatcher != nil {
-		return s.Dispatcher.HasPendingPrefix() && isModifierOnly(msg)
-	}
-	return s.pendingPrefix != "" && isModifierOnly(msg)
-}
-
-// DefaultShouldCaptureEsc returns true if a pending prefix or confirm dialog is active.
+// DefaultShouldCaptureEsc returns true if a confirm dialog is active.
 // Views should call this in their ShouldCaptureEsc() override and OR in their own conditions.
 // Views that also embed BaseSearchableView should additionally OR in m.SearchShouldCaptureEsc().
 func (s *InteractiveViewState) DefaultShouldCaptureEsc() bool {
-	if s.Dispatcher != nil {
-		return s.Dispatcher.HasPendingPrefix() || s.confirm.IsActive()
-	}
-	return s.pendingPrefix != "" || s.confirm.IsActive()
+	return s.confirm.IsActive()
 }
 
 // ClampCursorTo ensures cursor is within [0, length-1] range.
@@ -136,21 +112,6 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 	}
 	c, h := s.confirm.HandleKey(key)
 	return c, h
-}
-
-// setMutationFlash enables the mutation flash with the given background color.
-func (s *InteractiveViewState) setMutationFlash(bg color.Color) {
-	s.mutationFlash = true
-	s.mutationFlashBg = bg
-	s.mutationFlashKind = FlashMutation
-}
-
-// setCompletionFlash enables the multi-frame completion ramp at frame 0.
-// Pair with completionFlashScheduler() to advance the frames.
-func (s *InteractiveViewState) setCompletionFlash() {
-	s.mutationFlash = true
-	s.mutationFlashBg = completionFlashBg(0)
-	s.mutationFlashKind = FlashCompletion
 }
 
 // advanceCompletionFlashFrame updates the background to the given frame's color.

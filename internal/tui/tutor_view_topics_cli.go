@@ -79,7 +79,8 @@ and sync with it; custom contexts stay machine-local.
 # Applying A Context
 
 Applying a context is a session-only TUI scope change, so
-there is no CLI switch command. Press C in the Outliner.`,
+there is no CLI switch command. Press c in the Outliner to open
+the Scope Hub.`,
 		},
 		{
 			Title:    "Comments",
@@ -114,7 +115,7 @@ there is no CLI switch command. Press C in the Outliner.`,
 # Ranked Suggestions
 
 The suggestion engine scores tasks based on priority, due dates,
-status, activity recency, unblocking potential, and scoring profiles.
+workflow state, activity recency, unblocking potential, and scoring profiles.
 
   tt focus suggest        # Top 10 suggestions
   tt focus suggest -n 5   # Top 5 suggestions
@@ -179,20 +180,19 @@ Outliner. Archive completed projects to keep things tidy.
 			Category: "CLI",
 			Content: `# Inline Syntax
 
-The tt add command accepts inline modifiers. Priority is set with !
-and tags with #.
+The tt add command accepts inline priority and tags. Use --state
+for the initial canonical workflow state.
 
   tt add "Fix login bug !1 #backend"
   tt add "Update docs !3 #frontend"
-  tt add "Research caching #perf"
+  tt add "Research caching #perf" --state next
 
-# Sections in TUI Quick Capture
+# Task Composer
 
-Inside the TUI Quick Capture input, use / followed by a GTD section.
-This sigil is not parsed by the tt add command.
+The TUI Task Composer uses the shared capture grammar:
 
-  Fix login bug !1 #backend /inbox
-  Research caching #perf /next
+  Fix login bug !1 #backend $inbox
+  Research caching #perf $next @tomorrow
 
 # Priority Shorthand
 
@@ -202,14 +202,12 @@ the number anywhere in the task title.
   tt add "Critical fix !1"
   tt add "Nice to have !4"
 
-# Tags and Sections
+# Tags and State
 
-Tags help you categorize tasks across projects. Sections follow
-GTD methodology for workflow organization. In the CLI, set a section
-with tt task add --section.
+Tags provide cross-cutting organization without changing lifecycle.
+Use --state to set one of the ten canonical workflow states.
 
-  Deploy service #ops #urgent /review
-  tt task add "Deploy service" --tag ops --tag urgent --section Next`,
+  tt task add "Deploy service" --tag ops --tag urgent --state review`,
 		},
 		{
 			Title:    "Scoring",
@@ -249,10 +247,10 @@ across all projects.
 
 # Filtering Options
 
-Combine search with filters to narrow results by status,
-priority, tag, section, or parked state.
+Combine search with canonical state, priority, tag, and parked
+filters.
 
-  tt task list --status todo --tag backend
+  tt task list --state ready --tag backend
   tt task list --parked
   tt task list --priority 1`,
 		},
@@ -279,24 +277,24 @@ Add tasks with type and parent options for hierarchy.
 
   tt task add --type epic "User Authentication"
   tt task add --type story "Login Flow" --parent <epic-id>
-  tt task add --type bug "Fix timeout" --parent <story-id>
+  tt task add --type bug "Fix timeout" --parent <story-id> --state inbox
 
-# Status Transitions
+# State Transitions
 
   tt task start <id>
   tt task complete <id>
   tt task cancel <id>
-  tt task block <id>
+  tt task wait <id>
 
 # Priority and Workflow State
 
   tt task priority <id> 2
   tt task state ready <id>
-  tt task state next <id>
+  tt task next <id>
 
 # Dependencies
 
-  tt task depends <task-id> <blocker-id>
+  tt task depends <task-id> --on <blocker-id>
 
 # Snooze
 

@@ -62,7 +62,6 @@ func TestArchiveCompletedTasksRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 			}
 
 			model, outliner := newSession2OutlinerApp(t, dataDir, true, project)
-			outliner.selectOutlinerMode(ModeComplete)
 			installDistinctOutlinerSnapshot(t, model, outliner)
 			if outliner.loadedProjects[0] == project {
 				t.Fatal("Outliner snapshot unexpectedly aliases the catalog project")
@@ -70,6 +69,7 @@ func TestArchiveCompletedTasksRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 			if tt.scoped {
 				outliner.pushProjectScope(project.ID)
 			}
+			outliner.selectOutlinerMode(ModeActivity)
 			if !outlinerHasTask(outliner, project.ID, archivedTaskID) {
 				t.Fatal("completed task missing before archive")
 			}
@@ -89,8 +89,8 @@ func TestArchiveCompletedTasksRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 			if outlinerHasTask(outliner, project.ID, archivedTaskID) {
 				t.Fatal("archived task remained visible without navigation")
 			}
-			if got := outliner.activeOutlinerMode(); got != ModeComplete {
-				t.Fatalf("Outliner mode changed to %q, want %q", got, ModeComplete)
+			if got := outliner.activeOutlinerMode(); got != ModeActivity {
+				t.Fatalf("Outliner mode changed to %q, want preserved %q", got, ModeActivity)
 			}
 			if tt.scoped && outliner.scopedProjectID != project.ID {
 				t.Fatalf("project scope changed to %q, want %q", outliner.scopedProjectID, project.ID)
@@ -144,32 +144,4 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	if got := outliner.activeOutlinerMode(); got != ModeAll {
 		t.Fatalf("Outliner mode changed to %q, want %q", got, ModeAll)
 	}
-}
-
-func TestInlineTaskCreateRefreshesVisibleOutlinerSnapshot(t *testing.T) {
-	env := newAppBulkPickerEnv(t, []*models.Task{})
-	model := env.appModel()
-	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
-	outliner.selectOutlinerMode(ModeAll)
-	model.crossOutliner = outliner
-	model.views.Register(ViewCrossProjectOutliner, outliner)
-	model.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
-	model.enableTypedNavigation()
-	installDistinctOutlinerSnapshot(t, model, outliner)
-
-	_, cmd := model.Update(InlineTaskCreateMsg{
-		Project: env.projects[0],
-		Title:   "Inline created",
-	})
-	runSession2AppCommand(t, model, cmd)
-
-	if outliner.crossLoading {
-		t.Fatal("Outliner reload did not settle")
-	}
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil && row.task.Title == "Inline created" {
-			return
-		}
-	}
-	t.Fatal("inline-created task did not appear without navigating away")
 }

@@ -36,12 +36,15 @@ func (s StatusIconInfo) CountValue() int {
 
 // ItemID returns the key as a string identifier.
 func (s StatusIconInfo) ItemID() string {
+	if s.Key == "" {
+		return "status-icon:none"
+	}
 	return s.Key
 }
 
 // StatusIconPickerModel allows selecting a status icon for a project.
 type StatusIconPickerModel struct {
-	*BasePicker[StatusIconInfo]
+	*ListSurfaceAdapter[StatusIconInfo]
 	project *models.Project
 }
 
@@ -72,7 +75,7 @@ func NewStatusIconPickerModel(project *models.Project) *StatusIconPickerModel {
 		})
 	}
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Set Status Icon",
 		EmptyMessage:   "No status icons available.",
 		NoMatchMessage: "No matching icons.",
@@ -86,8 +89,8 @@ func NewStatusIconPickerModel(project *models.Project) *StatusIconPickerModel {
 	}
 
 	return &StatusIconPickerModel{
-		BasePicker: picker,
-		project:    project,
+		ListSurfaceAdapter: picker,
+		project:            project,
 	}
 }
 
@@ -110,8 +113,8 @@ func (m *StatusIconPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
-				key := m.Filtered[m.Cursor].Key
+			if len(m.FilteredItems()) > 0 && m.CursorIndex() < len(m.FilteredItems()) {
+				key := m.FilteredItems()[m.CursorIndex()].Key
 				project := m.project
 				return m, func() tea.Msg {
 					return StatusIconSelectedMsg{Project: project, Key: key}
@@ -152,14 +155,14 @@ func (m *StatusIconPickerModel) View() tea.View {
 	b.WriteString("\n\n")
 
 	// List items
-	for i, item := range m.Filtered {
+	for i, item := range m.FilteredItems() {
 		cursor := "  "
-		if i == m.Cursor {
+		if i == m.CursorIndex() {
 			cursor = "  "
 		}
 
 		line := cursor + item.DisplayText()
-		if i == m.Cursor {
+		if i == m.CursorIndex() {
 			b.WriteString(TaskJumperSelectedStyle.Render(line))
 		} else {
 			b.WriteString(line)

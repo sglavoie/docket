@@ -46,7 +46,6 @@ func newCrossProjectTestEnv(t *testing.T, taskGroups ...[]*models.Task) *crossPr
 			}
 		}
 		project.NextShortID = next
-		project.EnsureDefaultSections()
 		project.BuildTaskTree()
 		projects[i] = project
 	}

@@ -9,5 +9,7 @@ const (
 
 const DefaultUndoHistoryDepth = 50
 
-// CurrentConfigVersion is the schema version shared by the split domain files.
-const CurrentConfigVersion = 3
+// CurrentConfigVersion is the payload schema version shared by the split
+// domain files. WorkspaceCatalog.SchemaVersion is the authoritative bundle
+// marker; the other payloads deliberately do not duplicate it.
+const CurrentConfigVersion = 4

@@ -16,7 +16,7 @@ var templateAddCmd = &cobra.Command{
 	Short: "Add a new task template",
 	Long: `Add a new task template for creating tasks with pre-configured settings.
 
-Templates define task type, priority, tags, section, and checklist items.
+Templates define task type, priority, tags, canonical state, and checklist items.
 When using a template, the parent task is created with the specified settings,
 and checklist items are added to it.
 
@@ -25,7 +25,7 @@ FLAGS
   --type            Task type: epic, story, task, bug, idea (default: task)
   --priority        Priority 1-5 (0 for default)
   --tags            Comma-separated tags
-  --section         Built-in GTD section (e.g., Next, Inbox; empty = Active)
+  --state           Canonical workflow state
   --description     Task description template
   --category        Category: bug, feature, process
   --item              Checklist item (can specify multiple)
@@ -50,7 +50,7 @@ EXAMPLES
     --optional-item "Design Notes"
 
   # Release checklist
-  tt template add -n "Release" --type task --tags release --section Next \
+  tt template add -n "Release" --type task --tags release --state next \
     --item "Run Tests" \
     --item "Update Changelog" \
     --item "Deploy"`,
@@ -62,7 +62,7 @@ var (
 	templateAddType        string
 	templateAddPriority    int
 	templateAddTags        string
-	templateAddSection     string
+	templateAddState       string
 	templateAddDescription string
 	templateAddCategory    string
 	templateAddChildren    []string
@@ -77,7 +77,7 @@ func init() {
 	templateAddCmd.Flags().StringVar(&templateAddType, "type", "task", "task type: epic, story, task, bug, idea")
 	templateAddCmd.Flags().IntVar(&templateAddPriority, "priority", 0, "priority 1-5 (0 for default)")
 	templateAddCmd.Flags().StringVar(&templateAddTags, "tags", "", "comma-separated tags")
-	templateAddCmd.Flags().StringVar(&templateAddSection, "section", "", "built-in GTD section (empty = Active)")
+	templateAddCmd.Flags().StringVar(&templateAddState, "state", "", "canonical workflow state")
 	templateAddCmd.Flags().StringVar(&templateAddDescription, "description", "", "task description template")
 	templateAddCmd.Flags().StringVar(&templateAddCategory, "category", "", "category: bug, feature, process")
 	templateAddCmd.Flags().StringArrayVar(&templateAddChildren, "item", nil, "checklist item (can specify multiple)")
@@ -89,7 +89,7 @@ func init() {
 
 	_ = templateAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = templateAddCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
-	_ = templateAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
+	_ = templateAddCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 }
 
 func runTemplateAdd(cmd *cobra.Command, args []string) error {
@@ -134,9 +134,12 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	state, err := templateStateFromLegacySectionInput(templateAddSection, models.StateInbox)
-	if err != nil {
-		return err
+	state := models.StateInbox
+	if stagedLifecycleFlagProvided(cmd, "state", templateAddState) {
+		state, err = parseCanonicalWorkflowStateInput("state", templateAddState)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Parse tags
@@ -182,7 +185,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	t.Children = children
 
 	// Validate
-	err = t.Validate()
+	err = t.ValidateForAuthoring()
 	if err != nil {
 		return fmt.Errorf("invalid template: %w", err)
 	}
@@ -210,6 +213,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Type    string `json:"type"`
+			State   string `json:"state"`
 			Enabled bool   `json:"enabled"`
 			Items   int    `json:"items"`
 			Summary string `json:"summary"`
@@ -217,6 +221,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 			ID:      t.ID,
 			Name:    t.Name,
 			Type:    string(t.Type),
+			State:   t.EffectiveState().String(),
 			Enabled: t.Enabled,
 			Items:   len(children),
 			Summary: t.Summary(),

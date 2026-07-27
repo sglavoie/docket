@@ -41,8 +41,11 @@ const (
 	WeeklySectionRecurringOverview
 )
 
-// ShowWeeklyReviewMsg opens the weekly review view.
-type ShowWeeklyReviewMsg struct{}
+// ShowWeeklyReviewMsg opens the weekly review view over the captured project
+// set. An omitted set retains the legacy app-wide entry-point behavior.
+type ShowWeeklyReviewMsg struct {
+	ProjectSet ProjectSetScope
+}
 
 // CloseWeeklyReviewMsg closes the weekly review view.
 type CloseWeeklyReviewMsg struct{ PopViewMsg }
@@ -70,6 +73,7 @@ type WeeklyReviewModel struct {
 	// Queue / daily-plan indicator support
 	queueIDs     map[TaskIdentity]bool
 	dailyPlanIDs map[TaskIdentity]bool
+	projectSet   ProjectSetScope
 
 	// Project sections
 	staleProjects []WeeklyReviewProject
@@ -115,8 +119,19 @@ type WeeklyReviewModel struct {
 
 // NewWeeklyReviewModel creates a new weekly review model.
 func NewWeeklyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *WeeklyReviewModel {
+	return NewWeeklyReviewModelForProjectSet(runtime, mgr, ProjectSetScope{})
+}
+
+// NewWeeklyReviewModelForProjectSet creates a review over the exact project set
+// captured by the launching Outliner scope.
+func NewWeeklyReviewModelForProjectSet(
+	runtime *config.RuntimeState,
+	mgr *config.Manager,
+	projectSet ProjectSetScope,
+) *WeeklyReviewModel {
 	m := &WeeklyReviewModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(mgr, runtime),
+		projectSet:        canonicalProjectSetScope(projectSet),
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
@@ -159,7 +174,6 @@ func NewWeeklyReviewModel(runtime *config.RuntimeState, mgr *config.Manager) *We
 			},
 		},
 	}
-	m.initFilterMixinWithDispatcher(m.Dispatcher, runtime)
 	m.loadData()
 	return m
 }
@@ -229,18 +243,15 @@ func (m *WeeklyReviewModel) escSteps() []EscStep {
 	}
 }
 
-// ShouldCaptureEsc returns true when prefix mode, section focus, confirm dialog, or summary is active.
+// ShouldCaptureEsc reports whether Weekly Review owns an internal dismissal layer.
 func (m *WeeklyReviewModel) ShouldCaptureEsc() bool {
 	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps()) || m.showingSummary
 }
 
-func (m *WeeklyReviewModel) viewID() PresentationID { return ViewWeeklyReview }
-func (m *WeeklyReviewModel) viewName() string       { return "Weekly Review" }
-
 // GetHelpItems returns help items for this view.
 func (m *WeeklyReviewModel) GetHelpItems() []HelpItem {
 	return mergeHelpItems(
-		GetKeybindingRegistry().GetAppLevelForView(m.viewID()),
+		getGlobalHelpItems(),
 		helpItemsFromKeyMap(m.buildKeyMap()),
 	)
 }

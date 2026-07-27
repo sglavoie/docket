@@ -1,0 +1,10 @@
+{
+  "name": "project-inbox-mode-minimum-layout",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "command", "label": "focus the current task's project in Inbox", "command": "project inbox mode" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

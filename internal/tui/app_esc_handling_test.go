@@ -34,11 +34,6 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 			viewTyp: ViewTextEditor,
 			view:    NewTextEditorModel("title", "some value"),
 		},
-		{
-			name:    "QuickCapture",
-			viewTyp: ViewQuickCapture,
-			view:    NewQuickCaptureModel(testutil.NewTestProjectWithTasks("test"), nil, false),
-		},
 	}
 
 	for _, tc := range alwaysCaptureViews {
@@ -67,6 +62,24 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("TaskComposer", func(t *testing.T) {
+		app := newTestAppModel()
+		_ = app.openTaskComposer(TaskComposerPreset{
+			Kind:    ComposerProject,
+			Project: testutil.NewTestProjectWithTasks("test"),
+		})
+		if app.currentView() != ViewTaskComposer {
+			t.Fatalf("expected current view %v, got %v", ViewTaskComposer, app.currentView())
+		}
+		if !app.taskComposer.ShouldCaptureEsc() {
+			t.Fatal("TaskComposer.ShouldCaptureEsc() returned false")
+		}
+		handled, _ := app.handleEscKey()
+		if handled {
+			t.Error("TaskComposer: handleEscKey() returned handled=true; expected false")
+		}
+	})
 }
 
 // TestHandleEscKey_PopsNonModalViews verifies that for views without modal
@@ -83,22 +96,22 @@ func TestHandleEscKey_PopsNonModalViews(t *testing.T) {
 	if !handled {
 		t.Error("handleEscKey() should have consumed esc for a non-modal view")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("expected ViewDashboard after pop, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("expected Outliner root after pop, got %v", app.currentView())
 	}
 }
 
-// TestHandleEscKey_NopAtDashboard verifies that esc at the dashboard root
+// TestHandleEscKey_NopAtOutlinerRoot verifies that esc at the Outliner root
 // is not consumed (nothing to pop).
-func TestHandleEscKey_NopAtDashboard(t *testing.T) {
+func TestHandleEscKey_NopAtOutlinerRoot(t *testing.T) {
 	app := newTestAppModel()
 
 	handled, _ := app.handleEscKey()
 	if handled {
-		t.Error("handleEscKey() at dashboard should return handled=false (nothing to pop)")
+		t.Error("handleEscKey() at the Outliner root should return handled=false")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should remain ViewDashboard, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should remain at the Outliner root, got %v", app.currentView())
 	}
 }
 
@@ -129,8 +142,8 @@ func TestAskEscapePopsPreviouslyTrappedStates(t *testing.T) {
 			}
 			model, _ = app.Update(cmd())
 			app = model.(*AppModel)
-			if app.currentView() != ViewDashboard {
-				t.Fatalf("current view = %v, want dashboard", app.currentView())
+			if app.currentView() != ViewCrossProjectOutliner {
+				t.Fatalf("current view = %v, want Outliner root", app.currentView())
 			}
 			if tc.state == askStateApplying && (ask.state != askStateApplying || ask.applyID == 0) {
 				t.Fatalf("leaving Ask invalidated in-flight apply: state=%v id=%d", ask.state, ask.applyID)
@@ -190,15 +203,15 @@ func TestProjectSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	if selector.SearchQuery() != "" {
 		t.Fatalf("expected cleared search query, got %q", selector.SearchQuery())
 	}
-	if len(selector.Filtered) != 1 {
-		t.Fatalf("expected full project list to be restored, got %d item(s)", len(selector.Filtered))
+	if len(selector.FilteredItems()) != 1 {
+		t.Fatalf("expected full project list to be restored, got %d item(s)", len(selector.FilteredItems()))
 	}
 
 	_, cmd = app.Update(syntheticSpecialKey(tea.KeyEsc))
 	if cmd != nil {
 		app.Update(cmd())
 	}
-	if app.currentView() != ViewDashboard {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
 	}
 }
@@ -214,7 +227,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	}
 
 	app := newTestAppModel()
-	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, false, ViewOutliner)
+	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, true, ViewCrossProjectOutliner)
 	app.showView(ViewParentSelector, selector)
 	selector.Init()
 
@@ -233,15 +246,15 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	if selector.SearchQuery() != "" {
 		t.Fatalf("expected cleared search query, got %q", selector.SearchQuery())
 	}
-	if len(selector.Filtered) != 2 {
-		t.Fatalf("expected full parent list to be restored, got %d item(s)", len(selector.Filtered))
+	if len(selector.FilteredItems()) != 3 {
+		t.Fatalf("expected no-parent plus full parent list, got %d item(s)", len(selector.FilteredItems()))
 	}
 
 	_, cmd = app.Update(syntheticSpecialKey(tea.KeyEsc))
 	if cmd != nil {
 		app.Update(cmd())
 	}
-	if app.currentView() != ViewDashboard {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
 	}
 }
@@ -249,8 +262,8 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 // TestSpaceActivatesPeek verifies that space sets peekTask when a cursor task exists.
 func TestSpaceActivatesPeek(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, nil, app.runtime)
-	app.viewStack = []PresentationID{ViewOutliner}
+	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
+	setTestPresentationPath(app, ViewCrossProjectOutliner)
 
 	// Simulate space press
 	msg := tea.KeyPressMsg{Code: tea.KeySpace}

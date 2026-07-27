@@ -11,7 +11,7 @@ import (
 
 // ActionTypePickerModel allows selecting an action type from the full list.
 type ActionTypePickerModel struct {
-	*BasePicker[ActionTypeInfo]
+	*ListSurfaceAdapter[ActionTypeInfo]
 	actionIndex     int
 	currentActionID string
 }
@@ -33,7 +33,7 @@ type ActionTypePickerDoneMsg struct {
 func NewActionTypePickerModel(actionIndex int, currentType workflow.ActionType) *ActionTypePickerModel {
 	items := BuildActionTypeItems()
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Select Action Type",
 		EmptyMessage:   "No action types available.",
 		NoMatchMessage: "No matching actions.",
@@ -46,9 +46,9 @@ func NewActionTypePickerModel(actionIndex int, currentType workflow.ActionType) 
 	picker.SetCursorToID(currentID)
 
 	return &ActionTypePickerModel{
-		BasePicker:      picker,
-		actionIndex:     actionIndex,
-		currentActionID: currentID,
+		ListSurfaceAdapter: picker,
+		actionIndex:        actionIndex,
+		currentActionID:    currentID,
 	}
 }
 
@@ -96,8 +96,8 @@ func (m *ActionTypePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
-				actionType := m.Filtered[m.Cursor].ActionType
+			if len(m.FilteredItems()) > 0 && m.CursorIndex() < len(m.FilteredItems()) {
+				actionType := m.FilteredItems()[m.CursorIndex()].ActionType
 				return m, func() tea.Msg {
 					return ActionTypePickerDoneMsg{
 						ActionIndex: m.actionIndex,
@@ -145,7 +145,7 @@ func (m *ActionTypePickerModel) View() tea.View {
 	b.WriteString(m.RenderList(maxVisible))
 
 	left := HelpStyle.Render(m.RenderFooter())
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.FilteredItems())))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return tea.NewView(b.String())

@@ -15,8 +15,8 @@ var taskDimCmd = &cobra.Command{
 	Long: `Toggle a task's dimmed flag, visually muting it in all views.
 
 Dimmed tasks remain visible but are rendered in a muted style.
-Dimming does not change a task's workflow state, section, or Focus Queue
-membership.
+Dimming does not change a task's workflow state, Today membership, or Next
+ordering.
 
 If no ID is specified, opens an interactive selector.
 

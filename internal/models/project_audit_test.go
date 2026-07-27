@@ -41,7 +41,6 @@ func requireAuditErrorContains(t *testing.T, project *Project, want string) {
 
 func TestAuditProjectValidProject(t *testing.T) {
 	project := newAuditTestProject(t)
-	project.EnsureSection("Sprint-1")
 
 	epic := newAuditTestTask(t, "epic-1", 1, TaskTypeEpic, "Epic")
 	story := newAuditTestTask(t, "story-1", 2, TaskTypeStory, "Story")
@@ -49,8 +48,8 @@ func TestAuditProjectValidProject(t *testing.T) {
 
 	story.ParentID = &epic.ID
 	bug.ParentID = &story.ID
-	story.SetSection(SectionNext)
-	bug.SetSection("Sprint-1")
+	story.ApplyWorkflowState(StateNext)
+	bug.ApplyWorkflowState(StateWaiting)
 	bug.DependsOn = []string{epic.ID, "other-project:external-blocker"}
 	story.RelatedTo = []string{bug.ID, "other-project:external-related"}
 

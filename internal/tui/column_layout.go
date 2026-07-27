@@ -42,21 +42,6 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 	return cl
 }
 
-// ComputeTaskLineColumnLayout computes a ColumnLayout for TaskLine-based views
-// (Planner, Outliner, daily/weekly review, activity, etc.).
-// hideLowPriority mirrors the HideLowPriority flag on TaskLine.
-//
-// Equivalent to ComputeBadgeWidths with IncludeStatus/IncludeType enabled.
-// Callers that need a Project column should call ComputeBadgeWidths directly
-// with a ProjectNameFor callback.
-func ComputeTaskLineColumnLayout(tasks []*models.Task, hideLowPriority bool) *ColumnLayout {
-	return ComputeBadgeWidths(tasks, BadgeWidthOpts{
-		HideLowPriority: hideLowPriority,
-		IncludeStatus:   true,
-		IncludeType:     true,
-	})
-}
-
 // crossProjectNameLookup returns a ProjectNameFor callback for a slice of
 // CrossProjectTask. Tasks not in the slice produce empty strings (skipping
 // them from project width measurement).

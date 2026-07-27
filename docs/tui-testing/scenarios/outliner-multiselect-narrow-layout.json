@@ -4,7 +4,7 @@
   "size": "66x22",
   "actions": [
     { "type": "resize", "width": 66, "height": 22 },
-    { "type": "command", "label": "open global All focus", "command": "outliner root" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
     { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

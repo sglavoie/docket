@@ -94,7 +94,7 @@ func computeCycleTimeSummaries(tasks []TaskSummary, cutoff, now time.Time, bucke
 func findFirstInProgress(t *models.Task) time.Time {
 	var earliest time.Time
 	for _, entry := range t.Activity {
-		if entry.Field == "status" && entry.NewValue == string(models.StatusInProgress) {
+		if entry.Field == "state" && entry.NewValue == string(models.StateInProgress) {
 			if earliest.IsZero() || entry.Timestamp.Before(earliest) {
 				earliest = entry.Timestamp
 			}

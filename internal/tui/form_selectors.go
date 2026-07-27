@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
-	"github.com/sglavoie/tt/internal/icons"
 )
 
 // renderFormLabelShared renders a form field label with fixed width alignment.
@@ -51,14 +49,6 @@ func renderFormToggle(optionA, optionB string, aSelected bool, focused bool) str
 		s += HelpStyle.Render("  (Space to toggle)")
 	}
 	return s
-}
-
-// renderPriorityStarsShared returns star characters for a priority level.
-func renderPriorityStarsShared(priority int) string {
-	if priority <= 0 {
-		return ""
-	}
-	return strings.Repeat(icons.Get("star"), priority)
 }
 
 // renderContextSelectorShared renders a hybrid context selector (predefined list + custom typing).

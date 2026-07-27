@@ -35,7 +35,7 @@ var focusSuggestCmd = &cobra.Command{
 	Short: "Show ranked task suggestions across projects",
 	Long: `Show tasks ranked by the "Backlog" suggestion engine.
 
-Tasks are scored based on priority, due dates, status, activity recency,
+Tasks are scored based on priority, due dates, workflow state, activity recency,
 unblocking potential, and composite scoring profiles.
 
 Examples:
@@ -55,8 +55,8 @@ state is "next" (StateNext). The persisted focus queue list is ordering-only
 unindexed StateNext task). Today (the Daily Plan) is a mutually exclusive
 planning list, so a task is never in both Next and Today.
 
-In the TUI, press Tab to cycle the Outliner's work modes. Press 'q' to toggle
-the selected task's Next membership or 'w' to toggle Today membership. From
+In the TUI, press Tab to cycle the Outliner's work modes. Press 'n' to toggle
+the selected task's Next membership or 't' to toggle Today membership. From
 the CLI use 'tt focus queue add' (Next) or 'tt focus today add' (Today), and
 reorder Next with 'tt focus queue move'.
 
@@ -70,8 +70,8 @@ var focusTodayCmd = &cobra.Command{
 	Short: "Show tasks planned for today",
 	Long: `Show tasks that have been planned for today's work session.
 
-Planned tasks appear in the built-in Today section at the top of the Outliner's
-All mode. Press 'w' on a task to toggle Today membership. Unfinished tasks carry
+Planned tasks appear in the synthetic Today group at the top of the Outliner's
+All mode. Press 't' on a task to toggle Today membership. Unfinished tasks carry
 over automatically to the next day.
 
 Examples:
@@ -102,7 +102,6 @@ type focusTaskJSON struct {
 	ShortID   int    `json:"short_id"`
 	Ref       string `json:"ref"`
 	Type      string `json:"type"`
-	Status    string `json:"status"`
 	State     string `json:"state"`
 	Priority  int    `json:"priority"`
 	Title     string `json:"title"`
@@ -116,7 +115,6 @@ func focusTaskToJSON(task *models.Task, project *models.Project) focusTaskJSON {
 		ShortID:   task.ShortID,
 		Ref:       fmt.Sprintf("%s:#%d", project.Slug, task.ShortID),
 		Type:      string(task.Type),
-		Status:    string(models.LegacyStatusForState(task.State())),
 		State:     string(task.State()),
 		Priority:  task.Priority,
 		Title:     task.Title,
@@ -168,7 +166,7 @@ func runFocus(cmd *cobra.Command, args []string) error {
 func displayFocusTable(tasks []focus.FocusTask) {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
+	t.AppendHeader(table.Row{"Project", "ID", "Type", "State", "Pri", "Title", "Due"})
 
 	for _, ft := range tasks {
 		task := ft.Task
@@ -341,7 +339,7 @@ func runFocusToday(cmd *cobra.Command, args []string) error {
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
+	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "State", "Pri", "Title", "Due"})
 
 	count := 0
 	for _, item := range planItems {
@@ -503,7 +501,7 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
+	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "State", "Pri", "Title", "Due"})
 
 	for i, ft := range ordered {
 		task := ft.Task

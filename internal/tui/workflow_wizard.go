@@ -183,7 +183,7 @@ func (m *WorkflowWizardModel) selectedTriggerField() workflow.TriggerField {
 	if m.triggerCursor < len(m.triggerFields) {
 		return m.triggerFields[m.triggerCursor]
 	}
-	return workflow.FieldStatus
+	return workflow.FieldState
 }
 
 // selectedTriggerOp returns the currently selected trigger operation.
@@ -199,7 +199,7 @@ func (m *WorkflowWizardModel) selectedActionType() workflow.ActionType {
 	if m.actionTypeCursor < len(m.actionTypes) {
 		return m.actionTypes[m.actionTypeCursor]
 	}
-	return workflow.ActionSetStatus
+	return workflow.ActionSetState
 }
 
 // needsActionValue returns true if the selected action type requires a value.
@@ -239,7 +239,7 @@ func (m *WorkflowWizardModel) saveRule() tea.Cmd {
 	}
 
 	rule := workflow.NewRule(name, trigger, []workflow.RuleAction{action})
-	if err := rule.Validate(); err != nil {
+	if err := rule.ValidateForAuthoring(); err != nil {
 		m.err = err
 		return nil
 	}

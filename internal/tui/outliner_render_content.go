@@ -27,27 +27,23 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	notice := m.zoomNotice
 	m.zoomNotice = ""
 
-	perspective := m.currentPerspective()
-	var perspectiveLabel string
-	if !m.isActiveCrossPriority() {
-		perspectiveLabel = m.buildPerspectiveLabel(perspective)
-	}
+	modeLabel := m.buildModeLabel()
 	breadcrumb := m.renderOutlinerBreadcrumb(width)
 	searchIndicator := m.buildOutlinerSearchIndicator()
 
 	if len(m.rows) == 0 {
-		return m.renderOutlinerEmptyState(width, perspective, perspectiveLabel, searchIndicator, breadcrumb, notice)
+		return m.renderOutlinerEmptyState(width, modeLabel, searchIndicator, breadcrumb, notice)
 	}
 
 	var b strings.Builder
-	m.writeOutlinerHeader(&b, width, perspectiveLabel, searchIndicator)
+	m.writeOutlinerHeader(&b, width, modeLabel, searchIndicator)
 
 	// The title row is budgeted as a single line by contentHeight(), but the
 	// multi-select badge / long filter suffix can push it past the render width
 	// and wrap under the enclosing Width() style (notably the narrow tree pane
 	// in split-pane mode). Reserve the extra wrapped rows so the viewport does
 	// not overflow terminal height.
-	titleExtra := wrappedLineCount(m.buildOutlinerTitleLine(width, perspectiveLabel, searchIndicator), width) - 1
+	titleExtra := wrappedLineCount(m.buildOutlinerTitleLine(width, modeLabel, searchIndicator), width) - 1
 
 	// Reserve one row for the selected-task metadata strip whenever a row is
 	// selectable. The strip stays blank when the cursor sits on a section
@@ -142,26 +138,9 @@ func wrappedLineCount(s string, width int) int {
 	return lipgloss.Height(lipgloss.NewStyle().Width(width).Render(s))
 }
 
-func (m *OutlinerModel) buildPerspectiveLabel(perspective Perspective) string {
+func (m *OutlinerModel) buildModeLabel() string {
 	activeMode := m.activeOutlinerModeEntry()
-	if activeMode.Perspective == noPerspective {
-		return "  " + GetViewModeStyleForSection(activeMode.Label).Render("◆ "+activeMode.Label)
-	}
-	if m.smartFocus != nil {
-		return "  " + GetViewModeStyleForSection(m.smartFocus.String()).Render("@ "+m.smartFocus.String()) +
-			" " + MutedStyle.Render("P modes")
-	}
-	prevID := CyclePerspective(perspective.ID, -1)
-	nextID := CyclePerspective(perspective.ID, 1)
-	previous, _ := PerspectiveByID(prevID)
-	next, _ := PerspectiveByID(nextID)
-
-	currentStyle := GetViewModeStyleForSection(perspective.Name)
-
-	return "  " +
-		MutedStyle.Render("‹ "+previous.Name) + " " +
-		currentStyle.Render("@ "+perspective.Name) + " " +
-		MutedStyle.Render(next.Name+" ›")
+	return "  " + GetOutlinerModeStyle(activeMode.ID).Render("◆ "+activeMode.Label)
 }
 
 func (m *OutlinerModel) renderOutlinerBreadcrumb(width int) string {
@@ -185,8 +164,8 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 	if m.project == nil {
 		projectCount := len(m.loadedProjects)
 		prefix := "Outliner"
-		if m.isActiveCrossPriority() {
-			prefix = "Outliner: Priority"
+		if m.primaryMode != ModeAll {
+			prefix += ": " + m.activeOutlinerModeEntry().Label
 		}
 		var title string
 		if m.isProjectScoped() {
@@ -208,7 +187,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 		}
 		sortField := m.sort.Field
 		sortAscending := m.sort.Ascending
-		if m.isActiveCrossPriority() {
+		if m.activeOutlinerModeEntry().FixedOrder() {
 			sortField = SortByDefault
 			sortAscending = false
 		}
@@ -231,7 +210,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 
 // appendOpenLoopsCounter right-aligns the open-loops counter at the end of an
 // already-assembled title line. Must be called after every inline title-row
-// element (perspective label, search indicator, multi-select badge) has been
+// element (mode label, search indicator, multi-select badge) has been
 // appended so the counter doesn't push them off the right edge.
 func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
 	outlinerLoops := m.openLoops
@@ -249,24 +228,26 @@ func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
 	return line + strings.Repeat(" ", gap) + rendered
 }
 
-// buildOutlinerTitleLine assembles the single title row (title, perspective
+// buildOutlinerTitleLine assembles the single title row (title, mode
 // label, search indicator, optional multi-select badge, right-aligned
 // open-loops counter). Shared by writeOutlinerHeader and the height budget so
 // both measure the same line.
-func (m *OutlinerModel) buildOutlinerTitleLine(width int, perspectiveLabel, searchIndicator string) string {
-	var line strings.Builder
-	line.WriteString(m.renderOutlinerTitle(width))
-	line.WriteString(perspectiveLabel)
-	line.WriteString(searchIndicator)
+func (m *OutlinerModel) buildOutlinerTitleLine(width int, modeLabel, searchIndicator string) string {
+	var suffix strings.Builder
+	suffix.WriteString(modeLabel)
+	suffix.WriteString(searchIndicator)
 	if m.multiSelectMode {
-		line.WriteString("  ")
-		line.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", m.SelectedCount())))
+		suffix.WriteString("  ")
+		suffix.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", m.SelectedCount())))
 	}
-	return m.appendOpenLoopsCounter(line.String(), width)
+	renderedSuffix := suffix.String()
+	titleWidth := max(width-lipgloss.Width(renderedSuffix), 1)
+	title := truncateToVisualWidth(m.renderOutlinerTitle(width), titleWidth)
+	return m.appendOpenLoopsCounter(title+renderedSuffix, width)
 }
 
-func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, perspectiveLabel, searchIndicator string) {
-	b.WriteString(m.buildOutlinerTitleLine(width, perspectiveLabel, searchIndicator))
+func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, modeLabel, searchIndicator string) {
+	b.WriteString(m.buildOutlinerTitleLine(width, modeLabel, searchIndicator))
 	b.WriteString("\n")
 
 	if m.ac.IsActive() {
@@ -284,11 +265,11 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, persp
 	}
 }
 
-func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspective, perspectiveLabel, searchIndicator, breadcrumb, notice string) string {
+func (m *OutlinerModel) renderOutlinerEmptyState(width int, modeLabel, searchIndicator, breadcrumb, notice string) string {
 	var b strings.Builder
 	var line strings.Builder
 	line.WriteString(m.renderOutlinerTitle(width))
-	line.WriteString(perspectiveLabel)
+	line.WriteString(modeLabel)
 	line.WriteString(searchIndicator)
 	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
 	b.WriteString("\n")
@@ -307,12 +288,12 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, perspective Perspect
 		b.WriteString("\n")
 	}
 
-	emptyMsg := m.outlinerEmptyMessage(perspective)
+	emptyMsg := m.outlinerEmptyMessage()
 	b.WriteString(MutedStyle.Render(emptyMsg))
 	if emptyMsg == EmptyStateNoTasks && m.project != nil &&
-		m.SearchQuery() == "" && (m.Dispatcher == nil || !m.Dispatcher.HasPendingPrefix()) {
+		m.SearchQuery() == "" {
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("i add · : commands · ? help · esc back"))
+		b.WriteString(HelpStyle.Render("a capture · : finder · m modes · c scope · ? help"))
 	}
 	if notice != "" {
 		b.WriteString("\n\n")
@@ -336,37 +317,39 @@ func (m *OutlinerModel) renderPinnedTagTabBar(width int) string {
 	return RenderTabBar(tabs, m.pinnedTagTabIndex(), width, 1)
 }
 
-func (m *OutlinerModel) outlinerEmptyMessage(perspective Perspective) string {
+func (m *OutlinerModel) outlinerEmptyMessage() string {
 	if m.project == nil && len(m.loadedProjects) == 0 {
-		return "No projects in current context. Press C to switch context."
+		return "No projects in this scope. Press c to choose another scope."
 	}
-	if m.workNextMode {
-		return "Next is empty — press q to shortlist a task, Tab for Backlog, or P to pick a mode."
+	if m.primaryMode == ModeNext {
+		return "Next is empty — press n on a task to add it, Tab for Backlog, or m for another mode."
 	}
-	if m.workBacklogMode {
-		return "Backlog is empty — everything actionable is already in Today or Next. Press Tab to switch work modes, or P for other modes."
+	if m.primaryMode == ModeBacklog {
+		return "Backlog is empty — no Ready tasks remain outside Today. Tab cycles work modes; m shows all modes."
 	}
-	if m.project == nil {
-		return "No tasks found."
+	if m.primaryMode == ModeInbox {
+		return "Inbox is empty — press a to capture or Tab to continue."
 	}
-	if m.smartFocus != nil {
-		return fmt.Sprintf("No tasks match the %s focus. Try P to pick a perspective or F to adjust filters.", m.smartFocus.String())
-	}
-	if perspective.Name != "All" && len(m.zoomStack) > 0 {
+	if m.primaryMode != ModeAll && len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 		if task := m.project.GetTaskByID(topID); task != nil {
-			return fmt.Sprintf("No tasks match the %s perspective within %q. Try P to pick a perspective or h/l to cycle.", perspective.Name, task.Title)
+			return fmt.Sprintf("No tasks match %s within %q. Press m for modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label, task.Title)
 		}
-		return fmt.Sprintf("No tasks match the %s perspective. Try P to pick a perspective or h/l to cycle.", perspective.Name)
+		return fmt.Sprintf("No tasks match %s. Press m for modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
 	}
-	if perspective.Name != "All" {
-		return fmt.Sprintf("No tasks match the %s perspective. Try P to pick a perspective or h/l to cycle.", perspective.Name)
+	if m.primaryMode != ModeAll {
+		return fmt.Sprintf("No tasks match %s. Press m for modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
 	}
 	if m.SearchQuery() != "" {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
 	}
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) || m.filter.Actionable {
 		return EmptyStateFiltered
+	}
+	if m.project == nil {
+		if mode := m.activeOutlinerModeEntry(); mode.ID != ModeAll {
+			return fmt.Sprintf("%s is empty — press m for another mode or Ctrl+Esc to reset.", mode.Label)
+		}
 	}
 	return EmptyStateNoTasks
 }

@@ -11,7 +11,7 @@ import (
 // literally with the '#' prefix.
 func TestTagAdderStripsLeadingHash(t *testing.T) {
 	adder := NewTagAdder()
-	picker := NewBasePicker[TagInfo](nil, PickerConfig{MultiSelect: true})
+	picker := NewListSurfaceAdapter[TagInfo](nil, PickerConfig{MultiSelect: true})
 	adder.EnterAddMode()
 	adder.AddTagInput.SetValue("#backend")
 
@@ -19,10 +19,10 @@ func TestTagAdderStripsLeadingHash(t *testing.T) {
 	if !handled {
 		t.Fatalf("expected key to be handled")
 	}
-	if len(picker.Items) != 1 {
-		t.Fatalf("want 1 tag, got %d", len(picker.Items))
+	if len(picker.SourceItems()) != 1 {
+		t.Fatalf("want 1 tag, got %d", len(picker.SourceItems()))
 	}
-	if picker.Items[0].Name != "backend" {
-		t.Errorf("want tag %q, got %q", "backend", picker.Items[0].Name)
+	if picker.SourceItems()[0].Name != "backend" {
+		t.Errorf("want tag %q, got %q", "backend", picker.SourceItems()[0].Name)
 	}
 }

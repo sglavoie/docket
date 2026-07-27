@@ -36,14 +36,10 @@ func (m *TaskAttachmentsModel) buildKeyMap() *keymap.KeyMap {
 		}, keymap.WithGate(func() bool { return !inInputMode() })),
 	)
 
-	// Goto group: g prefix (gg = top)
-	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
-		JumpToTop: func() (tea.Model, tea.Cmd) {
-			m.cursor = 0
-			return m, nil
-		},
-		GoToProject: nil,
-	})...)
+	entries = append(entries, keymap.Bind("home", "Jump to first attachment", "Navigation", func() (tea.Model, tea.Cmd) {
+		m.cursor = 0
+		return m, nil
+	}, keymap.WithGate(func() bool { return !inInputMode() })))
 
 	// Open/view actions
 	entries = append(entries,

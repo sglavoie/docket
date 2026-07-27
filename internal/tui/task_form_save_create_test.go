@@ -211,22 +211,22 @@ func TestTaskForm_Save_CreateOpenAfterSubtaskTargetsChild(t *testing.T) {
 
 // ── Dimmed-aware insertion ──────────────────────────────────────────────────
 
-func seedDimmedTask(t *testing.T, shortID int, title, section string) *models.Task {
+func seedDimmedTask(t *testing.T, shortID int, title string, state models.WorkflowState) *models.Task {
 	t.Helper()
 	task := seedTask(t, shortID, title, models.StateReady)
-	task.SetSection(section)
+	task.ApplyWorkflowState(state)
 	task.Dimmed = true
 	return task
 }
 
 func TestTaskForm_Save_Create_InsertsBeforeDimmedSameSection(t *testing.T) {
-	dimmed := seedDimmedTask(t, 1, "Dimmed existing", models.SectionNext)
+	dimmed := seedDimmedTask(t, 1, "Dimmed existing", models.StateNext)
 	env := newScenarioEnv(t, "create-dimmed", dimmed)
 	m := scenarioCreateForm(t, env)
 
 	m.draft.title = "New important task"
 	m.titleInput.SetValue("New important task")
-	m.draft.section = models.SectionNext
+	m.draft.state = models.StateNext
 
 	msg := runCreate(t, m)
 	fresh := env.reload(t)
@@ -250,13 +250,13 @@ func TestTaskForm_Save_Create_InsertsBeforeDimmedSameSection(t *testing.T) {
 }
 
 func TestTaskForm_Save_Create_DimmedInDifferentSectionIgnored(t *testing.T) {
-	dimmed := seedDimmedTask(t, 1, "Dimmed in Inbox", models.SectionInbox)
+	dimmed := seedDimmedTask(t, 1, "Dimmed in Inbox", models.StateInbox)
 	env := newScenarioEnv(t, "create-dimmed-other", dimmed)
 	m := scenarioCreateForm(t, env)
 
 	m.draft.title = "New Next task"
 	m.titleInput.SetValue("New Next task")
-	m.draft.section = models.SectionNext
+	m.draft.state = models.StateNext
 
 	runCreate(t, m)
 	fresh := env.reload(t)

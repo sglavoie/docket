@@ -212,17 +212,10 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			return fmt.Errorf("cannot clear all triggers without adding new ones (use --add-trigger-field)")
 		}
 		modifiedRule.Triggers = []workflow.RuleTrigger{}
-		modifiedRule.Trigger = workflow.RuleTrigger{} // Clear legacy field
 		hasChanges = true
 	}
 
 	if len(workflowEditAddTriggerFields) > 0 {
-		// Handle legacy single trigger field migration
-		if len(modifiedRule.Triggers) == 0 && modifiedRule.Trigger.Field != "" {
-			modifiedRule.Triggers = []workflow.RuleTrigger{modifiedRule.Trigger}
-			modifiedRule.Trigger = workflow.RuleTrigger{}
-		}
-
 		newTriggers, err := buildTriggersFromFlags(workflowEditAddTriggerFields, workflowEditAddTriggerOps, workflowEditAddTriggerValues)
 		if err != nil {
 			return err
@@ -232,12 +225,6 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	if workflowEditRemoveTriggers != "" {
-		// Migrate legacy single trigger to Triggers slice before removal
-		if len(modifiedRule.Triggers) == 0 && modifiedRule.Trigger.Field != "" {
-			modifiedRule.Triggers = []workflow.RuleTrigger{modifiedRule.Trigger}
-			modifiedRule.Trigger = workflow.RuleTrigger{}
-		}
-
 		indices, err := parseCommaSeparatedIndices(workflowEditRemoveTriggers)
 		if err != nil {
 			return fmt.Errorf("invalid --remove-trigger indices: %w", err)

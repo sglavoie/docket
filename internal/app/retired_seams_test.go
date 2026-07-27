@@ -6,41 +6,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// This file covers the additive app-layer migration seams introduced for the
-// cross-project single-task raw-save migration (session 33.7.3.4.4.1):
-// SetSection and MoveTaskToTop/MoveTaskToBottom. They are thin
-// ledger-committed operations. The retired ToggleActive seam was removed in
-// session 33.7.6.3: the Active field is no longer a task concept; Focus Queue
-// membership is independent planning state. The SetStage seam was
-// removed with the Stage field (workflow state is now the single source of
-// truth).
-
-// TestSetSectionCommitsAndSyncsState proves SetSection stores a valid GTD section,
-// resyncs the derived workflow state, and silently ignores a non-GTD name.
-func TestSetSectionCommitsAndSyncsState(t *testing.T) {
-	task := newTask("t1", 1, "task")
-	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
-	svc := newTestService(repo)
-
-	if _, err := svc.SetSection("t1", models.SectionSomeday); err != nil {
-		t.Fatalf("SetSection: %v", err)
-	}
-	if got := models.SectionForState(task.State()); got != models.SectionSomeday {
-		t.Errorf("Section = %q, want %q", got, models.SectionSomeday)
-	}
-	if task.State() != models.StateSomeday {
-		t.Errorf("State = %q, want %q (section should resync state)", task.State(), models.StateSomeday)
-	}
-
-	// A non-GTD name is ignored by the model; the section is left unchanged.
-	if _, err := svc.SetSection("t1", "CustomGroup"); err != nil {
-		t.Fatalf("SetSection (non-GTD): %v", err)
-	}
-	if got := models.SectionForState(task.State()); got != models.SectionSomeday {
-		t.Errorf("Section = %q, want %q (non-GTD name should be ignored)", got, models.SectionSomeday)
-	}
-}
-
 // rootOrder reads the root-task IDs in slice order.
 func rootOrder(p *models.Project) []string {
 	var ids []string

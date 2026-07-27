@@ -41,7 +41,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 
 	var totalActive, highPriCount int
 
-	projects := m.runtime.ActiveProjects()
+	projects := projectsInProjectSet(m.runtime.ActiveProjects(), m.projectSet)
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
 			continue
@@ -74,7 +74,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// Inbox count
-			if isProcessableInboxTask(task) {
+			if task.IsInState(models.StateInbox) && !task.IsTerminalState() && !task.IsSnoozed() {
 				wp.InboxCount++
 			}
 
@@ -313,18 +313,6 @@ func (m *WeeklyReviewModel) toggleCurrentSection() (tea.Model, tea.Cmd) {
 		pos = sectionEnd
 	}
 
-	return m, nil
-}
-
-// toggleSectionFocus toggles focus on a specific section.
-func (m *WeeklyReviewModel) toggleSectionFocus(section WeeklyReviewSection) (tea.Model, tea.Cmd) {
-	if m.focusedSection != nil && *m.focusedSection == section {
-		m.focusedSection = nil
-	} else {
-		m.focusedSection = &section
-	}
-	m.calculateNavigation()
-	m.clampCursor()
 	return m, nil
 }
 

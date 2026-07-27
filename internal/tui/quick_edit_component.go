@@ -79,8 +79,6 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 	q.input.Focus()
 	q.input.CursorEnd()
 
-	effectiveSection := taskSectionBucket(task)
-
 	// Store original state
 	q.original = &quickEditResult{
 		title:       task.Title,
@@ -89,10 +87,8 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 		prioritySet: true,
 		dueDate:     task.DueDate,
 		dueDateSet:  task.DueDate != nil,
-		section:     effectiveSection,
-		sectionSet:  true,
-		status:      models.LegacyStatusForState(task.State()),
-		statusSet:   true,
+		state:       task.State(),
+		stateSet:    true,
 	}
 
 	// Initialize preview with original values
@@ -103,10 +99,8 @@ func (q *QuickEditComponent) Enter(task *models.Task, renameOnly bool) tea.Cmd {
 		prioritySet: true,
 		dueDate:     task.DueDate,
 		dueDateSet:  task.DueDate != nil,
-		section:     effectiveSection,
-		sectionSet:  true,
-		status:      models.LegacyStatusForState(task.State()),
-		statusSet:   true,
+		state:       task.State(),
+		stateSet:    true,
 	}
 
 	return textinput.Blink

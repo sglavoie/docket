@@ -144,7 +144,7 @@ func TestWriteArchivedTasks_DescriptionWithHeadingPattern(t *testing.T) {
 
 	output := WriteArchivedTasks("Test Project", []*models.Task{task})
 
-	result, err := ParseTasksMarkdownWithSections(output)
+	result, err := ParseTasksMarkdownDocument(output)
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}

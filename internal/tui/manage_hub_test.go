@@ -17,12 +17,6 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 		open   func(*AppModel, *models.Project) (bool, tea.Cmd)
 		params ManageParams
 	}{
-		{name: "project inbox", open: func(app *AppModel, project *models.Project) (bool, tea.Cmd) {
-			return app.handleInboxMessages(ShowInboxProcessorMsg{Project: project})
-		}, params: ManageParams{Module: ManageInbox, Scope: ProjectEntityScope("project")}},
-		{name: "global inbox", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleInboxMessages(ShowGlobalInboxProcessorMsg{})
-		}, params: ManageParams{Module: ManageInbox, Scope: AppEntityScope()}},
 		{name: "project notes", open: func(app *AppModel, project *models.Project) (bool, tea.Cmd) {
 			return app.handleNotesMessages(ShowNotesMsg{Project: project})
 		}, params: ManageParams{Module: ManageNotes, Scope: ProjectEntityScope("project")}},
@@ -212,83 +206,5 @@ func TestManageHubProjectDeletionStaysInTheCollectionAtAppScope(t *testing.T) {
 	params := app.CurrentRoute().Params().(ManageParams)
 	if app.CurrentRoute().ID() != SecondaryTool || params.Module != ManageNotes || params.Scope != AppEntityScope() {
 		t.Fatalf("delete fallback = %s/%#v, want Manage Notes app scope", app.CurrentRoute().ID(), params)
-	}
-}
-
-func TestManageLegacyNamesCollapseToScopedModules(t *testing.T) {
-	tests := []struct {
-		view   PresentationID
-		params ManageParams
-	}{
-		{ViewInboxProcessor, ManageParams{Module: ManageInbox, Scope: ProjectEntityScope("project")}},
-		{ViewGlobalInboxProcessor, ManageParams{Module: ManageInbox, Scope: AppEntityScope()}},
-		{ViewNotes, ManageParams{Module: ManageNotes, Scope: ProjectEntityScope("project")}},
-		{ViewGlobalNotes, ManageParams{Module: ManageNotes, Scope: AppEntityScope()}},
-		{ViewBlockers, ManageParams{Module: ManageBlockers, Scope: ProjectEntityScope("project")}},
-		{ViewGlobalBlockers, ManageParams{Module: ManageBlockers, Scope: AppEntityScope()}},
-		{ViewTagManager, ManageParams{Module: ManageTags, Scope: ProjectEntityScope("project")}},
-		{ViewGlobalTagManager, ManageParams{Module: ManageTags, Scope: AppEntityScope()}},
-		{ViewNotificationCenter, ManageParams{Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationAlerts}},
-		{ViewMessageLog, ManageParams{Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationLog}},
-		{ViewWorkflowRules, ManageParams{Module: ManageRules, Scope: AppEntityScope()}},
-		{ViewScoreProfileManager, ManageParams{Module: ManageRules, Scope: AppEntityScope()}},
-		{ViewTaskTemplates, ManageParams{Module: ManageTemplates, Scope: AppEntityScope()}},
-		{ViewSettings, ManageParams{Module: ManageSettings, Scope: AppEntityScope()}},
-		{ViewContextHub, ManageParams{Module: ManageContexts, Scope: AppEntityScope()}},
-	}
-
-	for _, tc := range tests {
-		route, ok, err := routeForPresentation(tc.view, "project", "")
-		if err != nil || !ok {
-			t.Fatalf("%s adapter: ok=%v err=%v", tc.view, ok, err)
-		}
-		if route.ID() != SecondaryTool || route.Params().(ManageParams) != tc.params {
-			t.Errorf("%s maps to %s/%#v, want Manage/%#v", tc.view, route.ID(), route.Params(), tc.params)
-		}
-	}
-}
-
-func TestManageLegacyNavigateMessagesReachTheTypedHub(t *testing.T) {
-	tests := []struct {
-		view   PresentationID
-		module ManageModule
-		scope  RouteScope
-		mode   NotificationMode
-	}{
-		{view: ViewInboxProcessor, module: ManageInbox, scope: ScopeProject},
-		{view: ViewGlobalInboxProcessor, module: ManageInbox, scope: ScopeApp},
-		{view: ViewNotes, module: ManageNotes, scope: ScopeProject},
-		{view: ViewGlobalNotes, module: ManageNotes, scope: ScopeApp},
-		{view: ViewBlockers, module: ManageBlockers, scope: ScopeProject},
-		{view: ViewGlobalBlockers, module: ManageBlockers, scope: ScopeApp},
-		{view: ViewTagManager, module: ManageTags, scope: ScopeProject},
-		{view: ViewGlobalTagManager, module: ManageTags, scope: ScopeApp},
-		{view: ViewNotificationCenter, module: ManageNotifications, scope: ScopeApp, mode: NotificationAlerts},
-		{view: ViewMessageLog, module: ManageNotifications, scope: ScopeApp, mode: NotificationLog},
-		{view: ViewWorkflowRules, module: ManageRules, scope: ScopeApp},
-		{view: ViewScoreProfileManager, module: ManageRules, scope: ScopeApp},
-		{view: ViewTaskTemplates, module: ManageTemplates, scope: ScopeApp},
-		{view: ViewSettings, module: ManageSettings, scope: ScopeApp},
-		{view: ViewContextHub, module: ManageContexts, scope: ScopeApp},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.view.String(), func(t *testing.T) {
-			app := typedTestApp(t)
-			handled, _ := app.handleNavigateToView(NavigateToViewMsg{PresentationID: tc.view})
-			if !handled {
-				t.Fatal("NavigateToViewMsg was not handled")
-			}
-			params := app.CurrentRoute().Params().(ManageParams)
-			if app.CurrentRoute().ID() != SecondaryTool || params.Module != tc.module || params.Scope.Kind != tc.scope || params.NotificationMode != tc.mode {
-				t.Fatalf("navigate result = %s/%#v, want Manage/%s/%v/%s", app.CurrentRoute().ID(), params, tc.module, tc.scope, tc.mode)
-			}
-			if tc.view == ViewWorkflowRules && app.manageHub.RulesMode() != ManageRulesWorkflow {
-				t.Fatalf("Workflow deep link selected Rules/%s", app.manageHub.RulesMode())
-			}
-			if tc.view == ViewScoreProfileManager && app.manageHub.RulesMode() != ManageRulesScoring {
-				t.Fatalf("Scoring deep link selected Rules/%s", app.manageHub.RulesMode())
-			}
-		})
 	}
 }

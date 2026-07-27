@@ -15,24 +15,20 @@ import (
 // event transition.
 func stateBasedTagRule() workflow.WorkflowRule {
 	return workflow.WorkflowRule{
-		ID:      "r-status-tag",
-		Name:    "Tag done tasks",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}},
-	}
+		ID:       "r-status-tag",
+		Name:     "Tag done tasks",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}}}
 }
 
 // contextualTagRule fires only on a state transition into done, so it requires
 // the pre-mutation state (Contextual=true) to trigger.
 func contextualTagRule() workflow.WorkflowRule {
 	return workflow.WorkflowRule{
-		ID:      "r-status-changed-tag",
-		Name:    "Tag on completion",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}},
-	}
+		ID:       "r-status-changed-tag",
+		Name:     "Tag on completion",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}}}
 }
 
 func TestStateWithWorkflowStateBasedRuleFires(t *testing.T) {
@@ -107,12 +103,10 @@ func TestStateWithWorkflowDeferredMoveCommitsOneTransaction(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-move-done",
-		Name:    "Archive done to Beta",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}},
-	}}
+		ID:       "r-move-done",
+		Name:     "Archive done to Beta",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}}}}
 
 	res, err := svc.StateWithWorkflow("t1", models.StateDone, app.SingleTaskWorkflowOptions{Rules: rules})
 	if err != nil {
@@ -142,12 +136,10 @@ func TestStateWithWorkflowFollowupAppended(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-followup",
-		Name:    "Follow up",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionCreateFollowup, Value: "verify {task}"}},
-	}}
+		ID:       "r-followup",
+		Name:     "Follow up",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionCreateFollowup, Value: "verify {task}"}}}}
 
 	if _, err := svc.StateWithWorkflow("t1", models.StateDone, app.SingleTaskWorkflowOptions{Rules: rules}); err != nil {
 		t.Fatalf("StateWithWorkflow: %v", err)
@@ -189,12 +181,10 @@ func TestSetPriorityWithWorkflowFiresRuleAndCommits(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-high-pri",
-		Name:    "Tag high priority",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "1"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "hot"}},
-	}}
+		ID:       "r-high-pri",
+		Name:     "Tag high priority",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "1"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "hot"}}}}
 
 	if _, err := svc.SetPriorityWithWorkflow("t1", 1, app.SingleTaskWorkflowOptions{Rules: rules}); err != nil {
 		t.Fatalf("SetPriorityWithWorkflow: %v", err)
@@ -295,11 +285,11 @@ func priorityCascadeRule(id string, state models.WorkflowState) workflow.Workflo
 		ID:      id,
 		Name:    id,
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{
+		Triggers: []workflow.RuleTrigger{{
 			Field:     workflow.FieldPriorityChanged,
 			Operation: workflow.OpEquals,
 			Value:     "3->1",
-		},
+		}},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: string(state)}},
 	}
 }
@@ -387,9 +377,9 @@ func TestWithWorkflowNoRulesCommitsBareMutation(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	res, err := svc.SetSectionWithWorkflow("t1", models.SectionSomeday, app.SingleTaskWorkflowOptions{UndoAction: "Move to Section"})
+	res, err := svc.StateWithWorkflow("t1", models.StateSomeday, app.SingleTaskWorkflowOptions{UndoAction: "Change state"})
 	if err != nil {
-		t.Fatalf("SetSectionWithWorkflow: %v", err)
+		t.Fatalf("StateWithWorkflow: %v", err)
 	}
 	if res.RuleTriggerCounts != nil {
 		t.Errorf("RuleTriggerCounts = %v, want nil with no rules", res.RuleTriggerCounts)
@@ -397,12 +387,12 @@ func TestWithWorkflowNoRulesCommitsBareMutation(t *testing.T) {
 	if len(repo.commits) != 1 {
 		t.Errorf("Commit called %d times, want 1", len(repo.commits))
 	}
-	if got := repo.commits[0][0].UndoAction; got != "Move to Section" {
-		t.Errorf("UndoAction = %q, want Move to Section", got)
+	if got := repo.commits[0][0].UndoAction; got != "Change state" {
+		t.Errorf("UndoAction = %q, want Change state", got)
 	}
 }
 
-func TestSetSectionWithWorkflowDoesNotAutoCompleteEligibleParent(t *testing.T) {
+func TestStateWithWorkflowDoesNotAutoCompleteEligibleParent(t *testing.T) {
 	story := newTask("story", 1, "story")
 	story.Type = models.TaskTypeStory
 	child := newTask("child", 2, "child")
@@ -420,8 +410,8 @@ func TestSetSectionWithWorkflowDoesNotAutoCompleteEligibleParent(t *testing.T) {
 		Actions:      []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: "done"}},
 	}
 
-	if _, err := newTestService(repo).SetSectionWithWorkflow(story.ID, models.SectionSomeday, app.SingleTaskWorkflowOptions{Rules: []workflow.WorkflowRule{rule}}); err != nil {
-		t.Fatalf("SetSectionWithWorkflow: %v", err)
+	if _, err := newTestService(repo).StateWithWorkflow(story.ID, models.StateSomeday, app.SingleTaskWorkflowOptions{Rules: []workflow.WorkflowRule{rule}}); err != nil {
+		t.Fatalf("StateWithWorkflow: %v", err)
 	}
 	if story.State() != models.StateSomeday {
 		t.Fatalf("story state = %s, want someday", story.State())

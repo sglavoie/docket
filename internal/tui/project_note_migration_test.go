@@ -60,8 +60,8 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	shell := &AppModel{
 		appService: svc,
 		views:      views,
-		viewStack:  []PresentationID{ViewNotes},
 	}
+	setTestPresentationPath(shell, ViewNotes)
 	return &projectNoteTUIEnv{dataDir: dataDir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}
 }
 
@@ -271,7 +271,7 @@ func TestProjectNoteBulkTagsAndLinksCommitAsSingleBatches(t *testing.T) {
 	}
 
 	env.shell.pendingBulkNotes = newNoteMutationRefs(app.ProjectNoteLocation(env.project.ID), env.view.notes)
-	env.shell.viewStack = []PresentationID{ViewNotes, ViewNoteTaskLinker}
+	setTestPresentationPath(env.shell, ViewNotes, ViewNoteTaskLinker)
 	handled, linkCmd := env.shell.handleNotesMessages(BulkNoteLinkDoneMsg{
 		ProjectID:   env.project.ID,
 		LinkChanges: map[string]bool{"task-1": true},

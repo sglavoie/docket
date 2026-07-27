@@ -25,7 +25,7 @@ func collectValidationErrors(rule *workflow.WorkflowRule) []string {
 			errors = append(errors, "at least one trigger is required")
 		} else {
 			for i, trigger := range triggers {
-				if err := trigger.Validate(); err != nil {
+				if err := trigger.ValidateForAuthoring(); err != nil {
 					errors = append(errors, fmt.Sprintf("trigger %d: %s", i, err.Error()))
 				}
 			}
@@ -40,14 +40,14 @@ func collectValidationErrors(rule *workflow.WorkflowRule) []string {
 		errors = append(errors, "at least one action is required")
 	} else {
 		for i, action := range rule.Actions {
-			if err := action.Validate(); err != nil {
+			if err := action.ValidateForAuthoring(); err != nil {
 				errors = append(errors, fmt.Sprintf("action %d: %s", i, err.Error()))
 			}
 		}
 	}
 
 	// Validate scope and level consistency (matching WorkflowRule.Validate).
-	if err := rule.Validate(); err != nil {
+	if err := rule.ValidateForAuthoring(); err != nil {
 		// Only append scope/level errors that aren't already captured above.
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "invalid scope") ||

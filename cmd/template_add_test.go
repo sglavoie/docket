@@ -16,7 +16,7 @@ func resetTemplateAddVars() {
 	templateAddType = "task"
 	templateAddPriority = 0
 	templateAddTags = ""
-	templateAddSection = ""
+	templateAddState = ""
 	templateAddDescription = ""
 	templateAddCategory = ""
 	templateAddChildren = nil
@@ -46,37 +46,19 @@ func setupTemplateAddTest(t *testing.T) *testDeps {
 	return deps
 }
 
-func TestTemplateAddSectionValidation(t *testing.T) {
-	t.Run("rejects non-GTD section", func(t *testing.T) {
-		deps := setupTemplateAddTest(t)
-		defer deps.Cleanup()
+func TestTemplateAddDefaultsToInbox(t *testing.T) {
+	deps := setupTemplateAddTest(t)
+	defer deps.Cleanup()
 
-		templateAddName = "Invalid Section"
-		templateAddSection = "Backlog"
+	templateAddName = "Inbox Template"
+	if err := runTemplateAdd(templateAddCmd, nil); err != nil {
+		t.Fatalf("runTemplateAdd: %v", err)
+	}
 
-		err := runTemplateAdd(templateAddCmd, nil)
-		if err == nil {
-			t.Fatal("expected error for non-GTD template section")
-		}
-	})
-
-	t.Run("accepts GTD section", func(t *testing.T) {
-		deps := setupTemplateAddTest(t)
-		defer deps.Cleanup()
-
-		templateAddName = "Inbox Template"
-		templateAddSection = models.SectionInbox
-
-		err := runTemplateAdd(templateAddCmd, nil)
-		testutil.AssertNoError(t, err)
-
-		reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
-		testutil.AssertNoError(t, loadErr)
-
-		tmpl := reloaded.Automation().GetTaskTemplateByName("Inbox Template")
-		if tmpl == nil {
-			t.Fatal("template not found after add")
-		}
-		testutil.AssertEqual(t, tmpl.State, models.StateInbox)
-	})
+	reloaded, loadErr := config.NewManager(deps.ConfigPath).LoadRuntimeState()
+	testutil.AssertNoError(t, loadErr)
+	tmpl := reloaded.Automation().GetTaskTemplateByName("Inbox Template")
+	if tmpl == nil || tmpl.State != models.StateInbox {
+		t.Fatalf("template = %+v, want inbox state", tmpl)
+	}
 }

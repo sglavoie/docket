@@ -14,7 +14,7 @@ func (m *OutlinerModel) View() tea.View {
 		return tea.NewView(m.renderFullWidth())
 	}
 
-	// Rebuild flat row list with perspective filter and clamp cursor.
+	// Rebuild the mode's flat row list and clamp the cursor.
 	m.rebuildRows()
 
 	return tea.NewView(m.renderFullWidth())

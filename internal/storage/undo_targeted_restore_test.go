@@ -35,7 +35,7 @@ func TestPerformTargetedUndo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read tasks file: %v", err)
 	}
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestPerformTargetedRedo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read tasks file: %v", err)
 	}
-	result, parseErr := ParseTasksMarkdownWithSections(string(content))
+	result, parseErr := ParseTasksMarkdownDocument(string(content))
 	if parseErr != nil {
 		t.Fatalf("failed to parse restored content: %v", parseErr)
 	}
@@ -136,7 +136,7 @@ func TestPerformTargetedUndoRemovesNewlyCreatedTask(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read tasks file: %v", err)
 	}
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}
@@ -217,7 +217,7 @@ func TestPerformTargetedUndoRemovesReferencesToNewlyCreatedTask(t *testing.T) {
 		t.Fatalf("restored content should not retain parent metadata for removed task:\n%s", string(content))
 	}
 
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestPerformTargetedUndoRestoresDeletedTask(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read tasks file: %v", err)
 	}
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}
@@ -421,7 +421,7 @@ func TestPerformTargetedUndoRestoresDecisionsForTargetedTasks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read tasks file: %v", err)
 	}
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		t.Fatalf("failed to parse restored content: %v", err)
 	}

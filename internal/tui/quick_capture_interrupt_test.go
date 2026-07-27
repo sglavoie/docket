@@ -20,7 +20,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	// instead of via the active-view snapshot.
 	beforeCursor := outliner.cursor
 
-	driveUITestKeys(t, driver, "ctrl+n")
+	driveUITestKeys(t, driver, "a")
 	assertQuickCaptureOpenOver(t, driver, ViewCrossProjectOutliner, beforeStack)
 	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
@@ -50,7 +50,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	}
 }
 
-func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
+func TestRetiredQuickCaptureShortcutDoesNotInterruptTaskDetail(t *testing.T) {
 	driver, _, project := newQuickCaptureInterruptFixture(t)
 	openFixtureOutliner(t, driver, project)
 
@@ -72,43 +72,19 @@ func TestQuickCaptureInterruptPreservesTaskDetailContext(t *testing.T) {
 	beforeStack := slices.Clone(driver.Observe(ObserveOptions{}).ViewStack)
 
 	driveUITestKeys(t, driver, "ctrl+n")
-	assertQuickCaptureOpenOver(t, driver, ViewTaskDetail, beforeStack)
-	detail = currentTaskDetail(t, driver)
-	if detail.scrollOffset != beforeScroll {
-		t.Fatalf("task detail scroll offset while capture is open = %d, want %d", detail.scrollOffset, beforeScroll)
+	afterRetiredKey := driver.Observe(ObserveOptions{})
+	if afterRetiredKey.CurrentView != ViewTaskDetail.String() {
+		t.Fatalf("retired Ctrl+N changed current view to %q", afterRetiredKey.CurrentView)
 	}
-	if detail.task == nil || detail.task.ID != beforeTaskID {
-		t.Fatalf("task detail task while capture is open = %v, want task ID %q", detail.task, beforeTaskID)
-	}
-
-	// Exercise the syntax viewport state: expand the guide and scroll it by line
-	// and page. The parked task detail's scroll offset and task identity must be
-	// untouched by capture's own viewport activity.
-	driveUITestKeys(t, driver, "?", "ctrl+j", "pgdown")
-	detail = currentTaskDetail(t, driver)
-	if detail.scrollOffset != beforeScroll {
-		t.Fatalf("task detail scroll offset after syntax scroll = %d, want %d", detail.scrollOffset, beforeScroll)
-	}
-	if detail.task == nil || detail.task.ID != beforeTaskID {
-		t.Fatalf("task detail task after syntax scroll = %v, want task ID %q", detail.task, beforeTaskID)
-	}
-	// Close the guide so the single-Esc dismissal path below is unchanged.
-	driveUITestKeys(t, driver, "?")
-
-	driveUITestKeys(t, driver, "esc")
-	after := driver.Observe(ObserveOptions{})
-	if after.CurrentView != ViewTaskDetail.String() {
-		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, ViewTaskDetail.String())
-	}
-	if !slices.Equal(after.ViewStack, beforeStack) {
-		t.Fatalf("view stack after capture dismiss = %v, want %v", after.ViewStack, beforeStack)
+	if !slices.Equal(afterRetiredKey.ViewStack, beforeStack) {
+		t.Fatalf("retired Ctrl+N changed view stack to %v, want %v", afterRetiredKey.ViewStack, beforeStack)
 	}
 	detail = currentTaskDetail(t, driver)
 	if detail.scrollOffset != beforeScroll {
-		t.Fatalf("task detail scroll offset after capture dismiss = %d, want %d", detail.scrollOffset, beforeScroll)
+		t.Fatalf("task detail scroll offset after retired Ctrl+N = %d, want %d", detail.scrollOffset, beforeScroll)
 	}
 	if detail.task == nil || detail.task.ID != beforeTaskID {
-		t.Fatalf("task detail task after capture dismiss = %v, want task ID %q", detail.task, beforeTaskID)
+		t.Fatalf("task detail task after retired Ctrl+N = %v, want task ID %q", detail.task, beforeTaskID)
 	}
 }
 
@@ -174,13 +150,14 @@ func driveUITestKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view PresentationID, priorStack []string) {
 	t.Helper()
 	obs := driver.Observe(ObserveOptions{})
-	// Task Composer is a typed overlay, so its compatibility view label changes
-	// while the legacy primary stack remains parked beneath it.
-	if obs.CurrentView != ViewQuickCapture.String() {
-		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, ViewQuickCapture.String())
+	// Task Composer is a typed overlay, so the derived renderer path adds its
+	// compatibility view above the parked primary route.
+	if obs.CurrentView != ViewTaskComposer.String() {
+		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, ViewTaskComposer.String())
 	}
-	if !slices.Equal(obs.ViewStack, priorStack) {
-		t.Fatalf("legacy view stack changed under typed composer = %v, want %v", obs.ViewStack, priorStack)
+	wantPath := append(slices.Clone(priorStack), ViewTaskComposer.String())
+	if !slices.Equal(obs.ViewStack, wantPath) {
+		t.Fatalf("renderer path under typed composer = %v, want %v", obs.ViewStack, wantPath)
 	}
 	overlay, ok := driver.App().navigation.Overlays.Current()
 	if !ok || overlay.Kind() != OverlayComposer || overlay.Key() != taskComposerOverlayKey {

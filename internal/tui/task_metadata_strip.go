@@ -152,7 +152,7 @@ func appendProjectSectionParts(parts []metadataPart, opts TaskMetadataStripOpts)
 			dropPriority: dropHigh,
 		})
 	}
-	if bucket := taskSectionBucket(opts.Task); !opts.AlreadyShown.Section && bucket != "" {
+	if bucket := taskStateGroupLabel(opts.Task); !opts.AlreadyShown.Section && bucket != "" {
 		text := MutedStyle.Render(bucket)
 		parts = append(parts, metadataPart{
 			group:        metadataGroupProjectSection,

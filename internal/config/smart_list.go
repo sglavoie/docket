@@ -119,9 +119,9 @@ func legacyCriterionStates(field, operation, value string) models.WorkflowStateS
 		actual := ""
 		switch field {
 		case "status":
-			actual = string(models.LegacyStatusForState(state))
+			actual = legacyCriterionStatus(state)
 		case "section":
-			actual = models.SectionForState(state)
+			actual = legacyCriterionSection(state)
 		}
 		if legacyCriterionStringMatch(actual, operation, value) {
 			matches = append(matches, state)
@@ -132,6 +132,50 @@ func legacyCriterionStates(field, operation, value string) models.WorkflowStateS
 		panic(err)
 	}
 	return states
+}
+
+func legacyCriterionStatus(state models.WorkflowState) string {
+	switch state {
+	case models.StateInbox, models.StateReady, models.StateNext:
+		return "todo"
+	case models.StateInProgress:
+		return "in_progress"
+	case models.StateWaiting:
+		return "blocked"
+	case models.StatePaused:
+		return "standby"
+	case models.StateReview:
+		return "review"
+	case models.StateSomeday:
+		return "maybe"
+	case models.StateDone:
+		return "done"
+	case models.StateCanceled:
+		return "canceled"
+	default:
+		return ""
+	}
+}
+
+func legacyCriterionSection(state models.WorkflowState) string {
+	switch state {
+	case models.StateInbox:
+		return "Inbox"
+	case models.StateNext:
+		return "Next"
+	case models.StateWaiting:
+		return "Waiting"
+	case models.StatePaused:
+		return "Standby"
+	case models.StateReview:
+		return "Review"
+	case models.StateSomeday:
+		return "Someday"
+	case models.StateDone, models.StateCanceled:
+		return "Completed"
+	default:
+		return ""
+	}
 }
 
 func legacyCriterionStringMatch(actual, operation, target string) bool {

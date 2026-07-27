@@ -34,10 +34,10 @@ func presentationScope(view PresentationID) RouteScope {
 	switch view {
 	case ViewDashboard, ViewProjectList,
 		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewGlobalSearch,
-		ViewGlobalBlockers, ViewGlobalNotes, ViewGlobalInboxProcessor,
+		ViewGlobalBlockers, ViewGlobalNotes,
 		ViewGlobalTagManager, ViewSettings, ViewWorkflowRules, ViewTaskTemplates,
 		ViewTutor, ViewAsk, ViewScoreProfileManager, ViewMetricsDashboard,
-		ViewCrossProjectOutliner, ViewFocusBoard, ViewRoadmap,
+		ViewCrossProjectOutliner, ViewRoadmap,
 		ViewNotificationCenter, ViewMessageLog, ViewContextHub:
 		return ScopeApp
 	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail,
@@ -54,22 +54,18 @@ func presentationAccentCategory(view PresentationID) AccentCategory {
 	switch view {
 	case ViewDashboard:
 		return AccentCatDashboard
-	case ViewQuickCapture, ViewBulkCapture:
+	case ViewTaskComposer:
 		return AccentCatCapture
-	case ViewGlobalInboxProcessor, ViewInboxProcessor, ViewCrossProjectOutliner:
+	case ViewCrossProjectOutliner:
 		return AccentCatTriage
 	case ViewDailyReview, ViewRoadmap:
 		return AccentCatPlan
-	case ViewFocusBoard:
-		return AccentCatWork
-	case ViewOutliner:
-		return AccentCatExecute
 	case ViewWeeklyReview, ViewMetricsDashboard, ViewRecentActivity:
 		return AccentCatReview
 	case ViewGlobalBlockers, ViewGlobalNotes, ViewNotes, ViewWorkflowRules,
 		ViewNotificationCenter, ViewContextHub:
 		return AccentCatSupport
-	case ViewGlobalSearch, ViewCommandPalette:
+	case ViewGlobalSearch, ViewFinder:
 		return AccentCatSearch
 	default:
 		return AccentCatNone

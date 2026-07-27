@@ -10,10 +10,22 @@ import (
 // NewAppModel.
 func newUITestApp() *AppModel {
 	app := newTestAppModel()
+	app.operationRegistry = NewOperationRegistry()
+	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 	o := NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o
 	app.views.Register(ViewCrossProjectOutliner, o)
-	app.viewStack = []PresentationID{ViewCrossProjectOutliner}
+	setTestPresentationPath(app, ViewCrossProjectOutliner)
+	if err := app.registerCoreInputOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerTaskActionOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		panic(err)
+	}
+	app.wireOutlinerOperationExecutor(app.crossOutliner)
 	return app
 }
 

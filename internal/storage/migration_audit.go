@@ -1,7 +1,5 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/models"
-
 // MigrationAuditEntry records the retired legacy lifecycle values a v1-parsed
 // task carried at load time. Under the workflow-state model the
 // Status/Section/Stage fields are no longer operational; they are captured for
@@ -10,7 +8,7 @@ import "github.com/sglavoie/tt/internal/models"
 type MigrationAuditEntry struct {
 	TaskID  string
 	ShortID int
-	Status  models.TaskStatus
+	Status  string
 	Section string
 	Stage   string
 }

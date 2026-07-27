@@ -266,33 +266,6 @@ func (s *Service) guardedSnoozeWithWorkflow(taskID string, locator TaskLocator, 
 	})
 }
 
-// SetSectionWithWorkflow moves one task to the workflow state a GTD section name
-// maps to (Task.SetSection performs the move) and runs the workflow cascade. A
-// non-empty section is ensured on the project, matching the legacy
-// applySectionChange behavior.
-func (s *Service) SetSectionWithWorkflow(taskID, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.setSectionWithWorkflow(taskID, TaskLocator{}, section, opts)
-}
-
-func (s *Service) SetSectionWithWorkflowByLocator(locator TaskLocator, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.setSectionWithWorkflow("", locator, section, opts)
-}
-
-func (s *Service) setSectionWithWorkflow(taskID string, locator TaskLocator, section string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	// A section move changes the derived workflow state, so fold the same
-	// Today/Next exclusivity reconciliation state transitions use into the same
-	// transaction. This explicit default remains alongside the orchestration-level
-	// backstop used when a later workflow rule changes state.
-	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
-	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
-		ref.Task.SetSection(section)
-		if section != "" {
-			ref.Project.EnsureSection(section)
-		}
-		return nil
-	})
-}
-
 // SetPinnedWithWorkflow sets one task's Pinned flag and runs the workflow
 // cascade. A nil pinned toggles the flag (the standard-keymap "toggle pin" op);
 // a non-nil pinned forces it. It preserves the legacy applyTogglePinned behavior

@@ -28,13 +28,11 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 		ShortID:    task.ShortID,
 		Type:       task.Type.String(),
 		Title:      task.Title,
-		Status:     models.LegacyStatusForState(task.State()).String(),
+		State:      task.State().String(),
 		Priority:   task.Priority,
 		ParentID:   task.ParentID,
 		Tags:       tags,
-		Section:    models.SectionForState(task.State()),
 		Pinned:     task.Pinned,
-		Queued:     true,
 		Dimmed:     task.Dimmed,
 		Parked:     task.IsParked(),
 		ParkedNote: task.ParkedNote,
@@ -57,11 +55,16 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	if v, ok := parsed["pinned"]; !ok || v != true {
 		t.Errorf("expected pinned=true in JSON, got %v", v)
 	}
-	if v, ok := parsed["queued"]; !ok || v != true {
-		t.Errorf("expected queued=true in JSON, got %v", v)
+	if v, ok := parsed["state"]; !ok || v != models.StateReady.String() {
+		t.Errorf("expected state=ready in JSON, got %v", v)
 	}
 	if _, ok := parsed["active"]; ok {
 		t.Error("did not expect legacy active field in JSON")
+	}
+	for _, field := range []string{"queued", "status", "section", "stage"} {
+		if _, ok := parsed[field]; ok {
+			t.Errorf("did not expect retired %s field in JSON", field)
+		}
 	}
 	if v, ok := parsed["dimmed"]; !ok || v != true {
 		t.Errorf("expected dimmed=true in JSON, got %v", v)
@@ -74,10 +77,6 @@ func TestTaskJSONEntry_IncludesFlagFields(t *testing.T) {
 	}
 	if _, ok := parsed["parked_at"]; !ok {
 		t.Error("expected parked_at in JSON output")
-	}
-	legacyTaskSectionField := "custom" + "_section"
-	if _, ok := parsed[legacyTaskSectionField]; ok {
-		t.Error("did not expect legacy section field in JSON")
 	}
 	if v, ok := parsed["parent_id"]; !ok || v != "parent-uuid" {
 		t.Errorf("expected parent_id=parent-uuid in JSON, got %v", v)
@@ -92,7 +91,7 @@ func TestTaskJSONEntry_NilParentIDSerializesAsNull(t *testing.T) {
 		ShortID:  task.ShortID,
 		Type:     task.Type.String(),
 		Title:    task.Title,
-		Status:   models.LegacyStatusForState(task.State()).String(),
+		State:    task.State().String(),
 		Priority: task.Priority,
 		ParentID: nil,
 		Tags:     []string{},
@@ -116,7 +115,7 @@ func TestTaskJSONEntry_NilParentIDSerializesAsNull(t *testing.T) {
 	}
 }
 
-func TestTaskJSONEntry_IncludesStageAndSnoozedUntil(t *testing.T) {
+func TestTaskJSONEntry_IncludesSnoozedUntil(t *testing.T) {
 	snoozeTime := time.Now().Add(24 * time.Hour)
 	task := testutil.NewTestTask("Staged task", models.TaskTypeTask)
 	task.SnoozedUntil = &snoozeTime
@@ -130,10 +129,9 @@ func TestTaskJSONEntry_IncludesStageAndSnoozedUntil(t *testing.T) {
 		ShortID:      task.ShortID,
 		Type:         task.Type.String(),
 		Title:        task.Title,
-		Status:       models.LegacyStatusForState(task.State()).String(),
+		State:        task.State().String(),
 		Priority:     task.Priority,
 		Tags:         tags,
-		Stage:        "Design",
 		SnoozedUntil: task.SnoozedUntil,
 		CreatedAt:    task.CreatedAt,
 		UpdatedAt:    task.UpdatedAt,
@@ -149,15 +147,15 @@ func TestTaskJSONEntry_IncludesStageAndSnoozedUntil(t *testing.T) {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if v, ok := parsed["stage"]; !ok || v != "Design" {
-		t.Errorf("expected stage=Design in JSON, got %v", v)
+	if _, ok := parsed["stage"]; ok {
+		t.Error("did not expect retired stage field in JSON")
 	}
 	if _, ok := parsed["snoozed_until"]; !ok {
 		t.Error("expected snoozed_until in JSON output")
 	}
 }
 
-func TestTaskJSONEntry_OmitsEmptyStageAndSnoozedUntil(t *testing.T) {
+func TestTaskJSONEntry_OmitsEmptyOptionalMetadata(t *testing.T) {
 	task := testutil.NewTestTask("Plain task", models.TaskTypeTask)
 
 	entry := taskJSONEntry{
@@ -165,7 +163,7 @@ func TestTaskJSONEntry_OmitsEmptyStageAndSnoozedUntil(t *testing.T) {
 		ShortID:  task.ShortID,
 		Type:     task.Type.String(),
 		Title:    task.Title,
-		Status:   models.LegacyStatusForState(task.State()).String(),
+		State:    task.State().String(),
 		Priority: task.Priority,
 		Tags:     []string{},
 	}
@@ -229,11 +227,7 @@ func TestTaskListJSONEntries_IncludesParkedMetadata(t *testing.T) {
 	}
 }
 
-// TestTaskJSONQueuedUsesWorkflowState locks FR-008-002 for the CLI task JSON:
-// the queued flag is StateNext membership, not presence in the Focus Queue
-// order index. An unindexed StateNext task reports queued=true; a stale indexed
-// non-Next task reports queued=false.
-func TestTaskJSONQueuedUsesWorkflowState(t *testing.T) {
+func TestTaskJSONUsesExactWorkflowState(t *testing.T) {
 	next := testutil.NewTestTask("On deck", models.TaskTypeTask)
 	next.ApplyWorkflowState(models.StateNext)
 	stale := testutil.NewTestTask("Left Next", models.TaskTypeTask)
@@ -244,10 +238,10 @@ func TestTaskJSONQueuedUsesWorkflowState(t *testing.T) {
 	if len(entries) != 2 {
 		t.Fatalf("got %d entries, want 2", len(entries))
 	}
-	if !entries[0].Queued {
-		t.Error("unindexed StateNext task should report queued=true")
+	if entries[0].State != models.StateNext.String() {
+		t.Errorf("first state = %q, want next", entries[0].State)
 	}
-	if entries[1].Queued {
-		t.Error("stale non-Next task should report queued=false even if it lingers in the order index")
+	if entries[1].State != models.StateReady.String() {
+		t.Errorf("second state = %q, want ready", entries[1].State)
 	}
 }

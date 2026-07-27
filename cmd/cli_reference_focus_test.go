@@ -40,7 +40,7 @@ func TestCLIReferenceFocusContract(t *testing.T) {
 	}
 	// The queue section must describe the state-driven Outliner/Next model:
 	// membership is StateNext and the persisted list is ordering-only.
-	for _, want := range []string{"StateNext", "ordering-only", "Outliner", "press Tab", "Press 'q'", "'w'"} {
+	for _, want := range []string{"StateNext", "ordering-only", "Outliner", "press Tab", "Press 'n'", "'t'"} {
 		if !strings.Contains(queueSection, want) {
 			t.Fatalf("CLI reference queue section missing %q:\n%s", want, queueSection)
 		}
@@ -70,7 +70,7 @@ func TestCLIReferenceFocusContract(t *testing.T) {
 	if end := strings.Index(todaySection, "\n## "); end >= 0 {
 		todaySection = todaySection[:end]
 	}
-	for _, want := range []string{"built-in Today section", "All mode", "Press 'w'"} {
+	for _, want := range []string{"synthetic Today group", "All mode", "Press 't'"} {
 		if !strings.Contains(todaySection, want) {
 			t.Fatalf("CLI reference today section missing %q:\n%s", want, todaySection)
 		}

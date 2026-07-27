@@ -150,7 +150,6 @@ func TestManageAdministrativeFormsRemainTransient(t *testing.T) {
 	for _, tc := range checks {
 		t.Run(tc.name, func(t *testing.T) {
 			app.navigation.Overlays.CancelAll()
-			app.syncPresentationStack()
 			handled, _ := tc.open()
 			if !handled {
 				t.Fatal("open message was not handled")

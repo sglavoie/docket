@@ -24,7 +24,7 @@ The dashboard shows:
   - All active projects with task counts
   - Current project details
   - Recent tasks
-  - Task statistics by type and status
+  - Task statistics by type and state
 
 Examples:
   tt dash`,
@@ -165,7 +165,7 @@ func displayRecentTasks(project *models.Project) {
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Type", "Status", "Title", "Updated"})
+	t.AppendHeader(table.Row{"ID", "Type", "State", "Title", "Updated"})
 
 	for _, task := range recentTasks {
 		t.AppendRow(table.Row{

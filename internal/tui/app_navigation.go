@@ -8,10 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// GetCommandRegistry returns the command registry for the application.
-// This is used by the command palette and for testing.
-func (m *AppModel) GetCommandRegistry() *CommandRegistry {
-	return m.commandRegistry
+// GetOperationRegistry returns the authoritative operation catalog.
+func (m *AppModel) GetOperationRegistry() *OperationRegistry {
+	return m.operationRegistry
 }
 
 // isNotesFullscreen returns true when the notes view is in fullscreen pane mode.
@@ -36,10 +35,11 @@ func (m *AppModel) getActiveNotesView() *NotesViewModel {
 	case ViewGlobalNotes:
 		viewType = ViewGlobalNotes
 	default:
-		// Check if either is on the stack
-		for i := len(m.viewStack) - 1; i >= 0; i-- {
-			if m.viewStack[i] == ViewNotes || m.viewStack[i] == ViewGlobalNotes {
-				viewType = m.viewStack[i]
+		// Check if either renderer is present in the derived navigation path.
+		path := m.presentationPath()
+		for i := len(path) - 1; i >= 0; i-- {
+			if path[i] == ViewNotes || path[i] == ViewGlobalNotes {
+				viewType = path[i]
 				break
 			}
 		}
@@ -69,14 +69,10 @@ func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	}
 	m.exitAskView()
 	m.currentProject = nil
-	if m.typedNavigation {
-		presentationCmd := m.prepareCrossProjectOutliner()
-		m.navigation.ResetRoot()
-		routeCmd := m.activateTaskWorkspaceRoute(outlinerRootRoute())
-		cmd = tea.Batch(presentationCmd, routeCmd)
-	} else {
-		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
-	}
+	presentationCmd := m.prepareCrossProjectOutliner()
+	m.navigation.ResetRoot()
+	routeCmd := m.activateTaskWorkspaceRoute(outlinerRootRoute())
+	cmd = tea.Batch(presentationCmd, routeCmd)
 	m.setInfoStatus("Project was removed — returning to the Outliner")
 	return true, cmd
 }
@@ -87,47 +83,39 @@ func (m *AppModel) currentView() PresentationID {
 }
 
 // baseProjectView walks the view stack from the top to find the underlying
-// project-level view (Outliner or CrossProjectOutliner), skipping overlays
-// like the command palette. This is needed by command handlers that run inside
-// the palette's Cmd — at that point currentView() returns ViewCommandPalette,
-// but the handler needs to know which project view it was invoked from.
+// project-level Outliner beneath transient overlays such as Finder. This is
+// needed by operation handlers that execute while an overlay is current but
+// still need the owning task-workspace renderer.
 func (m *AppModel) baseProjectView() PresentationID {
-	for i := len(m.viewStack) - 1; i >= 0; i-- {
-		switch m.viewStack[i] {
-		case ViewOutliner, ViewCrossProjectOutliner:
-			return m.viewStack[i]
+	path := m.presentationPath()
+	for i := len(path) - 1; i >= 0; i-- {
+		switch path[i] {
+		case ViewCrossProjectOutliner:
+			return path[i]
 		default:
 		}
 	}
-	return ViewDashboard
+	return ViewCrossProjectOutliner
 }
 
-// pushView installs a renderer on the typed route or overlay stack. Headless
-// models without navigation retain a small append-only presentation stack.
+// pushView installs a renderer on the authoritative route or overlay stack.
 func (m *AppModel) pushView(view PresentationID) {
 	if m.installTypedPresentation(view) {
 		m.installPendingStartupRoute(view)
-		return
 	}
-	m.viewStack = append(m.viewStack, view)
 }
 
 // popView removes the top view from the stack. It returns any commands needed
 // by the newly revealed view, including eager reload and resume hooks.
 func (m *AppModel) popView() tea.Cmd {
-	popped := false
-	if m.typedNavigation {
-		popped = m.popTypedPresentation()
-	} else if len(m.viewStack) > 1 {
-		if m.currentView() == ViewAsk {
-			m.exitAskView()
-		}
-		m.viewStack = m.viewStack[:len(m.viewStack)-1]
-		popped = true
-	}
+	hadOverlay := m.navigation.Overlays.Active()
+	hadPrimaryChild := !hadOverlay && m.navigation.Primary.Depth() > 1
+	popped := m.popTypedPresentation()
 	cv := m.currentView()
-	// Re-evaluate alerts when returning to dashboard
-	if cv == ViewDashboard {
+	// Re-evaluate alerts when a primary child returns to the Outliner root.
+	// Closing a transient overlay must not reload project data: picker models
+	// commit or reconcile their mutations after the overlay has been dismissed.
+	if hadPrimaryChild && m.navigation.Primary.Depth() == 1 && !m.navigation.Overlays.Active() {
 		m.reevaluateAlerts()
 	}
 	// Update accent and resume the now-top view.
@@ -154,25 +142,14 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		m.dismissPeek()
 		return true, nil
 	}
-	presentationOverlay := false
-	if m.typedNavigation {
-		if overlay, ok := m.navigation.Overlays.Current(); ok {
-			_, presentationOverlay = overlay.Presentation()
-		}
-	}
-	if !presentationOverlay {
-		if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
-			return false, nil
-		}
+	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
+		return false, nil
 	}
 	// The Outliner is the sole root: a clean root Esc has no child or overlay to
 	// unwind and must fall through to the view. There is something to close only
 	// when a primary child (Task Detail, secondary tool) is stacked above the
 	// root or a transient overlay is open.
-	primaryCanClose := m.currentView() != ViewDashboard
-	if m.typedNavigation {
-		primaryCanClose = m.navigation.Primary.Depth() > 1 || m.navigation.Overlays.Active()
-	}
+	primaryCanClose := m.navigation.Primary.Depth() > 1 || m.navigation.Overlays.Active()
 	if primaryCanClose {
 		closingView := m.currentView()
 		// Capture the view label for the Esc undo hint before any state changes.
@@ -185,18 +162,8 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 				closingLabel = labeler.StatusBarLabel()
 			}
 		}
-		// Save outliner filter state so it persists across navigation.
-		if closingView == ViewOutliner {
-			m.saveOutlinerToggleState()
-			m.saveOutlinerFilterState()
-		}
 		cmd := m.popView()
-		// Rebuild outliner rows when returning from cross-outliner so the
-		// display reflects the current in-memory filter state (e.g. after Fx).
-		if closingView == ViewCrossProjectOutliner && m.outliner != nil {
-			m.outliner.rebuildRows()
-		}
-		if closingLabel != "" && closingView != ViewCommandPalette {
+		if closingLabel != "" && closingView != ViewFinder {
 			m.setInfoStatus("Closed " + closingLabel)
 			return true, tea.Batch(cmd, defaultStatusTimeout())
 		}
@@ -208,14 +175,12 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 // jumpToOutlinerRoot is the preemptive Ctrl+Esc reset. It bypasses view-local
 // Esc ownership so it remains a reliable global escape hatch: it closes every
 // overlay, editor, child, and preview, clears project scope, search, filters,
-// task zoom, selections, pending prefixes, and transient modes, then activates
+// task zoom, selections, and transient modes, then activates
 // the clean global All Outliner with the cursor safely reset.
 func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
-	for i := len(m.viewStack) - 1; i >= 0; i-- {
-		viewType := m.viewStack[i]
-		if viewType == ViewDashboard {
-			continue
-		}
+	path := m.presentationPath()
+	for i := len(path) - 1; i >= 0; i-- {
+		viewType := path[i]
 		if view := m.views.Get(viewType); view != nil {
 			if resetter, ok := view.(ViewExitResetter); ok {
 				resetter.OnExit()
@@ -231,14 +196,10 @@ func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
 	m.taskComposer = nil
 
 	presentationCmd := m.prepareCrossProjectOutliner()
-	if m.typedNavigation {
-		m.navigation.ResetRoot()
-		if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
-			// A reset never produces an invalid root route; surface any error.
-			return cmd
-		}
-	} else {
-		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
+	m.navigation.ResetRoot()
+	if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
+		// A reset never produces an invalid root route; surface any error.
+		return cmd
 	}
 	m.projectStack = nil
 	if m.crossOutliner != nil {
@@ -251,8 +212,7 @@ func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
 
 func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 	switch viewType {
-	case ViewOutliner:
-		m.saveOutlinerToggleState()
+	case ViewCrossProjectOutliner:
 		m.saveOutlinerFilterState()
 	default:
 		// Other views do not keep close-time navigation state.
@@ -264,11 +224,9 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingSandboxReset = false
 	m.pendingSandboxProjectID = ""
 	m.pendingSandboxTaskCount = 0
+	m.clearPendingProjectArchive()
+	m.clearPendingTaskDelete()
 
-	m.showQuickSwitch = false
-	m.quickSwitchFiltering = false
-	m.showPinnedPopup = false
-	m.pinnedPopupFiltering = false
 	m.Overlays().ClearAll()
 
 	m.pendingBulkTasks = nil
@@ -282,73 +240,27 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingDescEdit = nil
 	m.pendingParkNav = nil
 
-	m.globalMoveState.sourceProject = nil
-	m.globalMoveState.sourceTask = nil
-	m.globalMoveState.destProject = nil
-	m.globalLinkedTaskState.sourceTask = nil
-	m.globalLinkedTaskState.sourceProject = nil
-	m.globalLinkedTaskState.linkType = 0
 }
 
-// popToAnchorView pops the view stack until the top is a project-level view
-// (Outliner) or the Dashboard, or the stack has only one entry.
+// popToAnchorView dismisses the current overlay or primary child back toward
+// the Outliner root.
 // Returns a tea.Cmd when popping reveals ViewCrossProjectOutliner so the
 // outliner can trigger an eager reload (mirrors popView's behavior).
 func (m *AppModel) popToAnchorView() tea.Cmd {
-	if m.typedNavigation {
-		return m.popView()
-	}
-	for len(m.viewStack) > 1 {
-		top := m.viewStack[len(m.viewStack)-1]
-		switch top {
-		case ViewDashboard, ViewOutliner, ViewCrossProjectOutliner:
-			if top == ViewDashboard {
-				m.reevaluateAlerts()
-			}
-			if v := m.views.Get(top); v != nil {
-				m.setAccentOnView(v)
-			}
-			if top == ViewCrossProjectOutliner {
-				return func() tea.Msg { return ViewDidAppearMsg{} }
-			}
-			return nil
-		default:
-		}
-		if top == ViewAsk {
-			m.exitAskView()
-		}
-		m.viewStack = m.viewStack[:len(m.viewStack)-1]
-	}
-	// Stack has 1 entry — re-evaluate if it's the dashboard
-	cv := m.currentView()
-	if cv == ViewDashboard {
-		m.reevaluateAlerts()
-	}
-	if v := m.views.Get(cv); v != nil {
-		m.setAccentOnView(v)
-	}
-	if cv == ViewCrossProjectOutliner {
-		return func() tea.Msg { return ViewDidAppearMsg{} }
-	}
-	return nil
+	return m.popView()
 }
 
 // currentAccentColor returns the accent color for the topmost mapped view in
 // the stack, falling back to ColorPrimary when no mapping is found.
 func (m *AppModel) currentAccentColor() color.Color {
-	if m.activeOutlinerRoute() {
-		return m.navigation.Primary.Current().Accent()
-	}
-	if m.activeReviewHub() {
-		return m.navigation.Primary.Current().Accent()
-	}
-	if m.activeManageHub() {
-		return m.navigation.Primary.Current().Accent()
-	}
-	for i := len(m.viewStack) - 1; i >= 0; i-- {
-		if c := ViewAccentColor(m.viewStack[i]); c != nil {
+	path := m.presentationPath()
+	for i := len(path) - 1; i >= 0; i-- {
+		if c := ViewAccentColor(path[i]); c != nil {
 			return c
 		}
+	}
+	if c := m.navigation.Primary.Current().Accent(); c != nil {
+		return c
 	}
 	return ColorPrimary
 }
@@ -421,6 +333,16 @@ func (m *AppModel) wireSecondaryCoordinators(view View) {
 	if w, ok := view.(taskFormWireable); ok {
 		w.SetTaskFormCoordinator(m.features.TaskForm)
 	}
+	if outliner, ok := view.(*OutlinerModel); ok {
+		m.wireOutlinerOperationExecutor(outliner)
+	}
+}
+
+func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
+	if outliner == nil {
+		return
+	}
+	outliner.operationRegistry = m.operationRegistry
 }
 
 func (m *AppModel) showView(viewType PresentationID, view View) {
@@ -436,6 +358,11 @@ func (m *AppModel) showView(viewType PresentationID, view View) {
 	view.SetSize(m.width, m.height-2)
 	m.wireSecondaryCoordinators(view)
 	m.views.Register(viewType, view)
+	if viewType == ViewCrossProjectOutliner {
+		if outliner, ok := view.(*OutlinerModel); ok {
+			m.crossOutliner = outliner
+		}
+	}
 	m.pushView(viewType)
 	m.setAccentOnView(view)
 }

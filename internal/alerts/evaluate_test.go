@@ -34,10 +34,10 @@ func TestEvaluate_MixedScenario(t *testing.T) {
 	cfg.LastWeeklyReviewAt = timePtr(now.AddDate(0, 0, -1))
 
 	dueDate := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
-	overdueTask := testTask("overdue", models.StatusTodo, now)
+	overdueTask := testTask("overdue", models.StateReady, now)
 	overdueTask.DueDate = &dueDate
 
-	staleTask := testTask("stale", models.StatusInProgress, now.AddDate(0, 0, -20))
+	staleTask := testTask("stale", models.StateInProgress, now.AddDate(0, 0, -20))
 
 	projects := []ProjectData{testProject("proj1", overdueTask, staleTask)}
 	snapshot := Evaluate(cfg, projects)
@@ -76,9 +76,9 @@ func TestEvaluate_GroupLabelIncludesCount(t *testing.T) {
 
 	due1 := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
 	due2 := time.Date(2026, 2, 22, 0, 0, 0, 0, time.UTC)
-	t1 := testTask("od1", models.StatusTodo, now)
+	t1 := testTask("od1", models.StateReady, now)
 	t1.DueDate = &due1
-	t2 := testTask("od2", models.StatusTodo, now)
+	t2 := testTask("od2", models.StateReady, now)
 	t2.DueDate = &due2
 
 	projects := []ProjectData{testProject("proj1", t1, t2)}
@@ -104,7 +104,7 @@ func TestEvaluate_SingleAlertNoCountInLabel(t *testing.T) {
 	cfg.DueSoonEnabled = false
 
 	due := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
-	task := testTask("single-overdue", models.StatusTodo, now)
+	task := testTask("single-overdue", models.StateReady, now)
 	task.DueDate = &due
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -141,9 +141,9 @@ func TestEvaluate_MultipleProjects(t *testing.T) {
 	cfg.DueSoonEnabled = false
 
 	due := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
-	t1 := testTask("od-p1", models.StatusTodo, now)
+	t1 := testTask("od-p1", models.StateReady, now)
 	t1.DueDate = &due
-	t2 := testTask("od-p2", models.StatusInProgress, now)
+	t2 := testTask("od-p2", models.StateInProgress, now)
 	t2.DueDate = &due
 
 	projects := []ProjectData{

@@ -378,37 +378,6 @@ func (s *Service) UndimWithWorkflowByLocator(locator TaskLocator, opts SingleTas
 	})
 }
 
-// SetSection moves a task to the workflow state a GTD section name maps to,
-// committing through the ledger (Task.SetSection performs the state move). A
-// non-GTD name is silently ignored by the model, matching the retired section
-// rules. Custom sections and stages are retired under the workflow-state model.
-//
-// Because SetSection changes the derived workflow state, it folds the same
-// Today/Next exclusivity reconciliation a Transition does into the commit: a task
-// moved into StateNext leaves the Daily Plan (Today) and a task moved out of
-// StateNext drops its stale Next order entry, both in the same transaction, so a
-// section move can never leave a task in both horizons or with a stale order entry.
-func (s *Service) SetSection(taskID, section string) (TaskResult, error) {
-	return s.setSection(taskID, TaskLocator{}, section)
-}
-
-func (s *Service) SetSectionByLocator(locator TaskLocator, section string) (TaskResult, error) {
-	return s.setSection("", locator, section)
-}
-
-func (s *Service) setSection(taskID string, locator TaskLocator, section string) (TaskResult, error) {
-	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
-	if err != nil {
-		return TaskResult{}, err
-	}
-	ref.Task.SetSection(section)
-	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(nil))
-	if err != nil {
-		return TaskResult{}, err
-	}
-	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Set Section", section)
-}
-
 // ApplyTypeAttrs applies type-specific attributes (bug/idea/task/story/epic
 // fields) to a task through the shared models implementation, so CLI flag input
 // and typed capture stay in parity. Invalid attribute values are rejected before

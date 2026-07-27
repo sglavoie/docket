@@ -36,12 +36,7 @@ type Task struct {
 	Type        TaskType `json:"type"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
-	// WorkflowState is the canonical schema-v2 lifecycle state and the single
-	// source of truth for a task's position in the workflow. Schema-v2 documents
-	// persist it directly via `state:`; schema-v1 documents are upgraded to it at
-	// load time by DeriveWorkflowState (see task_workflowstate.go). The retired
-	// legacy Status/Section/Stage/Active fields no longer exist on the task; State()
-	// reads this stored field only (empty -> StateReady).
+	// WorkflowState is the single lifecycle source of truth.
 	WorkflowState WorkflowState      `json:"workflow_state,omitempty"`
 	Priority      int                `json:"priority"`
 	ParentID      *string            `json:"parent_id,omitempty"`

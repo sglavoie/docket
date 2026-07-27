@@ -41,7 +41,7 @@ func CollectActionableTasksAt(projects []*models.Project, now time.Time) []Focus
 			// Actionability is state-derived: terminal tasks are done, waiting
 			// tasks are gated on external input, snoozed tasks are hidden, and
 			// dependency-blocked tasks are not yet ready. Exclusion now keys off
-			// the canonical StateWaiting rather than the retired StatusBlocked:
+			// the canonical StateWaiting:
 			// once v2 is the sole writer a blocked task persists as the waiting
 			// state (todo + Waiting section), so keying off status alone would let
 			// every reloaded blocked task leak back into the actionable set. This

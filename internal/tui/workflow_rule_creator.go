@@ -72,7 +72,7 @@ type WorkflowRuleCreatorModel struct {
 	// Scope inputs (comma-separated)
 	scopeProjectsInput textinput.Model
 	scopeTypesInput    textinput.Model
-	scopeSectionsInput textinput.Model
+	scopeStatesInput   textinput.Model
 
 	// Static lists for selectors
 	triggerFields []workflow.TriggerField
@@ -134,7 +134,7 @@ func NewWorkflowRuleCreatorModel(runtime *config.RuntimeState) *WorkflowRuleCrea
 
 	scopeProjectsInput := factory.NewTextInput("Projects (comma-separated)")
 	scopeTypesInput := factory.NewTextInput("Types (comma-separated)")
-	scopeSectionsInput := factory.NewTextInput("Sections (comma-separated)")
+	scopeStatesInput := factory.NewTextInput("States (comma-separated)")
 
 	var coordinator WorkflowCoordinator
 	if runtime != nil {
@@ -150,7 +150,7 @@ func NewWorkflowRuleCreatorModel(runtime *config.RuntimeState) *WorkflowRuleCrea
 		actions:            actions,
 		scopeProjectsInput: scopeProjectsInput,
 		scopeTypesInput:    scopeTypesInput,
-		scopeSectionsInput: scopeSectionsInput,
+		scopeStatesInput:   scopeStatesInput,
 		triggerFields:      workflow.ValidTriggerFields(),
 		triggerOps:         workflow.ValidTriggerOperations(),
 		actionTypes:        workflow.ValidActionTypes(),
@@ -278,8 +278,12 @@ func NewWorkflowRuleEditorModel(runtime *config.RuntimeState, rule workflow.Work
 		if len(rule.Scope.Types) > 0 {
 			m.scopeTypesInput.SetValue(strings.Join(rule.Scope.Types, ", "))
 		}
-		if len(rule.Scope.Sections) > 0 {
-			m.scopeSectionsInput.SetValue(strings.Join(rule.Scope.Sections, ", "))
+		if len(rule.Scope.States) > 0 {
+			states := make([]string, 0, len(rule.Scope.States))
+			for _, state := range rule.Scope.States {
+				states = append(states, state.String())
+			}
+			m.scopeStatesInput.SetValue(strings.Join(states, ", "))
 		}
 	}
 
@@ -375,7 +379,7 @@ func (m *WorkflowRuleCreatorModel) SetSize(width, height int) {
 	}
 	formFactory.ResizeTextInputWithReserve(&m.scopeProjectsInput, editorWidth, workflowNestedFieldReserve)
 	formFactory.ResizeTextInputWithReserve(&m.scopeTypesInput, editorWidth, workflowNestedFieldReserve)
-	formFactory.ResizeTextInputWithReserve(&m.scopeSectionsInput, editorWidth, workflowNestedFieldReserve)
+	formFactory.ResizeTextInputWithReserve(&m.scopeStatesInput, editorWidth, workflowNestedFieldReserve)
 }
 
 // Init initializes the model.

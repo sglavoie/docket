@@ -4,18 +4,6 @@ import "charm.land/lipgloss/v2"
 
 // Form and input field styles.
 var (
-	PrefixPopupStyle = lipgloss.NewStyle().
-				Background(ColorBackground).
-				Foreground(ColorLightGray).
-				Padding(0, 1)
-
-	PrefixKeyStyle = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
-			Bold(true)
-
-	PrefixDescStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("255"))
-
 	ValidationErrorStyle = lipgloss.NewStyle().
 				Foreground(ColorError).
 				MarginTop(1)

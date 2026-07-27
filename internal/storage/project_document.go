@@ -49,14 +49,10 @@ type OpaqueBlock struct {
 // ProjectDocument is the storage-boundary representation of a project's
 // tasks.md: canonical tasks and project metadata plus any opaque header blocks
 // the structured parser could not interpret, together with the detected schema
-// version and a canonical content revision. Sections and SectionColors are
-// decode-only schema-v1 inputs. They remain available for migration inspection
-// but never participate in canonical revisions, merges, runtime project state,
-// or schema-v2 writes.
+// version and a canonical content revision. Retired layout metadata remains
+// private to the decoder.
 type ProjectDocument struct {
 	ProjectName   string
-	Sections      []string
-	SectionColors map[string]string
 	Tags          []string
 	PinnedTags    []string
 	Tasks         []*models.Task
@@ -65,8 +61,10 @@ type ProjectDocument struct {
 	// Revision is the canonical content hash of this document. Two documents
 	// with identical logical content share a revision regardless of source
 	// formatting, because it is computed from the canonical v2 rendering.
-	Revision string
-	Warnings []ParseWarning
+	Revision            string
+	Warnings            []ParseWarning
+	legacySections      []string
+	legacySectionColors map[string]string
 }
 
 // ParseProjectDocument parses tasks.md content into a storage ProjectDocument.
@@ -84,21 +82,21 @@ func ParseProjectDocument(content string) (*ProjectDocument, error) {
 		return nil, err
 	}
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		return nil, err
 	}
 
 	doc := &ProjectDocument{
-		ProjectName:   result.ProjectName,
-		Sections:      result.Sections,
-		SectionColors: result.SectionColors,
-		Tags:          result.Tags,
-		PinnedTags:    result.PinnedTags,
-		Tasks:         result.Tasks,
-		SchemaVersion: schemaVersion,
-		OpaqueBlocks:  opaque,
-		Warnings:      result.Warnings,
+		ProjectName:         result.ProjectName,
+		Tags:                result.Tags,
+		PinnedTags:          result.PinnedTags,
+		Tasks:               result.Tasks,
+		SchemaVersion:       schemaVersion,
+		OpaqueBlocks:        opaque,
+		Warnings:            result.Warnings,
+		legacySections:      result.legacySections,
+		legacySectionColors: result.legacySectionColors,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc, nil

@@ -213,7 +213,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioCommandPaletteSearchStartsBlank(t *testing.T) {
+func TestUITestScenarioFinderSearchStartsBlank(t *testing.T) {
 	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
 	if err != nil {
 		t.Fatalf("NewFixtureDriver: %v", err)
@@ -221,19 +221,19 @@ func TestUITestScenarioCommandPaletteSearchStartsBlank(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	sc := UITestScenario{
-		Name: "command palette search starts blank",
+		Name: "finder search starts blank",
 		Actions: []UITestAction{
 			{Type: UITestActionKey, Key: ":"},
-			{Type: UITestActionText, Text: "all blockers"},
+			{Type: UITestActionText, Text: "choose scope"},
 			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionAssert, Assert: "view", Value: "GlobalBlockers"},
+			{Type: UITestActionAssert, Assert: "view", Value: "ContextHub"},
 			{Type: UITestActionAssert, Assert: "no_layout_issues"},
 		},
 	}
 
 	result := driver.RunScenarioResult(sc, RunScenarioOptions{})
 	if !result.OK {
-		t.Fatalf("command palette search should not inherit persisted category, got error: %+v", result.Error)
+		t.Fatalf("Finder search should not inherit persisted category, got error: %+v", result.Error)
 	}
 }
 
@@ -297,13 +297,13 @@ func TestUITestScenarioRoadmapEmptyForecastsNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioTaskDetailFromGlobalInboxNoOverflow(t *testing.T) {
+func TestUITestScenarioTaskDetailFromGlobalInboxModeNoOverflow(t *testing.T) {
 	raw := `{
 		"name": "task detail from global inbox layout",
 		"fixture": "rich",
 		"size": "100x35",
 		"actions": [
-			{"type": "command", "command": "global inbox processor"},
+			{"type": "command", "command": "global inbox mode"},
 			{"type": "command", "command": "view task details"},
 			{"type": "assert", "assert": "view", "value": "TaskDetail"},
 			{"type": "assert", "assert": "no_layout_issues"}
@@ -480,17 +480,16 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 			{Type: UITestActionKey, Key: "down"},
 		}, "rename project", "ProjectEditor"},
 		{"workflow rule creator", nil, "new workflow rule", "WorkflowRuleCreator"},
-		// The inbox processor needs a project under the cursor in the global
-		// Outliner (the current mode has no matching rows), so switch to All
-		// first and land the cursor on a task row.
-		{"inbox processor", []UITestAction{
+		// Project Inbox mode needs a project under the cursor in the global
+		// Outliner, so switch to All first and land on a task row.
+		{"project Inbox mode", []UITestAction{
 			{Type: UITestActionCommand, Command: "outliner root"},
 			// Step past the shared section header and the navigable project
 			// header to land on the first task row.
 			{Type: UITestActionKey, Key: "down"},
 			{Type: UITestActionKey, Key: "down"},
-		}, "inbox processor", "InboxProcessor"},
-		{"global inbox processor", nil, "global inbox processor", "GlobalInboxProcessor"},
+		}, "project inbox mode", "CrossProjectOutliner"},
+		{"global Inbox mode", nil, "global inbox mode", "CrossProjectOutliner"},
 	}
 
 	for _, tt := range tests {
@@ -708,18 +707,18 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 		actions []UITestAction
 	}{
 		{
-			name: "command palette",
-			view: "CommandPalette",
+			name: "finder key",
+			view: "Finder",
 			actions: []UITestAction{
 				{Type: UITestActionKey, Key: ":"},
 				{Type: UITestActionText, Text: strings.Repeat("a", 56)},
 			},
 		},
 		{
-			name: "global search",
-			view: "CommandPalette",
+			name: "finder command",
+			view: "Finder",
 			actions: []UITestAction{
-				{Type: UITestActionCommand, Command: "global search"},
+				{Type: UITestActionCommand, Command: "finder"},
 				{Type: UITestActionText, Text: strings.Repeat("a", 60)},
 			},
 		},
@@ -727,12 +726,15 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 			name: "notes search",
 			view: "NotesSearch",
 			actions: []UITestAction{
-				// Scope into the fixture project via the Ctrl+X picker so "show
-				// notes" resolves the active project scope. The global All root is
-				// empty, so without a scope the notes command correctly refuses to
-				// open a stale off-screen project (FR17-003).
-				{Type: UITestActionCommand, Command: "switch project"},
-				{Type: UITestActionKey, Key: "j"},
+				// Scope into the fixture project through the combined Scope Hub
+				// so "show notes" resolves the active project focus. The global
+				// All root is empty, so without a focus the notes command correctly
+				// refuses to open a stale off-screen project (FR17-003).
+				{Type: UITestActionCommand, Command: "choose scope"},
+				{Type: UITestActionKey, Key: "/"},
+				{Type: UITestActionText, Text: "rprj"},
+				{Type: UITestActionKey, Key: "enter"},
+				{Type: UITestActionKey, Key: "G"},
 				{Type: UITestActionKey, Key: "enter"},
 				{Type: UITestActionCommand, Command: "show notes"},
 				{Type: UITestActionCommand, Command: "search notes"},
@@ -768,16 +770,16 @@ func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testin
 	}
 }
 
-func TestUITestScenarioCommandPaletteTaskActionModeLongTitleNoOverflow(t *testing.T) {
+func TestUITestScenarioFinderTaskActionModeLongTitleNoOverflow(t *testing.T) {
 	sc := UITestScenario{
-		Name:    "command palette task action mode long title layout",
+		Name:    "Finder task action mode long title layout",
 		Fixture: "narrow",
 		Size:    "72x20",
 		Actions: []UITestAction{
 			{Type: UITestActionKey, Key: ":"},
 			{Type: UITestActionText, Text: ":task "},
 			{Type: UITestActionKey, Key: "tab"},
-			{Type: UITestActionAssert, Assert: "view", Value: "CommandPalette"},
+			{Type: UITestActionAssert, Assert: "view", Value: "Finder"},
 			{Type: UITestActionAssert, Assert: "no_layout_issues"},
 		},
 	}
@@ -789,7 +791,7 @@ func TestUITestScenarioCommandPaletteTaskActionModeLongTitleNoOverflow(t *testin
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	if !result.OK {
-		t.Fatalf("command palette task action mode layout should pass, got error: %+v", result.Error)
+		t.Fatalf("Finder task action mode layout should pass, got error: %+v", result.Error)
 	}
 }
 

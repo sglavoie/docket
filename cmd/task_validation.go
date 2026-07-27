@@ -67,32 +67,12 @@ func ParseTaskTypeFlags(epic, story, bug, idea bool, typeFlag string) (models.Ta
 }
 
 // CheckCompletionBlockers checks whether a task can be completed, returning an
-// error if it has incomplete dependencies or children. Completion is gated on
-// both; cancellation is gated on children only via checkStatusChangeBlockers.
+// error if it has incomplete dependencies or children.
 func CheckCompletionBlockers(project *models.Project, task *models.Task) error {
 	if err := checkIncompleteDependencies(project, task); err != nil {
 		return err
 	}
 	return checkIncompleteChildren(task)
-}
-
-// checkStatusChangeBlockers gates a status change on the completion invariant:
-// completion (StatusDone) is blocked by incomplete dependencies and children,
-// while cancellation (StatusCanceled) is blocked by incomplete children only.
-// A parent must never become done/canceled while a child is still open, but
-// dependency ordering is a separate rule that only applies to completion.
-func checkStatusChangeBlockers(project *models.Project, task *models.Task, targetStatus models.TaskStatus) error {
-	if targetStatus == models.StatusDone {
-		if err := checkIncompleteDependencies(project, task); err != nil {
-			return err
-		}
-	}
-	if targetStatus.IsComplete() {
-		if err := checkIncompleteChildren(task); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // checkIncompleteDependencies returns an error if the task has incomplete

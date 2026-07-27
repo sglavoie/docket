@@ -79,9 +79,10 @@ type UITestIssue struct {
 
 // UITestCommand is a compact description of a command the active view exposes,
 // surfaced in observations so a review host can discover the available actions
-// without scraping help text. It is derived from the command registry entry for
-// the current view (see UITestDriver.availableCommands).
+// without scraping help text. It is derived from the operation registry for the
+// current view (see UITestDriver.availableCommands).
 type UITestCommand struct {
+	ID       string   `json:"id"`
 	Name     string   `json:"name"`
 	Shortcut string   `json:"shortcut,omitempty"`
 	Category string   `json:"category,omitempty"`
@@ -91,7 +92,7 @@ type UITestCommand struct {
 // TUITestInspectable is implemented by view models that expose a compact,
 // stable semantic snapshot of their state for the `tt tui-test` review harness.
 // Snapshots are intentionally small: high-signal fields (counts, cursor,
-// selected-item title, active mode/tab/perspective/filter) rather than whole
+// selected-item title, active mode/tab/filter) rather than whole
 // task/project structs. The returned map is JSON-marshaled directly into an
 // observation, so keys must stay stable across renders.
 type TUITestInspectable interface {

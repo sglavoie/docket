@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 	"image/color"
-
-	"charm.land/lipgloss/v2"
 )
 
 // Capture footer help strings. Each is a plain, unstyled " · "-separated help
@@ -50,18 +48,6 @@ func captureFooterSpecFull(confirmDiscard, autocompleteActive, helpExpanded, syn
 	}
 }
 
-// captureFooterExtraRows reports how many rows beyond the standard two-row footer
-// the current capture footer occupies at the given width, so a capture view can
-// subtract only the extra wrapped rows from its content budget. It reserves for
-// the richest footer the expanded-syntax state can produce (scroll hints plus a
-// percentage) so the reserved height never underestimates the rendered footer,
-// regardless of whether the guide actually overflows this frame.
-func captureFooterExtraRows(width int, confirmDiscard, autocompleteActive, helpExpanded bool) int {
-	spec := captureFooterSpecFull(confirmDiscard, autocompleteActive, helpExpanded, helpExpanded, 100)
-	footer := renderContextualFooter(spec, width)
-	return max(lipgloss.Height(footer)-2, 0)
-}
-
 // renderContextualFooter renders a StatusBarFooterSpec into the shared wrapping
 // footer (separator line + a left/right-aligned help row that wraps on " · "
 // boundaries). HelpStyle is applied once over each non-empty side so the spec
@@ -83,13 +69,13 @@ func renderContextualFooter(spec StatusBarFooterSpec, width int, accent ...color
 
 // FooterEscapeHints is the canonical escape-hatch hint cluster shown in
 // full-height view footers. Ctrl+Esc resets to the global All Outliner, :
-// opens the command palette, and ? opens the per-view help.
+// opens the unified Finder, and ? opens the per-view help.
 // The order matches the app status bar's hint cluster (see app_view_status.go)
 // so the escape hatches read identically whether the host view is full-height
 // or relies on the app status bar. The cluster is rendered after the
 // view-specific contextual hints so the footer reads as
 // "<top 3 contextual> · <escape hatches>".
-const FooterEscapeHints = "ctrl+esc root · : cmd · ? help"
+const FooterEscapeHints = "ctrl+esc root · : finder · ? help"
 
 // composeFullHeightFooterLeft returns the styled left side of a full-height
 // view footer: contextual hints concatenated with the canonical escape-hatch

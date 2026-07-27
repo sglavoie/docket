@@ -425,7 +425,7 @@ func findLastBlockedTransition(task *models.Task) time.Time {
 		if entry == nil {
 			continue
 		}
-		if entry.Field == "status" && entry.NewValue == string(models.StatusBlocked) {
+		if entry.Field == "state" && entry.NewValue == string(models.StateWaiting) {
 			return entry.Timestamp
 		}
 	}

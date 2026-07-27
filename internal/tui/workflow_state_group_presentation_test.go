@@ -18,21 +18,21 @@ func TestWorkflowStateGroupThemeSemanticsCoverEveryGroup(t *testing.T) {
 	}
 }
 
-func TestLegacyAllPresentationGroupingUsesStateGroups(t *testing.T) {
+func TestCanonicalAllGroupingUsesExactStateGroups(t *testing.T) {
 	ready, _ := models.NewTask("ready", 1, models.TaskTypeTask, "Ready")
 	started, _ := models.NewTask("started", 2, models.TaskTypeTask, "Started")
 	inbox, _ := models.NewTask("inbox", 3, models.TaskTypeTask, "Inbox")
 	started.ApplyWorkflowState(models.StateInProgress)
 	inbox.ApplyWorkflowState(models.StateInbox)
 
-	forests := buildSectionTaskForests([]*models.Task{ready, started, inbox})
-	if got := forests[models.StateGroupBacklog]; got == nil || got.count != 2 {
-		t.Fatalf("legacy Active adapter did not combine canonical Backlog/In Progress: %#v", got)
+	forests := buildStateGroupTaskForests([]*models.Task{ready, started, inbox})
+	if got := forests[models.StateGroupBacklog]; got == nil || got.count != 1 {
+		t.Fatalf("Backlog state group = %#v, want one task", got)
 	}
 	if got := forests[models.StateGroupInbox]; got == nil || got.count != 1 {
 		t.Fatalf("Inbox state group = %#v, want one task", got)
 	}
-	if _, exists := forests[models.StateGroupInProgress]; exists {
-		t.Fatal("visible adapter leaked a second In Progress header before atomic cutover")
+	if got := forests[models.StateGroupInProgress]; got == nil || got.count != 1 {
+		t.Fatalf("In Progress state group = %#v, want one task", got)
 	}
 }

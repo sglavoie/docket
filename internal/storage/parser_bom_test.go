@@ -16,7 +16,7 @@ func TestParseTasksMarkdown_StripsLeadingBOM(t *testing.T) {
 	//  is the UTF-8 byte-order mark.
 	content := "\uFEFF# Project: BOM Test\n\n## Task: Hello\n<!-- id: 11111111-2222-3333-4444-555555555555, status: todo, priority: 3 -->\n\nA line of description.\n"
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

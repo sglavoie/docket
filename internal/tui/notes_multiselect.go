@@ -39,12 +39,6 @@ func (m *NotesViewModel) selectAllNotes() {
 	m.updateNoteSelectionStatus()
 }
 
-// deselectAllNotes clears all note selections.
-func (m *NotesViewModel) deselectAllNotes() {
-	m.selectedNotes = make(map[string]bool)
-	m.updateNoteSelectionStatus()
-}
-
 // getSelectedNotesList returns a slice of all selected notes.
 func (m *NotesViewModel) getSelectedNotesList() []*models.Note {
 	var notes []*models.Note

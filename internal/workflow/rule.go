@@ -1,6 +1,10 @@
 package workflow
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"encoding/json"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // RuleLevel indicates whether a rule operates on individual tasks or on projects.
 type RuleLevel string
@@ -60,17 +64,6 @@ const (
 	FieldProjectStatus      TriggerField = "project_status"        // string: current StatusIcon key
 	FieldHasTasksWithState  TriggerField = "has_tasks_with_state"  // string/set: any task has a matching state
 
-	// Legacy lifecycle fields remain decodable until the versioned workflow
-	// migration rewrites persisted rules. They are intentionally omitted from
-	// authoring metadata returned by ValidTriggerFields.
-	FieldStatus             TriggerField = "status"
-	FieldSection            TriggerField = "section"
-	FieldStatusChanged      TriggerField = "status_changed"
-	FieldSectionChanged     TriggerField = "section_changed"
-	FieldParentStatus       TriggerField = "parent_status"
-	FieldAllTasksStatus     TriggerField = "all_tasks_status"
-	FieldMajorityTaskStatus TriggerField = "majority_task_status"
-	FieldHasTasksWithStatus TriggerField = "has_tasks_with_status"
 )
 
 // TriggerOperation represents how to compare the field value.
@@ -112,10 +105,6 @@ const (
 	ActionSetRecurrence    ActionType = "set_recurrence"     // Value: recurrence pattern string
 	ActionSetProjectStatus ActionType = "set_project_status" // Value: project status icon key
 
-	// Legacy lifecycle actions remain decodable until persisted rules migrate.
-	// They are intentionally omitted from ValidActionTypes.
-	ActionSetStatus  ActionType = "set_status"
-	ActionSetSection ActionType = "set_section"
 )
 
 // RuleTrigger defines when a rule should fire.
@@ -154,28 +143,53 @@ type TriggerGroup struct {
 // RuleScope restricts a rule to specific projects, task types, or states.
 // Nil scope means no restriction. Non-empty fields use AND logic.
 type RuleScope struct {
-	Projects []string               `json:"projects,omitempty"` // Match by project name or ID
-	Types    []string               `json:"types,omitempty"`    // Match by task type
-	States   []models.WorkflowState `json:"states,omitempty"`   // Match by canonical workflow state
+	Projects       []string               `json:"projects,omitempty"` // Match by project name or ID
+	Types          []string               `json:"types,omitempty"`    // Match by task type
+	States         []models.WorkflowState `json:"states,omitempty"`   // Match by canonical workflow state
+	legacySections []string
+}
 
-	// Sections is decode-only compatibility state for persisted legacy rules.
-	// The v3-to-v4 domain migration owns converting it to States.
-	Sections []string `json:"sections,omitempty"`
+func (s *RuleScope) UnmarshalJSON(data []byte) error {
+	type canonicalScope RuleScope
+	var wire struct {
+		*canonicalScope
+		LegacySections []string `json:"sections"`
+	}
+	wire.canonicalScope = (*canonicalScope)(s)
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	s.legacySections = wire.LegacySections
+	return nil
 }
 
 // WorkflowRule defines an automation rule.
 type WorkflowRule struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	Level        RuleLevel     `json:"level,omitempty"` // "task" (default) or "project"
-	Enabled      bool          `json:"enabled"`
-	Priority     int           `json:"priority,omitempty"`      // Evaluation order: 1=highest (runs first), 0=unset (sorts last)
-	Trigger      RuleTrigger   `json:"trigger,omitzero"`        // Legacy single trigger (decode compatibility)
-	Triggers     []RuleTrigger `json:"triggers,omitempty"`      // Multiple triggers
-	TriggerLogic TriggerLogic  `json:"trigger_logic,omitempty"` // "and" or "or" (default: "and")
-	TriggerGroup *TriggerGroup `json:"trigger_group,omitempty"` // Nested trigger groups (takes precedence over flat Triggers/TriggerLogic)
-	Actions      []RuleAction  `json:"actions"`
-	TriggerCount int64         `json:"trigger_count,omitempty"`
-	Source       string        `json:"source,omitempty"` // "default" for built-in rules, empty for user-created
-	Scope        *RuleScope    `json:"scope,omitempty"`  // Optional scope restriction
+	ID            string        `json:"id"`
+	Name          string        `json:"name"`
+	Level         RuleLevel     `json:"level,omitempty"` // "task" (default) or "project"
+	Enabled       bool          `json:"enabled"`
+	Priority      int           `json:"priority,omitempty"`      // Evaluation order: 1=highest (runs first), 0=unset (sorts last)
+	Triggers      []RuleTrigger `json:"triggers,omitempty"`      // Multiple triggers
+	TriggerLogic  TriggerLogic  `json:"trigger_logic,omitempty"` // "and" or "or" (default: "and")
+	TriggerGroup  *TriggerGroup `json:"trigger_group,omitempty"` // Nested trigger groups (takes precedence over flat Triggers/TriggerLogic)
+	Actions       []RuleAction  `json:"actions"`
+	TriggerCount  int64         `json:"trigger_count,omitempty"`
+	Source        string        `json:"source,omitempty"` // "default" for built-in rules, empty for user-created
+	Scope         *RuleScope    `json:"scope,omitempty"`  // Optional scope restriction
+	legacyTrigger RuleTrigger
+}
+
+func (r *WorkflowRule) UnmarshalJSON(data []byte) error {
+	type canonicalRule WorkflowRule
+	var wire struct {
+		*canonicalRule
+		LegacyTrigger RuleTrigger `json:"trigger"`
+	}
+	wire.canonicalRule = (*canonicalRule)(r)
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	r.legacyTrigger = wire.LegacyTrigger
+	return nil
 }

@@ -134,31 +134,24 @@ func displayProjectShowJSON(project *models.Project) error {
 	}
 
 	type projectShowJSONEntry struct {
-		ID               string            `json:"id"`
-		Slug             string            `json:"slug"`
-		Name             string            `json:"name"`
-		Description      string            `json:"description"`
-		Context          string            `json:"context"`
-		Path             string            `json:"path"`
-		StatusIcon       string            `json:"status_icon,omitempty"`
-		StatusIconSource string            `json:"status_icon_source,omitempty"`
-		CreatedAt        time.Time         `json:"created_at"`
-		UpdatedAt        time.Time         `json:"updated_at"`
-		Archived         bool              `json:"archived"`
-		ArchivedAt       *time.Time        `json:"archived_at"`
-		Pinned           bool              `json:"pinned"`
-		PinnedAt         *time.Time        `json:"pinned_at,omitempty"`
-		Sections         []string          `json:"sections"`
-		SectionColors    map[string]string `json:"section_colors"`
-		TaskCount        int               `json:"task_count"`
-		ActiveCount      int               `json:"active_count"`
-		DoneCount        int               `json:"done_count"`
-		TasksByType      []typeStats       `json:"tasks_by_type"`
-	}
-
-	sections := project.GetSections()
-	if sections == nil {
-		sections = []string{}
+		ID               string      `json:"id"`
+		Slug             string      `json:"slug"`
+		Name             string      `json:"name"`
+		Description      string      `json:"description"`
+		Context          string      `json:"context"`
+		Path             string      `json:"path"`
+		StatusIcon       string      `json:"status_icon,omitempty"`
+		StatusIconSource string      `json:"status_icon_source,omitempty"`
+		CreatedAt        time.Time   `json:"created_at"`
+		UpdatedAt        time.Time   `json:"updated_at"`
+		Archived         bool        `json:"archived"`
+		ArchivedAt       *time.Time  `json:"archived_at"`
+		Pinned           bool        `json:"pinned"`
+		PinnedAt         *time.Time  `json:"pinned_at,omitempty"`
+		TaskCount        int         `json:"task_count"`
+		ActiveCount      int         `json:"active_count"`
+		DoneCount        int         `json:"done_count"`
+		TasksByType      []typeStats `json:"tasks_by_type"`
 	}
 
 	var tasksByType []typeStats
@@ -187,11 +180,6 @@ func displayProjectShowJSON(project *models.Project) error {
 		tasksByType = []typeStats{}
 	}
 
-	sectionColors := project.SectionColors
-	if sectionColors == nil {
-		sectionColors = map[string]string{}
-	}
-
 	entry := projectShowJSONEntry{
 		ID:               project.ID,
 		Slug:             project.Slug,
@@ -207,8 +195,6 @@ func displayProjectShowJSON(project *models.Project) error {
 		ArchivedAt:       project.ArchivedAt,
 		Pinned:           project.Pinned,
 		PinnedAt:         project.PinnedAt,
-		Sections:         sections,
-		SectionColors:    sectionColors,
 		TaskCount:        project.CountTasks(),
 		ActiveCount:      project.CountActiveTasks(),
 		DoneCount:        project.CountCompletedTasks(),

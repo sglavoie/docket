@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"reflect"
+	"strings"
 )
 
 // RouteID is the stable identity of a primary TUI surface. Modes and entity
@@ -67,31 +68,55 @@ type TaskWorkspaceParams struct {
 
 func (TaskWorkspaceParams) routeParams() {}
 
-// ReviewModule and ManageModule identify a specific retained secondary tool.
-// They travel as SecondaryTool route parameters; the ReviewLanding/ManageLanding
-// sentinels are only the pre-activation state of the hub renderers and are never
-// valid route parameters (secondary tools launch directly, without a landing).
+// ReviewModule and ManageModule identify a specific secondary tool. Secondary
+// routes always name a real module; there are no landing sentinels.
 type ReviewModule uint8
 
 const (
-	ReviewLanding ReviewModule = iota
-	ReviewDaily
+	ReviewDaily ReviewModule = iota
 	ReviewWeekly
 	ReviewActivity
 	ReviewMetrics
 	ReviewRoadmap
 )
 
-type ReviewParams struct{ Module ReviewModule }
+// ProjectSetScope captures the exact project set admitted by the launching
+// Outliner scope. Explicit distinguishes an intentionally empty Context from
+// legacy callers that omit a project set and expect the tool's app-wide
+// default.
+type ProjectSetScope struct {
+	projectIDs string
+	Explicit   bool
+}
+
+// ActiveProjectSetScope returns an explicit, defensively copied project set.
+// NewRoute canonicalizes ordering and duplicates before storing it.
+func ActiveProjectSetScope(projectIDs []string) ProjectSetScope {
+	return ProjectSetScope{
+		projectIDs: strings.Join(normalizedProjectIDs(projectIDs), "\x1f"),
+		Explicit:   true,
+	}
+}
+
+// ProjectIDs returns a defensive, canonical copy of the scoped identities.
+func (scope ProjectSetScope) ProjectIDs() []string {
+	if !scope.Explicit || scope.projectIDs == "" {
+		return nil
+	}
+	return strings.Split(scope.projectIDs, "\x1f")
+}
+
+type ReviewParams struct {
+	Module     ReviewModule
+	ProjectSet ProjectSetScope
+}
 
 func (ReviewParams) routeParams() {}
 
 type ManageModule uint8
 
 const (
-	ManageLanding ManageModule = iota
-	ManageInbox
-	ManageNotes
+	ManageNotes ManageModule = iota
 	ManageBlockers
 	ManageRules
 	ManageTemplates
@@ -111,6 +136,7 @@ const (
 type ManageParams struct {
 	Module           ManageModule
 	Scope            EntityScope
+	ProjectSet       ProjectSetScope
 	NotificationMode NotificationMode
 }
 
@@ -217,12 +243,17 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 	case SecondaryTool:
 		switch p := params.(type) {
 		case ReviewParams:
-			if p.Module == ReviewLanding || p.Module > ReviewRoadmap {
+			if p.Module > ReviewRoadmap {
 				return nil, invalidParams(id, "unknown review tool")
+			}
+			if p.Module == ReviewWeekly {
+				p.ProjectSet = canonicalProjectSetScope(p.ProjectSet)
+			} else {
+				p.ProjectSet = ProjectSetScope{}
 			}
 			return p, nil
 		case ManageParams:
-			if p.Module == ManageLanding || p.Module > ManageContexts {
+			if p.Module > ManageContexts {
 				return nil, invalidParams(id, "unknown manage tool")
 			}
 			if p.NotificationMode > NotificationLog {
@@ -236,6 +267,11 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 				p.Scope = scope
 			} else {
 				p.Scope = AppEntityScope()
+			}
+			if p.Module == ManageTags && p.Scope.Kind == ScopeApp {
+				p.ProjectSet = canonicalProjectSetScope(p.ProjectSet)
+			} else {
+				p.ProjectSet = ProjectSetScope{}
 			}
 			if p.Module != ManageNotifications {
 				p.NotificationMode = NotificationAlerts
@@ -273,6 +309,28 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 	}
 }
 
+func canonicalProjectSetScope(scope ProjectSetScope) ProjectSetScope {
+	if !scope.Explicit {
+		return ProjectSetScope{}
+	}
+	return ActiveProjectSetScope(scope.ProjectIDs())
+}
+
+func projectSetScopeEqual(left, right ProjectSetScope) bool {
+	return canonicalProjectSetScope(left) == canonicalProjectSetScope(right)
+}
+
+func manageParamsEqual(left, right ManageParams) bool {
+	return left.Module == right.Module &&
+		left.Scope == right.Scope &&
+		projectSetScopeEqual(left.ProjectSet, right.ProjectSet) &&
+		left.NotificationMode == right.NotificationMode
+}
+
+func reviewParamsEqual(left, right ReviewParams) bool {
+	return left.Module == right.Module && projectSetScopeEqual(left.ProjectSet, right.ProjectSet)
+}
+
 func canonicalEntityScope(id RouteID, scope EntityScope) (EntityScope, error) {
 	switch scope.Kind {
 	case ScopeApp:
@@ -289,7 +347,7 @@ func canonicalEntityScope(id RouteID, scope EntityScope) (EntityScope, error) {
 }
 
 func manageModuleSupportsScope(module ManageModule) bool {
-	return module == ManageInbox || module == ManageNotes || module == ManageBlockers || module == ManageTags
+	return module == ManageNotes || module == ManageBlockers || module == ManageTags
 }
 
 func paramsTypeError(id RouteID, params RouteParams) error {

@@ -27,7 +27,7 @@ type TagFilterDoneMsg struct {
 
 // TagFilterSelectorModel is the unified tag filter selector.
 type TagFilterSelectorModel struct {
-	*BasePicker[TagInfo]
+	*ListSurfaceAdapter[TagInfo]
 	source PresentationID
 }
 
@@ -38,7 +38,7 @@ func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
 		title = "Filter by Tags"
 	}
 
-	picker := NewBasePicker(msg.Tags, PickerConfig{
+	picker := NewListSurfaceAdapter(msg.Tags, PickerConfig{
 		Title:          title,
 		EmptyMessage:   "No tags found.",
 		NoMatchMessage: "No matching tags.",
@@ -51,8 +51,8 @@ func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
 	}
 
 	return &TagFilterSelectorModel{
-		BasePicker: picker,
-		source:     msg.Source,
+		ListSurfaceAdapter: picker,
+		source:             msg.Source,
 	}
 }
 
@@ -159,7 +159,7 @@ func uniqueProjects(projects []*models.Project) []*models.Project {
 
 // SetSize sets the view dimensions.
 func (m *TagFilterSelectorModel) SetSize(width, height int) {
-	m.BasePicker.SetSize(width, height)
+	m.ListSurfaceAdapter.SetSize(width, height)
 }
 
 // Init initializes the model.
@@ -170,7 +170,7 @@ func (m *TagFilterSelectorModel) Init() tea.Cmd {
 // Update handles messages.
 func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	source := m.source
-	cmd := filterSelectorUpdate(m.BasePicker, msg,
+	cmd := filterSelectorUpdate(m.ListSurfaceAdapter, msg,
 		func() tea.Msg { return TagFilterDoneMsg{Canceled: true, Source: source} },
 		func(selected []string) tea.Msg {
 			return TagFilterDoneMsg{SelectedTags: selected, Canceled: false, Source: source}
@@ -181,7 +181,7 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the tag filter selector.
 func (m *TagFilterSelectorModel) View() tea.View {
-	return tea.NewView(filterSelectorView(m.BasePicker, "tag"))
+	return tea.NewView(filterSelectorView(m.ListSurfaceAdapter, "tag"))
 }
 
 func (m *TagFilterSelectorModel) StatusBarLabel() string { return "Filter by Tags" }

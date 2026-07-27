@@ -6,7 +6,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 const testWorkspaceLedgerDepth = 1000
@@ -20,14 +19,6 @@ func newTestConfigAt(dataDir string) *config.RuntimeState {
 	domains.Settings.FzfEnabled = false
 	domains.Settings.GlowEnabled = false
 	return config.NewRuntimeState(dataDir, domains)
-}
-
-func newTestConfigWithProject(projectName string) (*config.RuntimeState, *models.Project) {
-	cfg := newTestConfig()
-	project := testutil.NewTestProject(projectName)
-	setTestProjects(cfg, []*models.Project{project})
-	cfg.Machine().CurrentProject = project.ID
-	return cfg, project
 }
 
 func testConfigWithProjects(projects ...*models.Project) *config.RuntimeState {

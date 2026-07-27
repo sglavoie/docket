@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestTUIStateMigrationFixtures(t *testing.T) {
@@ -88,10 +90,7 @@ func TestTUIStateMigrationFixtures(t *testing.T) {
 	}
 }
 
-func TestMachineTUIStateMigrationIsOneWayCleanup(t *testing.T) {
-	// Legacy startup, Home-layout, and sidebar JSON must be ignored rather than
-	// mapped to a replacement route: the payload decodes into the trimmed struct
-	// (dropping the obsolete keys) and only the version marker advances.
+func TestMachineTUIStateMigrationCanonicalizesLegacyStartup(t *testing.T) {
 	legacy := []byte(`{
 		"editor": "vim",
 		"start_view": "due-dates",
@@ -113,6 +112,9 @@ func TestMachineTUIStateMigrationIsOneWayCleanup(t *testing.T) {
 	if machine.Editor != "vim" {
 		t.Fatalf("durable editor lost: %q", machine.Editor)
 	}
+	if machine.StartupRoute.Mode != OutlinerModeDue {
+		t.Fatalf("startup route = %+v, want Due", machine.StartupRoute)
+	}
 	out, err := json.Marshal(machine)
 	if err != nil {
 		t.Fatalf("marshal migrated machine: %v", err)
@@ -122,6 +124,108 @@ func TestMachineTUIStateMigrationIsOneWayCleanup(t *testing.T) {
 			t.Fatalf("migrated machine still emits retired field %q: %s", field, out)
 		}
 	}
+}
+
+func TestNormalizeOutlinerRouteStateLegacyModes(t *testing.T) {
+	active := mustTestStateSet(t, models.StateReady, models.StateInProgress)
+	terminal := mustTestStateSet(t, models.StateDone, models.StateCanceled)
+	tests := []struct {
+		legacy  string
+		mode    string
+		states  models.WorkflowStateSet
+		snoozed bool
+		pinned  bool
+	}{
+		{legacy: "", mode: OutlinerModeAll},
+		{legacy: "unknown", mode: OutlinerModeAll},
+		{legacy: "active", mode: OutlinerModeAll, states: active},
+		{legacy: "waiting", mode: OutlinerModeAll, states: mustTestStateSet(t, models.StateWaiting)},
+		{legacy: "standby", mode: OutlinerModeAll, states: mustTestStateSet(t, models.StatePaused)},
+		{legacy: "someday", mode: OutlinerModeAll, states: mustTestStateSet(t, models.StateSomeday)},
+		{legacy: "review", mode: OutlinerModeAll, states: mustTestStateSet(t, models.StateReview)},
+		{legacy: "snoozed", mode: OutlinerModeAll, snoozed: true},
+		{legacy: "completed", mode: OutlinerModeAll, states: terminal},
+		{legacy: "due soon", mode: OutlinerModeDue},
+		{legacy: "high_priority", mode: OutlinerModePriority},
+		{legacy: "pinned", mode: OutlinerModeAll, pinned: true},
+		{legacy: "recently-visited", mode: OutlinerModeActivity},
+	}
+	for _, tc := range tests {
+		t.Run(tc.legacy, func(t *testing.T) {
+			got := NormalizeOutlinerRouteState(OutlinerRouteState{Mode: tc.legacy})
+			if got.Mode != tc.mode || !got.FilterStates.Equal(tc.states) ||
+				got.FilterSnoozed != tc.snoozed || got.FilterPinned != tc.pinned {
+				t.Fatalf("normalize %q = %+v states=%v, want mode=%q states=%v snoozed=%v pinned=%v",
+					tc.legacy, got, got.FilterStates.Values(), tc.mode, tc.states.Values(), tc.snoozed, tc.pinned)
+			}
+		})
+	}
+}
+
+func TestMachineRouteMigrationCanonicalFieldsWin(t *testing.T) {
+	payload := []byte(`{
+		"tui_state_version": 3,
+		"startup_route": {"mode": "unknown", "filter_pinned": true},
+		"start_view": "priority",
+		"current_route": {"mode": "activity"},
+		"cross_outliner_filter_sections": ["Waiting"],
+		"project_routes": {"project-1": {"mode": "due"}},
+		"project_view_states": {
+			"project-1": {"outliner_active_perspective": 2},
+			"project-2": {"outliner_active_perspective": 6}
+		}
+	}`)
+	var machine MachineState
+	if err := json.Unmarshal(payload, &machine); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if machine.StartupRoute.Mode != OutlinerModeAll || !machine.StartupRoute.FilterPinned {
+		t.Fatalf("canonical startup route lost precedence: %+v", machine.StartupRoute)
+	}
+	if machine.CurrentRoute.Mode != OutlinerModeActivity || !machine.CurrentRoute.FilterStates.IsEmpty() {
+		t.Fatalf("canonical current route lost precedence: %+v", machine.CurrentRoute)
+	}
+	if len(machine.ProjectRoutes) != 1 || machine.ProjectRoutes["project-1"].Mode != OutlinerModeDue {
+		t.Fatalf("canonical project routes lost precedence: %+v", machine.ProjectRoutes)
+	}
+	changed, err := machine.MigrateTUIState()
+	if err != nil || !changed {
+		t.Fatalf("MigrateTUIState changed=%v err=%v", changed, err)
+	}
+	data, err := json.Marshal(machine)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, legacy := range []string{"start_view", "start_route", "project_view_states", "cross_outliner_filter_sections"} {
+		if bytes.Contains(data, []byte(legacy)) {
+			t.Fatalf("canonical JSON retained %q: %s", legacy, data)
+		}
+	}
+}
+
+func TestMachineRouteMigrationDecodesCurrentPerspective(t *testing.T) {
+	payload := []byte(`{
+		"tui_state_version": 3,
+		"outliner_active_perspective": 2
+	}`)
+	var machine MachineState
+	if err := json.Unmarshal(payload, &machine); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := mustTestStateSet(t, models.StateReady, models.StateInProgress)
+	if machine.CurrentRoute.Mode != OutlinerModeAll || !machine.CurrentRoute.FilterStates.Equal(want) {
+		t.Fatalf("current route = %+v states=%v, want All + %v",
+			machine.CurrentRoute, machine.CurrentRoute.FilterStates.Values(), want.Values())
+	}
+}
+
+func mustTestStateSet(t *testing.T, states ...models.WorkflowState) models.WorkflowStateSet {
+	t.Helper()
+	set, err := models.NewWorkflowStateSet(states...)
+	if err != nil {
+		t.Fatalf("state set: %v", err)
+	}
+	return set
 }
 
 func TestLoadTimeTUIStateMigrationIsAtomicPerDomainAndIdempotent(t *testing.T) {

@@ -70,8 +70,8 @@ type TaskStatusChangedMsg struct{ Task *models.Task }
 // TaskPropertyChangedMsg signals an in-place task property change
 // (active, pinned, section, etc.) that should refresh without popping.
 // When NeedsSave is true, the handler will trigger an async project save.
-// This is used by command palette handlers that mutate tasks in-memory
-// without going through the persistFn pipeline.
+// This is used by adapters that mutate tasks in memory without going through
+// the coordinator pipeline.
 type TaskPropertyChangedMsg struct {
 	Task                *models.Task
 	NeedsSave           bool
@@ -242,39 +242,10 @@ type ParentSelectedMsg struct {
 // CloseParentSelectorMsg closes the parent selector without selection.
 type CloseParentSelectorMsg struct{ PopViewMsg }
 
-// =============================================================================
-// Quick Capture Messages (Show/Close Pattern)
-// =============================================================================
-
 // ShowTaskComposerMsg opens the canonical typed composer preset directly.
 type ShowTaskComposerMsg struct {
-	Preset     TaskComposerPreset
-	CompatView PresentationID
+	Preset TaskComposerPreset
 }
-
-// ShowQuickCaptureMsg opens the quick capture input.
-type ShowQuickCaptureMsg struct {
-	Project           *models.Project   // Explicit contextual destination; nil defaults to the system Inbox
-	AllProjects       []*models.Project // All non-archived projects for cross-project capture
-	FromGlobalCapture bool              // True when the project was selected before opening
-	SuggestedTag      string            // Pre-fill with #tag when single active tag filter
-	SuggestedSection  string            // Pre-fill with /section when in a specific section view
-}
-
-// CloseQuickCaptureMsg closes quick capture.
-type CloseQuickCaptureMsg struct{ PopViewMsg }
-
-// =============================================================================
-// Bulk Capture Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowBulkCaptureMsg opens the bulk capture input.
-type ShowBulkCaptureMsg struct {
-	Project *models.Project
-}
-
-// CloseBulkCaptureMsg closes bulk capture.
-type CloseBulkCaptureMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Task Comments Messages (Show/Close Pattern)
@@ -432,8 +403,7 @@ type MoveTaskToProjectMsg struct {
 	Task          *models.Task
 	SourceProject *models.Project
 	DestProjectID string
-	DestSection   *string // Optional section chosen by global move flow before moving
-	FromGlobal    bool    // true when triggered from a global move workflow (skip popView)
+	FromGlobal    bool // true when triggered from a global move workflow (skip popView)
 }
 
 // TaskMovedToProjectMsg signals a task was moved to another project.

@@ -10,7 +10,7 @@
     { "type": "command", "label": "open Daily Review mode in the Outliner", "command": "daily review" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "return to the Outliner root", "key": "esc" },
-    { "type": "command", "label": "open Weekly Review", "command": "weekly review" },
+    { "type": "key", "label": "open Weekly Review", "key": "R" },
     { "type": "assert", "assert": "view", "value": "WeeklyReview" },
     { "type": "assert", "assert": "contains", "value": "Weekly Review" },
     { "type": "assert", "assert": "no_layout_issues" }

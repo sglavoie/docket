@@ -77,13 +77,3 @@ func pinnedTagTabs(tags []string) []string {
 func pinnedTagFromTab(tab string) string {
 	return models.NormalizeTag(tab)
 }
-
-func gtdSections(sections []string) []string {
-	filtered := make([]string, 0, len(sections))
-	for _, section := range sections {
-		if models.IsGTDSection(section) {
-			filtered = append(filtered, section)
-		}
-	}
-	return filtered
-}

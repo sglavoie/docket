@@ -17,13 +17,13 @@ func TestApplySavedFilterToProjectViewsKeepsZeroUseCatalogTag(t *testing.T) {
 		FilterTags: []string{"catalog-only", "missing"},
 	}
 
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.crossOutliner = NewOutlinerModel(project, app.configManager, app.runtime)
 	app.applySavedFilterToOutliner(filter)
-	if !app.outliner.filter.Tags["catalog-only"] {
-		t.Fatalf("outliner tags = %v, want catalog-only restored", app.outliner.filter.Tags)
+	if !app.crossOutliner.filter.Tags["catalog-only"] {
+		t.Fatalf("outliner tags = %v, want catalog-only restored", app.crossOutliner.filter.Tags)
 	}
-	if app.outliner.filter.Tags["missing"] {
-		t.Fatalf("outliner tags = %v, want missing tag rejected", app.outliner.filter.Tags)
+	if app.crossOutliner.filter.Tags["missing"] {
+		t.Fatalf("outliner tags = %v, want missing tag rejected", app.crossOutliner.filter.Tags)
 	}
 }
 
@@ -66,9 +66,8 @@ func TestLoadSavedFilterAppliesCrossProjectCatalogTags(t *testing.T) {
 func TestLoadSavedFilterAppliesCrossProjectStates(t *testing.T) {
 	app := newTestAppModel()
 	project := &models.Project{
-		ID:       "alpha",
-		Name:     "Alpha",
-		Sections: []string{models.SectionNext, "Sprint-1"},
+		ID:   "alpha",
+		Name: "Alpha",
 	}
 
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
@@ -103,25 +102,17 @@ func TestLoadSavedFilterAppliesCrossProjectStates(t *testing.T) {
 
 func TestCaptureAndApplySavedFilterPreservesCanonicalStateSet(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
-	app.outliner.filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateNext), true)
+	app.crossOutliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.crossOutliner.filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateNext), true)
 
 	captured := app.captureOutlinerFilter("Planning", "planning")
-	if !captured.HasStateFilter() || !captured.FilterStates.Equal(app.outliner.filter.States) {
-		t.Fatalf("captured states = %v active=%v, want %v", captured.FilterStates.Values(), captured.HasStateFilter(), app.outliner.filter.States.Values())
+	if !captured.HasStateFilter() || !captured.FilterStates.Equal(app.crossOutliner.filter.States) {
+		t.Fatalf("captured states = %v active=%v, want %v", captured.FilterStates.Values(), captured.HasStateFilter(), app.crossOutliner.filter.States.Values())
 	}
 
-	app.outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone), true)
+	app.crossOutliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone), true)
 	app.applySavedFilterToOutliner(captured)
-	if !app.outliner.filter.States.Equal(captured.FilterStates) {
-		t.Fatalf("applied states = %v, want %v", app.outliner.filter.States.Values(), captured.FilterStates.Values())
-	}
-}
-
-func TestSectionFilterAdapterExpandsCompletedToBothTerminalStates(t *testing.T) {
-	states := workflowStatesForSectionNames([]string{models.SectionCompleted})
-	want := testWorkflowStateSet(models.StateDone, models.StateCanceled)
-	if !states.Equal(want) {
-		t.Fatalf("Completed adapter states = %v, want %v", states.Values(), want.Values())
+	if !app.crossOutliner.filter.States.Equal(captured.FilterStates) {
+		t.Fatalf("applied states = %v, want %v", app.crossOutliner.filter.States.Values(), captured.FilterStates.Values())
 	}
 }

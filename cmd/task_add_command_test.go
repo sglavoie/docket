@@ -26,7 +26,7 @@ func TestRunTaskAdd(t *testing.T) {
 		testutil.AssertEqual(t, task.Title, "My New Task")
 		testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 		testutil.AssertEqual(t, task.Priority, 3)
-		testutil.AssertEqual(t, models.LegacyStatusForState(task.State()), models.StatusTodo)
+		testutil.AssertEqual(t, task.State(), models.StateInbox)
 	})
 
 	t.Run("rejects missing title", func(t *testing.T) {
@@ -121,54 +121,6 @@ func TestRunTaskAdd(t *testing.T) {
 		if !task.HasTag("api") {
 			t.Error("task should have 'api' tag")
 		}
-	})
-
-	t.Run("rejects non-GTD section", func(t *testing.T) {
-		deps, project := setupTaskAddTest(t)
-		defer deps.Cleanup()
-
-		initialCount := len(project.Tasks)
-		taskSectionFlag = "Backlog"
-		_ = taskAddCmd.Flags().Set("section", "Backlog")
-		defer func() {
-			taskAddCmd.Flags().Lookup("section").Changed = false
-			taskSectionFlag = ""
-		}()
-
-		err := runTaskAdd(taskAddCmd, []string{"Backlog task"})
-		if err == nil {
-			t.Fatal("expected error for non-GTD section")
-		}
-
-		savedProject := deps.Repository.Projects[project.ID]
-		if len(savedProject.Tasks) != initialCount {
-			t.Fatalf("expected %d tasks, got %d", initialCount, len(savedProject.Tasks))
-		}
-	})
-
-	t.Run("creates task with GTD section in Section field", func(t *testing.T) {
-		deps, project := setupTaskAddTest(t)
-		defer deps.Cleanup()
-
-		project.EnsureDefaultSections()
-
-		initialCount := len(project.Tasks)
-		taskSectionFlag = "Inbox"
-		_ = taskAddCmd.Flags().Set("section", "Inbox")
-		defer func() {
-			taskAddCmd.Flags().Lookup("section").Changed = false
-			taskSectionFlag = ""
-		}()
-
-		err := runTaskAdd(taskAddCmd, []string{"Inbox task"})
-		testutil.AssertNoError(t, err)
-
-		savedProject := deps.Repository.Projects[project.ID]
-		if len(savedProject.Tasks) != initialCount+1 {
-			t.Fatalf("expected %d tasks, got %d", initialCount+1, len(savedProject.Tasks))
-		}
-		task := savedProject.Tasks[len(savedProject.Tasks)-1]
-		testutil.AssertEqual(t, models.SectionForState(task.State()), "Inbox")
 	})
 
 	t.Run("rejects invalid recurrence", func(t *testing.T) {

@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
-	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
@@ -176,7 +173,7 @@ func (m *TaskFormModel) buildDraftTaskAttrs() (
 // the task pointers for navigation, status, and open-after.
 func (m *TaskFormModel) saveCreate() tea.Cmd {
 	bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildDraftTaskAttrs()
-	state := creationStateFromLegacyInputs(m.draft.section, "", m.presetState)
+	state := creationStateFromPreset(m.draft.state)
 
 	// Build the subtask request list (blank titles skipped) and map the draft
 	// open-after index onto the created (non-blank) subtask index.
@@ -249,70 +246,6 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	return m.taskForm.CreateForm(req, openCreatedIdx, openContent, openDetail)
 }
 
-// readPastedClipboard reads and parses the clipboard into a util.PastedTask
-// without mutating any project. It is the parse-only seam shared by the
-// in-memory single-project paste (newInboxTaskFromClipboard) and the
-// cross-project paste, which builds an app.CaptureRequest instead of appending a
-// task directly. Returns an error when the clipboard is empty or unreadable.
-func readPastedClipboard() (util.PastedTask, error) {
-	text, err := clipboard.ReadAll()
-	if err != nil || strings.TrimSpace(text) == "" {
-		return util.PastedTask{}, fmt.Errorf("clipboard is empty")
-	}
-	pt := util.ParseClipboard(text)
-	if pt.Title == "" {
-		return util.PastedTask{}, fmt.Errorf("clipboard is empty")
-	}
-	return pt, nil
-}
-
-// newInboxTaskFromClipboard reads the clipboard, parses it, builds a Task in
-// the project's Inbox, and appends it to project.Tasks. Callers are responsible
-// for persisting the project. Returns the created task, or an error if the
-// clipboard is empty or unreadable.
-func newInboxTaskFromClipboard(project *models.Project) (*models.Task, error) {
-	pt, err := readPastedClipboard()
-	if err != nil {
-		return nil, err
-	}
-
-	if !project.HasSection(models.SectionInbox) {
-		project.EnsureSection(models.SectionInbox)
-		project.SetSectionColor(models.SectionInbox, "red")
-	}
-
-	now := time.Now()
-	task := &models.Task{
-		ID:              uuid.New().String(),
-		ShortID:         project.GetNextShortID(),
-		Type:            models.TaskTypeTask,
-		Title:           pt.Title,
-		Description:     pt.Description,
-		WorkflowState:   models.StateReady,
-		Priority:        3,
-		Tags:            []string{},
-		DependsOn:       []string{},
-		RelatedTo:       []string{},
-		ScoreDimensions: map[string]int{},
-		Children:        []*models.Task{},
-		CreatedAt:       now,
-		UpdatedAt:       now,
-	}
-	task.SetSection(models.SectionInbox)
-
-	if pt.URL != "" {
-		if attachErr := task.AddAttachment(pt.URL, true, pt.URL); attachErr != nil {
-			logging.Warn("clipboard paste: failed to add URL attachment: %v", attachErr)
-		}
-	}
-
-	project.Tasks = append([]*models.Task{task}, project.Tasks...)
-	project.BuildTaskTree()
-	project.ReorderRootTasksByCompletion()
-
-	return task, nil
-}
-
 // saveEdit builds a full-field EditRequest from the draft and routes the edit
 // through the task-form coordinator, which commits the change as one atomic
 // ChangeSet. The returned Cmd emits a TaskUpdatedMsg carrying the committed
@@ -325,7 +258,6 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		Type:          m.draft.taskType,
 		Priority:      m.draft.priority,
 		ParentID:      m.draft.parentID,
-		Section:       m.draft.section,
 		Description:   strings.TrimSpace(m.draft.desc),
 		Tags:          append([]string{}, m.draft.tags...),
 		DueDate:       m.draft.dueDate,
@@ -345,7 +277,11 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		EpicAttrs:     epicAttrs,
 	}
 
-	return m.taskForm.EditForm(taskIdentityFor(m.task, m.project), app.EditRequest{Form: form})
+	state := m.draft.state
+	return m.taskForm.EditForm(
+		taskIdentityFor(m.task, m.project),
+		app.EditRequest{Form: form, WorkflowState: &state},
+	)
 }
 
 // SetTaskFormCoordinator injects the shared task-form coordinator (taskFormWireable).

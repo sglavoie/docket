@@ -13,8 +13,8 @@ func TestHandleTaskMessagesDependencySelectorDone(t *testing.T) {
 	if !handled {
 		t.Error("DependencySelectorDoneMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing selector, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing selector, got %v", app.currentView())
 	}
 }
 
@@ -39,15 +39,15 @@ func TestHandleTaskMessagesCloseDependencyViewer(t *testing.T) {
 
 	app.Update(CloseDependencyViewerMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing viewer, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing viewer, got %v", app.currentView())
 	}
 }
 
 func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, nil, app.runtime)
-	app.pushView(ViewOutliner)
+	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
+	app.pushView(ViewCrossProjectOutliner)
 
 	msg := UndoPerformedMsg{Action: "Task deleted"}
 	handled, _ := app.handleTaskMessages(msg)
@@ -55,7 +55,7 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	if !handled {
 		t.Error("UndoPerformedMsg should be handled")
 	}
-	if app.currentView() != ViewOutliner {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Errorf("currentView should remain Outliner after undo, got %v", app.currentView())
 	}
 	if app.statusMessage != "Undid: Task deleted" {
@@ -65,8 +65,8 @@ func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 
 func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, nil, app.runtime)
-	app.pushView(ViewOutliner)
+	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
+	app.pushView(ViewCrossProjectOutliner)
 
 	msg := RedoPerformedMsg{Action: "Task restored"}
 	handled, _ := app.handleTaskMessages(msg)
@@ -74,7 +74,7 @@ func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
 	if !handled {
 		t.Error("RedoPerformedMsg should be handled")
 	}
-	if app.currentView() != ViewOutliner {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Errorf("currentView should remain Outliner after redo, got %v", app.currentView())
 	}
 	if app.statusMessage != "Redo: Task restored" {
@@ -103,8 +103,8 @@ func TestHandleTaskMessagesCloseTaskDetail(t *testing.T) {
 
 	app.Update(CloseTaskDetailMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing detail, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing detail, got %v", app.currentView())
 	}
 }
 
@@ -129,8 +129,8 @@ func TestHandleTaskMessagesCloseTaskChecklist(t *testing.T) {
 
 	app.Update(CloseTaskChecklistMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing checklist, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing checklist, got %v", app.currentView())
 	}
 }
 
@@ -155,7 +155,7 @@ func TestHandleTaskMessagesCloseTaskActivity(t *testing.T) {
 
 	app.Update(CloseTaskActivityMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing activity, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing activity, got %v", app.currentView())
 	}
 }

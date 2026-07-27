@@ -54,7 +54,6 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 			}
 		}
 		p.NextShortID = next
-		p.EnsureDefaultSections()
 		p.BuildTaskTree()
 		return p
 	}
@@ -106,7 +105,6 @@ func (e *taskDeleteEnv) appModel() *AppModel {
 		appService:           e.svc,
 		secondaryFeatures:    newSecondaryCoordinators(e.svc, nil),
 		views:                NewViewRegistry(),
-		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
@@ -176,7 +174,7 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 
 	cmd := m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs:   []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
-		Origin: ViewOutliner,
+		Origin: ViewCrossProjectOutliner,
 	})
 	if cmd != nil {
 		t.Fatal("arming the confirm must not dispatch a command")
@@ -184,8 +182,8 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 	if !m.taskDeleteConfirm.IsActive() || !m.hasActiveConfirmDialog() {
 		t.Fatal("confirm dialog should be active after request")
 	}
-	if m.pendingTaskDelete.origin != ViewOutliner {
-		t.Errorf("origin = %v, want ViewOutliner", m.pendingTaskDelete.origin)
+	if m.pendingTaskDelete.origin != ViewCrossProjectOutliner {
+		t.Errorf("origin = %v, want Outliner", m.pendingTaskDelete.origin)
 	}
 	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
 		t.Errorf("prompt = %q, want %q", got, "Delete task #1?")
@@ -262,7 +260,7 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs:   []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
-		Origin: ViewOutliner,
+		Origin: ViewCrossProjectOutliner,
 	})
 
 	handled, cmd := m.handleGlobalKeyPress(keyPress("y"))

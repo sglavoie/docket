@@ -15,7 +15,7 @@ func TestParseTasksMarkdown_OrphanedParentPreserved(t *testing.T) {
 
 Description of child.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestParseTasksMarkdown_OrphanedParentIgnored(t *testing.T) {
 
 Description of child.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestParseTasksMarkdown_BrokenHeadingFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := ParseTasksMarkdownWithSections(tc.content)
+			result, err := ParseTasksMarkdownDocument(tc.content)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -218,7 +218,7 @@ func TestParseTasksMarkdown_CorruptedMetadataValues(t *testing.T) {
 ## Task: Both Bad
 <!-- id: t3, status: nonexistent, priority: xyz -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -299,7 +299,7 @@ Description without any metadata comment.
 
 Normal description.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

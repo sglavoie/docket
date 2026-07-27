@@ -23,8 +23,8 @@ func TestHandleTaskMessagesCloseTaskDecisions(t *testing.T) {
 
 	app.Update(CloseTaskDecisionsMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing decisions, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing decisions, got %v", app.currentView())
 	}
 }
 

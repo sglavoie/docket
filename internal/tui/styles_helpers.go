@@ -201,37 +201,6 @@ func GetStateBadge(state models.WorkflowState) string {
 	}
 }
 
-// stateMutationFlashBg returns a subtle background color for a
-// workflow-state-specific mutation flash.
-func stateMutationFlashBg(state models.WorkflowState) color.Color {
-	if activeThemeName == "light" {
-		switch state {
-		case models.StateDone:
-			return lipgloss.Color("#d4edda")
-		case models.StateWaiting:
-			return lipgloss.Color("#f8d7da")
-		case models.StateInProgress:
-			return lipgloss.Color("#fff3cd")
-		case models.StateReview:
-			return lipgloss.Color("#e6d6f8")
-		default:
-			return ColorFlashBg
-		}
-	}
-	switch state {
-	case models.StateDone:
-		return lipgloss.Color("#1a3825")
-	case models.StateWaiting:
-		return lipgloss.Color("#3d1515")
-	case models.StateInProgress:
-		return lipgloss.Color("#3d2e00")
-	case models.StateReview:
-		return lipgloss.Color("#1f1f3d")
-	default:
-		return ColorFlashBg
-	}
-}
-
 // completionFlashBg returns the background color for a given frame (0..2) of the
 // task-completion ramp. The ramp goes saturated → bright → muted-success to give
 // task completion a distinct peak feel relative to ordinary status mutations.
@@ -260,58 +229,6 @@ func completionFlashBg(frame int) color.Color {
 		return lipgloss.Color("#2b4d1a")
 	default:
 		return lipgloss.Color("#1a3825")
-	}
-}
-
-// priorityMutationFlashBg returns a subtle background tint for a priority-specific mutation flash.
-func priorityMutationFlashBg(priority int) color.Color {
-	if activeThemeName == "light" {
-		switch priority {
-		case 1:
-			return lipgloss.Color("#f8d7da")
-		case 2:
-			return lipgloss.Color("#fff3cd")
-		case 3:
-			return lipgloss.Color("#dbe8ff")
-		default:
-			return ColorFlashBg
-		}
-	}
-	switch priority {
-	case 1:
-		return lipgloss.Color("#3d1a20")
-	case 2:
-		return lipgloss.Color("#3d2e00")
-	case 3:
-		return lipgloss.Color("#182035")
-	default:
-		return ColorFlashBg
-	}
-}
-
-// typeMutationFlashBg returns a subtle background tint for a type-specific mutation flash.
-func typeMutationFlashBg(taskType models.TaskType) color.Color {
-	if activeThemeName == "light" {
-		switch taskType {
-		case models.TaskTypeEpic:
-			return lipgloss.Color("#ede0ff")
-		case models.TaskTypeBug:
-			return lipgloss.Color("#f8d7da")
-		case models.TaskTypeIdea:
-			return lipgloss.Color("#fff3cd")
-		default:
-			return ColorFlashBg
-		}
-	}
-	switch taskType {
-	case models.TaskTypeEpic:
-		return lipgloss.Color("#2b1f45")
-	case models.TaskTypeBug:
-		return lipgloss.Color("#3d1520")
-	case models.TaskTypeIdea:
-		return lipgloss.Color("#3d2e00")
-	default:
-		return ColorFlashBg
 	}
 }
 
@@ -387,47 +304,30 @@ func GetWorkflowStateGroupAccent(group models.WorkflowStateGroup) color.Color {
 	}
 }
 
-// GetViewModeStyleForSection is a visible-surface compatibility adapter for
-// section-shaped labels. Canonical workflow headers use
-// GetWorkflowStateGroupStyle directly.
-func GetViewModeStyleForSection(section string) lipgloss.Style {
-	switch section {
-	case "":
-		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
-	case "Next":
-		return GetWorkflowStateGroupStyle(models.StateGroupNext)
-	case "Inbox":
-		return GetWorkflowStateGroupStyle(models.StateGroupInbox)
-	case "Waiting":
-		return GetWorkflowStateGroupStyle(models.StateGroupWaiting)
-	case "Someday":
-		return GetWorkflowStateGroupStyle(models.StateGroupSomeday)
-	case "Review":
-		return GetWorkflowStateGroupStyle(models.StateGroupReview)
-	case "Standby":
-		return GetWorkflowStateGroupStyle(models.StateGroupPaused)
-	case "Today":
-		return GetWorkflowStateGroupStyle(models.StateGroupToday)
-	case "In Progress":
-		return GetWorkflowStateGroupStyle(models.StateGroupInProgress)
-	case "Backlog":
-		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
-	case "Paused":
-		return GetWorkflowStateGroupStyle(models.StateGroupPaused)
-	case "Done":
-		return GetWorkflowStateGroupStyle(models.StateGroupDone)
-	case "Canceled":
-		return GetWorkflowStateGroupStyle(models.StateGroupCanceled)
-	case "All":
+// GetOutlinerModeStyle resolves one of the final ten mode identities to its
+// static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
+func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
+	switch mode {
+	case ModeAll:
 		return ViewModeAllStyle
-	case "Active":
+	case ModeInbox:
+		return GetWorkflowStateGroupStyle(models.StateGroupInbox)
+	case ModeNext, ModeDue:
+		return GetWorkflowStateGroupStyle(models.StateGroupNext)
+	case ModeBacklog:
 		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
-	case "Completed":
-		return GetWorkflowStateGroupStyle(models.StateGroupDone)
-	case "Snoozed":
-		return ViewModeSnoozedStyle
+	case ModePriority:
+		return GetWorkflowStateGroupStyle(models.StateGroupInProgress)
+	case ModeBlocked:
+		return GetWorkflowStateGroupStyle(models.StateGroupWaiting)
+	case ModeParked:
+		return GetWorkflowStateGroupStyle(models.StateGroupPaused)
+	case ModeDailyReview:
+		return GetWorkflowStateGroupStyle(models.StateGroupReview)
+	case ModeActivity:
+		return ViewModeAllStyle
 	default:
-		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
+		return ViewModeAllStyle
 	}
 }
 

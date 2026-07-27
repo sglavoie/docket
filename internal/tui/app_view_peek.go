@@ -67,19 +67,6 @@ func (m *AppModel) renderPeekOverlay() string {
 	return renderTitledBox(pane, innerWidth, title, footerText, borderStyle)
 }
 
-// activatePeek opens the peek overlay for the given task, zero-initializing
-// scroll/focus state so the overlay always starts at the top of both panes
-// with description (left) pane focused.
-func (m *AppModel) activatePeek(task *models.Task, project *models.Project) {
-	m.peekTask = task
-	m.peekProject = project
-	m.peekActive = true
-	m.peekLeftOffset = 0
-	m.peekRightOffset = 0
-	m.peekFocusRight = false
-	m.pushTypedOverlay(OverlayPeek, task.ID)
-}
-
 // dismissPeek clears all peek state.
 func (m *AppModel) dismissPeek() {
 	peekID := ""

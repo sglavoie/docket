@@ -70,8 +70,8 @@ func TestWriteActivity_SkipsNilEntries(t *testing.T) {
 	if len(parsedTask.Activity) != 1 {
 		t.Fatalf("expected 1 activity entry, got %d", len(parsedTask.Activity))
 	}
-	if parsedTask.Activity[0].Field != "status" {
-		t.Errorf("field = %q, want %q", parsedTask.Activity[0].Field, "status")
+	if parsedTask.Activity[0].Field != "state" {
+		t.Errorf("field = %q, want %q", parsedTask.Activity[0].Field, "state")
 	}
 }
 
@@ -236,8 +236,8 @@ func TestActivityRoundtripPlainValues(t *testing.T) {
 	}
 
 	entry := parsedTask.Activity[0]
-	if entry.OldValue != "todo" {
-		t.Errorf("OldValue = %q, want %q", entry.OldValue, "todo")
+	if entry.OldValue != "ready" {
+		t.Errorf("OldValue = %q, want %q", entry.OldValue, "ready")
 	}
 	if entry.NewValue != "in_progress" {
 		t.Errorf("NewValue = %q, want %q", entry.NewValue, "in_progress")
@@ -299,11 +299,11 @@ func TestActivityBackwardsCompatibility(t *testing.T) {
 	}
 
 	entry := task.Activity[0]
-	if entry.Field != "status" {
-		t.Errorf("field = %q, want %q", entry.Field, "status")
+	if entry.Field != "state" {
+		t.Errorf("field = %q, want %q", entry.Field, "state")
 	}
-	if entry.OldValue != "todo" {
-		t.Errorf("OldValue = %q, want %q", entry.OldValue, "todo")
+	if entry.OldValue != "ready" {
+		t.Errorf("OldValue = %q, want %q", entry.OldValue, "ready")
 	}
 	if entry.NewValue != "done" {
 		t.Errorf("NewValue = %q, want %q", entry.NewValue, "done")
@@ -371,8 +371,8 @@ func TestActivityRoundtripPreservesChronologicalOrder(t *testing.T) {
 	if parsedTask.Activity[0].Field != "created" {
 		t.Errorf("entry[0].Field = %q, want %q", parsedTask.Activity[0].Field, "created")
 	}
-	if parsedTask.Activity[1].Field != "status" {
-		t.Errorf("entry[1].Field = %q, want %q", parsedTask.Activity[1].Field, "status")
+	if parsedTask.Activity[1].Field != "state" {
+		t.Errorf("entry[1].Field = %q, want %q", parsedTask.Activity[1].Field, "state")
 	}
 	if parsedTask.Activity[2].Field != "priority" {
 		t.Errorf("entry[2].Field = %q, want %q", parsedTask.Activity[2].Field, "priority")

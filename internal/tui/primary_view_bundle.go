@@ -17,18 +17,16 @@ type PrimaryViewBundle struct {
 	link           LinkCoordinator
 	projectService *ProjectService
 	quickEdit      *QuickEditComponent
-	bulkOp         *BulkOperationComponent
 }
 
-// NewPrimaryViewBundle creates a bundle with a fresh ProjectService, QuickEdit,
-// and BulkOp component.
+// NewPrimaryViewBundle creates a bundle with a fresh ProjectService and
+// QuickEdit component.
 func NewPrimaryViewBundle(mgr *config.Manager, runtime *config.RuntimeState) PrimaryViewBundle {
 	return PrimaryViewBundle{
 		configManager:  mgr,
 		runtime:        runtime,
 		projectService: NewProjectService(),
 		quickEdit:      NewQuickEditComponent(),
-		bulkOp:         NewBulkOperationComponent(),
 	}
 }
 

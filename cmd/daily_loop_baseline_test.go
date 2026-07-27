@@ -26,11 +26,7 @@ func baselineHasFlag(cmd *cobra.Command, name string) bool {
 	return cmd.Flags().Lookup(name) != nil
 }
 
-// TestDailyLoopCurrentCreationAndFilterFlags characterizes the transitional CLI
-// surface. Creation/template/archive still speak section or status, while task
-// list already exposes state beside status. Later public-cutover sessions replace
-// this baseline with the state-only contract in testutil.
-func TestDailyLoopCurrentCreationAndFilterFlags(t *testing.T) {
+func TestDailyLoopCanonicalCreationAndFilterFlags(t *testing.T) {
 	archiveList := newTaskArchiveListCmd()
 	tests := []struct {
 		name    string
@@ -38,10 +34,14 @@ func TestDailyLoopCurrentCreationAndFilterFlags(t *testing.T) {
 		present []string
 		absent  []string
 	}{
-		{name: "task add", command: taskAddCmd, present: []string{"section"}, absent: []string{"state"}},
-		{name: "template add", command: templateAddCmd, present: []string{"section"}, absent: []string{"state"}},
-		{name: "task list", command: taskListCmd, present: []string{"status", "state", "sort"}},
-		{name: "archive list", command: archiveList, present: []string{"status"}, absent: []string{"state"}},
+		{name: "quick add", command: addCmd, present: []string{"state"}},
+		{name: "task add", command: taskAddCmd, present: []string{"state"}, absent: []string{"section"}},
+		{name: "task edit", command: taskEditCmd, present: []string{"state"}},
+		{name: "template add", command: templateAddCmd, present: []string{"state"}, absent: []string{"section"}},
+		{name: "template edit", command: templateEditCmd, present: []string{"state"}, absent: []string{"section"}},
+		{name: "template use", command: templateUseCmd, present: []string{"state"}},
+		{name: "task list", command: taskListCmd, present: []string{"state", "sort"}, absent: []string{"status"}},
+		{name: "archive list", command: archiveList, present: []string{"state"}, absent: []string{"status"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -59,10 +59,7 @@ func TestDailyLoopCurrentCreationAndFilterFlags(t *testing.T) {
 	}
 }
 
-// TestDailyLoopCurrentTaskListJSONShape pins representative legacy CLI output:
-// state is present, but status and section remain public compatibility fields
-// until the atomic cutover. Stage is omitted when empty.
-func TestDailyLoopCurrentTaskListJSONShape(t *testing.T) {
+func TestDailyLoopCanonicalTaskListJSONShape(t *testing.T) {
 	at := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
 	task := &models.Task{
 		ID:            "baseline-task",
@@ -92,13 +89,13 @@ func TestDailyLoopCurrentTaskListJSONShape(t *testing.T) {
 	sort.Strings(got)
 	want := []string{
 		"created_at", "dimmed", "due_date", "has_time", "id", "parent_id",
-		"parked", "pinned", "priority", "queued", "section", "short_id",
-		"state", "status", "tags", "title", "type", "updated_at",
+		"parked", "pinned", "priority", "short_id", "state", "tags", "title",
+		"type", "updated_at",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("task list JSON fields = %v, want %v", got, want)
 	}
-	if string(fields["status"]) != `"todo"` || string(fields["state"]) != `"next"` || string(fields["section"]) != `"Next"` {
-		t.Errorf("representative lifecycle output status=%s state=%s section=%s", fields["status"], fields["state"], fields["section"])
+	if string(fields["state"]) != `"next"` {
+		t.Errorf("representative lifecycle output state=%s", fields["state"])
 	}
 }

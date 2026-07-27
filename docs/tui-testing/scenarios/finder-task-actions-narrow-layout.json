@@ -1,0 +1,12 @@
+{
+  "name": "finder-task-actions-narrow-layout",
+  "fixture": "narrow",
+  "size": "72x20",
+  "actions": [
+    { "type": "key", "label": "open Finder", "key": ":" },
+    { "type": "text", "label": "filter to tasks", "text": ":task " },
+    { "type": "key", "label": "open actions for selected task", "key": "tab" },
+    { "type": "assert", "assert": "view", "value": "Finder" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

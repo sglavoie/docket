@@ -7,6 +7,77 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+type legacyTaskStatus string
+
+const (
+	legacyStatusTodo       legacyTaskStatus = "todo"
+	legacyStatusInProgress legacyTaskStatus = "in_progress"
+	legacyStatusReview     legacyTaskStatus = "review"
+	legacyStatusStandby    legacyTaskStatus = "standby"
+	legacyStatusDone       legacyTaskStatus = "done"
+	legacyStatusBlocked    legacyTaskStatus = "blocked"
+	legacyStatusCanceled   legacyTaskStatus = "canceled"
+	legacyStatusMaybe      legacyTaskStatus = "maybe"
+)
+
+const (
+	legacySectionInbox     = "Inbox"
+	legacySectionNext      = "Next"
+	legacySectionWaiting   = "Waiting"
+	legacySectionStandby   = "Standby"
+	legacySectionReview    = "Review"
+	legacySectionSomeday   = "Someday"
+	legacySectionCompleted = "Completed"
+)
+
+func parseLegacyTaskStatus(value string) (legacyTaskStatus, bool) {
+	status := legacyTaskStatus(value)
+	switch status {
+	case legacyStatusTodo, legacyStatusInProgress, legacyStatusReview,
+		legacyStatusStandby, legacyStatusDone, legacyStatusBlocked,
+		legacyStatusCanceled, legacyStatusMaybe:
+		return status, true
+	default:
+		return "", false
+	}
+}
+
+func isLegacyGTDSection(value string) bool {
+	switch value {
+	case legacySectionInbox, legacySectionNext, legacySectionWaiting,
+		legacySectionStandby, legacySectionReview, legacySectionSomeday,
+		legacySectionCompleted:
+		return true
+	default:
+		return false
+	}
+}
+
+func deriveLegacyWorkflowState(status legacyTaskStatus, section, stage string) models.WorkflowState {
+	switch {
+	case status == legacyStatusCanceled:
+		return models.StateCanceled
+	case status == legacyStatusDone || section == legacySectionCompleted:
+		return models.StateDone
+	case status == legacyStatusReview || section == legacySectionReview || strings.EqualFold(stage, legacySectionReview):
+		return models.StateReview
+	case status == legacyStatusInProgress:
+		return models.StateInProgress
+	case status == legacyStatusBlocked || section == legacySectionWaiting:
+		return models.StateWaiting
+	case status == legacyStatusStandby || section == legacySectionStandby:
+		return models.StatePaused
+	case status == legacyStatusMaybe || section == legacySectionSomeday:
+		return models.StateSomeday
+	case section == legacySectionInbox:
+		return models.StateInbox
+	case section == legacySectionNext:
+		return models.StateNext
+	default:
+		return models.StateReady
+	}
+}
+
 // legacyLifecycleKeys are the metadata keys that schema v2 replaces with a
 // single canonical `state` field. They are still parsed (and still written by
 // the legacy v1 writer) during the migration window, but the v2 writer omits
@@ -19,10 +90,8 @@ var legacyLifecycleKeys = map[string]bool{
 }
 
 // metadataStateFieldCodec parses the canonical schema-v2 `state` field straight
-// into the task's stored WorkflowState field (via Task.ApplyWorkflowState, which
-// also reconstitutes the legacy Status/Section shims so domain code that still
-// reads them keeps working during the migration window). Its writer is
-// intentionally a no-op: the shared (v1) writer never emits `state`, and the v2
+// into the task's stored WorkflowState field. Its writer is intentionally a
+// no-op: the shared writer never emits `state`, and the v2
 // writer injects it explicitly in appendWrittenPartsV2 from Task.State().
 // Registering the codec here is what makes the metadata splitter recognize
 // `state:` as a known key boundary when parsing a v2 document.
@@ -56,7 +125,7 @@ func noopMetadataWriter(_ *models.Task, _ *[]string) {}
 func legacyStatusFieldCodec() metadataFieldCodec {
 	return metadataField("status",
 		func(_ *models.Task, value string, state *metadataParseState, warnings *[]ParseWarning) {
-			if status, ok := models.ParseTaskStatus(value); ok {
+			if status, ok := parseLegacyTaskStatus(value); ok {
 				state.legacy.status = status
 				state.legacy.statusSeen = true
 				return

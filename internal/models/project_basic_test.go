@@ -121,20 +121,6 @@ func TestProjectArchive(t *testing.T) {
 	}
 }
 
-func TestNewProjectHasNextSection(t *testing.T) {
-	project, err := NewProject("test", "Test", "/tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(project.Sections) != 1 {
-		t.Errorf("expected 1 section, got %d", len(project.Sections))
-	}
-	if project.Sections[0] != SectionNext {
-		t.Errorf("expected first section to be Next, got %s", project.Sections[0])
-	}
-}
-
 func TestMutateTask_NotFound(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {

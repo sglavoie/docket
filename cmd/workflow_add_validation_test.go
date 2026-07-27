@@ -49,7 +49,7 @@ func TestWorkflowAdd_TriggerOperationValidation(t *testing.T) {
 
 	invalidOps := []string{"invalid", "match", "regex"}
 	for _, op := range invalidOps {
-		trigger := workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.TriggerOperation(op), Value: "test"}
+		trigger := workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.TriggerOperation(op), Value: "test"}
 		if err := trigger.Validate(); err == nil {
 			t.Errorf("expected operation %s to be invalid", op)
 		}
@@ -163,7 +163,6 @@ func TestWorkflowAdd_TriggerLogicValidation(t *testing.T) {
 
 func TestWorkflowAdd_NoValueRequiredActions(t *testing.T) {
 	noValueRequired := map[workflow.ActionType]bool{
-		workflow.ActionSetSection:     true,
 		workflow.ActionClearDue:       true,
 		workflow.ActionCompleteParent: true,
 		workflow.ActionBlockParent:    true,

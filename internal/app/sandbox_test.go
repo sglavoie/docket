@@ -26,7 +26,7 @@ func TestResetSandboxCommitsProjectAndRevisionCheckedNotesTogether(t *testing.T)
 	if err != nil {
 		t.Fatalf("PreviewSandboxReset: %v", err)
 	}
-	if got, want := preview.Counts, (app.SandboxResetCounts{Tasks: 1, Notes: 2, Tags: 2, PinnedTags: 1, SectionColors: 1, ShortIDCounter: 1}); got != want {
+	if got, want := preview.Counts, (app.SandboxResetCounts{Tasks: 1, Notes: 2, Tags: 2, PinnedTags: 1, ShortIDCounter: 1}); got != want {
 		t.Fatalf("preview counts = %+v, want %+v", got, want)
 	}
 
@@ -62,8 +62,6 @@ func TestResetSandboxDoesNotSkipNonDefaultStateWhenItemCountsAreZero(t *testing.
 	project := newProject("sandbox", "Sandbox")
 	project.Sandbox = true
 	project.NextShortID = 9
-	project.Sections = []string{"Later"}
-	project.SectionColors = map[string]string{"Later": "blue"}
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -71,8 +69,8 @@ func TestResetSandboxDoesNotSkipNonDefaultStateWhenItemCountsAreZero(t *testing.
 	if err != nil {
 		t.Fatalf("PreviewSandboxReset: %v", err)
 	}
-	if preview.Counts.Empty() || preview.Counts.SectionLayout != 1 || preview.Counts.SectionColors != 1 || preview.Counts.ShortIDCounter != 1 {
-		t.Fatalf("metadata-only reset preview = %+v, want three state changes", preview.Counts)
+	if preview.Counts.Empty() || preview.Counts.ShortIDCounter != 1 {
+		t.Fatalf("metadata-only reset preview = %+v, want counter reset", preview.Counts)
 	}
 	result, err := svc.ResetSandbox(project.ID)
 	if err != nil {
@@ -154,7 +152,6 @@ func TestResetSandboxUndoRedoRestoresExactProjectAndNoteBytes(t *testing.T) {
 	project.Sandbox = true
 	project.Tags = []string{"catalog"}
 	project.PinnedTags = []string{"catalog"}
-	project.SectionColors = map[string]string{models.SectionNext: "blue"}
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 
@@ -243,7 +240,6 @@ func sandboxProjectWithMetadata(t *testing.T) *models.Project {
 	project.Tags = []string{"catalog"}
 	project.PinnedTags = []string{"catalog"}
 	project.Tasks[0].Tags = []string{"task-tag"}
-	project.SectionColors = map[string]string{models.SectionNext: "blue"}
 	return project
 }
 
@@ -269,11 +265,8 @@ func assertSandboxProjectCleared(t *testing.T, project *models.Project) {
 	if len(project.Tasks) != 0 || project.NextShortID != 1 {
 		t.Fatalf("sandbox tasks not cleared: tasks=%d next=%d", len(project.Tasks), project.NextShortID)
 	}
-	if len(project.Sections) != 1 || project.Sections[0] != models.SectionNext {
-		t.Fatalf("sandbox sections = %v, want [Next]", project.Sections)
-	}
-	if len(project.SectionColors) != 0 || len(project.Tags) != 0 || len(project.PinnedTags) != 0 {
-		t.Fatalf("sandbox metadata not cleared: colors=%v tags=%v pins=%v", project.SectionColors, project.Tags, project.PinnedTags)
+	if len(project.Tags) != 0 || len(project.PinnedTags) != 0 {
+		t.Fatalf("sandbox metadata not cleared: tags=%v pins=%v", project.Tags, project.PinnedTags)
 	}
 }
 

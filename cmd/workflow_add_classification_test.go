@@ -9,8 +9,8 @@ import (
 func TestWorkflowAdd_IsEventTrigger(t *testing.T) {
 	eventTriggers := []workflow.TriggerField{
 		workflow.FieldStateChanged,
-		workflow.FieldStatusChanged,
-		workflow.FieldSectionChanged,
+		workflow.FieldStateChanged,
+		workflow.FieldStateChanged,
 		workflow.FieldPriorityChanged,
 		workflow.FieldTagAdded,
 		workflow.FieldTagRemoved,
@@ -26,9 +26,9 @@ func TestWorkflowAdd_IsEventTrigger(t *testing.T) {
 
 	stateTriggers := []workflow.TriggerField{
 		workflow.FieldState,
-		workflow.FieldStatus,
+		workflow.FieldState,
 		workflow.FieldPriority,
-		workflow.FieldSection,
+		workflow.FieldState,
 		workflow.FieldTags,
 	}
 
@@ -42,7 +42,7 @@ func TestWorkflowAdd_IsEventTrigger(t *testing.T) {
 func TestWorkflowAdd_IsHierarchicalTrigger(t *testing.T) {
 	hierarchicalTriggers := []workflow.TriggerField{
 		workflow.FieldParentState,
-		workflow.FieldParentStatus,
+		workflow.FieldParentState,
 		workflow.FieldParentType,
 		workflow.FieldParentTags,
 		workflow.FieldLevel,
@@ -61,9 +61,9 @@ func TestWorkflowAdd_IsHierarchicalTrigger(t *testing.T) {
 
 	nonHierarchical := []workflow.TriggerField{
 		workflow.FieldState,
-		workflow.FieldStatus,
+		workflow.FieldState,
 		workflow.FieldPriority,
-		workflow.FieldStatusChanged,
+		workflow.FieldStateChanged,
 	}
 
 	for _, field := range nonHierarchical {
@@ -90,9 +90,9 @@ func TestWorkflowAdd_IsHierarchicalAction(t *testing.T) {
 
 	nonHierarchical := []workflow.ActionType{
 		workflow.ActionSetState,
-		workflow.ActionSetStatus,
+		workflow.ActionSetState,
 		workflow.ActionAddTag,
-		workflow.ActionSetSection,
+		workflow.ActionSetState,
 	}
 
 	for _, action := range nonHierarchical {

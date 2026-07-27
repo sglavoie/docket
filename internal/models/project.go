@@ -37,20 +37,14 @@ type Project struct {
 	ColorSlot        int        `json:"color_slot,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
-	Tasks         []*Task           `json:"-"`
-	NextShortID   int               `json:"-"`
-	Sections      []string          `json:"-"` // Project-level section definitions
-	SectionColors map[string]string `json:"-"` // Section name -> color name mapping
-	Tags          []string          `json:"-"` // Project-level tag definitions
-	PinnedTags    []string          `json:"-"` // Project-level pinned tag tabs
-	Warnings      []string          `json:"-"` // Data repair warnings from last load
+	Tasks       []*Task  `json:"-"`
+	NextShortID int      `json:"-"`
+	Tags        []string `json:"-"` // Project-level tag definitions
+	PinnedTags  []string `json:"-"` // Project-level pinned tag tabs
+	Warnings    []string `json:"-"` // Data repair warnings from last load
 }
 
 const (
-	// SectionNext is the default section for active tasks.
-	SectionNext = "Next"
-	// SectionInbox is the default section for newly created recurring instances.
-	SectionInbox = "Inbox"
 	// MaxProjectSlugLength bounds the portable directory component persisted in
 	// the workspace catalog. Slugify can emit at most one ASCII byte per rune in
 	// a valid project name, so this matches MaxProjectNameLength.
@@ -115,20 +109,18 @@ func NewProject(id, name, path string) (*Project, error) {
 	}
 	now := time.Now()
 	return &Project{
-		ID:            id,
-		Slug:          slug,
-		Name:          name,
-		Context:       "personal",
-		Path:          path,
-		CreatedAt:     now,
-		UpdatedAt:     now,
-		Archived:      false,
-		Tasks:         []*Task{},
-		NextShortID:   1,
-		Sections:      []string{SectionNext},
-		SectionColors: make(map[string]string),
-		Tags:          []string{},
-		PinnedTags:    []string{},
+		ID:          id,
+		Slug:        slug,
+		Name:        name,
+		Context:     "personal",
+		Path:        path,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		Archived:    false,
+		Tasks:       []*Task{},
+		NextShortID: 1,
+		Tags:        []string{},
+		PinnedTags:  []string{},
 	}, nil
 }
 

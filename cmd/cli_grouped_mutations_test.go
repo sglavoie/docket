@@ -26,7 +26,7 @@ func TestRunTaskMoveToCommitsThroughLedgerAndRepairsConfig(t *testing.T) {
 	depth := 10
 	source := newFileBackedProject(t, tmpDir, "proj-source", "Source")
 	dest := newFileBackedProject(t, tmpDir, "proj-dest", "Dest")
-	task := addTestTask(t, source, "task-move", "Move me", models.StatusTodo)
+	task := addTestTask(t, source, "task-move", "Move me", models.StateReady)
 	taskID := task.ID
 	saveProjectForGroupedCLITest(t, source)
 	saveProjectForGroupedCLITest(t, dest)
@@ -141,8 +141,8 @@ func TestRunTaskArchiveAllCommitsThroughLedgerAsOneTransaction(t *testing.T) {
 	depth := 10
 	alpha := newFileBackedProject(t, tmpDir, "proj-alpha", "Alpha")
 	beta := newFileBackedProject(t, tmpDir, "proj-beta", "Beta")
-	addTestTask(t, alpha, "alpha-done", "Alpha done", models.StatusDone)
-	addTestTask(t, beta, "beta-done", "Beta done", models.StatusDone)
+	addTestTask(t, alpha, "alpha-done", "Alpha done", models.StateDone)
+	addTestTask(t, beta, "beta-done", "Beta done", models.StateDone)
 	saveProjectForGroupedCLITest(t, alpha)
 	saveProjectForGroupedCLITest(t, beta)
 
@@ -223,13 +223,13 @@ func newFileBackedProject(t *testing.T, root, id, name string) *models.Project {
 	return project
 }
 
-func addTestTask(t *testing.T, project *models.Project, id, title string, status models.TaskStatus) *models.Task {
+func addTestTask(t *testing.T, project *models.Project, id, title string, status models.WorkflowState) *models.Task {
 	t.Helper()
 	task, err := models.NewTask(id, project.GetNextShortID(), models.TaskTypeTask, title)
 	if err != nil {
 		t.Fatalf("NewTask(%s): %v", title, err)
 	}
-	task.WorkflowState = models.DeriveWorkflowState(status, "", "")
+	task.WorkflowState = status
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 	return task
@@ -279,7 +279,7 @@ func assertConfigRefsProject(t *testing.T, cfg *config.RuntimeState, taskID, pro
 func TestProjectDeleteRestorePurgeThroughJournal(t *testing.T) {
 	tmpDir := t.TempDir()
 	project := newFileBackedProject(t, tmpDir, "proj-doomed", "Doomed")
-	addTestTask(t, project, "doomed-task", "A task", models.StatusTodo)
+	addTestTask(t, project, "doomed-task", "A task", models.StateReady)
 	saveProjectForGroupedCLITest(t, project)
 
 	domains := config.NewDomains()

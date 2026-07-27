@@ -37,7 +37,6 @@ func (m *AppModel) reconcileNoteLedgerRestore(entry storage.LedgerEntry) ([]tea.
 	}
 
 	m.invalidateNoteTaskCaches()
-	m.invalidatePinnedPreview()
 	cmds := m.refreshTaskViewsAfterRestore(runtimeReloaded)
 	// A few established view refreshers reload their own project pointer from
 	// disk. Rebind the shell-owned planning/visit pointers once more after that

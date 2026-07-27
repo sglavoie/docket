@@ -149,8 +149,8 @@ func TestDomainFileStore_LoadAutomationRewritesLegacyTemplateStates(t *testing.T
 	if err != nil {
 		t.Fatalf("marshal legacy envelope: %v", err)
 	}
-	if err := os.WriteFile(path, raw, FilePermissions); err != nil {
-		t.Fatalf("write legacy automation: %v", err)
+	if writeErr := os.WriteFile(path, raw, FilePermissions); writeErr != nil {
+		t.Fatalf("write legacy automation: %v", writeErr)
 	}
 
 	loaded, migratedRevision, err := store.LoadAutomationChecked()
@@ -180,14 +180,14 @@ func TestDomainFileStore_LoadAutomationRewritesLegacyTemplateStates(t *testing.T
 		t.Fatalf("read canonical automation: %v", err)
 	}
 	var canonicalEnvelope domainEnvelope
-	if err := json.Unmarshal(canonicalBytes, &canonicalEnvelope); err != nil {
-		t.Fatalf("decode canonical envelope: %v", err)
+	if decodeErr := json.Unmarshal(canonicalBytes, &canonicalEnvelope); decodeErr != nil {
+		t.Fatalf("decode canonical envelope: %v", decodeErr)
 	}
 	var canonicalPayload struct {
 		TaskTemplates []map[string]json.RawMessage `json:"task_templates"`
 	}
-	if err := json.Unmarshal(canonicalEnvelope.Data, &canonicalPayload); err != nil {
-		t.Fatalf("decode canonical payload: %v", err)
+	if decodeErr := json.Unmarshal(canonicalEnvelope.Data, &canonicalPayload); decodeErr != nil {
+		t.Fatalf("decode canonical payload: %v", decodeErr)
 	}
 	fields := canonicalPayload.TaskTemplates[0]
 	if _, ok := fields["section"]; ok {

@@ -55,15 +55,6 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyPressMsg:
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg { return CloseTaskActivityMsg{} }
@@ -79,9 +70,8 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 
-		case "g":
-			m.pendingPrefix = "g"
-			return m, nil
+		case "home":
+			m.cursor = 0
 
 		case "G":
 			entries := m.getEntries()
@@ -115,11 +105,6 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// ShouldCaptureEsc returns true when a pending prefix is active.
-func (m *TaskActivityModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc()
 }
 
 func (m *TaskActivityModel) SupportsHelpShortcut() bool { return false }

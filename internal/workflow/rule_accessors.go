@@ -25,14 +25,13 @@ func NewCompoundRule(name string, triggers []RuleTrigger, logic TriggerLogic, ac
 	}
 }
 
-// GetTriggers returns all triggers for the rule.
-// Handles both legacy single Trigger and new Triggers slice.
+// GetTriggers returns all canonical triggers for the rule.
 func (r *WorkflowRule) GetTriggers() []RuleTrigger {
 	if len(r.Triggers) > 0 {
 		return r.Triggers
 	}
-	if r.Trigger.Field != "" {
-		return []RuleTrigger{r.Trigger}
+	if r.legacyTrigger.Field != "" {
+		return []RuleTrigger{r.legacyTrigger}
 	}
 	return nil
 }

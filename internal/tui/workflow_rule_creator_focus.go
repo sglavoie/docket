@@ -45,7 +45,7 @@ func (m *WorkflowRuleCreatorModel) blurCurrentField() {
 		case 1:
 			m.scopeTypesInput.Blur()
 		case 2:
-			m.scopeSectionsInput.Blur()
+			m.scopeStatesInput.Blur()
 		}
 	}
 }
@@ -78,7 +78,7 @@ func (m *WorkflowRuleCreatorModel) focusCurrentField() {
 		case 1:
 			m.scopeTypesInput.Focus()
 		case 2:
-			m.scopeSectionsInput.Focus()
+			m.scopeStatesInput.Focus()
 		}
 	}
 }

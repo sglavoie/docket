@@ -31,17 +31,16 @@ func (v *panicOnCustomView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (v *panicOnCustomView) View() tea.View { return tea.NewView("") }
 
-func TestUpdatePanicRecoveryRestoresEmptyViewStack(t *testing.T) {
+func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 	app := newTestAppModel()
-	app.viewStack = nil
-	app.views.Register(ViewDashboard, &panicOnCustomView{})
+	app.views.Register(ViewCrossProjectOutliner, &panicOnCustomView{})
 
 	model, _ := app.Update(panicCustomMsg{})
 	if model == nil {
 		t.Fatal("expected non-nil model after panic recovery")
 	}
-	if len(app.viewStack) != 1 || app.viewStack[0] != ViewDashboard {
-		t.Fatalf("expected viewStack to be restored to [ViewDashboard], got %#v", app.viewStack)
+	if path := app.presentationPath(); len(path) != 1 || path[0] != ViewCrossProjectOutliner {
+		t.Fatalf("expected navigation to recover at the Outliner root, got %#v", path)
 	}
 	if app.err == nil {
 		t.Fatal("expected err to be set after panic recovery")
@@ -78,8 +77,8 @@ func TestUpdatePanicRecoveryCancelsRegisteredAskStream(t *testing.T) {
 			if !stream.Canceled() || ask.cancelFn != nil || ask.stream != nil || ask.state != askStateInput {
 				t.Fatalf("Ask panic cleanup = canceled %v cancelFn %v stream %v state %v", stream.Canceled(), ask.cancelFn != nil, ask.stream, ask.state)
 			}
-			if len(app.viewStack) != 1 || app.currentView() != ViewDashboard {
-				t.Fatalf("panic stack = %#v, want dashboard root", app.viewStack)
+			if path := app.presentationPath(); len(path) != 1 || app.currentView() != ViewCrossProjectOutliner {
+				t.Fatalf("panic path = %#v, want Outliner root", path)
 			}
 		})
 	}

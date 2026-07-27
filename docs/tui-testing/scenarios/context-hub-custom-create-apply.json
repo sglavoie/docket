@@ -3,7 +3,7 @@
   "fixture": "contexts",
   "size": "100x30",
   "actions": [
-    { "type": "key", "label": "open the Context Hub", "key": "C" },
+    { "type": "key", "label": "open the Scope Hub", "key": "c" },
     { "type": "key", "label": "start a new custom context", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "New Custom Context" },
     { "type": "text", "label": "name the custom context", "text": "Clients" },
@@ -14,7 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Projects (2 selected)" },
     { "type": "key", "label": "save the custom context", "key": "ctrl+s" },
     { "type": "assert", "assert": "status_contains", "value": "Created custom context 'Clients' with 2 projects" },
-    { "type": "assert", "assert": "contains", "value": "1 custom · 3 project contexts" },
+    { "type": "assert", "assert": "contains", "value": "5 base scopes · 5 active" },
     { "type": "assert", "assert": "contains", "value": "Clients  custom · 2 project(s)" },
     { "type": "key", "label": "apply the new custom context", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

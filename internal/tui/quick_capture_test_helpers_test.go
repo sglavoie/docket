@@ -19,8 +19,8 @@ type quickCaptureParseTestCase struct {
 	wantTaskType   models.TaskType
 	wantSection    string
 	wantHasRecur   bool
-	wantStatus     models.TaskStatus
-	wantActivate   bool
+	wantState      models.WorkflowState
+	wantStatus     models.WorkflowState
 	wantErr        bool
 	errContains    string
 }
@@ -33,14 +33,6 @@ func quickCaptureTestProject() *models.Project {
 	return &models.Project{
 		ID:   "test-project",
 		Name: "Test Project",
-		Sections: []string{
-			models.SectionNext,
-			models.SectionInbox,
-			models.SectionWaiting,
-			models.SectionReview,
-			models.SectionStandby,
-			models.SectionSomeday,
-		},
 		Tasks: []*models.Task{
 			{ID: "epic-1", ShortID: 1, Type: models.TaskTypeEpic, Title: "User Authentication"},
 			{ID: "story-2", ShortID: 2, Type: models.TaskTypeStory, Title: "Login Flow"},
@@ -106,22 +98,17 @@ func runQuickCaptureParseTests(t *testing.T, tests []quickCaptureParseTestCase) 
 				t.Errorf("taskType = %q, want %q", result.taskType, tt.wantTaskType)
 			}
 
-			if tt.wantSection != "" && result.section != tt.wantSection {
-				t.Errorf("section = %q, want %q", result.section, tt.wantSection)
-			}
-
 			hasRecur := result.recurrence != nil
 			if hasRecur != tt.wantHasRecur {
 				t.Errorf("hasRecurrence = %v, want %v", hasRecur, tt.wantHasRecur)
 			}
 
-			if tt.wantStatus != "" && result.status != tt.wantStatus {
-				t.Errorf("status = %q, want %q", result.status, tt.wantStatus)
+			if tt.wantState != "" {
+				if !result.stateSet || result.state != tt.wantState {
+					t.Errorf("state = %q (set=%v), want %q", result.state, result.stateSet, tt.wantState)
+				}
 			}
 
-			if result.activate != tt.wantActivate {
-				t.Errorf("activate = %v, want %v", result.activate, tt.wantActivate)
-			}
 		})
 	}
 }

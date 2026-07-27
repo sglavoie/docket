@@ -26,7 +26,7 @@ func writeProject(t *testing.T, root, id, slug string, titles ...string) func() 
 		}
 		tasks = append(tasks, task)
 	}
-	content := storage.WriteTasksMarkdownWithSections(slug, tasks, []string{models.SectionNext}, nil)
+	content := storage.WriteTasksMarkdownWithProjectMetadata(slug, tasks, nil, nil)
 	if err := os.WriteFile(filepath.Join(path, "tasks.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}

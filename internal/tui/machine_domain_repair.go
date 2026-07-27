@@ -19,6 +19,11 @@ type machineProjectReference struct {
 	Slug string
 }
 
+type machineProjectRouteMove struct {
+	From string
+	To   string
+}
+
 // machineDomainRepair is an idempotent patch, not a captured MachineState
 // snapshot. Retrying it against a freshly loaded machine domain preserves
 // navigation, history, and preferences written after the original lifecycle
@@ -27,6 +32,7 @@ type machineDomainRepair struct {
 	removeProjects       []machineProjectReference
 	clearCurrentProjects []machineProjectReference
 	removeTaskLocators   []config.ProjectTaskLocator
+	moveProjectRoutes    []machineProjectRouteMove
 }
 
 func machineRepairForArchivedProject(projectID, slug string, locators []config.ProjectTaskLocator) machineDomainRepair {
@@ -49,7 +55,8 @@ func machineRepairForArchivedTasks(locators []config.ProjectTaskLocator) machine
 func (r machineDomainRepair) empty() bool {
 	return len(r.removeProjects) == 0 &&
 		len(r.clearCurrentProjects) == 0 &&
-		len(r.removeTaskLocators) == 0
+		len(r.removeTaskLocators) == 0 &&
+		len(r.moveProjectRoutes) == 0
 }
 
 func machineProjectReferenceMatches(ref string, project machineProjectReference) bool {
@@ -88,6 +95,23 @@ func (m *AppModel) applyMachineDomainRepair(repair machineDomainRepair, machine 
 			machine.CurrentProject = ""
 			changed = true
 		}
+	}
+	for _, move := range repair.moveProjectRoutes {
+		if move.From == "" || move.To == "" || move.From == move.To {
+			continue
+		}
+		route, ok := machine.ProjectRoutes[move.From]
+		if !ok {
+			continue
+		}
+		if _, canonicalExists := machine.ProjectRoutes[move.To]; !canonicalExists {
+			if machine.ProjectRoutes == nil {
+				machine.ProjectRoutes = make(map[string]config.OutlinerRouteState)
+			}
+			machine.ProjectRoutes[move.To] = config.NormalizeOutlinerRouteState(route)
+		}
+		delete(machine.ProjectRoutes, move.From)
+		changed = true
 	}
 
 	loaded := make(map[string]*models.Project)
@@ -145,6 +169,11 @@ func (r *machineDomainRepair) merge(next machineDomainRepair) {
 	for _, locator := range next.removeTaskLocators {
 		if locator.ProjectID != "" && locator.TaskID != "" && !slices.Contains(r.removeTaskLocators, locator) {
 			r.removeTaskLocators = append(r.removeTaskLocators, locator)
+		}
+	}
+	for _, move := range next.moveProjectRoutes {
+		if move.From != "" && move.To != "" && move.From != move.To && !slices.Contains(r.moveProjectRoutes, move) {
+			r.moveProjectRoutes = append(r.moveProjectRoutes, move)
 		}
 	}
 }
@@ -252,6 +281,19 @@ func (m *AppModel) reconcileStartupMachineReferences() error {
 		case !isNormalWorkProject(project):
 			repair.merge(machineDomainRepair{
 				clearCurrentProjects: []machineProjectReference{{ID: project.ID, Slug: project.Slug}},
+			})
+		}
+	}
+	for projectRef := range machine.ProjectRoutes {
+		project := m.runtime.GetProject(projectRef)
+		switch {
+		case project == nil:
+			repair.merge(machineDomainRepair{
+				removeProjects: []machineProjectReference{{ID: projectRef}},
+			})
+		case project.ID != "" && projectRef != project.ID:
+			repair.merge(machineDomainRepair{
+				moveProjectRoutes: []machineProjectRouteMove{{From: projectRef, To: project.ID}},
 			})
 		}
 	}

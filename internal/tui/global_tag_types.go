@@ -18,8 +18,11 @@ type GlobalTagInfo struct {
 	Pinned    bool
 }
 
-// ShowGlobalTagManagerMsg is sent to open the global tag manager view.
-type ShowGlobalTagManagerMsg struct{}
+// ShowGlobalTagManagerMsg opens the aggregate tag manager over the captured
+// project set. An omitted set retains the legacy app-wide behavior.
+type ShowGlobalTagManagerMsg struct {
+	ProjectSet ProjectSetScope
+}
 
 // CloseGlobalTagManagerMsg is sent when the global tag manager should close.
 type CloseGlobalTagManagerMsg struct{ PopViewMsg }

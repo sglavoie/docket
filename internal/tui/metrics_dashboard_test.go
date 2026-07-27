@@ -87,7 +87,7 @@ func TestMetricsDashboardLoadsArchivedSummaries(t *testing.T) {
 	archived.WorkflowState = models.StateDone
 	archived.CompletedAt = &completedAt
 	archived.Activity = []*models.ActivityEntry{
-		{Timestamp: startedAt, Field: "status", OldValue: string(models.StatusTodo), NewValue: string(models.StatusInProgress)},
+		{Timestamp: startedAt, Field: "status", OldValue: string(models.StateReady), NewValue: string(models.StateInProgress)},
 	}
 
 	archivePath := filepath.Join(project.Path, "completed.md")

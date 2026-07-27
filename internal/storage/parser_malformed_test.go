@@ -95,7 +95,7 @@ func TestParseTasksMarkdown_LineExceedingScannerBuffer(t *testing.T) {
 	longLine := strings.Repeat("x", 2*1024*1024)
 	content := "# Project: Test\n\n## Task: Normal\n<!-- id: t1, status: todo, priority: 3 -->\n\n" + longLine + "\n"
 
-	_, err := ParseTasksMarkdownWithSections(content)
+	_, err := ParseTasksMarkdownDocument(content)
 	if err == nil {
 		t.Fatal("expected error for line exceeding scanner buffer, got nil")
 	}
@@ -117,7 +117,7 @@ func TestParseTasksMarkdown_MetadataWithoutID(t *testing.T) {
 
 Description with <!-- a note: important --> embedded.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,7 +154,7 @@ Plus a real code example: <!-- TODO: fix this -->
 
 Normal description.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

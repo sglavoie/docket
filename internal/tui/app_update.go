@@ -16,20 +16,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
 			m.err = fmt.Errorf("internal error: %v", r)
 			m.exitAskView()
-			if len(m.viewStack) == 0 || m.currentView() != ViewDashboard {
-				m.viewStack = []PresentationID{ViewDashboard}
-			}
-			if m.typedNavigation {
-				m.navigation.ResetRoot()
-			}
-			m.sectionQuickPicker = nil
-			m.linkTypeQuickPicker = nil
-			m.linkModeQuickPicker = nil
+			m.navigation.ResetRoot()
+			m.taskActionSheet = nil
+			m.operationValuePicker = nil
 			m.isLoading = false
-			m.showQuickSwitch = false
-			m.quickSwitchFiltering = false
-			m.showPinnedPopup = false
-			m.pinnedPopupFiltering = false
 			m.pendingSandboxReset = false
 			m.pendingSandboxProjectID = ""
 			m.pendingBulkTasks = nil
@@ -76,15 +66,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		return m, cmd
 	}
 	if handled, cmd := m.handleTagMessages(msg); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleAttrFilterMessages(msg); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleSectionMessages(msg); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleInboxMessages(msg); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleClipboardMessages(msg); handled {

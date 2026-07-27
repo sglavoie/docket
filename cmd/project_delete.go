@@ -170,8 +170,8 @@ func planCrossProjectRefCleanup(projects []*models.Project, deletedProjectSlug, 
 		}
 
 		if cleaned > 0 {
-			content := storage.WriteTasksMarkdownWithFullProjectMetadata(
-				p.Name, p.Tasks, p.GetSections(), p.SectionColors, p.Tags, p.PinnedTags)
+			content := storage.WriteTasksMarkdownWithProjectMetadata(
+				p.Name, p.Tasks, p.Tags, p.PinnedTags)
 			writes = append(writes, storage.ArtifactChange{
 				Path:             storage.TasksFilePath(p.Path),
 				Data:             []byte(content),

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -48,21 +47,6 @@ func TestRunTaskList_RejectsInvalidFilterValues(t *testing.T) {
 		}
 		if !errors.Is(err, tterrors.ErrInvalidTaskType) {
 			t.Errorf("expected ErrInvalidTaskType, got %v", err)
-		}
-	})
-
-	t.Run("rejects invalid --status", func(t *testing.T) {
-		defer resetFilterVars()
-		cleanup := setup(t)
-		defer cleanup()
-
-		listTaskStatus = "wip" // not a valid status string
-		err := runTaskList(taskListCmd, nil)
-		if err == nil {
-			t.Fatal("expected error for invalid status, got nil")
-		}
-		if !strings.Contains(err.Error(), "invalid status") {
-			t.Errorf("expected 'invalid status' in error, got %v", err)
 		}
 	})
 

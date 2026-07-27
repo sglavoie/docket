@@ -18,9 +18,6 @@ func TestDailyLoopWorkflowStateAcceptanceMatrix(t *testing.T) {
 		if row.State != wantStates[i] {
 			t.Errorf("state %d = %q, want %q", i, row.State, wantStates[i])
 		}
-		if got := models.DeriveWorkflowState(row.LegacyStatus, row.LegacySection, row.LegacyStage); got != row.State {
-			t.Errorf("%q representative legacy input derives %q", row.State, got)
-		}
 		if row.Terminal != row.State.IsTerminal() {
 			t.Errorf("%q terminal=%v, want %v", row.State, row.Terminal, row.State.IsTerminal())
 		}
@@ -29,7 +26,7 @@ func TestDailyLoopWorkflowStateAcceptanceMatrix(t *testing.T) {
 
 func TestDailyLoopLegacyLifecycleFixturesCoverEveryInputFamily(t *testing.T) {
 	fixtures := DailyLoopLegacyLifecycleFixtures()
-	statuses := make(map[models.TaskStatus]bool)
+	statuses := make(map[string]bool)
 	sections := make(map[string]bool)
 	ids := make(map[string]bool)
 	var hasActive, hasEmpty, hasStage bool
@@ -45,24 +42,21 @@ func TestDailyLoopLegacyLifecycleFixturesCoverEveryInputFamily(t *testing.T) {
 		hasEmpty = hasEmpty || (fixture.Section == "" && fixture.Stage == "")
 		hasStage = hasStage || fixture.Stage != ""
 
-		if got := models.DeriveWorkflowState(fixture.Status, fixture.Section, fixture.Stage); got != fixture.State {
-			t.Errorf("%s derives %q, want %q", fixture.ID, got, fixture.State)
-		}
 	}
 
-	for _, status := range models.AllTaskStatuses() {
+	for _, status := range []string{"todo", "in_progress", "blocked", "standby", "review", "maybe", "done", "canceled"} {
 		if !statuses[status] {
 			t.Errorf("legacy status %q has no reusable fixture", status)
 		}
 	}
 	for _, section := range []string{
-		models.SectionInbox,
-		models.SectionNext,
-		models.SectionWaiting,
-		models.SectionStandby,
-		models.SectionReview,
-		models.SectionSomeday,
-		models.SectionCompleted,
+		"Inbox",
+		"Next",
+		"Waiting",
+		"Standby",
+		"Review",
+		"Someday",
+		"Completed",
 	} {
 		if !sections[section] {
 			t.Errorf("legacy section %q has no reusable fixture", section)

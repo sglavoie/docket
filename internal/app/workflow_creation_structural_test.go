@@ -14,11 +14,11 @@ func typeRule(id string, taskType models.TaskType, actions ...workflow.RuleActio
 		ID:      id,
 		Name:    id,
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{
+		Triggers: []workflow.RuleTrigger{{
 			Field:     workflow.FieldType,
 			Operation: workflow.OpEquals,
 			Value:     string(taskType),
-		},
+		}},
 		Actions: actions,
 	}
 }
@@ -28,11 +28,11 @@ func typeChangedRule(id, transition, tag string) workflow.WorkflowRule {
 		ID:      id,
 		Name:    id,
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{
+		Triggers: []workflow.RuleTrigger{{
 			Field:     workflow.FieldTypeChanged,
 			Operation: workflow.OpEquals,
 			Value:     transition,
-		},
+		}},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: tag}},
 	}
 }

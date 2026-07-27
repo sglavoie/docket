@@ -22,12 +22,12 @@ func TestMatchesHierarchicalTrigger_ParentStatus(t *testing.T) {
 	}{
 		{
 			name:     "parent status matches",
-			trigger:  RuleTrigger{Field: FieldParentStatus, Operation: OpEquals, Value: "in_progress"},
+			trigger:  RuleTrigger{Field: FieldParentState, Operation: OpEquals, Value: "in_progress"},
 			expected: true,
 		},
 		{
 			name:     "parent status does not match",
-			trigger:  RuleTrigger{Field: FieldParentStatus, Operation: OpEquals, Value: "done"},
+			trigger:  RuleTrigger{Field: FieldParentState, Operation: OpEquals, Value: "done"},
 			expected: false,
 		},
 		{
@@ -49,22 +49,22 @@ func TestMatchesHierarchicalTrigger_ParentStatus(t *testing.T) {
 func TestMatchesHierarchicalTrigger_AllChildrenDone(t *testing.T) {
 	tests := []struct {
 		name          string
-		childStatuses []models.TaskStatus
+		childStatuses []models.WorkflowState
 		expectedMatch bool
 	}{
 		{
 			name:          "all children done",
-			childStatuses: []models.TaskStatus{models.StatusDone, models.StatusDone},
+			childStatuses: []models.WorkflowState{models.StateDone, models.StateDone},
 			expectedMatch: true,
 		},
 		{
 			name:          "some children incomplete",
-			childStatuses: []models.TaskStatus{models.StatusDone, models.StatusTodo},
+			childStatuses: []models.WorkflowState{models.StateDone, models.StateReady},
 			expectedMatch: false,
 		},
 		{
 			name:          "no children",
-			childStatuses: []models.TaskStatus{},
+			childStatuses: []models.WorkflowState{},
 			expectedMatch: false,
 		},
 	}
@@ -75,7 +75,7 @@ func TestMatchesHierarchicalTrigger_AllChildrenDone(t *testing.T) {
 			for i, status := range tt.childStatuses {
 				child := &models.Task{
 					ID:            "child" + string(rune('0'+i)),
-					WorkflowState: models.DeriveWorkflowState(status, "", ""),
+					WorkflowState: status,
 					Type:          models.TaskTypeTask,
 					Parent:        parent,
 				}
@@ -281,7 +281,7 @@ func TestEvaluateRulesWithContext_HierarchicalTrigger(t *testing.T) {
 				{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
 			},
 			TriggerLogic: LogicAnd,
-			Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+			Actions:      []RuleAction{{ActionType: ActionSetState, Value: "done"}},
 		},
 	}
 
@@ -311,7 +311,7 @@ func TestEvaluateRulesWithContext_AllChildrenDoneDoesNotRecompleteReopenedParent
 					{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
 				},
 				TriggerLogic: LogicAnd,
-				Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+				Actions:      []RuleAction{{ActionType: ActionSetState, Value: "done"}},
 			},
 		},
 		{
@@ -330,7 +330,7 @@ func TestEvaluateRulesWithContext_AllChildrenDoneDoesNotRecompleteReopenedParent
 						},
 					},
 				},
-				Actions: []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+				Actions: []RuleAction{{ActionType: ActionSetState, Value: "done"}},
 			},
 		},
 	}
@@ -356,7 +356,7 @@ func TestEvaluateRulesWithContext_AllChildrenDoneDoesNotRecompleteReopenedParent
 
 			result := EvaluateRulesWithContext(evalCtx, []WorkflowRule{tt.rule})
 
-			if models.LegacyStatusForState(story.State()) != models.StatusTodo {
+			if story.State() != models.StateReady {
 				t.Errorf("expected reopened story to remain todo, got %s", story.State())
 			}
 			if len(result.ModifiedTasks) != 0 {
@@ -392,14 +392,14 @@ func TestEvaluateRulesWithContext_ReopenedRuleCanStillSetCompleteStatus(t *testi
 			{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
 		},
 		TriggerLogic: LogicAnd,
-		Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+		Actions:      []RuleAction{{ActionType: ActionSetState, Value: "done"}},
 	}
 	reopenedRule := WorkflowRule{
-		ID:      "rule-reopened",
-		Name:    "Explicit Reopen Override",
-		Enabled: true,
-		Trigger: RuleTrigger{Field: FieldReopened, Operation: OpEquals, Value: "true"},
-		Actions: []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+		ID:       "rule-reopened",
+		Name:     "Explicit Reopen Override",
+		Enabled:  true,
+		Triggers: []RuleTrigger{{Field: FieldReopened, Operation: OpEquals, Value: "true"}},
+		Actions:  []RuleAction{{ActionType: ActionSetState, Value: "done"}},
 	}
 
 	result := EvaluateRulesWithContext(evalCtx, []WorkflowRule{autoCompleteRule, reopenedRule})
@@ -438,7 +438,7 @@ func TestMatchesRule_TriggerGroupWithHierarchicalTrigger_NilEvalCtx(t *testing.T
 				TriggerGroup: &TriggerGroup{
 					Logic: LogicAnd,
 					Triggers: []RuleTrigger{
-						{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+						{Field: FieldState, Operation: OpEquals, Value: "todo"},
 						{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
 					},
 				},
@@ -648,7 +648,7 @@ func TestEvaluateRulesWithContext_AllChildrenDoneRequiresAggregateTransition(t *
 				{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
 			},
 			TriggerLogic: LogicAnd,
-			Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+			Actions:      []RuleAction{{ActionType: ActionSetState, Value: "done"}},
 		}
 	}
 

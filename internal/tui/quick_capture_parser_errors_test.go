@@ -28,12 +28,6 @@ func TestParseQuickCaptureErrors(t *testing.T) {
 			errContains: "parent not found",
 		},
 		{
-			name:        "invalid section",
-			input:       "Fix bug /NonexistentSection",
-			wantErr:     true,
-			errContains: "section not found",
-		},
-		{
 			name:        "invalid recurrence pattern",
 			input:       "Task ~notapattern",
 			wantErr:     true,
@@ -43,7 +37,7 @@ func TestParseQuickCaptureErrors(t *testing.T) {
 			name:        "invalid status",
 			input:       "Fix bug $invalid",
 			wantErr:     true,
-			errContains: "invalid status",
+			errContains: "invalid state",
 		},
 	})
 }

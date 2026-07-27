@@ -61,22 +61,6 @@ func TestSortCrossProjectTasksByProjectDisplayOrderPreservesSameProjectTaskOrder
 	assertCrossProjectTaskIDs(t, tasks, []string{"alpha-1", "alpha-2", "beta-1", "beta-2", "nil-1"})
 }
 
-func TestSortProjectTaskGroupsByProjectDisplayOrderUsesLookupAndKeepsUnknownLast(t *testing.T) {
-	alpha := projectForDisplayOrder("alpha", "alpha", "Alpha", false)
-	beta := projectForDisplayOrder("beta", "beta", "Beta", false)
-	groups := []projectTasksGroup{
-		{projectID: "beta", tasks: []*models.Task{taskForDisplayOrder("beta-1")}},
-		{projectID: "missing", tasks: []*models.Task{taskForDisplayOrder("missing-1")}},
-		{projectID: "alpha", tasks: []*models.Task{taskForDisplayOrder("alpha-1")}},
-		{projectID: "beta", tasks: []*models.Task{taskForDisplayOrder("beta-2")}},
-	}
-
-	sortProjectTaskGroupsByProjectDisplayOrder(groups, []*models.Project{nil, beta, alpha})
-
-	assertProjectGroupIDs(t, groups, []string{"alpha", "beta", "beta", "missing"})
-	assertProjectGroupFirstTaskIDs(t, groups, []string{"alpha-1", "beta-1", "beta-2", "missing-1"})
-}
-
 func projectForDisplayOrder(id, slug, name string, pinned bool) *models.Project {
 	return &models.Project{
 		ID:     id,
@@ -113,33 +97,6 @@ func assertCrossProjectTaskIDs(t *testing.T, tasks []CrossProjectTask, want []st
 	for i, task := range tasks {
 		if task.Task.ID != want[i] {
 			t.Fatalf("task[%d] ID: got %q, want %q", i, task.Task.ID, want[i])
-		}
-	}
-}
-
-func assertProjectGroupIDs(t *testing.T, groups []projectTasksGroup, want []string) {
-	t.Helper()
-	if len(groups) != len(want) {
-		t.Fatalf("got %d groups, want %d", len(groups), len(want))
-	}
-	for i, group := range groups {
-		if group.projectID != want[i] {
-			t.Fatalf("group[%d] projectID: got %q, want %q", i, group.projectID, want[i])
-		}
-	}
-}
-
-func assertProjectGroupFirstTaskIDs(t *testing.T, groups []projectTasksGroup, want []string) {
-	t.Helper()
-	if len(groups) != len(want) {
-		t.Fatalf("got %d groups, want %d", len(groups), len(want))
-	}
-	for i, group := range groups {
-		if len(group.tasks) == 0 {
-			t.Fatalf("group[%d] has no tasks, want first task %q", i, want[i])
-		}
-		if group.tasks[0].ID != want[i] {
-			t.Fatalf("group[%d] first task ID: got %q, want %q", i, group.tasks[0].ID, want[i])
 		}
 	}
 }

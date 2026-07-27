@@ -325,7 +325,7 @@ func triggerGroupContainsField(group *TriggerGroup, field TriggerField) bool {
 
 func getFieldFromAction(actionType ActionType) string {
 	switch actionType {
-	case ActionSetState, ActionSetStatus, ActionSetSection:
+	case ActionSetState:
 		return "state"
 	case ActionSetPriority:
 		return "priority"

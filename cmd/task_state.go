@@ -31,13 +31,17 @@ Examples:
   tt task state in_progress 5
   tt task state waiting web:#12
   tt task state ready 1 2 3`,
-	Args: cobra.MinimumNArgs(2),
-	RunE: runTaskState,
+	Args:              cobra.MinimumNArgs(2),
+	RunE:              runTaskState,
+	ValidArgsFunction: completeTaskStateArgs,
 }
 
 func runTaskState(cmd *cobra.Command, args []string) error {
 	target, ok := models.ParseWorkflowState(args[0])
 	if !ok {
+		if replacement, retired := retiredStateReplacement(args[0]); retired {
+			return fmt.Errorf("workflow state %q was removed; use %s", args[0], replacement)
+		}
 		return fmt.Errorf("invalid workflow state %q (valid: %s)", args[0], joinStates())
 	}
 	return runAppTransition(cmd, args[1:], target)
@@ -52,11 +56,8 @@ type stateConvenience struct {
 	target models.WorkflowState
 }
 
-// newStateConventions returns the WorkflowState convenience commands this session
-// adds on top of the legacy status commands: the new-vocabulary states that had
-// no dedicated command. ready and next carry no legacy status equivalent; wait,
-// pause, and someday are the canonical names for the blocked/standby/maybe
-// lifecycle under the unified workflow model.
+// stateConveniences returns fixed-target commands for the most common canonical
+// workflow transitions.
 func stateConveniences() []stateConvenience {
 	return []stateConvenience{
 		{use: "ready [ref...]", short: "Mark task(s) as ready", verb: "Ready", target: models.StateReady},
@@ -126,6 +127,16 @@ func joinStates() string {
 	return strings.Join(names, ", ")
 }
 
+// completeTaskStateArgs completes the canonical transition target first, then
+// task references from the current project. The first positional completion is
+// intentionally state-only.
+func completeTaskStateArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return stateCompletions, cobra.ShellCompDirectiveNoFileComp
+	}
+	return completeCurrentProjectTaskIDs()(cmd, args[1:], toComplete)
+}
+
 func init() {
 	taskCmd.AddCommand(taskStateCmd)
 	addOutputFlags(taskStateCmd)
@@ -141,6 +152,7 @@ func init() {
 			},
 		}
 		addOutputFlags(sub)
+		sub.ValidArgsFunction = completeCurrentProjectTaskIDs()
 		taskCmd.AddCommand(sub)
 	}
 }

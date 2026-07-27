@@ -87,7 +87,7 @@ func (tr TimeRange) Prev() TimeRange {
 // CompletionResult holds completion rate metrics.
 type CompletionResult struct {
 	Total     int       // Total resolved tasks (done + canceled) in range
-	Completed int       // Tasks with StatusDone in range
+	Completed int       // Tasks completed in range
 	Rate      float64   // Completion rate (0-1), done/(done+canceled)
 	Trend     []float64 // Rate per time bucket
 	Labels    []string  // Bucket labels

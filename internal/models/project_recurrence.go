@@ -151,10 +151,5 @@ func (p *Project) GenerateRecurringInstancesAt(now time.Time) int {
 		generated++
 	}
 
-	// Ensure Inbox section exists if we generated anything
-	if generated > 0 {
-		p.EnsureSection(SectionInbox)
-	}
-
 	return generated
 }

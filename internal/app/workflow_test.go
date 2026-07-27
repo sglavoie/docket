@@ -19,12 +19,10 @@ func TestApplyWorkflowsAppliesFieldMutation(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r1",
-		Name:    "Escalate P3",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}},
-	}}
+		ID:       "r1",
+		Name:     "Escalate P3",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}}}}
 
 	res, err := svc.ApplyWorkflows("proj-a", rules, nil)
 	if err != nil {
@@ -80,19 +78,15 @@ func TestApplyWorkflowsSurfacesConflictWithoutCommitting(t *testing.T) {
 
 	rules := []workflow.WorkflowRule{
 		{
-			ID:      "r1",
-			Name:    "To P1",
-			Enabled: true,
-			Trigger: workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"},
-			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}},
-		},
+			ID:       "r1",
+			Name:     "To P1",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}}},
 		{
-			ID:      "r2",
-			Name:    "To P5",
-			Enabled: true,
-			Trigger: workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"},
-			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "5"}},
-		},
+			ID:       "r2",
+			Name:     "To P5",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "3"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "5"}}},
 	}
 
 	res, err := svc.ApplyWorkflows("proj-a", rules, nil)
@@ -124,12 +118,10 @@ func TestApplyWorkflowsExecutesCrossProjectMoveInOneTransaction(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r1",
-		Name:    "Route ready tasks to Beta",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateReady)},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}},
-	}}
+		ID:       "r1",
+		Name:     "Route ready tasks to Beta",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateReady)}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}}}}
 
 	res, err := svc.ApplyWorkflows("proj-a", rules, map[string]*models.Task{})
 	if err != nil {

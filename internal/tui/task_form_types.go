@@ -39,7 +39,7 @@ type taskFormDraft struct {
 	taskType           models.TaskType
 	priority           int
 	parentID           *string
-	section            string
+	state              models.WorkflowState
 	pinned             bool
 	dimmed             bool
 	tags               []string
@@ -76,7 +76,6 @@ type TaskFormModel struct {
 	runtime      *config.RuntimeState
 	fromTemplate *template.TaskTemplate
 	taskForm     TaskFormCoordinator
-	presetState  models.WorkflowState
 	presetPlan   app.PlanningArtifactBuilder
 	hostTitle    string
 
@@ -98,6 +97,7 @@ type TaskFormModel struct {
 	activeOverlay  formOverlayKind
 	typePicker     *formTypePicker
 	priorityPicker *formPriorityPicker
+	statePicker    *formStatePicker
 	flagsPicker    *formFlagsPicker
 	duePicker      *formDueDatePicker
 	attrPicker     *formAttrPicker

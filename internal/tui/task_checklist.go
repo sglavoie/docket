@@ -86,22 +86,9 @@ func (m *TaskChecklistModel) HasTextInput() bool {
 	return m.addMode || m.editMode
 }
 
-// ShouldCaptureEsc returns true when in add/edit, delete confirmation, or pending prefix modes.
+// ShouldCaptureEsc returns true when in add/edit or delete confirmation modes.
 func (m *TaskChecklistModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
-}
-
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
-func (m *TaskChecklistModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			"g": NavigationPrefixHints,
-		},
-	}
 }
 
 func (m *TaskChecklistModel) StatusBarLabel() string { return "Checklist" }

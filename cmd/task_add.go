@@ -19,7 +19,7 @@ var (
 	taskParentFlag   string
 	taskPriority     int
 	taskTags         []string
-	taskSectionFlag  string
+	taskStateFlag    string
 	taskRecurFlag    string
 	taskAddFromFlag  string
 	taskTemplateFlag string
@@ -43,7 +43,7 @@ The default type is "task". Use flags to specify other types:
 Tasks can be nested under epics or stories using --parent.
 
 Use --template to create a task from a template. The template provides
-default values for type, priority, tags, section, and creates child tasks.
+default values for type, priority, tags, state, and creates checklist items.
 Other flags override template values.
 
 Examples:
@@ -68,7 +68,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isStory, "story", false, "create a story")
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
-	taskAddCmd.Flags().StringVar(&taskSectionFlag, "section", "", "section for the task (default: project's first section)")
+	taskAddCmd.Flags().StringVar(&taskStateFlag, "state", "", "canonical workflow state for the task")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskAddFromFlag, "from", "", "recurrence mode with --recur: 'due' (default) or 'completion'")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
@@ -81,7 +81,7 @@ func init() {
 	addOutputFlags(taskAddCmd)
 
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
-	_ = taskAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
+	_ = taskAddCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 	_ = taskAddCmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
 	_ = taskAddCmd.RegisterFlagCompletionFunc("template", completeTemplates())
 }
@@ -177,17 +177,17 @@ func runTaskAdd(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 	tags = append(tags, taskTags...)
 
-	// Handle section (explicit flag overrides template, using Changed() for
-	// consistency). Sections are limited to built-in GTD buckets; the app layer
-	// re-validates and ensures the section on the freshly snapshotted project.
-	state := models.StateReady
-	if cmd.Flags().Changed("section") {
-		if taskSectionFlag != "" && !models.IsGTDSection(taskSectionFlag) {
-			return tterrors.NewInvalidValueError("section", taskSectionFlag, "must be a built-in GTD section")
-		}
-		state = models.StateForSection(taskSectionFlag)
-	} else if tmpl != nil {
+	// Resolve the canonical lifecycle input. New tasks default to Inbox unless a
+	// template or explicit --state supplies another canonical state.
+	state := models.StateInbox
+	if tmpl != nil {
 		state = tmpl.EffectiveState()
+	}
+	if stagedLifecycleFlagProvided(cmd, "state", taskStateFlag) {
+		state, err = parseCanonicalWorkflowStateInput("state", taskStateFlag)
+		if err != nil {
+			return err
+		}
 	}
 	if !state.IsValid() {
 		return tterrors.NewInvalidValueError("template state", state, "must be a canonical workflow state")

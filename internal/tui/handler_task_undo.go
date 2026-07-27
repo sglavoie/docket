@@ -60,6 +60,9 @@ func (m *AppModel) workspaceLedgerRestoreIsNewest(project *models.Project, redo 
 	if err != nil || !ok {
 		return false
 	}
+	if project == nil {
+		return true
+	}
 	legacyAt := legacyTaskHistoryTimestamp(project, redo)
 	return legacyAt.IsZero() || !legacyAt.After(entry.Timestamp)
 }

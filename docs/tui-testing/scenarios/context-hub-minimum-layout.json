@@ -3,9 +3,10 @@
   "fixture": "contexts",
   "size": "60x20",
   "actions": [
-    { "type": "key", "label": "open the Context Hub", "key": "C" },
+    { "type": "key", "label": "open the Scope Hub", "key": "c" },
     { "type": "assert", "assert": "view", "value": "ContextHub" },
-    { "type": "assert", "assert": "contains", "value": "j/k · Enter apply · n/e/r/d · / search" },
+    { "type": "assert", "assert": "contains", "value": "Scope Hub" },
+    { "type": "assert", "assert": "contains", "value": "j/k · Enter activate · Space actions · / search" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "start a new custom context", "key": "n" },
     { "type": "text", "label": "name the custom context", "text": "Focus" },

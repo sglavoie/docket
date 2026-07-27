@@ -1,0 +1,12 @@
+{
+  "name": "project-inbox-mode-resize-minimum-layout",
+  "fixture": "rich",
+  "size": "100x40",
+  "actions": [
+    { "type": "command", "label": "focus the current task's project in Inbox", "command": "project inbox mode" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "shrink to a tight height", "width": 80, "height": 21 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

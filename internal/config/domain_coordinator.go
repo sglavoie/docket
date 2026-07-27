@@ -45,53 +45,13 @@ func (m *Manager) DomainCoordinator() *DomainCoordinator {
 // LoadDomains reads every explicit domain and records each synced domain's raw
 // revision as the optimistic-concurrency baseline for later checked artifacts.
 func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
-	catalog, catRev, err := c.store.LoadCatalogChecked()
+	domains, revisions, err := loadDomainBundleWithRevisions(c.store)
 	if err != nil {
 		return nil, err
 	}
-	if catRev == "" {
-		// A fresh coordinator needs one stable identity before it can render
-		// checked catalog artifacts. There is no machine path to inspect until
-		// that catalog is persisted, so machine state remains at its defaults.
-		if _, bindErr := c.store.bindCatalogPayload(catalog); bindErr != nil {
-			return nil, bindErr
-		}
+	for _, kind := range syncedDomainKinds {
+		c.revs[kind] = revisions[kind]
 	}
-	planning, planRev, err := c.store.LoadPlanningChecked()
-	if err != nil {
-		return nil, err
-	}
-	settings, setRev, err := c.store.LoadSettingsChecked()
-	if err != nil {
-		return nil, err
-	}
-	automation, autoRev, err := c.store.LoadAutomationChecked()
-	if err != nil {
-		return nil, err
-	}
-	machine := NewMachineState()
-	if catRev != "" {
-		machine, err = c.store.LoadMachine()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	domains := &Domains{
-		Catalog:    catalog,
-		Planning:   planning,
-		Settings:   settings,
-		Automation: automation,
-		Machine:    machine,
-	}
-	if err := validateDomainBundleForLoad(domains); err != nil {
-		return nil, err
-	}
-
-	c.revs[domainCatalog] = catRev
-	c.revs[domainPlanning] = planRev
-	c.revs[domainSettings] = setRev
-	c.revs[domainAutomation] = autoRev
 
 	return domains, nil
 }

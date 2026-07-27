@@ -107,6 +107,7 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 			planning.RemoveFromDailyPlanInProject(locator.TaskID, locator.ProjectID)
 		}
 		switch target.Today {
+		case PlanningTodayPreserve:
 		case PlanningTodayAdd:
 			if PlanningTodayEligible(target.State) {
 				ensureDailyPlanEntry(planning, locator, target.PlannedDate, target.UpdatePlannedDate)

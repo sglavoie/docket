@@ -211,7 +211,7 @@ func (m *WorkflowRulesModel) renderHelpText() string {
 
 // GetHelpItems returns help items for this view.
 func (m *WorkflowRulesModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewWorkflowRules)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 // HasTextInput returns true when search is active.

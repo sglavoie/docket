@@ -7,66 +7,29 @@ type HelpItem struct {
 	Category    string
 }
 
-// PrefixHint is a key/description pair shown in the which-key popup.
-type PrefixHint struct {
-	Key         string
-	Description string
-}
-
-// HelpItems returns all non-hidden bindings with compound keys for nested entries.
-// Leaf bindings inside prefix nodes use compound keys (e.g. ",s", "Ft").
+// HelpItems returns all active non-hidden direct bindings.
 func (km *KeyMap) HelpItems() []HelpItem {
 	var items []HelpItem
-	collectHelp("", km.Entries, &items)
+	for _, entry := range km.Entries {
+		binding := entry.Binding
+		if binding != nil && !binding.Hidden && (binding.Gate == nil || binding.Gate()) {
+			items = append(items, HelpItem{
+				Key: binding.Key, Description: binding.Description, Category: binding.Category,
+			})
+		}
+	}
 	return items
 }
 
-func collectHelp(prefix string, entries []Entry, out *[]HelpItem) {
-	for _, e := range entries {
-		switch {
-		case e.Binding != nil:
-			if !e.Binding.Hidden && (e.Binding.Gate == nil || e.Binding.Gate()) {
-				*out = append(*out, HelpItem{
-					Key:         prefix + e.Binding.Key,
-					Description: e.Binding.Description,
-					Category:    e.Binding.Category,
-				})
-			}
-		case e.PrefixNode != nil:
-			if e.PrefixNode.Gate != nil && !e.PrefixNode.Gate() {
-				continue
-			}
-			collectHelp(prefix+e.PrefixNode.Key, e.PrefixNode.Children, out)
-		}
-	}
-}
-
-// HandledKeys returns all key sequences the KeyMap can handle: every prefix
-// activator key (at all levels, as compound sequences) and every leaf binding key
-// (as its full compound path).
+// HandledKeys returns all direct keys the KeyMap can handle.
 func (km *KeyMap) HandledKeys() []string {
 	seen := map[string]bool{}
 	var keys []string
-	collectHandledKeys("", km.Entries, seen, &keys)
-	return keys
-}
-
-func collectHandledKeys(prefix string, entries []Entry, seen map[string]bool, out *[]string) {
-	for _, e := range entries {
-		switch {
-		case e.Binding != nil:
-			k := prefix + e.Binding.Key
-			if !seen[k] {
-				seen[k] = true
-				*out = append(*out, k)
-			}
-		case e.PrefixNode != nil:
-			activator := prefix + e.PrefixNode.Key
-			if !seen[activator] {
-				seen[activator] = true
-				*out = append(*out, activator)
-			}
-			collectHandledKeys(activator, e.PrefixNode.Children, seen, out)
+	for _, entry := range km.Entries {
+		if entry.Binding != nil && !seen[entry.Binding.Key] {
+			seen[entry.Binding.Key] = true
+			keys = append(keys, entry.Binding.Key)
 		}
 	}
+	return keys
 }

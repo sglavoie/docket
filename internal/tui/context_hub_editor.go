@@ -395,15 +395,7 @@ func (m *ContextHubModel) deleteCustomContext(name string) tea.Cmd {
 // parks the cursor on prefer when it survives, so a save or delete leaves the
 // user where they were working.
 func (m *ContextHubModel) refreshScopes(prefer ContextScope) {
-	m.summaries = ContextScopeSummaries(m.runtime)
-	m.applyFilter()
-	for i, summary := range m.filtered {
-		if summary.Scope == prefer {
-			m.cursor = i
-			return
-		}
-	}
-	m.setCursor(m.cursor)
+	m.rebuildScopeSurface(contextScopeListItemID(prefer))
 }
 
 func (m *ContextHubModel) selectedScope() (ContextScope, bool) {

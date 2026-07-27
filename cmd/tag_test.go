@@ -119,7 +119,6 @@ func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	task.Tags = []string{"task-tag"}
 	sandbox.Tasks = []*models.Task{task}
 	sandbox.NextShortID = 2
-	sandbox.SectionColors = map[string]string{models.SectionNext: "blue"}
 	note := models.NewNote("Reset with sandbox")
 	note.Body = "the CLI must delete this through the application transaction"
 	if err := storage.SaveNote(sandbox, note); err != nil {
@@ -160,11 +159,8 @@ func TestSandboxResetClearsTagsAndPinnedTags(t *testing.T) {
 	if len(saved.PinnedTags) != 0 {
 		t.Fatalf("saved.PinnedTags = %v, want empty", saved.PinnedTags)
 	}
-	if got, want := saved.Sections, []string{models.SectionNext}; !slices.Equal(got, want) {
-		t.Fatalf("saved.Sections = %v, want %v", got, want)
-	}
-	if saved.NextShortID != 1 || len(saved.SectionColors) != 0 {
-		t.Fatalf("saved short-id/colors = %d/%v, want reset", saved.NextShortID, saved.SectionColors)
+	if saved.NextShortID != 1 {
+		t.Fatalf("saved short-id = %d, want reset", saved.NextShortID)
 	}
 	if _, err := os.Stat(notePath); !os.IsNotExist(err) {
 		t.Fatalf("sandbox note exists after CLI reset, stat error=%v", err)

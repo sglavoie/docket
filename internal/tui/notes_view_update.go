@@ -70,23 +70,6 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 
 		m.clearStatus()
 
-		// Handle pending 'g' prefix key — always consume the second keystroke
-		if m.pendingPrefix != "" && isModifierOnly(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			if key == "X" && m.multiSelectMode {
-				m.deselectAllNotes()
-				return m, nil
-			}
-			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash, func() {
-				m.detailsPane.ResetScroll()
-				m.resetScrollOffset()
-			})
-			return m, cmd
-		}
-
 		// Tab toggles focus between list and details pane
 		if key == "tab" {
 			m.detailsPane.Focused = !m.detailsPane.Focused
@@ -142,8 +125,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 			if navCmd != nil {
 				return m, navCmd
 			}
-		case "g":
-			m.pendingPrefix = "g"
+		case "home":
+			m.cursor = 0
+			m.detailsPane.ResetScroll()
+			m.resetScrollOffset()
 			return m, nil
 		case "V":
 			m.toggleNoteMultiSelectMode()

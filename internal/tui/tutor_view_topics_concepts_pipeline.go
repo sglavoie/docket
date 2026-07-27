@@ -7,25 +7,23 @@ func tutorConceptTopicsPipeline() []TutorTopic {
 			Category: "Concepts",
 			Content: `# From Capture to Review
 
-Capture ideas with Ctrl+N, then triage Inbox work from the
-Outliner. The Outliner is the sole root view, and it always
-opens in All on every run. The Daily Plan appears as a built-in
-Today section above the normal workflow sections.
+Capture ideas with a, then triage work in the Outliner's Inbox
+mode. The Outliner is the sole root view, and it always
+opens in All on every run. The Daily Plan appears as a synthetic
+Today group above the canonical workflow-state groups.
 
 # Work Modes
 
-Tab cycles the Outliner work modes Next, Backlog, Active, and
-All; Shift+Tab reverses. h and l rotate workflow perspectives,
-and P opens a categorized, searchable picker for non-work modes.
-Perspectives, smart focuses, filters, and sorting change which
-tasks appear without leaving the Outliner.
+Tab cycles the Outliner work modes All, Inbox, Next, and Backlog;
+Shift+Tab reverses. m opens a categorized, searchable list for
+all work, computed, and review modes.
 
 # Scope
 
-Ctrl+X opens the project scope picker. The Outliner runs
+c opens the scope chooser. The Outliner runs
 globally across every project or narrows to a single selected
-project without changing views — scope belongs to the Outliner,
-not to a route.
+project or context without changing views — scope belongs to the
+Outliner, not to a route.
 
 # Secondary Tools
 
@@ -35,7 +33,7 @@ rather than separate views.
 
 # Navigation
 
-Press : to search actions by name and ? for help. Esc closes the
+Press : to open Finder and ? for help. Esc closes the
 active overlay or child before returning toward the Outliner;
 Ctrl+Esc resets to a clean global All Outliner.`,
 		},

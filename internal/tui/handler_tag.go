@@ -40,14 +40,11 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, nil
 		}
 		// Check if we came from project tree, outliner, or cross-project outliner - apply tags directly
-		if (m.currentView() == ViewOutliner || m.currentView() == ViewCrossProjectOutliner) && msg.Task != nil {
+		if m.currentView() == ViewCrossProjectOutliner && msg.Task != nil {
 			return true, m.applyTagsToTask(msg.Task, msg.Project, msg.SelectedTags)
 		}
-		// Otherwise forward to current view (inbox processor, task editor, etc.)
+		// Otherwise forward to the current view.
 		cmd := m.views.Update(m.currentView(), msg)
-		if v := m.views.Get(ViewInboxProcessor); v != nil {
-			m.inboxProcessor = v.(*InboxProcessorModel)
-		}
 		return true, cmd
 
 	case BulkTagSelectorDoneMsg:
@@ -133,7 +130,11 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
-		return true, m.activateManageHub(ManageParams{Module: ManageTags, Scope: AppEntityScope()})
+		return true, m.activateManageHub(ManageParams{
+			Module:     ManageTags,
+			Scope:      AppEntityScope(),
+			ProjectSet: msg.ProjectSet,
+		})
 
 	case GlobalTagRenamedMsg:
 		m.popView()
@@ -250,10 +251,6 @@ func (m *AppModel) showProjectWithTagFilter(project *models.Project, tag string)
 }
 
 func (m *AppModel) refreshAfterProjectTagChange(oldName, newName string) {
-	if m.outliner != nil {
-		updateTagFilterAfterCatalogChange(m.outliner.filter.Tags, oldName, newName)
-		m.outliner.rebuildRows()
-	}
 	if m.crossOutliner != nil {
 		updateTagFilterAfterCatalogChange(m.crossOutliner.filter.Tags, oldName, newName)
 		m.crossOutliner.rebuildRows()
@@ -281,14 +278,14 @@ func updateTagFilterAfterCatalogChange(tags map[string]bool, oldName, newName st
 func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]bool) {
 	// Views that implement commonFilterView can be handled generically.
 	standardViews := []PresentationID{
-		ViewFocusBoard, ViewDailyReview, ViewWeeklyReview, ViewRecentActivity,
+		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity,
 	}
 	for _, vt := range standardViews {
 		if source != vt {
 			continue
 		}
 		if v := m.views.Get(vt); v != nil {
-			if cfv, ok := v.(tagFilterApplicable); ok {
+			if cfv, ok := v.(commonFilterView); ok {
 				cfv.getFilter().Tags = tags
 				cfv.refreshAndClamp()
 			}
@@ -297,12 +294,6 @@ func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]b
 	}
 
 	switch source {
-	case ViewOutliner:
-		if target := m.outliner; target != nil {
-			target.filter.Tags = tags
-			target.rebuildRows()
-			target.clampCursor()
-		}
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
 			m.crossOutliner.filter.Tags = tags
@@ -325,14 +316,6 @@ func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]b
 // appropriate view and persists them to config.
 func (m *AppModel) applyColumnToggles(source PresentationID, toggles map[string]bool) {
 	switch source {
-	case ViewOutliner:
-		target := m.outliner
-		if target == nil {
-			break
-		}
-		priorityMode := target.columnConfig.PriorityMode()
-		target.columnConfig = NewColumnConfig(toggles, nil, DefaultOutlinerColumns, priorityMode)
-		target.rebuildRows()
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
 			priorityMode := m.crossOutliner.columnConfig.PriorityMode()

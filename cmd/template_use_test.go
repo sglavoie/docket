@@ -18,6 +18,7 @@ import (
 func resetTemplateUseVars() {
 	templateUseSkipOptional = false
 	templateUseParent = ""
+	templateUseState = ""
 	templateUseVars = nil
 }
 
@@ -147,6 +148,33 @@ func TestRunTemplateUse(t *testing.T) {
 		savedProject := deps.Repository.Projects[project.ID]
 		task := savedProject.Tasks[len(savedProject.Tasks)-1]
 		testutil.AssertEqual(t, task.State(), models.StateInProgress)
+	})
+
+	t.Run("canonical state flag overrides template state", func(t *testing.T) {
+		deps, project := setupTemplateUseTest(t)
+		defer deps.Cleanup()
+
+		tmpl := template.TaskTemplate{
+			ID: "override-state-tmpl", Name: "Override state", Enabled: true, Type: models.TaskTypeTask, State: models.StateInbox,
+		}
+		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
+		manager := config.NewManager(deps.ConfigPath)
+		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
+
+		templateUseState = "paused"
+		if err := templateUseCmd.Flags().Set("state", templateUseState); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { templateUseCmd.Flags().Lookup("state").Changed = false })
+
+		if err := runTemplateUse(templateUseCmd, []string{tmpl.ID, "Paused template task"}); err != nil {
+			t.Fatalf("runTemplateUse: %v", err)
+		}
+		saved := deps.Repository.Projects[project.ID]
+		got := saved.Tasks[len(saved.Tasks)-1]
+		if got.State() != models.StatePaused {
+			t.Fatalf("state = %q, want paused", got.State())
+		}
 	})
 
 	t.Run("increments use count through automation artifact only", func(t *testing.T) {

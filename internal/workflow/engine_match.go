@@ -91,20 +91,6 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool { //
 	case FieldStateChanged:
 		return matchesStateTransition(prev.State(), task.State(), trigger.Operation, trigger.Value)
 
-	case FieldStatusChanged:
-		return matchesTransition(
-			getPrevValue(prev, statusFieldValue),
-			statusFieldValue(task),
-			trigger.Value,
-		)
-
-	case FieldSectionChanged:
-		return matchesTransition(
-			getPrevValue(prev, effectiveSection),
-			effectiveSection(task),
-			trigger.Value,
-		)
-
 	case FieldPriorityChanged:
 		return matchesTransition(
 			getPrevValue(prev, func(t *models.Task) string { return strconv.Itoa(t.Priority) }),
@@ -237,19 +223,6 @@ func matchesPattern(value, pattern string) bool {
 	return strings.EqualFold(value, pattern)
 }
 
-// effectiveSection returns the logical GTD section for a task, derived from its
-// canonical workflow state rather than the retired task.Section field.
-func effectiveSection(t *models.Task) string {
-	return models.SectionForState(t.State())
-}
-
-// statusFieldValue returns the legacy status string a task's canonical state
-// maps back to, so rule conditions authored against the legacy status
-// vocabulary keep matching without reading the retired task.Status field.
-func statusFieldValue(t *models.Task) string {
-	return string(models.LegacyStatusForState(t.State()))
-}
-
 // getPrevValue safely gets a value from the previous task state.
 func getPrevValue(prev *models.Task, getter func(*models.Task) string) string {
 	if prev == nil {
@@ -289,12 +262,6 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 			return false
 		}
 		return matchesWorkflowState(task.Parent.State(), trigger.Operation, trigger.Value)
-
-	case FieldParentStatus:
-		if task.Parent == nil {
-			return false
-		}
-		return compareValues(statusFieldValue(task.Parent), trigger.Operation, trigger.Value)
 
 	case FieldParentType:
 		if task.Parent == nil {
@@ -437,13 +404,8 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	switch trigger.Field {
 	case FieldState:
 		return matchesWorkflowState(task.State(), trigger.Operation, trigger.Value)
-	case FieldStatus:
-		fieldValue = statusFieldValue(task)
 	case FieldPriority:
 		fieldValue = strconv.Itoa(task.Priority)
-	case FieldSection:
-		// Compare against the built-in GTD section stored on the task.
-		fieldValue = effectiveSection(task)
 	case FieldTags:
 		return matchesTagTrigger(task.Tags, trigger)
 	case FieldType:

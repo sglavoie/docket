@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 type quickCaptureParser struct {
@@ -48,7 +49,7 @@ func (p *quickCaptureParser) addAliasUsed(alias string) {
 }
 
 func (p *quickCaptureParser) finalizeTitle() {
-	p.result.title = normalizeCaptureTitle(p.input)
+	p.result.title = textgrammar.NormalizeText(p.input)
 	if p.strict && p.result.title == "" {
 		p.err = fmt.Errorf("task title cannot be empty")
 	}

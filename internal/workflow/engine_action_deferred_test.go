@@ -81,7 +81,7 @@ func TestApplyAction_MoveToProject(t *testing.T) {
 	if move.Destination != "DestProject" {
 		t.Errorf("expected Destination %q, got %q", "DestProject", move.Destination)
 	}
-	if models.SectionForState(task.State()) != models.SectionNext {
+	if task.State() != models.StateNext {
 		t.Error("expected task section to remain unchanged")
 	}
 }

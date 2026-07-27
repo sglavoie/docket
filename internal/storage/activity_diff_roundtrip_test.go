@@ -38,7 +38,7 @@ func TestActivityOrderPreservedAcrossWriteAndParse(t *testing.T) {
 		t.Fatalf("expected 3 activity entries, got %d", len(parsed.Activity))
 	}
 
-	wantFields := []string{"created", "status", "priority"}
+	wantFields := []string{"created", "state", "priority"}
 	for i, want := range wantFields {
 		if parsed.Activity[i].Field != want {
 			t.Errorf("activity[%d].Field = %q, want %q", i, parsed.Activity[i].Field, want)

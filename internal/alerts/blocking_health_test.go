@@ -10,7 +10,7 @@ import (
 
 func TestCheckBlockedTasks_BlockedLongEnough(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("blocked", models.StatusBlocked, now.AddDate(0, 0, -10))
+	task := testTask("blocked", models.StateWaiting, now.AddDate(0, 0, -10))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkBlockedTasks(DefaultAlertConfig(), projects, now)
@@ -24,7 +24,7 @@ func TestCheckBlockedTasks_BlockedLongEnough(t *testing.T) {
 
 func TestCheckBlockedTasks_RecentlyBlocked(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("blocked-recent", models.StatusBlocked, now.AddDate(0, 0, -3))
+	task := testTask("blocked-recent", models.StateWaiting, now.AddDate(0, 0, -3))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkBlockedTasks(DefaultAlertConfig(), projects, now)
@@ -35,7 +35,7 @@ func TestCheckBlockedTasks_RecentlyBlocked(t *testing.T) {
 
 func TestCheckBlockedTasks_NonBlockedIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("in-progress", models.StatusInProgress, now.AddDate(0, 0, -20))
+	task := testTask("in-progress", models.StateInProgress, now.AddDate(0, 0, -20))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkBlockedTasks(DefaultAlertConfig(), projects, now)
@@ -46,12 +46,12 @@ func TestCheckBlockedTasks_NonBlockedIgnored(t *testing.T) {
 
 func TestCheckBlockedTasks_UsesActivityLogNotUpdatedAt(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("blocked-edited", models.StatusBlocked, now.AddDate(0, 0, -2))
+	task := testTask("blocked-edited", models.StateWaiting, now.AddDate(0, 0, -2))
 	task.Activity = []*models.ActivityEntry{{
 		Timestamp: now.AddDate(0, 0, -10),
-		Field:     "status",
-		OldValue:  string(models.StatusInProgress),
-		NewValue:  string(models.StatusBlocked),
+		Field:     "state",
+		OldValue:  string(models.StateInProgress),
+		NewValue:  string(models.StateWaiting),
 	}}
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -63,12 +63,12 @@ func TestCheckBlockedTasks_UsesActivityLogNotUpdatedAt(t *testing.T) {
 
 func TestCheckBlockedTasks_RecentActivityLogBlockedNoAlert(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("blocked-recent-log", models.StatusBlocked, now.AddDate(0, 0, -20))
+	task := testTask("blocked-recent-log", models.StateWaiting, now.AddDate(0, 0, -20))
 	task.Activity = []*models.ActivityEntry{{
 		Timestamp: now.AddDate(0, 0, -3),
-		Field:     "status",
-		OldValue:  string(models.StatusTodo),
-		NewValue:  string(models.StatusBlocked),
+		Field:     "state",
+		OldValue:  string(models.StateReady),
+		NewValue:  string(models.StateWaiting),
 	}}
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -86,7 +86,7 @@ func TestCheckBlockedTasks_CalendarDayNotHours(t *testing.T) {
 	blockedAt := time.Date(2026, 3, 1, 23, 30, 0, 0, loc)
 	now := time.Date(2026, 3, 8, 10, 0, 0, 0, loc) // 7 calendar days later, ~6.4 days in hours
 
-	task := testTask("blocked-dst", models.StatusBlocked, blockedAt)
+	task := testTask("blocked-dst", models.StateWaiting, blockedAt)
 	cfg := DefaultAlertConfig()
 	cfg.BlockedDays = 7
 
@@ -107,12 +107,12 @@ func TestCheckBlockedTasks_BlockedSinceConvertedToUserLocalDay(t *testing.T) {
 	// threshold should use the user's local calendar days, not UTC's date.
 	blockedAt := time.Date(2026, 3, 1, 1, 0, 0, 0, time.UTC)
 	now := time.Date(2026, 3, 7, 10, 0, 0, 0, loc)
-	task := testTask("blocked-local-day", models.StatusBlocked, now.AddDate(0, 0, -1))
+	task := testTask("blocked-local-day", models.StateWaiting, now.AddDate(0, 0, -1))
 	task.Activity = []*models.ActivityEntry{{
 		Timestamp: blockedAt,
-		Field:     "status",
-		OldValue:  string(models.StatusTodo),
-		NewValue:  string(models.StatusBlocked),
+		Field:     "state",
+		OldValue:  string(models.StateReady),
+		NewValue:  string(models.StateWaiting),
 	}}
 
 	cfg := DefaultAlertConfig()
@@ -130,7 +130,7 @@ func TestCheckBlockedTasks_BlockedSinceConvertedToUserLocalDay(t *testing.T) {
 
 func TestCheckProjectHealth_StaleProject(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("old", models.StatusTodo, now.AddDate(0, 0, -30))
+	task := testTask("old", models.StateReady, now.AddDate(0, 0, -30))
 
 	projects := []ProjectData{testProject("stale-proj", task)}
 	alerts := checkProjectHealth(DefaultAlertConfig(), projects, now)
@@ -150,7 +150,7 @@ func TestCheckProjectHealth_StaleProject(t *testing.T) {
 
 func TestCheckProjectHealth_ActiveProject(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("recent", models.StatusTodo, now.AddDate(0, 0, -3))
+	task := testTask("recent", models.StateReady, now.AddDate(0, 0, -3))
 
 	projects := []ProjectData{testProject("active-proj", task)}
 	alerts := checkProjectHealth(DefaultAlertConfig(), projects, now)
@@ -169,8 +169,8 @@ func TestCheckProjectHealth_EmptyProject(t *testing.T) {
 
 func TestCheckProjectHealth_MixedTasks(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	oldTask := testTask("old", models.StatusTodo, now.AddDate(0, 0, -30))
-	recentTask := testTask("recent", models.StatusTodo, now.AddDate(0, 0, -1))
+	oldTask := testTask("old", models.StateReady, now.AddDate(0, 0, -30))
+	recentTask := testTask("recent", models.StateReady, now.AddDate(0, 0, -1))
 
 	projects := []ProjectData{testProject("mixed", oldTask, recentTask)}
 	alerts := checkProjectHealth(DefaultAlertConfig(), projects, now)

@@ -271,8 +271,8 @@ func TestTagManagerRenameTaskUsedTagPersistsAndDedupes(t *testing.T) {
 func TestTagManagerEnterAppliesOutlinerFilter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend", "frontend"}
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
-	app.pushView(ViewOutliner)
+	app.crossOutliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.pushView(ViewCrossProjectOutliner)
 
 	mgr := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 	app.showView(ViewTagManager, mgr)
@@ -297,10 +297,10 @@ func TestTagManagerEnterAppliesOutlinerFilter(t *testing.T) {
 	if !handled {
 		t.Fatal("TagManagerFilterMsg was not handled")
 	}
-	if app.currentView() != ViewOutliner {
-		t.Fatalf("current view = %v, want ViewOutliner (manager should be closed)", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("current view = %v, want Outliner (manager should be closed)", app.currentView())
 	}
-	if got := app.outliner.filter.Tags; len(got) != 1 || !got["frontend"] {
+	if got := app.crossOutliner.filter.Tags; len(got) != 1 || !got["frontend"] {
 		t.Fatalf("outliner filter tags = %v, want exactly {frontend}", got)
 	}
 }
@@ -308,9 +308,9 @@ func TestTagManagerEnterAppliesOutlinerFilter(t *testing.T) {
 func TestTagManagerEscLeavesOutlinerFilterUnchanged(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	project.Tags = []string{"backend", "frontend"}
-	app.outliner = NewOutlinerModel(project, app.configManager, app.runtime)
-	app.outliner.filter.Tags = map[string]bool{"backend": true}
-	app.pushView(ViewOutliner)
+	app.crossOutliner = NewOutlinerModel(project, app.configManager, app.runtime)
+	app.crossOutliner.filter.Tags = map[string]bool{"backend": true}
+	app.pushView(ViewCrossProjectOutliner)
 
 	mgr := NewTagManagerModelForProject(project, newTestSecondaryCoordinators(project).Tag)
 	app.showView(ViewTagManager, mgr)
@@ -324,7 +324,7 @@ func TestTagManagerEscLeavesOutlinerFilterUnchanged(t *testing.T) {
 	if msg := cmd(); !isCloseTagManager(msg) {
 		t.Fatalf("esc message = %T, want CloseTagManagerMsg", msg)
 	}
-	if got := app.outliner.filter.Tags; len(got) != 1 || !got["backend"] {
+	if got := app.crossOutliner.filter.Tags; len(got) != 1 || !got["backend"] {
 		t.Fatalf("outliner filter tags = %v, want unchanged {backend}", got)
 	}
 }

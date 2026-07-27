@@ -66,8 +66,8 @@ func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "Route") {
 		t.Fatalf("expected Route group line, got %q", lines[1])
 	}
-	if !strings.Contains(lines[1], "Inbox (default)") {
-		t.Fatalf("expected Route line to show 'Inbox (default)', got %q", lines[1])
+	if !strings.Contains(lines[1], "$inbox (default)") {
+		t.Fatalf("expected Route line to show '$inbox (default)', got %q", lines[1])
 	}
 	for _, banned := range []string{"Schedule", "Metadata", "Aliases"} {
 		if strings.Contains(plain, banned) {
@@ -95,7 +95,7 @@ func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 	if routeLine == "" {
 		t.Fatalf("expected Route group line, got:\n%s", plain)
 	}
-	for _, substr := range []string{"Inbox (default)", "Web App", "→"} {
+	for _, substr := range []string{"$inbox (default)", "Web App", "→"} {
 		if !strings.Contains(routeLine, substr) {
 			t.Errorf("expected substring %q in Route line, got %q", substr, routeLine)
 		}
@@ -118,8 +118,8 @@ func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
 		}
 	}
 	plain := ansi.Strip(rendered)
-	if !strings.Contains(plain, "Inbox (default)") {
-		t.Fatalf("expected 'Inbox (default)' hint in narrow preview, got:\n%s", plain)
+	if !strings.Contains(plain, "$inbox (default)") {
+		t.Fatalf("expected '$inbox (default)' hint in narrow preview, got:\n%s", plain)
 	}
 	// The long project name wraps across continuation lines, so look for
 	// each word individually rather than the full contiguous string.
@@ -139,8 +139,8 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		tags:              []string{"backend", "urgent"},
 		dueDate:           &due,
 		recurrence:        &models.RecurrencePattern{Unit: models.RecurrenceWeekly, Interval: 1},
-		section:           models.SectionNext,
-		status:            models.StatusInProgress,
+		state:             models.StateInProgress,
+		stateSet:          true,
 		targetProjectName: "Web App",
 		aliasesUsed:       []string{"tag:", "pri:"},
 	}, "", 0)
@@ -156,8 +156,8 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		prefix string
 		substr []string
 	}{
-		{"Task", []string{"Ship release", "$start"}},
-		{"Route", []string{"/" + models.SectionNext, "Web App"}},
+		{"Task", []string{"Ship release"}},
+		{"Route", []string{"$in_progress", "Web App"}},
 		{"Schedule", []string{"@Feb 15", "~"}},
 		{"Metadata", []string{"!1", "#backend", "#urgent"}},
 		{"Aliases", []string{"tag:", "pri:"}},
@@ -171,23 +171,6 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 				t.Errorf("line %d (%s): expected substring %q, got %q", i, exp.prefix, s, lines[i])
 			}
 		}
-	}
-}
-
-func TestRenderPreview_NonGTDSectionRoutesToInbox(t *testing.T) {
-	q := makePreviewInput(t, &quickCaptureResult{
-		title:    "Triage later",
-		taskType: models.TaskTypeTask,
-		priority: 3,
-		section:  "Backlog",
-	}, "", 0)
-
-	plain := ansi.Strip(q.renderPreview())
-	if !strings.Contains(plain, "Route") {
-		t.Fatalf("expected Route group, got %q", plain)
-	}
-	if !strings.Contains(plain, "/Backlog → Inbox") {
-		t.Fatalf("expected '/Backlog → Inbox' routing hint, got %q", plain)
 	}
 }
 
@@ -222,7 +205,8 @@ func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 		tags:              []string{"backend", "urgent", "production", "hotfix"},
 		dueDate:           &due,
 		recurrence:        &models.RecurrencePattern{Unit: models.RecurrenceDaily, Interval: 1},
-		section:           models.SectionNext,
+		state:             models.StateNext,
+		stateSet:          true,
 		targetProjectName: "Reliability And Observability Platform",
 	}, "", 32)
 
@@ -241,7 +225,8 @@ func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
 		taskType: models.TaskTypeTask,
 		priority: 3,
 		tags:     []string{"界面修复", "次要标签"},
-		section:  models.SectionNext,
+		state:    models.StateNext,
+		stateSet: true,
 	}, "", 28)
 
 	rendered := q.renderPreview()

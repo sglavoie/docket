@@ -26,8 +26,6 @@ func mergeTestTask(id, title string) *models.Task {
 func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
-		Sections:      []string{models.SectionNext},
-		SectionColors: map[string]string{},
 		Tags:          []string{},
 		PinnedTags:    []string{},
 		Tasks:         tasks,
@@ -470,26 +468,6 @@ func TestMerge_TagsSetMerge(t *testing.T) {
 		if !want[tag] {
 			t.Errorf("unexpected tag %q in %v", tag, got)
 		}
-	}
-}
-
-func TestMerge_IgnoresDecodeOnlySectionMetadata(t *testing.T) {
-	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
-	base.Sections = []string{models.SectionNext}
-	base.SectionColors = map[string]string{"Next": "blue"}
-	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	local.Sections = []string{models.SectionInbox}
-	local.SectionColors = map[string]string{"Next": "red"}
-	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	current.Sections = []string{models.SectionWaiting}
-	current.SectionColors = map[string]string{"Next": "green"}
-
-	res := mustMerge(t, base, local, current)
-	if res.HasConflicts() {
-		t.Fatalf("decode-only project section metadata must not conflict: %+v", res.Conflicts)
-	}
-	if len(res.Merged.Sections) != 0 || len(res.Merged.SectionColors) != 0 {
-		t.Fatalf("merged document retained decode-only metadata: sections=%v colors=%v", res.Merged.Sections, res.Merged.SectionColors)
 	}
 }
 

@@ -3,11 +3,8 @@ package tui
 import (
 	"fmt"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // This file hosts symbols formerly declared in the project_tree*.go family that
@@ -89,30 +86,6 @@ const (
 	ViewModeAll                       // All non-completed, non-snoozed tasks from all sections
 )
 
-// captureTaskStates creates a snapshot of task states for event trigger detection.
-func captureTaskStates(tasks []*models.Task) map[string]*models.Task {
-	return workflow.CaptureTaskStates(tasks)
-}
-
-// projectArchiveRequestCmd emits a project archive/unarchive request message.
-func projectArchiveRequestCmd(project *models.Project, archive bool) tea.Cmd {
-	if project == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		return ProjectArchiveRequestMsg{Project: project, Archive: archive}
-	}
-}
-
-// taskIDsFromSlice returns the IDs of the given tasks in order.
-func taskIDsFromSlice(tasks []*models.Task) []string {
-	ids := make([]string, len(tasks))
-	for i, t := range tasks {
-		ids[i] = t.ID
-	}
-	return ids
-}
-
 // formatDueDate returns a styled due date string for inline display.
 // timeFormat is a Go time layout string (e.g. "15:04" or "3:04pm").
 func formatDueDate(task *models.Task, timeFormat string) string {
@@ -122,21 +95,6 @@ func formatDueDate(task *models.Task, timeFormat string) string {
 	dateStr, style := ClassifyDueDate(task.DueDate)
 	dateStr = AppendTimeIfHasTime(task, dateStr, timeFormat)
 	return style.Render(icons.Get("date") + " " + dateStr)
-}
-
-// typeChangeOpForKey maps a movement key to a type-change operation.
-func typeChangeOpForKey(key string) (TypeChangeOp, string, bool) {
-	switch key {
-	case "<":
-		return TypePromote, "Promote Task", true
-	case ">":
-		return TypeDemote, "Demote Task", true
-	case "H":
-		return TypeCycleLeft, "Change Type", true
-	case "L":
-		return TypeCycleRight, "Change Type", true
-	}
-	return 0, "", false
 }
 
 // sectionLimitWarning formats the over-section-limit warning banner.

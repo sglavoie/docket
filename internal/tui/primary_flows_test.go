@@ -13,7 +13,6 @@ import (
 // mirrors the first step of the primary user flow: capture → Inbox.
 func TestCaptureCreatesInboxTask(t *testing.T) {
 	project := testutil.NewTestProject("smoke")
-	project.EnsureDefaultSections()
 
 	result, err := parseQuickCapture("Buy milk", project, nil, false)
 	if err != nil {
@@ -24,10 +23,6 @@ func TestCaptureCreatesInboxTask(t *testing.T) {
 	}
 	if result.taskType != models.TaskTypeTask {
 		t.Errorf("taskType: got %v, want %v", result.taskType, models.TaskTypeTask)
-	}
-	// Empty section in result means createTask routes the task to SectionInbox.
-	if result.section != "" {
-		t.Errorf("section: got %q, want %q (empty = Inbox)", result.section, "")
 	}
 }
 
@@ -40,18 +35,18 @@ func TestMoveToNextUpdatesStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.SetSection(models.SectionInbox)
-	if !task.InSection(models.SectionInbox) {
+	task.ApplyWorkflowState(models.StateInbox)
+	if !task.IsInState(models.StateInbox) {
 		t.Fatal("precondition: task should be in Inbox")
 	}
 
-	task.SetSection(models.SectionNext)
+	task.ApplyWorkflowState(models.StateNext)
 
-	if !task.InSection(models.SectionNext) {
-		t.Errorf("section: got %q, want %q", models.SectionForState(task.State()), models.SectionNext)
+	if !task.IsInState(models.StateNext) {
+		t.Errorf("section: got %q, want %q", task.State(), models.StateNext)
 	}
-	if got := models.LegacyStatusForState(task.State()); got != models.StatusTodo {
-		t.Errorf("status: got %q, want %q (moving section must not change status)", got, models.StatusTodo)
+	if got := task.State(); got != models.StateNext {
+		t.Errorf("state: got %q, want %q", got, models.StateNext)
 	}
 }
 
@@ -63,15 +58,15 @@ func TestCompleteNextTaskUpdatesProgress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.SetSection(models.SectionNext)
+	task.ApplyWorkflowState(models.StateNext)
 
 	task.Complete()
 
 	if task.State() != models.StateDone {
 		t.Errorf("state: got %q, want %q", task.State(), models.StateDone)
 	}
-	if got := models.SectionForState(task.State()); got != models.SectionCompleted {
-		t.Errorf("section: got %q, want %q", got, models.SectionCompleted)
+	if got := task.State(); got != models.StateDone {
+		t.Errorf("section: got %q, want %q", got, models.StateDone)
 	}
 	if task.CompletedAt == nil {
 		t.Error("CompletedAt: expected non-nil after Complete()")
@@ -101,7 +96,11 @@ func newCompletedStoryWithDoneChild(t *testing.T) (project *models.Project, pare
 // reloads the project from disk — mirroring a single-task status change.
 func reopenChildThroughWorkflow(t *testing.T, project *models.Project, childID string) {
 	t.Helper()
-	project.MutateTask(childID, func(tk *models.Task) { tk.ApplyTransition(models.StatusTodo) })
+	project.MutateTask(childID, func(tk *models.Task) {
+		if err := tk.ApplyStateTransition(models.StateReady); err != nil {
+			t.Fatalf("ApplyStateTransition(ready): %v", err)
+		}
+	})
 	project.CheckAndAutoUnblock()
 	reopened := project.ReconcileParentCompletion()
 	project.GenerateRecurringInstances()
@@ -174,10 +173,10 @@ func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
 
 	reopenChildThroughWorkflow(t, project, childID)
 
-	if got := models.LegacyStatusForState(project.GetTaskByID(parentID).State()); got != models.StatusInProgress {
+	if got := project.GetTaskByID(parentID).State(); got != models.StateInProgress {
 		t.Fatalf("parent status = %q, want in_progress after reopening child", got)
 	}
-	if got := models.LegacyStatusForState(project.GetTaskByID(childID).State()); got != models.StatusTodo {
+	if got := project.GetTaskByID(childID).State(); got != models.StateReady {
 		t.Fatalf("child status = %q, want todo after reopen", got)
 	}
 
@@ -187,10 +186,10 @@ func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
 	if err := storage.LoadProject(project); err != nil {
 		t.Fatalf("LoadProject after undo: %v", err)
 	}
-	if got := models.LegacyStatusForState(project.GetTaskByID(parentID).State()); got != models.StatusDone {
+	if got := project.GetTaskByID(parentID).State(); got != models.StateDone {
 		t.Errorf("after undo parent status = %q, want done (cascade must revert atomically)", got)
 	}
-	if got := models.LegacyStatusForState(project.GetTaskByID(childID).State()); got != models.StatusDone {
+	if got := project.GetTaskByID(childID).State(); got != models.StateDone {
 		t.Errorf("after undo child status = %q, want done", got)
 	}
 
@@ -200,10 +199,10 @@ func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
 	if err := storage.LoadProject(project); err != nil {
 		t.Fatalf("LoadProject after redo: %v", err)
 	}
-	if got := models.LegacyStatusForState(project.GetTaskByID(parentID).State()); got != models.StatusInProgress {
+	if got := project.GetTaskByID(parentID).State(); got != models.StateInProgress {
 		t.Errorf("after redo parent status = %q, want in_progress", got)
 	}
-	if got := models.LegacyStatusForState(project.GetTaskByID(childID).State()); got != models.StatusTodo {
+	if got := project.GetTaskByID(childID).State(); got != models.StateReady {
 		t.Errorf("after redo child status = %q, want todo", got)
 	}
 }

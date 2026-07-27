@@ -9,12 +9,12 @@ import (
 
 func TestWorkflowAdd_NewRuleCreation(t *testing.T) {
 	trigger := workflow.RuleTrigger{
-		Field:     workflow.FieldStatus,
+		Field:     workflow.FieldState,
 		Operation: workflow.OpEquals,
 		Value:     "done",
 	}
 	actions := []workflow.RuleAction{
-		{ActionType: workflow.ActionSetSection, Value: "Completed"},
+		{ActionType: workflow.ActionSetState, Value: "Completed"},
 	}
 
 	rule := workflow.NewRule("Test Rule", trigger, actions)
@@ -29,11 +29,11 @@ func TestWorkflowAdd_NewRuleCreation(t *testing.T) {
 
 func TestWorkflowAdd_NewCompoundRuleCreation(t *testing.T) {
 	triggers := []workflow.RuleTrigger{
-		{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+		{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 		{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "archive"},
 	}
 	actions := []workflow.RuleAction{
-		{ActionType: workflow.ActionSetSection, Value: "Completed"},
+		{ActionType: workflow.ActionSetState, Value: "Completed"},
 	}
 
 	rule := workflow.NewCompoundRule("Compound Rule", triggers, workflow.LogicAnd, actions)
@@ -59,32 +59,32 @@ func TestWorkflowAdd_RuleValidation(t *testing.T) {
 			name:     "valid rule",
 			ruleName: "Valid Rule",
 			triggers: []workflow.RuleTrigger{
-				{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+				{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 			},
 			actions: []workflow.RuleAction{
-				{ActionType: workflow.ActionSetSection, Value: "Completed"},
+				{ActionType: workflow.ActionSetState, Value: "done"},
 			},
 			expectErr: false,
 		},
 		{
 			name:      "missing name",
 			ruleName:  "",
-			triggers:  []workflow.RuleTrigger{{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"}},
-			actions:   []workflow.RuleAction{{ActionType: workflow.ActionSetSection}},
+			triggers:  []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"}},
+			actions:   []workflow.RuleAction{{ActionType: workflow.ActionSetState}},
 			expectErr: true,
 		},
 		{
 			name:      "no triggers",
 			ruleName:  "No Triggers",
 			triggers:  []workflow.RuleTrigger{},
-			actions:   []workflow.RuleAction{{ActionType: workflow.ActionSetSection}},
+			actions:   []workflow.RuleAction{{ActionType: workflow.ActionSetState}},
 			expectErr: true,
 		},
 		{
 			name:     "no actions",
 			ruleName: "No Actions",
 			triggers: []workflow.RuleTrigger{
-				{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+				{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 			},
 			actions:   []workflow.RuleAction{},
 			expectErr: true,
@@ -112,12 +112,12 @@ func TestWorkflowAdd_RuleValidation(t *testing.T) {
 
 func TestWorkflowAdd_RuleSummary(t *testing.T) {
 	trigger := workflow.RuleTrigger{
-		Field:     workflow.FieldStatus,
+		Field:     workflow.FieldState,
 		Operation: workflow.OpEquals,
 		Value:     "done",
 	}
 	actions := []workflow.RuleAction{
-		{ActionType: workflow.ActionSetSection, Value: "Completed"},
+		{ActionType: workflow.ActionSetState, Value: "done"},
 	}
 
 	rule := workflow.NewRule("Complete Done", trigger, actions)
@@ -134,8 +134,8 @@ func TestWorkflowAdd_TriggerString(t *testing.T) {
 		expected string
 	}{
 		{
-			workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
-			"status = done",
+			workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
+			"state = done",
 		},
 		{
 			workflow.RuleTrigger{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "urgent"},
@@ -160,9 +160,9 @@ func TestWorkflowAdd_ActionString(t *testing.T) {
 		action   workflow.RuleAction
 		contains string
 	}{
-		{workflow.RuleAction{ActionType: workflow.ActionSetStatus, Value: "done"}, "status"},
+		{workflow.RuleAction{ActionType: workflow.ActionSetState, Value: "done"}, "state"},
 		{workflow.RuleAction{ActionType: workflow.ActionAddTag, Value: "urgent"}, "tag"},
-		{workflow.RuleAction{ActionType: workflow.ActionSetSection, Value: "Completed"}, "Completed"},
+		{workflow.RuleAction{ActionType: workflow.ActionSetState, Value: "done"}, "done"},
 		{workflow.RuleAction{ActionType: workflow.ActionClearDue}, "clear"},
 	}
 
@@ -178,13 +178,13 @@ func TestWorkflowAdd_ActionString(t *testing.T) {
 
 func TestWorkflowAdd_GetTriggers(t *testing.T) {
 	singleTrigger := workflow.RuleTrigger{
-		Field:     workflow.FieldStatus,
+		Field:     workflow.FieldState,
 		Operation: workflow.OpEquals,
 		Value:     "done",
 	}
 
 	ruleSingle := &workflow.WorkflowRule{
-		Trigger: singleTrigger,
+		Triggers: []workflow.RuleTrigger{singleTrigger},
 	}
 
 	triggers := ruleSingle.GetTriggers()
@@ -192,7 +192,7 @@ func TestWorkflowAdd_GetTriggers(t *testing.T) {
 
 	ruleMultiple := &workflow.WorkflowRule{
 		Triggers: []workflow.RuleTrigger{
-			{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+			{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 			{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "archive"},
 		},
 	}
@@ -215,7 +215,7 @@ func TestWorkflowAdd_GetTriggerLogic(t *testing.T) {
 func TestWorkflowAdd_IsCompound(t *testing.T) {
 	ruleSingle := &workflow.WorkflowRule{
 		Triggers: []workflow.RuleTrigger{
-			{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+			{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 		},
 	}
 
@@ -225,7 +225,7 @@ func TestWorkflowAdd_IsCompound(t *testing.T) {
 
 	ruleCompound := &workflow.WorkflowRule{
 		Triggers: []workflow.RuleTrigger{
-			{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+			{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 			{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "archive"},
 		},
 	}

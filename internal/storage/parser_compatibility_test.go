@@ -57,7 +57,7 @@ func TestParseDeprecatedNoteType(t *testing.T) {
 
 Some notes here.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestParseDeprecatedActionType(t *testing.T) {
 
 Review the pull request.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestParseTasksMarkdown_DescriptionBlockWithoutMetadataComment(t *testing.T)
 My description
 <!-- /DESCRIPTION -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestParseTasksMarkdown_LeadingNonMetadataCommentPreserved(t *testing.T) {
 <!-- note: important -->
 Body text
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -176,7 +176,7 @@ Intro line
 <!-- priority: 1 -->
 Outro line
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

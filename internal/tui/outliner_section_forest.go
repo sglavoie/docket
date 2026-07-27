@@ -15,7 +15,18 @@ type sectionTaskForest struct {
 	count    int
 }
 
-func buildSectionTaskForests(tasks []*models.Task) map[models.WorkflowStateGroup]*sectionTaskForest {
+// buildStateGroupTaskForests builds the canonical All-mode forests without
+// passing through legacy section buckets. Parent/child edges survive only when
+// both tasks share the same state group; a cross-group child becomes a root in
+// its own group and carries an ancestor breadcrumb when flattened.
+func buildStateGroupTaskForests(tasks []*models.Task) map[models.WorkflowStateGroup]*sectionTaskForest {
+	return buildTaskForestsByStateGroup(tasks, taskStateGroup)
+}
+
+func buildTaskForestsByStateGroup(
+	tasks []*models.Task,
+	classify func(*models.Task) models.WorkflowStateGroup,
+) map[models.WorkflowStateGroup]*sectionTaskForest {
 	ordered := flattenTaskPointers(tasks)
 	included := make(map[string]*models.Task, len(ordered))
 	for _, task := range ordered {
@@ -24,7 +35,10 @@ func buildSectionTaskForests(tasks []*models.Task) map[models.WorkflowStateGroup
 
 	forests := make(map[models.WorkflowStateGroup]*sectionTaskForest)
 	for _, task := range ordered {
-		group := renderedHeaderStateGroupForTask(task)
+		group := classify(task)
+		if !group.IsValid() {
+			continue
+		}
 		forest := forests[group]
 		if forest == nil {
 			forest = &sectionTaskForest{children: make(map[string][]*models.Task)}
@@ -32,7 +46,7 @@ func buildSectionTaskForests(tasks []*models.Task) map[models.WorkflowStateGroup
 		}
 		forest.count++
 		if task.ParentID != nil {
-			if parent := included[*task.ParentID]; parent != nil && renderedHeaderStateGroupForTask(parent) == group {
+			if parent := included[*task.ParentID]; parent != nil && classify(parent) == group {
 				forest.children[parent.ID] = append(forest.children[parent.ID], task)
 				continue
 			}

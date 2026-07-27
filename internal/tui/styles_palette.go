@@ -96,37 +96,6 @@ var sectionColorLight = map[string]color.Color{
 	"white":   lipgloss.Color("#374151"),
 }
 
-// GetSectionColorStyle returns a style for a section badge given a color name.
-func GetSectionColorStyle(colorName string) lipgloss.Style {
-	bg := ColorBackground
-	if themeBgColor != "" {
-		bg = lipgloss.Color(themeBgColor)
-	}
-	fg := GetSectionColorValue(colorName)
-	if fg != nil {
-		return lipgloss.NewStyle().Foreground(fg).Background(bg)
-	}
-	return SectionBadgeStyle
-}
-
-// GetSectionColorIndex returns the index of a color name in the palette.
-func GetSectionColorIndex(colorName string) int {
-	for index, paletteColor := range SectionColorPalette {
-		if paletteColor.Name == colorName {
-			return index
-		}
-	}
-	return 0
-}
-
-// GetSectionColorByIndex returns the color name at the given palette index.
-func GetSectionColorByIndex(index int) string {
-	if index < 0 || index >= len(SectionColorPalette) {
-		return "gray"
-	}
-	return SectionColorPalette[index].Name
-}
-
 // GetSectionColorValue returns the color.Color for a section color name.
 // Returns the light-theme hex when the active theme is light, otherwise the
 // dark-theme ANSI value. Returns nil if the color name is empty or not found.

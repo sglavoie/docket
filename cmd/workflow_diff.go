@@ -112,8 +112,7 @@ func scopesEqual(a, b *workflow.RuleScope) bool {
 	}
 	return slices.Equal(a.Projects, b.Projects) &&
 		slices.Equal(a.Types, b.Types) &&
-		slices.Equal(a.States, b.States) &&
-		slices.Equal(a.Sections, b.Sections)
+		slices.Equal(a.States, b.States)
 }
 
 // formatScope returns a human-readable representation of a RuleScope.
@@ -134,10 +133,6 @@ func formatScope(s *workflow.RuleScope) string {
 			values = append(values, string(state))
 		}
 		parts = append(parts, fmt.Sprintf("states=[%s]", strings.Join(values, ", ")))
-	}
-	// Legacy section scope is displayed until persisted rules migrate.
-	if len(s.Sections) > 0 {
-		parts = append(parts, fmt.Sprintf("sections=[%s]", strings.Join(s.Sections, ", ")))
 	}
 	if len(parts) == 0 {
 		return "all"

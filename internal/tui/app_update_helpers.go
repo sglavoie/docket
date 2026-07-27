@@ -53,28 +53,6 @@ func (m *AppModel) hasActiveTextInput() bool {
 	return false
 }
 
-// resolveQuickCaptureProject enters the shared capture flow. The system Inbox
-// is the default destination and %project syntax makes routing elsewhere
-// optional inside the same input.
-func (m *AppModel) resolveQuickCaptureProject() tea.Msg {
-	return ShowQuickCaptureMsg{}
-}
-
-// isModifierOnly returns true when the key event is a bare modifier press
-// (Shift, Ctrl, Alt, etc.) with no accompanying character.
-func isModifierOnly(msg tea.KeyPressMsg) bool {
-	switch msg.Code {
-	case tea.KeyLeftShift, tea.KeyRightShift,
-		tea.KeyLeftCtrl, tea.KeyRightCtrl,
-		tea.KeyLeftAlt, tea.KeyRightAlt,
-		tea.KeyLeftSuper, tea.KeyRightSuper,
-		tea.KeyLeftHyper, tea.KeyRightHyper,
-		tea.KeyLeftMeta, tea.KeyRightMeta:
-		return true
-	}
-	return false
-}
-
 // isCtrlEscKey reports whether the key event is Ctrl+Esc. The string check
 // covers Bubble Tea's normalized representation; the code/modifier check keeps
 // this stable for tests and terminal protocols that preserve the modifier.
@@ -102,20 +80,6 @@ func upgradeKittyKeyboard() tea.Cmd {
 	}
 }
 
-// hasActivePendingPrefix returns true if the current view is in the middle of
-// a multi-key prefix sequence. Used to suppress global single-character
-// shortcuts (e.g. #, q, w, u) that would otherwise hijack prefix sub-keys.
-func (m *AppModel) hasActivePendingPrefix() bool {
-	view := m.activeView()
-	if view == nil {
-		return false
-	}
-	if p, ok := view.(PendingPrefixView); ok {
-		return p.HasPendingPrefix()
-	}
-	return false
-}
-
 // hasActiveConfirmDialog returns true if the current view has an active confirm dialog.
 // Used to prevent the global clipboard handler from intercepting y/Y during delete confirmations.
 func (m *AppModel) hasActiveConfirmDialog() bool {
@@ -128,17 +92,6 @@ func (m *AppModel) hasActiveConfirmDialog() bool {
 	}
 	if c, ok := view.(interface{ IsConfirmActive() bool }); ok {
 		return c.IsConfirmActive()
-	}
-	return false
-}
-
-// hasActiveMultiSelect returns true if the current view has multi-select mode active.
-func (m *AppModel) hasActiveMultiSelect() bool {
-	type multiSelectStateful interface {
-		IsMultiSelectActive() bool
-	}
-	if v, ok := m.currentViewAsModel().(multiSelectStateful); ok {
-		return v.IsMultiSelectActive()
 	}
 	return false
 }

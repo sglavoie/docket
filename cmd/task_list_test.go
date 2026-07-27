@@ -5,7 +5,6 @@ import "testing"
 // resetFilterVars resets all filter package variables to their zero values.
 func resetFilterVars() {
 	listTaskType = ""
-	listTaskStatus = ""
 	listState = ""
 	listBlocked = false
 	listFilterProject = nil

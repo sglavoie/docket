@@ -26,7 +26,7 @@ func newTestAppModel() *AppModel {
 		projects:             make(map[string]*models.Project),
 		persister:            NewProjectService(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		viewStack:            []PresentationID{ViewDashboard},
+		navigation:           NewNavigationState(),
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
@@ -54,7 +54,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		projects:             map[string]*models.Project{project.ID: project},
 		persister:            NewProjectService(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		viewStack:            []PresentationID{ViewDashboard},
+		navigation:           NewNavigationState(),
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
@@ -62,6 +62,42 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	}
 
 	return app, project
+}
+
+// setTestPresentationPath installs renderer identities through the same typed
+// route/overlay authority as production. The fallback is only for deliberately
+// partial fixtures that lack the entity data a production route requires.
+func setTestPresentationPath(app *AppModel, views ...PresentationID) {
+	app.navigation = NewNavigationState()
+	for _, view := range views {
+		if view == ViewDashboard {
+			continue
+		}
+		if view == ViewCrossProjectOutliner {
+			app.navigation.ResetRoot()
+			continue
+		}
+		if app.installTypedPresentation(view) {
+			continue
+		}
+		overlay, err := NewOverlay(OverlayForm, "test:"+view.String())
+		if err != nil {
+			panic(err)
+		}
+		overlay.presentation = view
+		overlay.hasPresentation = true
+		app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
+	}
+}
+
+func pushTestPresentationOverlay(app *AppModel, view PresentationID) {
+	overlay, err := NewOverlay(OverlayForm, "test:"+view.String())
+	if err != nil {
+		panic(err)
+	}
+	overlay.presentation = view
+	overlay.hasPresentation = true
+	app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
 }
 
 func setTestAppProjects(app *AppModel, projects ...*models.Project) {

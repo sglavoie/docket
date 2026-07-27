@@ -11,7 +11,7 @@ import (
 
 // NoteTagSelectorModel allows multi-selecting tags for a note.
 type NoteTagSelectorModel struct {
-	*BasePicker[TagInfo]
+	*ListSurfaceAdapter[TagInfo]
 	TagAdder
 	source       noteMutationRef
 	originalTags []string
@@ -21,7 +21,7 @@ type NoteTagSelectorModel struct {
 func NewNoteTagSelectorModel(source noteMutationRef, tags []TagInfo, currentTags []string) *NoteTagSelectorModel {
 	titleStr := truncateToVisualWidth(source.Note.Title, 30)
 
-	picker := NewBasePicker(tags, PickerConfig{
+	picker := NewListSurfaceAdapter(tags, PickerConfig{
 		Title:          fmt.Sprintf("Tags for: %s", titleStr),
 		EmptyMessage:   "No tags found (press 'a' to add).",
 		NoMatchMessage: "No matching tags (press 'a' to add).",
@@ -37,10 +37,10 @@ func NewNoteTagSelectorModel(source noteMutationRef, tags []TagInfo, currentTags
 	}
 
 	return &NoteTagSelectorModel{
-		BasePicker:   picker,
-		TagAdder:     NewTagAdder(),
-		source:       source,
-		originalTags: append([]string{}, currentTags...),
+		ListSurfaceAdapter: picker,
+		TagAdder:           NewTagAdder(),
+		source:             source,
+		originalTags:       append([]string{}, currentTags...),
 	}
 }
 
@@ -76,7 +76,7 @@ func buildNoteTagList(notes []*models.Note, project *models.Project) []TagInfo {
 
 // SetSize sets the view dimensions.
 func (m *NoteTagSelectorModel) SetSize(width, height int) {
-	m.BasePicker.SetSize(width, height)
+	m.ListSurfaceAdapter.SetSize(width, height)
 }
 
 // Init initializes the model.
@@ -93,7 +93,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if m.AddTagMode {
-			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
+			handled, cmd := m.HandleAddTagKey(msg, m.ListSurfaceAdapter)
 			if handled {
 				return m, cmd
 			}
@@ -135,7 +135,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the note tag selector.
 func (m *NoteTagSelectorModel) View() tea.View {
-	return tea.NewView(RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
+	return tea.NewView(RenderTagSelectorView(m.ListSurfaceAdapter, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
 }
 
 func (m *NoteTagSelectorModel) StatusBarLabel() string { return "Tag Note" }

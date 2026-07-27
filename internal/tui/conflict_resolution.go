@@ -191,7 +191,7 @@ func (m *ConflictResolutionModel) HandledKeys() []string {
 
 // GetHelpItems returns help items for this view.
 func (m *ConflictResolutionModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewConflictResolution)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *ConflictResolutionModel) buildKeyMap() *keymap.KeyMap {

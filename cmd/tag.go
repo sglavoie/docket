@@ -16,10 +16,10 @@ var tagCmd = &cobra.Command{
 	Use:     "tag",
 	Aliases: []string{"tags"},
 	Short:   "Manage project tags",
-	Long: `Manage project tags and pinned tag tabs.
+	Long: `Manage project tags and pinned tag shortcuts.
 
-Tags group tasks across the built-in GTD sections. Pinned tags appear as
-quick-access tabs in project and cross-project views.
+Tags group tasks without changing their workflow state. Pinned tags appear as
+Finder results in project and cross-project scopes.
 
 Examples:
   tt tag list
@@ -38,11 +38,11 @@ var tagListGlobal bool
 
 var tagPinCmd = &cobra.Command{
 	Use:   "pin <tag>",
-	Short: "Pin a tag as a quick-access tab",
-	Long: `Pin a tag as a quick-access tab.
+	Short: "Pin a tag for quick Finder access",
+	Long: `Pin a tag for quick Finder access.
 
 By default this pins the tag in the current project. Use --global to pin it
-for cross-project tag tabs.
+for cross-project Finder results.
 
 Examples:
   tt tag pin backend
@@ -52,11 +52,11 @@ Examples:
 
 var tagUnpinCmd = &cobra.Command{
 	Use:   "unpin <tag>",
-	Short: "Unpin a tag quick-access tab",
-	Long: `Unpin a tag quick-access tab.
+	Short: "Remove a pinned tag from Finder",
+	Long: `Remove a pinned tag from Finder.
 
 By default this unpins the tag in the current project. Use --global to unpin it
-from cross-project tag tabs.
+from cross-project Finder results.
 
 Examples:
   tt tag unpin backend
@@ -70,8 +70,8 @@ var tagListCmd = &cobra.Command{
 	Short:   "List project tags",
 	Long: `List tags in the current project.
 
-Use --pinned to show only pinned tag tabs. Use --global with --pinned to show
-cross-project pinned tag tabs.
+Use --pinned to show only pinned tags. Use --global with --pinned to show
+cross-project pinned tags.
 
 Examples:
   tt tag list
@@ -87,10 +87,10 @@ func init() {
 	tagCmd.AddCommand(tagUnpinCmd)
 	tagCmd.AddCommand(tagListCmd)
 
-	tagPinCmd.Flags().BoolVarP(&tagPinGlobal, "global", "g", false, "pin as a global cross-project tag tab")
-	tagUnpinCmd.Flags().BoolVarP(&tagUnpinGlobal, "global", "g", false, "unpin from global cross-project tag tabs")
-	tagListCmd.Flags().BoolVarP(&tagListPinned, "pinned", "p", false, "show only pinned tag tabs")
-	tagListCmd.Flags().BoolVarP(&tagListGlobal, "global", "g", false, "list global cross-project pinned tag tabs")
+	tagPinCmd.Flags().BoolVarP(&tagPinGlobal, "global", "g", false, "pin for global cross-project Finder access")
+	tagUnpinCmd.Flags().BoolVarP(&tagUnpinGlobal, "global", "g", false, "unpin from global cross-project Finder access")
+	tagListCmd.Flags().BoolVarP(&tagListPinned, "pinned", "p", false, "show only pinned tags")
+	tagListCmd.Flags().BoolVarP(&tagListGlobal, "global", "g", false, "list global cross-project pinned tags")
 
 	addOutputFlags(tagPinCmd)
 	addOutputFlags(tagUnpinCmd)

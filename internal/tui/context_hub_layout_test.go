@@ -90,10 +90,10 @@ func TestContextHubListScrollsToTheSelectedContext(t *testing.T) {
 	if !strings.Contains(render, "label-13") {
 		t.Errorf("last context not scrolled into view:\n%s", render)
 	}
-	if !strings.Contains(render, "more above") {
+	if !strings.Contains(render, "↑") || !strings.Contains(render, "more") {
 		t.Errorf("scrolled list did not report the rows above:\n%s", render)
 	}
-	if strings.Contains(render, "more below") {
+	if strings.Contains(render, "↓") {
 		t.Errorf("list at the bottom still claims hidden rows below:\n%s", render)
 	}
 }
@@ -161,13 +161,18 @@ func TestContextHubPreviewCountsWrapInsteadOfClipping(t *testing.T) {
 	hub.SetSize(100, 30)
 	focusContextHubScope(t, hub, CustomContextScope("focus"))
 
-	render := ansi.Strip(hub.View().Content)
+	render := contextHubRender(hub)
 	if strings.Contains(render, "…") {
 		t.Errorf("preview clipped instead of wrapping:\n%s", render)
 	}
+	preview, ok := hub.surface.CurrentPreview()
+	if !ok {
+		t.Fatal("selected custom context has no preview")
+	}
+	normalizedPreview := strings.Join(strings.Fields(preview.Body), " ")
 	for _, want := range []string{"active project(s)", "0 archived", "0 missing", "task(s)"} {
-		if !strings.Contains(render, want) {
-			t.Errorf("preview counts missing %q:\n%s", want, render)
+		if !strings.Contains(normalizedPreview, want) {
+			t.Errorf("preview counts missing %q:\n%s", want, normalizedPreview)
 		}
 	}
 }

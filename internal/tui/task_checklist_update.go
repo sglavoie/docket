@@ -96,8 +96,6 @@ func (m *TaskChecklistModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskChecklistModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
@@ -106,15 +104,6 @@ func (m *TaskChecklistModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) 
 		m.BaseView.SetSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.KeyPressMsg:
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd = handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-
 		return m, m.handleNormalKey(msg.String())
 	}
 
@@ -129,8 +118,8 @@ func (m *TaskChecklistModel) handleNormalKey(key string) tea.Cmd {
 		m.moveCursorDown()
 	case "k", "up":
 		m.moveCursorUp()
-	case "g":
-		m.pendingPrefix = "g"
+	case "home":
+		m.cursor = 0
 	case "G":
 		m.moveCursorBottom()
 	case "a", "n":

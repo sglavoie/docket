@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -37,8 +36,8 @@ func buildWorkflowStateFixture(t *testing.T) *models.Project {
 		return task
 	}
 
-	add("inbox", func(tk *models.Task) { tk.SetSection(models.SectionInbox) })
-	add("next", func(tk *models.Task) { tk.SetSection(models.SectionNext) })
+	add("inbox", func(tk *models.Task) { tk.ApplyWorkflowState(models.StateInbox) })
+	add("next", func(tk *models.Task) { tk.ApplyWorkflowState(models.StateNext) })
 	add("ready", nil) // default state derives to StateReady
 	add("in_progress", func(tk *models.Task) { tk.WorkflowState = models.StateInProgress })
 	add("waiting", func(tk *models.Task) { tk.WorkflowState = models.StateWaiting })
@@ -104,24 +103,6 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 		if passesCommonFilters(task, &filter, project, nil) {
 			t.Errorf("explicit empty state set unexpectedly matched task %q", task.ID)
 		}
-	}
-}
-
-func TestHandleFilterStateKeyTogglesMultiStateSet(t *testing.T) {
-	filter := newFilterState()
-	if !handleFilterStateKey("i", &filter) || !handleFilterStateKey("n", &filter) {
-		t.Fatal("state keys should be handled")
-	}
-	if got, want := filter.States.Values(), []models.WorkflowState{models.StateInbox, models.StateNext}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("toggled states = %v, want %v", got, want)
-	}
-	handleFilterStateKey("i", &filter)
-	if got, want := filter.States.Values(), []models.WorkflowState{models.StateNext}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("states after toggling Inbox off = %v, want %v", got, want)
-	}
-	handleFilterStateKey("n", &filter)
-	if filter.hasStateFilter() {
-		t.Fatalf("toggling the final state off left active filter %v", filter.States.Values())
 	}
 }
 

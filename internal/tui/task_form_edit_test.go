@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -35,82 +33,18 @@ func TestTaskForm_EditMode_LoadsBugAttrs(t *testing.T) {
 	}
 }
 
-func TestTaskFormEdit_NonGTDSectionIgnoredInDraft(t *testing.T) {
+func TestTaskFormEdit_CanonicalStatePreservedInDraft(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	cfg := newTestConfig()
 	if len(project.Tasks) == 0 {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
-	task.SetSection("Sprint-1")
-	if sec := models.SectionForState(task.State()); sec != "" {
-		t.Fatalf("precondition: expected Section=\"\", got %q", sec)
-	}
+	task.ApplyWorkflowState(models.StateWaiting)
 
 	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	if m.draft.section != "" {
-		t.Errorf("expected draft.section empty, got %q", m.draft.section)
-	}
-}
-
-func TestTaskFormEdit_GTDSection_PreservedInDraft(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.SetSection("Waiting")
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	if m.draft.section != "Waiting" {
-		t.Errorf("expected draft.section=%q, got %q", "Waiting", m.draft.section)
-	}
-}
-
-func TestTaskFormEdit_ActiveSection_PreservedInDraft(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.SetSection("")
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	if m.draft.section != "" {
-		t.Errorf("expected draft.section=\"\" (Active), got %q", m.draft.section)
-	}
-}
-
-func TestTaskFormEdit_NonGTDSectionIgnoredRoundTrip(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	project.EnsureSection("Sprint-1")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.SetSection("Sprint-1")
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-
-	tmpDir := t.TempDir()
-	project.Path = tmpDir
-	if err := os.WriteFile(filepath.Join(tmpDir, "tasks.md"), []byte("# Test Project\n"), 0o644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	cmd := m.handleSave()
-	if m.err != nil {
-		t.Fatalf("handleSave error: %v", m.err)
-	}
-	if cmd == nil {
-		t.Fatal("expected non-nil cmd from handleSave")
-	}
-
-	if sec := models.SectionForState(task.State()); sec != "" {
-		t.Errorf("expected task.Section empty after save, got %q", sec)
+	if m.draft.state != models.StateWaiting {
+		t.Errorf("expected draft.state=%q, got %q", models.StateWaiting, m.draft.state)
 	}
 }
 

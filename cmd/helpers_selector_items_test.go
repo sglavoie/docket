@@ -65,7 +65,7 @@ func TestTasksToSelectorItems(t *testing.T) {
 		}
 		items := TasksToSelectorItems([]*models.Task{task})
 
-		expectedHeaders := []string{"ID", "Type", "Status", "Title"}
+		expectedHeaders := []string{"ID", "Type", "State", "Title"}
 		for i, h := range expectedHeaders {
 			if items[0].Headers[i] != h {
 				t.Errorf("Headers[%d] = %q, want %q", i, items[0].Headers[i], h)

@@ -52,7 +52,6 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 	}
 	project.Tasks = []*models.Task{task, related}
 	project.NextShortID = 3
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
 	repo := newScenarioRepo(commitService, project)
@@ -117,7 +116,6 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 		persister:            NewProjectService(),
 		appService:           service,
 		views:                views,
-		viewStack:            []PresentationID{activeType},
 		width:                80,
 		height:               40,
 		currentProject:       project,
@@ -128,6 +126,7 @@ func newNoteLedgerReconcileEnv(t *testing.T, global bool) *noteLedgerReconcileEn
 		recentTaskVisits:     []RecentTaskVisitEntry{{Task: task, Project: project}},
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 	}
+	setTestPresentationPath(shell, activeType)
 
 	// NotesSearchModel also loads the project while building its linked-task
 	// preview cache, so resolve the canonical pointers one final time immediately

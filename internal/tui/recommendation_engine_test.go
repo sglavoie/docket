@@ -79,7 +79,7 @@ func TestRecommendOverdueBeatsEverythingElse(t *testing.T) {
 	plannedID := config.DailyPlanItem{TaskID: planned.ID, ProjectID: project.ID, PlannedDate: todayKeyFromNow()}
 
 	inbox := newEngineTask(t, project, "InboxItem")
-	inbox.SetSection(models.SectionInbox)
+	inbox.ApplyWorkflowState(models.StateInbox)
 
 	got := Recommend(RecommendationEngineInput{
 		Projects:  []*models.Project{project},
@@ -171,7 +171,7 @@ func TestRecommendCarriedOverReasonSurfaced(t *testing.T) {
 func TestRecommendInboxOnlyReturnsTriageInbox(t *testing.T) {
 	project := newEngineProject(t, "P")
 	inbox := newEngineTask(t, project, "Unprocessed")
-	inbox.SetSection(models.SectionInbox)
+	inbox.ApplyWorkflowState(models.StateInbox)
 
 	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
@@ -241,7 +241,7 @@ func TestRecommendInboxPreemptsHighPriorityActionable(t *testing.T) {
 	highPri.Priority = 1
 
 	inboxTask := newEngineTask(t, project, "New idea")
-	inboxTask.SetSection(models.SectionInbox)
+	inboxTask.ApplyWorkflowState(models.StateInbox)
 
 	got := Recommend(RecommendationEngineInput{
 		Projects: []*models.Project{project},
@@ -259,7 +259,7 @@ func TestRecommendBlockedPreemptsInboxAndHighPriorityActionable(t *testing.T) {
 	highPri.Priority = 1
 
 	inboxTask := newEngineTask(t, project, "New idea")
-	inboxTask.SetSection(models.SectionInbox)
+	inboxTask.ApplyWorkflowState(models.StateInbox)
 
 	blocked := newEngineTask(t, project, "Blocked decision")
 	blocked.WorkflowState = models.StateWaiting
@@ -354,7 +354,7 @@ func TestRecommendSnoozedTasksExcluded(t *testing.T) {
 	snoozedActionable.SnoozedUntil = &until
 
 	snoozedInbox := newEngineTask(t, project, "Snoozed inbox")
-	snoozedInbox.SetSection(models.SectionInbox)
+	snoozedInbox.ApplyWorkflowState(models.StateInbox)
 	snoozedInbox.SnoozedUntil = &until
 
 	snoozedBlocked := newEngineTask(t, project, "Snoozed blocked")
@@ -594,12 +594,12 @@ func TestRecommendInboxPriorityBeatsCreatedAt(t *testing.T) {
 	project := newEngineProject(t, "P")
 
 	oldLow := newEngineTask(t, project, "Old low pri")
-	oldLow.SetSection(models.SectionInbox)
+	oldLow.ApplyWorkflowState(models.StateInbox)
 	oldLow.Priority = 4
 	oldLow.CreatedAt = engineNow.Add(-48 * time.Hour)
 
 	newHigh := newEngineTask(t, project, "New high pri")
-	newHigh.SetSection(models.SectionInbox)
+	newHigh.ApplyWorkflowState(models.StateInbox)
 	newHigh.Priority = 1
 	newHigh.CreatedAt = engineNow.Add(-1 * time.Hour)
 

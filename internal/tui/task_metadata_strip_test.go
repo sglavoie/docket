@@ -50,8 +50,8 @@ func TestTaskMetadataStripEmptyMetadata(t *testing.T) {
 		Priority:      0, // suppressed: only 1–5 render
 	}
 	got := renderTaskMetadataStrip(TaskMetadataStripOpts{Task: task})
-	if got != "" {
-		t.Errorf("expected empty strip when task carries no renderable metadata, got %q", got)
+	if !strings.Contains(got, "Backlog") {
+		t.Errorf("expected canonical state group in metadata strip, got %q", got)
 	}
 }
 

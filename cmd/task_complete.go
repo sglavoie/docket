@@ -37,17 +37,6 @@ Examples:
 	RunE: runTaskStart,
 }
 
-var taskBlockCmd = &cobra.Command{
-	Use:   "block [id...]",
-	Short: "Mark task(s) as blocked",
-	Long: `Mark one or more tasks as blocked.
-
-Examples:
-  tt task block 5
-  tt task block 1 2 3`,
-	RunE: runTaskBlock,
-}
-
 var taskCancelCmd = &cobra.Command{
 	Use:   "cancel [id...]",
 	Short: "Cancel task(s)",
@@ -62,7 +51,7 @@ Examples:
 var taskReopenCmd = &cobra.Command{
 	Use:   "reopen [id...]",
 	Short: "Reopen completed task(s)",
-	Long: `Set one or more tasks back to todo status.
+	Long: `Reopen one or more terminal tasks in Inbox for triage.
 
 Examples:
   tt task reopen 5
@@ -81,41 +70,15 @@ Examples:
 	RunE: runTaskReview,
 }
 
-var taskStandbyCmd = &cobra.Command{
-	Use:   "standby [id...]",
-	Short: "Put task(s) on standby",
-	Long: `Put one or more tasks on standby (paused, on hold).
-
-Examples:
-  tt task standby 5
-  tt task standby 1 2 3`,
-	RunE: runTaskStandby,
-}
-
-var taskMaybeCmd = &cobra.Command{
-	Use:   "maybe [id...]",
-	Short: "Mark task(s) as maybe",
-	Long: `Mark one or more tasks as maybe (considering but not committed).
-
-Examples:
-  tt task maybe 5
-  tt task maybe 1 2 3`,
-	RunE: runTaskMaybe,
-}
-
 func init() {
 	taskCmd.AddCommand(taskCompleteCmd)
 	taskCmd.AddCommand(taskStartCmd)
-	taskCmd.AddCommand(taskBlockCmd)
 	taskCmd.AddCommand(taskCancelCmd)
 	taskCmd.AddCommand(taskReopenCmd)
 	taskCmd.AddCommand(taskReviewCmd)
-	taskCmd.AddCommand(taskStandbyCmd)
-	taskCmd.AddCommand(taskMaybeCmd)
 
 	for _, sub := range []*cobra.Command{
-		taskCompleteCmd, taskStartCmd, taskBlockCmd, taskCancelCmd,
-		taskReopenCmd, taskReviewCmd, taskStandbyCmd, taskMaybeCmd,
+		taskCompleteCmd, taskStartCmd, taskCancelCmd, taskReopenCmd, taskReviewCmd,
 	} {
 		addOutputFlags(sub)
 	}
@@ -127,9 +90,6 @@ func runTaskComplete(cmd *cobra.Command, args []string) error {
 func runTaskStart(cmd *cobra.Command, args []string) error {
 	return runStateCommand(cmd, args, "start")
 }
-func runTaskBlock(cmd *cobra.Command, args []string) error {
-	return runStateCommand(cmd, args, "block")
-}
 func runTaskCancel(cmd *cobra.Command, args []string) error {
 	return runStateCommand(cmd, args, "cancel")
 }
@@ -139,54 +99,27 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 func runTaskReview(cmd *cobra.Command, args []string) error {
 	return runStateCommand(cmd, args, "review")
 }
-func runTaskStandby(cmd *cobra.Command, args []string) error {
-	return runStateCommand(cmd, args, "standby")
-}
-func runTaskMaybe(cmd *cobra.Command, args []string) error {
-	return runStateCommand(cmd, args, "maybe")
-}
 
-// actionToTargetStatus maps CLI action names to the target TaskStatus.
-var actionToTargetStatus = map[string]models.TaskStatus{
-	"complete": models.StatusDone,
-	"start":    models.StatusInProgress,
-	"block":    models.StatusBlocked,
-	"cancel":   models.StatusCanceled,
-	"reopen":   models.StatusTodo,
-	"review":   models.StatusReview,
-	"standby":  models.StatusStandby,
-	"maybe":    models.StatusMaybe,
-}
-
-// actionToState maps a legacy CLI action name to the workflow state the
-// application-layer Transition use case moves the task to. block maps to waiting
-// and standby to paused/someday under the unified WorkflowState vocabulary;
-// reopen returns the task to inbox.
+// actionToState maps a semantic CLI action name to its canonical workflow state.
 var actionToState = map[string]models.WorkflowState{
 	"complete": models.StateDone,
 	"start":    models.StateInProgress,
-	"block":    models.StateWaiting,
 	"cancel":   models.StateCanceled,
 	"reopen":   models.StateInbox,
 	"review":   models.StateReview,
-	"standby":  models.StatePaused,
-	"maybe":    models.StateSomeday,
 }
 
 // actionVerbs maps a CLI action to the past-tense verb shown in human output.
 var actionVerbs = map[string]string{
 	"complete": "Completed",
 	"start":    "Started",
-	"block":    "Blocked",
 	"cancel":   "Canceled",
 	"reopen":   "Reopened",
 	"review":   "Set to review",
-	"standby":  "Set to standby",
-	"maybe":    "Set to maybe",
 }
 
-// runStateCommand routes a legacy status command through the application layer's
-// Transition use case. It preserves the legacy UX — explicit references or an
+// runStateCommand routes a semantic command through the application layer's
+// Transition use case. It preserves the UX — explicit references or an
 // interactive selector, per-task error aggregation, and the recurring-instance
 // notice on completion — while the mutation itself commits atomically,
 // revision-checked, and undoably through app.Service. The workflow guards
@@ -256,19 +189,19 @@ func runStateCommand(cmd *cobra.Command, args []string, action string) error {
 }
 
 // selectStateTarget opens the interactive selector for a state command invoked
-// with no explicit reference. It lists only tasks in the current project whose
-// legacy status can validly transition to the action's target and returns the
-// chosen task's project-qualified UUID.
+// with no explicit reference. It lists only tasks in the current project that
+// can transition to the action's target state and returns the chosen task's
+// project-qualified UUID.
 func selectStateTarget(action string) (string, error) {
 	project, _, err := LoadRuntimeCurrentProject()
 	if err != nil {
 		return "", err
 	}
 
-	targetStatus := actionToTargetStatus[action]
+	targetState := actionToState[action]
 	var candidates []*models.Task
 	for _, t := range project.Tasks {
-		if t.CanTransitionTo(targetStatus) == "" {
+		if models.CanTransitionState(t.State(), targetState) == "" {
 			candidates = append(candidates, t)
 		}
 	}

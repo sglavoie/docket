@@ -209,9 +209,6 @@ func TestNavigateToTaskPromptsThenEscLandsOnTarget(t *testing.T) {
 	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("currentView after skip = %v, want ViewCrossProjectOutliner", app.currentView())
 	}
-	if app.outliner != nil {
-		t.Fatal("deep-link navigation must not construct a separate AppModel.outliner root")
-	}
 	if got := app.crossOutliner.scopedProjectID; got != project.ID {
 		t.Fatalf("scopedProjectID after skip = %q, want %q", got, project.ID)
 	}
@@ -252,7 +249,7 @@ func newParkPromptTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 	cross.SetSize(app.width, app.height-2)
 	app.crossOutliner = cross
 	app.views.Register(ViewCrossProjectOutliner, cross)
-	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
+	setTestPresentationPath(app, ViewDashboard, ViewCrossProjectOutliner)
 
 	return app, project, source, target
 }

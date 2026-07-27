@@ -16,6 +16,7 @@ const (
 	formOverlayNone          formOverlayKind = iota
 	formOverlayType                          // formTypePicker
 	formOverlayPriority                      // formPriorityPicker
+	formOverlayState                         // formStatePicker
 	formOverlayFlags                         // formFlagsPicker
 	formOverlayDue                           // formDueDatePicker
 	formOverlayAttr                          // formAttrPicker (generic type-attr picker)
@@ -38,6 +39,10 @@ func (m *TaskFormModel) renderFormOverlay() string {
 	case formOverlayPriority:
 		if m.priorityPicker != nil {
 			return m.priorityPicker.render(m.width, m.draft.priority)
+		}
+	case formOverlayState:
+		if m.statePicker != nil {
+			return m.statePicker.render(m.width, m.draft.state)
 		}
 	case formOverlayFlags:
 		if m.flagsPicker != nil {
@@ -75,6 +80,10 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	case formOverlayPriority:
 		if m.priorityPicker != nil {
 			cmd, dismiss, result = m.priorityPicker.handleKey(msg)
+		}
+	case formOverlayState:
+		if m.statePicker != nil {
+			cmd, dismiss, result = m.statePicker.handleKey(msg)
 		}
 	case formOverlayFlags:
 		if m.flagsPicker != nil {
@@ -136,6 +145,7 @@ func (m *TaskFormModel) closeInlineOverlay() {
 	m.activeOverlay = formOverlayNone
 	m.typePicker = nil
 	m.priorityPicker = nil
+	m.statePicker = nil
 	m.flagsPicker = nil
 	m.duePicker = nil
 	m.attrPicker = nil
@@ -176,6 +186,10 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 		m.applyTypeChange(msg.Type)
 	case TaskFormPriorityPickedMsg:
 		m.draft.priority = msg.Priority
+		m.hasChanges = true
+		m.err = nil
+	case TaskFormStatePickedMsg:
+		m.draft.state = msg.State
 		m.hasChanges = true
 		m.err = nil
 	case TaskFormFlagsPickedMsg:

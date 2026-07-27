@@ -45,21 +45,3 @@ func sortCrossProjectTasksByProjectDisplayOrder(tasks []CrossProjectTask) {
 		return compareProjectsByDisplayOrder(tasks[i].Project, tasks[j].Project) < 0
 	})
 }
-
-func sortProjectTaskGroupsByProjectDisplayOrder(groups []projectTasksGroup, projects []*models.Project) {
-	projectsByID := projectDisplayLookupByID(projects)
-	sort.SliceStable(groups, func(i, j int) bool {
-		return compareProjectsByDisplayOrder(projectsByID[groups[i].projectID], projectsByID[groups[j].projectID]) < 0
-	})
-}
-
-func projectDisplayLookupByID(projects []*models.Project) map[string]*models.Project {
-	projectsByID := make(map[string]*models.Project, len(projects))
-	for _, project := range projects {
-		if project == nil || project.ID == "" {
-			continue
-		}
-		projectsByID[project.ID] = project
-	}
-	return projectsByID
-}

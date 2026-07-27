@@ -274,7 +274,7 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 	// mirroring the retired rule that custom grouping now lives in tags.
 	if !state.stateSeen {
 		section := state.legacy.section
-		if section != "" && !models.IsGTDSection(section) {
+		if section != "" && !isLegacyGTDSection(section) {
 			*warnings = append(*warnings, ParseWarning{
 				Type:  WarningDataCorrection,
 				Field: "section",
@@ -286,7 +286,7 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 			})
 			section = ""
 		}
-		task.WorkflowState = models.DeriveWorkflowState(state.legacy.status, section, state.legacy.stage)
+		task.WorkflowState = deriveLegacyWorkflowState(state.legacy.status, section, state.legacy.stage)
 	}
 }
 
@@ -294,7 +294,7 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 // carried, for the loader-level migration audit. All fields are zero and Present
 // is false for a schema-v2 (`state:`) document, which carries none of these keys.
 type LegacyLifecycle struct {
-	Status  models.TaskStatus
+	Status  string
 	Section string
 	Stage   string
 	Present bool // any retained lifecycle key (status/section/stage) was seen
@@ -302,7 +302,7 @@ type LegacyLifecycle struct {
 
 func legacyLifecycleFrom(state *metadataParseState) LegacyLifecycle {
 	return LegacyLifecycle{
-		Status:  state.legacy.status,
+		Status:  string(state.legacy.status),
 		Section: state.legacy.section,
 		Stage:   state.legacy.stage,
 		Present: state.legacy.statusSeen || state.legacy.sectionSeen ||

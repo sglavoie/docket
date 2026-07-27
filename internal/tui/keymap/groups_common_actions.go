@@ -27,21 +27,26 @@ type CommonTaskActionDeps struct {
 func CommonTaskActionGroup(deps CommonTaskActionDeps) []Entry {
 	cat := "Task Actions"
 	entries := []Entry{
-		Bind("o", "View task details", cat, deps.ViewTask),
+		Bind("o", "View task details", cat, deps.ViewTask,
+			WithOperationID("tui.command.view.task.details")),
 		Bind("Z", "Snooze date picker", cat, deps.SnoozeDatePicker),
 		Bind("D", "Mark done", cat, deps.MarkDone),
-		Bind("e", "Edit task", cat, deps.EditTask),
+		Bind("e", "Edit task", cat, deps.EditTask,
+			WithOperationID("tui.command.edit.task")),
 		Bind("?", "Toggle help", cat, deps.ToggleHelp),
-		Bind("S", "Edit score dimensions", cat, deps.EditScore),
+		Bind("S", "Edit score dimensions", cat, deps.EditScore,
+			WithOperationID("tui.command.score.editor")),
 	}
 	if deps.OpenURL != nil {
 		entries = append(entries, Bind("O", "Open URL in browser", cat, deps.OpenURL))
 	}
 	if deps.MoveToProject != nil {
-		entries = append(entries, Bind("ctrl+b", "Move task to project", cat, deps.MoveToProject))
+		entries = append(entries, Bind("ctrl+b", "Move task to project", cat, deps.MoveToProject,
+			WithOperationID("tui.command.move.to.project")))
 	}
 	if deps.QuickNote != nil {
-		entries = append(entries, Bind("ctrl+.", "Quick note on task", cat, deps.QuickNote))
+		entries = append(entries, Bind("ctrl+.", "Quick note on task", cat, deps.QuickNote,
+			WithOperationID("tui.command.quick.note")))
 	}
 	return entries
 }

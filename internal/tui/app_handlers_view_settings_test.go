@@ -30,8 +30,8 @@ func TestHandleViewMessagesSettingsSaved(t *testing.T) {
 	if !handled {
 		t.Error("SettingsSavedMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after settings saved, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after settings saved, got %v", app.currentView())
 	}
 }
 
@@ -59,8 +59,8 @@ func TestHandleViewMessagesCloseHelp(t *testing.T) {
 
 	app.Update(CloseHelpMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing help, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing help, got %v", app.currentView())
 	}
 }
 
@@ -99,8 +99,8 @@ func TestHandleViewMessagesWorkflowRuleCreated(t *testing.T) {
 	if !handled {
 		t.Error("WorkflowRuleCreatedMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after rule created, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after rule created, got %v", app.currentView())
 	}
 }
 
@@ -114,16 +114,16 @@ func TestHandleViewMessagesWorkflowRuleEdited(t *testing.T) {
 	if !handled {
 		t.Error("WorkflowRuleEditedMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after rule edited, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after rule edited, got %v", app.currentView())
 	}
 }
 
 func TestHandleViewMessagesShowFilter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.outliner = NewOutlinerModel(project, nil, app.runtime)
+	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
 
-	msg := ShowFilterMsg{CommonFilter: &app.outliner.filter.CommonFilterState, Project: project}
+	msg := ShowFilterMsg{CommonFilter: &app.crossOutliner.filter.CommonFilterState, Project: project}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
@@ -140,8 +140,8 @@ func TestHandleViewMessagesCloseFilter(t *testing.T) {
 
 	app.Update(CloseFilterMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing filter, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing filter, got %v", app.currentView())
 	}
 }
 
@@ -190,8 +190,8 @@ func TestHandleViewMessagesCloseNotificationCenter(t *testing.T) {
 
 	app.Update(CloseNotificationCenterMsg{})
 
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing notification center, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after closing notification center, got %v", app.currentView())
 	}
 }
 
@@ -219,8 +219,8 @@ func TestHandleViewMessagesFilterBuilderSaved(t *testing.T) {
 	if !handled {
 		t.Error("FilterBuilderSavedMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after filter builder saved, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after filter builder saved, got %v", app.currentView())
 	}
 }
 
@@ -235,8 +235,8 @@ func TestHandleViewMessagesTemplatePickerDoneCanceled(t *testing.T) {
 	if !handled {
 		t.Error("TemplatePickerDoneMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after canceled template picker, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after canceled template picker, got %v", app.currentView())
 	}
 	if app.pendingCreateTaskParent != nil {
 		t.Error("pendingCreateTaskParent should be cleared after canceling template picker")

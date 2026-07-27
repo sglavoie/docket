@@ -58,7 +58,7 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 		if !child.HasTag("backend") {
 			t.Errorf("subtask tags = %v, want inherited backend", child.Tags)
 		}
-		if got := models.SectionForState(child.State()); got != models.SectionNext {
+		if got := child.State(); got != models.StateNext {
 			t.Errorf("subtask section = %q, want Next", got)
 		}
 	}
@@ -125,7 +125,7 @@ func TestAddTaskWithChildrenAppliesFormFields(t *testing.T) {
 // a new root task before the first dimmed root task in the same display section.
 func TestAddTaskWithChildrenInsertBeforeDimmed(t *testing.T) {
 	dimmed := newTask("dimmed-1", 1, "Dimmed")
-	dimmed.SetSection(models.SectionNext)
+	dimmed.ApplyWorkflowState(models.StateNext)
 	dimmed.Dimmed = true
 	project := newProject("proj-1", "Proj", dimmed)
 	repo := newFakeRepo(project)
@@ -163,6 +163,7 @@ func TestEditFormReplacesFullFieldSet(t *testing.T) {
 	project := newProject("proj-1", "Proj", task)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
+	state := models.StateNext
 
 	res, err := svc.Edit(app.EditRequest{
 		TaskID: task.ID,
@@ -170,12 +171,12 @@ func TestEditFormReplacesFullFieldSet(t *testing.T) {
 			Title:    "After",
 			Type:     models.TaskTypeTask,
 			Priority: 1,
-			Section:  models.SectionNext,
 			Tags:     []string{"x"},
 			TaskAttrs: &models.TaskAttrs{
 				Effort: models.EffortSmall,
 			},
 		},
+		WorkflowState: &state,
 	})
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
@@ -226,7 +227,7 @@ func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
 		_, err := svc.Edit(app.EditRequest{
 			TaskID: task.ID,
 			Form: &app.FormEdit{
-				Title: "After", Type: models.TaskTypeTask, Priority: 3, Section: "", Tags: []string{},
+				Title: "After", Type: models.TaskTypeTask, Priority: 3, Tags: []string{},
 			},
 			WorkflowState: &state,
 		})
@@ -247,7 +248,7 @@ func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
 		_, err := svc.Edit(app.EditRequest{
 			TaskID: task.ID,
 			Form: &app.FormEdit{
-				Title: "Done", Type: models.TaskTypeTask, Priority: 3, Section: models.SectionCompleted, Tags: []string{},
+				Title: "Done", Type: models.TaskTypeTask, Priority: 3, Tags: []string{},
 			},
 			WorkflowState: &state,
 		})

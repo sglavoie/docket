@@ -13,7 +13,7 @@ import (
 
 func TestUITestFixtureNames(t *testing.T) {
 	got := BuiltinFixtureNames()
-	want := []string{"alerts", "contexts", "empty", "fresh", "narrow", "rich", "workflow"}
+	want := []string{"alerts", "contexts", "empty", "fresh", "narrow", "release", "rich", "workflow"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuiltinFixtureNames() = %v, want %v", got, want)
 	}
@@ -137,8 +137,8 @@ func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	targetCount := len(target.Tasks)
 	inboxCount := len(inbox.Tasks)
 
-	driver.dispatch(ShowQuickCaptureMsg{Project: target, AllProjects: driver.App().activeProjects()})
-	if driver.App().currentView() != ViewQuickCapture {
+	driver.dispatch(driver.App().captureComposerMessage(target, driver.App().activeProjects()))
+	if driver.App().currentView() != ViewTaskComposer {
 		t.Fatalf("current view = %s, want QuickCapture", driver.App().currentView())
 	}
 	const title = "Contextual capture stays with Rich Project"
@@ -175,8 +175,8 @@ func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	if captured == nil {
 		t.Fatalf("captured task %q not found in target project", title)
 	}
-	if models.SectionForState(captured.State()) != models.SectionInbox {
-		t.Fatalf("captured task section = %q, want Inbox", models.SectionForState(captured.State()))
+	if captured.State() != models.StateInbox {
+		t.Fatalf("captured task section = %q, want Inbox", captured.State())
 	}
 	for _, task := range inbox.Tasks {
 		if task.Title == title {

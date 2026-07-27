@@ -238,7 +238,6 @@ func TestResetSandboxClearsEverything(t *testing.T) {
 	project.Sandbox = true
 	project.Tags = []string{"catalog"}
 	project.PinnedTags = []string{"catalog"}
-	project.SectionColors = map[string]string{models.SectionNext: "blue"}
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -257,11 +256,8 @@ func TestResetSandboxClearsEverything(t *testing.T) {
 	if len(committed.Tasks) != 0 || committed.NextShortID != 1 {
 		t.Fatalf("project not cleared: tasks=%d nextShortID=%d", len(committed.Tasks), committed.NextShortID)
 	}
-	if len(committed.Tags) != 0 || len(committed.PinnedTags) != 0 || len(committed.SectionColors) != 0 {
-		t.Fatal("tags/pinned tags/section colors must be cleared")
-	}
-	if len(committed.Sections) != 1 || committed.Sections[0] != models.SectionNext {
-		t.Fatalf("Sections = %v, want [Next]", committed.Sections)
+	if len(committed.Tags) != 0 || len(committed.PinnedTags) != 0 {
+		t.Fatal("tags and pinned tags must be cleared")
 	}
 }
 

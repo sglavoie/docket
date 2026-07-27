@@ -40,18 +40,6 @@ func (m *ScoreProfileManagerModel) HandledKeys() []string {
 func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	if m.pendingPrefix != "" && isModifierOnly(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		prefix := m.pendingPrefix
-		m.pendingPrefix = ""
-		if key != "esc" && prefix == "g" && key == "g" {
-			m.cursor = 0
-		}
-		return m, nil
-	}
-
 	switch key {
 	case "esc":
 		return m, func() tea.Msg {
@@ -70,8 +58,8 @@ func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Mode
 		}
 		return m, nil
 
-	case "g":
-		m.pendingPrefix = "g"
+	case "home":
+		m.cursor = 0
 		return m, nil
 
 	case "G":

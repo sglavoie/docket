@@ -483,10 +483,7 @@ func completedAtForSummary(task *models.Task) *time.Time {
 func firstStartedAt(task *models.Task) *time.Time {
 	var first *time.Time
 	for _, entry := range task.Activity {
-		// Newer entries record workflow-state moves under "state"; entries
-		// written before the state migration used "status". The in_progress
-		// value string is identical in both models.
-		if entry == nil || (entry.Field != "state" && entry.Field != "status") || entry.NewValue != string(models.StatusInProgress) {
+		if entry == nil || entry.Field != "state" || entry.NewValue != string(models.StateInProgress) {
 			continue
 		}
 		if first == nil || entry.Timestamp.Before(*first) {

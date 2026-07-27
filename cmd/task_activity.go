@@ -20,7 +20,7 @@ var taskActivityCmd = &cobra.Command{
 	Short:   "Show task activity log",
 	Long: `Show the activity log for a task, displaying field changes over time.
 
-The activity log records changes to status, priority, section, tags, due date,
+The activity log records changes to state, priority, tags, due date,
 title, and other fields. Entries are shown in reverse chronological order.
 
 Examples:

@@ -244,9 +244,8 @@ func TestRenderTutorContentSampledAlignedRows(t *testing.T) {
 		title string
 		row   string
 	}{
-		{"Quick Capture Grammar", "    @date       Due date: @tomorrow @friday @+3d"},
-		{"Quick Capture Grammar", "    ^type       Task type: ^epic ^story ^task ^bug ^idea"},
-		{"Bulk Operations", "  ,s  Start all selected"},
+		{"Task Composer Grammar", "    @date       Due date: @tomorrow @friday @+3d"},
+		{"Task Composer Grammar", "    ^type       Task type: ^epic ^story ^task ^bug ^idea"},
 		{"Attachments", "  tt attach 5 src/main.go:42      # Code reference (opens in IDE)"},
 	}
 

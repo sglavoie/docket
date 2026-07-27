@@ -38,7 +38,7 @@ func TestSandboxResetTUISuccessReloadsCacheOnlyAfterDoneMessage(t *testing.T) {
 	if len(project.Tasks) != 0 || project.NextShortID != 1 || len(project.Tags) != 0 || len(project.PinnedTags) != 0 {
 		t.Fatalf("cache was not reloaded to committed reset: %+v", project)
 	}
-	if shell.statusMessage != "Cleared 7 item(s) from sandbox" {
+	if shell.statusMessage != "Cleared 6 item(s) from sandbox" {
 		t.Fatalf("status = %q, want committed count", shell.statusMessage)
 	}
 }
@@ -77,10 +77,6 @@ func TestSandboxResetTUIFailurePreservesDiskAndCache(t *testing.T) {
 	if len(fresh.Tasks) != 1 || fresh.NextShortID != 2 || len(fresh.Tags) != 1 || len(fresh.PinnedTags) != 1 {
 		t.Fatalf("sandbox disk state changed after failed reset: %+v", fresh)
 	}
-	if len(fresh.SectionColors) != 0 {
-		t.Fatalf("canonical disk load hydrated legacy section colors: %v", fresh.SectionColors)
-	}
-
 	handled, cmd := shell.handleProjectMessages(failed)
 	if !handled || cmd == nil {
 		t.Fatalf("failure handled=%v cmd=%v, want handled status timeout", handled, cmd)
@@ -117,7 +113,6 @@ func newSandboxResetTUIFixture(t *testing.T, commitErr error) (*AppModel, *model
 	project.NextShortID = 2
 	project.Tags = []string{"catalog"}
 	project.PinnedTags = []string{"catalog"}
-	project.SectionColors = map[string]string{models.SectionNext: "blue"}
 
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
@@ -151,7 +146,7 @@ func newSandboxResetTUIFixture(t *testing.T, commitErr error) (*AppModel, *model
 
 func assertSandboxResetTUICacheIntact(t *testing.T, project *models.Project) {
 	t.Helper()
-	if len(project.Tasks) != 1 || project.NextShortID != 2 || len(project.Tags) != 1 || len(project.PinnedTags) != 1 || len(project.SectionColors) != 1 {
+	if len(project.Tasks) != 1 || project.NextShortID != 2 || len(project.Tags) != 1 || len(project.PinnedTags) != 1 {
 		t.Fatalf("sandbox state changed before successful Update reload: %+v", project)
 	}
 }
@@ -162,7 +157,7 @@ func assertSandboxResetTUIDiskCleared(t *testing.T, project *models.Project, not
 	if err := storage.LoadProject(fresh); err != nil {
 		t.Fatalf("LoadProject after reset: %v", err)
 	}
-	if len(fresh.Tasks) != 0 || fresh.NextShortID != 1 || len(fresh.Tags) != 0 || len(fresh.PinnedTags) != 0 || len(fresh.SectionColors) != 0 {
+	if len(fresh.Tasks) != 0 || fresh.NextShortID != 1 || len(fresh.Tags) != 0 || len(fresh.PinnedTags) != 0 {
 		t.Fatalf("committed sandbox was not cleared: %+v", fresh)
 	}
 	if _, err := os.Stat(notePath); !os.IsNotExist(err) {

@@ -24,11 +24,10 @@ func TestParseQuickCaptureEmbeddedTokenLiterals(t *testing.T) {
 			wantSection:  "",
 		},
 		{
-			name:         "space before slash triggers section",
+			name:         "space before slash remains title text",
 			input:        "Fix bug /Next",
-			wantTitle:    "Fix bug",
+			wantTitle:    "Fix bug /Next",
 			wantPriority: 3,
-			wantSection:  "Next",
 		},
 		{
 			name:         "embedded hash should not trigger tag",
@@ -78,11 +77,10 @@ func TestParseQuickCaptureEmbeddedTokenLiterals(t *testing.T) {
 			wantParentID: nil,
 		},
 		{
-			name:         "second section sigil preserved in title not silently dropped",
+			name:         "all section sigils remain title text",
 			input:        "Fix bug /Next /Backlog",
-			wantTitle:    "Fix bug /Backlog",
+			wantTitle:    "Fix bug /Next /Backlog",
 			wantPriority: 3,
-			wantSection:  "Next",
 		},
 	})
 }

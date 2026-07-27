@@ -59,9 +59,6 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 	if task.State() != models.StateInProgress {
 		t.Errorf("state = %q, want in_progress", task.State())
 	}
-	if got := models.SectionForState(task.State()); got != "" {
-		t.Errorf("section = %q, want empty (in-progress auto-triage)", got)
-	}
 	// Prepend places the new task at the front.
 	if project.Tasks[0].ID != res.TaskID {
 		t.Errorf("prepended task not first: %q", project.Tasks[0].Title)
@@ -69,8 +66,7 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 }
 
 // TestService_Capture_DefaultInboxState verifies that a captured task with an
-// omitted state defaults to Inbox, and that the Inbox
-// section is ensured with its red highlight color.
+// omitted state defaults to Inbox.
 func TestService_Capture_DefaultInboxState(t *testing.T) {
 	project := newProject("proj-1", "Proj")
 	repo := newFakeRepo(project)
@@ -89,9 +85,6 @@ func TestService_Capture_DefaultInboxState(t *testing.T) {
 	}
 	if task.State() != models.StateInbox {
 		t.Errorf("state = %q, want inbox", task.State())
-	}
-	if got := project.SectionColors[models.SectionInbox]; got != "red" {
-		t.Errorf("Inbox color = %q, want red", got)
 	}
 }
 

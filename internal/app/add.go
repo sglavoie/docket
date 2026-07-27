@@ -33,8 +33,7 @@ type AddTaskRequest struct {
 	// Description is optional free-form body text.
 	Description string
 	// State is the task's initial canonical workflow state. Empty defaults to
-	// Inbox; compatibility adapters must explicitly request StateReady while
-	// their visible legacy creation surfaces still default to the active bucket.
+	// Inbox.
 	State models.WorkflowState
 	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
 	// task.SetRecurrence (which populates derived fields such as OriginalDay).
@@ -293,7 +292,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 			return TaskRef{}, "", invalidInput("recurrence", err.Error())
 		}
 	}
-	if err := s.initializeCreatedTask(project, task, normalized.state); err != nil {
+	if err := s.initializeCreatedTask(task, normalized.state); err != nil {
 		return TaskRef{}, "", err
 	}
 	if parent != nil {
@@ -350,7 +349,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	}
 
 	if req.InsertBeforeDimmed {
-		project.Tasks = insertBeforeDimmedInSection(project.Tasks, task)
+		project.Tasks = insertBeforeDimmedInState(project.Tasks, task)
 	} else {
 		project.Tasks = append(project.Tasks, task)
 	}
@@ -388,7 +387,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 			return FormCreateResult{}, invalidInput("title", buildErr.Error())
 		}
 		child.Priority = ref.Task.Priority
-		if stateErr := s.initializeCreatedTask(ref.Project, child, ref.Task.State()); stateErr != nil {
+		if stateErr := s.initializeCreatedTask(child, ref.Task.State()); stateErr != nil {
 			return FormCreateResult{}, stateErr
 		}
 		for _, tag := range ref.Task.Tags {
@@ -417,22 +416,17 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 	return out, nil
 }
 
-// insertBeforeDimmedInSection inserts newTask before the first dimmed ROOT task
-// that shares newTask's display section (derived from workflow state), falling
-// back to append when none is found. Child tasks (non-nil ParentID) are always
-// appended — their position is managed by the tree, not section order. This
-// preserves the task form's dimmed-aware create positioning inside the
-// application layer.
-func insertBeforeDimmedInSection(tasks []*models.Task, newTask *models.Task) []*models.Task {
+// insertBeforeDimmedInState inserts newTask before the first dimmed root task
+// in the same canonical state. Child positions are managed by the tree.
+func insertBeforeDimmedInState(tasks []*models.Task, newTask *models.Task) []*models.Task {
 	if newTask.ParentID != nil {
 		return append(tasks, newTask)
 	}
-	newSection := models.SectionForState(newTask.State())
 	for i, t := range tasks {
 		if t.ParentID != nil {
 			continue
 		}
-		if t.Dimmed && models.SectionForState(t.State()) == newSection {
+		if t.Dimmed && t.State() == newTask.State() {
 			result := make([]*models.Task, 0, len(tasks)+1)
 			result = append(result, tasks[:i]...)
 			result = append(result, newTask)

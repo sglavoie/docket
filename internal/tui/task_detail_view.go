@@ -435,7 +435,7 @@ func wrapTaskDetailFooterHelp(helpText string, firstLineWidth, width int) []stri
 func (m *TaskDetailModel) renderHeaderSection(width int) string {
 	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
 
-	effectiveSection := taskSectionBucket(m.task)
+	effectiveSection := taskStateGroupLabel(m.task)
 	stateGroup := taskStateGroup(m.task)
 	stateAccent := GetWorkflowStateGroupAccent(stateGroup)
 

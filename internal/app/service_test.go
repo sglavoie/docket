@@ -163,7 +163,7 @@ func TestEditRejectsInvalidTitle(t *testing.T) {
 
 func TestTransitionMovesThroughNonterminalStates(t *testing.T) {
 	task := newTask("t1", 1, "task")
-	task.SetSection(models.SectionInbox)
+	task.ApplyWorkflowState(models.StateInbox)
 	project := newProject("proj-1", "Alpha", task)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -283,7 +283,7 @@ func TestReopenFromTerminalReturnsToInbox(t *testing.T) {
 
 func TestCompleteBlockedByUnresolvedDependency(t *testing.T) {
 	blocker := newTask("dep", 1, "blocker")
-	blocker.SetSection(models.SectionInbox)
+	blocker.ApplyWorkflowState(models.StateInbox)
 	dependent := newTask("t2", 2, "dependent")
 	dependent.DependsOn = []string{"dep"}
 	project := newProject("proj-1", "Alpha", blocker, dependent)

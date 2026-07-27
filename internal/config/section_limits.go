@@ -16,16 +16,6 @@ const (
 	DefaultStateGroupLimitWaiting    = 3
 	DefaultStateGroupLimitPaused     = 5
 	DefaultStateGroupLimitSomeday    = 10
-
-	// Legacy names remain as presentation-adapter defaults until the section
-	// settings surface is retired.
-	DefaultSectionLimitActive  = DefaultStateGroupLimitBacklog
-	DefaultSectionLimitNext    = DefaultStateGroupLimitNext
-	DefaultSectionLimitInbox   = DefaultStateGroupLimitInbox
-	DefaultSectionLimitStandby = DefaultStateGroupLimitPaused
-	DefaultSectionLimitWaiting = DefaultStateGroupLimitWaiting
-	DefaultSectionLimitSomeday = DefaultStateGroupLimitSomeday
-	DefaultSectionLimitReview  = DefaultStateGroupLimitReview
 )
 
 func stateGroupLimitValue(limit int) int {
@@ -82,30 +72,6 @@ func (s *Settings) SetStateGroupLimit(group models.WorkflowStateGroup, limit int
 		s.StateGroupLimits = make(map[models.WorkflowStateGroup]int)
 	}
 	s.StateGroupLimits[group] = stateGroupLimitValue(limit)
-}
-
-// SetLegacySectionLimit is the write-side compatibility adapter for the
-// current settings form. The old Active bucket covered both ready and
-// in-progress tasks, so its value is copied deterministically to both canonical
-// groups.
-func (s *Settings) SetLegacySectionLimit(section string, limit int) {
-	switch section {
-	case "":
-		s.SetStateGroupLimit(models.StateGroupBacklog, limit)
-		s.SetStateGroupLimit(models.StateGroupInProgress, limit)
-	case models.SectionNext:
-		s.SetStateGroupLimit(models.StateGroupNext, limit)
-	case models.SectionInbox:
-		s.SetStateGroupLimit(models.StateGroupInbox, limit)
-	case models.SectionStandby:
-		s.SetStateGroupLimit(models.StateGroupPaused, limit)
-	case models.SectionWaiting:
-		s.SetStateGroupLimit(models.StateGroupWaiting, limit)
-	case models.SectionSomeday:
-		s.SetStateGroupLimit(models.StateGroupSomeday, limit)
-	case models.SectionReview:
-		s.SetStateGroupLimit(models.StateGroupReview, limit)
-	}
 }
 
 // decodeLegacySectionLimits migrates retired section_limit_* JSON values into

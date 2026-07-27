@@ -12,13 +12,13 @@ func TestFilterTasks_CompletedTasksExcludedByDefault(t *testing.T) {
 	defer resetFilterVars()
 
 	tasks := []*models.Task{
-		testutil.NewTestTaskWithStatus("Todo", models.StatusTodo),
-		testutil.NewTestTaskWithStatus("InProgress", models.StatusInProgress),
-		testutil.NewTestTaskWithStatus("Review", models.StatusReview),
-		testutil.NewTestTaskWithStatus("Standby", models.StatusStandby),
-		testutil.NewTestTaskWithStatus("Blocked", models.StatusBlocked),
-		testutil.NewTestTaskWithStatus("Done", models.StatusDone),
-		testutil.NewTestTaskWithStatus("Canceled", models.StatusCanceled),
+		testutil.NewTestTaskWithState("Todo", models.StateReady),
+		testutil.NewTestTaskWithState("InProgress", models.StateInProgress),
+		testutil.NewTestTaskWithState("Review", models.StateReview),
+		testutil.NewTestTaskWithState("Standby", models.StatePaused),
+		testutil.NewTestTaskWithState("Blocked", models.StateWaiting),
+		testutil.NewTestTaskWithState("Done", models.StateDone),
+		testutil.NewTestTaskWithState("Canceled", models.StateCanceled),
 	}
 
 	result := filterTasks(tasks)
@@ -59,8 +59,8 @@ func TestTaskMatchesFilters_SnoozedHiddenByDefault(t *testing.T) {
 func TestTaskMatchesFilters_CompletedHiddenByDefault(t *testing.T) {
 	defer resetFilterVars()
 
-	done := testutil.NewTestTaskWithStatus("Done", models.StatusDone)
-	todo := testutil.NewTestTaskWithStatus("Todo", models.StatusTodo)
+	done := testutil.NewTestTaskWithState("Done", models.StateDone)
+	todo := testutil.NewTestTaskWithState("Todo", models.StateReady)
 
 	if taskMatchesFilters(done) {
 		t.Error("expected completed task to be hidden by default")
@@ -101,7 +101,7 @@ func TestTaskMatchesFilters_ParkedRespectsCompletedVisibility(t *testing.T) {
 	defer resetFilterVars()
 	listParked = true
 
-	done := testutil.NewTestTaskWithStatus("Done parked", models.StatusDone)
+	done := testutil.NewTestTaskWithState("Done parked", models.StateDone)
 	done.ParkedNote = "resume archived state"
 
 	if taskMatchesFilters(done) {

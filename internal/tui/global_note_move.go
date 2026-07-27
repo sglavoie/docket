@@ -19,7 +19,7 @@ type GlobalNoteMoveDoneMsg struct {
 // GlobalNoteMoveProjectSelectorModel provides fuzzy-find selection of projects
 // for moving a global note into a project.
 type GlobalNoteMoveProjectSelectorModel struct {
-	*BasePicker[ProjectPickerItem]
+	*ListSurfaceAdapter[ProjectPickerItem]
 	alwaysSearch *alwaysSearchSinglePicker[ProjectPickerItem]
 }
 
@@ -37,7 +37,7 @@ func NewGlobalNoteMoveProjectSelectorModel(projects []*models.Project) *GlobalNo
 		items[i] = ProjectPickerItem{Project: p}
 	}
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Move Note to Project",
 		EmptyMessage:   "No projects available.",
 		NoMatchMessage: "No matching projects.",
@@ -46,9 +46,9 @@ func NewGlobalNoteMoveProjectSelectorModel(projects []*models.Project) *GlobalNo
 	})
 
 	m := &GlobalNoteMoveProjectSelectorModel{
-		BasePicker: picker,
+		ListSurfaceAdapter: picker,
 	}
-	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.ListSurfaceAdapter, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
 		AllItems: items,
 		CancelMsg: func() tea.Msg {
 			return GlobalNoteMoveDoneMsg{}
@@ -102,20 +102,20 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 
 	maxVisible := max(m.Height()-10, 5)
 
-	totalItems := len(m.Filtered)
+	totalItems := len(m.FilteredItems())
 	if totalItems == 0 {
 		return MutedStyle.Render("No matching projects.")
 	}
 
-	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
+	scrollOffset := calcScrollOffset(m.CursorIndex(), maxVisible)
 
-	for i, item := range m.Filtered {
+	for i, item := range m.FilteredItems() {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {
 			continue
 		}
 
 		cursor := "  "
-		if m.Cursor == i {
+		if m.CursorIndex() == i {
 			cursor = "  "
 		}
 
@@ -124,7 +124,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 		name := truncateToVisualWidth(item.Project.Name, maxNameLen)
 		line := fmt.Sprintf("%s%s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge)
 
-		if m.Cursor == i {
+		if m.CursorIndex() == i {
 			line = SelectedItemTextStyle.Render(line)
 		}
 

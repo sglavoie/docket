@@ -39,6 +39,20 @@ func weeklyReviewViewSpecificEntries(m *WeeklyReviewModel) []keymap.Entry {
 	entries = append(entries, weeklyReviewPriorityEntries(m)...)
 	entries = append(entries, weeklyReviewMultiSelectEntries(m)...)
 	entries = append(entries,
+		keymap.Bind("X", "Delete selected task(s)", "Actions", func() (tea.Model, tea.Cmd) {
+			refs := m.getSelectedBulkItems()
+			if len(refs) == 0 {
+				if current := m.getTaskAtCursor(); current != nil {
+					refs = []TaskProjectRef{{Task: current.Task, Project: current.Project}}
+				}
+			}
+			if len(refs) == 0 {
+				return m, nil
+			}
+			return m, func() tea.Msg {
+				return TaskDeleteRequestedMsg{Refs: refs, Origin: ViewWeeklyReview}
+			}
+		}),
 		keymap.Bind("ctrl+f", "Switch to Daily Review", "Navigation", func() (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return ShowDailyReviewMsg{} }
 		}),

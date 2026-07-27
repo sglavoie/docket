@@ -26,7 +26,7 @@ Marked active under the deprecated focus flag.
 <!-- id: plain-1, status: todo, priority: 2 -->
 `
 
-	parsed, err := storage.ParseTasksMarkdownWithSections(content)
+	parsed, err := storage.ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -58,8 +58,8 @@ func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
 		t.Fatalf("new Active-section task: %v", err)
 	}
 	activeSectionTask.ApplyWorkflowState(models.StateReady)
-	if got := models.SectionForState(activeSectionTask.State()); got != "" {
-		t.Fatalf("Active-section task bucket = %q, want empty Active bucket", got)
+	if got := activeSectionTask.State(); got != models.StateReady {
+		t.Fatalf("active task state = %q, want ready", got)
 	}
 
 	nonActiveTask, err := models.NewTask("next-section", 11, models.TaskTypeTask, "Pipeline work")
@@ -67,8 +67,8 @@ func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
 		t.Fatalf("new non-Active task: %v", err)
 	}
 	nonActiveTask.ApplyWorkflowState(models.StateNext)
-	if got := models.SectionForState(nonActiveTask.State()); got != models.SectionNext {
-		t.Fatalf("non-Active task bucket = %q, want %q", got, models.SectionNext)
+	if got := nonActiveTask.State(); got != models.StateNext {
+		t.Fatalf("non-Active task bucket = %q, want %q", got, models.StateNext)
 	}
 
 	planning := deps.Config.Planning()
@@ -78,15 +78,16 @@ func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
 	automation := deps.Config.Automation()
 	automation.WorkflowRules = []workflow.WorkflowRule{
 		{
-			ID:      "legacy-mixed",
-			Name:    "Legacy queue mutation",
-			Enabled: true,
-			Actions: []workflow.RuleAction{
+			ID:       "legacy-mixed",
+			Name:     "Legacy queue mutation",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "ready"}}, Actions: []workflow.RuleAction{
 				{ActionType: workflow.ActionType("set_active"), Value: "true"},
 				{ActionType: workflow.ActionAddTag, Value: "retained"},
 			},
 		},
 	}
+	deps.Config.Catalog().SchemaVersion = 3
 	if saveErr := saveTestRuntime(config.NewManager(deps.ConfigPath), deps.Config); saveErr != nil {
 		t.Fatalf("seed legacy workspace: %v", saveErr)
 	}
@@ -104,7 +105,7 @@ func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
 ## Task: Legacy active metadata
 <!-- id: legacy-active, status: todo, priority: 1, active: true -->
 `
-	parsed, err := storage.ParseTasksMarkdownWithSections(legacyTaskFile)
+	parsed, err := storage.ParseTasksMarkdownDocument(legacyTaskFile)
 	if err != nil {
 		t.Fatalf("parse legacy task metadata: %v", err)
 	}
@@ -123,7 +124,7 @@ func TestQueueStaysIndependentAcrossLegacyInputs(t *testing.T) {
 	}
 	for _, task := range []*models.Task{activeSectionTask, nonActiveTask} {
 		if !queued[task.ID] {
-			t.Errorf("queued %s task %q was removed", models.SectionForState(task.State()), task.ID)
+			t.Errorf("queued %s task %q was removed", task.State(), task.ID)
 		}
 	}
 	if queued[parsed.Tasks[0].ID] {

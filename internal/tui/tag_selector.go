@@ -11,7 +11,7 @@ import (
 
 // TagSelectorModel allows multi-selecting tags and adding new ones.
 type TagSelectorModel struct {
-	*BasePicker[TagInfo]
+	*ListSurfaceAdapter[TagInfo]
 	TagAdder
 	task         *models.Task
 	project      *models.Project
@@ -47,7 +47,7 @@ type BulkTagSelectorDoneMsg struct {
 
 // BulkTagSelectorModel allows multi-selecting tags for multiple tasks.
 type BulkTagSelectorModel struct {
-	*BasePicker[TagInfo]
+	*ListSurfaceAdapter[TagInfo]
 	TagAdder
 	taskRefs     []TaskProjectRef
 	originalTags map[TaskIdentity][]string
@@ -60,7 +60,7 @@ func NewBulkTagSelectorModel(taskRefs []TaskProjectRef) *BulkTagSelectorModel {
 	commonTags := findCommonTagsFromRefs(taskRefs)
 
 	title := fmt.Sprintf("Tags for %d tasks", len(taskRefs))
-	picker := NewBasePicker(tags, PickerConfig{
+	picker := NewListSurfaceAdapter(tags, PickerConfig{
 		Title:          title,
 		EmptyMessage:   "No tags in project (press 'a' to add).",
 		NoMatchMessage: "No matching tags (press 'a' to add).",
@@ -81,10 +81,10 @@ func NewBulkTagSelectorModel(taskRefs []TaskProjectRef) *BulkTagSelectorModel {
 	}
 
 	return &BulkTagSelectorModel{
-		BasePicker:   picker,
-		TagAdder:     NewTagAdder(),
-		taskRefs:     taskRefs,
-		originalTags: originalTags,
+		ListSurfaceAdapter: picker,
+		TagAdder:           NewTagAdder(),
+		taskRefs:           taskRefs,
+		originalTags:       originalTags,
 	}
 }
 
@@ -116,7 +116,7 @@ func findCommonTagsFromRefs(taskRefs []TaskProjectRef) []string {
 
 // SetSize sets the view dimensions.
 func (m *BulkTagSelectorModel) SetSize(width, height int) {
-	m.BasePicker.SetSize(width, height)
+	m.ListSurfaceAdapter.SetSize(width, height)
 }
 
 // Init initializes the model.
@@ -133,7 +133,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if m.AddTagMode {
-			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
+			handled, cmd := m.HandleAddTagKey(msg, m.ListSurfaceAdapter)
 			if handled {
 				return m, cmd
 			}
@@ -175,7 +175,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the bulk tag selector.
 func (m *BulkTagSelectorModel) View() tea.View {
-	return tea.NewView(RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
+	return tea.NewView(RenderTagSelectorView(m.ListSurfaceAdapter, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
 }
 
 // NewTagSelectorModel creates a new tag selector.
@@ -187,7 +187,7 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 		title = fmt.Sprintf("Tags for #%d: %s", task.ShortID, task.Title)
 	}
 
-	picker := NewBasePicker(tags, PickerConfig{
+	picker := NewListSurfaceAdapter(tags, PickerConfig{
 		Title:          title,
 		EmptyMessage:   "No tags in project (press 'a' to add).",
 		NoMatchMessage: "No matching tags (press 'a' to add).",
@@ -203,17 +203,17 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 	}
 
 	return &TagSelectorModel{
-		BasePicker:   picker,
-		TagAdder:     NewTagAdder(),
-		task:         task,
-		project:      project,
-		originalTags: append([]string{}, currentTags...),
+		ListSurfaceAdapter: picker,
+		TagAdder:           NewTagAdder(),
+		task:               task,
+		project:            project,
+		originalTags:       append([]string{}, currentTags...),
 	}
 }
 
 // SetSize sets the view dimensions.
 func (m *TagSelectorModel) SetSize(width, height int) {
-	m.BasePicker.SetSize(width, height)
+	m.ListSurfaceAdapter.SetSize(width, height)
 }
 
 // Init initializes the model.
@@ -230,7 +230,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if m.AddTagMode {
-			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
+			handled, cmd := m.HandleAddTagKey(msg, m.ListSurfaceAdapter)
 			if handled {
 				return m, cmd
 			}
@@ -274,7 +274,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the tag selector.
 func (m *TagSelectorModel) View() tea.View {
-	return tea.NewView(RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
+	return tea.NewView(RenderTagSelectorView(m.ListSurfaceAdapter, &m.TagAdder, m.Config.Title, m.Width(), m.Height()))
 }
 
 func (m *TagSelectorModel) StatusBarLabel() string { return "Select Tags" }

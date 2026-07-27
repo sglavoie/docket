@@ -132,7 +132,7 @@ func TestEffectiveLogic(t *testing.T) {
 func TestMigrateLegacyFilters_savedViews(t *testing.T) {
 	c := NewPlanningState()
 	c.SavedViews = []savedView{
-		{Name: "Bugs", FilterType: "bug", FilterStatus: "todo", FilterSections: []string{models.SectionNext}, FilterGitHubIssue: true, FilterParked: true, SortField: 1, PinnedTagTab: "backend"},
+		{Name: "Bugs", FilterType: "bug", FilterStatus: "todo", FilterSections: []string{string(models.StateNext)}, FilterGitHubIssue: true, FilterParked: true, SortField: 1, PinnedTagTab: "backend"},
 		{Name: "High Pri", FilterPriority: 1, FilterActionable: true},
 	}
 
@@ -179,7 +179,7 @@ func TestMigrateLegacyFilters_smartLists(t *testing.T) {
 			Name: "Overdue",
 			Criteria: []SmartListCriterion{
 				{Field: "status", Operation: "equals", Value: "todo"},
-				{Field: "section", Operation: "equals", Value: models.SectionNext},
+				{Field: "section", Operation: "equals", Value: string(models.StateNext)},
 				{Field: "due_date", Operation: "less_than", Value: "today"},
 				{Field: "parked", Operation: "equals", Value: "true"},
 			},

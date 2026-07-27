@@ -6,7 +6,7 @@ import (
 
 // ProjectSummary is the presentation-neutral view of a project's durable metadata,
 // derived from the WorkspaceSnapshot. It carries the stable identity, the synced
-// catalog fields, and the derived per-project section/tag vocabularies so an
+// catalog fields, and the derived per-project tag vocabulary so an
 // adapter can render a project list without reaching into the domain model.
 type ProjectSummary struct {
 	ID          string
@@ -20,7 +20,6 @@ type ProjectSummary struct {
 	Internal    bool
 	TaskCount   int
 	Tags        []string
-	Sections    []string
 	Revision    string
 }
 
@@ -55,15 +54,6 @@ func (s *Service) ProjectTags(projectID string) ([]string, error) {
 		return nil, err
 	}
 	return copyStrings(project.Tags), nil
-}
-
-// ProjectSections returns a project's section vocabulary from the snapshot.
-func (s *Service) ProjectSections(projectID string) ([]string, error) {
-	_, project, _, err := s.resolveProject(projectID)
-	if err != nil {
-		return nil, err
-	}
-	return copyStrings(project.GetSections()), nil
 }
 
 // Notes returns a project's notes through the workspace-aware note port.
@@ -124,7 +114,6 @@ func projectSummary(p *models.Project, revision string) ProjectSummary {
 		Internal:    p.Internal,
 		TaskCount:   len(p.Tasks),
 		Tags:        copyStrings(p.Tags),
-		Sections:    copyStrings(p.GetSections()),
 		Revision:    revision,
 	}
 }

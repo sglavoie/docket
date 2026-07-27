@@ -43,19 +43,6 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	movedSet := collectDescendantIDs(msg.SourceProject.Tasks, map[string]bool{sourceTask.ID: true})
 	sourceProjectID := msg.SourceProject.ID
 
-	// When the move flow picks a destination section, that section changes the moved
-	// root's workflow state, so compute the state it will hold AFTER the move to
-	// reconcile Today/Next against the true final state rather than the pre-move
-	// state. A section-preserving move (no section chosen) changes no state and skips
-	// the exclusivity reconciliation, leaving the reassignment behavior untouched.
-	var finalState *models.WorkflowState
-	if msg.DestSection != nil {
-		probe := *sourceTask
-		probe.SetSection(*msg.DestSection)
-		st := probe.State()
-		finalState = &st
-	}
-
 	// Fold the durable planning refs (Focus Queue, Daily Plan) reassigned to the
 	// destination into the move transaction as a config artifact, so a partial move
 	// can never leave planning refs pointing at the old project. When a destination
@@ -63,18 +50,13 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// moved root against its destination final state, so a move that lands the root in
 	// Next drops any stale Today entry and a move out of Next drops any stale order
 	// entry. Recent visits are excluded here and repaired separately after the commit.
-	artifacts, err := m.moveConfigArtifacts(movedSet, sourceProjectID, destProject.ID, sourceTask.ID, finalState)
+	artifacts, err := m.moveConfigArtifacts(movedSet, sourceProjectID, destProject.ID, sourceTask.ID, nil)
 	if err != nil {
 		return true, errorCmd("failed to prepare move: %w", err)
 	}
 
-	var res app.MoveResult
 	locator := app.TaskLocator{ProjectID: sourceProjectID, TaskID: sourceTask.ID}
-	if msg.DestSection != nil {
-		res, err = m.appService.MoveToProjectInSectionByLocator(locator, destProject.ID, *msg.DestSection, artifacts...)
-	} else {
-		res, err = m.appService.MoveToProjectByLocator(locator, destProject.ID, artifacts...)
-	}
+	res, err := m.appService.MoveToProjectByLocator(locator, destProject.ID, artifacts...)
 	if err != nil {
 		return true, errorCmd("failed to move task: %w", err)
 	}

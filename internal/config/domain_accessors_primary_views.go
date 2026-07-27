@@ -164,6 +164,17 @@ func (m *MachineState) RemoveMachineLocalTaskRefs(taskIDs map[string]bool) int {
 		}
 		m.RecentTaskVisits = filtered
 	}
+	if len(m.RecentDestinations) > 0 {
+		filtered := m.RecentDestinations[:0]
+		for _, destination := range m.RecentDestinations {
+			if destination.Kind == RecentDestinationTask && taskIDs[destination.ID] {
+				removed++
+				continue
+			}
+			filtered = append(filtered, destination)
+		}
+		m.RecentDestinations = filtered
+	}
 	return removed
 }
 
@@ -184,6 +195,16 @@ func (m *MachineState) RemoveMachineLocalTaskLocators(locators []ProjectTaskLoca
 		filtered = append(filtered, visit)
 	}
 	m.RecentTaskVisits = filtered
+	destinationFiltered := m.RecentDestinations[:0]
+	for _, destination := range m.RecentDestinations {
+		if destination.Kind == RecentDestinationTask &&
+			qualified[ProjectTaskLocator{ProjectID: destination.ProjectID, TaskID: destination.ID}] {
+			removed++
+			continue
+		}
+		destinationFiltered = append(destinationFiltered, destination)
+	}
+	m.RecentDestinations = destinationFiltered
 	return removed
 }
 
@@ -225,6 +246,14 @@ func (m *MachineState) ReassignRecentVisitsProjectFrom(taskIDs map[string]bool, 
 			updated++
 		}
 	}
+	for i := range m.RecentDestinations {
+		if m.RecentDestinations[i].Kind == RecentDestinationTask &&
+			m.RecentDestinations[i].ProjectID == sourceProjectID &&
+			taskIDs[m.RecentDestinations[i].ID] {
+			m.RecentDestinations[i].ProjectID = newProjectID
+			updated++
+		}
+	}
 	return updated
 }
 
@@ -256,6 +285,14 @@ func (m *MachineState) ReassignRecentVisitsProject(taskIDs map[string]bool, newP
 	for i := range m.RecentTaskVisits {
 		if taskIDs[m.RecentTaskVisits[i].TaskID] && m.RecentTaskVisits[i].ProjectID != newProjectID {
 			m.RecentTaskVisits[i].ProjectID = newProjectID
+			updated++
+		}
+	}
+	for i := range m.RecentDestinations {
+		if m.RecentDestinations[i].Kind == RecentDestinationTask &&
+			taskIDs[m.RecentDestinations[i].ID] &&
+			m.RecentDestinations[i].ProjectID != newProjectID {
+			m.RecentDestinations[i].ProjectID = newProjectID
 			updated++
 		}
 	}

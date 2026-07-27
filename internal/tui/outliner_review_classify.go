@@ -28,13 +28,6 @@ const (
 	SectionCompleted
 )
 
-// isToday returns true if t falls on the current calendar day in the local timezone.
-func isToday(t time.Time) bool {
-	now := time.Now()
-	tl := t.In(now.Location())
-	return tl.Year() == now.Year() && tl.YearDay() == now.YearDay()
-}
-
 type dailyReviewThresholds struct {
 	today              time.Time
 	dueSoonDays        int

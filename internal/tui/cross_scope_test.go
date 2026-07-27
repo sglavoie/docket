@@ -30,7 +30,7 @@ func TestLoadCrossScopeTasks_ReturnsLoadFailureDetails(t *testing.T) {
 		t.Fatal(err)
 	}
 	child.ParentID = &parent.ID
-	content := storage.WriteTasksMarkdownWithSections(project.Name, []*models.Task{parent, child}, []string{models.SectionNext}, nil)
+	content := storage.WriteTasksMarkdownWithProjectMetadata(project.Name, []*models.Task{parent, child}, nil, nil)
 	if err := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile(tasks.md): %v", err)
 	}

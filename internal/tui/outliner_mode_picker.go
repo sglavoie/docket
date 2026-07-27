@@ -9,10 +9,9 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
-// outlinerModePicker is the inline, searchable, categorized mode selector opened
-// with P. It replaces the old P0-P9 numeric prefix tree for workflow, smart,
-// lens, and review modes; Work modes stay on Tab/Shift+Tab. State is
-// self-contained, and the picker never touches the view stack.
+// outlinerModePicker is the inline, searchable, categorized selector for all
+// ten modes. State is self-contained, and the picker never touches the view
+// stack.
 type outlinerModePicker struct {
 	query string
 	// cursor indexes the selectable modes (headers skipped).
@@ -36,12 +35,8 @@ func (c OutlinerModeCategory) String() string {
 	switch c {
 	case ModeCategoryWork:
 		return "Work"
-	case ModeCategoryWorkflow:
-		return "Workflow"
-	case ModeCategorySmart:
-		return "Smart"
-	case ModeCategoryLens:
-		return "Lenses"
+	case ModeCategoryComputed:
+		return "Computed"
 	case ModeCategoryReview:
 		return "Review"
 	}
@@ -69,7 +64,7 @@ func modePickerModeUnavailable(mode OutlinerMode) bool {
 func modePickerRows(query string) []modePickerRow {
 	var rows []modePickerRow
 	categories := []OutlinerModeCategory{
-		ModeCategoryWorkflow, ModeCategorySmart, ModeCategoryLens, ModeCategoryReview,
+		ModeCategoryWork, ModeCategoryComputed, ModeCategoryReview,
 	}
 	for _, cat := range categories {
 		var modes []OutlinerMode
@@ -305,7 +300,7 @@ func (m *OutlinerModel) renderModePickerLine(row modePickerRow, selected, isCurr
 	case selected:
 		styledLabel = FilterItemSelectedStyle.Render(label)
 	default:
-		styledLabel = GetViewModeStyleForSection(row.mode.Label).Render(label)
+		styledLabel = GetOutlinerModeStyle(row.mode.ID).Render(label)
 	}
 
 	return "  " + marker + styledLabel + suffix

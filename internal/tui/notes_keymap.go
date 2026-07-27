@@ -31,12 +31,18 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("Z", "Toggle fullscreen pane", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }),
 	)
 
-	// g prefix: gg = top
-	entries = append(entries, keymap.Prefix("g", "Go…", "Navigation", []keymap.Entry{
-		keymap.Bind("g", "Go to top", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("X", "Deselect all (multi-select)", "Multi-select", func() (tea.Model, tea.Cmd) { return m, nil },
-			keymap.WithGate(func() bool { return m.multiSelectMode })),
-	}))
+	entries = append(entries,
+		keymap.Bind("home", "Go to top", "Navigation", func() (tea.Model, tea.Cmd) {
+			m.cursor = 0
+			return m, nil
+		}),
+		keymap.Bind("X", "Deselect all (multi-select)", "Multi-select", func() (tea.Model, tea.Cmd) {
+			m.multiSelectMode = false
+			m.selectedNotes = make(map[string]bool)
+			m.clearStatus()
+			return m, nil
+		}, keymap.WithGate(func() bool { return m.multiSelectMode })),
+	)
 
 	// Actions
 	entries = append(entries,

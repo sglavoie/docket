@@ -9,6 +9,16 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
+func canonicalCommitTestRule(id string) workflow.WorkflowRule {
+	return workflow.WorkflowRule{
+		ID:       id,
+		Name:     "seed",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "ready"}},
+		Actions:  []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "seed"}},
+	}
+}
+
 // seedWorkspace writes a complete synced-domain set (plus machine.json) so a
 // later domain-scoped commit leaves a loadable, non-partial workspace and every
 // domain the commit does not own already exists on disk.
@@ -28,7 +38,7 @@ func seedWorkspace(t *testing.T, cfg *Domains) (*Manager, string) {
 func TestManager_CommitSettings_WritesOnlyOwnedDomains(t *testing.T) {
 	cfg := NewDomains()
 	// Seed a value in a domain the settings commit must NOT touch.
-	cfg.Automation.WorkflowRules = []workflow.WorkflowRule{{ID: "rule-1", Name: "seed", Enabled: true}}
+	cfg.Automation.WorkflowRules = []workflow.WorkflowRule{canonicalCommitTestRule("rule-1")}
 	mgr, configPath := seedWorkspace(t, cfg)
 
 	// Mutate a settings-domain field (theme name) and a machine-local field
@@ -89,7 +99,7 @@ func TestManager_CommitAutomation(t *testing.T) {
 	cfg.Machine.Editor = "seed-editor"
 	mgr, configPath := seedWorkspace(t, cfg)
 
-	cfg.Automation.WorkflowRules = append(cfg.Automation.WorkflowRules, workflow.WorkflowRule{ID: "rule-9", Name: "added", Enabled: true})
+	cfg.Automation.WorkflowRules = append(cfg.Automation.WorkflowRules, canonicalCommitTestRule("rule-9"))
 	if err := mgr.CommitAutomation(cfg.Automation); err != nil {
 		t.Fatalf("CommitAutomation: %v", err)
 	}
@@ -121,7 +131,7 @@ func TestManager_CommitSettings_NilArgs(t *testing.T) {
 // automation domain it does not own untouched.
 func TestManager_CommitCatalog(t *testing.T) {
 	cfg := NewDomains()
-	cfg.Automation.WorkflowRules = []workflow.WorkflowRule{{ID: "rule-1", Name: "seed", Enabled: true}}
+	cfg.Automation.WorkflowRules = []workflow.WorkflowRule{canonicalCommitTestRule("rule-1")}
 	mgr, configPath := seedWorkspace(t, cfg)
 
 	d := cfg
@@ -171,7 +181,7 @@ func TestManager_CommitPlanning(t *testing.T) {
 // synced automation domain it does not own untouched.
 func TestManager_CommitMachine(t *testing.T) {
 	cfg := NewDomains()
-	cfg.Automation.WorkflowRules = []workflow.WorkflowRule{{ID: "rule-7", Name: "seed", Enabled: true}}
+	cfg.Automation.WorkflowRules = []workflow.WorkflowRule{canonicalCommitTestRule("rule-7")}
 	mgr, configPath := seedWorkspace(t, cfg)
 
 	d := cfg

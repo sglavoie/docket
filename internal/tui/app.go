@@ -32,20 +32,13 @@ const (
 	ViewTagManager
 	ViewGlobalTagManager
 	ViewTagFilterSelector
-	ViewSectionFilterSelector
-	ViewSectionPicker
-	ViewSectionManager
 	ViewPriorityPicker
 	ViewGlobalSearch
 	ViewParentSelector
-	ViewQuickCapture
-	ViewBulkCapture
-	ViewInboxProcessor
 	ViewTagSelector
 	ViewBulkTagSelector
 	ViewTaskComments
-	ViewCommandPalette
-	ViewBulkEdit
+	ViewFinder
 	ViewSaveSearchInput
 	ViewProjectSelector
 	ViewDailyReview
@@ -55,10 +48,8 @@ const (
 	ViewWorkflowWizard
 	ViewRecurrenceEditor
 	ViewTextEditor
-	ViewGlobalInboxProcessor
 	ViewBlockers
 	ViewTaskAttachments
-	ViewLinkedTaskCreator
 	ViewLinkedTaskSelector
 	ViewCrossProjectLinker
 	ViewNotes
@@ -87,8 +78,6 @@ const (
 	ViewSaveFilterInput
 	ViewMetricsDashboard
 	ViewScoringProfilePicker
-	ViewFocusBoard
-	ViewOutliner
 	ViewCrossProjectOutliner
 	ViewColumnPicker
 	ViewFilterBuilder
@@ -99,9 +88,9 @@ const (
 	ViewNotificationCenter
 	ViewMessageLog
 	ViewTaskForm
+	ViewTaskComposer
 	ViewRoadmap
 	ViewTaskDecisions
-	ViewAttrFilterPicker
 	ViewConflictResolution
 	ViewContextHub
 )
@@ -115,7 +104,7 @@ type sessionStats struct {
 	tasksSnoozed    int
 }
 
-// AppModel is the main TUI model with a view stack.
+// AppModel is the main TUI model.
 type AppModel struct {
 	configManager *config.Manager
 
@@ -182,38 +171,33 @@ type AppModel struct {
 
 	// appService is the same application service the feature coordinators wrap,
 	// retained directly for the few AppModel-owned overlays that mutate
-	// synchronously in Update() and need the typed result inline (the pinned-task
-	// popup: unpin/repin/reorder). Routing through it keeps those mutations atomic
+	// synchronously in Update() and need the typed result inline. Routing through
+	// it keeps those mutations atomic
 	// and ledger-undoable without a direct raw save.
 	appService *app.Service
 
-	// navigation is the live typed shell state. viewStack mirrors implementation
-	// renderer identity for registries and headless tests; production dispatch
-	// resolves through navigation.
-	navigation      NavigationState
-	typedNavigation bool
-	viewStack       []PresentationID
-	startupMessage  tea.Msg
-	startupRoute    *Route
-	startupView     PresentationID
-	width           int
-	height          int
+	// navigation is the sole live shell authority. PresentationID values attached
+	// to routes and overlays select renderers; they never form a second
+	// navigation stack.
+	navigation     NavigationState
+	startupMessage tea.Msg
+	startupRoute   *Route
+	startupView    PresentationID
+	width          int
+	height         int
 
 	// View registry for centralized view management
 	views *ViewRegistry
 
-	// Command registry for centralized command lookup (used by command palette)
-	commandRegistry *CommandRegistry
+	operationRegistry *OperationRegistry
+	operationExecutor *OperationExecutor
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
-	helpView             *HelpViewModel
-	taskJumper           *TaskJumperModel
-	inboxProcessor       *InboxProcessorModel
-	globalInboxProcessor *GlobalInboxProcessorModel
-	metricsDashboard     *MetricsDashboardModel
-	roadmap              *RoadmapModel
-	outliner             *OutlinerModel
-	crossOutliner        *OutlinerModel
+	helpView         *HelpViewModel
+	taskJumper       *TaskJumperModel
+	metricsDashboard *MetricsDashboardModel
+	roadmap          *RoadmapModel
+	crossOutliner    *OutlinerModel
 
 	// Per-project outliner toggle state (section collapse + node fold),
 	// keyed by project ID. Survives outliner recreation within a session.
@@ -247,9 +231,6 @@ type AppModel struct {
 	lastQueueToggleAt       time.Time
 	lastDailyPlanRedoAt     time.Time
 	lastQueueRedoAt         time.Time
-
-	// Last repeatable prefix-chord action for . (dot) key replay.
-	lastRepeatableAction *repeatableAction
 
 	// Current project context
 	currentProject *models.Project
@@ -285,8 +266,8 @@ type AppModel struct {
 	loadingMessage string
 	spinner        SpinnerModel
 
-	// Pending bulk tasks for palette operations (priority, date assignment)
-	pendingBulkTasks []PaletteBulkTaskItem
+	// Pending bulk tasks for date and attribute overlays.
+	pendingBulkTasks []TaskProjectRef
 
 	// Pending bulk section assignment from multi-select
 	pendingBulkSectionTasks   []*models.Task
@@ -339,18 +320,6 @@ type AppModel struct {
 	pendingTaskDelete taskDeletePending
 	taskDeleteConfirm ConfirmDialog
 
-	// pendingInboxDeletes arms post-commit bookkeeping for inbox processors that
-	// requested a canonical deletion, keyed by the per-request token minted in
-	// confirmTaskDelete. Inbox processors are not TaskWorkspace-backed, so they defer
-	// their advance/processed/cursor bookkeeping until the shell reports the delete
-	// transaction committed (applyPendingInboxDelete); a rejected transaction clears
-	// only the matching entry so the processor's queue stays untouched. Keying by
-	// token (rather than a single slot) lets two overlapping same-surface deletes
-	// each retain their own accounting until their matching result or error arrives,
-	// in either completion order, and prevents an unrelated command that finishes
-	// first from consuming an in-flight delete.
-	pendingInboxDeletes map[uint64]pendingInboxDelete
-
 	// pendingWeeklyReviewDeletes records the root-task count of each in-flight
 	// Weekly Review-origin canonical deletion, keyed by the request token that armed
 	// it. The Weekly Review completion summary has no post-commit callback of its
@@ -385,26 +354,8 @@ type AppModel struct {
 
 	lastNavigatedTaskID string
 
-	// Recent task visits for quick-switch (Alt+R)
-	recentTaskVisits          []RecentTaskVisitEntry
-	showQuickSwitch           bool
-	quickSwitchCursor         int
-	quickSwitchFilter         string
-	quickSwitchFiltering      bool
-	quickSwitchFiltered       []int   // indices into sortedQuickSwitchEntries
-	quickSwitchTitlePositions [][]int // parallel to quickSwitchFiltered: fuzzy match positions in title
-
-	// Pinned tasks popup state
-	showPinnedPopup      bool
-	pinnedPopupCursor    int
-	pinnedPopupItems     []pinnedTaskInfo
-	pinnedPopupFiltering bool
-	pinnedPopupFilter    string
-	pinnedPopupFiltered  []int          // indices into pinnedPopupItems
-	pinnedPopupTitlePos  [][]int        // parallel to pinnedPopupFiltered: fuzzy match positions
-	pinnedPreview        *OutlinerModel // cached preview outliner for highlighted pinned task's project
-	pinnedPreviewID      string         // project ID the preview was built for
-	pinnedPreviewTaskID  string         // task ID the preview cursor was set for
+	// Machine-local task visits feed Finder recency and pinning.
+	recentTaskVisits []RecentTaskVisitEntry
 
 	// Proactive alert snapshots (ephemeral, regenerated on navigation)
 	rawAlerts       *alerts.AlertSnapshot // unfiltered (before dismissal filter)
@@ -425,54 +376,13 @@ type AppModel struct {
 	// Quick note overlay (ctrl+. to add a comment without opening the full comments view)
 	quickNoteOverlay *QuickNoteOverlay
 
-	// Global project picker overlay (shown for project selection in global workflows)
-	globalProjectPicker *GlobalProjectPicker
-
-	// Unified Ctrl+X scope/administration picker (All Projects, Active, Archived, Trash)
-	scopePicker *ScopePickerModel
-
 	// Contextual project administration menu for a focused Outliner project header
 	projectAdminMenu *ProjectAdminMenuModel
 
-	// Global task picker overlay (shown for task selection in global workflows)
-	globalTaskPicker *GlobalTaskPicker
-
-	// Status quick picker overlay (shown as step 3 of global status update flow)
-	statusQuickPicker *StatusQuickPicker
-
-	// Section quick picker overlay (shown as step 4 of global task move flow)
-	sectionQuickPicker *SectionQuickPicker
-
-	// Section change quick picker overlay.
-	sectionChangeQuickPicker *SectionQuickPicker
-
-	// Intermediate state for the global task-move workflow.
-	// Cleared on completion or cancellation.
-	globalMoveState struct {
-		sourceProject *models.Project
-		sourceTask    *models.Task
-		destProject   *models.Project
-	}
-
-	// Link type quick picker overlay.
-	linkTypeQuickPicker *LinkTypeQuickPicker
-
-	// Link mode quick picker overlay.
-	linkModeQuickPicker *LinkModeQuickPicker
-
-	// Priority quick picker overlay.
-	priorityQuickPicker *PriorityQuickPicker
-
-	// Due date quick picker overlay.
-	dueDateQuickPicker *DueDateQuickPicker
-
-	// Intermediate state for global linked-task creation.
-	// Cleared on completion or cancellation.
-	globalLinkedTaskState struct {
-		sourceTask    *models.Task
-		sourceProject *models.Project
-		linkType      LinkType
-	}
+	// The simplified task action flow is the only generic two-level overlay:
+	// action sheet -> ListSurface value picker.
+	taskActionSheet      *TaskActionSheetModel
+	operationValuePicker *OperationValuePickerModel
 
 	// Peek task overlay (space toggles task detail peek)
 	peekTask        *models.Task

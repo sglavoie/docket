@@ -83,7 +83,7 @@ func TestCollectValidationErrors(t *testing.T) {
 				ID:   "test",
 				Name: "Test Rule",
 				Triggers: []workflow.RuleTrigger{
-					{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+					{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 				},
 				Actions: []workflow.RuleAction{
 					{ActionType: workflow.ActionAddTag, Value: "archived"},
@@ -97,7 +97,7 @@ func TestCollectValidationErrors(t *testing.T) {
 				ID:   "test",
 				Name: "",
 				Triggers: []workflow.RuleTrigger{
-					{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+					{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 				},
 				Actions: []workflow.RuleAction{
 					{ActionType: workflow.ActionAddTag, Value: "archived"},
@@ -123,7 +123,7 @@ func TestCollectValidationErrors(t *testing.T) {
 				ID:   "test",
 				Name: "Test",
 				Triggers: []workflow.RuleTrigger{
-					{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+					{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 				},
 				Actions: []workflow.RuleAction{},
 			},
@@ -137,7 +137,7 @@ func TestCollectValidationErrors(t *testing.T) {
 				TriggerGroup: &workflow.TriggerGroup{
 					Logic: workflow.LogicAnd,
 					Triggers: []workflow.RuleTrigger{
-						{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+						{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 						{Field: workflow.FieldTags, Operation: workflow.OpContains, Value: "release"},
 					},
 				},
@@ -176,48 +176,29 @@ func TestCollectValidationErrors(t *testing.T) {
 	}
 }
 
-// TestRemoveTriggerFromLegacyRule verifies that --remove-trigger works on rules
-// that use the legacy single Trigger field (rather than the Triggers slice).
-// Before the fix, this would fail with "cannot remove from empty list" because
-// removeByIndices was called on the nil Triggers slice without first migrating
-// the legacy Trigger into it.
-func TestRemoveTriggerFromLegacyRule(t *testing.T) {
-	// Simulate a legacy rule with only the single Trigger field set
+func TestRemoveTriggerFromCanonicalRule(t *testing.T) {
 	rule := workflow.WorkflowRule{
 		ID:      "test-legacy",
 		Name:    "Legacy Rule",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{
-			Field:     workflow.FieldStatus,
+		Triggers: []workflow.RuleTrigger{{
+			Field:     workflow.FieldState,
 			Operation: workflow.OpEquals,
 			Value:     "done",
-		},
-		// Triggers slice is empty (legacy format)
+		}},
 		Actions: []workflow.RuleAction{
 			{ActionType: workflow.ActionAddTag, Value: "archived"},
 		},
 	}
 
-	// Verify the legacy trigger is accessible via GetTriggers()
 	triggers := rule.GetTriggers()
 	if len(triggers) != 1 {
 		t.Fatalf("expected 1 trigger via GetTriggers(), got %d", len(triggers))
 	}
 
-	// Now simulate what the edit command does after the fix:
-	// Migrate legacy trigger before removal
 	modifiedRule := rule
-	if len(modifiedRule.Triggers) == 0 && modifiedRule.Trigger.Field != "" {
-		modifiedRule.Triggers = []workflow.RuleTrigger{modifiedRule.Trigger}
-		modifiedRule.Trigger = workflow.RuleTrigger{}
-	}
-
-	// Verify migration happened
 	if len(modifiedRule.Triggers) != 1 {
-		t.Fatalf("expected 1 trigger after migration, got %d", len(modifiedRule.Triggers))
-	}
-	if modifiedRule.Trigger.Field != "" {
-		t.Error("expected legacy Trigger field to be cleared after migration")
+		t.Fatalf("expected 1 trigger, got %d", len(modifiedRule.Triggers))
 	}
 
 	// Now removeByIndices should work
@@ -230,30 +211,22 @@ func TestRemoveTriggerFromLegacyRule(t *testing.T) {
 	}
 }
 
-// TestRemoveTriggerFromLegacyRuleAddNew verifies that removing the legacy trigger
-// and adding a new one in the same edit works correctly.
-func TestRemoveTriggerFromLegacyRuleAddNew(t *testing.T) {
+func TestRemoveTriggerAndAddNew(t *testing.T) {
 	rule := workflow.WorkflowRule{
 		ID:      "test-replace",
 		Name:    "Replace Trigger Rule",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{
-			Field:     workflow.FieldStatus,
+		Triggers: []workflow.RuleTrigger{{
+			Field:     workflow.FieldState,
 			Operation: workflow.OpEquals,
 			Value:     "done",
-		},
+		}},
 		Actions: []workflow.RuleAction{
 			{ActionType: workflow.ActionAddTag, Value: "archived"},
 		},
 	}
 
 	modifiedRule := rule
-
-	// Migrate legacy trigger (happens for both --add-trigger and --remove-trigger paths)
-	if len(modifiedRule.Triggers) == 0 && modifiedRule.Trigger.Field != "" {
-		modifiedRule.Triggers = []workflow.RuleTrigger{modifiedRule.Trigger}
-		modifiedRule.Trigger = workflow.RuleTrigger{}
-	}
 
 	// Remove old trigger
 	var err error
@@ -294,7 +267,7 @@ func TestCollectValidationErrors_LevelMismatch(t *testing.T) {
 		Name:  "Bad Level Rule",
 		Level: workflow.RuleLevelProject,
 		Triggers: []workflow.RuleTrigger{
-			{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
+			{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"},
 		},
 		Actions: []workflow.RuleAction{
 			{ActionType: workflow.ActionSetProjectStatus, Value: "active"},

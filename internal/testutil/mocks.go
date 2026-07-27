@@ -169,8 +169,6 @@ func (m *MockRepository) Load(project *models.Project) error {
 	if stored, ok := m.Projects[project.ID]; ok {
 		loaded := cloneProject(stored)
 		project.NextShortID = loaded.NextShortID
-		project.Sections = loaded.Sections
-		project.SectionColors = loaded.SectionColors
 		project.Tags = loaded.Tags
 		project.PinnedTags = loaded.PinnedTags
 		project.Tasks = loaded.Tasks
@@ -198,9 +196,6 @@ func cloneProject(project *models.Project) *models.Project {
 	projectCopy := *project
 	projectCopy.ArchivedAt = clonePointer(project.ArchivedAt)
 	projectCopy.PinnedAt = clonePointer(project.PinnedAt)
-	projectCopy.Sections = append([]string{}, project.Sections...)
-	projectCopy.SectionColors = make(map[string]string)
-	maps.Copy(projectCopy.SectionColors, project.SectionColors)
 	projectCopy.Tags = append([]string{}, project.Tags...)
 	projectCopy.PinnedTags = append([]string{}, project.PinnedTags...)
 	projectCopy.Warnings = append([]string{}, project.Warnings...)
@@ -415,8 +410,6 @@ func (m *MockRepository) RestoreFromBackup(project *models.Project) error {
 	m.Backups[project.ID] = current
 
 	project.NextShortID = restored.NextShortID
-	project.Sections = restored.Sections
-	project.SectionColors = restored.SectionColors
 	project.Tasks = restored.Tasks
 	project.Warnings = restored.Warnings
 	assignProjectPointers(project)

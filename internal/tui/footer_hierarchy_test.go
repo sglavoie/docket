@@ -29,7 +29,7 @@ import (
 // escape-hatch row reads identically across full-height and non-full-height
 // surfaces.
 func TestFooterEscapeHintsCanonicalOrder(t *testing.T) {
-	if FooterEscapeHints != "ctrl+esc root · : cmd · ? help" {
+	if FooterEscapeHints != "ctrl+esc root · : finder · ? help" {
 		t.Fatalf("FooterEscapeHints drifted from canonical order: %q", FooterEscapeHints)
 	}
 }
@@ -83,7 +83,7 @@ func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
 		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateWaiting,
 	}
-	blocked.SetSection(models.SectionNext)
+	blocked.ApplyWorkflowState(models.StateNext)
 
 	// Per-kind hint expectations. AllDone-caught-up intentionally emits no
 	// hint because the completed-Today footer already carries `p plan more`.
@@ -130,7 +130,7 @@ func TestNextActionStripHintsDoNotDuplicateTodayFooter(t *testing.T) {
 // advertise. Without this lockstep, Dashboard users would see one set of
 // escape keys while Today and Hub users see a different ordering.
 func TestAppStatusBarDefaultHelpMatchesFooterEscapeHints(t *testing.T) {
-	const appStatusDefault = "ctrl+esc root · : cmd · ? help"
+	const appStatusDefault = "ctrl+esc root · : finder · ? help"
 	if FooterEscapeHints != appStatusDefault {
 		t.Fatalf("FooterEscapeHints %q diverges from app status bar default %q; surfaces will show inconsistent escape hatches",
 			FooterEscapeHints, appStatusDefault)

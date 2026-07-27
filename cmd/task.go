@@ -9,6 +9,7 @@ var taskCmd = &cobra.Command{
 	Aliases: []string{"t"},
 	Short:   "Manage tasks",
 	Long:    `Commands for creating, listing, and managing tasks within the current project.`,
+	Args:    validateTaskArgs,
 	RunE:    runTaskList, // Default to listing tasks
 }
 

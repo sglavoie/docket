@@ -307,8 +307,8 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		var tasksMarkdown []byte
 		var tasksExpectedRevision *string
 		if expected, err := storage.LoadProjectForRewrite(project); err == nil {
-			tasksMarkdown = []byte(storage.WriteTasksMarkdownWithFullProjectMetadata(
-				project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags))
+			tasksMarkdown = []byte(storage.WriteTasksMarkdownWithProjectMetadata(
+				project.Name, project.Tasks, project.Tags, project.PinnedTags))
 			tasksExpectedRevision = expected
 		}
 
@@ -368,8 +368,8 @@ func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, ne
 			projectUpdated += n
 		}
 		if projectUpdated > 0 {
-			content := storage.WriteTasksMarkdownWithFullProjectMetadata(
-				p.Name, p.Tasks, p.GetSections(), p.SectionColors, p.Tags, p.PinnedTags)
+			content := storage.WriteTasksMarkdownWithProjectMetadata(
+				p.Name, p.Tasks, p.Tags, p.PinnedTags)
 			writes = append(writes, storage.ArtifactChange{
 				Path:             storage.TasksFilePath(p.Path),
 				Data:             []byte(content),

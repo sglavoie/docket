@@ -95,8 +95,12 @@ func formatRuleScope(s *workflow.RuleScope) string {
 	if len(s.Types) > 0 {
 		parts = append(parts, "types=["+strings.Join(s.Types, ", ")+"]")
 	}
-	if len(s.Sections) > 0 {
-		parts = append(parts, "sections=["+strings.Join(s.Sections, ", ")+"]")
+	if len(s.States) > 0 {
+		states := make([]string, 0, len(s.States))
+		for _, state := range s.States {
+			states = append(states, state.String())
+		}
+		parts = append(parts, "states=["+strings.Join(states, ", ")+"]")
 	}
 	if len(parts) == 0 {
 		return "all"

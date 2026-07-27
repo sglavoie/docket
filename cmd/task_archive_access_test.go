@@ -31,7 +31,7 @@ func TestTaskArchiveListUsesSummariesAndFilters(t *testing.T) {
 	cmd := newTaskArchiveListCmd()
 	mustSetFlag(t, cmd, "project", project.Slug)
 	mustSetFlag(t, cmd, "type", "bug")
-	mustSetFlag(t, cmd, "status", "canceled")
+	mustSetFlag(t, cmd, "state", "canceled")
 	mustSetFlag(t, cmd, "since", "2026-06-01")
 	mustSetFlag(t, cmd, "until", "2026-06-30")
 	mustSetFlag(t, cmd, "json", "true")
@@ -50,7 +50,7 @@ func TestTaskArchiveListUsesSummariesAndFilters(t *testing.T) {
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 filtered archive summary, got %d: %+v", len(entries), entries)
 	}
-	if entries[0].ID != juneBug.ID || entries[0].Title != juneBug.Title || entries[0].Type != "bug" || entries[0].Status != "canceled" {
+	if entries[0].ID != juneBug.ID || entries[0].Title != juneBug.Title || entries[0].Type != "bug" || entries[0].State != "canceled" {
 		t.Fatalf("unexpected archive list entry: %+v", entries[0])
 	}
 	if entries[0].SourceFile != "completed.md" || entries[0].SourceLine == 0 {
@@ -58,6 +58,35 @@ func TestTaskArchiveListUsesSummariesAndFilters(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(project.Path, ".completed.index.json")); err != nil {
 		t.Fatalf("archive list should create/reuse the derived summary index: %v", err)
+	}
+}
+
+func TestTaskArchiveListFiltersByCanonicalState(t *testing.T) {
+	deps, project := setupArchiveAccessTest(t)
+	defer deps.Cleanup()
+
+	done := archiveAccessTestTask(t, "arch-state-done-0001", 201, models.TaskTypeTask, "Done archive", time.Date(2026, 6, 10, 9, 0, 0, 0, time.Local))
+	canceled := archiveAccessTestTask(t, "arch-state-canceled-0001", 202, models.TaskTypeTask, "Canceled archive", time.Date(2026, 6, 11, 9, 0, 0, 0, time.Local))
+	canceled.WorkflowState = models.StateCanceled
+	writeArchiveAccessArchive(t, project, "completed.md", []*models.Task{done, canceled})
+
+	cmd := newTaskArchiveListCmd()
+	mustSetFlag(t, cmd, "project", project.Slug)
+	mustSetFlag(t, cmd, "state", models.StateCanceled.String())
+	mustSetFlag(t, cmd, "json", "true")
+
+	stdout, err := captureArchiveAccessStdout(t, func() error {
+		return runTaskArchiveList(cmd, nil)
+	})
+	if err != nil {
+		t.Fatalf("runTaskArchiveList: %v", err)
+	}
+	var entries []archiveSummaryJSONEntry
+	if err := json.Unmarshal([]byte(stdout), &entries); err != nil {
+		t.Fatalf("archive list JSON: %v\n%s", err, stdout)
+	}
+	if len(entries) != 1 || entries[0].ID != canceled.ID || entries[0].State != models.StateCanceled.String() {
+		t.Fatalf("canonical state-filtered entries = %+v", entries)
 	}
 }
 
@@ -152,7 +181,7 @@ func setupArchiveAccessTest(t *testing.T) (*testDeps, *models.Project) {
 
 func resetArchiveAccessVars() {
 	archiveListType = ""
-	archiveListStatus = ""
+	archiveListState = ""
 	archiveListSince = ""
 	archiveListUntil = ""
 	archiveShowNoGlow = false

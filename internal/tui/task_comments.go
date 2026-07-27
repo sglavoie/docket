@@ -93,22 +93,9 @@ func (m *TaskCommentsModel) OnExit() {
 	m.editTextInput.Reset()
 }
 
-// ShouldCaptureEsc returns true when in expanded, add/edit, delete confirmation, or pending prefix modes.
+// ShouldCaptureEsc returns true when in expanded, add/edit, or delete confirmation modes.
 func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
 	return m.expandedView || m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
-}
-
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
-func (m *TaskCommentsModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			"g": NavigationPrefixHints,
-		},
-	}
 }
 
 func (m *TaskCommentsModel) StatusBarLabel() string { return "Comments" }

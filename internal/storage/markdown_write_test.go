@@ -18,8 +18,8 @@ func TestSaveProject_Roundtrip(t *testing.T) {
 	project.Path = filepath.Join(dir, "test-project")
 
 	// Save the project
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
+	if saveErr := SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject failed: %v", saveErr)
 	}
 
 	// Verify file exists
@@ -70,21 +70,16 @@ func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 
 	project := testutil.NewTestProject("Sections Test")
 	project.Path = filepath.Join(dir, "sections-test")
-	project.Sections = []string{models.SectionNext, models.SectionInbox, models.SectionWaiting}
-	project.SectionColors = map[string]string{
-		models.SectionInbox:   "green",
-		models.SectionWaiting: "blue",
-	}
 
 	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.SetSection(models.SectionInbox)
+	task.ApplyWorkflowState(models.StateInbox)
 	project.Tasks = []*models.Task{task}
 
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
+	if saveErr := SaveProject(project); saveErr != nil {
+		t.Fatalf("SaveProject failed: %v", saveErr)
 	}
 
 	content, err := os.ReadFile(tasksFilePath(project.Path))
@@ -106,20 +101,11 @@ func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 		t.Fatalf("LoadProject failed: %v", err)
 	}
 
-	// Original 3 sections + built-in defaults added by EnsureDefaultSections
-	if len(loadedProject.Sections) < 3 {
-		t.Errorf("expected at least 3 sections, got %d", len(loadedProject.Sections))
-	}
-
-	if len(loadedProject.SectionColors) != 0 {
-		t.Errorf("expected canonical runtime section colors to be empty, got %v", loadedProject.SectionColors)
-	}
-
 	if len(loadedProject.Tasks) != 1 {
 		t.Fatalf("expected 1 task, got %d", len(loadedProject.Tasks))
 	}
 
-	if got := models.SectionForState(loadedProject.Tasks[0].State()); got != models.SectionInbox {
+	if got := loadedProject.Tasks[0].State(); got != models.StateInbox {
 		t.Errorf("expected task section Inbox, got %s", got)
 	}
 }
@@ -496,9 +482,9 @@ func TestWriteTasksMarkdown_SkipsNilTasks(t *testing.T) {
 
 	out := WriteTasksMarkdown("Nil Test", tasks)
 
-	parsed, err := ParseTasksMarkdownWithSections(out)
+	parsed, err := ParseTasksMarkdownDocument(out)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections failed: %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument failed: %v", err)
 	}
 	if len(parsed.Tasks) != 2 {
 		t.Fatalf("expected 2 tasks after round-trip, got %d", len(parsed.Tasks))

@@ -157,13 +157,10 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	}
 	b.WriteString("\n")
 
-	// 5: Section
-	b.WriteString(renderFormLabelWithWidth("Section:", lw, m.focusIndex == 5))
+	// 5: State
+	b.WriteString(renderFormLabelWithWidth("State:", lw, m.focusIndex == 5))
 	{
-		val := m.draft.section
-		if val == "" {
-			val = MutedStyle.Render("(none)")
-		}
+		val := m.draft.state.String()
 		if m.focusIndex == 5 {
 			b.WriteString(SelectorOptionSelectedStyle.Render(val))
 		} else {

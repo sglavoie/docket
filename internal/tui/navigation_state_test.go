@@ -44,6 +44,32 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 	}
 }
 
+func TestPrimaryRouteStackBoundsChildrenAndPreservesRootFocus(t *testing.T) {
+	stack := NewPrimaryRouteStack()
+	rootFocus := FocusTarget{ControlID: "outliner", EntityID: "task-1"}
+	detail := mustRoute(t, TaskDetail, TaskDetailParams{ProjectID: "p1", TaskID: "task-1"})
+	if err := stack.PushTaskDetail(detail, rootFocus); err != nil {
+		t.Fatal(err)
+	}
+
+	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageSettings, Scope: AppEntityScope()})
+	if err := stack.PushChild(secondary, FocusTarget{ControlID: "detail-tab"}); err != nil {
+		t.Fatal(err)
+	}
+	if stack.Depth() != 2 || stack.Current().ID() != SecondaryTool {
+		t.Fatalf("replaced child stack = %+v, want root + SecondaryTool", stack.Routes())
+	}
+
+	popped, restored, ok := stack.Pop()
+	if !ok || popped.ID() != SecondaryTool || restored != rootFocus {
+		t.Fatalf("pop = %s restore=%+v ok=%v, want SecondaryTool and original root focus %+v",
+			popped.ID(), restored, ok, rootFocus)
+	}
+	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
+		t.Fatalf("stack after child pop = %+v, want sole Outliner root", stack.Routes())
+	}
+}
+
 // TestTaskWorkspaceRejectsProjectRouteScope locks the FR15-001 contract: the
 // Outliner root is app-scoped only. A project-scoped TaskWorkspace is rejected
 // at construction (project selection is an Outliner scope frame, not a route),
@@ -79,7 +105,7 @@ func TestTaskWorkspaceRejectsProjectRouteScope(t *testing.T) {
 
 func TestOverlayStackNestingFocusAndCancellation(t *testing.T) {
 	var canceled []string
-	first, _ := NewOverlay(OverlayPalette, "palette")
+	first, _ := NewOverlay(OverlayFinder, "finder")
 	second, _ := NewOverlay(OverlayPicker, "status")
 	stack := OverlayStack{}
 	stack.Push(first, FocusTarget{ControlID: "workspace", EntityID: "t1"}, func() {

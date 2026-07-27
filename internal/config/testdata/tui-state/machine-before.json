@@ -23,8 +23,14 @@
   "pinned_commands": ["discard"],
   "saved_searches": {"discard": "query"},
   "last_palette_category": "discard",
-  "project_view_states": {"project-1": {"view_mode": 4}},
+  "project_view_states": {
+    "project-1": {
+      "view_mode": 4,
+      "outliner_active_perspective": 2
+    }
+  },
   "dashboard_horizontal_split_pct": 42,
   "task_form_collapsed": true,
-  "cross_outliner_fold_state": {"task-1": true}
+  "cross_outliner_fold_state": {"task-1": true},
+  "cross_outliner_filter_sections": ["Waiting"]
 }

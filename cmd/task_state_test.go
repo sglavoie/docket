@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -94,8 +95,8 @@ func TestTaskStateQualifiedDuplicateUsesOwningProject(t *testing.T) {
 	alpha := newFileBackedProject(t, root, "state-alpha", "State Alpha")
 	beta := newFileBackedProject(t, root, "state-beta", "State Beta")
 	const duplicateID = "duplicate-state-task"
-	addTestTask(t, alpha, duplicateID, "Alpha duplicate", models.StatusTodo)
-	addTestTask(t, beta, duplicateID, "Beta duplicate", models.StatusTodo)
+	addTestTask(t, alpha, duplicateID, "Alpha duplicate", models.StateReady)
+	addTestTask(t, beta, duplicateID, "Beta duplicate", models.StateReady)
 	setupFileBackedWorkflowCLI(t, root, alpha, []*models.Project{alpha, beta}, nil, nil)
 
 	err := runAppTransition(newStateTestCmd(), []string{beta.Slug + ":" + duplicateID}, models.StateWaiting)
@@ -121,5 +122,20 @@ func TestTaskStateRejectsInvalidState(t *testing.T) {
 	err := runTaskState(cmd, []string{"bogus", fmt.Sprintf("%d", task.ShortID)})
 	if err == nil {
 		t.Fatal("expected an error for an invalid workflow state")
+	}
+}
+
+func TestTaskStateCompletesCanonicalTargetFirst(t *testing.T) {
+	got, directive := completeTaskStateArgs(taskStateCmd, nil, "")
+	if directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("completion directive = %v", directive)
+	}
+	if !slices.Equal(got, stateCompletions) {
+		t.Fatalf("state completions = %v, want %v", got, stateCompletions)
+	}
+	for _, retired := range []string{"todo", "blocked", "standby", "maybe"} {
+		if slices.Contains(got, retired) {
+			t.Fatalf("canonical state completion includes retired lifecycle value %q", retired)
+		}
 	}
 }

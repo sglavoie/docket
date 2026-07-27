@@ -99,11 +99,11 @@ func TestTaskNextRemovesToday(t *testing.T) {
 // transaction, so a rule cascade cannot leave a task in both horizons.
 func TestWorkflowRuleNextPreservesPlanningExclusivity(t *testing.T) {
 	rule := workflow.WorkflowRule{
-		ID:      "r-start-to-next",
-		Name:    "Starting a task queues it as Next",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->in_progress"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetSection, Value: models.SectionNext}},
+		ID:       "r-start-to-next",
+		Name:     "Starting a task queues it as Next",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->in_progress"}},
+		Actions:  []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: string(models.StateNext)}},
 	}
 	project, configPath, cleanup := setupFocusMutateCLIWithRules(t, rule)
 	defer cleanup()
@@ -148,7 +148,6 @@ func setupFocusMutateCLIWithRules(t *testing.T, rules ...workflow.WorkflowRule) 
 	}
 	project.Slug = "test-project"
 	project.Path = projectPath
-	project.Sections = []string{models.SectionNext, models.SectionInbox}
 	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Build feature")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)

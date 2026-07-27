@@ -18,10 +18,10 @@ func makeBoardTask(t *testing.T, id string, shortID int, title string) *models.T
 	return task
 }
 
-func makeBoardTaskWithStatus(t *testing.T, id string, shortID int, title string, status models.TaskStatus) *models.Task {
+func makeBoardTaskWithStatus(t *testing.T, id string, shortID int, title string, status models.WorkflowState) *models.Task {
 	t.Helper()
 	task := makeBoardTask(t, id, shortID, title)
-	task.WorkflowState = models.TargetStateForStatus(status)
+	task.WorkflowState = status
 	return task
 }
 
@@ -35,10 +35,9 @@ func modeRowIDs(rows []OutlinerModeRow) []string {
 	return ids
 }
 
-// TestOutlinerModeBacklogExcludesTodayAndNextRanked ports the Planner Backlog
-// regression to the mode engine: BuildBacklogModeRows lists actionable tasks
-// excluding the Today (daily plan) and Next (StateNext) horizons, ordered by the
-// shared cross-project ranker (higher score first).
+// TestOutlinerModeBacklogExcludesTodayAndNonReadyStates locks the canonical
+// Backlog definition: exact StateReady membership excluding Today. Next and
+// InProgress belong to their own groups.
 func TestOutlinerModeBacklogExcludesTodayAndNextRanked(t *testing.T) {
 	project, _ := models.NewProject("proj", "Project", "/tmp/backlog-proj")
 
@@ -54,9 +53,8 @@ func TestOutlinerModeBacklogExcludesTodayAndNextRanked(t *testing.T) {
 		Scorer:       config.EmptyRuntimeState(""),
 	})
 
-	// Next (StateNext) and Today (daily plan) are excluded; the remaining
-	// actionable tasks are ranked, so the in-progress P1 outranks the ready P5.
-	want := []string{"hi", "lo"}
+	// Next (StateNext), InProgress, and Today (daily plan) are excluded.
+	want := []string{"lo"}
 	got := modeRowIDs(rows)
 	if len(got) != len(want) {
 		t.Fatalf("backlog IDs = %v, want %v", got, want)
@@ -114,10 +112,10 @@ func TestTodaySectionRowsOpenBeforeCompleted(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	parent := makeBoardTask(t, "id-parent", 1, "Parent")
-	childDone := makeBoardTaskWithStatus(t, "id-done", 2, "Done", models.StatusDone)
-	childOpenA := makeBoardTaskWithStatus(t, "id-openA", 3, "OpenA", models.StatusInProgress)
-	childCanceled := makeBoardTaskWithStatus(t, "id-canceled", 4, "Canceled", models.StatusCanceled)
-	childOpenB := makeBoardTaskWithStatus(t, "id-openB", 5, "OpenB", models.StatusTodo)
+	childDone := makeBoardTaskWithStatus(t, "id-done", 2, "Done", models.StateDone)
+	childOpenA := makeBoardTaskWithStatus(t, "id-openA", 3, "OpenA", models.StateInProgress)
+	childCanceled := makeBoardTaskWithStatus(t, "id-canceled", 4, "Canceled", models.StateCanceled)
+	childOpenB := makeBoardTaskWithStatus(t, "id-openB", 5, "OpenB", models.StateReady)
 	parent.Children = []*models.Task{childDone, childOpenA, childCanceled, childOpenB}
 	project.Tasks = []*models.Task{parent}
 
@@ -137,10 +135,10 @@ func TestTodaySectionRowsRecursiveOrdering(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	parent := makeBoardTask(t, "id-parent", 1, "Parent")
-	mid := makeBoardTaskWithStatus(t, "id-mid", 2, "Mid", models.StatusInProgress)
-	grandDone := makeBoardTaskWithStatus(t, "id-gdone", 3, "GDone", models.StatusDone)
-	grandOpen := makeBoardTaskWithStatus(t, "id-gopen", 4, "GOpen", models.StatusTodo)
-	grandCanceled := makeBoardTaskWithStatus(t, "id-gcanceled", 5, "GCanceled", models.StatusCanceled)
+	mid := makeBoardTaskWithStatus(t, "id-mid", 2, "Mid", models.StateInProgress)
+	grandDone := makeBoardTaskWithStatus(t, "id-gdone", 3, "GDone", models.StateDone)
+	grandOpen := makeBoardTaskWithStatus(t, "id-gopen", 4, "GOpen", models.StateReady)
+	grandCanceled := makeBoardTaskWithStatus(t, "id-gcanceled", 5, "GCanceled", models.StateCanceled)
 	mid.Children = []*models.Task{grandDone, grandOpen, grandCanceled}
 	parent.Children = []*models.Task{mid}
 	project.Tasks = []*models.Task{parent}
@@ -162,9 +160,9 @@ func TestTodaySectionRowsTreeConnectors(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", "/tmp/test-proj")
 
 	parent := makeBoardTask(t, "id-parent", 1, "Parent")
-	childDone := makeBoardTaskWithStatus(t, "id-done", 2, "Done", models.StatusDone)
-	childOpen := makeBoardTaskWithStatus(t, "id-open", 3, "Open", models.StatusInProgress)
-	childCanceled := makeBoardTaskWithStatus(t, "id-canceled", 4, "Canceled", models.StatusCanceled)
+	childDone := makeBoardTaskWithStatus(t, "id-done", 2, "Done", models.StateDone)
+	childOpen := makeBoardTaskWithStatus(t, "id-open", 3, "Open", models.StateInProgress)
+	childCanceled := makeBoardTaskWithStatus(t, "id-canceled", 4, "Canceled", models.StateCanceled)
 	parent.Children = []*models.Task{childDone, childCanceled, childOpen}
 	project.Tasks = []*models.Task{parent}
 

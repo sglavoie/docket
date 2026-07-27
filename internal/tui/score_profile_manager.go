@@ -23,7 +23,6 @@ type ScoreProfileManagerModel struct {
 	confirm          ConfirmDialog
 	currentProjectID string
 	statusMessage    string
-	pendingPrefix    string
 
 	// Inline preset picker sub-mode
 	pickingPreset bool
@@ -84,7 +83,7 @@ func (m *ScoreProfileManagerModel) HasActiveSearch() bool {
 
 // GetHelpItems returns help items for this view.
 func (m *ScoreProfileManagerModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewScoreProfileManager)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *ScoreProfileManagerModel) StatusBarLabel() string { return "Score Profiles" }

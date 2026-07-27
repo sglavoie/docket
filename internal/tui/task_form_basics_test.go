@@ -144,26 +144,6 @@ func TestTaskForm_ParentSelectedMsg_WrongSource_NoChange(t *testing.T) {
 	}
 }
 
-func TestTaskForm_SectionPickerDoneMsg_UpdatesDraft(t *testing.T) {
-	m := newTestTaskForm()
-	m = sendFormMsg(m, SectionPickerDoneMsg{Section: "Next", Canceled: false})
-	if m.draft.section != "Next" {
-		t.Errorf("expected draft.section=Next, got %q", m.draft.section)
-	}
-	if !m.hasChanges {
-		t.Error("expected hasChanges=true")
-	}
-}
-
-func TestTaskForm_SectionPickerDoneMsg_Canceled_NoChange(t *testing.T) {
-	m := newTestTaskForm()
-	m.draft.section = "Now"
-	m = sendFormMsg(m, SectionPickerDoneMsg{Section: "Later", Canceled: true})
-	if m.draft.section != "Now" {
-		t.Errorf("canceled section picker should not update draft; got %q", m.draft.section)
-	}
-}
-
 func TestTaskForm_TagSelectorDoneMsg_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
 	tags := []string{"go", "backend"}
@@ -189,7 +169,7 @@ func TestTaskForm_BasicsTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m.activeTab = formTabBasics
 	view := m.View().Content
-	for _, label := range []string{"Title:", "Description:", "Type:", "Priority:", "Parent:", "Section:", "Flags:", "Tags:"} {
+	for _, label := range []string{"Title:", "Description:", "Type:", "Priority:", "Parent:", "State:", "Flags:", "Tags:"} {
 		if !strings.Contains(view, label) {
 			t.Errorf("Basics tab should contain label %q; got:\n%s", label, view)
 		}

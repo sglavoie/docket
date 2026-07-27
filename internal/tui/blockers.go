@@ -36,7 +36,7 @@ func (m *BlockersModel) getTaskRef() (*models.Task, *models.Project) { return ni
 func (m *BlockersModel) Init() tea.Cmd { return nil }
 
 func (m *BlockersModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewBlockers)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *BlockersModel) SetSize(width, height int) {

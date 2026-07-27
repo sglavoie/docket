@@ -30,13 +30,13 @@ func TestFullscreenTitleChromeTruncationRecordsAudit(t *testing.T) {
 	}
 }
 
-// TestBasePickerDataRowTruncationNoAudit verifies that a long picker data row is
+// TestListSurfaceAdapterDataRowTruncationNoAudit verifies that a long picker data row is
 // clipped intentionally (via the dense-data path) without recording a
 // required-text-truncation audit issue, even while the picker's title/footer
 // chrome is audited. Picker rows are data, not chrome.
-func TestBasePickerDataRowTruncationNoAudit(t *testing.T) {
+func TestListSurfaceAdapterDataRowTruncationNoAudit(t *testing.T) {
 	longRow := strings.Repeat("very-long-picker-row-content ", 8)
-	picker := NewBasePicker([]testItem{{id: "1", text: longRow}}, PickerConfig{
+	picker := NewListSurfaceAdapter([]testItem{{id: "1", text: longRow}}, PickerConfig{
 		EmptyMessage:   "No items",
 		NoMatchMessage: "No matches",
 	})

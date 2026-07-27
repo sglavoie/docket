@@ -17,10 +17,10 @@ func TestComputeAll(t *testing.T) {
 		ID:   "test-project",
 		Name: "Test",
 		Tasks: []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-				{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: start, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
-			makeTask(models.StatusTodo, nil, nil),
+			makeTask(models.StateReady, nil, nil),
 		},
 	}
 
@@ -48,8 +48,8 @@ func TestComputeAllMultiProject(t *testing.T) {
 	done := now.AddDate(0, 0, -1)
 
 	projects := []*models.Project{
-		{ID: "p1", Tasks: []*models.Task{makeTask(models.StatusDone, timePtr(done), nil)}},
-		{ID: "p2", Tasks: []*models.Task{makeTask(models.StatusDone, timePtr(done), nil)}},
+		{ID: "p1", Tasks: []*models.Task{makeTask(models.StateDone, timePtr(done), nil)}},
+		{ID: "p2", Tasks: []*models.Task{makeTask(models.StateDone, timePtr(done), nil)}},
 	}
 
 	result := ComputeAllAt(projects, TimeRange7d, now)
@@ -69,7 +69,7 @@ func TestComputeAllExtraTasks(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 		project := &models.Project{
 			ID:    "p1",
-			Tasks: []*models.Task{makeTask(models.StatusDone, timePtr(done), nil)},
+			Tasks: []*models.Task{makeTask(models.StateDone, timePtr(done), nil)},
 		}
 
 		result := ComputeAllAt([]*models.Project{project}, TimeRange7d, now)
@@ -86,12 +86,12 @@ func TestComputeAllExtraTasks(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 		project := &models.Project{
 			ID:    "p1",
-			Tasks: []*models.Task{makeTask(models.StatusDone, timePtr(done), nil)},
+			Tasks: []*models.Task{makeTask(models.StateDone, timePtr(done), nil)},
 		}
 
 		archived := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), nil),
-			makeTask(models.StatusDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
 		}
 
 		result := ComputeAllAt([]*models.Project{project}, TimeRange7d, now, archived)
@@ -114,8 +114,8 @@ func TestComputeAllExtraTasks(t *testing.T) {
 		}
 
 		archived := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-				{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: start, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
 		}
 
@@ -135,7 +135,7 @@ func TestComputeAllExtraTasks(t *testing.T) {
 		}
 
 		archived := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), nil),
 		}
 
 		result := ComputeAllAt([]*models.Project{project}, TimeRange7d, now, archived)
@@ -158,11 +158,11 @@ func TestComputeAllWithSummaries(t *testing.T) {
 	project := &models.Project{
 		ID: "p1",
 		Tasks: []*models.Task{
-			makeTask(models.StatusDone, timePtr(liveDone), []*models.ActivityEntry{
-				{Timestamp: liveStart, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(liveDone), []*models.ActivityEntry{
+				{Timestamp: liveStart, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
-			makeTask(models.StatusBlocked, nil, []*models.ActivityEntry{
-				{Timestamp: blockedAt, Field: "status", OldValue: "todo", NewValue: "blocked"},
+			makeTask(models.StateWaiting, nil, []*models.ActivityEntry{
+				{Timestamp: blockedAt, Field: "state", OldValue: "todo", NewValue: "waiting"},
 			}),
 		},
 	}
@@ -207,14 +207,14 @@ func TestComputeAllSkipsNilProjectsAndTasks(t *testing.T) {
 	blockedAt := now.AddDate(0, 0, -3)
 	unblockedAt := now.AddDate(0, 0, -2)
 
-	projectTask := makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-		{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
-		{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-		{Timestamp: unblockedAt, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+	projectTask := makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+		{Timestamp: start, Field: "state", OldValue: "todo", NewValue: "in_progress"},
+		{Timestamp: blockedAt, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+		{Timestamp: unblockedAt, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 	})
 	projectTask.ID = "project-task"
 
-	extraTask := makeTask(models.StatusDone, timePtr(done), nil)
+	extraTask := makeTask(models.StateDone, timePtr(done), nil)
 	extraTask.ID = "extra-task"
 
 	project := &models.Project{

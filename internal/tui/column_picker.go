@@ -49,7 +49,7 @@ type ColumnPickerDoneMsg struct {
 
 // ColumnPickerModel is the picker for toggling column visibility.
 type ColumnPickerModel struct {
-	*BasePicker[ColumnInfo]
+	*ListSurfaceAdapter[ColumnInfo]
 	source PresentationID
 }
 
@@ -57,7 +57,7 @@ type ColumnPickerModel struct {
 func NewColumnPickerModel(msg ShowColumnPickerMsg) *ColumnPickerModel {
 	cols := AllColumns
 
-	picker := NewBasePicker(cols, PickerConfig{
+	picker := NewListSurfaceAdapter(cols, PickerConfig{
 		Title:          "Display Columns",
 		EmptyMessage:   "No columns available.",
 		NoMatchMessage: "No matching columns.",
@@ -72,8 +72,8 @@ func NewColumnPickerModel(msg ShowColumnPickerMsg) *ColumnPickerModel {
 	}
 
 	return &ColumnPickerModel{
-		BasePicker: picker,
-		source:     msg.Source,
+		ListSurfaceAdapter: picker,
+		source:             msg.Source,
 	}
 }
 
@@ -81,7 +81,7 @@ func (m *ColumnPickerModel) Init() tea.Cmd { return nil }
 
 func (m *ColumnPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	source := m.source
-	cmd := filterSelectorUpdate(m.BasePicker, msg,
+	cmd := filterSelectorUpdate(m.ListSurfaceAdapter, msg,
 		func() tea.Msg { return ColumnPickerDoneMsg{Source: source, Canceled: true} },
 		func(selected []string) tea.Msg {
 			toggles := buildColumnToggles(selected)
@@ -92,7 +92,7 @@ func (m *ColumnPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ColumnPickerModel) View() tea.View {
-	return tea.NewView(filterSelectorView(m.BasePicker, "column"))
+	return tea.NewView(filterSelectorView(m.ListSurfaceAdapter, "column"))
 }
 
 func (m *ColumnPickerModel) StatusBarLabel() string { return "Display Columns" }

@@ -315,7 +315,7 @@ func cleanupGroupedReverseSnapshots(plans []groupedRestorePlan) {
 }
 
 func buildRestoreContent(label, currentContent, snapContent string, latest UndoEntry) (string, error) {
-	snapResult, err := ParseTasksMarkdownWithSections(snapContent)
+	snapResult, err := ParseTasksMarkdownDocument(snapContent)
 	if err != nil {
 		return "", fmt.Errorf("%s snapshot is invalid: %w", label, err)
 	}

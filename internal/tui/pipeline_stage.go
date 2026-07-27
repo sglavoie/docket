@@ -4,14 +4,12 @@ package tui
 // Returns "" for legacy Execute-accent views and views outside the named pipeline stages.
 func pipelineStage(vt PresentationID) string {
 	switch vt {
-	case ViewQuickCapture, ViewBulkCapture:
+	case ViewTaskComposer:
 		return "Capture"
-	case ViewGlobalInboxProcessor, ViewCrossProjectOutliner:
+	case ViewCrossProjectOutliner:
 		return "Triage"
 	case ViewDailyReview, ViewRoadmap:
 		return "Plan"
-	case ViewFocusBoard:
-		return "Work"
 	case ViewWeeklyReview, ViewMetricsDashboard, ViewRecentActivity:
 		return "Review"
 	case ViewGlobalBlockers, ViewGlobalNotes, ViewWorkflowRules, ViewNotificationCenter:
@@ -25,7 +23,7 @@ func pipelineStage(vt PresentationID) string {
 // taskCountBefore is the number of tasks in the project before the capture; returns "" otherwise.
 func captureNextHint(taskCountBefore int) string {
 	if taskCountBefore == 0 {
-		return "plan it today (w) or triage it from the Inbox mode"
+		return "plan it Today (t) or triage it in Inbox"
 	}
 	return ""
 }
@@ -34,7 +32,7 @@ func captureNextHint(taskCountBefore int) string {
 // Called when no tasks exist yet so beginners get an actionable prompt.
 func pipelineNextHintOnboarding(vt PresentationID) string {
 	if vt == ViewCrossProjectOutliner {
-		return "Next: capture a task (Ctrl+N)"
+		return "Next: capture a task (a)"
 	}
 	return ""
 }
@@ -43,20 +41,18 @@ func pipelineNextHintOnboarding(vt PresentationID) string {
 // Returns "" for views that should show the default help text.
 func pipelineNextHint(vt PresentationID) string {
 	switch vt {
-	case ViewQuickCapture, ViewBulkCapture:
+	case ViewTaskComposer:
 		return "Next: Inbox triage | Tab cycles modes"
-	case ViewGlobalInboxProcessor, ViewCrossProjectOutliner:
-		return "Next: Tab for Next | w plans Today"
+	case ViewCrossProjectOutliner:
+		return "Next: Tab cycles modes | t plans Today"
 	case ViewRoadmap:
 		return "Next: All for Today | Enter project"
 	case ViewDailyReview:
 		return "ctrl+f weekly | Next: All for Today"
-	case ViewFocusBoard:
-		return "ctrl+t backlog | Next: Daily Review"
 	case ViewWeeklyReview:
-		return "ctrl+f daily | Next: Ctrl+N capture | Next mode"
+		return "Next: Esc back | a capture from All"
 	case ViewMetricsDashboard, ViewRecentActivity:
-		return "Next: Ctrl+N capture | Next mode"
+		return "Next: Esc back | a capture from All"
 	default:
 	}
 	return ""

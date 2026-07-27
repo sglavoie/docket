@@ -78,5 +78,8 @@ func (m *AppModel) resolveExportProject(msg ExportProjectMsg) *models.Project {
 	if msg.Project != nil {
 		return msg.Project
 	}
-	return m.paletteCursorProject()
+	if _, project := m.outlinerTarget(); project != nil {
+		return project
+	}
+	return m.currentProject
 }

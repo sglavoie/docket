@@ -1,39 +1,36 @@
 package tui
 
 import (
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // ParsedSearchQuery holds structured filters extracted from a search query.
 type ParsedSearchQuery struct {
-	TextQuery     string              // Remaining text after extracting filters
-	Priorities    []int               // Empty = all priorities
-	Tags          []string            // AND logic - task must have all tags
-	Statuses      []models.TaskStatus // Empty = all statuses
-	Types         []models.TaskType   // Empty = all types
-	DueDateFilter string              // "today", "tomorrow", "week", "overdue", "none", ""
-	Section       string              // Empty = all sections
-	HasPresence   []string            // has:X filters (normalized names)
-	NoPresence    []string            // no:X filters (negation of has:)
-	IsState       []string            // is:X filters
-	ProjectSlug   string              // p:slug project filter
+	TextQuery     string   // Remaining text after extracting filters
+	Priorities    []int    // Empty = all priorities
+	Tags          []string // AND logic - task must have all tags
+	States        []models.WorkflowState
+	Types         []models.TaskType // Empty = all types
+	DueDateFilter string            // "today", "tomorrow", "week", "overdue", "none", ""
+	HasPresence   []string          // has:X filters (normalized names)
+	NoPresence    []string          // no:X filters (negation of has:)
+	IsState       []string          // is:X filters
+	ProjectSlug   string            // p:slug project filter
 }
 
 // HasFilters returns true if any filters are active.
 func (p *ParsedSearchQuery) HasFilters() bool {
 	return len(p.Priorities) > 0 ||
 		len(p.Tags) > 0 ||
-		len(p.Statuses) > 0 ||
+		len(p.States) > 0 ||
 		len(p.Types) > 0 ||
 		p.DueDateFilter != "" ||
-		p.Section != "" ||
 		len(p.HasPresence) > 0 ||
 		len(p.NoPresence) > 0 ||
 		len(p.IsState) > 0 ||
@@ -44,137 +41,75 @@ func (p *ParsedSearchQuery) HasFilters() bool {
 // that have no meaning for notes (which lack these properties).
 func (p *ParsedSearchQuery) HasTaskOnlyFilters() bool {
 	return len(p.Priorities) > 0 ||
-		len(p.Statuses) > 0 ||
+		len(p.States) > 0 ||
 		len(p.Types) > 0 ||
-		p.DueDateFilter != "" ||
-		p.Section != ""
+		p.DueDateFilter != ""
 }
 
-// ParseSearchQuery extracts structured filters from a search query string.
-// Syntax mirrors quick capture:
-//   - !N, !N-M, or !alias for priority (1-5, range, or word/abbreviation)
-//   - #tag for tags
-//   - @today, @tomorrow, @week, @overdue, @none for due date filters
-//   - $status for status (todo, in_progress, review, standby, maybe, done, blocked, canceled)
-//   - ^type for task type (epic, story, task, bug, idea, note)
-//   - /section for section filter
+// ParseSearchQuery extracts structured filters through the shared text grammar.
+// Unknown search tokens remain free text instead of silently becoming filters.
 func ParseSearchQuery(input string) *ParsedSearchQuery {
 	result := &ParsedSearchQuery{}
+	parsed := textgrammar.Parse(input, textgrammar.SurfaceSearch)
+	rejected := make([]string, 0)
 
-	// Extract priority: !N, !N-M (range), or word/abbreviation aliases
-	priorityRangeRe := regexp.MustCompile(`\s*!([1-5])-([1-5])\s*`)
-	priorityTokenRe := regexp.MustCompile(`(?i)\s*!(critical|urgent|high|normal|medium|lowest|low|cr|ur|hi|no|med|me|lo|c|u|h|n|m|l|[1-5])\s*`)
-
-	// Handle range first
-	for _, match := range priorityRangeRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 3 {
-			start, _ := strconv.Atoi(match[1])
-			end, _ := strconv.Atoi(match[2])
-			if start > end {
-				start, end = end, start
-			}
-			for p := start; p <= end; p++ {
-				if !containsInt(result.Priorities, p) {
-					result.Priorities = append(result.Priorities, p)
-				}
+	for _, token := range parsed.TokensFor(textgrammar.FieldPriority) {
+		values, ok := textgrammar.ParsePriority(token.Value, true)
+		if !ok {
+			rejected = append(rejected, token.Raw)
+			continue
+		}
+		for _, priority := range values {
+			if !containsInt(result.Priorities, priority) {
+				result.Priorities = append(result.Priorities, priority)
 			}
 		}
 	}
-	input = priorityRangeRe.ReplaceAllString(input, " ")
-
-	// Then single priorities (numeric or abbreviation)
-	for _, match := range priorityTokenRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			p := parsePriorityToken(match[1])
-			if p >= 1 && p <= 5 && !containsInt(result.Priorities, p) {
-				result.Priorities = append(result.Priorities, p)
+	for _, token := range parsed.TokensFor(textgrammar.FieldTag) {
+		result.Tags = append(result.Tags, token.Value)
+	}
+	if tokens := parsed.TokensFor(textgrammar.FieldDue); len(tokens) > 0 {
+		result.DueDateFilter = strings.ToLower(tokens[0].Value)
+	}
+	for _, token := range parsed.TokensFor(textgrammar.FieldState) {
+		match, ok := textgrammar.ParseState(textgrammar.SurfaceSearch, token.Value)
+		if !ok {
+			rejected = append(rejected, token.Raw)
+			continue
+		}
+		for _, state := range match.States {
+			if !slices.Contains(result.States, state) {
+				result.States = append(result.States, state)
 			}
 		}
 	}
-	input = priorityTokenRe.ReplaceAllString(input, " ")
-
-	// Extract tags: #word
-	tagRe := regexp.MustCompile(`\s*#([\w][\w.-]*)\s*`)
-	for _, match := range tagRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			result.Tags = append(result.Tags, match[1])
+	for _, token := range parsed.TokensFor(textgrammar.FieldTaskType) {
+		taskType, ok := models.ParseTaskTypeInsensitive(token.Value)
+		if ok {
+			result.Types = append(result.Types, taskType)
+		} else if !strings.EqualFold(token.Value, "note") {
+			rejected = append(rejected, token.Raw)
 		}
 	}
-	input = tagRe.ReplaceAllString(input, " ")
-
-	// Extract due date filter: @keyword
-	dueDateRe := regexp.MustCompile(`(?i)\s*@(today|tomorrow|week|overdue|none)\s*`)
-	if match := dueDateRe.FindStringSubmatch(input); len(match) == 2 {
-		result.DueDateFilter = strings.ToLower(match[1])
+	for _, token := range parsed.TokensFor(textgrammar.FieldHas) {
+		result.HasPresence = append(result.HasPresence, normalizeHasFilter(strings.ToLower(token.Value)))
 	}
-	input = dueDateRe.ReplaceAllString(input, " ")
-
-	// Extract status: $status
-	statusRe := regexp.MustCompile(`(?i)\s*\$(todo|in_progress|review|standby|maybe|done|blocked|canceled)\s*`)
-	for _, match := range statusRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			if status, ok := models.ParseTaskStatus(strings.ToLower(match[1])); ok {
-				result.Statuses = append(result.Statuses, status)
-			}
+	for _, token := range parsed.TokensFor(textgrammar.FieldNo) {
+		result.NoPresence = append(result.NoPresence, normalizeHasFilter(strings.ToLower(token.Value)))
+	}
+	for _, token := range parsed.TokensFor(textgrammar.FieldIs) {
+		value := strings.ToLower(token.Value)
+		if textgrammar.ContainsDefinitionValue(textgrammar.SurfaceSearch, textgrammar.FieldIs, value) {
+			result.IsState = append(result.IsState, value)
+		} else {
+			rejected = append(rejected, token.Raw)
 		}
 	}
-	input = statusRe.ReplaceAllString(input, " ")
-
-	// Extract type: ^type
-	typeRe := regexp.MustCompile(`(?i)\s*\^(epic|story|task|bug|idea|note)\s*`)
-	for _, match := range typeRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			if taskType, ok := models.ParseTaskTypeInsensitive(match[1]); ok {
-				result.Types = append(result.Types, taskType)
-			}
-		}
+	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
+		result.ProjectSlug = strings.ToLower(tokens[0].Value)
 	}
-	input = typeRe.ReplaceAllString(input, " ")
 
-	// Extract section: /section
-	sectionRe := regexp.MustCompile(`\s*/(\S+)\s*`)
-	if match := sectionRe.FindStringSubmatch(input); len(match) == 2 {
-		result.Section = match[1]
-	}
-	input = sectionRe.ReplaceAllString(input, " ")
-
-	// Extract has: filters
-	hasRe := regexp.MustCompile(`(?i)\bhas:(\w+)`)
-	for _, match := range hasRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			result.HasPresence = append(result.HasPresence, normalizeHasFilter(strings.ToLower(match[1])))
-		}
-	}
-	input = hasRe.ReplaceAllString(input, " ")
-
-	// Extract no: filters
-	noRe := regexp.MustCompile(`(?i)\bno:(\w+)`)
-	for _, match := range noRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			result.NoPresence = append(result.NoPresence, normalizeHasFilter(strings.ToLower(match[1])))
-		}
-	}
-	input = noRe.ReplaceAllString(input, " ")
-
-	// Extract supported is: filters. Unsupported values remain text queries.
-	isRe := regexp.MustCompile(`(?i)\bis:(note|pinned|dimmed|blocked|overdue|snoozed|recurring|leaf|root)\b`)
-	for _, match := range isRe.FindAllStringSubmatch(input, -1) {
-		if len(match) == 2 {
-			result.IsState = append(result.IsState, strings.ToLower(match[1]))
-		}
-	}
-	input = isRe.ReplaceAllString(input, " ")
-
-	// Extract p: / project: filter
-	projectRe := regexp.MustCompile(`(?i)\b(?:project:|p:)(\S+)`)
-	if match := projectRe.FindStringSubmatch(input); len(match) == 2 {
-		result.ProjectSlug = strings.ToLower(match[1])
-	}
-	input = projectRe.ReplaceAllString(input, " ")
-
-	// Clean up remaining text query
-	result.TextQuery = strings.TrimSpace(input)
-	result.TextQuery = regexp.MustCompile(`\s+`).ReplaceAllString(result.TextQuery, " ")
+	result.TextQuery = textgrammar.NormalizeText(strings.Join(append([]string{parsed.Text}, rejected...), " "))
 
 	return result
 }
@@ -201,16 +136,8 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 		}
 	}
 
-	// Status filter (legacy vocabulary mapped onto workflow states)
-	if len(filters.Statuses) > 0 {
-		found := false
-		for _, status := range filters.Statuses {
-			if stateMatchesLegacyStatus(task.State(), status) {
-				found = true
-				break
-			}
-		}
-		if !found {
+	if len(filters.States) > 0 {
+		if !slices.Contains(filters.States, task.State()) {
 			return false
 		}
 	}
@@ -226,18 +153,6 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 	// Due date filter
 	if filters.DueDateFilter != "" {
 		if !matchesDueDateFilter(task, filters.DueDateFilter) {
-			return false
-		}
-	}
-
-	// Section filter (case-insensitive, against the state's section bucket)
-	if filters.Section != "" {
-		section := taskSectionBucket(task)
-		matchesSection := strings.EqualFold(section, filters.Section)
-		if strings.EqualFold(filters.Section, "Active") {
-			matchesSection = section == ""
-		}
-		if !matchesSection {
 			return false
 		}
 	}

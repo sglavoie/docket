@@ -12,7 +12,7 @@ import (
 
 // DependencySelectorModel allows toggling dependencies for a task.
 type DependencySelectorModel struct {
-	*BasePicker[TaskPickerItem]
+	*ListSurfaceAdapter[TaskPickerItem]
 	task           *models.Task
 	project        *models.Project
 	originalDepsOn map[string]bool
@@ -30,7 +30,7 @@ type DependencySelectorDoneMsg struct {
 func NewDependencySelectorModel(task *models.Task, project *models.Project) *DependencySelectorModel {
 	candidates := buildDependencyCandidates(task, project)
 
-	picker := NewBasePicker(candidates, PickerConfig{
+	picker := NewListSurfaceAdapter(candidates, PickerConfig{
 		Title: fmt.Sprintf("Dependencies for #%d: %s",
 			task.ShortID,
 			TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)),
@@ -48,10 +48,10 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 	}
 
 	return &DependencySelectorModel{
-		BasePicker:     picker,
-		task:           task,
-		project:        project,
-		originalDepsOn: originalDepsOn,
+		ListSurfaceAdapter: picker,
+		task:               task,
+		project:            project,
+		originalDepsOn:     originalDepsOn,
 	}
 }
 
@@ -115,7 +115,7 @@ func (m *DependencySelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			newDeps := m.SelectedIDs()
-			hasChanges := !mapsEqual(m.originalDepsOn, m.Selected)
+			hasChanges := !mapsEqual(m.originalDepsOn, m.SelectionMap())
 			return m, func() tea.Msg {
 				return DependencySelectorDoneMsg{
 					Task:       m.task,
@@ -171,7 +171,7 @@ func (m *DependencySelectorModel) View() tea.View {
 	b.WriteString(m.RenderSearchBar())
 
 	// Current dependencies count
-	depCount := len(m.Selected)
+	depCount := len(m.SelectionMap())
 	if depCount == 0 {
 		b.WriteString(MutedStyle.Render("No dependencies selected"))
 	} else {
@@ -184,7 +184,7 @@ func (m *DependencySelectorModel) View() tea.View {
 
 	// Footer
 	left := HelpStyle.Render("Space: toggle · /: search · Enter: confirm · Esc: cancel")
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.FilteredItems())))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return tea.NewView(b.String())
@@ -194,7 +194,7 @@ func (m *DependencySelectorModel) View() tea.View {
 func (m *DependencySelectorModel) renderTaskList() string {
 	var b strings.Builder
 
-	if len(m.Filtered) == 0 {
+	if len(m.FilteredItems()) == 0 {
 		b.WriteString(MutedStyle.Render(m.Config.EmptyMessage))
 		b.WriteString("\n")
 		return b.String()
@@ -209,24 +209,24 @@ func (m *DependencySelectorModel) renderTaskList() string {
 	}
 
 	start := 0
-	if m.Cursor >= maxVisible {
-		start = m.Cursor - maxVisible + 1
+	if m.CursorIndex() >= maxVisible {
+		start = m.CursorIndex() - maxVisible + 1
 	}
-	end := min(start+maxVisible, len(m.Filtered))
+	end := min(start+maxVisible, len(m.FilteredItems()))
 
 	for i := start; i < end; i++ {
-		item := m.Filtered[i]
+		item := m.FilteredItems()[i]
 		t := item.Task
 
 		// Checkbox
 		checkbox := "[ ]"
-		if m.Selected[item.ItemID()] {
+		if m.SelectionMap()[item.ItemID()] {
 			checkbox = "[x]"
 		}
 
 		// Cursor indicator
 		cursor := "  "
-		if i == m.Cursor {
+		if i == m.CursorIndex() {
 			cursor = "  "
 		}
 
@@ -241,19 +241,19 @@ func (m *DependencySelectorModel) renderTaskList() string {
 		prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, checkbox, typeIcon, statusIcon, idStr)
 		title := truncateToVisualWidth(t.Title, max(m.Width()-lipgloss.Width(prefix), 1))
 		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
-			CursorSelected: i == m.Cursor,
+			CursorSelected: i == m.CursorIndex(),
 		}).Render(title)
 
 		line := prefix + titleRendered
-		if i == m.Cursor {
+		if i == m.CursorIndex() {
 			line = BoldStyle.Render(line)
 		}
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
 
-	if len(m.Filtered) > maxVisible {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.Filtered)-maxVisible)))
+	if len(m.FilteredItems()) > maxVisible {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.FilteredItems())-maxVisible)))
 		b.WriteString("\n")
 	}
 

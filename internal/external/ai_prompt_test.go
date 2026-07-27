@@ -133,6 +133,9 @@ func TestParseActionPlan_RejectsMalformedFences(t *testing.T) {
 func TestParseActionPlan_RejectsMalformedAndCommandOutput(t *testing.T) {
 	cases := []string{
 		`{"version":2,"summary":"x","actions":[`,
+		`{"version":1,"summary":"x","actions":[]}`,
+		`{"version":3,"summary":"x","actions":[]}`,
+		`{"summary":"x","actions":[]}`,
 		`tt task delete 1`,
 		`{"version":2,"summary":"x","actions":[],"command":"rm -rf /"}`,
 		`{"version":2,"summary":"x","actions":[{"type":"shell","title":"rm -rf /"}]}`,
@@ -195,7 +198,7 @@ func TestBuildTaskContext_IncludesTaskMetadata(t *testing.T) {
 	// The section is now derived from the task's canonical state, which is
 	// case-sensitive (SectionForState always returns the canonical spelling), so
 	// the fixture uses the canonical Next section rather than lowercase "next".
-	task.SetSection(models.SectionNext)
+	task.ApplyWorkflowState(models.StateNext)
 	task.Tags = []string{"urgent", "ui"}
 	project := &models.Project{ID: "p1", Slug: "p", Name: "p", Tasks: []*models.Task{task}}
 	out := BuildTaskContext(project)

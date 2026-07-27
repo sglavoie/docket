@@ -9,7 +9,7 @@ import (
 
 // filterSelectorUpdate handles the common Update logic for filter selectors.
 // cancelMsg is called to produce the cancel message, doneMsg to produce the done message with selected IDs.
-func filterSelectorUpdate[T PickerItem](picker *BasePicker[T], msg tea.Msg, cancelMsg func() tea.Msg, doneMsg func([]string) tea.Msg) tea.Cmd {
+func filterSelectorUpdate[T PickerItem](picker *ListSurfaceAdapter[T], msg tea.Msg, cancelMsg func() tea.Msg, doneMsg func([]string) tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		picker.SetSize(msg.Width, msg.Height)
@@ -37,8 +37,8 @@ func filterSelectorUpdate[T PickerItem](picker *BasePicker[T], msg tea.Msg, canc
 
 // filterSelectorView renders the common View for filter selectors.
 // itemLabel should be "tag" or "section" (will be pluralized automatically).
-func filterSelectorView[T PickerItem](picker *BasePicker[T], itemLabel string) string {
-	selectedCount := len(picker.Selected)
+func filterSelectorView[T PickerItem](picker *ListSurfaceAdapter[T], itemLabel string) string {
+	selectedCount := len(picker.SelectionMap())
 	var headerContent string
 	if selectedCount == 0 {
 		headerContent = MutedStyle.Render(fmt.Sprintf("No %ss selected (showing all)", itemLabel))

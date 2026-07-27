@@ -243,10 +243,10 @@ func TestBulkDeleteLocatorsDisambiguateDuplicateTaskIDs(t *testing.T) {
 
 func TestBulkTransitionAcrossProjectsIsOneTransaction(t *testing.T) {
 	a := newTask("a", 1, "a")
-	a.SetSection(models.SectionInbox)
+	a.ApplyWorkflowState(models.StateInbox)
 	pa := newProject("proj-1", "Alpha", a)
 	b := newTask("b", 1, "b")
-	b.SetSection(models.SectionInbox)
+	b.ApplyWorkflowState(models.StateInbox)
 	pb := newProject("proj-2", "Beta", b)
 	repo := newFakeRepo(pa, pb)
 	svc := newTestService(repo)
@@ -268,7 +268,7 @@ func TestBulkTransitionAcrossProjectsIsOneTransaction(t *testing.T) {
 
 func TestBulkTransitionAbortsWholeBatchOnInvalidTransition(t *testing.T) {
 	a := newTask("a", 1, "a")
-	a.SetSection(models.SectionInbox)
+	a.ApplyWorkflowState(models.StateInbox)
 	terminal := newTask("done", 2, "already done")
 	terminal.Complete()
 	project := newProject("proj-1", "Alpha", a, terminal)

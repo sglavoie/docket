@@ -380,7 +380,7 @@ func loadTrashEntryForRestore(entryPath, entryID string) (*TrashTombstone, strin
 }
 
 // reloadProjectComputedFields loads tasks.md into the project's computed fields
-// (Tasks, sections, tags, NextShortID) without disturbing its config-level
+// (Tasks, tags, NextShortID) without disturbing its config-level
 // identity (ID, name, context, timestamps, archive/pin state). It also parses a
 // project name from the file when the tombstone carried none (legacy entries).
 func reloadProjectComputedFields(project *models.Project) error {
@@ -390,8 +390,6 @@ func reloadProjectComputedFields(project *models.Project) error {
 	}
 	project.Tasks = loaded.Tasks
 	project.NextShortID = loaded.NextShortID
-	project.Sections = loaded.Sections
-	project.SectionColors = loaded.SectionColors
 	project.Tags = loaded.Tags
 	project.PinnedTags = loaded.PinnedTags
 

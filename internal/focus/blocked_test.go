@@ -9,7 +9,7 @@ import (
 )
 
 // TestCollectActionableTasks_BlockedExcluded verifies that tasks with
-// StatusBlocked are excluded from actionable results regardless of whether
+// StateWaiting are excluded from actionable results regardless of whether
 // they have incomplete dependencies.
 func TestCollectActionableTasks_BlockedExcluded(t *testing.T) {
 	proj, err := models.NewProject(uuid.New().String(), "P", "")

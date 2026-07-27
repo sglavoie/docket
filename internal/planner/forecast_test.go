@@ -47,8 +47,8 @@ func TestForecastZeroVelocity(t *testing.T) {
 
 // TestForecastAllDone verifies zero remaining when all children are complete.
 func TestForecastAllDone(t *testing.T) {
-	c1 := withStatus(newTask("c1"), models.StatusDone)
-	c2 := withStatus(newTask("c2"), models.StatusDone)
+	c1 := withStatus(newTask("c1"), models.StateDone)
+	c2 := withStatus(newTask("c2"), models.StateDone)
 	parent := withChildren(newTask("parent"), c1, c2)
 
 	result := ForecastCompletion(parent, 1.0, refNow)
@@ -139,8 +139,8 @@ func TestForecastMixedEffortNoEffort(t *testing.T) {
 func TestWeightedVelocityNoEffortData(t *testing.T) {
 	throughput := metrics.ThroughputResult{Total: 10, AvgPerDay: 2.0}
 	tasks := []*models.Task{
-		withStatus(newTask("t1"), models.StatusDone),
-		withStatus(newTask("t2"), models.StatusDone),
+		withStatus(newTask("t1"), models.StateDone),
+		withStatus(newTask("t2"), models.StateDone),
 	}
 	got := WeightedVelocity(throughput, tasks)
 	if got != 2.0 {
@@ -168,7 +168,7 @@ func TestWeightedVelocityEffortWeighted(t *testing.T) {
 	for i := range tasks {
 		tasks[i] = withStatus(
 			withEffort(newTask(fmt.Sprintf("t%d", i)), models.EffortLarge),
-			models.StatusDone,
+			models.StateDone,
 		)
 	}
 	got := WeightedVelocity(throughput, tasks)
@@ -184,8 +184,8 @@ func TestWeightedVelocityEffortWeighted(t *testing.T) {
 func TestWeightedVelocityMixedEffort(t *testing.T) {
 	throughput := metrics.ThroughputResult{Total: 2, AvgPerDay: 1.0}
 
-	small := withStatus(withEffort(newTask("s"), models.EffortSmall), models.StatusDone) // 0.5
-	large := withStatus(withEffort(newTask("l"), models.EffortLarge), models.StatusDone) // 3.0
+	small := withStatus(withEffort(newTask("s"), models.EffortSmall), models.StateDone) // 0.5
+	large := withStatus(withEffort(newTask("l"), models.EffortLarge), models.StateDone) // 3.0
 
 	got := WeightedVelocity(throughput, []*models.Task{small, large})
 
@@ -220,7 +220,7 @@ func TestWeightedVelocityWithSummariesIncludesArchivedEffort(t *testing.T) {
 
 func TestWeightedVelocityPreservesIdeaEffortFallback(t *testing.T) {
 	throughput := metrics.ThroughputResult{Total: 1, AvgPerDay: 1.0}
-	task := withStatus(newTask("idea-velocity"), models.StatusDone)
+	task := withStatus(newTask("idea-velocity"), models.StateDone)
 	task.TaskAttrs = &models.TaskAttrs{}
 	task.EnsureIdeaAttrs().Effort = models.EffortLarge
 

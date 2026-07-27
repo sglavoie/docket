@@ -25,7 +25,7 @@ func TestLegacyWorkspaceFixtureParsesLegacyFields(t *testing.T) {
 		t.Fatalf("read legacy fixture: %v", err)
 	}
 
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		t.Fatalf("parse legacy fixture: %v", err)
 	}
@@ -125,11 +125,8 @@ func TestLegacyWorkspaceFixtureCanonicalRoundTrip(t *testing.T) {
 	if len(roundTrip.Tasks) != len(doc.Tasks) {
 		t.Fatalf("round-trip tasks = %d, want %d", len(roundTrip.Tasks), len(doc.Tasks))
 	}
-	if len(roundTrip.Sections) != 1 || roundTrip.Sections[0] != models.SectionNext {
-		t.Fatalf("round-trip project sections = %v, want parser compatibility default [Next]", roundTrip.Sections)
-	}
-	if len(roundTrip.SectionColors) != 0 {
-		t.Fatalf("round-trip section colors = %v, want empty", roundTrip.SectionColors)
+	if len(roundTrip.legacySections) != 0 || len(roundTrip.legacySectionColors) != 0 {
+		t.Fatalf("canonical round-trip retained legacy project metadata")
 	}
 
 	wantState := make(map[string]models.WorkflowState, len(doc.Tasks))
@@ -156,28 +153,25 @@ func TestLegacyProjectMetadataStaysAtDecodeBoundary(t *testing.T) {
 		"## Task: Custom section task\n" +
 		"<!-- id: custom-1, status: todo, section: Sprint-1, priority: 2 -->\n"
 
-	decoded, err := ParseTasksMarkdownWithSections(content)
+	decoded, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("parse legacy metadata: %v", err)
 	}
-	if len(decoded.Sections) != 3 || decoded.SectionColors[models.SectionWaiting] != "red" {
-		t.Fatalf("decode boundary lost legacy metadata: sections=%v colors=%v", decoded.Sections, decoded.SectionColors)
+	if len(decoded.legacySections) != 3 || decoded.legacySectionColors["Waiting"] != "red" {
+		t.Fatalf("decode boundary lost legacy metadata: sections=%v colors=%v", decoded.legacySections, decoded.legacySectionColors)
 	}
 
 	projectPath := filepath.Join(t.TempDir(), "decode-boundary")
-	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
-		t.Fatalf("create project path: %v", err)
+	if mkdirErr := os.MkdirAll(projectPath, DirPermissions); mkdirErr != nil {
+		t.Fatalf("create project path: %v", mkdirErr)
 	}
-	if err := os.WriteFile(tasksFilePath(projectPath), []byte(content), FilePermissions); err != nil {
-		t.Fatalf("write legacy project: %v", err)
+	if writeErr := os.WriteFile(tasksFilePath(projectPath), []byte(content), FilePermissions); writeErr != nil {
+		t.Fatalf("write legacy project: %v", writeErr)
 	}
 	project := &models.Project{ID: "decode-boundary", Name: "Decode Boundary", Path: projectPath}
 	load, err := LoadProjectWithWarnings(project)
 	if err != nil {
 		t.Fatalf("load legacy project: %v", err)
-	}
-	if len(project.SectionColors) != 0 {
-		t.Fatalf("runtime project hydrated legacy section colors: %v", project.SectionColors)
 	}
 	if len(project.Tags) != 2 || len(project.PinnedTags) != 1 {
 		t.Fatalf("canonical project metadata was not retained: tags=%v pinned=%v", project.Tags, project.PinnedTags)
@@ -189,8 +183,8 @@ func TestLegacyProjectMetadataStaysAtDecodeBoundary(t *testing.T) {
 		t.Fatalf("repair warnings were not retained: load=%v project=%v", load.Warnings, project.Warnings)
 	}
 
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("save canonical project: %v", err)
+	if saveErr := SaveProject(project); saveErr != nil {
+		t.Fatalf("save canonical project: %v", saveErr)
 	}
 	canonical, err := os.ReadFile(tasksFilePath(projectPath))
 	if err != nil {

@@ -41,12 +41,6 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 		if !handled {
 			t.Fatal("handleLinkedTaskNavigation should report handled")
 		}
-		if app.outliner != nil {
-			t.Fatal("linked-task navigation must not construct a separate AppModel.outliner root")
-		}
-		if app.views.Get(ViewOutliner) != nil {
-			t.Fatal("linked-task navigation must not register a ViewOutliner route")
-		}
 		if app.baseProjectView() != ViewCrossProjectOutliner {
 			t.Fatalf("base view = %s, want the single %s root", app.baseProjectView(), ViewCrossProjectOutliner)
 		}
@@ -65,7 +59,7 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 
 		// A palette task action after linked-task navigation resolves the same
 		// project-qualified task the scoped Outliner shows.
-		task, proj := app.paletteTaskTarget()
+		task, proj := app.outlinerTarget()
 		if task == nil || proj == nil {
 			t.Fatal("palette task action resolved no task from the scoped cross Outliner")
 		}
@@ -99,12 +93,6 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 		if cmd != nil {
 			cmd()
 		}
-		if app.outliner != nil {
-			t.Fatal("blocker navigation must not construct a separate AppModel.outliner root")
-		}
-		if app.views.Get(ViewOutliner) != nil {
-			t.Fatal("blocker navigation must not register a ViewOutliner route")
-		}
 		if app.baseProjectView() != ViewCrossProjectOutliner {
 			t.Fatalf("base view = %s, want the single %s root", app.baseProjectView(), ViewCrossProjectOutliner)
 		}
@@ -118,7 +106,7 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 		// A palette task action after blocker navigation resolves the same
 		// project-qualified task the scoped Outliner shows under its cursor.
 		visibleTask, visibleProject := cursorOnFirstTaskRow(t, cross)
-		task, proj := app.paletteTaskTarget()
+		task, proj := app.outlinerTarget()
 		if task == nil || proj == nil {
 			t.Fatal("palette task action resolved no task from the scoped cross Outliner")
 		}
@@ -141,13 +129,9 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 	t.Run("typed linked-task navigation keeps the root TaskWorkspace app-scoped", func(t *testing.T) {
 		owner, ownerTasks := planningOrderProject(t, t.TempDir(), "p-typed", "typed", "Alpha", "Bravo")
 		app, cross, _ := newPlanningOrderApp(t, owner)
-		app.enableTypedNavigation()
 
 		if _, cmd := app.handleLinkedTaskNavigation(ownerTasks[1], owner); cmd != nil {
 			cmd()
-		}
-		if app.outliner != nil {
-			t.Fatal("typed linked-task navigation must not construct AppModel.outliner")
 		}
 		route := app.navigation.Primary.Current()
 		if route.ID() != TaskWorkspace {
@@ -165,7 +149,7 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 
 // TestNoProductionSingleOutlinerIdentity locks FR16-003's structural half:
 // production (typed) project navigation must not construct, register, present,
-// or target a separate AppModel.outliner or ViewOutliner. Every project
+// or target a separate project-root renderer. Every project
 // selection becomes a scope frame on the single authoritative cross-project
 // Outliner, so switchToProject no longer builds a second single-project instance
 // on the typed path. This is what keeps the retained project commands exposed
@@ -173,12 +157,6 @@ func TestLinkedTaskAndBlockerNavigationUseCanonicalOutliner(t *testing.T) {
 func TestNoProductionSingleOutlinerIdentity(t *testing.T) {
 	assertSoleRoot := func(t *testing.T, app *AppModel, cross *OutlinerModel, projectID string) {
 		t.Helper()
-		if app.outliner != nil {
-			t.Fatal("production navigation must not construct a separate AppModel.outliner")
-		}
-		if app.views.Get(ViewOutliner) != nil {
-			t.Fatal("production navigation must not register a ViewOutliner route")
-		}
 		if app.baseProjectView() != ViewCrossProjectOutliner {
 			t.Fatalf("base view = %s, want the single %s root", app.baseProjectView(), ViewCrossProjectOutliner)
 		}
@@ -199,7 +177,6 @@ func TestNoProductionSingleOutlinerIdentity(t *testing.T) {
 		owner, _ := planningOrderProject(t, t.TempDir(), "p-sel", "sel", "Alpha", "Bravo")
 		other, _ := planningOrderProject(t, t.TempDir(), "p-sel2", "sel2", "Charlie", "Delta")
 		app, cross, _ := newPlanningOrderApp(t, owner, other)
-		app.enableTypedNavigation()
 
 		if cmd := app.selectProjectNow(other); cmd != nil {
 			cmd()
@@ -210,7 +187,6 @@ func TestNoProductionSingleOutlinerIdentity(t *testing.T) {
 	t.Run("task navigation scopes the cross Outliner without a second instance", func(t *testing.T) {
 		owner, ownerTasks := planningOrderProject(t, t.TempDir(), "p-nav", "nav", "Alpha", "Bravo")
 		app, cross, _ := newPlanningOrderApp(t, owner)
-		app.enableTypedNavigation()
 
 		if cmd := app.navigateToTaskInProjectNow(ownerTasks[1], owner); cmd != nil {
 			cmd()
@@ -221,15 +197,8 @@ func TestNoProductionSingleOutlinerIdentity(t *testing.T) {
 	t.Run("switchToProject builds no single-project instance on the typed path", func(t *testing.T) {
 		owner, _ := planningOrderProject(t, t.TempDir(), "p-sw", "sw", "Alpha", "Bravo")
 		app, _, _ := newPlanningOrderApp(t, owner)
-		app.enableTypedNavigation()
 
 		app.switchToProject(owner, true)
-		if app.outliner != nil {
-			t.Fatal("switchToProject must not construct AppModel.outliner on the typed navigation path")
-		}
-		if app.views.Get(ViewOutliner) != nil {
-			t.Fatal("switchToProject must not register ViewOutliner on the typed navigation path")
-		}
 	})
 }
 
@@ -264,16 +233,9 @@ func TestTaskDeepLinkUsesCanonicalOutlinerScope(t *testing.T) {
 		owner, ownerTasks := planningOrderProject(t, t.TempDir(), "p-deep", "deep", "Alpha", "Bravo")
 		other, _ := planningOrderProject(t, t.TempDir(), "p-deep2", "deep2", "Charlie", "Delta")
 		app, cross, _ := newPlanningOrderApp(t, owner, other)
-		app.enableTypedNavigation()
 
 		if cmd := app.navigateToTaskInProjectNow(ownerTasks[1], owner); cmd != nil {
 			cmd()
-		}
-		if app.outliner != nil {
-			t.Fatal("task deep link must not construct a separate AppModel.outliner root")
-		}
-		if app.views.Get(ViewOutliner) != nil {
-			t.Fatal("task deep link must not register a ViewOutliner route")
 		}
 		route := app.navigation.Primary.Current()
 		if route.ID() != TaskWorkspace {

@@ -90,20 +90,53 @@ func parseActivityPayload(payload string, timestamp time.Time) *models.ActivityE
 		} else {
 			newVal = unescapeActivityValue(rawNew)
 		}
-		return &models.ActivityEntry{
+		return normalizeLegacyLifecycleActivity(&models.ActivityEntry{
 			Timestamp: timestamp,
 			Field:     field,
 			OldValue:  unescapeActivityValue(value[:idx]),
 			NewValue:  newVal,
-		}
+		})
 	}
 
 	// Tags or other single-value entries
-	return &models.ActivityEntry{
+	return normalizeLegacyLifecycleActivity(&models.ActivityEntry{
 		Timestamp: timestamp,
 		Field:     field,
 		OldValue:  "",
 		NewValue:  unescapeActivityValue(value),
+	})
+}
+
+func normalizeLegacyLifecycleActivity(entry *models.ActivityEntry) *models.ActivityEntry {
+	if entry == nil || entry.Field != "status" {
+		return entry
+	}
+	entry.Field = "state"
+	entry.OldValue = legacyActivityState(entry.OldValue)
+	entry.NewValue = legacyActivityState(entry.NewValue)
+	return entry
+}
+
+func legacyActivityState(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "todo":
+		return string(models.StateReady)
+	case "in_progress":
+		return string(models.StateInProgress)
+	case "blocked":
+		return string(models.StateWaiting)
+	case "standby":
+		return string(models.StatePaused)
+	case "review":
+		return string(models.StateReview)
+	case "maybe":
+		return string(models.StateSomeday)
+	case "done":
+		return string(models.StateDone)
+	case "canceled":
+		return string(models.StateCanceled)
+	default:
+		return value
 	}
 }
 

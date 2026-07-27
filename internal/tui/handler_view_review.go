@@ -70,7 +70,7 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 		return true, nil
 
 	case ShowWeeklyReviewMsg:
-		return true, m.activateReviewHub(ReviewWeekly, nil)
+		return true, m.activateReviewHubWithProjectSet(ReviewWeekly, nil, msg.ProjectSet)
 
 	case WeeklyReviewSelectProjectMsg:
 		m.popView()
@@ -112,20 +112,13 @@ func (m *AppModel) handleViewReviewMessages(msg tea.Msg) (bool, tea.Cmd) { //nol
 // project and selects the Activity computed mode, replacing the retired
 // standalone project recent-activity screen.
 func (m *AppModel) openScopedOutlinerActivity(project *models.Project) tea.Cmd {
-	if m.outliner != nil {
-		m.saveOutlinerToggleState()
-		m.saveOutlinerFilterState()
-	}
+	m.saveOutlinerFilterState()
 	presentationCmd := m.prepareCrossProjectOutliner()
 	m.crossOutliner.pushProjectScope(project.ID)
 	m.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{SetMode: true, Mode: ModeActivity})
-	if m.typedNavigation {
-		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
-		if err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-		return tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
+	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-	m.showView(ViewCrossProjectOutliner, m.crossOutliner)
-	return presentationCmd
+	return tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
 }

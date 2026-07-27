@@ -19,7 +19,7 @@ func TestCheckOverdueTasks_NoTasks(t *testing.T) {
 func TestCheckOverdueTasks_OverdueTask(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
-	task := testTask("overdue task", models.StatusTodo, now)
+	task := testTask("overdue task", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -38,7 +38,7 @@ func TestCheckOverdueTasks_OverdueTask(t *testing.T) {
 func TestCheckOverdueTasks_ProjectContextStoredSeparately(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
-	task := testTask("overdue task", models.StatusTodo, now)
+	task := testTask("overdue task", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -57,7 +57,7 @@ func TestCheckOverdueTasks_ProjectContextStoredSeparately(t *testing.T) {
 func TestCheckOverdueTasks_OverdueMoreThan7Days(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
-	task := testTask("very overdue", models.StatusInProgress, now)
+	task := testTask("very overdue", models.StateInProgress, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -73,7 +73,7 @@ func TestCheckOverdueTasks_OverdueMoreThan7Days(t *testing.T) {
 func TestCheckOverdueTasks_CompletedTaskIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
-	task := testTask("done task", models.StatusDone, now)
+	task := testTask("done task", models.StateDone, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -85,7 +85,7 @@ func TestCheckOverdueTasks_CompletedTaskIgnored(t *testing.T) {
 
 func TestCheckOverdueTasks_NoDueDate(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("no due date", models.StatusTodo, now)
+	task := testTask("no due date", models.StateReady, now)
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkOverdueTasks(DefaultAlertConfig(), projects, now)
@@ -97,7 +97,7 @@ func TestCheckOverdueTasks_NoDueDate(t *testing.T) {
 func TestCheckOverdueTasks_DueToday(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
-	task := testTask("due today", models.StatusTodo, now)
+	task := testTask("due today", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -111,7 +111,7 @@ func TestCheckOverdueTasks_SnoozedTaskIgnored(t *testing.T) {
 	now := time.Now()
 	dueDate := now.AddDate(0, 0, -8)
 	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
-	task := testTask("snoozed overdue", models.StatusTodo, now)
+	task := testTask("snoozed overdue", models.StateReady, now)
 	task.DueDate = &dueDate
 	task.SnoozedUntil = &snoozeDate
 
@@ -126,7 +126,7 @@ func TestCheckDueSoonTasks_SnoozedTaskIgnored(t *testing.T) {
 	now := time.Now()
 	dueDate := now.AddDate(0, 0, 1)
 	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
-	task := testTask("snoozed soon", models.StatusTodo, now)
+	task := testTask("snoozed soon", models.StateReady, now)
 	task.DueDate = &dueDate
 	task.SnoozedUntil = &snoozeDate
 
@@ -140,7 +140,7 @@ func TestCheckDueSoonTasks_SnoozedTaskIgnored(t *testing.T) {
 func TestCheckDueSoonTasks_DueWithinHorizon(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	task := testTask("soon task", models.StatusTodo, now)
+	task := testTask("soon task", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -154,7 +154,7 @@ func TestCheckDueSoonTasks_DueWithinHorizon(t *testing.T) {
 func TestCheckDueSoonTasks_DueToday(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
-	task := testTask("due today", models.StatusTodo, now)
+	task := testTask("due today", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -167,7 +167,7 @@ func TestCheckDueSoonTasks_DueToday(t *testing.T) {
 func TestCheckDueSoonTasks_OverdueExcluded(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 2, 25, 0, 0, 0, 0, time.UTC)
-	task := testTask("overdue", models.StatusTodo, now)
+	task := testTask("overdue", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -180,7 +180,7 @@ func TestCheckDueSoonTasks_OverdueExcluded(t *testing.T) {
 func TestCheckDueSoonTasks_BeyondHorizon(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
-	task := testTask("far out", models.StatusTodo, now)
+	task := testTask("far out", models.StateReady, now)
 	task.DueDate = &dueDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -192,7 +192,7 @@ func TestCheckDueSoonTasks_BeyondHorizon(t *testing.T) {
 
 func TestCheckStaleTasks_StaleTask(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("stale", models.StatusTodo, now.AddDate(0, 0, -20))
+	task := testTask("stale", models.StateReady, now.AddDate(0, 0, -20))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
@@ -203,7 +203,7 @@ func TestCheckStaleTasks_StaleTask(t *testing.T) {
 
 func TestCheckStaleTasks_RecentTask(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("recent", models.StatusTodo, now.AddDate(0, 0, -5))
+	task := testTask("recent", models.StateReady, now.AddDate(0, 0, -5))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
@@ -215,7 +215,7 @@ func TestCheckStaleTasks_RecentTask(t *testing.T) {
 func TestCheckStaleTasks_SnoozedTaskIgnored(t *testing.T) {
 	now := time.Now()
 	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
-	task := testTask("snoozed stale", models.StatusTodo, now.AddDate(0, 0, -20))
+	task := testTask("snoozed stale", models.StateReady, now.AddDate(0, 0, -20))
 	task.SnoozedUntil = &snoozeDate
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -227,7 +227,7 @@ func TestCheckStaleTasks_SnoozedTaskIgnored(t *testing.T) {
 
 func TestCheckStaleTasks_CompletedIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("done stale", models.StatusDone, now.AddDate(0, 0, -30))
+	task := testTask("done stale", models.StateDone, now.AddDate(0, 0, -30))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
@@ -238,7 +238,7 @@ func TestCheckStaleTasks_CompletedIgnored(t *testing.T) {
 
 func TestCheckStaleTasks_SomedayIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("someday stale", models.StatusTodo, now.AddDate(0, 0, -30))
+	task := testTask("someday stale", models.StateReady, now.AddDate(0, 0, -30))
 	task.WorkflowState = models.StateSomeday
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -250,7 +250,7 @@ func TestCheckStaleTasks_SomedayIgnored(t *testing.T) {
 
 func TestCheckStaleTasks_ExactThresholdBoundary(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("boundary", models.StatusTodo, now.AddDate(0, 0, -14))
+	task := testTask("boundary", models.StateReady, now.AddDate(0, 0, -14))
 
 	projects := []ProjectData{testProject("proj1", task)}
 	alerts := checkStaleTasks(DefaultAlertConfig(), projects, now)
@@ -263,7 +263,7 @@ func TestCheckInboxBacklog_AboveThreshold(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	var tasks []*models.Task
 	for i := range 6 {
-		task := testTask("inbox", models.StatusTodo, now)
+		task := testTask("inbox", models.StateReady, now)
 		task.ID = "inbox-" + string(rune('a'+i))
 		task.WorkflowState = models.StateInbox
 		tasks = append(tasks, task)
@@ -285,7 +285,7 @@ func TestCheckInboxBacklog_ProjectContextStoredSeparately(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	var tasks []*models.Task
 	for i := range 6 {
-		task := testTask("inbox", models.StatusTodo, now)
+		task := testTask("inbox", models.StateReady, now)
 		task.ID = "inbox-" + string(rune('a'+i))
 		task.WorkflowState = models.StateInbox
 		tasks = append(tasks, task)
@@ -311,7 +311,7 @@ func TestCheckInboxBacklog_ProjectContextStoredSeparately(t *testing.T) {
 
 func TestCheckInboxBacklog_BelowThreshold(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	task := testTask("inbox1", models.StatusTodo, now)
+	task := testTask("inbox1", models.StateReady, now)
 	task.WorkflowState = models.StateInbox
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -337,7 +337,7 @@ func TestCheckInboxBacklog_SnoozedInboxIgnored(t *testing.T) {
 	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
 	var tasks []*models.Task
 	for i := range 6 {
-		task := testTask("snoozed-inbox", models.StatusTodo, now)
+		task := testTask("snoozed-inbox", models.StateReady, now)
 		task.ID = "snoozed-" + string(rune('a'+i))
 		task.WorkflowState = models.StateInbox
 		task.SnoozedUntil = &snoozeDate
@@ -354,10 +354,10 @@ func TestCheckInboxBacklog_SnoozedInboxIgnored(t *testing.T) {
 func TestCheckBlockedTasks_SnoozedBlockedIgnored(t *testing.T) {
 	now := time.Now()
 	snoozeDate := now.AddDate(0, 0, 10) // must be in the future so IsSnoozed() returns true
-	task := testTask("snoozed blocked", models.StatusBlocked, now.AddDate(0, 0, -10))
+	task := testTask("snoozed blocked", models.StateWaiting, now.AddDate(0, 0, -10))
 	task.SnoozedUntil = &snoozeDate
 	task.Activity = []*models.ActivityEntry{
-		{Field: "status", NewValue: "blocked", Timestamp: now.AddDate(0, 0, -10)},
+		{Field: "state", NewValue: "waiting", Timestamp: now.AddDate(0, 0, -10)},
 	}
 
 	projects := []ProjectData{testProject("proj1", task)}
@@ -373,7 +373,7 @@ func TestCheckInboxBacklog_CompletedInboxIgnored(t *testing.T) {
 	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
 	var tasks []*models.Task
 	for i := range 6 {
-		task := testTask("done-inbox", models.StatusDone, now)
+		task := testTask("done-inbox", models.StateDone, now)
 		task.ID = "done-" + string(rune('a'+i))
 		// A completed task resolves to StateDone even though it was captured in
 		// the inbox; the checker must not count it toward the inbox backlog.

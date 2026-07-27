@@ -21,15 +21,6 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case SectionPickerDoneMsg:
-		// Routed here from handler_section.go when Task == nil && currentView == ViewTaskForm.
-		if !msg.Canceled && msg.Section != "" {
-			m.draft.section = msg.Section
-			m.hasChanges = true
-			m.err = nil
-		}
-		return m, nil
-
 	case TagSelectorDoneMsg:
 		// Routed here from handler_tag.go via delegateToCurrentView when task is nil.
 		if !msg.Canceled {

@@ -20,21 +20,3 @@ func TestTruncateToVisualWidthUsesDisplayWidth(t *testing.T) {
 		t.Fatalf("test assumption failed: expected sample text width 8")
 	}
 }
-
-func prefixWidthBeforeToken(t *testing.T, lines []string, contains string, token string) int {
-	t.Helper()
-
-	for _, line := range lines {
-		if !strings.Contains(line, contains) {
-			continue
-		}
-		idx := strings.Index(line, token)
-		if idx == -1 {
-			t.Fatalf("line %q missing token %q", line, token)
-		}
-		return lipgloss.Width(line[:idx])
-	}
-
-	t.Fatalf("no line found containing %q", contains)
-	return 0
-}

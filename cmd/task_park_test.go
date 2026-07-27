@@ -18,7 +18,7 @@ import (
 // workspace undo ledger (not the legacy per-project history). A ledger undo
 // reverses the park, restoring the un-parked task.
 func TestRunTaskParkPersistsMetadataAndLedgerUndo(t *testing.T) {
-	project, cleanup := setupTaskParkCLI(t, models.StatusTodo)
+	project, cleanup := setupTaskParkCLI(t, models.StateReady)
 	defer cleanup()
 
 	if err := runTaskPark(taskParkCmd, []string{"1", "blocked", "on", "API"}); err != nil {
@@ -59,7 +59,7 @@ func TestRunTaskParkPersistsMetadataAndLedgerUndo(t *testing.T) {
 // metadata and records the clear in the workspace ledger; a ledger undo restores
 // the parked state.
 func TestRunTaskUnparkClearsMetadataAndLedgerUndo(t *testing.T) {
-	project, cleanup := setupTaskParkCLI(t, models.StatusTodo)
+	project, cleanup := setupTaskParkCLI(t, models.StateReady)
 	defer cleanup()
 
 	if err := runTaskPark(taskParkCmd, []string{"1", "state"}); err != nil {
@@ -94,7 +94,7 @@ func TestRunTaskUnparkClearsMetadataAndLedgerUndo(t *testing.T) {
 // TestRunTaskUnparkNonParkedIsNoop proves unparking a task that is not parked is a
 // friendly no-op that records nothing in the workspace ledger.
 func TestRunTaskUnparkNonParkedIsNoop(t *testing.T) {
-	project, cleanup := setupTaskParkCLI(t, models.StatusTodo)
+	project, cleanup := setupTaskParkCLI(t, models.StateReady)
 	defer cleanup()
 
 	if err := runTaskUnpark(taskUnparkCmd, []string{"1"}); err != nil {
@@ -109,7 +109,7 @@ func TestRunTaskUnparkNonParkedIsNoop(t *testing.T) {
 }
 
 func TestRunTaskParkRejectsCompletedTask(t *testing.T) {
-	project, cleanup := setupTaskParkCLI(t, models.StatusDone)
+	project, cleanup := setupTaskParkCLI(t, models.StateDone)
 	defer cleanup()
 
 	err := runTaskPark(taskParkCmd, []string{"1", "state"})
@@ -134,7 +134,7 @@ func parkTestLedger(projectPath string) *storage.WorkspaceLedger {
 	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), config.DefaultUndoHistoryDepth, []string{dataDir})
 }
 
-func setupTaskParkCLI(t *testing.T, status models.TaskStatus) (*models.Project, func()) {
+func setupTaskParkCLI(t *testing.T, status models.WorkflowState) (*models.Project, func()) {
 	t.Helper()
 
 	tmpDir := t.TempDir()
@@ -153,10 +153,10 @@ func setupTaskParkCLI(t *testing.T, status models.TaskStatus) (*models.Project, 
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	if status.IsComplete() {
+	if status.IsTerminal() {
 		task.Complete()
 	} else {
-		task.WorkflowState = models.DeriveWorkflowState(status, "", "")
+		task.WorkflowState = status
 	}
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2

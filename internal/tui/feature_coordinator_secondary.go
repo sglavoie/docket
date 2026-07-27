@@ -65,8 +65,6 @@ type BulkMutator interface {
 // cross-project single-task handler now routes through it; the legacy raw-save
 // family (crossPersistFn/crossSaveProject) it replaced has been removed.
 type TaskItemMutator interface {
-	// SetSection commits one task's legacy GTD section field (resyncing state).
-	SetSectionByLocator(locator app.TaskLocator, section string) (app.TaskResult, error)
 	// MoveTaskToTop moves one task to the top of its model-order siblings.
 	MoveTaskToTopByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskToBottom moves one task to the bottom of its model-order siblings.
@@ -111,6 +109,8 @@ type TaskItemMutator interface {
 	ChangeTaskTypeByLocator(locator app.TaskLocator, change app.TaskTypeChange) (app.TaskResult, error)
 	// Reparent changes one task's parent within its owning project.
 	ReparentByLocator(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
+	// SetDependencies replaces one task's complete dependency set.
+	SetDependenciesByLocator(locator app.TaskLocator, dependencies []string) (app.TaskResult, error)
 
 	// The *WithWorkflow methods commit one single-task mutation AND run the
 	// legacy workflow-rule cascade (follow-ups, deferred cross-project moves,
@@ -123,7 +123,6 @@ type TaskItemMutator interface {
 	SetPriorityWithWorkflowByLocator(locator app.TaskLocator, priority int, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
 	SetDueDateWithWorkflowByLocator(locator app.TaskLocator, due *time.Time, hasTime bool, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
 	SnoozeWithWorkflowByLocator(locator app.TaskLocator, until *time.Time, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
-	SetSectionWithWorkflowByLocator(locator app.TaskLocator, section string, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
 	SetPinnedWithWorkflowByLocator(locator app.TaskLocator, pinned *bool, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
 	ToggleDimmedWithWorkflowByLocator(locator app.TaskLocator, opts app.SingleTaskWorkflowOptions) (app.BulkResult, error)
 	// Delete permanently removes one task's subtree, folding any caller-supplied
@@ -598,7 +597,7 @@ func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []stri
 
 // TaskItemCoordinator backs the single-task outliner mutation handlers, parallel
 // to BulkCoordinator but for one task at a time. The attribute seams
-// (ToggleActive/SetSection/SetStage) resolve to a TransactionResultMsg (a
+// attribute operations resolve to a TransactionResultMsg (a
 // single-task commit, reloaded by handleTransactionResult); the reorder seams
 // (MoveToTop/MoveToBottom) resolve to a BatchTransactionResultMsg because they
 // reorder a whole project's task slice, reloaded by handleBatchTransactionResult.
@@ -611,13 +610,6 @@ type TaskItemCoordinator struct {
 	task                   TaskItemMutator
 	projectStatusArtifacts app.WorkflowProjectStatusArtifactBuilder
 	planningArtifacts      app.PlanningArtifactBuilder
-}
-
-// SetSection commits one task's legacy GTD section field as one transaction.
-func (c TaskItemCoordinator) SetSection(task TaskIdentity, section string) tea.Cmd {
-	return runTask(c.name, "Set Section", func() (app.TaskResult, error) {
-		return c.task.SetSectionByLocator(task.Locator(), section)
-	})
 }
 
 // MoveToTop moves one task to the top of its siblings as one project-scoped
@@ -695,9 +687,22 @@ func (c TaskItemCoordinator) Outdent(task TaskIdentity) tea.Cmd {
 
 // Transition moves one task to a target workflow state as one transaction.
 func (c TaskItemCoordinator) Transition(task TaskIdentity, target models.WorkflowState) tea.Cmd {
-	return runTask(c.name, "Change State", func() (app.TaskResult, error) {
-		return c.task.Transition(app.StateRequest{Locator: task.Locator(), Target: target})
-	})
+	name := c.name
+	planning := c.planningArtifacts
+	return func() tea.Msg {
+		res, err := c.task.Transition(app.StateRequest{
+			Locator:           task.Locator(),
+			Target:            target,
+			PlanningArtifacts: planning,
+		})
+		if err != nil {
+			return TransactionErrorMsg{Feature: name, Action: "Change State", Err: err}
+		}
+		return TransactionResultMsg{
+			Feature: name, Action: "Change State", Result: res,
+			PlanningChanged: planning != nil,
+		}
+	}
 }
 
 // ClearRecurrence removes one recurring task's pattern as one transaction.
@@ -799,6 +804,13 @@ func (c TaskItemCoordinator) Reparent(task TaskIdentity, newParentID *string) te
 	})
 }
 
+// SetDependencies replaces one task's dependency set as one transaction.
+func (c TaskItemCoordinator) SetDependencies(task TaskIdentity, dependencies []string) tea.Cmd {
+	return runTask(c.name, "Set Dependencies", func() (app.TaskResult, error) {
+		return c.task.SetDependenciesByLocator(task.Locator(), dependencies)
+	})
+}
+
 // runTaskWorkflow wraps a workflow-aware single-task mutation as an async command
 // resolving to a BatchTransactionResultMsg (or TransactionErrorMsg on rejection).
 // A single-task mutation that runs the workflow cascade can touch several projects
@@ -857,15 +869,6 @@ func (c TaskItemCoordinator) SnoozeWorkflow(task TaskIdentity, until *time.Time,
 	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
 	return runTaskWorkflow(c.name, "Snooze", summary, func() (app.BulkResult, error) {
 		return c.task.SnoozeWithWorkflowByLocator(task.Locator(), until, opts)
-	})
-}
-
-// SetSectionWorkflow sets one task's GTD section and runs the workflow cascade.
-func (c TaskItemCoordinator) SetSectionWorkflow(task TaskIdentity, section string, opts app.SingleTaskWorkflowOptions, summary func(app.TaskResult) string) tea.Cmd {
-	opts.ProjectStatusArtifacts = c.projectStatusArtifacts
-	opts.PlanningArtifacts = c.planningArtifacts
-	return runTaskWorkflow(c.name, "Move to Section", summary, func() (app.BulkResult, error) {
-		return c.task.SetSectionWithWorkflowByLocator(task.Locator(), section, opts)
 	})
 }
 

@@ -122,22 +122,9 @@ func (m *TaskDecisionsModel) OnExit() {
 	m.editRationale.Reset()
 }
 
-// ShouldCaptureEsc returns true when in expanded, add/edit, delete confirmation, or pending prefix modes.
+// ShouldCaptureEsc returns true when in expanded, add/edit, or delete confirmation modes.
 func (m *TaskDecisionsModel) ShouldCaptureEsc() bool {
 	return m.expandedView || m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
-}
-
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
-func (m *TaskDecisionsModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			"g": NavigationPrefixHints,
-		},
-	}
 }
 
 func (m *TaskDecisionsModel) StatusBarLabel() string { return "Decisions" }

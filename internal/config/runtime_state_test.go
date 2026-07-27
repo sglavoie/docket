@@ -42,29 +42,32 @@ func TestRuntimeState_ReloadSanitizesRetiredSetActiveActions(t *testing.T) {
 	automation := NewAutomationConfig()
 	automation.WorkflowRules = []workflow.WorkflowRule{
 		{
-			ID:      "mixed",
-			Name:    "Keep remaining action",
-			Enabled: true,
-			Actions: []workflow.RuleAction{
+			ID:       "mixed",
+			Name:     "Keep remaining action",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "ready"}}, Actions: []workflow.RuleAction{
 				{ActionType: workflow.ActionType("set_active"), Value: "true"},
 				{ActionType: workflow.ActionAddTag, Value: "retained"},
 			},
 		},
 		{
-			ID:      "retired-only",
-			Name:    "Remove actionless rule",
-			Enabled: true,
-			Actions: []workflow.RuleAction{{ActionType: workflow.ActionType("set_active"), Value: "false"}},
-		},
+			ID:       "retired-only",
+			Name:     "Remove actionless rule",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "ready"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionType("set_active"), Value: "false"}}},
 		{
-			ID:      "unchanged",
-			Name:    "Keep untouched rule",
-			Enabled: true,
-			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPinned, Value: "true"}},
-		},
+			ID:       "unchanged",
+			Name:     "Keep untouched rule",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "ready"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPinned, Value: "true"}}},
 	}
 	if commitErr := manager.CommitAutomation(automation); commitErr != nil {
 		t.Fatalf("CommitAutomation: %v", commitErr)
+	}
+	catalog := seed.Catalog()
+	catalog.SchemaVersion = previousConfigVersion
+	if commitErr := manager.CommitCatalog(catalog); commitErr != nil {
+		t.Fatalf("CommitCatalog legacy schema: %v", commitErr)
 	}
 
 	rs, err := manager.LoadRuntimeState()

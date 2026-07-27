@@ -310,7 +310,7 @@ First description.
 
 Second description.
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -113,7 +113,7 @@ func (t *TaskTemplate) UnmarshalJSON(data []byte) error {
 	case lifecycle.State != nil && *lifecycle.State != "":
 		result.State = *lifecycle.State
 	case lifecycle.Section != nil && strings.TrimSpace(*lifecycle.Section) != "":
-		result.State = models.StateForSection(strings.TrimSpace(*lifecycle.Section))
+		result.State = legacyTemplateSectionState(strings.TrimSpace(*lifecycle.Section))
 		result.legacyStateDecoded = true
 	default:
 		result.State = models.StateInbox
@@ -129,6 +129,27 @@ func (t *TaskTemplate) UnmarshalJSON(data []byte) error {
 	}
 	*t = result
 	return nil
+}
+
+func legacyTemplateSectionState(section string) models.WorkflowState {
+	switch {
+	case strings.EqualFold(section, "Inbox"):
+		return models.StateInbox
+	case strings.EqualFold(section, "Next"):
+		return models.StateNext
+	case strings.EqualFold(section, "Waiting"):
+		return models.StateWaiting
+	case strings.EqualFold(section, "Standby"):
+		return models.StatePaused
+	case strings.EqualFold(section, "Review"):
+		return models.StateReview
+	case strings.EqualFold(section, "Someday"):
+		return models.StateSomeday
+	case strings.EqualFold(section, "Completed"):
+		return models.StateDone
+	default:
+		return models.StateReady
+	}
 }
 
 // Validate checks if the template is properly configured.
@@ -190,6 +211,18 @@ func (t *TaskTemplate) Validate() error {
 	}
 
 	return nil
+}
+
+// ValidateForAuthoring rejects decode-only lifecycle compatibility accepted by
+// the versioned v3-to-v4 migration.
+func (t *TaskTemplate) ValidateForAuthoring() error {
+	if t == nil {
+		return fmt.Errorf("template is nil")
+	}
+	if t.legacyStateDecoded || t.State == "" {
+		return fmt.Errorf("template must use an explicit canonical state")
+	}
+	return t.Validate()
 }
 
 // isValidTaskType checks if a task type is valid.

@@ -10,7 +10,7 @@ import (
 )
 
 // TagAdder provides shared add-tag mode state and logic.
-// Embed this in any model that has a BasePicker[TagInfo] and needs add-tag functionality.
+// Embed this in any model that has a ListSurfaceAdapter[TagInfo] and needs add-tag functionality.
 type TagAdder struct {
 	AddTagMode  bool
 	AddTagInput textinput.Model
@@ -48,7 +48,7 @@ func (a *TagAdder) EnterAddMode() tea.Cmd {
 // HandleAddTagKey processes a key message while in add-tag mode.
 // The picker parameter is used to manipulate the item list and selection.
 // Returns (handled, cmd). The caller should return (m, cmd) when handled is true.
-func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *BasePicker[TagInfo]) (bool, tea.Cmd) {
+func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapter[TagInfo]) (bool, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		a.AddTagMode = false
@@ -68,7 +68,7 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *BasePicker[TagIn
 		}
 
 		// Check for duplicate
-		for _, item := range picker.Items {
+		for _, item := range picker.SourceItems() {
 			if item.Name == tagName {
 				picker.PreSelectByID(tagName)
 				picker.SetCursorToID(tagName)
@@ -80,10 +80,14 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *BasePicker[TagIn
 		}
 
 		// Add new tag
-		picker.Items = append(picker.Items, TagInfo{Name: tagName, TaskCount: 0})
-		sort.Slice(picker.Items, func(i, j int) bool {
-			return picker.Items[i].Name < picker.Items[j].Name
+		items := append(picker.SourceItems(), TagInfo{Name: tagName, TaskCount: 0})
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].Name < items[j].Name
 		})
+		if err := picker.ReplaceItems(items); err != nil {
+			a.AddTagError = err.Error()
+			return true, nil
+		}
 		picker.Filter(picker.SearchQuery())
 		picker.PreSelectByID(tagName)
 		picker.SetCursorToID(tagName)
@@ -125,14 +129,14 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 }
 
 // RenderTagSelectorView renders the standard tag selector view as a fullscreen layout.
-func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title string, width, height int) string {
+func RenderTagSelectorView(picker *ListSurfaceAdapter[TagInfo], adder *TagAdder, title string, width, height int) string {
 	if adder.AddTagMode {
 		return adder.RenderAddTagMode(width, height)
 	}
 
 	var b strings.Builder
 
-	selectedCount := len(picker.Selected)
+	selectedCount := len(picker.SelectionMap())
 	var subtitle string
 	if selectedCount == 0 {
 		subtitle = "No tags selected"
@@ -152,7 +156,7 @@ func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title s
 	b.WriteString(picker.RenderList(maxVisible))
 
 	footerText := renderTagSelectorFooter(picker)
-	itemCount := MutedStyle.Render(fmt.Sprintf("%d items", len(picker.Filtered)))
+	itemCount := MutedStyle.Render(fmt.Sprintf("%d items", len(picker.FilteredItems())))
 	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(footerText, width)))
 	b.WriteString("\n")
 	b.WriteString(itemCount)
@@ -161,11 +165,11 @@ func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title s
 }
 
 // renderTagSelectorFooter renders the standard footer with 'a' key for adding tags.
-func renderTagSelectorFooter(picker *BasePicker[TagInfo]) string {
+func renderTagSelectorFooter(picker *ListSurfaceAdapter[TagInfo]) string {
 	if picker.IsSearchMode() {
 		return "enter done · esc clear"
 	}
-	if len(picker.Filtered) == 0 {
+	if len(picker.FilteredItems()) == 0 {
 		return "a add tag · esc cancel"
 	}
 	return "space toggle · a add tag · / search · c clear · enter apply · esc cancel"

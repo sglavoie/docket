@@ -7,11 +7,11 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestFilterTasks_CombinedFilters_TypeAndStatus(t *testing.T) {
+func TestFilterTasks_CombinedFilters_TypeAndState(t *testing.T) {
 	defer resetFilterVars()
 	listShowAll = true
 	listTaskType = "task"
-	listTaskStatus = "todo"
+	listState = models.StateReady.String()
 
 	tasks := []*models.Task{
 		func() *models.Task {
@@ -34,7 +34,7 @@ func TestFilterTasks_CombinedFilters_TypeAndStatus(t *testing.T) {
 	result := filterTasks(tasks)
 
 	if len(result) != 1 {
-		t.Errorf("expected 1 task matching type=task AND status=todo, got %d", len(result))
+		t.Errorf("expected 1 task matching type=task AND state=ready, got %d", len(result))
 	}
 	if len(result) > 0 {
 		if result[0].Type != models.TaskTypeTask {
@@ -77,7 +77,7 @@ func TestFilterTasks_AllFiltersApplied(t *testing.T) {
 	defer resetFilterVars()
 	listShowAll = true
 	listTaskType = "bug"
-	listTaskStatus = "in_progress"
+	listState = models.StateInProgress.String()
 	listPriority = 1
 	listTag = "critical"
 

@@ -28,7 +28,7 @@ func (v *testViewWithMetadata) SetSize(width, height int) {}
 
 func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 	app := newTestAppModel()
-	app.views.Register(ViewDashboard, &testViewWithMetadata{})
+	app.views.Register(ViewCrossProjectOutliner, &testViewWithMetadata{})
 
 	output := app.View()
 
@@ -76,30 +76,25 @@ func countFullWidthDividers(content string) int {
 	return count
 }
 
-// TestAppViewQuickCaptureUsesAppShellFooter guards the single-footer contract:
-// Quick Capture is a normal (non-full-height) stack view, so AppModel.View()
-// must supply exactly one app-shell footer. The prior regression rendered an
-// inline footer inside QuickCaptureModel.View() *and* the app-shell footer,
-// producing two competing separators. Rendering the stack-opened view through
-// app.View() (not QuickCaptureModel.View() directly) is required so the
-// composition path is exercised.
+// TestAppViewQuickCaptureUsesAppShellFooter guards the single-footer contract
+// for the unified Task Composer overlay.
 func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.width = 80
 	app.height = 24
 
-	handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{Project: project})
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
 	if !handled {
-		t.Fatal("ShowQuickCaptureMsg should be handled")
+		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
-	if app.currentView() != ViewQuickCapture {
+	if app.currentView() != ViewTaskComposer {
 		t.Fatalf("currentView should be QuickCapture, got %v", app.currentView())
 	}
 
 	content := app.View().Content
 
-	if !strings.Contains(content, "Quick Capture") {
-		t.Fatal("composed output should keep the Quick Capture title/body")
+	if !strings.Contains(content, "Task Composer") {
+		t.Fatal("composed output should keep the Task Composer title/body")
 	}
 
 	if got := countFullWidthDividers(content); got != 1 {

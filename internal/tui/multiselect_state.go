@@ -1,6 +1,9 @@
 package tui
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // MultiSelectState provides reusable multi-selection state for views that
 // support selecting multiple tasks. Embed this in view models to share the
@@ -18,6 +21,24 @@ func (s *MultiSelectState) ClearSelection() {
 // SelectedCount returns the number of currently selected items.
 func (s *MultiSelectState) SelectedCount() int {
 	return len(s.selectedTaskIdentities)
+}
+
+// SelectedTaskIdentities returns a deterministic defensive copy suitable for
+// operation target resolution.
+func (s *MultiSelectState) SelectedTaskIdentities() []TaskIdentity {
+	selected := make([]TaskIdentity, 0, len(s.selectedTaskIdentities))
+	for identity, active := range s.selectedTaskIdentities {
+		if active && identity.Valid() {
+			selected = append(selected, identity)
+		}
+	}
+	sort.Slice(selected, func(i, j int) bool {
+		if selected[i].ProjectID != selected[j].ProjectID {
+			return selected[i].ProjectID < selected[j].ProjectID
+		}
+		return selected[i].TaskID < selected[j].TaskID
+	})
+	return selected
 }
 
 // IsMultiSelectActive reports whether multi-select mode is on. Used by the

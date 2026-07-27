@@ -32,8 +32,6 @@ func TestProjectDocumentV2FixedPoint(t *testing.T) {
 
 	doc := &ProjectDocument{
 		ProjectName:   "Schema V2",
-		Sections:      []string{models.SectionNext, models.SectionWaiting},
-		SectionColors: map[string]string{},
 		Tags:          []string{"backend"},
 		Tasks:         []*models.Task{epic, child},
 		SchemaVersion: SchemaVersionV2,
@@ -77,8 +75,6 @@ func TestProjectDocumentV2SameMinuteUpdatedAtFixedPoint(t *testing.T) {
 	task.UpdatedAt = time.Date(2026, 7, 13, 10, 15, 55, 0, time.Local)
 	doc := &ProjectDocument{
 		ProjectName:   "Stable timestamps",
-		Sections:      []string{models.SectionNext},
-		SectionColors: map[string]string{},
 		Tasks:         []*models.Task{task},
 		SchemaVersion: SchemaVersionV2,
 	}
@@ -212,8 +208,6 @@ func TestProjectDocumentHierarchyRoundTrip(t *testing.T) {
 
 	doc := &ProjectDocument{
 		ProjectName:   "Hierarchy",
-		Sections:      []string{models.SectionNext},
-		SectionColors: map[string]string{},
 		Tasks:         []*models.Task{epic, story, leaf},
 		SchemaVersion: SchemaVersionV2,
 	}
@@ -246,8 +240,6 @@ func TestProjectDocumentArchiveState(t *testing.T) {
 
 	doc := &ProjectDocument{
 		ProjectName:   "Archive",
-		Sections:      []string{models.SectionNext, models.SectionCompleted},
-		SectionColors: map[string]string{},
 		Tasks:         []*models.Task{done},
 		SchemaVersion: SchemaVersionV2,
 	}
@@ -293,8 +285,8 @@ func TestProjectDocumentManualEdit(t *testing.T) {
 	if task.State() != models.StateSomeday {
 		t.Fatalf("state = %q, want someday", task.State())
 	}
-	if got := models.SectionForState(task.State()); got != models.SectionSomeday {
-		t.Fatalf("derived section = %q, want %q", got, models.SectionSomeday)
+	if got := task.State(); got != models.StateSomeday {
+		t.Fatalf("derived section = %q, want %q", got, models.StateSomeday)
 	}
 }
 
@@ -307,7 +299,6 @@ func TestLoadSaveProjectDocumentV2(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 	project.Slug = "v2-disk"
-	project.Sections = []string{models.SectionNext}
 
 	task := newDocTask(t, "disk-1", 1, models.TaskTypeTask, "Disk task")
 	task.ApplyWorkflowState(models.StateNext)

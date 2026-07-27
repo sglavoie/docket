@@ -78,6 +78,30 @@ func TestStartupMachineReferenceReconciliationKeepsArchivedContextMembership(t *
 	}
 }
 
+func TestStartupMachineReferenceReconciliationCanonicalizesProjectRouteKeys(t *testing.T) {
+	project := newSession4Project(t, "Route Startup Repair")
+	fixture := newSession4LifecycleFixture(t, true, project)
+
+	machine := cloneMachineState(fixture.app.runtime.Machine())
+	machine.ProjectRoutes = map[string]config.OutlinerRouteState{
+		project.ID:   {Mode: config.OutlinerModeActivity},
+		project.Slug: {Mode: config.OutlinerModeDue},
+		"missing":    {Mode: config.OutlinerModePriority},
+	}
+	if err := fixture.app.runtime.CommitMachine(machine); err != nil {
+		t.Fatalf("seed project routes: %v", err)
+	}
+
+	restarted, err := NewAppModel(fixture.app.runtime, fixture.manager)
+	if err != nil {
+		t.Fatalf("restart app: %v", err)
+	}
+	routes := restarted.runtime.Machine().ProjectRoutes
+	if len(routes) != 1 || routes[project.ID].Mode != config.OutlinerModeActivity {
+		t.Fatalf("reconciled project routes = %+v, want canonical ID entry to win", routes)
+	}
+}
+
 func TestStartupMachineReferenceReconciliationQueuesBlockedCommit(t *testing.T) {
 	project := newSession4Project(t, "Blocked Startup Repair")
 	fixture := newSession4LifecycleFixture(t, true, project)

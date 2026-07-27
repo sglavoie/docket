@@ -444,9 +444,11 @@ func TestWorkflowScenario(t *testing.T) {
 	}
 
 	cfg.Automation().WorkflowRules = append(cfg.Automation().WorkflowRules, workflow.WorkflowRule{
-		ID:      "rule-1",
-		Name:    "Auto-ready on capture",
-		Enabled: true,
+		ID:       "rule-1",
+		Name:     "Auto-ready on capture",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "inbox"}},
+		Actions:  []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: "ready"}},
 	})
 	runConfigResult(t, features.Workflow.Save(cfg.Automation()))
 

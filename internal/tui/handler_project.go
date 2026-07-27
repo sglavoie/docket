@@ -35,6 +35,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case ProjectCreatedMsg:
 		popCmd := m.popView()
 		m.syncProjectCache()
+		m.refreshScopeHubIfActive()
 		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.ProjectCreated = true })
 		moveTask := m.pendingProjectMoveTask
 		moveSource := m.pendingProjectMoveSource
@@ -88,6 +89,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			statusMsg = "Unpinned"
 		}
 		m.setSuccessStatus(statusMsg)
+		m.refreshScopeHubIfActive()
 		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case ProjectDeletedMsg:
@@ -128,13 +130,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		// Reset to the global Outliner root since the project no longer exists.
 		m.exitAskView()
-		if m.typedNavigation {
-			presentationCmd := m.prepareCrossProjectOutliner()
-			m.navigation.ResetRoot()
-			return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd, repairCmd)
-		}
-		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
-		return true, repairCmd
+		presentationCmd := m.prepareCrossProjectOutliner()
+		m.navigation.ResetRoot()
+		return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd, repairCmd)
 
 	case ProjectRestoredMsg:
 		return true, m.commitProjectUnarchive(msg.Project)
@@ -152,6 +150,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		popCmd := m.popView()
 		m.syncProjectCache()
 		m.refreshProjectView()
+		m.refreshScopeHubIfActive()
 		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload())
 
 	case TutorDismissedMsg:
@@ -192,6 +191,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", msg.Project.Name))
+		m.refreshScopeHubIfActive()
 		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case retryTrashRestoreMachineRefsMsg:
@@ -208,6 +208,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		m.err = nil
 		m.setSuccessStatus(fmt.Sprintf("Restored: %s", recovery.Project.Name))
+		m.refreshScopeHubIfActive()
 		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 
 	case PurgeFromTrashMsg:
@@ -223,6 +224,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.setSuccessStatus(fmt.Sprintf("Permanently deleted: %s", msg.Slug))
+		m.refreshScopeHubIfActive()
 		return true, defaultStatusTimeout()
 
 	case SandboxResetRequestMsg:
@@ -276,23 +278,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
 	// Pop overlay views if that's where we came from
-	if m.currentView() == ViewCommandPalette {
+	if m.currentView() == ViewFinder {
 		m.popView()
 	}
 	m.switchToProject(project, true)
-	if m.typedNavigation {
-		_, cmd := m.handleProjectViewMessages(ShowOutlinerMsg{Project: project})
-		return cmd
-	}
-	m.saveOutlinerToggleState()
-	m.saveOutlinerFilterState()
-	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-	m.outliner.queueIDs = m.focusQueueIDs
-	m.outliner.dailyPlanIDs = m.dailyPlanIDs
-	m.restoreOutlinerToggleState()
-	m.restoreOutlinerFilterState()
-	m.showView(ViewOutliner, m.outliner)
-	return nil
+	_, cmd := m.handleProjectViewMessages(ShowOutlinerMsg{Project: project})
+	return cmd
 }
 
 func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bool) tea.Cmd {
@@ -409,6 +400,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	} else {
 		m.setSuccessStatus(action)
 	}
+	m.refreshScopeHubIfActive()
 	return tea.Batch(m.requestCrossProjectOutlinerReload(), repairCmd, defaultStatusTimeout())
 }
 
@@ -428,6 +420,7 @@ func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
 	}
 	copyCatalogMetadata(project, &updated)
 	m.setSuccessStatus(fmt.Sprintf("Unarchived %s", updated.Name))
+	m.refreshScopeHubIfActive()
 	return tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 }
 

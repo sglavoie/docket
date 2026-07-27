@@ -80,7 +80,7 @@ func Recommend(input RecommendationEngineInput) RecommendedAction {
 			continue
 		}
 		cand := recommendCandidate{task: ft.Task, project: ft.Project}
-		if ft.Task.InSection(models.SectionInbox) {
+		if ft.Task.IsInState(models.StateInbox) {
 			cand.reasons = []RecommendationReason{ReasonInboxNeedsTriage}
 			inbox = append(inbox, cand)
 			continue

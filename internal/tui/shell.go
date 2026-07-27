@@ -39,8 +39,8 @@ type ShellContext interface {
 // Compile-time assurance that AppModel satisfies the shared shell contract.
 var _ ShellContext = (*AppModel)(nil)
 
-// ShellState is a facade over the AppModel's navigation shell: the view stack,
-// current route, and terminal geometry.
+// ShellState is a facade over the AppModel's navigation shell: its derived
+// renderer path, current route, and terminal geometry.
 type ShellState struct{ app *AppModel }
 
 // Shell returns the shell-state facade for this model.
@@ -49,14 +49,17 @@ func (m *AppModel) Shell() ShellState { return ShellState{app: m} }
 // CurrentView returns the topmost view type on the stack.
 func (s ShellState) CurrentView() PresentationID { return s.app.currentView() }
 
-// Stack returns the current view stack (top is the last element).
-func (s ShellState) Stack() []PresentationID { return s.app.viewStack }
+// Stack returns renderer identities derived from the current route and overlay
+// stacks (top is the last element).
+func (s ShellState) Stack() []PresentationID { return s.app.presentationPath() }
 
-// Depth returns the number of views on the stack.
-func (s ShellState) Depth() int { return len(s.app.viewStack) }
+// Depth returns the number of rendered route/overlay frames.
+func (s ShellState) Depth() int { return len(s.app.presentationPath()) }
 
-// AtRoot reports whether the stack is collapsed to the dashboard root.
-func (s ShellState) AtRoot() bool { return len(s.app.viewStack) <= 1 }
+// AtRoot reports whether navigation is the bare Outliner root.
+func (s ShellState) AtRoot() bool {
+	return s.app.navigation.Primary.Depth() == 1 && !s.app.navigation.Overlays.Active()
+}
 
 // Size returns the current terminal dimensions.
 func (s ShellState) Size() (int, int) { return s.app.width, s.app.height }
@@ -64,28 +67,10 @@ func (s ShellState) Size() (int, int) { return s.app.width, s.app.height }
 // CurrentRoute returns the route instance for the topmost view.
 func (s ShellState) CurrentRoute() Route { return s.app.CurrentRoute() }
 
-// CurrentRoute returns the live typed primary route. Headless models without
-// navigation derive a route from their renderer stack. Overlays are skipped
-// because they belong to the separate overlay stack.
+// CurrentRoute returns the live primary route. Overlays are skipped because
+// they belong to the separate overlay stack.
 func (m *AppModel) CurrentRoute() Route {
-	if m.typedNavigation {
-		return m.navigation.Primary.Current()
-	}
-	projectID := ""
-	if m.currentProject != nil {
-		projectID = m.currentProject.ID
-	}
-	for i := len(m.viewStack) - 1; i >= 0; i-- {
-		route, ok, err := routeForPresentation(m.viewStack[i], projectID, m.lastNavigatedTaskID)
-		if err == nil && ok && route.ID() != Reference {
-			return route
-		}
-	}
-	root, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
-	if err != nil {
-		panic(err)
-	}
-	return root
+	return m.navigation.Primary.Current()
 }
 
 // CurrentView satisfies ShellContext.
@@ -128,11 +113,9 @@ func (w WorkspaceSession) ViewContext() ViewContext {
 	}
 }
 
-// OverlayManager centralizes the transient global overlays layered above the
-// routed view stack (quick-note, and the global picker chain). These are not
-// routes: they float over whatever route is current and are cleared together
-// when navigation resets. Ownership of their lifecycle lives here so the
-// AppModel navigation code delegates rather than hand-rolling the field checks.
+// OverlayManager centralizes transient overlays layered above the routed view
+// stack. They float over the current route and are cleared together when
+// navigation resets.
 type OverlayManager struct{ app *AppModel }
 
 // Overlays returns the overlay-manager facade for this model.
@@ -142,53 +125,28 @@ func (m *AppModel) Overlays() OverlayManager { return OverlayManager{app: m} }
 // input, which the shell uses to suppress global single-key shortcuts.
 func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
-	return m.quickNoteOverlay != nil ||
-		m.globalProjectPicker != nil ||
-		(m.scopePicker != nil && m.scopePicker.searching) ||
-		m.globalTaskPicker != nil ||
-		m.statusQuickPicker != nil ||
-		m.sectionQuickPicker != nil
+	return m.operationValuePicker != nil ||
+		m.taskActionSheet != nil ||
+		m.quickNoteOverlay != nil
 }
 
 // Active reports whether any transient overlay is currently shown.
 func (o OverlayManager) Active() bool {
 	m := o.app
-	return (m.typedNavigation && m.navigation.Overlays.Active()) ||
+	return m.navigation.Overlays.Active() ||
+		m.taskActionSheet != nil ||
+		m.operationValuePicker != nil ||
 		m.quickNoteOverlay != nil ||
-		m.globalProjectPicker != nil ||
-		m.scopePicker != nil ||
-		m.projectAdminMenu != nil ||
-		m.globalTaskPicker != nil ||
-		m.statusQuickPicker != nil ||
-		m.sectionQuickPicker != nil ||
-		m.sectionChangeQuickPicker != nil ||
-		m.linkTypeQuickPicker != nil ||
-		m.linkModeQuickPicker != nil ||
-		m.priorityQuickPicker != nil ||
-		m.dueDateQuickPicker != nil
+		m.projectAdminMenu != nil
 }
 
 // ClearAll dismisses every transient overlay. Called when navigation collapses
 // so no overlay outlives the route it was opened over.
 func (o OverlayManager) ClearAll() {
 	m := o.app
-	if m.typedNavigation {
-		m.navigation.Overlays.CancelAll()
-	}
-	m.showQuickSwitch = false
-	m.quickSwitchFiltering = false
-	m.showPinnedPopup = false
-	m.pinnedPopupFiltering = false
+	m.navigation.Overlays.CancelAll()
+	m.taskActionSheet = nil
+	m.operationValuePicker = nil
 	m.quickNoteOverlay = nil
-	m.globalProjectPicker = nil
-	m.scopePicker = nil
 	m.projectAdminMenu = nil
-	m.globalTaskPicker = nil
-	m.statusQuickPicker = nil
-	m.sectionQuickPicker = nil
-	m.sectionChangeQuickPicker = nil
-	m.linkTypeQuickPicker = nil
-	m.linkModeQuickPicker = nil
-	m.priorityQuickPicker = nil
-	m.dueDateQuickPicker = nil
 }

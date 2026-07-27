@@ -23,8 +23,7 @@ type CrossProjectLinkerModel struct {
 	sourceProject *models.Project
 	coordinator   LinkCoordinator
 
-	pendingPrefix string
-	step          CrossProjectLinkerStep
+	step CrossProjectLinkerStep
 
 	// Project selection
 	allProjects      []*models.Project
@@ -67,7 +66,7 @@ func NewCrossProjectLinkerModel(sourceTask *models.Task, sourceProject *models.P
 }
 
 func (m *CrossProjectLinkerModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewCrossProjectLinker)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 // SetSize sets the view dimensions.

@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 func TestParseQuickCaptureScheduleAndPlacement(t *testing.T) {
 	runQuickCaptureParseTests(t, []quickCaptureParseTestCase{
@@ -118,35 +122,35 @@ func TestParseQuickCaptureScheduleAndPlacement(t *testing.T) {
 			wantHasRecur:   true,
 		},
 		{
-			name:         "section assignment",
-			input:        "Fix bug /Next",
+			name:         "state assignment",
+			input:        "Fix bug $next",
 			wantTitle:    "Fix bug",
 			wantPriority: 3,
-			wantSection:  "Next",
+			wantState:    models.StateNext,
 		},
 		{
-			name:         "section case insensitive",
-			input:        "Fix bug /next",
+			name:         "state case insensitive",
+			input:        "Fix bug $NEXT",
 			wantTitle:    "Fix bug",
 			wantPriority: 3,
-			wantSection:  "Next",
+			wantState:    models.StateNext,
 		},
 		{
-			name:         "section with other metadata",
-			input:        "Urgent fix !1 #backend /Waiting",
+			name:         "state with other metadata",
+			input:        "Urgent fix !1 #backend $waiting",
 			wantTitle:    "Urgent fix",
 			wantPriority: 1,
 			wantTags:     []string{"backend"},
-			wantSection:  "Waiting",
+			wantState:    models.StateWaiting,
 		},
 		{
 			name:           "multi-word date with other metadata",
-			input:          "Critical fix !1 #urgent @in 2 weeks /Next",
+			input:          "Critical fix !1 #urgent @in 2 weeks $next",
 			wantTitle:      "Critical fix",
 			wantPriority:   1,
 			wantTags:       []string{"urgent"},
 			wantHasDueDate: true,
-			wantSection:    "Next",
+			wantState:      models.StateNext,
 		},
 		{
 			name:           "all metadata combined",

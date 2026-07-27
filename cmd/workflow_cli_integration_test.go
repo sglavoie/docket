@@ -57,11 +57,11 @@ func reloadWorkflowProject(t *testing.T, project *models.Project) {
 
 func enabledTaskRule(id string, trigger workflow.RuleTrigger, actions ...workflow.RuleAction) workflow.WorkflowRule {
 	return workflow.WorkflowRule{
-		ID:      id,
-		Name:    id,
-		Enabled: true,
-		Trigger: trigger,
-		Actions: actions,
+		ID:       id,
+		Name:     id,
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{trigger},
+		Actions:  actions,
 	}
 }
 
@@ -70,7 +70,7 @@ func TestCLIWorkflowStatelessAddCreatesFollowup(t *testing.T) {
 	project := newFileBackedProject(t, root, "project-add", "Add Project")
 	rule := enabledTaskRule(
 		"followup-on-add",
-		workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
+		workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "inbox"},
 		workflow.RuleAction{ActionType: workflow.ActionCreateFollowup, Value: "Follow up from CLI"},
 	)
 	setupFileBackedWorkflowCLI(t, root, project, []*models.Project{project}, []workflow.WorkflowRule{rule}, nil)
@@ -94,10 +94,10 @@ func TestCLIWorkflowContextualStateAndEditRules(t *testing.T) {
 	t.Run("state transition", func(t *testing.T) {
 		root := t.TempDir()
 		project := newFileBackedProject(t, root, "project-state", "State Project")
-		task := addTestTask(t, project, "state-task", "Complete me", models.StatusTodo)
+		task := addTestTask(t, project, "state-task", "Complete me", models.StateReady)
 		rule := enabledTaskRule(
 			"tag-on-complete",
-			workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->done"},
+			workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
 			workflow.RuleAction{ActionType: workflow.ActionAddTag, Value: "completed-by-rule"},
 		)
 		setupFileBackedWorkflowCLI(t, root, project, []*models.Project{project}, []workflow.WorkflowRule{rule}, nil)
@@ -114,10 +114,10 @@ func TestCLIWorkflowContextualStateAndEditRules(t *testing.T) {
 	t.Run("edited content", func(t *testing.T) {
 		root := t.TempDir()
 		project := newFileBackedProject(t, root, "project-edit", "Edit Project")
-		task := addTestTask(t, project, "edit-task", "Edit me", models.StatusTodo)
+		task := addTestTask(t, project, "edit-task", "Edit me", models.StateReady)
 		rule := enabledTaskRule(
 			"must-not-fire-on-content-only-edit",
-			workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->done"},
+			workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
 			workflow.RuleAction{ActionType: workflow.ActionAddTag, Value: "unexpected"},
 		)
 		setupFileBackedWorkflowCLI(t, root, project, []*models.Project{project}, []workflow.WorkflowRule{rule}, nil)
@@ -148,7 +148,7 @@ func TestCLIWorkflowCrossProjectMove(t *testing.T) {
 	dest := newFileBackedProject(t, root, "project-dest", "Destination")
 	rule := enabledTaskRule(
 		"move-new-tasks",
-		workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
+		workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "inbox"},
 		workflow.RuleAction{ActionType: workflow.ActionMoveToProject, Value: dest.Name},
 	)
 	setupFileBackedWorkflowCLI(t, root, source, []*models.Project{source, dest}, []workflow.WorkflowRule{rule}, nil)
@@ -170,12 +170,12 @@ func TestCLIWorkflowProjectStatusRule(t *testing.T) {
 	root := t.TempDir()
 	project := newFileBackedProject(t, root, "project-status", "Status Project")
 	rule := workflow.WorkflowRule{
-		ID:      "status-active-project",
-		Name:    "status-active-project",
-		Level:   workflow.RuleLevelProject,
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldActiveTaskCount, Operation: workflow.OpGreaterThan, Value: "0"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetProjectStatus, Value: "active"}},
+		ID:       "status-active-project",
+		Name:     "status-active-project",
+		Level:    workflow.RuleLevelProject,
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldActiveTaskCount, Operation: workflow.OpGreaterThan, Value: "0"}},
+		Actions:  []workflow.RuleAction{{ActionType: workflow.ActionSetProjectStatus, Value: "active"}},
 	}
 	configPath := setupFileBackedWorkflowCLI(t, root, project, []*models.Project{project}, []workflow.WorkflowRule{rule}, nil)
 	resetQuickAddVars()
@@ -196,7 +196,7 @@ func TestCLITemplateWorkflowPersistsUseAndCounts(t *testing.T) {
 	project := newFileBackedProject(t, root, "project-template", "Template Project")
 	rule := enabledTaskRule(
 		"template-workflow",
-		workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
+		workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "inbox"},
 		workflow.RuleAction{ActionType: workflow.ActionAddTag, Value: "from-workflow"},
 	)
 	tmpl := tttemplate.TaskTemplate{ID: "workflow-template", Name: "Workflow Template", Enabled: true, Type: models.TaskTypeTask}
@@ -225,8 +225,8 @@ func TestCLITemplateWorkflowPersistsUseAndCounts(t *testing.T) {
 func TestCLIPartialSuccessFlushesTriggerCountsOnce(t *testing.T) {
 	root := t.TempDir()
 	project := newFileBackedProject(t, root, "project-partial", "Partial Project")
-	first := addTestTask(t, project, "partial-first", "First", models.StatusTodo)
-	second := addTestTask(t, project, "partial-second", "Second", models.StatusTodo)
+	first := addTestTask(t, project, "partial-first", "First", models.StateReady)
+	second := addTestTask(t, project, "partial-second", "Second", models.StateReady)
 	rule := enabledTaskRule(
 		"priority-one",
 		workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: "1"},
@@ -270,7 +270,7 @@ func TestCLIWorkflowDisabledRulesAndNoOpCommands(t *testing.T) {
 		project := newFileBackedProject(t, root, "project-disabled", "Disabled Project")
 		rule := enabledTaskRule(
 			"disabled-followup",
-			workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "todo"},
+			workflow.RuleTrigger{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "inbox"},
 			workflow.RuleAction{ActionType: workflow.ActionCreateFollowup, Value: "must not exist"},
 		)
 		rule.Enabled = false
@@ -291,7 +291,7 @@ func TestCLIWorkflowDisabledRulesAndNoOpCommands(t *testing.T) {
 	t.Run("priority no-op", func(t *testing.T) {
 		root := t.TempDir()
 		project := newFileBackedProject(t, root, "project-noop", "No-op Project")
-		task := addTestTask(t, project, "noop-task", "No-op", models.StatusTodo)
+		task := addTestTask(t, project, "noop-task", "No-op", models.StateReady)
 		rule := enabledTaskRule(
 			"match-default-priority",
 			workflow.RuleTrigger{Field: workflow.FieldPriority, Operation: workflow.OpEquals, Value: fmt.Sprintf("%d", task.Priority)},

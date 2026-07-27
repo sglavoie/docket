@@ -59,7 +59,7 @@ type ScoringProfilePickerDoneMsg struct {
 
 // ScoringProfilePickerModel allows selecting a scoring profile for a project.
 type ScoringProfilePickerModel struct {
-	*BasePicker[ScoringProfileOption]
+	*ListSurfaceAdapter[ScoringProfileOption]
 	projectID     string
 	configManager *config.Manager
 	currentName   string
@@ -89,7 +89,7 @@ func NewScoringProfilePickerModel(current *scoring.ScoringProfile, profiles []sc
 		})
 	}
 
-	picker := NewBasePicker(options, PickerConfig{
+	picker := NewListSurfaceAdapter(options, PickerConfig{
 		Title:          "Scoring Profile",
 		EmptyMessage:   "No scoring profiles configured.",
 		NoMatchMessage: "No matching profiles.",
@@ -101,10 +101,10 @@ func NewScoringProfilePickerModel(current *scoring.ScoringProfile, profiles []sc
 	picker.SetCursorToID(currentID)
 
 	return &ScoringProfilePickerModel{
-		BasePicker:    picker,
-		projectID:     projectID,
-		configManager: mgr,
-		currentName:   currentName,
+		ListSurfaceAdapter: picker,
+		projectID:          projectID,
+		configManager:      mgr,
+		currentName:        currentName,
 	}
 }
 
@@ -132,8 +132,8 @@ func (m *ScoringProfilePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
-				selected := m.Filtered[m.Cursor]
+			if len(m.FilteredItems()) > 0 && m.CursorIndex() < len(m.FilteredItems()) {
+				selected := m.FilteredItems()[m.CursorIndex()]
 				projectID := m.projectID
 				profileID := selected.ProfileID
 				return m, func() tea.Msg {
@@ -186,8 +186,8 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 		maxVisible = 5
 	}
 
-	if len(m.Filtered) == 0 {
-		if len(m.Items) == 0 {
+	if len(m.FilteredItems()) == 0 {
+		if len(m.SourceItems()) == 0 {
 			b.WriteString(MutedStyle.Render(m.Config.EmptyMessage))
 		} else {
 			b.WriteString(MutedStyle.Render(m.Config.NoMatchMessage))
@@ -195,15 +195,15 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 		b.WriteString("\n")
 	} else {
 		start := 0
-		if m.Cursor >= maxVisible {
-			start = m.Cursor - maxVisible + 1
+		if m.CursorIndex() >= maxVisible {
+			start = m.CursorIndex() - maxVisible + 1
 		}
-		end := min(start+maxVisible, len(m.Filtered))
+		end := min(start+maxVisible, len(m.FilteredItems()))
 
 		for i := start; i < end; i++ {
-			opt := m.Filtered[i]
+			opt := m.FilteredItems()[i]
 			cursor := "  "
-			if i == m.Cursor {
+			if i == m.CursorIndex() {
 				cursor = "  "
 			}
 
@@ -213,7 +213,7 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 			}
 
 			line := fmt.Sprintf("%s%s%s", cursor, check, opt.DisplayText())
-			if i == m.Cursor {
+			if i == m.CursorIndex() {
 				b.WriteString(TaskJumperSelectedStyle.Render(line))
 			} else {
 				b.WriteString(line)
@@ -221,8 +221,8 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 			b.WriteString("\n")
 		}
 
-		if len(m.Filtered) > maxVisible {
-			remaining := len(m.Filtered) - end
+		if len(m.FilteredItems()) > maxVisible {
+			remaining := len(m.FilteredItems()) - end
 			if remaining > 0 {
 				b.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", remaining)))
 				b.WriteString("\n")
@@ -232,7 +232,7 @@ func (m *ScoringProfilePickerModel) View() tea.View {
 
 	// Footer
 	left := HelpStyle.Render("↑/↓ navigate · Enter select · / search · Esc cancel")
-	right := MutedStyle.Render(fmt.Sprintf("%d profiles", len(m.Filtered)))
+	right := MutedStyle.Render(fmt.Sprintf("%d profiles", len(m.FilteredItems())))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return tea.NewView(b.String())

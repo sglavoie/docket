@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"time"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -44,7 +42,7 @@ func (m *OutlinerModel) isPlanningReorderMode() bool {
 	if m.project != nil {
 		return false
 	}
-	if m.workNextMode {
+	if m.primaryMode == ModeNext {
 		return true
 	}
 	return m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsTodaySection
@@ -69,7 +67,7 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 
 	kind := reorderDailyPlan
 	order := m.globalDailyPlanOrder()
-	if m.workNextMode {
+	if m.primaryMode == ModeNext {
 		kind = reorderFocusQueue
 		order = m.globalNextOrder()
 	}
@@ -207,24 +205,4 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg)
 	}
 	m.setInfoStatus("Reordered planning list")
 	return tea.Batch(m.refreshTaskViewsAfterPlanningMutation()...)
-}
-
-// dailyPlanItemsForOrder rebuilds Daily Plan items in the given order, preserving
-// each task's existing planned date and defaulting new entries to today so a
-// reorder never rewrites the scheduled day.
-func (m *AppModel) dailyPlanItemsForOrder(order []config.ProjectTaskLocator) []config.DailyPlanItem {
-	today := time.Now().Format("2006-01-02")
-	dates := make(map[config.ProjectTaskLocator]string)
-	for _, item := range m.runtime.Planning().GetDailyPlan() {
-		dates[config.ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = item.PlannedDate
-	}
-	items := make([]config.DailyPlanItem, 0, len(order))
-	for _, loc := range order {
-		date := dates[loc]
-		if date == "" {
-			date = today
-		}
-		items = append(items, config.DailyPlanItem{TaskID: loc.TaskID, ProjectID: loc.ProjectID, PlannedDate: date})
-	}
-	return items
 }

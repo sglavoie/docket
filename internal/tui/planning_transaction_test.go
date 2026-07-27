@@ -51,7 +51,6 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 	project.Path = filepath.Join(dataDir, "projects", "planning-txn")
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
@@ -77,7 +76,6 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		appService:           svc,
 		secondaryFeatures:    newSecondaryCoordinators(svc, manager),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
@@ -87,7 +85,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		dailyPlan:            []FocusTask{},
 		dailyPlanIDs:         make(map[TaskIdentity]bool),
 	}
-	appModel.showView(ViewOutliner, &invariantQueueView{taskID: task.ID, project: project})
+	appModel.showView(ViewCrossProjectOutliner, &invariantQueueView{taskID: task.ID, project: project})
 	return appModel, repo, task, dataDir
 }
 
@@ -233,18 +231,18 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 	})
 }
 
-// TestSectionMovesPreservePlanningExclusivity locks FR-010-002 for the TUI seams:
-// a section move that enters StateNext drops Today, and a section move that leaves
+// TestStateMovesPreservePlanningExclusivity locks FR-010-002 for the TUI seams:
+// a state move that enters StateNext drops Today, and a state move that leaves
 // StateNext drops the stale Next order entry, within the same durable transaction,
 // across the generic (SetSection), workflow-aware (SetSectionWorkflow), and bulk
 // (CommitProjectWorkflow) coordinator paths.
-func TestSectionMovesPreservePlanningExclusivity(t *testing.T) {
-	t.Run("generic SetSection into Next drops Today", func(t *testing.T) {
+func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
+	t.Run("generic transition into Next drops Today", func(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
 		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
 
-		if _, err := m.appService.SetSection(task.ID, models.SectionNext); err != nil {
-			t.Fatalf("SetSection: %v", err)
+		if _, err := m.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateNext}); err != nil {
+			t.Fatalf("Transition: %v", err)
 		}
 		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
 			t.Fatalf("state = %s, want next", st)
@@ -254,12 +252,12 @@ func TestSectionMovesPreservePlanningExclusivity(t *testing.T) {
 		}
 	})
 
-	t.Run("generic SetSection out of Next drops the stale order entry", func(t *testing.T) {
+	t.Run("generic transition out of Next drops the stale order entry", func(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
 		m.seedDiskFocusQueue(t, task.ID, m.currentProject.ID)
 
-		if _, err := m.appService.SetSection(task.ID, models.SectionWaiting); err != nil {
-			t.Fatalf("SetSection: %v", err)
+		if _, err := m.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateWaiting}); err != nil {
+			t.Fatalf("Transition: %v", err)
 		}
 		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {
 			t.Fatalf("state = %s, want waiting", st)
@@ -269,11 +267,11 @@ func TestSectionMovesPreservePlanningExclusivity(t *testing.T) {
 		}
 	})
 
-	t.Run("workflow-aware SetSectionWorkflow into Next drops Today", func(t *testing.T) {
+	t.Run("workflow-aware transition into Next drops Today", func(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
 		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
 
-		cmd := m.secondaryFeatures.TaskItem.SetSectionWorkflow(taskIdentityFor(task, m.currentProject), models.SectionNext,
+		cmd := m.secondaryFeatures.TaskItem.TransitionWorkflow(taskIdentityFor(task, m.currentProject), models.StateNext,
 			app.SingleTaskWorkflowOptions{}, func(app.TaskResult) string { return "" })
 		assertNotTransactionError(t, cmd())
 
@@ -289,13 +287,13 @@ func TestSectionMovesPreservePlanningExclusivity(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
 		m.seedDiskDailyPlan(t, task.ID, m.currentProject.ID)
 
-		// Mirror the shell bulk-section handler: mutate the project in memory, then
+		// Mirror the shell bulk-state handler: mutate the project in memory, then
 		// commit through the workflow coordinator naming the changed tasks.
 		m.currentProject.MutateTask(task.ID, func(tk *models.Task) {
-			tk.SetSection(models.SectionNext)
+			tk.ApplyWorkflowState(models.StateNext)
 		})
 		cmd := m.secondaryFeatures.TaskItem.CommitProjectWorkflow(m.currentProject,
-			app.ProjectWorkflowOptions{UndoAction: "Move to Section", PlanningTaskIDs: []string{task.ID}}, "moved")
+			app.ProjectWorkflowOptions{UndoAction: "Change State", PlanningTaskIDs: []string{task.ID}}, "moved")
 		assertNotTransactionError(t, cmd())
 
 		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {

@@ -50,13 +50,11 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		appearanceDetector:   appearance.NewDetector(),
 		persister:            NewProjectService(),
 		navigation:           NewNavigationState(),
-		typedNavigation:      true,
-		viewStack:            []PresentationID{ViewDashboard},
 		sessionStats:         sessionStats{sessionStart: time.Now()},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
-		commandRegistry:      NewCommandRegistry(),
+		operationRegistry:    NewOperationRegistry(),
 		spinner:              NewSpinner(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 		focusQueue:           []FocusTask{},
@@ -71,6 +69,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	for _, opt := range opts {
 		opt(app)
 	}
+	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 
 	// Bind the primary feature coordinators to the application service. The
 	// service is built once per session over the storage-backed repository so a
@@ -124,7 +123,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 			app.currentProject = current
 		}
 	}
-	// The Outliner always launches globally in Today, so a restored current
+	// The Outliner always launches in global All, so a restored current
 	// project that is no longer a normal work target must not linger as the shell
 	// pointer; drop it before resolving startup navigation.
 	if app.currentProject != nil &&
@@ -171,8 +170,21 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		app.focusDismissedIDs[id] = true
 	}
 
-	// Register global commands
-	app.registerGlobalCommands()
+	if err := app.registerCoreInputOperations(); err != nil {
+		return nil, fmt.Errorf("register core input operations: %w", err)
+	}
+	if err := app.registerTaskActionOperations(); err != nil {
+		return nil, fmt.Errorf("register task action operations: %w", err)
+	}
+	if err := app.registerScopeHubOperations(); err != nil {
+		return nil, fmt.Errorf("register scope hub operations: %w", err)
+	}
+	if err := app.registerHarnessOperations(); err != nil {
+		return nil, fmt.Errorf("register harness operations: %w", err)
+	}
+	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		return nil, fmt.Errorf("register simplified input strategy: %w", err)
+	}
 
 	ApplyTheme(NewThemeConfig(runtime.Settings()))
 
@@ -180,16 +192,15 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	app.refreshOnboardingProgress(startupLoads)
 
 	// The Outliner is the sole root: construct and register the global
-	// (All Projects) Outliner in Today so the first frame renders the root even
+	// (All Projects) Outliner in All so the first frame renders the root even
 	// before Init's startup reload lands. NewNavigationState already roots the
-	// primary stack at the Outliner; sync the presentation mirror to match. The
-	// returned constructor command is deliberately startup-owned: AppModel.Init
+	// primary stack at the Outliner. The returned constructor command is
+	// deliberately startup-owned: AppModel.Init
 	// emits ShowGlobalOutlinerMsg, whose handler starts and returns the current
 	// generation's reload command.
 	_ = app.prepareCrossProjectOutliner()
 	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeAll, SetMode: true})
 	app.setAccentOnView(app.crossOutliner)
-	app.syncPresentationStack()
 
 	return app, nil
 }
@@ -479,48 +490,6 @@ func (app *AppModel) hydrateRecentVisits(activeProjects []*models.Project, start
 	}
 }
 
-// commandGroups returns every command batch in the order they are registered.
-// Tests use this to rebuild the registry and assert palette invariants without
-// drifting from the production registration order.
-func (m *AppModel) commandGroups() [][]Command {
-	return [][]Command{
-		m.globalCommands(),
-		m.filterCommands(),
-		m.viewCommands(),
-		outlinerModeCommands(),
-		m.navCommands(),
-		m.taskCommands(),
-		m.projectCommands(),
-		m.taskActionCommands(),
-		m.viewModeCommands(),
-		m.notesCommands(),
-		m.otherCommands(),
-		m.structureCommands(),
-		m.notesViewCommands(),
-		m.blockersCommands(),
-		m.taskCommentsCommands(),
-		m.globalTagManagerCommands(),
-		m.attachmentCommands(),
-		m.inboxProcessorCommands(),
-		m.workflowRulesCommands(),
-		m.scoringCommands(),
-		m.outlinerCommands(),
-		m.exportCommands(),
-	}
-}
-
-// registerGlobalCommands registers commands that are available from any view.
-func (m *AppModel) registerGlobalCommands() {
-	for _, group := range m.commandGroups() {
-		_ = m.commandRegistry.RegisterBatch(group)
-	}
-}
-
-// getGlobalHelpItems returns help items that apply across all views.
-func getGlobalHelpItems() []HelpItem {
-	return NewKeybindingRegistry().GetGlobalBindings()
-}
-
 const periodicSaveInterval = 60 * time.Second
 const appearanceCheckInterval = 30 * time.Second
 
@@ -554,13 +523,20 @@ type startupNavigationPlan struct {
 	Presentation PresentationID
 }
 
-// resolveStartupNavigation resolves the single startup destination. The Outliner
-// is the sole root and always launches globally in Today; startup is no longer
-// configurable, so this ignores persisted machine state entirely. The Outliner
-// root route itself is installed by NewAppModel; this only supplies the reload +
-// mode-selection message dispatched from Init.
-func resolveStartupNavigation(_ *config.MachineState, _ string) (startupNavigationPlan, bool) {
+// resolveStartupNavigation restores only the config-owned Outliner view-state
+// DTO. The Outliner root route remains installed by typed NavigationState and
+// scope/project selection remains outside the DTO.
+func resolveStartupNavigation(machine *config.MachineState, _ string) (startupNavigationPlan, bool) {
+	route := config.NormalizeOutlinerRouteState(config.OutlinerRouteState{})
+	if machine != nil {
+		route = config.NormalizeOutlinerRouteState(machine.StartupRoute)
+	}
 	return startupNavigationPlan{
-		Message: ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{Mode: ModeAll, SetMode: true}},
+		Message: ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{
+			Mode:          OutlinerModeID(route.Mode),
+			SetMode:       true,
+			RouteState:    route,
+			SetRouteState: true,
+		}},
 	}, true
 }

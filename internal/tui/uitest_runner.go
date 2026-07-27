@@ -136,40 +136,56 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 	return nil
 }
 
-// runCommand resolves a registered command by case-insensitive name against the
-// current view's command set, invokes its handler, and routes the resulting
-// message through the driver so global/search/view handlers (not just
-// AppModel.processMessage) observe it. This mirrors the command-palette
-// execution path — including unwrapping a PaletteCommandResultMsg into the
-// carried tea.Cmd — so a command action opens the same views the palette would
-// without driving the palette UI. Unknown, view-unavailable, nil-registry, and
-// nil-handler commands are reported as structured action failures.
+// runCommand resolves a registered operation by stable ID or case-insensitive
+// label and routes its result through the full app. Discovery remains restricted
+// to the production input strategy, but an explicit scenario command may invoke
+// any applicable registered operation so lower-level layout tests can cover
+// dormant compatibility surfaces until their deletion. These setup-only
+// operations are never returned in AvailableCommands.
 func (d *UITestDriver) runCommand(name string) error {
-	registry := d.app.commandRegistry
-	if registry == nil {
-		return fmt.Errorf("command %q: no command registry is wired", name)
+	registry := d.app.operationRegistry
+	if registry == nil || d.app.operationExecutor == nil {
+		return fmt.Errorf("command %q: no operation registry is wired", name)
 	}
 	view := d.app.currentView()
-	cmds := registry.GetForView(view)
-	var match *Command
-	for i := range cmds {
-		if strings.EqualFold(cmds[i].Name, name) {
-			match = &cmds[i]
-			break
+	descriptors := d.availableOperationDescriptors()
+	var match *OperationDescriptor
+	find := func(candidates []OperationDescriptor) *OperationDescriptor {
+		for i := range candidates {
+			if strings.EqualFold(string(candidates[i].ID), name) ||
+				strings.EqualFold(candidates[i].Label, name) {
+				return &candidates[i]
+			}
 		}
+		return nil
+	}
+	match = find(descriptors)
+	if match == nil {
+		ctx := d.app.operationCommandContext()
+		ctx.View = view
+		ctx.Capabilities.Add(CapabilityHarness)
+		match = find(registry.Discover(ctx))
 	}
 	if match == nil {
 		return fmt.Errorf("command %q is not available in view %q", name, view.String())
 	}
-	if match.Handler == nil {
-		return fmt.Errorf("command %q has no handler", name)
-	}
 
-	msg := match.Handler()
+	ctx := d.app.operationCommandContext()
+	ctx.View = view
+	ctx.Capabilities.Add(CapabilityHarness)
+	result := d.app.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      match.ID,
+		Context: ctx,
+		Source:  OperationSourceHarness,
+	})
+	if result.Err != nil {
+		return fmt.Errorf("command %q failed: %w", name, result.Err)
+	}
+	msg := result.AsMessage()
 	switch m := msg.(type) {
 	case nil:
 		d.pendingCmd = nil
-	case PaletteCommandResultMsg:
+	case OperationCommandResultMsg:
 		// The handler deferred its real work into a tea.Cmd; drain that instead
 		// of routing the wrapper as a message.
 		d.pendingCmd = m.Cmd

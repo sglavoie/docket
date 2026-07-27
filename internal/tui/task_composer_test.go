@@ -60,10 +60,8 @@ func TestTaskComposerPresetModes(t *testing.T) {
 	if templateComposer.expanded.draft.taskType != models.TaskTypeBug || templateComposer.expanded.draft.priority != 1 {
 		t.Fatalf("template defaults not applied: %+v", templateComposer.expanded.draft)
 	}
-	if templateComposer.expanded.presetState != models.StatePaused ||
-		templateComposer.expanded.draft.section != models.SectionStandby {
-		t.Fatalf("template state not staged exactly: state=%q section adapter=%q",
-			templateComposer.expanded.presetState, templateComposer.expanded.draft.section)
+	if templateComposer.expanded.draft.state != models.StatePaused {
+		t.Fatalf("template state not staged exactly: state=%q", templateComposer.expanded.draft.state)
 	}
 	editComposer := NewTaskComposerModel(tests[6].preset, appModel.runtime)
 	editComposer.expanded.titleInput.SetValue("one\ntwo")
@@ -78,7 +76,7 @@ func TestTaskComposerMultilineValidationIsAtomicAndUsesSourceLines(t *testing.T)
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:    ComposerProject,
 		Project: env.project,
-		Shared:  TaskComposerSharedAttributes{Section: models.SectionInbox},
+		Shared:  TaskComposerSharedAttributes{State: models.StateInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
 	input := "First task\n\n!1\nThird task"
@@ -104,8 +102,8 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 		Kind:    ComposerProject,
 		Project: env.project,
 		Shared: TaskComposerSharedAttributes{
-			Section: models.SectionNext,
-			Tags:    []string{"shared"},
+			State: models.StateNext,
+			Tags:  []string{"shared"},
 		},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
@@ -177,7 +175,7 @@ func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
 		t.Fatalf("multiline expansion was not rejected: mode=%v errors=%+v", composer.mode, composer.errors)
 	}
 
-	composer.input.SetValue("Ship it ^bug !1 #release /next")
+	composer.input.SetValue("Ship it ^bug !1 #release $next")
 	composer.expandSingle()
 	if composer.mode != ComposerExpanded || composer.expanded == nil {
 		t.Fatal("single line did not expand")
@@ -190,11 +188,10 @@ func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
 func TestTaskComposerUsesTypedOverlayWithoutLegacyRoute(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	installTestSystemInbox(appModel, project)
-	appModel.enableTypedNavigation()
 
-	handled, _ := appModel.handleViewMessages(ShowQuickCaptureMsg{Project: project})
+	handled, _ := appModel.handleViewMessages(appModel.captureComposerMessage(project, appModel.activeProjects()))
 	if !handled || !appModel.activeTaskComposer() {
-		t.Fatal("quick-capture alias did not activate Task Composer")
+		t.Fatal("Task Composer message did not activate Task Composer")
 	}
 	overlay, ok := appModel.navigation.Overlays.Current()
 	if !ok || overlay.Kind() != OverlayComposer || overlay.Key() != taskComposerOverlayKey {
@@ -202,9 +199,6 @@ func TestTaskComposerUsesTypedOverlayWithoutLegacyRoute(t *testing.T) {
 	}
 	if _, legacy := overlay.Presentation(); legacy {
 		t.Fatal("Task Composer opened a legacy capture/form overlay route")
-	}
-	if _, legacyModel := appModel.activeView().(*QuickCaptureModel); legacyModel {
-		t.Fatal("legacy QuickCaptureModel remained live")
 	}
 	if _, ok := appModel.activeView().(*TaskComposerModel); !ok {
 		t.Fatalf("active view = %T, want TaskComposerModel", appModel.activeView())
@@ -243,7 +237,6 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 func TestTaskComposerEditEscFlowThroughTypedOverlay(t *testing.T) {
 	t.Run("clean edit closes", func(t *testing.T) {
 		appModel, project := newTestAppModelWithProject()
-		appModel.enableTypedNavigation()
 		appModel.Update(EditTaskMsg{Project: project, Task: project.Tasks[0]})
 
 		if !appModel.activeTaskComposer() {
@@ -265,7 +258,6 @@ func TestTaskComposerEditEscFlowThroughTypedOverlay(t *testing.T) {
 
 	t.Run("dirty edit exposes and dismisses discard confirmation", func(t *testing.T) {
 		appModel, project := newTestAppModelWithProject()
-		appModel.enableTypedNavigation()
 		task := project.Tasks[0]
 		originalTitle := task.Title
 		appModel.Update(EditTaskMsg{Project: project, Task: task})

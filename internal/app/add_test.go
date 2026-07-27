@@ -85,8 +85,8 @@ func TestService_AddTask_Parity(t *testing.T) {
 	if task.Description != "body text" {
 		t.Errorf("description = %q", task.Description)
 	}
-	if got := models.SectionForState(task.State()); got != models.SectionNext {
-		t.Errorf("section = %q, want %q", got, models.SectionNext)
+	if got := task.State(); got != models.StateNext {
+		t.Errorf("section = %q, want %q", got, models.StateNext)
 	}
 	if task.Recurrence == nil {
 		t.Error("recurrence not set")

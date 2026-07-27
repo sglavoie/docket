@@ -71,8 +71,8 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 	}
 
 	snap := m.UITestSnapshot()
-	if got := snapString(t, snap, "perspective"); got != "All" {
-		t.Errorf("perspective = %q, want All", got)
+	if got := snapString(t, snap, "mode"); got != string(ModeAll) {
+		t.Errorf("mode = %q, want %s", got, ModeAll)
 	}
 	if got := snapInt(t, snap, "row_count"); got <= 0 {
 		t.Errorf("row_count = %d, want > 0", got)
@@ -83,24 +83,6 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 	// The rich fixture has tasks, so the cursor row should carry a title.
 	if got := snapString(t, snap, "selected_task"); got == "" {
 		t.Error("selected_task is empty")
-	}
-}
-
-func TestUITestSnapshotCommandPalette(t *testing.T) {
-	ws := newSnapshotWorkspace(t)
-	registry := NewCommandRegistry()
-	_ = registry.Register(Command{Name: "Create Task", Shortcut: "n", Category: CategoryTasks})
-	m := NewCommandPaletteModel(ws.Runtime, registry, ViewDashboard, nil)
-
-	snap := m.UITestSnapshot()
-	if _, ok := snap["query"]; !ok {
-		t.Error("snapshot missing query")
-	}
-	if _, ok := snap["result_count"]; !ok {
-		t.Error("snapshot missing result_count")
-	}
-	if got, ok := snap["action_mode"].(bool); !ok || got {
-		t.Errorf("action_mode = %v, want false", snap["action_mode"])
 	}
 }
 
@@ -159,86 +141,43 @@ func TestUITestAvailableCommands(t *testing.T) {
 // carried through from the registry entry.
 func TestUITestAvailableCommandsFields(t *testing.T) {
 	app := newUITestApp()
-	app.commandRegistry = NewCommandRegistry()
-	if err := app.commandRegistry.Register(Command{
-		Name:     "Create Task",
-		Shortcut: "n",
-		Category: CategoryTasks,
-		Aliases:  []string{"add task", "new task"},
-		Views:    []PresentationID{ViewCrossProjectOutliner},
-	}); err != nil {
-		t.Fatalf("Register: %v", err)
-	}
 	driver := NewUITestDriver(app, 100, 30)
 
 	cmds := driver.availableCommands()
-	if len(cmds) != 1 {
-		t.Fatalf("availableCommands len = %d, want 1", len(cmds))
+	var found *UITestCommand
+	for index := range cmds {
+		if cmds[index].ID == string(operationCoreCapture) {
+			found = &cmds[index]
+			break
+		}
 	}
-	c := cmds[0]
-	if c.Name != "Create Task" || c.Shortcut != "n" || c.Category != "Tasks" {
-		t.Errorf("command fields = %+v", c)
+	if found == nil {
+		t.Fatalf("capture operation is missing from available commands: %+v", cmds)
 	}
-	if len(c.Aliases) != 2 || c.Aliases[0] != "add task" {
-		t.Errorf("aliases = %v", c.Aliases)
+	if found.Name != "Capture" || found.Shortcut != "a" || found.Category != "Tasks" {
+		t.Errorf("capture operation fields = %+v", *found)
+	}
+	if len(found.Aliases) == 0 {
+		t.Errorf("capture operation aliases = %v, want at least one", found.Aliases)
 	}
 }
 
-func TestUITestAvailableCommandsOmitsUnavailableCommands(t *testing.T) {
+func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 	app := newUITestApp()
-	app.commandRegistry = NewCommandRegistry()
-	dynamicAvailable := true
-	for _, cmd := range []Command{
-		{Name: "Always", Category: CategoryTasks},
-		{Name: "Dynamic", Category: CategoryTasks, Available: func() bool { return dynamicAvailable }},
-		{Name: "Never", Category: CategoryTasks, Available: func() bool { return false }},
-	} {
-		if err := app.commandRegistry.Register(cmd); err != nil {
-			t.Fatalf("Register(%q): %v", cmd.Name, err)
-		}
-	}
-	driver := NewUITestDriver(app, 100, 30)
 
-	commandNames := func(commands []UITestCommand) []string {
-		names := make([]string, 0, len(commands))
-		for _, cmd := range commands {
-			names = append(names, cmd.Name)
-		}
-		return names
+	commands := NewUITestDriver(app, 100, 30).availableCommands()
+	strategy, _ := app.operationRegistry.InputStrategy(InputStrategySimplified)
+	if len(commands) != len(strategy.Bindings) {
+		t.Fatalf("available operations = %d, strategy bindings = %d", len(commands), len(strategy.Bindings))
 	}
-	if got := commandNames(driver.availableCommands()); len(got) != 2 || got[0] != "Always" || got[1] != "Dynamic" {
-		t.Fatalf("available commands = %v, want [Always Dynamic]", got)
+	byID := make(map[string]UITestCommand, len(commands))
+	for _, command := range commands {
+		byID[command.ID] = command
 	}
-
-	dynamicAvailable = false
-	if got := commandNames(driver.availableCommands()); len(got) != 1 || got[0] != "Always" {
-		t.Fatalf("available commands after predicate change = %v, want [Always]", got)
+	if got := byID[string(operationCoreVisibleSearch)].Shortcut; got != "/" {
+		t.Errorf("visible search shortcut = %q, want /", got)
 	}
-}
-
-func TestCommandPaletteOmitsUnavailableCommands(t *testing.T) {
-	runtime := newTestConfig()
-	registry := NewCommandRegistry()
-	for _, cmd := range []Command{
-		{Name: "Always", Category: CategoryTasks},
-		{Name: "Never", Category: CategoryTasks, Available: func() bool { return false }},
-	} {
-		if err := registry.Register(cmd); err != nil {
-			t.Fatalf("Register(%q): %v", cmd.Name, err)
-		}
-	}
-
-	palette := NewCommandPaletteModel(runtime, registry, ViewDashboard, nil)
-	found := make(map[string]bool)
-	for _, item := range palette.allItems {
-		if item.Command != nil {
-			found[item.Command.Name] = true
-		}
-	}
-	if !found["Always"] {
-		t.Fatal("palette omitted an available command")
-	}
-	if found["Never"] {
-		t.Fatal("palette included an unavailable command")
+	if got := byID[string(operationCoreFinder)].Shortcut; got != ":" {
+		t.Errorf("finder shortcut = %q, want :", got)
 	}
 }

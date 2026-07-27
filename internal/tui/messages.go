@@ -14,7 +14,7 @@ package tui
 //   - CloseXxxMsg: Dismisses the view, may carry result data
 //
 // Examples:
-//   - ShowCommandPaletteMsg / CloseCommandPaletteMsg
+//   - ShowFinderMsg / FinderClosedMsg
 //   - ShowFilterMsg / CloseFilterMsg
 //   - ShowHelpMsg / CloseHelpMsg
 //   - ShowTagSelectorMsg (closes via TagSelectorDoneMsg)
@@ -29,7 +29,6 @@ package tui
 //
 // Examples:
 //   - TagSelectorDoneMsg{Tags: []string, Canceled: bool}
-//   - SectionPickerDoneMsg{Section: string, Canceled: bool}
 //   - PriorityPickerDoneMsg{Priority: int, Canceled: bool}
 //   - ContextScopeSelectedMsg{SelectedContext: string, Canceled: bool}
 //
@@ -61,14 +60,14 @@ package tui
 //
 // # Action Pattern (Command Execution)
 //
-// Used to trigger specific operations, often from command palette or
+// Used to trigger specific operations from the registry, Finder, or direct
 // keyboard shortcuts.
 //
 //   - XxxActionMsg: Execute action with parameters
 //   - XxxMsg (verb): Trigger an operation
 //
 // Examples:
-//   - CommandPaletteTaskActionMsg{Action: "complete", Task: ...}
+//   - TaskActionSheetExecuteMsg{Request: ...}
 //   - RefreshMsg, BackMsg, QuitMsg
 //
 // # File Organization
@@ -76,9 +75,7 @@ package tui
 // Messages are defined close to their primary consumers:
 //
 //   - app_messages_*.go: Core navigation and shared app-level messages
-//   - inbox_messages.go: Inbox processor specific
 //   - bulk_edit_types.go: Bulk edit panel specific
-//   - command_palette.go: Palette-specific messages (end of file)
 //   - [view]_xxx.go: View-specific messages near the view
 //
 // When adding new messages:

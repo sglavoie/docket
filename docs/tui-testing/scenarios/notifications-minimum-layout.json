@@ -3,7 +3,7 @@
   "fixture": "alerts",
   "size": "72x20",
   "actions": [
-    { "type": "command", "label": "open Notification Center", "command": "notifications" },
+    { "type": "key", "label": "open Notifications", "key": "!" },
     { "type": "assert", "assert": "view", "value": "NotificationCenter" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

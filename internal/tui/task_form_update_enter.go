@@ -125,14 +125,9 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 		}
 
 	case 5:
-		// Section: open section picker (Task=nil signals form context)
-		project := m.project
-		return func() tea.Msg {
-			return ShowSectionPickerMsg{
-				Task:    nil,
-				Project: project,
-			}
-		}
+		m.statePicker = newFormStatePicker(m.draft.state)
+		m.activeOverlay = formOverlayState
+		return nil
 
 	case 6:
 		// Flags: open inline flags picker

@@ -248,7 +248,7 @@ func TestCockpitActionHintAndFooterOrdering(t *testing.T) {
 		CockpitCommandPrioritizeTask,
 		CockpitCommandQuickCapture,
 		CockpitCommandOpenDestination,
-		CockpitCommandOpenCommandPalette,
+		CockpitCommandOpenFinder,
 		CockpitCommandShowHelp,
 	})
 }
@@ -433,7 +433,7 @@ func TestBuildCockpitRecommendationCharacterizesCurrentSurfaceStates(t *testing.
 			assertCockpitCommands(t, got.Footer.Contextual, tc.wantFooter)
 			assertCockpitCommands(t, got.Footer.Escape, []CockpitCommand{
 				CockpitCommandOpenDestination,
-				CockpitCommandOpenCommandPalette,
+				CockpitCommandOpenFinder,
 				CockpitCommandShowHelp,
 			})
 		})

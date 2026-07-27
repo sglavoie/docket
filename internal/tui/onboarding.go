@@ -119,6 +119,23 @@ func (m *AppModel) observeLoadedProjectMilestones(projectIDs ...string) {
 	})
 }
 
+// activeInboxTriage reports whether a task mutation originated from the live
+// Inbox list. Processor models are no longer navigation destinations, so the
+// Outliner mode is the sole source for this onboarding milestone.
+func (m *AppModel) activeInboxTriage() bool {
+	if m == nil || !m.activeOutlinerRoute() {
+		return false
+	}
+	outliner, _, ok := m.outlinerPrimary()
+	return ok && outliner != nil && outliner.activeOutlinerMode() == ModeInbox
+}
+
+func (m *AppModel) markInboxTriaged() {
+	m.advanceOnboarding(func(progress *config.OnboardingProgress) {
+		progress.InboxTriaged = true
+	})
+}
+
 func onboardingStatus(progress config.OnboardingProgress) string {
 	if progress.Complete() {
 		return ""
@@ -128,11 +145,11 @@ func onboardingStatus(progress config.OnboardingProgress) string {
 		key  string
 		done bool
 	}{
-		{name: "create", key: ":", done: progress.ProjectCreated},
+		{name: "scope", key: "c", done: progress.ProjectCreated},
 		{name: "capture", key: "a", done: progress.TaskCaptured},
-		{name: "triage", key: ":", done: progress.InboxTriaged},
-		{name: "plan", key: "tab", done: progress.TaskPlanned},
-		{name: "complete", key: "x", done: progress.TaskCompleted},
+		{name: "triage", key: "Tab", done: progress.InboxTriaged},
+		{name: "plan", key: "t", done: progress.TaskPlanned},
+		{name: "complete", key: "d", done: progress.TaskCompleted},
 	}
 	parts := make([]string, 0, len(steps))
 	for _, step := range steps {

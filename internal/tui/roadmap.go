@@ -342,7 +342,7 @@ func (m *RoadmapModel) handleRoadmapActionKey(key string) (tea.Model, tea.Cmd, b
 	case "r":
 		m.computeData()
 	case "?":
-		return m, helpCmd(ViewRoadmap, "Roadmap", GetKeybindingRegistry().GetForView(ViewRoadmap)), true
+		return m, helpCmd(ViewRoadmap, "Roadmap", helpItemsFromKeyMap(m.buildKeyMap())), true
 	default:
 		return m, nil, false
 	}
@@ -489,7 +489,7 @@ func (m *RoadmapModel) selectedRow() (*models.Task, *models.Project) {
 	return nil, nil
 }
 
-// HandledKeys implements KeySyncView.
+// HandledKeys returns the direct keys accepted by the roadmap.
 func (m *RoadmapModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
 }

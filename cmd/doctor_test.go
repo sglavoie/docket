@@ -638,7 +638,7 @@ func TestRunDoctor_ReportsProjectLoadFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	child.ParentID = &parent.ID
-	content := storage.WriteTasksMarkdownWithSections(project.Name, []*models.Task{parent, child}, []string{models.SectionNext}, nil)
+	content := storage.WriteTasksMarkdownWithProjectMetadata(project.Name, []*models.Task{parent, child}, nil, nil)
 	if writeErr := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); writeErr != nil {
 		t.Fatalf("WriteFile(tasks.md): %v", writeErr)
 	}
@@ -734,7 +734,7 @@ func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
 		t.Fatalf("loaded %d tasks, want 1", len(reloaded.Tasks))
 	}
 	task := reloaded.Tasks[0]
-	if got := models.SectionForState(task.State()); got != "" {
-		t.Fatalf("task section = %q, want empty after persisted repair", got)
+	if got := task.State(); got != models.StateReady {
+		t.Fatalf("task state = %q, want ready after persisted repair", got)
 	}
 }

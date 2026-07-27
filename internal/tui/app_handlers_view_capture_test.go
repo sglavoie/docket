@@ -7,55 +7,54 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestHandleViewMessagesShowQuickCapture(t *testing.T) {
+func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	inbox := installTestSystemInbox(app, project)
 
-	msg := ShowQuickCaptureMsg{Project: project}
+	msg := app.captureComposerMessage(project, app.activeProjects())
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
-		t.Error("ShowQuickCaptureMsg should be handled")
+		t.Error("ShowTaskComposerMsg should be handled")
 	}
-	// Quick capture is now a normal stack view, mirroring Bulk Capture.
-	if app.currentView() != ViewQuickCapture {
-		t.Errorf("currentView should be QuickCapture after ShowQuickCaptureMsg, got %v", app.currentView())
+	if app.currentView() != ViewTaskComposer {
+		t.Errorf("currentView should be TaskComposer after ShowTaskComposerMsg, got %v", app.currentView())
 	}
-	capture, ok := app.views.Get(ViewQuickCapture).(*QuickCaptureModel)
+	capture, ok := app.views.Get(ViewTaskComposer).(*TaskComposerModel)
 	if !ok {
-		t.Fatalf("quick capture view = %T, want *QuickCaptureModel", app.views.Get(ViewQuickCapture))
+		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(ViewTaskComposer))
 	}
-	if capture.project != project {
-		t.Fatalf("quick capture project = %v, want contextual project %v (system Inbox was %v)", capture.project, project, inbox)
+	if capture.preset.Project != project {
+		t.Fatalf("quick capture project = %v, want contextual project %v (system Inbox was %v)", capture.preset.Project, project, inbox)
 	}
-	if capture.skipProjectSyntax {
-		t.Fatal("contextual quick capture unexpectedly disabled project-sigil routing")
+	if !capture.preset.AllowProjectSwitch {
+		t.Fatal("contextual quick capture unexpectedly disabled project switching")
 	}
-	if len(capture.projectCache) != 2 {
-		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.projectCache))
+	if len(capture.preset.AllProjects) != 2 {
+		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.preset.AllProjects))
 	}
 }
 
-func TestHandleViewMessagesShowQuickCaptureDefaultsToSystemInbox(t *testing.T) {
+func TestTaskComposerCaptureDefaultsToSystemInbox(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	inbox := installTestSystemInbox(app, project)
 
-	handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{})
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(nil, nil))
 	if !handled {
-		t.Fatal("ShowQuickCaptureMsg should be handled")
+		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
-	capture, ok := app.views.Get(ViewQuickCapture).(*QuickCaptureModel)
+	capture, ok := app.views.Get(ViewTaskComposer).(*TaskComposerModel)
 	if !ok {
-		t.Fatalf("quick capture view = %T, want *QuickCaptureModel", app.views.Get(ViewQuickCapture))
+		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(ViewTaskComposer))
 	}
-	if capture.project != inbox {
-		t.Fatalf("quick capture project = %v, want system Inbox %v", capture.project, inbox)
+	if capture.preset.Project != inbox {
+		t.Fatalf("quick capture project = %v, want system Inbox %v", capture.preset.Project, inbox)
 	}
-	if capture.skipProjectSyntax {
-		t.Fatal("context-free quick capture unexpectedly disabled project-sigil routing")
+	if !capture.preset.AllowProjectSwitch {
+		t.Fatal("context-free quick capture unexpectedly disabled project switching")
 	}
-	if len(capture.projectCache) != 2 {
-		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.projectCache))
+	if len(capture.preset.AllProjects) != 2 {
+		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.preset.AllProjects))
 	}
 }
 
@@ -68,61 +67,6 @@ func installTestSystemInbox(app *AppModel, projects ...*models.Project) *models.
 	return inbox
 }
 
-func TestHandleViewMessagesCloseQuickCapture(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	// Push quick capture as a normal stack view (new behavior).
-	app.showView(ViewQuickCapture, NewQuickCaptureModel(project, nil, false))
-	if app.currentView() != ViewQuickCapture {
-		t.Fatalf("setup: currentView should be QuickCapture, got %v", app.currentView())
-	}
-
-	app.Update(CloseQuickCaptureMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should pop back to Dashboard after CloseQuickCaptureMsg, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesShowBulkCapture(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-
-	msg := ShowBulkCaptureMsg{Project: project}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowBulkCaptureMsg should be handled")
-	}
-	if app.currentView() != ViewBulkCapture {
-		t.Errorf("currentView should be BulkCapture, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesCloseBulkCapture(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewBulkCapture)
-
-	app.Update(CloseBulkCaptureMsg{})
-
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing bulk capture, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesBulkEditDone(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewBulkEdit)
-
-	msg := BulkEditDoneMsg{Applied: false}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("BulkEditDoneMsg should be handled")
-	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after bulk edit done, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesRecurrenceEditorDone(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewRecurrenceEditor)
@@ -133,8 +77,8 @@ func TestHandleViewMessagesRecurrenceEditorDone(t *testing.T) {
 	if !handled {
 		t.Error("RecurrenceEditorDoneMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after recurrence editor done, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after recurrence editor done, got %v", app.currentView())
 	}
 }
 
@@ -148,23 +92,8 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	if !handled {
 		t.Error("TextEditorDoneMsg should be handled")
 	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after text editor done, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesShowBulkEdit(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	tasks := project.Tasks
-
-	msg := ShowBulkEditMsg{Tasks: tasks, Project: project}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowBulkEditMsg should be handled")
-	}
-	if app.currentView() != ViewBulkEdit {
-		t.Errorf("currentView should be BulkEdit, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Errorf("currentView should be Outliner after text editor done, got %v", app.currentView())
 	}
 }
 

@@ -36,7 +36,6 @@ func setupConflictTest(t *testing.T) (*storage.ConflictStore, *storage.CommitSer
 	}
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 	if _, err := svc.Commit(storage.ChangeSet{Project: project}); err != nil {
 		t.Fatalf("commit remote: %v", err)

@@ -103,8 +103,6 @@ func loadProjectContentForRewrite(project *models.Project, content []byte) (*Pro
 func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
 	project.Tasks = []*models.Task{}
 	project.NextShortID = 1
-	project.Sections = []string{models.SectionNext}
-	project.SectionColors = make(map[string]string)
 	project.Tags = []string{}
 	project.PinnedTags = []string{}
 	if auditErr := auditLoadedProject(project); auditErr != nil {
@@ -125,19 +123,14 @@ func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadRe
 }
 
 func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, validateCrossRefs bool) (*ProjectLoadResult, error) {
-	result, err := ParseTasksMarkdownWithSections(string(content))
+	result, err := ParseTasksMarkdownDocument(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 	}
 
 	project.Tasks = result.Tasks
-	// Project sections and colors are schema-v1 decode inputs only. Keep the
-	// compatibility fields on their canonical runtime defaults until their
-	// staged removal; never hydrate retired persisted presentation metadata.
-	project.Sections = []string{models.SectionNext}
 	project.Tags = result.Tags
 	project.PinnedTags = result.PinnedTags
-	project.SectionColors = make(map[string]string)
 
 	maxShortID := 0
 	for _, task := range result.Tasks {
@@ -147,7 +140,6 @@ func loadProjectContentWithCrossRefValidation(project *models.Project, content [
 	}
 	project.NextShortID = maxShortID + 1
 
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
 	if validateCrossRefs {

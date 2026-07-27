@@ -1,0 +1,11 @@
+{
+  "name": "visible-search-minimum-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open visible search", "key": "/" },
+    { "type": "text", "label": "search visible tasks", "text": "login" },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

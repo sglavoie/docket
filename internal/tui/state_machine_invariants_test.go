@@ -28,8 +28,6 @@ func (v *invariantQueueView) Update(tea.Msg) (tea.Model, tea.Cmd) {
 
 func (v *invariantQueueView) View() tea.View { return tea.NewView("") }
 
-// getTaskRef re-resolves the task from the project so it returns the live
-// pointer after a ledger-backed queue toggle reloads the project from disk.
 func (v *invariantQueueView) getTaskRef() (*models.Task, *models.Project) {
 	if v.project != nil {
 		if fresh := v.project.GetTaskByID(v.taskID); fresh != nil {
@@ -47,10 +45,11 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
 	outliner.SetSearchQuery(project.Tasks[0].Title)
 	outliner.zoomStack = []ZoomEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
-	app.showView(ViewOutliner, outliner)
+	app.showView(ViewCrossProjectOutliner, outliner)
+	wireInvariantSimplifiedOutliner(t, app, outliner)
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewOutliner {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("multi-select esc should stay in outliner, got %v", app.currentView())
 	}
 	if outliner.multiSelectMode {
@@ -64,7 +63,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewOutliner {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("search esc should stay in outliner, got %v", app.currentView())
 	}
 	if outliner.SearchQuery() != "" {
@@ -75,7 +74,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewOutliner {
+	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("zoom esc should stay in outliner, got %v", app.currentView())
 	}
 	if len(outliner.zoomStack) != 0 {
@@ -86,13 +85,13 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewDashboard {
-		t.Fatalf("fourth esc should pop the view, got %v", app.currentView())
+	if app.currentView() != ViewCrossProjectOutliner {
+		t.Fatalf("fourth esc at the Outliner root should be a no-op, got %v", app.currentView())
 	}
 }
 
 func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
-	// The Planner (ViewFocusBoard) is the sole planning surface after the Focus
+	// The Outliner is the sole planning surface after the Focus
 	// View retirement. On the Planner the global q/w/u/ctrl+r keys are owned by
 	// the Today simple grammar (currentViewUsesTodaySimpleGrammar), so this test
 	// drives the app-level toggle + undo/redo methods directly — the exact code
@@ -137,7 +136,7 @@ func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
 // does not, and the ranking signal follows the state rather than the list.
 func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 	t.Run("q on unindexed StateNext leaves Next", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewCrossProjectOutliner)
 		identity := taskIdentityFor(task, app.currentProject)
 		if app.focusQueueIDs[identity] {
 			t.Fatal("precondition: StateNext task must start unindexed in the order list")
@@ -158,7 +157,7 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 	})
 
 	t.Run("adding unindexed StateNext task to Today removes it from Next", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewCrossProjectOutliner)
 		identity := taskIdentityFor(task, app.currentProject)
 		if app.focusQueueIDs[identity] {
 			t.Fatal("precondition: StateNext task must start unindexed in the order list")
@@ -242,12 +241,12 @@ func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
 
 	t.Run("outliner Next includes unindexed StateNext and excludes stale index", func(t *testing.T) {
 		outliner := NewOutlinerModel(project, nil, runtime)
-		outliner.ApplyOpenOptions(OutlinerOpenOptions{Focus: OutlinerNext, SetFocus: true})
-		filter := outliner.baseFocusFilter(project)
-		if !filter(indexedNext) || !filter(unindexedNext) {
+		outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeNext, SetMode: true})
+		visible := visibleOutlinerTaskIDs(outliner)
+		if !visible[indexedNext.ID] || !visible[unindexedNext.ID] {
 			t.Fatal("Outliner Next must include every StateNext task")
 		}
-		if filter(stale) {
+		if visible[stale.ID] {
 			t.Fatal("stale indexed non-Next task must not appear in Outliner Next")
 		}
 	})
@@ -295,6 +294,7 @@ func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
 
 func TestTUIStateMachine_LatestUndoToastWins(t *testing.T) {
 	app := newTestAppModel()
+	wireInvariantSimplifiedRoot(t, app)
 	calls := make([]string, 0, 2)
 
 	_ = app.setUndoableStatus("first", func() tea.Cmd {
@@ -326,6 +326,7 @@ func TestTUIStateMachine_LatestUndoToastWins(t *testing.T) {
 // action's undo.
 func TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback(t *testing.T) {
 	app := newTestAppModel()
+	wireInvariantSimplifiedRoot(t, app)
 	called := false
 
 	_ = app.setUndoableStatus("destructive · u to undo", func() tea.Cmd {
@@ -346,13 +347,36 @@ func TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback(t *testing.T) 
 	}
 }
 
+func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
+	t.Helper()
+	outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = outliner
+	app.views.Register(ViewCrossProjectOutliner, outliner)
+	wireInvariantSimplifiedOutliner(t, app, outliner)
+}
+
+func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *OutlinerModel) {
+	t.Helper()
+	app.operationRegistry = NewOperationRegistry()
+	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
+	app.crossOutliner = outliner
+	app.views.Register(ViewCrossProjectOutliner, outliner)
+	if err := app.registerCoreInputOperations(); err != nil {
+		t.Fatalf("register core operations: %v", err)
+	}
+	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		t.Fatalf("register simplified input strategy: %v", err)
+	}
+	app.wireOutlinerOperationExecutor(outliner)
+}
+
 func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T) {
 	project := &models.Project{
 		ID:   "selection-project",
 		Name: "Selection Project",
 		Tasks: []*models.Task{
-			makeTask("next-task", "Next task", models.SectionNext),
-			makeTask("waiting-task", "Waiting task", models.SectionWaiting),
+			makeTask("next-task", "Next task", models.StateNext),
+			makeTask("waiting-task", "Waiting task", models.StateWaiting),
 		},
 	}
 	project.BuildTaskTree()
@@ -402,14 +426,12 @@ func sendAppKey(app *AppModel, key tea.KeyPressMsg) *AppModel {
 
 func newFocusToggleTestApp(t *testing.T) (*AppModel, *models.Task) {
 	t.Helper()
-	return newFocusToggleTestAppState(t, models.StateReady, ViewFocusBoard)
+	return newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 }
 
 // newFocusToggleTestAppState builds a ledger-backed AppModel whose single task
-// starts in the given workflow state, hosted under hostView (so key-flow tests
-// can drive q/w/u/ctrl+r from a real non-Planner task view). The hosted view is
-// a QueueToggleable that re-resolves the live task after each reload.
-func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostView PresentationID) (*AppModel, *models.Task) {
+// starts in the given workflow state under the canonical Outliner root.
+func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ PresentationID) (*AppModel, *models.Task) {
 	t.Helper()
 
 	dataDir := t.TempDir()
@@ -423,7 +445,6 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 	project.Path = filepath.Join(dataDir, "projects", "focus-toggle")
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
@@ -446,7 +467,6 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 		persister:            NewProjectService(),
 		appService:           svc,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
@@ -455,11 +475,22 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, hostVi
 		focusQueueIDs:        make(map[TaskIdentity]bool),
 		dailyPlan:            []FocusTask{},
 		dailyPlanIDs:         make(map[TaskIdentity]bool),
+		operationRegistry:    NewOperationRegistry(),
+		navigation:           NewNavigationState(),
 	}
-	appModel.showView(hostView, &invariantQueueView{
-		taskID:  task.ID,
-		project: project,
-	})
+	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)
+	outliner := NewOutlinerModel(project, manager, runtime)
+	outliner.rebuildRows()
+	outliner.moveCursorToTask(task.ID)
+	appModel.crossOutliner = outliner
+	appModel.views.Register(ViewCrossProjectOutliner, outliner)
+	if err := appModel.registerCoreInputOperations(); err != nil {
+		t.Fatalf("register core operations: %v", err)
+	}
+	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		t.Fatalf("register simplified input: %v", err)
+	}
+	appModel.wireOutlinerOperationExecutor(outliner)
 	return appModel, task
 }
 

@@ -14,52 +14,31 @@ import (
 // (re)creates the outliner view for it. Pass restoreState=false to skip
 // restoring saved filter/sort state (e.g. when applying a custom section or
 // tag filter that should not be overwritten by the persisted view state).
-func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
+func (m *AppModel) switchToProject(project *models.Project, _ bool) {
 	if project == nil {
 		return
 	}
 	m.saveProjectViewState()
 	m.currentProject = project
 	_ = m.persister.Load(project)
-	m.runtime.Settings().ApplyGlobalColorsToProject(project)
-	// Production navigation (typed) owns a single authoritative cross-project
+	// Navigation owns a single authoritative cross-project
 	// Outliner; every project selection becomes a scope frame via
 	// enterProjectScopeOutliner, so there is no second single-project Outliner to
-	// construct, register, present, or target here. The legacy single-project
-	// ViewOutliner is built only on the non-typed (headless-test) path.
-	if m.typedNavigation {
-		return
-	}
-	m.outliner = NewOutlinerModel(project, m.configManager, m.runtime)
-	m.outliner.queueIDs = m.focusQueueIDs
-	m.outliner.dailyPlanIDs = m.dailyPlanIDs
-	m.outliner.SetSize(m.width, m.height-2)
-	m.restoreOutlinerToggleState()
-	if restoreState {
-		m.restoreOutlinerFilterState()
-	}
-	m.views.Register(ViewOutliner, m.outliner)
+	// construct, register, present, or target here.
 }
 
 // saveProjectViewState caches the current outliner's fold state for this session.
 func (m *AppModel) saveProjectViewState() {
-	if m.outliner == nil {
-		return
-	}
-	m.saveOutlinerToggleState()
 	m.saveOutlinerFilterState()
 }
 
 // refreshProjectView rebuilds the current outliner's rows from the (already
 // reloaded) project, preserving the cursor. It never reloads from disk.
 func (m *AppModel) refreshProjectView() {
-	if m.currentProject == nil || m.outliner == nil {
+	if m.crossOutliner == nil {
 		return
 	}
-	m.currentProject.BuildTaskTree()
-	m.outliner.project = m.currentProject
-	m.outliner.rebuildRows()
-	m.outliner.clampCursor()
+	rebuildOutlinerPreservingCursor(m.crossOutliner)
 }
 
 // refreshProjectViewInMemory is the in-memory-only refresh used as the safe

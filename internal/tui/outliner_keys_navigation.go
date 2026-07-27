@@ -1,64 +1,71 @@
 package tui
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *OutlinerModel) handleNavigationKey(key string) (tea.Model, tea.Cmd, bool) {
-	switch key {
+func handleQuickEditKey(
+	msg tea.KeyPressMsg,
+	qe *QuickEditComponent,
+	project *models.Project,
+	onSave func() tea.Cmd,
+	onUndo func(action, detail string),
+) (tea.Model, tea.Cmd) {
+	switch msg.String() {
 	case "esc":
-		RunEscCascade(m.escSteps())
-		return m, nil, true
-
+		qe.Exit()
+		return nil, nil
 	case "enter":
-		if model, cmd, handled := m.crossHandleEnterKey(); handled {
-			return model, cmd, true
+		input := strings.TrimSpace(qe.GetInput().Value())
+		if input == "" {
+			qe.Exit()
+			return nil, nil
 		}
-
-		if len(m.rows) == 0 || m.cursor >= len(m.rows) {
-			return m, nil, true
+		task := project.GetTaskByID(qe.GetTask().ID)
+		if task == nil {
+			qe.Exit()
+			return nil, nil
 		}
-		row := m.rows[m.cursor]
-		if row.IsSectionHeader {
-			m.toggleSectionFoldAtCursor()
-			return m, nil, true
+		if qe.IsRenameOnly() {
+			if models.ValidateTaskTitle(input) != nil {
+				qe.Exit()
+				return nil, nil
+			}
+			oldTitle := task.Title
+			project.MutateTask(task.ID, func(task *models.Task) { task.Title = input })
+			if onUndo != nil {
+				onUndo("Rename Task", oldTitle)
+			}
+		} else {
+			result, err := parseQuickEdit(input, task, project)
+			if err != nil {
+				return nil, nil
+			}
+			if applyQuickEdit(task, project, result) != "" {
+				qe.Exit()
+				return nil, nil
+			}
+			if onUndo != nil {
+				onUndo("Quick Edit", task.Title)
+			}
 		}
-
-		task := row.task
-		if len(task.Children) > 0 {
-			m.zoomStack = append(m.zoomStack, ZoomEntry{
-				TaskID:      task.ID,
-				CursorIndex: m.cursor,
-			})
-			m.cursor = 0
-			m.resetViewScrollOffset()
-			return m, nil, true
+		qe.Exit()
+		return nil, onSave()
+	default:
+		input := qe.GetInput()
+		input, cmd := input.Update(msg)
+		qe.UpdateInput(input)
+		if !qe.IsRenameOnly() {
+			preview, _ := parseQuickEditForPreview(qe.GetInput().Value(), qe.GetTask(), project)
+			qe.SetPreview(preview)
 		}
-		return m, func() tea.Msg {
-			return ShowTaskDetailMsg{Task: task, Project: m.project}
-		}, true
-
-	case "backspace":
-		if m.project == nil && len(m.crossZoomStack) > 0 {
-			top := m.crossZoomStack[len(m.crossZoomStack)-1]
-			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
-			m.cursor = top.CursorIndex
-			m.resetViewScrollOffset()
-			return m, nil, true
-		}
-		if len(m.zoomStack) > 0 {
-			top := m.zoomStack[len(m.zoomStack)-1]
-			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
-			m.cursor = top.CursorIndex
-			m.resetViewScrollOffset()
-		}
-		return m, nil, true
+		return nil, cmd
 	}
-
-	return nil, nil, false
 }
 
 // handleQuickEditMode handles input while in quick edit mode.
@@ -97,7 +104,11 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea
 			if mutated == nil {
 				return nil
 			}
-			return m.taskItem.Edit(taskIdentityFor(mutated, proj), app.EditRequest{Form: formEditFromTask(mutated)})
+			state := mutated.State()
+			return m.taskItem.Edit(taskIdentityFor(mutated, proj), app.EditRequest{
+				Form:          formEditFromTask(mutated),
+				WorkflowState: &state,
+			})
 		}
 		undoFn = func(string, string) {}
 	}
@@ -125,7 +136,6 @@ func formEditFromTask(t *models.Task) *app.FormEdit {
 		Type:          t.Type,
 		Priority:      t.Priority,
 		ParentID:      t.ParentID,
-		Section:       models.SectionForState(t.State()),
 		Description:   t.Description,
 		Tags:          append([]string{}, t.Tags...),
 		DueDate:       t.DueDate,
@@ -175,14 +185,15 @@ func (m *OutlinerModel) escSteps() []EscStep {
 		{Active: func() bool { return m.isProjectScoped() }, Clear: func() {
 			m.popProjectScope()
 		}},
-		{Active: func() bool { return m.project == nil && m.crossPriorityMode }, Clear: func() {
-			m.exitCrossPriorityMode()
-		}},
 	}
 }
 
 func (m *OutlinerModel) ShouldCaptureEsc() bool {
-	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
+	return m.DefaultShouldCaptureEsc() ||
+		m.SearchShouldCaptureEsc() ||
+		m.multiSelectMode ||
+		m.quickEdit.IsActive() ||
+		m.scoreFilterInput.IsActive() ||
 		AnyEscStepActive(m.escSteps())
 }
 func (m *OutlinerModel) HasTextInput() bool {

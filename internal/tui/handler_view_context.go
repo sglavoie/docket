@@ -17,11 +17,12 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Canceled {
 			return true, m.popView()
 		}
+		scope := RegularContextScope(msg.SelectedContext)
+		if msg.IsCustomContext {
+			scope = CustomContextScope(msg.SelectedContext)
+		}
+		m.recordFinderDestination(recentDestinationForContextScope(scope))
 		if m.crossOutliner != nil {
-			scope := RegularContextScope(msg.SelectedContext)
-			if msg.IsCustomContext {
-				scope = CustomContextScope(msg.SelectedContext)
-			}
 			m.crossOutliner.applyContextScope(scope)
 		}
 		// Applying a scope is navigation to the scoped Outliner, not merely a
@@ -69,11 +70,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 // sole Outliner root without resetting its freshly applied context scope.
 // Cancel uses the ordinary one-pop path instead so it can restore Task Detail.
 func (m *AppModel) returnToOutlinerAfterContextSelection() tea.Cmd {
-	if !m.typedNavigation {
-		return m.popToAnchorView()
-	}
 	m.navigation.ResetRoot()
-	m.syncPresentationStack()
 	if view := m.views.Get(m.currentView()); view != nil {
 		m.setAccentOnView(view)
 	}

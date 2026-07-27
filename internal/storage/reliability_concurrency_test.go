@@ -35,7 +35,6 @@ func reliabilityProject(t *testing.T, dataDir, slug string, tasks ...*models.Tas
 	p.Path = fmt.Sprintf("%s/projects/%s", dataDir, slug)
 	p.Tasks = tasks
 	p.NextShortID = len(tasks) + 1
-	p.EnsureDefaultSections()
 	p.BuildTaskTree()
 	return p
 }
@@ -181,8 +180,8 @@ func TestReliability_ExternalFileEditDetectedByRevisionCheck(t *testing.T) {
 		reliabilityTask(t, 1, "original"),
 		reliabilityTask(t, 2, "added by external editor"),
 	)
-	externalContent := WriteTasksMarkdownWithFullProjectMetadata(
-		edited.Name, edited.Tasks, edited.GetSections(), edited.SectionColors, edited.Tags, edited.PinnedTags,
+	externalContent := WriteTasksMarkdownWithProjectMetadata(
+		edited.Name, edited.Tasks, edited.Tags, edited.PinnedTags,
 	)
 	if err := os.WriteFile(tasksFilePath(p.Path), []byte(externalContent), FilePermissions); err != nil {
 		t.Fatalf("simulate external edit: %v", err)
@@ -234,8 +233,8 @@ func TestReliability_CommitDrivesCrashRecoveryRollForward(t *testing.T) {
 	}
 	betaTasks := tasksFilePath(betaPath)
 	stranded := reliabilityProject(t, dataDir, "beta", reliabilityTask(t, 1, "recovered work"))
-	strandedContent := WriteTasksMarkdownWithFullProjectMetadata(
-		stranded.Name, stranded.Tasks, stranded.GetSections(), stranded.SectionColors, stranded.Tags, stranded.PinnedTags,
+	strandedContent := WriteTasksMarkdownWithProjectMetadata(
+		stranded.Name, stranded.Tasks, stranded.Tags, stranded.PinnedTags,
 	)
 	journal := transaction.NewJournal(transactionsDir, []string{dataDir})
 	if _, err := journal.Prepare([]transaction.Op{{

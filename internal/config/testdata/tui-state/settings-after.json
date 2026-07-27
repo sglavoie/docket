@@ -1,5 +1,5 @@
 {
-  "tui_state_version": 3,
+  "tui_state_version": 4,
   "default_context": "work",
   "fzf_enabled": true,
   "glow_enabled": true

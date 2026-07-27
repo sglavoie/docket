@@ -4,10 +4,16 @@
   "size": "60x20",
   "actions": [
     { "type": "resize", "width": 60, "height": 20 },
-    { "type": "command", "label": "open global All focus", "command": "outliner root" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "key", "label": "enter multi-select mode", "key": "v" },
     { "type": "key", "label": "select current task", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "[x]" },
+    { "type": "key", "label": "open bulk actions for the frozen selection", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Bulk Actions · 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Set State" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

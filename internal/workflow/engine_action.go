@@ -164,32 +164,10 @@ func applyAction(task *models.Task, action RuleAction) bool { //nolint:gocyclo
 	switch action.ActionType {
 	case ActionSetState:
 		return applyCanonicalStateAction(task, action.Value, nil)
-	case ActionSetStatus:
-		newStatus := models.TaskStatus(action.Value)
-		// Idempotency is checked against the canonical state the target status
-		// realizes (TargetStateForStatus mirrors ApplyTransition's routing), so
-		// the guard no longer reads the retired task.Status field.
-		if !newStatus.IsValid() || task.State() == models.TargetStateForStatus(newStatus) {
-			return false
-		}
-		// Use lifecycle methods to ensure side effects (timestamps, sections, flags)
-		// are applied consistently. Skip CanTransitionTo check since workflow rules
-		// are intentional overrides (e.g., force-completing a blocked task).
-		task.ApplyTransition(newStatus)
-		return true
 	case ActionSetPriority:
 		newPriority, err := strconv.Atoi(action.Value)
 		if err == nil && newPriority >= models.PriorityMin && newPriority <= models.PriorityMax && task.Priority != newPriority {
 			task.Priority = newPriority
-			task.UpdatedAt = time.Now()
-			return true
-		}
-	case ActionSetSection:
-		// Compare the target against the section the task's canonical state
-		// currently occupies (SectionForState) instead of the retired
-		// task.Section field, so a no-op set is still skipped.
-		if (models.IsGTDSection(action.Value) || action.Value == "") && models.SectionForState(task.State()) != action.Value {
-			task.SetSection(action.Value)
 			task.UpdatedAt = time.Now()
 			return true
 		}
@@ -341,12 +319,6 @@ func actionTargetState(action RuleAction) (models.WorkflowState, bool) {
 	case ActionSetState:
 		state, ok := models.ParseWorkflowState(action.Value)
 		return state, ok
-	case ActionSetStatus:
-		status := models.TaskStatus(action.Value)
-		if !status.IsValid() {
-			return "", false
-		}
-		return models.TargetStateForStatus(status), true
 	default:
 		return "", false
 	}

@@ -7,25 +7,25 @@ import "github.com/sglavoie/tt/internal/models"
 // the refactored tests: canceled > done/Completed > review/Review >
 // in_progress > blocked/Waiting > standby/Standby > maybe/Someday > Inbox >
 // Next > ready. Earlier rules win when multiple legacy signals are present.
-func legacyStateForStatusSection(status models.TaskStatus, section string) models.WorkflowState {
+func legacyStateForStatusSection(status models.WorkflowState, section string) models.WorkflowState {
 	switch {
-	case status == models.StatusCanceled:
+	case status == models.StateCanceled:
 		return models.StateCanceled
-	case status == models.StatusDone || section == models.SectionCompleted:
+	case status == models.StateDone || section == string(models.StateDone):
 		return models.StateDone
-	case status == models.StatusReview || section == models.SectionReview:
+	case status == models.StateReview || section == string(models.StateReview):
 		return models.StateReview
-	case status == models.StatusInProgress:
+	case status == models.StateInProgress:
 		return models.StateInProgress
-	case status == models.StatusBlocked || section == models.SectionWaiting:
+	case status == models.StateWaiting || section == string(models.StateWaiting):
 		return models.StateWaiting
-	case status == models.StatusStandby || section == models.SectionStandby:
+	case status == models.StatePaused || section == string(models.StatePaused):
 		return models.StatePaused
-	case status == models.StatusMaybe || section == models.SectionSomeday:
+	case status == models.StateSomeday || section == string(models.StateSomeday):
 		return models.StateSomeday
-	case section == models.SectionInbox:
+	case section == string(models.StateInbox):
 		return models.StateInbox
-	case section == models.SectionNext:
+	case section == string(models.StateNext):
 		return models.StateNext
 	default:
 		return models.StateReady

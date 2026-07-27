@@ -5,19 +5,6 @@ func (p *Project) CountTasks() int {
 	return len(p.Tasks)
 }
 
-// CountActiveSectionTasks returns the number of tasks in the default active
-// bucket: work that is ready or in progress (the states SectionForState maps
-// to the empty section).
-func (p *Project) CountActiveSectionTasks() int {
-	count := 0
-	for _, task := range p.Tasks {
-		if st := task.State(); st == StateReady || st == StateInProgress {
-			count++
-		}
-	}
-	return count
-}
-
 // CountActiveTasks returns the number of tasks in a nonterminal workflow state.
 func (p *Project) CountActiveTasks() int {
 	count := 0
@@ -63,8 +50,7 @@ func (p *Project) CountDueSoonTasks(days int) int {
 	return count
 }
 
-// CountBlockedTasks returns the number of tasks in the waiting workflow state
-// (the legacy blocked status and the Waiting section both map there).
+// CountBlockedTasks returns the number of tasks in the waiting workflow state.
 func (p *Project) CountBlockedTasks() int {
 	count := 0
 	for _, task := range p.Tasks {

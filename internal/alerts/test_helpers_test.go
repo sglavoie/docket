@@ -13,11 +13,11 @@ func testProject(name string, tasks ...*models.Task) ProjectData {
 	}
 }
 
-func testTask(title string, status models.TaskStatus, updatedAt time.Time) *models.Task {
+func testTask(title string, status models.WorkflowState, updatedAt time.Time) *models.Task {
 	return &models.Task{
 		ID:            "task-" + title,
 		Title:         title,
-		WorkflowState: models.DeriveWorkflowState(status, "", ""),
+		WorkflowState: status,
 		UpdatedAt:     updatedAt,
 	}
 }

@@ -9,7 +9,7 @@ import (
 const (
 	archiveIndexFileName = ".completed.index.json"
 	// archiveIndexVersion 2 replaced ArchiveTaskSummary's legacy `status`
-	// (models.TaskStatus) field with `state` (models.WorkflowState); a stale v1
+	// retired lifecycle field with `state` (models.WorkflowState); a stale v1
 	// index deserializes an empty state, so the version bump forces a rebuild.
 	archiveIndexVersion = 2
 )

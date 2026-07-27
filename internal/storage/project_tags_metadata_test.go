@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestParseTasksMarkdownWithSections_ProjectTags(t *testing.T) {
+func TestParseTasksMarkdownDocument_ProjectTags(t *testing.T) {
 	content := `# Project: Test Project
 <!-- sections: Next;Inbox -->
 <!-- tags: backend; #frontend ; backend; urgent -->
@@ -21,7 +21,7 @@ func TestParseTasksMarkdownWithSections_ProjectTags(t *testing.T) {
 <!-- id: task1, status: todo, priority: 3 -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestParseTasksMarkdownWithSections_ProjectTags(t *testing.T) {
 	}
 }
 
-func TestParseTasksMarkdownWithSections_ProjectPinnedTags(t *testing.T) {
+func TestParseTasksMarkdownDocument_ProjectPinnedTags(t *testing.T) {
 	content := `# Project: Test Project
 <!-- sections: Next;Inbox -->
 <!-- pinned_tags: backend; #frontend ; backend; urgent -->
@@ -41,7 +41,7 @@ func TestParseTasksMarkdownWithSections_ProjectPinnedTags(t *testing.T) {
 <!-- id: task1, status: todo, priority: 3 -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestParseTasksMarkdownWithSections_ProjectPinnedTags(t *testing.T) {
 	}
 }
 
-func TestParseTasksMarkdownWithSections_ProjectTagsAfterTaskIgnored(t *testing.T) {
+func TestParseTasksMarkdownDocument_ProjectTagsAfterTaskIgnored(t *testing.T) {
 	content := `# Project: Test Project
 
 ## Task: My Task
@@ -61,7 +61,7 @@ func TestParseTasksMarkdownWithSections_ProjectTagsAfterTaskIgnored(t *testing.T
 <!-- tags: backend -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestParseTasksMarkdownWithSections_ProjectTagsAfterTaskIgnored(t *testing.T
 	}
 }
 
-func TestParseTasksMarkdownWithSections_ProjectPinnedTagsAfterTaskIgnored(t *testing.T) {
+func TestParseTasksMarkdownDocument_ProjectPinnedTagsAfterTaskIgnored(t *testing.T) {
 	content := `# Project: Test Project
 
 ## Task: My Task
@@ -80,7 +80,7 @@ func TestParseTasksMarkdownWithSections_ProjectPinnedTagsAfterTaskIgnored(t *tes
 <!-- pinned_tags: backend -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestParseTasksMarkdownWithSections_ProjectPinnedTagsAfterTaskIgnored(t *tes
 	}
 }
 
-func TestParseTasksMarkdownWithSections_InvalidProjectTagsWarnAndSkip(t *testing.T) {
+func TestParseTasksMarkdownDocument_InvalidProjectTagsWarnAndSkip(t *testing.T) {
 	content := `# Project: Test Project
 <!-- tags: backend;bad,tag;#;frontend -->
 
@@ -98,7 +98,7 @@ func TestParseTasksMarkdownWithSections_InvalidProjectTagsWarnAndSkip(t *testing
 <!-- id: task1, status: todo, priority: 3 -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestParseTasksMarkdownWithSections_InvalidProjectTagsWarnAndSkip(t *testing
 	}
 }
 
-func TestParseTasksMarkdownWithSections_InvalidProjectPinnedTagsWarnAndSkip(t *testing.T) {
+func TestParseTasksMarkdownDocument_InvalidProjectPinnedTagsWarnAndSkip(t *testing.T) {
 	content := `# Project: Test Project
 <!-- pinned_tags: backend;bad,tag;#;frontend -->
 
@@ -127,7 +127,7 @@ func TestParseTasksMarkdownWithSections_InvalidProjectPinnedTagsWarnAndSkip(t *t
 <!-- id: task1, status: todo, priority: 3 -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -157,9 +157,8 @@ func TestWriteTasksMarkdownWithProjectMetadata_WritesTags(t *testing.T) {
 	content := WriteTasksMarkdownWithProjectMetadata(
 		"Test Project",
 		[]*models.Task{task},
-		[]string{models.SectionNext, models.SectionInbox},
-		map[string]string{models.SectionInbox: "gray"},
 		[]string{" backend ", "#frontend", "backend", "bad,tag"},
+		nil,
 	)
 
 	if strings.Contains(content, "<!-- sections:") {
@@ -176,17 +175,15 @@ func TestWriteTasksMarkdownWithProjectMetadata_WritesTags(t *testing.T) {
 	}
 }
 
-func TestWriteTasksMarkdownWithFullProjectMetadata_WritesPinnedTags(t *testing.T) {
+func TestWriteTasksMarkdownWithProjectMetadata_WritesPinnedTags(t *testing.T) {
 	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	content := WriteTasksMarkdownWithFullProjectMetadata(
+	content := WriteTasksMarkdownWithProjectMetadata(
 		"Test Project",
 		[]*models.Task{task},
-		[]string{models.SectionNext, models.SectionInbox},
-		map[string]string{models.SectionInbox: "gray"},
 		[]string{"backend"},
 		[]string{" #frontend ", "backend", "frontend", "bad,tag"},
 	)
@@ -401,20 +398,18 @@ func TestBuildTargetedRestorePreservesProjectTags(t *testing.T) {
 	currentContent := WriteTasksMarkdownWithProjectMetadata(
 		"Restore Test",
 		[]*models.Task{currentTask},
-		[]string{"Next"},
-		nil,
 		[]string{"current-zero", "backend"},
+		nil,
 	)
 	snapshotContent := WriteTasksMarkdownWithProjectMetadata(
 		"Restore Test",
 		[]*models.Task{snapshotTask},
-		[]string{"Next"},
-		nil,
 		[]string{"snapshot-only"},
+		nil,
 	)
-	snapshotResult, err := ParseTasksMarkdownWithSections(snapshotContent)
+	snapshotResult, err := ParseTasksMarkdownDocument(snapshotContent)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections(snapshotContent): %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument(snapshotContent): %v", err)
 	}
 
 	restored, err := buildTargetedRestore(currentContent, snapshotResult, []string{"task-1"})
@@ -422,9 +417,9 @@ func TestBuildTargetedRestorePreservesProjectTags(t *testing.T) {
 		t.Fatalf("buildTargetedRestore failed: %v", err)
 	}
 
-	result, err := ParseTasksMarkdownWithSections(restored)
+	result, err := ParseTasksMarkdownDocument(restored)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections(restored): %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument(restored): %v", err)
 	}
 
 	if !slices.Equal(result.Tags, []string{"current-zero", "backend"}) {
@@ -456,25 +451,21 @@ func TestBuildTargetedRestorePreservesProjectPinnedTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	currentContent := WriteTasksMarkdownWithFullProjectMetadata(
+	currentContent := WriteTasksMarkdownWithProjectMetadata(
 		"Restore Test",
 		[]*models.Task{currentTask},
-		[]string{"Next"},
-		nil,
 		[]string{"current-zero", "backend"},
 		[]string{"current-pinned", "backend"},
 	)
-	snapshotContent := WriteTasksMarkdownWithFullProjectMetadata(
+	snapshotContent := WriteTasksMarkdownWithProjectMetadata(
 		"Restore Test",
 		[]*models.Task{snapshotTask},
-		[]string{"Next"},
-		nil,
 		[]string{"snapshot-only"},
 		[]string{"snapshot-pinned"},
 	)
-	snapshotResult, err := ParseTasksMarkdownWithSections(snapshotContent)
+	snapshotResult, err := ParseTasksMarkdownDocument(snapshotContent)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections(snapshotContent): %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument(snapshotContent): %v", err)
 	}
 
 	restored, err := buildTargetedRestore(currentContent, snapshotResult, []string{"task-1"})
@@ -482,9 +473,9 @@ func TestBuildTargetedRestorePreservesProjectPinnedTags(t *testing.T) {
 		t.Fatalf("buildTargetedRestore failed: %v", err)
 	}
 
-	result, err := ParseTasksMarkdownWithSections(restored)
+	result, err := ParseTasksMarkdownDocument(restored)
 	if err != nil {
-		t.Fatalf("ParseTasksMarkdownWithSections(restored): %v", err)
+		t.Fatalf("ParseTasksMarkdownDocument(restored): %v", err)
 	}
 
 	if !slices.Equal(result.PinnedTags, []string{"current-pinned", "backend"}) {

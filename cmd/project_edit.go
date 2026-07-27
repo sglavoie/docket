@@ -209,8 +209,8 @@ func commitProjectRename(workspace *CLIWorkspace, project *models.Project, origi
 	var tasksMarkdown []byte
 	var tasksExpectedRevision *string
 	if expected, err := storage.LoadProjectForRewrite(project); err == nil {
-		tasksMarkdown = []byte(storage.WriteTasksMarkdownWithFullProjectMetadata(
-			project.Name, project.Tasks, project.GetSections(), project.SectionColors, project.Tags, project.PinnedTags))
+		tasksMarkdown = []byte(storage.WriteTasksMarkdownWithProjectMetadata(
+			project.Name, project.Tasks, project.Tags, project.PinnedTags))
 		tasksExpectedRevision = expected
 	}
 
@@ -294,8 +294,8 @@ func planCrossProjectRefRewrites(projects []*models.Project, originalSlug, newSl
 		}
 
 		if projectUpdated > 0 {
-			content := storage.WriteTasksMarkdownWithFullProjectMetadata(
-				p.Name, p.Tasks, p.GetSections(), p.SectionColors, p.Tags, p.PinnedTags)
+			content := storage.WriteTasksMarkdownWithProjectMetadata(
+				p.Name, p.Tasks, p.Tags, p.PinnedTags)
 			writes = append(writes, storage.ArtifactChange{
 				Path:             storage.TasksFilePath(p.Path),
 				Data:             []byte(content),

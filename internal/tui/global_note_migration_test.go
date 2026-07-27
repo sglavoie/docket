@@ -54,8 +54,8 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	shell := &AppModel{
 		appService: svc,
 		views:      views,
-		viewStack:  []PresentationID{ViewGlobalNotes},
 	}
+	setTestPresentationPath(shell, ViewGlobalNotes)
 	return &globalNoteTUIEnv{dataDir: dataDir, dir: dir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}
 }
 
@@ -191,6 +191,7 @@ func TestGlobalBulkNoteTagsCommitAsOneTransaction(t *testing.T) {
 func TestGlobalNoteMoveUsesDestinationIDAndSharedLedgerScopes(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Move me")
 	source := env.view.notes[0]
+	pushTestPresentationOverlay(env.shell, ViewProjectSelector)
 	env.shell.pendingGlobalNoteMove = &pendingNoteMove{Source: newNoteMutationRef(app.GlobalNoteLocation(), source)}
 	handled, cmd := env.shell.handleNotesMessages(GlobalNoteMoveDoneMsg{ProjectID: env.project.ID, ProjectName: env.project.Name})
 	if !handled || cmd == nil || env.shell.pendingGlobalNoteMove != nil {

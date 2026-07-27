@@ -15,11 +15,11 @@ func legacyMutationRule() workflow.WorkflowRule {
 		ID:      "legacy-mutation-rule",
 		Name:    "mark legacy mutation target",
 		Enabled: true,
-		Trigger: workflow.RuleTrigger{
+		Triggers: []workflow.RuleTrigger{{
 			Field:     workflow.FieldPriority,
 			Operation: workflow.OpEquals,
 			Value:     "1",
-		},
+		}},
 		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "workflow-fired"}},
 	}
 }

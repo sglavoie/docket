@@ -109,3 +109,77 @@ func (m *MachineState) GetRecentPaletteItems() []RecentPaletteItem {
 func (m *MachineState) SetRecentPaletteItems(items []RecentPaletteItem) {
 	m.RecentPaletteItems = items
 }
+
+// GetRecentDestinations returns a defensive copy of the qualified finder
+// history in most-recent-first order.
+func (m *MachineState) GetRecentDestinations() []RecentDestination {
+	if m == nil || len(m.RecentDestinations) == 0 {
+		return []RecentDestination{}
+	}
+	return append([]RecentDestination(nil), m.RecentDestinations...)
+}
+
+// SetRecentDestinations normalizes, de-duplicates, and bounds a qualified
+// finder history while preserving the caller's most-recent-first order.
+func (m *MachineState) SetRecentDestinations(destinations []RecentDestination) {
+	if m == nil {
+		return
+	}
+	var normalized []RecentDestination
+	if len(destinations) > 0 {
+		normalized = make([]RecentDestination, 0, min(len(destinations), MaxRecentDestinations))
+	}
+	seen := make(map[string]bool, len(destinations))
+	for _, destination := range destinations {
+		destination.Kind = RecentDestinationKind(strings.TrimSpace(string(destination.Kind)))
+		destination.ID = strings.TrimSpace(destination.ID)
+		destination.ProjectID = strings.TrimSpace(destination.ProjectID)
+		if destination.Count < 1 {
+			destination.Count = 1
+		}
+		key := destination.QualifiedID()
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		normalized = append(normalized, destination)
+		if len(normalized) == MaxRecentDestinations {
+			break
+		}
+	}
+	m.RecentDestinations = normalized
+}
+
+// RecordRecentDestination moves destination to the front of the qualified
+// history and increments its durable selection count.
+func (m *MachineState) RecordRecentDestination(destination RecentDestination) bool {
+	if m == nil {
+		return false
+	}
+	destination.Kind = RecentDestinationKind(strings.TrimSpace(string(destination.Kind)))
+	destination.ID = strings.TrimSpace(destination.ID)
+	destination.ProjectID = strings.TrimSpace(destination.ProjectID)
+	key := destination.QualifiedID()
+	if key == "" {
+		return false
+	}
+
+	count := 0
+	next := make([]RecentDestination, 0, min(len(m.RecentDestinations)+1, MaxRecentDestinations))
+	for _, existing := range m.RecentDestinations {
+		if existing.QualifiedID() == key {
+			count = existing.Count
+			continue
+		}
+		if existing.Valid() {
+			next = append(next, existing)
+		}
+	}
+	destination.Count = max(count+1, 1)
+	next = append([]RecentDestination{destination}, next...)
+	if len(next) > MaxRecentDestinations {
+		next = next[:MaxRecentDestinations]
+	}
+	m.RecentDestinations = next
+	return true
+}

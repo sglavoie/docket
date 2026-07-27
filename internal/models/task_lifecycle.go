@@ -61,39 +61,9 @@ func (t *Task) Uncomplete() {
 	_ = t.ApplyStateTransition(StateInProgress)
 }
 
-// CanTransitionTo checks whether the task can move to newStatus. Returns an
-// empty string if the transition is allowed, or a human-readable reason if it
-// is not.
-//
-// This is the legacy-status wrapper over the canonical state rules: the target
-// status is mapped to the workflow state applying it would realize (see
-// TargetStateForStatus) and validated with CanTransitionState against the
-// task's current State(). Nonterminal states are freely interchangeable, a
-// same-state transition is rejected, and terminal states only allow the todo
-// (reopen-to-inbox) target.
-//
-// This method covers state-level rules only. Project-level checks (such as
-// incomplete dependencies blocking completion) must be performed by the caller.
-func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
-	if !newStatus.IsValid() {
-		return fmt.Sprintf("invalid target status %q", newStatus)
-	}
-	return CanTransitionState(t.State(), TargetStateForStatus(newStatus))
-}
-
-// ApplyTransition is the legacy-status adapter over ApplyStateTransition.
-// The caller should check CanTransitionTo first.
-func (t *Task) ApplyTransition(newStatus TaskStatus) {
-	if !newStatus.IsValid() {
-		return
-	}
-	_ = t.ApplyStateTransition(TargetStateForStatus(newStatus))
-}
-
 // ApplyStateTransition moves the task to the given canonical WorkflowState,
-// applying all lifecycle side effects at time.Now. It is the state-native
-// successor to ApplyTransition(TaskStatus). The caller should check
-// CanTransitionState first when normal transition policy must be enforced.
+// applying all lifecycle side effects at time.Now. The caller should check
+// CanTransitionState first when transition policy must be enforced.
 func (t *Task) ApplyStateTransition(state WorkflowState) error {
 	return t.ApplyStateTransitionAt(state, time.Now())
 }
@@ -101,11 +71,11 @@ func (t *Task) ApplyStateTransition(state WorkflowState) error {
 // ApplyStateTransitionAt is the canonical task-state mutation primitive. It
 // owns terminal completion timestamps, reopen cleanup, snooze clearing, and the
 // update timestamp. Supplying now lets application services use their injected
-// clock while legacy model adapters retain their time.Now behavior.
+// clock.
 //
 // This method validates the target but deliberately does not enforce
-// CanTransitionState: compatibility adapters and reconciliation may perform
-// explicit overrides. User-facing transition services validate policy first.
+// CanTransitionState: reconciliation may perform explicit overrides.
+// User-facing transition services validate policy first.
 func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error {
 	if !state.IsValid() {
 		return fmt.Errorf("invalid workflow state %q", state)

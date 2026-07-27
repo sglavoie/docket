@@ -11,23 +11,20 @@ import (
 
 const taskComposerOverlayKey = "task-composer"
 
-func (m *AppModel) openTaskComposer(preset TaskComposerPreset, presentation PresentationID) tea.Cmd {
+func (m *AppModel) openTaskComposer(preset TaskComposerPreset) tea.Cmd {
 	composer := NewTaskComposerModel(preset, m.runtime)
-	composer.presentation = presentation
 	composer.SetCaptureCoordinator(m.features.Capture)
 	composer.SetTaskFormCoordinator(m.features.TaskForm)
 	composer.SetSize(m.width, m.height-2)
 	m.taskComposer = composer
-	// Register the renderer identity used by nested form pickers while the typed
-	// composer overlay remains the authoritative navigation state.
-	m.views.Register(presentation, composer)
+	m.views.Register(ViewTaskComposer, composer)
 	m.pushTypedOverlay(OverlayComposer, taskComposerOverlayKey)
 	m.setAccentOnView(composer)
 	return composer.Init()
 }
 
 func (m *AppModel) activeTaskComposer() bool {
-	if !m.typedNavigation || m.taskComposer == nil {
+	if m.taskComposer == nil {
 		return false
 	}
 	overlay, ok := m.navigation.Overlays.Current()
@@ -38,11 +35,15 @@ func (m *AppModel) activeTaskComposer() bool {
 	return !hasPresentation
 }
 
-func (m *AppModel) captureComposerPreset(msg ShowQuickCaptureMsg) (TaskComposerPreset, bool) {
-	project := msg.Project
-	allProjects := m.activeProjects()
-	if len(allProjects) == 0 {
-		allProjects = msg.AllProjects
+func (m *AppModel) captureComposerPreset(
+	project *models.Project,
+	allProjects []*models.Project,
+	suggestedTag string,
+) (TaskComposerPreset, bool) {
+	contextual := project != nil
+	projects := m.activeProjects()
+	if len(projects) == 0 {
+		projects = append([]*models.Project(nil), allProjects...)
 	}
 
 	if project == nil {
@@ -52,24 +53,29 @@ func (m *AppModel) captureComposerPreset(msg ShowQuickCaptureMsg) (TaskComposerP
 		return TaskComposerPreset{}, false
 	}
 	parts := make([]string, 0, 2)
-	if msg.SuggestedTag != "" {
-		parts = append(parts, "#"+msg.SuggestedTag)
-	}
-	if msg.SuggestedSection != "" {
-		parts = append(parts, "/"+msg.SuggestedSection)
+	if suggestedTag != "" {
+		parts = append(parts, "#"+suggestedTag)
 	}
 	kind := ComposerProject
-	if msg.Project == nil {
+	if !contextual {
 		kind = ComposerGlobal
 	}
 	return TaskComposerPreset{
 		Kind:               kind,
 		Project:            project,
-		AllProjects:        allProjects,
+		AllProjects:        projects,
 		InitialText:        strings.Join(parts, " "),
 		AllowProjectSwitch: true,
-		Shared:             TaskComposerSharedAttributes{Section: models.SectionInbox},
+		Shared:             TaskComposerSharedAttributes{State: models.StateInbox},
 	}, true
+}
+
+func (m *AppModel) captureComposerMessage(project *models.Project, allProjects []*models.Project) tea.Msg {
+	preset, ok := m.captureComposerPreset(project, allProjects, "")
+	if !ok {
+		return nil
+	}
+	return ShowTaskComposerMsg{Preset: preset}
 }
 
 func (m *AppModel) createComposerPreset(project *models.Project, parent *models.Task) TaskComposerPreset {
@@ -77,29 +83,29 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 		Kind:        ComposerProject,
 		Project:     project,
 		AllProjects: m.activeProjects(),
-		Shared:      TaskComposerSharedAttributes{Section: models.SectionNext},
+		Shared:      TaskComposerSharedAttributes{State: models.StateNext},
 	}
 	if parent != nil {
 		parentID := parent.ID
 		preset.Kind = ComposerChild
 		preset.Parent = parent
 		preset.Shared.ParentID = &parentID
-		preset.Shared.Section = taskSectionBucket(parent)
+		preset.Shared.State = parent.State()
 	}
 	return preset
 }
 
 func linkedComposerPreset(project *models.Project, source *models.Task, linkType LinkType) TaskComposerPreset {
-	section := ""
+	state := models.StateInbox
 	if source != nil {
-		section = taskSectionBucket(source)
+		state = source.State()
 	}
 	return TaskComposerPreset{
 		Kind:       ComposerLinked,
 		Project:    project,
 		SourceTask: source,
 		LinkType:   linkType,
-		Shared:     TaskComposerSharedAttributes{Section: section},
+		Shared:     TaskComposerSharedAttributes{State: state},
 	}
 }
 

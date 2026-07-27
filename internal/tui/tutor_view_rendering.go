@@ -78,41 +78,20 @@ func init() {
 		{`\bEnter\b`, keybindStyle, 0},
 		{`\bEsc\b`, keybindStyle, 0},
 		{`\bTab\b`, keybindStyle, 0},
+		{`\bSpace\b`, keybindStyle, 0},
 		{`\bj/k\b`, keybindStyle, 0},
 		{`\bJ/K\b`, keybindStyle, 0},
-		// Comma-prefix bindings at start of line: ,s ,d ,b ,o ,x ,S
-		{`^(,[sdboxrSm])\s`, keybindStyle, 1},
-		// "using , followed" — color the comma
-		{`using (,) followed`, keybindStyle, 1},
 		// "Press X" patterns for single-char keys
-		{`[Pp]ress ([qQ?:@fnva]) `, keybindStyle, 1},
-		// "using the s prefix"
-		{`the (s) prefix`, keybindStyle, 1},
-		// "Use !" pattern
-		{`Use (!) followed`, keybindStyle, 1},
+		{`[Pp]ress ([aesdbtnvcmNRT!u?/:]) `, keybindStyle, 1},
 		// "d for days, w for weeks"
 		{`(d) for days`, keybindStyle, 1},
 		{`(w) for weeks`, keybindStyle, 1},
 		// "set with !", "with #", "with @"
 		{`(?:set |tags )with ([!#@])`, keybindStyle, 1},
 		{`assignment with (@)`, keybindStyle, 1},
-		// Command palette commands
-		{`type (ask ai) to`, keybindStyle, 1},
 		// Score badge patterns
 		{`\[S:\d+\]`, makeColorStyle(ColorSuccess), 0},
 		{`\[S:~\d+\]`, makeColorStyle(ColorOrange), 0},
-		// Shift+S keybinding
-		{`Shift\+S`, keybindStyle, 0},
-		// FS prefix
-		{`\bFS\b`, keybindStyle, 0},
-		// Fv prefix and sub-keys (Fv, Fvs, Fvl, Fvd)
-		{`\bFv[sld]?\b`, keybindStyle, 0},
-		// :sv palette prefix
-		{`:sv\b`, keybindStyle, 0},
-		// "by s", "then l", "then d" — color the single key after by/then
-		{`(?:by|then) ([sld]) `, keybindStyle, 1},
-		// Repeat-last-action key
-		{`Press (\.) `, keybindStyle, 1},
 	}...)
 
 	for _, r := range rules {

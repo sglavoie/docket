@@ -36,8 +36,7 @@ type CaptureRequest struct {
 	// same project (validated to exist).
 	ParentID *string
 	// State is the task's initial canonical workflow state. Empty defaults to
-	// Inbox; compatibility adapters must translate any legacy section/status
-	// inputs and explicitly request StateReady when preserving their old default.
+	// Inbox.
 	State models.WorkflowState
 	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
 	// task.SetRecurrence (which populates derived fields such as OriginalDay).
@@ -251,14 +250,8 @@ func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest)
 		parentID := *req.ParentID
 		task.ParentID = &parentID
 	}
-	hadInboxSection := project.HasSection(models.SectionInbox)
-	if err := s.initializeCreatedTask(project, task, state); err != nil {
+	if err := s.initializeCreatedTask(task, state); err != nil {
 		return nil, err
-	}
-	// Capture keeps the legacy Inbox highlight until section-oriented views are
-	// removed. State initialization already ensured the Inbox section exists.
-	if state == models.StateInbox && !hadInboxSection {
-		project.SetSectionColor(models.SectionInbox, "red")
 	}
 	return task, nil
 }

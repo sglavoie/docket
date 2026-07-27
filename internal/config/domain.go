@@ -522,7 +522,9 @@ type Settings struct {
 	TutorDismissed      *bool               `json:"tutor_dismissed,omitempty"`
 	Onboarding          *OnboardingProgress `json:"onboarding,omitempty"`
 	GlobalPinnedTags    []string            `json:"global_pinned_tags,omitempty"`
-	SectionColors       map[string]string   `json:"section_colors,omitempty"`
+
+	// StateGroupColors is the canonical persisted color registry.
+	StateGroupColors map[models.WorkflowStateGroup]string `json:"state_group_colors,omitempty"`
 
 	// Behavior — activity, list, and pin limits.
 	MaxActivityEntries    *int  `json:"max_activity_entries,omitempty"`
@@ -551,6 +553,7 @@ type Settings struct {
 	StateGroupLimits map[models.WorkflowStateGroup]int `json:"state_group_limits,omitempty"`
 
 	legacySectionLimitsDecoded bool `json:"-"`
+	legacySectionColorsDecoded bool `json:"-"`
 
 	// Appearance.
 	ActiveTheme        string        `json:"active_theme,omitempty"`
@@ -609,6 +612,14 @@ func (s *Settings) Validate() error {
 	}
 	if s.UndoHistoryDepth != nil && *s.UndoHistoryDepth < 0 {
 		return fmt.Errorf("settings: undo_history_depth must be >= 0, got %d", *s.UndoHistoryDepth)
+	}
+	for group, color := range s.StateGroupColors {
+		if !group.IsValid() {
+			return fmt.Errorf("settings: invalid state-group color key %q", group)
+		}
+		if !models.IsValidThemeColor(color) {
+			return fmt.Errorf("settings: invalid state-group color %q for %q", color, group)
+		}
 	}
 	if err := s.AIConsent.Validate(); err != nil {
 		return err
@@ -677,12 +688,17 @@ type MachineState struct {
 	AIConfigDirs     map[string]string `json:"ai_config_dirs,omitempty"`
 
 	// Current navigation and active (non-saved) filter selections.
-	CurrentProject   string              `json:"current_project,omitempty"`
-	CustomContexts   map[string][]string `json:"custom_contexts,omitempty"`
-	RecentTaskVisits []RecentTaskVisit   `json:"recent_task_visits,omitempty"`
+	CurrentProject              string                        `json:"current_project,omitempty"`
+	CustomContexts              map[string][]string           `json:"custom_contexts,omitempty"`
+	RecentTaskVisits            []RecentTaskVisit             `json:"recent_task_visits,omitempty"`
+	StartupRoute                OutlinerRouteState            `json:"startup_route,omitzero"`
+	CurrentRoute                OutlinerRouteState            `json:"current_route,omitzero"`
+	ProjectRoutes               map[string]OutlinerRouteState `json:"project_routes,omitempty"`
+	legacyOutlinerRoutesDecoded bool                          `json:"-"`
 
 	// Histories.
 	RecentPaletteItems []RecentPaletteItem `json:"recent_palette_items,omitempty"`
+	RecentDestinations []RecentDestination `json:"recent_destinations,omitempty"`
 }
 
 // NewMachineState returns machine state seeded with the same editor default
@@ -691,6 +707,8 @@ func NewMachineState() *MachineState {
 	return &MachineState{
 		TUIStateVersion: CurrentTUIStateVersion,
 		Editor:          "code",
+		StartupRoute:    NormalizeOutlinerRouteState(OutlinerRouteState{}),
+		CurrentRoute:    NormalizeOutlinerRouteState(OutlinerRouteState{}),
 	}
 }
 
@@ -717,6 +735,26 @@ func (m *MachineState) Validate() error {
 			return fmt.Errorf("machine: ai_config_dirs[%q] must contain an absolute path", rawName)
 		}
 	}
+	if len(m.RecentDestinations) > MaxRecentDestinations {
+		return fmt.Errorf(
+			"machine: recent destinations exceed limit %d",
+			MaxRecentDestinations,
+		)
+	}
+	seenDestinations := make(map[string]bool, len(m.RecentDestinations))
+	for index, destination := range m.RecentDestinations {
+		key := destination.QualifiedID()
+		if key == "" {
+			return fmt.Errorf("machine: recent destination %d is invalid", index)
+		}
+		if seenDestinations[key] {
+			return fmt.Errorf("machine: recent destination %d duplicates %q", index, key)
+		}
+		if destination.Count < 1 {
+			return fmt.Errorf("machine: recent destination %d has invalid count %d", index, destination.Count)
+		}
+		seenDestinations[key] = true
+	}
 	return nil
 }
 
@@ -735,6 +773,24 @@ func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
 		return !refMatches(pid, id, slug)
 	})
 	changed = visits || changed
+
+	if len(m.RecentDestinations) > 0 {
+		filtered := m.RecentDestinations[:0]
+		for _, destination := range m.RecentDestinations {
+			projectDestination := destination.Kind == RecentDestinationProject &&
+				refMatches(destination.ID, id, slug)
+			if projectDestination || refMatches(destination.ProjectID, id, slug) {
+				changed = true
+				continue
+			}
+			filtered = append(filtered, destination)
+		}
+		m.RecentDestinations = filtered
+	}
+	if mapHadProjectKey(m.ProjectRoutes, id, slug) {
+		deleteProjectKey(m.ProjectRoutes, id, slug)
+		changed = true
+	}
 
 	changed = filterProjectIDMap(m.CustomContexts, func(pid string) bool {
 		return !refMatches(pid, id, slug)

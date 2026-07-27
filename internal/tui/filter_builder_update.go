@@ -321,6 +321,9 @@ func (m *FilterBuilderModel) saveSavedFilter() tea.Cmd {
 	}
 
 	sf := m.buildSavedFilter()
+	if err := sf.ValidateForAuthoring(); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
 
 	// Saved filters are planning-domain state. Commit only the planning domain
 	// through the shared runtime snapshot (a checked commit that refreshes the

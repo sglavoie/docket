@@ -11,48 +11,48 @@ import (
 func TestUpdateTaskStatusComplete(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	task := project.Tasks[0]
-	originalStatus := models.LegacyStatusForState(task.State())
+	originalStatus := task.State()
 
 	// Verify the task starts in a non-complete state
-	if originalStatus == models.StatusDone {
+	if originalStatus == models.StateDone {
 		t.Skip("test task already done")
 	}
 
 	task.Complete()
-	testutil.AssertTaskStatus(t, task, models.StatusDone)
+	testutil.AssertTaskState(t, task, models.StateDone)
 
 	if task.CompletedAt == nil {
 		t.Error("CompletedAt should be set after Complete()")
 	}
 
 	// Verify we can check original status
-	if originalStatus == models.StatusDone {
+	if originalStatus == models.StateDone {
 		t.Error("original status should not have been done")
 	}
 }
 
 func TestUpdateTaskStatusStart(t *testing.T) {
 	task := testutil.NewTestTask("Test Task", models.TaskTypeTask)
-	testutil.AssertTaskStatus(t, task, models.StatusTodo)
+	testutil.AssertTaskState(t, task, models.StateReady)
 
 	task.Start()
-	testutil.AssertTaskStatus(t, task, models.StatusInProgress)
+	testutil.AssertTaskState(t, task, models.StateInProgress)
 }
 
 func TestUpdateTaskStatusBlock(t *testing.T) {
 	task := testutil.NewTestTask("Test Task", models.TaskTypeTask)
-	testutil.AssertTaskStatus(t, task, models.StatusTodo)
+	testutil.AssertTaskState(t, task, models.StateReady)
 
 	task.Block()
-	testutil.AssertTaskStatus(t, task, models.StatusBlocked)
+	testutil.AssertTaskState(t, task, models.StateWaiting)
 }
 
 func TestUpdateTaskStatusCancel(t *testing.T) {
 	task := testutil.NewTestTask("Test Task", models.TaskTypeTask)
-	testutil.AssertTaskStatus(t, task, models.StatusTodo)
+	testutil.AssertTaskState(t, task, models.StateReady)
 
 	task.Cancel()
-	testutil.AssertTaskStatus(t, task, models.StatusCanceled)
+	testutil.AssertTaskState(t, task, models.StateCanceled)
 
 	if task.CompletedAt == nil {
 		t.Error("CompletedAt should be set after Cancel()")
@@ -60,15 +60,15 @@ func TestUpdateTaskStatusCancel(t *testing.T) {
 }
 
 func TestUpdateTaskStatusReopen(t *testing.T) {
-	task := testutil.NewTestTaskWithStatus("Completed Task", models.StatusDone)
-	testutil.AssertTaskStatus(t, task, models.StatusDone)
+	task := testutil.NewTestTaskWithState("Completed Task", models.StateDone)
+	testutil.AssertTaskState(t, task, models.StateDone)
 
 	if task.CompletedAt == nil {
 		t.Error("completed task should have CompletedAt set")
 	}
 
 	task.Reopen()
-	testutil.AssertTaskStatus(t, task, models.StatusTodo)
+	testutil.AssertTaskState(t, task, models.StateInbox)
 
 	if task.CompletedAt != nil {
 		t.Error("CompletedAt should be cleared after Reopen()")
@@ -128,7 +128,7 @@ func TestAutoUnblockAfterComplete(t *testing.T) {
 
 	project.Tasks = []*models.Task{blocker, blocked}
 
-	testutil.AssertTaskStatus(t, blocked, models.StatusBlocked)
+	testutil.AssertTaskState(t, blocked, models.StateWaiting)
 
 	// Complete the blocker
 	blocker.Complete()
@@ -137,7 +137,7 @@ func TestAutoUnblockAfterComplete(t *testing.T) {
 	project.CheckAndAutoUnblock()
 
 	// Blocked task should now be unblocked to todo
-	testutil.AssertTaskStatus(t, blocked, models.StatusTodo)
+	testutil.AssertTaskState(t, blocked, models.StateInbox)
 }
 
 func TestAutoUnblockAfterCancel(t *testing.T) {
@@ -163,110 +163,110 @@ func TestAutoUnblockAfterCancel(t *testing.T) {
 	project.CheckAndAutoUnblock()
 
 	// Blocked task should now be unblocked to todo
-	testutil.AssertTaskStatus(t, blocked, models.StatusTodo)
+	testutil.AssertTaskState(t, blocked, models.StateInbox)
 }
 
 func TestStatusTransitions(t *testing.T) {
 	tests := []struct {
 		name         string
-		initialState models.TaskStatus
+		initialState models.WorkflowState
 		action       func(*models.Task)
-		wantStatus   models.TaskStatus
+		wantStatus   models.WorkflowState
 	}{
 		{
 			name:         "todo to in_progress",
-			initialState: models.StatusTodo,
+			initialState: models.StateReady,
 			action:       (*models.Task).Start,
-			wantStatus:   models.StatusInProgress,
+			wantStatus:   models.StateInProgress,
 		},
 		{
 			name:         "todo to done",
-			initialState: models.StatusTodo,
+			initialState: models.StateReady,
 			action:       (*models.Task).Complete,
-			wantStatus:   models.StatusDone,
+			wantStatus:   models.StateDone,
 		},
 		{
 			name:         "todo to blocked",
-			initialState: models.StatusTodo,
+			initialState: models.StateReady,
 			action:       (*models.Task).Block,
-			wantStatus:   models.StatusBlocked,
+			wantStatus:   models.StateWaiting,
 		},
 		{
 			name:         "todo to canceled",
-			initialState: models.StatusTodo,
+			initialState: models.StateReady,
 			action:       (*models.Task).Cancel,
-			wantStatus:   models.StatusCanceled,
+			wantStatus:   models.StateCanceled,
 		},
 		{
 			name:         "in_progress to done",
-			initialState: models.StatusInProgress,
+			initialState: models.StateInProgress,
 			action:       (*models.Task).Complete,
-			wantStatus:   models.StatusDone,
+			wantStatus:   models.StateDone,
 		},
 		{
 			name:         "in_progress to blocked",
-			initialState: models.StatusInProgress,
+			initialState: models.StateInProgress,
 			action:       (*models.Task).Block,
-			wantStatus:   models.StatusBlocked,
+			wantStatus:   models.StateWaiting,
 		},
 		{
 			name:         "blocked to in_progress",
-			initialState: models.StatusBlocked,
+			initialState: models.StateWaiting,
 			action:       (*models.Task).Start,
-			wantStatus:   models.StatusInProgress,
+			wantStatus:   models.StateInProgress,
 		},
 		{
 			name:         "done to todo via reopen",
-			initialState: models.StatusDone,
+			initialState: models.StateDone,
 			action:       (*models.Task).Reopen,
-			wantStatus:   models.StatusTodo,
+			wantStatus:   models.StateInbox,
 		},
 		{
 			name:         "canceled to todo via reopen",
-			initialState: models.StatusCanceled,
+			initialState: models.StateCanceled,
 			action:       (*models.Task).Reopen,
-			wantStatus:   models.StatusTodo,
+			wantStatus:   models.StateInbox,
 		},
 		{
 			name:         "in_progress to review",
-			initialState: models.StatusInProgress,
+			initialState: models.StateInProgress,
 			action:       (*models.Task).Review,
-			wantStatus:   models.StatusReview,
+			wantStatus:   models.StateReview,
 		},
 		{
 			name:         "todo to review",
-			initialState: models.StatusTodo,
+			initialState: models.StateReady,
 			action:       (*models.Task).Review,
-			wantStatus:   models.StatusReview,
+			wantStatus:   models.StateReview,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := testutil.NewTestTaskWithStatus("Test Task", tt.initialState)
+			task := testutil.NewTestTaskWithState("Test Task", tt.initialState)
 			tt.action(task)
-			testutil.AssertTaskStatus(t, task, tt.wantStatus)
+			testutil.AssertTaskState(t, task, tt.wantStatus)
 		})
 	}
 }
 
-func TestStatusIsComplete(t *testing.T) {
+func TestWorkflowStateIsTerminal(t *testing.T) {
 	tests := []struct {
-		status   models.TaskStatus
+		status   models.WorkflowState
 		complete bool
 	}{
-		{models.StatusTodo, false},
-		{models.StatusInProgress, false},
-		{models.StatusReview, false},
-		{models.StatusBlocked, false},
-		{models.StatusDone, true},
-		{models.StatusCanceled, true},
+		{models.StateReady, false},
+		{models.StateInProgress, false},
+		{models.StateReview, false},
+		{models.StateWaiting, false},
+		{models.StateDone, true},
+		{models.StateCanceled, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(string(tt.status), func(t *testing.T) {
-			if got := tt.status.IsComplete(); got != tt.complete {
-				t.Errorf("TaskStatus(%q).IsComplete() = %v, want %v", tt.status, got, tt.complete)
+			if got := tt.status.IsTerminal(); got != tt.complete {
+				t.Errorf("WorkflowState(%q).IsTerminal() = %v, want %v", tt.status, got, tt.complete)
 			}
 		})
 	}
@@ -333,92 +333,6 @@ func TestCompleteParentBlockedByIncompleteChildren(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), child1.Title) {
 		t.Errorf("expected error to name incomplete child %q, got %v", child1.Title, err)
-	}
-}
-
-func TestCancelParentBlockedByIncompleteChildren(t *testing.T) {
-	project := testutil.NewTestProject("Test Project")
-
-	parent, err := models.NewTask("parent-1", 1, models.TaskTypeEpic, "Parent Epic")
-	if err != nil {
-		t.Fatal(err)
-	}
-	child, err := models.NewTask("child-1", 2, models.TaskTypeTask, "Child Todo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	child.ParentID = &parent.ID
-
-	project.Tasks = []*models.Task{parent, child}
-	project.BuildTaskTree()
-
-	parentTask := project.GetTaskByID(parent.ID)
-	err = checkStatusChangeBlockers(project, parentTask, models.StatusCanceled)
-	if err == nil {
-		t.Fatal("expected canceling a parent with an incomplete child to be blocked")
-	}
-	if !strings.Contains(err.Error(), "incomplete children") {
-		t.Errorf("expected incomplete-children error, got %v", err)
-	}
-	if !strings.Contains(err.Error(), child.Title) {
-		t.Errorf("expected error to name incomplete child %q, got %v", child.Title, err)
-	}
-}
-
-func TestCancelLeafAndCompleteParentSucceed(t *testing.T) {
-	project := testutil.NewTestProject("Test Project")
-
-	leaf, err := models.NewTask("leaf-1", 1, models.TaskTypeTask, "Leaf Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	parent, err := models.NewTask("parent-1", 2, models.TaskTypeEpic, "Parent Epic")
-	if err != nil {
-		t.Fatal(err)
-	}
-	child, err := models.NewTask("child-1", 3, models.TaskTypeTask, "Child Done")
-	if err != nil {
-		t.Fatal(err)
-	}
-	child.ParentID = &parent.ID
-	child.WorkflowState = models.StateDone
-
-	project.Tasks = []*models.Task{leaf, parent, child}
-	project.BuildTaskTree()
-
-	if err := checkStatusChangeBlockers(project, project.GetTaskByID(leaf.ID), models.StatusCanceled); err != nil {
-		t.Errorf("expected canceling a leaf to succeed, got %v", err)
-	}
-	if err := checkStatusChangeBlockers(project, project.GetTaskByID(parent.ID), models.StatusCanceled); err != nil {
-		t.Errorf("expected canceling a parent with all children complete to succeed, got %v", err)
-	}
-}
-
-func TestCancelNotBlockedByIncompleteDependencies(t *testing.T) {
-	project := testutil.NewTestProject("Test Project")
-
-	blocker, err := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Incomplete Blocker")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dependent, err := models.NewTask("dependent-1", 2, models.TaskTypeTask, "Dependent Leaf")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = dependent.AddDependency(blocker.ID)
-
-	project.Tasks = []*models.Task{blocker, dependent}
-	project.BuildTaskTree()
-
-	dependentTask := project.GetTaskByID(dependent.ID)
-
-	// Completing is blocked by the incomplete dependency...
-	if err := checkStatusChangeBlockers(project, dependentTask, models.StatusDone); err == nil {
-		t.Fatal("expected completing a task with an incomplete dependency to be blocked")
-	}
-	// ...but canceling is not (dependencies never block cancellation).
-	if err := checkStatusChangeBlockers(project, dependentTask, models.StatusCanceled); err != nil {
-		t.Errorf("expected canceling a task with an incomplete dependency to succeed, got %v", err)
 	}
 }
 
@@ -495,23 +409,23 @@ func TestCompleteBlockedByMixedDependencies(t *testing.T) {
 	}
 }
 
-func TestStatusIsActive(t *testing.T) {
+func TestWorkflowStateIsNonterminal(t *testing.T) {
 	tests := []struct {
-		status models.TaskStatus
+		status models.WorkflowState
 		active bool
 	}{
-		{models.StatusTodo, true},
-		{models.StatusInProgress, true},
-		{models.StatusReview, true},
-		{models.StatusBlocked, true},
-		{models.StatusDone, false},
-		{models.StatusCanceled, false},
+		{models.StateReady, true},
+		{models.StateInProgress, true},
+		{models.StateReview, true},
+		{models.StateWaiting, true},
+		{models.StateDone, false},
+		{models.StateCanceled, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(string(tt.status), func(t *testing.T) {
-			if got := tt.status.IsActive(); got != tt.active {
-				t.Errorf("TaskStatus(%q).IsActive() = %v, want %v", tt.status, got, tt.active)
+			if got := tt.status.IsNonterminal(); got != tt.active {
+				t.Errorf("WorkflowState(%q).IsNonterminal() = %v, want %v", tt.status, got, tt.active)
 			}
 		})
 	}

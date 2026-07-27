@@ -5,133 +5,10 @@ import (
 	"slices"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// SaveFilterInputModel handles naming a saved filter preset.
-type SaveFilterInputModel struct {
-	summary  string // Summary of active filters being saved
-	input    textinput.Model
-	err      string
-	width    int
-	height   int
-	canceled bool
-	discardConfirmState
-}
-
-// NewSaveFilterInputModel creates a new save view input model.
-func NewSaveFilterInputModel(summary string) *SaveFilterInputModel {
-	input := textinput.New()
-	input.Placeholder = "Enter a name for this view"
-	input.Focus()
-	input.CharLimit = 50
-	input.SetWidth(40)
-	applyThemedTextInput(&input)
-
-	return &SaveFilterInputModel{
-		summary: summary,
-		input:   input,
-	}
-}
-
-// SetSize sets the view dimensions.
-func (m *SaveFilterInputModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-	m.input.SetWidth(min(width-20, 40))
-}
-
-func (m *SaveFilterInputModel) Init() tea.Cmd {
-	return textinput.Blink
-}
-
-func (m *SaveFilterInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.confirmDiscard {
-		if msg, ok := msg.(tea.KeyPressMsg); ok {
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDiscard = false
-				return m, func() tea.Msg { return BackMsg{} }
-			case "n", "N", "esc":
-				m.confirmDiscard = false
-				return m, nil
-			}
-			return m, nil
-		}
-	}
-
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc":
-			if strings.TrimSpace(m.input.Value()) != "" {
-				m.confirmDiscard = true
-				return m, nil
-			}
-			m.canceled = true
-			return m, func() tea.Msg { return BackMsg{} }
-
-		case "enter":
-			name := strings.TrimSpace(m.input.Value())
-			if name == "" {
-				m.err = "Name cannot be empty"
-				return m, nil
-			}
-
-			return m, func() tea.Msg {
-				return SaveFilterMsg{Name: name}
-			}
-		}
-	}
-
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	m.err = ""
-	return m, cmd
-}
-
-func (m *SaveFilterInputModel) View() tea.View {
-	var b strings.Builder
-
-	b.WriteString(renderFullscreenTitle("Save View", ""))
-	b.WriteString("\n\n")
-
-	// Show summary of what is being saved
-	if m.summary != "" {
-		b.WriteString(MutedStyle.Render("Saving: "))
-		b.WriteString(BoldStyle.Render(m.summary))
-		b.WriteString("\n\n")
-	}
-
-	b.WriteString(SubtitleStyle.Render("Name"))
-	b.WriteString("\n")
-	b.WriteString(m.input.View())
-	b.WriteString("\n")
-
-	if m.err != "" {
-		b.WriteString("\n")
-		b.WriteString(ErrorIconStyle.Render(m.err))
-		b.WriteString("\n")
-	}
-
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save · Esc to cancel"), "", m.width))
-
-	return tea.NewView(b.String())
-}
-
-// HasTextInput returns true because the save view input is active.
-func (m *SaveFilterInputModel) HasTextInput() bool { return true }
-
-// ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
-func (m *SaveFilterInputModel) ShouldCaptureEsc() bool { return true }
-
-func (m *SaveFilterInputModel) IsFullHeight() bool { return false }
-
-// describeSavedFilterSummary builds a human-readable summary of a SavedFilter.
 func describeSavedFilterSummary(sf *config.SavedFilter) string {
 	if sf.Mode == "criteria" {
 		return describeCriteriaFilter(sf)
@@ -146,34 +23,46 @@ func describeSavedFilterSummary(sf *config.SavedFilter) string {
 	)
 }
 
-// describeCriteriaFilter builds a summary for a criteria-mode saved filter.
 func describeCriteriaFilter(sf *config.SavedFilter) string {
 	if len(sf.Criteria) == 0 {
 		return "No criteria"
 	}
 	var parts []string
-	for _, c := range sf.Criteria {
-		if c.Field == "state" {
-			values := c.States.Values()
+	for _, criterion := range sf.Criteria {
+		if criterion.Field == "state" {
+			values := criterion.States.Values()
 			states := make([]string, len(values))
-			for i, state := range values {
-				states[i] = string(state)
+			for index, state := range values {
+				states[index] = string(state)
 			}
-			parts = append(parts, c.Field+" "+c.Operation+" "+strings.Join(states, ","))
+			parts = append(parts, criterion.Field+" "+criterion.Operation+" "+strings.Join(states, ","))
 			continue
 		}
-		parts = append(parts, c.Field+" "+c.Operation+" "+c.Value)
+		parts = append(parts, criterion.Field+" "+criterion.Operation+" "+criterion.Value)
 	}
-	logic := sf.EffectiveLogic()
-	sep := " AND "
-	if logic == "or" {
-		sep = " OR "
+	separator := " AND "
+	if sf.EffectiveLogic() == "or" {
+		separator = " OR "
 	}
-	return strings.Join(parts, sep)
+	return strings.Join(parts, separator)
 }
 
-// describeSnapshotFilters builds a human-readable summary of a snapshot filter's state.
-func describeSnapshotFilters(filterType string, filterStates models.WorkflowStateSet, hasStateFilter bool, filterPriority int, filterTags []string, filterDueDate int, filterActionable bool, filterHideDimmed bool, filterGitHubIssue bool, filterParked bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
+func describeSnapshotFilters(
+	filterType string,
+	filterStates models.WorkflowStateSet,
+	hasStateFilter bool,
+	filterPriority int,
+	filterTags []string,
+	filterDueDate int,
+	filterActionable bool,
+	filterHideDimmed bool,
+	filterGitHubIssue bool,
+	filterParked bool,
+	filterAttrs map[string]string,
+	filterScoreMin float64,
+	sortField int,
+	viewMode int,
+) string {
 	var parts []string
 
 	switch viewMode {
@@ -202,8 +91,8 @@ func describeSnapshotFilters(filterType string, filterStates models.WorkflowStat
 	if hasStateFilter {
 		values := filterStates.Values()
 		states := make([]string, len(values))
-		for i, state := range values {
-			states[i] = string(state)
+		for index, state := range values {
+			states[index] = string(state)
 		}
 		value := "none"
 		if len(states) > 0 {
@@ -211,10 +100,8 @@ func describeSnapshotFilters(filterType string, filterStates models.WorkflowStat
 		}
 		parts = append(parts, "state:"+value)
 	}
-	if len(filterTags) > 0 {
-		for _, tag := range filterTags {
-			parts = append(parts, "#"+tag)
-		}
+	for _, tag := range filterTags {
+		parts = append(parts, "#"+tag)
 	}
 	switch filterDueDate {
 	case 1:
@@ -240,12 +127,12 @@ func describeSnapshotFilters(filterType string, filterStates models.WorkflowStat
 	}
 	if len(filterAttrs) > 0 {
 		keys := make([]string, 0, len(filterAttrs))
-		for k := range filterAttrs {
-			keys = append(keys, k)
+		for key := range filterAttrs {
+			keys = append(keys, key)
 		}
 		slices.Sort(keys)
-		for _, k := range keys {
-			parts = append(parts, k+"="+filterAttrs[k])
+		for _, key := range keys {
+			parts = append(parts, key+"="+filterAttrs[key])
 		}
 	}
 	if filterScoreMin > 0 {
@@ -256,11 +143,8 @@ func describeSnapshotFilters(filterType string, filterStates models.WorkflowStat
 	if name, ok := sortNames[sortField]; ok {
 		parts = append(parts, "sort:"+name)
 	}
-
 	if len(parts) == 0 {
 		return "Active (default)"
 	}
 	return strings.Join(parts, " | ")
 }
-
-func (m *SaveFilterInputModel) StatusBarLabel() string { return "Save Filter" }

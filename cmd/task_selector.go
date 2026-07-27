@@ -10,7 +10,7 @@ import (
 
 // TasksToSelectorItems converts tasks to selector items with standard columns.
 func TasksToSelectorItems(tasks []*models.Task) []selector.Item {
-	headers := []string{"ID", "Type", "Status", "Title"}
+	headers := []string{"ID", "Type", "State", "Title"}
 	items := make([]selector.Item, len(tasks))
 	for i, t := range tasks {
 		items[i] = selector.Item{

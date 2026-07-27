@@ -246,8 +246,8 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if p.Type != models.TaskTypeBug {
 		t.Errorf("Type = %q, want 'bug'", p.Type)
 	}
-	if models.LegacyStatusForState(p.State()) != models.StatusDone {
-		t.Errorf("legacy status = %q, want 'done'", models.LegacyStatusForState(p.State()))
+	if p.State() != models.StateDone {
+		t.Errorf("legacy status = %q, want 'done'", p.State())
 	}
 	if p.Priority != 1 {
 		t.Errorf("Priority = %d, want 1", p.Priority)
@@ -264,8 +264,8 @@ func TestRoundTrip_TaskWithAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if p.State() != models.StateDone {
 		t.Errorf("State = %q, want %q", p.State(), models.StateDone)
 	}
-	if models.SectionForState(p.State()) != models.SectionCompleted {
-		t.Errorf("section = %q, want %q (canonical done shim)", models.SectionForState(p.State()), models.SectionCompleted)
+	if p.State() != models.StateDone {
+		t.Errorf("section = %q, want %q (canonical done shim)", p.State(), models.StateDone)
 	}
 	if p.DueDate == nil {
 		t.Error("DueDate should not be nil")

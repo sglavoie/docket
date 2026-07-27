@@ -28,6 +28,9 @@ EXAMPLES
   # Change type and priority
   tt template edit abc123 --type story --priority 2
 
+  # Change canonical workflow state
+  tt template edit abc123 --state waiting
+
   # Update tags
   tt template edit abc123 --tags backend,api
 
@@ -59,7 +62,7 @@ var (
 	templateEditType            string
 	templateEditPriority        int
 	templateEditTags            string
-	templateEditSection         string
+	templateEditState           string
 	templateEditDescription     string
 	templateEditCategory        string
 	templateEditAddChildren     []string
@@ -79,7 +82,7 @@ func init() {
 	templateEditCmd.Flags().StringVar(&templateEditType, "type", "", "task type: epic, story, task, bug, idea")
 	templateEditCmd.Flags().IntVar(&templateEditPriority, "priority", 0, "priority 1-5 (0 for default)")
 	templateEditCmd.Flags().StringVar(&templateEditTags, "tags", "", "comma-separated tags (replaces existing)")
-	templateEditCmd.Flags().StringVar(&templateEditSection, "section", "", "built-in GTD section (empty = Active)")
+	templateEditCmd.Flags().StringVar(&templateEditState, "state", "", "canonical workflow state")
 	templateEditCmd.Flags().StringVar(&templateEditDescription, "description", "", "task description template")
 	templateEditCmd.Flags().StringVar(&templateEditCategory, "category", "", "category: bug, feature, process")
 	templateEditCmd.Flags().StringArrayVar(&templateEditAddChildren, "add-item", nil, "add checklist item (can specify multiple)")
@@ -93,7 +96,7 @@ func init() {
 
 	_ = templateEditCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = templateEditCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
-	_ = templateEditCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
+	_ = templateEditCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 	addOutputFlags(templateEditCmd)
 }
 
@@ -175,8 +178,8 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 		hasChanges = true
 	}
 
-	if cmd.Flags().Changed("section") {
-		state, stateErr := templateStateFromLegacySectionInput(templateEditSection, models.StateReady)
+	if stagedLifecycleFlagProvided(cmd, "state", templateEditState) {
+		state, stateErr := parseCanonicalWorkflowStateInput("state", templateEditState)
 		if stateErr != nil {
 			return stateErr
 		}
@@ -292,7 +295,7 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 	}
 
 	// Validate
-	if err := t.Validate(); err != nil {
+	if err := t.ValidateForAuthoring(); err != nil {
 		return fmt.Errorf("invalid template: %w", err)
 	}
 
@@ -313,8 +316,9 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error { //nolint:gocyclo
 			ID      string `json:"id"`
 			Name    string `json:"name"`
 			Type    string `json:"type"`
+			State   string `json:"state"`
 			Summary string `json:"summary"`
-		}{ID: t.ID, Name: t.Name, Type: string(t.Type), Summary: t.Summary()})
+		}{ID: t.ID, Name: t.Name, Type: string(t.Type), State: t.EffectiveState().String(), Summary: t.Summary()})
 	}
 	fmt.Printf("Updated task template: %s [%s]\n", t.Name, t.ID)
 	fmt.Printf("  %s\n", t.Summary())

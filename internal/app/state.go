@@ -51,8 +51,8 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if guardErr := childrenCompletionGuard(ref.Task, target); guardErr != nil {
 		return TaskResult{}, guardErr
 	}
-	if err := applyState(ref.Task, target, s.clock.Now()); err != nil {
-		return TaskResult{}, invalidInput("state", err.Error())
+	if stateErr := applyState(ref.Task, target, s.clock.Now()); stateErr != nil {
+		return TaskResult{}, invalidInput("state", stateErr.Error())
 	}
 	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {

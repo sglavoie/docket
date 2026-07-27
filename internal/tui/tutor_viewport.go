@@ -3,7 +3,7 @@ package tui
 import "charm.land/bubbles/v2/viewport"
 
 func (m *TutorModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewTutor)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *TutorModel) SetSize(width, height int) {

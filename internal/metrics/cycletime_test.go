@@ -17,11 +17,11 @@ func TestCycleTime(t *testing.T) {
 		done2 := now.AddDate(0, 0, -1)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done1), []*models.ActivityEntry{
-				{Timestamp: start1, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done1), []*models.ActivityEntry{
+				{Timestamp: start1, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
-			makeTask(models.StatusDone, timePtr(done2), []*models.ActivityEntry{
-				{Timestamp: start2, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done2), []*models.ActivityEntry{
+				{Timestamp: start2, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
 		}
 
@@ -44,8 +44,8 @@ func TestCycleTime(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), nil),
-			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
+			makeTask(models.StateDone, timePtr(done), nil),
+			makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
 				{Timestamp: now.AddDate(0, 0, -3), Field: "priority", OldValue: "3", NewValue: "1"},
 			}),
 		}
@@ -65,9 +65,9 @@ func TestCycleTime(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-				{Timestamp: first, Field: "status", OldValue: "todo", NewValue: "in_progress"},
-				{Timestamp: second, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: first, Field: "state", OldValue: "todo", NewValue: "in_progress"},
+				{Timestamp: second, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 			}),
 		}
 
@@ -92,9 +92,9 @@ func TestCycleTime(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-				{Timestamp: second, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
-				{Timestamp: first, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: second, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
+				{Timestamp: first, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
 		}
 
@@ -120,11 +120,11 @@ func TestCycleTime(t *testing.T) {
 		futureDone := now.Add(3 * time.Hour)
 
 		tasks := []*models.Task{
-			makeTask(models.StatusDone, timePtr(recentDone), []*models.ActivityEntry{
-				{Timestamp: recentStart, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(recentDone), []*models.ActivityEntry{
+				{Timestamp: recentStart, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
-			makeTask(models.StatusDone, timePtr(futureDone), []*models.ActivityEntry{
-				{Timestamp: futureStart, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(futureDone), []*models.ActivityEntry{
+				{Timestamp: futureStart, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
 		}
 
@@ -146,8 +146,8 @@ func TestCycleTime(t *testing.T) {
 		done := now.AddDate(0, 0, -1)
 		tasks := []*models.Task{
 			nil,
-			makeTask(models.StatusDone, timePtr(done), []*models.ActivityEntry{
-				{Timestamp: start, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+			makeTask(models.StateDone, timePtr(done), []*models.ActivityEntry{
+				{Timestamp: start, Field: "state", OldValue: "todo", NewValue: "in_progress"},
 			}),
 		}
 

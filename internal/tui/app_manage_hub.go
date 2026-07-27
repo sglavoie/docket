@@ -39,12 +39,20 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 			}
 			return m.crossOutliner.activeContext
 		},
+		ActiveProjectFocus: func() string {
+			if m.crossOutliner == nil {
+				return ""
+			}
+			return m.crossOutliner.scopedProjectID
+		},
 		LoadedProjects: func() []*models.Project {
 			if m.crossOutliner == nil {
 				return nil
 			}
 			return m.crossOutliner.loadedProjects
 		},
+		OperationRegistry: m.operationRegistry,
+		OperationExecutor: m.operationExecutor,
 	}
 	if m.manageHub == nil {
 		m.manageHub = NewManageHubModel(deps)
@@ -101,25 +109,13 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		m.registerManageModulePresentation(params, active)
 	}
 
-	if !m.typedNavigation {
-		view := View(hub)
-		presentation := ViewSettings
-		if active != nil {
-			view = active
-			presentation, _ = hub.PresentationView()
-		}
-		m.showView(presentation, view)
-		return view.Init()
-	}
-
 	if err := m.navigation.PushChild(route, m.currentFocusTarget()); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 	if m.startupRoute != nil && m.startupRoute.ID() == SecondaryTool {
 		m.startupRoute = nil
-		m.startupView = ViewDashboard
+		m.startupView = ViewCrossProjectOutliner
 	}
-	m.syncPresentationStack()
 	if projectPickerOpen {
 		m.pushTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
 	}
@@ -153,12 +149,6 @@ func (m *AppModel) registerManageModulePresentation(params ManageParams, view Vi
 		return
 	}
 	m.views.Register(presentation, view)
-	switch typed := view.(type) {
-	case *InboxProcessorModel:
-		m.inboxProcessor = typed
-	case *GlobalInboxProcessorModel:
-		m.globalInboxProcessor = typed
-	}
 }
 
 func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {

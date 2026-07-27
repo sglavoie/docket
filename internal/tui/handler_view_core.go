@@ -29,13 +29,6 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
 
-	case NavigateToViewMsg:
-		return m.handleNavigateToView(msg)
-	case NavigatePaletteAliasMsg:
-		// No searchable alias currently resolves to a distinct navigation
-		// target; the message is retained as generic palette-alias plumbing.
-		return true, nil
-
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)

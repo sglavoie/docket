@@ -1,86 +1,242 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
+)
 
 // handleSearchMessages handles Palette search and selection messages.
 // Returns true if the message was handled.
 func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case PaletteEntitySelectMsg:
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			m.recordTaskVisit(msg.Task, msg.Project)
-			return true, m.navigateToTaskInProject(msg.Task, msg.Project)
+	case ShowFinderMsg:
+		context := m.operationCommandContext()
+		finder, err := NewRuntimeFinder(m.runtime, m.GetOperationRegistry(), context)
+		if err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
 		}
-		return true, nil
+		discovery, err := NewFinderDiscoveryModel(finder, context, msg.PreFilter)
+		if err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
+		}
+		return m.showViewInit(ViewFinder, discovery)
 
-	case PalettePeekRequestMsg:
-		// Open the in-app Peek overlay above the palette. The palette view stays
-		// on the stack, so dismissing Peek (Esc) restores its exact state.
-		if msg.Task != nil {
-			m.activatePeek(msg.Task, msg.Project)
+	case ShowModeListMsg:
+		discovery, err := NewModeDiscoveryModel(m.operationCommandContext())
+		if err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
 		}
-		return true, nil
+		return m.showViewInit(ViewFinder, discovery)
 
-	case ShowCommandPaletteMsg:
-		// Pass the current view (before pushing the palette) for context-aware command filtering.
-		// Scope tasks to currentProject only when the invoking view is project-scoped; Dashboard
-		// and cross-project views should list tasks from every project (nil = all projects).
-		currentView := m.currentView()
-		paletteProject := m.currentProject
-		if presentationScope(currentView) == ScopeApp {
-			paletteProject = nil
-		}
-		if review, ok := m.activeView().(*ReviewHubModel); ok && review.ProjectScope() != nil {
-			paletteProject = review.ProjectScope()
-		}
-		palette := NewCommandPaletteModel(m.runtime, m.commandRegistry, currentView, paletteProject)
-		if review, ok := m.activeView().(*ReviewHubModel); ok {
-			palette.SetCommandContext(review.CommandContext())
-		}
-		// Apply pre-filter if specified (overrides last category)
-		if msg.PreFilter != "" {
-			palette.searchInput.SetValue(msg.PreFilter)
-			palette.showTips = false
-			palette.filterItems()
-		}
-		return m.showViewInit(ViewCommandPalette, palette)
+	case CloseFinderMsg:
+		return true, m.popView()
 
-	case CommandPaletteExecuteMsg:
-		// Check if the inner message opens a modal view that should return to the palette
-		keepPalette := false
-		if msg.ResultMsg != nil {
-			switch msg.ResultMsg.(type) {
-			case EditTaskMsg, SetDueDateMsg, SetSnoozeDateMsg, ShowSectionPickerMsg, ShowPriorityPickerMsg:
-				keepPalette = true
-			case PalettePeekRequestMsg:
-				// Peek activates an in-app overlay above the palette; keep the
-				// palette on the stack so Esc returns to its exact search state,
-				// matching the palette task-row Peek (peekItem) path.
-				keepPalette = true
-			}
-		}
-		// Only close command palette for non-modal actions. popView() can return
-		// a cmd (e.g. ViewDidAppearMsg when revealing the cross-project outliner);
-		// preserve it so the revealed view still gets its eager-reload signal.
-		var popCmd tea.Cmd
-		if !keepPalette {
-			popCmd = m.popView()
-		}
-		var resultCmd tea.Cmd
-		if msg.ResultMsg != nil {
-			if cmdMsg, ok := msg.ResultMsg.(PaletteCommandResultMsg); ok {
-				// Unwrap a command-carrying result so the handler's tea.Cmd runs
-				// after the palette closes instead of being routed as a Msg.
-				resultCmd = cmdMsg.Cmd
-			} else {
-				_, resultCmd = m.processMessage(msg.ResultMsg)
-			}
-		}
-		return true, batchPaletteExecuteCmds(popCmd, resultCmd)
+	case DiscoveryListSelectMsg:
+		return m.handleDiscoveryListSelection(msg)
 
 	}
 	return false, nil
+}
+
+func (m *AppModel) handleDiscoveryListSelection(msg DiscoveryListSelectMsg) (bool, tea.Cmd) {
+	switch target := msg.Item.Data.(type) {
+	case FinderTarget:
+		return m.handleFinderTargetSelection(msg.Item.ID, target, msg.Context)
+	case OutlinerMode:
+		m.recordFinderDestination(config.RecentDestination{
+			Kind: config.RecentDestinationMode,
+			ID:   string(target.ID),
+		})
+		return m.activateDiscoveryMode(target.ID)
+	default:
+		return true, func() tea.Msg {
+			return ErrorMsg{Err: ErrListItemNotFound}
+		}
+	}
+}
+
+func (m *AppModel) handleFinderTargetSelection(
+	itemID ListItemID,
+	target FinderTarget,
+	context CommandContext,
+) (bool, tea.Cmd) {
+	if destination, ok := target.RecentDestination(); ok &&
+		destination.QualifiedID() == string(itemID) {
+		m.recordFinderDestination(destination)
+	}
+
+	switch target.Kind {
+	case FinderItemOperation:
+		if target.Operation == nil || m.operationExecutor == nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: ErrOperationNotRegistered} }
+		}
+		popCmd := m.popView()
+		actionCmd := m.executeOperationOverlayRequest(OperationExecutionRequest{
+			ID:      target.Operation.ID,
+			Context: cloneCommandContext(context),
+			Source:  OperationSourceFinder,
+		})
+		return true, batchPaletteExecuteCmds(popCmd, actionCmd)
+
+	case FinderItemTask:
+		popCmd := m.popView()
+		if target.Task == nil || target.Project == nil {
+			return true, popCmd
+		}
+		m.recordTaskVisit(target.Task, target.Project)
+		return true, batchPaletteExecuteCmds(
+			popCmd,
+			m.navigateToTaskInProject(target.Task, target.Project),
+		)
+
+	case FinderItemProject:
+		popCmd := m.popView()
+		_, selectCmd := m.handleProjectMessages(SelectProjectMsg{Project: target.Project})
+		return true, batchPaletteExecuteCmds(popCmd, selectCmd)
+
+	case FinderItemNote:
+		popCmd := m.popView()
+		if target.Note == nil {
+			return true, popCmd
+		}
+		params := ManageParams{Module: ManageNotes, Scope: AppEntityScope()}
+		if target.Project != nil {
+			params.Scope = ProjectEntityScope(target.Project.ID)
+		}
+		openCmd := m.activateManageHub(params)
+		m.selectFinderNote(target.Note.Filename)
+		return true, batchPaletteExecuteCmds(popCmd, openCmd)
+
+	case FinderItemTool:
+		popCmd := m.popView()
+		if target.Tool == nil {
+			return true, popCmd
+		}
+		navigationCmd := m.openFinderTool(target.Tool.ID)
+		return true, batchPaletteExecuteCmds(popCmd, navigationCmd)
+
+	case FinderItemMode:
+		if target.Mode == nil {
+			return true, m.popView()
+		}
+		return m.activateDiscoveryMode(target.Mode.ID)
+
+	case FinderItemScope:
+		if target.Scope == nil {
+			return true, m.popView()
+		}
+		scope := target.Scope.Scope
+		return m.handleContextMessages(ContextScopeSelectedMsg{
+			SelectedContext: scope.Name,
+			IsCustomContext: scope.IsCustom(),
+		})
+
+	case FinderItemTag:
+		if target.Tag == nil {
+			return true, m.popView()
+		}
+		outliner := m.discoveryOutliner()
+		if outliner == nil {
+			return true, m.popView()
+		}
+		if outliner.filter.Tags == nil {
+			outliner.filter.Tags = make(map[string]bool)
+		}
+		outliner.filter.Tags[target.Tag.Name] = true
+		outliner.activeSavedFilter = ""
+		outliner.rebuildRows()
+		return true, m.returnToOutlinerAfterContextSelection()
+
+	case FinderItemSavedFilter:
+		if target.SavedFilter == nil {
+			return true, m.popView()
+		}
+		outliner := m.discoveryOutliner()
+		if outliner == nil {
+			return true, m.popView()
+		}
+		m.applySavedFilterToOutlinerModel(outliner, *target.SavedFilter)
+		return true, m.returnToOutlinerAfterContextSelection()
+	}
+	return true, m.popView()
+}
+
+func (m *AppModel) openFinderTool(id string) tea.Cmd {
+	switch id {
+	case "weekly-review":
+		_, cmd := m.handleViewMessages(ShowWeeklyReviewMsg{})
+		return cmd
+	case "metrics":
+		_, cmd := m.handleViewMessages(ShowMetricsDashboardMsg{})
+		return cmd
+	case "roadmap":
+		_, cmd := m.handleViewMessages(ShowRoadmapMsg{})
+		return cmd
+	case "blockers":
+		_, cmd := m.handleViewMessages(ShowGlobalBlockersMsg{})
+		return cmd
+	case "notes":
+		return m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
+	case "tags":
+		_, cmd := m.handleTagMessages(ShowGlobalTagManagerMsg{})
+		return cmd
+	case "workflow-rules":
+		return m.activateManageHub(ManageParams{Module: ManageRules, Scope: AppEntityScope()})
+	case "settings":
+		return m.activateManageHub(ManageParams{Module: ManageSettings, Scope: AppEntityScope()})
+	case "contexts":
+		return m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
+	default:
+		return func() tea.Msg { return ErrorMsg{Err: ErrListItemNotFound} }
+	}
+}
+
+func (m *AppModel) activateDiscoveryMode(id OutlinerModeID) (bool, tea.Cmd) {
+	outliner := m.discoveryOutliner()
+	if outliner == nil {
+		return true, m.popView()
+	}
+	_, modeCmd := outliner.selectOutlinerMode(id)
+	return true, batchPaletteExecuteCmds(
+		m.returnToOutlinerAfterContextSelection(),
+		modeCmd,
+	)
+}
+
+func (m *AppModel) discoveryOutliner() *OutlinerModel {
+	if outliner, _, ok := m.outlinerPrimary(); ok {
+		return outliner
+	}
+	return m.crossOutliner
+}
+
+func (m *AppModel) selectFinderNote(filename string) {
+	if m.manageHub == nil {
+		return
+	}
+	notes, ok := m.manageHub.ActiveModuleView().(*NotesViewModel)
+	if !ok {
+		return
+	}
+	for index, note := range notes.notes {
+		if note != nil && note.Filename == filename {
+			notes.cursor = index
+			return
+		}
+	}
+}
+
+func (m *AppModel) recordFinderDestination(destination config.RecentDestination) {
+	if !destination.Valid() {
+		return
+	}
+	if err := m.commitMachineMutation(func(machine *config.MachineState) {
+		machine.RecordRecentDestination(destination)
+	}); err != nil {
+		logging.Warn("failed to save Finder destination: %v", err)
+	}
 }
 
 // batchPaletteExecuteCmds combines the popView cmd and the palette result cmd,

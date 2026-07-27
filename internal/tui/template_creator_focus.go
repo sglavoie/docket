@@ -102,7 +102,7 @@ func (m *TaskTemplateCreatorModel) getFocusSection() (section string, idx int) {
 }
 
 // HasTextInput returns true to block : and ? keys in the template creator.
-// This prevents the command palette and help from opening while editing.
+// This prevents Finder and help from opening while editing.
 func (m *TaskTemplateCreatorModel) HasTextInput() bool {
 	return true
 }

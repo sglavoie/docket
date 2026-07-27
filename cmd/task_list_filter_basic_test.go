@@ -22,9 +22,9 @@ func TestFilterTasks_NoFilters(t *testing.T) {
 	defer resetFilterVars()
 
 	tasks := []*models.Task{
-		testutil.NewTestTaskWithStatus("Task 1", models.StatusTodo),
-		testutil.NewTestTaskWithStatus("Task 2", models.StatusInProgress),
-		testutil.NewTestTaskWithStatus("Task 3", models.StatusDone),
+		testutil.NewTestTaskWithState("Task 1", models.StateReady),
+		testutil.NewTestTaskWithState("Task 2", models.StateInProgress),
+		testutil.NewTestTaskWithState("Task 3", models.StateDone),
 	}
 
 	result := filterTasks(tasks)
@@ -39,9 +39,9 @@ func TestFilterTasks_ShowAll(t *testing.T) {
 	listShowAll = true
 
 	tasks := []*models.Task{
-		testutil.NewTestTaskWithStatus("Task 1", models.StatusTodo),
-		testutil.NewTestTaskWithStatus("Task 2", models.StatusDone),
-		testutil.NewTestTaskWithStatus("Task 3", models.StatusCanceled),
+		testutil.NewTestTaskWithState("Task 1", models.StateReady),
+		testutil.NewTestTaskWithState("Task 2", models.StateDone),
+		testutil.NewTestTaskWithState("Task 3", models.StateCanceled),
 	}
 
 	result := filterTasks(tasks)

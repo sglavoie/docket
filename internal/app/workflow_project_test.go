@@ -120,12 +120,10 @@ func TestCommitProjectWithWorkflowDeferredMoveCommitsOneTransaction(t *testing.T
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-move-done",
-		Name:    "Archive done to Beta",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: "done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}},
-	}}
+		ID:       "r-move-done",
+		Name:     "Archive done to Beta",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}}}}
 
 	t1.Complete()
 	res, err := svc.CommitProjectWithWorkflow(projA, app.ProjectWorkflowOptions{Rules: rules})

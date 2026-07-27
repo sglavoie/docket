@@ -16,30 +16,18 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseOutlinerMsg:
-		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
 		m.popView()
-		m.outliner = nil
 		return true, nil
 
 	case ShowGlobalOutlinerMsg:
-		// Save current view state so it persists if a different project's
-		// view is later created from inside the cross-outliner.
-		if m.outliner != nil {
-			m.saveOutlinerToggleState()
-			m.saveOutlinerFilterState()
-		}
 		presentationCmd := m.prepareCrossProjectOutliner()
 		m.crossOutliner.ApplyOpenOptions(msg.Options)
-		if m.typedNavigation {
-			route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
-			if err != nil {
-				return true, func() tea.Msg { return ErrorMsg{Err: err} }
-			}
-			return true, tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
+		route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+		if err != nil {
+			return true, func() tea.Msg { return ErrorMsg{Err: err} }
 		}
-		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
-		return true, presentationCmd
+		return true, tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)
 
 	case CloseGlobalOutlinerMsg:
 		return true, m.popToAnchorView()
@@ -69,16 +57,12 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 		presentationCmd = m.prepareCrossProjectOutliner()
 	}
 
-	if m.typedNavigation {
-		// A project-navigation request abandons any transient overlay and child
-		// route and lands on the sole app-scoped Outliner root.
-		m.taskDetail = nil
-		m.taskComposer = nil
-		if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
-			return cmd
-		}
-	} else {
-		m.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
+	// A project-navigation request abandons any transient overlay and child route
+	// and lands on the sole app-scoped Outliner root.
+	m.taskDetail = nil
+	m.taskComposer = nil
+	if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
+		return cmd
 	}
 
 	cross := m.crossOutliner
@@ -86,26 +70,14 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 		return presentationCmd
 	}
 	cross.pushProjectScope(project.ID)
-	if options.SetMode || options.SetFocus || options.SetSort || options.SetLens {
+	if options.SetRouteState || options.SetMode || options.SetSort {
 		cross.ApplyOpenOptions(options)
-	} else {
-		// Explicit project navigation presents the project's full task tree in
-		// All rather than inheriting another mode, so project navigation exposes
-		// the project's full workflow plus its scoped Today section.
-		cross.selectOutlinerMode(ModeAll)
 	}
 	if openAt != nil {
 		cross.NavigateToTaskInProject(openAt, project)
 	}
 	m.setAccentOnView(cross)
 
-	// Project work is served by the scoped cross Outliner; discard any transient
-	// single-project instance switchToProject may have created so one
-	// authoritative Outliner owns all project-scoped work.
-	if m.outliner != nil {
-		m.outliner = nil
-		m.views.Remove(ViewOutliner)
-	}
 	return presentationCmd
 }
 

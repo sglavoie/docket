@@ -23,18 +23,9 @@ func TestCanonicalWorkflowAuthoringMetadata(t *testing.T) {
 			t.Errorf("ValidTriggerFields() missing %q", want)
 		}
 	}
-	for _, legacy := range []TriggerField{
-		FieldStatus,
-		FieldSection,
-		FieldStatusChanged,
-		FieldSectionChanged,
-		FieldParentStatus,
-		FieldAllTasksStatus,
-		FieldMajorityTaskStatus,
-		FieldHasTasksWithStatus,
-	} {
-		if slices.Contains(fields, legacy) {
-			t.Errorf("ValidTriggerFields() exposes legacy field %q", legacy)
+	for _, field := range fields {
+		if field == TriggerField("status") || field == TriggerField("section") {
+			t.Errorf("ValidTriggerFields() exposes retired field %q", field)
 		}
 	}
 
@@ -42,34 +33,9 @@ func TestCanonicalWorkflowAuthoringMetadata(t *testing.T) {
 	if !slices.Contains(actions, ActionSetState) {
 		t.Error("ValidActionTypes() missing set_state")
 	}
-	if slices.Contains(actions, ActionSetStatus) || slices.Contains(actions, ActionSetSection) {
-		t.Error("ValidActionTypes() exposes legacy lifecycle actions")
-	}
-}
-
-func TestLegacyLifecycleSchemaIsDecodeOnlyForAuthoring(t *testing.T) {
-	for _, trigger := range []RuleTrigger{
-		{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
-		{Field: FieldSection, Operation: OpEquals, Value: "Inbox"},
-		{Field: FieldStatusChanged, Operation: OpEquals, Value: "todo->done"},
-	} {
-		if err := trigger.Validate(); err != nil {
-			t.Errorf("legacy decoded trigger should remain valid: %v", err)
-		}
-		if err := trigger.ValidateForAuthoring(); err == nil {
-			t.Errorf("legacy trigger %q should not be authorable", trigger.Field)
-		}
-	}
-
-	for _, action := range []RuleAction{
-		{ActionType: ActionSetStatus, Value: "done"},
-		{ActionType: ActionSetSection, Value: "Next"},
-	} {
-		if err := action.Validate(); err != nil {
-			t.Errorf("legacy decoded action should remain valid: %v", err)
-		}
-		if err := action.ValidateForAuthoring(); err == nil {
-			t.Errorf("legacy action %q should not be authorable", action.ActionType)
+	for _, action := range actions {
+		if action == ActionType("set_status") || action == ActionType("set_section") {
+			t.Errorf("ValidActionTypes() exposes retired action %q", action)
 		}
 	}
 }
@@ -185,11 +151,13 @@ func TestWorkflowRuleJSONRetainsLegacyDecodeAndWritesCanonicalRules(t *testing.T
 	if err := json.Unmarshal([]byte(legacyJSON), &legacy); err != nil {
 		t.Fatalf("decode legacy rule: %v", err)
 	}
-	if legacy.Trigger.Field != FieldStatus || legacy.Actions[0].ActionType != ActionSetSection {
-		t.Fatalf("legacy lifecycle schema was not retained: %#v", legacy)
+	migrated, changed, err := MigrateLegacyLifecycleRules([]WorkflowRule{legacy})
+	if err != nil || !changed || len(migrated) != 1 {
+		t.Fatalf("legacy decode migration = %#v, changed=%v, err=%v", migrated, changed, err)
 	}
-	if err := legacy.Validate(); err != nil {
-		t.Fatalf("legacy decoded rule should remain valid before migration: %v", err)
+	if migrated[0].Triggers[0].Field != FieldState ||
+		migrated[0].Actions[0].ActionType != ActionSetState {
+		t.Fatalf("legacy lifecycle schema was not canonicalized: %#v", migrated[0])
 	}
 
 	canonical := NewRule(
@@ -221,19 +189,6 @@ func TestDefaultRulesUseCanonicalLifecycleVocabulary(t *testing.T) {
 	for _, rule := range GetDefaultRules() {
 		if err := rule.Validate(); err != nil {
 			t.Errorf("default rule %q invalid: %v", rule.ID, err)
-		}
-		for _, trigger := range rule.GetTriggers() {
-			switch trigger.Field {
-			case FieldStatus, FieldSection, FieldStatusChanged, FieldSectionChanged,
-				FieldParentStatus, FieldAllTasksStatus, FieldMajorityTaskStatus, FieldHasTasksWithStatus:
-				t.Errorf("default rule %q uses legacy trigger field %q", rule.ID, trigger.Field)
-			default:
-			}
-		}
-		for _, action := range rule.Actions {
-			if action.ActionType == ActionSetStatus || action.ActionType == ActionSetSection {
-				t.Errorf("default rule %q uses legacy action %q", rule.ID, action.ActionType)
-			}
 		}
 	}
 }

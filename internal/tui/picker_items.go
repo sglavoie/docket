@@ -3,45 +3,9 @@ package tui
 import (
 	"fmt"
 
-	"charm.land/lipgloss/v2"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
-
-// SectionInfo implements PickerItem for section selection.
-// FilterText returns the section name for filtering.
-func (s SectionInfo) FilterText() string {
-	if s.Name == "" {
-		return "(no section)"
-	}
-	return s.Name
-}
-
-// DisplayText returns the section name for display, colored if a color is set.
-func (s SectionInfo) DisplayText() string {
-	name := s.Name
-	if name == "" {
-		name = "(no section)"
-	}
-	if s.ColorName != "" && s.ColorName != "gray" {
-		colorVal := GetSectionColorValue(s.ColorName)
-		if colorVal != nil {
-			return lipgloss.NewStyle().Foreground(colorVal).Render(name)
-		}
-	}
-	return name
-}
-
-// CountValue returns the task count for this section.
-func (s SectionInfo) CountValue() int {
-	return s.TaskCount
-}
-
-// ItemID returns the section name as its unique identifier.
-func (s SectionInfo) ItemID() string {
-	return s.Name
-}
 
 // TagInfo implements PickerItem for tag selection.
 // FilterText returns the tag name for filtering.
@@ -150,22 +114,20 @@ func (a ActionTypeInfo) ItemID() string {
 
 // TriggerFieldDescriptions maps trigger fields to human-readable descriptions.
 var TriggerFieldDescriptions = map[workflow.TriggerField]string{
-	workflow.FieldStatus:           "Current task status",
+	workflow.FieldState:            "Current workflow state",
 	workflow.FieldPriority:         "Task priority level (1-5)",
-	workflow.FieldSection:          "Built-in section name (Next, Waiting, etc.)",
 	workflow.FieldTags:             "Task tags",
 	workflow.FieldType:             "Task type (epic, story, task, bug, idea)",
 	workflow.FieldDueDays:          "Days until due (negative = overdue)",
 	workflow.FieldCreatedDays:      "Days since task creation",
 	workflow.FieldUpdatedDays:      "Days since last update",
-	workflow.FieldStatusChanged:    "Status transition (e.g., todo->done)",
-	workflow.FieldSectionChanged:   "Section transition (e.g., Next->Waiting)",
+	workflow.FieldStateChanged:     "State transition (e.g., ready->done)",
 	workflow.FieldPriorityChanged:  "Priority transition (e.g., 3->1)",
 	workflow.FieldTagAdded:         "Tag was added to task",
 	workflow.FieldTagRemoved:       "Tag was removed from task",
 	workflow.FieldCompleted:        "Task was completed or canceled",
 	workflow.FieldReopened:         "Task was reopened",
-	workflow.FieldParentStatus:     "Parent task's status",
+	workflow.FieldParentState:      "Parent task's state",
 	workflow.FieldParentType:       "Parent task's type",
 	workflow.FieldParentTags:       "Parent task has tag",
 	workflow.FieldLevel:            "Hierarchy depth (0 = root)",
@@ -180,16 +142,18 @@ var TriggerFieldDescriptions = map[workflow.TriggerField]string{
 	workflow.FieldRecurrenceCompleted: "Recurring task completed its cycle",
 	workflow.FieldStreakBroken:        "Recurrence streak was reset to zero",
 	// Boolean state triggers
-	workflow.FieldHasDueDate:       "Task has a due date set",
-	workflow.FieldHasTags:          "Task has one or more tags",
-	workflow.FieldDescriptionEmpty: "Task description is empty",
+	workflow.FieldHasDueDate:        "Task has a due date set",
+	workflow.FieldHasTags:           "Task has one or more tags",
+	workflow.FieldDescriptionEmpty:  "Task description is empty",
+	workflow.FieldAllTasksState:     "All project tasks match a state",
+	workflow.FieldMajorityTaskState: "Most project tasks match a state",
+	workflow.FieldHasTasksWithState: "Project has tasks in a state",
 }
 
 // ActionTypeDescriptions maps action types to human-readable descriptions.
 var ActionTypeDescriptions = map[workflow.ActionType]string{
-	workflow.ActionSetStatus:      "Change task status",
+	workflow.ActionSetState:       "Change task workflow state",
 	workflow.ActionSetPriority:    "Change task priority",
-	workflow.ActionSetSection:     "Move task to section",
 	workflow.ActionAddTag:         "Add tag to task",
 	workflow.ActionRemoveTag:      "Remove tag from task",
 	workflow.ActionSetDueRelative: "Set due date relative to now (+3d, +1w)",

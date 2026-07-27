@@ -83,10 +83,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	}
 
 	// Command palette task actions
-	if handled, cmd := m.handleTaskPaletteMessages(msg); handled {
-		return handled, cmd
-	}
-
 	// Content editing messages
 	if handled, cmd := m.handleTaskContentMessages(msg); handled {
 		return handled, cmd
@@ -169,7 +165,6 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 	case TaskPropertyChangedMsg:
 		m.handleWithRefresh(false, false, "")
 		cmd := m.views.Update(m.currentView(), msg)
-		m.syncInboxProcessor()
 		if msg.NeedsSave && m.currentProject != nil {
 			// The palette/command handlers already applied the property change to the
 			// task(s) in m.currentProject in memory (toggle active/pin, set priority,
@@ -195,22 +190,6 @@ func projectWorkflowOptsFromTaskPropertyMsg(msg TaskPropertyChangedMsg) app.Proj
 		UndoAction:  msg.UndoAction,
 		UndoContext: msg.UndoContext,
 	}
-}
-
-// handleTaskPaletteMessages handles command palette task action messages.
-// Returns true if the message was handled.
-func (m *AppModel) handleTaskPaletteMessages(msg tea.Msg) (bool, tea.Cmd) {
-	switch msg := msg.(type) {
-	case CommandPaletteTaskActionMsg:
-		return m.handleCommandPaletteTaskAction(msg)
-
-	case CommandPaletteBulkActionMsg:
-		return m.handleCommandPaletteBulkAction(msg)
-
-	case InlineTaskCreateMsg:
-		return m.handleInlineTaskCreate(msg)
-	}
-	return false, nil
 }
 
 // handleTaskContentMessages handles task content editing messages.

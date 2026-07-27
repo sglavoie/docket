@@ -47,7 +47,6 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 	task.WorkflowState = state
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
 	repo := newScenarioRepo(commitService, project)
@@ -182,8 +181,8 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 // (3) when a newer workspace-ledger mutation follows the toggle, that newer
 // mutation is undone first — the planning undo never jumps ahead of it.
 func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
-	t.Run("q toggle commits state and planning as one durable undoable ledger entry", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewOutliner)
+	t.Run("Next toggle commits state and planning as one durable undoable ledger entry", func(t *testing.T) {
+		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 		// Precondition: the task is planned for Today, so the promotion must also
 		// prove the Today drop rides the same transaction.
 		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
@@ -192,7 +191,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 			t.Fatalf("seed daily plan: %v", err)
 		}
 
-		app = sendAppKey(app, syntheticKey('q'))
+		app = sendAppKey(app, syntheticKey('n'))
 		assertQueueKeyFlow(t, app, task.ID, true)
 
 		// The move is one ledger transaction that captured state + planning.
@@ -222,13 +221,13 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 	})
 
 	t.Run("newer ledger mutation is undone before the planning toggle", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 
 		origPriority := diskTaskPriority(t, app.currentProject, task.ID)
 		newPriority := origPriority + 1
 
 		// Promote to Next (ledger transaction #1).
-		app = sendAppKey(app, syntheticKey('q'))
+		app = sendAppKey(app, syntheticKey('n'))
 		assertQueueKeyFlow(t, app, task.ID, true)
 
 		// A newer, unrelated workspace-ledger mutation (transaction #2).

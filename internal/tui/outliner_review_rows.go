@@ -129,7 +129,7 @@ func (m *OutlinerModel) buildDailyReviewRows() {
 			continue
 		}
 		sortDailyReviewSection(entries, dailyReviewSectionComparator(section))
-		m.appendReviewSection(getSectionName(section), reviewCollapseKey(reviewDaily, int(section)), entries)
+		m.appendReviewSection(getSectionName(section), reviewCollapseKey(ModeDailyReview, int(section)), entries)
 	}
 }
 
@@ -187,10 +187,10 @@ func (m *OutlinerModel) buildActivityRows() {
 	}
 
 	if len(active) > 0 {
-		m.appendReviewSection("Active", reviewCollapseKey(reviewActivity, activitySectionActive), active)
+		m.appendReviewSection("Active", reviewCollapseKey(ModeActivity, activitySectionActive), active)
 	}
 	if len(completed) > 0 {
-		m.appendReviewSection("Completed", reviewCollapseKey(reviewActivity, activitySectionCompleted), completed)
+		m.appendReviewSection("Completed", reviewCollapseKey(ModeActivity, activitySectionCompleted), completed)
 	}
 }
 

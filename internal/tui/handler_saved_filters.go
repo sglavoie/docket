@@ -14,9 +14,6 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case ShowSaveFilterDialogMsg:
-		return m.showViewInit(ViewSaveFilterInput, NewSaveFilterInputModel(m.buildCurrentViewSummary()))
-
 	case SaveFilterMsg:
 		sf := m.captureCurrentFilter(msg.Name)
 		// Saved filters are planning-domain state; commit only the planning
@@ -29,28 +26,20 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 		// Pop the input dialog
 		m.popView()
 		// Set active saved filter indicator on the appropriate view
-		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+		if m.crossOutliner != nil {
 			m.crossOutliner.activeSavedFilter = msg.Name
-		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-			m.outliner.activeSavedFilter = msg.Name
 		}
-		// Refresh the command palette if it's still showing
-		m.refreshCommandPaletteItems()
+		// Refresh Finder if it is still showing.
+		m.refreshFinderItems()
 		return true, nil
 
 	case LoadSavedFilterMsg:
 		if outliner, _, ok := m.outlinerPrimary(); ok {
-			if outliner.project == nil {
-				m.applySavedFilterToCrossOutliner(msg.Filter)
-			} else {
-				m.applySavedFilterToOutliner(msg.Filter)
-			}
+			m.applySavedFilterToOutlinerModel(outliner, msg.Filter)
 			return true, nil
 		}
-		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+		if m.crossOutliner != nil {
 			m.applySavedFilterToCrossOutliner(msg.Filter)
-		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-			m.applySavedFilterToOutliner(msg.Filter)
 		}
 		return true, nil
 
@@ -61,29 +50,28 @@ func (m *AppModel) handleSavedFilterMessages(msg tea.Msg) (bool, tea.Cmd) { //no
 			return true, errorCmd("failed to delete saved filter: %w", err)
 		}
 		// Clear active indicator (filter already deleted, so just clear any indicator)
-		if m.baseProjectView() == ViewCrossProjectOutliner && m.crossOutliner != nil {
+		if m.crossOutliner != nil {
 			m.crossOutliner.activeSavedFilter = ""
 			m.crossOutliner.activeCriteriaFilter = nil
-		} else if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-			m.outliner.activeSavedFilter = ""
-			m.outliner.activeCriteriaFilter = nil
 		}
-		// Refresh the command palette if it's showing
-		m.refreshCommandPaletteItems()
+		m.refreshFinderItems()
 		return true, nil
 	}
 	return false, nil
 }
 
-// refreshCommandPaletteItems reloads the command palette's domain-native items
-// when it is the current view.
-func (m *AppModel) refreshCommandPaletteItems() {
-	if m.currentView() != ViewCommandPalette {
+func (m *AppModel) refreshFinderItems() {
+	if m.currentView() != ViewFinder {
 		return
 	}
-	if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
-		palette.allItems = palette.loadAllItems()
-		palette.filterItems()
+	if discovery, ok := m.views.Get(ViewFinder).(*DiscoveryListModel); ok &&
+		discovery.kind == DiscoverySurfaceFinder {
+		finder, err := NewRuntimeFinder(m.runtime, m.GetOperationRegistry(), discovery.context)
+		if err != nil {
+			return
+		}
+		discovery.finder = finder
+		_ = discovery.rebuildFinderResults()
 	}
 }
 
@@ -108,12 +96,11 @@ func (m *AppModel) captureCurrentFilter(name string) config.SavedFilter {
 			return m.captureOutlinerFilterFrom(name, id, m.crossOutliner)
 		}
 	}
-	return m.captureOutlinerFilter(name, id)
+	return m.captureOutlinerFilterFrom(name, id, m.crossOutliner)
 }
 
-// captureOutlinerFilter creates a SavedFilter from the outliner state.
 func (m *AppModel) captureOutlinerFilter(name, id string) config.SavedFilter {
-	return m.captureOutlinerFilterFrom(name, id, m.outliner)
+	return m.captureOutlinerFilterFrom(name, id, m.crossOutliner)
 }
 
 func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel) config.SavedFilter {
@@ -149,12 +136,11 @@ func (m *AppModel) captureOutlinerFilterFrom(name, id string, ol *OutlinerModel)
 	return sf
 }
 
-// applySavedFilterToOutliner applies a saved filter's state to the outliner.
-func (m *AppModel) applySavedFilterToOutliner(sf config.SavedFilter) {
-	m.applySavedFilterToOutlinerModel(m.outliner, sf)
+func (m *AppModel) applySavedFilterToCrossOutliner(sf config.SavedFilter) {
+	m.applySavedFilterToOutlinerModel(m.crossOutliner, sf)
 }
 
-func (m *AppModel) applySavedFilterToCrossOutliner(sf config.SavedFilter) {
+func (m *AppModel) applySavedFilterToOutliner(sf config.SavedFilter) {
 	m.applySavedFilterToOutlinerModel(m.crossOutliner, sf)
 }
 
@@ -198,48 +184,4 @@ func (m *AppModel) applySavedFilterToOutlinerModel(ol *OutlinerModel, sf config.
 
 	// Rebuild with new sort/filter
 	ol.rebuildRows()
-}
-
-// buildCurrentViewSummary returns a human-readable summary of the current filter state.
-func (m *AppModel) buildCurrentViewSummary() string {
-	switch m.baseProjectView() {
-	case ViewCrossProjectOutliner:
-		return m.buildOutlinerSummaryFrom(m.crossOutliner)
-	case ViewOutliner:
-		return m.buildOutlinerViewSummary()
-	default:
-		return m.buildOutlinerViewSummary()
-	}
-}
-
-// buildOutlinerViewSummary returns a summary of the outliner's filter state.
-func (m *AppModel) buildOutlinerViewSummary() string {
-	return m.buildOutlinerSummaryFrom(m.outliner)
-}
-
-func (m *AppModel) buildOutlinerSummaryFrom(ol *OutlinerModel) string {
-	if ol == nil {
-		return ""
-	}
-
-	var tags []string
-	for tag := range ol.filter.Tags {
-		tags = append(tags, tag)
-	}
-	return describeSnapshotFilters(
-		string(ol.filter.Type),
-		ol.filter.States,
-		ol.filter.hasStateFilter(),
-		ol.filter.Priority,
-		tags,
-		int(ol.filter.DueDate),
-		ol.filter.Actionable,
-		ol.filter.HideDimmed,
-		ol.filter.GitHubIssue,
-		ol.filter.Parked,
-		ol.filter.Attrs,
-		ol.filter.ScoreMin,
-		int(ol.sort.Field),
-		ol.activePerspective,
-	)
 }

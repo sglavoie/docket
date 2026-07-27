@@ -255,7 +255,7 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "?":
-			return m, helpCmd(ViewMetricsDashboard, "Metrics Dashboard", GetKeybindingRegistry().GetForView(ViewMetricsDashboard))
+			return m, helpCmd(ViewMetricsDashboard, "Metrics Dashboard", helpItemsFromKeyMap(m.buildKeyMap()))
 		}
 	}
 	return m, nil

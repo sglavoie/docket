@@ -97,13 +97,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if msg.Project != nil {
 				m.reloadProjectByID(msg.Project.ID)
 			}
-			if m.outliner != nil {
-				if m.outliner.project == nil {
-					m.outliner.crossForceRebuild = true
-				}
-				m.outliner.rebuildRows()
-			}
-			if cross := m.activeCrossProjectOutliner(); cross != nil && cross != m.outliner {
+			if cross := m.activeCrossProjectOutliner(); cross != nil {
 				cross.crossForceRebuild = true
 				cross.rebuildRows()
 				cross.clampCursor()

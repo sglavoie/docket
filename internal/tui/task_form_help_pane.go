@@ -114,7 +114,7 @@ func (m *TaskFormModel) basicsHelpEntries() []helpEntry {
 		}
 	case 5: // Section
 		return []helpEntry{
-			{key: "Enter", desc: "pick section"},
+			{key: "Enter", desc: "pick state"},
 		}
 	case 6: // Flags
 		return []helpEntry{

@@ -49,10 +49,7 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, typed bool, projects .
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(ViewCrossProjectOutliner, cross)
-	app.viewStack = []PresentationID{ViewDashboard, ViewCrossProjectOutliner}
-	if typed {
-		app.enableTypedNavigation()
-	}
+	setTestPresentationPath(app, ViewDashboard, ViewCrossProjectOutliner)
 	return app, cross
 }
 
@@ -98,7 +95,7 @@ func TestHandleWithRefreshDefersCrossReloadWhileCovered(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "covered")
 	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
-	app.viewStack = append(app.viewStack, ViewTaskDetail)
+	pushTestPresentationOverlay(app, ViewTaskDetail)
 
 	cmd := app.handleWithRefresh(false, true, "")
 
@@ -185,7 +182,7 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "back")
 	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
-	app.viewStack = append(app.viewStack, ViewTaskDetail)
+	pushTestPresentationOverlay(app, ViewTaskDetail)
 	generation := cross.crossLoadGen
 
 	_, cmd := app.Update(BackMsg{})
@@ -246,7 +243,7 @@ func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testin
 
 	_ = cross.reloadCrossProjects()
 	generation := cross.crossLoadGen
-	app.viewStack = append(app.viewStack, ViewTaskDetail)
+	pushTestPresentationOverlay(app, ViewTaskDetail)
 
 	raw := cross.loadCrossProjectsCmd()()
 	loaded, ok := raw.(crossProjectsLoadedMsg)

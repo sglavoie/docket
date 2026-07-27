@@ -4,13 +4,6 @@ import (
 	"strings"
 )
 
-// clearActiveSavedFilter clears the active saved filter indicator and any
-// criteria filter. Called when the user manually changes filter/sort state.
-func (m *OutlinerModel) clearActiveSavedFilter() {
-	m.activeSavedFilter = ""
-	m.activeCriteriaFilter = nil
-}
-
 // ActiveFilterCount returns the number of active filters for the status bar pill.
 func (m *OutlinerModel) ActiveFilterCount() int {
 	return len(m.activeFilterParts())
@@ -64,7 +57,7 @@ func (m *OutlinerModel) renderQuickEditBar() string {
 
 	helpHint := MutedStyle.Render("Enter=save  Esc=cancel")
 	if !m.quickEdit.IsRenameOnly() {
-		helpHint = MutedStyle.Render("!1-5=priority #tag @date /section $status · Enter=save Esc=cancel")
+		helpHint = MutedStyle.Render("!1-5=priority #tag @date $state · Enter=save Esc=cancel")
 	}
 	lines = append(lines, helpHint)
 

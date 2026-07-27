@@ -35,8 +35,6 @@ func tuiTestDoc(t *testing.T, title string) *storage.ProjectDocument {
 	}
 	doc := &storage.ProjectDocument{
 		ProjectName:   "Alpha",
-		Sections:      []string{models.SectionNext},
-		SectionColors: map[string]string{},
 		Tasks:         []*models.Task{task},
 		SchemaVersion: storage.SchemaVersionV2,
 	}

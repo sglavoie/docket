@@ -8,8 +8,8 @@ func tutorConceptTopicsCore() []TutorTopic {
 			Content: `# What Is the Activity Log
 
 Every task maintains a persistent changelog that records field
-changes over time: status transitions, priority changes, section
-reassignments, tag edits, title updates, and more.
+changes over time: state transitions, priority changes, tag edits,
+title updates, and more.
 
 # How It Works
 
@@ -91,10 +91,11 @@ Outliner shows. Only one is active at a time.
 
 # Applying And Managing A Context
 
-Press C in the Outliner to open Contexts. Browse with j/k,
+Press c in the Outliner to open the Scope Hub. Browse with j/k,
 preview the projects a scope resolves to, / to search, and
-Enter to apply. From the same surface, n creates a custom
-context, e edits membership, r renames, and d deletes.
+Enter to apply. Press Space on a scope or project to open its
+contextual actions for creation, membership, rename, lifecycle,
+and recovery operations.
 
 # What A Context Does Not Do
 
@@ -120,12 +121,12 @@ than creating separate child tasks.
 # When to Use Checklists
 
 Use checklists for steps within a task that do not need their own
-status, priority, or metadata. For example, a deployment task might
+state, priority, or metadata. For example, a deployment task might
 have checklist items for each step in the release process.
 
 # Checklists vs Child Tasks
 
-Child tasks have full metadata (status, priority, tags, due dates).
+Child tasks have full metadata (state, priority, tags, due dates).
 Checklist items are simple text with a done/incomplete toggle. Use
 child tasks for substantial work items and checklists for quick
 step-by-step tracking.`,

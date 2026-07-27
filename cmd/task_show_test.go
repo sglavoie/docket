@@ -32,7 +32,7 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 		ShortID:         task.ShortID,
 		Type:            task.Type.String(),
 		Title:           task.Title,
-		Status:          models.LegacyStatusForState(task.State()).String(),
+		State:           task.State().String(),
 		Priority:        task.Priority,
 		Tags:            task.Tags,
 		DependsOn:       task.DependsOn,
@@ -65,8 +65,8 @@ func TestTaskShowJSONIncludesPinnedAt(t *testing.T) {
 	}
 }
 
-func TestTaskShowJSONUsesQueuedField(t *testing.T) {
-	data, err := json.Marshal(taskShowJSONEntry{Queued: true})
+func TestTaskShowJSONUsesOnlyCanonicalLifecycleField(t *testing.T) {
+	data, err := json.Marshal(taskShowJSONEntry{State: models.StateNext.String()})
 	if err != nil {
 		t.Fatalf("failed to marshal: %v", err)
 	}
@@ -75,11 +75,13 @@ func TestTaskShowJSONUsesQueuedField(t *testing.T) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
-	if value, ok := raw["queued"]; !ok || value != true {
-		t.Errorf("expected queued=true in JSON, got %v", value)
+	if value, ok := raw["state"]; !ok || value != models.StateNext.String() {
+		t.Errorf("expected state=next in JSON, got %v", value)
 	}
-	if _, ok := raw["active"]; ok {
-		t.Error("did not expect legacy active field in JSON")
+	for _, field := range []string{"status", "section", "queued", "stage", "active"} {
+		if _, ok := raw[field]; ok {
+			t.Errorf("did not expect retired %s field in JSON", field)
+		}
 	}
 }
 
@@ -111,7 +113,7 @@ func TestTaskShowJSONIncludesActivity(t *testing.T) {
 		ShortID:         task.ShortID,
 		Type:            task.Type.String(),
 		Title:           task.Title,
-		Status:          models.LegacyStatusForState(task.State()).String(),
+		State:           task.State().String(),
 		Priority:        task.Priority,
 		Tags:            task.Tags,
 		DependsOn:       task.DependsOn,

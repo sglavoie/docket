@@ -2,13 +2,15 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func TestQuickCaptureStatusSuggestionsIncludeAllStatuses(t *testing.T) {
 	q := &quickCaptureInput{}
 	suggestions := q.getStatusSuggestions("")
 
-	want := []string{"start", "review", "standby", "maybe", "blocked", "done", "canceled"}
+	want := textgrammar.StateNames()
 	if len(suggestions) != len(want) {
 		t.Fatalf("got %d suggestions, want %d", len(suggestions), len(want))
 	}
@@ -27,9 +29,9 @@ func TestQuickCaptureStatusSuggestionsFilterByPartial(t *testing.T) {
 		want    []string
 	}{
 		{"rev", []string{"review"}},
-		{"stand", []string{"standby"}},
-		{"start", []string{"start"}},
-		{"block", []string{"blocked"}},
+		{"read", []string{"ready"}},
+		{"wait", []string{"waiting"}},
+		{"pause", []string{"paused"}},
 	}
 
 	for _, tt := range tests {

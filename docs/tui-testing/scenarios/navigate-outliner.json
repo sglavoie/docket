@@ -4,13 +4,15 @@
   "size": "120x40",
   "actions": [
     { "type": "resize", "width": 120, "height": 40 },
-    { "type": "command", "label": "open global All focus", "command": "outliner root" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "command", "label": "open global All focus", "command": "outliner root" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "command", "label": "sort All focus by due date", "command": "Due Date" },
+    { "type": "key", "label": "open the mode finder", "key": "m" },
+    { "type": "text", "label": "find Due", "text": "due" },
+    { "type": "key", "label": "activate Due", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

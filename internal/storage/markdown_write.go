@@ -12,28 +12,12 @@ import (
 // WriteTasksMarkdown generates markdown content from tasks.
 // Tasks are written in their slice order, preserving user-defined ordering.
 func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
-	return WriteTasksMarkdownWithSections(projectName, tasks, nil, nil)
-}
-
-// WriteTasksMarkdownWithSections generates canonical schema-v2 markdown.
-//
-// sections and sectionColors are retained in the signature only while legacy
-// runtime callers are staged away from project lifecycle sections. Canonical
-// project documents never persist either value.
-func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, _ []string, _ map[string]string) string {
 	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, nil, nil)
 }
 
-// WriteTasksMarkdownWithProjectMetadata generates markdown content from tasks,
-// tags, and retained compatibility arguments for legacy section metadata.
-func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, _ []string, _ map[string]string, tags []string) string {
-	return WriteTasksMarkdownWithFullProjectMetadata(projectName, tasks, nil, nil, tags, nil)
-}
-
-// WriteTasksMarkdownWithFullProjectMetadata generates markdown content from
-// tasks and all canonical project-level task-file metadata. Legacy lifecycle
-// sections and section colors are accepted for source compatibility but ignored.
-func WriteTasksMarkdownWithFullProjectMetadata(projectName string, tasks []*models.Task, _ []string, _ map[string]string, tags []string, pinnedTags []string) string {
+// WriteTasksMarkdownWithProjectMetadata generates canonical schema-v2 markdown
+// with all project-level task-file metadata.
+func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, tags []string, pinnedTags []string) string {
 	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, tags, pinnedTags)
 }
 

@@ -24,19 +24,6 @@ func (m *LinkedTaskSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	if m.pendingPrefix != "" && isModifierOnly(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		prefix := m.pendingPrefix
-		m.pendingPrefix = ""
-		if key != "esc" && prefix == "g" {
-			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-		return m, nil
-	}
-
 	if model, cmd, handled := m.HandleSearchMode(msg, m, m.filterRelations); handled {
 		return model, cmd
 	}
@@ -78,8 +65,8 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model
 		}
 		return m, nil
 
-	case "g":
-		m.pendingPrefix = "g"
+	case "home":
+		m.cursor = 0
 		return m, nil
 	}
 

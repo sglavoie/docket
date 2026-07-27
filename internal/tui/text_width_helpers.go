@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -68,12 +66,4 @@ func truncateRequired(site, text string, width int) string {
 		recordRequiredTextTruncation(site, text, truncated)
 	}
 	return truncated
-}
-
-func leftPadToWidth(text string, width int) string {
-	visualWidth := lipgloss.Width(text)
-	if visualWidth >= width {
-		return text
-	}
-	return strings.Repeat(" ", width-visualWidth) + text
 }

@@ -20,18 +20,6 @@ func (m *CrossProjectLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	if m.pendingPrefix != "" && isModifierOnly(msg) {
-		return m, nil
-	}
-	if m.pendingPrefix != "" {
-		prefix := m.pendingPrefix
-		m.pendingPrefix = ""
-		if key != "esc" && prefix == "g" && key == "g" {
-			m.goToFirst()
-		}
-		return m, nil
-	}
-
 	if m.IsSearchMode() && (m.step == StepSelectProject || m.step == StepSelectTask) {
 		handled, cmd, valueChanged := m.HandleSearchInput(msg)
 		if valueChanged {
@@ -88,9 +76,9 @@ func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyPressMsg) (tea.Model
 		}
 		return m, nil
 
-	case "g":
+	case "home":
 		if !m.IsSearchMode() {
-			m.pendingPrefix = "g"
+			m.goToFirst()
 		}
 		return m, nil
 

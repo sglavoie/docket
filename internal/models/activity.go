@@ -7,7 +7,7 @@ import (
 // ActivityEntry records a single field change in a task's activity log.
 type ActivityEntry struct {
 	Timestamp time.Time `json:"timestamp"`
-	Field     string    `json:"field"`     // e.g., "status", "priority", "tags", "created"
+	Field     string    `json:"field"`     // e.g., "state", "priority", "tags", "created"
 	OldValue  string    `json:"old_value"` // empty for "created" entries
 	NewValue  string    `json:"new_value"` // empty for "created" entries
 }

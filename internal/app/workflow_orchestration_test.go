@@ -32,11 +32,10 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 	projectStatus := &projectStatusArtifactRecorder{}
 
 	taskRule := workflow.WorkflowRule{
-		ID:      "cascade",
-		Name:    "Ship cascade",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: string(models.StatusInProgress)},
-		Actions: []workflow.RuleAction{
+		ID:       "cascade",
+		Name:     "Ship cascade",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateInProgress)}}, Actions: []workflow.RuleAction{
 			{ActionType: workflow.ActionCreateFollowup, Value: "verify {task}"},
 			{ActionType: workflow.ActionMoveToProject, Value: destination.Name},
 		},
@@ -46,9 +45,7 @@ func TestWorkflowOrchestrationGroupsEveryCascadeEffect(t *testing.T) {
 		Name:     "Mark active",
 		Level:    workflow.RuleLevelProject,
 		Enabled:  true,
-		Trigger:  workflow.RuleTrigger{Field: workflow.FieldActiveTaskCount, Operation: workflow.OpGreaterThan, Value: "0"},
-		Actions:  []workflow.RuleAction{{ActionType: workflow.ActionSetProjectStatus, Value: "active"}},
-		Priority: 10,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldActiveTaskCount, Operation: workflow.OpGreaterThan, Value: "0"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetProjectStatus, Value: "active"}}, Priority: 10,
 	}
 
 	result, err := newTestService(repo).StateWithWorkflow(task.ID, models.StateInProgress, app.SingleTaskWorkflowOptions{
@@ -99,19 +96,15 @@ func TestBulkWorkflowReturnsNormalizedConflicts(t *testing.T) {
 	repo := newFakeRepo(project)
 	rules := []workflow.WorkflowRule{
 		{
-			ID:      "priority-one",
-			Name:    "Set P1",
-			Enabled: true,
-			Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: string(models.StatusInProgress)},
-			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}},
-		},
+			ID:       "priority-one",
+			Name:     "Set P1",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateInProgress)}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "1"}}},
 		{
-			ID:      "priority-five",
-			Name:    "Set P5",
-			Enabled: true,
-			Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: string(models.StatusInProgress)},
-			Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "5"}},
-		},
+			ID:       "priority-five",
+			Name:     "Set P5",
+			Enabled:  true,
+			Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateInProgress)}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetPriority, Value: "5"}}},
 	}
 
 	result, err := newTestService(repo).BulkTransitionWithWorkflow(app.BulkTransitionRequest{
@@ -142,13 +135,11 @@ func TestWorkflowProjectStatusFailsClosedWithoutCatalogArtifact(t *testing.T) {
 	project := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(project)
 	rule := workflow.WorkflowRule{
-		ID:      "project-active",
-		Name:    "Mark active",
-		Level:   workflow.RuleLevelProject,
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldActiveTaskCount, Operation: workflow.OpGreaterThan, Value: "0"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetProjectStatus, Value: "active"}},
-	}
+		ID:       "project-active",
+		Name:     "Mark active",
+		Level:    workflow.RuleLevelProject,
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldActiveTaskCount, Operation: workflow.OpGreaterThan, Value: "0"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionSetProjectStatus, Value: "active"}}}
 
 	_, err := newTestService(repo).SetPriorityWithWorkflow(task.ID, 1, app.SingleTaskWorkflowOptions{Rules: []workflow.WorkflowRule{rule}})
 	if !errors.Is(err, app.ErrWorkflowProjectStatusPersistenceUnavailable) {
@@ -186,12 +177,10 @@ func TestWorkflowRulesSeeLegacyPreEvaluationReconciliation(t *testing.T) {
 	project := newProject("proj-a", "Alpha", parent, child)
 	repo := newFakeRepo(project)
 	rule := workflow.WorkflowRule{
-		ID:      "tag-reopened",
-		Name:    "Tag reopened parent",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatus, Operation: workflow.OpEquals, Value: string(models.StatusInProgress)},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "reconciled"}},
-	}
+		ID:       "tag-reopened",
+		Name:     "Tag reopened parent",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: string(models.StateInProgress)}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "reconciled"}}}
 
 	_, err := newTestService(repo).SetPriorityWithWorkflow(child.ID, 1, app.SingleTaskWorkflowOptions{Rules: []workflow.WorkflowRule{rule}})
 	if err != nil {

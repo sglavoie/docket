@@ -25,12 +25,14 @@ This is a shorthand for "tt task add" with smart inline parsing:
   - Inline tags: #tag (e.g., "Add feature #backend #urgent")
 
 The default type is "task". Use flags for other types.
+Use --state to choose an initial canonical workflow state.
 
 Examples:
   tt add "Fix login bug"
   tt add "Fix login bug !1"
   tt add "Add feature #backend #urgent"
   tt add "Critical fix !1 #hotfix"
+  tt add "Waiting on vendor" --state waiting
   tt add --story "User authentication flow"
   tt add "Implement cache" --parent 1
   tt add "Deploy service" --project myproject`,
@@ -43,6 +45,7 @@ var (
 	addParentFlag string
 	addPriority   int
 	addTags       []string
+	addStateFlag  string
 	addIsEpic     bool
 	addIsStory    bool
 	addIsBug      bool
@@ -67,6 +70,7 @@ func init() {
 	addCmd.Flags().StringVar(&addParentFlag, "parent", "", "parent task ID or short ID")
 	addCmd.Flags().IntVarP(&addPriority, "priority", "P", 0, "priority (1=highest, 5=lowest)")
 	addCmd.Flags().StringSliceVarP(&addTags, "tag", "T", nil, "tags for the task")
+	addCmd.Flags().StringVar(&addStateFlag, "state", "", "canonical workflow state for the task")
 
 	addCmd.Flags().BoolVar(&addIsEpic, "epic", false, "create an epic")
 	addCmd.Flags().BoolVar(&addIsStory, "story", false, "create a story")
@@ -76,6 +80,7 @@ func init() {
 	addCmd.Flags().StringP("project", "p", "", "target project slug (default: current project)")
 
 	_ = addCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
+	_ = addCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 }
 
 // parseInlineMetadata extracts priority (!N) and tags (#tag) from the title.
@@ -181,6 +186,14 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	tags = append(tags, addTags...)
 	tags = append(tags, inlineTags...)
 
+	state := models.StateInbox
+	if stagedLifecycleFlagProvided(cmd, "state", addStateFlag) {
+		state, err = parseCanonicalWorkflowStateInput("state", addStateFlag)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Resolve the parent to its stable UUID (with the legacy hierarchy/depth
 	// checks); the use case re-validates against the fresh snapshot.
 	var parentID *string
@@ -206,7 +219,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 			Type:      taskType,
 			Priority:  priority,
 			Tags:      tags,
-			State:     models.StateReady,
+			State:     state,
 			ParentID:  parentID,
 		}, workflows.options(false, "Add Task", nil))
 	})

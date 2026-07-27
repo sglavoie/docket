@@ -13,8 +13,9 @@ import (
 
 var taskEditCmd = &cobra.Command{
 	Use:   "edit [id]",
-	Short: "Edit a task's title and description",
-	Long: `Edit a task's title and description in an external editor.
+	Short: "Edit a task's content and state",
+	Long: `Edit a task's title and description in an external editor, optionally
+setting its canonical workflow state with --state.
 
 If no ID is specified, opens an interactive selector.
 
@@ -26,18 +27,24 @@ The editor can be configured via:
 
 Examples:
   tt task edit 5
+  tt task edit 5 --state waiting
   tt task edit 3 --editor vim
   tt t edit`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runTaskEdit,
 }
 
-var editEditor string
+var (
+	editEditor    string
+	taskEditState string
+)
 
 func init() {
 	taskCmd.AddCommand(taskEditCmd)
 	taskEditCmd.Flags().StringVar(&editEditor, "editor", "", "editor to use")
+	taskEditCmd.Flags().StringVar(&taskEditState, "state", "", "set canonical workflow state")
 	addOutputFlags(taskEditCmd)
+	_ = taskEditCmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 	taskEditCmd.ValidArgsFunction = completeCurrentProjectTaskIDs()
 }
 
@@ -45,6 +52,15 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	out, err := getOutputOpts(cmd)
 	if err != nil {
 		return err
+	}
+
+	var requestedState *models.WorkflowState
+	if stagedLifecycleFlagProvided(cmd, "state", taskEditState) {
+		state, stateErr := parseCanonicalWorkflowStateInput("state", taskEditState)
+		if stateErr != nil {
+			return stateErr
+		}
+		requestedState = &state
 	}
 
 	// Load project and config once (the config manager is no longer needed here:
@@ -94,7 +110,8 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// Check if changed
 	titleChanged := newTitle != task.Title
 	descChanged := newDesc != task.Description
-	if !titleChanged && !descChanged {
+	stateChanged := requestedState != nil && *requestedState != task.State()
+	if !titleChanged && !descChanged && !stateChanged {
 		if out.JSON {
 			return outputSingleTaskJSON(task)
 		}
@@ -114,9 +131,10 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	undoContext := fmt.Sprintf("#%d %s", task.ShortID, newTitle)
 	cascade, err := withResultRetry(func() (app.BulkResult, error) {
 		return workflows.service.EditWithWorkflow(app.EditRequest{
-			Locator:     app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
-			Title:       &newTitle,
-			Description: &newDesc,
+			Locator:       app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+			Title:         &newTitle,
+			Description:   &newDesc,
+			WorkflowState: requestedState,
 		}, workflows.optionsWithContext(true, "Edit Task", undoContext))
 	})
 	if err != nil {

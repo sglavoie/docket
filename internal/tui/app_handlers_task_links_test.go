@@ -29,7 +29,7 @@ func TestHandleTaskMessagesCreateLinkedTask(t *testing.T) {
 	if !handled {
 		t.Error("CreateLinkedTaskMsg should be handled")
 	}
-	if app.currentView() != ViewLinkedTaskCreator {
+	if app.currentView() != ViewTaskComposer {
 		t.Errorf("currentView should be LinkedTaskCreator, got %v", app.currentView())
 	}
 }

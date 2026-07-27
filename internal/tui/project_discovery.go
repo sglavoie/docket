@@ -22,16 +22,6 @@ func projectDiscoveryProjects(runtime *config.RuntimeState) []*models.Project {
 	return projects
 }
 
-func projectDiscoveryDescription(project *models.Project) string {
-	if project == nil {
-		return ""
-	}
-	if project.Archived {
-		return fmt.Sprintf("%s - Project: %s", archivedProjectMarker, project.Slug)
-	}
-	return fmt.Sprintf("Project: %s", project.Slug)
-}
-
 func projectPickerDisplayText(project *models.Project) string {
 	if project == nil {
 		return ""

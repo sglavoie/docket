@@ -11,11 +11,11 @@ import (
 
 func TestCaptureTaskStates(t *testing.T) {
 	t.Run("captures task states", func(t *testing.T) {
-		task1 := testutil.NewTestTaskWithStatus("Task 1", models.StatusTodo)
+		task1 := testutil.NewTestTaskWithState("Task 1", models.StateReady)
 		task1.Priority = 2
 		task1.Tags = []string{"urgent", "backend"}
 
-		task2 := testutil.NewTestTaskWithStatus("Task 2", models.StatusInProgress)
+		task2 := testutil.NewTestTaskWithState("Task 2", models.StateInProgress)
 		task2.WorkflowState = models.StateInProgress
 
 		tasks := []*models.Task{task1, task2}
@@ -55,7 +55,7 @@ func TestCaptureTaskStates(t *testing.T) {
 	})
 
 	t.Run("captures recurrence Mode and OriginalDay", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Recurring", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Recurring", models.StateReady)
 		task.Recurrence = &models.RecurrencePattern{
 			Interval:    1,
 			Unit:        models.RecurrenceMonthly,
@@ -97,7 +97,7 @@ func TestCaptureTaskStates(t *testing.T) {
 	})
 
 	t.Run("deep copies DueDate pointer", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		due := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
 		task.DueDate = &due
 
@@ -126,7 +126,7 @@ func TestCaptureTaskStates(t *testing.T) {
 	})
 
 	t.Run("modifying original tasks does not affect captured states", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		task.Priority = 3
 		task.Tags = []string{"original"}
 
@@ -147,10 +147,10 @@ func TestCaptureTaskStates(t *testing.T) {
 
 func TestBuildEvaluationContext(t *testing.T) {
 	t.Run("builds context with previous states", func(t *testing.T) {
-		task1 := testutil.NewTestTaskWithStatus("Task 1", models.StatusTodo)
-		task2 := testutil.NewTestTaskWithStatus("Task 2", models.StatusInProgress)
+		task1 := testutil.NewTestTaskWithState("Task 1", models.StateReady)
+		task2 := testutil.NewTestTaskWithState("Task 2", models.StateInProgress)
 
-		prevTask1 := testutil.NewTestTaskWithStatus("Task 1", models.StatusInProgress)
+		prevTask1 := testutil.NewTestTaskWithState("Task 1", models.StateInProgress)
 		prevTask1.ID = task1.ID
 
 		prevStates := map[string]*models.Task{
@@ -203,7 +203,7 @@ func TestBuildEvaluationContext(t *testing.T) {
 	})
 
 	t.Run("handles empty previous states", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		tasks := []*models.Task{task}
 
 		ctx := workflow.BuildEvaluationContext(tasks, map[string]*models.Task{}, "", "")
@@ -217,13 +217,13 @@ func TestBuildEvaluationContext(t *testing.T) {
 	})
 
 	t.Run("excludes unchanged tasks from Changes", func(t *testing.T) {
-		changed := testutil.NewTestTaskWithStatus("Changed", models.StatusDone)
-		unchanged := testutil.NewTestTaskWithStatus("Unchanged", models.StatusTodo)
+		changed := testutil.NewTestTaskWithState("Changed", models.StateDone)
+		unchanged := testutil.NewTestTaskWithState("Unchanged", models.StateReady)
 
 		// Previous state: changed was Todo, unchanged was Todo
-		prevChanged := testutil.NewTestTaskWithStatus("Changed", models.StatusTodo)
+		prevChanged := testutil.NewTestTaskWithState("Changed", models.StateReady)
 		prevChanged.ID = changed.ID
-		prevUnchanged := testutil.NewTestTaskWithStatus("Unchanged", models.StatusTodo)
+		prevUnchanged := testutil.NewTestTaskWithState("Unchanged", models.StateReady)
 		prevUnchanged.ID = unchanged.ID
 
 		prevStates := map[string]*models.Task{
@@ -254,17 +254,17 @@ func TestBuildEvaluationContext(t *testing.T) {
 
 func TestTaskStateChanged(t *testing.T) {
 	t.Run("nil prev means changed", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		if !workflow.TaskStateChanged(task, nil) {
 			t.Error("expected changed when prev is nil")
 		}
 	})
 
 	t.Run("same state means unchanged", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		task.Priority = 3
 		task.Tags = []string{"a", "b"}
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		prev.Priority = 3
 		prev.Tags = []string{"a", "b"}
@@ -274,8 +274,8 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("status change detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusDone)
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateDone)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when status differs")
@@ -283,9 +283,9 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("priority change detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		task.Priority = 1
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		prev.Priority = 3
 		if !workflow.TaskStateChanged(task, prev) {
@@ -294,9 +294,9 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("tag change detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		task.Tags = []string{"a", "b", "c"}
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		prev.Tags = []string{"a", "b"}
 		if !workflow.TaskStateChanged(task, prev) {
@@ -305,10 +305,10 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("due date added detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		now := time.Now()
 		task.DueDate = &now
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		if !workflow.TaskStateChanged(task, prev) {
 			t.Error("expected changed when due date added")
@@ -316,8 +316,8 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("due date removed detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		now := time.Now()
 		prev.DueDate = &now
@@ -327,9 +327,9 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("section change detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		task.WorkflowState = models.StateNext
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		prev.WorkflowState = models.StateInbox
 		if !workflow.TaskStateChanged(task, prev) {
@@ -338,9 +338,9 @@ func TestTaskStateChanged(t *testing.T) {
 	})
 
 	t.Run("type change detected", func(t *testing.T) {
-		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		task := testutil.NewTestTaskWithState("Task", models.StateReady)
 		task.Type = models.TaskTypeBug
-		prev := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
+		prev := testutil.NewTestTaskWithState("Task", models.StateReady)
 		prev.ID = task.ID
 		prev.Type = models.TaskTypeTask
 		if !workflow.TaskStateChanged(task, prev) {

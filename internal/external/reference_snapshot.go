@@ -291,7 +291,7 @@ func writeLinkedTaskSummary(b *strings.Builder, linkedTaskIDs []string, linkedTa
 
 func formatTaskSummary(task *models.Task) string {
 	if task.ShortID > 0 {
-		return fmt.Sprintf("#%d %s: %s (%s) [%s]", task.ShortID, task.Type.HeadingPrefix(), task.Title, models.LegacyStatusForState(task.State()), task.ID)
+		return fmt.Sprintf("#%d %s: %s (%s) [%s]", task.ShortID, task.Type.HeadingPrefix(), task.Title, task.State(), task.ID)
 	}
 	return fmt.Sprintf("%s (%s)", task.Title, task.ID)
 }

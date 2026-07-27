@@ -111,30 +111,26 @@ func TestValidateTaskTitle_MultiByteCountsAsRunes(t *testing.T) {
 	}
 }
 
-func TestTaskStatus(t *testing.T) {
+func TestWorkflowStateClassificationAndIcons(t *testing.T) {
 	tests := []struct {
-		status     TaskStatus
-		isComplete bool
-		isActive   bool
+		state      WorkflowState
+		isTerminal bool
 		icon       string
 	}{
-		{StatusTodo, false, true, "□"},
-		{StatusInProgress, false, true, "▶"},
-		{StatusDone, true, false, "✓"},
-		{StatusBlocked, false, true, "⊘"},
-		{StatusCanceled, true, false, "✕"},
+		{StateReady, false, "□"},
+		{StateInProgress, false, "▶"},
+		{StateDone, true, "✓"},
+		{StateWaiting, false, "⊘"},
+		{StateCanceled, true, "✕"},
 	}
 
 	for _, tc := range tests {
-		t.Run(string(tc.status), func(t *testing.T) {
-			if tc.status.IsComplete() != tc.isComplete {
-				t.Errorf("%s.IsComplete() = %v, want %v", tc.status, tc.status.IsComplete(), tc.isComplete)
+		t.Run(string(tc.state), func(t *testing.T) {
+			if tc.state.IsTerminal() != tc.isTerminal {
+				t.Errorf("%s.IsTerminal() = %v, want %v", tc.state, tc.state.IsTerminal(), tc.isTerminal)
 			}
-			if tc.status.IsActive() != tc.isActive {
-				t.Errorf("%s.IsActive() = %v, want %v", tc.status, tc.status.IsActive(), tc.isActive)
-			}
-			if tc.status.Icon() != tc.icon {
-				t.Errorf("%s.Icon() = %s, want %s", tc.status, tc.status.Icon(), tc.icon)
+			if tc.state.Icon() != tc.icon {
+				t.Errorf("%s.Icon() = %s, want %s", tc.state, tc.state.Icon(), tc.icon)
 			}
 		})
 	}
@@ -229,29 +225,29 @@ func TestTaskTags(t *testing.T) {
 	}
 }
 
-func TestParseTaskStatus(t *testing.T) {
+func TestParseWorkflowStateFromCanonicalStrings(t *testing.T) {
 	tests := []struct {
 		input string
-		want  TaskStatus
+		want  WorkflowState
 		valid bool
 	}{
-		{"todo", StatusTodo, true},
-		{"in_progress", StatusInProgress, true},
-		{"done", StatusDone, true},
-		{"blocked", StatusBlocked, true},
-		{"canceled", StatusCanceled, true},
-		{"invalid", TaskStatus("invalid"), false},
-		{"", TaskStatus(""), false},
+		{"ready", StateReady, true},
+		{"in_progress", StateInProgress, true},
+		{"done", StateDone, true},
+		{"waiting", StateWaiting, true},
+		{"canceled", StateCanceled, true},
+		{"invalid", WorkflowState("invalid"), false},
+		{"", WorkflowState(""), false},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			got, valid := ParseTaskStatus(tc.input)
+			got, valid := ParseWorkflowState(tc.input)
 			if got != tc.want {
-				t.Errorf("ParseTaskStatus(%s) = %s, want %s", tc.input, got, tc.want)
+				t.Errorf("ParseWorkflowState(%s) = %s, want %s", tc.input, got, tc.want)
 			}
 			if valid != tc.valid {
-				t.Errorf("ParseTaskStatus(%s) valid = %v, want %v", tc.input, valid, tc.valid)
+				t.Errorf("ParseWorkflowState(%s) valid = %v, want %v", tc.input, valid, tc.valid)
 			}
 		})
 	}

@@ -69,7 +69,7 @@ func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEn
 
 	activity := make([]*models.ActivityEntry, 0, len(t.Activity))
 	for _, a := range t.Activity {
-		if a.Field == "status" {
+		if a.Field == "state" {
 			activity = append(activity, a)
 		}
 	}
@@ -81,10 +81,10 @@ func computeBlockedEntryInRange(t *models.Task, cutoff, now time.Time) BlockedEn
 	inBlockedPeriod := false
 
 	for _, a := range activity {
-		if a.NewValue == string(models.StatusBlocked) && !inBlockedPeriod {
+		if a.NewValue == string(models.StateWaiting) && !inBlockedPeriod {
 			blockedStart = a.Timestamp
 			inBlockedPeriod = true
-		} else if a.OldValue == string(models.StatusBlocked) && inBlockedPeriod {
+		} else if a.OldValue == string(models.StateWaiting) && inBlockedPeriod {
 			duration := blockedDurationInRange(blockedStart, a.Timestamp, cutoff, now)
 			if duration > 0 {
 				entry.TotalBlocked = addDurationSaturating(entry.TotalBlocked, duration)

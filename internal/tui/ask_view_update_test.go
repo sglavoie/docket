@@ -610,7 +610,8 @@ func TestAskActionPlanCoveredAndReplacedOutcomes(t *testing.T) {
 				var replacement *AskViewModel
 				switch placement {
 				case "covered":
-					appModel.showView(ViewMessageLog, NewMessageLogViewModel(nil))
+					appModel.views.Register(ViewMessageLog, NewMessageLogViewModel(nil))
+					pushTestPresentationOverlay(appModel, ViewMessageLog)
 				case "replaced":
 					replacement = NewAskViewModelWithDeps(nil, "", appModel.runtime, nil)
 					replacement.response = "replacement input"

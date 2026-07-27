@@ -99,7 +99,7 @@ type periodicSaveMsg struct{}
 // modified (e.g. Fx clear) and should be persisted to config immediately.
 type outlinerFilterStateChangedMsg struct{}
 
-// StatusMsg sets a temporary status message (used by command palette handlers).
+// StatusMsg sets a temporary status message.
 type StatusMsg string
 
 // InfoStatusMsg sets a temporary informational status message (neutral styling, no checkmark).
@@ -183,36 +183,12 @@ func cursorFlashTimeout() tea.Cmd {
 // Held under the Doherty Threshold (400 ms) so mutations feel instantaneous.
 const MutationFlashDuration = 250 * time.Millisecond
 
-// mutationFlashTimeout returns a command that clears the mutation flash after MutationFlashDuration.
-func mutationFlashTimeout() tea.Cmd {
-	return tea.Tick(MutationFlashDuration, func(time.Time) tea.Msg {
-		return MutationFlashClearMsg{}
-	})
-}
-
 // CompletionFlashFrameDuration is how long each frame of the completion ramp lasts.
 const CompletionFlashFrameDuration = 100 * time.Millisecond
 
 // CompletionFlashFrameCount is the number of frames in the completion ramp,
 // counting frame 0 (set synchronously) plus the scheduled frames.
 const CompletionFlashFrameCount = 3
-
-// completionFlashScheduler returns a batch of ticks that drive the 3-frame
-// green-ramp pulse for task completion: frame 1 at +100ms, frame 2 at +200ms,
-// then a terminal MutationFlashClearMsg at +300ms. Frame 0 is set
-// synchronously by setCompletionFlash() before this scheduler runs.
-func completionFlashScheduler() tea.Cmd {
-	frame1 := tea.Tick(CompletionFlashFrameDuration, func(time.Time) tea.Msg {
-		return CompletionFlashFrameMsg{Frame: 1}
-	})
-	frame2 := tea.Tick(2*CompletionFlashFrameDuration, func(time.Time) tea.Msg {
-		return CompletionFlashFrameMsg{Frame: 2}
-	})
-	clear := tea.Tick(3*CompletionFlashFrameDuration, func(time.Time) tea.Msg {
-		return MutationFlashClearMsg{}
-	})
-	return tea.Batch(frame1, frame2, clear)
-}
 
 // TodayClearedBannerTimeout is how long the Today-cleared banner stays visible.
 const TodayClearedBannerTimeout = 5 * time.Second

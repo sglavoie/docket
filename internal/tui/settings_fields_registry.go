@@ -88,15 +88,15 @@ func buildSettingsFieldRegistry() []settingsFieldMeta {
 	// subTab 3: Recent Tasks
 	base = subTabFieldStart(tabBehavior, 3)
 	add(base+0, tabBehavior, 3, "General > Recent Tasks", "Max Recent Visits", "recent tasks max visits quick switch", strconv.Itoa(config.DefaultMaxRecentTaskVisits))
-	// subTab 5: Section Limits
+	// subTab 5: Work-group limits
 	base = subTabFieldStart(tabBehavior, 4)
-	add(base+0, tabBehavior, 4, "General > Section Limits", "Active Limit", "active section limit gtd wip", strconv.Itoa(config.DefaultSectionLimitActive))
-	add(base+1, tabBehavior, 4, "General > Section Limits", "Next Limit", "next section limit", strconv.Itoa(config.DefaultSectionLimitNext))
-	add(base+2, tabBehavior, 4, "General > Section Limits", "Inbox Limit", "inbox section limit", strconv.Itoa(config.DefaultSectionLimitInbox))
-	add(base+3, tabBehavior, 4, "General > Section Limits", "Standby Limit", "standby section limit", strconv.Itoa(config.DefaultSectionLimitStandby))
-	add(base+4, tabBehavior, 4, "General > Section Limits", "Waiting Limit", "waiting section limit blocked", strconv.Itoa(config.DefaultSectionLimitWaiting))
-	add(base+5, tabBehavior, 4, "General > Section Limits", "Someday Limit", "someday section limit maybe", strconv.Itoa(config.DefaultSectionLimitSomeday))
-	add(base+6, tabBehavior, 4, "General > Section Limits", "Review Limit", "review section limit", strconv.Itoa(config.DefaultSectionLimitReview))
+	add(base+0, tabBehavior, 4, "General > Work Group Limits", "Backlog Limit", "backlog work group limit wip", strconv.Itoa(config.DefaultStateGroupLimitBacklog))
+	add(base+1, tabBehavior, 4, "General > Work Group Limits", "Next Limit", "next work group limit", strconv.Itoa(config.DefaultStateGroupLimitNext))
+	add(base+2, tabBehavior, 4, "General > Work Group Limits", "Inbox Limit", "inbox work group limit", strconv.Itoa(config.DefaultStateGroupLimitInbox))
+	add(base+3, tabBehavior, 4, "General > Work Group Limits", "Paused Limit", "paused work group limit", strconv.Itoa(config.DefaultStateGroupLimitPaused))
+	add(base+4, tabBehavior, 4, "General > Work Group Limits", "Waiting Limit", "waiting work group limit blocked", strconv.Itoa(config.DefaultStateGroupLimitWaiting))
+	add(base+5, tabBehavior, 4, "General > Work Group Limits", "Someday Limit", "someday work group limit", strconv.Itoa(config.DefaultStateGroupLimitSomeday))
+	add(base+6, tabBehavior, 4, "General > Work Group Limits", "Review Limit", "review work group limit", strconv.Itoa(config.DefaultStateGroupLimitReview))
 
 	// Tab 4: Attachments (2 fields)
 	base = tabFieldStart[tabAttachments]

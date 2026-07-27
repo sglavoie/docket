@@ -70,12 +70,6 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 	if manage.Scope != AppEntityScope() || manage.NotificationMode != NotificationAlerts {
 		t.Errorf("irrelevant manage params not canonical: %+v", manage)
 	}
-	if _, err := NewRoute(SecondaryTool, ManageParams{Module: ManageLanding}); !errors.Is(err, ErrInvalidRouteParams) {
-		t.Fatalf("manage landing must be rejected as a secondary tool: %v", err)
-	}
-	if _, err := NewRoute(SecondaryTool, ReviewParams{Module: ReviewLanding}); !errors.Is(err, ErrInvalidRouteParams) {
-		t.Fatalf("review landing must be rejected as a secondary tool: %v", err)
-	}
 	if _, err := NewRoute(SecondaryTool, TaskWorkspaceParams{}); !errors.Is(err, ErrRouteParamsType) {
 		t.Fatalf("secondary tool with foreign params error = %v", err)
 	}

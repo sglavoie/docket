@@ -134,11 +134,10 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	}
 }
 
-// TestTUITaskMoveAppliesDestSectionAndCanonicalTask verifies the migrated move
+// TestTUITaskMoveUsesCanonicalTask verifies the migrated move
 // resolves and moves the CANONICAL source task (not a stale view copy passed in
-// the message) and applies the chosen destination section as part of the move
-// transaction.
-func TestTUITaskMoveAppliesDestSectionAndCanonicalTask(t *testing.T) {
+// the message).
+func TestTUITaskMoveUsesCanonicalTask(t *testing.T) {
 	env := newMoveHandlerEnv(t, "move-task-1", "Move me")
 	source, dest := env.source, env.dest
 	moved := source.GetTaskByID("move-task-1")
@@ -149,13 +148,10 @@ func TestTUITaskMoveAppliesDestSectionAndCanonicalTask(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new stale task: %v", err)
 	}
-	destSection := models.SectionWaiting
-
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task:          staleTask,
 		SourceProject: source,
 		DestProjectID: dest.ID,
-		DestSection:   &destSection,
 	})
 	if !handled {
 		t.Fatal("move message was not handled")
@@ -164,8 +160,8 @@ func TestTUITaskMoveAppliesDestSectionAndCanonicalTask(t *testing.T) {
 	if movedMsg.OldShortID != oldCanonicalShortID {
 		t.Fatalf("OldShortID = %d, want canonical short ID %d", movedMsg.OldShortID, oldCanonicalShortID)
 	}
-	if models.SectionForState(staleTask.State()) != "" {
-		t.Fatalf("stale message task must not be mutated, got section %q", models.SectionForState(staleTask.State()))
+	if staleTask.State() != models.StateReady {
+		t.Fatalf("stale message task must not be mutated, got state %q", staleTask.State())
 	}
 
 	if env.reloadProject(t, source).GetTaskByID(moved.ID) != nil {
@@ -178,8 +174,8 @@ func TestTUITaskMoveAppliesDestSectionAndCanonicalTask(t *testing.T) {
 	if destTask.Title != "Move me" {
 		t.Fatalf("destination task title = %q, want canonical %q", destTask.Title, "Move me")
 	}
-	if models.SectionForState(destTask.State()) != destSection {
-		t.Fatalf("destination task section = %q, want %q", models.SectionForState(destTask.State()), destSection)
+	if destTask.State() != models.StateReady {
+		t.Fatalf("destination task state = %q, want ready", destTask.State())
 	}
 }
 
@@ -255,7 +251,6 @@ func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *move
 			}
 		}
 		p.NextShortID = next
-		p.EnsureDefaultSections()
 		p.BuildTaskTree()
 		return p
 	}
@@ -289,7 +284,6 @@ func (e *moveHandlerEnv) appModel() *AppModel {
 		persister:            NewProjectService(),
 		appService:           e.svc,
 		views:                NewViewRegistry(),
-		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
@@ -348,48 +342,6 @@ func assertDiskConfigRef(t *testing.T, mgr *config.Manager, taskID, projectID st
 	}
 	if checkRecent && len(cfg.Machine().RecentTaskVisits) > 0 && (cfg.Machine().RecentTaskVisits[0].TaskID != taskID || cfg.Machine().RecentTaskVisits[0].ProjectID != projectID) {
 		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.Machine().RecentTaskVisits, taskID, projectID)
-	}
-}
-
-func TestGlobalMoveSectionSelectedCarriesDestSectionWithoutMutatingTask(t *testing.T) {
-	source := &models.Project{ID: "source", Name: "Source"}
-	dest := &models.Project{ID: "dest", Name: "Dest"}
-	task, err := models.NewTask("move-task-1", 4, models.TaskTypeTask, "Move me")
-	if err != nil {
-		t.Fatalf("new task: %v", err)
-	}
-
-	app := &AppModel{}
-	app.globalMoveState.sourceProject = source
-	app.globalMoveState.sourceTask = task
-	app.globalMoveState.destProject = dest
-
-	handled, cmd := app.handleGlobalMoveSectionSelected(GlobalMoveSectionSelectedMsg{
-		Section: models.SectionWaiting,
-	})
-	if !handled {
-		t.Fatal("section selection was not handled")
-	}
-	if cmd == nil {
-		t.Fatal("expected move command")
-	}
-	if models.SectionForState(task.State()) != "" {
-		t.Fatalf("source task should not be mutated before move message, got section %q", models.SectionForState(task.State()))
-	}
-
-	rawMsg := cmd()
-	msg, ok := rawMsg.(MoveTaskToProjectMsg)
-	if !ok {
-		t.Fatalf("expected MoveTaskToProjectMsg, got %T", rawMsg)
-	}
-	if msg.Task != task || msg.SourceProject != source || msg.DestProjectID != dest.ID || !msg.FromGlobal {
-		t.Fatalf("unexpected move message: %#v", msg)
-	}
-	if msg.DestSection == nil || *msg.DestSection != models.SectionWaiting {
-		t.Fatalf("DestSection = %v, want %q", msg.DestSection, models.SectionWaiting)
-	}
-	if app.globalMoveState.sourceProject != nil || app.globalMoveState.sourceTask != nil || app.globalMoveState.destProject != nil {
-		t.Fatal("global move state should be cleared")
 	}
 }
 

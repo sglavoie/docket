@@ -23,11 +23,10 @@ func (m *ScoreProfileManagerModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("u", "Unassign from project", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
 	)
 
-	// Goto group: g prefix (gg = top)
-	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
-		JumpToTop:   func() (tea.Model, tea.Cmd) { return m, nil },
-		GoToProject: nil,
-	})...)
+	entries = append(entries, keymap.Bind("home", "Jump to first", "Navigation", func() (tea.Model, tea.Cmd) {
+		m.cursor = 0
+		return m, nil
+	}))
 
 	return &keymap.KeyMap{
 		ViewName: "Score Profile Manager",

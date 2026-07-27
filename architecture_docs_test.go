@@ -11,10 +11,12 @@ func TestArchitectureDocumentationCoversReleaseCandidateContracts(t *testing.T) 
 	if err != nil {
 		t.Fatalf("read architecture documentation: %v", err)
 	}
-	content := string(data)
+	content := strings.Join(strings.Fields(string(data)), " ")
 	required := []string{
 		"## Workflow state model",
 		"Dependency blocking is derived",
+		"`in_progress` identifies work currently underway",
+		"Focus Queue is ordering-only",
 		"## Durable data layout",
 		".tt/transactions/",
 		"## Transactions, recovery, and undo",
@@ -34,6 +36,12 @@ func TestArchitectureDocumentationCoversReleaseCandidateContracts(t *testing.T) 
 		"## Backup and restore",
 		"## Platform support",
 		"macOS and Linux",
+		"## TUI navigation architecture",
+		"All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked, Daily",
+		"`Tab`/`Shift+Tab` cycle All → Inbox → Next → Backlog",
+		"`OperationRegistry` is the common descriptor source",
+		"`ListSurface`",
+		"restores All over All Projects",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, needle) {
@@ -47,10 +55,10 @@ func TestREADMEPointsToArchitectureAndLocalFirstStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read README: %v", err)
 	}
-	content := string(data)
+	content := strings.Join(strings.Fields(string(data)), " ")
 	for _, needle := range []string{
 		"local `~/.tt/` workspace by default",
-		"iCloud only after explicit selection",
+		"iCloud Drive, only after explicit selection",
 		"not converted automatically",
 		"`--force` skips only the confirmation prompt",
 		"docs/architecture.md",
@@ -62,29 +70,31 @@ func TestREADMEPointsToArchitectureAndLocalFirstStorage(t *testing.T) {
 	}
 }
 
-func TestQueueAndActiveDocumentationStayDistinct(t *testing.T) {
+func TestCanonicalStateAndPlanningDocumentationStayDistinct(t *testing.T) {
 	for _, path := range []string{"README.md", "docs/architecture.md"} {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)
 		}
-		content := string(data)
+		content := strings.Join(strings.Fields(string(data)), " ")
 		for _, want := range []string{
-			"Active section",
 			"Focus Queue",
-			"next tasks in the pipeline",
+			"ordering",
+			"Today and Next are mutually exclusive",
 		} {
 			if !strings.Contains(content, want) {
-				t.Errorf("%s missing Queue/Active distinction %q", path, want)
+				t.Errorf("%s missing canonical planning distinction %q", path, want)
 			}
 		}
-	}
-
-	architecture, err := os.ReadFile("docs/architecture.md")
-	if err != nil {
-		t.Fatalf("read architecture documentation: %v", err)
-	}
-	if strings.Contains(string(architecture), "legacy `Active=true` membership is captured in Focus\nQueue") {
-		t.Fatal("architecture documentation still claims legacy active metadata populates Queue")
+		for _, stale := range []string{
+			"Active section",
+			"Next → Backlog → Active → All",
+			"command-palette project navigation",
+			"`Ctrl+X`",
+		} {
+			if strings.Contains(content, stale) {
+				t.Errorf("%s contains retired runtime guidance %q", path, stale)
+			}
+		}
 	}
 }

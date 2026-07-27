@@ -10,19 +10,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// activeCrossProjectOutliner returns the OutlinerModel currently displaying
-// cross-project rows, preferring m.crossOutliner (the dedicated instance for
-// ViewCrossProjectOutliner) and falling back to m.outliner only when it is
-// itself in cross-project mode (project == nil). Returns nil when no
-// cross-project outliner is active.
+// activeCrossProjectOutliner returns the sole Outliner model.
 func (m *AppModel) activeCrossProjectOutliner() *OutlinerModel {
-	if m.crossOutliner != nil {
-		return m.crossOutliner
-	}
-	if m.outliner != nil && m.outliner.project == nil {
-		return m.outliner
-	}
-	return nil
+	return m.crossOutliner
 }
 
 // requestCrossProjectOutlinerReload starts a disk-backed reload only when its
@@ -34,17 +24,8 @@ func (m *AppModel) requestCrossProjectOutlinerReload() tea.Cmd {
 	if cross == nil {
 		return nil
 	}
-	if m.typedNavigation {
-		if !m.activeOutlinerRoute() {
-			return nil
-		}
-	} else {
-		if m.currentView() != ViewCrossProjectOutliner || m.views == nil {
-			return nil
-		}
-		if registered, ok := m.views.Get(ViewCrossProjectOutliner).(*OutlinerModel); !ok || registered != cross {
-			return nil
-		}
+	if !m.activeOutlinerRoute() {
+		return nil
 	}
 	return cross.reloadCrossProjects()
 }
@@ -76,76 +57,23 @@ func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 	}
 }
 
-// registeredProjectOutliners returns every distinct single-project outliner
-// owned by the app.
-func (m *AppModel) registeredProjectOutliners() []*OutlinerModel {
-	if m == nil {
-		return nil
-	}
-
-	candidates := []*OutlinerModel{m.outliner}
-
-	outliners := make([]*OutlinerModel, 0, len(candidates))
-	seen := make(map[*OutlinerModel]struct{}, len(candidates))
-	for _, outliner := range candidates {
-		if outliner == nil || outliner.project == nil {
-			continue
-		}
-		if _, exists := seen[outliner]; exists {
-			continue
-		}
-		seen[outliner] = struct{}{}
-		outliners = append(outliners, outliner)
-	}
-	return outliners
-}
-
-// reloadRegisteredProjectOutliners reloads the project object owned by each
-// single-project outliner. Project pointers, rather than project IDs, are
-// deduplicated because a temporary drill-down intentionally owns a different
-// project object from the app's canonical project cache.
-func (m *AppModel) reloadRegisteredProjectOutliners(
-	loader func(*models.Project) error,
-	alreadyLoaded ...*models.Project,
-) {
-	if loader == nil {
+func rebuildOutlinerPreservingCursor(outliner *OutlinerModel) {
+	if outliner == nil {
 		return
 	}
-
-	loaded := make(map[*models.Project]struct{}, len(alreadyLoaded))
-	for _, project := range alreadyLoaded {
-		if project != nil {
-			loaded[project] = struct{}{}
-		}
-	}
-	for _, outliner := range m.registeredProjectOutliners() {
-		project := outliner.project
-		if _, exists := loaded[project]; exists {
-			continue
-		}
-		loaded[project] = struct{}{}
-		if err := loader(project); err != nil {
-			logging.Warn("failed to load project %s: %v", project.Name, err)
-		}
-	}
+	anchor := outliner.captureModeCursor()
+	outliner.rebuildRows()
+	outliner.restoreModeCursor(anchor)
+	outliner.clampCursor()
 }
 
-func (m *AppModel) rebuildRegisteredProjectOutliners() {
-	for _, outliner := range m.registeredProjectOutliners() {
-		outliner.rebuildRows()
-		outliner.clampCursor()
-	}
-}
-
-// refreshAllViews rebuilds in-memory rows for the project tree and any active
-// outliner (single-project and cross-project). It never reloads from disk;
+// refreshAllViews rebuilds in-memory rows for the project tree and Outliner.
+// It never reloads from disk;
 // disk-backed reloads belong in refreshTaskViewsAfterSave and handleWithRefresh.
 func (m *AppModel) refreshAllViews() {
 	m.refreshProjectView()
-	m.rebuildRegisteredProjectOutliners()
 	if cross := m.activeCrossProjectOutliner(); cross != nil {
-		cross.rebuildRows()
-		cross.clampCursor()
+		rebuildOutlinerPreservingCursor(cross)
 	}
 }
 
@@ -169,7 +97,6 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 			currentProject = m.currentProject
 			_ = m.persister.Load(currentProject)
 		}
-		m.reloadRegisteredProjectOutliners(m.persister.Load, currentProject)
 	}
 	// Cross-project outliner has its own loadedProjects cache that bypasses
 	// m.currentProject, so a disk-backed reload is needed for mutations to
@@ -413,14 +340,4 @@ func (m *AppModel) refreshRuntime() bool {
 	}
 	m.syncProjectCache()
 	return true
-}
-
-// syncInboxProcessor updates the typed inboxProcessor pointer after view updates.
-// This keeps the pointer in sync when the inbox processor view is active.
-func (m *AppModel) syncInboxProcessor() {
-	if m.currentView() == ViewInboxProcessor {
-		if v := m.views.Get(ViewInboxProcessor); v != nil {
-			m.inboxProcessor = v.(*InboxProcessorModel)
-		}
-	}
 }

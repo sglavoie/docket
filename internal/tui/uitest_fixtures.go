@@ -40,6 +40,7 @@ const (
 	FixtureWorkflow = "workflow"
 	FixtureNarrow   = "narrow"
 	FixtureContexts = "contexts"
+	FixtureRelease  = "release"
 )
 
 // builtinFixtures maps each fixture name to the builder that populates its
@@ -53,6 +54,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureWorkflow: buildWorkflowFixture,
 	FixtureNarrow:   buildNarrowFixture,
 	FixtureContexts: buildContextsFixture,
+	FixtureRelease:  buildReleaseFixture,
 }
 
 // BuiltinFixtureNames returns the sorted list of built-in fixture names.
@@ -135,7 +137,6 @@ func (w *uitestWorkspace) addProject(name string, build func(*models.Project)) (
 		return nil, err
 	}
 	project.Path = w.Runtime.ProjectPath(project.Slug)
-	project.EnsureDefaultSections()
 	if build != nil {
 		build(project)
 	}
@@ -499,6 +500,45 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 		another := newFixtureTask(p, models.TaskTypeBug,
 			"Truncated column headers overlap when the terminal is resized below the minimum comfortable width")
 		another.ApplyWorkflowState(models.StateInProgress)
+	})
+	if err != nil {
+		return err
+	}
+	w.setCurrentProject(project.ID)
+	return nil
+}
+
+// buildReleaseFixture creates a large canonical Outliner catalog with Unicode
+// content. The committed release-hardening scenario uses it to exercise Finder
+// indexing, wide and minimum layouts, viewport bounds, and repeated resizes
+// against substantially more rows than the everyday review fixtures.
+func buildReleaseFixture(w *uitestWorkspace) error {
+	states := []models.WorkflowState{
+		models.StateInbox,
+		models.StateReady,
+		models.StateNext,
+		models.StateInProgress,
+		models.StateWaiting,
+		models.StatePaused,
+		models.StateReview,
+		models.StateSomeday,
+	}
+	project, err := w.addProject("Release Ω Project", func(p *models.Project) {
+		unicodeTask := newFixtureTask(p, models.TaskTypeTask, "国際化 🚀 café résumé release check")
+		unicodeTask.Description = "Unicode display-width and Finder-search acceptance row."
+		unicodeTask.Tags = []string{"i18n", "release"}
+		unicodeTask.ApplyWorkflowState(models.StateInProgress)
+
+		for i := 0; i < 240; i++ {
+			task := newFixtureTask(
+				p,
+				models.TaskTypeTask,
+				fmt.Sprintf("Release acceptance item %03d with bounded viewport content", i+1),
+			)
+			task.Priority = (i % 5) + 1
+			task.Tags = []string{"release", fmt.Sprintf("batch-%d", i%8)}
+			task.ApplyWorkflowState(states[i%len(states)])
+		}
 	})
 	if err != nil {
 		return err

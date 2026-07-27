@@ -139,11 +139,6 @@ func (m *TaskDetailModel) refreshAfterReload() bool {
 	return false
 }
 
-// NewTaskDetailModel creates a new task detail view.
-func NewTaskDetailModel(task *models.Task, project *models.Project, runtime *config.RuntimeState) *TaskDetailModel {
-	return NewTaskDetailModelForTab(task, project, runtime, TaskOverview, "", SubviewCoordinator{}, AttachmentCoordinator{})
-}
-
 // NewTaskDetailModelForTab creates the unified detail surface and all embedded
 // tab controllers. Existing child models retain their coordinator-backed
 // mutation and editor behavior without owning navigation entries.
@@ -373,15 +368,6 @@ func (m *TaskDetailModel) HasTextInput() bool {
 	return false
 }
 
-func (m *TaskDetailModel) HasPendingPrefix() bool {
-	if child := m.activeTabView(); child != nil {
-		if pending, ok := child.(PendingPrefixView); ok {
-			return pending.HasPendingPrefix()
-		}
-	}
-	return m.InteractiveViewState.HasPendingPrefix()
-}
-
 // ShouldCaptureEsc returns true so the detail view handles esc/q itself.
 func (m *TaskDetailModel) ShouldCaptureEsc() bool {
 	if child := m.activeTabView(); child != nil {
@@ -427,48 +413,6 @@ func (m *TaskDetailModel) OnExit() {
 
 // IsFullHeight returns true because task detail renders its own footer.
 func (m *TaskDetailModel) IsFullHeight() bool { return true }
-
-// GetPrefixPopupInfo returns popup info when a prefix key is pending.
-func (m *TaskDetailModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if child := m.activeTabView(); child != nil {
-		if prefix, ok := child.(interface{ GetPrefixPopupInfo() *PrefixPopupInfo }); ok {
-			return prefix.GetPrefixPopupInfo()
-		}
-	}
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints:  m.prefixHints(),
-	}
-}
-
-// prefixHints returns the prefix hint map for this view.
-func (m *TaskDetailModel) prefixHints() PrefixHints {
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		"!": BuildPriorityPrefixHints(0),
-	}
-
-	// Add status-aware active hints
-	if m.task != nil {
-		statusHints := make([]PrefixHint, len(StatusPrefixHints))
-		copy(statusHints, StatusPrefixHints)
-		state := m.task.State()
-		for i := range statusHints {
-			// Each "," prefix key maps directly to the workflow state it applies;
-			// the hint is active when the task is already in that state.
-			if target, ok := StateForPrefixKey(statusHints[i].Key); ok {
-				statusHints[i].Active = state == target
-			}
-		}
-		hints[","] = statusHints
-		hints["!"] = BuildPriorityPrefixHints(m.task.Priority)
-	}
-
-	return hints
-}
 
 // viewHeight returns the number of visible content lines after reserving the
 // title and the task detail footer's actual wrapped height.

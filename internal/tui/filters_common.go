@@ -6,16 +6,12 @@ import (
 	"sort"
 	"strings"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// CommonFilterState contains the filter fields shared across views that support
-// the F-prefix filter system. Views embed this struct directly.
+// CommonFilterState contains filter fields shared across views.
 type CommonFilterState struct {
 	Type        models.TaskType         // filter by type (epic/story/task/bug/idea)
 	States      models.WorkflowStateSet // filter by one or more canonical workflow states
@@ -29,6 +25,8 @@ type CommonFilterState struct {
 	GitHubIssue bool                    // only show tasks linked to a GitHub issue
 	Parked      bool                    // only show parked tasks
 	Blocked     bool                    // only show tasks blocked by an unresolved dependency
+	Snoozed     bool                    // only show currently snoozed tasks
+	Pinned      bool                    // only show pinned tasks
 
 	// statesSet distinguishes no state predicate from an explicit empty
 	// match-nothing set produced by intersecting contradictory legacy filters.
@@ -48,6 +46,8 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		GitHubIssue: src.GitHubIssue,
 		Parked:      src.Parked,
 		Blocked:     src.Blocked,
+		Snoozed:     src.Snoozed,
+		Pinned:      src.Pinned,
 		statesSet:   src.statesSet,
 	}
 	if len(src.Tags) > 0 {
@@ -111,6 +111,12 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, project *model
 	if f.Parked && !task.IsParked() {
 		return false
 	}
+	if f.Snoozed && !task.IsSnoozed() {
+		return false
+	}
+	if f.Pinned && !task.Pinned {
+		return false
+	}
 	if len(f.Tags) > 0 {
 		for tag := range f.Tags {
 			if !task.HasTag(tag) {
@@ -164,7 +170,9 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.HideDimmed ||
 		f.GitHubIssue ||
 		f.Parked ||
-		f.Blocked
+		f.Blocked ||
+		f.Snoozed ||
+		f.Pinned
 }
 
 // clearCommonFilters resets all common filters to defaults.
@@ -182,6 +190,8 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.GitHubIssue = false
 	f.Parked = false
 	f.Blocked = false
+	f.Snoozed = false
+	f.Pinned = false
 }
 
 // commonFilterParts returns the list of active filter description strings.
@@ -255,6 +265,12 @@ func commonFilterParts(f *CommonFilterState) []string {
 	if f.Parked {
 		parts = append(parts, "parked")
 	}
+	if f.Snoozed {
+		parts = append(parts, "snoozed")
+	}
+	if f.Pinned {
+		parts = append(parts, "pinned")
+	}
 	if f.Blocked {
 		parts = append(parts, "blocked")
 	}
@@ -266,20 +282,6 @@ func commonFilterParts(f *CommonFilterState) []string {
 // Returns empty string if no filters are active.
 func renderCommonFilterIndicator(f *CommonFilterState) string {
 	return renderFilterBadge(commonFilterParts(f))
-}
-
-func buildTagCmdFromProject(project *models.Project, selected map[string]bool, source PresentationID, title string, excludeCompleted bool) tea.Cmd {
-	tags := BuildProjectTagList(project, excludeCompleted)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
-	}
-}
-
-func buildTagCmdFromProjectTasks(projects []*models.Project, tasks []*models.Task, selected map[string]bool, source PresentationID, title string, excludeCompleted bool) tea.Cmd {
-	tags := BuildCatalogTagList(projects, tasks, excludeCompleted)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
-	}
 }
 
 // CollectTaskTagNames returns sorted unique tag names from task usage only.
@@ -305,22 +307,6 @@ func tagNamesFromInfos(infos []TagInfo) []string {
 		tags[i] = info.Name
 	}
 	return tags
-}
-
-func projectsFromWeeklyReviewTasks(items []WeeklyReviewTask) []*models.Project {
-	projects := make([]*models.Project, 0, len(items))
-	for _, item := range items {
-		projects = append(projects, item.Project)
-	}
-	return uniqueProjects(projects)
-}
-
-func tasksFromWeeklyReviewTasks(items []WeeklyReviewTask) []*models.Task {
-	tasks := make([]*models.Task, 0, len(items))
-	for _, item := range items {
-		tasks = append(tasks, item.Task)
-	}
-	return tasks
 }
 
 // validateSavedStringSet returns the subset of saved that exist in valid.
@@ -360,27 +346,22 @@ func renderFilterBadge(parts []string) string {
 	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
 }
 
-// FilterMixin provides standard commonFilterView bridge methods. Views that
-// embed this struct get getFilter, getFilterMachine, setFilterPendingPrefix,
-// HasActiveFilters, ClearAllFilters, and renderActiveFilterIndicator for free.
+// commonFilterView exposes the filter state and refresh hook used by typed
+// filter result messages.
+type commonFilterView interface {
+	getFilter() *CommonFilterState
+	refreshAndClamp()
+}
+
+// FilterMixin provides shared filter state. Views that embed this struct get
+// getFilter, HasActiveFilters, ClearAllFilters, and
+// renderActiveFilterIndicator for free.
 // Views with custom filter logic (extra filter fields) override the methods
 // they need; the embedded defaults still handle the common cases.
 type FilterMixin struct {
-	filter        CommonFilterState
-	filterMachine *config.MachineState
-
-	// dispatcher is the keymap dispatcher; when non-nil it owns prefix state.
-	dispatcher *keymap.Dispatcher
-
+	filter CommonFilterState
 	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
 	activeCriteriaFilter *config.SavedFilter
-}
-
-// initFilterMixinWithDispatcher wires the mixin to a declarative dispatcher
-// and the machine-local custom score-filter preference.
-func (fm *FilterMixin) initFilterMixinWithDispatcher(d *keymap.Dispatcher, runtime *config.RuntimeState) {
-	fm.dispatcher = d
-	fm.filterMachine = runtime.Machine()
 }
 
 // newFilterState returns an initialized CommonFilterState with allocated maps.
@@ -391,11 +372,7 @@ func newFilterState() CommonFilterState {
 	}
 }
 
-func (fm *FilterMixin) getFilter() *CommonFilterState          { return &fm.filter }
-func (fm *FilterMixin) getFilterMachine() *config.MachineState { return fm.filterMachine }
-func (fm *FilterMixin) setFilterPendingPrefix(p string) {
-	fm.dispatcher.SetPendingPrefix(p)
-}
+func (fm *FilterMixin) getFilter() *CommonFilterState { return &fm.filter }
 func (fm *FilterMixin) HasActiveFilters() bool {
 	return hasActiveCommonFilters(&fm.filter) || fm.activeCriteriaFilter != nil
 }

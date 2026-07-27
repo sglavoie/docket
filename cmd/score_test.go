@@ -334,7 +334,7 @@ func TestRunScoreRank(t *testing.T) {
 		// Snooze one active task (set SnoozedUntil to the future)
 		var snoozedTask *models.Task
 		for _, task := range project.Tasks {
-			if status := models.LegacyStatusForState(task.State()); status.IsActive() && !status.IsComplete() {
+			if state := task.State(); state.IsNonterminal() {
 				future := time.Now().Add(7 * 24 * time.Hour)
 				task.SnoozedUntil = &future
 				snoozedTask = task
@@ -349,7 +349,7 @@ func TestRunScoreRank(t *testing.T) {
 		// Count how many tasks would be included (active, non-snoozed)
 		expectedCount := 0
 		for _, task := range project.Tasks {
-			if !models.LegacyStatusForState(task.State()).IsComplete() && !task.IsSnoozed() {
+			if !task.State().IsTerminal() && !task.IsSnoozed() {
 				expectedCount++
 			}
 		}
@@ -357,7 +357,7 @@ func TestRunScoreRank(t *testing.T) {
 		// Build ranked list using the same logic as runScoreRank (with default snoozed=false)
 		var ranked []rankedTask
 		for _, task := range project.Tasks {
-			if models.LegacyStatusForState(task.State()).IsComplete() {
+			if task.State().IsTerminal() {
 				continue
 			}
 			if task.IsSnoozed() {
@@ -384,7 +384,7 @@ func TestScoreRankJSON_IncludesIDAndPriority(t *testing.T) {
 		ID           string  `json:"id"`
 		ShortID      int     `json:"short_id"`
 		Type         string  `json:"type"`
-		Status       string  `json:"status"`
+		State        string  `json:"state"`
 		Title        string  `json:"title"`
 		Priority     int     `json:"priority"`
 		Score        float64 `json:"score"`
@@ -396,7 +396,7 @@ func TestScoreRankJSON_IncludesIDAndPriority(t *testing.T) {
 		ID:           "task-uuid-123",
 		ShortID:      42,
 		Type:         "task",
-		Status:       "todo",
+		State:        "ready",
 		Title:        "Important task",
 		Priority:     1,
 		Score:        8.5,
@@ -418,6 +418,12 @@ func TestScoreRankJSON_IncludesIDAndPriority(t *testing.T) {
 	}
 	if v, ok := parsed["priority"]; !ok || v != float64(1) {
 		t.Errorf("expected priority=1 in score rank JSON, got %v", v)
+	}
+	if v, ok := parsed["state"]; !ok || v != models.StateReady.String() {
+		t.Errorf("expected state=ready in score rank JSON, got %v", v)
+	}
+	if _, ok := parsed["status"]; ok {
+		t.Error("did not expect retired status field in score rank JSON")
 	}
 }
 

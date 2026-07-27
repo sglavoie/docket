@@ -68,15 +68,15 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
 	displayName := row.SectionName
 	if displayName == "" {
-		displayName = "Active"
+		displayName = models.StateGroupBacklog.Label()
 	}
 
-	sectionStyle := GetViewModeStyleForSection(row.SectionName)
+	sectionStyle := GetWorkflowStateGroupStyle(models.StateGroupBacklog)
 	if row.StateGroup.IsValid() {
 		sectionStyle = GetWorkflowStateGroupStyle(row.StateGroup)
 	}
 	prefix := "@ "
-	if row.IsLensHeader {
+	if row.IsComputedHeader {
 		prefix = "◷ "
 	}
 
@@ -88,13 +88,8 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		Prefix:      prefix,
 	})
 
-	limit := 0
-	if row.StateGroup.IsValid() {
-		limit = m.runtime.Settings().GetStateGroupLimit(row.StateGroup)
-	} else {
-		limit = m.runtime.Settings().GetSectionLimit(row.SectionName)
-	}
-	if !row.IsLensHeader && limit > 0 && row.SectionCount > limit {
+	limit := m.runtime.Settings().GetStateGroupLimit(row.StateGroup)
+	if !row.IsComputedHeader && limit > 0 && row.SectionCount > limit {
 		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
 	}
 	if row.ProjectID != "" {
@@ -121,9 +116,8 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 
 // renderOutlinerProjectHeaderRow renders a synthetic project sub-header row
 // that visually clusters adjacent tasks from the same project in cross-project
-// perspectives. In the All perspective these rows sit beneath shared section
-// headers; other project-grouped perspectives emit them directly above each
-// project's task group. The header reuses the persisted project color and slug
+// modes. In All these rows sit beneath shared state-group headers. The header
+// reuses the persisted project color and slug
 // text so the inline `[slug]` badges on individual task rows can be suppressed.
 // Sub-headers are skipped by keyboard navigation; the selected styling branches
 // are kept defensive only.
@@ -270,7 +264,7 @@ func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 	if row.ProjectID == "" {
 		return ""
 	}
-	// Every cross-project perspective renders the colored `[slug]` badge inline
+	// Every cross-project mode renders the colored `[slug]` badge inline
 	// so each task row carries its own project identity, matching Planner's
 	// deterministic project-color treatment. Group headers and project
 	// sub-headers still cluster rows visually; the inline badge is the primary
@@ -481,24 +475,6 @@ func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
 		compacted = "  ‹ … › " + ancestors[len(ancestors)-1]
 	}
 	return truncateToVisualWidth(compacted, maxWidth)
-}
-
-func compactAncestorBreadcrumb(breadcrumb string, maxWidth int) string {
-	if breadcrumb == "" || maxWidth < 3 {
-		return ""
-	}
-	if lipgloss.Width(breadcrumb) <= maxWidth {
-		return breadcrumb
-	}
-	parts := strings.Split(strings.TrimSuffix(breadcrumb, " ›"), " › ")
-	for len(parts) > 1 {
-		parts = parts[1:]
-		candidate := "… › " + strings.Join(parts, " › ") + " ›"
-		if lipgloss.Width(candidate) <= maxWidth {
-			return candidate
-		}
-	}
-	return truncateToVisualWidth("… › "+parts[0]+" ›", maxWidth)
 }
 
 func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) int {

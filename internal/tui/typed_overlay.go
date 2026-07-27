@@ -7,7 +7,7 @@ import "fmt"
 type OverlayKind uint8
 
 const (
-	OverlayPalette OverlayKind = iota
+	OverlayFinder OverlayKind = iota
 	OverlayComposer
 	OverlayProjectPicker
 	OverlayViewMenu
@@ -17,14 +17,12 @@ const (
 	OverlayForm
 	OverlayPicker
 	OverlayConfirmation
-	OverlayRecent
-	OverlayPinned
 	OverlayProjectDrilldown
 	OverlayReference
 )
 
 var overlayKindNames = [...]string{
-	"Palette",
+	"Finder",
 	"Composer",
 	"ProjectPicker",
 	"ViewMenu",
@@ -34,8 +32,6 @@ var overlayKindNames = [...]string{
 	"Form",
 	"Picker",
 	"Confirmation",
-	"Recent",
-	"Pinned",
 	"ProjectDrilldown",
 	"Reference",
 }

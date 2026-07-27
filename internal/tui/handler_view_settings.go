@@ -192,10 +192,7 @@ func (m *AppModel) showTaskCreatorForTemplate(taskTemplate *template.TaskTemplat
 		project = m.currentProject
 	}
 	if project != nil {
-		if m.typedNavigation {
-			return true, m.openTaskComposer(templateComposerPreset(project, parentTask, taskTemplate), ViewTaskForm)
-		}
-		return m.showViewInit(ViewTaskForm, NewTaskFormModelCreateFromTemplate(project, m.runtime, parentTask, taskTemplate))
+		return true, m.openTaskComposer(templateComposerPreset(project, parentTask, taskTemplate))
 	}
 
 	return true, nil

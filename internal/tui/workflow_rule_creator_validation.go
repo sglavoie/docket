@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -45,19 +46,27 @@ func (m *WorkflowRuleCreatorModel) buildTriggerGroupFromForm(triggers []workflow
 
 // buildScopeFromInputs parses the scope text inputs into a RuleScope.
 // Returns nil if all inputs are empty.
-func (m *WorkflowRuleCreatorModel) buildScopeFromInputs() *workflow.RuleScope {
+func (m *WorkflowRuleCreatorModel) buildScopeFromInputs() (*workflow.RuleScope, error) {
 	projects := parseCommaSeparatedInput(m.scopeProjectsInput.Value())
 	types := parseCommaSeparatedInput(m.scopeTypesInput.Value())
-	sections := parseCommaSeparatedInput(m.scopeSectionsInput.Value())
+	rawStates := parseCommaSeparatedInput(m.scopeStatesInput.Value())
 
-	if len(projects) == 0 && len(types) == 0 && len(sections) == 0 {
-		return nil
+	if len(projects) == 0 && len(types) == 0 && len(rawStates) == 0 {
+		return nil, nil
+	}
+	states := make([]models.WorkflowState, 0, len(rawStates))
+	for _, raw := range rawStates {
+		state, ok := models.ParseWorkflowState(strings.ToLower(raw))
+		if !ok {
+			return nil, fmt.Errorf("invalid workflow state in scope: %s", raw)
+		}
+		states = append(states, state)
 	}
 	return &workflow.RuleScope{
 		Projects: projects,
 		Types:    types,
-		Sections: sections,
-	}
+		States:   states,
+	}, nil
 }
 
 // parseCommaSeparatedInput splits a comma-separated string into trimmed, non-empty values.
@@ -93,7 +102,7 @@ func (m *WorkflowRuleCreatorModel) buildRuleFromForm() (*workflow.WorkflowRule, 
 			Operation: m.triggerOps[t.opCursor],
 			Value:     strings.TrimSpace(t.valueInput.Value()),
 		}
-		if err := triggers[i].Validate(); err != nil {
+		if err := triggers[i].ValidateForAuthoring(); err != nil {
 			return nil, fmt.Errorf("trigger %d: %w", i+1, err)
 		}
 	}
@@ -113,7 +122,7 @@ func (m *WorkflowRuleCreatorModel) buildRuleFromForm() (*workflow.WorkflowRule, 
 				Value:     strings.TrimSpace(a.condValueInput.Value()),
 			}
 		}
-		if err := actions[i].Validate(); err != nil {
+		if err := actions[i].ValidateForAuthoring(); err != nil {
 			return nil, fmt.Errorf("action %d: %w", i+1, err)
 		}
 	}
@@ -135,7 +144,6 @@ func (m *WorkflowRuleCreatorModel) buildRuleFromForm() (*workflow.WorkflowRule, 
 		rule = workflow.NewCompoundRule(name, nil, m.triggerLogic, actions)
 		rule.TriggerGroup = tg
 		rule.Triggers = nil
-		rule.Trigger = workflow.RuleTrigger{}
 	} else if len(triggers) == 1 {
 		rule = workflow.NewRule(name, triggers[0], actions)
 	} else {
@@ -144,10 +152,14 @@ func (m *WorkflowRuleCreatorModel) buildRuleFromForm() (*workflow.WorkflowRule, 
 	rule.Priority = priority
 
 	// Build scope from inputs
-	rule.Scope = m.buildScopeFromInputs()
+	scope, err := m.buildScopeFromInputs()
+	if err != nil {
+		return nil, err
+	}
+	rule.Scope = scope
 
 	// Validate the complete rule
-	if err := rule.Validate(); err != nil {
+	if err := rule.ValidateForAuthoring(); err != nil {
 		return nil, err
 	}
 

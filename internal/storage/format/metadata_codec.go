@@ -49,7 +49,7 @@ type metadataParseState struct {
 	// a schema-v1 document carries no `state:` field. The retired `active` key is
 	// recognized and discarded so old metadata continues to parse safely.
 	legacy struct {
-		status      models.TaskStatus
+		status      legacyTaskStatus
 		statusSeen  bool
 		section     string
 		sectionSeen bool

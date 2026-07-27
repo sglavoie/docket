@@ -42,15 +42,6 @@ func (m *WorkflowDryRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return model, cmd
 		}
 
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-
 		switch msg.String() {
 		case "esc":
 			if m.searchQuery != "" {
@@ -75,8 +66,8 @@ func (m *WorkflowDryRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case "g":
-			m.pendingPrefix = "g"
+		case "home":
+			m.cursor = 0
 			return m, nil
 
 		case "G":

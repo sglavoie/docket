@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 )
 
@@ -29,42 +28,6 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 		emptyTabs[i] = c == 0
 	}
 	return renderWrappingTabBarWithEmpty(labels, m.tabs.Active, emptyTabs, m.width, m.AccentColor())
-}
-
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
-func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	var currentPriority int
-	if wt := m.getTaskAtCursor(); wt != nil {
-		currentPriority = wt.Task.Priority
-	}
-	hints := CommonTaskActionPrefixHints(currentPriority)
-	hints["g"] = WeeklyReviewNavigationPrefixHints
-	hints["f"] = []PrefixHint{
-		{Key: "a", Description: "toggle", Detail: "Toggle section fold"},
-		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-	}
-	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.runtime.Machine(), true, true, false))
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints:  hints,
-	}
-}
-
-// WeeklyReviewNavigationPrefixHints contains "g" prefix hints.
-var WeeklyReviewNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first", Detail: "Jump to first item"},
-	{Key: "p", Description: "go to project/task", Detail: "Navigate to project or task"},
-	{Key: "P", Description: "stale projects", Detail: "Focus Stale Projects section"},
-	{Key: "i", Description: "inbox backlog", Detail: "Focus Inbox Backlog section"},
-	{Key: "b", Description: "blocked work", Detail: "Focus Blocked Work section"},
-	{Key: "o", Description: "overcommitted", Detail: "Focus Overcommitted section"},
-	{Key: "t", Description: "stale tasks", Detail: "Focus Stale Tasks section"},
-	{Key: "m", Description: "priority mismatch", Detail: "Focus Priority Mismatch section"},
-	{Key: "w", Description: "upcoming week", Detail: "Focus Upcoming Week section"},
-	{Key: "r", Description: "recurring", Detail: "Focus Recurring Overview section"},
 }
 
 // renderCompletionSummary renders the completion summary overlay.

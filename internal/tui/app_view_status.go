@@ -173,22 +173,24 @@ func fitStatusBarSegments(left, right string, width int) (string, string) {
 	return left, right
 }
 
-// buildBreadcrumb constructs a compact "Home > project > view" label from the view stack.
+// buildBreadcrumb constructs a compact route/overlay breadcrumb.
 // Each segment uses the view's StatusBarLabel() when available, with fallbacks for common views.
 // Project names are truncated to keep the breadcrumb short.
 func (m *AppModel) buildBreadcrumb() string {
 	const maxProjectLen = 16
 	const sep = " > "
 
-	// Build a deduplicated view stack, keeping the LAST occurrence of each
+	path := m.presentationPath()
+
+	// Build a deduplicated renderer path, keeping the LAST occurrence of each
 	// view type (e.g. for stacked project views the deepest project wins).
 	lastIdx := make(map[PresentationID]int)
-	for i, vt := range m.viewStack {
+	for i, vt := range path {
 		lastIdx[vt] = i
 	}
 
 	var parts []string
-	for i, vt := range m.viewStack {
+	for i, vt := range path {
 		if lastIdx[vt] != i {
 			continue // skip earlier duplicates
 		}
@@ -217,12 +219,10 @@ func (m *AppModel) buildBreadcrumb() string {
 	}
 
 	// Esc-preview: show what pressing Esc will return to. The Outliner is the
-	// sole root, so suppress the hint there — a clean root Esc is a no-op with
-	// nothing to return to, even though the presentation mirror carries a
-	// Dashboard sentinel beneath the root.
-	atTypedRoot := m.typedNavigation && m.navigation.Primary.Depth() <= 1 && !m.navigation.Overlays.Active()
-	if len(m.viewStack) >= 2 && m.currentView() != ViewDashboard && !atTypedRoot {
-		prevVT := m.viewStack[len(m.viewStack)-2]
+	// sole root, so suppress the hint there.
+	atRoot := m.navigation.Primary.Depth() <= 1 && !m.navigation.Overlays.Active()
+	if len(path) >= 2 && !atRoot {
+		prevVT := path[len(path)-2]
 		prevLabel := m.breadcrumbLabel(prevVT, maxProjectLen)
 		if prevLabel != "" {
 			hint := MutedStyle.Render(" ← " + prevLabel)
@@ -237,19 +237,12 @@ func (m *AppModel) buildBreadcrumb() string {
 
 // breadcrumbLabel returns a short human-readable label for a single view type.
 func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string {
-	// ViewDashboard is the retired root sentinel carried at index 0 of the
-	// presentation mirror beneath the Outliner root. Home was removed with the
-	// Outliner-only cutover, so the sentinel contributes no visible breadcrumb
-	// segment — the normal root status bar shows the Outliner label alone.
-	if vt == ViewDashboard {
-		return ""
-	}
-
+	path := m.presentationPath()
 	var label string
-	if m.activeReviewHub() && len(m.viewStack) > 0 && vt == m.viewStack[len(m.viewStack)-1] {
+	if m.activeReviewHub() && len(path) > 0 && vt == path[len(path)-1] {
 		label = m.reviewHub.StatusBarLabel()
 	}
-	if m.activeManageHub() && len(m.viewStack) > 0 && vt == m.viewStack[len(m.viewStack)-1] {
+	if m.activeManageHub() && len(path) > 0 && vt == path[len(path)-1] {
 		label = m.manageHub.StatusBarLabel()
 	}
 

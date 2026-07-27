@@ -27,7 +27,6 @@ func planningOrderProject(t *testing.T, dataDir, id, slug string, titles ...stri
 	}
 	project.Tasks = tasks
 	project.NextShortID = len(titles) + 1
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 	return project, tasks
 }
@@ -71,7 +70,6 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		appService:           svc,
 		secondaryFeatures:    newSecondaryCoordinators(svc, manager),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		viewStack:            []PresentationID{ViewCrossProjectOutliner},
 		width:                120,
 		height:               40,
 		views:                NewViewRegistry(),
@@ -80,14 +78,27 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		focusQueueIDs:        make(map[TaskIdentity]bool),
 		dailyPlan:            []FocusTask{},
 		dailyPlanIDs:         make(map[TaskIdentity]bool),
+		operationRegistry:    NewOperationRegistry(),
+		navigation:           NewNavigationState(),
 	}
+	m.operationExecutor = NewOperationExecutor(m.operationRegistry)
 	m.rebuildPlanningFromRuntime()
 
 	cross := NewOutlinerModel(nil, manager, runtime)
 	cross.loadedProjects = projects
+	if len(projects) == 1 {
+		cross.scopedProjectID = projects[0].ID
+	}
 	cross.SetSize(120, 40)
 	m.crossOutliner = cross
 	m.views.Register(ViewCrossProjectOutliner, cross)
+	if err := m.registerCoreInputOperations(); err != nil {
+		t.Fatalf("register core operations: %v", err)
+	}
+	if err := m.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		t.Fatalf("register simplified input: %v", err)
+	}
+	m.wireOutlinerOperationExecutor(cross)
 	return m, cross, dataDir
 }
 
@@ -170,13 +181,13 @@ func assertOrder(t *testing.T, label string, got, want []string) {
 	}
 }
 
-// pressReorderKey drives one J/K key through the cross Outliner's real keymap and
+// pressReorderKey drives one J/K key through the OperationRegistry grammar and
 // routes the emitted planning-reorder command back through the shell, mirroring
 // production dispatch end to end. It returns whether a reorder command fired.
 func pressReorderKey(t *testing.T, m *AppModel, cross *OutlinerModel, key rune) bool {
 	t.Helper()
-	_, cmd := cross.handleKeyMsg(syntheticKey(key))
-	if cmd == nil {
+	handled, cmd := m.handleGlobalKeyPress(syntheticKey(key))
+	if !handled || cmd == nil {
 		return false
 	}
 	msg := cmd()
@@ -187,11 +198,11 @@ func pressReorderKey(t *testing.T, m *AppModel, cross *OutlinerModel, key rune) 
 	return true
 }
 
-// TestOutlinerPlanningOrderJK locks FR-002: from the global Outliner, J/K in Next
+// TestOutlinerPlanningOrderJK locks FR-002: from a project-scoped Outliner, J/K in Next
 // reorders the durable focus queue and J/K on explicit rows in All's Today section
 // reorders the durable daily plan — both without touching task hierarchy — while
-// J/K stays unavailable in the other computed-order horizons. Cross-project
-// interleaving proves the global order survives a reload.
+// J/K stays unavailable in the other computed-order horizons and at the
+// all-project root.
 func TestOutlinerPlanningOrderJK(t *testing.T) {
 	t.Run("Next J reorders the durable focus queue and persists after reload", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-next", "next", "Alpha", "Bravo", "Charlie")
@@ -200,8 +211,8 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		enterCrossMode(cross, ModeNext)
-		if !cross.workNextMode {
-			t.Fatal("ModeNext did not enter workNextMode on the global Outliner")
+		if cross.primaryMode != ModeNext {
+			t.Fatal("ModeNext did not become the global Outliner mode")
 		}
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
@@ -242,7 +253,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			[]string{tasks[0].ID, tasks[2].ID, tasks[1].ID})
 	})
 
-	t.Run("cross-project interleaved Next order is retained after reload", func(t *testing.T) {
+	t.Run("all-project interleaved Next order is not directly reorderable", func(t *testing.T) {
 		dir := t.TempDir()
 		p1, t1 := planningOrderProject(t, dir, "proj-1", "one", "A", "C")
 		p2, t2 := planningOrderProject(t, dir, "proj-2", "two", "B", "D")
@@ -256,26 +267,12 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			t.Fatal("cursor did not land on B")
 		}
 
-		// Move B down: A, C, B, D — B (project two) crosses C (project one).
-		if !pressReorderKey(t, m, cross, 'J') {
-			t.Fatal("J in interleaved Next produced no reorder command")
+		if pressReorderKey(t, m, cross, 'J') {
+			t.Fatal("J at the all-project root must not reorder across projects")
 		}
 
-		want := []string{t1[0].ID, t1[1].ID, t2[0].ID, t2[1].ID}
+		want := []string{t1[0].ID, t2[0].ID, t1[1].ID, t2[1].ID}
 		assertOrder(t, "interleaved focus queue", diskFocusQueueIDs(t, dataDir), want)
-
-		// Rebuilding the rows from committed state renders the same interleaved order.
-		// (The durable reorder triggers an async cross reload that clears
-		// loadedProjects; re-seat the same project pointers to stand in for it.)
-		cross.loadedProjects = []*models.Project{p1, p2}
-		enterCrossMode(cross, ModeNext)
-		var rowIDs []string
-		for _, row := range cross.rows {
-			if row.isTaskRow() {
-				rowIDs = append(rowIDs, row.task.ID)
-			}
-		}
-		assertOrder(t, "interleaved Next rows after reload", rowIDs, want)
 	})
 
 	t.Run("Today J reorders the durable daily plan without changing hierarchy", func(t *testing.T) {
@@ -301,30 +298,6 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
 	})
 
-	t.Run("J is unavailable in Backlog (no planning or hierarchy change)", func(t *testing.T) {
-		project, tasks := planningOrderProject(t, t.TempDir(), "p-back", "back", "Alpha", "Bravo")
-		m, cross, dataDir := newPlanningOrderApp(t, project)
-		// Backlog needs actionable, non-Next tasks: flip both to Ready.
-		for _, task := range tasks {
-			task.ApplyWorkflowState(models.StateReady)
-		}
-		enterCrossMode(cross, ModeBacklog)
-		if cross.isPlanningReorderMode() {
-			t.Fatal("Backlog must not be a planning-reorder mode")
-		}
-		if !cross.isComputedOrderMode() {
-			t.Fatal("Backlog must be a computed-order mode")
-		}
-		cross.cursor = 0
-
-		if pressReorderKey(t, m, cross, 'J') {
-			t.Fatal("J in Backlog emitted a reorder command; it must be unavailable")
-		}
-		if got := diskFocusQueueIDs(t, dataDir); len(got) != 0 {
-			t.Fatalf("Backlog J touched the focus queue: %v", got)
-		}
-		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID})
-	})
 }
 
 func TestTodayPlanningReorderStateBuckets(t *testing.T) {

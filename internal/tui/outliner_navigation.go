@@ -47,7 +47,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 		return false
 	}
 
-	if bucket := taskSectionBucket(task); bucket != "" && m.project != nil {
+	if bucket := taskStateGroupLabel(task); bucket != "" && m.project != nil {
 		delete(m.collapsedSections, bucket)
 	}
 	m.ensureExpandedNodes()
@@ -79,15 +79,14 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 	m.activeSavedFilter = ""
 	m.activeCriteriaFilter = nil
 	m.setPinnedTagTabIndex(0)
-	target := ModeAll
-	switch {
-	case task.IsTerminalState():
-		target = ModeComplete
-	case task.IsSnoozed():
-		target = ModeSnoozed
+	if task.IsTerminalState() {
+		states, _ := models.NewWorkflowStateSet(task.State())
+		m.filter.setStateFilter(states, true)
 	}
-
-	m.selectOutlinerMode(target)
+	if task.IsSnoozed() {
+		m.filter.Snoozed = true
+	}
+	m.selectOutlinerMode(ModeAll)
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {
 			m.cursor = i

@@ -172,21 +172,61 @@ func (r *WorkflowRule) Validate() error {
 	return nil
 }
 
+// ValidateForAuthoring rejects decode-only shapes used by schema migration.
+func (r *WorkflowRule) ValidateForAuthoring() error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	if r.legacyTrigger.Field != "" {
+		return fmt.Errorf("singular trigger input was removed; use triggers")
+	}
+	if r.TriggerGroup != nil {
+		if err := validateTriggerGroupForAuthoring(r.TriggerGroup); err != nil {
+			return fmt.Errorf("invalid trigger group: %w", err)
+		}
+	} else {
+		for i, trigger := range r.Triggers {
+			if err := trigger.ValidateForAuthoring(); err != nil {
+				return fmt.Errorf("invalid trigger %d: %w", i+1, err)
+			}
+		}
+	}
+	for i, action := range r.Actions {
+		if err := action.ValidateForAuthoring(); err != nil {
+			return fmt.Errorf("invalid action %d: %w", i+1, err)
+		}
+	}
+	if r.Scope != nil && len(r.Scope.legacySections) > 0 {
+		return fmt.Errorf("invalid scope: sections input was removed; use states")
+	}
+	return nil
+}
+
+func validateTriggerGroupForAuthoring(group *TriggerGroup) error {
+	for i, trigger := range group.Triggers {
+		if err := trigger.ValidateForAuthoring(); err != nil {
+			return fmt.Errorf("trigger %d in group: %w", i+1, err)
+		}
+	}
+	for i := range group.Groups {
+		if err := validateTriggerGroupForAuthoring(&group.Groups[i]); err != nil {
+			return fmt.Errorf("sub-group %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
 // Validate checks if the trigger is properly configured.
 func (t RuleTrigger) Validate() error {
 	validFields := map[TriggerField]bool{
 		FieldState:               true,
-		FieldStatus:              true,
 		FieldPriority:            true,
-		FieldSection:             true,
 		FieldTags:                true,
 		FieldType:                true,
 		FieldDueDays:             true,
 		FieldCreatedDays:         true,
 		FieldUpdatedDays:         true,
 		FieldStateChanged:        true,
-		FieldStatusChanged:       true,
-		FieldSectionChanged:      true,
 		FieldPriorityChanged:     true,
 		FieldTagAdded:            true,
 		FieldTagRemoved:          true,
@@ -200,7 +240,6 @@ func (t RuleTrigger) Validate() error {
 		FieldHasTags:             true,
 		FieldDescriptionEmpty:    true,
 		FieldParentState:         true,
-		FieldParentStatus:        true,
 		FieldParentType:          true,
 		FieldParentTags:          true,
 		FieldLevel:               true,
@@ -213,15 +252,12 @@ func (t RuleTrigger) Validate() error {
 		FieldHasInProgressTasks:  true,
 		FieldActiveTaskCount:     true,
 		FieldAllTasksState:       true,
-		FieldAllTasksStatus:      true,
 		FieldMajorityTaskType:    true,
 		FieldMajorityTaskState:   true,
-		FieldMajorityTaskStatus:  true,
 		FieldCompletionRatio:     true,
 		FieldDaysSinceUpdate:     true,
 		FieldProjectStatus:       true,
 		FieldHasTasksWithState:   true,
-		FieldHasTasksWithStatus:  true,
 	}
 	if !validFields[t.Field] {
 		return fmt.Errorf("invalid field: %s", t.Field)
@@ -239,11 +275,8 @@ func (t RuleTrigger) Validate() error {
 	if !validOps[t.Operation] {
 		return fmt.Errorf("invalid operation: %s", t.Operation)
 	}
-	if t.Value == "" && !isValidEmptyTriggerValue(t) {
+	if t.Value == "" {
 		return fmt.Errorf("trigger value is required")
-	}
-	if err := validateSectionTriggerValue(t); err != nil {
-		return err
 	}
 	if err := validateCanonicalStateTrigger(t); err != nil {
 		return err
@@ -252,9 +285,7 @@ func (t RuleTrigger) Validate() error {
 	return nil
 }
 
-// ValidateForAuthoring validates a trigger against the canonical schema exposed
-// for new rules. Validate remains broader so decoded legacy rules can survive
-// until the versioned migration rewrites them.
+// ValidateForAuthoring validates a trigger against the canonical schema.
 func (t RuleTrigger) ValidateForAuthoring() error {
 	if !containsTriggerField(ValidTriggerFields(), t.Field) {
 		return fmt.Errorf("trigger field is not available for canonical authoring: %s", t.Field)
@@ -301,45 +332,11 @@ func validateCanonicalStateTrigger(t RuleTrigger) error {
 	return nil
 }
 
-func isValidEmptyTriggerValue(t RuleTrigger) bool {
-	return t.Field == FieldSection && (t.Operation == OpEquals || t.Operation == OpNotEquals)
-}
-
-func validateSectionTriggerValue(t RuleTrigger) error {
-	switch t.Field {
-	case FieldSection:
-		if t.Value != "" && !models.IsGTDSection(t.Value) {
-			return fmt.Errorf("section trigger value must be a built-in section: %s", t.Value)
-		}
-	case FieldSectionChanged:
-		parts := strings.Split(t.Value, "->")
-		if len(parts) != 2 {
-			return nil
-		}
-		for _, part := range parts {
-			if err := validateSectionTransitionPattern(strings.TrimSpace(part)); err != nil {
-				return err
-			}
-		}
-	default:
-	}
-	return nil
-}
-
-func validateSectionTransitionPattern(pattern string) error {
-	if pattern == "*" || pattern == "" || models.IsGTDSection(pattern) {
-		return nil
-	}
-	return fmt.Errorf("section_changed value must target built-in sections: %s", pattern)
-}
-
 // Validate checks if the action is properly configured.
 func (a RuleAction) Validate() error {
 	validActions := map[ActionType]bool{
 		ActionSetState:         true,
-		ActionSetStatus:        true,
 		ActionSetPriority:      true,
-		ActionSetSection:       true,
 		ActionAddTag:           true,
 		ActionRemoveTag:        true,
 		ActionSetDueRelative:   true,
@@ -363,7 +360,6 @@ func (a RuleAction) Validate() error {
 	}
 
 	noValueRequired := map[ActionType]bool{
-		ActionSetSection:     true,
 		ActionClearDue:       true,
 		ActionCompleteParent: true,
 		ActionBlockParent:    true,
@@ -397,10 +393,6 @@ func (a RuleAction) Validate() error {
 		if models.ProjectStatusIconByKey(a.Value) == nil {
 			return fmt.Errorf("invalid project status icon key: %s", a.Value)
 		}
-	case ActionSetSection:
-		if a.Value != "" && !models.IsGTDSection(a.Value) {
-			return fmt.Errorf("set_section value must be a built-in section: %s", a.Value)
-		}
 	}
 
 	if a.Condition != nil {
@@ -412,8 +404,7 @@ func (a RuleAction) Validate() error {
 	return nil
 }
 
-// ValidateForAuthoring validates an action against the canonical schema exposed
-// for new rules while Validate retains decode compatibility for legacy actions.
+// ValidateForAuthoring validates an action against the canonical schema.
 func (a RuleAction) ValidateForAuthoring() error {
 	if !containsActionType(ValidActionTypes(), a.ActionType) {
 		return fmt.Errorf("action type is not available for canonical authoring: %s", a.ActionType)
@@ -523,7 +514,7 @@ func ValidActionTypes() []ActionType {
 // IsEventTrigger returns true if the trigger field requires change detection.
 func IsEventTrigger(field TriggerField) bool {
 	switch field {
-	case FieldStateChanged, FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
+	case FieldStateChanged, FieldPriorityChanged,
 		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
 		FieldDueDateChanged, FieldTypeChanged, FieldRecurrenceCompleted, FieldStreakBroken:
 		return true
@@ -535,7 +526,7 @@ func IsEventTrigger(field TriggerField) bool {
 // IsHierarchicalTrigger returns true if the trigger requires parent/child data.
 func IsHierarchicalTrigger(field TriggerField) bool {
 	switch field {
-	case FieldParentState, FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
+	case FieldParentState, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
 		FieldIsBlocked, FieldBlockerCount, FieldDependencyCount:
 		return true
@@ -558,9 +549,9 @@ func IsHierarchicalAction(actionType ActionType) bool {
 // IsProjectTrigger returns true if the trigger field is a project-level aggregate field.
 func IsProjectTrigger(field TriggerField) bool {
 	switch field {
-	case FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksState, FieldAllTasksStatus,
-		FieldMajorityTaskType, FieldMajorityTaskState, FieldMajorityTaskStatus, FieldCompletionRatio,
-		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithState, FieldHasTasksWithStatus:
+	case FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksState,
+		FieldMajorityTaskType, FieldMajorityTaskState, FieldCompletionRatio,
+		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithState:
 		return true
 	default:
 	}
@@ -620,25 +611,6 @@ func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID st
 		}
 	}
 
-	// Legacy section scope remains executable until the versioned migration
-	// rewrites persisted workflow rules.
-	if len(r.Scope.Sections) > 0 {
-		if task == nil {
-			return false
-		}
-		matched := false
-		taskSection := models.SectionForState(task.State())
-		for _, section := range r.Scope.Sections {
-			if strings.EqualFold(section, taskSection) {
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			return false
-		}
-	}
-
 	return true
 }
 
@@ -663,15 +635,6 @@ func (r *WorkflowRule) validateScope() error {
 			return fmt.Errorf("invalid state in scope: %s", state)
 		}
 	}
-	for _, section := range r.Scope.Sections {
-		if section != "" && strings.TrimSpace(section) == "" {
-			return fmt.Errorf("empty section name in scope")
-		}
-		if section != "" && !models.IsGTDSection(section) {
-			return fmt.Errorf("invalid section in scope: %s", section)
-		}
-	}
-
 	return nil
 }
 
@@ -731,9 +694,6 @@ func (r *WorkflowRule) scopeTaskFields() []string {
 	}
 	if len(r.Scope.States) > 0 {
 		fields = append(fields, "states")
-	}
-	if len(r.Scope.Sections) > 0 {
-		fields = append(fields, "sections")
 	}
 	return fields
 }

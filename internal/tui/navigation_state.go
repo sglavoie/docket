@@ -77,39 +77,29 @@ func (s *PrimaryRouteStack) ReplaceDestination(route Route) error {
 	return nil
 }
 
-// PushTaskDetail adds a hierarchical child and records the exact stable focus
-// bookmark to restore when it is popped.
+// PushTaskDetail installs Task Detail as the one primary child and records the
+// exact stable focus bookmark to restore when it is popped.
 func (s *PrimaryRouteStack) PushTaskDetail(route Route, restore FocusTarget) error {
-	s.ensureRoot()
 	if route.ID() != TaskDetail {
 		return fmt.Errorf("%w: only TaskDetail can be pushed", ErrInvalidRouteTransition)
 	}
-	if s.Current().ID() == TaskDetail {
-		return fmt.Errorf("%w: TaskDetail cannot parent TaskDetail", ErrInvalidRouteTransition)
-	}
-	s.frames = append(s.frames, primaryRouteFrame{route: route, restoreFocus: restore})
-	return nil
+	return s.PushChild(route, restore)
 }
 
-// PushChild adds a hierarchical child route on top of the active destination and
-// records the parent focus bookmark to restore on pop. Task Detail and secondary
-// tools are children: they launch from a destination and dismiss back to it.
-// Launching another secondary tool while one is active replaces the current
-// child (tools do not nest) so a single Esc still returns to the destination.
+// PushChild installs the one child route above the Outliner root and records the
+// parent focus bookmark to restore on pop. Task Detail and secondary tools never
+// nest; switching child kinds or modules replaces the existing child so the
+// primary stack remains bounded to root + one child.
 func (s *PrimaryRouteStack) PushChild(route Route, restore FocusTarget) error {
 	s.ensureRoot()
 	switch route.ID() {
-	case TaskDetail:
-		if s.Current().ID() == TaskDetail {
-			return fmt.Errorf("%w: TaskDetail cannot parent TaskDetail", ErrInvalidRouteTransition)
-		}
-	case SecondaryTool:
-		if s.Current().ID() == SecondaryTool {
-			s.frames[len(s.frames)-1].route = route
-			return nil
-		}
+	case TaskDetail, SecondaryTool:
 	default:
 		return fmt.Errorf("%w: %s is not a child route", ErrInvalidRouteTransition, route.ID())
+	}
+	if len(s.frames) > 1 {
+		s.frames[len(s.frames)-1].route = route
+		return nil
 	}
 	s.frames = append(s.frames, primaryRouteFrame{route: route, restoreFocus: restore})
 	return nil
@@ -166,6 +156,14 @@ func (s *OverlayStack) Current() (Overlay, bool) {
 		return Overlay{}, false
 	}
 	return s.frames[len(s.frames)-1].overlay, true
+}
+
+func (s *OverlayStack) Overlays() []Overlay {
+	overlays := make([]Overlay, len(s.frames))
+	for i := range s.frames {
+		overlays[i] = s.frames[i].overlay
+	}
+	return overlays
 }
 
 func (s *OverlayStack) CloseTop() (Overlay, FocusTarget, bool) {

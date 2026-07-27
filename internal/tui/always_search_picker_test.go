@@ -44,13 +44,13 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewCrossProjectOutliner)
 	m.Init()
 
 	model, _ := m.Update(syntheticCtrlKey('d'))
 	m = model.(*ParentSelectorModel)
-	if m.Cursor != 1 {
-		t.Fatalf("ctrl+d should clamp to the parent entry, got cursor %d", m.Cursor)
+	if m.CursorIndex() != 1 {
+		t.Fatalf("ctrl+d should clamp to the parent entry, got cursor %d", m.CursorIndex())
 	}
 
 	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
@@ -67,8 +67,8 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 
 	model, _ = m.Update(syntheticCtrlKey('u'))
 	m = model.(*ParentSelectorModel)
-	if m.Cursor != 0 {
-		t.Fatalf("ctrl+u should clamp back to None, got cursor %d", m.Cursor)
+	if m.CursorIndex() != 0 {
+		t.Fatalf("ctrl+u should clamp back to None, got cursor %d", m.CursorIndex())
 	}
 
 	_, cmd = m.Update(syntheticSpecialKey(tea.KeyEnter))
@@ -90,7 +90,7 @@ func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewCrossProjectOutliner)
 	m.SetSize(80, 24)
 
 	view := m.View().Content
@@ -136,7 +136,7 @@ func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, ViewOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, ViewCrossProjectOutliner)
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd != nil {
@@ -157,8 +157,8 @@ func TestGlobalNoteMoveProjectSelectorUpdate_SelectsProject(t *testing.T) {
 	m := NewGlobalNoteMoveProjectSelectorModel([]*models.Project{projectA, projectB})
 	model, _ := m.Update(syntheticCtrlKey('j'))
 	m = model.(*GlobalNoteMoveProjectSelectorModel)
-	if m.Cursor != 1 {
-		t.Fatalf("ctrl+j should move cursor to 1, got %d", m.Cursor)
+	if m.CursorIndex() != 1 {
+		t.Fatalf("ctrl+j should move cursor to 1, got %d", m.CursorIndex())
 	}
 
 	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))

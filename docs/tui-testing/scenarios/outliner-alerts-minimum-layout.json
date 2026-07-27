@@ -1,0 +1,10 @@
+{
+  "name": "outliner-alerts-minimum-layout",
+  "fixture": "alerts",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "◆ All" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

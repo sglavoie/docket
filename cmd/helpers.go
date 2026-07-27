@@ -337,11 +337,9 @@ type mutateTaskJSONEntry struct {
 	ShortID   int      `json:"short_id"`
 	Type      string   `json:"type"`
 	Title     string   `json:"title"`
-	Status    string   `json:"status"`
 	State     string   `json:"state"`
 	Priority  int      `json:"priority"`
 	Tags      []string `json:"tags"`
-	Section   string   `json:"section,omitempty"`
 	CreatedAt string   `json:"created_at"`
 	UpdatedAt string   `json:"updated_at"`
 	DueDate   *string  `json:"due_date,omitempty"`
@@ -358,11 +356,9 @@ func taskToMutateJSONEntry(task *models.Task) mutateTaskJSONEntry {
 		ShortID:   task.ShortID,
 		Type:      task.Type.String(),
 		Title:     task.Title,
-		Status:    models.LegacyStatusForState(task.State()).String(),
 		State:     task.State().String(),
 		Priority:  task.Priority,
 		Tags:      tags,
-		Section:   models.SectionForState(task.State()),
 		CreatedAt: task.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt: task.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}

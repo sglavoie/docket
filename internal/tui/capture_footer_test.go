@@ -71,11 +71,7 @@ func TestCaptureFooterSpecStatePriority(t *testing.T) {
 }
 
 // TestAppViewLinkedTaskCreatorUsesAppShellFooter guards the single-footer
-// contract for the Linked Task Creator: it is a normal (non-full-height) stack
-// view, so AppModel.View() must supply exactly one app-shell footer. This
-// session removed the inline child footer that previously produced a second
-// competing separator. Rendering through app.View() exercises the composition
-// path.
+// contract for the linked-task Task Composer preset.
 func TestAppViewLinkedTaskCreatorUsesAppShellFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.width = 80
@@ -89,8 +85,8 @@ func TestAppViewLinkedTaskCreatorUsesAppShellFooter(t *testing.T) {
 
 	content := app.View().Content
 
-	if !strings.Contains(content, "New Blocker") {
-		t.Fatal("composed output should keep the Linked Task Creator title/body")
+	if !strings.Contains(content, "Task Composer") || !strings.Contains(content, "Linked task · blocker") {
+		t.Fatal("composed output should keep the linked-task Task Composer title/body")
 	}
 	if got := countFullWidthDividers(content); got != 1 {
 		t.Fatalf("expected exactly one app-shell footer separator, got %d\n%s", got, ansi.Strip(content))
@@ -121,9 +117,9 @@ func TestAppViewLinkedTaskCreatorComposesWithinTerminalAcrossSizes(t *testing.T)
 				if !handled {
 					t.Fatal("CreateLinkedTaskMsg should be handled")
 				}
-				ltc, ok := app.views.Get(ViewLinkedTaskCreator).(*LinkedTaskCreatorModel)
+				ltc, ok := app.views.Get(ViewTaskComposer).(*TaskComposerModel)
 				if !ok {
-					t.Fatal("expected a LinkedTaskCreatorModel to be registered")
+					t.Fatal("expected a TaskComposerModel to be registered")
 				}
 				if expand {
 					ltc.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
@@ -145,8 +141,8 @@ func TestAppViewLinkedTaskCreatorComposesWithinTerminalAcrossSizes(t *testing.T)
 				if !strings.Contains(plain, "Enter create") {
 					t.Fatalf("%s: app-shell footer capture actions missing\n%s", name, plain)
 				}
-				if !strings.Contains(plain, "New Blocker") {
-					t.Fatalf("%s: linked task creator title missing\n%s", name, plain)
+				if !strings.Contains(plain, "Linked task · blocker") {
+					t.Fatalf("%s: linked-task composer label missing\n%s", name, plain)
 				}
 				if got := countFullWidthDividers(content); got != 1 {
 					t.Fatalf("%s: expected exactly one app-shell footer separator, got %d\n%s", name, got, plain)
@@ -166,9 +162,9 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	app.width = 60
 	app.height = 20
 
-	handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{Project: project})
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
 	if !handled {
-		t.Fatal("ShowQuickCaptureMsg should be handled")
+		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 
 	content, issues := withRenderAudit(func() string { return app.View().Content })
@@ -197,9 +193,9 @@ func TestCaptureFooterSurvivesPinnedTasks(t *testing.T) {
 	project.Tasks[0].Title = sentinel
 	project.Tasks[0].Pinned = true
 
-	handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{Project: project})
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
 	if !handled {
-		t.Fatal("ShowQuickCaptureMsg should be handled")
+		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 
 	// Sanity: the project genuinely has a pinned task available to the bar.
@@ -225,9 +221,9 @@ func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
 	app.width = 80
 	app.height = 24
 
-	handled, _ := app.handleViewMessages(ShowQuickCaptureMsg{Project: project})
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
 	if !handled {
-		t.Fatal("ShowQuickCaptureMsg should be handled")
+		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 
 	app.statusMessage = "task saved"

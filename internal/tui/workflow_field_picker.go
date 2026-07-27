@@ -11,7 +11,7 @@ import (
 
 // TriggerFieldPickerModel allows selecting a trigger field from the full list.
 type TriggerFieldPickerModel struct {
-	*BasePicker[TriggerFieldInfo]
+	*ListSurfaceAdapter[TriggerFieldInfo]
 	triggerIndex   int
 	currentFieldID string
 }
@@ -33,7 +33,7 @@ type TriggerFieldPickerDoneMsg struct {
 func NewTriggerFieldPickerModel(triggerIndex int, currentField workflow.TriggerField) *TriggerFieldPickerModel {
 	items := BuildTriggerFieldItems()
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Select Trigger Field",
 		EmptyMessage:   "No trigger fields available.",
 		NoMatchMessage: "No matching fields.",
@@ -46,9 +46,9 @@ func NewTriggerFieldPickerModel(triggerIndex int, currentField workflow.TriggerF
 	picker.SetCursorToID(currentID)
 
 	return &TriggerFieldPickerModel{
-		BasePicker:     picker,
-		triggerIndex:   triggerIndex,
-		currentFieldID: currentID,
+		ListSurfaceAdapter: picker,
+		triggerIndex:       triggerIndex,
+		currentFieldID:     currentID,
 	}
 }
 
@@ -96,8 +96,8 @@ func (m *TriggerFieldPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
-				field := m.Filtered[m.Cursor].Field
+			if len(m.FilteredItems()) > 0 && m.CursorIndex() < len(m.FilteredItems()) {
+				field := m.FilteredItems()[m.CursorIndex()].Field
 				return m, func() tea.Msg {
 					return TriggerFieldPickerDoneMsg{
 						TriggerIndex: m.triggerIndex,
@@ -145,7 +145,7 @@ func (m *TriggerFieldPickerModel) View() tea.View {
 	b.WriteString(m.RenderList(maxVisible))
 
 	left := HelpStyle.Render(m.RenderFooter())
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.FilteredItems())))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return tea.NewView(b.String())

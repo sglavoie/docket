@@ -49,14 +49,10 @@ func (m *WorkflowRulesModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// Goto group: g prefix (gg = top)
-	entries = append(entries, keymap.GotoGroup(keymap.GotoDeps{
-		JumpToTop: func() (tea.Model, tea.Cmd) {
-			m.cursor = 0
-			return m, nil
-		},
-		GoToProject: nil,
-	})...)
+	entries = append(entries, keymap.Bind("home", "Jump to first rule", "Navigation", func() (tea.Model, tea.Cmd) {
+		m.cursor = 0
+		return m, nil
+	}))
 
 	// Actions
 	entries = append(entries,

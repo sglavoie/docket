@@ -10,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// noteTaskItem wraps a task for use with BasePicker.
+// noteTaskItem wraps a task for use with ListSurfaceAdapter.
 type noteTaskItem struct {
 	task *models.Task
 }
@@ -24,7 +24,7 @@ func (i noteTaskItem) ItemID() string  { return i.task.ID }
 
 // NoteTaskLinkerModel is a task picker for linking notes to tasks.
 type NoteTaskLinkerModel struct {
-	picker        *BasePicker[noteTaskItem]
+	picker        *ListSurfaceAdapter[noteTaskItem]
 	project       *models.Project
 	note          *models.Note
 	noteService   projectNoteService
@@ -46,7 +46,7 @@ func NewNoteTaskLinkerModelWithService(project *models.Project, note *models.Not
 		items = append(items, noteTaskItem{task: t})
 	}
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Link Note to Task",
 		Subtitle:       note.Title,
 		EmptyMessage:   "No tasks in project.",
@@ -218,8 +218,8 @@ func (m *NoteTaskLinkerModel) View() tea.View {
 	}
 
 	// Custom render to show linked status
-	if len(m.picker.Filtered) == 0 {
-		if len(m.picker.Items) == 0 {
+	if len(m.picker.FilteredItems()) == 0 {
+		if len(m.picker.SourceItems()) == 0 {
 			content.WriteString(MutedStyle.Render(m.picker.Config.EmptyMessage))
 		} else {
 			content.WriteString(MutedStyle.Render(m.picker.Config.NoMatchMessage))
@@ -227,14 +227,14 @@ func (m *NoteTaskLinkerModel) View() tea.View {
 		content.WriteString("\n")
 	} else {
 		start := 0
-		if m.picker.Cursor >= maxVisible {
-			start = m.picker.Cursor - maxVisible + 1
+		if m.picker.CursorIndex() >= maxVisible {
+			start = m.picker.CursorIndex() - maxVisible + 1
 		}
-		end := min(start+maxVisible, len(m.picker.Filtered))
+		end := min(start+maxVisible, len(m.picker.FilteredItems()))
 
 		for i := start; i < end; i++ {
-			item := m.picker.Filtered[i]
-			selected := i == m.picker.Cursor
+			item := m.picker.FilteredItems()[i]
+			selected := i == m.picker.CursorIndex()
 
 			isLinked := linkedSet[item.ItemID()]
 			display := item.DisplayText()
@@ -247,7 +247,7 @@ func (m *NoteTaskLinkerModel) View() tea.View {
 			content.WriteString("\n")
 		}
 
-		if remaining := len(m.picker.Filtered) - end; remaining > 0 {
+		if remaining := len(m.picker.FilteredItems()) - end; remaining > 0 {
 			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", remaining)))
 			content.WriteString("\n")
 		}

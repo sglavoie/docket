@@ -10,10 +10,10 @@ func timePtr(t time.Time) *time.Time {
 	return &t
 }
 
-func makeTask(status models.TaskStatus, completedAt *time.Time, activity []*models.ActivityEntry) *models.Task {
+func makeTask(status models.WorkflowState, completedAt *time.Time, activity []*models.ActivityEntry) *models.Task {
 	return &models.Task{
 		ID:            "test-task",
-		WorkflowState: models.DeriveWorkflowState(status, "", ""),
+		WorkflowState: status,
 		CompletedAt:   completedAt,
 		Activity:      activity,
 	}

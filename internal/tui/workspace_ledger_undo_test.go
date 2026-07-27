@@ -56,7 +56,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 			task := seedTask(t, 1, "Ledger undo target", models.StateReady)
 			project := newLedgerUndoProject(t, dataDir, "ledger-undo", task)
 
-			mutator := newLedgerUndoApp(t, dataDir, project, ViewOutliner, task.ID, true)
+			mutator := newLedgerUndoApp(t, dataDir, project, ViewCrossProjectOutliner, task.ID, true)
 			before := readTasksFile(t, project)
 
 			if err := tc.mutate(mutator.appService, task.ID); err != nil {
@@ -69,7 +69,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 
 			// Simulate a restart: a brand-new AppModel with no in-memory undo state,
 			// reading the durable ledger the previous session wrote.
-			restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewOutliner, task.ID, false)
+			restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewCrossProjectOutliner, task.ID, false)
 
 			restarted = sendAppKey(restarted, syntheticKey('u'))
 			if got := readTasksFile(t, project); !bytes.Equal(got, before) {
@@ -89,7 +89,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		task := seedTask(t, 1, "Planning transition target", models.StateReady)
 		project := newLedgerUndoProject(t, dataDir, "planning-undo", task)
 
-		mutator := newLedgerUndoApp(t, dataDir, project, ViewOutliner, task.ID, true)
+		mutator := newLedgerUndoApp(t, dataDir, project, ViewCrossProjectOutliner, task.ID, true)
 
 		// Seed the task into Today (Daily Plan) on disk so a transition into Next
 		// must drop the Today entry through the folded planning artifact.
@@ -107,7 +107,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		}
 		after := readTasksFile(t, project)
 
-		restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewOutliner, task.ID, false)
+		restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewCrossProjectOutliner, task.ID, false)
 
 		restarted = sendAppKey(restarted, syntheticKey('u'))
 		if got := readTasksFile(t, project); !bytes.Equal(got, before) {
@@ -142,7 +142,6 @@ func newLedgerUndoProject(t *testing.T, dataDir, slug string, task *models.Task)
 	project.Path = filepath.Join(dataDir, "projects", slug)
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = task.ShortID + 1
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 	return project
 }
@@ -190,7 +189,6 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 		persister:            NewProjectService(),
 		appService:           svc,
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		viewStack:            []PresentationID{ViewDashboard},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
@@ -199,8 +197,22 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 		focusQueueIDs:        make(map[TaskIdentity]bool),
 		dailyPlan:            []FocusTask{},
 		dailyPlanIDs:         make(map[TaskIdentity]bool),
+		operationRegistry:    NewOperationRegistry(),
+		navigation:           NewNavigationState(),
 	}
-	appModel.showView(hostView, &invariantQueueView{taskID: taskID, project: project})
+	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)
+	appModel.lastNavigatedTaskID = taskID
+	outliner := NewOutlinerModel(project, manager, runtime)
+	outliner.rebuildRows()
+	outliner.moveCursorToTask(taskID)
+	appModel.showView(hostView, outliner)
+	if err := appModel.registerCoreInputOperations(); err != nil {
+		t.Fatalf("register core operations: %v", err)
+	}
+	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		t.Fatalf("register simplified input strategy: %v", err)
+	}
+	appModel.wireOutlinerOperationExecutor(outliner)
 	return appModel
 }
 

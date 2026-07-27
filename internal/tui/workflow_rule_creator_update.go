@@ -312,7 +312,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //
 		case 1:
 			m.scopeTypesInput, cmd = m.scopeTypesInput.Update(msg)
 		case 2:
-			m.scopeSectionsInput, cmd = m.scopeSectionsInput.Update(msg)
+			m.scopeStatesInput, cmd = m.scopeStatesInput.Update(msg)
 		}
 	}
 

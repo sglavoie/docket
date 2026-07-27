@@ -32,14 +32,11 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 			outliner.clearMultiSelect()
 		}
 	}
-	clearOutliner(m.outliner)
 	clearOutliner(m.crossOutliner)
 	if m.views != nil {
-		for _, vt := range []PresentationID{ViewOutliner, ViewCrossProjectOutliner} {
-			if view := m.views.Get(vt); view != nil {
-				if outliner, ok := view.(*OutlinerModel); ok {
-					clearOutliner(outliner)
-				}
+		if view := m.views.Get(ViewCrossProjectOutliner); view != nil {
+			if outliner, ok := view.(*OutlinerModel); ok {
+				clearOutliner(outliner)
 			}
 		}
 	}
@@ -69,20 +66,12 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 		return
 	}
 
-	if m.outliner != nil && clearMultiSelectStateForTaskIDs(&m.outliner.MultiSelectState, selectedIDs) {
-		m.outliner.rebuildRows()
-		m.outliner.clampCursor()
-	}
-	if m.outliner != nil && multiSelectStateHasTaskID(&m.outliner.MultiSelectState, selectedIDs) {
-		m.outliner.clearMultiSelect()
-	}
 	if m.crossOutliner != nil && multiSelectStateHasTaskID(&m.crossOutliner.MultiSelectState, selectedIDs) {
 		m.crossOutliner.clearMultiSelect()
 	}
 
 	for _, vt := range []PresentationID{
 		ViewWeeklyReview,
-		ViewOutliner,
 		ViewCrossProjectOutliner,
 	} {
 		m.clearViewBulkTaskSelectionForRefs(vt, selectedIDs)

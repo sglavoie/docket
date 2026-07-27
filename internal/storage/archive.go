@@ -64,7 +64,7 @@ func parseArchiveFileWithHeadingLines(path string) ([]*models.Task, []int, error
 // index builder can hash and parse a source from a single read, and so the
 // transactional archive path can index the exact content it is about to write.
 func parseArchiveContentWithHeadingLines(content string) ([]*models.Task, []int, error) {
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse archive: %w", err)
 	}

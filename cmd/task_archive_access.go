@@ -16,7 +16,7 @@ import (
 
 var (
 	archiveListType   string
-	archiveListStatus string
+	archiveListState  string
 	archiveListSince  string
 	archiveListUntil  string
 	archiveShowNoGlow bool
@@ -41,21 +41,22 @@ Examples:
   tt task archive list
   tt task archive list --project my-project
   tt task archive list --since 2026-01-01 --until 2026-01-31
-  tt task archive list --type bug --status done --json`,
+  tt task archive list --state canceled
+  tt task archive list --type bug --state done --json`,
 		Args: cobra.NoArgs,
 		RunE: runTaskArchiveList,
 	}
 
 	cmd.Flags().StringP("project", "p", "", "target project slug (default: current project)")
 	cmd.Flags().StringVarP(&archiveListType, "type", "t", "", "filter by type (epic, story, task, bug, idea)")
-	cmd.Flags().StringVarP(&archiveListStatus, "status", "s", "", "filter by status (done, canceled)")
+	cmd.Flags().StringVar(&archiveListState, "state", "", "filter by canonical state (done, canceled)")
 	cmd.Flags().StringVar(&archiveListSince, "since", "", "include tasks completed on or after YYYY-MM-DD")
 	cmd.Flags().StringVar(&archiveListUntil, "until", "", "include tasks completed on or before YYYY-MM-DD")
 	addOutputFlags(cmd)
 
 	_ = cmd.RegisterFlagCompletionFunc("project", completeProjectSlugs())
 	_ = cmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
-	_ = cmd.RegisterFlagCompletionFunc("status", completeEnum(statusCompletions))
+	_ = cmd.RegisterFlagCompletionFunc("state", completeEnum(stateCompletions))
 
 	return cmd
 }
@@ -159,7 +160,7 @@ func runTaskArchiveShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if out.JSON {
-		return displayTaskShowJSON(task, task.State() == models.StateNext)
+		return displayTaskShowJSON(task)
 	}
 	if out.Quiet {
 		return nil
@@ -193,7 +194,7 @@ func loadArchiveAccessProject(cmd *cobra.Command) (*models.Project, *CLIWorkspac
 
 type archiveListFilters struct {
 	taskType  *models.TaskType
-	status    *models.TaskStatus
+	state     *models.WorkflowState
 	since     *time.Time
 	untilNext *time.Time
 }
@@ -209,12 +210,12 @@ func parseArchiveListFilters() (archiveListFilters, error) {
 		filters.taskType = &taskType
 	}
 
-	if archiveListStatus != "" {
-		status, ok := models.ParseTaskStatus(archiveListStatus)
+	if archiveListState != "" {
+		state, ok := models.ParseWorkflowState(archiveListState)
 		if !ok {
-			return filters, fmt.Errorf("invalid status %q (valid: %s)", archiveListStatus, strings.Join(statusCompletions, ", "))
+			return filters, fmt.Errorf("invalid state %q (valid: %s)", archiveListState, strings.Join(stateCompletions, ", "))
 		}
-		filters.status = &status
+		filters.state = &state
 	}
 
 	since, err := parseArchiveListDateFlag("--since", archiveListSince)
@@ -264,7 +265,7 @@ func archiveSummaryMatches(summary storage.ArchiveTaskSummary, filters archiveLi
 	if filters.taskType != nil && summary.Type != *filters.taskType {
 		return false
 	}
-	if filters.status != nil && !stateMatchesLegacyStatus(summary.WorkflowState, *filters.status) {
+	if filters.state != nil && summary.WorkflowState != *filters.state {
 		return false
 	}
 	if filters.since != nil || filters.untilNext != nil {
@@ -288,7 +289,7 @@ type archiveSummaryJSONEntry struct {
 	ShortID       int        `json:"short_id"`
 	Type          string     `json:"type"`
 	Title         string     `json:"title"`
-	Status        string     `json:"status"`
+	State         string     `json:"state"`
 	Priority      int        `json:"priority"`
 	CreatedAt     time.Time  `json:"created_at"`
 	CompletedAt   *time.Time `json:"completed_at"`
@@ -309,7 +310,7 @@ func displayArchiveSummariesJSON(project *models.Project, summaries []storage.Ar
 			ShortID:       summary.ShortID,
 			Type:          summary.Type.String(),
 			Title:         summary.Title,
-			Status:        models.LegacyStatusForState(summary.WorkflowState).String(),
+			State:         summary.WorkflowState.String(),
 			Priority:      summary.Priority,
 			CreatedAt:     summary.CreatedAt,
 			CompletedAt:   summary.CompletedAt,
@@ -326,7 +327,7 @@ func displayArchiveSummariesJSON(project *models.Project, summaries []storage.Ar
 func displayArchiveSummaryTable(project *models.Project, summaries []storage.ArchiveTaskSummary) {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "#", "Type", "Status", "Completed", "Title", "Source"})
+	t.AppendHeader(table.Row{"ID", "#", "Type", "State", "Completed", "Title", "Source"})
 
 	for _, summary := range summaries {
 		t.AppendRow(table.Row{

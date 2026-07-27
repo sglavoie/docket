@@ -13,24 +13,17 @@ type Binding struct {
 	Key         string
 	Description string
 	Category    string
+	// OperationID links this direct key to the same semantic operation used by
+	// commands and palettes. Empty retains the legacy action path.
+	OperationID string
 	Action      Action
 	Gate        Gate // nil = always active
 	Hidden      bool // excluded from help, included in HandledKeys
 }
 
-// PrefixNode is an intermediate key that awaits a follow-up key.
-type PrefixNode struct {
-	Key         string
-	Description string
-	Category    string
-	Children    []Entry
-	Gate        Gate // nil = always active
-}
-
-// Entry holds exactly one non-nil field.
+// Entry holds one direct binding.
 type Entry struct {
-	Binding    *Binding
-	PrefixNode *PrefixNode
+	Binding *Binding
 }
 
 // KeyMap is the complete set of keybindings for a view.
@@ -42,9 +35,6 @@ type KeyMap struct {
 // BindOption is a functional option for Bind.
 type BindOption func(*Binding)
 
-// PrefixOption is a functional option for Prefix.
-type PrefixOption func(*PrefixNode)
-
 // WithGate sets a gate on a Binding.
 func WithGate(g Gate) BindOption {
 	return func(b *Binding) { b.Gate = g }
@@ -55,9 +45,10 @@ func AsHidden() BindOption {
 	return func(b *Binding) { b.Hidden = true }
 }
 
-// WithPrefixGate sets a gate on a PrefixNode.
-func WithPrefixGate(g Gate) PrefixOption {
-	return func(p *PrefixNode) { p.Gate = g }
+// WithOperationID routes a binding through the shell operation executor when
+// one is installed, preserving Action as the compatibility fallback.
+func WithOperationID(id string) BindOption {
+	return func(b *Binding) { b.OperationID = id }
 }
 
 // Bind constructs a Binding entry.
@@ -72,18 +63,4 @@ func Bind(key, desc, cat string, action Action, opts ...BindOption) Entry {
 		o(b)
 	}
 	return Entry{Binding: b}
-}
-
-// Prefix constructs a PrefixNode entry.
-func Prefix(key, desc, cat string, children []Entry, opts ...PrefixOption) Entry {
-	p := &PrefixNode{
-		Key:         key,
-		Description: desc,
-		Category:    cat,
-		Children:    children,
-	}
-	for _, o := range opts {
-		o(p)
-	}
-	return Entry{PrefixNode: p}
 }

@@ -30,15 +30,14 @@ func TestRetiredTaskStageCommandSurfaceStaysRemoved(t *testing.T) {
 		t.Fatalf("task add still exposes retired --stage flag: %+v", flag)
 	}
 
-	// Backward-readable JSON keeps the optional field even though no command can
-	// mutate it and current task output leaves it empty.
 	for name, typ := range map[string]reflect.Type{
 		"task list": reflect.TypeOf(taskJSONEntry{}),
 		"task show": reflect.TypeOf(taskShowJSONEntry{}),
 	} {
-		field, ok := typ.FieldByName("Stage")
-		if !ok || field.Tag.Get("json") != "stage,omitempty" {
-			t.Errorf("%s JSON lost legacy stage compatibility field", name)
+		for _, retired := range []string{"Status", "Section", "Stage", "Queued"} {
+			if _, ok := typ.FieldByName(retired); ok {
+				t.Errorf("%s JSON still exposes retired %s field", name, retired)
+			}
 		}
 	}
 }

@@ -17,7 +17,7 @@ func resetTaskAddVars() {
 	taskParentFlag = ""
 	taskPriority = 3
 	taskTags = nil
-	taskSectionFlag = ""
+	taskStateFlag = ""
 	taskRecurFlag = ""
 	taskAddFromFlag = ""
 	taskTemplateFlag = ""

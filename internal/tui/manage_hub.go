@@ -55,8 +55,6 @@ func (mode ManageRulesMode) String() string {
 }
 
 var manageModuleNames = [...]string{
-	"Manage",
-	"Inbox",
 	"Notes",
 	"Blockers",
 	"Rules",
@@ -89,19 +87,22 @@ func (mode NotificationMode) String() string {
 // seams. The hub owns navigation and lifecycle only; mutations remain in the
 // application service and feature coordinators used by the embedded models.
 type ManageHubDependencies struct {
-	Runtime        *config.RuntimeState
-	ConfigManager  *config.Manager
-	AppService     *app.Service
-	NoteService    projectNoteService
-	HistoryLedger  *storage.WorkspaceLedger
-	Blockers       BlockerCoordinator
-	Tags           TagCoordinator
-	Wire           func(View)
-	ResolveProject func(string) *models.Project
-	CurrentProject func() *models.Project
-	NewSettings    func() *SettingsModel
-	ActiveContext  func() ContextScope
-	LoadedProjects func() []*models.Project
+	Runtime            *config.RuntimeState
+	ConfigManager      *config.Manager
+	AppService         *app.Service
+	NoteService        projectNoteService
+	HistoryLedger      *storage.WorkspaceLedger
+	Blockers           BlockerCoordinator
+	Tags               TagCoordinator
+	Wire               func(View)
+	ResolveProject     func(string) *models.Project
+	CurrentProject     func() *models.Project
+	NewSettings        func() *SettingsModel
+	ActiveContext      func() ContextScope
+	ActiveProjectFocus func() string
+	LoadedProjects     func() []*models.Project
+	OperationRegistry  *OperationRegistry
+	OperationExecutor  *OperationExecutor
 }
 
 type manageHubPickerEntry struct {
@@ -142,7 +143,7 @@ func NewManageHubModel(deps ManageHubDependencies) *ManageHubModel {
 	return &ManageHubModel{
 		deps: deps,
 		params: ManageParams{
-			Module: ManageLanding,
+			Module: ManageNotes,
 			Scope:  AppEntityScope(),
 		},
 	}
@@ -307,7 +308,7 @@ func (m *ManageHubModel) OpenViewMenu() bool {
 
 	m.pickerCursor = 0
 	for i, entry := range m.pickerEntries {
-		if entry.params == params && (!entry.hasRulesMode || entry.rulesMode == m.rulesMode) {
+		if manageParamsEqual(entry.params, params) && (!entry.hasRulesMode || entry.rulesMode == m.rulesMode) {
 			m.pickerCursor = i
 			break
 		}
@@ -348,12 +349,6 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	params = route.Params().(ManageParams)
 	m.params = params
 	m.closePicker()
-	if params.Module == ManageLanding {
-		m.active = nil
-		m.activeKey = ""
-		return nil
-	}
-
 	project, err := m.projectForScope(params.Scope)
 	if err != nil {
 		return err
@@ -368,12 +363,6 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 
 	var view View
 	switch params.Module {
-	case ManageInbox:
-		if project == nil {
-			view = NewGlobalInboxProcessorModel(m.deps.ConfigManager, m.deps.Runtime)
-		} else {
-			view = NewInboxProcessorModel(project, m.deps.ConfigManager, m.deps.Runtime)
-		}
 	case ManageNotes:
 		if project == nil {
 			view = NewGlobalNotesViewModelWithService(
@@ -412,7 +401,11 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		view = NewTaskTemplatesModel(m.deps.Runtime)
 	case ManageTags:
 		if project == nil {
-			view = NewGlobalTagManagerModel(m.deps.Runtime.ActiveProjects(), m.deps.Runtime, m.deps.Tags)
+			view = NewGlobalTagManagerModel(
+				projectsInProjectSet(m.deps.Runtime.ActiveProjects(), params.ProjectSet),
+				m.deps.Runtime,
+				m.deps.Tags,
+			)
 		} else {
 			view = NewTagManagerModelForProject(project, m.deps.Tags)
 		}
@@ -433,6 +426,10 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			active = m.deps.ActiveContext()
 		}
 		hub := NewContextHubModel(m.deps.Runtime, m.deps.ConfigManager, m.deps.AppService, active)
+		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor)
+		if m.deps.ActiveProjectFocus != nil {
+			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
+		}
 		if m.deps.LoadedProjects != nil {
 			hub.SetLoadedProjects(m.deps.LoadedProjects())
 		}
@@ -465,7 +462,16 @@ func (m *ManageHubModel) projectForScope(scope EntityScope) (*models.Project, er
 }
 
 func manageModuleCacheKey(params ManageParams, rulesMode ManageRulesMode) string {
-	return fmt.Sprintf("%d:%d:%s:%d:%d", params.Module, params.Scope.Kind, params.Scope.ProjectID, params.NotificationMode, rulesMode)
+	return fmt.Sprintf(
+		"%d:%d:%s:%t:%s:%d:%d",
+		params.Module,
+		params.Scope.Kind,
+		params.Scope.ProjectID,
+		params.ProjectSet.Explicit,
+		strings.Join(params.ProjectSet.ProjectIDs(), "\x1f"),
+		params.NotificationMode,
+		rulesMode,
+	)
 }
 
 func (m *ManageHubModel) prepareActiveView() {
@@ -602,20 +608,6 @@ func (m *ManageHubModel) IsFullHeight() bool {
 	return false
 }
 
-func (m *ManageHubModel) HasPendingPrefix() bool {
-	if provider, ok := m.active.(PendingPrefixView); ok {
-		return provider.HasPendingPrefix()
-	}
-	return false
-}
-
-func (m *ManageHubModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if provider, ok := m.active.(PrefixPopupProvider); ok {
-		return provider.GetPrefixPopupInfo()
-	}
-	return nil
-}
-
 func (m *ManageHubModel) GetConfirmDialog() *ConfirmDialog {
 	if provider, ok := m.active.(ConfirmDialogProvider); ok {
 		return provider.GetConfirmDialog()
@@ -673,9 +665,6 @@ func (m *ManageHubModel) GetHelpItems() []HelpItem {
 }
 
 func (m *ManageHubModel) StatusBarLabel() string {
-	if m.params.Module == ManageLanding {
-		return "Manage"
-	}
 	if m.params.Module == ManageNotifications {
 		return "Notifications · " + m.params.NotificationMode.String()
 	}
@@ -688,17 +677,21 @@ func (m *ManageHubModel) StatusBarLabel() string {
 	if m.params.Scope.Kind == ScopeProject {
 		return m.params.Module.String() + " · Project"
 	}
+	if m.params.Module == ManageTags && m.params.ProjectSet.Explicit {
+		return m.params.Module.String() + " · Scope"
+	}
 	return m.params.Module.String() + " · All"
 }
 
 func (m *ManageHubModel) CommandContext() CommandContext {
-	if view, ok := m.PresentationView(); ok && m.params.Module != ManageLanding {
+	if view, ok := m.PresentationView(); ok {
 		ctx := PresentationCommandContext(view)
 		if m.params.Scope.Kind == ScopeProject {
 			ctx.Scope = ScopeProject
 			delete(ctx.Capabilities, CapabilityAppScope)
 			ctx.Capabilities.Add(CapabilityProjectScope)
 		}
+		ctx.ScopeProjectIDs = m.ScopeProjectIDs()
 		return ctx
 	}
 	return CommandContext{
@@ -712,6 +705,23 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 }
 
 func (m *ManageHubModel) RulesMode() ManageRulesMode { return m.rulesMode }
+
+// ScopeProjectIDs returns the exact project set represented by the active
+// typed Manage route. App-scoped legacy modules continue to resolve all active
+// projects when no explicit set was supplied.
+func (m *ManageHubModel) ScopeProjectIDs() []string {
+	if m.params.Scope.Kind == ScopeProject {
+		return []string{m.params.Scope.ProjectID}
+	}
+	projects := projectsInProjectSet(m.deps.Runtime.ActiveProjects(), m.params.ProjectSet)
+	ids := make([]string, 0, len(projects))
+	for _, project := range projects {
+		if project != nil {
+			ids = append(ids, project.ID)
+		}
+	}
+	return normalizedProjectIDs(ids)
+}
 
 // SetRulesMode replaces the Rules submode without changing the typed route.
 // Activate performs the actual model construction so callers can update the
@@ -768,13 +778,6 @@ func (m *ManageHubModel) RefreshTemplates() {
 
 func manageModulePresentation(params ManageParams) (PresentationID, bool) {
 	switch params.Module {
-	case ManageLanding:
-		return ViewSettings, true
-	case ManageInbox:
-		if params.Scope.Kind == ScopeProject {
-			return ViewInboxProcessor, true
-		}
-		return ViewGlobalInboxProcessor, true
 	case ManageNotes:
 		if params.Scope.Kind == ScopeProject {
 			return ViewNotes, true

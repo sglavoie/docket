@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -53,6 +56,101 @@ func loadBulkPickerTestProject(t *testing.T, project *models.Project) *models.Pr
 		t.Fatalf("LoadProject: %v", err)
 	}
 	return loaded
+}
+
+type appBulkPickerEnv struct {
+	dataDir  string
+	ledger   *storage.WorkspaceLedger
+	svc      *app.Service
+	features SecondaryCoordinators
+	mgr      *config.Manager
+	cfg      *config.RuntimeState
+	projects []*models.Project
+}
+
+func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPickerEnv {
+	t.Helper()
+	dataDir := t.TempDir()
+	t.Setenv("HOME", dataDir)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+
+	projects := make([]*models.Project, len(taskGroups))
+	for i, tasks := range taskGroups {
+		slug := fmt.Sprintf("bp%d", i)
+		project, err := models.NewProject(uuid.New().String(), slug, "")
+		if err != nil {
+			t.Fatalf("NewProject: %v", err)
+		}
+		project.Slug = slug
+		project.Path = filepath.Join(dataDir, "projects", slug)
+		project.Tasks = tasks
+		next := 1
+		for _, task := range tasks {
+			if task.ShortID >= next {
+				next = task.ShortID + 1
+			}
+		}
+		project.NextShortID = next
+		project.BuildTaskTree()
+		projects[i] = project
+	}
+
+	repo := newScenarioRepo(commitSvc, projects...)
+	repo.seed(t)
+	svc := app.NewService(repo, nil, nil)
+
+	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
+	cfg := newTestConfigAt(dataDir)
+	setTestProjects(cfg, projects)
+	if err := saveTestRuntime(mgr, cfg); err != nil {
+		t.Fatalf("seed config save: %v", err)
+	}
+	return &appBulkPickerEnv{
+		dataDir: dataDir, ledger: ledger, svc: svc,
+		features: newSecondaryCoordinators(svc, mgr),
+		mgr:      mgr, cfg: cfg, projects: projects,
+	}
+}
+
+func (e *appBulkPickerEnv) appModel() *AppModel {
+	projects := make(map[string]*models.Project, len(e.projects))
+	for _, project := range e.projects {
+		projects[project.ID] = project
+	}
+	return &AppModel{
+		configManager: e.mgr, runtime: testRuntimeAt(e.cfg.DataDir(), e.cfg),
+		deps:     newShellDeps(testRuntimeAt(e.cfg.DataDir(), e.cfg), nil, e.mgr, nil),
+		projects: projects, persister: NewProjectService(), appService: e.svc,
+		secondaryFeatures: e.features, views: NewViewRegistry(),
+		navigation: NewNavigationState(), width: 80, height: 24,
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+	}
+}
+
+func (e *appBulkPickerEnv) refs(idx int, tasks ...*models.Task) []TaskProjectRef {
+	refs := make([]TaskProjectRef, 0, len(tasks))
+	for _, task := range tasks {
+		refs = append(refs, TaskProjectRef{Task: task, Project: e.projects[idx]})
+	}
+	return refs
+}
+
+func (e *appBulkPickerEnv) reload(t *testing.T, idx int) *models.Project {
+	t.Helper()
+	project := e.projects[idx]
+	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
+	if err := storage.LoadProject(fresh); err != nil {
+		t.Fatalf("reload project %d: %v", idx, err)
+	}
+	return fresh
+}
+
+func (e *appBulkPickerEnv) undo(t *testing.T) {
+	t.Helper()
+	if _, err := e.ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger undo: %v", err)
+	}
 }
 
 func runBulkPickerBatchCmd(t *testing.T, cmd tea.Cmd) []tea.Msg {

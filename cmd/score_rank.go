@@ -83,7 +83,6 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 			ID           string  `json:"id"`
 			ShortID      int     `json:"short_id"`
 			Type         string  `json:"type"`
-			Status       string  `json:"status"`
 			State        string  `json:"state"`
 			Title        string  `json:"title"`
 			Priority     int     `json:"priority"`
@@ -99,7 +98,6 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 				ID:           r.task.ID,
 				ShortID:      r.task.ShortID,
 				Type:         string(r.task.Type),
-				Status:       string(models.LegacyStatusForState(r.task.State())),
 				State:        string(r.task.State()),
 				Title:        r.task.Title,
 				Priority:     r.task.Priority,

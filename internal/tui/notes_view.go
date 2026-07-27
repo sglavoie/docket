@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -62,7 +61,6 @@ type NotesViewModel struct {
 	// Multi-select state
 	multiSelectMode bool
 	selectedNotes   map[string]bool // keyed by filename
-	pendingPrefix   string          // waiting for second key after prefix (e.g. "g")
 
 	// Tab state
 	tabs TabState
@@ -354,25 +352,6 @@ func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog {
 	}
 	m.confirmOverlay.Cancel()
 	return &m.confirm
-}
-
-// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
-func (m *NotesViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
-	if m.pendingPrefix == "" {
-		return nil
-	}
-	km := m.buildKeyMap()
-	d := keymap.NewDispatcher(km)
-	d.SetPendingPrefix(m.pendingPrefix)
-	rawHints := d.PrefixHints()
-	hints := make([]PrefixHint, 0, len(rawHints))
-	for _, h := range rawHints {
-		hints = append(hints, PrefixHint{Key: h.Key, Description: h.Description})
-	}
-	return &PrefixPopupInfo{
-		Prefix: m.pendingPrefix,
-		Hints:  PrefixHints{m.pendingPrefix: hints},
-	}
 }
 
 func (m *NotesViewModel) StatusBarLabel() string {

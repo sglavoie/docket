@@ -15,15 +15,22 @@ const parentSelectorNoParentLabel = "No parent (top-level)"
 // ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
 type ParentPickerItem struct {
 	Task *models.Task
+	None bool
 }
 
 // FilterText returns searchable text for parent filtering.
 func (p ParentPickerItem) FilterText() string {
+	if p.None {
+		return parentSelectorNoParentLabel
+	}
 	return fmt.Sprintf("#%d %s %s", p.Task.ShortID, p.Task.Type.HeadingPrefix(), p.Task.Title)
 }
 
 // DisplayText returns the task title for display.
 func (p ParentPickerItem) DisplayText() string {
+	if p.None {
+		return parentSelectorNoParentLabel
+	}
 	return p.Task.Title
 }
 
@@ -34,12 +41,15 @@ func (p ParentPickerItem) CountValue() int {
 
 // ItemID returns the task ID as its unique identifier.
 func (p ParentPickerItem) ItemID() string {
+	if p.None {
+		return "parent:none"
+	}
 	return p.Task.ID
 }
 
 // ParentSelectorModel provides fuzzy-find selection of parent tasks.
 type ParentSelectorModel struct {
-	*BasePicker[ParentPickerItem]
+	*ListSurfaceAdapter[ParentPickerItem]
 	allItems     []ParentPickerItem // All valid parent candidates
 	allowNone    bool               // Whether "None" is a valid option
 	currentID    *string            // Currently selected parent ID (for pre-selection)
@@ -50,12 +60,15 @@ type ParentSelectorModel struct {
 
 // NewParentSelectorModel creates a new parent selector.
 func NewParentSelectorModel(validParents []*models.Task, currentID *string, allowNone bool, source PresentationID) *ParentSelectorModel {
-	items := make([]ParentPickerItem, len(validParents))
-	for i, t := range validParents {
-		items[i] = ParentPickerItem{Task: t}
+	items := make([]ParentPickerItem, 0, len(validParents)+1)
+	if allowNone {
+		items = append(items, ParentPickerItem{None: true})
+	}
+	for _, task := range validParents {
+		items = append(items, ParentPickerItem{Task: task})
 	}
 
-	picker := NewBasePicker(items, PickerConfig{
+	picker := NewListSurfaceAdapter(items, PickerConfig{
 		Title:          "Select Parent",
 		EmptyMessage:   "No valid parents available.",
 		NoMatchMessage: "No matching parents.",
@@ -64,48 +77,29 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 	})
 
 	m := &ParentSelectorModel{
-		BasePicker: picker,
-		allItems:   items,
-		allowNone:  allowNone,
-		currentID:  currentID,
-		source:     source,
+		ListSurfaceAdapter: picker,
+		allItems:           items,
+		allowNone:          allowNone,
+		currentID:          currentID,
+		source:             source,
 	}
 
 	// Pre-select current parent if set
 	if currentID != nil {
-		for i, item := range items {
-			if item.Task.ID == *currentID {
-				if allowNone {
-					m.Cursor = i + 1 // +1 to account for "None" option
-				} else {
-					m.Cursor = i
-				}
-				break
-			}
-		}
+		m.SetCursorToID(*currentID)
 	}
 
-	m.alwaysSearch = newAlwaysSearchSinglePicker(m.BasePicker, alwaysSearchSinglePickerConfig[ParentPickerItem]{
+	m.alwaysSearch = newAlwaysSearchSinglePicker(m.ListSurfaceAdapter, alwaysSearchSinglePickerConfig[ParentPickerItem]{
 		AllItems: items,
-		MaxCursor: func(filtered []ParentPickerItem) int {
-			if m.allowNone {
-				return len(filtered)
-			}
-			return max(len(filtered)-1, 0)
-		},
 		CancelMsg: func() tea.Msg {
 			return CloseParentSelectorMsg{}
 		},
 		SelectMsg: func(cursor int, filtered []ParentPickerItem) tea.Msg {
+			if cursor >= len(filtered) {
+				return CloseParentSelectorMsg{}
+			}
 			var parentID *string
-
-			if m.allowNone {
-				if cursor == 0 {
-					parentID = nil
-				} else if cursor-1 < len(filtered) {
-					parentID = &filtered[cursor-1].Task.ID
-				}
-			} else if cursor < len(filtered) {
+			if !filtered[cursor].None {
 				parentID = &filtered[cursor].Task.ID
 			}
 
@@ -163,7 +157,11 @@ func (m *ParentSelectorModel) View() tea.View {
 	var b strings.Builder
 
 	title := "Select Parent"
-	subtitle := fmt.Sprintf("%d parent%s available", len(m.allItems), pluralize(len(m.allItems), "", "s"))
+	parentCount := len(m.allItems)
+	if m.allowNone {
+		parentCount--
+	}
+	subtitle := fmt.Sprintf("%d parent%s available", parentCount, pluralize(parentCount, "", "s"))
 	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
 	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
 	b.WriteString(renderFullscreenTitle(title, subtitle))
@@ -182,7 +180,7 @@ func (m *ParentSelectorModel) View() tea.View {
 		footer = "↑/↓ navigate · Enter select · Ctrl+X no parent · Esc cancel"
 	}
 	left := HelpStyle.Render(footer)
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.FilteredItems())))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return tea.NewView(b.String())
@@ -196,50 +194,23 @@ func (m *ParentSelectorModel) renderList() string {
 		// Account for title, input, footer
 		m.Height()-10, 5)
 
-	// Calculate total items (including "None" if allowed)
-	totalItems := len(m.Filtered)
-	if m.allowNone {
-		totalItems++
-	}
-
+	totalItems := len(m.FilteredItems())
 	if totalItems == 0 {
 		return MutedStyle.Render("No matching parents.")
 	}
 
-	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
+	scrollOffset := calcScrollOffset(m.CursorIndex(), maxVisible)
 
-	itemIndex := 0
-
-	// Render "None" option if allowed and in view
-	if m.allowNone {
-		if itemIndex >= scrollOffset && itemIndex < scrollOffset+maxVisible {
-			cursor := "  "
-			if m.Cursor == 0 {
-				cursor = "  "
-			}
-			line := fmt.Sprintf("%s%s", cursor, parentSelectorNoParentLabel)
-			if m.Cursor == 0 {
-				line = SelectedLine(line, m.Width())
-			} else {
-				line = MutedStyle.Render(line)
-			}
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
-		itemIndex++
-	}
-
-	// Render parent tasks
-	for i, item := range m.Filtered {
-		cursorIdx := i
-		if m.allowNone {
-			cursorIdx = i + 1
-		}
-
-		if itemIndex >= scrollOffset && itemIndex < scrollOffset+maxVisible {
-			cursor := "  "
-			if m.Cursor == cursorIdx {
-				cursor = "  "
+	for i, item := range m.FilteredItems() {
+		if i >= scrollOffset && i < scrollOffset+maxVisible {
+			if item.None {
+				line := MutedStyle.Render(parentSelectorNoParentLabel)
+				if m.CursorIndex() == i {
+					line = SelectedLine(parentSelectorNoParentLabel, m.Width())
+				}
+				b.WriteString(line)
+				b.WriteString("\n")
+				continue
 			}
 
 			// Type icon with badge style
@@ -248,22 +219,21 @@ func (m *ParentSelectorModel) renderList() string {
 			// Short ID
 			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
 
-			prefix := fmt.Sprintf("%s%s %s ", cursor, typeIcon, shortID)
+			prefix := fmt.Sprintf("  %s %s ", typeIcon, shortID)
 			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
 			title := truncateToVisualWidth(item.Task.Title, maxTitleLen)
 			titleRendered := TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{
-				CursorSelected: m.Cursor == cursorIdx,
+				CursorSelected: m.CursorIndex() == i,
 			}).Render(title)
 			line := prefix + titleRendered
 
-			if m.Cursor == cursorIdx {
+			if m.CursorIndex() == i {
 				line = SelectedLine(line, m.Width())
 			}
 
 			b.WriteString(line)
 			b.WriteString("\n")
 		}
-		itemIndex++
 	}
 
 	// Show scroll indicator if there are more items

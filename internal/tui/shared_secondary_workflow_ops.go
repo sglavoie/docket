@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -39,21 +38,6 @@ func wfOpts(v workflowOpsView, task *models.Task, action string) app.SingleTaskW
 	}
 }
 
-// wfChangeState transitions the cursor task to newState, running the workflow
-// cascade. It is the coordinator-backed replacement for taskOpsChangeStatus and
-// takes a canonical WorkflowState directly rather than a legacy TaskStatus.
-func wfChangeState(v workflowOpsView, newState models.WorkflowState) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, StateVerb(newState)+" Task")
-	return v.taskItemCoordinator().TransitionWorkflow(taskIdentityFor(task, project), newState, opts,
-		func(res app.TaskResult) string {
-			return fmt.Sprintf("Task #%d -> %s", res.ShortID, newState)
-		})
-}
-
 // wfChangePriority sets the cursor task's priority from a numeric key string.
 func wfChangePriority(v workflowOpsView, key string) tea.Cmd {
 	task, project := v.getTaskRef()
@@ -70,91 +54,5 @@ func wfChangePriority(v workflowOpsView, key string) tea.Cmd {
 	return v.taskItemCoordinator().SetPriorityWorkflow(taskIdentityFor(task, project), priority, opts,
 		func(app.TaskResult) string {
 			return fmt.Sprintf("Priority set to %d", priority)
-		})
-}
-
-// wfSetQuickDueDate sets the cursor task's due date to a relative day offset.
-func wfSetQuickDueDate(v workflowOpsView, daysFromNow int) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	due, label := dueDateFromDays(daysFromNow, false)
-	opts := wfOpts(v, task, "Set Due Date")
-	return v.taskItemCoordinator().SetDueDateWorkflow(taskIdentityFor(task, project), due, false, opts,
-		func(app.TaskResult) string {
-			return fmt.Sprintf("Due date set to %s", label)
-		})
-}
-
-// wfClearDueDate clears the cursor task's due date.
-func wfClearDueDate(v workflowOpsView) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, "Clear Due Date")
-	return v.taskItemCoordinator().SetDueDateWorkflow(taskIdentityFor(task, project), nil, false, opts,
-		func(app.TaskResult) string { return "Due date cleared" })
-}
-
-// wfQuickSnooze sets or clears (nil snoozeDate) the cursor task's snooze date.
-func wfQuickSnooze(v workflowOpsView, snoozeDate *time.Time) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, "Snooze")
-	return v.taskItemCoordinator().SnoozeWorkflow(taskIdentityFor(task, project), snoozeDate, opts,
-		func(app.TaskResult) string {
-			if snoozeDate == nil {
-				return "Snooze cleared"
-			}
-			return fmt.Sprintf("Snoozed until %s", snoozeDate.Format("Mon Jan 2"))
-		})
-}
-
-// wfSectionMove moves the cursor task to the given GTD section.
-func wfSectionMove(v workflowOpsView, section string) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, "Move to Section")
-	return v.taskItemCoordinator().SetSectionWorkflow(taskIdentityFor(task, project), section, opts,
-		func(app.TaskResult) string {
-			name := section
-			if name == "" {
-				name = "Active"
-			}
-			return fmt.Sprintf("Moved to %s", name)
-		})
-}
-
-// wfTogglePin flips the cursor task's Pinned flag, running the workflow cascade.
-// It is the coordinator-backed replacement for taskOpsTogglePinned.
-func wfTogglePin(v workflowOpsView) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, "Toggle Pin")
-	return v.taskItemCoordinator().TogglePinnedWorkflow(taskIdentityFor(task, project), nil, opts,
-		func(res app.TaskResult) string {
-			return fmt.Sprintf("Toggled pin on #%d", res.ShortID)
-		})
-}
-
-// wfToggleDim flips the cursor task's Dimmed flag, running the workflow cascade.
-// It is the coordinator-backed replacement for taskOpsToggleDimmed.
-func wfToggleDim(v workflowOpsView) tea.Cmd {
-	task, project := v.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	opts := wfOpts(v, task, "Toggle Dim")
-	return v.taskItemCoordinator().ToggleDimmedWorkflow(taskIdentityFor(task, project), opts,
-		func(res app.TaskResult) string {
-			return fmt.Sprintf("Toggled dim on #%d", res.ShortID)
 		})
 }

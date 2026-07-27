@@ -24,7 +24,7 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	// self-pad their render to the terminal height, so the height-2 budget is
 	// what every render is tuned against. Previously this loop re-applied the
 	// full msg.Height to full-height views, diverging from the open path and
-	// overflowing views (Notes, Inbox Processor) that size against their budget
+	// overflowing views (such as Notes) that size against their budget
 	// rather than self-padding. Regression coverage: the *-resize-minimum-layout
 	// scenarios under docs/tui-testing/scenarios/ (run by TestExampleScenariosPass).
 	m.views.SetSize(msg.Width, msg.Height-2)
@@ -40,9 +40,6 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	if m.taskComposer != nil {
 		m.taskComposer.SetSize(msg.Width, msg.Height-2)
 	}
-	if m.pinnedPreview != nil {
-		m.pinnedPreview.SetSize(msg.Width, msg.Height-2)
-	}
 }
 
 // delegateToCurrentView forwards messages to the active view model.
@@ -51,7 +48,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		updated, cmd := m.taskComposer.Update(msg)
 		if composer, ok := updated.(*TaskComposerModel); ok {
 			m.taskComposer = composer
-			m.views.Register(composer.presentation, composer)
+			m.views.Register(ViewTaskComposer, composer)
 		}
 		return cmd
 	}
@@ -79,11 +76,11 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 	currentView := m.currentView()
 	cmd := m.views.Update(currentView, msg)
 
-	// Update peek task if active (cursor may have moved). The command palette
+	// Update peek task if active (cursor may have moved). Finder
 	// originates a frozen Peek snapshot and has no cursor task to follow, so
 	// leave that overlay untouched — otherwise an async message routed to the
 	// palette would dismiss a Peek the user is still reading.
-	if m.peekActive && currentView != ViewCommandPalette {
+	if m.peekActive && currentView != ViewFinder {
 		if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
 			m.peekTask = task
 			m.peekProject = project
@@ -102,21 +99,9 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		if v := m.views.Get(ViewTaskJumper); v != nil {
 			m.taskJumper = v.(*TaskJumperModel)
 		}
-	case ViewInboxProcessor:
-		if v := m.views.Get(ViewInboxProcessor); v != nil {
-			m.inboxProcessor = v.(*InboxProcessorModel)
-		}
-	case ViewGlobalInboxProcessor:
-		if v := m.views.Get(ViewGlobalInboxProcessor); v != nil {
-			m.globalInboxProcessor = v.(*GlobalInboxProcessorModel)
-		}
-	case ViewOutliner:
-		if v := m.views.Get(ViewOutliner); v != nil {
-			m.outliner = v.(*OutlinerModel)
-		}
 	case ViewCrossProjectOutliner:
-		if v := m.views.Get(ViewCrossProjectOutliner); v != nil {
-			m.crossOutliner = v.(*OutlinerModel)
+		if v, ok := m.views.Get(ViewCrossProjectOutliner).(*OutlinerModel); ok {
+			m.crossOutliner = v
 		}
 	default:
 	}
@@ -142,41 +127,6 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 	}
 	if v, ok := m.currentViewAsModel().(taskRefProvider); ok {
 		return v.getTaskRef()
-	}
-	return nil, nil
-}
-
-// peekCursorTaskAndProject resolves the task under the primary view's cursor for
-// the shared palette "peek task detail" command. It first tries the direct-key
-// fast path (getCurrentCursorTaskAndProject). That helper gates each primary with
-// activeReviewHub/activeManageHub/activeTaskWorkspace/activeTaskDetail, all of
-// which are false while the command palette shadows the primary as a shell
-// overlay, so the palette-executed command would otherwise resolve nothing. The
-// fallback consults the same primaries ungated — they resolve beneath shell
-// overlays — so the palette Peek command targets the same task Shift+Enter does.
-func (m *AppModel) peekCursorTaskAndProject() (*models.Task, *models.Project) {
-	if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
-		return task, project
-	}
-	if view, _, ok := m.outlinerPrimary(); ok {
-		if task, project := view.getTaskRef(); task != nil {
-			return task, project
-		}
-	}
-	if hub, _, ok := m.reviewHubPrimary(); ok {
-		if task, project := hub.getTaskRef(); task != nil {
-			return task, project
-		}
-	}
-	if hub, _, ok := m.manageHubPrimary(); ok {
-		if task, project := hub.getTaskRef(); task != nil {
-			return task, project
-		}
-	}
-	if detail, _, ok := m.taskDetailPrimary(); ok {
-		if task, project := detail.getTaskRef(); task != nil {
-			return task, project
-		}
 	}
 	return nil, nil
 }

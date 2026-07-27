@@ -130,36 +130,50 @@ func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
 	return obs
 }
 
-// availableCommands returns the commands the current view exposes, derived from
-// the command registry and sorted by name for stable output. It returns nil
+// availableCommands returns the operations the current view exposes, derived
+// from the authoritative operation registry and sorted for stable output. It returns nil
 // when no registry is wired or no commands apply to the current view.
 func (d *UITestDriver) availableCommands() []UITestCommand {
-	registry := d.app.commandRegistry
-	if registry == nil {
+	descriptors := d.availableOperationDescriptors()
+	if len(descriptors) == 0 {
 		return nil
 	}
-	cmds := registry.GetForView(d.app.currentView())
-	if len(cmds) == 0 {
-		return nil
-	}
-	result := make([]UITestCommand, 0, len(cmds))
-	for _, c := range cmds {
+	operations := d.app.operationRegistry
+	result := make([]UITestCommand, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		shortcut := operations.InputShortcutForOperation(InputStrategySimplified, descriptor.ID)
 		result = append(result, UITestCommand{
-			Name:     c.Name,
-			Shortcut: c.Shortcut,
-			Category: string(c.Category),
-			Aliases:  c.Aliases,
+			ID:       string(descriptor.ID),
+			Name:     descriptor.Label,
+			Shortcut: shortcut,
+			Category: operationCategoryLabel(descriptor.Category),
+			Aliases:  append([]string(nil), descriptor.Aliases...),
 		})
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Name != result[j].Name {
+			return result[i].Name < result[j].Name
+		}
+		return result[i].ID < result[j].ID
+	})
 	return result
+}
+
+func (d *UITestDriver) availableOperationDescriptors() []OperationDescriptor {
+	if d == nil || d.app == nil || d.app.operationRegistry == nil {
+		return nil
+	}
+	ctx := d.app.operationCommandContext()
+	ctx.View = d.app.currentView()
+	return d.app.operationRegistry.InputStrategyOperations(InputStrategySimplified, ctx)
 }
 
 // viewStackNames returns the human-readable names of the current view stack,
 // bottom to top. It always returns a non-nil slice for stable JSON output.
 func (d *UITestDriver) viewStackNames() []string {
-	names := make([]string, 0, len(d.app.viewStack))
-	for _, vt := range d.app.viewStack {
+	path := d.app.presentationPath()
+	names := make([]string, 0, len(path))
+	for _, vt := range path {
 		names = append(names, vt.String())
 	}
 	return names

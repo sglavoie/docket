@@ -253,12 +253,12 @@ func (m *WorkflowRuleCreatorModel) renderScopeSection(section string, fieldIdx i
 	b.WriteString(m.scopeTypesInput.View())
 	b.WriteString("\n\n")
 
-	sectLabel := "  Sections: "
+	sectLabel := "  States: "
 	if section == "scope" && fieldIdx == 2 {
-		sectLabel = "  " + FieldLabelFocusedStyle.Render("Sections: ")
+		sectLabel = "  " + FieldLabelFocusedStyle.Render("States: ")
 	}
 	b.WriteString(sectLabel)
-	b.WriteString(m.scopeSectionsInput.View())
+	b.WriteString(m.scopeStatesInput.View())
 	b.WriteString("\n")
 
 	return b.String()

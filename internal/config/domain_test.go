@@ -41,23 +41,19 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 		},
 		{
 			name:    "empty project id",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{Slug: "a"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{Slug: "a"}}}, wantErr: true,
 		},
 		{
 			name:    "empty project slug",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a"}}}, wantErr: true,
 		},
 		{
 			name:    "duplicate id",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a"}, {ID: "a", Slug: "b"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a"}, {ID: "a", Slug: "b"}}}, wantErr: true,
 		},
 		{
 			name:    "duplicate slug",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "s"}, {ID: "b", Slug: "s"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "s"}, {ID: "b", Slug: "s"}}}, wantErr: true,
 		},
 		{
 			name:    "dangling system inbox",
@@ -66,37 +62,30 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 		},
 		{
 			name:    "sandbox slug on sandbox project",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "sandbox", Slug: "_sandbox", Sandbox: true}}},
-		},
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "sandbox", Slug: "_sandbox", Sandbox: true}}}},
 		{
 			name:    "sandbox slug on ordinary project",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "not-sandbox", Slug: "_sandbox"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "not-sandbox", Slug: "_sandbox"}}}, wantErr: true,
 		},
 		{
 			name:    "traversal slug",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "escape", Slug: "../escape"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "escape", Slug: "../escape"}}}, wantErr: true,
 		},
 		{
 			name:    "noncanonical slug",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "upper", Slug: "Upper"}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "upper", Slug: "Upper"}}}, wantErr: true,
 		},
 		{
 			name:    "overlong slug",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "long", Slug: strings.Repeat("a", models.MaxProjectSlugLength+1)}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "long", Slug: strings.Repeat("a", models.MaxProjectSlugLength+1)}}}, wantErr: true,
 		},
 		{
 			name:    "negative color slot",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: -1}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: -1}}}, wantErr: true,
 		},
 		{
 			name:    "color slot above palette",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount + 1}}},
-			wantErr: true,
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount + 1}}}, wantErr: true,
 		},
 	}
 	for _, tc := range tests {
@@ -321,11 +310,7 @@ func TestPlanningStateValidate(t *testing.T) {
 	}
 
 	cases := []*PlanningState{
-		{FocusQueue: []FocusQueueItem{{ProjectID: "p"}}},
-		{DailyPlan: []DailyPlanItem{{ProjectID: "p"}}},
-		{SavedViews: []savedView{{}}},
-		{SavedFilters: []SavedFilter{{}}},
-	}
+		{FocusQueue: []FocusQueueItem{{ProjectID: "p"}}}, {DailyPlan: []DailyPlanItem{{ProjectID: "p"}}}, {SavedViews: []savedView{{}}}, {SavedFilters: []SavedFilter{{}}}}
 	for i, c := range cases {
 		if err := c.Validate(); err == nil {
 			t.Errorf("case %d: expected validation error", i)
@@ -456,6 +441,10 @@ func TestMachineStateRemoveProjectReferences(t *testing.T) {
 		CurrentProject:   "drop",
 		RecentTaskVisits: []RecentTaskVisit{{TaskID: "t", ProjectID: "drop"}, {TaskID: "t2", ProjectID: "keep"}},
 		CustomContexts:   map[string][]string{"work": {"drop"}},
+		ProjectRoutes: map[string]OutlinerRouteState{
+			"drop-slug": {Mode: OutlinerModeDue},
+			"keep":      {Mode: OutlinerModeActivity},
+		},
 	}
 	if !m.RemoveProjectReferences("drop", "drop-slug") {
 		t.Fatal("expected change")
@@ -468,6 +457,9 @@ func TestMachineStateRemoveProjectReferences(t *testing.T) {
 	}
 	if got := m.CustomContexts["work"]; len(got) != 0 {
 		t.Errorf("custom context not cleaned: %+v", got)
+	}
+	if _, ok := m.ProjectRoutes["drop-slug"]; ok || m.ProjectRoutes["keep"].Mode != OutlinerModeActivity {
+		t.Errorf("project routes not cleaned selectively: %+v", m.ProjectRoutes)
 	}
 }
 
@@ -483,10 +475,9 @@ func TestNewDomainsYieldsDefaults(t *testing.T) {
 
 func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 	d := &Domains{
-		Catalog:    &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "drop", Slug: "drop"}}, SystemInboxProjectID: "drop"},
-		Planning:   &PlanningState{FocusQueue: []FocusQueueItem{{TaskID: "t", ProjectID: "drop"}}},
-		Automation: &AutomationConfig{ProjectScoringProfile: map[string]string{"drop": "p"}},
-		Machine:    &MachineState{CurrentProject: "drop"},
+		Catalog:  &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "drop", Slug: "drop"}}, SystemInboxProjectID: "drop"},
+		Planning: &PlanningState{FocusQueue: []FocusQueueItem{{TaskID: "t", ProjectID: "drop"}}}, Automation: &AutomationConfig{ProjectScoringProfile: map[string]string{"drop": "p"}},
+		Machine: &MachineState{CurrentProject: "drop"},
 	}
 	if !d.RemoveProjectReferences("drop", "drop") {
 		t.Fatal("expected change across domains")

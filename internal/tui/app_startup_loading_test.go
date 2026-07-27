@@ -16,12 +16,11 @@ import (
 func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	runtime := newTestConfig()
 	project := &models.Project{
-		ID:       "project-1",
-		Slug:     "project-1",
-		Name:     "Project 1",
-		Path:     t.TempDir(),
-		Tasks:    []*models.Task{},
-		Sections: []string{models.SectionNext},
+		ID:    "project-1",
+		Slug:  "project-1",
+		Name:  "Project 1",
+		Path:  t.TempDir(),
+		Tasks: []*models.Task{},
 	}
 	setTestProjects(runtime, []*models.Project{project})
 	runtime.Machine().CurrentProject = project.ID

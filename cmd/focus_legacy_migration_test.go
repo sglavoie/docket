@@ -80,11 +80,11 @@ func TestFocusQueueFirstUseMigrationUsesWorkspaceTransaction(t *testing.T) {
 	depth := 10
 
 	projA := newFileBackedProject(t, tmpDir, "proj-a", "Project A")
-	taskA := addTestTask(t, projA, "task-a", "Alpha", models.StatusTodo)
+	taskA := addTestTask(t, projA, "task-a", "Alpha", models.StateReady)
 	saveProjectForGroupedCLITest(t, projA)
 
 	projB := newFileBackedProject(t, tmpDir, "proj-b", "Project B")
-	taskB := addTestTask(t, projB, "task-b", "Beta", models.StatusTodo)
+	taskB := addTestTask(t, projB, "task-b", "Beta", models.StateReady)
 	saveProjectForGroupedCLITest(t, projB)
 
 	// Both legacy members are recorded in the ordering-only index but neither is

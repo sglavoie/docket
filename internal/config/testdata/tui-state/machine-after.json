@@ -1,9 +1,20 @@
 {
-  "tui_state_version": 3,
+  "tui_state_version": 4,
   "editor": "vim",
   "current_project": "project-1",
   "custom_contexts": {"Work": ["project-1"]},
   "recent_task_visits": [{"project_id": "project-1", "task_id": "task-1"}],
+  "startup_route": {"mode": "priority"},
+  "current_route": {
+    "mode": "all",
+    "filter_states": ["waiting"]
+  },
+  "project_routes": {
+    "project-1": {
+      "mode": "all",
+      "filter_states": ["ready", "in_progress"]
+    }
+  },
   "recent_palette_items": [
     {"category": "command", "id": "1"},
     {"category": "command", "id": "2"},

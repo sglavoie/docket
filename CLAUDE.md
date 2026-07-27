@@ -1,136 +1,244 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file gives Claude Code contributor guidance for this repository.
 
-## Plan Mode
+## Planning
 
-- Make the plan extremely concise. Sacrifice grammar for the sake of concision.
-- At the end of each plan, give me a list of unresolved questions to answer, if any.
+- Keep implementation plans concise.
+- End plans with unresolved questions, if any.
+- Preserve unrelated work in the working tree.
 
-## Build and Development Commands
+## Build and development
 
 ```bash
-just build       # Build the tt binary in current directory
-just install     # Build and install to ~/.local/bin
-just test        # Run all tests
-just lint        # Run fmt and vet
-just fmt         # Format Go code
-just vet         # Run go vet
-just tidy        # Clean up go.mod and go.sum
-just clean       # Remove build artifacts
+just build          # Build ./tt
+just install        # Install to ~/.local/bin
+just test           # Run all Go tests
+just lint           # Run formatting and vet checks
+just fmt
+just vet
+just tidy
+just ci             # Full release gate
+just tui-scenarios  # Replay committed TUI scenarios
 ```
 
-Run a single test file: `go test ./internal/models/task_basic_test.go`
-Run tests with verbose output: `go test -v ./...`
+Run a package test with `go test ./internal/models` or a focused test with
+`go test ./internal/tui -run TestName`. Go accepts packages, not individual test
+files, as test targets.
 
-## Architecture Overview
+Generated documentation is checked by:
 
-tt is a CLI-first task manager with a TUI built on BubbleTea. The design philosophy is that all operations are available as CLI commands, which the TUI invokes internally.
-
-### Package Structure
-
-The `cmd/` package contains Cobra commands. Each command file handles one subcommand (e.g., `project_new.go` for `tt project new`). Commands load config via `config.NewManager()`, perform operations through models and storage, then save changes.
-
-The `internal/models/` package defines the domain types: Project, Task, TaskType, and TaskStatus. These are pure data structures with helper methods but no I/O. Task types follow a hierarchy: epics contain stories/tasks/bugs/ideas, stories contain tasks/bugs, and tasks/bugs/ideas are leaf nodes.
-
-The `internal/storage/` package handles persistence. Tasks are stored in human-readable markdown files (`tasks.md` per project). The `parser.go` file parses markdown into Task structs using regex to extract metadata from HTML comments. The `markdown.go` file writes tasks back to markdown format.
-
-The `internal/config/` package manages the JSON config file (`~/.tt/.tt.json` by default, or the `tt` folder in iCloud Drive when available). It stores project metadata, current project selection, and tool preferences (fzf, glow). The Config struct holds project references; actual task data lives in markdown files. Default data-root and config-path decisions route through the helpers in `internal/config/paths.go`.
-
-The `internal/tui/` package implements the BubbleTea interface. The `AppModel` in `app.go` manages a view stack for navigation. Each view (dashboard, outliner, task detail, project creator) is a separate model that receives delegated Update/View calls.
-
-The `internal/external/` package wraps optional tool integrations (fzf for fuzzy selection, glow for markdown rendering, VS Code for editing).
-
-### Data Flow
-
-When a user runs `tt task add`:
-
-1. Command loads config and gets current project
-2. `storage.LoadProject()` reads `tasks.md` and parses into `[]*Task`
-3. New task is created via `models.NewTask()`
-4. Task is added to project, tree is rebuilt via `BuildTaskTree()`
-5. `storage.SaveProject()` writes all tasks back to `tasks.md`
-
-### Markdown Storage Format
-
-Tasks are stored with heading depth indicating hierarchy. Task metadata (id, status, priority, tags, dates) is in HTML comments for parser compatibility:
-
-```markdown
-## Epic: User Authentication
-<!-- id: uuid, status: in_progress, priority: 1, tags: backend -->
-
-Description here.
-
-### Story: Login Flow
-<!-- id: uuid, status: todo, priority: 2 -->
+```bash
+./scripts/check_generated_docs.sh
 ```
 
-### TUI Navigation Model
+Do not hand-edit `cmd/cli-reference.md` without changing the Cobra help that
+generates it.
 
-The TUI uses a view stack pattern. Selecting a project pushes `ViewOutliner` (the ProjectTree view was retired; the Outliner is the surviving per-project surface). Pressing Enter on a task opens glow for viewing. Pressing Esc pops views until reaching dashboard.
+## Architecture
 
-### TUI Keybinding Constraints
+`tt` is a local-first task manager with a Cobra CLI and a Bubble Tea TUI. Both
+presentation layers call the application layer; neither is a second domain
+implementation.
 
-tt requires a Kitty-protocol-compatible terminal (Kitty, Ghostty, WezTerm, etc.). Bubble Tea v2 auto-requests Kitty key disambiguation, enabling keys like `Ctrl+,`, `Ctrl+i` (≠ Tab), `Ctrl+m` (≠ Enter), `Shift+Enter`, and key release events.
+### Packages
 
-### TUI Keybinding Sync Convention
+- `cmd/` contains CLI adapters, argument resolution, output formatting, and
+  Cobra help.
+- `internal/models/` contains canonical domain values and pure task/project
+  behavior.
+- `internal/app/` contains use cases, workflow orchestration, planning
+  reconciliation, and mutation policies.
+- `internal/storage/` parses and renders task Markdown and implements
+  revision-checked workspace transactions, merge, recovery, conflict, archive,
+  and undo storage.
+- `internal/config/` owns the split workspace domains and machine-local runtime
+  state.
+- `internal/tui/` contains the Outliner, typed routes and overlays, operation
+  registry/executor, shared list surfaces, and secondary tools.
+- `internal/workflow/`, `internal/template/`, and `internal/textgrammar/` own
+  automation, task templates, and shared capture/search grammar.
 
-Every view-local `KeybindingRegistry` entry must implement `HandledKeys() []string` (the `KeySyncView` interface in `handled_keys.go`). `HandledKeys()` must return exactly the set of keys the view's `Update()` can process — matching the expanded registry keys for that view. The bidirectional sync is enforced by `TestKeybindingSyncAllViews` in `keybinding_sync_test.go`:
+### Mutation flow
 
-- **Ghost binding**: key in registry but not in `HandledKeys()` → user sees a key that does nothing.
-- **Invisible binding**: key in `HandledKeys()` but not in registry → key works but is undocumented.
+A user mutation resolves its targets from one workspace snapshot, validates in
+`internal/app`, produces changes, and commits through the workspace repository.
+The repository checks revisions and paths, acquires locks deterministically,
+stages a manifest, atomically publishes all artifacts, and records one undo
+entry. Cross-project changes are one transaction; never reproduce this behavior
+with independent `SaveProject` calls.
 
-When adding a new view-local keybinding: update both the registry (`keybindings_views.go` or similar) AND `HandledKeys()`. Use the shared helpers in `handled_keys.go` (e.g. `statusPrefixKeys()`, `filterSubKeys()`, `listNavigationKeys()`). Add the view to the appropriate session function in `keybinding_sync_test.go`.
+CLI commands should call the existing application service and save/commit seams.
+TUI operations should use the appropriate coordinator or executor mutation
+binding. Direct storage writes are reserved for maintenance, migration, restore,
+or narrowly audited infrastructure.
 
-App-level shortcuts handled by `AppModel.handleGlobalKeyPress` are the exception: register unconditional globals with no `Views`, and register conditional app-level shortcuts with `scopedAppBinding(...)`/`AppLevel: true` so help appears only in views where the app dispatcher actually handles the key. Do not add those app-level keys to individual view `HandledKeys()`; the ghost-binding invariant skips `AppLevel` entries because they are not processed by view-local `Update()` methods.
+## Canonical task lifecycle
 
-Navigation aliases (`up`/`down`) are usually handled internally but not registered; don't include them in `HandledKeys()` unless the registry explicitly documents `↑/↓` or `↑/k`. Similarly, `ctrl+u`/`ctrl+d` for page navigation must appear in the registry (as `ctrl+u/d` or `ctrl+U/D`) before being added to `HandledKeys()`.
+`models.WorkflowState` is the only runtime task lifecycle value:
 
-### TUI Esc/q Key Handling
+```text
+inbox, ready, next, in_progress, waiting,
+paused, review, someday, done, canceled
+```
 
-- `Esc` is the sole navigation/dismiss key: closes views, cancels input, exits modes, pops the view stack.
-- `q` is reserved exclusively for queue management (toggle queue panel). It has no quit/back/navigation role.
+Use `Task.State()` and the canonical state transition helpers. Do not add
+`TaskStatus`, section, stage, or queued lifecycle fields back to runtime models,
+application requests, JSON, configuration, templates, search, or workflows.
+Schema-v1 task Markdown remains readable only through private migration decoding;
+all ordinary writes are canonical schema v2 with one `state` field.
 
-The global `handleEscKey()` in `app_update.go` intercepts Esc before views receive it. Views that need to handle Esc internally (expanded views, input modes, delete confirmations) must be added to `handleEscKey()` to return `false`, allowing the key to propagate to the view's `Update()` method. See existing checks for ViewWorkflowRules, ViewTaskComments, etc. as examples.
+The word `status` remains valid for unrelated concepts such as a project status
+icon, a blocker record's resolved status, process status, and HTTP/command
+status. Do not conflate those with task lifecycle.
 
-### TUI Status & Undo Toasts
+### Planning invariants
 
-Destructive but reversible mutations (delete, archive, bulk status/priority change) call `setUndoableStatus(msg, undoCb)` in `handler_helpers.go`. The toast displays for `UndoToastTimeout` (6s); within that window, pressing `u` invokes `undoCb`. A second call replaces both the callback and `statusExpiresAt`, so rapid back-to-back destructions cleanly undo only the most recent one — the older `UndoToastTimeoutMsg` tick is benign because its handler checks `statusExpiresAt` before clearing.
+- Next membership is exactly `StateNext`. Focus Queue is an optional ordering
+  index and never grants membership.
+- Today is a project-qualified planning list containing nonterminal, non-Inbox,
+  non-Next tasks.
+- Today and Next are mutually exclusive.
+- Backlog sets Ready and clears Today/Next planning.
+- Adding Today to Inbox or Next promotes the task to Ready first.
+- Starting sets In Progress; completing sets Done and clears planning.
+- Reopening Done or Canceled returns the task to Inbox.
+- Dependency blocking is derived from unresolved dependencies.
 
-Non-destructive success messages use the plain (2s) status path. Do not bind `u` as a global keybinding; it works only while the model-level guard is true.
+Use the application planning reconciliation seam whenever state and planning
+membership can change together.
 
-Dashboard archived mode is the view-local recovery exception for `u`: it appears only after toggling archived projects with `a`, and it must dispatch `ProjectArchiveRequestMsg{Archive: false}` so confirmation handles the restore. Keep archived projects discoverable with `ARCHIVED` markers in project-level search, while active task workflows remain active-only.
+## Public lifecycle contract
 
-### Persistent Undo/Redo Contract
+- Creation and template commands use `--state`.
+- List, archive, and sort surfaces use state.
+- Task JSON emits only `state`; project JSON does not emit workflow sections or
+  section colors.
+- Capture, edit, and search use `$ready`-style canonical tokens.
+- Saved filters persist `filter_states`; templates persist `state`.
+- Workflow rules use state fields, state sets, state transitions, and
+  `set_state`.
+- Structured AI actions use plan schema v2; `create_task.state` is optional and
+  defaults to Inbox.
 
-The persistent undo model is linear, matching Vim-style `u` / `ctrl+r`: every undoable user-visible `tasks.md` mutation records a pre-mutation snapshot, undo moves that entry to redo while restoring the snapshot, redo moves it back, and any new mutation clears redo for that project history. `TaskIDs` means targeted task restore; leave it nil when project-level metadata or whole-file changes must be restored.
+Retired flags and commands should fail with a concise canonical replacement;
+they must not be silently accepted as aliases.
 
-Grouped transactions use `UndoSnapshotOptions.GroupID` plus the same sorted `GroupProjectIDs` on every touched project. CLI and TUI restore through `storage.PerformUndoForProjects` / `PerformRedoForProjects`; grouped restores preflight every project and abort on missing, diverged, or unavailable history rather than partially applying files. After task moves/restores, repair config references such as focus queue, daily plan, and recent visits to the project where each task now exists.
+## TUI architecture
 
-New CLI mutations should save through `cmd.SaveProject` with `SaveOptions{UndoAction, UndoContext, ...}` or record `storage.RecordUndoSnapshotWithOptions` / `recordGroupedUndoSnapshots` before custom multi-project saves. New TUI mutations should use `ProjectSaveOptions`, `WorkflowSaveOptions`, `SaveProjectAsyncWithOptions`, `SaveMultipleProjectsAsyncWithOptions`, or `recordTUIUndoSnapshotWithGroup` before any direct save. Do not add raw `storage.SaveProject`, `storage.SaveProjectLocked`, `saveProjectSync`, or persister `Save` calls for user-visible task/project mutations unless the path is maintenance/restore-only and is explicitly justified in `internal/storage/undo_raw_save_audit_test.go`.
+The TUI has one AppModel-owned, scope-aware Outliner. It always starts in All
+over All Projects. A project focus is a scope inside that Outliner, not another
+root model.
 
-### TUI Column Alignment
+Typed navigation is authoritative:
 
-Task-row renderers (Planner, Outliner, Daily/Weekly review, Recent Activity, Global Search, etc.) share badge column widths through `ColumnLayout` in `column_layout.go`. The struct tracks `PriorityWidth`, `StatusWidth`, `TypeWidth`, `StageWidth`, and `ProjectWidth`; call `ComputeBadgeWidths(...)` once per render pass and pass the result down to the row renderer in `shared_render.go`. Use `PadBadge` for consistent left-padding of empty slots — never hand-pad strings.
+- Outliner root
+- at most one Task Detail or Secondary Tool child
+- typed overlays, with operation sheet → value picker as the maximum depth
 
-## UX Metrics
+`Ctrl+Esc` closes children and overlays, clears transient filters, search, and
+selection, and restores All over All Projects.
 
-### Primary User Flows
+### Operations
 
-The three primary flows covered by smoke tests in `internal/tui/primary_flows_test.go`:
+`OperationRegistry` is the descriptor authority for direct keys, action sheets,
+Finder actions, bulk actions, help, and harness discovery.
+`OperationExecutor` is the single invocation pipeline. Add an operation once,
+give it stable identity, applicability, target cardinality, risk, and optional
+value-provider metadata, then bind execution separately. Do not add parallel
+command catalogs, prefix-key routers, or view-specific action copies.
 
-1. **Capture → Inbox** (`TestCaptureCreatesInboxTask`): `parseQuickCapture` with no `/section` sigil sets `result.section = ""`, which `createTask` routes to `SectionInbox`.
-2. **Inbox → Next** (`TestMoveToNextUpdatesStatus`): `task.SetSection(models.SectionNext)` moves a task from Inbox to the Next (on-deck) section without touching its status. `SectionNext` is the on-deck shortlist (reachable via `;q`), distinct from Today — the Daily Plan config list reachable via `;w`.
-3. **Next → Complete** (`TestCompleteNextTaskUpdatesProgress`): `task.Complete()` on a `SectionNext` task sets `StatusDone`, moves to `SectionCompleted`, and records `CompletedAt`.
+Direct Outliner keys are:
 
-### Risky Config Flags
+```text
+a capture   e edit   s start   d done
+b Backlog   t Today  n Next    Space actions
+/ search    : Finder m modes   c Scope Hub  v multi-select
+N Notes     R Weekly Review    T Tags        ! Notifications
+u undo      Ctrl+R redo        Esc back      Ctrl+Esc reset
+? help      Ctrl+C quit
+```
 
-| Field | Location | Risk | Notes |
-|-------|----------|------|-------|
-| `DashboardBottomLayout` | `config.UIState.GetDashboardLayout()` | Low | Enum 0/1/2 (horizontal/vertical/list-only); invalid stored values clamp to 0. Do not store raw int — use the named constants. |
-| `OpenLoops.HasTasks` | `tui.OpenLoops` (runtime struct, not persisted) | None | Computed on load; drives onboarding hint. Not a config field. |
+In multi-select, `Space` toggles selection and `Enter` opens bulk actions.
+Delete exists only in an action sheet and requires confirmation.
 
-### Success Proxies
+### List surfaces and routes
 
-- **Onboarding completion**: `OpenLoops.HasTasks == true` after first capture — the zero-task hint in the dashboard status bar disappears, confirming the user completed the capture flow.
-- **Streak retention**: `task.Recurrence.Streak` — non-zero means the user has completed recurring tasks consecutively. Displayed in the task detail view.
+Use `ListSurface` for generic fuzzy lists, categories, viewport behavior,
+preview, and single/multi-selection. Stable item IDs must be non-empty and
+project-qualified where task IDs can collide. Keep specialized date, calendar,
+form, and domain controls only where their behavior is not a generic picker.
+
+Typed overlays must prevent hidden Outliner input and reload dispatch.
+Scenario-only deep links require `CapabilityHarness`; they must not leak into
+production help or Finder.
+
+### Scope and promoted tools
+
+`c` opens the Scope Hub for All Projects, regular contexts, custom contexts, and
+single projects. Scope is session-owned. Notes uses project notes in project
+focus and global scratch notes otherwise. Weekly Review and Tags receive the
+active scope's project set. Notifications remains global.
+
+## Capture and search grammar
+
+`internal/textgrammar` is the source for canonical capture and search tokens.
+Task Composer and visible search help must derive lifecycle names from it.
+Authoring accepts `$state`/`state:<value>`, not retired task status or section
+forms. Capture defaults to Inbox and routes to the System Inbox at base scope or
+the focused project in project scope.
+
+When changing token definitions, update parser, completion, live preview, syntax
+guide, tutor, and parity tests together.
+
+## Durable storage
+
+The portable data directory contains:
+
+```text
+.tt/workspace.json
+.tt/planning.json
+.tt/settings.json
+.tt/automation.json
+.tt/transactions/
+.tt/undo/
+.tt/conflicts/
+.tt/trash/
+projects/<slug>/tasks.md
+```
+
+Machine-local state is keyed by workspace ID below
+`~/.tt/runtime/<workspace-id>/machine.json`; logs and process locks are also
+machine-local. New workspaces start at local `~/.tt/`. iCloud and other data
+directories require explicit selection.
+
+Project paths must remain derived below the approved data root. Preserve opaque
+schema-v2 Markdown blocks. Do not bypass path validation, transaction locks,
+revision checks, or recovery manifests.
+
+## Undo, conflicts, and AI
+
+Undo/redo is a linear workspace ledger. A new overlapping mutation clears redo.
+Grouped restores preflight every participant and abort instead of applying a
+partial restore.
+
+Concurrent project changes use canonical revisions and field-level three-way
+merge. Conflicting edits produce durable conflict bundles; resolution rechecks
+the remote revision.
+
+AI provider output is untrusted. Prompts travel over standard input. Structured
+plans are parsed as v2, resolved against one snapshot, risk-classified, previewed,
+confirmed, and applied once with read preconditions. Never turn provider text
+into shell execution or rebuild an executable plan from a detached preview.
+
+## Documentation and scenario contracts
+
+User-facing documentation must describe only the final ten-mode daily loop.
+Migration documentation may name retired fields only when it clearly describes
+decode-only historical input.
+
+Committed TUI scenarios should cover final user behavior: daily loop, exact mode
+catalog, action sheets, bulk selection, Scope Hub, Inbox auto-advance, Finder
+shortlist/search, promoted tools, and narrow layouts. Do not preserve obsolete
+surfaces solely for scenario setup; use harness-only operations when a deep link
+is necessary.

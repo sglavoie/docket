@@ -94,8 +94,8 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	if parsed.State() != models.StateDone {
 		t.Errorf("State = %q, want %q", parsed.State(), models.StateDone)
 	}
-	if models.SectionForState(parsed.State()) != models.SectionCompleted {
-		t.Errorf("Section = %q, want %q (canonical done shim)", models.SectionForState(parsed.State()), models.SectionCompleted)
+	if parsed.State() != models.StateDone {
+		t.Errorf("Section = %q, want %q (canonical done shim)", parsed.State(), models.StateDone)
 	}
 	if parsed.CreatedAt.Format("2006-01-02 15:04") != created.Format("2006-01-02 15:04") {
 		t.Errorf("CreatedAt = %v, want %v", parsed.CreatedAt, created)

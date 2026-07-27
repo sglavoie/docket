@@ -14,9 +14,9 @@ type todaySectionBuild struct {
 }
 
 // buildTodaySection realizes the Daily Plan as a synthetic section inside the
-// All perspective. It deliberately bypasses the All perspective's terminal
-// filter so completed plan entries remain visible, while TaskExclude prunes
-// snoozed plan roots and their inherited subtrees without mutating membership.
+// All mode. Membership is constrained by the canonical application planning
+// invariant; snoozed entries stay hidden by default but an explicit snoozed
+// filter may reveal them without mutating the durable plan.
 func (m *OutlinerModel) buildTodaySection(
 	projects []*models.Project,
 	candidates map[string][]*models.Task,
@@ -29,7 +29,8 @@ func (m *OutlinerModel) buildTodaySection(
 	input := m.buildOutlinerModeInput(projects)
 	input.CandidateTasks = candidates
 	input.TaskExclude = func(task *models.Task, _ *models.Project) bool {
-		return task == nil || task.IsSnoozed()
+		return !planningTodayEligible(task) ||
+			(task.IsSnoozedAt(input.Now) && !m.hasExplicitSnoozedFilter())
 	}
 	input.TaskFilter = m.workModeTaskFilter()
 
@@ -46,7 +47,7 @@ func (m *OutlinerModel) buildTodaySection(
 				continue
 			}
 			identity := taskIdentityFor(task, project)
-			if input.DailyPlanIDs[identity] {
+			if input.DailyPlanIDs[identity] && planningTodayEligible(task) {
 				result.suppressed[identity] = true
 			}
 		}
@@ -134,8 +135,4 @@ func removeTodayRowsFromTree(
 		result = append(result, &clone)
 	}
 	return result
-}
-
-func todayCandidateTasks(roots []*models.Task) []*models.Task {
-	return flattenTaskPointers(roots)
 }

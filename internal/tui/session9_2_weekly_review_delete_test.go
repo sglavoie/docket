@@ -9,6 +9,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+func armedWeeklyReviewDeleteTotal(m *AppModel) int {
+	total := 0
+	for _, count := range m.pendingWeeklyReviewDeletes {
+		total += count
+	}
+	return total
+}
+
 // Session 9.2 repair (weekly-review-delete-accounting, FR-010): Weekly Review
 // deletions route through the shell-owned canonical TaskDeleteRequestedMsg, which
 // has no Weekly Review post-commit callback, so a successful deletion was omitted
@@ -206,7 +214,7 @@ func TestWeeklyReviewDeleteUnrelatedOriginSkipsAccounting(t *testing.T) {
 
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs:   []TaskProjectRef{{Task: e.sibling, Project: e.alpha}},
-		Origin: ViewOutliner,
+		Origin: ViewCrossProjectOutliner,
 	})
 	_, confirmCmd := m.handleTaskDeleteConfirmKey("y")
 	if armedWeeklyReviewDeleteTotal(m) != 0 {

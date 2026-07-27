@@ -26,17 +26,8 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TaskJumperSelectMsg:
 		m.popView()
-		if msg.Task != nil {
-			switch m.currentView() { //nolint:exhaustive // Only outliner presentations accept jumper repositioning.
-			case ViewCrossProjectOutliner:
-				if m.crossOutliner != nil {
-					m.crossOutliner.NavigateToTaskInProject(msg.Task, msg.Project)
-				}
-			case ViewOutliner:
-				if m.outliner != nil {
-					m.outliner.NavigateToTask(msg.Task)
-				}
-			}
+		if msg.Task != nil && m.crossOutliner != nil {
+			m.crossOutliner.NavigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -67,6 +58,7 @@ func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case StatusUpdatedMsg:
 		popCmd := m.popView()
 		m.syncProjectCache()
+		m.refreshScopeHubIfActive()
 		m.setSuccessStatus("Status updated")
 		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
 	}

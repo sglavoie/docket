@@ -18,7 +18,7 @@ func resetTemplateEditVars() {
 	templateEditType = ""
 	templateEditPriority = 0
 	templateEditTags = ""
-	templateEditSection = ""
+	templateEditState = ""
 	templateEditDescription = ""
 	templateEditCategory = ""
 	templateEditAddChildren = nil
@@ -162,35 +162,5 @@ func TestTemplateEditRemoveItemUsesOneBased(t *testing.T) {
 		}
 		testutil.AssertEqual(t, updated.Checklist[0], "Step B")
 		testutil.AssertEqual(t, updated.Checklist[1], "Step C")
-	})
-}
-
-func TestTemplateEditSectionValidation(t *testing.T) {
-	t.Run("rejects non-GTD section", func(t *testing.T) {
-		deps := setupTemplateEditTest(t)
-		defer deps.Cleanup()
-
-		tmpl := template.TaskTemplate{
-			ID:      "edit-section",
-			Name:    "Edit Section",
-			Enabled: true,
-			Type:    models.TaskTypeTask,
-		}
-		deps.Config.Automation().TaskTemplates = append(deps.Config.Automation().TaskTemplates, tmpl)
-		manager := config.NewManager(deps.ConfigPath)
-		testutil.AssertNoError(t, saveTestRuntime(manager, deps.Config))
-
-		templateEditSection = "Backlog"
-		cmd := templateEditCmd
-		_ = cmd.Flags().Set("section", "Backlog")
-		defer func() {
-			cmd.Flags().Lookup("section").Changed = false
-			templateEditSection = ""
-		}()
-
-		err := runTemplateEdit(cmd, []string{"edit-section"})
-		if err == nil {
-			t.Fatal("expected error for non-GTD template section")
-		}
 	})
 }

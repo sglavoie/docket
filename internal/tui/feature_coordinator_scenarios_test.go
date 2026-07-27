@@ -111,7 +111,6 @@ func newScenarioEnv(t *testing.T, slug string, tasks ...*models.Task) *scenarioE
 		}
 	}
 	project.NextShortID = next
-	project.EnsureDefaultSections()
 	project.BuildTaskTree()
 
 	repo := newScenarioRepo(commitSvc, project)

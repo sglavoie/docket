@@ -53,15 +53,6 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 			}
 		}
 
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash, func() { m.previewScroll = 0 })
-			return m, cmd
-		}
-
 		return m.handleDefaultKey(msg.String())
 	}
 
@@ -142,8 +133,9 @@ func (m *TaskTemplatesModel) handleNavigationKey(key string) (bool, tea.Model, t
 			m.previewScroll = 0
 		}
 		return true, m, nil
-	case "g":
-		m.pendingPrefix = "g"
+	case "home":
+		m.cursor = 0
+		m.previewScroll = 0
 		return true, m, nil
 	case "G":
 		if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {

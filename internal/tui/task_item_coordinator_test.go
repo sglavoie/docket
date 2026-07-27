@@ -13,16 +13,15 @@ import (
 // raw-save family (session 33.7.3.4.4.1); no production caller routes through it
 // yet, so these scenarios drive it directly.
 
-// TestTaskItemSetSectionScenario covers the section seam: setting a GTD section
-// commits and resyncs the derived state on the reloaded task.
-func TestTaskItemSetSectionScenario(t *testing.T) {
+// TestTaskItemTransitionScenario covers the canonical state-transition seam.
+func TestTaskItemTransitionScenario(t *testing.T) {
 	task := seedTask(t, 1, "Park me", models.StateReady)
-	env, features := newSecondaryEnv(t, "section", task)
+	env, features := newSecondaryEnv(t, "state", task)
 
-	runResult(t, features.TaskItem.SetSection(taskIdentityFor(task, env.project), models.SectionSomeday))
+	runResult(t, features.TaskItem.Transition(taskIdentityFor(task, env.project), models.StateSomeday))
 	got := env.reload(t).GetTaskByID(task.ID)
-	if got == nil || models.SectionForState(got.State()) != models.SectionSomeday {
-		t.Fatalf("reloaded section = %v, want %q", got, models.SectionSomeday)
+	if got == nil || got.State() != models.StateSomeday {
+		t.Fatalf("reloaded state = %v, want %q", got, models.StateSomeday)
 	}
 	if got.State() != models.StateSomeday {
 		t.Errorf("reloaded state = %q, want %q", got.State(), models.StateSomeday)

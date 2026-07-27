@@ -67,19 +67,23 @@ func TestSortTasks_ByUpdated(t *testing.T) {
 	testutil.AssertEqual(t, tasks[2].Title, "Oldest")
 }
 
-func TestSortTasks_ByStatus(t *testing.T) {
-	tasks := []*models.Task{
-		testutil.NewTestTaskWithStatus("Done task", models.StatusDone),
-		testutil.NewTestTaskWithStatus("InProgress task", models.StatusInProgress),
-		testutil.NewTestTaskWithStatus("Todo task", models.StatusTodo),
+func TestSortTasks_ByCanonicalStateOrder(t *testing.T) {
+	states := models.AllWorkflowStates()
+	tasks := make([]*models.Task, 0, len(states))
+	for i := len(states) - 1; i >= 0; i-- {
+		task := testutil.NewTestTask(states[i].String(), models.TaskTypeTask)
+		task.ApplyWorkflowState(states[i])
+		tasks = append(tasks, task)
 	}
 
-	err := sortTasks(tasks, "status")
+	err := sortTasks(tasks, "state")
 	testutil.AssertNoError(t, err)
 
-	testutil.AssertEqual(t, tasks[0].Title, "InProgress task")
-	testutil.AssertEqual(t, tasks[1].Title, "Todo task")
-	testutil.AssertEqual(t, tasks[2].Title, "Done task")
+	for i, want := range states {
+		if got := tasks[i].State(); got != want {
+			t.Errorf("state at %d = %q, want %q", i, got, want)
+		}
+	}
 }
 
 func TestSortTasks_ByTitle(t *testing.T) {
@@ -134,8 +138,8 @@ func TestSortTasks_StableSort(t *testing.T) {
 
 func TestStateOrderCoversAllStates(t *testing.T) {
 	for _, state := range models.AllWorkflowStates() {
-		if _, ok := stateOrder[state]; !ok {
-			t.Errorf("stateOrder map is missing state %q", state)
+		if _, ok := canonicalStateOrder[state]; !ok {
+			t.Errorf("canonicalStateOrder map is missing state %q", state)
 		}
 	}
 }

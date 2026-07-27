@@ -209,9 +209,6 @@ func TestRestoreTrashEntry_FaithfulMetadata(t *testing.T) {
 	} else if restored.Tasks[0].State() != models.StateWaiting {
 		t.Errorf("restored task state = %q, want waiting", restored.Tasks[0].State())
 	}
-	if len(restored.SectionColors) != 0 {
-		t.Errorf("restored runtime project hydrated legacy section colors: %v", restored.SectionColors)
-	}
 	if restored.Path != filepath.Join(dataDir, "projects", "faithful") {
 		t.Errorf("restored Path = %q", restored.Path)
 	}

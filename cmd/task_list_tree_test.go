@@ -8,7 +8,7 @@ import (
 )
 
 func TestSubtreeHasMatch_MatchingSelf(t *testing.T) {
-	task := testutil.NewTestTaskWithStatus("Active", models.StatusTodo)
+	task := testutil.NewTestTaskWithState("Active", models.StateReady)
 	task.Children = []*models.Task{}
 
 	matches := func(t *models.Task) bool { return !t.IsComplete() }
@@ -19,7 +19,7 @@ func TestSubtreeHasMatch_MatchingSelf(t *testing.T) {
 }
 
 func TestSubtreeHasMatch_NonMatchingSelfNoChildren(t *testing.T) {
-	task := testutil.NewTestTaskWithStatus("Done", models.StatusDone)
+	task := testutil.NewTestTaskWithState("Done", models.StateDone)
 	task.Children = []*models.Task{}
 
 	matches := func(t *models.Task) bool { return !t.IsComplete() }
@@ -30,10 +30,10 @@ func TestSubtreeHasMatch_NonMatchingSelfNoChildren(t *testing.T) {
 }
 
 func TestSubtreeHasMatch_NonMatchingParentWithMatchingChild(t *testing.T) {
-	parent := testutil.NewTestTaskWithStatus("Done Epic", models.StatusDone)
+	parent := testutil.NewTestTaskWithState("Done Epic", models.StateDone)
 	parent.Type = models.TaskTypeEpic
 
-	child := testutil.NewTestTaskWithStatus("Active Task", models.StatusInProgress)
+	child := testutil.NewTestTaskWithState("Active Task", models.StateInProgress)
 	child.Children = []*models.Task{}
 
 	parent.Children = []*models.Task{child}
@@ -46,13 +46,13 @@ func TestSubtreeHasMatch_NonMatchingParentWithMatchingChild(t *testing.T) {
 }
 
 func TestSubtreeHasMatch_NonMatchingParentWithMatchingGrandchild(t *testing.T) {
-	grandparent := testutil.NewTestTaskWithStatus("Done Epic", models.StatusDone)
+	grandparent := testutil.NewTestTaskWithState("Done Epic", models.StateDone)
 	grandparent.Type = models.TaskTypeEpic
 
-	parent := testutil.NewTestTaskWithStatus("Done Story", models.StatusDone)
+	parent := testutil.NewTestTaskWithState("Done Story", models.StateDone)
 	parent.Type = models.TaskTypeStory
 
-	child := testutil.NewTestTaskWithStatus("Active Task", models.StatusTodo)
+	child := testutil.NewTestTaskWithState("Active Task", models.StateReady)
 	child.Children = []*models.Task{}
 
 	parent.Children = []*models.Task{child}
@@ -66,10 +66,10 @@ func TestSubtreeHasMatch_NonMatchingParentWithMatchingGrandchild(t *testing.T) {
 }
 
 func TestSubtreeHasMatch_AllNonMatching(t *testing.T) {
-	parent := testutil.NewTestTaskWithStatus("Done Epic", models.StatusDone)
+	parent := testutil.NewTestTaskWithState("Done Epic", models.StateDone)
 	parent.Type = models.TaskTypeEpic
 
-	child := testutil.NewTestTaskWithStatus("Done Task", models.StatusDone)
+	child := testutil.NewTestTaskWithState("Done Task", models.StateDone)
 	child.Children = []*models.Task{}
 
 	parent.Children = []*models.Task{child}

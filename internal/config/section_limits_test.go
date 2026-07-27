@@ -7,14 +7,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestGetSectionLimitClampsNegativeToDisabled(t *testing.T) {
+func TestGetStateGroupLimitClampsNegativeToDisabled(t *testing.T) {
 	cfg := NewSettings()
 	cfg.StateGroupLimits = map[models.WorkflowStateGroup]int{
 		models.StateGroupNext: -1,
 	}
 
-	if got := cfg.GetSectionLimit("Next"); got != 0 {
-		t.Fatalf("expected negative section limit clamped to 0, got %d", got)
+	if got := cfg.GetStateGroupLimit(models.StateGroupNext); got != 0 {
+		t.Fatalf("expected negative state-group limit clamped to 0, got %d", got)
 	}
 }
 

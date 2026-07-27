@@ -20,7 +20,7 @@ func TestParseTasksMarkdown_DuplicateID_PreservesDependsOn(t *testing.T) {
 ## Task: Task B
 <!-- id: unique-b, status: todo, priority: 3, depends: dup-id -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestParseTasksMarkdown_DuplicateID_PreservesParentID(t *testing.T) {
 ### Task: Child
 <!-- id: child-1, status: todo, priority: 3, parent: dup-id -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestParseTasksMarkdown_OrphanedParentRef(t *testing.T) {
 ## Task: Orphaned Child
 <!-- id: child-id, status: todo, priority: 1, parent: nonexistent-parent-id -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestParseTasksMarkdown_DuplicateID_PreservesRelatedTo(t *testing.T) {
 ## Task: Task C
 <!-- id: unique-c, status: todo, priority: 3, related: dup-id -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestParseTasksMarkdown_TripleDuplicateID(t *testing.T) {
 ## Task: Task D
 <!-- id: unique-d, status: todo, priority: 1, depends: dup-id -->
 `
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

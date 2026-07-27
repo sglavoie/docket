@@ -177,41 +177,8 @@ func (m *Manager) LoadDomains() (*Domains, error) {
 }
 
 func loadDomainBundle(store *DomainFileStore) (*Domains, error) {
-	domains, err := loadDomainFiles(store)
-	if err != nil {
-		return nil, err
-	}
-	// Loading tolerates only repairable catalog color slots. Malformed persisted
-	// values in every other domain, including preferences from an unknown future
-	// harness, are rejected rather than silently discarded.
-	if err := validateDomainBundleForLoad(domains); err != nil {
-		return nil, err
-	}
-	return domains, nil
-}
-
-func loadDomainFiles(store *DomainFileStore) (*Domains, error) {
-	catalog, err := store.LoadCatalog()
-	if err != nil {
-		return nil, err
-	}
-	planning, err := store.LoadPlanning()
-	if err != nil {
-		return nil, err
-	}
-	settings, err := store.LoadSettings()
-	if err != nil {
-		return nil, err
-	}
-	automation, err := store.LoadAutomation()
-	if err != nil {
-		return nil, err
-	}
-	machine, err := store.LoadMachine()
-	if err != nil {
-		return nil, err
-	}
-	return &Domains{Catalog: catalog, Planning: planning, Settings: settings, Automation: automation, Machine: machine}, nil
+	domains, _, err := loadDomainBundleWithRevisions(store)
+	return domains, err
 }
 
 // LoadOrCreateDomains loads explicit domains and persists their defaults when

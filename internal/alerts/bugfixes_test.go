@@ -165,7 +165,7 @@ func TestCheckers_NilTaskSkipped(t *testing.T) {
 		WorkflowState: models.StateWaiting,
 		UpdatedAt:     now.AddDate(0, 0, -30),
 		Activity: []*models.ActivityEntry{
-			{Field: "status", NewValue: string(models.StatusBlocked), Timestamp: now.AddDate(0, 0, -10)},
+			{Field: "state", NewValue: string(models.StateWaiting), Timestamp: now.AddDate(0, 0, -10)},
 		},
 	}
 	projects := []ProjectData{{
@@ -207,7 +207,7 @@ func TestFindLastBlockedTransition_NilEntrySkipped(t *testing.T) {
 		UpdatedAt:     now.AddDate(0, 0, -1),
 		Activity: []*models.ActivityEntry{
 			nil,
-			{Field: "status", NewValue: string(models.StatusBlocked), Timestamp: blockedAt},
+			{Field: "state", NewValue: string(models.StateWaiting), Timestamp: blockedAt},
 			nil,
 		},
 	}

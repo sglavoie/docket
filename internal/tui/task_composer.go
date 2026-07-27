@@ -42,7 +42,6 @@ type TaskComposerSharedAttributes struct {
 	Type       models.TaskType
 	Priority   int
 	Tags       []string
-	Section    string
 	Due        *time.Time
 	ParentID   *string
 	Recurrence *models.RecurrencePattern
@@ -114,32 +113,66 @@ func composerLinkLabel(linkType LinkType) string {
 	}
 }
 
+func creationStateFromPreset(preset models.WorkflowState) models.WorkflowState {
+	if preset != "" {
+		return preset
+	}
+	return models.StateInbox
+}
+
+func creationStateFromParsedInput(
+	state models.WorkflowState,
+	stateSet bool,
+	preset models.WorkflowState,
+) models.WorkflowState {
+	if stateSet {
+		return state
+	}
+	return creationStateFromPreset(preset)
+}
+
+func appLinkKind(linkType LinkType) app.LinkKind {
+	switch linkType {
+	case LinkTypeBlocker:
+		return app.LinkBlocker
+	case LinkTypeDependent:
+		return app.LinkDependent
+	case LinkTypeSubtask:
+		return app.LinkSubtask
+	default:
+		return app.LinkFollowUp
+	}
+}
+
 // TaskComposerModel is the sole live task creation/editing overlay. Compact
 // mode owns one-or-many capture lines; expanded mode embeds the full form for
 // exactly one task.
+type lineError struct {
+	line    int
+	message string
+}
+
 type TaskComposerModel struct {
 	quickCaptureInput
-	preset       TaskComposerPreset
-	runtime      *config.RuntimeState
-	mode         TaskComposerMode
-	expanded     *TaskFormModel
-	capture      CaptureCoordinator
-	taskForm     TaskFormCoordinator
-	errors       []lineError
-	width        int
-	height       int
-	presentation PresentationID
+	preset   TaskComposerPreset
+	runtime  *config.RuntimeState
+	mode     TaskComposerMode
+	expanded *TaskFormModel
+	capture  CaptureCoordinator
+	taskForm TaskFormCoordinator
+	errors   []lineError
+	width    int
+	height   int
 	discardConfirmState
 }
 
 func NewTaskComposerModel(preset TaskComposerPreset, runtime *config.RuntimeState) *TaskComposerModel {
 	m := &TaskComposerModel{
-		preset:       preset,
-		runtime:      runtime,
-		mode:         ComposerCompact,
-		width:        80,
-		height:       22,
-		presentation: ViewTaskForm,
+		preset:  preset,
+		runtime: runtime,
+		mode:    ComposerCompact,
+		width:   80,
+		height:  22,
 	}
 
 	switch preset.Kind {
@@ -363,20 +396,12 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 			continue
 		}
 
-		section := parsed.section
-		if section == "" {
-			section = m.preset.Shared.Section
-		}
-		if section != "" && !models.IsGTDSection(section) {
-			m.errors = append(m.errors, lineError{line: idx + 1, message: fmt.Sprintf("section not found: %q", section)})
-			continue
-		}
 		taskType := parsed.taskType
-		if m.preset.Shared.Type != "" && !captureTypeRe.MatchString(line) && !captureTypeAliasRe.MatchString(line) {
+		if m.preset.Shared.Type != "" && !parsed.taskTypeSet {
 			taskType = m.preset.Shared.Type
 		}
 		priority := parsed.priority
-		if m.preset.Shared.Priority != 0 && !capturePriorityRe.MatchString(line) && !capturePriorityAliasRe.MatchString(line) {
+		if m.preset.Shared.Priority != 0 && !parsed.prioritySet {
 			priority = m.preset.Shared.Priority
 		}
 		parentID := parsed.parentID
@@ -391,7 +416,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 		if recurrence == nil {
 			recurrence = cloneRecurrence(m.preset.Shared.Recurrence)
 		}
-		state := creationStateFromLegacyInputs(section, parsed.status, m.preset.Shared.State)
+		state := creationStateFromParsedInput(parsed.state, parsed.stateSet, m.preset.Shared.State)
 		req := app.CaptureRequest{
 			ProjectID:         target.ID,
 			Title:             parsed.title,
@@ -489,7 +514,7 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 			Due:               cloneTime(m.preset.Shared.Due),
 			ParentID:          cloneStringPtr(m.preset.Shared.ParentID),
 			Recurrence:        cloneRecurrence(m.preset.Shared.Recurrence),
-			State:             creationStateFromLegacyInputs(m.preset.Shared.Section, "", m.preset.Shared.State),
+			State:             creationStateFromPreset(m.preset.Shared.State),
 			PlanningArtifacts: m.preset.PlanningArtifacts,
 		})
 	}
@@ -519,14 +544,13 @@ func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	if state == "" {
 		state = models.StateInbox
 	}
-	form.draft.section = models.SectionForState(state)
+	form.draft.state = state
 	form.draft.parentID = cloneStringPtr(req.ParentID)
 	form.draft.dueDate = cloneTime(req.Due)
 	form.draft.dueInput = formatDateInput(req.Due, req.HasTime)
 	form.draft.recurrence = cloneRecurrence(req.Recurrence)
 	form.titleInput.SetValue(req.Title)
 	form.dueTextInput.SetValue(form.draft.dueInput)
-	form.presetState = state
 	form.presetPlan = req.PlanningArtifacts
 	form.hostTitle = "Task Composer · Expanded"
 	form.SetTaskFormCoordinator(m.taskForm)
@@ -615,9 +639,6 @@ func (m *TaskComposerModel) View() tea.View {
 
 func (m *TaskComposerModel) renderSharedAttributes() string {
 	parts := make([]string, 0, 6)
-	if section := m.preset.Shared.Section; section != "" {
-		parts = append(parts, section)
-	}
 	if state := m.preset.Shared.State; state != "" {
 		parts = append(parts, string(state))
 	}

@@ -29,19 +29,20 @@ Any nonterminal state may move to another nonterminal state. `done` and
 `CompletedAt` is populated only for terminal tasks.
 
 Dependency blocking is derived from unresolved dependencies and appears as a
-badge/filter. It is not a workflow state. The Active section identifies work
-currently being worked on. Next (the on-deck shortlist) is not a
-separate membership collection: a task is in Next exactly when its workflow
-state is `next` (`StateNext`). The persisted Focus Queue list is ordering-only
-— it orders the StateNext tasks (the next tasks in the pipeline) and never
-confers membership, so unindexed StateNext tasks still belong to Next and
-stale indexed non-Next tasks do not.
-Daily Plan (Today) is a separate, config-backed planning collection. Next and
-Today membership are mutually exclusive. Moving a task from Next to Today
-atomically transitions it from `StateNext` to `StateReady` and adds it to Daily
-Plan. Entering Next atomically removes any Today membership.
+badge/filter. It is not a workflow state. `in_progress` identifies work
+currently underway. Next (the on-deck shortlist) is not a separate membership
+collection: a task is in Next exactly when its workflow state is `next`
+(`StateNext`). The persisted Focus Queue is ordering-only—it orders StateNext
+tasks and never confers membership—so unindexed StateNext tasks still belong to
+Next and stale indexed non-Next tasks do not.
 
-Use `tt task state <ref> <state>` for the complete state surface. Convenience
+Daily Plan (Today) is a separate, config-backed planning collection. It contains
+only nonterminal, non-Inbox, non-Next tasks. Today and Next are mutually
+exclusive. Moving a task from Next or Inbox to Today atomically transitions it
+to `StateReady` and adds it to Daily Plan. Entering Next atomically removes
+Today membership. Completing work removes both planning memberships.
+
+Use `tt task state <state> <ref...>` for the complete state surface. Convenience
 commands include `ready`, `next`, `start`, `wait`, `pause`, `review`, `someday`,
 `complete`, `cancel`, and `reopen`.
 
@@ -121,9 +122,9 @@ every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
 
 `<workspace-id>` is the canonical UUID stored in synced `workspace.json`. The
 file contains editors, integration choices, current project
-selection, custom contexts, and bounded recent task/palette items. Renderer
+selection, custom contexts, and bounded recent Finder destinations. Renderer
 layout, filters, cursors, folds, composer expansion, and the active context
-scope are session-owned and are not serialized. The Outliner's Today section
+scope are session-owned and are not serialized. The Outliner's Today group
 owns its project-qualified subtree overrides and global tree-depth limit for the
 session, and a depth change clears per-node overrides. A workspace with a
 different ID never shares this state. On first
@@ -158,34 +159,36 @@ namespace.
 ## TUI navigation architecture
 
 The Outliner is the sole primary root and launches globally in All on every
-run. Its config-backed Daily Plan appears as a synthetic Today section above the
-normal workflow sections. Typed navigation is an Outliner root, Task Detail children, direct
-secondary-tool children (Weekly Review, Metrics, Roadmap, Inbox, Notes,
-operational Blockers, workflow/scoring tools, Templates, Tags, Notifications,
-Settings, and other retained utilities), and reference/help surfaces. Modes and
-project scopes belong to the Outliner rather than to routes: `Tab`/`Shift+Tab`
-cycle Next → Backlog → Active → All, `h`/`l` rotate workflow perspectives, `P`
-opens a categorized searchable picker for non-work modes, and `Ctrl+X` changes
-project scope. Saved-perspective IDs and saved filters are preserved and
-normalized under the mode catalog; the workspace-wide due-date lens is a
-Due Date mode rather than a separate route. Esc unwinds local state, task zoom,
-project scope, then the active child screen; Ctrl+Esc resets to a clean global
-All.
+run. Its config-backed Daily Plan appears as a synthetic, deduplicated Today
+group above In Progress, Inbox, Next, Backlog, Review, Waiting, Paused, and
+Someday. Done and Canceled require an explicit filter.
 
-A single Outliner model (`AppModel.crossOutliner`) and one presentation identity
-(`ViewCrossProjectOutliner`) own both global and project-scoped work. The root
-`TaskWorkspace` route is always app-scoped; project selection is represented only
-by Outliner scope frames, never by a project-scoped root route. Project scope is
-entered through `Ctrl+X` (the scope picker) and the project-header scope actions
-(`Enter` on a header or its `Shift+Enter` admin menu), which all share the
-Outliner's own `pushProjectScope` and preserve the active mode. The remaining
-project entry points — command-palette project navigation, task deep links, and
-project-aware commands — route through `AppModel.enterProjectScopeOutliner`,
-which pushes or replaces a scope frame on that one instance rather than
-constructing a separate `AppModel.outliner`. The retired `Ctrl+P` and `g o`
-drill-downs no longer exist. Task creation and every retained project operation
-run from the scoped Outliner. Esc pops to the previous scope
-frame; Ctrl+Esc clears the scope stack back to global All.
+Typed navigation has one Outliner root, at most one Task Detail or Secondary
+Tool child, and typed overlays. The operation sheet followed by a value picker
+is the maximum overlay depth. Hidden Outliner state never receives input or
+reload dispatch while an overlay is active.
+
+Modes and project scopes belong to the Outliner rather than to routes. The exact
+mode catalog is All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked, Daily
+Review, and Activity. `Tab`/`Shift+Tab` cycle All → Inbox → Next → Backlog and
+back. `m` opens the searchable mode source, `c` opens the Scope Hub, `/` searches
+visible rows, `:` opens Finder, and `v` enters multi-select. Pinned items, recent
+destinations, and saved filters are Finder results rather than permanent modes.
+
+A single AppModel-owned Outliner instance owns both global and project-focused
+work. Project selection is represented by Outliner scope frames, never another
+root model. Enter on a project header, the Scope Hub, Finder destinations, task
+deep links, and project-aware operations all focus that same Outliner. Esc
+returns through local overlays, children, and scope frames. Ctrl+Esc closes all
+children and overlays, clears transient filters, search, and selection, and
+restores All over All Projects.
+
+`OperationRegistry` is the common descriptor source for direct dispatch,
+contextual action sheets, Finder operations, bulk actions, help, and harness
+discovery. `OperationExecutor` resolves frozen typed targets and owns the common
+invocation pipeline. Generic fuzzy lists, categories, preview, viewport,
+selection, and contextual actions use `ListSurface`; specialized calendars and
+forms remain focused domain controls.
 
 ### Active context scope
 
@@ -201,15 +204,15 @@ written to `workspace.json` or `machine.json`, and every run starts in All.
 `Ctrl+Esc` clears it along with the rest of the Outliner's narrowing. Applying a
 scope is a scope change and not a filter: it clears project scope frames, task
 zoom, multi-select, and cursor position, and it leaves the work mode, task
-filters, search, sort, columns, and pinned-tag tab untouched. It narrows every
+filters, search, sort, and columns untouched. It narrows every
 cross-project surface through the Outliner's one `scopeProjects()` seam, so
-tree, priority, work-horizon, and review modes all inherit it, and the
+tree, priority, computed, and review modes all inherit it, and the
 workspace-wide daily-review checkpoint refuses to complete while a scope is
 narrowing the visible set. Regular scopes resolve against the live catalog;
 custom scopes resolve their stored project IDs and silently skip members that
 are archived or no longer cataloged.
 
-`C` in the Outliner opens Contexts, an app-scoped Manage destination that browses
+`c` in the Outliner opens the Scope Hub, a typed secondary tool that browses
 scopes, previews the projects and task counts each resolves to, applies one, and
 runs create, membership edit, rename, and delete inline for both kinds. Every
 mutation commits through one use-case layer: custom contexts write to

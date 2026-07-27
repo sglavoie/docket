@@ -21,7 +21,7 @@ func TestParseMigrationAudit_RecordsRetiredFields(t *testing.T) {
 <!-- id: c, status: done, section: Completed, active: true, priority: 3 -->
 `
 
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestParseMigrationAudit_RecordsRetiredFields(t *testing.T) {
 
 	// The retired values are recorded verbatim from the schema-v1 metadata.
 	got := audit.Entries[0]
-	want := MigrationAuditEntry{TaskID: "a", ShortID: 1, Status: models.StatusInProgress, Section: models.SectionNext, Stage: "Design"}
+	want := MigrationAuditEntry{TaskID: "a", ShortID: 1, Status: string(models.StateInProgress), Section: "Next", Stage: "Design"}
 	if got != want {
 		t.Errorf("entry[0] = %+v, want %+v", got, want)
 	}

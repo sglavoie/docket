@@ -183,16 +183,14 @@ func (m *WorkflowWizardModel) clampListScroll(cursor *int) {
 // triggerFieldLabel returns a short human-readable name for a trigger field.
 func triggerFieldLabel(f workflow.TriggerField) string {
 	labels := map[workflow.TriggerField]string{
-		workflow.FieldStatus:              "status",
+		workflow.FieldState:               "state",
 		workflow.FieldPriority:            "priority",
-		workflow.FieldSection:             "section",
 		workflow.FieldTags:                "tags",
 		workflow.FieldType:                "type",
 		workflow.FieldDueDays:             "due_days",
 		workflow.FieldCreatedDays:         "created_days",
 		workflow.FieldUpdatedDays:         "updated_days",
-		workflow.FieldStatusChanged:       "status_changed",
-		workflow.FieldSectionChanged:      "section_changed",
+		workflow.FieldStateChanged:        "state_changed",
 		workflow.FieldPriorityChanged:     "priority_changed",
 		workflow.FieldTagAdded:            "tag_added",
 		workflow.FieldTagRemoved:          "tag_removed",
@@ -205,7 +203,7 @@ func triggerFieldLabel(f workflow.TriggerField) string {
 		workflow.FieldHasDueDate:          "has_due_date",
 		workflow.FieldHasTags:             "has_tags",
 		workflow.FieldDescriptionEmpty:    "description_empty",
-		workflow.FieldParentStatus:        "parent_status",
+		workflow.FieldParentState:         "parent_state",
 		workflow.FieldParentType:          "parent_type",
 		workflow.FieldParentTags:          "parent_tags",
 		workflow.FieldLevel:               "level",
@@ -217,13 +215,13 @@ func triggerFieldLabel(f workflow.TriggerField) string {
 		workflow.FieldDependencyCount:     "dependency_count",
 		workflow.FieldHasInProgressTasks:  "has_in_progress_tasks",
 		workflow.FieldActiveTaskCount:     "active_task_count",
-		workflow.FieldAllTasksStatus:      "all_tasks_status",
+		workflow.FieldAllTasksState:       "all_tasks_state",
 		workflow.FieldMajorityTaskType:    "majority_task_type",
-		workflow.FieldMajorityTaskStatus:  "majority_task_status",
+		workflow.FieldMajorityTaskState:   "majority_task_state",
 		workflow.FieldCompletionRatio:     "completion_ratio",
 		workflow.FieldDaysSinceUpdate:     "days_since_update",
 		workflow.FieldProjectStatus:       "project_status",
-		workflow.FieldHasTasksWithStatus:  "has_tasks_with_status",
+		workflow.FieldHasTasksWithState:   "has_tasks_with_state",
 	}
 	if label, ok := labels[f]; ok {
 		return label

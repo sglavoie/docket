@@ -26,7 +26,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 
 	// The Outliner presentation is the app-scoped TaskWorkspace root; project
 	// selection is an Outliner scope frame, not a project-scoped root route.
-	app.pushView(ViewOutliner)
+	app.pushView(ViewCrossProjectOutliner)
 	r := app.CurrentRoute()
 	workspace, ok := r.Params().(TaskWorkspaceParams)
 	if r.ID() != TaskWorkspace || !ok || workspace.Scope != AppEntityScope() {
@@ -34,7 +34,10 @@ func TestCurrentRouteBinding(t *testing.T) {
 	}
 
 	// Task-scoped view carries both.
-	app.pushView(ViewTaskDetail)
+	task := &models.Task{ID: "t1", Title: "Task"}
+	proj.Tasks = []*models.Task{task}
+	proj.BuildTaskTree()
+	_ = app.activateTaskDetail(task, proj, TaskOverview)
 	r = app.CurrentRoute()
 	detail, ok := r.Params().(TaskDetailParams)
 	if r.ID() != TaskDetail || !ok || detail.ProjectID != "p1" || detail.TaskID != "t1" {
@@ -50,10 +53,14 @@ func TestCurrentRouteBinding(t *testing.T) {
 		t.Errorf("cross-project Outliner route scope = %+v, want app", workspace.Scope)
 	}
 
-	// Legacy overlays do not replace the typed primary route.
-	app.pushView(ViewCommandPalette)
+	// Overlays do not replace the typed primary route.
+	overlay, err := NewOverlay(OverlayFinder, "test:finder")
+	if err != nil {
+		t.Fatalf("NewOverlay: %v", err)
+	}
+	app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
 	if got := app.CurrentRoute().ID(); got != TaskWorkspace {
-		t.Errorf("CurrentRoute under palette = %s, want TaskWorkspace", got)
+		t.Errorf("CurrentRoute under finder = %s, want TaskWorkspace", got)
 	}
 }
 
@@ -62,17 +69,20 @@ func TestShellStateFacade(t *testing.T) {
 	app := newShellTestApp()
 	app.currentProject = &models.Project{ID: "p1", Name: "Proj"}
 	s := app.Shell()
-	// Construction lands on the sole Outliner root. The presentation mirror
-	// carries a Dashboard sentinel beneath the root, so Depth is 2 there.
+	// Construction lands on the sole Outliner root, with no synthetic
+	// presentation sentinel beneath it.
 	if s.CurrentView() != ViewCrossProjectOutliner {
 		t.Errorf("CurrentView = %s, want CrossProjectOutliner", s.CurrentView())
 	}
 	if s.CurrentRoute().ID() != TaskWorkspace {
 		t.Errorf("root route = %s, want TaskWorkspace", s.CurrentRoute().ID())
 	}
+	if s.Depth() != 1 || len(s.Stack()) != 1 || s.Stack()[0] != ViewCrossProjectOutliner {
+		t.Fatalf("root renderer path = %v depth=%d, want sole Outliner renderer", s.Stack(), s.Depth())
+	}
 	// The Outliner presentation replaces the single root in place and stays
 	// app-scoped; project selection is an Outliner scope frame, not a root route.
-	app.pushView(ViewOutliner)
+	app.pushView(ViewCrossProjectOutliner)
 	if s.CurrentRoute().ID() != TaskWorkspace {
 		t.Errorf("CurrentRoute = %s, want TaskWorkspace", s.CurrentRoute().ID())
 	}
@@ -81,8 +91,10 @@ func TestShellStateFacade(t *testing.T) {
 		t.Errorf("root scope = %+v, want app-scoped root", s.CurrentRoute().Params())
 	}
 	// A child (Task Detail) stacks above the root.
-	app.lastNavigatedTaskID = "t1"
-	app.pushView(ViewTaskDetail)
+	task := &models.Task{ID: "t1", Title: "Task"}
+	app.currentProject.Tasks = []*models.Task{task}
+	app.currentProject.BuildTaskTree()
+	_ = app.activateTaskDetail(task, app.currentProject, TaskOverview)
 	if s.AtRoot() {
 		t.Error("expected not AtRoot after pushing a child")
 	}
@@ -118,9 +130,9 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 	}
 
 	// A text-input overlay drives both Active and HasActiveTextInput.
-	app.globalProjectPicker = &GlobalProjectPicker{}
+	app.quickNoteOverlay = &QuickNoteOverlay{}
 	if !o.Active() || !o.HasActiveTextInput() {
-		t.Error("globalProjectPicker should make overlays active and text-input")
+		t.Error("quick note should make overlays active and text-input")
 	}
 	if !app.hasActiveTextInput() {
 		t.Error("AppModel.hasActiveTextInput should reflect the overlay")
@@ -128,16 +140,16 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 
 	// A non-text overlay is active but not text-input.
 	o.ClearAll()
-	app.priorityQuickPicker = &PriorityQuickPicker{}
+	app.projectAdminMenu = &ProjectAdminMenuModel{}
 	if !o.Active() {
-		t.Error("priorityQuickPicker should make overlays active")
+		t.Error("project admin menu should make overlays active")
 	}
 	if o.HasActiveTextInput() {
-		t.Error("priorityQuickPicker is not a text-input overlay")
+		t.Error("project admin menu is not a text-input overlay")
 	}
 
 	o.ClearAll()
-	if o.Active() || app.globalProjectPicker != nil || app.priorityQuickPicker != nil {
+	if o.Active() || app.quickNoteOverlay != nil || app.projectAdminMenu != nil {
 		t.Error("ClearAll should dismiss every overlay")
 	}
 }

@@ -1,12 +1,6 @@
 package tui
 
-import (
-	"fmt"
-	"slices"
-	"sort"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import "github.com/sglavoie/tt/internal/models"
 
 // validateCrossZoomStack walks the cross-project zoom stack from top to bottom,
 // popping entries whose task no longer exists in their owning project. It
@@ -84,7 +78,7 @@ func (m *OutlinerModel) validateZoomStack() {
 }
 
 // rebuildRows flattens the current task tree into the rows slice, applying the
-// active perspective filter, and clamps the cursor to stay within bounds.
+// active mode and filters, and clamps the cursor to stay within bounds.
 func (m *OutlinerModel) rebuildRows() {
 	if m.project == nil {
 		// Mark as a mutation-driven rebuild so the memoization guard in
@@ -104,137 +98,17 @@ func (m *OutlinerModel) rebuildRows() {
 
 	m.validateZoomStack()
 
-	// The computed Backlog horizon is a flat, fixed-order list built from the
-	// cross-project ranker rather than the perspective
-	// tree. An explicit navigation target (openAt) falls through to the tree
-	// path so the target can be revealed.
-	if m.workBacklogMode && openAt == nil {
-		m.buildWorkModeRows()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return
-	}
-
-	if m.reviewModeActive() && openAt == nil {
-		m.buildReviewModeRows()
-		return
-	}
-
-	roots := m.project.GetRootTasks()
-	if len(m.zoomStack) > 0 {
-		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
-		if task := m.project.GetTaskByID(topID); task != nil {
-			roots = task.Children
-		}
-	}
-
-	tasks := filterTaskTree(roots, m.baseFocusFilter(m.project))
-
-	if tag := m.activePinnedTagFilter(); tag != "" {
-		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return task.HasTag(tag)
-		})
-	}
-
-	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
-		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return passesCommonFilters(task, &m.filter.CommonFilterState, m.project, m.runtime.Automation())
-		})
-	}
-
-	if m.activeCriteriaFilter != nil {
-		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return passesSavedFilterCriteria(task, m.project, m.activeCriteriaFilter, m.runtime.Automation())
-		})
-	}
-
-	if m.filter.Actionable {
-		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return taskIsActionableState(task, m.project)
-		})
-	}
-
-	if query := m.SearchQuery(); query != "" {
-		tasks = filterTaskTree(tasks, func(task *models.Task) bool {
-			return matchesSearch(task, query, m.runtime.Planning())
-		})
-	}
-	tasks = m.applyFocusOrdering(tasks, m.project.ID)
-
-	if m.sort.Field != SortByDefault {
-		tasks = m.sortTaskTree(tasks)
-	}
-
-	if m.smartFocus == nil && m.currentPerspective().Name == "All" {
-		m.buildRowsWithSectionHeaders(tasks)
-	} else {
-		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
-		m.insertDepth0Separators()
-	}
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.buildCanonicalModeRows()
 
 	if openAt != nil {
 		m.revealTask(openAt)
 	}
 }
 
-// buildRowsWithSectionHeaders groups tasks by canonical state group, then uses
-// the temporary section-shaped presentation adapter for current visible labels.
-func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
-	forests := buildSectionTaskForests(tasks)
-
-	for _, group := range legacyAllPresentationGroupOrder() {
-		forest := forests[group]
-		if forest == nil || forest.count == 0 {
-			continue
-		}
-		sectionName := legacySectionForStateGroup(group)
-
-		if len(m.rows) > 0 {
-			m.rows = append(m.rows, outlinerRow{IsSeparator: true})
-		}
-		m.rows = append(m.rows, outlinerRow{
-			IsSectionHeader: true,
-			SectionName:     sectionName,
-			SectionCount:    forest.count,
-			StateGroup:      group,
-		})
-
-		if !m.collapsedSections[sectionName] {
-			m.flattenSectionForest(forest, "", &m.rows)
-		}
-	}
-}
-
 // effectiveDisplaySection returns the task's display section for non-header
 // contexts such as navigation matching and task-form dimming.
 func effectiveDisplaySection(t *models.Task) string {
-	return taskSectionBucket(t)
-}
-
-func renderedHeaderStateGroupForTask(task *models.Task) models.WorkflowStateGroup {
-	group := headerStateGroupForTask(task)
-	section := legacySectionForStateGroup(group)
-	if section == "" || isRenderedOutlinerHeaderSection(section) {
-		return group
-	}
-	return models.StateGroupBacklog
-}
-
-func isRenderedOutlinerHeaderSection(section string) bool {
-	return slices.Contains(SectionOrder, section)
-}
-
-// currentPerspective returns the active perspective preset.
-// Defaults to the "All" perspective (key 1) when activePerspective is unset or negative.
-func (m *OutlinerModel) currentPerspective() Perspective {
-	idx := m.activePerspective
-	if idx < 0 || idx > 9 {
-		idx = 1
-	}
-	perspective, _ := PerspectiveByID(idx)
-	return perspective
+	return taskStateGroupLabel(t)
 }
 
 // filterTaskTree returns a copy of the task tree containing only tasks that
@@ -253,62 +127,12 @@ func filterTaskTree(tasks []*models.Task, predicate func(*models.Task) bool) []*
 	return result
 }
 
-// sortTaskTree returns a sorted copy of the task tree. Sorting is applied at
-// each hierarchy level (siblings are reordered but parent-child relationships
-// are preserved). The original slices are not mutated.
-func (m *OutlinerModel) sortTaskTree(tasks []*models.Task) []*models.Task {
-	sorted := make([]*models.Task, len(tasks))
-	copy(sorted, tasks)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		cmp := CompareTasks(sorted[i], sorted[j], m.sort.Field, m.project.ID, m.runtime.Automation())
-		return ApplySortDirection(cmp, m.sort.Ascending)
-	})
-	for idx, task := range sorted {
-		if len(task.Children) == 0 {
-			continue
-		}
-		clone := *task
-		clone.Children = m.sortTaskTree(task.Children)
-		sorted[idx] = &clone
-	}
-	return sorted
-}
-
-// toggleSort updates both the active and durable tree sorts. Fixed-order modes
-// own their ordering and reject manual sort changes without touching either.
-func (m *OutlinerModel) toggleSort(field SortField) {
-	if !m.activeOutlinerModeEntry().SupportsManualSort() {
-		m.manualSortUnavailableStatus()
-		return
-	}
-	m.clearActiveSavedFilter()
-	m.sort.Toggle(field)
-	m.treeSort = m.sort
-	m.rebuildRows()
-}
-
-func (m *OutlinerModel) resetSort() {
-	if !m.activeOutlinerModeEntry().SupportsManualSort() {
-		m.manualSortUnavailableStatus()
-		return
-	}
-	m.clearActiveSavedFilter()
-	m.sort.Reset()
-	m.treeSort = m.sort
-	m.rebuildRows()
-}
-
-func (m *OutlinerModel) manualSortUnavailableStatus() {
-	mode := m.activeOutlinerModeEntry()
-	m.setStatus(fmt.Sprintf("Ordering is automatic in %s mode — manual sorting is available only in tree modes", mode.Label))
-}
-
 // clampCursor ensures the cursor stays within [0, len(rows)-1] and never
 // rests on a non-navigable row (a separator). The cursor is allowed to settle
 // on section headers (which act as collapse toggles), project sub-headers
 // (Enter scopes, Shift+Enter administers), and task rows. Separators are
 // visual-only and must never be selected after a rebuild, filter, collapse,
-// paging, or perspective change.
+// paging, or mode change.
 func (m *OutlinerModel) clampCursor() {
 	m.ClampCursorTo(len(m.rows))
 	if len(m.rows) == 0 {
@@ -437,24 +261,6 @@ func (m *OutlinerModel) searchTagCache() []string {
 		return CollectTagNamesForProject(m.project)
 	}
 	return CollectTagNamesForProjects(m.loadedProjects)
-}
-
-// searchSectionCache returns all unique sections across the outliner's project(s).
-func (m *OutlinerModel) searchSectionCache() []string {
-	if m.project != nil {
-		return gtdSections(m.project.GetSections())
-	}
-	seen := make(map[string]bool)
-	var result []string
-	for _, p := range m.loadedProjects {
-		for _, s := range gtdSections(p.GetSections()) {
-			if !seen[s] {
-				seen[s] = true
-				result = append(result, s)
-			}
-		}
-	}
-	return result
 }
 
 // contentHeight returns the number of task rows visible on screen,

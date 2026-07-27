@@ -17,7 +17,7 @@ func NewTaskFormModelCreate(
 	draft := taskFormDraft{
 		taskType: models.TaskTypeTask,
 		priority: 3,
-		section:  models.SectionNext,
+		state:    models.StateNext,
 	}
 	if suggestedParent != nil {
 		// Walk up to find the nearest ancestor that can accept this child type
@@ -74,13 +74,7 @@ func NewTaskFormModelCreateFromTemplate(
 	if len(tmpl.Tags) > 0 {
 		m.draft.tags = append([]string{}, tmpl.Tags...)
 	}
-	m.presetState = tmpl.EffectiveState()
-	if section := models.SectionForState(m.presetState); section != "" {
-		project.EnsureSection(section)
-		m.draft.section = section
-	} else {
-		m.draft.section = ""
-	}
+	m.draft.state = tmpl.EffectiveState()
 	if tmpl.Description != "" {
 		m.draft.desc = tmpl.Description
 	}
@@ -110,13 +104,11 @@ func NewTaskFormModelEdit(
 	task *models.Task,
 	runtime *config.RuntimeState,
 ) *TaskFormModel {
-	effectiveSection := taskSectionBucket(task)
-
 	draft := taskFormDraft{
 		taskType:           task.Type,
 		priority:           task.Priority,
 		parentID:           task.ParentID,
-		section:            effectiveSection,
+		state:              task.State(),
 		pinned:             task.Pinned,
 		dimmed:             task.Dimmed,
 		tags:               append([]string{}, task.Tags...),

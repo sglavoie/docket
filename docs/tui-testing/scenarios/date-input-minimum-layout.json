@@ -1,11 +1,18 @@
 {
-  "name": "date-input-minimum-layout",
+  "name": "due-date-action-sheet-minimum-layout",
   "fixture": "rich",
   "size": "72x20",
   "actions": [
-    { "type": "command", "label": "open Global Inbox Processor", "command": "global inbox processor" },
-    { "type": "command", "label": "open Set Due Date", "command": "set inbox task due date" },
-    { "type": "assert", "assert": "view", "value": "DateInput" },
+    { "type": "key", "label": "open the mode finder", "key": "m" },
+    { "type": "text", "label": "find Inbox", "text": "inbox" },
+    { "type": "key", "label": "activate Inbox", "key": "enter" },
+    { "type": "key", "label": "open task actions", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions" },
+    { "type": "key", "label": "search actions", "key": "/" },
+    { "type": "text", "label": "find due date", "text": "due" },
+    { "type": "key", "label": "keep the action search", "key": "enter" },
+    { "type": "key", "label": "open due-date values", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

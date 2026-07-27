@@ -20,16 +20,15 @@ type LinkedTaskRelation struct {
 // LinkedTaskSelectorModel is a picker for navigating to linked tasks.
 type LinkedTaskSelectorModel struct {
 	BaseSearchableView
-	sourceTask    *models.Task
-	project       *models.Project
-	runtime       *config.RuntimeState
-	coordinator   LinkCoordinator
-	relations     []LinkedTaskRelation
-	filtered      []LinkedTaskRelation // filtered relations based on search
-	cursor        int
-	cursorFlash   bool
-	scrollOffset  int
-	pendingPrefix string
+	sourceTask   *models.Task
+	project      *models.Project
+	runtime      *config.RuntimeState
+	coordinator  LinkCoordinator
+	relations    []LinkedTaskRelation
+	filtered     []LinkedTaskRelation // filtered relations based on search
+	cursor       int
+	cursorFlash  bool
+	scrollOffset int
 }
 
 // NewLinkedTaskSelectorModelWithConfig creates a new linked task selector,

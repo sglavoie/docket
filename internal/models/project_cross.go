@@ -13,9 +13,8 @@ type MoveTaskToProjectResult struct {
 }
 
 // MoveTaskToProject moves a task and all its descendants to another project.
-// Dependencies pointing to tasks not in the moved set are cleared.
-// Sections are preserved if they exist in destination, otherwise reset to Next.
-// Short IDs are regenerated in the destination project.
+// Dependencies pointing to tasks not in the moved set are cleared. Workflow
+// states are preserved and short IDs are regenerated in the destination.
 func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProjectResult, error) {
 	if task == nil {
 		return nil, fmt.Errorf("cannot move nil task")
@@ -49,17 +48,11 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	oldShortIDs := make([]int, len(movedTasks))
 
 	now := time.Now()
-	destSections := dest.GetSections()
-	destSectionSet := make(map[string]bool)
-	for _, s := range destSections {
-		destSectionSet[s] = true
-	}
-
 	// Process each task being moved
 	for i, t := range movedTasks {
 		oldShortIDs[i] = t.ShortID
 		clearedDeps = append(clearedDeps, rewriteMovedTaskRefs(t, movedIDs)...)
-		reassignTaskToDest(t, dest, destSectionSet, now)
+		reassignTaskToDest(t, dest, now)
 	}
 
 	// Clear the root task's ParentID since it becomes a root in destination
@@ -143,19 +136,9 @@ func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
 	return dropped
 }
 
-// reassignTaskToDest fixes section bookkeeping, refreshes the short ID, and
-// clears the project pointer so the task is ready to live under dest. The
-// destSectionSet map is updated in place when sections are added to dest.
-func reassignTaskToDest(t *Task, dest *Project, destSectionSet map[string]bool, now time.Time) {
-	// The task carries its workflow state across the move; make sure dest
-	// enumerates the section bucket that state resolves to, since dest may
-	// have been created without EnsureDefaultSections and UI listings derive
-	// their buckets from dest.Sections.
-	if bucket := SectionForState(t.State()); bucket != "" && !destSectionSet[bucket] {
-		dest.EnsureSection(bucket)
-		destSectionSet[bucket] = true
-	}
-
+// reassignTaskToDest refreshes the short ID and clears the project pointer so
+// the task is ready to live under dest.
+func reassignTaskToDest(t *Task, dest *Project, now time.Time) {
 	t.UpdatedAt = now
 	t.ShortID = dest.GetNextShortID()
 	t.Project = nil

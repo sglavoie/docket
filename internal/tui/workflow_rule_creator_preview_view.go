@@ -213,8 +213,8 @@ func (m *WorkflowRuleCreatorModel) buildScopePreviewString() string {
 	if v := strings.TrimSpace(m.scopeTypesInput.Value()); v != "" {
 		parts = append(parts, "types=["+v+"]")
 	}
-	if v := strings.TrimSpace(m.scopeSectionsInput.Value()); v != "" {
-		parts = append(parts, "sections=["+v+"]")
+	if v := strings.TrimSpace(m.scopeStatesInput.Value()); v != "" {
+		parts = append(parts, "states=["+v+"]")
 	}
 	return strings.Join(parts, ", ")
 }

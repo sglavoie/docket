@@ -115,7 +115,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 func displaySearchResults(results []models.SearchResult, query string) {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"Project", "ID", "Type", "Status", "Title"})
+	t.AppendHeader(table.Row{"Project", "ID", "Type", "State", "Title"})
 
 	for _, r := range results {
 		t.AppendRow(table.Row{

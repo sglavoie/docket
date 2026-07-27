@@ -38,23 +38,108 @@ func TestTutorDocumentsConsolidatedNavigation(t *testing.T) {
 	}
 }
 
-func TestTutorDocumentsPaletteAndTaskComposer(t *testing.T) {
-	palette := findTutorTUITopic(t, "Command Palette")
-	for _, want := range []string{"Press :", "search", "triage inbox", "undo last triage action"} {
-		if !strings.Contains(palette.Content, want) {
-			t.Errorf("Command Palette topic missing %q", want)
+func TestTutorDocumentsFinderAndTaskComposer(t *testing.T) {
+	finder := findTutorTUITopic(t, "Finder")
+	for _, want := range []string{"Press :", "search", "OperationRegistry"} {
+		if !strings.Contains(finder.Content, want) {
+			t.Errorf("Finder topic missing %q", want)
 		}
 	}
-	composer := findTutorTUITopic(t, "Quick Capture Grammar")
-	for _, want := range []string{"Ctrl+N", "Task Composer", "@date", "#tag"} {
+	composer := findTutorTUITopic(t, "Task Composer Grammar")
+	for _, want := range []string{"Press a", "Task Composer", "@date", "#tag"} {
 		if !strings.Contains(composer.Content, want) {
-			t.Errorf("Quick Capture Grammar topic missing %q", want)
+			t.Errorf("Task Composer Grammar topic missing %q", want)
+		}
+	}
+}
+
+func TestTutorDocumentsFinalDailyLoopContract(t *testing.T) {
+	keys := findTutorTUITopic(t, "Everyday Keys")
+	for _, want := range []string{
+		"a       Capture",
+		"e       Edit",
+		"s       Start",
+		"d       Complete",
+		"b       Move",
+		"t       Toggle",
+		"n       Toggle",
+		"Space   Open",
+	} {
+		if !strings.Contains(keys.Content, want) {
+			t.Errorf("Everyday Keys topic missing %q", want)
+		}
+	}
+
+	pipeline := findTutorTUITopic(t, "Pipeline Views")
+	for _, want := range []string{
+		"Tab cycles All, Inbox, Next, and Backlog",
+		"Press c",
+		"N opens Notes",
+		"R opens Weekly Review",
+		"T opens Tags",
+		"! opens Notifications",
+	} {
+		if !strings.Contains(pipeline.Content, want) {
+			t.Errorf("Pipeline Views topic missing %q", want)
+		}
+	}
+
+	actions := findTutorTUITopic(t, "Task Actions and Multi-Select")
+	for _, want := range []string{"Press Space", "Press v", "Space to select", "Press Enter", "Destructive actions require confirmation"} {
+		if !strings.Contains(actions.Content, want) {
+			t.Errorf("Task Actions and Multi-Select topic missing %q", want)
+		}
+	}
+}
+
+func TestTutorDocumentsCanonicalStateGrammar(t *testing.T) {
+	state := findTutorTopicByTitle(t, "Workflow States")
+	for _, want := range []string{"inbox", "ready", "next", "in_progress", "waiting", "paused", "review", "someday", "done", "canceled"} {
+		if !strings.Contains(state.Content, want) {
+			t.Errorf("Workflow States topic missing %q", want)
+		}
+	}
+
+	composer := findTutorTUITopic(t, "Task Composer Grammar")
+	for _, want := range []string{"$state", "state:ready", "omission defaults to Inbox"} {
+		if !strings.Contains(composer.Content, want) {
+			t.Errorf("Task Composer Grammar topic missing %q", want)
 		}
 	}
 }
 
 func TestTutorContainsNoRetiredNavigationSurfaces(t *testing.T) {
-	retired := []string{"Pipeline Hub", "Keybinding Explorer", "Global Search", ";;", ";i", ";q", ";w", `ctrl+\`}
+	retired := []string{
+		"Command Palette",
+		"command palette",
+		"Inbox Processor",
+		"inbox processor",
+		"Pipeline Hub",
+		"Keybinding Explorer",
+		"Global Search",
+		"Ctrl+N",
+		"Ctrl+X",
+		"smart focus",
+		"perspective",
+		"prefix-chord",
+		";;",
+		";i",
+		";q",
+		";w",
+		`ctrl+\`,
+		"Sections (GTD)",
+		"GTD section",
+		"Today section",
+		"workflow sections",
+		"/sections",
+		"--section",
+		"--status",
+		"status transitions",
+		"status changes to",
+		"Press C in the Outliner",
+		"Press C to",
+		"Press q",
+	}
 	for _, topic := range tutorTopics() {
 		for _, term := range retired {
 			if strings.Contains(topic.Content, term) {

@@ -9,7 +9,7 @@ import (
 // buildTargetedRestore parses the current content, replaces only the targeted
 // tasks with their versions from the snapshot, and re-serializes.
 func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, taskIDs []string) (string, error) {
-	currentResult, err := ParseTasksMarkdownWithSections(currentContent)
+	currentResult, err := ParseTasksMarkdownDocument(currentContent)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse current content: %w", err)
 	}
@@ -73,11 +73,9 @@ func buildTargetedRestore(currentContent string, snapshotResult *ParseResult, ta
 		currentIDs[snapTask.ID] = true
 	}
 
-	return WriteTasksMarkdownWithFullProjectMetadata(
+	return writeTasksMarkdownWithProjectMetadata(
 		currentResult.ProjectName,
 		currentResult.Tasks,
-		currentResult.Sections,
-		currentResult.SectionColors,
 		currentResult.Tags,
 		currentResult.PinnedTags,
 	), nil

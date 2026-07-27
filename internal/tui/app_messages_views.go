@@ -131,7 +131,7 @@ type ShowGlobalOutlinerMsg struct {
 type CloseGlobalOutlinerMsg struct{}
 
 // CloseCrossOutlinerMsg closes the cross-project outliner and pops to the previous anchor
-// without resetting the model state (cursor, perspective, fold state are preserved).
+// without resetting the model state (cursor, mode, and fold state are preserved).
 type CloseCrossOutlinerMsg struct{}
 
 // =============================================================================

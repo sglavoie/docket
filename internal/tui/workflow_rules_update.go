@@ -30,15 +30,6 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint
 			return model, cmd
 		}
 
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-
 		return m.handleDefaultKey(msg.String())
 	}
 
@@ -105,8 +96,8 @@ func (m *WorkflowRulesModel) handleNavigationKey(key string) (bool, tea.Model, t
 			m.cursor--
 		}
 		return true, m, nil
-	case "g":
-		m.pendingPrefix = "g"
+	case "home":
+		m.cursor = 0
 		return true, m, nil
 	case "G":
 		if len(m.filteredRules) > 0 {

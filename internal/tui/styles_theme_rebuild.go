@@ -129,10 +129,6 @@ func rebuildLayoutStyles() {
 	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorProgressEmpty)
 	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorBorder)
-	PrefixPopupStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorLightGray).Padding(0, 1)
-	PrefixKeyStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
-	PrefixDescStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-
 	TaskJumperListStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, true, false, false).BorderForeground(ColorBorder)
 	TaskJumperPreviewStyle = lipgloss.NewStyle().Padding(0, 1)
 	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
@@ -193,7 +189,6 @@ func rebuildViewStyles() {
 	HelpViewTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
 	HelpCategoryStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
 	HelpFilterActiveStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	FocusModeStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Background(ColorBackground)
 
 	ViewModeActiveStyle = makeViewModeStyle("#2e4a30", "#15803d")
 	ViewModeWorkStyle = makeViewModeStyle("#4a321e", "#9a3412")

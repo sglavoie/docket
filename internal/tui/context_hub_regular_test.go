@@ -324,7 +324,6 @@ func TestContextHubRegularSaveFailureLeavesNothingBehind(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	app.enableTypedNavigation()
 	hub := openRegularEditorOn(t, app, "work")
 
 	// A catalog the store can read no longer is a commit that cannot be staged.
@@ -431,7 +430,6 @@ func defaultContextWorkspace(t *testing.T) (*AppModel, string) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	app.enableTypedNavigation()
 	return app, dataDir
 }
 

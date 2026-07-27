@@ -31,14 +31,11 @@ type EditRequest struct {
 	// fields are mutually exclusive in practice.
 	Form *FormEdit
 	// WorkflowState, when non-nil, preserves or changes the canonical lifecycle
-	// state after applying either a form or granular edit. Full-form callers need
-	// this because the legacy section projection cannot distinguish Ready from In
-	// Progress: both occupy the default active bucket.
+	// state after applying either a form or granular edit.
 	WorkflowState *models.WorkflowState
 	// PlanningArtifacts, when set, folds the durable planning reconciliation the
 	// edit implies (Today/Next exclusivity) into the same ledger transaction as the
-	// task write, so a form edit that changes the task's section — and therefore its
-	// workflow state — keeps Today/Next exclusive and undoes atomically. Nil uses
+	// task write, so a state-changing form edit undoes atomically. Nil uses
 	// the service default planning builder (installed by the TUI); when neither is
 	// set the edit is a bare task write.
 	PlanningArtifacts PlanningArtifactBuilder
@@ -52,7 +49,6 @@ type FormEdit struct {
 	Type          models.TaskType
 	Priority      int
 	ParentID      *string
-	Section       string
 	Description   string
 	Tags          []string
 	DueDate       *time.Time
@@ -81,19 +77,18 @@ type FormEdit struct {
 // req.Form is set, the full task-form field set is applied instead of the
 // granular pointer fields.
 func (s *Service) Edit(req EditRequest) (TaskResult, error) {
-	ref, _, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
+	ref, snap, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
 	if err != nil {
 		return TaskResult{}, err
+	}
+	if guardErr := validateEditStateTransition(ref, NewWorkspaceResolver(snap), req.WorkflowState); guardErr != nil {
+		return TaskResult{}, guardErr
 	}
 	if applyErr := s.applyEdit(ref.Task, req); applyErr != nil {
 		return TaskResult{}, applyErr
 	}
-	// A form edit can change the task's section (and therefore its workflow state),
-	// so fold the same Today/Next exclusivity reconciliation a state transition does
-	// into the same transaction: entering StateNext drops Today, leaving StateNext
-	// drops the stale Next order entry. A granular edit that leaves the state
-	// unchanged reconciles to no planning change (nil artifacts), so this is a bare
-	// task write for `tt task edit`.
+	// Fold Today/Next reconciliation into the same transaction. A content-only
+	// edit reconciles to no planning change.
 	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return TaskResult{}, err
@@ -109,14 +104,42 @@ func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptio
 	if opts.UndoAction == "" {
 		opts.UndoAction = "Edit Task"
 	}
-	// A form edit changes the derived workflow state when its section changes, so
-	// fold the Today/Next exclusivity reconciliation into the same cascade
-	// transaction. The single-task workflow runner already names the edited task as
-	// its planning target, so the builder reconciles exactly that task.
+	// Fold Today/Next reconciliation into the same cascade transaction.
 	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
-	return s.mutateWithWorkflowSelection(req.TaskID, req.Locator, opts, nil, func(ref TaskRef, _ *WorkspaceResolver) error {
+	return s.mutateWithWorkflowSelection(req.TaskID, req.Locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
+		if guardErr := validateEditStateTransition(ref, resolver, req.WorkflowState); guardErr != nil {
+			return guardErr
+		}
 		return s.applyEdit(ref.Task, req)
 	})
+}
+
+// validateEditStateTransition makes a state-changing edit obey the same guards
+// as the canonical Transition use case. Content-only edits and explicit
+// same-state writes remain valid; a real transition checks the state graph,
+// workspace-qualified dependencies, and incomplete children before any edit
+// fields are applied.
+func validateEditStateTransition(ref TaskRef, resolver *WorkspaceResolver, target *models.WorkflowState) error {
+	if target == nil {
+		return nil
+	}
+	if !target.IsValid() {
+		return invalidInput("workflow state", fmt.Sprintf("%q is not a valid workflow state", *target))
+	}
+	from := ref.Task.State()
+	if *target == from {
+		return nil
+	}
+	if reason := models.CanTransitionState(from, *target); reason != "" {
+		return invalidInput("workflow state", reason)
+	}
+	if *target == models.StateDone && resolver != nil && resolver.HasIncompleteDependencies(ref.Task, ref.Project) {
+		return fmt.Errorf("%w: task #%d", ErrDependencyBlocked, ref.Task.ShortID)
+	}
+	if err := childrenCompletionGuard(ref.Task, *target); err != nil {
+		return err
+	}
+	return nil
 }
 
 // applyEdit is the shared validation and mutation seam for bare and
@@ -172,9 +195,9 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 }
 
 // applyFormEdit replaces a task's editable fields from the task form's draft,
-// validating title, type, priority, section, and tags before mutating so a
+// validating title, type, priority, and tags before mutating so a
 // rejected edit never persists. It mirrors the field-application order the form
-// used before the migration (title/type/priority/parent/section, then dates,
+// used before the migration (title/type/priority/parent, then dates,
 // tags, flags, recurrence, links, description, checklist, type attrs, pinned).
 func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	title := strings.TrimSpace(f.Title)
@@ -187,9 +210,6 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	if err := models.ValidatePriority(f.Priority, false); err != nil {
 		return invalidInput("priority", err.Error())
 	}
-	if f.Section != "" && !models.IsGTDSection(f.Section) {
-		return invalidInput("section", fmt.Sprintf("%q is not a built-in GTD section; use tags for flexible grouping", f.Section))
-	}
 	normalizedTags, err := normalizeTags(f.Tags)
 	if err != nil {
 		return err
@@ -199,7 +219,6 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	task.Type = f.Type
 	task.Priority = f.Priority
 	task.ParentID = f.ParentID
-	task.SetSection(f.Section)
 	task.DueDate = cloneTimePtr(f.DueDate)
 	task.HasTime = f.HasTime
 	task.StartDate = cloneTimePtr(f.StartDate)

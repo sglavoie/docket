@@ -14,7 +14,7 @@ A task can have multiple tags, and tags work across projects.
 
 Use tags for themes that cut across your project hierarchy:
 #backend, #frontend, #urgent, #tech-debt, #design. Tags complement
-sections and priority by adding a free-form dimension to task
+workflow state and priority by adding a free-form dimension to task
 organization.`,
 		},
 		{
@@ -42,7 +42,7 @@ See Type-Specific Attributes for per-type metadata.`,
 			Content: `# What Are Templates
 
 Templates are pre-configured task structures for common scenarios.
-A template specifies type, priority, tags, section, attributes,
+A template specifies type, priority, tags, canonical state, attributes,
 and optional checklist items that are applied when creating a task.
 
 # Default Templates
@@ -101,14 +101,14 @@ Triggers can be state changes or events.
 
 # Practical Examples
 
-Auto-move tasks to Active section when started:
+Tag work when it starts:
 
-  Trigger: status changes to in_progress
-  Action: set section to active
+  Trigger: state changes to in_progress
+  Action: add tag "started"
 
 Auto-tag completed tasks:
 
-  Trigger: status changes to done
+  Trigger: state changes to done
   Action: add tag "completed"`,
 		},
 	}

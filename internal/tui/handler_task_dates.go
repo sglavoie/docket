@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleTaskDateMessages handles task date-related messages (due dates, snooze).
@@ -197,20 +196,6 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 	m.pendingBulkTasks = nil
 	m.refreshAllViews()
 	return true, nil
-}
-
-func taskProjectRefsFromTasks(tasks []*models.Task, project *models.Project) []TaskProjectRef {
-	if project == nil {
-		return nil
-	}
-	refs := make([]TaskProjectRef, 0, len(tasks))
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		refs = append(refs, TaskProjectRef{Task: task, Project: project})
-	}
-	return refs
 }
 
 func validTaskProjectRefs(refs []TaskProjectRef) []TaskProjectRef {

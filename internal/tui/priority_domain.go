@@ -9,7 +9,7 @@ import (
 )
 
 // PriorityGroup is the urgency grouping used by the Outliner's optional
-// cross-project priority lens.
+// cross-project Priority mode.
 type PriorityGroup int
 
 const (
@@ -22,7 +22,7 @@ const (
 )
 
 // PriorityTask carries the urgency metadata rendered by the Outliner's
-// cross-project priority lens.
+// cross-project Priority mode.
 type PriorityTask struct {
 	Task         *models.Task
 	UrgencyScore int
@@ -113,87 +113,4 @@ func SortPriorityTasksByUrgency(tasks []*PriorityTask) {
 	sort.SliceStable(tasks, func(i, j int) bool {
 		return tasks[i].UrgencyScore > tasks[j].UrgencyScore
 	})
-}
-
-// crossPriorityCollapseKeyPrefix marks a section-header collapse key as
-// belonging to the cross-project Priority mode. The prefix exists so the
-// shared section header renderer and toggle helpers can route collapse-state
-// lookups to OutlinerModel.crossPriorityCollapsedGroups instead of the
-// persisted m.collapsedSections map.
-const crossPriorityCollapseKeyPrefix = "_xpp:"
-
-// priorityGroupSlug returns a stable, lowercase identifier for a priority
-// group. Used to build collapse-key sentinels and for tests.
-func priorityGroupSlug(g PriorityGroup) string {
-	switch g {
-	case PriorityGroupOverdue:
-		return "overdue"
-	case PriorityGroupToday:
-		return "today"
-	case PriorityGroupThisWeek:
-		return "this_week"
-	case PriorityGroupLater:
-		return "later"
-	case PriorityGroupBacklog:
-		return "backlog"
-	case PriorityGroupWaitingOn:
-		return "blocked"
-	}
-	return "unknown"
-}
-
-// priorityGroupHeaderLabel returns the human-readable label shown in a
-// cross-project Priority mode section header. Uppercase mirrors the
-// single-project Priority View header style.
-func priorityGroupHeaderLabel(g PriorityGroup) string {
-	switch g {
-	case PriorityGroupOverdue:
-		return "OVERDUE"
-	case PriorityGroupToday:
-		return "DUE TODAY"
-	case PriorityGroupThisWeek:
-		return "THIS WEEK"
-	case PriorityGroupLater:
-		return "LATER"
-	case PriorityGroupBacklog:
-		return "BACKLOG"
-	case PriorityGroupWaitingOn:
-		return "BLOCKED / WAITING"
-	}
-	return ""
-}
-
-// crossPriorityCollapseKey builds the sentinel collapse key for a priority
-// group in cross-project Priority mode.
-func crossPriorityCollapseKey(g PriorityGroup) string {
-	return crossPriorityCollapseKeyPrefix + priorityGroupSlug(g)
-}
-
-// priorityGroupFromCollapseKey decodes a sentinel collapse key produced by
-// crossPriorityCollapseKey. Returns ok=false for any non-priority key.
-func priorityGroupFromCollapseKey(key string) (PriorityGroup, bool) {
-	if len(key) <= len(crossPriorityCollapseKeyPrefix) ||
-		key[:len(crossPriorityCollapseKeyPrefix)] != crossPriorityCollapseKeyPrefix {
-		return 0, false
-	}
-	slug := key[len(crossPriorityCollapseKeyPrefix):]
-	for _, g := range CrossPriorityGroupOrder() {
-		if priorityGroupSlug(g) == slug {
-			return g, true
-		}
-	}
-	return 0, false
-}
-
-// CrossPriorityGroupOrder returns the canonical display order for cross-project
-// Priority mode group headers.
-func CrossPriorityGroupOrder() []PriorityGroup {
-	return []PriorityGroup{
-		PriorityGroupOverdue,
-		PriorityGroupToday,
-		PriorityGroupThisWeek,
-		PriorityGroupLater,
-		PriorityGroupBacklog,
-		PriorityGroupWaitingOn,
-	}
 }

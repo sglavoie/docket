@@ -163,13 +163,13 @@ Some description.
 			t.Fatalf("expected 3 activity entries, got %d", len(loaded.Activity))
 		}
 
-		if loaded.Activity[0].Field != "status" || loaded.Activity[0].NewValue != "in_progress" {
+		if loaded.Activity[0].Field != "state" || loaded.Activity[0].NewValue != "in_progress" {
 			t.Errorf("first activity entry mismatch: %+v", loaded.Activity[0])
 		}
-		if loaded.Activity[1].Field != "status" || loaded.Activity[1].NewValue != "blocked" {
+		if loaded.Activity[1].Field != "state" || loaded.Activity[1].NewValue != "waiting" {
 			t.Errorf("second activity entry mismatch: %+v", loaded.Activity[1])
 		}
-		if loaded.Activity[2].Field != "status" || loaded.Activity[2].NewValue != "in_progress" {
+		if loaded.Activity[2].Field != "state" || loaded.Activity[2].NewValue != "in_progress" {
 			t.Errorf("third activity entry mismatch: %+v", loaded.Activity[2])
 		}
 	})
@@ -320,8 +320,8 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) { //nolint:gocyclo
 	if loaded.State() != models.StateDone {
 		t.Errorf("state: got %q, want %q", loaded.State(), models.StateDone)
 	}
-	if section := models.SectionForState(loaded.State()); section != models.SectionCompleted {
-		t.Errorf("section: got %q, want %q (canonical done shim)", section, models.SectionCompleted)
+	if section := loaded.State(); section != models.StateDone {
+		t.Errorf("section: got %q, want %q (canonical done shim)", section, models.StateDone)
 	}
 	if len(loaded.DependsOn) != 2 || loaded.DependsOn[0] != "dep-1" || loaded.DependsOn[1] != "dep-2" {
 		t.Errorf("depends_on: got %v, want [dep-1 dep-2]", loaded.DependsOn)

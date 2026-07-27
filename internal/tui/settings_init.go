@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // NewSettingsModel creates a new settings model reading its initial values from
@@ -152,13 +153,13 @@ func NewSettingsModel(deps *shellDeps) *SettingsModel {
 			strconv.Itoa(settings.GetAlertProjectStaleDays()),
 			false,
 		),
-		sectionLimitActiveInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitActive), 3, 6, strconv.Itoa(settings.GetSectionLimit("")), false),
-		sectionLimitNextInput:    newSettingsInput(strconv.Itoa(config.DefaultSectionLimitNext), 3, 6, strconv.Itoa(settings.GetSectionLimit("Next")), false),
-		sectionLimitInboxInput:   newSettingsInput(strconv.Itoa(config.DefaultSectionLimitInbox), 3, 6, strconv.Itoa(settings.GetSectionLimit("Inbox")), false),
-		sectionLimitStandbyInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitStandby), 3, 6, strconv.Itoa(settings.GetSectionLimit("Standby")), false),
-		sectionLimitWaitingInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitWaiting), 3, 6, strconv.Itoa(settings.GetSectionLimit("Waiting")), false),
-		sectionLimitSomedayInput: newSettingsInput(strconv.Itoa(config.DefaultSectionLimitSomeday), 3, 6, strconv.Itoa(settings.GetSectionLimit("Someday")), false),
-		sectionLimitReviewInput:  newSettingsInput(strconv.Itoa(config.DefaultSectionLimitReview), 3, 6, strconv.Itoa(settings.GetSectionLimit("Review")), false),
+		sectionLimitActiveInput:  newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitBacklog), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupBacklog)), false),
+		sectionLimitNextInput:    newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitNext), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupNext)), false),
+		sectionLimitInboxInput:   newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitInbox), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupInbox)), false),
+		sectionLimitStandbyInput: newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitPaused), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupPaused)), false),
+		sectionLimitWaitingInput: newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitWaiting), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupWaiting)), false),
+		sectionLimitSomedayInput: newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitSomeday), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupSomeday)), false),
+		sectionLimitReviewInput:  newSettingsInput(strconv.Itoa(config.DefaultStateGroupLimitReview), 3, 6, strconv.Itoa(settings.GetStateGroupLimit(models.StateGroupReview)), false),
 		themePresetInput:         newSettingsInput("preset name", 50, 30, "", false),
 		originalTheme:            NewThemeConfig(settings),
 		activeTheme:              activeName,

@@ -22,13 +22,13 @@ import (
 //
 // Hero precedence is urgency-only (first match wins):
 //  1. HeroOverdue   — task is past due
-//  2. HeroBlocked   — explicit StatusBlocked OR incomplete dependencies
+//  2. HeroBlocked   — explicit waiting state OR incomplete dependencies
 //  3. HeroDueToday  — task is due today (and not yet overdue)
 //  4. HeroP1        — Priority == 1
-//  5. HeroReview    — StatusReview
+//  5. HeroReview    — review state
 //
 // Quiet states (always return HeroNone so no badge competes for attention):
-// completed tasks (StatusDone, StatusCanceled) and explicitly dimmed rows.
+// terminal tasks (done, canceled) and explicitly dimmed rows.
 type HeroKind int
 
 const (

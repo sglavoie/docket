@@ -4,7 +4,11 @@ import (
 	"slices"
 	"sort"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
+
+func actFn() Action { return func() (tea.Model, tea.Cmd) { return nil, nil } }
 
 func TestListNavigationGroup(t *testing.T) {
 	deps := ListNavigationDeps{}
@@ -88,169 +92,7 @@ func TestTypeChangeGroup(t *testing.T) {
 	}
 }
 
-func TestCommonPrimaryViewGroup_Base(t *testing.T) {
-	deps := CommonPrimaryViewDeps{}
-	entries := CommonPrimaryViewGroup(deps)
-	// 10 base entries: project-cycle keys are gone, EditLastModified and
-	// MoveReparent are nil, ctrl+p is omitted, ctrl+n is globally captured, and
-	// the retired w=AddToPlan and R=ReloadFromDisk bindings were removed (w is now
-	// an app-level Today toggle; R is the Outliner's mode-aware reload/review key).
-	if len(entries) != 10 {
-		t.Errorf("CommonPrimaryViewGroup (base): want 10 entries, got %d", len(entries))
-	}
-}
-
-func TestCommonPrimaryViewGroup_AllOptional(t *testing.T) {
-	deps := CommonPrimaryViewDeps{
-		SwitchProjectView: actFn(),
-		EditLastModified:  actFn(),
-		MoveReparent:      actFn(),
-	}
-	entries := CommonPrimaryViewGroup(deps)
-	// 10 base + ctrl+p (SwitchProjectView set) + EditLastModified + MoveReparent.
-	if len(entries) != 13 {
-		t.Errorf("CommonPrimaryViewGroup (full): want 13 entries, got %d", len(entries))
-	}
-}
-
-func TestCommonPrimaryViewGroup_ProjectViewDescription(t *testing.T) {
-	// Single-project (SwitchProjectView nil): ctrl+p is omitted entirely — the
-	// Outliner is the sole per-project view, so there is nothing to toggle.
-	t.Run("single-project omits ctrl+p", func(t *testing.T) {
-		entries := CommonPrimaryViewGroup(CommonPrimaryViewDeps{})
-		for _, entry := range entries {
-			if entry.Binding != nil && entry.Binding.Key == "ctrl+p" {
-				t.Fatalf("single-project should omit ctrl+p, got %q", entry.Binding.Description)
-			}
-		}
-	})
-
-	// Cross-project (SwitchProjectView set): ctrl+p drills into the highlighted
-	// project's outliner, defaulting to an accurate label.
-	tests := []struct {
-		name string
-		deps CommonPrimaryViewDeps
-		want string
-	}{
-		{
-			name: "cross-project default label",
-			deps: CommonPrimaryViewDeps{SwitchProjectView: actFn()},
-			want: "Open highlighted project's outliner",
-		},
-		{
-			name: "cross-project explicit label",
-			deps: CommonPrimaryViewDeps{
-				SwitchProjectView:            actFn(),
-				SwitchProjectViewDescription: "Open highlighted project's outliner",
-			},
-			want: "Open highlighted project's outliner",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			entries := CommonPrimaryViewGroup(tt.deps)
-			for _, entry := range entries {
-				if entry.Binding != nil && entry.Binding.Key == "ctrl+p" {
-					if entry.Binding.Description != tt.want {
-						t.Fatalf("ctrl+p description = %q, want %q", entry.Binding.Description, tt.want)
-					}
-					return
-				}
-			}
-			t.Fatal("CommonPrimaryViewGroup missing ctrl+p")
-		})
-	}
-}
-
-func TestCommonPrimaryViewGroup_ProjectNotesKeysDoNotCollideWithGlobalCapture(t *testing.T) {
-	entries := CommonPrimaryViewGroup(CommonPrimaryViewDeps{})
-	keys := directBindingKeys(entries)
-
-	if slices.Contains(keys, "ctrl+o") {
-		t.Fatal("CommonPrimaryViewGroup should not bind ctrl+o to Outliner")
-	}
-	if slices.Contains(keys, "ctrl+n") {
-		t.Fatal("CommonPrimaryViewGroup should leave ctrl+n to the global Task Composer binding")
-	}
-	for _, k := range []string{"{", "}"} {
-		if !slices.Contains(keys, k) {
-			t.Fatalf("CommonPrimaryViewGroup missing key %q", k)
-		}
-	}
-
-	for _, e := range entries {
-		if e.Binding == nil {
-			continue
-		}
-		switch e.Binding.Key {
-		case "{":
-			if !e.Binding.Hidden {
-				t.Fatal("{ should remain a handled local shortcut without appearing in help")
-			}
-		}
-	}
-}
-
-// TestIntegration_MergedHandledKeys builds a keymap from multiple groups and
-// verifies that HandledKeys() contains the expected compound sequences.
-func TestIntegration_MergedHandledKeys(t *testing.T) {
-	statusDeps := StatusDeps{
-		ChangeState:   func(string) Action { return nilAction },
-		HasRecurrence: func() bool { return false },
-	}
-	priorityDeps := PriorityDeps{ChangePriority: func(string) Action { return nilAction }}
-	navDeps := ListNavigationDeps{}
-
-	km := &KeyMap{
-		ViewName: "test",
-		Entries: MergeEntries(
-			StatusGroup(statusDeps),
-			PriorityGroup(priorityDeps),
-			ListNavigationGroup(navDeps),
-		),
-	}
-
-	handled := km.HandledKeys()
-	handledSet := make(map[string]bool, len(handled))
-	for _, k := range handled {
-		handledSet[k] = true
-	}
-
-	// Prefix activators should be present
-	for _, k := range []string{",", "!"} {
-		if !handledSet[k] {
-			t.Errorf("HandledKeys missing prefix activator %q", k)
-		}
-	}
-	// Compound leaf keys
-	for _, k := range []string{",s", ",d", ",b", ",o", ",x", ",r", ",S", "!1", "!2", "!3", "!4", "!5"} {
-		if !handledSet[k] {
-			t.Errorf("HandledKeys missing compound key %q", k)
-		}
-	}
-	// Top-level nav keys
-	for _, k := range []string{"j", "down", "k", "up", "G", "ctrl+u", "ctrl+d"} {
-		if !handledSet[k] {
-			t.Errorf("HandledKeys missing nav key %q", k)
-		}
-	}
-}
-
 // ---- helpers ----
-
-// childBindingKeys returns the Key fields of all direct Binding children.
-// PrefixNode children are not included.
-func childBindingKeys(entries []Entry) []string {
-	var keys []string
-	for _, e := range entries {
-		if e.Binding != nil {
-			keys = append(keys, e.Binding.Key)
-		}
-	}
-	sort.Strings(keys)
-	return keys
-}
 
 // directBindingKeys returns the Key fields from a flat list of Binding entries.
 func directBindingKeys(entries []Entry) []string {

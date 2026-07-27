@@ -65,34 +65,3 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 	}
 	return best.project
 }
-
-// parsePriorityToken converts a priority token (numeric, word alias, or short prefix) to 1–5.
-// Word mappings: critical/urgent/high→1, normal/medium→3, low/lowest→5.
-// Short prefixes: c/cr/u/ur/h/hi→1, n/no/m/me/med→3, l/lo→5.
-func parsePriorityToken(token string) int {
-	abbrev := map[string]int{
-		"c": 1, "cr": 1,
-		"u": 1, "ur": 1,
-		"h": 1, "hi": 1,
-		"n": 3, "no": 3,
-		"m": 3, "me": 3, "med": 3,
-		"l": 5, "lo": 5,
-	}
-
-	lower := strings.ToLower(token)
-	if priority, ok := abbrev[lower]; ok {
-		return priority
-	}
-
-	switch lower {
-	case "critical", "urgent", "high":
-		return 1
-	case "normal", "medium":
-		return 3
-	case "low", "lowest":
-		return 5
-	default:
-		priority, _ := strconv.Atoi(token)
-		return priority
-	}
-}

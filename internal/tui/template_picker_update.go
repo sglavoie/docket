@@ -42,15 +42,6 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// j/k only navigate when NOT in search mode (allow typing j/k in search)
 		if !m.searchActive {
-			if m.SkipModifierInPrefix(msg) {
-				return m, nil
-			}
-			if m.pendingPrefix == "g" {
-				m.pendingPrefix = ""
-				_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash, func() { m.previewScroll = 0 })
-				return m, cmd
-			}
-
 			switch msg.String() {
 			case "j":
 				if m.cursor < len(m.filteredTemplates) {
@@ -64,8 +55,9 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.previewScroll = 0
 				}
 				return m, nil
-			case "g":
-				m.pendingPrefix = "g"
+			case "home":
+				m.cursor = 0
+				m.previewScroll = 0
 				return m, nil
 			case "G":
 				m.cursor = len(m.filteredTemplates)

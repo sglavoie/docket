@@ -37,8 +37,8 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case DependencyViewerSelectMsg:
 		m.popView()
-		if msg.Task != nil && m.outliner != nil {
-			m.outliner.NavigateToTaskInProject(msg.Task, m.outliner.project)
+		if msg.Task != nil && m.crossOutliner != nil {
+			m.crossOutliner.NavigateToTask(msg.Task)
 			return true, nil
 		}
 		return true, nil

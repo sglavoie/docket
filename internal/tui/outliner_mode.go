@@ -1,42 +1,21 @@
 package tui
 
-// This file establishes the unified Outliner mode catalog: a single, stable
-// vocabulary that wraps the existing perspectives, smart focuses, and
-// priority/due-date lenses without changing their persisted meanings. It adds no
-// navigation or rendering cutover; it only defines the mode metadata and the
-// purpose-built ordering policies that the Next/Backlog row strategies in
-// outliner_mode_rows.go realize.
+// This file establishes the final ten-mode Outliner catalog.
 
-// OutlinerModeID is the stable identifier for a catalog mode. IDs are strings so
-// they can appear in the mode picker, aliases, and future persisted state
-// without colliding with the integer perspective IDs they wrap.
+// OutlinerModeID is the stable identifier for a catalog mode.
 type OutlinerModeID string
 
-// Stable mode IDs. These strings are the durable identity of each mode; changing
-// one is a breaking change to the picker and any future persisted selection.
+// Stable canonical mode IDs. These strings are the durable identity of each
+// mode; changing one is a breaking persisted-state change.
 const (
-	ModeNext     OutlinerModeID = "next"
-	ModeBacklog  OutlinerModeID = "backlog"
-	ModeActive   OutlinerModeID = "active"
-	ModeAll      OutlinerModeID = "all"
-	ModeInbox    OutlinerModeID = "inbox"
-	ModeStandby  OutlinerModeID = "standby"
-	ModeWaiting  OutlinerModeID = "waiting"
-	ModeSomeday  OutlinerModeID = "someday"
-	ModeReview   OutlinerModeID = "review"
-	ModeSnoozed  OutlinerModeID = "snoozed"
-	ModeComplete OutlinerModeID = "completed"
-
-	ModeDueSoon      OutlinerModeID = "due-soon"
-	ModeHighPriority OutlinerModeID = "high-priority"
-	ModeBlocked      OutlinerModeID = "blocked"
-	ModeParked       OutlinerModeID = "parked"
-	ModePinned       OutlinerModeID = "pinned"
-	ModeRecent       OutlinerModeID = "recently-visited"
-
-	ModePriorityLens OutlinerModeID = "priority"
-	ModeDueDateLens  OutlinerModeID = "due-date"
-
+	ModeAll         OutlinerModeID = "all"
+	ModeInbox       OutlinerModeID = "inbox"
+	ModeNext        OutlinerModeID = "next"
+	ModeBacklog     OutlinerModeID = "backlog"
+	ModeDue         OutlinerModeID = "due"
+	ModePriority    OutlinerModeID = "priority"
+	ModeBlocked     OutlinerModeID = "blocked"
+	ModeParked      OutlinerModeID = "parked"
 	ModeDailyReview OutlinerModeID = "daily-review"
 	ModeActivity    OutlinerModeID = "activity"
 )
@@ -46,9 +25,7 @@ type OutlinerModeCategory uint8
 
 const (
 	ModeCategoryWork OutlinerModeCategory = iota
-	ModeCategoryWorkflow
-	ModeCategorySmart
-	ModeCategoryLens
+	ModeCategoryComputed
 	ModeCategoryReview
 )
 
@@ -61,49 +38,47 @@ const (
 	OrderPolicyTree       OutlinerOrderPolicy = iota // hierarchical; manual sort allowed
 	OrderPolicyFocusQueue                            // Next: focus-queue order
 	OrderPolicyRanked                                // Backlog: cross-project ranker order
-	OrderPolicyLens                                  // Priority/Due Date: computed flat order
 	OrderPolicyReview                                // Daily Review/Activity: timeline order
+	OrderPolicyComputed                              // Due/Priority/Blocked/Parked: computed flat order
 )
 
-// OutlinerRowStrategy names the row builder a mode uses. Perspective and
-// SmartFocus reuse the shared tree renderer with a predicate; Next/Backlog
-// are the purpose-built strategies in outliner_mode_rows.go.
+// OutlinerReorderPolicy declares whether J/K may mutate the active sequence.
+// The four primary modes support it only in a single-project scope; computed
+// and review modes never do.
+type OutlinerReorderPolicy uint8
+
+const (
+	ReorderPolicyNone OutlinerReorderPolicy = iota
+	ReorderPolicySingleProjectSequence
+)
+
+// OutlinerRowStrategy names the canonical row builder a mode uses.
 type OutlinerRowStrategy uint8
 
 const (
-	RowStrategyPerspective OutlinerRowStrategy = iota
-	RowStrategySmartFocus
+	RowStrategyAll OutlinerRowStrategy = iota
+	RowStrategyInbox
 	RowStrategyNext
 	RowStrategyBacklog
-	RowStrategyLens
+	RowStrategyDue
+	RowStrategyPriority
+	RowStrategyBlocked
+	RowStrategyParked
 	RowStrategyReview
 )
 
-// noPerspective marks a mode that is not backed by a persisted perspective.
-const noPerspective = -1
-
-// OutlinerMode is one catalog entry. It carries stable identity plus the linkage
-// into the existing subsystems it wraps (perspective ID, smart focus, lens) so
-// saved-filter and perspective compatibility is preserved rather than replaced.
+// OutlinerMode is one catalog entry.
 type OutlinerMode struct {
-	ID          OutlinerModeID
-	Label       string
-	Aliases     []string
-	Category    OutlinerModeCategory
-	OrderPolicy OutlinerOrderPolicy
-	RowStrategy OutlinerRowStrategy
-
-	// Perspective is the stable perspective ID this mode wraps, or noPerspective
-	// when the mode is a computed horizon (Backlog) or a non-perspective
-	// surface (smart focuses, lenses, review).
-	Perspective int
-	// SmartFocus is set for smart modes so the existing matchesSmartFocus
-	// predicate remains the single implementation.
-	SmartFocus *OutlinerFocus
-	// Lens is set for the Due Date lens mode; PriorityLens marks the Priority
-	// lens (the session-only cross-project priority mode).
-	Lens         *OutlinerLens
-	PriorityLens bool
+	ID            OutlinerModeID
+	Label         string
+	Aliases       []string
+	Category      OutlinerModeCategory
+	OrderPolicy   OutlinerOrderPolicy
+	ReorderPolicy OutlinerReorderPolicy
+	RowStrategy   OutlinerRowStrategy
+	// TabIndex is the stable Tab/Shift+Tab position, or noTabIndex for modes
+	// outside the four-mode work cycle.
+	TabIndex int
 }
 
 // SupportsManualSort reports whether the user's manual sort applies. Only
@@ -118,6 +93,15 @@ func (mode OutlinerMode) FixedOrder() bool {
 	return mode.OrderPolicy != OrderPolicyTree
 }
 
+// SupportsManualReorder reports whether J/K may reorder this mode when the
+// active scope resolves to exactly one project.
+func (mode OutlinerMode) SupportsManualReorder() bool {
+	return mode.ReorderPolicy == ReorderPolicySingleProjectSequence
+}
+
+// InTabCycle reports whether the mode participates in Tab/Shift+Tab.
+func (mode OutlinerMode) InTabCycle() bool { return mode.TabIndex >= 0 }
+
 // SupportsCommonFilters reports whether the shared common-filter + search stack
 // composes on top of this mode's rows. Every current mode composes them (the
 // Planner applied common filters and search to Today/Next/Backlog too), so this
@@ -125,42 +109,26 @@ func (mode OutlinerMode) FixedOrder() bool {
 // second convention.
 func (mode OutlinerMode) SupportsCommonFilters() bool { return true }
 
-func smartFocusPtr(f OutlinerFocus) *OutlinerFocus { return &f }
-func lensPtr(l OutlinerLens) *OutlinerLens         { return &l }
-
 // outlinerModes is the ordered catalog. Order is the canonical presentation
 // order within each category for the picker.
+const noTabIndex = -1
+
 var outlinerModes = []OutlinerMode{
-	// Work.
-	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyFocusQueue, RowStrategy: RowStrategyNext, Perspective: PerspectiveNext},
-	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyRanked, RowStrategy: RowStrategyBacklog, Perspective: noPerspective},
-	{ID: ModeActive, Label: "Active", Aliases: []string{"active"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveActive},
-	{ID: ModeAll, Label: "All", Aliases: []string{"all", "all tasks", "cross-project tasks", "every task"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveAll},
+	// Primary modes, in exact Tab order.
+	{ID: ModeAll, Label: "All", Aliases: []string{"all", "all tasks", "cross-project tasks", "every task"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicySingleProjectSequence, RowStrategy: RowStrategyAll, TabIndex: 0},
+	{ID: ModeInbox, Label: "Inbox", Aliases: []string{"inbox"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicySingleProjectSequence, RowStrategy: RowStrategyInbox, TabIndex: 1},
+	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyFocusQueue, ReorderPolicy: ReorderPolicySingleProjectSequence, RowStrategy: RowStrategyNext, TabIndex: 2},
+	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, Category: ModeCategoryWork, OrderPolicy: OrderPolicyRanked, ReorderPolicy: ReorderPolicySingleProjectSequence, RowStrategy: RowStrategyBacklog, TabIndex: 3},
 
-	// Workflow.
-	{ID: ModeInbox, Label: "Inbox", Aliases: []string{"inbox"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveInbox},
-	{ID: ModeStandby, Label: "Standby", Aliases: []string{"standby"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveStandby},
-	{ID: ModeWaiting, Label: "Waiting", Aliases: []string{"waiting"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveWaiting},
-	{ID: ModeSomeday, Label: "Someday", Aliases: []string{"someday"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveSomeday},
-	{ID: ModeReview, Label: "Review", Aliases: []string{"review"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveReview},
-	{ID: ModeSnoozed, Label: "Snoozed", Aliases: []string{"snoozed"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveSnoozed},
-	{ID: ModeComplete, Label: "Completed", Aliases: []string{"completed", "done", "completed tasks"}, Category: ModeCategoryWorkflow, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategyPerspective, Perspective: PerspectiveCompleted},
+	// Computed modes.
+	{ID: ModeDue, Label: "Due", Aliases: []string{"due", "due date", "schedule", "due dates", "by due date"}, Category: ModeCategoryComputed, OrderPolicy: OrderPolicyComputed, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue, TabIndex: noTabIndex},
+	{ID: ModePriority, Label: "Priority", Aliases: []string{"priority", "high priority"}, Category: ModeCategoryComputed, OrderPolicy: OrderPolicyComputed, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyPriority, TabIndex: noTabIndex},
+	{ID: ModeBlocked, Label: "Blocked", Aliases: []string{"blocked"}, Category: ModeCategoryComputed, OrderPolicy: OrderPolicyComputed, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyBlocked, TabIndex: noTabIndex},
+	{ID: ModeParked, Label: "Parked", Aliases: []string{"parked"}, Category: ModeCategoryComputed, OrderPolicy: OrderPolicyComputed, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyParked, TabIndex: noTabIndex},
 
-	// Smart.
-	{ID: ModeDueSoon, Label: "Due Soon", Aliases: []string{"due-soon", "due"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerDueSoon)},
-	{ID: ModeHighPriority, Label: "High Priority", Aliases: []string{"high-priority", "high", "priority view"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerHighPriority)},
-	{ID: ModeBlocked, Label: "Blocked", Aliases: []string{"blocked"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerBlocked)},
-	{ID: ModeParked, Label: "Parked", Aliases: []string{"parked"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerParked)},
-	{ID: ModePinned, Label: "Pinned", Aliases: []string{"pinned"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerPinned)},
-	{ID: ModeRecent, Label: "Recently Visited", Aliases: []string{"recently-visited", "recent", "recent tasks"}, Category: ModeCategorySmart, OrderPolicy: OrderPolicyTree, RowStrategy: RowStrategySmartFocus, Perspective: noPerspective, SmartFocus: smartFocusPtr(OutlinerRecent)},
-
-	// Lenses.
-	{ID: ModePriorityLens, Label: "Priority", Aliases: []string{"priority"}, Category: ModeCategoryLens, OrderPolicy: OrderPolicyLens, RowStrategy: RowStrategyLens, Perspective: noPerspective, PriorityLens: true},
-	{ID: ModeDueDateLens, Label: "Due Date", Aliases: []string{"due-date", "schedule", "all tasks by due date", "due dates", "by due date", "tasks by due date", "due date overview"}, Category: ModeCategoryLens, OrderPolicy: OrderPolicyLens, RowStrategy: RowStrategyLens, Perspective: noPerspective, Lens: lensPtr(OutlinerLensDueDate)},
-
-	// Review.
-	{ID: ModeDailyReview, Label: "Daily Review", Aliases: []string{"daily-review", "daily", "planning", "morning review", "DailyReview", "review daily"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, RowStrategy: RowStrategyReview, Perspective: noPerspective},
-	{ID: ModeActivity, Label: "Activity", Aliases: []string{"activity", "latest activity", "recent activity", "review activity", "RecentActivity", "latest"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, RowStrategy: RowStrategyReview, Perspective: noPerspective},
+	// Review modes.
+	{ID: ModeDailyReview, Label: "Daily Review", Aliases: []string{"daily-review", "DailyReview", "daily", "planning", "morning review", "review daily"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyReview, TabIndex: noTabIndex},
+	{ID: ModeActivity, Label: "Activity", Aliases: []string{"activity", "RecentActivity", "latest activity", "recent activity", "review activity", "latest"}, Category: ModeCategoryReview, OrderPolicy: OrderPolicyReview, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyReview, TabIndex: noTabIndex},
 }
 
 // outlinerModeIndex maps each mode ID to its catalog entry for O(1) lookup.
@@ -198,25 +166,16 @@ func OutlinerModesByCategory(category OutlinerModeCategory) []OutlinerMode {
 	return out
 }
 
-// OutlinerModeForPerspective returns the mode that wraps the given stable
-// perspective ID and true, or a zero mode and false. Every visible perspective
-// maps to exactly one mode, preserving persisted perspective meanings.
-func OutlinerModeForPerspective(perspective int) (OutlinerMode, bool) {
-	for _, mode := range outlinerModes {
-		if mode.Perspective == perspective {
-			return mode, true
+// OutlinerTabModes returns the four primary descriptors in exact Tab order.
+func OutlinerTabModes() []OutlinerMode {
+	out := make([]OutlinerMode, 0, 4)
+	for tabIndex := 0; tabIndex < 4; tabIndex++ {
+		for _, mode := range outlinerModes {
+			if mode.TabIndex == tabIndex {
+				out = append(out, mode)
+				break
+			}
 		}
 	}
-	return OutlinerMode{}, false
-}
-
-// OutlinerModeForSmartFocus returns the smart mode wrapping the given focus and
-// true, or a zero mode and false.
-func OutlinerModeForSmartFocus(focus OutlinerFocus) (OutlinerMode, bool) {
-	for _, mode := range outlinerModes {
-		if mode.SmartFocus != nil && *mode.SmartFocus == focus {
-			return mode, true
-		}
-	}
-	return OutlinerMode{}, false
+	return out
 }

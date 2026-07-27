@@ -226,7 +226,6 @@ func realTestProject(t *testing.T, dataDir, slug, title string) *models.Project 
 	}
 	p.Tasks = []*models.Task{task}
 	p.NextShortID = 2
-	p.EnsureDefaultSections()
 	p.BuildTaskTree()
 	return p
 }

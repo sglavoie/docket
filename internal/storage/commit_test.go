@@ -46,7 +46,6 @@ func newCommitTestProject(t *testing.T, dataDir, slug, title string) *models.Pro
 	}
 	p.Tasks = []*models.Task{task}
 	p.NextShortID = 2
-	p.EnsureDefaultSections()
 	p.BuildTaskTree()
 	return p
 }
@@ -134,8 +133,6 @@ func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
 func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	project := newCommitTestProject(t, dataDir, "lossless", "before")
-	project.Sections = []string{models.SectionNext}
-	project.SectionColors = map[string]string{models.SectionNext: "orange"}
 	project.Tags = []string{"alpha", "beta"}
 	project.PinnedTags = []string{"beta"}
 	project.Tasks[0].CreatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
@@ -182,8 +179,8 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	if first.Revision != firstReload.Revision {
 		t.Fatalf("first result revision %s != reload %s", first.Revision, firstReload.Revision)
 	}
-	if strings.Contains(firstContent, "<!-- sections:") || len(firstReload.SectionColors) != 0 {
-		t.Fatalf("canonical commit retained legacy section metadata: colors=%v\n%s", firstReload.SectionColors, firstContent)
+	if strings.Contains(firstContent, "<!-- sections:") || len(firstReload.legacySectionColors) != 0 {
+		t.Fatalf("canonical commit retained legacy section metadata: colors=%v\n%s", firstReload.legacySectionColors, firstContent)
 	}
 	if len(firstReload.Tags) != 2 || len(firstReload.PinnedTags) != 1 || firstReload.PinnedTags[0] != "beta" {
 		t.Fatalf("full metadata not preserved: tags=%v pinned=%v", firstReload.Tags, firstReload.PinnedTags)
@@ -801,8 +798,8 @@ func TestCommitService_AttachmentMoveRecoversWithMetadata(t *testing.T) {
 	dst.NextShortID = dst.GetNextShortID() + 1
 	dst.BuildTaskTree()
 
-	srcContent := WriteTasksMarkdownWithFullProjectMetadata(src.Name, src.Tasks, src.GetSections(), src.SectionColors, src.Tags, src.PinnedTags)
-	dstContent := WriteTasksMarkdownWithFullProjectMetadata(dst.Name, dst.Tasks, dst.GetSections(), dst.SectionColors, dst.Tags, dst.PinnedTags)
+	srcContent := WriteTasksMarkdownWithProjectMetadata(src.Name, src.Tasks, src.Tags, src.PinnedTags)
+	dstContent := WriteTasksMarkdownWithProjectMetadata(dst.Name, dst.Tasks, dst.Tags, dst.PinnedTags)
 
 	txnDir := filepath.Join(dataDir, ".tt", "transactions")
 	journal := transaction.NewJournal(txnDir, []string{dataDir})

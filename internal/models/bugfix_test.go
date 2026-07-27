@@ -5,54 +5,6 @@ import (
 	"time"
 )
 
-// TestSetSection_RejectsNonGTDName verifies SetSection silently drops custom
-// grouping names. Custom grouping now lives in tags, not section state.
-func TestSetSection_RejectsNonGTDName(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-	}{
-		{"space", "has space"},
-		{"tab", "has\ttab"},
-		{"newline", "has\nnewline"},
-		{"semicolon", "has;semi"},
-		{"colon", "has:colon"},
-		{"whitespace-only", "   "},
-		{"valid hyphen", "Sprint-1"},
-		{"valid camel", "BackLog"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			task, err := NewTask("id", 1, TaskTypeTask, "T")
-			if err != nil {
-				t.Fatal(err)
-			}
-			task.SetSection(tc.input)
-			if got := SectionForState(task.State()); got != "" {
-				t.Errorf("expected Section empty for non-GTD name %q, got %q", tc.input, got)
-			}
-		})
-	}
-}
-
-// TestSetSection_InvalidNamePreservesPriorState ensures a rejected SetSection
-// call does not wipe a previously valid section assignment.
-func TestSetSection_InvalidNamePreservesPriorState(t *testing.T) {
-	task, err := NewTask("id", 1, TaskTypeTask, "T")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.SetSection(SectionInbox)
-	if got := SectionForState(task.State()); got != SectionInbox {
-		t.Fatalf("precondition: expected Inbox, got %q", got)
-	}
-	// Attempt to set an invalid name; should be a no-op leaving prior state.
-	task.SetSection("bad name")
-	if got := SectionForState(task.State()); got != SectionInbox {
-		t.Errorf("expected Section unchanged after invalid SetSection, got %q", got)
-	}
-}
-
 // TestGetBlockingTasks_NilTaskNoPanic verifies the nil-task guard.
 // Before the fix, GetBlockingTasks(nil) panicked while reading task.DependsOn.
 func TestGetBlockingTasks_NilTaskNoPanic(t *testing.T) {
@@ -399,64 +351,6 @@ func TestSwapTasks_UpdatesBothTimestamps(t *testing.T) {
 	}
 	if task2.UpdatedAt.Equal(stale) {
 		t.Error("task2.UpdatedAt should be refreshed after swap (regression: only task1 was touched)")
-	}
-}
-
-// TestEnsureSection_RejectsCaseVariantGTDCollision verifies EnsureSection does
-// not add a case-variant of a GTD section name (e.g. "inbox" when "Inbox"
-// already exists). Before the fix, lowercase "inbox" passed validation and
-// was appended alongside the canonical "Inbox", producing two sections that
-// look identical to the user but are distinct in storage.
-func TestEnsureSection_RejectsCaseVariantGTDCollision(t *testing.T) {
-	p, err := NewProject("test", "Test", "/tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	p.EnsureDefaultSections()
-	originalLen := len(p.Sections)
-
-	for _, name := range []string{"inbox", "INBOX", "Waiting ", "someday", "review", "Standby", "COMPLETED", "NeXt"} {
-		// Strip whitespace test inputs that ValidateSectionName itself rejects.
-		// "Waiting " has trailing space, which the existing validator catches
-		// before our case-collision check; skip those so we focus on the new
-		// guard.
-		if name == "Waiting " {
-			continue
-		}
-		p.EnsureSection(name)
-	}
-
-	if len(p.Sections) != originalLen {
-		t.Errorf("EnsureSection added case-variant GTD section names: got %v", p.Sections)
-	}
-
-	// Exact-case GTD names still work (idempotently).
-	p.EnsureSection(SectionInbox)
-	if len(p.Sections) != originalLen {
-		t.Errorf("EnsureSection should be idempotent for canonical Inbox; got %v", p.Sections)
-	}
-
-	// Non-GTD section names are ignored; flexible grouping lives in tags.
-	p.EnsureSection("Backlog")
-	if p.HasSection("Backlog") {
-		t.Error("EnsureSection should not add non-GTD sections")
-	}
-}
-
-// TestSetSection_RejectsCaseVariantGTDName verifies SetSection refuses a
-// case-variant of a GTD section name.
-func TestSetSection_RejectsCaseVariantGTDName(t *testing.T) {
-	task, err := NewTask("id", 1, TaskTypeTask, "T")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.SetSection(SectionInbox)
-
-	task.SetSection("inbox")
-	// Section must remain unchanged when the call is rejected; otherwise the
-	// task silently drops out of its current bucket on invalid input.
-	if got := SectionForState(task.State()); got != SectionInbox {
-		t.Errorf("Section should be preserved when SetSection rejects input, got %q", got)
 	}
 }
 

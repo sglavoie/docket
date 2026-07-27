@@ -19,7 +19,26 @@ import (
 const (
 	scannerInitBufSize = 64 * 1024
 	scannerMaxBufSize  = 1024 * 1024
+	legacySectionNext  = "Next"
 )
+
+func isLegacyProjectSection(name string) bool {
+	switch name {
+	case "Next", "Inbox", "Waiting", "Someday", "Review", "Standby", "Completed":
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidLegacyProjectColor(color string) bool {
+	switch color {
+	case "gray", "red", "orange", "yellow", "green", "cyan", "blue", "purple", "magenta", "white":
+		return true
+	default:
+		return false
+	}
+}
 
 var (
 	// Matches headings like "## Epic: Title" or "### Story: Title".
@@ -47,13 +66,13 @@ type ParseWarning = format.ParseWarning
 
 // ParseResult contains the results of parsing a tasks.md file.
 type ParseResult struct {
-	ProjectName   string
-	Tasks         []*models.Task
-	Sections      []string
-	Tags          []string
-	PinnedTags    []string
-	SectionColors map[string]string
-	Warnings      []ParseWarning // Non-fatal issues found during parsing
+	ProjectName         string
+	Tasks               []*models.Task
+	Tags                []string
+	PinnedTags          []string
+	Warnings            []ParseWarning // Non-fatal issues found during parsing
+	legacySections      []string
+	legacySectionColors map[string]string
 	// MigrationAudit records retained retired schema-v1 lifecycle values every
 	// task carried at parse time (one entry per task, in load order). ProjectID is
 	// left empty here and added by the project loader.
@@ -63,16 +82,16 @@ type ParseResult struct {
 // ParseTasksMarkdown parses a tasks.md file content into tasks.
 // Returns the project name and a slice of tasks.
 func ParseTasksMarkdown(content string) (string, []*models.Task, error) {
-	result, err := ParseTasksMarkdownWithSections(content)
+	result, err := ParseTasksMarkdownDocument(content)
 	if err != nil {
 		return "", nil, err
 	}
 	return result.ProjectName, result.Tasks, nil
 }
 
-// ParseTasksMarkdownWithSections parses a tasks.md file content into tasks and sections.
-// Returns a ParseResult containing the project name, tasks, and sections.
-func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
+// ParseTasksMarkdownDocument parses a tasks.md document. Retired project
+// layout metadata is captured privately for migration-boundary tests only.
+func ParseTasksMarkdownDocument(content string) (*ParseResult, error) {
 	// Strip a leading UTF-8 BOM (0xEF 0xBB 0xBF) if present. Editors on
 	// Windows occasionally save tasks.md with a BOM, which would otherwise
 	// be glued onto the first line and prevent the project-title regex from
@@ -196,20 +215,15 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	parentWarnings := validateParentReferences(tasks, taskByID)
 	metadataWarnings = append(metadataWarnings, parentWarnings...)
 
-	// Default to Next section if none specified
-	if len(sections) == 0 {
-		sections = []string{models.SectionNext}
-	}
-
 	return &ParseResult{
-		ProjectName:    projectName,
-		Tasks:          tasks,
-		Sections:       sections,
-		Tags:           tags,
-		PinnedTags:     pinnedTags,
-		SectionColors:  sectionColors,
-		Warnings:       metadataWarnings,
-		MigrationAudit: buildMigrationAuditEntries(parsedTasks, tasks),
+		ProjectName:         projectName,
+		Tasks:               tasks,
+		Tags:                tags,
+		PinnedTags:          pinnedTags,
+		Warnings:            metadataWarnings,
+		legacySections:      sections,
+		legacySectionColors: sectionColors,
+		MigrationAudit:      buildMigrationAuditEntries(parsedTasks, tasks),
 	}, nil
 }
 
@@ -287,7 +301,7 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 
 		parts := strings.SplitN(sectionSpec, ":", 2)
 		name := strings.TrimSpace(parts[0])
-		if name == "" || !models.IsGTDSection(name) {
+		if name == "" || !isLegacyProjectSection(name) {
 			continue
 		}
 
@@ -300,7 +314,7 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 			if color == "" {
 				continue
 			}
-			if models.IsValidSectionColor(color) {
+			if isValidLegacyProjectColor(color) {
 				sectionColors[name] = color
 				continue
 			}
@@ -629,7 +643,7 @@ func ParseProjectNameFromFile(filePath string) (string, error) {
 	}
 
 	// Strip a leading UTF-8 BOM so files saved with one still expose their
-	// project name. See the matching strip in ParseTasksMarkdownWithSections.
+	// project name. See the matching strip in ParseTasksMarkdownDocument.
 	text := strings.TrimPrefix(string(content), "\uFEFF")
 	scanner := bufio.NewScanner(strings.NewReader(text))
 	// Match the buffer growth used by the main parser so files with very long

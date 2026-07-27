@@ -3,7 +3,7 @@
   "fixture": "contexts",
   "size": "100x30",
   "actions": [
-    { "type": "key", "label": "open the Context Hub", "key": "C" },
+    { "type": "key", "label": "open the Scope Hub", "key": "c" },
     { "type": "key", "label": "start a new custom context", "key": "n" },
     { "type": "text", "label": "name the custom context", "text": "Clients" },
     { "type": "key", "label": "focus the project list", "key": "tab" },

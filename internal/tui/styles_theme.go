@@ -57,7 +57,6 @@ func rebuildStyles() {
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
 	rebuildPriorityTitleStyles()
-	rebuildGroupColors()
 }
 
 // ApplyTheme reconfigures cursor/selection colors and background propagation.
@@ -174,14 +173,6 @@ func ApplyTheme(tc ThemeConfig) {
 	StatusBarStyle = withOptionalBg(lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Padding(0, 1), alwaysBg)
-
-	PrefixPopupStyle = withOptionalBg(lipgloss.NewStyle().
-		Foreground(ColorLightGray).
-		Padding(0, 1), alwaysBg)
-
-	FocusModeStyle = withOptionalBg(lipgloss.NewStyle().
-		Foreground(ColorSecondary).
-		Bold(true), alwaysBg)
 
 	FilterBadgeInactiveStyle = withOptionalBg(lipgloss.NewStyle().
 		Foreground(ColorBadgeText).

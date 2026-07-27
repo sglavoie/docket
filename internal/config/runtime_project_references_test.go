@@ -1,6 +1,10 @@
 package config
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 func TestApplySyncedProjectReferencesKeepsDuplicateTaskIDsAcrossProjects(t *testing.T) {
 	domains := NewDomains()
@@ -50,5 +54,33 @@ func TestApplyProjectReferencesKeepsDuplicateRecentVisitIDsAcrossProjects(t *tes
 		if !visits[locator] {
 			t.Errorf("RecentTaskVisits = %+v, missing %+v", machine.RecentTaskVisits, locator)
 		}
+	}
+}
+
+func TestProjectReferencesRoundTripOutlinerRouteUnderCanonicalProjectID(t *testing.T) {
+	runtime := NewRuntimeState("", NewDomains())
+	machine := runtime.Machine()
+	machine.ProjectRoutes = map[string]OutlinerRouteState{
+		"archived-alpha": {Mode: "waiting"},
+	}
+	runtime.SetMachineInMemory(machine)
+
+	refs := runtime.ExtractProjectReferences("archived-alpha", "")
+	if refs.OutlinerRoute == nil ||
+		refs.OutlinerRoute.Mode != OutlinerModeAll ||
+		!refs.OutlinerRoute.FilterStates.Contains(models.StateWaiting) {
+		t.Fatalf("extracted route = %+v", refs.OutlinerRoute)
+	}
+
+	restored := NewMachineState()
+	if !restored.ApplyProjectReferences("alpha", refs) {
+		t.Fatal("restoring route reported no change")
+	}
+	if _, stale := restored.ProjectRoutes["archived-alpha"]; stale {
+		t.Fatalf("restored stale route key: %+v", restored.ProjectRoutes)
+	}
+	route, ok := restored.ProjectRoutes["alpha"]
+	if !ok || route.Mode != OutlinerModeAll || !route.FilterStates.Contains(models.StateWaiting) {
+		t.Fatalf("restored route = %+v", restored.ProjectRoutes)
 	}
 }

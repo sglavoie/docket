@@ -215,7 +215,7 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = rule.Validate()
+	err = rule.ValidateForAuthoring()
 	if err != nil {
 		return fmt.Errorf("invalid rule: %w", err)
 	}

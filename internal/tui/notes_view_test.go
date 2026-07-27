@@ -155,43 +155,6 @@ func TestRenameFlowCancel(t *testing.T) {
 	}
 }
 
-func TestPendingGKeyConsumed(t *testing.T) {
-	m := newTestNotesView(sampleNotes())
-
-	// Move cursor down first
-	m.cursor = 2
-
-	// Press g then d — should consume the d, NOT trigger delete
-	m.Update(syntheticKey('g'))
-	if m.pendingPrefix != "g" {
-		t.Error("expected pendingPrefix=\"g\" after g")
-	}
-
-	m.Update(syntheticKey('d'))
-	if m.pendingPrefix != "" {
-		t.Error("expected pendingPrefix=\"\" after second key")
-	}
-	if m.cursor != 2 {
-		t.Errorf("expected cursor=2 after gd (only gg jumps to top), got %d", m.cursor)
-	}
-	if m.confirm.IsActive() {
-		t.Error("expected no delete confirmation after gd — second key should be consumed")
-	}
-}
-
-func TestPendingGKeyDeselectAll(t *testing.T) {
-	m := newTestNotesView(sampleNotes())
-	m.multiSelectMode = true
-	m.selectedNotes = map[string]bool{"a.md": true, "b.md": true}
-
-	m.Update(syntheticKey('g'))
-	m.Update(syntheticKey('X'))
-
-	if len(m.selectedNotes) != 0 {
-		t.Error("expected all deselected after gX")
-	}
-}
-
 func TestOpenCurrentNoteReferenceCreatesSnapshotAndUsesExternalEditor(t *testing.T) {
 	note := &models.Note{
 		Title:       "Reference Note",

@@ -58,7 +58,7 @@ func (m *AskViewModel) HandledKeys() []string {
 }
 
 func (m *AskViewModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewAsk)
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 // SetSize implements View.

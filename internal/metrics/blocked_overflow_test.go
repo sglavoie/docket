@@ -20,9 +20,9 @@ func TestBlockedAggregatesDoNotOverflow(t *testing.T) {
 	for i := range tasks {
 		start := now.Add(-blocked - time.Hour)
 		end := now.Add(-time.Hour)
-		tasks[i] = makeTask(models.StatusDone, timePtr(now), []*models.ActivityEntry{
-			{Timestamp: start, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			{Timestamp: end, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+		tasks[i] = makeTask(models.StateDone, timePtr(now), []*models.ActivityEntry{
+			{Timestamp: start, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			{Timestamp: end, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 		})
 		tasks[i].ID = string(rune('a' + i))
 	}
@@ -53,12 +53,12 @@ func TestBlockedEntryTotalDoesNotOverflow(t *testing.T) {
 		start := time.Date(1500+i*60, 1, 1, 0, 0, 0, 0, time.UTC)
 		end := start.Add(blocked)
 		activity = append(activity,
-			&models.ActivityEntry{Timestamp: start, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
-			&models.ActivityEntry{Timestamp: end, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+			&models.ActivityEntry{Timestamp: start, Field: "state", OldValue: "in_progress", NewValue: "waiting"},
+			&models.ActivityEntry{Timestamp: end, Field: "state", OldValue: "waiting", NewValue: "in_progress"},
 		)
 	}
 
-	task := makeTask(models.StatusDone, timePtr(now), activity)
+	task := makeTask(models.StateDone, timePtr(now), activity)
 	result := computeBlocked([]*models.Task{task}, now, nil)
 
 	if result.TaskCount != 1 {

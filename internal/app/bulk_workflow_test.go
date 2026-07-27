@@ -17,12 +17,10 @@ func TestBulkTransitionWithWorkflowFiresEventRuleAndCountsTriggers(t *testing.T)
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-done-tag",
-		Name:    "Tag on completion",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}},
-	}}
+		ID:       "r-done-tag",
+		Name:     "Tag on completion",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionAddTag, Value: "shipped"}}}}
 
 	res, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
 		TaskIDs: []string{"t1", "t2"},
@@ -84,12 +82,10 @@ func TestBulkTransitionWithWorkflowMovesTaskInSameTransaction(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-move-done",
-		Name:    "Archive done to Beta",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}},
-	}}
+		ID:       "r-move-done",
+		Name:     "Archive done to Beta",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionMoveToProject, Value: "Beta"}}}}
 
 	res, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
 		TaskIDs: []string{"t1"},
@@ -127,12 +123,10 @@ func TestBulkTransitionWithWorkflowAppendsFollowupTask(t *testing.T) {
 	svc := newTestService(repo)
 
 	rules := []workflow.WorkflowRule{{
-		ID:      "r-followup",
-		Name:    "Follow up after deploy",
-		Enabled: true,
-		Trigger: workflow.RuleTrigger{Field: workflow.FieldStatusChanged, Operation: workflow.OpEquals, Value: "*->done"},
-		Actions: []workflow.RuleAction{{ActionType: workflow.ActionCreateFollowup, Value: "verify {task}"}},
-	}}
+		ID:       "r-followup",
+		Name:     "Follow up after deploy",
+		Enabled:  true,
+		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldStateChanged, Operation: workflow.OpEquals, Value: "*->done"}}, Actions: []workflow.RuleAction{{ActionType: workflow.ActionCreateFollowup, Value: "verify {task}"}}}}
 
 	_, err := svc.BulkTransitionWithWorkflow(app.BulkTransitionRequest{
 		TaskIDs: []string{"t1"},

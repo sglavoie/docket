@@ -69,9 +69,9 @@ func TestTaskDetailLegacyMessagesChangeOneTypedRouteMode(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
 	task := project.Tasks[0]
-	app.pushView(ViewOutliner)
+	app.pushView(ViewCrossProjectOutliner)
 	parent := app.CurrentRoute()
-	parentMirror := append([]PresentationID(nil), app.viewStack...)
+	parentPath := app.presentationPath()
 
 	messages := []struct {
 		msg tea.Msg
@@ -111,8 +111,8 @@ func TestTaskDetailLegacyMessagesChangeOneTypedRouteMode(t *testing.T) {
 	if !app.CurrentRoute().Equal(parent) {
 		t.Fatalf("parent route changed after Detail close: got %+v want %+v", app.CurrentRoute(), parent)
 	}
-	if got := app.viewStack; len(got) != len(parentMirror) || got[len(got)-1] != parentMirror[len(parentMirror)-1] {
-		t.Fatalf("parent presentation mirror was not restored: got %v want %v", got, parentMirror)
+	if got := app.presentationPath(); len(got) != len(parentPath) || got[len(got)-1] != parentPath[len(parentPath)-1] {
+		t.Fatalf("parent renderer path was not restored: got %v want %v", got, parentPath)
 	}
 }
 
@@ -129,9 +129,9 @@ func TestTaskDetailClosePreservesWorkspaceCursorFiltersAndSelection(t *testing.T
 	outliner.multiSelectMode = true
 	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
 	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[1], project))
-	app.outliner = outliner
-	app.views.Register(ViewOutliner, outliner)
-	app.pushView(ViewOutliner)
+	app.crossOutliner = outliner
+	app.views.Register(ViewCrossProjectOutliner, outliner)
+	app.pushView(ViewCrossProjectOutliner)
 
 	beforeSearch := outliner.SearchQuery()
 	beforeCursor := outliner.cursor

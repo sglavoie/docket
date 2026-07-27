@@ -176,7 +176,7 @@ func renderMetadataContentOpts(task *models.Task, project *models.Project, inner
 	}
 
 	if !hideSection {
-		sectionName := taskSectionBucket(task)
+		sectionName := taskStateGroupLabel(task)
 		if sectionName == "" {
 			sectionName = "Active"
 		}

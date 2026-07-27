@@ -3,6 +3,8 @@ package tui
 import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // HelpItem represents a single help entry.
@@ -20,14 +22,74 @@ type filteredHelpItem struct {
 	descPositions []int
 }
 
-// HelpProvider is an interface for views that can provide help items.
-// Two patterns are acceptable:
-//  1. Registry-backed (most views): return GetKeybindingRegistry().GetForView(ViewXxx)
-//  2. Custom (views with dynamic descriptions): build and return []HelpItem directly.
-//
-// Use custom only when descriptions must change at runtime (e.g., toggling archive state).
+// HelpProvider is implemented by views that project help directly from their
+// active keymap or other view-local controls.
 type HelpProvider interface {
 	GetHelpItems() []HelpItem
+}
+
+func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
+	raw := km.HelpItems()
+	items := make([]HelpItem, len(raw))
+	for i, item := range raw {
+		items[i] = HelpItem{
+			Key:         item.Key,
+			Description: item.Description,
+			Category:    item.Category,
+		}
+	}
+	return items
+}
+
+func mergeHelpItems(groups ...[]HelpItem) []HelpItem {
+	var items []HelpItem
+	for _, group := range groups {
+		items = append(items, group...)
+	}
+	return dedupHelpItems(items)
+}
+
+func dedupHelpItems(items []HelpItem) []HelpItem {
+	type dedupKey struct{ key, desc string }
+	seen := make(map[dedupKey]bool, len(items))
+	result := items[:0]
+	for _, item := range items {
+		key := dedupKey{item.Key, item.Description}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		result = append(result, item)
+	}
+	return result
+}
+
+// getGlobalHelpItems derives the accepted root grammar directly from the
+// operation descriptors and simplified input strategy. There is no parallel
+// keybinding registry.
+func getGlobalHelpItems() []HelpItem {
+	descriptors := make(map[OperationID]OperationDescriptor)
+	for _, descriptor := range coreInputOperationDescriptors() {
+		descriptors[descriptor.ID] = descriptor
+	}
+	strategy := SimplifiedInputStrategy()
+	items := make([]HelpItem, 0, len(strategy.Bindings))
+	for _, binding := range strategy.Bindings {
+		descriptor, ok := descriptors[binding.OperationID]
+		if !ok {
+			continue
+		}
+		key := binding.DisplayKey
+		if key == "" && len(binding.Keys) > 0 {
+			key = binding.Keys[0]
+		}
+		items = append(items, HelpItem{
+			Key:         key,
+			Description: descriptor.Label,
+			Category:    operationCategoryLabel(descriptor.Category),
+		})
+	}
+	return items
 }
 
 // HelpViewModel is the model for the help view.

@@ -4,13 +4,13 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "open Task Composer", "key": "ctrl+n" },
-    { "type": "assert", "assert": "view", "value": "QuickCapture" },
+    { "type": "key", "label": "capture a task", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "text", "label": "enter first task", "text": "Triage the welcome checklist" },
     { "type": "key", "label": "create the task", "key": "enter" },
     { "type": "wait", "label": "wait for capture commit" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Task captured" },
+    { "type": "assert", "assert": "status_contains", "value": "Created in Inbox" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

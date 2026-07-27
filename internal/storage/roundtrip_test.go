@@ -24,8 +24,6 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 
 	project := testutil.NewTestProject("Round-Trip Project")
 	project.Path = filepath.Join(dir, "roundtrip")
-	project.Sections = []string{"Next", "Inbox", "Waiting"}
-	project.SectionColors = map[string]string{"Inbox": "blue", "Waiting": "orange"}
 	project.Tags = []string{"backend", "release", "urgent"}
 	project.PinnedTags = []string{"backend", "urgent"}
 
@@ -209,9 +207,8 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		t.Errorf("project pinned tags: got %v, want %v", loaded.PinnedTags, project.PinnedTags)
 	}
 
-	// Section preserved (derived from the round-tripped state)
-	if got := models.SectionForState(gotEpic.State()); got != "Next" {
-		t.Errorf("epic section: got %q, want %q", got, "Next")
+	if got := gotEpic.State(); got != models.StateNext {
+		t.Errorf("epic state: got %q, want %q", got, models.StateNext)
 	}
 
 	// Score dimensions preserved
@@ -300,11 +297,6 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		t.Errorf("story parent: got %v, want %s", gotStory.ParentID, epic.ID)
 	}
 
-	// Legacy project section colors are intentionally decode-only and are not
-	// hydrated into the canonical runtime project.
-	if len(loaded.SectionColors) != 0 {
-		t.Errorf("section colors: got %v, want empty canonical runtime metadata", loaded.SectionColors)
-	}
 }
 
 // TestRoundTrip_DescriptionWithHeadingPattern verifies that descriptions

@@ -9,8 +9,6 @@ import (
 )
 
 func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
-	var cmd tea.Cmd
-
 	if m.confirm.IsActive() {
 		return m.updateConfirmMode(msg)
 	}
@@ -26,15 +24,6 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 	case tea.KeyPressMsg:
-		if m.SkipModifierInPrefix(msg) {
-			return m, nil
-		}
-		if m.pendingPrefix == "g" {
-			m.pendingPrefix = ""
-			_, cmd = handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
-			return m, cmd
-		}
-
 		return m, m.updateNormalKey(msg.String())
 	}
 
@@ -116,8 +105,8 @@ func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.C
 	case "k", "up":
 		m.moveCursorUp()
 		return nil, true
-	case "g":
-		m.pendingPrefix = "g"
+	case "home":
+		m.cursor = 0
 		return nil, true
 	case "G":
 		m.moveCursorBottom()

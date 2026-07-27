@@ -181,17 +181,15 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	if project == nil {
 		now := time.Now()
 		project = &models.Project{
-			ID:            "system-inbox-" + uuid.New().String(),
-			Slug:          config.SystemInboxSlug,
-			Name:          config.SystemInboxName,
-			Context:       m.runtime.DefaultContext(),
-			Path:          m.runtime.ProjectPath(config.SystemInboxSlug),
-			CreatedAt:     now,
-			UpdatedAt:     now,
-			Tasks:         []*models.Task{},
-			NextShortID:   1,
-			Sections:      []string{models.SectionNext},
-			SectionColors: make(map[string]string),
+			ID:          "system-inbox-" + uuid.New().String(),
+			Slug:        config.SystemInboxSlug,
+			Name:        config.SystemInboxName,
+			Context:     m.runtime.DefaultContext(),
+			Path:        m.runtime.ProjectPath(config.SystemInboxSlug),
+			CreatedAt:   now,
+			UpdatedAt:   now,
+			Tasks:       []*models.Task{},
+			NextShortID: 1,
 		}
 		if project.Context == "" {
 			project.Context = "personal"
@@ -268,17 +266,15 @@ func (m *AppModel) ensureSystemInboxProject() error {
 func newSandboxProject(runtime *config.RuntimeState) *models.Project {
 	now := time.Now()
 	return &models.Project{
-		ID:            "sandbox-" + now.Format("20060102150405") + "-" + uuid.New().String()[:8],
-		Slug:          "_sandbox",
-		Name:          "Sandbox",
-		Context:       "personal",
-		Path:          runtime.ProjectPath("_sandbox"),
-		CreatedAt:     now,
-		UpdatedAt:     now,
-		Sandbox:       true,
-		Tasks:         []*models.Task{},
-		NextShortID:   1,
-		Sections:      []string{models.SectionNext},
-		SectionColors: make(map[string]string),
+		ID:          "sandbox-" + now.Format("20060102150405") + "-" + uuid.New().String()[:8],
+		Slug:        "_sandbox",
+		Name:        "Sandbox",
+		Context:     "personal",
+		Path:        runtime.ProjectPath("_sandbox"),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		Sandbox:     true,
+		Tasks:       []*models.Task{},
+		NextShortID: 1,
 	}
 }
