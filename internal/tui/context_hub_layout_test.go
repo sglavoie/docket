@@ -98,6 +98,89 @@ func TestContextHubListScrollsToTheSelectedContext(t *testing.T) {
 	}
 }
 
+// TestContextHubListFollowsEachJToTheLastProject guards the renderer/model
+// height boundary: continuation rows must be included in the list's viewport
+// budget or the shell clips the selected last row.
+func TestContextHubListFollowsEachJToTheLastProject(t *testing.T) {
+	app := contextHubCrowdedApp(t)
+	hub := openContextHub(t, app)
+	hub.SetSize(60, 20)
+
+	for index := 0; index < len(hub.surface.Matches()); index++ {
+		if index > 0 {
+			hub.Update(syntheticKey('j'))
+		}
+		rendered := ansi.Strip(hub.View().Content)
+		if got := lipgloss.Height(rendered); got > 20 {
+			t.Fatalf("cursor %d rendered %d rows, want <= 20:\n%s", index, got, rendered)
+		}
+		current, ok := hub.surface.CurrentItem()
+		if !ok {
+			t.Fatalf("cursor %d has no current item", index)
+		}
+		if want := "› " + current.PrimaryText; !strings.Contains(rendered, want) {
+			t.Fatalf("cursor row %q is outside the Hub viewport:\n%s", want, rendered)
+		}
+	}
+
+	current, ok := hub.surface.CurrentItem()
+	if !ok || current.PrimaryText != "Project 13" {
+		t.Fatalf("last item = (%q, %v), want Project 13", current.PrimaryText, ok)
+	}
+}
+
+func TestContextHubCtrlDUHalfPageNavigationFollowsTheCursor(t *testing.T) {
+	for _, mode := range []struct {
+		name         string
+		activate     func(*ContextHubModel)
+		searchActive bool
+	}{
+		{name: "browse"},
+		{
+			name:         "active search",
+			activate:     func(hub *ContextHubModel) { hub.Update(syntheticKey('/')) },
+			searchActive: true,
+		},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			app := contextHubCrowdedApp(t)
+			hub := openContextHub(t, app)
+			hub.SetSize(60, 20)
+			_ = hub.View()
+			if mode.activate != nil {
+				mode.activate(hub)
+			}
+
+			start := hub.surface.Cursor()
+			downStep := HalfPage(hub.surface.Viewport().Height)
+			hub.Update(syntheticCtrlKey('d'))
+			if got, want := hub.surface.Cursor(), start+downStep; got != want {
+				t.Fatalf("Ctrl+D cursor = %d, want %d", got, want)
+			}
+			rendered := ansi.Strip(hub.View().Content)
+			current, ok := hub.surface.CurrentItem()
+			if !ok || !strings.Contains(rendered, "› "+current.PrimaryText) {
+				t.Fatalf("Ctrl+D cursor row is outside the Hub viewport:\n%s", rendered)
+			}
+
+			beforeUp := hub.surface.Cursor()
+			upStep := HalfPage(hub.surface.Viewport().Height)
+			hub.Update(syntheticCtrlKey('u'))
+			if got, want := hub.surface.Cursor(), max(beforeUp-upStep, 0); got != want {
+				t.Fatalf("Ctrl+U cursor = %d, want %d", got, want)
+			}
+			rendered = ansi.Strip(hub.View().Content)
+			current, ok = hub.surface.CurrentItem()
+			if !ok || !strings.Contains(rendered, "› "+current.PrimaryText) {
+				t.Fatalf("Ctrl+U cursor row is outside the Hub viewport:\n%s", rendered)
+			}
+			if hub.HasActiveSearch() != mode.searchActive {
+				t.Fatalf("search active = %v, want %v", hub.HasActiveSearch(), mode.searchActive)
+			}
+		})
+	}
+}
+
 // TestContextHubFooterHelpStaysOnOneLine guards the footer against the shell's
 // status-bar swap, which replaces a full-height view's last two lines: a footer
 // that wrapped onto a third line would leave an orphaned separator behind.

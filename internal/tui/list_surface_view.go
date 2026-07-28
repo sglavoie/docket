@@ -156,8 +156,8 @@ func renderCompactListSurface(
 			ListWidth: config.Width,
 		}
 	}
-	model.SetSize(config.Width, config.Height)
-	content := renderListSurfacePane(model, config.Width)
+	showContinuations := sizeListSurfaceViewport(model, config.Width, config.Height)
+	content := renderListSurfacePane(model, config.Width, showContinuations)
 	if !config.HideHelp {
 		content = appendListSurfaceHelp(content, listSurfaceHelp(model, config.HelpText), config.Width)
 	}
@@ -180,8 +180,8 @@ func renderWideListSurface(
 		listWidth = config.Width - previewWidth - listSurfacePaneGapWidth
 	}
 
-	model.SetSize(listWidth, config.Height)
-	listPane := renderListSurfacePane(model, listWidth)
+	showContinuations := sizeListSurfaceViewport(model, listWidth, config.Height)
+	listPane := renderListSurfacePane(model, listWidth, showContinuations)
 	previewPane := renderListSurfacePreview(preview, previewWidth, config.Height)
 	content := joinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
 	if !config.HideHelp {
@@ -196,7 +196,37 @@ func renderWideListSurface(
 	}
 }
 
-func renderListSurfacePane(model *ListSurfaceModel, width int) string {
+// sizeListSurfaceViewport reserves room inside the renderer's height for the
+// continuation rows it adds around the model's item rows. Reducing the item
+// capacity can reveal a second continuation, so converge from the full height
+// until the indicator count is stable. Without this accounting, an upper
+// continuation at the bottom of a list made the pane one row too tall and the
+// embedding view clipped the cursor row.
+func sizeListSurfaceViewport(model *ListSurfaceModel, width, height int) bool {
+	model.SetSize(width, height)
+	// At one or two rows, keeping the cursor visible is more useful than spending
+	// the entire pane on scroll indicators.
+	if height < 3 {
+		return false
+	}
+	for {
+		viewport := model.Viewport()
+		continuationRows := 0
+		if viewport.CanScrollUp {
+			continuationRows++
+		}
+		if viewport.CanScrollDown {
+			continuationRows++
+		}
+		itemRows := max(height-continuationRows, 1)
+		if itemRows == viewport.Height {
+			return true
+		}
+		model.SetSize(width, itemRows)
+	}
+}
+
+func renderListSurfacePane(model *ListSurfaceModel, width int, showContinuations bool) string {
 	if empty, ok := model.EmptyContext(); ok {
 		return renderListSurfaceEmpty(empty, width)
 	}
@@ -204,13 +234,13 @@ func renderListSurfacePane(model *ListSurfaceModel, width int) string {
 	rows := model.VisibleRows()
 	viewport := model.Viewport()
 	lines := make([]string, 0, len(rows)+2)
-	if viewport.CanScrollUp {
+	if showContinuations && viewport.CanScrollUp {
 		lines = append(lines, renderListContinuation("↑", viewport.Offset, width))
 	}
 	for _, row := range rows {
 		lines = append(lines, renderListSurfaceRow(row, model.Config().SelectionMode, width))
 	}
-	if viewport.CanScrollDown {
+	if showContinuations && viewport.CanScrollDown {
 		remaining := max(viewport.TotalRows-viewport.Offset-len(rows), 0)
 		lines = append(lines, renderListContinuation("↓", remaining, width))
 	}

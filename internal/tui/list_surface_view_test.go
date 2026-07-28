@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -29,7 +31,7 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 
 	rendered := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:  40,
-		Height: 2,
+		Height: 3,
 	}).Render(model)
 	if rendered.Layout != ListSurfaceLayoutCompact || rendered.PreviewVisible {
 		t.Fatalf("compact result = %+v", rendered)
@@ -46,7 +48,7 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 	}
 	rendered = NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:    40,
-		Height:   2,
+		Height:   3,
 		HideHelp: true,
 	}).Render(model)
 	if !strings.Contains(rendered.Content, "↑ 2 more") {
@@ -104,6 +106,56 @@ func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testin
 		t.Fatalf("narrow fallback leaked preview pane:\n%s", compact.Content)
 	}
 	assertListSurfaceWidth(t, compact.Content, 48)
+}
+
+func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T) {
+	t.Parallel()
+
+	categories := []ListCategory{
+		{ID: "first", Label: "First"},
+		{ID: "second", Label: "Second"},
+	}
+	items := make([]ListItem, 0, 8)
+	for index := range 8 {
+		category := ListCategoryID("first")
+		if index >= 4 {
+			category = "second"
+		}
+		items = append(items, ListItem{
+			ID:          ListItemID(fmt.Sprintf("item-%d", index)),
+			CategoryID:  category,
+			PrimaryText: fmt.Sprintf("Item %d", index),
+		})
+	}
+	model := mustListSurface(t, items, categories, ListSurfaceConfig{})
+	renderer := NewListSurfaceRenderer(ListSurfaceRenderConfig{
+		Width:    30,
+		Height:   4,
+		Layout:   ListSurfaceLayoutCompact,
+		HideHelp: true,
+	})
+
+	for index := range items {
+		if index > 0 && !model.MoveCursor(1) {
+			t.Fatalf("cursor did not move to item %d", index)
+		}
+		rendered := renderer.Render(model)
+		if got := lipgloss.Height(rendered.Content); got > 4 {
+			t.Fatalf("item %d rendered height = %d, want <= 4:\n%s", index, got, rendered.Content)
+		}
+		current, ok := model.CurrentItem()
+		if !ok {
+			t.Fatalf("item %d has no current item", index)
+		}
+		if want := "› " + current.PrimaryText; !strings.Contains(ansi.Strip(rendered.Content), want) {
+			t.Fatalf("cursor row %q is outside the rendered viewport:\n%s", want, ansi.Strip(rendered.Content))
+		}
+	}
+
+	rendered := renderer.Render(model)
+	if !strings.Contains(rendered.Content, "↑") || strings.Contains(rendered.Content, "↓") {
+		t.Fatalf("bottom viewport has incorrect continuations:\n%s", rendered.Content)
+	}
 }
 
 func TestListSurfaceDomainAdaptersProvideStableQualifiedTargets(t *testing.T) {

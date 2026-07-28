@@ -127,6 +127,16 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.actions != nil {
 		return m.updateScopeHubActions(key)
 	}
+	if m.HasActiveSearch() {
+		switch key.String() {
+		case "ctrl+d":
+			m.moveScopeHubHalfPage(1)
+			return m, nil
+		case "ctrl+u":
+			m.moveScopeHubHalfPage(-1)
+			return m, nil
+		}
+	}
 	if model, cmd, handled := m.HandleSearchMode(key, m, m.applyFilter); handled {
 		return model, cmd
 	}
@@ -155,6 +165,10 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.surface != nil {
 			m.surface.MoveCursorToEnd()
 		}
+	case "ctrl+d":
+		m.moveScopeHubHalfPage(1)
+	case "ctrl+u":
+		m.moveScopeHubHalfPage(-1)
 	case "n":
 		return m, m.executeScopeHubBrowseAction(operationScopeCreateContext)
 	case "e":
@@ -169,6 +183,13 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.activateScopeHubCurrent()
 	}
 	return m, nil
+}
+
+func (m *ContextHubModel) moveScopeHubHalfPage(direction int) {
+	if m.surface == nil || direction == 0 {
+		return
+	}
+	m.surface.MoveCursor(direction * HalfPage(m.surface.Viewport().Height))
 }
 
 // SetSize keeps the inline editor's inputs sized with the hub itself; the hub
@@ -359,18 +380,22 @@ func (m *ContextHubModel) footerHelpVariants() []string {
 	case m.actions != nil:
 		return m.scopeHubActionFooterHelpVariants()
 	case m.HasActiveSearch():
-		return []string{"Enter keep filter · Esc clear"}
+		return []string{
+			"Ctrl+d/u half page · Enter keep filter · Esc clear",
+			"Ctrl+d/u half page · Enter keep · Esc clear",
+			"Enter keep filter · Esc clear",
+		}
 	case m.SearchQuery() != "":
 		return []string{
-			"j/k choose · Enter activate · Space actions · Esc clear search",
-			"j/k · Enter · Space actions · Esc clear",
+			"j/k choose · Ctrl+d/u half page · Enter activate · Space actions · Esc clear search",
+			"Ctrl+d/u half page · Enter · Space · Esc clear",
 			"Enter · Space · Esc clear",
 		}
 	}
 	return []string{
-		"j/k choose · Enter activate · Space actions · / search",
-		"j/k · Enter activate · Space actions · / search",
-		"j/k · Enter · Space · /",
+		"j/k choose · Ctrl+d/u half page · Enter activate · Space actions · / search",
+		"j/k · Ctrl+d/u half page · Enter · Space · /",
+		"Ctrl+d/u · Enter · Space · /",
 	}
 }
 
@@ -443,6 +468,7 @@ func (m *ContextHubModel) GetHelpItems() []HelpItem {
 	}
 	return []HelpItem{
 		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
+		{Key: "Ctrl+d/u", Description: "Move half a page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Jump to the first or last scope item", Category: "Navigation"},
 		{Key: "/", Description: "Search scopes, projects, and trash", Category: "Filters"},
 		{Key: "enter", Description: "Activate a base scope or project focus", Category: "Actions"},
