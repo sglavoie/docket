@@ -379,10 +379,18 @@ type AppModel struct {
 	// Contextual project administration menu for a focused Outliner project header
 	projectAdminMenu *ProjectAdminMenuModel
 
-	// The simplified task action flow is the only generic two-level overlay:
-	// action sheet -> ListSurface value picker.
-	taskActionSheet      *TaskActionSheetModel
+	// The contextual action flow is the only generic two-level overlay:
+	// action sheet -> value step. The sheet is host-agnostic; the host it was
+	// opened for travels on every message it emits. The value step is a
+	// ListSurface picker, or a text prompt when the value is typed.
+	contextActionSheet   *ContextActionSheetModel
 	operationValuePicker *OperationValuePickerModel
+	operationTextPrompt  *OperationTextPromptModel
+
+	// A destructive contextual action prompts here and keeps its frozen request
+	// so cancellation returns to the sheet with nothing executed.
+	operationConfirm        ConfirmDialog
+	pendingOperationRequest OperationExecutionRequest
 
 	// Peek task overlay (space toggles task detail peek)
 	peekTask        *models.Task

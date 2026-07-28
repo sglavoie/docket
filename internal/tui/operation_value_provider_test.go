@@ -90,7 +90,7 @@ func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	}
 }
 
-func TestTaskActionSelectionOpensValuePickerAndCancelReturnsToSheet(t *testing.T) {
+func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 	model := newUITestApp()
 	task := &models.Task{
 		ID:            "task",
@@ -105,22 +105,32 @@ func TestTaskActionSelectionOpensValuePickerAndCancelReturnsToSheet(t *testing.T
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
-	model.taskActionSheet = &TaskActionSheetModel{}
+	sheet, err := NewTaskActionSheetModel(
+		model.operationRegistry,
+		model.operationExecutor,
+		taskActionTestContext(models.StateReady),
+		"Task",
+	)
+	if err != nil {
+		t.Fatalf("NewTaskActionSheetModel: %v", err)
+	}
+	model.contextActionSheet = sheet
+	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskSetState))) {
+		t.Fatal("task sheet is missing the state action")
+	}
 
-	handled, cmd := model.handleOperationOverlayMessage(TaskActionSheetExecuteMsg{
-		Request: OperationExecutionRequest{
-			ID:      operationTaskSetState,
-			Context: taskActionTestContext(models.StateReady),
-			Source:  OperationSourceActionSheet,
-		},
-	})
+	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if dismissed {
+		t.Fatal("a pending value picker dismissed the sheet")
+	}
+	handled, cmd := model.handleOperationOverlayMessage(raw)
 	if !handled || cmd != nil {
 		t.Fatalf("sheet selection = handled %v, cmd %T; want picker opened synchronously", handled, cmd)
 	}
 	if model.operationValuePicker == nil {
 		t.Fatal("state action did not open its ListSurface value picker")
 	}
-	if model.taskActionSheet == nil {
+	if model.contextActionSheet == nil {
 		t.Fatal("opening a value picker discarded the action sheet beneath it")
 	}
 
@@ -131,7 +141,7 @@ func TestTaskActionSelectionOpensValuePickerAndCancelReturnsToSheet(t *testing.T
 	if model.operationValuePicker != nil {
 		t.Fatal("cancel did not close the value picker")
 	}
-	if model.taskActionSheet == nil {
+	if model.contextActionSheet == nil {
 		t.Fatal("cancel did not return to the action sheet")
 	}
 }
@@ -227,6 +237,167 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	for index, task := range []*models.Task{taskA, taskB} {
 		if got := env.reload(t, index).GetTaskByID(task.ID); got == nil || got.Priority != 5 {
 			t.Fatalf("undo project %d priority = %v, want 5", index, got)
+		}
+	}
+}
+
+// newTaskStructureTestProject lays out one epic with a story child followed by a
+// loose root task, which is the smallest shape covering every legal and illegal
+// indent/outdent/reparent case.
+func newTaskStructureTestProject() *models.Project {
+	epic := &models.Task{
+		ID: "epic", ShortID: 1, Title: "Epic",
+		Type: models.TaskTypeEpic, WorkflowState: models.StateReady,
+	}
+	story := &models.Task{
+		ID: "story", ShortID: 2, Title: "Story", ParentID: strPtr("epic"),
+		Type: models.TaskTypeStory, WorkflowState: models.StateReady,
+	}
+	loose := &models.Task{
+		ID: "loose", ShortID: 3, Title: "Loose",
+		Type: models.TaskTypeTask, WorkflowState: models.StateReady,
+	}
+	project := &models.Project{
+		ID: "alpha", Name: "Alpha", Slug: "alpha",
+		Tasks: []*models.Task{epic, story, loose},
+	}
+	project.BuildTaskTree()
+	return project
+}
+
+func taskOperationTestContext(task *models.Task, project *models.Project) CommandContext {
+	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Entity = taskOperationEntity(task, project)
+	return context
+}
+
+func taskOperationApplicable(
+	t *testing.T,
+	model *AppModel,
+	id OperationID,
+	task *models.Task,
+	project *models.Project,
+) bool {
+	t.Helper()
+	descriptor, ok := model.operationRegistry.Descriptor(id)
+	if !ok {
+		t.Fatalf("operation %s is not registered", id)
+	}
+	return descriptor.Applicable(taskOperationTestContext(task, project))
+}
+
+func TestTaskOperationIndentAndOutdentApplicabilityFollowsHierarchyLegality(t *testing.T) {
+	model := newUITestApp()
+	project := newTaskStructureTestProject()
+	setTestAppProjects(model, project)
+
+	for _, testCase := range []struct {
+		taskID string
+		id     OperationID
+		want   bool
+	}{
+		{taskID: "loose", id: operationTaskIndent, want: true},
+		{taskID: "epic", id: operationTaskIndent, want: false},
+		{taskID: "story", id: operationTaskOutdent, want: true},
+		{taskID: "loose", id: operationTaskOutdent, want: false},
+	} {
+		task := project.GetTaskByID(testCase.taskID)
+		if task == nil {
+			t.Fatalf("fixture is missing task %s", testCase.taskID)
+		}
+		if got := taskOperationApplicable(t, model, testCase.id, task, project); got != testCase.want {
+			t.Errorf("%s applicable for %s = %v, want %v", testCase.id, testCase.taskID, got, testCase.want)
+		}
+	}
+}
+
+func TestTaskOperationParentAndMoveApplicabilityRequireCandidates(t *testing.T) {
+	model := newUITestApp()
+	project := newTaskStructureTestProject()
+	setTestAppProjects(model, project)
+	loose := project.GetTaskByID("loose")
+	epic := project.GetTaskByID("epic")
+
+	if !taskOperationApplicable(t, model, operationTaskSetParent, loose, project) {
+		t.Error("set-parent is unavailable for a task with valid parent candidates")
+	}
+	if taskOperationApplicable(t, model, operationTaskSetParent, epic, project) {
+		t.Error("set-parent is offered for a root epic that nothing can parent")
+	}
+	if taskOperationApplicable(t, model, operationTaskMoveProject, loose, project) {
+		t.Error("move-project is offered with no other active project")
+	}
+
+	other := &models.Project{ID: "beta", Name: "Beta", Slug: "beta"}
+	setTestAppProjects(model, project, other)
+	if !taskOperationApplicable(t, model, operationTaskMoveProject, loose, project) {
+		t.Error("move-project stayed unavailable after a destination project appeared")
+	}
+	if got := model.moveProjectCandidates(project); len(got) != 1 || got[0].ID != other.ID {
+		t.Errorf("move destinations = %v, want only the other project", got)
+	}
+}
+
+func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
+	model := newUITestApp()
+	project := newTaskStructureTestProject()
+	setTestAppProjects(model, project, &models.Project{ID: "beta", Name: "Beta", Slug: "beta"})
+	loose := project.GetTaskByID("loose")
+
+	descriptors := TaskActionSheetDescriptors(
+		model.operationRegistry,
+		taskOperationTestContext(loose, project),
+	)
+	ordered := make([]OperationID, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		if _, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
+			ordered = append(ordered, descriptor.ID)
+		}
+	}
+	// Unpark, unpin, and undim are absent because the loose task is none of
+	// those; Outdent is absent because a top-level task has no parent to leave;
+	// both child creators are absent because a leaf type cannot hold a child.
+	want := []OperationID{
+		operationTaskSetState,
+		operationTaskSetPriority,
+		operationTaskSetDueDate,
+		operationTaskSetSnooze,
+		operationTaskScore,
+		operationTaskPark,
+		operationTaskSetTags,
+		operationTaskMoveProject,
+		operationTaskPin,
+		operationTaskDim,
+		operationCoreEdit,
+		operationCoreDetail,
+		operationTaskChecklist,
+		operationTaskComments,
+		operationTaskQuickNote,
+		operationTaskDecisions,
+		operationTaskAttachments,
+		operationTaskActivity,
+		operationTaskCopyTitle,
+		operationTaskCopyTitleDescription,
+		operationTaskCopyDetails,
+		operationTaskCopyReference,
+		operationTaskSetParent,
+		operationTaskIndent,
+		operationTaskSetDependencies,
+		operationTaskLinkedTasks,
+		operationTaskNewLinkedSubtask,
+		operationTaskDelete,
+	}
+	if !reflect.DeepEqual(ordered, want) {
+		t.Fatalf("manifest order = %v, want %v", ordered, want)
+	}
+	for _, id := range []OperationID{operationTaskIndent, operationTaskOutdent} {
+		descriptor, ok := model.operationRegistry.Descriptor(id)
+		if !ok {
+			t.Fatalf("operation %s is not registered", id)
+		}
+		if got := taskActionCategory(descriptor); got != taskActionCategoryRelationships {
+			t.Errorf("%s category = %s, want %s", id, got, taskActionCategoryRelationships)
 		}
 	}
 }

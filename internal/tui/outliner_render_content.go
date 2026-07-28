@@ -211,7 +211,9 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 // appendOpenLoopsCounter right-aligns the open-loops counter at the end of an
 // already-assembled title line. Must be called after every inline title-row
 // element (mode label, search indicator, multi-select badge) has been
-// appended so the counter doesn't push them off the right edge.
+// appended so the counter doesn't push them off the right edge. width is the
+// budget left after the alert indicator's reservation, so the counter is
+// dropped before the indicator ever is.
 func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
 	outlinerLoops := m.openLoops
 	outlinerLoops.TodayDone = 0
@@ -221,7 +223,7 @@ func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
 		return line
 	}
 	rendered := MutedStyle.Render(counter)
-	gap := width - lipgloss.Width(line) - lipgloss.Width(rendered) - titleCounterAlertReserve
+	gap := width - lipgloss.Width(line) - lipgloss.Width(rendered)
 	if gap <= 0 {
 		return line
 	}
@@ -240,10 +242,33 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int, modeLabel, searchIndic
 		suffix.WriteString("  ")
 		suffix.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", m.SelectedCount())))
 	}
-	renderedSuffix := suffix.String()
-	titleWidth := max(width-lipgloss.Width(renderedSuffix), 1)
-	title := truncateToVisualWidth(m.renderOutlinerTitle(width), titleWidth)
-	return m.appendOpenLoopsCounter(title+renderedSuffix, width)
+	return m.composeOutlinerTitleRow(width, suffix.String())
+}
+
+// composeOutlinerTitleRow lays out the title row within width. The alert
+// indicator has the highest right-side priority: its exact width plus separator
+// is held back first, the filter/sort badge and the open-loops counter degrade
+// against what is left, and the title itself is truncated last so the row never
+// exceeds width.
+func (m *OutlinerModel) composeOutlinerTitleRow(width int, suffix string) string {
+	indicator, reserve := alertIndicatorReserve(m.alertCount)
+	if reserve >= width {
+		// Narrower than any supported terminal: the row content wins because an
+		// indicator alone would say nothing about where the user is.
+		indicator, reserve = "", 0
+	}
+	budget := max(width-reserve, 1)
+
+	suffix = truncateToVisualWidth(suffix, budget)
+	titleWidth := max(budget-lipgloss.Width(suffix), 1)
+	title := truncateToVisualWidth(m.renderOutlinerTitle(budget), titleWidth)
+
+	line := m.appendOpenLoopsCounter(title+suffix, budget)
+	if indicator == "" {
+		return line
+	}
+	gap := max(width-lipgloss.Width(line)-lipgloss.Width(indicator), 1)
+	return line + strings.Repeat(" ", gap) + indicator
 }
 
 func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, modeLabel, searchIndicator string) {
@@ -267,11 +292,7 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, modeL
 
 func (m *OutlinerModel) renderOutlinerEmptyState(width int, modeLabel, searchIndicator, breadcrumb, notice string) string {
 	var b strings.Builder
-	var line strings.Builder
-	line.WriteString(m.renderOutlinerTitle(width))
-	line.WriteString(modeLabel)
-	line.WriteString(searchIndicator)
-	b.WriteString(m.appendOpenLoopsCounter(line.String(), width))
+	b.WriteString(m.composeOutlinerTitleRow(width, modeLabel+searchIndicator))
 	b.WriteString("\n")
 
 	if m.ac.IsActive() {

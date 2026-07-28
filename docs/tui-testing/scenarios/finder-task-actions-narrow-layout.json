@@ -7,6 +7,13 @@
     { "type": "text", "label": "filter to tasks", "text": ":task " },
     { "type": "key", "label": "open actions for selected task", "key": "tab" },
     { "type": "assert", "assert": "view", "value": "Finder" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions" },
+    { "type": "assert", "assert": "contains", "value": ":task" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "dismiss the action sheet", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "Finder" },
+    { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
+    { "type": "assert", "assert": "contains", "value": ":task" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

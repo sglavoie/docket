@@ -1,6 +1,9 @@
 package tui
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Capability is a declarative feature exposed by the active route or overlay.
 // Routes and overlays construct CommandContext values from their active mode.
@@ -21,6 +24,39 @@ const (
 	CapabilityProjectScope Capability = "scope:project"
 	CapabilityTaskScope    Capability = "scope:task"
 )
+
+// capabilityFamilies are the prefixes reserved for capabilities generated per
+// route, overlay, presentation, scope, surface, or input strategy.
+var capabilityFamilies = []string{
+	"presentation:",
+	"scope:",
+	"route:",
+	"overlay:",
+	"surface:",
+	"input:",
+}
+
+// validCapability reports whether a capability is a declared constant or a
+// member of a reserved dynamic family. It catches typos at registration.
+func validCapability(capability Capability) bool {
+	switch capability {
+	case CapabilityCommandDiscovery,
+		CapabilitySimplifiedInput,
+		CapabilityScopeHub,
+		CapabilityHarness,
+		CapabilityAppScope,
+		CapabilityProjectScope,
+		CapabilityTaskScope:
+		return true
+	}
+	for _, family := range capabilityFamilies {
+		if strings.HasPrefix(string(capability), family) &&
+			len(capability) > len(family) {
+			return true
+		}
+	}
+	return false
+}
 
 // CapabilitySet is the active route/overlay capability set.
 type CapabilitySet map[Capability]struct{}
@@ -66,6 +102,10 @@ type SelectionContext struct {
 	// It stays pointer-free so a frozen action sheet cannot be retargeted by a
 	// later row rebuild.
 	Entities []EntityContext
+	// EntityIdentities is the typed selection for surfaces whose rows are not
+	// tasks. Hosts that only select tasks may leave it empty; selected-entity
+	// resolution then derives it from Tasks.
+	EntityIdentities []EntityIdentity
 	// Visual distinguishes an explicit visual selection (including one selected
 	// task) from the ordinary cursor fallback used by selected-target operations.
 	Visual bool
@@ -95,10 +135,18 @@ type CommandContext struct {
 	Capabilities CapabilitySet
 	Selection    SelectionContext
 	Entity       EntityContext
+	// CurrentEntity is the typed identity of the focused row. Surfaces whose
+	// rows are not tasks or projects set it directly; task and project surfaces
+	// may leave it empty and let resolution derive it from Entity.
+	CurrentEntity EntityIdentity
 	// ScopeProjectIDs is the stable project set admitted by the active scope.
 	// It lets operation execution resolve scoped-project targets without
 	// depending on renderer models or palette-specific messages.
 	ScopeProjectIDs []string
+	// FocusedProjectID is the project the active scope is focused on, empty at
+	// base or multi-project scope. It is deliberately independent of the cursor
+	// so a frozen tool invocation cannot borrow an unrelated row's project.
+	FocusedProjectID string
 }
 
 // presentationCapability scopes mature renderer commands without affecting

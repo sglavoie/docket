@@ -5,6 +5,7 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "◆ All" },
+    { "type": "assert", "assert": "contains", "value": "📫 11" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -22,6 +22,12 @@ func newUITestApp() *AppModel {
 	if err := app.registerTaskActionOperations(); err != nil {
 		panic(err)
 	}
+	if err := app.registerGlobalOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerHarnessOperations(); err != nil {
+		panic(err)
+	}
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		panic(err)
 	}

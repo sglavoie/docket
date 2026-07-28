@@ -135,10 +135,18 @@ type OutlinerModel struct {
 
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops
+
+	// alertCount mirrors AppModel.alertCount() for the title-row notification
+	// indicator, which the outliner composes itself rather than receiving as a
+	// post-render overlay.
+	alertCount int
 }
 
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
 func (m *OutlinerModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
+
+// setAlertCount injects the latest proactive-alert count into the view.
+func (m *OutlinerModel) setAlertCount(count int) { m.alertCount = count }
 
 func (m *OutlinerModel) resetViewScrollOffset() {
 	m.viewScrollOffset = 0

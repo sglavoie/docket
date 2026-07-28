@@ -72,7 +72,7 @@ func checkDailyReviewReminder(cfg AlertConfig, projects []ProjectData, now time.
 		return []Alert{{
 			Category: CategoryDailyReview,
 			Title:    "Daily review never completed",
-			Details:  "Open Daily Review (press P, choose Daily Review) and press R when done",
+			Details:  "Press Enter here, or open the Daily Review mode with m",
 			Severity: SeverityWarning,
 		}}
 	}
@@ -130,7 +130,7 @@ func checkWeeklyReviewReminder(cfg AlertConfig, projects []ProjectData, now time
 		return []Alert{{
 			Category: CategoryWeeklyReview,
 			Title:    "Weekly review never completed",
-			Details:  "Run the 'weekly review' command from the palette (:)",
+			Details:  "Press Enter here, or open Weekly Review with R",
 			Severity: SeverityWarning,
 		}}
 	}

@@ -108,11 +108,17 @@ Key names are case-sensitive where the TUI contract is case-sensitive:
 ```text
 a e s d b t n v
 N R T !
+j k h l g G J K
 tab shift+tab enter space esc
 up down left right
-ctrl+r ctrl+esc ctrl+c
+ctrl+r ctrl+u ctrl+d ctrl+esc ctrl+c
 pgup pgdown home end
 ```
+
+`j`/`k`/`h`/`l`/`g`/`G` and their arrow, `Home`/`End`, and `PgUp`/`PgDn`
+counterparts are aliases of the same operations, so a scenario may use whichever
+spelling makes the intent clearer. Inside an action sheet or picker, the same
+movement keys walk the list and `Esc` steps back one overlay.
 
 Prefer real public keys for user workflow coverage. A `command` action uses the
 same `OperationRegistry` and `OperationExecutor` as production. Explicit
@@ -146,11 +152,15 @@ The primary daily-loop contracts are:
 | Capture → Inbox | `fresh-install-capture.json`, `task-composer-minimum-layout.json` |
 | Inbox auto-advance and `n`/`b`/`t`/`s`/`d` loop | `daily-loop.json` |
 | Exact ten-mode catalog and Tab modes | `mode-catalog.json`, `navigate-outliner.json` |
-| Contextual action sheet and value picker | `date-input-minimum-layout.json`, `snooze-input-minimum-layout.json` |
-| Multi-select and bulk action sheet | `outliner-multiselect-minimum-layout.json`, `outliner-multiselect-narrow-layout.json` |
+| Vim and terminal navigation aliases | `outliner-navigation-aliases.json` |
+| Complete `Space` action catalog and declined deletion | `outliner-space-action-catalog.json` |
+| Contextual action sheet and value picker | `date-input-minimum-layout.json`, `snooze-input-minimum-layout.json`, `action-sheet-picker-cancel.json` |
+| Multi-select and bulk action intersection | `outliner-multiselect-minimum-layout.json`, `outliner-multiselect-narrow-layout.json`, `outliner-bulk-action-intersection.json` |
 | Scope Hub browse, search, mutation, and narrow layout | `context-hub-open.json`, `scope-hub-search-commit.json`, `context-hub-*.json` |
-| Empty Finder shortlist and typed search | `finder-shortlist.json`, `finder-search.json`, `finder-task-actions-narrow-layout.json` |
-| Promoted Notes, Weekly Review, Tags, and Notifications | `promoted-tools.json`, `global-notes-resize-minimum-layout.json`, `notifications-minimum-layout.json` |
+| Empty Finder shortlist and typed search | `finder-shortlist.json`, `finder-search.json` |
+| Finder `Tab` actions for task and non-task results | `finder-task-actions-narrow-layout.json`, `finder-task-action-unwind.json`, `finder-non-task-actions.json` |
+| Promoted Notes, Weekly Review, Tags, and Notifications | `promoted-tools.json`, `global-notes-resize-minimum-layout.json` |
+| Notifications: empty, dense, long-title, narrow, resized | `notifications-minimum-layout.json`, `notifications-empty-resize-layout.json`, `notifications-dense-narrow-layout.json`, `notifications-long-title-resize-layout.json`, `fresh-install-alerts-quiet.json` |
 | Global/project Inbox responsive layouts | `global-inbox-mode-*.json`, `project-inbox-mode-*.json` |
 | Visible search and narrow task detail | `visible-search-minimum-layout.json`, `task-detail-narrow-layout.json` |
 

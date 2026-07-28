@@ -1,0 +1,31 @@
+{
+  "name": "notifications-dense-narrow-layout",
+  "fixture": "alerts",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open Notifications with a dense alert list", "key": "!" },
+    { "type": "assert", "assert": "view", "value": "NotificationCenter" },
+    { "type": "assert", "assert": "contains", "value": "11 alerts" },
+    { "type": "assert", "assert": "contains", "value": "Overdue: submit quarterly report" },
+    { "type": "assert", "assert": "contains", "value": "Untriaged alert backlog item 5" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "shrink to the minimum layout", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "view", "value": "NotificationCenter" },
+    { "type": "assert", "assert": "contains", "value": "11 alerts" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "walk the dense list at the minimum layout", "key": "G" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "g" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "restore the standard layout", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "contains", "value": "Untriaged alert backlog item 5" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "📫 11" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -133,7 +133,7 @@ func TestCheckWeeklyReviewReminder_NeverCompleted(t *testing.T) {
 	if alerts[0].Title != "Weekly review never completed" {
 		t.Errorf("unexpected title: %s", alerts[0].Title)
 	}
-	if alerts[0].Details != "Run the 'weekly review' command from the palette (:)" {
+	if alerts[0].Details != "Press Enter here, or open Weekly Review with R" {
 		t.Errorf("unexpected weekly review shortcut copy: %s", alerts[0].Details)
 	}
 }

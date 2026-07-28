@@ -108,9 +108,20 @@ func (s *Service) CreateLinkedTasks(reqs []LinkedTaskRequest) ([]LinkedTaskResul
 				return nil, invalidInput("dependent", linkErr.Error())
 			}
 		case LinkSubtask:
-			if source.Type.IsLeafType() {
-				source.Type = models.TaskTypeStory
+			// Promotion is what makes a leaf source able to parent at all, so the
+			// relationship is validated against the promoted type before it is
+			// applied and before the source is mutated.
+			promoted := source.Type
+			if promoted.IsLeafType() {
+				promoted = models.TaskTypeStory
 			}
+			if !task.Type.CanBeChildOf(promoted) {
+				return nil, invalidInput("subtask", fmt.Sprintf("%s cannot be a child of %s", task.Type.HeadingPrefix(), promoted.HeadingPrefix()))
+			}
+			if source.Level+1 > models.MaxNestingDepth {
+				return nil, invalidInput("subtask", fmt.Sprintf("nesting under #%d would exceed maximum depth of %d levels", source.ShortID, models.MaxNestingDepth))
+			}
+			source.Type = promoted
 			parentID := source.ID
 			task.ParentID = &parentID
 		case LinkFollowUp:

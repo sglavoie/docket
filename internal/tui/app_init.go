@@ -170,20 +170,8 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		app.focusDismissedIDs[id] = true
 	}
 
-	if err := app.registerCoreInputOperations(); err != nil {
-		return nil, fmt.Errorf("register core input operations: %w", err)
-	}
-	if err := app.registerTaskActionOperations(); err != nil {
-		return nil, fmt.Errorf("register task action operations: %w", err)
-	}
-	if err := app.registerScopeHubOperations(); err != nil {
-		return nil, fmt.Errorf("register scope hub operations: %w", err)
-	}
-	if err := app.registerHarnessOperations(); err != nil {
-		return nil, fmt.Errorf("register harness operations: %w", err)
-	}
-	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
-		return nil, fmt.Errorf("register simplified input strategy: %w", err)
+	if err := app.registerOperationCatalog(); err != nil {
+		return nil, err
 	}
 
 	ApplyTheme(NewThemeConfig(runtime.Settings()))
@@ -203,6 +191,35 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	app.setAccentOnView(app.crossOutliner)
 
 	return app, nil
+}
+
+// registerOperationCatalog fills the registry with every operation family and
+// the input strategy that routes their direct keys.
+func (app *AppModel) registerOperationCatalog() error {
+	registrations := []struct {
+		name     string
+		register func() error
+	}{
+		{"core input", app.registerCoreInputOperations},
+		{"task action", app.registerTaskActionOperations},
+		{"scope hub", app.registerScopeHubOperations},
+		{"project", app.registerProjectOperations},
+		{"note", app.registerNoteOperations},
+		{"tag", app.registerTagOperations},
+		{"saved filter", app.registerSavedFilterOperations},
+		{"mode", app.registerModeOperations},
+		{"global", app.registerGlobalOperations},
+		{"harness", app.registerHarnessOperations},
+	}
+	for _, registration := range registrations {
+		if err := registration.register(); err != nil {
+			return fmt.Errorf("register %s operations: %w", registration.name, err)
+		}
+	}
+	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		return fmt.Errorf("register simplified input strategy: %w", err)
+	}
+	return nil
 }
 
 // recoverTUIWorkspace runs before any startup workflow evaluation, domain

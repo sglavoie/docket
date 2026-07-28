@@ -690,6 +690,7 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 			ctx.Scope = ScopeProject
 			delete(ctx.Capabilities, CapabilityAppScope)
 			ctx.Capabilities.Add(CapabilityProjectScope)
+			ctx.FocusedProjectID = m.params.Scope.ProjectID
 		}
 		ctx.ScopeProjectIDs = m.ScopeProjectIDs()
 		return ctx

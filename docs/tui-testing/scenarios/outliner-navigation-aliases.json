@@ -1,0 +1,51 @@
+{
+  "name": "outliner-navigation-aliases",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "step down with the vim alias", "key": "j" },
+    { "type": "key", "label": "step down with the vim alias", "key": "j" },
+    { "type": "key", "label": "open actions for the row under the cursor", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "key", "label": "close the sheet", "key": "esc" },
+
+    { "type": "key", "label": "jump to the first row with the vim alias", "key": "g" },
+    { "type": "key", "label": "step down with the arrow key", "key": "down" },
+    { "type": "key", "label": "step down with the arrow key", "key": "down" },
+    { "type": "key", "label": "open actions for the row under the cursor", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "key", "label": "close the sheet", "key": "esc" },
+
+    { "type": "key", "label": "jump to the last row with the vim alias", "key": "G" },
+    { "type": "key", "label": "open actions for the row under the cursor", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Explore social login" },
+    { "type": "key", "label": "close the sheet", "key": "esc" },
+
+    { "type": "key", "label": "jump to the first row with Home", "key": "home" },
+    { "type": "key", "label": "jump to the last row with End", "key": "end" },
+    { "type": "key", "label": "open actions for the row under the cursor", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Explore social login" },
+    { "type": "key", "label": "close the sheet", "key": "esc" },
+
+    { "type": "key", "label": "return to the first row", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "land on the epic that owns a subtree", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "key", "label": "collapse the subtree with h", "key": "h" },
+    { "type": "assert", "assert": "not_contains", "value": "Add password validation" },
+    { "type": "key", "label": "expand the subtree with l", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+
+    { "type": "key", "label": "page down with the half-page alias", "key": "ctrl+d" },
+    { "type": "key", "label": "page up with the half-page alias", "key": "ctrl+u" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

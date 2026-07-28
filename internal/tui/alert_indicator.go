@@ -13,6 +13,10 @@ var alertIndicatorStyle = lipgloss.NewStyle().
 	Foreground(ColorAccent). // Bright accent (follows palette)
 	Bold(true)
 
+// alertIndicatorGap is the separator between the indicator and whatever sits to
+// its left on a title row that composes the indicator itself.
+const alertIndicatorGap = 2
+
 // renderAlertIndicator returns a styled alert indicator string.
 // Returns empty string when count is 0.
 func renderAlertIndicator(count int) string {
@@ -22,11 +26,31 @@ func renderAlertIndicator(count int) string {
 	return alertIndicatorStyle.Render(fmt.Sprintf("📫 %d", count))
 }
 
-// shouldShowAlertIndicator returns true for views that display the alert indicator.
+// alertIndicatorReserve returns the rendered indicator and the exact number of
+// columns a title row must hold back for it, separator included. A zero count
+// reserves nothing.
+func alertIndicatorReserve(count int) (string, int) {
+	indicator := renderAlertIndicator(count)
+	if indicator == "" {
+		return "", 0
+	}
+	return indicator, lipgloss.Width(indicator) + alertIndicatorGap
+}
+
+// alertCountAware is implemented by views that compose the alert indicator into
+// their own title row. AppModel injects the latest count before each render;
+// those views stay out of shouldShowAlertIndicator so the post-render overlay
+// cannot draw a second indicator over the composed one.
+type alertCountAware interface {
+	setAlertCount(int)
+}
+
+// shouldShowAlertIndicator returns true for views that display the alert
+// indicator. A view that implements alertCountAware composes its own indicator
+// and is served by that seam instead of the post-render overlay.
 func (m *AppModel) shouldShowAlertIndicator() bool {
 	switch m.currentView() {
 	case ViewDashboard,
-		ViewCrossProjectOutliner,
 		ViewDailyReview, ViewWeeklyReview,
 		ViewMetricsDashboard,
 		ViewRecentActivity,

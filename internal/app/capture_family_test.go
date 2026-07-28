@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -101,6 +102,104 @@ func TestService_Capture_RejectsInvalidState(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Fatalf("rejected capture committed %d changesets", len(repo.commits))
+	}
+}
+
+// newChildHierarchyProject builds a leaf task plus a story chain that reaches the
+// nesting cap, so capture can be probed against every child placement the domain
+// accepts or rejects. Each case gets a fresh project because a successful capture
+// mutates it.
+func newChildHierarchyProject() *models.Project {
+	tasks := []*models.Task{newTask("leaf", 1, "leaf")}
+	var previous *models.Task
+	for level := 0; level <= models.MaxNestingDepth; level++ {
+		story, err := models.NewTask(fmt.Sprintf("story-%d", level), level+2, models.TaskTypeStory, "story")
+		if err != nil {
+			panic(err)
+		}
+		if previous != nil {
+			parentID := previous.ID
+			story.ParentID = &parentID
+		}
+		tasks = append(tasks, story)
+		previous = story
+	}
+	return newProject("proj-1", "Proj", tasks...)
+}
+
+// TestService_Capture_ChildHierarchyRules verifies capture enforces the same
+// child placement rules as AddTask, so the TUI's child actions cannot persist a
+// relationship the domain rejects or later detaches back to the root.
+func TestService_Capture_ChildHierarchyRules(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		parentID string
+		wantErr  error
+	}{
+		{name: "leaf parent cannot hold a child", parentID: "leaf", wantErr: app.ErrInvalidInput},
+		{name: "parent at the nesting cap is refused", parentID: "story-6", wantErr: app.ErrInvalidInput},
+		{name: "parent one below the cap is accepted", parentID: "story-5"},
+		{name: "valid parent is accepted", parentID: "story-0"},
+		{name: "deleted parent is reported missing", parentID: "gone", wantErr: app.ErrTaskNotFound},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			project := newChildHierarchyProject()
+			repo := newFakeRepo(project)
+			svc := newTestService(repo)
+
+			parentID := testCase.parentID
+			res, err := svc.Capture(app.CaptureRequest{
+				ProjectID: project.ID,
+				Title:     "child",
+				ParentID:  &parentID,
+			})
+			if testCase.wantErr != nil {
+				if !errors.Is(err, testCase.wantErr) {
+					t.Fatalf("error = %v, want %v", err, testCase.wantErr)
+				}
+				if len(repo.commits) != 0 {
+					t.Fatalf("rejected capture committed %d changesets", len(repo.commits))
+				}
+				if project.GetTaskByID("leaf").Level != 0 {
+					t.Error("a rejected capture changed the existing hierarchy")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Capture: %v", err)
+			}
+			created := project.GetTaskByID(res.TaskID)
+			if created == nil {
+				t.Fatal("captured task not found")
+			}
+			if created.ParentID == nil || *created.ParentID != parentID {
+				t.Errorf("parent = %v, want %s", created.ParentID, parentID)
+			}
+		})
+	}
+}
+
+// TestService_CreateLinkedTask_SubtaskRespectsDepthLimit verifies the subtask link
+// refuses a source already at the nesting cap instead of promoting it and writing
+// a child that would be detached back to the root.
+func TestService_CreateLinkedTask_SubtaskRespectsDepthLimit(t *testing.T) {
+	project := newChildHierarchyProject()
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.CreateLinkedTask(app.LinkedTaskRequest{
+		Task:         app.CaptureRequest{ProjectID: project.ID, Title: "too deep"},
+		SourceTaskID: "story-6",
+		Link:         app.LinkSubtask,
+	})
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+	if len(repo.commits) != 0 {
+		t.Fatalf("rejected linked subtask committed %d changesets", len(repo.commits))
+	}
+	if source := project.GetTaskByID("story-6"); source.Type != models.TaskTypeStory {
+		t.Errorf("source type = %s, want the untouched story", source.Type)
 	}
 }
 

@@ -54,6 +54,7 @@ the Outliner.
 | --- | --- |
 | Task loop | `a` capture, `e` edit, `s` start, `d` done, `b` Backlog, `t` Today, `n` Next, `Space` actions |
 | Navigation | `j`/`k` move, `h`/`l` or arrows collapse/expand, `J`/`K` reorder, `Enter` detail |
+| Jumps | `g`/`Home` first row, `G`/`End` last row, `Ctrl+U`/`PgUp` and `Ctrl+D`/`PgDn` half page |
 | Discovery | `/` visible search, `:` Finder, `m` modes, `c` Scope Hub, `v` multi-select |
 | Core tools | `N` Notes, `R` Weekly Review, `T` Tags, `!` Notifications |
 | Session | `u` undo, `Ctrl+R` redo, `Esc` back, `Ctrl+Esc` reset, `?` help, `Ctrl+C` quit |
@@ -63,6 +64,13 @@ toggles the current task and `Enter` opens bulk actions. Delete is available
 only from an action sheet and always requires confirmation. `J`/`K` reorder
 only within one project in a manually ordered All, Inbox, Next, or Backlog
 sequence.
+
+Every action lives in exactly one catalog. Direct keys, the `Space` sheet, bulk
+actions, Finder actions, and `?` help all project the same operation entries, so
+an action offered on one surface behaves identically on the others. A bulk sheet
+shows only the actions that apply to every selected task. Destructive actions are
+grouped under Danger, are labelled `confirmation required`, and always prompt
+before anything is written; declining leaves the workspace untouched.
 
 `Ctrl+Esc` closes children and overlays, clears transient filters, search, and
 selection, then restores All over All Projects.
@@ -76,13 +84,20 @@ task surface.
 
 Notes opens project notes in project focus and global scratch notes in a base
 scope. Weekly Review and Tags receive the active scope's project set.
-Notifications remains global.
+Notifications remains global: `!` opens the same Alert Center whatever the
+active scope is, and an unread count rides the top-right of the Outliner header
+so alerts stay visible without leaving the daily loop.
 
 Press `:` for Finder. Empty Finder input shows a short, bounded list of recent
 destinations followed by applicable operations. Type to search modes, scopes,
 operations, tasks, notes, tags, saved filters, pinned items, and recent items.
 Pinned, recent, and saved-filter entries are discovery results; they are not
 permanent modes or navigation tabs.
+
+In Finder, `Enter` opens the highlighted result and `Tab` opens its action
+sheet. Tasks, projects, notes, tags, saved filters, scopes, modes, and tools each
+get the actions their own kind owns, so the Finder acts on a result without
+first navigating to it. `Esc` closes the sheet and leaves the search intact.
 
 Press `/` to search the tasks visible in the current Outliner. Capture and
 search use the same canonical state tokens:

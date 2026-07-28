@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -95,6 +96,55 @@ func TestSimplifiedInputStrategySeparatesVisibleSearchAndFinder(t *testing.T) {
 	}
 }
 
+func TestSimplifiedNavigationAliasesShareOneOperationAndDisplayKey(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+	aliases := []struct {
+		keys    []string
+		want    OperationID
+		display string
+	}{
+		{keys: []string{"g", "home"}, want: operationCoreCursorTop, display: "g/Home"},
+		{keys: []string{"G", "end"}, want: operationCoreCursorBottom, display: "G/End"},
+		{keys: []string{"ctrl+u", "pgup"}, want: operationCoreCursorPageUp, display: "Ctrl+U/PgUp"},
+		{keys: []string{"ctrl+d", "pgdown"}, want: operationCoreCursorPageDown, display: "Ctrl+D/PgDn"},
+	}
+
+	handled := registry.HandledKeysForInputStrategy(InputStrategySimplified)
+	helpKeys := make(map[string]bool)
+	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+		helpKeys[item.Key] = true
+	}
+
+	for _, alias := range aliases {
+		for _, key := range alias.keys {
+			binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, key, ctx)
+			if !ok {
+				t.Fatalf("key %q did not resolve", key)
+			}
+			if binding.OperationID != alias.want {
+				t.Errorf("key %q resolved to %s, want %s", key, binding.OperationID, alias.want)
+			}
+			if binding.DisplayKey != alias.display {
+				t.Errorf("key %q display = %q, want %q", key, binding.DisplayKey, alias.display)
+			}
+			if !slices.Contains(handled, key) {
+				t.Errorf("handled keys omit %q", key)
+			}
+		}
+		if !helpKeys[alias.display] {
+			t.Errorf("help omits %q", alias.display)
+		}
+	}
+
+	footer := registry.FooterHintsForInputStrategy(InputStrategySimplified, ctx, 0)
+	for _, alias := range aliases {
+		if strings.Contains(footer, alias.display) {
+			t.Errorf("compact footer spends its hint budget on %q", alias.display)
+		}
+	}
+}
+
 func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
 	newRegistry := func(t *testing.T) *OperationRegistry {
 		t.Helper()
@@ -147,7 +197,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	}
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
-	for _, retired := range []string{"g", "F", "P", "C", "q", "w", "i", "x", "#", "|", "ctrl+n", "ctrl+x"} {
+	for _, retired := range []string{"F", "P", "C", "q", "w", "i", "x", "#", "|", "ctrl+n", "ctrl+x"} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
 			t.Fatalf("parse retired key %q: %v", retired, err)
@@ -172,7 +222,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 	for _, item := range items {
 		keys[item.Key] = true
 	}
-	for _, retired := range []string{"g", "F", "P", "C", "q", "w", "i", "x", "#", "|", "Ctrl+N", "Ctrl+X"} {
+	for _, retired := range []string{"F", "P", "C", "q", "w", "i", "x", "#", "|", "Ctrl+N", "Ctrl+X"} {
 		if keys[retired] {
 			t.Errorf("simplified help retains retired shortcut alias %q", retired)
 		}
@@ -200,9 +250,18 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 		t.Fatalf("Finder key produced %T, want ShowFinderMsg", cmd())
 	}
 
-	handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	binding, _, ok := app.operationRegistry.InputBindingForKey(
+		InputStrategySimplified,
+		"g",
+		app.operationCommandContext(),
+	)
+	if !ok || binding.OperationID != operationCoreCursorTop {
+		t.Fatalf("g resolved to %s (found %v), want %s", binding.OperationID, ok, operationCoreCursorTop)
+	}
+
+	handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'F', Text: "F"})
 	if !handled || cmd != nil {
-		t.Fatalf("retired legacy prefix g = handled %v cmd %v; want consumed no-op", handled, cmd)
+		t.Fatalf("retired legacy key F = handled %v cmd %v; want consumed no-op", handled, cmd)
 	}
 }
 

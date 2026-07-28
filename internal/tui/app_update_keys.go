@@ -50,6 +50,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if handled, cmd := m.handleTaskDeleteConfirmKey(key); handled {
 			return true, cmd
 		}
+		if handled, cmd := m.handleOperationConfirmKey(key); handled {
+			return true, cmd
+		}
 		if handled, cmd := m.handleActiveKeyOverlay(msg); handled {
 			return true, cmd
 		}
@@ -80,6 +83,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	if handled, cmd := m.handleTaskDeleteConfirmKey(key); handled {
+		return true, cmd
+	}
+
+	if handled, cmd := m.handleOperationConfirmKey(key); handled {
 		return true, cmd
 	}
 
@@ -194,6 +201,13 @@ func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	if m.operationTextPrompt != nil {
+		dismiss, cmd := dispatchOverlayKey(m.operationTextPrompt, msg)
+		if dismiss {
+			m.operationTextPrompt = nil
+		}
+		return true, cmd
+	}
 	if m.operationValuePicker != nil {
 		dismiss, cmd := dispatchOverlayKey(m.operationValuePicker, msg)
 		if dismiss {
@@ -203,10 +217,10 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		return true, cmd
 	}
-	if m.taskActionSheet != nil {
-		dismiss, cmd := dispatchOverlayKey(m.taskActionSheet, msg)
+	if m.contextActionSheet != nil {
+		dismiss, cmd := dispatchOverlayKey(m.contextActionSheet, msg)
 		if dismiss {
-			m.taskActionSheet = nil
+			m.contextActionSheet = nil
 		}
 		return true, cmd
 	}

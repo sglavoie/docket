@@ -372,7 +372,7 @@ func NewRuntimeFinder(
 		}
 	}
 
-	tools := finderTools()
+	tools := globalToolCatalog(registry, context)
 	tags := finderTagsFromProjects(runtime, loadedProjects)
 	filters := runtime.Planning().GetSavedFilters()
 	providers := []FinderProvider{
@@ -387,20 +387,6 @@ func NewRuntimeFinder(
 		FinderSavedFilterProvider{Filters: filters},
 	}
 	return NewFinder(runtime.Machine(), providers...)
-}
-
-func finderTools() []FinderTool {
-	return []FinderTool{
-		{ID: "weekly-review", Label: "Weekly Review", Description: "Strategic project health review"},
-		{ID: "metrics", Label: "Metrics", Description: "Completion, cycle-time, and throughput analytics"},
-		{ID: "roadmap", Label: "Roadmap", Description: "Timelines, forecasts, and critical paths"},
-		{ID: "blockers", Label: "Blockers", Description: "Blocked and blocking tasks"},
-		{ID: "notes", Label: "Notes", Description: "Project and global notes"},
-		{ID: "tags", Label: "Tags", Description: "Manage tags across projects"},
-		{ID: "workflow-rules", Label: "Workflow Rules", Description: "Manage workflow automation rules"},
-		{ID: "settings", Label: "Settings", Description: "Application preferences and configuration"},
-		{ID: "contexts", Label: "Contexts", Description: "Browse and apply project contexts"},
-	}
 }
 
 func finderTagsFromProjects(runtime *config.RuntimeState, projects []*models.Project) []TagInfo {

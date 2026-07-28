@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -33,11 +35,84 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseFinderMsg:
 		return true, m.popView()
 
+	case ActivateOutlinerModeMsg:
+		return m.activateDiscoveryMode(msg.Mode)
+
+	case ShowFinderContextActionsMsg:
+		return true, m.openFinderContextActionSheet(msg)
+
+	case ContextActionSheetCompletedMsg:
+		if msg.Host != ContextActionHostFinder {
+			return false, nil
+		}
+		return true, batchPaletteExecuteCmds(m.closeFinderRoute(), msg.Cmd)
+
 	case DiscoveryListSelectMsg:
 		return m.handleDiscoveryListSelection(msg)
 
 	}
 	return false, nil
+}
+
+// openFinderContextActionSheet freezes the selected row as the sole target, so
+// a later result rebuild or cursor move cannot retarget the pending action.
+func (m *AppModel) openFinderContextActionSheet(msg ShowFinderContextActionsMsg) tea.Cmd {
+	target, ok := msg.Item.Data.(FinderTarget)
+	if !ok {
+		return m.reportFinderActionsUnavailable()
+	}
+	sheet, err := m.buildFinderContextActionSheet(msg, target)
+	if err != nil {
+		m.err = err
+		return statusTimeout(5 * time.Second)
+	}
+	// An empty sheet means every advertised action was dropped as inapplicable,
+	// which is a status message rather than an unusable modal.
+	if sheet == nil || len(sheet.operationIDs()) == 0 {
+		return m.reportFinderActionsUnavailable()
+	}
+	m.contextActionSheet = sheet
+	return nil
+}
+
+func (m *AppModel) buildFinderContextActionSheet(
+	msg ShowFinderContextActionsMsg,
+	target FinderTarget,
+) (*ContextActionSheetModel, error) {
+	frozen, ok := finderContextActionTarget(msg.Context, target)
+	if !ok {
+		return nil, nil
+	}
+	if target.Kind == FinderItemTask {
+		return NewFinderTaskActionSheetModel(
+			m.GetOperationRegistry(),
+			m.operationExecutor,
+			frozen.context,
+			frozen.subtitle,
+			msg.Item.OperationIDs,
+		)
+	}
+	return NewFinderContextActionSheetModel(
+		m.GetOperationRegistry(),
+		m.operationExecutor,
+		frozen,
+		msg.Item.OperationIDs,
+	)
+}
+
+func (m *AppModel) reportFinderActionsUnavailable() tea.Cmd {
+	m.setInfoStatus("No actions are available for this result")
+	return defaultStatusTimeout()
+}
+
+// closeFinderRoute unwinds the Finder once after a completed contextual action.
+// The route check keeps it idempotent: a follow-up completion cannot pop the
+// destination the first one opened.
+func (m *AppModel) closeFinderRoute() tea.Cmd {
+	if m.currentView() != ViewFinder {
+		return nil
+	}
+	return m.popView()
 }
 
 func (m *AppModel) handleDiscoveryListSelection(msg DiscoveryListSelectMsg) (bool, tea.Cmd) {
@@ -110,11 +185,15 @@ func (m *AppModel) handleFinderTargetSelection(
 		return true, batchPaletteExecuteCmds(popCmd, openCmd)
 
 	case FinderItemTool:
-		popCmd := m.popView()
-		if target.Tool == nil {
-			return true, popCmd
+		if target.Tool == nil || m.operationExecutor == nil {
+			return true, m.popView()
 		}
-		navigationCmd := m.openFinderTool(target.Tool.ID)
+		popCmd := m.popView()
+		navigationCmd := m.executeOperationOverlayRequest(OperationExecutionRequest{
+			ID:      OperationID(target.Tool.ID),
+			Context: cloneCommandContext(context),
+			Source:  OperationSourceFinder,
+		})
 		return true, batchPaletteExecuteCmds(popCmd, navigationCmd)
 
 	case FinderItemMode:
@@ -163,36 +242,6 @@ func (m *AppModel) handleFinderTargetSelection(
 	return true, m.popView()
 }
 
-func (m *AppModel) openFinderTool(id string) tea.Cmd {
-	switch id {
-	case "weekly-review":
-		_, cmd := m.handleViewMessages(ShowWeeklyReviewMsg{})
-		return cmd
-	case "metrics":
-		_, cmd := m.handleViewMessages(ShowMetricsDashboardMsg{})
-		return cmd
-	case "roadmap":
-		_, cmd := m.handleViewMessages(ShowRoadmapMsg{})
-		return cmd
-	case "blockers":
-		_, cmd := m.handleViewMessages(ShowGlobalBlockersMsg{})
-		return cmd
-	case "notes":
-		return m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
-	case "tags":
-		_, cmd := m.handleTagMessages(ShowGlobalTagManagerMsg{})
-		return cmd
-	case "workflow-rules":
-		return m.activateManageHub(ManageParams{Module: ManageRules, Scope: AppEntityScope()})
-	case "settings":
-		return m.activateManageHub(ManageParams{Module: ManageSettings, Scope: AppEntityScope()})
-	case "contexts":
-		return m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
-	default:
-		return func() tea.Msg { return ErrorMsg{Err: ErrListItemNotFound} }
-	}
-}
-
 func (m *AppModel) activateDiscoveryMode(id OutlinerModeID) (bool, tea.Cmd) {
 	outliner := m.discoveryOutliner()
 	if outliner == nil {
@@ -213,7 +262,7 @@ func (m *AppModel) discoveryOutliner() *OutlinerModel {
 }
 
 func (m *AppModel) selectFinderNote(filename string) {
-	if m.manageHub == nil {
+	if filename == "" || m.manageHub == nil {
 		return
 	}
 	notes, ok := m.manageHub.ActiveModuleView().(*NotesViewModel)

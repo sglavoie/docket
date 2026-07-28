@@ -8,6 +8,26 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// resolveChildParent resolves a requested parent for a task that is about to be
+// created and validates the relationship the domain accepts: the parent exists
+// in the same project, its type allows the child's type, and the child would not
+// land past the nesting cap. Every creation seam shares it, so capture and add
+// can never disagree about which child relationships are legal, and a rejected
+// request is refused before any task is built or committed.
+func resolveChildParent(project *models.Project, childType models.TaskType, parentID string) (*models.Task, error) {
+	parent := project.GetTaskByID(parentID)
+	if parent == nil {
+		return nil, fmt.Errorf("%w: parent %s", ErrTaskNotFound, parentID)
+	}
+	if !childType.CanBeChildOf(parent.Type) {
+		return nil, invalidInput("parent", fmt.Sprintf("%s cannot be a child of %s", childType.HeadingPrefix(), parent.Type.HeadingPrefix()))
+	}
+	if parent.Level+1 > models.MaxNestingDepth {
+		return nil, invalidInput("parent", fmt.Sprintf("nesting under #%d would exceed maximum depth of %d levels", parent.ShortID, models.MaxNestingDepth))
+	}
+	return parent, nil
+}
+
 // Reparent changes a task's parent within its owning project. A nil newParentID
 // promotes the task to a root. The new parent must exist in the same project and
 // accept the task's type as a child, and the change must not create a circular

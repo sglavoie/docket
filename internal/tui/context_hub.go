@@ -32,7 +32,7 @@ type ContextHubModel struct {
 	active           ContextScope
 	taskCounts       map[string]int
 	surface          *ListSurfaceModel
-	actions          *scopeHubActionSheet
+	actions          *ContextActionSheetModel
 	registry         *OperationRegistry
 	executor         *OperationExecutor
 	focusedProjectID string
@@ -219,7 +219,7 @@ func (m *ContextHubModel) renderContent(width, height int) string {
 		return m.editorView(width, height)
 	}
 	if m.actions != nil {
-		return m.renderScopeHubActions(width, height)
+		return m.renderScopeHubActions(width)
 	}
 	rendered := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:       width,

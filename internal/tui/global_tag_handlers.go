@@ -1,14 +1,10 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleNormalMode handles keyboard input in normal mode.
@@ -77,25 +73,7 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyPressMsg) (tea.Model
 }
 
 func (m *GlobalTagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
-	runtime := m.runtime
-	return func() tea.Msg {
-		if runtime == nil {
-			return GlobalTagManagerErrorMsg{Err: fmt.Errorf("config is unavailable")}
-		}
-		tagName = models.NormalizeTag(tagName)
-		var pinned bool
-		var toggleErr error
-		if err := commitSettingsToRuntime(runtime, func(s *config.Settings) {
-			pinned, toggleErr = s.ToggleGlobalPinnedTag(tagName)
-		}); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
-		}
-		if toggleErr != nil {
-			return GlobalTagManagerErrorMsg{Err: toggleErr}
-		}
-
-		return GlobalTagPinnedMsg{Name: tagName, Pinned: pinned}
-	}
+	return toggleGlobalPinnedTagCmd(m.runtime, tagName)
 }
 
 // handleRenameMode handles keyboard input while in rename mode.

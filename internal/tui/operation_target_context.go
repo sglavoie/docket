@@ -21,6 +21,7 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	view := m.currentView()
 	ctx := PresentationCommandContext(view)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	ctx.FocusedProjectID = m.operationFocusedProjectID()
 	if review, ok := m.activeView().(*ReviewHubModel); ok {
 		ctx = review.CommandContext()
 	}
@@ -50,8 +51,26 @@ func (m *AppModel) operationCommandContext() CommandContext {
 		ctx.Selection.Visual = visual.IsMultiSelectActive()
 	}
 	ctx.Selection.Entities = m.operationSelectionEntities(ctx.Selection.Tasks)
+	ctx.Selection.EntityIdentities = taskEntityIdentities(ctx.Selection.Tasks)
+	ctx.CurrentEntity = commandContextCurrentEntity(ctx.Entity)
 	ctx.ScopeProjectIDs = m.operationScopeProjectIDs(project)
 	return ctx
+}
+
+// operationFocusedProjectID reports the project the session is focused on. It
+// never falls back to the cursor: base and multi-project scopes stay app-scoped
+// even when the cursor happens to sit on a project's task.
+func (m *AppModel) operationFocusedProjectID() string {
+	if out := m.activeOutliner(); out != nil {
+		if out.project != nil {
+			return out.project.ID
+		}
+		return out.scopedProjectID
+	}
+	if m.currentProject != nil {
+		return m.currentProject.ID
+	}
+	return ""
 }
 
 func (m *AppModel) operationSelectionEntities(identities []TaskIdentity) []EntityContext {
@@ -120,6 +139,8 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
 	ctx.Selection.Entities = m.operationSelectionEntities(ctx.Selection.Tasks)
+	ctx.Selection.EntityIdentities = taskEntityIdentities(ctx.Selection.Tasks)
+	ctx.CurrentEntity = commandContextCurrentEntity(ctx.Entity)
 	projects := m.scopeProjects()
 	ctx.ScopeProjectIDs = make([]string, 0, len(projects))
 	for _, project := range projects {
@@ -128,6 +149,11 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 		}
 	}
 	ctx.ScopeProjectIDs = normalizedProjectIDs(ctx.ScopeProjectIDs)
+	if m.project != nil {
+		ctx.FocusedProjectID = m.project.ID
+	} else {
+		ctx.FocusedProjectID = m.scopedProjectID
+	}
 	return ctx
 }
 

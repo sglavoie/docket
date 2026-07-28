@@ -158,77 +158,41 @@ func tagManagerError(err error) TagManagerErrorMsg {
 	return TagManagerErrorMsg{Err: err}
 }
 
+// missingTagManagerProjectCmd reports the manager losing its project rather than
+// dispatching a mutation against an unnamed catalog.
+func missingTagManagerProjectCmd() tea.Cmd {
+	return func() tea.Msg {
+		return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
+	}
+}
+
 // renameTag renames a tag in the project catalog and task usages.
 func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
-	project := m.project
-	coordinator := m.coordinator
-	return func() tea.Msg {
-		if project == nil {
-			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
-		}
-		newName = models.NormalizeTag(newName)
-		if newName == "" || newName == oldName {
-			return nil
-		}
-
-		res, err := coordinator.RenameCatalog(project.ID, oldName, newName)
-		if err != nil {
-			return tagManagerError(err)
-		}
-		if !res.Changed {
-			return nil
-		}
-
-		return TagRenamedMsg{OldName: oldName, NewName: res.Tag}
+	if m.project == nil {
+		return missingTagManagerProjectCmd()
 	}
+	return renameProjectTagCmd(m.coordinator, m.project.ID, oldName, newName)
 }
 
 func (m *TagManagerModel) addProjectTag(tagName string) tea.Cmd {
-	project := m.project
-	coordinator := m.coordinator
-	return func() tea.Msg {
-		if project == nil {
-			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
-		}
-		res, err := coordinator.AddCatalog(project.ID, tagName)
-		if err != nil {
-			return tagManagerError(err)
-		}
-
-		return TagAddedMsg{Name: res.Tag}
+	if m.project == nil {
+		return missingTagManagerProjectCmd()
 	}
+	return addProjectTagCmd(m.coordinator, m.project.ID, tagName)
 }
 
 func (m *TagManagerModel) removeProjectTag(tagName string) tea.Cmd {
-	project := m.project
-	coordinator := m.coordinator
-	return func() tea.Msg {
-		if project == nil {
-			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
-		}
-		res, err := coordinator.RemoveCatalog(project.ID, tagName)
-		if err != nil {
-			return tagManagerError(err)
-		}
-
-		return TagRemovedMsg{Name: res.Tag}
+	if m.project == nil {
+		return missingTagManagerProjectCmd()
 	}
+	return removeProjectTagCmd(m.coordinator, m.project.ID, tagName)
 }
 
 func (m *TagManagerModel) togglePinnedTag(tagName string) tea.Cmd {
-	project := m.project
-	coordinator := m.coordinator
-	return func() tea.Msg {
-		if project == nil {
-			return TagManagerErrorMsg{Err: fmt.Errorf("project is unavailable")}
-		}
-		res, err := coordinator.TogglePinned(project.ID, tagName)
-		if err != nil {
-			return tagManagerError(err)
-		}
-
-		return TagPinnedMsg{Name: res.Tag, Pinned: res.Pinned}
+	if m.project == nil {
+		return missingTagManagerProjectCmd()
 	}
+	return toggleProjectPinnedTagCmd(m.coordinator, m.project.ID, tagName)
 }
 
 // filterByTag closes the tag manager and applies the selected tag to the

@@ -83,7 +83,9 @@ func upgradeKittyKeyboard() tea.Cmd {
 // hasActiveConfirmDialog returns true if the current view has an active confirm dialog.
 // Used to prevent the global clipboard handler from intercepting y/Y during delete confirmations.
 func (m *AppModel) hasActiveConfirmDialog() bool {
-	if m.projectArchiveConfirm.IsActive() || m.taskDeleteConfirm.IsActive() {
+	if m.projectArchiveConfirm.IsActive() ||
+		m.taskDeleteConfirm.IsActive() ||
+		m.operationConfirm.IsActive() {
 		return true
 	}
 	view := m.activeView()

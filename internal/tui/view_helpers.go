@@ -17,14 +17,15 @@ type TitleParams struct {
 	FilterParts   []string
 	SortField     SortField
 	SortAscending bool
-	Width         int    // 0 = no truncation
-	Counter       string // optional right-aligned open-loops counter (Zeigarnik)
+	// Width is the room the title line owns, already net of any right-side
+	// reservation the caller makes (alert indicator, counter). 0 = no truncation.
+	Width int
 }
 
 // renderProjectTitle renders the project title line with context, notes indicator,
 // filter badges, and archived status. Shared across all project-level views.
 // When params is non-nil, filter/sort info is appended inline, truncated to fit
-// within params.Width (reserving space for the alert indicator).
+// within params.Width.
 func renderProjectTitle(project *models.Project, runtime *config.RuntimeState, params *TitleParams) string {
 	var b strings.Builder
 	title := fmt.Sprintf("%s - Tasks", project.Name)
@@ -52,17 +53,6 @@ func renderProjectTitle(project *models.Project, runtime *config.RuntimeState, p
 		}
 	}
 
-	// Append right-aligned open-loops counter if provided and there's room.
-	if params != nil && params.Counter != "" && params.Width > 0 {
-		base := b.String()
-		counter := MutedStyle.Render(params.Counter)
-		gap := params.Width - lipgloss.Width(base) - lipgloss.Width(counter) - titleCounterAlertReserve
-		if gap > 0 {
-			b.WriteString(strings.Repeat(" ", gap))
-			b.WriteString(counter)
-		}
-	}
-
 	return b.String()
 }
 
@@ -77,11 +67,9 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 		return ""
 	}
 
-	// Reserve space for alert indicator (icon + count + gap)
-	alertReserve := 10
-	maxWidth := params.Width - alertReserve
-	if maxWidth <= 0 || params.Width == 0 {
-		// No width constraint or too narrow — render full
+	maxWidth := params.Width
+	if maxWidth <= 0 {
+		// No width constraint — render full
 		maxWidth = 0
 	}
 

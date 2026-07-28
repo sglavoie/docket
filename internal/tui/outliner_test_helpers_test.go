@@ -34,6 +34,18 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerScopeHubOperations(); err != nil {
 		t.Fatalf("register scope hub operations: %v", err)
 	}
+	if err := model.registerProjectOperations(); err != nil {
+		t.Fatalf("register project operations: %v", err)
+	}
+	if err := model.registerNoteOperations(); err != nil {
+		t.Fatalf("register note operations: %v", err)
+	}
+	if err := model.registerTagOperations(); err != nil {
+		t.Fatalf("register tag operations: %v", err)
+	}
+	if err := model.registerSavedFilterOperations(); err != nil {
+		t.Fatalf("register saved filter operations: %v", err)
+	}
 	if err := model.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}

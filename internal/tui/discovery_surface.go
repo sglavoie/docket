@@ -29,9 +29,21 @@ type ShowFinderMsg struct {
 
 type CloseFinderMsg struct{}
 
+// ShowFinderContextActionsMsg requests the shared contextual sheet for the
+// selected Finder row, carrying the row and the frozen context it was ranked in.
+type ShowFinderContextActionsMsg struct {
+	Item    ListItem
+	Context CommandContext
+}
+
 // ShowModeListMsg opens the ten-mode catalog through the same searchable List
 // Surface interaction used by the Finder.
 type ShowModeListMsg struct{}
+
+// ActivateOutlinerModeMsg switches the discovery Outliner to one catalog mode.
+type ActivateOutlinerModeMsg struct {
+	Mode OutlinerModeID
+}
 
 // DiscoveryListSelectMsg carries the selected typed ListItem and the frozen
 // operation context from the route that opened discovery.
@@ -269,10 +281,12 @@ func (model *DiscoveryListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Kind:    model.kind,
 				}
 			}
+		case "tab":
+			return model, model.contextActionsCmd()
 		case "up", "ctrl+k", "ctrl+p", "shift+tab":
 			model.surface.MoveCursor(-1)
 			return model, nil
-		case "down", "ctrl+j", "ctrl+n", "tab":
+		case "down", "ctrl+j", "ctrl+n":
 			model.surface.MoveCursor(1)
 			return model, nil
 		case "home":
@@ -305,6 +319,29 @@ func (model *DiscoveryListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 	return model, nil
+}
+
+// contextActionsCmd asks the host for the selected row's contextual sheet. The
+// Finder keeps its query, cursor, and viewport because the sheet opens as an
+// app-owned overlay above this model instead of replacing it.
+func (model *DiscoveryListModel) contextActionsCmd() tea.Cmd {
+	if model.kind != DiscoverySurfaceFinder {
+		return nil
+	}
+	item, ok := model.surface.CurrentItem()
+	if !ok {
+		return nil
+	}
+	if !item.Enabled() {
+		model.notice = item.DisabledReason
+		return nil
+	}
+	return func() tea.Msg {
+		return ShowFinderContextActionsMsg{
+			Item:    item,
+			Context: cloneCommandContext(model.context),
+		}
+	}
 }
 
 // SetSize implements the shared view sizing contract.
@@ -367,7 +404,7 @@ func (model *DiscoveryListModel) View() tea.View {
 		content.WriteString("\n")
 	}
 	content.WriteString(renderStatusBarFooter(
-		HelpStyle.Render("Type to search · j/k navigate · Enter open · Esc close"),
+		HelpStyle.Render("Type to search · Enter open · Tab actions · Esc close"),
 		"",
 		width,
 	))

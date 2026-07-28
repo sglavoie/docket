@@ -48,6 +48,10 @@ const (
 	operationCoreActions          OperationID = "tui.core.actions"
 	operationCoreCursorDown       OperationID = "tui.core.cursor-down"
 	operationCoreCursorUp         OperationID = "tui.core.cursor-up"
+	operationCoreCursorTop        OperationID = "tui.core.cursor-top"
+	operationCoreCursorBottom     OperationID = "tui.core.cursor-bottom"
+	operationCoreCursorPageUp     OperationID = "tui.core.cursor-page-up"
+	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
 	operationCoreCollapseParent   OperationID = "tui.core.collapse-parent"
 	operationCoreExpand           OperationID = "tui.core.expand"
 	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
@@ -88,6 +92,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 2, FooterLabel: "actions"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
+			{OperationID: operationCoreCursorTop, Keys: []string{"g", "home"}, DisplayKey: "g/Home"},
+			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
+			{OperationID: operationCoreCursorPageUp, Keys: []string{"ctrl+u", "pgup"}, DisplayKey: "Ctrl+U/PgUp"},
+			{OperationID: operationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn"},
 			{OperationID: operationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
 			{OperationID: operationCoreReorderDown, Keys: []string{"J"}, DisplayKey: "J"},

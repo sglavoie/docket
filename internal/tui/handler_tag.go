@@ -72,6 +72,12 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		m.applyTagFilterToView(msg.Source, tags)
 		return true, nil
 
+	case ApplyTagFilterMsg:
+		if msg.Tag != "" {
+			m.applyTagFilterToView(msg.Source, map[string]bool{msg.Tag: true})
+		}
+		return true, nil
+
 	case TagRenamedMsg:
 		if m.currentView() == ViewTagManager {
 			cmd := m.views.Update(ViewTagManager, msg)
@@ -80,6 +86,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		}
 		m.popView()
 		m.reloadAndRefreshProjectTree()
+		m.refreshFinderItems()
 		return true, nil
 
 	case TagAddedMsg:
@@ -89,6 +96,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, cmd
 		}
 		m.reloadAndRefreshProjectTree()
+		m.refreshFinderItems()
 		return true, nil
 
 	case TagRemovedMsg:
@@ -98,6 +106,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, cmd
 		}
 		m.reloadAndRefreshProjectTree()
+		m.refreshFinderItems()
 		return true, nil
 
 	case TagPinnedMsg:
@@ -107,6 +116,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, cmd
 		}
 		m.reloadAndRefreshProjectTree()
+		m.refreshFinderItems()
 		return true, nil
 
 	case TagManagerFilterMsg:
@@ -138,6 +148,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 
 	case GlobalTagRenamedMsg:
 		m.popView()
+		m.refreshFinderItems()
 		return true, nil
 
 	case GlobalTagPinnedMsg:
@@ -147,6 +158,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, cmd
 		}
 		m.refreshAfterGlobalTagPinnedChange()
+		m.refreshFinderItems()
 		return true, nil
 
 	case GlobalTagManagerErrorMsg:
@@ -274,25 +286,20 @@ func updateTagFilterAfterCatalogChange(tags map[string]bool, oldName, newName st
 	}
 }
 
+// tagFilterAppliesTo reports whether a view owns a tag filter that a selection
+// can land in. It is the single authority for both dispatch and for advertising
+// the tag filter operation, so an advertised filter can never silently no-op.
+func tagFilterAppliesTo(view PresentationID) bool {
+	switch view {
+	case ViewCrossProjectOutliner, ViewNotes, ViewWeeklyReview:
+		return true
+	default:
+		return false
+	}
+}
+
 // applyTagFilterToView dispatches a tag filter selection to the originating view.
 func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]bool) {
-	// Views that implement commonFilterView can be handled generically.
-	standardViews := []PresentationID{
-		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity,
-	}
-	for _, vt := range standardViews {
-		if source != vt {
-			continue
-		}
-		if v := m.views.Get(vt); v != nil {
-			if cfv, ok := v.(commonFilterView); ok {
-				cfv.getFilter().Tags = tags
-				cfv.refreshAndClamp()
-			}
-		}
-		return
-	}
-
 	switch source {
 	case ViewCrossProjectOutliner:
 		if m.crossOutliner != nil {
@@ -308,7 +315,13 @@ func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]b
 				notesView.loadNotes()
 			}
 		}
-	default:
+	case ViewWeeklyReview:
+		if v := m.views.Get(source); v != nil {
+			if cfv, ok := v.(commonFilterView); ok {
+				cfv.getFilter().Tags = tags
+				cfv.refreshAndClamp()
+			}
+		}
 	}
 }
 

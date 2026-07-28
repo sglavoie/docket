@@ -266,16 +266,11 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	// possibly-stale load.
 	var parent *models.Task
 	if req.ParentID != nil {
-		parent = project.GetTaskByID(*req.ParentID)
-		if parent == nil {
-			return TaskRef{}, "", fmt.Errorf("%w: parent %s", ErrTaskNotFound, *req.ParentID)
+		resolved, parentErr := resolveChildParent(project, normalized.taskType, *req.ParentID)
+		if parentErr != nil {
+			return TaskRef{}, "", parentErr
 		}
-		if !normalized.taskType.CanBeChildOf(parent.Type) {
-			return TaskRef{}, "", invalidInput("parent", fmt.Sprintf("%s cannot be a child of %s", normalized.taskType.HeadingPrefix(), parent.Type.HeadingPrefix()))
-		}
-		if parent.Level+1 > models.MaxNestingDepth {
-			return TaskRef{}, "", invalidInput("parent", fmt.Sprintf("nesting under #%d would exceed maximum depth of %d levels", parent.ShortID, models.MaxNestingDepth))
-		}
+		parent = resolved
 	}
 
 	task, err := models.NewTask(s.ids.NewID(), project.GetNextShortID(), normalized.taskType, normalized.title)

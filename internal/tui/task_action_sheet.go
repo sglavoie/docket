@@ -2,11 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
-	"unicode/utf8"
-
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 )
 
 const (
@@ -27,59 +24,42 @@ var taskActionCategories = []ListCategory{
 	{ID: taskActionCategoryDanger, Label: "Danger"},
 }
 
-// TaskActionSheetExecuteMsg asks the shell to execute the frozen operation
-// request selected from the task action sheet.
-type TaskActionSheetExecuteMsg struct {
-	Request OperationExecutionRequest
-}
-
-// TaskActionSheetClosedMsg dismisses the sheet without executing an action.
-type TaskActionSheetClosedMsg struct{}
-
-// TaskActionSheetModel is a searchable, grouped ListSurface projection of the
-// operations applicable to the frozen cursor task or visual selection.
-type TaskActionSheetModel struct {
-	surface   *ListSurfaceModel
-	context   CommandContext
-	taskTitle string
-	targets   int
-	bulk      bool
-	searching bool
-}
-
-// NewTaskActionSheetModel builds a frozen action catalog for the selected
-// target set. The CommandContext carries stable task and scope identities, so
-// cursor changes beneath the modal cannot retarget the eventual operation.
+// NewTaskActionSheetModel builds the Outliner task sheet on the shared
+// contextual engine. The CommandContext carries stable task and scope
+// identities, so cursor changes beneath the modal cannot retarget the eventual
+// operation.
 func NewTaskActionSheetModel(
 	registry *OperationRegistry,
+	executor *OperationExecutor,
 	context CommandContext,
 	taskTitle string,
-) (*TaskActionSheetModel, error) {
+) (*ContextActionSheetModel, error) {
 	descriptors := TaskActionSheetDescriptors(registry, context)
-	items := make([]ListItem, 0, len(descriptors))
+	ids := make([]OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
-		descriptorCopy := descriptor
-		secondary := taskActionSecondaryText(descriptor)
-		items = append(items, ListItem{
-			ID:             ListItemID("task-action:" + string(descriptor.ID)),
-			CategoryID:     taskActionCategory(descriptor),
-			PrimaryText:    descriptor.Label,
-			SecondaryText:  secondary,
-			Aliases:        append([]string(nil), descriptor.Aliases...),
-			DisabledReason: taskActionDisabledReason(descriptor, context),
-			OperationIDs:   []OperationID{descriptor.ID},
-			Preview: ListPreview{
-				Title: descriptor.Label,
-				Fields: []ListPreviewField{
-					{Label: "Risk", Value: string(descriptor.Risk)},
-					{Label: "Value", Value: string(descriptor.ValueProviderID)},
-				},
-			},
-			Data: descriptorCopy,
-		})
+		ids = append(ids, descriptor.ID)
 	}
-	surface, err := NewListSurfaceModel(items, taskActionCategories, ListSurfaceConfig{
-		SelectionMode: ListSelectionSingle,
+	title := "Task Actions"
+	source := OperationSourceActionSheet
+	if context.Selection.Visual {
+		title = "Bulk Actions"
+		source = OperationSourceBulk
+	}
+	return NewContextActionSheetModel(registry, executor, context, ids, ContextActionSheetConfig{
+		Host:         ContextActionHostOutliner,
+		Completion:   ContextActionCompleteCloseSheet,
+		Source:       source,
+		Title:        title,
+		Subtitle:     strings.TrimSpace(taskTitle),
+		ItemIDPrefix: "task-action:",
+		Categories:   taskActionCategories,
+		CategoryFor:  taskActionCategory,
+		SecondaryFor: operationActionSecondaryText,
+		DisabledFor: func(descriptor OperationDescriptor) string {
+			return taskActionDisabledReason(descriptor, context)
+		},
+		Targets: taskActionTargetCount(context),
+		Bulk:    context.Selection.Visual,
 		EmptyState: ListEmptyState{
 			Title:  "No task actions available.",
 			Detail: "Select a task that can be acted on.",
@@ -89,16 +69,42 @@ func NewTaskActionSheetModel(
 			Detail: "Clear or change the search.",
 		},
 	})
-	if err != nil {
-		return nil, err
-	}
-	return &TaskActionSheetModel{
-		surface:   surface,
-		context:   cloneCommandContext(context),
-		taskTitle: strings.TrimSpace(taskTitle),
-		targets:   taskActionTargetCount(context),
-		bulk:      context.Selection.Visual,
-	}, nil
+}
+
+// NewFinderTaskActionSheetModel builds the sheet for one Finder task row from
+// the authoritative manifest that row carries. Completion closes the Finder
+// stack because the sheet was reached through it, unlike the Outliner sheet,
+// which returns to the rows underneath it.
+func NewFinderTaskActionSheetModel(
+	registry *OperationRegistry,
+	executor *OperationExecutor,
+	context CommandContext,
+	taskTitle string,
+	operationIDs []OperationID,
+) (*ContextActionSheetModel, error) {
+	return NewContextActionSheetModel(registry, executor, context, operationIDs, ContextActionSheetConfig{
+		Host:         ContextActionHostFinder,
+		Completion:   ContextActionCompleteCloseHost,
+		Source:       OperationSourceActionSheet,
+		Title:        "Task Actions",
+		Subtitle:     strings.TrimSpace(taskTitle),
+		ItemIDPrefix: "finder-task-action:",
+		Categories:   taskActionCategories,
+		CategoryFor:  taskActionCategory,
+		SecondaryFor: operationActionSecondaryText,
+		DisabledFor: func(descriptor OperationDescriptor) string {
+			return taskActionDisabledReason(descriptor, context)
+		},
+		Targets: 1,
+		EmptyState: ListEmptyState{
+			Title:  "No task actions available.",
+			Detail: "This task cannot be acted on from the Finder.",
+		},
+		NoMatchState: ListEmptyState{
+			Title:  "No matching actions.",
+			Detail: "Clear or change the search.",
+		},
+	})
 }
 
 // TaskActionSheetDescriptors returns the deterministic selected-task operation
@@ -116,7 +122,10 @@ func TaskActionSheetDescriptors(
 			!taskActionDescriptorApplicableToEveryTarget(descriptor, context) {
 			continue
 		}
-		if context.Selection.Visual && !bulkTaskActionSheetEligible(descriptor) {
+		// The manifest Bulk flag is the single bulk-eligibility rule: an action
+		// reaches a multi-target sheet only when a multi-task coordinator or the
+		// canonical delete transaction can carry every frozen selected task.
+		if context.Selection.Visual && !taskOperationSupportsBulk(descriptor.ID) {
 			continue
 		}
 		if _, err := (OperationTargetResolver{}).Resolve(descriptor, context); err != nil {
@@ -162,22 +171,12 @@ func taskActionDescriptorApplicableToEveryTarget(
 	return true
 }
 
-func bulkTaskActionSheetEligible(descriptor OperationDescriptor) bool {
-	switch descriptor.ID {
-	case operationTaskSetState,
-		operationTaskSetPriority,
-		operationTaskSetDueDate,
-		operationTaskSetSnooze,
-		operationTaskSetTags:
-		return true
-	default:
-	}
-	return descriptor.Risk == OperationRiskDestructive &&
-		descriptor.Category == OperationCategoryTask &&
-		strings.EqualFold(descriptor.Label, "delete task")
-}
-
 func taskActionSheetEligible(descriptor OperationDescriptor) bool {
+	// The manifest decides first so the sheet can reuse the core Edit and Detail
+	// operations instead of registering task-only copies of them.
+	if _, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
+		return true
+	}
 	id := string(descriptor.ID)
 	label := strings.ToLower(descriptor.Label)
 	if strings.HasPrefix(id, "tui.core.") || descriptor.ID == operationCoreActions {
@@ -197,19 +196,6 @@ func taskActionSheetEligible(descriptor OperationDescriptor) bool {
 		"move to project", "manage dependencies", "move/reparent task":
 		return false
 	}
-	if descriptor.ID == operationTaskSetState ||
-		descriptor.ID == operationTaskSetPriority ||
-		descriptor.ID == operationTaskSetDueDate ||
-		descriptor.ID == operationTaskSetSnooze ||
-		descriptor.ID == operationTaskSetTags ||
-		descriptor.ID == operationTaskMoveProject ||
-		descriptor.ID == operationTaskSetDependencies ||
-		descriptor.ID == operationTaskSetParent {
-		return true
-	}
-	if label == "task activity" || label == "peek task detail" {
-		return true
-	}
 	if descriptor.Category != OperationCategoryTask {
 		return false
 	}
@@ -221,13 +207,8 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 	if descriptor.Risk == OperationRiskDestructive {
 		return taskActionCategoryDanger
 	}
-	switch descriptor.ValueProviderID {
-	case ValueProviderState, ValueProviderPriority, ValueProviderDueDate, ValueProviderSnooze:
-		return taskActionCategoryPlan
-	case ValueProviderTags, ValueProviderProject, ValueProviderParent:
-		return taskActionCategoryOrganize
-	case ValueProviderDependencies:
-		return taskActionCategoryRelationships
+	if entry, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
+		return entry.Category
 	}
 	label := strings.ToLower(descriptor.Label)
 	switch {
@@ -256,7 +237,7 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 	}
 }
 
-func taskActionSecondaryText(descriptor OperationDescriptor) string {
+func operationActionSecondaryText(descriptor OperationDescriptor) string {
 	switch {
 	case descriptor.ValueProviderID != "":
 		return "choose " + strings.ReplaceAll(string(descriptor.ValueProviderID), "-", " ")
@@ -289,6 +270,9 @@ func taskActionDisabledReason(
 	return ""
 }
 
+// sortTaskActionDescriptors groups by action-sheet category, then puts manifest
+// operations in their authoritative order ahead of any other action in the same
+// category.
 func sortTaskActionDescriptors(descriptors []OperationDescriptor) {
 	categoryRank := func(id ListCategoryID) int {
 		for index, category := range taskActionCategories {
@@ -298,134 +282,36 @@ func sortTaskActionDescriptors(descriptors []OperationDescriptor) {
 		}
 		return len(taskActionCategories)
 	}
-	for i := 1; i < len(descriptors); i++ {
-		for j := i; j > 0; j-- {
-			left, right := descriptors[j-1], descriptors[j]
-			leftRank, rightRank := categoryRank(taskActionCategory(left)), categoryRank(taskActionCategory(right))
-			leftLabel, rightLabel := strings.ToLower(left.Label), strings.ToLower(right.Label)
-			if leftRank < rightRank ||
-				(leftRank == rightRank && leftLabel < rightLabel) ||
-				(leftRank == rightRank && leftLabel == rightLabel && left.ID < right.ID) {
-				break
-			}
-			descriptors[j-1], descriptors[j] = descriptors[j], descriptors[j-1]
+	sort.SliceStable(descriptors, func(i, j int) bool {
+		left, right := descriptors[i], descriptors[j]
+		leftCategory := categoryRank(taskActionCategory(left))
+		rightCategory := categoryRank(taskActionCategory(right))
+		if leftCategory != rightCategory {
+			return leftCategory < rightCategory
 		}
-	}
+		leftManifest := taskOperationManifestRank(left.ID)
+		rightManifest := taskOperationManifestRank(right.ID)
+		if leftManifest != rightManifest {
+			return leftManifest < rightManifest
+		}
+		leftLabel, rightLabel := strings.ToLower(left.Label), strings.ToLower(right.Label)
+		if leftLabel != rightLabel {
+			return leftLabel < rightLabel
+		}
+		return left.ID < right.ID
+	})
 }
 
 func cloneCommandContext(context CommandContext) CommandContext {
 	context.Capabilities = cloneCapabilitySet(context.Capabilities)
 	context.Selection.Tasks = append([]TaskIdentity(nil), context.Selection.Tasks...)
 	context.Selection.Entities = append([]EntityContext(nil), context.Selection.Entities...)
+	context.Selection.EntityIdentities = append(
+		[]EntityIdentity(nil),
+		context.Selection.EntityIdentities...,
+	)
 	context.ScopeProjectIDs = append([]string(nil), context.ScopeProjectIDs...)
 	return context
-}
-
-// handleKey implements the shell's compact key-interceptor contract.
-func (model *TaskActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
-	if model == nil || model.surface == nil {
-		return nil, true, TaskActionSheetClosedMsg{}
-	}
-	key := msg.String()
-	if model.searching {
-		switch key {
-		case "esc":
-			if model.surface.Query().Raw != "" {
-				model.surface.SetQuery("")
-				return nil, false, nil
-			}
-			model.searching = false
-			return nil, false, nil
-		case "enter":
-			model.searching = false
-			return nil, false, nil
-		case "backspace":
-			query := model.surface.Query().Raw
-			if query != "" {
-				_, size := utf8.DecodeLastRuneInString(query)
-				model.surface.SetQuery(query[:len(query)-size])
-			}
-			return nil, false, nil
-		default:
-			if msg.Text != "" {
-				model.surface.SetQuery(model.surface.Query().Raw + msg.Text)
-			}
-			return nil, false, nil
-		}
-	}
-
-	switch key {
-	case "esc":
-		return nil, true, TaskActionSheetClosedMsg{}
-	case "/":
-		model.searching = true
-	case "up", "k", "ctrl+p":
-		model.surface.MoveCursor(-1)
-	case "down", "j", "ctrl+n":
-		model.surface.MoveCursor(1)
-	case "home", "g":
-		model.surface.MoveCursorToStart()
-	case "end", "G":
-		model.surface.MoveCursorToEnd()
-	case "pgup":
-		model.surface.PageCursor(-1)
-	case "pgdown":
-		model.surface.PageCursor(1)
-	case "enter":
-		item, ok := model.surface.CurrentItem()
-		if !ok {
-			return nil, false, nil
-		}
-		if !item.Enabled() {
-			return nil, false, StatusMsg(item.DisabledReason)
-		}
-		descriptor, ok := item.Data.(OperationDescriptor)
-		if !ok {
-			return nil, false, StatusMsg("Action is unavailable")
-		}
-		return nil, false, TaskActionSheetExecuteMsg{Request: OperationExecutionRequest{
-			ID:      descriptor.ID,
-			Context: cloneCommandContext(model.context),
-			Source:  model.invocationSource(),
-		}}
-	}
-	return nil, false, nil
-}
-
-func (model *TaskActionSheetModel) invocationSource() OperationInvocationSource {
-	if model != nil && model.bulk {
-		return OperationSourceBulk
-	}
-	return OperationSourceActionSheet
-}
-
-func (model *TaskActionSheetModel) render(width int) string {
-	if model == nil || model.surface == nil {
-		return ""
-	}
-	innerWidth := min(max(width*3/5, 48), max(width-6, 24))
-	listHeight := min(max(len(model.surface.Rows()), 7), 16)
-	query := model.surface.Query().Raw
-	search := "Press / to search"
-	if model.searching || query != "" {
-		cursor := ""
-		if model.searching {
-			cursor = "▏"
-		}
-		search = "Search: " + query + cursor
-	}
-	content := MutedStyle.Render(search) + "\n\n" +
-		RenderCompactListSurface(model.surface, innerWidth-2, listHeight)
-	titleText := "Task Actions"
-	if model.bulk {
-		titleText = fmt.Sprintf("Bulk Actions · %d selected", model.targets)
-	}
-	if model.taskTitle != "" {
-		titleText += ": " + truncateToVisualWidth(model.taskTitle, max(innerWidth-20, 12))
-	}
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
-	footer := HelpStyle.Render("Enter choose · / search · Esc close")
-	return renderTitledBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
 }
 
 func (m *AppModel) openTaskActionSheet(context CommandContext) error {
@@ -446,26 +332,36 @@ func (m *AppModel) openTaskActionSheet(context CommandContext) error {
 				taskOperationEntity(ref.Task, ref.Project),
 			)
 		}
+		// operationTaskRefs can drop rows the selection still names, so the typed
+		// identities are rederived rather than inherited; otherwise the frozen
+		// sheet would act on a wider set than it lists.
+		context.Selection.EntityIdentities = taskEntityIdentities(context.Selection.Tasks)
 		context.Entity = context.Selection.Entities[0]
 		sheet, err := NewTaskActionSheetModel(
 			m.GetOperationRegistry(),
+			m.operationExecutor,
 			context,
 			fmt.Sprintf("%d task(s)", len(refs)),
 		)
 		if err != nil {
 			return err
 		}
-		m.taskActionSheet = sheet
+		m.contextActionSheet = sheet
 		return nil
 	}
 	task, _ := m.getCurrentCursorTaskAndProject()
 	if task == nil {
 		return fmt.Errorf("select a task to open actions")
 	}
-	sheet, err := NewTaskActionSheetModel(m.GetOperationRegistry(), context, task.Title)
+	sheet, err := NewTaskActionSheetModel(
+		m.GetOperationRegistry(),
+		m.operationExecutor,
+		context,
+		task.Title,
+	)
 	if err != nil {
 		return err
 	}
-	m.taskActionSheet = sheet
+	m.contextActionSheet = sheet
 	return nil
 }

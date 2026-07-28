@@ -430,9 +430,11 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 			Prepend:           true,
 			PlanningArtifacts: m.preset.PlanningArtifacts,
 		}
-		if parentID != nil && target.GetTaskByID(*parentID) == nil {
-			m.errors = append(m.errors, lineError{line: idx + 1, message: fmt.Sprintf("parent not found: %s", *parentID)})
-			continue
+		if parentID != nil {
+			if err := validateComposerParent(target, taskType, *parentID); err != nil {
+				m.errors = append(m.errors, lineError{line: idx + 1, message: err.Error()})
+				continue
+			}
 		}
 		if m.preset.Kind == ComposerLinked {
 			if m.preset.SourceTask == nil || target.GetTaskByID(m.preset.SourceTask.ID) == nil {
@@ -452,6 +454,23 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 		return nil, nil, false
 	}
 	return reqs, linked, true
+}
+
+// validateComposerParent mirrors the application-layer child placement rule so a
+// rejected nesting is reported on the offending line instead of failing the whole
+// submission after the fact.
+func validateComposerParent(project *models.Project, taskType models.TaskType, parentID string) error {
+	parent := project.GetTaskByID(parentID)
+	if parent == nil {
+		return fmt.Errorf("parent not found: %s", parentID)
+	}
+	if !taskType.CanBeChildOf(parent.Type) {
+		return fmt.Errorf("%s cannot be a child of %s", taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
+	}
+	if parent.Level+1 > models.MaxNestingDepth {
+		return fmt.Errorf("nesting under #%d would exceed maximum depth of %d levels", parent.ShortID, models.MaxNestingDepth)
+	}
+	return nil
 }
 
 func cloneStringPtr(value *string) *string {

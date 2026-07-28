@@ -1,0 +1,38 @@
+{
+  "name": "outliner-bulk-action-intersection",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto an In Progress task", "key": "j" },
+    { "type": "key", "label": "enter multi-select", "key": "v" },
+    { "type": "key", "label": "select the In Progress task", "key": "space" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move to an Inbox task in the same project", "key": "j" },
+    { "type": "key", "label": "select the Inbox task", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "key", "label": "open bulk actions for the frozen selection", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Bulk Actions · 2 selected" },
+
+    { "type": "assert", "assert": "contains", "value": "Set State" },
+    { "type": "assert", "assert": "contains", "value": "Set Priority" },
+    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "contains", "value": "Set Tags" },
+    { "type": "assert", "assert": "contains", "value": "Delete Task" },
+
+    { "type": "assert", "assert": "not_contains", "value": "Open Task Detail" },
+    { "type": "assert", "assert": "not_contains", "value": "Edit Task" },
+    { "type": "assert", "assert": "not_contains", "value": "Move Project" },
+    { "type": "assert", "assert": "not_contains", "value": "Copy Title" },
+    { "type": "assert", "assert": "not_contains", "value": "Task Checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Parent" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "dismiss bulk actions without mutating", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Bulk Actions" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

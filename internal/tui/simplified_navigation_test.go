@@ -90,16 +90,89 @@ func TestSimplifiedEnterAlwaysOpensTaskDetail(t *testing.T) {
 		hasVisibleChildren: true,
 	}}
 
-	message := app.coreTaskDetailMessage()
-	detail, ok := message.(ShowTaskDetailMsg)
+	result := app.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      operationCoreDetail,
+		Context: app.operationCommandContext(),
+		Source:  OperationSourceDirectKey,
+	})
+	if result.Err != nil {
+		t.Fatalf("execute detail: %v", result.Err)
+	}
+	detail, ok := result.Message.(ShowTaskDetailMsg)
 	if !ok {
-		t.Fatalf("Enter returned %T, want ShowTaskDetailMsg", message)
+		t.Fatalf("Enter returned %T, want ShowTaskDetailMsg", result.Message)
 	}
 	if detail.Task != task || detail.Project != project {
 		t.Fatalf("detail target = (%v, %v), want (%v, %v)", detail.Task, detail.Project, task, project)
 	}
 	if len(app.crossOutliner.crossZoomStack) != 0 || len(app.crossOutliner.zoomStack) != 0 {
 		t.Fatal("Enter unexpectedly changed task zoom")
+	}
+}
+
+// navigationAliasTestApp renders twelve rows whose first and last entries are
+// non-navigable separators, so every jump alias has to skip inward.
+func navigationAliasTestApp(t *testing.T) *AppModel {
+	t.Helper()
+	app := newUITestApp()
+	project := scopeTestProject("project", "Project", "one")
+	app.projects[project.ID] = project
+	out := app.crossOutliner
+	out.loadedProjects = []*models.Project{project}
+	out.height = 11
+	out.rows = make([]outlinerRow, 0, 12)
+	out.rows = append(out.rows, outlinerRow{IsSeparator: true})
+	for range 10 {
+		out.rows = append(out.rows, outlinerRow{task: project.Tasks[0], ProjectID: project.ID})
+	}
+	out.rows = append(out.rows, outlinerRow{IsSeparator: true})
+	return app
+}
+
+func TestSingleOutlinerNavigationAliasesMatchTheirPairedKeys(t *testing.T) {
+	tests := []struct {
+		name  string
+		keys  []string
+		start int
+		want  int
+	}{
+		{name: "half page down", keys: []string{"ctrl+d", "pgdown"}, start: 1, want: 6},
+		{name: "half page up", keys: []string{"ctrl+u", "pgup"}, start: 10, want: 5},
+		{name: "first navigable row", keys: []string{"g", "home"}, start: 6, want: 1},
+		{name: "last navigable row", keys: []string{"G", "end"}, start: 1, want: 10},
+	}
+	for _, test := range tests {
+		for _, key := range test.keys {
+			t.Run(test.name+"/"+key, func(t *testing.T) {
+				app := navigationAliasTestApp(t)
+				app.crossOutliner.cursor = test.start
+				msg, err := parseUITestKey(key)
+				if err != nil {
+					t.Fatalf("parse %q: %v", key, err)
+				}
+				if handled, _ := app.handleGlobalKeyPress(msg); !handled {
+					t.Fatalf("key %q was not handled", key)
+				}
+				if got := app.crossOutliner.cursor; got != test.want {
+					t.Fatalf("cursor after %q = %d, want %d", key, got, test.want)
+				}
+			})
+		}
+	}
+}
+
+func TestSingleOutlinerNavigationJumpsFlashTheCursor(t *testing.T) {
+	app := navigationAliasTestApp(t)
+	app.crossOutliner.cursor = 1
+	msg, err := parseUITestKey("ctrl+d")
+	if err != nil {
+		t.Fatalf("parse ctrl+d: %v", err)
+	}
+	if handled, cmd := app.handleGlobalKeyPress(msg); !handled || cmd == nil {
+		t.Fatalf("ctrl+d = handled %v cmd %v; want a cursor flash command", handled, cmd)
+	}
+	if !app.crossOutliner.cursorFlash {
+		t.Fatal("half-page jump did not flash the cursor")
 	}
 }
 

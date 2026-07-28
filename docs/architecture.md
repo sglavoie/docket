@@ -190,6 +190,33 @@ invocation pipeline. Generic fuzzy lists, categories, preview, viewport,
 selection, and contextual actions use `ListSurface`; specialized calendars and
 forms remain focused domain controls.
 
+Every surface is a projection of that one catalog rather than a parallel command
+list. The simplified input strategy derives direct keys, handled keys, footer
+hints, and `?` help; descriptor placement decides Finder membership; the task
+operation manifest orders the `Space` sheet and marks which entries survive into
+a bulk selection. A bulk sheet therefore offers the intersection of the
+bulk-capable entries, and an action reachable from two surfaces resolves to the
+same descriptor and binding on both. Catalog invariants in
+`internal/tui/operation_parity_test.go` assert these projections stay in step.
+
+Finder rows are actionable in place: `Enter` activates the result and `Tab` opens
+the contextual sheet built from the action family the result's kind owns. The
+sheet freezes the row it was opened over, clears any inherited multi-select, and
+drops the inherited entity for rows that name their own, so a Finder action can
+never widen to targets the user did not see.
+
+Destructive descriptors carry `OperationRiskDestructive`. The executor gates them
+behind a confirmation before any transaction opens, unless a binding explicitly
+delegates confirmation to a handler that runs its own prompt, so declining a
+Danger action never reaches the workspace repository. Deletion has no direct key
+and exists only inside an action sheet.
+
+Alerts are placed once and read everywhere. The alert engine evaluates the whole
+workspace, `!` opens the global Alert Center regardless of the active scope, and
+views that compose their own title row receive the count through the
+`alertCountAware` seam while the remaining views get a right-aligned overlay. The
+two seams are mutually exclusive, so the indicator is never drawn twice.
+
 ### Active context scope
 
 The active context is the global Outliner's project scope and is the only

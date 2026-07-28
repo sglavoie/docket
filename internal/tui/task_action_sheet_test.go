@@ -21,30 +21,27 @@ func taskActionTestContext(state models.WorkflowState) CommandContext {
 	return context
 }
 
-func bulkTaskActionTestContext(states ...models.WorkflowState) CommandContext {
-	context := taskActionTestContext(states[0])
+// bulkTaskActionTestContext freezes a visual selection over live tasks, the same
+// shape openTaskActionSheet builds from the Outliner's selected rows.
+func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) CommandContext {
+	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Selection.Visual = true
-	context.Selection.Tasks = make([]TaskIdentity, 0, len(states))
-	context.Selection.Entities = make([]EntityContext, 0, len(states))
-	for index, state := range states {
-		projectID := "project"
-		if index > 0 {
-			projectID = "project-" + string(rune('a'+index))
-		}
-		taskID := "task-" + string(rune('a'+index))
-		context.Selection.Tasks = append(context.Selection.Tasks, TaskIdentity{
-			ProjectID: projectID,
-			TaskID:    taskID,
-		})
-		context.Selection.Entities = append(context.Selection.Entities, EntityContext{
-			ProjectID: projectID,
-			TaskID:    taskID,
-			State:     state.String(),
-			Mutable:   !state.IsTerminal(),
-		})
+	context.Selection.Tasks = make([]TaskIdentity, 0, len(tasks))
+	context.Selection.Entities = make([]EntityContext, 0, len(tasks))
+	for _, task := range tasks {
+		context.Selection.Tasks = append(context.Selection.Tasks, taskIdentityFor(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
 	return context
+}
+
+// taskActionTestDescriptors builds the production planning/structure
+// descriptors. The app carries no projects, so structure-dependent applicability
+// falls back to structural eligibility.
+func taskActionTestDescriptors() []OperationDescriptor {
+	return newUITestApp().taskActionOperationDescriptors()
 }
 
 func registerTaskActionTestDescriptor(
@@ -58,49 +55,15 @@ func registerTaskActionTestDescriptor(
 	}
 }
 
-func TestTaskActionSheetProjectsNativeAndRetainedSelectedTaskActions(t *testing.T) {
-	registry := NewOperationRegistry()
-	for _, descriptor := range taskActionOperationDescriptors() {
-		registerTaskActionTestDescriptor(t, registry, descriptor)
-	}
-	for _, descriptor := range []OperationDescriptor{
-		{
-			ID:                "retained.edit-content",
-			Label:             "Edit Content",
-			Category:          OperationCategoryTask,
-			TargetSource:      OperationTargetCurrentTask,
-			TargetCardinality: TargetCardinalityOne,
-			Risk:              OperationRiskMutation,
-		},
-		{
-			ID:                "retained.delete",
-			Label:             "Delete Task",
-			Category:          OperationCategoryTask,
-			TargetSource:      OperationTargetCurrentTask,
-			TargetCardinality: TargetCardinalityOne,
-			Risk:              OperationRiskDestructive,
-		},
-		{
-			ID:                "retained.global",
-			Label:             "Global Status Update",
-			Category:          OperationCategoryTask,
-			TargetSource:      OperationTargetSelectedTasks,
-			TargetCardinality: TargetCardinalityOneOrMore,
-			Risk:              OperationRiskMutation,
-		},
-		{
-			ID:                "retained.status",
-			Label:             "Block Task",
-			Category:          OperationCategoryTask,
-			TargetSource:      OperationTargetCurrentTask,
-			TargetCardinality: TargetCardinalityOne,
-			Risk:              OperationRiskMutation,
-		},
-	} {
-		registerTaskActionTestDescriptor(t, registry, descriptor)
-	}
+func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
+	model := newUITestApp()
+	project := newTaskStructureTestProject()
+	setTestAppProjects(model, project, &models.Project{ID: "beta", Name: "Beta", Slug: "beta"})
+	story := project.GetTaskByID("story")
+	context := taskOperationTestContext(story, project)
+	registry := model.operationRegistry
 
-	descriptors := TaskActionSheetDescriptors(registry, taskActionTestContext(models.StateReady))
+	descriptors := TaskActionSheetDescriptors(registry, context)
 	ids := make([]OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
@@ -112,22 +75,33 @@ func TestTaskActionSheetProjectsNativeAndRetainedSelectedTaskActions(t *testing.
 		operationTaskSetParent,
 		operationTaskIndent,
 		operationTaskOutdent,
-		"retained.edit-content",
-		"retained.delete",
+		operationCoreEdit,
+		operationCoreDetail,
+		operationTaskDelete,
 	} {
 		if !slices.Contains(ids, want) {
 			t.Errorf("action sheet missing %s: %v", want, ids)
 		}
 	}
-	for _, excluded := range []OperationID{"retained.global", "retained.status"} {
+	// Direct-key core navigation, capture, and the sheet's own opener are not
+	// task actions; the one-state transitions are superseded by the state picker.
+	for _, excluded := range []OperationID{
+		operationCoreStart,
+		operationCoreDone,
+		operationCoreActions,
+		operationCoreCapture,
+		operationCoreMultiSelect,
+		operationCoreCursorDown,
+	} {
 		if slices.Contains(ids, excluded) {
-			t.Errorf("action sheet retained superseded/non-contextual %s: %v", excluded, ids)
+			t.Errorf("action sheet exposed non-contextual %s: %v", excluded, ids)
 		}
 	}
 
 	sheet, err := NewTaskActionSheetModel(
 		registry,
-		taskActionTestContext(models.StateReady),
+		NewOperationExecutor(registry),
+		context,
 		"Selected task",
 	)
 	if err != nil {
@@ -157,18 +131,24 @@ func TestTaskActionSheetProjectsNativeAndRetainedSelectedTaskActions(t *testing.
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 't', Text: "t"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	if got := sheet.surface.Matches(); len(got) != 1 || got[0].Item.ID != "task-action:retained.delete" {
-		t.Fatalf("search results = %+v, want retained delete", got)
+	matches := sheet.surface.Matches()
+	wantDelete := ListItemID("task-action:" + string(operationTaskDelete))
+	if len(matches) != 1 || matches[0].Item.ID != wantDelete {
+		t.Fatalf("search results = %+v, want only %s", matches, wantDelete)
+	}
+	if got := matches[0].Item.SecondaryText; got != "confirmation required" {
+		t.Errorf("delete secondary text = %q, want the confirmation hint", got)
 	}
 }
 
 func TestTaskActionSheetSnoozeShowsUsefulUnavailableReason(t *testing.T) {
 	registry := NewOperationRegistry()
-	for _, descriptor := range taskActionOperationDescriptors() {
+	for _, descriptor := range taskActionTestDescriptors() {
 		registerTaskActionTestDescriptor(t, registry, descriptor)
 	}
 	sheet, err := NewTaskActionSheetModel(
 		registry,
+		NewOperationExecutor(registry),
 		taskActionTestContext(models.StateInProgress),
 		"Active task",
 	)
@@ -187,28 +167,17 @@ func TestTaskActionSheetSnoozeShowsUsefulUnavailableReason(t *testing.T) {
 }
 
 func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *testing.T) {
-	registry := NewOperationRegistry()
-	for _, descriptor := range taskActionOperationDescriptors() {
-		registerTaskActionTestDescriptor(t, registry, descriptor)
-	}
-	registerTaskActionTestDescriptor(t, registry, OperationDescriptor{
-		ID:                "retained.delete",
-		Label:             "Delete Task",
-		Category:          OperationCategoryTask,
-		TargetSource:      OperationTargetSelectedTasks,
-		TargetCardinality: TargetCardinalityOneOrMore,
-		Risk:              OperationRiskDestructive,
-	})
-	registerTaskActionTestDescriptor(t, registry, OperationDescriptor{
-		ID:                "retained.edit",
-		Label:             "Edit Content",
-		Category:          OperationCategoryTask,
-		TargetSource:      OperationTargetCurrentTask,
-		TargetCardinality: TargetCardinalityOne,
-		Risk:              OperationRiskMutation,
-	})
+	model := newUITestApp()
+	project := newTaskStructureTestProject()
+	setTestAppProjects(model, project, &models.Project{ID: "beta", Name: "Beta", Slug: "beta"})
+	registry := model.operationRegistry
 
-	context := bulkTaskActionTestContext(models.StateReady, models.StateInProgress)
+	// The in-progress member is what removes snooze from the intersection.
+	story := project.GetTaskByID("story")
+	loose := project.GetTaskByID("loose")
+	loose.WorkflowState = models.StateInProgress
+	context := bulkTaskActionTestContext(project, story, loose)
+
 	descriptors := TaskActionSheetDescriptors(registry, context)
 	ids := make([]OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
@@ -219,7 +188,7 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
-		"retained.delete",
+		operationTaskDelete,
 	} {
 		if !slices.Contains(ids, want) {
 			t.Errorf("bulk action sheet missing %s: %v", want, ids)
@@ -232,14 +201,24 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		operationTaskSetParent,
 		operationTaskIndent,
 		operationTaskOutdent,
-		"retained.edit",
+		operationCoreEdit,
+		operationCoreDetail,
+		operationTaskCopyTitle,
+		operationTaskNewChild,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("bulk action sheet exposed non-common operation %s: %v", excluded, ids)
 		}
 	}
+	// The manifest Bulk flag is the only membership rule, so nothing can reach a
+	// multi-target sheet without a coordinator that carries every frozen target.
+	for _, id := range ids {
+		if !taskOperationSupportsBulk(id) {
+			t.Errorf("bulk action sheet advertised %s, which has no bulk coordinator", id)
+		}
+	}
 
-	sheet, err := NewTaskActionSheetModel(registry, context, "2 tasks")
+	sheet, err := NewTaskActionSheetModel(registry, NewOperationExecutor(registry), context, "2 tasks")
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
@@ -247,12 +226,15 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		t.Fatal("set-priority action is missing from the bulk sheet")
 	}
 	_, _, result := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	execute, ok := result.(TaskActionSheetExecuteMsg)
+	emitted, ok := result.(ContextActionSheetResultMsg)
 	if !ok {
-		t.Fatalf("bulk Enter returned %T, want TaskActionSheetExecuteMsg", result)
+		t.Fatalf("bulk Enter returned %T, want ContextActionSheetResultMsg", result)
 	}
-	if execute.Request.Source != OperationSourceBulk {
-		t.Fatalf("bulk request source = %q, want %q", execute.Request.Source, OperationSourceBulk)
+	if emitted.Host != ContextActionHostOutliner {
+		t.Fatalf("bulk result host = %q, want %q", emitted.Host, ContextActionHostOutliner)
+	}
+	if emitted.Request.Source != OperationSourceBulk {
+		t.Fatalf("bulk request source = %q, want %q", emitted.Request.Source, OperationSourceBulk)
 	}
 }
 
@@ -277,13 +259,13 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("Space = handled %v, cmd %T; want handled with no command", handled, cmd)
 	}
-	if app.taskActionSheet == nil {
+	if app.contextActionSheet == nil {
 		t.Fatal("Space did not open the selected-task action sheet")
 	}
 	if app.operationValuePicker != nil {
 		t.Fatal("Space skipped the action sheet and opened a value picker")
 	}
-	if got := len(app.taskActionSheet.surface.Items()); got == 0 {
+	if got := len(app.contextActionSheet.surface.Items()); got == 0 {
 		t.Fatal("opened action sheet contains no applicable task actions")
 	}
 }
@@ -323,20 +305,24 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	app.crossOutliner.cursor = 1
 	send(tea.KeyPressMsg{Code: tea.KeySpace})
 	send(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if app.taskActionSheet == nil || !app.taskActionSheet.bulk || app.taskActionSheet.targets != 2 {
-		t.Fatalf("Enter did not open a two-target bulk action sheet: %#v", app.taskActionSheet)
+	sheet := app.contextActionSheet
+	if sheet == nil || !sheet.config.Bulk || sheet.config.Targets != 2 {
+		t.Fatalf("Enter did not open a two-target bulk action sheet: %#v", sheet)
 	}
-	if !app.taskActionSheet.surface.SetCursorToID(
+	if !sheet.surface.SetCursorToID(
 		ListItemID("task-action:" + string(operationTaskSetPriority)),
 	) {
 		t.Fatal("bulk action sheet is missing set-priority")
 	}
-	_, _, rawExecute := app.taskActionSheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	execute, ok := rawExecute.(TaskActionSheetExecuteMsg)
-	if !ok {
-		t.Fatalf("priority selection returned %T, want TaskActionSheetExecuteMsg", rawExecute)
+	_, dismissed, rawResult := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if dismissed {
+		t.Fatal("a pending value picker dismissed the bulk sheet")
 	}
-	handled, cmd := app.handleOperationOverlayMessage(execute)
+	emitted, ok := rawResult.(ContextActionSheetResultMsg)
+	if !ok {
+		t.Fatalf("priority selection returned %T, want ContextActionSheetResultMsg", rawResult)
+	}
+	handled, cmd := app.handleOperationOverlayMessage(emitted)
 	if !handled || cmd != nil {
 		t.Fatalf("priority execution = handled %v cmd %T, want value picker", handled, cmd)
 	}

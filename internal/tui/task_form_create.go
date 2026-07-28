@@ -19,18 +19,7 @@ func NewTaskFormModelCreate(
 		priority: 3,
 		state:    models.StateNext,
 	}
-	if suggestedParent != nil {
-		// Walk up to find the nearest ancestor that can accept this child type
-		candidate := suggestedParent
-		for candidate != nil {
-			if candidate.CanAddChild(draft.taskType) {
-				id := candidate.ID
-				draft.parentID = &id
-				break
-			}
-			candidate = candidate.Parent
-		}
-	}
+	draft.parentID = formNearestValidParentID(suggestedParent, draft.taskType)
 
 	m := &TaskFormModel{
 		mode:       FormModeCreate,
@@ -68,6 +57,9 @@ func NewTaskFormModelCreateFromTemplate(
 	}
 
 	m.draft.taskType = tmpl.Type
+	// The suggested parent was resolved for the default type, so it is rechecked
+	// against the template's own type rather than kept as an illegal nesting.
+	m.draft.parentID = formNearestValidParentID(suggestedParent, tmpl.Type)
 	if tmpl.Priority > 0 {
 		m.draft.priority = tmpl.Priority
 	}
@@ -96,6 +88,20 @@ func NewTaskFormModelCreateFromTemplate(
 	}
 
 	return m
+}
+
+// formNearestValidParentID walks up from the suggested parent to the nearest
+// ancestor that can hold childType without breaching the nesting cap, so a
+// pre-filled parent is never a relationship the domain would reject. It returns
+// nil when no ancestor qualifies.
+func formNearestValidParentID(suggestedParent *models.Task, childType models.TaskType) *string {
+	for candidate := suggestedParent; candidate != nil; candidate = candidate.Parent {
+		if candidate.CanAddChild(childType) && candidate.Level+1 <= models.MaxNestingDepth {
+			id := candidate.ID
+			return &id
+		}
+	}
+	return nil
 }
 
 // NewTaskFormModelEdit creates a TaskFormModel for editing an existing task.

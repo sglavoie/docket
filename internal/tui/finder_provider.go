@@ -97,17 +97,7 @@ func (provider FinderOperationProvider) FinderItems() ([]ListItem, error) {
 	if provider.Registry == nil {
 		return []ListItem{}, nil
 	}
-	// Once the canonical key strategy is active, Finder operation results must
-	// come from that same strategy projection. This keeps dormant compatibility
-	// commands out of the visible catalog while retaining applicability-only
-	// discovery for isolated providers and legacy migration tests.
-	descriptors := provider.Registry.Discover(provider.Context)
-	if provider.Context.Capabilities.Has(CapabilitySimplifiedInput) {
-		descriptors = provider.Registry.InputStrategyOperations(
-			InputStrategySimplified,
-			provider.Context,
-		)
-	}
+	descriptors := finderOperationDescriptors(provider.Registry, provider.Context)
 	items := make([]ListItem, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		descriptorCopy := descriptor
@@ -137,6 +127,45 @@ func (provider FinderOperationProvider) FinderItems() ([]ListItem, error) {
 		})
 	}
 	return items, nil
+}
+
+// finderOperationDescriptors decides membership from descriptor placement and
+// applicability, so every production operation the context admits is listed
+// exactly once and tool descriptors stay in the Tools category.
+//
+// The active key grammar only decides order: operations the Outliner also binds
+// to a direct key lead, which is what keeps the bounded empty-query shortlist on
+// the daily loop instead of the alphabetical head of the catalog.
+func finderOperationDescriptors(
+	registry *OperationRegistry,
+	ctx CommandContext,
+) []OperationDescriptor {
+	discovered := make([]OperationDescriptor, 0)
+	for _, descriptor := range registry.All() {
+		if descriptor.Placement == PlacementFinderOperation && descriptor.Applicable(ctx) {
+			discovered = append(discovered, descriptor)
+		}
+	}
+	ranks := make(map[OperationID]int)
+	unbound := 0
+	if strategy, ok := registry.InputStrategy(InputStrategySimplified); ok {
+		for index, binding := range strategy.Bindings {
+			if _, exists := ranks[binding.OperationID]; !exists {
+				ranks[binding.OperationID] = index
+			}
+		}
+		unbound = len(strategy.Bindings)
+	}
+	rankOf := func(id OperationID) int {
+		if index, ok := ranks[id]; ok {
+			return index
+		}
+		return unbound
+	}
+	sort.SliceStable(discovered, func(i, j int) bool {
+		return rankOf(discovered[i].ID) < rankOf(discovered[j].ID)
+	})
+	return discovered
 }
 
 // FinderTaskProvider exposes active, nonterminal tasks. Its IDs use the
@@ -171,6 +200,7 @@ func (provider FinderTaskProvider) FinderItems() ([]ListItem, error) {
 				PrimaryText:   task.Title,
 				SecondaryText: fmt.Sprintf("#%d · %s · %s", task.ShortID, project.Name, workflowStateListLabel(state)),
 				Aliases:       aliases,
+				OperationIDs:  taskOperationManifestIDs(),
 				Preview: ListPreview{
 					Title:   task.Title,
 					Summary: task.Description,
@@ -222,6 +252,7 @@ func (provider FinderProjectProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:   project.Name,
 			SecondaryText: project.Context + " · " + status,
 			Aliases:       []string{project.Name, project.Slug, project.Context, status},
+			OperationIDs:  operationDescriptorIDs(projectOperationDescriptors()),
 			Preview: ListPreview{
 				Title:   project.Name,
 				Summary: project.Description,
@@ -278,6 +309,7 @@ func (provider FinderNoteProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:   entry.Note.Title,
 			SecondaryText: scope,
 			Aliases:       aliases,
+			OperationIDs:  operationDescriptorIDs(noteOperationDescriptors()),
 			Preview: ListPreview{
 				Title:   entry.Note.Title,
 				Summary: entry.Note.Filename,
@@ -331,6 +363,7 @@ func (provider FinderToolProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:   tool.Label,
 			SecondaryText: tool.Description,
 			Aliases:       append([]string(nil), tool.Aliases...),
+			OperationIDs:  []OperationID{OperationID(id)},
 			Preview: ListPreview{
 				Title:   tool.Label,
 				Summary: tool.Description,
@@ -369,6 +402,7 @@ func (provider FinderModeProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:    mode.Label,
 			SecondaryText:  mode.Category.String() + " · " + ordering,
 			Aliases:        append([]string{string(mode.ID)}, mode.Aliases...),
+			OperationIDs:   []OperationID{operationModeActivate},
 			DisabledReason: finderModeDisabledReason(mode),
 			Preview: ListPreview{
 				Title: mode.Label,
@@ -412,6 +446,7 @@ func (provider FinderScopeProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:   label,
 			SecondaryText: fmt.Sprintf("%d projects", summary.ActiveProjectCount),
 			Aliases:       []string{summary.Scope.Name, "scope", "projects"},
+			OperationIDs:  finderScopeOperationIDs(summary.Scope),
 			Preview: ListPreview{
 				Title: label,
 				Fields: []ListPreviewField{
@@ -447,6 +482,7 @@ func (provider FinderTagProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:   tag.Name,
 			SecondaryText: fmt.Sprintf("%d tasks", tag.TaskCount),
 			Aliases:       []string{tag.Name, "#" + tag.Name},
+			OperationIDs:  operationDescriptorIDs(tagOperationDescriptors()),
 			Preview: ListPreview{
 				Title: tag.Name,
 				Fields: []ListPreviewField{
@@ -484,6 +520,7 @@ func (provider FinderSavedFilterProvider) FinderItems() ([]ListItem, error) {
 			PrimaryText:   filter.Name,
 			SecondaryText: describeSavedFilterSummary(&filter),
 			Aliases:       []string{filter.Name, filter.Mode, filter.FilterType},
+			OperationIDs:  operationDescriptorIDs(savedFilterOperationDescriptors()),
 			Preview: ListPreview{
 				Title:   filter.Name,
 				Summary: describeSavedFilterSummary(&filter),
@@ -504,6 +541,31 @@ func (provider FinderSavedFilterProvider) FinderItems() ([]ListItem, error) {
 	}
 	sortFinderProviderItems(items)
 	return items, nil
+}
+
+// operationDescriptorIDs projects an ordered descriptor catalog into the row
+// manifest a Finder result carries. The contextual sheet drops whatever the
+// frozen target cannot do, so a row may safely advertise its whole catalog.
+func operationDescriptorIDs(descriptors []OperationDescriptor) []OperationID {
+	ids := make([]OperationID, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		ids = append(ids, descriptor.ID)
+	}
+	return ids
+}
+
+// finderScopeOperationIDs limits regular and All rows to activation because
+// membership, rename, and delete only exist for custom contexts.
+func finderScopeOperationIDs(scope ContextScope) []OperationID {
+	ids := []OperationID{operationScopeActivateContext}
+	if !scope.IsCustom() {
+		return ids
+	}
+	return append(ids,
+		operationScopeEditContext,
+		operationScopeRenameContext,
+		operationScopeDeleteContext,
+	)
 }
 
 func recentDestinationForContextScope(scope ContextScope) config.RecentDestination {

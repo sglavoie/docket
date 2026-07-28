@@ -159,8 +159,34 @@ u undo      Ctrl+R redo        Esc back      Ctrl+Esc reset
 ? help      Ctrl+C quit
 ```
 
+Cursor movement accepts both vim and terminal spellings: `j`/`↓`, `k`/`↑`,
+`h`/`←`, `l`/`→`, `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`. Every
+alias is one binding in the input strategy, never a second dispatch path.
+
 In multi-select, `Space` toggles selection and `Enter` opens bulk actions.
 Delete exists only in an action sheet and requires confirmation.
+
+Each surface is a projection of the one catalog, so add an action once and let
+the projection carry it:
+
+- the simplified input strategy derives direct keys, handled keys, footer hints,
+  and `?` help
+- descriptor placement decides Finder membership
+- the task operation manifest orders the `Space` sheet and marks bulk-capable
+  entries, so a bulk sheet shows the intersection over the whole selection
+- in Finder, `Enter` activates a row and `Tab` opens the action sheet its kind
+  owns, over a frozen copy of that row with inherited selection cleared
+
+Destructive operations declare `OperationRiskDestructive`; the executor confirms
+before opening a transaction unless the binding delegates confirmation to a
+handler that prompts itself. Task delete reaches the user only through an action
+sheet; a secondary surface may bind its own destructive key, as the Scope Hub
+binds `d` to context delete, but no destructive path may write before its prompt
+resolves and none may request a picker value ahead of the prompt.
+
+`internal/tui/operation_parity_test.go` holds the catalog invariants for all of
+the above. Extend it when adding an operation family rather than asserting the
+same parity inside a feature test.
 
 ### List surfaces and routes
 
@@ -178,7 +204,14 @@ production help or Finder.
 `c` opens the Scope Hub for All Projects, regular contexts, custom contexts, and
 single projects. Scope is session-owned. Notes uses project notes in project
 focus and global scratch notes otherwise. Weekly Review and Tags receive the
-active scope's project set. Notifications remains global.
+active scope's project set.
+
+Notifications remains global: `!` opens the same workspace-wide Alert Center in
+every scope. The unread count reaches a view through exactly one seam — views
+implementing `alertCountAware` compose it into their own title row and are
+excluded from the post-render overlay that serves the rest. Alert copy must name
+the current grammar; do not reintroduce retired keys or a palette in alert
+details.
 
 ## Capture and search grammar
 

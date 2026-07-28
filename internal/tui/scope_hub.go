@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -73,28 +72,16 @@ type scopeHubInlineActionMsg struct {
 	Target      scopeHubActionTarget
 }
 
-type scopeHubActionSheet struct {
-	surface   *ListSurfaceModel
-	target    scopeHubActionTarget
-	label     string
-	input     textinput.Model
-	searching bool
-}
-
 const (
-	operationScopeCreateContext   OperationID = "tui.scope.create-context"
-	operationScopeEditContext     OperationID = "tui.scope.edit-context"
-	operationScopeRenameContext   OperationID = "tui.scope.rename-context"
-	operationScopeDeleteContext   OperationID = "tui.scope.delete-context"
-	operationScopeCreateProject   OperationID = "tui.scope.create-project"
-	operationScopeRenameProject   OperationID = "tui.scope.rename-project"
-	operationScopeStatusProject   OperationID = "tui.scope.status-project"
-	operationScopePinProject      OperationID = "tui.scope.pin-project"
-	operationScopeArchiveProject  OperationID = "tui.scope.archive-project"
-	operationScopeRestoreProject  OperationID = "tui.scope.restore-project"
-	operationScopeOpenProjectNote OperationID = "tui.scope.open-project-notes"
-	operationScopeRestoreTrash    OperationID = "tui.scope.restore-trash"
-	operationScopePurgeTrash      OperationID = "tui.scope.purge-trash"
+	operationScopeActivateContext OperationID = "tui.scope.activate-context"
+
+	operationScopeCreateContext OperationID = "tui.scope.create-context"
+	operationScopeEditContext   OperationID = "tui.scope.edit-context"
+	operationScopeRenameContext OperationID = "tui.scope.rename-context"
+	operationScopeDeleteContext OperationID = "tui.scope.delete-context"
+	operationScopeCreateProject OperationID = "tui.scope.create-project"
+	operationScopeRestoreTrash  OperationID = "tui.scope.restore-trash"
+	operationScopePurgeTrash    OperationID = "tui.scope.purge-trash"
 )
 
 func scopeHubOperationDescriptors() []OperationDescriptor {
@@ -117,17 +104,12 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 		}
 	}
 	return []OperationDescriptor{
+		descriptor(operationScopeActivateContext, "Activate scope", OperationCategoryScope, OperationRiskReadOnly, "apply scope", "switch scope"),
 		descriptor(operationScopeCreateContext, "New custom context", OperationCategoryScope, OperationRiskMutation, "create context"),
 		descriptor(operationScopeEditContext, "Edit membership", OperationCategoryScope, OperationRiskMutation, "edit context"),
 		descriptor(operationScopeRenameContext, "Rename context", OperationCategoryScope, OperationRiskMutation),
 		descriptor(operationScopeDeleteContext, "Delete context", OperationCategoryScope, OperationRiskDestructive),
 		descriptor(operationScopeCreateProject, "New project", OperationCategoryProject, OperationRiskMutation, "create project"),
-		descriptor(operationScopeRenameProject, "Rename project", OperationCategoryProject, OperationRiskMutation, "edit project"),
-		descriptor(operationScopeStatusProject, "Set project status", OperationCategoryProject, OperationRiskMutation),
-		descriptor(operationScopePinProject, "Toggle project pin", OperationCategoryProject, OperationRiskMutation, "pin project", "unpin project"),
-		descriptor(operationScopeArchiveProject, "Archive project", OperationCategoryProject, OperationRiskDestructive, "unarchive project"),
-		descriptor(operationScopeRestoreProject, "Unarchive project", OperationCategoryProject, OperationRiskMutation, "restore archived project"),
-		descriptor(operationScopeOpenProjectNote, "Open project notes", OperationCategoryNote, OperationRiskReadOnly),
 		descriptor(operationScopeRestoreTrash, "Restore from trash", OperationCategoryProject, OperationRiskMutation, "recover project", "undelete"),
 		descriptor(operationScopePurgeTrash, "Permanently delete", OperationCategoryProject, OperationRiskDestructive, "purge trash"),
 	}
@@ -162,8 +144,12 @@ func (m *AppModel) registerScopeHubOperations() error {
 }
 
 func (m *AppModel) scopeHubOperationMessage(id OperationID, target scopeHubActionTarget) tea.Msg {
-	project := m.projectByID(target.ProjectID)
 	switch id {
+	case operationScopeActivateContext:
+		return ContextScopeSelectedMsg{
+			SelectedContext: target.Scope.Name,
+			IsCustomContext: target.Scope.IsCustom(),
+		}
 	case operationScopeCreateContext,
 		operationScopeEditContext,
 		operationScopeRenameContext,
@@ -172,30 +158,6 @@ func (m *AppModel) scopeHubOperationMessage(id OperationID, target scopeHubActio
 		return scopeHubInlineActionMsg{OperationID: id, Target: target}
 	case operationScopeCreateProject:
 		return CreateProjectMsg{}
-	case operationScopeRenameProject:
-		if project != nil {
-			return EditProjectMsg{Project: project}
-		}
-	case operationScopeStatusProject:
-		if project != nil {
-			return ShowStatusIconPickerMsg{Project: project}
-		}
-	case operationScopePinProject:
-		if project != nil {
-			return ProjectPinRequestMsg{Project: project, Pinned: !project.Pinned}
-		}
-	case operationScopeArchiveProject:
-		if project != nil {
-			return ProjectArchiveRequestMsg{Project: project, Archive: true}
-		}
-	case operationScopeRestoreProject:
-		if project != nil {
-			return ProjectArchiveRequestMsg{Project: project, Archive: false}
-		}
-	case operationScopeOpenProjectNote:
-		if project != nil {
-			return ShowNotesMsg{Project: project}
-		}
 	case operationScopeRestoreTrash:
 		if target.TrashEntryID != "" {
 			return RestoreFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
@@ -221,6 +183,18 @@ func (m *ContextHubModel) SetProjectFocus(projectID string) {
 func (m *ContextHubModel) scopeHubCommandContext() CommandContext {
 	ctx := PresentationCommandContext(ViewContextHub)
 	ctx.Capabilities.Add(CapabilityScopeHub)
+	return ctx
+}
+
+// scopeHubActionContext carries the frozen row identity into the shared
+// operation pipeline. Project operations resolve their target from it rather
+// than from the live cursor, so a later rebuild cannot retarget them.
+func (m *ContextHubModel) scopeHubActionContext(target scopeHubActionTarget) CommandContext {
+	ctx := m.scopeHubCommandContext()
+	if target.ProjectID != "" {
+		ctx.CurrentEntity = ProjectEntity(target.ProjectID)
+		ctx.FocusedProjectID = target.ProjectID
+	}
 	return ctx
 }
 
@@ -330,12 +304,17 @@ func (m *ContextHubModel) scopeHubItems(trash []storage.TrashEntry) []ListItem {
 			Aliases:       []string{project.Name, project.Slug, project.Context, "active project"},
 			Preview:       m.scopeHubProjectPreview(project, false),
 			OperationIDs: []OperationID{
+				operationProjectOpen,
 				operationScopeCreateProject,
 				operationScopeRenameProject,
 				operationScopeStatusProject,
 				operationScopePinProject,
 				operationScopeArchiveProject,
 				operationScopeOpenProjectNote,
+				operationProjectMetrics,
+				operationProjectExport,
+				operationProjectOpenFolder,
+				operationProjectArchiveCompleted,
 			},
 			Data: scopeHubEntry{Kind: scopeHubEntryActiveProject, Project: project},
 		})
@@ -354,6 +333,8 @@ func (m *ContextHubModel) scopeHubItems(trash []storage.TrashEntry) []ListItem {
 			OperationIDs: []OperationID{
 				operationScopeRenameProject,
 				operationScopeRestoreProject,
+				operationProjectExport,
+				operationProjectOpenFolder,
 			},
 			Data: scopeHubEntry{Kind: scopeHubEntryArchivedProject, Project: project},
 		})
@@ -511,8 +492,7 @@ func (m *ContextHubModel) activateScopeHubCurrent() tea.Cmd {
 		}
 	case scopeHubEntryActiveProject:
 		if entry.Project != nil {
-			projectID := entry.Project.ID
-			return func() tea.Msg { return ApplyProjectScopeMsg{ProjectID: projectID} }
+			return m.executeScopeHubProjectOperation(operationProjectOpen, entry)
 		}
 	case scopeHubEntryArchivedProject:
 		m.notice = "Archived projects must be unarchived from Space actions before they can be focused"
@@ -520,6 +500,22 @@ func (m *ContextHubModel) activateScopeHubCurrent() tea.Cmd {
 		m.notice = "Deleted projects must be restored from Space actions before they can be focused"
 	}
 	return nil
+}
+
+// executeScopeHubProjectOperation runs a project operation from a browse key
+// through the same executor path the action sheet uses, so Enter and Space
+// share one handler instead of emitting their own message.
+func (m *ContextHubModel) executeScopeHubProjectOperation(id OperationID, entry scopeHubEntry) tea.Cmd {
+	if m.executor == nil {
+		m.notice = "Scope actions are unavailable"
+		return nil
+	}
+	target := scopeHubTarget(entry)
+	return m.applyScopeHubExecutionResult(m.executor.Execute(OperationExecutionRequest{
+		ID:      id,
+		Context: m.scopeHubActionContext(target),
+		Source:  OperationSourceDirectKey,
+	}))
 }
 
 func scopeHubTarget(entry scopeHubEntry) scopeHubActionTarget {
@@ -539,52 +535,37 @@ func (m *ContextHubModel) openScopeHubActions() {
 	if !ok || m.surface == nil {
 		return
 	}
-	state := m.surface.ActionState()
-	descriptors, err := state.Descriptors(m.registry, m.scopeHubCommandContext())
+	target := scopeHubTarget(entry)
+	sheet, err := NewContextActionSheetModel(
+		m.registry,
+		m.executor,
+		m.scopeHubActionContext(target),
+		m.surface.ActionState().OperationIDs,
+		ContextActionSheetConfig{
+			Host:         ContextActionHostScopeHub,
+			Completion:   ContextActionCompleteCloseSheet,
+			Title:        "Actions",
+			Subtitle:     scopeHubEntryLabel(entry),
+			Categories:   scopeHubActionCategories,
+			CategoryFor:  scopeHubActionCategory,
+			SecondaryFor: func(descriptor OperationDescriptor) string { return string(descriptor.Risk) },
+			// The frozen row travels as the value every scope operation reads, so
+			// no later rebuild or cursor move can retarget it.
+			Value:        target,
+			HasValue:     true,
+			EmptyState:   ListEmptyState{Title: "No actions available."},
+			NoMatchState: ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
+		},
+	)
 	if err != nil {
 		m.notice = err.Error()
 		return
 	}
-	if len(descriptors) == 0 {
+	if len(sheet.operationIDs()) == 0 {
 		m.notice = "No administration actions are available for this item"
 		return
 	}
-	items := make([]ListItem, 0, len(descriptors))
-	for _, descriptor := range descriptors {
-		items = append(items, ListItem{
-			ID:            ListItemID("scope-hub-action:" + string(descriptor.ID)),
-			CategoryID:    scopeHubActionCategory(descriptor),
-			PrimaryText:   descriptor.Label,
-			SecondaryText: string(descriptor.Risk),
-			Aliases:       append([]string(nil), descriptor.Aliases...),
-			Preview: ListPreview{
-				Title: descriptor.Label,
-				Fields: []ListPreviewField{
-					{Label: "Risk", Value: string(descriptor.Risk)},
-				},
-			},
-			Data: descriptor,
-		})
-	}
-	surface, err := NewListSurfaceModel(items, scopeHubActionCategories, ListSurfaceConfig{
-		SelectionMode: ListSelectionSingle,
-		EmptyState:    ListEmptyState{Title: "No actions available."},
-		NoMatchState:  ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
-	})
-	if err != nil {
-		m.notice = err.Error()
-		return
-	}
-	input := textinput.New()
-	input.Placeholder = "Search actions..."
-	input.CharLimit = 64
-	applyThemedTextInput(&input)
-	m.actions = &scopeHubActionSheet{
-		surface: surface,
-		target:  scopeHubTarget(entry),
-		label:   scopeHubEntryLabel(entry),
-		input:   input,
-	}
+	m.actions = sheet
 }
 
 func scopeHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
@@ -592,7 +573,10 @@ func scopeHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
 		return scopeHubActionCategoryDanger
 	}
 	switch descriptor.ID {
-	case operationScopeCreateContext, operationScopeEditContext, operationScopeRenameContext:
+	case operationScopeActivateContext,
+		operationScopeCreateContext,
+		operationScopeEditContext,
+		operationScopeRenameContext:
 		return scopeHubActionCategoryContext
 	case operationScopeRestoreProject, operationScopeRestoreTrash:
 		return scopeHubActionCategoryRecovery
@@ -618,94 +602,35 @@ func scopeHubEntryLabel(entry scopeHubEntry) string {
 	return "Scope item"
 }
 
+// updateScopeHubActions translates the shared sheet's compact key contract into
+// the hub's own notice, confirmation, and inline-editor behavior. Space keeps
+// running the highlighted action so the documented open-and-run rhythm survives
+// the migration to the shared engine.
 func (m *ContextHubModel) updateScopeHubActions(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	actions := m.actions
-	if actions == nil {
+	if m.actions == nil {
 		return m, nil
 	}
-	if actions.searching {
+	if !m.actions.searching {
 		switch key.String() {
-		case "esc":
-			actions.searching = false
-			actions.input.Blur()
-			actions.input.SetValue("")
-			actions.surface.SetQuery("")
-			return m, nil
-		case "enter":
-			actions.searching = false
-			actions.input.Blur()
-			return m, nil
-		case "up", "ctrl+k", "ctrl+p":
-			actions.surface.MoveCursor(-1)
-			return m, nil
-		case "down", "ctrl+j", "ctrl+n":
-			actions.surface.MoveCursor(1)
-			return m, nil
+		case " ", "space":
+			key = tea.KeyPressMsg{Code: tea.KeyEnter}
 		}
-		previous := actions.input.Value()
-		var cmd tea.Cmd
-		actions.input, cmd = actions.input.Update(key)
-		if actions.input.Value() != previous {
-			actions.surface.SetQuery(actions.input.Value())
-		}
+	}
+	cmd, dismissed, message := m.actions.handleKey(key)
+	if dismissed {
+		m.actions = nil
+	}
+	switch typed := message.(type) {
+	case ContextActionSheetClosedMsg:
+		m.actions = nil
+		return m, cmd
+	case ContextActionSheetResultMsg:
+		return m, m.applyScopeHubExecutionResult(typed.Result)
+	case StatusMsg:
+		m.notice = string(typed)
 		return m, cmd
 	}
-
-	switch key.String() {
-	case "esc":
-		if actions.surface.Query().Raw != "" {
-			actions.input.SetValue("")
-			actions.surface.SetQuery("")
-			return m, nil
-		}
-		m.actions = nil
-	case "/":
-		actions.searching = true
-		actions.input.SetValue(actions.surface.Query().Raw)
-		actions.input.CursorEnd()
-		return m, actions.input.Focus()
-	case "j", "down":
-		actions.surface.MoveCursor(1)
-	case "k", "up":
-		actions.surface.MoveCursor(-1)
-	case "g", "home":
-		actions.surface.MoveCursorToStart()
-	case "G", "end":
-		actions.surface.MoveCursorToEnd()
-	case "enter", " ", "space":
-		return m, m.executeScopeHubAction()
-	}
-	return m, nil
-}
-
-func (m *ContextHubModel) executeScopeHubAction() tea.Cmd {
-	if m.actions == nil {
-		return nil
-	}
-	item, ok := m.actions.surface.CurrentItem()
-	if !ok {
-		return nil
-	}
-	descriptor, ok := item.Data.(OperationDescriptor)
-	if !ok {
-		m.notice = "Selected scope action is invalid"
-		return nil
-	}
-	target := m.actions.target
-	m.actions = nil
-
-	if m.executor == nil {
-		m.notice = "Scope actions are unavailable"
-		return nil
-	}
-	result := m.executor.Execute(OperationExecutionRequest{
-		ID:       descriptor.ID,
-		Context:  m.scopeHubCommandContext(),
-		Source:   OperationSourceActionSheet,
-		Value:    target,
-		HasValue: true,
-	})
-	return m.applyScopeHubExecutionResult(result)
+	return m, cmd
 }
 
 // executeScopeHubBrowseAction routes every documented browse key through the
@@ -729,7 +654,7 @@ func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 	}
 	request := OperationExecutionRequest{
 		ID:       id,
-		Context:  m.scopeHubCommandContext(),
+		Context:  m.scopeHubActionContext(target),
 		Source:   OperationSourceDirectKey,
 		Value:    target,
 		HasValue: true,
@@ -809,17 +734,11 @@ func (m *ContextHubModel) focusScopeHubContext(scope ContextScope) {
 	}
 }
 
-func (m *ContextHubModel) renderScopeHubActions(width, height int) string {
+func (m *ContextHubModel) renderScopeHubActions(width int) string {
 	if m.actions == nil {
 		return ""
 	}
-	header := SectionHeaderStyle.Render("Actions for " + m.actions.label)
-	if m.actions.searching || m.actions.surface.Query().Raw != "" {
-		header += "\n/" + m.actions.input.View()
-	}
-	contentHeight := max(height-2, 1)
-	body := RenderCompactListSurface(m.actions.surface, width, contentHeight)
-	return header + "\n\n" + body
+	return m.actions.render(width)
 }
 
 func (m *ContextHubModel) scopeHubActionFooterHelpVariants() []string {

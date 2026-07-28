@@ -1,0 +1,36 @@
+{
+  "name": "action-sheet-picker-cancel",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the In Progress task", "key": "j" },
+    { "type": "key", "label": "open the contextual action sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "key", "label": "open the state value picker", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Set State: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Esc back" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel the picker", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "Set State: Build login form" },
+    { "type": "key", "label": "cancel the sheet", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
+    { "type": "assert", "assert": "contains", "value": "@ In Progress" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reopen the contextual action sheet", "key": "space" },
+    { "type": "key", "label": "open the state value picker", "key": "enter" },
+    { "type": "key", "key": "k" },
+    { "type": "key", "label": "highlight Ready", "key": "k" },
+    { "type": "key", "label": "commit the chosen value", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Set State: Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "@ In Progress" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

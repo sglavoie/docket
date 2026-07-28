@@ -126,7 +126,8 @@ func (m *AppModel) Overlays() OverlayManager { return OverlayManager{app: m} }
 func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
 	return m.operationValuePicker != nil ||
-		m.taskActionSheet != nil ||
+		m.operationTextPrompt != nil ||
+		m.contextActionSheet != nil ||
 		m.quickNoteOverlay != nil
 }
 
@@ -134,8 +135,9 @@ func (o OverlayManager) HasActiveTextInput() bool {
 func (o OverlayManager) Active() bool {
 	m := o.app
 	return m.navigation.Overlays.Active() ||
-		m.taskActionSheet != nil ||
+		m.contextActionSheet != nil ||
 		m.operationValuePicker != nil ||
+		m.operationTextPrompt != nil ||
 		m.quickNoteOverlay != nil ||
 		m.projectAdminMenu != nil
 }
@@ -145,8 +147,11 @@ func (o OverlayManager) Active() bool {
 func (o OverlayManager) ClearAll() {
 	m := o.app
 	m.navigation.Overlays.CancelAll()
-	m.taskActionSheet = nil
+	m.contextActionSheet = nil
 	m.operationValuePicker = nil
+	m.operationTextPrompt = nil
+	m.operationConfirm.Cancel()
+	m.pendingOperationRequest = OperationExecutionRequest{}
 	m.quickNoteOverlay = nil
 	m.projectAdminMenu = nil
 }

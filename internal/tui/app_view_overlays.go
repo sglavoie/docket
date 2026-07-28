@@ -38,11 +38,14 @@ type widthRenderer interface {
 // with OverlayPopupDimmed. Order matters: later entries render on top.
 func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	var out []widthRenderer
-	if m.taskActionSheet != nil {
-		out = append(out, m.taskActionSheet)
+	if m.contextActionSheet != nil {
+		out = append(out, m.contextActionSheet)
 	}
 	if m.operationValuePicker != nil {
 		out = append(out, m.operationValuePicker)
+	}
+	if m.operationTextPrompt != nil {
+		out = append(out, m.operationTextPrompt)
 	}
 	if m.projectAdminMenu != nil {
 		out = append(out, m.projectAdminMenu)
@@ -61,6 +64,9 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	}
 	if m.taskDeleteConfirm.IsActive() {
 		return m.taskDeleteConfirm.RenderOverlay(m.width)
+	}
+	if m.operationConfirm.IsActive() {
+		return m.operationConfirm.RenderOverlay(m.width)
 	}
 
 	view := m.activeView()

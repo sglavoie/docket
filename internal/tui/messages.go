@@ -67,7 +67,7 @@ package tui
 //   - XxxMsg (verb): Trigger an operation
 //
 // Examples:
-//   - TaskActionSheetExecuteMsg{Request: ...}
+//   - ContextActionSheetResultMsg{Request: ..., Result: ...}
 //   - RefreshMsg, BackMsg, QuitMsg
 //
 // # File Organization

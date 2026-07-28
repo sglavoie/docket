@@ -73,7 +73,39 @@ const (
 	ValueProviderProject      ValueProviderID = "project"
 	ValueProviderDependencies ValueProviderID = "dependencies"
 	ValueProviderParent       ValueProviderID = "parent"
+	ValueProviderNoteTitle    ValueProviderID = "note-title"
+	ValueProviderTagName      ValueProviderID = "tag-name"
 )
+
+// textEntry reports whether the provider's value is typed rather than picked
+// from a list, so the value step opens the text prompt instead of the picker.
+func (id ValueProviderID) textEntry() bool {
+	return id == ValueProviderNoteTitle || id == ValueProviderTagName
+}
+
+func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {
+	descriptor.ValueProviderID = provider
+	return descriptor
+}
+
+// OperationPlacement declares where a descriptor is discoverable. Finder is the
+// only command surface, so placement decides whether an operation is listed
+// among its operations, among its tools, only in contextual action sheets, or
+// nowhere.
+type OperationPlacement string
+
+const (
+	PlacementFinderOperation OperationPlacement = "finder-operation"
+	PlacementFinderTool      OperationPlacement = "finder-tool"
+	PlacementContextual      OperationPlacement = "contextual"
+	PlacementHidden          OperationPlacement = "hidden"
+)
+
+// DiscoverableInFinder reports whether the placement lists the operation in
+// Finder.
+func (placement OperationPlacement) DiscoverableInFinder() bool {
+	return placement == PlacementFinderOperation || placement == PlacementFinderTool
+}
 
 // OperationApplicability is a handler-free predicate over the active command
 // context. RequiredCapabilities are checked before this predicate.
@@ -84,8 +116,10 @@ type OperationApplicability func(CommandContext) bool
 type OperationDescriptor struct {
 	ID                   OperationID
 	Label                string
+	Description          string
 	Aliases              []string
 	Category             OperationCategory
+	Placement            OperationPlacement
 	DirectKey            string
 	TargetSource         OperationTargetSource
 	TargetCardinality    TargetCardinality
@@ -195,6 +229,25 @@ func (registry *OperationRegistry) ForContext(ctx CommandContext) ([]OperationDe
 	return descriptors, nil
 }
 
+// ForPlacement returns the descriptors applicable in ctx that the given
+// discovery surface may list.
+func (registry *OperationRegistry) ForPlacement(
+	ctx CommandContext,
+	placement OperationPlacement,
+) ([]OperationDescriptor, error) {
+	applicable, err := registry.ForContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	descriptors := make([]OperationDescriptor, 0, len(applicable))
+	for _, descriptor := range applicable {
+		if descriptor.Placement == placement {
+			descriptors = append(descriptors, descriptor)
+		}
+	}
+	return descriptors, nil
+}
+
 // ValidateContext verifies that applicable operations have unique direct keys.
 func (registry *OperationRegistry) ValidateContext(ctx CommandContext) error {
 	_, err := registry.ForContext(ctx)
@@ -204,7 +257,9 @@ func (registry *OperationRegistry) ValidateContext(ctx CommandContext) error {
 func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDescriptor, error) {
 	descriptor.ID = OperationID(strings.TrimSpace(string(descriptor.ID)))
 	descriptor.Label = strings.TrimSpace(descriptor.Label)
+	descriptor.Description = strings.TrimSpace(descriptor.Description)
 	descriptor.DirectKey = normalizeOperationKey(descriptor.DirectKey)
+	descriptor.Placement = OperationPlacement(strings.TrimSpace(string(descriptor.Placement)))
 	descriptor.ValueProviderID = ValueProviderID(strings.TrimSpace(string(descriptor.ValueProviderID)))
 	if descriptor.ID == "" {
 		return OperationDescriptor{}, fmt.Errorf("operation ID is required")
@@ -238,9 +293,46 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	if !validOperationRisk(descriptor.Risk) {
 		return OperationDescriptor{}, fmt.Errorf("operation %s has invalid risk %q", descriptor.ID, descriptor.Risk)
 	}
+	if err := validateOperationCapabilities(descriptor.ID, descriptor.RequiredCapabilities); err != nil {
+		return OperationDescriptor{}, err
+	}
+	if descriptor.Placement == "" {
+		descriptor.Placement = defaultOperationPlacement(descriptor.RequiredCapabilities)
+	}
+	if !validOperationPlacement(descriptor.Placement) {
+		return OperationDescriptor{}, fmt.Errorf(
+			"operation %s has invalid placement %q",
+			descriptor.ID,
+			descriptor.Placement,
+		)
+	}
+	if descriptor.RequiredCapabilities.Has(CapabilityHarness) && descriptor.Placement.DiscoverableInFinder() {
+		return OperationDescriptor{}, fmt.Errorf(
+			"operation %s requires the test harness and must not be placed in Finder",
+			descriptor.ID,
+		)
+	}
 	descriptor.Aliases = normalizeOperationAliases(descriptor.Label, descriptor.Aliases)
 	descriptor.RequiredCapabilities = cloneCapabilitySet(descriptor.RequiredCapabilities)
 	return descriptor, nil
+}
+
+// defaultOperationPlacement keeps harness deep links out of every discovery
+// surface while leaving ordinary operations discoverable in Finder.
+func defaultOperationPlacement(capabilities CapabilitySet) OperationPlacement {
+	if capabilities.Has(CapabilityHarness) {
+		return PlacementHidden
+	}
+	return PlacementFinderOperation
+}
+
+func validateOperationCapabilities(id OperationID, capabilities CapabilitySet) error {
+	for capability := range capabilities {
+		if !validCapability(capability) {
+			return fmt.Errorf("operation %s has unknown required capability %q", id, capability)
+		}
+	}
+	return nil
 }
 
 func cloneOperationDescriptor(descriptor OperationDescriptor) OperationDescriptor {
@@ -304,6 +396,15 @@ func validOperationCategory(category OperationCategory) bool {
 		OperationCategoryReview,
 		OperationCategoryNotification,
 		OperationCategorySystem:
+		return true
+	default:
+		return false
+	}
+}
+
+func validOperationPlacement(placement OperationPlacement) bool {
+	switch placement {
+	case PlacementFinderOperation, PlacementFinderTool, PlacementContextual, PlacementHidden:
 		return true
 	default:
 		return false

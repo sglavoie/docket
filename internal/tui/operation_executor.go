@@ -120,6 +120,10 @@ type OperationStatusEvent struct {
 	Phase       OperationStatusPhase
 	Status      string
 	Err         error
+	// OwnsUserFeedback reports that this event's Status is the outcome's only
+	// user-visible feedback. A reporter that shows anything else duplicates a
+	// notification the message seam already delivers.
+	OwnsUserFeedback bool
 }
 
 type OperationStatusReporter func(OperationStatusEvent)
@@ -140,10 +144,13 @@ type OperationValueRequestMsg struct {
 	Provider ValueProviderID
 }
 
-// OperationExecutionResult is the adapter-facing outcome.
+// OperationExecutionResult is the adapter-facing outcome. Status holds the
+// handler's own words, and StatusReported records that an installed reporter
+// already showed them.
 type OperationExecutionResult struct {
 	Message              tea.Msg
 	Status               string
+	StatusReported       bool
 	Err                  error
 	ConfirmationRequired *OperationConfirmationRequestMsg
 	ValueRequired        *OperationValueRequestMsg
@@ -160,7 +167,9 @@ func (msg OperationCommandResultMsg) String() string { return "operation command
 func (msg OperationCommandResultMsg) Type() string { return "operation_command_result" }
 
 // AsMessage converts an execution outcome to the existing Bubble Tea message
-// seam while preserving centralized errors and generic pending requests.
+// seam while preserving centralized errors and generic pending requests. A
+// handler whose whole outcome is a status reaches the user here, because the
+// status reporter is optional and a message always outranks it.
 func (result OperationExecutionResult) AsMessage() tea.Msg {
 	switch {
 	case result.Err != nil:
@@ -171,6 +180,8 @@ func (result OperationExecutionResult) AsMessage() tea.Msg {
 		return result.Message
 	case result.ValueRequired != nil:
 		return *result.ValueRequired
+	case result.Status != "" && !result.StatusReported:
+		return StatusMsg(result.Status)
 	default:
 		return nil
 	}
@@ -294,8 +305,19 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 	if binding.OperationID == "" {
 		return fmt.Errorf("operation binding ID is required")
 	}
-	if _, ok := executor.registry.Descriptor(binding.OperationID); !ok {
+	descriptor, ok := executor.registry.Descriptor(binding.OperationID)
+	if !ok {
 		return fmt.Errorf("%w: %s", ErrOperationNotRegistered, binding.OperationID)
+	}
+	if err := validateOperationCapabilities(binding.OperationID, binding.RequiredCapabilities); err != nil {
+		return err
+	}
+	if descriptor.TargetCardinality == TargetCardinalityNone &&
+		(binding.SingleHandler != nil || binding.BulkHandler != nil) {
+		return fmt.Errorf(
+			"operation %s resolves no targets and requires a target-free handler",
+			binding.OperationID,
+		)
 	}
 	handlerCount := 0
 	for _, present := range []bool{
@@ -433,26 +455,31 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 		}
 	}
 
-	status := handlerResult.Status
-	if status == "" {
-		status = descriptor.Label
+	// The ledger and the reporter always need a name for what ran; only the
+	// handler's own words are feedback worth showing a user.
+	recorded := handlerResult.Status
+	if recorded == "" {
+		recorded = descriptor.Label
 	}
 	if descriptor.Risk != OperationRiskReadOnly {
 		executor.history.record(operationUndoEntry{
 			id:     descriptor.ID,
 			label:  descriptor.Label,
-			status: status,
+			status: recorded,
 			undo:   handlerResult.Undo,
 			redo:   handlerResult.Redo,
 		})
 	}
-	executor.report(OperationStatusEvent{
-		OperationID: descriptor.ID,
-		Label:       descriptor.Label,
-		Phase:       OperationStatusCompleted,
-		Status:      status,
-	})
-	return OperationExecutionResult{Message: handlerResult.Message, Status: status}
+	return executor.deliver(
+		OperationStatusEvent{
+			OperationID: descriptor.ID,
+			Label:       descriptor.Label,
+			Phase:       OperationStatusCompleted,
+			Status:      recorded,
+		},
+		handlerResult.Message,
+		handlerResult.Status,
+	)
 }
 
 // Undo runs the newest executor-native undo callback.
@@ -462,13 +489,16 @@ func (executor *OperationExecutor) Undo() OperationExecutionResult {
 		return executor.failure("", "Undo", errors.New("nothing to undo"))
 	}
 	message := entry.undo()
-	executor.report(OperationStatusEvent{
-		OperationID: entry.id,
-		Label:       entry.label,
-		Phase:       OperationStatusUndone,
-		Status:      entry.status,
-	})
-	return OperationExecutionResult{Message: message, Status: entry.status}
+	return executor.deliver(
+		OperationStatusEvent{
+			OperationID: entry.id,
+			Label:       entry.label,
+			Phase:       OperationStatusUndone,
+			Status:      entry.status,
+		},
+		message,
+		entry.status,
+	)
 }
 
 // Redo runs the newest executor-native redo callback.
@@ -478,13 +508,16 @@ func (executor *OperationExecutor) Redo() OperationExecutionResult {
 		return executor.failure("", "Redo", errors.New("nothing to redo"))
 	}
 	message := entry.redo()
-	executor.report(OperationStatusEvent{
-		OperationID: entry.id,
-		Label:       entry.label,
-		Phase:       OperationStatusRedone,
-		Status:      entry.status,
-	})
-	return OperationExecutionResult{Message: message, Status: entry.status}
+	return executor.deliver(
+		OperationStatusEvent{
+			OperationID: entry.id,
+			Label:       entry.label,
+			Phase:       OperationStatusRedone,
+			Status:      entry.status,
+		},
+		message,
+		entry.status,
+	)
 }
 
 func (executor *OperationExecutor) bindingFor(
@@ -551,6 +584,23 @@ func (executor *OperationExecutor) failure(
 		Err:         err,
 	})
 	return OperationExecutionResult{Err: err}
+}
+
+// deliver names the one user-visible owner of a finished outcome. A handler
+// message outranks the reporter, so the reporter learns it must stay quiet and
+// the result stops claiming its status was already shown.
+func (executor *OperationExecutor) deliver(
+	event OperationStatusEvent,
+	message tea.Msg,
+	status string,
+) OperationExecutionResult {
+	event.OwnsUserFeedback = message == nil && status != ""
+	executor.report(event)
+	return OperationExecutionResult{
+		Message:        message,
+		Status:         status,
+		StatusReported: executor.reporter != nil && event.OwnsUserFeedback,
+	}
 }
 
 func (executor *OperationExecutor) report(event OperationStatusEvent) {

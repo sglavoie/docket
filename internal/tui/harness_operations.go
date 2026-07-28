@@ -117,7 +117,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			return OpenTaskActivityMsg{Task: task, Project: project}
 		}},
 		{operationHarnessProjectNotes, "show notes", OperationCategoryNote, func() tea.Msg {
-			return m.coreNotesMessage()
+			return m.globalOperationMessage(operationToolNotes, m.operationCommandContext())
 		}},
 		{operationHarnessNotesSearch, "search notes", OperationCategoryNote, func() tea.Msg {
 			return syntheticKey('/')

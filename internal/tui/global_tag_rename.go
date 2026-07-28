@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // renameGlobalTag renames a tag across every project that uses it through the
@@ -15,27 +14,7 @@ import (
 // usages atomically, committing every touched project as one transaction and
 // recording a single grouped undo/redo entry.
 func (m *GlobalTagManagerModel) renameGlobalTag(oldName, newName string) tea.Cmd {
-	// Normalize and no-op on an empty/unchanged rename, matching the legacy
-	// synchronous guard before any work is dispatched.
-	oldName = models.NormalizeTag(oldName)
-	newName = models.NormalizeTag(newName)
-	if newName == "" || newName == oldName {
-		return nil
-	}
-
-	coordinator := m.coordinator
-	return func() tea.Msg {
-		res, err := coordinator.RenameWorkspace(oldName, newName)
-		if err != nil {
-			return GlobalTagManagerErrorMsg{Err: globalTagRenameError(err)}
-		}
-		return GlobalTagRenamedMsg{
-			OldName:      res.OldTag,
-			NewName:      res.NewTag,
-			ProjectCount: res.ProjectCount,
-			TaskCount:    res.TaskCount,
-		}
-	}
+	return renameWorkspaceTagCmd(m.coordinator, oldName, newName)
 }
 
 // globalTagRenameError unwraps an application-layer invalid-input error to its

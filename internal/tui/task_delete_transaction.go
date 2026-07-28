@@ -10,6 +10,35 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+const operationTaskDelete OperationID = "tui.task.delete"
+
+// executeTaskDeleteOperation turns the frozen action-sheet targets into the one
+// canonical delete request. The registry never mutates task data: confirmation
+// and the atomic transaction stay in handleTaskDeleteRequested/confirmTaskDelete,
+// which is why the binding delegates confirmation instead of adding a second,
+// generic prompt in front of the canonical one.
+func (m *AppModel) executeTaskDeleteOperation(
+	invocation OperationInvocation,
+) OperationHandlerResult {
+	refs := make([]TaskProjectRef, 0, len(invocation.Targets.Targets))
+	for _, target := range invocation.Targets.Targets {
+		task, project := m.taskAndProjectForIdentity(target.Task)
+		if task == nil || project == nil {
+			return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+		}
+		refs = append(refs, TaskProjectRef{Task: task, Project: project})
+	}
+	if len(refs) == 0 {
+		return OperationHandlerResult{
+			Err: fmt.Errorf("operation %s requires at least one task", invocation.Descriptor.ID),
+		}
+	}
+	return OperationHandlerResult{Message: TaskDeleteRequestedMsg{
+		Refs:   refs,
+		Origin: invocation.Context.View,
+	}}
+}
+
 // TaskDeleteRequestedMsg is the canonical, shell-owned request to permanently
 // delete one or more task subtrees. Any surface (Outliner, Planner, Task
 // Detail, review, …) emits it instead of running its own delete flow: the shell

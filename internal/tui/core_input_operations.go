@@ -34,9 +34,22 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			Risk:                 risk,
 		}
 	}
+	// Edit and Detail are the two core operations the task action sheet reuses,
+	// so they must name the frozen row the sheet was opened on instead of
+	// inheriting a selection or project default that the cursor can outrun.
+	withTaskTarget := func(descriptor OperationDescriptor) OperationDescriptor {
+		descriptor.TargetSource = OperationTargetCurrentTask
+		return descriptor
+	}
+	// Direct keys that open a global tool are shortcuts to that tool's own
+	// descriptor, so Finder lists the tool once and never the shortcut.
+	toolShortcut := func(descriptor OperationDescriptor) OperationDescriptor {
+		descriptor.Placement = PlacementHidden
+		return descriptor
+	}
 	return []OperationDescriptor{
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
-		core(operationCoreEdit, "Edit Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "modify task"),
+		withTaskTarget(core(operationCoreEdit, "Edit Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "modify task", "rename task", "change title")),
 		core(operationCoreStart, "Start Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "in progress"),
 		core(operationCoreDone, "Complete Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "done", "finish task"),
 		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "ready"),
@@ -45,25 +58,29 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreActions, "Task Actions", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskReadOnly, "action sheet"),
 		core(operationCoreCursorDown, "Move Cursor Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorUp, "Move Cursor Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreCursorTop, "Go to First Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreCursorBottom, "Go to Last Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreCursorPageUp, "Half Page Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCollapseParent, "Collapse or Go to Parent", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
-		core(operationCoreDetail, "Open Task Detail", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskReadOnly, "task detail"),
+		withTaskTarget(core(operationCoreDetail, "Open Task Detail", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskReadOnly, "task detail", "peek task", "task overview")),
 		core(operationCoreVisibleSearch, "Search Visible Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "filter visible list"),
 		core(operationCoreFinder, "Global Finder", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "find anything"),
 		core(operationCoreModes, "Choose Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "modes"),
 		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "projects", "contexts"),
 		core(operationCoreMultiSelect, "Toggle Multi-select", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
-		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
-		core(operationCoreWeeklyReview, "Weekly Review", OperationCategoryReview, TargetCardinalityNone, OperationRiskReadOnly),
-		core(operationCoreTags, "Tags", OperationCategoryTag, TargetCardinalityNone, OperationRiskReadOnly),
-		core(operationCoreNotifications, "Notifications", OperationCategoryNotification, TargetCardinalityNone, OperationRiskReadOnly, "alerts"),
+		toolShortcut(core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes")),
+		toolShortcut(core(operationCoreWeeklyReview, "Weekly Review", OperationCategoryReview, TargetCardinalityNone, OperationRiskReadOnly)),
+		toolShortcut(core(operationCoreTags, "Tags", OperationCategoryTag, TargetCardinalityNone, OperationRiskReadOnly)),
+		toolShortcut(core(operationCoreNotifications, "Notifications", OperationCategoryNotification, TargetCardinalityNone, OperationRiskReadOnly, "alerts")),
 		core(operationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReset, "Reset to All Projects", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "root", "global all"),
-		core(operationCoreHelp, "Help", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "keyboard shortcuts"),
+		toolShortcut(core(operationCoreHelp, "Help", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "keyboard shortcuts")),
 		core(operationCoreQuit, "Quit", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "exit"),
 		core(operationCoreNextWorkMode, "Next Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCorePreviousWorkMode, "Previous Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
@@ -100,8 +117,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreCapture:
 		message = m.coreCaptureMessage()
 	case operationCoreEdit:
-		task, project := m.outlinerTarget()
-		if task != nil {
+		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
 			message = EditTaskMsg{Task: task, Project: project}
 		}
 	case operationCoreStart:
@@ -121,9 +137,17 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			m.setInfoStatus(err.Error())
 		}
 	case operationCoreCursorDown:
-		message = commandMessage(m.coreMoveCursor(1))
+		message = commandMessage(m.coreMoveCursor("j"))
 	case operationCoreCursorUp:
-		message = commandMessage(m.coreMoveCursor(-1))
+		message = commandMessage(m.coreMoveCursor("k"))
+	case operationCoreCursorTop:
+		message = commandMessage(m.coreMoveCursor("home"))
+	case operationCoreCursorBottom:
+		message = commandMessage(m.coreMoveCursor("G"))
+	case operationCoreCursorPageUp:
+		message = commandMessage(m.coreMoveCursor("ctrl+u"))
+	case operationCoreCursorPageDown:
+		message = commandMessage(m.coreMoveCursor("ctrl+d"))
 	case operationCoreCollapseParent:
 		if out, _, ok := m.outlinerPrimary(); ok {
 			out.collapseOrMoveToParent()
@@ -141,8 +165,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			if err := m.openTaskActionSheet(invocation.Context); err != nil {
 				out.setStatus(err.Error())
 			}
-		} else {
-			message = m.coreTaskDetailMessage()
+		} else if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil && project != nil {
+			message = ShowTaskDetailMsg{Task: task, Project: project}
 		}
 	case operationCoreVisibleSearch:
 		if out, _, ok := m.outlinerPrimary(); ok {
@@ -159,15 +183,13 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			out.toggleMultiSelectMode()
 		}
 	case operationCoreNotes:
-		message = m.coreNotesMessage()
+		message = m.globalOperationMessage(operationToolNotes, invocation.Context)
 	case operationCoreWeeklyReview:
-		message = ShowWeeklyReviewMsg{
-			ProjectSet: ActiveProjectSetScope(invocation.Context.ScopeProjectIDs),
-		}
+		message = m.globalOperationMessage(operationToolWeeklyReview, invocation.Context)
 	case operationCoreTags:
-		message = m.coreTagsMessage(invocation.Context.ScopeProjectIDs)
+		message = m.globalOperationMessage(operationToolTags, invocation.Context)
 	case operationCoreNotifications:
-		message = ShowNotificationCenterMsg{}
+		message = m.globalOperationMessage(operationToolNotifications, invocation.Context)
 	case operationCoreUndo:
 		message = commandMessage(m.coreUndo())
 	case operationCoreRedo:
@@ -179,11 +201,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreReset:
 		message = JumpDashboardMsg{}
 	case operationCoreHelp:
-		message = ShowHelpMsg{
-			SourceView: m.currentView(),
-			ViewName:   "Outliner",
-			Items:      m.coreInputHelpItems(),
-		}
+		message = m.globalOperationMessage(operationToolReference, invocation.Context)
 	case operationCoreQuit:
 		message = QuitMsg{}
 	case operationCoreNextWorkMode:
@@ -292,14 +310,13 @@ func (m *AppModel) coreMoveToBacklog() tea.Cmd {
 	return m.queueToggleResultCmd()
 }
 
-func (m *AppModel) coreMoveCursor(delta int) tea.Cmd {
+// coreMoveCursor takes a shared list-navigation key rather than a delta so steps,
+// edge jumps, and half-page jumps all inherit the same viewport sizing, boundary
+// flashing, and non-navigable row skipping.
+func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	out, _, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return nil
-	}
-	key := "j"
-	if delta < 0 {
-		key = "k"
 	}
 	previous := out.cursor
 	handled, cmd := handleListNavigation(
@@ -329,44 +346,6 @@ func (m *AppModel) coreReorder(delta int) tea.Cmd {
 		return cmd
 	}
 	return out.reorderTask(delta)
-}
-
-func (m *AppModel) coreTaskDetailMessage() tea.Msg {
-	out, _, ok := m.outlinerPrimary()
-	if !ok || out == nil || out.multiSelectMode {
-		return nil
-	}
-	task, project := out.getTaskRef()
-	if task == nil || project == nil {
-		return nil
-	}
-	return ShowTaskDetailMsg{Task: task, Project: project}
-}
-
-func (m *AppModel) coreNotesMessage() tea.Msg {
-	out, _, ok := m.outlinerPrimary()
-	if ok && out != nil {
-		if out.project != nil {
-			return ShowNotesMsg{Project: out.project}
-		}
-		if project := out.scopedProject(); project != nil {
-			return ShowNotesMsg{Project: project}
-		}
-	}
-	return ShowGlobalNotesMsg{}
-}
-
-func (m *AppModel) coreTagsMessage(scopeProjectIDs []string) tea.Msg {
-	out, _, ok := m.outlinerPrimary()
-	if ok && out != nil {
-		if out.project != nil {
-			return ShowTagManagerMsg{Project: out.project}
-		}
-		if project := out.scopedProject(); project != nil {
-			return ShowTagManagerMsg{Project: project}
-		}
-	}
-	return ShowGlobalTagManagerMsg{ProjectSet: ActiveProjectSetScope(scopeProjectIDs)}
 }
 
 func (m *AppModel) coreUndo() tea.Cmd {

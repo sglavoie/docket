@@ -10,9 +10,11 @@ import (
 // Notes Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowNotesMsg opens the notes view.
+// ShowNotesMsg opens the notes view. Focus optionally names the note filename
+// the cursor should land on.
 type ShowNotesMsg struct {
 	Project *models.Project
+	Focus   string
 }
 
 // CloseNotesMsg closes the notes view.
@@ -71,8 +73,11 @@ type ProjectNoteEditorDoneMsg struct {
 	Err             error
 }
 
-// ShowGlobalNotesMsg opens the global notes view.
-type ShowGlobalNotesMsg struct{}
+// ShowGlobalNotesMsg opens the global notes view. Focus optionally names the
+// note filename the cursor should land on.
+type ShowGlobalNotesMsg struct {
+	Focus string
+}
 
 // CloseGlobalNotesMsg closes the global notes view.
 type CloseGlobalNotesMsg struct{ PopToAnchorMsg }

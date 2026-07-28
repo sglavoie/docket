@@ -172,6 +172,9 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
 	}
+	// Real sessions evaluate proactive alerts before the first frame, so the
+	// harness must too or no scenario ever sees the notification indicator.
+	app.reevaluateAlerts()
 	// The Outliner is the sole root and always boots into a loaded global All.
 	// Dispatch the startup message through the driver and drain it so the
 	// cross-project cache is populated before the scenario observes the screen —

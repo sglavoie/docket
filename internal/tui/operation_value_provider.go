@@ -246,102 +246,139 @@ func (model *OperationValuePickerModel) render(width int) string {
 	)
 }
 
-func taskActionOperationDescriptors() []OperationDescriptor {
-	descriptor := func(
-		id OperationID,
-		label string,
-		provider ValueProviderID,
-		source OperationTargetSource,
-		cardinality TargetCardinality,
-		aliases ...string,
-	) OperationDescriptor {
-		return OperationDescriptor{
-			ID:                   id,
-			Label:                label,
-			Aliases:              aliases,
+func (m *AppModel) taskActionOperationDescriptors() []OperationDescriptor {
+	manifest := taskOperationManifest()
+	descriptors := make([]OperationDescriptor, 0, len(manifest))
+	for _, entry := range manifest {
+		if entry.Core {
+			continue
+		}
+		source, cardinality := OperationTargetCurrentTask, TargetCardinalityOne
+		if entry.Bulk {
+			source, cardinality = OperationTargetSelectedTasks, TargetCardinalityOneOrMore
+		}
+		id := entry.ID
+		descriptors = append(descriptors, OperationDescriptor{
+			ID:      id,
+			Label:   entry.Label,
+			Aliases: entry.Aliases,
+			// A manifest action reaches a user through the row it acts on, so it
+			// is contextual: the Outliner sheet and the Finder task sheet both
+			// project the manifest, and Finder never lists it a second time as a
+			// standalone operation aimed at whatever the cursor happens to be on.
+			Placement:            PlacementContextual,
 			Category:             OperationCategoryTask,
 			TargetSource:         source,
 			TargetCardinality:    cardinality,
 			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
 			Applicability: func(context CommandContext) bool {
-				return taskActionOperationApplicable(id, context)
+				return m.taskActionOperationApplicable(id, context)
 			},
-			Risk:            OperationRiskMutation,
-			ValueProviderID: provider,
-		}
+			Risk:            entry.Risk,
+			ValueProviderID: entry.Provider,
+		})
 	}
-	bulk := func(id OperationID, label string, provider ValueProviderID, aliases ...string) OperationDescriptor {
-		return descriptor(
-			id,
-			label,
-			provider,
-			OperationTargetSelectedTasks,
-			TargetCardinalityOneOrMore,
-			aliases...,
-		)
-	}
-	single := func(id OperationID, label string, provider ValueProviderID, aliases ...string) OperationDescriptor {
-		return descriptor(
-			id,
-			label,
-			provider,
-			OperationTargetCurrentTask,
-			TargetCardinalityOne,
-			aliases...,
-		)
-	}
-	return []OperationDescriptor{
-		bulk(operationTaskSetState, "Set State", ValueProviderState, "workflow state", "status"),
-		bulk(operationTaskSetPriority, "Set Priority", ValueProviderPriority, "importance"),
-		bulk(operationTaskSetDueDate, "Set Due Date", ValueProviderDueDate, "deadline"),
-		bulk(operationTaskSetSnooze, "Set Snooze", ValueProviderSnooze, "hide until"),
-		bulk(operationTaskSetTags, "Set Tags", ValueProviderTags, "labels"),
-		single(operationTaskMoveProject, "Move Project", ValueProviderProject, "transfer task"),
-		single(operationTaskSetDependencies, "Set Dependencies", ValueProviderDependencies, "blocked by"),
-		single(operationTaskSetParent, "Set Parent", ValueProviderParent, "reparent", "clear parent"),
-		single(operationTaskIndent, "Indent", "", "nest under previous task"),
-		single(operationTaskOutdent, "Outdent", "", "move to parent level"),
-	}
+	return descriptors
 }
 
-func taskActionOperationApplicable(id OperationID, context CommandContext) bool {
+func (m *AppModel) taskActionOperationApplicable(id OperationID, context CommandContext) bool {
 	if !coreOutlinerApplicability(context) {
 		return false
 	}
+	entry, _ := taskOperationManifestEntryFor(id)
 	entities := []EntityContext{context.Entity}
 	if context.Selection.Visual {
 		selected := normalizedTaskIdentities(context.Selection.Tasks)
 		if len(selected) == 0 || len(context.Selection.Entities) != len(selected) {
 			return false
 		}
-		entities = context.Selection.Entities
-		switch id {
-		case operationTaskSetState,
-			operationTaskSetPriority,
-			operationTaskSetDueDate,
-			operationTaskSetSnooze,
-			operationTaskSetTags:
-		default:
+		if !entry.Bulk {
 			return false
 		}
+		entities = context.Selection.Entities
 	}
 	for _, entity := range entities {
-		if entity.TaskID == "" || entity.ProjectID == "" || entity.Archived {
+		if entity.TaskID == "" || entity.ProjectID == "" {
 			return false
 		}
-		if context.Selection.Visual && id == operationTaskSetSnooze {
-			switch models.WorkflowState(entity.State) {
-			case models.StateInProgress, models.StateDone, models.StateCanceled:
-				return false
-			case models.StateInbox, models.StateReady, models.StateNext,
-				models.StateWaiting, models.StatePaused, models.StateReview, models.StateSomeday:
-				continue
-			default:
-				return false
-			}
+		if entity.Archived && entry.Risk != OperationRiskReadOnly {
+			return false
+		}
+		if context.Selection.Visual && id == operationTaskSetSnooze && !taskStateAllowsSnooze(entity.State) {
+			return false
+		}
+		if !m.taskStructureAllowsOperation(id, entity) {
+			return false
+		}
+		if !m.taskAuxiliaryAllowsOperation(id, entity) {
+			return false
 		}
 	}
 	return true
+}
+
+func taskStateAllowsSnooze(state string) bool {
+	switch models.WorkflowState(state) {
+	case models.StateInbox, models.StateReady, models.StateNext,
+		models.StateWaiting, models.StatePaused, models.StateReview, models.StateSomeday:
+		return true
+	default:
+		return false
+	}
+}
+
+// taskStructureAllowsOperation hides destination-dependent actions that the
+// domain would reject: an indent with no legal parent above, an outdent at root,
+// a reparent with no candidate, or a move with no other active project. A target
+// that no longer resolves stays applicable so the handler reports the single
+// authoritative "no longer available" error instead of the row vanishing.
+func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityContext) bool {
+	switch id {
+	case operationTaskMoveProject, operationTaskSetParent, operationTaskIndent, operationTaskOutdent:
+	default:
+		return true
+	}
+	task, project := m.taskAndProjectForIdentity(TaskIdentity{
+		ProjectID: entity.ProjectID,
+		TaskID:    entity.TaskID,
+	})
+	if task == nil || project == nil {
+		return true
+	}
+	switch id {
+	case operationTaskMoveProject:
+		return len(m.moveProjectCandidates(project)) > 0
+	case operationTaskSetParent:
+		return task.ParentID != nil || len(buildReparentValidParents(project, task)) > 0
+	case operationTaskIndent:
+		above := project.GetTaskAbove(task)
+		if above == nil {
+			return false
+		}
+		allowed, _ := task.CanIndent(above)
+		return allowed
+	case operationTaskOutdent:
+		allowed, _ := task.CanOutdent()
+		return allowed
+	default:
+		return true
+	}
+}
+
+// moveProjectCandidates is the single destination set shared by move-project
+// applicability and its value picker.
+func (m *AppModel) moveProjectCandidates(source *models.Project) []*models.Project {
+	candidates := make([]*models.Project, 0)
+	for _, candidate := range m.activeProjects() {
+		if candidate == nil || candidate.Archived {
+			continue
+		}
+		if source != nil && candidate.ID == source.ID {
+			continue
+		}
+		candidates = append(candidates, candidate)
+	}
+	return candidates
 }
 
 func (m *AppModel) registerTaskActionOperations() error {
@@ -367,15 +404,18 @@ func (m *AppModel) registerTaskActionOperations() error {
 			return err
 		}
 	}
-	for _, descriptor := range taskActionOperationDescriptors() {
+	for _, descriptor := range m.taskActionOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
 			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
 			Applicability:        descriptor.Applicability,
-			Handler:              m.executeTaskValueOperation,
+			Handler:              m.executeTaskOperation,
 			// Every handler below dispatches to an application-layer coordinator
 			// or the existing atomic move message, which already owns commit and
 			// rollback policy.
 			DelegateTransaction: true,
+			// The canonical delete request prompts before it mutates, so a generic
+			// executor confirmation in front of it would ask the same question twice.
+			DelegateConfirmation: descriptor.ID == operationTaskDelete,
 		}); err != nil {
 			return err
 		}
@@ -383,7 +423,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 	return nil
 }
 
-func (m *AppModel) executeTaskValueOperation(
+func (m *AppModel) executeTaskOperation(
 	invocation OperationInvocation,
 ) OperationHandlerResult {
 	if len(invocation.Targets.Targets) == 0 {
@@ -391,6 +431,11 @@ func (m *AppModel) executeTaskValueOperation(
 	}
 	if invocation.Descriptor.ValueProviderID != "" && !invocation.HasValue {
 		return OperationHandlerResult{Err: fmt.Errorf("operation %s requires a value", invocation.Descriptor.ID)}
+	}
+	// Deletion takes every resolved target at once because one atomic
+	// transaction removes single and multi-root selections alike.
+	if invocation.Descriptor.ID == operationTaskDelete {
+		return m.executeTaskDeleteOperation(invocation)
 	}
 	if len(invocation.Targets.Targets) > 1 {
 		return m.executeBulkTaskValueOperation(invocation)
@@ -400,6 +445,13 @@ func (m *AppModel) executeTaskValueOperation(
 	if !identity.Valid() {
 		return OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 	}
+	return m.executeSingleTaskOperation(invocation, identity)
+}
+
+func (m *AppModel) executeSingleTaskOperation(
+	invocation OperationInvocation,
+	identity TaskIdentity,
+) OperationHandlerResult {
 	cmdResult := func(cmd tea.Cmd) OperationHandlerResult {
 		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
 	}
@@ -470,7 +522,7 @@ func (m *AppModel) executeTaskValueOperation(
 	case operationTaskOutdent:
 		return cmdResult(m.secondaryFeatures.TaskItem.Outdent(identity))
 	default:
-		return OperationHandlerResult{Err: fmt.Errorf("%w: %s", ErrOperationHandler, invocation.Descriptor.ID)}
+		return m.executeAuxiliaryTaskOperation(invocation, identity)
 	}
 }
 
@@ -661,13 +713,7 @@ func (m *AppModel) newOperationValuePicker(
 		if len(refs) != 1 {
 			return nil, fmt.Errorf("move project is available for one task at a time")
 		}
-		projects := make([]*models.Project, 0)
-		for _, candidate := range m.activeProjects() {
-			if candidate != nil && candidate.ID != project.ID && !candidate.Archived {
-				projects = append(projects, candidate)
-			}
-		}
-		source := ListSourceFromProjects(projects)
+		source := ListSourceFromProjects(m.moveProjectCandidates(project))
 		for index := range source.Items {
 			candidate, _ := source.Items[index].Data.(*models.Project)
 			if candidate != nil {
@@ -952,19 +998,41 @@ func (m *AppModel) executeOperationOverlayRequest(
 		return statusTimeout(5 * time.Second)
 	}
 	if result.ValueRequired != nil {
-		picker, err := m.newOperationValuePicker(
-			result.ValueRequired.Request,
-			result.ValueRequired.Provider,
-		)
+		return m.openOperationValueStep(*result.ValueRequired)
+	}
+	return operationResultCmd(result)
+}
+
+// openOperationValueStep opens the value overlay one provider needs: a typed
+// prompt for text values, the ListSurface picker for everything else.
+func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.Cmd {
+	if request.Provider.textEntry() {
+		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {
 			m.err = err
 			return statusTimeout(5 * time.Second)
 		}
-		m.operationValuePicker = picker
-		return nil
+		m.operationTextPrompt = prompt
+		return prompt.initCmd()
 	}
-	message := result.AsMessage()
-	switch typed := message.(type) {
+	picker, err := m.newOperationValuePicker(request.Request, request.Provider)
+	if err != nil {
+		m.err = err
+		return statusTimeout(5 * time.Second)
+	}
+	m.operationValuePicker = picker
+	return nil
+}
+
+func (m *AppModel) clearOperationValueStep() {
+	m.operationValuePicker = nil
+	m.operationTextPrompt = nil
+}
+
+// operationResultCmd converts a completed execution outcome into the Bubble Tea
+// command seam.
+func operationResultCmd(result OperationExecutionResult) tea.Cmd {
+	switch typed := result.AsMessage().(type) {
 	case nil:
 		return nil
 	case OperationCommandResultMsg:
@@ -976,36 +1044,104 @@ func (m *AppModel) executeOperationOverlayRequest(
 
 func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch typed := msg.(type) {
-	case TaskActionSheetExecuteMsg:
-		if m.operationRegistry != nil {
-			if descriptor, ok := m.operationRegistry.Descriptor(typed.Request.ID); ok &&
-				descriptor.ValueProviderID == "" {
-				m.taskActionSheet = nil
-			}
-		}
-		return true, m.executeOperationOverlayRequest(typed.Request)
-	case TaskActionSheetClosedMsg:
-		m.taskActionSheet = nil
+	case ContextActionSheetResultMsg:
+		return true, m.applyContextActionSheetResult(typed)
+	case ContextActionSheetClosedMsg:
+		m.contextActionSheet = nil
+		return true, nil
+	case OperationConfirmationRequestMsg:
+		m.showOperationConfirmation(typed)
 		return true, nil
 	case OperationValueRequestMsg:
-		picker, err := m.newOperationValuePicker(typed.Request, typed.Provider)
-		if err != nil {
-			m.err = err
-			return true, statusTimeout(5 * time.Second)
-		}
-		m.operationValuePicker = picker
-		return true, nil
+		return true, m.openOperationValueStep(typed)
 	case OperationValueSelectedMsg:
-		m.operationValuePicker = nil
-		m.taskActionSheet = nil
+		m.clearOperationValueStep()
 		request := typed.Request
 		request.Value = typed.Value
 		request.HasValue = true
-		return true, m.executeOperationOverlayRequest(request)
+		return true, m.resumeContextActionRequest(request)
 	case OperationValueCanceledMsg:
-		m.operationValuePicker = nil
+		m.clearOperationValueStep()
 		return true, nil
 	default:
 		return false, nil
 	}
+}
+
+// applyContextActionSheetResult applies the nested step or completion produced
+// by one centralized sheet execution. A failure is already retained on the
+// sheet, a pending value or confirmation opens beneath it, and only a completed
+// action reports the host lifecycle.
+func (m *AppModel) applyContextActionSheetResult(msg ContextActionSheetResultMsg) tea.Cmd {
+	switch {
+	case msg.Result.Err != nil:
+		return nil
+	case msg.Result.ValueRequired != nil:
+		return m.openOperationValueStep(*msg.Result.ValueRequired)
+	case msg.Result.ConfirmationRequired != nil:
+		m.showOperationConfirmation(*msg.Result.ConfirmationRequired)
+		return nil
+	}
+	cmd := operationResultCmd(msg.Result)
+	if msg.Completion != ContextActionCompleteCloseHost {
+		return cmd
+	}
+	completed := ContextActionSheetCompletedMsg{Host: msg.Host, Cmd: cmd}
+	return func() tea.Msg { return completed }
+}
+
+// resumeContextActionRequest re-enters the executor after a nested value or
+// confirmation step. An open sheet keeps ownership of the outcome so a failure
+// stays visible on it and only a completed action dismisses it.
+func (m *AppModel) resumeContextActionRequest(request OperationExecutionRequest) tea.Cmd {
+	sheet := m.contextActionSheet
+	if sheet == nil {
+		return m.executeOperationOverlayRequest(request)
+	}
+	result, dismissed := sheet.Execute(request)
+	if dismissed {
+		m.contextActionSheet = nil
+	}
+	return m.applyContextActionSheetResult(ContextActionSheetResultMsg{
+		Host:       sheet.config.Host,
+		Completion: sheet.config.Completion,
+		Request:    request,
+		Result:     result,
+	})
+}
+
+const operationConfirmAction = "contextual-operation"
+
+// showOperationConfirmation prompts for a destructive contextual action and
+// freezes the executor-supplied request, which already carries Confirmed.
+func (m *AppModel) showOperationConfirmation(request OperationConfirmationRequestMsg) {
+	m.pendingOperationRequest = request.Request
+	prompt := request.Label + "?"
+	if count := len(request.Targets.Entities()); count > 1 {
+		prompt = fmt.Sprintf("%s · %d targets?", request.Label, count)
+	}
+	m.operationConfirm.Show(operationConfirmAction, prompt)
+}
+
+// handleOperationConfirmKey gives the contextual destructive confirmation modal
+// key priority: it consumes every key while active so nothing leaks into the
+// sheet beneath, and cancellation leaves that sheet exactly as it was.
+func (m *AppModel) handleOperationConfirmKey(key string) (bool, tea.Cmd) {
+	if !m.operationConfirm.IsActive() {
+		return false, nil
+	}
+	confirmed, handled := m.operationConfirm.HandleKey(key)
+	if !handled {
+		return false, nil
+	}
+	if confirmed {
+		request := m.pendingOperationRequest
+		m.pendingOperationRequest = OperationExecutionRequest{}
+		return true, m.resumeContextActionRequest(request)
+	}
+	switch key {
+	case "n", "N", "esc":
+		m.pendingOperationRequest = OperationExecutionRequest{}
+	}
+	return true, nil
 }

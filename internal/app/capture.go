@@ -33,7 +33,8 @@ type CaptureRequest struct {
 	Due     *time.Time
 	HasTime bool
 	// ParentID, when non-nil, nests the new task under an existing task in the
-	// same project (validated to exist).
+	// same project. The parent must exist, accept this task's type, and leave the
+	// child within the nesting cap.
 	ParentID *string
 	// State is the task's initial canonical workflow state. Empty defaults to
 	// Inbox.
@@ -213,8 +214,10 @@ func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest)
 		return nil, err
 	}
 
-	if req.ParentID != nil && project.GetTaskByID(*req.ParentID) == nil {
-		return nil, fmt.Errorf("%w: parent %s", ErrTaskNotFound, *req.ParentID)
+	if req.ParentID != nil {
+		if _, parentErr := resolveChildParent(project, taskType, *req.ParentID); parentErr != nil {
+			return nil, parentErr
+		}
 	}
 
 	state, err := normalizeCreationState(req.State)

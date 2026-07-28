@@ -329,6 +329,7 @@ func (m *ReviewHubModel) CommandContext() CommandContext {
 			ctx.Scope = ScopeProject
 			delete(ctx.Capabilities, CapabilityAppScope)
 			ctx.Capabilities.Add(CapabilityProjectScope)
+			ctx.FocusedProjectID = m.project.ID
 		}
 		ctx.ScopeProjectIDs = m.ScopeProjectIDs()
 		return ctx

@@ -17,8 +17,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.err = fmt.Errorf("internal error: %v", r)
 			m.exitAskView()
 			m.navigation.ResetRoot()
-			m.taskActionSheet = nil
-			m.operationValuePicker = nil
+			m.contextActionSheet = nil
+			m.clearOperationValueStep()
+			m.operationConfirm.Cancel()
+			m.pendingOperationRequest = OperationExecutionRequest{}
 			m.isLoading = false
 			m.pendingSandboxReset = false
 			m.pendingSandboxProjectID = ""

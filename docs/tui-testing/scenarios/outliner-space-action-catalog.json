@@ -1,0 +1,42 @@
+{
+  "name": "outliner-space-action-catalog",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto a task", "key": "j" },
+    { "type": "key", "label": "open the contextual action sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "PLAN" },
+    { "type": "assert", "assert": "contains", "value": "Set State" },
+    { "type": "assert", "assert": "contains", "value": "Set Priority" },
+    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "contains", "value": "ORGANIZE" },
+    { "type": "assert", "assert": "contains", "value": "Set Tags" },
+    { "type": "assert", "assert": "contains", "value": "Move Project" },
+    { "type": "assert", "assert": "contains", "value": "CONTENT" },
+    { "type": "assert", "assert": "contains", "value": "Edit Task" },
+    { "type": "assert", "assert": "contains", "value": "Open Task Detail" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "scroll to the end of the catalog", "key": "G" },
+    { "type": "assert", "assert": "contains", "value": "RELATIONSHIPS" },
+    { "type": "assert", "assert": "contains", "value": "Set Parent" },
+    { "type": "assert", "assert": "contains", "value": "Set Dependencies" },
+    { "type": "assert", "assert": "contains", "value": "Copy Title" },
+    { "type": "assert", "assert": "contains", "value": "DANGER" },
+    { "type": "assert", "assert": "contains", "value": "Delete Task" },
+    { "type": "assert", "assert": "contains", "value": "confirmation required" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "choose the destructive action", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Confirm" },
+    { "type": "assert", "assert": "contains", "value": "y confirm" },
+    { "type": "key", "label": "decline the deletion", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "y confirm" },
+    { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

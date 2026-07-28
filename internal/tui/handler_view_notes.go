@@ -102,13 +102,17 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		if msg.Project == nil {
 			return true, m.activateManageProjectPicker(ManageNotes)
 		}
-		return true, m.activateManageHub(ManageParams{
+		cmd := m.activateManageHub(ManageParams{
 			Module: ManageNotes,
 			Scope:  ProjectEntityScope(msg.Project.ID),
 		})
+		m.selectFinderNote(msg.Focus)
+		return true, cmd
 
 	case ShowGlobalNotesMsg:
-		return true, m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
+		cmd := m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
+		m.selectFinderNote(msg.Focus)
+		return true, cmd
 
 	case ShowGlobalNoteCreatorMsg:
 		return m.handleCreateGlobalNote()
@@ -180,9 +184,10 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 
 	case ShowNoteTaskLinkerMsg:
-		if msg.Project != nil && msg.Note != nil {
-			m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModelWithService(msg.Project, msg.Note, m.appService, false))
+		if msg.Project == nil || msg.Note == nil {
+			return true, errorCmd("cannot link: a note link names a task in the note's own project")
 		}
+		m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModelWithService(msg.Project, msg.Note, m.appService, false))
 		return true, nil
 
 	case CloseNoteTaskLinkerMsg:
@@ -246,6 +251,7 @@ func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
 	if !noteViewMatchesLocation(nv, location) {
 		m.setSuccessStatus(msg.SuccessMessage)
 		m.refreshNotesSearchState()
+		m.refreshFinderItems()
 		return
 	}
 	preferred := ""
@@ -268,6 +274,7 @@ func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
 	}
 	nv.setStatus(msg.SuccessMessage)
 	m.refreshNotesSearchState()
+	m.refreshFinderItems()
 }
 
 func normalizedNoteLocation(location app.NoteLocation, projectID string) app.NoteLocation {

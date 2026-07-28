@@ -13,6 +13,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowContextHubMsg:
 		return true, m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
 
+	case scopeHubInlineActionMsg:
+		return true, m.openScopeHubForInlineAction(msg)
+
 	case ContextScopeSelectedMsg:
 		if msg.Canceled {
 			return true, m.popView()
@@ -64,6 +67,23 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.reconcileRegularContextScope(msg.WasActive, AllContextScope()))
 	}
 	return false, nil
+}
+
+// openScopeHubForInlineAction routes a custom-scope mutation raised outside the
+// Scope Hub into a hub opened on the exact frozen scope. The hub intercepts its
+// own inline actions before they reach the shell, so this only ever runs for a
+// scope action started somewhere else, such as a Finder scope row.
+func (m *AppModel) openScopeHubForInlineAction(msg scopeHubInlineActionMsg) tea.Cmd {
+	cmd := m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
+	if m.manageHub == nil {
+		return cmd
+	}
+	hub, ok := m.manageHub.ActiveModuleView().(*ContextHubModel)
+	if !ok {
+		return cmd
+	}
+	hub.applyScopeHubInlineAction(msg)
+	return cmd
 }
 
 // returnToOutlinerAfterContextSelection dismisses every primary child above the

@@ -19,16 +19,30 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return nil
 	}
-	note := m.notes[m.cursor]
-
-	if note.ParseError != "" {
-		m.setErrorStatus("cannot preview — note has parse error. Press e to edit.")
+	cmd, err := notePreviewCmd(m.notes[m.cursor])
+	if err != nil {
+		m.setErrorStatus(err.Error())
 		return nil
 	}
-
-	if !external.GlowAvailable() {
+	if cmd == nil {
 		m.setStatus("glow not available for viewing")
 		return nil
+	}
+	m.setStatus("Opening in glow...")
+	return cmd
+}
+
+// notePreviewCmd renders one note into a temporary file and pages it through
+// glow. A nil command with a nil error means glow is not installed.
+func notePreviewCmd(note *models.Note) (tea.Cmd, error) {
+	if note == nil {
+		return nil, fmt.Errorf("note is unavailable")
+	}
+	if note.ParseError != "" {
+		return nil, fmt.Errorf("cannot preview — note has a parse error; press e to edit")
+	}
+	if !external.GlowAvailable() {
+		return nil, nil
 	}
 
 	content := fmt.Sprintf("# %s\n\n", note.Title)
@@ -39,22 +53,21 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 
 	tmpFile, err := os.CreateTemp("", "tt-note-*.md")
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create note preview: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	_, writeErr := tmpFile.WriteString(content)
 	closeErr := tmpFile.Close()
 	if writeErr != nil || closeErr != nil {
 		_ = os.Remove(tmpPath)
-		return nil
+		return nil, fmt.Errorf("failed to write note preview")
 	}
 
-	m.setStatus("Opening in glow...")
 	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		_ = os.Remove(tmpPath)
 		return NotesRefreshMsg{}
-	})
+	}), nil
 }
 
 func (m *NotesViewModel) openCurrentNoteReference() tea.Cmd {
@@ -63,39 +76,50 @@ func (m *NotesViewModel) openCurrentNoteReference() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 
-	path, err := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
-	if err != nil {
-		return errorCmd("invalid note path: %w", err)
-	}
-
-	content, err := m.formatNoteReferenceMarkdown(note, path)
-	if err != nil {
-		return errorCmd("failed to prepare note reference: %w", err)
-	}
-
-	snapshotPath, err := createReferenceSnapshotFile(content, "tt-note-reference-", ".md")
-	if err != nil {
-		return errorCmd("failed to create note reference: %w", err)
-	}
-
 	externalEditor := ""
 	if m.config != nil {
 		externalEditor = m.config.GetExternalEditor()
 	}
-	result, err := openReferenceFile(externalEditor, snapshotPath)
+	status, err := openNoteReference(note, m.effectiveDir(), externalEditor, m.linkedTasksForReferenceNote(note))
 	if err != nil {
-		if result.Status == external.ReferenceOpenStatusUnsupportedEditor {
-			m.setStatus(err.Error())
-			return defaultStatusTimeout()
-		}
 		return errorCmd("%s", err)
 	}
 
-	m.setStatus("Opened note reference copy")
+	m.setStatus(status)
 	return defaultStatusTimeout()
 }
 
-func (m *NotesViewModel) formatNoteReferenceMarkdown(note *models.Note, path string) (string, error) {
+// openNoteReference writes a read-only snapshot of one note and hands it to the
+// external editor, returning the status the caller should surface. An editor
+// that cannot open a detached snapshot is reported as a status, not an error,
+// so the note view keeps its existing non-fatal message.
+func openNoteReference(note *models.Note, dir, externalEditor string, linked []*models.Task) (string, error) {
+	if note == nil {
+		return "", fmt.Errorf("note is unavailable")
+	}
+	path, err := storage.NoteFilePathIn(dir, note.Filename)
+	if err != nil {
+		return "", fmt.Errorf("invalid note path: %w", err)
+	}
+	content, err := noteReferenceMarkdown(note, path, linked)
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare note reference: %w", err)
+	}
+	snapshotPath, err := createReferenceSnapshotFile(content, "tt-note-reference-", ".md")
+	if err != nil {
+		return "", fmt.Errorf("failed to create note reference: %w", err)
+	}
+	result, err := openReferenceFile(externalEditor, snapshotPath)
+	if err != nil {
+		if result.Status == external.ReferenceOpenStatusUnsupportedEditor {
+			return err.Error(), nil
+		}
+		return "", err
+	}
+	return "Opened note reference copy", nil
+}
+
+func noteReferenceMarkdown(note *models.Note, path string, linked []*models.Task) (string, error) {
 	if note.ParseError != "" {
 		raw, err := os.ReadFile(path)
 		if err != nil {
@@ -104,17 +128,20 @@ func (m *NotesViewModel) formatNoteReferenceMarkdown(note *models.Note, path str
 		return formatRawNoteReferenceMarkdown(note, string(raw)), nil
 	}
 
-	return external.FormatNoteReferenceMarkdownWithTasks(note, m.linkedTasksForReferenceNote(note)), nil
+	return external.FormatNoteReferenceMarkdownWithTasks(note, linked), nil
 }
 
 func (m *NotesViewModel) linkedTasksForReferenceNote(note *models.Note) []*models.Task {
-	if note == nil || len(note.LinkedTasks) == 0 {
-		return nil
-	}
-
 	tasks := m.cachedTasks
 	if len(tasks) == 0 && m.project != nil {
 		tasks = m.project.Tasks
+	}
+	return notesLinkedTasks(note, tasks)
+}
+
+func notesLinkedTasks(note *models.Note, tasks []*models.Task) []*models.Task {
+	if note == nil || len(note.LinkedTasks) == 0 {
+		return nil
 	}
 
 	taskByID := make(map[string]*models.Task, len(tasks))
@@ -178,8 +205,14 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	if location.Scope == "" {
 		return errorCmd("cannot edit note without a location")
 	}
+	return noteEditCmd(note, location, m.effectiveDir(), editor)
+}
+
+// noteEditCmd opens one note in the editor. A malformed note is edited as raw
+// file content so its frontmatter can be repaired by hand.
+func noteEditCmd(note *models.Note, location app.NoteLocation, dir, editor string) tea.Cmd {
 	if note.ParseError != "" {
-		path, pathErr := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
+		path, pathErr := storage.NoteFilePathIn(dir, note.Filename)
 		if pathErr != nil {
 			return errorCmd("invalid note path: %w", pathErr)
 		}

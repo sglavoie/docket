@@ -514,12 +514,11 @@ func TestScopeHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
 	alpha := app.projectByID("alpha")
 	setTestAppProjects(app, alpha)
 	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd == nil {
-		t.Fatal("stale project action emitted no error message")
+	if cmd != nil {
+		t.Fatalf("stale project action still emitted %#v", cmd())
 	}
-	msg, ok := cmd().(ErrorMsg)
-	if !ok || msg.Err == nil || msg.Err.Error() != "scope action target is no longer available" {
-		t.Fatalf("stale project action emitted %#v, want the production ErrorMsg", cmd())
+	if hub.notice != "project beta is no longer available" {
+		t.Fatalf("stale project action notice = %q, want the production executor error", hub.notice)
 	}
 }
 
