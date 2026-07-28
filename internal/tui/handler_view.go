@@ -10,11 +10,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// Delegate saved filter messages to dedicated handler
-	if handled, cmd := m.handleSavedFilterMessages(msg); handled {
-		return handled, cmd
-	}
-
 	// Delegate notes messages to dedicated handler
 	if handled, cmd := m.handleNotesMessages(msg); handled {
 		return handled, cmd

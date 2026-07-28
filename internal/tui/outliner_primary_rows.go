@@ -224,7 +224,7 @@ func (m *OutlinerModel) hasExplicitTerminalFilter() bool {
 			return true
 		}
 	}
-	return m.activeCriteriaFilter != nil && m.activeCriteriaFilter.IncludeCompleted
+	return false
 }
 
 func (m *OutlinerModel) allPrimaryGroupOrder() []models.WorkflowStateGroup {

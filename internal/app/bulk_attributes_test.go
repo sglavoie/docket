@@ -32,6 +32,14 @@ func TestBulkSetPrioritySetsAllAndCommitsOnce(t *testing.T) {
 	if got := repo.commits[0][0].UndoAction; got != "Set Priority" {
 		t.Errorf("UndoAction = %q, want Set Priority", got)
 	}
+
+	// Zero is the unset value, not an out-of-range priority, so it clears in bulk too.
+	if _, err = svc.BulkSetPriority([]string{"t1", "t2"}, 0); err != nil {
+		t.Fatalf("BulkSetPriority(0): %v", err)
+	}
+	if t1.Priority != 0 || t2.Priority != 0 {
+		t.Errorf("cleared priorities = %d/%d, want 0/0", t1.Priority, t2.Priority)
+	}
 }
 
 func TestBulkSetPriorityRejectsInvalidPriority(t *testing.T) {
@@ -42,6 +50,9 @@ func TestBulkSetPriorityRejectsInvalidPriority(t *testing.T) {
 
 	_, err := svc.BulkSetPriority([]string{"t1"}, 99)
 	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("err = %v, want ErrInvalidInput", err)
+	}
+	if _, err = svc.BulkSetPriority([]string{"t1"}, -1); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {

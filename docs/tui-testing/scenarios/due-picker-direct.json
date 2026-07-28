@@ -1,0 +1,29 @@
+{
+  "name": "due-picker-direct",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the In Progress task", "key": "j" },
+
+    { "type": "key", "label": "open the due-date picker with its direct key", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Due Date: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Clear" },
+    { "type": "assert", "assert": "contains", "value": "Today" },
+    { "type": "assert", "assert": "contains", "value": "Esc back" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
+
+    { "type": "key", "label": "reopen the picker", "key": "@" },
+    { "type": "key", "label": "highlight Today", "key": "j" },
+    { "type": "key", "label": "commit the due date", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the picker chrome is gone; only its status remains", "assert": "not_contains", "value": "Esc back" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

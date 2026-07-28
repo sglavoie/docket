@@ -15,11 +15,12 @@
     { "type": "key", "label": "open bulk actions for the frozen selection", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Bulk Actions · 2 selected" },
 
-    { "type": "assert", "assert": "contains", "value": "Set State" },
-    { "type": "assert", "assert": "contains", "value": "Set Priority" },
-    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
-    { "type": "assert", "assert": "contains", "value": "Set Tags" },
     { "type": "assert", "assert": "contains", "value": "Delete Task" },
+
+    { "type": "assert", "label": "metadata reaches a selection through its direct key, not a bulk row", "assert": "not_contains", "value": "Set State" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Tags" },
 
     { "type": "assert", "assert": "not_contains", "value": "Open Task Detail" },
     { "type": "assert", "assert": "not_contains", "value": "Edit Task" },

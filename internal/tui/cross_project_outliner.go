@@ -198,7 +198,6 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "context=%d:%q|", m.activeContext.Kind, m.activeContext.Name)
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
-	fmt.Fprintf(&b, "criteria=%s|", m.activeCriteriaFilterFingerprint())
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
 	fmt.Fprintf(&b, "review=%s|", reviewCollapsedFingerprint(m.reviewCollapsedSections))
@@ -225,19 +224,6 @@ func loadedProjectIDsFingerprint(projects []*models.Project) string {
 		ids = append(ids, project.ID)
 	}
 	return strings.Join(ids, "\x1f")
-}
-
-func (m *OutlinerModel) activeCriteriaFilterFingerprint() string {
-	if m.activeCriteriaFilter == nil {
-		return ""
-	}
-	filter := m.activeCriteriaFilter
-	var b strings.Builder
-	fmt.Fprintf(&b, "%q:%q:%q:%q:%t", filter.ID, filter.Name, filter.Mode, filter.EffectiveLogic(), filter.IncludeCompleted)
-	for _, criterion := range filter.Criteria {
-		fmt.Fprintf(&b, "|%q:%q:%q", criterion.Field, criterion.Operation, criterion.Value)
-	}
-	return b.String()
 }
 
 // crossProjectView renders the cross-project outliner. It shows a centered

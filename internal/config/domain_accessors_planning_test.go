@@ -69,47 +69,6 @@ func TestPlanningReviewCompletionRoundTrip(t *testing.T) {
 	}
 }
 
-// TestPlanningSavedFilterAccessors confirms the saved-filter accessors on the
-// planning domain mirror the config.Config facade: upsert-by-ID identity,
-// name/ID lookup and deletion.
-func TestPlanningSavedFilterAccessors(t *testing.T) {
-	p := NewPlanningState()
-
-	if got := p.GetSavedFilters(); got == nil || len(got) != 0 {
-		t.Fatalf("fresh planning saved filters = %v, want empty non-nil", got)
-	}
-
-	p.SaveFilter(SavedFilter{ID: "a", Name: "Alpha", Mode: "snapshot"})
-	p.SaveFilter(SavedFilter{ID: "b", Name: "Beta", Mode: "criteria"})
-	if len(p.GetSavedFilters()) != 2 {
-		t.Fatalf("saved filters = %d, want 2", len(p.GetSavedFilters()))
-	}
-
-	// Upsert by ID replaces in place rather than appending.
-	p.SaveFilter(SavedFilter{ID: "a", Name: "Alpha Renamed", Mode: "snapshot"})
-	if len(p.GetSavedFilters()) != 2 {
-		t.Fatalf("upsert changed count to %d, want 2", len(p.GetSavedFilters()))
-	}
-	if sf := p.GetSavedFilter("a"); sf == nil || sf.Name != "Alpha Renamed" {
-		t.Fatalf("GetSavedFilter(a) = %v, want Alpha Renamed", sf)
-	}
-
-	// Name lookup is case-insensitive.
-	if sf := p.GetSavedFilterByName("beta"); sf == nil || sf.ID != "b" {
-		t.Fatalf("GetSavedFilterByName(beta) = %v, want id b", sf)
-	}
-
-	if !p.DeleteSavedFilter("a") {
-		t.Fatal("DeleteSavedFilter(a) should report removal")
-	}
-	if p.GetSavedFilter("a") != nil {
-		t.Fatal("filter a should be gone after delete")
-	}
-	if p.DeleteSavedFilter("missing") {
-		t.Fatal("deleting an unknown filter should report false")
-	}
-}
-
 // TestDomainOwnershipSeparation confirms alert policy and review bookkeeping
 // remain in distinct explicit domains.
 func TestDomainOwnershipSeparation(t *testing.T) {

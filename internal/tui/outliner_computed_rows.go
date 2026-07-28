@@ -82,10 +82,10 @@ func compareOrderedModeTasks(left, right orderedModeTask) int {
 }
 
 func effectiveModePriority(task *models.Task) int {
-	if task == nil || models.ValidatePriority(task.Priority, false) != nil {
+	if task == nil {
 		return models.PriorityDefault
 	}
-	return task.Priority
+	return models.EffectivePriority(task.Priority)
 }
 
 func isComputedOpenWork(task *models.Task, in OutlinerModeInput) bool {

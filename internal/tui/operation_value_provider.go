@@ -423,6 +423,41 @@ func (m *AppModel) registerTaskActionOperations() error {
 	return nil
 }
 
+// acceptsPresetValue reports whether a key binding may deliver value directly
+// instead of opening the provider's picker. It mirrors the type assertions the
+// task handlers below make, so a mistyped preset is rejected when the input
+// strategy is registered rather than when the user presses the chord.
+func (id ValueProviderID) acceptsPresetValue(value any) bool {
+	switch id {
+	case ValueProviderState:
+		_, ok := value.(models.WorkflowState)
+		return ok
+	case ValueProviderPriority, ValueProviderFilterPriority:
+		_, ok := value.(int)
+		return ok
+	case ValueProviderFilterDue:
+		_, ok := value.(DueDateFilter)
+		return ok
+	case ValueProviderFilterStates, ValueProviderFilterTags:
+		_, ok := value.([]string)
+		return ok
+	case ValueProviderDueDate, ValueProviderSnooze:
+		_, ok := value.(OperationDateValue)
+		return ok
+	case ValueProviderTags, ValueProviderDependencies:
+		_, ok := value.([]string)
+		return ok
+	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName:
+		_, ok := value.(string)
+		return ok
+	case ValueProviderParent:
+		_, ok := value.(OperationParentValue)
+		return ok
+	default:
+		return false
+	}
+}
+
 func (m *AppModel) executeTaskOperation(
 	invocation OperationInvocation,
 ) OperationHandlerResult {
@@ -465,7 +500,7 @@ func (m *AppModel) executeSingleTaskOperation(
 		return cmdResult(m.secondaryFeatures.TaskItem.Transition(identity, state))
 	case operationTaskSetPriority:
 		priority, ok := invocation.Value.(int)
-		if !ok || priority < 1 || priority > 5 {
+		if !ok || priority < 0 || priority > models.PriorityMax {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid priority value")}
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetPriority(identity, priority))
@@ -565,7 +600,7 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		))
 	case operationTaskSetPriority:
 		priority, ok := invocation.Value.(int)
-		if !ok || priority < 1 || priority > 5 {
+		if !ok || priority < 0 || priority > models.PriorityMax {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid priority value")}
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.SetPriorityLocators(locators, priority))
@@ -624,6 +659,15 @@ func (m *AppModel) newOperationValuePicker(
 	request OperationExecutionRequest,
 	provider ValueProviderID,
 ) (*OperationValuePickerModel, error) {
+	// Filter pickers refine the whole view, so they must open without any task
+	// under the cursor and never resolve targets.
+	switch provider {
+	case ValueProviderFilterStates:
+		return m.newFilterStatesPicker(request)
+	case ValueProviderFilterTags:
+		return m.newFilterTagsPicker(request)
+	default:
+	}
 	refs, err := m.operationTaskRefs(request.Context)
 	if err != nil {
 		return nil, err

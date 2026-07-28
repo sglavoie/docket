@@ -37,7 +37,8 @@ The TUI is organized around capture, triage, plan, execute, and complete:
 2. Press `Tab` to move from All to Inbox and triage new tasks.
 3. Use `b`, `n`, or `t` to put work in Backlog, Next, or Today.
 4. Use `s` to start and `d` to complete the selected task.
-5. Press `Space` for every less-frequent or destructive action.
+5. Use `p`, `,`, `@`, and `#` to set priority, state, due date, and tags.
+6. Press `Space` for every less-frequent or destructive action.
 
 All mode groups open work as Today, In Progress, Inbox, Next, Backlog, Review,
 Waiting, Paused, and Someday. Today is synthetic and deduplicated. Done and
@@ -53,11 +54,20 @@ the Outliner.
 | Area | Keys |
 | --- | --- |
 | Task loop | `a` capture, `e` edit, `s` start, `d` done, `b` Backlog, `t` Today, `n` Next, `Space` actions |
+| Metadata | `p0`-`p5` priority (`p0` clears), `,i`/`,w`/`,p`/`,r`/`,s`/`,c` state, `@` due date, `#` tags |
+| Filters | `fp0`-`fp5` priority threshold, `fs` states, `ft` tags, `fd` then `t`/`w`/`o`/`n` due, `fx` clear |
 | Navigation | `j`/`k` move, `h`/`l` or arrows collapse/expand, `J`/`K` reorder, `Enter` detail |
 | Jumps | `g`/`Home` first row, `G`/`End` last row, `Ctrl+U`/`PgUp` and `Ctrl+D`/`PgDn` half page |
 | Discovery | `/` visible search, `:` Finder, `m` modes, `c` Scope Hub, `v` multi-select |
 | Core tools | `N` Notes, `R` Weekly Review, `T` Tags, `!` Notifications |
 | Session | `u` undo, `Ctrl+R` redo, `Esc` back, `Ctrl+Esc` reset, `?` help, `Ctrl+C` quit |
+
+Metadata keys act on the cursored task or, in multi-select, on the whole
+selection. They are the only route to those four edits, so the `Space` sheet
+does not repeat them. Filter keys are view state rather than a task edit: a
+filter survives mode switches, shows as a chip in the title row, and is cleared
+by `fx` or `Ctrl+Esc`. Pressing a chord prefix shows the choices it offers in a
+hint row above the footer.
 
 Normally, `Space` opens the contextual action sheet. In multi-select, `Space`
 toggles the current task and `Enter` opens bulk actions. Delete is available
@@ -90,12 +100,12 @@ so alerts stay visible without leaving the daily loop.
 
 Press `:` for Finder. Empty Finder input shows a short, bounded list of recent
 destinations followed by applicable operations. Type to search modes, scopes,
-operations, tasks, notes, tags, saved filters, pinned items, and recent items.
-Pinned, recent, and saved-filter entries are discovery results; they are not
-permanent modes or navigation tabs.
+operations, tasks, notes, tags, pinned items, and recent items. Pinned and
+recent entries are discovery results; they are not permanent modes or
+navigation tabs.
 
 In Finder, `Enter` opens the highlighted result and `Tab` opens its action
-sheet. Tasks, projects, notes, tags, saved filters, scopes, modes, and tools each
+sheet. Tasks, projects, notes, tags, scopes, modes, and tools each
 get the actions their own kind owns, so the Finder acts on a result without
 first navigating to it. `Esc` closes the sheet and leaves the search intact.
 

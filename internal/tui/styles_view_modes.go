@@ -22,12 +22,6 @@ var (
 				Foreground(lipgloss.Color("0")).
 				Padding(0, 1)
 
-	SavedFilterBadgeStyle = lipgloss.NewStyle().
-				Background(ColorSecondary).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
 	FilterBadgeInactiveStyle = lipgloss.NewStyle().
 					Background(ColorBackground).
 					Foreground(ColorBadgeText).

@@ -1,19 +1,17 @@
 package tui
 
 import (
-	"maps"
 	"slices"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // outlinerScopeFrame captures the outliner state that a project-scope push
 // replaces, so popping the scope restores every mode discriminator, filter,
-// search, saved-filter, sort, pinned-tag, cursor, scroll, and zoom value owned
-// per scope exactly. Every mutable map, pointer-backed criteria, and slice is
-// snapshotted (deep-copied) at capture time so edits made inside a child scope
-// cannot reach back and mutate a parent frame still sitting on the stack.
+// search, sort, pinned-tag, cursor, scroll, and zoom value owned per scope
+// exactly. Every mutable map and slice is snapshotted (deep-copied) at capture
+// time so edits made inside a child scope cannot reach back and mutate a parent
+// frame still sitting on the stack.
 //
 // Fold state is deliberately NOT snapshotted and remains shared across scopes:
 //   - collapsedSections / expandedNodes are keyed by project and section, so a
@@ -30,14 +28,12 @@ type outlinerScopeFrame struct {
 
 	primaryMode OutlinerModeID
 
-	// Filter / search / saved-filter / pinned-tag narrowing.
-	filter               FilterState
-	searchActive         bool
-	searchQuery          string
-	searchInputValue     string
-	activeSavedFilter    string
-	activeCriteriaFilter *config.SavedFilter
-	pinnedTagTabIndex    int
+	// Filter / search / pinned-tag narrowing.
+	filter            FilterState
+	searchActive      bool
+	searchQuery       string
+	searchInputValue  string
+	pinnedTagTabIndex int
 
 	// Active render ordering plus the durable tree-mode sort.
 	sort     SortState
@@ -61,49 +57,30 @@ func cloneFilterState(f FilterState) FilterState {
 	return dup
 }
 
-// cloneSavedFilter deep-copies a pointer-backed saved criteria filter so a child
-// scope loading or clearing its own criteria cannot mutate a parent frame's copy.
-func cloneSavedFilter(f *config.SavedFilter) *config.SavedFilter {
-	if f == nil {
-		return nil
-	}
-	dup := *f
-	dup.FilterTags = slices.Clone(f.FilterTags)
-	dup.SetFilterStates(f.FilterStates, f.HasStateFilter())
-	dup.FilterAttrs = maps.Clone(f.FilterAttrs)
-	dup.Criteria = slices.Clone(f.Criteria)
-	for i := range dup.Criteria {
-		dup.Criteria[i].States = cloneCommonWorkflowStateSet(f.Criteria[i].States)
-	}
-	return &dup
-}
-
 // captureScopeFrame snapshots the current restorable state into a frame. Every
-// mutable map/pointer/slice is deep-copied so the frame is fully independent of
-// the live model.
+// mutable map/slice is deep-copied so the frame is fully independent of the
+// live model.
 func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 	return outlinerScopeFrame{
-		scopedProjectID:      m.scopedProjectID,
-		cursor:               m.cursor,
-		viewScrollOffset:     m.viewScrollOffset,
-		primaryMode:          m.primaryMode,
-		filter:               cloneFilterState(m.filter),
-		searchActive:         m.HasActiveSearch(),
-		searchQuery:          m.SearchQuery(),
-		searchInputValue:     m.SearchInputValue(),
-		activeSavedFilter:    m.activeSavedFilter,
-		activeCriteriaFilter: cloneSavedFilter(m.activeCriteriaFilter),
-		pinnedTagTabIndex:    m.pinnedTagTabIndex(),
-		sort:                 m.sort,
-		treeSort:             m.treeSort,
-		zoomStack:            slices.Clone(m.zoomStack),
-		crossZoomStack:       slices.Clone(m.crossZoomStack),
+		scopedProjectID:   m.scopedProjectID,
+		cursor:            m.cursor,
+		viewScrollOffset:  m.viewScrollOffset,
+		primaryMode:       m.primaryMode,
+		filter:            cloneFilterState(m.filter),
+		searchActive:      m.HasActiveSearch(),
+		searchQuery:       m.SearchQuery(),
+		searchInputValue:  m.SearchInputValue(),
+		pinnedTagTabIndex: m.pinnedTagTabIndex(),
+		sort:              m.sort,
+		treeSort:          m.treeSort,
+		zoomStack:         slices.Clone(m.zoomStack),
+		crossZoomStack:    slices.Clone(m.crossZoomStack),
 	}
 }
 
 // restoreScopeFrame applies a previously captured frame back onto the model,
-// deep-copying every mutable map/pointer/slice back out so the live model never
-// aliases the frame's snapshot.
+// deep-copying every mutable map/slice back out so the live model never aliases
+// the frame's snapshot.
 func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.scopedProjectID = f.scopedProjectID
 	m.cursor = f.cursor
@@ -113,8 +90,6 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.SetSearchActive(f.searchActive)
 	m.SetSearchQuery(f.searchQuery)
 	m.SetSearchInputValue(f.searchInputValue)
-	m.activeSavedFilter = f.activeSavedFilter
-	m.activeCriteriaFilter = cloneSavedFilter(f.activeCriteriaFilter)
 	m.setPinnedTagTabIndex(f.pinnedTagTabIndex)
 	m.sort = f.sort
 	m.treeSort = f.treeSort
@@ -260,8 +235,6 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.clearContextScope()
 	m.zoomStack = nil
 	m.crossZoomStack = nil
-	m.activeSavedFilter = ""
-	m.activeCriteriaFilter = nil
 	clearCommonFilters(&m.filter.CommonFilterState)
 	m.filter.Actionable = false
 	m.setPinnedTagTabIndex(0)

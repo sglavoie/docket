@@ -26,13 +26,11 @@ func TestSplitDomainV3ToV4MigrationIsAtomicLosslessAndIdempotent(t *testing.T) {
 	writeRawDomainPayload(t, dataDir, workspaceID, domainPlanning, map[string]any{
 		"tui_state_version": CurrentTUIStateVersion,
 		"streak_count":      9,
-		"saved_filters": []map[string]any{{
-			"id":              "legacy-filter",
-			"name":            "Legacy filter",
-			"mode":            "snapshot",
+		"saved_views": []map[string]any{{
+			"name":            "Legacy view",
 			"filter_status":   "todo",
 			"filter_sections": []string{string(models.StateNext)},
-			"filter_tags":     []string{"backend", "urgent"},
+			"sort_field":      2,
 		}},
 	})
 	writeRawDomainPayload(t, dataDir, workspaceID, domainSettings, map[string]any{
@@ -103,13 +101,8 @@ func TestSplitDomainV3ToV4MigrationIsAtomicLosslessAndIdempotent(t *testing.T) {
 	if migrated.Catalog.SchemaVersion != CurrentConfigVersion {
 		t.Fatalf("catalog schema version = %d, want %d", migrated.Catalog.SchemaVersion, CurrentConfigVersion)
 	}
-	if migrated.Planning.StreakCount != 9 || len(migrated.Planning.SavedFilters) != 1 {
+	if migrated.Planning.StreakCount != 9 {
 		t.Fatalf("planning metadata changed: %+v", migrated.Planning)
-	}
-	filter := migrated.Planning.SavedFilters[0]
-	if !filter.HasStateFilter() || !filter.FilterStates.Equal(mustStateSet(t, models.StateNext)) ||
-		strings.Join(filter.FilterTags, ",") != "backend,urgent" {
-		t.Fatalf("migrated filter = %+v", filter)
 	}
 	if got := migrated.Settings.StateGroupLimits[models.StateGroupBacklog]; got != 8 {
 		t.Fatalf("backlog limit = %d, want 8", got)
@@ -253,14 +246,6 @@ func TestCurrentSchemaRejectsRetiredLifecycleInputs(t *testing.T) {
 			want: "explicit canonical state",
 		},
 		{
-			name: "saved filter status",
-			kind: domainPlanning,
-			payload: map[string]any{"tui_state_version": CurrentTUIStateVersion, "saved_filters": []map[string]any{{
-				"id": "legacy-filter", "name": "Legacy", "mode": "snapshot", "filter_status": "todo",
-			}}},
-			want: "retired status or section",
-		},
-		{
 			name: "workflow trigger",
 			kind: domainAutomation,
 			payload: map[string]any{"workflow_rules": []map[string]any{{
@@ -296,6 +281,59 @@ func TestCurrentSchemaRejectsRetiredLifecycleInputs(t *testing.T) {
 				t.Fatalf("LoadDomains error = %v, want %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// TestCurrentSchemaDiscardsRetiredPlanningSections covers a workspace last
+// written by a build that still persisted filter presets. Every retired shape
+// must load clean rather than fail validation, and the discard must reach disk
+// in one rewrite so the next load is a no-op.
+func TestCurrentSchemaDiscardsRetiredPlanningSections(t *testing.T) {
+	manager, dataDir := seededManager(t)
+	domains, err := manager.LoadDomains()
+	if err != nil {
+		t.Fatalf("load seeded domains: %v", err)
+	}
+
+	planningPath := writeRawDomainPayload(t, dataDir, domains.Catalog.WorkspaceID, domainPlanning, map[string]any{
+		"tui_state_version": CurrentTUIStateVersion,
+		"streak_count":      5,
+		"saved_views": []map[string]any{{
+			"name": "Legacy view", "filter_sections": []string{"Next"},
+		}},
+		"smart_lists": []map[string]any{{
+			"id": "legacy-list", "name": "Legacy list",
+			"criteria": []map[string]any{{"field": "status", "operation": "equals", "value": "todo"}},
+		}},
+	})
+
+	migrated, err := manager.LoadDomains()
+	if err != nil {
+		t.Fatalf("LoadDomains with retired filter presets: %v", err)
+	}
+	if migrated.Planning.StreakCount != 5 {
+		t.Fatalf("durable planning value lost: %+v", migrated.Planning)
+	}
+
+	after, err := os.ReadFile(planningPath)
+	if err != nil {
+		t.Fatalf("read planning payload: %v", err)
+	}
+	for _, token := range []string{`"saved_views"`, `"smart_lists"`} {
+		if bytes.Contains(after, []byte(token)) {
+			t.Fatalf("planning payload retained %s: %s", token, after)
+		}
+	}
+
+	if _, reloadErr := manager.LoadDomains(); reloadErr != nil {
+		t.Fatalf("idempotent reload: %v", reloadErr)
+	}
+	stable, err := os.ReadFile(planningPath)
+	if err != nil {
+		t.Fatalf("reread planning payload: %v", err)
+	}
+	if !bytes.Equal(stable, after) {
+		t.Fatal("idempotent reload rewrote the planning payload")
 	}
 }
 
@@ -377,15 +415,6 @@ func readDomainBytes(t *testing.T, paths map[domainKind]string) map[domainKind][
 	return result
 }
 
-func mustStateSet(t *testing.T, states ...models.WorkflowState) models.WorkflowStateSet {
-	t.Helper()
-	set, err := models.NewWorkflowStateSet(states...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return set
-}
-
 func equalStates(got, want []models.WorkflowState) bool {
 	if len(got) != len(want) {
 		return false
@@ -416,7 +445,7 @@ func assertCanonicalV4Payloads(t *testing.T, artifacts map[domainKind][]byte) {
 	if catalog.SchemaVersion != CurrentConfigVersion {
 		t.Fatalf("persisted catalog version = %d, want %d", catalog.SchemaVersion, CurrentConfigVersion)
 	}
-	for _, token := range []string{`"filter_status"`, `"filter_sections"`} {
+	for _, token := range []string{`"saved_views"`, `"smart_lists"`} {
 		if bytes.Contains(payloads[domainPlanning], []byte(token)) {
 			t.Fatalf("canonical planning retained %s: %s", token, payloads[domainPlanning])
 		}

@@ -15,7 +15,7 @@ import (
 type CommonFilterState struct {
 	Type        models.TaskType         // filter by type (epic/story/task/bug/idea)
 	States      models.WorkflowStateSet // filter by one or more canonical workflow states
-	Priority    int                     // 0=all, 1=high only (<=2)
+	Priority    int                     // 0=all, N>0 keeps tasks whose effective priority is <= N
 	Tags        map[string]bool         // filter by tag names (AND logic)
 	DueDate     DueDateFilter           // filter by due date
 	Attrs       map[string]string       // type.attribute -> value
@@ -102,7 +102,7 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, project *model
 	if f.Blocked && !task.IsDependencyBlocked(project) {
 		return false
 	}
-	if f.Priority == 1 && task.Priority > 2 {
+	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
 		return false
 	}
 	if f.GitHubIssue && !task.HasGitHubIssue() {
@@ -198,8 +198,8 @@ func clearCommonFilters(f *CommonFilterState) {
 func commonFilterParts(f *CommonFilterState) []string {
 	var parts []string
 
-	if f.Priority == 1 {
-		parts = append(parts, "!Hi")
+	if f.Priority > 0 {
+		parts = append(parts, fmt.Sprintf("!<=%d", f.Priority))
 	}
 	if f.Type != "" {
 		parts = append(parts, "type:"+string(f.Type))
@@ -360,8 +360,6 @@ type commonFilterView interface {
 // they need; the embedded defaults still handle the common cases.
 type FilterMixin struct {
 	filter CommonFilterState
-	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
-	activeCriteriaFilter *config.SavedFilter
 }
 
 // newFilterState returns an initialized CommonFilterState with allocated maps.
@@ -374,19 +372,14 @@ func newFilterState() CommonFilterState {
 
 func (fm *FilterMixin) getFilter() *CommonFilterState { return &fm.filter }
 func (fm *FilterMixin) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&fm.filter) || fm.activeCriteriaFilter != nil
+	return hasActiveCommonFilters(&fm.filter)
 }
 func (fm *FilterMixin) ClearAllFilters() {
 	clearCommonFilters(&fm.filter)
-	fm.activeCriteriaFilter = nil
 }
 
 // ActiveFilterCount returns the number of active filters.
 // Implements ActiveFilterProvider. Views with extra filter fields override this.
 func (fm *FilterMixin) ActiveFilterCount() int {
-	count := len(commonFilterParts(&fm.filter))
-	if fm.activeCriteriaFilter != nil {
-		count++
-	}
-	return count
+	return len(commonFilterParts(&fm.filter))
 }

@@ -120,8 +120,8 @@ func TestDailyLoopTargetContractInventory(t *testing.T) {
 	if !slices.Equal(public.TaskJSONLifecycleFields, []string{"state"}) {
 		t.Errorf("task JSON lifecycle fields = %v, want only state", public.TaskJSONLifecycleFields)
 	}
-	if public.SavedFilterField != "filter_states" || public.TemplateField != "state" {
-		t.Errorf("persistence fields = %q / %q", public.SavedFilterField, public.TemplateField)
+	if public.TemplateField != "state" {
+		t.Errorf("template persistence field = %q, want state", public.TemplateField)
 	}
 	if public.ActionPlanVersion != 2 || !public.CreateTaskStateOptional {
 		t.Errorf("action-plan contract = v%d optional=%v", public.ActionPlanVersion, public.CreateTaskStateOptional)

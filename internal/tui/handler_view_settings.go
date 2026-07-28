@@ -151,16 +151,6 @@ func (m *AppModel) handleViewSettingsMessages(msg tea.Msg) (bool, tea.Cmd) { //n
 
 	case ShowWorkflowDryRunMsg:
 		return m.showViewInit(ViewWorkflowDryRun, NewWorkflowDryRunModel(m.runtime.DataDir(), m.configManager, m.persister, msg.SingleRule))
-
-	case ShowFilterBuilderMsg:
-		return m.showViewInit(ViewFilterBuilder, NewFilterBuilderModel(m.runtime))
-
-	case ShowFilterEditorMsg:
-		return m.showViewInit(ViewFilterBuilder, NewFilterEditorModel(m.runtime, msg.Filter))
-
-	case FilterBuilderSavedMsg:
-		m.popView()
-		return true, nil
 	}
 
 	return false, nil

@@ -149,23 +149,12 @@ func topologicalSortByPriority(tasks []*models.Task) ([]*models.Task, error) {
 	return result, nil
 }
 
-// effectivePriority returns the task's priority, substituting PriorityDefault
-// for the zero value. Priority 0 means "unset" in the model (parsed tasks
-// without an explicit priority); without this remap they would sort *before*
-// PriorityMin (=1, the most-critical bucket) in SerialSchedule.
-func effectivePriority(p int) int {
-	if p == 0 {
-		return models.PriorityDefault
-	}
-	return p
-}
-
 // sortByPriorityThenID sorts tasks by priority ascending (lower = higher
-// priority), then by graph key for determinism. Priority 0 is treated as
-// PriorityDefault so unset tasks do not sort ahead of critical ones.
+// priority), then by graph key for determinism. An unset priority reads as
+// PriorityDefault so it does not sort ahead of critical work.
 func sortByPriorityThenID(tasks []*models.Task) {
 	sort.Slice(tasks, func(i, j int) bool {
-		pi, pj := effectivePriority(tasks[i].Priority), effectivePriority(tasks[j].Priority)
+		pi, pj := models.EffectivePriority(tasks[i].Priority), models.EffectivePriority(tasks[j].Priority)
 		if pi != pj {
 			return pi < pj
 		}

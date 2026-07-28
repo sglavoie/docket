@@ -115,7 +115,7 @@ membership can change together.
 - Task JSON emits only `state`; project JSON does not emit workflow sections or
   section colors.
 - Capture, edit, and search use `$ready`-style canonical tokens.
-- Saved filters persist `filter_states`; templates persist `state`.
+- Templates persist `state`.
 - Workflow rules use state fields, state sets, state transitions, and
   `set_state`.
 - Structured AI actions use plan schema v2; `create_task.state` is optional and
@@ -153,11 +153,32 @@ Direct Outliner keys are:
 ```text
 a capture   e edit   s start   d done
 b Backlog   t Today  n Next    Space actions
+@ due date  # tags
 / search    : Finder m modes   c Scope Hub  v multi-select
 N Notes     R Weekly Review    T Tags        ! Notifications
 u undo      Ctrl+R redo        Esc back      Ctrl+Esc reset
 ? help      Ctrl+C quit
 ```
+
+Chord families are:
+
+```text
+p0-5      priority (p0 clears)
+,iwprsc   state without a direct key: inbox waiting paused review someday canceled
+fp0-5     filter priority threshold (fp0 clears the facet)
+fdtwon    filter due: today, this week, overdue, no due date
+fs        filter states     ft filter tags     fx clear all filters
+```
+
+A chord is one binding in the same input strategy, declared as a `Sequence`
+rather than a second dispatch path, and every non-terminal prefix carries a
+registered `OperationChordGroup` label so the which-key row can name it. `p`,
+`,`, `@`, and `#` act on the cursored task or on the whole multi-selection; they
+are the only route to those four operations, which are `DirectOnly` in the task
+operation manifest and therefore absent from the `Space` sheet, the bulk sheet,
+and Finder. The `f` family is view state rather than a task mutation: it opens
+no transaction, persists across mode switches, and shows as a chip in the title
+row.
 
 Cursor movement accepts both vim and terminal spellings: `j`/`↓`, `k`/`↑`,
 `h`/`←`, `l`/`→`, `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`. Every

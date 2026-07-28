@@ -233,7 +233,9 @@ func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
-	ctx := app.operationCommandContext()
+	// Task-scoped keys only resolve over a real target, so the audit runs in the
+	// same focused context the user is in when they press them.
+	ctx := taskActionParityContext(t, app)
 
 	strategy, ok := registry.InputStrategy(InputStrategySimplified)
 	if !ok {
@@ -243,17 +245,26 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	handled := registry.HandledKeysForInputStrategy(InputStrategySimplified)
 	expectedKeys := make([]string, 0, len(handled))
 	for _, binding := range strategy.Bindings {
-		for _, key := range binding.Keys {
-			if !slices.Contains(expectedKeys, key) {
-				expectedKeys = append(expectedKeys, key)
+		for _, path := range binding.paths() {
+			for _, key := range path {
+				if !slices.Contains(expectedKeys, key) {
+					expectedKeys = append(expectedKeys, key)
+				}
 			}
-			resolved, descriptor, found := registry.InputBindingForKey(InputStrategySimplified, key, ctx)
-			if !found {
-				t.Errorf("key %q does not resolve to an operation in the Outliner context", key)
+			resolved, descriptor, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
+			if resolution != ChordTerminal {
+				t.Errorf("key path %v does not resolve to an operation in the Outliner context", path)
 				continue
 			}
 			if resolved.OperationID != binding.OperationID || descriptor.ID != binding.OperationID {
-				t.Errorf("key %q resolved to %s, want %s", key, descriptor.ID, binding.OperationID)
+				t.Errorf("key path %v resolved to %s, want %s", path, descriptor.ID, binding.OperationID)
+			}
+			// A chord's own prefixes must wait for the next key rather than run.
+			for depth := 1; depth < len(path); depth++ {
+				_, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path[:depth], ctx)
+				if resolution != ChordPending {
+					t.Errorf("chord prefix %v resolution = %v, want pending", path[:depth], resolution)
+				}
 			}
 		}
 	}
@@ -274,6 +285,77 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 		shortcut := registry.InputShortcutForOperation(InputStrategySimplified, descriptor.ID)
 		if item.Key != shortcut {
 			t.Errorf("help row %d shows key %q, want the strategy display key %q", index, item.Key, shortcut)
+		}
+	}
+}
+
+// TestChordBindingsStayPrefixFreeExecutableAndLabeled audits the chord half of
+// the one grammar: no key path shadows another, presets match the value their
+// handler asserts, every chord reaches a compatible handler, and every prefix
+// can render a which-key row. It is quiet while the strategy declares no chord.
+func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
+	app := parityAuditApp(t)
+	registry := app.GetOperationRegistry()
+	executor := app.operationExecutor
+	ctx := taskActionParityContext(t, app)
+
+	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	if !ok {
+		t.Fatal("simplified input strategy is not registered")
+	}
+
+	paths := make([][]string, 0, len(strategy.Bindings))
+	for _, binding := range strategy.Bindings {
+		paths = append(paths, binding.paths()...)
+		descriptor, exists := registry.Descriptor(binding.OperationID)
+		if !exists {
+			t.Errorf("binding %v references unregistered operation %s", binding.DisplayKey, binding.OperationID)
+			continue
+		}
+		if len(executor.bindings[binding.OperationID]) == 0 {
+			t.Errorf("key %s binds unexecutable operation %s", binding.DisplayKey, binding.OperationID)
+		}
+		if !binding.HasPresetValue {
+			continue
+		}
+		if !descriptor.ValueProviderID.acceptsPresetValue(binding.PresetValue) {
+			t.Errorf(
+				"key %s presets %T, which the %s handler does not accept",
+				binding.DisplayKey,
+				binding.PresetValue,
+				descriptor.ValueProviderID,
+			)
+		}
+	}
+
+	for i, left := range paths {
+		for j, right := range paths {
+			if i == j || len(left) >= len(right) {
+				continue
+			}
+			if slices.Equal(left, right[:len(left)]) {
+				t.Errorf("key path %v shadows the longer path %v", left, right)
+			}
+		}
+	}
+
+	for _, group := range strategy.ChordGroups {
+		hints := registry.ChordHintsForPrefix(InputStrategySimplified, group.Sequence, ctx)
+		if len(hints) == 0 {
+			t.Errorf("chord prefix %v offers no which-key hint", group.Sequence)
+		}
+		for _, hint := range hints {
+			if hint.Label == "" {
+				t.Errorf("chord prefix %v hints key %q without a label", group.Sequence, hint.Key)
+			}
+			path := append(slices.Clone(group.Sequence), hint.Key)
+			if _, _, resolution := registry.InputBindingForSequence(
+				InputStrategySimplified,
+				path,
+				ctx,
+			); resolution == ChordNoMatch {
+				t.Errorf("which-key row offers %v, which resolves to nothing", path)
+			}
 		}
 	}
 }
@@ -307,10 +389,13 @@ func TestSpaceAndFinderProjectionsStayInsideTheDeclaredPlacements(t *testing.T) 
 		if len(executor.bindings[descriptor.ID]) == 0 {
 			t.Errorf("Space sheet lists unexecutable operation %s", descriptor.ID)
 		}
-		_, manifested := taskOperationManifestEntryFor(descriptor.ID)
+		entry, manifested := taskOperationManifestEntryFor(descriptor.ID)
 		if !manifested {
 			t.Errorf("Space sheet lists %s, which the task manifest does not own", descriptor.ID)
 			continue
+		}
+		if entry.DirectOnly {
+			t.Errorf("Space sheet repeats direct-only operation %s", descriptor.ID)
 		}
 		// Manifest actions reach users through the row they act on. Only the two
 		// reused core operations keep a Finder placement, because their direct key
@@ -322,10 +407,29 @@ func TestSpaceAndFinderProjectionsStayInsideTheDeclaredPlacements(t *testing.T) 
 		}
 	}
 
-	// Every action a Finder task row advertises must be the same catalog.
-	for _, id := range taskOperationManifestIDs() {
+	// Every action a Finder task row advertises must be the same catalog, minus
+	// the direct-only entries whose key the footer already advertises.
+	rowActions := taskOperationManifestIDs()
+	for _, id := range rowActions {
 		if _, ok := registry.Descriptor(id); !ok {
 			t.Errorf("task manifest advertises unregistered operation %s", id)
+		}
+	}
+	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	if !ok {
+		t.Fatal("simplified input strategy is not registered")
+	}
+	for _, entry := range taskOperationManifest() {
+		if !entry.DirectOnly {
+			continue
+		}
+		if slices.Contains(rowActions, entry.ID) {
+			t.Errorf("direct-only operation %s is still a row action", entry.ID)
+		}
+		// A removed projection has to leave a key behind, or the operation becomes
+		// unreachable instead of faster.
+		if displayKeysForOperation(strategy, entry.ID) == "" {
+			t.Errorf("direct-only operation %s has no key in the input strategy", entry.ID)
 		}
 	}
 }

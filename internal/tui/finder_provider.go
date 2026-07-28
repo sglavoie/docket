@@ -14,27 +14,25 @@ import (
 type FinderItemKind string
 
 const (
-	FinderItemOperation   FinderItemKind = "operation"
-	FinderItemTask        FinderItemKind = "task"
-	FinderItemProject     FinderItemKind = "project"
-	FinderItemNote        FinderItemKind = "note"
-	FinderItemTool        FinderItemKind = "tool"
-	FinderItemMode        FinderItemKind = "mode"
-	FinderItemScope       FinderItemKind = "scope"
-	FinderItemTag         FinderItemKind = "tag"
-	FinderItemSavedFilter FinderItemKind = "saved-filter"
+	FinderItemOperation FinderItemKind = "operation"
+	FinderItemTask      FinderItemKind = "task"
+	FinderItemProject   FinderItemKind = "project"
+	FinderItemNote      FinderItemKind = "note"
+	FinderItemTool      FinderItemKind = "tool"
+	FinderItemMode      FinderItemKind = "mode"
+	FinderItemScope     FinderItemKind = "scope"
+	FinderItemTag       FinderItemKind = "tag"
 )
 
 const (
-	FinderCategoryOperations   ListCategoryID = "finder:operations"
-	FinderCategoryTasks        ListCategoryID = "finder:tasks"
-	FinderCategoryProjects     ListCategoryID = "finder:projects"
-	FinderCategoryNotes        ListCategoryID = "finder:notes"
-	FinderCategoryTools        ListCategoryID = "finder:tools"
-	FinderCategoryModes        ListCategoryID = "finder:modes"
-	FinderCategoryScopes       ListCategoryID = "finder:scopes"
-	FinderCategoryTags         ListCategoryID = "finder:tags"
-	FinderCategorySavedFilters ListCategoryID = "finder:saved-filters"
+	FinderCategoryOperations ListCategoryID = "finder:operations"
+	FinderCategoryTasks      ListCategoryID = "finder:tasks"
+	FinderCategoryProjects   ListCategoryID = "finder:projects"
+	FinderCategoryNotes      ListCategoryID = "finder:notes"
+	FinderCategoryTools      ListCategoryID = "finder:tools"
+	FinderCategoryModes      ListCategoryID = "finder:modes"
+	FinderCategoryScopes     ListCategoryID = "finder:scopes"
+	FinderCategoryTags       ListCategoryID = "finder:tags"
 )
 
 var finderCategoryCatalog = []ListCategory{
@@ -46,7 +44,6 @@ var finderCategoryCatalog = []ListCategory{
 	{ID: FinderCategoryModes, Label: "Modes"},
 	{ID: FinderCategoryScopes, Label: "Scopes"},
 	{ID: FinderCategoryTags, Label: "Tags"},
-	{ID: FinderCategorySavedFilters, Label: "Saved Filters"},
 }
 
 // FinderCategories returns the fixed category order shared by every finder.
@@ -58,17 +55,16 @@ func FinderCategories() []ListCategory {
 // Recent is empty for operations and is fully project-qualified for task and
 // project-note destinations.
 type FinderTarget struct {
-	Kind        FinderItemKind
-	Recent      config.RecentDestination
-	Operation   *OperationDescriptor
-	Task        *models.Task
-	Project     *models.Project
-	Note        *models.Note
-	Tool        *FinderTool
-	Mode        *OutlinerMode
-	Scope       *ContextScopeSummary
-	Tag         *TagInfo
-	SavedFilter *config.SavedFilter
+	Kind      FinderItemKind
+	Recent    config.RecentDestination
+	Operation *OperationDescriptor
+	Task      *models.Task
+	Project   *models.Project
+	Note      *models.Note
+	Tool      *FinderTool
+	Mode      *OutlinerMode
+	Scope     *ContextScopeSummary
+	Tag       *TagInfo
 }
 
 // RecentDestination returns the durable destination identity when this target
@@ -496,45 +492,6 @@ func (provider FinderTagProvider) FinderItems() ([]ListItem, error) {
 				Recent: config.RecentDestination{
 					Kind: config.RecentDestinationTag,
 					ID:   tag.Name,
-				},
-			},
-		})
-	}
-	sortFinderProviderItems(items)
-	return items, nil
-}
-
-// FinderSavedFilterProvider exposes durable saved filters.
-type FinderSavedFilterProvider struct {
-	Filters []config.SavedFilter
-}
-
-// FinderItems implements FinderProvider.
-func (provider FinderSavedFilterProvider) FinderItems() ([]ListItem, error) {
-	items := make([]ListItem, 0, len(provider.Filters))
-	for _, filter := range provider.Filters {
-		filterCopy := filter
-		items = append(items, ListItem{
-			ID:            ListItemID("saved-filter:" + filter.ID),
-			CategoryID:    FinderCategorySavedFilters,
-			PrimaryText:   filter.Name,
-			SecondaryText: describeSavedFilterSummary(&filter),
-			Aliases:       []string{filter.Name, filter.Mode, filter.FilterType},
-			OperationIDs:  operationDescriptorIDs(savedFilterOperationDescriptors()),
-			Preview: ListPreview{
-				Title:   filter.Name,
-				Summary: describeSavedFilterSummary(&filter),
-				Fields: []ListPreviewField{
-					{Label: "Mode", Value: filter.Mode},
-					{Label: "Type", Value: filter.FilterType},
-				},
-			},
-			Data: FinderTarget{
-				Kind:        FinderItemSavedFilter,
-				SavedFilter: &filterCopy,
-				Recent: config.RecentDestination{
-					Kind: config.RecentDestinationSavedFilter,
-					ID:   filter.ID,
 				},
 			},
 		})

@@ -67,11 +67,6 @@ type OutlinerModel struct {
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
 
-	activeSavedFilter string // Name of the currently loaded saved filter (if any)
-
-	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
-	activeCriteriaFilter *config.SavedFilter
-
 	// Inline preview mode: show description/checklist below cursor task
 	previewMode bool
 

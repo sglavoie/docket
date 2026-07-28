@@ -174,8 +174,8 @@ func taskActionDescriptorApplicableToEveryTarget(
 func taskActionSheetEligible(descriptor OperationDescriptor) bool {
 	// The manifest decides first so the sheet can reuse the core Edit and Detail
 	// operations instead of registering task-only copies of them.
-	if _, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
-		return true
+	if entry, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
+		return !entry.DirectOnly
 	}
 	id := string(descriptor.ID)
 	label := strings.ToLower(descriptor.Label)

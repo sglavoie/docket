@@ -75,6 +75,13 @@ const (
 	ValueProviderParent       ValueProviderID = "parent"
 	ValueProviderNoteTitle    ValueProviderID = "note-title"
 	ValueProviderTagName      ValueProviderID = "tag-name"
+
+	// Filter providers feed the Outliner's view-state filter facets rather than
+	// a task mutation; the priority and due providers are preset-only.
+	ValueProviderFilterPriority ValueProviderID = "filter-priority"
+	ValueProviderFilterStates   ValueProviderID = "filter-states"
+	ValueProviderFilterTags     ValueProviderID = "filter-tags"
+	ValueProviderFilterDue      ValueProviderID = "filter-due"
 )
 
 // textEntry reports whether the provider's value is typed rather than picked
@@ -141,6 +148,7 @@ func (descriptor OperationDescriptor) Applicable(ctx CommandContext) bool {
 type OperationRegistry struct {
 	descriptors     map[OperationID]OperationDescriptor
 	inputStrategies map[InputStrategyID]InputStrategy
+	inputChords     map[InputStrategyID]*inputChordNode
 }
 
 // NewOperationRegistry creates an empty registry.
@@ -148,6 +156,7 @@ func NewOperationRegistry() *OperationRegistry {
 	return &OperationRegistry{
 		descriptors:     make(map[OperationID]OperationDescriptor),
 		inputStrategies: make(map[InputStrategyID]InputStrategy),
+		inputChords:     make(map[InputStrategyID]*inputChordNode),
 	}
 }
 

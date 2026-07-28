@@ -38,6 +38,12 @@ func (m *AppModel) renderStatusBar() string {
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 
+	// An unfinished chord owns the footer: the which-key row is live input
+	// feedback, so it outranks banners and transient status text.
+	if row := m.pendingChordHintRow(); row != "" {
+		return renderContextualFooter(StatusBarFooterSpec{Left: row}, m.width, m.currentAccentColor())
+	}
+
 	// Today-cleared banner takes precedence over the regular status message
 	// for the duration of its TTL — Peak-End Rule punctuation for daily completion.
 	if m.todayClearedBanner != "" {
@@ -267,8 +273,6 @@ func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string 
 	// Fallback labels for views that don't implement StatusBarLabeler.
 	if label == "" {
 		switch vt {
-		case ViewFilter:
-			label = "Filter"
 		case ViewDailyReview:
 			label = "Daily Review"
 		case ViewWeeklyReview:

@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/models"
+
 // Priority display mode constants.
 const (
 	PriorityModeAll         = "all"
@@ -67,7 +69,7 @@ func NewColumnConfig(toggles, globalDefaults, defaults map[string]bool, priority
 // the given priority level, based on the configured priority display mode.
 func (c *ColumnConfig) ShouldShowPriority(priority int) bool {
 	if c == nil {
-		return priority <= 2
+		return models.IsHighPriority(priority)
 	}
 	switch c.priorityMode {
 	case PriorityModeAll:
@@ -75,7 +77,7 @@ func (c *ColumnConfig) ShouldShowPriority(priority int) bool {
 	case PriorityModeHidden:
 		return false
 	default:
-		return priority <= 2
+		return models.IsHighPriority(priority)
 	}
 }
 

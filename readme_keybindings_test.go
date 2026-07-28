@@ -112,7 +112,7 @@ func TestREADMEDocumentsScopeFinderAndPromotedTools(t *testing.T) {
 		"Notifications remains global",
 		"Press `:` for Finder",
 		"Empty Finder input shows a short, bounded list of recent destinations",
-		"Pinned, recent, and saved-filter entries are discovery results",
+		"Pinned and recent entries are discovery results",
 	})
 	rejectDocumentationText(t, strings.ToLower(content), []string{
 		"`f p`",

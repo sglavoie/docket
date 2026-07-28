@@ -1,0 +1,37 @@
+{
+  "name": "filter-chord-priority",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "hold the filter prefix", "key": "f" },
+    { "type": "assert", "assert": "contains", "value": "p priority threshold" },
+    { "type": "assert", "assert": "contains", "value": "d due" },
+    { "type": "assert", "assert": "contains", "value": "s states" },
+    { "type": "assert", "assert": "contains", "value": "t tags" },
+    { "type": "assert", "assert": "contains", "value": "x clear all" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "enter the priority threshold facet", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "0 all" },
+    { "type": "assert", "assert": "contains", "value": "1 <=1" },
+    { "type": "assert", "assert": "contains", "value": "5 <=5" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "keep only tasks at priority <= 1", "key": "1" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering priority <= 1" },
+    { "type": "assert", "label": "the threshold badge joins the title row", "assert": "contains", "value": "!<=1" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "label": "the priority-2 story is filtered out", "assert": "not_contains", "value": "User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reset the threshold with fp0", "key": "f" },
+    { "type": "key", "key": "p" },
+    { "type": "key", "key": "0" },
+    { "type": "assert", "assert": "status_contains", "value": "Priority filter cleared" },
+    { "type": "assert", "assert": "not_contains", "value": "!<=1" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"strings"
 	"time"
 )
 
@@ -343,65 +342,4 @@ func (p *PlanningState) GetStreakLastDate() string {
 // SetStreakLastDate mirrors writing (*Config).StreakLastDate.
 func (p *PlanningState) SetStreakLastDate(day string) {
 	p.StreakLastDate = day
-}
-
-// --- PlanningState: saved filters (views + smart lists) -------------------
-//
-// Saved filters are the unified planning-owned presets that subsume the legacy
-// saved views (snapshot mode) and smart lists (criteria mode). The bodies below
-// mirror the (*Config) counterparts in saved_filter.go field-for-field so the TUI
-// saved-filter consumers read and commit this state through RuntimeState.Planning
-// without dereferencing config.Config.
-
-// GetSavedFilters mirrors (*Config).GetSavedFilters.
-func (p *PlanningState) GetSavedFilters() []SavedFilter {
-	if p.SavedFilters == nil {
-		return []SavedFilter{}
-	}
-	return p.SavedFilters
-}
-
-// GetSavedFilter mirrors (*Config).GetSavedFilter.
-func (p *PlanningState) GetSavedFilter(id string) *SavedFilter {
-	for i := range p.SavedFilters {
-		if p.SavedFilters[i].ID == id {
-			return &p.SavedFilters[i]
-		}
-	}
-	return nil
-}
-
-// GetSavedFilterByName mirrors (*Config).GetSavedFilterByName.
-func (p *PlanningState) GetSavedFilterByName(name string) *SavedFilter {
-	nameLower := strings.ToLower(name)
-	for i := range p.SavedFilters {
-		if strings.ToLower(p.SavedFilters[i].Name) == nameLower {
-			return &p.SavedFilters[i]
-		}
-	}
-	return nil
-}
-
-// SaveFilter mirrors (*Config).SaveFilter: upsert by ID.
-func (p *PlanningState) SaveFilter(f SavedFilter) {
-	f.normalizeLifecycle()
-	for i := range p.SavedFilters {
-		if p.SavedFilters[i].ID == f.ID {
-			p.SavedFilters[i] = f
-			return
-		}
-	}
-	p.SavedFilters = append(p.SavedFilters, f)
-}
-
-// DeleteSavedFilter removes a saved filter by ID from the planning domain,
-// returning true when the filter existed.
-func (p *PlanningState) DeleteSavedFilter(id string) bool {
-	for i := range p.SavedFilters {
-		if p.SavedFilters[i].ID == id {
-			p.SavedFilters = append(p.SavedFilters[:i], p.SavedFilters[i+1:]...)
-			return true
-		}
-	}
-	return false
 }

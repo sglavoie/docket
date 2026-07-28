@@ -78,14 +78,6 @@ func loadDomainBundleWithRevisions(store *DomainFileStore) (*Domains, map[domain
 }
 
 func validateCanonicalCurrentInputs(domains *Domains) error {
-	if len(domains.Planning.SavedViews) > 0 || len(domains.Planning.SmartLists) > 0 {
-		return fmt.Errorf("invalid planning domain: current schema accepts only saved_filters")
-	}
-	for i := range domains.Planning.SavedFilters {
-		if err := domains.Planning.SavedFilters[i].ValidateForAuthoring(); err != nil {
-			return fmt.Errorf("invalid planning domain: saved filter %d: %w", i, err)
-		}
-	}
 	for i := range domains.Automation.TaskTemplates {
 		if err := domains.Automation.TaskTemplates[i].ValidateForAuthoring(); err != nil {
 			return fmt.Errorf("invalid automation domain: task template %d: %w", i, err)

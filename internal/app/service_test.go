@@ -344,11 +344,21 @@ func TestSetPriorityValidatesRange(t *testing.T) {
 	if _, err := svc.SetPriority("t1", 99); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
+	if _, err := svc.SetPriority("t1", -1); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("err = %v, want ErrInvalidInput", err)
+	}
 	if _, err := svc.SetPriority("t1", 1); err != nil {
 		t.Fatalf("SetPriority(1): %v", err)
 	}
 	if task.Priority != 1 {
 		t.Errorf("priority = %d, want 1", task.Priority)
+	}
+	// Zero is the unset value, not an out-of-range priority, so it clears.
+	if _, err := svc.SetPriority("t1", 0); err != nil {
+		t.Fatalf("SetPriority(0): %v", err)
+	}
+	if task.Priority != 0 {
+		t.Errorf("priority = %d, want 0", task.Priority)
 	}
 }
 

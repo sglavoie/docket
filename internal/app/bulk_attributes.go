@@ -84,7 +84,7 @@ func (s *Service) BulkSetPriorityByLocators(locators []TaskLocator, priority int
 }
 
 func (s *Service) bulkSetPriority(taskIDs []string, locators []TaskLocator, priority int) (BulkResult, error) {
-	if err := models.ValidatePriority(priority, false); err != nil {
+	if err := models.ValidatePriority(priority, true); err != nil {
 		return BulkResult{}, invalidInput("priority", err.Error())
 	}
 	return s.bulkAttribute(taskIDs, locators, "Set Priority", fmt.Sprintf("priority %d", priority), nil, func(t *models.Task) {

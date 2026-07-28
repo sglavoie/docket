@@ -60,7 +60,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			totalActive++
-			if task.Priority <= 2 {
+			if models.IsHighPriority(task.Priority) {
 				highPriCount++
 			}
 
@@ -94,7 +94,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// High priority todo
-			if task.Priority <= 2 && taskInPlanningState(task) {
+			if models.IsHighPriority(task.Priority) && taskInPlanningState(task) {
 				wp.HighPriorityTodo++
 			}
 
@@ -113,7 +113,7 @@ func (m *WeeklyReviewModel) loadData() { //nolint:gocyclo
 			}
 
 			// Priority mismatch: high priority still in todo
-			if task.Priority <= 2 && taskInPlanningState(task) {
+			if models.IsHighPriority(task.Priority) && taskInPlanningState(task) {
 				m.priorityMismatch = append(m.priorityMismatch, WeeklyReviewTask{Task: task, Project: project})
 			}
 
@@ -241,8 +241,10 @@ func staleWeeklyTaskLess(left, right WeeklyReviewTask) bool {
 }
 
 func priorityMismatchTaskLess(left, right WeeklyReviewTask) bool {
-	if left.Task.Priority != right.Task.Priority {
-		return left.Task.Priority < right.Task.Priority
+	leftPriority := models.EffectivePriority(left.Task.Priority)
+	rightPriority := models.EffectivePriority(right.Task.Priority)
+	if leftPriority != rightPriority {
+		return leftPriority < rightPriority
 	}
 	if cmp := compareWeeklyDueDates(left.Task.DueDate, right.Task.DueDate); cmp != 0 {
 		return cmp < 0
@@ -254,8 +256,10 @@ func dueDateThenPriorityTaskLess(left, right WeeklyReviewTask) bool {
 	if cmp := compareWeeklyDueDates(left.Task.DueDate, right.Task.DueDate); cmp != 0 {
 		return cmp < 0
 	}
-	if left.Task.Priority != right.Task.Priority {
-		return left.Task.Priority < right.Task.Priority
+	leftPriority := models.EffectivePriority(left.Task.Priority)
+	rightPriority := models.EffectivePriority(right.Task.Priority)
+	if leftPriority != rightPriority {
+		return leftPriority < rightPriority
 	}
 	return left.Task.ID < right.Task.ID
 }

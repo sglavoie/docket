@@ -322,17 +322,17 @@ func (m *OutlinerModel) renderTaskIndicators(task *models.Task, rowWidth int) st
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
+	priorityBadge := ""
+	if m.columnConfig.ShouldShowPriority(task.Priority) {
+		priorityBadge = renderPriorityBadge(task.Priority)
+	}
 	if colLayout != nil && colLayout.HasPriority {
-		priorityBadge := ""
-		if m.columnConfig.ShouldShowPriority(task.Priority) {
-			priorityBadge = renderPriorityBadge(task.Priority)
-		}
 		return PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
 	}
-	if m.columnConfig.ShouldShowPriority(task.Priority) {
-		return renderPriorityBadge(task.Priority) + " "
+	if priorityBadge == "" {
+		return ""
 	}
-	return ""
+	return priorityBadge + " "
 }
 
 func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.Project) string {

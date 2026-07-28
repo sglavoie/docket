@@ -5,12 +5,6 @@ import tea "charm.land/bubbletea/v2"
 // handleViewSelectionMessages handles transient pickers, previews, and status editors.
 func (m *AppModel) handleViewSelectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowFilterMsg:
-		if msg.CommonFilter != nil {
-			m.showView(ViewFilter, NewFilterViewModelForOutliner(msg.CommonFilter, msg.Project))
-		}
-		return true, nil
-
 	case ShowTaskJumperMsg:
 		if msg.Project != nil {
 			m.taskJumper = NewTaskJumperModel(msg.Project)

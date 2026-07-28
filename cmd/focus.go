@@ -192,8 +192,10 @@ func displayFocusTable(tasks []focus.FocusTask) {
 // so the order does not flicker between invocations when prior keys are equal.
 func sortFocusTasks(tasks []focus.FocusTask) {
 	sort.Slice(tasks, func(i, j int) bool {
-		if tasks[i].Task.Priority != tasks[j].Task.Priority {
-			return tasks[i].Task.Priority < tasks[j].Task.Priority
+		pi := models.EffectivePriority(tasks[i].Task.Priority)
+		pj := models.EffectivePriority(tasks[j].Task.Priority)
+		if pi != pj {
+			return pi < pj
 		}
 		if !tasks[i].Task.UpdatedAt.Equal(tasks[j].Task.UpdatedAt) {
 			return tasks[i].Task.UpdatedAt.After(tasks[j].Task.UpdatedAt)
@@ -401,8 +403,10 @@ func nextTasks(projects []*models.Project, queue []config.FocusQueueItem) []focu
 		if ri != rj {
 			return ri < rj
 		}
-		if tasks[i].Task.Priority != tasks[j].Task.Priority {
-			return tasks[i].Task.Priority < tasks[j].Task.Priority
+		pi := models.EffectivePriority(tasks[i].Task.Priority)
+		pj := models.EffectivePriority(tasks[j].Task.Priority)
+		if pi != pj {
+			return pi < pj
 		}
 		return tasks[i].Task.ShortID < tasks[j].Task.ShortID
 	})

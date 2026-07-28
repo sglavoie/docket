@@ -30,3 +30,46 @@ func TestValidatePriority(t *testing.T) {
 		})
 	}
 }
+
+func TestEffectivePriorityResolvesUnsetAndOffScaleToDefault(t *testing.T) {
+	tests := []struct {
+		name  string
+		value int
+		want  int
+	}{
+		{"unset", PriorityUnset, PriorityDefault},
+		{"critical", PriorityMin, PriorityMin},
+		{"default", PriorityDefault, PriorityDefault},
+		{"minimal", PriorityMax, PriorityMax},
+		{"negative", -3, PriorityDefault},
+		{"above max", PriorityMax + 1, PriorityDefault},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := EffectivePriority(tt.value); got != tt.want {
+				t.Errorf("EffectivePriority(%d) = %d, want %d", tt.value, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsHighPriorityExcludesUnset(t *testing.T) {
+	tests := []struct {
+		value int
+		want  bool
+	}{
+		{PriorityUnset, false},
+		{1, true},
+		{2, true},
+		{PriorityDefault, false},
+		{PriorityMax, false},
+		{PriorityMax + 1, false},
+	}
+
+	for _, tt := range tests {
+		if got := IsHighPriority(tt.value); got != tt.want {
+			t.Errorf("IsHighPriority(%d) = %v, want %v", tt.value, got, tt.want)
+		}
+	}
+}

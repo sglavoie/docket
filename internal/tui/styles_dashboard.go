@@ -44,14 +44,13 @@ var (
 	SeparatorStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted)
 
-	CategoryCommandStyle     = lipgloss.NewStyle().Foreground(ColorPrimary)
-	CategoryTaskStyle        = lipgloss.NewStyle().Foreground(ColorSuccess)
-	CategoryProjectStyle     = lipgloss.NewStyle().Foreground(ColorSecondary)
-	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
-	CategorySectionStyle     = lipgloss.NewStyle().Foreground(ColorPurple)
-	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
-	CategoryNoteStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
-	CategoryViewStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
+	CategoryCommandStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	CategoryTaskStyle    = lipgloss.NewStyle().Foreground(ColorSuccess)
+	CategoryProjectStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	CategoryTagStyle     = lipgloss.NewStyle().Foreground(ColorWarning)
+	CategorySectionStyle = lipgloss.NewStyle().Foreground(ColorPurple)
+	CategoryNoteStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("108"))
+	CategoryViewStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
 
 	SelectedCheckboxStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 )

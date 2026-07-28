@@ -21,7 +21,6 @@ func TestFinderProvidersBuildUnifiedTypedCatalog(t *testing.T) {
 	alpha.Tasks = []*models.Task{alphaTask}
 	beta.Tasks = []*models.Task{betaTask}
 	note := models.NewNote("Project note")
-	filter := config.SavedFilter{ID: "filter", Name: "My filter", Mode: "snapshot"}
 	mode := OutlinerModeCatalog()[0]
 	scope := ContextScopeSummary{Scope: AllContextScope(), ActiveProjectCount: 2}
 
@@ -32,7 +31,7 @@ func TestFinderProvidersBuildUnifiedTypedCatalog(t *testing.T) {
 		FinderProjectProvider{Projects: []*models.Project{beta, alpha}},
 		FinderNoteProvider{Notes: []FinderNote{{Note: note, Project: alpha}}}, FinderToolProvider{Tools: []FinderTool{{ID: "settings", Label: "Settings"}}}, FinderModeProvider{Modes: []OutlinerMode{mode}},
 		FinderScopeProvider{Scopes: []ContextScopeSummary{scope}},
-		FinderTagProvider{Tags: []TagInfo{{Name: "focus", TaskCount: 2}}}, FinderSavedFilterProvider{Filters: []config.SavedFilter{filter}},
+		FinderTagProvider{Tags: []TagInfo{{Name: "focus", TaskCount: 2}}},
 	)
 	if err != nil {
 		t.Fatalf("NewFinder: %v", err)
@@ -57,7 +56,6 @@ func TestFinderProvidersBuildUnifiedTypedCatalog(t *testing.T) {
 		QualifiedTaskListItemID(beta.ID, betaTask.ID),
 		QualifiedNoteListItemID(alpha.ID, note.Filename),
 		"project:alpha",
-		"saved-filter:filter",
 	} {
 		if !seenIDs[id] {
 			t.Errorf("missing finder item %s", id)
@@ -148,7 +146,7 @@ func TestFinderOperationOrderLeadsWithTheDirectKeyGrammar(t *testing.T) {
 func newFinderPlacementTestRegistry(t *testing.T) *OperationRegistry {
 	t.Helper()
 	registry := NewOperationRegistry()
-	for _, descriptor := range coreInputOperationDescriptors() {
+	for _, descriptor := range append(coreInputOperationDescriptors(), simplifiedTaskActionDescriptors()...) {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("register core operation %s: %v", descriptor.ID, err)
 		}
@@ -528,7 +526,7 @@ func TestFinderTypedQuerySearchesFullCatalogWithDeterministicRanking(t *testing.
 
 	finder, err := NewFinder(
 		config.NewMachineState(),
-		FinderSavedFilterProvider{Filters: []config.SavedFilter{{ID: "needle", Name: "Needle"}}}, FinderTagProvider{Tags: []TagInfo{{Name: "Needle", TaskCount: 1}}}, FinderNoteProvider{Notes: []FinderNote{{Note: note, Project: project}}}, FinderProjectProvider{Projects: []*models.Project{project}},
+		FinderTagProvider{Tags: []TagInfo{{Name: "Needle", TaskCount: 1}}}, FinderNoteProvider{Notes: []FinderNote{{Note: note, Project: project}}}, FinderProjectProvider{Projects: []*models.Project{project}},
 		FinderTaskProvider{Projects: []*models.Project{project}},
 		FinderOperationProvider{Registry: registry, Context: CommandContext{}},
 	)
@@ -540,7 +538,7 @@ func TestFinderTypedQuerySearchesFullCatalogWithDeterministicRanking(t *testing.
 	if results.Shortlist {
 		t.Fatal("typed search must not be marked as a shortlist")
 	}
-	if got, want := len(results.Results), 6; got != want {
+	if got, want := len(results.Results), 5; got != want {
 		t.Fatalf("typed results = %d, want %d: %+v", got, want, results.Results)
 	}
 	wantCategories := []ListCategoryID{
@@ -549,7 +547,6 @@ func TestFinderTypedQuerySearchesFullCatalogWithDeterministicRanking(t *testing.
 		FinderCategoryProjects,
 		FinderCategoryNotes,
 		FinderCategoryTags,
-		FinderCategorySavedFilters,
 	}
 	for index, want := range wantCategories {
 		if got := results.Results[index].Item.CategoryID; got != want {

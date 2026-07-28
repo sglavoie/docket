@@ -51,7 +51,7 @@ func finderContextActionTarget(
 	frozen.Selection = SelectionContext{}
 	switch target.Kind {
 	case FinderItemProject, FinderItemNote, FinderItemTag,
-		FinderItemSavedFilter, FinderItemScope, FinderItemMode:
+		FinderItemScope, FinderItemMode:
 		frozen.Entity = EntityContext{}
 		frozen.CurrentEntity = EntityIdentity{}
 	case FinderItemTask, FinderItemTool, FinderItemOperation:
@@ -115,17 +115,6 @@ func finderContextActionTarget(
 			context:  frozen,
 			title:    "Tag Actions",
 			subtitle: target.Tag.Name,
-		}, true
-
-	case FinderItemSavedFilter:
-		if target.SavedFilter == nil {
-			return finderContextTarget{}, false
-		}
-		frozen.CurrentEntity = SavedFilterEntity(target.SavedFilter.ID)
-		return finderContextTarget{
-			context:  frozen,
-			title:    "Saved Filter Actions",
-			subtitle: target.SavedFilter.Name,
 		}, true
 
 	case FinderItemScope:

@@ -115,7 +115,6 @@ func rebuildBadgeStyles() {
 	}
 	ArchivedBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(warningFg).Padding(0, 1)
 	FilterBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(warningFg).Padding(0, 1)
-	SavedFilterBadgeStyle = lipgloss.NewStyle().Background(ColorSecondary).Foreground(lipgloss.Color("15")).Bold(true).Padding(0, 1)
 	FilterBadgeInactiveStyle = lipgloss.NewStyle().Background(ColorBackground).Foreground(ColorBadgeText).Padding(0, 1)
 	SectionBadgeStyle = lipgloss.NewStyle().Foreground(ColorBadgeText).Background(ColorBackground)
 	ChildrenBadgeStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Background(ColorBackground)
@@ -238,7 +237,6 @@ func rebuildCategoryStyles() {
 	CategoryProjectStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CategoryTagStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySectionStyle = lipgloss.NewStyle().Foreground(ColorPurple)
-	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	CategoryNoteStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#73daca"))
 	CategoryViewStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 }

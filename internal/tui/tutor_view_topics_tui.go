@@ -35,8 +35,8 @@ where the current mode and scope support durable ordering.`,
 			Content: `# Find Anything
 
 Press : to open Finder. Type to search the operations,
-destinations, modes, scopes, tags, saved filters, notes, and recent
-tasks available in the current context. Press Enter to choose the
+destinations, modes, scopes, tags, notes, and recent tasks
+available in the current context. Press Enter to choose the
 highlighted result and Esc to close Finder.
 
 Finder derives actions from the same OperationRegistry used by
@@ -131,7 +131,7 @@ Metadata, and Aliases so you can confirm how the task will be
 created before saving.`,
 		},
 		{
-			Title:    "Search and Saved Filters",
+			Title:    "Search and Filters",
 			Category: "TUI",
 			Content: `# Visible Search
 
@@ -140,12 +140,12 @@ The search grammar supports structured state, priority, tag, type,
 date, and project tokens in addition to title text. Press Esc to
 clear or close the active search layer.
 
-# Saved Filters
+# Filter Chords
 
-Finder lists saved filters alongside modes and scopes. Press :,
-type a saved filter's name, and press Enter to apply it. Use the
-relevant Finder operations to create, edit, or delete saved filter
-definitions.`,
+Press f to start a filter chord: fp0-5 sets a priority threshold,
+fdtwon filters by due date, fs picks states, and ft picks tags.
+The active facets appear in the filter bar. Press fx to clear every
+facet at once.`,
 		},
 		{
 			Title:    "Planning Metadata",

@@ -40,10 +40,10 @@ func (s *Service) SetDueDateByLocator(locator TaskLocator, due *time.Time, hasTi
 }
 
 // SetPriority sets a task's priority. The value must be within the valid
-// 1..PriorityMax range.
+// 1..PriorityMax range, or zero to clear it.
 func (s *Service) SetPriority(taskID string, priority int) (TaskResult, error) {
 	return s.mutateTask(taskID, "Set Priority", "", func(ref TaskRef) error {
-		if err := models.ValidatePriority(priority, false); err != nil {
+		if err := models.ValidatePriority(priority, true); err != nil {
 			return invalidInput("priority", err.Error())
 		}
 		ref.Task.Priority = priority
@@ -54,7 +54,7 @@ func (s *Service) SetPriority(taskID string, priority int) (TaskResult, error) {
 
 func (s *Service) SetPriorityByLocator(locator TaskLocator, priority int) (TaskResult, error) {
 	return s.mutateTaskByLocator(locator, "Set Priority", "", func(ref TaskRef) error {
-		if err := models.ValidatePriority(priority, false); err != nil {
+		if err := models.ValidatePriority(priority, true); err != nil {
 			return invalidInput("priority", err.Error())
 		}
 		ref.Task.Priority = priority

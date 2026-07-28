@@ -15,6 +15,7 @@ func (p *PlanningState) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, (*plain)(p)); err != nil {
 		return err
 	}
+	p.retiredSectionsDecoded = jsonObjectHasRetiredKey(data, PlanningState{})
 	if !jsonObjectHasKey(data, "tui_state_version") {
 		p.TUIStateVersion = 0
 	}
@@ -342,6 +343,30 @@ func jsonObjectHasKey(data []byte, key string) bool {
 	return json.Unmarshal(data, &object) == nil && object[key] != nil
 }
 
+// jsonObjectHasRetiredKey reports whether data carries a key the canonical
+// struct no longer defines. Callers must reject payloads from a newer build
+// first, so an unrecognized key can only be a retired one.
+func jsonObjectHasRetiredKey(data []byte, canonical any) bool {
+	var object map[string]json.RawMessage
+	if json.Unmarshal(data, &object) != nil {
+		return false
+	}
+	canonicalType := reflect.TypeOf(canonical)
+	known := make(map[string]struct{}, canonicalType.NumField())
+	for i := range canonicalType.NumField() {
+		name, _, _ := strings.Cut(canonicalType.Field(i).Tag.Get("json"), ",")
+		if name != "" && name != "-" {
+			known[name] = struct{}{}
+		}
+	}
+	for key := range object {
+		if _, ok := known[key]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
 // MigrateTUIState rewrites portable planning UI state in place. Query fields
 // remain durable; view, sort, pin, tab, and board presentation fields do not.
 func (p *PlanningState) MigrateTUIState() (bool, error) {
@@ -352,7 +377,12 @@ func (p *PlanningState) MigrateTUIState() (bool, error) {
 		return false, fmt.Errorf("planning: TUI state version %d not supported, please upgrade tt", p.TUIStateVersion)
 	}
 
-	changed := p.MigrateLegacyFilters()
+	// Retired planning sections have no canonical destination: filtering is now
+	// session-scoped f-chord state, so any section the current schema no longer
+	// defines is dropped on read and the domain is rewritten without it. The
+	// version guard above already rejected payloads from a newer build.
+	changed := p.retiredSectionsDecoded
+	p.retiredSectionsDecoded = false
 	if p.NormalizePlanningMemberships() {
 		changed = true
 	}

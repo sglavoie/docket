@@ -37,41 +37,29 @@ func TestComputeCrossProjectScore(t *testing.T) {
 		}
 	})
 
-	t.Run("malformed priority is clamped", func(t *testing.T) {
-		critical, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
-		if err != nil {
-			t.Fatal(err)
-		}
-		critical.Priority = models.PriorityMin
-
-		tooHigh, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Too high")
-		if err != nil {
-			t.Fatal(err)
-		}
-		tooHigh.Priority = models.PriorityMin - 1
-
-		low, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Low")
-		if err != nil {
-			t.Fatal(err)
-		}
-		low.Priority = models.PriorityMax
-
-		tooLow, err := models.NewTask(uuid.New().String(), 4, models.TaskTypeTask, "Too low")
-		if err != nil {
-			t.Fatal(err)
-		}
-		tooLow.Priority = models.PriorityMax + 1
-
-		criticalScore := computeCrossProjectScore(critical, project, nil, now)
-		tooHighScore := computeCrossProjectScore(tooHigh, project, nil, now)
-		if tooHighScore != criticalScore {
-			t.Errorf("priority below min should score like priority %d: got %d, want %d", models.PriorityMin, tooHighScore, criticalScore)
+	t.Run("unset and off-scale priority score as the default", func(t *testing.T) {
+		newScored := func(shortID int, title string, priority int) *models.Task {
+			task, err := models.NewTask(uuid.New().String(), shortID, models.TaskTypeTask, title)
+			if err != nil {
+				t.Fatal(err)
+			}
+			task.Priority = priority
+			return task
 		}
 
-		lowScore := computeCrossProjectScore(low, project, nil, now)
-		tooLowScore := computeCrossProjectScore(tooLow, project, nil, now)
-		if tooLowScore != lowScore {
-			t.Errorf("priority above max should score like priority %d: got %d, want %d", models.PriorityMax, tooLowScore, lowScore)
+		defaultScore := computeCrossProjectScore(newScored(1, "Default", models.PriorityDefault), project, nil, now)
+		for _, offScale := range []struct {
+			name     string
+			priority int
+		}{
+			{"unset", models.PriorityUnset},
+			{"below min", models.PriorityMin - 2},
+			{"above max", models.PriorityMax + 1},
+		} {
+			got := computeCrossProjectScore(newScored(2, offScale.name, offScale.priority), project, nil, now)
+			if got != defaultScore {
+				t.Errorf("%s priority scored %d, want the P%d score %d", offScale.name, got, models.PriorityDefault, defaultScore)
+			}
 		}
 	})
 

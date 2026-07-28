@@ -162,6 +162,12 @@ func TestSimplifiedFinderAndModeKeysOpenDiscoveryListSurfaces(t *testing.T) {
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
+	if err := app.registerTaskActionOperations(); err != nil {
+		t.Fatalf("register task action operations: %v", err)
+	}
+	if err := app.registerFilterOperations(); err != nil {
+		t.Fatalf("register filter operations: %v", err)
+	}
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified strategy: %v", err)
 	}

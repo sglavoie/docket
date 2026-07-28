@@ -336,8 +336,7 @@ func (w *WorkspaceCatalog) UpsertProject(p *models.Project) {
 }
 
 // PlanningState owns the planning collections: focus queue, daily plan, review
-// completion, dismissals, and saved task views/filters. It maps to
-// <data>/.tt/planning.json.
+// completion, and dismissals. It maps to <data>/.tt/planning.json.
 type PlanningState struct {
 	TUIStateVersion int `json:"tui_state_version"`
 
@@ -347,14 +346,13 @@ type PlanningState struct {
 	DailyPlan          []DailyPlanItem  `json:"daily_plan,omitempty"`
 	FocusDismissedIDs  []string         `json:"focus_dismissed_ids,omitempty"`
 	AlertDismissals    []AlertDismissal `json:"alert_dismissals,omitempty"`
-	SavedViews         []savedView      `json:"saved_views,omitempty"`
-	SavedFilters       []SavedFilter    `json:"saved_filters,omitempty"`
-	SmartLists         []smartList      `json:"smart_lists,omitempty"`
 	LastDailyReviewAt  *time.Time       `json:"last_daily_review_at,omitempty"`
 	LastWeeklyReviewAt *time.Time       `json:"last_weekly_review_at,omitempty"`
 	TodayClearedAt     string           `json:"today_cleared_at,omitempty"`
 	StreakCount        int              `json:"streak_count,omitempty"`
 	StreakLastDate     string           `json:"streak_last_date,omitempty"`
+
+	retiredSectionsDecoded bool `json:"-"`
 }
 
 // NewPlanningState returns an empty planning state.
@@ -363,7 +361,7 @@ func NewPlanningState() *PlanningState {
 }
 
 // Validate reports problems with the planning collections: focus queue and
-// daily plan items must reference a task, and saved views/filters must be named.
+// daily plan items must reference a task.
 func (p *PlanningState) Validate() error {
 	for i, item := range p.FocusQueue {
 		if item.TaskID == "" {
@@ -373,19 +371,6 @@ func (p *PlanningState) Validate() error {
 	for i, item := range p.DailyPlan {
 		if item.TaskID == "" {
 			return fmt.Errorf("planning: daily plan item %d has empty task id", i)
-		}
-	}
-	for i, v := range p.SavedViews {
-		if v.Name == "" {
-			return fmt.Errorf("planning: saved view %d has empty name", i)
-		}
-	}
-	for i, f := range p.SavedFilters {
-		if f.Name == "" {
-			return fmt.Errorf("planning: saved filter %d has empty name", i)
-		}
-		if err := f.Validate(); err != nil {
-			return fmt.Errorf("planning: saved filter %d: %w", i, err)
 		}
 	}
 	return nil

@@ -15,7 +15,6 @@ package tui
 //
 // Examples:
 //   - ShowFinderMsg / FinderClosedMsg
-//   - ShowFilterMsg / CloseFilterMsg
 //   - ShowHelpMsg / CloseHelpMsg
 //   - ShowTagSelectorMsg (closes via TagSelectorDoneMsg)
 //

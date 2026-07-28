@@ -283,7 +283,7 @@ func sortTasks(tasks []*models.Task, field string) error {
 	switch field {
 	case "priority":
 		sort.SliceStable(tasks, func(i, j int) bool {
-			return tasks[i].Priority < tasks[j].Priority
+			return models.EffectivePriority(tasks[i].Priority) < models.EffectivePriority(tasks[j].Priority)
 		})
 	case "created":
 		sort.SliceStable(tasks, func(i, j int) bool {

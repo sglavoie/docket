@@ -9,21 +9,12 @@ func (m *OutlinerModel) ActiveFilterCount() int {
 	return len(m.activeFilterParts())
 }
 
-// activeFilterParts returns the list of active filter description strings.
+// activeFilterParts returns the list of active filter description strings
+// (type, state, priority, tags, due date, attrs, score, actionable,
+// hide-dimmed). commonFilterParts already emits "ready" for Actionable, so it
+// must not be re-appended here.
 func (m *OutlinerModel) activeFilterParts() []string {
-	var parts []string
-
-	// Show saved filter badge if active
-	if m.activeSavedFilter != "" {
-		parts = append(parts, SavedFilterBadgeStyle.Render("View: "+m.activeSavedFilter))
-	}
-
-	// Add common filter parts (type, state, priority, tags, due date, attrs,
-	// score, actionable, hide-dimmed). commonFilterParts already emits
-	// "ready" for Actionable, so do not re-append it below.
-	parts = append(parts, commonFilterParts(&m.filter.CommonFilterState)...)
-
-	return parts
+	return commonFilterParts(&m.filter.CommonFilterState)
 }
 
 // renderQuickEditBar renders the quick edit input bar at the bottom of the view.

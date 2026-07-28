@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -113,5 +114,35 @@ func TestMachineStateRecentDestinationsNormalizeRecordAndBound(t *testing.T) {
 	}
 	if machine.RecordRecentDestination(RecentDestination{Kind: RecentDestinationTask, ID: "unqualified"}) {
 		t.Fatal("unqualified task destination should be rejected")
+	}
+}
+
+// TestMachineStateDropsRetiredRecentDestinationKinds covers machine-local
+// history written before saved filters were removed: the entries name a
+// destination that no longer exists, so the TUI-state migration drops them and
+// reports the change so the payload is rewritten.
+func TestMachineStateDropsRetiredRecentDestinationKinds(t *testing.T) {
+	payload := []byte(`{
+		"tui_state_version": 4,
+		"recent_destinations": [
+			{"kind": "saved-filter", "id": "filter-1"},
+			{"kind": "tag", "id": "backend"}
+		]
+	}`)
+	machine := NewMachineState()
+	if err := json.Unmarshal(payload, machine); err != nil {
+		t.Fatalf("unmarshal machine payload: %v", err)
+	}
+
+	changed, err := machine.MigrateTUIState()
+	if err != nil {
+		t.Fatalf("MigrateTUIState: %v", err)
+	}
+	if !changed {
+		t.Fatal("retired recent destination should mark the machine domain changed")
+	}
+	recents := machine.GetRecentDestinations()
+	if len(recents) != 1 || recents[0].QualifiedID() != "tag:backend" {
+		t.Fatalf("recents = %+v, want only tag:backend", recents)
 	}
 }

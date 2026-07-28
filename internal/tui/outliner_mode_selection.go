@@ -185,15 +185,13 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 }
 
 // workModeFilterPredicate returns the per-task predicate applying the active
-// common filters, search, pinned tag, saved criteria, and actionable
-// constraints. It mirrors crossPriorityRowPredicate minus the priority
-// eligibility gate so computed work horizons honor the same visible filters as
-// the tree modes.
+// common filters, search, pinned tag, and actionable constraints. It mirrors
+// crossPriorityRowPredicate minus the priority eligibility gate so computed work
+// horizons honor the same visible filters as the tree modes.
 func (m *OutlinerModel) workModeFilterPredicate(proj *models.Project) func(*models.Task) bool {
 	pinnedTag := m.activePinnedTagFilter()
 	query := m.SearchQuery()
 	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
-	criteria := m.activeCriteriaFilter
 	actionable := m.filter.Actionable
 	var planning *config.PlanningState
 	var automation *config.AutomationConfig
@@ -213,9 +211,6 @@ func (m *OutlinerModel) workModeFilterPredicate(proj *models.Project) func(*mode
 			return false
 		}
 		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, automation) {
-			return false
-		}
-		if criteria != nil && !passesSavedFilterCriteria(t, proj, criteria, automation) {
 			return false
 		}
 		if actionable && !taskIsActionableState(t, proj) {

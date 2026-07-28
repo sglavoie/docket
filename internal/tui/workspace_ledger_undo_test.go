@@ -209,6 +209,12 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
+	if err := appModel.registerTaskActionOperations(); err != nil {
+		t.Fatalf("register task action operations: %v", err)
+	}
+	if err := appModel.registerFilterOperations(); err != nil {
+		t.Fatalf("register filter operations: %v", err)
+	}
 	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}

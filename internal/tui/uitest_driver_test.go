@@ -22,6 +22,9 @@ func newUITestApp() *AppModel {
 	if err := app.registerTaskActionOperations(); err != nil {
 		panic(err)
 	}
+	if err := app.registerFilterOperations(); err != nil {
+		panic(err)
+	}
 	if err := app.registerGlobalOperations(); err != nil {
 		panic(err)
 	}

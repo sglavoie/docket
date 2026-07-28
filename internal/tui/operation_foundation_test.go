@@ -61,11 +61,6 @@ func TestFoundationInvariants(t *testing.T) {
 				"tag:project-a/api",
 			},
 			{
-				"saved filter", SavedFilterEntity(" filter-1 "),
-				EntityIdentity{Kind: EntityKindSavedFilter, Name: "filter-1"},
-				"saved-filter:filter-1",
-			},
-			{
 				"scope", ScopeEntity(CustomContextScope("Focus")),
 				EntityIdentity{Kind: EntityKindScope, Name: "scope:custom:Focus"},
 				"scope:scope:custom:Focus",

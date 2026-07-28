@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -81,6 +82,10 @@ func sortDailyReviewSection(tasks []CrossProjectTask, less crossTaskLess) {
 	sort.Slice(tasks, func(i, j int) bool { return less(tasks[i], tasks[j]) })
 }
 
+func crossTaskPriority(task CrossProjectTask) int {
+	return models.EffectivePriority(task.Task.Priority)
+}
+
 // crossTaskLess comparators for recurring sort patterns on CrossProjectTask slices.
 func byOverdueDueDateThenID(a, b CrossProjectTask) bool {
 	if !a.Task.DueDate.Equal(*b.Task.DueDate) {
@@ -93,22 +98,22 @@ func byDueDateThenPriority(a, b CrossProjectTask) bool {
 	if !a.Task.DueDate.Equal(*b.Task.DueDate) {
 		return a.Task.DueDate.Before(*b.Task.DueDate)
 	}
-	if a.Task.Priority != b.Task.Priority {
-		return a.Task.Priority < b.Task.Priority
+	if pa, pb := crossTaskPriority(a), crossTaskPriority(b); pa != pb {
+		return pa < pb
 	}
 	return a.Task.ID < b.Task.ID
 }
 
 func byPriorityThenID(a, b CrossProjectTask) bool {
-	if a.Task.Priority != b.Task.Priority {
-		return a.Task.Priority < b.Task.Priority
+	if pa, pb := crossTaskPriority(a), crossTaskPriority(b); pa != pb {
+		return pa < pb
 	}
 	return a.Task.ID < b.Task.ID
 }
 
 func byPriorityThenUpdatedAt(a, b CrossProjectTask) bool {
-	if a.Task.Priority != b.Task.Priority {
-		return a.Task.Priority < b.Task.Priority
+	if pa, pb := crossTaskPriority(a), crossTaskPriority(b); pa != pb {
+		return pa < pb
 	}
 	if !a.Task.UpdatedAt.Equal(b.Task.UpdatedAt) {
 		return a.Task.UpdatedAt.After(b.Task.UpdatedAt)

@@ -92,40 +92,8 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
-	if m.confirmDiscard {
-		switch key.String() {
-		case "y", "Y":
-			m.closeEditor()
-		case "n", "N", "esc":
-			m.confirmDiscard = false
-			m.discardOverlay.Cancel()
-		}
-		return m, nil
-	}
-	confirmAction := m.confirm.Action()
-	if confirmed, handled := m.confirm.HandleKey(key.String()); handled {
-		if !confirmed {
-			m.pendingDelete = ContextScope{}
-			m.pendingPurge = scopeHubActionTarget{}
-			return m, nil
-		}
-		if confirmAction == scopeHubConfirmPurge {
-			target := m.pendingPurge
-			m.pendingPurge = scopeHubActionTarget{}
-			if target.TrashEntryID == "" {
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return PurgeFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
-			}
-		}
-		return m, m.deleteConfirmedContext()
-	}
-	if m.editor != nil {
-		return m.updateEditor(key)
-	}
-	if m.actions != nil {
-		return m.updateScopeHubActions(key)
+	if model, cmd, handled := m.updateScopeHubOverlays(key); handled {
+		return model, cmd
 	}
 	if m.HasActiveSearch() {
 		switch key.String() {
@@ -183,6 +151,56 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.activateScopeHubCurrent()
 	}
 	return m, nil
+}
+
+// updateScopeHubOverlays gives the discard prompt, the confirmation prompt, the
+// inline editor, and the action sheet first claim on a key press, in that
+// order, so browse bindings never fire underneath an open overlay.
+func (m *ContextHubModel) updateScopeHubOverlays(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+	if m.confirmDiscard {
+		switch key.String() {
+		case "y", "Y":
+			m.closeEditor()
+		case "n", "N", "esc":
+			m.confirmDiscard = false
+			m.discardOverlay.Cancel()
+		}
+		return m, nil, true
+	}
+	confirmAction := m.confirm.Action()
+	if confirmed, handled := m.confirm.HandleKey(key.String()); handled {
+		return m, m.resolveScopeHubConfirm(confirmAction, confirmed), true
+	}
+	if m.editor != nil {
+		model, cmd := m.updateEditor(key)
+		return model, cmd, true
+	}
+	if m.actions != nil {
+		model, cmd := m.updateScopeHubActions(key)
+		return model, cmd, true
+	}
+	return m, nil, false
+}
+
+// resolveScopeHubConfirm clears the pending targets a prompt was guarding and
+// returns the mutation the user approved, if any.
+func (m *ContextHubModel) resolveScopeHubConfirm(action string, confirmed bool) tea.Cmd {
+	if !confirmed {
+		m.pendingDelete = ContextScope{}
+		m.pendingPurge = scopeHubActionTarget{}
+		return nil
+	}
+	if action == scopeHubConfirmPurge {
+		target := m.pendingPurge
+		m.pendingPurge = scopeHubActionTarget{}
+		if target.TrashEntryID == "" {
+			return nil
+		}
+		return func() tea.Msg {
+			return PurgeFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
+		}
+	}
+	return m.deleteConfirmedContext()
 }
 
 func (m *ContextHubModel) moveScopeHubHalfPage(direction int) {

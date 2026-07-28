@@ -221,6 +221,7 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 
 func (m *AppModel) clearTransientNavigationState() {
 	m.dismissPeek()
+	m.pendingChord = nil
 	m.pendingSandboxReset = false
 	m.pendingSandboxProjectID = ""
 	m.pendingSandboxTaskCount = 0

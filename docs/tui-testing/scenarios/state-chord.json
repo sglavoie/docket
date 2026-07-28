@@ -1,0 +1,38 @@
+{
+  "name": "state-chord",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the In Progress task", "key": "j" },
+
+    { "type": "key", "label": "hold the state prefix", "key": "," },
+    { "type": "assert", "assert": "contains", "value": "i inbox" },
+    { "type": "assert", "assert": "contains", "value": "w waiting" },
+    { "type": "assert", "assert": "contains", "value": "c canceled" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "send the cursored task to Waiting", "key": "w" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State" },
+    { "type": "assert", "assert": "contains", "value": "@ Waiting  (2)" },
+    { "type": "assert", "assert": "contains", "value": "T ⊘   Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "abandon a half-typed chord", "key": "," },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "w waiting" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "enter multi-select", "key": "v" },
+    { "type": "key", "label": "select the cursored task", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "key", "label": "park the selection in Someday", "key": "," },
+    { "type": "key", "key": "s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "@ Someday  (2)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

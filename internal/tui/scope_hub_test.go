@@ -532,6 +532,12 @@ func TestSimplifiedCOpensOnlyTheScopeHub(t *testing.T) {
 	if err := app.registerScopeHubOperations(); err != nil {
 		t.Fatalf("register scope hub operations: %v", err)
 	}
+	if err := app.registerTaskActionOperations(); err != nil {
+		t.Fatalf("register task action operations: %v", err)
+	}
+	if err := app.registerFilterOperations(); err != nil {
+		t.Fatalf("register filter operations: %v", err)
+	}
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}

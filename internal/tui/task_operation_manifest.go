@@ -15,6 +15,11 @@ type taskOperationManifestEntry struct {
 	// risk stay on the single core descriptor so the action sheet and the
 	// direct key can never describe the same operation differently.
 	Core bool
+	// DirectOnly marks entries the input strategy reaches faster than any list
+	// can. They keep their descriptor, bulk coordinator and value provider but
+	// leave the row action list, so the action sheet and Finder do not repeat a
+	// key the footer already advertises.
+	DirectOnly bool
 }
 
 // taskOperationManifest is the authoritative ordered single-task action list.
@@ -23,31 +28,34 @@ type taskOperationManifestEntry struct {
 func taskOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{
 		{
-			ID:       operationTaskSetState,
-			Label:    "Set State",
-			Aliases:  []string{"workflow state", "status"},
-			Provider: ValueProviderState,
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-			Bulk:     true,
+			ID:         operationTaskSetState,
+			Label:      "Set State",
+			Aliases:    []string{"workflow state", "status"},
+			Provider:   ValueProviderState,
+			Category:   taskActionCategoryPlan,
+			Risk:       OperationRiskMutation,
+			Bulk:       true,
+			DirectOnly: true,
 		},
 		{
-			ID:       operationTaskSetPriority,
-			Label:    "Set Priority",
-			Aliases:  []string{"importance"},
-			Provider: ValueProviderPriority,
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-			Bulk:     true,
+			ID:         operationTaskSetPriority,
+			Label:      "Set Priority",
+			Aliases:    []string{"importance"},
+			Provider:   ValueProviderPriority,
+			Category:   taskActionCategoryPlan,
+			Risk:       OperationRiskMutation,
+			Bulk:       true,
+			DirectOnly: true,
 		},
 		{
-			ID:       operationTaskSetDueDate,
-			Label:    "Set Due Date",
-			Aliases:  []string{"deadline"},
-			Provider: ValueProviderDueDate,
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-			Bulk:     true,
+			ID:         operationTaskSetDueDate,
+			Label:      "Set Due Date",
+			Aliases:    []string{"deadline"},
+			Provider:   ValueProviderDueDate,
+			Category:   taskActionCategoryPlan,
+			Risk:       OperationRiskMutation,
+			Bulk:       true,
+			DirectOnly: true,
 		},
 		{
 			ID:       operationTaskSetSnooze,
@@ -80,13 +88,14 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskSetTags,
-			Label:    "Set Tags",
-			Aliases:  []string{"labels"},
-			Provider: ValueProviderTags,
-			Category: taskActionCategoryOrganize,
-			Risk:     OperationRiskMutation,
-			Bulk:     true,
+			ID:         operationTaskSetTags,
+			Label:      "Set Tags",
+			Aliases:    []string{"labels"},
+			Provider:   ValueProviderTags,
+			Category:   taskActionCategoryOrganize,
+			Risk:       OperationRiskMutation,
+			Bulk:       true,
+			DirectOnly: true,
 		},
 		{
 			ID:       operationTaskMoveProject,
@@ -280,6 +289,9 @@ func taskOperationManifestIDs() []OperationID {
 	manifest := taskOperationManifest()
 	ids := make([]OperationID, 0, len(manifest))
 	for _, entry := range manifest {
+		if entry.DirectOnly {
+			continue
+		}
 		ids = append(ids, entry.ID)
 	}
 	return ids

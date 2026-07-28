@@ -232,7 +232,6 @@ func parseFinderPreFilter(raw string) (ListCategoryID, string) {
 		":mode":  FinderCategoryModes,
 		":scope": FinderCategoryScopes,
 		":tag":   FinderCategoryTags,
-		":sv":    FinderCategorySavedFilters,
 	}
 	category, ok := categories[strings.ToLower(parts[0])]
 	if !ok {

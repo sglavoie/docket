@@ -275,8 +275,10 @@ func metadataPriorityFieldCodec() metadataFieldCodec {
 				addValidationWarning(warnings, "priority", "invalid priority %q, using default", value)
 				return
 			}
-			if err = models.ValidatePriority(priority, false); err != nil {
-				addValidationWarning(warnings, "priority", "priority %d out of range (%d-%d), using default", priority, models.PriorityMin, models.PriorityMax)
+			// Zero round-trips as the canonical unset priority; only values
+			// outside the scale fall back to the parser's default.
+			if err = models.ValidatePriority(priority, true); err != nil {
+				addValidationWarning(warnings, "priority", "priority %d out of range (%d for unset, %d-%d), using default", priority, models.PriorityUnset, models.PriorityMin, models.PriorityMax)
 				return
 			}
 			task.Priority = priority

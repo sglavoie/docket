@@ -7,6 +7,8 @@ import (
 	"charm.land/lipgloss/v2"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *WeeklyReviewModel) View() tea.View {
@@ -101,7 +103,7 @@ func (m *WeeklyReviewModel) View() tea.View {
 				Width:   m.width,
 				AlreadyShown: TaskMetadataAlreadyShown{
 					Project:  true,
-					Priority: stripTask.Task.Priority >= 1 && stripTask.Task.Priority <= 2,
+					Priority: models.IsHighPriority(stripTask.Task.Priority),
 					Due:      stripTask.Task.DueDate != nil,
 					Stale:    true,
 					Updated:  section == WeeklySectionStaleTasks,

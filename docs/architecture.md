@@ -172,8 +172,8 @@ Modes and project scopes belong to the Outliner rather than to routes. The exact
 mode catalog is All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked, Daily
 Review, and Activity. `Tab`/`Shift+Tab` cycle All → Inbox → Next → Backlog and
 back. `m` opens the searchable mode source, `c` opens the Scope Hub, `/` searches
-visible rows, `:` opens Finder, and `v` enters multi-select. Pinned items, recent
-destinations, and saved filters are Finder results rather than permanent modes.
+visible rows, `:` opens Finder, and `v` enters multi-select. Pinned items and
+recent destinations are Finder results rather than permanent modes.
 
 A single AppModel-owned Outliner instance owns both global and project-focused
 work. Project selection is represented by Outliner scope frames, never another

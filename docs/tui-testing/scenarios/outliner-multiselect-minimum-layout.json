@@ -13,7 +13,7 @@
     { "type": "assert", "assert": "contains", "value": "[x]" },
     { "type": "key", "label": "open bulk actions for the frozen selection", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Bulk Actions · 1 selected" },
-    { "type": "assert", "assert": "contains", "value": "Set State" },
+    { "type": "assert", "assert": "contains", "value": "Delete Task" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -283,62 +283,6 @@ func TestTagOperationsRejectTagsThatLeftTheirScope(t *testing.T) {
 	}
 }
 
-func TestSavedFilterOperationsResolveByStableID(t *testing.T) {
-	model, _ := entityOperationApp(t)
-	if err := model.commitPlanningMutation(func(p *config.PlanningState) {
-		p.SaveFilter(config.SavedFilter{ID: "sf-1", Name: "Urgent", Mode: "snapshot"})
-	}); err != nil {
-		t.Fatalf("seed saved filter: %v", err)
-	}
-
-	applied := executeEntityOperation(model, operationSavedFilterApply, SavedFilterEntity("sf-1"))
-	load, ok := applied.Message.(LoadSavedFilterMsg)
-	if !ok || load.Filter.ID != "sf-1" {
-		t.Fatalf("apply emitted %#v, want the sf-1 filter", applied.Message)
-	}
-
-	edited := executeEntityOperation(model, operationSavedFilterEdit, SavedFilterEntity("sf-1"))
-	editor, ok := edited.Message.(ShowFilterEditorMsg)
-	if !ok || editor.Filter == nil || editor.Filter.ID != "sf-1" {
-		t.Fatalf("edit emitted %#v, want the builder on sf-1", edited.Message)
-	}
-
-	missing := executeEntityOperation(model, operationSavedFilterApply, SavedFilterEntity("sf-gone"))
-	if missing.Err == nil {
-		t.Fatalf("applying a deleted filter emitted %#v, want an error", missing.Message)
-	}
-}
-
-func TestSavedFilterDeleteConfirmsAndClearsTheActiveIndicator(t *testing.T) {
-	model, _ := entityOperationApp(t)
-	if err := model.commitPlanningMutation(func(p *config.PlanningState) {
-		p.SaveFilter(config.SavedFilter{ID: "sf-1", Name: "Urgent", Mode: "snapshot"})
-	}); err != nil {
-		t.Fatalf("seed saved filter: %v", err)
-	}
-	model.crossOutliner.activeSavedFilter = "Urgent"
-
-	result := executeEntityOperation(model, operationSavedFilterDelete, SavedFilterEntity("sf-1"))
-	if result.ConfirmationRequired == nil || result.Message != nil {
-		t.Fatalf("saved filter delete ran without confirmation: %#v", result)
-	}
-	confirmed := model.operationExecutor.Execute(result.ConfirmationRequired.Request)
-	request, ok := confirmed.Message.(DeleteSavedFilterMsg)
-	if !ok || request.ID != "sf-1" {
-		t.Fatalf("confirmed delete emitted %#v, want a sf-1 delete", confirmed.Message)
-	}
-
-	if handled, _ := model.handleSavedFilterMessages(request); !handled {
-		t.Fatal("the delete request was not handled")
-	}
-	if model.runtime.Planning().GetSavedFilter("sf-1") != nil {
-		t.Fatal("the saved filter survived its confirmed delete")
-	}
-	if model.crossOutliner.activeSavedFilter != "" {
-		t.Fatalf("active saved filter = %q, want cleared", model.crossOutliner.activeSavedFilter)
-	}
-}
-
 func TestEntityOperationRefreshKeepsFinderRecents(t *testing.T) {
 	model := contextHubApp(t)
 	model.recordFinderDestination(config.RecentDestination{
@@ -351,7 +295,6 @@ func TestEntityOperationRefreshKeepsFinderRecents(t *testing.T) {
 	}
 
 	model.handleTagMessages(TagRemovedMsg{Name: "urgent"})
-	model.handleSavedFilterMessages(DeleteSavedFilterMsg{ID: "sf-gone"})
 	model.reconcileNoteResult(ProjectNoteMutationResultMsg{
 		Location:       app.GlobalNoteLocation(),
 		SuccessMessage: "Deleted: scratch",

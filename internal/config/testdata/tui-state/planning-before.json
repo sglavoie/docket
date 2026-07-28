@@ -1,18 +1,14 @@
 {
   "focus_queue": [{"project_id": "project-1", "task_id": "task-1"}],
-  "saved_filters": [{
-    "id": "filter-1",
-    "name": "Actionable bugs",
-    "mode": "snapshot",
-    "view_mode": 3,
-    "filter_type": "bug",
-    "filter_tags": ["backend"],
-    "filter_actionable": true,
+  "saved_views": [{
+    "name": "Next up",
+    "filter_sections": ["Next"],
     "sort_field": 2,
-    "sort_ascending": true,
-    "pinned_tag_tab": "backend",
-    "show_as_tab": true,
-    "kanban_mode": "status",
-    "kanban_visible_columns": ["ready"]
+    "sort_ascending": true
+  }],
+  "smart_lists": [{
+    "id": "list-1",
+    "name": "Stale reviews",
+    "criteria": [{"field": "status", "operation": "equals", "value": "review"}]
   }]
 }

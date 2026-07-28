@@ -207,7 +207,7 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	if !f.Type.IsValid() {
 		return invalidInput("type", fmt.Sprintf("%q is not a valid task type", f.Type))
 	}
-	if err := models.ValidatePriority(f.Priority, false); err != nil {
+	if err := models.ValidatePriority(f.Priority, true); err != nil {
 		return invalidInput("priority", err.Error())
 	}
 	normalizedTags, err := normalizeTags(f.Tags)

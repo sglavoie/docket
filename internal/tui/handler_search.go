@@ -224,19 +224,7 @@ func (m *AppModel) handleFinderTargetSelection(
 			outliner.filter.Tags = make(map[string]bool)
 		}
 		outliner.filter.Tags[target.Tag.Name] = true
-		outliner.activeSavedFilter = ""
 		outliner.rebuildRows()
-		return true, m.returnToOutlinerAfterContextSelection()
-
-	case FinderItemSavedFilter:
-		if target.SavedFilter == nil {
-			return true, m.popView()
-		}
-		outliner := m.discoveryOutliner()
-		if outliner == nil {
-			return true, m.popView()
-		}
-		m.applySavedFilterToOutlinerModel(outliner, *target.SavedFilter)
 		return true, m.returnToOutlinerAfterContextSelection()
 	}
 	return true, m.popView()
@@ -252,6 +240,23 @@ func (m *AppModel) activateDiscoveryMode(id OutlinerModeID) (bool, tea.Cmd) {
 		m.returnToOutlinerAfterContextSelection(),
 		modeCmd,
 	)
+}
+
+// refreshFinderItems rebuilds the open Finder's providers so a mutation made
+// from one of its rows is reflected without reopening the route.
+func (m *AppModel) refreshFinderItems() {
+	if m.currentView() != ViewFinder {
+		return
+	}
+	if discovery, ok := m.views.Get(ViewFinder).(*DiscoveryListModel); ok &&
+		discovery.kind == DiscoverySurfaceFinder {
+		finder, err := NewRuntimeFinder(m.runtime, m.GetOperationRegistry(), discovery.context)
+		if err != nil {
+			return
+		}
+		discovery.finder = finder
+		_ = discovery.rebuildFinderResults()
+	}
 }
 
 func (m *AppModel) discoveryOutliner() *OutlinerModel {

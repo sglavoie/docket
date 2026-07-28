@@ -1,0 +1,29 @@
+{
+  "name": "tags-picker-direct",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the In Progress task", "key": "j" },
+
+    { "type": "key", "label": "open the tag picker with its direct key", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Set Tags: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "TAGS" },
+    { "type": "assert", "assert": "contains", "value": "Space toggle" },
+    { "type": "assert", "assert": "contains", "value": "Esc back" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Tags" },
+
+    { "type": "key", "label": "reopen the picker", "key": "#" },
+    { "type": "key", "label": "select the first tag", "key": "space" },
+    { "type": "key", "label": "apply the selection", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Tags: Build login form" },
+    { "type": "assert", "assert": "status_contains", "value": "Tagged 1 task(s)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

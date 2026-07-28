@@ -80,7 +80,7 @@ func CategorizeByDueDate(task *models.Task) PriorityGroup {
 // cross-project priority modes. inFocusQueue is the task's explicit Focus Queue
 // membership.
 func ComputeUrgencyScore(task *models.Task, inFocusQueue bool) int {
-	score := (6 - task.Priority) * 1000
+	score := (6 - models.EffectivePriority(task.Priority)) * 1000
 
 	if task.Type == models.TaskTypeBug {
 		score += 100

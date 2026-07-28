@@ -4,11 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "move to the long-titled task", "key": "G" },
-    { "type": "key", "label": "open the contextual action sheet", "key": "space" },
-    { "type": "key", "label": "search the sheet", "key": "/" },
-    { "type": "text", "label": "find the due-date action", "text": "due date" },
-    { "type": "key", "label": "leave sheet search", "key": "enter" },
-    { "type": "key", "label": "open the due-date picker", "key": "enter" },
+    { "type": "key", "label": "open the due-date picker", "key": "@" },
     { "type": "key", "label": "highlight Today", "key": "j" },
     { "type": "key", "label": "make the long-titled task due today", "key": "enter" },
     { "type": "wait" },

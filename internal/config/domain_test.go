@@ -300,17 +300,15 @@ func TestNewPlanningStateDefaults(t *testing.T) {
 
 func TestPlanningStateValidate(t *testing.T) {
 	valid := &PlanningState{
-		FocusQueue:   []FocusQueueItem{{TaskID: "t", ProjectID: "p"}},
-		DailyPlan:    []DailyPlanItem{{TaskID: "t", ProjectID: "p"}},
-		SavedViews:   []savedView{{Name: "v"}},
-		SavedFilters: []SavedFilter{{Name: "f"}},
+		FocusQueue: []FocusQueueItem{{TaskID: "t", ProjectID: "p"}},
+		DailyPlan:  []DailyPlanItem{{TaskID: "t", ProjectID: "p"}},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Errorf("valid planning should pass: %v", err)
 	}
 
 	cases := []*PlanningState{
-		{FocusQueue: []FocusQueueItem{{ProjectID: "p"}}}, {DailyPlan: []DailyPlanItem{{ProjectID: "p"}}}, {SavedViews: []savedView{{}}}, {SavedFilters: []SavedFilter{{}}}}
+		{FocusQueue: []FocusQueueItem{{ProjectID: "p"}}}, {DailyPlan: []DailyPlanItem{{ProjectID: "p"}}}}
 	for i, c := range cases {
 		if err := c.Validate(); err == nil {
 			t.Errorf("case %d: expected validation error", i)

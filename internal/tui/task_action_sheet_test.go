@@ -69,8 +69,8 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		ids = append(ids, descriptor.ID)
 	}
 	for _, want := range []OperationID{
-		operationTaskSetState,
-		operationTaskSetPriority,
+		operationTaskSetSnooze,
+		operationTaskScore,
 		operationTaskSetDependencies,
 		operationTaskSetParent,
 		operationTaskIndent,
@@ -84,7 +84,8 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		}
 	}
 	// Direct-key core navigation, capture, and the sheet's own opener are not
-	// task actions; the one-state transitions are superseded by the state picker.
+	// task actions; the metadata operations the input strategy binds directly
+	// leave the sheet rather than repeating their key as a row.
 	for _, excluded := range []OperationID{
 		operationCoreStart,
 		operationCoreDone,
@@ -92,6 +93,10 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationCoreCapture,
 		operationCoreMultiSelect,
 		operationCoreCursorDown,
+		operationTaskSetState,
+		operationTaskSetPriority,
+		operationTaskSetDueDate,
+		operationTaskSetTags,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("action sheet exposed non-contextual %s: %v", excluded, ids)
@@ -183,19 +188,17 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	for _, want := range []OperationID{
+	if !slices.Contains(ids, operationTaskDelete) {
+		t.Errorf("bulk action sheet missing %s: %v", operationTaskDelete, ids)
+	}
+	for _, excluded := range []OperationID{
+		// Snooze is bulk-capable but the in-progress member removes it.
+		operationTaskSetSnooze,
+		// The four metadata operations reach a selection through their direct key.
 		operationTaskSetState,
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
-		operationTaskDelete,
-	} {
-		if !slices.Contains(ids, want) {
-			t.Errorf("bulk action sheet missing %s: %v", want, ids)
-		}
-	}
-	for _, excluded := range []OperationID{
-		operationTaskSetSnooze,
 		operationTaskMoveProject,
 		operationTaskSetDependencies,
 		operationTaskSetParent,
@@ -222,8 +225,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
-	if !sheet.surface.SetCursorToID("task-action:" + ListItemID(operationTaskSetPriority)) {
-		t.Fatal("set-priority action is missing from the bulk sheet")
+	if !sheet.surface.SetCursorToID("task-action:" + ListItemID(operationTaskDelete)) {
+		t.Fatal("delete action is missing from the bulk sheet")
 	}
 	_, _, result := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	emitted, ok := result.(ContextActionSheetResultMsg)
@@ -309,10 +312,16 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	if sheet == nil || !sheet.config.Bulk || sheet.config.Targets != 2 {
 		t.Fatalf("Enter did not open a two-target bulk action sheet: %#v", sheet)
 	}
-	if !sheet.surface.SetCursorToID(
+	// Priority now belongs to the p chord, so the bulk sheet must not repeat it.
+	if sheet.surface.SetCursorToID(
 		ListItemID("task-action:" + string(operationTaskSetPriority)),
 	) {
-		t.Fatal("bulk action sheet is missing set-priority")
+		t.Fatal("bulk action sheet still lists the direct-only set-priority action")
+	}
+	if !sheet.surface.SetCursorToID(
+		ListItemID("task-action:" + string(operationTaskSetSnooze)),
+	) {
+		t.Fatal("bulk action sheet is missing set-snooze")
 	}
 	_, dismissed, rawResult := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if dismissed {
@@ -320,13 +329,13 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	}
 	emitted, ok := rawResult.(ContextActionSheetResultMsg)
 	if !ok {
-		t.Fatalf("priority selection returned %T, want ContextActionSheetResultMsg", rawResult)
+		t.Fatalf("snooze selection returned %T, want ContextActionSheetResultMsg", rawResult)
 	}
 	handled, cmd := app.handleOperationOverlayMessage(emitted)
 	if !handled || cmd != nil {
-		t.Fatalf("priority execution = handled %v cmd %T, want value picker", handled, cmd)
+		t.Fatalf("snooze execution = handled %v cmd %T, want value picker", handled, cmd)
 	}
-	if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderPriority {
-		t.Fatalf("priority action did not open the canonical value picker: %#v", app.operationValuePicker)
+	if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderSnooze {
+		t.Fatalf("snooze action did not open the canonical value picker: %#v", app.operationValuePicker)
 	}
 }

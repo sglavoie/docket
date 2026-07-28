@@ -374,7 +374,6 @@ func NewRuntimeFinder(
 
 	tools := globalToolCatalog(registry, context)
 	tags := finderTagsFromProjects(runtime, loadedProjects)
-	filters := runtime.Planning().GetSavedFilters()
 	providers := []FinderProvider{
 		FinderOperationProvider{Registry: registry, Context: context},
 		FinderTaskProvider{Projects: loadedProjects},
@@ -384,7 +383,6 @@ func NewRuntimeFinder(
 		FinderModeProvider{Modes: OutlinerModeCatalog()},
 		FinderScopeProvider{Scopes: ContextScopeSummaries(runtime)},
 		FinderTagProvider{Tags: tags},
-		FinderSavedFilterProvider{Filters: filters},
 	}
 	return NewFinder(runtime.Machine(), providers...)
 }

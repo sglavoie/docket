@@ -26,7 +26,6 @@ const (
 	ViewDateInput
 	ViewDependencySelector
 	ViewDependencyViewer
-	ViewFilter
 	ViewTaskJumper
 	ViewProjectPreview
 	ViewTagManager
@@ -75,12 +74,10 @@ const (
 	ViewTaskDetail
 	ViewScoreEditor
 	ViewScoreProfileManager
-	ViewSaveFilterInput
 	ViewMetricsDashboard
 	ViewScoringProfilePicker
 	ViewCrossProjectOutliner
 	ViewColumnPicker
-	ViewFilterBuilder
 	ViewWorkflowDryRun
 	ViewTemplateVarFiller
 	ViewStatusInput
@@ -391,6 +388,10 @@ type AppModel struct {
 	// so cancellation returns to the sheet with nothing executed.
 	operationConfirm        ConfirmDialog
 	pendingOperationRequest OperationExecutionRequest
+
+	// Keys already pressed toward an unfinished chord. A non-empty prefix owns
+	// the footer as a which-key row until the chord completes or is abandoned.
+	pendingChord []string
 
 	// Peek task overlay (space toggles task detail peek)
 	peekTask        *models.Task

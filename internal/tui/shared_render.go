@@ -233,7 +233,7 @@ func (tl TaskLine) queueIndicator() string {
 
 func (tl TaskLine) buildTaskLineSegments() taskLineSegments {
 	priorityBadge := renderPriorityBadge(tl.Task.Priority)
-	if tl.HideLowPriority && tl.Task.Priority > 2 {
+	if tl.HideLowPriority && !models.IsHighPriority(tl.Task.Priority) {
 		priorityBadge = ""
 	}
 

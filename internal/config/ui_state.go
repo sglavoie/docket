@@ -109,19 +109,22 @@ func mustWorkflowStateSet(states ...models.WorkflowState) models.WorkflowStateSe
 	return set
 }
 
+func cloneWorkflowStateSet(states models.WorkflowStateSet) models.WorkflowStateSet {
+	return mustWorkflowStateSet(states.Values()...)
+}
+
 // RecentDestinationKind identifies a finder destination without importing TUI
 // route or presentation types into the machine-local config domain.
 type RecentDestinationKind string
 
 const (
-	RecentDestinationTask        RecentDestinationKind = "task"
-	RecentDestinationProject     RecentDestinationKind = "project"
-	RecentDestinationNote        RecentDestinationKind = "note"
-	RecentDestinationTool        RecentDestinationKind = "tool"
-	RecentDestinationMode        RecentDestinationKind = "mode"
-	RecentDestinationScope       RecentDestinationKind = "scope"
-	RecentDestinationTag         RecentDestinationKind = "tag"
-	RecentDestinationSavedFilter RecentDestinationKind = "saved-filter"
+	RecentDestinationTask    RecentDestinationKind = "task"
+	RecentDestinationProject RecentDestinationKind = "project"
+	RecentDestinationNote    RecentDestinationKind = "note"
+	RecentDestinationTool    RecentDestinationKind = "tool"
+	RecentDestinationMode    RecentDestinationKind = "mode"
+	RecentDestinationScope   RecentDestinationKind = "scope"
+	RecentDestinationTag     RecentDestinationKind = "tag"
 )
 
 // RecentDestination is the durable identity of a finder destination.
@@ -136,6 +139,8 @@ type RecentDestination struct {
 }
 
 // Valid reports whether a destination has enough identity to be persisted.
+// Retired kinds fall through to false, so a machine-local history written by an
+// older build loses only the entries whose destination no longer exists.
 func (destination RecentDestination) Valid() bool {
 	if strings.TrimSpace(destination.ID) == "" {
 		return false
@@ -148,8 +153,7 @@ func (destination RecentDestination) Valid() bool {
 		RecentDestinationTool,
 		RecentDestinationMode,
 		RecentDestinationScope,
-		RecentDestinationTag,
-		RecentDestinationSavedFilter:
+		RecentDestinationTag:
 		return true
 	default:
 		return false

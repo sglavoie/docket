@@ -464,12 +464,16 @@ func (m *TaskJumperModel) renderPreview() string {
 
 	// Priority
 	priorityStyle := NormalStyle
-	if task.Priority <= 2 {
-		priorityStyle = WarningIconStyle
+	priorityText := "unset"
+	if task.Priority != models.PriorityUnset {
+		priorityText = fmt.Sprintf("%d", task.Priority)
+		if models.IsHighPriority(task.Priority) {
+			priorityStyle = WarningIconStyle
+		}
 	}
 	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Priority:"),
-		priorityStyle.Render(fmt.Sprintf("%d", task.Priority)))
+		priorityStyle.Render(priorityText))
 
 	// Type
 	fmt.Fprintf(&b, "%s %s\n",

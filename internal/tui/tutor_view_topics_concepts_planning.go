@@ -3,35 +3,6 @@ package tui
 func tutorConceptTopicsPlanning() []TutorTopic {
 	return []TutorTopic{
 		{
-			Title:    "Saved Filters",
-			Category: "Concepts",
-			Content: `# What Are Saved Filters
-
-A saved filter is a named preset that captures your current filter
-and sort settings. Instead of manually re-applying
-filters every time you want to see the same slice of tasks, you
-save the combination once and load it with a couple of keystrokes.
-
-There are two modes: snapshot (flat filter state) and criteria
-(compound rules like smart lists). Both are managed uniformly.
-
-# Managing Saved Filters
-
-Press : to open Finder. Finder lists saved filters alongside the
-operations that create, edit, and delete their definitions. Search
-for the filter or operation by name, then press Enter. Applying a
-saved filter updates the Outliner immediately and shows its name in
-the filter bar.
-
-# Storage
-
-Saved filters are stored in the portable planning domain and are
-available across all projects. Snapshot filters capture
-type/state/priority/tag/due-date/attribute/score filters,
-sort field and direction. Criteria
-filters store compound rules with AND/OR logic.`,
-		},
-		{
 			Title:    "Planning Horizons",
 			Category: "Concepts",
 			Content: `# State Groups
@@ -56,8 +27,8 @@ ordered All, Inbox, Next, or Backlog sequence.
 Use tags for flexible grouping by team, area, initiative, or
 customer without moving a task through its workflow. Press T from
 the Outliner to manage tags in the active scope. Finder exposes
-pinned items, recent destinations, and saved filters without
-turning them into permanent modes.`,
+pinned items and recent destinations without turning them into
+permanent modes.`,
 		},
 		{
 			Title:    "Workflow States",

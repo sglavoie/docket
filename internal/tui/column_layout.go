@@ -101,7 +101,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		}
 		hasTasks = true
 
-		showPriority := !opts.HideLowPriority || task.Priority <= 2
+		showPriority := !opts.HideLowPriority || models.IsHighPriority(task.Priority)
 		if showPriority {
 			badge := renderPriorityBadge(task.Priority)
 			if w := lipgloss.Width(badge); w > 0 {

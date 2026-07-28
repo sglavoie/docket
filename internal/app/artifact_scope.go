@@ -12,9 +12,9 @@ const (
 	ScopeUnknown ArtifactScope = iota
 	// ScopeDurable marks synced state persisted with the workspace (task markdown,
 	// notes, blockers, project metadata and tags, templates, scoring profiles,
-	// workflow rules, saved filters/views, review completion, and the planning
-	// collections). It is the only scope the application layer commits through the
-	// transactional Repository.
+	// workflow rules, review completion, and the planning collections). It is the
+	// only scope the application layer commits through the transactional
+	// Repository.
 	ScopeDurable
 	// ScopeMachineLocal marks state that stays on one machine and must never be
 	// committed to the shared workspace (editors, integrations, current navigation,
@@ -38,7 +38,6 @@ const (
 	ArtifactTemplates        ArtifactKind = "templates"
 	ArtifactScoringProfiles  ArtifactKind = "scoring_profiles"
 	ArtifactWorkflowRules    ArtifactKind = "workflow_rules"
-	ArtifactSavedFilters     ArtifactKind = "saved_filters"
 	ArtifactReviewCompletion ArtifactKind = "review_completion"
 	ArtifactFocusQueue       ArtifactKind = "focus_queue"
 	ArtifactDailyPlan        ArtifactKind = "daily_plan"
@@ -60,7 +59,7 @@ func ClassifyArtifact(kind ArtifactKind) ArtifactScope {
 	switch kind {
 	case ArtifactTasks, ArtifactNotes, ArtifactBlockers, ArtifactProjectMetadata,
 		ArtifactProjectTags, ArtifactTemplates, ArtifactScoringProfiles,
-		ArtifactWorkflowRules, ArtifactSavedFilters, ArtifactReviewCompletion,
+		ArtifactWorkflowRules, ArtifactReviewCompletion,
 		ArtifactFocusQueue, ArtifactDailyPlan:
 		return ScopeDurable
 	case ArtifactEditors, ArtifactIntegrations, ArtifactNavigation,

@@ -13,7 +13,7 @@ func TestClassifyArtifact(t *testing.T) {
 	durable := []app.ArtifactKind{
 		app.ArtifactTasks, app.ArtifactNotes, app.ArtifactBlockers,
 		app.ArtifactProjectMetadata, app.ArtifactProjectTags, app.ArtifactTemplates,
-		app.ArtifactScoringProfiles, app.ArtifactWorkflowRules, app.ArtifactSavedFilters,
+		app.ArtifactScoringProfiles, app.ArtifactWorkflowRules,
 		app.ArtifactReviewCompletion, app.ArtifactFocusQueue, app.ArtifactDailyPlan,
 	}
 	for _, k := range durable {

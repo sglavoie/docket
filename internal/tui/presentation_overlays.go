@@ -47,7 +47,7 @@ func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlayProjectPicker, true
 	case ViewColumnPicker:
 		return OverlayViewMenu, true
-	case ViewFilter, ViewFilterBuilder, ViewTagFilterSelector, ViewNotesSearch:
+	case ViewTagFilterSelector, ViewNotesSearch:
 		return OverlaySearch, true
 	case ViewTaskJumper:
 		return OverlayTaskJump, true
@@ -63,7 +63,7 @@ func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		ViewBulkTagSelector, ViewRecurrenceEditor,
 		ViewLinkedTaskSelector, ViewCrossProjectLinker, ViewNoteTaskLinker,
 		ViewNoteTagSelector, ViewSnoozeInput, ViewParkInput, ViewTaskTemplatePicker,
-		ViewScoreEditor, ViewSaveFilterInput, ViewScoringProfilePicker,
+		ViewScoreEditor, ViewScoringProfilePicker,
 		ViewWorkflowDryRun, ViewStatusInput, ViewStatusIconPicker:
 		return OverlayPicker, true
 	default:

@@ -12,7 +12,7 @@ import (
 
 // switchToProject switches the current project, loads it from storage, and
 // (re)creates the outliner view for it. Pass restoreState=false to skip
-// restoring saved filter/sort state (e.g. when applying a custom section or
+// restoring persisted filter/sort state (e.g. when applying a custom section or
 // tag filter that should not be overwritten by the persisted view state).
 func (m *AppModel) switchToProject(project *models.Project, _ bool) {
 	if project == nil {

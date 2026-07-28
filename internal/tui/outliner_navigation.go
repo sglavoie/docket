@@ -76,8 +76,6 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 	m.zoomStack = nil
 	m.filter = NewFilterState()
 	m.ClearSearch()
-	m.activeSavedFilter = ""
-	m.activeCriteriaFilter = nil
 	m.setPinnedTagTabIndex(0)
 	if task.IsTerminalState() {
 		states, _ := models.NewWorkflowStateSet(task.State())

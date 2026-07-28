@@ -119,32 +119,6 @@ func TestHandleViewMessagesWorkflowRuleEdited(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesShowFilter(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
-
-	msg := ShowFilterMsg{CommonFilter: &app.crossOutliner.filter.CommonFilterState, Project: project}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ShowFilterMsg should be handled")
-	}
-	if app.currentView() != ViewFilter {
-		t.Errorf("currentView should be Filter, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesCloseFilter(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewFilter)
-
-	app.Update(CloseFilterMsg{})
-
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after closing filter, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesShowTaskTemplates(t *testing.T) {
 	app := newTestAppModel()
 
@@ -206,21 +180,6 @@ func TestHandleViewMessagesShowTutor(t *testing.T) {
 	}
 	if app.currentView() != ViewTutor {
 		t.Errorf("currentView should be Tutor, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesFilterBuilderSaved(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewFilterBuilder)
-
-	msg := FilterBuilderSavedMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("FilterBuilderSavedMsg should be handled")
-	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after filter builder saved, got %v", app.currentView())
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -44,15 +43,6 @@ func TestDeletedProjectTagAfterReloadIsAbsentFromTagSurfaces(t *testing.T) {
 		t.Fatalf("outliner tags after refresh = %v, want frontend only", app.crossOutliner.filter.Tags)
 	}
 
-	staleFilter := config.SavedFilter{
-		Name:       "Deleted Tag Snapshot",
-		Mode:       "snapshot",
-		FilterTags: []string{"backend", "frontend"},
-	}
-	app.applySavedFilterToOutliner(staleFilter)
-	if app.crossOutliner.filter.Tags["backend"] || !app.crossOutliner.filter.Tags["frontend"] {
-		t.Fatalf("outliner saved filter tags = %v, want frontend only", app.crossOutliner.filter.Tags)
-	}
 	if got := app.crossOutliner.activePinnedTagFilter(); got != "" {
 		t.Fatalf("outliner activePinnedTagFilter() = %q, want empty", got)
 	}

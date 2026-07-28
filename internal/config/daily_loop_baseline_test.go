@@ -47,19 +47,9 @@ func TestDailyLoopCurrentPlanningAndAutomationJSONShapes(t *testing.T) {
 		requireBaselineFields(t, fields, []string{"focus_queue", "daily_plan"}, nil)
 	})
 
-	t.Run("saved filter", func(t *testing.T) {
-		states, err := models.NewWorkflowStateSet(models.StateNext)
-		if err != nil {
-			t.Fatalf("state set: %v", err)
-		}
-		filter := SavedFilter{
-			ID:   "filter",
-			Name: "Canonical filter",
-			Mode: "snapshot",
-		}
-		filter.SetFilterStates(states, true)
-		fields := baselineJSONFields(t, filter)
-		requireBaselineFields(t, fields, []string{"filter_states"}, []string{"filter_status", "filter_sections"})
+	t.Run("planning drops retired sections", func(t *testing.T) {
+		fields := baselineJSONFields(t, PlanningState{StreakCount: 3})
+		requireBaselineFields(t, fields, nil, []string{"saved_views", "smart_lists"})
 	})
 
 	t.Run("task template", func(t *testing.T) {

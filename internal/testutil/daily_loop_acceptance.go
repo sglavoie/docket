@@ -133,7 +133,6 @@ type PublicInterfaceAcceptance struct {
 	TaskJSONForbiddenFields []string
 	ProjectJSONForbidden    []string
 	SearchTokenExample      string
-	SavedFilterField        string
 	TemplateField           string
 	WorkflowVocabulary      []string
 	ActionPlanVersion       int
@@ -203,7 +202,6 @@ func DailyLoopTargetContract() DailyLoopContract {
 			TaskJSONForbiddenFields: []string{"status", "section", "stage"},
 			ProjectJSONForbidden:    []string{"sections", "section_colors"},
 			SearchTokenExample:      "$ready",
-			SavedFilterField:        "filter_states",
 			TemplateField:           "state",
 			WorkflowVocabulary:      []string{"state", "state-set", "state-transition", "set_state"},
 			ActionPlanVersion:       2,
@@ -226,7 +224,7 @@ func DailyLoopTargetContract() DailyLoopContract {
 			"Today is synthetic and deduplicated",
 			"Today contains only nonterminal non-Inbox tasks",
 			"done and canceled require explicit filters",
-			"pinned, recent, and saved filters are finder results",
+			"pinned and recent destinations are finder results",
 		},
 		InteractionMax: 2,
 	}

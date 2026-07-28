@@ -70,9 +70,6 @@ func finderRowFixtures(t *testing.T, app *AppModel, ctx CommandContext) []finder
 			Scopes: []ContextScopeSummary{{Scope: CustomContextScope("Focus")}},
 		}),
 		first("tag", FinderTagProvider{Tags: []TagInfo{{Name: "urgent", TaskCount: 2}}}),
-		first("saved filter", FinderSavedFilterProvider{
-			Filters: []config.SavedFilter{{ID: "weekly", Name: "Weekly", Mode: "snapshot"}},
-		}),
 	}
 }
 
@@ -514,7 +511,7 @@ func TestFinderTagFilterFromOutlinerRouteAppliesToTheOutliner(t *testing.T) {
 }
 
 // TestFinderTaskSheetCancelFromSettingsPreservesQueryAndRoute keeps the sheet a
-// pure overlay: cancelling it must return the user to the same Finder.
+// pure overlay: canceling it must return the user to the same Finder.
 func TestFinderTaskSheetCancelFromSettingsPreservesQueryAndRoute(t *testing.T) {
 	driver, app, ctx := openFinderFromRoute(t, func(*UITestDriver) tea.Msg {
 		return ShowManageHubMsg{Params: ManageParams{Module: ManageSettings, Scope: AppEntityScope()}}
@@ -810,7 +807,7 @@ func TestFinderRenameNoteCancelReturnsToTheSameSheet(t *testing.T) {
 		t.Fatal("Esc left the text prompt open")
 	}
 	if model.contextActionSheet == nil {
-		t.Fatal("cancelling the prompt also closed the row sheet")
+		t.Fatal("canceling the prompt also closed the row sheet")
 	}
 	if !slices.Contains(model.contextActionSheet.operationIDs(), operationNoteRename) {
 		t.Fatal("the sheet the prompt returned to no longer offers the rename")

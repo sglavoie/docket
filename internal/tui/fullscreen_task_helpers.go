@@ -81,8 +81,13 @@ func appendFullscreenTitleCounter(base, counter string, width int) string {
 	return base + strings.Repeat(" ", gap) + rendered
 }
 
-// renderPriorityBadge renders a priority indicator with color styling.
+// renderPriorityBadge renders a priority indicator with color styling. An unset
+// priority has no glyph of its own, so it renders nothing rather than borrowing
+// the normal-priority icon.
 func renderPriorityBadge(priority int) string {
+	if models.ValidatePriority(priority, false) != nil {
+		return ""
+	}
 	return GetPriorityStyle(priority).Render(PriorityIcon(priority))
 }
 
@@ -100,8 +105,10 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(state.Icon() + " " + string(state))
-	priorityBadge := renderPriorityBadge(task.Priority)
-	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
+	idLine := fmt.Sprintf("#%d", task.ShortID)
+	if priorityBadge := renderPriorityBadge(task.Priority); priorityBadge != "" {
+		idLine += " " + priorityBadge
+	}
 
 	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
 

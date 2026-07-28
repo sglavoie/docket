@@ -271,10 +271,7 @@ func (t *TaskTemplate) Summary() string {
 
 // GetEffectivePriority returns the priority to use, defaulting to 3 if not set.
 func (t *TaskTemplate) GetEffectivePriority() int {
-	if t.Priority == 0 {
-		return models.PriorityDefault
-	}
-	return t.Priority
+	return models.EffectivePriority(t.Priority)
 }
 
 // GetChildType returns the effective type for a child, defaulting to Task.

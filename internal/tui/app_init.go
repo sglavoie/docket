@@ -202,11 +202,11 @@ func (app *AppModel) registerOperationCatalog() error {
 	}{
 		{"core input", app.registerCoreInputOperations},
 		{"task action", app.registerTaskActionOperations},
+		{"filter", app.registerFilterOperations},
 		{"scope hub", app.registerScopeHubOperations},
 		{"project", app.registerProjectOperations},
 		{"note", app.registerNoteOperations},
 		{"tag", app.registerTagOperations},
-		{"saved filter", app.registerSavedFilterOperations},
 		{"mode", app.registerModeOperations},
 		{"global", app.registerGlobalOperations},
 		{"harness", app.registerHarnessOperations},

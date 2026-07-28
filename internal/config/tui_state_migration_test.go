@@ -246,8 +246,8 @@ func TestLoadTimeTUIStateMigrationIsAtomicPerDomainAndIdempotent(t *testing.T) {
 	planningPath := writeRawDomainPayload(t, dataDir, workspaceID, domainPlanning, map[string]any{
 		"tui_state_version": 0,
 		"streak_count":      7,
-		"saved_filters": []map[string]any{{
-			"id": "f", "name": "Bugs", "mode": "snapshot", "filter_type": "bug", "sort_field": 2,
+		"saved_views": []map[string]any{{
+			"name": "Bugs", "filter_type": "bug", "sort_field": 2,
 		}},
 	})
 	settingsPath := writeRawDomainPayload(t, dataDir, workspaceID, domainSettings, map[string]any{

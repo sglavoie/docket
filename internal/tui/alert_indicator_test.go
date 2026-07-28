@@ -218,7 +218,7 @@ func TestOutlinerTitleRowNeverOverflowsAtSupportedWidths(t *testing.T) {
 		m := alertTitleOutliner(t, 12)
 		m.setOpenLoops(OpenLoops{Inbox: 9, Overdue: 4})
 		m.multiSelectMode = true
-		m.activeSavedFilter = "Deep Work Review Queue"
+		m.filter.Tags = map[string]bool{"deep-work": true, "review-queue": true}
 		m.sort = SortState{Field: SortByPriority, Ascending: true}
 
 		line := m.buildOutlinerTitleLine(width, m.buildModeLabel(), m.buildOutlinerSearchIndicator())

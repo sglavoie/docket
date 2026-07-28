@@ -322,6 +322,7 @@ func (m *AppModel) applyTagFilterToView(source PresentationID, tags map[string]b
 				cfv.refreshAndClamp()
 			}
 		}
+	default:
 	}
 }
 

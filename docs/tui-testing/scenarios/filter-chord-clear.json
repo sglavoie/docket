@@ -1,0 +1,36 @@
+{
+  "name": "filter-chord-clear",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "stack a priority threshold", "key": "f" },
+    { "type": "key", "key": "p" },
+    { "type": "key", "key": "2" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering priority <= 2" },
+    { "type": "assert", "assert": "contains", "value": "!<=2" },
+
+    { "type": "key", "label": "stack a due facet on top", "key": "f" },
+    { "type": "key", "key": "d" },
+    { "type": "assert", "label": "the due facet names its presets", "assert": "contains", "value": "t today" },
+    { "type": "assert", "assert": "contains", "value": "o overdue" },
+    { "type": "key", "key": "n" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering due: none" },
+    { "type": "assert", "label": "both facets stay in the badge", "assert": "contains", "value": "!<=2" },
+    { "type": "assert", "assert": "contains", "value": "due:none" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "abandon a half-typed filter chord", "key": "f" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "due:none" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear everything at once", "key": "f" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
+    { "type": "assert", "assert": "not_contains", "value": "!<=2" },
+    { "type": "assert", "assert": "not_contains", "value": "due:none" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

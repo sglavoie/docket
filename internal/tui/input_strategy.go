@@ -2,9 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // InputStrategyID identifies a complete top-level key grammar. Simplified is
@@ -17,22 +18,170 @@ const (
 	InputStrategySimplified InputStrategyID = "simplified"
 )
 
-// OperationKeyBinding assigns one operation one or more equivalent direct key
-// events. Keys are physical Bubble Tea key names, never prefix sequences.
-// DisplayKey is the compact help spelling. FooterRank zero excludes an
-// operation from compact footer hints.
+// OperationKeyBinding assigns one operation either one or more equivalent direct
+// key events (Keys) or exactly one multi-key chord path (Sequence). Every
+// element is a physical Bubble Tea key name; a direct key is a length-1
+// sequence, so both spellings resolve through one dispatch path. DisplayKey is
+// the compact help spelling. FooterRank zero excludes an operation from compact
+// footer hints. HintLabel names the binding in the which-key row shown while its
+// chord prefix is pending. A preset value supplies the operation's value without
+// opening a picker and is the only reason one operation may own several
+// bindings.
 type OperationKeyBinding struct {
-	OperationID OperationID
-	Keys        []string
-	DisplayKey  string
+	OperationID    OperationID
+	Keys           []string
+	Sequence       []string
+	DisplayKey     string
+	FooterRank     int
+	FooterLabel    string
+	HintLabel      string
+	PresetValue    any
+	HasPresetValue bool
+}
+
+// OperationChordGroup labels one non-terminal chord prefix. Every prefix in a
+// strategy needs a label so a pending chord always has a which-key row to show;
+// a ranked group also appears among the compact footer hints.
+type OperationChordGroup struct {
+	Sequence    []string
+	HintLabel   string
 	FooterRank  int
 	FooterLabel string
 }
 
 // InputStrategy is one collision-free, prefix-free operation key grammar.
+// Bindings and their chord group labels are the single declaration source for
+// dispatch, help, footer hints, and which-key rows.
 type InputStrategy struct {
-	ID       InputStrategyID
-	Bindings []OperationKeyBinding
+	ID          InputStrategyID
+	Bindings    []OperationKeyBinding
+	ChordGroups []OperationChordGroup
+}
+
+// ChordResolution is the outcome of resolving one key path against a strategy.
+type ChordResolution int
+
+const (
+	// ChordNoMatch means the path leads nowhere applicable and must be abandoned.
+	ChordNoMatch ChordResolution = iota
+	// ChordPending means the path is a prefix waiting for its next key.
+	ChordPending
+	// ChordTerminal means the path resolves to one applicable binding.
+	ChordTerminal
+)
+
+// paths returns every key path that resolves this binding. Direct keys are
+// length-1 paths, so a chord and a direct key are the same kind of value.
+func (binding OperationKeyBinding) paths() [][]string {
+	if len(binding.Sequence) > 0 {
+		return [][]string{binding.Sequence}
+	}
+	paths := make([][]string, 0, len(binding.Keys))
+	for _, key := range binding.Keys {
+		paths = append(paths, []string{key})
+	}
+	return paths
+}
+
+// inputChordNode is one node of a strategy's key trie. bindingIndex is negative
+// on prefix nodes; childOrder keeps which-key hints in declaration order.
+type inputChordNode struct {
+	children     map[string]*inputChordNode
+	childOrder   []string
+	bindingIndex int
+	owner        OperationID
+}
+
+func newInputChordNode() *inputChordNode {
+	return &inputChordNode{children: make(map[string]*inputChordNode), bindingIndex: -1}
+}
+
+func (node *inputChordNode) child(key string) *inputChordNode {
+	if node == nil {
+		return nil
+	}
+	return node.children[key]
+}
+
+func (node *inputChordNode) terminal() bool {
+	return node != nil && node.bindingIndex >= 0
+}
+
+// insert adds one prefix-free path. A path that passes through or stops on an
+// existing terminal, or that ends on a node another chord continues past, is a
+// grammar defect rather than a runtime ambiguity to resolve later.
+func (node *inputChordNode) insert(
+	strategyID InputStrategyID,
+	operationID OperationID,
+	path []string,
+	bindingIndex int,
+) error {
+	current := node
+	for _, key := range path {
+		if current.terminal() {
+			return fmt.Errorf(
+				"input strategy %s chord prefix collision: %s already ends a binding inside %s (%s vs %s)",
+				strategyID,
+				chordPathString(path[:len(path)-1]),
+				chordPathString(path),
+				current.owner,
+				operationID,
+			)
+		}
+		next := current.children[key]
+		if next == nil {
+			next = newInputChordNode()
+			current.children[key] = next
+			current.childOrder = append(current.childOrder, key)
+		}
+		current = next
+	}
+	if current.terminal() {
+		return fmt.Errorf(
+			"input strategy %s key collision: %s (%s vs %s)",
+			strategyID,
+			chordPathString(path),
+			current.owner,
+			operationID,
+		)
+	}
+	if len(current.children) > 0 {
+		return fmt.Errorf(
+			"input strategy %s chord prefix collision: %s is a prefix of a longer chord (%s vs %s)",
+			strategyID,
+			chordPathString(path),
+			current.owner,
+			operationID,
+		)
+	}
+	current.bindingIndex = bindingIndex
+	current.owner = operationID
+	return nil
+}
+
+// prefixPaths returns every non-root prefix path in declaration order.
+func (node *inputChordNode) prefixPaths(prefix []string) [][]string {
+	if node == nil {
+		return nil
+	}
+	paths := make([][]string, 0)
+	for _, key := range node.childOrder {
+		child := node.children[key]
+		if child.terminal() {
+			continue
+		}
+		path := append(append([]string(nil), prefix...), key)
+		paths = append(paths, path)
+		paths = append(paths, child.prefixPaths(path)...)
+	}
+	return paths
+}
+
+func chordPathString(path []string) string {
+	if len(path) == 0 {
+		return "(root)"
+	}
+	return strings.Join(path, " ")
 }
 
 // Stable core operation IDs let the final grammar remain independent of dormant
@@ -77,7 +226,7 @@ const (
 )
 
 // SimplifiedInputStrategy returns a fresh copy of the accepted daily-loop
-// grammar. Every key is direct: the strategy has no prefix node or chord.
+// grammar. Direct keys and chord sequences are declared here and nowhere else.
 func SimplifiedInputStrategy() InputStrategy {
 	return InputStrategy{
 		ID: InputStrategySimplified,
@@ -118,13 +267,48 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreQuit, Keys: []string{"ctrl+c"}, DisplayKey: "Ctrl+C"},
 			{OperationID: operationCoreNextWorkMode, Keys: []string{"tab"}, DisplayKey: "Tab"},
 			{OperationID: operationCorePreviousWorkMode, Keys: []string{"shift+tab"}, DisplayKey: "Shift+Tab"},
+			{OperationID: operationTaskSetDueDate, Keys: []string{"@"}, DisplayKey: "@", FooterRank: 15, FooterLabel: "due"},
+			{OperationID: operationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 16, FooterLabel: "tags"},
+			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "0"}, DisplayKey: "p0-5", HintLabel: "clear", PresetValue: 0, HasPresetValue: true},
+			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "1"}, DisplayKey: "p0-5", HintLabel: "critical", PresetValue: 1, HasPresetValue: true},
+			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "2"}, DisplayKey: "p0-5", HintLabel: "high", PresetValue: 2, HasPresetValue: true},
+			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "3"}, DisplayKey: "p0-5", HintLabel: "normal", PresetValue: 3, HasPresetValue: true},
+			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "4"}, DisplayKey: "p0-5", HintLabel: "low", PresetValue: 4, HasPresetValue: true},
+			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "5"}, DisplayKey: "p0-5", HintLabel: "lowest", PresetValue: 5, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "i"}, DisplayKey: ",iwprsc", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "w"}, DisplayKey: ",iwprsc", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "p"}, DisplayKey: ",iwprsc", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "r"}, DisplayKey: ",iwprsc", HintLabel: "review", PresetValue: models.StateReview, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "s"}, DisplayKey: ",iwprsc", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "c"}, DisplayKey: ",iwprsc", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "0"}, DisplayKey: "fp0-5", HintLabel: "all", PresetValue: 0, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "1"}, DisplayKey: "fp0-5", HintLabel: "<=1", PresetValue: 1, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "2"}, DisplayKey: "fp0-5", HintLabel: "<=2", PresetValue: 2, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "3"}, DisplayKey: "fp0-5", HintLabel: "<=3", PresetValue: 3, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "4"}, DisplayKey: "fp0-5", HintLabel: "<=4", PresetValue: 4, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "5"}, DisplayKey: "fp0-5", HintLabel: "<=5", PresetValue: 5, HasPresetValue: true},
+			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "t"}, DisplayKey: "fdtwon", HintLabel: "today", PresetValue: DueDateToday, HasPresetValue: true},
+			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "w"}, DisplayKey: "fdtwon", HintLabel: "this week", PresetValue: DueDateThisWeek, HasPresetValue: true},
+			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "o"}, DisplayKey: "fdtwon", HintLabel: "overdue", PresetValue: DueDateOverdue, HasPresetValue: true},
+			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "n"}, DisplayKey: "fdtwon", HintLabel: "no due date", PresetValue: DueDateNone, HasPresetValue: true},
+			{OperationID: operationFilterStates, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "states"},
+			{OperationID: operationFilterTags, Sequence: []string{"f", "t"}, DisplayKey: "ft", HintLabel: "tags"},
+			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
+		},
+		ChordGroups: []OperationChordGroup{
+			{Sequence: []string{"p"}, HintLabel: "priority", FooterRank: 17, FooterLabel: "priority"},
+			{Sequence: []string{","}, HintLabel: "state", FooterRank: 18, FooterLabel: "state"},
+			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
+			{Sequence: []string{"f", "p"}, HintLabel: "priority threshold"},
+			{Sequence: []string{"f", "d"}, HintLabel: "due"},
 		},
 	}
 }
 
 // RegisterInputStrategy validates and stores a strategy. Descriptor existence,
-// exact key uniqueness, and direct-event syntax are checked together so a
-// registered strategy cannot contain an undocumented prefix dependency.
+// direct-event syntax, preset value types, and prefix-freeness across every key
+// path are checked together so a registered strategy cannot contain an ambiguous
+// or unlabeled prefix dependency.
 func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy) error {
 	if registry == nil {
 		return fmt.Errorf("operation registry is required")
@@ -140,59 +324,172 @@ func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy)
 		return fmt.Errorf("input strategy already registered: %s", strategy.ID)
 	}
 
-	seenKeys := make(map[string]OperationID)
-	seenOperations := make(map[OperationID]bool)
+	// Only preset-valued bindings may share an operation: p1 through p5 are five
+	// spellings of one set-priority operation, while any other repeat is a
+	// duplicate grammar entry.
+	presetOnlyOperations := make(map[OperationID]bool)
+	trie := newInputChordNode()
 	normalized := InputStrategy{ID: strategy.ID, Bindings: make([]OperationKeyBinding, 0, len(strategy.Bindings))}
 	for _, binding := range strategy.Bindings {
 		binding.OperationID = OperationID(strings.TrimSpace(string(binding.OperationID)))
 		if binding.OperationID == "" {
 			return fmt.Errorf("input strategy %s has a binding without an operation ID", strategy.ID)
 		}
-		if seenOperations[binding.OperationID] {
-			return fmt.Errorf("input strategy %s binds operation %s more than once", strategy.ID, binding.OperationID)
-		}
-		if _, ok := registry.Descriptor(binding.OperationID); !ok {
+		descriptor, ok := registry.Descriptor(binding.OperationID)
+		if !ok {
 			return fmt.Errorf("input strategy %s references unknown operation %s", strategy.ID, binding.OperationID)
 		}
-		if len(binding.Keys) == 0 {
+		if len(binding.Keys) == 0 && len(binding.Sequence) == 0 {
 			return fmt.Errorf("input strategy %s operation %s has no keys", strategy.ID, binding.OperationID)
 		}
-		seenOperations[binding.OperationID] = true
+		if len(binding.Keys) > 0 && len(binding.Sequence) > 0 {
+			return fmt.Errorf(
+				"input strategy %s operation %s declares both direct keys and a chord sequence",
+				strategy.ID,
+				binding.OperationID,
+			)
+		}
+		if len(binding.Sequence) == 1 {
+			return fmt.Errorf(
+				"input strategy %s operation %s declares a one-key chord sequence; use Keys instead",
+				strategy.ID,
+				binding.OperationID,
+			)
+		}
+		if binding.HasPresetValue {
+			if descriptor.ValueProviderID == "" {
+				return fmt.Errorf(
+					"input strategy %s operation %s presets a value but takes none",
+					strategy.ID,
+					binding.OperationID,
+				)
+			}
+			if !descriptor.ValueProviderID.acceptsPresetValue(binding.PresetValue) {
+				return fmt.Errorf(
+					"input strategy %s operation %s presets %T, which its %s value provider does not accept",
+					strategy.ID,
+					binding.OperationID,
+					binding.PresetValue,
+					descriptor.ValueProviderID,
+				)
+			}
+		}
+		if firstWasPreset, exists := presetOnlyOperations[binding.OperationID]; exists {
+			if !firstWasPreset || !binding.HasPresetValue {
+				return fmt.Errorf(
+					"input strategy %s binds operation %s more than once",
+					strategy.ID,
+					binding.OperationID,
+				)
+			}
+		}
+		presetOnlyOperations[binding.OperationID] = binding.HasPresetValue
 		binding.DisplayKey = strings.TrimSpace(binding.DisplayKey)
 		binding.FooterLabel = strings.TrimSpace(binding.FooterLabel)
+		binding.HintLabel = strings.TrimSpace(binding.HintLabel)
 
-		keys := make([]string, 0, len(binding.Keys))
-		for _, raw := range binding.Keys {
-			key := normalizeOperationKey(raw)
-			if !isDirectInputKey(key) {
-				return fmt.Errorf(
-					"input strategy %s operation %s key %q is not one direct key event",
-					strategy.ID,
-					binding.OperationID,
-					raw,
-				)
-			}
-			if owner, exists := seenKeys[key]; exists {
-				return fmt.Errorf(
-					"input strategy %s key collision: %s (%s vs %s)",
-					strategy.ID,
-					key,
-					owner,
-					binding.OperationID,
-				)
-			}
-			seenKeys[key] = binding.OperationID
-			keys = append(keys, key)
+		owner := "operation " + string(binding.OperationID)
+		normalizedKeys, err := normalizeChordPath(strategy.ID, owner, binding.Keys)
+		if err != nil {
+			return err
 		}
-		binding.Keys = keys
+		normalizedSequence, err := normalizeChordPath(strategy.ID, owner, binding.Sequence)
+		if err != nil {
+			return err
+		}
+		binding.Keys = normalizedKeys
+		binding.Sequence = normalizedSequence
 		if binding.DisplayKey == "" {
-			binding.DisplayKey = strings.Join(keys, "/")
+			binding.DisplayKey = strings.Join(binding.Keys, "/") + strings.Join(binding.Sequence, "")
+		}
+
+		index := len(normalized.Bindings)
+		for _, path := range binding.paths() {
+			if err := trie.insert(strategy.ID, binding.OperationID, path, index); err != nil {
+				return err
+			}
 		}
 		normalized.Bindings = append(normalized.Bindings, cloneOperationKeyBinding(binding))
 	}
 
+	groups, err := normalizeChordGroups(strategy, trie)
+	if err != nil {
+		return err
+	}
+	normalized.ChordGroups = groups
+
+	if registry.inputChords == nil {
+		registry.inputChords = make(map[InputStrategyID]*inputChordNode)
+	}
 	registry.inputStrategies[strategy.ID] = normalized
+	registry.inputChords[strategy.ID] = trie
 	return nil
+}
+
+func normalizeChordPath(strategyID InputStrategyID, owner string, path []string) ([]string, error) {
+	if len(path) == 0 {
+		return nil, nil
+	}
+	normalized := make([]string, 0, len(path))
+	for _, raw := range path {
+		key := normalizeOperationKey(raw)
+		if !isDirectInputKey(key) {
+			return nil, fmt.Errorf(
+				"input strategy %s %s key %q is not one direct key event",
+				strategyID,
+				owner,
+				raw,
+			)
+		}
+		normalized = append(normalized, key)
+	}
+	return normalized, nil
+}
+
+// normalizeChordGroups pairs every prefix in the trie with exactly one declared
+// label, so a pending chord can never render a blank which-key row.
+func normalizeChordGroups(strategy InputStrategy, trie *inputChordNode) ([]OperationChordGroup, error) {
+	declared := make(map[string]OperationChordGroup, len(strategy.ChordGroups))
+	for _, group := range strategy.ChordGroups {
+		sequence, err := normalizeChordPath(strategy.ID, "chord group", group.Sequence)
+		if err != nil {
+			return nil, err
+		}
+		if len(sequence) == 0 {
+			return nil, fmt.Errorf("input strategy %s has a chord group without a sequence", strategy.ID)
+		}
+		group.Sequence = sequence
+		group.HintLabel = strings.TrimSpace(group.HintLabel)
+		group.FooterLabel = strings.TrimSpace(group.FooterLabel)
+		if group.HintLabel == "" {
+			return nil, fmt.Errorf(
+				"input strategy %s chord group %s has no hint label",
+				strategy.ID,
+				chordPathString(sequence),
+			)
+		}
+		key := chordPathString(sequence)
+		if _, exists := declared[key]; exists {
+			return nil, fmt.Errorf("input strategy %s labels chord group %s more than once", strategy.ID, key)
+		}
+		declared[key] = group
+	}
+
+	prefixes := trie.prefixPaths(nil)
+	groups := make([]OperationChordGroup, 0, len(prefixes))
+	for _, prefix := range prefixes {
+		key := chordPathString(prefix)
+		group, exists := declared[key]
+		if !exists {
+			return nil, fmt.Errorf("input strategy %s chord prefix %s has no group label", strategy.ID, key)
+		}
+		delete(declared, key)
+		groups = append(groups, cloneOperationChordGroup(group))
+	}
+	for key := range declared {
+		return nil, fmt.Errorf("input strategy %s chord group %s does not label a chord prefix", strategy.ID, key)
+	}
+	return groups, nil
 }
 
 // InputStrategy returns a defensive copy of a registered strategy.
@@ -207,6 +504,45 @@ func (registry *OperationRegistry) InputStrategy(id InputStrategyID) (InputStrat
 	return cloneInputStrategy(strategy), true
 }
 
+// InputBindingForSequence resolves one key path through the selected strategy
+// and active operation context. A direct key is a length-1 path, so this is the
+// only resolution seam: it reports whether the path ends a binding, waits for
+// more keys, or leads nowhere applicable.
+func (registry *OperationRegistry) InputBindingForSequence(
+	id InputStrategyID,
+	sequence []string,
+	ctx CommandContext,
+) (OperationKeyBinding, OperationDescriptor, ChordResolution) {
+	if registry == nil || len(sequence) == 0 {
+		return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
+	}
+	strategy, ok := registry.inputStrategies[id]
+	if !ok {
+		return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
+	}
+	node := registry.inputChords[id]
+	for _, raw := range sequence {
+		node = node.child(normalizeOperationKey(raw))
+		if node == nil {
+			return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
+		}
+	}
+	if node.terminal() {
+		binding := strategy.Bindings[node.bindingIndex]
+		descriptor, exists := registry.Descriptor(binding.OperationID)
+		if !exists || !descriptor.Applicable(ctx) {
+			return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
+		}
+		return cloneOperationKeyBinding(binding), descriptor, ChordTerminal
+	}
+	// A prefix whose whole subtree is inapplicable would trap input in a chord
+	// that can never complete, so it fails closed like an unbound key.
+	if !registry.chordSubtreeIsApplicable(strategy, node, ctx) {
+		return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
+	}
+	return OperationKeyBinding{}, OperationDescriptor{}, ChordPending
+}
+
 // InputBindingForKey resolves one direct key through the selected strategy and
 // active operation context.
 func (registry *OperationRegistry) InputBindingForKey(
@@ -214,22 +550,28 @@ func (registry *OperationRegistry) InputBindingForKey(
 	key string,
 	ctx CommandContext,
 ) (OperationKeyBinding, OperationDescriptor, bool) {
-	strategy, ok := registry.InputStrategy(id)
-	if !ok {
-		return OperationKeyBinding{}, OperationDescriptor{}, false
+	binding, descriptor, resolution := registry.InputBindingForSequence(id, []string{key}, ctx)
+	return binding, descriptor, resolution == ChordTerminal
+}
+
+func (registry *OperationRegistry) chordSubtreeIsApplicable(
+	strategy InputStrategy,
+	node *inputChordNode,
+	ctx CommandContext,
+) bool {
+	if node == nil {
+		return false
 	}
-	key = normalizeOperationKey(key)
-	for _, binding := range strategy.Bindings {
-		if !slices.Contains(binding.Keys, key) {
-			continue
-		}
-		descriptor, exists := registry.Descriptor(binding.OperationID)
-		if !exists || !descriptor.Applicable(ctx) {
-			return OperationKeyBinding{}, OperationDescriptor{}, false
-		}
-		return binding, descriptor, true
+	if node.terminal() {
+		descriptor, exists := registry.Descriptor(strategy.Bindings[node.bindingIndex].OperationID)
+		return exists && descriptor.Applicable(ctx)
 	}
-	return OperationKeyBinding{}, OperationDescriptor{}, false
+	for _, key := range node.childOrder {
+		if registry.chordSubtreeIsApplicable(strategy, node.children[key], ctx) {
+			return true
+		}
+	}
+	return false
 }
 
 func isDirectInputKey(key string) bool {
@@ -263,13 +605,23 @@ func isDirectInputKey(key string) bool {
 
 func cloneOperationKeyBinding(binding OperationKeyBinding) OperationKeyBinding {
 	binding.Keys = append([]string(nil), binding.Keys...)
+	binding.Sequence = append([]string(nil), binding.Sequence...)
 	return binding
+}
+
+func cloneOperationChordGroup(group OperationChordGroup) OperationChordGroup {
+	group.Sequence = append([]string(nil), group.Sequence...)
+	return group
 }
 
 func cloneInputStrategy(strategy InputStrategy) InputStrategy {
 	strategy.Bindings = append([]OperationKeyBinding(nil), strategy.Bindings...)
 	for i := range strategy.Bindings {
 		strategy.Bindings[i] = cloneOperationKeyBinding(strategy.Bindings[i])
+	}
+	strategy.ChordGroups = append([]OperationChordGroup(nil), strategy.ChordGroups...)
+	for i := range strategy.ChordGroups {
+		strategy.ChordGroups[i] = cloneOperationChordGroup(strategy.ChordGroups[i])
 	}
 	return strategy
 }

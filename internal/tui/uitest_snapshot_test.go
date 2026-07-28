@@ -167,12 +167,21 @@ func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 
 	commands := NewUITestDriver(app, 100, 30).availableCommands()
 	strategy, _ := app.operationRegistry.InputStrategy(InputStrategySimplified)
-	if len(commands) != len(strategy.Bindings) {
-		t.Fatalf("available operations = %d, strategy bindings = %d", len(commands), len(strategy.Bindings))
+	bound := make(map[OperationID]struct{}, len(strategy.Bindings))
+	for _, binding := range strategy.Bindings {
+		bound[binding.OperationID] = struct{}{}
 	}
 	byID := make(map[string]UITestCommand, len(commands))
 	for _, command := range commands {
 		byID[command.ID] = command
+		// A preset family declares one binding per value, so the driver reports one
+		// command per operation instead of one per binding.
+		if _, ok := bound[OperationID(command.ID)]; !ok {
+			t.Errorf("command %s is not bound by the simplified strategy", command.ID)
+		}
+	}
+	if len(commands) != len(byID) {
+		t.Errorf("available operations = %d, distinct IDs = %d", len(commands), len(byID))
 	}
 	if got := byID[string(operationCoreVisibleSearch)].Shortcut; got != "/" {
 		t.Errorf("visible search shortcut = %q, want /", got)

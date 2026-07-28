@@ -115,8 +115,8 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
 	model.contextActionSheet = sheet
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskSetState))) {
-		t.Fatal("task sheet is missing the state action")
+	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskSetSnooze))) {
+		t.Fatal("task sheet is missing the snooze action")
 	}
 
 	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -128,7 +128,7 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 		t.Fatalf("sheet selection = handled %v, cmd %T; want picker opened synchronously", handled, cmd)
 	}
 	if model.operationValuePicker == nil {
-		t.Fatal("state action did not open its ListSurface value picker")
+		t.Fatal("snooze action did not open its ListSurface value picker")
 	}
 	if model.contextActionSheet == nil {
 		t.Fatal("opening a value picker discarded the action sheet beneath it")
@@ -358,14 +358,11 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 	// Unpark, unpin, and undim are absent because the loose task is none of
 	// those; Outdent is absent because a top-level task has no parent to leave;
 	// both child creators are absent because a leaf type cannot hold a child.
+	// State, priority, due date, and tags are absent because they are direct-only.
 	want := []OperationID{
-		operationTaskSetState,
-		operationTaskSetPriority,
-		operationTaskSetDueDate,
 		operationTaskSetSnooze,
 		operationTaskScore,
 		operationTaskPark,
-		operationTaskSetTags,
 		operationTaskMoveProject,
 		operationTaskPin,
 		operationTaskDim,

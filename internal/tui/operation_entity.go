@@ -12,16 +12,15 @@ import (
 type OperationEntityKind string
 
 const (
-	EntityKindNone        OperationEntityKind = ""
-	EntityKindTask        OperationEntityKind = "task"
-	EntityKindProject     OperationEntityKind = "project"
-	EntityKindNote        OperationEntityKind = "note"
-	EntityKindTag         OperationEntityKind = "tag"
-	EntityKindSavedFilter OperationEntityKind = "saved-filter"
-	EntityKindScope       OperationEntityKind = "scope"
-	EntityKindMode        OperationEntityKind = "mode"
-	EntityKindTool        OperationEntityKind = "tool"
-	EntityKindOperation   OperationEntityKind = "operation"
+	EntityKindNone      OperationEntityKind = ""
+	EntityKindTask      OperationEntityKind = "task"
+	EntityKindProject   OperationEntityKind = "project"
+	EntityKindNote      OperationEntityKind = "note"
+	EntityKindTag       OperationEntityKind = "tag"
+	EntityKindScope     OperationEntityKind = "scope"
+	EntityKindMode      OperationEntityKind = "mode"
+	EntityKindTool      OperationEntityKind = "tool"
+	EntityKindOperation OperationEntityKind = "operation"
 )
 
 // OperationEntityScope distinguishes an entity the whole workspace owns from
@@ -47,7 +46,7 @@ type EntityIdentity struct {
 	ProjectID string
 	TaskID    string
 	// Name is a note filename, a normalized tag, or the stable catalog ID of a
-	// saved filter, scope, mode, tool, or operation.
+	// scope, mode, tool, or operation.
 	Name string
 }
 
@@ -105,11 +104,6 @@ func ProjectTagEntity(projectID, name string) EntityIdentity {
 		ProjectID: projectID,
 		Name:      name,
 	})
-}
-
-// SavedFilterEntity returns the identity of one saved filter.
-func SavedFilterEntity(id string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindSavedFilter, Name: id})
 }
 
 // ScopeEntity returns the identity of one context scope, reusing the stable
@@ -171,8 +165,7 @@ func (id EntityIdentity) Valid() bool {
 		default:
 			return false
 		}
-	case EntityKindSavedFilter,
-		EntityKindScope,
+	case EntityKindScope,
 		EntityKindMode,
 		EntityKindTool,
 		EntityKindOperation:
