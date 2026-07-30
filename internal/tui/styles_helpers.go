@@ -245,20 +245,9 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 	}
 }
 
-// RenderCursorPrefix returns the 3-character cursor prefix string based on row state.
-func RenderCursorPrefix(selected, pinned bool) string {
-	var prefix string
-	switch {
-	case selected && pinned:
-		prefix = "  " + PinnedMarker
-	case selected:
-		prefix = "   "
-	case pinned:
-		prefix = "  " + PinnedMarker
-	default:
-		prefix = "   "
-	}
-	return prefix
+// RenderCursorPrefix returns the fixed-width gutter before a task row.
+func RenderCursorPrefix() string {
+	return "   "
 }
 
 // Hyperlink creates a clickable OSC 8 hyperlink in supported terminals.

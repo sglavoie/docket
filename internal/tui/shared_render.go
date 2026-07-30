@@ -33,7 +33,6 @@ type TaskLine struct {
 	// Optional elements
 	InNext          bool          // show "q " Next indicator in accent color (else "  "); superseded by InToday
 	InToday         bool          // show "w " Today indicator in accent color; takes precedence over InNext
-	Pinned          bool          // show · pinned marker in cursor prefix
 	Prefix          string        // after queue indicator (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
 	PostTitle       string        // after title (e.g., tags or section)
@@ -135,7 +134,6 @@ func RenderCrossProjectTaskLine(
 		MaxTitle:        maxTitleLen,
 		InNext:          opts.InNext,
 		InToday:         opts.InToday,
-		Pinned:          task.Pinned,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
@@ -171,7 +169,7 @@ func MutationFlashLine(line string, width int, bg color.Color) string {
 
 // Render assembles the task line string from the configured fields.
 func (tl TaskLine) Render() string {
-	cursorPrefix := RenderCursorPrefix(tl.IsSelected, tl.Pinned)
+	cursorPrefix := RenderCursorPrefix()
 	segments := tl.buildTaskLineSegments()
 	segments = tl.applyHeroDemotion(segments)
 

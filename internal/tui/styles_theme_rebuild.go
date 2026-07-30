@@ -181,7 +181,6 @@ func rebuildSelectionStyles() {
 	SelectedCheckboxStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	FocusIndicatorStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	FocusIndicator = FocusIndicatorStyle.Render("▐")
-	PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render("·")
 }
 
 func rebuildPanelStyles() {

@@ -167,7 +167,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 			}
 		}
 	}
-	cursorPrefix := RenderCursorPrefix(selected, task.Pinned)
+	cursorPrefix := RenderCursorPrefix()
 	queueIndicator := m.renderTaskQueueIndicator(task, proj)
 	checkbox := m.renderTaskCheckbox(row)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
