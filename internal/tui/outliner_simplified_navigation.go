@@ -3,13 +3,14 @@ package tui
 import tea "charm.land/bubbletea/v2"
 
 // collapseOrMoveToParent gives h/Left one deterministic tree behavior: collapse
-// an expanded header or task first, otherwise move to the visible parent task.
+// an expanded section, project header, or task first; otherwise move to the
+// visible parent task.
 func (m *OutlinerModel) collapseOrMoveToParent() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader {
+	if row.IsSectionHeader || row.IsProjectHeader {
 		if m.isSectionRowCollapsed(row) {
 			return false
 		}
@@ -38,14 +39,14 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 }
 
 // expandAtCursor gives l/Right one behavior: expand the current collapsed
-// section or task. Indent/outdent remain legacy-only until they move into the
-// action sheet.
+// section, project header, or task. Indent/outdent remain legacy-only until
+// they move into the action sheet.
 func (m *OutlinerModel) expandAtCursor() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader {
+	if row.IsSectionHeader || row.IsProjectHeader {
 		if !m.isSectionRowCollapsed(row) {
 			return false
 		}

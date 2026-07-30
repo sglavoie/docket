@@ -10,7 +10,18 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-const stateGroupCollapsePrefix = "_state:"
+const (
+	stateGroupCollapsePrefix     = "_state:"
+	projectSectionCollapsePrefix = "_project:"
+)
+
+// projectSectionCollapseKey identifies one project's task group within a
+// shared cross-project state section. Keeping the state group in the key lets
+// users fold (for example) Alpha's Backlog rows without hiding Alpha's Inbox
+// rows as well.
+func projectSectionCollapseKey(projectID string, group models.WorkflowStateGroup) string {
+	return projectSectionCollapsePrefix + projectID + ":" + string(group)
+}
 
 type primaryProjectTree struct {
 	project *models.Project
@@ -336,10 +347,16 @@ func (m *OutlinerModel) appendStateGroupForests(
 		projectID := ""
 		if m.project == nil {
 			projectID = item.project.ID
-			m.rows = append(m.rows, outlinerRow{
+			projectHeader := outlinerRow{
 				IsProjectHeader: true,
 				ProjectID:       projectID,
-			})
+				SectionCount:    item.forest.count,
+				CollapseKey:     projectSectionCollapseKey(projectID, group),
+			}
+			m.rows = append(m.rows, projectHeader)
+			if m.isSectionRowCollapsed(projectHeader) {
+				continue
+			}
 		}
 		m.flattenSectionForest(item.forest, projectID, &m.rows)
 	}

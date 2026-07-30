@@ -111,8 +111,8 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 // modes. In All these rows sit beneath shared state-group headers. The header
 // reuses the persisted project color and slug
 // text so the inline `[slug]` badges on individual task rows can be suppressed.
-// Sub-headers are skipped by keyboard navigation; the selected styling branches
-// are kept defensive only.
+// They use the same fold indicator as built-in sections, while Enter and
+// Shift+Enter retain their project scope and administration behavior.
 func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
 	project := m.resolveProjectForRow(row)
 	projectSlug := row.ProjectID
@@ -125,7 +125,15 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	badge := projectColorStyle(project).
 		Bold(true).
 		Render("[" + projectSlug + "]")
-	line := truncateToVisualWidth(" "+badge, rowWidth)
+	indicator := IconExpanded
+	if m.isSectionRowCollapsed(row) {
+		indicator = IconCollapsed
+	}
+	line := " " + MutedStyle.Render(indicator) + " " + badge
+	if row.SectionCount > 0 {
+		line += " " + MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
+	}
+	line = truncateToVisualWidth(line, rowWidth)
 
 	if selected {
 		if m.mutationFlash {

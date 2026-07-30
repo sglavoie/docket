@@ -77,6 +77,74 @@ func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testi
 	}
 }
 
+func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
+	for _, keys := range []struct {
+		name     string
+		collapse string
+		expand   string
+	}{
+		{name: "vim aliases", collapse: "h", expand: "l"},
+		{name: "arrow aliases", collapse: "left", expand: "right"},
+	} {
+		t.Run(keys.name, func(t *testing.T) {
+			app := newUITestApp()
+			alpha := scopeTestProject("alpha", "Alpha", "alpha-task")
+			beta := scopeTestProject("beta", "Beta", "beta-task")
+			app.projects[alpha.ID] = alpha
+			app.projects[beta.ID] = beta
+
+			outliner := app.crossOutliner
+			outliner.loadedProjects = []*models.Project{alpha, beta}
+			outliner.crossForceRebuild = true
+			outliner.crossProjectRebuildRows()
+
+			projectHeader := -1
+			for index, row := range outliner.rows {
+				if row.IsProjectHeader && row.ProjectID == alpha.ID {
+					projectHeader = index
+					break
+				}
+			}
+			if projectHeader < 0 {
+				t.Fatalf("Alpha project header is missing from rows: %+v", outliner.rows)
+			}
+			outliner.cursor = projectHeader
+			collapseKey := outliner.rows[projectHeader].effectiveCollapseKey()
+
+			collapseMsg, err := parseUITestKey(keys.collapse)
+			if err != nil {
+				t.Fatalf("parse collapse key %q: %v", keys.collapse, err)
+			}
+			if handled, _ := app.handleGlobalKeyPress(collapseMsg); !handled {
+				t.Fatalf("collapse key %q was not handled", keys.collapse)
+			}
+			if !outliner.collapsedSections[collapseKey] {
+				t.Fatalf("collapse key %q was not recorded", collapseKey)
+			}
+			if findTaskRow(outliner.rows, "alpha-task") >= 0 {
+				t.Fatal("Alpha task remains visible after collapsing its project header")
+			}
+			if findTaskRow(outliner.rows, "beta-task") < 0 {
+				t.Fatal("collapsing Alpha also hid Beta's task")
+			}
+
+			expandMsg, err := parseUITestKey(keys.expand)
+			if err != nil {
+				t.Fatalf("parse expand key %q: %v", keys.expand, err)
+			}
+			if handled, _ := app.handleGlobalKeyPress(expandMsg); !handled {
+				t.Fatalf("expand key %q was not handled", keys.expand)
+			}
+			if outliner.collapsedSections[collapseKey] {
+				t.Fatalf("expand key %q did not clear collapse key %q", keys.expand, collapseKey)
+			}
+			if findTaskRow(outliner.rows, "alpha-task") < 0 {
+				t.Fatal("Alpha task did not reappear after expanding its project header")
+			}
+		})
+	}
+}
+
 func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "parent")
