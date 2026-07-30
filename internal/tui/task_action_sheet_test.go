@@ -179,6 +179,43 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 }
 
+func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
+	registry := NewOperationRegistry()
+	for _, descriptor := range taskActionTestDescriptors() {
+		registerTaskActionTestDescriptor(t, registry, descriptor)
+	}
+	sheet, err := NewTaskActionSheetModel(
+		registry,
+		NewOperationExecutor(registry),
+		taskActionTestContext(models.StateReady),
+		"Selected task",
+	)
+	if err != nil {
+		t.Fatalf("NewTaskActionSheetModel: %v", err)
+	}
+
+	first, ok := sheet.surface.CurrentItem()
+	if !ok {
+		t.Fatal("task action sheet has no initial item")
+	}
+	_, _, _ = sheet.handleKey(syntheticCtrlKey('j'))
+	second, ok := sheet.surface.CurrentItem()
+	if !ok || second.ID == first.ID {
+		t.Fatalf("Ctrl+J did not move down: first = %q, current = %q", first.ID, second.ID)
+	}
+	_, _, _ = sheet.handleKey(syntheticCtrlKey('k'))
+	current, ok := sheet.surface.CurrentItem()
+	if !ok || current.ID != first.ID {
+		t.Fatalf("Ctrl+K did not move back up: current = %q, want %q", current.ID, first.ID)
+	}
+	if query := sheet.surface.Query().Raw; query != "" {
+		t.Fatalf("Ctrl+J/Ctrl+K changed the immediate-filter query to %q", query)
+	}
+	if view := sheet.render(100); !strings.Contains(view, "↑↓/Ctrl+j/k move") {
+		t.Fatalf("task action sheet footer does not advertise Ctrl+j/k navigation:\n%s", view)
+	}
+}
+
 func TestTaskActionSheetOmitsDirectSnoozeOperation(t *testing.T) {
 	registry := NewOperationRegistry()
 	for _, descriptor := range taskActionTestDescriptors() {

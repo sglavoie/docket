@@ -268,10 +268,10 @@ func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 		case "/":
 			model.searching = true
 			return nil, false, nil
-		case "up":
+		case "up", "ctrl+k":
 			model.surface.MoveCursor(-1)
 			return nil, false, nil
-		case "down":
+		case "down", "ctrl+j":
 			model.surface.MoveCursor(1)
 			return nil, false, nil
 		case "home":
@@ -405,7 +405,7 @@ func (model *ContextActionSheetModel) render(width int) string {
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
 	footerText := "Enter choose · / search · Esc close"
 	if model.config.ImmediateFilter {
-		footerText = "Type filter · ↑↓ move · Enter · Esc"
+		footerText = "Type filter · ↑↓/Ctrl+j/k move · Enter · Esc"
 	}
 	footer := HelpStyle.Render(footerText)
 	return renderTitledBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
