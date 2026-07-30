@@ -15,8 +15,10 @@ import (
 func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
 	first, _ := models.NewGenericTask("first", 1, "First task")
 	first.Description = "First description"
+	first.Tags = []string{"backend", "security"}
 	second, _ := models.NewGenericTask("second", 2, "Second task")
 	second.Description = "Second description"
+	second.Tags = []string{"frontend"}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{first, second})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 
@@ -32,12 +34,15 @@ func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
 
 		outliner.togglePeek()
 		firstView := ansi.Strip(outliner.View().Content)
-		if !strings.Contains(firstView, "Description: First description") {
+		if !strings.Contains(firstView, "Description: First description") ||
+			!strings.Contains(firstView, "Tags: #backend #security") {
 			t.Fatalf("width %d Peek missing first task:\n%s", width, firstView)
 		}
 		outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: second.ID})
 		secondView := ansi.Strip(outliner.View().Content)
 		if !strings.Contains(secondView, "Description: Second description") ||
+			!strings.Contains(secondView, "Tags: #frontend") ||
+			strings.Contains(secondView, "Tags: #backend #security") ||
 			strings.Contains(secondView, "Description: First description") {
 			t.Fatalf("width %d Peek did not follow cursor:\n%s", width, secondView)
 		}

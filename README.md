@@ -115,8 +115,8 @@ hidden.
 
 `Enter` toggles a session-only Peek directly beneath the cursor task. Peek
 follows navigation and shows at most five lines of additive detail:
-description, checklist items, dependency names, and recurrence. `Esc` closes
-Peek before unwinding Outliner navigation.
+description, tags, checklist items, dependency names, and recurrence. `Esc`
+closes Peek before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, snooze, and pin actions apply atomically
 to a selection. Entering multi-select closes Peek. Structural, edit, Peek,

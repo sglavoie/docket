@@ -152,9 +152,9 @@ Outliner rows omit short task IDs.
 
 `Enter` toggles a session-only, project-qualified Peek below the cursor task.
 Peek follows cursor, mode, and scope navigation and is capped at five additive
-lines: two description lines plus compact checklist items, named dependencies,
-and recurrence detail. `Esc` dismisses Peek before other Outliner navigation.
-Entering visual selection disables Peek.
+lines: up to two description lines plus tags, compact checklist items, named
+dependencies, and recurrence detail. `Esc` dismisses Peek before other
+Outliner navigation. Entering visual selection disables Peek.
 
 ### Selection and subordinate tools
 

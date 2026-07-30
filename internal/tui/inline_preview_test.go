@@ -64,7 +64,7 @@ func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 			t.Fatalf("Peek missing %q:\n%s", want, plain)
 		}
 	}
-	for _, banned := range []string{"#41", "#42", "#99", "State:", "Priority:", "Due:", "Tags:"} {
+	for _, banned := range []string{"#41", "#42", "#99", "State:", "Priority:", "Due:"} {
 		if strings.Contains(plain, banned) {
 			t.Fatalf("Peek repeated %q:\n%s", banned, plain)
 		}
@@ -73,6 +73,36 @@ func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 		if got := lipgloss.Width(line); got > width {
 			t.Fatalf("line %d width = %d, want <= %d: %q", lineNumber, got, width, ansi.Strip(line))
 		}
+	}
+}
+
+func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
+	task := &models.Task{
+		ID:   "task",
+		Tags: []string{"backend", "security", "type:authentication"},
+	}
+
+	styled := inlinePeekTagsLine(task, 80)
+	wantStyled := MutedStyle.Render("Tags: ") +
+		TagInlineStyle.Bold(true).Render("#backend #security #type:authentication")
+	if styled != wantStyled {
+		t.Fatalf("styled Peek tags = %q, want %q", styled, wantStyled)
+	}
+
+	const width = 32
+	lines := inlinePeekLines(inlinePeekOptions{Task: task, Indent: "  ", Width: width})
+	if len(lines) != 1 {
+		t.Fatalf("tags-only Peek lines = %d, want 1", len(lines))
+	}
+	plain := ansi.Strip(lines[0])
+	if !strings.HasPrefix(plain, "  Tags: #backend #security") {
+		t.Fatalf("Peek tags = %q", plain)
+	}
+	if !strings.HasSuffix(plain, "…") {
+		t.Fatalf("truncated Peek tags missing ellipsis: %q", plain)
+	}
+	if got := lipgloss.Width(lines[0]); got > width {
+		t.Fatalf("Peek tags width = %d, want <= %d", got, width)
 	}
 }
 

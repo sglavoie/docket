@@ -57,8 +57,8 @@ func (m *OutlinerModel) relationshipProjects(owner *models.Project) []*models.Pr
 
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
-// contains only richer content: description, checklist items, dependency
-// names, and recurrence detail.
+// contains only richer content plus tags: description, tags, checklist items,
+// dependency names, and recurrence detail.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
@@ -67,6 +67,10 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
 	lines := make([]string, 0, inlinePeekMaxLines)
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
+
+	if tags := inlinePeekTagsLine(opts.Task, available); tags != "" {
+		lines = append(lines, opts.Indent+tags)
+	}
 
 	if checklist := inlinePeekChecklistLine(opts.Task, available); checklist != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(checklist))
@@ -92,6 +96,25 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 		lines = lines[:inlinePeekMaxLines]
 	}
 	return lines
+}
+
+func inlinePeekTagsLine(task *models.Task, width int) string {
+	if task == nil || len(task.Tags) == 0 || width <= 0 {
+		return ""
+	}
+
+	tags := make([]string, 0, len(task.Tags))
+	for _, tag := range task.Tags {
+		if tag = strings.TrimSpace(tag); tag != "" {
+			tags = append(tags, "#"+tag)
+		}
+	}
+	if len(tags) == 0 {
+		return ""
+	}
+	line := MutedStyle.Render("Tags: ") +
+		TagInlineStyle.Bold(true).Render(strings.Join(tags, " "))
+	return truncateIntentional(line, width, "…")
 }
 
 func inlinePeekDescriptionLines(description, indent string, width int) []string {

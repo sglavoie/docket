@@ -1,7 +1,10 @@
 package tui
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -78,21 +81,21 @@ func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "parent")
 	task := project.Tasks[0]
+	task.Tags = []string{"backend", "security"}
 	child := makeTask("child", "Child", "")
 	child.ParentID = &task.ID
 	project.Tasks = append(project.Tasks, child)
 	project.BuildTaskTree()
 	app.projects[project.ID] = project
 	app.crossOutliner.loadedProjects = []*models.Project{project}
-	app.crossOutliner.rows = []outlinerRow{{
-		task:               task,
-		ProjectID:          project.ID,
-		hasVisibleChildren: true,
-	}}
+	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.crossProjectRebuildRows()
+	app.crossOutliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	for _, width := range []int{60, 99, 100, 160} {
 		app.crossOutliner.peekMode = false
 		app.width = width
+		app.crossOutliner.SetSize(width, 22)
 		result := app.operationExecutor.Execute(OperationExecutionRequest{
 			ID:      operationCoreDetail,
 			Context: app.operationCommandContext(),
@@ -103,6 +106,10 @@ func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 		}
 		if !app.crossOutliner.peekMode {
 			t.Fatalf("width %d Enter did not enable Peek", width)
+		}
+		plain := ansi.Strip(app.crossOutliner.View().Content)
+		if !strings.Contains(plain, "Tags: #backend #security") {
+			t.Fatalf("width %d Enter Peek missing selected task tags:\n%s", width, plain)
 		}
 	}
 	if len(app.crossOutliner.crossZoomStack) != 0 || len(app.crossOutliner.zoomStack) != 0 {
