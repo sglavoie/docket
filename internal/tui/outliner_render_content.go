@@ -14,6 +14,8 @@ type outlinerViewport struct {
 	rowWidth    int
 }
 
+const completedTaskWarningThreshold = 20
+
 // renderOutlinerTreeContent renders the full-width Outliner tree constrained to
 // the given width.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
@@ -158,25 +160,85 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 	return renderProjectTitle(m.project, m.runtime, titleParams)
 }
 
-// appendOpenLoopsCounter right-aligns the open-loops counter at the end of an
-// already-assembled title line. Must be called after every inline title-row
-// element (mode label, search indicator, multi-select badge) has been
-// appended so the counter doesn't push them off the right edge. width is the
-// available title-row budget.
+// appendOpenLoopsCounter right-aligns the Outliner's passive counters at the
+// end of an already-assembled title line. Completed tasks are appended after
+// the open-loop readout, but are deliberately the first segment dropped when
+// the full readout does not fit. Must be called after every inline title-row
+// element (mode label, search indicator, multi-select badge) has been appended
+// so the counters don't push them off the right edge. width is the available
+// title-row budget.
 func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
+	openLoops := m.renderOutlinerOpenLoopsCounter()
+	completed := renderCompletedTaskCounter(m.completedTaskCount())
+
+	if completed != "" {
+		counter := completed
+		if openLoops != "" {
+			counter = openLoops + MutedStyle.Render(" · ") + completed
+		}
+		if rendered, ok := appendRightAlignedTitleCounter(line, counter, width); ok {
+			return rendered
+		}
+	}
+
+	if rendered, ok := appendRightAlignedTitleCounter(line, openLoops, width); ok {
+		return rendered
+	}
+	return line
+}
+
+func (m *OutlinerModel) renderOutlinerOpenLoopsCounter() string {
 	outlinerLoops := m.openLoops
 	outlinerLoops.TodayDone = 0
 	outlinerLoops.TodayTotal = 0
 	counter := FormatOpenLoops(outlinerLoops)
+	if counter == "" {
+		return ""
+	}
+	return MutedStyle.Render(counter)
+}
+
+// completedTaskCount returns the cleanup-backlog count for the current
+// Outliner scope. Base Outliner scopes always report the global count, even
+// when a Context, mode, search, filter, or zoom narrows the visible rows. A
+// focused project reports only that project's count.
+func (m *OutlinerModel) completedTaskCount() int {
+	if m.project != nil {
+		return m.project.CountCompletedTasks()
+	}
+	if project := m.scopedProject(); project != nil {
+		return project.CountCompletedTasks()
+	}
+
+	count := 0
+	for _, project := range m.loadedProjects {
+		if project != nil {
+			count += project.CountCompletedTasks()
+		}
+	}
+	return count
+}
+
+func renderCompletedTaskCounter(count int) string {
+	if count <= 0 {
+		return ""
+	}
+	label := fmt.Sprintf("completed %d", count)
+	if count > completedTaskWarningThreshold {
+		return PreviewWarningStyle.Render(label)
+	}
+	return MutedStyle.Render(label)
+}
+
+func appendRightAlignedTitleCounter(line, counter string, width int) (string, bool) {
 	if counter == "" || width <= 0 {
-		return line
+		return line, false
 	}
-	rendered := MutedStyle.Render(counter)
-	gap := width - lipgloss.Width(line) - lipgloss.Width(rendered)
+	gap := width - lipgloss.Width(line) - lipgloss.Width(counter)
 	if gap <= 0 {
-		return line
+		return line, false
 	}
-	return line + strings.Repeat(" ", gap) + rendered
+	return line + strings.Repeat(" ", gap) + counter, true
 }
 
 // buildOutlinerTitleLine assembles the single title row (title, mode
