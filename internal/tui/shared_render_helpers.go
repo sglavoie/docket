@@ -44,7 +44,7 @@ func JoinGroupParts(parts ...string) string {
 }
 
 // EmptyStateFiltered is the standard message shown when active filters produce no results.
-const EmptyStateFiltered = "No tasks match filters. Press Ctrl+Esc to reset."
+const EmptyStateFiltered = "No tasks match filters. Press fx to clear filters."
 
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
 const EmptyStateNoTasks = "No tasks yet. Press a to capture one."

@@ -335,12 +335,12 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 	if m.primaryMode != ModeAll && len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 		if task := m.project.GetTaskByID(topID); task != nil {
-			return fmt.Sprintf("No tasks match %s within %q. Use Tab/Shift+Tab to change modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label, task.Title)
+			return fmt.Sprintf("No tasks match %s within %q. Use Tab/Shift+Tab to change modes.", m.activeOutlinerModeEntry().Label, task.Title)
 		}
-		return fmt.Sprintf("No tasks match %s. Use Tab/Shift+Tab to change modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
+		return fmt.Sprintf("No tasks match %s. Use Tab/Shift+Tab to change modes.", m.activeOutlinerModeEntry().Label)
 	}
 	if m.primaryMode != ModeAll {
-		return fmt.Sprintf("No tasks match %s. Use Tab/Shift+Tab to change modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
+		return fmt.Sprintf("No tasks match %s. Use Tab/Shift+Tab to change modes.", m.activeOutlinerModeEntry().Label)
 	}
 	if m.SearchQuery() != "" {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
@@ -350,7 +350,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 	}
 	if m.project == nil {
 		if mode := m.activeOutlinerModeEntry(); mode.ID != ModeAll {
-			return fmt.Sprintf("%s is empty — use Tab/Shift+Tab for another mode or Ctrl+Esc to reset.", mode.Label)
+			return fmt.Sprintf("%s is empty — use Tab/Shift+Tab for another mode.", mode.Label)
 		}
 	}
 	return EmptyStateNoTasks

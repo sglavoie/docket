@@ -162,6 +162,27 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	}
 }
 
+func TestFilteredEmptyStateAdvertisesWorkingClearChord(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	out := app.crossOutliner
+	out.filter.Tags = map[string]bool{"missing": true}
+	out.crossForceRebuild = true
+	out.rebuildRows()
+
+	if visible := visibleOutlinerTaskIDs(out); len(visible) != 0 {
+		t.Fatalf("missing-tag filter left tasks visible: %v", visible)
+	}
+	const want = "No tasks match filters. Press fx to clear filters."
+	if got := out.outlinerEmptyMessage(); got != want {
+		t.Fatalf("filtered empty state = %q, want %q", got, want)
+	}
+
+	pressFilterChord(t, app, "fx")
+	if visible := visibleOutlinerTaskIDs(out); len(visible) != 3 {
+		t.Fatalf("advertised fx chord restored %d tasks, want 3: %v", len(visible), visible)
+	}
+}
+
 func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
