@@ -112,6 +112,7 @@ func TestOutlinerV5TargetGrammarIsCanonicalAndSingleOwner(t *testing.T) {
 		"A",
 		"e",
 		"E",
+		"S",
 		",i",
 		"!0",
 		"!1-!5",

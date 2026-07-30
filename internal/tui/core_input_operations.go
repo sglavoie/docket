@@ -73,6 +73,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCollapseParent, "Collapse or Go to Parent", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		peek,
@@ -179,6 +180,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreExpand:
 		if out, _, ok := m.outlinerPrimary(); ok {
 			out.expandAtCursor()
+		}
+	case operationCoreToggleSections:
+		if out, _, ok := m.outlinerPrimary(); ok {
+			out.toggleVisibleSections()
 		}
 	case operationCoreReorderDown:
 		message = commandMessage(m.coreReorder(1))

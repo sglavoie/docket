@@ -66,6 +66,7 @@ func OutlinerV5TargetContract() OutlinerV5Contract {
 			{Key: "k / Up", Action: "move-up", Area: "navigation"},
 			{Key: "h / Left", Action: "collapse", Area: "navigation"},
 			{Key: "l / Right", Action: "expand", Area: "navigation"},
+			{Key: "S", Action: "toggle-all-sections", Area: "navigation"},
 			{Key: "Home", Action: "first-row", Area: "navigation"},
 			{Key: "End", Action: "last-row", Area: "navigation"},
 			{Key: "PageUp", Action: "page-up", Area: "navigation"},

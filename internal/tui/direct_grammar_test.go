@@ -28,6 +28,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"ctrl+d": operationCoreCursorPageDown, "pgdown": operationCoreCursorPageDown,
 		"h": operationCoreCollapseParent, "left": operationCoreCollapseParent,
 		"l": operationCoreExpand, "right": operationCoreExpand,
+		"S": operationCoreToggleSections,
 		"J": operationCoreReorderDown, "K": operationCoreReorderUp,
 		"<": operationTaskOutdent, ">": operationTaskIndent,
 		"enter": operationCoreDetail,

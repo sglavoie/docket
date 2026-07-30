@@ -2,6 +2,14 @@ package tui
 
 import tea "charm.land/bubbletea/v2"
 
+// sectionToggleRestoreAnchor identifies a task temporarily hidden by an
+// S-driven all-section collapse. The next S-driven expansion restores focus to
+// it when the task remains visible in the active view.
+type sectionToggleRestoreAnchor struct {
+	task       TaskIdentity
+	sectionKey string
+}
+
 // collapseOrMoveToParent gives h/Left one deterministic tree behavior: collapse
 // an expanded section, project header, or task first; otherwise move to the
 // visible parent task.
@@ -65,6 +73,136 @@ func (m *OutlinerModel) expandAtCursor() bool {
 	m.expandedNodes[identity] = true
 	m.rebuildRows()
 	m.moveCursorToIdentity(identity)
+	return true
+}
+
+// toggleVisibleSections expands every visible top-level section when any is
+// collapsed; otherwise it collapses them all. Project subheaders and task tree
+// folds are deliberately outside this bulk operation.
+func (m *OutlinerModel) toggleVisibleSections() bool {
+	if m == nil {
+		return false
+	}
+	headers := m.visibleSectionHeaders()
+	if len(headers) == 0 {
+		return false
+	}
+
+	allExpanded := true
+	headerKeys := make(map[string]bool, len(headers))
+	for _, header := range headers {
+		key := header.effectiveCollapseKey()
+		headerKeys[key] = true
+		if m.isSectionRowCollapsed(header) {
+			allExpanded = false
+		}
+	}
+
+	cursorAnchor := m.captureModeCursor()
+	selectedHeaderKey := ""
+	if m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader {
+		selectedHeaderKey = m.rows[m.cursor].effectiveCollapseKey()
+	}
+	if allExpanded {
+		m.sectionToggleRestore = nil
+		if header, containsCursor := m.topLevelSectionAtCursor(headerKeys); containsCursor {
+			if row := m.rows[m.cursor]; row.isTaskRow() && row.task != nil {
+				m.sectionToggleRestore = &sectionToggleRestoreAnchor{
+					task:       m.taskIdentityForRow(row),
+					sectionKey: header.effectiveCollapseKey(),
+				}
+			}
+			for _, section := range headers {
+				m.setSectionRowCollapsed(section, true)
+			}
+			m.rebuildRows()
+			m.moveCursorToSectionHeader(header.effectiveCollapseKey())
+			return true
+		}
+		for _, section := range headers {
+			m.setSectionRowCollapsed(section, true)
+		}
+		m.rebuildRows()
+		m.restoreModeCursor(cursorAnchor)
+		return true
+	}
+
+	for _, section := range headers {
+		m.setSectionRowCollapsed(section, false)
+	}
+	m.rebuildRows()
+	if m.restoreSectionToggleFocus() {
+		return true
+	}
+	if selectedHeaderKey != "" {
+		m.moveCursorToSectionHeader(selectedHeaderKey)
+		return true
+	}
+	m.restoreModeCursor(cursorAnchor)
+	return true
+}
+
+func (m *OutlinerModel) visibleSectionHeaders() []outlinerRow {
+	headers := make([]outlinerRow, 0)
+	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			headers = append(headers, row)
+		}
+	}
+	return headers
+}
+
+// topLevelSectionAtCursor returns the visible section that owns the cursor's
+// current row. Pinned and Today task rows have explicit membership markers;
+// those avoid treating the ungrouped Inbox/Next/Backlog rows after Pinned as
+// Pinned content.
+func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (outlinerRow, bool) {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return outlinerRow{}, false
+	}
+	selected := m.rows[m.cursor]
+	for i := m.cursor; i >= 0; i-- {
+		header := m.rows[i]
+		if !header.IsSectionHeader {
+			continue
+		}
+		if !sectionKeys[header.effectiveCollapseKey()] {
+			return outlinerRow{}, false
+		}
+		if selected.isTaskRow() {
+			if header.IsPinnedSection && !selected.IsPinnedSection {
+				return outlinerRow{}, false
+			}
+			if header.IsTodaySection && !selected.IsTodaySection {
+				return outlinerRow{}, false
+			}
+		}
+		return header, true
+	}
+	return outlinerRow{}, false
+}
+
+func (m *OutlinerModel) moveCursorToSectionHeader(key string) bool {
+	for i, row := range m.rows {
+		if row.IsSectionHeader && row.effectiveCollapseKey() == key {
+			m.cursor = i
+			return true
+		}
+	}
+	m.clampCursor()
+	return false
+}
+
+func (m *OutlinerModel) restoreSectionToggleFocus() bool {
+	anchor := m.sectionToggleRestore
+	m.sectionToggleRestore = nil
+	if anchor == nil {
+		return false
+	}
+	if m.moveCursorToIdentity(anchor.task) {
+		return true
+	}
+	m.moveCursorToSectionHeader(anchor.sectionKey)
 	return true
 }
 

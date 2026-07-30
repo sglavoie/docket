@@ -113,6 +113,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		{key: "left", want: operationCoreCollapseParent},
 		{key: "l", want: operationCoreExpand},
 		{key: "right", want: operationCoreExpand},
+		{key: "S", want: operationCoreToggleSections},
 	}
 	for _, test := range tests {
 		binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, test.key, ctx)
@@ -122,6 +123,16 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		if binding.OperationID != test.want {
 			t.Errorf("key %q resolved to %s, want %s", test.key, binding.OperationID, test.want)
 		}
+	}
+	helpHasToggleSections := false
+	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+		if item.Key == "S" && item.Description == "Toggle All Sections" {
+			helpHasToggleSections = true
+			break
+		}
+	}
+	if !helpHasToggleSections {
+		t.Error("generated help omits S Toggle All Sections")
 	}
 	if _, _, ok := registry.InputBindingForKey(InputStrategySimplified, ":", ctx); ok {
 		t.Error("removed Finder key still resolves")

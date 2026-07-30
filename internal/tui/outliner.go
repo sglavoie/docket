@@ -60,6 +60,9 @@ type OutlinerModel struct {
 	pinnedTagTab      map[string]int        // Active pinned tag tab index per projectID (0 = All)
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool       // Section collapse state for All mode
+	// sectionToggleRestore preserves a task focus across one S-driven
+	// collapse/expand cycle. It is deliberately session-only.
+	sectionToggleRestore *sectionToggleRestoreAnchor
 
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 

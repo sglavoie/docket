@@ -56,7 +56,7 @@ asks for them.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the five modes |
-| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
+| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description |
 | Daily state | `s` In Progress, `d` Done, `b` Ready/Backlog, `t` Today, `n` Next |
 | Other state | `,i` Inbox, `,w` Waiting, `,p` Paused, `,s` Someday, `,c` Canceled |

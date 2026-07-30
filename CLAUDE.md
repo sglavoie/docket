@@ -95,7 +95,7 @@ The direct grammar is:
 
 ```text
 Tab / Shift+Tab                 five modes
-j/k, arrows, h/l, Home/End     navigation
+j/k, arrows, h/l, S, Home/End  navigation
 a/A, e/E                       capture/edit
 s d b t n                      daily state/planning
 ,i ,w ,p ,s ,c                 other state

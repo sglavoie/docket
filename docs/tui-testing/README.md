@@ -91,7 +91,7 @@ The final public grammar is:
 
 ```text
 Tab/Shift+Tab                    All, Inbox, Next, Backlog, Due
-j/k h/l g/G Ctrl+U/Ctrl+D        navigation
+j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 a/A e/E                          capture and edit
 s d b t n                        daily state and planning
 ,i ,w ,p ,s ,c                  other workflow states

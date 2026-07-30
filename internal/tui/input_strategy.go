@@ -204,6 +204,7 @@ const (
 	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
 	operationCoreCollapseParent   OperationID = "tui.core.collapse-parent"
 	operationCoreExpand           OperationID = "tui.core.expand"
+	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
 	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
 	operationCoreDetail           OperationID = "tui.core.detail"
@@ -246,6 +247,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn"},
 			{OperationID: operationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
+			{OperationID: operationCoreToggleSections, Keys: []string{"S"}, DisplayKey: "S"},
 			{OperationID: operationCoreReorderDown, Keys: []string{"J"}, DisplayKey: "J"},
 			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K"},
 			{OperationID: operationTaskOutdent, Keys: []string{"<"}, DisplayKey: "<"},
