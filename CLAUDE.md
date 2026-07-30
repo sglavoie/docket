@@ -99,7 +99,7 @@ j/k, arrows, h/l, Home/End     navigation
 a/A, e/E                       capture/edit
 s d b t n                      daily state/planning
 ,i ,w ,p ,s ,c                 other state
-p0-5 @ # z P                   metadata
+!0-5 @ # z P                   metadata
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
 v V Space                      selection/actions
@@ -108,7 +108,7 @@ c N T / ? u Ctrl+R Esc Ctrl+C  global
 
 Filter chords are `fp0-5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`. `fd` opens
 the due-date facet picker for overdue, today, this week, or no due date, and
-`fx` clears every facet. Removed keys `m`, `:`, `R`, `!`, and `Ctrl+Esc` must
+`fx` clears every facet. Removed keys `m`, `:`, `R`, `p`, and `Ctrl+Esc` must
 remain unbound.
 
 The `Space` menu is exactly:

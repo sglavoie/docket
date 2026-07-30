@@ -583,7 +583,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 	for _, retired := range []string{
 		"F", "C", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
-		":", "R", "!", "ctrl+esc", "m",
+		":", "R", "p", "ctrl+esc", "m",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
@@ -611,7 +611,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 	}
 	for _, retired := range []string{
 		"F", "C", "q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
-		":", "R", "!", "Ctrl+Esc", "m",
+		":", "R", "p", "Ctrl+Esc", "m",
 	} {
 		if keys[retired] {
 			t.Errorf("simplified help retains retired shortcut alias %q", retired)

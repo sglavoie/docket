@@ -95,7 +95,7 @@ j/k h/l g/G Ctrl+U/Ctrl+D        navigation
 a/A e/E                          capture and edit
 s d b t n                        daily state and planning
 ,i ,w ,p ,s ,c                  other workflow states
-p0-5 @ # z P                    metadata
+!0-5 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
 v V Space Enter                 selection, actions, Peek
@@ -103,7 +103,7 @@ c N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-5 fs ft fd fb fz fx         filters
 ```
 
-`m`, `:`, `R`, `!`, and `Ctrl+Esc` are intentionally unbound.
+`m`, `:`, `R`, `p`, and `Ctrl+Esc` are intentionally unbound.
 
 ### Assertions
 

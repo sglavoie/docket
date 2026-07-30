@@ -91,10 +91,10 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`a` capture, `A` child, `e` title, `E` description",
 		"`s` In Progress, `d` Done, `b` Ready/Backlog, `t` Today, `n` Next",
 		"`,i` Inbox, `,w` Waiting, `,p` Paused, `,s` Someday, `,c` Canceled",
-		"`p0` clears priority; `p1`–`p5` set it; `@` due date; `#` tags; `z` snooze; `P` pin",
+		"`!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
-		"Removed keys such as `m`, `:`, `R`, `!`, and `Ctrl+Esc` have no compatibility action",
+		"Removed keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc` have no compatibility action",
 	})
 }
 

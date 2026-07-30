@@ -36,7 +36,7 @@ The direct interaction grammar is:
 | Capture and edit | `a`, `A`, `e`, `E` |
 | Daily state | `s`, `d`, `b`, `t`, `n` |
 | State chord | `,i`, `,w`, `,p`, `,s`, `,c` |
-| Metadata | `p0`, `p1`–`p5`, `@`, `#`, `z`, `P` |
+| Metadata | `!0`, `!1`–`!5`, `@`, `#`, `z`, `P` |
 | Structure | `<`, `>`, `J`, `K` |
 | Clipboard | `y`, `Y`, `Ctrl+Y` |
 | Selection and task menu | `v`, `V`, `Space` |

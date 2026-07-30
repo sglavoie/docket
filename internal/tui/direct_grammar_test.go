@@ -60,9 +60,38 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		}
 	}
 
-	for _, removed := range []string{"m", ":", "R", "!", "ctrl+esc"} {
+	for _, removed := range []string{"m", ":", "R", "p", "ctrl+esc"} {
 		if owner := owners[removed]; owner != "" {
 			t.Errorf("removed key %q still resolves to %s", removed, owner)
+		}
+	}
+}
+
+func TestFinalPriorityChordUsesBangPrefix(t *testing.T) {
+	strategy := SimplifiedInputStrategy()
+	got := make(map[string]any)
+	for _, binding := range strategy.Bindings {
+		if binding.OperationID != operationTaskSetPriority ||
+			len(binding.Sequence) != 2 ||
+			binding.Sequence[0] != "!" {
+			continue
+		}
+		got[binding.Sequence[1]] = binding.PresetValue
+	}
+	want := map[string]any{"0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+	if len(got) != len(want) {
+		t.Fatalf("priority chord terminals = %v, want %v", got, want)
+	}
+	for key, priority := range want {
+		if got[key] != priority {
+			t.Errorf("!%s = %v, want %v", key, got[key], priority)
+		}
+	}
+	for _, binding := range strategy.Bindings {
+		if binding.OperationID == operationTaskSetPriority &&
+			len(binding.Sequence) > 0 &&
+			binding.Sequence[0] == "p" {
+			t.Errorf("retired priority prefix remains registered: %v", binding.Sequence)
 		}
 	}
 }

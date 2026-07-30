@@ -47,9 +47,9 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		want  OperationID
 		value any
 	}{
-		{path: []string{"p", "0"}, want: operationTaskSetPriority, value: 0},
-		{path: []string{"p", "1"}, want: operationTaskSetPriority, value: 1},
-		{path: []string{"p", "5"}, want: operationTaskSetPriority, value: 5},
+		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
+		{path: []string{"!", "1"}, want: operationTaskSetPriority, value: 1},
+		{path: []string{"!", "5"}, want: operationTaskSetPriority, value: 5},
 		{path: []string{",", "i"}, want: operationTaskSetState, value: models.StateInbox},
 		{path: []string{",", "w"}, want: operationTaskSetState, value: models.StateWaiting},
 		{path: []string{",", "p"}, want: operationTaskSetState, value: models.StatePaused},
@@ -135,9 +135,9 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 	t.Run("chord prefix waits and names its family", func(t *testing.T) {
 		app, _ := newApp(t)
-		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'p', Text: "p"})
+		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '!', Text: "!"})
 		if !handled || cmd != nil {
-			t.Fatalf("p = handled %v cmd %T; want a pending prefix", handled, cmd)
+			t.Fatalf("! = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
 		row := app.pendingChordHintRow()
 		for _, want := range []string{"0 clear", "1 critical", "5 lowest"} {
@@ -149,10 +149,10 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 	t.Run("terminal chord dispatches a mutation", func(t *testing.T) {
 		app, _ := newApp(t)
-		app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'p', Text: "p"})
+		app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '!', Text: "!"})
 		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '0', Text: "0"})
 		if !handled || cmd == nil {
-			t.Fatalf("p0 = handled %v cmd %T; want the clear-priority command", handled, cmd)
+			t.Fatalf("!0 = handled %v cmd %T; want the clear-priority command", handled, cmd)
 		}
 		if len(app.pendingChord) != 0 {
 			t.Errorf("pending chord = %v, want cleared", app.pendingChord)

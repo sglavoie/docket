@@ -60,14 +60,14 @@ asks for them.
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description |
 | Daily state | `s` In Progress, `d` Done, `b` Ready/Backlog, `t` Today, `n` Next |
 | Other state | `,i` Inbox, `,w` Waiting, `,p` Paused, `,s` Someday, `,c` Canceled |
-| Metadata | `p0` clears priority; `p1`–`p5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
+| Metadata | `!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles one row; `V` selects every visible task |
 | Global | `c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 The operation descriptors are the single source for dispatch, the compact
-footer, chord hints, and `?` help. Removed keys such as `m`, `:`, `R`, `!`, and
+footer, chord hints, and `?` help. Removed keys such as `m`, `:`, `R`, `p`, and
 `Ctrl+Esc` have no compatibility action.
 
 ### Task actions
