@@ -22,12 +22,9 @@
     { "type": "key", "label": "drop it to the default priority", "key": "p" },
     { "type": "key", "key": "3" },
     { "type": "wait" },
-    { "type": "key", "label": "inspect the reloaded priority", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "Inspector" },
-    { "type": "assert", "label": "an explicit P3 reloads as normal priority", "assert": "contains", "value": "Priority: P3 normal" },
+    { "type": "assert", "label": "an explicit P3 reloads without a high-priority badge", "assert": "not_contains", "value": "▶ ◉ Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "key": "esc" },
-    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "clear the priority", "key": "p" },
     { "type": "key", "key": "0" },
@@ -36,11 +33,6 @@
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "inspect the cleared priority", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "Inspector" },
-    { "type": "assert", "label": "the cleared priority reloaded as unset", "assert": "contains", "value": "Priority: none" },
-    { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "select the In Progress task and enter multi-select", "key": "v" },

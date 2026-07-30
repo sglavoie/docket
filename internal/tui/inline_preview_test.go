@@ -1,116 +1,117 @@
 package tui
 
 import (
+	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestInlinePreviewLines_NilTask(t *testing.T) {
-	lines := inlinePreviewLines(nil, "  ", 80)
-	if lines != nil {
-		t.Errorf("expected nil for nil task, got %v", lines)
+func TestInlinePeekNilAndEmptyTask(t *testing.T) {
+	if lines := inlinePeekLines(inlinePeekOptions{}); lines != nil {
+		t.Fatalf("nil task lines = %v, want nil", lines)
+	}
+
+	lines := inlinePeekLines(inlinePeekOptions{
+		Task:   &models.Task{},
+		Indent: "  ",
+		Width:  40,
+	})
+	if got := ansi.Strip(strings.Join(lines, "\n")); got != "  No additional details" {
+		t.Fatalf("empty Peek = %q", got)
 	}
 }
 
-func TestInlinePreviewLines_NoDescriptionNoChecklist(t *testing.T) {
-	task := &models.Task{}
-	lines := inlinePreviewLines(task, "  ", 80)
+func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
+	project := &models.Project{ID: "project", Slug: "project", Name: "Project"}
+	needed := &models.Task{ID: "needed", ShortID: 41, Title: "Prepare 日本語 API"}
+	blocked := &models.Task{
+		ID: "blocked", ShortID: 42, Title: "Release client",
+		DependsOn: []string{"task"},
+	}
+	task := &models.Task{
+		ID:          "task",
+		ShortID:     99,
+		Title:       "Selected",
+		Description: strings.Repeat("Unicode café 界 content ", 12),
+		DependsOn:   []string{needed.ID},
+		Checklist: []models.ChecklistItem{
+			{Text: "First item", Done: true},
+			{Text: "Second item"},
+			{Text: "Third item"},
+		},
+		Recurrence: &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly},
+	}
+	project.Tasks = []*models.Task{needed, task, blocked}
+	project.BuildTaskTree()
+
+	const width = 64
+	rendered := inlinePeekLines(inlinePeekOptions{
+		Task: task, Project: project, Projects: []*models.Project{project},
+		Indent: "    ", Width: width,
+	})
+	plain := ansi.Strip(strings.Join(rendered, "\n"))
+	if len(rendered) != inlinePeekMaxLines {
+		t.Fatalf("Peek line count = %d, want %d:\n%s", len(rendered), inlinePeekMaxLines, plain)
+	}
+	for _, want := range []string{
+		"Description:", "Checklist:", "Needs: Prepare", "Blocks: Release", "Repeats: every 2 weeks",
+	} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("Peek missing %q:\n%s", want, plain)
+		}
+	}
+	for _, banned := range []string{"#41", "#42", "#99", "State:", "Priority:", "Due:", "Tags:"} {
+		if strings.Contains(plain, banned) {
+			t.Fatalf("Peek repeated %q:\n%s", banned, plain)
+		}
+	}
+	for lineNumber, line := range rendered {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("line %d width = %d, want <= %d: %q", lineNumber, got, width, ansi.Strip(line))
+		}
+	}
+}
+
+func TestInlinePeekQualifiesCrossProjectDependencyWithoutTaskID(t *testing.T) {
+	owner := &models.Project{ID: "owner", Slug: "own", Name: "Owner"}
+	other := &models.Project{ID: "other", Slug: "api", Name: "API"}
+	task := &models.Task{ID: "task", Title: "Ship", DependsOn: []string{"other:dependency"}}
+	dependency := &models.Task{ID: "dependency", ShortID: 7, Title: "Publish schema"}
+	owner.Tasks = []*models.Task{task}
+	other.Tasks = []*models.Task{dependency}
+
+	plain := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{
+		Task: task, Project: owner, Projects: []*models.Project{owner, other}, Width: 80,
+	}), "\n"))
+	if !strings.Contains(plain, "Needs: [api] Publish schema") {
+		t.Fatalf("cross-project Peek = %q", plain)
+	}
+	if strings.Contains(plain, "#7") {
+		t.Fatalf("cross-project Peek leaked short ID: %q", plain)
+	}
+}
+
+func TestInlinePeekTruncatesLongCategoryLines(t *testing.T) {
+	task := &models.Task{
+		ID: "task",
+		Checklist: []models.ChecklistItem{
+			{Text: strings.Repeat("界", 40)},
+			{Text: "second"},
+			{Text: "third"},
+		},
+	}
+	lines := inlinePeekLines(inlinePeekOptions{Task: task, Indent: "  ", Width: 24})
 	if len(lines) != 1 {
-		t.Fatalf("expected 1 line, got %d", len(lines))
+		t.Fatalf("checklist-only Peek lines = %d, want 1", len(lines))
 	}
-	// Should contain "(no description)"
-	if lines[0] == "" {
-		t.Error("expected non-empty line for no-description task")
+	if !strings.Contains(ansi.Strip(lines[0]), "…") {
+		t.Fatalf("truncated checklist missing ellipsis: %q", ansi.Strip(lines[0]))
 	}
-}
-
-func TestInlinePreviewLines_DescriptionOnly(t *testing.T) {
-	task := &models.Task{Description: "This is a test description"}
-	lines := inlinePreviewLines(task, "  ", 80)
-	if len(lines) != 1 {
-		t.Fatalf("expected 1 line for single-line description, got %d", len(lines))
-	}
-}
-
-func TestInlinePreviewLines_MultiLineDescription(t *testing.T) {
-	task := &models.Task{Description: "Line one\nLine two\nLine three"}
-	lines := inlinePreviewLines(task, "  ", 80)
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 lines for multi-line description (capped at 2), got %d", len(lines))
-	}
-}
-
-func TestInlinePreviewLines_ChecklistOnly(t *testing.T) {
-	task := &models.Task{
-		Checklist: []models.ChecklistItem{
-			{Text: "Item 1", Done: false},
-			{Text: "Item 2", Done: true},
-		},
-	}
-	lines := inlinePreviewLines(task, "  ", 80)
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 lines for 2 checklist items, got %d", len(lines))
-	}
-}
-
-func TestInlinePreviewLines_ChecklistWithMore(t *testing.T) {
-	task := &models.Task{
-		Checklist: []models.ChecklistItem{
-			{Text: "Item 1", Done: false},
-			{Text: "Item 2", Done: true},
-			{Text: "Item 3", Done: false},
-			{Text: "Item 4", Done: false},
-		},
-	}
-	lines := inlinePreviewLines(task, "  ", 80)
-	// 2 items + "+2 more"
-	if len(lines) != 3 {
-		t.Fatalf("expected 3 lines (2 items + more), got %d", len(lines))
-	}
-}
-
-func TestInlinePreviewLines_DescriptionAndChecklist(t *testing.T) {
-	task := &models.Task{
-		Description: "Some description",
-		Checklist: []models.ChecklistItem{
-			{Text: "Check this", Done: false},
-		},
-	}
-	lines := inlinePreviewLines(task, "  ", 80)
-	// 1 description + 1 checklist = 2
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 lines, got %d", len(lines))
-	}
-}
-
-func TestInlinePreviewLineCount_NilTask(t *testing.T) {
-	count := inlinePreviewLineCount(nil)
-	if count != 0 {
-		t.Errorf("expected 0, got %d", count)
-	}
-}
-
-func TestInlinePreviewLineCount_NoContent(t *testing.T) {
-	task := &models.Task{}
-	count := inlinePreviewLineCount(task)
-	if count != 1 {
-		t.Errorf("expected 1 (no description placeholder), got %d", count)
-	}
-}
-
-func TestInlinePreviewLineCount_DescAndChecklist(t *testing.T) {
-	task := &models.Task{
-		Description: "Hello\nWorld",
-		Checklist: []models.ChecklistItem{
-			{Text: "A", Done: false},
-			{Text: "B", Done: true},
-			{Text: "C", Done: false},
-		},
-	}
-	// 2 desc lines + 2 checklist + 1 "+more" = 5
-	count := inlinePreviewLineCount(task)
-	if count != 5 {
-		t.Errorf("expected 5, got %d", count)
+	if got := lipgloss.Width(lines[0]); got > 24 {
+		t.Fatalf("truncated checklist width = %d", got)
 	}
 }

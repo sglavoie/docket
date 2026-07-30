@@ -136,7 +136,7 @@ Startup validation rejects an operation that appears in both the direct grammar
 and the task menu. Destructive descriptors require confirmation before any
 transaction begins.
 
-### Search, filters, and inspector
+### Search, filters, and Peek
 
 Visible search performs a case-insensitive substring match against title and
 description only. Filter facets compose as priority threshold, OR states, AND
@@ -145,11 +145,16 @@ time are shared across Pinned, Today, primary mode rows, and Due. Search and
 facets persist across mode and scope changes within the run and are never
 serialized.
 
-At widths of at least 100 columns, a read-only right pane follows the cursor.
-At narrower widths, `Enter` opens a frozen project-qualified inspector overlay
-and `Esc` closes it. Both use one renderer for project path, state, priority,
-due/snooze, tags, dependencies, recurrence, checklist progress, lifecycle
-timestamps, and description.
+The Outliner remains full-width at every supported terminal size. Rows carry
+operational scan signals directly: workflow/blocking, conditional high
+priority, due, snooze, dependency counts, recurrence, and checklist progress.
+Outliner rows omit short task IDs.
+
+`Enter` toggles a session-only, project-qualified Peek below the cursor task.
+Peek follows cursor, mode, and scope navigation and is capped at five additive
+lines: two description lines plus compact checklist items, named dependencies,
+and recurrence detail. `Esc` dismisses Peek before other Outliner navigation.
+Entering visual selection disables Peek.
 
 ### Selection and subordinate tools
 

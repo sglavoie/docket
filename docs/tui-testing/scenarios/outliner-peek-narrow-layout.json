@@ -1,0 +1,16 @@
+{
+  "name": "outliner-peek-narrow-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Inspector" },
+    { "type": "key", "label": "select the task with additive detail", "key": "end" },
+    { "type": "key", "label": "enable the same inline Peek at minimum width", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
+    { "type": "assert", "assert": "not_contains", "value": "#7" },
+    { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Description: Google / GitHub OAuth." },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

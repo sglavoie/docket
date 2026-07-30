@@ -68,13 +68,6 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, cmd
 	}
 
-	// A narrow inspector is a frozen snapshot with no keymap of its own.
-	// Esc is handled by the canonical overlay-close cascade above; every other
-	// key is swallowed so the covered Outliner cannot move or mutate.
-	if m.peekActive {
-		return true, nil
-	}
-
 	// Guard against stale currentProject (e.g., deleted by external CLI command)
 	if handled, cmd := m.handleInvalidManageProjectScope(); handled {
 		return true, cmd

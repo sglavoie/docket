@@ -98,7 +98,7 @@ s d b t n                        daily state and planning
 p0-5 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
-v V Space Enter                 selection, actions, inspector
+v V Space Enter                 selection, actions, Peek
 c N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-5 fs ft fd fb fz fx         filters
 ```
@@ -133,7 +133,7 @@ The committed suite exercises the product contracts directly:
 | Combined Global/project Notes | `notes-tool.json`, `global-notes-resize-minimum-layout.json` |
 | Checklist, comments, decisions, and attachments | `rich-tools.json` |
 | Exact nine-item `Space` menu | `outliner-space-action-catalog.json` |
-| Wide following and narrow frozen inspector | `outliner-inspector-wide-layout.json`, `outliner-inspector-narrow-layout.json` |
+| Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Visual selection and bulk intersection | `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
 | Dark/light machine-local theme | `theme-toggle.json` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |

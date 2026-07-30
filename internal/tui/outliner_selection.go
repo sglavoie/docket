@@ -50,9 +50,27 @@ func (m *OutlinerModel) toggleCursorSelection() {
 	if m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isTaskRow() {
 		return
 	}
+	m.peekMode = false
 	m.multiSelectMode = true
 	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.cursor]))
 	m.updateVisualSelectionStatus()
+}
+
+func (m *OutlinerModel) togglePeek() bool {
+	if m == nil || m.multiSelectMode {
+		return false
+	}
+	if m.peekMode {
+		m.peekMode = false
+		m.resetViewScrollOffset()
+		return true
+	}
+	if task, _ := m.getTaskRef(); task == nil {
+		return false
+	}
+	m.peekMode = true
+	m.resetViewScrollOffset()
+	return true
 }
 
 // toggleMultiSelectMode enters or exits multi-select mode.
@@ -64,6 +82,7 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 		return
 	}
 
+	m.peekMode = false
 	m.updateVisualSelectionStatus()
 }
 
@@ -80,6 +99,7 @@ func (m *OutlinerModel) updateVisualSelectionStatus() {
 
 // selectAllVisible adds all currently visible rows to the selection.
 func (m *OutlinerModel) selectAllVisible() {
+	m.peekMode = false
 	for _, row := range m.rows {
 		if !row.isTaskRow() || row.task == nil {
 			continue

@@ -126,11 +126,13 @@ The `Space` menu is exactly:
 An operation is direct-only or menu-only, never both. Delete has no direct key
 and confirms before mutation.
 
-At 100 columns and wider, the read-only inspector follows the cursor. Narrower
-layouts use a frozen `Enter` inspector overlay. While visual selection exists,
-structural, edit, inspector, relation, and clipboard operations must reject it
-instead of falling back to the cursor. The bulk `Space` menu contains Delete
-only.
+The Outliner stays full-width at every supported size. `Enter` toggles a
+session-only, five-line Peek beneath the cursor for description, checklist
+items, named dependencies, and recurrence detail. Rows carry operational
+metadata directly and omit short IDs. Entering visual selection closes Peek;
+while selection exists, structural, edit, Peek, relation, and clipboard
+operations must reject it instead of falling back to the cursor. The bulk
+`Space` menu contains Delete only.
 
 Scope Hub owns All, regular/custom contexts, project focus, and lean project
 administration. `N` opens combined Global/focused-project Notes; note creation

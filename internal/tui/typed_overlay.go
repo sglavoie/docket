@@ -12,7 +12,6 @@ const (
 	OverlayViewMenu
 	OverlaySearch
 	OverlayTaskJump
-	OverlayPeek
 	OverlayForm
 	OverlayPicker
 	OverlayConfirmation
@@ -26,7 +25,6 @@ var overlayKindNames = [...]string{
 	"ViewMenu",
 	"Search",
 	"TaskJump",
-	"Peek",
 	"Form",
 	"Picker",
 	"Confirmation",

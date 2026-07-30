@@ -107,7 +107,7 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	})
 }
 
-func TestREADMEDocumentsFiltersInspectorAndBulkSemantics(t *testing.T) {
+func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"`fp0`, `fp1`–`fp5`",
@@ -117,8 +117,9 @@ func TestREADMEDocumentsFiltersInspectorAndBulkSemantics(t *testing.T) {
 		"`fb` | Blocked-only",
 		"`fz` | Snoozed-only",
 		"`fx` | Clear every facet",
-		"At 100 columns or wider, a read-only inspector follows the cursor",
-		"Below 100 columns, `Enter` freezes the selected task in an inspector overlay",
+		"The Outliner uses the full terminal width at every supported size",
+		"`Enter` toggles a session-only Peek directly beneath the cursor task",
+		"Entering multi-select closes Peek",
 		"In multi-select, `Space` offers Delete only",
 	})
 }

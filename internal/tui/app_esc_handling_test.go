@@ -115,24 +115,6 @@ func TestHandleEscKey_NopAtOutlinerRoot(t *testing.T) {
 	}
 }
 
-// TestHandleEscKey_DismissesPeekOverlay verifies that Esc clears peekActive and peekTask.
-func TestHandleEscKey_DismissesPeekOverlay(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.peekTask = project.Tasks[0]
-	app.peekActive = true
-
-	handled, _ := app.handleEscKey()
-	if !handled {
-		t.Error("handleEscKey() should consume esc when peek is active")
-	}
-	if app.peekActive {
-		t.Error("peekActive should be false after Esc")
-	}
-	if app.peekTask != nil {
-		t.Error("peekTask should be nil after Esc")
-	}
-}
-
 func TestProjectSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	sourceProject, err := models.NewProject("source", "Source", t.TempDir())
 	if err != nil {
@@ -219,39 +201,5 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	}
 	if app.currentView() != ViewCrossProjectOutliner {
 		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
-	}
-}
-
-// TestSpaceActivatesPeek verifies that space sets peekTask when a cursor task exists.
-func TestSpaceActivatesPeek(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
-	setTestPresentationPath(app, ViewCrossProjectOutliner)
-
-	// Simulate space press
-	msg := tea.KeyPressMsg{Code: tea.KeySpace}
-	app.Update(msg)
-
-	// peekTask may or may not be set depending on whether the outliner has a cursor task.
-	// The important thing is no panic occurred
-	_ = app.peekActive
-	_ = app.peekTask
-}
-
-// TestSpaceKeyUpKeepsActivePeek verifies that key-up does not close active peek.
-func TestSpaceKeyUpKeepsActivePeek(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.peekTask = project.Tasks[0]
-	app.peekActive = true
-
-	keyUp := tea.KeyReleaseMsg{Code: tea.KeySpace}
-	result, _ := app.Update(keyUp)
-	appResult := result.(*AppModel)
-
-	if !appResult.peekActive {
-		t.Error("peekActive should remain true after key-up")
-	}
-	if appResult.peekTask != project.Tasks[0] {
-		t.Error("peekTask should remain set after key-up")
 	}
 }

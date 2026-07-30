@@ -158,7 +158,7 @@ func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 		operationTaskTogglePin:            "keep on top",
 		operationTaskNewChild:             "new subtask",
 		operationCoreEdit:                 "rename task",
-		operationCoreDetail:               "task overview",
+		operationCoreDetail:               "task preview",
 	}
 	for id, alias := range wanted {
 		descriptor, ok := model.operationRegistry.Descriptor(id)
@@ -193,10 +193,6 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 	out.rows = []outlinerRow{{task: other, ProjectID: project.ID}}
 	out.cursor = 0
 
-	detail := executeTaskOperationForTest(t, model, operationCoreDetail, context)
-	if got := detail.Message.(ShowTaskInspectorMsg).Task; got != task {
-		t.Errorf("detail target = %v, want the frozen task %v", got, task)
-	}
 	edit := executeTaskOperationForTest(t, model, operationCoreEdit, context)
 	if got := edit.Message.(ShowTaskTextEditorMsg).Task; got != task {
 		t.Errorf("edit target = %v, want the frozen task %v", got, task)

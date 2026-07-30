@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -97,7 +96,7 @@ func TestGitHubIssueAttachmentLabels(t *testing.T) {
 	}
 }
 
-func TestGitHubIssueAttachmentSurfacesUseCompactLabel(t *testing.T) {
+func TestGitHubIssueAttachmentDetailUsesCompactLabel(t *testing.T) {
 	task := &models.Task{
 		Attachments: []models.Attachment{
 			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
@@ -108,32 +107,5 @@ func TestGitHubIssueAttachmentSurfacesUseCompactLabel(t *testing.T) {
 	detail := ansi.Strip((&TaskDetailModel{task: task}).renderAttachmentsSection(80))
 	if !strings.Contains(detail, "GH acme/roadmap#123") {
 		t.Fatalf("task detail attachments should label GitHub issue compactly, got:\n%s", detail)
-	}
-
-	peek := ansi.Strip(strings.Join(peekAttachmentsBlock(task, 40), "\n"))
-	if !strings.Contains(peek, "GitHub issue acme/roadmap#123") {
-		t.Fatalf("peek attachments should label GitHub issue compactly, got:\n%s", peek)
-	}
-}
-
-func TestPeekGitHubIssueAttachmentDoesNotOverflowWidth(t *testing.T) {
-	task := &models.Task{
-		Attachments: []models.Attachment{
-			{
-				Filename: "https://github.com/superlongownername/superlongrepositoryname/issues/123456",
-				IsURL:    true,
-			},
-		},
-	}
-
-	const width = 28
-	lines := peekAttachmentsBlock(task, width)
-	if len(lines) == 0 {
-		t.Fatal("expected lines, got none")
-	}
-	for i, line := range lines {
-		if got := lipgloss.Width(line); got > width {
-			t.Fatalf("line %d exceeds width %d: width=%d, content=%q", i, width, got, line)
-		}
 	}
 }

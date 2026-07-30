@@ -303,12 +303,6 @@ type ChecklistItemToggledMsg struct{ Task *models.Task }
 // Task Detail Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowTaskInspectorMsg opens the frozen narrow-terminal inspector overlay.
-type ShowTaskInspectorMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
 // ShowTaskDetailMsg opens the full-screen task detail view.
 type ShowTaskDetailMsg struct {
 	Task    *models.Task

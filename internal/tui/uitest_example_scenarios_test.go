@@ -22,8 +22,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"context-hub-open.json",
 		"notes-tool.json",
 		"rich-tools.json",
-		"outliner-inspector-wide-layout.json",
-		"outliner-inspector-narrow-layout.json",
+		"outliner-peek-wide-layout.json",
+		"outliner-peek-narrow-layout.json",
 		"outliner-bulk-action-intersection.json",
 		"theme-toggle.json",
 		"in-app-help.json",
@@ -36,6 +36,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 
 	retired := []string{
 		"command-action-help.json",
+		"outliner-inspector-narrow-layout.json",
+		"outliner-inspector-wide-layout.json",
 		"promoted-tools.json",
 		"task-composer-minimum-layout.json",
 		"task-detail-narrow-layout.json",

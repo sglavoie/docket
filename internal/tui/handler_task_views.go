@@ -8,10 +8,6 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowTaskInspectorMsg:
-		m.showInspectorOverlay(msg.Task, msg.Project)
-		return true, nil
-
 	case ShowTaskDetailMsg:
 		return m.handleShowTaskDetail(msg)
 

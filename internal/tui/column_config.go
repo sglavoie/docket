@@ -22,7 +22,6 @@ const (
 	ColRecurrence   = "recurrence"
 	ColSnooze       = "snooze"
 	ColDecisions    = "decisions"
-	ColShortID      = "short_id"
 	ColDescription  = "description"
 )
 
@@ -39,7 +38,6 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColRecurrence:   true,
 	ColSnooze:       true,
 	ColDecisions:    true,
-	ColShortID:      true,
 	ColDescription:  true,
 }
 

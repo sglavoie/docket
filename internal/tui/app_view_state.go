@@ -16,9 +16,6 @@ const minTerminalHeight = 20
 func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
-	if msg.Width >= inspectorWideBreakpoint && m.peekActive {
-		m.dismissPeek()
-	}
 	m.tooNarrow = msg.Width < minTerminalWidth
 	m.tooShort = msg.Height < minTerminalHeight
 	// All views (including full-height ones) are sized to height-2, matching the

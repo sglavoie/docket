@@ -151,7 +151,8 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	}
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
-	indicators := m.renderTaskIndicators(task, rowWidth)
+	indicatorSegments := m.renderTaskIndicatorSegments(task, proj)
+	indicators := indicatorSegments.render()
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands
 	// out.
@@ -175,17 +176,25 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
 	// Queue membership, multi-select state, tree position, and workflow state
 	// remain; lower-priority badges are progressively removed as space tightens.
-	titleTarget := min(10, max(rowWidth/4, 4))
+	titleTarget := min(8, max(rowWidth/4, 4))
 	availableTitleWidth := func() int {
 		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
 	}
 	if availableTitleWidth() < titleTarget {
-		indicators = ""
+		indicatorSegments.recurrence = ""
+		indicators = indicatorSegments.render()
 	}
 	if availableTitleWidth() < titleTarget {
-		prioritySegment = ""
+		indicatorSegments.checklist = ""
+		indicators = indicatorSegments.render()
 	}
 	if availableTitleWidth() < titleTarget {
+		indicatorSegments.dependencies = ""
+		indicators = indicatorSegments.render()
+	}
+	if availableTitleWidth() < titleTarget {
+		// Cross-project headers retain scope identity; at the narrowest/deepest
+		// rows the repeated inline badge yields to urgency and a readable title.
 		projBadge = ""
 	}
 	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
@@ -213,11 +222,13 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 
 	line = m.applyTaskRowLineStyle(line, task, proj, selected, rowWidth, rowIndex)
 
-	if m.previewMode && rowIndex == m.cursor {
+	if m.peekMode && rowIndex == m.cursor {
 		var b strings.Builder
 		b.WriteString(line)
-		indent := row.prefix + "    "
-		for _, previewLine := range inlinePreviewLines(task, indent, width) {
+		// Peek belongs to the selected task but is not another tree node. Preserve
+		// the nesting width for alignment without repeating connector glyphs.
+		indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
+		for _, previewLine := range m.inlinePeekLinesForRow(row, indent, width) {
 			b.WriteString("\n")
 			b.WriteString(previewLine)
 		}
@@ -259,6 +270,7 @@ func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
 			projectSlug = project.Name
 		}
 	}
+	projectSlug = truncateIntentional(projectSlug, 12, "…")
 	return projectColorStyle(project).Render("["+projectSlug+"]") + " "
 }
 
@@ -276,28 +288,68 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 	})
 }
 
-// renderTaskIndicators returns the dense-row inline metadata. Per the dense-row
-// hierarchy, normal outliner rows keep only the primary scan anchors inline:
-// the short ID (so keyboard nav targets stay visible) and the overdue/due-today
-// text (the urgency hero for date-driven attention). Every other secondary
-// indicator — future due dates, snooze, recurrence, progress, dependencies,
-// tags, comments, description, attachments, checklist, decisions —
-// moves to the selected-task metadata strip rendered beneath the row.
-func (m *OutlinerModel) renderTaskIndicators(task *models.Task, rowWidth int) string {
-	var parts []string
-	if m.columnConfig.IsVisible(ColShortID) {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
-	}
-	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
-		if dueStr := formatDueDate(task); dueStr != "" {
-			parts = append(parts, dueStr)
-		}
-	}
-	indicatorStr := JoinGroupParts(parts...)
-	if indicatorStr == "" {
+type taskIndicatorSegments struct {
+	due          string
+	snooze       string
+	dependencies string
+	recurrence   string
+	checklist    string
+}
+
+func (segments taskIndicatorSegments) render() string {
+	rendered := JoinGroupParts(
+		segments.due,
+		segments.snooze,
+		segments.dependencies,
+		segments.recurrence,
+		segments.checklist,
+	)
+	if rendered == "" {
 		return ""
 	}
-	return " " + indicatorStr
+	return " " + rendered
+}
+
+// renderTaskIndicatorSegments promotes operational task state into the row.
+// Rich content stays in Peek; tags and rich-record counts stay in their tools.
+// The caller progressively drops recurrence, checklist, then dependency counts
+// only when preserving all signals would leave an unreadably small title.
+func (m *OutlinerModel) renderTaskIndicatorSegments(
+	task *models.Task,
+	project *models.Project,
+) taskIndicatorSegments {
+	var segments taskIndicatorSegments
+	if task == nil {
+		return segments
+	}
+	if m.columnConfig.IsVisible(ColDueDate) {
+		segments.due = formatDueDate(task)
+	}
+	if task.SnoozedUntil != nil && m.columnConfig.IsVisible(ColSnooze) {
+		segments.snooze = MutedStyle.Render("zzz " + formatSnoozeDate(*task.SnoozedUntil))
+	}
+	if m.columnConfig.IsVisible(ColDependencies) {
+		needs, blocks := m.taskDependencyCounts(task, project)
+		segments.dependencies = renderDependencyIndicatorCounts(needs, blocks)
+	}
+	if task.IsRecurring() && m.columnConfig.IsVisible(ColRecurrence) {
+		segments.recurrence = MutedStyle.Render("↻")
+	}
+	if m.columnConfig.IsVisible(ColChecklist) {
+		segments.checklist = renderChecklistIndicator(task)
+	}
+	return segments
+}
+
+func (m *OutlinerModel) taskDependencyCounts(task *models.Task, project *models.Project) (int, int) {
+	if task == nil || project == nil {
+		return 0, 0
+	}
+	needs := len(task.DependsOn)
+	if m.workspaceResolver != nil {
+		return needs, len(m.workspaceResolver.GetBlockedByTasks(task, project))
+	}
+	return needs, len(project.GetBlockedByTasks(task))
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {

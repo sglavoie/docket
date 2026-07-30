@@ -74,9 +74,8 @@ func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testi
 	}
 }
 
-func TestSimplifiedEnterUsesResponsiveInspector(t *testing.T) {
+func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 	app := newUITestApp()
-	app.width = inspectorWideBreakpoint - 1
 	project := scopeTestProject("project", "Project", "parent")
 	task := project.Tasks[0]
 	child := makeTask("child", "Child", "")
@@ -91,29 +90,20 @@ func TestSimplifiedEnterUsesResponsiveInspector(t *testing.T) {
 		hasVisibleChildren: true,
 	}}
 
-	result := app.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreDetail,
-		Context: app.operationCommandContext(),
-		Source:  OperationSourceDirectKey,
-	})
-	if result.Err != nil {
-		t.Fatalf("execute detail: %v", result.Err)
-	}
-	detail, ok := result.Message.(ShowTaskInspectorMsg)
-	if !ok {
-		t.Fatalf("narrow Enter returned %T, want ShowTaskInspectorMsg", result.Message)
-	}
-	if detail.Task != task || detail.Project != project {
-		t.Fatalf("detail target = (%v, %v), want (%v, %v)", detail.Task, detail.Project, task, project)
-	}
-	app.width = inspectorWideBreakpoint
-	result = app.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreDetail,
-		Context: app.operationCommandContext(),
-		Source:  OperationSourceDirectKey,
-	})
-	if result.Err != nil || result.Message != nil {
-		t.Fatalf("wide Enter result = message %T err %v, want no-op", result.Message, result.Err)
+	for _, width := range []int{60, 99, 100, 160} {
+		app.crossOutliner.peekMode = false
+		app.width = width
+		result := app.operationExecutor.Execute(OperationExecutionRequest{
+			ID:      operationCoreDetail,
+			Context: app.operationCommandContext(),
+			Source:  OperationSourceDirectKey,
+		})
+		if result.Err != nil || result.Message != nil {
+			t.Fatalf("width %d Enter result = message %T err %v", width, result.Message, result.Err)
+		}
+		if !app.crossOutliner.peekMode {
+			t.Fatalf("width %d Enter did not enable Peek", width)
+		}
 	}
 	if len(app.crossOutliner.crossZoomStack) != 0 || len(app.crossOutliner.zoomStack) != 0 {
 		t.Fatal("Enter unexpectedly changed task zoom")

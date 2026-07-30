@@ -127,10 +127,6 @@ func (m *AppModel) popView() tea.Cmd {
 // propagate to views); cmd is non-nil when the pop triggers a side-effect
 // (e.g. ViewDidAppearMsg for the cross-project outliner).
 func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
-	if m.peekActive {
-		m.dismissPeek()
-		return true, nil
-	}
 	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
 		return false, nil
 	}
@@ -208,7 +204,6 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 }
 
 func (m *AppModel) clearTransientNavigationState() {
-	m.dismissPeek()
 	m.pendingChord = nil
 	m.clearPendingProjectArchive()
 	m.clearPendingTaskDelete()

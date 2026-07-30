@@ -145,9 +145,13 @@ func formEditFromTask(t *models.Task) *app.FormEdit {
 }
 
 // escSteps defines the Esc dismissal cascade for Outliner:
-// multi-select → search query → zoom stack (single-project or cross-project).
+// Peek → multi-select → search query → zoom stack (single-project or cross-project).
 func (m *OutlinerModel) escSteps() []EscStep {
 	return []EscStep{
+		{Active: func() bool { return m.peekMode }, Clear: func() {
+			m.peekMode = false
+			m.resetViewScrollOffset()
+		}},
 		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
 			m.toggleMultiSelectMode()
 		}},

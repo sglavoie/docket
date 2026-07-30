@@ -6,7 +6,6 @@ package tui
 //
 // Overlay visual contract:
 //   - Pickers/selection overlays (dimmedOverlayRenderers): dim
-//   - Peek/preview: dim (replaces context with detail)
 //   - Confirm dialogs: dim (destructive action requires focus)
 func (m *AppModel) applyOverlays(content string, h int) string {
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
@@ -14,11 +13,6 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		if popup := renderer.render(m.width); popup != "" {
 			content = OverlayPopupDimmed(content, popup, m.width, h)
 		}
-	}
-
-	// Overlay peek task detail if active
-	if popup := m.renderPeekOverlay(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
 	}
 
 	// Overlay confirm dialog last so it renders on top of all other popups

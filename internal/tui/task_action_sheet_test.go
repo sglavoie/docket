@@ -448,7 +448,7 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	}
 }
 
-func TestVisualSelectionRejectsInspectorWithoutCursorFallback(t *testing.T) {
+func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	app := newUITestApp()
 	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateReady}
 	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateReady}
@@ -469,9 +469,9 @@ func TestVisualSelectionRejectsInspectorWithoutCursorFallback(t *testing.T) {
 		Source:  OperationSourceDirectKey,
 	})
 	if !errors.Is(result.Err, ErrOperationUnavailable) {
-		t.Fatalf("visual-selection inspector error = %v, want unavailable", result.Err)
+		t.Fatalf("visual-selection Peek error = %v, want unavailable", result.Err)
 	}
 	if result.Message != nil || app.contextActionSheet != nil {
-		t.Fatal("visual-selection inspector fell back to the cursor or action sheet")
+		t.Fatal("visual-selection Peek fell back to the cursor or action sheet")
 	}
 }

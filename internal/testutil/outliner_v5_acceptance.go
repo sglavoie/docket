@@ -165,7 +165,7 @@ func OutlinerV5TargetContract() OutlinerV5Contract {
 			"no action appears in both direct grammar and the task menu",
 			"help and footer hints derive from the same operation descriptors",
 			"terminal and snoozed work are hidden by default",
-			"bulk mutations are atomic and structural edit inspector relation and clipboard actions reject an active selection",
+			"bulk mutations are atomic and structural edit Peek relation and clipboard actions reject an active selection",
 		},
 		RemovedCapabilities: []string{
 			"alternate primary presentations and command-only duplicates",

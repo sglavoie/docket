@@ -69,8 +69,8 @@ type OutlinerModel struct {
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
 
-	// Inline preview mode: show description/checklist below cursor task
-	previewMode bool
+	// Peek mode follows the cursor and shows additive task detail inline.
+	peekMode bool
 
 	// OpenAtTask, when set, positions the cursor on the given task the first
 	// time rebuildRows produces a non-empty row list. Cleared after first use.

@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -11,6 +12,13 @@ import (
 
 // IndicatorGroupSep is the dim separator rendered between indicator groups.
 var IndicatorGroupSep = MutedStyle.Render(" │ ")
+
+func formatSnoozeDate(snoozedUntil time.Time) string {
+	if snoozedUntil.Year() != time.Now().Year() {
+		return snoozedUntil.Format("Jan 2 '06")
+	}
+	return snoozedUntil.Format("Jan 2")
+}
 
 // JoinIndicatorGroups joins non-empty group strings with the shared dim separator.
 // Empty groups are skipped so no orphan separators appear.
@@ -255,12 +263,16 @@ func renderProgressFraction(task *models.Task) string {
 
 // renderDependencyIndicators renders compact dependency arrow indicators.
 func renderDependencyIndicators(task *models.Task, project *models.Project) string {
+	return renderDependencyIndicatorCounts(len(task.DependsOn), len(project.GetBlockedByTasks(task)))
+}
+
+func renderDependencyIndicatorCounts(needs, blocks int) string {
 	var parts []string
-	if len(task.DependsOn) > 0 {
-		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))))
+	if needs > 0 {
+		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("→%d", needs)))
 	}
-	if blockedBy := project.GetBlockedByTasks(task); len(blockedBy) > 0 {
-		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))))
+	if blocks > 0 {
+		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("←%d", blocks)))
 	}
 	return strings.Join(parts, " ")
 }

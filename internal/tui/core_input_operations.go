@@ -34,15 +34,26 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			Risk:                 risk,
 		}
 	}
-	// Edit and Detail are the two core operations the task action sheet reuses,
-	// so they must name the frozen row the sheet was opened on instead of
-	// inheriting a selection or project default that the cursor can outrun.
+	// Single-task operations must not inherit a visual selection or a project
+	// default when the cursor does not identify one task.
 	withTaskTarget := func(descriptor OperationDescriptor) OperationDescriptor {
 		descriptor.TargetSource = OperationTargetCurrentTask
 		descriptor.Applicability = func(ctx CommandContext) bool {
 			return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
 		}
 		return descriptor
+	}
+	peek := core(
+		operationCoreDetail,
+		"Toggle Task Peek",
+		OperationCategoryNavigation,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
+		"peek task",
+		"task preview",
+	)
+	peek.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
 	}
 	return []OperationDescriptor{
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
@@ -64,7 +75,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
-		withTaskTarget(core(operationCoreDetail, "Inspect Task", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskReadOnly, "task inspector", "task overview")),
+		peek,
 		core(operationCoreVisibleSearch, "Search Visible Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "filter visible list"),
 		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "projects", "contexts"),
 		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
@@ -174,10 +185,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreReorderUp:
 		message = commandMessage(m.coreReorder(-1))
 	case operationCoreDetail:
-		if m.width < inspectorWideBreakpoint {
-			if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil && project != nil {
-				message = ShowTaskInspectorMsg{Task: task, Project: project}
-			}
+		if out, _, ok := m.outlinerPrimary(); ok {
+			out.togglePeek()
 		}
 	case operationCoreVisibleSearch:
 		if out, _, ok := m.outlinerPrimary(); ok {
@@ -191,6 +200,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreSelectAll:
 		if out, _, ok := m.outlinerPrimary(); ok {
+			out.peekMode = false
 			out.multiSelectMode = true
 			out.selectAllVisible()
 			out.updateVisualSelectionStatus()

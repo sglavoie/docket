@@ -106,17 +106,24 @@ change:
 Pressing a chord prefix shows its valid continuations above the footer. `Esc`
 cancels that unfinished chord.
 
-### Inspector and multi-select
+### Peek and multi-select
 
-At 100 columns or wider, a read-only inspector follows the cursor in a right
-pane. Below 100 columns, `Enter` freezes the selected task in an inspector
-overlay and `Esc` closes it.
+The Outliner uses the full terminal width at every supported size. Task rows
+show workflow/blocking, conditional high priority, due and snooze dates,
+dependency counts, recurrence, and checklist progress; short task IDs are
+hidden.
+
+`Enter` toggles a session-only Peek directly beneath the cursor task. Peek
+follows navigation and shows at most five lines of additive detail:
+description, checklist items, dependency names, and recurrence. `Esc` closes
+Peek before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, snooze, and pin actions apply atomically
-to a selection. Structural, edit, inspector, relation, and clipboard operations
-do not fall back silently to the cursor while a selection exists. In
-multi-select, `Space` offers Delete only; successful delete clears selection,
-while other successful bulk actions preserve it.
+to a selection. Entering multi-select closes Peek. Structural, edit, Peek,
+relation, and clipboard operations do not fall back silently to the cursor
+while a selection exists. In multi-select, `Space` offers Delete only;
+successful delete clears selection, while other successful bulk actions
+preserve it.
 
 ## Capture grammar
 

@@ -274,17 +274,6 @@ type AppModel struct {
 	// the footer as a which-key row until the chord completes or is abandoned.
 	pendingChord []string
 
-	// Peek task overlay (space toggles task detail peek)
-	peekTask        *models.Task
-	peekProject     *models.Project
-	peekActive      bool
-	peekLeftOffset  int
-	peekRightOffset int
-	peekFocusRight  bool // false = left (description), true = right
-	peekLeftLines   int  // cached total line count for left pane
-	peekRightLines  int  // cached total line count for right pane
-	peekPaneHeight  int  // cached visible height per pane
-
 	// Export state for repeat-press clipboard behavior.
 	lastExportPath string
 	lastExportAt   time.Time

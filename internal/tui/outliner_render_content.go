@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 type outlinerViewport struct {
@@ -16,8 +14,8 @@ type outlinerViewport struct {
 	rowWidth    int
 }
 
-// renderOutlinerTreeContent renders the tree portion of the outliner, constrained to
-// the given width. Used by both full-width and split-pane layouts.
+// renderOutlinerTreeContent renders the full-width Outliner tree constrained to
+// the given width.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	notice := m.zoomNotice
 	m.zoomNotice = ""
@@ -40,24 +38,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	// not overflow terminal height.
 	titleExtra := wrappedLineCount(m.buildOutlinerTitleLine(width, modeLabel, searchIndicator), width) - 1
 
-	// Reserve one row for the selected-task metadata strip whenever a row is
-	// selectable. The strip stays blank when the cursor sits on a section
-	// header or separator so layout does not jitter as the selection moves.
-	stripReserved := m.cursor >= 0 && m.cursor < len(m.rows)
-	var stripTask *models.Task
-	if stripReserved {
-		row := m.rows[m.cursor]
-		if row.isTaskRow() {
-			stripTask = row.task
-		}
-	}
-
 	extraFooter := 0
 	if titleExtra > 0 {
 		extraFooter += titleExtra
-	}
-	if stripReserved {
-		extraFooter++
 	}
 	if notice != "" {
 		extraFooter += 2
@@ -74,29 +57,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	viewport := m.computeOutlinerViewport(width, extraFooter)
 	b.WriteString(m.renderOutlinerRows(viewport, width))
-
-	if stripReserved {
-		var strip string
-		if stripTask != nil {
-			alreadyShown := TaskMetadataAlreadyShown{Project: m.project != nil}
-			if m.columnConfig.ShouldShowPriority(stripTask.Priority) {
-				alreadyShown.Priority = true
-			}
-			if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(stripTask) {
-				alreadyShown.Due = true
-			}
-			strip = renderTaskMetadataStrip(TaskMetadataStripOpts{
-				Task:         stripTask,
-				Project:      m.resolveProjectForRow(m.rows[m.cursor]),
-				Runtime:      m.runtime,
-				Width:        width,
-				AlreadyShown: alreadyShown,
-				ColumnConfig: m.columnConfig,
-			})
-		}
-		b.WriteString("\n")
-		b.WriteString(strip)
-	}
 
 	if notice != "" {
 		b.WriteString("\n")
@@ -341,8 +301,12 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 	// drive a negative window slice.
 	visibleRows := max(m.contentHeight()-extraFooterLines, 1)
 
-	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].isTaskRow() {
-		visibleRows = max(visibleRows-inlinePreviewLineCount(m.rows[m.cursor].task), 1)
+	if m.peekMode && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].isTaskRow() {
+		// The shell footer may wrap to three lines at minimum width while views
+		// retain the standard two-line size budget. Reserve one guard row so a
+		// Peek attached to the last visible task is never the line shell clipping
+		// removes.
+		visibleRows = max(visibleRows-m.inlinePeekLineCount(m.rows[m.cursor], width-1)-1, 1)
 	}
 
 	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.rows), visibleRows, &m.viewScrollOffset)

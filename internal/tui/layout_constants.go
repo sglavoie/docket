@@ -8,11 +8,9 @@ package tui
 // metadata aligns vertically across all rows. Nil = current variable behavior.
 type ColumnLayout struct {
 	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
-	ShortIDWidth  int // max rendered "#N" visual width; 0 if column not visible
 	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
 	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
 	HasPriority   bool
-	HasShortID    bool
 	HasStatus     bool
 	HasProject    bool
 }

@@ -293,16 +293,6 @@ func (m *AppModel) cancelTypedOverlayPresentation(kind OverlayKind, key string) 
 		if key == taskComposerOverlayKey {
 			m.taskComposer = nil
 		}
-	case OverlayPeek:
-		m.peekTask = nil
-		m.peekProject = nil
-		m.peekActive = false
-		m.peekLeftOffset = 0
-		m.peekRightOffset = 0
-		m.peekFocusRight = false
-		m.peekLeftLines = 0
-		m.peekRightLines = 0
-		m.peekPaneHeight = 0
 	case OverlayViewMenu:
 		if key == manageHubViewMenuOverlayKey && m.manageHub != nil {
 			m.manageHub.closePicker()
