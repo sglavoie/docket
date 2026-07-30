@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -41,6 +43,16 @@ func TestBuildTreePrefix(t *testing.T) {
 				t.Errorf("buildTreePrefix(%v, %v)\ngot:  %q\nwant: %q", tt.ancestorIsLast, tt.isLast, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestRenderTaskPrefixKeepsLeafConnectorsCompact(t *testing.T) {
+	prefix, fold := renderTaskPrefix("├── ", "")
+	if got, want := ansi.Strip(prefix), "├── "; got != want {
+		t.Fatalf("leaf connector = %q, want compact %q", got, want)
+	}
+	if fold != "" {
+		t.Fatalf("leaf connector should not add a filler segment, got %q", ansi.Strip(fold))
 	}
 }
 

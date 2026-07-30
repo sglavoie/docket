@@ -31,9 +31,7 @@ type TaskLine struct {
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
 	// Optional elements
-	InNext          bool          // show "q " Next indicator in accent color (else "  "); superseded by InToday
-	InToday         bool          // show "w " Today indicator in accent color; takes precedence over InNext
-	Prefix          string        // after queue indicator (e.g., star indicator "★ ")
+	Prefix          string        // after cursor (e.g., star indicator "★ ")
 	PreBadges       string        // after cursor, before status badge (e.g., project name, checkbox, rank)
 	PostTitle       string        // after title (e.g., tags or section)
 	DueStr          string        // right-aligned due date string (pre-styled by caller)
@@ -54,8 +52,6 @@ type CrossProjectTaskLineOpts struct {
 	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
 	ShowDescription bool          // show description-indicator icon when task has a non-empty description
 	MaxProjectLen   int           // project name truncation; 0 defaults to 12
-	InNext          bool          // show "q " Next indicator in accent color (else "  "); superseded by InToday
-	InToday         bool          // show "w " Today indicator in accent color; takes precedence over InNext
 	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
 	StatusBadge     string        // pre-styled status badge override
 	DueStr          string        // right-aligned context string, already styled by caller
@@ -132,8 +128,6 @@ func RenderCrossProjectTaskLine(
 		Project:         proj,
 		IsSelected:      isCursor,
 		MaxTitle:        maxTitleLen,
-		InNext:          opts.InNext,
-		InToday:         opts.InToday,
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
@@ -173,7 +167,7 @@ func (tl TaskLine) Render() string {
 	segments := tl.buildTaskLineSegments()
 	segments = tl.applyHeroDemotion(segments)
 
-	line := tl.composeTaskLine(cursorPrefix, tl.queueIndicator(), segments)
+	line := tl.composeTaskLine(cursorPrefix, segments)
 	line = tl.appendDueString(line, segments.dueStr)
 	if tl.ViewWidth > 0 {
 		line = truncateToVisualWidth(line, tl.ViewWidth)
@@ -186,17 +180,6 @@ type taskLineSegments struct {
 	prioritySegment string
 	title           string
 	dueStr          string
-}
-
-func (tl TaskLine) queueIndicator() string {
-	switch {
-	case tl.InToday:
-		return ActiveStyle.Render("w") + " "
-	case tl.InNext:
-		return ActiveStyle.Render("q") + " "
-	default:
-		return "  "
-	}
 }
 
 func (tl TaskLine) buildTaskLineSegments() taskLineSegments {
@@ -280,11 +263,10 @@ func demotedTaskLineSegment(segment string) string {
 	return demoteBadge(trimmed) + " "
 }
 
-func (tl TaskLine) composeTaskLine(cursorPrefix, queueIndicator string, segments taskLineSegments) string {
+func (tl TaskLine) composeTaskLine(cursorPrefix string, segments taskLineSegments) string {
 	return fmt.Sprintf(
-		"%s%s%s%s%s %s%s%s",
+		"%s%s%s%s %s%s%s",
 		cursorPrefix,
-		queueIndicator,
 		tl.Prefix,
 		tl.PreBadges,
 		segments.statusIcon,

@@ -95,7 +95,6 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 	if m.crossOutliner == nil {
 		m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
-		m.crossOutliner.queueIDs = m.nextOrderIDs
 		m.crossOutliner.todayIDs = m.todayIDs
 		m.crossOutliner.SetSize(m.width, m.height-2)
 		m.wireSecondaryCoordinators(m.crossOutliner)

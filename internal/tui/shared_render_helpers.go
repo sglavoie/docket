@@ -88,7 +88,7 @@ func renderSectionHeader(opts SectionHeaderOpts) string {
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
 	countPart := MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
 
-	line := "  " + indPart + " " + namePart + " " + countPart
+	line := indPart + " " + namePart + " " + countPart
 
 	if opts.Width > 0 {
 		visible := lipgloss.Width(line)

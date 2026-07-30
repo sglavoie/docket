@@ -125,7 +125,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	badge := projectColorStyle(project).
 		Bold(true).
 		Render("[" + projectSlug + "]")
-	line := truncateToVisualWidth("    "+badge, rowWidth)
+	line := truncateToVisualWidth(" "+badge, rowWidth)
 
 	if selected {
 		if m.mutationFlash {
@@ -168,7 +168,6 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		}
 	}
 	cursorPrefix := RenderCursorPrefix()
-	queueIndicator := m.renderTaskQueueIndicator(task, proj)
 	checkbox := m.renderTaskCheckbox(row)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
 	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator)
@@ -199,9 +198,8 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	}
 	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
 
-	line := fmt.Sprintf("%s%s%s%s%s%s%s %s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s%s %s%s%s",
 		cursorPrefix,
-		queueIndicator,
 		checkbox,
 		prefixStr,
 		foldIndicator,
@@ -404,16 +402,6 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
 	return JoinGroupParts(contentParts...)
 }
 
-func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task, project *models.Project) string {
-	if m.todayIDs[taskIdentityFor(task, project)] {
-		return ActiveStyle.Render("w") + " "
-	}
-	if taskIsNext(task) {
-		return ActiveStyle.Render("q") + " "
-	}
-	return "  "
-}
-
 func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow) string {
 	if !m.multiSelectMode {
 		return ""
@@ -440,13 +428,8 @@ func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
 }
 
 func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
-	if foldIndicator == "" && prefix != "" {
-		runes := []rune(prefix)
-		if runes[len(runes)-1] == ' ' {
-			runes[len(runes)-1] = '─'
-		}
-		return MutedStyle.Render(string(runes)), MutedStyle.Render("─") + " "
-	}
+	// A leaf connector already communicates its tree position with ├──/└──.
+	// Do not extend it into the task-content gutter.
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
@@ -502,7 +485,7 @@ func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
 }
 
 func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators string) int {
-	return lipgloss.Width(cursorPrefix) + 2 + lipgloss.Width(checkbox) +
+	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(projBadge) + 1 +
 		lipgloss.Width(statusIcon) + 1 +

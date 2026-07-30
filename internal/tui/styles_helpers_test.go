@@ -57,9 +57,9 @@ func TestGetTitlePriorityStyleOutOfRange(t *testing.T) {
 	}
 }
 
-func TestRenderCursorPrefixDoesNotShowPinnedMarker(t *testing.T) {
-	if got, want := RenderCursorPrefix(), "   "; got != want {
-		t.Fatalf("RenderCursorPrefix() = %q, want fixed-width blank gutter %q", got, want)
+func TestRenderCursorPrefixUsesMinimalMargin(t *testing.T) {
+	if got, want := RenderCursorPrefix(), " "; got != want {
+		t.Fatalf("RenderCursorPrefix() = %q, want minimal blank margin %q", got, want)
 	}
 }
 

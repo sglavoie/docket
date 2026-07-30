@@ -245,9 +245,11 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 	}
 }
 
-// RenderCursorPrefix returns the fixed-width gutter before a task row.
+// RenderCursorPrefix returns the minimal left margin before a task row. Cursor
+// selection is expressed by the row highlight, so no wider marker gutter is
+// needed.
 func RenderCursorPrefix() string {
-	return "   "
+	return " "
 }
 
 // Hyperlink creates a clickable OSC 8 hyperlink in supported terminals.

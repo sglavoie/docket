@@ -39,8 +39,7 @@ type OutlinerModel struct {
 	projectService *ProjectService
 	quickEdit      *QuickEditComponent
 
-	// Queue / daily-plan indicator support
-	queueIDs map[TaskIdentity]bool
+	// Daily-plan membership support for building Today rows.
 	todayIDs map[TaskIdentity]bool
 
 	project *models.Project

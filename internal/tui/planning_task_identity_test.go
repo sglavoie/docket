@@ -115,20 +115,11 @@ func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
 	}
 }
 
-func TestPlanningRenderingAndOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
+func TestPlanningOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
 	alphaTask.WorkflowState = models.StateReady
 	betaTask.WorkflowState = models.StateReady
 	alphaID := taskIdentityFor(alphaTask, alpha)
-
-	outliner := NewOutlinerModel(nil, nil, nil)
-	outliner.todayIDs = map[TaskIdentity]bool{alphaID: true}
-	if got := outliner.renderTaskQueueIndicator(alphaTask, alpha); got == "  " {
-		t.Fatal("planned alpha task lost its Today indicator")
-	}
-	if got := outliner.renderTaskQueueIndicator(betaTask, beta); got != "  " {
-		t.Fatalf("beta duplicate inherited alpha's Today indicator: %q", got)
-	}
 
 	repo := testutil.NewMockRepository()
 	repo.Projects[alpha.ID] = alpha

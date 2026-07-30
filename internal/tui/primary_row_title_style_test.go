@@ -26,7 +26,28 @@ func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 		rowIndex := findPrimaryRowStyleOutlinerRow(t, m.rows, task.ID)
 		line := m.renderOutlinerTaskRow(m.rows[rowIndex], false, 120, 120, rowIndex, nil)
 		assertPrimaryRowTitleStyle(t, line, task)
-		assertQueueIndicatorOnly(t, line)
+		assertPlanningMarkerColumnRemoved(t, line, task)
+	}
+}
+
+func TestOutlinerChromeUsesCompactLeftMargins(t *testing.T) {
+	m := NewOutlinerModel(nil, nil, nil)
+
+	section := ansi.Strip(m.renderOutlinerSectionHeaderRow(outlinerRow{
+		IsSectionHeader: true,
+		SectionName:     "Ready",
+		SectionCount:    1,
+	}, false, 120, 0))
+	if strings.HasPrefix(section, " ") {
+		t.Fatalf("section header retained a left gutter: %q", section)
+	}
+
+	project := ansi.Strip(m.renderOutlinerProjectHeaderRow(outlinerRow{
+		IsProjectHeader: true,
+		ProjectID:       "roadmap",
+	}, false, 120, 0))
+	if !strings.HasPrefix(project, " [roadmap]") {
+		t.Fatalf("project header should retain only a one-cell left margin: %q", project)
 	}
 }
 
@@ -38,9 +59,8 @@ func newPrimaryRowStyleTask(t *testing.T, id string, shortID int, title string, 
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}
 	task.Priority = priority
-	// Queue membership is the StateNext workflow state, so the "q" indicator
-	// renders for StateNext tasks (the persisted order index is no longer the
-	// source of badge membership).
+	// StateNext retains its workflow semantics without needing a separate
+	// single-letter planning-marker column in the task row.
 	task.WorkflowState = models.StateNext
 	return task
 }
@@ -83,14 +103,12 @@ func assertPrimaryRowTitleStyle(t *testing.T, line string, task *models.Task) {
 	}
 }
 
-func assertQueueIndicatorOnly(t *testing.T, line string) {
+func assertPlanningMarkerColumnRemoved(t *testing.T, line string, task *models.Task) {
 	t.Helper()
 
 	plain := ansi.Strip(line)
-	if !strings.Contains(plain, "q ") {
-		t.Fatalf("expected queue indicator in:\n%s", plain)
-	}
-	if strings.Contains(plain, "*") {
-		t.Fatalf("queue indicator should not be accompanied by an active marker in:\n%s", plain)
+	wantPrefix := RenderCursorPrefix() + task.State().Icon()
+	if !strings.HasPrefix(plain, wantPrefix) {
+		t.Fatalf("planned task row should place its state badge directly after the cursor gutter; got:\n%s", plain)
 	}
 }

@@ -23,7 +23,6 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 			task := newTaskTitleRegressionTask(t, fmt.Sprintf("queued-p%d", priority), priority, fmt.Sprintf("Queued P%d title", priority))
 			line := TaskLine{
 				Task:      task,
-				InNext:    true,
 				MaxTitle:  80,
 				ViewWidth: 120,
 			}.Render()
