@@ -38,6 +38,146 @@ func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *test
 	}
 }
 
+func newOperationTagPickerForTest(t *testing.T, tags ...string) *OperationValuePickerModel {
+	t.Helper()
+	infos := make([]TagInfo, 0, len(tags))
+	for _, tag := range tags {
+		infos = append(infos, TagInfo{Name: tag})
+	}
+	source := ListSourceFromTags(infos)
+	for index := range source.Items {
+		source.Items[index].Data = source.Items[index].PrimaryText
+	}
+	picker, err := newOperationValuePickerModel(
+		OperationExecutionRequest{ID: operationTaskSetTags},
+		ValueProviderTags,
+		"Set Tags",
+		"Task",
+		source,
+		true,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("newOperationValuePickerModel: %v", err)
+	}
+	return picker
+}
+
+func TestOperationTagPickerCreatesSelectsAndAppliesNewTag(t *testing.T) {
+	picker := newOperationTagPickerForTest(t, "zeta")
+	picker.surface.SetQuery("stale")
+	if rendered := picker.render(90); !strings.Contains(rendered, "a add tag") {
+		t.Fatalf("Set Tags help does not advertise tag creation:\n%s", rendered)
+	}
+
+	_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: 'a'})
+	if dismissed || result != nil || !picker.tagAdder.AddTagMode {
+		t.Fatalf("a result = dismissed %v, message %T, add mode %v", dismissed, result, picker.tagAdder.AddTagMode)
+	}
+	if rendered := picker.render(90); !strings.Contains(rendered, "Add New Tag") {
+		t.Fatalf("add-tag overlay is missing its title:\n%s", rendered)
+	}
+
+	picker.tagAdder.AddTagInput.SetValue("  #alpha  ")
+	_, dismissed, result = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if dismissed || result != nil || picker.tagAdder.AddTagMode {
+		t.Fatalf("tag submit = dismissed %v, message %T, add mode %v", dismissed, result, picker.tagAdder.AddTagMode)
+	}
+	if got := picker.surface.Query().Raw; got != "" {
+		t.Fatalf("query after tag creation = %q, want cleared", got)
+	}
+	if !picker.surface.IsSelected("tag:alpha") {
+		t.Fatal("new tag is not selected")
+	}
+	items := picker.surface.Items()
+	if len(items) != 2 || items[0].ID != "tag:alpha" || items[1].ID != "tag:zeta" {
+		t.Fatalf("sorted tag items = %+v, want alpha then zeta", items)
+	}
+
+	_, dismissed, result = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !dismissed {
+		t.Fatal("Enter did not apply the completed tag selection")
+	}
+	selected, ok := result.(OperationValueSelectedMsg)
+	if !ok {
+		t.Fatalf("result = %T, want OperationValueSelectedMsg", result)
+	}
+	if got, want := selected.Value, []string{"alpha"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("selected tags = %#v, want %#v", got, want)
+	}
+}
+
+func TestOperationTagPickerValidatesInputAndEscapesBackToPicker(t *testing.T) {
+	picker := newOperationTagPickerForTest(t)
+	if rendered := picker.render(90); !strings.Contains(rendered, "a add tag") {
+		t.Fatalf("empty Set Tags help does not advertise tag creation:\n%s", rendered)
+	}
+
+	picker.handleKey(tea.KeyPressMsg{Code: 'a'})
+	for _, input := range []string{" ", "invalid,tag"} {
+		picker.tagAdder.AddTagInput.SetValue(input)
+		_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+		if dismissed || result != nil || !picker.tagAdder.AddTagMode || picker.tagAdder.AddTagError == "" {
+			t.Fatalf(
+				"invalid input %q = dismissed %v, message %T, add mode %v, error %q",
+				input,
+				dismissed,
+				result,
+				picker.tagAdder.AddTagMode,
+				picker.tagAdder.AddTagError,
+			)
+		}
+	}
+	if len(picker.surface.Items()) != 0 {
+		t.Fatalf("invalid input added tag rows: %+v", picker.surface.Items())
+	}
+
+	_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if dismissed || result != nil || picker.tagAdder.AddTagMode {
+		t.Fatalf("first Esc = dismissed %v, message %T, add mode %v", dismissed, result, picker.tagAdder.AddTagMode)
+	}
+	_, dismissed, result = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if !dismissed {
+		t.Fatal("second Esc did not dismiss Set Tags")
+	}
+	if _, ok := result.(OperationValueCanceledMsg); !ok {
+		t.Fatalf("second Esc result = %T, want OperationValueCanceledMsg", result)
+	}
+}
+
+func TestBulkOperationTagPickerCreatesAndPromotesTagsAsAddPatch(t *testing.T) {
+	picker := newOperationTagPickerForTest(t, "partial")
+	if err := picker.configureTagMembership(map[ListItemID]operationTagMembership{
+		"tag:partial": operationTagSome,
+	}); err != nil {
+		t.Fatalf("configureTagMembership: %v", err)
+	}
+
+	for _, input := range []string{" #partial ", "fresh"} {
+		picker.handleKey(tea.KeyPressMsg{Code: 'a'})
+		picker.tagAdder.AddTagInput.SetValue(input)
+		_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+		if dismissed || result != nil || picker.tagAdder.AddTagMode {
+			t.Fatalf("add %q = dismissed %v, message %T, add mode %v", input, dismissed, result, picker.tagAdder.AddTagMode)
+		}
+	}
+	if items := picker.surface.Items(); len(items) != 2 {
+		t.Fatalf("duplicate tag created an extra row: %+v", items)
+	}
+
+	value, err := picker.selectedValue()
+	if err != nil {
+		t.Fatalf("selectedValue: %v", err)
+	}
+	patch, ok := value.(OperationTagsValue)
+	if !ok {
+		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+	}
+	if !reflect.DeepEqual(patch.Add, []string{"fresh", "partial"}) || len(patch.Remove) != 0 {
+		t.Fatalf("tag patch = %+v, want add fresh and partial only", patch)
+	}
+}
+
 func TestOperationValuePickerMultiSelectionReturnsStableValues(t *testing.T) {
 	source := ListSource{Items: []ListItem{
 		{ID: "tag:z", PrimaryText: "z", Data: "z"},

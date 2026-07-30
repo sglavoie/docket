@@ -95,6 +95,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"Removed keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc` have no compatibility action",
+		"`a` creates and selects a new tag",
 	})
 }
 

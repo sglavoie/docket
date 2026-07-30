@@ -7,6 +7,8 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // TagAdder provides shared add-tag mode state and logic.
@@ -45,56 +47,35 @@ func (a *TagAdder) EnterAddMode() tea.Cmd {
 	return textinput.Blink
 }
 
-// HandleAddTagKey processes a key message while in add-tag mode.
-// The picker parameter is used to manipulate the item list and selection.
-// Returns (handled, cmd). The caller should return (m, cmd) when handled is true.
-func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapter[TagInfo]) (bool, tea.Cmd) {
+func (a *TagAdder) leaveAddMode() {
+	a.AddTagMode = false
+	a.AddTagError = ""
+	a.AddTagInput.Blur()
+}
+
+// handleAddTagInputKey owns the shared input lifecycle for every tag-creation
+// surface. The caller supplies picker-specific insertion and selection behavior
+// so each surface can retain its own stable IDs and selection semantics.
+func (a *TagAdder) handleAddTagInputKey(
+	msg tea.KeyPressMsg,
+	submit func(string) error,
+) (bool, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		a.AddTagMode = false
-		a.AddTagError = ""
-		a.AddTagInput.Blur()
+		a.leaveAddMode()
 		return true, nil
 
 	case "enter":
-		// Strip a leading '#' so users who type quick-capture syntax
-		// (#backend) don't end up with tags literally containing a hash;
-		// tag rendering always prepends '#' itself.
-		tagName := strings.TrimSpace(a.AddTagInput.Value())
-		tagName = strings.TrimSpace(strings.TrimPrefix(tagName, "#"))
-		if tagName == "" {
-			a.AddTagError = "Tag name cannot be empty"
-			return true, nil
-		}
-
-		// Check for duplicate
-		for _, item := range picker.SourceItems() {
-			if item.Name == tagName {
-				picker.PreSelectByID(tagName)
-				picker.SetCursorToID(tagName)
-				a.AddTagError = fmt.Sprintf("Tag '%s' already exists - selected it", tagName)
-				a.AddTagMode = false
-				a.AddTagInput.Blur()
-				return true, nil
-			}
-		}
-
-		// Add new tag
-		items := append(picker.SourceItems(), TagInfo{Name: tagName, TaskCount: 0})
-		sort.Slice(items, func(i, j int) bool {
-			return items[i].Name < items[j].Name
-		})
-		if err := picker.ReplaceItems(items); err != nil {
+		tagName := models.NormalizeTag(a.AddTagInput.Value())
+		if err := models.ValidateTag(tagName); err != nil {
 			a.AddTagError = err.Error()
 			return true, nil
 		}
-		picker.Filter(picker.SearchQuery())
-		picker.PreSelectByID(tagName)
-		picker.SetCursorToID(tagName)
-
-		a.AddTagMode = false
-		a.AddTagError = ""
-		a.AddTagInput.Blur()
+		if err := submit(tagName); err != nil {
+			a.AddTagError = err.Error()
+			return true, nil
+		}
+		a.leaveAddMode()
 		return true, nil
 
 	default:
@@ -104,6 +85,35 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapt
 	}
 }
 
+// HandleAddTagKey processes a key message while in add-tag mode.
+// The picker parameter is used to manipulate the item list and selection.
+// Returns (handled, cmd). The caller should return (m, cmd) when handled is true.
+func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapter[TagInfo]) (bool, tea.Cmd) {
+	return a.handleAddTagInputKey(msg, func(tagName string) error {
+		// Check for duplicate
+		for _, item := range picker.SourceItems() {
+			if item.Name == tagName {
+				picker.PreSelectByID(tagName)
+				picker.SetCursorToID(tagName)
+				return nil
+			}
+		}
+
+		// Add new tag
+		items := append(picker.SourceItems(), TagInfo{Name: tagName, TaskCount: 0})
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].Name < items[j].Name
+		})
+		if err := picker.ReplaceItems(items); err != nil {
+			return err
+		}
+		picker.Filter(picker.SearchQuery())
+		picker.PreSelectByID(tagName)
+		picker.SetCursorToID(tagName)
+		return nil
+	})
+}
+
 // RenderAddTagMode renders the add tag input UI as a fullscreen view.
 func (a *TagAdder) RenderAddTagMode(width, height int) string {
 	var b strings.Builder
@@ -111,7 +121,10 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 	b.WriteString(renderFullscreenTitle("Add New Tag", ""))
 	b.WriteString("\n\n")
 
-	b.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf(
+		"Enter a tag name (max %d characters)",
+		a.AddTagInput.CharLimit,
+	)))
 	b.WriteString("\n\n")
 	b.WriteString(a.AddTagInput.View())
 	b.WriteString("\n\n")

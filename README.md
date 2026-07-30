@@ -70,6 +70,10 @@ The operation descriptors are the single source for dispatch, the compact
 footer, chord hints, and `?` help. Removed keys such as `m`, `:`, `R`, `p`, and
 `Ctrl+Esc` have no compatibility action.
 
+`#` opens Set Tags for the current task or visual selection. Inside the
+overlay, `Space` toggles tags, `a` creates and selects a new tag, and `Enter`
+applies the pending changes.
+
 ### Task actions
 
 `Space` contains exactly:

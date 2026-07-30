@@ -83,6 +83,7 @@ type OperationValuePickerModel struct {
 	searching  bool
 	tagInitial map[ListItemID]operationTagMembership
 	tagCurrent map[ListItemID]operationTagMembership
+	tagAdder   TagAdder
 }
 
 func newOperationValuePickerModel(
@@ -119,19 +120,29 @@ func newOperationValuePickerModel(
 			surface.SetCursorToID(selected[0])
 		}
 	}
-	return &OperationValuePickerModel{
+	model := &OperationValuePickerModel{
 		surface:  surface,
 		request:  request,
 		provider: provider,
 		title:    title,
 		subtitle: subtitle,
 		multi:    multi,
-	}, nil
+	}
+	if provider == ValueProviderTags {
+		model.tagAdder = NewTagAdder()
+	}
+	return model, nil
 }
 
 func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
 		return nil, true, OperationValueCanceledMsg{}
+	}
+	if model.provider == ValueProviderTags && model.tagAdder.AddTagMode {
+		handled, cmd := model.tagAdder.handleAddTagInputKey(msg, model.addOrSelectTag)
+		if handled {
+			return cmd, false, nil
+		}
 	}
 	key := msg.String()
 	if model.searching {
@@ -166,6 +177,10 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		return nil, true, OperationValueCanceledMsg{}
 	case "/":
 		model.searching = true
+	case "a":
+		if model.provider == ValueProviderTags {
+			return model.tagAdder.EnterAddMode(), false, nil
+		}
 	case "up", "k", "ctrl+p":
 		model.surface.MoveCursor(-1)
 	case "down", "j", "ctrl+n":
@@ -207,6 +222,60 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		}
 	}
 	return nil, false, nil
+}
+
+func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
+	id := ListItemID("tag:" + tag)
+	items := model.surface.Items()
+	for _, item := range items {
+		if item.ID == id {
+			model.surface.SetQuery("")
+			return model.selectTagForAll(id)
+		}
+	}
+
+	source := ListSourceFromTags([]TagInfo{{Name: tag}})
+	if len(source.Items) != 1 {
+		return fmt.Errorf("building tag row for %q", tag)
+	}
+	item := source.Items[0]
+	item.Data = tag
+	items = append(items, item)
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].PrimaryText < items[j].PrimaryText
+	})
+
+	model.surface.SetQuery("")
+	if err := model.surface.SetItems(items); err != nil {
+		return err
+	}
+	if model.tagInitial != nil {
+		model.tagInitial[id] = operationTagNone
+		model.tagCurrent[id] = operationTagAll
+	}
+	return model.selectTagForAll(id)
+}
+
+func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
+	if model.tagCurrent != nil {
+		model.tagCurrent[id] = operationTagAll
+	}
+	if !model.surface.IsSelected(id) {
+		selected := model.surface.SelectedIDs()
+		selected = append(selected, id)
+		if err := model.surface.SetSelectedIDs(selected); err != nil {
+			return err
+		}
+	}
+	if model.tagCurrent != nil {
+		if err := model.syncTagMembershipRows(); err != nil {
+			return err
+		}
+	}
+	if !model.surface.SetCursorToID(id) {
+		return fmt.Errorf("%w: %s", ErrListItemNotFound, id)
+	}
+	return nil
 }
 
 func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
@@ -318,6 +387,23 @@ func (model *OperationValuePickerModel) render(width int) string {
 		return ""
 	}
 	innerWidth := min(max(width*3/5, 46), max(width-6, 24))
+	if model.provider == ValueProviderTags && model.tagAdder.AddTagMode {
+		content := MutedStyle.Render(fmt.Sprintf(
+			"Enter a tag name (max %d characters)",
+			model.tagAdder.AddTagInput.CharLimit,
+		)) + "\n\n" + model.tagAdder.AddTagInput.View()
+		if model.tagAdder.AddTagError != "" {
+			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.tagAdder.AddTagError)
+		}
+		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Add New Tag")
+		return renderOverlayBox(
+			content,
+			innerWidth,
+			title,
+			HelpStyle.Render("Enter add tag · Esc cancel"),
+			lipgloss.NewStyle().Foreground(ColorPrimary),
+		)
+	}
 	listHeight := min(max(len(model.surface.Rows()), 6), 15)
 	query := model.surface.Query().Raw
 	search := "Press / to search"
@@ -338,6 +424,9 @@ func (model *OperationValuePickerModel) render(width int) string {
 	help := "Enter choose · / search · Esc back"
 	if model.multi {
 		help = "Space toggle · Enter apply · Esc back"
+	}
+	if model.provider == ValueProviderTags {
+		help = "Space toggle · a add tag · Enter apply · Esc back"
 	}
 	return renderOverlayBox(
 		content,
