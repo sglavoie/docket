@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -321,6 +323,76 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Errorf("seeded selection = %v, want [tag:deep]", selected)
 		}
 	})
+}
+
+func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testing.T) {
+	app := newUITestApp()
+	project := &models.Project{
+		ID:   "project",
+		Name: "Project",
+		Slug: "project",
+		Tasks: []*models.Task{
+			{ID: "inbox-1", Title: "Inbox one", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"focus"}},
+			{ID: "inbox-2", Title: "Inbox two", WorkflowState: models.StateInbox, Priority: 2, Tags: []string{"focus"}},
+			{ID: "inbox-other-tag", Title: "Other tag", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"other"}},
+			{ID: "ready", Title: "Ready", WorkflowState: models.StateReady, Priority: 1, Tags: []string{"focus"}},
+			{ID: "waiting-too-low", Title: "Waiting", WorkflowState: models.StateWaiting, Priority: 5, Tags: []string{"focus"}},
+			{ID: "done", Title: "Done", WorkflowState: models.StateDone, Priority: 1, Tags: []string{"focus"}},
+		},
+	}
+	project.BuildTaskTree()
+	setTestAppProjects(app, project)
+	outliner := app.crossOutliner
+	outliner.loadedProjects = []*models.Project{project}
+	outliner.filter.Priority = 2
+	outliner.filter.Tags = map[string]bool{"focus": true}
+	selectedStates, err := models.NewWorkflowStateSet(models.StateWaiting)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outliner.filter.setStateFilter(selectedStates, true)
+	outliner.crossForceRebuild = true
+	outliner.rebuildRows()
+
+	picker, err := app.newFilterStatesPicker(OperationExecutionRequest{})
+	if err != nil {
+		t.Fatalf("newFilterStatesPicker() error = %v", err)
+	}
+	items := make(map[ListItemID]ListItem)
+	for _, item := range picker.surface.Items() {
+		items[item.ID] = item
+	}
+
+	for id, want := range map[ListItemID]string{
+		"state:inbox":   "inbox ⋅ 2",
+		"state:ready":   "ready ⋅ 1",
+		"state:waiting": "waiting ⋅ 0",
+		"state:done":    "done ⋅ 1",
+	} {
+		item, ok := items[id]
+		if !ok {
+			t.Fatalf("state picker omitted %s", id)
+		}
+		if got := ansi.Strip(item.SecondaryText); got != want {
+			t.Errorf("%s secondary text = %q, want %q", id, got, want)
+		}
+	}
+
+	waiting := items["state:waiting"].SecondaryText
+	lightRedZero := lipgloss.NewStyle().Foreground(ColorError).Faint(true).Render("0")
+	if !strings.HasSuffix(waiting, "⋅ "+lightRedZero) {
+		t.Errorf("zero count is not rendered with the prospective zero style: %q", waiting)
+	}
+	if got := outliner.filter.States.Values(); len(got) != 1 || got[0] != models.StateWaiting {
+		t.Errorf("building counts mutated active state filter to %v", got)
+	}
+
+	rendered := ansi.Strip(picker.render(120))
+	for _, want := range []string{"inbox ⋅ 2", "waiting ⋅ 0"} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("rendered state picker omitted %q:\n%s", want, rendered)
+		}
+	}
 }
 
 func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {

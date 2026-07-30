@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -244,8 +246,10 @@ func (m *AppModel) newFilterStatesPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	source := ListSourceFromWorkflowStates(models.AllWorkflowStates())
+	counts := m.prospectiveStateFilterCounts()
 	for index := range source.Items {
 		if state, ok := source.Items[index].Data.(models.WorkflowState); ok {
+			source.Items[index].SecondaryText += " " + renderProspectiveFilterCount(counts[state])
 			source.Items[index].Data = state.String()
 		}
 	}
@@ -264,6 +268,95 @@ func (m *AppModel) newFilterStatesPicker(
 		true,
 		selected,
 	)
+}
+
+// prospectiveStateFilterCounts returns the matching-task buckets available to
+// the state facet. The existing state selection is replaced because workflow
+// states compose with OR; every other active facet, search, mode,
+// Context/project scope, and zoom remain in force.
+func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
+	counts := make(map[models.WorkflowState]int, len(models.AllWorkflowStates()))
+	if m == nil || m.crossOutliner == nil {
+		return counts
+	}
+
+	filter := copyCommonFilterState(&m.crossOutliner.filter.CommonFilterState)
+	states, err := models.NewWorkflowStateSet(models.AllWorkflowStates()...)
+	if err != nil {
+		return counts
+	}
+	filter.setStateFilter(states, true)
+	return prospectiveOutlinerStateCounts(m.crossOutliner, filter)
+}
+
+// prospectiveOutlinerStateCounts runs the canonical row projection on an
+// isolated model copy. Expanding task trees and sections keeps presentation
+// folds from changing facet totals, while rebuilding through the normal mode
+// pipeline preserves all actual scope and visibility rules.
+func prospectiveOutlinerStateCounts(
+	outliner *OutlinerModel,
+	filter *CommonFilterState,
+) map[models.WorkflowState]int {
+	counts := make(map[models.WorkflowState]int, len(models.AllWorkflowStates()))
+	if outliner == nil || filter == nil {
+		return counts
+	}
+
+	projection := *outliner
+	projection.filter.CommonFilterState = *copyCommonFilterState(filter)
+	projection.rows = nil
+	projection.OpenAtTask = nil
+	projection.expandedNodes = make(map[TaskIdentity]bool)
+	projection.collapsedSections = make(map[string]bool)
+	projection.zoomStack = append([]ZoomEntry(nil), outliner.zoomStack...)
+	projection.crossZoomStack = append(
+		[]CrossProjectZoomEntry(nil),
+		outliner.crossZoomStack...,
+	)
+	projection.pinnedTagTab = make(map[string]int, len(outliner.pinnedTagTab))
+	for key, value := range outliner.pinnedTagTab {
+		projection.pinnedTagTab[key] = value
+	}
+	projection.crossForceRebuild = true
+	projection.rebuildRows()
+
+	// A matching descendant can retain a non-matching ancestor as hierarchy
+	// context. Count only rows that satisfy the prospective predicate themselves.
+	now := time.Now()
+	resolver := projection.newWorkspaceFilterResolver(projection.workModeScopeProjects())
+	matches := projection.workModeTaskFilterWithResolverAt(now, resolver)
+	seen := make(map[TaskIdentity]struct{})
+	for _, row := range projection.rows {
+		if !row.isTaskRow() || row.task == nil {
+			continue
+		}
+		project := projection.resolveProjectForRow(row)
+		if !matches(row.task, project) {
+			continue
+		}
+		projectID := row.ProjectID
+		if projectID == "" && project != nil {
+			projectID = project.ID
+		}
+		identity := TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
+		if _, duplicate := seen[identity]; duplicate {
+			continue
+		}
+		seen[identity] = struct{}{}
+		counts[row.task.State()]++
+	}
+	return counts
+}
+
+func renderProspectiveFilterCount(count int) string {
+	if count == 0 {
+		zero := lipgloss.NewStyle().
+			Foreground(ColorError).
+			Faint(true).
+			Render("0")
+		return "⋅ " + zero
+	}
+	return fmt.Sprintf("⋅ %d", count)
 }
 
 // newFilterTagsPicker is the ft multi-select picker over the active scope's
