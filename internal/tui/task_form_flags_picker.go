@@ -47,7 +47,7 @@ func (p *formFlagsPicker) render(width int) string {
 
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(width*2/5, 40), width-4)
-	innerWidth := max(maxWidth, footerMinInner)
+	innerWidth := min(max(maxWidth, footerMinInner), max(width-4, 1))
 
 	type row struct {
 		label string
@@ -65,8 +65,8 @@ func (p *formFlagsPicker) render(width int) string {
 		}
 		line := fmt.Sprintf(" %s %s", checked, r.label)
 		lineWidth := lipgloss.Width(line)
-		if lineWidth < innerWidth-2 {
-			line += strings.Repeat(" ", innerWidth-2-lineWidth)
+		if lineWidth < innerWidth-4 {
+			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
 			line = SelectedStyle.Render(line)
@@ -77,5 +77,5 @@ func (p *formFlagsPicker) render(width int) string {
 		}
 	}
 
-	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

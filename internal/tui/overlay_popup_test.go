@@ -1,0 +1,141 @@
+package tui
+
+import (
+	"strings"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
+)
+
+func TestOverlayPopupDimmedKeepsCompleteHaloInsideViewport(t *testing.T) {
+	const (
+		baseWidth  = 30
+		baseHeight = 12
+		frameWidth = 18
+	)
+	baseLine := strings.Repeat(".", baseWidth)
+	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
+	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	popup := renderOverlayBox("body", frameWidth, "Title", "Enter · Esc", borderStyle)
+
+	rendered := OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
+	lines := strings.Split(rendered, "\n")
+	if got := len(lines); got != baseHeight {
+		t.Fatalf("composed height = %d, want %d", got, baseHeight)
+	}
+	for i, line := range lines {
+		if got := lipgloss.Width(line); got != baseWidth {
+			t.Fatalf("composed line %d width = %d, want %d", i, got, baseWidth)
+		}
+	}
+
+	popupHeight := lipgloss.Height(popup)
+	startRow := baseHeight - popupHeight
+	startCol := (baseWidth - lipgloss.Width(popup)) / 2
+	plain := make([]string, len(lines))
+	for i, line := range lines {
+		plain[i] = ansi.Strip(line)
+	}
+
+	topHalo := ansi.Cut(plain[startRow], startCol, startCol+lipgloss.Width(popup))
+	bottomHalo := ansi.Cut(plain[baseHeight-1], startCol, startCol+lipgloss.Width(popup))
+	if strings.TrimSpace(topHalo) != "" || strings.TrimSpace(bottomHalo) != "" {
+		t.Fatalf("top or bottom halo was clipped:\n%s", strings.Join(plain, "\n"))
+	}
+
+	topBorder := ansi.Cut(plain[startRow+1], startCol, startCol+lipgloss.Width(popup))
+	bottomBorder := ansi.Cut(plain[baseHeight-2], startCol, startCol+lipgloss.Width(popup))
+	if !strings.HasPrefix(topBorder, " ╭") || !strings.HasSuffix(topBorder, "╮ ") {
+		t.Fatalf("top border lacks both side halo cells: %q", topBorder)
+	}
+	if !strings.HasPrefix(bottomBorder, " ╰") || !strings.HasSuffix(bottomBorder, "╯ ") {
+		t.Fatalf("bottom border lacks both side halo cells: %q", bottomBorder)
+	}
+}
+
+func TestOverlayPopupDimmedFitsTallPopupWithoutClippingFrame(t *testing.T) {
+	const (
+		baseWidth  = 30
+		baseHeight = 10
+		frameWidth = 18
+	)
+	baseLine := strings.Repeat(".", baseWidth)
+	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
+	content := strings.Repeat("row\n", 16) + "last row"
+	borderStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	popup := renderOverlayBox("body\n"+content, frameWidth, "Confirm", "y · n", borderStyle)
+	if lipgloss.Height(popup) <= baseHeight {
+		t.Fatal("test popup must exceed the viewport height")
+	}
+
+	rendered := OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
+	lines := strings.Split(ansi.Strip(rendered), "\n")
+	if got := len(lines); got != baseHeight {
+		t.Fatalf("composed height = %d, want %d", got, baseHeight)
+	}
+
+	startCol := (baseWidth - lipgloss.Width(popup)) / 2
+	topHalo := ansi.Cut(lines[0], startCol, startCol+lipgloss.Width(popup))
+	topBorder := ansi.Cut(lines[1], startCol, startCol+lipgloss.Width(popup))
+	bottomBorder := ansi.Cut(lines[baseHeight-2], startCol, startCol+lipgloss.Width(popup))
+	bottomHalo := ansi.Cut(lines[baseHeight-1], startCol, startCol+lipgloss.Width(popup))
+	if strings.TrimSpace(topHalo) != "" || strings.TrimSpace(bottomHalo) != "" {
+		t.Fatalf("height fitting clipped an outer halo row:\n%s", strings.Join(lines, "\n"))
+	}
+	if !strings.HasPrefix(topBorder, " ╭") || !strings.HasSuffix(topBorder, "╮ ") {
+		t.Fatalf("height fitting clipped the top border: %q", topBorder)
+	}
+	if !strings.HasPrefix(bottomBorder, " ╰") || !strings.HasSuffix(bottomBorder, "╯ ") {
+		t.Fatalf("height fitting clipped the bottom border: %q", bottomBorder)
+	}
+	if !strings.Contains(rendered, "Confirm") || !strings.Contains(rendered, "y · n") {
+		t.Fatalf("height fitting dropped title or help:\n%s", strings.Join(lines, "\n"))
+	}
+}
+
+func TestOverlayPopupDimmedPreservesNestedModalFrames(t *testing.T) {
+	const (
+		baseWidth  = 44
+		baseHeight = 18
+	)
+	baseLine := strings.Repeat(".", baseWidth)
+	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
+	parent := renderOverlayBox(
+		"parent content\nline two\nline three\nline four\nline five\nline six",
+		30,
+		"Parent actions",
+		"Enter",
+		lipgloss.NewStyle().Foreground(ColorPrimary),
+	)
+	child := renderOverlayBox(
+		"Proceed?",
+		18,
+		"Confirm",
+		"y · n",
+		lipgloss.NewStyle().Foreground(ColorWarning),
+	)
+
+	withParent := OverlayPopupDimmed(base, parent, baseWidth, baseHeight)
+	rendered := OverlayPopupDimmed(withParent, child, baseWidth, baseHeight)
+	plain := ansi.Strip(rendered)
+	if !strings.Contains(plain, "Parent actions") || !strings.Contains(plain, "Confirm") {
+		t.Fatalf("nested composition dropped a modal identity:\n%s", plain)
+	}
+	for i, line := range strings.Split(rendered, "\n") {
+		if got := lipgloss.Width(line); got != baseWidth {
+			t.Fatalf("nested line %d width = %d, want %d", i, got, baseWidth)
+		}
+	}
+
+	childWidth := lipgloss.Width(child)
+	startCol := (baseWidth - childWidth) / 2
+	lines := strings.Split(plain, "\n")
+	childTop := baseHeight - lipgloss.Height(child)
+	topBorder := ansi.Cut(lines[childTop+1], startCol, startCol+childWidth)
+	bottomBorder := ansi.Cut(lines[baseHeight-2], startCol, startCol+childWidth)
+	if !strings.HasPrefix(topBorder, " ╭") || !strings.HasSuffix(topBorder, "╮ ") ||
+		!strings.HasPrefix(bottomBorder, " ╰") || !strings.HasSuffix(bottomBorder, "╯ ") {
+		t.Fatalf("top nested modal lost its complete frame:\n%s", plain)
+	}
+}

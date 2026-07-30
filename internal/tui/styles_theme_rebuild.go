@@ -96,6 +96,7 @@ func rebuildBadgeStyles() {
 }
 
 func rebuildLayoutStyles() {
+	OverlayHaloStyle = lipgloss.NewStyle().Background(ColorDimmedBg)
 	BoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(1, 2)
 	StatusBarStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Background(ColorBackground).Padding(0, 1)
 	ProgressFullStyle = lipgloss.NewStyle().Foreground(ColorSuccess)

@@ -94,7 +94,7 @@ func (model *OperationTextPromptModel) render(width int) string {
 		content.WriteString(ValidationErrorStyle.Render(model.notice))
 	}
 
-	return renderTitledBox(
+	return renderOverlayBox(
 		content.String(),
 		innerWidth,
 		lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(model.title),

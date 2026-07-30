@@ -54,7 +54,8 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set State")
 	footer := HelpStyle.Render("j/k: move · Enter: select · Esc: cancel")
-	innerWidth := min(max(width*2/5, 36), width-4)
+	minInnerWidth := max(lipgloss.Width(title), lipgloss.Width(footer)) + 4
+	innerWidth := min(max(max(width*2/5, 36), minInnerWidth), max(width-4, 1))
 
 	var content strings.Builder
 	for i, state := range states {
@@ -63,8 +64,8 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 			currentMark = "● "
 		}
 		line := fmt.Sprintf(" %s%s %s", currentMark, state.Icon(), state.String())
-		if lineWidth := lipgloss.Width(line); lineWidth < innerWidth-2 {
-			line += strings.Repeat(" ", innerWidth-2-lineWidth)
+		if lineWidth := lipgloss.Width(line); lineWidth < innerWidth-4 {
+			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
 			line = SelectedStyle.Render(line)
@@ -74,5 +75,5 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 			content.WriteString("\n")
 		}
 	}
-	return renderTitledBox(content.String(), innerWidth, title, footer, borderStyle)
+	return renderOverlayBox(content.String(), innerWidth, title, footer, borderStyle)
 }

@@ -17,8 +17,10 @@ var (
 	// readable contrast on light themes where Faint alone would wash text out.
 	DimStyle = lipgloss.NewStyle().Foreground(ColorDimmed).Faint(true)
 
-	// ShadowStyle renders a dark background cell for overlay drop-shadows (1 char wide).
-	ShadowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#1a1a1a"))
+	// OverlayHaloStyle renders the subtle, theme-aware ring surrounding modal
+	// overlays. Unlike a directional drop shadow, the ring appears on all four
+	// sides so every overlay has a complete visual boundary.
+	OverlayHaloStyle = lipgloss.NewStyle().Background(ColorDimmedBg)
 
 	// BlockedRowStyle applies a subtle red background tint to blocked rows.
 	BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))

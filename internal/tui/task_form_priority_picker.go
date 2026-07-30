@@ -76,7 +76,7 @@ func (p *formPriorityPicker) render(width, current int) string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
-	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(width-4, 1))
 
 	var content strings.Builder
 	for i, e := range formPriorityEntries {
@@ -89,8 +89,8 @@ func (p *formPriorityPicker) render(width, current int) string {
 		keyHint := MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
 		line := fmt.Sprintf(" %s%s %s %s", currentMark, icon, e.label, keyHint)
 		lineWidth := lipgloss.Width(line)
-		if lineWidth < innerWidth-2 {
-			line += strings.Repeat(" ", innerWidth-2-lineWidth)
+		if lineWidth < innerWidth-4 {
+			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
 			line = SelectedStyle.Render(line)
@@ -101,5 +101,5 @@ func (p *formPriorityPicker) render(width, current int) string {
 		}
 	}
 
-	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

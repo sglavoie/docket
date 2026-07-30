@@ -145,9 +145,10 @@ func TestConfirmDialog_RenderOverlay_NoWrapping(t *testing.T) {
 		t.Errorf("undo hint missing u shortcut:\n%s", rendered)
 	}
 
-	// Count lines: top border, prompt, blank, item, undo hint, bottom border = 6
+	// Count lines: halo, border, title, prompt, blank, item, undo hint, help,
+	// border, halo = 10.
 	lines := strings.Split(rendered, "\n")
-	if len(lines) != 6 {
-		t.Errorf("expected 6 lines (no wrapping), got %d:\n%s", len(lines), rendered)
+	if len(lines) != 10 {
+		t.Errorf("expected 10 lines (no wrapping), got %d:\n%s", len(lines), rendered)
 	}
 }

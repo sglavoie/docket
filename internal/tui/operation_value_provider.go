@@ -329,7 +329,7 @@ func (model *OperationValuePickerModel) render(width int) string {
 		search = "Search: " + query + cursor
 	}
 	content := MutedStyle.Render(search) + "\n\n" +
-		RenderCompactListSurface(model.surface, innerWidth-2, listHeight)
+		RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
 	titleText := model.title
 	if model.subtitle != "" {
 		titleText += ": " + truncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
@@ -339,7 +339,7 @@ func (model *OperationValuePickerModel) render(width int) string {
 	if model.multi {
 		help = "Space toggle · Enter apply · Esc back"
 	}
-	return renderTitledBox(
+	return renderOverlayBox(
 		content,
 		innerWidth,
 		title,

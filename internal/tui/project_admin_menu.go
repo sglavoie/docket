@@ -109,7 +109,7 @@ func (m *ProjectAdminMenuModel) render(width int) string {
 	var content strings.Builder
 	for i, item := range m.items {
 		line := fmt.Sprintf(" %s", item.label)
-		budget := max(innerWidth-2, 1)
+		budget := max(innerWidth-4, 1)
 		if w := lipgloss.Width(line); w < budget {
 			line += strings.Repeat(" ", budget-w)
 		}
@@ -122,5 +122,5 @@ func (m *ProjectAdminMenuModel) render(width int) string {
 		}
 	}
 
-	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

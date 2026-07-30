@@ -61,6 +61,34 @@ func TestTaskFormEditFitsWidthWhenRendered(t *testing.T) {
 	assertFitsWithin(t, rendered, 72, 30)
 }
 
+func TestTaskFormInlineOverlayKeepsCompleteFrameAtMinimumSize(t *testing.T) {
+	m := newTestTaskForm()
+	m.SetSize(formMinWidth, formMinHeight)
+	m.activeOverlay = formOverlayPriority
+	m.priorityPicker = newFormPriorityPicker(m.draft.priority)
+
+	rendered := m.View().Content
+	assertFitsWithin(t, rendered, formMinWidth, formMinHeight)
+
+	lines := strings.Split(ansi.Strip(rendered), "\n")
+	topBorder, bottomBorder := -1, -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "╭") && strings.HasSuffix(trimmed, "╮") {
+			topBorder = i
+		}
+		if strings.HasPrefix(trimmed, "╰") && strings.HasSuffix(trimmed, "╯") {
+			bottomBorder = i
+		}
+	}
+	if topBorder < 0 || bottomBorder <= topBorder {
+		t.Fatalf("inline overlay frame was clipped at minimum size:\n%s", ansi.Strip(rendered))
+	}
+	if bottomBorder+1 >= len(lines) || strings.TrimSpace(lines[bottomBorder+1]) != "" {
+		t.Fatalf("inline overlay bottom halo was clipped at minimum size:\n%s", ansi.Strip(rendered))
+	}
+}
+
 // assertFitsWithin fails if any rendered line exceeds width or the line count
 // exceeds height.
 func assertFitsWithin(t *testing.T, rendered string, width, height int) {

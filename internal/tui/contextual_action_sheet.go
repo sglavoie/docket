@@ -393,7 +393,7 @@ func (model *ContextActionSheetModel) render(width int) string {
 		header = ErrorStatusStyle.Render(truncateToVisualWidth(model.notice, max(innerWidth-4, 12))) +
 			"\n" + header
 	}
-	content := header + "\n\n" + RenderCompactListSurface(model.surface, innerWidth-2, listHeight)
+	content := header + "\n\n" + RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
 
 	titleText := model.config.Title
 	if model.config.Bulk {
@@ -408,5 +408,5 @@ func (model *ContextActionSheetModel) render(width int) string {
 		footerText = "Type filter · ↑↓/Ctrl+j/k move · Enter · Esc"
 	}
 	footer := HelpStyle.Render(footerText)
-	return renderTitledBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
+	return renderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
 }

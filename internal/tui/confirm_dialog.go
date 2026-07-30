@@ -176,8 +176,10 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	if innerWidth < minWidth {
 		innerWidth = minWidth
 	}
+	// Reserve one terminal cell outside the one-cell halo on each side.
+	innerWidth = min(innerWidth, max(width-4, 1))
 
-	return renderTitledBox(content, innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }
 
 // discardConfirmState bundles the confirmDiscard flag with a ConfirmDialog and

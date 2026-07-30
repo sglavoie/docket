@@ -112,7 +112,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
-	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(width-4, 1))
 
 	today := util.StartOfDay(time.Now())
 	currentEntryIdx := -1
@@ -145,8 +145,8 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 		}
 		line := fmt.Sprintf(" %s%s %s", currentMark, e.label, keyHint)
 		lineWidth := lipgloss.Width(line)
-		if lineWidth < innerWidth-2 {
-			line += strings.Repeat(" ", innerWidth-2-lineWidth)
+		if lineWidth < innerWidth-4 {
+			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
 			line = SelectedStyle.Render(line)
@@ -157,5 +157,5 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 		}
 	}
 
-	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

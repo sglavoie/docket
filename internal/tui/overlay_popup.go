@@ -17,28 +17,26 @@ func DimContent(content string) string {
 	return strings.Join(lines, "\n")
 }
 
-// OverlayPopupDimmed dims the base content before placing the popup at bottom-center.
-// A 1-char drop shadow is added on the right and bottom edges of the popup.
+// OverlayPopupDimmed dims the base content before placing the popup at
+// bottom-center. Popup renderers own their complete frame and symmetric halo.
 func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0), true)
+	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0))
 }
 
-func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withShadow bool) string {
+func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) string {
 	if popup == "" {
 		return base
 	}
+	popup = fitOverlayPopupHeight(popup, baseHeight)
 
 	baseLines := strings.Split(base, "\n")
 	popupLines := strings.Split(popup, "\n")
 	popupHeight := len(popupLines)
 	maxPopupWidth := popupWidth(popup)
+	startCol = min(max(startCol, 0), max(baseWidth-maxPopupWidth, 0))
 
-	pad := ""
-	if withShadow {
-		pad = DimStyle.Render("")
-	}
 	for len(baseLines) < baseHeight {
-		baseLines = append(baseLines, pad)
+		baseLines = append(baseLines, "")
 	}
 
 	startRow := bottomPopupTopRow(baseHeight, popupHeight)
@@ -55,40 +53,39 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int, withS
 		baseLines[row] = overlayLineAt(baseLines[row], popupLine, startCol, baseWidth)
 	}
 
-	if withShadow {
-		shadowChar := ShadowStyle.Render(" ")
-		// Right shadow: 1 char to the right of each popup line.
-		for i := 1; i < len(popupLines); i++ {
-			row := startRow + i
-			if row >= len(baseLines) {
-				break
-			}
-			shadowCol := startCol + maxPopupWidth
-			if shadowCol < baseWidth {
-				baseLines[row] = overlayLineAt(baseLines[row], shadowChar, shadowCol, baseWidth)
-			}
-		}
-		// Bottom shadow: offset 1 right from the popup's left edge, 1 row below popup.
-		shadowRow := startRow + popupHeight
-		if shadowRow < len(baseLines) {
-			shadowStart := startCol + 1
-			if shadowStart < baseWidth {
-				shadowWidth := min(maxPopupWidth, baseWidth-shadowStart)
-				if shadowWidth > 0 {
-					bottomShadow := ShadowStyle.Width(shadowWidth).Render("")
-					baseLines[shadowRow] = overlayLineAt(baseLines[shadowRow], bottomShadow, shadowStart, baseWidth)
-				}
-			}
-		}
-	}
-
 	return strings.Join(baseLines, "\n")
 }
 
+// fitOverlayPopupHeight removes only interior rows when a modal is taller than
+// the viewport. The complete outer treatment remains visible: top halo, top
+// border, title, help, bottom border, and bottom halo are retained whenever the
+// viewport has room for them. App-level minimum-size guards keep real popup
+// viewports above the four rows required for the halo and border alone.
+func fitOverlayPopupHeight(popup string, maxHeight int) string {
+	if popup == "" || maxHeight < 1 {
+		return ""
+	}
+	lines := strings.Split(popup, "\n")
+	if len(lines) <= maxHeight {
+		return popup
+	}
+
+	headRows := min(3, (maxHeight+1)/2)
+	tailRows := min(3, maxHeight-headRows)
+	middleRows := max(maxHeight-headRows-tailRows, 0)
+
+	fitted := make([]string, 0, maxHeight)
+	fitted = append(fitted, lines[:headRows]...)
+	middleEnd := min(headRows+middleRows, len(lines)-tailRows)
+	fitted = append(fitted, lines[headRows:middleEnd]...)
+	fitted = append(fitted, lines[len(lines)-tailRows:]...)
+	return strings.Join(fitted, "\n")
+}
+
 // bottomPopupTopRow returns the first rendered row for a bottom-aligned popup,
-// leaving one row below it for the bottom shadow when the terminal has space.
+// keeping the popup's own bottom halo within the available terminal height.
 func bottomPopupTopRow(baseHeight, popupHeight int) int {
-	return max(baseHeight-popupHeight-1, 0)
+	return max(baseHeight-popupHeight, 0)
 }
 
 func popupWidth(popup string) int {

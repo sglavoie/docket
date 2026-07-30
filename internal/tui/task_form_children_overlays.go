@@ -37,13 +37,13 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(m.width-4, 1))
 
-	m.checklistItemInput.SetWidth(innerWidth - 4)
+	m.checklistItemInput.SetWidth(max(innerWidth-5, 1))
 	applyThemedTextInput(&m.checklistItemInput)
 	content := " " + m.checklistItemInput.View()
 
-	return renderTitledBox(content, innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }
 
 // TaskFormSubtaskEditedMsg is emitted when a subtask draft edit is confirmed.
@@ -83,10 +83,10 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := max(maxWidth, max(titleMinInner, footerMinInner))
+	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(m.width-4, 1))
 
-	m.subtaskItemInput.SetWidth(innerWidth - 6)
+	m.subtaskItemInput.SetWidth(max(innerWidth-6, 1))
 	applyThemedTextInput(&m.subtaskItemInput)
 
-	return renderTitledBox(" "+m.subtaskItemInput.View(), innerWidth, title, footerText, borderStyle)
+	return renderOverlayBox(" "+m.subtaskItemInput.View(), innerWidth, title, footerText, borderStyle)
 }

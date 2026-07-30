@@ -48,6 +48,15 @@ func TestDarkThemeMutedAndStructuralStyleMappings(t *testing.T) {
 	}
 }
 
+func TestOverlayHaloTracksThemeDimmedBackground(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: "light"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	if got, want := OverlayHaloStyle.GetBackground(), ColorDimmedBg; got != want {
+		t.Errorf("light overlay halo background = %v, want %v", got, want)
+	}
+}
+
 func TestMakeViewModeStyleLightThemeBg(t *testing.T) {
 	activeThemeName = "light"
 	t.Cleanup(func() { activeThemeName = "" })

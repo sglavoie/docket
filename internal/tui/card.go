@@ -67,43 +67,62 @@ func renderTitledTopBorder(titleText string, width int, borderStyle lipgloss.Sty
 	return result
 }
 
-// renderTitledBottomBorder builds "╰─ Footer ─────╯" for the given width.
-// footerText should already be styled; borderStyle controls the frame characters.
-func renderTitledBottomBorder(footerText string, width int, borderStyle lipgloss.Style) string {
-	footerVisualWidth := lipgloss.Width(footerText)
-	remainingDashes := max(width-5-footerVisualWidth, 1)
-	left := borderStyle.Render("╰─ ")
-	right := borderStyle.Render(" " + strings.Repeat("─", remainingDashes) + "╯")
-	result := left + footerText + right
-	if lipgloss.Width(result) > width {
-		// Bottom titled border is footer chrome; audit clips like the top border.
-		result = truncateRequired("card footer border", result, width-1) + borderStyle.Render("╯")
-	}
-	return result
-}
-
-// renderTitledBox renders content inside a rounded-border box with a titled top
-// border and a titled bottom border (footer). title and footer must already be
-// styled; borderStyle controls the frame characters and BorderForeground color.
-func renderTitledBox(content string, innerWidth int, title, footer string, borderStyle lipgloss.Style) string {
+// renderOverlayBox renders a modal surface with an uninterrupted semantic
+// border, title and help text inside the frame, and a subtle one-cell halo on
+// all four sides. Width is the framed box width; the halo adds two columns and
+// two rows. Title and footer must already be styled.
+func renderOverlayBox(content string, width int, title, footer string, borderStyle lipgloss.Style) string {
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderStyle.GetForeground()).
 		Padding(0, 1).
-		Width(innerWidth)
+		Width(width)
 
-	rendered := boxStyle.Render(content)
-
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		return rendered
+	var body strings.Builder
+	if title != "" {
+		body.WriteString(title)
+	}
+	if title != "" && content != "" {
+		body.WriteString("\n")
+	}
+	body.WriteString(content)
+	if footer != "" {
+		if body.Len() > 0 {
+			body.WriteString("\n")
+		}
+		body.WriteString(footer)
 	}
 
-	actualWidth := lipgloss.Width(lines[0])
-	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-	lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
+	return renderOverlayHalo(boxStyle.Render(body.String()))
+}
 
-	return strings.Join(lines, "\n")
+// renderOverlayHalo wraps a fully rendered overlay frame in a theme-aware ring.
+// Padding short frame rows before adding the side cells keeps the halo rectangular
+// even when styled content has uneven visual widths.
+func renderOverlayHalo(frame string) string {
+	if frame == "" {
+		return ""
+	}
+
+	lines := strings.Split(frame, "\n")
+	frameWidth := 0
+	for _, line := range lines {
+		frameWidth = max(frameWidth, lipgloss.Width(line))
+	}
+
+	haloCell := OverlayHaloStyle.Render(" ")
+	haloRow := OverlayHaloStyle.Width(frameWidth + 2).Render("")
+	rendered := make([]string, 0, len(lines)+2)
+	rendered = append(rendered, haloRow)
+	for _, line := range lines {
+		if lineWidth := lipgloss.Width(line); lineWidth < frameWidth {
+			line += strings.Repeat(" ", frameWidth-lineWidth)
+		}
+		rendered = append(rendered, haloCell+line+haloCell)
+	}
+	rendered = append(rendered, haloRow)
+
+	return strings.Join(rendered, "\n")
 }
 
 // renderClusterFrame renders a single outer card titled `label` that groups
