@@ -20,15 +20,15 @@ func writeProject(t *testing.T, root, id, slug string, titles ...string) func() 
 	}
 	var tasks []*models.Task
 	for i, title := range titles {
-		task, err := models.NewTask(slug+"-"+title, i+1, models.TaskTypeTask, title)
+		task, err := models.NewGenericTask(slug+"-"+title, i+1, title)
 		if err != nil {
 			t.Fatalf("NewTask: %v", err)
 		}
 		tasks = append(tasks, task)
 	}
-	content := storage.WriteTasksMarkdownWithProjectMetadata(slug, tasks, nil, nil)
-	if err := os.WriteFile(filepath.Join(path, "tasks.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	project := &models.Project{ID: id, Slug: slug, Name: slug, Path: path, Tasks: tasks}
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject: %v", err)
 	}
 	return func() *models.Project {
 		return &models.Project{ID: id, Slug: slug, Name: slug, Path: path}

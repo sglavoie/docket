@@ -3,22 +3,45 @@ package storage
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 )
 
-const testWorkspaceLedgerDepth = 1000
-
 // newTestLedger builds a WorkspaceLedger rooted under a fresh temp workspace,
 // returning the ledger and the workspace root so tests can seed files inside it.
-func newTestLedger(t *testing.T, maxDepth int) (*WorkspaceLedger, string) {
+func newTestLedger(t *testing.T) (*WorkspaceLedger, string) {
 	t.Helper()
 	root := t.TempDir()
 	dir := filepath.Join(root, ".tt", "undo")
-	return NewWorkspaceLedger(dir, maxDepth, []string{root}), root
+	return NewWorkspaceLedger(dir, []string{root}), root
+}
+
+func TestWorkspaceLedgerValidateChecksRetainedBlobsWithoutMutatingHistory(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	target := filepath.Join(root, "projects", "alpha", "tasks.md")
+	mustRecord(t, ledger, "txn-validate", "alpha", target, "before", "after")
+
+	status, err := ledger.Validate()
+	if err != nil {
+		t.Fatalf("Validate healthy ledger: %v", err)
+	}
+	if status.UndoEntries != 1 || status.RedoEntries != 0 {
+		t.Fatalf("validation status = %+v", status)
+	}
+	again, err := ledger.Validate()
+	if err != nil || again != status {
+		t.Fatalf("repeat validation = (%+v, %v), want (%+v, nil)", again, err, status)
+	}
+
+	if err := os.Remove(blobPathFor(ledger, "before")); err != nil {
+		t.Fatalf("remove retained blob: %v", err)
+	}
+	if _, err := ledger.Validate(); err == nil {
+		t.Fatal("Validate accepted a ledger with a missing retained blob")
+	}
 }
 
 func writeFile(t *testing.T, path, content string) {
@@ -47,206 +70,10 @@ func requireAbsent(t *testing.T, path string) {
 	}
 }
 
-// TestWorkspaceLedger_DisabledRecordCreatesNoState verifies both planning and
-// standalone recording are successful no-ops without ledger or journal state.
-func TestWorkspaceLedger_DisabledRecordCreatesNoState(t *testing.T) {
-	ledger, root := newTestLedger(t, 0)
-	record := LedgerRecord{
-		TransactionID: "disabled",
-		Artifacts: []LedgerArtifact{{
-			Path: filepath.Join(root, "notes", "disabled.md"), AfterExists: true, After: []byte("after"),
-		}},
-	}
-
-	plan, err := ledger.prepareRecord(record)
-	if err != nil {
-		t.Fatalf("prepareRecord: %v", err)
-	}
-	if plan != nil {
-		t.Fatalf("prepareRecord plan = %#v, want nil while disabled", plan)
-	}
-	if err := ledger.Record(record); err != nil {
-		t.Fatalf("Record: %v", err)
-	}
-	requireAbsent(t, ledger.dir)
-	requireAbsent(t, ledger.transactionsDir)
-}
-
-// TestCommitService_DisabledLedgerCommitsUserArtifacts proves a configured but
-// disabled ledger does not prevent the user transaction from committing.
-func TestCommitService_DisabledLedgerCommitsUserArtifacts(t *testing.T) {
-	dataDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 0, []string{dataDir})
-	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
-	path := filepath.Join(dataDir, "notes", "global.md")
-
-	txnID, err := service.CommitArtifactTransaction(ArtifactCommitRequest{
-		Artifacts:  []ArtifactChange{{Path: path, Data: []byte("committed")}},
-		UndoAction: "edit global note",
-	})
-	if err != nil {
-		t.Fatalf("CommitArtifactTransaction: %v", err)
-	}
-	if txnID == "" {
-		t.Fatal("CommitArtifactTransaction returned an empty transaction id")
-	}
-	if got := readFile(t, path); got != "committed" {
-		t.Fatalf("committed artifact = %q, want committed", got)
-	}
-	if _, ok, err := ledger.SelectNewestUndo(GlobalScope()); err != nil || ok {
-		t.Fatalf("SelectNewestUndo = ok %v err %v, want no history", ok, err)
-	}
-	requireAbsent(t, ledger.dir)
-	assertJournalClean(t, dataDir)
-}
-
-// TestWorkspaceLedger_DisablingPreservesExistingHistory covers both reopening
-// at depth zero and changing a live ledger to zero. Neither path may hide or
-// mutate the existing undo and redo stacks, and later records remain disabled.
-func TestWorkspaceLedger_DisablingPreservesExistingHistory(t *testing.T) {
-	for _, mode := range []string{"reopen", "set"} {
-		t.Run(mode, func(t *testing.T) {
-			ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
-			first := filepath.Join(root, "first.md")
-			second := filepath.Join(root, "second.md")
-			later := filepath.Join(root, "later.md")
-			writeFile(t, first, "first after")
-			writeFile(t, second, "second after")
-			mustRecord(t, ledger, "txn-first", "p", first, "first before", "first after")
-			mustRecord(t, ledger, "txn-second", "p", second, "second before", "second after")
-			if _, err := ledger.Undo(GlobalScope()); err != nil {
-				t.Fatalf("seed Undo: %v", err)
-			}
-
-			switch mode {
-			case "reopen":
-				ledger = NewWorkspaceLedger(ledger.dir, 0, []string{root})
-			case "set":
-				ledger.SetMaxDepth(0)
-			}
-			writeFile(t, later, "later after")
-			mustRecord(t, ledger, "txn-disabled", "p", later, "later before", "later after")
-
-			undoCount, err := ledger.UndoCount(GlobalScope())
-			if err != nil {
-				t.Fatalf("UndoCount: %v", err)
-			}
-			redoCount, err := ledger.RedoCount(GlobalScope())
-			if err != nil {
-				t.Fatalf("RedoCount: %v", err)
-			}
-			if undoCount != 1 || redoCount != 1 {
-				t.Fatalf("history counts = undo %d redo %d, want 1 and 1", undoCount, redoCount)
-			}
-			if _, err := ledger.Undo(GlobalScope()); err != nil {
-				t.Fatalf("Undo existing entry: %v", err)
-			}
-			if got := readFile(t, first); got != "first before" {
-				t.Fatalf("first after undo = %q, want first before", got)
-			}
-			if _, err := ledger.Redo(GlobalScope()); err != nil {
-				t.Fatalf("Redo existing entry: %v", err)
-			}
-			if got := readFile(t, second); got != "second after" {
-				t.Fatalf("second after redo = %q, want second after", got)
-			}
-			if got := readFile(t, later); got != "later after" {
-				t.Fatalf("unrecorded mutation changed during restore: got %q", got)
-			}
-		})
-	}
-}
-
-// TestWorkspaceLedger_SetMaxDepthPrunesOnNextRecord verifies reducing a
-// positive depth leaves existing history intact until the next recorded commit.
-func TestWorkspaceLedger_SetMaxDepthPrunesOnNextRecord(t *testing.T) {
-	ledger, root := newTestLedger(t, 3)
-	for i := 0; i < 3; i++ {
-		path := filepath.Join(root, fmt.Sprintf("entry-%d.md", i))
-		writeFile(t, path, "after")
-		mustRecord(t, ledger, fmt.Sprintf("txn-%d", i), "p", path, fmt.Sprintf("before-%d", i), "after")
-	}
-
-	ledger.SetMaxDepth(1)
-	if count, err := ledger.UndoCount(GlobalScope()); err != nil || count != 3 {
-		t.Fatalf("UndoCount before next record = %d err %v, want 3", count, err)
-	}
-	last := filepath.Join(root, "entry-last.md")
-	writeFile(t, last, "after")
-	mustRecord(t, ledger, "txn-last", "p", last, "before-last", "after")
-
-	entry, ok, err := ledger.SelectNewestUndo(GlobalScope())
-	if err != nil || !ok {
-		t.Fatalf("SelectNewestUndo: ok=%v err=%v", ok, err)
-	}
-	if entry.TransactionID != "txn-last" {
-		t.Fatalf("remaining transaction = %q, want txn-last", entry.TransactionID)
-	}
-	if count, err := ledger.UndoCount(GlobalScope()); err != nil || count != 1 {
-		t.Fatalf("UndoCount after next record = %d err %v, want 1", count, err)
-	}
-	requireAbsent(t, blobPathFor(ledger, "before-0"))
-}
-
-// TestWorkspaceLedger_SetMaxDepthConcurrentWithRecord exercises live retention
-// updates against record planning. The race detector verifies the shared depth
-// has no unsynchronized reads or writes.
-func TestWorkspaceLedger_SetMaxDepthConcurrentWithRecord(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
-	path := filepath.Join(root, "race.md")
-	writeFile(t, path, "after")
-	mustRecord(t, ledger, "txn-seed", "p", path, "before", "after")
-
-	const iterations = 32
-	start := make(chan struct{})
-	errs := make(chan error, iterations)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		<-start
-		for i := 0; i < iterations; i++ {
-			if i%2 == 0 {
-				ledger.SetMaxDepth(0)
-			} else {
-				ledger.SetMaxDepth(testWorkspaceLedgerDepth)
-			}
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		<-start
-		for i := 0; i < iterations; i++ {
-			err := ledger.Record(LedgerRecord{
-				TransactionID: fmt.Sprintf("txn-race-%d", i),
-				ProjectIDs:    []string{"p"},
-				Artifacts: []LedgerArtifact{{
-					Path: path, BeforeExists: true, Before: []byte("before"), AfterExists: true, After: []byte("after"),
-				}},
-			})
-			if err != nil {
-				errs <- err
-			}
-		}
-	}()
-	close(start)
-	wg.Wait()
-	close(errs)
-	for err := range errs {
-		t.Fatalf("concurrent Record: %v", err)
-	}
-
-	ledger.SetMaxDepth(2)
-	mustRecord(t, ledger, "txn-final", "p", path, "before", "after")
-	if count, err := ledger.UndoCount(GlobalScope()); err != nil || count != 2 {
-		t.Fatalf("UndoCount after final record = %d err %v, want 2", count, err)
-	}
-}
-
 // TestWorkspaceLedger_UndoRedoRestoresImages verifies a single entry's undo
 // restores the before-image and redo restores the after-image.
 func TestWorkspaceLedger_UndoRedoRestoresImages(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	f := filepath.Join(root, "projects", "alpha", "tasks.md")
 	writeFile(t, f, "v2") // post-commit on-disk state
 
@@ -292,7 +119,7 @@ func TestWorkspaceLedger_UndoRedoRestoresImages(t *testing.T) {
 // TestWorkspaceLedger_UndoCreateAndDeleteImages covers the absent-state ends: an
 // undo that removes a created file and a redo that recreates it.
 func TestWorkspaceLedger_UndoCreateAndDeleteImages(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	f := filepath.Join(root, "projects", "alpha", "new.md")
 	writeFile(t, f, "created") // file was created by the commit
 
@@ -321,7 +148,7 @@ func TestWorkspaceLedger_UndoCreateAndDeleteImages(t *testing.T) {
 // the newest entry affecting that project even when a later entry for a different
 // project sits above it on the stack.
 func TestWorkspaceLedger_ProjectScopeOutOfOrder(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	f1 := filepath.Join(root, "projects", "p1", "tasks.md")
 	f2 := filepath.Join(root, "projects", "p2", "tasks.md")
 	writeFile(t, f1, "b")
@@ -407,7 +234,7 @@ func TestLedgerScope_ArtifactRootMatchesAllArtifactTransitions(t *testing.T) {
 // TestWorkspaceLedger_ArtifactRootScopeOutOfOrder verifies selection, undo and
 // redo counts all skip a newer unrelated mutation using the same root matcher.
 func TestWorkspaceLedger_ArtifactRootScopeOutOfOrder(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	notesRoot := filepath.Join(root, "notes")
 	notePath := filepath.Join(notesRoot, "note.md")
 	taskPath := filepath.Join(root, "projects", "p1", "tasks.md")
@@ -461,7 +288,7 @@ func TestWorkspaceLedger_ArtifactRootScopeOutOfOrder(t *testing.T) {
 // spanning multiple projects reverses every project's file at once and is
 // selectable by any member project.
 func TestWorkspaceLedger_GroupedEntryRestoresAllProjects(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	f1 := filepath.Join(root, "projects", "p1", "tasks.md")
 	f2 := filepath.Join(root, "projects", "p2", "tasks.md")
 	writeFile(t, f1, "b")
@@ -496,52 +323,175 @@ func TestWorkspaceLedger_GroupedEntryRestoresAllProjects(t *testing.T) {
 	}
 }
 
-// TestWorkspaceLedger_RetentionPruning verifies the undo stack keeps only the
-// newest maxDepth entries and garbage-collects the pruned entry's blobs.
-func TestWorkspaceLedger_RetentionPruning(t *testing.T) {
-	ledger, root := newTestLedger(t, 2)
-	files := []string{
-		filepath.Join(root, "projects", "p", "a.md"),
-		filepath.Join(root, "projects", "p", "b.md"),
-		filepath.Join(root, "projects", "p", "c.md"),
+func TestWorkspaceLedger_GroupedArtifactKindsRestoreTogether(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	artifacts := []struct {
+		name   string
+		path   string
+		before string
+		after  string
+	}{
+		{
+			name:   "tasks",
+			path:   filepath.Join(root, "projects", "alpha", "tasks.md"),
+			before: "tasks before",
+			after:  "tasks after",
+		},
+		{
+			name:   "projects",
+			path:   filepath.Join(root, ".tt", "workspace.json"),
+			before: `{"projects":["before"]}`,
+			after:  `{"projects":["after"]}`,
+		},
+		{
+			name:   "notes",
+			path:   filepath.Join(root, "projects", "alpha", "notes", "design.md"),
+			before: "note before",
+			after:  "note after",
+		},
+		{
+			name:   "attachments",
+			path:   filepath.Join(root, "projects", "alpha", "attachments", "task-1", "evidence.txt"),
+			before: "attachment before",
+			after:  "attachment after",
+		},
 	}
-	for i, f := range files {
+
+	record := LedgerRecord{
+		TransactionID: "mixed-artifacts",
+		Action:        "grouped mutation",
+		ProjectIDs:    []string{"alpha"},
+		Artifacts:     make([]LedgerArtifact, 0, len(artifacts)),
+	}
+	for _, artifact := range artifacts {
+		writeFile(t, artifact.path, artifact.after)
+		record.Artifacts = append(record.Artifacts, LedgerArtifact{
+			Path:         artifact.path,
+			BeforeExists: true,
+			Before:       []byte(artifact.before),
+			AfterExists:  true,
+			After:        []byte(artifact.after),
+		})
+	}
+	if err := ledger.Record(record); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	if _, err := ledger.Undo(GlobalScope()); err != nil {
+		t.Fatalf("Undo: %v", err)
+	}
+	for _, artifact := range artifacts {
+		if got := readFile(t, artifact.path); got != artifact.before {
+			t.Fatalf("%s after undo = %q, want %q", artifact.name, got, artifact.before)
+		}
+	}
+
+	if _, err := ledger.Redo(GlobalScope()); err != nil {
+		t.Fatalf("Redo: %v", err)
+	}
+	for _, artifact := range artifacts {
+		if got := readFile(t, artifact.path); got != artifact.after {
+			t.Fatalf("%s after redo = %q, want %q", artifact.name, got, artifact.after)
+		}
+	}
+}
+
+// TestWorkspaceLedger_RetentionPruning verifies the undo stack keeps exactly
+// the newest WorkspaceUndoLimit entries and garbage-collects the evicted entry's
+// blobs deterministically.
+func TestWorkspaceLedger_RetentionPruning(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	files := make([]string, WorkspaceUndoLimit+1)
+	for i := range files {
+		f := filepath.Join(root, "projects", "p", fmt.Sprintf("%02d.md", i))
+		files[i] = f
 		writeFile(t, f, "after")
-		mustRecord(t, ledger, "txn", "p", f, "before"+string(rune('0'+i)), "after")
+		mustRecord(t, ledger, fmt.Sprintf("txn-%02d", i), "p", f, fmt.Sprintf("before-%02d", i), "after")
 	}
 
 	lf, err := ledger.load()
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if len(lf.Entries) != 2 {
-		t.Fatalf("undo stack depth = %d, want 2", len(lf.Entries))
+	if len(lf.Entries) != WorkspaceUndoLimit {
+		t.Fatalf("undo stack depth = %d, want %d", len(lf.Entries), WorkspaceUndoLimit)
 	}
-	// The oldest entry (a.md) was pruned; undoing twice must not reach it.
-	if _, err := ledger.Undo(GlobalScope()); err != nil {
-		t.Fatalf("undo 1: %v", err)
-	}
-	if _, err := ledger.Undo(GlobalScope()); err != nil {
-		t.Fatalf("undo 2: %v", err)
+	// The oldest entry was pruned; undoing the entire retained stack must not
+	// reach it.
+	for i := 0; i < WorkspaceUndoLimit; i++ {
+		if _, err := ledger.Undo(GlobalScope()); err != nil {
+			t.Fatalf("undo %d: %v", i+1, err)
+		}
 	}
 	if got := readFile(t, files[0]); got != "after" {
 		t.Fatalf("pruned entry must be unreachable: a.md = %q, want after", got)
 	}
 
 	// The pruned entry's unique before-blob must be gone from the blob store.
-	prunedBlob := blobPathFor(ledger, "before0")
+	prunedBlob := blobPathFor(ledger, "before-00")
 	requireAbsent(t, prunedBlob)
 	// A surviving entry's before-blob must remain.
-	if _, err := os.Stat(blobPathFor(ledger, "before2")); err != nil {
+	if _, err := os.Stat(blobPathFor(ledger, fmt.Sprintf("before-%02d", WorkspaceUndoLimit))); err != nil {
 		t.Fatalf("surviving blob missing: %v", err)
 	}
 }
 
-// TestWorkspaceLedger_RedoInvalidationOnOverlap verifies a new mutation that
-// touches a file with a pending redo entry discards that redo, while a
-// non-overlapping mutation leaves the redo replayable.
-func TestWorkspaceLedger_RedoInvalidationOnOverlap(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+func TestWorkspaceLedger_LoadPrunesOversizedExistingHistory(t *testing.T) {
+	ledger, _ := newTestLedger(t)
+	oversized := ledgerFile{
+		SchemaVersion: UndoLedgerSchemaVersion,
+		NextSeq:       WorkspaceUndoLimit + 2,
+	}
+	for seq := 1; seq <= WorkspaceUndoLimit+1; seq++ {
+		entry := LedgerEntry{Seq: seq, TransactionID: fmt.Sprintf("txn-%02d", seq)}
+		if seq <= 26 {
+			oversized.Entries = append(oversized.Entries, entry)
+		} else {
+			oversized.RedoEntries = append(oversized.RedoEntries, entry)
+		}
+	}
+	data, err := json.Marshal(oversized)
+	if err != nil {
+		t.Fatalf("marshal oversized ledger: %v", err)
+	}
+	writeFile(t, ledger.ledgerPath(), string(data))
+
+	loaded, err := ledger.load()
+	if err != nil {
+		t.Fatalf("load oversized ledger: %v", err)
+	}
+	if got := len(loaded.Entries) + len(loaded.RedoEntries); got != WorkspaceUndoLimit {
+		t.Fatalf("loaded history size = %d, want %d", got, WorkspaceUndoLimit)
+	}
+	for _, stack := range [][]LedgerEntry{loaded.Entries, loaded.RedoEntries} {
+		for _, entry := range stack {
+			if entry.Seq == 1 {
+				t.Fatal("oldest oversized entry remained reachable")
+			}
+		}
+	}
+
+	if _, undoErr := ledger.Undo(GlobalScope()); undoErr != nil {
+		t.Fatalf("Undo oversized ledger: %v", undoErr)
+	}
+	persistedData, err := os.ReadFile(ledger.ledgerPath())
+	if err != nil {
+		t.Fatalf("read persisted ledger: %v", err)
+	}
+	var persisted ledgerFile
+	if err := json.Unmarshal(persistedData, &persisted); err != nil {
+		t.Fatalf("unmarshal persisted ledger: %v", err)
+	}
+	if got := len(persisted.Entries) + len(persisted.RedoEntries); got != WorkspaceUndoLimit {
+		t.Fatalf("persisted history size = %d, want %d", got, WorkspaceUndoLimit)
+	}
+}
+
+// TestWorkspaceLedger_ForwardMutationClearsRedo verifies the linear history
+// contract: every successful forward mutation discards all pending redo entries,
+// even when the new transaction touches unrelated artifacts.
+func TestWorkspaceLedger_ForwardMutationClearsRedo(t *testing.T) {
+	ledger, root := newTestLedger(t)
 	f1 := filepath.Join(root, "projects", "p", "f1.md")
 	f2 := filepath.Join(root, "projects", "p", "f2.md")
 
@@ -551,28 +501,23 @@ func TestWorkspaceLedger_RedoInvalidationOnOverlap(t *testing.T) {
 		t.Fatalf("undo: %v", err)
 	}
 
-	// Non-overlapping mutation on f2 leaves the redo of e1 intact.
+	// A non-overlapping mutation still starts a new branch and clears redo.
 	writeFile(t, f2, "y")
 	mustRecord(t, ledger, "txn-2", "p", f2, "x", "y")
-	if _, ok, _ := ledger.SelectNewestRedo(GlobalScope()); !ok {
-		t.Fatal("non-overlapping mutation must preserve redo")
-	}
-
-	// Overlapping mutation on f1 invalidates the redo of e1.
-	writeFile(t, f1, "c")
-	mustRecord(t, ledger, "txn-3", "p", f1, "a", "c")
 	if _, ok, _ := ledger.SelectNewestRedo(GlobalScope()); ok {
-		t.Fatal("overlapping mutation must invalidate redo")
+		t.Fatal("forward mutation must invalidate every redo entry")
 	}
 	if _, err := ledger.Redo(GlobalScope()); err == nil {
 		t.Fatal("expected redo to be unavailable after invalidation")
 	}
+	requireAbsent(t, blobPathFor(ledger, "a"))
+	requireAbsent(t, blobPathFor(ledger, "b"))
 }
 
 // TestWorkspaceLedger_RejectsPathOutsideRoots proves a tampered ledger cannot
 // escape the approved workspace roots during restore.
 func TestWorkspaceLedger_RejectsPathOutsideRoots(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	outside := filepath.Join(t.TempDir(), "escape.md")
 	writeFile(t, outside, "after")
 	_ = root
@@ -597,7 +542,7 @@ func TestWorkspaceLedger_RejectsPathOutsideRoots(t *testing.T) {
 // bytes captured before the delete.
 func TestCommitService_LedgerRecordsAndUndoesAttachmentDelete(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := newCommitTestProject(t, dataDir, "alpha", "attach me")
@@ -646,6 +591,25 @@ func TestCommitService_NoLedgerSkipsRecording(t *testing.T) {
 		t.Fatalf("Commit: %v", err)
 	}
 	requireAbsent(t, filepath.Join(dataDir, ".tt", "undo", "ledger.json"))
+}
+
+func TestWorkspaceLedger_LeavesLegacyProjectUndoDirectoryUntouched(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	artifactPath := filepath.Join(root, "projects", "alpha", "tasks.md")
+	legacySentinel := filepath.Join(root, "projects", "alpha", ".undo", "sentinel.json")
+	writeFile(t, artifactPath, "after")
+	writeFile(t, legacySentinel, "legacy snapshot")
+
+	mustRecord(t, ledger, "txn-1", "alpha", artifactPath, "before", "after")
+	if _, err := ledger.Undo(GlobalScope()); err != nil {
+		t.Fatalf("Undo: %v", err)
+	}
+	if _, err := ledger.Redo(GlobalScope()); err != nil {
+		t.Fatalf("Redo: %v", err)
+	}
+	if got := readFile(t, legacySentinel); got != "legacy snapshot" {
+		t.Fatalf("legacy .undo sentinel = %q, want untouched snapshot", got)
+	}
 }
 
 // mustRecord records a single-artifact before->after edit and fails on error.

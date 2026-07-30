@@ -14,16 +14,12 @@ func (m *TaskFormModel) renderChildrenTab() string {
 
 	b.WriteString(m.renderChildrenChecklistSection())
 
-	if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
+	switch m.mode {
+	case FormModeCreate:
 		b.WriteString(m.renderChildrenSubtasksSection())
-	} else if m.mode == FormModeEdit {
+	case FormModeEdit:
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("Subtasks exist as independent tasks — edit via Parent field."))
-		b.WriteString("\n")
-	} else {
-		// Create mode but type doesn't support subtasks.
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("Switch to Epic or Story to add subtasks."))
 		b.WriteString("\n")
 	}
 
@@ -137,7 +133,6 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 
 // renderSubtaskItemRow renders a single subtask draft row.
 func renderSubtaskItemRow(i int, st formSubtaskDraft, focused bool) string {
-	badge := GetTypeBadge(string(st.taskType), st.taskType.Icon())
 	title := st.title
 	if title == "" {
 		title = MutedStyle.Render("(empty)")
@@ -146,7 +141,7 @@ func renderSubtaskItemRow(i int, st formSubtaskDraft, focused bool) string {
 	if st.optional {
 		optional = MutedStyle.Render(" (optional)")
 	}
-	line := fmt.Sprintf("%s  %s%s", badge, title, optional)
+	line := fmt.Sprintf("%s%s", title, optional)
 	if focused {
 		hint := MutedStyle.Render("  Enter: edit · Ctrl+O: optional · Ctrl+D: del · Ctrl+J/K: move")
 		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"

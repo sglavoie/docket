@@ -13,7 +13,7 @@ func TestTaskCommentsSaveCommentMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestTaskCommentsSaveCommentEmptyText(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestTaskCommentsDeleteMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestTaskCommentsRenderEditModeOOB(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestTaskCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestTaskCommentsHasUnsavedEditChangesIgnoresSurroundingWhitespace(t *testin
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -278,13 +278,13 @@ func TestTaskCommentsHasUnsavedEditChangesIgnoresSurroundingWhitespace(t *testin
 	}
 }
 
-func TestTaskCommentsToggleResolvedMutatesSynchronously(t *testing.T) {
+func TestTaskCommentsLeanPanelHasNoResolvedControl(t *testing.T) {
 	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -295,15 +295,12 @@ func TestTaskCommentsToggleResolvedMutatesSynchronously(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.cursor = 0
-
-	cmd := model.toggleResolved()
-	if cmd == nil {
-		t.Fatal("expected non-nil command from toggleResolved")
+	if cmd := model.handleNormalKey("r"); cmd != nil {
+		t.Fatalf("retired resolved key emitted command %#v", cmd())
 	}
-
-	// Verify state was mutated synchronously before cmd() runs
-	if !model.task.Comments[0].Resolved {
-		t.Fatal("expected comment to be resolved after toggleResolved()")
+	for _, key := range model.HandledKeys() {
+		if key == "r" {
+			t.Fatal("retired resolved key remains in comments key map")
+		}
 	}
 }

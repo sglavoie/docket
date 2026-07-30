@@ -63,29 +63,6 @@ func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color
 	return strings.Join(rows, "\n")
 }
 
-// renderWrappingTabBarWithEmpty renders a tab bar and dims empty inactive tabs.
-// emptyTabs[i] == true means tab i has zero items and should be rendered faint
-// (unless it is the active tab). Pass nil to disable dimming.
-func renderWrappingTabBarWithEmpty(tabs []string, activeIdx int, emptyTabs []bool, availableWidth int, accent ...color.Color) string {
-	return renderWrappingTabBarColored(tabs, activeIdx, nil, emptyTabs, availableWidth, accent...)
-}
-
-// renderSubTabBarWithFocus renders a sub-tab bar row with a ▐ focus indicator.
-// tabs is the list of tab names, activeIdx is the active tab, focused indicates
-// whether this row has focus (shows ▐) or not (shows space), and width is the
-// available width for the tab bar. The bar wraps to multiple rows when tab
-// labels overflow; the focus indicator is prefixed only to the first row.
-func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width int, accent ...color.Color) string {
-	bar := renderWrappingTabBar(tabs, activeIdx, width-2, accent...)
-	lines := strings.Split(bar, "\n")
-	prefix := " "
-	if focused {
-		prefix = FocusIndicator
-	}
-	lines[0] = prefix + lines[0]
-	return strings.Join(lines, "\n")
-}
-
 // renderTabFiller returns a bottom-border filler element that extends a tab row
 // to the given width. Returns "" if width <= 0.
 func renderTabFiller(width int) string {
@@ -161,14 +138,4 @@ func renderWrappingHelpLine(helpText string, width int) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// renderTabBarWithOptionalSubTabs renders a tab bar that switches between a
-// wrapping tab bar and a sub-tab-bar-with-focus layout depending on whether
-// sub-tabs are present.
-func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNames []string, subTabRowFocused bool, width int, accent ...color.Color) string {
-	if len(subTabNames) > 1 {
-		return renderSubTabBarWithFocus(tabNames, activeTab, !subTabRowFocused, width, accent...)
-	}
-	return renderWrappingTabBar(tabNames, activeTab, width, accent...)
 }

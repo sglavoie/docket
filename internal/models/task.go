@@ -29,13 +29,15 @@ type ChecklistItem struct {
 	Done bool   `json:"done"`
 }
 
-// Task represents a single task, story, epic, bug, or idea.
+// GenericTaskHeading is the only heading label emitted by task codecs.
+const GenericTaskHeading = "Task"
+
+// Task is the target generic work record.
 type Task struct {
-	ID          string   `json:"id"`
-	ShortID     int      `json:"short_id"`
-	Type        TaskType `json:"type"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
+	ID          string `json:"id"`
+	ShortID     int    `json:"short_id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 	// WorkflowState is the single lifecycle source of truth.
 	WorkflowState WorkflowState      `json:"workflow_state,omitempty"`
 	Priority      int                `json:"priority"`
@@ -45,34 +47,15 @@ type Task struct {
 	UpdatedAt     time.Time          `json:"updated_at"`
 	CompletedAt   *time.Time         `json:"completed_at,omitempty"`
 	DueDate       *time.Time         `json:"due_date,omitempty"`
-	HasTime       bool               `json:"has_time,omitempty"`   // true when DueDate carries a meaningful clock time
 	DependsOn     []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
-	RelatedTo     []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
 	Pinned        bool               `json:"pinned,omitempty"`     // Whether the task is pinned
 	PinnedAt      *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
-	Dimmed        bool               `json:"dimmed,omitempty"`     // Whether the task is visually dimmed
 	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
 	Decisions     []*Decision        `json:"decisions,omitempty"`  // Design/architecture decisions
 	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
 	Attachments   []Attachment       `json:"attachments,omitempty"`
-	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"`  // Task hidden until this date
-	ParkedNote    string             `json:"parked_note,omitempty"`    // Resume note for interrupted work
-	ParkedAt      *time.Time         `json:"parked_at,omitempty"`      // When the task was parked
-	Activity      []*ActivityEntry   `json:"activity,omitempty"`       // Persistent changelog of field changes
-	Checklist     []ChecklistItem    `json:"checklist,omitempty"`      // Checklist items for subtasks
-	StartDate     *time.Time         `json:"start_date,omitempty"`     // Planned/actual start date (used for Gantt scheduling)
-	EstimatedDays float64            `json:"estimated_days,omitempty"` // Estimated duration in working days (0 = unset)
-	Source        string             `json:"source,omitempty"`         // Origin of the task (e.g., "github", "jira")
-	URL           string             `json:"url,omitempty"`            // External reference URL
-	// Scoring dimensions: manual overrides for scoring profile dimensions (e.g., "impact": 4)
-	ScoreDimensions map[string]int `json:"score_dimensions,omitempty"`
-
-	// Type-specific attributes (only one should be set based on task Type)
-	BugAttrs   *BugAttrs   `json:"bug_attrs,omitempty"`
-	IdeaAttrs  *IdeaAttrs  `json:"idea_attrs,omitempty"`
-	TaskAttrs  *TaskAttrs  `json:"task_attrs,omitempty"`
-	StoryAttrs *StoryAttrs `json:"story_attrs,omitempty"`
-	EpicAttrs  *EpicAttrs  `json:"epic_attrs,omitempty"`
+	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
+	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`
@@ -108,9 +91,12 @@ func ValidateTaskTitle(title string) error {
 	return nil
 }
 
-// NewTask creates a new task with default values.
-// Returns an error if the title is invalid.
-func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, error) {
+// NewGenericTask creates a target generic Task with default values.
+func NewGenericTask(id string, shortID int, title string) (*Task, error) {
+	return newTask(id, shortID, title)
+}
+
+func newTask(id string, shortID int, title string) (*Task, error) {
 	if err := ValidateTaskTitle(title); err != nil {
 		return nil, err
 	}
@@ -118,34 +104,15 @@ func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, er
 	return &Task{
 		ID:      id,
 		ShortID: shortID,
-		Type:    taskType,
 		Title:   title,
 		// StateReady is the default for freshly created tasks (an empty section
 		// and todo status derived to StateReady under the legacy model).
-		WorkflowState:   StateReady,
-		Priority:        PriorityDefault, // Medium priority
-		Tags:            []string{},
-		DependsOn:       []string{},
-		RelatedTo:       []string{},
-		ScoreDimensions: map[string]int{},
-		CreatedAt:       now,
-		UpdatedAt:       now,
-		Children:        []*Task{},
+		WorkflowState: StateReady,
+		Priority:      PriorityDefault, // Medium priority
+		Tags:          []string{},
+		DependsOn:     []string{},
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Children:      []*Task{},
 	}, nil
-}
-
-// ClearTypeAttrs clears all type-specific attribute pointers.
-// Called when task type changes to prevent stale attributes from persisting.
-//
-// Design note: each task type owns at most one Attrs pointer (e.g. a Bug has
-// BugAttrs, a Story has StoryAttrs). The other pointers are always nil during
-// normal operation. Clearing all of them on a type change is intentional —
-// it is cheaper and safer than tracking which pointer was previously active,
-// and ensures no phantom attributes leak into the new type's serialized form.
-func (t *Task) ClearTypeAttrs() {
-	t.BugAttrs = nil
-	t.IdeaAttrs = nil
-	t.TaskAttrs = nil
-	t.StoryAttrs = nil
-	t.EpicAttrs = nil
 }

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "workspace",
+  "data": {
+    "schema_version": 4,
+    "workspace_id": "00000000-0000-4000-8000-000000000004",
+    "projects": [],
+    "system_inbox_project_id": ""
+  }
+}

@@ -71,33 +71,6 @@ func DefaultDarkTheme() Theme {
 	}
 }
 
-func defaultDarkThemeRev1() Theme {
-	return Theme{
-		BackgroundColor: "#1a1b26",
-		CursorColor:     "#33467c",
-		CursorTextColor: "#c0caf5",
-		Palette: PaletteColors{
-			NormalText:     "#c0caf5",
-			Muted:          "#565f89",
-			Dimmed:         "#3b3f5c",
-			DimmedBg:       "#24283b",
-			DimmedFg:       "#9aa5ce",
-			Primary:        "#7aa2f7",
-			Secondary:      "#7dcfff",
-			Accent:         "#e0af68",
-			Success:        "#9ece6a",
-			Warning:        "#e0af68",
-			Error:          "#f7768e",
-			Border:         "#3b3f5c",
-			Priority1Title: "#f7768e",
-			Priority2Title: "#e0af68",
-			Priority3Title: "#7aa2f7",
-			Priority4Title: "#9aa5ce",
-			Priority5Title: "#565f89",
-		},
-	}
-}
-
 // DefaultTheme returns the canonical default Theme for the given variant.
 // Unknown variants fall back to dark.
 func DefaultTheme(variant string) Theme {

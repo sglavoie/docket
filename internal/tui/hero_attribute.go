@@ -25,10 +25,9 @@ import (
 //  2. HeroBlocked   — explicit waiting state OR incomplete dependencies
 //  3. HeroDueToday  — task is due today (and not yet overdue)
 //  4. HeroP1        — Priority == 1
-//  5. HeroReview    — review state
 //
 // Quiet states (always return HeroNone so no badge competes for attention):
-// terminal tasks (done, canceled) and explicitly dimmed rows.
+// terminal tasks (done, canceled).
 type HeroKind int
 
 const (
@@ -37,19 +36,18 @@ const (
 	HeroBlocked
 	HeroDueToday
 	HeroP1
-	HeroReview
 )
 
 // pickHeroAttribute returns the highest-precedence hero attribute for a task.
 // Returns HeroNone when no attribute qualifies (the row keeps current badge
 // styling; nothing is demoted) and for quiet states — completed, canceled,
-// and dimmed tasks never claim the hero slot. The project is required to
+// tasks never claim the hero slot. The project is required to
 // evaluate blocked-by-dependencies; pass nil to skip that branch.
 func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 	if t == nil {
 		return HeroNone
 	}
-	if t.IsTerminalState() || t.Dimmed {
+	if t.IsTerminalState() {
 		return HeroNone
 	}
 	if t.IsOverdue() {
@@ -64,18 +62,13 @@ func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 	if t.Priority == 1 {
 		return HeroP1
 	}
-	if t.IsInState(models.StateReview) {
-		return HeroReview
-	}
 	return HeroNone
 }
 
 // dueIsInlineHero reports whether a task's due date may be rendered as the
-// dense-row urgency anchor. It mirrors the quiet-state guard used by
-// pickHeroAttribute so completed, canceled, and dimmed rows never claim due
-// urgency inline.
+// dense-row urgency anchor.
 func dueIsInlineHero(t *models.Task) bool {
-	return t != nil && !t.IsComplete() && !t.Dimmed && (t.IsOverdue() || t.IsDueToday())
+	return t != nil && !t.IsComplete() && (t.IsOverdue() || t.IsDueToday())
 }
 
 // demoteBadge re-renders a pre-styled badge with MutedStyle, preserving the
@@ -89,7 +82,7 @@ func demoteBadge(badge string) string {
 }
 
 // statusIsHero reports whether the status badge is the hero for a given kind.
-func statusIsHero(h HeroKind) bool { return h == HeroBlocked || h == HeroReview }
+func statusIsHero(h HeroKind) bool { return h == HeroBlocked }
 
 // priorityIsHero reports whether the priority badge is the hero.
 func priorityIsHero(h HeroKind) bool { return h == HeroP1 }

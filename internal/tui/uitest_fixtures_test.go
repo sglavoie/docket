@@ -13,7 +13,7 @@ import (
 
 func TestUITestFixtureNames(t *testing.T) {
 	got := BuiltinFixtureNames()
-	want := []string{"alerts", "contexts", "empty", "fresh", "narrow", "release", "rich", "workflow"}
+	want := []string{"busy", "contexts", "empty", "fresh", "narrow", "release", "rich", "workflow"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuiltinFixtureNames() = %v, want %v", got, want)
 	}
@@ -98,7 +98,7 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	if inbox == nil {
 		t.Fatal("fresh install has no system Inbox")
 	}
-	if inbox.Name != config.SystemInboxName || inbox.Internal || inbox.Archived {
+	if inbox.Name != config.SystemInboxName || inbox.Archived {
 		t.Fatalf("system Inbox metadata = %+v", inbox)
 	}
 	active := driver.App().runtime.ActiveProjects()
@@ -222,7 +222,7 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	}
 	sourceWorkspaceID := sourceCatalog.WorkspaceID
 	sourceMachine := config.NewMachineState()
-	sourceMachine.Editor = "source-only-editor"
+	sourceMachine.Theme = "light"
 	sourceStore := config.NewDomainFileStoreWithWorkspace(src.DataDir, sourceWorkspaceID)
 	if saveErr := sourceStore.SaveMachine(sourceMachine); saveErr != nil {
 		t.Fatalf("SaveMachine(source): %v", saveErr)
@@ -244,8 +244,8 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	if got := driver.App().runtime.Catalog().WorkspaceID; got == "" || got == sourceWorkspaceID {
 		t.Fatalf("copied workspace ID = %q, want a fresh identity distinct from %q", got, sourceWorkspaceID)
 	}
-	if got, want := driver.App().runtime.Machine().Editor, config.NewMachineState().Editor; got != want {
-		t.Fatalf("copied workspace machine editor = %q, want isolated default %q", got, want)
+	if got, want := driver.App().runtime.Machine().Theme, config.NewMachineState().Theme; got != want {
+		t.Fatalf("copied workspace machine theme = %q, want isolated default %q", got, want)
 	}
 
 	// The copied project points at the temp copy and its tasks.md matches source.
@@ -285,7 +285,7 @@ func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	if copied == nil {
 		t.Fatal("copied config is missing the source project")
 	}
-	newTask, err := models.NewTask("copy-only-task", copied.NextShortID, models.TaskTypeTask, "Copy-only task")
+	newTask, err := models.NewGenericTask("copy-only-task", copied.NextShortID, "Copy-only task")
 	if err != nil {
 		t.Fatalf("NewTask error: %v", err)
 	}
@@ -315,9 +315,9 @@ func newSourceWorkspace(t *testing.T) *uitestWorkspace {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	project, err := ws.addProject("Source Project", func(p *models.Project) {
-		epic := newFixtureTask(p, models.TaskTypeEpic, "Source epic")
+		epic := newFixtureTask(p, "Source epic")
 		epic.Priority = 1
-		story := newFixtureTask(p, models.TaskTypeStory, "Source story")
+		story := newFixtureTask(p, "Source story")
 		story.ParentID = &epic.ID
 	})
 	if err != nil {

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -45,29 +44,10 @@ const projectArchiveConfirmAction = "project-archive"
 
 type projectArchiveConfirmedMsg struct{}
 
-// ProjectDeletedMsg signals a project was permanently deleted.
-type ProjectDeletedMsg struct{ Project *models.Project }
-
 // ProjectPinRequestMsg requests a durable project pin-state change.
 type ProjectPinRequestMsg struct {
 	Project *models.Project
 	Pinned  bool
-}
-
-// =============================================================================
-// Project Tree Messages
-// =============================================================================
-
-// RestoreFromTrashMsg requests restoration of a project from trash.
-type RestoreFromTrashMsg struct {
-	EntryID string
-	Slug    string
-}
-
-// PurgeFromTrashMsg requests permanent deletion of a project from trash.
-type PurgeFromTrashMsg struct {
-	EntryID string
-	Slug    string
 }
 
 // =============================================================================
@@ -76,18 +56,3 @@ type PurgeFromTrashMsg struct {
 
 // StatusUpdatedMsg signals the project status was updated.
 type StatusUpdatedMsg struct{}
-
-// =============================================================================
-// Sandbox Messages
-// =============================================================================
-
-// SandboxResetRequestMsg requests to reset/clear the sandbox project.
-type SandboxResetRequestMsg struct{}
-
-// SandboxResetDoneMsg signals the sandbox was reset.
-type SandboxResetDoneMsg struct {
-	Result app.SandboxResetResult
-}
-
-// SandboxResetFailedMsg reports a rejected reset without changing live caches.
-type SandboxResetFailedMsg struct{ Err error }

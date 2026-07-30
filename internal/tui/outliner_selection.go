@@ -50,6 +50,7 @@ func (m *OutlinerModel) toggleCursorSelection() {
 	if m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isTaskRow() {
 		return
 	}
+	m.multiSelectMode = true
 	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.cursor]))
 	m.updateVisualSelectionStatus()
 }
@@ -71,10 +72,10 @@ func (m *OutlinerModel) updateVisualSelectionStatus() {
 		return
 	}
 	if count := m.SelectedCount(); count > 0 {
-		m.setStatus(fmt.Sprintf("Visual selection: %d selected · Space toggle · Enter actions · Esc/v exit", count))
+		m.setStatus(fmt.Sprintf("Visual selection: %d selected · v toggle · Space delete menu · Esc clear", count))
 		return
 	}
-	m.setStatus("Visual selection: Space toggle · Enter actions · Esc/v exit")
+	m.setStatus("Visual selection: v toggle · V all visible · Esc clear")
 }
 
 // selectAllVisible adds all currently visible rows to the selection.
@@ -87,23 +88,11 @@ func (m *OutlinerModel) selectAllVisible() {
 	}
 }
 
-// pruneInvisibleSelections removes selected tasks that are no longer visible.
+// pruneInvisibleSelections intentionally retains valid project-qualified
+// selections even when a filter, mode, or successful mutation hides their rows.
+// Non-delete bulk actions preserve the frozen selection so a follow-up action
+// never narrows silently to what happens to remain visible.
 func (m *OutlinerModel) pruneInvisibleSelections() {
-	if !m.multiSelectMode {
-		return
-	}
-	visibleIdentities := make(map[TaskIdentity]bool, len(m.rows))
-	for _, row := range m.rows {
-		if !row.isTaskRow() || row.task == nil {
-			continue
-		}
-		visibleIdentities[m.taskIdentityForRow(row)] = true
-	}
-	for identity := range m.selectedTaskIdentities {
-		if !visibleIdentities[identity] {
-			delete(m.selectedTaskIdentities, identity)
-		}
-	}
 }
 
 // clearMultiSelect exits multi-select mode and clears all selections.

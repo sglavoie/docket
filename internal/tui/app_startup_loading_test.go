@@ -23,17 +23,13 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 		Tasks: []*models.Task{},
 	}
 	setTestProjects(runtime, []*models.Project{project})
-	runtime.Machine().CurrentProject = project.ID
-	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{{ProjectID: project.ID, TaskID: "task-next"}})
-	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{{
-		ProjectID:   project.ID,
-		TaskID:      "task-today",
-		PlannedDate: time.Now().Format("2006-01-02"),
+	runtime.Planning().SetNextOrder([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: "task-next"}})
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
+		ProjectID: project.ID,
+		TaskID:    "task-today",
 	}})
-	runtime.Machine().SetRecentTaskVisits([]config.RecentTaskVisit{{ProjectID: project.ID, TaskID: "task-next"}})
-
 	// Next and Today are mutually exclusive, so use separate valid members while
-	// proving all planning/recent references share one startup project load.
+	// proving all planning references share one startup project load.
 	nextTask := &models.Task{ID: "task-next", ShortID: 1, Title: "Next task", WorkflowState: models.StateNext}
 	todayTask := &models.Task{ID: "task-today", ShortID: 2, Title: "Today task", WorkflowState: models.StateReady}
 	stored := *project
@@ -51,14 +47,11 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	if got := len(mock.LoadCalls); got != 1 {
 		t.Fatalf("startup loaded the same referenced project %d times, want 1", got)
 	}
-	if got := len(app.focusQueue); got != 1 {
+	if got := len(app.nextOrder); got != 1 {
 		t.Fatalf("focus queue items = %d, want 1", got)
 	}
-	if got := len(app.dailyPlan); got != 1 {
+	if got := len(app.today); got != 1 {
 		t.Fatalf("daily plan items = %d, want 1", got)
-	}
-	if got := len(app.recentTaskVisits); got != 1 {
-		t.Fatalf("recent visits = %d, want 1", got)
 	}
 }
 
@@ -119,10 +112,6 @@ func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
 		{
 			ID: "system-inbox", Slug: config.SystemInboxSlug, Name: config.SystemInboxName, Context: "personal",
 			CreatedAt: now, UpdatedAt: now, ColorSlot: 1,
-		},
-		{
-			ID: "sandbox", Slug: "_sandbox", Name: "Sandbox", Context: "personal",
-			CreatedAt: now, UpdatedAt: now, Sandbox: true,
 		},
 	}
 	catalog.SystemInboxProjectID = "system-inbox"

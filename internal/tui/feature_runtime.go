@@ -16,11 +16,7 @@ import (
 // This file provides the production application-service wiring for the TUI. The
 // feature coordinators (feature_coordinator.go) drive presentation-neutral
 // application use cases; this is the seam that binds those use cases to durable,
-// transactional, undoable storage in production. It deliberately mirrors the
-// CLI's cliRepository (cmd/app_service.go) so a mutation dispatched from the TUI
-// commits through the same journaled path with the same optimistic-concurrency
-// and undo-ledger semantics as the equivalent CLI command — the whole point of
-// routing both adapters through one application layer.
+// transactional, undoable storage in production.
 
 // tuiAppRepository is the production app.Repository backing TUI feature
 // coordinators. Each Snapshot loads every loadable project fresh at its on-disk
@@ -28,7 +24,7 @@ import (
 // anywhere in the workspace; Commit routes changesets through the transactional
 // commit service (with the workspace undo ledger attached) on the real
 // filesystem, and falls back to a raw save against a test-double storage
-// repository — matching the dual path SaveProject and cliRepository already use.
+// repository.
 //
 // It depends on explicit domain-backed capabilities rather than the config.Config
 // facade: the catalog domain (via RuntimeDependencies) supplies the loadable
@@ -61,7 +57,7 @@ func (r *tuiAppRepository) useCommitService() bool {
 
 // Snapshot loads a revision-consistent read model over every loadable project.
 // Projects that fail to load are skipped with a warning rather than failing the
-// whole mutation, matching FindTaskGloballyByID's and cliRepository's tolerance.
+// whole mutation.
 func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 	projects, listErr := r.deps.AllLoadableProjects(r.dataDir)
 	if listErr != nil {
@@ -92,8 +88,7 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 
 // tuiProjectDiskDocument returns the exact lossless on-disk document whose
 // revision the commit service compares against ExpectedRevision. It reads the
-// disk document (not the load-normalized in-memory
-// project) for the same reason cliRepository.projectDiskDocument does: a fresh
+// disk document rather than the load-normalized in-memory project: a fresh
 // project's raw bytes can diverge from ToProjectDocument(loaded) after load-time
 // normalization, which would otherwise fail the first optimistic commit with a
 // phantom stale-revision conflict. Test doubles keep projects in memory with no
@@ -209,6 +204,16 @@ func (r *tuiAppRepository) CommitOps(ops []transaction.Op, artifacts []storage.A
 	return nil
 }
 
+func (r *tuiAppRepository) CommitOpsTransaction(request storage.OpsCommitRequest) (string, error) {
+	if r.useCommitService() {
+		return r.svc.CommitOpsTransaction(request)
+	}
+	if err := r.CommitOps(request.Ops, request.Artifacts); err != nil {
+		return "", err
+	}
+	return "", nil
+}
+
 // newTUIAppService constructs the application service the TUI feature
 // coordinators drive. The service owns the storage-backed repository, the system
 // clock, and the UUID generator; every primary-view mutation routes through one
@@ -219,6 +224,5 @@ func newTUIAppService(dataDir string, deps *config.RuntimeDependencies, ledger *
 		nil,
 		nil,
 		app.NewStorageWorkspaceNotePort(dataDir),
-		nil,
 	)
 }

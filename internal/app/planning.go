@@ -20,19 +20,18 @@ const (
 	PlanningBacklog     PlanningAction = "backlog"
 )
 
-// PlanningRequest applies one planning action to a task. PlannedDate is optional
-// for AddToday and defaults to the service clock's local calendar day.
+// PlanningRequest applies one planning action to a project-qualified task.
 type PlanningRequest struct {
-	TaskID      string
-	Locator     TaskLocator
-	Action      PlanningAction
-	PlannedDate string
+	TaskID  string
+	Locator TaskLocator
+	Action  PlanningAction
 }
 
-// PlanningTodayUpdate changes the planned date of one existing Today member.
-type PlanningTodayUpdate struct {
-	Locator     TaskLocator
-	PlannedDate string
+// PlanningBulkRequest applies one uniform planning intent to a
+// project-qualified selection.
+type PlanningBulkRequest struct {
+	Targets []TaskLocator
+	Action  PlanningAction
 }
 
 // ApplyPlanning is the single task/planning mutation boundary. State changes and
@@ -56,12 +55,8 @@ func (s *Service) ApplyPlanning(req PlanningRequest) (TaskResult, error) {
 		}
 	}()
 
-	plannedDate := req.PlannedDate
-	if plannedDate == "" {
-		plannedDate = s.clock.Now().Format("2006-01-02")
-	}
 	target, stateChanged, err := ApplyPlanningActionToTask(
-		ref.Task, ref.Project.ID, req.Action, plannedDate, s.clock.Now(),
+		ref.Task, ref.Project.ID, req.Action, s.clock.Now(),
 	)
 	if err != nil {
 		return TaskResult{}, err
@@ -89,10 +84,95 @@ func (s *Service) ApplyPlanning(req PlanningRequest) (TaskResult, error) {
 	return newTaskResult(ref, revision), nil
 }
 
+// ApplyPlanningBulk validates the complete selection before mutation, applies
+// every task-state and planning membership effect, and commits all touched
+// projects plus the checked planning artifact in one transaction.
+func (s *Service) ApplyPlanningBulk(req PlanningBulkRequest) (BulkResult, error) {
+	if len(req.Targets) == 0 {
+		return BulkResult{}, invalidInput("tasks", "at least one task is required")
+	}
+	builder := s.defaultedPlanningArtifacts(nil)
+	if builder == nil {
+		return BulkResult{}, fmt.Errorf("app: planning mutations require a planning artifact builder")
+	}
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return BulkResult{}, err
+	}
+	refs, err := resolveRequestedTasks(snap, nil, req.Targets)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return BulkResult{}, fmt.Errorf("capture bulk planning rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+
+	now := s.clock.Now()
+	for _, ref := range refs {
+		clone := *ref.Task
+		if _, _, validationErr := ApplyPlanningActionToTask(
+			&clone, ref.Project.ID, req.Action, now,
+		); validationErr != nil {
+			return BulkResult{}, validationErr
+		}
+	}
+	targets := make([]PlanningReconcileTarget, 0, len(refs))
+	for _, ref := range refs {
+		target, _, mutationErr := ApplyPlanningActionToTask(
+			ref.Task, ref.Project.ID, req.Action, now,
+		)
+		if mutationErr != nil {
+			return BulkResult{}, mutationErr
+		}
+		targets = append(targets, target)
+	}
+	artifacts, err := planningArtifactsForRequest(
+		PlanningReconcileRequest{Targets: targets},
+		builder,
+	)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	commits, indexes := distinctProjectCommits(refs, snap)
+	if len(commits) == 0 {
+		return BulkResult{}, invalidInput("tasks", "at least one task is required")
+	}
+	commits[0].artifacts = append(commits[0].artifacts, artifacts...)
+	outcome, err := s.commitProjects(
+		commits,
+		planningUndoAction(req.Action),
+		fmt.Sprintf("%d tasks", len(refs)),
+	)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	committed = true
+
+	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	for _, ref := range refs {
+		result.Tasks = append(
+			result.Tasks,
+			newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])),
+		)
+	}
+	for _, commit := range commits {
+		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)
+	}
+	return result, nil
+}
+
 // ApplyPlanningActionToTask applies the task-state half of a planning action and
 // returns the matching reconciliation target. It is exported for isolated,
 // non-persistent UI models; production callers use Service.ApplyPlanning.
-func ApplyPlanningActionToTask(task *models.Task, projectID string, action PlanningAction, plannedDate string, now time.Time) (PlanningReconcileTarget, bool, error) {
+func ApplyPlanningActionToTask(task *models.Task, projectID string, action PlanningAction, now time.Time) (PlanningReconcileTarget, bool, error) {
 	if task == nil {
 		return PlanningReconcileTarget{}, false, invalidInput("planning", "task is required")
 	}
@@ -124,8 +204,8 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 
 	stateChanged := targetState != task.State()
 	if stateChanged {
-		if reason := models.CanTransitionState(task.State(), targetState); reason != "" {
-			return PlanningReconcileTarget{}, false, &TransitionError{From: string(task.State()), To: string(targetState), Reason: reason}
+		if err := validateLifecycleTransition(TaskRef{Task: task}, nil, targetState); err != nil {
+			return PlanningReconcileTarget{}, false, err
 		}
 		if err := task.ApplyStateTransitionAt(targetState, now); err != nil {
 			return PlanningReconcileTarget{}, false, invalidInput("state", err.Error())
@@ -133,7 +213,7 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 	}
 	return PlanningReconcileTarget{
 		TaskID: task.ID, ProjectID: projectID, State: task.State(),
-		Today: today, PlannedDate: plannedDate, EnsureNextOrder: action == PlanningAddNext,
+		Today: today,
 	}, stateChanged, nil
 }
 
@@ -156,7 +236,7 @@ func planningUndoAction(action PlanningAction) string {
 
 // ReconcilePlanning sanitizes all persisted Today and Next-order entries against
 // one fresh workspace snapshot. It removes dangling/duplicate/illegal entries;
-// StateNext itself remains authoritative membership while FocusQueue is only an
+// StateNext itself remains authoritative membership while NextOrder is only an
 // optional explicit order index.
 func (s *Service) ReconcilePlanning() (bool, error) {
 	builder := s.defaultedPlanningArtifacts(nil)
@@ -193,51 +273,16 @@ func (s *Service) ClearToday() error {
 // StateNext member omitted by a stale caller at the end.
 func (s *Service) ReorderNext(order []TaskLocator) error {
 	return s.applyPlanningOrder(PlanningReconcileRequest{
-		FocusOrder: append([]TaskLocator(nil), order...), SetFocusOrder: true,
+		NextOrder: append([]TaskLocator(nil), order...), SetNextOrder: true,
 	}, "Reorder Next")
 }
 
-// ReorderToday replaces Daily Plan order while preserving each entry's planned
-// date and retaining any valid omitted member at the end.
+// ReorderToday replaces the workspace-wide Today order while retaining any
+// valid omitted member at the end.
 func (s *Service) ReorderToday(order []TaskLocator) error {
 	return s.applyPlanningOrder(PlanningReconcileRequest{
-		DailyOrder: append([]TaskLocator(nil), order...), SetDailyOrder: true,
+		TodayOrder: append([]TaskLocator(nil), order...), SetTodayOrder: true,
 	}, "Reorder Today")
-}
-
-// UpdateTodayDates applies carry-over dates through the canonical reconciler,
-// preserving Today eligibility and all Next invariants.
-func (s *Service) UpdateTodayDates(updates []PlanningTodayUpdate) error {
-	builder := s.defaultedPlanningArtifacts(nil)
-	if builder == nil {
-		return fmt.Errorf("app: planning mutations require a planning artifact builder")
-	}
-	snap, err := s.repo.Snapshot()
-	if err != nil {
-		return err
-	}
-	targets := planningTargetsForSnapshot(snap)
-	byLocator := make(map[TaskLocator]string, len(updates))
-	for _, update := range updates {
-		if update.Locator.Valid() && update.PlannedDate != "" {
-			byLocator[update.Locator] = update.PlannedDate
-		}
-	}
-	for i := range targets {
-		locator := TaskLocator{ProjectID: targets[i].ProjectID, TaskID: targets[i].TaskID}
-		if date := byLocator[locator]; date != "" {
-			targets[i].Today = PlanningTodayAdd
-			targets[i].PlannedDate = date
-			targets[i].UpdatePlannedDate = true
-		}
-	}
-	artifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
-		Targets: targets, Complete: true,
-	}, builder)
-	if err != nil {
-		return err
-	}
-	return s.commitPlanningOnly(artifacts, nil, "Carry Today Forward", "")
 }
 
 func (s *Service) applyPlanningOrder(req PlanningReconcileRequest, undoAction string) error {

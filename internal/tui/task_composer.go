@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/template"
 )
 
 // TaskComposerPresetKind is the typed intent carried into the one task composer
@@ -23,9 +22,7 @@ const (
 	ComposerGlobal TaskComposerPresetKind = iota
 	ComposerProject
 	ComposerPlanner
-	ComposerTemplate
 	ComposerChild
-	ComposerLinked
 	ComposerEdit
 )
 
@@ -39,7 +36,6 @@ const (
 // TaskComposerSharedAttributes are defaults shared by every nonblank compact
 // line. Explicit capture syntax on a line wins over these defaults.
 type TaskComposerSharedAttributes struct {
-	Type       models.TaskType
 	Priority   int
 	Tags       []string
 	Due        *time.Time
@@ -49,16 +45,13 @@ type TaskComposerSharedAttributes struct {
 }
 
 // TaskComposerPreset is the complete typed launch contract for compact create,
-// expanded create/edit, Planner membership, templates, children, and links.
+// expanded create/edit, Planner membership, children, and links.
 type TaskComposerPreset struct {
 	Kind               TaskComposerPresetKind
 	Project            *models.Project
 	AllProjects        []*models.Project
 	Task               *models.Task
 	Parent             *models.Task
-	SourceTask         *models.Task
-	LinkType           LinkType
-	Template           *template.TaskTemplate
 	Shared             TaskComposerSharedAttributes
 	InitialText        string
 	AllowProjectSwitch bool
@@ -82,34 +75,12 @@ func (p TaskComposerPreset) label() string {
 		default:
 			return "Backlog"
 		}
-	case ComposerTemplate:
-		if p.Template != nil {
-			return "Template · " + p.Template.Name
-		}
-		return "Template"
 	case ComposerChild:
 		return "Child task"
-	case ComposerLinked:
-		return "Linked task · " + composerLinkLabel(p.LinkType)
 	case ComposerEdit:
 		return "Edit task"
 	default:
 		return "Task"
-	}
-}
-
-func composerLinkLabel(linkType LinkType) string {
-	switch linkType {
-	case LinkTypeBlocker:
-		return "blocker"
-	case LinkTypeDependent:
-		return "dependent"
-	case LinkTypeSubtask:
-		return "subtask"
-	case LinkTypeFollowUp:
-		return "follow-up"
-	default:
-		return "related"
 	}
 }
 
@@ -124,24 +95,15 @@ func creationStateFromParsedInput(
 	state models.WorkflowState,
 	stateSet bool,
 	preset models.WorkflowState,
+	parentID *string,
 ) models.WorkflowState {
 	if stateSet {
 		return state
 	}
-	return creationStateFromPreset(preset)
-}
-
-func appLinkKind(linkType LinkType) app.LinkKind {
-	switch linkType {
-	case LinkTypeBlocker:
-		return app.LinkBlocker
-	case LinkTypeDependent:
-		return app.LinkDependent
-	case LinkTypeSubtask:
-		return app.LinkSubtask
-	default:
-		return app.LinkFollowUp
+	if parentID != nil {
+		return models.StateReady
 	}
+	return creationStateFromPreset(preset)
 }
 
 // TaskComposerModel is the sole live task creation/editing overlay. Compact
@@ -183,14 +145,6 @@ func NewTaskComposerModel(preset TaskComposerPreset, runtime *config.RuntimeStat
 			m.expanded.hostTitle = "Task Composer · Edit"
 		} else {
 			m.errors = []lineError{{line: 1, message: "edit preset requires a task and project"}}
-		}
-	case ComposerTemplate:
-		m.mode = ComposerExpanded
-		if preset.Project != nil {
-			m.expanded = NewTaskFormModelCreateFromTemplate(preset.Project, runtime, preset.Parent, preset.Template)
-			m.expanded.hostTitle = "Task Composer · Expanded"
-		} else {
-			m.errors = []lineError{{line: 1, message: "template preset requires a project"}}
 		}
 	default:
 		m.initCompactInput()
@@ -339,15 +293,9 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskComposerModel) createCompact(openContent, openDetail bool) tea.Cmd {
-	reqs, linked, ok := m.parseCompactLines()
+	reqs, ok := m.parseCompactLines()
 	if !ok {
 		return nil
-	}
-	if len(linked) == 1 {
-		return m.capture.CreateLinked(linked[0], m.preset.LinkType, openContent, openDetail)
-	}
-	if len(linked) > 1 {
-		return m.capture.CreateLinkedBulk(linked, m.preset.LinkType)
 	}
 	if len(reqs) == 1 {
 		return m.capture.CaptureCreate(reqs[0], openContent, openDetail)
@@ -355,17 +303,15 @@ func (m *TaskComposerModel) createCompact(openContent, openDetail bool) tea.Cmd 
 	return m.capture.CaptureBulk(reqs, true)
 }
 
-func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.LinkedTaskRequest, bool) { //nolint:gocyclo
+func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 	m.errors = nil
 	if m.preset.Project == nil {
 		m.errors = []lineError{{line: 1, message: "project is unavailable"}}
-		return nil, nil, false
+		return nil, false
 	}
 
 	lines := strings.Split(m.input.Value(), "\n")
 	reqs := make([]app.CaptureRequest, 0, len(lines))
-	linked := make([]app.LinkedTaskRequest, 0, len(lines))
-	firstProjectID := ""
 	for idx, raw := range lines {
 		line := strings.TrimSpace(raw)
 		if line == "" {
@@ -389,17 +335,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 			m.errors = append(m.errors, lineError{line: idx + 1, message: "target project is unavailable"})
 			continue
 		}
-		if firstProjectID == "" {
-			firstProjectID = target.ID
-		} else if target.ID != firstProjectID {
-			m.errors = append(m.errors, lineError{line: idx + 1, message: "all compact lines must target the same project"})
-			continue
-		}
 
-		taskType := parsed.taskType
-		if m.preset.Shared.Type != "" && !parsed.taskTypeSet {
-			taskType = m.preset.Shared.Type
-		}
 		priority := parsed.priority
 		if m.preset.Shared.Priority != 0 && !parsed.prioritySet {
 			priority = m.preset.Shared.Priority
@@ -416,11 +352,11 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 		if recurrence == nil {
 			recurrence = cloneRecurrence(m.preset.Shared.Recurrence)
 		}
-		state := creationStateFromParsedInput(parsed.state, parsed.stateSet, m.preset.Shared.State)
+		state := creationStateFromParsedInput(parsed.state, parsed.stateSet, m.preset.Shared.State, parentID)
 		req := app.CaptureRequest{
+			SourceLine:        idx + 1,
 			ProjectID:         target.ID,
 			Title:             parsed.title,
-			Type:              taskType,
 			Priority:          priority,
 			Tags:              mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
 			Due:               due,
@@ -431,41 +367,30 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []app.Lin
 			PlanningArtifacts: m.preset.PlanningArtifacts,
 		}
 		if parentID != nil {
-			if err := validateComposerParent(target, taskType, *parentID); err != nil {
+			if err := validateComposerParent(target, *parentID); err != nil {
 				m.errors = append(m.errors, lineError{line: idx + 1, message: err.Error()})
 				continue
 			}
 		}
-		if m.preset.Kind == ComposerLinked {
-			if m.preset.SourceTask == nil || target.GetTaskByID(m.preset.SourceTask.ID) == nil {
-				m.errors = append(m.errors, lineError{line: idx + 1, message: "source task is unavailable"})
-				continue
-			}
-			linked = append(linked, app.LinkedTaskRequest{Task: req, SourceTaskID: m.preset.SourceTask.ID, Link: appLinkKind(m.preset.LinkType)})
-		} else {
-			reqs = append(reqs, req)
-		}
+		reqs = append(reqs, req)
 	}
 
-	if len(reqs) == 0 && len(linked) == 0 && len(m.errors) == 0 {
+	if len(reqs) == 0 && len(m.errors) == 0 {
 		m.errors = []lineError{{line: 1, message: "no tasks to create"}}
 	}
 	if len(m.errors) > 0 {
-		return nil, nil, false
+		return nil, false
 	}
-	return reqs, linked, true
+	return reqs, true
 }
 
 // validateComposerParent mirrors the application-layer child placement rule so a
 // rejected nesting is reported on the offending line instead of failing the whole
 // submission after the fact.
-func validateComposerParent(project *models.Project, taskType models.TaskType, parentID string) error {
+func validateComposerParent(project *models.Project, parentID string) error {
 	parent := project.GetTaskByID(parentID)
 	if parent == nil {
 		return fmt.Errorf("parent not found: %s", parentID)
-	}
-	if !taskType.CanBeChildOf(parent.Type) {
-		return fmt.Errorf("%s cannot be a child of %s", taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
 	}
 	if parent.Level+1 > models.MaxNestingDepth {
 		return fmt.Errorf("nesting under #%d would exceed maximum depth of %d levels", parent.ShortID, models.MaxNestingDepth)
@@ -508,26 +433,17 @@ func (m *TaskComposerModel) projectByID(id string) *models.Project {
 }
 
 func (m *TaskComposerModel) expandSingle() tea.Cmd {
-	if m.preset.Kind == ComposerLinked {
-		m.errors = []lineError{{line: 1, message: "linked-task relationship editing stays in compact mode"}}
-		return nil
-	}
 	if m.preset.Project == nil {
 		m.errors = []lineError{{line: 1, message: "project is unavailable"}}
 		return nil
 	}
 	if m.nonblankLineCount() == 0 {
-		taskType := m.preset.Shared.Type
-		if taskType == "" {
-			taskType = models.TaskTypeTask
-		}
 		priority := m.preset.Shared.Priority
 		if priority == 0 {
 			priority = models.PriorityDefault
 		}
 		return m.expandRequest(app.CaptureRequest{
 			ProjectID:         m.preset.Project.ID,
-			Type:              taskType,
 			Priority:          priority,
 			Tags:              append([]string(nil), m.preset.Shared.Tags...),
 			Due:               cloneTime(m.preset.Shared.Due),
@@ -537,7 +453,7 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 			PlanningArtifacts: m.preset.PlanningArtifacts,
 		})
 	}
-	reqs, _, ok := m.parseCompactLines()
+	reqs, ok := m.parseCompactLines()
 	if !ok {
 		return nil
 	}
@@ -556,7 +472,6 @@ func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	}
 	form := NewTaskFormModelCreate(project, m.runtime, nil)
 	form.draft.title = req.Title
-	form.draft.taskType = req.Type
 	form.draft.priority = req.Priority
 	form.draft.tags = append([]string(nil), req.Tags...)
 	state := req.State
@@ -566,7 +481,7 @@ func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.state = state
 	form.draft.parentID = cloneStringPtr(req.ParentID)
 	form.draft.dueDate = cloneTime(req.Due)
-	form.draft.dueInput = formatDateInput(req.Due, req.HasTime)
+	form.draft.dueInput = formatDateInput(req.Due)
 	form.draft.recurrence = cloneRecurrence(req.Recurrence)
 	form.titleInput.SetValue(req.Title)
 	form.dueTextInput.SetValue(form.draft.dueInput)

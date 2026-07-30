@@ -7,11 +7,15 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *NotesViewModel) View() tea.View {
+	if m.combined {
+		return m.viewCombined()
+	}
 	var b strings.Builder
 
 	// Title
@@ -21,18 +25,7 @@ func (m *NotesViewModel) View() tea.View {
 	} else {
 		title = fmt.Sprintf("%s - Notes", m.project.Name)
 	}
-	if len(m.filterTags) > 0 {
-		title += " [filtered]"
-	}
-	subtitle := ""
-	if len(m.filterTags) > 0 {
-		tags := make([]string, 0, len(m.filterTags))
-		for t := range m.filterTags {
-			tags = append(tags, t)
-		}
-		subtitle = fmt.Sprintf("[tags: %s]", strings.Join(tags, ", "))
-	}
-	b.WriteString(renderFullscreenTitle(title, subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitle(title, "", m.AccentColor()))
 	b.WriteString("\n")
 
 	// Tab bar and count info (hidden when bottom pane is fullscreen)
@@ -117,13 +110,91 @@ func (m *NotesViewModel) View() tea.View {
 	return tea.NewView(b.String())
 }
 
+func (m *NotesViewModel) viewCombined() tea.View {
+	var b strings.Builder
+	subtitle := "Global + active project"
+	if m.Width() < 48 {
+		subtitle = ""
+	}
+	b.WriteString(renderFullscreenTitle("Notes", subtitle, m.AccentColor()))
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d notes", len(m.notes))))
+	b.WriteString("\n\n")
+
+	if m.destinationPicker {
+		b.WriteString(TitleStyle.Render("Create note in"))
+		b.WriteString("\n\n")
+		for i, location := range m.destinations {
+			label := m.locationLabel(location)
+			if i == m.destinationCursor {
+				b.WriteString(PickerSelectedStyle.Render("> " + label))
+			} else {
+				b.WriteString("  " + label)
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+		b.WriteString(HelpStyle.Render("j/k: choose · Enter: confirm location · Esc: cancel"))
+		return tea.NewView(b.String())
+	}
+
+	if len(m.notes) == 0 {
+		b.WriteString(renderEmptyState("No notes yet.", "Press n to choose a location and create one."))
+		b.WriteString("\n")
+	} else {
+		listHeight := max(m.Height()-7, 1)
+		start, end := persistentIndexWindow(m.cursor, len(m.notes), listHeight, &m.scrollOffset)
+		for i := start; i < end; i++ {
+			note := m.notes[i]
+			location := m.noteLocationFor(note)
+			scopeWidth := min(24, max(m.Width()/3, 6))
+			scope := truncateAndPad(m.locationLabel(location), scopeWidth)
+			title := truncateToVisualWidth(note.Title, max(m.Width()-scopeWidth-2, 1))
+			row := fmt.Sprintf("%s  %s", MutedStyle.Render(scope), title)
+			if note.ParseError != "" {
+				row = WarningIconStyle.Render("! ") + row
+			}
+			if i == m.cursor {
+				b.WriteString(PickerSelectedStyle.Render(row))
+			} else {
+				b.WriteString(row)
+			}
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("\n")
+	if m.renaming {
+		b.WriteString("Rename: " + m.renameInput.View())
+	} else {
+		help := "Enter: open · n: new · r: rename · x: delete · u: undo · Ctrl+R: redo · Esc: close"
+		b.WriteString(HelpStyle.Render(renderWrappingHelpLine(help, m.Width())))
+	}
+	if m.statusMessage != "" {
+		b.WriteString("\n")
+		b.WriteString(m.renderStatusBar())
+	}
+	return tea.NewView(b.String())
+}
+
+func (m *NotesViewModel) locationLabel(location app.NoteLocation) string {
+	if location.Scope == app.NoteScopeGlobal {
+		return "Global"
+	}
+	if m.project != nil && location.ProjectID == m.project.ID {
+		return m.project.Name
+	}
+	if location.ProjectID != "" {
+		return location.ProjectID
+	}
+	return "Unknown"
+}
+
 func (m *NotesViewModel) renderListPane() string {
 	if len(m.notes) == 0 {
 		return renderEmptyState("No notes yet.", "Press n to create one.") + "\n"
 	}
 
 	var b strings.Builder
-	pinnedStyle := SuccessStyle
 
 	listHeight := m.listHeight
 	if listHeight < 1 {
@@ -135,7 +206,7 @@ func (m *NotesViewModel) renderListPane() string {
 
 	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.notes), noteListHeight, &m.scrollOffset)
 
-	selectedStyle := TaskJumperSelectedStyle
+	selectedStyle := PickerSelectedStyle
 	if m.detailsPane.Focused {
 		selectedStyle = MutedStyle
 	}
@@ -165,34 +236,14 @@ func (m *NotesViewModel) renderListPane() string {
 			paddedTitle = MutedStyle.Render(paddedTitle)
 			row = fmt.Sprintf("%s %s %8s", indicator, paddedTitle, MutedStyle.Render("error"))
 		} else {
-			pin := " "
-			if note.Pinned {
-				pin = pinnedStyle.Render("P")
-			}
-
 			maxTitle := 40
 			if m.multiSelectMode {
 				maxTitle = 36
 			}
 			paddedTitle := truncateAndPad(checkbox+truncateToVisualWidth(note.Title, maxTitle), 40)
 
-			tags := ""
-			if len(note.Tags) > 0 {
-				tags = " [" + strings.Join(note.Tags, ", ") + "]"
-			}
-
-			linked := ""
-			if len(note.LinkedTasks) > 0 && !m.isGlobal {
-				linked = fmt.Sprintf(" (%d)", len(note.LinkedTasks))
-			}
-
 			age := formatNoteAge(note.ModifiedAt)
-
-			if note.Pinned {
-				paddedTitle = pinnedStyle.Render(paddedTitle)
-			}
-
-			row = fmt.Sprintf("%s %s %8s%s%s", pin, paddedTitle, age, tags, linked)
+			row = fmt.Sprintf("  %s %8s", paddedTitle, age)
 		}
 
 		if isCurrent {
@@ -221,21 +272,13 @@ func (m *NotesViewModel) renderFooter() string {
 		}
 		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+D/U: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · Esc: close"
 	} else if m.multiSelectMode {
-		helpText = "space: toggle · a: all · gX: clear · d: delete · t: tag · l: link · y: copy · V/Esc: exit multi-select"
+		helpText = "space: toggle · a: all · gX: clear · d: delete · V/Esc: exit multi-select"
 	} else {
 		zHint := "Z:fullscreen"
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
 		}
 		helpText = "j/k: nav · Tab: pane · e: edit · n: new · d: del · r: rename · s: sort · y: copy · " + zHint
-		if m.isGlobal {
-			helpText += " · m: move to project"
-		} else {
-			helpText += " · /: search"
-			if len(m.filterTags) > 0 {
-				helpText += " · C: clear filter"
-			}
-		}
 	}
 	helpText += " · ?: help"
 	return HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width()))
@@ -294,25 +337,6 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 		titleLine := TitleStyle.Render(truncateToVisualWidth(note.Title, max(width-2, 1)))
 		lines = append(lines, titleLine)
 
-		// Tags
-		if len(note.Tags) > 0 {
-			lines = append(lines, MutedStyle.Render("Tags: "+strings.Join(note.Tags, ", ")))
-		}
-
-		// Linked tasks
-		if len(note.LinkedTasks) > 0 && !m.isGlobal {
-			for _, taskID := range note.LinkedTasks {
-				taskTitle := "[deleted]"
-				taskLine := MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle))
-				if m.project != nil {
-					if task := m.project.GetTaskByID(taskID); task != nil {
-						taskLine = MutedStyle.Render("  → ") + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
-					}
-				}
-				lines = append(lines, taskLine)
-			}
-		}
-
 		lines = append(lines, "")
 
 		// Body: render as markdown
@@ -338,6 +362,18 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
+	if m.combined {
+		return []HelpItem{
+			{Key: "j/k", Description: "Navigate"},
+			{Key: "Enter", Description: "Open in external editor"},
+			{Key: "n", Description: "Create after confirming location"},
+			{Key: "r", Description: "Rename note"},
+			{Key: "x", Description: "Delete note"},
+			{Key: "u", Description: "Undo workspace change"},
+			{Key: "Ctrl+R", Description: "Redo workspace change"},
+			{Key: "Esc", Description: "Close Notes"},
+		}
+	}
 	items := []HelpItem{
 		{Key: "shift+←/→", Description: "Switch tab"},
 		{Key: "j/k", Description: "Navigate up/down"},
@@ -357,7 +393,6 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		items = append(items,
 			HelpItem{Key: "u", Description: "Undo last note change"},
 			HelpItem{Key: "Ctrl+R", Description: "Redo last note change"},
-			HelpItem{Key: "m", Description: "Move note to project"},
 		)
 	} else {
 		items = append(items,

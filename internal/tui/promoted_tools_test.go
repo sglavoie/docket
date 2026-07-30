@@ -8,16 +8,15 @@ import (
 )
 
 func TestPromotedToolOperationsPreserveActiveScopeSemantics(t *testing.T) {
-	workA := &models.Project{ID: "work-a", Name: "Work A", Context: "work"}
-	workB := &models.Project{ID: "work-b", Name: "Work B", Context: "work"}
-	home := &models.Project{ID: "home", Name: "Home", Context: "home"}
+	workA := &models.Project{ID: "work-a", Name: "Work A", Slug: "work-a", Context: "work"}
+	workB := &models.Project{ID: "work-b", Name: "Work B", Slug: "work-b", Context: "work"}
+	home := &models.Project{ID: "home", Name: "Home", Slug: "home", Context: "home"}
 
 	tests := []struct {
 		name             string
 		configure        func(*OutlinerModel)
 		wantProjectIDs   []string
 		wantProjectNotes *models.Project
-		wantProjectTags  *models.Project
 	}{
 		{
 			name:           "all",
@@ -39,7 +38,6 @@ func TestPromotedToolOperationsPreserveActiveScopeSemantics(t *testing.T) {
 			},
 			wantProjectIDs:   []string{workB.ID},
 			wantProjectNotes: workB,
-			wantProjectTags:  workB,
 		},
 	}
 
@@ -71,36 +69,11 @@ func TestPromotedToolOperationsPreserveActiveScopeSemantics(t *testing.T) {
 					t.Fatalf("Notes message = %#v, want project %s", notes, test.wantProjectNotes.ID)
 				}
 			}
-
-			weekly, ok := executePromotedTool(t, app, operationCoreWeeklyReview, context).(ShowWeeklyReviewMsg)
-			if !ok || !weekly.ProjectSet.Explicit ||
-				!slices.Equal(weekly.ProjectSet.ProjectIDs(), test.wantProjectIDs) {
-				t.Fatalf("Weekly Review scope = %#v, want %v", weekly.ProjectSet, test.wantProjectIDs)
-			}
-
-			tags := executePromotedTool(t, app, operationCoreTags, context)
-			if test.wantProjectTags == nil {
-				msg, ok := tags.(ShowGlobalTagManagerMsg)
-				if !ok || !msg.ProjectSet.Explicit ||
-					!slices.Equal(msg.ProjectSet.ProjectIDs(), test.wantProjectIDs) {
-					t.Fatalf("Tags message = %#v, want aggregate scope %v", tags, test.wantProjectIDs)
-				}
-			} else {
-				msg, ok := tags.(ShowTagManagerMsg)
-				if !ok || msg.Project != test.wantProjectTags {
-					t.Fatalf("Tags message = %#v, want project %s", tags, test.wantProjectTags.ID)
-				}
-			}
-
-			if _, ok := executePromotedTool(t, app, operationCoreNotifications, context).(ShowNotificationCenterMsg); !ok {
-				t.Fatal("Notifications must remain the global notification-center message")
-			}
 		})
 	}
 }
 
 func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
-	projectSet := ActiveProjectSetScope([]string{"work-b", "work-a"})
 	tests := []struct {
 		name    string
 		message any
@@ -113,38 +86,6 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 				got, ok := params.(ManageParams)
 				if !ok || got.Module != ManageNotes || got.Scope.Kind != ScopeApp {
 					t.Fatalf("global Notes route params = %#v", params)
-				}
-			},
-		},
-		{
-			name:    "weekly review",
-			message: ShowWeeklyReviewMsg{ProjectSet: projectSet},
-			check: func(t *testing.T, params RouteParams) {
-				got, ok := params.(ReviewParams)
-				if !ok || got.Module != ReviewWeekly || !projectSetScopeEqual(got.ProjectSet, projectSet) {
-					t.Fatalf("Weekly Review route params = %#v", params)
-				}
-			},
-		},
-		{
-			name:    "scoped tags",
-			message: ShowGlobalTagManagerMsg{ProjectSet: projectSet},
-			check: func(t *testing.T, params RouteParams) {
-				got, ok := params.(ManageParams)
-				if !ok || got.Module != ManageTags || got.Scope.Kind != ScopeApp ||
-					!projectSetScopeEqual(got.ProjectSet, projectSet) {
-					t.Fatalf("Tags route params = %#v", params)
-				}
-			},
-		},
-		{
-			name:    "notifications",
-			message: ShowNotificationCenterMsg{},
-			check: func(t *testing.T, params RouteParams) {
-				got, ok := params.(ManageParams)
-				if !ok || got.Module != ManageNotifications || got.Scope.Kind != ScopeApp ||
-					got.ProjectSet.Explicit {
-					t.Fatalf("Notifications route params = %#v", params)
 				}
 			},
 		},

@@ -72,7 +72,6 @@ func (t *Task) GitHubIssueRefs() []GitHubIssueRef {
 		refs = append(refs, ref)
 	}
 
-	addRef(t.URL)
 	for _, attachment := range t.Attachments {
 		if attachment.IsURL {
 			addRef(attachment.Filename)

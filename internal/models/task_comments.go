@@ -11,15 +11,20 @@ import (
 // empty text as a flush sentinel and discards the entry, mirroring
 // AddDecision).
 func (t *Task) AddComment(text string) {
+	t.AddCommentAt(text, time.Now())
+}
+
+// AddCommentAt adds a comment using the caller-owned mutation timestamp.
+func (t *Task) AddCommentAt(text string, now time.Time) {
 	if strings.TrimSpace(text) == "" {
 		return
 	}
 	comment := &Comment{
 		Text:      text,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	}
 	t.Comments = append(t.Comments, comment)
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 }
 
 // RemoveComment removes the comment at the given index.
@@ -41,26 +46,4 @@ func (t *Task) ClearComments() {
 		t.Comments = []*Comment{}
 		t.UpdatedAt = time.Now()
 	}
-}
-
-// ToggleCommentResolved flips the Resolved state of the comment at the given index.
-// Returns false if the index is out of range.
-func (t *Task) ToggleCommentResolved(index int) bool {
-	if index < 0 || index >= len(t.Comments) {
-		return false
-	}
-	t.Comments[index].Resolved = !t.Comments[index].Resolved
-	t.UpdatedAt = time.Now()
-	return true
-}
-
-// UnresolvedCommentCount returns the number of comments where Resolved is false.
-func (t *Task) UnresolvedCommentCount() int {
-	count := 0
-	for _, c := range t.Comments {
-		if !c.Resolved {
-			count++
-		}
-	}
-	return count
 }

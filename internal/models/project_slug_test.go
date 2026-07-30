@@ -7,28 +7,25 @@ import (
 
 func TestValidateProjectSlug(t *testing.T) {
 	valid := []struct {
-		name    string
-		slug    string
-		sandbox bool
+		name string
+		slug string
 	}{
 		{name: "single component", slug: "alpha"},
 		{name: "hyphens and digits", slug: "alpha-2"},
 		{name: "numeric", slug: "123"},
 		{name: "maximum length", slug: strings.Repeat("a", MaxProjectSlugLength)},
-		{name: "reserved sandbox component", slug: "_sandbox", sandbox: true},
 	}
 	for _, tc := range valid {
 		t.Run("valid/"+tc.name, func(t *testing.T) {
-			if err := ValidateProjectSlug(tc.slug, tc.sandbox); err != nil {
-				t.Fatalf("ValidateProjectSlug(%q, %v): %v", tc.slug, tc.sandbox, err)
+			if err := ValidateProjectSlug(tc.slug); err != nil {
+				t.Fatalf("ValidateProjectSlug(%q): %v", tc.slug, err)
 			}
 		})
 	}
 
 	invalid := []struct {
-		name    string
-		slug    string
-		sandbox bool
+		name string
+		slug string
 	}{
 		{name: "empty", slug: ""},
 		{name: "dot traversal", slug: "."},
@@ -48,8 +45,8 @@ func TestValidateProjectSlug(t *testing.T) {
 	}
 	for _, tc := range invalid {
 		t.Run("invalid/"+tc.name, func(t *testing.T) {
-			if err := ValidateProjectSlug(tc.slug, tc.sandbox); err == nil {
-				t.Fatalf("ValidateProjectSlug(%q, %v) unexpectedly succeeded", tc.slug, tc.sandbox)
+			if err := ValidateProjectSlug(tc.slug); err == nil {
+				t.Fatalf("ValidateProjectSlug(%q) unexpectedly succeeded", tc.slug)
 			}
 		})
 	}

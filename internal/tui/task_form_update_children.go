@@ -14,7 +14,7 @@ func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, te
 		m.checklistExpanded = !m.checklistExpanded
 		m.clampChildrenFocusIndex()
 	case "S":
-		if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
+		if m.mode == FormModeCreate {
 			m.subtasksExpanded = !m.subtasksExpanded
 			m.clampChildrenFocusIndex()
 		}
@@ -70,7 +70,6 @@ func (m *TaskFormModel) handleChildrenEnter() tea.Cmd {
 		m.childrenAddingNew = false
 		m.initSubtaskItemInput(m.draft.subtasks[idx].title)
 		m.subtaskItemInput.Focus()
-		m.subtaskTypeCursor = formSubtaskTypeCursorFor(m.draft.subtasks[idx].taskType)
 		m.activeOverlay = formOverlaySubtaskEdit
 	}
 	return nil
@@ -92,16 +91,15 @@ func (m *TaskFormModel) handleChildrenCtrlA() tea.Cmd {
 
 // handleChildrenCtrlT adds a new subtask draft and opens the edit overlay for it.
 func (m *TaskFormModel) handleChildrenCtrlT() tea.Cmd {
-	if m.mode != FormModeCreate || !formTypeCanHaveSubtasks(m.draft.taskType) {
+	if m.mode != FormModeCreate {
 		return nil
 	}
-	m.draft.subtasks = append(m.draft.subtasks, formSubtaskDraft{taskType: formSubtaskTypes[0]})
+	m.draft.subtasks = append(m.draft.subtasks, formSubtaskDraft{})
 	m.subtasksExpanded = true
 	m.childrenEditIdx = len(m.draft.subtasks) - 1
 	m.childrenAddingNew = true
 	m.initSubtaskItemInput("")
 	m.subtaskItemInput.Focus()
-	m.subtaskTypeCursor = 0
 	m.activeOverlay = formOverlaySubtaskEdit
 	m.hasChanges = true
 	m.err = nil

@@ -10,9 +10,9 @@ import (
 
 const duplicateLocatorTaskID = "duplicate-task-id"
 
-func locatorTestTask(t *testing.T, id string, shortID int, typ models.TaskType, title string) *models.Task {
+func locatorTestTask(t *testing.T, id string, shortID int, typ string, title string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, shortID, typ, title)
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", title, err)
 	}
@@ -22,8 +22,8 @@ func locatorTestTask(t *testing.T, id string, shortID int, typ models.TaskType, 
 
 func newDuplicateLocatorEnv(t *testing.T, betaExtras ...*models.Task) (*crossProjectTestEnv, *models.Task, *models.Task) {
 	t.Helper()
-	alpha := locatorTestTask(t, duplicateLocatorTaskID, 1, models.TaskTypeTask, "Alpha duplicate")
-	beta := locatorTestTask(t, duplicateLocatorTaskID, 1, models.TaskTypeTask, "Beta duplicate")
+	alpha := locatorTestTask(t, duplicateLocatorTaskID, 1, "", "Alpha duplicate")
+	beta := locatorTestTask(t, duplicateLocatorTaskID, 1, "", "Beta duplicate")
 	betaTasks := append([]*models.Task{beta}, betaExtras...)
 	return newCrossProjectTestEnv(t, []*models.Task{alpha}, betaTasks), alpha, beta
 }
@@ -53,7 +53,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 		if res := runResult(t, env.taskItem.SetPriority(identity, 1)); res.ProjectID != env.projects[1].ID {
 			t.Fatalf("priority result project = %q, want beta", res.ProjectID)
 		}
-		if res := runResult(t, env.taskItem.SetDueDate(identity, &due, false)); res.ProjectID != env.projects[1].ID {
+		if res := runResult(t, env.taskItem.SetDueDate(identity, &due)); res.ProjectID != env.projects[1].ID {
 			t.Fatalf("due-date result project = %q, want beta", res.ProjectID)
 		}
 		alphaTask := env.reload(t, 0).GetTaskByID(duplicateLocatorTaskID)
@@ -67,7 +67,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	})
 
 	t.Run("delayed reparent", func(t *testing.T) {
-		parent := locatorTestTask(t, "beta-parent", 2, models.TaskTypeStory, "Beta parent")
+		parent := locatorTestTask(t, "beta-parent", 2, "", "Beta parent")
 		env, _, beta := newDuplicateLocatorEnv(t, parent)
 		outliner := newCrossOutlinerFromEnv(env)
 		newParentID := parent.ID
@@ -107,7 +107,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 
 	t.Run("attachment and subview", func(t *testing.T) {
 		env, _, beta := newDuplicateLocatorEnv(t)
-		features := newSecondaryCoordinators(env.svc, nil)
+		features := newSecondaryCoordinators(env.svc)
 		identity := taskIdentityFor(beta, env.projects[1])
 
 		if res := runResult(t, features.Attachment.AttachURL(identity, "https://example.com/beta")); res.ProjectID != env.projects[1].ID {
@@ -126,26 +126,4 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 		}
 	})
 
-	t.Run("park", func(t *testing.T) {
-		env, _, beta := newDuplicateLocatorEnv(t)
-		shell := &AppModel{appService: env.svc}
-		res, err := shell.applyParkMutation(ParkNoteDoneMsg{
-			Task:    beta,
-			Project: env.projects[1],
-			Note:    "resume beta",
-		})
-		if err != nil {
-			t.Fatalf("park beta: %v", err)
-		}
-		if res.ProjectID != env.projects[1].ID {
-			t.Fatalf("park result project = %q, want beta", res.ProjectID)
-		}
-		if got := env.reload(t, 0).GetTaskByID(duplicateLocatorTaskID); got.IsParked() {
-			t.Fatal("parking beta changed alpha duplicate")
-		}
-		got := env.reload(t, 1).GetTaskByID(duplicateLocatorTaskID)
-		if !got.IsParked() || got.ParkedNote != "resume beta" {
-			t.Fatalf("beta park state = parked %v note %q", got.IsParked(), got.ParkedNote)
-		}
-	})
 }

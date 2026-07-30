@@ -16,8 +16,7 @@ import (
 func (m *TaskDecisionsModel) saveDecision() tea.Cmd {
 	text := m.textInput.Value()
 	rationale := strings.TrimSpace(m.rationaleInput.Value())
-	category := m.selectedCategory()
-	task, err := appendDecision(m.project, m.task.ID, text, rationale, category)
+	task, err := appendDecision(m.project, m.task.ID, text, rationale)
 	if err != nil {
 		m.err = err
 		return nil
@@ -28,7 +27,7 @@ func (m *TaskDecisionsModel) saveDecision() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Decisions) - 1
 
-	return commitTaskItemMutation(m.project, task, m.coordinator.AddDecision(taskIdentityFor(task, m.project), text, rationale, category), func(fresh *models.Task) tea.Msg {
+	return commitTaskItemMutation(m.project, task, m.coordinator.AddDecision(taskIdentityFor(task, m.project), text, rationale), func(fresh *models.Task) tea.Msg {
 		return DecisionAddedMsg{Task: fresh}
 	})
 }
@@ -59,7 +58,6 @@ func (m *TaskDecisionsModel) startEditDecision() tea.Cmd {
 	m.editActiveField = 0
 	m.editTextInput.SetValue(decision.Text)
 	m.editRationale.SetValue(decision.Rationale)
-	m.editCategoryIdx = decisionCategoryIndex(decision.Category)
 	m.editTextInput.Focus()
 	m.editRationale.Blur()
 	return textarea.Blink
@@ -80,14 +78,12 @@ func (m *TaskDecisionsModel) saveEditedDecision() tea.Cmd {
 
 	editIndex := m.editIndex
 	rationale := strings.TrimSpace(m.editRationale.Value())
-	category := m.selectedEditCategory()
 	m.task.Decisions[editIndex].Text = text
 	m.task.Decisions[editIndex].Rationale = rationale
-	m.task.Decisions[editIndex].Category = category
 	m.cancelEditMode()
 	m.err = nil
 
-	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditDecision(taskIdentityFor(m.task, m.project), editIndex, text, rationale, &category), func(fresh *models.Task) tea.Msg {
+	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditDecision(taskIdentityFor(m.task, m.project), editIndex, text, rationale), func(fresh *models.Task) tea.Msg {
 		return DecisionEditedMsg{Task: fresh}
 	})
 }
@@ -113,7 +109,7 @@ func (m *TaskDecisionsModel) editInExternalEditor() tea.Cmd {
 
 		task.Decisions[editIndex].Text = newText
 		task.Decisions[editIndex].Rationale = newRationale
-		return commitTaskItemMutation(project, task, coordinator.EditDecision(taskIdentityFor(task, project), editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
+		return commitTaskItemMutation(project, task, coordinator.EditDecision(taskIdentityFor(task, project), editIndex, newText, newRationale), func(fresh *models.Task) tea.Msg {
 			return DecisionEditedMsg{Task: fresh}
 		})()
 	})
@@ -127,7 +123,6 @@ func (m *TaskDecisionsModel) addDecisionInExternalEditor() tea.Cmd {
 	task := m.task
 	project := m.project
 	coordinator := m.coordinator
-	category := m.selectedCategory()
 	m.cancelAddMode()
 
 	return m.editDecisionWithExternalEditor(content, false, func(newText, newRationale string) tea.Msg {
@@ -138,26 +133,10 @@ func (m *TaskDecisionsModel) addDecisionInExternalEditor() tea.Cmd {
 			task = t
 		}
 
-		task.AddDecision(newText, newRationale, category)
-		return commitTaskItemMutation(project, task, coordinator.AddDecision(taskIdentityFor(task, project), newText, newRationale, category), func(fresh *models.Task) tea.Msg {
+		task.AddDecision(newText, newRationale)
+		return commitTaskItemMutation(project, task, coordinator.AddDecision(taskIdentityFor(task, project), newText, newRationale), func(fresh *models.Task) tea.Msg {
 			return DecisionAddedMsg{Task: fresh}
 		})()
-	})
-}
-
-func (m *TaskDecisionsModel) toggleResolved() tea.Cmd {
-	return executeTaskItemToggleMutation(taskItemToggleMutation{
-		project: m.project,
-		task:    &m.task,
-		cursor:  m.cursor,
-		toggle: func(task *models.Task, index int) bool {
-			return task.ToggleDecisionResolved(index)
-		},
-		errorMessage: "failed to toggle decision resolved state",
-		commit:       m.coordinator.ToggleDecisionResolved,
-		success: func(task *models.Task) tea.Msg {
-			return DecisionResolvedMsg{Task: task}
-		},
 	})
 }
 
@@ -192,7 +171,7 @@ func (m *TaskDecisionsModel) editDecisionInExternalEditorFromEditMode() tea.Cmd 
 
 		task.Decisions[editIndex].Text = newText
 		task.Decisions[editIndex].Rationale = newRationale
-		return commitTaskItemMutation(project, task, coordinator.EditDecision(taskIdentityFor(task, project), editIndex, newText, newRationale, nil), func(fresh *models.Task) tea.Msg {
+		return commitTaskItemMutation(project, task, coordinator.EditDecision(taskIdentityFor(task, project), editIndex, newText, newRationale), func(fresh *models.Task) tea.Msg {
 			return DecisionEditedMsg{Task: fresh}
 		})()
 	})
@@ -339,14 +318,4 @@ func readEditedDecisionContent(tmpPath string) (text, rationale string, err erro
 	}
 
 	return text, rationale, nil
-}
-
-// decisionCategoryIndex returns the index of the given category in ValidDecisionCategories.
-func decisionCategoryIndex(cat models.DecisionCategory) int {
-	for i, c := range models.ValidDecisionCategories() {
-		if c == cat {
-			return i
-		}
-	}
-	return 0
 }

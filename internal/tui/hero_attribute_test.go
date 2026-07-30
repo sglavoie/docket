@@ -40,10 +40,10 @@ func TestPickHeroAttribute(t *testing.T) {
 			want:    HeroOverdue,
 		},
 		{
-			name: "blocked + P1 + review (no overdue) → HeroBlocked",
+			name: "blocked + P1 (no overdue) → HeroBlocked",
 			task: &models.Task{
-				ID:            "t-blocked-p1-review",
-				WorkflowState: models.StateReview,
+				ID:            "t-blocked-p1",
+				WorkflowState: models.StateReady,
 				Priority:      1,
 				DependsOn:     []string{"dep-1"},
 			},
@@ -77,8 +77,8 @@ func TestPickHeroAttribute(t *testing.T) {
 			want:    HeroDueToday,
 		},
 		{
-			name:    "due today + review + P3 → HeroDueToday (beats review)",
-			task:    &models.Task{ID: "t-due-today-review", WorkflowState: models.StateReview, Priority: 3, DueDate: &today},
+			name:    "due today + P3 → HeroDueToday",
+			task:    &models.Task{ID: "t-due-today", WorkflowState: models.StateReady, Priority: 3, DueDate: &today},
 			project: &models.Project{},
 			want:    HeroDueToday,
 		},
@@ -87,12 +87,6 @@ func TestPickHeroAttribute(t *testing.T) {
 			task:    &models.Task{ID: "t-p1", WorkflowState: models.StateReady, Priority: 1, DueDate: &futureDue},
 			project: &models.Project{},
 			want:    HeroP1,
-		},
-		{
-			name:    "review with P3 → HeroReview",
-			task:    &models.Task{ID: "t-rev", WorkflowState: models.StateReview, Priority: 3},
-			project: &models.Project{},
-			want:    HeroReview,
 		},
 		{
 			name:    "todo P3 no due → HeroNone",
@@ -129,24 +123,6 @@ func TestPickHeroAttribute(t *testing.T) {
 			project: &models.Project{},
 			want:    HeroNone,
 		},
-		{
-			name:    "dimmed overdue P1 → HeroNone (dimmed is quiet)",
-			task:    &models.Task{ID: "t-dimmed", WorkflowState: models.StateReady, Priority: 1, DueDate: &pastDue, Dimmed: true},
-			project: &models.Project{},
-			want:    HeroNone,
-		},
-		{
-			name: "dimmed blocked → HeroNone (dimmed beats blocked)",
-			task: &models.Task{
-				ID:            "t-dimmed-blocked",
-				WorkflowState: models.StateWaiting,
-				Priority:      1,
-				DependsOn:     []string{"dep-1"},
-				Dimmed:        true,
-			},
-			project: &models.Project{Tasks: []*models.Task{depPending}},
-			want:    HeroNone,
-		},
 	}
 
 	for _, tc := range tests {
@@ -171,12 +147,11 @@ func TestDueIsInlineHeroHonorsQuietStates(t *testing.T) {
 	open := &models.Task{ID: "open", WorkflowState: models.StateReady, DueDate: &today}
 	done := &models.Task{ID: "done", WorkflowState: models.StateDone, DueDate: &today}
 	canceled := &models.Task{ID: "canceled", WorkflowState: models.StateCanceled, DueDate: &today}
-	dimmed := &models.Task{ID: "dimmed", WorkflowState: models.StateReady, DueDate: &today, Dimmed: true}
 
 	if !dueIsInlineHero(open) {
 		t.Fatal("open due-today task should be eligible for inline due hero")
 	}
-	for _, task := range []*models.Task{done, canceled, dimmed} {
+	for _, task := range []*models.Task{done, canceled} {
 		if dueIsInlineHero(task) {
 			t.Fatalf("%s task should not be eligible for inline due hero", task.State())
 		}
@@ -184,7 +159,7 @@ func TestDueIsInlineHeroHonorsQuietStates(t *testing.T) {
 }
 
 func TestDemoteBadgePreservesGlyph(t *testing.T) {
-	original := GetStatusBadge("done", "✓")
+	original := GetStateBadge(models.StateDone)
 	if original == "" {
 		t.Fatal("expected non-empty status badge")
 	}

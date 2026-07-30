@@ -1,53 +1,30 @@
 package config
 
 // ExtractProjectReferences snapshots project-scoped references directly from
-// the five owned runtime domains. It mirrors Config.ExtractProjectReferences
+// the three owned runtime domains.
 // without recomposing the legacy facade.
 func (rs *RuntimeState) ExtractProjectReferences(id, slug string) ProjectReferences {
 	matches := func(pid string) bool { return pid == id || (slug != "" && pid == slug) }
-	catalog, planning, automation, machine := rs.Catalog(), rs.Planning(), rs.Automation(), rs.Machine()
+	catalog, planning, machine := rs.Catalog(), rs.Planning(), rs.Machine()
 	refs := ProjectReferences{
-		WasCurrent:     machine.CurrentProject != "" && matches(machine.CurrentProject),
 		WasActionInbox: catalog.SystemInboxProjectID != "" && matches(catalog.SystemInboxProjectID),
 	}
-	if v, ok := lookupProjectKey(automation.ProjectScoringProfile, id, slug); ok {
-		refs.ScoringProfile = &v
-	}
-	if v, ok := lookupProjectKey(automation.WorkflowEvalStates, id, slug); ok {
-		vv := v
-		refs.WorkflowEval = &vv
-	}
-	for _, item := range planning.FocusQueue {
+	for _, item := range planning.NextOrder {
 		if matches(item.ProjectID) {
-			refs.FocusQueue = append(refs.FocusQueue, item)
+			refs.NextOrder = append(refs.NextOrder, item)
 		}
 	}
-	for _, item := range planning.DailyPlan {
+	for _, item := range planning.Today {
 		if matches(item.ProjectID) {
-			refs.DailyPlan = append(refs.DailyPlan, item)
+			refs.Today = append(refs.Today, item)
 		}
-	}
-	for _, visit := range machine.RecentTaskVisits {
-		if matches(visit.ProjectID) {
-			refs.RecentTaskVisits = append(refs.RecentTaskVisits, visit)
-		}
-	}
-	for _, destination := range machine.RecentDestinations {
-		projectDestination := destination.Kind == RecentDestinationProject && matches(destination.ID)
-		if projectDestination || matches(destination.ProjectID) {
-			refs.RecentDestinations = append(refs.RecentDestinations, destination)
-		}
-	}
-	if route, ok := lookupProjectKey(machine.ProjectRoutes, id, slug); ok {
-		route = NormalizeOutlinerRouteState(route)
-		refs.OutlinerRoute = &route
 	}
 	refs.CustomContextKeys = contextKeysContaining(machine.CustomContexts, matches)
 	return refs
 }
 
 // ApplyProjectReferences re-establishes a restored project's captured
-// references directly on the five explicit domains. Restore adapters that
+// references directly on the three explicit domains. Restore adapters that
 // commit the synced workspace before repairing machine-local state can call
 // ApplySyncedProjectReferences first, retain refs, and call
 // MachineState.ApplyProjectReferences from their main update loop.
@@ -62,7 +39,7 @@ func (d *Domains) ApplyProjectReferences(projectID string, refs ProjectReference
 }
 
 // ApplySyncedProjectReferences restores only references owned by the portable
-// catalog, planning, and automation domains. Machine-local references are
+// catalog and planning domains. Machine-local references are
 // deliberately excluded so callers can commit them separately and retain the
 // captured ProjectReferences as retry data until machine.json succeeds.
 func (d *Domains) ApplySyncedProjectReferences(projectID string, refs ProjectReferences) {
@@ -72,46 +49,31 @@ func (d *Domains) ApplySyncedProjectReferences(projectID string, refs ProjectRef
 	if refs.WasActionInbox && d.Catalog != nil {
 		d.Catalog.SystemInboxProjectID = projectID
 	}
-	if refs.ScoringProfile != nil && d.Automation != nil {
-		if d.Automation.ProjectScoringProfile == nil {
-			d.Automation.ProjectScoringProfile = make(map[string]string)
-		}
-		d.Automation.ProjectScoringProfile[projectID] = *refs.ScoringProfile
-	}
-	if refs.WorkflowEval != nil && d.Automation != nil {
-		if d.Automation.WorkflowEvalStates == nil {
-			d.Automation.WorkflowEvalStates = make(map[string]WorkflowEvalState)
-		}
-		d.Automation.WorkflowEvalStates[projectID] = *refs.WorkflowEval
-	}
-
 	if d.Planning != nil {
-		existingFocus := make(map[ProjectTaskLocator]bool, len(d.Planning.FocusQueue))
-		for _, item := range d.Planning.FocusQueue {
-			existingFocus[ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+		existingNext := make(map[ProjectTaskLocator]bool, len(d.Planning.NextOrder))
+		for _, item := range d.Planning.NextOrder {
+			existingNext[item] = true
 		}
-		for _, item := range refs.FocusQueue {
+		for _, item := range refs.NextOrder {
 			item.ProjectID = projectID
-			locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
-			if existingFocus[locator] {
+			if existingNext[item] {
 				continue
 			}
-			d.Planning.FocusQueue = append(d.Planning.FocusQueue, item)
-			existingFocus[locator] = true
+			d.Planning.NextOrder = append(d.Planning.NextOrder, item)
+			existingNext[item] = true
 		}
 
-		existingPlan := make(map[ProjectTaskLocator]bool, len(d.Planning.DailyPlan))
-		for _, item := range d.Planning.DailyPlan {
-			existingPlan[ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+		existingToday := make(map[ProjectTaskLocator]bool, len(d.Planning.Today))
+		for _, item := range d.Planning.Today {
+			existingToday[item] = true
 		}
-		for _, item := range refs.DailyPlan {
+		for _, item := range refs.Today {
 			item.ProjectID = projectID
-			locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
-			if existingPlan[locator] {
+			if existingToday[item] {
 				continue
 			}
-			d.Planning.DailyPlan = append(d.Planning.DailyPlan, item)
-			existingPlan[locator] = true
+			d.Planning.Today = append(d.Planning.Today, item)
+			existingToday[item] = true
 		}
 	}
 }
@@ -124,50 +86,8 @@ func (m *MachineState) ApplyProjectReferences(projectID string, refs ProjectRefe
 	if m == nil || projectID == "" {
 		return false
 	}
-	changed := refs.WasCurrent ||
-		len(refs.RecentTaskVisits) > 0 ||
-		len(refs.RecentDestinations) > 0 ||
-		refs.OutlinerRoute != nil ||
-		len(refs.CustomContextKeys) > 0
-	if refs.WasCurrent {
-		m.CurrentProject = projectID
-	}
-	existingVisits := make(map[ProjectTaskLocator]bool, len(m.RecentTaskVisits))
-	for _, visit := range m.RecentTaskVisits {
-		existingVisits[ProjectTaskLocator{ProjectID: visit.ProjectID, TaskID: visit.TaskID}] = true
-	}
-	for _, visit := range refs.RecentTaskVisits {
-		visit.ProjectID = projectID
-		locator := ProjectTaskLocator{ProjectID: visit.ProjectID, TaskID: visit.TaskID}
-		if existingVisits[locator] {
-			continue
-		}
-		m.RecentTaskVisits = append(m.RecentTaskVisits, visit)
-		existingVisits[locator] = true
-	}
-
-	restoredDestinations := make([]RecentDestination, 0, len(refs.RecentDestinations))
-	for _, destination := range refs.RecentDestinations {
-		if destination.Kind == RecentDestinationProject {
-			destination.ID = projectID
-		}
-		if destination.ProjectID != "" {
-			destination.ProjectID = projectID
-		}
-		restoredDestinations = append(restoredDestinations, destination)
-	}
-	if len(restoredDestinations) > 0 {
-		m.SetRecentDestinations(append(restoredDestinations, m.RecentDestinations...))
-	}
-	if refs.OutlinerRoute != nil {
-		if m.ProjectRoutes == nil {
-			m.ProjectRoutes = make(map[string]OutlinerRouteState)
-		}
-		m.ProjectRoutes[projectID] = NormalizeOutlinerRouteState(*refs.OutlinerRoute)
-	}
-
 	for _, key := range refs.CustomContextKeys {
 		addProjectToContextMap(&m.CustomContexts, key, projectID)
 	}
-	return changed
+	return len(refs.CustomContextKeys) > 0
 }

@@ -1,7 +1,6 @@
 package format
 
 import (
-	"sort"
 	"strings"
 	"time"
 
@@ -75,17 +74,6 @@ func unescapeNewlines(s string) string {
 	return b.String()
 }
 
-// escapeMetadataScalar escapes delimiters that would otherwise let a scalar
-// metadata value look like the start of a later top-level metadata field.
-func escapeMetadataScalar(s string) string {
-	if !strings.ContainsAny(s, `\,`) {
-		return s
-	}
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, ",", `\,`)
-	return s
-}
-
 // unescapeMetadataScalar reverses escapeMetadataScalar while preserving unknown
 // escape sequences so older hand-written values are not aggressively rewritten.
 func unescapeMetadataScalar(s string) string {
@@ -151,14 +139,4 @@ func splitChecklistItems(s string) []string {
 	}
 	items = append(items, current.String())
 	return items
-}
-
-// sortedKeys returns the keys of an int map in sorted order.
-func sortedKeys(m map[string]int) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }

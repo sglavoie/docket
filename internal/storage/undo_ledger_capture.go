@@ -4,7 +4,190 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+
+	"github.com/sglavoie/tt/internal/transaction"
 )
+
+// captureOpsLedgerImages records the net topology transition of a raw
+// lifecycle transaction plus its typed artifact rewrites. Raw operations are
+// captured first and artifacts overlay their final bytes, which is important
+// for a rename that moves an old tasks.md and then rewrites it under the new
+// project directory.
+func captureOpsLedgerImages(ops []transaction.Op, artifacts []ArtifactChange) ([]LedgerArtifact, error) {
+	images := make(map[string]LedgerArtifact)
+	merge := func(next LedgerArtifact) error {
+		path := filepath.Clean(next.Path)
+		next.Path = path
+		current, ok := images[path]
+		if !ok {
+			images[path] = next
+			return nil
+		}
+		currentKind := current.Kind
+		if currentKind == "" {
+			currentKind = ArtifactImageKindFile
+		}
+		nextKind := next.Kind
+		if nextKind == "" {
+			nextKind = ArtifactImageKindFile
+		}
+		if currentKind != nextKind {
+			return fmt.Errorf("storage: lifecycle undo target %q changes image kind", path)
+		}
+		current.AfterExists = next.AfterExists
+		current.After = next.After
+		images[path] = current
+		return nil
+	}
+
+	for _, op := range ops {
+		captured, err := captureRawOpLedgerImages(op)
+		if err != nil {
+			return nil, err
+		}
+		for _, image := range captured {
+			if err := merge(image); err != nil {
+				return nil, err
+			}
+		}
+	}
+	artifactImages, err := captureArtifactLedgerImages(artifacts)
+	if err != nil {
+		return nil, err
+	}
+	for _, image := range artifactImages {
+		if err := merge(image); err != nil {
+			return nil, err
+		}
+	}
+
+	paths := make([]string, 0, len(images))
+	for path := range images {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	out := make([]LedgerArtifact, 0, len(paths))
+	for _, path := range paths {
+		out = append(out, images[path])
+	}
+	return out, nil
+}
+
+func captureRawOpLedgerImages(op transaction.Op) ([]LedgerArtifact, error) {
+	switch op.Kind {
+	case transaction.OpWrite:
+		before, exists, err := readFileMaybe(op.Target)
+		if err != nil {
+			return nil, err
+		}
+		out := []LedgerArtifact{{
+			Path:         op.Target,
+			BeforeExists: exists,
+			Before:       before,
+			AfterExists:  true,
+			After:        op.Data,
+		}}
+		parent := filepath.Dir(filepath.Clean(op.Target))
+		parentExists, err := directoryExistsMaybe(parent)
+		if err != nil {
+			return nil, err
+		}
+		if !parentExists {
+			out = append(out, LedgerArtifact{
+				Kind: ArtifactImageKindDirectory, Path: parent, AfterExists: true,
+			})
+		}
+		return out, nil
+	case transaction.OpDelete:
+		return capturePathTransition(op.Target, "", false)
+	case transaction.OpMove:
+		return capturePathTransition(op.Source, op.Target, true)
+	default:
+		return nil, fmt.Errorf("storage: unsupported lifecycle operation kind %q", op.Kind)
+	}
+}
+
+// capturePathTransition flattens a file or directory tree into byte images.
+// A move maps every source descendant to the corresponding target descendant;
+// a delete records only the source before-images.
+func capturePathTransition(source, target string, move bool) ([]LedgerArtifact, error) {
+	source = filepath.Clean(source)
+	target = filepath.Clean(target)
+	var out []LedgerArtifact
+	err := filepath.WalkDir(source, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			if os.IsNotExist(walkErr) && path == source {
+				return nil
+			}
+			return walkErr
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("storage: lifecycle undo does not support symlink %q", path)
+		}
+		rel, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		destination := ""
+		if move {
+			destination = target
+			if rel != "." {
+				destination = filepath.Join(target, rel)
+			}
+		}
+		if entry.IsDir() {
+			out = append(out, LedgerArtifact{
+				Kind: ArtifactImageKindDirectory, Path: path, BeforeExists: true,
+			})
+			if move {
+				exists, existsErr := directoryExistsMaybe(destination)
+				if existsErr != nil {
+					return existsErr
+				}
+				if exists {
+					return fmt.Errorf("storage: lifecycle move target already exists: %s", destination)
+				}
+				out = append(out, LedgerArtifact{
+					Kind: ArtifactImageKindDirectory, Path: destination, AfterExists: true,
+				})
+			}
+			return nil
+		}
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("storage: lifecycle undo does not support non-regular file %q", path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		out = append(out, LedgerArtifact{Path: path, BeforeExists: true, Before: data})
+		if move {
+			if _, exists, err := readFileMaybe(destination); err != nil {
+				return err
+			} else if exists {
+				return fmt.Errorf("storage: lifecycle move target already exists: %s", destination)
+			}
+			out = append(out, LedgerArtifact{Path: destination, AfterExists: true, After: data})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func directoryExistsMaybe(path string) (bool, error) {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.IsDir(), nil
+}
 
 // captureArtifactLedgerImages captures the byte-exact state transition for an
 // artifact-only transaction. It runs after every optimistic revision has been

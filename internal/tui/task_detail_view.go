@@ -10,14 +10,13 @@ import (
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 // maxContentWidth aliases the layout constant for local use.
 const maxContentWidth = MaxContentWidth
 
-const taskDetailFooterHelp = "Tab/Shift+Tab: tabs · j/k: scroll · c: comments · D: decisions · H: toggle history · ,: status · !: priority · e: edit · d: due · Esc: close"
+const taskDetailFooterHelp = "j/k: scroll · H: toggle history · ,: status · !: priority · e: edit · d: due · Esc: close"
 
 // detailContentWidth returns the shared task-detail card width used by View,
 // section rendering, centering, and description markdown. It caps the model
@@ -32,9 +31,7 @@ func (m *TaskDetailModel) View() tea.View {
 		return tea.NewView("No task selected")
 	}
 	if child := m.activeTabView(); child != nil {
-		view := child.View()
-		view.SetContent(insertTaskDetailTabBar(view.Content, m.renderTabBar()))
-		return view
+		return child.View()
 	}
 
 	// Determine content width (capped, centered if wider)
@@ -47,33 +44,7 @@ func (m *TaskDetailModel) View() tea.View {
 	// Footer with scroll position
 	footer := m.renderFooter()
 
-	return tea.NewView(titleBar + "\n" + m.renderTabBar() + "\n" + content + "\n" + footer)
-}
-
-func insertTaskDetailTabBar(content, tabBar string) string {
-	if before, after, ok := strings.Cut(content, "\n"); ok {
-		return before + "\n" + tabBar + "\n" + after
-	}
-	return content + "\n" + tabBar
-}
-
-func (m *TaskDetailModel) renderTabBar() string {
-	names := taskDetailTabNames[:]
-	if m.width < 72 {
-		names = []string{"Overview", "Check", "Comments", "Decisions", "Files", "Activity"}
-	}
-	parts := make([]string, 0, len(taskDetailTabOrder))
-	for i, tab := range taskDetailTabOrder {
-		label := " " + names[i] + " "
-		if tab == m.tab {
-			label = SelectedItemTextStyle.Render("[" + names[i] + "]")
-		} else {
-			label = MutedStyle.Render(label)
-		}
-		parts = append(parts, label)
-	}
-	line := strings.Join(parts, " ")
-	return lipgloss.NewStyle().Width(max(m.width, 1)).Render(truncateToVisualWidth(line, max(m.width, 1)))
+	return tea.NewView(titleBar + "\n" + content + "\n" + footer)
 }
 
 func (m *TaskDetailModel) renderDetailContent(contentWidth int) string {
@@ -124,50 +95,30 @@ func (m *TaskDetailModel) overviewSections(contentWidth int) []string {
 }
 
 func (m *TaskDetailModel) planningSections(contentWidth int) ([]string, bool) {
-	sections := []string{m.renderPlanningMembershipSection(contentWidth)}
-	planningHasFrame := false
-	if scoreProfile := m.taskDetailScoreProfile(); scoreProfile != nil {
-		sections = append(sections, m.renderPlanningCluster(scoreProfile, contentWidth))
-		planningHasFrame = true
-	} else {
-		sections = append(sections, m.renderActivitySection(contentWidth))
+	sections := []string{
+		m.renderPlanningMembershipSection(contentWidth),
+		m.renderLifecycleSection(contentWidth),
 	}
 	if len(m.task.Checklist) > 0 {
 		sections = append(sections, m.renderChecklistSection(contentWidth))
 	}
-	if m.hasDetailDependencies() || len(m.task.RelatedTo) > 0 {
+	if m.hasDetailDependencies() {
 		sections = append(sections, m.renderDependenciesSection(contentWidth))
 	}
-	return sections, planningHasFrame
+	return sections, false
 }
 
 func (m *TaskDetailModel) renderPlanningMembershipSection(width int) string {
 	today := "not planned"
-	if m.inDailyPlan {
+	if m.inToday {
 		today = "planned"
 	}
-	focusQueue := "not ranked"
-	if m.inFocusQueue {
-		focusQueue = "ranked"
+	nextOrder := "not ranked"
+	if m.inNextOrder {
+		nextOrder = "ranked"
 	}
-	content := fmt.Sprintf("Today: %s\nFocus Queue: %s", today, focusQueue)
+	content := fmt.Sprintf("Today: %s\nFocus Queue: %s", today, nextOrder)
 	return renderCard("Planning membership", content, width, DefaultCardConfig())
-}
-
-func (m *TaskDetailModel) taskDetailScoreProfile() *scoring.ScoringProfile {
-	if m.runtime == nil {
-		return nil
-	}
-	return m.runtime.Automation().GetProjectScoringProfile(m.project.ID)
-}
-
-func (m *TaskDetailModel) renderPlanningCluster(scoreProfile *scoring.ScoringProfile, contentWidth int) string {
-	innerW := max(contentWidth-CardBorderOverhead, 4)
-	leftCol := innerW / 2
-	rightCol := innerW - leftCol
-	scoreCol := renderClusterColumn("Score", renderScoreCardContent(m.task, scoreProfile, leftCol-2), leftCol)
-	activityCol := renderClusterColumn("Activity", buildActivityContent(m.task), rightCol)
-	return renderClusterFrame("Planning", []string{scoreCol, activityCol}, contentWidth)
 }
 
 func (m *TaskDetailModel) hasDetailDependencies() bool {
@@ -460,20 +411,13 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 // renderDueSection renders the due date card.
 // Omits the recurrence line since the task detail view has a dedicated Recurrence card.
 func (m *TaskDetailModel) renderDueSection(width int) string {
-	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring(), m.runtime.Settings().GetTimeFormat()), width, DefaultCardConfig())
+	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring()), width, DefaultCardConfig())
 }
 
 // renderRecurrenceSection renders the recurrence card with pattern and upcoming dates.
 func (m *TaskDetailModel) renderRecurrenceSection(width int) string {
 	var lines []string
 	lines = append(lines, MutedStyle.Render("Pattern: ")+m.task.Recurrence.String())
-
-	if m.task.Recurrence.Streak > 0 || m.task.Recurrence.MaxStreak > 0 {
-		lines = append(lines, MutedStyle.Render(fmt.Sprintf("Streak:  %d (best: %d)", m.task.Recurrence.Streak, m.task.Recurrence.MaxStreak)))
-	}
-	if m.task.Recurrence.Skipped > 0 {
-		lines = append(lines, MutedStyle.Render(fmt.Sprintf("Skipped: %d times", m.task.Recurrence.Skipped)))
-	}
 
 	upcoming := m.task.NextNDueDates(3)
 	if len(upcoming) > 0 {
@@ -551,17 +495,6 @@ func (m *TaskDetailModel) renderDependenciesSection(width int) string {
 			line := fmt.Sprintf("  #%-3d %s %s",
 				blocked.ShortID, depStatus.Render(blocked.State().Icon()), title)
 			lines = append(lines, line)
-		}
-	}
-
-	// Related tasks
-	if len(m.task.RelatedTo) > 0 {
-		if len(lines) > 0 {
-			lines = append(lines, "")
-		}
-		lines = append(lines, MutedStyle.Render("Related:"))
-		for _, relRef := range m.task.RelatedTo {
-			lines = append(lines, m.formatLinkedTask(relRef, width-6))
 		}
 	}
 

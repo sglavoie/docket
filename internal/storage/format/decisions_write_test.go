@@ -30,12 +30,11 @@ func TestWriteDecisions(t *testing.T) {
 			decisions: []*models.Decision{{
 				Text:      "Use PostgreSQL",
 				Rationale: "Better for complex queries",
-				Category:  models.DecisionCategoryDesign,
 				CreatedAt: time.Date(2026, 5, 7, 14, 30, 0, 0, time.Local),
 			}},
 			wantHas: []string{
 				"<!-- DECISIONS -->",
-				"<!-- decision: 2026-05-07 14:30, category:design -->",
+				"<!-- decision: 2026-05-07 14:30 -->",
 				"Use PostgreSQL",
 				"<!-- rationale -->",
 				"Better for complex queries",
@@ -43,16 +42,13 @@ func TestWriteDecisions(t *testing.T) {
 			},
 		},
 		{
-			name: "resolved decision",
+			name: "decision without rationale",
 			decisions: []*models.Decision{{
 				Text:      "Chosen approach",
-				Rationale: "Agreed by team",
-				Category:  models.DecisionCategoryArchitecture,
 				CreatedAt: time.Date(2026, 5, 7, 15, 0, 0, 0, time.Local),
-				Resolved:  true,
 			}},
 			wantHas: []string{
-				"<!-- decision: 2026-05-07 15:00, category:architecture, resolved -->",
+				"<!-- decision: 2026-05-07 15:00 -->",
 			},
 		},
 		{
@@ -60,7 +56,6 @@ func TestWriteDecisions(t *testing.T) {
 			decisions: []*models.Decision{{
 				Text:      "Use <!-- inject --> safely",
 				Rationale: "Prevents XSS",
-				Category:  models.DecisionCategorySecurity,
 				CreatedAt: time.Date(2026, 5, 7, 16, 0, 0, 0, time.Local),
 			}},
 			wantHas: []string{
@@ -69,15 +64,14 @@ func TestWriteDecisions(t *testing.T) {
 			},
 		},
 		{
-			name: "trade-off category",
+			name: "another timestamp",
 			decisions: []*models.Decision{{
 				Text:      "Speed vs correctness",
 				Rationale: "Chosen speed",
-				Category:  models.DecisionCategoryTradeOff,
 				CreatedAt: time.Date(2026, 5, 7, 10, 0, 0, 0, time.Local),
 			}},
 			wantHas: []string{
-				"<!-- decision: 2026-05-07 10:00, category:trade-off -->",
+				"<!-- decision: 2026-05-07 10:00 -->",
 			},
 		},
 	}

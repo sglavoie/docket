@@ -8,7 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -18,9 +17,7 @@ import (
 // ManageHubModuleSelectedMsg changes the active Manage mode without creating a
 // child route. The shell owns the corresponding typed route replacement.
 type ManageHubModuleSelectedMsg struct {
-	Params       ManageParams
-	RulesMode    ManageRulesMode
-	HasRulesMode bool
+	Params ManageParams
 }
 
 // ShowManageHubMsg is the typed entry point used by startup routing and direct
@@ -33,35 +30,8 @@ const manageHubViewMenuOverlayKey = "manage-view-menu"
 
 type manageHubViewMenuMsg struct{ Open bool }
 
-// ManageRulesMode is hub-owned because the sealed Manage route intentionally
-// carries Rules as one module rather than exposing Workflow and Scoring as
-// separate routes.
-type ManageRulesMode uint8
-
-const (
-	ManageRulesWorkflow ManageRulesMode = iota
-	ManageRulesScoring
-)
-
-func (mode ManageRulesMode) String() string {
-	switch mode {
-	case ManageRulesWorkflow:
-		return "Workflow"
-	case ManageRulesScoring:
-		return "Scoring"
-	default:
-		return fmt.Sprintf("ManageRulesMode(%d)", mode)
-	}
-}
-
 var manageModuleNames = [...]string{
 	"Notes",
-	"Blockers",
-	"Rules",
-	"Templates",
-	"Tags",
-	"Notifications",
-	"Settings",
 	"Contexts",
 }
 
@@ -70,17 +40,6 @@ func (module ManageModule) String() string {
 		return manageModuleNames[module]
 	}
 	return fmt.Sprintf("ManageModule(%d)", module)
-}
-
-func (mode NotificationMode) String() string {
-	switch mode {
-	case NotificationAlerts:
-		return "Alerts"
-	case NotificationLog:
-		return "Log"
-	default:
-		return fmt.Sprintf("NotificationMode(%d)", mode)
-	}
 }
 
 // ManageHubDependencies collects the existing transaction-backed collection
@@ -92,12 +51,10 @@ type ManageHubDependencies struct {
 	AppService         *app.Service
 	NoteService        projectNoteService
 	HistoryLedger      *storage.WorkspaceLedger
-	Blockers           BlockerCoordinator
 	Tags               TagCoordinator
 	Wire               func(View)
 	ResolveProject     func(string) *models.Project
 	CurrentProject     func() *models.Project
-	NewSettings        func() *SettingsModel
 	ActiveContext      func() ContextScope
 	ActiveProjectFocus func() string
 	LoadedProjects     func() []*models.Project
@@ -106,11 +63,9 @@ type ManageHubDependencies struct {
 }
 
 type manageHubPickerEntry struct {
-	name         string
-	description  string
-	params       ManageParams
-	rulesMode    ManageRulesMode
-	hasRulesMode bool
+	name        string
+	description string
+	params      ManageParams
 }
 
 // ManageHubModel is the sole live Manage destination for collection and log
@@ -122,18 +77,12 @@ type ManageHubModel struct {
 	deps ManageHubDependencies
 
 	params    ManageParams
-	rulesMode ManageRulesMode
 	active    View
 	activeKey string
 
 	pickerTitle   string
 	pickerEntries []manageHubPickerEntry
 	pickerCursor  int
-
-	filteredAlerts *alerts.AlertSnapshot
-	rawAlerts      *alerts.AlertSnapshot
-	dismissedSet   map[string]bool
-	messageEntries []MessageLogEntry
 }
 
 func NewManageHubModel(deps ManageHubDependencies) *ManageHubModel {
@@ -190,44 +139,6 @@ func (m *ManageHubModel) normalizeCollectionKey(key tea.KeyPressMsg) tea.Msg {
 		case "x":
 			return syntheticKey('d')
 		}
-	case ManageTags:
-		switch key.String() {
-		case "e":
-			return syntheticKey('r')
-		case "x":
-			return syntheticKey('d')
-		case "space":
-			return syntheticKey('p')
-		}
-	case ManageRules:
-		if m.rulesMode == ManageRulesScoring {
-			if key.String() == "x" {
-				return syntheticKey('d')
-			}
-			break
-		}
-		switch key.String() {
-		case "a":
-			return syntheticKey('n')
-		case "x":
-			return syntheticKey('d')
-		}
-	case ManageTemplates:
-		switch key.String() {
-		case "a":
-			return syntheticKey('n')
-		case "x":
-			return syntheticKey('d')
-		}
-	case ManageNotifications:
-		if m.params.NotificationMode == NotificationAlerts {
-			switch key.String() {
-			case "x":
-				return syntheticKey('d')
-			case "space":
-				return tea.KeyPressMsg{Code: tea.KeyTab}
-			}
-		}
 	}
 	return key
 }
@@ -254,9 +165,7 @@ func (m *ManageHubModel) updatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			entry := m.pickerEntries[m.pickerCursor]
 			m.closePicker()
 			return m, func() tea.Msg {
-				return ManageHubModuleSelectedMsg{
-					Params: entry.params, RulesMode: entry.rulesMode, HasRulesMode: entry.hasRulesMode,
-				}
+				return ManageHubModuleSelectedMsg{Params: entry.params}
 			}
 		}
 	}
@@ -269,8 +178,8 @@ func (m *ManageHubModel) closePicker() {
 	m.pickerCursor = 0
 }
 
-// OpenViewMenu exposes route-owned scope and notification-mode choices. It is
-// intentionally local to the hub: selecting an option replaces route params
+// OpenViewMenu exposes route-owned scope choices. It is intentionally local to
+// the hub: selecting an option replaces route params
 // and never pushes a tracked child route.
 func (m *ManageHubModel) OpenViewMenu() bool {
 	params := m.params
@@ -290,25 +199,13 @@ func (m *ManageHubModel) OpenViewMenu() bool {
 				params: ManageParams{Module: params.Module, Scope: ProjectEntityScope(project.ID)},
 			})
 		}
-	case params.Module == ManageRules:
-		m.pickerTitle = "Rules mode"
-		m.pickerEntries = []manageHubPickerEntry{
-			{name: "Workflow", description: "Triggers and automated actions", params: params, rulesMode: ManageRulesWorkflow, hasRulesMode: true},
-			{name: "Scoring", description: "Scoring profiles and assignment", params: params, rulesMode: ManageRulesScoring, hasRulesMode: true},
-		}
-	case params.Module == ManageNotifications:
-		m.pickerTitle = "Notifications view"
-		m.pickerEntries = []manageHubPickerEntry{
-			{name: "Alerts", description: "Actionable notifications", params: ManageParams{Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationAlerts}},
-			{name: "Log", description: "Recent status messages", params: ManageParams{Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationLog}},
-		}
 	default:
 		return false
 	}
 
 	m.pickerCursor = 0
 	for i, entry := range m.pickerEntries {
-		if manageParamsEqual(entry.params, params) && (!entry.hasRulesMode || entry.rulesMode == m.rulesMode) {
+		if manageParamsEqual(entry.params, params) {
 			m.pickerCursor = i
 			break
 		}
@@ -353,73 +250,31 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	if err != nil {
 		return err
 	}
-	key := manageModuleCacheKey(params, m.rulesMode)
-	// Notifications and Contexts read live state at construction time, so a
-	// cached instance would show a stale snapshot.
-	if key == m.activeKey && m.active != nil &&
-		params.Module != ManageNotifications && params.Module != ManageContexts {
+	key := manageModuleCacheKey(params)
+	// Contexts read live state at construction time, so a cached instance would
+	// show a stale snapshot.
+	if key == m.activeKey && m.active != nil && params.Module != ManageContexts {
 		return nil
 	}
 
 	var view View
 	switch params.Module {
 	case ManageNotes:
-		if project == nil {
-			view = NewGlobalNotesViewModelWithService(
-				storage.GlobalNotesDir(m.deps.Runtime.DataDir()),
-				m.deps.NoteService,
-				m.deps.HistoryLedger,
-				m.deps.Runtime.Machine(),
-			)
-		} else {
-			view = NewNotesViewModelWithService(
-				project,
-				m.deps.NoteService,
-				m.deps.HistoryLedger,
-				m.deps.Runtime.Machine(),
-			)
+		activeProject := project
+		if activeProject == nil && m.deps.CurrentProject != nil {
+			activeProject = m.deps.CurrentProject()
 		}
-	case ManageBlockers:
-		if project == nil {
-			view = NewGlobalBlockersModel(m.deps.Runtime, m.deps.Blockers)
-		} else {
-			view = NewBlockersModelWithEditor(project, m.deps.Runtime.Machine().GetEditor(), m.deps.Blockers)
+		preferred := app.GlobalNoteLocation()
+		if project != nil {
+			preferred = app.ProjectNoteLocation(project.ID)
 		}
-	case ManageRules:
-		if m.rulesMode == ManageRulesScoring {
-			projectID := ""
-			if m.deps.CurrentProject != nil {
-				if current := m.deps.CurrentProject(); current != nil {
-					projectID = current.ID
-				}
-			}
-			view = NewScoreProfileManagerModel(m.deps.Runtime, projectID)
-		} else {
-			view = NewWorkflowRulesModel(m.deps.Runtime)
-		}
-	case ManageTemplates:
-		view = NewTaskTemplatesModel(m.deps.Runtime)
-	case ManageTags:
-		if project == nil {
-			view = NewGlobalTagManagerModel(
-				projectsInProjectSet(m.deps.Runtime.ActiveProjects(), params.ProjectSet),
-				m.deps.Runtime,
-				m.deps.Tags,
-			)
-		} else {
-			view = NewTagManagerModelForProject(project, m.deps.Tags)
-		}
-	case ManageNotifications:
-		if params.NotificationMode == NotificationLog {
-			view = NewMessageLogViewModel(m.messageEntries)
-		} else {
-			view = NewNotificationCenterModel(m.filteredAlerts, m.rawAlerts, m.dismissedSet)
-		}
-	case ManageSettings:
-		if m.deps.NewSettings == nil {
-			return fmt.Errorf("settings dependencies are unavailable")
-		}
-		view = m.deps.NewSettings()
+		view = NewCombinedNotesViewModelWithService(
+			storage.GlobalNotesDir(m.deps.Runtime.DataDir()),
+			activeProject,
+			preferred,
+			m.deps.NoteService,
+			m.deps.HistoryLedger,
+		)
 	case ManageContexts:
 		active := AllContextScope()
 		if m.deps.ActiveContext != nil {
@@ -461,16 +316,14 @@ func (m *ManageHubModel) projectForScope(scope EntityScope) (*models.Project, er
 	return project, nil
 }
 
-func manageModuleCacheKey(params ManageParams, rulesMode ManageRulesMode) string {
+func manageModuleCacheKey(params ManageParams) string {
 	return fmt.Sprintf(
-		"%d:%d:%s:%t:%s:%d:%d",
+		"%d:%d:%s:%t:%s",
 		params.Module,
 		params.Scope.Kind,
 		params.Scope.ProjectID,
 		params.ProjectSet.Explicit,
 		strings.Join(params.ProjectSet.ProjectIDs(), "\x1f"),
-		params.NotificationMode,
-		rulesMode,
 	)
 }
 
@@ -490,43 +343,6 @@ func (m *ManageHubModel) prepareActiveView() {
 func (m *ManageHubModel) Params() ManageParams { return m.params }
 
 func (m *ManageHubModel) ActiveModuleView() View { return m.active }
-
-func (m *ManageHubModel) SetNotificationData(filtered, raw *alerts.AlertSnapshot, dismissed map[string]bool) {
-	m.filteredAlerts = filtered
-	m.rawAlerts = raw
-	m.dismissedSet = dismissed
-}
-
-func (m *ManageHubModel) SetMessageLogEntries(entries []MessageLogEntry) {
-	m.messageEntries = append([]MessageLogEntry(nil), entries...)
-	if m.params.Module == ManageNotifications && m.params.NotificationMode == NotificationLog {
-		m.active = NewMessageLogViewModel(m.messageEntries)
-		m.activeKey = manageModuleCacheKey(m.params, m.rulesMode)
-		m.prepareActiveView()
-	}
-}
-
-func (m *ManageHubModel) RefreshNotificationCenter() {
-	if m.params.Module != ManageNotifications || m.params.NotificationMode != NotificationAlerts {
-		return
-	}
-	var showDismissed bool
-	var cursor int
-	if previous, ok := m.active.(*NotificationCenterModel); ok {
-		showDismissed = previous.showDismissed
-		cursor = previous.cursor
-	}
-	next := NewNotificationCenterModel(m.filteredAlerts, m.rawAlerts, m.dismissedSet)
-	next.showDismissed = showDismissed
-	if showDismissed {
-		next.rebuildForShowDismissed()
-	}
-	next.cursor = cursor
-	next.clampCursor()
-	m.active = next
-	m.activeKey = manageModuleCacheKey(m.params, m.rulesMode)
-	m.prepareActiveView()
-}
 
 func (m *ManageHubModel) View() tea.View {
 	if len(m.pickerEntries) > 0 {
@@ -644,14 +460,9 @@ func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *ManageHubModel) GetHelpItems() []HelpItem {
-	if m.params.Module == ManageRules || m.params.Module == ManageTemplates ||
-		m.params.Module == ManageSettings || m.params.Module == ManageContexts {
+	if m.params.Module == ManageContexts {
 		if provider, ok := m.active.(HelpProvider); ok {
-			items := append([]HelpItem(nil), provider.GetHelpItems()...)
-			if m.params.Module == ManageRules {
-				items = append(items, HelpItem{Key: "v", Description: "Switch Workflow or Scoring", Category: "View"})
-			}
-			return items
+			return append([]HelpItem(nil), provider.GetHelpItems()...)
 		}
 	}
 	return []HelpItem{
@@ -665,20 +476,11 @@ func (m *ManageHubModel) GetHelpItems() []HelpItem {
 }
 
 func (m *ManageHubModel) StatusBarLabel() string {
-	if m.params.Module == ManageNotifications {
-		return "Notifications · " + m.params.NotificationMode.String()
-	}
-	if m.params.Module == ManageRules {
-		return "Rules · " + m.rulesMode.String()
-	}
 	if m.params.Module == ManageContexts {
 		return "Contexts"
 	}
 	if m.params.Scope.Kind == ScopeProject {
 		return m.params.Module.String() + " · Project"
-	}
-	if m.params.Module == ManageTags && m.params.ProjectSet.Explicit {
-		return m.params.Module.String() + " · Scope"
 	}
 	return m.params.Module.String() + " · All"
 }
@@ -696,7 +498,7 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 		return ctx
 	}
 	return CommandContext{
-		View:  ViewSettings,
+		View:  ViewContextHub,
 		Scope: ScopeApp,
 		Capabilities: NewCapabilitySet(
 			CapabilityCommandDiscovery,
@@ -704,8 +506,6 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 		),
 	}
 }
-
-func (m *ManageHubModel) RulesMode() ManageRulesMode { return m.rulesMode }
 
 // ScopeProjectIDs returns the exact project set represented by the active
 // typed Manage route. App-scoped legacy modules continue to resolve all active
@@ -724,57 +524,10 @@ func (m *ManageHubModel) ScopeProjectIDs() []string {
 	return normalizedProjectIDs(ids)
 }
 
-// SetRulesMode replaces the Rules submode without changing the typed route.
-// Activate performs the actual model construction so callers can update the
-// route and renderer in one shell transaction.
-func (m *ManageHubModel) SetRulesMode(mode ManageRulesMode) {
-	if mode > ManageRulesScoring || mode == m.rulesMode {
-		return
-	}
-	m.rulesMode = mode
-	m.activeKey = ""
-}
-
 // PresentationView exposes the temporary legacy name for command discovery.
 // It never becomes a route identity.
 func (m *ManageHubModel) PresentationView() (PresentationID, bool) {
-	if m.params.Module == ManageRules && m.rulesMode == ManageRulesScoring {
-		return ViewScoreProfileManager, true
-	}
 	return manageModulePresentation(m.params)
-}
-
-func (m *ManageHubModel) RefreshWorkflowRules() {
-	if m.params.Module != ManageRules || m.rulesMode != ManageRulesWorkflow {
-		return
-	}
-	m.active = NewWorkflowRulesModel(m.deps.Runtime)
-	m.activeKey = manageModuleCacheKey(m.params, m.rulesMode)
-	m.prepareActiveView()
-}
-
-func (m *ManageHubModel) RefreshScoringProfiles() {
-	if m.params.Module != ManageRules || m.rulesMode != ManageRulesScoring {
-		return
-	}
-	projectID := ""
-	if m.deps.CurrentProject != nil {
-		if current := m.deps.CurrentProject(); current != nil {
-			projectID = current.ID
-		}
-	}
-	m.active = NewScoreProfileManagerModel(m.deps.Runtime, projectID)
-	m.activeKey = manageModuleCacheKey(m.params, m.rulesMode)
-	m.prepareActiveView()
-}
-
-func (m *ManageHubModel) RefreshTemplates() {
-	if m.params.Module != ManageTemplates {
-		return
-	}
-	m.active = NewTaskTemplatesModel(m.deps.Runtime)
-	m.activeKey = manageModuleCacheKey(m.params, m.rulesMode)
-	m.prepareActiveView()
 }
 
 func manageModulePresentation(params ManageParams) (PresentationID, bool) {
@@ -784,27 +537,6 @@ func manageModulePresentation(params ManageParams) (PresentationID, bool) {
 			return ViewNotes, true
 		}
 		return ViewGlobalNotes, true
-	case ManageBlockers:
-		if params.Scope.Kind == ScopeProject {
-			return ViewBlockers, true
-		}
-		return ViewGlobalBlockers, true
-	case ManageRules:
-		return ViewWorkflowRules, true
-	case ManageTemplates:
-		return ViewTaskTemplates, true
-	case ManageTags:
-		if params.Scope.Kind == ScopeProject {
-			return ViewTagManager, true
-		}
-		return ViewGlobalTagManager, true
-	case ManageNotifications:
-		if params.NotificationMode == NotificationLog {
-			return ViewMessageLog, true
-		}
-		return ViewNotificationCenter, true
-	case ManageSettings:
-		return ViewSettings, true
 	case ManageContexts:
 		return ViewContextHub, true
 	default:

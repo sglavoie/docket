@@ -40,7 +40,6 @@ type ContextHubModel struct {
 	editor         *contextEditor
 	confirm        ConfirmDialog
 	pendingDelete  ContextScope
-	pendingPurge   scopeHubActionTarget
 	confirmDiscard bool
 	discardOverlay ConfirmDialog
 	notice         string
@@ -187,18 +186,7 @@ func (m *ContextHubModel) updateScopeHubOverlays(key tea.KeyPressMsg) (tea.Model
 func (m *ContextHubModel) resolveScopeHubConfirm(action string, confirmed bool) tea.Cmd {
 	if !confirmed {
 		m.pendingDelete = ContextScope{}
-		m.pendingPurge = scopeHubActionTarget{}
 		return nil
-	}
-	if action == scopeHubConfirmPurge {
-		target := m.pendingPurge
-		m.pendingPurge = scopeHubActionTarget{}
-		if target.TrashEntryID == "" {
-			return nil
-		}
-		return func() tea.Msg {
-			return PurgeFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
-		}
 	}
 	return m.deleteConfirmedContext()
 }
@@ -317,11 +305,6 @@ func (m *ContextHubModel) previewCounts(summary ContextScopeSummary) string {
 	parts := []string{fmt.Sprintf("%d active project(s)", summary.ActiveProjectCount)}
 	if summary.Scope.IsCustom() {
 		parts = append(parts, fmt.Sprintf("%d archived", summary.ArchivedProjectCount))
-		// Sandbox and internal members are rare enough that a permanent "0
-		// hidden" would be noise in a pane that already wraps.
-		if summary.HiddenProjectCount > 0 {
-			parts = append(parts, fmt.Sprintf("%d hidden", summary.HiddenProjectCount))
-		}
 		parts = append(parts, fmt.Sprintf("%d missing", summary.StaleReferenceCount))
 	}
 	if m.taskCounts != nil {
@@ -366,13 +349,12 @@ func (m *ContextHubModel) subtitle() string {
 			regular++
 		}
 	}
-	activeProjects, archivedProjects, trash := m.scopeHubLifecycleCounts()
+	activeProjects, archivedProjects := m.scopeHubLifecycleCounts()
 	return fmt.Sprintf(
-		"%d base scopes · %d active · %d archived · %d trash",
+		"%d base scopes · %d active · %d archived",
 		1+custom+regular,
 		activeProjects,
 		archivedProjects,
-		trash,
 	)
 }
 
@@ -442,9 +424,6 @@ func contextHubRowDetail(summary ContextScopeSummary) string {
 		if summary.ArchivedProjectCount > 0 {
 			detail += fmt.Sprintf(" · %d archived", summary.ArchivedProjectCount)
 		}
-		if summary.HiddenProjectCount > 0 {
-			detail += fmt.Sprintf(" · %d hidden", summary.HiddenProjectCount)
-		}
 		if summary.StaleReferenceCount > 0 {
 			detail += fmt.Sprintf(" · %d missing", summary.StaleReferenceCount)
 		}
@@ -488,7 +467,7 @@ func (m *ContextHubModel) GetHelpItems() []HelpItem {
 		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
 		{Key: "Ctrl+d/u", Description: "Move half a page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Jump to the first or last scope item", Category: "Navigation"},
-		{Key: "/", Description: "Search scopes, projects, and trash", Category: "Filters"},
+		{Key: "/", Description: "Search scopes and projects", Category: "Filters"},
 		{Key: "enter", Description: "Activate a base scope or project focus", Category: "Actions"},
 		{Key: "space", Description: "Open contextual administration actions", Category: "Actions"},
 		{Key: "n", Description: "Create a custom context", Category: "Actions"},

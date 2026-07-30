@@ -13,18 +13,16 @@ import (
 // TaskFormFlagsPickedMsg is emitted when the user confirms flag selection.
 type TaskFormFlagsPickedMsg struct {
 	Pinned bool
-	Dimmed bool
 }
 
-// formFlagsPicker is an inline overlay for toggling task flags (Pinned/Dimmed).
+// formFlagsPicker is an inline overlay for toggling task flags.
 type formFlagsPicker struct {
 	cursor int
 	pinned bool
-	dimmed bool
 }
 
-func newFormFlagsPicker(pinned, dimmed bool) *formFlagsPicker {
-	return &formFlagsPicker{cursor: 0, pinned: pinned, dimmed: dimmed}
+func newFormFlagsPicker(pinned bool) *formFlagsPicker {
+	return &formFlagsPicker{cursor: 0, pinned: pinned}
 }
 
 // handleKey processes a key press.
@@ -34,24 +32,9 @@ func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg
 	case "esc":
 		return nil, true, nil
 	case "enter":
-		return nil, true, TaskFormFlagsPickedMsg{Pinned: p.pinned, Dimmed: p.dimmed}
-	case "up", "k":
-		if p.cursor > 0 {
-			p.cursor--
-		}
-		return nil, false, nil
-	case "down", "j":
-		if p.cursor < 1 {
-			p.cursor++
-		}
-		return nil, false, nil
+		return nil, true, TaskFormFlagsPickedMsg{Pinned: p.pinned}
 	case "space", "x":
-		switch p.cursor {
-		case 0:
-			p.pinned = !p.pinned
-		case 1:
-			p.dimmed = !p.dimmed
-		}
+		p.pinned = !p.pinned
 		return nil, false, nil
 	}
 	return nil, false, nil
@@ -72,7 +55,6 @@ func (p *formFlagsPicker) render(width int) string {
 	}
 	rows := []row{
 		{"Pinned", p.pinned},
-		{"Dimmed", p.dimmed},
 	}
 
 	var content strings.Builder

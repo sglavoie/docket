@@ -3,10 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-
 	domainapp "github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -41,72 +38,10 @@ func outlinerHasTask(outliner *OutlinerModel, projectID, taskID string) bool {
 	return false
 }
 
-func TestArchiveCompletedTasksRefreshesVisibleOutlinerSnapshot(t *testing.T) {
-	tests := []struct {
-		name   string
-		scoped bool
-		all    bool
-	}{
-		{name: "project archive in project scope", scoped: true},
-		{name: "archive all in global scope", all: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dataDir := t.TempDir()
-			project := newSession2Project(t, dataDir, tt.name)
-			project.Tasks[0].Complete()
-			archivedTaskID := project.Tasks[0].ID
-			if err := storage.SaveProject(project); err != nil {
-				t.Fatalf("save completed task: %v", err)
-			}
-
-			model, outliner := newSession2OutlinerApp(t, dataDir, true, project)
-			installDistinctOutlinerSnapshot(t, model, outliner)
-			if outliner.loadedProjects[0] == project {
-				t.Fatal("Outliner snapshot unexpectedly aliases the catalog project")
-			}
-			if tt.scoped {
-				outliner.pushProjectScope(project.ID)
-			}
-			outliner.selectOutlinerMode(ModeActivity)
-			if !outlinerHasTask(outliner, project.ID, archivedTaskID) {
-				t.Fatal("completed task missing before archive")
-			}
-
-			var request tea.Msg
-			if tt.all {
-				request = ArchiveAllCompletedTasksMsg{}
-			} else {
-				request = ArchiveCompletedTasksMsg{Project: project}
-			}
-			_, cmd := model.Update(request)
-			runSession2AppCommand(t, model, cmd)
-
-			if outliner.crossLoading {
-				t.Fatal("Outliner reload did not settle")
-			}
-			if outlinerHasTask(outliner, project.ID, archivedTaskID) {
-				t.Fatal("archived task remained visible without navigation")
-			}
-			if got := outliner.activeOutlinerMode(); got != ModeActivity {
-				t.Fatalf("Outliner mode changed to %q, want preserved %q", got, ModeActivity)
-			}
-			if tt.scoped && outliner.scopedProjectID != project.ID {
-				t.Fatalf("project scope changed to %q, want %q", outliner.scopedProjectID, project.ID)
-			}
-		})
-	}
-}
-
 func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "created refresh")
 	model, outliner := newSession2OutlinerApp(t, dataDir, true, project)
-	// Keep this test focused on the task refresh. Without the completed
-	// milestone, the isolated test runtime persists onboarding settings and
-	// reloads its intentionally in-memory-only catalog.
-	model.runtime.Settings().SetOnboardingProgress(config.OnboardingProgress{TaskCaptured: true})
 	installDistinctOutlinerSnapshot(t, model, outliner)
 
 	committed := &models.Project{
@@ -118,7 +53,7 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	if err := storage.LoadProject(committed); err != nil {
 		t.Fatalf("load committed project: %v", err)
 	}
-	task, err := models.NewTask("created-refresh-task", committed.GetNextShortID(), models.TaskTypeTask, "Newly created")
+	task, err := models.NewGenericTask("created-refresh-task", committed.GetNextShortID(), "Newly created")
 	if err != nil {
 		t.Fatalf("create task: %v", err)
 	}

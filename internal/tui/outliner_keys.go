@@ -9,21 +9,9 @@ import (
 func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	// The inline mode picker owns all input while open.
-	if m.modePickerActive() {
-		return m.handleModePickerKey(msg)
-	}
-
-	// Handle score filter custom value input
-	if m.scoreFilterInput.IsActive() {
-		cmd := m.scoreFilterInput.ProcessKey(msg, &m.filter.ScoreMin, func() { m.rebuildRows() })
-		return m, cmd
-	}
-
 	// Handle search mode input first
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
-		m.rebuildRows()
-		DetectSearchAutocomplete(m.SearchAC(), m.SearchInputValue(), m.searchTagCache())
+		rebuildOutlinerPreservingCursor(m)
 	}); handled {
 		return model, cmd
 	}

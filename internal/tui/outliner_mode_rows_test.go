@@ -10,7 +10,7 @@ import (
 
 func makeBoardTask(t *testing.T, id string, shortID int, title string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, shortID, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,37 +35,6 @@ func modeRowIDs(rows []OutlinerModeRow) []string {
 	return ids
 }
 
-// TestOutlinerModeBacklogExcludesTodayAndNonReadyStates locks the canonical
-// Backlog definition: exact StateReady membership excluding Today. Next and
-// InProgress belong to their own groups.
-func TestOutlinerModeBacklogExcludesTodayAndNextRanked(t *testing.T) {
-	project, _ := models.NewProject("proj", "Project", "/tmp/backlog-proj")
-
-	hi := &models.Task{ID: "hi", ShortID: 1, Type: models.TaskTypeTask, Title: "High", WorkflowState: models.StateInProgress, Priority: 1}
-	lo := &models.Task{ID: "lo", ShortID: 2, Type: models.TaskTypeTask, Title: "Low", WorkflowState: models.StateReady, Priority: 5}
-	next := &models.Task{ID: "next", ShortID: 3, Type: models.TaskTypeTask, Title: "Next", WorkflowState: models.StateNext, Priority: 1}
-	planned := &models.Task{ID: "planned", ShortID: 4, Type: models.TaskTypeTask, Title: "Planned", WorkflowState: models.StateReady, Priority: 1}
-	project.Tasks = []*models.Task{hi, lo, next, planned}
-
-	rows := BuildBacklogModeRows(OutlinerModeInput{
-		Projects:     []*models.Project{project},
-		DailyPlanIDs: map[TaskIdentity]bool{taskIdentityFor(planned, project): true},
-		Scorer:       config.EmptyRuntimeState(""),
-	})
-
-	// Next (StateNext), InProgress, and Today (daily plan) are excluded.
-	want := []string{"lo"}
-	got := modeRowIDs(rows)
-	if len(got) != len(want) {
-		t.Fatalf("backlog IDs = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("backlog order = %v, want %v", got, want)
-		}
-	}
-}
-
 // TestOutlinerModeNextOrdersByQueueRank ports the Planner Next ordering
 // regression: BuildNextModeRows lists StateNext tasks ordered by the focus-queue
 // index, appending unindexed members in stable input order, and excludes
@@ -73,20 +42,20 @@ func TestOutlinerModeBacklogExcludesTodayAndNextRanked(t *testing.T) {
 func TestOutlinerModeNextOrdersByQueueRank(t *testing.T) {
 	project, _ := models.NewProject("proj", "Project", "/tmp/next-proj")
 
-	a := &models.Task{ID: "id-a", ShortID: 1, Type: models.TaskTypeTask, Title: "Alpha", WorkflowState: models.StateNext}
-	b := &models.Task{ID: "id-b", ShortID: 2, Type: models.TaskTypeTask, Title: "Bravo", WorkflowState: models.StateNext}
-	c := &models.Task{ID: "id-c", ShortID: 3, Type: models.TaskTypeTask, Title: "Charlie", WorkflowState: models.StateNext}
-	d := &models.Task{ID: "id-d", ShortID: 4, Type: models.TaskTypeTask, Title: "Delta", WorkflowState: models.StateNext}
-	e := &models.Task{ID: "id-e", ShortID: 5, Type: models.TaskTypeTask, Title: "Echo", WorkflowState: models.StateNext}
-	ready := &models.Task{ID: "ready", ShortID: 6, Type: models.TaskTypeTask, Title: "Ready", WorkflowState: models.StateReady}
-	done := &models.Task{ID: "done", ShortID: 7, Type: models.TaskTypeTask, Title: "Done", WorkflowState: models.StateDone}
+	a := &models.Task{ID: "id-a", ShortID: 1, Title: "Alpha", WorkflowState: models.StateNext}
+	b := &models.Task{ID: "id-b", ShortID: 2, Title: "Bravo", WorkflowState: models.StateNext}
+	c := &models.Task{ID: "id-c", ShortID: 3, Title: "Charlie", WorkflowState: models.StateNext}
+	d := &models.Task{ID: "id-d", ShortID: 4, Title: "Delta", WorkflowState: models.StateNext}
+	e := &models.Task{ID: "id-e", ShortID: 5, Title: "Echo", WorkflowState: models.StateNext}
+	ready := &models.Task{ID: "ready", ShortID: 6, Title: "Ready", WorkflowState: models.StateReady}
+	done := &models.Task{ID: "done", ShortID: 7, Title: "Done", WorkflowState: models.StateDone}
 	// Input (project) order is a,b,c,d,e so unindexed d,e keep input order.
 	project.Tasks = []*models.Task{a, b, c, d, e, ready, done}
 
 	rows := BuildNextModeRows(OutlinerModeInput{
 		Projects: []*models.Project{project},
 		// Only A,B,C indexed; D,E unindexed StateNext members.
-		FocusQueue: []config.FocusQueueItem{
+		NextOrder: []config.ProjectTaskLocator{
 			{TaskID: "id-a", ProjectID: project.ID},
 			{TaskID: "id-b", ProjectID: project.ID},
 			{TaskID: "id-c", ProjectID: project.ID},
@@ -121,7 +90,7 @@ func TestTodaySectionRowsOpenBeforeCompleted(t *testing.T) {
 
 	rows := BuildTodayModeRows(OutlinerModeInput{
 		Projects:        []*models.Project{project},
-		DailyPlanIDs:    map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
+		TodayIDs:        map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
 		ChildDepthLimit: -1,
 	})
 
@@ -145,7 +114,7 @@ func TestTodaySectionRowsRecursiveOrdering(t *testing.T) {
 
 	rows := BuildTodayModeRows(OutlinerModeInput{
 		Projects:        []*models.Project{project},
-		DailyPlanIDs:    map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
+		TodayIDs:        map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
 		ChildDepthLimit: -1,
 	})
 
@@ -168,7 +137,7 @@ func TestTodaySectionRowsTreeConnectors(t *testing.T) {
 
 	rows := BuildTodayModeRows(OutlinerModeInput{
 		Projects:        []*models.Project{project},
-		DailyPlanIDs:    map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
+		TodayIDs:        map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
 		ChildDepthLimit: -1,
 	})
 
@@ -195,7 +164,7 @@ func TestTodaySectionRowsHardExcludePrunesDescendantsWithoutTaskFilter(t *testin
 
 	rows := BuildTodayModeRows(OutlinerModeInput{
 		Projects:        []*models.Project{project},
-		DailyPlanIDs:    map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
+		TodayIDs:        map[TaskIdentity]bool{taskIdentityFor(parent, project): true},
 		ChildDepthLimit: -1,
 		TaskExclude: func(task *models.Task, _ *models.Project) bool {
 			return task.ID == hidden.ID

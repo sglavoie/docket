@@ -48,26 +48,19 @@ func (m *TaskFormModel) renderFormHelpPane(width int) string {
 func (m *TaskFormModel) helpPaneHeader() string {
 	switch m.activeTab {
 	case formTabBasics:
-		names := []string{"Title", "Description", "Type", "Priority", "Parent", "Section", "Flags", "Tags"}
+		names := []string{"Title", "Description", "Priority", "Parent", "State", "Flags", "Tags"}
 		if m.focusIndex < len(names) {
 			return names[m.focusIndex]
 		}
-		return "Attribute"
 	case formTabSchedule:
 		switch m.focusIndex {
 		case 0:
 			return "Due Date"
 		case 1:
-			return "Start Date"
-		case 2:
-			return "Estimated Days"
-		case 3:
 			return "Recurrence"
 		}
 	case formTabChildren:
 		return "Children"
-	case formTabDetails:
-		return "Details"
 	}
 	return "Keys"
 }
@@ -80,8 +73,6 @@ func (m *TaskFormModel) helpPaneEntries() []helpEntry {
 		return m.scheduleHelpEntries()
 	case formTabChildren:
 		return m.childrenHelpEntries()
-	case formTabDetails:
-		return m.detailsHelpEntries()
 	}
 	return nil
 }
@@ -97,38 +88,30 @@ func (m *TaskFormModel) basicsHelpEntries() []helpEntry {
 			{key: "Enter", desc: "edit"},
 			{key: "Ctrl+E", desc: "ext editor"},
 		}
-	case 2: // Type
-		return []helpEntry{
-			{key: "h/l ←/→", desc: "cycle type"},
-			{key: "Enter", desc: "picker"},
-		}
-	case 3: // Priority
+	case 2: // Priority
 		return []helpEntry{
 			{key: "1-5", desc: "set priority"},
 			{key: "j/k ↑/↓", desc: "cycle"},
 			{key: "Enter", desc: "picker"},
 		}
-	case 4: // Parent
+	case 3: // Parent
 		return []helpEntry{
 			{key: "Enter", desc: "select or clear parent"},
 		}
-	case 5: // Section
+	case 4: // State
 		return []helpEntry{
 			{key: "Enter", desc: "pick state"},
 		}
-	case 6: // Flags
+	case 5: // Flags
 		return []helpEntry{
 			{key: "Enter", desc: "toggle flags"},
 		}
-	case 7: // Tags
+	case 6: // Tags
 		return []helpEntry{
 			{key: "Enter", desc: "manage tags"},
 		}
-	default: // 8+ attr rows
-		return []helpEntry{
-			{key: "Enter", desc: "edit attribute"},
-		}
 	}
+	return nil
 }
 
 func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
@@ -138,15 +121,7 @@ func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
 			{key: "Ctrl+D", desc: "presets"},
 			{key: "Enter", desc: "confirm"},
 		}
-	case 1: // Start Date
-		return []helpEntry{
-			{key: "Enter", desc: "confirm"},
-		}
-	case 2: // Estimated Days
-		return []helpEntry{
-			{key: "Enter", desc: "confirm"},
-		}
-	case 3: // Recurrence
+	case 1: // Recurrence
 		return []helpEntry{
 			{key: "Enter", desc: "edit pattern"},
 		}
@@ -164,14 +139,8 @@ func (m *TaskFormModel) childrenHelpEntries() []helpEntry {
 		{key: "Ctrl+O", desc: "toggle optional"},
 		{key: "Ctrl+S", desc: "save task"},
 	}
-	if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
+	if m.mode == FormModeCreate {
 		entries = append([]helpEntry{{key: "Ctrl+T", desc: "add subtask"}}, entries...)
 	}
 	return entries
-}
-
-func (m *TaskFormModel) detailsHelpEntries() []helpEntry {
-	return []helpEntry{
-		{key: "Enter", desc: "confirm"},
-	}
 }

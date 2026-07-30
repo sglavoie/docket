@@ -20,9 +20,8 @@ func TestWriteIdempotency_TitleWhitespace(t *testing.T) {
 	for _, title := range cases {
 		t.Run(title, func(t *testing.T) {
 			tasks := []*models.Task{{
-				ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-				Title: title, WorkflowState: models.StateReady, Priority: 3,
-				Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
+				ID: "t1", ShortID: 1, Title: title, WorkflowState: models.StateReady, Priority: 3,
+				Tags: []string{}, DependsOn: []string{},
 				CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			}}
 			first := WriteTasksMarkdown("Test", tasks)
@@ -45,17 +44,16 @@ func TestWriteIdempotency_TitleWhitespace(t *testing.T) {
 func TestWriteIdempotency_EmptyCommentDropped(t *testing.T) {
 	ts := time.Date(2024, 1, 1, 10, 30, 0, 0, time.UTC)
 	tasks := []*models.Task{{
-		ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-		Title: "T1", WorkflowState: models.StateReady, Priority: 3,
-		Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
+		ID: "t1", ShortID: 1, Title: "T1", WorkflowState: models.StateReady, Priority: 3,
+		Tags: []string{}, DependsOn: []string{},
 		CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Comments: []*models.Comment{
 			{Text: "   ", CreatedAt: ts},
 			{Text: "real content", CreatedAt: ts},
 		},
 		Decisions: []*models.Decision{
-			{Text: "", Rationale: "abandoned", Category: "design", CreatedAt: ts},
-			{Text: "kept", Rationale: "", Category: "design", CreatedAt: ts},
+			{Text: "", Rationale: "abandoned", CreatedAt: ts},
+			{Text: "kept", Rationale: "", CreatedAt: ts},
 		},
 	}}
 	first := WriteTasksMarkdown("Test", tasks)
@@ -82,9 +80,8 @@ func TestWriteIdempotency_EmptyCommentDropped(t *testing.T) {
 func TestWriteIdempotency_CommentAndDecisionWhitespace(t *testing.T) {
 	ts := time.Date(2024, 1, 1, 10, 30, 0, 0, time.UTC)
 	tasks := []*models.Task{{
-		ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-		Title: "T1", WorkflowState: models.StateReady, Priority: 3,
-		Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
+		ID: "t1", ShortID: 1, Title: "T1", WorkflowState: models.StateReady, Priority: 3,
+		Tags: []string{}, DependsOn: []string{},
 		CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		Comments: []*models.Comment{
 			{Text: "  leading", CreatedAt: ts},
@@ -93,7 +90,6 @@ func TestWriteIdempotency_CommentAndDecisionWhitespace(t *testing.T) {
 		Decisions: []*models.Decision{{
 			Text:      "  text with leading",
 			Rationale: "rationale with trailing  ",
-			Category:  models.DecisionCategory("design"),
 			CreatedAt: ts,
 		}},
 	}}
@@ -122,9 +118,8 @@ func TestWriteIdempotency_DescriptionWhitespace(t *testing.T) {
 	for _, desc := range cases {
 		t.Run(desc[:min(12, len(desc))], func(t *testing.T) {
 			tasks := []*models.Task{{
-				ID: "t1", ShortID: 1, Type: models.TaskTypeTask,
-				Title: "T1", Description: desc, WorkflowState: models.StateReady, Priority: 3,
-				Tags: []string{}, DependsOn: []string{}, RelatedTo: []string{},
+				ID: "t1", ShortID: 1, Title: "T1", Description: desc, WorkflowState: models.StateReady, Priority: 3,
+				Tags: []string{}, DependsOn: []string{},
 				CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			}}
 			first := WriteTasksMarkdown("Test", tasks)

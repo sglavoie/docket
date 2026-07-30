@@ -65,11 +65,11 @@ func TestTaskDetailUpdate_IgnoresMessagesForOtherTasks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
-	shown, err := models.NewTask("task-shown", 1, models.TaskTypeTask, "Shown")
+	shown, err := models.NewGenericTask("task-shown", 1, "Shown")
 	if err != nil {
 		t.Fatalf("NewTask shown: %v", err)
 	}
-	other, err := models.NewTask("task-other", 2, models.TaskTypeTask, "Other")
+	other, err := models.NewGenericTask("task-other", 2, "Other")
 	if err != nil {
 		t.Fatalf("NewTask other: %v", err)
 	}

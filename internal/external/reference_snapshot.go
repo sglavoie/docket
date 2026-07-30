@@ -42,7 +42,7 @@ func FormatTaskReferenceMarkdownWithNotes(task *models.Task, linkedNotes []*mode
 
 // FormatNoteReferenceMarkdownWithTasks formats a note as a read-only reference
 // snapshot and summarizes linked tasks when task records are available.
-func FormatNoteReferenceMarkdownWithTasks(note *models.Note, linkedTasks []*models.Task) string {
+func FormatNoteReferenceMarkdownWithTasks(note *models.Note, _ []*models.Task) string {
 	var b strings.Builder
 	if note == nil {
 		b.WriteString("# Note Reference\n\n")
@@ -63,21 +63,13 @@ func FormatNoteReferenceMarkdownWithTasks(note *models.Note, linkedTasks []*mode
 	if note.Filename != "" {
 		fmt.Fprintf(&b, "| Filename | %s |\n", markdownTableCell(note.Filename))
 	}
-	if len(note.Tags) > 0 {
-		fmt.Fprintf(&b, "| Tags | %s |\n", markdownTableCell(strings.Join(note.Tags, ", ")))
-	}
 	if !note.CreatedAt.IsZero() {
 		fmt.Fprintf(&b, "| Created | %s |\n", note.CreatedAt.Format(util.DateTimeFormat))
 	}
 	if !note.ModifiedAt.IsZero() {
 		fmt.Fprintf(&b, "| Modified | %s |\n", note.ModifiedAt.Format(util.DateTimeFormat))
 	}
-	if note.Pinned {
-		b.WriteString("| Pinned | Yes |\n")
-	}
 	b.WriteString("\n")
-
-	writeLinkedTaskSummary(&b, note.LinkedTasks, linkedTasks)
 
 	if note.ParseError != "" {
 		b.WriteString("## Parse Error\n\n")
@@ -189,14 +181,10 @@ func writeReferenceTaskDetails(b *strings.Builder, task *models.Task, linkedNote
 			if comment == nil {
 				continue
 			}
-			status := ""
-			if comment.Resolved {
-				status = " (resolved)"
-			}
 			if comment.CreatedAt.IsZero() {
-				fmt.Fprintf(b, "- %s%s\n", formatMarkdownListText(comment.Text), status)
+				fmt.Fprintf(b, "- %s\n", formatMarkdownListText(comment.Text))
 			} else {
-				fmt.Fprintf(b, "- %s: %s%s\n", comment.CreatedAt.Format(util.DateTimeFormat), formatMarkdownListText(comment.Text), status)
+				fmt.Fprintf(b, "- %s: %s\n", comment.CreatedAt.Format(util.DateTimeFormat), formatMarkdownListText(comment.Text))
 			}
 		}
 		b.WriteString("\n")
@@ -212,12 +200,6 @@ func writeReferenceTaskDetails(b *strings.Builder, task *models.Task, linkedNote
 			if !decision.CreatedAt.IsZero() {
 				parts = append(parts, decision.CreatedAt.Format(util.DateTimeFormat))
 			}
-			if decision.Category != "" {
-				parts = append(parts, string(decision.Category))
-			}
-			if decision.Resolved {
-				parts = append(parts, "resolved")
-			}
 			prefix := ""
 			if len(parts) > 0 {
 				prefix = strings.Join(parts, " | ") + ": "
@@ -226,17 +208,6 @@ func writeReferenceTaskDetails(b *strings.Builder, task *models.Task, linkedNote
 			if decision.Rationale != "" {
 				fmt.Fprintf(b, "  - Rationale: %s\n", formatMarkdownListText(decision.Rationale))
 			}
-		}
-		b.WriteString("\n")
-	}
-
-	if len(task.RelatedTo) > 0 {
-		b.WriteString("## Related Tasks\n\n")
-		for _, id := range task.RelatedTo {
-			if strings.TrimSpace(id) == "" {
-				continue
-			}
-			fmt.Fprintf(b, "- %s\n", id)
 		}
 		b.WriteString("\n")
 	}
@@ -251,49 +222,6 @@ func writeReferenceTaskDetails(b *strings.Builder, task *models.Task, linkedNote
 		}
 		b.WriteString("\n")
 	}
-}
-
-func writeLinkedTaskSummary(b *strings.Builder, linkedTaskIDs []string, linkedTasks []*models.Task) {
-	if len(linkedTaskIDs) == 0 && len(linkedTasks) == 0 {
-		return
-	}
-
-	taskByID := make(map[string]*models.Task, len(linkedTasks))
-	for _, task := range linkedTasks {
-		if task != nil && task.ID != "" {
-			taskByID[task.ID] = task
-		}
-	}
-
-	b.WriteString("## Linked Tasks\n\n")
-	seen := map[string]bool{}
-	for _, id := range linkedTaskIDs {
-		id = strings.TrimSpace(id)
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		if task := taskByID[id]; task != nil {
-			fmt.Fprintf(b, "- %s\n", formatTaskSummary(task))
-			continue
-		}
-		fmt.Fprintf(b, "- %s\n", id)
-	}
-	for _, task := range linkedTasks {
-		if task == nil || task.ID == "" || seen[task.ID] {
-			continue
-		}
-		seen[task.ID] = true
-		fmt.Fprintf(b, "- %s\n", formatTaskSummary(task))
-	}
-	b.WriteString("\n")
-}
-
-func formatTaskSummary(task *models.Task) string {
-	if task.ShortID > 0 {
-		return fmt.Sprintf("#%d %s: %s (%s) [%s]", task.ShortID, task.Type.HeadingPrefix(), task.Title, task.State(), task.ID)
-	}
-	return fmt.Sprintf("%s (%s)", task.Title, task.ID)
 }
 
 func formatNoteSummary(note *models.Note) string {

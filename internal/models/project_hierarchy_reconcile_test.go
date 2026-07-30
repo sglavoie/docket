@@ -6,7 +6,6 @@ func TestReconcileParentCompletionSingleReopen(t *testing.T) {
 	project := newDependencyTestProject(t, "test")
 
 	parent := newDependencyTestTask(t, "parent", 1, "Parent")
-	parent.Type = TaskTypeStory
 	child := newDependencyTestTask(t, "child", 2, "Child")
 	if err := parent.AddChild(child); err != nil {
 		t.Fatal(err)
@@ -31,9 +30,7 @@ func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
 	project := newDependencyTestProject(t, "test")
 
 	epic := newDependencyTestTask(t, "epic", 1, "Epic")
-	epic.Type = TaskTypeEpic
 	story := newDependencyTestTask(t, "story", 2, "Story")
-	story.Type = TaskTypeStory
 	task := newDependencyTestTask(t, "task", 3, "Task")
 
 	if err := story.AddChild(task); err != nil {
@@ -63,7 +60,6 @@ func TestReconcileParentCompletionCanceledParent(t *testing.T) {
 	project := newDependencyTestProject(t, "test")
 
 	parent := newDependencyTestTask(t, "parent", 1, "Parent")
-	parent.Type = TaskTypeStory
 	child := newDependencyTestTask(t, "child", 2, "Child")
 	if err := parent.AddChild(child); err != nil {
 		t.Fatal(err)
@@ -84,7 +80,6 @@ func TestReconcileParentCompletionNoOpWhenConsistent(t *testing.T) {
 	project := newDependencyTestProject(t, "test")
 
 	parent := newDependencyTestTask(t, "parent", 1, "Parent")
-	parent.Type = TaskTypeStory
 	child := newDependencyTestTask(t, "child", 2, "Child")
 	if err := parent.AddChild(child); err != nil {
 		t.Fatal(err)

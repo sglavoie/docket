@@ -8,15 +8,15 @@ func TestProjectGetRootTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 2, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 2, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	childTask, err := NewTask("child", 3, TaskTypeTask, "Child")
+	childTask, err := NewGenericTask("child", 3, "Child")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,11 +45,11 @@ func TestProjectGetTaskByID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task-1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task-2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,12 +77,12 @@ func TestProjectGetTaskByID_EmptyIDReturnsNil(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	good, err := NewTask("good", 1, TaskTypeTask, "Good")
+	good, err := NewGenericTask("good", 1, "Good")
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Simulate a corrupted on-disk task whose ID failed to parse.
-	corrupted := &Task{ID: "", ShortID: 99, Title: "Corrupted", Type: TaskTypeTask}
+	corrupted := &Task{ID: "", ShortID: 99, Title: "Corrupted"}
 	project.Tasks = []*Task{good, corrupted}
 
 	if got := project.GetTaskByID(""); got != nil {
@@ -99,11 +99,11 @@ func TestProjectGetTaskByShortID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task-1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task-2", 42, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task-2", 42, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}

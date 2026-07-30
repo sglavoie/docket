@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -46,25 +45,11 @@ func (m *AppModel) handleUndoRedoPerformed(statusMsg string) (bool, tea.Cmd) {
 }
 
 // workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
-// holds a reversible transaction for the applicable action (undo when redo is
-// false, redo when true) that is at least as new as the cursor project's legacy
-// per-project history. Application-service mutations (edit, priority, completion,
-// state transition, section move) commit to the ledger, so when this returns true
-// general u/ctrl+r restores that durable, restart-safe transaction. It returns
-// false only when the legacy per-project history is genuinely newer, or the ledger
-// has no matching entry — the sole conditions under which the legacy restore path
-// is used.
-func (m *AppModel) workspaceLedgerRestoreIsNewest(project *models.Project, redo bool) bool {
+// holds a reversible transaction for the applicable action.
+func (m *AppModel) workspaceLedgerRestoreIsNewest(redo bool) bool {
 	ledger := workspaceLedgerFromConfig(m.runtime)
-	entry, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), redo)
-	if err != nil || !ok {
-		return false
-	}
-	if project == nil {
-		return true
-	}
-	legacyAt := legacyTaskHistoryTimestamp(project, redo)
-	return legacyAt.IsZero() || !legacyAt.After(entry.Timestamp)
+	_, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), redo)
+	return err == nil && ok
 }
 
 // ledgerNewestEntry previews the entry a subsequent undo (redo=false) or redo
@@ -74,22 +59,6 @@ func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScop
 		return ledger.SelectNewestRedo(scope)
 	}
 	return ledger.SelectNewestUndo(scope)
-}
-
-// legacyTaskHistoryTimestamp returns the newest timestamp in the project's legacy
-// per-project undo (redo=false) or redo (redo=true) history, or the zero time when
-// none exists. It gates the ledger-vs-legacy recency decision for general
-// u/ctrl+r.
-func legacyTaskHistoryTimestamp(project *models.Project, redo bool) time.Time {
-	load := storage.LoadUndoHistory
-	if redo {
-		load = storage.LoadRedoHistory
-	}
-	var latest time.Time
-	if entries, err := load(project); err == nil {
-		latest = latestUndoEntryTimestamp(latest, entries)
-	}
-	return latest
 }
 
 // handleLedgerTaskUndoRedo restores the newest application-service workspace-ledger
@@ -173,22 +142,16 @@ func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project)
 		return TaskProjectRef{}, false
 	}
 
-	for i := range m.focusQueue {
-		if ref, ok := resolve(m.focusQueue[i].Task, m.focusQueue[i].Project); ok {
-			m.focusQueue[i].Task = ref.Task
-			m.focusQueue[i].Project = ref.Project
+	for i := range m.nextOrder {
+		if ref, ok := resolve(m.nextOrder[i].Task, m.nextOrder[i].Project); ok {
+			m.nextOrder[i].Task = ref.Task
+			m.nextOrder[i].Project = ref.Project
 		}
 	}
-	for i := range m.dailyPlan {
-		if ref, ok := resolve(m.dailyPlan[i].Task, m.dailyPlan[i].Project); ok {
-			m.dailyPlan[i].Task = ref.Task
-			m.dailyPlan[i].Project = ref.Project
-		}
-	}
-	for i := range m.recentTaskVisits {
-		if ref, ok := resolve(m.recentTaskVisits[i].Task, m.recentTaskVisits[i].Project); ok {
-			m.recentTaskVisits[i].Task = ref.Task
-			m.recentTaskVisits[i].Project = ref.Project
+	for i := range m.today {
+		if ref, ok := resolve(m.today[i].Task, m.today[i].Project); ok {
+			m.today[i].Task = ref.Task
+			m.today[i].Project = ref.Project
 		}
 	}
 }

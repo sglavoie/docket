@@ -8,15 +8,15 @@ func TestProjectBuildTaskTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	story, err := NewGenericTask("story", 2, "Story")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 3, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,19 +57,19 @@ func TestProjectGetTaskAbove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	story, err := NewGenericTask("story", 2, "Story")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 3, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 4, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task2", 4, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}

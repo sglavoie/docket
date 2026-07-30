@@ -8,21 +8,19 @@ import (
 )
 
 // OperationCategory is the stable product grouping used by action sheets,
-// finder results, help, and harness discovery.
+// help, direct grammar, and harness discovery.
 type OperationCategory string
 
 const (
-	OperationCategoryTask         OperationCategory = "task"
-	OperationCategoryNavigation   OperationCategory = "navigation"
-	OperationCategoryMode         OperationCategory = "mode"
-	OperationCategoryScope        OperationCategory = "scope"
-	OperationCategoryFilter       OperationCategory = "filter"
-	OperationCategoryProject      OperationCategory = "project"
-	OperationCategoryNote         OperationCategory = "note"
-	OperationCategoryTag          OperationCategory = "tag"
-	OperationCategoryReview       OperationCategory = "review"
-	OperationCategoryNotification OperationCategory = "notification"
-	OperationCategorySystem       OperationCategory = "system"
+	OperationCategoryTask       OperationCategory = "task"
+	OperationCategoryNavigation OperationCategory = "navigation"
+	OperationCategoryMode       OperationCategory = "mode"
+	OperationCategoryScope      OperationCategory = "scope"
+	OperationCategoryFilter     OperationCategory = "filter"
+	OperationCategoryProject    OperationCategory = "project"
+	OperationCategoryNote       OperationCategory = "note"
+	OperationCategoryTag        OperationCategory = "tag"
+	OperationCategorySystem     OperationCategory = "system"
 )
 
 // TargetCardinality declares how many resolved targets an operation accepts.
@@ -73,11 +71,13 @@ const (
 	ValueProviderProject      ValueProviderID = "project"
 	ValueProviderDependencies ValueProviderID = "dependencies"
 	ValueProviderParent       ValueProviderID = "parent"
+	ValueProviderRecurrence   ValueProviderID = "recurrence"
 	ValueProviderNoteTitle    ValueProviderID = "note-title"
 	ValueProviderTagName      ValueProviderID = "tag-name"
 
 	// Filter providers feed the Outliner's view-state filter facets rather than
-	// a task mutation; the priority and due providers are preset-only.
+	// a task mutation; priority is preset-only while states, tags, and due use
+	// pickers.
 	ValueProviderFilterPriority ValueProviderID = "filter-priority"
 	ValueProviderFilterStates   ValueProviderID = "filter-states"
 	ValueProviderFilterTags     ValueProviderID = "filter-tags"
@@ -95,25 +95,6 @@ func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID)
 	return descriptor
 }
 
-// OperationPlacement declares where a descriptor is discoverable. Finder is the
-// only command surface, so placement decides whether an operation is listed
-// among its operations, among its tools, only in contextual action sheets, or
-// nowhere.
-type OperationPlacement string
-
-const (
-	PlacementFinderOperation OperationPlacement = "finder-operation"
-	PlacementFinderTool      OperationPlacement = "finder-tool"
-	PlacementContextual      OperationPlacement = "contextual"
-	PlacementHidden          OperationPlacement = "hidden"
-)
-
-// DiscoverableInFinder reports whether the placement lists the operation in
-// Finder.
-func (placement OperationPlacement) DiscoverableInFinder() bool {
-	return placement == PlacementFinderOperation || placement == PlacementFinderTool
-}
-
 // OperationApplicability is a handler-free predicate over the active command
 // context. RequiredCapabilities are checked before this predicate.
 type OperationApplicability func(CommandContext) bool
@@ -126,7 +107,6 @@ type OperationDescriptor struct {
 	Description          string
 	Aliases              []string
 	Category             OperationCategory
-	Placement            OperationPlacement
 	DirectKey            string
 	TargetSource         OperationTargetSource
 	TargetCardinality    TargetCardinality
@@ -238,25 +218,6 @@ func (registry *OperationRegistry) ForContext(ctx CommandContext) ([]OperationDe
 	return descriptors, nil
 }
 
-// ForPlacement returns the descriptors applicable in ctx that the given
-// discovery surface may list.
-func (registry *OperationRegistry) ForPlacement(
-	ctx CommandContext,
-	placement OperationPlacement,
-) ([]OperationDescriptor, error) {
-	applicable, err := registry.ForContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	descriptors := make([]OperationDescriptor, 0, len(applicable))
-	for _, descriptor := range applicable {
-		if descriptor.Placement == placement {
-			descriptors = append(descriptors, descriptor)
-		}
-	}
-	return descriptors, nil
-}
-
 // ValidateContext verifies that applicable operations have unique direct keys.
 func (registry *OperationRegistry) ValidateContext(ctx CommandContext) error {
 	_, err := registry.ForContext(ctx)
@@ -268,7 +229,6 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	descriptor.Label = strings.TrimSpace(descriptor.Label)
 	descriptor.Description = strings.TrimSpace(descriptor.Description)
 	descriptor.DirectKey = normalizeOperationKey(descriptor.DirectKey)
-	descriptor.Placement = OperationPlacement(strings.TrimSpace(string(descriptor.Placement)))
 	descriptor.ValueProviderID = ValueProviderID(strings.TrimSpace(string(descriptor.ValueProviderID)))
 	if descriptor.ID == "" {
 		return OperationDescriptor{}, fmt.Errorf("operation ID is required")
@@ -305,34 +265,9 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	if err := validateOperationCapabilities(descriptor.ID, descriptor.RequiredCapabilities); err != nil {
 		return OperationDescriptor{}, err
 	}
-	if descriptor.Placement == "" {
-		descriptor.Placement = defaultOperationPlacement(descriptor.RequiredCapabilities)
-	}
-	if !validOperationPlacement(descriptor.Placement) {
-		return OperationDescriptor{}, fmt.Errorf(
-			"operation %s has invalid placement %q",
-			descriptor.ID,
-			descriptor.Placement,
-		)
-	}
-	if descriptor.RequiredCapabilities.Has(CapabilityHarness) && descriptor.Placement.DiscoverableInFinder() {
-		return OperationDescriptor{}, fmt.Errorf(
-			"operation %s requires the test harness and must not be placed in Finder",
-			descriptor.ID,
-		)
-	}
 	descriptor.Aliases = normalizeOperationAliases(descriptor.Label, descriptor.Aliases)
 	descriptor.RequiredCapabilities = cloneCapabilitySet(descriptor.RequiredCapabilities)
 	return descriptor, nil
-}
-
-// defaultOperationPlacement keeps harness deep links out of every discovery
-// surface while leaving ordinary operations discoverable in Finder.
-func defaultOperationPlacement(capabilities CapabilitySet) OperationPlacement {
-	if capabilities.Has(CapabilityHarness) {
-		return PlacementHidden
-	}
-	return PlacementFinderOperation
 }
 
 func validateOperationCapabilities(id OperationID, capabilities CapabilitySet) error {
@@ -402,18 +337,7 @@ func validOperationCategory(category OperationCategory) bool {
 		OperationCategoryProject,
 		OperationCategoryNote,
 		OperationCategoryTag,
-		OperationCategoryReview,
-		OperationCategoryNotification,
 		OperationCategorySystem:
-		return true
-	default:
-		return false
-	}
-}
-
-func validOperationPlacement(placement OperationPlacement) bool {
-	switch placement {
-	case PlacementFinderOperation, PlacementFinderTool, PlacementContextual, PlacementHidden:
 		return true
 	default:
 		return false
@@ -472,12 +396,8 @@ func operationCategoryRank(category OperationCategory) int {
 		return 6
 	case OperationCategoryTag:
 		return 7
-	case OperationCategoryReview:
-		return 8
-	case OperationCategoryNotification:
-		return 9
 	default:
-		return 10
+		return 8
 	}
 }
 

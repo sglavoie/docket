@@ -82,47 +82,7 @@ type ShowGlobalNotesMsg struct {
 // CloseGlobalNotesMsg closes the global notes view.
 type CloseGlobalNotesMsg struct{ PopToAnchorMsg }
 
-// MoveNoteToProjectMsg moves a note from global notes to a project.
-type MoveNoteToProjectMsg struct {
-	Note    *models.Note
-	Project *models.Project
-}
-
 // ShowNoteCreatorMsg opens a quick note creation prompt.
 type ShowNoteCreatorMsg struct {
 	Project *models.Project
-}
-
-// ShowNoteTaskLinkerMsg opens the task picker to link a note to a task.
-type ShowNoteTaskLinkerMsg struct {
-	Project *models.Project
-	Note    *models.Note
-}
-
-// BulkNoteTagMsg opens the tag selector for multiple notes.
-type BulkNoteTagMsg struct {
-	Sources       []noteMutationRef
-	AvailableTags []TagInfo
-}
-
-// BulkNoteLinkMsg opens the task linker for multiple notes.
-type BulkNoteLinkMsg struct {
-	Notes   []*models.Note
-	Project *models.Project
-}
-
-// BulkNoteLinkDoneMsg returns the result from bulk note linking.
-type BulkNoteLinkDoneMsg struct {
-	Notes       []*models.Note
-	ProjectID   string
-	LinkChanges map[string]bool
-	Canceled    bool
-}
-
-// CloseNoteTaskLinkerMsg closes the note task linker.
-type CloseNoteTaskLinkerMsg struct{}
-
-// NoteTaskLinkedMsg signals a note was linked to a task.
-type NoteTaskLinkedMsg struct {
-	TaskID string // Last toggled task ID, used for bulk linking
 }

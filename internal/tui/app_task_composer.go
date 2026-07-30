@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/template"
 )
 
 const taskComposerOverlayKey = "task-composer"
@@ -83,32 +82,14 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 		Kind:        ComposerProject,
 		Project:     project,
 		AllProjects: m.activeProjects(),
-		Shared:      TaskComposerSharedAttributes{State: models.StateNext},
+		Shared:      TaskComposerSharedAttributes{State: models.StateInbox},
 	}
 	if parent != nil {
 		parentID := parent.ID
 		preset.Kind = ComposerChild
 		preset.Parent = parent
 		preset.Shared.ParentID = &parentID
-		preset.Shared.State = parent.State()
+		preset.Shared.State = models.StateReady
 	}
 	return preset
-}
-
-func linkedComposerPreset(project *models.Project, source *models.Task, linkType LinkType) TaskComposerPreset {
-	state := models.StateInbox
-	if source != nil {
-		state = source.State()
-	}
-	return TaskComposerPreset{
-		Kind:       ComposerLinked,
-		Project:    project,
-		SourceTask: source,
-		LinkType:   linkType,
-		Shared:     TaskComposerSharedAttributes{State: state},
-	}
-}
-
-func templateComposerPreset(project *models.Project, parent *models.Task, tmpl *template.TaskTemplate) TaskComposerPreset {
-	return TaskComposerPreset{Kind: ComposerTemplate, Project: project, Parent: parent, Template: tmpl}
 }

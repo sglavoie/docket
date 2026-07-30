@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "workspace",
+  "data": {
+    "schema_version": 4,
+    "workspace_id": "00000000-0000-4000-8000-000000000004",
+    "projects": [
+      {
+        "id": "project-inbox",
+        "slug": "inbox",
+        "name": "Inbox",
+        "description": "Synthetic protected capture project",
+        "status_icon": "inbox",
+        "status_icon_source": "auto",
+        "context": "personal",
+        "created_at": "2026-01-01T08:00:00Z",
+        "updated_at": "2026-02-01T08:00:00Z",
+        "archived": false,
+        "pinned": true,
+        "pinned_at": "2026-01-01T08:05:00Z",
+        "color_slot": 1
+      },
+      {
+        "id": "project-alpha",
+        "slug": "alpha",
+        "name": "Alpha Fixture",
+        "description": "Synthetic rich migration source",
+        "status_icon": "active",
+        "status_icon_source": "user",
+        "context": "work",
+        "created_at": "2026-01-02T08:00:00Z",
+        "updated_at": "2026-02-02T08:00:00Z",
+        "archived": false,
+        "pinned": true,
+        "pinned_at": "2026-02-01T09:00:00Z",
+        "color_slot": 2
+      },
+      {
+        "id": "project-beta",
+        "slug": "beta",
+        "name": "Beta Fixture",
+        "description": "Synthetic cross-project dependency target",
+        "context": "work",
+        "created_at": "2026-01-03T08:00:00Z",
+        "updated_at": "2026-02-03T08:00:00Z",
+        "archived": false,
+        "pinned": false,
+        "color_slot": 3
+      },
+      {
+        "id": "project-archived",
+        "slug": "archived-fixture",
+        "name": "Archived Fixture",
+        "description": "Synthetic archived project catalog row",
+        "context": "personal",
+        "created_at": "2025-12-01T08:00:00Z",
+        "updated_at": "2026-01-10T08:00:00Z",
+        "archived": true,
+        "archived_at": "2026-01-10T08:00:00Z",
+        "pinned": false,
+        "color_slot": 4
+      },
+      {
+        "id": "project-sandbox",
+        "slug": "_sandbox",
+        "name": "Sandbox",
+        "description": "Synthetic content that remains snapshot-only",
+        "context": "personal",
+        "created_at": "2026-01-04T08:00:00Z",
+        "updated_at": "2026-02-04T08:00:00Z",
+        "archived": false,
+        "pinned": false,
+        "sandbox": true
+      },
+      {
+        "id": "project-internal",
+        "slug": "internal-fixture",
+        "name": "Internal Fixture",
+        "description": "Synthetic internal project removed by v5",
+        "context": "personal",
+        "created_at": "2026-01-05T08:00:00Z",
+        "updated_at": "2026-02-05T08:00:00Z",
+        "archived": false,
+        "pinned": false,
+        "internal": true
+      }
+    ],
+    "system_inbox_project_id": "project-inbox"
+  }
+}

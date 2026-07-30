@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -17,7 +16,7 @@ import (
 
 func newBulkPickerTestTask(t *testing.T, shortID int, title string, tags ...string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(uuid.New().String(), shortID, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(uuid.New().String(), shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -46,18 +45,6 @@ func newBulkPickerTestProject(t *testing.T, name string, tasks ...*models.Task) 
 	return project
 }
 
-func loadBulkPickerTestProject(t *testing.T, project *models.Project) *models.Project {
-	t.Helper()
-	loaded, err := models.NewProject(project.ID, project.Name, project.Path)
-	if err != nil {
-		t.Fatalf("NewProject reload: %v", err)
-	}
-	if err := storage.LoadProject(loaded); err != nil {
-		t.Fatalf("LoadProject: %v", err)
-	}
-	return loaded
-}
-
 type appBulkPickerEnv struct {
 	dataDir  string
 	ledger   *storage.WorkspaceLedger
@@ -72,7 +59,7 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 	t.Helper()
 	dataDir := t.TempDir()
 	t.Setenv("HOME", dataDir)
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	projects := make([]*models.Project, len(taskGroups))
@@ -108,7 +95,7 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 	}
 	return &appBulkPickerEnv{
 		dataDir: dataDir, ledger: ledger, svc: svc,
-		features: newSecondaryCoordinators(svc, mgr),
+		features: newSecondaryCoordinators(svc),
 		mgr:      mgr, cfg: cfg, projects: projects,
 	}
 }
@@ -151,26 +138,4 @@ func (e *appBulkPickerEnv) undo(t *testing.T) {
 	if _, err := e.ledger.Undo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger undo: %v", err)
 	}
-}
-
-func runBulkPickerBatchCmd(t *testing.T, cmd tea.Cmd) []tea.Msg {
-	t.Helper()
-	if cmd == nil {
-		t.Fatal("expected non-nil command")
-	}
-
-	msg := cmd()
-	batch, ok := msg.(tea.BatchMsg)
-	if !ok {
-		return []tea.Msg{msg}
-	}
-
-	msgs := make([]tea.Msg, 0, len(batch))
-	for _, batchCmd := range batch {
-		if batchCmd == nil {
-			continue
-		}
-		msgs = append(msgs, batchCmd())
-	}
-	return msgs
 }

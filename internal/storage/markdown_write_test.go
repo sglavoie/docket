@@ -52,9 +52,6 @@ func TestSaveProject_Roundtrip(t *testing.T) {
 		if task.Title != original.Title {
 			t.Errorf("task %s: expected title %q, got %q", task.ID, original.Title, task.Title)
 		}
-		if task.Type != original.Type {
-			t.Errorf("task %s: expected type %s, got %s", task.ID, original.Type, task.Type)
-		}
 		if task.State() != original.State() {
 			t.Errorf("task %s: expected state %s, got %s", task.ID, original.State(), task.State())
 		}
@@ -71,7 +68,7 @@ func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 	project := testutil.NewTestProject("Sections Test")
 	project.Path = filepath.Join(dir, "sections-test")
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test Task")
+	task, err := models.NewGenericTask("task-1", 1, "Test Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +83,8 @@ func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read saved project: %v", err)
 	}
-	if !strings.Contains(string(content), "<!-- tt-schema: 2 -->") {
-		t.Fatalf("saved project is missing schema-v2 marker:\n%s", content)
+	if !strings.Contains(string(content), "<!-- tt-schema: 5 -->") {
+		t.Fatalf("saved project is missing schema-v5 marker:\n%s", content)
 	}
 	if strings.Contains(string(content), "<!-- sections:") {
 		t.Fatalf("saved project retained legacy section metadata:\n%s", content)
@@ -132,213 +129,6 @@ func TestSaveProject_EmptyProject(t *testing.T) {
 
 	if len(loadedProject.Tasks) != 0 {
 		t.Errorf("expected 0 tasks, got %d", len(loadedProject.Tasks))
-	}
-}
-
-func TestSaveProject_PreservesOpaqueMetadataWhileCanonicalizing(t *testing.T) {
-	projectPath := filepath.Join(t.TempDir(), "opaque-project")
-	if err := os.MkdirAll(projectPath, DirPermissions); err != nil {
-		t.Fatalf("create project path: %v", err)
-	}
-	legacy := "# Project: Opaque Project\n" +
-		"<!-- future-feature: preserve-exactly -->\n" +
-		"<!-- sections: Next:blue;Waiting:red -->\n\n" +
-		"## Task: Existing\n" +
-		"<!-- id: existing-1, status: blocked, section: Waiting, priority: 2 -->\n"
-	if err := os.WriteFile(tasksFilePath(projectPath), []byte(legacy), FilePermissions); err != nil {
-		t.Fatalf("seed legacy project: %v", err)
-	}
-
-	project := &models.Project{ID: "opaque-project", Name: "Opaque Project", Path: projectPath}
-	if err := LoadProject(project); err != nil {
-		t.Fatalf("load legacy project: %v", err)
-	}
-	project.Tags = []string{"keep"}
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("save canonical project: %v", err)
-	}
-
-	content, err := os.ReadFile(tasksFilePath(projectPath))
-	if err != nil {
-		t.Fatalf("read canonical project: %v", err)
-	}
-	text := string(content)
-	if !strings.Contains(text, "<!-- tt-schema: 2 -->") ||
-		!strings.Contains(text, "<!-- future-feature: preserve-exactly -->") ||
-		!strings.Contains(text, "<!-- tags: keep -->") ||
-		!strings.Contains(text, "state: waiting") {
-		t.Fatalf("canonical save lost project/task metadata:\n%s", text)
-	}
-	if strings.Contains(text, "<!-- sections:") ||
-		strings.Contains(text, "status:") ||
-		strings.Contains(text, "section:") {
-		t.Fatalf("canonical save retained legacy lifecycle metadata:\n%s", text)
-	}
-}
-
-func TestBackupProject(t *testing.T) {
-	dir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	project := testutil.NewTestProjectWithTasks("Backup Test")
-	project.Path = filepath.Join(dir, "backup-test")
-
-	// Save initial project
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
-	}
-
-	// Create backup
-	if err := BackupProject(project); err != nil {
-		t.Fatalf("BackupProject failed: %v", err)
-	}
-
-	// Verify backup file exists
-	backupPath := GetBackupFilePath(project)
-	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-		t.Fatal("backup file was not created")
-	}
-
-	// Verify BackupExists returns true
-	if !BackupExists(project) {
-		t.Error("BackupExists returned false but backup exists")
-	}
-
-	// Read both files and verify content matches
-	tasksContent, err := os.ReadFile(GetTasksFilePath(project))
-	if err != nil {
-		t.Fatalf("failed to read tasks file: %v", err)
-	}
-
-	backupContent, err := os.ReadFile(backupPath)
-	if err != nil {
-		t.Fatalf("failed to read backup file: %v", err)
-	}
-
-	if string(tasksContent) != string(backupContent) {
-		t.Error("backup content does not match original")
-	}
-}
-
-func TestBackupProject_NoTasksFile(t *testing.T) {
-	dir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	project := testutil.NewTestProject("No Tasks")
-	project.Path = filepath.Join(dir, "no-tasks")
-
-	// Don't save - no tasks.md exists
-	// Backup should succeed silently
-	if err := BackupProject(project); err != nil {
-		t.Fatalf("BackupProject should not fail for non-existent tasks file: %v", err)
-	}
-
-	// Verify no backup was created
-	if BackupExists(project) {
-		t.Error("backup should not exist for non-existent tasks file")
-	}
-}
-
-func TestRestoreFromBackup(t *testing.T) {
-	dir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	project := testutil.NewTestProjectWithTasks("Restore Test")
-	project.Path = filepath.Join(dir, "restore-test")
-	originalTaskCount := len(project.Tasks)
-
-	// Save and backup
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
-	}
-	if err := BackupProject(project); err != nil {
-		t.Fatalf("BackupProject failed: %v", err)
-	}
-
-	// Modify project - add a task
-	newTask, err := models.NewTask("new-task", project.NextShortID, models.TaskTypeTask, "New Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	project.Tasks = append(project.Tasks, newTask)
-	project.NextShortID++
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject after modification failed: %v", err)
-	}
-
-	// Restore from backup
-	if err := RestoreFromBackup(project); err != nil {
-		t.Fatalf("RestoreFromBackup failed: %v", err)
-	}
-
-	// Load and verify task count is back to original
-	loadedProject := testutil.NewTestProject("Restore Test")
-	loadedProject.Path = project.Path
-
-	if err := LoadProject(loadedProject); err != nil {
-		t.Fatalf("LoadProject failed: %v", err)
-	}
-
-	if len(loadedProject.Tasks) != originalTaskCount {
-		t.Errorf("expected %d tasks after restore, got %d", originalTaskCount, len(loadedProject.Tasks))
-	}
-}
-
-func TestRestoreFromBackup_Reversible(t *testing.T) {
-	dir, cleanup := testutil.TempProjectDir(t)
-	defer cleanup()
-
-	project := testutil.NewTestProject("Reversible Test")
-	project.Path = filepath.Join(dir, "reversible-test")
-
-	// Create initial state with 1 task
-	task1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task One")
-	if err != nil {
-		t.Fatal(err)
-	}
-	project.Tasks = []*models.Task{task1}
-	project.NextShortID = 2
-	if err = SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
-	}
-	if err = BackupProject(project); err != nil {
-		t.Fatalf("BackupProject failed: %v", err)
-	}
-
-	// Modify to 2 tasks
-	task2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Task Two")
-	if err != nil {
-		t.Fatal(err)
-	}
-	project.Tasks = append(project.Tasks, task2)
-	if err := SaveProject(project); err != nil {
-		t.Fatalf("SaveProject failed: %v", err)
-	}
-
-	// First restore - should have 1 task
-	if err := RestoreFromBackup(project); err != nil {
-		t.Fatalf("RestoreFromBackup failed: %v", err)
-	}
-
-	loadedProject := testutil.NewTestProject("Reversible Test")
-	loadedProject.Path = project.Path
-	if err := LoadProject(loadedProject); err != nil {
-		t.Fatalf("LoadProject failed: %v", err)
-	}
-	if len(loadedProject.Tasks) != 1 {
-		t.Errorf("expected 1 task after first restore, got %d", len(loadedProject.Tasks))
-	}
-
-	// Second restore (undo) - should have 2 tasks again
-	if err := RestoreFromBackup(project); err != nil {
-		t.Fatalf("second RestoreFromBackup failed: %v", err)
-	}
-
-	if err := LoadProject(loadedProject); err != nil {
-		t.Fatalf("LoadProject failed: %v", err)
-	}
-	if len(loadedProject.Tasks) != 2 {
-		t.Errorf("expected 2 tasks after second restore (undo), got %d", len(loadedProject.Tasks))
 	}
 }
 
@@ -466,11 +256,11 @@ func TestSaveProjectLocked_CreatesLockFile(t *testing.T) {
 }
 
 func TestWriteTasksMarkdown_SkipsNilTasks(t *testing.T) {
-	tk1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "First")
+	tk1, err := models.NewGenericTask("task-1", 1, "First")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tk2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Second")
+	tk2, err := models.NewGenericTask("task-2", 2, "Second")
 	if err != nil {
 		t.Fatal(err)
 	}

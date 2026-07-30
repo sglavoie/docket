@@ -31,15 +31,30 @@ func taskAttachmentsDirName(taskID string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// GetTaskAttachmentsDir returns the path to the attachments directory for a
-// specific task, addressed by sha256(task.ID) for a stable, path-safe name.
+// GetTaskAttachmentsDir returns the lexical path to a task attachment
+// directory. Callers that open or mutate the path must use
+// ResolveTaskAttachmentsDir so symlink containment is verified.
 func GetTaskAttachmentsDir(project *models.Project, task *models.Task) string {
 	return filepath.Join(getAttachmentsDir(project), taskAttachmentsDirName(task.ID))
 }
 
-// GetAttachmentPath returns the full path to a specific attachment file.
+// GetAttachmentPath returns the lexical path to an attachment file. It remains
+// for trusted test/setup callers; code that opens or mutates the path must use
+// ResolveAttachmentPath so filename and symlink containment are verified.
 func GetAttachmentPath(project *models.Project, task *models.Task, filename string) string {
 	return filepath.Join(GetTaskAttachmentsDir(project, task), filename)
+}
+
+// ResolveTaskAttachmentsDir returns a contained attachment directory suitable
+// for opening or mutation.
+func ResolveTaskAttachmentsDir(project *models.Project, task *models.Task) (string, error) {
+	return resolveTaskAttachmentsDir(project, task)
+}
+
+// ResolveAttachmentPath returns a contained attachment file path suitable for
+// opening or mutation.
+func ResolveAttachmentPath(project *models.Project, task *models.Task, filename string) (string, error) {
+	return resolveAttachmentPath(project, task, filename)
 }
 
 // resolveTaskAttachmentsDir is the single resolver shared by every attachment

@@ -3,31 +3,10 @@ package config
 import "sort"
 
 type ProjectReferences struct {
-	WasCurrent         bool                `json:"was_current,omitempty"`
-	WasActionInbox     bool                `json:"was_action_inbox,omitempty"`
-	ScoringProfile     *string             `json:"scoring_profile,omitempty"`
-	WorkflowEval       *WorkflowEvalState  `json:"workflow_eval,omitempty"`
-	FocusQueue         []FocusQueueItem    `json:"focus_queue,omitempty"`
-	DailyPlan          []DailyPlanItem     `json:"daily_plan,omitempty"`
-	RecentTaskVisits   []RecentTaskVisit   `json:"recent_task_visits,omitempty"`
-	RecentDestinations []RecentDestination `json:"recent_destinations,omitempty"`
-	OutlinerRoute      *OutlinerRouteState `json:"outliner_route,omitempty"`
-	CustomContextKeys  []string            `json:"custom_context_keys,omitempty"`
-}
-
-func lookupProjectKey[T any](values map[string]T, id, slug string) (T, bool) {
-	if id != "" {
-		if v, ok := values[id]; ok {
-			return v, true
-		}
-	}
-	if slug != "" {
-		if v, ok := values[slug]; ok {
-			return v, true
-		}
-	}
-	var zero T
-	return zero, false
+	WasActionInbox    bool                 `json:"was_action_inbox,omitempty"`
+	Today             []ProjectTaskLocator `json:"today,omitempty"`
+	NextOrder         []ProjectTaskLocator `json:"next_order,omitempty"`
+	CustomContextKeys []string             `json:"custom_context_keys,omitempty"`
 }
 
 func contextKeysContaining(m map[string][]string, matches func(string) bool) []string {

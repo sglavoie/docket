@@ -8,8 +8,8 @@ import (
 )
 
 // handleConflictMessages routes the conflict-management surfaces: opening the
-// resolution view from a notification entry point, showing a specific conflict,
-// and reacting to a completed resolution.
+// resolution view, showing a specific conflict, and reacting to a completed
+// resolution.
 func (m *AppModel) handleConflictMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case OpenConflictsMsg:
@@ -35,8 +35,8 @@ func (m *AppModel) handleConflictMessages(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// OpenConflictsMsg is the notification entry point: it opens the newest
-// unresolved conflict, or reports that there are none.
+// OpenConflictsMsg opens the newest unresolved conflict, or reports that there
+// are none.
 type OpenConflictsMsg struct{}
 
 // openNewestConflict opens the resolution view for the most recently recorded

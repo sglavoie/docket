@@ -11,9 +11,8 @@ import (
 
 // CreateTaskMsg opens the task creator, optionally with a parent task.
 type CreateTaskMsg struct {
-	ParentTask         *models.Task
-	Project            *models.Project // Optional: when set, creates in this project instead of currentProject
-	SkipTemplatePicker bool            // If true, skip template picker even if templates exist
+	ParentTask *models.Task
+	Project    *models.Project // Optional: when set, creates in this project instead of currentProject
 }
 
 // EditTaskMsg opens the task editor for the given task.
@@ -127,25 +126,6 @@ type SetSnoozeDateMsg struct {
 }
 
 // =============================================================================
-// Park Messages
-// =============================================================================
-
-// ShowParkInputMsg opens the park input view for a task.
-type ShowParkInputMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// ParkNoteDoneMsg is sent when a task parking note is saved or skipped.
-type ParkNoteDoneMsg struct {
-	Task     *models.Task
-	Project  *models.Project
-	Note     string
-	Unparked bool
-	Skipped  bool
-}
-
-// =============================================================================
 // Dependency Messages (Show/Close Pattern)
 // =============================================================================
 
@@ -197,9 +177,6 @@ type CopyTaskTitleMsg struct{ Task *models.Task }
 // CopyTaskDetailsMsg copies a single task's full details to clipboard.
 type CopyTaskDetailsMsg struct{ Task *models.Task }
 
-// CopyTaskReferenceMsg copies a task reference (e.g., #123) to clipboard.
-type CopyTaskReferenceMsg struct{ Task *models.Task }
-
 // CopyTasksTitleMsg copies multiple tasks' titles to clipboard.
 type CopyTasksTitleMsg struct{ Tasks []*models.Task }
 
@@ -211,6 +188,12 @@ type CopyTaskTitleAndDescMsg struct{ Task *models.Task }
 
 // CopyTasksTitleAndDescMsg copies multiple tasks' title and description to clipboard.
 type CopyTasksTitleAndDescMsg struct{ Tasks []*models.Task }
+
+// TaskClipboardProjectedMsg carries application-owned clipboard text back to
+// the TUI adapter, which performs the platform clipboard write.
+type TaskClipboardProjectedMsg struct {
+	Projection app.TaskClipboardProjection
+}
 
 // TaskCopiedMsg confirms task(s) were copied to clipboard.
 type TaskCopiedMsg struct {
@@ -260,12 +243,6 @@ type ShowTaskCommentsMsg struct {
 // CloseTaskCommentsMsg closes the comments view.
 type CloseTaskCommentsMsg struct{ PopViewMsg }
 
-// OpenQuickNoteMsg opens the quick note overlay for the given task.
-type OpenQuickNoteMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
 // CommentAddedMsg signals a comment was added.
 type CommentAddedMsg struct{ Task *models.Task }
 
@@ -274,9 +251,6 @@ type CommentDeletedMsg struct{ Task *models.Task }
 
 // CommentEditedMsg signals a comment was edited.
 type CommentEditedMsg struct{ Task *models.Task }
-
-// CommentResolvedMsg signals a comment's resolved state was toggled.
-type CommentResolvedMsg struct{ Task *models.Task }
 
 // =============================================================================
 // Task Decisions Messages (Show/Close Pattern)
@@ -299,9 +273,6 @@ type DecisionDeletedMsg struct{ Task *models.Task }
 
 // DecisionEditedMsg signals a decision was edited.
 type DecisionEditedMsg struct{ Task *models.Task }
-
-// DecisionResolvedMsg signals a decision's resolved state was toggled.
-type DecisionResolvedMsg struct{ Task *models.Task }
 
 // =============================================================================
 // Task Checklist Messages (Show/Close Pattern)
@@ -329,21 +300,14 @@ type ChecklistItemDeletedMsg struct{ Task *models.Task }
 type ChecklistItemToggledMsg struct{ Task *models.Task }
 
 // =============================================================================
-// Task Activity Messages (Show/Close Pattern)
+// Task Detail Messages (Show/Close Pattern)
 // =============================================================================
 
-// OpenTaskActivityMsg opens the activity log view for a task.
-type OpenTaskActivityMsg struct {
+// ShowTaskInspectorMsg opens the frozen narrow-terminal inspector overlay.
+type ShowTaskInspectorMsg struct {
 	Task    *models.Task
 	Project *models.Project
 }
-
-// CloseTaskActivityMsg closes the activity log view.
-type CloseTaskActivityMsg struct{ PopViewMsg }
-
-// =============================================================================
-// Task Detail Messages (Show/Close Pattern)
-// =============================================================================
 
 // ShowTaskDetailMsg opens the full-screen task detail view.
 type ShowTaskDetailMsg struct {
@@ -355,13 +319,6 @@ type ShowTaskDetailMsg struct {
 // detail model changes tabs. The model owns tab-local UI state; the route owns
 // the canonical tab identity.
 type TaskDetailTabChangedMsg struct{ Tab TaskDetailTab }
-
-// AlertCenterShowDetailMsg requests task detail view from the alert center.
-// Resolved at the app level since the notification center doesn't hold config.
-type AlertCenterShowDetailMsg struct {
-	TaskID    string
-	ProjectID string
-}
 
 // CloseTaskDetailMsg closes the task detail view.
 type CloseTaskDetailMsg struct{ PopViewMsg }
@@ -418,26 +375,6 @@ type TaskMovedToProjectMsg struct {
 }
 
 // =============================================================================
-// Archive Messages
-// =============================================================================
-
-// ArchiveCompletedTasksMsg requests archiving all completed tasks in a project.
-// When Project is nil the current project is used.
-type ArchiveCompletedTasksMsg struct {
-	Project *models.Project
-}
-
-// ArchiveAllCompletedTasksMsg requests archiving completed tasks across all active projects.
-type ArchiveAllCompletedTasksMsg struct{}
-
-// TasksArchivedMsg signals that completed tasks were archived.
-type TasksArchivedMsg struct {
-	Count                int // Number of tasks archived
-	Projects             int // Number of projects affected (0 means single-project archive)
-	ArchivedTaskLocators []app.TaskLocator
-}
-
-// =============================================================================
 // Linked Task Creation Messages
 // =============================================================================
 
@@ -445,61 +382,9 @@ type TasksArchivedMsg struct {
 type LinkType int
 
 const (
-	LinkTypeBlocker   LinkType = iota // New task blocks source
-	LinkTypeDependent                 // New task depends on source
-	LinkTypeSubtask                   // New task is a subtask of source
-	LinkTypeFollowUp                  // New task is a follow-up (bidirectional related)
+	LinkTypeBlocker   LinkType = iota // Source depends on target
+	LinkTypeDependent                 // Target depends on source
 )
-
-// CreateLinkedTaskMsg opens the linked task creator.
-type CreateLinkedTaskMsg struct {
-	SourceTask *models.Task
-	Project    *models.Project
-	LinkType   LinkType
-}
-
-// LinkedTaskCreatedMsg signals a linked task was created.
-//
-// Result, when non-nil, is the committed application-layer outcome from the
-// capture coordinator. handleLinkedTaskCreated reloads the committed project and
-// re-resolves both the new and source tasks before running the shared
-// navigation/status logic.
-type LinkedTaskCreatedMsg struct {
-	SourceTask  *models.Task
-	NewTask     *models.Task
-	Project     *models.Project
-	Result      *app.LinkedTaskResult
-	LinkType    LinkType
-	OpenContent bool
-	OpenDetail  bool
-}
-
-// LinkedTaskBatchCreatedMsg reports one atomic compact composer batch.
-type LinkedTaskBatchCreatedMsg struct {
-	Results  []app.LinkedTaskResult
-	LinkType LinkType
-}
-
-// =============================================================================
-// Linked Task Navigation Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowLinkedTaskSelectorMsg opens the linked task selector for a task.
-type ShowLinkedTaskSelectorMsg struct {
-	Task      *models.Task
-	Project   *models.Project
-	ForUnlink bool // If true, always show selector (don't jump on single task)
-}
-
-// CloseLinkedTaskSelectorMsg closes the linked task selector.
-type CloseLinkedTaskSelectorMsg struct{ PopViewMsg }
-
-// LinkedTaskSelectedMsg signals a linked task was selected for navigation.
-type LinkedTaskSelectedMsg struct {
-	Task    *models.Task
-	Project *models.Project
-	TaskRef string // Optional: qualified ref for cross-project links (projectID:taskID)
-}
 
 // =============================================================================
 // Cross-Project Linking Messages (Show/Close Pattern)

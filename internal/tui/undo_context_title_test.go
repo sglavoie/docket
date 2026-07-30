@@ -41,7 +41,7 @@ func TestRenameEditTitle_UndoContextUsesOldTitle(t *testing.T) {
 // so the undo context shows the original title, not the new one.
 func TestQuickEditRename_UndoContextUsesOldTitle(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", t.TempDir())
-	task, err := models.NewTask("id-qe", 1, models.TaskTypeTask, "Original Name")
+	task, err := models.NewGenericTask("id-qe", 1, "Original Name")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestQuickEditRename_UndoContextUsesOldTitle(t *testing.T) {
 // value. This documents why capturing oldTitle before MutateTask is necessary.
 func TestMutateTask_TitlePointerSharing(t *testing.T) {
 	project, _ := models.NewProject("proj", "proj", t.TempDir())
-	task, err := models.NewTask("id-ptr", 1, models.TaskTypeTask, "Before")
+	task, err := models.NewGenericTask("id-ptr", 1, "Before")
 	if err != nil {
 		t.Fatal(err)
 	}

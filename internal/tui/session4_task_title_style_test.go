@@ -13,7 +13,7 @@ func TestDependencyViewerHeaderUsesPriorityTitleStyle(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	task, err := models.NewTask("dependency-header", 7, models.TaskTypeTask, "Dependency Header")
+	task, err := models.NewGenericTask("dependency-header", 7, "Dependency Header")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}

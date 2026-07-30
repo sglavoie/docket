@@ -114,19 +114,6 @@ func seekContextHubScope(t *testing.T, hub *ContextHubModel, target ContextScope
 	)
 }
 
-func currentContextHubSummary(hub *ContextHubModel) (ContextScopeSummary, bool) {
-	scope, ok := currentContextHubScope(hub)
-	if !ok {
-		return ContextScopeSummary{}, false
-	}
-	for _, summary := range hub.summaries {
-		if summary.Scope == scope {
-			return summary, true
-		}
-	}
-	return ContextScopeSummary{}, false
-}
-
 func typeIntoContextHub(hub *ContextHubModel, text string) {
 	for _, r := range text {
 		hub.Update(syntheticKey(r))
@@ -602,61 +589,6 @@ func TestContextHubEditPreservesHiddenCustomRefs(t *testing.T) {
 // the finding named: a custom context holding sandbox and internal projects must
 // report them, must not preview or count them as active, and must survive a save
 // that changes nothing — the case that used to delete them silently.
-func TestContextHubEditPreservesSandboxAndInternalMembers(t *testing.T) {
-	app := contextHubApp(t)
-	sandbox := scopeTestProject("sandbox", "Scratch", "1")
-	sandbox.Slug = "_sandbox"
-	sandbox.Context = "work"
-	sandbox.Sandbox = true
-	system := scopeTestProject("system", "Inbox", "1")
-	system.Slug = "inbox"
-	system.Context = "work"
-	system.Internal = true
-	addTestAppProject(app, sandbox)
-	addTestAppProject(app, system)
-	stored := []string{"alpha", "sandbox", "system"}
-	app.runtime.Machine().SetCustomContext("focus", stored)
-
-	hub := openContextHub(t, app)
-	focusContextHubScope(t, hub, CustomContextScope("focus"))
-	summary, ok := currentContextHubSummary(hub)
-	if !ok {
-		t.Fatal("List Surface cursor did not resolve a context summary")
-	}
-	if summary.ActiveProjectCount != 1 || summary.HiddenProjectCount != 2 {
-		t.Fatalf("summary = %+v, want active=1 hidden=2", summary)
-	}
-	if rendered := contextHubRender(hub); !strings.Contains(rendered, "custom · 1 project(s) · 2 hidden") {
-		t.Fatalf("hub render never reports the hidden members:\n%s", rendered)
-	}
-
-	hub.Update(syntheticKey('e'))
-	if hub.editor == nil {
-		t.Fatal("e did not open the editor on a custom context")
-	}
-	for _, project := range hub.editor.projects {
-		if project.ID == "sandbox" || project.ID == "system" {
-			t.Fatalf("the editor listed hidden project %q", project.ID)
-		}
-	}
-	if !slices.Equal(hub.editor.hiddenMembers, []string{"sandbox", "system"}) {
-		t.Fatalf("editor hidden members = %v, want the sandbox and internal members", hub.editor.hiddenMembers)
-	}
-	if len(hub.editor.selected) != 1 {
-		t.Fatalf("editor reported %d selected, want only the one listed member", len(hub.editor.selected))
-	}
-	if rendered := contextHubRender(hub); !strings.Contains(rendered, "+ 2 hidden member(s) kept on save") {
-		t.Fatalf("editor never says the hidden members are preserved:\n%s", rendered)
-	}
-
-	// Saving an otherwise untouched context is the exact case that dropped them.
-	if _, cmd := hub.Update(contextHubSaveKey); cmd == nil {
-		t.Fatal("ctrl+s emitted no save command")
-	}
-	if got := app.runtime.Machine().GetCustomContext("focus"); !slices.Equal(got, stored) {
-		t.Fatalf("membership after an unchanged save = %v, want %v", got, stored)
-	}
-}
 
 // TestContextHubEditorDiscardConfirmationGuardsUnsavedEdits covers the Esc
 // ladder: Esc leaves the project list, a dirty editor then arms the shared

@@ -16,8 +16,6 @@ type ProjectSummary struct {
 	Context     string
 	Archived    bool
 	Pinned      bool
-	Sandbox     bool
-	Internal    bool
 	TaskCount   int
 	Tags        []string
 	Revision    string
@@ -53,7 +51,7 @@ func (s *Service) ProjectTags(projectID string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return copyStrings(project.Tags), nil
+	return project.AllTags(), nil
 }
 
 // Notes returns a project's notes through the workspace-aware note port.
@@ -75,30 +73,6 @@ func (s *Service) NotesAt(location NoteLocation) ([]*models.Note, error) {
 	return s.notes.Notes(location, project)
 }
 
-// Blockers returns a project's blockers through the artifact reader.
-func (s *Service) Blockers(projectID string) ([]*models.Blocker, error) {
-	_, project, _, err := s.resolveProject(projectID)
-	if err != nil {
-		return nil, err
-	}
-	return s.blockers.Blockers(project)
-}
-
-// ActiveBlockerCount returns the number of unresolved blockers in a project.
-func (s *Service) ActiveBlockerCount(projectID string) (int, error) {
-	blockers, err := s.Blockers(projectID)
-	if err != nil {
-		return 0, err
-	}
-	count := 0
-	for _, b := range blockers {
-		if !b.IsResolved() {
-			count++
-		}
-	}
-	return count, nil
-}
-
 // projectSummary builds a ProjectSummary from a project and its revision, copying
 // the derived slices so a caller cannot mutate the snapshot's backing arrays.
 func projectSummary(p *models.Project, revision string) ProjectSummary {
@@ -110,21 +84,8 @@ func projectSummary(p *models.Project, revision string) ProjectSummary {
 		Context:     p.Context,
 		Archived:    p.Archived,
 		Pinned:      p.Pinned,
-		Sandbox:     p.Sandbox,
-		Internal:    p.Internal,
 		TaskCount:   len(p.Tasks),
-		Tags:        copyStrings(p.Tags),
+		Tags:        p.AllTags(),
 		Revision:    revision,
 	}
-}
-
-// copyStrings returns a defensive copy of a string slice, or nil for an empty
-// input, so query results never alias the snapshot's backing arrays.
-func copyStrings(in []string) []string {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]string, len(in))
-	copy(out, in)
-	return out
 }

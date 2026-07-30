@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewTask(t *testing.T) {
-	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewGenericTask("test-id", 1, "Test Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,9 +17,6 @@ func TestNewTask(t *testing.T) {
 	}
 	if task.ShortID != 1 {
 		t.Errorf("expected ShortID 1, got %d", task.ShortID)
-	}
-	if task.Type != TaskTypeTask {
-		t.Errorf("expected Type TaskTypeTask, got %s", task.Type)
 	}
 	if task.Title != "Test Task" {
 		t.Errorf("expected Title 'Test Task', got '%s'", task.Title)
@@ -137,7 +134,7 @@ func TestWorkflowStateClassificationAndIcons(t *testing.T) {
 }
 
 func TestTaskStatusTransitions(t *testing.T) {
-	task, err := NewTask("test", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("test", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,13 +160,15 @@ func TestTaskStatusTransitions(t *testing.T) {
 		t.Error("after Complete(), CompletedAt should be set")
 	}
 
-	// Reopen returns the task to the Inbox for re-processing.
-	task.Reopen()
+	// A direct Inbox transition returns terminal work for re-processing.
+	if err := task.ApplyStateTransition(StateInbox); err != nil {
+		t.Fatal(err)
+	}
 	if task.State() != StateInbox {
-		t.Errorf("after Reopen(), State = %s, want inbox", task.State())
+		t.Errorf("after Inbox transition, State = %s, want inbox", task.State())
 	}
 	if task.CompletedAt != nil {
-		t.Error("after Reopen(), CompletedAt should be nil")
+		t.Error("after Inbox transition, CompletedAt should be nil")
 	}
 
 	// Cancel
@@ -183,7 +182,7 @@ func TestTaskStatusTransitions(t *testing.T) {
 }
 
 func TestTaskTags(t *testing.T) {
-	task, err := NewTask("test", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("test", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +253,7 @@ func TestParseWorkflowStateFromCanonicalStrings(t *testing.T) {
 }
 
 func TestTaskUpdatedAt(t *testing.T) {
-	task, err := NewTask("test", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("test", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}

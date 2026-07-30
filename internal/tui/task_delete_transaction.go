@@ -62,39 +62,6 @@ type taskDeletePending struct {
 
 const taskDeleteConfirmAction = "task-delete"
 
-// applyPendingWeeklyReviewDelete credits the Weekly Review completion summary
-// for a committed canonical deletion it originated. token is the committing
-// batch's correlation token: the count is credited and cleared only by the exact
-// result the pending count armed (the map entry keyed by that token). An
-// unrelated delete success, a non-delete success, any mismatched result (zero or
-// unarmed token), or a duplicate delivery of an already-consumed result is a
-// no-op that LEAVES every other in-flight count intact, so each overlapping
-// Weekly Review delete is credited exactly once and none is erased before its own
-// delete returns.
-func (m *AppModel) applyPendingWeeklyReviewDelete(token uint64, removedIDs []string) {
-	if token == 0 {
-		return
-	}
-	count, ok := m.pendingWeeklyReviewDeletes[token]
-	if !ok {
-		return
-	}
-	delete(m.pendingWeeklyReviewDeletes, token)
-	if count <= 0 || len(removedIDs) == 0 || m.views == nil {
-		return
-	}
-	if wr, ok := m.views.Get(ViewWeeklyReview).(*WeeklyReviewModel); ok && wr != nil {
-		wr.recordCommittedDeletion(count)
-	}
-}
-
-func (m *AppModel) clearPendingDeleteBookkeeping(token uint64) {
-	if token == 0 {
-		return
-	}
-	delete(m.pendingWeeklyReviewDeletes, token)
-}
-
 // handleTaskDeleteRequested canonicalizes the requested roots, resolves the
 // confirmation prompt, and arms the shell-owned confirm dialog. It never mutates
 // task data — the delete transaction runs only after the user confirms in
@@ -173,18 +140,10 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 // aborts before any mutation and preserves the pending selection's task data.
 func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	roots := m.pendingTaskDelete.roots
-	origin := m.pendingTaskDelete.origin
 	m.clearPendingTaskDelete()
 	if len(roots) == 0 {
 		return nil
 	}
-
-	// Mint a per-request correlation token. It rides the committing result/error
-	// (stampDeleteRequestToken) so the Inbox and Weekly Review post-commit
-	// bookkeeping armed below is consumed only by THIS delete's outcome, never by
-	// an unrelated command that happens to finish first.
-	m.deleteRequestSeq++
-	token := m.deleteRequestSeq
 
 	// Expand every root to its whole subtree so the durable planning cleanup keys
 	// on each removed task, not just the roots.
@@ -200,43 +159,22 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	}
 
 	// Fold the durable planning-ref cleanup into the delete transaction as the
-	// revision-checked planning-domain artifact. Machine-local recent visits are
-	// repaired separately by the shell after the commit (handleBatchTransactionResult).
+	// revision-checked planning-domain artifact.
 	var artifacts []storage.ArtifactChange
 	if m.runtime != nil && m.configManager != nil {
 		planning := clonePlanningState(m.runtime.Planning())
 		if planning.RemoveDurableTaskLocators(configLocators(locatorsToDelete)) > 0 {
 			arts, err := planningDomainArtifact(m.configManager, planning)
 			if err != nil {
-				// This aborts before the bulk transaction command is created, so its
-				// ErrorMsg never reaches the TransactionErrorMsg cleanup path. Drop both
-				// the shell token slot armed above and the originating view's
-				// per-task focus slot armed in requestDelete, keyed by THIS request's
-				// token, so the failed delete leaves no stale in-flight bookkeeping to
-				// suppress a later final-task close. The task stays in the queue.
-				m.clearPendingDeleteBookkeeping(token)
 				return errorCmd("%v", err)
 			}
 			artifacts = arts
 		}
 	}
 
-	// Arm Weekly Review post-commit deletion accounting. This runs only after the
-	// artifact build above succeeded, so an artifact-build error early-return never
-	// arms it. The count is the number of requested roots (the confirmation-prompt
-	// count) so the Deletions row uses the same per-task unit as the other
-	// single-task summary counters; it is applied only on commit
-	// (applyPendingWeeklyReviewDelete), never on cancellation or failure.
-	if origin == ViewWeeklyReview {
-		if m.pendingWeeklyReviewDeletes == nil {
-			m.pendingWeeklyReviewDeletes = make(map[uint64]int)
-		}
-		m.pendingWeeklyReviewDeletes[token] = len(roots)
-	}
-
 	locators := taskLocatorsFromTaskRefs(roots)
 	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators, artifacts...)
-	return stampDeleteRequestToken(finalizeLocatedBatchResult(cmd, locators, ""), token)
+	return finalizeLocatedBatchResult(cmd, locators, "")
 }
 
 func configLocators(locators map[app.TaskLocator]bool) []config.ProjectTaskLocator {

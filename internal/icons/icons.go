@@ -10,10 +10,9 @@ func SetUseEmoji(v bool) { useEmoji.Store(v) }
 type iconPair struct{ emoji, unicode string }
 
 var registry = map[string]iconPair{
-	// Dashboard/Alert Indicators
+	// Due-date and workflow indicators
 	"overdue":   {"🔥", "‼"},
 	"due_today": {"⏰", "⧖"},
-	"blockers":  {"🚧", "⊜"},
 	"inbox":     {"📥", "⊳"},
 	"notes":     {"📝", "¶"},
 
@@ -27,10 +26,6 @@ var registry = map[string]iconPair{
 	"archive":  {"📦", "⊟"},
 	"edit":     {"✏️", "✎"},
 	"recur":    {"↺", "⟳"},
-
-	// Type Hints (autocomplete)
-	"idea":      {"💡", "∗"},
-	"note_type": {"📝", "≡"},
 
 	// Task Status Icons
 	"status.todo":        {"📋", "□"},
@@ -61,36 +56,13 @@ var registry = map[string]iconPair{
 	"checkbox.checked":   {"✅", "☑"},
 	"checkbox.unchecked": {"⬜", "☐"},
 
-	// Alert/Misc
+	// General feedback
 	"warning": {"⚠️", "⚠"},
 	"star":    {"⭐", "★"},
 	"streak":  {"⚡", "↯"},
 	"success": {"✅", "✓"},
 	"error":   {"❌", "✕"},
 	"close":   {"❌", "✕"},
-
-	// Task Type Hints (autocomplete)
-	"type.epic":  {"🏔️", "◆"},
-	"type.story": {"📖", "◇"},
-	"type.task":  {"📋", "□"},
-	"type.bug":   {"🐛", "⚠"},
-	"type.idea":  {"💡", "∗"},
-
-	// Score/Blocked Indicators
-	"score_bucket": {"💎", "◈"},
-	"blocked_dot":  {"🚧", "◈"},
-
-	// Project Status Icons
-	"project.planning":    {"📐", "△"},
-	"project.wip":         {"🚧", "⋙"},
-	"project.active":      {"🟢", "▣"},
-	"project.review":      {"🔍", "⊙"},
-	"project.testing":     {"🧪", "⋔"},
-	"project.stabilizing": {"🔒", "⊢"},
-	"project.maintenance": {"🔧", "⚒"},
-	"project.bugfix":      {"🐛", "⊠"},
-	"project.paused":      {"💤", "⏏"},
-	"project.archived":    {"📦", "⊔"},
 }
 
 // Get returns the icon string for the given key, using emoji or Unicode

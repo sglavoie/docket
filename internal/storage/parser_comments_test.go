@@ -56,7 +56,7 @@ Second comment text.
 }
 
 func TestWriteTasksMarkdown_WithComments(t *testing.T) {
-	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task with Comments")
+	task, err := models.NewGenericTask("task1", 1, "Task with Comments")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestWriteTasksMarkdown_WithComments(t *testing.T) {
 }
 
 func TestCommentsRoundTrip(t *testing.T) {
-	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task with Comments")
+	original, err := models.NewGenericTask("task1", 1, "Task with Comments")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ Comment with code: func() { return &lt;!-- test --&gt; }
 
 func TestCommentsRoundTrip_WithHTMLMarkers(t *testing.T) {
 	// This tests that comments containing HTML comment markers survive round trip
-	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	original, err := models.NewGenericTask("task1", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestCommentsRoundTrip_WithHTMLMarkers(t *testing.T) {
 
 func TestCommentsRoundTrip_WithEndMarker(t *testing.T) {
 	// Test the edge case where comment text contains the end marker
-	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	original, err := models.NewGenericTask("task1", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestCommentsRoundTrip_WithEndMarker(t *testing.T) {
 
 func TestCommentsRoundTrip_WithEndMarkerOnItsOwnLine(t *testing.T) {
 	// Test the edge case where comment text is exactly the end marker on its own line
-	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	original, err := models.NewGenericTask("task1", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}

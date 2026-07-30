@@ -3,7 +3,6 @@ package tui
 import (
 	"sort"
 	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -11,44 +10,24 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
-
-// ShowNoteTagSelectorMsg opens the tag selector for a note.
-type ShowNoteTagSelectorMsg struct {
-	Source        noteMutationRef
-	AvailableTags []TagInfo
-	CurrentTags   []string
-}
-
-// NoteTagSelectorDoneMsg returns the result from the note tag selector.
-type NoteTagSelectorDoneMsg struct {
-	Source       noteMutationRef
-	SelectedTags []string
-	Canceled     bool
-}
 
 // NotesViewModel displays and manages project notes.
 type NotesViewModel struct {
 	BaseView
 
-	project     *models.Project
-	notesDir    string // when set, use path-based storage (global notes mode)
-	isGlobal    bool   // true when operating on global notes
-	noteService projectNoteService
-	noteLedger  *storage.WorkspaceLedger
-	config      interface {
-		GetEditor() string
-		GetExternalEditor() string
-	}
-
+	project      *models.Project
+	notesDir     string // when set, use path-based storage (global notes mode)
+	isGlobal     bool   // true when operating on global notes
+	combined     bool
+	preferred    app.NoteLocation
+	locations    map[*models.Note]app.NoteLocation
+	noteService  projectNoteService
+	noteLedger   *storage.WorkspaceLedger
 	notes        []*models.Note
 	cursor       int
 	scrollOffset int
 	cursorFlash  bool
-
-	// Filter state
-	filterTags map[string]bool
 
 	// Delete confirmation state
 	confirm          ConfirmDialog
@@ -83,6 +62,11 @@ type NotesViewModel struct {
 
 	statusMessage string
 	statusIsError bool
+
+	// New-note creation always pauses at this explicit destination selector.
+	destinationPicker bool
+	destinationCursor int
+	destinations      []app.NoteLocation
 }
 
 // setStatus sets a status message and clears the error flag.
@@ -125,15 +109,6 @@ func (m *NotesViewModel) handleConfirmKey(key string) (confirmed, handled bool) 
 	return c, h
 }
 
-// Tab constants for notes view filtering.
-var noteTabNames = []string{"All", "Pinned", "Recent", "Tagged"}
-
-const (
-	noteTabPinned = 1
-	noteTabRecent = 2
-	noteTabTagged = 3
-)
-
 // noteSortMode defines how notes are sorted.
 type noteSortMode int
 
@@ -159,50 +134,44 @@ func (s noteSortMode) String() string {
 	}
 }
 
-// notesConfig is a minimal interface for config access.
-type notesConfig interface {
-	GetEditor() string
-	GetExternalEditor() string
-}
-
-// NewNotesViewModelWithService creates a project notes view backed by the typed
-// note application API and project-scoped workspace ledger.
-func NewNotesViewModelWithService(project *models.Project, service projectNoteService, ledger *storage.WorkspaceLedger, cfg ...notesConfig) *NotesViewModel {
+// NewCombinedNotesViewModelWithService creates the one location-aware Notes
+// tool. It lists global notes together with notes from the active project (when
+// one exists). preferred controls only the initial row in the explicit
+// creation destination picker; it never bypasses confirmation.
+func NewCombinedNotesViewModelWithService(
+	notesDir string,
+	project *models.Project,
+	preferred app.NoteLocation,
+	service projectNoteService,
+	ledger *storage.WorkspaceLedger,
+) *NotesViewModel {
 	m := &NotesViewModel{
 		project:       project,
-		noteService:   service,
-		noteLedger:    ledger,
-		filterTags:    make(map[string]bool),
-		selectedNotes: make(map[string]bool),
-		tabs:          TabState{Names: noteTabNames},
-	}
-	if len(cfg) > 0 && cfg[0] != nil {
-		m.config = cfg[0]
-	}
-	m.loadNotes()
-	return m
-}
-
-// NewGlobalNotesViewModelWithService creates a global notes view backed by the
-// typed application API and undo/redo restricted to the global notes directory.
-func NewGlobalNotesViewModelWithService(notesDir string, service projectNoteService, ledger *storage.WorkspaceLedger, cfg ...notesConfig) *NotesViewModel {
-	m := &NotesViewModel{
 		notesDir:      notesDir,
-		isGlobal:      true,
+		combined:      true,
+		preferred:     preferred,
 		noteService:   service,
 		noteLedger:    ledger,
-		filterTags:    make(map[string]bool),
+		locations:     make(map[*models.Note]app.NoteLocation),
 		selectedNotes: make(map[string]bool),
-		tabs:          TabState{Names: noteTabNames},
+		tabs:          TabState{Names: []string{"All"}},
 	}
-	if len(cfg) > 0 && cfg[0] != nil {
-		m.config = cfg[0]
+	if preferred.Scope == "" {
+		m.preferred = app.GlobalNoteLocation()
 	}
 	m.loadNotes()
 	return m
 }
 
 func (m *NotesViewModel) noteLocation() app.NoteLocation {
+	if m.combined {
+		if len(m.notes) > 0 && m.cursor >= 0 && m.cursor < len(m.notes) {
+			if location, ok := m.locations[m.notes[m.cursor]]; ok {
+				return location
+			}
+		}
+		return m.preferred
+	}
 	if m.isGlobal {
 		return app.GlobalNoteLocation()
 	}
@@ -212,9 +181,22 @@ func (m *NotesViewModel) noteLocation() app.NoteLocation {
 	return app.ProjectNoteLocation(m.project.ID)
 }
 
+func (m *NotesViewModel) noteLocationFor(note *models.Note) app.NoteLocation {
+	if m.combined {
+		if location, ok := m.locations[note]; ok {
+			return location
+		}
+		return app.NoteLocation{}
+	}
+	return m.noteLocation()
+}
+
 // noteLedgerScope preserves project Notes' project-wide restore behavior while
 // restricting Global Notes to transactions that touch its own collection.
 func (m *NotesViewModel) noteLedgerScope() storage.LedgerScope {
+	if m.combined {
+		return storage.GlobalScope()
+	}
 	if m.isGlobal {
 		return storage.ArtifactRootScope(m.notesDir)
 	}
@@ -226,6 +208,16 @@ func (m *NotesViewModel) noteLedgerScope() storage.LedgerScope {
 
 // effectiveDir returns the notes directory path for either global or project notes.
 func (m *NotesViewModel) effectiveDir() string {
+	if m.combined {
+		location := m.noteLocation()
+		if location.Scope == app.NoteScopeGlobal {
+			return m.notesDir
+		}
+		if location.Scope == app.NoteScopeProject && m.project != nil && m.project.ID == location.ProjectID {
+			return storage.NotesDir(m.project)
+		}
+		return ""
+	}
 	if m.isGlobal {
 		return m.notesDir
 	}
@@ -235,7 +227,39 @@ func (m *NotesViewModel) effectiveDir() string {
 func (m *NotesViewModel) loadNotes() {
 	var notes []*models.Note
 	var err error
-	if m.noteService != nil && (m.isGlobal || m.project != nil) {
+	if m.combined {
+		m.locations = make(map[*models.Note]app.NoteLocation)
+		if m.noteService == nil {
+			m.notes = nil
+			m.resetScrollOffset()
+			return
+		}
+		global, globalErr := m.noteService.NotesAt(app.GlobalNoteLocation())
+		if globalErr != nil {
+			m.notes = nil
+			m.setErrorStatus(globalErr.Error())
+			m.resetScrollOffset()
+			return
+		}
+		for _, note := range global {
+			m.locations[note] = app.GlobalNoteLocation()
+		}
+		notes = append(notes, global...)
+		if m.project != nil {
+			location := app.ProjectNoteLocation(m.project.ID)
+			projectNotes, projectErr := m.noteService.NotesAt(location)
+			if projectErr != nil {
+				m.notes = nil
+				m.setErrorStatus(projectErr.Error())
+				m.resetScrollOffset()
+				return
+			}
+			for _, note := range projectNotes {
+				m.locations[note] = location
+			}
+			notes = append(notes, projectNotes...)
+		}
+	} else if m.noteService != nil && (m.isGlobal || m.project != nil) {
 		notes, err = m.noteService.NotesAt(m.noteLocation())
 	} else if m.isGlobal {
 		notes, err = storage.ListNotesFrom(m.notesDir)
@@ -248,53 +272,19 @@ func (m *NotesViewModel) loadNotes() {
 		return
 	}
 	// Load project tasks once for displaying linked task titles
-	if !m.isGlobal && !m.tasksLoaded {
+	if !m.combined && !m.isGlobal && !m.tasksLoaded {
 		if loadErr := storage.LoadProject(m.project); loadErr == nil {
 			m.cachedTasks = m.project.Tasks
 		}
 		m.tasksLoaded = true
 	}
-	if len(m.filterTags) > 0 {
-		var filtered []*models.Note
-		for _, n := range notes {
-			for _, t := range n.Tags {
-				if m.filterTags[t] {
-					filtered = append(filtered, n)
-					break
-				}
-			}
-		}
-		notes = filtered
+	if m.combined {
+		sort.SliceStable(notes, func(i, j int) bool {
+			return notes[i].ModifiedAt.After(notes[j].ModifiedAt)
+		})
+	} else {
+		m.sortNotes(notes)
 	}
-	// Apply tab filter
-	switch m.tabs.Active {
-	case noteTabPinned:
-		var filtered []*models.Note
-		for _, n := range notes {
-			if n.Pinned {
-				filtered = append(filtered, n)
-			}
-		}
-		notes = filtered
-	case noteTabRecent:
-		var filtered []*models.Note
-		for _, n := range notes {
-			if time.Since(n.ModifiedAt) < util.Week {
-				filtered = append(filtered, n)
-			}
-		}
-		notes = filtered
-	case noteTabTagged:
-		var filtered []*models.Note
-		for _, n := range notes {
-			if len(n.Tags) > 0 {
-				filtered = append(filtered, n)
-			}
-		}
-		notes = filtered
-	}
-	// Apply sort mode (pinned notes always first)
-	m.sortNotes(notes)
 	m.notes = notes
 	m.cursor = ClampCursor(m.cursor, len(m.notes))
 	m.resetScrollOffset()
@@ -302,9 +292,6 @@ func (m *NotesViewModel) loadNotes() {
 
 func (m *NotesViewModel) sortNotes(notes []*models.Note) {
 	sort.SliceStable(notes, func(i, j int) bool {
-		if notes[i].Pinned != notes[j].Pinned {
-			return notes[i].Pinned
-		}
 		switch m.sortMode {
 		case noteSortCreated:
 			return notes[i].CreatedAt.After(notes[j].CreatedAt)
@@ -333,17 +320,6 @@ func (m *NotesViewModel) SetSize(width, height int) {
 
 // ShowGlobalNoteCreatorMsg opens a note creator in global notes mode.
 type ShowGlobalNoteCreatorMsg struct{}
-
-// ShowGlobalNoteMoveMsg requests a project picker to move a global note.
-type ShowGlobalNoteMoveMsg struct {
-	Source noteMutationRef
-}
-
-// GlobalNoteMoveCompleteMsg indicates a global note was moved to a project.
-type GlobalNoteMoveCompleteMsg struct {
-	NoteTitle   string
-	ProjectName string
-}
 
 func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog {
 	if m.confirmDiscard {

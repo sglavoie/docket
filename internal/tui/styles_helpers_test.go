@@ -100,16 +100,6 @@ func TestTaskTitleStyleFor(t *testing.T) {
 			task.WorkflowState = models.StateCanceled
 			return task
 		}(), TaskTitleStyleOptions{CursorSelected: true}, CanceledStyle},
-		{"dimmed uses muted title style", func() *models.Task {
-			task := taskWith(1)
-			task.Dimmed = true
-			return task
-		}(), TaskTitleStyleOptions{}, MutedStyle},
-		{"dimmed suppresses selected title style", func() *models.Task {
-			task := taskWith(1)
-			task.Dimmed = true
-			return task
-		}(), TaskTitleStyleOptions{CursorSelected: true}, MutedStyle},
 		{"context muted suppresses selected title style", taskWith(2), TaskTitleStyleOptions{CursorSelected: true, Muted: true}, MutedStyle},
 		{"disabled suppresses selected title style", taskWith(3), TaskTitleStyleOptions{CursorSelected: true, Disabled: true}, MutedStyle},
 		{"nil task fallback", nil, TaskTitleStyleOptions{}, NormalStyle},

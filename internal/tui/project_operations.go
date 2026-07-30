@@ -13,22 +13,17 @@ import (
 // tui.project.* is reserved for the maintenance actions added alongside them.
 const (
 	operationScopeRenameProject   OperationID = "tui.scope.rename-project"
-	operationScopeStatusProject   OperationID = "tui.scope.status-project"
 	operationScopePinProject      OperationID = "tui.scope.pin-project"
 	operationScopeArchiveProject  OperationID = "tui.scope.archive-project"
 	operationScopeRestoreProject  OperationID = "tui.scope.restore-project"
 	operationScopeOpenProjectNote OperationID = "tui.scope.open-project-notes"
 
-	operationProjectOpen             OperationID = "tui.project.open"
-	operationProjectMetrics          OperationID = "tui.project.metrics"
-	operationProjectExport           OperationID = "tui.project.export"
-	operationProjectOpenFolder       OperationID = "tui.project.open-folder"
-	operationProjectArchiveCompleted OperationID = "tui.project.archive-completed"
+	operationProjectOpen OperationID = "tui.project.open"
 )
 
 // projectOperationDescriptors is the authoritative catalog of project-targeted
 // operations. Every entry resolves one frozen project identity, so the same
-// descriptor serves the Scope Hub, Finder, and any other host that names a
+// descriptor serves the Scope Hub and any other host that names a
 // project row.
 func projectOperationDescriptors() []OperationDescriptor {
 	descriptor := func(
@@ -45,7 +40,6 @@ func projectOperationDescriptors() []OperationDescriptor {
 			Description:       description,
 			Aliases:           aliases,
 			Category:          category,
-			Placement:         PlacementFinderOperation,
 			TargetSource:      OperationTargetCurrentEntity,
 			TargetCardinality: TargetCardinalityOne,
 			Applicability:     projectOperationApplicable,
@@ -54,16 +48,11 @@ func projectOperationDescriptors() []OperationDescriptor {
 	}
 	return []OperationDescriptor{
 		descriptor(operationProjectOpen, "Open project", "Focus the Outliner on this project", OperationCategoryProject, OperationRiskReadOnly, "focus project"),
-		descriptor(operationScopeRenameProject, "Edit project", "Open the full project editor", OperationCategoryProject, OperationRiskMutation, "rename project", "project settings"),
-		descriptor(operationScopeStatusProject, "Set project status", "Choose the project status icon", OperationCategoryProject, OperationRiskMutation, "status icon"),
+		descriptor(operationScopeRenameProject, "Edit project", "Edit lean project metadata", OperationCategoryProject, OperationRiskMutation, "project settings"),
 		descriptor(operationScopePinProject, "Toggle project pin", "Pin or unpin the project", OperationCategoryProject, OperationRiskMutation, "pin project", "unpin project"),
 		descriptor(operationScopeArchiveProject, "Archive project", "Archive the project", OperationCategoryProject, OperationRiskDestructive),
 		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", OperationCategoryProject, OperationRiskMutation, "restore archived project"),
 		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", OperationCategoryNote, OperationRiskReadOnly),
-		descriptor(operationProjectMetrics, "Project metrics", "Completion and throughput analytics for this project", OperationCategoryReview, OperationRiskReadOnly, "project analytics"),
-		descriptor(operationProjectExport, "Export project", "Write this project to an export file", OperationCategoryProject, OperationRiskReadOnly),
-		descriptor(operationProjectOpenFolder, "Open project folder", "Reveal this project's directory", OperationCategoryProject, OperationRiskReadOnly, "reveal project"),
-		descriptor(operationProjectArchiveCompleted, "Archive completed tasks", "Move this project's completed tasks into its archive", OperationCategoryTask, OperationRiskDestructive, "archive done tasks"),
 	}
 }
 
@@ -98,11 +87,11 @@ func (m *AppModel) projectOperationApplicability(
 		if !projectOperationApplicable(ctx) {
 			return false
 		}
-		if !gated {
-			return true
-		}
 		project := m.projectByID(currentEntityIdentity(ctx).ProjectID)
 		if project == nil {
+			return true
+		}
+		if !gated {
 			return true
 		}
 		return m.projectRequirementUnmet(requirement, label, project) == nil
@@ -163,17 +152,14 @@ func (m *AppModel) executeProjectOperation(
 type projectOperationRequirement struct {
 	requireArchived   bool
 	requireActive     bool
-	rejectSandbox     bool
 	rejectSystemInbox bool
 }
 
 var projectOperationRequirements = map[OperationID]projectOperationRequirement{
-	operationProjectOpen:             {requireActive: true},
-	operationScopeRenameProject:      {rejectSystemInbox: true},
-	operationScopePinProject:         {requireActive: true},
-	operationScopeArchiveProject:     {requireActive: true, rejectSandbox: true, rejectSystemInbox: true},
-	operationScopeRestoreProject:     {requireArchived: true},
-	operationProjectArchiveCompleted: {requireActive: true},
+	operationProjectOpen:         {requireActive: true},
+	operationScopePinProject:     {requireActive: true},
+	operationScopeArchiveProject: {requireActive: true, rejectSystemInbox: true},
+	operationScopeRestoreProject: {requireArchived: true},
 }
 
 // projectOperationUnavailable checks the freshly reloaded project rather than
@@ -203,8 +189,6 @@ func (m *AppModel) projectRequirementUnmet(
 		return fmt.Errorf("%s applies only to archived projects", label)
 	case requirement.requireActive && project.Archived:
 		return fmt.Errorf("%s is unavailable while %s is archived", label, project.Name)
-	case requirement.rejectSandbox && project.Sandbox:
-		return fmt.Errorf("%s is unavailable for the sandbox project", label)
 	case requirement.rejectSystemInbox && m.runtime.IsSystemInboxProject(project.ID):
 		return fmt.Errorf("%s is unavailable for the system Inbox project", label)
 	}
@@ -218,8 +202,6 @@ func (m *AppModel) projectOperationMessage(id OperationID, project *models.Proje
 		return ApplyProjectScopeMsg{ProjectID: project.ID}
 	case operationScopeRenameProject:
 		return EditProjectMsg{Project: project}
-	case operationScopeStatusProject:
-		return ShowStatusIconPickerMsg{Project: project}
 	case operationScopePinProject:
 		return ProjectPinRequestMsg{Project: project, Pinned: !project.Pinned}
 	case operationScopeArchiveProject:
@@ -228,14 +210,6 @@ func (m *AppModel) projectOperationMessage(id OperationID, project *models.Proje
 		return ProjectArchiveRequestMsg{Project: project, Archive: false}
 	case operationScopeOpenProjectNote:
 		return ShowNotesMsg{Project: project}
-	case operationProjectMetrics:
-		return ShowMetricsDashboardMsg{Project: project}
-	case operationProjectExport:
-		return ExportProjectMsg{Project: project}
-	case operationProjectOpenFolder:
-		return OpenDataFolderMsg{Project: project}
-	case operationProjectArchiveCompleted:
-		return ArchiveCompletedTasksMsg{Project: project}
 	default:
 		return nil
 	}

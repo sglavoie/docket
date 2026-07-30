@@ -3,9 +3,7 @@ package tui
 import (
 	"cmp"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // SortState bundles a sort field and direction. Embedded by views that support
@@ -39,10 +37,8 @@ func (s *SortState) Toggle(f SortField) {
 
 // StateOrder returns the sort order for a workflow state (workflow order).
 // This is the single source of truth used by all views that sort by
-// status/state. It mirrors the legacy StatusOrder with the three todo-ish
-// planning states slotted where todo sat (next, then inbox, then ready),
-// waiting where blocked sat, paused where standby sat, and someday where
-// maybe sat.
+// status/state. The three planning states lead (next, then inbox, then ready),
+// followed by active, deferred, and terminal work.
 func StateOrder(state models.WorkflowState) int {
 	switch state {
 	case models.StateNext:
@@ -53,27 +49,24 @@ func StateOrder(state models.WorkflowState) int {
 		return 2
 	case models.StateInProgress:
 		return 3
-	case models.StateReview:
-		return 4
 	case models.StatePaused:
-		return 5
+		return 4
 	case models.StateSomeday:
-		return 6
+		return 5
 	case models.StateWaiting:
-		return 7
+		return 6
 	case models.StateDone:
-		return 8
+		return 7
 	case models.StateCanceled:
-		return 9
+		return 8
 	default:
-		return 10
+		return 9
 	}
 }
 
 // TodayStateOrder ranks workflow states by activeness for the Today section.
-// In-progress first, review pushed below other active states, terminal last.
-// The three todo-ish planning states share one rank so the daily-plan position
-// keeps ordering them.
+// In-progress comes first and terminal work comes last. The three planning
+// states share one rank so the daily-plan position keeps ordering them.
 func TodayStateOrder(state models.WorkflowState) int {
 	switch state {
 	case models.StateInProgress:
@@ -86,32 +79,29 @@ func TodayStateOrder(state models.WorkflowState) int {
 		return 3
 	case models.StateSomeday:
 		return 4
-	case models.StateReview:
-		return 5
 	case models.StateDone:
-		return 6
+		return 5
 	case models.StateCanceled:
-		return 7
+		return 6
 	default:
-		return 8
+		return 7
 	}
 }
 
 // CompareTasks compares two tasks based on the given sort field.
 // Returns -1 if a < b, 0 if equal, 1 if a > b.
-// The projectID and automation snapshot are needed for score-based comparison.
 // Ties on the primary key are broken by task.ID (lexicographic) to keep
 // the ordering deterministic and to satisfy strict weak ordering when
 // the result is fed through sort.Slice.
-func CompareTasks(a, b *models.Task, field SortField, projectID string, auto *config.AutomationConfig) int {
-	primary := compareTasksPrimary(a, b, field, projectID, auto)
+func CompareTasks(a, b *models.Task, field SortField) int {
+	primary := compareTasksPrimary(a, b, field)
 	if primary != 0 {
 		return primary
 	}
 	return cmp.Compare(a.ID, b.ID)
 }
 
-func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, auto *config.AutomationConfig) int {
+func compareTasksPrimary(a, b *models.Task, field SortField) int {
 	switch field {
 	case SortByPriority:
 		return cmp.Compare(a.Priority, b.Priority)
@@ -134,42 +124,10 @@ func compareTasksPrimary(a, b *models.Task, field SortField, projectID string, a
 	case SortByStatus:
 		return cmp.Compare(StateOrder(a.State()), StateOrder(b.State()))
 
-	case SortByScore:
-		profile := auto.GetProjectScoringProfile(projectID)
-		if profile != nil {
-			scoreA := scoring.ComputeScore(a, profile)
-			scoreB := scoring.ComputeScore(b, profile)
-			// Higher score first (descending by default)
-			return -cmp.Compare(scoreA, scoreB)
-		}
-		return 0
 	default:
 	}
 
 	return 0
-}
-
-// CompareTasksCrossProject compares two tasks that may belong to different projects.
-// Each task has its own projectID for score resolution. Ties are broken by
-// task.ID for deterministic ordering under sort.Slice.
-func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, projectIDB string, auto *config.AutomationConfig) int {
-	if field == SortByScore {
-		pa := auto.GetProjectScoringProfile(projectIDA)
-		pb := auto.GetProjectScoringProfile(projectIDB)
-		var sa, sb float64
-		if pa != nil {
-			sa = scoring.ComputeScore(a, pa)
-		}
-		if pb != nil {
-			sb = scoring.ComputeScore(b, pb)
-		}
-		// Higher score first (descending by default)
-		if c := -cmp.Compare(sa, sb); c != 0 {
-			return c
-		}
-		return cmp.Compare(a.ID, b.ID)
-	}
-	return CompareTasks(a, b, field, "", auto)
 }
 
 // ApplySortDirection converts a three-way compare result into a Less

@@ -23,15 +23,12 @@ const (
 // PlanningReconcileTarget names a task whose workflow state a transaction set,
 // paired with the final state the task holds after the mutation and cascade.
 // Today optionally requests an explicit add/remove on top of state-derived
-// cleanup. PlannedDate is used only by PlanningTodayAdd.
+// cleanup.
 type PlanningReconcileTarget struct {
-	TaskID            string
-	ProjectID         string
-	State             models.WorkflowState
-	Today             PlanningTodayDirective
-	PlannedDate       string
-	UpdatePlannedDate bool
-	EnsureNextOrder   bool
+	TaskID    string
+	ProjectID string
+	State     models.WorkflowState
+	Today     PlanningTodayDirective
 }
 
 // PlanningReconcileRequest is the complete application-owned mutation applied to
@@ -42,10 +39,10 @@ type PlanningReconcileTarget struct {
 type PlanningReconcileRequest struct {
 	Targets       []PlanningReconcileTarget
 	Complete      bool
-	FocusOrder    []TaskLocator
-	SetFocusOrder bool
-	DailyOrder    []TaskLocator
-	SetDailyOrder bool
+	NextOrder     []TaskLocator
+	SetNextOrder  bool
+	TodayOrder    []TaskLocator
+	SetTodayOrder bool
 	ClearToday    bool
 }
 
@@ -57,10 +54,10 @@ type PlanningArtifactBuilder func(PlanningReconcileRequest) ([]storage.ArtifactC
 
 // ReconcilePlanningState applies the canonical Today/Next invariants to one
 // planning snapshot. It is deliberately application-owned so CLI, TUI,
-// workflow, action-plan, undo/redo, and startup paths cannot drift:
+// action-plan, undo/redo, and startup paths cannot drift:
 //
-//   - StateNext owns Next membership and its order entry, and excludes Today.
-//   - non-Next tasks have no FocusQueue entry.
+//   - StateNext owns Next membership and has one NextOrder entry, and excludes Today.
+//   - non-Next tasks have no NextOrder entry.
 //   - Inbox and terminal tasks cannot be in Today.
 //   - explicit Today adds are accepted only for eligible final states.
 //   - complete reconciliation removes dangling and duplicate entries.
@@ -70,8 +67,9 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 	if planning == nil {
 		return false
 	}
-	beforeFocus := append([]config.FocusQueueItem(nil), planning.FocusQueue...)
-	beforeDaily := append([]config.DailyPlanItem(nil), planning.DailyPlan...)
+	beforeNext := append([]config.ProjectTaskLocator(nil), planning.NextOrder...)
+	beforeToday := append([]config.ProjectTaskLocator(nil), planning.Today...)
+	planning.NormalizePlanningReferences()
 
 	known := make(map[TaskLocator]PlanningReconcileTarget, len(req.Targets))
 	for _, target := range req.Targets {
@@ -83,8 +81,8 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 	}
 
 	if req.Complete {
-		planning.FocusQueue = sanitizeFocusQueue(planning.FocusQueue, known)
-		planning.DailyPlan = sanitizeDailyPlan(planning.DailyPlan, known)
+		planning.NextOrder = sanitizeNextOrder(planning.NextOrder, known)
+		planning.Today = sanitizeToday(planning.Today, known)
 	}
 
 	applied := make(map[TaskLocator]bool, len(known))
@@ -96,43 +94,41 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 		}
 		applied[locator] = true
 		if target.State == models.StateNext {
-			planning.RemoveFromDailyPlanInProject(locator.TaskID, locator.ProjectID)
-			if target.EnsureNextOrder {
-				ensureFocusQueueEntry(planning, locator)
-			}
+			planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
+			ensureNextOrderEntry(planning, locator)
 		} else {
-			planning.RemoveFromFocusQueueInProject(locator.TaskID, locator.ProjectID)
+			planning.RemoveFromNextOrderInProject(locator.TaskID, locator.ProjectID)
 		}
 		if target.State == models.StateInbox || target.State.IsTerminal() {
-			planning.RemoveFromDailyPlanInProject(locator.TaskID, locator.ProjectID)
+			planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
 		}
 		switch target.Today {
 		case PlanningTodayPreserve:
 		case PlanningTodayAdd:
 			if PlanningTodayEligible(target.State) {
-				ensureDailyPlanEntry(planning, locator, target.PlannedDate, target.UpdatePlannedDate)
+				ensureTodayEntry(planning, locator)
 			}
 		case PlanningTodayRemove:
-			planning.RemoveFromDailyPlanInProject(locator.TaskID, locator.ProjectID)
+			planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
 		}
 	}
 
 	if req.ClearToday {
-		planning.DailyPlan = nil
+		planning.Today = nil
 	}
-	if req.SetFocusOrder {
-		for _, locator := range req.FocusOrder {
+	if req.SetNextOrder {
+		for _, locator := range req.NextOrder {
 			if target, ok := known[locator]; ok && target.State == models.StateNext {
-				ensureFocusQueueEntry(planning, locator)
+				ensureNextOrderEntry(planning, locator)
 			}
 		}
-		planning.FocusQueue = reorderFocusQueue(planning.FocusQueue, req.FocusOrder)
+		planning.NextOrder = reorderPlanningRefs(planning.NextOrder, req.NextOrder)
 	}
-	if req.SetDailyOrder {
-		planning.DailyPlan = reorderDailyPlan(planning.DailyPlan, req.DailyOrder)
+	if req.SetTodayOrder {
+		planning.Today = reorderPlanningRefs(planning.Today, req.TodayOrder)
 	}
 
-	return !slices.Equal(beforeFocus, planning.FocusQueue) || !slices.Equal(beforeDaily, planning.DailyPlan)
+	return !slices.Equal(beforeNext, planning.NextOrder) || !slices.Equal(beforeToday, planning.Today)
 }
 
 // PlanningTodayEligible reports whether a task in state may belong to Today.
@@ -140,8 +136,8 @@ func PlanningTodayEligible(state models.WorkflowState) bool {
 	return state.IsValid() && state != models.StateInbox && state != models.StateNext && !state.IsTerminal()
 }
 
-func sanitizeFocusQueue(items []config.FocusQueueItem, known map[TaskLocator]PlanningReconcileTarget) []config.FocusQueueItem {
-	out := make([]config.FocusQueueItem, 0, len(items))
+func sanitizeNextOrder(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget) []config.ProjectTaskLocator {
+	out := make([]config.ProjectTaskLocator, 0, len(items))
 	seen := make(map[TaskLocator]bool, len(items))
 	for _, item := range items {
 		locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
@@ -155,8 +151,8 @@ func sanitizeFocusQueue(items []config.FocusQueueItem, known map[TaskLocator]Pla
 	return out
 }
 
-func sanitizeDailyPlan(items []config.DailyPlanItem, known map[TaskLocator]PlanningReconcileTarget) []config.DailyPlanItem {
-	out := make([]config.DailyPlanItem, 0, len(items))
+func sanitizeToday(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget) []config.ProjectTaskLocator {
+	out := make([]config.ProjectTaskLocator, 0, len(items))
 	seen := make(map[TaskLocator]bool, len(items))
 	for _, item := range items {
 		locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
@@ -170,59 +166,34 @@ func sanitizeDailyPlan(items []config.DailyPlanItem, known map[TaskLocator]Plann
 	return out
 }
 
-func ensureFocusQueueEntry(planning *config.PlanningState, locator TaskLocator) {
-	for _, item := range planning.FocusQueue {
+func ensureNextOrderEntry(planning *config.PlanningState, locator TaskLocator) {
+	for _, item := range planning.NextOrder {
 		if item.TaskID == locator.TaskID && item.ProjectID == locator.ProjectID {
 			return
 		}
 	}
-	planning.FocusQueue = append(planning.FocusQueue, config.FocusQueueItem{
+	planning.NextOrder = append(planning.NextOrder, config.ProjectTaskLocator{
 		TaskID: locator.TaskID, ProjectID: locator.ProjectID,
 	})
 }
 
-func ensureDailyPlanEntry(planning *config.PlanningState, locator TaskLocator, plannedDate string, updateDate bool) {
-	for i, item := range planning.DailyPlan {
+func ensureTodayEntry(planning *config.PlanningState, locator TaskLocator) {
+	for _, item := range planning.Today {
 		if item.TaskID == locator.TaskID && item.ProjectID == locator.ProjectID {
-			if updateDate && plannedDate != "" {
-				planning.DailyPlan[i].PlannedDate = plannedDate
-			}
 			return
 		}
 	}
-	planning.DailyPlan = append(planning.DailyPlan, config.DailyPlanItem{
-		TaskID: locator.TaskID, ProjectID: locator.ProjectID, PlannedDate: plannedDate,
+	planning.Today = append(planning.Today, config.ProjectTaskLocator{
+		TaskID: locator.TaskID, ProjectID: locator.ProjectID,
 	})
 }
 
-func reorderFocusQueue(items []config.FocusQueueItem, order []TaskLocator) []config.FocusQueueItem {
-	byLocator := make(map[TaskLocator]config.FocusQueueItem, len(items))
+func reorderPlanningRefs(items []config.ProjectTaskLocator, order []TaskLocator) []config.ProjectTaskLocator {
+	byLocator := make(map[TaskLocator]config.ProjectTaskLocator, len(items))
 	for _, item := range items {
 		byLocator[TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = item
 	}
-	out := make([]config.FocusQueueItem, 0, len(items))
-	for _, locator := range order {
-		if item, ok := byLocator[locator]; ok {
-			out = append(out, item)
-			delete(byLocator, locator)
-		}
-	}
-	for _, item := range items {
-		locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
-		if _, ok := byLocator[locator]; ok {
-			out = append(out, item)
-			delete(byLocator, locator)
-		}
-	}
-	return out
-}
-
-func reorderDailyPlan(items []config.DailyPlanItem, order []TaskLocator) []config.DailyPlanItem {
-	byLocator := make(map[TaskLocator]config.DailyPlanItem, len(items))
-	for _, item := range items {
-		byLocator[TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}] = item
-	}
-	out := make([]config.DailyPlanItem, 0, len(items))
+	out := make([]config.ProjectTaskLocator, 0, len(items))
 	for _, locator := range order {
 		if item, ok := byLocator[locator]; ok {
 			out = append(out, item)
@@ -242,7 +213,7 @@ func reorderDailyPlan(items []config.DailyPlanItem, order []TaskLocator) []confi
 // collectPlanningReconcileTargets resolves each task id to its final state and
 // owning project among the committed projects, so the builder reconciles against
 // post-mutation, post-cascade state. Ids absent from every committed project
-// (e.g. a task moved out by a workflow rule) are skipped.
+// (e.g. a task moved out concurrently) are skipped.
 func collectPlanningReconcileTargets(commits []projectCommit, taskIDs []string, locators []TaskLocator) []PlanningReconcileTarget {
 	if len(taskIDs) == 0 && len(locators) == 0 {
 		return nil

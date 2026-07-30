@@ -5,8 +5,6 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *TaskDecisionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
@@ -55,10 +53,6 @@ func (m *TaskDecisionsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			m.editActiveField = 1 - m.editActiveField
 			return m, m.focusEditField()
-		case "ctrl+y":
-			cats := allDecisionCategories()
-			m.editCategoryIdx = (m.editCategoryIdx + 1) % len(cats)
-			return m, nil
 		case "shift+enter":
 			if m.editActiveField == 0 {
 				m.editTextInput.InsertString("\n")
@@ -97,10 +91,6 @@ func (m *TaskDecisionsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			m.activeField = 1 - m.activeField
 			return m, m.focusAddField()
-		case "ctrl+y":
-			cats := allDecisionCategories()
-			m.categoryIndex = (m.categoryIndex + 1) % len(cats)
-			return m, nil
 		case "shift+enter":
 			if m.activeField == 0 {
 				m.textInput.InsertString("\n")
@@ -165,7 +155,6 @@ func (m *TaskDecisionsModel) moveCursorBottom() {
 func (m *TaskDecisionsModel) beginAddMode() tea.Cmd {
 	m.addMode = true
 	m.activeField = 0
-	m.categoryIndex = 0
 	m.textInput.Focus()
 	m.rationaleInput.Blur()
 	return textarea.Blink
@@ -174,7 +163,6 @@ func (m *TaskDecisionsModel) beginAddMode() tea.Cmd {
 func (m *TaskDecisionsModel) cancelAddMode() {
 	m.addMode = false
 	m.activeField = 0
-	m.categoryIndex = 0
 	m.textInput.Reset()
 	m.rationaleInput.Reset()
 }
@@ -206,20 +194,4 @@ func (m *TaskDecisionsModel) focusEditField() tea.Cmd {
 		m.editRationale.Focus()
 	}
 	return textarea.Blink
-}
-
-func (m *TaskDecisionsModel) selectedCategory() models.DecisionCategory {
-	cats := allDecisionCategories()
-	if m.categoryIndex >= 0 && m.categoryIndex < len(cats) {
-		return cats[m.categoryIndex]
-	}
-	return cats[0]
-}
-
-func (m *TaskDecisionsModel) selectedEditCategory() models.DecisionCategory {
-	cats := allDecisionCategories()
-	if m.editCategoryIdx >= 0 && m.editCategoryIdx < len(cats) {
-		return cats[m.editCategoryIdx]
-	}
-	return cats[0]
 }

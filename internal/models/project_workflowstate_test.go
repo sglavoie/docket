@@ -12,9 +12,9 @@ func TestProjectStateQueriesUseExactCanonicalState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ready, _ := NewTask("ready", 1, TaskTypeTask, "Ready")
-	started, _ := NewTask("started", 2, TaskTypeTask, "Started")
-	next, _ := NewTask("next", 3, TaskTypeTask, "Next")
+	ready, _ := NewGenericTask("ready", 1, "Ready")
+	started, _ := NewGenericTask("started", 2, "Started")
+	next, _ := NewGenericTask("next", 3, "Next")
 	started.ApplyWorkflowState(StateInProgress)
 	next.ApplyWorkflowState(StateNext)
 	project.Tasks = []*Task{ready, started, next}
@@ -38,7 +38,6 @@ func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 		StateGroupInbox,
 		StateGroupNext,
 		StateGroupBacklog,
-		StateGroupReview,
 		StateGroupWaiting,
 		StateGroupPaused,
 		StateGroupSomeday,
@@ -61,6 +60,12 @@ func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 		if !ok || WorkflowStateGroupForState(state) != group {
 			t.Errorf("group/state round trip for %q = %q, %v", group, state, ok)
 		}
+	}
+}
+
+func TestLegacyReviewGroupIsNotCanonical(t *testing.T) {
+	if StateGroupReview.IsValid() {
+		t.Fatal("legacy Review group is valid in the target group vocabulary")
 	}
 }
 

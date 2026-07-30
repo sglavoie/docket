@@ -27,12 +27,10 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 		AppService:     m.appService,
 		NoteService:    noteService,
 		HistoryLedger:  historyLedger,
-		Blockers:       m.secondaryFeatures.Blocker,
 		Tags:           m.secondaryFeatures.Tag,
 		Wire:           m.wireSecondaryCoordinators,
 		ResolveProject: m.projectByID,
 		CurrentProject: func() *models.Project { return m.currentProject },
-		NewSettings:    func() *SettingsModel { return NewSettingsModel(m.deps) },
 		ActiveContext: func() ContextScope {
 			if m.crossOutliner == nil {
 				return AllContextScope()
@@ -65,14 +63,12 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 			m.manageHub.activeKey = ""
 		}
 	}
-	m.manageHub.SetNotificationData(m.proactiveAlerts, m.rawAlerts, m.dismissedSet)
-	m.manageHub.SetMessageLogEntries(m.messageLog.Entries())
 	m.manageHub.SetSize(m.width, m.height-2)
 	return m.manageHub
 }
 
-// activateManageHub installs one scoped collection or notification mode as a
-// mode of the typed Manage destination. No embedded legacy model enters route
+// activateManageHub installs one scoped collection mode as a mode of the typed
+// Manage destination. No embedded legacy model enters route
 // history; PresentationID remains only a presentation observation for commands and
 // existing overlay return messages.
 func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
@@ -112,10 +108,6 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 	if err := m.navigation.PushChild(route, m.currentFocusTarget()); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
-	if m.startupRoute != nil && m.startupRoute.ID() == SecondaryTool {
-		m.startupRoute = nil
-		m.startupView = ViewCrossProjectOutliner
-	}
 	if projectPickerOpen {
 		m.pushTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
 	}
@@ -127,12 +119,6 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 	return nil
 }
 
-func (m *AppModel) activateManageRules(mode ManageRulesMode) tea.Cmd {
-	hub := m.ensureManageHub()
-	hub.SetRulesMode(mode)
-	return m.activateManageHub(ManageParams{Module: ManageRules, Scope: AppEntityScope()})
-}
-
 func (m *AppModel) activateManageProjectPicker(module ManageModule) tea.Cmd {
 	return m.activateManageHub(ManageParams{Module: module, Scope: ProjectEntityScope("missing-project")})
 }
@@ -142,9 +128,6 @@ func (m *AppModel) registerManageModulePresentation(params ManageParams, view Vi
 		return
 	}
 	presentation, ok := manageModulePresentation(params)
-	if params.Module == ManageRules && m.manageHub != nil {
-		presentation, ok = m.manageHub.PresentationView()
-	}
 	if !ok {
 		return
 	}
@@ -157,9 +140,6 @@ func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.activateManageHub(msg.Params)
 	case ManageHubModuleSelectedMsg:
 		m.closeTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
-		if msg.HasRulesMode {
-			m.ensureManageHub().SetRulesMode(msg.RulesMode)
-		}
 		return true, m.activateManageHub(msg.Params)
 	case manageHubViewMenuMsg:
 		if msg.Open {
@@ -170,31 +150,6 @@ func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	default:
 		return false, nil
-	}
-}
-
-func (m *AppModel) refreshManageNotificationCenter() {
-	if m.manageHub == nil {
-		return
-	}
-	m.manageHub.SetNotificationData(m.proactiveAlerts, m.rawAlerts, m.dismissedSet)
-	m.manageHub.RefreshNotificationCenter()
-	params := m.manageHub.Params()
-	if active := m.manageHub.ActiveModuleView(); active != nil {
-		m.registerManageModulePresentation(params, active)
-	}
-}
-
-func (m *AppModel) refreshManageMessageLog() {
-	if m.manageHub == nil {
-		return
-	}
-	m.manageHub.SetMessageLogEntries(m.messageLog.Entries())
-	params := m.manageHub.Params()
-	if params.Module == ManageNotifications && params.NotificationMode == NotificationLog {
-		if active := m.manageHub.ActiveModuleView(); active != nil {
-			m.registerManageModulePresentation(params, active)
-		}
 	}
 }
 

@@ -32,7 +32,7 @@ type planningReconcileEnv struct {
 func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planningReconcileEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitService := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project, err := models.NewProject(uuid.New().String(), "planning-reconcile", "")
@@ -40,7 +40,7 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 		t.Fatalf("NewProject: %v", err)
 	}
 	project.Path = filepath.Join(dataDir, "projects", project.Slug)
-	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Reconcile target")
+	task, err := models.NewGenericTask(uuid.New().String(), 1, "Reconcile target")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -59,7 +59,7 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 		t.Fatalf("load runtime: %v", err)
 	}
 
-	service := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil).
+	service := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir)).
 		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 
 	return &planningReconcileEnv{
@@ -75,22 +75,22 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 	}
 }
 
-// seedDailyPlan commits a Daily Plan entry for the env's task through a checked
+// seedToday commits a Daily Plan entry for the env's task through a checked
 // planning commit, establishing Today membership as a precondition.
-func (e *planningReconcileEnv) seedDailyPlan(t *testing.T) {
+func (e *planningReconcileEnv) seedToday(t *testing.T) {
 	t.Helper()
 	planning := clonePlanningState(e.runtime.Planning())
-	planning.DailyPlan = []config.DailyPlanItem{{TaskID: e.taskID, ProjectID: e.project.ID, PlannedDate: "2026-07-19"}}
+	planning.Today = []config.ProjectTaskLocator{{TaskID: e.taskID, ProjectID: e.project.ID}}
 	if err := e.runtime.CommitPlanning(planning); err != nil {
 		t.Fatalf("seed daily plan: %v", err)
 	}
 }
 
-// seedFocusQueue commits a Next order entry for the env's task.
-func (e *planningReconcileEnv) seedFocusQueue(t *testing.T) {
+// seedNextOrder commits a Next order entry for the env's task.
+func (e *planningReconcileEnv) seedNextOrder(t *testing.T) {
 	t.Helper()
 	planning := clonePlanningState(e.runtime.Planning())
-	planning.FocusQueue = []config.FocusQueueItem{{TaskID: e.taskID, ProjectID: e.project.ID}}
+	planning.NextOrder = []config.ProjectTaskLocator{{TaskID: e.taskID, ProjectID: e.project.ID}}
 	if err := e.runtime.CommitPlanning(planning); err != nil {
 		t.Fatalf("seed focus queue: %v", err)
 	}
@@ -114,61 +114,60 @@ func (e *planningReconcileEnv) reloadPlanning(t *testing.T) *config.PlanningStat
 func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	t.Run("view-local coordinator picker drops Today", func(t *testing.T) {
 		env := newPlanningReconcileEnv(t, models.StateReady)
-		env.seedDailyPlan(t)
+		env.seedToday(t)
 
-		coords := newSecondaryCoordinators(env.service, env.manager)
-		cmd := coords.TaskItem.TransitionWorkflow(TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID}, models.StateNext,
-			app.SingleTaskWorkflowOptions{UndoAction: "Change State"},
-			func(app.TaskResult) string { return "" })
+		coords := newSecondaryCoordinators(env.service)
+		cmd := coords.TaskItem.Transition(
+			TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID},
+			models.StateNext,
+		)
 		assertNotTransactionError(t, cmd())
 
 		planning := env.reloadPlanning(t)
-		if len(planning.GetDailyPlan()) != 0 {
-			t.Fatalf("daily plan after coordinator transition = %+v, want empty", planning.GetDailyPlan())
+		if len(planning.GetToday()) != 0 {
+			t.Fatalf("daily plan after coordinator transition = %+v, want empty", planning.GetToday())
 		}
 	})
 
 	t.Run("global plain-Transition picker drops Today", func(t *testing.T) {
 		env := newPlanningReconcileEnv(t, models.StateReady)
-		env.seedDailyPlan(t)
+		env.seedToday(t)
 
 		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateNext}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 
 		planning := env.reloadPlanning(t)
-		if len(planning.GetDailyPlan()) != 0 {
-			t.Fatalf("daily plan after global transition = %+v, want empty", planning.GetDailyPlan())
+		if len(planning.GetToday()) != 0 {
+			t.Fatalf("daily plan after global transition = %+v, want empty", planning.GetToday())
 		}
 	})
 
 	t.Run("bulk transition drops Today", func(t *testing.T) {
 		env := newPlanningReconcileEnv(t, models.StateReady)
-		env.seedDailyPlan(t)
+		env.seedToday(t)
 
-		coords := newSecondaryCoordinators(env.service, env.manager)
-		cmd := coords.Bulk.TransitionWithWorkflow(
-			app.BulkTransitionRequest{TaskIDs: []string{env.taskID}, Target: models.StateNext, SkipInvalid: true},
-			func(int) string { return "" })
+		coords := newSecondaryCoordinators(env.service)
+		cmd := coords.Bulk.Transition([]string{env.taskID}, models.StateNext)
 		assertNotTransactionError(t, cmd())
 
 		planning := env.reloadPlanning(t)
-		if len(planning.GetDailyPlan()) != 0 {
-			t.Fatalf("daily plan after bulk transition = %+v, want empty", planning.GetDailyPlan())
+		if len(planning.GetToday()) != 0 {
+			t.Fatalf("daily plan after bulk transition = %+v, want empty", planning.GetToday())
 		}
 	})
 
 	t.Run("transition out of Next drops stale order entry", func(t *testing.T) {
 		env := newPlanningReconcileEnv(t, models.StateNext)
-		env.seedFocusQueue(t)
+		env.seedNextOrder(t)
 
 		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateInProgress}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 
 		planning := env.reloadPlanning(t)
-		if len(planning.GetFocusQueue()) != 0 {
-			t.Fatalf("focus queue after leaving Next = %+v, want empty (stale order dropped)", planning.GetFocusQueue())
+		if len(planning.GetNextOrder()) != 0 {
+			t.Fatalf("focus queue after leaving Next = %+v, want empty (stale order dropped)", planning.GetNextOrder())
 		}
 	})
 }
@@ -186,7 +185,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		// Precondition: the task is planned for Today, so the promotion must also
 		// prove the Today drop rides the same transaction.
 		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
-			p.SetDailyPlan([]config.DailyPlanItem{{TaskID: task.ID, ProjectID: app.currentProject.ID, PlannedDate: "2026-07-19"}})
+			p.SetToday([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: app.currentProject.ID}})
 		}); err != nil {
 			t.Fatalf("seed daily plan: %v", err)
 		}
@@ -196,23 +195,23 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 
 		// The move is one ledger transaction that captured state + planning.
 		dataDir := app.runtime.DataDir()
-		if got := diskFocusQueueLen(t, dataDir); got != 1 {
+		if got := diskNextOrderLen(t, dataDir); got != 1 {
 			t.Fatalf("committed Next order entries = %d, want 1", got)
 		}
-		if got := diskDailyPlanLen(t, dataDir); got != 0 {
+		if got := diskTodayLen(t, dataDir); got != 0 {
 			t.Fatalf("committed Daily Plan entries = %d, want 0 (Today dropped in same txn)", got)
 		}
 
 		// Durability: a fresh ledger over the same data dir (simulating a restart)
 		// undoes the transaction and restores the exact pre-mutation state.
-		freshLedger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+		freshLedger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 		if _, _, err := freshLedger.UndoWithEntry(storage.GlobalScope()); err != nil {
 			t.Fatalf("durable undo from fresh ledger: %v", err)
 		}
-		if got := diskFocusQueueLen(t, dataDir); got != 0 {
+		if got := diskNextOrderLen(t, dataDir); got != 0 {
 			t.Fatalf("Next order after durable undo = %d, want 0", got)
 		}
-		if got := diskDailyPlanLen(t, dataDir); got != 1 {
+		if got := diskTodayLen(t, dataDir); got != 1 {
 			t.Fatalf("Daily Plan after durable undo = %d, want 1 (Today restored)", got)
 		}
 		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateReady {
@@ -241,7 +240,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateNext {
 			t.Fatalf("state after first undo = %s, want still next (priority undone first)", st)
 		}
-		if got := diskFocusQueueLen(t, app.runtime.DataDir()); got != 1 {
+		if got := diskNextOrderLen(t, app.runtime.DataDir()); got != 1 {
 			t.Fatalf("Next order after first undo = %d, want 1 (toggle not yet undone)", got)
 		}
 		if p := diskTaskPriority(t, app.currentProject, task.ID); p != origPriority {
@@ -253,30 +252,30 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateReady {
 			t.Fatalf("state after second undo = %s, want ready (toggle undone)", st)
 		}
-		if got := diskFocusQueueLen(t, app.runtime.DataDir()); got != 0 {
+		if got := diskNextOrderLen(t, app.runtime.DataDir()); got != 0 {
 			t.Fatalf("Next order after second undo = %d, want 0 (toggle undone)", got)
 		}
 	})
 }
 
-// diskFocusQueueLen / diskDailyPlanLen / diskTaskState read committed state fresh
+// diskNextOrderLen / diskTodayLen / diskTaskState read committed state fresh
 // from disk so assertions observe exactly what a restart would load.
-func diskFocusQueueLen(t *testing.T, dataDir string) int {
+func diskNextOrderLen(t *testing.T, dataDir string) int {
 	t.Helper()
 	planning, err := config.NewManager(filepath.Join(dataDir, ".tt.json")).DomainCoordinator().LoadPlanning()
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	return len(planning.GetFocusQueue())
+	return len(planning.GetNextOrder())
 }
 
-func diskDailyPlanLen(t *testing.T, dataDir string) int {
+func diskTodayLen(t *testing.T, dataDir string) int {
 	t.Helper()
 	planning, err := config.NewManager(filepath.Join(dataDir, ".tt.json")).DomainCoordinator().LoadPlanning()
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	return len(planning.GetDailyPlan())
+	return len(planning.GetToday())
 }
 
 func diskTaskState(t *testing.T, project *models.Project, taskID string) models.WorkflowState {

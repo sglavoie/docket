@@ -8,7 +8,7 @@ func TestBuildTaskTree_CircularParentSelfReference(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task, err := NewTask("task-1", 1, TaskTypeTask, "Self-referencing task")
+	task, err := NewGenericTask("task-1", 1, "Self-referencing task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,11 +35,11 @@ func TestBuildTaskTree_CircularParentMutualReference(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	taskB, err := NewGenericTask("b", 2, "Task B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,15 +66,15 @@ func TestBuildTaskTree_CircularParentLongChain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	taskB, err := NewGenericTask("b", 2, "Task B")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	taskC, err := NewGenericTask("c", 3, "Task C")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,15 +109,15 @@ func TestBuildTaskTree_CircularParentFullCycleCleared(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	taskB, err := NewGenericTask("b", 2, "Task B")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	taskC, err := NewGenericTask("c", 3, "Task C")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestBuildTaskTree_CircularParentFullCycleCleared(t *testing.T) {
 }
 
 func TestWouldCreateCycle_SelfCycle(t *testing.T) {
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,11 +172,11 @@ func TestWouldCreateCycle_SelfCycle(t *testing.T) {
 }
 
 func TestWouldCreateCycle_IndirectCycle(t *testing.T) {
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	taskB, err := NewGenericTask("b", 2, "Task B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,15 +193,15 @@ func TestWouldCreateCycle_IndirectCycle(t *testing.T) {
 }
 
 func TestWouldCreateCycle_ValidReparent(t *testing.T) {
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	taskB, err := NewGenericTask("b", 2, "Task B")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	taskC, err := NewGenericTask("c", 3, "Task C")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,11 +219,11 @@ func TestWouldCreateCycle_ValidReparent(t *testing.T) {
 func TestAddChild_CycleDetected(t *testing.T) {
 	// a (Story) is already the parent of b (Epic) via Parent pointer.
 	// Attempting to add a as a child of b would create cycle b->a->b.
-	a, err := NewTask("a", 1, TaskTypeStory, "A")
+	a, err := NewGenericTask("a", 1, "A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := NewTask("b", 2, TaskTypeEpic, "B")
+	b, err := NewGenericTask("b", 2, "B")
 	if err != nil {
 		t.Fatal(err)
 	}

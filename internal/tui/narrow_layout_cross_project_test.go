@@ -16,7 +16,7 @@ func TestProjectSelectorViewRespectsVisualWidth(t *testing.T) {
 		t.Fatalf("NewProject source: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 42, models.TaskTypeTask, "修复跨项目移动选择器的宽字符截断问题")
+	task, err := models.NewGenericTask("task-1", 42, "修复跨项目移动选择器的宽字符截断问题")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -52,41 +52,12 @@ func TestProjectSelectorViewRespectsVisualWidth(t *testing.T) {
 	}
 }
 
-func TestLinkedTaskSelectorRelationLineRespectsVisualWidth(t *testing.T) {
-	sourceProject, err := models.NewProject("source", "source-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject source: %v", err)
-	}
-	targetProject, err := models.NewProject("target", "target-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject target: %v", err)
-	}
-	targetProject.Name = "界面修复冲刺计划项目"
-
-	task, err := models.NewTask("task-1", 12, models.TaskTypeTask, "修复跨项目链接列表在窄宽度下的标题截断问题")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	task.WorkflowState = models.StateInProgress
-
-	m := &LinkedTaskSelectorModel{sourceTask: task, project: sourceProject}
-	m.SetSize(32, 12)
-
-	line := "> " + m.renderRelationLine(LinkedTaskRelation{Task: task, Project: targetProject}, false)
-	if lipgloss.Width(ansi.Strip(line)) > 32 {
-		t.Fatalf("linked task selector line exceeds width 32: %q (width=%d)", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)))
-	}
-	if !strings.Contains(ansi.Strip(line), "界面修复") {
-		t.Fatalf("expected cross-project label to remain visible, got %q", ansi.Strip(line))
-	}
-}
-
 func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
 	sourceProject, err := models.NewProject("source", "source-proj", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject source: %v", err)
 	}
-	sourceTask, err := models.NewTask("source-task", 7, models.TaskTypeTask, "修复跨项目链接器在窄宽度下的布局")
+	sourceTask, err := models.NewGenericTask("source-task", 7, "修复跨项目链接器在窄宽度下的布局")
 	if err != nil {
 		t.Fatalf("NewTask source: %v", err)
 	}
@@ -94,7 +65,7 @@ func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProject target: %v", err)
 	}
-	targetTask, err := models.NewTask("target-task", 21, models.TaskTypeTask, "修复目标任务列表在窄视图中的宽字符截断问题")
+	targetTask, err := models.NewGenericTask("target-task", 21, "修复目标任务列表在窄视图中的宽字符截断问题")
 	if err != nil {
 		t.Fatalf("NewTask target: %v", err)
 	}

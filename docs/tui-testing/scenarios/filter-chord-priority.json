@@ -1,13 +1,15 @@
 {
   "name": "filter-chord-priority",
   "fixture": "rich",
-  "size": "100x35",
+  "size": "99x35",
   "actions": [
     { "type": "key", "label": "hold the filter prefix", "key": "f" },
     { "type": "assert", "assert": "contains", "value": "p priority threshold" },
     { "type": "assert", "assert": "contains", "value": "d due" },
     { "type": "assert", "assert": "contains", "value": "s states" },
     { "type": "assert", "assert": "contains", "value": "t tags" },
+    { "type": "assert", "assert": "contains", "value": "b blocked" },
+    { "type": "assert", "assert": "contains", "value": "z snoozed" },
     { "type": "assert", "assert": "contains", "value": "x clear all" },
     { "type": "assert", "assert": "no_layout_issues" },
 

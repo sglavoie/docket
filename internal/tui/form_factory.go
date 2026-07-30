@@ -95,18 +95,6 @@ func (f *FormFieldFactory) ResizeTextarea(ta *textarea.Model, availableWidth int
 	ta.SetWidth(width)
 }
 
-// ResizeTextareaWithReserve adjusts a textarea that shares a row with fixed
-// labels or indentation. reservedColumns is the visual width consumed before
-// the textarea starts.
-func (f *FormFieldFactory) ResizeTextareaWithReserve(ta *textarea.Model, availableWidth, reservedColumns int) {
-	cardWidth := min(availableWidth-4, 80)
-	lipglossWidth := cardWidth - 2
-	textWidth := lipglossWidth - 4 - 1
-	budget := max(availableWidth-reservedColumns, 1)
-	width := min(textWidth, budget)
-	ta.SetWidth(max(width, 1))
-}
-
 // ResizeTextInput adjusts a text input to fit available width.
 // Uses same calculation as ResizeTextarea for consistency.
 func (f *FormFieldFactory) ResizeTextInput(ti *textinput.Model, availableWidth int) {

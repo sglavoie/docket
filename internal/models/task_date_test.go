@@ -6,7 +6,7 @@ import (
 )
 
 func TestIsDueToday(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestIsDueToday(t *testing.T) {
 }
 
 func TestIsDueThisWeek(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,131 +85,5 @@ func TestIsDueThisWeek(t *testing.T) {
 	task.DueDate = &yesterday
 	if task.IsDueThisWeek() {
 		t.Error("expected not due this week for yesterday")
-	}
-}
-
-func TestEnsureTypeAttrs(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeBug, "Bug Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Initially nil
-	if task.BugAttrs != nil {
-		t.Error("expected BugAttrs nil initially")
-	}
-
-	task.EnsureBugAttrs()
-	if task.BugAttrs == nil {
-		t.Error("expected BugAttrs to be initialized")
-	}
-
-	// Second call should be idempotent
-	task.BugAttrs.Severity = BugSeverityCritical
-	task.EnsureBugAttrs()
-	if task.BugAttrs.Severity != BugSeverityCritical {
-		t.Error("EnsureBugAttrs should not reset existing attrs")
-	}
-}
-
-func TestEnsureIdeaAttrs(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeIdea, "Idea Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	task.EnsureIdeaAttrs()
-	if task.IdeaAttrs == nil {
-		t.Error("expected IdeaAttrs to be initialized")
-	}
-
-	task.IdeaAttrs.Value = IdeaValueHigh
-	task.EnsureIdeaAttrs()
-	if task.IdeaAttrs.Value != IdeaValueHigh {
-		t.Error("EnsureIdeaAttrs should not reset existing attrs")
-	}
-}
-
-func TestEnsureTaskAttrs(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Task Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	task.EnsureTaskAttrs()
-	if task.TaskAttrs == nil {
-		t.Error("expected TaskAttrs to be initialized")
-	}
-
-	task.TaskAttrs.Effort = EffortLarge
-	task.EnsureTaskAttrs()
-	if task.TaskAttrs.Effort != EffortLarge {
-		t.Error("EnsureTaskAttrs should not reset existing attrs")
-	}
-}
-
-func TestEnsureStoryAttrs(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeStory, "Story Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	task.EnsureStoryAttrs()
-	if task.StoryAttrs == nil {
-		t.Error("expected StoryAttrs to be initialized")
-	}
-
-	task.StoryAttrs.StoryPoints = 13
-	task.EnsureStoryAttrs()
-	if task.StoryAttrs.StoryPoints != 13 {
-		t.Error("EnsureStoryAttrs should not reset existing attrs")
-	}
-}
-
-func TestEnsureEpicAttrs(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeEpic, "Epic Test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	task.EnsureEpicAttrs()
-	if task.EpicAttrs == nil {
-		t.Error("expected EpicAttrs to be initialized")
-	}
-
-	task.EpicAttrs.Scope = EpicScopeDefined
-	task.EnsureEpicAttrs()
-	if task.EpicAttrs.Scope != EpicScopeDefined {
-		t.Error("EnsureEpicAttrs should not reset existing attrs")
-	}
-}
-
-func TestParseTaskTypeInsensitive(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected TaskType
-		valid    bool
-	}{
-		{"task", TaskTypeTask, true},
-		{"TASK", TaskTypeTask, true},
-		{"Task", TaskTypeTask, true},
-		{"BUG", TaskTypeBug, true},
-		{"Epic", TaskTypeEpic, true},
-		{"STORY", TaskTypeStory, true},
-		{"idea", TaskTypeIdea, true},
-		{"invalid", TaskType("invalid"), false},
-		{"", TaskType(""), false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, valid := ParseTaskTypeInsensitive(tt.input)
-			if valid != tt.valid {
-				t.Errorf("ParseTaskTypeInsensitive(%q) valid = %v, want %v", tt.input, valid, tt.valid)
-			}
-			if valid && got != tt.expected {
-				t.Errorf("ParseTaskTypeInsensitive(%q) = %q, want %q", tt.input, got, tt.expected)
-			}
-		})
 	}
 }

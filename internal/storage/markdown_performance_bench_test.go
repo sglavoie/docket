@@ -12,7 +12,7 @@ func BenchmarkWriteTasksMarkdownLargeHierarchy(b *testing.B) {
 	tasks := make([]*models.Task, 0, taskCount)
 	for i := range taskCount {
 		id := fmt.Sprintf("task-%05d", i)
-		task, err := models.NewTask(id, i+1, models.TaskTypeTask, fmt.Sprintf("Large hierarchy task %d", i))
+		task, err := models.NewGenericTask(id, i+1, fmt.Sprintf("Large hierarchy task %d", i))
 		if err != nil {
 			b.Fatalf("create task: %v", err)
 		}

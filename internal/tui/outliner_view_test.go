@@ -52,27 +52,27 @@ func TestFlattenTaskTree(t *testing.T) {
 	//       task2
 	//     story2
 	//   epic2
-	epic1, err := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic 1")
+	epic1, err := models.NewGenericTask("e1", 1, "Epic 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story1, err := models.NewTask("s1", 2, models.TaskTypeStory, "Story 1")
+	story1, err := models.NewGenericTask("s1", 2, "Story 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := models.NewTask("t1", 3, models.TaskTypeTask, "Task 1")
+	task1, err := models.NewGenericTask("t1", 3, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := models.NewTask("t2", 4, models.TaskTypeTask, "Task 2")
+	task2, err := models.NewGenericTask("t2", 4, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story2, err := models.NewTask("s2", 5, models.TaskTypeStory, "Story 2")
+	story2, err := models.NewGenericTask("s2", 5, "Story 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	epic2, err := models.NewTask("e2", 6, models.TaskTypeEpic, "Epic 2")
+	epic2, err := models.NewGenericTask("e2", 6, "Epic 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,9 +163,9 @@ func TestFlattenTaskTreeDeep(t *testing.T) {
 	tasks := make([]*models.Task, 6)
 	for i := range tasks {
 		var err error
-		tasks[i], err = models.NewTask(
-			"id"+string(rune('0'+i)), i+1, models.TaskTypeTask, "Level "+string(rune('1'+i)),
-		)
+		tasks[i], err = models.NewGenericTask(
+			"id"+string(rune('0'+i)), i+1, "Level "+string(rune('1'+i)))
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -212,39 +212,39 @@ func TestFlattenTaskTreeLeafAndParentConnectors(t *testing.T) {
 	//       task3 (leaf, only/last child of story2)
 	//     leaf2 (leaf, last child of epic2)
 
-	epic1, err := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic 1")
+	epic1, err := models.NewGenericTask("e1", 1, "Epic 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story1, err := models.NewTask("s1", 2, models.TaskTypeStory, "Story 1")
+	story1, err := models.NewGenericTask("s1", 2, "Story 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := models.NewTask("t1", 3, models.TaskTypeTask, "Task 1")
+	task1, err := models.NewGenericTask("t1", 3, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := models.NewTask("t2", 4, models.TaskTypeTask, "Task 2")
+	task2, err := models.NewGenericTask("t2", 4, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	leaf1, err := models.NewTask("l1", 5, models.TaskTypeTask, "Leaf 1")
+	leaf1, err := models.NewGenericTask("l1", 5, "Leaf 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	epic2, err := models.NewTask("e2", 6, models.TaskTypeEpic, "Epic 2")
+	epic2, err := models.NewGenericTask("e2", 6, "Epic 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story2, err := models.NewTask("s2", 7, models.TaskTypeStory, "Story 2")
+	story2, err := models.NewGenericTask("s2", 7, "Story 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := models.NewTask("t3", 8, models.TaskTypeTask, "Task 3")
+	task3, err := models.NewGenericTask("t3", 8, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	leaf2, err := models.NewTask("l2", 9, models.TaskTypeTask, "Leaf 2")
+	leaf2, err := models.NewGenericTask("l2", 9, "Leaf 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,14 +315,14 @@ func TestFlattenTaskTreeSliceAliasing(t *testing.T) {
 	// "non-last" state as "last" because the second sibling's append
 	// overwrote the first sibling's ancestor trail in the shared array.
 
-	root, _ := models.NewTask("r", 1, models.TaskTypeEpic, "Root")
-	parent1, _ := models.NewTask("p1", 2, models.TaskTypeStory, "Parent 1")
-	parent2, _ := models.NewTask("p2", 3, models.TaskTypeTask, "Parent 2")
-	sibling1, _ := models.NewTask("s1", 4, models.TaskTypeTask, "Sibling 1")
-	sibling2, _ := models.NewTask("s2", 5, models.TaskTypeTask, "Sibling 2")
-	grandchild1, _ := models.NewTask("gc1", 6, models.TaskTypeTask, "Grandchild 1")
-	grandchild2, _ := models.NewTask("gc2", 7, models.TaskTypeTask, "Grandchild 2")
-	root2, _ := models.NewTask("r2", 8, models.TaskTypeEpic, "Root 2")
+	root, _ := models.NewGenericTask("r", 1, "Root")
+	parent1, _ := models.NewGenericTask("p1", 2, "Parent 1")
+	parent2, _ := models.NewGenericTask("p2", 3, "Parent 2")
+	sibling1, _ := models.NewGenericTask("s1", 4, "Sibling 1")
+	sibling2, _ := models.NewGenericTask("s2", 5, "Sibling 2")
+	grandchild1, _ := models.NewGenericTask("gc1", 6, "Grandchild 1")
+	grandchild2, _ := models.NewGenericTask("gc2", 7, "Grandchild 2")
+	root2, _ := models.NewGenericTask("r2", 8, "Root 2")
 
 	sibling1.Children = []*models.Task{grandchild1}
 	sibling2.Children = []*models.Task{grandchild2}
@@ -365,15 +365,15 @@ func TestFlattenTaskTreeSliceAliasing(t *testing.T) {
 func TestFlattenTaskTreeNoState(t *testing.T) {
 	// Verify no connector state stored on tree nodes: run flatten twice
 	// and confirm identical results.
-	epic, err := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic")
+	epic, err := models.NewGenericTask("e1", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child1, err := models.NewTask("c1", 2, models.TaskTypeTask, "Child 1")
+	child1, err := models.NewGenericTask("c1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := models.NewTask("c2", 3, models.TaskTypeTask, "Child 2")
+	child2, err := models.NewGenericTask("c2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}

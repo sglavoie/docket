@@ -16,7 +16,6 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 			name: "complete task",
 			task: &models.Task{
 				ID:            "task-round-1",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateInProgress,
 				Priority:      2,
 				Tags:          []string{"work", "urgent"},
@@ -28,7 +27,6 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 				Recurrence: &models.RecurrencePattern{
 					Interval: 1,
 					Unit:     models.RecurrenceWeekly,
-					Weekdays: []int{1, 3, 5},
 				},
 			},
 		},
@@ -36,7 +34,6 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 			name: "minimal task",
 			task: &models.Task{
 				ID:            "task-round-2",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      3,
 			},
@@ -45,7 +42,6 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 			name: "task with in-progress state",
 			task: &models.Task{
 				ID:            "task-round-3",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateInProgress,
 				Priority:      2,
 			},

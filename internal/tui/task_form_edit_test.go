@@ -7,32 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-func TestTaskForm_EditMode_LoadsBugAttrs(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.Type = models.TaskTypeBug
-	task.BugAttrs = &models.BugAttrs{
-		Severity:     models.BugSeverityMajor,
-		Reproducible: models.BugReproducibleYes,
-		Workaround:   "some workaround",
-	}
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	if m.draft.bugAttrs.Severity != models.BugSeverityMajor {
-		t.Errorf("expected Severity=major, got %v", m.draft.bugAttrs.Severity)
-	}
-	if m.draft.bugAttrs.Reproducible != models.BugReproducibleYes {
-		t.Errorf("expected Reproducible=yes, got %v", m.draft.bugAttrs.Reproducible)
-	}
-	if m.draft.bugAttrs.Workaround != "some workaround" {
-		t.Errorf("expected Workaround='some workaround', got %q", m.draft.bugAttrs.Workaround)
-	}
-}
-
 func TestTaskFormEdit_CanonicalStatePreservedInDraft(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	cfg := newTestConfig()
@@ -52,10 +26,10 @@ func TestBuildValidParentsExcludesSelfInEditMode(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
 	cfg := newTestConfig()
 
-	epic := testutil.NewTestTask("Epic", models.TaskTypeEpic)
-	story := testutil.NewTestTask("Story", models.TaskTypeStory)
+	epic := testutil.NewTestTask("Epic")
+	story := testutil.NewTestTask("Story")
 	story.ParentID = &epic.ID
-	task := testutil.NewTestTask("Leaf Task", models.TaskTypeTask)
+	task := testutil.NewTestTask("Leaf Task")
 	task.ParentID = &story.ID
 
 	project.Tasks = []*models.Task{epic, story, task}
@@ -88,7 +62,7 @@ func TestBuildValidParentsIncludesAllInCreateMode(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
 	cfg := newTestConfig()
 
-	epic := testutil.NewTestTask("Epic", models.TaskTypeEpic)
+	epic := testutil.NewTestTask("Epic")
 	project.Tasks = []*models.Task{epic}
 	project.BuildTaskTree()
 

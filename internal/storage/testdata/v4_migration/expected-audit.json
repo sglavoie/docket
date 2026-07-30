@@ -1,0 +1,253 @@
+{
+  "schema": "synthetic-v4-migration-inventory-v1",
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "rules": [
+    {
+      "id": "snapshot-portable-config",
+      "fixture": "workspace/.tt/workspace.json",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "snapshot-machine-state",
+      "fixture": "machine/runtime/00000000-0000-4000-8000-000000000004/machine.json",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "snapshot-active-task-markdown",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "snapshot-archived-task-markdown",
+      "fixture": "workspace/projects/alpha/completed.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "snapshot-project-metadata",
+      "fixture": "workspace/.tt/workspace.json",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "snapshot-global-and-project-notes",
+      "fixture": "workspace/.tt/global-notes/global-reference.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "inventory-attachment-binaries",
+      "fixture": "workspace/projects/alpha/.attachments/d339d9894d9d35bf3dff069a22086be037c7c98fb1d7fc57ea77c74e25098e87/specification.txt",
+      "outcome": "report"
+    },
+    {
+      "id": "legacy-type-to-tag",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "review-to-ready-plus-tag",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "url-field-to-attachment",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "source-to-namespaced-tag",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "unresolved-blocker-to-inbox-task",
+      "fixture": "workspace/projects/alpha/blockers.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "resolved-blocker-snapshot-only",
+      "fixture": "workspace/projects/alpha/blockers.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "due-timestamp-to-local-date",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "snooze-timestamp-to-local-date",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "yearly-recurrence-to-month-interval",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "weekday-recurrence-to-weekly-interval",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "drop-rich-recurrence-state",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "minimal-note-frontmatter",
+      "fixture": "workspace/projects/alpha/notes/project-plan.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "reintegrate-archived-tasks",
+      "fixture": "workspace/projects/alpha/completed.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "active-id-wins-archive-duplicate",
+      "fixture": "workspace/projects/alpha/completed.md",
+      "outcome": "report"
+    },
+    {
+      "id": "reassign-colliding-short-ids",
+      "fixture": "workspace/projects/beta/completed.md",
+      "outcome": "report"
+    },
+    {
+      "id": "missing-parent-becomes-root",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "report"
+    },
+    {
+      "id": "preserve-cross-project-dependencies",
+      "fixture": "workspace/projects/beta/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "repair-dependencies-after-id-remap",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "report"
+    },
+    {
+      "id": "light-theme-stays-light",
+      "fixture": "variants/settings-light.json",
+      "outcome": "convert"
+    },
+    {
+      "id": "dark-or-custom-theme-becomes-dark",
+      "fixture": "workspace/.tt/settings.json",
+      "outcome": "convert"
+    },
+    {
+      "id": "sandbox-content-snapshot-only",
+      "fixture": "workspace/projects/_sandbox/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "project-trash-snapshot-only",
+      "fixture": "workspace/.tt/trash/project-deleted__1769947200000000000/tombstone.json",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "parking-data-snapshot-only",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "type-attributes-snapshot-only",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "related-links-snapshot-only",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "start-estimate-score-activity-snapshot-only",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "comment-resolved-state-dropped",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "decision-category-and-resolved-state-dropped",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "project-status-and-tag-catalogs-dropped",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "settings-and-automation-domains-dropped",
+      "fixture": "workspace/.tt/automation.json",
+      "outcome": "snapshot"
+    },
+    {
+      "id": "archive-and-index-removed-after-commit",
+      "fixture": "workspace/projects/alpha/.completed.index.json",
+      "outcome": "convert"
+    },
+    {
+      "id": "attachment-binaries-retained-in-place",
+      "fixture": "workspace/projects/alpha/.attachments/d339d9894d9d35bf3dff069a22086be037c7c98fb1d7fc57ea77c74e25098e87/specification.txt",
+      "outcome": "convert"
+    },
+    {
+      "id": "retained-task-fields-and-rich-records",
+      "fixture": "workspace/projects/alpha/tasks.md",
+      "outcome": "convert"
+    },
+    {
+      "id": "retained-lean-project-fields",
+      "fixture": "workspace/.tt/workspace.json",
+      "outcome": "convert"
+    },
+    {
+      "id": "planning-retains-today-and-next-order-only",
+      "fixture": "workspace/.tt/planning.json",
+      "outcome": "convert"
+    },
+    {
+      "id": "machine-retains-contexts-and-theme-only",
+      "fixture": "machine/runtime/00000000-0000-4000-8000-000000000004/machine.json",
+      "outcome": "convert"
+    }
+  ],
+  "unsupported_cases": [
+    {
+      "id": "corrupt-config-envelope",
+      "fixture": "unsupported/corrupt-workspace.json",
+      "outcome": "fail"
+    },
+    {
+      "id": "future-config-envelope",
+      "fixture": "unsupported/future-workspace.json",
+      "outcome": "fail"
+    },
+    {
+      "id": "partial-split-domain-bundle",
+      "fixture": "unsupported/partial/workspace/.tt/workspace.json",
+      "outcome": "fail"
+    },
+    {
+      "id": "future-task-markdown-schema",
+      "fixture": "unsupported/future-tasks.md",
+      "outcome": "fail"
+    },
+    {
+      "id": "corrupt-note-frontmatter",
+      "fixture": "unsupported/corrupt-note.md",
+      "outcome": "report"
+    },
+    {
+      "id": "orphan-attachment-directory",
+      "fixture": "workspace/projects/alpha/.attachments/94aeaa63349fb9ecfc9b52011f9eaf07c166cc1d999a00c5b9aad7b0152995a9/orphan.txt",
+      "outcome": "report"
+    }
+  ]
+}

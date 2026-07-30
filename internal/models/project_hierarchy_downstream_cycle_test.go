@@ -13,15 +13,15 @@ func TestBuildTaskTree_DownstreamCycleDoesNotDetachUpstreamTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	taskA, err := NewGenericTask("a", 1, "Task A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	taskB, err := NewGenericTask("b", 2, "Task B")
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	taskC, err := NewGenericTask("c", 3, "Task C")
 	if err != nil {
 		t.Fatal(err)
 	}

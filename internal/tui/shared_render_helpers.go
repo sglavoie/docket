@@ -3,11 +3,9 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -49,17 +47,11 @@ const EmptyStateClosed = "No closed tasks."
 // EmptyStateNoMatch is the standard message shown when a tab filter produces no results.
 const EmptyStateNoMatch = "No tasks match this tab."
 
-// EmptyStateNoMessages is shown when a message log has no entries.
-const EmptyStateNoMessages = "No messages yet."
-
 // EmptyStateSearchPrompt is shown in a search view when no query has been entered.
 const EmptyStateSearchPrompt = "Type to search across all tasks…"
 
 // EmptyStateCrossProject is shown when a cross-project search finds no tasks.
 const EmptyStateCrossProject = "No tasks found across projects."
-
-// EmptyStateNoAlerts is shown in the alert center when no alerts are active.
-const EmptyStateNoAlerts = "No alerts — everything looks good!"
 
 // SectionHeaderOpts configures the unified section header renderer.
 type SectionHeaderOpts struct {
@@ -129,27 +121,17 @@ func renderDescriptionIndicator(task *models.Task) string {
 }
 
 // renderCommentIndicator renders a compact comment count indicator.
-// Shows unresolved/total when some are resolved, otherwise just total.
 func renderCommentIndicator(task *models.Task) string {
 	if len(task.Comments) == 0 {
 		return ""
-	}
-	unresolved := task.UnresolvedCommentCount()
-	if unresolved < len(task.Comments) {
-		return MutedStyle.Render(fmt.Sprintf("%s %d/%d", IconComment(), unresolved, len(task.Comments)))
 	}
 	return MutedStyle.Render(fmt.Sprintf("%s %d", IconComment(), len(task.Comments)))
 }
 
 // renderDecisionIndicator renders a compact decision count indicator.
-// Shows unresolved/total when some are resolved, otherwise just total.
 func renderDecisionIndicator(task *models.Task) string {
 	if len(task.Decisions) == 0 {
 		return ""
-	}
-	unresolved := task.UnresolvedDecisionCount()
-	if unresolved < len(task.Decisions) {
-		return MutedStyle.Render(fmt.Sprintf("%s %d/%d", IconDecision(), unresolved, len(task.Decisions)))
 	}
 	return MutedStyle.Render(fmt.Sprintf("%s %d", IconDecision(), len(task.Decisions)))
 }
@@ -281,27 +263,4 @@ func renderDependencyIndicators(task *models.Task, project *models.Project) stri
 		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))))
 	}
 	return strings.Join(parts, " ")
-}
-
-// renderStaleIndicator renders the shared stale badge when a task exceeds the configured threshold.
-func renderStaleIndicator(settings *config.Settings, task *models.Task) string {
-	if settings == nil {
-		return ""
-	}
-	threshold := settings.GetStaleTaskDays()
-	if threshold <= 0 {
-		return ""
-	}
-	effectiveUpdate := task.UpdatedAt
-	if effectiveUpdate.IsZero() {
-		effectiveUpdate = task.CreatedAt
-	}
-	if effectiveUpdate.IsZero() {
-		return ""
-	}
-	days := int(time.Since(effectiveUpdate).Hours() / 24)
-	if days < threshold {
-		return ""
-	}
-	return MutedStyle.Render("stale")
 }

@@ -6,7 +6,7 @@ import (
 )
 
 func TestAddTag(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestAddTag(t *testing.T) {
 }
 
 func TestAddMultipleTags(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestAddMultipleTags(t *testing.T) {
 }
 
 func TestRemoveTag(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestRemoveTag(t *testing.T) {
 }
 
 func TestRemoveNonexistentTag(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func Test_validateTag(t *testing.T) {
 }
 
 func TestAddTagRejectsInvalid(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestAddTagRejectsInvalid(t *testing.T) {
 }
 
 func TestAddTagNormalizesWhitespace(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestAddTagNormalizesWhitespace(t *testing.T) {
 }
 
 func TestRemoveTagNormalizesWhitespace(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestRemoveTagNormalizesWhitespace(t *testing.T) {
 }
 
 func TestHasTagNormalizesWhitespace(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestHasTagNormalizesWhitespace(t *testing.T) {
 }
 
 func TestHasTag(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestHasTag(t *testing.T) {
 // CLI input like `--tag "#backend"` would render as "##backend" — diverging
 // from the TUI tag adder (commit 086f1321) which already strips the prefix.
 func TestAddTagStripsLeadingHash(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestAddTagStripsLeadingHash(t *testing.T) {
 // whitespace + '#') is rejected, since stripping the prefix leaves an empty
 // string.
 func TestAddTagRejectsHashOnly(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestAddTagRejectsHashOnly(t *testing.T) {
 // HasTag("") could match an empty entry and a missing/unset filter argument
 // would treat every task as tagged.
 func TestHasTagEmptyReturnsFalse(t *testing.T) {
-	task, err := NewTask("t", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}

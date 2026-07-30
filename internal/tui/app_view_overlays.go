@@ -50,9 +50,6 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	if m.projectAdminMenu != nil {
 		out = append(out, m.projectAdminMenu)
 	}
-	if m.quickNoteOverlay != nil {
-		out = append(out, m.quickNoteOverlay)
-	}
 	return out
 }
 

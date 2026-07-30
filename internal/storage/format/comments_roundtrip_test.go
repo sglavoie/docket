@@ -103,58 +103,6 @@ func TestWriteComments_AmpersandRoundTrip(t *testing.T) {
 	}
 }
 
-func TestWriteComments_ResolvedRoundTrip(t *testing.T) {
-	comments := []*models.Comment{
-		{
-			Text:      "Unresolved comment",
-			CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
-			Resolved:  false,
-		},
-		{
-			Text:      "Resolved comment",
-			CreatedAt: time.Date(2025, 1, 16, 14, 20, 0, 0, time.Local),
-			Resolved:  true,
-		},
-		{
-			Text:      "Another unresolved",
-			CreatedAt: time.Date(2025, 1, 17, 9, 15, 0, 0, time.Local),
-			Resolved:  false,
-		},
-	}
-
-	task := &models.Task{
-		Description: "Task description",
-		Comments:    comments,
-	}
-
-	commentBlock := WriteComments(task)
-
-	task2 := &models.Task{
-		Description: "Task description\n\n" + commentBlock,
-	}
-
-	ExtractCommentsFromDescription(task2)
-
-	if len(task2.Comments) != len(comments) {
-		t.Fatalf("got %d comments, want %d", len(task2.Comments), len(comments))
-	}
-
-	for i, got := range task2.Comments {
-		want := comments[i]
-		if got.Text != want.Text {
-			t.Errorf("Comment[%d].Text = %q, want %q", i, got.Text, want.Text)
-		}
-		if got.Resolved != want.Resolved {
-			t.Errorf("Comment[%d].Resolved = %v, want %v", i, got.Resolved, want.Resolved)
-		}
-		gotTime := got.CreatedAt.Format(util.DateTimeFormat)
-		wantTime := want.CreatedAt.Format(util.DateTimeFormat)
-		if gotTime != wantTime {
-			t.Errorf("Comment[%d].CreatedAt = %s, want %s", i, gotTime, wantTime)
-		}
-	}
-}
-
 func TestWriteComments_HeadingLikeLinesRoundTrip(t *testing.T) {
 	comments := []*models.Comment{
 		{

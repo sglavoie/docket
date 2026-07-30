@@ -7,74 +7,9 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
-
-// handleAskMessage owns action-plan completion independently of whichever view
-// is currently visible. Transactions cannot be canceled once committing, so a
-// covered or replaced Ask still needs exactly-once reference repair, project
-// reloads, and cache/view refreshes after its command returns.
-func (m *AppModel) handleAskMessage(raw tea.Msg) (bool, tea.Cmd) {
-	msg, ok := raw.(AskActionPlanAppliedMsg)
-	if !ok {
-		return false, nil
-	}
-	if msg.OperationID == 0 {
-		return true, nil
-	}
-	if m.handledAskApplyIDs == nil {
-		m.handledAskApplyIDs = make(map[uint64]struct{})
-	}
-	if _, handled := m.handledAskApplyIDs[msg.OperationID]; handled {
-		return true, nil
-	}
-	m.handledAskApplyIDs[msg.OperationID] = struct{}{}
-
-	var cmds []tea.Cmd
-	if msg.Err == nil {
-		msg.RepairWarning = repairAskActionPlanTaskRefs(m.runtime, msg.Result.DeletedTaskLocators, msg.PendingDomains)
-		for _, projectID := range msg.Result.TouchedProjects {
-			m.reloadProjectByID(projectID)
-		}
-		m.clearToggleHistory()
-		m.observeLoadedProjectMilestones(msg.Result.TouchedProjects...)
-		cmds = append(cmds, m.refreshTaskViewsAfterSave()...)
-	}
-
-	var matchingAsk *AskViewModel
-	if m.views != nil {
-		if ask, registered := m.views.Get(ViewAsk).(*AskViewModel); registered &&
-			ask.state == askStateApplying && ask.applyID == msg.OperationID {
-			matchingAsk = ask
-		}
-	}
-	matchingAskVisible := matchingAsk != nil && m.currentView() == ViewAsk
-	if matchingAsk != nil {
-		_, cmd := matchingAsk.Update(msg)
-		cmds = append(cmds, cmd)
-	}
-
-	if !matchingAskVisible {
-		if msg.Err != nil {
-			failure := fmt.Sprintf("AI action plan apply failed: %s", askErrorText(msg.Err))
-			m.setBackgroundErrorStatus(failure)
-			cmds = append(cmds, statusTimeout(5*time.Second))
-		} else {
-			success := fmt.Sprintf("Applied %d AI action(s) · transaction %s · undo %s", len(msg.Result.Actions), msg.Result.TransactionID, msg.Result.UndoID)
-			m.setSuccessStatus(success)
-			if msg.RepairWarning != nil {
-				warning := fmt.Sprintf("%s — warning: local reference repair incomplete: %s", success, askErrorText(msg.RepairWarning))
-				m.setWarningStatus(warning)
-			}
-			cmds = append(cmds, defaultStatusTimeout())
-		}
-	}
-
-	return true, tea.Batch(cmds...)
-}
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 	if handled, cmd := m.handleOperationOverlayMessage(msg); handled {
@@ -97,13 +32,6 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.PasteMsg:
-		if m.quickNoteOverlay != nil {
-			var cmd tea.Cmd
-			m.quickNoteOverlay.input, cmd = m.quickNoteOverlay.input.Update(msg)
-			return true, cmd
-		}
-		return false, nil
 	case tea.KeyPressMsg:
 		return m.handleGlobalKeyPress(msg)
 	case tea.KeyboardEnhancementsMsg:
@@ -138,8 +66,13 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// whichever child presentation happens to be visible when the async
 		// command completes. Routing the result globally guarantees loading state
 		// settles even if navigation covered the Outliner after the load started.
+		// Adopt accepted snapshots into the shell cache first so operation
+		// resolution sees the same disk-loaded task trees as the rendered rows.
 		if m.crossOutliner == nil {
 			return true, nil
+		}
+		if msg.generation == m.crossOutliner.crossLoadGen {
+			m.adoptCrossProjectSnapshot(msg.projects)
 		}
 		return true, m.crossOutliner.handleCrossProjectsLoaded(msg)
 	case retryMachineDomainRepairMsg:
@@ -181,24 +114,10 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.handleTransactionResult(msg)
 	case BatchTransactionResultMsg:
 		return true, m.handleBatchTransactionResult(msg)
-	case ConfigTransactionResultMsg:
-		// A config-domain coordinator committed the settings/machine or automation
-		// domain through a checked save; advance the shared runtime snapshot so views
-		// reading it observe the committed preferences without a render-time disk load.
-		m.refreshRuntime()
-		return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 	case TransactionErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.err = msg.Err
-		// A rejected transaction must leave the inbox queue untouched: drop the
-		// armed post-commit bookkeeping so the same task stays selected and
-		// unprocessed, and likewise drop any armed Weekly Review deletion accounting
-		// so a failed delete stays uncounted. Correlate on the request token so only
-		// THIS delete's rejection clears its own state — an unrelated transaction
-		// error (token 0 or a different delete's token) leaves an in-flight Inbox or
-		// Weekly Review delete intact.
-		m.clearPendingDeleteBookkeeping(msg.DeleteRequestToken)
 		return true, statusTimeout(5 * time.Second)
 	default:
 		return false, nil
@@ -211,18 +130,11 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // affected project is reloaded from disk before the shared post-save refresh
 // runs, keeping every open view consistent with the committed transaction.
 func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
-	triagedInbox := m.activeInboxTriage() &&
-		msg.Action == "Change State" &&
-		msg.Result.State != models.StateInbox
 	m.reloadProjectByID(msg.Result.ProjectID)
 	if msg.PlanningChanged && m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
 	}
 	m.refreshLoadedTaskWorkspace()
-	m.observeLoadedProjectMilestones(msg.Result.ProjectID)
-	if triagedInbox {
-		m.markInboxTriaged()
-	}
 	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 }
 
@@ -232,26 +144,10 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 // project, so each affected project's in-memory copy is reloaded from disk before
 // the shared post-save refresh runs, keeping every open view consistent.
 func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) tea.Cmd {
-	triagedInbox := m.activeInboxTriage() &&
-		msg.Action == "Bulk Transition" &&
-		len(msg.TouchedProjectIDs) > 0
 	for _, projectID := range msg.TouchedProjectIDs {
 		m.reloadProjectByID(projectID)
 	}
 	m.refreshLoadedTaskWorkspace()
-	// Repair the machine-local recent visits for every removed task — a bulk
-	// delete folds the DURABLE project-qualified planning refs (Focus Queue and Daily Plan)
-	// into the transaction as a config artifact, but recent visits are
-	// non-authoritative UI state cleaned separately after the commit, mirroring the
-	// CLI delete. A save failure here is a warning, not an error: the delete is
-	// already committed.
-	if len(msg.RemovedTaskLocators) > 0 {
-		if err := m.commitMachineMutation(func(machine *config.MachineState) {
-			machine.RemoveMachineLocalTaskLocators(configTaskLocatorsFromApp(msg.RemovedTaskLocators))
-		}); err != nil {
-			logging.Warn("failed to update recent visits after bulk delete: %v", err)
-		}
-	}
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
 	// selection intact for the user to retry.
@@ -260,32 +156,12 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	} else if len(msg.ClearSelectionTaskIDs) > 0 {
 		m.clearBulkTaskSelectionsForTaskIDs(msg.ClearSelectionTaskIDs)
 	}
-	// Persist workflow-rule trigger counts fired by a bulk-with-rules mutation.
-	// They live in workspace config (not project Markdown), so they ride outside
-	// the ChangeSet; doing it here in Update() keeps the shared config write off
-	// the async command goroutine.
-	if len(msg.RuleTriggerCounts) > 0 {
-		if err := m.commitAutomationMutation(func(automation *config.AutomationConfig) {
-			automation.IncrementRuleTriggerCounts(msg.RuleTriggerCounts)
-		}); err != nil {
-			logging.Warn("failed to update workflow rule trigger counts: %v", err)
-		}
-	}
 	// The checked planning artifact folded into this batch is now committed.
 	// Rebuild the shared planning caches only after the runtime snapshot advances:
 	// registered views refresh below and must never render a known-stale snapshot.
 	if m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
 	}
-	m.observeLoadedProjectMilestones(msg.TouchedProjectIDs...)
-	if triagedInbox {
-		m.markInboxTriaged()
-	}
-	// Credit the Weekly Review completion summary for a committed delete it
-	// originated. A no-op for every other origin (the count is armed only for a
-	// Weekly Review-origin delete in confirmTaskDelete) and for an unrelated batch
-	// whose token does not match the armed request.
-	m.applyPendingWeeklyReviewDelete(msg.DeleteRequestToken, msg.RemovedTaskIDs)
 	saveCmd := m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
 	return saveCmd
 }
@@ -314,36 +190,19 @@ func (m *AppModel) reloadProjectByID(projectID string) {
 }
 
 func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
-	switch msg := msg.(type) {
+	switch msg.(type) {
 	case RefreshOpenLoopsMsg:
-		m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
+		m.openLoops = ComputeOpenLoops(m.runtime, m.todayIDs)
 		return true, nil
 	case TodayClearedBannerClearMsg:
 		m.todayClearedBanner = ""
 		return true, nil
 	case NotesRefreshMsg:
-		m.refreshNotesSearchState()
 		if nv := m.getActiveNotesView(); nv != nil {
 			nv.tasksLoaded = false
 			nv.loadNotes()
 		}
 		return true, nil
-	case systemAppearanceCheckMsg:
-		if !m.runtime.Settings().GetAutoTheme() {
-			return true, nil
-		}
-		detector := m.appearanceDetector
-		return true, func() tea.Msg {
-			return systemAppearanceResultMsg{Appearance: detector.Detect()}
-		}
-	case systemAppearanceResultMsg:
-		cmd := m.handleAppearanceResult(msg)
-		if m.runtime.Settings().GetAutoTheme() {
-			return true, tea.Batch(cmd, tea.Tick(appearanceCheckInterval, func(time.Time) tea.Msg {
-				return systemAppearanceCheckMsg{}
-			}))
-		}
-		return true, cmd
 	default:
 		return false, nil
 	}
@@ -407,13 +266,8 @@ func (m *AppModel) refreshTaskViewsAfterRestore(runtimeReloaded bool) []tea.Cmd 
 }
 
 func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject bool) []tea.Cmd {
-	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
-	m.refreshNotesSearchState()
+	m.openLoops = ComputeOpenLoops(m.runtime, m.todayIDs)
 	m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
-	if m.reviewHub != nil {
-		m.reviewHub.SetPlanningIndicators(m.focusQueueIDs, m.dailyPlanIDs)
-		m.reviewHub.Refresh()
-	}
 	var saveCmds []tea.Cmd
 	if reloadCrossProject {
 		if reloadCmd := m.requestCrossProjectOutlinerReload(); reloadCmd != nil {
@@ -421,12 +275,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 		}
 	}
 	if m.views != nil {
-		if v := m.views.Get(ViewWeeklyReview); v != nil {
-			if wr, ok := v.(*WeeklyReviewModel); ok {
-				wr.reloadData()
-				wr.clampCursor()
-			}
-		}
 		if v := m.views.Get(ViewTaskAttachments); v != nil {
 			if av, ok := v.(*TaskAttachmentsModel); ok {
 				av.refreshAfterReload()
@@ -436,14 +284,13 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 			if td, ok := v.(*TaskDetailModel); ok {
 				if td.task != nil && td.project != nil {
 					identity := taskIdentityFor(td.task, td.project)
-					td.SetPlanningMembership(m.dailyPlanIDs[identity], m.focusQueueIDs[identity])
+					td.SetPlanningMembership(m.todayIDs[identity], m.nextOrderIDs[identity])
 				}
 				if !td.refreshAfterReload() && m.taskDetail == td && m.activeTaskDetail() {
 					saveCmds = append(saveCmds, func() tea.Msg { return BackMsg{} })
 				}
 			}
 		}
-		m.refreshLinkedTaskSelectorAfterReload()
 	}
 	return saveCmds
 }
@@ -453,24 +300,5 @@ func (m *AppModel) refreshProjectViewAfterTaskMutation(persistProjectTreeState b
 		m.refreshProjectView()
 	} else {
 		m.refreshProjectViewInMemory()
-	}
-}
-
-func (m *AppModel) refreshLinkedTaskSelectorAfterReload() {
-	if v := m.views.Get(ViewLinkedTaskSelector); v != nil {
-		if ls, ok := v.(*LinkedTaskSelectorModel); ok {
-			ls.refreshAfterReload(m.projectByID(tuiUndoProjectID(ls.project)))
-		}
-	}
-}
-
-func (m *AppModel) refreshNotesSearchState() {
-	if m.views == nil {
-		return
-	}
-	if v := m.views.Get(ViewNotesSearch); v != nil {
-		if ns, ok := v.(*NotesSearchModel); ok {
-			ns.MarkStale()
-		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
@@ -34,8 +35,6 @@ var schemaMarkerRegex = regexp.MustCompile(`^<!--\s*tt-schema:\s*(\d+)\s*-->\s*$
 var knownHeaderCommentRegexes = []*regexp.Regexp{
 	schemaMarkerRegex,
 	sectionsRegex,
-	tagsRegex,
-	pinnedTagsRegex,
 }
 
 // OpaqueBlock is a verbatim slice of header content that the structured parser
@@ -53,26 +52,41 @@ type OpaqueBlock struct {
 // private to the decoder.
 type ProjectDocument struct {
 	ProjectName   string
-	Tags          []string
-	PinnedTags    []string
 	Tasks         []*models.Task
 	SchemaVersion int
 	OpaqueBlocks  []OpaqueBlock
 	// Revision is the canonical content hash of this document. Two documents
 	// with identical logical content share a revision regardless of source
-	// formatting, because it is computed from the canonical v2 rendering.
+	// formatting.
 	Revision            string
 	Warnings            []ParseWarning
 	legacySections      []string
 	legacySectionColors map[string]string
 }
 
-// ParseProjectDocument parses tasks.md content into a storage ProjectDocument.
-// It detects the schema version, captures unknown header comment lines as opaque
-// blocks, delegates structured task parsing to the shared parser (so both legacy
-// v1 and v2 `state` documents load identically for the rest of the domain), and
-// computes the canonical revision.
+// ParseProjectDocument parses the live schema-v5 tasks.md format. Older task
+// schemas are accepted only by the migration-specific decoder and are rejected
+// at this runtime boundary.
 func ParseProjectDocument(content string) (*ProjectDocument, error) {
+	content = strings.TrimPrefix(content, "\uFEFF")
+	schemaVersion, _, err := scanDocumentHeader(content)
+	if err != nil {
+		return nil, err
+	}
+	if schemaVersion != SchemaVersionV5 {
+		return nil, fmt.Errorf(
+			"task schema version %d requires the snapshot-first workspace migration to schema %d",
+			schemaVersion,
+			SchemaVersionV5,
+		)
+	}
+	return parseLegacyAwareProjectDocument(content)
+}
+
+// parseLegacyAwareProjectDocument is retained for legacy codec tests. Runtime
+// loading and conflict handling call ParseProjectDocument and therefore accept
+// schema 5 only; migration reads v4 through format.DecodeLegacyV4TaskDocument.
+func parseLegacyAwareProjectDocument(content string) (*ProjectDocument, error) {
 	// Mirror the parser's BOM handling so header detection lines up with the
 	// structured parse.
 	content = strings.TrimPrefix(content, "\uFEFF")
@@ -80,6 +94,29 @@ func ParseProjectDocument(content string) (*ProjectDocument, error) {
 	schemaVersion, opaque, err := scanDocumentHeader(content)
 	if err != nil {
 		return nil, err
+	}
+	if schemaVersion == SchemaVersionV5 {
+		v5, parseErr := ParseV5ProjectDocument(content)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		tasks, conversionErr := ModelsFromV5ProjectDocument(v5, time.Local)
+		if conversionErr != nil {
+			return nil, conversionErr
+		}
+		doc := &ProjectDocument{
+			ProjectName:   v5.ProjectName,
+			Tasks:         tasks,
+			SchemaVersion: SchemaVersionV5,
+		}
+		doc.Revision = doc.ComputeRevision()
+		return doc, nil
+	}
+	if schemaVersion > SchemaVersionV2 {
+		return nil, fmt.Errorf(
+			"task schema version %d is not supported; restore the pre-simplification v5 snapshot to use an older tt release",
+			schemaVersion,
+		)
 	}
 
 	result, err := ParseTasksMarkdownDocument(content)
@@ -89,8 +126,6 @@ func ParseProjectDocument(content string) (*ProjectDocument, error) {
 
 	doc := &ProjectDocument{
 		ProjectName:         result.ProjectName,
-		Tags:                result.Tags,
-		PinnedTags:          result.PinnedTags,
 		Tasks:               result.Tasks,
 		SchemaVersion:       schemaVersion,
 		OpaqueBlocks:        opaque,
@@ -155,20 +190,20 @@ func isKnownHeaderComment(line string) bool {
 	return false
 }
 
-// ComputeRevision returns the canonical content revision for the document: the
-// SHA-256 (hex) of its canonical v2 rendering. The v2 rendering is used as the
-// canonical form regardless of the document's own schema version so that a
-// legacy project and its upgraded v2 counterpart hash identically when their
-// logical content matches.
+// ComputeRevision returns the SHA-256 (hex) of the document's canonical
+// rendering.
 func (d *ProjectDocument) ComputeRevision() string {
 	sum := sha256.Sum256([]byte(d.canonicalContent()))
 	return hex.EncodeToString(sum[:])
 }
 
-// canonicalContent renders the document in canonical v2 form for hashing. It is
-// deliberately independent of the on-disk schema version and of incidental
-// source formatting.
+// canonicalContent renders the document in its selected canonical schema.
 func (d *ProjectDocument) canonicalContent() string {
+	if d.SchemaVersion == SchemaVersionV5 {
+		if content, err := d.writeV5(); err == nil {
+			return content
+		}
+	}
 	return d.render()
 }
 
@@ -177,6 +212,25 @@ func (d *ProjectDocument) canonicalContent() string {
 // with the canonical `state` field instead of legacy lifecycle fields.
 func (d *ProjectDocument) WriteV2() string {
 	return d.render()
+}
+
+// WriteCurrent renders the strict schema selected by the document. Runtime
+// documents are schema 5; WriteV2 remains available only to migration fixtures
+// and legacy codec tests.
+func (d *ProjectDocument) WriteCurrent() (string, error) {
+	if d.SchemaVersion == SchemaVersionV5 {
+		return d.writeV5()
+	}
+	return d.render(), nil
+}
+
+func (d *ProjectDocument) writeV5() (string, error) {
+	project := &models.Project{Name: d.ProjectName, Tasks: d.Tasks}
+	v5, err := V5ProjectDocumentFromModel(project)
+	if err != nil {
+		return "", err
+	}
+	return WriteV5ProjectDocument(v5)
 }
 
 // render serializes the document as schema v2 unconditionally: it writes the
@@ -191,21 +245,16 @@ func (d *ProjectDocument) render() string {
 			b.WriteString("\n")
 		}
 	}
-	return writeTasksMarkdownDocument(d.ProjectName, d.Tasks, d.Tags, d.PinnedTags, header, format.WriteMetadataV2)
+	return writeTasksMarkdownDocument(d.ProjectName, d.Tasks, header, format.WriteMetadataV2)
 }
 
-// ToProjectDocument builds a v2 ProjectDocument from an already-loaded project,
-// preserving the supplied opaque blocks. New transactional callers should use
-// ProjectDocumentFromBase so the source of those blocks is the exact document
-// retained by the repository snapshot rather than a separately threaded slice.
+// ToProjectDocument builds a live schema-v5 document from an already-loaded
+// project. Opaque legacy header blocks are intentionally excluded.
 func ToProjectDocument(project *models.Project, opaque []OpaqueBlock) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   project.Name,
-		Tags:          project.Tags,
-		PinnedTags:    project.PinnedTags,
 		Tasks:         project.Tasks,
-		SchemaVersion: SchemaVersionV2,
-		OpaqueBlocks:  opaque,
+		SchemaVersion: SchemaVersionV5,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
@@ -217,14 +266,12 @@ func ToProjectDocument(project *models.Project, opaque []OpaqueBlock) *ProjectDo
 // ChangeSet (rather than only []OpaqueBlock) also gives the commit boundary the
 // field-level merge base it needs when an expected revision becomes stale.
 func ProjectDocumentFromBase(project *models.Project, base *ProjectDocument) *ProjectDocument {
-	var opaque []OpaqueBlock
-	if base != nil {
-		opaque = append([]OpaqueBlock(nil), base.OpaqueBlocks...)
-	}
-	return ToProjectDocument(project, opaque)
+	doc := ToProjectDocument(project, nil)
+	doc.Revision = doc.ComputeRevision()
+	return doc
 }
 
-// CanonicalProjectDocument returns the fixed-point schema-v2 document that will
+// CanonicalProjectDocument returns the fixed-point schema-v5 document that will
 // be observed after a write and immediate reload. Rendering and parsing once
 // intentionally applies every persisted normalization (timestamp precision,
 // set de-duplication, hierarchy ordering) before the commit result is computed,
@@ -232,7 +279,13 @@ func ProjectDocumentFromBase(project *models.Project, base *ProjectDocument) *Pr
 // bytes actually staged by the journal.
 func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*ProjectDocument, error) {
 	doc := ProjectDocumentFromBase(project, base)
-	canonical, err := ParseProjectDocument(doc.WriteV2())
+	doc.SchemaVersion = SchemaVersionV5
+	doc.OpaqueBlocks = nil
+	content, err := doc.WriteCurrent()
+	if err != nil {
+		return nil, fmt.Errorf("rendering canonical project document: %w", err)
+	}
+	canonical, err := ParseProjectDocument(content)
 	if err != nil {
 		return nil, fmt.Errorf("canonicalizing project document: %w", err)
 	}
@@ -242,14 +295,14 @@ func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*
 // LoadProjectDocument reads a project's tasks.md into a ProjectDocument, the
 // lossless base retained for later merging. It reads through the filesystem
 // directly (the transactional repository, sessions 12+, will own richer
-// loading); a missing file yields an empty v2 document.
+// loading); a missing file yields an empty v5 document.
 func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
 		doc := &ProjectDocument{
 			ProjectName:   project.Name,
 			Tasks:         []*models.Task{},
-			SchemaVersion: SchemaVersionV2,
+			SchemaVersion: SchemaVersionV5,
 		}
 		doc.Revision = doc.ComputeRevision()
 		return doc, nil
@@ -260,9 +313,8 @@ func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	return ParseProjectDocument(string(content))
 }
 
-// SaveProjectDocumentV2 writes a project to disk in schema-v2 format. This is
-// the opt-in v2 write path: the default SaveProject remains v1 until the
-// transactional repository (sessions 12+) makes v2 the canonical write format.
+// SaveProjectDocumentV2 is retained only for legacy codec tests and migration
+// fixtures. Live persistence writes schema 5.
 func SaveProjectDocumentV2(project *models.Project, opaque []OpaqueBlock) error {
 	if err := auditProjectBeforeSave(project); err != nil {
 		return err

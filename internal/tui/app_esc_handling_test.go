@@ -115,43 +115,6 @@ func TestHandleEscKey_NopAtOutlinerRoot(t *testing.T) {
 	}
 }
 
-func TestAskEscapePopsPreviouslyTrappedStates(t *testing.T) {
-	for _, tc := range []struct {
-		name  string
-		state askState
-		draft string
-	}{
-		{name: "input with draft", state: askStateInput, draft: "unfinished request"},
-		{name: "saving preferences", state: askStateSavingPreferences},
-		{name: "applying", state: askStateApplying},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			app := newTestAppModel()
-			ask := NewAskViewModel(nil, "")
-			ask.state = tc.state
-			ask.textarea.SetValue(tc.draft)
-			if tc.state == askStateApplying {
-				ask.applyID = nextAskOperationID()
-			}
-			app.showView(ViewAsk, ask)
-
-			model, cmd := app.Update(syntheticSpecialKey(tea.KeyEsc))
-			app = model.(*AppModel)
-			if cmd == nil {
-				t.Fatal("Escape did not schedule navigation back")
-			}
-			model, _ = app.Update(cmd())
-			app = model.(*AppModel)
-			if app.currentView() != ViewCrossProjectOutliner {
-				t.Fatalf("current view = %v, want Outliner root", app.currentView())
-			}
-			if tc.state == askStateApplying && (ask.state != askStateApplying || ask.applyID == 0) {
-				t.Fatalf("leaving Ask invalidated in-flight apply: state=%v id=%d", ask.state, ask.applyID)
-			}
-		})
-	}
-}
-
 // TestHandleEscKey_DismissesPeekOverlay verifies that Esc clears peekActive and peekTask.
 func TestHandleEscKey_DismissesPeekOverlay(t *testing.T) {
 	app, project := newTestAppModelWithProject()
@@ -179,7 +142,7 @@ func TestProjectSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProject dest: %v", err)
 	}
-	task, err := models.NewTask("task-1", 7, models.TaskTypeTask, "Move me")
+	task, err := models.NewGenericTask("task-1", 7, "Move me")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -217,11 +180,11 @@ func TestProjectSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 }
 
 func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
-	parentA, err := models.NewTask("parent-a", 1, models.TaskTypeStory, "Alpha parent")
+	parentA, err := models.NewGenericTask("parent-a", 1, "Alpha parent")
 	if err != nil {
 		t.Fatalf("NewTask A: %v", err)
 	}
-	parentB, err := models.NewTask("parent-b", 2, models.TaskTypeStory, "Beta parent")
+	parentB, err := models.NewGenericTask("parent-b", 2, "Beta parent")
 	if err != nil {
 		t.Fatalf("NewTask B: %v", err)
 	}

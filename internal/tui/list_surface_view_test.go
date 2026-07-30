@@ -161,11 +161,11 @@ func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T)
 func TestListSurfaceDomainAdaptersProvideStableQualifiedTargets(t *testing.T) {
 	t.Parallel()
 
-	taskA, err := models.NewTask("same-task", 1, models.TaskTypeTask, "Alpha task")
+	taskA, err := models.NewGenericTask("same-task", 1, "Alpha task")
 	if err != nil {
 		t.Fatalf("NewTask(alpha) error = %v", err)
 	}
-	taskB, err := models.NewTask("same-task", 1, models.TaskTypeTask, "Bravo task")
+	taskB, err := models.NewGenericTask("same-task", 1, "Bravo task")
 	if err != nil {
 		t.Fatalf("NewTask(bravo) error = %v", err)
 	}
@@ -196,11 +196,6 @@ func TestListSurfaceDomainAdaptersProvideStableQualifiedTargets(t *testing.T) {
 		states.Items[3].ID != "state:in_progress" {
 		t.Fatalf("state adapter = %+v", states.Items)
 	}
-	modes := ListSourceFromOutlinerModes(OutlinerModeCatalog())
-	if len(modes.Items) != len(OutlinerModeCatalog()) || len(modes.Categories) != 3 {
-		t.Fatalf("mode adapter sizes = %d items %d categories",
-			len(modes.Items), len(modes.Categories))
-	}
 	scopes := ListSourceFromContextScopes([]ContextScopeSummary{
 		{Scope: AllContextScope(), ActiveProjectCount: 2},
 		{Scope: CustomContextScope("Focus"), ActiveProjectCount: 1},
@@ -211,10 +206,10 @@ func TestListSurfaceDomainAdaptersProvideStableQualifiedTargets(t *testing.T) {
 	}
 	priorities := ListSourceFromPriorities([]PriorityInfo{{Priority: 1, Description: "Critical"}})
 	projects := ListSourceFromProjects([]*models.Project{alpha})
-	tags := ListSourceFromTags([]TagInfo{{Name: "focus", TaskCount: 2, Pinned: true}})
+	tags := ListSourceFromTags([]TagInfo{{Name: "focus", TaskCount: 2}})
 	if priorities.Items[0].ID != "priority:1" ||
 		projects.Items[0].ID != "project:alpha" ||
-		tags.Items[0].CategoryID != "tag:pinned" {
+		tags.Items[0].CategoryID != "tag:other" {
 		t.Fatalf("priority/project/tag adapters are not stable: %+v %+v %+v",
 			priorities.Items, projects.Items, tags.Items)
 	}

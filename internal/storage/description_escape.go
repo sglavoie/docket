@@ -8,7 +8,9 @@ import (
 // matchesHeadingOrProject returns true if the line matches a task heading
 // or project title regex.
 func matchesHeadingOrProject(line string) bool {
-	return headingRegex.MatchString(line) || projectRegex.MatchString(line)
+	return headingRegex.MatchString(line) ||
+		legacyTypedHeadingRegex.MatchString(line) ||
+		projectRegex.MatchString(line)
 }
 
 // blockMarkerRegex matches the 8 block-marker lines used by the storage
@@ -23,6 +25,11 @@ var blockMarkerRegex = regexp.MustCompile(`^<!--\s*/?(DESCRIPTION|COMMENTS|ACTIV
 // Used by the parser to suppress per-line heading-unescape inside those
 // blocks so the text isn't unescaped twice.
 var nonDescriptionBlockMarkerRegex = regexp.MustCompile(`^<!--\s*/?(COMMENTS|ACTIVITY|DECISIONS)\s*-->$`)
+
+var (
+	legacyActivityStartMarkerRegex = regexp.MustCompile(`^<!--\s*ACTIVITY\s*-->$`)
+	legacyActivityEndMarkerRegex   = regexp.MustCompile(`^<!--\s*/ACTIVITY\s*-->$`)
+)
 
 // matchesBlockMarker returns true if the trimmed line is one of the 8
 // block-marker lines (start or end of DESCRIPTION/COMMENTS/ACTIVITY/DECISIONS).
@@ -145,10 +152,10 @@ func unescapeDescriptionLine(line string) string {
 	return line
 }
 
-// unescapeBlockMarkers strips the leading `\` from any block-marker
-// lines in the description. Must run AFTER ExtractActivity/Comments/
-// Decisions/Description so that escaped markers in the body survive
-// extraction. Mirrors the recursive backslash-chain logic of
+// unescapeBlockMarkers strips the leading `\` from any block-marker lines in
+// the description. It must run after block extraction, including removal of
+// retired v4 activity blocks, so escaped markers in the body survive
+// extraction. It mirrors the recursive backslash-chain logic of
 // unescapeDescriptionLine for headings.
 func unescapeBlockMarkers(desc string) string {
 	if desc == "" {

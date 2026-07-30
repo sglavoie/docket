@@ -27,11 +27,11 @@ func TestListNavigationGroup(t *testing.T) {
 func TestCommonTaskActionGroup_Base(t *testing.T) {
 	deps := CommonTaskActionDeps{}
 	entries := CommonTaskActionGroup(deps)
-	if len(entries) != 6 {
-		t.Fatalf("CommonTaskActionGroup (base): want 6 entries, got %d", len(entries))
+	if len(entries) != 5 {
+		t.Fatalf("CommonTaskActionGroup (base): want 5 entries, got %d", len(entries))
 	}
 	keys := directBindingKeys(entries)
-	for _, k := range []string{"o", "Z", "D", "e", "?", "S"} {
+	for _, k := range []string{"o", "Z", "D", "e", "?"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("CommonTaskActionGroup: missing key %q", k)
 		}
@@ -45,8 +45,8 @@ func TestCommonTaskActionGroup_AllOptional(t *testing.T) {
 		QuickNote:     actFn(),
 	}
 	entries := CommonTaskActionGroup(deps)
-	if len(entries) != 9 {
-		t.Fatalf("CommonTaskActionGroup (full): want 9 entries, got %d", len(entries))
+	if len(entries) != 8 {
+		t.Fatalf("CommonTaskActionGroup (full): want 8 entries, got %d", len(entries))
 	}
 }
 
@@ -67,27 +67,13 @@ func TestMultiSelectGroup(t *testing.T) {
 func TestSortGroup(t *testing.T) {
 	deps := SortDeps{}
 	entries := SortGroup(deps)
-	if len(entries) != 6 {
-		t.Fatalf("SortGroup: want 6 entries, got %d", len(entries))
+	if len(entries) != 5 {
+		t.Fatalf("SortGroup: want 5 entries, got %d", len(entries))
 	}
 	keys := directBindingKeys(entries)
-	for _, k := range []string{"1", "2", "3", "4", "5", "0"} {
+	for _, k := range []string{"1", "2", "3", "4", "0"} {
 		if !slices.Contains(keys, k) {
 			t.Errorf("SortGroup: missing key %q", k)
-		}
-	}
-}
-
-func TestTypeChangeGroup(t *testing.T) {
-	deps := TypeChangeDeps{}
-	entries := TypeChangeGroup(deps)
-	if len(entries) != 4 {
-		t.Fatalf("TypeChangeGroup: want 4 entries, got %d", len(entries))
-	}
-	keys := directBindingKeys(entries)
-	for _, k := range []string{"<", ">", "H", "L"} {
-		if !slices.Contains(keys, k) {
-			t.Errorf("TypeChangeGroup: missing key %q", k)
 		}
 	}
 }

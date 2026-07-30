@@ -23,20 +23,17 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 	source, dest := env.source, env.dest
 	moved := source.GetTaskByID("move-task-1")
 
-	env.cfg.Planning().FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
-	env.cfg.Planning().DailyPlan = []config.DailyPlanItem{{TaskID: moved.ID, ProjectID: source.ID, PlannedDate: "2026-06-18"}}
-	env.cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().NextOrder = []config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().Today = []config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}}
 	if err := saveTestRuntime(env.mgr, env.cfg); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
 
 	app := env.appModel()
-	app.focusQueue = []FocusTask{{Task: moved, Project: source}}
-	app.focusQueueIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
-	app.dailyPlan = []FocusTask{{Task: moved, Project: source}}
-	app.dailyPlanIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
-	app.recentTaskVisits = []RecentTaskVisitEntry{{Task: moved, Project: source}}
-
+	app.nextOrder = []FocusTask{{Task: moved, Project: source}}
+	app.nextOrderIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
+	app.today = []FocusTask{{Task: moved, Project: source}}
+	app.todayIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task:          moved,
 		SourceProject: source,
@@ -54,16 +51,13 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 	if env.reloadProject(t, dest).GetTaskByID(moved.ID) == nil {
 		t.Fatal("dest should contain moved task on disk")
 	}
-	// Durable + recent config refs point to dest (recent updated post-commit).
-	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, true)
-	if app.focusQueue[0].Project.ID != dest.ID || app.dailyPlan[0].Project.ID != dest.ID || app.recentTaskVisits[0].Project.ID != dest.ID {
+	// Durable planning refs point to the destination.
+	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID)
+	if app.nextOrder[0].Project.ID != dest.ID || app.today[0].Project.ID != dest.ID {
 		t.Fatal("in-memory refs should point to dest after move")
 	}
 
-	// Ledger undo restores the move and the folded durable config refs (Focus
-	// Queue, Daily Plan). Recent visits live in the machine-local machine.json,
-	// which is excluded from the workspace transaction, so undo does NOT move them
-	// back to source — assert on the durable refs only (checkRecent=false).
+	// Ledger undo restores the move and the folded durable planning refs.
 	if _, err := env.ledger.Undo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger undo: %v", err)
 	}
@@ -73,17 +67,16 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 	if env.reloadProject(t, dest).GetTaskByID(moved.ID) != nil {
 		t.Fatal("dest should not contain task after undo")
 	}
-	assertDiskConfigRef(t, env.mgr, moved.ID, source.ID, false)
+	assertDiskConfigRef(t, env.mgr, moved.ID, source.ID)
 
-	// Ledger redo re-applies the move and durable refs (recent visits, being
-	// non-transactional, are not restored by redo — asserted on durable refs only).
+	// Ledger redo re-applies the move and durable refs.
 	if _, err := env.ledger.Redo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger redo: %v", err)
 	}
 	if env.reloadProject(t, dest).GetTaskByID(moved.ID) == nil {
 		t.Fatal("dest should contain task after redo")
 	}
-	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID, false)
+	assertDiskConfigRef(t, env.mgr, moved.ID, dest.ID)
 }
 
 func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
@@ -92,15 +85,11 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	moved := source.GetTaskByID("shared-id")
 	other := &models.Project{ID: "alpha", Name: "Alpha"}
 
-	env.cfg.Planning().FocusQueue = []config.FocusQueueItem{
+	env.cfg.Planning().NextOrder = []config.ProjectTaskLocator{
 		{TaskID: moved.ID, ProjectID: source.ID},
 		{TaskID: moved.ID, ProjectID: other.ID},
 	}
-	env.cfg.Planning().DailyPlan = []config.DailyPlanItem{
-		{TaskID: moved.ID, ProjectID: source.ID},
-		{TaskID: moved.ID, ProjectID: other.ID},
-	}
-	env.cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+	env.cfg.Planning().Today = []config.ProjectTaskLocator{
 		{TaskID: moved.ID, ProjectID: source.ID},
 		{TaskID: moved.ID, ProjectID: other.ID},
 	}
@@ -109,9 +98,8 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	}
 
 	m := env.appModel()
-	m.focusQueue = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
-	m.dailyPlan = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
-	m.recentTaskVisits = []RecentTaskVisitEntry{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	m.nextOrder = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	m.today = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
 	_, cmd := m.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task: moved, SourceProject: source, DestProjectID: dest.ID,
 	})
@@ -121,15 +109,13 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	if reloaded.Planning().FocusQueue[0].ProjectID != dest.ID || reloaded.Planning().FocusQueue[1].ProjectID != other.ID ||
-		reloaded.Planning().DailyPlan[0].ProjectID != dest.ID || reloaded.Planning().DailyPlan[1].ProjectID != other.ID ||
-		reloaded.Machine().RecentTaskVisits[0].ProjectID != dest.ID || reloaded.Machine().RecentTaskVisits[1].ProjectID != other.ID {
-		t.Fatalf("qualified move reassigned another project's refs: focus=%+v daily=%+v recent=%+v",
-			reloaded.Planning().FocusQueue, reloaded.Planning().DailyPlan, reloaded.Machine().RecentTaskVisits)
+	if reloaded.Planning().NextOrder[0].ProjectID != dest.ID || reloaded.Planning().NextOrder[1].ProjectID != other.ID ||
+		reloaded.Planning().Today[0].ProjectID != dest.ID || reloaded.Planning().Today[1].ProjectID != other.ID {
+		t.Fatalf("qualified move reassigned another project's refs: focus=%+v daily=%+v",
+			reloaded.Planning().NextOrder, reloaded.Planning().Today)
 	}
-	if m.focusQueue[0].Project.ID != dest.ID || m.focusQueue[1].Project.ID != other.ID ||
-		m.dailyPlan[0].Project.ID != dest.ID || m.dailyPlan[1].Project.ID != other.ID ||
-		m.recentTaskVisits[0].Project.ID != dest.ID || m.recentTaskVisits[1].Project.ID != other.ID {
+	if m.nextOrder[0].Project.ID != dest.ID || m.nextOrder[1].Project.ID != other.ID ||
+		m.today[0].Project.ID != dest.ID || m.today[1].Project.ID != other.ID {
 		t.Fatalf("qualified move reassigned another project's in-memory refs")
 	}
 }
@@ -144,7 +130,7 @@ func TestTUITaskMoveUsesCanonicalTask(t *testing.T) {
 	oldCanonicalShortID := moved.ShortID
 
 	app := env.appModel()
-	staleTask, err := models.NewTask(moved.ID, 99, models.TaskTypeTask, "Stale view copy")
+	staleTask, err := models.NewGenericTask(moved.ID, 99, "Stale view copy")
 	if err != nil {
 		t.Fatalf("new stale task: %v", err)
 	}
@@ -193,7 +179,7 @@ func TestTUITaskMoveRollsBackOnCommitFailure(t *testing.T) {
 	// target the journal rejects, aborting the whole transaction.
 	outsideDir := t.TempDir()
 	env.mgr = config.NewManager(filepath.Join(outsideDir, ".tt.json"))
-	env.cfg.Planning().FocusQueue = []config.FocusQueueItem{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().NextOrder = []config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}}
 
 	app := env.appModel()
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
@@ -232,7 +218,7 @@ type moveHandlerEnv struct {
 func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *moveHandlerEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	newProject := func(slug, name string, tasks []*models.Task) *models.Project {
@@ -255,7 +241,7 @@ func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *move
 		return p
 	}
 
-	task, err := models.NewTask(sourceTaskID, 1, models.TaskTypeTask, sourceTaskTitle)
+	task, err := models.NewGenericTask(sourceTaskID, 1, sourceTaskTitle)
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -268,10 +254,7 @@ func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *move
 
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	cfg := newTestConfigAt(dataDir)
-	depth := 50
-	cfg.Settings().UndoHistoryDepth = &depth
 	setTestProjects(cfg, []*models.Project{source, dest})
-	cfg.Machine().CurrentProject = source.ID
 
 	return &moveHandlerEnv{dataDir: dataDir, ledger: ledger, svc: svc, mgr: mgr, cfg: cfg, source: source, dest: dest}
 }
@@ -327,21 +310,18 @@ func drainSingleMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 }
 
 // assertDiskConfigRef reloads the config from disk and asserts the durable
-// planning refs (and optionally recent visits) for taskID point at projectID.
-func assertDiskConfigRef(t *testing.T, mgr *config.Manager, taskID, projectID string, checkRecent bool) {
+// planning refs for taskID point at projectID.
+func assertDiskConfigRef(t *testing.T, mgr *config.Manager, taskID, projectID string) {
 	t.Helper()
 	cfg, err := config.NewManager(mgr.GetConfigPath()).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("load config from disk: %v", err)
 	}
-	if len(cfg.Planning().FocusQueue) != 1 || cfg.Planning().FocusQueue[0].TaskID != taskID || cfg.Planning().FocusQueue[0].ProjectID != projectID {
-		t.Fatalf("FocusQueue = %+v, want task %s in project %s", cfg.Planning().FocusQueue, taskID, projectID)
+	if len(cfg.Planning().NextOrder) != 1 || cfg.Planning().NextOrder[0].TaskID != taskID || cfg.Planning().NextOrder[0].ProjectID != projectID {
+		t.Fatalf("NextOrder = %+v, want task %s in project %s", cfg.Planning().NextOrder, taskID, projectID)
 	}
-	if len(cfg.Planning().DailyPlan) > 0 && (cfg.Planning().DailyPlan[0].TaskID != taskID || cfg.Planning().DailyPlan[0].ProjectID != projectID) {
-		t.Fatalf("DailyPlan = %+v, want task %s in project %s", cfg.Planning().DailyPlan, taskID, projectID)
-	}
-	if checkRecent && len(cfg.Machine().RecentTaskVisits) > 0 && (cfg.Machine().RecentTaskVisits[0].TaskID != taskID || cfg.Machine().RecentTaskVisits[0].ProjectID != projectID) {
-		t.Fatalf("RecentTaskVisits = %+v, want task %s in project %s", cfg.Machine().RecentTaskVisits, taskID, projectID)
+	if len(cfg.Planning().Today) > 0 && (cfg.Planning().Today[0].TaskID != taskID || cfg.Planning().Today[0].ProjectID != projectID) {
+		t.Fatalf("Today = %+v, want task %s in project %s", cfg.Planning().Today, taskID, projectID)
 	}
 }
 

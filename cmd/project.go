@@ -5,11 +5,13 @@ import (
 )
 
 var projectCmd = &cobra.Command{
-	Use:     "project",
-	Aliases: []string{"p"},
-	Short:   "Manage projects",
-	Long:    `Commands for creating, listing, and managing projects.`,
-	RunE:    runProjectList, // Default to listing projects
+	Use:   "project",
+	Short: "Export project data",
+	Long:  `Export a project and its retained task, note, and attachment references.`,
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return cmd.Help()
+	},
 }
 
 func init() {

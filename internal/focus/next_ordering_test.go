@@ -7,12 +7,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestFocusQueueRankKeepsDuplicateTaskIDsIndependent(t *testing.T) {
-	queue := []config.FocusQueueItem{
+func TestNextOrderRankKeepsDuplicateTaskIDsIndependent(t *testing.T) {
+	queue := []config.ProjectTaskLocator{
 		{ProjectID: "beta", TaskID: "shared"},
 		{ProjectID: "alpha", TaskID: "shared"},
 	}
-	rank := FocusQueueRank(queue)
+	rank := NextOrderRank(queue)
 	beta := config.ProjectTaskLocator{ProjectID: "beta", TaskID: "shared"}
 	alpha := config.ProjectTaskLocator{ProjectID: "alpha", TaskID: "shared"}
 	if got := RankOrUnindexed(rank, beta); got != 0 {
@@ -28,9 +28,9 @@ func TestLegacyNextQueueMigrationUsesPersistedProjectOwnership(t *testing.T) {
 	betaTask := &models.Task{ID: "shared", WorkflowState: models.StateReady}
 	alpha := &models.Project{ID: "alpha", Tasks: []*models.Task{alphaTask}}
 	beta := &models.Project{ID: "beta", Tasks: []*models.Task{betaTask}}
-	queue := []config.FocusQueueItem{{ProjectID: beta.ID, TaskID: betaTask.ID}}
+	queue := []config.ProjectTaskLocator{{ProjectID: beta.ID, TaskID: betaTask.ID}}
 
-	locators := LegacyNextQueueMemberLocators(queue, []*models.Project{alpha, beta})
+	locators := LegacyNextOrderMemberLocators(queue, []*models.Project{alpha, beta})
 	want := config.ProjectTaskLocator{ProjectID: beta.ID, TaskID: betaTask.ID}
 	if len(locators) != 1 || locators[0] != want {
 		t.Fatalf("migration locators = %+v, want [%+v]", locators, want)

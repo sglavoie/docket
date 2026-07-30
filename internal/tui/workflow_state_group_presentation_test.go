@@ -19,9 +19,9 @@ func TestWorkflowStateGroupThemeSemanticsCoverEveryGroup(t *testing.T) {
 }
 
 func TestCanonicalAllGroupingUsesExactStateGroups(t *testing.T) {
-	ready, _ := models.NewTask("ready", 1, models.TaskTypeTask, "Ready")
-	started, _ := models.NewTask("started", 2, models.TaskTypeTask, "Started")
-	inbox, _ := models.NewTask("inbox", 3, models.TaskTypeTask, "Inbox")
+	ready, _ := models.NewGenericTask("ready", 1, "Ready")
+	started, _ := models.NewGenericTask("started", 2, "Started")
+	inbox, _ := models.NewGenericTask("inbox", 3, "Inbox")
 	started.ApplyWorkflowState(models.StateInProgress)
 	inbox.ApplyWorkflowState(models.StateInbox)
 

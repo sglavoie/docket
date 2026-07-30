@@ -1,0 +1,13 @@
+{
+  "name": "outliner-inspector-wide-layout",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Inspector" },
+    { "type": "key", "label": "wide Enter does not open an overlay", "key": "enter" },
+    { "type": "key", "label": "move the cursor while the persistent inspector remains passive", "key": "end" },
+    { "type": "assert", "assert": "contains", "value": "Task: #7 Explore social login" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

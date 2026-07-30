@@ -185,12 +185,77 @@ func (r *WorkspaceResolver) HasIncompleteDependencies(task *models.Task, owner *
 	return false
 }
 
+// IsDependencyBlocked is the workspace-aware derived blocked predicate. It is
+// deliberately independent of workflow state and standalone project blockers:
+// only unresolved task dependencies contribute to this status.
+func (r *WorkspaceResolver) IsDependencyBlocked(task *models.Task, owner *models.Project) bool {
+	return r.HasIncompleteDependencies(task, owner)
+}
+
+// GetBlockingTasks resolves every dependency carried by task across the
+// workspace. Unresolvable references are omitted because there is no TaskRef to
+// return; HasIncompleteDependencies still treats unresolvable qualified
+// references as blocking.
+func (r *WorkspaceResolver) GetBlockingTasks(task *models.Task, owner *models.Project) []TaskRef {
+	if task == nil || owner == nil {
+		return nil
+	}
+	blockers := make([]TaskRef, 0, len(task.DependsOn))
+	seen := make(map[taskReferenceIdentity]bool, len(task.DependsOn))
+	for _, dependency := range task.DependsOn {
+		blocker, project, ok := r.resolveRef(dependency, owner)
+		if !ok {
+			continue
+		}
+		identity := taskReferenceIdentity{projectID: project.ID, taskID: blocker.ID}
+		if seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		blockers = append(blockers, TaskRef{
+			Task:    blocker,
+			Project: project,
+			Base:    r.snap.Document(project.ID),
+		})
+	}
+	return blockers
+}
+
+// GetBlockedByTasks performs the reverse workspace lookup for blocker. Results
+// follow snapshot project order and each project's durable task order. Both
+// stable-project-ID and legacy-slug spellings resolve to the same identity.
+func (r *WorkspaceResolver) GetBlockedByTasks(blocker *models.Task, owner *models.Project) []TaskRef {
+	if blocker == nil || owner == nil {
+		return nil
+	}
+	var blocked []TaskRef
+	for _, project := range r.snap.Projects() {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil || !r.containsTaskReference(task.DependsOn, project, owner, blocker.ID) {
+				continue
+			}
+			blocked = append(blocked, TaskRef{
+				Task:    task,
+				Project: project,
+				Base:    r.snap.Document(project.ID),
+			})
+		}
+	}
+	return blocked
+}
+
 // WouldCreateDependencyCycle reports whether adding a dependency from taskID (in
 // owner) onto blockerRef would create a cycle, following DependsOn edges across
 // projects. A cycle forms when the blocker already depends — directly or
 // transitively — on the task. A reference that leaves the snapshot simply ends
 // that path; it cannot close a cycle through an unknown task.
 func (r *WorkspaceResolver) WouldCreateDependencyCycle(owner *models.Project, taskID, blockerRef string) bool {
+	if owner == nil || taskID == "" {
+		return false
+	}
 	blocker, blockerHome, ok := r.resolveRef(blockerRef, owner)
 	if !ok {
 		return false
@@ -289,27 +354,6 @@ func (s *Service) addDependency(ref TaskRef, resolver *WorkspaceResolver, blocke
 	return blockerRef, nil
 }
 
-// AddDependencyWithWorkflow validates and adds a dependency through the same
-// workspace-aware resolver as AddDependency, then runs the workflow cascade.
-func (s *Service) AddDependencyWithWorkflow(taskID, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.addDependencyWithWorkflowSelection(taskID, TaskLocator{}, blockerRef, opts)
-}
-
-func (s *Service) AddDependencyWithWorkflowByLocator(locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.addDependencyWithWorkflowSelection("", locator, blockerRef, opts)
-}
-
-func (s *Service) addDependencyWithWorkflowSelection(taskID string, locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	opts = withDefaultWorkflowUndoAction(opts, "Add Dependency")
-	if opts.UndoContext == "" {
-		opts.UndoContext = strings.TrimSpace(blockerRef)
-	}
-	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
-		_, err := s.addDependency(ref, resolver, blockerRef)
-		return err
-	})
-}
-
 // RemoveDependency drops a dependency edge. Removing an edge the task does not
 // carry is a no-op that still commits the (unchanged) project.
 func (s *Service) RemoveDependency(taskID, blockerRef string) (TaskResult, error) {
@@ -345,27 +389,6 @@ func (s *Service) removeDependency(ref TaskRef, resolver *WorkspaceResolver, blo
 	return blockerRef, nil
 }
 
-// RemoveDependencyWithWorkflow removes every reference equivalent to blockerRef
-// and runs the workflow cascade on the resulting fresh-snapshot task.
-func (s *Service) RemoveDependencyWithWorkflow(taskID, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.removeDependencyWithWorkflowSelection(taskID, TaskLocator{}, blockerRef, opts)
-}
-
-func (s *Service) RemoveDependencyWithWorkflowByLocator(locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	return s.removeDependencyWithWorkflowSelection("", locator, blockerRef, opts)
-}
-
-func (s *Service) removeDependencyWithWorkflowSelection(taskID string, locator TaskLocator, blockerRef string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	opts = withDefaultWorkflowUndoAction(opts, "Remove Dependency")
-	if opts.UndoContext == "" {
-		opts.UndoContext = strings.TrimSpace(blockerRef)
-	}
-	return s.mutateWithWorkflowSelection(taskID, locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
-		_, err := s.removeDependency(ref, resolver, blockerRef)
-		return err
-	})
-}
-
 // ClearDependencies removes every dependency edge from the task. Dependency
 // blocking is a derived predicate (HasIncompleteDependencies), not a workflow
 // state, so clearing the last dependency simply makes the task no longer blocked
@@ -389,34 +412,15 @@ func clearTaskDependencies(task *models.Task) error {
 	return nil
 }
 
-// ClearDependenciesWithWorkflow clears dependency edges while preserving the
-// task's workflow state. An already-empty set is a legacy CLI no-op.
-func (s *Service) ClearDependenciesWithWorkflow(taskID string, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	opts = withDefaultWorkflowUndoAction(opts, "Clear Dependencies")
-	return s.mutateWithWorkflowGuarded(taskID, opts, func(ref TaskRef) bool {
-		return len(ref.Task.DependsOn) == 0
-	}, func(ref TaskRef, _ *WorkspaceResolver) error {
-		return clearTaskDependencies(ref.Task)
-	})
-}
-
-func (s *Service) ClearDependenciesWithWorkflowByLocator(locator TaskLocator, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	opts = withDefaultWorkflowUndoAction(opts, "Clear Dependencies")
-	return s.mutateWithWorkflowGuardedByLocator(locator, opts, func(ref TaskRef) bool {
-		return len(ref.Task.DependsOn) == 0
-	}, func(ref TaskRef, _ *WorkspaceResolver) error {
-		return clearTaskDependencies(ref.Task)
-	})
-}
-
 // SetDependencies replaces a task's entire dependency set with deps, committing
 // one ChangeSet. It is the wholesale analog of AddDependency/RemoveDependency
 // for callers (the TUI dependency selector) that compute the complete post-edit
-// set themselves: the selector only offers non-cyclic, non-self candidates, so
-// the set is validated at selection time and applied here after identity-based
-// deduplication. A nil or empty slice clears every dependency. Dependency
-// blocking is a derived predicate rather than a workflow state, so this never
-// reopens or transitions the task.
+// set themselves. The application boundary validates the complete replacement:
+// every reference must resolve, self-dependencies and workspace-spanning cycles
+// are rejected, and stable-ID/legacy-slug aliases are identity-deduplicated. A
+// nil or empty slice clears every dependency. Dependency blocking is a derived
+// predicate rather than a workflow state, so this never reopens or transitions
+// the task.
 func (s *Service) SetDependencies(taskID string, deps []string) (TaskResult, error) {
 	return s.setDependencies(taskID, TaskLocator{}, deps)
 }
@@ -431,222 +435,42 @@ func (s *Service) setDependencies(taskID string, locator TaskLocator, deps []str
 		return TaskResult{}, err
 	}
 	resolver := NewWorkspaceResolver(snap)
-	next := append([]string(nil), deps...)
-	ref.Task.DependsOn, _ = resolver.deduplicateTaskReferences(next, ref.Project)
+	next, err := validateDependencySet(ref, resolver, deps)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	ref.Task.DependsOn = next
 	ref.Task.UpdatedAt = s.clock.Now()
 	return s.commitProject(ref, revision, "Edit Dependencies", "")
 }
 
-// AddRelated links the task to relatedRef (a same-project UUID or a
-// "projectID:taskID" cross-project reference). Related links are non-directional
-// and carry no cycle constraint, so only existence and self-reference are
-// validated.
-func (s *Service) AddRelated(taskID, relatedRef string) (TaskResult, error) {
-	return s.addRelated(taskID, TaskLocator{}, relatedRef)
-}
-
-func (s *Service) AddRelatedByLocator(locator TaskLocator, relatedRef string) (TaskResult, error) {
-	return s.addRelated("", locator, relatedRef)
-}
-
-func (s *Service) addRelated(taskID string, locator TaskLocator, relatedRef string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
-	if err != nil {
-		return TaskResult{}, err
+func validateDependencySet(ref TaskRef, resolver *WorkspaceResolver, deps []string) ([]string, error) {
+	if len(deps) == 0 {
+		return nil, nil
 	}
-	relatedRef = strings.TrimSpace(relatedRef)
-	if relatedRef == "" {
-		return TaskResult{}, invalidInput("related", "related reference is required")
-	}
-	resolver := NewWorkspaceResolver(snap)
-	related, relatedProject, ok := resolver.resolveRef(relatedRef, ref.Project)
-	if !ok {
-		return TaskResult{}, fmt.Errorf("%w: related %s", ErrTaskNotFound, relatedRef)
-	}
-	if related.ID == ref.Task.ID && relatedProject.ID == ref.Project.ID {
-		return TaskResult{}, invalidInput("related", "a task cannot be related to itself")
-	}
-	var deduplicated bool
-	ref.Task.RelatedTo, deduplicated = resolver.deduplicateTaskReferences(ref.Task.RelatedTo, ref.Project)
-	if deduplicated {
-		ref.Task.UpdatedAt = s.clock.Now()
-	}
-	if !resolver.containsTaskReference(ref.Task.RelatedTo, ref.Project, relatedProject, related.ID) {
-		if err := ref.Task.AddRelatedTo(relatedRef); err != nil {
-			return TaskResult{}, invalidInput("related", err.Error())
+	next := make([]string, 0, len(deps))
+	seen := make(map[taskReferenceIdentity]bool, len(deps))
+	for _, raw := range deps {
+		dependency := strings.TrimSpace(raw)
+		if dependency == "" {
+			return nil, invalidInput("dependency", "blocker reference is required")
 		}
-	}
-	return s.commitProject(ref, revision, "Add Related Link", relatedRef)
-}
-
-// RelatedLinkResult is the presentation-neutral outcome of a bidirectional
-// related-link mutation, carrying every project the transaction touched so an
-// adapter can reload exactly those projects.
-type RelatedLinkResult struct {
-	// TouchedProjectIDs lists the committed projects (one entry when both tasks
-	// share a project, two otherwise).
-	TouchedProjectIDs []string
-	// SourceShortID and TargetShortID identify the linked tasks for display.
-	SourceShortID int
-	TargetShortID int
-}
-
-// AddRelatedBidirectional links two tasks with reciprocal related references
-// and commits every touched project as ONE transaction, so a cross-project
-// follow-up link never lands on only one side. otherRef is a same-project task
-// UUID or a "projectID:taskID" cross-project reference; the stored back-reference
-// is qualified with the source project when the tasks live in different projects.
-func (s *Service) AddRelatedBidirectional(taskID, otherRef string) (RelatedLinkResult, error) {
-	return s.addRelatedBidirectional(taskID, TaskLocator{}, otherRef)
-}
-
-func (s *Service) AddRelatedBidirectionalByLocator(locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
-	return s.addRelatedBidirectional("", locator, otherRef)
-}
-
-func (s *Service) addRelatedBidirectional(taskID string, locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
-	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
-	if err != nil {
-		return RelatedLinkResult{}, err
-	}
-	otherRef = strings.TrimSpace(otherRef)
-	if otherRef == "" {
-		return RelatedLinkResult{}, invalidInput("related", "related reference is required")
-	}
-	other, otherProject, ok := NewWorkspaceResolver(snap).resolveRef(otherRef, ref.Project)
-	if !ok {
-		return RelatedLinkResult{}, fmt.Errorf("%w: related %s", ErrTaskNotFound, otherRef)
-	}
-	if other.ID == ref.Task.ID && otherProject.ID == ref.Project.ID {
-		return RelatedLinkResult{}, invalidInput("related", "a task cannot be related to itself")
-	}
-	backRef := ref.Task.ID
-	if otherProject.ID != ref.Project.ID {
-		backRef = ref.Project.ID + ":" + ref.Task.ID
-	}
-	resolver := NewWorkspaceResolver(snap)
-	var deduplicated bool
-	ref.Task.RelatedTo, deduplicated = resolver.deduplicateTaskReferences(ref.Task.RelatedTo, ref.Project)
-	if deduplicated {
-		ref.Task.UpdatedAt = s.clock.Now()
-	}
-	if !resolver.containsTaskReference(ref.Task.RelatedTo, ref.Project, otherProject, other.ID) {
-		if err := ref.Task.AddRelatedTo(otherRef); err != nil {
-			return RelatedLinkResult{}, invalidInput("related", err.Error())
+		blocker, blockerProject, ok := resolver.resolveRef(dependency, ref.Project)
+		if !ok {
+			return nil, fmt.Errorf("%w: blocker %s", ErrTaskNotFound, dependency)
 		}
-	}
-	other.RelatedTo, deduplicated = resolver.deduplicateTaskReferences(other.RelatedTo, otherProject)
-	if deduplicated {
-		other.UpdatedAt = s.clock.Now()
-	}
-	if !resolver.containsTaskReference(other.RelatedTo, otherProject, ref.Project, ref.Task.ID) {
-		if err := other.AddRelatedTo(backRef); err != nil {
-			return RelatedLinkResult{}, invalidInput("related", err.Error())
+		if blocker.ID == ref.Task.ID && blockerProject.ID == ref.Project.ID {
+			return nil, invalidInput("dependency", "a task cannot depend on itself")
 		}
-	}
-	commits := []projectCommit{{project: ref.Project, expectedRevision: revision, base: ref.Base}}
-	touched := []string{ref.Project.ID}
-	if otherProject.ID != ref.Project.ID {
-		commits = append(commits, projectCommit{project: otherProject, expectedRevision: snap.Revision(otherProject.ID), base: snap.Document(otherProject.ID)})
-		touched = append(touched, otherProject.ID)
-	}
-	undoContext := fmt.Sprintf("#%d <-> #%d", ref.Task.ShortID, other.ShortID)
-	if _, err := s.commitProjects(commits, "Add Related Link", undoContext); err != nil {
-		return RelatedLinkResult{}, err
-	}
-	return RelatedLinkResult{
-		TouchedProjectIDs: touched,
-		SourceShortID:     ref.Task.ShortID,
-		TargetShortID:     other.ShortID,
-	}, nil
-}
-
-// RemoveRelated drops a related link. Removing a link the task does not carry is a
-// no-op that still commits the (unchanged) project.
-func (s *Service) RemoveRelated(taskID, relatedRef string) (TaskResult, error) {
-	return s.removeRelated(taskID, TaskLocator{}, relatedRef)
-}
-
-func (s *Service) RemoveRelatedByLocator(locator TaskLocator, relatedRef string) (TaskResult, error) {
-	return s.removeRelated("", locator, relatedRef)
-}
-
-func (s *Service) removeRelated(taskID string, locator TaskLocator, relatedRef string) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
-	if err != nil {
-		return TaskResult{}, err
-	}
-	relatedRef = strings.TrimSpace(relatedRef)
-	if relatedRef == "" {
-		return TaskResult{}, invalidInput("related", "related reference is required")
-	}
-	var removed int
-	ref.Task.RelatedTo, removed = NewWorkspaceResolver(snap).removeEquivalentTaskReferences(ref.Task.RelatedTo, ref.Project, relatedRef)
-	if removed > 0 {
-		ref.Task.UpdatedAt = s.clock.Now()
-	}
-	return s.commitProject(ref, revision, "Remove Related Link", relatedRef)
-}
-
-// RemoveRelatedBidirectional drops a related link from BOTH sides and commits
-// every touched project as ONE transaction, the mirror of AddRelatedBidirectional.
-// The forward reference is always removed from the source task; the reciprocal
-// back-reference is removed from the target when it still resolves in the
-// workspace (a same-project target rides the same commit, a cross-project target
-// adds a second atomic commit). A target that no longer resolves — a dangling or
-// already-deleted link — degenerates to a source-only removal, so a half-broken
-// related pair can always be cleaned up.
-func (s *Service) RemoveRelatedBidirectional(taskID, otherRef string) (RelatedLinkResult, error) {
-	return s.removeRelatedBidirectional(taskID, TaskLocator{}, otherRef)
-}
-
-func (s *Service) RemoveRelatedBidirectionalByLocator(locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
-	return s.removeRelatedBidirectional("", locator, otherRef)
-}
-
-func (s *Service) removeRelatedBidirectional(taskID string, locator TaskLocator, otherRef string) (RelatedLinkResult, error) {
-	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
-	if err != nil {
-		return RelatedLinkResult{}, err
-	}
-	otherRef = strings.TrimSpace(otherRef)
-	if otherRef == "" {
-		return RelatedLinkResult{}, invalidInput("related", "related reference is required")
-	}
-	resolver := NewWorkspaceResolver(snap)
-	// Always drop every equivalent forward spelling from the source.
-	var removed int
-	ref.Task.RelatedTo, removed = resolver.removeEquivalentTaskReferences(ref.Task.RelatedTo, ref.Project, otherRef)
-	if removed > 0 {
-		ref.Task.UpdatedAt = s.clock.Now()
-	}
-
-	commits := []projectCommit{{project: ref.Project, expectedRevision: revision, base: ref.Base}}
-	touched := []string{ref.Project.ID}
-	targetShortID := 0
-
-	if other, otherProject, ok := resolver.resolveRef(otherRef, ref.Project); ok {
-		targetShortID = other.ShortID
-		other.RelatedTo, removed = resolver.removeTaskReferences(other.RelatedTo, otherProject, ref.Project, ref.Task.ID)
-		if removed > 0 {
-			other.UpdatedAt = s.clock.Now()
+		if resolver.WouldCreateDependencyCycle(ref.Project, ref.Task.ID, dependency) {
+			return nil, invalidInput("dependency", "would create a circular dependency")
 		}
-		if otherProject.ID != ref.Project.ID {
-			commits = append(commits, projectCommit{project: otherProject, expectedRevision: snap.Revision(otherProject.ID), base: snap.Document(otherProject.ID)})
-			touched = append(touched, otherProject.ID)
+		identity := taskReferenceIdentity{projectID: blockerProject.ID, taskID: blocker.ID}
+		if seen[identity] {
+			continue
 		}
+		seen[identity] = true
+		next = append(next, dependency)
 	}
-
-	undoContext := fmt.Sprintf("#%d", ref.Task.ShortID)
-	if targetShortID != 0 {
-		undoContext = fmt.Sprintf("#%d <-> #%d", ref.Task.ShortID, targetShortID)
-	}
-	if _, err := s.commitProjects(commits, "Remove Related Link", undoContext); err != nil {
-		return RelatedLinkResult{}, err
-	}
-	return RelatedLinkResult{
-		TouchedProjectIDs: touched,
-		SourceShortID:     ref.Task.ShortID,
-		TargetShortID:     targetShortID,
-	}, nil
+	return next, nil
 }

@@ -69,14 +69,6 @@ func (m *OutlinerModel) expandAtCursor() bool {
 
 func (m *OutlinerModel) setSectionRowCollapsed(row outlinerRow, collapsed bool) {
 	key := row.effectiveCollapseKey()
-	if isReviewCollapseKey(key) {
-		if m.reviewCollapsedSections == nil {
-			m.reviewCollapsedSections = make(map[string]bool)
-		}
-		m.reviewCollapsedSections[key] = collapsed
-		m.crossForceRebuild = true
-		return
-	}
 	if m.collapsedSections == nil {
 		m.collapsedSections = make(map[string]bool)
 	}
@@ -126,9 +118,9 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(
 	return m, cmd
 }
 
-// simplifiedReorderEligible limits J/K to a project-focused manually ordered
-// All/Inbox/Next/Backlog sequence. Base all-project and computed modes cannot
-// mutate ordering.
+// simplifiedReorderEligible dispatches J/K by the selected row's ordering
+// context. Pinned and Due are automatic; Today and Next use durable planning
+// order; All, Inbox, and Backlog use same-project sibling order.
 func (m *OutlinerModel) simplifiedReorderEligible() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
@@ -140,9 +132,20 @@ func (m *OutlinerModel) simplifiedReorderEligible() bool {
 	if !row.isTaskRow() || row.task == nil {
 		return false
 	}
-	if m.project == nil && !m.isProjectScoped() {
+	if row.IsPinnedSection {
 		return false
 	}
 	mode, ok := OutlinerModeByID(m.activeOutlinerMode())
-	return ok && mode.SupportsManualReorder()
+	if !ok || mode.ID == ModeDue {
+		return false
+	}
+	if m.isPlanningReorderMode() {
+		return true
+	}
+	switch mode.ID {
+	case ModeAll, ModeInbox, ModeBacklog:
+		return m.resolveProjectForRow(row) != nil
+	default:
+		return false
+	}
 }

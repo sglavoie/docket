@@ -137,19 +137,6 @@ func TestNewProjectNotFoundError(t *testing.T) {
 	}
 }
 
-func TestNewProjectNotFoundInTrashError(t *testing.T) {
-	err := NewProjectNotFoundInTrashError("archived-project")
-	if !errors.Is(err, ErrProjectNotFound) {
-		t.Error("NewProjectNotFoundInTrashError should wrap ErrProjectNotFound")
-	}
-	if !strings.Contains(err.Error(), "trash") {
-		t.Errorf("error message should contain 'trash', got %q", err.Error())
-	}
-	if !strings.Contains(err.Error(), "archived-project") {
-		t.Errorf("error message should contain project ID, got %q", err.Error())
-	}
-}
-
 func TestNewRequiredFieldError(t *testing.T) {
 	testCases := []struct {
 		field string

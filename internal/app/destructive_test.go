@@ -82,11 +82,10 @@ func TestDeleteCleansCrossProjectRefsInOneTransaction(t *testing.T) {
 	target := newTask("target", 1, "delete me")
 	source := newProject("proj-1", "Alpha", target)
 
-	// A task in another project depends on and relates to the deleted task via a
-	// cross-project reference keyed by the source slug.
+	// A task in another project depends on the deleted task via a cross-project
+	// reference keyed by the source slug.
 	dependent := newTask("dep", 1, "dependent")
 	dependent.DependsOn = []string{"alpha:target"}
-	dependent.RelatedTo = []string{"alpha:target"}
 	other := newProject("proj-2", "Beta", dependent)
 
 	repo := newFakeRepo(source, other)
@@ -96,8 +95,8 @@ func TestDeleteCleansCrossProjectRefsInOneTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	if res.CrossProjectRefsCleared != 2 {
-		t.Errorf("CrossProjectRefsCleared = %d, want 2 (DependsOn + RelatedTo)", res.CrossProjectRefsCleared)
+	if res.CrossProjectRefsCleared != 1 {
+		t.Errorf("CrossProjectRefsCleared = %d, want 1", res.CrossProjectRefsCleared)
 	}
 	if len(res.TouchedProjectIDs) != 2 {
 		t.Errorf("TouchedProjectIDs = %v, want source + other", res.TouchedProjectIDs)
@@ -105,8 +104,8 @@ func TestDeleteCleansCrossProjectRefsInOneTransaction(t *testing.T) {
 	if res.TouchedProjectIDs[0] != "proj-1" {
 		t.Errorf("first touched project = %q, want source proj-1", res.TouchedProjectIDs[0])
 	}
-	if len(dependent.DependsOn) != 0 || len(dependent.RelatedTo) != 0 {
-		t.Errorf("cross-project refs survived: deps=%v related=%v", dependent.DependsOn, dependent.RelatedTo)
+	if len(dependent.DependsOn) != 0 {
+		t.Errorf("cross-project dependencies survived: %v", dependent.DependsOn)
 	}
 
 	// The whole delete must be exactly one Commit call carrying two changesets.

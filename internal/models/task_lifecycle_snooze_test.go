@@ -35,25 +35,27 @@ func TestCancelClearsSnooze(t *testing.T) {
 	}
 }
 
-func TestReopenClearsSnooze(t *testing.T) {
+func TestInboxTransitionClearsSnoozeAfterCompletion(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 	task.Complete()
-	task.Reopen()
+	if err := task.ApplyStateTransition(StateInbox); err != nil {
+		t.Fatal(err)
+	}
 
 	if task.SnoozedUntil != nil {
-		t.Error("expected SnoozedUntil to be nil after Reopen")
+		t.Error("expected SnoozedUntil to be nil after Inbox transition")
 	}
 	if task.IsSnoozed() {
-		t.Error("expected not snoozed after Reopen")
+		t.Error("expected not snoozed after Inbox transition")
 	}
 	if task.State() != StateInbox {
-		t.Errorf("expected StateInbox after Reopen, got %s", task.State())
+		t.Errorf("expected StateInbox after transition, got %s", task.State())
 	}
 }
 
-func TestReopenClearsSnoozeDirectly(t *testing.T) {
+func TestInboxTransitionClearsSnoozeDirectly(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	future := time.Now().AddDate(0, 0, 14)
 	task.SnoozedUntil = &future
@@ -61,13 +63,15 @@ func TestReopenClearsSnoozeDirectly(t *testing.T) {
 	now := time.Now()
 	task.CompletedAt = &now
 
-	task.Reopen()
+	if err := task.ApplyStateTransition(StateInbox); err != nil {
+		t.Fatal(err)
+	}
 
 	if task.SnoozedUntil != nil {
-		t.Error("expected SnoozedUntil to be nil after Reopen")
+		t.Error("expected SnoozedUntil to be nil after Inbox transition")
 	}
 	if task.IsSnoozed() {
-		t.Error("expected not snoozed after Reopen")
+		t.Error("expected not snoozed after Inbox transition")
 	}
 }
 
@@ -105,25 +109,6 @@ func TestBlockClearsSnooze(t *testing.T) {
 	}
 	if task.State() != StateWaiting {
 		t.Errorf("expected StateWaiting after Block, got %s", task.State())
-	}
-}
-
-func TestReviewClearsSnooze(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.WorkflowState = StateInProgress
-	future := time.Now().AddDate(0, 0, 7)
-	task.SnoozedUntil = &future
-
-	task.Review()
-
-	if task.SnoozedUntil != nil {
-		t.Error("expected SnoozedUntil to be nil after Review")
-	}
-	if task.IsSnoozed() {
-		t.Error("expected not snoozed after Review")
-	}
-	if task.State() != StateReview {
-		t.Errorf("expected StateReview after Review, got %s", task.State())
 	}
 }
 

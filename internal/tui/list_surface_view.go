@@ -284,7 +284,9 @@ func renderListSurfaceRow(
 	marker := cursor
 	if selectionMode == ListSelectionMulti {
 		checkbox := "[ ] "
-		if row.Selected {
+		if item.Indeterminate {
+			checkbox = "[-] "
+		} else if row.Selected {
 			checkbox = "[x] "
 		}
 		marker += checkbox
@@ -339,7 +341,7 @@ func renderListSurfacePreview(preview ListPreview, width, height int) string {
 	}
 
 	if preview.Title != "" {
-		appendWrapped(preview.Title, TaskJumperPreviewHeaderStyle)
+		appendWrapped(preview.Title, ListPreviewHeaderStyle)
 	}
 	if preview.Summary != "" {
 		appendWrapped(preview.Summary, MutedStyle)

@@ -24,16 +24,16 @@ func TestTaskForm_TabSwitchForward(t *testing.T) {
 		t.Errorf("after ]]: expected tab %d, got %d", formTabChildren, m.activeTab)
 	}
 	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
-	if m.activeTab != formTabDetails {
-		t.Errorf("after ]]]: expected tab %d, got %d", formTabDetails, m.activeTab)
+	if m.activeTab != formTabBasics {
+		t.Errorf("after ]]]: expected tab %d, got %d", formTabBasics, m.activeTab)
 	}
 }
 
 func TestTaskForm_TabSwitchBackward(t *testing.T) {
 	m := newTestTaskForm()
 	m = sendFormKey(m, syntheticShiftKey(tea.KeyLeft))
-	if m.activeTab != formTabDetails {
-		t.Errorf("[: expected wrap to tab %d, got %d", formTabDetails, m.activeTab)
+	if m.activeTab != formTabChildren {
+		t.Errorf("[: expected wrap to tab %d, got %d", formTabChildren, m.activeTab)
 	}
 }
 
@@ -79,7 +79,7 @@ func TestTaskForm_FocusCyclesBackward_Basics(t *testing.T) {
 	}
 }
 
-func TestTaskForm_FocusNoOpOnEmptyTab(t *testing.T) {
+func TestTaskForm_ChildrenFocusCyclesAcrossSectionHeaders(t *testing.T) {
 	m := newTestTaskForm()
 	for range formTabCount {
 		m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
@@ -87,8 +87,8 @@ func TestTaskForm_FocusNoOpOnEmptyTab(t *testing.T) {
 	m.activeTab = formTabChildren
 	m.focusIndex = 0
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyTab))
-	if m.focusIndex != 0 {
-		t.Errorf("focus on empty tab: expected 0, got %d", m.focusIndex)
+	if m.focusIndex != 1 {
+		t.Errorf("children focus after Tab: expected 1, got %d", m.focusIndex)
 	}
 }
 
@@ -129,16 +129,16 @@ func TestTaskForm_HelpPaneHiddenWhenNarrow(t *testing.T) {
 
 func TestTaskForm_HelpPaneFieldHeader_Priority(t *testing.T) {
 	m := newTestTaskForm()
-	m.focusIndex = 3
+	m.focusIndex = 2
 	view := m.View().Content
 	if !strings.Contains(view, "Priority") {
-		t.Errorf("help pane should show 'Priority' header at focusIndex 3; got:\n%s", view)
+		t.Errorf("help pane should show 'Priority' header at focusIndex 2; got:\n%s", view)
 	}
 }
 
 func TestTaskForm_HelpPaneHiddenDuringOverlay(t *testing.T) {
 	m := newTestTaskForm()
-	m.activeOverlay = formOverlayType
+	m.activeOverlay = formOverlayPriority
 	view := m.View().Content
 	if strings.Contains(view, "│") {
 		t.Errorf("help pane should be hidden during overlay; got:\n%s", view)

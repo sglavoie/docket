@@ -4,8 +4,6 @@ import (
 	"strconv"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 //nolint:gocyclo // main Update dispatch
@@ -147,36 +145,8 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// ── Start Date textinput (field 1 on Schedule tab) ────────────────────
-		if m.activeTab == formTabSchedule && m.focusIndex == 1 {
-			if cmd, ok := m.handleTextInputKey(msg, m.commitStartDateInput, &m.startDateTextInput); ok {
-				return m, cmd
-			}
-		}
-
-		// ── Est. Days textinput (field 2 on Schedule tab) ──────────────────────
-		if m.activeTab == formTabSchedule && m.focusIndex == 2 {
-			if cmd, ok := m.handleTextInputKey(msg, m.commitEstimatedDaysInput, &m.estimatedDaysTextInput); ok {
-				return m, cmd
-			}
-		}
-
-		// ── URL textinput (field 0 on Details tab) ────────────────────────────
-		if m.activeTab == formTabDetails && m.focusIndex == 0 {
-			if cmd, ok := m.handleTextInputKey(msg, m.commitURLInput, &m.urlTextInput); ok {
-				return m, cmd
-			}
-		}
-
-		// ── Source textinput (field 1 on Details tab) ──────────────────────────
-		if m.activeTab == formTabDetails && m.focusIndex == 1 {
-			if cmd, ok := m.handleTextInputKey(msg, m.commitSourceInput, &m.sourceTextInput); ok {
-				return m, cmd
-			}
-		}
-
-		// ── Priority inline editing (Basics tab, field 3) ─────────────────────
-		if m.activeTab == formTabBasics && m.focusIndex == 3 {
+		// ── Priority inline editing (Basics tab, field 2) ─────────────────────
+		if m.activeTab == formTabBasics && !m.collapsedBasics && m.focusIndex == 2 {
 			switch msg.String() {
 			case "1", "2", "3", "4", "5":
 				p, _ := strconv.Atoi(msg.String())
@@ -197,26 +167,6 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.hasChanges = true
 					m.err = nil
 				}
-				return m, nil
-			}
-		}
-
-		// ── Type inline cycling (Basics tab, field 2) ──────────────────────────
-		if m.activeTab == formTabBasics && m.focusIndex == 2 {
-			types := models.AllTaskTypes()
-			curIdx := 0
-			for i, t := range types {
-				if t == m.draft.taskType {
-					curIdx = i
-					break
-				}
-			}
-			switch msg.String() {
-			case "h", "left":
-				m.applyTypeChange(types[(curIdx+len(types)-1)%len(types)])
-				return m, nil
-			case "l", "right":
-				m.applyTypeChange(types[(curIdx+1)%len(types)])
 				return m, nil
 			}
 		}
@@ -250,9 +200,6 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if m.activeTab == formTabSchedule {
 				return m, m.handleScheduleEnter()
-			}
-			if m.activeTab == formTabDetails {
-				return m, m.handleDetailsEnter()
 			}
 			if m.activeTab == formTabChildren {
 				return m, m.handleChildrenEnter()

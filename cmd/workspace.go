@@ -5,14 +5,14 @@ import (
 )
 
 var workspaceCmd = &cobra.Command{
-	Use:     "workspace",
-	Aliases: []string{"ws"},
-	Short:   "Manage the workspace data directory location",
+	Use:   "workspace",
+	Short: "Manage the workspace data directory location",
 	Long: `Inspect and relocate the workspace data directory.
 
 New installations are local-first: tt stores data under ~/.tt unless an iCloud
 Drive workspace already exists. iCloud (or any other location) is chosen
 explicitly with 'tt workspace move'; there is no automatic migration.`,
+	Args: cobra.NoArgs,
 	RunE: runWorkspaceLocation, // default to showing the current location
 }
 

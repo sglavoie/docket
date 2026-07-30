@@ -41,50 +41,28 @@ func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
 	return items
 }
 
-func mergeHelpItems(groups ...[]HelpItem) []HelpItem {
-	var items []HelpItem
-	for _, group := range groups {
-		items = append(items, group...)
-	}
-	return dedupHelpItems(items)
-}
-
-func dedupHelpItems(items []HelpItem) []HelpItem {
-	type dedupKey struct{ key, desc string }
-	seen := make(map[dedupKey]bool, len(items))
-	result := items[:0]
-	for _, item := range items {
-		key := dedupKey{item.Key, item.Description}
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		result = append(result, item)
-	}
-	return result
-}
-
-// getGlobalHelpItems derives the accepted root grammar directly from the
-// operation descriptors and simplified input strategy. There is no parallel
-// keybinding registry.
+// getGlobalHelpItems projects the descriptor-backed portion of the accepted
+// root grammar for legacy secondary views that still append global shortcuts.
+// The Outliner itself reads the registered strategy directly.
 func getGlobalHelpItems() []HelpItem {
 	descriptors := make(map[OperationID]OperationDescriptor)
 	for _, descriptor := range coreInputOperationDescriptors() {
 		descriptors[descriptor.ID] = descriptor
 	}
 	strategy := SimplifiedInputStrategy()
-	items := make([]HelpItem, 0, len(strategy.Bindings))
+	items := make([]HelpItem, 0, len(descriptors))
+	seen := make(map[OperationID]bool, len(descriptors))
 	for _, binding := range strategy.Bindings {
+		if seen[binding.OperationID] {
+			continue
+		}
 		descriptor, ok := descriptors[binding.OperationID]
 		if !ok {
 			continue
 		}
-		key := binding.DisplayKey
-		if key == "" && len(binding.Keys) > 0 {
-			key = binding.Keys[0]
-		}
+		seen[binding.OperationID] = true
 		items = append(items, HelpItem{
-			Key:         key,
+			Key:         displayKeysForOperation(strategy, binding.OperationID),
 			Description: descriptor.Label,
 			Category:    operationCategoryLabel(descriptor.Category),
 		})

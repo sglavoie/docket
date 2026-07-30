@@ -98,13 +98,20 @@ var legacyLifecycleKeys = map[string]bool{
 func metadataStateFieldCodec() metadataFieldCodec {
 	return metadataField("state",
 		func(task *models.Task, value string, state *metadataParseState, warnings *[]ParseWarning) {
-			parsed, ok := models.ParseWorkflowState(strings.TrimSpace(value))
-			if !ok {
-				addValidationWarning(warnings, "state", "invalid state %q, ignoring", value)
+			raw := strings.TrimSpace(value)
+			if parsed, ok := models.ParseWorkflowState(raw); ok {
+				task.ApplyWorkflowState(parsed)
+				state.stateSeen = true
 				return
 			}
-			task.ApplyWorkflowState(parsed)
-			state.stateSeen = true
+			if parsed, ok := models.ParseLegacyWorkflowState(raw); ok && parsed == models.StateReview {
+				task.ApplyWorkflowState(models.StateReady)
+				state.stateSeen = true
+				state.legacyReviewSeen = true
+				addLegacyReviewWarning(warnings)
+				return
+			}
+			addValidationWarning(warnings, "state", "invalid state %q, ignoring", value)
 		},
 		noopMetadataWriter,
 	)
@@ -177,6 +184,7 @@ func legacyActiveFieldCodec() metadataFieldCodec {
 // and writes all other fields identically to v1. Ordering is deterministic so
 // v2 output is a write→parse→write fixed point.
 func (r metadataRegistry) appendWrittenPartsV2(task *models.Task, parts *[]string) {
+	task = targetTaskForMetadataWrite(task)
 	for _, field := range r.ordered {
 		if field.key == "status" {
 			appendMetadataPart(parts, "state", string(task.State()))
@@ -187,9 +195,30 @@ func (r metadataRegistry) appendWrittenPartsV2(task *models.Task, parts *[]strin
 		}
 		field.write(task, parts)
 	}
-	for _, family := range r.families {
-		family.write(task, parts)
+}
+
+// targetTaskForMetadataWrite keeps the transitional v2 writer inside the
+// target vocabulary even if an unremoved caller constructed a v4 Review task
+// directly. The caller's task is never mutated.
+func targetTaskForMetadataWrite(task *models.Task) *models.Task {
+	if task == nil || task.State() != models.StateReview {
+		return task
 	}
+	normalized := *task
+	normalized.WorkflowState = models.StateReady
+	normalized.Tags = append([]string(nil), task.Tags...)
+	if !normalized.HasTag(models.LegacyReviewTag) {
+		normalized.Tags = append(normalized.Tags, models.LegacyReviewTag)
+	}
+	return &normalized
+}
+
+func addLegacyReviewWarning(warnings *[]ParseWarning) {
+	*warnings = append(*warnings, ParseWarning{
+		Type:    WarningDeprecation,
+		Field:   "state",
+		Message: "retired Review state converted to Ready plus the review tag",
+	})
 }
 
 // WriteMetadataV2 generates the schema-v2 metadata comment for a task: the

@@ -160,7 +160,14 @@ func (m *ConflictResolutionModel) editExternally() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmp.Name()
-	if _, writeErr := tmp.WriteString(m.bundle.Local.WriteV2()); writeErr != nil {
+	content, renderErr := m.bundle.Local.WriteCurrent()
+	if renderErr != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		m.setError(renderErr.Error())
+		return nil
+	}
+	if _, writeErr := tmp.WriteString(content); writeErr != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpPath)
 		m.setError(writeErr.Error())
@@ -168,7 +175,7 @@ func (m *ConflictResolutionModel) editExternally() tea.Cmd {
 	}
 	_ = tmp.Close()
 
-	resolved, err := external.ResolveEditor(m.runtime.Machine().GetEditor())
+	resolved, err := external.ResolveEditor("")
 	if err != nil {
 		_ = os.Remove(tmpPath)
 		m.setError(err.Error())

@@ -14,12 +14,6 @@ func TestProjectAdminMenuDispatchesContextualCommands(t *testing.T) {
 		action projectAdminAction
 		verify func(t *testing.T, msg any)
 	}{
-		{"preview", adminActionPreview, func(t *testing.T, msg any) {
-			m, ok := msg.(ShowMetricsDashboardMsg)
-			if !ok || m.Project != project {
-				t.Fatalf("expected metrics preview, got %#v", msg)
-			}
-		}},
 		{"scope", adminActionScope, func(t *testing.T, msg any) {
 			m, ok := msg.(ApplyProjectScopeMsg)
 			if !ok || m.ProjectID != project.ID {
@@ -29,11 +23,6 @@ func TestProjectAdminMenuDispatchesContextualCommands(t *testing.T) {
 		{"edit", adminActionEdit, func(t *testing.T, msg any) {
 			if m, ok := msg.(EditProjectMsg); !ok || m.Project != project {
 				t.Fatalf("expected edit, got %#v", msg)
-			}
-		}},
-		{"status", adminActionStatus, func(t *testing.T, msg any) {
-			if m, ok := msg.(ShowStatusIconPickerMsg); !ok || m.Project != project {
-				t.Fatalf("expected status, got %#v", msg)
 			}
 		}},
 		{"pin", adminActionPin, func(t *testing.T, msg any) {
@@ -74,6 +63,9 @@ func TestProjectAdminMenuDispatchesContextualCommands(t *testing.T) {
 			}
 			tc.verify(t, menu.dispatch())
 		})
+	}
+	if got := len(newProjectAdminMenu(project).items); got != 5 {
+		t.Fatalf("project admin menu has %d items, want five lean actions", got)
 	}
 }
 

@@ -22,6 +22,11 @@ func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return RecurrenceEditorDoneMsg{Pattern: pattern, Canceled: false}
 			}
 
+		case "c":
+			return m, func() tea.Msg {
+				return RecurrenceEditorDoneMsg{Pattern: nil, Canceled: false}
+			}
+
 		case "tab":
 			m.focusSection = m.nextFocusSection()
 			m.intervalEditing = false // Reset editing state when leaving interval
@@ -43,13 +48,6 @@ func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "down", "j":
 			return m, m.handleDown()
-
-		case "space":
-			// Toggle weekday
-			if m.focusSection == 2 && m.isWeeklyUnit() {
-				m.weekdays[m.weekdayCursor] = !m.weekdays[m.weekdayCursor]
-			}
-			return m, nil
 
 		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			if m.focusSection == 0 {
@@ -79,44 +77,24 @@ func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case "m":
-			// Toggle recurrence mode: from-due ↔ from-completion
-			if m.mode == models.RecurModeFromCompletion {
-				m.mode = models.RecurModeFromDue
-			} else {
-				m.mode = models.RecurModeFromCompletion
-			}
-			return m, nil
 		}
 	}
 
 	return m, nil
 }
 
-func (m *RecurrenceEditorModel) isWeeklyUnit() bool {
-	return m.units[m.unitCursor] == models.RecurrenceWeekly
-}
-
 func (m *RecurrenceEditorModel) nextFocusSection() int {
-	maxSection := 1 // interval, unit
-	if m.isWeeklyUnit() {
-		maxSection = 2 // + weekdays
-	}
 	next := m.focusSection + 1
-	if next > maxSection {
+	if next > 1 {
 		next = 0
 	}
 	return next
 }
 
 func (m *RecurrenceEditorModel) prevFocusSection() int {
-	maxSection := 1
-	if m.isWeeklyUnit() {
-		maxSection = 2
-	}
 	prev := m.focusSection - 1
 	if prev < 0 {
-		prev = maxSection
+		prev = 1
 	}
 	return prev
 }
@@ -127,14 +105,6 @@ func (m *RecurrenceEditorModel) handleLeft() tea.Cmd {
 	case 1: // unit selector
 		if m.unitCursor > 0 {
 			m.unitCursor--
-			// Reset weekdays section focus if no longer weekly
-			if !m.isWeeklyUnit() && m.focusSection == 2 {
-				m.focusSection = 1
-			}
-		}
-	case 2: // weekdays
-		if m.weekdayCursor > 0 {
-			m.weekdayCursor--
 		}
 	}
 	return nil
@@ -147,10 +117,6 @@ func (m *RecurrenceEditorModel) handleRight() tea.Cmd {
 		if m.unitCursor < len(m.units)-1 {
 			m.unitCursor++
 		}
-	case 2: // weekdays
-		if m.weekdayCursor < 6 {
-			m.weekdayCursor++
-		}
 	}
 	return nil
 }
@@ -161,11 +127,6 @@ func (m *RecurrenceEditorModel) handleUp() tea.Cmd {
 		if m.interval < 99 {
 			m.interval++
 			m.intervalEditing = true
-		}
-	case 2: // weekdays
-		if m.weekdayCursor >= 4 {
-			// Move from bottom row to top row
-			m.weekdayCursor -= 4
 		}
 	}
 	return nil
@@ -178,12 +139,6 @@ func (m *RecurrenceEditorModel) handleDown() tea.Cmd {
 			m.interval--
 			m.intervalEditing = true
 		}
-	case 2: // weekdays
-		if m.weekdayCursor < 4 {
-			// Move from top row to bottom row
-			newCursor := min(m.weekdayCursor+4, 6)
-			m.weekdayCursor = newCursor
-		}
 	}
 	return nil
 }
@@ -195,20 +150,6 @@ func (m *RecurrenceEditorModel) buildPattern() *models.RecurrencePattern {
 	pattern := &models.RecurrencePattern{
 		Interval: interval,
 		Unit:     m.units[m.unitCursor],
-		Mode:     m.mode,
-	}
-
-	// Add weekdays if weekly and any selected
-	if m.isWeeklyUnit() {
-		var weekdays []int
-		for i := range 7 {
-			if m.weekdays[i] {
-				weekdays = append(weekdays, i)
-			}
-		}
-		if len(weekdays) > 0 {
-			pattern.Weekdays = weekdays
-		}
 	}
 
 	return pattern

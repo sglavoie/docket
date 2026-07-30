@@ -113,8 +113,7 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	var b strings.Builder
 
 	// Header
-	fmt.Fprintf(&b, "# %s #%d: %s\n\n",
-		task.Type.HeadingPrefix(), task.ShortID, task.Title)
+	fmt.Fprintf(&b, "# Task #%d: %s\n\n", task.ShortID, task.Title)
 
 	// Metadata table
 	b.WriteString("| Property | Value |\n")
@@ -122,8 +121,6 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	state := task.State()
 	fmt.Fprintf(&b, "| State | %s %s |\n", state.Icon(), state)
 	fmt.Fprintf(&b, "| Priority | %d |\n", task.Priority)
-	fmt.Fprintf(&b, "| Type | %s |\n", task.Type.HeadingPrefix())
-
 	if len(task.Tags) > 0 {
 		fmt.Fprintf(&b, "| Tags | %s |\n", markdownTableCell(strings.Join(task.Tags, ", ")))
 	}
@@ -141,21 +138,10 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	}
 
 	if task.DueDate != nil {
-		dueFmt := util.DateFormat
-		if task.HasTime {
-			dueFmt = util.DateTimeFormat
-		}
-		fmt.Fprintf(&b, "| Due | %s |\n", task.DueDate.Format(dueFmt))
+		fmt.Fprintf(&b, "| Due | %s |\n", task.DueDate.Format(util.DateFormat))
 	}
 
 	b.WriteString("\n")
-
-	// Type-specific attributes
-	if attrTable := formatTaskAttributesMarkdown(task); attrTable != "" {
-		b.WriteString("## Attributes\n\n")
-		b.WriteString(attrTable)
-		b.WriteString("\n")
-	}
 
 	// Description
 	if task.Description != "" {
@@ -201,8 +187,8 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 			if child.IsComplete() {
 				checkbox = "[x]"
 			}
-			fmt.Fprintf(&b, "- %s %s #%d: %s\n",
-				checkbox, child.Type.Icon(), child.ShortID, child.Title)
+			fmt.Fprintf(&b, "- %s #%d: %s\n",
+				checkbox, child.ShortID, child.Title)
 		}
 	}
 
@@ -243,83 +229,4 @@ func PageMarkdown(content string) error {
 		fmt.Println(content)
 	}
 	return nil
-}
-
-// formatTaskAttributesMarkdown formats type-specific attributes as a markdown table.
-// Returns empty string if no attributes are set.
-func formatTaskAttributesMarkdown(task *models.Task) string {
-	var rows []string
-
-	switch task.Type {
-	case models.TaskTypeBug:
-		if task.BugAttrs != nil {
-			if task.BugAttrs.Severity != "" {
-				rows = append(rows, fmt.Sprintf("| Severity | %s |", markdownTableCell(task.BugAttrs.Severity)))
-			}
-			if task.BugAttrs.Reproducible != "" {
-				rows = append(rows, fmt.Sprintf("| Reproducible | %s |", markdownTableCell(task.BugAttrs.Reproducible)))
-			}
-			if task.BugAttrs.Workaround != "" {
-				rows = append(rows, fmt.Sprintf("| Workaround | %s |", markdownTableCell(task.BugAttrs.Workaround)))
-			}
-		}
-	case models.TaskTypeIdea:
-		if task.IdeaAttrs != nil {
-			if task.IdeaAttrs.Category != "" {
-				rows = append(rows, fmt.Sprintf("| Category | %s |", markdownTableCell(task.IdeaAttrs.Category)))
-			}
-			if task.IdeaAttrs.Effort != "" {
-				rows = append(rows, fmt.Sprintf("| Effort | %s |", markdownTableCell(task.IdeaAttrs.Effort)))
-			}
-			if task.IdeaAttrs.Value != "" {
-				rows = append(rows, fmt.Sprintf("| Value | %s |", markdownTableCell(task.IdeaAttrs.Value)))
-			}
-			if task.IdeaAttrs.Validated {
-				rows = append(rows, "| Validated | Yes |")
-			}
-		}
-	case models.TaskTypeTask:
-		if task.TaskAttrs != nil {
-			if task.TaskAttrs.Effort != "" {
-				rows = append(rows, fmt.Sprintf("| Effort | %s |", markdownTableCell(task.TaskAttrs.Effort)))
-			}
-			if task.TaskAttrs.WorkType != "" {
-				rows = append(rows, fmt.Sprintf("| Work Type | %s |", markdownTableCell(task.TaskAttrs.WorkType)))
-			}
-		}
-	case models.TaskTypeStory:
-		if task.StoryAttrs != nil {
-			if task.StoryAttrs.StoryPoints > 0 {
-				rows = append(rows, fmt.Sprintf("| Story Points | %d |", task.StoryAttrs.StoryPoints))
-			}
-			if task.StoryAttrs.Persona != "" {
-				rows = append(rows, fmt.Sprintf("| Persona | %s |", markdownTableCell(task.StoryAttrs.Persona)))
-			}
-		}
-	case models.TaskTypeEpic:
-		if task.EpicAttrs != nil {
-			if task.EpicAttrs.Scope != "" {
-				rows = append(rows, fmt.Sprintf("| Scope | %s |", markdownTableCell(task.EpicAttrs.Scope)))
-			}
-			if task.EpicAttrs.Milestone != "" {
-				rows = append(rows, fmt.Sprintf("| Milestone | %s |", markdownTableCell(task.EpicAttrs.Milestone)))
-			}
-			if task.EpicAttrs.SuccessMetrics != "" {
-				rows = append(rows, fmt.Sprintf("| Success Metrics | %s |", markdownTableCell(task.EpicAttrs.SuccessMetrics)))
-			}
-		}
-	}
-
-	if len(rows) == 0 {
-		return ""
-	}
-
-	var b strings.Builder
-	b.WriteString("| Attribute | Value |\n")
-	b.WriteString("|-----------|-------|\n")
-	for _, row := range rows {
-		b.WriteString(row)
-		b.WriteString("\n")
-	}
-	return b.String()
 }

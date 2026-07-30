@@ -23,7 +23,7 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 			task := newTaskTitleRegressionTask(t, fmt.Sprintf("queued-p%d", priority), priority, fmt.Sprintf("Queued P%d title", priority))
 			line := TaskLine{
 				Task:      task,
-				Queued:    true,
+				InNext:    true,
 				MaxTitle:  80,
 				ViewWidth: 120,
 			}.Render()
@@ -58,7 +58,7 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 		}
 	})
 
-	t.Run("canceled and dimmed titles stay disabled", func(t *testing.T) {
+	t.Run("canceled titles stay disabled", func(t *testing.T) {
 		canceled := newTaskTitleRegressionTask(t, "canceled-p1", 1, "Canceled priority title")
 		canceled.WorkflowState = models.StateCanceled
 		canceledLine := TaskLine{Task: canceled, MaxTitle: 80, ViewWidth: 120}.Render()
@@ -67,19 +67,6 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 		}
 		if strings.Contains(canceledLine, GetTitlePriorityStyle(canceled.Priority).Render(canceled.Title)) {
 			t.Fatalf("canceled title should not expose priority style in:\n%s", ansi.Strip(canceledLine))
-		}
-
-		dimmed := newTaskTitleRegressionTask(t, "dimmed-p1", 1, "Dimmed priority title")
-		dimmed.Dimmed = true
-		dimmedLine := TaskLine{Task: dimmed, MaxTitle: 80, ViewWidth: 120}.Render()
-		if !strings.Contains(ansi.Strip(dimmedLine), dimmed.Title) {
-			t.Fatalf("dimmed row lost title text in:\n%s", ansi.Strip(dimmedLine))
-		}
-		if dimmedLine == ansi.Strip(dimmedLine) {
-			t.Fatalf("expected dimmed row to remain styled as disabled text:\n%s", ansi.Strip(dimmedLine))
-		}
-		if strings.Contains(dimmedLine, GetTitlePriorityStyle(dimmed.Priority).Render(dimmed.Title)) {
-			t.Fatalf("dimmed title should not expose priority style in:\n%s", ansi.Strip(dimmedLine))
 		}
 	})
 
@@ -101,62 +88,14 @@ func TestTaskLinePriorityTitleRegressionStates(t *testing.T) {
 	})
 }
 
-func TestLinkedTaskReferenceRowsUsePriorityTitleStyle(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
-
-	task := newTaskTitleRegressionTask(t, "linked-p1", 1, "Linked priority title")
-	project, err := models.NewProject("proj-1", "notes-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	project.Tasks = []*models.Task{task}
-	note := &models.Note{
-		Title:       "Reference note",
-		Filename:    "reference.md",
-		LinkedTasks: []string{task.ID},
-	}
-	want := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
-
-	t.Run("note detail linked task row", func(t *testing.T) {
-		m := &NotesViewModel{
-			project:       project,
-			filterTags:    make(map[string]bool),
-			selectedNotes: make(map[string]bool),
-		}
-		rendered := m.renderDetailsPane(note, 80, 20)
-		if !strings.Contains(rendered, want) {
-			t.Fatalf("expected note detail linked task title to use priority style in:\n%s", ansi.Strip(rendered))
-		}
-	})
-
-	t.Run("notes search preview linked task row", func(t *testing.T) {
-		m := &NotesSearchModel{
-			project:  project,
-			filtered: []notesSearchResult{{note: note}},
-		}
-		m.SetSize(100, 20)
-		rendered := m.renderPreview()
-		if !strings.Contains(rendered, want) {
-			t.Fatalf("expected notes search preview linked task title to use priority style in:\n%s", ansi.Strip(rendered))
-		}
-	})
-}
-
 func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T) {
 	files := []string{
 		"shared_render.go",
 		"outliner_render_rows.go",
 		"app_pinned_tasks_render.go",
-		"metrics_dashboard_render.go",
-		"workflow_dry_run_view.go",
-		"roadmap_render.go",
-		"task_jumper.go",
-		"project_preview.go",
 		"parent_selector.go",
 		"dependency_selector.go",
 		"dependency_viewer.go",
-		"linked_task_selector_view.go",
 		"cross_project_linker_view.go",
 		"quick_capture_autocomplete.go",
 		"task_attachments_view.go",
@@ -165,11 +104,8 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 		"task_checklist_view.go",
 		"fullscreen_task_helpers.go",
 		"picker_items.go",
-		"task_activity.go",
-		"note_task_linker.go",
 		"task_detail_view.go",
 		"notes_view_render.go",
-		"notes_search_render.go",
 	}
 
 	forbidden := []struct {
@@ -213,7 +149,7 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 func newTaskTitleRegressionTask(t *testing.T, id string, priority int, title string) *models.Task {
 	t.Helper()
 
-	task, err := models.NewTask(id, priority, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(id, priority, title)
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}

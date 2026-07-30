@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"time"
 )
 
 // IsLeaf returns true if this task has no children.
@@ -85,21 +84,12 @@ func (t *Task) HasProgressChildren() bool {
 	return len(t.Children) > 0
 }
 
-// CanAddChild returns true if the given task type can be added as a child.
-func (t *Task) CanAddChild(childType TaskType) bool {
-	return childType.CanBeChildOf(t.Type)
-}
-
 // AddChild adds a task as a child, setting the parent reference.
-// Returns an error if the child is nil, the child type is not allowed, the
-// nesting depth would be exceeded, or a cycle would be created. The nil
-// guard prevents a panic in CanAddChild reading child.Type.
+// Returns an error if the child is nil, the nesting depth would be exceeded,
+// or a cycle would be created.
 func (t *Task) AddChild(child *Task) error {
 	if child == nil {
 		return fmt.Errorf("cannot add nil child")
-	}
-	if !t.CanAddChild(child.Type) {
-		return fmt.Errorf("cannot add %s as child of %s", child.Type, t.Type)
 	}
 	if t.Level+1 > MaxNestingDepth {
 		return fmt.Errorf("cannot add child: would exceed maximum nesting depth of %d levels", MaxNestingDepth)
@@ -129,104 +119,11 @@ func (t *Task) AddChild(child *Task) error {
 	return nil
 }
 
-// CanPromote checks if this task can be promoted to the next higher type.
-// Returns (allowed, reason) where reason explains why if not allowed.
-func (t *Task) CanPromote() (bool, string) {
-	newType := t.Type.Promote()
-
-	// Already at top of hierarchy
-	if newType == t.Type {
-		return false, "already at top of hierarchy"
-	}
-
-	// Check if new type is valid under current parent
-	if t.Parent != nil {
-		if !newType.CanBeChildOf(t.Parent.Type) {
-			return false, newType.String() + " cannot be child of " + t.Parent.Type.String()
-		}
-	}
-
-	// Check if all children are valid under new type
-	for _, child := range t.Children {
-		if !child.Type.CanBeChildOf(newType) {
-			return false, child.Type.String() + " cannot be child of " + newType.String()
-		}
-	}
-
-	return true, ""
-}
-
-// CanDemote checks if this task can be demoted to the next lower type.
-// Returns (allowed, reason) where reason explains why if not allowed.
-func (t *Task) CanDemote() (bool, string) {
-	newType := t.Type.Demote()
-
-	// Already at bottom of hierarchy
-	if newType == t.Type {
-		return false, "already at bottom of hierarchy"
-	}
-
-	// Check if new type can have children (if we have any)
-	if len(t.Children) > 0 && !newType.CanHaveChildren() {
-		return false, newType.String() + " cannot have children"
-	}
-
-	// Check if new type is valid under current parent
-	if t.Parent != nil {
-		if !newType.CanBeChildOf(t.Parent.Type) {
-			return false, newType.String() + " cannot be child of " + t.Parent.Type.String()
-		}
-	}
-
-	// Check if all children are valid under new type
-	for _, child := range t.Children {
-		if !child.Type.CanBeChildOf(newType) {
-			return false, child.Type.String() + " cannot be child of " + newType.String()
-		}
-	}
-
-	return true, ""
-}
-
-// CanCycleLeafType checks if this task can cycle its leaf type.
-// Returns (allowed, reason) where reason explains why if not allowed.
-func (t *Task) CanCycleLeafType(left bool) (bool, string) {
-	if !t.Type.IsLeafType() {
-		return false, "not a leaf type"
-	}
-
-	var newType TaskType
-	if left {
-		newType = t.Type.CycleLeafLeft()
-	} else {
-		newType = t.Type.CycleLeafRight()
-	}
-
-	// Check if new type is valid under current parent
-	if t.Parent != nil {
-		if !newType.CanBeChildOf(t.Parent.Type) {
-			return false, newType.String() + " cannot be child of " + t.Parent.Type.String()
-		}
-	}
-
-	return true, ""
-}
-
 // CanIndent checks if this task can become a child of the given target parent.
 // Returns (allowed, reason) where reason explains why if not allowed.
 func (t *Task) CanIndent(targetParent *Task) (bool, string) {
 	if targetParent == nil {
 		return false, "no target parent"
-	}
-
-	// Check if target can have children
-	if !targetParent.Type.CanHaveChildren() {
-		return false, targetParent.Type.String() + " cannot have children"
-	}
-
-	// Check if this task's type can be a child of target
-	if !t.Type.CanBeChildOf(targetParent.Type) {
-		return false, t.Type.String() + " cannot be child of " + targetParent.Type.String()
 	}
 
 	// Check nesting depth: the task (and its subtree) would be pushed one level
@@ -264,59 +161,5 @@ func (t *Task) CanOutdent() (bool, string) {
 		return false, "already at root level"
 	}
 
-	// If parent has a grandparent, check if our type is valid under grandparent
-	if t.Parent.Parent != nil {
-		if !t.Type.CanBeChildOf(t.Parent.Parent.Type) {
-			return false, t.Type.String() + " cannot be child of " + t.Parent.Parent.Type.String()
-		}
-	}
-
-	// Children stay under this task, so they remain valid
-
 	return true, ""
-}
-
-// Promote changes this task's type to the next higher type in the hierarchy.
-// Returns an error if promotion is not allowed.
-func (t *Task) Promote() error {
-	if allowed, reason := t.CanPromote(); !allowed {
-		return fmt.Errorf("cannot promote: %s", reason)
-	}
-
-	t.Type = t.Type.Promote()
-	t.ClearTypeAttrs() // Clear type-specific attributes when type changes
-	t.UpdatedAt = time.Now()
-	return nil
-}
-
-// Demote changes this task's type to the next lower type in the hierarchy.
-// Returns an error if demotion is not allowed.
-func (t *Task) Demote() error {
-	if allowed, reason := t.CanDemote(); !allowed {
-		return fmt.Errorf("cannot demote: %s", reason)
-	}
-
-	t.Type = t.Type.Demote()
-	t.ClearTypeAttrs() // Clear type-specific attributes when type changes
-	t.UpdatedAt = time.Now()
-	return nil
-}
-
-// CycleLeafType cycles this task's type among leaf types (Task, Bug, Idea).
-// If left is true, cycles left (Task -> Idea -> Bug -> Task).
-// If left is false, cycles right (Task -> Bug -> Idea -> Task).
-// Returns an error if cycling is not allowed.
-func (t *Task) CycleLeafType(left bool) error {
-	if allowed, reason := t.CanCycleLeafType(left); !allowed {
-		return fmt.Errorf("cannot cycle type: %s", reason)
-	}
-
-	if left {
-		t.Type = t.Type.CycleLeafLeft()
-	} else {
-		t.Type = t.Type.CycleLeafRight()
-	}
-	t.ClearTypeAttrs() // Clear type-specific attributes when type changes
-	t.UpdatedAt = time.Now()
-	return nil
 }

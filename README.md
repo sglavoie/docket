@@ -1,258 +1,269 @@
-# tt - Terminal Tasks
+# tt — Terminal Tasks
 
-`tt` is a local-first project and task manager for the terminal. It combines a
-scriptable CLI with a full-screen Bubble Tea TUI and stores readable Markdown
-in a local `~/.tt/` workspace by default. You can choose another data directory,
-including iCloud Drive, only after explicit selection.
+`tt` is a local-first, Outliner-first task manager for the terminal. Run `tt`
+to open the Bubble Tea interface; readable Markdown remains the canonical task
+store. The public command line is intentionally limited to diagnostics,
+conflict recovery, workspace relocation, project export, and shell completion.
 
-## Installation
+## Install and start
 
 ```bash
 go build -o tt .
+./tt
 ```
 
-Move the binary into your `PATH`, or run it directly from the repository.
+Move the binary into your `PATH` if desired. A new workspace starts locally in
+`~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or `tt workspace move` to select a
+different location. Moving into iCloud Drive or another synced directory is an
+explicit choice; an existing selected iCloud workspace is preserved.
 
-## Quick start
+Every run starts in All Projects, All mode, with no restored search, filters,
+selection, or navigation. Press `a` to capture the first task. At All Projects
+scope, capture routes to the protected workspace Inbox; in a single-project
+scope, it routes to that project.
 
-```bash
-tt project new "My Project"
-tt select my-project
-tt task add "Set up database" --state inbox --priority 1
-tt task add "Create user table" --parent 1
-tt task list --tree
-tt
+## Daily loop
+
+The Outliner is the only primary task presentation:
+
+1. `a` captures one or more tasks.
+2. `Tab` moves to Inbox for triage.
+3. `b`, `n`, and `t` move work to Backlog, Next, or Today.
+4. `s` starts work and `d` completes it.
+5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
+6. `Space` opens the nine occasional task tools.
+
+Together, these operations form one capture, triage, plan, execute, and
+complete loop.
+
+`Tab` cycles exactly All → Inbox → Next → Backlog → Due, and `Shift+Tab`
+reverses that cycle.
+
+All mode shows open, unsnoozed work in this order:
+
+```text
+Pinned, Today, In Progress, Inbox, Next, Backlog, Waiting, Paused, Someday
 ```
 
-`tt` opens on the Outliner in global All by default; press `Ctrl+Esc` to return
-to that root from anywhere. Base-scope capture writes to the workspace-owned
-System Inbox project. Capture in a focused project writes to that project. New
-tasks default to the `inbox` state on every creation surface.
+Pinned tasks appear once, newest pin first, with project and parent
+breadcrumbs. All, Inbox, and Backlog preserve hierarchy and manual sibling
+order. Today and Next preserve workspace-wide planning order. Due is date
+ordered. Done, Canceled, and snoozed work stay hidden unless a filter explicitly
+asks for them.
 
-## The daily loop
-
-The TUI is organized around capture, triage, plan, execute, and complete:
-
-1. Press `a` to capture work.
-2. Press `Tab` to move from All to Inbox and triage new tasks.
-3. Use `b`, `n`, or `t` to put work in Backlog, Next, or Today.
-4. Use `s` to start and `d` to complete the selected task.
-5. Use `p`, `,`, `@`, and `#` to set priority, state, due date, and tags.
-6. Press `Space` for every less-frequent or destructive action.
-
-All mode groups open work as Today, In Progress, Inbox, Next, Backlog, Review,
-Waiting, Paused, and Someday. Today is synthetic and deduplicated. Done and
-Canceled tasks appear only when an explicit filter asks for them.
-
-The ten modes are All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked,
-Daily Review, and Activity. `Tab` cycles All → Inbox → Next → Backlog;
-`Shift+Tab` reverses. Press `m` to search the complete mode list without leaving
-the Outliner.
-
-## TUI keys
+## Outliner grammar
 
 | Area | Keys |
 | --- | --- |
-| Task loop | `a` capture, `e` edit, `s` start, `d` done, `b` Backlog, `t` Today, `n` Next, `Space` actions |
-| Metadata | `p0`-`p5` priority (`p0` clears), `,i`/`,w`/`,p`/`,r`/`,s`/`,c` state, `@` due date, `#` tags |
-| Filters | `fp0`-`fp5` priority threshold, `fs` states, `ft` tags, `fd` then `t`/`w`/`o`/`n` due, `fx` clear |
-| Navigation | `j`/`k` move, `h`/`l` or arrows collapse/expand, `J`/`K` reorder, `Enter` detail |
-| Jumps | `g`/`Home` first row, `G`/`End` last row, `Ctrl+U`/`PgUp` and `Ctrl+D`/`PgDn` half page |
-| Discovery | `/` visible search, `:` Finder, `m` modes, `c` Scope Hub, `v` multi-select |
-| Core tools | `N` Notes, `R` Weekly Review, `T` Tags, `!` Notifications |
-| Session | `u` undo, `Ctrl+R` redo, `Esc` back, `Ctrl+Esc` reset, `?` help, `Ctrl+C` quit |
+| Modes | `Tab` / `Shift+Tab` cycle the five modes |
+| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
+| Capture and edit | `a` capture, `A` child, `e` title, `E` description |
+| Daily state | `s` In Progress, `d` Done, `b` Ready/Backlog, `t` Today, `n` Next |
+| Other state | `,i` Inbox, `,w` Waiting, `,p` Paused, `,s` Someday, `,c` Canceled |
+| Metadata | `p0` clears priority; `p1`–`p5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
+| Structure | `<` outdent, `>` indent, `J`/`K` reorder |
+| Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
+| Selection | `v` toggles one row; `V` selects every visible task |
+| Global | `c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
-Metadata keys act on the cursored task or, in multi-select, on the whole
-selection. They are the only route to those four edits, so the `Space` sheet
-does not repeat them. Filter keys are view state rather than a task edit: a
-filter survives mode switches, shows as a chip in the title row, and is cleared
-by `fx` or `Ctrl+Esc`. Pressing a chord prefix shows the choices it offers in a
-hint row above the footer.
+The operation descriptors are the single source for dispatch, the compact
+footer, chord hints, and `?` help. Removed keys such as `m`, `:`, `R`, `!`, and
+`Ctrl+Esc` have no compatibility action.
 
-Normally, `Space` opens the contextual action sheet. In multi-select, `Space`
-toggles the current task and `Enter` opens bulk actions. Delete is available
-only from an action sheet and always requires confirmation. `J`/`K` reorder
-only within one project in a manually ordered All, Inbox, Next, or Backlog
-sequence.
+### Task actions
 
-Every action lives in exactly one catalog. Direct keys, the `Space` sheet, bulk
-actions, Finder actions, and `?` help all project the same operation entries, so
-an action offered on one surface behaves identically on the others. A bulk sheet
-shows only the actions that apply to every selected task. Destructive actions are
-grouped under Danger, are labelled `confirmation required`, and always prompt
-before anything is written; declining leaves the workspace untouched.
+`Space` contains exactly:
 
-`Ctrl+Esc` closes children and overlays, clears transient filters, search, and
-selection, then restores All over All Projects.
+1. Recurrence
+2. Move Project
+3. Set Parent
+4. Dependencies
+5. Checklist
+6. Comments
+7. Decisions
+8. Attachments
+9. Delete
 
-## Modes, scope, and discovery
+The list filters as soon as printable text is typed. Frequent direct operations
+do not repeat in this menu. Delete always asks for confirmation.
 
-Press `c` to open the Scope Hub. Choose All Projects, a regular context, a
-custom context, or one project. Scope is session-owned and never persisted
-across runs. A project focus is a scope inside the same Outliner, not a separate
-task surface.
+### Filters and search
 
-Notes opens project notes in project focus and global scratch notes in a base
-scope. Weekly Review and Tags receive the active scope's project set.
-Notifications remains global: `!` opens the same Alert Center whatever the
-active scope is, and an unread count rides the top-right of the Outliner header
-so alerts stay visible without leaving the daily loop.
+Filters and visible search are session-only and persist while modes and scopes
+change:
 
-Press `:` for Finder. Empty Finder input shows a short, bounded list of recent
-destinations followed by applicable operations. Type to search modes, scopes,
-operations, tasks, notes, tags, pinned items, and recent items. Pinned and
-recent entries are discovery results; they are not permanent modes or
-navigation tabs.
+| Keys | Effect |
+| --- | --- |
+| `fp0`, `fp1`–`fp5` | Clear priority filtering or keep numeric priorities at or above the selected importance (`<=` the number) |
+| `fs` | Pick workflow states with OR semantics, including terminal states |
+| `ft` | Pick tags with AND semantics |
+| `fd` | Open the due-date facet picker: overdue, today, this week, or no due date |
+| `fb` | Blocked-only |
+| `fz` | Snoozed-only |
+| `fx` | Clear every facet |
+| `/` | Case-insensitive title/description substring search over visible tasks |
 
-In Finder, `Enter` opens the highlighted result and `Tab` opens its action
-sheet. Tasks, projects, notes, tags, scopes, modes, and tools each
-get the actions their own kind owns, so the Finder acts on a result without
-first navigating to it. `Esc` closes the sheet and leaves the search intact.
+Pressing a chord prefix shows its valid continuations above the footer. `Esc`
+cancels that unfinished chord.
 
-Press `/` to search the tasks visible in the current Outliner. Capture and
-search use the same canonical state tokens:
+### Inspector and multi-select
+
+At 100 columns or wider, a read-only inspector follows the cursor in a right
+pane. Below 100 columns, `Enter` freezes the selected task in an inspector
+overlay and `Esc` closes it.
+
+State, Today/Next, priority, due, tags, snooze, and pin actions apply atomically
+to a selection. Structural, edit, inspector, relation, and clipboard operations
+do not fall back silently to the cursor while a selection exists. In
+multi-select, `Space` offers Delete only; successful delete clears selection,
+while other successful bulk actions preserve it.
+
+## Capture grammar
+
+One nonblank line creates one task. Multiple lines are fully parsed and
+validated before one atomic transaction is committed.
 
 ```text
-$ready  $next  $in_progress  $waiting  $paused
-#tag    !1     @tomorrow     ^bug      %project
+!1-5  #tag  @date  ~interval  $state  %project  >parent
 ```
 
-Press `?` in the Task Composer for the complete capture grammar. Lifecycle
-input uses `$state` or `state:<value>`; retired status and section forms are not
-accepted for authoring.
+- `!1` through `!5` set priority.
+- `#tag` accepts normalized tags, including `type:bug` and `source:github`.
+- `@date` accepts the supported date expressions and stores a local calendar
+  date.
+- `~interval` accepts daily, weekly, monthly, or an integer day/week/month
+  interval such as `~2w`.
+- `$state` uses one of the nine workflow states below.
+- `%project` overrides scope routing.
+- `>parent` resolves inside the selected project after project routing.
 
-## Workflow state and planning
+Aliases such as `priority:`, `due:`, `state:`, `proj:`, and `^type` are literal
+title text, not metadata. Root capture defaults to Inbox. A new child defaults
+to Ready under its selected parent.
 
-Every task has exactly one canonical state:
+## Workflow, hierarchy, and recurrence
+
+The nine persisted workflow states are:
 
 ```text
 inbox  ready  next  in_progress  waiting
-paused  review  someday  done  canceled
+paused  someday  done  canceled
 ```
 
-Dependency blocking is derived from unresolved dependencies, not stored as a
-separate state. Done and Canceled are terminal; reopening either returns it to
-Inbox for triage.
+Next membership derives from `next`; the planning domain stores only its
+workspace-wide order. Today is a separate planning collection. Today and Next
+are mutually exclusive, and terminal transitions remove both references.
+Unresolved dependencies block Done. Done and Canceled are also blocked while a
+direct child remains nonterminal.
 
-- `b` sets Ready and removes Today and Next membership.
-- `n` sets Next and removes Today; pressing it on a Next task returns it to
-  Ready.
-- `t` toggles Today. Adding an Inbox or Next task promotes it to Ready first;
-  removing Today otherwise preserves state.
-- `s` sets In Progress.
-- `d` sets Done and removes planning memberships.
+Parents are project-local and hierarchy depth is capped at six. Dependencies
+may cross projects, use stable project-qualified identity, and reject cycles.
 
-Today contains only nonterminal, non-Inbox tasks. Today and Next are mutually
-exclusive. The Focus Queue is only an optional ordering index for tasks whose
-state is Next; it never grants Next membership.
+Recurrence supports day, week, and month intervals. Completion advances from
+the prior due date until the next occurrence is after the completion date, or
+uses completion plus the interval when no prior due date exists. The generated
+task is Inbox in the same project and parent and copies only the retained
+recurrence fields.
 
-## Common CLI commands
+## Scope, projects, and Notes
+
+`c` opens Scope Hub for All Projects, regular contexts, custom contexts, and
+project administration. Scope is session-only. Opening a project focuses the
+same Outliner rather than creating another task root. Project administration
+supports create, edit, pin, archive, restore, and project Notes. The catalog ID,
+not a display name, protects the system Inbox.
+
+`N` opens the combined Notes tool. It shows Global notes and, when a project is
+focused, that project's notes. `n` always asks for a Global or active-project
+destination before starting the editor. `Enter` opens the selected note in
+`TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
+configure one. Notes support list, create, open, rename, and delete only.
+
+`T` toggles exactly two maintained machine-local themes: dark and light.
+
+## Undo, recovery, and conflicts
+
+`u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed
+transactions. Task, project, note, and attachment changes share that history.
+A new forward mutation clears redo; a failed operation creates no entry.
+
+Workspace commits validate paths and revisions, stage a durable manifest, and
+publish every affected artifact atomically. Startup rolls an interrupted
+prepared transaction forward before loading the workspace. Concurrent edits
+that cannot be merged produce durable conflict bundles:
 
 ```bash
-tt                              # Open All over All Projects
-tt project list                 # List projects
-tt project show                 # Show the current project
-tt task add "Write docs"        # Create an Inbox task
-tt task add "Deploy" --state next
-tt task list --state ready      # Filter by canonical state
-tt task list --sort state
-tt task show 12
-tt task state in_progress 12
-tt task complete 12
-tt task reopen 12               # Return terminal work to Inbox
-tt task park 12 "waiting on review"
-tt task list --parked
-tt focus today
-tt focus queue                  # List StateNext tasks in Next order
-tt task archive list
-tt task archive show abc12345
-tt undo                         # Restore previous task state
-tt redo
+tt conflict list
+tt conflict show <id>
+tt conflict resolve <id> --use local
+tt conflict resolve <id> --use remote
+tt conflict resolve <id> --use file --file merged.md
 ```
 
-Use `tt --help`, `tt <command> --help`, and the generated
-[`cmd/cli-reference.md`](cmd/cli-reference.md) for complete syntax.
+## v5 storage and migration
 
-Task JSON emits `state` as its only lifecycle field. Creation and template
-commands use `--state`; task and archive listing filter and sort by state.
-
-## Undo, archive, and recovery
-
-Task and project mutations record workspace transactions. `tt undo` steps
-backward through the current project history and `tt redo` reapplies the latest
-undo. Use `--global` to select the newest workspace-wide transaction.
-Cross-project operations restore as a group and abort before making changes if
-one member is missing, diverged, or unavailable.
-
-Active work lives in each project's `tasks.md`. `tt task archive` moves
-completed tasks into `completed.md` and rotated `completed.N.md` files. The
-project-local `.completed.index.json` is a rebuildable summary used by
-archive-aware metrics.
-
-Archive and recovery commands are explicit:
-
-```bash
-tt project archive <slug-or-id>
-tt project unarchive <slug-or-id>
-tt task archive list
-tt task archive show <id-or-prefix>
-tt task archive rebuild-index
-tt doctor --fix
-```
-
-## Data directory
-
-New workspaces use the local `~/.tt/` workspace by default. iCloud is used only
-after explicit selection and legacy aggregate configuration is not converted
-automatically. `--data-dir` and `TT_DATA_DIR` select another workspace. Logs,
-machine settings, and process locks stay under local `~/.tt/` and are never
-synced.
+The live portable layout is deliberately small:
 
 ```text
-<data dir>/
+<data>/
 ├── .tt/
 │   ├── workspace.json
 │   ├── planning.json
-│   ├── settings.json
-│   ├── automation.json
+│   ├── global-notes/
 │   ├── transactions/
 │   ├── undo/
 │   ├── conflicts/
-│   └── trash/
-└── projects/
+│   └── backups/
+└── projects/<slug>/
+    ├── tasks.md
+    ├── notes/
+    └── .attachments/
 ```
 
-Close every TUI using the source or destination before `tt workspace move`.
-`--force` skips only the confirmation prompt; it never bypasses process locks,
-commit locks, or snapshot validation.
+Project task files use strict schema-5 Markdown and generic `Task` headings.
+`workspace.json` contains the lean project catalog and protected Inbox ID.
+`planning.json` contains Today and Next ordering only. Custom contexts and the
+dark/light choice live in machine-local
+`~/.tt/runtime/<workspace-id>/machine.json`.
 
-See [Architecture, data, privacy, and recovery](docs/architecture.md) for the
-state model, persistence boundaries, conflict handling, cloud and AI consent,
-migration expectations, backups, and platform support.
+On the first v5 startup of a supported v4 workspace, `tt` validates the complete
+conversion before writing. It then publishes an immutable
+`.tt/backups/pre-simplification-v5-<UTC>.tar.gz` archive and matching
+`.audit.md` report before atomically activating schema 5. Attachment binaries
+remain in place and are checksum-inventoried. Invalid or future-schema input
+aborts without changing workspace data, and repeated startup is idempotent.
+Downgrade requires restoring the snapshot with an older build.
 
-## Ask AI
+Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
+explicitly supported repairs. Migration snapshots are never modified.
 
-Ask AI supports the Claude, Codex, and GitHub Copilot CLIs. Context disclosure
-is opt-in and consent is provider-specific. Redacted requests omit human text;
-no-context requests send no workspace data or access capability. Structured
-action plans are validated, previewed, confirmed, and committed locally as one
-undoable transaction.
+## Maintenance CLI
 
-```bash
-tt ask "what should I work on next?"
-tt ask --harness codex "turn this plan into tasks"
-tt ask --redact-context "which task is most urgent?"
-tt ask --no-context "how do workflow states work?"
+```text
+tt
+tt doctor [--fix]
+tt conflict list|show|resolve
+tt workspace [location|move]
+tt completion bash|zsh|fish
+tt project export [slug-or-id]
+tt --version
 ```
+
+Global flags are `--data-dir` and `--no-color`. See
+[`cmd/cli-reference.md`](cmd/cli-reference.md) for generated syntax.
 
 ## Development
 
 ```bash
+just test
+./scripts/check_generated_docs.sh
+./scripts/run_tui_scenarios.sh
 just ci
-just tui-scenarios
 ```
 
-`just tui-scenarios` replays the committed daily-loop, Finder, action-sheet,
-bulk-selection, Scope Hub, Inbox, promoted-tool, and narrow-layout contracts.
-See [docs/tui-testing/README.md](docs/tui-testing/README.md) for the scenario
-format and safety model.
+The scenario gate replays the committed final-product TUI workflows plus the
+snapshot-first migration and interrupted-activation recovery scenarios. See
+[docs/tui-testing/README.md](docs/tui-testing/README.md).
+
+For data boundaries, transaction mechanics, migration details, and platform
+support, read [docs/architecture.md](docs/architecture.md).

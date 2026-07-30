@@ -3,7 +3,6 @@ package tui
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -24,8 +23,9 @@ type outlinerRow struct {
 	IsSectionHeader    bool                      // True if this row is a section header (not a task)
 	IsComputedHeader   bool                      // True for a computed-mode grouping header such as a due-date bucket
 	IsProjectHeader    bool                      // True if this row is a synthetic, render-only project sub-header (not a task)
+	IsPinnedSection    bool                      // True for the synthetic Pinned header and every promoted task row beneath it
 	IsTodaySection     bool                      // True for the synthetic Daily Plan header and every task row rendered beneath it
-	IsDailyPlanMember  bool                      // True only for explicit Daily Plan roots; contextual descendants remain false
+	IsTodayMember      bool                      // True only for explicit Daily Plan roots; contextual descendants remain false
 	SectionName        string                    // Section name for header rows
 	SectionCount       int                       // Number of tasks in this section
 	StateGroup         models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers
@@ -64,9 +64,6 @@ func (r outlinerRow) effectiveCollapseKey() string {
 
 // isSectionRowCollapsed reports whether a section-header row is collapsed.
 func (m *OutlinerModel) isSectionRowCollapsed(row outlinerRow) bool {
-	if isReviewCollapseKey(row.CollapseKey) {
-		return m.reviewCollapsedSections[row.CollapseKey]
-	}
 	return m.collapsedSections[row.effectiveCollapseKey()]
 }
 
@@ -100,12 +97,6 @@ func buildTreePrefix(ancestorIsLast []bool, isLast bool) string {
 		b.WriteString(connectorBranch)
 	}
 	return b.String()
-}
-
-// matchesSearch parses structured filters from the query and fuzzy-matches
-// the remaining text against the task's title, tags, description, and comments.
-func matchesSearch(task *models.Task, query string, _ *config.PlanningState) bool {
-	return TaskMatchesStructuredSearch(task, query)
 }
 
 // flattenTaskTreeWithFolds recursively walks the task tree and produces a flat

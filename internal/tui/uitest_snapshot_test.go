@@ -186,7 +186,4 @@ func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 	if got := byID[string(operationCoreVisibleSearch)].Shortcut; got != "/" {
 		t.Errorf("visible search shortcut = %q, want /", got)
 	}
-	if got := byID[string(operationCoreFinder)].Shortcut; got != ":" {
-		t.Errorf("finder shortcut = %q, want :", got)
-	}
 }

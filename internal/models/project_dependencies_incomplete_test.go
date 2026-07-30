@@ -32,9 +32,11 @@ func TestHasIncompleteDependencies(t *testing.T) {
 		t.Error("task with all dependencies complete should return false")
 	}
 
-	blocker2.Reopen()
+	if err := blocker2.ApplyStateTransition(StateInbox); err != nil {
+		t.Fatal(err)
+	}
 	if !project.HasIncompleteDependencies(dependent) {
-		t.Error("task with reopened dependency should return true")
+		t.Error("task with dependency returned to Inbox should return true")
 	}
 	blocker2.Cancel()
 	if project.HasIncompleteDependencies(dependent) {

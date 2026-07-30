@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -27,7 +28,7 @@ type globalNoteTUIEnv struct {
 func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	project, err := models.NewProject(uuid.New().String(), "destination", "")
 	if err != nil {
@@ -46,8 +47,14 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 		}
 	}
 
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil)
-	view := NewGlobalNotesViewModelWithService(dir, svc, ledger)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
+	view := NewCombinedNotesViewModelWithService(
+		dir,
+		project,
+		app.GlobalNoteLocation(),
+		svc,
+		ledger,
+	)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
 	views.Register(ViewGlobalNotes, view)
@@ -69,18 +76,24 @@ func (e *globalNoteTUIEnv) note(t *testing.T, filename string) *models.Note {
 }
 
 func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T) {
-	env := newGlobalNoteTUIEnv(t, "Pin me")
+	env := newGlobalNoteTUIEnv(t, "Edit me")
 	before := env.view.notes[0]
-	cmd := env.view.togglePin()
+	updated := cloneNoteForCommand(before)
+	updated.Body = "edited body"
+	updated.ModifiedAt = time.Now()
+	cmd := noteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
+		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: app.GlobalNoteLocation(), Note: updated}},
+		UndoAction: "Edit Note",
+	}, "Edited", false)
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	if result.Location != app.GlobalNoteLocation() {
 		t.Fatalf("result location = %#v", result.Location)
 	}
-	if env.view.notes[0] != before || env.view.notes[0].Pinned {
+	if env.view.notes[0] != before || env.view.notes[0].Body != "Edit me body" {
 		t.Fatal("command mutated the global view cache before Update")
 	}
-	if disk := env.note(t, before.Filename); !disk.Pinned {
-		t.Fatal("typed global transaction did not persist pin")
+	if disk := env.note(t, before.Filename); disk.Body != "edited body" {
+		t.Fatal("typed global transaction did not persist body edit")
 	}
 	entry, ok, err := env.ledger.SelectNewestUndo(storage.GlobalScope())
 	if err != nil || !ok {
@@ -90,17 +103,24 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 		t.Fatalf("global-only transaction carried project IDs: %v", entry.ProjectIDs)
 	}
 	env.shell.handleNotesMessages(result)
-	if !env.view.notes[0].Pinned || env.view.notes[0] == before {
+	if env.view.notes[0].Body != "edited body" || env.view.notes[0] == before {
 		t.Fatal("Update did not reconcile the committed global note")
 	}
 }
 
-func TestGlobalNotesUndoRedoSkipsNewerProjectTaskMutation(t *testing.T) {
+func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Scoped note")
 	note := env.view.notes[0]
-	noteMutation := runProjectNoteMutation(t, func() any { return env.view.togglePin()() })
+	updated := cloneNoteForCommand(note)
+	updated.Body = "updated scoped body"
+	updated.ModifiedAt = time.Now()
+	cmd := noteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
+		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: app.GlobalNoteLocation(), Note: updated}},
+		UndoAction: "Edit Note",
+	}, "Edited", false)
+	noteMutation := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(noteMutation)
-	if !env.note(t, note.Filename).Pinned {
+	if env.note(t, note.Filename).Body != "updated scoped body" {
 		t.Fatal("global note mutation did not persist")
 	}
 
@@ -108,35 +128,39 @@ func TestGlobalNotesUndoRedoSkipsNewerProjectTaskMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddTask: %v", err)
 	}
+	taskEntry, ok, err := env.ledger.SelectNewestUndo(storage.GlobalScope())
+	if err != nil || !ok {
+		t.Fatalf("newest workspace transaction ok=%v err=%v", ok, err)
+	}
 
 	undo, ok := env.view.undoDelete()().(ProjectNoteLedgerResultMsg)
-	if !ok || undo.Entry.TransactionID != noteMutation.Result.Results[0].TransactionID {
-		t.Fatalf("global note undo selected %#v, want note transaction %q", undo, noteMutation.Result.Results[0].TransactionID)
+	if !ok || undo.Entry.TransactionID != taskEntry.TransactionID {
+		t.Fatalf("combined Notes undo selected %#v, want newest transaction %q", undo, taskEntry.TransactionID)
 	}
 	env.shell.handleNotesMessages(undo)
-	if env.note(t, note.Filename).Pinned {
-		t.Fatal("global note undo did not restore the note")
+	if env.note(t, note.Filename).Body != "updated scoped body" {
+		t.Fatal("undoing the newer task mutation changed the older note mutation")
 	}
 	if err := storage.LoadProject(env.project); err != nil {
 		t.Fatalf("reload project after note undo: %v", err)
 	}
-	if task := env.project.GetTaskByID(taskResult.TaskID); task == nil || task.Title != "Newer project task" {
-		t.Fatalf("newer project task changed by global note undo: %#v", task)
+	if task := env.project.GetTaskByID(taskResult.TaskID); task != nil {
+		t.Fatalf("combined Notes undo retained newer project task: %#v", task)
 	}
 
 	redo, ok := env.view.redoNoteMutation()().(ProjectNoteLedgerResultMsg)
-	if !ok || redo.Entry.TransactionID != noteMutation.Result.Results[0].TransactionID {
-		t.Fatalf("global note redo selected %#v, want note transaction %q", redo, noteMutation.Result.Results[0].TransactionID)
+	if !ok || redo.Entry.TransactionID != taskEntry.TransactionID {
+		t.Fatalf("combined Notes redo selected %#v, want newest transaction %q", redo, taskEntry.TransactionID)
 	}
 	env.shell.handleNotesMessages(redo)
-	if !env.note(t, note.Filename).Pinned {
-		t.Fatal("global note redo did not replay the note mutation")
+	if env.note(t, note.Filename).Body != "updated scoped body" {
+		t.Fatal("redoing the newer task mutation changed the older note mutation")
 	}
 	if err := storage.LoadProject(env.project); err != nil {
 		t.Fatalf("reload project after note redo: %v", err)
 	}
 	if task := env.project.GetTaskByID(taskResult.TaskID); task == nil || task.Title != "Newer project task" {
-		t.Fatalf("newer project task changed by global note redo: %#v", task)
+		t.Fatalf("combined Notes redo did not restore newer project task: %#v", task)
 	}
 }
 
@@ -174,63 +198,7 @@ func TestGlobalBulkNoteDeleteIsAtomicOnStaleRevision(t *testing.T) {
 }
 
 func TestGlobalBulkNoteTagsCommitAsOneTransaction(t *testing.T) {
-	env := newGlobalNoteTUIEnv(t, "One", "Two")
-	cmd := env.shell.applyNoteTags(app.GlobalNoteLocation(), env.view.notes, []string{"batch"}, true)
-	result := runProjectNoteMutation(t, func() any { return cmd() })
-	if len(result.Result.Results) != 2 || result.Result.Results[0].TransactionID != result.Result.Results[1].TransactionID {
-		t.Fatal("global bulk tags did not commit in one transaction")
-	}
-	env.shell.handleNotesMessages(result)
-	for _, note := range env.view.notes {
-		if got := env.note(t, note.Filename); len(got.Tags) != 1 || got.Tags[0] != "batch" {
-			t.Fatalf("global bulk tag missing from %s: %v", note.Filename, got.Tags)
-		}
-	}
-}
-
-func TestGlobalNoteMoveUsesDestinationIDAndSharedLedgerScopes(t *testing.T) {
-	env := newGlobalNoteTUIEnv(t, "Move me")
-	source := env.view.notes[0]
-	pushTestPresentationOverlay(env.shell, ViewProjectSelector)
-	env.shell.pendingGlobalNoteMove = &pendingNoteMove{Source: newNoteMutationRef(app.GlobalNoteLocation(), source)}
-	handled, cmd := env.shell.handleNotesMessages(GlobalNoteMoveDoneMsg{ProjectID: env.project.ID, ProjectName: env.project.Name})
-	if !handled || cmd == nil || env.shell.pendingGlobalNoteMove != nil {
-		t.Fatal("global move did not freeze and dispatch its pending request")
-	}
-	result := runProjectNoteMutation(t, func() any { return cmd() })
-	if _, err := os.Stat(filepath.Join(env.dir, source.Filename)); !os.IsNotExist(err) {
-		t.Fatalf("move left global source: %v", err)
-	}
-	destinationNotes, err := env.svc.NotesAt(app.ProjectNoteLocation(env.project.ID))
-	if err != nil || len(destinationNotes) != 1 {
-		t.Fatalf("destination notes=%d err=%v", len(destinationNotes), err)
-	}
-	entry, ok, err := env.ledger.SelectNewestUndo(storage.GlobalScope())
-	if err != nil || !ok || len(entry.ProjectIDs) != 1 || entry.ProjectIDs[0] != env.project.ID {
-		t.Fatalf("move global entry=%#v ok=%v err=%v", entry, ok, err)
-	}
-	projectEntry, ok, err := env.ledger.SelectNewestUndo(storage.ProjectScope(env.project.ID))
-	if err != nil || !ok || projectEntry.TransactionID != entry.TransactionID {
-		t.Fatalf("move project selection=%#v ok=%v err=%v", projectEntry, ok, err)
-	}
-	env.shell.handleNotesMessages(result)
-
-	undo, ok := env.view.undoDelete()().(ProjectNoteLedgerResultMsg)
-	if !ok || undo.Location != app.GlobalNoteLocation() || undo.Redo {
-		t.Fatalf("global undo result = %#v", undo)
-	}
-	env.shell.handleNotesMessages(undo)
-	if len(env.view.notes) != 1 || env.view.notes[0].Title != source.Title {
-		t.Fatal("global undo did not restore the move source")
-	}
-	redo, ok := env.view.redoNoteMutation()().(ProjectNoteLedgerResultMsg)
-	if !ok || !redo.Redo {
-		t.Fatalf("global redo result = %#v", redo)
-	}
-	env.shell.handleNotesMessages(redo)
-	if len(env.view.notes) != 0 {
-		t.Fatal("global redo did not replay the move")
-	}
+	t.Skip("retired: combined Notes has no tags or bulk mutations")
 }
 
 func TestGlobalNoteEditorResultUsesTypedRenameTransaction(t *testing.T) {

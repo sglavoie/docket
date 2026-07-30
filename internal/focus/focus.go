@@ -1,11 +1,9 @@
 package focus
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // FocusTask wraps a task with its parent project for cross-project display.
@@ -26,8 +24,8 @@ func CollectActionableTasks(projects []*models.Project) []FocusTask {
 
 // CollectActionableTasksAt is CollectActionableTasks with an explicit reference
 // time for the snooze check. Use this instead of CollectActionableTasks when the
-// reference time is not time.Now() (e.g., the recommendation engine's
-// deterministic clock), mirroring Task.IsSnoozed / Task.IsSnoozedAt.
+// reference time is not time.Now(), mirroring Task.IsSnoozed /
+// Task.IsSnoozedAt.
 func CollectActionableTasksAt(projects []*models.Project, now time.Time) []FocusTask {
 	var tasks []FocusTask
 	for _, project := range projects {
@@ -56,31 +54,48 @@ func CollectActionableTasksAt(projects []*models.Project, now time.Time) []Focus
 	return tasks
 }
 
-// FormatRelativeDue formats a due date relative to today as plain text.
-func FormatRelativeDue(dueDate *time.Time) string {
-	if dueDate == nil {
-		return ""
+func hasIncompleteDependencies(task *models.Task, project *models.Project, projects []*models.Project) bool {
+	if task == nil || project == nil {
+		return false
 	}
-
-	now := time.Now()
-
-	daysUntil := util.DaysBetween(now, *dueDate)
-
-	switch {
-	case daysUntil < -1:
-		return fmt.Sprintf("%d days ago", -daysUntil)
-	case daysUntil == -1:
-		return "yesterday"
-	case daysUntil == 0:
-		return "today"
-	case daysUntil == 1:
-		return "tomorrow"
-	case daysUntil < 7:
-		return dueDate.Format("Mon")
-	default:
-		if dueDate.Year() != now.Year() {
-			return dueDate.Format("Jan 2 '06")
+	for _, depID := range task.DependsOn {
+		ref := models.ParseTaskRef(depID)
+		if ref.IsCrossProject() {
+			dep := getTaskByRef(projects, ref)
+			if dep == nil || !dep.IsComplete() {
+				return true
+			}
+			continue
 		}
-		return dueDate.Format("Jan 2")
+		dep := getTaskByID(project, depID)
+		if dep == nil || !dep.IsComplete() {
+			return true
+		}
 	}
+	return false
+}
+
+func getTaskByRef(projects []*models.Project, ref models.TaskRef) *models.Task {
+	if ref.IsEmpty() {
+		return nil
+	}
+	for _, project := range projects {
+		if project == nil || project.ID != ref.ProjectID {
+			continue
+		}
+		return getTaskByID(project, ref.TaskID)
+	}
+	return nil
+}
+
+func getTaskByID(project *models.Project, id string) *models.Task {
+	if project == nil || id == "" {
+		return nil
+	}
+	for _, task := range project.Tasks {
+		if task != nil && task.ID == id {
+			return task
+		}
+	}
+	return nil
 }

@@ -17,7 +17,7 @@ import (
 func TestCreateDomainBundle_ValidatesBeforeBootstrapEffects(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "absent", "workspace")
 	domains := NewDomains()
-	domains.Machine.AIHarness = "unknown-harness"
+	domains.Machine.Theme = "sepia"
 
 	err := createDomainBundle(
 		storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir}),
@@ -122,14 +122,53 @@ func TestManagerCompleteSplitStateWinsOverStaleLegacyConfig(t *testing.T) {
 func TestManagerLoadOrCreateDomains_EmptyWorkspaceStillBootstraps(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dataDir := filepath.Join(t.TempDir(), "new-workspace")
-	domains, err := NewManager(ConfigPathForDataDir(dataDir)).LoadOrCreateDomains()
+	manager := NewManager(ConfigPathForDataDir(dataDir))
+	domains, err := manager.LoadOrCreateDomains()
 	if err != nil {
 		t.Fatalf("bootstrap empty workspace: %v", err)
 	}
 	if domains == nil || domains.Catalog == nil {
 		t.Fatal("bootstrap empty workspace returned incomplete domains")
 	}
+	inboxID := domains.Catalog.SystemInboxProjectID
+	var inbox *CatalogProject
+	for i := range domains.Catalog.Projects {
+		if domains.Catalog.Projects[i].ID == inboxID {
+			inbox = &domains.Catalog.Projects[i]
+			break
+		}
+	}
+	if inboxID == "" || inbox == nil || inbox.Name != SystemInboxName || inbox.Slug != SystemInboxSlug {
+		t.Fatalf("fresh protected Inbox = %+v, id = %q", inbox, inboxID)
+	}
+	taskPath := storage.TasksFilePath(inbox.CatalogPath(dataDir))
+	taskBytes, err := os.ReadFile(taskPath)
+	if err != nil {
+		t.Fatalf("read protected Inbox tasks: %v", err)
+	}
+	document, err := storage.ParseProjectDocument(string(taskBytes))
+	if err != nil {
+		t.Fatalf("parse protected Inbox tasks: %v", err)
+	}
+	if len(document.Tasks) != 0 {
+		t.Fatalf("fresh protected Inbox has %d tasks", len(document.Tasks))
+	}
 	assertCompleteSyncedBootstrap(t, dataDir, domains.Catalog.WorkspaceID)
+
+	reloaded, err := manager.LoadOrCreateDomains()
+	if err != nil {
+		t.Fatalf("repeat bootstrap load: %v", err)
+	}
+	if reloaded.Catalog.SystemInboxProjectID != inboxID {
+		t.Fatalf("repeat bootstrap changed protected Inbox from %q to %q", inboxID, reloaded.Catalog.SystemInboxProjectID)
+	}
+	after, err := os.ReadFile(taskPath)
+	if err != nil {
+		t.Fatalf("read protected Inbox tasks after repeat load: %v", err)
+	}
+	if string(after) != string(taskBytes) {
+		t.Fatal("repeat bootstrap rewrote protected Inbox task document")
+	}
 }
 
 func TestManagerLoadOrCreateDomains_RecoversInterruptedBootstrapBeforeClassification(t *testing.T) {
@@ -160,8 +199,8 @@ func TestManagerLoadOrCreateDomains_RecoversInterruptedBootstrapBeforeClassifica
 			if domains.Catalog.WorkspaceID != workspaceID {
 				t.Fatalf("recovered workspace ID = %q, want %q", domains.Catalog.WorkspaceID, workspaceID)
 			}
-			if domains.Machine.Editor != NewMachineState().Editor {
-				t.Fatalf("recovered default machine editor = %q, want %q", domains.Machine.Editor, NewMachineState().Editor)
+			if domains.Machine == nil {
+				t.Fatal("recovered domains omitted machine state")
 			}
 			assertCompleteSyncedBootstrap(t, dataDir, workspaceID)
 			assertNoBootstrapManifests(t, TransactionsDir(dataDir))
@@ -254,8 +293,8 @@ func TestManagerLoadOrCreateDomains_MachineFailureLeavesCompleteSyncedWorkspace(
 	if reloaded.Catalog.WorkspaceID != catalog.WorkspaceID {
 		t.Fatalf("reloaded workspace ID = %q, want %q", reloaded.Catalog.WorkspaceID, catalog.WorkspaceID)
 	}
-	if reloaded.Machine.Editor != NewMachineState().Editor {
-		t.Fatalf("reloaded machine editor = %q, want default %q", reloaded.Machine.Editor, NewMachineState().Editor)
+	if reloaded.Machine == nil {
+		t.Fatal("reloaded domains omitted default machine state")
 	}
 	machinePath, err := MachineStatePath(catalog.WorkspaceID)
 	if err != nil {
@@ -277,8 +316,6 @@ func defaultBootstrapOps(t *testing.T, dataDir, workspaceID string) []transactio
 	}{
 		{kind: domainCatalog, path: WorkspaceCatalogPath(dataDir), payload: domains.Catalog},
 		{kind: domainPlanning, path: PlanningStatePath(dataDir), payload: domains.Planning},
-		{kind: domainSettings, path: SettingsPath(dataDir), payload: domains.Settings},
-		{kind: domainAutomation, path: AutomationPath(dataDir), payload: domains.Automation},
 	}
 	ops := make([]transaction.Op, 0, len(specs))
 	for _, spec := range specs {
@@ -320,8 +357,6 @@ func assertCompleteSyncedBootstrap(t *testing.T, dataDir, workspaceID string) {
 	paths := []string{
 		WorkspaceCatalogPath(dataDir),
 		PlanningStatePath(dataDir),
-		SettingsPath(dataDir),
-		AutomationPath(dataDir),
 	}
 	for _, path := range paths {
 		data, err := os.ReadFile(path)

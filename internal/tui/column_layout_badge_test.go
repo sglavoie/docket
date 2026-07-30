@@ -31,7 +31,6 @@ func TestComputeBadgeWidthsEmpty(t *testing.T) {
 func TestComputeBadgeWidthsAllNil(t *testing.T) {
 	if got := ComputeBadgeWidths([]*models.Task{nil, nil, nil}, BadgeWidthOpts{
 		IncludeStatus: true,
-		IncludeType:   true,
 	}); got != nil {
 		t.Errorf("all-nil tasks should return nil layout, got %+v", got)
 	}
@@ -40,25 +39,21 @@ func TestComputeBadgeWidthsAllNil(t *testing.T) {
 func TestComputeBadgeWidthsMixed(t *testing.T) {
 	t1 := &models.Task{
 		Title:         "alpha",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateInProgress,
 		Priority:      2,
 	}
 	t2 := &models.Task{
 		Title:         "beta",
-		Type:          models.TaskTypeEpic,
 		WorkflowState: models.StateReady,
 		Priority:      5,
 	}
 	t3 := &models.Task{
 		Title:         "gamma",
-		Type:          models.TaskTypeBug,
 		WorkflowState: models.StateWaiting,
 	}
 
 	cl := ComputeBadgeWidths([]*models.Task{t1, t2, nil, t3}, BadgeWidthOpts{
 		IncludeStatus: true,
-		IncludeType:   true,
 	})
 	if cl == nil {
 		t.Fatal("expected non-nil layout for mixed tasks")
@@ -73,16 +68,13 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 	if !cl.HasStatus || cl.StatusWidth <= 0 {
 		t.Errorf("status column should be populated, got Has=%v width=%d", cl.HasStatus, cl.StatusWidth)
 	}
-	if !cl.HasType || cl.TypeWidth <= 0 {
-		t.Errorf("type column should be populated, got Has=%v width=%d", cl.HasType, cl.TypeWidth)
-	}
 	if cl.HasProject {
 		t.Error("HasProject should remain false when ProjectNameFor is nil")
 	}
 }
 
 func TestComputeBadgeWidthsHideLowPriority(t *testing.T) {
-	t1 := &models.Task{Priority: 5, WorkflowState: models.StateReady, Type: models.TaskTypeTask}
+	t1 := &models.Task{Priority: 5, WorkflowState: models.StateReady}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
 		HideLowPriority: true,
 	})
@@ -99,7 +91,7 @@ func TestComputeBadgeWidthsHideLowPriority(t *testing.T) {
 
 func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	// No options enabled → only priority is measured.
-	t1 := &models.Task{Priority: 1, WorkflowState: models.StateReady, Type: models.TaskTypeTask}
+	t1 := &models.Task{Priority: 1, WorkflowState: models.StateReady}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{})
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
@@ -107,7 +99,7 @@ func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	if !cl.HasPriority {
 		t.Error("HasPriority should be true regardless of opts when priority is shown")
 	}
-	if cl.HasStatus || cl.HasType || cl.HasProject {
+	if cl.HasStatus || cl.HasProject {
 		t.Errorf("optional columns should remain unset when not requested, got %+v", cl)
 	}
 }
@@ -116,7 +108,7 @@ func TestComputeBadgeWidthsPriorityEmojiWidth(t *testing.T) {
 	icons.SetUseEmoji(true)
 	t.Cleanup(func() { icons.SetUseEmoji(false) })
 
-	t1 := &models.Task{Priority: 1, WorkflowState: models.StateReady, Type: models.TaskTypeTask}
+	t1 := &models.Task{Priority: 1, WorkflowState: models.StateReady}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{})
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
@@ -130,8 +122,8 @@ func TestComputeBadgeWidthsPriorityEmojiWidth(t *testing.T) {
 }
 
 func TestComputeBadgeWidthsProject(t *testing.T) {
-	t1 := &models.Task{ID: "1", Title: "one", WorkflowState: models.StateReady, Type: models.TaskTypeTask}
-	t2 := &models.Task{ID: "2", Title: "two", WorkflowState: models.StateReady, Type: models.TaskTypeTask}
+	t1 := &models.Task{ID: "1", Title: "one", WorkflowState: models.StateReady}
+	t2 := &models.Task{ID: "2", Title: "two", WorkflowState: models.StateReady}
 
 	names := map[string]string{
 		"1": "short",
@@ -155,7 +147,7 @@ func TestComputeBadgeWidthsProject(t *testing.T) {
 }
 
 func TestComputeBadgeWidthsProjectEmptyName(t *testing.T) {
-	t1 := &models.Task{ID: "1", WorkflowState: models.StateReady, Type: models.TaskTypeTask}
+	t1 := &models.Task{ID: "1", WorkflowState: models.StateReady}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
 		ProjectNameFor: func(*models.Task) string { return "" },
 	})

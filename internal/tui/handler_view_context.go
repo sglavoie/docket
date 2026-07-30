@@ -24,7 +24,6 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.IsCustomContext {
 			scope = CustomContextScope(msg.SelectedContext)
 		}
-		m.recordFinderDestination(recentDestinationForContextScope(scope))
 		if m.crossOutliner != nil {
 			m.crossOutliner.applyContextScope(scope)
 		}
@@ -72,7 +71,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 // openScopeHubForInlineAction routes a custom-scope mutation raised outside the
 // Scope Hub into a hub opened on the exact frozen scope. The hub intercepts its
 // own inline actions before they reach the shell, so this only ever runs for a
-// scope action started somewhere else, such as a Finder scope row.
+// scope action started somewhere else, such as a Scope Hub row.
 func (m *AppModel) openScopeHubForInlineAction(msg scopeHubInlineActionMsg) tea.Cmd {
 	cmd := m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
 	if m.manageHub == nil {

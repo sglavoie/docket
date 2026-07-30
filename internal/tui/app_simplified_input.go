@@ -9,8 +9,8 @@ import (
 // handleSimplifiedInputKey resolves one root-level key through the selected
 // OperationRegistry strategy, extending any pending chord prefix first. It
 // deliberately returns handled=false while an inline Outliner control owns input
-// so the normal view Update path can process search, quick edit, confirmation,
-// and mode-picker keystrokes.
+// so the normal view Update path can process search, quick edit, and confirmation
+// keystrokes.
 func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return false, nil
@@ -71,6 +71,35 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	}
 }
 
+// executeSimplifiedGlobalKey routes a grammar-owned global key through the same
+// descriptor and executor even when a subordinate route covers the Outliner.
+// Ctrl+C is currently the only such key.
+func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
+	if m.operationRegistry == nil || m.operationExecutor == nil {
+		return false, nil
+	}
+	ctx := m.operationCommandContext()
+	ctx.View = ViewCrossProjectOutliner
+	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	binding, _, ok := m.operationRegistry.InputBindingForKey(InputStrategySimplified, key, ctx)
+	if !ok {
+		return false, nil
+	}
+	result := m.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      binding.OperationID,
+		Context: ctx,
+		Source:  OperationSourceDirectKey,
+	})
+	switch message := result.AsMessage().(type) {
+	case nil:
+		return true, nil
+	case OperationCommandResultMsg:
+		return true, message.Cmd
+	default:
+		return true, func() tea.Msg { return message }
+	}
+}
+
 // pendingChordHintRow is the which-key footer row for an unfinished chord.
 func (m *AppModel) pendingChordHintRow() string {
 	if m == nil || m.operationRegistry == nil || len(m.pendingChord) == 0 {
@@ -85,9 +114,7 @@ func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {
 	if m == nil {
 		return false
 	}
-	if m.modePickerActive() ||
-		m.scoreFilterInput.IsActive() ||
-		m.IsSearchMode() ||
+	if m.IsSearchMode() ||
 		m.quickEdit.IsActive() ||
 		m.confirm.IsActive() {
 		return true

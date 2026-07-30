@@ -16,19 +16,14 @@ import (
 
 // Autocomplete mode constants
 const (
-	acModeNone          = iota // No autocomplete active
-	acModeTag                  // Completing a #tag
-	acModeParent               // Completing a >parent
-	acModeType                 // Completing a ^type
-	acModePriority             // Completing a !priority
-	acModeDate                 // Completing a @date
-	acModeRecur                // Completing a ~recurrence
-	acModeStatus               // Completing a $state
-	acModeProject              // Completing a %project
-	acModeHas                  // has:property filter (visible search)
-	acModeIs                   // is:property filter (visible search)
-	acModeNo                   // no:property filter (visible search)
-	acModeSearchProject        // p:project filter (visible search)
+	acModeNone     = iota // No autocomplete active
+	acModeTag             // Completing a #tag
+	acModeParent          // Completing a >parent
+	acModePriority        // Completing a !priority
+	acModeDate            // Completing a @date
+	acModeRecur           // Completing a ~recurrence
+	acModeStatus          // Completing a $state
+	acModeProject         // Completing a %project
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -37,8 +32,6 @@ const acVisibleCount = 7
 // quickCaptureResult holds parsed metadata from quick capture input.
 type quickCaptureResult struct {
 	title             string
-	taskType          models.TaskType
-	taskTypeSet       bool
 	priority          int
 	prioritySet       bool
 	tags              []string
@@ -47,16 +40,14 @@ type quickCaptureResult struct {
 	recurrence        *models.RecurrencePattern
 	state             models.WorkflowState
 	stateSet          bool
-	targetProjectID   *string  // Target project ID for cross-project capture
-	targetProjectName string   // Target project name (for preview display)
-	aliasesUsed       []string // Alias forms used, e.g. ["tag:", "pri:"]
+	targetProjectID   *string // Target project ID for cross-project capture
+	targetProjectName string  // Target project name (for preview display)
 }
 
 // quickCaptureTriggers defines the trigger characters for quick capture autocomplete.
 var quickCaptureTriggers = []ACTrigger{
 	{'#', acModeTag},
 	{'>', acModeParent},
-	{'^', acModeType},
 	{'!', acModePriority},
 	{'@', acModeDate},
 	{'~', acModeRecur},
@@ -135,10 +126,10 @@ func (q *quickCaptureInput) initCaches() {
 	// Cache all tags from the project
 	q.tagCache = CollectTagNamesForProject(q.project)
 
-	// Cache potential parent tasks (non-completed, can have children)
+	// Cache potential parent tasks (non-completed).
 	q.parentCache = make([]*models.Task, 0)
 	for _, task := range q.project.Tasks {
-		if !task.IsComplete() && task.Type.CanHaveChildren() {
+		if !task.IsComplete() {
 			q.parentCache = append(q.parentCache, task)
 		}
 	}
@@ -288,8 +279,6 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getTagSuggestions(partial)
 	case acModeParent:
 		items = q.getParentSuggestions(partial)
-	case acModeType:
-		items = q.getTypeSuggestions(partial)
 	case acModePriority:
 		items = q.getPrioritySuggestions(partial)
 	case acModeDate:
@@ -317,12 +306,12 @@ func (q *quickCaptureInput) updatePreview() {
 }
 
 // previewGroupLabelWidth is the padded width used for the leading group label
-// column ("Task", "Route", "Schedule", "Metadata", "Aliases"). Sized to the
+// column ("Task", "Route", "Schedule", "Metadata"). Sized to the
 // longest label plus a trailing space so the body column lines up.
 const previewGroupLabelWidth = 9
 
 // previewGroup is one labeled cluster of parsed-metadata chunks (Task, Route,
-// Schedule, Metadata, Aliases). Both the full grouped preview and the compact
+// Schedule, Metadata). Both the full grouped preview and the compact
 // two-row fallback are built from the same groups so they can never disagree
 // about what the parser understood.
 type previewGroup struct {
@@ -333,14 +322,13 @@ type previewGroup struct {
 // previewGroups builds the populated preview groups from the parsed result, or
 // reports ok=false when there is nothing to preview. It is the single source of
 // the recognized task, route, schedule, state, priority, tag, project, and
-// alias information shown by both preview renderers.
+// information shown by both preview renderers.
 func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if q.preview == nil || q.preview.title == "" {
 		return nil, false
 	}
 
-	typeStyle := GetTypeStyle(string(q.preview.taskType))
-	taskChunks := []string{typeStyle.Render(q.preview.taskType.Icon()) + " " + q.preview.title}
+	taskChunks := []string{q.preview.title}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 
 	state := models.StateInbox
@@ -381,18 +369,13 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		groups = append(groups, previewGroup{label: "Metadata", chunks: metaChunks})
 	}
 
-	if len(q.preview.aliasesUsed) > 0 {
-		body := MutedStyle.Render(strings.Join(q.preview.aliasesUsed, ", "))
-		groups = append(groups, previewGroup{label: "Aliases", chunks: []string{body}})
-	}
-
 	return groups, true
 }
 
 // renderPreview formats the parsed preview for display. The output is chunked
 // into labeled groups (Task / Route / Schedule / Metadata) so the user can
 // scan what the parser understood without parsing a separator-soup. Only
-// populated groups are shown; alias hints go on their own line.
+// populated groups are shown.
 func (q *quickCaptureInput) renderPreview() string {
 	if q.previewErr != "" {
 		return ValidationErrorStyle.Render(q.previewErr)
@@ -527,7 +510,7 @@ func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
 // the same grammar reference reads correctly wherever it appears.
 const syntaxGuideTitle = "Capture Syntax"
 
-// syntaxGuideEntry documents one sigil/alias family: the accepted forms, a
+// syntaxGuideEntry documents one canonical sigil family: the accepted form, a
 // short description, display examples, and a set of full capture inputs that
 // must parse successfully. The display fields (forms/desc/examples) may carry
 // presentation sugar such as arrows or "(repeatable)" hints; the validation
@@ -549,8 +532,7 @@ type syntaxGuideGroup struct {
 
 // syntaxGuideGroups returns the grouped sigil reference. Project Routing is
 // only included when %project capture is enabled, so the Linked Task Creator
-// (which skips project syntax) never advertises it. Task-type examples omit
-// `note` because it is not a valid models.TaskType.
+// (which skips project syntax) never advertises it.
 func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 	groupOrder := []string{"Basics", "Priority & Tags", "Schedule", "Placement", "State", "Project Routing"}
 	byGroup := make(map[string][]syntaxGuideEntry)
@@ -564,40 +546,30 @@ func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 			examples: strings.Join(def.Examples, "  "),
 		}
 		switch def.Field {
-		case textgrammar.FieldTaskType:
-			for _, value := range def.Values {
-				entry.validation = append(entry.validation, "Sample ^"+value)
-			}
-			entry.validation = append(entry.validation, "Sample type:task")
 		case textgrammar.FieldPriority:
 			for _, value := range def.Values {
 				entry.validation = append(entry.validation, "Task !"+value)
 			}
-			entry.validation = append(entry.validation, "Task pri:2", "Task priority:high")
 		case textgrammar.FieldTag:
-			entry.validation = []string{"Task #backend", "Task #urgent #api", "Task tag:backend"}
+			entry.validation = []string{"Task #backend", "Task #urgent #api", "Task #type:bug"}
 		case textgrammar.FieldDue:
 			entry.validation = []string{
 				"Task @tomorrow", "Task @friday", "Task @+3d", "Task @next monday",
-				"Task @in 2 weeks", "Task @2025-12-31", "Task due:2w",
+				"Task @in 2 weeks", "Task @2025-12-31",
 			}
 		case textgrammar.FieldRecurrence:
 			entry.validation = []string{
 				"Task ~daily", "Task ~weekly", "Task ~biweekly", "Task ~monthly",
-				"Task ~yearly", "Task ~2d", "Task recur:weekly", "Task ~weekly:mon,fri", "Task ~daily~",
+				"Task ~2d",
 			}
 		case textgrammar.FieldParent:
-			entry.validation = []string{"Subtask >1", "Subtask >Login", "Subtask parent:2"}
+			entry.validation = []string{"Subtask >1", "Subtask >Login"}
 		case textgrammar.FieldState:
 			for _, value := range def.Values {
 				entry.validation = append(entry.validation, "Task $"+value)
 			}
 		case textgrammar.FieldProject:
-			entry.validation = []string{
-				"Task %" + syntaxGuideProjectSlug,
-				"Task p:" + syntaxGuideProjectSlug,
-				"Task proj:" + syntaxGuideProjectSlug,
-			}
+			entry.validation = []string{"Task %" + syntaxGuideProjectSlug}
 		default:
 		}
 		byGroup[def.Group] = append(byGroup[def.Group], entry)
@@ -624,7 +596,7 @@ const (
 	syntaxColumnGap   = 2 // Gap between aligned columns.
 )
 
-// renderSyntaxGuide returns the grouped, measured, wrap-aware sigil/alias
+// renderSyntaxGuide returns the grouped, measured, wrap-aware canonical sigil
 // reference shown when the user toggles the gated syntax help. Shared by Quick
 // Capture and the linked-task creator so both surfaces stay in lockstep.
 //

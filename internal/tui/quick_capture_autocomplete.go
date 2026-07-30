@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -39,47 +38,6 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 			Display: "#" + s.tag,
 			Value:   s.tag,
 		})
-	}
-	return suggestions
-}
-
-// captureTypeIcon returns the autocomplete icon for a valid task type.
-func captureTypeIcon(t models.TaskType) string {
-	switch t {
-	case models.TaskTypeEpic:
-		return icons.Get("type.epic")
-	case models.TaskTypeStory:
-		return icons.Get("type.story")
-	case models.TaskTypeTask:
-		return icons.Get("type.task")
-	case models.TaskTypeBug:
-		return icons.Get("type.bug")
-	case models.TaskTypeIdea:
-		return icons.Get("idea")
-	default:
-		return ""
-	}
-}
-
-// getTypeSuggestions returns matching task type options for the partial query.
-// Suggestions are derived from models.AllTaskTypes() so only valid task types
-// are offered; the invalid `note` type can never be suggested because it cannot
-// produce a valid task.
-func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
-	var suggestions []ACSuggestion
-	partialLower := strings.ToLower(partial)
-	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTaskType)
-	for _, name := range def.Values {
-		t, ok := models.ParseTaskType(name)
-		if !ok {
-			continue
-		}
-		if partial == "" || strings.Contains(name, partialLower) {
-			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("^%s %s", name, captureTypeIcon(t)),
-				Value:   name,
-			})
-		}
 	}
 	return suggestions
 }
@@ -173,8 +131,7 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 
 	var scored []scoredParent
 	for _, task := range q.parentCache {
-		// Build searchable text: "#ShortID Type Title"
-		searchText := fmt.Sprintf("#%d %s %s", task.ShortID, task.Type.HeadingPrefix(), task.Title)
+		searchText := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
 		score := fuzzy.Score(searchText, partial)
 		if score > 0 {
 			scored = append(scored, scoredParent{task: task, score: score})
@@ -190,12 +147,12 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		task := s.task
-		// Truncate title if too long (width-aware: ~15 chars overhead for icon+id+spaces)
+		// Truncate title if too long (width-aware).
 		titleLimit := max(q.width-15, 10)
 		title := truncateToVisualWidth(task.Title, titleLimit)
 		titleRendered := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)
 		suggestions = append(suggestions, ACSuggestion{
-			Display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, titleRendered),
+			Display: fmt.Sprintf("#%d %s", task.ShortID, titleRendered),
 			Value:   strconv.Itoa(task.ShortID),
 		})
 	}

@@ -9,15 +9,23 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// fullscreenContentHeight calculates the available height for content in a
-// fullscreen tabbed view. It subtracts the standard chrome overhead: title line (1),
-// newline after title (1), and status bar footer (2), for a fixed cost of 4 lines.
-// The tabBarOverhead parameter accounts for the tab bar height plus any additional
-// header lines such as blank separators or filter badges.
-func fullscreenContentHeight(totalHeight, tabBarOverhead int) int {
-	const fixedOverhead = 4 // title(1) + newline(1) + footer(2)
-	h := max(totalHeight-fixedOverhead-tabBarOverhead, 1)
-	return h
+// fitBlockHeight truncates or pads a rendered block to an exact line count.
+func fitBlockHeight(block string, height int) string {
+	if height <= 0 {
+		return ""
+	}
+	block = strings.TrimRight(block, "\n")
+	lines := []string{""}
+	if block != "" {
+		lines = strings.Split(block, "\n")
+	}
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+	for len(lines) < height {
+		lines = append(lines, "")
+	}
+	return strings.Join(lines, "\n")
 }
 
 // fullscreenContentHeightForBlocks returns the largest content-block height (in
@@ -263,80 +271,6 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 	}
 
 	return style.Render(dividerLine)
-}
-
-// renderFullscreenChrome renders the tab bar + optional filter badge + trailing
-// blank line that sits between the title and the content area. It returns the
-// rendered string and the number of lines consumed (for content height calc).
-func renderFullscreenChrome(tabBar, filterBadge string, trailingBlank bool) (string, int) {
-	var b strings.Builder
-	b.WriteString(tabBar)
-	b.WriteString("\n")
-
-	if filterBadge != "" {
-		b.WriteString(filterBadge)
-		b.WriteString("\n")
-	}
-	if trailingBlank {
-		b.WriteString("\n")
-	}
-
-	lines := lipgloss.Height(tabBar) // tab bar may wrap to multiple rows
-	if filterBadge != "" {
-		lines++
-	}
-	if trailingBlank {
-		lines++
-	}
-	return b.String(), lines
-}
-
-// renderFullscreenFooterBlock renders the "\n\n" + status messages + footer bar
-// sequence that most fullscreen views share. The caller supplies the status
-// message, error, and the left/right footer strings already styled.
-// Pass an optional accent color to tint the separator line.
-func renderFullscreenFooterBlock(statusMsg string, err error, footerLeft, footerRight string, width int, accent ...color.Color) string {
-	var b strings.Builder
-	b.WriteString("\n\n")
-	b.WriteString(renderStatusMessages(statusMsg, err))
-	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, width, accent...))
-	return b.String()
-}
-
-// renderStatusMessages renders the standard status/error message block used by
-// fullscreen views. Returns an empty string when neither message is set.
-func renderStatusMessages(statusMessage string, err error) string {
-	var b strings.Builder
-	if statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(statusMessage))
-		b.WriteString("\n")
-	}
-	if err != nil {
-		b.WriteString(ValidationErrorStyle.Render(err.Error()))
-		b.WriteString("\n")
-	}
-	return b.String()
-}
-
-// renderCollapsibleHeader renders a collapsible section/group header.
-// It is a thin wrapper around renderSectionHeader that also applies selection
-// highlighting. Use renderSectionHeader directly when callers need to apply
-// their own highlighting (e.g. ZebraLine, MutationFlashLine).
-func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flash bool, style lipgloss.Style, width int) string {
-	line := renderSectionHeader(SectionHeaderOpts{
-		Name:        name,
-		Count:       count,
-		Collapsed:   collapsed,
-		AccentColor: style,
-		Width:       width,
-	})
-	if isSelected {
-		if flash {
-			return SelectedFlashLine(line, 0)
-		}
-		return SelectedLine(line, 0)
-	}
-	return line
 }
 
 // Spacing rule: 1 blank line between sections, 0 blank lines between rows

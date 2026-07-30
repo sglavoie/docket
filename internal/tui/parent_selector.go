@@ -23,7 +23,7 @@ func (p ParentPickerItem) FilterText() string {
 	if p.None {
 		return parentSelectorNoParentLabel
 	}
-	return fmt.Sprintf("#%d %s %s", p.Task.ShortID, p.Task.Type.HeadingPrefix(), p.Task.Title)
+	return fmt.Sprintf("#%d %s", p.Task.ShortID, p.Task.Title)
 }
 
 // DisplayText returns the task title for display.
@@ -213,13 +213,10 @@ func (m *ParentSelectorModel) renderList() string {
 				continue
 			}
 
-			// Type icon with badge style
-			typeIcon := GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon())
-
 			// Short ID
 			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
 
-			prefix := fmt.Sprintf("  %s %s ", typeIcon, shortID)
+			prefix := fmt.Sprintf("  %s ", shortID)
 			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
 			title := truncateToVisualWidth(item.Task.Title, maxTitleLen)
 			titleRendered := TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{

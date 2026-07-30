@@ -296,10 +296,6 @@ func operationCategoryLabel(category OperationCategory) string {
 		return "Notes"
 	case OperationCategoryTag:
 		return "Tags"
-	case OperationCategoryReview:
-		return "Review"
-	case OperationCategoryNotification:
-		return "Notifications"
 	case OperationCategorySystem:
 		return "System"
 	default:

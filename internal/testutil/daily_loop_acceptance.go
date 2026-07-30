@@ -49,7 +49,7 @@ type WorkflowStateAcceptance struct {
 	Terminal      bool
 }
 
-// DailyLoopWorkflowStateAcceptance returns the ten canonical states in their
+// DailyLoopWorkflowStateAcceptance returns the nine target states in their
 // accepted public order.
 func DailyLoopWorkflowStateAcceptance() []WorkflowStateAcceptance {
 	return []WorkflowStateAcceptance{
@@ -59,7 +59,6 @@ func DailyLoopWorkflowStateAcceptance() []WorkflowStateAcceptance {
 		{State: models.StateInProgress, LegacyStatus: "in_progress"},
 		{State: models.StateWaiting, LegacyStatus: "blocked", LegacySection: "Waiting"},
 		{State: models.StatePaused, LegacyStatus: "standby", LegacySection: "Standby"},
-		{State: models.StateReview, LegacyStatus: "review", LegacySection: "Review", LegacyStage: "Review"},
 		{State: models.StateSomeday, LegacyStatus: "maybe", LegacySection: "Someday"},
 		{State: models.StateDone, LegacyStatus: "done", LegacySection: "Completed", Terminal: true},
 		{State: models.StateCanceled, LegacyStatus: "canceled", Terminal: true},
@@ -160,8 +159,8 @@ type DailyLoopContract struct {
 // contract so later migration tests can compare production behavior against it.
 func DailyLoopTargetContract() DailyLoopContract {
 	return DailyLoopContract{
-		Modes:        []string{"All", "Inbox", "Next", "Backlog", "Due", "Priority", "Blocked", "Parked", "Daily Review", "Activity"},
-		TabCycle:     []string{"All", "Inbox", "Next", "Backlog"},
+		Modes:        []string{"All", "Inbox", "Next", "Backlog", "Due"},
+		TabCycle:     []string{"All", "Inbox", "Next", "Backlog", "Due"},
 		GroupOrder:   []string{"Today", "In Progress", "Inbox", "Next", "Backlog", "Review", "Waiting", "Paused", "Someday"},
 		InitialMode:  "All",
 		InitialScope: "All Projects",
@@ -184,9 +183,7 @@ func DailyLoopTargetContract() DailyLoopContract {
 			{Key: "c", Action: "scope", Area: "discovery"},
 			{Key: "v", Action: "multi-select", Area: "discovery"},
 			{Key: "N", Action: "notes", Area: "core tools"},
-			{Key: "R", Action: "weekly review", Area: "core tools"},
 			{Key: "T", Action: "tags", Area: "core tools"},
-			{Key: "!", Action: "notifications", Area: "core tools"},
 			{Key: "u", Action: "undo", Area: "session"},
 			{Key: "ctrl+r", Action: "redo", Area: "session"},
 			{Key: "esc", Action: "back", Area: "session"},
@@ -217,8 +214,8 @@ func DailyLoopTargetContract() DailyLoopContract {
 		},
 		ScopeRules: []string{
 			"project focus opens project notes; base scope opens global scratch notes",
-			"weekly review and tags use the active scope project set",
-			"notifications remain global",
+			"tags use the active scope project set",
+			"notes and tags follow the active scope",
 		},
 		Visibility: []string{
 			"Today is synthetic and deduplicated",

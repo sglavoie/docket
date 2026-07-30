@@ -55,10 +55,10 @@ const (
 // in ttenv so process adapters can use the same name without importing config.
 const DataDirEnvVar = ttenv.DataDirEnvVar
 
-// InternalDir returns the internal ".tt" directory inside a data directory. This
-// is where the synced decomposed-config files (workspace/planning/settings/
-// automation.json) live. It mirrors Config.GetInternalDir but is available
-// without a loaded Config so path helpers share one derivation point.
+// InternalDir returns the internal ".tt" directory inside a data directory.
+// It contains the portable catalog and planning files plus transaction and
+// migration artifacts. The helper is available without a loaded Config so all
+// path derivation shares one root.
 func InternalDir(dataDir string) string {
 	return filepath.Join(dataDir, dataDirName)
 }
@@ -88,12 +88,14 @@ func PlanningStatePath(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "planning.json")
 }
 
-// SettingsPath returns the synced settings.json path for a data dir.
+// SettingsPath returns the retired v4 settings.json path for migration and
+// doctor inspection. Live runtime code does not load this domain.
 func SettingsPath(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "settings.json")
 }
 
-// AutomationPath returns the synced automation.json path for a data dir.
+// AutomationPath returns the retired v4 automation.json path for migration and
+// doctor inspection. Live runtime code does not load this domain.
 func AutomationPath(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "automation.json")
 }

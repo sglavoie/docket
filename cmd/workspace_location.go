@@ -21,11 +21,11 @@ active-workspace pointer (if one has been set by 'tt workspace move').`,
 func runWorkspaceLocation(_ *cobra.Command, _ []string) error {
 	manager := config.NewManager(resolveConfigPath())
 	configPath := manager.GetConfigPath()
-	dataDir := config.WorkspaceRootFromConfigPath(configPath)
+	workspaceDir := config.WorkspaceRootFromConfigPath(configPath)
 
-	fmt.Printf("Workspace data directory: %s\n", config.DisplayPath(dataDir))
+	fmt.Printf("Workspace data directory: %s\n", config.DisplayPath(workspaceDir))
 	fmt.Printf("Config file:              %s\n", config.DisplayPath(configPath))
-	fmt.Printf("Storage:                  %s\n", config.StorageLocationLabel(dataDir))
+	fmt.Printf("Storage:                  %s\n", config.StorageLocationLabel(workspaceDir))
 
 	if ptr, ok := config.ReadActiveWorkspacePointer(); ok {
 		fmt.Printf("Active workspace pointer: %s\n", config.DisplayPath(ptr))

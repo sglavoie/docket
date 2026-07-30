@@ -1,12 +1,9 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -67,88 +64,6 @@ func TestCaptureFooterSpecStatePriority(t *testing.T) {
 	}
 	if got := captureFooterSpec(false, false, true); got.Left != captureFooterHelp {
 		t.Fatalf("expanded syntax expected, got %q", got.Left)
-	}
-}
-
-// TestAppViewLinkedTaskCreatorUsesAppShellFooter guards the single-footer
-// contract for the linked-task Task Composer preset.
-func TestAppViewLinkedTaskCreatorUsesAppShellFooter(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.width = 80
-	app.height = 24
-	sourceTask := project.Tasks[0]
-
-	handled, _ := app.handleTaskMessages(CreateLinkedTaskMsg{SourceTask: sourceTask, Project: project, LinkType: LinkTypeBlocker})
-	if !handled {
-		t.Fatal("CreateLinkedTaskMsg should be handled")
-	}
-
-	content := app.View().Content
-
-	if !strings.Contains(content, "Task Composer") || !strings.Contains(content, "Linked task · blocker") {
-		t.Fatal("composed output should keep the linked-task Task Composer title/body")
-	}
-	if got := countFullWidthDividers(content); got != 1 {
-		t.Fatalf("expected exactly one app-shell footer separator, got %d\n%s", got, ansi.Strip(content))
-	}
-}
-
-// TestAppViewLinkedTaskCreatorComposesWithinTerminalAcrossSizes composes the
-// Linked Task Creator through AppModel at the supported minimum and every
-// baseline size, with the guide both closed and expanded. The scenario runner
-// cannot reliably construct a source/link context at 60x20, so this composed Go
-// test is the minimum-size coverage for the Linked Task Creator: it asserts the
-// single app-shell footer with its capture actions stays visible, no required
-// text is truncated, every line fits the width, and the render fits the
-// terminal height (its fixed source-task header notwithstanding).
-func TestAppViewLinkedTaskCreatorComposesWithinTerminalAcrossSizes(t *testing.T) {
-	sizes := append([]baselineSize{narrowBaseline}, baselineSizes...)
-	for _, sz := range sizes {
-		for _, expand := range []bool{false, true} {
-			name := fmt.Sprintf("%s expanded=%v", sz.label, expand)
-			t.Run(name, func(t *testing.T) {
-				app, project := newTestAppModelWithProject()
-				app.handleWindowSize(tea.WindowSizeMsg{Width: sz.width, Height: sz.height})
-				sourceTask := project.Tasks[0]
-
-				handled, _ := app.handleTaskMessages(CreateLinkedTaskMsg{
-					SourceTask: sourceTask, Project: project, LinkType: LinkTypeBlocker,
-				})
-				if !handled {
-					t.Fatal("CreateLinkedTaskMsg should be handled")
-				}
-				ltc, ok := app.views.Get(ViewTaskComposer).(*TaskComposerModel)
-				if !ok {
-					t.Fatal("expected a TaskComposerModel to be registered")
-				}
-				if expand {
-					ltc.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-					if !ltc.helpExpanded {
-						t.Fatal("expected guide to expand")
-					}
-				}
-
-				content, issues := withRenderAudit(func() string { return app.View().Content })
-				if len(issues) != 0 {
-					t.Fatalf("%s: required-text truncation recorded: %+v", name, issues)
-				}
-
-				plain := ansi.Strip(content)
-				assertRenderedLinesWithinVisualWidth(t, name, content, sz.width)
-				if h := lipgloss.Height(content); h > sz.height {
-					t.Fatalf("%s: composed height %d exceeds terminal height %d\n%s", name, h, sz.height, plain)
-				}
-				if !strings.Contains(plain, "Enter create") {
-					t.Fatalf("%s: app-shell footer capture actions missing\n%s", name, plain)
-				}
-				if !strings.Contains(plain, "Linked task · blocker") {
-					t.Fatalf("%s: linked-task composer label missing\n%s", name, plain)
-				}
-				if got := countFullWidthDividers(content); got != 1 {
-					t.Fatalf("%s: expected exactly one app-shell footer separator, got %d\n%s", name, got, plain)
-				}
-			})
-		}
 	}
 }
 

@@ -4,17 +4,15 @@ import "github.com/sglavoie/tt/internal/models"
 
 // legacyStateForStatusSection collapses a legacy (status, section) pair onto a
 // single canonical WorkflowState, applying the migration precedence used across
-// the refactored tests: canceled > done/Completed > review/Review >
-// in_progress > blocked/Waiting > standby/Standby > maybe/Someday > Inbox >
-// Next > ready. Earlier rules win when multiple legacy signals are present.
+// the refactored tests: canceled > done/Completed > in_progress >
+// blocked/Waiting > standby/Standby > maybe/Someday > Inbox > Next > ready.
+// Earlier rules win when multiple legacy signals are present.
 func legacyStateForStatusSection(status models.WorkflowState, section string) models.WorkflowState {
 	switch {
 	case status == models.StateCanceled:
 		return models.StateCanceled
 	case status == models.StateDone || section == string(models.StateDone):
 		return models.StateDone
-	case status == models.StateReview || section == string(models.StateReview):
-		return models.StateReview
 	case status == models.StateInProgress:
 		return models.StateInProgress
 	case status == models.StateWaiting || section == string(models.StateWaiting):

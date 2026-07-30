@@ -67,7 +67,6 @@ func TestRoundTrip_ChecklistAdversarial(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
 				ID:            "cl-test",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      1,
 				Checklist:     tc.items,

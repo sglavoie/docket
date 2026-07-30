@@ -158,8 +158,3 @@ func CycleTab(current *int, count, delta int) {
 	}
 	*current = ((*current+delta)%count + count) % count
 }
-
-// ToggleSection flips a section's collapsed state.
-func ToggleSection[K comparable](collapsed map[K]bool, key K) {
-	collapsed[key] = !collapsed[key]
-}

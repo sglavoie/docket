@@ -97,17 +97,6 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesBlockerAdded(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-
-	msg := BlockerAddedMsg{Project: project}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("BlockerAddedMsg should be handled")
-	}
-}
-
 func TestHandleViewMessagesAttachmentAdded(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 

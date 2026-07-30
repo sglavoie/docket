@@ -3,80 +3,36 @@ package models
 import "testing"
 
 func TestCanIndent(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	parent, err := NewGenericTask("parent", 1, "Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	child, err := NewGenericTask("child", 2, "Child")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 3, TaskTypeTask, "Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	bug, err := NewTask("bug", 4, TaskTypeBug, "Bug")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Task can indent under Epic
-	ok, reason := task.CanIndent(epic)
+	ok, reason := child.CanIndent(parent)
 	if !ok {
-		t.Errorf("task should be able to indent under epic: %s", reason)
-	}
-
-	// Task can indent under Story
-	ok, reason = task.CanIndent(story)
-	if !ok {
-		t.Errorf("task should be able to indent under story: %s", reason)
-	}
-
-	// Task cannot indent under another Task (leaf type)
-	ok, _ = task.CanIndent(bug)
-	if ok {
-		t.Error("task should not be able to indent under bug (leaf type)")
-	}
-
-	// Story can indent under Epic
-	ok, reason = story.CanIndent(epic)
-	if !ok {
-		t.Errorf("story should be able to indent under epic: %s", reason)
-	}
-
-	// Story cannot indent under another Story
-	story2, err := NewTask("story2", 5, TaskTypeStory, "Story 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ok, _ = story.CanIndent(story2)
-	if ok {
-		t.Error("story should not be able to indent under another story")
-	}
-
-	// Epic cannot indent under Story
-	ok, _ = epic.CanIndent(story)
-	if ok {
-		t.Error("epic should not be able to indent under story")
+		t.Errorf("generic task should be able to indent under another task: %s", reason)
 	}
 
 	// Cannot indent with nil parent
-	ok, _ = task.CanIndent(nil)
+	ok, _ = child.CanIndent(nil)
 	if ok {
 		t.Error("should not be able to indent with nil parent")
 	}
 }
 
 func TestCanOutdent(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	story, err := NewGenericTask("story", 2, "Story")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 3, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,15 +64,15 @@ func TestCanOutdent(t *testing.T) {
 	}
 
 	// Story under Epic with Bug child - Bug can outdent to become Epic child
-	epic2, err := NewTask("epic2", 10, TaskTypeEpic, "Epic 2")
+	epic2, err := NewGenericTask("epic2", 10, "Epic 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story2, err := NewTask("story2", 11, TaskTypeStory, "Story 2")
+	story2, err := NewGenericTask("story2", 11, "Story 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	bugUnderStory, err := NewTask("bug", 12, TaskTypeBug, "Bug")
+	bugUnderStory, err := NewGenericTask("bug", 12, "Bug")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,11 +92,11 @@ func TestCanOutdent(t *testing.T) {
 func TestCanOutdentInvalidHierarchy(t *testing.T) {
 	// Create hierarchy where outdent would be invalid
 	// Story -> Task, but Task promotes to Story, cannot be root Story's sibling
-	story, err := NewTask("story", 1, TaskTypeStory, "Story")
+	story, err := NewGenericTask("story", 1, "Story")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 2, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 2, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,21 +114,21 @@ func TestCanOutdentInvalidHierarchy(t *testing.T) {
 func TestCanIndent_NestingDepthExceeded(t *testing.T) {
 	// Build a chain of tasks right at MaxNestingDepth:
 	// epic (level 0) -> story (level 1) -> ... -> task (level MaxNestingDepth)
-	epic, err := NewTask("root", 1, TaskTypeEpic, "Root Epic")
+	epic, err := NewGenericTask("root", 1, "Root Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
 	epic.Level = 0
 
 	// Create a story at level MaxNestingDepth (simulating a deep chain)
-	deepStory, err := NewTask("deep", 2, TaskTypeStory, "Deep Story")
+	deepStory, err := NewGenericTask("deep", 2, "Deep Story")
 	if err != nil {
 		t.Fatal(err)
 	}
 	deepStory.Level = MaxNestingDepth
 
 	// A leaf task trying to indent under a task at MaxNestingDepth should fail
-	leaf, err := NewTask("leaf", 3, TaskTypeTask, "Leaf Task")
+	leaf, err := NewGenericTask("leaf", 3, "Leaf Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,19 +147,19 @@ func TestCanIndent_SubtreeExceedsDepth(t *testing.T) {
 	// Target parent is at level MaxNestingDepth-1.
 	// Task to indent has a child (subtree depth = 1).
 	// Indenting would put the task at MaxNestingDepth and its child at MaxNestingDepth+1.
-	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	parent, err := NewGenericTask("parent", 1, "Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
 	parent.Level = MaxNestingDepth - 1
 
-	task, err := NewTask("task", 2, TaskTypeStory, "Story With Child")
+	task, err := NewGenericTask("task", 2, "Story With Child")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task.Level = 0
 
-	child, err := NewTask("child", 3, TaskTypeTask, "Child Task")
+	child, err := NewGenericTask("child", 3, "Child Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,13 +178,13 @@ func TestCanIndent_SubtreeExceedsDepth(t *testing.T) {
 func TestCanIndent_NestingDepthAllowed(t *testing.T) {
 	// Target parent is at level MaxNestingDepth-1, task has no children.
 	// This should succeed since the task would be at MaxNestingDepth (the limit).
-	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	parent, err := NewGenericTask("parent", 1, "Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
 	parent.Level = MaxNestingDepth - 1
 
-	task, err := NewTask("task", 2, TaskTypeTask, "Leaf Task")
+	task, err := NewGenericTask("task", 2, "Leaf Task")
 	if err != nil {
 		t.Fatal(err)
 	}

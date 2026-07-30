@@ -102,7 +102,7 @@ func TestCommitMerge_IndependentEditsMergeAutomatically(t *testing.T) {
 	}
 }
 
-func TestCommitMerge_CleanStaleMergeRetainsActivityAndRecordsLocalDeltaOnce(t *testing.T) {
+func TestCommitMerge_CleanStaleMergePreservesIndependentFieldsAndLatestTimestamp(t *testing.T) {
 	env := newMergeCommitEnv(t)
 	project := env.project("p1", "Alpha", "alpha")
 	baseTime := time.Date(2026, 7, 14, 9, 0, 0, 0, time.Local)
@@ -114,20 +114,15 @@ func TestCommitMerge_CleanStaleMergeRetainsActivityAndRecordsLocalDeltaOnce(t *t
 	initial.Tasks[0].UpdatedAt = baseTime
 	base := env.commitDoc(t, project, initial, "", nil)
 
-	// The remote writer lands first and records its priority activity through the
-	// ordinary in-sync path.
+	// The remote writer lands first with a priority change.
 	remote := cloneEdit(base, func(task *models.Task) {
 		task.Priority = models.PriorityMin
 		task.UpdatedAt = remoteTime
 	})
-	current := env.commitDoc(t, project, remote, base.Revision, base)
-	if len(current.Tasks[0].Activity) != 1 || current.Tasks[0].Activity[0].Field != "priority" {
-		t.Fatalf("remote activity = %+v, want one priority entry", current.Tasks[0].Activity)
-	}
+	env.commitDoc(t, project, remote, base.Revision, base)
 
 	// The local writer retains the older base, edits an independent field, and
-	// carries a different derived timestamp. The stale commit must preserve the
-	// remote entry and append only the accepted local title delta.
+	// carries a newer lifecycle timestamp.
 	local := projectFromDocument(project, cloneEdit(base, func(task *models.Task) {
 		task.Title = "local title"
 		task.UpdatedAt = localTime
@@ -147,13 +142,6 @@ func TestCommitMerge_CleanStaleMergeRetainsActivityAndRecordsLocalDeltaOnce(t *t
 		t.Fatalf("merged UpdatedAt = %v, want latest %v", merged.Tasks[0].UpdatedAt, localTime)
 	}
 
-	activityCounts := make(map[string]int)
-	for _, entry := range merged.Tasks[0].Activity {
-		activityCounts[entry.Field]++
-	}
-	if activityCounts["priority"] != 1 || activityCounts["title"] != 1 || len(merged.Tasks[0].Activity) != 2 {
-		t.Fatalf("merged activity = %+v, want remote priority and local title exactly once", merged.Tasks[0].Activity)
-	}
 	if records, listErr := env.store.List(); listErr != nil || len(records) != 0 {
 		t.Fatalf("clean merge recorded conflicts: records=%d err=%v", len(records), listErr)
 	}

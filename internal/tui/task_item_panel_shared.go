@@ -132,7 +132,6 @@ type taskItemPanelActions struct {
 	editExternal             func() tea.Cmd
 	showDeleteConfirm        func()
 	showIndexedDeleteConfirm func()
-	toggleResolved           func() tea.Cmd
 	copyText                 func() tea.Cmd
 	copyAllText              func() tea.Cmd
 	expandSelection          func()
@@ -164,10 +163,6 @@ func (a taskItemPanelActions) handleNormalKey(state *InteractiveViewState, key s
 	case "d", "x":
 		if a.hasSelection() {
 			a.showIndexedDeleteConfirm()
-		}
-	case "r":
-		if a.hasSelection() {
-			return a.toggleResolved()
 		}
 	case "y":
 		if a.hasSelection() {
@@ -246,12 +241,6 @@ func buildTaskItemPanelKeyMap(viewName string, actions taskItemPanelActions, ext
 			}
 			return actions.model, nil
 		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("r", "Toggle resolved", "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				return actions.model, actions.toggleResolved()
-			}
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
 		keymap.Bind("y", fmt.Sprintf("Copy %s text", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
 			if actions.hasSelection() {
 				return actions.model, actions.copyText()
@@ -326,27 +315,6 @@ func executeTaskItemDeleteMutation(cfg taskItemDeleteMutation) tea.Cmd {
 	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit(taskIdentityFor(*cfg.task, cfg.project), index), cfg.success)
 }
 
-type taskItemToggleMutation struct {
-	project      *models.Project
-	task         **models.Task
-	cursor       int
-	toggle       func(*models.Task, int) bool
-	errorMessage string
-	// commit builds the coordinator command that persists the toggle of the
-	// item at the given index.
-	commit  func(task TaskIdentity, index int) tea.Cmd
-	success func(*models.Task) tea.Msg
-}
-
-func executeTaskItemToggleMutation(cfg taskItemToggleMutation) tea.Cmd {
-	refreshTaskReference(cfg.project, cfg.task)
-	if !cfg.toggle(*cfg.task, cfg.cursor) {
-		return func() tea.Msg { return ErrorMsg{Err: errors.New(cfg.errorMessage)} }
-	}
-
-	return commitTaskItemMutation(cfg.project, *cfg.task, cfg.commit(taskIdentityFor(*cfg.task, cfg.project), cfg.cursor), cfg.success)
-}
-
 // formatNumberedMarkdownList renders items as a numbered Markdown list in
 // display order (1-based). Multiline item text keeps its continuation lines,
 // indented beneath the "N. " marker so the list stays readable when pasted.
@@ -385,13 +353,8 @@ var copyTextToClipboard = func(text string) error {
 	return clipCmd.Run()
 }
 
-func renderTaskItemSummary(b *strings.Builder, itemName string, total, unresolved int) {
-	resolvedCount := total - unresolved
-	countStr := fmt.Sprintf("%d %s(s)", total, itemName)
-	if resolvedCount > 0 {
-		countStr += fmt.Sprintf(" (%d resolved)", resolvedCount)
-	}
-	b.WriteString(MutedStyle.Render(countStr))
+func renderTaskItemSummary(b *strings.Builder, itemName string, total int) {
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d %s(s)", total, itemName)))
 	b.WriteString("\n\n")
 }
 

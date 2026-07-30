@@ -53,6 +53,36 @@ func (m *AppModel) syncProjectCache() {
 	}
 }
 
+// adoptCrossProjectSnapshot installs the task trees loaded by the global
+// Outliner into the shell's stable project cache and rewires the snapshot to
+// those stable pointers. Catalog snapshots intentionally contain metadata
+// only, so operations resolved through projectByID must adopt the disk-loaded
+// task trees before the Outliner exposes their rows.
+func (m *AppModel) adoptCrossProjectSnapshot(projects []*models.Project) {
+	if m == nil {
+		return
+	}
+	if m.projects == nil {
+		m.projects = make(map[string]*models.Project)
+	}
+	for index, loaded := range projects {
+		if loaded == nil || loaded.ID == "" {
+			continue
+		}
+		cached := m.projects[loaded.ID]
+		if cached == nil {
+			m.projects[loaded.ID] = loaded
+			cached = loaded
+		} else if cached != loaded {
+			*cached = *loaded
+		}
+		projects[index] = cached
+		if m.currentProject != nil && m.currentProject.ID == cached.ID {
+			m.currentProject = cached
+		}
+	}
+}
+
 func copyCatalogMetadata(dst, src *models.Project) {
 	if dst == nil || src == nil {
 		return
@@ -60,8 +90,6 @@ func copyCatalogMetadata(dst, src *models.Project) {
 	dst.Slug = src.Slug
 	dst.Name = src.Name
 	dst.Description = src.Description
-	dst.StatusIcon = src.StatusIcon
-	dst.StatusIconSource = src.StatusIconSource
 	dst.Context = src.Context
 	dst.Path = src.Path
 	dst.CreatedAt = src.CreatedAt
@@ -70,8 +98,6 @@ func copyCatalogMetadata(dst, src *models.Project) {
 	dst.ArchivedAt = src.ArchivedAt
 	dst.Pinned = src.Pinned
 	dst.PinnedAt = src.PinnedAt
-	dst.Sandbox = src.Sandbox
-	dst.Internal = src.Internal
 	dst.ColorSlot = src.ColorSlot
 }
 
@@ -144,19 +170,6 @@ func (m *AppModel) allProjects() []*models.Project {
 	return m.projectsInRuntimeOrder(m.runtime.AllProjects())
 }
 
-// ensureSandboxProject installs the hidden sandbox in the catalog when a
-// workspace does not have one. Catalog metadata is committed through the
-// runtime domain seam; task data remains lazy and storage-backed.
-func (m *AppModel) ensureSandboxProject() error {
-	if m == nil || m.runtime == nil || m.runtime.GetSandboxProject() != nil {
-		return nil
-	}
-	project := newSandboxProject(m.runtime)
-	return m.commitCatalogMutation(func(catalog *config.WorkspaceCatalog) {
-		catalog.UpsertProject(project)
-	})
-}
-
 // ensureSystemInboxProject installs (or upgrades) the workspace-owned Inbox.
 // It is a regular visible project for every read surface; SystemInboxProjectID
 // is the stable identity that distinguishes it from user-created projects.
@@ -171,8 +184,7 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	catalogChanged := project == nil
 	if project == nil {
 		for _, candidate := range m.runtime.AllProjects() {
-			if candidate != nil && (candidate.Slug == config.LegacyActionInboxSlug ||
-				(candidate.Internal && candidate.Name == "Action Inbox")) {
+			if candidate != nil && candidate.Slug == config.LegacyActionInboxSlug {
 				project = candidate
 				break
 			}
@@ -196,11 +208,10 @@ func (m *AppModel) ensureSystemInboxProject() error {
 		}
 	}
 
-	if project.Name != config.SystemInboxName || project.Internal || project.Archived || project.ArchivedAt != nil ||
+	if project.Name != config.SystemInboxName || project.Archived || project.ArchivedAt != nil ||
 		m.runtime.Catalog().SystemInboxProjectID != project.ID {
 		catalogChanged = true
 		project.Name = config.SystemInboxName
-		project.Internal = false
 		project.Archived = false
 		project.ArchivedAt = nil
 		project.UpdatedAt = time.Now()
@@ -234,8 +245,9 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	artifacts := make([]storage.ArtifactChange, 0, 2)
 	if catalogChanged {
 		catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
-		catalog.UpsertProject(project)
-		catalog.SystemInboxProjectID = project.ID
+		if err := catalog.RepairSystemInboxProject(project); err != nil {
+			return err
+		}
 		artifact, err := m.runtime.CheckedCatalogArtifact(catalog)
 		if err != nil {
 			return err
@@ -247,9 +259,13 @@ func (m *AppModel) ensureSystemInboxProject() error {
 		if err != nil {
 			return err
 		}
+		content, err := doc.WriteCurrent()
+		if err != nil {
+			return err
+		}
 		requireAbsent := ""
 		artifacts = append(artifacts, storage.ArtifactChange{
-			Path: storage.TasksFilePath(project.Path), Data: []byte(doc.WriteV2()), ExpectedRevision: &requireAbsent,
+			Path: storage.TasksFilePath(project.Path), Data: []byte(content), ExpectedRevision: &requireAbsent,
 		})
 	}
 	if err := m.appService.CommitWorkspaceBootstrap(ops, artifacts...); err != nil {
@@ -261,20 +277,4 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	m.runtime.SetMachineInMemory(machine)
 	m.syncProjectCache()
 	return nil
-}
-
-func newSandboxProject(runtime *config.RuntimeState) *models.Project {
-	now := time.Now()
-	return &models.Project{
-		ID:          "sandbox-" + now.Format("20060102150405") + "-" + uuid.New().String()[:8],
-		Slug:        "_sandbox",
-		Name:        "Sandbox",
-		Context:     "personal",
-		Path:        runtime.ProjectPath("_sandbox"),
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		Sandbox:     true,
-		Tasks:       []*models.Task{},
-		NextShortID: 1,
-	}
 }

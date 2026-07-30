@@ -15,11 +15,9 @@ func SearchInputWidth(viewWidth int) int {
 // BaseSearchableView extends BaseView with search functionality.
 type BaseSearchableView struct {
 	BaseView
-	searchActive      bool
-	searchQuery       string
-	searchInput       textinput.Model
-	searchHelpVisible bool
-	ac                AutocompleteState
+	searchActive bool
+	searchQuery  string
+	searchInput  textinput.Model
 }
 
 // SetSize updates the view dimensions and adjusts the search input width.
@@ -62,24 +60,12 @@ func (v *BaseSearchableView) SearchShouldCaptureEsc() bool {
 	return v.searchActive
 }
 
-// IsSearchHelpVisible returns true if the search help pane is visible.
-func (v *BaseSearchableView) IsSearchHelpVisible() bool {
-	return v.searchHelpVisible
-}
-
-// SearchAC returns a pointer to the autocomplete state for search.
-func (v *BaseSearchableView) SearchAC() *AutocompleteState {
-	return &v.ac
-}
-
 // ClearSearch clears the search state and resets the input.
 func (v *BaseSearchableView) ClearSearch() {
 	v.searchActive = false
 	v.searchQuery = ""
 	v.searchInput.SetValue("")
 	v.searchInput.Blur()
-	v.searchHelpVisible = false
-	v.ac.Clear()
 }
 
 // SetSearchActive sets the search active state.
@@ -128,8 +114,6 @@ func (v *BaseSearchableView) DeactivateSearch() {
 	v.searchInput.Blur()
 	v.searchInput.SetValue("")
 	v.searchQuery = ""
-	v.searchHelpVisible = false
-	v.ac.Clear()
 }
 
 // ConfirmSearch exits search mode but keeps the current query.
@@ -137,8 +121,6 @@ func (v *BaseSearchableView) ConfirmSearch() {
 	v.searchActive = false
 	v.searchInput.Blur()
 	v.searchQuery = v.searchInput.Value()
-	v.searchHelpVisible = false
-	v.ac.Clear()
 }
 
 // HandleSearchMode processes a key message when search mode is active.
@@ -168,16 +150,6 @@ func (v *BaseSearchableView) HandleSearchMode(
 func (v *BaseSearchableView) HandleSearchInput(msg tea.KeyPressMsg) (handled bool, cmd tea.Cmd, valueChanged bool) {
 	key := msg.String()
 
-	// Handle autocomplete navigation when active (tab/enter/esc/up/down)
-	if v.ac.HandleKey(key, func() {
-		v.acceptSearchAutocomplete()
-	}) {
-		if key == "tab" || key == "enter" {
-			return false, nil, true
-		}
-		return true, nil, false
-	}
-
 	switch key {
 	case "esc":
 		v.DeactivateSearch()
@@ -185,12 +157,6 @@ func (v *BaseSearchableView) HandleSearchInput(msg tea.KeyPressMsg) (handled boo
 	case "enter":
 		v.ConfirmSearch()
 		return true, nil, false
-	case "?":
-		if !v.ac.IsActive() {
-			v.searchHelpVisible = !v.searchHelpVisible
-			return true, nil, false
-		}
-		fallthrough
 	default:
 		oldVal := v.searchInput.Value()
 		v.searchInput, cmd = v.searchInput.Update(msg)
@@ -200,23 +166,4 @@ func (v *BaseSearchableView) HandleSearchInput(msg tea.KeyPressMsg) (handled boo
 		}
 		return false, cmd, valueChanged
 	}
-}
-
-// acceptSearchAutocomplete inserts the selected suggestion into the search input.
-func (v *BaseSearchableView) acceptSearchAutocomplete() {
-	if !v.ac.IsActive() {
-		return
-	}
-
-	var newInput string
-	if kw := keywordForMode(v.ac.Mode); kw != "" {
-		newInput = v.ac.BuildKeywordAcceptedInput(v.searchInput.Value(), kw)
-	} else {
-		triggerChar := TriggerCharForMode(v.ac.Mode, searchTriggers)
-		newInput = v.ac.BuildAcceptedInput(v.searchInput.Value(), triggerChar)
-	}
-
-	v.searchInput.SetValue(newInput)
-	v.searchInput.SetCursor(len(newInput))
-	v.ac.Clear()
 }

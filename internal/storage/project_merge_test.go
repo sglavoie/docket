@@ -15,7 +15,6 @@ func mergeTestTask(id, title string) *models.Task {
 	return &models.Task{
 		ID:            id,
 		ShortID:       1,
-		Type:          models.TaskTypeTask,
 		Title:         title,
 		WorkflowState: models.StateReady,
 		Priority:      models.PriorityDefault,
@@ -26,10 +25,8 @@ func mergeTestTask(id, title string) *models.Task {
 func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
-		Tags:          []string{},
-		PinnedTags:    []string{},
 		Tasks:         tasks,
-		SchemaVersion: SchemaVersionV2,
+		SchemaVersion: SchemaVersionV5,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
@@ -152,19 +149,14 @@ func TestMerge_IndependentEditsWithDerivedMetadataAutoMerge(t *testing.T) {
 	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
 	base.Tasks[0].CreatedAt = baseTime
 	base.Tasks[0].UpdatedAt = baseTime
-	base.Tasks[0].Activity = []*models.ActivityEntry{{Timestamp: baseTime, Field: "created"}}
 
 	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
 	local.Tasks[0].Title = "Alpha edited"
 	local.Tasks[0].UpdatedAt = localTime
-	local.Tasks[0].Activity = append([]*models.ActivityEntry(nil), base.Tasks[0].Activity...)
-	local.Tasks[0].Activity = append(local.Tasks[0].Activity, &models.ActivityEntry{Timestamp: localTime, Field: "title"})
 
 	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
 	current.Tasks[0].Priority = models.PriorityMin
 	current.Tasks[0].UpdatedAt = currentTime
-	current.Tasks[0].Activity = append([]*models.ActivityEntry(nil), base.Tasks[0].Activity...)
-	current.Tasks[0].Activity = append(current.Tasks[0].Activity, &models.ActivityEntry{Timestamp: currentTime, Field: "priority"})
 
 	res := mustMerge(t, base, local, current)
 	if res.HasConflicts() {
@@ -176,9 +168,6 @@ func TestMerge_IndependentEditsWithDerivedMetadataAutoMerge(t *testing.T) {
 	}
 	if !merged.UpdatedAt.Equal(localTime) {
 		t.Fatalf("merged UpdatedAt = %v, want latest %v", merged.UpdatedAt, localTime)
-	}
-	if len(merged.Activity) != 2 || merged.Activity[0].Field != "created" || merged.Activity[1].Field != "priority" {
-		t.Fatalf("merged activity = %+v, want current durable history", merged.Activity)
 	}
 }
 
@@ -419,6 +408,46 @@ func TestMerge_BothReorderIdenticallyCoalesces(t *testing.T) {
 	}
 }
 
+func TestMerge_IndependentSiblingGroupReordersCoalesce(t *testing.T) {
+	parentA := mergeTestTask("parent-a", "Parent A")
+	parentB := mergeTestTask("parent-b", "Parent B")
+	a1 := mergeTestTask("a1", "A1")
+	a2 := mergeTestTask("a2", "A2")
+	b1 := mergeTestTask("b1", "B1")
+	b2 := mergeTestTask("b2", "B2")
+	a1.ParentID = &parentA.ID
+	a2.ParentID = &parentA.ID
+	b1.ParentID = &parentB.ID
+	b2.ParentID = &parentB.ID
+	base := mergeTestDoc("p", parentA, a1, a2, parentB, b1, b2)
+
+	localTasks := cloneDocTasks(base.Tasks)
+	local := mergeTestDoc("p", localTasks[0], localTasks[2], localTasks[1], localTasks[3], localTasks[4], localTasks[5])
+	currentTasks := cloneDocTasks(base.Tasks)
+	current := mergeTestDoc("p", currentTasks[0], currentTasks[1], currentTasks[2], currentTasks[3], currentTasks[5], currentTasks[4])
+
+	result := mustMerge(t, base, local, current)
+	if result.HasConflicts() {
+		t.Fatalf("independent sibling reorders conflicted: %+v", result.Conflicts)
+	}
+	mergedProject := &models.Project{Tasks: result.Merged.Tasks}
+	mergedProject.BuildTaskTree()
+	assertMergedOrder := func(task *models.Task, want ...string) {
+		t.Helper()
+		siblings := mergedProject.GetSiblings(task)
+		if len(siblings) != len(want) {
+			t.Fatalf("siblings of %s = %d, want %d", task.ID, len(siblings), len(want))
+		}
+		for i, id := range want {
+			if siblings[i].ID != id {
+				t.Fatalf("siblings of %s = %v, want %v", task.ID, taskIDs(siblings), want)
+			}
+		}
+	}
+	assertMergedOrder(mergedProject.GetTaskByID("a1"), "a2", "a1")
+	assertMergedOrder(mergedProject.GetTaskByID("b1"), "b2", "b1")
+}
+
 func TestMerge_ProjectNameConflict(t *testing.T) {
 	base := mergeTestDoc("base-name", mergeTestTask("a", "Alpha"))
 	local := mergeTestDoc("local-name", cloneDocTasks(base.Tasks)...)
@@ -444,64 +473,6 @@ func TestMerge_ProjectNameOneSideAdopts(t *testing.T) {
 	}
 	if res.Merged.ProjectName != "renamed" {
 		t.Errorf("project name = %q, want renamed", res.Merged.ProjectName)
-	}
-}
-
-func TestMerge_TagsSetMerge(t *testing.T) {
-	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
-	base.Tags = []string{"keep", "drop"}
-	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	local.Tags = []string{"keep", "drop", "local-add"} // adds a tag
-	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	current.Tags = []string{"keep", "current-add"} // removes "drop", adds one
-
-	res := mustMerge(t, base, local, current)
-	if res.HasConflicts() {
-		t.Fatalf("tag set merge should not conflict, got: %+v", res.Conflicts)
-	}
-	got := res.Merged.Tags
-	want := map[string]bool{"keep": true, "local-add": true, "current-add": true}
-	if len(got) != len(want) {
-		t.Fatalf("tags = %v, want set %v", got, want)
-	}
-	for _, tag := range got {
-		if !want[tag] {
-			t.Errorf("unexpected tag %q in %v", tag, got)
-		}
-	}
-}
-
-func TestMerge_OpaqueBlockOneSideAdopts(t *testing.T) {
-	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
-	base.OpaqueBlocks = []OpaqueBlock{{Content: "<!-- future: base -->"}}
-	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	local.OpaqueBlocks = []OpaqueBlock{{Content: "<!-- future: base -->"}} // unchanged
-	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	current.OpaqueBlocks = []OpaqueBlock{{Content: "<!-- future: changed -->"}}
-
-	res := mustMerge(t, base, local, current)
-	if res.HasConflicts() {
-		t.Fatalf("single-side opaque edit should adopt, got: %+v", res.Conflicts)
-	}
-	if len(res.Merged.OpaqueBlocks) != 1 || res.Merged.OpaqueBlocks[0].Content != "<!-- future: changed -->" {
-		t.Errorf("opaque blocks = %+v, want current change", res.Merged.OpaqueBlocks)
-	}
-}
-
-func TestMerge_OpaqueBlockDivergentConflicts(t *testing.T) {
-	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))
-	base.OpaqueBlocks = []OpaqueBlock{{Content: "<!-- future: base -->"}}
-	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	local.OpaqueBlocks = []OpaqueBlock{{Content: "<!-- future: local -->"}}
-	current := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	current.OpaqueBlocks = []OpaqueBlock{{Content: "<!-- future: current -->"}}
-
-	res := mustMerge(t, base, local, current)
-	if res.Merged != nil {
-		t.Fatal("divergent opaque edits must not produce a document")
-	}
-	if !hasConflictKind(res, MergeConflictOpaqueBlock) {
-		t.Fatalf("expected opaque_block conflict, got %v", conflictKinds(res))
 	}
 }
 

@@ -89,14 +89,19 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 		simplifiedOperationContext(),
 		0,
 	)
-	for _, want := range []string{"a capture", "/ search", ": finder", "Ctrl+Esc root", "? help"} {
+	for _, want := range []string{"a capture", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
 		}
 	}
+	for _, retired := range []string{": finder", "Ctrl+Esc root"} {
+		if strings.Contains(footer, retired) {
+			t.Errorf("footer %q retains removed hint %q", footer, retired)
+		}
+	}
 }
 
-func TestSimplifiedInputStrategySeparatesVisibleSearchAndFinder(t *testing.T) {
+func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
 	tests := []struct {
@@ -104,7 +109,6 @@ func TestSimplifiedInputStrategySeparatesVisibleSearchAndFinder(t *testing.T) {
 		want OperationID
 	}{
 		{key: "/", want: operationCoreVisibleSearch},
-		{key: ":", want: operationCoreFinder},
 		{key: "h", want: operationCoreCollapseParent},
 		{key: "left", want: operationCoreCollapseParent},
 		{key: "l", want: operationCoreExpand},
@@ -118,6 +122,9 @@ func TestSimplifiedInputStrategySeparatesVisibleSearchAndFinder(t *testing.T) {
 		if binding.OperationID != test.want {
 			t.Errorf("key %q resolved to %s, want %s", test.key, binding.OperationID, test.want)
 		}
+	}
+	if _, _, ok := registry.InputBindingForKey(InputStrategySimplified, ":", ctx); ok {
+		t.Error("removed Finder key still resolves")
 	}
 }
 
@@ -226,7 +233,6 @@ func chordTestRegistry(t *testing.T) *OperationRegistry {
 		ID:                   chordTestSetPriority,
 		Label:                "Set Priority",
 		Category:             OperationCategoryTask,
-		Placement:            PlacementContextual,
 		TargetSource:         OperationTargetCurrentTask,
 		TargetCardinality:    TargetCardinalityOne,
 		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
@@ -303,7 +309,7 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	if _, _, resolution := registry.InputBindingForSequence(
 		"chords",
 		[]string{"p"},
-		PresentationCommandContext(ViewSettings),
+		PresentationCommandContext(ViewContextHub),
 	); resolution != ChordNoMatch {
 		t.Error("an inapplicable chord subtree still accepted its prefix")
 	}
@@ -575,7 +581,10 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	}
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
-	for _, retired := range []string{"F", "P", "C", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x"} {
+	for _, retired := range []string{
+		"F", "C", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
+		":", "R", "!", "ctrl+esc", "m",
+	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
 			t.Fatalf("parse retired key %q: %v", retired, err)
@@ -600,7 +609,10 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 	for _, item := range items {
 		keys[item.Key] = true
 	}
-	for _, retired := range []string{"F", "P", "C", "q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X"} {
+	for _, retired := range []string{
+		"F", "C", "q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
+		":", "R", "!", "Ctrl+Esc", "m",
+	} {
 		if keys[retired] {
 			t.Errorf("simplified help retains retired shortcut alias %q", retired)
 		}
@@ -621,11 +633,8 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	}
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: ':', Text: ":"})
-	if !handled || cmd == nil {
-		t.Fatal("canonical Finder key was not dispatched")
-	}
-	if _, ok := cmd().(ShowFinderMsg); !ok {
-		t.Fatalf("Finder key produced %T, want ShowFinderMsg", cmd())
+	if !handled || cmd != nil {
+		t.Fatalf("removed Finder key = handled %v cmd %v; want consumed no-op", handled, cmd)
 	}
 
 	binding, _, ok := app.operationRegistry.InputBindingForKey(
@@ -643,19 +652,16 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	}
 }
 
-func TestProductionFinderKeyIsGlobalFromChildRoutes(t *testing.T) {
+func TestRemovedFinderKeyDoesNotEscapeChildRoutes(t *testing.T) {
 	runtime := newTestConfig()
 	app, err := NewAppModel(runtime, nil, WithPersister(NewMockPersister()))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	app.pushView(ViewSettings)
+	app.pushView(ViewContextHub)
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: ':', Text: ":"})
-	if !handled || cmd == nil {
-		t.Fatal("canonical Finder key was not dispatched from a child route")
-	}
-	if _, ok := cmd().(ShowFinderMsg); !ok {
-		t.Fatalf("child-route Finder key produced %T, want ShowFinderMsg", cmd())
+	if !handled || cmd != nil {
+		t.Fatalf("child-route Finder key = handled %v cmd %v; want consumed no-op", handled, cmd)
 	}
 }

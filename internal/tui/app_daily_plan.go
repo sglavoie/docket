@@ -10,17 +10,17 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// dailyPlanToggleAction is retained as transient UI metadata while every durable
+// todayToggleAction is retained as transient UI metadata while every durable
 // Today mutation and its undo/redo now flow through the workspace ledger.
-type dailyPlanToggleAction struct {
+type todayToggleAction struct {
 	Task    *models.Task
 	Project *models.Project
 	WasAdd  bool // true = task was added to daily plan
 }
 
-// toggleDailyPlan adds or removes the focused task from the daily plan.
+// toggleToday adds or removes the focused task from the daily plan.
 // Returns a status timeout cmd on success, or nil if no task is available.
-func (m *AppModel) toggleDailyPlan() tea.Cmd {
+func (m *AppModel) toggleToday() tea.Cmd {
 	view := m.activeView()
 	if view == nil {
 		return nil
@@ -35,8 +35,8 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 	}
 	taskID, projectID := task.ID, project.ID
 	identity := taskIdentityFor(task, project)
-	add := !m.dailyPlanIDs[identity]
-	fresh, _, err := m.dailyPlanLedgerTransition(taskID, projectID, add)
+	add := !m.todayIDs[identity]
+	fresh, _, err := m.todayLedgerTransition(taskID, projectID, add)
 	if err != nil {
 		m.err = err
 		return errorCmd("%s", err)
@@ -46,15 +46,15 @@ func (m *AppModel) toggleDailyPlan() tea.Cmd {
 	} else {
 		m.setInfoStatus(fmt.Sprintf("Removed from today's plan: %s", taskTitleOrFallback(fresh, task)))
 	}
-	m.lastToggleUndoKind = toggleUndoDailyPlan
-	m.lastDailyPlanToggleAt = time.Now()
+	m.lastToggleUndoKind = toggleUndoToday
+	m.lastTodayToggleAt = time.Now()
 	m.clearToggleRedoHistory()
 	return m.queueToggleResultCmd()
 }
 
-// dailyPlanLedgerTransition delegates both membership and any Inbox/Next
+// todayLedgerTransition delegates both membership and any Inbox/Next
 // promotion to the application service.
-func (m *AppModel) dailyPlanLedgerTransition(taskID, projectID string, add bool) (*models.Task, *models.Project, error) {
+func (m *AppModel) todayLedgerTransition(taskID, projectID string, add bool) (*models.Task, *models.Project, error) {
 	action := app.PlanningRemoveToday
 	if add {
 		action = app.PlanningAddToday
@@ -62,68 +62,68 @@ func (m *AppModel) dailyPlanLedgerTransition(taskID, projectID string, add bool)
 	return m.applyTaskPlanningAction(taskID, projectID, action)
 }
 
-// undoDailyPlanToggle restores the last Today transaction through the same
+// undoTodayToggle restores the last Today transaction through the same
 // durable workspace ledger used by Next.
-func (m *AppModel) undoDailyPlanToggle() tea.Cmd {
-	if m.appService == nil && m.lastDailyPlanToggle != nil {
-		action := m.lastDailyPlanToggle
-		m.lastDailyPlanToggle = nil
-		m.lastDailyPlanToggleRedo = action
-		m.lastDailyPlanToggleAt = time.Time{}
-		m.lastDailyPlanRedoAt = time.Now()
-		m.lastToggleRedoKind = toggleUndoDailyPlan
-		m.lastToggleUndoKind = m.nextUndoKind(toggleUndoDailyPlan)
-		m.applyDailyPlanToggleInMemory(action, !action.WasAdd)
+func (m *AppModel) undoTodayToggle() tea.Cmd {
+	if m.appService == nil && m.lastTodayToggle != nil {
+		action := m.lastTodayToggle
+		m.lastTodayToggle = nil
+		m.lastTodayToggleRedo = action
+		m.lastTodayToggleAt = time.Time{}
+		m.lastTodayRedoAt = time.Now()
+		m.lastToggleRedoKind = toggleUndoToday
+		m.lastToggleUndoKind = m.nextUndoKind(toggleUndoToday)
+		m.applyTodayToggleInMemory(action, !action.WasAdd)
 		return defaultStatusTimeout()
 	}
-	m.lastDailyPlanToggle = nil
-	m.lastDailyPlanToggleAt = time.Time{}
-	m.lastDailyPlanRedoAt = time.Now()
-	m.lastToggleRedoKind = toggleUndoDailyPlan
-	m.lastToggleUndoKind = toggleUndoDailyPlan
+	m.lastTodayToggle = nil
+	m.lastTodayToggleAt = time.Time{}
+	m.lastTodayRedoAt = time.Now()
+	m.lastToggleRedoKind = toggleUndoToday
+	m.lastToggleUndoKind = toggleUndoToday
 	return m.planningLedgerRestore(false)
 }
 
-// redoDailyPlanToggle reapplies the last Today transaction through the durable
+// redoTodayToggle reapplies the last Today transaction through the durable
 // workspace ledger.
-func (m *AppModel) redoDailyPlanToggle() tea.Cmd {
-	if m.appService == nil && m.lastDailyPlanToggleRedo != nil {
-		action := m.lastDailyPlanToggleRedo
-		m.lastDailyPlanToggleRedo = nil
-		m.lastDailyPlanToggle = action
-		m.lastDailyPlanRedoAt = time.Time{}
-		m.lastDailyPlanToggleAt = time.Now()
-		m.lastToggleUndoKind = toggleUndoDailyPlan
-		m.lastToggleRedoKind = m.nextRedoKind(toggleUndoDailyPlan)
-		m.applyDailyPlanToggleInMemory(action, action.WasAdd)
+func (m *AppModel) redoTodayToggle() tea.Cmd {
+	if m.appService == nil && m.lastTodayToggleRedo != nil {
+		action := m.lastTodayToggleRedo
+		m.lastTodayToggleRedo = nil
+		m.lastTodayToggle = action
+		m.lastTodayRedoAt = time.Time{}
+		m.lastTodayToggleAt = time.Now()
+		m.lastToggleUndoKind = toggleUndoToday
+		m.lastToggleRedoKind = m.nextRedoKind(toggleUndoToday)
+		m.applyTodayToggleInMemory(action, action.WasAdd)
 		return defaultStatusTimeout()
 	}
-	m.lastDailyPlanToggleRedo = nil
-	m.lastDailyPlanRedoAt = time.Time{}
-	m.lastToggleRedoKind = toggleUndoDailyPlan
-	m.lastToggleUndoKind = toggleUndoDailyPlan
-	m.lastDailyPlanToggleAt = time.Now()
+	m.lastTodayToggleRedo = nil
+	m.lastTodayRedoAt = time.Time{}
+	m.lastToggleRedoKind = toggleUndoToday
+	m.lastToggleUndoKind = toggleUndoToday
+	m.lastTodayToggleAt = time.Now()
 	return m.planningLedgerRestore(true)
 }
 
-// applyDailyPlanToggleInMemory preserves the old isolated-model undo contract
+// applyTodayToggleInMemory preserves the old isolated-model undo contract
 // without creating an adapter-owned persistence path. Production models always
 // use the application service and workspace ledger above.
-func (m *AppModel) applyDailyPlanToggleInMemory(action *dailyPlanToggleAction, add bool) {
+func (m *AppModel) applyTodayToggleInMemory(action *todayToggleAction, add bool) {
 	if action == nil || action.Task == nil || action.Project == nil {
 		return
 	}
 	identity := taskIdentityFor(action.Task, action.Project)
 	if !add {
-		m.removeFromDailyPlan(identity)
+		m.removeFromToday(identity)
 		return
 	}
-	if m.dailyPlanIDs == nil {
-		m.dailyPlanIDs = make(map[TaskIdentity]bool)
+	if m.todayIDs == nil {
+		m.todayIDs = make(map[TaskIdentity]bool)
 	}
-	if m.dailyPlanIDs[identity] {
+	if m.todayIDs[identity] {
 		return
 	}
-	m.dailyPlan = append(m.dailyPlan, FocusTask{Task: action.Task, Project: action.Project})
-	m.dailyPlanIDs[identity] = true
+	m.today = append(m.today, FocusTask{Task: action.Task, Project: action.Project})
+	m.todayIDs[identity] = true
 }

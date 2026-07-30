@@ -135,17 +135,10 @@ Reduces latency
 	if d.Rationale != "Reduces latency" {
 		t.Errorf("Rationale = %q, want %q", d.Rationale, "Reduces latency")
 	}
-	if d.Category != models.DecisionCategoryTradeOff {
-		t.Errorf("Category = %q, want %q", d.Category, models.DecisionCategoryTradeOff)
-	}
-	if d.Resolved {
-		t.Error("expected decision to not be resolved")
-	}
 }
 
-func TestExtractDecisionsFromDescription_Resolved(t *testing.T) {
-	t.Run("parses resolved decision", func(t *testing.T) {
-		description := `Task description
+func TestExtractDecisionsFromDescription_DiscardsLegacyHeaderFields(t *testing.T) {
+	description := `Task description
 
 <!-- DECISIONS -->
 <!-- decision: 2026-05-07 14:30, category:design, resolved -->
@@ -154,106 +147,15 @@ Use SQL
 Team already knows it
 <!-- /DECISIONS -->`
 
-		task := &models.Task{Description: description}
-		ExtractDecisionsFromDescription(task)
-
-		if len(task.Decisions) != 1 {
-			t.Fatalf("got %d decisions, want 1", len(task.Decisions))
-		}
-		if !task.Decisions[0].Resolved {
-			t.Error("expected decision to be resolved")
-		}
-	})
-
-	t.Run("mixed resolved and unresolved", func(t *testing.T) {
-		description := `Task description
-
-<!-- DECISIONS -->
-<!-- decision: 2026-05-07 14:30, category:design -->
-First
-<!-- rationale -->
-First rationale
-<!-- decision: 2026-05-07 15:00, category:scope, resolved -->
-Second
-<!-- rationale -->
-Second rationale
-<!-- decision: 2026-05-07 16:00, category:ux -->
-Third
-<!-- rationale -->
-Third rationale
-<!-- /DECISIONS -->`
-
-		task := &models.Task{Description: description}
-		ExtractDecisionsFromDescription(task)
-
-		if len(task.Decisions) != 3 {
-			t.Fatalf("got %d decisions, want 3", len(task.Decisions))
-		}
-		if task.Decisions[0].Resolved {
-			t.Error("decision 0 should be unresolved")
-		}
-		if !task.Decisions[1].Resolved {
-			t.Error("decision 1 should be resolved")
-		}
-		if task.Decisions[2].Resolved {
-			t.Error("decision 2 should be unresolved")
-		}
-	})
-}
-
-// TestExtractDecisionsFromDescription_ResolvedNoCategory ensures the parser
-// recognizes the "resolved" suffix when no category clause is present.
-// Previously the parser positionally assigned parts[1] to category, which
-// caused "resolved" to be misassigned as the category string and silently
-// dropped the resolved flag.
-func TestExtractDecisionsFromDescription_ResolvedNoCategory(t *testing.T) {
-	description := `Task description
-
-<!-- DECISIONS -->
-<!-- decision: 2026-05-07 14:30, resolved -->
-Decision without category
-<!-- rationale -->
-Rationale text
-<!-- /DECISIONS -->`
-
 	task := &models.Task{Description: description}
 	ExtractDecisionsFromDescription(task)
 
-	if len(task.Decisions) != 1 {
-		t.Fatalf("got %d decisions, want 1", len(task.Decisions))
+	if len(task.Decisions) != 1 || task.Decisions[0].Text != "Use SQL" ||
+		task.Decisions[0].Rationale != "Team already knows it" {
+		t.Fatalf("decisions = %+v, want retained lean record", task.Decisions)
 	}
-	d := task.Decisions[0]
-	if !d.Resolved {
-		t.Error("expected decision to be resolved")
-	}
-	if d.Category != "" {
-		t.Errorf("Category = %q, want empty", d.Category)
-	}
-}
-
-// TestExtractDecisionsFromDescription_FieldsAnyOrder ensures the parser
-// recognizes "category:" and "resolved" regardless of their position
-// in the comma-separated decision header.
-func TestExtractDecisionsFromDescription_FieldsAnyOrder(t *testing.T) {
-	description := `<!-- DECISIONS -->
-<!-- decision: 2026-05-07 14:30, resolved, category:design -->
-Reorder test
-<!-- rationale -->
-Rationale
-<!-- /DECISIONS -->`
-
-	task := &models.Task{Description: description}
-	ExtractDecisionsFromDescription(task)
-
-	if len(task.Decisions) != 1 {
-		t.Fatalf("got %d decisions, want 1", len(task.Decisions))
-	}
-	d := task.Decisions[0]
-	if !d.Resolved {
-		t.Error("expected decision to be resolved")
-	}
-	if d.Category != models.DecisionCategoryDesign {
-		t.Errorf("Category = %q, want %q", d.Category, models.DecisionCategoryDesign)
+	if rewritten := WriteDecisions(task); strings.Contains(rewritten, "category:") || strings.Contains(rewritten, "resolved") {
+		t.Fatalf("lean rewrite retained legacy decision fields:\n%s", rewritten)
 	}
 }
 

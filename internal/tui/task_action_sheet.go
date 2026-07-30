@@ -18,8 +18,8 @@ const (
 var taskActionCategories = []ListCategory{
 	{ID: taskActionCategoryPlan, Label: "Plan"},
 	{ID: taskActionCategoryOrganize, Label: "Organize"},
-	{ID: taskActionCategoryContent, Label: "Content"},
 	{ID: taskActionCategoryRelationships, Label: "Relationships"},
+	{ID: taskActionCategoryContent, Label: "Content"},
 	{ID: taskActionCategoryMore, Label: "More"},
 	{ID: taskActionCategoryDanger, Label: "Danger"},
 }
@@ -58,47 +58,12 @@ func NewTaskActionSheetModel(
 		DisabledFor: func(descriptor OperationDescriptor) string {
 			return taskActionDisabledReason(descriptor, context)
 		},
-		Targets: taskActionTargetCount(context),
-		Bulk:    context.Selection.Visual,
+		ImmediateFilter: true,
+		Targets:         taskActionTargetCount(context),
+		Bulk:            context.Selection.Visual,
 		EmptyState: ListEmptyState{
 			Title:  "No task actions available.",
 			Detail: "Select a task that can be acted on.",
-		},
-		NoMatchState: ListEmptyState{
-			Title:  "No matching actions.",
-			Detail: "Clear or change the search.",
-		},
-	})
-}
-
-// NewFinderTaskActionSheetModel builds the sheet for one Finder task row from
-// the authoritative manifest that row carries. Completion closes the Finder
-// stack because the sheet was reached through it, unlike the Outliner sheet,
-// which returns to the rows underneath it.
-func NewFinderTaskActionSheetModel(
-	registry *OperationRegistry,
-	executor *OperationExecutor,
-	context CommandContext,
-	taskTitle string,
-	operationIDs []OperationID,
-) (*ContextActionSheetModel, error) {
-	return NewContextActionSheetModel(registry, executor, context, operationIDs, ContextActionSheetConfig{
-		Host:         ContextActionHostFinder,
-		Completion:   ContextActionCompleteCloseHost,
-		Source:       OperationSourceActionSheet,
-		Title:        "Task Actions",
-		Subtitle:     strings.TrimSpace(taskTitle),
-		ItemIDPrefix: "finder-task-action:",
-		Categories:   taskActionCategories,
-		CategoryFor:  taskActionCategory,
-		SecondaryFor: operationActionSecondaryText,
-		DisabledFor: func(descriptor OperationDescriptor) string {
-			return taskActionDisabledReason(descriptor, context)
-		},
-		Targets: 1,
-		EmptyState: ListEmptyState{
-			Title:  "No task actions available.",
-			Detail: "This task cannot be acted on from the Finder.",
 		},
 		NoMatchState: ListEmptyState{
 			Title:  "No matching actions.",
@@ -223,7 +188,6 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 		strings.Contains(label, "comment"),
 		strings.Contains(label, "attachment"),
 		strings.Contains(label, "decision"),
-		strings.Contains(label, "activity"),
 		strings.Contains(label, "detail"),
 		strings.Contains(label, "note"):
 		return taskActionCategoryContent

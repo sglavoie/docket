@@ -28,10 +28,10 @@ func TestQuickCaptureStatusSuggestionsFilterByPartial(t *testing.T) {
 		partial string
 		want    []string
 	}{
-		{"rev", []string{"review"}},
 		{"read", []string{"ready"}},
 		{"wait", []string{"waiting"}},
 		{"pause", []string{"paused"}},
+		{"some", []string{"someday"}},
 	}
 
 	for _, tt := range tests {

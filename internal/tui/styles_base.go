@@ -17,18 +17,6 @@ var (
 	// readable contrast on light themes where Faint alone would wash text out.
 	DimStyle = lipgloss.NewStyle().Foreground(ColorDimmed).Faint(true)
 
-	// DimmedTaskStyle applies a light gray background + dark text + italic to visually dim task lines.
-	DimmedTaskStyle = lipgloss.NewStyle().
-			Background(ColorDimmedBg).
-			Foreground(ColorDimmedFg).
-			Italic(true)
-
-	// DimmedSelectedStyle is used for dimmed tasks that are also under the cursor.
-	DimmedSelectedStyle = lipgloss.NewStyle().
-				Background(ColorDimmedBg).
-				Foreground(ColorSelectedFg).
-				Italic(true)
-
 	// ShadowStyle renders a dark background cell for overlay drop-shadows (1 char wide).
 	ShadowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#1a1a1a"))
 

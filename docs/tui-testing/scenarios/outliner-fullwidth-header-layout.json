@@ -4,7 +4,7 @@
   "size": "60x20",
   "actions": [
     { "type": "resize", "width": 60, "height": 20 },
-    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "outliner root" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }

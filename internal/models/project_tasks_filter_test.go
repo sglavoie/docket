@@ -8,25 +8,25 @@ func TestProjectFilterTasks_WithPredicates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task-1", 1, TaskTypeTask, "High priority task")
+	task1, err := NewGenericTask("task-1", 1, "High priority task")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.Priority = 1
 
-	task2, err := NewTask("task-2", 2, TaskTypeTask, "Medium priority task")
+	task2, err := NewGenericTask("task-2", 2, "Medium priority task")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.Priority = 2
 
-	task3, err := NewTask("task-3", 3, TaskTypeTask, "Low priority task")
+	task3, err := NewGenericTask("task-3", 3, "Low priority task")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task3.Priority = 3
 
-	task4, err := NewTask("task-4", 4, TaskTypeBug, "Bug fix")
+	task4, err := NewGenericTask("task-4", 4, "Bug fix")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,13 +92,6 @@ func TestProjectFilterMethods_EmptyTaskList(t *testing.T) {
 		}
 	})
 
-	t.Run("GetTasksByType on empty list", func(t *testing.T) {
-		result := project.GetTasksByType(TaskTypeTask)
-		if len(result) != 0 {
-			t.Errorf("GetTasksByType on empty list should return empty, got %d", len(result))
-		}
-	})
-
 	t.Run("GetTasksByTag on empty list", func(t *testing.T) {
 		result := project.GetTasksByTag("backend")
 		if len(result) != 0 {
@@ -142,13 +135,6 @@ func TestProjectFilterMethods_NilTaskList(t *testing.T) {
 		}
 	})
 
-	t.Run("GetTasksByType on nil list", func(t *testing.T) {
-		result := project.GetTasksByType(TaskTypeTask)
-		if len(result) != 0 {
-			t.Errorf("GetTasksByType on nil list should return empty, got %d", len(result))
-		}
-	})
-
 	t.Run("GetTasksByTag on nil list", func(t *testing.T) {
 		result := project.GetTasksByTag("backend")
 		if len(result) != 0 {
@@ -162,7 +148,7 @@ func TestProjectFilterTasks_NilPredicateReturnsNil(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task-1", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task-1", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}

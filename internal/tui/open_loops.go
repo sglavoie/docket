@@ -40,14 +40,14 @@ type openLoopsAware interface {
 // ComputeOpenLoops counts the open loops across all loadable projects using the
 // same cross-scope loader Today uses, selecting the project set from the
 // startup-loaded catalog domain rather than the config.Config facade.
-// dailyPlanIDs supplies the Today scope (which tasks are planned for today) so
+// todayIDs supplies the Today scope (which tasks are planned for today) so
 // the counter agrees with Today regardless of completion status.
-func ComputeOpenLoops(rs *config.RuntimeState, dailyPlanIDs map[TaskIdentity]bool) OpenLoops {
+func ComputeOpenLoops(rs *config.RuntimeState, todayIDs map[TaskIdentity]bool) OpenLoops {
 	if rs == nil {
 		return OpenLoops{}
 	}
 	var out OpenLoops
-	_, projects, failed := loadCrossScopeSelection(rs.AllLoadableProjects(), false, nil)
+	_, projects, failed := loadCrossScopeSelection(rs.AllLoadableProjects(), nil)
 	for _, f := range failed {
 		logging.Warn("open loops: %s", f.Detail)
 	}
@@ -55,7 +55,7 @@ func ComputeOpenLoops(rs *config.RuntimeState, dailyPlanIDs map[TaskIdentity]boo
 		for _, task := range project.Tasks {
 			out.HasTasks = true
 			// Today scope: include planned tasks regardless of completion (matches Today).
-			if dailyPlanIDs != nil && dailyPlanIDs[taskIdentityFor(task, project)] {
+			if todayIDs != nil && todayIDs[taskIdentityFor(task, project)] {
 				out.TodayTotal++
 				if task.IsComplete() {
 					out.TodayDone++

@@ -10,24 +10,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // AppVersion is the application version string used when writing theme files.
 // Set this from the cmd package before calling RunApp.
 var AppVersion = "dev"
-
-// StartupEvalResult holds the result of workflow evaluation at TUI startup.
-type StartupEvalResult struct {
-	Evaluated     bool
-	ModifiedTasks int
-	RulesApplied  int
-}
 
 // RunApp starts the TUI application.
 func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOption) error {
@@ -52,46 +42,9 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 	}
 	defer lock.Release()
 
-	// Evaluate workflow rules at startup if needed
-	var startupResult *StartupEvalResult
-	if current := runtime.CurrentProject(); current != nil {
-		startupResult = evaluateWorkflowAtStartup(runtime, manager, current)
-	}
-
-	// Apply config-driven storage settings
-	if runtime.Settings().MaxActivityEntries != nil {
-		storage.MaxActivityEntries = *runtime.Settings().MaxActivityEntries
-	}
-
 	model, err := NewAppModel(runtime, manager, opts...)
 	if err != nil {
 		return err
-	}
-
-	// Evaluate proactive alerts at startup
-	model.reevaluateAlerts()
-
-	// Pass startup eval result to model for status display
-	if startupResult != nil && startupResult.Evaluated && startupResult.ModifiedTasks > 0 {
-		model.statusMessage = fmt.Sprintf("%d task(s) updated by %d workflow rule(s)",
-			startupResult.ModifiedTasks, startupResult.RulesApplied)
-	}
-
-	// Show data repair notification for current project
-	if model.statusMessage == "" {
-		if current := model.currentProject; current != nil {
-			// Ensure project is loaded (may have been loaded by workflow eval already)
-			if len(current.Tasks) == 0 && current.Path != "" {
-				_ = storage.LoadProject(current)
-			}
-			if n := len(current.Warnings); n > 0 {
-				model.statusMessage = fmt.Sprintf("%d data issue(s) auto-repaired (run tt doctor for details)", n)
-				model.statusIsInfo = true
-				if saveErr := persistStartupProjectRepair(model, current); saveErr != nil {
-					logging.Warn("failed to persist auto-repaired data: %v", saveErr)
-				}
-			}
-		}
 	}
 
 	p := tea.NewProgram(model)
@@ -122,35 +75,6 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 		}
 		printSessionSummary(app.sessionStats)
 	}
-	return err
-}
-
-type startupRepairRevisionProvider interface {
-	startupRepairRevision(project *models.Project) (string, bool)
-}
-
-// persistStartupProjectRepair commits only when the production project loader
-// retained the exact raw revision that produced the in-memory normalization. A
-// custom/test persister without that contract is deliberately a no-op; falling
-// back to an unchecked save would recreate the startup clobber race.
-func persistStartupProjectRepair(model *AppModel, project *models.Project) error {
-	if model == nil || project == nil || model.runtime == nil {
-		return nil
-	}
-	provider, ok := model.persister.(startupRepairRevisionProvider)
-	if !ok {
-		return nil
-	}
-	expectedRawRevision, ok := provider.startupRepairRevision(project)
-	if !ok {
-		return nil
-	}
-	dataDir := model.runtime.DataDir()
-	if dataDir == "" {
-		return fmt.Errorf("startup project repair requires a workspace data directory")
-	}
-	_, err := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir}).
-		CommitProjectRepair(project, expectedRawRevision)
 	return err
 }
 
@@ -207,58 +131,4 @@ func sessionDurationStr(start time.Time) string {
 		return fmt.Sprintf("%dm", m)
 	}
 	return ""
-}
-
-// evaluateWorkflowAtStartup evaluates workflow rules for the current project.
-// Task mutations use the application transaction boundary; configuration side
-// effects are committed only to their owning planning, automation, and catalog
-// domains.
-func evaluateWorkflowAtStartup(runtime *config.RuntimeState, manager *config.Manager, project *models.Project) *StartupEvalResult {
-	result := &StartupEvalResult{}
-	if runtime == nil || manager == nil || project == nil {
-		return result
-	}
-
-	automation := cloneAutomationConfig(runtime.Automation())
-	if !automation.ShouldEvaluateWorkflow(project.ID) {
-		return result
-	}
-	rules := automation.GetEnabledWorkflowRules()
-	if len(rules) == 0 {
-		return result
-	}
-
-	ledger := workspaceLedgerFromConfig(runtime)
-	svc := newTUIAppService(runtime.DataDir(), manager.RuntimeDependencies(), ledger)
-	wr, err := svc.ApplyWorkflowsWithArtifacts(project.ID, rules, nil, app.WorkflowArtifactBuilders{
-		ProjectStatus: workflowProjectStatusArtifactBuilder(manager),
-		Planning:      planningReconcileArtifactBuilder(manager),
-	})
-	if err != nil {
-		logging.Warn("startup workflow evaluation failed: %v", err)
-		return result
-	}
-
-	result.Evaluated = true
-	result.ModifiedTasks = len(wr.ModifiedTaskIDs)
-	result.RulesApplied = len(wr.RuleTriggerCounts)
-
-	if len(wr.ProjectStatusChanges) > 0 {
-		// ApplyWorkflows committed catalog artifacts with the task cascade; reload
-		// the runtime snapshot so startup consumers observe them.
-		if err := runtime.RefreshAfterCommit(); err != nil {
-			logging.Warn("failed to refresh startup workflow domain changes: %v", err)
-		}
-	}
-
-	automation.IncrementRuleTriggerCounts(wr.RuleTriggerCounts)
-
-	automation.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
-		LastEvalTime: time.Now(),
-		RulesHash:    automation.ComputeWorkflowRulesHash(),
-	})
-	if err := runtime.CommitAutomation(automation); err != nil {
-		logging.Warn("failed to persist startup workflow automation state: %v", err)
-	}
-	return result
 }

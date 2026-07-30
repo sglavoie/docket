@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -40,35 +39,9 @@ func navigateToScheduleField(m *TaskFormModel, idx int) *TaskFormModel {
 	return m
 }
 
-func navigateToAttrRow(m *TaskFormModel, localIdx int) *TaskFormModel {
-	m.activeTab = formTabBasics
-	m.focusIndex = formBasicsFieldCount + localIdx
-	m.focusTitleInput()
-	return m
-}
-
-func navigateToDetailsField(m *TaskFormModel, idx int) *TaskFormModel {
-	m.activeTab = formTabDetails
-	m.focusIndex = idx
-	m.syncInputFocus()
-	return m
-}
-
-func newBugTaskForm() *TaskFormModel {
-	m := newTestTaskForm()
-	m.draft.taskType = models.TaskTypeBug
-	return m
-}
-
 func navigateToChildrenTab(m *TaskFormModel) *TaskFormModel {
 	m.activeTab = formTabChildren
 	m.focusIndex = 0
-	return m
-}
-
-func newEpicTaskForm() *TaskFormModel {
-	m := newTestTaskForm()
-	m.draft.taskType = models.TaskTypeEpic
 	return m
 }
 

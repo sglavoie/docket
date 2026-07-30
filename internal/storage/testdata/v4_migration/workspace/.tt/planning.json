@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "planning",
+  "data": {
+    "tui_state_version": 4,
+    "focus_queue": [
+      {
+        "task_id": "synthetic-alpha-weekday",
+        "project_id": "project-alpha"
+      },
+      {
+        "task_id": "synthetic-beta-root",
+        "project_id": "project-beta"
+      }
+    ],
+    "daily_plan": [
+      {
+        "task_id": "synthetic-alpha-rich",
+        "project_id": "project-alpha",
+        "planned_date": "2026-02-03"
+      },
+      {
+        "task_id": "synthetic-beta-root",
+        "project_id": "project-beta",
+        "planned_date": "2026-02-03"
+      }
+    ],
+    "focus_dismissed_ids": [
+      "synthetic-dismissed"
+    ],
+    "alert_dismissals": [
+      {
+        "key": "overdue:synthetic-alpha-rich",
+        "category": "overdue",
+        "dismissed_at": "2026-02-02T10:00:00Z"
+      }
+    ],
+    "last_daily_review_at": "2026-02-02T17:00:00Z",
+    "last_weekly_review_at": "2026-02-01T17:00:00Z",
+    "today_cleared_at": "2026-02-01",
+    "streak_count": 8,
+    "streak_last_date": "2026-02-02"
+  }
+}

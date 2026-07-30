@@ -54,7 +54,15 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		t.Fatalf("f = handled %v cmd %T; want a pending prefix", handled, cmd)
 	}
 	row := app.pendingChordHintRow()
-	for _, want := range []string{"p priority threshold", "d due", "s states", "t tags", "x clear all"} {
+	for _, want := range []string{
+		"p priority threshold",
+		"d due",
+		"s states",
+		"t tags",
+		"b blocked",
+		"z snoozed",
+		"x clear all",
+	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("f which-key row %q omits %q", row, want)
 		}
@@ -108,42 +116,6 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 				}
 			},
 		},
-		{
-			path:   []string{"f", "d", "t"},
-			status: "Filtering due: today",
-			verify: func(t *testing.T) {
-				if filter.DueDate != DueDateToday {
-					t.Errorf("DueDate = %v, want today", filter.DueDate)
-				}
-			},
-		},
-		{
-			path:   []string{"f", "d", "w"},
-			status: "Filtering due: this week",
-			verify: func(t *testing.T) {
-				if filter.DueDate != DueDateThisWeek {
-					t.Errorf("DueDate = %v, want this week", filter.DueDate)
-				}
-			},
-		},
-		{
-			path:   []string{"f", "d", "o"},
-			status: "Filtering due: overdue",
-			verify: func(t *testing.T) {
-				if filter.DueDate != DueDateOverdue {
-					t.Errorf("DueDate = %v, want overdue", filter.DueDate)
-				}
-			},
-		},
-		{
-			path:   []string{"f", "d", "n"},
-			status: "Filtering due: none",
-			verify: func(t *testing.T) {
-				if filter.DueDate != DueDateNone {
-					t.Errorf("DueDate = %v, want none", filter.DueDate)
-				}
-			},
-		},
 	}
 	for _, preset := range presets {
 		t.Run(strings.Join(preset.path, ""), func(t *testing.T) {
@@ -170,6 +142,8 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	filter.Priority = 2
 	filter.DueDate = DueDateToday
 	filter.Tags = map[string]bool{"deep": true}
+	filter.Blocked = true
+	filter.Snoozed = true
 	set, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +204,63 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	}
 }
 
+func TestFilterChordBlockedAndSnoozedFacets(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	filter := &app.crossOutliner.filter.CommonFilterState
+
+	if cmd := pressFilterChord(t, app, "fb"); cmd == nil {
+		t.Fatal("fb produced no status command")
+	}
+	if !filter.Blocked {
+		t.Fatal("fb did not enable the blocked-only facet")
+	}
+
+	if cmd := pressFilterChord(t, app, "fz"); cmd == nil {
+		t.Fatal("fz produced no status command")
+	}
+	if !filter.Snoozed {
+		t.Fatal("fz did not enable the snoozed-only facet")
+	}
+
+	pressFilterChord(t, app, "fx")
+	if filter.Blocked || filter.Snoozed {
+		t.Fatalf("fx left blocked/snoozed enabled: %+v", filter)
+	}
+}
+
 func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
+	t.Run("fd due date", func(t *testing.T) {
+		app := newFilterChordTestApp(t)
+		app.crossOutliner.filter.DueDate = DueDateThisWeek
+
+		cmd := pressFilterChord(t, app, "fd")
+		if cmd == nil {
+			t.Fatal("fd produced no value-request command")
+		}
+		app.handleOperationOverlayMessage(cmd())
+		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterDue {
+			t.Fatalf("fd did not open the due-date picker: %#v", app.operationValuePicker)
+		}
+		items := app.operationValuePicker.surface.Items()
+		wantIDs := []ListItemID{
+			"filter-due:overdue",
+			"filter-due:today",
+			"filter-due:week",
+			"filter-due:none",
+		}
+		if len(items) != len(wantIDs) {
+			t.Fatalf("due-date picker items = %v, want %v", items, wantIDs)
+		}
+		for index, wantID := range wantIDs {
+			if items[index].ID != wantID {
+				t.Errorf("due-date picker item %d = %s, want %s", index, items[index].ID, wantID)
+			}
+		}
+		if current, ok := app.operationValuePicker.surface.CurrentItem(); !ok || current.ID != "filter-due:week" {
+			t.Errorf("seeded cursor = %v (%v), want filter-due:week", current.ID, ok)
+		}
+	})
+
 	t.Run("fs states", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		set, err := models.NewWorkflowStateSet(models.StateWaiting)
@@ -270,6 +300,83 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Errorf("seeded selection = %v, want [tag:deep]", selected)
 		}
 	})
+}
+
+func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
+	tests := []struct {
+		name   string
+		itemID ListItemID
+		want   DueDateFilter
+	}{
+		{name: "overdue", itemID: "filter-due:overdue", want: DueDateOverdue},
+		{name: "today", itemID: "filter-due:today", want: DueDateToday},
+		{name: "this week", itemID: "filter-due:week", want: DueDateThisWeek},
+		{name: "no due date", itemID: "filter-due:none", want: DueDateNone},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			app := newFilterChordTestApp(t)
+			cmd := pressFilterChord(t, app, "fd")
+			if cmd == nil {
+				t.Fatal("fd produced no value-request command")
+			}
+			if handled, overlayCmd := app.handleOperationOverlayMessage(cmd()); !handled || overlayCmd != nil {
+				t.Fatalf("fd request = handled %v cmd %T; want picker opened synchronously", handled, overlayCmd)
+			}
+			picker := app.operationValuePicker
+			if picker == nil || !picker.surface.SetCursorToID(test.itemID) {
+				t.Fatalf("due-date picker cannot select %s", test.itemID)
+			}
+			_, dismissed, selected := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+			if !dismissed {
+				t.Fatal("Enter did not finish the due-date picker")
+			}
+			handled, statusCmd := app.handleOperationOverlayMessage(selected)
+			if !handled || statusCmd == nil {
+				t.Fatalf("due-date selection = handled %v cmd %T; want applied status", handled, statusCmd)
+			}
+			if got := app.crossOutliner.filter.DueDate; got != test.want {
+				t.Errorf("DueDate = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+
+	binding, descriptor, resolution := registry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"f", "d"},
+		ctx,
+	)
+	if resolution != ChordTerminal || descriptor.ID != operationFilterDue {
+		t.Fatalf("fd = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterDue)
+	}
+	if binding.HasPresetValue || binding.DisplayKey != "fd" {
+		t.Errorf("fd binding = preset %v display %q, want picker display fd", binding.HasPresetValue, binding.DisplayKey)
+	}
+	helpDocumentsFD := false
+	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+		if item.Key == "fd" && item.Description == "Filter by Due Date" {
+			helpDocumentsFD = true
+			break
+		}
+	}
+	if !helpDocumentsFD {
+		t.Error("derived help omits the terminal fd due-date picker")
+	}
+	for _, retired := range [][]string{
+		{"f", "d", "t"},
+		{"f", "d", "w"},
+		{"f", "d", "o"},
+		{"f", "d", "n"},
+	} {
+		if _, _, got := registry.InputBindingForSequence(InputStrategySimplified, retired, ctx); got != ChordNoMatch {
+			t.Errorf("retired due path %v resolution = %v, want no match", retired, got)
+		}
+	}
 }
 
 func TestFilterOperationsApplyPickerValues(t *testing.T) {
@@ -343,39 +450,20 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	}
 }
 
-// TestFilterOperationsStayChordOnly locks the discovery half of the contract:
-// the filter family refines the view in place, so it reaches the user through
-// the f chords alone and never as a Finder row.
+// TestFilterOperationsStayChordOnly locks the direct-grammar contract: the
+// filter family refines the view in place through the f chords.
 func TestFilterOperationsStayChordOnly(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
-	ctx := app.operationCommandContext()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 5 {
-		t.Fatalf("filter family declares %d operations, want 5", len(descriptors))
+	if len(descriptors) != 7 {
+		t.Fatalf("filter family declares %d operations, want 7", len(descriptors))
 	}
-	filterIDs := make(map[OperationID]bool, len(descriptors))
 	for _, declared := range descriptors {
-		registered, ok := registry.Descriptor(declared.ID)
+		_, ok := registry.Descriptor(declared.ID)
 		if !ok {
 			t.Fatalf("filter operation %s is not registered", declared.ID)
-		}
-		if registered.Placement.DiscoverableInFinder() {
-			t.Errorf("filter operation %s declares a Finder-discoverable placement", declared.ID)
-		}
-		filterIDs[declared.ID] = true
-	}
-
-	finder, err := NewRuntimeFinder(app.runtime, registry, ctx)
-	if err != nil {
-		t.Fatalf("NewRuntimeFinder: %v", err)
-	}
-	for _, item := range finder.Items() {
-		for _, id := range item.OperationIDs {
-			if filterIDs[id] {
-				t.Errorf("finder row %s advertises filter operation %s", item.ID, id)
-			}
 		}
 	}
 }
@@ -394,7 +482,7 @@ func TestPriorityThresholdSemantics(t *testing.T) {
 		filter := newFilterState()
 		filter.Priority = threshold
 		for priority, pass := range want {
-			if got := passesCommonFilters(tasks[priority], &filter, nil, nil); got != pass {
+			if got := passesCommonFilters(tasks[priority], &filter, nil); got != pass {
 				t.Errorf("threshold %d priority %d = %v, want %v", threshold, priority, got, pass)
 			}
 		}

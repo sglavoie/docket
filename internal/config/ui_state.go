@@ -1,6 +1,8 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -24,17 +26,49 @@ type OutlinerRouteState struct {
 	FilterPinned  bool                    `json:"filter_pinned,omitempty"`
 }
 
+// UnmarshalJSON keeps legacy route persistence readable without making retired
+// states valid in the target WorkflowStateSet API. Review filters normalize to
+// Ready, matching task-state conversion; unknown values remain hard errors.
+func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Mode          string                 `json:"mode,omitempty"`
+		FilterStates  []models.WorkflowState `json:"filter_states,omitempty"`
+		FilterSnoozed bool                   `json:"filter_snoozed,omitempty"`
+		FilterPinned  bool                   `json:"filter_pinned,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	states := make([]models.WorkflowState, 0, len(raw.FilterStates))
+	for _, legacy := range raw.FilterStates {
+		target, ok := models.TargetStateForLegacy(legacy)
+		if !ok {
+			return fmt.Errorf("invalid workflow state %q", legacy)
+		}
+		states = append(states, target)
+	}
+	filterStates, err := models.NewWorkflowStateSet(states...)
+	if err != nil {
+		return err
+	}
+	*s = OutlinerRouteState{
+		Mode:          raw.Mode,
+		FilterStates:  filterStates,
+		FilterSnoozed: raw.FilterSnoozed,
+		FilterPinned:  raw.FilterPinned,
+	}
+	return nil
+}
+
 const (
-	OutlinerModeAll         = "all"
-	OutlinerModeInbox       = "inbox"
-	OutlinerModeNext        = "next"
-	OutlinerModeBacklog     = "backlog"
-	OutlinerModeDue         = "due"
-	OutlinerModePriority    = "priority"
-	OutlinerModeBlocked     = "blocked"
-	OutlinerModeParked      = "parked"
-	OutlinerModeDailyReview = "daily-review"
-	OutlinerModeActivity    = "activity"
+	OutlinerModeAll      = "all"
+	OutlinerModeInbox    = "inbox"
+	OutlinerModeNext     = "next"
+	OutlinerModeBacklog  = "backlog"
+	OutlinerModeDue      = "due"
+	OutlinerModePriority = "priority"
+	OutlinerModeBlocked  = "blocked"
 )
 
 // NormalizeOutlinerRouteState returns a defensive, canonical copy of state.
@@ -59,7 +93,10 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.FilterStates = mustWorkflowStateSet(models.StateSomeday)
 	case "review":
 		state.Mode = OutlinerModeAll
-		state.FilterStates = mustWorkflowStateSet(models.StateReview)
+		// Review tasks are converted to Ready plus the review tag by the task
+		// compatibility reader. The retired route has no tag facet, so Ready is
+		// the closest target-state predicate it can retain.
+		state.FilterStates = mustWorkflowStateSet(models.StateReady)
 	case "snoozed":
 		state.Mode = OutlinerModeAll
 		state.FilterSnoozed = true
@@ -74,17 +111,18 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.Mode = OutlinerModeAll
 		state.FilterPinned = true
 	case "recent", "recently-visited", "recent-tasks":
-		state.Mode = OutlinerModeActivity
+		state.Mode = OutlinerModeAll
+	case "daily-review":
+		state.Mode = OutlinerModeAll
+	case "parked":
+		state.Mode = OutlinerModeAll
 	case OutlinerModeAll,
 		OutlinerModeInbox,
 		OutlinerModeNext,
 		OutlinerModeBacklog,
 		OutlinerModeDue,
 		OutlinerModePriority,
-		OutlinerModeBlocked,
-		OutlinerModeParked,
-		OutlinerModeDailyReview,
-		OutlinerModeActivity:
+		OutlinerModeBlocked:
 		state.Mode = mode
 	default:
 		state.Mode = OutlinerModeAll
@@ -113,90 +151,12 @@ func cloneWorkflowStateSet(states models.WorkflowStateSet) models.WorkflowStateS
 	return mustWorkflowStateSet(states.Values()...)
 }
 
-// RecentDestinationKind identifies a finder destination without importing TUI
-// route or presentation types into the machine-local config domain.
-type RecentDestinationKind string
-
 const (
-	RecentDestinationTask    RecentDestinationKind = "task"
-	RecentDestinationProject RecentDestinationKind = "project"
-	RecentDestinationNote    RecentDestinationKind = "note"
-	RecentDestinationTool    RecentDestinationKind = "tool"
-	RecentDestinationMode    RecentDestinationKind = "mode"
-	RecentDestinationScope   RecentDestinationKind = "scope"
-	RecentDestinationTag     RecentDestinationKind = "tag"
-)
-
-// RecentDestination is the durable identity of a finder destination.
-// ProjectID qualifies task and project-note IDs so equal entity IDs in
-// different projects never share recency. Count is retained for future ranking
-// while slice order remains the authoritative most-recent-first order.
-type RecentDestination struct {
-	Kind      RecentDestinationKind `json:"kind"`
-	ID        string                `json:"id"`
-	ProjectID string                `json:"project_id,omitempty"`
-	Count     int                   `json:"count,omitempty"`
-}
-
-// Valid reports whether a destination has enough identity to be persisted.
-// Retired kinds fall through to false, so a machine-local history written by an
-// older build loses only the entries whose destination no longer exists.
-func (destination RecentDestination) Valid() bool {
-	if strings.TrimSpace(destination.ID) == "" {
-		return false
-	}
-	switch destination.Kind {
-	case RecentDestinationTask:
-		return strings.TrimSpace(destination.ProjectID) != ""
-	case RecentDestinationNote,
-		RecentDestinationProject,
-		RecentDestinationTool,
-		RecentDestinationMode,
-		RecentDestinationScope,
-		RecentDestinationTag:
-		return true
-	default:
-		return false
-	}
-}
-
-// QualifiedID returns the stable finder identity represented by destination.
-func (destination RecentDestination) QualifiedID() string {
-	if !destination.Valid() {
-		return ""
-	}
-	kind := string(destination.Kind)
-	switch destination.Kind {
-	case RecentDestinationTask:
-		return kind + ":" + destination.ProjectID + ":" + destination.ID
-	case RecentDestinationNote:
-		projectID := destination.ProjectID
-		if projectID == "" {
-			projectID = "global"
-		}
-		return kind + ":" + projectID + ":" + destination.ID
-	default:
-		return kind + ":" + destination.ID
-	}
-}
-
-const (
-	// CurrentTUIStateVersion versions route and presentation state inside the
-	// machine, planning, and settings domains independently from their envelope
-	// schema. Each owning domain can therefore migrate and commit atomically.
+	// CurrentTUIStateVersion is the last v4 route/presentation version understood
+	// by the legacy-domain migration converter.
 	//
 	// Version 4 introduces the ten-mode OutlinerRouteState and migrates retired
 	// perspectives, smart focuses, lenses, startup destinations, project view
 	// states, and cross-Outliner lifecycle filters into canonical route DTOs.
 	CurrentTUIStateVersion = 4
-
-	// MaxRecentPaletteItems is the durable cap for the one palette history that
-	// survives the TUI-state migration.
-	MaxRecentPaletteItems = 10
-
-	// MaxRecentDestinations bounds the machine-local finder destination
-	// history. Finder empty-query output uses only the three newest live
-	// destinations, but retaining a slightly deeper history allows stale
-	// references to disappear without emptying the shortlist.
-	MaxRecentDestinations = 10
 )

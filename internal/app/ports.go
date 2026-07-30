@@ -21,17 +21,20 @@ import (
 )
 
 // OpsCommitter is the optional capability a Repository exposes to commit a set of
-// raw file operations plus revision-checked artifacts — a directory move, a
-// tombstone write, a config rewrite, a recursive delete — as ONE atomic journaled
-// transaction. It is the persistence
-// boundary the project archive-location, trash, restore, and purge use cases drive:
-// where task mutations flow through Commit(ChangeSet), the config- and directory-
-// centric project lifecycle flows through CommitOps. Keeping artifacts typed at
-// this boundary preserves their optimistic-concurrency contracts instead of
-// flattening them into unchecked write operations. A repository that does not
-// support it makes the project-lifecycle use cases fail closed.
+// raw file operations plus revision-checked artifacts as one atomic journaled
+// transaction. Project rename and workspace maintenance use this boundary when
+// directory and config changes must land together. Keeping artifacts typed
+// preserves their optimistic-concurrency contracts instead of flattening them into
+// unchecked writes.
 type OpsCommitter interface {
 	CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error
+}
+
+// UndoableOpsCommitter extends OpsCommitter for user-facing project lifecycle
+// changes. Implementations commit the raw operations, artifacts, and workspace
+// ledger entry as one transaction.
+type UndoableOpsCommitter interface {
+	CommitOpsTransaction(request storage.OpsCommitRequest) (string, error)
 }
 
 // ArtifactCommitter is the repository capability used by workspace-note

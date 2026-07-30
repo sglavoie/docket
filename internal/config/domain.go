@@ -1,28 +1,23 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/aiharness"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/template"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// Configuration is split into five explicit persistence domains:
+// Runtime configuration is split into three explicit persistence domains:
 //
 //   - WorkspaceCatalog -> <data>/.tt/workspace.json
 //   - PlanningState    -> <data>/.tt/planning.json
-//   - Settings         -> <data>/.tt/settings.json
-//   - AutomationConfig -> <data>/.tt/automation.json
 //   - MachineState     -> ~/.tt/runtime/<workspace-id>/machine.json
 //
 // Each aggregate owns its defaults, validation, project-reference cleanup, and
-// persistence lifecycle. RuntimeState composes the five loaded domains for
+// persistence lifecycle. RuntimeState composes the three loaded domains for
 // long-lived consumers, while mutations commit only the owning domain (or an
 // explicit checked multi-domain transaction).
 
@@ -32,22 +27,18 @@ import (
 // directory and its safe slug (see CatalogPath), never stored, so a workspace
 // can be moved between machines or storage backends without rewriting paths.
 type CatalogProject struct {
-	ID               string     `json:"id"`
-	Slug             string     `json:"slug"`
-	Name             string     `json:"name"`
-	Description      string     `json:"description,omitempty"`
-	StatusIcon       string     `json:"status_icon,omitempty"`
-	StatusIconSource string     `json:"status_icon_source,omitempty"`
-	Context          string     `json:"context"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Archived         bool       `json:"archived"`
-	ArchivedAt       *time.Time `json:"archived_at,omitempty"`
-	Pinned           bool       `json:"pinned"`
-	PinnedAt         *time.Time `json:"pinned_at,omitempty"`
-	Sandbox          bool       `json:"sandbox,omitempty"`
-	Internal         bool       `json:"internal,omitempty"`
-	ColorSlot        int        `json:"color_slot,omitempty"`
+	ID          string     `json:"id"`
+	Slug        string     `json:"slug"`
+	Name        string     `json:"name"`
+	Description string     `json:"description,omitempty"`
+	Context     string     `json:"context"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	Archived    bool       `json:"archived"`
+	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
+	Pinned      bool       `json:"pinned"`
+	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
+	ColorSlot   int        `json:"color_slot,omitempty"`
 }
 
 const (
@@ -66,6 +57,14 @@ const (
 	LegacyActionInboxSlug = "action-inbox"
 )
 
+var (
+	// ErrProtectedSystemInbox marks a project-catalog mutation that would
+	// rename, archive, remove, or otherwise invalidate the project identified
+	// by WorkspaceCatalog.SystemInboxProjectID. The ID is the protection
+	// boundary; display names and slugs never grant protected status.
+	ErrProtectedSystemInbox = errors.New("config: protected system Inbox")
+)
+
 // CatalogPath derives a project's data directory from the workspace data
 // directory and the project slug. Absolute paths are never persisted; this is
 // the single derivation point for a catalog project's location.
@@ -80,22 +79,18 @@ func catalogProjectFromModel(p *models.Project) CatalogProject {
 		return CatalogProject{}
 	}
 	return CatalogProject{
-		ID:               p.ID,
-		Slug:             p.Slug,
-		Name:             p.Name,
-		Description:      p.Description,
-		StatusIcon:       p.StatusIcon,
-		StatusIconSource: p.StatusIconSource,
-		Context:          p.Context,
-		CreatedAt:        p.CreatedAt,
-		UpdatedAt:        p.UpdatedAt,
-		Archived:         p.Archived,
-		ArchivedAt:       p.ArchivedAt,
-		Pinned:           p.Pinned,
-		PinnedAt:         p.PinnedAt,
-		Sandbox:          p.Sandbox,
-		Internal:         p.Internal,
-		ColorSlot:        p.ColorSlot,
+		ID:          p.ID,
+		Slug:        p.Slug,
+		Name:        p.Name,
+		Description: p.Description,
+		Context:     p.Context,
+		CreatedAt:   p.CreatedAt,
+		UpdatedAt:   p.UpdatedAt,
+		Archived:    p.Archived,
+		ArchivedAt:  p.ArchivedAt,
+		Pinned:      p.Pinned,
+		PinnedAt:    p.PinnedAt,
+		ColorSlot:   p.ColorSlot,
 	}
 }
 
@@ -104,23 +99,19 @@ func catalogProjectFromModel(p *models.Project) CatalogProject {
 // are left zero for storage to populate on load.
 func (p CatalogProject) ToModel(dataDir string) *models.Project {
 	return &models.Project{
-		ID:               p.ID,
-		Slug:             p.Slug,
-		Name:             p.Name,
-		Description:      p.Description,
-		StatusIcon:       p.StatusIcon,
-		StatusIconSource: p.StatusIconSource,
-		Context:          p.Context,
-		Path:             p.CatalogPath(dataDir),
-		CreatedAt:        p.CreatedAt,
-		UpdatedAt:        p.UpdatedAt,
-		Archived:         p.Archived,
-		ArchivedAt:       p.ArchivedAt,
-		Pinned:           p.Pinned,
-		PinnedAt:         p.PinnedAt,
-		Sandbox:          p.Sandbox,
-		Internal:         p.Internal,
-		ColorSlot:        p.ColorSlot,
+		ID:          p.ID,
+		Slug:        p.Slug,
+		Name:        p.Name,
+		Description: p.Description,
+		Context:     p.Context,
+		Path:        p.CatalogPath(dataDir),
+		CreatedAt:   p.CreatedAt,
+		UpdatedAt:   p.UpdatedAt,
+		Archived:    p.Archived,
+		ArchivedAt:  p.ArchivedAt,
+		Pinned:      p.Pinned,
+		PinnedAt:    p.PinnedAt,
+		ColorSlot:   p.ColorSlot,
 	}
 }
 
@@ -166,13 +157,20 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 	if w.SchemaVersion <= 0 {
 		return fmt.Errorf("workspace catalog: schema version must be positive, got %d", w.SchemaVersion)
 	}
+	if w.SchemaVersion > CurrentConfigVersion {
+		return fmt.Errorf(
+			"workspace catalog: schema version %d is newer than supported version %d; upgrade tt",
+			w.SchemaVersion,
+			CurrentConfigVersion,
+		)
+	}
 	seenID := make(map[string]bool, len(w.Projects))
 	seenSlug := make(map[string]bool, len(w.Projects))
 	for i, p := range w.Projects {
 		if p.ID == "" {
 			return fmt.Errorf("workspace catalog: project %d has empty id", i)
 		}
-		if err := models.ValidateProjectSlug(p.Slug, p.Sandbox); err != nil {
+		if err := models.ValidateProjectSlug(p.Slug); err != nil {
 			return fmt.Errorf("workspace catalog: project %q has invalid slug: %w", p.ID, err)
 		}
 		if seenID[p.ID] {
@@ -187,8 +185,19 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 		seenID[p.ID] = true
 		seenSlug[p.Slug] = true
 	}
-	if w.SystemInboxProjectID != "" && !seenID[w.SystemInboxProjectID] {
-		return fmt.Errorf("workspace catalog: system inbox references unknown project %q", w.SystemInboxProjectID)
+	if w.SystemInboxProjectID != "" {
+		if !seenID[w.SystemInboxProjectID] {
+			return fmt.Errorf("workspace catalog: system inbox references unknown project %q", w.SystemInboxProjectID)
+		}
+		for _, project := range w.Projects {
+			if project.ID == w.SystemInboxProjectID && (project.Archived || project.ArchivedAt != nil) {
+				return fmt.Errorf(
+					"%w: project %q cannot be archived",
+					ErrProtectedSystemInbox,
+					w.SystemInboxProjectID,
+				)
+			}
+		}
 	}
 	return nil
 }
@@ -237,7 +246,7 @@ func (w *WorkspaceCatalog) EnsureProjectColorSlots() bool {
 }
 
 func projectColorEligible(project CatalogProject) bool {
-	return !project.Sandbox && !project.Internal
+	return true
 }
 
 func validProjectColorSlot(slot int) bool {
@@ -274,10 +283,33 @@ func allProjectColorSlotsUsed(usage [ProjectColorSlotCount + 1]int) bool {
 	return true
 }
 
-// RemoveProjectReferences drops the cataloged project and clears the system
-// inbox reference when it targeted the removed project. It returns true when
-// anything changed.
-func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
+// RemoveProject drops a cataloged project while preserving the protected
+// system Inbox invariant. Matching remains compatible with legacy slug
+// references, but protection is decided from the matched project's durable ID.
+// A rejected removal leaves the catalog unchanged.
+func (w *WorkspaceCatalog) RemoveProject(id, slug string) (bool, error) {
+	if w == nil {
+		return false, nil
+	}
+	if w.IsSystemInboxProject(id) {
+		return false, fmt.Errorf(
+			"%w: project %q cannot be removed",
+			ErrProtectedSystemInbox,
+			id,
+		)
+	}
+	if id == "" && slug != "" {
+		for _, project := range w.Projects {
+			if project.Slug == slug && w.IsSystemInboxProject(project.ID) {
+				return false, fmt.Errorf(
+					"%w: project %q cannot be removed",
+					ErrProtectedSystemInbox,
+					project.ID,
+				)
+			}
+		}
+	}
+
 	changed := false
 	kept := w.Projects[:0]
 	for _, p := range w.Projects {
@@ -288,10 +320,15 @@ func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
 		kept = append(kept, p)
 	}
 	w.Projects = kept
-	if refMatches(w.SystemInboxProjectID, id, slug) {
-		w.SystemInboxProjectID = ""
-		changed = true
-	}
+	return changed, nil
+}
+
+// RemoveProjectReferences is the compatibility form used by reference-cleanup
+// callers. It deliberately fails closed for the protected system Inbox. New
+// lifecycle adapters should call RemoveProject so they can surface the typed
+// rejection.
+func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
+	changed, _ := w.RemoveProject(id, slug)
 	return changed
 }
 
@@ -300,487 +337,192 @@ func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
 // portable catalog form (absolute Path and computed fields dropped), so a TUI
 // that mutates catalog-owned flags on a rehydrated models.Project (Archive,
 // Pin, rename) can write the change back through a checked catalog commit.
-func (w *WorkspaceCatalog) UpsertProject(p *models.Project) {
-	if w == nil || p == nil {
-		return
-	}
-	w.EnsureProjectColorSlots()
-	for i := range w.Projects {
-		if w.Projects[i].ID == p.ID {
-			storedSlot := w.Projects[i].ColorSlot
-			if !validProjectColorSlot(storedSlot) && projectColorEligible(catalogProjectFromModel(p)) {
-				usage := projectColorSlotUsage(w.Projects, i)
-				storedSlot = leastUsedProjectColorSlot(usage)
-			}
-			if !validProjectColorSlot(storedSlot) {
-				storedSlot = 0
-			}
-			p.ColorSlot = storedSlot
-			cp := catalogProjectFromModel(p)
-			w.Projects[i] = cp
-			return
-		}
-	}
-
-	cp := catalogProjectFromModel(p)
-	if projectColorEligible(cp) {
-		usage := projectColorSlotUsage(w.Projects, -1)
-		if !validProjectColorSlot(cp.ColorSlot) || (usage[cp.ColorSlot] > 0 && !allProjectColorSlotsUsed(usage)) {
-			cp.ColorSlot = leastUsedProjectColorSlot(usage)
-		}
-	} else if !validProjectColorSlot(cp.ColorSlot) {
-		cp.ColorSlot = 0
-	}
-	p.ColorSlot = cp.ColorSlot
-	w.Projects = append(w.Projects, cp)
+//
+// The mutation is prepared on a defensive copy. Invalid updates therefore
+// cannot partially repair color slots or alter the caller's catalog. Existing
+// system Inbox identity and active lifecycle state are immutable here; startup
+// compatibility code must use RepairSystemInboxProject for its one explicit
+// legacy normalization.
+func (w *WorkspaceCatalog) UpsertProject(p *models.Project) error {
+	return w.upsertProject(p, false)
 }
 
-// PlanningState owns the planning collections: focus queue, daily plan, review
-// completion, and dismissals. It maps to <data>/.tt/planning.json.
+// RepairSystemInboxProject installs or normalizes the catalog-owned Inbox
+// during workspace bootstrap. It is intentionally separate from ordinary
+// project updates so user-facing edit/archive operations cannot use legacy
+// repair authority. The repaired project must remain active.
+func (w *WorkspaceCatalog) RepairSystemInboxProject(p *models.Project) error {
+	if w == nil {
+		return fmt.Errorf("workspace catalog is required")
+	}
+	if p == nil {
+		return fmt.Errorf("system Inbox project is required")
+	}
+	if w.SystemInboxProjectID != "" && w.SystemInboxProjectID != p.ID {
+		return fmt.Errorf(
+			"%w: cannot replace project %q with %q",
+			ErrProtectedSystemInbox,
+			w.SystemInboxProjectID,
+			p.ID,
+		)
+	}
+	if p.Archived || p.ArchivedAt != nil {
+		return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemInbox, p.ID)
+	}
+	return w.upsertProject(p, true)
+}
+
+func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemInbox bool) error {
+	if w == nil {
+		return fmt.Errorf("workspace catalog is required")
+	}
+	if p == nil {
+		return fmt.Errorf("project is required")
+	}
+
+	next := *w
+	next.Projects = append([]CatalogProject(nil), w.Projects...)
+	next.EnsureProjectColorSlots()
+	cp := catalogProjectFromModel(p)
+
+	existingIndex := -1
+	for i, existing := range next.Projects {
+		if existing.ID == cp.ID {
+			existingIndex = i
+			continue
+		}
+		if existing.Slug == cp.Slug {
+			return fmt.Errorf(
+				"workspace catalog: project slug %q is already owned by project %q",
+				cp.Slug,
+				existing.ID,
+			)
+		}
+	}
+
+	if next.IsSystemInboxProject(cp.ID) {
+		if cp.Archived || cp.ArchivedAt != nil {
+			return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemInbox, cp.ID)
+		}
+		if existingIndex >= 0 && !repairSystemInbox {
+			existing := next.Projects[existingIndex]
+			if existing.Name != cp.Name || existing.Slug != cp.Slug {
+				return fmt.Errorf("%w: project %q cannot be renamed", ErrProtectedSystemInbox, cp.ID)
+			}
+		}
+	}
+
+	if existingIndex >= 0 {
+		storedSlot := next.Projects[existingIndex].ColorSlot
+		if !validProjectColorSlot(storedSlot) && projectColorEligible(cp) {
+			usage := projectColorSlotUsage(next.Projects, existingIndex)
+			storedSlot = leastUsedProjectColorSlot(usage)
+		}
+		if !validProjectColorSlot(storedSlot) {
+			storedSlot = 0
+		}
+		cp.ColorSlot = storedSlot
+		next.Projects[existingIndex] = cp
+	} else {
+		if projectColorEligible(cp) {
+			usage := projectColorSlotUsage(next.Projects, -1)
+			if !validProjectColorSlot(cp.ColorSlot) || (usage[cp.ColorSlot] > 0 && !allProjectColorSlotsUsed(usage)) {
+				cp.ColorSlot = leastUsedProjectColorSlot(usage)
+			}
+		} else if !validProjectColorSlot(cp.ColorSlot) {
+			cp.ColorSlot = 0
+		}
+		next.Projects = append(next.Projects, cp)
+	}
+
+	if repairSystemInbox {
+		next.SystemInboxProjectID = cp.ID
+	}
+
+	*w = next
+	p.ColorSlot = cp.ColorSlot
+	return nil
+}
+
+// PlanningState owns the two durable planning collections retained by v5:
+// project-qualified Today membership/order and the preferred order of StateNext
+// tasks. StateNext remains authoritative for Next membership.
 type PlanningState struct {
-	TUIStateVersion int `json:"tui_state_version"`
-
-	// FocusQueue is the Next order index: it records the preferred ordering of
-	// StateNext tasks, not membership (which is derived from State()==StateNext).
-	FocusQueue         []FocusQueueItem `json:"focus_queue,omitempty"`
-	DailyPlan          []DailyPlanItem  `json:"daily_plan,omitempty"`
-	FocusDismissedIDs  []string         `json:"focus_dismissed_ids,omitempty"`
-	AlertDismissals    []AlertDismissal `json:"alert_dismissals,omitempty"`
-	LastDailyReviewAt  *time.Time       `json:"last_daily_review_at,omitempty"`
-	LastWeeklyReviewAt *time.Time       `json:"last_weekly_review_at,omitempty"`
-	TodayClearedAt     string           `json:"today_cleared_at,omitempty"`
-	StreakCount        int              `json:"streak_count,omitempty"`
-	StreakLastDate     string           `json:"streak_last_date,omitempty"`
-
-	retiredSectionsDecoded bool `json:"-"`
+	Today     []ProjectTaskLocator `json:"today,omitempty"`
+	NextOrder []ProjectTaskLocator `json:"next_order,omitempty"`
 }
 
 // NewPlanningState returns an empty planning state.
 func NewPlanningState() *PlanningState {
-	return &PlanningState{TUIStateVersion: CurrentTUIStateVersion}
+	return &PlanningState{}
 }
 
-// Validate reports problems with the planning collections: focus queue and
-// daily plan items must reference a task.
+// Validate reports problems with the project-qualified planning collections.
 func (p *PlanningState) Validate() error {
-	for i, item := range p.FocusQueue {
-		if item.TaskID == "" {
-			return fmt.Errorf("planning: focus queue item %d has empty task id", i)
+	seenToday := make(map[ProjectTaskLocator]bool, len(p.Today))
+	for i, item := range p.Today {
+		if !item.Valid() {
+			return fmt.Errorf("planning: Today item %d has incomplete identity", i)
 		}
+		if seenToday[item] {
+			return fmt.Errorf("planning: Today repeats task %q in project %q", item.TaskID, item.ProjectID)
+		}
+		seenToday[item] = true
 	}
-	for i, item := range p.DailyPlan {
-		if item.TaskID == "" {
-			return fmt.Errorf("planning: daily plan item %d has empty task id", i)
+	seenNext := make(map[ProjectTaskLocator]bool, len(p.NextOrder))
+	for i, item := range p.NextOrder {
+		if !item.Valid() {
+			return fmt.Errorf("planning: Next order item %d has incomplete identity", i)
 		}
+		if seenNext[item] {
+			return fmt.Errorf("planning: Next order repeats task %q in project %q", item.TaskID, item.ProjectID)
+		}
+		seenNext[item] = true
 	}
 	return nil
 }
 
-// RemoveProjectReferences drops focus queue and daily plan entries that point at
-// the removed project. It returns true when anything changed.
+// RemoveProjectReferences drops Today and Next-order entries that point at the
+// removed project. It returns true when anything changed.
 func (p *PlanningState) RemoveProjectReferences(id, slug string) bool {
-	var fq, dp bool
-	p.FocusQueue, fq = filterProjectRefSlice(p.FocusQueue, func(item FocusQueueItem) string {
+	var todayChanged, nextChanged bool
+	p.Today, todayChanged = filterProjectRefSlice(p.Today, func(item ProjectTaskLocator) string {
 		return item.ProjectID
 	}, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	})
-	p.DailyPlan, dp = filterProjectRefSlice(p.DailyPlan, func(item DailyPlanItem) string {
+	p.NextOrder, nextChanged = filterProjectRefSlice(p.NextOrder, func(item ProjectTaskLocator) string {
 		return item.ProjectID
 	}, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	})
-	return fq || dp
+	return todayChanged || nextChanged
 }
 
-// AIConsentSettings records the user's remembered consent to send task context
-// to the AI assistant. Consent is opt-in and must be explicit (context.md:
-// "AI receives task context only after explicit remembered consent").
-type AIConsentSettings struct {
-	Granted   bool                         `json:"granted"`
-	GrantedAt *time.Time                   `json:"granted_at,omitempty"`
-	Providers map[string]AIProviderConsent `json:"providers,omitempty"`
-}
-
-// CurrentAIConsentScopeVersion is the disclosure scope that covers all active
-// project data and permits Codex to inspect the workspace read-only. Bumping it
-// deliberately requires each provider to receive fresh consent.
-const CurrentAIConsentScopeVersion = 1
-
-// AIProviderConsent records one provider-specific remembered consent grant.
-type AIProviderConsent struct {
-	Granted      bool       `json:"granted"`
-	GrantedAt    *time.Time `json:"granted_at,omitempty"`
-	ScopeVersion int        `json:"scope_version,omitempty"`
-}
-
-// GrantedFor reports whether the selected harness has granted consent for the
-// current disclosure scope. Legacy and unversioned grants are intentionally
-// insufficient because they did not disclose active-workspace context or
-// Codex's read-only workspace inspection capability.
-func (s AIConsentSettings) GrantedFor(name aiharness.Name) bool {
-	if !name.Valid() {
-		return false
-	}
-	grant := s.Providers[string(name)]
-	return grant.Granted && grant.ScopeVersion == CurrentAIConsentScopeVersion
-}
-
-// GrantFor remembers task-context consent for one harness at grantedAt.
-// Claude also updates the legacy fields so older tt versions retain that grant.
-func (s *AIConsentSettings) GrantFor(name aiharness.Name, grantedAt time.Time) error {
-	if s == nil {
-		return fmt.Errorf("AI consent settings are required")
-	}
-	if !name.Valid() {
-		return fmt.Errorf("grant AI consent: %w %q", aiharness.ErrUnknownHarness, name)
-	}
-	grantedAt = grantedAt.UTC()
-	if s.Providers == nil {
-		s.Providers = make(map[string]AIProviderConsent)
-	}
-	timestamp := grantedAt
-	s.Providers[string(name)] = AIProviderConsent{
-		Granted:      true,
-		GrantedAt:    &timestamp,
-		ScopeVersion: CurrentAIConsentScopeVersion,
-	}
-	if name == aiharness.Claude {
-		legacyTimestamp := grantedAt
-		s.Granted = true
-		s.GrantedAt = &legacyTimestamp
-	}
-	return nil
-}
-
-// Validate rejects provider-map keys that are not part of the supported
-// allowlist. It does not require grants for every provider.
-func (s AIConsentSettings) Validate() error {
-	for rawName := range s.Providers {
-		if _, err := aiharness.Parse(rawName); err != nil {
-			return fmt.Errorf("settings: ai_consent provider: %w", err)
-		}
-	}
-	return nil
-}
-
-// OnboardingProgress records the five durable first-run milestones. Each flag
-// is monotonic: once observed it remains complete even if the corresponding
-// task or project is later removed.
-type OnboardingProgress struct {
-	ProjectCreated bool `json:"project_created,omitempty"`
-	TaskCaptured   bool `json:"task_captured,omitempty"`
-	InboxTriaged   bool `json:"inbox_triaged,omitempty"`
-	TaskPlanned    bool `json:"task_planned,omitempty"`
-	TaskCompleted  bool `json:"task_completed,omitempty"`
-}
-
-// CompletedCount returns the number of finished onboarding milestones.
-func (p OnboardingProgress) CompletedCount() int {
-	count := 0
-	for _, done := range []bool{p.ProjectCreated, p.TaskCaptured, p.InboxTriaged, p.TaskPlanned, p.TaskCompleted} {
-		if done {
-			count++
-		}
-	}
-	return count
-}
-
-// Complete reports whether every onboarding milestone has been observed.
-func (p OnboardingProgress) Complete() bool { return p.CompletedCount() == 5 }
-
-// Settings owns portable behavior, appearance, alert, and privacy/AI-consent
-// preferences. It maps to <data>/.tt/settings.json.
-type Settings struct {
-	TUIStateVersion int `json:"tui_state_version"`
-
-	// Behavior.
-	DefaultContext      string              `json:"default_context,omitempty"`
-	FzfEnabled          bool                `json:"fzf_enabled"`
-	GlowEnabled         bool                `json:"glow_enabled"`
-	FzfTimeout          *int                `json:"fzf_timeout,omitempty"`
-	UndoHistoryDepth    *int                `json:"undo_history_depth,omitempty"`
-	TimeFormat          string              `json:"time_format,omitempty"`
-	WeekEndDay          string              `json:"week_end_day,omitempty"`
-	UseEmoji            *bool               `json:"use_emoji,omitempty"`
-	LinkedTaskJumpToNew *bool               `json:"linked_task_jump_to_new,omitempty"`
-	TutorDismissed      *bool               `json:"tutor_dismissed,omitempty"`
-	Onboarding          *OnboardingProgress `json:"onboarding,omitempty"`
-	GlobalPinnedTags    []string            `json:"global_pinned_tags,omitempty"`
-
-	// StateGroupColors is the canonical persisted color registry.
-	StateGroupColors map[models.WorkflowStateGroup]string `json:"state_group_colors,omitempty"`
-
-	// Behavior — activity, list, and pin limits.
-	MaxActivityEntries    *int  `json:"max_activity_entries,omitempty"`
-	RecentActivityLimit   *int  `json:"recent_activity_limit,omitempty"`
-	RecentActivityShowAll *bool `json:"recent_activity_show_all,omitempty"`
-	MaxPinnedBarItems     *int  `json:"max_pinned_bar_items,omitempty"`
-	MaxRecentTaskVisits   *int  `json:"max_recent_task_visits,omitempty"`
-
-	// Behavior — review windows.
-	ReviewDueSoonDays    *int `json:"review_due_soon_days,omitempty"`
-	ReviewFutureDays     *int `json:"review_future_days,omitempty"`
-	ReviewOldDays        *int `json:"review_old_days,omitempty"`
-	ReviewCompletedHours *int `json:"review_completed_hours,omitempty"`
-
-	// Behavior — weekly/stale thresholds.
-	WeeklyStaleProjectDays    *int `json:"weekly_stale_project_days,omitempty"`
-	WeeklyStaleTaskDays       *int `json:"weekly_stale_task_days,omitempty"`
-	StaleTaskDays             *int `json:"stale_task_days,omitempty"`
-	PriorityEscalationDays    *int `json:"priority_escalation_days,omitempty"`
-	WeeklyInboxThreshold      *int `json:"weekly_inbox_threshold,omitempty"`
-	WeeklyBlockedThreshold    *int `json:"weekly_blocked_threshold,omitempty"`
-	WeeklyInProgressThreshold *int `json:"weekly_in_progress_threshold,omitempty"`
-
-	// Behavior — canonical All/state-group WIP limits. Legacy section_limit_*
-	// keys are decoded and migrated by Settings.UnmarshalJSON but never emitted.
-	StateGroupLimits map[models.WorkflowStateGroup]int `json:"state_group_limits,omitempty"`
-
-	legacySectionLimitsDecoded bool `json:"-"`
-	legacySectionColorsDecoded bool `json:"-"`
-
-	// Appearance.
-	ActiveTheme        string        `json:"active_theme,omitempty"`
-	AutoTheme          *bool         `json:"auto_theme,omitempty"`
-	ThemeDark          Theme         `json:"theme_dark,omitzero"`
-	ThemeDarkName      string        `json:"theme_dark_name,omitempty"`
-	ThemeDarkRev       int           `json:"theme_dark_rev,omitempty"`
-	ThemeLight         Theme         `json:"theme_light,omitzero"`
-	ThemeLightName     string        `json:"theme_light_name,omitempty"`
-	ThemeLightRev      int           `json:"theme_light_rev,omitempty"`
-	Palette            PaletteColors `json:"palette,omitzero"`
-	TUIBackgroundColor string        `json:"tui_background_color,omitempty"`
-	TUICursorColor     string        `json:"tui_cursor_color,omitempty"`
-	TUICursorTextColor string        `json:"tui_cursor_text_color,omitempty"`
-	TUIZebraStriping   *bool         `json:"tui_zebra_striping,omitempty"`
-
-	// Alerts.
-	AlertDailyReviewEnabled   *bool `json:"alert_daily_review_enabled,omitempty"`
-	AlertWeeklyReviewEnabled  *bool `json:"alert_weekly_review_enabled,omitempty"`
-	AlertOverdueEnabled       *bool `json:"alert_overdue_enabled,omitempty"`
-	AlertDueSoonEnabled       *bool `json:"alert_due_soon_enabled,omitempty"`
-	AlertStaleEnabled         *bool `json:"alert_stale_enabled,omitempty"`
-	AlertInboxEnabled         *bool `json:"alert_inbox_enabled,omitempty"`
-	AlertBlockedEnabled       *bool `json:"alert_blocked_enabled,omitempty"`
-	AlertProjectHealthEnabled *bool `json:"alert_project_health_enabled,omitempty"`
-	AlertDueSoonDays          *int  `json:"alert_due_soon_days,omitempty"`
-	AlertStaleDays            *int  `json:"alert_stale_days,omitempty"`
-	AlertInboxThreshold       *int  `json:"alert_inbox_threshold,omitempty"`
-	AlertBlockedDays          *int  `json:"alert_blocked_days,omitempty"`
-	AlertProjectStaleDays     *int  `json:"alert_project_stale_days,omitempty"`
-	AlertDailyReviewHour      *int  `json:"alert_daily_review_hour,omitempty"`
-	AlertWeeklyReviewDay      *int  `json:"alert_weekly_review_day,omitempty"`
-
-	// Privacy / AI consent.
-	AIConsent AIConsentSettings `json:"ai_consent,omitzero"`
-}
-
-// NewSettings returns settings seeded with the same portable defaults NewConfig
-// applies.
-func NewSettings() *Settings {
-	depth := DefaultUndoHistoryDepth
-	return &Settings{
-		TUIStateVersion:  CurrentTUIStateVersion,
-		DefaultContext:   "personal",
-		FzfEnabled:       true,
-		GlowEnabled:      true,
-		UndoHistoryDepth: &depth,
-	}
-}
-
-// Validate reports out-of-range portable settings. Pointer fields that are nil
-// fall back to defaults and are always valid.
-func (s *Settings) Validate() error {
-	if s.FzfTimeout != nil && *s.FzfTimeout < 0 {
-		return fmt.Errorf("settings: fzf_timeout must be >= 0, got %d", *s.FzfTimeout)
-	}
-	if s.UndoHistoryDepth != nil && *s.UndoHistoryDepth < 0 {
-		return fmt.Errorf("settings: undo_history_depth must be >= 0, got %d", *s.UndoHistoryDepth)
-	}
-	for group, color := range s.StateGroupColors {
-		if !group.IsValid() {
-			return fmt.Errorf("settings: invalid state-group color key %q", group)
-		}
-		if !models.IsValidThemeColor(color) {
-			return fmt.Errorf("settings: invalid state-group color %q for %q", color, group)
-		}
-	}
-	if err := s.AIConsent.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-// AutomationConfig owns workflow rules, task templates, and scoring
-// configuration. It maps to <data>/.tt/automation.json.
-type AutomationConfig struct {
-	WorkflowRules           []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`
-	DefaultRulesInitialized bool                         `json:"default_rules_initialized,omitempty"`
-	WorkflowEvalStates      map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`
-	WorkflowEvalInterval    *int                         `json:"workflow_eval_interval,omitempty"`
-	TaskTemplates           []template.TaskTemplate      `json:"task_templates,omitempty"`
-	DefaultTemplatesInit    bool                         `json:"default_templates_init,omitempty"`
-	ScoringProfiles         []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`
-	ProjectScoringProfile   map[string]string            `json:"project_scoring_profile,omitempty"`
-}
-
-// NewAutomationConfig returns an empty automation config.
-func NewAutomationConfig() *AutomationConfig {
-	return &AutomationConfig{}
-}
-
-// Validate reports problems with automation entries: workflow rules and scoring
-// profiles must be named.
-func (a *AutomationConfig) Validate() error {
-	for i, r := range a.WorkflowRules {
-		if r.Name == "" {
-			return fmt.Errorf("automation: workflow rule %d has empty name", i)
-		}
-	}
-	for i, p := range a.ScoringProfiles {
-		if p.Name == "" {
-			return fmt.Errorf("automation: scoring profile %d has empty name", i)
-		}
-	}
-	return nil
-}
-
-// RemoveProjectReferences drops per-project scoring assignments and workflow
-// evaluation state for the removed project. It returns true when anything
-// changed.
-func (a *AutomationConfig) RemoveProjectReferences(id, slug string) bool {
-	changed := mapHadProjectKey(a.ProjectScoringProfile, id, slug)
-	changed = mapHadProjectKey(a.WorkflowEvalStates, id, slug) || changed
-	deleteProjectKey(a.ProjectScoringProfile, id, slug)
-	deleteProjectKey(a.WorkflowEvalStates, id, slug)
-	return changed
-}
-
-// MachineState owns machine-specific preferences that should not follow a
-// workspace between machines: editors, navigation, histories, and layout. It
-// maps to ~/.tt/runtime/<workspace-id>/machine.json. The durable catalog UUID,
-// rather than the current data-directory path, selects its machine-local state.
+// MachineState contains only the machine-local values retained by v5.
 type MachineState struct {
-	TUIStateVersion int `json:"tui_state_version"`
-
-	// Editors and integrations.
-	Editor           string            `json:"editor,omitempty"`
-	AttachmentEditor string            `json:"attachment_editor,omitempty"`
-	CodeEditor       string            `json:"code_editor,omitempty"`
-	ExternalEditor   string            `json:"external_editor,omitempty"`
-	AIHarness        string            `json:"ai_harness,omitempty"`
-	AIConfigDirs     map[string]string `json:"ai_config_dirs,omitempty"`
-
-	// Current navigation and active (non-saved) filter selections.
-	CurrentProject              string                        `json:"current_project,omitempty"`
-	CustomContexts              map[string][]string           `json:"custom_contexts,omitempty"`
-	RecentTaskVisits            []RecentTaskVisit             `json:"recent_task_visits,omitempty"`
-	StartupRoute                OutlinerRouteState            `json:"startup_route,omitzero"`
-	CurrentRoute                OutlinerRouteState            `json:"current_route,omitzero"`
-	ProjectRoutes               map[string]OutlinerRouteState `json:"project_routes,omitempty"`
-	legacyOutlinerRoutesDecoded bool                          `json:"-"`
-
-	// Histories.
-	RecentPaletteItems []RecentPaletteItem `json:"recent_palette_items,omitempty"`
-	RecentDestinations []RecentDestination `json:"recent_destinations,omitempty"`
+	CustomContexts map[string][]string `json:"custom_contexts,omitempty"`
+	Theme          string              `json:"theme"`
 }
 
-// NewMachineState returns machine state seeded with the same editor default
-// NewConfig applies.
+// NewMachineState returns the default built-in theme selection.
 func NewMachineState() *MachineState {
-	return &MachineState{
-		TUIStateVersion: CurrentTUIStateVersion,
-		Editor:          "code",
-		StartupRoute:    NormalizeOutlinerRouteState(OutlinerRouteState{}),
-		CurrentRoute:    NormalizeOutlinerRouteState(OutlinerRouteState{}),
-	}
+	return &MachineState{Theme: "dark"}
 }
 
-// Validate reports problems with machine-local preferences. Config-directory
-// existence is intentionally checked only when an explicit override is used,
-// so temporarily unavailable persisted directories remain loadable.
+// Validate reports problems with machine-local preferences.
 func (m *MachineState) Validate() error {
-	if m.TUIStateVersion > CurrentTUIStateVersion {
-		return fmt.Errorf("machine: TUI state version %d not supported, please upgrade tt", m.TUIStateVersion)
-	}
-	if m.AIHarness != "" {
-		if _, err := aiharness.Parse(m.AIHarness); err != nil {
-			return fmt.Errorf("machine: ai_harness: %w", err)
-		}
-	}
-	for rawName, path := range m.AIConfigDirs {
-		if _, err := aiharness.Parse(rawName); err != nil {
-			return fmt.Errorf("machine: ai_config_dirs: %w", err)
-		}
-		if path == "" {
-			return fmt.Errorf("machine: ai_config_dirs[%q] must contain an explicit path", rawName)
-		}
-		if !filepath.IsAbs(path) {
-			return fmt.Errorf("machine: ai_config_dirs[%q] must contain an absolute path", rawName)
-		}
-	}
-	if len(m.RecentDestinations) > MaxRecentDestinations {
-		return fmt.Errorf(
-			"machine: recent destinations exceed limit %d",
-			MaxRecentDestinations,
-		)
-	}
-	seenDestinations := make(map[string]bool, len(m.RecentDestinations))
-	for index, destination := range m.RecentDestinations {
-		key := destination.QualifiedID()
-		if key == "" {
-			return fmt.Errorf("machine: recent destination %d is invalid", index)
-		}
-		if seenDestinations[key] {
-			return fmt.Errorf("machine: recent destination %d duplicates %q", index, key)
-		}
-		if destination.Count < 1 {
-			return fmt.Errorf("machine: recent destination %d has invalid count %d", index, destination.Count)
-		}
-		seenDestinations[key] = true
+	if m.Theme != "" && m.Theme != "dark" && m.Theme != "light" {
+		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
 	}
 	return nil
 }
 
-// RemoveProjectReferences clears navigation, view-state, and recent-visit
-// references to the removed project. It returns true when anything changed.
+// RemoveProjectReferences removes a project from saved custom contexts.
 func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
-	changed := false
-	if refMatches(m.CurrentProject, id, slug) {
-		m.CurrentProject = ""
-		changed = true
-	}
-	var visits bool
-	m.RecentTaskVisits, visits = filterProjectRefSlice(m.RecentTaskVisits, func(v RecentTaskVisit) string {
-		return v.ProjectID
-	}, func(pid string) bool {
+	return filterProjectIDMap(m.CustomContexts, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	})
-	changed = visits || changed
-
-	if len(m.RecentDestinations) > 0 {
-		filtered := m.RecentDestinations[:0]
-		for _, destination := range m.RecentDestinations {
-			projectDestination := destination.Kind == RecentDestinationProject &&
-				refMatches(destination.ID, id, slug)
-			if projectDestination || refMatches(destination.ProjectID, id, slug) {
-				changed = true
-				continue
-			}
-			filtered = append(filtered, destination)
-		}
-		m.RecentDestinations = filtered
-	}
-	if mapHadProjectKey(m.ProjectRoutes, id, slug) {
-		deleteProjectKey(m.ProjectRoutes, id, slug)
-		changed = true
-	}
-
-	changed = filterProjectIDMap(m.CustomContexts, func(pid string) bool {
-		return !refMatches(pid, id, slug)
-	}) || changed
-	return changed
 }
 
 // refMatches reports whether a stored project reference targets the identified
@@ -796,18 +538,4 @@ func refMatches(ref, id, slug string) bool {
 // slug) is the one being removed.
 func projectMatches(projID, projSlug, id, slug string) bool {
 	return refMatches(projID, id, slug) || refMatches(projSlug, id, slug)
-}
-
-// mapHadProjectKey reports whether a project-keyed map contains an entry for the
-// removed project before deletion, so callers can report change accurately.
-func mapHadProjectKey[T any](values map[string]T, id, slug string) bool {
-	if _, ok := values[id]; ok {
-		return true
-	}
-	if slug != "" {
-		if _, ok := values[slug]; ok {
-			return true
-		}
-	}
-	return false
 }

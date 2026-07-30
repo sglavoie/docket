@@ -88,12 +88,12 @@ func TestDailyLoopPlanningAcceptanceMatrixIsInternallyConsistent(t *testing.T) {
 
 func TestDailyLoopTargetContractInventory(t *testing.T) {
 	contract := DailyLoopTargetContract()
-	wantModes := []string{"All", "Inbox", "Next", "Backlog", "Due", "Priority", "Blocked", "Parked", "Daily Review", "Activity"}
+	wantModes := []string{"All", "Inbox", "Next", "Backlog", "Due"}
 	if !slices.Equal(contract.Modes, wantModes) {
 		t.Fatalf("modes = %v, want %v", contract.Modes, wantModes)
 	}
-	if !slices.Equal(contract.TabCycle, wantModes[:4]) {
-		t.Errorf("Tab cycle = %v, want %v", contract.TabCycle, wantModes[:4])
+	if !slices.Equal(contract.TabCycle, wantModes) {
+		t.Errorf("Tab cycle = %v, want %v", contract.TabCycle, wantModes)
 	}
 	if contract.InitialMode != "All" || contract.InitialScope != "All Projects" {
 		t.Errorf("initial route = %s / %s, want All / All Projects", contract.InitialMode, contract.InitialScope)
@@ -138,6 +138,11 @@ func TestDailyLoopTargetContractInventory(t *testing.T) {
 	}
 	if len(contract.ScopeRules) != 3 || len(contract.Visibility) != 4 {
 		t.Errorf("scope/visibility contract is incomplete: %v / %v", contract.ScopeRules, contract.Visibility)
+	}
+	if slices.ContainsFunc(contract.Keys, func(binding KeyAcceptance) bool {
+		return binding.Key == "R" || binding.Action == "weekly review"
+	}) {
+		t.Error("daily-loop contract retained the removed weekly review tool")
 	}
 }
 

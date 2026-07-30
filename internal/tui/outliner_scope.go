@@ -7,17 +7,14 @@ import (
 )
 
 // outlinerScopeFrame captures the outliner state that a project-scope push
-// replaces, so popping the scope restores every mode discriminator, filter,
-// search, sort, pinned-tag, cursor, scroll, and zoom value owned per scope
-// exactly. Every mutable map and slice is snapshotted (deep-copied) at capture
-// time so edits made inside a child scope cannot reach back and mutate a parent
-// frame still sitting on the stack.
+// replaces, so popping the scope restores navigation and presentation axes that
+// remain scope-owned. Task facets are intentionally absent: they refine the one
+// Outliner for the whole run and therefore survive every mode and scope change.
 //
 // Fold state is deliberately NOT snapshotted and remains shared across scopes:
 //   - collapsedSections / expandedNodes are keyed by project and section, so a
 //     scope change cannot corrupt another project's folds.
-//   - crossPriorityCollapsedGroups / reviewCollapsedSections are per-computed-mode
-//     fold maps reset on mode entry, not per scope.
+//   - computed section fold maps are not per-scope state.
 //
 // The active Context is likewise not snapshotted: applying a Context empties the
 // scope stack, so no frame can outlive the Context it was pushed under.
@@ -28,11 +25,8 @@ type outlinerScopeFrame struct {
 
 	primaryMode OutlinerModeID
 
-	// Filter / search / pinned-tag narrowing.
-	filter            FilterState
-	searchActive      bool
-	searchQuery       string
-	searchInputValue  string
+	// Pinned-tag narrowing remains scope-owned. Visible search is deliberately
+	// absent: it is one run-wide refinement and survives scope changes.
 	pinnedTagTabIndex int
 
 	// Active render ordering plus the durable tree-mode sort.
@@ -44,19 +38,6 @@ type outlinerScopeFrame struct {
 	crossZoomStack []CrossProjectZoomEntry
 }
 
-// cloneFilterState returns a deep copy of a FilterState with all maps allocated,
-// so a restored frame never shares (or nil-panics on) Tags/Attrs/Sections.
-func cloneFilterState(f FilterState) FilterState {
-	dup := FilterState{CommonFilterState: *copyCommonFilterState(&f.CommonFilterState)}
-	if dup.Tags == nil {
-		dup.Tags = make(map[string]bool)
-	}
-	if dup.Attrs == nil {
-		dup.Attrs = make(map[string]string)
-	}
-	return dup
-}
-
 // captureScopeFrame snapshots the current restorable state into a frame. Every
 // mutable map/slice is deep-copied so the frame is fully independent of the
 // live model.
@@ -66,10 +47,6 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		cursor:            m.cursor,
 		viewScrollOffset:  m.viewScrollOffset,
 		primaryMode:       m.primaryMode,
-		filter:            cloneFilterState(m.filter),
-		searchActive:      m.HasActiveSearch(),
-		searchQuery:       m.SearchQuery(),
-		searchInputValue:  m.SearchInputValue(),
 		pinnedTagTabIndex: m.pinnedTagTabIndex(),
 		sort:              m.sort,
 		treeSort:          m.treeSort,
@@ -86,10 +63,6 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.cursor = f.cursor
 	m.viewScrollOffset = f.viewScrollOffset
 	m.primaryMode = f.primaryMode
-	m.filter = cloneFilterState(f.filter)
-	m.SetSearchActive(f.searchActive)
-	m.SetSearchQuery(f.searchQuery)
-	m.SetSearchInputValue(f.searchInputValue)
 	m.setPinnedTagTabIndex(f.pinnedTagTabIndex)
 	m.sort = f.sort
 	m.treeSort = f.treeSort
@@ -178,7 +151,6 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.clampCursor()
-	m.applyOutlinerRouteState(m.projectRouteState(projectID))
 }
 
 // popProjectScope restores the captured base scope. It reports whether a focus
@@ -224,12 +196,9 @@ func (m *OutlinerModel) clearProjectScope() bool {
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
 // leave the root silently narrowed by a stale context, filter, tag, or sort.
 func (m *OutlinerModel) resetToGlobalAll() {
-	m.modePicker = nil
 	m.confirm.Cancel()
 	m.quickEdit.Exit()
 	m.crossQuickEditProject = nil
-	m.scoreFilterInput.active = false
-	m.scoreFilterInput.Input.Blur()
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.clearContextScope()

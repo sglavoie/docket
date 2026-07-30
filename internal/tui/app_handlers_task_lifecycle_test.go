@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	taskapp "github.com/sglavoie/tt/internal/app"
+)
 
 func TestHandleTaskMessagesCreateTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
@@ -33,17 +37,30 @@ func TestHandleTaskMessagesCreateTaskWithParent(t *testing.T) {
 }
 
 func TestHandleTaskMessagesEditTask(t *testing.T) {
-	app, project := newTestAppModelWithProject()
+	model, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 
-	msg := EditTaskMsg{Task: task}
-	handled, _ := app.handleTaskMessages(msg)
+	msg := EditTaskMsg{Project: project, Task: task}
+	handled, _ := model.handleTaskMessages(msg)
 
 	if !handled {
 		t.Error("EditTaskMsg should be handled")
 	}
-	if app.currentView() != ViewTaskComposer {
-		t.Errorf("currentView should be TaskComposer, got %v", app.currentView())
+	if model.currentView() != ViewTextEditor {
+		t.Errorf("currentView should be TextEditor, got %v", model.currentView())
+	}
+	if model.activeTaskComposer() || model.taskComposer != nil {
+		t.Error("daily title edit opened the full Task Composer")
+	}
+	if model.pendingTaskTextEdit == nil {
+		t.Fatal("daily title edit did not retain its stable task identity")
+	}
+	if model.pendingTaskTextEdit.Operation != taskapp.TaskOperationEditTitle {
+		t.Errorf("operation = %q, want title edit", model.pendingTaskTextEdit.Operation)
+	}
+	if model.pendingTaskTextEdit.Identity.ProjectID != project.ID ||
+		model.pendingTaskTextEdit.Identity.TaskID != task.ID {
+		t.Errorf("pending identity = %+v, want %s/%s", model.pendingTaskTextEdit.Identity, project.ID, task.ID)
 	}
 }
 
@@ -71,23 +88,6 @@ func TestHandleTaskMessagesTaskDeleted(t *testing.T) {
 
 	if !handled {
 		t.Error("TaskDeletedMsg should be handled")
-	}
-}
-
-func TestHandleTaskMessagesTasksArchived(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := TasksArchivedMsg{Count: 5}
-	handled, cmd := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("TasksArchivedMsg should be handled")
-	}
-	if app.statusMessage != "Archived 5 task(s) to completed.md" {
-		t.Errorf("statusMessage should contain archive count, got %q", app.statusMessage)
-	}
-	if cmd == nil {
-		t.Error("TasksArchivedMsg should return a status timeout command")
 	}
 }
 

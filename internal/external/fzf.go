@@ -31,14 +31,6 @@ func configuredFzfTimeoutSeconds() int {
 	return seconds
 }
 
-// SetFzfTimeout sets the fzf invocation timeout in seconds.
-// Values <= 0 are ignored and the default (30s) is kept.
-func SetFzfTimeout(seconds int) {
-	if seconds > 0 {
-		fzfTimeoutSeconds.Store(int64(seconds))
-	}
-}
-
 // sanitizeFzfField replaces characters that would corrupt fzf's tab-delimited
 // line format. Tabs become spaces and newlines/carriage-returns become spaces
 // so a single field cannot span multiple lines or split columns.
@@ -161,9 +153,8 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	taskMap := make(map[int]*models.Task)
 
 	for _, t := range tasks {
-		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
+		line := fmt.Sprintf("#%d\t%s\t%s",
 			t.ShortID,
-			t.Type.Icon(),
 			t.State().Icon(),
 			sanitizeFzfField(t.Title))
 		lines = append(lines, line)
@@ -224,88 +215,6 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	return nil, fmt.Errorf("task not found")
 }
 
-// FzfMultiSelectProjects uses fzf to select multiple projects from the list.
-func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselectedIDs map[string]bool) ([]*models.Project, error) {
-	fzfPath, err := CachedFzfPath()
-	if err != nil {
-		return nil, fmt.Errorf("fzf not found — install fzf (https://github.com/junegunn/fzf) or use the --id flag to specify items directly")
-	}
-	if len(projects) == 0 {
-		return nil, fmt.Errorf("no projects to select from")
-	}
-
-	// Build input for fzf.
-	// Format: slug<TAB>display-name (slug)<TAB>context<TAB>N tasks
-	// The slug column is hidden via --with-nth=2.. and used only for parsing.
-	var lines []string
-	projectMap := make(map[string]*models.Project)
-
-	for _, p := range projects {
-		marker := " "
-		if preselectedIDs[p.ID] {
-			marker = "*"
-		}
-		line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks",
-			sanitizeFzfField(p.Slug),
-			marker,
-			sanitizeFzfField(p.Name),
-			sanitizeFzfField(p.Slug),
-			sanitizeFzfField(p.Context),
-			p.CountTasks())
-		lines = append(lines, line)
-		projectMap[p.Slug] = p
-	}
-
-	input := strings.Join(lines, "\n")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(configuredFzfTimeoutSeconds())*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, fzfPath,
-		"--prompt", prompt+" ",
-		"--height", "50%",
-		"--reverse",
-		"--multi",
-		"--delimiter", "\t",
-		"--with-nth", "2..",
-	)
-
-	cmd.Stdin = strings.NewReader(input)
-	cmd.Stderr = os.Stderr
-
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-
-	if err := cmd.Run(); err != nil {
-		return nil, classifyFzfRunError(ctx, err)
-	}
-
-	output := strings.TrimSpace(stdout.String())
-	if output == "" {
-		return nil, tterrors.ErrCanceled
-	}
-
-	// Parse selections - slug is the first tab-delimited field.
-	var selectedProjects []*models.Project
-	for line := range strings.SplitSeq(output, "\n") {
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) > 0 && parts[0] != "" {
-			if project, ok := projectMap[parts[0]]; ok {
-				selectedProjects = append(selectedProjects, project)
-			}
-		}
-	}
-
-	if len(selectedProjects) == 0 {
-		return nil, fmt.Errorf("no projects selected")
-	}
-
-	return selectedProjects, nil
-}
-
 // FzfMultiSelectTasks uses fzf to select multiple tasks from the list.
 func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, error) {
 	fzfPath, err := CachedFzfPath()
@@ -321,9 +230,8 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 	taskMap := make(map[int]*models.Task)
 
 	for _, t := range tasks {
-		line := fmt.Sprintf("#%d\t%s\t%s\t%s",
+		line := fmt.Sprintf("#%d\t%s\t%s",
 			t.ShortID,
-			t.Type.Icon(),
 			t.State().Icon(),
 			sanitizeFzfField(t.Title))
 		lines = append(lines, line)

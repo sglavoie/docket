@@ -33,7 +33,7 @@ func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 func newPrimaryRowStyleTask(t *testing.T, id string, shortID int, title string, priority int) *models.Task {
 	t.Helper()
 
-	task, err := models.NewTask(id, shortID, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}

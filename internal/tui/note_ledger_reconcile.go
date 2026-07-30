@@ -109,7 +109,7 @@ func (m *AppModel) reloadActiveNotesAfterLedgerRestore() *NotesViewModel {
 	// ProjectIDs were reloaded before the view fan-out. Seed the notes view's
 	// linked-task cache from that stable project pointer so loadNotes does not
 	// perform a second project load and replace the pointers just repaired in the
-	// focus queue, daily plan, recent visits, and task subviews.
+	// focus queue, daily plan, and task subviews.
 	if !view.isGlobal && view.project != nil {
 		view.tasksLoaded = true
 		view.cachedTasks = view.project.Tasks

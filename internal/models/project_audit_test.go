@@ -16,10 +16,10 @@ func newAuditTestProject(t *testing.T) *Project {
 	return project
 }
 
-func newAuditTestTask(t *testing.T, id string, shortID int, taskType TaskType, title string) *Task {
+func newAuditTestTask(t *testing.T, id string, shortID int, taskType string, title string) *Task {
 	t.Helper()
 
-	task, err := NewTask(id, shortID, taskType, title)
+	task, err := NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,16 +42,15 @@ func requireAuditErrorContains(t *testing.T, project *Project, want string) {
 func TestAuditProjectValidProject(t *testing.T) {
 	project := newAuditTestProject(t)
 
-	epic := newAuditTestTask(t, "epic-1", 1, TaskTypeEpic, "Epic")
-	story := newAuditTestTask(t, "story-1", 2, TaskTypeStory, "Story")
-	bug := newAuditTestTask(t, "bug-1", 3, TaskTypeBug, "Bug")
+	epic := newAuditTestTask(t, "epic-1", 1, "", "Epic")
+	story := newAuditTestTask(t, "story-1", 2, "", "Story")
+	bug := newAuditTestTask(t, "bug-1", 3, "", "Bug")
 
 	story.ParentID = &epic.ID
 	bug.ParentID = &story.ID
 	story.ApplyWorkflowState(StateNext)
 	bug.ApplyWorkflowState(StateWaiting)
 	bug.DependsOn = []string{epic.ID, "other-project:external-blocker"}
-	story.RelatedTo = []string{bug.ID, "other-project:external-related"}
 
 	project.Tasks = []*Task{epic, story, bug}
 	project.BuildTaskTree()
@@ -63,7 +62,7 @@ func TestAuditProjectValidProject(t *testing.T) {
 
 func TestAuditProjectRejectsEmptyTaskID(t *testing.T) {
 	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "", 1, TaskTypeTask, "Missing ID")
+	task := newAuditTestTask(t, "", 1, "", "Missing ID")
 	project.Tasks = []*Task{task}
 
 	requireAuditErrorContains(t, project, "empty task ID")
@@ -71,8 +70,8 @@ func TestAuditProjectRejectsEmptyTaskID(t *testing.T) {
 
 func TestAuditProjectRejectsDuplicateTaskID(t *testing.T) {
 	project := newAuditTestProject(t)
-	first := newAuditTestTask(t, "dup", 1, TaskTypeTask, "First")
-	second := newAuditTestTask(t, "dup", 2, TaskTypeBug, "Second")
+	first := newAuditTestTask(t, "dup", 1, "", "First")
+	second := newAuditTestTask(t, "dup", 2, "", "Second")
 	project.Tasks = []*Task{first, second}
 
 	requireAuditErrorContains(t, project, "duplicate task ID")
@@ -80,8 +79,8 @@ func TestAuditProjectRejectsDuplicateTaskID(t *testing.T) {
 
 func TestAuditProjectRejectsCyclicParentGraph(t *testing.T) {
 	project := newAuditTestProject(t)
-	parent := newAuditTestTask(t, "parent", 1, TaskTypeStory, "Parent")
-	child := newAuditTestTask(t, "child", 2, TaskTypeTask, "Child")
+	parent := newAuditTestTask(t, "parent", 1, "", "Parent")
+	child := newAuditTestTask(t, "child", 2, "", "Child")
 	parent.ParentID = &child.ID
 	child.ParentID = &parent.ID
 	project.Tasks = []*Task{parent, child}
@@ -89,19 +88,9 @@ func TestAuditProjectRejectsCyclicParentGraph(t *testing.T) {
 	requireAuditErrorContains(t, project, "cyclic parent chain")
 }
 
-func TestAuditProjectRejectsIllegalParentChildType(t *testing.T) {
-	project := newAuditTestProject(t)
-	parent := newAuditTestTask(t, "parent", 1, TaskTypeTask, "Leaf Parent")
-	child := newAuditTestTask(t, "child", 2, TaskTypeStory, "Story Child")
-	child.ParentID = &parent.ID
-	project.Tasks = []*Task{parent, child}
-
-	requireAuditErrorContains(t, project, "cannot be child")
-}
-
 func TestAuditProjectRejectsSelfDependency(t *testing.T) {
 	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Self Dep")
+	task := newAuditTestTask(t, "task-1", 1, "", "Self Dep")
 	task.DependsOn = []string{task.ID}
 	project.Tasks = []*Task{task}
 
@@ -110,7 +99,7 @@ func TestAuditProjectRejectsSelfDependency(t *testing.T) {
 
 func TestAuditProjectRejectsDanglingLocalDependency(t *testing.T) {
 	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Dangling Dep")
+	task := newAuditTestTask(t, "task-1", 1, "", "Dangling Dep")
 	task.DependsOn = []string{"missing-task"}
 	project.Tasks = []*Task{task}
 
@@ -119,9 +108,9 @@ func TestAuditProjectRejectsDanglingLocalDependency(t *testing.T) {
 
 func TestAuditProjectRejectsDependencyCycle(t *testing.T) {
 	project := newAuditTestProject(t)
-	taskA := newAuditTestTask(t, "a", 1, TaskTypeTask, "A")
-	taskB := newAuditTestTask(t, "b", 2, TaskTypeTask, "B")
-	taskC := newAuditTestTask(t, "c", 3, TaskTypeTask, "C")
+	taskA := newAuditTestTask(t, "a", 1, "", "A")
+	taskB := newAuditTestTask(t, "b", 2, "", "B")
+	taskC := newAuditTestTask(t, "c", 3, "", "C")
 	taskA.DependsOn = []string{taskB.ID}
 	taskB.DependsOn = []string{taskC.ID}
 	taskC.DependsOn = []string{taskA.ID}
@@ -130,27 +119,9 @@ func TestAuditProjectRejectsDependencyCycle(t *testing.T) {
 	requireAuditErrorContains(t, project, "cyclic dependency")
 }
 
-func TestAuditProjectRejectsSelfRelatedRef(t *testing.T) {
-	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Self Related")
-	task.RelatedTo = []string{task.ID}
-	project.Tasks = []*Task{task}
-
-	requireAuditErrorContains(t, project, "related to itself")
-}
-
-func TestAuditProjectRejectsDanglingLocalRelatedRef(t *testing.T) {
-	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Dangling Related")
-	task.RelatedTo = []string{"missing-task"}
-	project.Tasks = []*Task{task}
-
-	requireAuditErrorContains(t, project, "related to missing local task")
-}
-
 func TestAuditProjectRejectsInvalidWorkflowState(t *testing.T) {
 	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, TaskTypeTask, "Invalid State")
+	task := newAuditTestTask(t, "task-1", 1, "", "Invalid State")
 	task.WorkflowState = WorkflowState("sprint-1")
 	project.Tasks = []*Task{task}
 

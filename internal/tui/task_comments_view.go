@@ -46,9 +46,6 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	comment := m.task.Comments[m.cursor]
 	timestamp := FormatTimestampBracket(comment.CreatedAt)
 	headerLabel := fmt.Sprintf("Comment [%d]", m.cursor)
-	if comment.Resolved {
-		headerLabel += " [resolved]"
-	}
 
 	b.WriteString(FieldLabelFocusedStyle.Render(headerLabel))
 	b.WriteString("\n")
@@ -88,7 +85,7 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderCommentsSummary(b *strings.Builder) {
-	renderTaskItemSummary(b, "comment", len(m.task.Comments), m.task.UnresolvedCommentCount())
+	renderTaskItemSummary(b, "comment", len(m.task.Comments))
 }
 
 func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
@@ -131,9 +128,6 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	entry.WriteString("  ")
 
 	timestamp := FormatTimestampBracket(comment.CreatedAt)
-	if comment.Resolved {
-		timestamp += " [resolved]"
-	}
 
 	if index == m.cursor {
 		entry.WriteString(BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
@@ -144,12 +138,12 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	}
 	entry.WriteString("\n")
 
-	renderTaskItemPreview(&entry, comment.Text, maxLen, comment.Resolved)
+	renderTaskItemPreview(&entry, comment.Text, maxLen, false)
 
 	return entry.String()
 }
 
 func (m *TaskCommentsModel) renderFooter(b *strings.Builder) {
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · y: copy · Y: copy all · Enter: expand · Esc: close", m.Width())))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · d/x: delete · y: copy · Y: copy all · Enter: expand · Esc: close", m.Width())))
 }

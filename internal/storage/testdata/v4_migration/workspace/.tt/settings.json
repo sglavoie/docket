@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "settings",
+  "data": {
+    "tui_state_version": 4,
+    "default_context": "work",
+    "fzf_enabled": true,
+    "glow_enabled": true,
+    "fzf_timeout": 2,
+    "undo_history_depth": 75,
+    "time_format": "24h",
+    "week_end_day": "friday",
+    "use_emoji": true,
+    "linked_task_jump_to_new": true,
+    "tutor_dismissed": true,
+    "onboarding": {
+      "project_created": true,
+      "task_captured": true,
+      "inbox_triaged": true,
+      "task_planned": true,
+      "task_completed": true
+    },
+    "global_pinned_tags": [
+      "synthetic",
+      "type:bug"
+    ],
+    "state_group_colors": {
+      "inbox": "blue",
+      "backlog": "gray",
+      "review": "purple"
+    },
+    "max_activity_entries": 100,
+    "recent_activity_limit": 25,
+    "recent_activity_show_all": true,
+    "max_pinned_bar_items": 12,
+    "max_recent_task_visits": 20,
+    "review_due_soon_days": 4,
+    "review_future_days": 30,
+    "review_old_days": 60,
+    "review_completed_hours": 72,
+    "weekly_stale_project_days": 21,
+    "weekly_stale_task_days": 14,
+    "stale_task_days": 30,
+    "priority_escalation_days": 7,
+    "weekly_inbox_threshold": 10,
+    "weekly_blocked_threshold": 5,
+    "weekly_in_progress_threshold": 6,
+    "state_group_limits": {
+      "in_progress": 3,
+      "review": 4
+    },
+    "active_theme": "synthetic-custom",
+    "auto_theme": true,
+    "theme_dark": {
+      "palette": {
+        "normal_text": "#eeeeee",
+        "muted": "#999999",
+        "primary": "#6699cc",
+        "accent": "#cc9966",
+        "success": "#66aa77",
+        "warning": "#ccaa66",
+        "error": "#cc6677",
+        "border": "#555555",
+        "priority1_title": "#ff5555",
+        "priority2_title": "#ffaa55",
+        "priority3_title": "#55aaff",
+        "priority4_title": "#aaaaaa",
+        "priority5_title": "#777777"
+      },
+      "background_color": "#101010",
+      "cursor_color": "#303060",
+      "cursor_text_color": "#ffffff"
+    },
+    "theme_dark_name": "Synthetic Custom",
+    "theme_dark_rev": 2,
+    "theme_light": {
+      "palette": {
+        "normal_text": "#111111",
+        "primary": "#2255aa",
+        "border": "#222222"
+      },
+      "background_color": "#fafafa",
+      "cursor_color": "#ccccff",
+      "cursor_text_color": "#111111"
+    },
+    "theme_light_name": "Synthetic Light",
+    "theme_light_rev": 3,
+    "palette": {
+      "normal_text": "#dddddd",
+      "primary": "#7788aa"
+    },
+    "tui_background_color": "#121212",
+    "tui_cursor_color": "#343434",
+    "tui_cursor_text_color": "#fefefe",
+    "tui_zebra_striping": true,
+    "alert_daily_review_enabled": true,
+    "alert_weekly_review_enabled": true,
+    "alert_overdue_enabled": true,
+    "alert_due_soon_enabled": true,
+    "alert_stale_enabled": true,
+    "alert_inbox_enabled": true,
+    "alert_blocked_enabled": true,
+    "alert_project_health_enabled": true,
+    "alert_due_soon_days": 5,
+    "alert_stale_days": 20,
+    "alert_inbox_threshold": 12,
+    "alert_blocked_days": 6,
+    "alert_project_stale_days": 18,
+    "alert_daily_review_hour": 8,
+    "alert_weekly_review_day": 1,
+    "ai_consent": {
+      "granted": true,
+      "granted_at": "2026-01-02T12:00:00Z",
+      "providers": {
+        "claude": {
+          "granted": true,
+          "granted_at": "2026-01-02T12:00:00Z",
+          "scope_version": 1
+        },
+        "codex": {
+          "granted": true,
+          "granted_at": "2026-01-03T12:00:00Z",
+          "scope_version": 1
+        }
+      }
+    }
+  }
+}

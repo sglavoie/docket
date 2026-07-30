@@ -21,7 +21,6 @@ type TaskMetadataAlreadyShown struct {
 	Project  bool
 	Section  bool
 	Due      bool
-	Score    bool
 	Stale    bool
 	Updated  bool
 }
@@ -48,7 +47,6 @@ type metadataGroup int
 const (
 	metadataGroupProjectSection metadataGroup = iota
 	metadataGroupLifecycle
-	metadataGroupScore
 	metadataGroupProgress
 	metadataGroupDependencies
 	metadataGroupTags
@@ -106,7 +104,6 @@ func buildMetadataParts(opts TaskMetadataStripOpts) []metadataPart {
 
 	parts = appendProjectSectionParts(parts, opts)
 	parts = appendLifecycleParts(parts, opts)
-	parts = appendScorePart(parts, opts)
 	parts = appendProgressParts(parts, opts)
 	parts = appendDependencyPart(parts, opts)
 	parts = appendTagsPart(parts, opts)
@@ -173,12 +170,7 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 		})
 	}
 	if !opts.AlreadyShown.Due && task.DueDate != nil && columnVisible(opts.ColumnConfig, ColDueDate) {
-		var dueStr string
-		if opts.Runtime != nil {
-			dueStr = FormatRelativeDueTask(task, true, opts.Runtime.Settings().GetTimeFormat())
-		} else {
-			dueStr = FormatRelativeDue(task.DueDate, true)
-		}
+		dueStr := FormatRelativeDueTask(task, true)
 		if dueStr != "" {
 			parts = append(parts, metadataPart{
 				group:        metadataGroupLifecycle,
@@ -196,9 +188,6 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 	}
 	if task.IsRecurring() && columnVisible(opts.ColumnConfig, ColRecurrence) {
 		recurStr := "↻"
-		if task.Recurrence.Streak > 0 {
-			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
-		}
 		parts = append(parts, metadataPart{
 			group:        metadataGroupLifecycle,
 			text:         MutedStyle.Render(recurStr),
@@ -206,26 +195,6 @@ func appendLifecycleParts(parts []metadataPart, opts TaskMetadataStripOpts) []me
 		})
 	}
 	return parts
-}
-
-func appendScorePart(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if opts.AlreadyShown.Score || opts.Runtime == nil || opts.Project == nil ||
-		!columnVisible(opts.ColumnConfig, ColScore) {
-		return parts
-	}
-	profile := opts.Runtime.Automation().GetProjectScoringProfile(opts.Project.ID)
-	if profile == nil {
-		return parts
-	}
-	badge := RenderScoreBadge(opts.Task, profile)
-	if badge == "" {
-		return parts
-	}
-	return append(parts, metadataPart{
-		group:        metadataGroupScore,
-		text:         badge,
-		dropPriority: dropMedium,
-	})
 }
 
 func appendProgressParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
@@ -309,23 +278,6 @@ func appendContentParts(parts []metadataPart, opts TaskMetadataStripOpts) []meta
 }
 
 func appendFooterParts(parts []metadataPart, opts TaskMetadataStripOpts) []metadataPart {
-	if opts.Task.EstimatedDays > 0 {
-		text := MutedStyle.Render(fmt.Sprintf("~%gd", opts.Task.EstimatedDays))
-		parts = append(parts, metadataPart{
-			group:        metadataGroupFooter,
-			text:         text,
-			dropPriority: dropLowest,
-		})
-	}
-	if !opts.AlreadyShown.Stale {
-		if stale := renderStaleIndicator(opts.Runtime.Settings(), opts.Task); stale != "" {
-			parts = append(parts, metadataPart{
-				group:        metadataGroupFooter,
-				text:         stale,
-				dropPriority: dropLowest,
-			})
-		}
-	}
 	if !opts.AlreadyShown.Updated {
 		updatedAt := opts.Task.UpdatedAt
 		if updatedAt.IsZero() {

@@ -22,13 +22,6 @@ func sortProjectsWithPinnedFirst(projects []*models.Project) {
 	})
 }
 
-func deleteProjectKey[T any](values map[string]T, id, slug string) {
-	delete(values, id)
-	if slug != "" {
-		delete(values, slug)
-	}
-}
-
 func filterProjectRefSlice[T any](values []T, projectID func(T) string, keep func(string) bool) ([]T, bool) {
 	changed := false
 	filtered := values[:0]

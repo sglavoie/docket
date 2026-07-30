@@ -53,9 +53,6 @@ This is the description.
 	if task.Title != "My First Task" {
 		t.Errorf("expected Title 'My First Task', got '%s'", task.Title)
 	}
-	if task.Type != models.TaskTypeTask {
-		t.Errorf("expected Type 'task', got '%s'", task.Type)
-	}
 	if task.State() != models.StateReady {
 		t.Errorf("expected State 'ready', got '%s'", task.State())
 	}
@@ -67,55 +64,13 @@ This is the description.
 	}
 }
 
-func TestParseTasksMarkdown_AllTypes(t *testing.T) {
-	content := `# Project: Test
-
-## Epic: An Epic
-<!-- id: e1, status: in_progress, priority: 1 -->
-
-## Story: A Story
-<!-- id: s1, status: todo, priority: 2 -->
-
-## Task: A Task
-<!-- id: t1, status: done, priority: 3 -->
-
-## Bug: A Bug
-<!-- id: b1, status: blocked, priority: 1 -->
-
-## Idea: An Idea
-<!-- id: i1, status: canceled, priority: 5 -->
-`
-	_, tasks, err := ParseTasksMarkdown(content)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(tasks) != 5 {
-		t.Fatalf("expected 5 tasks, got %d", len(tasks))
-	}
-
-	expectedTypes := []models.TaskType{
-		models.TaskTypeEpic,
-		models.TaskTypeStory,
-		models.TaskTypeTask,
-		models.TaskTypeBug,
-		models.TaskTypeIdea,
-	}
-
-	for i, task := range tasks {
-		if task.Type != expectedTypes[i] {
-			t.Errorf("task %d: expected Type '%s', got '%s'", i, expectedTypes[i], task.Type)
-		}
-	}
-}
-
 func TestParseTasksMarkdown_Hierarchy(t *testing.T) {
 	content := `# Project: Test
 
-## Epic: Parent Epic
+## Task: Parent Task
 <!-- id: epic1, status: in_progress, priority: 1 -->
 
-### Story: Child Story
+### Task: Child Task
 <!-- id: story1, status: todo, priority: 2 -->
 
 #### Task: Grandchild Task
@@ -134,17 +89,17 @@ func TestParseTasksMarkdown_Hierarchy(t *testing.T) {
 	}
 
 	// Check hierarchy is set up
-	epic := tasks[0]
-	story := tasks[1]
+	parent := tasks[0]
+	child := tasks[1]
 	task1 := tasks[2]
 	task2 := tasks[3]
 
-	// Story should be child of Epic
-	if story.ParentID == nil || *story.ParentID != "epic1" {
-		t.Error("story should have epic1 as parent")
+	// Child should be nested under the parent.
+	if child.ParentID == nil || *child.ParentID != "epic1" {
+		t.Error("child should have epic1 as parent")
 	}
 
-	// Task1 should be child of Story
+	// Task1 should be child of the intermediate task.
 	if task1.ParentID == nil || *task1.ParentID != "story1" {
 		t.Error("task1 should have story1 as parent")
 	}
@@ -154,9 +109,9 @@ func TestParseTasksMarkdown_Hierarchy(t *testing.T) {
 		t.Error("task2 should have no parent")
 	}
 
-	// Epic should have no parent
-	if epic.ParentID != nil {
-		t.Error("epic should have no parent")
+	// Parent should have no parent.
+	if parent.ParentID != nil {
+		t.Error("parent should have no parent")
 	}
 }
 

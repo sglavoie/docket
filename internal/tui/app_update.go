@@ -15,18 +15,16 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			stack := debug.Stack()
 			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
 			m.err = fmt.Errorf("internal error: %v", r)
-			m.exitAskView()
 			m.navigation.ResetRoot()
 			m.contextActionSheet = nil
+			m.pendingTaskRecurrenceRequest = nil
+			m.suspendedTaskActionSheet = nil
 			m.clearOperationValueStep()
 			m.operationConfirm.Cancel()
 			m.pendingOperationRequest = OperationExecutionRequest{}
 			m.isLoading = false
-			m.pendingSandboxReset = false
-			m.pendingSandboxProjectID = ""
 			m.pendingBulkTasks = nil
 			m.pendingBulkSectionTasks = nil
-			m.pendingBulkNotes = nil
 			m.statusMessage = ""
 			m.loadingMessage = ""
 			outModel = m
@@ -49,9 +47,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	}
 
 	if handled, cmd := m.handleGlobalMessage(msg); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleAskMessage(msg); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleManageHubMessages(msg); handled {

@@ -14,7 +14,7 @@ func TestTaskChecklistSpaceTogglesItem(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Write regression test")
+	task, err := models.NewGenericTask("task-1", 1, "Write regression test")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestTaskChecklistSaveItemMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestTaskChecklistDeleteMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestTaskChecklistReorderOOBAfterResolve(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestTaskChecklistToggleOOBAfterResolve(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestTaskChecklistDeleteOOBAfterResolve(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestTaskChecklistEditExternalEditorFromEditModeOOB(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestTaskChecklistSaveEditMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}

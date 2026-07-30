@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
+
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -84,8 +87,8 @@ func (m *Manager) domainStore() *DomainFileStore {
 	return NewDomainFileStore(m.workspaceDataDir())
 }
 
-var allDomainKinds = []domainKind{domainCatalog, domainPlanning, domainSettings, domainAutomation, domainMachine}
-var syncedDomainKinds = []domainKind{domainCatalog, domainPlanning, domainSettings, domainAutomation}
+var allDomainKinds = []domainKind{domainCatalog, domainPlanning, domainMachine}
+var syncedDomainKinds = []domainKind{domainCatalog, domainPlanning}
 
 func (m *Manager) domainFilesExist(store *DomainFileStore) bool {
 	// Synced domains establish whether a workspace exists. machine.json cannot
@@ -151,9 +154,18 @@ func (m *Manager) RecoverWorkspace() error {
 		return err
 	}
 	dataDir := m.workspaceDataDir()
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, LocalDataRoot()})
 	if _, err := commit.RecoverWorkspace(); err != nil {
 		return fmt.Errorf("failed to recover workspace before loading split configuration domains: %w", err)
+	}
+	// Recovery must run before migration inspection: an interrupted activation
+	// transaction is roll-forward state, not a fresh migration candidate. Only a
+	// complete split-domain workspace is eligible; partial state remains the
+	// load path's explicit corruption error.
+	if state, _ := m.classifyDomainState(store); state == domainStateComplete {
+		if err := m.MigrateWorkspaceToV5(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v5: %w", err)
+		}
 	}
 	return nil
 }
@@ -200,7 +212,11 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 	}
 
 	domains := NewDomains()
-	if err := createDomainBundle(commit, store, domains); err != nil {
+	inboxArtifact, err := prepareFreshSystemInbox(dataDir, domains.Catalog)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare protected system Inbox: %w", err)
+	}
+	if err := createDomainBundle(commit, store, domains, inboxArtifact); err != nil {
 		if errors.Is(err, storage.ErrStaleArtifact) {
 			return m.loadAfterBootstrapRace(err)
 		}
@@ -213,11 +229,11 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 // the synced transaction creates anything. Machine state lives outside the
 // workspace root and is intentionally saved only after all four synced domains
 // have committed successfully.
-func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, domains *Domains) error {
+func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, domains *Domains, additional ...storage.ArtifactChange) error {
 	if commit == nil {
 		return fmt.Errorf("configuration commit service is required")
 	}
-	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Settings == nil || domains.Automation == nil || domains.Machine == nil {
+	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Machine == nil {
 		return fmt.Errorf("all configuration domains are required")
 	}
 	workspaceID, err := store.bindCatalogPayload(domains.Catalog)
@@ -235,11 +251,9 @@ func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, d
 	synced := []syncedDomain{
 		{kind: domainCatalog, payload: domains.Catalog},
 		{kind: domainPlanning, payload: domains.Planning},
-		{kind: domainSettings, payload: domains.Settings},
-		{kind: domainAutomation, payload: domains.Automation},
 	}
 	absentRevision := ""
-	changes := make([]storage.ArtifactChange, 0, len(synced))
+	changes := make([]storage.ArtifactChange, 0, len(synced)+len(additional))
 	for _, domain := range synced {
 		path, pathErr := store.pathFor(domain.kind)
 		if pathErr != nil {
@@ -255,6 +269,7 @@ func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, d
 			ExpectedRevision: &absentRevision,
 		}.StorageChange())
 	}
+	changes = append(changes, additional...)
 	if _, err := commit.CommitArtifacts(changes); err != nil {
 		return err
 	}
@@ -262,6 +277,44 @@ func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, d
 		return fmt.Errorf("failed to save machine-local configuration after synced bootstrap: %w", err)
 	}
 	return nil
+}
+
+// prepareFreshSystemInbox installs the protected Inbox into a brand-new
+// catalog and renders its empty task document. The caller commits this artifact
+// together with every synced domain, so a clean workspace can never expose a
+// catalog entry without its project file (or vice versa).
+//
+// This helper is intentionally limited to the absent-workspace bootstrap path.
+// Established workspaces are loaded strictly and must surface a missing or
+// inconsistent Inbox to diagnostics instead of silently repairing it.
+func prepareFreshSystemInbox(dataDir string, catalog *WorkspaceCatalog) (storage.ArtifactChange, error) {
+	if catalog == nil {
+		return storage.ArtifactChange{}, fmt.Errorf("workspace catalog is required")
+	}
+	project, err := models.NewProject(
+		"system-inbox-"+uuid.NewString(),
+		SystemInboxName,
+		filepath.Join(dataDir, "projects", SystemInboxSlug),
+	)
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	if repairErr := catalog.RepairSystemInboxProject(project); repairErr != nil {
+		return storage.ArtifactChange{}, repairErr
+	}
+	document, err := storage.WriteV5ProjectDocument(storage.V5ProjectDocument{
+		ProjectName: project.Name,
+	})
+	if err != nil {
+		return storage.ArtifactChange{}, err
+	}
+	absentRevision := ""
+	return storage.ArtifactChange{
+		Path:             storage.TasksFilePath(project.Path),
+		Data:             []byte(document),
+		Mode:             storage.FilePermissions,
+		ExpectedRevision: &absentRevision,
+	}, nil
 }
 
 func validateDomainBundle(domains *Domains) error {
@@ -273,7 +326,7 @@ func validateDomainBundleForLoad(domains *Domains) error {
 }
 
 func validateDomainBundleWithCatalogPolicy(domains *Domains, validateCatalog func(*WorkspaceCatalog) error) error {
-	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Settings == nil || domains.Automation == nil || domains.Machine == nil {
+	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Machine == nil {
 		return fmt.Errorf("all configuration domains are required")
 	}
 	checks := []struct {
@@ -282,8 +335,6 @@ func validateDomainBundleWithCatalogPolicy(domains *Domains, validateCatalog fun
 	}{
 		{name: "catalog", validate: func() error { return validateCatalog(domains.Catalog) }},
 		{name: "planning", validate: domains.Planning.Validate},
-		{name: "settings", validate: domains.Settings.Validate},
-		{name: "automation", validate: domains.Automation.Validate},
 		{name: "machine", validate: domains.Machine.Validate},
 	}
 	for _, check := range checks {
@@ -311,19 +362,13 @@ func (m *Manager) loadAfterBootstrapRace(staleErr error) (*Domains, error) {
 }
 
 func saveDomainBundle(store *DomainFileStore, domains *Domains) error {
-	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Settings == nil || domains.Automation == nil || domains.Machine == nil {
+	if domains == nil || domains.Catalog == nil || domains.Planning == nil || domains.Machine == nil {
 		return fmt.Errorf("all configuration domains are required")
 	}
 	if err := store.SaveCatalog(domains.Catalog); err != nil {
 		return err
 	}
 	if err := store.SavePlanning(domains.Planning); err != nil {
-		return err
-	}
-	if err := store.SaveSettings(domains.Settings); err != nil {
-		return err
-	}
-	if err := store.SaveAutomation(domains.Automation); err != nil {
 		return err
 	}
 	return store.SaveMachine(domains.Machine)

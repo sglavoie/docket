@@ -16,6 +16,9 @@ const minTerminalHeight = 20
 func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
+	if msg.Width >= inspectorWideBreakpoint && m.peekActive {
+		m.dismissPeek()
+	}
 	m.tooNarrow = msg.Width < minTerminalWidth
 	m.tooShort = msg.Height < minTerminalHeight
 	// All views (including full-height ones) are sized to height-2, matching the
@@ -28,9 +31,6 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	// rather than self-padding. Regression coverage: the *-resize-minimum-layout
 	// scenarios under docs/tui-testing/scenarios/ (run by TestExampleScenariosPass).
 	m.views.SetSize(msg.Width, msg.Height-2)
-	if m.reviewHub != nil {
-		m.reviewHub.SetSize(msg.Width, msg.Height-2)
-	}
 	if m.manageHub != nil {
 		m.manageHub.SetSize(msg.Width, msg.Height-2)
 	}
@@ -52,13 +52,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		}
 		return cmd
 	}
-	if m.activeReviewHub() {
-		updated, cmd := m.reviewHub.Update(msg)
-		if hub, ok := updated.(*ReviewHubModel); ok {
-			m.reviewHub = hub
-		}
-		return cmd
-	}
 	if m.activeManageHub() {
 		updated, cmd := m.manageHub.Update(msg)
 		if hub, ok := updated.(*ManageHubModel); ok {
@@ -76,28 +69,11 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 	currentView := m.currentView()
 	cmd := m.views.Update(currentView, msg)
 
-	// Update peek task if active (cursor may have moved). Finder
-	// originates a frozen Peek snapshot and has no cursor task to follow, so
-	// leave that overlay untouched — otherwise an async message routed to the
-	// palette would dismiss a Peek the user is still reading.
-	if m.peekActive && currentView != ViewFinder {
-		if task, project := m.getCurrentCursorTaskAndProject(); task != nil {
-			m.peekTask = task
-			m.peekProject = project
-		} else {
-			m.dismissPeek()
-		}
-	}
-
 	// Keep typed pointers in sync for views that need direct access
 	switch currentView {
 	case ViewHelp:
 		if v := m.views.Get(ViewHelp); v != nil {
 			m.helpView = v.(*HelpViewModel)
-		}
-	case ViewTaskJumper:
-		if v := m.views.Get(ViewTaskJumper); v != nil {
-			m.taskJumper = v.(*TaskJumperModel)
 		}
 	case ViewCrossProjectOutliner:
 		if v, ok := m.views.Get(ViewCrossProjectOutliner).(*OutlinerModel); ok {
@@ -111,11 +87,8 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 
 // getCurrentCursorTaskAndProject returns the task and project under the cursor in
 // the current primary view, or (nil, nil) when no task is selected. The project
-// pointer enables overlays (e.g. peek) that need scoring profile lookups.
+// pointer enables overlays that need project context.
 func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Project) {
-	if hub, _, ok := m.reviewHubPrimary(); ok && m.activeReviewHub() {
-		return hub.getTaskRef()
-	}
 	if hub, _, ok := m.manageHubPrimary(); ok && m.activeManageHub() {
 		return hub.getTaskRef()
 	}

@@ -54,13 +54,13 @@ func TestCurrentRouteBinding(t *testing.T) {
 	}
 
 	// Overlays do not replace the typed primary route.
-	overlay, err := NewOverlay(OverlayFinder, "test:finder")
+	overlay, err := NewOverlay(OverlaySearch, "test:search")
 	if err != nil {
 		t.Fatalf("NewOverlay: %v", err)
 	}
 	app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
 	if got := app.CurrentRoute().ID(); got != TaskWorkspace {
-		t.Errorf("CurrentRoute under finder = %s, want TaskWorkspace", got)
+		t.Errorf("CurrentRoute under search = %s, want TaskWorkspace", got)
 	}
 }
 
@@ -130,9 +130,9 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 	}
 
 	// A text-input overlay drives both Active and HasActiveTextInput.
-	app.quickNoteOverlay = &QuickNoteOverlay{}
+	app.operationTextPrompt = &OperationTextPromptModel{}
 	if !o.Active() || !o.HasActiveTextInput() {
-		t.Error("quick note should make overlays active and text-input")
+		t.Error("text prompt should make overlays active and text-input")
 	}
 	if !app.hasActiveTextInput() {
 		t.Error("AppModel.hasActiveTextInput should reflect the overlay")
@@ -149,7 +149,7 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 	}
 
 	o.ClearAll()
-	if o.Active() || app.quickNoteOverlay != nil || app.projectAdminMenu != nil {
+	if o.Active() || app.operationTextPrompt != nil || app.projectAdminMenu != nil {
 		t.Error("ClearAll should dismiss every overlay")
 	}
 }

@@ -3,48 +3,46 @@ package tui
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TaskMatchesSearch checks if a task matches the search query by fuzzy-matching
-// the title, tags, description, and comments.
+// TaskMatchesSearch reports whether query is a case-insensitive substring of
+// the task's visible title or description. Search facets belong to the
+// Outliner's dedicated filter grammar and are deliberately not interpreted
+// here.
 func TaskMatchesSearch(task *models.Task, query string) bool {
-	q := strings.TrimSpace(query)
-	if q == "" {
-		return true
-	}
-	if fuzzy.MatchTerms(task.Title, q) {
-		return true
-	}
-	for _, tag := range task.Tags {
-		if fuzzy.MatchTerms(tag, q) {
-			return true
-		}
-	}
-	if fuzzy.MatchTerms(task.Description, q) {
-		return true
-	}
-	for _, comment := range task.Comments {
-		if fuzzy.MatchTerms(comment.Text, q) {
-			return true
-		}
-	}
-	return false
-}
-
-// TaskMatchesStructuredSearch parses structured filters from the query, applies
-// them, and then fuzzy-matches the remaining text portion.
-func TaskMatchesStructuredSearch(task *models.Task, query string) bool {
-	parsed := ParseSearchQuery(query)
-	if !TaskMatchesFilters(task, parsed) {
+	if task == nil {
 		return false
 	}
-	return TaskMatchesSearch(task, parsed.TextQuery)
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return true
+	}
+	return strings.Contains(strings.ToLower(task.Title), strings.ToLower(query)) ||
+		strings.Contains(strings.ToLower(task.Description), strings.ToLower(query))
 }
 
-// ExtractSearchTextQuery returns only the text portion of a search query,
-// with all structured filter tokens removed.
-func ExtractSearchTextQuery(query string) string {
-	return ParseSearchQuery(query).TextQuery
+// searchSubstringPositions returns the rune positions of the first
+// case-insensitive substring match. The renderer uses these positions to
+// highlight titles without reintroducing fuzzy matching.
+func searchSubstringPositions(text, query string) []int {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil
+	}
+	textRunes := []rune(text)
+	queryRunes := []rune(query)
+	if len(queryRunes) > len(textRunes) {
+		return nil
+	}
+	for start := 0; start+len(queryRunes) <= len(textRunes); start++ {
+		if strings.EqualFold(string(textRunes[start:start+len(queryRunes)]), query) {
+			positions := make([]int, len(queryRunes))
+			for offset := range queryRunes {
+				positions[offset] = start + offset
+			}
+			return positions
+		}
+	}
+	return nil
 }

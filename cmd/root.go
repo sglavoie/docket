@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
@@ -17,11 +16,9 @@ import (
 var noColor bool
 var closeLogging = logging.Close
 
-var (
-	configPath string
-	dataDir    string
-	verbose    bool
+var dataDir string
 
+var (
 	// Build information, populated via ldflags
 	Version   = "dev"
 	GitCommit = ""
@@ -30,23 +27,24 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "tt",
-	Short: "A terminal-based task and project manager",
-	Long: `tt is a CLI-first task and project manager designed for developers.
+	Short: "An Outliner-first terminal task manager",
+	Long: `tt is an Outliner-first terminal task manager.
 
-It supports hierarchical tasks (epics, stories, tasks, bugs, ideas),
-markdown-based storage, and integrates with tools like fzf and glow.
+Run tt without a command to open the interactive Outliner. The command-line
+surface is intentionally limited to workspace maintenance, diagnostics,
+conflict recovery, project export, and shell completion.
 
 Examples:
-  tt                           # Launch interactive TUI
-  tt dash                      # Show dashboard summary
-  tt project new "My Project"  # Create a new project
-  tt task add "Fix login bug"  # Add a task to current project
-  tt task list --type epic     # List all epics`,
+  tt
+  tt doctor
+  tt conflict list
+  tt workspace location
+  tt project export`,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		cmd.SilenceUsage = true
 		return nil
 	},
-	Args: validateRootArgs,
+	Args: cobra.NoArgs,
 	RunE: runRoot,
 }
 
@@ -71,29 +69,13 @@ func executeCommand(command *cobra.Command) error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig, initNoColor)
+	cobra.OnInitialize(initNoColor)
 	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
-	rootCmd.SetFlagErrorFunc(lifecycleFlagError)
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "deprecated: isolate a workspace at this config file's directory")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().Bool("version", false, "show version information")
-
-	_ = viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
-	_ = viper.BindPFlag("data-dir", rootCmd.PersistentFlags().Lookup("data-dir"))
-	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
-}
-
-func initConfig() {
-	if configPath != "" {
-		viper.Set("config", configPath)
-	}
-	if dataDir != "" {
-		viper.Set("data-dir", dataDir)
-	}
 }
 
 func initNoColor() {
@@ -104,31 +86,22 @@ func initNoColor() {
 	}
 }
 
-func GetConfigPath() string {
-	return viper.GetString("config")
-}
-
 // GetDataDir returns the explicitly selected workspace data directory: the
 // --data-dir flag, or the TT_DATA_DIR environment variable when the flag is
 // unset. It is empty when neither is provided, so callers can fall back to the
 // active-workspace pointer or the legacy default.
 func GetDataDir() string {
-	if dd := viper.GetString("data-dir"); dd != "" {
-		return dd
+	if dataDir != "" {
+		return dataDir
 	}
 	return os.Getenv(ttenv.DataDirEnvVar)
 }
 
 // resolveConfigPath derives the config path the manager should use, honoring the
-// documented workspace precedence: an explicit --config wins (its directory is
-// the isolated workspace root); otherwise an explicit --data-dir/TT_DATA_DIR or
-// the machine-local active-workspace pointer selects the data dir and its config
-// path; otherwise an empty string lets NewManager resolve the legacy default
-// (iCloud when available, else ~/.tt).
+// documented workspace precedence: an explicit --data-dir/TT_DATA_DIR or the
+// machine-local active-workspace pointer selects the data dir and its config
+// path; otherwise an empty string lets NewManager resolve the legacy default.
 func resolveConfigPath() string {
-	if cp := GetConfigPath(); cp != "" {
-		return cp
-	}
 	dd := GetDataDir()
 	if dd == "" {
 		if ptr, ok := config.ReadActiveWorkspacePointer(); ok {
@@ -139,11 +112,6 @@ func resolveConfigPath() string {
 		return config.ConfigPathForDataDir(filepath.Clean(dd))
 	}
 	return ""
-}
-
-// IsVerbose returns true if verbose mode is enabled via --verbose or -v flag.
-func IsVerbose() bool {
-	return viper.GetBool("verbose")
 }
 
 func runRoot(cmd *cobra.Command, args []string) error {
@@ -159,7 +127,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	tui.AppVersion = Version
-	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.WithCLIReference(CLIReference))
+	return tui.RunApp(workspace.Runtime, workspace.Manager)
 }
 
 func printVersion() {

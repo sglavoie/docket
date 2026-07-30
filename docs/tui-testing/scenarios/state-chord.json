@@ -17,7 +17,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change State" },
     { "type": "assert", "assert": "contains", "value": "@ Waiting  (2)" },
-    { "type": "assert", "assert": "contains", "value": "T ⊘   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "⊘   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "abandon a half-typed chord", "key": "," },
@@ -26,8 +26,7 @@
     { "type": "assert", "assert": "not_contains", "value": "w waiting" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "enter multi-select", "key": "v" },
-    { "type": "key", "label": "select the cursored task", "key": "space" },
+    { "type": "key", "label": "select the cursored task and enter multi-select", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
     { "type": "key", "label": "park the selection in Someday", "key": "," },
     { "type": "key", "key": "s" },

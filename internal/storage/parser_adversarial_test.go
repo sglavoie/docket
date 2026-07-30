@@ -145,18 +145,6 @@ func TestRoundTrip_AdversarialInputs(t *testing.T) {
 			},
 		},
 		{
-			name: "URL with commas and metadata-key-like substrings",
-			mutate: func(task *models.Task) {
-				task.URL = "https://example.com/search?q=tags:foo,bar&status=open"
-			},
-			assertion: func(t *testing.T, got *models.Task) {
-				want := "https://example.com/search?q=tags:foo,bar&status=open"
-				if got.URL != want {
-					t.Errorf("url: got %q, want %q", got.URL, want)
-				}
-			},
-		},
-		{
 			name: "decisions and comments alongside heading-like description",
 			mutate: func(task *models.Task) {
 				task.Description = "## Task: looks-like-heading"
@@ -178,7 +166,7 @@ func TestRoundTrip_AdversarialInputs(t *testing.T) {
 
 	for _, sc := range scenarios {
 		t.Run(sc.name, func(t *testing.T) {
-			task, err := models.NewTask("adv-id-1", 1, models.TaskTypeTask, "Adversarial Task")
+			task, err := models.NewGenericTask("adv-id-1", 1, "Adversarial Task")
 			if err != nil {
 				t.Fatal(err)
 			}

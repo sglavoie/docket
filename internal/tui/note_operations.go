@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -27,21 +26,12 @@ const (
 	operationNoteCopyTitle     OperationID = "tui.note.copy-title"
 	operationNoteCopyBody      OperationID = "tui.note.copy-body"
 	operationNoteCopyTitleBody OperationID = "tui.note.copy-title-body"
-	operationNoteMove          OperationID = "tui.note.move-to-project"
 	operationNoteDelete        OperationID = "tui.note.delete"
-)
-
-// The note clipboard writers are package vars so tests can exercise what the
-// copy actions report without writing to the real system clipboard.
-var (
-	copyNoteTitleToClipboard        = external.CopyNoteTitle
-	copyNoteBodyToClipboard         = external.CopyNoteBody
-	copyNoteTitleAndBodyToClipboard = external.CopyNoteTitleAndBody
 )
 
 // noteOperationDescriptors is the authoritative catalog of note-targeted
 // operations. Each one resolves the frozen note identity at execution, so the
-// same descriptor serves Finder, the Notes manager, and any other host that
+// same descriptor serves the Notes manager and any other host that
 // names a note row.
 func noteOperationDescriptors() []OperationDescriptor {
 	descriptor := func(
@@ -58,7 +48,6 @@ func noteOperationDescriptors() []OperationDescriptor {
 			Description:       description,
 			Aliases:           aliases,
 			Category:          OperationCategoryNote,
-			Placement:         PlacementFinderOperation,
 			TargetSource:      OperationTargetCurrentEntity,
 			TargetCardinality: TargetCardinalityOne,
 			Applicability:     applicability,
@@ -75,32 +64,10 @@ func noteOperationDescriptors() []OperationDescriptor {
 		return descriptor(id, label, description, risk, noteOperationApplicable, aliases...)
 	}
 	return []OperationDescriptor{
-		note(operationNoteOpen, "Open note", "Open the Notes manager on this note", OperationRiskReadOnly, "focus note"),
-		note(operationNotePreview, "Preview note", "Render this note with glow", OperationRiskReadOnly, "view note"),
-		note(operationNoteEdit, "Edit note", "Open this note in the editor", OperationRiskMutation),
-		note(operationNoteReference, "Open note reference", "Open a read-only snapshot of this note", OperationRiskReadOnly),
+		note(operationNoteOpen, "Open note", "Open this note in the external editor", OperationRiskMutation),
 		withValueProvider(
 			note(operationNoteRename, "Rename note", "Give this note a new title", OperationRiskMutation),
 			ValueProviderNoteTitle,
-		),
-		note(operationNoteTags, "Edit note tags", "Choose the tags on this note", OperationRiskMutation, "tag note"),
-		descriptor(
-			operationNoteLink,
-			"Link note to tasks",
-			"Choose the tasks in this note's project that it documents",
-			OperationRiskMutation,
-			projectNoteOperationApplicable,
-		),
-		note(operationNotePin, "Toggle note pin", "Pin or unpin this note", OperationRiskMutation, "pin note", "unpin note"),
-		note(operationNoteCopyTitle, "Copy note title", "Copy this note's title to the clipboard", OperationRiskReadOnly),
-		note(operationNoteCopyBody, "Copy note body", "Copy this note's body to the clipboard", OperationRiskReadOnly),
-		note(operationNoteCopyTitleBody, "Copy note title and body", "Copy this note's title and body to the clipboard", OperationRiskReadOnly),
-		descriptor(
-			operationNoteMove,
-			"Move note to project",
-			"Move this global note into a project",
-			OperationRiskMutation,
-			globalNoteOperationApplicable,
 		),
 		note(operationNoteDelete, "Delete note", "Delete this note", OperationRiskDestructive),
 	}
@@ -113,36 +80,9 @@ func noteOperationApplicable(ctx CommandContext) bool {
 	return currentEntityIdentity(ctx).Kind == EntityKindNote
 }
 
-// globalNoteOperationApplicable restricts the move action to workspace scratch
-// notes: a project note already lives in a project collection.
-func globalNoteOperationApplicable(ctx CommandContext) bool {
-	identity := currentEntityIdentity(ctx)
-	return identity.Kind == EntityKindNote && identity.Scope == EntityScopeGlobal
-}
-
-// projectNoteOperationApplicable restricts task linking to project notes. A note
-// link names a task inside the note's own project, so a workspace scratch note
-// has no task scope to link within; `tt note link` rejects --global for the same
-// reason. Move the note into a project first.
-func projectNoteOperationApplicable(ctx CommandContext) bool {
-	identity := currentEntityIdentity(ctx)
-	return identity.Kind == EntityKindNote && identity.Scope == EntityScopeProject
-}
-
 // noteOperationsBlockedByParseError lists the actions that need parsed note
 // content. Edit, reference, rename, and delete stay available so a malformed
 // note can still be repaired or removed.
-var noteOperationsBlockedByParseError = map[OperationID]bool{
-	operationNotePreview:       true,
-	operationNoteTags:          true,
-	operationNoteLink:          true,
-	operationNotePin:           true,
-	operationNoteCopyTitle:     true,
-	operationNoteCopyBody:      true,
-	operationNoteCopyTitleBody: true,
-	operationNoteMove:          true,
-}
-
 func (m *AppModel) registerNoteOperations() error {
 	if m == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
@@ -228,15 +168,6 @@ func (m *AppModel) executeNoteOperation(
 	if err != nil {
 		return OperationHandlerResult{Err: err}
 	}
-	if resolved.Note.ParseError != "" && noteOperationsBlockedByParseError[invocation.Descriptor.ID] {
-		return OperationHandlerResult{
-			Err: fmt.Errorf(
-				"%s is unavailable while %s has a parse error; edit the note to repair it",
-				invocation.Descriptor.Label,
-				resolved.Note.Filename,
-			),
-		}
-	}
 	return m.noteOperationResult(invocation, resolved)
 }
 
@@ -249,87 +180,17 @@ func (m *AppModel) noteOperationResult(
 	command := func(cmd tea.Cmd) OperationHandlerResult {
 		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
 	}
-	copyNote := func(copy func(*models.Note) (string, error), status string) OperationHandlerResult {
-		if _, err := copy(note); err != nil {
-			return OperationHandlerResult{Err: fmt.Errorf("copy failed: %w", err)}
-		}
-		return OperationHandlerResult{Status: status}
-	}
 
 	switch invocation.Descriptor.ID {
 	case operationNoteOpen:
-		if resolved.Location.Scope == app.NoteScopeGlobal {
-			return OperationHandlerResult{Message: ShowGlobalNotesMsg{Focus: note.Filename}}
-		}
-		return OperationHandlerResult{Message: ShowNotesMsg{Project: resolved.Project, Focus: note.Filename}}
-
-	case operationNotePreview:
-		cmd, err := notePreviewCmd(note)
-		if err != nil {
-			return OperationHandlerResult{Err: err}
-		}
-		if cmd == nil {
-			return OperationHandlerResult{Err: fmt.Errorf("glow is not available for note preview")}
-		}
-		return command(cmd)
-
-	case operationNoteEdit:
-		editor, err := external.ResolveEditor(m.runtime.Machine().GetEditor())
+		editor, err := external.ResolveNoteEditor()
 		if err != nil {
 			return OperationHandlerResult{Err: err}
 		}
 		return command(noteEditCmd(note, resolved.Location, m.noteOperationDir(resolved), editor))
 
-	case operationNoteReference:
-		status, err := openNoteReference(
-			note,
-			m.noteOperationDir(resolved),
-			m.runtime.Machine().GetExternalEditor(),
-			notesLinkedTasks(note, m.noteOperationTasks(resolved)),
-		)
-		if err != nil {
-			return OperationHandlerResult{Err: err}
-		}
-		return OperationHandlerResult{Status: status}
-
 	case operationNoteRename:
 		return m.renameNoteOperation(invocation, resolved)
-
-	case operationNoteTags:
-		return OperationHandlerResult{Message: ShowNoteTagSelectorMsg{
-			Source:        newNoteMutationRef(resolved.Location, note),
-			AvailableTags: buildNoteTagList(resolved.Siblings, resolved.Project),
-			CurrentTags:   append([]string(nil), note.Tags...),
-		}}
-
-	case operationNoteLink:
-		return OperationHandlerResult{Message: ShowNoteTaskLinkerMsg{Project: resolved.Project, Note: note}}
-
-	case operationNotePin:
-		updated := cloneNoteForCommand(note)
-		updated.Pinned = !updated.Pinned
-		updated.ModifiedAt = time.Now()
-		status := "Pinned: " + note.Title
-		if note.Pinned {
-			status = "Unpinned: " + note.Title
-		}
-		return command(noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
-			Operations:  []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: resolved.Location, Note: updated}},
-			UndoAction:  "Toggle Note Pin",
-			UndoContext: note.Title,
-		}, status, false))
-
-	case operationNoteCopyTitle:
-		return copyNote(copyNoteTitleToClipboard, "Copied title to clipboard")
-	case operationNoteCopyBody:
-		return copyNote(copyNoteBodyToClipboard, "Copied body to clipboard")
-	case operationNoteCopyTitleBody:
-		return copyNote(copyNoteTitleAndBodyToClipboard, "Copied title and body to clipboard")
-
-	case operationNoteMove:
-		return OperationHandlerResult{Message: ShowGlobalNoteMoveMsg{
-			Source: newNoteMutationRef(app.GlobalNoteLocation(), note),
-		}}
 
 	case operationNoteDelete:
 		return command(noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
@@ -369,19 +230,6 @@ func (m *AppModel) renameNoteOperation(
 			UndoContext: resolved.Note.Title,
 		}, fmt.Sprintf("Renamed: %s → %s", resolved.Note.Title, title), false),
 	}}
-}
-
-func (m *AppModel) noteOperationTasks(resolved resolvedNote) []*models.Task {
-	if resolved.Project != nil {
-		return resolved.Project.Tasks
-	}
-	tasks := make([]*models.Task, 0)
-	for _, project := range m.activeProjects() {
-		if project != nil {
-			tasks = append(tasks, project.Tasks...)
-		}
-	}
-	return tasks
 }
 
 // operationStringValue reads a trimmed string invocation value, which is how

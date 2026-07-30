@@ -25,7 +25,7 @@ func buildWorkflowStateFixture(t *testing.T) *models.Project {
 	project := &models.Project{ID: "p1", Name: "Project"}
 
 	add := func(id string, mutate func(*models.Task)) *models.Task {
-		task, err := models.NewTask(id, len(project.Tasks)+1, models.TaskTypeTask, "Task "+id)
+		task, err := models.NewGenericTask(id, len(project.Tasks)+1, "Task "+id)
 		if err != nil {
 			t.Fatalf("NewTask(%q): %v", id, err)
 		}
@@ -42,7 +42,6 @@ func buildWorkflowStateFixture(t *testing.T) *models.Project {
 	add("in_progress", func(tk *models.Task) { tk.WorkflowState = models.StateInProgress })
 	add("waiting", func(tk *models.Task) { tk.WorkflowState = models.StateWaiting })
 	add("paused", func(tk *models.Task) { tk.WorkflowState = models.StatePaused })
-	add("review", func(tk *models.Task) { tk.WorkflowState = models.StateReview })
 	add("someday", func(tk *models.Task) { tk.WorkflowState = models.StateSomeday })
 	add("done", func(tk *models.Task) { tk.WorkflowState = models.StateDone })
 	add("canceled", func(tk *models.Task) { tk.WorkflowState = models.StateCanceled })
@@ -62,7 +61,7 @@ func buildWorkflowStateFixture(t *testing.T) *models.Project {
 
 // TestStateFilter_SelectsTasksByDerivedState proves the shared common-filter
 // State field selects exactly the tasks whose derived WorkflowState equals the
-// filter value, across all ten canonical states.
+// filter value, across all nine canonical states.
 func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 	project := buildWorkflowStateFixture(t)
 
@@ -73,7 +72,7 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 			filter.setStateFilter(testWorkflowStateSet(state), true)
 			for _, task := range project.Tasks {
 				want := task.State() == state
-				got := passesCommonFilters(task, &filter, project, nil)
+				got := passesCommonFilters(task, &filter, project)
 				if got != want {
 					t.Errorf("task %q (state %s): passesCommonFilters(State=%s)=%v, want %v",
 						task.ID, task.State(), state, got, want)
@@ -90,7 +89,7 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 
 	for _, task := range project.Tasks {
 		want := filter.States.Contains(task.State())
-		if got := passesCommonFilters(task, &filter, project, nil); got != want {
+		if got := passesCommonFilters(task, &filter, project); got != want {
 			t.Errorf("task %q state=%s: multi-state filter got %v, want %v", task.ID, task.State(), got, want)
 		}
 	}
@@ -100,7 +99,7 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 		t.Fatal("explicit empty state set must remain an active match-nothing filter")
 	}
 	for _, task := range project.Tasks {
-		if passesCommonFilters(task, &filter, project, nil) {
+		if passesCommonFilters(task, &filter, project) {
 			t.Errorf("explicit empty state set unexpectedly matched task %q", task.ID)
 		}
 	}
@@ -120,7 +119,7 @@ func TestBlockedFilter_SelectsDependencyBlockedTasks(t *testing.T) {
 		if want {
 			blockedCount++
 		}
-		got := passesCommonFilters(task, &filter, project, nil)
+		got := passesCommonFilters(task, &filter, project)
 		if got != want {
 			t.Errorf("task %q: passesCommonFilters(Blocked)=%v, want %v (IsDependencyBlocked)", task.ID, got, want)
 		}

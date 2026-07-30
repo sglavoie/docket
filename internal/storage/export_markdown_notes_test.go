@@ -24,16 +24,17 @@ func TestWriteNotesSectionClean(t *testing.T) {
 			wantExact: "",
 		},
 		{
-			name: "single note with tags and body",
+			name: "single note retains body",
 			notes: []*models.Note{
-				{Title: "Project ideas", Tags: []string{"brainstorm", "roadmap"}, Body: "body text", ModifiedAt: now},
+				{Title: "Project ideas", Body: "body text", ModifiedAt: now},
 			},
-			contains: "\n---\n\n# Notes\n\n## Project ideas\ntags: brainstorm, roadmap\n\nbody text\n",
+			contains:    "\n---\n\n# Notes\n\n## Project ideas\n\nbody text\n",
+			notContains: "tags:",
 		},
 		{
-			name: "single note no tags",
+			name: "single note",
 			notes: []*models.Note{
-				{Title: "No Tags", Tags: []string{}, Body: "content", ModifiedAt: now},
+				{Title: "No Tags", Body: "content", ModifiedAt: now},
 			},
 			contains:    "## No Tags",
 			notContains: "tags:",
@@ -41,7 +42,7 @@ func TestWriteNotesSectionClean(t *testing.T) {
 		{
 			name: "single note empty body",
 			notes: []*models.Note{
-				{Title: "Empty Body", Tags: []string{}, Body: "", ModifiedAt: now},
+				{Title: "Empty Body", Body: "", ModifiedAt: now},
 			},
 			contains: "## Empty Body\n",
 		},
@@ -55,8 +56,8 @@ func TestWriteNotesSectionClean(t *testing.T) {
 		{
 			name: "multiple notes ordering preserved with blank line between",
 			notes: []*models.Note{
-				{Title: "First", Tags: []string{}, Body: "body one", ModifiedAt: now},
-				{Title: "Second", Tags: []string{}, Body: "body two", ModifiedAt: now.Add(-time.Hour)},
+				{Title: "First", Body: "body one", ModifiedAt: now},
+				{Title: "Second", Body: "body two", ModifiedAt: now.Add(-time.Hour)},
 			},
 			contains: "## First",
 		},
@@ -85,8 +86,8 @@ func TestWriteNotesSectionClean(t *testing.T) {
 func TestWriteNotesSectionClean_MultipleNotesOrdering(t *testing.T) {
 	now := time.Now()
 	notes := []*models.Note{
-		{Title: "Alpha", Tags: []string{}, Body: "a", ModifiedAt: now},
-		{Title: "Beta", Tags: []string{}, Body: "b", ModifiedAt: now.Add(-time.Hour)},
+		{Title: "Alpha", Body: "a", ModifiedAt: now},
+		{Title: "Beta", Body: "b", ModifiedAt: now.Add(-time.Hour)},
 	}
 	got := writeNotesSectionClean(notes)
 

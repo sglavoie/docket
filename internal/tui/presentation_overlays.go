@@ -5,18 +5,8 @@ package tui
 // their typed route activation methods, never inferred from a renderer ID.
 func overlayForPresentation(view PresentationID) (Overlay, bool, error) {
 	switch view {
-	case ViewHelp, ViewAsk, ViewTutor:
-		kind := ReferenceHelp
-		switch view {
-		case ViewHelp:
-		case ViewAsk:
-			kind = ReferenceAsk
-		case ViewTutor:
-			kind = ReferenceTutor
-		default:
-			return Overlay{}, false, nil
-		}
-		route, err := NewRoute(Reference, ReferenceParams{Kind: kind})
+	case ViewHelp:
+		route, err := NewRoute(Reference, ReferenceParams{Kind: ReferenceHelp})
 		if err != nil {
 			return Overlay{}, true, err
 		}
@@ -39,32 +29,20 @@ func overlayForPresentation(view PresentationID) (Overlay, bool, error) {
 
 func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 	switch view {
-	case ViewFinder, ViewGlobalSearch:
-		return OverlayFinder, true
-	case ViewTaskForm, ViewTemplateVarFiller:
+	case ViewTaskForm:
 		return OverlayComposer, true
-	case ViewProjectList, ViewProjectSelector:
+	case ViewProjectSelector:
 		return OverlayProjectPicker, true
-	case ViewColumnPicker:
-		return OverlayViewMenu, true
-	case ViewTagFilterSelector, ViewNotesSearch:
+	case ViewTagFilterSelector:
 		return OverlaySearch, true
-	case ViewTaskJumper:
-		return OverlayTaskJump, true
-	case ViewProjectPreview, ViewRecentActivityPreview:
-		return OverlayPeek, true
-	case ViewProjectCreator, ViewProjectEditor, ViewWorkflowRuleCreator, ViewWorkflowRuleEditor, ViewWorkflowWizard,
-		ViewTaskTemplateCreator, ViewTaskTemplateEditor, ViewTextEditor:
+	case ViewProjectCreator, ViewProjectEditor, ViewTextEditor:
 		return OverlayForm, true
 	case ViewConflictResolution:
 		return OverlayConfirmation, true
 	case ViewDateInput, ViewDependencySelector, ViewDependencyViewer,
 		ViewPriorityPicker, ViewParentSelector, ViewTagSelector,
 		ViewBulkTagSelector, ViewRecurrenceEditor,
-		ViewLinkedTaskSelector, ViewCrossProjectLinker, ViewNoteTaskLinker,
-		ViewNoteTagSelector, ViewSnoozeInput, ViewParkInput, ViewTaskTemplatePicker,
-		ViewScoreEditor, ViewScoringProfilePicker,
-		ViewWorkflowDryRun, ViewStatusInput, ViewStatusIconPicker:
+		ViewCrossProjectLinker, ViewSnoozeInput:
 		return OverlayPicker, true
 	default:
 		return 0, false

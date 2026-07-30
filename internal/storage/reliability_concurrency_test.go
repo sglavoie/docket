@@ -41,7 +41,7 @@ func reliabilityProject(t *testing.T, dataDir, slug string, tasks ...*models.Tas
 
 func reliabilityTask(t *testing.T, shortID int, title string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(uuid.New().String(), shortID, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(uuid.New().String(), shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -180,9 +180,7 @@ func TestReliability_ExternalFileEditDetectedByRevisionCheck(t *testing.T) {
 		reliabilityTask(t, 1, "original"),
 		reliabilityTask(t, 2, "added by external editor"),
 	)
-	externalContent := WriteTasksMarkdownWithProjectMetadata(
-		edited.Name, edited.Tasks, edited.Tags, edited.PinnedTags,
-	)
+	externalContent := mustWriteV5Project(t, edited)
 	if err := os.WriteFile(tasksFilePath(p.Path), []byte(externalContent), FilePermissions); err != nil {
 		t.Fatalf("simulate external edit: %v", err)
 	}
@@ -233,9 +231,7 @@ func TestReliability_CommitDrivesCrashRecoveryRollForward(t *testing.T) {
 	}
 	betaTasks := tasksFilePath(betaPath)
 	stranded := reliabilityProject(t, dataDir, "beta", reliabilityTask(t, 1, "recovered work"))
-	strandedContent := WriteTasksMarkdownWithProjectMetadata(
-		stranded.Name, stranded.Tasks, stranded.Tags, stranded.PinnedTags,
-	)
+	strandedContent := mustWriteV5Project(t, stranded)
 	journal := transaction.NewJournal(transactionsDir, []string{dataDir})
 	if _, err := journal.Prepare([]transaction.Op{{
 		Kind:   transaction.OpWrite,

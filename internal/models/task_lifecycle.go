@@ -8,7 +8,6 @@ import (
 )
 
 // Complete marks the task as done and sets the completion time.
-// Snooze and parking are cleared since hiding or resuming a completed task is meaningless.
 func (t *Task) Complete() {
 	_ = t.ApplyStateTransition(StateDone)
 }
@@ -17,12 +16,6 @@ func (t *Task) Complete() {
 // Snooze is cleared since an in-progress task should always be visible.
 func (t *Task) Start() {
 	_ = t.ApplyStateTransition(StateInProgress)
-}
-
-// Review marks the task as in review.
-// Snooze is cleared since a task in review should always be visible.
-func (t *Task) Review() {
-	_ = t.ApplyStateTransition(StateReview)
 }
 
 // Standby puts the task on hold (the paused state).
@@ -47,12 +40,6 @@ func (t *Task) Block() {
 // Snooze is cleared since hiding a canceled task is meaningless.
 func (t *Task) Cancel() {
 	_ = t.ApplyStateTransition(StateCanceled)
-}
-
-// Reopen returns the task to the Inbox for re-processing.
-// Snooze is cleared so the reopened task is immediately visible.
-func (t *Task) Reopen() {
-	_ = t.ApplyStateTransition(StateInbox)
 }
 
 // Uncomplete reverts a completed task to in-progress without relocating it to
@@ -81,9 +68,6 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 		return fmt.Errorf("invalid workflow state %q", state)
 	}
 
-	if state == StateDone {
-		t.Unpark(true)
-	}
 	t.ApplyWorkflowState(state)
 	t.SnoozedUntil = nil
 	if state.IsTerminal() {
@@ -91,9 +75,6 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 		t.CompletedAt = &completedAt
 	} else {
 		t.CompletedAt = nil
-	}
-	if state == StateInbox {
-		t.Dimmed = false
 	}
 	t.UpdatedAt = now
 	return nil
@@ -130,41 +111,24 @@ func (t *Task) TogglePinned() {
 	}
 }
 
-// Dim marks the task as visually dimmed.
-func (t *Task) Dim() {
-	t.Dimmed = true
-	t.UpdatedAt = time.Now()
-}
-
-// Undim removes the dimmed state.
-func (t *Task) Undim() {
-	t.Dimmed = false
-	t.UpdatedAt = time.Now()
-}
-
-// ToggleDimmed toggles the dimmed state.
-func (t *Task) ToggleDimmed() {
-	if t.Dimmed {
-		t.Undim()
-	} else {
-		t.Dim()
-	}
-}
-
 // IsSnoozed returns true if the task is snoozed (SnoozedUntil is set and after today).
 func (t *Task) IsSnoozed() bool {
 	return t.IsSnoozedAt(time.Now())
 }
 
 // IsSnoozedAt returns true if the task is snoozed relative to the given time.
-// Use this instead of IsSnoozed when the reference time is not time.Now()
-// (e.g., in alert evaluation with a deterministic clock).
+// Use this instead of IsSnoozed when the reference time is not time.Now().
 func (t *Task) IsSnoozedAt(now time.Time) bool {
 	if t.SnoozedUntil == nil {
 		return false
 	}
-	today := util.StartOfDay(now)
-	snoozeDay := util.StartOfDay(*t.SnoozedUntil)
+	// SnoozedUntil is a calendar date, not an instant. Normalize both dates
+	// onto the same neutral location before comparing so equal local dates do
+	// not compare differently merely because their time.Location values differ.
+	nowYear, nowMonth, nowDay := now.Date()
+	snoozeYear, snoozeMonth, snoozeDayOfMonth := t.SnoozedUntil.Date()
+	today := time.Date(nowYear, nowMonth, nowDay, 0, 0, 0, 0, time.UTC)
+	snoozeDay := time.Date(snoozeYear, snoozeMonth, snoozeDayOfMonth, 0, 0, 0, 0, time.UTC)
 	return snoozeDay.After(today)
 }
 
@@ -186,9 +150,6 @@ func (t *Task) IsOverdue() bool {
 		return false
 	}
 	now := time.Now()
-	if t.HasTime {
-		return t.DueDate.Before(now)
-	}
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Before(today)
@@ -196,22 +157,12 @@ func (t *Task) IsOverdue() bool {
 
 // IsDueSoon returns true if the task has a due date within the specified number
 // of days (inclusive) and is not overdue or complete.
-// When HasTime is set, uses exact time comparison so that a task whose specific
-// time has already passed is treated as overdue (not "due soon").
-// Otherwise uses day-level comparison (normalizes to midnight local time).
+// Uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsDueSoon(days int) bool {
 	if t.DueDate == nil || t.IsTerminalState() {
 		return false
 	}
 	now := time.Now()
-	if t.HasTime {
-		// Time-aware: overdue if the exact time has passed
-		if t.DueDate.Before(now) {
-			return false
-		}
-		threshold := now.AddDate(0, 0, days)
-		return !t.DueDate.After(threshold)
-	}
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	// Not overdue
@@ -251,22 +202,14 @@ func (t *Task) IsDueThisWeek() bool {
 	return !dueDay.Before(today) && dueDay.Before(weekEnd)
 }
 
-// SetRecurrence sets the recurrence pattern for the task.
+// SetRecurrence sets the canonical interval pattern for the task.
 // Returns an error if the pattern is non-nil and fails validation.
-// For monthly and yearly patterns, OriginalDay is automatically populated from
-// the task's DueDate (if set) to prevent day-of-month drift across short months
-// (monthly: e.g. Jan 31 → Feb 28 → Mar 31; yearly: e.g. Feb 29 → Feb 28 → Feb 29).
 func (t *Task) SetRecurrence(pattern *RecurrencePattern) error {
 	if pattern != nil {
 		if err := pattern.Validate(); err != nil {
 			return err
 		}
-		// Populate OriginalDay for monthly/yearly patterns so that months with
-		// fewer days don't permanently drift the day-of-month.
-		needsOriginalDay := pattern.Unit == RecurrenceMonthly || pattern.Unit == RecurrenceYearly
-		if needsOriginalDay && pattern.OriginalDay == 0 && t.DueDate != nil {
-			pattern.OriginalDay = t.DueDate.Day()
-		}
+		pattern = &RecurrencePattern{Interval: pattern.Interval, Unit: pattern.Unit}
 	}
 	t.Recurrence = pattern
 	t.UpdatedAt = time.Now()
@@ -281,32 +224,9 @@ func (t *Task) ClearRecurrence() {
 	}
 }
 
-// ensureRecurrenceOriginalDay populates Recurrence.OriginalDay for monthly and
-// yearly patterns when it has not been set yet, using the given seed day. This
-// guards against day-of-month drift when SetRecurrence ran before DueDate was
-// assigned (so SetRecurrence could not seed OriginalDay itself): without this,
-// the first short-month clamp would silently overwrite the user's intended day
-// (e.g. Jan 31 → Feb 29 → Mar 29 instead of Mar 31).
-func (t *Task) ensureRecurrenceOriginalDay(seedDay int) {
-	if t.Recurrence == nil || t.Recurrence.OriginalDay != 0 {
-		return
-	}
-	if t.Recurrence.Unit != RecurrenceMonthly && t.Recurrence.Unit != RecurrenceYearly {
-		return
-	}
-	if seedDay >= 1 && seedDay <= 31 {
-		t.Recurrence.OriginalDay = seedDay
-	}
-}
-
 // SkipRecurrence advances the due date to the next occurrence without completing
-// the task. Increments the Skipped counter and resets the Streak to 0 (skipping
-// breaks a streak). No-op if the task is not recurring.
-//
-// The next date is always computed from the current due date (or today when no
-// due date is set), regardless of the recurrence mode. The mode only governs
-// post-completion scheduling; skipping is schedule-based and should not be
-// influenced by when the task was (or will be) completed.
+// the task. It is retained as a compatibility action but no longer records
+// counters. No-op if the task is not recurring.
 func (t *Task) SkipRecurrence() {
 	if t.Recurrence == nil {
 		return
@@ -314,25 +234,18 @@ func (t *Task) SkipRecurrence() {
 
 	var base time.Time
 	if t.DueDate != nil {
-		base = *t.DueDate
-	} else if t.HasTime {
-		base = time.Now()
+		base = calendarDate(*t.DueDate)
 	} else {
-		base = util.StartOfDay(time.Now())
+		base = calendarDate(time.Now())
 	}
-	t.ensureRecurrenceOriginalDay(base.Day())
 	next := calculateNextDate(base, t.Recurrence)
 	t.DueDate = &next
-	t.Recurrence.Skipped++
-	t.Recurrence.Streak = 0
 	t.UpdatedAt = time.Now()
 }
 
 // DeferRecurrence pushes the due date forward by the given number of days.
-// Unlike SkipRecurrence, deferring does not affect the streak or skipped count.
 // No-op if the task is not recurring or if days <= 0 (deferral must move the
 // due date forward; a negative or zero value would silently rewind it).
-// When the task carries a time-of-day (HasTime), the clock component is preserved.
 func (t *Task) DeferRecurrence(days int) {
 	if t.Recurrence == nil {
 		return
@@ -341,84 +254,67 @@ func (t *Task) DeferRecurrence(days int) {
 		return
 	}
 
-	if t.DueDate != nil && t.HasTime {
-		// Preserve the clock component by adding days directly.
-		newDue := t.DueDate.AddDate(0, 0, days)
-		t.DueDate = &newDue
-	} else {
-		base := util.StartOfDay(time.Now())
-		if t.DueDate != nil {
-			base = util.StartOfDay(*t.DueDate)
-		}
-		newDue := base.AddDate(0, 0, days)
-		t.DueDate = &newDue
+	base := util.StartOfDay(time.Now())
+	if t.DueDate != nil {
+		base = util.StartOfDay(*t.DueDate)
 	}
+	newDue := base.AddDate(0, 0, days)
+	t.DueDate = &newDue
 	t.UpdatedAt = time.Now()
 }
 
-// NextDueDate calculates the next due date based on the recurrence pattern.
-// For RecurModeFromDue (default): next date is calculated from the current due date.
-// For RecurModeFromCompletion: next date is calculated from CompletedAt (or now if nil).
-// If the task has no due date (FromDue mode), calculates from today.
-// If the task is not recurring, returns nil.
+// NextDueDate calculates the first scheduled occurrence strictly after the
+// task's completion date. CompletedAt is used when present; otherwise now is
+// used. If there is no prior due date, completion is the schedule anchor.
 func (t *Task) NextDueDate() *time.Time {
-	if t.Recurrence == nil {
+	if t.CompletedAt != nil {
+		return t.NextDueDateAfter(*t.CompletedAt)
+	}
+	if t.Recurrence == nil || t.Recurrence.Validate() != nil {
 		return nil
 	}
-
-	var baseDate time.Time
-	if t.Recurrence.Mode == RecurModeFromCompletion {
-		if t.CompletedAt != nil {
-			baseDate = *t.CompletedAt
-		} else {
-			baseDate = time.Now()
-		}
-	} else {
-		baseDate = time.Now()
-		if t.DueDate != nil {
-			baseDate = *t.DueDate
-		}
+	if t.DueDate != nil {
+		next := calculateNextDate(calendarDate(*t.DueDate), t.Recurrence)
+		return &next
 	}
+	return t.NextDueDateAfter(time.Now())
+}
 
-	// Seed OriginalDay on the first calculation when SetRecurrence ran before
-	// DueDate was set; otherwise day-of-month drifts on short-month clamps.
-	if t.Recurrence.Mode != RecurModeFromCompletion && t.DueDate != nil {
-		t.ensureRecurrenceOriginalDay(t.DueDate.Day())
+// NextDueDateAfter is the deterministic recurrence scheduler. It advances from
+// the previous due date repeatedly until the result is strictly after the
+// completion calendar date. Without a previous due date, it advances once from
+// completion. This preserves scheduled cadence while catching up late work.
+func (t *Task) NextDueDateAfter(completedAt time.Time) *time.Time {
+	if t.Recurrence == nil || t.Recurrence.Validate() != nil {
+		return nil
 	}
-	next := calculateNextDate(baseDate, t.Recurrence)
+	base := calendarDate(completedAt)
+	if t.DueDate != nil {
+		base = calendarDate(*t.DueDate)
+	}
+	next := calculateNextDate(base, t.Recurrence)
+	for !calendarDateAfter(next, completedAt) {
+		next = calculateNextDate(next, t.Recurrence)
+	}
 	return &next
 }
 
 // NextNDueDates returns the next n upcoming due dates based on the recurrence
-// pattern. The first date matches NextDueDate (honoring Mode); subsequent
-// dates iterate forward from there. Returns nil if the task is not recurring
-// or n <= 0.
+// pattern. The first date matches NextDueDate; subsequent dates follow the
+// scheduled cadence. Returns nil for an invalid pattern or n <= 0.
 func (t *Task) NextNDueDates(n int) []time.Time {
-	if t.Recurrence == nil || n <= 0 {
+	if t.Recurrence == nil || t.Recurrence.Validate() != nil || n <= 0 {
 		return nil
 	}
 
-	var baseDate time.Time
-	if t.Recurrence.Mode == RecurModeFromCompletion {
-		if t.CompletedAt != nil {
-			baseDate = *t.CompletedAt
-		} else {
-			baseDate = time.Now()
-		}
-	} else {
-		baseDate = time.Now()
-		if t.DueDate != nil {
-			baseDate = *t.DueDate
-		}
-	}
-
-	// Seed OriginalDay so that the iterated series does not drift on short months.
-	if t.Recurrence.Mode != RecurModeFromCompletion && t.DueDate != nil {
-		t.ensureRecurrenceOriginalDay(t.DueDate.Day())
+	first := t.NextDueDate()
+	if first == nil {
+		return nil
 	}
 	dates := make([]time.Time, 0, n)
-	current := baseDate
-	for range n {
+	current := *first
+	dates = append(dates, current)
+	for len(dates) < n {
 		current = calculateNextDate(current, t.Recurrence)
 		dates = append(dates, current)
 	}

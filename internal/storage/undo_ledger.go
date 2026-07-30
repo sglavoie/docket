@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/sglavoie/tt/internal/transaction"
@@ -25,6 +24,7 @@ const undoLedgerSchemaVersionV1 = 1
 const (
 	undoLedgerFileName = "ledger.json"
 	undoLedgerBlobsDir = "blobs"
+	WorkspaceUndoLimit = 50
 )
 
 // ArtifactImageKind distinguishes retained file contents from directory
@@ -159,7 +159,7 @@ type LedgerRecord struct {
 // missing content-addressed blobs first and the new ledger file last, so a
 // CommitService can append them to the same transaction manifest as the user
 // artifacts. file is the resulting in-memory ledger state used for post-commit
-// best-effort blob garbage collection. A nil plan means recording is disabled.
+// best-effort blob garbage collection.
 type preparedLedgerRecord struct {
 	ops  []transaction.Op
 	file *ledgerFile
@@ -179,18 +179,21 @@ type preparedLedgerRecord struct {
 type WorkspaceLedger struct {
 	dir             string
 	transactionsDir string
-	maxDepth        atomic.Int64
 	roots           []string
 	now             func() time.Time
 }
 
+// WorkspaceLedgerValidation summarizes a successful read-only validation.
+type WorkspaceLedgerValidation struct {
+	UndoEntries int
+	RedoEntries int
+}
+
 // NewWorkspaceLedger returns a ledger persisted under dir (typically
-// config.UndoLedgerDir(dataDir)). It retains at most maxDepth undo entries,
-// pruning the oldest beyond that depth, and restricts every restore write and
-// delete to paths inside roots as defense in depth. A maxDepth <= 0 disables
-// new history recording without hiding or removing existing entries; callers
-// pass the configured undo depth.
-func NewWorkspaceLedger(dir string, maxDepth int, roots []string) *WorkspaceLedger {
+// config.UndoLedgerDir(dataDir)). It retains exactly the newest
+// WorkspaceUndoLimit committed transactions and restricts every restore write
+// and delete to paths inside roots as defense in depth.
+func NewWorkspaceLedger(dir string, roots []string) *WorkspaceLedger {
 	cleanRoots := make([]string, 0, len(roots))
 	for _, r := range roots {
 		if r != "" {
@@ -203,16 +206,7 @@ func NewWorkspaceLedger(dir string, maxDepth int, roots []string) *WorkspaceLedg
 		roots:           cleanRoots,
 		now:             time.Now,
 	}
-	ledger.maxDepth.Store(int64(maxDepth))
 	return ledger
-}
-
-// SetMaxDepth updates the retention depth used by subsequent record operations.
-// Values at or below zero disable new history recording. Existing undo and redo
-// entries remain readable and restorable, and a positive reduction is applied
-// when the next record is successfully committed.
-func (l *WorkspaceLedger) SetMaxDepth(maxDepth int) {
-	l.maxDepth.Store(int64(maxDepth))
 }
 
 func (l *WorkspaceLedger) ledgerPath() string {
@@ -252,22 +246,139 @@ func (l *WorkspaceLedger) load() (*ledgerFile, error) {
 	if err := normalizeLedgerImages(&lf); err != nil {
 		return nil, err
 	}
+	pruneLedgerCapacity(&lf)
 	if lf.NextSeq == 0 {
 		lf.NextSeq = 1
 	}
 	return &lf, nil
 }
 
+// Validate checks the persisted ledger structure, restore-target containment,
+// and every referenced blob without changing history or comparing against the
+// workspace's current artifact bytes. A missing ledger is a valid empty
+// history.
+func (l *WorkspaceLedger) Validate() (WorkspaceLedgerValidation, error) {
+	if l == nil {
+		return WorkspaceLedgerValidation{}, fmt.Errorf("storage: workspace ledger is required")
+	}
+	lf, err := l.load()
+	if err != nil {
+		return WorkspaceLedgerValidation{}, err
+	}
+
+	seenSeq := make(map[int]bool, len(lf.Entries)+len(lf.RedoEntries))
+	maxSeq := 0
+	for _, stack := range []struct {
+		name    string
+		entries []LedgerEntry
+	}{
+		{name: "undo", entries: lf.Entries},
+		{name: "redo", entries: lf.RedoEntries},
+	} {
+		for index, entry := range stack.entries {
+			if entry.Seq <= 0 {
+				return WorkspaceLedgerValidation{}, fmt.Errorf("storage: %s ledger entry %d has invalid sequence %d", stack.name, index, entry.Seq)
+			}
+			if seenSeq[entry.Seq] {
+				return WorkspaceLedgerValidation{}, fmt.Errorf("storage: undo ledger repeats sequence %d", entry.Seq)
+			}
+			seenSeq[entry.Seq] = true
+			if entry.Seq > maxSeq {
+				maxSeq = entry.Seq
+			}
+			if strings.TrimSpace(entry.TransactionID) == "" {
+				return WorkspaceLedgerValidation{}, fmt.Errorf("storage: ledger entry %d has no transaction id", entry.Seq)
+			}
+			for _, image := range entry.Artifacts {
+				if !pathWithinApprovedRoots(image.Path, l.roots) {
+					return WorkspaceLedgerValidation{}, fmt.Errorf("storage: ledger entry %d artifact path escapes approved roots: %s", entry.Seq, image.Path)
+				}
+			}
+			if _, err := l.validateRestoreImages(entry); err != nil {
+				return WorkspaceLedgerValidation{}, fmt.Errorf("storage: validate ledger entry %d: %w", entry.Seq, err)
+			}
+		}
+	}
+	if lf.NextSeq <= maxSeq {
+		return WorkspaceLedgerValidation{}, fmt.Errorf("storage: undo ledger next sequence %d does not follow retained sequence %d", lf.NextSeq, maxSeq)
+	}
+	return WorkspaceLedgerValidation{
+		UndoEntries: len(lf.Entries),
+		RedoEntries: len(lf.RedoEntries),
+	}, nil
+}
+
 func encodeLedgerFile(lf *ledgerFile) ([]byte, error) {
 	if err := normalizeLedgerImages(lf); err != nil {
 		return nil, err
 	}
+	pruneLedgerCapacity(lf)
 	lf.SchemaVersion = UndoLedgerSchemaVersion
 	data, err := json.MarshalIndent(lf, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal undo ledger: %w", err)
 	}
 	return data, nil
+}
+
+// pruneLedgerCapacity keeps the newest fixed-capacity transactions across both
+// stacks. Undo and redo only move an entry between stacks, so counting both
+// stacks enforces one workspace history even when loading a ledger written by
+// an older release with a larger configured depth.
+func pruneLedgerCapacity(lf *ledgerFile) {
+	if lf == nil {
+		return
+	}
+	total := len(lf.Entries) + len(lf.RedoEntries)
+	if total <= WorkspaceUndoLimit {
+		return
+	}
+	type entryRef struct {
+		seq   int
+		stack int
+		index int
+	}
+	refs := make([]entryRef, 0, total)
+	for i, entry := range lf.Entries {
+		refs = append(refs, entryRef{seq: entry.Seq, index: i})
+	}
+	for i, entry := range lf.RedoEntries {
+		refs = append(refs, entryRef{seq: entry.Seq, stack: 1, index: i})
+	}
+	sort.SliceStable(refs, func(i, j int) bool {
+		if refs[i].seq != refs[j].seq {
+			return refs[i].seq < refs[j].seq
+		}
+		if refs[i].stack != refs[j].stack {
+			return refs[i].stack < refs[j].stack
+		}
+		return refs[i].index < refs[j].index
+	})
+
+	dropUndo := make(map[int]bool)
+	dropRedo := make(map[int]bool)
+	for _, ref := range refs[:total-WorkspaceUndoLimit] {
+		if ref.stack == 0 {
+			dropUndo[ref.index] = true
+		} else {
+			dropRedo[ref.index] = true
+		}
+	}
+	lf.Entries = filterLedgerEntries(lf.Entries, dropUndo)
+	lf.RedoEntries = filterLedgerEntries(lf.RedoEntries, dropRedo)
+}
+
+func filterLedgerEntries(entries []LedgerEntry, drop map[int]bool) []LedgerEntry {
+	if len(drop) == 0 {
+		return entries
+	}
+	filtered := make([]LedgerEntry, 0, len(entries)-len(drop))
+	for i, entry := range entries {
+		if !drop[i] {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
 }
 
 func normalizeLedgerImages(lf *ledgerFile) error {
@@ -312,19 +423,8 @@ func (l *WorkspaceLedger) readBlob(hash string) ([]byte, error) {
 // prepareRecord builds the complete filesystem change for one ledger append
 // without writing anything. That lets every undoable commit stage the ledger
 // blobs and JSON in its user-artifact manifest instead of risking a successful
-// mutation followed by a failed, missing undo entry. It returns a nil plan when
-// the sampled depth disables recording.
+// mutation followed by a failed, missing undo entry.
 func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord, error) {
-	maxDepth := int(l.maxDepth.Load())
-	if maxDepth <= 0 {
-		return nil, nil
-	}
-	return l.prepareRecordWithDepth(rec, maxDepth)
-}
-
-// prepareRecordWithDepth builds a record plan using the depth sampled once by
-// the caller at the start of the record operation.
-func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int) (*preparedLedgerRecord, error) {
 	if rec.TransactionID == "" {
 		return nil, fmt.Errorf("storage: ledger record requires a transaction id")
 	}
@@ -402,14 +502,15 @@ func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int)
 	lf.NextSeq++
 	lf.Entries = append(lf.Entries, entry)
 
-	// Redo invalidation: any pending redo entry that overlaps an artifact in the
-	// new mutation can no longer be safely replayed, so drop it.
-	lf.RedoEntries = removeOverlappingRedo(lf.RedoEntries, entry)
+	// A forward mutation starts a new linear history branch. Every pending redo
+	// transaction is therefore unreachable, including entries whose artifacts do
+	// not overlap this mutation.
+	lf.RedoEntries = nil
 
-	// Retention pruning: keep only the newest maxDepth undo entries.
-	if len(lf.Entries) > maxDepth {
+	// Retention pruning: keep only the newest fixed-capacity undo entries.
+	if len(lf.Entries) > WorkspaceUndoLimit {
 		sort.SliceStable(lf.Entries, func(i, j int) bool { return lf.Entries[i].Seq < lf.Entries[j].Seq })
-		lf.Entries = lf.Entries[len(lf.Entries)-maxDepth:]
+		lf.Entries = lf.Entries[len(lf.Entries)-WorkspaceUndoLimit:]
 	}
 
 	data, encodeErr := encodeLedgerFile(lf)
@@ -423,25 +524,21 @@ func (l *WorkspaceLedger) prepareRecordWithDepth(rec LedgerRecord, maxDepth int)
 }
 
 // Record appends a committed transaction to the ledger. It retains every
-// artifact's before/after bytes as content-addressed blobs, clears overlapping
-// redo entries, prunes the undo stack to its retention depth, and finally
+// artifact's before/after bytes as content-addressed blobs, clears the entire
+// redo stack, prunes the undo stack to its fixed capacity, and finally
 // garbage-collects unreferenced blobs. CommitService uses prepareRecord directly
 // so those writes share the user transaction; Record remains available to the
 // standalone ledger API and focused ledger tests. When recording is enabled,
 // the standalone path uses the workspace commit lock and journal so it cannot
 // race a commit or restore.
 func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
-	maxDepth := int(l.maxDepth.Load())
-	if maxDepth <= 0 {
-		return nil
-	}
 	service := NewCommitService(l.transactionsDir, l.roots)
 	return service.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(l.transactionsDir, l.roots)
 		if _, err := service.recoverLocked(journal); err != nil {
 			return err
 		}
-		plan, err := l.prepareRecordWithDepth(rec, maxDepth)
+		plan, err := l.prepareRecord(rec)
 		if err != nil {
 			return err
 		}
@@ -1065,37 +1162,6 @@ func removeEntryAt(stack []LedgerEntry, idx int) []LedgerEntry {
 	out = append(out, stack[:idx]...)
 	out = append(out, stack[idx+1:]...)
 	return out
-}
-
-// removeOverlappingRedo drops every redo entry that overlaps the new entry.
-// Directory images overlap both their exact path and every descendant path, so
-// a later attachment mutation cannot leave an unsafe directory-level redo.
-func removeOverlappingRedo(redo []LedgerEntry, newEntry LedgerEntry) []LedgerEntry {
-	if len(redo) == 0 || len(newEntry.Artifacts) == 0 {
-		return redo
-	}
-	kept := make([]LedgerEntry, 0, len(redo))
-	for _, e := range redo {
-		if !ledgerEntriesOverlap(e, newEntry) {
-			kept = append(kept, e)
-		}
-	}
-	return kept
-}
-
-func ledgerEntriesOverlap(left, right LedgerEntry) bool {
-	for _, a := range left.Artifacts {
-		for _, b := range right.Artifacts {
-			leftPath := filepath.Clean(a.Path)
-			rightPath := filepath.Clean(b.Path)
-			if leftPath == rightPath ||
-				(a.imageKind() == ArtifactImageKindDirectory && pathWithinArtifactRoot(leftPath, rightPath)) ||
-				(b.imageKind() == ArtifactImageKindDirectory && pathWithinArtifactRoot(rightPath, leftPath)) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func ledgerEntryDescription(entry LedgerEntry) string {

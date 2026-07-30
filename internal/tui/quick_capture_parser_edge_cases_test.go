@@ -2,8 +2,6 @@ package tui
 
 import (
 	"testing"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestParseQuickCaptureEmbeddedTokenLiterals(t *testing.T) {
@@ -56,11 +54,10 @@ func TestParseQuickCaptureEmbeddedTokenLiterals(t *testing.T) {
 			wantHasRecur: false,
 		},
 		{
-			name:         "embedded caret should not trigger type",
+			name:         "embedded caret remains title text",
 			input:        "Fix regex a^bug pattern",
 			wantTitle:    "Fix regex a^bug pattern",
 			wantPriority: 3,
-			wantTaskType: models.TaskTypeTask,
 		},
 		{
 			name:         "embedded dollar should not trigger status",

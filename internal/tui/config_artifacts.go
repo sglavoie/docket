@@ -1,72 +1,23 @@
 package tui
 
 import (
-	"fmt"
-
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// workflowProjectStatusArtifactBuilder applies project-rule status changes to
-// the catalog domain and renders one optimistic-concurrency-checked artifact.
-// The app service groups it with every task, destination-project, and planning
-// write produced by the same cascade.
-func workflowProjectStatusArtifactBuilder(mgr *config.Manager) app.WorkflowProjectStatusArtifactBuilder {
-	if mgr == nil {
-		return nil
-	}
-	return func(changes []app.WorkflowProjectStatusChange) ([]storage.ArtifactChange, error) {
-		coord := mgr.DomainCoordinator()
-		catalog, err := coord.LoadCatalog()
-		if err != nil {
-			return nil, err
-		}
-		changed := false
-		for _, change := range changes {
-			found := false
-			for i := range catalog.Projects {
-				if catalog.Projects[i].ID != change.ProjectID {
-					continue
-				}
-				found = true
-				if catalog.Projects[i].StatusIcon != change.StatusIcon || catalog.Projects[i].StatusIconSource != change.StatusIconSource {
-					catalog.Projects[i].StatusIcon = change.StatusIcon
-					catalog.Projects[i].StatusIconSource = change.StatusIconSource
-					changed = true
-				}
-				break
-			}
-			if !found {
-				return nil, fmt.Errorf("workflow project status target %q is absent from the workspace catalog", change.ProjectID)
-			}
-		}
-		if !changed {
-			return nil, nil
-		}
-		artifact, err := coord.CheckedCatalogArtifact(catalog)
-		if err != nil {
-			return nil, err
-		}
-		return []storage.ArtifactChange{artifact.StorageChange()}, nil
-	}
-}
-
-// syncedDomainArtifacts renders the four explicit synced configuration domains
+// syncedDomainArtifacts renders the two explicit synced configuration domains
 // into revision-checked artifacts for a transaction that intentionally spans
-// catalog, planning, settings, and automation state.
+// catalog and planning state.
 func syncedDomainArtifacts(
 	mgr *config.Manager,
 	catalog *config.WorkspaceCatalog,
 	planning *config.PlanningState,
-	settings *config.Settings,
-	automation *config.AutomationConfig,
 ) ([]storage.ArtifactChange, error) {
 	coord := mgr.DomainCoordinator()
 	if _, err := coord.LoadDomains(); err != nil {
 		return nil, err
 	}
-	domainArts, err := coord.CheckedDomainArtifacts(catalog, planning, settings, automation)
+	domainArts, err := coord.CheckedDomainArtifacts(catalog, planning)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +30,8 @@ func syncedDomainArtifacts(
 
 // planningDomainArtifact renders only planning.json for a task mutation that
 // also removes durable planning references. Keeping this domain-native avoids
-// rebuilding the legacy Config facade and prevents unrelated catalog/settings/
-// automation artifacts from joining the task transaction.
+// rebuilding the legacy Config facade and prevents unrelated catalog artifacts
+// from joining the task transaction.
 func planningDomainArtifact(mgr *config.Manager, planning *config.PlanningState) ([]storage.ArtifactChange, error) {
 	coord := mgr.DomainCoordinator()
 	if _, err := coord.LoadPlanning(); err != nil {
@@ -107,33 +58,4 @@ func catalogDomainArtifact(mgr *config.Manager, catalog *config.WorkspaceCatalog
 		return nil, err
 	}
 	return []storage.ArtifactChange{artifact.StorageChange()}, nil
-}
-
-// catalogAndSettingsDomainArtifacts renders workspace.json and settings.json as
-// one revision-checked pair for a mutation that moves project labels and a
-// setting naming one of them together, so neither can land without the other.
-func catalogAndSettingsDomainArtifacts(
-	mgr *config.Manager,
-	catalog *config.WorkspaceCatalog,
-	settings *config.Settings,
-) ([]storage.ArtifactChange, error) {
-	coord := mgr.DomainCoordinator()
-	if _, err := coord.LoadCatalog(); err != nil {
-		return nil, err
-	}
-	if _, err := coord.LoadSettings(); err != nil {
-		return nil, err
-	}
-	catalogArtifact, err := coord.CheckedCatalogArtifact(catalog)
-	if err != nil {
-		return nil, err
-	}
-	settingsArtifact, err := coord.CheckedSettingsArtifact(settings)
-	if err != nil {
-		return nil, err
-	}
-	return []storage.ArtifactChange{
-		catalogArtifact.StorageChange(),
-		settingsArtifact.StorageChange(),
-	}, nil
 }

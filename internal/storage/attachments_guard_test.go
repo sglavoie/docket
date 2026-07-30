@@ -110,3 +110,22 @@ func TestAttachmentHelpersHandleNilInputs(t *testing.T) {
 		t.Fatalf("GetAttachmentSize with nil attachment = %d, want 0", size)
 	}
 }
+
+func TestResolveAttachmentPathRejectsUntrustedNames(t *testing.T) {
+	project := newTestProject(t)
+	task := &models.Task{ID: "real-task-id", Title: "Real"}
+
+	for _, filename := range []string{"../escape.txt", "/tmp/escape.txt", ".", `nested\\escape.txt`} {
+		if path, err := ResolveAttachmentPath(project, task, filename); err == nil {
+			t.Errorf("ResolveAttachmentPath(%q) = %q, want error", filename, path)
+		}
+	}
+
+	path, err := ResolveAttachmentPath(project, task, "safe.txt")
+	if err != nil {
+		t.Fatalf("ResolveAttachmentPath(safe.txt): %v", err)
+	}
+	if filepath.Base(path) != "safe.txt" {
+		t.Fatalf("resolved path = %q, want safe.txt basename", path)
+	}
+}

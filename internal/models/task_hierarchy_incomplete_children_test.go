@@ -3,15 +3,15 @@ package models
 import "testing"
 
 func TestIncompleteChildrenMixedStatuses(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	done, err := NewTask("done", 2, TaskTypeTask, "Done")
+	done, err := NewGenericTask("done", 2, "Done")
 	if err != nil {
 		t.Fatal(err)
 	}
-	open, err := NewTask("open", 3, TaskTypeTask, "Open")
+	open, err := NewGenericTask("open", 3, "Open")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestIncompleteChildrenMixedStatuses(t *testing.T) {
 }
 
 func TestIncompleteChildrenLeaf(t *testing.T) {
-	leaf, err := NewTask("leaf", 1, TaskTypeTask, "Leaf")
+	leaf, err := NewGenericTask("leaf", 1, "Leaf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,15 +51,15 @@ func TestIncompleteChildrenLeaf(t *testing.T) {
 }
 
 func TestIncompleteChildrenAllComplete(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	c1, err := NewTask("c1", 2, TaskTypeTask, "Child 1")
+	c1, err := NewGenericTask("c1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	c2, err := NewTask("c2", 3, TaskTypeTask, "Child 2")
+	c2, err := NewGenericTask("c2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,11 +82,11 @@ func TestIncompleteChildrenAllComplete(t *testing.T) {
 }
 
 func TestIncompleteChildrenCanceledCountsAsComplete(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	canceled, err := NewTask("canceled", 2, TaskTypeTask, "Canceled")
+	canceled, err := NewGenericTask("canceled", 2, "Canceled")
 	if err != nil {
 		t.Fatal(err)
 	}

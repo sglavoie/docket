@@ -73,7 +73,6 @@ func rebuildAccentColors() {
 		AccentPlan = lipgloss.Color("#15803d")
 		AccentWork = lipgloss.Color("#c2410c")
 		AccentExecute = lipgloss.Color("#0f766e")
-		AccentReview = lipgloss.Color("#92400e")
 		AccentSupport = lipgloss.Color("#4b5563")
 		AccentSearch = lipgloss.Color("#7c3aed")
 	} else {
@@ -83,7 +82,6 @@ func rebuildAccentColors() {
 		AccentPlan = lipgloss.Color("#9ece6a")
 		AccentWork = lipgloss.Color("#ff9e64")
 		AccentExecute = lipgloss.Color("#73daca")
-		AccentReview = lipgloss.Color("#e0af68")
 		AccentSupport = lipgloss.Color("#565f89")
 		AccentSearch = lipgloss.Color("#bb9af7")
 	}

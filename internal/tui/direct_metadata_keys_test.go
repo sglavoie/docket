@@ -53,7 +53,6 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{",", "i"}, want: operationTaskSetState, value: models.StateInbox},
 		{path: []string{",", "w"}, want: operationTaskSetState, value: models.StateWaiting},
 		{path: []string{",", "p"}, want: operationTaskSetState, value: models.StatePaused},
-		{path: []string{",", "r"}, want: operationTaskSetState, value: models.StateReview},
 		{path: []string{",", "s"}, want: operationTaskSetState, value: models.StateSomeday},
 		{path: []string{",", "c"}, want: operationTaskSetState, value: models.StateCanceled},
 	}

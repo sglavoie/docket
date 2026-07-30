@@ -10,7 +10,7 @@ func (m *OutlinerModel) ActiveFilterCount() int {
 }
 
 // activeFilterParts returns the list of active filter description strings
-// (type, state, priority, tags, due date, attrs, score, actionable,
+// (type, state, priority, tags, due date, attrs, actionable,
 // hide-dimmed). commonFilterParts already emits "ready" for Actionable, so it
 // must not be re-appended here.
 func (m *OutlinerModel) activeFilterParts() []string {

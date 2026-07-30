@@ -8,9 +8,8 @@ import (
 )
 
 // appStatusBarHeight is the number of terminal rows the AppModel status bar
-// occupies below a non-full-height view's content (separator + breadcrumb). It
-// mirrors the budgeting constant used by the score profile manager and lets
-// input views reserve space so their content never overflows the terminal.
+// occupies below a non-full-height view's content (separator + breadcrumb).
+// Input views reserve this space so their content never overflows the terminal.
 const appStatusBarHeight = 2
 
 // clampHelpBoxToHeight renders a help box for bodyLines, budgeting the rows

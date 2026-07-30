@@ -12,35 +12,23 @@ import (
 // WriteTasksMarkdown generates markdown content from tasks.
 // Tasks are written in their slice order, preserving user-defined ordering.
 func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
-	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, nil, nil)
-}
-
-// WriteTasksMarkdownWithProjectMetadata generates canonical schema-v2 markdown
-// with all project-level task-file metadata.
-func WriteTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, tags []string, pinnedTags []string) string {
-	return writeTasksMarkdownWithProjectMetadata(projectName, tasks, tags, pinnedTags)
-}
-
-func writeTasksMarkdownWithProjectMetadata(projectName string, tasks []*models.Task, tags []string, pinnedTags []string) string {
 	header := func(b *strings.Builder) {
 		fmt.Fprintf(b, "<!-- tt-schema: %d -->\n", SchemaVersionV2)
 	}
-	return writeTasksMarkdownDocument(projectName, tasks, tags, pinnedTags, header, format.WriteMetadataV2)
+	return writeTasksMarkdownDocument(projectName, tasks, header, format.WriteMetadataV2)
 }
 
 // writeTasksMarkdownDocument is the canonical serializer used by ordinary
 // project writes and ProjectDocument. The header hook writes the schema marker
 // and any preserved opaque blocks before structured project metadata; writeMeta
 // supplies the canonical per-task metadata encoder.
-func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, tags []string, pinnedTags []string, header func(*strings.Builder), writeMeta func(*models.Task) string) string {
+func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, header func(*strings.Builder), writeMeta func(*models.Task) string) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(&builder, "# Project: %s\n", projectName)
 	if header != nil {
 		header(&builder)
 	}
-	writeTagsMetadata(&builder, tags)
-	writePinnedTagsMetadata(&builder, pinnedTags)
 	builder.WriteString("\n")
 
 	hierarchy := indexTaskHierarchy(tasks)
@@ -55,24 +43,6 @@ func writeTasksMarkdownDocument(projectName string, tasks []*models.Task, tags [
 	appendOrphanedTasks(&builder, tasks, hierarchy.children, visited, writeMeta)
 
 	return builder.String()
-}
-
-func writeTagsMetadata(builder *strings.Builder, tags []string) {
-	tags = models.DedupeTags(tags)
-	if len(tags) == 0 {
-		return
-	}
-
-	fmt.Fprintf(builder, "<!-- tags: %s -->\n", strings.Join(tags, ";"))
-}
-
-func writePinnedTagsMetadata(builder *strings.Builder, pinnedTags []string) {
-	pinnedTags = models.DedupeTags(pinnedTags)
-	if len(pinnedTags) == 0 {
-		return
-	}
-
-	fmt.Fprintf(builder, "<!-- pinned_tags: %s -->\n", strings.Join(pinnedTags, ";"))
 }
 
 // taskHierarchyIndex records the roots and ordered child adjacency lists for a
@@ -136,7 +106,7 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, child
 	// (parser.go parseTaskHeadingLine). Writing the raw title would make
 	// the write→parse round-trip non-idempotent for titles with leading
 	// or trailing spaces.
-	fmt.Fprintf(builder, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), strings.TrimSpace(task.Title))
+	fmt.Fprintf(builder, "%s Task: %s\n", hashes, strings.TrimSpace(task.Title))
 
 	builder.WriteString(writeMeta(task))
 	builder.WriteString("\n")
@@ -149,11 +119,6 @@ func writeTaskPreservingOrder(builder *strings.Builder, task *models.Task, child
 		builder.WriteString("<!-- DESCRIPTION -->\n")
 		builder.WriteString(escapeDescription(desc))
 		builder.WriteString("\n<!-- /DESCRIPTION -->\n")
-	}
-
-	if activity := format.WriteActivity(task); activity != "" {
-		builder.WriteString("\n")
-		builder.WriteString(activity)
 	}
 
 	// Comments/Decisions may legitimately return "" even when the slices are

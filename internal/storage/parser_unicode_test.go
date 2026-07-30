@@ -27,7 +27,7 @@ func TestParseTasksMarkdown_UnicodeTitle(t *testing.T) {
 }
 
 func TestParseTasksMarkdown_EmojiTitle(t *testing.T) {
-	content := "# Project: Test\n\n## Bug: \U0001f41b Fix login crash\n<!-- id: b1, status: todo, priority: 1 -->\n\n\U0001f525 Hot fix needed\n"
+	content := "# Project: Test\n\n## Task: \U0001f41b Fix login crash\n<!-- id: b1, status: todo, priority: 1 -->\n\n\U0001f525 Hot fix needed\n"
 	_, tasks, err := ParseTasksMarkdown(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -64,7 +64,6 @@ func TestRoundTrip_UnicodeTitle(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "\u4efb\u52d9\u7ba1\u7406 - Task Manager",
 			Description:   "\u00c9crire du code avec des caract\u00e8res sp\u00e9ciaux: \u00e0\u00e7\u00fc\u00f1",
 			WorkflowState: models.StateReady,
@@ -95,7 +94,6 @@ func TestRoundTrip_EmptyDescription(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "No Description",
 			Description:   "",
 			WorkflowState: models.StateReady,
@@ -123,7 +121,6 @@ func TestRoundTrip_SpecialCharsInTags(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "Tagged Task",
 			WorkflowState: models.StateReady,
 			Priority:      2,
@@ -157,7 +154,6 @@ func TestRoundTrip_ColonInTitle(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "Fix: Handle edge case: empty input",
 			WorkflowState: models.StateReady,
 			Priority:      2,
@@ -186,7 +182,6 @@ func TestRoundTrip_DescriptionWithHTMLComment(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "Tricky Description",
 			Description:   "Use <!-- comment --> syntax in markdown.",
 			WorkflowState: models.StateReady,

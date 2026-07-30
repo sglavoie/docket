@@ -11,8 +11,6 @@ import (
 
 // newTestAppModel creates an AppModel for testing with a temp config file.
 func newTestAppModel() *AppModel {
-	resetSessionMutations()
-
 	cfg := newTestConfig()
 	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
 	configPath := filepath.Join(tmpDir, "tt.json")
@@ -35,12 +33,9 @@ func newTestAppModel() *AppModel {
 
 // newTestAppModelWithProject creates an AppModel with a test project and temp config.
 func newTestAppModelWithProject() (*AppModel, *models.Project) {
-	resetSessionMutations()
-
 	cfg := newTestConfig()
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	setTestProjects(cfg, []*models.Project{project})
-	cfg.Machine().CurrentProject = project.ID
 
 	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
 	configPath := filepath.Join(tmpDir, "tt.json")
@@ -70,7 +65,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 func setTestPresentationPath(app *AppModel, views ...PresentationID) {
 	app.navigation = NewNavigationState()
 	for _, view := range views {
-		if view == ViewDashboard {
+		if view == ViewUnknown {
 			continue
 		}
 		if view == ViewCrossProjectOutliner {
@@ -107,7 +102,9 @@ func setTestAppProjects(app *AppModel, projects ...*models.Project) {
 		if project == nil {
 			continue
 		}
-		catalog.UpsertProject(project)
+		if err := catalog.UpsertProject(project); err != nil {
+			panic(err)
+		}
 		app.projects[project.ID] = project
 	}
 	app.runtime.SetCatalogInMemory(catalog)
@@ -116,11 +113,4 @@ func setTestAppProjects(app *AppModel, projects ...*models.Project) {
 func addTestAppProject(app *AppModel, project *models.Project) {
 	projects := append(app.allProjects(), project)
 	setTestAppProjects(app, projects...)
-}
-
-func setTestCurrentProject(app *AppModel, projectID string) {
-	machine := cloneMachineState(app.runtime.Machine())
-	machine.CurrentProject = projectID
-	app.runtime.SetMachineInMemory(machine)
-	app.currentProject = app.projectByID(projectID)
 }

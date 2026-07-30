@@ -26,6 +26,12 @@ func validateAttachmentPath(path string) error {
 
 // AddAttachment adds a file attachment to the task.
 func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) error {
+	return t.AddAttachmentAt(filename, isURL, originalPath, time.Now())
+}
+
+// AddAttachmentAt adds a file or URL attachment using the caller-owned
+// mutation timestamp.
+func (t *Task) AddAttachmentAt(filename string, isURL bool, originalPath string, now time.Time) error {
 	if filename == "" {
 		return fmt.Errorf("attachment filename must not be empty")
 	}
@@ -35,20 +41,29 @@ func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) e
 	if err := validateAttachmentPath(originalPath); err != nil {
 		return fmt.Errorf("adding attachment: %w", err)
 	}
+	if now.IsZero() {
+		return fmt.Errorf("adding attachment: timestamp must not be zero")
+	}
 	attachment := Attachment{
 		Filename:     filename,
 		IsURL:        isURL,
 		OriginalPath: originalPath,
-		AddedAt:      time.Now(),
+		AddedAt:      now,
 	}
 	t.Attachments = append(t.Attachments, attachment)
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 	return nil
 }
 
 // AddCodeReference adds a code reference attachment to the task.
 // Code references are stored without copying the file.
 func (t *Task) AddCodeReference(path string, lineNumber int) error {
+	return t.AddCodeReferenceAt(path, lineNumber, time.Now())
+}
+
+// AddCodeReferenceAt adds a code reference using the caller-owned mutation
+// timestamp.
+func (t *Task) AddCodeReferenceAt(path string, lineNumber int, now time.Time) error {
 	if path == "" {
 		return fmt.Errorf("code reference path must not be empty")
 	}
@@ -58,16 +73,19 @@ func (t *Task) AddCodeReference(path string, lineNumber int) error {
 	if err := validateAttachmentPath(path); err != nil {
 		return fmt.Errorf("adding code reference: %w", err)
 	}
+	if now.IsZero() {
+		return fmt.Errorf("adding code reference: timestamp must not be zero")
+	}
 	attachment := Attachment{
 		Filename:     path,
 		IsURL:        false,
 		IsCodeRef:    true,
 		LineNumber:   lineNumber,
 		OriginalPath: path,
-		AddedAt:      time.Now(),
+		AddedAt:      now,
 	}
 	t.Attachments = append(t.Attachments, attachment)
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 	return nil
 }
 

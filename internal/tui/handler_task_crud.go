@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -45,18 +45,6 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 		return true, nil
 	}
 
-	// Check if there are enabled templates (unless explicitly skipped)
-	if !msg.SkipTemplatePicker {
-		enabledTemplates := m.runtime.Automation().GetEnabledTaskTemplates()
-		if len(enabledTemplates) > 0 {
-			// Store the parent task and show template picker
-			m.pendingCreateTaskParent = msg.ParentTask
-			m.pendingCreateTaskProject = project
-			_, cmd := m.showViewInit(ViewTaskTemplatePicker, NewTemplatePickerModel(enabledTemplates, project))
-			return true, cmd
-		}
-	}
-	// No templates or skipped, go directly to the compact task composer.
 	return true, m.openTaskComposer(m.createComposerPreset(project, msg.ParentTask))
 }
 
@@ -67,8 +55,9 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 		project = m.currentProject
 	}
 	if project != nil && msg.Task != nil {
-		preset := TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: msg.Task}
-		return true, m.openTaskComposer(preset)
+		return m.handleEditorMessages(ShowTaskTextEditorMsg{
+			Task: msg.Task, Project: project, Operation: app.TaskOperationEditTitle,
+		})
 	}
 	return true, nil
 }
@@ -77,12 +66,6 @@ func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
 func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	// Capture whether this creation originated from the Quick Capture view and the
 	// pre-capture task count before handleWithRefresh pops the view / reloads.
-	fromQuickCapture := m.taskComposer != nil && m.taskComposer.preset.Kind == ComposerGlobal
-	preCaptureCount := 0
-	if m.currentProject != nil {
-		preCaptureCount = len(m.currentProject.Tasks)
-	}
-
 	// Coordinator path: the capture committed one atomic ChangeSet through the
 	// application layer, so reload the committed project from disk and re-resolve
 	// the task by ID. The shared navigation/status/open-after logic below then runs
@@ -106,9 +89,6 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	} else if msg.Task != nil {
 		m.sessionStats.tasksCreated++
 	}
-	if msg.Task != nil {
-		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.TaskCaptured = true })
-	}
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
 	if msg.Task != nil {
@@ -129,13 +109,6 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	}
 	if msg.CreatedCount > 1 {
 		m.setSuccessStatus(fmt.Sprintf("Created %d tasks", msg.CreatedCount))
-	}
-
-	// Override with onboarding next-step hint when this was the first task captured
-	if fromQuickCapture && msg.Task != nil {
-		if hint := captureNextHint(preCaptureCount); hint != "" {
-			m.setSuccessStatus(formatSuccessWithNext("Task captured", hint))
-		}
 	}
 
 	// Delegate to the current view so it can reload its state
@@ -208,18 +181,18 @@ func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
 		return true, refreshCmd
 	}
 
-	// Pull the latest undo snapshot so the toast labels exactly what
-	// `u` will undo. Falling back to the in-message task title would
-	// drift if the project has no undo entry recorded.
-	entries, err := storage.LoadUndoHistory(project)
-	if err != nil || len(entries) == 0 {
+	// Pull the latest workspace entry so the toast labels exactly what `u` will
+	// undo. Falling back to the in-message task title would drift if no durable
+	// transaction was recorded.
+	ledger := workspaceLedgerFromConfig(m.runtime)
+	latest, ok, err := ledger.SelectNewestUndo(storage.GlobalScope())
+	if err != nil || !ok {
 		return true, refreshCmd
 	}
-	latest := entries[0]
 
 	toast := formatUndoToast(latest.Action, latest.Context)
 	undoCb := func() tea.Cmd {
-		return performUndoForProjectsCmd(m.persister, project, activeUndoProjectsFromRuntime(m.runtime), m.repairTaskProjectRefsAfterRestore)
+		return m.handleLedgerTaskUndoRedo(false)
 	}
 	return true, tea.Batch(refreshCmd, m.setUndoableStatus(toast, undoCb))
 }

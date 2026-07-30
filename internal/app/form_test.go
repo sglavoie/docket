@@ -20,14 +20,13 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 	res, err := svc.AddTaskWithChildren(app.AddTaskRequest{
 		ProjectID: project.ID,
 		Title:     "Parent Epic",
-		Type:      models.TaskTypeEpic,
 		Priority:  2,
 		Tags:      []string{"backend"},
 		State:     models.StateNext,
 		Subtasks: []app.AddSubtaskRequest{
-			{Title: "child one", Type: models.TaskTypeTask},
-			{Title: "  ", Type: models.TaskTypeTask},
-			{Title: "child two", Type: models.TaskTypeBug},
+			{Title: "child one"},
+			{Title: "  "},
+			{Title: "child two"},
 		},
 	})
 	if err != nil {
@@ -41,8 +40,8 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 	}
 
 	parent := project.GetTaskByID(res.Task.TaskID)
-	if parent == nil || parent.Type != models.TaskTypeEpic {
-		t.Fatalf("parent not committed as epic: %v", parent)
+	if parent == nil {
+		t.Fatalf("parent not committed: %v", parent)
 	}
 	for _, cr := range res.Subtasks {
 		child := project.GetTaskByID(cr.TaskID)
@@ -65,26 +64,20 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 }
 
 // TestAddTaskWithChildrenAppliesFormFields proves the create use case applies the
-// task form's scheduling, reference, flag, and checklist metadata.
+// task form's scheduling, flag, and checklist metadata.
 func TestAddTaskWithChildrenAppliesFormFields(t *testing.T) {
 	project := newProject("proj-1", "Proj")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
 	due := time.Date(2026, 8, 1, 15, 0, 0, 0, time.UTC)
-	start := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
 	res, err := svc.AddTaskWithChildren(app.AddTaskRequest{
-		ProjectID:     project.ID,
-		Title:         "Full task",
-		Priority:      3,
-		State:         models.StateNext,
-		DueDate:       &due,
-		HasTime:       true,
-		StartDate:     &start,
-		EstimatedDays: 2.5,
-		URL:           "https://example.com",
-		Source:        "meeting",
-		Pinned:        true,
+		ProjectID: project.ID,
+		Title:     "Full task",
+		Priority:  3,
+		State:     models.StateNext,
+		DueDate:   &due,
+		Pinned:    true,
 		ChecklistItems: []models.ChecklistItem{
 			{Text: "done step", Done: true},
 			{Text: "  ", Done: false},
@@ -98,17 +91,8 @@ func TestAddTaskWithChildrenAppliesFormFields(t *testing.T) {
 	if task == nil {
 		t.Fatal("task not committed")
 	}
-	if task.DueDate == nil || !task.HasTime {
-		t.Errorf("due/hasTime not applied: %v %v", task.DueDate, task.HasTime)
-	}
-	if task.StartDate == nil {
-		t.Error("start date not applied")
-	}
-	if task.EstimatedDays != 2.5 {
-		t.Errorf("estimated days = %v, want 2.5", task.EstimatedDays)
-	}
-	if task.URL != "https://example.com" || task.Source != "meeting" {
-		t.Errorf("url/source not applied: %q %q", task.URL, task.Source)
+	if task.DueDate == nil {
+		t.Error("due date not applied")
 	}
 	if !task.Pinned || task.PinnedAt == nil {
 		t.Error("pinned/pinnedAt not applied")
@@ -121,45 +105,10 @@ func TestAddTaskWithChildrenAppliesFormFields(t *testing.T) {
 	}
 }
 
-// TestAddTaskWithChildrenInsertBeforeDimmed proves the create positioning inserts
-// a new root task before the first dimmed root task in the same display section.
-func TestAddTaskWithChildrenInsertBeforeDimmed(t *testing.T) {
-	dimmed := newTask("dimmed-1", 1, "Dimmed")
-	dimmed.ApplyWorkflowState(models.StateNext)
-	dimmed.Dimmed = true
-	project := newProject("proj-1", "Proj", dimmed)
-	repo := newFakeRepo(project)
-	svc := newTestService(repo)
-
-	res, err := svc.AddTaskWithChildren(app.AddTaskRequest{
-		ProjectID:          project.ID,
-		Title:              "New",
-		State:              models.StateNext,
-		InsertBeforeDimmed: true,
-	})
-	if err != nil {
-		t.Fatalf("AddTaskWithChildren: %v", err)
-	}
-	newIdx, dimmedIdx := -1, -1
-	for i, task := range project.Tasks {
-		switch task.ID {
-		case res.Task.TaskID:
-			newIdx = i
-		case dimmed.ID:
-			dimmedIdx = i
-		}
-	}
-	if newIdx < 0 || dimmedIdx < 0 || newIdx >= dimmedIdx {
-		t.Fatalf("new (%d) should precede dimmed (%d)", newIdx, dimmedIdx)
-	}
-}
-
 // TestEditFormReplacesFullFieldSet proves a form edit replaces the whole editable
-// field set, including switching type and clearing the previous type's attrs.
+// field set.
 func TestEditFormReplacesFullFieldSet(t *testing.T) {
 	task := newTask("t-1", 1, "Before")
-	task.Type = models.TaskTypeBug
-	task.BugAttrs = &models.BugAttrs{Severity: models.BugSeverityMajor}
 	project := newProject("proj-1", "Proj", task)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -169,12 +118,8 @@ func TestEditFormReplacesFullFieldSet(t *testing.T) {
 		TaskID: task.ID,
 		Form: &app.FormEdit{
 			Title:    "After",
-			Type:     models.TaskTypeTask,
 			Priority: 1,
 			Tags:     []string{"x"},
-			TaskAttrs: &models.TaskAttrs{
-				Effort: models.EffortSmall,
-			},
 		},
 		WorkflowState: &state,
 	})
@@ -182,14 +127,8 @@ func TestEditFormReplacesFullFieldSet(t *testing.T) {
 		t.Fatalf("Edit: %v", err)
 	}
 	got := project.GetTaskByID(res.TaskID)
-	if got.Title != "After" || got.Type != models.TaskTypeTask || got.Priority != 1 {
+	if got.Title != "After" || got.Priority != 1 {
 		t.Fatalf("edit not applied: %+v", got)
-	}
-	if got.BugAttrs != nil {
-		t.Error("stale BugAttrs should be cleared on type change")
-	}
-	if got.TaskAttrs == nil || got.TaskAttrs.Effort != models.EffortSmall {
-		t.Errorf("new TaskAttrs not applied: %v", got.TaskAttrs)
 	}
 	if !got.HasTag("x") {
 		t.Errorf("tags = %v, want x", got.Tags)
@@ -206,7 +145,7 @@ func TestEditFormRejectsInvalidTitle(t *testing.T) {
 
 	_, err := svc.Edit(app.EditRequest{
 		TaskID: task.ID,
-		Form:   &app.FormEdit{Title: "   ", Type: models.TaskTypeTask, Priority: 3},
+		Form:   &app.FormEdit{Title: "   ", Priority: 3},
 	})
 	if err == nil {
 		t.Fatal("expected an error for a blank title")
@@ -227,7 +166,7 @@ func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
 		_, err := svc.Edit(app.EditRequest{
 			TaskID: task.ID,
 			Form: &app.FormEdit{
-				Title: "After", Type: models.TaskTypeTask, Priority: 3, Tags: []string{},
+				Title: "After", Priority: 3, Tags: []string{},
 			},
 			WorkflowState: &state,
 		})
@@ -248,7 +187,7 @@ func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
 		_, err := svc.Edit(app.EditRequest{
 			TaskID: task.ID,
 			Form: &app.FormEdit{
-				Title: "Done", Type: models.TaskTypeTask, Priority: 3, Tags: []string{},
+				Title: "Done", Priority: 3, Tags: []string{},
 			},
 			WorkflowState: &state,
 		})

@@ -10,9 +10,6 @@ var (
 	InProgressStyle = lipgloss.NewStyle().
 			Foreground(ColorWarning)
 
-	ReviewStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary)
-
 	DoneStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)
 

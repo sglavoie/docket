@@ -36,12 +36,9 @@ type FeatureMutator interface {
 	// Capture creates a new task in a project (Quick Capture, the Inbox capture
 	// flow, and the create task form).
 	Capture(req app.CaptureRequest) (app.TaskResult, error)
-	// CaptureMany creates several tasks in one project as one ChangeSet (Bulk
-	// Capture).
+	// CaptureMany creates routed tasks across one or more projects as one
+	// transaction (multiline capture).
 	CaptureMany(reqs []app.CaptureRequest) ([]app.TaskResult, error)
-	// CreateLinkedTask creates a task related to an existing source task (the
-	// Linked Task Creator).
-	CreateLinkedTask(req app.LinkedTaskRequest) (app.LinkedTaskResult, error)
 	// AddTaskWithChildren creates a parent task plus subtasks in one ChangeSet
 	// (the create task form).
 	AddTaskWithChildren(req app.AddTaskRequest) (app.FormCreateResult, error)
@@ -111,11 +108,6 @@ type TransactionErrorMsg struct {
 	Feature string
 	Action  string
 	Err     error
-	// DeleteRequestToken correlates a rejected canonical delete with the Inbox /
-	// Weekly Review post-commit bookkeeping it armed, so only the exact request's
-	// failure drops that in-flight state. Zero for every non-delete rejection (and
-	// for deletes that armed no bookkeeping); the correlation guards ignore zero.
-	DeleteRequestToken uint64
 }
 
 // FeatureCoordinator is the shared base for the primary feature coordinators. It
@@ -171,7 +163,7 @@ func (c CaptureCoordinator) Capture(req app.CaptureRequest) tea.Cmd {
 // Capture) and emits a TaskCreatedMsg carrying the committed application result
 // plus the open-after flags, so the shell reloads the committed project,
 // re-resolves the task for cursor navigation and open-after, and shows the
-// "Created in <bucket>" / onboarding status. A rejected capture surfaces an
+// creation status. A rejected capture surfaces an
 // ErrorMsg, leaving the capture view open with the pre-mutation input.
 func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent, openDetail bool) tea.Cmd {
 	mutator := c.mutator
@@ -224,43 +216,6 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 			return msg
 		}
 		return SaveCompleteMsg{}
-	}
-}
-
-type linkedTaskBatchMutator interface {
-	CreateLinkedTasks([]app.LinkedTaskRequest) ([]app.LinkedTaskResult, error)
-}
-
-// CreateLinkedBulk commits every compact linked-task line and its relationship
-// through one application-layer ChangeSet.
-func (c CaptureCoordinator) CreateLinkedBulk(reqs []app.LinkedTaskRequest, linkType LinkType) tea.Cmd {
-	mutator := c.mutator
-	return func() tea.Msg {
-		batch, ok := mutator.(linkedTaskBatchMutator)
-		if !ok {
-			return ErrorMsg{Err: fmt.Errorf("linked-task batch mutation is unavailable")}
-		}
-		results, err := batch.CreateLinkedTasks(reqs)
-		if err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return LinkedTaskBatchCreatedMsg{Results: results, LinkType: linkType}
-	}
-}
-
-// CreateLinked runs the linked-task capture use case and emits a
-// LinkedTaskCreatedMsg carrying the committed result, so the shell reloads the
-// committed project, re-resolves both tasks, jumps/opens as configured, and shows
-// the "Created <link> #N" status. A rejected creation surfaces an ErrorMsg.
-func (c CaptureCoordinator) CreateLinked(req app.LinkedTaskRequest, linkType LinkType, openContent, openDetail bool) tea.Cmd {
-	mutator := c.mutator
-	return func() tea.Msg {
-		res, err := mutator.CreateLinkedTask(req)
-		if err != nil {
-			return ErrorMsg{Err: err}
-		}
-		result := res
-		return LinkedTaskCreatedMsg{Result: &result, LinkType: linkType, OpenContent: openContent, OpenDetail: openDetail}
 	}
 }
 

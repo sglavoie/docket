@@ -36,8 +36,11 @@ func TestParseQuickEdit_Tags(t *testing.T) {
 	if len(result.tagsToAdd) != 1 || result.tagsToAdd[0] != "newtag" {
 		t.Errorf("expected tagsToAdd=['newtag'], got %v", result.tagsToAdd)
 	}
-	if len(result.tagsToRemove) != 1 || result.tagsToRemove[0] != "old" {
-		t.Errorf("expected tagsToRemove=['old'], got %v", result.tagsToRemove)
+	if len(result.tagsToRemove) != 0 {
+		t.Errorf("tagsToRemove = %v, want no shared -# parsing", result.tagsToRemove)
+	}
+	if result.title != "Task -#old" {
+		t.Errorf("title = %q, want legacy removal form as text", result.title)
 	}
 }
 
@@ -150,11 +153,11 @@ func TestParseQuickEdit_HyphenatedTags(t *testing.T) {
 	if len(result.tagsToAdd) != 1 || result.tagsToAdd[0] != "new-tag" {
 		t.Errorf("expected tagsToAdd=['new-tag'], got %v", result.tagsToAdd)
 	}
-	if len(result.tagsToRemove) != 1 || result.tagsToRemove[0] != "old-tag" {
-		t.Errorf("expected tagsToRemove=['old-tag'], got %v", result.tagsToRemove)
+	if len(result.tagsToRemove) != 0 {
+		t.Errorf("tagsToRemove = %v, want no shared -# parsing", result.tagsToRemove)
 	}
-	if result.title != "Task" {
-		t.Errorf("expected title 'Task', got '%s'", result.title)
+	if result.title != "Task -#old-tag" {
+		t.Errorf("expected legacy removal form in title, got %q", result.title)
 	}
 }
 

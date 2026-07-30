@@ -17,31 +17,20 @@ type AccentCategory int
 
 const (
 	AccentCatNone AccentCategory = iota
-	AccentCatDashboard
 	AccentCatCapture
 	AccentCatTriage
-	AccentCatPlan
-	AccentCatWork
 	AccentCatExecute
-	AccentCatReview
 	AccentCatSupport
-	AccentCatSearch
 )
 
 // presentationScope derives command scope directly from the active renderer.
 // Navigation identity is owned exclusively by RouteID and its typed params.
 func presentationScope(view PresentationID) RouteScope {
 	switch view {
-	case ViewDashboard, ViewProjectList,
-		ViewDailyReview, ViewWeeklyReview, ViewRecentActivity, ViewGlobalSearch,
-		ViewGlobalBlockers, ViewGlobalNotes,
-		ViewGlobalTagManager, ViewSettings, ViewWorkflowRules, ViewTaskTemplates,
-		ViewTutor, ViewAsk, ViewScoreProfileManager, ViewMetricsDashboard,
-		ViewCrossProjectOutliner, ViewRoadmap,
-		ViewNotificationCenter, ViewMessageLog, ViewContextHub:
+	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewContextHub:
 		return ScopeApp
 	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail,
-		ViewTaskAttachments, ViewTaskActivity:
+		ViewTaskAttachments:
 		return ScopeTask
 	default:
 		return ScopeProject
@@ -52,21 +41,12 @@ func presentationScope(view PresentationID) RouteScope {
 // second navigation registry.
 func presentationAccentCategory(view PresentationID) AccentCategory {
 	switch view {
-	case ViewDashboard:
-		return AccentCatDashboard
 	case ViewTaskComposer:
 		return AccentCatCapture
 	case ViewCrossProjectOutliner:
 		return AccentCatTriage
-	case ViewDailyReview, ViewRoadmap:
-		return AccentCatPlan
-	case ViewWeeklyReview, ViewMetricsDashboard, ViewRecentActivity:
-		return AccentCatReview
-	case ViewGlobalBlockers, ViewGlobalNotes, ViewNotes, ViewWorkflowRules,
-		ViewNotificationCenter, ViewContextHub:
+	case ViewGlobalNotes, ViewNotes, ViewContextHub:
 		return AccentCatSupport
-	case ViewGlobalSearch, ViewFinder:
-		return AccentCatSearch
 	default:
 		return AccentCatNone
 	}
@@ -75,24 +55,14 @@ func presentationAccentCategory(view PresentationID) AccentCategory {
 // accentColorForCategory resolves an accent category against the active theme.
 func accentColorForCategory(category AccentCategory) color.Color {
 	switch category {
-	case AccentCatDashboard:
-		return AccentDashboard
 	case AccentCatCapture:
 		return AccentCapture
 	case AccentCatTriage:
 		return AccentTriage
-	case AccentCatPlan:
-		return AccentPlan
-	case AccentCatWork:
-		return AccentWork
 	case AccentCatExecute:
 		return AccentExecute
-	case AccentCatReview:
-		return AccentReview
 	case AccentCatSupport:
 		return AccentSupport
-	case AccentCatSearch:
-		return AccentSearch
 	default:
 		return nil
 	}
@@ -100,8 +70,8 @@ func accentColorForCategory(category AccentCategory) color.Color {
 
 // allPresentations returns the contiguous renderer inventory.
 func allPresentations() []PresentationID {
-	presentations := make([]PresentationID, 0, int(ViewContextHub)+1)
-	for presentation := ViewDashboard; presentation <= ViewContextHub; presentation++ {
+	presentations := make([]PresentationID, 0, int(ViewContextHub))
+	for presentation := ViewProjectCreator; presentation <= ViewContextHub; presentation++ {
 		presentations = append(presentations, presentation)
 	}
 	return presentations

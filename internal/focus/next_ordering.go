@@ -2,15 +2,12 @@ package focus
 
 import "github.com/sglavoie/tt/internal/config"
 
-// FocusQueueRank maps each project-qualified task present in the Focus Queue
-// order index to its 0-based position. Membership in Next is the StateNext
-// workflow state, not presence in this list — the list only records the user's
-// preferred ordering among Next tasks. Duplicate qualified entries keep their
-// first (earliest) position.
-func FocusQueueRank(queue []config.FocusQueueItem) map[config.ProjectTaskLocator]int {
-	rank := make(map[config.ProjectTaskLocator]int, len(queue))
-	for i, item := range queue {
-		locator := config.ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
+// NextOrderRank maps each project-qualified task in the durable Next order to
+// its 0-based position. Membership remains the StateNext workflow state.
+// Duplicate qualified entries keep their first (earliest) position.
+func NextOrderRank(order []config.ProjectTaskLocator) map[config.ProjectTaskLocator]int {
+	rank := make(map[config.ProjectTaskLocator]int, len(order))
+	for i, locator := range order {
 		if _, seen := rank[locator]; !seen {
 			rank[locator] = i
 		}

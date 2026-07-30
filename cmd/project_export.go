@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -46,6 +47,9 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 		if err = os.MkdirAll(workspace.Manager.ExportsDir(), 0700); err != nil {
 			return fmt.Errorf("create exports dir: %w", err)
 		}
+	}
+	if guardErr := config.RefusePreSimplificationV5SnapshotMutation(workspace.Runtime.DataDir(), dest); guardErr != nil {
+		return fmt.Errorf("refusing project export destination: %w", guardErr)
 	}
 
 	destPath, err := ExportProjectMarkdown(project, dest)

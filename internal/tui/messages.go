@@ -14,7 +14,6 @@ package tui
 //   - CloseXxxMsg: Dismisses the view, may carry result data
 //
 // Examples:
-//   - ShowFinderMsg / FinderClosedMsg
 //   - ShowHelpMsg / CloseHelpMsg
 //   - ShowTagSelectorMsg (closes via TagSelectorDoneMsg)
 //
@@ -41,7 +40,7 @@ package tui
 //   - XxxDeletedMsg: Entity was removed
 //
 // Examples:
-//   - ProjectCreatedMsg, ProjectUpdatedMsg, ProjectDeletedMsg
+//   - ProjectCreatedMsg, ProjectUpdatedMsg
 //   - TaskCreatedMsg, TaskUpdatedMsg, TaskDeletedMsg
 //   - CommentAddedMsg, CommentEditedMsg, CommentDeletedMsg
 //
@@ -55,12 +54,11 @@ package tui
 // Examples:
 //   - SelectProjectMsg: Switch to project in dashboard
 //   - GlobalSearchSelectMsg: Navigate to search result
-//   - TaskJumperSelectMsg: Jump to task in tree
 //
 // # Action Pattern (Command Execution)
 //
-// Used to trigger specific operations from the registry, Finder, or direct
-// keyboard shortcuts.
+// Used to trigger specific operations from the registry or direct keyboard
+// shortcuts.
 //
 //   - XxxActionMsg: Execute action with parameters
 //   - XxxMsg (verb): Trigger an operation

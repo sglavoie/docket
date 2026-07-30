@@ -18,29 +18,23 @@ var (
 
 // Project represents a collection of tasks.
 type Project struct {
-	ID               string     `json:"id"`
-	Slug             string     `json:"slug"`
-	Name             string     `json:"name"`
-	Description      string     `json:"description,omitempty"`
-	StatusIcon       string     `json:"status_icon,omitempty"`
-	StatusIconSource string     `json:"status_icon_source,omitempty"` // "user" (manually set), "auto" (workflow-inferred), "" (unset)
-	Context          string     `json:"context"`
-	Path             string     `json:"path"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Archived         bool       `json:"archived"`
-	ArchivedAt       *time.Time `json:"archived_at,omitempty"`
-	Pinned           bool       `json:"pinned"`
-	PinnedAt         *time.Time `json:"pinned_at,omitempty"`
-	Sandbox          bool       `json:"sandbox,omitempty"`
-	Internal         bool       `json:"internal,omitempty"`
-	ColorSlot        int        `json:"color_slot,omitempty"`
+	ID          string     `json:"id"`
+	Slug        string     `json:"slug"`
+	Name        string     `json:"name"`
+	Description string     `json:"description,omitempty"`
+	Context     string     `json:"context"`
+	Path        string     `json:"path"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	Archived    bool       `json:"archived"`
+	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
+	Pinned      bool       `json:"pinned"`
+	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
+	ColorSlot   int        `json:"color_slot,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks       []*Task  `json:"-"`
 	NextShortID int      `json:"-"`
-	Tags        []string `json:"-"` // Project-level tag definitions
-	PinnedTags  []string `json:"-"` // Project-level pinned tag tabs
 	Warnings    []string `json:"-"` // Data repair warnings from last load
 }
 
@@ -64,9 +58,8 @@ var reservedProjectSlugs = map[string]bool{
 // ValidateProjectSlug reports whether slug is the exact portable directory
 // component accepted in a workspace catalog. Ordinary slugs must already be in
 // Slugify's canonical lowercase ASCII form; validation never normalizes persisted
-// input. The hidden _sandbox component is the sole exception and is accepted only
-// for a project explicitly marked as the workspace sandbox.
-func ValidateProjectSlug(slug string, sandbox bool) error {
+// input.
+func ValidateProjectSlug(slug string) error {
 	if err := util.ValidateChildName(slug); err != nil {
 		return fmt.Errorf("project slug %q is not a safe path component: %w", slug, err)
 	}
@@ -74,10 +67,7 @@ func ValidateProjectSlug(slug string, sandbox bool) error {
 		return fmt.Errorf("project slug too long (%d chars, max %d)", len(slug), MaxProjectSlugLength)
 	}
 	if slug == "_sandbox" {
-		if sandbox {
-			return nil
-		}
-		return fmt.Errorf("project slug %q is reserved for the sandbox project", slug)
+		return fmt.Errorf("project slug %q is reserved", slug)
 	}
 	if reservedProjectSlugs[slug] {
 		return fmt.Errorf("project slug %q is reserved", slug)
@@ -104,7 +94,7 @@ func NewProject(id, name, path string) (*Project, error) {
 	if slug == "" {
 		return nil, fmt.Errorf("project name %q produces empty slug after sanitization", name)
 	}
-	if err := ValidateProjectSlug(slug, false); err != nil {
+	if err := ValidateProjectSlug(slug); err != nil {
 		return nil, err
 	}
 	now := time.Now()
@@ -119,8 +109,6 @@ func NewProject(id, name, path string) (*Project, error) {
 		Archived:    false,
 		Tasks:       []*Task{},
 		NextShortID: 1,
-		Tags:        []string{},
-		PinnedTags:  []string{},
 	}, nil
 }
 
@@ -187,17 +175,6 @@ func (p *Project) MutateTask(taskID string, fn func(*Task)) bool {
 		}
 	}
 	return false
-}
-
-// StatusIconEmoji returns the emoji for the project's status icon, or empty string if not set.
-func (p *Project) StatusIconEmoji() string {
-	if p.StatusIcon == "" {
-		return ""
-	}
-	if icon := ProjectStatusIconByKey(p.StatusIcon); icon != nil {
-		return icon.DisplayIcon()
-	}
-	return ""
 }
 
 // TogglePinned toggles the pinned status.

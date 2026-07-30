@@ -15,10 +15,8 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
-// opsRepo wraps fakeRepo and implements app.OpsCommitter by applying the planned
-// operations directly on the real filesystem, so the project-lifecycle use cases —
-// which plan real directory moves, tombstone writes, and recursive deletes — commit
-// against temp directories. An injected commitErr simulates a transaction failure.
+// opsRepo wraps fakeRepo and applies planned lifecycle operations directly on a
+// temporary filesystem. An injected commitErr simulates transaction failure.
 type opsRepo struct {
 	*fakeRepo
 	commitErr          error
@@ -114,156 +112,27 @@ func tasksExpectedRevision(t *testing.T, project *models.Project) *string {
 	return &revision
 }
 
-// TestDeleteProjectRequiresConfirm proves an unconfirmed delete never touches
-// storage: the destructive-confirmation guard fires before the port is even
-// resolved.
-func TestDeleteProjectRequiresConfirm(t *testing.T) {
-	svc := newTestService(newFakeRepo())
-	_, err := svc.DeleteProject(app.DeleteProjectRequest{
-		Project: &models.Project{ID: "id", Slug: "x"},
-		Confirm: false,
-	})
-	if !errors.Is(err, app.ErrDestructiveConfirmationRequired) {
-		t.Fatalf("DeleteProject(unconfirmed) err = %v, want ErrDestructiveConfirmationRequired", err)
-	}
-}
-
-// TestDeleteProjectFailsClosedWithoutOpsCommitter proves the use case refuses to run
-// when the repository cannot commit raw ops, rather than silently degrading.
-func TestDeleteProjectFailsClosedWithoutOpsCommitter(t *testing.T) {
-	svc := newTestService(newFakeRepo())
-	_, err := svc.DeleteProject(app.DeleteProjectRequest{
-		Project: &models.Project{ID: uuid.New().String(), Slug: "x", Path: t.TempDir()},
-		DataDir: t.TempDir(),
-		Confirm: true,
-	})
-	if err == nil || !strings.Contains(err.Error(), "does not support") {
-		t.Fatalf("expected fail-closed error, got %v", err)
-	}
-}
-
-func TestDeleteProjectRejectsUncheckedCrossProjectRewrite(t *testing.T) {
+func TestProtectedSystemInboxRenameRejectedBeforeCommit(t *testing.T) {
 	dataDir := t.TempDir()
-	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
+	project := seedProjectDir(t, dataDir, "inbox", "Inbox")
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
 	svc := app.NewService(repo, nil, nil)
 
-	_, err := svc.DeleteProject(app.DeleteProjectRequest{
-		Project: project,
-		DataDir: dataDir,
-		CrossRefWrites: []storage.ArtifactChange{{
-			Path: filepath.Join(dataDir, "projects", "bravo", "tasks.md"),
-			Data: []byte("# Bravo\n"),
-		}},
-		Confirm: true,
+	_, renameErr := svc.RenameProject(app.RenameProjectRequest{
+		Project:              project,
+		SystemInboxProjectID: project.ID,
+		DataDir:              dataDir,
+		OldSlug:              "inbox",
+		NewSlug:              "renamed",
 	})
-	if err == nil || !strings.Contains(err.Error(), "expected revision") {
-		t.Fatalf("DeleteProject unchecked rewrite err = %v, want expected-revision error", err)
+	if !errors.Is(renameErr, app.ErrProtectedSystemInbox) {
+		t.Fatalf("RenameProject(system Inbox) error = %v, want ErrProtectedSystemInbox", renameErr)
 	}
 	if len(repo.committed) != 0 {
-		t.Fatalf("unchecked delete reached persistence: %#v", repo.committed)
+		t.Fatalf("protected lifecycle request reached persistence: %#v", repo.committed)
 	}
-}
-
-// TestProjectLifecycleRoundTripThroughApp exercises the complete delete → restore →
-// purge lifecycle through the application service, proving the typed requests drive
-// the journaled ops and the restore BuildConfig callback runs with the reconstructed
-// identity.
-func TestProjectLifecycleRoundTripThroughApp(t *testing.T) {
-	dataDir := t.TempDir()
-	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
-	repo := &opsRepo{fakeRepo: newFakeRepo()}
-	svc := app.NewService(repo, nil, nil)
-
-	del, err := svc.DeleteProject(app.DeleteProjectRequest{
-		Project: project,
-		DataDir: dataDir,
-		Reason:  "deleted via test",
-		Config:  []storage.ArtifactChange{configArtifact(dataDir, `{"v":"deleted"}`)},
-		Confirm: true,
-	})
-	if err != nil {
-		t.Fatalf("DeleteProject: %v", err)
-	}
-	if del.EntryID == "" {
-		t.Fatal("expected a trash entry id")
-	}
-	if _, statErr := os.Stat(project.Path); !os.IsNotExist(statErr) {
-		t.Fatalf("expected project dir moved to trash, stat err = %v", statErr)
-	}
-
-	var builtWith string
-	res, err := svc.RestoreProject(app.RestoreProjectRequest{
-		DataDir: dataDir,
-		EntryID: del.EntryID,
-		BuildConfig: func(p *models.Project, tomb *storage.TrashTombstone) ([]storage.ArtifactChange, error) {
-			builtWith = p.Slug
-			return []storage.ArtifactChange{configArtifact(dataDir, `{"v":"restored"}`)}, nil
-		},
-	})
-	if err != nil {
-		t.Fatalf("RestoreProject: %v", err)
-	}
-	if builtWith != "alpha" {
-		t.Fatalf("BuildConfig received slug %q, want alpha", builtWith)
-	}
-	if res.Project == nil || res.Project.Slug != "alpha" {
-		t.Fatalf("restore result project = %+v, want slug alpha", res.Project)
-	}
-	if _, statErr := os.Stat(filepath.Join(dataDir, "projects", "alpha", "tasks.md")); statErr != nil {
-		t.Fatalf("expected project restored: %v", statErr)
-	}
-	if got, _ := os.ReadFile(filepath.Join(dataDir, "config.json")); string(got) != `{"v":"restored"}` {
-		t.Fatalf("config after restore = %q", got)
-	}
-
-	// Delete again, then purge the entry permanently.
-	del2, err := svc.DeleteProject(app.DeleteProjectRequest{
-		Project: res.Project,
-		DataDir: dataDir,
-		Config:  []storage.ArtifactChange{configArtifact(dataDir, `{"v":"deleted2"}`)},
-		Confirm: true,
-	})
-	if err != nil {
-		t.Fatalf("DeleteProject(2): %v", err)
-	}
-	purge, err := svc.PurgeProject(app.PurgeProjectRequest{
-		DataDir: dataDir,
-		EntryID: del2.EntryID,
-		Slug:    "alpha",
-		Confirm: true,
-	})
-	if err != nil {
-		t.Fatalf("PurgeProject: %v", err)
-	}
-	if !purge.Purged {
-		t.Fatal("expected purge to remove the entry")
-	}
-	trashDir := filepath.Join(dataDir, ".tt", "trash")
-	if entries, _ := os.ReadDir(trashDir); len(entries) != 0 {
-		t.Fatalf("expected trash empty after purge, got %d entries", len(entries))
-	}
-}
-
-// TestPurgeProjectRequiresConfirm and no-ops on a missing entry.
-func TestPurgeProjectRequiresConfirmAndNoopsMissing(t *testing.T) {
-	dataDir := t.TempDir()
-	repo := &opsRepo{fakeRepo: newFakeRepo()}
-	svc := app.NewService(repo, nil, nil)
-
-	if _, err := svc.PurgeProject(app.PurgeProjectRequest{DataDir: dataDir, EntryID: "e", Slug: "x", Confirm: false}); !errors.Is(err, app.ErrDestructiveConfirmationRequired) {
-		t.Fatalf("PurgeProject(unconfirmed) err = %v, want ErrDestructiveConfirmationRequired", err)
-	}
-
-	res, err := svc.PurgeProject(app.PurgeProjectRequest{DataDir: dataDir, EntryID: "missing", Slug: "x", Confirm: true})
-	if err != nil {
-		t.Fatalf("PurgeProject(missing): %v", err)
-	}
-	if res.Purged {
-		t.Fatal("expected no-op purge for missing entry")
-	}
-	if len(repo.committed) != 0 {
-		t.Fatalf("expected no commit for missing-entry purge, got %d", len(repo.committed))
+	if _, err := os.Stat(project.Path); err != nil {
+		t.Fatalf("protected project directory changed: %v", err)
 	}
 }
 
@@ -446,56 +315,6 @@ func TestRenameProjectRealCommitRejectsConcurrentTaskEdit(t *testing.T) {
 	}
 	if got, readErr := os.ReadFile(filepath.Join(dataDir, "projects", "alpha", "tasks.md")); readErr != nil || string(got) != string(concurrent) {
 		t.Fatalf("source tasks = %q, %v; want concurrent bytes %q", got, readErr, concurrent)
-	}
-}
-
-// TestDeleteProjectRealCommitRejectsConcurrentReferenceEdit proves a stale
-// cross-project cleanup rewrite aborts a real delete transaction before the
-// project is moved to trash. The independently edited referencing project stays
-// byte-for-byte intact.
-func TestDeleteProjectRealCommitRejectsConcurrentReferenceEdit(t *testing.T) {
-	dataDir := t.TempDir()
-	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
-	referencing := seedProjectDir(t, dataDir, "bravo", "Bravo")
-	expected := tasksExpectedRevision(t, referencing)
-	repo := &journalOpsRepo{
-		fakeRepo: newFakeRepo(),
-		commit: storage.NewCommitService(
-			filepath.Join(dataDir, ".tt", "transactions"),
-			[]string{dataDir},
-		),
-	}
-	svc := app.NewService(repo, nil, nil)
-
-	concurrent := []byte("# Bravo\n<!-- concurrent task edit -->\n")
-	if err := os.WriteFile(storage.TasksFilePath(referencing.Path), concurrent, 0o600); err != nil {
-		t.Fatalf("write concurrent tasks: %v", err)
-	}
-
-	_, err := svc.DeleteProject(app.DeleteProjectRequest{
-		Project: project,
-		DataDir: dataDir,
-		CrossRefWrites: []storage.ArtifactChange{{
-			Path:             storage.TasksFilePath(referencing.Path),
-			Data:             []byte("# Bravo\n<!-- references cleaned -->\n"),
-			ExpectedRevision: expected,
-		}},
-		Confirm: true,
-	})
-	if !errors.Is(err, storage.ErrStaleArtifact) {
-		t.Fatalf("DeleteProject err = %v, want ErrStaleArtifact", err)
-	}
-	if _, statErr := os.Stat(project.Path); statErr != nil {
-		t.Fatalf("deleted project moved despite stale reference rewrite: %v", statErr)
-	}
-	if got, readErr := os.ReadFile(storage.TasksFilePath(referencing.Path)); readErr != nil || string(got) != string(concurrent) {
-		t.Fatalf("referencing tasks = %q, %v; want concurrent bytes %q", got, readErr, concurrent)
-	}
-	trashDir := filepath.Join(dataDir, ".tt", "trash")
-	if entries, readErr := os.ReadDir(trashDir); readErr == nil && len(entries) != 0 {
-		t.Fatalf("aborted delete left %d trash entries", len(entries))
-	} else if readErr != nil && !os.IsNotExist(readErr) {
-		t.Fatalf("read trash dir: %v", readErr)
 	}
 }
 

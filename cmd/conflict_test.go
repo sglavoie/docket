@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -15,6 +14,8 @@ import (
 // setupConflictTest wires a workspace so the conflict subcommands resolve their
 // store and commit service against a real on-disk data dir, and returns the
 // store, the project on disk, and its data dir.
+//
+//nolint:govet // The test-local data directory is intentionally independent of the command flag.
 func setupConflictTest(t *testing.T) (*storage.ConflictStore, *storage.CommitService, *models.Project) {
 	t.Helper()
 	deps := setupTestDeps(t)
@@ -22,15 +23,14 @@ func setupConflictTest(t *testing.T) (*storage.ConflictStore, *storage.CommitSer
 	if err := saveTestRuntime(manager, deps.Config); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
-	viper.Set("config", deps.ConfigPath)
-	t.Cleanup(func() { viper.Set("config", "") })
 
 	dataDir := config.WorkspaceRootFromConfigPath(deps.ConfigPath)
+	setCommandDataDir(t, dataDir)
 	store := storage.NewConflictStore(config.ConflictsDir(dataDir))
 	svc := storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir})
 
 	project := &models.Project{ID: "p1", Name: "Alpha", Slug: "alpha", Path: filepath.Join(dataDir, "projects", "alpha")}
-	task, err := models.NewTask(uuid.NewString(), 1, models.TaskTypeTask, "remote title")
+	task, err := models.NewGenericTask(uuid.NewString(), 1, "remote title")
 	if err != nil {
 		t.Fatalf("new task: %v", err)
 	}

@@ -32,11 +32,7 @@ func newRepresentativeWorkspaceFixture(tb testing.TB) representativeWorkspaceFix
 		tasks := make([]*models.Task, 0, representativeTasksPerProject)
 		for taskIndex := range representativeTasksPerProject {
 			id := fmt.Sprintf("%s-task-%03d", slug, taskIndex)
-			taskType := models.TaskTypeTask
-			if taskIndex%10 == 0 {
-				taskType = models.TaskTypeStory
-			}
-			task, err := models.NewTask(id, taskIndex+1, taskType, fmt.Sprintf("Representative task %d", taskIndex))
+			task, err := models.NewGenericTask(id, taskIndex+1, fmt.Sprintf("Representative task %d", taskIndex))
 			if err != nil {
 				tb.Fatalf("create task: %v", err)
 			}

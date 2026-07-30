@@ -1,33 +1,26 @@
 package tui
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // This file exercises the secondary-view feature coordinators
 // (feature_coordinator_secondary.go) end to end. The task/artifact coordinators
 // (attachment, bulk) run through the real transactional storage stack and undo
 // ledger — the same mutation→reload→render→undo cycle the primary scenarios honor
-// — while the config coordinators (settings, workflow) persist through a temp-dir
-// config manager and reload from disk. Together they cover the four transactional
-// flows session 32 introduced: attachment, bulk, workflow, and settings changes.
+// against the retained task/artifact coordinator seam.
 
 // secondaryEnv extends scenarioEnv with the secondary coordinators bound to the
 // same application service.
 func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenarioEnv, SecondaryCoordinators) {
 	t.Helper()
 	env := newScenarioEnv(t, slug, tasks...)
-	return env, newSecondaryCoordinators(env.svc, nil)
+	return env, newSecondaryCoordinators(env.svc)
 }
 
 // runBatchResult executes a coordinator command and asserts it produced a
@@ -46,24 +39,6 @@ func runBatchResult(t *testing.T, cmd tea.Cmd) BatchTransactionResultMsg {
 		t.Fatalf("expected BatchTransactionResultMsg, got %T", msg)
 	}
 	return BatchTransactionResultMsg{}
-}
-
-// runConfigResult executes a config coordinator command and asserts it produced a
-// committed config-transaction message.
-func runConfigResult(t *testing.T, cmd tea.Cmd) ConfigTransactionResultMsg {
-	t.Helper()
-	if cmd == nil {
-		t.Fatal("coordinator returned a nil command")
-	}
-	switch msg := cmd().(type) {
-	case ConfigTransactionResultMsg:
-		return msg
-	case TransactionErrorMsg:
-		t.Fatalf("expected a committed config write, got error: %v", msg.Err)
-	default:
-		t.Fatalf("expected ConfigTransactionResultMsg, got %T", msg)
-	}
-	return ConfigTransactionResultMsg{}
 }
 
 // TestAttachmentScenario covers the transactional attachment overlay: attaching a
@@ -184,7 +159,7 @@ func TestBulkDueDateScenario(t *testing.T) {
 	env, features := newSecondaryEnv(t, "bulk-due", a, b)
 
 	due := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
-	runBatchResult(t, features.Bulk.SetDueDate([]string{a.ID, b.ID}, due, false))
+	runBatchResult(t, features.Bulk.SetDueDate([]string{a.ID, b.ID}, due))
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
@@ -316,32 +291,6 @@ func TestSubviewChecklistScenario(t *testing.T) {
 	}
 }
 
-// TestTagCatalogScenario covers the transactional tag manager: renaming a
-// task-used tag commits catalog and task usages together, and undo restores the
-// original name everywhere.
-func TestTagCatalogScenario(t *testing.T) {
-	task := seedTask(t, 1, "Tagged", models.StateReady)
-	task.AddTag("backend")
-	env, features := newSecondaryEnv(t, "tag-catalog", task)
-
-	res, err := features.Tag.RenameCatalog(env.project.ID, "backend", "platform")
-	if err != nil {
-		t.Fatalf("RenameCatalog: %v", err)
-	}
-	if !res.Changed || res.Tag != "platform" {
-		t.Fatalf("rename result = %+v, want changed platform", res)
-	}
-
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || len(got.Tags) != 1 || got.Tags[0] != "platform" {
-		t.Fatalf("reloaded task tags = %v, want [platform]", got)
-	}
-
-	env.undo(t)
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || len(got.Tags) != 1 || got.Tags[0] != "backend" {
-		t.Fatalf("undo did not restore the tag name: %v", got)
-	}
-}
-
 // TestAttachmentReorderScenario covers the transactional attachment reorder: the
 // swap commits, the reloaded task shows the new order, and undo restores it.
 func TestAttachmentReorderScenario(t *testing.T) {
@@ -359,122 +308,5 @@ func TestAttachmentReorderScenario(t *testing.T) {
 	env.undo(t)
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Attachments[0].Filename != "https://example.com/a" {
 		t.Fatalf("undo did not restore the order: %v", got)
-	}
-}
-
-// TestLinkScenario covers the transactional link surfaces: a bidirectional
-// related link commits both sides atomically, unlink removes one side, and undo
-// restores it.
-func TestLinkScenario(t *testing.T) {
-	a := seedTask(t, 1, "Source", models.StateReady)
-	b := seedTask(t, 2, "Target", models.StateReady)
-	env, features := newSecondaryEnv(t, "links", a, b)
-
-	msg := runBatchResult(t, features.Link.RelateBidirectional(taskIdentityFor(a, env.project), b.ID))
-	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
-		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
-	}
-
-	reloaded := env.reload(t)
-	if got := reloaded.GetTaskByID(a.ID); got == nil || len(got.RelatedTo) != 1 {
-		t.Fatalf("source related = %v, want one link", got)
-	}
-	if got := reloaded.GetTaskByID(b.ID); got == nil || len(got.RelatedTo) != 1 {
-		t.Fatalf("target related = %v, want reciprocal link", got)
-	}
-
-	runResult(t, features.Link.RemoveRelated(taskIdentityFor(a, env.project), b.ID))
-	if got := env.reload(t).GetTaskByID(a.ID); got == nil || len(got.RelatedTo) != 0 {
-		t.Fatalf("unlink left source related = %v", got)
-	}
-
-	env.undo(t)
-	if got := env.reload(t).GetTaskByID(a.ID); got == nil || len(got.RelatedTo) != 1 {
-		t.Fatalf("undo did not restore the link: %v", got)
-	}
-}
-
-// newConfigEnv builds a temp-dir config manager over a fresh config so the config
-// coordinators can persist and reload.
-func newConfigEnv(t *testing.T) (*config.Manager, *config.RuntimeState, string) {
-	t.Helper()
-	configPath := filepath.Join(t.TempDir(), ".tt.json")
-	mgr := config.NewManager(configPath)
-	cfg := newTestConfig()
-	return mgr, cfg, configPath
-}
-
-// TestSettingsScenario covers the transactional settings editor: saving a mutated
-// editor setting through the settings coordinator persists it, and a fresh manager
-// reloads the committed value.
-func TestSettingsScenario(t *testing.T) {
-	mgr, cfg, configPath := newConfigEnv(t)
-	features := newSecondaryCoordinators(&app.Service{}, mgr)
-
-	// Seed the complete synced-domain set so a domain-scoped settings commit
-	// (which writes only settings.json + machine.json) leaves a loadable,
-	// non-partial workspace.
-	if err := saveTestRuntime(mgr, cfg); err != nil {
-		t.Fatalf("seed workspace: %v", err)
-	}
-
-	cfg.Machine().Editor = "hx"
-	runConfigResult(t, features.Settings.Save(cfg.Settings(), cfg.Machine()))
-
-	reloaded, err := config.NewManager(configPath).LoadRuntimeState()
-	if err != nil {
-		t.Fatalf("reload config: %v", err)
-	}
-	if reloaded.Machine().Editor != "hx" {
-		t.Fatalf("reloaded editor = %q, want hx", reloaded.Machine().Editor)
-	}
-}
-
-// TestWorkflowScenario covers the transactional workflow editor: saving a config
-// with an added workflow rule through the workflow coordinator persists it, and a
-// fresh manager reloads the committed rule.
-func TestWorkflowScenario(t *testing.T) {
-	mgr, cfg, configPath := newConfigEnv(t)
-	features := newSecondaryCoordinators(&app.Service{}, mgr)
-
-	// Seed the complete synced-domain set so a domain-scoped automation commit
-	// leaves a loadable, non-partial workspace.
-	if err := saveTestRuntime(mgr, cfg); err != nil {
-		t.Fatalf("seed workspace: %v", err)
-	}
-
-	cfg.Automation().WorkflowRules = append(cfg.Automation().WorkflowRules, workflow.WorkflowRule{
-		ID:       "rule-1",
-		Name:     "Auto-ready on capture",
-		Enabled:  true,
-		Triggers: []workflow.RuleTrigger{{Field: workflow.FieldState, Operation: workflow.OpEquals, Value: "inbox"}},
-		Actions:  []workflow.RuleAction{{ActionType: workflow.ActionSetState, Value: "ready"}},
-	})
-	runConfigResult(t, features.Workflow.Save(cfg.Automation()))
-
-	reloaded, err := config.NewManager(configPath).LoadRuntimeState()
-	if err != nil {
-		t.Fatalf("reload config: %v", err)
-	}
-	rules := reloaded.Automation().GetWorkflowRules()
-	if len(rules) != 1 || rules[0].ID != "rule-1" {
-		t.Fatalf("reloaded workflow rules = %+v, want one rule-1", rules)
-	}
-}
-
-// TestSettingsSaveError covers the error leg: a failing gateway surfaces a
-// TransactionErrorMsg rather than a committed result.
-func TestSettingsSaveError(t *testing.T) {
-	// Point the manager at a path whose parent is a file, so MkdirAll fails.
-	bad := filepath.Join(t.TempDir(), "afile")
-	if err := os.WriteFile(bad, []byte("x"), 0o600); err != nil {
-		t.Fatalf("seed file: %v", err)
-	}
-	mgr := config.NewManager(filepath.Join(bad, "nested", ".tt.json"))
-	features := newSecondaryCoordinators(&app.Service{}, mgr)
-
-	cfg := newTestConfig()
-	if err := runError(t, features.Settings.Save(cfg.Settings(), cfg.Machine())); err == nil {
-		t.Fatal("expected a save error through a broken committer")
 	}
 }

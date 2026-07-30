@@ -17,6 +17,10 @@ var (
 	// ErrProjectNotFound marks a request targeting a project absent from the
 	// loaded snapshot.
 	ErrProjectNotFound = errors.New("app: project not found")
+	// ErrProtectedSystemInbox marks a project lifecycle request that targets
+	// the catalog-owned system Inbox. Adapters supply its durable catalog ID;
+	// the application layer never infers protection from a display name or slug.
+	ErrProtectedSystemInbox = errors.New("app: protected system Inbox")
 	// ErrTaskNotFound marks a request targeting a task absent from the loaded
 	// snapshot.
 	ErrTaskNotFound = errors.New("app: task not found")
@@ -43,10 +47,6 @@ var (
 	// the illegal completed-parent-with-incomplete-child state is rejected before
 	// any mutation rather than silently reconciled after the fact.
 	ErrParentHasIncompleteChildren = errors.New("app: task has incomplete children")
-	// ErrWorkflowProjectStatusPersistenceUnavailable marks a project rule that
-	// requested a catalog-owned status change without a revision-checked catalog
-	// artifact builder. The task/project transaction must not commit separately.
-	ErrWorkflowProjectStatusPersistenceUnavailable = errors.New("app: workflow project status persistence unavailable")
 )
 
 // IncompleteChild describes one direct child that blocks a parent's terminal

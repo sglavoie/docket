@@ -11,6 +11,8 @@ const (
 	operationFilterStates   OperationID = "tui.filter.states"
 	operationFilterTags     OperationID = "tui.filter.tags"
 	operationFilterDue      OperationID = "tui.filter.due"
+	operationFilterBlocked  OperationID = "tui.filter.blocked"
+	operationFilterSnoozed  OperationID = "tui.filter.snoozed"
 	operationFilterClear    OperationID = "tui.filter.clear"
 )
 
@@ -22,12 +24,9 @@ func filterOperationDescriptors() []OperationDescriptor {
 		aliases ...string,
 	) OperationDescriptor {
 		return OperationDescriptor{
-			ID:      id,
-			Label:   label,
-			Aliases: aliases,
-			// The filter family is a chord-only view refinement: it narrows the one
-			// Outliner in place, so Finder and the action sheets never list it.
-			Placement:            PlacementHidden,
+			ID:                   id,
+			Label:                label,
+			Aliases:              aliases,
 			Category:             OperationCategoryFilter,
 			TargetCardinality:    TargetCardinalityNone,
 			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
@@ -41,6 +40,8 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
 		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
+		descriptor(operationFilterBlocked, "Filter Blocked Tasks", "", "blocked only"),
+		descriptor(operationFilterSnoozed, "Filter Snoozed Tasks", "", "snoozed only"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }
@@ -49,28 +50,25 @@ func (m *AppModel) registerFilterOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	// The preset-only providers reject a picker request outright: every priority
-	// and due binding carries its value, so reaching the provider means a caller
-	// bypassed the chord grammar.
-	presetOnly := map[ValueProviderID]string{
-		ValueProviderFilterPriority: "fp0-5",
-		ValueProviderFilterDue:      "fd",
+	// Priority is the only preset-only facet: each fp0-5 binding carries its
+	// threshold, so reaching the provider means a caller bypassed the grammar.
+	if err := m.operationExecutor.RegisterValueProvider(ValueProviderFilterPriority,
+		func(OperationInvocation) OperationValueProviderResult {
+			return OperationValueProviderResult{
+				Err: fmt.Errorf("this filter takes its value from the fp0-5 chord"),
+			}
+		}); err != nil {
+		return err
 	}
-	for provider, chord := range presetOnly {
-		if err := m.operationExecutor.RegisterValueProvider(provider,
-			func(OperationInvocation) OperationValueProviderResult {
-				return OperationValueProviderResult{
-					Err: fmt.Errorf("this filter takes its value from the %s chord", chord),
-				}
-			}); err != nil {
-			return err
-		}
-	}
-	for _, provider := range []ValueProviderID{ValueProviderFilterStates, ValueProviderFilterTags} {
+	for _, provider := range []ValueProviderID{
+		ValueProviderFilterStates,
+		ValueProviderFilterTags,
+		ValueProviderFilterDue,
+	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
 			func(OperationInvocation) OperationValueProviderResult {
 				// Returning no immediate value asks the shell to open the provider's
-				// multi-select picker seeded from the current filter.
+				// picker seeded from the current filter.
 				return OperationValueProviderResult{}
 			}); err != nil {
 			return err
@@ -155,6 +153,12 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		if len(names) == 0 {
 			status = "Tag filter cleared"
 		}
+	case operationFilterBlocked:
+		filter.Blocked = true
+		status = "Filtering blocked tasks"
+	case operationFilterSnoozed:
+		filter.Snoozed = true
+		status = "Filtering snoozed tasks"
 	case operationFilterClear:
 		clearCommonFilters(filter)
 		status = "Filters cleared"
@@ -163,8 +167,7 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 	}
 
 	out.crossForceRebuild = true
-	out.rebuildRows()
-	out.clampCursor()
+	rebuildOutlinerPreservingCursor(out)
 	return OperationHandlerResult{Status: status}
 }
 
@@ -181,6 +184,58 @@ func dueDateFilterLabel(filter DueDateFilter) string {
 	default:
 		return "all"
 	}
+}
+
+// newFilterDuePicker is the fd single-select picker over the four public
+// due-date facets, seeded from the active facet when one is set.
+func (m *AppModel) newFilterDuePicker(
+	request OperationExecutionRequest,
+) (*OperationValuePickerModel, error) {
+	options := []struct {
+		id        string
+		label     string
+		secondary string
+		value     DueDateFilter
+	}{
+		{id: "overdue", label: "Overdue", secondary: "before today", value: DueDateOverdue},
+		{id: "today", label: "Today", secondary: "due today", value: DueDateToday},
+		{id: "week", label: "This week", secondary: "within seven days", value: DueDateThisWeek},
+		{id: "none", label: "No due date", secondary: "unscheduled tasks", value: DueDateNone},
+	}
+	items := make([]ListItem, 0, len(options))
+	for _, option := range options {
+		items = append(items, ListItem{
+			ID:            ListItemID("filter-due:" + option.id),
+			PrimaryText:   option.label,
+			SecondaryText: option.secondary,
+			Aliases:       []string{option.id, option.label, option.secondary},
+			Data:          option.value,
+		})
+	}
+	selected := []ListItemID(nil)
+	if m.crossOutliner != nil {
+		switch m.crossOutliner.filter.DueDate {
+		case DueDateAll:
+			selected = nil
+		case DueDateOverdue:
+			selected = []ListItemID{"filter-due:overdue"}
+		case DueDateToday:
+			selected = []ListItemID{"filter-due:today"}
+		case DueDateThisWeek:
+			selected = []ListItemID{"filter-due:week"}
+		case DueDateNone:
+			selected = []ListItemID{"filter-due:none"}
+		}
+	}
+	return newOperationValuePickerModel(
+		request,
+		ValueProviderFilterDue,
+		"Filter by Due Date",
+		"keep matching tasks",
+		ListSource{Items: items},
+		false,
+		selected,
+	)
 }
 
 // newFilterStatesPicker is the fs multi-select picker over the canonical
@@ -218,7 +273,7 @@ func (m *AppModel) newFilterTagsPicker(
 ) (*OperationValuePickerModel, error) {
 	projects := m.activeProjects()
 	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
-		projects = m.crossOutliner.loadedProjects
+		projects = m.crossOutliner.workModeScopeProjects()
 	}
 	source := ListSourceFromTags(BuildProjectsTagList(projects, false))
 	for index := range source.Items {

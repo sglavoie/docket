@@ -21,9 +21,6 @@ func TestCaptureCreatesInboxTask(t *testing.T) {
 	if result.title != "Buy milk" {
 		t.Errorf("title: got %q, want %q", result.title, "Buy milk")
 	}
-	if result.taskType != models.TaskTypeTask {
-		t.Errorf("taskType: got %v, want %v", result.taskType, models.TaskTypeTask)
-	}
 }
 
 // TestMoveToNextUpdatesStatus verifies the inbox→next flow: moving a task
@@ -31,7 +28,7 @@ func TestCaptureCreatesInboxTask(t *testing.T) {
 // via ;q) updates its section without touching its status. Next is distinct
 // from Today (the Daily Plan, reached via ;w).
 func TestMoveToNextUpdatesStatus(t *testing.T) {
-	task, err := models.NewTask("t1", 1, models.TaskTypeTask, "Finish report")
+	task, err := models.NewGenericTask("t1", 1, "Finish report")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -54,7 +51,7 @@ func TestMoveToNextUpdatesStatus(t *testing.T) {
 // completing a task that lives in the Next (on-deck) section sets it to Done,
 // moves it to the Completed section, and records the completion time.
 func TestCompleteNextTaskUpdatesProgress(t *testing.T) {
-	task, err := models.NewTask("t2", 2, models.TaskTypeTask, "Ship feature")
+	task, err := models.NewGenericTask("t2", 2, "Ship feature")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -80,7 +77,6 @@ func TestCompleteNextTaskUpdatesProgress(t *testing.T) {
 func newCompletedStoryWithDoneChild(t *testing.T) (project *models.Project, parentID, childID string) {
 	t.Helper()
 	parent := newBulkPickerTestTask(t, 1, "Parent Story")
-	parent.Type = models.TaskTypeStory
 	child := newBulkPickerTestTask(t, 2, "Child")
 	child.ParentID = &parent.ID
 	child.Complete()
@@ -90,10 +86,9 @@ func newCompletedStoryWithDoneChild(t *testing.T) (project *models.Project, pare
 }
 
 // reopenChildThroughWorkflow reopens the given child through the same
-// post-mutation pipeline the shared save path runs (auto-unblock, reverse
-// parent-completion reconcile, recurring generation, root reorder), records a
-// targeted undo snapshot widened with the reopened parent IDs, then persists and
-// reloads the project from disk — mirroring a single-task status change.
+// post-mutation pipeline the shared save path runs (reverse parent-completion
+// reconcile, recurring generation, root reorder), then persists and reloads the
+// project from disk.
 func reopenChildThroughWorkflow(t *testing.T, project *models.Project, childID string) {
 	t.Helper()
 	project.MutateTask(childID, func(tk *models.Task) {
@@ -101,23 +96,10 @@ func reopenChildThroughWorkflow(t *testing.T, project *models.Project, childID s
 			t.Fatalf("ApplyStateTransition(ready): %v", err)
 		}
 	})
-	project.CheckAndAutoUnblock()
-	reopened := project.ReconcileParentCompletion()
+	project.ReconcileParentCompletion()
 	project.GenerateRecurringInstances()
 	project.ReorderRootTasksByCompletion()
 
-	taskIDs := append([]string{childID}, reopened...)
-	if err := storage.RecordUndoSnapshotWithOptions(project, storage.UndoSnapshotOptions{
-		Action:   "Reopen Task",
-		Context:  "#2 Child",
-		MaxDepth: 10,
-		TaskIDs:  taskIDs,
-	}); err != nil {
-		t.Fatalf("RecordUndoSnapshotWithOptions: %v", err)
-	}
-	if err := storage.BackupProject(project); err != nil {
-		t.Fatalf("BackupProject: %v", err)
-	}
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject: %v", err)
 	}
@@ -160,49 +142,5 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	}
 	if story.State() != models.StateInProgress {
 		t.Errorf("story state = %q, want in_progress after outdent", story.State())
-	}
-}
-
-// TestReopenChildUndoRevertsCascadeAtomically verifies the atomic-undo contract:
-// reopening a child auto-uncompletes its parent, and a single undo restores both
-// the child's status and the cascaded parent uncompletion, with redo re-applying
-// both. This depends on ReconcileParentCompletion's reopened IDs being folded
-// into the targeted undo snapshot.
-func TestReopenChildUndoRevertsCascadeAtomically(t *testing.T) {
-	project, parentID, childID := newCompletedStoryWithDoneChild(t)
-
-	reopenChildThroughWorkflow(t, project, childID)
-
-	if got := project.GetTaskByID(parentID).State(); got != models.StateInProgress {
-		t.Fatalf("parent status = %q, want in_progress after reopening child", got)
-	}
-	if got := project.GetTaskByID(childID).State(); got != models.StateReady {
-		t.Fatalf("child status = %q, want todo after reopen", got)
-	}
-
-	if _, err := storage.PerformUndo(project); err != nil {
-		t.Fatalf("PerformUndo: %v", err)
-	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("LoadProject after undo: %v", err)
-	}
-	if got := project.GetTaskByID(parentID).State(); got != models.StateDone {
-		t.Errorf("after undo parent status = %q, want done (cascade must revert atomically)", got)
-	}
-	if got := project.GetTaskByID(childID).State(); got != models.StateDone {
-		t.Errorf("after undo child status = %q, want done", got)
-	}
-
-	if _, err := storage.PerformRedo(project); err != nil {
-		t.Fatalf("PerformRedo: %v", err)
-	}
-	if err := storage.LoadProject(project); err != nil {
-		t.Fatalf("LoadProject after redo: %v", err)
-	}
-	if got := project.GetTaskByID(parentID).State(); got != models.StateInProgress {
-		t.Errorf("after redo parent status = %q, want in_progress", got)
-	}
-	if got := project.GetTaskByID(childID).State(); got != models.StateReady {
-		t.Errorf("after redo child status = %q, want todo", got)
 	}
 }

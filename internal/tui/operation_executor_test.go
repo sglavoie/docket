@@ -208,7 +208,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 	first := executor.Execute(OperationExecutionRequest{
 		ID:      descriptor.ID,
 		Context: ctx,
-		Source:  OperationSourceFinder,
+		Source:  OperationSourceActionSheet,
 	})
 	if first.ConfirmationRequired == nil {
 		t.Fatal("destructive execution should require confirmation")
@@ -504,7 +504,7 @@ func TestOperationExecutorRollsBackFailedHandler(t *testing.T) {
 
 	result := executor.Execute(OperationExecutionRequest{
 		ID:      descriptor.ID,
-		Context: PresentationCommandContext(ViewDashboard),
+		Context: PresentationCommandContext(ViewUnknown),
 	})
 	if !errors.Is(result.Err, handlerErr) {
 		t.Fatalf("Execute error = %v, want %v", result.Err, handlerErr)

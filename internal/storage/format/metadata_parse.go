@@ -18,16 +18,6 @@ func addValidationWarning(warnings *[]ParseWarning, field, format string, args .
 	})
 }
 
-// parseFloatOrWarn parses a float64 value, appending a validation warning on failure.
-func parseFloatOrWarn(value, field string, warnings *[]ParseWarning) (float64, bool) {
-	v, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		addValidationWarning(warnings, field, "invalid %s %q, ignoring: %v", field, value, err)
-		return 0, false
-	}
-	return v, true
-}
-
 // splitSemicolonDedup splits a semicolon-delimited string into unique, trimmed,
 // non-empty values, preserving insertion order. Used for tags, depends, related.
 func splitSemicolonDedup(value string) []string {
@@ -76,8 +66,9 @@ func parseDueOrWarn(task *models.Task, value string, warnings *[]ParseWarning) {
 		return
 	}
 	if t, err := time.ParseInLocation(util.DateTimeDueFormat, value, time.Local); err == nil {
-		task.DueDate = &t
-		task.HasTime = true
+		year, month, day := t.Date()
+		date := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+		task.DueDate = &date
 		return
 	}
 	addValidationWarning(warnings, "due", "invalid due %q, ignoring", value)
@@ -240,13 +231,6 @@ func parseAttachments(value string, warnings *[]ParseWarning) []models.Attachmen
 }
 
 func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnings *[]ParseWarning) {
-	if state.recurSubFields.hasAny && task.Recurrence != nil {
-		task.Recurrence.Skipped = state.recurSubFields.skipped
-		task.Recurrence.Streak = state.recurSubFields.streak
-		task.Recurrence.MaxStreak = state.recurSubFields.maxStreak
-		task.Recurrence.OriginalDay = state.recurSubFields.originalDay
-	}
-
 	if task.Recurrence != nil {
 		if err := task.Recurrence.Validate(); err != nil {
 			*warnings = append(*warnings, ParseWarning{
@@ -257,11 +241,11 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 		}
 	}
 
-	if state.recurSubFields.hasAny && task.Recurrence == nil {
+	if state.legacyRecurrenceSubFieldSeen {
 		*warnings = append(*warnings, ParseWarning{
 			Type:    WarningValidation,
 			Field:   "recur",
-			Message: "recurrence sub-fields (recur.skipped/streak/max_streak) found without a recur field; ignoring",
+			Message: "legacy recurrence counters/original-day fields are not supported; ignoring",
 		})
 	}
 
@@ -286,7 +270,19 @@ func finalizeParsedMetadata(task *models.Task, state *metadataParseState, warnin
 			})
 			section = ""
 		}
-		task.WorkflowState = deriveLegacyWorkflowState(state.legacy.status, section, state.legacy.stage)
+		legacyState := deriveLegacyWorkflowState(state.legacy.status, section, state.legacy.stage)
+		targetState, ok := models.TargetStateForLegacy(legacyState)
+		if !ok {
+			targetState = models.StateReady
+		}
+		task.WorkflowState = targetState
+		if legacyState == models.StateReview {
+			state.legacyReviewSeen = true
+			addLegacyReviewWarning(warnings)
+		}
+	}
+	if state.legacyReviewSeen && !task.HasTag(models.LegacyReviewTag) {
+		task.Tags = append(task.Tags, models.LegacyReviewTag)
 	}
 }
 

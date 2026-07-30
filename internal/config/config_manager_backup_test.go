@@ -40,7 +40,7 @@ func TestManagerRestoreConfigFromBackupIsReversible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	domains.Catalog.Projects = []CatalogProject{{ID: "p1", Slug: "one", Name: "One"}}
+	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p1", Slug: "one", Name: "One"})
 	if commitErr := manager.CommitCatalog(domains.Catalog); commitErr != nil {
 		t.Fatal(commitErr)
 	}
@@ -59,8 +59,8 @@ func TestManagerRestoreConfigFromBackupIsReversible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(restored.Catalog.Projects); got != 1 {
-		t.Fatalf("restored projects = %d, want 1", got)
+	if got := len(restored.Catalog.Projects); got != 2 {
+		t.Fatalf("restored projects = %d, want 2", got)
 	}
 
 	if restoreErr := manager.RestoreConfigFromBackup(); restoreErr != nil {
@@ -70,8 +70,8 @@ func TestManagerRestoreConfigFromBackupIsReversible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(restored.Catalog.Projects); got != 2 {
-		t.Fatalf("reversed restore projects = %d, want 2", got)
+	if got := len(restored.Catalog.Projects); got != 3 {
+		t.Fatalf("reversed restore projects = %d, want 3", got)
 	}
 }
 

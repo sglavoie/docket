@@ -159,7 +159,7 @@ func TestCommitService_AttachmentMoveDropsEmptySourceWithoutCreatingDestination(
 }
 
 func TestWorkspaceLedger_V2PersistsImageKinds(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	filePath := filepath.Join(root, "projects", "alpha", "tasks.md")
 	dirPath := filepath.Join(root, "projects", "alpha", attachmentsDirName, strings.Repeat("a", 64))
 	if err := ledger.Record(LedgerRecord{
@@ -199,7 +199,7 @@ func TestWorkspaceLedger_V1AttachmentCleanupIsConservativeAndSurvivesUpgrade(t *
 		{name: "preserves directory containing unrelated sibling", withSibling: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+			ledger, root := newTestLedger(t)
 			taskDir := filepath.Join(root, "projects", "alpha", attachmentsDirName, strings.Repeat("b", 64))
 			tracked := filepath.Join(taskDir, "tracked.txt")
 			writeFile(t, tracked, "tracked")
@@ -249,7 +249,7 @@ func TestWorkspaceLedger_V1AttachmentCleanupIsConservativeAndSurvivesUpgrade(t *
 }
 
 func TestWorkspaceLedger_NewV2RecordOnV1LedgerIsNotMarkedLegacy(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	first := filepath.Join(root, "first.txt")
 	second := filepath.Join(root, "second.txt")
 	if err := ledger.Record(LedgerRecord{
@@ -276,7 +276,7 @@ func TestWorkspaceLedger_NewV2RecordOnV1LedgerIsNotMarkedLegacy(t *testing.T) {
 }
 
 func TestWorkspaceLedger_DirectoryPreflightRejectsTypeDriftAtomically(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	taskDir := filepath.Join(root, "projects", "alpha", attachmentsDirName, strings.Repeat("c", 64))
 	attachment := filepath.Join(taskDir, "payload.txt")
 	other := filepath.Join(root, "other.txt")
@@ -307,7 +307,7 @@ func TestWorkspaceLedger_DirectoryPreflightRejectsTypeDriftAtomically(t *testing
 	assertLedgerRestoreStacks(t, ledger, 1, 0)
 }
 
-func TestLedgerDirectoryImagesParticipateInScopeAndOverlap(t *testing.T) {
+func TestLedgerDirectoryImagesParticipateInArtifactScope(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "projects", "alpha", attachmentsDirName, strings.Repeat("d", 64))
 	descendant := filepath.Join(dir, "payload.txt")
@@ -317,20 +317,16 @@ func TestLedgerDirectoryImagesParticipateInScopeAndOverlap(t *testing.T) {
 	if !entryMatchesScope(directoryEntry, ArtifactRootScope(descendant)) {
 		t.Fatal("directory image did not match a descendant artifact scope")
 	}
-	redo := []LedgerEntry{directoryEntry}
-	if got := removeOverlappingRedo(redo, LedgerEntry{Artifacts: []ArtifactImage{{Path: descendant}}}); len(got) != 0 {
-		t.Fatalf("descendant mutation left %d overlapping redo entries", len(got))
-	}
 	sibling := filepath.Join(filepath.Dir(dir), filepath.Base(dir)+"-other", "payload.txt")
-	if got := removeOverlappingRedo(redo, LedgerEntry{Artifacts: []ArtifactImage{{Path: sibling}}}); len(got) != 1 {
-		t.Fatalf("similarly prefixed sibling removed redo entry: %d entries", len(got))
+	if entryMatchesScope(directoryEntry, ArtifactRootScope(sibling)) {
+		t.Fatal("directory image matched a similarly prefixed sibling scope")
 	}
 }
 
 func newAttachmentLedgerTestService(t *testing.T) (*CommitService, *WorkspaceLedger, string) {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	return service, ledger, dataDir
 }

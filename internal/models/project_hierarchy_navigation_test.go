@@ -9,28 +9,28 @@ func TestProjectGetSiblings(t *testing.T) {
 	}
 
 	// Create tasks: two root tasks, one with children
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 10, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 10, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child1, err := NewTask("child1", 11, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 11, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 12, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 12, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,15 +60,15 @@ func TestProjectMoveTaskUp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,15 +105,15 @@ func TestProjectMoveTaskDown(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,15 +150,15 @@ func TestProjectMoveTaskUpWithChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,11 +189,11 @@ func TestProjectIndentTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 2, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 2, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,15 +218,15 @@ func TestProjectOutdentTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	story, err := NewGenericTask("story", 2, "Story")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 3, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestIndentTaskReturnsErrorWhenNoTaskAbove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,17 +281,17 @@ func TestIndentTaskReturnsErrorWhenNoTaskAbove(t *testing.T) {
 	}
 }
 
-func TestIndentTaskReturnsErrorWhenTypeInvalid(t *testing.T) {
+func TestIndentTaskAllowsGenericHierarchy(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 2, TaskTypeEpic, "Epic")
+	task2, err := NewGenericTask("task2", 2, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,10 +299,12 @@ func TestIndentTaskReturnsErrorWhenTypeInvalid(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 	project.BuildTaskTree()
 
-	// Epic cannot be child of Task
 	err = project.IndentTask(task2)
-	if err == nil {
-		t.Error("expected error when indenting epic under task, got nil")
+	if err != nil {
+		t.Fatalf("generic indent failed: %v", err)
+	}
+	if task2.ParentID == nil || *task2.ParentID != task1.ID {
+		t.Fatalf("generic indent parent = %v, want %q", task2.ParentID, task1.ID)
 	}
 }
 
@@ -312,7 +314,7 @@ func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}

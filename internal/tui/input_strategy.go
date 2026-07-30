@@ -189,6 +189,7 @@ func chordPathString(path []string) string {
 const (
 	operationCoreCapture          OperationID = "tui.core.capture"
 	operationCoreEdit             OperationID = "tui.core.edit"
+	operationCoreEditDescription  OperationID = "tui.core.edit-description"
 	operationCoreStart            OperationID = "tui.core.start"
 	operationCoreDone             OperationID = "tui.core.done"
 	operationCoreBacklog          OperationID = "tui.core.backlog"
@@ -207,18 +208,14 @@ const (
 	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
 	operationCoreDetail           OperationID = "tui.core.detail"
 	operationCoreVisibleSearch    OperationID = "tui.core.visible-search"
-	operationCoreFinder           OperationID = "tui.core.finder"
-	operationCoreModes            OperationID = "tui.core.modes"
 	operationCoreScope            OperationID = "tui.core.scope"
 	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
+	operationCoreSelectAll        OperationID = "tui.core.select-all"
 	operationCoreNotes            OperationID = "tui.core.notes"
-	operationCoreWeeklyReview     OperationID = "tui.core.weekly-review"
-	operationCoreTags             OperationID = "tui.core.tags"
-	operationCoreNotifications    OperationID = "tui.core.notifications"
+	operationCoreToggleTheme      OperationID = "tui.core.toggle-theme"
 	operationCoreUndo             OperationID = "tui.core.undo"
 	operationCoreRedo             OperationID = "tui.core.redo"
 	operationCoreBack             OperationID = "tui.core.back"
-	operationCoreReset            OperationID = "tui.core.reset"
 	operationCoreHelp             OperationID = "tui.core.help"
 	operationCoreQuit             OperationID = "tui.core.quit"
 	operationCoreNextWorkMode     OperationID = "tui.core.next-work-mode"
@@ -232,7 +229,9 @@ func SimplifiedInputStrategy() InputStrategy {
 		ID: InputStrategySimplified,
 		Bindings: []OperationKeyBinding{
 			{OperationID: operationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 1, FooterLabel: "capture"},
-			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 10, FooterLabel: "edit"},
+			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 10, FooterLabel: "title"},
+			{OperationID: operationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
+			{OperationID: operationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
 			{OperationID: operationCoreStart, Keys: []string{"s"}, DisplayKey: "s", FooterRank: 11, FooterLabel: "start"},
 			{OperationID: operationCoreDone, Keys: []string{"d"}, DisplayKey: "d", FooterRank: 3, FooterLabel: "done"},
 			{OperationID: operationCoreBacklog, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 12, FooterLabel: "backlog"},
@@ -249,50 +248,51 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
 			{OperationID: operationCoreReorderDown, Keys: []string{"J"}, DisplayKey: "J"},
 			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K"},
+			{OperationID: operationTaskOutdent, Keys: []string{"<"}, DisplayKey: "<"},
+			{OperationID: operationTaskIndent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationCoreDetail, Keys: []string{"enter"}, DisplayKey: "Enter"},
 			{OperationID: operationCoreVisibleSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
-			{OperationID: operationCoreFinder, Keys: []string{":"}, DisplayKey: ":", FooterRank: 5, FooterLabel: "finder"},
-			{OperationID: operationCoreModes, Keys: []string{"m"}, DisplayKey: "m", FooterRank: 6, FooterLabel: "modes"},
 			{OperationID: operationCoreScope, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 7, FooterLabel: "scope"},
 			{OperationID: operationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v"},
+			{OperationID: operationCoreSelectAll, Keys: []string{"V"}, DisplayKey: "V"},
 			{OperationID: operationCoreNotes, Keys: []string{"N"}, DisplayKey: "N"},
-			{OperationID: operationCoreWeeklyReview, Keys: []string{"R"}, DisplayKey: "R"},
-			{OperationID: operationCoreTags, Keys: []string{"T"}, DisplayKey: "T"},
-			{OperationID: operationCoreNotifications, Keys: []string{"!"}, DisplayKey: "!"},
+			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
-			{OperationID: operationCoreReset, Keys: []string{"ctrl+esc"}, DisplayKey: "Ctrl+Esc", FooterRank: 9, FooterLabel: "root"},
 			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?", FooterRank: 8, FooterLabel: "help"},
 			{OperationID: operationCoreQuit, Keys: []string{"ctrl+c"}, DisplayKey: "Ctrl+C"},
 			{OperationID: operationCoreNextWorkMode, Keys: []string{"tab"}, DisplayKey: "Tab"},
 			{OperationID: operationCorePreviousWorkMode, Keys: []string{"shift+tab"}, DisplayKey: "Shift+Tab"},
 			{OperationID: operationTaskSetDueDate, Keys: []string{"@"}, DisplayKey: "@", FooterRank: 15, FooterLabel: "due"},
 			{OperationID: operationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 16, FooterLabel: "tags"},
+			{OperationID: operationTaskSetSnooze, Keys: []string{"z"}, DisplayKey: "z", FooterRank: 23, FooterLabel: "snooze"},
+			{OperationID: operationTaskTogglePin, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 24, FooterLabel: "pin"},
+			{OperationID: operationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
+			{OperationID: operationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
+			{OperationID: operationTaskCopyTitleDescription, Keys: []string{"ctrl+y"}, DisplayKey: "Ctrl+Y"},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "0"}, DisplayKey: "p0-5", HintLabel: "clear", PresetValue: 0, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "1"}, DisplayKey: "p0-5", HintLabel: "critical", PresetValue: 1, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "2"}, DisplayKey: "p0-5", HintLabel: "high", PresetValue: 2, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "3"}, DisplayKey: "p0-5", HintLabel: "normal", PresetValue: 3, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "4"}, DisplayKey: "p0-5", HintLabel: "low", PresetValue: 4, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"p", "5"}, DisplayKey: "p0-5", HintLabel: "lowest", PresetValue: 5, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "i"}, DisplayKey: ",iwprsc", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "w"}, DisplayKey: ",iwprsc", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "p"}, DisplayKey: ",iwprsc", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "r"}, DisplayKey: ",iwprsc", HintLabel: "review", PresetValue: models.StateReview, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "s"}, DisplayKey: ",iwprsc", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "c"}, DisplayKey: ",iwprsc", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "i"}, DisplayKey: ",iwpsc", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "w"}, DisplayKey: ",iwpsc", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "p"}, DisplayKey: ",iwpsc", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "s"}, DisplayKey: ",iwpsc", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{",", "c"}, DisplayKey: ",iwpsc", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "0"}, DisplayKey: "fp0-5", HintLabel: "all", PresetValue: 0, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "1"}, DisplayKey: "fp0-5", HintLabel: "<=1", PresetValue: 1, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "2"}, DisplayKey: "fp0-5", HintLabel: "<=2", PresetValue: 2, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "3"}, DisplayKey: "fp0-5", HintLabel: "<=3", PresetValue: 3, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "4"}, DisplayKey: "fp0-5", HintLabel: "<=4", PresetValue: 4, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "5"}, DisplayKey: "fp0-5", HintLabel: "<=5", PresetValue: 5, HasPresetValue: true},
-			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "t"}, DisplayKey: "fdtwon", HintLabel: "today", PresetValue: DueDateToday, HasPresetValue: true},
-			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "w"}, DisplayKey: "fdtwon", HintLabel: "this week", PresetValue: DueDateThisWeek, HasPresetValue: true},
-			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "o"}, DisplayKey: "fdtwon", HintLabel: "overdue", PresetValue: DueDateOverdue, HasPresetValue: true},
-			{OperationID: operationFilterDue, Sequence: []string{"f", "d", "n"}, DisplayKey: "fdtwon", HintLabel: "no due date", PresetValue: DueDateNone, HasPresetValue: true},
+			{OperationID: operationFilterDue, Sequence: []string{"f", "d"}, DisplayKey: "fd", HintLabel: "due date"},
 			{OperationID: operationFilterStates, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "states"},
 			{OperationID: operationFilterTags, Sequence: []string{"f", "t"}, DisplayKey: "ft", HintLabel: "tags"},
+			{OperationID: operationFilterBlocked, Sequence: []string{"f", "b"}, DisplayKey: "fb", HintLabel: "blocked"},
+			{OperationID: operationFilterSnoozed, Sequence: []string{"f", "z"}, DisplayKey: "fz", HintLabel: "snoozed"},
 			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
 		},
 		ChordGroups: []OperationChordGroup{
@@ -300,7 +300,6 @@ func SimplifiedInputStrategy() InputStrategy {
 			{Sequence: []string{","}, HintLabel: "state", FooterRank: 18, FooterLabel: "state"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "p"}, HintLabel: "priority threshold"},
-			{Sequence: []string{"f", "d"}, HintLabel: "due"},
 		},
 	}
 }

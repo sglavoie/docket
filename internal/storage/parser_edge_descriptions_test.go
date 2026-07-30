@@ -40,14 +40,12 @@ func TestRoundTrip_DescriptionWithHeadingLikeLines(t *testing.T) {
 				{
 					ID:            "t1",
 					ShortID:       1,
-					Type:          models.TaskTypeTask,
 					Title:         "Test Task",
 					Description:   tc.desc,
 					WorkflowState: models.StateReady,
 					Priority:      3,
 					Tags:          []string{},
 					DependsOn:     []string{},
-					RelatedTo:     []string{},
 					CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			}
@@ -82,14 +80,12 @@ func TestRoundTrip_DescriptionWithLiteralBackslashHash(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "Test Task",
 			Description:   desc,
 			WorkflowState: models.StateReady,
 			Priority:      3,
 			Tags:          []string{},
 			DependsOn:     []string{},
-			RelatedTo:     []string{},
 			CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
@@ -130,14 +126,12 @@ func TestRoundTrip_DescriptionEmptyAndWhitespace(t *testing.T) {
 				{
 					ID:            "t1",
 					ShortID:       1,
-					Type:          models.TaskTypeTask,
 					Title:         "Test Task",
 					Description:   tc.desc,
 					WorkflowState: models.StateReady,
 					Priority:      3,
 					Tags:          []string{},
 					DependsOn:     []string{},
-					RelatedTo:     []string{},
 					CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			}
@@ -281,14 +275,12 @@ func TestRoundTrip_DescriptionWithBlockMarkers(t *testing.T) {
 				{
 					ID:            "t1",
 					ShortID:       1,
-					Type:          models.TaskTypeTask,
 					Title:         "Test Task",
 					Description:   tc.desc,
 					WorkflowState: models.StateReady,
 					Priority:      3,
 					Tags:          []string{},
 					DependsOn:     []string{},
-					RelatedTo:     []string{},
 					CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				},
 			}
@@ -310,9 +302,6 @@ func TestRoundTrip_DescriptionWithBlockMarkers(t *testing.T) {
 			if len(parsed[0].Comments) != 0 {
 				t.Errorf("phantom Comments parsed: %+v", parsed[0].Comments)
 			}
-			if len(parsed[0].Activity) != 0 {
-				t.Errorf("phantom Activity parsed: %+v", parsed[0].Activity)
-			}
 			if len(parsed[0].Decisions) != 0 {
 				t.Errorf("phantom Decisions parsed: %+v", parsed[0].Decisions)
 			}
@@ -330,14 +319,12 @@ func TestRoundTrip_DescriptionWithHTMLCommentLikeMetadata(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       1,
-			Type:          models.TaskTypeTask,
 			Title:         "Test Task",
 			Description:   desc,
 			WorkflowState: models.StateReady,
 			Priority:      3,
 			Tags:          []string{},
 			DependsOn:     []string{},
-			RelatedTo:     []string{},
 			CreatedAt:     time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}

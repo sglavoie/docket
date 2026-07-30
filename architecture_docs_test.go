@@ -6,95 +6,81 @@ import (
 	"testing"
 )
 
-func TestArchitectureDocumentationCoversReleaseCandidateContracts(t *testing.T) {
-	data, err := os.ReadFile("docs/architecture.md")
+func normalizedDocumentation(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read architecture documentation: %v", err)
+		t.Fatalf("read %s: %v", path, err)
 	}
-	content := strings.Join(strings.Fields(string(data)), " ")
+	return strings.Join(strings.Fields(string(data)), " ")
+}
+
+func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
+	content := normalizedDocumentation(t, "docs/architecture.md")
 	required := []string{
-		"## Workflow state model",
-		"Dependency blocking is derived",
-		"`in_progress` identifies work currently underway",
-		"Focus Queue is ordering-only",
-		"## Durable data layout",
-		".tt/transactions/",
-		"## Transactions, recovery, and undo",
+		"## Runtime layers",
+		"strict schema-5 Markdown",
+		"## Task model",
+		"Blocked is derived from unresolved dependencies",
+		"Today and Next are mutually exclusive",
+		"resulting subtree depth above six",
+		"## TUI architecture",
+		"The five modes are All, Inbox, Next, Backlog, and Due",
+		"### One operation grammar",
+		"`SimplifiedInputStrategy` is the only Outliner key grammar",
+		"the exact nine `Space` actions",
+		"At widths of at least 100 columns",
+		"The bulk `Space` menu contains Delete only",
+		"The combined Notes tool carries an explicit location with every row",
+		"## Persistence layout",
+		"workspace.json",
+		"planning.json",
+		"## Transactions and recovery",
+		"at most 50 transactions",
 		"## Concurrent edits and conflicts",
-		"opaque prepared action plan",
-		"legacy-only aggregate `.tt.json`",
-		"canonical lowercase ASCII components",
-		"active TUI at either path",
+		"## Snapshot-first v5 migration",
+		"pre-simplification-v5-<UTC>.tar.gz",
+		"prepared activation journal",
 		"## Workspace location and cloud consent",
-		"New workspaces start in local storage",
-		"## AI privacy and consent",
-		"standard input, not process arguments",
-		"Full-workspace disclosure requires current provider-specific consent",
-		"codex exec --cd <workspace>",
-		"Redacted, no-context, and declined",
-		"## Upgrade and migration expectations",
-		"## Backup and restore",
-		"## Platform support",
+		"## Maintenance CLI and platform support",
 		"macOS and Linux",
-		"## TUI navigation architecture",
-		"All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked, Daily",
-		"`Tab`/`Shift+Tab` cycle All → Inbox → Next → Backlog",
-		"`OperationRegistry` is the common descriptor source",
-		"`ListSurface`",
-		"restores All over All Projects",
 	}
 	for _, needle := range required {
-		if !strings.Contains(content, needle) {
+		if !strings.Contains(content, strings.Join(strings.Fields(needle), " ")) {
 			t.Errorf("architecture documentation missing %q", needle)
 		}
 	}
 }
 
-func TestREADMEPointsToArchitectureAndLocalFirstStorage(t *testing.T) {
-	data, err := os.ReadFile("README.md")
-	if err != nil {
-		t.Fatalf("read README: %v", err)
-	}
-	content := strings.Join(strings.Fields(string(data)), " ")
-	for _, needle := range []string{
-		"local `~/.tt/` workspace by default",
-		"iCloud Drive, only after explicit selection",
-		"not converted automatically",
-		"`--force` skips only the confirmation prompt",
-		"docs/architecture.md",
-		"just tui-scenarios",
+func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
+	content := normalizedDocumentation(t, "docs/architecture.md")
+	for _, stale := range []string{
+		"Review mode",
+		"Finder",
+		"Command Palette",
+		"Task Type",
+		"live schema 4",
+		"task mutation CLI",
+		"Ctrl+Esc reset",
 	} {
-		if !strings.Contains(content, needle) {
-			t.Errorf("README missing %q", needle)
+		if strings.Contains(content, stale) {
+			t.Errorf("architecture documentation contains retired runtime guidance %q", stale)
 		}
 	}
 }
 
-func TestCanonicalStateAndPlanningDocumentationStayDistinct(t *testing.T) {
-	for _, path := range []string{"README.md", "docs/architecture.md"} {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		content := strings.Join(strings.Fields(string(data)), " ")
-		for _, want := range []string{
-			"Focus Queue",
-			"ordering",
-			"Today and Next are mutually exclusive",
-		} {
-			if !strings.Contains(content, want) {
-				t.Errorf("%s missing canonical planning distinction %q", path, want)
-			}
-		}
-		for _, stale := range []string{
-			"Active section",
-			"Next → Backlog → Active → All",
-			"command-palette project navigation",
-			"`Ctrl+X`",
-		} {
-			if strings.Contains(content, stale) {
-				t.Errorf("%s contains retired runtime guidance %q", path, stale)
-			}
+func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
+	content := normalizedDocumentation(t, "CLAUDE.md")
+	for _, required := range []string{
+		"nine-state, five-mode, Outliner-only product",
+		"keys `m`, `:`, `R`, `!`, and `Ctrl+Esc` must remain unbound",
+		"The `Space` menu is exactly",
+		"!1-5 #tag @date ~interval $state %project >parent",
+		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
+		"focused snapshot-first migration and interrupted activation recovery tests",
+	} {
+		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
+			t.Errorf("CLAUDE.md missing %q", required)
 		}
 	}
 }

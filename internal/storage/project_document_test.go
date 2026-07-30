@@ -9,9 +9,9 @@ import (
 )
 
 // newDocTask builds a minimal task for document round-trip tests.
-func newDocTask(t *testing.T, id string, shortID int, taskType models.TaskType, title string) *models.Task {
+func newDocTask(t *testing.T, id string, shortID int, taskType string, title string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, shortID, taskType, title)
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}
@@ -21,18 +21,39 @@ func newDocTask(t *testing.T, id string, shortID int, taskType models.TaskType, 
 	return task
 }
 
+func mustWriteV5Project(t *testing.T, project *models.Project) string {
+	t.Helper()
+	document, err := CanonicalProjectDocument(project, nil)
+	if err != nil {
+		t.Fatalf("canonical project document: %v", err)
+	}
+	content, err := document.WriteCurrent()
+	if err != nil {
+		t.Fatalf("write current project document: %v", err)
+	}
+	return content
+}
+
+func mustWriteCurrentDocument(t *testing.T, document *ProjectDocument) string {
+	t.Helper()
+	content, err := document.WriteCurrent()
+	if err != nil {
+		t.Fatalf("write current document: %v", err)
+	}
+	return content
+}
+
 // TestProjectDocumentV2FixedPoint verifies write→parse→write reaches a fixed
 // point for a schema-v2 document, the primary losslessness contract.
 func TestProjectDocumentV2FixedPoint(t *testing.T) {
-	epic := newDocTask(t, "epic-1", 1, models.TaskTypeEpic, "Epic one")
+	epic := newDocTask(t, "epic-1", 1, "", "Epic one")
 	epic.ApplyWorkflowState(models.StateInProgress)
-	child := newDocTask(t, "task-1", 2, models.TaskTypeTask, "Child task")
+	child := newDocTask(t, "task-1", 2, "", "Child task")
 	child.ParentID = &epic.ID
 	child.ApplyWorkflowState(models.StateWaiting)
 
 	doc := &ProjectDocument{
 		ProjectName:   "Schema V2",
-		Tags:          []string{"backend"},
 		Tasks:         []*models.Task{epic, child},
 		SchemaVersion: SchemaVersionV2,
 	}
@@ -42,7 +63,7 @@ func TestProjectDocumentV2FixedPoint(t *testing.T) {
 		t.Fatalf("v2 output missing schema marker:\n%s", seed)
 	}
 
-	parsed, err := ParseProjectDocument(seed)
+	parsed, err := parseLegacyAwareProjectDocument(seed)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -70,7 +91,7 @@ func TestProjectDocumentV2FixedPoint(t *testing.T) {
 // first write contains a redundant updated field that disappears after parse and
 // changes the canonical revision.
 func TestProjectDocumentV2SameMinuteUpdatedAtFixedPoint(t *testing.T) {
-	task := newDocTask(t, "same-minute", 1, models.TaskTypeTask, "Same minute")
+	task := newDocTask(t, "same-minute", 1, "", "Same minute")
 	task.CreatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
 	task.UpdatedAt = time.Date(2026, 7, 13, 10, 15, 55, 0, time.Local)
 	doc := &ProjectDocument{
@@ -83,7 +104,7 @@ func TestProjectDocumentV2SameMinuteUpdatedAtFixedPoint(t *testing.T) {
 	if strings.Contains(first, "updated:") {
 		t.Fatalf("same-minute timestamp emitted a non-canonical updated field:\n%s", first)
 	}
-	parsed, err := ParseProjectDocument(first)
+	parsed, err := parseLegacyAwareProjectDocument(first)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -102,7 +123,7 @@ func TestProjectDocumentV1Upgrade(t *testing.T) {
 		"## Task: Waiting item\n" +
 		"<!-- id: leg-1, status: todo, section: Waiting, priority: 2, created: 2025-03-01 08:00:00 -->\n"
 
-	doc, err := ParseProjectDocument(legacy)
+	doc, err := parseLegacyAwareProjectDocument(legacy)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -126,7 +147,7 @@ func TestProjectDocumentV1Upgrade(t *testing.T) {
 		t.Fatalf("upgraded v2 leaked legacy fields:\n%s", v2)
 	}
 
-	reparsed, err := ParseProjectDocument(v2)
+	reparsed, err := parseLegacyAwareProjectDocument(v2)
 	if err != nil {
 		t.Fatalf("re-parse upgraded doc: %v", err)
 	}
@@ -145,7 +166,7 @@ func TestProjectDocumentPreservesOpaqueBlocks(t *testing.T) {
 		"## Task: Only task\n" +
 		"<!-- id: op-1, state: ready, priority: 1, created: 2025-03-01 08:00:00 -->\n"
 
-	doc, err := ParseProjectDocument(src)
+	doc, err := parseLegacyAwareProjectDocument(src)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -159,7 +180,7 @@ func TestProjectDocumentPreservesOpaqueBlocks(t *testing.T) {
 	}
 
 	// Fixed point including the opaque block.
-	reparsed, err := ParseProjectDocument(out)
+	reparsed, err := parseLegacyAwareProjectDocument(out)
 	if err != nil {
 		t.Fatalf("re-parse: %v", err)
 	}
@@ -176,7 +197,7 @@ func TestProjectDocumentMalformedState(t *testing.T) {
 		"## Task: Bad state\n" +
 		"<!-- id: bad-1, state: not-a-real-state, priority: 1, created: 2025-03-01 08:00:00 -->\n"
 
-	doc, err := ParseProjectDocument(src)
+	doc, err := parseLegacyAwareProjectDocument(src)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -197,12 +218,12 @@ func TestProjectDocumentMalformedState(t *testing.T) {
 // TestProjectDocumentHierarchyRoundTrip verifies parent/child relationships and
 // slice order survive a v2 round-trip.
 func TestProjectDocumentHierarchyRoundTrip(t *testing.T) {
-	epic := newDocTask(t, "epic-h", 1, models.TaskTypeEpic, "Parent epic")
+	epic := newDocTask(t, "epic-h", 1, "", "Parent epic")
 	epic.ApplyWorkflowState(models.StateReady)
-	story := newDocTask(t, "story-h", 2, models.TaskTypeStory, "Child story")
+	story := newDocTask(t, "story-h", 2, "", "Child story")
 	story.ParentID = &epic.ID
 	story.ApplyWorkflowState(models.StateNext)
-	leaf := newDocTask(t, "task-h", 3, models.TaskTypeTask, "Grandchild task")
+	leaf := newDocTask(t, "task-h", 3, "", "Grandchild task")
 	leaf.ParentID = &story.ID
 	leaf.ApplyWorkflowState(models.StateInProgress)
 
@@ -212,7 +233,7 @@ func TestProjectDocumentHierarchyRoundTrip(t *testing.T) {
 		SchemaVersion: SchemaVersionV2,
 	}
 
-	reparsed, err := ParseProjectDocument(doc.WriteV2())
+	reparsed, err := parseLegacyAwareProjectDocument(doc.WriteV2())
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -233,7 +254,7 @@ func TestProjectDocumentHierarchyRoundTrip(t *testing.T) {
 // completion timestamp round-trips through v2 with state and CompletedAt intact —
 // the shape archived/completed tasks take.
 func TestProjectDocumentArchiveState(t *testing.T) {
-	done := newDocTask(t, "done-1", 1, models.TaskTypeTask, "Finished work")
+	done := newDocTask(t, "done-1", 1, "", "Finished work")
 	done.ApplyWorkflowState(models.StateDone)
 	completed := time.Date(2025, 3, 2, 12, 0, 0, 0, time.Local)
 	done.CompletedAt = &completed
@@ -252,7 +273,7 @@ func TestProjectDocumentArchiveState(t *testing.T) {
 		t.Fatalf("v2 output missing completed timestamp:\n%s", out)
 	}
 
-	reparsed, err := ParseProjectDocument(out)
+	reparsed, err := parseLegacyAwareProjectDocument(out)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -274,7 +295,7 @@ func TestProjectDocumentManualEdit(t *testing.T) {
 		"## Task: Hand written\n" +
 		"<!-- id: man-1, state: someday, priority: 3, created: 2025-03-01 08:00:00 -->\n"
 
-	doc, err := ParseProjectDocument(manual)
+	doc, err := parseLegacyAwareProjectDocument(manual)
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
@@ -290,9 +311,9 @@ func TestProjectDocumentManualEdit(t *testing.T) {
 	}
 }
 
-// TestLoadSaveProjectDocumentV2 verifies the opt-in v2 filesystem round-trip
-// through SaveProjectDocumentV2 / LoadProjectDocument.
-func TestLoadSaveProjectDocumentV2(t *testing.T) {
+// TestLoadProjectDocumentRejectsLegacyV2 verifies legacy codec output is not
+// accepted by the live project-document loader.
+func TestLoadProjectDocumentRejectsLegacyV2(t *testing.T) {
 	dir := t.TempDir()
 	project, err := models.NewProject("v2-disk-id", "V2 Disk", dir)
 	if err != nil {
@@ -300,7 +321,7 @@ func TestLoadSaveProjectDocumentV2(t *testing.T) {
 	}
 	project.Slug = "v2-disk"
 
-	task := newDocTask(t, "disk-1", 1, models.TaskTypeTask, "Disk task")
+	task := newDocTask(t, "disk-1", 1, "", "Disk task")
 	task.ApplyWorkflowState(models.StateNext)
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
@@ -310,17 +331,8 @@ func TestLoadSaveProjectDocumentV2(t *testing.T) {
 		t.Fatalf("SaveProjectDocumentV2: %v", saveErr)
 	}
 
-	doc, err := LoadProjectDocument(project)
-	if err != nil {
-		t.Fatalf("LoadProjectDocument: %v", err)
-	}
-	if doc.SchemaVersion != SchemaVersionV2 {
-		t.Fatalf("schema version = %d, want v2", doc.SchemaVersion)
-	}
-	if len(doc.Tasks) != 1 || doc.Tasks[0].State() != models.StateNext {
-		t.Fatalf("loaded doc tasks = %#v, want one next task", doc.Tasks)
-	}
-	if doc.Revision == "" {
-		t.Fatalf("expected non-empty revision")
+	if _, err := LoadProjectDocument(project); err == nil ||
+		!strings.Contains(err.Error(), "snapshot-first workspace migration") {
+		t.Fatalf("LoadProjectDocument(v2) error = %v, want migration refusal", err)
 	}
 }

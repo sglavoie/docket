@@ -7,8 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -17,10 +15,7 @@ import (
 // atomic application-layer transaction. The source removal, destination
 // insertion, each moved task's attachment directory, and the durable planning
 // refs (Focus Queue, Daily Plan) reassigned to the destination all commit
-// together through app.Service.MoveToProject — replacing the retired
-// saveBothProjectsAsync orchestration that persisted the two projects and their
-// per-project .undo snapshots as separate raw saves. Machine-local recent visits
-// are non-authoritative UI state repaired separately after the commit succeeds.
+// together through app.Service.MoveToProject.
 func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.Cmd) {
 	if msg.Task == nil || msg.SourceProject == nil || msg.DestProjectID == "" {
 		return true, nil
@@ -49,7 +44,7 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	// section was chosen, the same artifact reconciles Today/Next exclusivity for the
 	// moved root against its destination final state, so a move that lands the root in
 	// Next drops any stale Today entry and a move out of Next drops any stale order
-	// entry. Recent visits are excluded here and repaired separately after the commit.
+	// entry.
 	artifacts, err := m.moveConfigArtifacts(movedSet, sourceProjectID, destProject.ID, sourceTask.ID, nil)
 	if err != nil {
 		return true, errorCmd("failed to prepare move: %w", err)
@@ -66,33 +61,18 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	m.reloadProjectByID(destProject.ID)
 	m.reloadProjectByID(msg.SourceProject.ID)
 
-	// Repair the machine-local recent visits separately — non-authoritative UI state
-	// updated only after the durable commit succeeded. A failure here is a warning,
-	// not an error: the move is already committed.
-	if err := m.commitMachineMutation(func(machine *config.MachineState) {
-		machine.ReassignRecentVisitsProjectFrom(movedSet, sourceProjectID, destProject.ID)
-	}); err != nil {
-		logging.Warn("failed to update recent visits after move: %v", err)
-	}
-
-	// Update in-memory TUI focus queue, daily plan, and recent-visit references so
-	// open planning views point at the destination project immediately.
-	for i := range m.focusQueue {
-		if m.focusQueue[i].Project != nil && m.focusQueue[i].Project.ID == sourceProjectID && movedSet[m.focusQueue[i].Task.ID] {
-			m.focusQueue[i].Project = destProject
+	// Update in-memory planning references so open views point at the destination
+	// project immediately.
+	for i := range m.nextOrder {
+		if m.nextOrder[i].Project != nil && m.nextOrder[i].Project.ID == sourceProjectID && movedSet[m.nextOrder[i].Task.ID] {
+			m.nextOrder[i].Project = destProject
 		}
 	}
-	for i := range m.dailyPlan {
-		if m.dailyPlan[i].Project != nil && m.dailyPlan[i].Project.ID == sourceProjectID && movedSet[m.dailyPlan[i].Task.ID] {
-			m.dailyPlan[i].Project = destProject
+	for i := range m.today {
+		if m.today[i].Project != nil && m.today[i].Project.ID == sourceProjectID && movedSet[m.today[i].Task.ID] {
+			m.today[i].Project = destProject
 		}
 	}
-	for i := range m.recentTaskVisits {
-		if m.recentTaskVisits[i].Project != nil && m.recentTaskVisits[i].Project.ID == sourceProjectID && movedSet[m.recentTaskVisits[i].Task.ID] {
-			m.recentTaskVisits[i].Project = destProject
-		}
-	}
-
 	movedTask := destProject.GetTaskByID(sourceTask.ID)
 	return true, func() tea.Msg {
 		return TaskMovedToProjectMsg{
@@ -146,9 +126,6 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	// reassignment) into its transaction; advance the shared domain snapshot now
 	// that it is committed so views reading it stay consistent.
 	m.refreshRuntime()
-	if msg.SourceProject != nil && m.runtime.IsSystemInboxProject(msg.SourceProject.ID) {
-		m.advanceOnboarding(func(progress *config.OnboardingProgress) { progress.InboxTriaged = true })
-	}
 	var statusMsg string
 	if msg.MovedCount > 1 {
 		statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, msg.DestProject.Name)
@@ -159,5 +136,18 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 		statusMsg += fmt.Sprintf(" (%d deps cleared)", msg.ClearedDeps)
 	}
 	m.setSuccessStatus(statusMsg)
-	return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload(), statusTimeout(3*time.Second))
+	reloadCmd := m.requestCrossProjectOutlinerReload()
+	m.preserveMovedOutlinerTarget(msg)
+	return true, tea.Batch(popCmd, reloadCmd, statusTimeout(3*time.Second))
+}
+
+func (m *AppModel) preserveMovedOutlinerTarget(msg TaskMovedToProjectMsg) {
+	if !msg.FromGlobal || m.crossOutliner == nil || msg.Task == nil || msg.DestProject == nil {
+		return
+	}
+	// reloadCrossProjects captured the old project-qualified cursor before
+	// clearing rows. Replace it with the moved task's new qualified identity so
+	// the task-menu operation returns to the same logical Outliner target.
+	m.crossOutliner.crossReloadProjectID = msg.DestProject.ID
+	m.crossOutliner.crossReloadTaskID = msg.Task.ID
 }

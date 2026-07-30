@@ -13,12 +13,6 @@ type ProjectRepository interface {
 	// Save persists the project data to storage.
 	Save(project *models.Project) error
 
-	// Backup creates a backup copy of the project data.
-	Backup(project *models.Project) error
-
-	// RestoreFromBackup swaps the current data with the backup.
-	RestoreFromBackup(project *models.Project) error
-
 	// Exists checks if a project exists at the given path.
 	Exists(projectPath string) bool
 
@@ -27,9 +21,6 @@ type ProjectRepository interface {
 
 	// DeleteDir removes the project directory.
 	DeleteDir(projectPath string) error
-
-	// BackupExists checks if a backup exists for the project.
-	BackupExists(project *models.Project) bool
 }
 
 // FileSystemRepository implements ProjectRepository using the filesystem.
@@ -50,16 +41,6 @@ func (r *FileSystemRepository) Save(project *models.Project) error {
 	return SaveProject(project)
 }
 
-// Backup implements ProjectRepository.
-func (r *FileSystemRepository) Backup(project *models.Project) error {
-	return BackupProject(project)
-}
-
-// RestoreFromBackup implements ProjectRepository.
-func (r *FileSystemRepository) RestoreFromBackup(project *models.Project) error {
-	return RestoreFromBackup(project)
-}
-
 // Exists implements ProjectRepository.
 func (r *FileSystemRepository) Exists(projectPath string) bool {
 	return projectExists(projectPath)
@@ -73,11 +54,6 @@ func (r *FileSystemRepository) CreateDir(project *models.Project) error {
 // DeleteDir implements ProjectRepository.
 func (r *FileSystemRepository) DeleteDir(projectPath string) error {
 	return deleteProjectDir(projectPath)
-}
-
-// BackupExists implements ProjectRepository.
-func (r *FileSystemRepository) BackupExists(project *models.Project) bool {
-	return BackupExists(project)
 }
 
 // DefaultRepository is the default ProjectRepository implementation.

@@ -195,8 +195,8 @@ type ArtifactPrecondition struct {
 // Path is the project directory containing tasks.md. The current canonical
 // project revision must equal ExpectedRevision while the project's advisory
 // lock is held; any divergence aborts the whole transaction with a
-// RevisionConflictError before normal stale-revision merging, activity diffs,
-// conflict recording, undo capture, or journal staging begins.
+// RevisionConflictError before normal stale-revision merging, conflict
+// recording, undo capture, or journal staging begins.
 //
 // Preconditions never become project writes, journal operations, conflict
 // bundles, or workspace-ledger images. ProjectID and ProjectName are retained
@@ -225,6 +225,18 @@ type ArtifactCommitRequest struct {
 	ProjectIDs    []string
 	UndoAction    string
 	UndoContext   string
+}
+
+// OpsCommitRequest describes an undoable user mutation that combines raw
+// filesystem choreography with revision-checked artifacts. Project lifecycle
+// operations use it when a directory move and its catalog/tasks rewrites must
+// be one journal transaction and one workspace-ledger entry.
+type OpsCommitRequest struct {
+	Ops         []transaction.Op
+	Artifacts   []ArtifactChange
+	ProjectIDs  []string
+	UndoAction  string
+	UndoContext string
 }
 
 // ChangeSet is the unit of a single project's mutation committed atomically: the
@@ -329,8 +341,7 @@ type CommitResult struct {
 // order, verify each optimistic revision under the locks, then prepare and commit
 // every project write plus its artifacts as one atomic transaction. Commit is the
 // single-project convenience; CommitMulti spans multiple projects and their
-// artifacts in one transaction. Direct raw-save paths
-// (SaveProject/RestoreFromBackup) remain only as internal repair hooks.
+// artifacts in one transaction.
 type CommitService struct {
 	transactionsDir string
 	roots           []string
@@ -528,18 +539,14 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	return results, nil
 }
 
-// CommitOps commits raw file operations — directory moves, tombstone writes, and
-// recursive deletes — as ONE atomic transaction through the journal, under the
-// workspace commit lock and after crash recovery. Call CommitOpsWithArtifacts
-// when a lifecycle operation also carries revision-checked writes.
+// CommitOps commits raw file operations as one atomic transaction through the
+// journal, under the workspace commit lock and after crash recovery. Call
+// CommitOpsWithArtifacts when an operation also carries revision-checked writes.
 // It is the project-lifecycle counterpart to CommitMulti: where CommitMulti's unit
 // is a project's tasks.md plus its artifacts, CommitOps carries arbitrary in-root
-// file ops, so archive-location, trash, restore, and purge choreography commits
-// atomically or not at all — a crash mid-commit is rolled forward by recovery, and
-// any target that resolves outside the approved roots is rejected during Prepare
-// before a single byte is staged. It records no undo-ledger entry: project
-// trash/restore is reversible through the trash lifecycle itself and purge is
-// irreversible, so neither participates in the task-oriented workspace ledger.
+// file ops, so directory and maintenance choreography commits atomically or not at
+// all. A crash mid-commit is rolled forward by recovery, and any target resolving
+// outside the approved roots is rejected before a byte is staged.
 func (s *CommitService) CommitOps(ops []transaction.Op) error {
 	return s.CommitOpsWithArtifacts(ops, nil)
 }
@@ -548,17 +555,104 @@ func (s *CommitService) CommitOps(ops []transaction.Op) error {
 // as one transaction. Unlike flattening artifacts into raw writes, this path
 // acquires their domain locks and validates every ExpectedRevision before any
 // move, delete, or write is staged. A stale catalog/config artifact therefore
-// aborts the accompanying project rename, trash, or restore without changing the
-// workspace.
+// aborts the accompanying project rename or maintenance operation without changing
+// the workspace.
 func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts []ArtifactChange) error {
+	_, err := s.commitOps(OpsCommitRequest{Ops: ops, Artifacts: artifacts}, false)
+	return err
+}
+
+// CommitPlannedOpsWithArtifacts builds and commits one maintenance transaction
+// while holding the workspace commit lock. The planner may inspect the
+// workspace after crash recovery and returns typed artifact writes/deletes plus
+// raw directory operations. Artifact revisions are validated under their
+// ordered locks before anything is staged.
+//
+// This is the activation boundary for migrations that must prove a complete
+// source inventory under the same workspace lock that publishes canonical
+// replacements and removes now-empty legacy directories. Artifact operations
+// are applied before raw operations so callers can delete every file in a
+// legacy directory before removing the directory itself.
+func (s *CommitService) CommitPlannedOpsWithArtifacts(
+	plan func() ([]transaction.Op, []ArtifactChange, error),
+) error {
+	if plan == nil {
+		return fmt.Errorf("storage: planned ops commit requires a planner")
+	}
+
+	return s.withWorkspaceCommitLock(func() error {
+		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
+		}
+
+		ops, artifacts, planErr := plan()
+		if planErr != nil {
+			return planErr
+		}
+		if len(ops) == 0 && len(artifacts) == 0 {
+			return fmt.Errorf("storage: planned ops commit requires at least one operation")
+		}
+		lockPaths, lockErr := artifactLockPaths(artifacts, s.roots)
+		if lockErr != nil {
+			return lockErr
+		}
+		if err := createArtifactLockDirectories(lockPaths); err != nil {
+			return err
+		}
+		return withOrderedFileLocks(lockPaths, func() error {
+			if err := validateArtifactRevisions(artifacts); err != nil {
+				return err
+			}
+			artifactOps, _, expandErr := expandArtifactChanges(artifacts)
+			if expandErr != nil {
+				return expandErr
+			}
+			allOps := make([]transaction.Op, 0, len(artifactOps)+len(ops))
+			allOps = append(allOps, artifactOps...)
+			allOps = append(allOps, ops...)
+
+			manifest, prepareErr := journal.Prepare(allOps)
+			if prepareErr != nil {
+				return fmt.Errorf("preparing transaction: %w", prepareErr)
+			}
+			for _, op := range allOps {
+				if op.Kind != transaction.OpMove {
+					continue
+				}
+				if err := os.MkdirAll(filepath.Dir(filepath.Clean(op.Target)), DirPermissions); err != nil {
+					return fmt.Errorf("creating commit target directory: %w", err)
+				}
+			}
+			if err := journal.Commit(manifest); err != nil {
+				return fmt.Errorf("committing transaction: %w", err)
+			}
+			return nil
+		})
+	})
+}
+
+// CommitOpsTransaction commits raw lifecycle operations and artifacts while
+// recording their complete file/directory topology in the workspace undo
+// ledger. The ledger append shares the same journal manifest as the user
+// mutation, so a successful lifecycle change can never be missing its undo
+// boundary.
+func (s *CommitService) CommitOpsTransaction(request OpsCommitRequest) (string, error) {
+	return s.commitOps(request, true)
+}
+
+func (s *CommitService) commitOps(request OpsCommitRequest, recordUndo bool) (string, error) {
+	ops := request.Ops
+	artifacts := request.Artifacts
 	if len(ops) == 0 && len(artifacts) == 0 {
-		return nil
+		return "", nil
 	}
 	lockPaths, err := artifactLockPaths(artifacts, s.roots)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return s.withWorkspaceCommitLock(func() error {
+	var txnID string
+	commitErr := s.withWorkspaceCommitLock(func() error {
 		journal := transaction.NewJournal(s.transactionsDir, s.roots)
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
@@ -571,6 +665,14 @@ func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts [
 				return err
 			}
 
+			var ledgerArtifacts []LedgerArtifact
+			if recordUndo && s.ledger != nil {
+				var captureErr error
+				ledgerArtifacts, captureErr = captureOpsLedgerImages(ops, artifacts)
+				if captureErr != nil {
+					return fmt.Errorf("capturing undo images for lifecycle transaction: %w", captureErr)
+				}
+			}
 			artifactOps, _, err := expandArtifactChanges(artifacts)
 			if err != nil {
 				return err
@@ -579,9 +681,18 @@ func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts [
 			allOps = append(allOps, ops...)
 			allOps = append(allOps, artifactOps...)
 
-			manifest, err := journal.Prepare(allOps)
+			var ledgerRecord *LedgerRecord
+			if recordUndo && s.ledger != nil {
+				ledgerRecord = &LedgerRecord{
+					Action:     request.UndoAction,
+					Context:    request.UndoContext,
+					ProjectIDs: request.ProjectIDs,
+					Artifacts:  ledgerArtifacts,
+				}
+			}
+			manifest, ledgerPlan, err := s.prepareTransaction(journal, allOps, ledgerRecord)
 			if err != nil {
-				return fmt.Errorf("preparing transaction: %w", err)
+				return err
 			}
 			// Prepare creates ordinary write parents while staging. A write nested
 			// below an earlier directory move is staged below that move's source and
@@ -601,9 +712,17 @@ func (s *CommitService) CommitOpsWithArtifacts(ops []transaction.Op, artifacts [
 			if err := journal.Commit(manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
+			if ledgerPlan != nil {
+				s.ledger.gcBlobs(ledgerPlan.file)
+			}
+			txnID = manifest.ID
 			return nil
 		})
 	})
+	if commitErr != nil {
+		return "", commitErr
+	}
+	return txnID, nil
 }
 
 // CommitArtifactTransaction commits an artifact-only user mutation as one
@@ -623,6 +742,74 @@ func (s *CommitService) CommitArtifactTransaction(request ArtifactCommitRequest)
 // saves do not become user-visible undo steps.
 func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, error) {
 	return s.commitArtifacts(ArtifactCommitRequest{Artifacts: artifacts}, false)
+}
+
+// CommitPlannedArtifacts builds and commits an artifact-only maintenance
+// transaction while holding the workspace commit lock. The planner must be
+// read-only: it exists for operations such as immutable workspace snapshots
+// that must read one coherent source state after crash recovery and before any
+// cooperating writer can commit. The returned artifacts are validated,
+// revision-checked, staged, and published together through the normal journal;
+// no workspace-ledger entry is recorded.
+//
+// Unlike CommitArtifacts, artifact paths cannot be validated before the lock is
+// taken because the planner supplies them. Callers should therefore validate
+// user-controlled roots before invoking this method and return only paths
+// derived beneath the service's approved roots.
+func (s *CommitService) CommitPlannedArtifacts(plan func() ([]ArtifactChange, error)) (string, error) {
+	if plan == nil {
+		return "", fmt.Errorf("storage: planned artifact commit requires a planner")
+	}
+
+	var txnID string
+	commitErr := s.withWorkspaceCommitLock(func() error {
+		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
+		}
+
+		artifacts, planErr := plan()
+		if planErr != nil {
+			return planErr
+		}
+		if len(artifacts) == 0 {
+			return fmt.Errorf("storage: planned artifact commit requires at least one artifact")
+		}
+		artifactLocks, lockErr := artifactLockPaths(artifacts, s.roots)
+		if lockErr != nil {
+			return lockErr
+		}
+		if err := createArtifactLockDirectories(artifactLocks); err != nil {
+			return err
+		}
+		return withOrderedFileLocks(artifactLocks, func() error {
+			if err := validateArtifactRevisions(artifacts); err != nil {
+				return err
+			}
+			ops, dirsToCreate, expandErr := expandArtifactChanges(artifacts)
+			if expandErr != nil {
+				return expandErr
+			}
+			manifest, prepareErr := journal.Prepare(ops)
+			if prepareErr != nil {
+				return fmt.Errorf("preparing transaction: %w", prepareErr)
+			}
+			for _, dir := range dirsToCreate {
+				if err := os.MkdirAll(dir, DirPermissions); err != nil {
+					return fmt.Errorf("creating commit target directory: %w", err)
+				}
+			}
+			if err := journal.Commit(manifest); err != nil {
+				return fmt.Errorf("committing transaction: %w", err)
+			}
+			txnID = manifest.ID
+			return nil
+		})
+	})
+	if commitErr != nil {
+		return "", commitErr
+	}
+	return txnID, nil
 }
 
 // CommitProjectRepair persists normalization performed while loading a project
@@ -647,9 +834,13 @@ func (s *CommitService) CommitProjectRepair(project *models.Project, expectedRaw
 	if err != nil {
 		return "", fmt.Errorf("rendering project repair for %s: %w", project.Name, err)
 	}
+	content, err := doc.WriteCurrent()
+	if err != nil {
+		return "", fmt.Errorf("rendering project repair for %s: %w", project.Name, err)
+	}
 	return s.CommitArtifacts([]ArtifactChange{{
 		Path:             tasksFilePath(project.Path),
-		Data:             []byte(doc.WriteV2()),
+		Data:             []byte(content),
 		Mode:             FilePermissions,
 		ExpectedRevision: &expectedRawRevision,
 	}})
@@ -728,8 +919,8 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 
 		// Preconditions guard the validity of artifact locations themselves. Take
 		// and validate those locks first so a stale project path is rejected before
-		// creating a note lock directory below a location that was just moved or
-		// trashed. The workspace commit lock serializes other CommitServices while
+		// creating a note lock directory below a location that was just moved. The
+		// workspace commit lock serializes other CommitServices while
 		// config writers serialize on the held precondition lock.
 		if err := createArtifactLockDirectories(preconditionLocks); err != nil {
 			return err
@@ -898,7 +1089,7 @@ func artifactAdvisoryLockPath(path string) string {
 // validateProjectPaths checks every path CommitMulti reads, writes, or opens for
 // a project before the workspace lock can create the transactions directory.
 // PathWithinRoot resolves existing symlinks, so an escaping project directory,
-// tasks.md, backup, or advisory lock is rejected without filesystem effects.
+// tasks.md, or advisory lock is rejected without filesystem effects.
 func validateProjectPaths(changeset int, projectPath string, roots []string) error {
 	if projectPath == "" {
 		return fmt.Errorf("storage: changeset %d project requires a path", changeset)
@@ -906,7 +1097,6 @@ func validateProjectPaths(changeset int, projectPath string, roots []string) err
 	checks := []artifactPathRole{
 		{path: projectPath, role: "project directory"},
 		{path: tasksFilePath(projectPath), role: "project tasks"},
-		{path: backupFilePath(projectPath), role: "project backup"},
 		{path: filepath.Join(projectPath, LockFileName), role: "project lock"},
 	}
 	for _, check := range checks {
@@ -1258,8 +1448,8 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 
 	// Project preconditions are deliberately a separate first phase. They guard
 	// the complete application-level read set and must expire atomically before
-	// the ordinary ExpectedRevision path can mutate activity, attempt a merge, or
-	// record a durable conflict bundle for any changeset.
+	// the ordinary ExpectedRevision path can attempt a merge or record a durable
+	// conflict bundle for any changeset.
 	if err := s.validateProjectRevisionPreconditions(changesets); err != nil {
 		return nil, nil, err
 	}
@@ -1275,15 +1465,7 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 		}
 		switch {
 		case cs.ExpectedRevision == "" || cs.ExpectedRevision == currentRevision:
-			// In sync (or the caller opted out of the check): nothing to merge. Record
-			// the activity diff against the current (== the loaded base) document, as
-			// the legacy save path did, before Phase 3 renders the local intent. This
-			// runs ONLY here: diffing the local intent against a divergent on-disk
-			// document would append activity entries that then read as a spurious
-			// same-field merge conflict, so the merge path below is left untouched.
-			if currentDoc != nil {
-				diffAndRecordActivity(currentDoc.Tasks, project.Tasks, MaxActivityEntries)
-			}
+			// In sync (or the caller opted out of the check): nothing to merge.
 		case s.conflicts != nil && cs.Base != nil && currentDoc != nil:
 			// Stale revision with a real merge base and a durable conflict store:
 			// three-way merge the loaded base, the caller's local intent, and the
@@ -1310,14 +1492,13 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 				})
 				continue
 			}
-			// The merge retained current's durable activity history while excluding
-			// Activity from user-authored field conflicts. Record the accepted local
-			// business delta against current exactly once before canonicalization, so
-			// a clean stale commit has the same audit semantics as an in-sync commit.
-			diffAndRecordActivity(currentDoc.Tasks, merge.Merged.Tasks, MaxActivityEntries)
 			// Re-parse the merged rendering so the committed revision is a fixed point
 			// (reload-stable): it equals exactly what the next LoadProjectDocument sees.
-			canonical, canonErr := ParseProjectDocument(merge.Merged.WriteV2())
+			mergedContent, renderErr := merge.Merged.WriteCurrent()
+			if renderErr != nil {
+				return nil, nil, fmt.Errorf("rendering merged document for %s: %w", project.Name, renderErr)
+			}
+			canonical, canonErr := ParseProjectDocument(mergedContent)
 			if canonErr != nil {
 				return nil, nil, fmt.Errorf("canonicalizing merged document for %s: %w", project.Name, canonErr)
 			}
@@ -1388,18 +1569,9 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 		return nil, &CommitConflictError{Conflicts: recorded}
 	}
 
-	// Phase 2: back up every project's current tasks.md as an internal repair hook
-	// (matches the legacy save path); best-effort and outside the transaction.
-	for i := range changesets {
-		if err := BackupProject(changesets[i].Project); err != nil {
-			return nil, fmt.Errorf("failed to create backup: %w", err)
-		}
-	}
-
-	// Phase 3: build every project write plus every artifact as ONE transaction so
+	// Build every project write plus every artifact as one transaction so
 	// the whole cross-project mutation is atomic. The markdown content is
-	// byte-identical to the legacy save path so on-disk output is unchanged; only
-	// the write mechanism moves behind the journal.
+	// rendered in the canonical live schema before staging.
 	ops := make([]transaction.Op, 0, len(changesets))
 	// dirsToCreate collects target parent directories that must exist before the
 	// journal renames staged bytes into place: attachment move/copy destinations
@@ -1430,15 +1602,18 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 				return nil, fmt.Errorf("rendering project %s: %w", project.Name, err)
 			}
 		}
-		content := committedDoc.WriteV2()
+		content, err := committedDoc.WriteCurrent()
+		if err != nil {
+			return nil, fmt.Errorf("rendering project %s: %w", project.Name, err)
+		}
 		committedDocs[i] = committedDoc
 		if s.ledger != nil {
-			arts, err := captureLedgerArtifacts(cs, content)
-			if err != nil {
-				return nil, fmt.Errorf("capturing undo images for project %s: %w", project.Name, err)
+			arts, captureErr := captureLedgerArtifacts(cs, content)
+			if captureErr != nil {
+				return nil, fmt.Errorf("capturing undo images for project %s: %w", project.Name, captureErr)
 			}
 			ledgerArtifacts = append(ledgerArtifacts, arts...)
-			ledgerProjectIDs = append(ledgerProjectIDs, undoProjectID(project))
+			ledgerProjectIDs = append(ledgerProjectIDs, ledgerProjectID(project))
 			if recordAction == "" {
 				recordAction = cs.UndoAction
 			}
@@ -1512,6 +1687,16 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 	return results, nil
 }
 
+func ledgerProjectID(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	if project.ID != "" {
+		return project.ID
+	}
+	return project.Slug
+}
+
 // withOrderedFileLocks acquires every distinct lock path in sorted order and runs
 // fn while all are held. Sorting gives a deterministic global acquisition order so
 // two concurrent multi-commits touching an overlapping set of projects can never
@@ -1546,10 +1731,8 @@ func acquireLocksInOrder(paths []string, fn func() error) error {
 
 // currentDocAndRevision reads and parses the project's current tasks.md,
 // returning the parsed document (the three-way merge's "current" input) and its
-// canonical revision, or (nil, "") when the file is absent or unparseable. Unlike
-// the legacy read it performs NO activity diff — that mutates the caller's task
-// set and must not run before a merge, so Phase 1 records activity only on the
-// in-sync path. A nil document routes a stale commit to a plain
+// canonical revision, or (nil, "") when the file is absent or unparseable.
+// A nil document routes a stale commit to a plain
 // RevisionConflictError since it has no mergeable current, matching the legacy
 // save path's tolerance of an unparseable on-disk file.
 func (s *CommitService) currentDocAndRevision(tasksPath string, project *models.Project) (*ProjectDocument, string, error) {

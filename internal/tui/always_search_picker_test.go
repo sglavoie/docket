@@ -18,7 +18,7 @@ func TestProjectSelectorUpdate_ReturnsMoveMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProject dest: %v", err)
 	}
-	task, err := models.NewTask("task-1", 7, models.TaskTypeTask, "Move me")
+	task, err := models.NewGenericTask("task-1", 7, "Move me")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestProjectSelectorUpdate_ReturnsMoveMessage(t *testing.T) {
 }
 
 func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
-	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	parent, err := models.NewGenericTask("parent-1", 11, "Parent task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 }
 
 func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
-	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	parent, err := models.NewGenericTask("parent-1", 11, "Parent task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
 }
 
 func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
-	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	parent, err := models.NewGenericTask("parent-1", 11, "Parent task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 }
 
 func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
-	parent, err := models.NewTask("parent-1", 11, models.TaskTypeStory, "Parent task")
+	parent, err := models.NewGenericTask("parent-1", 11, "Parent task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -141,35 +141,5 @@ func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd != nil {
 		t.Fatal("ctrl+x should not emit a selection when no-parent is disallowed")
-	}
-}
-
-func TestGlobalNoteMoveProjectSelectorUpdate_SelectsProject(t *testing.T) {
-	projectA, err := models.NewProject("proj-a", "Alpha", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject A: %v", err)
-	}
-	projectB, err := models.NewProject("proj-b", "Beta", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject B: %v", err)
-	}
-
-	m := NewGlobalNoteMoveProjectSelectorModel([]*models.Project{projectA, projectB})
-	model, _ := m.Update(syntheticCtrlKey('j'))
-	m = model.(*GlobalNoteMoveProjectSelectorModel)
-	if m.CursorIndex() != 1 {
-		t.Fatalf("ctrl+j should move cursor to 1, got %d", m.CursorIndex())
-	}
-
-	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd == nil {
-		t.Fatal("enter should emit a project selection")
-	}
-	msg, ok := cmd().(GlobalNoteMoveDoneMsg)
-	if !ok {
-		t.Fatalf("expected GlobalNoteMoveDoneMsg, got %T", cmd())
-	}
-	if msg.ProjectID != projectB.ID || msg.ProjectName != projectB.Name {
-		t.Fatalf("expected selected project %q, got %#v", projectB.ID, msg)
 	}
 }

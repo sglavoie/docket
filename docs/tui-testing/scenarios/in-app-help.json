@@ -1,0 +1,19 @@
+{
+  "name": "in-app-help",
+  "fixture": "rich",
+  "size": "160x55",
+  "actions": [
+    { "type": "key", "label": "open generated Outliner help", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "assert": "contains", "value": "Help - Outliner" },
+    { "type": "assert", "assert": "contains", "value": "Capture" },
+    { "type": "assert", "assert": "contains", "value": "Start Task" },
+    { "type": "assert", "assert": "contains", "value": "Choose Scope" },
+    { "type": "assert", "assert": "contains", "value": "Toggle Theme" },
+    { "type": "assert", "assert": "not_contains", "value": "Weekly Review" },
+    { "type": "assert", "assert": "not_contains", "value": "Finder" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close help", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
+  ]
+}

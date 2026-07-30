@@ -103,7 +103,7 @@ func TestTaskForm_ScheduleTab_DuePicker_EscCancels(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_EnterOnRecurrence_EmitsShowRecurrenceEditorMsg(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 3)
+	m = navigateToScheduleField(m, 1)
 	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
 	if cmd == nil {
 		t.Fatal("expected Cmd from Enter on Recurrence, got nil")
@@ -161,69 +161,6 @@ func TestTaskForm_ScheduleTab_NLDateRoundTrip(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Edit_PreservesHasTime(t *testing.T) {
-	project := &models.Project{
-		ID:   "test",
-		Name: "Test",
-		Path: t.TempDir(),
-	}
-	dueDate := time.Date(2026, 6, 15, 14, 30, 0, 0, time.Local)
-	task := &models.Task{
-		ID:            "task-1",
-		ShortID:       1,
-		Type:          models.TaskTypeTask,
-		Title:         "Test task",
-		WorkflowState: models.StateReady,
-		DueDate:       &dueDate,
-		HasTime:       true,
-	}
-	project.Tasks = []*models.Task{task}
-
-	m := NewTaskFormModelEdit(project, task, nil)
-	if !m.draft.hasTime {
-		t.Error("expected draft.hasTime=true when editing task with HasTime=true")
-	}
-	if m.draft.dueInput != "2026-06-15T14:30" {
-		t.Errorf("expected dueInput='2026-06-15T14:30', got %q", m.draft.dueInput)
-	}
-}
-
-func TestTaskForm_DueDatePresetPickerClearsHasTime(t *testing.T) {
-	m := newTestTaskForm()
-	m.draft.hasTime = true
-	tomorrow := time.Date(2026, 6, 16, 0, 0, 0, 0, time.Local)
-	pickedMsg := TaskFormDueDatePickedMsg{Date: &tomorrow}
-	m.activeOverlay = formOverlayDue
-	m.duePicker = newFormDueDatePicker(nil)
-	m.applyFormOverlayResult(pickedMsg)
-	if m.draft.hasTime {
-		t.Error("expected hasTime=false after preset picker selection")
-	}
-	if m.draft.dueDate == nil {
-		t.Error("expected dueDate to be set")
-	}
-}
-
-func TestDateInput_PrefillPreservesHasTime(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	dueWithTime := time.Date(2026, 6, 15, 14, 30, 0, 0, time.Local)
-
-	task := &models.Task{
-		ID:      "test-due-time",
-		ShortID: 99,
-		Title:   "Test task",
-		DueDate: &dueWithTime,
-		HasTime: true,
-	}
-
-	m := NewDateInputModel(task, project, "")
-	got := m.input.Value()
-	want := "2026-06-15T14:30"
-	if got != want {
-		t.Errorf("DateInputModel prefill with HasTime=true: got %q, want %q", got, want)
-	}
-}
-
 func TestDateInput_PrefillDateOnly(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 	due := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
@@ -233,13 +170,12 @@ func TestDateInput_PrefillDateOnly(t *testing.T) {
 		ShortID: 98,
 		Title:   "Test task",
 		DueDate: &due,
-		HasTime: false,
 	}
 
 	m := NewDateInputModel(task, project, "")
 	got := m.input.Value()
 	want := "2026-06-15"
 	if got != want {
-		t.Errorf("DateInputModel prefill with HasTime=false: got %q, want %q", got, want)
+		t.Errorf("DateInputModel date-only prefill: got %q, want %q", got, want)
 	}
 }

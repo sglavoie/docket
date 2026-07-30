@@ -20,19 +20,23 @@ type todaySectionBuild struct {
 func (m *OutlinerModel) buildTodaySection(
 	projects []*models.Project,
 	candidates map[string][]*models.Task,
+	input OutlinerModeInput,
+	pinned map[TaskIdentity]bool,
 ) todaySectionBuild {
 	result := todaySectionBuild{suppressed: make(map[TaskIdentity]bool)}
 	if len(projects) == 0 {
 		return result
 	}
 
-	input := m.buildOutlinerModeInput(projects)
 	input.CandidateTasks = candidates
-	input.TaskExclude = func(task *models.Task, _ *models.Project) bool {
+	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
 		return !planningTodayEligible(task) ||
-			(task.IsSnoozedAt(input.Now) && !m.hasExplicitSnoozedFilter())
+			(task.IsSnoozedAt(input.Now) && !m.hasExplicitSnoozedFilter()) ||
+			pinned[taskIdentityFor(task, project)]
 	}
-	input.TaskFilter = m.workModeTaskFilter()
+	if input.TaskFilter == nil {
+		input.TaskFilter = m.workModeTaskFilterAt(input.Now)
+	}
 
 	// Suppress every explicit plan member from the normal workflow forest even
 	// when it is snoozed (and therefore intentionally absent from Today). This
@@ -47,7 +51,7 @@ func (m *OutlinerModel) buildTodaySection(
 				continue
 			}
 			identity := taskIdentityFor(task, project)
-			if input.DailyPlanIDs[identity] && planningTodayEligible(task) {
+			if input.TodayIDs[identity] && planningTodayEligible(task) {
 				result.suppressed[identity] = true
 			}
 		}
@@ -66,8 +70,8 @@ func (m *OutlinerModel) buildTodaySection(
 		identity := taskIdentityFor(modeRow.Task, modeRow.Project)
 		row := m.outlinerRowFromModeRow(modeRow)
 		row.IsTodaySection = true
-		row.IsDailyPlanMember = input.DailyPlanIDs[identity]
-		if row.IsDailyPlanMember {
+		row.IsTodayMember = input.TodayIDs[identity]
+		if row.IsTodayMember {
 			result.visiblePlanCount++
 		}
 		if modeRow.Depth == 0 {
@@ -85,7 +89,7 @@ func (m *OutlinerModel) buildTodaySection(
 		result.rows[rowIndex].prefix = buildTreePrefix(nil, i == len(rootRowIndexes)-1)
 		nextIndex := rowIndex + 1
 		result.rows[rowIndex].hasVisibleChildren =
-			nextIndex < len(result.rows) && !result.rows[nextIndex].IsDailyPlanMember
+			nextIndex < len(result.rows) && !result.rows[nextIndex].IsTodayMember
 	}
 
 	return result

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -16,11 +15,11 @@ func auxiliaryTaskTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 	model := newUITestApp()
 	target := &models.Task{
 		ID: "target", ShortID: 1, Title: "Target",
-		Type: models.TaskTypeStory, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	other := &models.Task{
 		ID: "other", ShortID: 2, Title: "Other",
-		Type: models.TaskTypeTask, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	project := &models.Project{
 		ID: "alpha", Name: "Alpha", Slug: "alpha",
@@ -66,62 +65,28 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 		operationTaskAttachments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskAttachmentsMsg).Task, task)
 		},
-		operationTaskActivity: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(OpenTaskActivityMsg).Task, task)
-		},
-		operationTaskQuickNote: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(OpenQuickNoteMsg).Task, task)
-		},
 		operationTaskCopyTitle: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(CopyTaskTitleMsg).Task, task)
+			if msg.(OperationCommandResultMsg).Cmd == nil {
+				t.Error("copy title produced no application operation command")
+			}
 		},
 		operationTaskCopyDetails: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(CopyTaskDetailsMsg).Task, task)
+			if msg.(OperationCommandResultMsg).Cmd == nil {
+				t.Error("copy description produced no application operation command")
+			}
 		},
 		operationTaskCopyTitleDescription: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(CopyTaskTitleAndDescMsg).Task, task)
-		},
-		operationTaskCopyReference: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(CopyTaskReferenceMsg).Task, task)
-		},
-		operationTaskScore: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowScoreEditorMsg).Task, task)
-		},
-		operationTaskPark: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowParkInputMsg).Task, task)
-		},
-		operationTaskLinkedTasks: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowLinkedTaskSelectorMsg).Task, task)
+			if msg.(OperationCommandResultMsg).Cmd == nil {
+				t.Error("copy title and description produced no application operation command")
+			}
 		},
 		operationTaskNewChild: func(t *testing.T, msg any) {
 			create := msg.(CreateTaskMsg)
 			assertTaskMessageTarget(t, create.ParentTask, task)
-			if !create.SkipTemplatePicker {
-				t.Error("new child task offered the template picker")
-			}
 		},
-		operationTaskNewChildFromTemplate: func(t *testing.T, msg any) {
-			create := msg.(CreateTaskMsg)
-			assertTaskMessageTarget(t, create.ParentTask, task)
-			if create.SkipTemplatePicker {
-				t.Error("new child from template skipped the template picker")
-			}
-		},
-		operationTaskNewLinkedSubtask: func(t *testing.T, msg any) {
-			linked := msg.(CreateLinkedTaskMsg)
-			assertTaskMessageTarget(t, linked.SourceTask, task)
-			if linked.LinkType != LinkTypeSubtask {
-				t.Errorf("link type = %v, want subtask", linked.LinkType)
-			}
-		},
-		operationTaskPin: func(t *testing.T, msg any) {
+		operationTaskTogglePin: func(t *testing.T, msg any) {
 			if msg.(OperationCommandResultMsg).Cmd == nil {
-				t.Error("pin produced no coordinator command")
-			}
-		},
-		operationTaskDim: func(t *testing.T, msg any) {
-			if msg.(OperationCommandResultMsg).Cmd == nil {
-				t.Error("dim produced no coordinator command")
+				t.Error("toggle pin produced no coordinator command")
 			}
 		},
 	}
@@ -142,47 +107,7 @@ func assertTaskMessageTarget(t *testing.T, got, want *models.Task) {
 	}
 }
 
-func TestTaskOperationPairedActionsFollowLiveTaskState(t *testing.T) {
-	model, project, task := auxiliaryTaskTestApp(t)
-
-	pairs := []struct {
-		enabled  OperationID
-		disabled OperationID
-		flip     func()
-	}{
-		{operationTaskPin, operationTaskUnpin, func() { task.Pinned = true }},
-		{operationTaskDim, operationTaskUndim, func() { task.Dimmed = true }},
-		{operationTaskPark, operationTaskUnpark, func() {
-			parked := time.Now()
-			task.ParkedAt = &parked
-		}},
-	}
-	for _, pair := range pairs {
-		if !taskOperationApplicable(t, model, pair.enabled, task, project) {
-			t.Errorf("%s was unavailable on a task that has not been acted on", pair.enabled)
-		}
-		if taskOperationApplicable(t, model, pair.disabled, task, project) {
-			t.Errorf("%s was offered alongside %s", pair.disabled, pair.enabled)
-		}
-		pair.flip()
-		if taskOperationApplicable(t, model, pair.enabled, task, project) {
-			t.Errorf("%s stayed available after the task entered that state", pair.enabled)
-		}
-		if !taskOperationApplicable(t, model, pair.disabled, task, project) {
-			t.Errorf("%s was unavailable on a task already in that state", pair.disabled)
-		}
-	}
-}
-
-func TestTaskOperationParkIsUnavailableOnTerminalTasks(t *testing.T) {
-	model, project, task := auxiliaryTaskTestApp(t)
-	task.WorkflowState = models.StateDone
-	if taskOperationApplicable(t, model, operationTaskPark, task, project) {
-		t.Error("park was offered on a completed task")
-	}
-}
-
-func TestTaskOperationSheetReusesCoreEditAndDetailExactlyOnce(t *testing.T) {
+func TestTaskOperationSheetOmitsDirectCoreEditAndDetail(t *testing.T) {
 	model, project, task := auxiliaryTaskTestApp(t)
 	descriptors := TaskActionSheetDescriptors(
 		model.operationRegistry,
@@ -194,19 +119,9 @@ func TestTaskOperationSheetReusesCoreEditAndDetailExactlyOnce(t *testing.T) {
 		key := strings.ToLower(descriptor.Label)
 		labels[key] = append(labels[key], descriptor.ID)
 	}
-	for _, expected := range []struct {
-		label string
-		id    OperationID
-	}{
-		{"edit task", operationCoreEdit},
-		{"open task detail", operationCoreDetail},
-	} {
-		ids := labels[expected.label]
-		if len(ids) != 1 {
-			t.Fatalf("%q appears %d times in the task sheet: %v", expected.label, len(ids), ids)
-		}
-		if ids[0] != expected.id {
-			t.Errorf("%q is served by %s, want the core operation %s", expected.label, ids[0], expected.id)
+	for _, label := range []string{"edit title", "edit description", "inspect task"} {
+		if ids := labels[label]; len(ids) != 0 {
+			t.Errorf("direct operation %q appears in the task sheet: %v", label, ids)
 		}
 	}
 }
@@ -234,24 +149,16 @@ func TestTaskOperationCatalogIsFullyManifested(t *testing.T) {
 func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 	model, _, _ := auxiliaryTaskTestApp(t)
 	wanted := map[OperationID]string{
-		operationTaskChecklist:        "checklist",
-		operationTaskComments:         "add comment",
-		operationTaskDecisions:        "design decisions",
-		operationTaskAttachments:      "add attachment",
-		operationTaskActivity:         "task history",
-		operationTaskQuickNote:        "jot note",
-		operationTaskCopyTitle:        "yank title",
-		operationTaskCopyReference:    "copy task id",
-		operationTaskScore:            "set score",
-		operationTaskPark:             "note where you left off",
-		operationTaskUnpark:           "resume task",
-		operationTaskPin:              "keep on top",
-		operationTaskDim:              "mute task",
-		operationTaskLinkedTasks:      "linked tasks",
-		operationTaskNewChild:         "new subtask",
-		operationTaskNewLinkedSubtask: "linked subtask",
-		operationCoreEdit:             "rename task",
-		operationCoreDetail:           "task overview",
+		operationTaskComments:             "add comment",
+		operationTaskDecisions:            "design decisions",
+		operationTaskAttachments:          "add attachment",
+		operationTaskCopyTitle:            "yank title",
+		operationTaskCopyDetails:          "yank description",
+		operationTaskCopyTitleDescription: "yank title and description",
+		operationTaskTogglePin:            "keep on top",
+		operationTaskNewChild:             "new subtask",
+		operationCoreEdit:                 "rename task",
+		operationCoreDetail:               "task overview",
 	}
 	for id, alias := range wanted {
 		descriptor, ok := model.operationRegistry.Descriptor(id)
@@ -287,16 +194,16 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 	out.cursor = 0
 
 	detail := executeTaskOperationForTest(t, model, operationCoreDetail, context)
-	if got := detail.Message.(ShowTaskDetailMsg).Task; got != task {
+	if got := detail.Message.(ShowTaskInspectorMsg).Task; got != task {
 		t.Errorf("detail target = %v, want the frozen task %v", got, task)
 	}
 	edit := executeTaskOperationForTest(t, model, operationCoreEdit, context)
-	if got := edit.Message.(EditTaskMsg).Task; got != task {
+	if got := edit.Message.(ShowTaskTextEditorMsg).Task; got != task {
 		t.Errorf("edit target = %v, want the frozen task %v", got, task)
 	}
 	copied := executeTaskOperationForTest(t, model, operationTaskCopyTitle, context)
-	if got := copied.Message.(CopyTaskTitleMsg).Task; got != task {
-		t.Errorf("copy target = %v, want the frozen task %v", got, task)
+	if copied.Message.(OperationCommandResultMsg).Cmd == nil {
+		t.Error("copy produced no application operation command")
 	}
 }
 
@@ -306,11 +213,11 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 func newChildHierarchyTestProject() *models.Project {
 	leaf := &models.Task{
 		ID: "leaf", ShortID: 1, Title: "Leaf",
-		Type: models.TaskTypeTask, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	epic := &models.Task{
 		ID: "epic", ShortID: 2, Title: "Epic",
-		Type: models.TaskTypeEpic, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	tasks := []*models.Task{leaf, epic}
 	parentID := epic.ID
@@ -319,7 +226,7 @@ func newChildHierarchyTestProject() *models.Project {
 		owner := parentID
 		tasks = append(tasks, &models.Task{
 			ID: id, ShortID: level + 2, Title: id, ParentID: &owner,
-			Type: models.TaskTypeStory, WorkflowState: models.StateReady,
+			WorkflowState: models.StateReady,
 		})
 		parentID = id
 	}
@@ -342,25 +249,17 @@ func TestTaskChildActionsFollowHierarchyLeafAndDepthLimits(t *testing.T) {
 		want   bool
 	}{
 		{taskID: "epic", id: operationTaskNewChild, want: true},
-		{taskID: "epic", id: operationTaskNewChildFromTemplate, want: true},
 		{taskID: "story-5", id: operationTaskNewChild, want: true},
-		{taskID: "leaf", id: operationTaskNewChild, want: false},
-		{taskID: "leaf", id: operationTaskNewChildFromTemplate, want: false},
-		{taskID: "story-6", id: operationTaskNewChild, want: false},
-		{taskID: "story-6", id: operationTaskNewChildFromTemplate, want: false},
-		// Promotion makes a leaf source able to parent, so only depth rejects a
-		// linked subtask.
-		{taskID: "leaf", id: operationTaskNewLinkedSubtask, want: true},
-		{taskID: "story-5", id: operationTaskNewLinkedSubtask, want: true},
-		{taskID: "story-6", id: operationTaskNewLinkedSubtask, want: false},
+		{taskID: "leaf", id: operationTaskNewChild, want: true},
+		{taskID: "story-6", id: operationTaskNewChild, want: true},
 	} {
 		task := project.GetTaskByID(testCase.taskID)
 		if task == nil {
 			t.Fatalf("fixture is missing task %s", testCase.taskID)
 		}
 		if got := taskOperationApplicable(t, model, testCase.id, task, project); got != testCase.want {
-			t.Errorf("%s on %s (%s at level %d) = %v, want %v",
-				testCase.id, testCase.taskID, task.Type, task.Level, got, testCase.want)
+			t.Errorf("%s on %s (level %d) = %v, want %v",
+				testCase.id, testCase.taskID, task.Level, got, testCase.want)
 		}
 	}
 }
@@ -405,7 +304,7 @@ func TestTaskOperationStaleFrozenTargetReportsUnavailable(t *testing.T) {
 	project.BuildTaskTree()
 
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationTaskQuickNote,
+		ID:      operationTaskComments,
 		Context: context,
 		Source:  OperationSourceActionSheet,
 	})

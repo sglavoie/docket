@@ -135,22 +135,6 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 	})
 }
 
-func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
-	return executeTaskItemToggleMutation(taskItemToggleMutation{
-		project: m.project,
-		task:    &m.task,
-		cursor:  m.cursor,
-		toggle: func(task *models.Task, index int) bool {
-			return task.ToggleCommentResolved(index)
-		},
-		errorMessage: "failed to toggle comment resolved state",
-		commit:       m.coordinator.ToggleCommentResolved,
-		success: func(task *models.Task) tea.Msg {
-			return CommentResolvedMsg{Task: task}
-		},
-	})
-}
-
 func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	if m.editIndex >= len(m.task.Comments) {
 		m.cancelEditMode()

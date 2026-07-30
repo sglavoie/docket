@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "machine",
+  "data": {
+    "tui_state_version": 4,
+    "editor": "synthetic-editor",
+    "attachment_editor": "synthetic-attachment-editor",
+    "code_editor": "synthetic-code-editor",
+    "external_editor": "synthetic-external-editor",
+    "ai_harness": "codex",
+    "ai_config_dirs": {
+      "codex": "/synthetic/config/codex"
+    },
+    "current_project": "project-alpha",
+    "custom_contexts": {
+      "synthetic-focus": [
+        "project-alpha",
+        "project-beta"
+      ]
+    },
+    "recent_task_visits": [
+      {
+        "task_id": "synthetic-alpha-rich",
+        "project_id": "project-alpha",
+        "pinned": true
+      }
+    ],
+    "startup_route": {
+      "mode": "priority",
+      "filter_states": [
+        "ready",
+        "in_progress"
+      ],
+      "filter_snoozed": true,
+      "filter_pinned": true
+    },
+    "current_route": {
+      "mode": "activity"
+    },
+    "project_routes": {
+      "project-alpha": {
+        "mode": "review",
+        "filter_states": [
+          "review"
+        ]
+      }
+    },
+    "recent_palette_items": [
+      {
+        "category": "task",
+        "id": "synthetic-alpha-rich",
+        "count": 2
+      }
+    ],
+    "recent_destinations": [
+      {
+        "kind": "task",
+        "id": "synthetic-alpha-rich",
+        "project_id": "project-alpha",
+        "count": 2
+      },
+      {
+        "kind": "mode",
+        "id": "review",
+        "count": 1
+      }
+    ]
+  }
+}

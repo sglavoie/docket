@@ -18,7 +18,7 @@ const (
 	// the one routed Scope Hub that supplies their frozen targets.
 	CapabilityScopeHub Capability = "surface:scope-hub"
 	// CapabilityHarness exposes setup-only operations to semantic scenario
-	// commands without advertising them in Finder, help, or direct input.
+	// commands without advertising them in help or direct input.
 	CapabilityHarness      Capability = "surface:test-harness"
 	CapabilityAppScope     Capability = "scope:app"
 	CapabilityProjectScope Capability = "scope:project"

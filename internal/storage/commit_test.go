@@ -40,7 +40,7 @@ func newCommitTestProject(t *testing.T, dataDir, slug, title string) *models.Pro
 	}
 	p.Slug = slug
 	p.Path = filepath.Join(dataDir, "projects", slug)
-	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(uuid.New().String(), 1, title)
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -133,18 +133,14 @@ func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
 func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	project := newCommitTestProject(t, dataDir, "lossless", "before")
-	project.Tags = []string{"alpha", "beta"}
-	project.PinnedTags = []string{"beta"}
 	project.Tasks[0].CreatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
 	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
 
-	seed := ProjectDocumentFromBase(project, &ProjectDocument{
-		OpaqueBlocks: []OpaqueBlock{{Content: "<!-- future-feature: keep-exactly -->"}},
-	})
+	seed := ProjectDocumentFromBase(project, nil)
 	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		t.Fatalf("mkdir project: %v", err)
 	}
-	if err := os.WriteFile(tasksFilePath(project.Path), []byte(seed.WriteV2()), FilePermissions); err != nil {
+	if err := os.WriteFile(tasksFilePath(project.Path), []byte(mustWriteCurrentDocument(t, seed)), FilePermissions); err != nil {
 		t.Fatalf("seed tasks: %v", err)
 	}
 	base, err := LoadProjectDocument(project)
@@ -163,14 +159,14 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 		t.Fatalf("read first commit: %v", err)
 	}
 	firstContent := string(firstBytes)
-	if !strings.Contains(firstContent, "<!-- tt-schema: 2 -->") {
+	if !strings.Contains(firstContent, "<!-- tt-schema: 5 -->") {
 		t.Fatalf("committed content missing schema marker:\n%s", firstContent)
 	}
-	if !strings.Contains(firstContent, "<!-- future-feature: keep-exactly -->") {
-		t.Fatalf("committed content dropped opaque block:\n%s", firstContent)
+	if strings.Contains(firstContent, "<!-- future-feature: keep-exactly -->") {
+		t.Fatalf("committed v5 content retained opaque legacy block:\n%s", firstContent)
 	}
-	if strings.Contains(firstContent, "updated:") {
-		t.Fatalf("same-minute commit wrote unstable updated field:\n%s", firstContent)
+	if !strings.Contains(firstContent, "updated:") {
+		t.Fatalf("schema-v5 commit omitted required updated timestamp:\n%s", firstContent)
 	}
 	firstReload, err := LoadProjectDocument(project)
 	if err != nil {
@@ -182,10 +178,6 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	if strings.Contains(firstContent, "<!-- sections:") || len(firstReload.legacySectionColors) != 0 {
 		t.Fatalf("canonical commit retained legacy section metadata: colors=%v\n%s", firstReload.legacySectionColors, firstContent)
 	}
-	if len(firstReload.Tags) != 2 || len(firstReload.PinnedTags) != 1 || firstReload.PinnedTags[0] != "beta" {
-		t.Fatalf("full metadata not preserved: tags=%v pinned=%v", firstReload.Tags, firstReload.PinnedTags)
-	}
-
 	project.Tasks[0].Title = "second mutation"
 	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 55, 0, time.Local)
 	second, err := svc.Commit(ChangeSet{Project: project, ExpectedRevision: firstReload.Revision, Base: firstReload})
@@ -199,8 +191,8 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	if second.Revision != secondReload.Revision {
 		t.Fatalf("second result revision %s != reload %s", second.Revision, secondReload.Revision)
 	}
-	if len(secondReload.OpaqueBlocks) != 1 || secondReload.OpaqueBlocks[0].Content != "<!-- future-feature: keep-exactly -->" {
-		t.Fatalf("second commit changed opaque blocks: %+v", secondReload.OpaqueBlocks)
+	if len(secondReload.OpaqueBlocks) != 0 {
+		t.Fatalf("schema-v5 second commit restored opaque legacy blocks: %+v", secondReload.OpaqueBlocks)
 	}
 }
 
@@ -217,7 +209,7 @@ func TestCommitService_StaleRevisionConflict(t *testing.T) {
 	staleRevision := onDiskRevision(t, project)
 
 	// A concurrent change advances the on-disk revision.
-	extra, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "added out of band")
+	extra, err := models.NewGenericTask(uuid.New().String(), 2, "added out of band")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +254,7 @@ func TestCommitService_ExpectedRevisionMatchCommits(t *testing.T) {
 	}
 	current := onDiskRevision(t, project)
 
-	extra, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "v2 task")
+	extra, err := models.NewGenericTask(uuid.New().String(), 2, "v2 task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,7 +462,7 @@ func TestCommitService_CommitMulti_StaleRevisionAtEveryPositionAbortsAll(t *test
 			// A concurrent change advances the on-disk revision of the project at
 			// pos, so its expected (seed) revision is now stale.
 			conflictProject := projects[pos]
-			extra, err := models.NewTask(uuid.New().String(), 99, models.TaskTypeTask, "out of band")
+			extra, err := models.NewGenericTask(uuid.New().String(), 99, "out of band")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -794,12 +786,13 @@ func TestCommitService_AttachmentMoveRecoversWithMetadata(t *testing.T) {
 	moved := src.Tasks[0]
 	src.Tasks = nil
 	src.BuildTaskTree()
+	moved.ShortID = dst.GetNextShortID()
 	dst.Tasks = append(dst.Tasks, moved)
-	dst.NextShortID = dst.GetNextShortID() + 1
+	dst.NextShortID = moved.ShortID + 1
 	dst.BuildTaskTree()
 
-	srcContent := WriteTasksMarkdownWithProjectMetadata(src.Name, src.Tasks, src.Tags, src.PinnedTags)
-	dstContent := WriteTasksMarkdownWithProjectMetadata(dst.Name, dst.Tasks, dst.Tags, dst.PinnedTags)
+	srcContent := mustWriteV5Project(t, src)
+	dstContent := mustWriteV5Project(t, dst)
 
 	txnDir := filepath.Join(dataDir, ".tt", "transactions")
 	journal := transaction.NewJournal(txnDir, []string{dataDir})

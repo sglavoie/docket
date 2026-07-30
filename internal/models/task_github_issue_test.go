@@ -57,12 +57,10 @@ func TestParseGitHubIssueURL(t *testing.T) {
 }
 
 func TestTaskGitHubIssueRefs(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.URL = "https://github.com/acme/roadmap/issues/123"
-
 	if err := task.AddAttachment("https://www.github.com/acme/roadmap/issues/123?ref=duplicate", true, "https://www.github.com/acme/roadmap/issues/123?ref=duplicate"); err != nil {
 		t.Fatal(err)
 	}
@@ -89,11 +87,10 @@ func TestTaskGitHubIssueRefs(t *testing.T) {
 }
 
 func TestTaskGitHubIssueRefsNoMatches(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.URL = "https://github.com/acme/roadmap/pull/123"
 	if err := task.AddAttachment("https://example.com/acme/roadmap/issues/456", true, "https://example.com/acme/roadmap/issues/456"); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +104,7 @@ func TestTaskGitHubIssueRefsNoMatches(t *testing.T) {
 }
 
 func TestTaskGitHubIssueRefsURLAttachmentOriginalPathFallback(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +124,7 @@ func TestTaskGitHubIssueRefsURLAttachmentOriginalPathFallback(t *testing.T) {
 }
 
 func TestTaskGitHubIssueRefsURLAttachmentOriginalPathDeduplicates(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}

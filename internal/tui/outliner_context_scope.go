@@ -15,10 +15,13 @@ func (m *OutlinerModel) applyContextScope(scope ContextScope) {
 	m.scopedProjectID = ""
 	m.zoomStack = nil
 	m.crossZoomStack = nil
-	if m.multiSelectMode {
-		m.clearMultiSelect()
-		m.multiSelectMode = false
-	}
+	m.clearMultiSelect()
+	// A scope switch owns a fresh navigation origin. Suppress any task identity
+	// captured by an earlier mutation reload, and prevent the next reload from
+	// capturing the rebuilt top row as though it were a user cursor choice.
+	m.crossReloadProjectID = ""
+	m.crossReloadTaskID = ""
+	m.crossReloadFromTop = true
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true

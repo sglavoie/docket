@@ -5,13 +5,12 @@ import (
 	"testing"
 )
 
-// fakeDomainStore is a minimal DomainStore that only serves a fixed planning
-// aggregate; it verifies that RuntimeDependencies reads Focus Queue through the
-// injected Planning dependency rather than any config.Config facade.
+// fakeDomainStore verifies that RuntimeDependencies reads NextOrder through the
+// injected Planning dependency.
 type fakeDomainStore struct {
-	DomainStore // embed for the unused domains; nil is fine since they are never called
-	planning    *PlanningState
-	loadCalls   int
+	DomainStore
+	planning  *PlanningState
+	loadCalls int
 }
 
 func (f *fakeDomainStore) LoadPlanning() (*PlanningState, error) {
@@ -25,8 +24,7 @@ func TestNewRuntimeDependenciesWiresEveryDomainToStore(t *testing.T) {
 	if deps == nil {
 		t.Fatal("NewRuntimeDependencies returned nil for a non-nil store")
 	}
-	if deps.Catalog == nil || deps.Planning == nil || deps.Settings == nil ||
-		deps.Automation == nil || deps.Machine == nil {
+	if deps.Catalog == nil || deps.Planning == nil || deps.Machine == nil {
 		t.Fatalf("every domain must be wired: %+v", deps)
 	}
 	if NewRuntimeDependencies(nil) != nil {
@@ -34,63 +32,55 @@ func TestNewRuntimeDependenciesWiresEveryDomainToStore(t *testing.T) {
 	}
 }
 
-func TestRuntimeDependenciesFocusQueueReadsPlanningDependency(t *testing.T) {
+func TestRuntimeDependenciesNextOrderReadsPlanningDependency(t *testing.T) {
 	fake := &fakeDomainStore{planning: &PlanningState{
-		FocusQueue: []FocusQueueItem{
+		NextOrder: []ProjectTaskLocator{
 			{TaskID: "t1", ProjectID: "p1"},
 			{TaskID: "t2", ProjectID: "p1"},
 		},
 	}}
 	deps := NewRuntimeDependencies(fake)
 
-	queue, err := deps.FocusQueue()
+	order, err := deps.NextOrder()
 	if err != nil {
-		t.Fatalf("FocusQueue: %v", err)
+		t.Fatalf("NextOrder: %v", err)
 	}
-	if len(queue) != 2 {
-		t.Fatalf("expected 2 focus queue items, got %d", len(queue))
+	if len(order) != 2 {
+		t.Fatalf("expected 2 Next-order items, got %d", len(order))
 	}
 	if fake.loadCalls == 0 {
-		t.Fatal("FocusQueue must load through the Planning dependency")
+		t.Fatal("NextOrder must load through the Planning dependency")
 	}
 
-	in, err := deps.TaskInFocusQueue("t2")
-	if err != nil {
-		t.Fatalf("TaskInFocusQueue: %v", err)
+	locator := ProjectTaskLocator{TaskID: "t2", ProjectID: "p1"}
+	if in, err := deps.TaskInNextOrder(locator); err != nil || !in {
+		t.Fatalf("TaskInNextOrder(%+v) = %v, %v", locator, in, err)
 	}
-	if !in {
-		t.Fatal("t2 should be reported in the focus queue")
-	}
-	out, err := deps.TaskInFocusQueue("missing")
-	if err != nil {
-		t.Fatalf("TaskInFocusQueue: %v", err)
-	}
-	if out {
-		t.Fatal("unknown task must not be reported in the focus queue")
-	}
-	if empty, _ := deps.TaskInFocusQueue(""); empty {
-		t.Fatal("empty task id must not be a member")
+	for _, absent := range []ProjectTaskLocator{
+		{TaskID: "missing", ProjectID: "p1"},
+		{TaskID: "t2", ProjectID: "p2"},
+		{},
+	} {
+		if in, err := deps.TaskInNextOrder(absent); err != nil || in {
+			t.Fatalf("TaskInNextOrder(%+v) = %v, %v; want false, nil", absent, in, err)
+		}
 	}
 }
 
-func TestManagerRuntimeDependenciesRoundTripsFocusQueue(t *testing.T) {
+func TestManagerRuntimeDependenciesRoundTripsNextOrder(t *testing.T) {
 	store := newIsolatedStore(t)
-	if err := store.SavePlanning(&PlanningState{
-		FocusQueue: []FocusQueueItem{{TaskID: "focus-1", ProjectID: "proj-1"}},
-	}); err != nil {
+	planning := NewPlanningState()
+	planning.AddToNextOrder("next-1", "proj-1")
+	if err := store.SavePlanning(planning); err != nil {
 		t.Fatalf("SavePlanning: %v", err)
 	}
 
-	mgr := NewManager(filepath.Join(store.DataDir(), ".tt.json"))
-	deps := mgr.RuntimeDependencies()
+	deps := NewManager(filepath.Join(store.DataDir(), ".tt.json")).RuntimeDependencies()
 	if deps == nil {
 		t.Fatal("Manager.RuntimeDependencies returned nil")
 	}
-	in, err := deps.TaskInFocusQueue("focus-1")
-	if err != nil {
-		t.Fatalf("TaskInFocusQueue: %v", err)
-	}
-	if !in {
-		t.Fatal("persisted focus-queue member should be visible through the runtime seam")
+	locator := ProjectTaskLocator{TaskID: "next-1", ProjectID: "proj-1"}
+	if in, err := deps.TaskInNextOrder(locator); err != nil || !in {
+		t.Fatalf("TaskInNextOrder(%+v) = %v, %v", locator, in, err)
 	}
 }

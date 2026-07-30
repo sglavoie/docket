@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// DomainCoordinator loads the four synced configuration domains while retaining
+// DomainCoordinator loads the two synced configuration domains while retaining
 // the raw revision observed for each, so a later save can be revision-checked
 // against a concurrent writer instead of blindly overwriting it. It is the
 // production seam through which domain mutations acquire optimistic concurrency:
@@ -56,17 +56,15 @@ func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
 	return domains, nil
 }
 
-// CheckedDomainArtifacts renders the four explicit synced domains without
+// CheckedDomainArtifacts renders the two explicit synced domains without
 // rebuilding the legacy Config aggregate. It is the composition-root seam used
 // by domain-native adapters when one transaction intentionally spans several
 // configuration domains.
 func (c *DomainCoordinator) CheckedDomainArtifacts(
 	catalog *WorkspaceCatalog,
 	planning *PlanningState,
-	settings *Settings,
-	automation *AutomationConfig,
 ) ([]DomainArtifact, error) {
-	if catalog == nil || planning == nil || settings == nil || automation == nil {
+	if catalog == nil || planning == nil {
 		return nil, fmt.Errorf("all synced configuration domains are required")
 	}
 	// Bind the on-disk catalog first when it exists. A fresh multi-domain artifact
@@ -92,8 +90,6 @@ func (c *DomainCoordinator) CheckedDomainArtifacts(
 	}{
 		{domainCatalog, WorkspaceCatalogPath(dataDir), catalog},
 		{domainPlanning, PlanningStatePath(dataDir), planning},
-		{domainSettings, SettingsPath(dataDir), settings},
-		{domainAutomation, AutomationPath(dataDir), automation},
 	}
 	arts := make([]DomainArtifact, 0, len(specs))
 	for _, s := range specs {
@@ -121,32 +117,6 @@ func (c *DomainCoordinator) LoadPlanning() (*PlanningState, error) {
 	return planning, nil
 }
 
-// LoadAutomation reads only the automation domain and records its raw revision
-// for a subsequent CheckedAutomationArtifact call. It is the scoped load seam
-// for template-use counts, workflow counters, and other automation-only
-// mutations that must join a task transaction without rewriting planning.
-func (c *DomainCoordinator) LoadAutomation() (*AutomationConfig, error) {
-	automation, rev, err := c.store.LoadAutomationChecked()
-	if err != nil {
-		return nil, err
-	}
-	c.revs[domainAutomation] = rev
-	return automation, nil
-}
-
-// LoadSettings reads only the portable settings domain and records its raw
-// revision for a subsequent CheckedSettingsArtifact call. It is the
-// settings-scoped counterpart to LoadCatalog for a mutation that must carry one
-// setting inside another domain's transaction.
-func (c *DomainCoordinator) LoadSettings() (*Settings, error) {
-	settings, rev, err := c.store.LoadSettingsChecked()
-	if err != nil {
-		return nil, err
-	}
-	c.revs[domainSettings] = rev
-	return settings, nil
-}
-
 // LoadCatalog reads only the workspace catalog and records its raw revision for
 // a subsequent CheckedCatalogArtifact call. It is the catalog-scoped counterpart
 // to LoadPlanning for project metadata mutations folded into a larger workspace
@@ -166,7 +136,7 @@ func (c *DomainCoordinator) LoadCatalog() (*WorkspaceCatalog, error) {
 }
 
 // CheckedCatalogArtifact renders only workspace.json under the revision observed
-// by LoadCatalog (or Load), leaving planning, settings, and automation untouched.
+// by LoadCatalog (or Load), leaving every other domain untouched.
 func (c *DomainCoordinator) CheckedCatalogArtifact(catalog *WorkspaceCatalog) (DomainArtifact, error) {
 	if catalog == nil {
 		return DomainArtifact{}, fmt.Errorf("workspace catalog is required")
@@ -192,9 +162,8 @@ func (c *DomainCoordinator) CheckedCatalogArtifact(catalog *WorkspaceCatalog) (D
 
 // CheckedPlanningArtifact renders only the planning domain into a
 // revision-checked DomainArtifact, stamped against the baseline LoadPlanning
-// (or Load) recorded. Unlike CheckedArtifacts it leaves the catalog, settings,
-// and automation domains untouched, so a planning-only mutation cannot clobber
-// a concurrent write to another domain.
+// (or Load) recorded. Unlike CheckedArtifacts it leaves every other domain
+// untouched, so a planning-only mutation cannot clobber a concurrent write.
 func (c *DomainCoordinator) CheckedPlanningArtifact(planning *PlanningState) (DomainArtifact, error) {
 	if planning == nil {
 		return DomainArtifact{}, fmt.Errorf("planning state is required")
@@ -218,62 +187,6 @@ func (c *DomainCoordinator) CheckedPlanningArtifact(planning *PlanningState) (Do
 	return DomainArtifact{Path: PlanningStatePath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
 }
 
-// CheckedAutomationArtifact renders only automation.json against the revision
-// observed by LoadAutomation (or LoadDomains), leaving catalog, planning, and
-// settings untouched. Template use-count updates use this seam so a workflow-
-// generated planning artifact can coexist in the same transaction without a
-// duplicate target or an unrelated stale baseline.
-func (c *DomainCoordinator) CheckedAutomationArtifact(automation *AutomationConfig) (DomainArtifact, error) {
-	if automation == nil {
-		return DomainArtifact{}, fmt.Errorf("automation config is required")
-	}
-	_, catalogRev, err := c.store.LoadCatalogChecked()
-	if err != nil {
-		return DomainArtifact{}, err
-	}
-	if catalogRev == "" {
-		return DomainArtifact{}, fmt.Errorf("%w: checked automation artifacts require an existing workspace catalog", ErrWorkspaceIDRequired)
-	}
-	workspaceID, err := c.store.validatedWorkspaceID()
-	if err != nil {
-		return DomainArtifact{}, err
-	}
-	data, err := encodeDomainEnvelope(domainAutomation, workspaceID, automation)
-	if err != nil {
-		return DomainArtifact{}, err
-	}
-	rev := c.revs[domainAutomation]
-	return DomainArtifact{Path: AutomationPath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
-}
-
-// CheckedSettingsArtifact renders only settings.json against the revision
-// observed by LoadSettings (or LoadDomains), leaving catalog, planning, and
-// automation untouched. Renaming the default context uses this seam so the
-// relabeled catalog and the moved DefaultContext setting commit as one checked
-// transaction.
-func (c *DomainCoordinator) CheckedSettingsArtifact(settings *Settings) (DomainArtifact, error) {
-	if settings == nil {
-		return DomainArtifact{}, fmt.Errorf("settings are required")
-	}
-	_, catalogRev, err := c.store.LoadCatalogChecked()
-	if err != nil {
-		return DomainArtifact{}, err
-	}
-	if catalogRev == "" {
-		return DomainArtifact{}, fmt.Errorf("%w: checked settings artifacts require an existing workspace catalog", ErrWorkspaceIDRequired)
-	}
-	workspaceID, err := c.store.validatedWorkspaceID()
-	if err != nil {
-		return DomainArtifact{}, err
-	}
-	data, err := encodeDomainEnvelope(domainSettings, workspaceID, settings)
-	if err != nil {
-		return DomainArtifact{}, err
-	}
-	rev := c.revs[domainSettings]
-	return DomainArtifact{Path: SettingsPath(c.store.DataDir()), Data: data, ExpectedRevision: &rev}, nil
-}
-
 // AdoptArtifacts advances the coordinator's baseline to the revisions of a set of
 // artifacts it just committed, so a subsequent CheckedArtifacts is validated
 // against the freshly written state rather than the stale original load. Each
@@ -284,8 +197,6 @@ func (c *DomainCoordinator) AdoptArtifacts(arts []DomainArtifact) {
 	byPath := map[string]domainKind{
 		WorkspaceCatalogPath(c.store.DataDir()): domainCatalog,
 		PlanningStatePath(c.store.DataDir()):    domainPlanning,
-		SettingsPath(c.store.DataDir()):         domainSettings,
-		AutomationPath(c.store.DataDir()):       domainAutomation,
 	}
 	for _, art := range arts {
 		if kind, ok := byPath[art.Path]; ok {

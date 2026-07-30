@@ -34,23 +34,6 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.showView(ViewHelp, m.helpView)
 		return true, nil
 
-	case ShowTutorMsg:
-		m.showView(ViewTutor, NewTutorModel())
-		return true, nil
-
-	case ShowAskMsg:
-		return m.showViewInit(ViewAsk, NewAskViewModelForWorkspace(m.cliReference, m.runtime, m.appService, m.persister))
-
-	case ShowMessageLogMsg:
-		return true, m.activateManageHub(ManageParams{
-			Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationLog,
-		})
-
-	case AppendToMessageLogMsg:
-		m.messageLog.Append(msg.Message, msg.Level)
-		m.refreshManageMessageLog()
-		return true, nil
-
 	case StatusClearMsg:
 		if !msg.ScheduledAt.IsZero() && !m.statusUpdatedAt.Before(msg.ScheduledAt) {
 			return true, nil

@@ -7,9 +7,8 @@
     { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "command", "label": "open project Inbox mode", "command": "project inbox mode" },
-    { "type": "key", "key": "enter" },
     { "type": "key", "key": "e" },
-    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "view", "value": "TextEditor" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

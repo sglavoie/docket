@@ -12,8 +12,6 @@ import (
 
 type darwinDetector struct{}
 
-func newDetector() Detector { return darwinDetector{} }
-
 // readTimeout bounds the defaults invocation so a hung lookup cannot wedge
 // callers (notably the TUI's appearance poller).
 const readTimeout = 2 * time.Second

@@ -1,0 +1,2 @@
+Synthetic attachment binary placeholder.
+The migration inventories this file and leaves its bytes in place.

@@ -62,13 +62,6 @@ func (p *Project) GetTasksByState(state WorkflowState) []*Task {
 	})
 }
 
-// GetTasksByType returns tasks filtered by type.
-func (p *Project) GetTasksByType(taskType TaskType) []*Task {
-	return p.FilterTasks(func(t *Task) bool {
-		return t.Type == taskType
-	})
-}
-
 // GetTasksByTag returns tasks that have the given tag.
 func (p *Project) GetTasksByTag(tag string) []*Task {
 	return p.FilterTasks(func(t *Task) bool {

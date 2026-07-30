@@ -13,7 +13,6 @@ func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
 	return &models.Task{
 		ID:            id,
 		Title:         id,
-		Type:          models.TaskTypeTask,
 		WorkflowState: state,
 		UpdatedAt:     time.Now(),
 	}
@@ -39,7 +38,6 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 		primaryRowsTask("next", models.StateNext),
 		primaryRowsTask("today", models.StateReady),
 		primaryRowsTask("backlog", models.StateReady),
-		primaryRowsTask("review", models.StateReview),
 		primaryRowsTask("waiting", models.StateWaiting),
 		primaryRowsTask("paused", models.StatePaused),
 		primaryRowsTask("someday", models.StateSomeday),
@@ -51,7 +49,7 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	tasks[len(tasks)-1].SnoozedUntil = &future
 	project := primaryRowsProject("alpha", tasks...)
 	outliner, runtime := primaryRowsOutliner(project)
-	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{{
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
 		ProjectID: project.ID,
 		TaskID:    "today",
 	}})
@@ -140,12 +138,12 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 	betaInbox := primaryRowsTask("beta-inbox", models.StateInbox)
 	beta := primaryRowsProject("beta", betaNext, betaInbox)
 	outliner, runtime := primaryRowsOutliner(alpha, beta)
-	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{
+	runtime.Planning().SetNextOrder([]config.ProjectTaskLocator{
 		{ProjectID: beta.ID, TaskID: betaNext.ID},
 		{ProjectID: alpha.ID, TaskID: alphaNext.ID},
 		{ProjectID: alpha.ID, TaskID: alphaNextChild.ID},
 	})
-	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{{
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
 		ProjectID: alpha.ID,
 		TaskID:    alphaToday.ID,
 	}})
@@ -156,7 +154,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		alphaNext.ID,
 		alphaNextChild.ID,
 	}) {
-		t.Fatalf("Next rows = %v, want FocusQueue order with hierarchy intact", got)
+		t.Fatalf("Next rows = %v, want NextOrder order with hierarchy intact", got)
 	}
 	for _, row := range outliner.rows {
 		if row.isTaskRow() && row.ProjectID == "" {

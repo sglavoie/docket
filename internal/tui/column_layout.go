@@ -42,24 +42,6 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 	return cl
 }
 
-// crossProjectNameLookup returns a ProjectNameFor callback for a slice of
-// CrossProjectTask. Tasks not in the slice produce empty strings (skipping
-// them from project width measurement).
-func crossProjectNameLookup(items []CrossProjectTask) func(task *models.Task) string {
-	names := make(map[string]string, len(items))
-	for _, it := range items {
-		if it.Task != nil && it.Project != nil {
-			names[it.Task.ID] = it.Project.Name
-		}
-	}
-	return func(task *models.Task) string {
-		if task == nil {
-			return ""
-		}
-		return names[task.ID]
-	}
-}
-
 // BadgeWidthOpts configures which badge columns ComputeBadgeWidths should
 // measure. Consumers explicitly enable each column so the helper can serve
 // both single-project (no Project column) and cross-project surfaces.
@@ -70,8 +52,6 @@ type BadgeWidthOpts struct {
 
 	// IncludeStatus measures the status badge column width.
 	IncludeStatus bool
-	// IncludeType measures the type badge column width.
-	IncludeType bool
 
 	// ProjectNameFor, when non-nil, enables the Project column. The function
 	// returns the project display name for a task; an empty return skips
@@ -118,16 +98,6 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 				cl.HasStatus = true
 				if w > cl.StatusWidth {
 					cl.StatusWidth = w
-				}
-			}
-		}
-
-		if opts.IncludeType {
-			badge := GetTypeBadge(string(task.Type), task.Type.Icon())
-			if w := lipgloss.Width(badge); w > 0 {
-				cl.HasType = true
-				if w > cl.TypeWidth {
-					cl.TypeWidth = w
 				}
 			}
 		}

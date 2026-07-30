@@ -9,8 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// Persist the canonical mode/lifecycle-filter DTO for the active Outliner
-// scope. Typed navigation continues to own scope and route hierarchy.
+// Persist the canonical mode DTO for the active Outliner scope. Filter facets
+// are run-local and typed navigation continues to own scope and route hierarchy.
 func (m *AppModel) saveOutlinerFilterState() {
 	outliner := m.crossOutliner
 	if outliner == nil {
@@ -18,14 +18,6 @@ func (m *AppModel) saveOutlinerFilterState() {
 	}
 	if err := outliner.persistActiveRouteState(); err != nil {
 		logging.Warn("failed to persist Outliner route state: %v", err)
-	}
-}
-
-// reloadAndRefreshProjectTree reloads the project from storage and refreshes the
-// per-project outliner view. Preserves filter/sort state across the reload.
-func (m *AppModel) reloadAndRefreshProjectTree() {
-	if m.crossOutliner != nil {
-		rebuildOutlinerPreservingCursor(m.crossOutliner)
 	}
 }
 
@@ -44,7 +36,7 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 
 // applyTagsToTaskRefs applies selected tags to multiple task refs as one
 // asynchronous cross-project transaction through the BulkCoordinator. Setting
-// tags is an attribute mutation (no workflow rules run); the shell owns reload
+// tags is an attribute mutation; the shell owns reload
 // and selection-clear via the batch result.
 func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
 	refs = validTaskProjectRefs(refs)

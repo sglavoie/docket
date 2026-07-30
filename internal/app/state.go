@@ -41,24 +41,29 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	from := ref.Task.State()
-	if reason := models.CanTransitionState(from, target); reason != "" {
-		return TaskResult{}, &TransitionError{From: string(from), To: string(target), Reason: reason}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("capture transition rollback state: %w", err)
 	}
-	if target == models.StateDone && NewWorkspaceResolver(snap).HasIncompleteDependencies(ref.Task, ref.Project) {
-		return TaskResult{}, fmt.Errorf("%w: task #%d", ErrDependencyBlocked, ref.Task.ShortID)
-	}
-	if guardErr := childrenCompletionGuard(ref.Task, target); guardErr != nil {
-		return TaskResult{}, guardErr
-	}
-	if stateErr := applyState(ref.Task, target, s.clock.Now()); stateErr != nil {
-		return TaskResult{}, invalidInput("state", stateErr.Error())
+	keepMutation := false
+	defer func() {
+		if !keepMutation {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+	if transitionErr := s.applyLifecycleTransition(ref, NewWorkspaceResolver(snap), target); transitionErr != nil {
+		return TaskResult{}, transitionErr
 	}
 	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return TaskResult{}, err
 	}
-	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Change State", string(target))
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Change State", string(target))
+	if err != nil {
+		return TaskResult{}, err
+	}
+	keepMutation = true
+	return result, nil
 }
 
 // transitionPlanningArtifacts renders the planning reconciliation a single-task
@@ -98,6 +103,40 @@ func (s *Service) CompleteByLocator(locator TaskLocator) (TaskResult, error) {
 	return s.Transition(StateRequest{Locator: locator, Target: models.StateDone})
 }
 
+// validateLifecycleTransition is the one application-layer lifecycle policy.
+// Every single-task, bulk, edit, action-plan, and planning entry
+// point uses it before mutating state, so forbidden graph edges, dependency
+// blocks, and direct-child blocks return the same typed errors everywhere.
+func validateLifecycleTransition(ref TaskRef, resolver *WorkspaceResolver, target models.WorkflowState) error {
+	return validateLifecycleTransitionFrom(ref.Task.State(), ref, resolver, target)
+}
+
+// validateLifecycleTransitionFrom validates a transition whose source state was
+// captured before the task was mutated. Project-scoped UI commits use this form
+// because they submit an already-edited project together with its immutable base.
+func validateLifecycleTransitionFrom(from models.WorkflowState, ref TaskRef, resolver *WorkspaceResolver, target models.WorkflowState) error {
+	if reason := models.CanTransitionState(from, target); reason != "" {
+		return &TransitionError{From: string(from), To: string(target), Reason: reason}
+	}
+	if target == models.StateDone && resolver != nil && resolver.HasIncompleteDependencies(ref.Task, ref.Project) {
+		return fmt.Errorf("%w: task #%d", ErrDependencyBlocked, ref.Task.ShortID)
+	}
+	return childrenCompletionGuard(ref.Task, ref.Project, target)
+}
+
+// applyLifecycleTransition validates and applies one transition with the service
+// clock. Model state, terminal/reopen timestamps, snooze cleanup, and UpdatedAt
+// therefore change through the same primitive for every application entry point.
+func (s *Service) applyLifecycleTransition(ref TaskRef, resolver *WorkspaceResolver, target models.WorkflowState) error {
+	if err := validateLifecycleTransition(ref, resolver, target); err != nil {
+		return err
+	}
+	if err := applyState(ref.Task, target, s.clock.Now()); err != nil {
+		return invalidInput("state", err.Error())
+	}
+	return nil
+}
+
 // childrenCompletionGuard rejects a terminal transition (done or canceled) of a
 // task that still has incomplete direct children, mirroring the legacy CLI
 // completion invariant: a parent must never become done or canceled while a
@@ -105,15 +144,35 @@ func (s *Service) CompleteByLocator(locator TaskLocator) (TaskResult, error) {
 // and it runs before any mutation so a rejected parent never enters the illegal
 // completed-with-incomplete-child state that the post-mutation reconciliation
 // would otherwise silently undo.
-func childrenCompletionGuard(task *models.Task, target models.WorkflowState) error {
+func childrenCompletionGuard(task *models.Task, project *models.Project, target models.WorkflowState) error {
 	if !target.IsTerminal() {
 		return nil
 	}
-	incomplete := task.IncompleteChildren()
+	incomplete := incompleteDirectChildren(task, project)
 	if len(incomplete) == 0 {
 		return nil
 	}
 	return newChildrenBlockedError(task, incomplete)
+}
+
+// incompleteDirectChildren derives the guard from durable ParentID links when
+// the owning project is available. This remains correct even when a project-wide
+// edit changed hierarchy before rebuilding the in-memory Children pointers.
+func incompleteDirectChildren(task *models.Task, project *models.Project) []*models.Task {
+	if task == nil {
+		return nil
+	}
+	if project == nil {
+		return task.IncompleteChildren()
+	}
+	var incomplete []*models.Task
+	for _, candidate := range project.Tasks {
+		if candidate == nil || candidate.ParentID == nil || *candidate.ParentID != task.ID || candidate.IsTerminalState() {
+			continue
+		}
+		incomplete = append(incomplete, candidate)
+	}
+	return incomplete
 }
 
 // newChildrenBlockedError builds a ChildrenBlockedError from the blocking child

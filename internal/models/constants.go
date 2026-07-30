@@ -30,7 +30,7 @@ func ValidatePriority(value int, allowZero bool) error {
 }
 
 // EffectivePriority resolves a stored priority to the number that ordering,
-// filtering, and scoring should use. PriorityUnset — and any value outside the
+// filtering and ordering should use. PriorityUnset — and any value outside the
 // scale, which only legacy or hand-edited input can produce — reads as
 // PriorityDefault.
 func EffectivePriority(value int) int {

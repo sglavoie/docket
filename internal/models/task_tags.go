@@ -42,10 +42,6 @@ func ValidateTag(tag string) error {
 	return nil
 }
 
-func normalizeTag(tag string) string {
-	return NormalizeTag(tag)
-}
-
 func validateTag(tag string) error {
 	return ValidateTag(tag)
 }

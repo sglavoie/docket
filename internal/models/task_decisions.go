@@ -9,18 +9,22 @@ import (
 // empty/whitespace-only text are silently dropped because they cannot be
 // round-tripped through the markdown decisions block (the parser uses an
 // empty text to detect the end of a decision and would lose the entry).
-func (t *Task) AddDecision(text, rationale string, category DecisionCategory) {
+func (t *Task) AddDecision(text, rationale string) {
+	t.AddDecisionAt(text, rationale, time.Now())
+}
+
+// AddDecisionAt adds a decision using the caller-owned mutation timestamp.
+func (t *Task) AddDecisionAt(text, rationale string, now time.Time) {
 	if strings.TrimSpace(text) == "" {
 		return
 	}
 	decision := &Decision{
 		Text:      text,
 		Rationale: rationale,
-		Category:  category,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	}
 	t.Decisions = append(t.Decisions, decision)
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 }
 
 // RemoveDecision removes the decision at the given index.
@@ -40,26 +44,4 @@ func (t *Task) ClearDecisions() {
 		t.Decisions = []*Decision{}
 		t.UpdatedAt = time.Now()
 	}
-}
-
-// ToggleDecisionResolved flips the Resolved state of the decision at the given index.
-// Returns false if the index is out of range.
-func (t *Task) ToggleDecisionResolved(index int) bool {
-	if index < 0 || index >= len(t.Decisions) {
-		return false
-	}
-	t.Decisions[index].Resolved = !t.Decisions[index].Resolved
-	t.UpdatedAt = time.Now()
-	return true
-}
-
-// UnresolvedDecisionCount returns the number of decisions where Resolved is false.
-func (t *Task) UnresolvedDecisionCount() int {
-	count := 0
-	for _, d := range t.Decisions {
-		if !d.Resolved {
-			count++
-		}
-	}
-	return count
 }

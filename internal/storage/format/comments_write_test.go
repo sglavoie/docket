@@ -96,34 +96,16 @@ func TestWriteComments(t *testing.T) {
 	}
 }
 
-func TestWriteComments_Resolved(t *testing.T) {
-	t.Run("writes resolved suffix", func(t *testing.T) {
-		task := &models.Task{
-			Comments: []*models.Comment{{
-				Text:      "Resolved comment",
-				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
-				Resolved:  true,
-			}},
-		}
+func TestWriteCommentsUsesLeanHeader(t *testing.T) {
+	task := &models.Task{
+		Comments: []*models.Comment{{
+			Text:      "A regular comment",
+			CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
+		}},
+	}
 
-		got := WriteComments(task)
-		if !strings.Contains(got, "<!-- comment: 2025-01-15 10:30, resolved -->") {
-			t.Errorf("WriteComments() missing resolved suffix\ngot:\n%s", got)
-		}
-	})
-
-	t.Run("does not write resolved suffix for unresolved", func(t *testing.T) {
-		task := &models.Task{
-			Comments: []*models.Comment{{
-				Text:      "A regular comment",
-				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
-				Resolved:  false,
-			}},
-		}
-
-		got := WriteComments(task)
-		if strings.Contains(got, ", resolved") {
-			t.Errorf("WriteComments() should not contain ', resolved' suffix\ngot:\n%s", got)
-		}
-	})
+	got := WriteComments(task)
+	if !strings.Contains(got, "<!-- comment: 2025-01-15 10:30 -->") || strings.Contains(got, ", resolved") {
+		t.Fatalf("WriteComments() emitted non-lean header:\n%s", got)
+	}
 }

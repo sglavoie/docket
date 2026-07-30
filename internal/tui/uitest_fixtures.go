@@ -18,7 +18,7 @@ import (
 // This file builds the reliable data surfaces the LLM-driven review harness
 // drives against. Two shapes are supported:
 //
-//   - Built-in fixtures (empty/rich/alerts/workflow/narrow) construct a fresh
+//   - Built-in fixtures construct a fresh
 //     isolated temp data dir, write projects through storage, and launch the
 //     driver from that copied config.
 //   - Copied-config workspaces load a real user config, copy its data dir into
@@ -26,17 +26,17 @@ import (
 //     driver from there — never mutating the source config, machine state, or
 //     task files.
 //
-// Fixture builders live in internal/tui (production code) rather than
-// internal/testutil so the hidden `tt tui-test` CLI (session 5+) can import them
-// without pulling in test-only helpers.
+// Fixture builders live beside the driver in internal/tui so committed
+// scenarios exercise production model construction without importing unrelated
+// test helpers.
 
-// Built-in fixture names. These are the values accepted by NewFixtureDriver and
-// surfaced by `tt tui-test fixtures`.
+// Built-in fixture names accepted by NewFixtureDriver and the committed
+// test-only scenario harness.
 const (
 	FixtureEmpty    = "empty"
 	FixtureFresh    = "fresh"
 	FixtureRich     = "rich"
-	FixtureAlerts   = "alerts"
+	FixtureBusy     = "busy"
 	FixtureWorkflow = "workflow"
 	FixtureNarrow   = "narrow"
 	FixtureContexts = "contexts"
@@ -50,7 +50,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureEmpty:    buildEmptyFixture,
 	FixtureFresh:    buildFreshFixture,
 	FixtureRich:     buildRichFixture,
-	FixtureAlerts:   buildAlertsFixture,
+	FixtureBusy:     buildBusyFixture,
 	FixtureWorkflow: buildWorkflowFixture,
 	FixtureNarrow:   buildNarrowFixture,
 	FixtureContexts: buildContextsFixture,
@@ -78,6 +78,9 @@ type uitestWorkspace struct {
 	ConfigPath string
 	Runtime    *config.RuntimeState
 	Manager    *config.Manager
+	// currentProjectID is fixture-only session state. Runtime configuration no
+	// longer persists a current project, but scenarios may explicitly choose one.
+	currentProjectID string
 	// startAtDefault asks launch to apply the same startup navigation selected by
 	// AppModel.Init, without scheduling the real program's periodic timers.
 	startAtDefault bool
@@ -103,9 +106,6 @@ func newUITestWorkspace() (*uitestWorkspace, error) {
 
 	dataDir := filepath.Join(root, "data")
 	runtime := config.EmptyRuntimeState(dataDir)
-	runtime.Settings().FzfEnabled = false
-	runtime.Settings().GlowEnabled = false
-	runtime.Catalog().UpsertProject(newSandboxProject(runtime))
 	if err := runtime.EnsureDataDir(); err != nil {
 		_ = os.RemoveAll(root)
 		return nil, fmt.Errorf("failed to create workspace data dir: %w", err)
@@ -143,7 +143,9 @@ func (w *uitestWorkspace) addProject(name string, build func(*models.Project)) (
 	project.BuildTaskTree()
 
 	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
-	catalog.UpsertProject(project)
+	if err := catalog.UpsertProject(project); err != nil {
+		return nil, fmt.Errorf("failed to catalog project %q: %w", name, err)
+	}
 	w.Runtime.SetCatalogInMemory(catalog)
 	if err := storage.SaveProject(project); err != nil {
 		return nil, fmt.Errorf("failed to write project %q: %w", name, err)
@@ -151,7 +153,7 @@ func (w *uitestWorkspace) addProject(name string, build func(*models.Project)) (
 	return project, nil
 }
 
-// launch persists the four synced domains and builds a driver over the existing
+// launch persists the catalog and planning domains and builds a driver over the existing
 // AppModel. NewAppModel reloads each active project's tasks from disk, so the
 // driver observes exactly what storage round-tripped.
 func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
@@ -172,9 +174,6 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
 	}
-	// Real sessions evaluate proactive alerts before the first frame, so the
-	// harness must too or no scenario ever sees the notification indicator.
-	app.reevaluateAlerts()
 	// The Outliner is the sole root and always boots into a loaded global All.
 	// Dispatch the startup message through the driver and drain it so the
 	// cross-project cache is populated before the scenario observes the screen —
@@ -183,6 +182,17 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if app.startupMessage != nil {
 		driver.dispatch(app.startupMessage)
 		driver.drain()
+	}
+	if w.currentProjectID != "" {
+		for _, project := range app.crossOutliner.loadedProjects {
+			if project != nil && project.ID == w.currentProjectID {
+				app.currentProject = project
+				break
+			}
+		}
+		if app.currentProject == nil {
+			app.currentProject = app.projectByID(w.currentProjectID)
+		}
 	}
 	return driver, nil
 }
@@ -204,12 +214,6 @@ func (w *uitestWorkspace) persistSyncedDomains() error {
 	if err := store.SavePlanning(w.Runtime.Planning()); err != nil {
 		return err
 	}
-	if err := store.SaveSettings(w.Runtime.Settings()); err != nil {
-		return err
-	}
-	if err := store.SaveAutomation(w.Runtime.Automation()); err != nil {
-		return err
-	}
 	if freshIdentity {
 		return store.SaveMachine(config.NewMachineState())
 	}
@@ -217,9 +221,7 @@ func (w *uitestWorkspace) persistSyncedDomains() error {
 }
 
 func (w *uitestWorkspace) setCurrentProject(projectID string) {
-	machine := cloneMachineState(w.Runtime.Machine())
-	machine.CurrentProject = projectID
-	w.Runtime.SetMachineInMemory(machine)
+	w.currentProjectID = projectID
 }
 
 // NewFixtureDriver builds an isolated workspace preloaded with the named
@@ -289,16 +291,8 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		_ = ws.Cleanup()
 		return nil, nil, fmt.Errorf("failed to load copied runtime domains: %w", err)
 	}
-	runtime.Settings().FzfEnabled = false
-	runtime.Settings().GlowEnabled = false
-
 	ws.DataDir = root
 	ws.Runtime = runtime
-	if runtime.Machine().CurrentProject == "" {
-		if projects := runtime.ActiveProjects(); len(projects) > 0 {
-			ws.setCurrentProject(projects[0].ID)
-		}
-	}
 
 	driver, err := ws.launch(width, height)
 	if err != nil {
@@ -323,23 +317,13 @@ func forkCopiedWorkspaceIdentity(dataDir string) error {
 	if err != nil {
 		return err
 	}
-	settings, err := source.LoadSettings()
-	if err != nil {
-		return err
-	}
-	automation, err := source.LoadAutomation()
-	if err != nil {
-		return err
-	}
 
 	paths := []string{
 		config.WorkspaceCatalogPath(dataDir),
 		config.PlanningStatePath(dataDir),
-		config.SettingsPath(dataDir),
-		config.AutomationPath(dataDir),
 	}
 	for _, path := range paths {
-		if err := os.Remove(path); err != nil {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("remove copied domain %s: %w", filepath.Base(path), err)
 		}
 		if err := os.Remove(path + ".bak"); err != nil && !os.IsNotExist(err) {
@@ -356,19 +340,13 @@ func forkCopiedWorkspaceIdentity(dataDir string) error {
 	if err := destination.SavePlanning(planning); err != nil {
 		return err
 	}
-	if err := destination.SaveSettings(settings); err != nil {
-		return err
-	}
-	if err := destination.SaveAutomation(automation); err != nil {
-		return err
-	}
 	return destination.SaveMachine(config.NewMachineState())
 }
 
 // --- Built-in fixture builders ---
 
 // buildEmptyFixture leaves the workspace with no user projects, exercising the
-// zero-task onboarding surface (the dashboard capture hint).
+// zero-task dashboard capture hint.
 func buildEmptyFixture(_ *uitestWorkspace) error {
 	return nil
 }
@@ -382,39 +360,39 @@ func buildFreshFixture(w *uitestWorkspace) error {
 }
 
 // buildRichFixture creates a project with a full task hierarchy spanning every
-// task type, status, priority, and a couple of GTD sections.
+// retained workflow states, priorities, hierarchy, and relationships.
 func buildRichFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Rich Project", func(p *models.Project) {
-		epic := newFixtureTask(p, models.TaskTypeEpic, "Launch platform")
+		epic := newFixtureTask(p, "Launch platform")
 		epic.Description = "Ship the first public release."
 		epic.Priority = 1
 
-		story := newFixtureTask(p, models.TaskTypeStory, "User authentication")
+		story := newFixtureTask(p, "User authentication")
 		story.ParentID = &epic.ID
 		story.Priority = 2
 
-		login := newFixtureTask(p, models.TaskTypeTask, "Build login form")
+		login := newFixtureTask(p, "Build login form")
 		login.ParentID = &story.ID
 		login.ApplyWorkflowState(models.StateInProgress)
 
-		validate := newFixtureTask(p, models.TaskTypeTask, "Add password validation")
+		validate := newFixtureTask(p, "Add password validation")
 		validate.ParentID = &story.ID
 		validate.Tags = []string{"backend", "security"}
 
-		mockup := newFixtureTask(p, models.TaskTypeTask, "Design login mockup")
+		mockup := newFixtureTask(p, "Design login mockup")
 		mockup.ParentID = &story.ID
 		markDone(mockup)
 
-		bug := newFixtureTask(p, models.TaskTypeBug, "Fix redirect loop after logout")
+		bug := newFixtureTask(p, "Fix redirect loop after logout")
 		bug.Priority = 1
 		bug.Tags = []string{"urgent"}
 		bug.ApplyWorkflowState(models.StateWaiting)
 
-		idea := newFixtureTask(p, models.TaskTypeIdea, "Explore social login")
+		idea := newFixtureTask(p, "Explore social login")
 		idea.Description = "Google / GitHub OAuth."
 		idea.ApplyWorkflowState(models.StateSomeday)
 
-		inbox := newFixtureTask(p, models.TaskTypeTask, "Triage support inbox")
+		inbox := newFixtureTask(p, "Triage support inbox")
 		inbox.ApplyWorkflowState(models.StateInbox)
 	})
 	if err != nil {
@@ -424,34 +402,34 @@ func buildRichFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildAlertsFixture creates tasks that trip dashboard alerts: overdue,
-// due-soon, and high-priority blocked work.
-func buildAlertsFixture(w *uitestWorkspace) error {
-	project, err := w.addProject("Alerts Project", func(p *models.Project) {
-		overdue := newFixtureTask(p, models.TaskTypeTask, "Overdue: submit quarterly report")
+// buildBusyFixture creates a dense mix of urgent, scheduled, blocked, waiting,
+// and inbox work for dashboard stress tests.
+func buildBusyFixture(w *uitestWorkspace) error {
+	project, err := w.addProject("Busy Project", func(p *models.Project) {
+		overdue := newFixtureTask(p, "Overdue: submit quarterly report")
 		overdue.Priority = 1
 		overdue.ApplyWorkflowState(models.StateNext)
 		setDue(overdue, -3*24*time.Hour)
 
-		dueSoon := newFixtureTask(p, models.TaskTypeTask, "Due soon: renew certificate")
+		dueSoon := newFixtureTask(p, "Due soon: renew certificate")
 		dueSoon.Priority = 2
 		dueSoon.ApplyWorkflowState(models.StateNext)
 		setDue(dueSoon, 12*time.Hour)
 
-		blocked := newFixtureTask(p, models.TaskTypeBug, "Blocked: production outage")
+		blocked := newFixtureTask(p, "Blocked: production outage")
 		blocked.Priority = 1
 		blocked.ApplyWorkflowState(models.StateWaiting)
 
-		waiting := newFixtureTask(p, models.TaskTypeTask, "Waiting on vendor response")
+		waiting := newFixtureTask(p, "Waiting on vendor response")
 		waiting.ApplyWorkflowState(models.StateWaiting)
 	})
 	if err != nil {
 		return err
 	}
-	_, err = w.addProject("Alert Backlog", func(p *models.Project) {
+	_, err = w.addProject("Inbox Backlog", func(p *models.Project) {
 		stale := time.Now().Add(-21 * 24 * time.Hour)
 		for i := 0; i < 5; i++ {
-			task := newFixtureTask(p, models.TaskTypeTask, fmt.Sprintf("Untriaged alert backlog item %d", i+1))
+			task := newFixtureTask(p, fmt.Sprintf("Untriaged inbox item %d", i+1))
 			task.ApplyWorkflowState(models.StateInbox)
 			task.CreatedAt = stale
 			task.UpdatedAt = stale
@@ -465,17 +443,17 @@ func buildAlertsFixture(w *uitestWorkspace) error {
 }
 
 // buildWorkflowFixture creates a spread of tasks across workflow states so the
-// planning/review views have something to render.
+// state and planning operations have something to render.
 func buildWorkflowFixture(w *uitestWorkspace) error {
 	titles := []string{
-		"Sketch onboarding flow",
+		"Sketch intake flow",
 		"Design settings screen",
 		"Implement export pipeline",
 		"Review release notes",
 	}
 	project, err := w.addProject("Workflow Project", func(p *models.Project) {
 		for i, title := range titles {
-			t := newFixtureTask(p, models.TaskTypeTask, title)
+			t := newFixtureTask(p, title)
 			t.Priority = (i % 3) + 1
 			t.ApplyWorkflowState(models.StateNext)
 			if i == len(titles)-1 {
@@ -494,14 +472,16 @@ func buildWorkflowFixture(w *uitestWorkspace) error {
 // when the driver is run at a narrow terminal width.
 func buildNarrowFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Narrow Project", func(p *models.Project) {
-		long := newFixtureTask(p, models.TaskTypeTask,
+		long := newFixtureTask(p,
 			"Investigate intermittent timeout when syncing very large project archives over slow connections")
+
 		long.Priority = 1
 		long.Tags = []string{"infrastructure", "reliability", "sync"}
 		long.ApplyWorkflowState(models.StateNext)
 
-		another := newFixtureTask(p, models.TaskTypeBug,
+		another := newFixtureTask(p,
 			"Truncated column headers overlap when the terminal is resized below the minimum comfortable width")
+
 		another.ApplyWorkflowState(models.StateInProgress)
 	})
 	if err != nil {
@@ -512,8 +492,8 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 }
 
 // buildReleaseFixture creates a large canonical Outliner catalog with Unicode
-// content. The committed release-hardening scenario uses it to exercise Finder
-// indexing, wide and minimum layouts, viewport bounds, and repeated resizes
+// content. The release-hardening fixture exercises wide and minimum layouts,
+// viewport bounds, and repeated resizes
 // against substantially more rows than the everyday review fixtures.
 func buildReleaseFixture(w *uitestWorkspace) error {
 	states := []models.WorkflowState{
@@ -523,21 +503,20 @@ func buildReleaseFixture(w *uitestWorkspace) error {
 		models.StateInProgress,
 		models.StateWaiting,
 		models.StatePaused,
-		models.StateReview,
 		models.StateSomeday,
 	}
 	project, err := w.addProject("Release Ω Project", func(p *models.Project) {
-		unicodeTask := newFixtureTask(p, models.TaskTypeTask, "国際化 🚀 café résumé release check")
-		unicodeTask.Description = "Unicode display-width and Finder-search acceptance row."
+		unicodeTask := newFixtureTask(p, "国際化 🚀 café résumé release check")
+		unicodeTask.Description = "Unicode display-width and visible-search acceptance row."
 		unicodeTask.Tags = []string{"i18n", "release"}
 		unicodeTask.ApplyWorkflowState(models.StateInProgress)
 
 		for i := 0; i < 240; i++ {
 			task := newFixtureTask(
 				p,
-				models.TaskTypeTask,
-				fmt.Sprintf("Release acceptance item %03d with bounded viewport content", i+1),
-			)
+
+				fmt.Sprintf("Release acceptance item %03d with bounded viewport content", i+1))
+
 			task.Priority = (i % 5) + 1
 			task.Tags = []string{"release", fmt.Sprintf("batch-%d", i%8)}
 			task.ApplyWorkflowState(states[i%len(states)])
@@ -569,7 +548,7 @@ func buildContextsFixture(w *uitestWorkspace) error {
 	for _, spec := range projects {
 		project, err := w.addProject(spec.name, func(p *models.Project) {
 			p.Context = spec.context
-			task := newFixtureTask(p, models.TaskTypeTask, spec.task)
+			task := newFixtureTask(p, spec.task)
 			task.ApplyWorkflowState(models.StateNext)
 		})
 		if err != nil {
@@ -585,8 +564,8 @@ func buildContextsFixture(w *uitestWorkspace) error {
 
 // newFixtureTask creates a task with the next short ID, appends it to the
 // project, and returns it for further customization before the tree is built.
-func newFixtureTask(p *models.Project, taskType models.TaskType, title string) *models.Task {
-	task, err := models.NewTask(uuid.New().String(), p.NextShortID, taskType, title)
+func newFixtureTask(p *models.Project, title string) *models.Task {
+	task, err := models.NewGenericTask(uuid.New().String(), p.NextShortID, title)
 	if err != nil {
 		// Fixture titles are authored in this file and validated by tests, so a
 		// failure here is a programming error, not runtime input.

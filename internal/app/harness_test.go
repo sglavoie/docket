@@ -12,8 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-const testWorkspaceLedgerDepth = 1000
-
 // fakeRepo is an in-memory Repository that mirrors the transactional storage
 // boundary closely enough to exercise the application use cases: it hands out
 // the live project pointers through a snapshot, tracks each project's revision
@@ -264,18 +262,6 @@ func (m *memArtifactPort) ProjectLocationPrecondition([]*models.Project) (*stora
 	return nil, nil
 }
 
-func (m *memArtifactPort) EncodeBlockers(project *models.Project, blockers []*models.Blocker) (storage.ArtifactChange, error) {
-	return storage.ArtifactChange{Path: storage.BlockersFilePath(project), Data: []byte(storage.RenderBlockersContent(blockers))}, nil
-}
-
-func (m *memArtifactPort) Blockers(project *models.Project) ([]*models.Blocker, error) {
-	data, ok := m.repo.files[filepath.Clean(storage.BlockersFilePath(project))]
-	if !ok {
-		return []*models.Blocker{}, nil
-	}
-	return storage.ParseBlockersContent(string(data))
-}
-
 // lastCommit returns the single changeset from the most recent Commit call,
 // failing the expectation implicitly if the shape is not exactly one call of one
 // changeset.
@@ -307,7 +293,7 @@ func (s *seqIDs) NewID() string {
 // deterministic ID generator.
 func newTestService(repo *fakeRepo) *app.Service {
 	artifacts := repo.artifactPort()
-	return app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, artifacts, artifacts)
+	return app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, artifacts)
 }
 
 // newProject builds an in-memory project with the given tasks appended and the
@@ -331,7 +317,7 @@ func newProject(id, name string, tasks ...*models.Task) *models.Project {
 
 // newTask builds a leaf task with a stable UUID and short ID.
 func newTask(id string, shortID int, title string) *models.Task {
-	t, err := models.NewTask(id, shortID, models.TaskTypeTask, title)
+	t, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		panic(err)
 	}

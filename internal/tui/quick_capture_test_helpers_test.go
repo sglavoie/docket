@@ -16,7 +16,6 @@ type quickCaptureParseTestCase struct {
 	wantTags       []string
 	wantHasDueDate bool
 	wantParentID   *string
-	wantTaskType   models.TaskType
 	wantSection    string
 	wantHasRecur   bool
 	wantState      models.WorkflowState
@@ -34,10 +33,10 @@ func quickCaptureTestProject() *models.Project {
 		ID:   "test-project",
 		Name: "Test Project",
 		Tasks: []*models.Task{
-			{ID: "epic-1", ShortID: 1, Type: models.TaskTypeEpic, Title: "User Authentication"},
-			{ID: "story-2", ShortID: 2, Type: models.TaskTypeStory, Title: "Login Flow"},
-			{ID: "task-3", ShortID: 3, Type: models.TaskTypeTask, Title: "Implement button"},
-			{ID: "task-4", ShortID: 4, Type: models.TaskTypeTask, Title: "Implement search"},
+			{ID: "epic-1", ShortID: 1, Title: "User Authentication"},
+			{ID: "story-2", ShortID: 2, Title: "Login Flow"},
+			{ID: "task-3", ShortID: 3, Title: "Implement button"},
+			{ID: "task-4", ShortID: 4, Title: "Implement search"},
 		},
 	}
 }
@@ -92,10 +91,6 @@ func runQuickCaptureParseTests(t *testing.T, tests []quickCaptureParseTestCase) 
 				}
 			} else if result.parentID != nil {
 				t.Errorf("parentID = %q, want nil", *result.parentID)
-			}
-
-			if tt.wantTaskType != "" && result.taskType != tt.wantTaskType {
-				t.Errorf("taskType = %q, want %q", result.taskType, tt.wantTaskType)
 			}
 
 			hasRecur := result.recurrence != nil

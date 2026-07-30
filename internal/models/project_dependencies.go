@@ -70,52 +70,6 @@ func (p *Project) dependsOnTransitive(sourceID, targetID string, visited map[str
 	return false
 }
 
-// CheckAndAutoUnblock checks all waiting tasks that carry dependencies and
-// reopens them (to the Inbox) once every dependency is complete. Waiting is
-// the workflow state the legacy blocked status maps to; a waiting task with
-// no dependencies is treated as externally waiting and left alone.
-// Cross-project dependencies (format "projectID:taskID") cannot be resolved
-// locally and are conservatively treated as incomplete to prevent premature
-// unblocking.
-// Dangling local references (depID points to a task that no longer exists)
-// are skipped (treated as resolved), mirroring HasIncompleteDependencies.
-// Without this, a blocked task whose blocker was deleted would remain
-// blocked indefinitely even though HasIncompleteDependencies reports it
-// as completable — leaving the two helpers contradicting one another.
-func (p *Project) CheckAndAutoUnblock() {
-	for _, task := range p.Tasks {
-		if !task.IsInState(StateWaiting) || len(task.DependsOn) == 0 {
-			continue
-		}
-
-		allComplete := true
-		for _, depID := range task.DependsOn {
-			if ParseTaskRef(depID).IsCrossProject() {
-				// Cross-project dep cannot be resolved locally;
-				// treat as incomplete to prevent premature unblocking.
-				allComplete = false
-				break
-			}
-			dep := p.GetTaskByID(depID)
-			if dep == nil {
-				// Dangling local ref: treat as resolved (matches the
-				// HasIncompleteDependencies contract). BuildTaskTree
-				// normally prunes orphans on load, so survivors only
-				// appear via direct slice mutation.
-				continue
-			}
-			if !dep.IsComplete() {
-				allComplete = false
-				break
-			}
-		}
-
-		if allComplete {
-			task.Reopen()
-		}
-	}
-}
-
 // HasIncompleteDependencies returns true if the task has any dependencies
 // that are not yet complete (done or canceled).
 // Cross-project qualified references (format "projectID:taskID") that cannot

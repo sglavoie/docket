@@ -36,8 +36,8 @@ func TestRouteIDSetAndDestinations(t *testing.T) {
 }
 
 func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
-	if _, err := NewRoute(TaskWorkspace, ReviewParams{Module: ReviewDaily}); !errors.Is(err, ErrRouteParamsType) {
-		t.Fatalf("TaskWorkspace with ReviewParams error = %v", err)
+	if _, err := NewRoute(TaskWorkspace, ManageParams{Module: ManageNotes}); !errors.Is(err, ErrRouteParamsType) {
+		t.Fatalf("TaskWorkspace with ManageParams error = %v", err)
 	}
 	if _, err := NewRoute(RouteID(99), TaskWorkspaceParams{}); !errors.Is(err, ErrInvalidRouteID) {
 		t.Fatalf("unknown ID error = %v", err)
@@ -63,11 +63,10 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 	}
 
 	manage := mustRoute(t, SecondaryTool, ManageParams{
-		Module:           ManageSettings,
-		Scope:            EntityScope{Kind: ScopeProject, ProjectID: "p1"},
-		NotificationMode: NotificationLog,
+		Module: ManageContexts,
+		Scope:  EntityScope{Kind: ScopeProject, ProjectID: "p1"},
 	}).Params().(ManageParams)
-	if manage.Scope != AppEntityScope() || manage.NotificationMode != NotificationAlerts {
+	if manage.Scope != AppEntityScope() {
 		t.Errorf("irrelevant manage params not canonical: %+v", manage)
 	}
 	if _, err := NewRoute(SecondaryTool, TaskWorkspaceParams{}); !errors.Is(err, ErrRouteParamsType) {

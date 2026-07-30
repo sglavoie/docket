@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "automation",
+  "data": {
+    "workflow_rules": [
+      {
+        "id": "synthetic-rule",
+        "name": "Synthetic waiting rule",
+        "level": "task",
+        "enabled": true,
+        "priority": 1,
+        "triggers": [
+          {
+            "field": "priority",
+            "operation": "equals",
+            "value": "1"
+          }
+        ],
+        "trigger_logic": "and",
+        "actions": [
+          {
+            "action_type": "add_tag",
+            "value": "automated"
+          }
+        ],
+        "trigger_count": 3,
+        "scope": {
+          "projects": [
+            "project-alpha"
+          ],
+          "types": [
+            "bug"
+          ],
+          "states": [
+            "waiting"
+          ]
+        }
+      }
+    ],
+    "default_rules_initialized": true,
+    "workflow_eval_states": {
+      "project-alpha": {
+        "last_eval_time": "2026-02-02T12:00:00Z",
+        "rules_hash": "synthetic-rules-hash"
+      }
+    },
+    "workflow_eval_interval": 10,
+    "task_templates": [
+      {
+        "id": "synthetic-template",
+        "name": "Synthetic bug template",
+        "enabled": true,
+        "category": "bug",
+        "type": "bug",
+        "priority": 1,
+        "tags": [
+          "template"
+        ],
+        "state": "inbox",
+        "description": "Synthetic template body",
+        "children": [
+          {
+            "title": "Synthetic reproduction child",
+            "type": "task",
+            "optional": false
+          }
+        ],
+        "checklist": [
+          "Confirm expected result"
+        ],
+        "use_count": 2
+      }
+    ],
+    "default_templates_init": true,
+    "scoring_profiles": [
+      {
+        "id": "synthetic-score",
+        "name": "Synthetic score",
+        "description": "Retired scoring fixture",
+        "usage_hint": "Use only in migration tests",
+        "formula": "weighted_sum",
+        "dimensions": [
+          {
+            "id": "impact",
+            "name": "Impact",
+            "min": 1,
+            "max": 5,
+            "default": 3,
+            "weight": 1,
+            "source": "manual"
+          }
+        ]
+      }
+    ],
+    "project_scoring_profile": {
+      "project-alpha": "synthetic-score"
+    }
+  }
+}

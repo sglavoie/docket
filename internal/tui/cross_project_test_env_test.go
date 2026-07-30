@@ -26,7 +26,7 @@ type crossProjectTestEnv struct {
 func newCrossProjectTestEnv(t *testing.T, taskGroups ...[]*models.Task) *crossProjectTestEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	projects := make([]*models.Project, len(taskGroups))
@@ -53,7 +53,7 @@ func newCrossProjectTestEnv(t *testing.T, taskGroups ...[]*models.Task) *crossPr
 	repo := newScenarioRepo(commitSvc, projects...)
 	repo.seed(t)
 	svc := app.NewService(repo, nil, nil)
-	coords := newSecondaryCoordinators(svc, nil)
+	coords := newSecondaryCoordinators(svc)
 	return &crossProjectTestEnv{
 		dataDir: dataDir, ledger: ledger, svc: svc,
 		bulk: coords.Bulk, taskItem: coords.TaskItem, projects: projects,

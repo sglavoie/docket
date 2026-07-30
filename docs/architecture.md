@@ -1,425 +1,339 @@
-# Architecture, data, privacy, and recovery
+# Architecture, data, migration, and recovery
 
-This document describes the release-candidate architecture of `tt`. It is the
-operator reference for the workflow-state model, on-disk layout, transaction and
-conflict behavior, cloud and AI consent, upgrades, backups, and supported
-platforms. CLI syntax remains authoritative in `tt --help`; TUI interaction is
-documented in the in-app Reference and contextual help.
+`tt` is an Outliner-first local application. The Bubble Tea TUI is the product
+surface; Cobra exposes only maintenance commands. Both use the same application
+services and revision-checked storage boundaries.
 
-## Workflow state model
+## Runtime layers
 
-A task has one canonical `WorkflowState`. The persisted `state:` value in
-schema-v2 task Markdown is one of:
+The repository is divided by responsibility:
 
-| State | Meaning |
+- `internal/models` owns task, project, note, recurrence, hierarchy, and
+  workflow invariants.
+- `internal/app` owns use cases, target resolution, atomic multi-project
+  mutations, planning reconciliation, and rollback of in-memory state when a
+  commit fails.
+- `internal/storage` owns strict schema-5 Markdown, attachments, transactions,
+  workspace undo/redo, three-way merge, conflicts, and recovery.
+- `internal/config` owns the lean catalog and planning domains, machine-local
+  contexts/theme, workspace selection, and the v4-to-v5 migration.
+- `internal/tui` owns the single Outliner root, typed subordinate tools and
+  overlays, operation descriptors, and the deterministic review harness.
+- `cmd` owns only the TUI launcher and maintenance CLI adapters.
+
+A user mutation resolves project-qualified targets from one immutable workspace
+snapshot. The application layer validates every requested target and domain
+rule before mutation. It then submits all project documents, domain artifacts,
+notes, and attachment effects to one repository transaction. Presentations do
+not reproduce these checks with independent saves.
+
+## Task model
+
+Schema 5 stores generic tasks with these supported fields:
+
+| Group | Fields |
 | --- | --- |
-| `inbox` | Captured but not triaged. |
-| `ready` | Available work with no stronger scheduling signal. |
-| `next` | A deliberately selected next action. |
-| `in_progress` | Work currently underway. |
-| `waiting` | Waiting on an external event or person. |
-| `paused` | Voluntarily suspended work. |
-| `review` | Work awaiting review or validation. |
-| `someday` | Deferred without a current commitment. |
-| `done` | Completed terminal work. |
-| `canceled` | Canceled terminal work. |
+| Identity | stable ID and project-local ShortID |
+| Content | title and description |
+| Workflow | Inbox, Ready, Next, In Progress, Waiting, Paused, Someday, Done, Canceled |
+| Planning metadata | priority, due date, dated snooze, pin, pin timestamp |
+| Organization | project-local parent, tags, cross-project dependencies |
+| Rich records | checklist, comments, decisions, attachments, recurrence |
+| Lifecycle | created, updated, completed timestamps |
 
-Any nonterminal state may move to another nonterminal state. `done` and
-`canceled` are terminal; `reopen` returns either terminal state to `inbox`.
-`CompletedAt` is populated only for terminal tasks.
+Task Markdown uses only generic `Task` headings. Tags are derived from live task
+records, not a catalog. Due and snooze values are calendar dates.
 
-Dependency blocking is derived from unresolved dependencies and appears as a
-badge/filter. It is not a workflow state. `in_progress` identifies work
-currently underway. Next (the on-deck shortlist) is not a separate membership
-collection: a task is in Next exactly when its workflow state is `next`
-(`StateNext`). The persisted Focus Queue is ordering-only—it orders StateNext
-tasks and never confers membership—so unindexed StateNext tasks still belong to
-Next and stale indexed non-Next tasks do not.
+### Workflow and planning
 
-Daily Plan (Today) is a separate, config-backed planning collection. It contains
-only nonterminal, non-Inbox, non-Next tasks. Today and Next are mutually
-exclusive. Moving a task from Next or Inbox to Today atomically transitions it
-to `StateReady` and adds it to Daily Plan. Entering Next atomically removes
-Today membership. Completing work removes both planning memberships.
+Next membership is exactly the `next` workflow state. `planning.json` retains a
+project-qualified ordering list for Next but cannot confer membership on a
+non-Next task.
 
-Use `tt task state <state> <ref...>` for the complete state surface. Convenience
-commands include `ready`, `next`, `start`, `wait`, `pause`, `review`, `someday`,
-`complete`, `cancel`, and `reopen`.
+Today is a separate project-qualified collection. Today and Next are mutually
+exclusive. Adding an Inbox or Next task to Today first moves it to Ready.
+Entering Next removes Today. Done and Canceled remove both planning references.
+The planning reconciler deduplicates entries and removes stale or terminal
+references inside the same transaction as the task change.
 
-## Runtime and application layers
+Blocked is derived from unresolved dependencies; it is not a state. A task
+cannot move to Done while a dependency is unresolved. Done and Canceled are
+also rejected when a direct child remains nonterminal.
 
-Both the CLI and TUI invoke the presentation-neutral application service. A
-mutation resolves targets from one workspace snapshot, validates domain rules,
-builds one or more `ChangeSet` values, and crosses the same repository commit
-boundary. Views and commands do not write project Markdown directly.
+### Hierarchy, dependencies, and ordering
 
-Workspace snapshots retain parsed projects, canonical revisions, task lookup,
-qualified references, reverse dependencies, and partial-load diagnostics.
-Long-lived global views reuse the snapshot loader: a changed project is parsed
-once for a rebuild and unchanged indexed projects are not reparsed. Hierarchy
-and Markdown traversal use lookup and child-adjacency indexes rather than
-repeated full-project scans.
+Parents are project-local. Reparenting rejects missing parents, self-parenting,
+cycles, cross-project parents, and a resulting subtree depth above six.
 
-AI mutations use an opaque prepared action plan from preview through apply. The
-prepared value defensively retains the exact snapshot, resolved actions, original
-provider indexes, and accepted risk tiers shown to the user; callers cannot rebuild
-an executable plan from a detached preview. Apply is single-use and adds read-only
-revision preconditions for every project whose state influenced the accepted plan,
-including transitive dependency reads and delete cleanup. Any relevant drift expires
-the plan atomically and requires a fresh response, preview, and confirmation.
-Unrelated project drift does not invalidate the plan.
+Dependencies use stable task identity and carry a project qualifier when they
+cross projects. The workspace resolver validates existence, self-reference,
+and cycles. Moving a task between projects repairs or clears affected
+references atomically across every participating project.
 
-## Durable data layout
+All, Inbox, and Backlog retain project hierarchy and manual sibling order.
+Today and Next have workspace-wide durable order. Due is automatically date
+ordered. `J`/`K` therefore dispatches by row context: sibling reorder for a
+hierarchical row, planning reorder for Today or Next, and no mutation for
+Pinned or Due.
 
-Markdown remains canonical for project tasks. A workspace rooted at `<data>`
-uses this layout:
+### Recurrence and rich records
+
+Recurrence is a positive integer interval with unit `day`, `week`, or `month`.
+Completion advances repeatedly from the prior due date until the next due date
+falls after completion. Without a prior due date, it uses completion plus the
+interval. End-of-month cadence remains stable.
+
+The generated task is Inbox in the same project and parent. It copies title,
+description, priority, tags, unchecked checklist items, and recurrence. It does
+not copy children, dependencies, comments, decisions, attachments, pin,
+planning placement, or snooze.
+
+Comments store timestamped text. Decisions store timestamped text and rationale.
+Checklist items store text and completion and may be reordered. Attachments are
+files, HTTP(S) URLs, or code references and participate in the same transaction
+and undo ledger as task Markdown.
+
+## TUI architecture
+
+Every run creates one AppModel-owned Outliner and starts in All Projects, All.
+Search, filters, selection, folds, cursor, and scope are session state and are
+not restored. Typed navigation permits that one root, at most one subordinate
+tool, and typed overlays. Covered Outliner state receives no key or reload
+dispatch.
+
+The five modes are All, Inbox, Next, Backlog, and Due.
+`Tab`/`Shift+Tab` cycle only that ordered catalog. A project focus is a scope
+frame in the same Outliner, never a second root.
+
+All mode projects open, unsnoozed work as Pinned, Today, In Progress, Inbox,
+Next, Backlog, Waiting, Paused, and Someday. Pinned is a transient
+newest-first projection with project/parent breadcrumbs and an identity
+suppression set, so promoted tasks appear only once.
+
+### One operation grammar
+
+`OperationRegistry` stores stable operation descriptors: label, category,
+applicability, target cardinality, risk, value provider, and capabilities.
+`OperationExecutor` freezes and resolves typed targets, requests values, gates
+confirmation, and invokes the bound handler.
+
+`SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
+handled-key metadata, chord hints, footer hints, `?` help, and harness discovery
+all project from that strategy. The task operation manifest separately orders
+the exact nine `Space` actions:
+
+1. Recurrence
+2. Move Project
+3. Set Parent
+4. Dependencies
+5. Checklist
+6. Comments
+7. Decisions
+8. Attachments
+9. Delete
+
+Startup validation rejects an operation that appears in both the direct grammar
+and the task menu. Destructive descriptors require confirmation before any
+transaction begins.
+
+### Search, filters, and inspector
+
+Visible search performs a case-insensitive substring match against title and
+description only. Filter facets compose as priority threshold, OR states, AND
+tags, due bucket, blocked-only, and snoozed-only. One predicate and reference
+time are shared across Pinned, Today, primary mode rows, and Due. Search and
+facets persist across mode and scope changes within the run and are never
+serialized.
+
+At widths of at least 100 columns, a read-only right pane follows the cursor.
+At narrower widths, `Enter` opens a frozen project-qualified inspector overlay
+and `Esc` closes it. Both use one renderer for project path, state, priority,
+due/snooze, tags, dependencies, recurrence, checklist progress, lifecycle
+timestamps, and description.
+
+### Selection and subordinate tools
+
+Visual selection stores project-qualified task identities independently of
+current visibility. Bulk lifecycle, planning, priority, due, tags, snooze, and
+pin requests validate the complete selection before one transaction. Structural
+and relation operations, edits, inspection, and clipboard actions reject visual
+selection rather than falling back to the cursor. The bulk `Space` menu contains
+Delete only.
+
+Scope Hub resolves All Projects, regular context labels, custom machine-local
+contexts, and projects. Applying scope clears navigation and selection but
+preserves the active mode, search, and filters. Project administration supports
+create, edit, pin, archive, restore, and project Notes. The catalog-owned Inbox
+ID is the protection authority.
+
+The combined Notes tool carries an explicit location with every row. It loads
+Global notes plus the focused project's notes, if any. Creation always pauses
+at a destination picker. Note mutations and external-editor results commit
+through the workspace ledger. Editor resolution is `TT_EDITOR`, then `VISUAL`,
+then `EDITOR`.
+
+## Persistence layout
+
+The portable workspace rooted at `<data>` is:
 
 ```text
 <data>/
 ├── .tt/
-│   ├── workspace.json      # schema version, workspace ID, project catalog, Inbox ID
-│   ├── planning.json       # Focus Queue, Daily Plan, reviews, filters, saved views
-│   ├── settings.json       # portable behavior, appearance, privacy, and AI consent
-│   ├── automation.json     # workflows, templates, and scoring configuration
-│   ├── transactions/       # prepared/recovering transaction manifests and staging
-│   ├── undo/               # workspace transaction ledger and retained undo artifacts
-│   ├── conflicts/          # base/local/remote conflict bundles
-│   └── trash/              # versioned project tombstones
+│   ├── workspace.json       # lean project catalog and protected Inbox ID
+│   ├── planning.json        # Today and Next order only
+│   ├── global-notes/        # minimal Markdown notes
+│   ├── transactions/        # prepared/recovering commit journals
+│   ├── undo/                # workspace ledger and retained artifact images
+│   ├── conflicts/           # merge bundles
+│   └── backups/             # immutable pre-v5 rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md        # canonical schema-v2 task Markdown
-        ├── completed.md    # archived completed tasks (plus completed.N.md rotations)
-        ├── .completed.index.json # rebuildable archive summary index
-        ├── notes/
-        └── .attachments/
+        ├── tasks.md         # strict schema-5 generic Task Markdown
+        ├── notes/           # minimal project notes
+        └── .attachments/    # task-addressed file binaries
 ```
 
-Project paths are derived from the data directory and validated catalog slugs;
-absolute project paths are not durable workspace configuration. Ordinary slugs must
-already be canonical lowercase ASCII components, reserved names are rejected, and
-`_sandbox` is accepted only for the catalog's sandbox project. Catalog load and
-transactional encode both enforce this invariant. The storage boundary validates
-the project directory plus its task, backup, and lock paths against approved roots,
-resolving existing symlinks before it creates transaction or lock artifacts.
-Project creation is create-only: an uncataloged existing `tasks.md` aborts creation
-without changing either the file or catalog. Unknown schema-v2 header blocks are
-preserved when task Markdown is rewritten.
+Project paths are derived from the selected data directory and canonical
+lowercase ASCII slugs. Absolute paths are not catalog data. Every mutation path
+is checked against approved roots with symlink-aware containment before locks,
+staging files, or destination directories are created.
 
-Startup classifies the synced domain bundle before recovery or bootstrap. The
-precedence is: a complete split bundle loads; a partial bundle fails for repair; a
-legacy-only aggregate `.tt.json` returns a typed migration-required error; and only
-a truly empty workspace bootstraps defaults. A stale aggregate beside a complete or
-partial split bundle is ignored. Legacy-only rejection happens before transaction
-directories, locks, domain files, or machine files can be created. This release does
-not automatically convert the aggregate format: migration must explicitly choose
-the authoritative source of truth.
+Portable configuration has only two synced domains:
 
-Machine-specific state is intentionally separate:
+- `workspace.json`: workspace identity, lean active/archived project catalog,
+  automatic color slots, and the protected Inbox ID.
+- `planning.json`: project-qualified Today and Next ordering.
+
+Machine state has only custom contexts and the dark/light theme:
 
 ```text
-every workspace:  ~/.tt/runtime/<workspace-id>/machine.json
+~/.tt/runtime/<workspace-id>/machine.json
 ```
 
-`<workspace-id>` is the canonical UUID stored in synced `workspace.json`. The
-file contains editors, integration choices, current project
-selection, custom contexts, and bounded recent Finder destinations. Renderer
-layout, filters, cursors, folds, composer expansion, and the active context
-scope are session-owned and are not serialized. The Outliner's Today group
-owns its project-qualified subtree overrides and global tree-depth limit for the
-session, and a depth change clears per-node overrides. A workspace with a
-different ID never shares this state. On first
-startup after upgrading from the former layout, `tt` checks the machine file
-keyed by the current data-directory path, then the historical
-`~/.tt/machine.json`; it imports only an empty-ID or catalog-matching envelope,
-writes it atomically to the canonical path, and retains the source for rollback.
-An identity mismatch is an explicit error. Once canonical state exists, legacy
-copies are ignored.
+The workspace ID prevents unrelated workspaces from sharing machine state.
+Logs and process locks are also machine-local. A fixed machine-local active
+workspace pointer may select a non-default data directory before the portable
+catalog is loaded.
 
-Logs and process locks are also machine-local and never synced, but unlike
-`machine.json` they remain keyed by the current data-directory path. This keeps
-two separately opened paths isolated even if their durable contents claim the
-same workspace identity.
+## Transactions and recovery
 
-A workspace-location move first acquires the machine-local TUI process locks for
-both source and destination in deterministic order, so an active TUI at either path
-blocks relocation. It then acquires and recovers both workspace commit locks before
-inventory. The locked inventory is hash-bound: source drift, a divergent destination,
-or a destination race aborts without switching the active-workspace pointer, and
-publication never replaces a competing file. `--force` skips only the confirmation
-prompt and never bypasses process locks, commit locks, or snapshot validation.
+The workspace repository is the sole user-mutation persistence boundary. A
+commit:
 
-After copying and validating the portable workspace, the move binds and migrates
-machine state while the source path is still known, rechecks source and destination,
-then switches the machine-local active-workspace pointer as the final commit. The
-source remains as a backup. Because the catalog ID is preserved, supported
-machine preferences remain available at the destination on the same machine. A
-true copy assigned a new workspace ID receives a separate default machine-state
-namespace.
+1. validates paths, revisions, artifact bytes, and attachment effects;
+2. acquires deterministic locks;
+3. writes a prepared journal and staged data;
+4. publishes every operation atomically and marks the journal committed; and
+5. records one workspace undo transaction.
 
-## TUI navigation architecture
+Startup recovers prepared or committing journals before it classifies or loads
+the workspace. Recovery authorizes every transaction root recorded by the
+operation; migration publication includes the machine-state root as well as the
+portable workspace. A quarantined or malformed journal blocks startup rather
+than allowing a partial view.
 
-The Outliner is the sole primary root and launches globally in All on every
-run. Its config-backed Daily Plan appears as a synthetic, deduplicated Today
-group above In Progress, Inbox, Next, Backlog, Review, Waiting, Paused, and
-Someday. Done and Canceled require an explicit filter.
-
-Typed navigation has one Outliner root, at most one Task Detail or Secondary
-Tool child, and typed overlays. The operation sheet followed by a value picker
-is the maximum overlay depth. Hidden Outliner state never receives input or
-reload dispatch while an overlay is active.
-
-Modes and project scopes belong to the Outliner rather than to routes. The exact
-mode catalog is All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked, Daily
-Review, and Activity. `Tab`/`Shift+Tab` cycle All → Inbox → Next → Backlog and
-back. `m` opens the searchable mode source, `c` opens the Scope Hub, `/` searches
-visible rows, `:` opens Finder, and `v` enters multi-select. Pinned items and
-recent destinations are Finder results rather than permanent modes.
-
-A single AppModel-owned Outliner instance owns both global and project-focused
-work. Project selection is represented by Outliner scope frames, never another
-root model. Enter on a project header, the Scope Hub, Finder destinations, task
-deep links, and project-aware operations all focus that same Outliner. Esc
-returns through local overlays, children, and scope frames. Ctrl+Esc closes all
-children and overlays, clears transient filters, search, and selection, and
-restores All over All Projects.
-
-`OperationRegistry` is the common descriptor source for direct dispatch,
-contextual action sheets, Finder operations, bulk actions, help, and harness
-discovery. `OperationExecutor` resolves frozen typed targets and owns the common
-invocation pipeline. Generic fuzzy lists, categories, preview, viewport,
-selection, and contextual actions use `ListSurface`; specialized calendars and
-forms remain focused domain controls.
-
-Every surface is a projection of that one catalog rather than a parallel command
-list. The simplified input strategy derives direct keys, handled keys, footer
-hints, and `?` help; descriptor placement decides Finder membership; the task
-operation manifest orders the `Space` sheet and marks which entries survive into
-a bulk selection. A bulk sheet therefore offers the intersection of the
-bulk-capable entries, and an action reachable from two surfaces resolves to the
-same descriptor and binding on both. Catalog invariants in
-`internal/tui/operation_parity_test.go` assert these projections stay in step.
-
-Finder rows are actionable in place: `Enter` activates the result and `Tab` opens
-the contextual sheet built from the action family the result's kind owns. The
-sheet freezes the row it was opened over, clears any inherited multi-select, and
-drops the inherited entity for rows that name their own, so a Finder action can
-never widen to targets the user did not see.
-
-Destructive descriptors carry `OperationRiskDestructive`. The executor gates them
-behind a confirmation before any transaction opens, unless a binding explicitly
-delegates confirmation to a handler that runs its own prompt, so declining a
-Danger action never reaches the workspace repository. Deletion has no direct key
-and exists only inside an action sheet.
-
-Alerts are placed once and read everywhere. The alert engine evaluates the whole
-workspace, `!` opens the global Alert Center regardless of the active scope, and
-views that compose their own title row receive the count through the
-`alertCountAware` seam while the remaining views get a right-aligned overlay. The
-two seams are mutually exclusive, so the indicator is never drawn twice.
-
-### Active context scope
-
-The active context is the global Outliner's project scope and is the only
-project-set authority in the TUI; the retired ad-hoc project-subset filter no
-longer exists. Exactly one scope is active at a time and it is one of three
-kinds: All (every active project), a regular context label carried by the
-catalog projects themselves, or a custom context naming a hand-picked project
-group. An empty scope name degrades to All.
-
-The scope is session-owned. It is held on the single Outliner instance, is never
-written to `workspace.json` or `machine.json`, and every run starts in All.
-`Ctrl+Esc` clears it along with the rest of the Outliner's narrowing. Applying a
-scope is a scope change and not a filter: it clears project scope frames, task
-zoom, multi-select, and cursor position, and it leaves the work mode, task
-filters, search, sort, and columns untouched. It narrows every
-cross-project surface through the Outliner's one `scopeProjects()` seam, so
-tree, priority, computed, and review modes all inherit it, and the
-workspace-wide daily-review checkpoint refuses to complete while a scope is
-narrowing the visible set. Regular scopes resolve against the live catalog;
-custom scopes resolve their stored project IDs and silently skip members that
-are archived or no longer cataloged.
-
-`c` in the Outliner opens the Scope Hub, a typed secondary tool that browses
-scopes, previews the projects and task counts each resolves to, applies one, and
-runs create, membership edit, rename, and delete inline for both kinds. Every
-mutation commits through one use-case layer: custom contexts write to
-machine-local state, regular labels relabel catalog projects in a checked
-workspace commit, and removing a project from a label reassigns it to another
-one rather than leaving it unlabeled. Renaming the default context label carries
-`Settings.DefaultContext` along in the same checked transaction, so the catalog
-relabel and the setting can never disagree about which label is the default.
-
-## Transactions, recovery, and undo
-
-`WorkspaceRepository.Commit(ChangeSet)` is the sole user-mutation persistence
-boundary. Each change carries the revision observed in its base snapshot. The
-commit service:
-
-1. validates all paths, revisions, artifacts, and attachment effects;
-2. acquires locks in deterministic order;
-3. writes a `prepared` transaction manifest and staged bytes;
-4. advances through `committing` to `committed` while atomically replacing
-   project and domain artifacts; and
-5. records one workspace-ledger entry for undo.
-
-Startup recovery rolls an interrupted prepared/committing transaction forward.
-It does not expose a partially applied multi-project mutation. Do not manually
-delete `.tt/transactions/` while recovery is pending.
-
-`tt undo` and `tt redo` operate in the current project by default;
-`tt undo --global` and `tt redo --global` select the newest workspace
-transaction. A grouped transaction restores every affected project, domain
-artifact, archive entry, index, and retained attachment together. A new
-mutation clears overlapping redo entries. Undo depth controls retained history,
-including attachment bytes.
-
-Undo is convenience history, not a backup: retention is finite and lives in the
-same workspace as the primary data.
+The ledger retains at most 50 transactions across undo and redo. `u` and
+`Ctrl+R` restore complete artifact images, including project moves, planning,
+notes, and attachment topology. Every successful forward mutation clears redo.
+Failed operations record nothing. Undo is convenience history in the same
+workspace, not an independent backup.
 
 ## Concurrent edits and conflicts
 
-Project revisions are SHA-256 hashes of canonical schema-v2 content. If the
-on-disk revision changed after a snapshot was loaded, `tt` performs a field-level
-three-way merge using the retained base, the local intent, and current disk
-content.
+Project revisions hash canonical schema-5 content. A stale writer is compared
+with its base and current remote document. Independent additions and
+non-overlapping field edits can merge; competing edits, delete-versus-edit,
+incompatible hierarchy/order changes, or opaque-block divergence produce a
+durable conflict bundle without partially committing the transaction.
 
-Read-only project preconditions are stricter than ordinary write revisions. They
-guard project state consulted by a prepared AI plan under the same deterministic
-project-lock set, but never become writes, conflicts, undo images, or journal
-operations. A missing or changed guarded project stops the transaction before
-three-way merge, conflict recording, or durable staging. Ordinary non-AI mutations
-retain the merge behavior below.
+The maintenance CLI lists, shows, and resolves those bundles. Resolution
+rechecks the current remote revision. A conflict from an aborted multi-artifact
+transaction may require adopting remote and retrying the original operation so
+all side effects are rebuilt together.
 
-Independent task additions, different-field edits, identical edits, and
-delete-versus-unchanged changes merge automatically. The transaction stops and
-records a conflict for delete-versus-edit, different edits to the same field,
-incompatible hierarchy/order edits, or concurrent changes to the same opaque
-Markdown block. No project or artifact in the `ChangeSet` is partially
-committed.
+## Snapshot-first v5 migration
 
-Use `tt conflict list`, `tt conflict show`, and `tt conflict resolve`. Resolution
-rechecks the current remote revision before committing, so an older resolution
-cannot overwrite a newer edit.
+Workspace recovery reads the catalog payload schema before ordinary loading.
+Schema 5 proceeds directly. A supported schema-4 split-domain workspace enters
+the migration path:
+
+1. Decode the v4 catalog, planning, settings, automation, machine state, task
+   Markdown, completed archives, notes, blockers, and legacy indexes with
+   migration-only DTOs.
+2. Build and validate the complete schema-5 candidate graph, including notes,
+   hierarchy, ShortID repair, dependencies, planning references, and every
+   canonical output byte. Corrupt or future-schema input stops here without
+   creating a snapshot or changing workspace data.
+3. Under the workspace commit lock, publish an immutable rollback pair:
+   `.tt/backups/pre-simplification-v5-<UTC>.tar.gz` and the matching
+   `.audit.md`. The archive contains portable config, machine state, project
+   metadata, task Markdown/archives, and notes. Attachment binaries stay in
+   place and are checksum-inventoried in the audit.
+4. Revalidate the locked inventory, then atomically publish schema-5 domains,
+   notes, and task documents while removing retired settings, automation,
+   completed archives/indexes, blockers, trash, Sandbox/Internal content,
+   per-project undo, and task backup artifacts.
+5. Recover or roll forward the prepared activation journal before any later
+   migration inspection.
+
+The migration is idempotent: a repeated schema-5 startup neither reconverts data
+nor creates another rollback pair. Snapshot artifacts are application-owned and
+immutable to `tt`. Older builds do not support schema 5; downgrade requires
+restoring the snapshot.
+
+An older aggregate `.tt.json` without the supported split-domain workspace is
+not implicitly imported. Startup reports that unsupported legacy source before
+creating a new workspace beside it.
 
 ## Workspace location and cloud consent
 
-New workspaces start in local storage at `~/.tt/`. `--data-dir` and
-`TT_DATA_DIR` select another workspace explicitly. iCloud is opt-in through the
-workspace-location flow; selecting it stages a copy, validates the destination,
-and switches the machine-local active-workspace pointer only after the copy is
-complete. Existing installations that are already active in iCloud remain
-there during upgrade unless the operator moves them.
+Workspace selection precedence is explicit `--data-dir`, `TT_DATA_DIR`, the
+machine-local active-workspace pointer, then the local default. A previously
+existing iCloud workspace is preserved for compatibility, but new cloud use is
+chosen through `tt workspace move`.
 
-Portable workspace files may sync only when the selected data directory is in a
-cloud-synced location. `machine.json`, logs, and locks remain local. Review the
-cloud provider's retention and encryption policy before opting in; `tt` does
-not add end-to-end encryption around provider storage.
-
-## AI privacy and consent
-
-AI is optional. Ask AI supports the Claude, Codex, and GitHub Copilot CLIs. `tt`
-sends task context only after an explicit disclosure and remembered consent
-stored in portable `settings.json`. Consent is tracked per harness and scope
-version. Full-workspace disclosure requires current provider-specific consent,
-so a generic, unversioned, or superseded grant is not sufficient and `tt`
-requests renewed consent. Older releases retain legacy Claude fields for
-compatibility, but no legacy grant authorizes the current disclosure scope. Each
-request supports:
-
-- full context, containing every active, non-archived project and its task
-  content;
-- redacted context, which sends only opaque stable project/task IDs and
-  non-text metadata while omitting project names and slugs, qualified task
-  references, titles, descriptions, and tags; or
-- no context.
-
-Only a consented full-context Codex request receives live workspace inspection
-capability. The Codex adapter keeps its fresh temporary launcher directory,
-uses `codex exec --cd <workspace>` with `TT_DATA_DIR` set to that exact
-workspace, and retains its ephemeral read-only sandbox. When fresh data is
-needed, its prompt permits only `tt project list --json` and `tt task list
---project <project> --json`. The sandbox is the enforcement boundary: Codex
-cannot mutate the workspace directly. Redacted, no-context, and declined
-requests receive no workspace path or filesystem inspection capability;
-Claude and Copilot retain their existing adapter restrictions.
-
-The machine-local `machine.json` remembers the TUI's selected harness and
-per-harness explicit configuration directories. CLI `--harness` and
-`--config-dir` values override one request without rewriting those defaults.
-Without an explicit directory, the provider environment variable
-(`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, or `COPILOT_HOME`) and then its native default
-apply. Prompts are sent to the configured provider over standard input, not process arguments.
-Provider output is treated as untrusted data and must match the
-versioned structured action schema. `tt` resolves targets and classifies risk
-locally, prepares one snapshot-bound preview, previews safe actions as one batch,
-requires a separate confirmation for destructive actions, and commits accepted
-actions as one undoable transaction. If any project consulted by the accepted plan
-changes before apply, the plan expires without merge or partial effects and the user
-must obtain a fresh response and preview. Shell commands from provider output are
-rejected.
-
-Consent controls what `tt` supplies; the provider's own CLI, account, and data
-retention policies still apply. Redacted context does not expose the workspace
-directory, and `--no-context` sends no workspace data or access capability.
-
-## Upgrade and migration expectations
-
-Schema-v1 task Markdown is read through a deterministic migration mapping:
-canceled; done/completed; review; in progress; blocked/waiting; standby/paused;
-maybe/someday; inbox; next; then ready. Nonterminal tasks from the legacy Action
-Inbox become `inbox`. A legacy `active` metadata key is accepted only to parse
-old task files safely, then discarded; it never adds a task to Focus Queue. The
-migration audit records original status, section, stage, and custom-stage
-configuration before schema-v2 becomes canonical.
-
-Workspace-domain migration and location moves use staged writes and validation.
-Keep the pre-migration copy until the audit and acceptance checks pass. Do not
-manually convert `state:` metadata or delete the audit merely to silence a
-warning; fix the source or restore the backup and rerun the migration.
-
-An aggregate `.tt.json` without split-domain markers is not imported during normal
-startup. Startup fails before creating split files or recovery artifacts so an
-operator can migrate or archive the legacy source deliberately. Conversely, a stale
-aggregate beside a split bundle never overrides that bundle. No permanent aggregate
-compatibility or implicit conversion path is part of the runtime architecture.
+Move acquires TUI process locks for source and destination, recovers both commit
+roots, inventories and hash-binds the source, copies without overwriting a
+divergent destination, validates the result, and updates the active-workspace
+pointer last. The source remains as a backup. `--force` skips only the
+confirmation prompt; it never bypasses process locks, commit locks, or
+validation.
 
 ## Backup and restore
 
-Back up the complete selected data directory, including `.tt/` and `projects/`.
-For a simple filesystem copy, stop all `tt` processes first so the copy observes
-one transaction boundary. Snapshot-capable backup tools may instead capture the
-whole directory atomically.
+Back up the complete selected data directory, including `.tt/`, project notes,
+and attachment binaries. Stop active `tt` processes for a plain filesystem copy,
+or use a snapshot mechanism that captures the directory atomically. Keep an
+independent backup outside the same sync provider when provider deletion or
+account loss is in scope.
 
-Keep backups outside the selected workspace and outside its cloud provider when
-you need protection from provider deletion or account loss. Test restores into
-a separate directory with `tt --data-dir <restore> doctor` before relying on
-them. `.completed.index.json` is derived and rebuildable, but task Markdown,
-domain JSON, notes, attachments, transaction/undo artifacts, tombstones, and
-conflict bundles can contain unique recovery data.
-
-Machine state may be backed up separately if navigation history and local editor
-preferences matter; it is not required to recover canonical tasks.
-
-## Platform support
-
-The release candidate is tested on current macOS and Linux runners. Durable
-locking and atomic filesystem behavior are implemented for those platforms, and
-release builds target `darwin`/`linux` on `amd64`/`arm64`. Windows is not a
-supported release target.
-
-Claude, Codex, GitHub Copilot, `fzf`, `glow`, editors, and other external
-integrations are optional.
-Core CLI, TUI, local storage, transactions, and recovery do not require them.
-
-## Release-candidate checks
-
-Run the same gate as GitHub CI:
+Test a restored copy with:
 
 ```bash
+tt --data-dir <restore> doctor
+tt --data-dir <restore> project export <project>
+```
+
+Machine state is optional for canonical recovery; tasks, notes, attachments,
+portable domains, and migration snapshots are not.
+
+## Maintenance CLI and platform support
+
+The public CLI contains the TUI launcher, `doctor`, `conflict`, `workspace`,
+`completion`, and `project export`, plus help and version output. Global flags
+are `--data-dir` and `--no-color`. It has no task mutation or undo/redo command.
+
+Current release builds target macOS and Linux on `amd64` and `arm64`. Windows is
+not a supported release target. Core use does not require external AI services
+or provider integrations.
+
+## Verification
+
+```bash
+./scripts/check_generated_docs.sh
+./scripts/run_tui_scenarios.sh
 just ci
 ```
 
-This regenerates and checks documentation, runs race-enabled tests and coverage
-floors, replays every committed TUI scenario, vets and lints, checks `go mod
-tidy`, rejects dead code, and builds all packages. Use `just tui-scenarios` to
-replay only the committed TUI scenarios.
+The scenario script replays every committed TUI JSON workflow and the focused
+snapshot-first migration and interrupted-recovery scenarios.

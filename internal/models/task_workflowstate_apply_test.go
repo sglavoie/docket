@@ -21,7 +21,7 @@ func TestApplyWorkflowStateRoundTrip(t *testing.T) {
 // replaces a previously-set state, so a stale state cannot linger and override
 // the intended state on reload.
 func TestApplyWorkflowStateOverridesPriorState(t *testing.T) {
-	task := &Task{WorkflowState: StateReview}
+	task := &Task{WorkflowState: StateWaiting}
 	task.ApplyWorkflowState(StateNext)
 	if got := task.State(); got != StateNext {
 		t.Fatalf("State() = %q, want %q", got, StateNext)

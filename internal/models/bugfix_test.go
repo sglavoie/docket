@@ -28,7 +28,7 @@ func TestGetBlockedByTasks_NilTaskNoPanic(t *testing.T) {
 	}
 	// Add a task so the iteration is non-trivial; without the guard,
 	// reading task.ID inside HasDependency would panic.
-	task, err := NewTask("t1", 1, TaskTypeTask, "T")
+	task, err := NewGenericTask("t1", 1, "T")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,63 +65,10 @@ func TestGetIncompleteDependencies_NilTaskNoPanic(t *testing.T) {
 	}
 }
 
-// TestSkipRecurrence_NoDueDateUsesStartOfDay verifies that skipping a
-// recurring task with no DueDate produces a midnight-aligned next date
-// when HasTime is false. Before the fix, the next date inherited the
-// current wall-clock time, silently corrupting the implicit "no time of
-// day" semantic — a later toggle of HasTime would expose garbage minutes.
-func TestSkipRecurrence_NoDueDateUsesStartOfDay(t *testing.T) {
-	task, err := NewTask("id", 1, TaskTypeTask, "T")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := task.SetRecurrence(&RecurrencePattern{Interval: 1, Unit: RecurrenceDaily}); err != nil {
-		t.Fatal(err)
-	}
-	task.HasTime = false
-	task.DueDate = nil
-
-	task.SkipRecurrence()
-
-	if task.DueDate == nil {
-		t.Fatal("expected DueDate to be set after skip")
-	}
-	if task.DueDate.Hour() != 0 || task.DueDate.Minute() != 0 || task.DueDate.Second() != 0 || task.DueDate.Nanosecond() != 0 {
-		t.Errorf("expected midnight-aligned next date (HasTime=false), got %v (hour=%d min=%d sec=%d nsec=%d)",
-			*task.DueDate, task.DueDate.Hour(), task.DueDate.Minute(), task.DueDate.Second(), task.DueDate.Nanosecond())
-	}
-}
-
-// TestSkipRecurrence_PreservesTimeOfDay verifies that when an existing
-// DueDate carries a meaningful time-of-day (HasTime=true), SkipRecurrence
-// preserves the clock component. This is the complementary case to the
-// no-DueDate fix: we must only normalize when the user has no time set.
-func TestSkipRecurrence_PreservesTimeOfDay(t *testing.T) {
-	task, err := NewTask("id", 1, TaskTypeTask, "T")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := task.SetRecurrence(&RecurrencePattern{Interval: 1, Unit: RecurrenceDaily}); err != nil {
-		t.Fatal(err)
-	}
-	due := time.Date(2026, 1, 15, 9, 30, 0, 0, time.UTC)
-	task.DueDate = &due
-	task.HasTime = true
-
-	task.SkipRecurrence()
-
-	if task.DueDate == nil {
-		t.Fatal("expected DueDate to be set after skip")
-	}
-	if task.DueDate.Hour() != 9 || task.DueDate.Minute() != 30 {
-		t.Errorf("expected time-of-day preserved (9:30), got %v", *task.DueDate)
-	}
-}
-
 // TestAddChild_NilChildReturnsError verifies AddChild rejects nil children.
 // Before the fix, AddChild(nil) panicked on child.Type access in CanAddChild.
 func TestAddChild_NilChildReturnsError(t *testing.T) {
-	parent, err := NewTask("p", 1, TaskTypeEpic, "Parent")
+	parent, err := NewGenericTask("p", 1, "Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +88,7 @@ func TestMutateTask_NilFnReturnsFalse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := NewTask("t1", 1, TaskTypeTask, "T")
+	task, err := NewGenericTask("t1", 1, "T")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,11 +113,11 @@ func TestMoveTaskUp_UpdatesBothTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := NewTask("a", 1, TaskTypeTask, "A")
+	a, err := NewGenericTask("a", 1, "A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := NewTask("b", 2, TaskTypeTask, "B")
+	b, err := NewGenericTask("b", 2, "B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,11 +148,11 @@ func TestMoveTaskDown_UpdatesBothTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := NewTask("a", 1, TaskTypeTask, "A")
+	a, err := NewGenericTask("a", 1, "A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := NewTask("b", 2, TaskTypeTask, "B")
+	b, err := NewGenericTask("b", 2, "B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,37 +175,6 @@ func TestMoveTaskDown_UpdatesBothTimestamps(t *testing.T) {
 	}
 }
 
-// TestRecurrenceValidate_RejectsWeekdaysOnNonWeekly verifies that Weekdays
-// may only be set when Unit is RecurrenceWeekly. Before the fix, Validate
-// accepted patterns like {Unit: monthly, Weekdays: [Mon]} even though
-// calculateNextDate silently ignores Weekdays for non-weekly units —
-// meaning the data round-tripped through storage indefinitely while
-// having no runtime effect.
-func TestRecurrenceValidate_RejectsWeekdaysOnNonWeekly(t *testing.T) {
-	units := []RecurrenceUnit{RecurrenceDaily, RecurrenceMonthly, RecurrenceYearly}
-	for _, u := range units {
-		p := &RecurrencePattern{Interval: 1, Unit: u, Weekdays: []int{1}}
-		if err := p.Validate(); err == nil {
-			t.Errorf("expected error for Weekdays on unit %q, got nil", u)
-		}
-	}
-	// Weekly with Weekdays remains valid.
-	p := &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{1, 3}}
-	if err := p.Validate(); err != nil {
-		t.Errorf("weekly with weekdays should validate, got %v", err)
-	}
-}
-
-// TestRecurrenceValidate_RejectsDuplicateWeekdays verifies that duplicate
-// entries in Weekdays are rejected. Duplicates would skew findNextWeekday's
-// iteration semantics and produce confusing strings ("on Mon, Mon and Wed").
-func TestRecurrenceValidate_RejectsDuplicateWeekdays(t *testing.T) {
-	p := &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{1, 3, 1}}
-	if err := p.Validate(); err == nil {
-		t.Error("expected error for duplicate weekdays, got nil")
-	}
-}
-
 // TestDeferRecurrence_RejectsNonPositiveDays verifies that DeferRecurrence is a
 // no-op when called with zero or negative days. The function's contract is to
 // "push the due date forward"; before the fix, a negative argument silently
@@ -267,7 +183,7 @@ func TestRecurrenceValidate_RejectsDuplicateWeekdays(t *testing.T) {
 // off-by-sign bug in a caller.
 func TestDeferRecurrence_RejectsNonPositiveDays(t *testing.T) {
 	makeRecurringTask := func() *Task {
-		task, err := NewTask("id", 1, TaskTypeTask, "T")
+		task, err := NewGenericTask("id", 1, "T")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -330,11 +246,11 @@ func TestSwapTasks_UpdatesBothTimestamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := NewTask("a", 1, TaskTypeTask, "A")
+	task1, err := NewGenericTask("a", 1, "A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("b", 2, TaskTypeTask, "B")
+	task2, err := NewGenericTask("b", 2, "B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,9 +302,7 @@ func TestWouldCreateCycle_DownstreamCycleDoesNotHang(t *testing.T) {
 // TestHasIncompleteDependencies_DanglingContract documents and enforces the
 // dangling-deps contract: a depID that points to a task that no longer
 // exists (deleted, never existed) must NOT block completion. The function
-// returns false for such refs (treats them as resolved). This contract is
-// the symmetric counterpart to CheckAndAutoUnblock — if either side flips,
-// blocked tasks and "can I complete?" disagree.
+// returns false for such refs (treats them as resolved).
 func TestHasIncompleteDependencies_DanglingContract(t *testing.T) {
 	makeProject := func(t *testing.T) *Project {
 		t.Helper()
@@ -400,7 +314,7 @@ func TestHasIncompleteDependencies_DanglingContract(t *testing.T) {
 	}
 	makeTask := func(t *testing.T, id string, shortID int) *Task {
 		t.Helper()
-		task, err := NewTask(id, shortID, TaskTypeTask, "T"+id)
+		task, err := NewGenericTask(id, shortID, "T"+id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -518,89 +432,4 @@ func TestHasIncompleteDependencies_DanglingContract(t *testing.T) {
 			t.Error("completed self-reference must NOT block (the task itself counts as complete)")
 		}
 	})
-}
-
-// TestCheckAndAutoUnblock_DanglingDepDoesNotBlock verifies CheckAndAutoUnblock
-// matches the HasIncompleteDependencies contract: a blocked task whose
-// only outstanding dep is a dangling reference must be auto-unblocked.
-// Before the fix, CheckAndAutoUnblock treated `dep == nil` as incomplete and
-// left the task forever blocked, contradicting HasIncompleteDependencies which
-// would happily allow completion.
-func TestCheckAndAutoUnblock_DanglingDepDoesNotBlock(t *testing.T) {
-	p, err := NewProject("p", "P", "/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task, err := NewTask("t1", 1, TaskTypeTask, "Blocked Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Inject a dangling dep + blocked status directly (bypassing AddDependency
-	// so we test what happens when storage delivers a stale ref).
-	task.DependsOn = []string{"ghost-id"}
-	task.WorkflowState = StateWaiting
-	p.Tasks = []*Task{task}
-
-	p.CheckAndAutoUnblock()
-
-	if task.State() != StateInbox {
-		t.Errorf("expected dangling-only dep to auto-unblock to inbox, got %s", task.State())
-	}
-}
-
-// TestCheckAndAutoUnblock_DanglingMixedWithIncompleteStaysBlocked ensures
-// the dangling pass-through does not accidentally unblock when a real
-// incomplete blocker is still present alongside the ghost.
-func TestCheckAndAutoUnblock_DanglingMixedWithIncompleteStaysBlocked(t *testing.T) {
-	p, err := NewProject("p", "P", "/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	blocker, err := NewTask("b1", 1, TaskTypeTask, "Real Blocker")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task, err := NewTask("t1", 2, TaskTypeTask, "Blocked Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = task.AddDependency(blocker.ID)
-	task.DependsOn = append(task.DependsOn, "ghost-id")
-	task.WorkflowState = StateWaiting
-	p.Tasks = []*Task{blocker, task}
-
-	p.CheckAndAutoUnblock()
-
-	if task.State() != StateWaiting {
-		t.Errorf("expected task to remain waiting while real blocker is incomplete, got %s", task.State())
-	}
-}
-
-// TestCheckAndAutoUnblock_DanglingPlusResolvedUnblocks verifies that with
-// one dangling ref and one resolved (completed) blocker, the task is
-// unblocked — the dangling ref must not contribute an "incomplete" vote.
-func TestCheckAndAutoUnblock_DanglingPlusResolvedUnblocks(t *testing.T) {
-	p, err := NewProject("p", "P", "/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	blocker, err := NewTask("b1", 1, TaskTypeTask, "Real Blocker")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task, err := NewTask("t1", 2, TaskTypeTask, "Blocked Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = task.AddDependency(blocker.ID)
-	task.DependsOn = append(task.DependsOn, "ghost-id")
-	task.WorkflowState = StateWaiting
-	p.Tasks = []*Task{blocker, task}
-
-	blocker.Complete()
-	p.CheckAndAutoUnblock()
-
-	if task.State() != StateInbox {
-		t.Errorf("expected task to be unblocked to inbox (resolved blocker + dangling ref), got %s", task.State())
-	}
 }

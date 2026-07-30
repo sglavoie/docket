@@ -34,13 +34,13 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 
 		app = sendAppKey(app, syntheticKey('t'))
-		assertDailyPlanKeyFlow(t, app, task.ID, true)
+		assertTodayKeyFlow(t, app, task.ID, true)
 
 		app = sendAppKey(app, syntheticKey('u'))
-		assertDailyPlanKeyFlow(t, app, task.ID, false)
+		assertTodayKeyFlow(t, app, task.ID, false)
 
 		app = sendAppKey(app, ctrlR)
-		assertDailyPlanKeyFlow(t, app, task.ID, true)
+		assertTodayKeyFlow(t, app, task.ID, true)
 	})
 }
 
@@ -57,24 +57,24 @@ func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool
 		t.Fatalf("StateNext membership = %v, want %v", got, inQueue)
 	}
 	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
-	if app.focusQueueIDs[identity] != inQueue {
-		t.Fatalf("order-index membership = %v, want %v", app.focusQueueIDs[identity], inQueue)
+	if app.nextOrderIDs[identity] != inQueue {
+		t.Fatalf("order-index membership = %v, want %v", app.nextOrderIDs[identity], inQueue)
 	}
-	if got := taskMembershipCount(app.focusQueue, taskID); got != boolCount(inQueue) {
+	if got := taskMembershipCount(app.nextOrder, taskID); got != boolCount(inQueue) {
 		t.Fatalf("order-index slice count = %d, want %d", got, boolCount(inQueue))
 	}
 }
 
-// assertDailyPlanKeyFlow checks that the daily-plan toggle moved the Today plan
+// assertTodayKeyFlow checks that the daily-plan toggle moved the Today plan
 // entry (both the id set and the ordered slice).
-func assertDailyPlanKeyFlow(t *testing.T, app *AppModel, taskID string, inPlan bool) {
+func assertTodayKeyFlow(t *testing.T, app *AppModel, taskID string, inPlan bool) {
 	t.Helper()
 
 	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
-	if app.dailyPlanIDs[identity] != inPlan {
-		t.Fatalf("daily-plan membership = %v, want %v", app.dailyPlanIDs[identity], inPlan)
+	if app.todayIDs[identity] != inPlan {
+		t.Fatalf("daily-plan membership = %v, want %v", app.todayIDs[identity], inPlan)
 	}
-	if got := taskMembershipCount(app.dailyPlan, taskID); got != boolCount(inPlan) {
+	if got := taskMembershipCount(app.today, taskID); got != boolCount(inPlan) {
 		t.Fatalf("daily-plan slice count = %d, want %d", got, boolCount(inPlan))
 	}
 }

@@ -39,7 +39,7 @@ func TestReadFileForContractTestUsesStableBaseDir(t *testing.T) {
 	}
 
 	content := readFileForContractTest(t, "README.md")
-	if !strings.Contains(content, "# tt - Terminal Tasks") {
+	if !strings.Contains(content, "# tt — Terminal Tasks") {
 		t.Fatal("expected README content to load regardless of cwd")
 	}
 }
@@ -67,107 +67,96 @@ func rejectDocumentationText(t *testing.T, content string, forbidden []string) {
 func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"`tt` opens on the Outliner in global All by default",
-		"press `Ctrl+Esc` to return to that root from anywhere",
+		"The Outliner is the only primary task presentation",
+		"`Tab` cycles exactly All → Inbox → Next → Backlog → Due",
 		"capture, triage, plan, execute, and complete",
-		"`Tab` cycles All → Inbox → Next → Backlog",
-		"All, Inbox, Next, Backlog, Due, Priority, Blocked, Parked,",
-		"Daily Review, and Activity",
-		"Today, In Progress, Inbox, Next, Backlog, Review,",
-		"Waiting, Paused, and Someday",
+	})
+	// The final section catalog is intentionally checked as one ordered string.
+	requireDocumentationText(t, content, []string{
+		"Pinned, Today, In Progress, Inbox, Next, Backlog, Waiting, Paused, Someday",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Next → Backlog → Active → All",
-		"workflow perspective",
 		"Command Palette",
-		"command palette",
 		"Inbox Processor",
-		"prefix menu",
-		"`Ctrl+X`",
-		"`Ctrl+G`",
-		"`q` to toggle",
-		"`w` to toggle",
-	})
-}
-
-func TestREADMEDocumentsStableKeysAndActionSheets(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
-	requireDocumentationText(t, content, []string{
-		"`a` capture, `e` edit, `s` start, `d` done, `b` Backlog, `t` Today, `n` Next, `Space` actions",
-		"`/` visible search, `:` Finder, `m` modes, `c` Scope Hub, `v` multi-select",
-		"`N` Notes, `R` Weekly Review, `T` Tags, `!` Notifications",
-		"`u` undo, `Ctrl+R` redo, `Esc` back, `Ctrl+Esc` reset, `?` help, `Ctrl+C` quit",
-		"In multi-select, `Space` toggles the current task and `Enter` opens bulk actions",
-		"Delete is available only from an action sheet and always requires confirmation",
-	})
-}
-
-func TestREADMEDocumentsScopeFinderAndPromotedTools(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
-	requireDocumentationText(t, content, []string{
-		"Press `c` to open the Scope Hub",
-		"Scope is session-owned and never persisted across runs",
-		"Notes opens project notes in project focus and global scratch notes in a base scope",
-		"Weekly Review and Tags receive the active scope's project set",
-		"Notifications remains global",
+		"Weekly Review",
+		"`Ctrl+Esc` reset",
 		"Press `:` for Finder",
-		"Empty Finder input shows a short, bounded list of recent destinations",
-		"Pinned and recent entries are discovery results",
-	})
-	rejectDocumentationText(t, strings.ToLower(content), []string{
-		"`f p`",
-		"project filter popup",
-		"saved-filter tabs",
-		"pinned tag tabs",
 	})
 }
 
-func TestREADMEDocumentsCanonicalStateAndPlanning(t *testing.T) {
+func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"inbox  ready  next  in_progress  waiting",
-		"paused  review  someday  done  canceled",
-		"Dependency blocking is derived",
-		"`b` sets Ready and removes Today and Next membership",
-		"`n` sets Next and removes Today",
-		"`t` toggles Today",
+		"`a` capture, `A` child, `e` title, `E` description",
+		"`s` In Progress, `d` Done, `b` Ready/Backlog, `t` Today, `n` Next",
+		"`,i` Inbox, `,w` Waiting, `,p` Paused, `,s` Someday, `,c` Canceled",
+		"`p0` clears priority; `p1`–`p5` set it; `@` due date; `#` tags; `z` snooze; `P` pin",
+		"`y` title, `Y` description, `Ctrl+Y` both",
+		"`c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
+		"Removed keys such as `m`, `:`, `R`, `!`, and `Ctrl+Esc` have no compatibility action",
+	})
+}
+
+func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"1. Recurrence 2. Move Project 3. Set Parent 4. Dependencies 5. Checklist 6. Comments 7. Decisions 8. Attachments 9. Delete",
+		"The list filters as soon as printable text is typed",
+		"Delete always asks for confirmation",
+	})
+}
+
+func TestREADMEDocumentsFiltersInspectorAndBulkSemantics(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"`fp0`, `fp1`–`fp5`",
+		"`fs` | Pick workflow states with OR semantics",
+		"`ft` | Pick tags with AND semantics",
+		"`fd` | Open the due-date facet picker: overdue, today, this week, or no due date",
+		"`fb` | Blocked-only",
+		"`fz` | Snoozed-only",
+		"`fx` | Clear every facet",
+		"At 100 columns or wider, a read-only inspector follows the cursor",
+		"Below 100 columns, `Enter` freezes the selected task in an inspector overlay",
+		"In multi-select, `Space` offers Delete only",
+	})
+}
+
+func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"!1-5 #tag @date ~interval $state %project >parent",
+		"Aliases such as `priority:`, `due:`, `state:`, `proj:`, and `^type` are literal title text",
+		"inbox ready next in_progress waiting paused someday done canceled",
 		"Today and Next are mutually exclusive",
-		"Focus Queue is only an optional ordering index",
-		"Lifecycle input uses `$state` or `state:<value>`",
+		"Unresolved dependencies block Done",
+		"hierarchy depth is capped at six",
 	})
 	rejectDocumentationText(t, content, []string{
-		"Active section",
-		"Standby",
-		"task status",
-		"--section",
-		"--status",
-		"/inbox",
-		"/next",
+		"paused review someday",
+		"completed.md",
+		".completed.index.json",
 	})
 }
 
-func TestREADMECLIAndStorageContractStaysCurrent(t *testing.T) {
+func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"tt task add \"Deploy\" --state next",
-		"tt task list --state ready",
-		"tt task state in_progress 12",
-		"tt task reopen 12 # Return terminal work to Inbox",
-		"tt task archive list",
-		"completed.md",
-		".completed.index.json",
-		"tt undo # Restore previous task state",
-		"local `~/.tt/` workspace by default",
-		"iCloud is used only after explicit selection",
-		"not converted automatically",
-		"`--force` skips only the confirmation prompt",
+		"workspace.json",
+		"planning.json",
+		"schema-5 Markdown and generic `Task` headings",
+		"machine-local `~/.tt/runtime/<workspace-id>/machine.json`",
+		"pre-simplification-v5-<UTC>.tar.gz",
+		"Invalid or future-schema input aborts without changing workspace data",
+		"`u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed transactions",
+		"./scripts/run_tui_scenarios.sh",
 		"docs/architecture.md",
-		"just tui-scenarios",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Configuration is stored at `~/.tt.json`",
-		"tt task move-to <id> <target-id>",
-		"tt task depends add <id> <blocker-id>",
+		"## Settings",
+		"## Finder",
 	})
 }
 
@@ -175,43 +164,43 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "cmd/cli-reference.md")
 
 	rejectDocumentationText(t, content, []string{
-		"config file path (default: ~/.tt.json)",
-		"config file path (default: ~/.tt/.tt.json)",
-		"'editor' field in ~/.tt.json",
-		"'editor' field in ~/.tt/.tt.json",
-		"Usage: tt project archive [name|id] [flags]",
-		"Usage: tt project delete [name|id] [flags]",
-		"Tasks are added to the daily plan by pressing 'w'",
-		"Press 'q' to toggle",
-		"Press 'w' on a task",
-		"built-in Today section",
-		"Sections are preserved if they are built-in GTD sections",
-		"changes to status, priority, section",
-		"Set one or more tasks back to todo status",
-		"Tags group tasks across the built-in GTD sections",
-		"cross-project tag tabs",
+		"## tt add",
+		"## tt attach",
+		"## tt context",
+		"## tt dash",
+		"## tt focus",
+		"## tt note",
+		"## tt redo",
+		"## tt sandbox",
+		"## tt search",
+		"## tt select",
+		"## tt task",
+		"## tt theme",
+		"## tt tui-test",
+		"## tt undo",
+		"## tt project archive",
+		"## tt project delete",
+		"## tt project edit",
+		"## tt project list",
+		"## tt project new",
+		"## tt project restore",
+		"--config",
+		"--verbose",
 	})
 
 	requireDocumentationText(t, content, []string{
-		"deprecated: isolate a workspace at this config file's directory",
 		"workspace data directory (env TT_DATA_DIR; default: ~/.tt",
+		"## tt completion",
+		"## tt conflict",
+		"## tt conflict list",
+		"## tt conflict resolve",
+		"## tt conflict show",
+		"## tt doctor",
+		"## tt project",
+		"## tt project export",
 		"## tt workspace",
+		"## tt workspace location",
 		"Usage: tt workspace move <destination> [flags]",
-		"'editor' field in the tt config file",
-		"## tt task archive list",
-		"Usage: tt task archive show <id-or-prefix> [flags]",
-		"completed.md and completed.N.md",
-		"Usage: tt project archive <slug-or-id> [flags]",
-		"Projects can be specified by slug or ID.",
-		"Show the Outliner's Next shortlist (StateNext tasks)",
-		"Press 'n' to toggle",
-		"selected task's Next membership",
-		"synthetic Today group at the top of the Outliner's",
-		"Press 't' on a task",
-		"Canonical workflow state is preserved",
-		"records changes to state, priority, tags",
-		"Reopen one or more terminal tasks in Inbox for triage",
-		"tt task list --parked     # Show parked tasks only",
-		"--parked bool    show parked tasks only",
+		"--no-color bool",
 	})
 }

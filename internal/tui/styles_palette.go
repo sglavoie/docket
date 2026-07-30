@@ -56,7 +56,6 @@ var (
 	AccentPlan      = lipgloss.Color("#9ece6a") // green (Plan stage)
 	AccentWork      = lipgloss.Color("#ff9e64") // orange (Work stage)
 	AccentExecute   = lipgloss.Color("#73daca") // teal (legacy Execute accent retained for project work views)
-	AccentReview    = lipgloss.Color("#e0af68") // amber (Review stage)
 	AccentSupport   = lipgloss.Color("#565f89") // muted gray (Support stage)
 	AccentSearch    = lipgloss.Color("#bb9af7") // purple (search/command)
 

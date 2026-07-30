@@ -48,7 +48,6 @@ func TestRenderPreview_PreviewErrorShortCircuits(t *testing.T) {
 func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:    "Fix login bug",
-		taskType: models.TaskTypeTask,
 		priority: 3, // default - hidden
 	}, "", 0)
 
@@ -79,7 +78,6 @@ func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:             "Capture for other team",
-		taskType:          models.TaskTypeTask,
 		priority:          3,
 		targetProjectName: "Web App",
 	}, "", 0)
@@ -105,7 +103,6 @@ func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:             "Capture for the offsite tomorrow morning",
-		taskType:          models.TaskTypeTask,
 		priority:          3,
 		targetProjectName: "Q1 Planning Roadmap Initiative",
 	}, "", 32)
@@ -134,7 +131,6 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 	due := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:             "Ship release",
-		taskType:          models.TaskTypeTask,
 		priority:          1,
 		tags:              []string{"backend", "urgent"},
 		dueDate:           &due,
@@ -142,14 +138,13 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		state:             models.StateInProgress,
 		stateSet:          true,
 		targetProjectName: "Web App",
-		aliasesUsed:       []string{"tag:", "pri:"},
 	}, "", 0)
 
 	plain := ansi.Strip(q.renderPreview())
 	lines := strings.Split(plain, "\n")
 
-	if len(lines) != 5 {
-		t.Fatalf("expected 5 lines (4 groups + aliases), got %d:\n%s", len(lines), plain)
+	if len(lines) != 4 {
+		t.Fatalf("expected 4 lines, got %d:\n%s", len(lines), plain)
 	}
 
 	expectations := []struct {
@@ -160,7 +155,6 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		{"Route", []string{"$in_progress", "Web App"}},
 		{"Schedule", []string{"@Feb 15", "~"}},
 		{"Metadata", []string{"!1", "#backend", "#urgent"}},
-		{"Aliases", []string{"tag:", "pri:"}},
 	}
 	for i, exp := range expectations {
 		if !strings.HasPrefix(lines[i], exp.prefix) {
@@ -174,33 +168,10 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 	}
 }
 
-func TestRenderPreview_AliasHintLivesOnDedicatedLine(t *testing.T) {
-	q := makePreviewInput(t, &quickCaptureResult{
-		title:       "Just an alias check",
-		taskType:    models.TaskTypeTask,
-		priority:    3,
-		aliasesUsed: []string{"tag:"},
-	}, "", 0)
-
-	plain := ansi.Strip(q.renderPreview())
-	lines := strings.Split(plain, "\n")
-	if len(lines) < 2 {
-		t.Fatalf("expected at least 2 lines (Task + Aliases), got %d:\n%s", len(lines), plain)
-	}
-	last := lines[len(lines)-1]
-	if !strings.HasPrefix(last, "Aliases") {
-		t.Fatalf("expected last line to start with Aliases, got %q", last)
-	}
-	if strings.Contains(lines[0], "via") || strings.Contains(lines[0], "tag:") {
-		t.Errorf("alias hint should not be appended to Task line: %q", lines[0])
-	}
-}
-
 func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 	due := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:             "Investigate intermittent flaky integration test failure on CI",
-		taskType:          models.TaskTypeBug,
 		priority:          1,
 		tags:              []string{"backend", "urgent", "production", "hotfix"},
 		dueDate:           &due,
@@ -222,7 +193,6 @@ func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:    "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
-		taskType: models.TaskTypeTask,
 		priority: 3,
 		tags:     []string{"界面修复", "次要标签"},
 		state:    models.StateNext,
@@ -241,7 +211,6 @@ func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
 func TestRenderPreview_ContinuationLinesAlignToLabelColumn(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:    "Task title used to force a wrap",
-		taskType: models.TaskTypeTask,
 		priority: 3,
 		tags:     []string{"alpha", "beta", "gamma", "delta", "epsilon"},
 	}, "", 28)

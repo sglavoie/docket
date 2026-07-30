@@ -10,20 +10,15 @@ import (
 )
 
 type outlinerViewport struct {
-	visibleRows      int
-	searchHelpHeight int
-	startIdx         int
-	endIdx           int
-	rowWidth         int
+	visibleRows int
+	startIdx    int
+	endIdx      int
+	rowWidth    int
 }
 
 // renderOutlinerTreeContent renders the tree portion of the outliner, constrained to
 // the given width. Used by both full-width and split-pane layouts.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
-	if m.modePickerActive() {
-		return m.renderModePicker(width)
-	}
-
 	notice := m.zoomNotice
 	m.zoomNotice = ""
 
@@ -101,11 +96,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 		b.WriteString("\n")
 		b.WriteString(strip)
-	}
-
-	if viewport.searchHelpHeight > 0 {
-		b.WriteString("\n")
-		b.WriteString(renderSearchHelpPane(width, viewport.searchHelpHeight))
 	}
 
 	if notice != "" {
@@ -212,8 +202,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 // already-assembled title line. Must be called after every inline title-row
 // element (mode label, search indicator, multi-select badge) has been
 // appended so the counter doesn't push them off the right edge. width is the
-// budget left after the alert indicator's reservation, so the counter is
-// dropped before the indicator ever is.
+// available title-row budget.
 func (m *OutlinerModel) appendOpenLoopsCounter(line string, width int) string {
 	outlinerLoops := m.openLoops
 	outlinerLoops.TodayDone = 0
@@ -245,39 +234,19 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int, modeLabel, searchIndic
 	return m.composeOutlinerTitleRow(width, suffix.String())
 }
 
-// composeOutlinerTitleRow lays out the title row within width. The alert
-// indicator has the highest right-side priority: its exact width plus separator
-// is held back first, the filter/sort badge and the open-loops counter degrade
-// against what is left, and the title itself is truncated last so the row never
-// exceeds width.
+// composeOutlinerTitleRow lays out the title row within width. The filter/sort
+// badge and open-loops counter degrade before the title is truncated.
 func (m *OutlinerModel) composeOutlinerTitleRow(width int, suffix string) string {
-	indicator, reserve := alertIndicatorReserve(m.alertCount)
-	if reserve >= width {
-		// Narrower than any supported terminal: the row content wins because an
-		// indicator alone would say nothing about where the user is.
-		indicator, reserve = "", 0
-	}
-	budget := max(width-reserve, 1)
-
+	budget := max(width, 1)
 	suffix = truncateToVisualWidth(suffix, budget)
 	titleWidth := max(budget-lipgloss.Width(suffix), 1)
 	title := truncateToVisualWidth(m.renderOutlinerTitle(budget), titleWidth)
-
-	line := m.appendOpenLoopsCounter(title+suffix, budget)
-	if indicator == "" {
-		return line
-	}
-	gap := max(width-lipgloss.Width(line)-lipgloss.Width(indicator), 1)
-	return line + strings.Repeat(" ", gap) + indicator
+	return m.appendOpenLoopsCounter(title+suffix, budget)
 }
 
 func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int, modeLabel, searchIndicator string) {
 	b.WriteString(m.buildOutlinerTitleLine(width, modeLabel, searchIndicator))
 	b.WriteString("\n")
-
-	if m.ac.IsActive() {
-		b.WriteString(m.ac.RenderDropdown("    "))
-	}
 
 	if tabBar := m.renderPinnedTagTabBar(width); tabBar != "" {
 		b.WriteString(tabBar)
@@ -295,10 +264,6 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, modeLabel, searchInd
 	b.WriteString(m.composeOutlinerTitleRow(width, modeLabel+searchIndicator))
 	b.WriteString("\n")
 
-	if m.ac.IsActive() {
-		b.WriteString(m.ac.RenderDropdown("    "))
-	}
-
 	if tabBar := m.renderPinnedTagTabBar(width); tabBar != "" {
 		b.WriteString(tabBar)
 		b.WriteString("\n")
@@ -314,18 +279,12 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int, modeLabel, searchInd
 	if emptyMsg == EmptyStateNoTasks && m.project != nil &&
 		m.SearchQuery() == "" {
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("a capture · : finder · m modes · c scope · ? help"))
+		b.WriteString(HelpStyle.Render("a capture · Tab modes · c scope · ? help"))
 	}
 	if notice != "" {
 		b.WriteString("\n\n")
 		b.WriteString(PreviewWarningStyle.Render(notice))
 	}
-	if m.IsSearchHelpVisible() {
-		helpHeight := max(m.contentHeight()/2, 1)
-		b.WriteString("\n")
-		b.WriteString(renderSearchHelpPane(width, helpHeight))
-	}
-
 	return b.String()
 }
 
@@ -343,10 +302,10 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return "No projects in this scope. Press c to choose another scope."
 	}
 	if m.primaryMode == ModeNext {
-		return "Next is empty — press n on a task to add it, Tab for Backlog, or m for another mode."
+		return "Next is empty — press n on a task to add it or Tab for Backlog."
 	}
 	if m.primaryMode == ModeBacklog {
-		return "Backlog is empty — no Ready tasks remain outside Today. Tab cycles work modes; m shows all modes."
+		return "Backlog is empty — no Ready tasks remain outside Today. Tab cycles modes."
 	}
 	if m.primaryMode == ModeInbox {
 		return "Inbox is empty — press a to capture or Tab to continue."
@@ -354,12 +313,12 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 	if m.primaryMode != ModeAll && len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 		if task := m.project.GetTaskByID(topID); task != nil {
-			return fmt.Sprintf("No tasks match %s within %q. Press m for modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label, task.Title)
+			return fmt.Sprintf("No tasks match %s within %q. Use Tab/Shift+Tab to change modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label, task.Title)
 		}
-		return fmt.Sprintf("No tasks match %s. Press m for modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
+		return fmt.Sprintf("No tasks match %s. Use Tab/Shift+Tab to change modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
 	}
 	if m.primaryMode != ModeAll {
-		return fmt.Sprintf("No tasks match %s. Press m for modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
+		return fmt.Sprintf("No tasks match %s. Use Tab/Shift+Tab to change modes or Ctrl+Esc to reset.", m.activeOutlinerModeEntry().Label)
 	}
 	if m.SearchQuery() != "" {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
@@ -369,7 +328,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 	}
 	if m.project == nil {
 		if mode := m.activeOutlinerModeEntry(); mode.ID != ModeAll {
-			return fmt.Sprintf("%s is empty — press m for another mode or Ctrl+Esc to reset.", mode.Label)
+			return fmt.Sprintf("%s is empty — use Tab/Shift+Tab for another mode or Ctrl+Esc to reset.", mode.Label)
 		}
 	}
 	return EmptyStateNoTasks
@@ -382,23 +341,6 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 	// drive a negative window slice.
 	visibleRows := max(m.contentHeight()-extraFooterLines, 1)
 
-	if m.ac.IsActive() {
-		acLines := min(len(m.ac.Items), acVisibleCount)
-		if m.ac.ViewportTop > 0 {
-			acLines++
-		}
-		if m.ac.ViewportTop+acVisibleCount < len(m.ac.Items) {
-			acLines++
-		}
-		visibleRows = max(visibleRows-acLines, 1)
-	}
-
-	searchHelpHeight := 0
-	if m.IsSearchHelpVisible() {
-		searchHelpHeight = visibleRows / 2
-		visibleRows = max(visibleRows-searchHelpHeight, 1)
-	}
-
 	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].isTaskRow() {
 		visibleRows = max(visibleRows-inlinePreviewLineCount(m.rows[m.cursor].task), 1)
 	}
@@ -410,10 +352,9 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 	}
 
 	return outlinerViewport{
-		visibleRows:      visibleRows,
-		searchHelpHeight: searchHelpHeight,
-		startIdx:         startIdx,
-		endIdx:           endIdx,
-		rowWidth:         rowWidth,
+		visibleRows: visibleRows,
+		startIdx:    startIdx,
+		endIdx:      endIdx,
+		rowWidth:    rowWidth,
 	}
 }

@@ -15,7 +15,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	service := app.NewService(newTestAppRepo(project), nil, nil)
 	model.appService = service
 	model.features = newFeatureCoordinators(service, service)
-	model.secondaryFeatures = newSecondaryCoordinators(service, model.configManager)
+	model.secondaryFeatures = newSecondaryCoordinators(service)
 	model.deps = newShellDeps(model.runtime, service, model.configManager, nil)
 	model.operationRegistry = NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
@@ -43,9 +43,6 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerNoteOperations(); err != nil {
 		t.Fatalf("register note operations: %v", err)
 	}
-	if err := model.registerTagOperations(); err != nil {
-		t.Fatalf("register tag operations: %v", err)
-	}
 	if err := model.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
@@ -61,7 +58,6 @@ func scopeTestProject(id, name string, taskIDs ...string) *models.Project {
 			ID:            taskID,
 			ShortID:       i + 1,
 			Title:         taskID,
-			Type:          models.TaskTypeTask,
 			WorkflowState: models.StateReady,
 		})
 	}
@@ -124,7 +120,8 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 	runtime := newTestConfigAt(env.dataDir)
 	setTestProjects(runtime, env.projects)
 	outliner := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(nil, testRuntimeAt(runtime.DataDir(), runtime)),
+		runtime:           testRuntimeAt(runtime.DataDir(), runtime),
+		quickEdit:         NewQuickEditComponent(),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[TaskIdentity]bool),
 		MultiSelectState: MultiSelectState{
@@ -132,23 +129,7 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 		},
 		loadedProjects: env.projects,
 	}
-	outliner.bulk = env.bulk
 	outliner.taskItem = env.taskItem
-	return outliner
-}
-
-func newWorkModeOutliner(t *testing.T) *OutlinerModel {
-	t.Helper()
-	tasks := []*models.Task{
-		makeTask("t-inbox", "Capture something", models.StateInbox),
-		makeTask("t-next", "Do the thing", models.StateNext),
-		makeTask("t-active", "In progress", ""),
-	}
-	project := renderFixtureProject(t, "proj-modes", "mod", "Modes Project", tasks)
-	runtime := newTestConfig()
-	outliner := NewOutlinerModel(project, nil, testRuntimeAt(runtime.DataDir(), runtime))
-	outliner.SetSize(120, 24)
-	outliner.rebuildRows()
 	return outliner
 }
 
@@ -168,14 +149,14 @@ func renderFixtureTask(
 	t *testing.T,
 	id string,
 	shortID int,
-	taskType models.TaskType,
+	taskType string,
 	title string,
 	status models.WorkflowState,
 	priority int,
 	section models.WorkflowState,
 ) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, shortID, taskType, title)
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}

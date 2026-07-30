@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -68,19 +70,27 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	for _, want := range []OperationID{
-		operationTaskSetSnooze,
-		operationTaskScore,
-		operationTaskSetDependencies,
+	wantIDs := []OperationID{
+		operationTaskRecurrence,
+		operationTaskMoveProject,
 		operationTaskSetParent,
-		operationTaskIndent,
-		operationTaskOutdent,
-		operationCoreEdit,
-		operationCoreDetail,
+		operationTaskSetDependencies,
+		operationTaskChecklist,
+		operationTaskComments,
+		operationTaskDecisions,
+		operationTaskAttachments,
 		operationTaskDelete,
-	} {
-		if !slices.Contains(ids, want) {
-			t.Errorf("action sheet missing %s: %v", want, ids)
+	}
+	if !slices.Equal(ids, wantIDs) {
+		t.Fatalf("action sheet IDs = %v, want exact nine %v", ids, wantIDs)
+	}
+	wantLabels := []string{
+		"Recurrence", "Move Project", "Set Parent", "Dependencies", "Checklist",
+		"Comments", "Decisions", "Attachments", "Delete",
+	}
+	for index, descriptor := range descriptors {
+		if descriptor.Label != wantLabels[index] {
+			t.Errorf("action %d label = %q, want %q", index, descriptor.Label, wantLabels[index])
 		}
 	}
 	// Direct-key core navigation, capture, and the sheet's own opener are not
@@ -97,6 +107,17 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
+		operationTaskSetSnooze,
+		operationTaskTogglePin,
+		operationTaskIndent,
+		operationTaskOutdent,
+		operationCoreEdit,
+		operationCoreEditDescription,
+		operationCoreDetail,
+		operationTaskCopyTitle,
+		operationTaskCopyDetails,
+		operationTaskCopyTitleDescription,
+		operationTaskNewChild,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("action sheet exposed non-contextual %s: %v", excluded, ids)
@@ -121,6 +142,8 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 	for _, category := range []ListCategoryID{
 		taskActionCategoryPlan,
+		taskActionCategoryOrganize,
+		taskActionCategoryRelationships,
 		taskActionCategoryContent,
 		taskActionCategoryDanger,
 	} {
@@ -129,14 +152,24 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		}
 	}
 
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: '/', Text: "/"})
+	// Printable letters filter immediately. This query includes k, which is no
+	// longer a navigation alias inside the task menu.
+	for _, letter := range "check" {
+		_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
+	}
+	matches := sheet.surface.Matches()
+	wantChecklist := ListItemID("task-action:" + string(operationTaskChecklist))
+	if len(matches) != 1 || matches[0].Item.ID != wantChecklist {
+		t.Fatalf("immediate filter results = %+v, want only %s", matches, wantChecklist)
+	}
+	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'l', Text: "l"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 't', Text: "t"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	matches := sheet.surface.Matches()
+	matches = sheet.surface.Matches()
 	wantDelete := ListItemID("task-action:" + string(operationTaskDelete))
 	if len(matches) != 1 || matches[0].Item.ID != wantDelete {
 		t.Fatalf("search results = %+v, want only %s", matches, wantDelete)
@@ -146,7 +179,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 }
 
-func TestTaskActionSheetSnoozeShowsUsefulUnavailableReason(t *testing.T) {
+func TestTaskActionSheetOmitsDirectSnoozeOperation(t *testing.T) {
 	registry := NewOperationRegistry()
 	for _, descriptor := range taskActionTestDescriptors() {
 		registerTaskActionTestDescriptor(t, registry, descriptor)
@@ -162,13 +195,100 @@ func TestTaskActionSheetSnoozeShowsUsefulUnavailableReason(t *testing.T) {
 	}
 	for _, item := range sheet.surface.Items() {
 		if item.ID == ListItemID("task-action:"+string(operationTaskSetSnooze)) {
-			if item.DisabledReason == "" {
-				t.Fatal("in-progress snooze action did not explain unavailability")
-			}
-			return
+			t.Fatal("direct snooze operation is repeated in the task menu")
 		}
 	}
-	t.Fatal("snooze action is missing")
+}
+
+func TestTaskRecurrenceCancelRestoresFrozenActionSheet(t *testing.T) {
+	model := newUITestApp()
+	target := &models.Task{
+		ID: "target", ShortID: 1, Title: "Target",
+		WorkflowState: models.StateReady,
+		Recurrence:    &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly},
+	}
+	other := &models.Task{
+		ID: "other", ShortID: 2, Title: "Other",
+		WorkflowState: models.StateReady,
+	}
+	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{target, other}}
+	project.BuildTaskTree()
+	setTestAppProjects(model, project)
+	model.crossOutliner.loadedProjects = []*models.Project{project}
+	model.crossOutliner.rows = []outlinerRow{
+		{task: target, ProjectID: project.ID},
+		{task: other, ProjectID: project.ID},
+	}
+
+	sheet, err := NewTaskActionSheetModel(
+		model.operationRegistry,
+		model.operationExecutor,
+		taskOperationTestContext(target, project),
+		target.Title,
+	)
+	if err != nil {
+		t.Fatalf("NewTaskActionSheetModel: %v", err)
+	}
+	model.contextActionSheet = sheet
+	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskRecurrence))) {
+		t.Fatal("task sheet is missing Recurrence")
+	}
+	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if dismissed {
+		t.Fatal("Recurrence dismissed the sheet before its value step")
+	}
+	handled, cmd := model.handleOperationOverlayMessage(raw)
+	if !handled || cmd != nil {
+		t.Fatalf("Recurrence selection = handled %v cmd %T; want synchronous editor open", handled, cmd)
+	}
+	if model.currentView() != ViewRecurrenceEditor || model.pendingTaskRecurrenceRequest == nil {
+		t.Fatal("Recurrence did not open the canonical editor with a pending frozen request")
+	}
+	if model.contextActionSheet != nil || model.suspendedTaskActionSheet != sheet {
+		t.Fatal("Recurrence did not suspend the original action sheet")
+	}
+
+	// Moving the underlying cursor cannot retarget the suspended request.
+	model.crossOutliner.cursor = 1
+	handled, cmd = model.handleEditorMessages(RecurrenceEditorDoneMsg{Canceled: true})
+	if !handled || cmd != nil {
+		t.Fatalf("Recurrence cancel = handled %v cmd %T; want unwind without mutation", handled, cmd)
+	}
+	if model.contextActionSheet != sheet || model.suspendedTaskActionSheet != nil {
+		t.Fatal("Recurrence cancel did not restore the same action sheet")
+	}
+	if got := model.contextActionSheet.context.Entity.TaskID; got != target.ID {
+		t.Fatalf("restored frozen target = %q, want %q", got, target.ID)
+	}
+}
+
+func TestRecurrenceEditorUsesCanonicalIntervalModelAndExplicitClear(t *testing.T) {
+	editor := NewRecurrenceEditorModel(&models.RecurrencePattern{
+		Interval: 3,
+		Unit:     models.RecurrenceWeekly,
+	}, nil)
+	if got := editor.units; !slices.Equal(got, []models.RecurrenceUnit{
+		models.RecurrenceDaily,
+		models.RecurrenceWeekly,
+		models.RecurrenceMonthly,
+	}) {
+		t.Fatalf("recurrence units = %v, want day/week/month", got)
+	}
+	rendered := editor.View().Content
+	for _, retired := range []string{"Weekdays:", "Mode:", "Streak:", "year"} {
+		if strings.Contains(rendered, retired) {
+			t.Errorf("canonical recurrence editor still renders %q", retired)
+		}
+	}
+	_, cmd := editor.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
+	if cmd == nil {
+		t.Fatal("c did not emit an explicit recurrence clear")
+	}
+	raw := cmd()
+	cleared, ok := raw.(RecurrenceEditorDoneMsg)
+	if !ok || cleared.Canceled || cleared.Pattern != nil {
+		t.Fatalf("clear result = %#v, want non-canceled nil pattern", raw)
+	}
 }
 
 func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *testing.T) {
@@ -188,8 +308,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	if !slices.Contains(ids, operationTaskDelete) {
-		t.Errorf("bulk action sheet missing %s: %v", operationTaskDelete, ids)
+	if !slices.Equal(ids, []OperationID{operationTaskDelete}) {
+		t.Fatalf("bulk action sheet IDs = %v, want Delete only", ids)
 	}
 	for _, excluded := range []OperationID{
 		// Snooze is bulk-capable but the in-progress member removes it.
@@ -294,9 +414,8 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 		}
 	}
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
-	send(tea.KeyPressMsg{Code: tea.KeySpace})
 	if !app.crossOutliner.IsTaskIdentitySelected(taskIdentityFor(first, project)) {
-		t.Fatal("Space did not toggle the cursor row in visual selection")
+		t.Fatal("v did not toggle the cursor row into visual selection")
 	}
 	send(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
@@ -304,13 +423,12 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	}
 
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
-	send(tea.KeyPressMsg{Code: tea.KeySpace})
 	app.crossOutliner.cursor = 1
+	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	send(tea.KeyPressMsg{Code: tea.KeySpace})
-	send(tea.KeyPressMsg{Code: tea.KeyEnter})
 	sheet := app.contextActionSheet
 	if sheet == nil || !sheet.config.Bulk || sheet.config.Targets != 2 {
-		t.Fatalf("Enter did not open a two-target bulk action sheet: %#v", sheet)
+		t.Fatalf("Space did not open a two-target bulk action sheet: %#v", sheet)
 	}
 	// Priority now belongs to the p chord, so the bulk sheet must not repeat it.
 	if sheet.surface.SetCursorToID(
@@ -318,24 +436,42 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	) {
 		t.Fatal("bulk action sheet still lists the direct-only set-priority action")
 	}
-	if !sheet.surface.SetCursorToID(
+	if sheet.surface.SetCursorToID(
 		ListItemID("task-action:" + string(operationTaskSetSnooze)),
 	) {
-		t.Fatal("bulk action sheet is missing set-snooze")
+		t.Fatal("bulk action sheet repeats direct-only set-snooze")
 	}
-	_, dismissed, rawResult := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if dismissed {
-		t.Fatal("a pending value picker dismissed the bulk sheet")
+	if !sheet.surface.SetCursorToID(
+		ListItemID("task-action:" + string(operationTaskDelete)),
+	) {
+		t.Fatal("bulk action sheet is missing delete")
 	}
-	emitted, ok := rawResult.(ContextActionSheetResultMsg)
-	if !ok {
-		t.Fatalf("snooze selection returned %T, want ContextActionSheetResultMsg", rawResult)
+}
+
+func TestVisualSelectionRejectsInspectorWithoutCursorFallback(t *testing.T) {
+	app := newUITestApp()
+	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateReady}
+	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateReady}
+	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
+	project.BuildTaskTree()
+	setTestAppProjects(app, project)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.rows = []outlinerRow{
+		{task: first, ProjectID: project.ID},
+		{task: second, ProjectID: project.ID},
 	}
-	handled, cmd := app.handleOperationOverlayMessage(emitted)
-	if !handled || cmd != nil {
-		t.Fatalf("snooze execution = handled %v cmd %T, want value picker", handled, cmd)
+	app.crossOutliner.toggleCursorSelection()
+	app.crossOutliner.cursor = 1
+
+	result := app.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      operationCoreDetail,
+		Context: app.operationCommandContext(),
+		Source:  OperationSourceDirectKey,
+	})
+	if !errors.Is(result.Err, ErrOperationUnavailable) {
+		t.Fatalf("visual-selection inspector error = %v, want unavailable", result.Err)
 	}
-	if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderSnooze {
-		t.Fatalf("snooze action did not open the canonical value picker: %#v", app.operationValuePicker)
+	if result.Message != nil || app.contextActionSheet != nil {
+		t.Fatal("visual-selection inspector fell back to the cursor or action sheet")
 	}
 }

@@ -6,9 +6,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 func focusScopeHubItem(t *testing.T, hub *ContextHubModel, id ListItemID) {
@@ -32,7 +29,7 @@ func scopeHubActionIDs(hub *ContextHubModel) []OperationID {
 	return ids
 }
 
-func TestScopeHubUsesTheFourCanonicalListSurfaceCategories(t *testing.T) {
+func TestScopeHubUsesTheLeanCanonicalListSurfaceCategories(t *testing.T) {
 	app := contextHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Slug = "archived"
@@ -47,7 +44,6 @@ func TestScopeHubUsesTheFourCanonicalListSurfaceCategories(t *testing.T) {
 		{ID: scopeHubCategoryBase, Label: "Base Scopes"},
 		{ID: scopeHubCategoryActive, Label: "Active Projects"},
 		{ID: scopeHubCategoryArchived, Label: "Archived Projects"},
-		{ID: scopeHubCategoryTrash, Label: "Trash"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("scope categories = %#v, want %#v", got, want)
@@ -244,7 +240,7 @@ func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing
 			}
 			target, ok := invocation.Value.(scopeHubActionTarget)
 			if !ok || !invocation.HasValue || target.Scope != CustomContextScope("focus") ||
-				target.ProjectID != "" || target.TrashEntryID != "" {
+				target.ProjectID != "" {
 				t.Fatalf("frozen invocation target = %#v/%v, want custom context focus", invocation.Value, invocation.HasValue)
 			}
 			tc.assert(t, hub)
@@ -261,11 +257,10 @@ func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing
 func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testing.T) {
 	for _, row := range []struct {
 		name string
-		id   func(string) ListItemID
+		id   ListItemID
 	}{
-		{name: "active project", id: func(string) ListItemID { return "scope-hub:active:beta" }},
-		{name: "archived project", id: func(string) ListItemID { return "scope-hub:archived:archived" }},
-		{name: "trash", id: func(entryID string) ListItemID { return ListItemID("scope-hub:trash:" + entryID) }},
+		{name: "active project", id: "scope-hub:active:beta"},
+		{name: "archived project", id: "scope-hub:archived:archived"},
 	} {
 		for _, key := range []rune{'e', 'r', 'd'} {
 			t.Run(row.name+"/"+string(key), func(t *testing.T) {
@@ -279,24 +274,8 @@ func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testi
 				archived.Path = t.TempDir()
 				addTestAppProject(app, archived)
 
-				deleted := &models.Project{
-					ID:   "deleted-id",
-					Slug: "deleted",
-					Name: "Deleted",
-					Path: t.TempDir(),
-				}
-				entryID, err := storage.MoveProjectToTrash(
-					deleted,
-					app.runtime.DataDir(),
-					"scope hub browse key test",
-					nil,
-				)
-				if err != nil {
-					t.Fatalf("MoveProjectToTrash: %v", err)
-				}
-
 				hub := openContextHub(t, app)
-				itemID := row.id(entryID)
+				itemID := row.id
 				focusScopeHubItem(t, hub, itemID)
 				hub.Update(syntheticKey(key))
 
@@ -321,11 +300,10 @@ func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testi
 func TestScopeHubNewContextBrowseKeyOpensFromEveryNonContextRow(t *testing.T) {
 	for _, row := range []struct {
 		name string
-		id   func(string) ListItemID
+		id   ListItemID
 	}{
-		{name: "active project", id: func(string) ListItemID { return "scope-hub:active:beta" }},
-		{name: "archived project", id: func(string) ListItemID { return "scope-hub:archived:archived" }},
-		{name: "trash", id: func(entryID string) ListItemID { return ListItemID("scope-hub:trash:" + entryID) }},
+		{name: "active project", id: "scope-hub:active:beta"},
+		{name: "archived project", id: "scope-hub:archived:archived"},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			app := contextHubApp(t)
@@ -338,24 +316,8 @@ func TestScopeHubNewContextBrowseKeyOpensFromEveryNonContextRow(t *testing.T) {
 			archived.Path = t.TempDir()
 			addTestAppProject(app, archived)
 
-			deleted := &models.Project{
-				ID:   "deleted-id",
-				Slug: "deleted",
-				Name: "Deleted",
-				Path: t.TempDir(),
-			}
-			entryID, err := storage.MoveProjectToTrash(
-				deleted,
-				app.runtime.DataDir(),
-				"scope hub browse key test",
-				nil,
-			)
-			if err != nil {
-				t.Fatalf("MoveProjectToTrash: %v", err)
-			}
-
 			hub := openContextHub(t, app)
-			itemID := row.id(entryID)
+			itemID := row.id
 			focusScopeHubItem(t, hub, itemID)
 			hub.Update(syntheticKey('n'))
 
@@ -458,43 +420,6 @@ func TestScopeHubHelpDocumentsEveryBrowseKey(t *testing.T) {
 	}
 }
 
-func TestScopeHubTrashActionsPreserveRestoreAndPurgeSafety(t *testing.T) {
-	app := contextHubApp(t)
-	app.runtime = testRuntimeAt(t.TempDir(), app.runtime)
-	app.crossOutliner.runtime = app.runtime
-	deleted := &models.Project{
-		ID:   "deleted-id",
-		Slug: "deleted",
-		Name: "Deleted",
-		Path: t.TempDir(),
-	}
-	entryID, err := storage.MoveProjectToTrash(deleted, app.runtime.DataDir(), "scope hub test", nil)
-	if err != nil {
-		t.Fatalf("MoveProjectToTrash: %v", err)
-	}
-
-	hub := openContextHub(t, app)
-	focusScopeHubItem(t, hub, ListItemID("scope-hub:trash:"+entryID))
-	if _, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
-		t.Fatalf("trash Enter emitted %T; recovery must live under Space", cmd())
-	}
-	if hub.notice == "" {
-		t.Fatal("trash Enter gave no recovery guidance")
-	}
-
-	hub.Update(syntheticKey(' '))
-	got := scopeHubActionIDs(hub)
-	if !containsOperationID(got, operationScopeRestoreTrash) ||
-		!containsOperationID(got, operationScopePurgeTrash) {
-		t.Fatalf("trash actions = %v, want restore and purge", got)
-	}
-	hub.actions.surface.SetCursorToID(ListItemID("scope-hub-action:" + string(operationScopePurgeTrash)))
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if !hub.confirm.IsActive() || hub.confirm.Action() != scopeHubConfirmPurge {
-		t.Fatal("purge did not arm the explicit irreversible confirmation")
-	}
-}
-
 func TestScopeHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
 	app := contextHubApp(t)
 	hub := openContextHub(t, app)
@@ -577,6 +502,81 @@ func TestProjectFocusReplacementNeverStacksAndEscReturnsToContextBase(t *testing
 	}
 	if out.scopedProjectID != "" || out.activeContext != RegularContextScope("work") {
 		t.Fatalf("focus pop returned to project=%q context=%#v, want work base", out.scopedProjectID, out.activeContext)
+	}
+}
+
+func TestContextScopeChangePreservesRunViewAndClearsNavigationState(t *testing.T) {
+	alpha := scopeTestProject("alpha", "Alpha", "1", "2")
+	alpha.Context = "work"
+	beta := scopeTestProject("beta", "Beta", "3")
+	beta.Context = "home"
+	out := scopeTestOutliner(alpha, beta)
+
+	out.primaryMode = ModeDue
+	out.SetSearchQuery("needle")
+	out.filter.Priority = 3
+	out.filter.Tags = map[string]bool{"focus": true}
+	out.filter.DueDate = DueDateThisWeek
+	out.filter.Blocked = true
+	out.filter.Snoozed = true
+	out.pushProjectScope("alpha")
+	out.crossZoomStack = []CrossProjectZoomEntry{{
+		ProjectID:   "alpha",
+		TaskID:      "1",
+		CursorIndex: 2,
+	}}
+	out.cursor = 2
+	out.SelectTaskIdentity(TaskIdentity{ProjectID: "alpha", TaskID: "1"})
+	// A mutation reload may already have frozen a cursor identity before the
+	// Scope Hub selection arrives. It must not survive the new project set.
+	out.crossReloadProjectID = "alpha"
+	out.crossReloadTaskID = "1"
+
+	out.applyContextScope(RegularContextScope("home"))
+
+	if out.primaryMode != ModeDue || out.SearchQuery() != "needle" {
+		t.Fatalf("scope switch changed mode/search: mode=%s search=%q", out.primaryMode, out.SearchQuery())
+	}
+	if out.filter.Priority != 3 ||
+		!out.filter.Tags["focus"] ||
+		out.filter.DueDate != DueDateThisWeek ||
+		!out.filter.Blocked ||
+		!out.filter.Snoozed {
+		t.Fatalf("scope switch changed facets: %+v", out.filter.CommonFilterState)
+	}
+	if out.scopedProjectID != "" || len(out.scopeStack) != 0 || len(out.crossZoomStack) != 0 {
+		t.Fatalf(
+			"scope switch retained project frames: project=%q stack=%d zoom=%d",
+			out.scopedProjectID,
+			len(out.scopeStack),
+			len(out.crossZoomStack),
+		)
+	}
+	if out.cursor != 0 || out.multiSelectMode || out.SelectedCount() != 0 {
+		t.Fatalf(
+			"scope switch retained cursor/selection: cursor=%d active=%v selected=%d",
+			out.cursor,
+			out.multiSelectMode,
+			out.SelectedCount(),
+		)
+	}
+	if out.crossReloadProjectID != "" || out.crossReloadTaskID != "" || !out.crossReloadFromTop {
+		t.Fatalf(
+			"scope switch retained reload cursor: project=%q task=%q from-top=%v",
+			out.crossReloadProjectID,
+			out.crossReloadTaskID,
+			out.crossReloadFromTop,
+		)
+	}
+
+	_ = out.reloadCrossProjects()
+	if out.crossReloadProjectID != "" || out.crossReloadTaskID != "" || out.crossReloadFromTop {
+		t.Fatalf(
+			"first scope reload restored a cursor: project=%q task=%q from-top=%v",
+			out.crossReloadProjectID,
+			out.crossReloadTaskID,
+			out.crossReloadFromTop,
+		)
 	}
 }
 

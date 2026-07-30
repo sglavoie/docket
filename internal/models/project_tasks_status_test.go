@@ -11,7 +11,7 @@ func TestProjectGetTasksByState_AllStates(t *testing.T) {
 	var tasks []*Task
 	states := AllWorkflowStates()
 	for i, state := range states {
-		task, taskErr := NewTask(string(state), i+1, TaskTypeTask, "Task in "+string(state))
+		task, taskErr := NewGenericTask(string(state), i+1, "Task in "+string(state))
 		if taskErr != nil {
 			t.Fatal(taskErr)
 		}
@@ -39,15 +39,15 @@ func TestProjectGetTasksByState_MultipleMatches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task-1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task-2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("task-3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestProjectGetTasksByState_DerivesFromLegacyFields(t *testing.T) {
 
 	// A task in the waiting state (the canonical successor of the legacy
 	// blocked status) is bucketed under StateWaiting.
-	task, err := NewTask("task-1", 1, TaskTypeTask, "Blocked task")
+	task, err := NewGenericTask("task-1", 1, "Blocked task")
 	if err != nil {
 		t.Fatal(err)
 	}

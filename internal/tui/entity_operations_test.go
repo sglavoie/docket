@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -20,7 +19,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 	model := typedTestApp(t)
 
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project, err := models.NewProject(uuid.New().String(), "notes", "")
@@ -38,7 +37,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 		}
 	}
 
-	model.appService = app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil)
+	model.appService = app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
 	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(project))
 	setTestAppProjects(model, project)
 	return model, project
@@ -50,7 +49,7 @@ func executeEntityOperation(app *AppModel, id OperationID, entity EntityIdentity
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
-		Source:  OperationSourceFinder,
+		Source:  OperationSourceActionSheet,
 	})
 }
 
@@ -67,13 +66,16 @@ func onlyNoteFilename(t *testing.T, model *AppModel, location app.NoteLocation) 
 }
 
 func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
+	t.Setenv("TT_EDITOR", "true")
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
 	model, project := entityOperationApp(t, "Design log")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
 	result := executeEntityOperation(model, operationNoteOpen, ProjectNoteEntity(project.ID, filename))
-	open, ok := result.Message.(ShowNotesMsg)
-	if !ok || open.Project == nil || open.Project.ID != project.ID || open.Focus != filename {
-		t.Fatalf("open note emitted %#v, want the seeded project note", result.Message)
+	open, ok := result.Message.(OperationCommandResultMsg)
+	if !ok || open.Cmd == nil {
+		t.Fatalf("open note emitted %#v, want an external-editor command", result.Message)
 	}
 
 	// The note disappears after the row was built: the next execution must fail
@@ -91,21 +93,9 @@ func TestNoteOperationsRejectTargetsOutsideTheirScope(t *testing.T) {
 	model, project := entityOperationApp(t, "Design log")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
-	// A project note names a project collection, so the global-only move must not
-	// be offered for it.
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
-	ctx.CurrentEntity = ProjectNoteEntity(project.ID, filename)
-	if globalNoteOperationApplicable(ctx) {
-		t.Fatal("move to project was offered for a project note")
-	}
-	ctx.CurrentEntity = GlobalNoteEntity(filename)
-	if !globalNoteOperationApplicable(ctx) {
-		t.Fatal("move to project was withheld from a global note")
-	}
-
 	// currentEntityIdentity degrades to the focused project, so an unguarded note
 	// descriptor would silently borrow it.
-	ctx = PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.FocusedProjectID = project.ID
 	if noteOperationApplicable(ctx) {
 		t.Fatal("a note operation was offered with only a project in focus")
@@ -176,132 +166,5 @@ func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(storage.NotesDir(project), filename)); !os.IsNotExist(err) {
 		t.Fatalf("note file still present after delete: %v", err)
-	}
-}
-
-func TestTagOperationsApplyToTheOriginatingView(t *testing.T) {
-	model := contextHubApp(t)
-	alpha := model.projectByID("alpha")
-	alpha.Tasks[0].Tags = []string{"urgent"}
-	model.crossOutliner.crossForceRebuild = true
-	model.crossOutliner.rebuildRows()
-
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
-	ctx.CurrentEntity = WorkspaceTagEntity("urgent")
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationTagFilter,
-		Context: ctx,
-		Source:  OperationSourceFinder,
-	})
-	filter, ok := result.Message.(ApplyTagFilterMsg)
-	if !ok || filter.Tag != "urgent" || filter.Source != ViewCrossProjectOutliner {
-		t.Fatalf("tag filter emitted %#v, want the originating Outliner", result.Message)
-	}
-
-	handled, _ := model.handleTagMessages(filter)
-	if !handled {
-		t.Fatal("the tag filter message was not handled")
-	}
-	if !model.crossOutliner.filter.Tags["urgent"] {
-		t.Fatalf("Outliner tag filter = %v, want urgent applied", model.crossOutliner.filter.Tags)
-	}
-}
-
-func TestTagOperationsOpenTheManagerForTheirScope(t *testing.T) {
-	model := contextHubApp(t)
-	alpha := model.projectByID("alpha")
-	alpha.Tasks[0].Tags = []string{"urgent"}
-
-	global := executeEntityOperation(model, operationTagManage, WorkspaceTagEntity("urgent"))
-	if _, ok := global.Message.(ShowGlobalTagManagerMsg); !ok {
-		t.Fatalf("an aggregate tag opened %#v, want the global tag manager", global.Message)
-	}
-
-	alpha.Tags = []string{"urgent"}
-	scoped := executeEntityOperation(model, operationTagManage, ProjectTagEntity("alpha", "urgent"))
-	manager, ok := scoped.Message.(ShowTagManagerMsg)
-	if !ok || manager.Project == nil || manager.Project.ID != "alpha" {
-		t.Fatalf("a project tag opened %#v, want alpha's tag manager", scoped.Message)
-	}
-}
-
-func TestTagOperationsNeverOfferAggregateDeletion(t *testing.T) {
-	model := contextHubApp(t)
-
-	workspace := PresentationCommandContext(ViewCrossProjectOutliner)
-	workspace.CurrentEntity = WorkspaceTagEntity("urgent")
-	scoped := PresentationCommandContext(ViewCrossProjectOutliner)
-	scoped.CurrentEntity = ProjectTagEntity("alpha", "urgent")
-
-	for _, id := range []OperationID{operationTagDeleteProject, operationTagRenameProject} {
-		descriptor, ok := model.operationRegistry.Descriptor(id)
-		if !ok {
-			t.Fatalf("%s is not registered", id)
-		}
-		if descriptor.Applicability(workspace) {
-			t.Fatalf("%s was offered for an aggregate workspace tag", id)
-		}
-		if !descriptor.Applicability(scoped) {
-			t.Fatalf("%s was withheld from a project-qualified tag", id)
-		}
-	}
-
-	rename, ok := model.operationRegistry.Descriptor(operationTagRenameWorkspace)
-	if !ok {
-		t.Fatal("the workspace tag rename is not registered")
-	}
-	if !rename.Applicability(workspace) || rename.Applicability(scoped) {
-		t.Fatal("the workspace tag rename must apply only to aggregate tags")
-	}
-
-	result := executeEntityOperation(model, operationTagDeleteProject, WorkspaceTagEntity("urgent"))
-	if result.Err == nil {
-		t.Fatalf("deleting an aggregate tag emitted %#v, want a refusal", result.Message)
-	}
-}
-
-func TestTagOperationsRejectTagsThatLeftTheirScope(t *testing.T) {
-	model := contextHubApp(t)
-
-	// No project uses the tag, so neither the aggregate nor the project identity
-	// resolves.
-	if result := executeEntityOperation(model, operationTagPin, WorkspaceTagEntity("ghost")); result.Err == nil {
-		t.Fatalf("pinning an unused aggregate tag emitted %#v", result.Message)
-	}
-	if result := executeEntityOperation(model, operationTagPin, ProjectTagEntity("alpha", "ghost")); result.Err == nil {
-		t.Fatalf("pinning a tag absent from alpha emitted %#v", result.Message)
-	}
-
-	alpha := model.projectByID("alpha")
-	alpha.Tags = []string{"urgent"}
-	result := executeEntityOperation(model, operationTagPin, ProjectTagEntity("alpha", "urgent"))
-	if result.Err != nil {
-		t.Fatalf("pinning a live project tag failed: %v", result.Err)
-	}
-	if _, ok := result.Message.(OperationCommandResultMsg); !ok {
-		t.Fatalf("project tag pin emitted %#v, want a mutation command", result.Message)
-	}
-}
-
-func TestEntityOperationRefreshKeepsFinderRecents(t *testing.T) {
-	model := contextHubApp(t)
-	model.recordFinderDestination(config.RecentDestination{
-		Kind: config.RecentDestinationProject,
-		ID:   "beta",
-	})
-	before := model.runtime.Machine().GetRecentDestinations()
-	if len(before) != 1 {
-		t.Fatalf("seeded %d recents, want 1", len(before))
-	}
-
-	model.handleTagMessages(TagRemovedMsg{Name: "urgent"})
-	model.reconcileNoteResult(ProjectNoteMutationResultMsg{
-		Location:       app.GlobalNoteLocation(),
-		SuccessMessage: "Deleted: scratch",
-	})
-
-	after := model.runtime.Machine().GetRecentDestinations()
-	if len(after) != 1 || after[0] != before[0] {
-		t.Fatalf("Finder refresh rewrote machine recents: %#v, want %#v", after, before)
 	}
 }

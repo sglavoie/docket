@@ -37,13 +37,9 @@ func NewDateInputModel(task *models.Task, project *models.Project, weekEndDay st
 	input.SetWidth(40)
 	applyThemedTextInput(&input)
 
-	// Pre-fill with current due date if set (preserve time component when present)
+	// Pre-fill with the current date.
 	if task.DueDate != nil {
-		if task.HasTime {
-			input.SetValue(task.DueDate.Format(util.DateTimeDueFormat))
-		} else {
-			input.SetValue(task.DueDate.Format(util.DateFormat))
-		}
+		input.SetValue(task.DueDate.Format(util.DateFormat))
 	}
 
 	if weekEndDay == "" {
@@ -100,17 +96,16 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear due date
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
-				return m, dueDateChangedCmd(m.task, m.project, nil, false, true)
+				return m, dueDateChangedCmd(m.task, m.project, nil, true)
 			}
 
-			// Parse the date (supports optional time-of-day suffix like "5pm")
-			date, hasTime, err := util.ParseRelativeDateWithTime(value, m.weekEndDay)
+			date, err := util.ParseRelativeDateWithConfig(value, m.weekEndDay)
 			if err != nil {
 				m.err = err
 				return m, nil
 			}
 
-			return m, dueDateChangedCmd(m.task, m.project, &date, hasTime, true)
+			return m, dueDateChangedCmd(m.task, m.project, &date, true)
 		}
 	}
 
@@ -119,7 +114,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time.Time, hasTime, explicit bool) tea.Cmd {
+func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time.Time, explicit bool) tea.Cmd {
 	var dueDateCopy *time.Time
 	if dueDate != nil {
 		d := *dueDate
@@ -130,7 +125,6 @@ func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time
 			Task:             task,
 			Project:          project,
 			DueDate:          dueDateCopy,
-			HasTime:          hasTime,
 			HasExplicitValue: explicit,
 		}
 	}
@@ -150,9 +144,6 @@ func (m *DateInputModel) View() tea.View {
 	if m.task.DueDate != nil {
 		b.WriteString(FieldLabelStyle.Render("Current: "))
 		dateStr := m.task.DueDate.Format("2006-01-02 (Monday)")
-		if m.task.HasTime {
-			dateStr += " " + m.task.DueDate.Format("15:04")
-		}
 		b.WriteString(dateStr)
 		b.WriteString("\n\n")
 	}
@@ -212,7 +203,6 @@ type DueDateChangedMsg struct {
 	Task             *models.Task
 	Project          *models.Project
 	DueDate          *time.Time
-	HasTime          bool
 	HasExplicitValue bool
 }
 
@@ -220,12 +210,6 @@ type DueDateChangedMsg struct {
 // This is a convenience wrapper around util.ParseRelativeDate.
 func ParseDate(input string) (time.Time, error) {
 	return util.ParseRelativeDate(input)
-}
-
-// ParseFlexibleDate is like ParseDate but also accepts bare shorthand without
-// the leading +: "3d" (3 days), "2w" (2 weeks), "1m" (1 month).
-func ParseFlexibleDate(input string) (time.Time, error) {
-	return util.ParseFlexibleDate(input)
 }
 
 func (m *DateInputModel) StatusBarLabel() string { return "Set Due Date" }

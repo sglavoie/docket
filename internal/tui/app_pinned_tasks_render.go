@@ -8,7 +8,7 @@ import (
 )
 
 // renderPinnedTasksBar renders the compact, non-interactive pinned summary.
-// Navigation and search live in Finder; the retired pinned popup is gone.
+// Navigation and visible search live in the Outliner; the retired pinned popup is gone.
 func (m *AppModel) renderPinnedTasksBar(width int) string {
 	pinned := m.collectPinnedTasks()
 	if len(pinned) == 0 {
@@ -17,10 +17,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 
 	separatorStr := MutedStyle.Render(" · ")
 	separatorWidth := lipgloss.Width(separatorStr)
-	maxDisplay := m.runtime.Settings().GetMaxPinnedBarItems()
-	if maxDisplay == 0 {
-		return ""
-	}
+	const maxDisplay = 5
 	overflow := 0
 	if len(pinned) > maxDisplay {
 		overflow = len(pinned) - maxDisplay
@@ -36,14 +33,13 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 
 	entries := make([]string, 0, len(pinned))
 	for _, item := range pinned {
-		typeBadge := GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon())
-		titleWidth := max(perEntryWidth-2, 3)
+		titleWidth := max(perEntryWidth, 3)
 		title := TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{}).
 			Render(truncateToVisualWidth(item.Title, titleWidth))
 		if renderedWidth := lipgloss.Width(title); renderedWidth < titleWidth {
 			title += strings.Repeat(" ", titleWidth-renderedWidth)
 		}
-		entries = append(entries, typeBadge+" "+title)
+		entries = append(entries, title)
 	}
 
 	result := strings.Join(entries, separatorStr)

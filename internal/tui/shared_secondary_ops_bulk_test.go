@@ -119,7 +119,7 @@ func mustBulkRefProject(t *testing.T, id, name string) *models.Project {
 
 func mustBulkRefTask(t *testing.T, id string, shortID int) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, shortID, models.TaskTypeTask, "Task "+id)
+	task, err := models.NewGenericTask(id, shortID, "Task "+id)
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}

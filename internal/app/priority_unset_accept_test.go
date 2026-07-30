@@ -17,7 +17,7 @@ import (
 
 func newUnsetPriorityService(t *testing.T, dataDir string, projects ...*models.Project) *app.Service {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newStorageRepo(commitSvc, projects...)
 	repo.seed(t)
@@ -35,7 +35,7 @@ func prioritizedProject(t *testing.T, dataDir, slug string, priority int, titles
 	project.Slug = slug
 	project.Path = filepath.Join(dataDir, "projects", slug)
 	for i, title := range titles {
-		task, taskErr := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, title)
+		task, taskErr := models.NewGenericTask(uuid.New().String(), i+1, title)
 		if taskErr != nil {
 			t.Fatalf("NewTask: %v", taskErr)
 		}
@@ -106,7 +106,6 @@ func TestFormEditKeepsAnUnsetPriority(t *testing.T) {
 		TaskID: task.ID,
 		Form: &app.FormEdit{
 			Title:    "Build login form",
-			Type:     models.TaskTypeTask,
 			Priority: task.Priority,
 			Tags:     []string{},
 		},

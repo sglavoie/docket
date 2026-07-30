@@ -11,7 +11,6 @@ import (
 var writeFileAtomic = util.AtomicWriteFile
 
 const tasksFileName = "tasks.md"
-const backupFileName = ".tasks.md.bak"
 
 // LockFileName is the advisory lock file used to serialize concurrent writes
 // to a project's tasks.md. All callers (CLI, TUI, storage layer) must use
@@ -40,13 +39,6 @@ type ProjectLoadResult struct {
 	MigrationAudit *MigrationAudit
 }
 
-// DefaultMaxActivityEntries is the default maximum number of activity entries per task.
-const DefaultMaxActivityEntries = 50
-
-// MaxActivityEntries controls the maximum number of activity entries per task.
-// Set by the application during startup from config. Falls back to DefaultMaxActivityEntries.
-var MaxActivityEntries = DefaultMaxActivityEntries
-
 func tasksFilePath(projectPath string) string {
 	return filepath.Join(projectPath, tasksFileName)
 }
@@ -58,16 +50,7 @@ func TasksFilePath(projectPath string) string {
 	return tasksFilePath(projectPath)
 }
 
-func backupFilePath(projectPath string) string {
-	return filepath.Join(projectPath, backupFileName)
-}
-
 // GetTasksFilePath returns the path to a project's tasks.md file.
 func GetTasksFilePath(project *models.Project) string {
 	return tasksFilePath(project.Path)
-}
-
-// GetBackupFilePath returns the path to a project's backup file.
-func GetBackupFilePath(project *models.Project) string {
-	return backupFilePath(project.Path)
 }

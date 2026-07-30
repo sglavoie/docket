@@ -5,13 +5,31 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 )
 
 // handleClipboardMessages handles clipboard-related messages (copy task title/details).
 // Returns true if the message was handled.
+//
+//nolint:gocyclo // Clipboard message dispatch owns one typed response path for every retained payload.
 func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case TaskClipboardProjectedMsg:
+		if err := copyTextToClipboard(msg.Projection.Text); err != nil {
+			return true, errorCmd("copy failed: %w", err)
+		}
+		switch msg.Projection.Operation {
+		case app.TaskOperationCopyTitle:
+			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1} }
+		case app.TaskOperationCopyDescription:
+			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, FullDetail: true} }
+		case app.TaskOperationCopyTitleDescription:
+			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, TitleAndDesc: true} }
+		default:
+			return true, errorCmd("copy failed: unknown clipboard projection %q", msg.Projection.Operation)
+		}
+
 	case CopyTaskTitleMsg:
 		if msg.Task == nil {
 			return true, nil
@@ -39,17 +57,6 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, FullDetail: true}
 		}
-
-	case CopyTaskReferenceMsg:
-		if msg.Task == nil {
-			return true, nil
-		}
-		ref, err := external.CopyTaskReference(msg.Task)
-		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
-		}
-		m.setSuccessStatus(fmt.Sprintf("Copied \"%s\" to clipboard", ref))
-		return true, defaultStatusTimeout()
 
 	case CopyTasksTitleMsg:
 		if len(msg.Tasks) == 0 {

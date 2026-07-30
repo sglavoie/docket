@@ -117,7 +117,7 @@ func (OperationTargetResolver) Resolve(
 		}
 	case OperationTargetSelectedTasks:
 		selected := normalizedTaskIdentities(ctx.Selection.Tasks)
-		if len(selected) == 0 {
+		if len(selected) == 0 && !ctx.Selection.Visual {
 			if current := currentTaskIdentity(ctx); current.Valid() {
 				selected = []TaskIdentity{current}
 			}
@@ -209,6 +209,9 @@ func selectedEntityIdentities(ctx CommandContext) []EntityIdentity {
 	}
 	if selected := taskEntityIdentities(ctx.Selection.Tasks); len(selected) > 0 {
 		return selected
+	}
+	if ctx.Selection.Visual {
+		return nil
 	}
 	if current := currentEntityIdentity(ctx); current.Valid() {
 		return []EntityIdentity{current}

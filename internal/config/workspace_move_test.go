@@ -82,40 +82,6 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 	}
 }
 
-func TestMoveWorkspacePreservesMigratedMachineStateForSameID(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	src := filepath.Join(t.TempDir(), "src")
-	dst := filepath.Join(t.TempDir(), "dst")
-	seedSyncedWorkspaceWithoutMachine(t, src, testWorkspaceIDA)
-	legacyPath := legacyMachineStatePaths(src)[0]
-	legacyBytes := writeLegacyMachineEnvelope(t, legacyPath, testWorkspaceIDA, &MachineState{
-		Editor:         "same-id-editor",
-		CurrentProject: "project-1",
-	})
-
-	if _, err := MoveWorkspace(src, dst); err != nil {
-		t.Fatalf("MoveWorkspace: %v", err)
-	}
-	moved, err := NewManager(ConfigPathForDataDir(dst)).LoadRuntimeState()
-	if err != nil {
-		t.Fatalf("load moved runtime: %v", err)
-	}
-	if got := moved.Catalog().WorkspaceID; got != testWorkspaceIDA {
-		t.Fatalf("moved workspace ID = %q, want %q", got, testWorkspaceIDA)
-	}
-	if got := moved.Machine().Editor; got != "same-id-editor" {
-		t.Fatalf("moved editor = %q, want same-id-editor", got)
-	}
-	if got := moved.Machine().CurrentProject; got != "project-1" {
-		t.Fatalf("moved current project = %q, want project-1", got)
-	}
-	if got, err := os.ReadFile(legacyPath); err != nil || string(got) != string(legacyBytes) {
-		t.Fatalf("move changed legacy rollback source: bytes=%q err=%v", got, err)
-	}
-}
-
 func TestMoveWorkspace_RetryIsIdempotent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

@@ -44,14 +44,6 @@ var helpCategoryIntent = map[string]string{
 	"Notes":           "Other",
 }
 
-// helpCrossViewJumpKeys lists key strings that jump from any current view to
-// another top-level view. They are bucketed into "Jump to View" so they do not
-// crowd the primary actions in first-level help.
-var helpCrossViewJumpKeys = map[string]bool{
-	":":        true,
-	"ctrl+esc": true,
-}
-
 // helpNavigateKeys lists direct keys that always belong in the Navigate
 // intent regardless of Category. Covers list movement, viewport paging, and
 // app-shell controls (esc/quit/explorer toggle).
@@ -88,9 +80,6 @@ func intentForItem(item HelpItem, sourceView PresentationID) string {
 	}
 	if helpNavigateKeys[item.Key] {
 		return "Navigate"
-	}
-	if helpCrossViewJumpKeys[item.Key] {
-		return "Jump to View"
 	}
 	if intent, ok := helpCategoryIntent[item.Category]; ok {
 		return intent

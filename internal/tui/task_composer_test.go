@@ -10,21 +10,12 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/template"
 )
 
 func TestTaskComposerPresetModes(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 	parentID := task.ID
-	tmpl := &template.TaskTemplate{
-		Name:     "Bug report",
-		Type:     models.TaskTypeBug,
-		Priority: 1,
-		Tags:     []string{"triage"},
-		State:    models.StatePaused,
-	}
-
 	tests := []struct {
 		name       string
 		preset     TaskComposerPreset
@@ -36,8 +27,6 @@ func TestTaskComposerPresetModes(t *testing.T) {
 		{"project", TaskComposerPreset{Kind: ComposerProject, Project: project}, ComposerCompact, ComposerProject, false},
 		{"planner", TaskComposerPreset{Kind: ComposerPlanner, Project: project, PlannerTab: boardTabToday}, ComposerCompact, ComposerPlanner, false},
 		{"child", TaskComposerPreset{Kind: ComposerChild, Project: project, Parent: task, Shared: TaskComposerSharedAttributes{ParentID: &parentID}}, ComposerCompact, ComposerChild, true},
-		{"linked", TaskComposerPreset{Kind: ComposerLinked, Project: project, SourceTask: task, LinkType: LinkTypeBlocker}, ComposerCompact, ComposerLinked, false},
-		{"template", TaskComposerPreset{Kind: ComposerTemplate, Project: project, Template: tmpl}, ComposerExpanded, ComposerTemplate, false},
 		{"edit", TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: task}, ComposerExpanded, ComposerEdit, false},
 	}
 
@@ -56,14 +45,7 @@ func TestTaskComposerPresetModes(t *testing.T) {
 		})
 	}
 
-	templateComposer := NewTaskComposerModel(tests[5].preset, appModel.runtime)
-	if templateComposer.expanded.draft.taskType != models.TaskTypeBug || templateComposer.expanded.draft.priority != 1 {
-		t.Fatalf("template defaults not applied: %+v", templateComposer.expanded.draft)
-	}
-	if templateComposer.expanded.draft.state != models.StatePaused {
-		t.Fatalf("template state not staged exactly: state=%q", templateComposer.expanded.draft.state)
-	}
-	editComposer := NewTaskComposerModel(tests[6].preset, appModel.runtime)
+	editComposer := NewTaskComposerModel(tests[4].preset, appModel.runtime)
 	editComposer.expanded.titleInput.SetValue("one\ntwo")
 	editComposer.expanded.commitAllTextInputs()
 	if editComposer.expanded.draft.title != "one two" {
@@ -128,35 +110,48 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 	}
 }
 
-func TestTaskComposerLinkedMultilineIsAtomicAndUndoable(t *testing.T) {
-	source, err := models.NewTask("source", 1, models.TaskTypeTask, "Source")
+func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testing.T) {
+	parent, err := models.NewGenericTask("beta-parent", 1, "Beta Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := newScenarioEnv(t, "composer-linked", source)
-	composer := NewTaskComposerModel(linkedComposerPreset(env.project, source, LinkTypeBlocker), nil)
-	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("Blocker one\nBlocker two")
+	env := newCrossProjectTestEnv(t, nil, []*models.Task{parent})
+	features := newFeatureCoordinators(env.svc, env.svc)
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:               ComposerGlobal,
+		Project:            env.projects[0],
+		AllProjects:        env.projects,
+		AllowProjectSwitch: true,
+		Shared:             TaskComposerSharedAttributes{State: models.StateInbox},
+	}, nil)
+	composer.SetCaptureCoordinator(features.Capture)
+	composer.input.SetValue("Alpha task\nBeta child %out1 >1")
 
 	cmd := composer.createCompact(false, false)
 	if cmd == nil {
-		t.Fatal("linked batch returned nil command")
+		t.Fatal("routed batch returned nil command")
 	}
-	msg, ok := cmd().(LinkedTaskBatchCreatedMsg)
-	if !ok || len(msg.Results) != 2 {
-		t.Fatalf("linked result = %#v", msg)
+	msg, ok := cmd().(TaskCreatedMsg)
+	if !ok || msg.CreatedCount != 2 {
+		t.Fatalf("routed result = %#v, want TaskCreatedMsg count 2", msg)
 	}
-	fresh := env.reload(t)
-	committedSource := fresh.GetTaskByID(source.ID)
-	if len(fresh.Tasks) != 3 || committedSource == nil || len(committedSource.DependsOn) != 2 {
-		t.Fatalf("linked batch was not committed together: tasks=%d source=%+v", len(fresh.Tasks), committedSource)
+	alpha := env.reload(t, 0)
+	beta := env.reload(t, 1)
+	if len(alpha.Tasks) != 1 || alpha.Tasks[0].Title != "Alpha task" || alpha.Tasks[0].State() != models.StateInbox {
+		t.Fatalf("alpha capture = %+v", alpha.Tasks)
+	}
+	child := beta.GetTaskByShortID(2)
+	if len(beta.Tasks) != 2 || child == nil || child.Title != "Beta child" ||
+		child.ParentID == nil || *child.ParentID != parent.ID || child.State() != models.StateReady {
+		t.Fatalf("beta routed child = %+v tasks=%+v", child, beta.Tasks)
 	}
 
 	env.undo(t)
-	fresh = env.reload(t)
-	committedSource = fresh.GetTaskByID(source.ID)
-	if len(fresh.Tasks) != 1 || committedSource == nil || len(committedSource.DependsOn) != 0 {
-		t.Fatalf("linked batch undo was partial: tasks=%d source=%+v", len(fresh.Tasks), committedSource)
+	if got := len(env.reload(t, 0).Tasks); got != 0 {
+		t.Fatalf("one undo left %d alpha tasks", got)
+	}
+	if got := len(env.reload(t, 1).Tasks); got != 1 {
+		t.Fatalf("one undo left %d beta tasks, want original parent", got)
 	}
 }
 
@@ -180,7 +175,7 @@ func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
 	if composer.mode != ComposerExpanded || composer.expanded == nil {
 		t.Fatal("single line did not expand")
 	}
-	if composer.expanded.draft.title != "Ship it" || composer.expanded.draft.taskType != models.TaskTypeBug || composer.expanded.draft.priority != 1 {
+	if composer.expanded.draft.title != "Ship it ^bug" || composer.expanded.draft.priority != 1 {
 		t.Fatalf("expanded draft lost compact fields: %+v", composer.expanded.draft)
 	}
 }
@@ -234,76 +229,36 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 	}
 }
 
-func TestTaskComposerEditEscFlowThroughTypedOverlay(t *testing.T) {
-	t.Run("clean edit closes", func(t *testing.T) {
-		appModel, project := newTestAppModelWithProject()
-		appModel.Update(EditTaskMsg{Project: project, Task: project.Tasks[0]})
+func TestDailyTaskEditsUseNarrowTypedOverlays(t *testing.T) {
+	appModel, project := newTestAppModelWithProject()
+	task := project.Tasks[0]
 
-		if !appModel.activeTaskComposer() {
-			t.Fatal("edit did not open the typed Task Composer overlay")
-		}
-		_, cmd := appModel.Update(syntheticSpecialKey(tea.KeyEsc))
-		if cmd == nil {
-			t.Fatal("clean edit Esc did not request navigation back")
-		}
-		backMsg := cmd()
-		if _, ok := backMsg.(BackMsg); !ok {
-			t.Fatalf("clean edit Esc emitted %T, want BackMsg", backMsg)
-		}
-		appModel.Update(backMsg)
-		if appModel.activeTaskComposer() || appModel.taskComposer != nil {
-			t.Fatal("clean edit Esc left the Task Composer overlay open")
-		}
+	appModel.Update(EditTaskMsg{Project: project, Task: task})
+	if appModel.currentView() != ViewTextEditor {
+		t.Fatalf("title edit view = %v, want TextEditor", appModel.currentView())
+	}
+	if appModel.activeTaskComposer() || appModel.taskComposer != nil {
+		t.Fatal("title edit opened the full Task Composer")
+	}
+	if appModel.pendingTaskTextEdit == nil ||
+		appModel.pendingTaskTextEdit.Operation != app.TaskOperationEditTitle {
+		t.Fatalf("title edit pending operation = %+v", appModel.pendingTaskTextEdit)
+	}
+
+	appModel.popView()
+	appModel.Update(ShowTaskTextEditorMsg{
+		Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 	})
-
-	t.Run("dirty edit exposes and dismisses discard confirmation", func(t *testing.T) {
-		appModel, project := newTestAppModelWithProject()
-		task := project.Tasks[0]
-		originalTitle := task.Title
-		appModel.Update(EditTaskMsg{Project: project, Task: task})
-
-		appModel.Update(syntheticKey('x'))
-		if appModel.taskComposer == nil || appModel.taskComposer.expanded == nil || !appModel.taskComposer.expanded.hasChanges {
-			t.Fatal("typing in the edit composer did not dirty the embedded form")
-		}
-
-		appModel.Update(syntheticSpecialKey(tea.KeyEsc))
-		if !appModel.activeTaskComposer() {
-			t.Fatal("dirty edit Esc closed without confirmation")
-		}
-		if popup := appModel.renderConfirmDialogOverlay(); !strings.Contains(popup, "Discard unsaved changes?") {
-			t.Fatalf("dirty edit confirmation was not surfaced through the shell: %q", popup)
-		}
-
-		draftTitle := appModel.taskComposer.expanded.draft.title
-		appModel.Update(syntheticSpecialKey(tea.KeyEsc))
-		if popup := appModel.renderConfirmDialogOverlay(); popup != "" {
-			t.Fatalf("Esc did not dismiss the discard confirmation: %q", popup)
-		}
-		if !appModel.activeTaskComposer() {
-			t.Fatal("dismissing the discard confirmation closed the composer")
-		}
-		if appModel.taskComposer.expanded.draft.title != draftTitle {
-			t.Fatal("dismissing the discard confirmation changed the draft")
-		}
-
-		appModel.Update(syntheticSpecialKey(tea.KeyEsc))
-		_, cmd := appModel.Update(syntheticKey('y'))
-		if cmd == nil {
-			t.Fatal("confirming discard did not request navigation back")
-		}
-		backMsg := cmd()
-		if _, ok := backMsg.(BackMsg); !ok {
-			t.Fatalf("confirming discard emitted %T, want BackMsg", backMsg)
-		}
-		appModel.Update(backMsg)
-		if appModel.activeTaskComposer() || appModel.taskComposer != nil {
-			t.Fatal("confirming discard left the Task Composer overlay open")
-		}
-		if task.Title != originalTitle {
-			t.Fatal("discarding the draft mutated the task")
-		}
-	})
+	if appModel.currentView() != ViewTextEditor {
+		t.Fatalf("description edit view = %v, want TextEditor", appModel.currentView())
+	}
+	if appModel.activeTaskComposer() || appModel.taskComposer != nil {
+		t.Fatal("description edit opened the full Task Composer")
+	}
+	if appModel.pendingTaskTextEdit == nil ||
+		appModel.pendingTaskTextEdit.Operation != app.TaskOperationEditDescription {
+		t.Fatalf("description edit pending operation = %+v", appModel.pendingTaskTextEdit)
+	}
 }
 
 func TestTaskComposerPlannerPresetCarriesStateAndAtomicArtifacts(t *testing.T) {
@@ -317,7 +272,7 @@ func TestTaskComposerPlannerPresetCarriesStateAndAtomicArtifacts(t *testing.T) {
 		PlanningArtifacts: builder,
 	}, nil)
 	composer.input.SetValue("Plan me")
-	reqs, _, ok := composer.parseCompactLines()
+	reqs, ok := composer.parseCompactLines()
 	if !ok || len(reqs) != 1 || reqs[0].State != models.StateNext || reqs[0].PlanningArtifacts == nil {
 		t.Fatalf("planner preset request = %+v errors=%+v", reqs, composer.errors)
 	}

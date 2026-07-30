@@ -45,10 +45,7 @@ func (m *TaskDecisionsModel) View() tea.View {
 func (m *TaskDecisionsModel) renderExpandedView(b *strings.Builder) tea.View {
 	decision := m.task.Decisions[m.cursor]
 	timestamp := FormatTimestampBracket(decision.CreatedAt)
-	headerLabel := fmt.Sprintf("Decision [%d] [%s]", m.cursor, decision.Category)
-	if decision.Resolved {
-		headerLabel += " [resolved]"
-	}
+	headerLabel := fmt.Sprintf("Decision [%d]", m.cursor)
 
 	b.WriteString(FieldLabelFocusedStyle.Render(headerLabel))
 	b.WriteString("\n")
@@ -77,9 +74,6 @@ func (m *TaskDecisionsModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", decision.CreatedAt)))
 	b.WriteString("\n\n")
 
-	b.WriteString(m.renderCategorySelector(m.editCategoryIdx))
-	b.WriteString("\n\n")
-
 	applyThemedTextarea(&m.editTextInput)
 	applyThemedTextarea(&m.editRationale)
 
@@ -103,15 +97,12 @@ func (m *TaskDecisionsModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString(m.editRationale.View())
 	b.WriteString("\n\n")
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch field · Ctrl+Y: cycle category · Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch field · Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
 func (m *TaskDecisionsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(FieldLabelFocusedStyle.Render("Add Decision:"))
-	b.WriteString("\n\n")
-
-	b.WriteString(m.renderCategorySelector(m.categoryIndex))
 	b.WriteString("\n\n")
 
 	applyThemedTextarea(&m.textInput)
@@ -137,26 +128,12 @@ func (m *TaskDecisionsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(m.rationaleInput.View())
 	b.WriteString("\n\n")
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch field · Ctrl+Y: cycle category · Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch field · Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
-func (m *TaskDecisionsModel) renderCategorySelector(selected int) string {
-	cats := allDecisionCategories()
-	var parts []string
-	for i, cat := range cats {
-		label := string(cat)
-		if i == selected {
-			parts = append(parts, SelectorOptionSelectedStyle.Render(label))
-		} else {
-			parts = append(parts, MutedStyle.Render(label))
-		}
-	}
-	return FieldLabelStyle.Render("Category: ") + strings.Join(parts, " ")
-}
-
 func (m *TaskDecisionsModel) renderDecisionsSummary(b *strings.Builder) {
-	renderTaskItemSummary(b, "decision", len(m.task.Decisions), m.task.UnresolvedDecisionCount())
+	renderTaskItemSummary(b, "decision", len(m.task.Decisions))
 }
 
 func (m *TaskDecisionsModel) renderMessages(b *strings.Builder) {
@@ -197,32 +174,23 @@ func (m *TaskDecisionsModel) renderDecisionEntry(index int, decision *models.Dec
 	var entry strings.Builder
 	entry.WriteString("  ")
 
-	categoryLabel := fmt.Sprintf("[%s]", decision.Category)
 	timestamp := FormatTimestampBracket(decision.CreatedAt)
-	resolvedSuffix := ""
-	if decision.Resolved {
-		resolvedSuffix = " [resolved]"
-	}
 
 	if index == m.cursor {
 		entry.WriteString(BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
-		entry.WriteString(FieldLabelFocusedStyle.Render(categoryLabel))
-		entry.WriteString(" ")
-		entry.WriteString(FieldLabelFocusedStyle.Render(timestamp + resolvedSuffix))
+		entry.WriteString(FieldLabelFocusedStyle.Render(timestamp))
 	} else {
 		entry.WriteString(MutedStyle.Render(fmt.Sprintf("[%d] ", index)))
-		entry.WriteString(MutedStyle.Render(categoryLabel))
-		entry.WriteString(" ")
-		entry.WriteString(MutedStyle.Render(timestamp + resolvedSuffix))
+		entry.WriteString(MutedStyle.Render(timestamp))
 	}
 	entry.WriteString("\n")
 
-	renderTaskItemPreview(&entry, decision.Text, maxLen, decision.Resolved)
+	renderTaskItemPreview(&entry, decision.Text, maxLen, false)
 
 	return entry.String()
 }
 
 func (m *TaskDecisionsModel) renderFooter(b *strings.Builder) {
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · y: copy · Y: copy all · Enter: expand · Esc: close", m.Width())))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · d/x: delete · y: copy · Y: copy all · Enter: expand · Esc: close", m.Width())))
 }

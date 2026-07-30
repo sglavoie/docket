@@ -23,8 +23,8 @@ type ViewCapabilities interface {
 	// HasTextInput returns true if the view currently has active text input.
 	HasTextInput() bool
 	// IsFullHeight returns true if the view should use the full terminal height
-	// (no external status bar). Views like Help, Tutor, Ask, and Command Palette
-	// render their own footer and need the entire terminal area.
+	// (no external status bar). Views like Help render their own footer and need
+	// the entire terminal area.
 	IsFullHeight() bool
 }
 

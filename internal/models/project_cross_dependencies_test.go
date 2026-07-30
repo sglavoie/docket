@@ -12,19 +12,19 @@ func TestMoveTaskToProjectClearsCrossProjectDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	parent, err := NewGenericTask("parent", 1, "Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := NewTask("other", 4, TaskTypeTask, "Other Task")
+	other, err := NewGenericTask("other", 4, "Other Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,15 +63,15 @@ func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("task3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("task3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,15 +105,15 @@ func TestMoveTaskToProjectPreservesCrossProjectRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := NewTask("other", 3, TaskTypeTask, "Other Task")
+	other, err := NewGenericTask("other", 3, "Other Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,9 +121,6 @@ func TestMoveTaskToProjectPreservesCrossProjectRefs(t *testing.T) {
 	crossRef := "external-proj-id:remote-task-id"
 	_ = task1.AddDependency(crossRef)
 	_ = task1.AddDependency(other.ID)
-
-	crossRelRef := "another-proj-id:another-task-id"
-	task1.RelatedTo = []string{crossRelRef, task2.ID}
 
 	sourceProj.Tasks = []*Task{task1, task2, other}
 	sourceProj.BuildTaskTree()
@@ -138,13 +135,6 @@ func TestMoveTaskToProjectPreservesCrossProjectRefs(t *testing.T) {
 	}
 	if task1.DependsOn[0] != crossRef {
 		t.Errorf("expected cross-project ref %q to be preserved, got %q", crossRef, task1.DependsOn[0])
-	}
-
-	if len(task1.RelatedTo) != 1 {
-		t.Fatalf("expected 1 RelatedTo preserved (cross-project ref), got %d: %v", len(task1.RelatedTo), task1.RelatedTo)
-	}
-	if task1.RelatedTo[0] != crossRelRef {
-		t.Errorf("expected cross-project RelatedTo %q to be preserved, got %q", crossRelRef, task1.RelatedTo[0])
 	}
 
 	if len(result.ClearedDeps) != 1 || result.ClearedDeps[0] != other.ID {

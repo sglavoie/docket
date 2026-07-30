@@ -87,12 +87,6 @@ func TestTaskForm_Save_CreateInitializesCollectionFields(t *testing.T) {
 	if task.DependsOn == nil {
 		t.Error("DependsOn should be initialized to empty slice, got nil")
 	}
-	if task.RelatedTo == nil {
-		t.Error("RelatedTo should be initialized to empty slice, got nil")
-	}
-	if task.ScoreDimensions == nil {
-		t.Error("ScoreDimensions should be initialized to empty map, got nil")
-	}
 }
 
 func TestTaskForm_Save_CreateHappyPath_AddsChecklistItems(t *testing.T) {
@@ -136,17 +130,16 @@ func TestTaskForm_Save_CreateResultCarriesProjectID(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Save_CreateHappyPath_AddsSubtasksForEpic(t *testing.T) {
-	env := newScenarioEnv(t, "create-epic")
+func TestTaskForm_Save_CreateHappyPath_AddsSubtasks(t *testing.T) {
+	env := newScenarioEnv(t, "create-parent")
 	m := scenarioCreateForm(t, env)
 
-	m.draft.taskType = models.TaskTypeEpic
-	m.draft.title = "Parent Epic"
-	m.titleInput.SetValue("Parent Epic")
+	m.draft.title = "Parent Task"
+	m.titleInput.SetValue("Parent Task")
 	m.draft.subtasks = []formSubtaskDraft{
-		{title: "child one", taskType: models.TaskTypeTask},
-		{title: "", taskType: models.TaskTypeTask},
-		{title: "child two", taskType: models.TaskTypeBug},
+		{title: "child one"},
+		{title: ""},
+		{title: "child two"},
 	}
 
 	msg := runCreate(t, m)
@@ -154,7 +147,7 @@ func TestTaskForm_Save_CreateHappyPath_AddsSubtasksForEpic(t *testing.T) {
 
 	parent := fresh.GetTaskByID(msg.Result.TaskID)
 	if parent == nil {
-		t.Fatal("epic absent from reloaded project")
+		t.Fatal("parent absent from reloaded project")
 	}
 	var childOne, childTwo *models.Task
 	for _, task := range fresh.Tasks {
@@ -169,13 +162,10 @@ func TestTaskForm_Save_CreateHappyPath_AddsSubtasksForEpic(t *testing.T) {
 		t.Fatalf("subtasks missing: one=%v two=%v", childOne, childTwo)
 	}
 	if childOne.ParentID == nil || *childOne.ParentID != parent.ID {
-		t.Errorf("child one not parented to the epic")
-	}
-	if childTwo.Type != models.TaskTypeBug {
-		t.Errorf("child two type = %v, want bug", childTwo.Type)
+		t.Errorf("child one not parented to the parent task")
 	}
 	// The blank-title subtask was skipped.
-	if childOne.DependsOn == nil || childOne.ScoreDimensions == nil {
+	if childOne.DependsOn == nil {
 		t.Error("subtask collection fields should be initialized")
 	}
 }
@@ -184,11 +174,10 @@ func TestTaskForm_Save_CreateOpenAfterSubtaskTargetsChild(t *testing.T) {
 	env := newScenarioEnv(t, "create-openafter")
 	m := scenarioCreateForm(t, env)
 
-	m.draft.taskType = models.TaskTypeEpic
-	m.draft.title = "Parent Epic"
-	m.titleInput.SetValue("Parent Epic")
+	m.draft.title = "Parent Task"
+	m.titleInput.SetValue("Parent Task")
 	m.draft.subtasks = []formSubtaskDraft{
-		{title: "open-after subtask", taskType: models.TaskTypeTask},
+		{title: "open-after subtask"},
 	}
 	m.subtaskOpenDetail = true
 	m.subtaskOpenIdx = 0
@@ -201,82 +190,11 @@ func TestTaskForm_Save_CreateOpenAfterSubtaskTargetsChild(t *testing.T) {
 		t.Fatal("OpenTaskID should target the created subtask")
 	}
 	if msg.OpenTaskID == msg.Result.TaskID {
-		t.Error("OpenTaskID should target the subtask, not the parent epic")
+		t.Error("OpenTaskID should target the subtask, not the parent task")
 	}
 	child := env.reload(t).GetTaskByID(msg.OpenTaskID)
 	if child == nil || child.Title != "open-after subtask" {
 		t.Fatalf("open-after target is not the subtask: %v", child)
-	}
-}
-
-// ── Dimmed-aware insertion ──────────────────────────────────────────────────
-
-func seedDimmedTask(t *testing.T, shortID int, title string, state models.WorkflowState) *models.Task {
-	t.Helper()
-	task := seedTask(t, shortID, title, models.StateReady)
-	task.ApplyWorkflowState(state)
-	task.Dimmed = true
-	return task
-}
-
-func TestTaskForm_Save_Create_InsertsBeforeDimmedSameSection(t *testing.T) {
-	dimmed := seedDimmedTask(t, 1, "Dimmed existing", models.StateNext)
-	env := newScenarioEnv(t, "create-dimmed", dimmed)
-	m := scenarioCreateForm(t, env)
-
-	m.draft.title = "New important task"
-	m.titleInput.SetValue("New important task")
-	m.draft.state = models.StateNext
-
-	msg := runCreate(t, m)
-	fresh := env.reload(t)
-
-	newIdx, dimmedIdx := -1, -1
-	for i, task := range fresh.Tasks {
-		switch task.Title {
-		case "New important task":
-			newIdx = i
-		case "Dimmed existing":
-			dimmedIdx = i
-		}
-	}
-	if newIdx < 0 || dimmedIdx < 0 {
-		t.Fatalf("tasks not found: new=%d dimmed=%d", newIdx, dimmedIdx)
-	}
-	if newIdx >= dimmedIdx {
-		t.Errorf("new task at %d should precede dimmed task at %d", newIdx, dimmedIdx)
-	}
-	_ = msg
-}
-
-func TestTaskForm_Save_Create_DimmedInDifferentSectionIgnored(t *testing.T) {
-	dimmed := seedDimmedTask(t, 1, "Dimmed in Inbox", models.StateInbox)
-	env := newScenarioEnv(t, "create-dimmed-other", dimmed)
-	m := scenarioCreateForm(t, env)
-
-	m.draft.title = "New Next task"
-	m.titleInput.SetValue("New Next task")
-	m.draft.state = models.StateNext
-
-	runCreate(t, m)
-	fresh := env.reload(t)
-
-	newIdx, dimmedIdx := -1, -1
-	for i, task := range fresh.Tasks {
-		switch task.Title {
-		case "New Next task":
-			newIdx = i
-		case "Dimmed in Inbox":
-			dimmedIdx = i
-		}
-	}
-	if newIdx < 0 || dimmedIdx < 0 {
-		t.Fatalf("tasks not found: new=%d dimmed=%d", newIdx, dimmedIdx)
-	}
-	// The dimmed task is in a different section, so it must not pull the new task
-	// before it.
-	if newIdx <= dimmedIdx {
-		t.Errorf("new Next task (%d) should not precede Inbox-dimmed task (%d)", newIdx, dimmedIdx)
 	}
 }
 

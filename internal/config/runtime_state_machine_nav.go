@@ -3,14 +3,10 @@ package config
 import "github.com/sglavoie/tt/internal/models"
 
 // This file holds the catalog-combining navigation accessors on RuntimeState:
-// the machine-local domain owns the cycle/context project ID lists and the
-// current-project selection, but rehydrating those IDs into *models.Project
-// requires the workspace catalog. Each mirrors its (*Config) counterpart but
-// reads the in-memory Machine + Catalog domains instead of the facade, so the
-// project-cycle manager, context pickers, and navigation helpers stay disk-free
-// and off config.Config. The archived filter matches the facade: a referenced
-// project that no longer exists or is archived is dropped from the returned
-// list (but still counted by the *ArchivedCount* helpers).
+// the machine-local domain owns custom-context project ID lists, but rehydrating
+// those IDs into *models.Project requires the workspace catalog. Archived and
+// missing references are excluded from active results while retaining their
+// diagnostic counts.
 
 // GetProject rehydrates a cataloged project by ID or slug, or nil if none
 // matches. It mirrors (*Config).GetProject over the in-memory catalog snapshot.
@@ -24,19 +20,6 @@ func (rs *RuntimeState) GetProject(idOrSlug string) *models.Project {
 		}
 	}
 	return nil
-}
-
-// CurrentProject rehydrates the machine-local current-project selection, or nil
-// when none is selected. It mirrors (*Config).GetCurrentProject.
-func (rs *RuntimeState) CurrentProject() *models.Project {
-	if rs == nil {
-		return nil
-	}
-	id := rs.Machine().CurrentProject
-	if id == "" {
-		return nil
-	}
-	return rs.GetProject(id)
 }
 
 // CustomContextProjects mirrors (*Config).GetCustomContextProjects.
@@ -53,14 +36,6 @@ func (rs *RuntimeState) CustomContextProjectCount(name string) int {
 // (*Config).GetCustomContextArchivedProjectCount.
 func (rs *RuntimeState) CustomContextArchivedProjectCount(name string) int {
 	return rs.archivedProjectCountForIDs(rs.Machine().GetCustomContext(name))
-}
-
-// CustomContextHiddenProjectCount counts stored project IDs that resolve to a
-// cataloged sandbox or internal project. Those are real memberships no
-// active-only surface can list, so they are reported alongside the archived and
-// missing counts instead of vanishing from every total.
-func (rs *RuntimeState) CustomContextHiddenProjectCount(name string) int {
-	return rs.hiddenProjectCountForIDs(rs.Machine().GetCustomContext(name))
 }
 
 // CustomContextStaleReferenceCount counts stored project IDs that no longer
@@ -96,19 +71,6 @@ func (rs *RuntimeState) archivedProjectCountForIDs(ids []string) int {
 	count := 0
 	for _, id := range ids {
 		if p := rs.GetProject(id); p != nil && p.Archived {
-			count++
-		}
-	}
-	return count
-}
-
-// hiddenProjectCountForIDs counts IDs resolving to a cataloged project that is
-// ineligible for a scope for a reason other than archival: sandbox or internal.
-func (rs *RuntimeState) hiddenProjectCountForIDs(ids []string) int {
-	count := 0
-	for _, id := range ids {
-		p := rs.GetProject(id)
-		if p != nil && !p.Archived && !IsActiveContextMember(p) {
 			count++
 		}
 	}

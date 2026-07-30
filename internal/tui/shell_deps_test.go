@@ -60,8 +60,7 @@ func TestShellDepsRuntimeReadsDomainsWithoutFacade(t *testing.T) {
 	}
 
 	rs := app.deps.Runtime
-	if rs.Catalog() == nil || rs.Planning() == nil || rs.Settings() == nil ||
-		rs.Automation() == nil || rs.Machine() == nil {
+	if rs.Catalog() == nil || rs.Planning() == nil || rs.Machine() == nil {
 		t.Fatal("bundle RuntimeState must expose every domain accessor")
 	}
 }

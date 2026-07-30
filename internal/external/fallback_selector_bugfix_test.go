@@ -15,7 +15,7 @@ import (
 func TestFallbackMultiSelectTasks_Deduplicates(t *testing.T) {
 	tasks := make([]*models.Task, 3)
 	for i := range tasks {
-		tsk, err := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, "task")
+		tsk, err := models.NewGenericTask(uuid.New().String(), i+1, "task")
 		if err != nil {
 			t.Fatalf("new task: %v", err)
 		}

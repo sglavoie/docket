@@ -1,7 +1,7 @@
 {
   "name": "filter-chord-states",
   "fixture": "rich",
-  "size": "100x35",
+  "size": "99x35",
   "actions": [
     { "type": "key", "label": "open the state filter picker", "key": "f" },
     { "type": "key", "key": "s" },

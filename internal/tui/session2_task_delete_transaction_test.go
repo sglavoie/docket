@@ -35,7 +35,7 @@ type taskDeleteEnv struct {
 func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	newProject := func(slug, name string, tasks []*models.Task) *models.Project {
@@ -60,7 +60,7 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 
 	// The parent is an epic so a task may legally nest beneath it (a task cannot
 	// be the child of another task per the type hierarchy).
-	parent, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeEpic, "Parent")
+	parent, err := models.NewGenericTask(uuid.New().String(), 1, "Parent")
 	if err != nil {
 		t.Fatalf("NewTask epic: %v", err)
 	}
@@ -80,11 +80,8 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	cfg := newTestConfigAt(dataDir)
 	setTestProjects(cfg, []*models.Project{alpha, beta})
-	cfg.Machine().CurrentProject = alpha.ID
-	// A durable planning ref inside the deleted subtree (the child) and a
-	// machine-local recent visit to the root: both must be repaired on delete.
-	cfg.Planning().FocusQueue = []config.FocusQueueItem{{ProjectID: alpha.ID, TaskID: child.ID}}
-	cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{{ProjectID: alpha.ID, TaskID: parent.ID}}
+	// A durable planning ref inside the deleted subtree must be repaired on delete.
+	cfg.Planning().NextOrder = []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: child.ID}}
 	if err := saveTestRuntime(mgr, cfg); err != nil {
 		t.Fatalf("seed config: %v", err)
 	}
@@ -103,7 +100,7 @@ func (e *taskDeleteEnv) appModel() *AppModel {
 		projects:             map[string]*models.Project{e.alpha.ID: e.alpha, e.beta.ID: e.beta},
 		persister:            NewProjectService(),
 		appService:           e.svc,
-		secondaryFeatures:    newSecondaryCoordinators(e.svc, nil),
+		secondaryFeatures:    newSecondaryCoordinators(e.svc),
 		views:                NewViewRegistry(),
 		width:                80,
 		height:               24,
@@ -272,8 +269,8 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	}
 
 	// Building the checked artifact must not mutate the cached snapshot before commit.
-	if len(runtime.Planning().GetFocusQueue()) != 1 {
-		t.Errorf("cached focus queue changed before commit: %v", runtime.Planning().GetFocusQueue())
+	if len(runtime.Planning().GetNextOrder()) != 1 {
+		t.Errorf("cached focus queue changed before commit: %v", runtime.Planning().GetNextOrder())
 	}
 
 	msg := runBatchResult(t, cmd)
@@ -296,19 +293,16 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 		t.Error("sibling should survive the subtree delete")
 	}
 
-	// Durable planning cleanup committed with the delete; recent visits repaired after.
-	if len(runtime.Planning().GetFocusQueue()) != 0 {
-		t.Errorf("runtime focus queue should be cleaned, got %v", runtime.Planning().GetFocusQueue())
-	}
-	if len(runtime.Machine().RecentTaskVisits) != 0 {
-		t.Errorf("recent visits should be repaired, got %v", runtime.Machine().RecentTaskVisits)
+	// Durable planning cleanup committed with the delete.
+	if len(runtime.Planning().GetNextOrder()) != 0 {
+		t.Errorf("runtime focus queue should be cleaned, got %v", runtime.Planning().GetNextOrder())
 	}
 	reloadedCfg, err := config.NewManager(filepath.Join(e.dataDir, ".tt.json")).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	if len(reloadedCfg.Planning().FocusQueue) != 0 {
-		t.Errorf("durable focus queue should be cleaned on disk, got %v", reloadedCfg.Planning().FocusQueue)
+	if len(reloadedCfg.Planning().NextOrder) != 0 {
+		t.Errorf("durable focus queue should be cleaned on disk, got %v", reloadedCfg.Planning().NextOrder)
 	}
 
 	// Undo restores the deleted subtree from the workspace ledger.
@@ -399,16 +393,11 @@ func TestTUITaskDeletePreservesDuplicateIDReferencesInOtherProject(t *testing.T)
 	if err := storage.SaveProject(e.beta); err != nil {
 		t.Fatalf("save beta duplicate: %v", err)
 	}
-	e.cfg.Planning().FocusQueue = []config.FocusQueueItem{
+	e.cfg.Planning().NextOrder = []config.ProjectTaskLocator{
 		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
 		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
 	}
-	e.cfg.Planning().DailyPlan = []config.DailyPlanItem{
-		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
-		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
-	}
-	e.cfg.Planning().FocusDismissedIDs = []string{e.parent.ID}
-	e.cfg.Machine().RecentTaskVisits = []config.RecentTaskVisit{
+	e.cfg.Planning().Today = []config.ProjectTaskLocator{
 		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
 		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
 	}
@@ -430,17 +419,11 @@ func TestTUITaskDeletePreservesDuplicateIDReferencesInOtherProject(t *testing.T)
 	if e.reload(t, e.beta).GetTaskByID(e.lone.ID) != nil {
 		t.Fatal("beta/shared survived delete")
 	}
-	if got := m.runtime.Planning().FocusQueue; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+	if got := m.runtime.Planning().NextOrder; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
 		t.Fatalf("delete cleaned wrong focus refs: %+v", got)
 	}
-	if got := m.runtime.Planning().DailyPlan; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+	if got := m.runtime.Planning().Today; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
 		t.Fatalf("delete cleaned wrong daily refs: %+v", got)
-	}
-	if got := m.runtime.Planning().FocusDismissedIDs; len(got) != 1 || got[0] != e.parent.ID {
-		t.Fatalf("qualified delete changed legacy dismissed IDs: %v", got)
-	}
-	if got := m.runtime.Machine().RecentTaskVisits; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
-		t.Fatalf("delete cleaned wrong recent visits: %+v", got)
 	}
 }
 

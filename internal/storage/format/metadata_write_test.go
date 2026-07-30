@@ -21,7 +21,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "basic task",
 			task: &models.Task{
 				ID:            "task-123",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      3,
 			},
@@ -31,7 +30,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with tags",
 			task: &models.Task{
 				ID:            "task-456",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateDone,
 				Priority:      1,
 				Tags:          []string{"work", "urgent"},
@@ -44,7 +42,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with GTD section",
 			task: &models.Task{
 				ID:            "task-789",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateNext,
 				Priority:      2,
 			},
@@ -54,7 +51,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with dates",
 			task: &models.Task{
 				ID:            "task-1",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      2,
 				CreatedAt:     time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
@@ -67,7 +63,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with completed timestamp",
 			task: &models.Task{
 				ID:            "task-2",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateDone,
 				Priority:      1,
 				CreatedAt:     time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
@@ -80,7 +75,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with dependencies",
 			task: &models.Task{
 				ID:            "task-3",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateWaiting,
 				Priority:      2,
 				DependsOn:     []string{"task-1", "task-2"},
@@ -93,7 +87,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with boolean flags",
 			task: &models.Task{
 				ID:            "task-4",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      2,
 				Pinned:        true,
@@ -104,7 +97,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with daily recurrence",
 			task: &models.Task{
 				ID:            "task-5",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      1,
 				Recurrence: &models.RecurrencePattern{
@@ -115,19 +107,17 @@ func TestWriteMetadataV2(t *testing.T) {
 			want: "<!-- id: task-5, state: ready, priority: 1, recur: 1d -->",
 		},
 		{
-			name: "task with weekly recurrence and weekdays",
+			name: "task with multi-week recurrence",
 			task: &models.Task{
 				ID:            "task-6",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      2,
 				Recurrence: &models.RecurrencePattern{
 					Interval: 2,
 					Unit:     models.RecurrenceWeekly,
-					Weekdays: []int{1, 3, 5},
 				},
 			},
-			want: "<!-- id: task-6, state: ready, priority: 2, recur: 2w:mon,wed,fri -->",
+			want: "<!-- id: task-6, state: ready, priority: 2, recur: 2w -->",
 		},
 		{
 			// Custom stages are retired: `stage:` is dropped and the state
@@ -135,7 +125,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with stage",
 			task: &models.Task{
 				ID:            "task-stage",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      2,
 			},
@@ -145,7 +134,6 @@ func TestWriteMetadataV2(t *testing.T) {
 			name: "task with updated same as created",
 			task: &models.Task{
 				ID:            "task-7",
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      1,
 				CreatedAt:     time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),

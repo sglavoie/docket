@@ -2,8 +2,6 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *AppModel) currentFocusTarget() FocusTarget {
@@ -43,7 +41,7 @@ func (m *AppModel) presentationPath() []PresentationID {
 		}
 	}
 	for _, overlay := range m.navigation.Overlays.Overlays() {
-		if view, ok := overlay.Presentation(); ok && view != ViewDashboard {
+		if view, ok := overlay.Presentation(); ok && view != ViewUnknown {
 			path = append(path, view)
 			continue
 		}
@@ -61,7 +59,7 @@ func (m *AppModel) presentationPath() []PresentationID {
 }
 
 func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
-	if view, ok := route.Presentation(); ok && view != ViewDashboard {
+	if view, ok := route.Presentation(); ok && view != ViewUnknown {
 		return view, true
 	}
 	switch route.ID() {
@@ -73,12 +71,6 @@ func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
 		return taskWorkspacePresentation(params), true
 	case SecondaryTool:
 		switch params := route.Params().(type) {
-		case ReviewParams:
-			project := (*models.Project)(nil)
-			if m.reviewHub != nil {
-				project = m.reviewHub.ProjectScope()
-			}
-			return reviewModulePresentation(params.Module, project)
 		case ManageParams:
 			if m.manageHub != nil && manageParamsEqual(params, m.manageHub.Params()) {
 				if view, ok := m.manageHub.PresentationView(); ok {
@@ -101,17 +93,13 @@ func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
 		switch params.Kind {
 		case ReferenceHelp:
 			return ViewHelp, true
-		case ReferenceAsk:
-			return ViewAsk, true
-		case ReferenceTutor:
-			return ViewTutor, true
 		}
 	}
 	return 0, false
 }
 
 // outlinerPrimary resolves the canonical Task Workspace model beneath shell
-// overlays such as Finder.
+// overlays.
 func (m *AppModel) outlinerPrimary() (*OutlinerModel, TaskWorkspaceParams, bool) {
 	route := m.navigation.Primary.Current()
 	if route.ID() != TaskWorkspace {
@@ -133,50 +121,14 @@ func (m *AppModel) activeOutlinerRoute() bool {
 	return !m.navigation.Overlays.Active()
 }
 
-// activeReviewHub reports whether the typed Review secondary tool is the live
-// renderer and is not covered by a legacy-rendered overlay.
-func (m *AppModel) activeReviewHub() bool {
-	if _, _, ok := m.reviewHubPrimary(); !ok {
-		return false
-	}
-	if overlay, ok := m.navigation.Overlays.Current(); ok {
-		if _, hasPresentation := overlay.Presentation(); hasPresentation {
-			return false
-		}
-	}
-	return true
-}
-
-// reviewHubPrimary returns Review even beneath shell overlays so palette
-// actions can resolve the selected task against the same module as direct keys.
-func (m *AppModel) reviewHubPrimary() (*ReviewHubModel, ReviewParams, bool) {
-	if m.reviewHub == nil {
-		return nil, ReviewParams{}, false
-	}
-	route := m.navigation.Primary.Current()
-	if route.ID() != SecondaryTool {
-		return nil, ReviewParams{}, false
-	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return nil, ReviewParams{}, false
-	}
-	params, ok := route.Params().(ReviewParams)
-	if !ok || !reviewParamsEqual(params, m.reviewHub.Params()) {
-		return nil, ReviewParams{}, false
-	}
-	return m.reviewHub, params, true
-}
-
 // activeManageHub reports whether the typed Manage secondary tool is the live
 // renderer and is not covered by a legacy-rendered overlay.
 func (m *AppModel) activeManageHub() bool {
 	if _, _, ok := m.manageHubPrimary(); !ok {
 		return false
 	}
-	if overlay, ok := m.navigation.Overlays.Current(); ok {
-		if _, hasPresentation := overlay.Presentation(); hasPresentation {
-			return false
-		}
+	if overlay, ok := m.navigation.Overlays.Current(); ok && overlayCoversPrimary(overlay) {
+		return false
 	}
 	return true
 }
@@ -207,13 +159,24 @@ func (m *AppModel) activeTaskDetail() bool {
 	if m.taskDetail == nil {
 		return false
 	}
-	if overlay, ok := m.navigation.Overlays.Current(); ok {
-		if _, hasPresentation := overlay.Presentation(); hasPresentation {
-			return false
-		}
+	if overlay, ok := m.navigation.Overlays.Current(); ok && overlayCoversPrimary(overlay) {
+		return false
 	}
 	_, _, ok := m.taskDetailPrimary()
 	return ok
+}
+
+// overlayCoversPrimary distinguishes a real presentation layer from shell
+// state markers such as a hub's embedded view menu. Reference overlays select
+// their presentation through a typed Reference route instead of the legacy
+// Presentation field, so both forms must cover the primary child for rendering,
+// input dispatch, and one-layer Esc ownership.
+func overlayCoversPrimary(overlay Overlay) bool {
+	if _, hasPresentation := overlay.Presentation(); hasPresentation {
+		return true
+	}
+	_, hasReference := overlay.ReferenceRoute()
+	return hasReference
 }
 
 // taskDetailPrimary returns Task Detail beneath shell overlays so global task
@@ -240,9 +203,6 @@ func (m *AppModel) activeView() View {
 	if m.activeTaskComposer() {
 		return m.taskComposer
 	}
-	if m.activeReviewHub() {
-		return m.reviewHub
-	}
 	if m.activeManageHub() {
 		return m.manageHub
 	}
@@ -258,33 +218,15 @@ func (m *AppModel) activeView() View {
 // installTypedPresentation projects a renderer onto the live typed stacks. It
 // returns false for presentation-only views without a route or overlay class.
 func (m *AppModel) installTypedPresentation(view PresentationID) bool {
-	if view == ViewDashboard {
+	if view == ViewUnknown {
 		return false
 	}
 	if overlay, ok, err := overlayForPresentation(view); err == nil && ok {
-		var cancel func()
-		if view == ViewAsk {
-			cancel = m.exitAskView
-		}
-		m.navigation.Overlays.Push(overlay, m.currentFocusTarget(), cancel)
+		m.navigation.Overlays.Push(overlay, m.currentFocusTarget(), nil)
 		return true
 	}
 
 	return false
-}
-
-// installPendingStartupRoute replaces inferred renderer defaults with the
-// exact typed route loaded from configuration. It runs only
-// for the first renderer selected by AppModel.Init.
-func (m *AppModel) installPendingStartupRoute(view PresentationID) {
-	if m.startupRoute == nil || view != m.startupView {
-		return
-	}
-	if m.navigation.ReplaceDestination(*m.startupRoute) != nil {
-		return
-	}
-	m.startupRoute = nil
-	m.startupView = ViewCrossProjectOutliner
 }
 
 func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
@@ -302,9 +244,6 @@ func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
 
 func (m *AppModel) popTypedPresentation() bool {
 	if overlay, _, ok := m.navigation.Overlays.CloseTop(); ok {
-		if view, hasPresentation := overlay.Presentation(); hasPresentation && view == ViewAsk {
-			m.exitAskView()
-		}
 		if overlay.Kind() == OverlayComposer && overlay.Key() == taskComposerOverlayKey {
 			m.taskComposer = nil
 		}

@@ -173,60 +173,6 @@ func (ac *AutocompleteState) BuildAcceptedInput(input string, triggerChar byte) 
 	return input[:ac.TriggerPos] + string(triggerChar) + selected.Value + " "
 }
 
-// DetectKeywordTrigger scans the input for a keyword:partial pattern at the end
-// of the current token, where keyword is one of "has", "is", "no", "p".
-// Returns the mode, trigger position (start of the keyword), and partial text after
-// the colon. Returns acModeNone if no keyword trigger is found.
-func DetectKeywordTrigger(input string) (mode int, triggerPos int, partial string) {
-	if len(input) == 0 {
-		return acModeNone, 0, ""
-	}
-
-	// Find start of the current token (scan back from end until space/newline or start)
-	wordStart := len(input)
-	for i := len(input) - 1; i >= 0; i-- {
-		if input[i] == ' ' || input[i] == '\n' {
-			wordStart = i + 1
-			break
-		}
-		if i == 0 {
-			wordStart = 0
-		}
-	}
-
-	token := input[wordStart:]
-
-	keywords := []struct {
-		prefix string
-		mode   int
-	}{
-		{"has:", acModeHas},
-		{"is:", acModeIs},
-		{"no:", acModeNo},
-		{"p:", acModeSearchProject},
-	}
-
-	tokenLower := strings.ToLower(token)
-	for _, kw := range keywords {
-		if strings.HasPrefix(tokenLower, kw.prefix) {
-			return kw.mode, wordStart, token[len(kw.prefix):]
-		}
-	}
-
-	return acModeNone, 0, ""
-}
-
-// BuildKeywordAcceptedInput constructs the new input value after accepting a keyword
-// trigger suggestion. It replaces from the trigger position to the end of the input
-// with keyword + ":" + selected.Value + " ".
-func (ac *AutocompleteState) BuildKeywordAcceptedInput(input, keyword string) string {
-	if !ac.IsActive() {
-		return input
-	}
-	selected := ac.Selected()
-	return input[:ac.TriggerPos] + keyword + ":" + selected.Value + " "
-}
-
 // TriggerCharForMode returns the trigger character for the given autocomplete mode,
 // using the provided trigger definitions. Returns 0 if mode is not found.
 func TriggerCharForMode(mode int, triggers []ACTrigger) byte {

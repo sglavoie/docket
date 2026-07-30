@@ -72,15 +72,15 @@ func handleQuickEditKey(
 //
 // handleQuickEditKey applies the parsed rename/quick-edit to the loaded project's
 // task in memory, then calls onSave. In single-project mode onSave runs the
-// workflow persist pipeline; in cross-project mode onSave routes the now-mutated
+// project persist pipeline; in cross-project mode onSave routes the now-mutated
 // task through the app-layer Edit seam (a full-form EditRequest that replaces the
 // task's editable fields), committing one ledger transaction so the shell reloads
 // and toasts. The onUndo callback is retired in cross mode — the ledger owns undo.
 func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	proj := m.project
 	// Name the quick-edited task as the planning-reconcile target so a single-project
-	// quick edit that changes the task's section (and therefore its workflow state)
-	// folds Today/Next exclusivity into the same whole-project workflow transaction.
+	// quick edit that changes the task's section (and therefore its state) folds
+	// Today/Next exclusivity into the same whole-project transaction.
 	var editTaskID string
 	if t := m.quickEdit.GetTask(); t != nil {
 		editTaskID = t.ID
@@ -89,7 +89,7 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea
 		if editTaskID != "" {
 			m.undo.TaskIDs = []string{editTaskID}
 		}
-		return m.saveWithWorkflow()
+		return m.saveProject()
 	}
 	undoFn := m.setUndoContext
 	if proj == nil && m.crossQuickEditProject != nil {
@@ -132,27 +132,15 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea
 // form's own save path (task_form_save.go).
 func formEditFromTask(t *models.Task) *app.FormEdit {
 	return &app.FormEdit{
-		Title:         t.Title,
-		Type:          t.Type,
-		Priority:      t.Priority,
-		ParentID:      t.ParentID,
-		Description:   t.Description,
-		Tags:          append([]string{}, t.Tags...),
-		DueDate:       t.DueDate,
-		HasTime:       t.HasTime,
-		StartDate:     t.StartDate,
-		EstimatedDays: t.EstimatedDays,
-		URL:           t.URL,
-		Source:        t.Source,
-		Dimmed:        t.Dimmed,
-		Pinned:        t.Pinned,
-		Recurrence:    t.Recurrence,
-		Checklist:     append([]models.ChecklistItem(nil), t.Checklist...),
-		BugAttrs:      t.BugAttrs,
-		IdeaAttrs:     t.IdeaAttrs,
-		TaskAttrs:     t.TaskAttrs,
-		StoryAttrs:    t.StoryAttrs,
-		EpicAttrs:     t.EpicAttrs,
+		Title:       t.Title,
+		Priority:    t.Priority,
+		ParentID:    t.ParentID,
+		Description: t.Description,
+		Tags:        append([]string{}, t.Tags...),
+		DueDate:     t.DueDate,
+		Pinned:      t.Pinned,
+		Recurrence:  t.Recurrence,
+		Checklist:   append([]models.ChecklistItem(nil), t.Checklist...),
 	}
 }
 
@@ -166,7 +154,7 @@ func (m *OutlinerModel) escSteps() []EscStep {
 		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
 			m.ClearSearch()
 			m.resetViewScrollOffset()
-			m.rebuildRows()
+			rebuildOutlinerPreservingCursor(m)
 		}},
 		{Active: func() bool { return len(m.zoomStack) > 0 }, Clear: func() {
 			top := m.zoomStack[len(m.zoomStack)-1]
@@ -193,9 +181,8 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 		m.SearchShouldCaptureEsc() ||
 		m.multiSelectMode ||
 		m.quickEdit.IsActive() ||
-		m.scoreFilterInput.IsActive() ||
 		AnyEscStepActive(m.escSteps())
 }
 func (m *OutlinerModel) HasTextInput() bool {
-	return m.DefaultHasTextInput() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
+	return m.DefaultHasTextInput() || m.quickEdit.IsActive()
 }

@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -174,6 +175,14 @@ func (m *TextEditorModel) IsFullHeight() bool { return false }
 type ShowTextEditorMsg struct {
 	FieldName    string // "title" or "description"
 	CurrentValue string
+}
+
+// ShowTaskTextEditorMsg opens the narrow daily editor for exactly one task
+// field. Operation must be EditTitle or EditDescription.
+type ShowTaskTextEditorMsg struct {
+	Task      *models.Task
+	Project   *models.Project
+	Operation app.TaskOperation
 }
 
 // TextEditorDoneMsg signals the text editor has finished.

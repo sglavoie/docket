@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -17,12 +16,9 @@ var noteMultiDashRe = regexp.MustCompile(`-{2,}`)
 // workspace-global note collection; location is supplied separately by the
 // application layer rather than persisted in the note itself.
 type Note struct {
-	Title       string    `yaml:"title"`
-	Tags        []string  `yaml:"tags,omitempty"`
-	CreatedAt   time.Time `yaml:"created"`
-	ModifiedAt  time.Time `yaml:"modified"`
-	LinkedTasks []string  `yaml:"linked_tasks,omitempty"`
-	Pinned      bool      `yaml:"pinned,omitempty"`
+	Title      string    `yaml:"title"`
+	CreatedAt  time.Time `yaml:"created"`
+	ModifiedAt time.Time `yaml:"modified"`
 
 	// Filename is the on-disk filename (e.g., "2025-01-28-my-note.md").
 	Filename string `yaml:"-"`
@@ -45,86 +41,12 @@ type Note struct {
 func NewNote(title string) *Note {
 	now := time.Now()
 	return &Note{
-		Title:       title,
-		Tags:        []string{},
-		CreatedAt:   now,
-		ModifiedAt:  now,
-		LinkedTasks: []string{},
-		Filename:    generateFilename(title, now),
-		Body:        "",
+		Title:      title,
+		CreatedAt:  now,
+		ModifiedAt: now,
+		Filename:   generateFilename(title, now),
+		Body:       "",
 	}
-}
-
-// AddTag adds a tag if it is non-empty and not already present.
-func (n *Note) AddTag(tag string) {
-	tag = normalizeTag(tag)
-	if tag == "" {
-		return
-	}
-	if slices.Contains(n.Tags, tag) {
-		return
-	}
-	n.Tags = append(n.Tags, tag)
-	n.ModifiedAt = time.Now()
-}
-
-// SetTags replaces the note's tags, filtering out empty strings and duplicates.
-func (n *Note) SetTags(tags []string) {
-	seen := make(map[string]bool)
-	var cleaned []string
-	for _, t := range tags {
-		t = normalizeTag(t)
-		if t == "" || seen[t] {
-			continue
-		}
-		seen[t] = true
-		cleaned = append(cleaned, t)
-	}
-	if cleaned == nil {
-		cleaned = []string{}
-	}
-	n.Tags = cleaned
-	n.ModifiedAt = time.Now()
-}
-
-// AddLink adds a task UUID to the linked tasks list if not already present.
-// Empty IDs are silently rejected so a malformed input cannot corrupt the
-// LinkedTasks slice and cause every empty lookup to match.
-func (n *Note) AddLink(taskID string) {
-	if taskID == "" {
-		return
-	}
-	if slices.Contains(n.LinkedTasks, taskID) {
-		return
-	}
-	n.LinkedTasks = append(n.LinkedTasks, taskID)
-	n.ModifiedAt = time.Now()
-}
-
-// RemoveLink removes a task UUID from the linked tasks list.
-// Empty IDs are a no-op (mirrors AddLink so we never accidentally remove an
-// orphaned empty entry that snuck in via a corrupted file).
-func (n *Note) RemoveLink(taskID string) {
-	if taskID == "" {
-		return
-	}
-	for i, id := range n.LinkedTasks {
-		if id == taskID {
-			n.LinkedTasks = append(n.LinkedTasks[:i], n.LinkedTasks[i+1:]...)
-			n.ModifiedAt = time.Now()
-			return
-		}
-	}
-}
-
-// HasLink returns true if the note is linked to the given task UUID.
-// An empty taskID always returns false so a missing argument cannot
-// accidentally match a malformed empty entry stored on disk.
-func (n *Note) HasLink(taskID string) bool {
-	if taskID == "" {
-		return false
-	}
-	return slices.Contains(n.LinkedTasks, taskID)
 }
 
 // TitleFromFilename derives a human-readable title from a note filename

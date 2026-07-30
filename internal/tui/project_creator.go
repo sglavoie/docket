@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -16,6 +17,8 @@ import (
 // ProjectCreatorModel handles creating a new project via TUI.
 type ProjectCreatorModel struct {
 	runtime *config.RuntimeState
+	manager *config.Manager
+	service *app.Service
 
 	nameInput     textinput.Model
 	contextInput  textinput.Model
@@ -31,9 +34,9 @@ type ProjectCreatorModel struct {
 	discardConfirmState
 }
 
-// NewProjectCreatorModel creates a new project creator reading the default and
-// available contexts from the domain-native catalog/settings snapshot.
-func NewProjectCreatorModel(runtime *config.RuntimeState) *ProjectCreatorModel {
+// NewProjectCreatorModel creates a project creator reading its default and
+// available contexts from the domain-native catalog snapshot.
+func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manager, service *app.Service) *ProjectCreatorModel {
 	factory := DefaultFormFieldFactory()
 	nameInput := factory.NewTextInputFocused("Project name")
 	nameInput.CharLimit = 100
@@ -54,6 +57,8 @@ func NewProjectCreatorModel(runtime *config.RuntimeState) *ProjectCreatorModel {
 
 	return &ProjectCreatorModel{
 		runtime:       runtime,
+		manager:       manager,
+		service:       service,
 		nameInput:     nameInput,
 		contextInput:  contextInput,
 		contextCursor: 0, // Default context is at index 0
@@ -185,6 +190,8 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 	name := strings.TrimSpace(m.nameInput.Value())
 	contextValue := strings.TrimSpace(m.contextInput.Value())
 	runtime := m.runtime
+	manager := m.manager
+	service := m.service
 	return func() tea.Msg {
 		if name == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
@@ -213,28 +220,47 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		}
 		project.Context = contextValue
 
-		// Ensure data directory exists
-		if err := runtime.EnsureDataDir(); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", err)}
+		if manager == nil || service == nil {
+			return ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
 		}
 
-		// Create project directory and initial tasks.md
-		if err := storage.CreateProjectDir(project); err != nil {
+		if ensureErr := runtime.EnsureDataDir(); ensureErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", ensureErr)}
+		}
+
+		catalog := cloneWorkspaceCatalog(runtime.Catalog())
+		if upsertErr := catalog.UpsertProject(project); upsertErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", upsertErr)}
+		}
+		catalogArtifacts, err := catalogDomainArtifact(manager, catalog)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to encode project catalog: %w", err)}
+		}
+		document, err := storage.CanonicalProjectDocument(project, nil)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
+		}
+		content, err := document.WriteCurrent()
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
+		}
+		requireAbsent := ""
+		artifacts := append(catalogArtifacts, storage.ArtifactChange{
+			Path:             storage.TasksFilePath(project.Path),
+			Data:             []byte(content),
+			Mode:             storage.FilePermissions,
+			ExpectedRevision: &requireAbsent,
+		})
+		if err := service.CommitProjectMutation(storage.OpsCommitRequest{
+			Artifacts:   artifacts,
+			ProjectIDs:  []string{project.ID},
+			UndoAction:  "Create Project",
+			UndoContext: project.Name,
+		}); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
-
-		// Add the project to the catalog domain through a checked commit
-		// (replacing the whole-config Manager.Save), then record it as the
-		// machine-local current-project selection.
-		if err := commitCatalogToRuntime(runtime, func(c *config.WorkspaceCatalog) {
-			c.UpsertProject(project)
-		}); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project catalog: %w", err)}
-		}
-		if err := commitMachineToRuntime(runtime, func(machine *config.MachineState) {
-			machine.CurrentProject = project.ID
-		}); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to set current project: %w", err)}
+		if err := runtime.RefreshAfterCommit(); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 		}
 
 		return ProjectCreatedMsg{Project: project}

@@ -19,7 +19,6 @@ var taskDetailTabOrder = [...]TaskDetailTab{
 	TaskComments,
 	TaskDecisions,
 	TaskAttachments,
-	TaskActivity,
 }
 
 var taskDetailTabNames = [...]string{
@@ -28,7 +27,6 @@ var taskDetailTabNames = [...]string{
 	"Comments",
 	"Decisions",
 	"Attachments",
-	"Activity",
 }
 
 func (t TaskDetailTab) String() string {
@@ -50,8 +48,6 @@ func taskDetailPresentation(tab TaskDetailTab) PresentationID {
 		return ViewTaskDecisions
 	case TaskAttachments:
 		return ViewTaskAttachments
-	case TaskActivity:
-		return ViewTaskActivity
 	case TaskOverview:
 		return ViewTaskDetail
 	default:
@@ -65,7 +61,7 @@ type TaskDetailModel struct {
 	InteractiveViewState
 	task    *models.Task
 	project *models.Project
-	// runtime backs the domain-native scoring read (project scoring profile).
+	// runtime provides project lookup and machine-local theme state.
 	runtime *config.RuntimeState
 
 	// taskItem routes the detail view's own status/priority mutations through the
@@ -79,7 +75,6 @@ type TaskDetailModel struct {
 	comments    *TaskCommentsModel
 	decisions   *TaskDecisionsModel
 	attachments *TaskAttachmentsModel
-	activity    *TaskActivityModel
 
 	scrollOffset      int
 	totalLines        int
@@ -98,16 +93,16 @@ type TaskDetailModel struct {
 
 	// Planning membership is shell-owned because Today and Focus Queue live in
 	// planning state rather than on the task entity itself.
-	inDailyPlan  bool
-	inFocusQueue bool
+	inToday     bool
+	inNextOrder bool
 }
 
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
 func (m *TaskDetailModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
 
-func (m *TaskDetailModel) SetPlanningMembership(inDailyPlan, inFocusQueue bool) {
-	m.inDailyPlan = inDailyPlan
-	m.inFocusQueue = inFocusQueue
+func (m *TaskDetailModel) SetPlanningMembership(inToday, inNextOrder bool) {
+	m.inToday = inToday
+	m.inNextOrder = inNextOrder
 }
 
 // SetTaskItemCoordinator injects the application-layer single-task coordinator
@@ -158,7 +153,7 @@ func NewTaskDetailModelForTab(
 	if err != nil {
 		logging.Warn("glamour renderer init failed: %v", err)
 	}
-	if tab > TaskActivity {
+	if tab > TaskAttachments {
 		tab = TaskOverview
 	}
 	m := &TaskDetailModel{
@@ -172,7 +167,6 @@ func NewTaskDetailModelForTab(
 	m.comments = NewTaskCommentsModelWithEditor(task, project, editor, subview)
 	m.decisions = NewTaskDecisionsModelWithEditor(task, project, editor, subview)
 	m.attachments = NewTaskAttachmentsModel(task, project, runtime, attachment)
-	m.activity = NewTaskActivityModel(task, project)
 	return m
 }
 
@@ -186,9 +180,6 @@ func (m *TaskDetailModel) Init() tea.Cmd {
 func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		if m.shouldChangeTab(msg.String()) {
-			return m.changeTab(msg.String())
-		}
 		if m.tab != TaskOverview {
 			return m.updateActiveTab(msg)
 		}
@@ -249,43 +240,16 @@ func (m *TaskDetailModel) activeTabView() View {
 		return m.decisions
 	case TaskAttachments:
 		return m.attachments
-	case TaskActivity:
-		return m.activity
 	default:
 		return nil
 	}
 }
 
-func (m *TaskDetailModel) shouldChangeTab(key string) bool {
-	if key != "tab" && key != "shift+tab" {
-		return false
-	}
-	if child := m.activeTabView(); child != nil {
-		if caps, ok := child.(ViewCapabilities); ok && (caps.HasTextInput() || caps.ShouldCaptureEsc()) {
-			return false
-		}
-	}
-	return true
-}
-
-func (m *TaskDetailModel) changeTab(key string) (tea.Model, tea.Cmd) {
-	delta := 1
-	if key == "shift+tab" {
-		delta = -1
-	}
-	index := int(m.tab) + delta
-	if index < 0 {
-		index = len(taskDetailTabOrder) - 1
-	}
-	index %= len(taskDetailTabOrder)
-	m.SetTab(taskDetailTabOrder[index])
-	return m, func() tea.Msg { return TaskDetailTabChangedMsg{Tab: m.tab} }
-}
-
-// SetTab changes the active mode without reconstructing embedded models, so
-// cursor and in-progress tab-local state survive ordinary tab switches.
+// SetTab selects the one subordinate tool represented by this task-scoped route.
+// Production input never cycles between tools: each is opened only from its
+// corresponding task-menu action.
 func (m *TaskDetailModel) SetTab(tab TaskDetailTab) {
-	if tab > TaskActivity || tab == m.tab {
+	if tab > TaskAttachments || tab == m.tab {
 		return
 	}
 	m.tab = tab
@@ -316,9 +280,6 @@ func (m *TaskDetailModel) syncEmbeddedTasks() {
 		if m.task != nil {
 			m.attachments.refreshAfterReload()
 		}
-	}
-	if m.activity != nil {
-		m.activity.task = m.task
 	}
 }
 
@@ -352,9 +313,6 @@ func (m *TaskDetailModel) embeddedTabViews() []View {
 	}
 	if m.attachments != nil {
 		views = append(views, m.attachments)
-	}
-	if m.activity != nil {
-		views = append(views, m.activity)
 	}
 	return views
 }

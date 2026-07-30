@@ -6,15 +6,15 @@ import (
 )
 
 func TestTaskDependencies(t *testing.T) {
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocker1, err := NewTask("blocker1", 2, TaskTypeTask, "Blocker 1")
+	blocker1, err := NewGenericTask("blocker1", 2, "Blocker 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocker2, err := NewTask("blocker2", 3, TaskTypeTask, "Blocker 2")
+	blocker2, err := NewGenericTask("blocker2", 3, "Blocker 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestTaskDependencies(t *testing.T) {
 }
 
 func TestAddDependencyRejectsSelfDependency(t *testing.T) {
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestAddDependencyRejectsSelfDependency(t *testing.T) {
 }
 
 func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
 // cause every empty-string lookup to match (mirroring the FindTaskGloballyByID
 // empty-prefix family of bugs).
 func TestAddDependencyRejectsEmptyBlocker(t *testing.T) {
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestAddDependencyRejectsEmptyBlocker(t *testing.T) {
 // TestHasDependencyEmptyReturnsFalse verifies that HasDependency("") never
 // matches, even if a malformed empty entry somehow ended up in DependsOn.
 func TestHasDependencyEmptyReturnsFalse(t *testing.T) {
-	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,8 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// projectOperationContext mimics a non-Scope-Hub host (Finder) naming one
-// frozen project.
+// projectOperationContext mimics a non-Scope-Hub host naming one frozen
+// project.
 func projectOperationContext(projectID string) CommandContext {
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.CurrentEntity = ProjectEntity(projectID)
@@ -21,29 +21,29 @@ func executeProjectOperation(app *AppModel, id OperationID, ctx CommandContext) 
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
-		Source:  OperationSourceFinder,
+		Source:  OperationSourceActionSheet,
 	})
 }
 
-func TestProjectOperationsShareOneHandlerAcrossScopeHubAndFinder(t *testing.T) {
+func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 	app := contextHubApp(t)
 	hub := openContextHub(t, app)
 	focusScopeHubItem(t, hub, "scope-hub:active:beta")
 
 	fromHub := executeProjectOperation(
 		app,
-		operationProjectExport,
+		operationScopeOpenProjectNote,
 		hub.scopeHubActionContext(scopeHubActionTarget{ProjectID: "beta"}),
 	)
-	fromFinder := executeProjectOperation(app, operationProjectExport, projectOperationContext("beta"))
+	fromOtherHost := executeProjectOperation(app, operationScopeOpenProjectNote, projectOperationContext("beta"))
 
-	hubMsg, ok := fromHub.Message.(ExportProjectMsg)
+	hubMsg, ok := fromHub.Message.(ShowNotesMsg)
 	if !ok || hubMsg.Project == nil || hubMsg.Project.ID != "beta" {
-		t.Fatalf("Scope Hub export emitted %#v, want beta", fromHub.Message)
+		t.Fatalf("Scope Hub notes emitted %#v, want beta", fromHub.Message)
 	}
-	finderMsg, ok := fromFinder.Message.(ExportProjectMsg)
-	if !ok || finderMsg.Project != hubMsg.Project {
-		t.Fatalf("Finder export emitted %#v, want the same project handler path", fromFinder.Message)
+	otherHostMsg, ok := fromOtherHost.Message.(ShowNotesMsg)
+	if !ok || otherHostMsg.Project != hubMsg.Project {
+		t.Fatalf("other host notes emitted %#v, want the same project handler path", fromOtherHost.Message)
 	}
 }
 
@@ -77,14 +77,11 @@ func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	}
 }
 
-func TestProjectOperationsRejectArchivedSandboxAndImmutableTargets(t *testing.T) {
+func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 	app := contextHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Archived = true
-	sandbox := scopeTestProject("sandbox", "Sandbox", "1")
-	sandbox.Sandbox = true
 	addTestAppProject(app, archived)
-	addTestAppProject(app, sandbox)
 
 	catalog := cloneWorkspaceCatalog(app.runtime.Catalog())
 	catalog.SystemInboxProjectID = "alpha"
@@ -96,11 +93,9 @@ func TestProjectOperationsRejectArchivedSandboxAndImmutableTargets(t *testing.T)
 		proj string
 	}{
 		{"open archived", operationProjectOpen, "archived"},
-		{"archive completed on archived", operationProjectArchiveCompleted, "archived"},
-		{"archive the sandbox", operationScopeArchiveProject, "sandbox"},
-		{"edit the system Inbox", operationScopeRenameProject, "alpha"},
+		{"archive the system Inbox", operationScopeArchiveProject, "alpha"},
 		{"unarchive an active project", operationScopeRestoreProject, "beta"},
-		{"act on a removed project", operationProjectMetrics, "ghost"},
+		{"act on a removed project", operationScopeRenameProject, "ghost"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -127,35 +122,6 @@ func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
 	}
 }
 
-func TestArchiveCompletedTasksRequiresExplicitConfirmation(t *testing.T) {
-	app := contextHubApp(t)
-	ctx := projectOperationContext("beta")
-
-	result := executeProjectOperation(app, operationProjectArchiveCompleted, ctx)
-	if result.ConfirmationRequired == nil {
-		t.Fatalf("archive completed ran without confirmation: %#v", result)
-	}
-	if result.Message != nil {
-		t.Fatalf("archive completed emitted %#v before confirmation", result.Message)
-	}
-
-	// The shell prompt must actually open for a host that returns the request
-	// as a message rather than hosting a contextual action sheet.
-	handled, _ := app.handleOperationOverlayMessage(*result.ConfirmationRequired)
-	if !handled || !app.operationConfirm.IsActive() {
-		t.Fatal("the destructive confirmation request never reached the shell prompt")
-	}
-
-	handled, cmd := app.handleOperationConfirmKey("y")
-	if !handled || cmd == nil {
-		t.Fatal("confirming archive completed produced no execution")
-	}
-	archive, ok := cmd().(ArchiveCompletedTasksMsg)
-	if !ok || archive.Project == nil || archive.Project.ID != "beta" {
-		t.Fatalf("confirmed archive completed emitted %#v, want a beta request", cmd())
-	}
-}
-
 func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	app := contextHubApp(t)
 	result := executeProjectOperation(app, operationScopeArchiveProject, projectOperationContext("beta"))
@@ -176,25 +142,7 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	}
 }
 
-func TestProjectFolderAndMetricsTargetTheFrozenProject(t *testing.T) {
-	app := contextHubApp(t)
-	app.currentProject = app.projectByID("alpha")
-	ctx := projectOperationContext("beta")
-
-	folder := executeProjectOperation(app, operationProjectOpenFolder, ctx)
-	open, ok := folder.Message.(OpenDataFolderMsg)
-	if !ok || open.Project == nil || open.Project.ID != "beta" {
-		t.Fatalf("open project folder emitted %#v, want beta", folder.Message)
-	}
-
-	metrics := executeProjectOperation(app, operationProjectMetrics, ctx)
-	dashboard, ok := metrics.Message.(ShowMetricsDashboardMsg)
-	if !ok || dashboard.Project == nil || dashboard.Project.ID != "beta" {
-		t.Fatalf("project metrics emitted %#v, want beta", metrics.Message)
-	}
-}
-
-func TestScopeHubActiveProjectOffersEveryMaintenanceOperation(t *testing.T) {
+func TestScopeHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
 	hub := openContextHub(t, contextHubApp(t))
 	focusScopeHubItem(t, hub, "scope-hub:active:beta")
 	hub.Update(syntheticKey(' '))
@@ -203,14 +151,9 @@ func TestScopeHubActiveProjectOffersEveryMaintenanceOperation(t *testing.T) {
 	for _, want := range []OperationID{
 		operationProjectOpen,
 		operationScopeRenameProject,
-		operationScopeStatusProject,
 		operationScopePinProject,
 		operationScopeArchiveProject,
 		operationScopeOpenProjectNote,
-		operationProjectMetrics,
-		operationProjectExport,
-		operationProjectOpenFolder,
-		operationProjectArchiveCompleted,
 	} {
 		if !containsOperationID(got, want) {
 			t.Fatalf("active project actions omitted %s: %v", want, got)
@@ -218,6 +161,9 @@ func TestScopeHubActiveProjectOffersEveryMaintenanceOperation(t *testing.T) {
 	}
 	if containsOperationID(got, operationScopeRestoreProject) {
 		t.Fatalf("active project offered unarchive: %v", got)
+	}
+	if len(got) != 6 {
+		t.Fatalf("active project actions = %v, want exactly six lean actions", got)
 	}
 }
 

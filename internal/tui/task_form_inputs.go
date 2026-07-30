@@ -1,12 +1,9 @@
 package tui
 
 import (
-	"fmt"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
-
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // initTitleInput creates and configures the title textarea with an optional initial value.
@@ -22,10 +19,6 @@ func (m *TaskFormModel) initTitleInput(value string) {
 func (m *TaskFormModel) syncInputFocus() {
 	m.focusTitleInput()
 	m.focusDueInput()
-	m.focusStartDateInput()
-	m.focusEstimatedDaysInput()
-	m.focusURLInput()
-	m.focusSourceInput()
 }
 
 // focusTitleInput focuses the title textarea when field 0 is active.
@@ -40,7 +33,7 @@ func (m *TaskFormModel) focusTitleInput() {
 // initDueInput creates and configures the due date textinput with an optional initial value.
 func (m *TaskFormModel) initDueInput(value string) {
 	m.dueTextInput = textinput.New()
-	m.dueTextInput.Placeholder = "tomorrow 5pm, +3d 14:30, fri, 2026-01-15"
+	m.dueTextInput.Placeholder = "tomorrow, +3d, fri, 2026-01-15"
 	m.dueTextInput.CharLimit = 40
 	m.dueTextInput.SetWidth(40)
 	applyThemedTextInput(&m.dueTextInput)
@@ -62,114 +55,6 @@ func (m *TaskFormModel) focusDueInput() {
 func (m *TaskFormModel) commitDueInput() {
 	m.draft.dueInput = m.dueTextInput.Value()
 	m.dueTextInput.Blur()
-}
-
-// initStartDateInput creates and configures the start date textinput with an optional initial value.
-func (m *TaskFormModel) initStartDateInput(value string) {
-	m.startDateTextInput = textinput.New()
-	m.startDateTextInput.Placeholder = "tomorrow, +3d, 2026-01-15, none"
-	m.startDateTextInput.CharLimit = 40
-	m.startDateTextInput.SetWidth(40)
-	applyThemedTextInput(&m.startDateTextInput)
-	if value != "" {
-		m.startDateTextInput.SetValue(value)
-	}
-}
-
-// focusStartDateInput focuses the start date textinput when field 1 on the Schedule tab is active.
-func (m *TaskFormModel) focusStartDateInput() {
-	if m.activeTab == formTabSchedule && m.focusIndex == 1 {
-		m.startDateTextInput.Focus()
-	} else {
-		m.startDateTextInput.Blur()
-	}
-}
-
-// commitStartDateInput syncs the startDateTextInput value back into the draft.
-func (m *TaskFormModel) commitStartDateInput() {
-	m.draft.startDateInput = m.startDateTextInput.Value()
-	m.startDateTextInput.Blur()
-}
-
-// initEstimatedDaysInput creates and configures the estimated days textinput with an optional initial value.
-func (m *TaskFormModel) initEstimatedDaysInput(value string) {
-	m.estimatedDaysTextInput = textinput.New()
-	m.estimatedDaysTextInput.Placeholder = "e.g., 1, 3.5, 0.5"
-	m.estimatedDaysTextInput.CharLimit = 10
-	m.estimatedDaysTextInput.SetWidth(10)
-	applyThemedTextInput(&m.estimatedDaysTextInput)
-	if value != "" {
-		m.estimatedDaysTextInput.SetValue(value)
-	}
-}
-
-// focusEstimatedDaysInput focuses the estimated days textinput when field 2 on the Schedule tab is active.
-func (m *TaskFormModel) focusEstimatedDaysInput() {
-	if m.activeTab == formTabSchedule && m.focusIndex == 2 {
-		m.estimatedDaysTextInput.Focus()
-	} else {
-		m.estimatedDaysTextInput.Blur()
-	}
-}
-
-// commitEstimatedDaysInput syncs the estimatedDaysTextInput value back into the draft.
-func (m *TaskFormModel) commitEstimatedDaysInput() {
-	m.draft.estimatedDaysInput = m.estimatedDaysTextInput.Value()
-	m.estimatedDaysTextInput.Blur()
-}
-
-// initURLInput creates and configures the URL textinput with an optional initial value.
-func (m *TaskFormModel) initURLInput(value string) {
-	m.urlTextInput = textinput.New()
-	m.urlTextInput.Placeholder = "https://..."
-	m.urlTextInput.CharLimit = 500
-	m.urlTextInput.SetWidth(50)
-	applyThemedTextInput(&m.urlTextInput)
-	if value != "" {
-		m.urlTextInput.SetValue(value)
-	}
-}
-
-// focusURLInput focuses the URL textinput when field 0 on the Details tab is active.
-func (m *TaskFormModel) focusURLInput() {
-	if m.activeTab == formTabDetails && m.focusIndex == 0 {
-		m.urlTextInput.Focus()
-	} else {
-		m.urlTextInput.Blur()
-	}
-}
-
-// commitURLInput syncs the URL textinput value back into the draft.
-func (m *TaskFormModel) commitURLInput() {
-	m.draft.url = m.urlTextInput.Value()
-	m.urlTextInput.Blur()
-}
-
-// initSourceInput creates and configures the Source textinput with an optional initial value.
-func (m *TaskFormModel) initSourceInput(value string) {
-	m.sourceTextInput = textinput.New()
-	m.sourceTextInput.Placeholder = "source reference..."
-	m.sourceTextInput.CharLimit = 500
-	m.sourceTextInput.SetWidth(50)
-	applyThemedTextInput(&m.sourceTextInput)
-	if value != "" {
-		m.sourceTextInput.SetValue(value)
-	}
-}
-
-// focusSourceInput focuses the Source textinput when field 1 on the Details tab is active.
-func (m *TaskFormModel) focusSourceInput() {
-	if m.activeTab == formTabDetails && m.focusIndex == 1 {
-		m.sourceTextInput.Focus()
-	} else {
-		m.sourceTextInput.Blur()
-	}
-}
-
-// commitSourceInput syncs the Source textinput value back into the draft.
-func (m *TaskFormModel) commitSourceInput() {
-	m.draft.source = m.sourceTextInput.Value()
-	m.sourceTextInput.Blur()
 }
 
 // initChecklistItemInput creates and configures the checklist item edit textinput.
@@ -196,23 +81,10 @@ func (m *TaskFormModel) initSubtaskItemInput(value string) {
 	}
 }
 
-// formatDateInput formats a *time.Time as a "YYYY-MM-DD" string for text inputs.
-// When hasTime is true, appends the time in "YYYY-MM-DDTHH:MM" format.
-func formatDateInput(value *time.Time, hasTime bool) string {
+// formatDateInput formats a date for text inputs.
+func formatDateInput(value *time.Time) string {
 	if value == nil {
 		return ""
 	}
-	if hasTime {
-		return value.Format(util.DateTimeDueFormat)
-	}
 	return value.Format("2006-01-02")
-}
-
-// formatEstimatedDaysInput formats a float64 estimated days value as a string for text inputs.
-// Returns empty string when the value is zero.
-func formatEstimatedDaysInput(value float64) string {
-	if value == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%g", value)
 }

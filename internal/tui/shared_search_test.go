@@ -27,10 +27,10 @@ func TestTaskMatchesSearch(t *testing.T) {
 		{"matches title partial", "auth", true},
 		{"matches title case insensitive", "BUILD", true},
 		{"matches description", "OAuth2", true},
-		{"matches tag exactly", "backend", true},
-		{"matches tag partial", "sec", true},
-		{"matches comment text", "review", true},
-		{"matches comment partial", "team lead", true},
+		{"does not match tag", "backend", false},
+		{"does not match comment", "review", false},
+		{"does not fuzzy match", "bld auth", false},
+		{"structured-looking text stays literal", "$ready", false},
 		{"no match returns false", "xyzabc", false},
 	}
 
@@ -41,6 +41,28 @@ func TestTaskMatchesSearch(t *testing.T) {
 				t.Errorf("TaskMatchesSearch() = %v, want %v for query %q", result, tt.want, tt.query)
 			}
 		})
+	}
+}
+
+func TestTaskMatchesSearchNilTask(t *testing.T) {
+	if TaskMatchesSearch(nil, "") {
+		t.Fatal("nil task must not match even an empty query")
+	}
+}
+
+func TestSearchSubstringPositionsAreCaseInsensitiveAndContiguous(t *testing.T) {
+	got := searchSubstringPositions("Ship OAuth Login", "OAUTH")
+	want := []int{5, 6, 7, 8, 9}
+	if len(got) != len(want) {
+		t.Fatalf("positions = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("positions = %v, want %v", got, want)
+		}
+	}
+	if got := searchSubstringPositions("Ship OAuth Login", "oa log"); len(got) != 0 {
+		t.Fatalf("non-contiguous query positions = %v, want none", got)
 	}
 }
 

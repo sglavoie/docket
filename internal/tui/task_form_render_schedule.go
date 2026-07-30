@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -9,8 +8,7 @@ import (
 )
 
 // formScheduleLabelWidth is the fixed label column width for all Schedule-tab rows.
-// "Estimated Days:" (15 chars) is the widest; +1 pad = 16.
-const formScheduleLabelWidth = 16
+const formScheduleLabelWidth = 12
 
 // renderScheduleTab renders the Schedule tab: Due (inline textinput) and Recurrence.
 func (m *TaskFormModel) renderScheduleTab() string {
@@ -79,42 +77,11 @@ func (m *TaskFormModel) renderScheduleTabExpanded() string {
 	}
 	b.WriteString("\n")
 
-	// 1: Start Date — inline textinput when focused, plain date otherwise.
-	b.WriteString(renderFormLabelWithWidth("Start Date:", lw, m.focusIndex == 1))
-	if m.focusIndex == 1 {
-		applyThemedTextInput(&m.startDateTextInput)
-		b.WriteString(m.startDateTextInput.View())
-	} else {
-		val := m.draft.startDateInput
-		if val == "" && m.draft.startDate == nil {
-			b.WriteString(MutedStyle.Render("(none)"))
-		} else if val != "" {
-			b.WriteString(val)
-		} else {
-			b.WriteString(scheduleDueDateDisplay(m.draft.startDate))
-		}
-	}
-	b.WriteString("\n")
-
-	// 2: Est. Days — inline textinput when focused, plain number otherwise.
-	b.WriteString(renderFormLabelWithWidth("Estimated Days:", lw, m.focusIndex == 2))
-	if m.focusIndex == 2 {
-		applyThemedTextInput(&m.estimatedDaysTextInput)
-		b.WriteString(m.estimatedDaysTextInput.View())
-	} else {
-		if m.draft.estimatedDays == 0 {
-			b.WriteString(MutedStyle.Render("(none)"))
-		} else {
-			_, _ = fmt.Fprintf(&b, "%g", m.draft.estimatedDays)
-		}
-	}
-	b.WriteString("\n")
-
-	// 3: Recurrence — read-only row; Enter opens RecurrenceEditorModel.
-	b.WriteString(renderFormLabelWithWidth("Recurrence:", lw, m.focusIndex == 3))
+	// 1: Recurrence — read-only row; Enter opens RecurrenceEditorModel.
+	b.WriteString(renderFormLabelWithWidth("Recurrence:", lw, m.focusIndex == 1))
 	{
 		val := recurrenceDisplay(m.draft.recurrence)
-		if m.focusIndex == 3 {
+		if m.focusIndex == 1 {
 			b.WriteString(SelectorOptionSelectedStyle.Render(val))
 		} else {
 			b.WriteString(val)

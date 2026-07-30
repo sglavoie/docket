@@ -13,8 +13,3 @@ const (
 type Detector interface {
 	Detect() SystemAppearance
 }
-
-// NewDetector returns a platform-specific Detector.
-func NewDetector() Detector {
-	return newDetector()
-}

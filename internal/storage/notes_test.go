@@ -24,7 +24,6 @@ func TestNewNoteAndSaveLoad(t *testing.T) {
 	project := newTestProject(t)
 	note := models.NewNote("My Test Note")
 	note.Body = "Hello, world!"
-	note.Tags = []string{"test", "example"}
 
 	if err := SaveNote(project, note); err != nil {
 		t.Fatalf("SaveNote failed: %v", err)
@@ -40,9 +39,6 @@ func TestNewNoteAndSaveLoad(t *testing.T) {
 	}
 	if strings.TrimSpace(loaded.Body) != "Hello, world!" {
 		t.Errorf("Body = %q, want %q", loaded.Body, "Hello, world!")
-	}
-	if len(loaded.Tags) != 2 || loaded.Tags[0] != "test" {
-		t.Errorf("Tags = %v, want [test example]", loaded.Tags)
 	}
 	if loaded.Filename != note.Filename {
 		t.Errorf("Filename = %q, want %q", loaded.Filename, note.Filename)
@@ -87,8 +83,7 @@ func TestListNotes(t *testing.T) {
 	n1.ModifiedAt = time.Now().Add(-2 * time.Hour)
 	n2 := models.NewNote("Second")
 	n2.ModifiedAt = time.Now().Add(-1 * time.Hour)
-	n3 := models.NewNote("Pinned")
-	n3.Pinned = true
+	n3 := models.NewNote("Oldest")
 	n3.ModifiedAt = time.Now().Add(-3 * time.Hour)
 
 	for _, n := range []*models.Note{n1, n2, n3} {
@@ -104,13 +99,11 @@ func TestListNotes(t *testing.T) {
 	if len(notes) != 3 {
 		t.Fatalf("len = %d, want 3", len(notes))
 	}
-	// Pinned first
-	if notes[0].Title != "Pinned" {
-		t.Errorf("first note should be pinned, got %q", notes[0].Title)
+	if notes[0].Title != "Second" {
+		t.Errorf("first note should be newest, got %q", notes[0].Title)
 	}
-	// Then by modified date desc
-	if notes[1].Title != "Second" {
-		t.Errorf("second note should be Second, got %q", notes[1].Title)
+	if notes[1].Title != "First" {
+		t.Errorf("second note should be First, got %q", notes[1].Title)
 	}
 }
 
@@ -182,34 +175,6 @@ func TestNoteHelpersRejectPathTraversal(t *testing.T) {
 	}
 }
 
-func TestNoteLinking(t *testing.T) {
-	note := models.NewNote("Linked Note")
-
-	note.AddLink("task-uuid-1")
-	if !note.HasLink("task-uuid-1") {
-		t.Error("HasLink should return true after AddLink")
-	}
-
-	// Duplicate add is idempotent
-	note.AddLink("task-uuid-1")
-	if len(note.LinkedTasks) != 1 {
-		t.Errorf("LinkedTasks should have 1 entry, got %d", len(note.LinkedTasks))
-	}
-
-	note.AddLink("task-uuid-2")
-	if len(note.LinkedTasks) != 2 {
-		t.Errorf("LinkedTasks should have 2 entries, got %d", len(note.LinkedTasks))
-	}
-
-	note.RemoveLink("task-uuid-1")
-	if note.HasLink("task-uuid-1") {
-		t.Error("HasLink should return false after RemoveLink")
-	}
-	if len(note.LinkedTasks) != 1 {
-		t.Errorf("LinkedTasks should have 1 entry after remove, got %d", len(note.LinkedTasks))
-	}
-}
-
 func TestNotesExist(t *testing.T) {
 	project := newTestProject(t)
 	if NotesExist(project) {
@@ -248,13 +213,11 @@ func TestSaveNoteFilenameCollision(t *testing.T) {
 	originalFilename := note1.Filename
 
 	note2 := &models.Note{
-		Title:       "Collision Test 2",
-		Tags:        []string{},
-		CreatedAt:   time.Now().Add(time.Second), // different creation time
-		ModifiedAt:  time.Now().Add(time.Second),
-		LinkedTasks: []string{},
-		Filename:    originalFilename, // same filename as note1
-		Body:        "different content",
+		Title:      "Collision Test 2",
+		CreatedAt:  time.Now().Add(time.Second), // different creation time
+		ModifiedAt: time.Now().Add(time.Second),
+		Filename:   originalFilename, // same filename as note1
+		Body:       "different content",
 	}
 
 	if err := SaveNote(project, note2); err != nil {
@@ -358,9 +321,6 @@ func TestRenameNoteInDedup(t *testing.T) {
 
 func TestParseNoteRoundtrip(t *testing.T) {
 	note := models.NewNote("Roundtrip Test")
-	note.Tags = []string{"go", "test"}
-	note.LinkedTasks = []string{"uuid-123"}
-	note.Pinned = true
 	note.Body = "Some body content.\n\nWith paragraphs.\n"
 
 	content, err := renderNote(note)
@@ -370,6 +330,16 @@ func TestParseNoteRoundtrip(t *testing.T) {
 	if !strings.HasPrefix(content, "---\n") {
 		t.Error("rendered note should start with ---")
 	}
+	for _, retired := range []string{"tags:", "linked_tasks:", "pinned:"} {
+		if strings.Contains(content, retired) {
+			t.Fatalf("rendered note contains retired key %q:\n%s", retired, content)
+		}
+	}
+	for _, retained := range []string{"title:", "created:", "modified:"} {
+		if strings.Count(content, retained) != 1 {
+			t.Fatalf("rendered note retained key %q count != 1:\n%s", retained, content)
+		}
+	}
 
 	parsed, err := parseNote("test.md", content)
 	if err != nil {
@@ -378,14 +348,5 @@ func TestParseNoteRoundtrip(t *testing.T) {
 
 	if parsed.Title != note.Title {
 		t.Errorf("Title = %q, want %q", parsed.Title, note.Title)
-	}
-	if len(parsed.Tags) != 2 {
-		t.Errorf("Tags length = %d, want 2", len(parsed.Tags))
-	}
-	if !parsed.Pinned {
-		t.Error("Pinned should be true")
-	}
-	if len(parsed.LinkedTasks) != 1 || parsed.LinkedTasks[0] != "uuid-123" {
-		t.Errorf("LinkedTasks = %v, want [uuid-123]", parsed.LinkedTasks)
 	}
 }

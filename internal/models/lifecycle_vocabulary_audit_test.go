@@ -33,6 +33,16 @@ func TestRuntimeLifecycleVocabularyIsCanonical(t *testing.T) {
 		"StatusTodo": true, "StatusInProgress": true, "StatusReview": true,
 		"StatusStandby": true, "StatusDone": true, "StatusBlocked": true,
 		"StatusCanceled": true, "StatusMaybe": true,
+		"StateReview": true,
+	}
+	allowedRetiredIdentifierFiles := map[string]map[string]bool{
+		"StateReview": {
+			"internal/models/workflowstate.go":           true,
+			"internal/models/workflowstate_legacy.go":    true,
+			"internal/storage/format/metadata_parse.go":  true,
+			"internal/storage/format/metadata_state.go":  true,
+			"internal/testutil/daily_loop_acceptance.go": true,
+		},
 	}
 	legacyTags := map[string]bool{
 		"status": true, "section": true, "stage": true,
@@ -74,7 +84,8 @@ func TestRuntimeLifecycleVocabularyIsCanonical(t *testing.T) {
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch value := node.(type) {
 			case *ast.Ident:
-				if retiredIdentifiers[value.Name] {
+				allowedFiles := allowedRetiredIdentifierFiles[value.Name]
+				if retiredIdentifiers[value.Name] && !allowedFiles[relative] {
 					t.Errorf("%s:%d: retired runtime lifecycle identifier %q", relative, fileSet.Position(value.Pos()).Line, value.Name)
 				}
 			case *ast.Field:

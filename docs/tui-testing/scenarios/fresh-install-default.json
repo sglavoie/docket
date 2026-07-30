@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "Setup 0/5" },
     { "type": "assert", "assert": "contains", "value": "capture" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

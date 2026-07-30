@@ -25,16 +25,6 @@ func taskIdentityFromLocator(locator app.TaskLocator) TaskIdentity {
 	return TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
 }
 
-func configTaskLocatorsFromApp(locators []app.TaskLocator) []config.ProjectTaskLocator {
-	result := make([]config.ProjectTaskLocator, 0, len(locators))
-	for _, locator := range locators {
-		if locator.ProjectID != "" && locator.TaskID != "" {
-			result = append(result, config.ProjectTaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
-		}
-	}
-	return result
-}
-
 func appTaskLocatorsFromConfig(locators []config.ProjectTaskLocator) []app.TaskLocator {
 	result := make([]app.TaskLocator, 0, len(locators))
 	for _, locator := range locators {

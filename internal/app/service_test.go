@@ -195,7 +195,6 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 			}
 			task.CompletedAt = &staleCompletion
 			task.SnoozedUntil = &snoozedUntil
-			task.Dimmed = true
 			project := newProject("proj-1", "Alpha", task)
 			repo := newFakeRepo(project)
 			svc := newTestService(repo)
@@ -219,9 +218,6 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 				}
 			} else if task.CompletedAt != nil {
 				t.Errorf("CompletedAt = %v, want nil", task.CompletedAt)
-			}
-			if target == models.StateInbox && task.Dimmed {
-				t.Error("inbox transition should clear Dimmed")
 			}
 		})
 	}
@@ -331,8 +327,45 @@ func TestCompleteGeneratesRecurringInstance(t *testing.T) {
 	if generated.State() != models.StateInbox {
 		t.Errorf("generated state = %q, want inbox", generated.State())
 	}
+	if generated.ID != "gen-task-1" {
+		t.Errorf("generated ID = %q, want injected gen-task-1", generated.ID)
+	}
+	wantDue := time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC)
+	if generated.DueDate == nil || !generated.DueDate.Equal(wantDue) {
+		t.Errorf("generated due = %v, want %v", generated.DueDate, wantDue)
+	}
 	if !generated.CreatedAt.Equal(fixedNow) || !generated.UpdatedAt.Equal(fixedNow) {
 		t.Errorf("generated timestamps = %v/%v, want injected time %v", generated.CreatedAt, generated.UpdatedAt, fixedNow)
+	}
+}
+
+func TestCompleteRecurringTaskRollsBackWhenCommitFails(t *testing.T) {
+	task := newTask("t1", 1, "daily standup")
+	due := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	task.DueDate = &due
+	if err := task.SetRecurrence(models.ParseRecurrence("daily")); err != nil {
+		t.Fatalf("SetRecurrence: %v", err)
+	}
+	project := newProject("proj-1", "Alpha", task)
+	repo := newFakeRepo(project)
+	sentinel := errors.New("commit failed")
+	repo.commitErr = sentinel
+	svc := newTestService(repo)
+
+	if _, err := svc.Complete(task.ID); !errors.Is(err, sentinel) {
+		t.Fatalf("Complete error = %v, want %v", err, sentinel)
+	}
+	if task.State() != models.StateReady || task.CompletedAt != nil {
+		t.Fatalf("failed completion left lifecycle state %s/%v", task.State(), task.CompletedAt)
+	}
+	if task.Recurrence == nil || task.Recurrence.Unit != models.RecurrenceDaily {
+		t.Fatalf("failed completion lost recurrence: %+v", task.Recurrence)
+	}
+	if len(project.Tasks) != 1 || project.Tasks[0] != task {
+		t.Fatalf("failed completion left generated tasks or replaced source pointer: %+v", project.Tasks)
+	}
+	if len(repo.commits) != 0 {
+		t.Fatalf("failed completion recorded %d commits", len(repo.commits))
 	}
 }
 
@@ -368,17 +401,17 @@ func TestSetDueDateSetsAndClears(t *testing.T) {
 	svc := newTestService(repo)
 
 	due := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
-	if _, err := svc.SetDueDate("t1", &due, true); err != nil {
+	if _, err := svc.SetDueDate("t1", &due); err != nil {
 		t.Fatalf("SetDueDate: %v", err)
 	}
-	if task.DueDate == nil || !task.DueDate.Equal(due) || !task.HasTime {
-		t.Fatalf("due=%v hasTime=%v, want set with time", task.DueDate, task.HasTime)
+	if task.DueDate == nil || task.DueDate.Format("2006-01-02") != due.Format("2006-01-02") {
+		t.Fatalf("due=%v, want date %s", task.DueDate, due.Format("2006-01-02"))
 	}
-	if _, err := svc.SetDueDate("t1", nil, false); err != nil {
+	if _, err := svc.SetDueDate("t1", nil); err != nil {
 		t.Fatalf("clear SetDueDate: %v", err)
 	}
-	if task.DueDate != nil || task.HasTime {
-		t.Errorf("due=%v hasTime=%v, want cleared", task.DueDate, task.HasTime)
+	if task.DueDate != nil {
+		t.Errorf("due=%v, want cleared", task.DueDate)
 	}
 }
 
@@ -440,43 +473,6 @@ func TestSnoozeAndClear(t *testing.T) {
 	}
 }
 
-func TestParkAndUnpark(t *testing.T) {
-	task := newTask("t1", 1, "task")
-	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
-	svc := newTestService(repo)
-
-	if _, err := svc.Park("t1", "resume at step 3"); err != nil {
-		t.Fatalf("Park: %v", err)
-	}
-	if !task.IsParked() {
-		t.Fatal("task not parked")
-	}
-	if _, err := svc.Unpark("t1"); err != nil {
-		t.Fatalf("Unpark: %v", err)
-	}
-	if task.IsParked() {
-		t.Error("task still parked")
-	}
-}
-
-// TestParkRejectsCompletedTask proves the completed-task guard now lives in the
-// application service: parking a done task is rejected as invalid input and the
-// task is left untouched, matching the legacy CLI edge check.
-func TestParkRejectsCompletedTask(t *testing.T) {
-	task := newTask("t1", 1, "task")
-	task.Complete()
-	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
-	svc := newTestService(repo)
-
-	_, err := svc.Park("t1", "resume later")
-	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("err = %v, want ErrInvalidInput", err)
-	}
-	if task.IsParked() {
-		t.Error("completed task should not be parked")
-	}
-}
-
 // TestSnoozeRejectsCompletedAndInProgress proves the snooze-set guards moved into
 // the application service: snoozing a done or an in-progress task is rejected,
 // while clearing a snooze remains allowed on any task.
@@ -501,53 +497,6 @@ func TestSnoozeRejectsCompletedAndInProgress(t *testing.T) {
 	}
 	if inProgress.SnoozedUntil != nil {
 		t.Error("in-progress task should not be snoozed")
-	}
-}
-
-// TestToggleDimmedAndUndim proves the dim use cases flip the dimmed flag and that
-// Undim clears it (discarding, not toggling).
-func TestToggleDimmedAndUndim(t *testing.T) {
-	task := newTask("t1", 1, "task")
-	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
-	svc := newTestService(repo)
-
-	if _, err := svc.ToggleDimmed("t1"); err != nil {
-		t.Fatalf("ToggleDimmed: %v", err)
-	}
-	if !task.Dimmed {
-		t.Fatal("task should be dimmed after toggle")
-	}
-	if _, err := svc.Undim("t1"); err != nil {
-		t.Fatalf("Undim: %v", err)
-	}
-	if task.Dimmed {
-		t.Error("task should not be dimmed after undim")
-	}
-}
-
-// TestApplyAndClearTypeAttrs proves the type-attribute use cases apply and clear
-// type-specific fields, and that an invalid value is rejected before any commit.
-func TestApplyAndClearTypeAttrs(t *testing.T) {
-	task := newTask("t1", 1, "task")
-	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
-	svc := newTestService(repo)
-
-	if _, err := svc.ApplyTypeAttrs("t1", models.TypeAttrValues{TaskEffort: "small"}); err != nil {
-		t.Fatalf("ApplyTypeAttrs: %v", err)
-	}
-	if task.TaskAttrs == nil || task.TaskAttrs.Effort != "small" {
-		t.Fatalf("TaskAttrs = %+v, want effort small", task.TaskAttrs)
-	}
-
-	if _, err := svc.ApplyTypeAttrs("t1", models.TypeAttrValues{TaskEffort: "gigantic"}); err == nil {
-		t.Fatal("expected invalid effort to be rejected")
-	}
-
-	if _, err := svc.ClearTypeAttrs("t1"); err != nil {
-		t.Fatalf("ClearTypeAttrs: %v", err)
-	}
-	if task.TaskAttrs != nil {
-		t.Errorf("TaskAttrs = %+v, want cleared", task.TaskAttrs)
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 // ListSource is the validated input shape shared by List Surface adapters and
-// the unified finder providers built on top of them.
+// the retained list surfaces built on top of them.
 type ListSource struct {
 	Items      []ListItem
 	Categories []ListCategory
@@ -84,88 +84,6 @@ func pickerItemListID(item PickerItem) ListItemID {
 	return "picker:none"
 }
 
-// ListSourceFromSelectorItems adapts the shared CLI/TUI selector rows. The first
-// column remains the primary label; remaining columns are preserved as
-// searchable secondary text and labeled preview fields.
-func ListSourceFromSelectorItems(items []SelectorItem) ListSource {
-	adapted := make([]ListItem, 0, len(items))
-	for _, item := range items {
-		primary := ""
-		if len(item.Columns) > 0 {
-			primary = item.Columns[0]
-		}
-		secondary := ""
-		if len(item.Columns) > 1 {
-			secondary = strings.Join(item.Columns[1:], " · ")
-		}
-		fields := make([]ListPreviewField, 0, len(item.Columns))
-		for index, value := range item.Columns {
-			label := fmt.Sprintf("Column %d", index+1)
-			if index < len(item.Headers) && item.Headers[index] != "" {
-				label = item.Headers[index]
-			}
-			fields = append(fields, ListPreviewField{Label: label, Value: value})
-		}
-		adapted = append(adapted, ListItem{
-			ID:            ListItemID(item.ID),
-			PrimaryText:   primary,
-			SecondaryText: secondary,
-			Aliases:       append([]string(nil), item.Columns...),
-			Preview:       ListPreview{Title: primary, Fields: fields},
-			Data:          item,
-		})
-	}
-	return ListSource{Items: adapted}
-}
-
-// ListSourceFromOutlinerModes adapts the current unified mode catalog.
-func ListSourceFromOutlinerModes(modes []OutlinerMode) ListSource {
-	var categories []ListCategory
-	for _, category := range []OutlinerModeCategory{ModeCategoryWork, ModeCategoryComputed, ModeCategoryReview} {
-		for _, mode := range modes {
-			if mode.Category == category {
-				categories = append(categories, ListCategory{
-					ID:    modeListCategoryID(category),
-					Label: category.String(),
-				})
-				break
-			}
-		}
-	}
-	items := make([]ListItem, 0, len(modes))
-	for _, mode := range modes {
-		secondary := "Manual order"
-		if mode.FixedOrder() {
-			secondary = "Fixed order"
-		}
-		reordering := "Unavailable"
-		if mode.SupportsManualReorder() {
-			reordering = "Single-project sequence"
-		}
-		item := ListItem{
-			ID:            ListItemID("mode:" + string(mode.ID)),
-			CategoryID:    modeListCategoryID(mode.Category),
-			PrimaryText:   mode.Label,
-			SecondaryText: secondary,
-			Aliases:       append([]string(nil), mode.Aliases...),
-			Preview: ListPreview{
-				Title: mode.Label,
-				Fields: []ListPreviewField{
-					{Label: "Category", Value: mode.Category.String()},
-					{Label: "Ordering", Value: secondary},
-					{Label: "Reordering", Value: reordering},
-				},
-			},
-			Data: mode,
-		}
-		if modePickerModeUnavailable(mode) {
-			item.DisabledReason = "not available in this scope"
-		}
-		items = append(items, item)
-	}
-	return ListSource{Items: items, Categories: categories}
-}
-
 // ListSourceFromContextScopes adapts the canonical scope summaries.
 func ListSourceFromContextScopes(summaries []ContextScopeSummary) ListSource {
 	categories := []ListCategory{
@@ -191,7 +109,6 @@ func ListSourceFromContextScopes(summaries []ContextScopeSummary) ListSource {
 				Fields: []ListPreviewField{
 					{Label: "Active", Value: strconv.Itoa(summary.ActiveProjectCount)},
 					{Label: "Archived", Value: strconv.Itoa(summary.ArchivedProjectCount)},
-					{Label: "Hidden", Value: strconv.Itoa(summary.HiddenProjectCount)},
 					{Label: "Missing", Value: strconv.Itoa(summary.StaleReferenceCount)},
 				},
 			},
@@ -286,18 +203,14 @@ func ListSourceFromProjects(projects []*models.Project) ListSource {
 	return ListSource{Items: items, Categories: categories}
 }
 
-// ListSourceFromTags adapts tag manager and picker sources.
+// ListSourceFromTags adapts task-tag picker sources.
 func ListSourceFromTags(tags []TagInfo) ListSource {
 	categories := []ListCategory{
-		{ID: "tag:pinned", Label: "Pinned"},
 		{ID: "tag:other", Label: "Tags"},
 	}
 	items := make([]ListItem, 0, len(tags))
 	for _, tag := range tags {
 		category := ListCategoryID("tag:other")
-		if tag.Pinned {
-			category = "tag:pinned"
-		}
 		items = append(items, ListItem{
 			ID:            ListItemID("tag:" + tag.Name),
 			CategoryID:    category,
@@ -308,7 +221,6 @@ func ListSourceFromTags(tags []TagInfo) ListSource {
 				Title: tag.Name,
 				Fields: []ListPreviewField{
 					{Label: "Tasks", Value: strconv.Itoa(tag.TaskCount)},
-					{Label: "Pinned", Value: strconv.FormatBool(tag.Pinned)},
 				},
 			},
 			Data: tag,
@@ -318,7 +230,7 @@ func ListSourceFromTags(tags []TagInfo) ListSource {
 }
 
 // TaskListSourceData retains the project-qualified task target required by the
-// global finder and operation executor.
+// list surfaces and the operation executor.
 type TaskListSourceData struct {
 	Task    *models.Task
 	Project *models.Project
@@ -371,20 +283,9 @@ func ListSourceFromTasks(projects []*models.Project) ListSource {
 }
 
 // QualifiedTaskListItemID returns the stable project-qualified identity shared
-// by task adapters and future finder destinations.
+// by task adapters and retained list destinations.
 func QualifiedTaskListItemID(projectID, taskID string) ListItemID {
 	return ListItemID("task:" + projectID + ":" + taskID)
-}
-
-func modeListCategoryID(category OutlinerModeCategory) ListCategoryID {
-	switch category {
-	case ModeCategoryComputed:
-		return "mode:computed"
-	case ModeCategoryReview:
-		return "mode:review"
-	default:
-		return "mode:work"
-	}
 }
 
 func contextScopeListItemID(scope ContextScope) ListItemID {
@@ -423,8 +324,6 @@ func workflowStateListLabel(state models.WorkflowState) string {
 		return "Waiting"
 	case models.StatePaused:
 		return "Paused"
-	case models.StateReview:
-		return "Review"
 	case models.StateSomeday:
 		return "Someday"
 	case models.StateDone:

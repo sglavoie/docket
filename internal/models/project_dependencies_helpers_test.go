@@ -16,7 +16,7 @@ func newDependencyTestProject(t *testing.T, id string) *Project {
 func newDependencyTestTask(t *testing.T, id string, shortID int, title string) *Task {
 	t.Helper()
 
-	task, err := NewTask(id, shortID, TaskTypeTask, title)
+	task, err := NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatal(err)
 	}

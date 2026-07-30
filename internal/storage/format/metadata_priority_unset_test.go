@@ -14,7 +14,6 @@ import (
 func TestUnsetPriorityRoundTripsAsZero(t *testing.T) {
 	task := &models.Task{
 		ID:            "unset-priority",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      models.PriorityUnset,
 	}

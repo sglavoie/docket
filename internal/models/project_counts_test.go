@@ -11,26 +11,26 @@ func TestProjectTaskCounts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // todo
+	task1, err := NewGenericTask("1", 1, "Task 1") // todo
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.Start() // in_progress
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task3.Complete() // done
-	task4, err := NewTask("4", 4, TaskTypeTask, "Task 4")
+	task4, err := NewGenericTask("4", 4, "Task 4")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task4.Block() // blocked
-	task5, err := NewTask("5", 5, TaskTypeTask, "Task 5")
+	task5, err := NewGenericTask("5", 5, "Task 5")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,16 +59,16 @@ func TestProjectGetTasksByState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.Start()
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,62 +86,26 @@ func TestProjectGetTasksByState(t *testing.T) {
 	}
 }
 
-func TestProjectGetTasksByType(t *testing.T) {
-	project, err := NewProject("test", "Test", "/tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	epic, err := NewTask("1", 1, TaskTypeEpic, "Epic")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task1, err := NewTask("2", 2, TaskTypeTask, "Task 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task2, err := NewTask("3", 3, TaskTypeTask, "Task 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	bug, err := NewTask("4", 4, TaskTypeBug, "Bug")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	project.Tasks = []*Task{epic, task1, task2, bug}
-
-	tasks := project.GetTasksByType(TaskTypeTask)
-	if len(tasks) != 2 {
-		t.Errorf("expected 2 tasks of type Task, got %d", len(tasks))
-	}
-
-	epics := project.GetTasksByType(TaskTypeEpic)
-	if len(epics) != 1 {
-		t.Errorf("expected 1 epic, got %d", len(epics))
-	}
-}
-
 func TestProjectGetTasksByTag(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.AddTag("backend")
 	task1.AddTag("urgent")
 
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.AddTag("backend")
 
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,14 +139,14 @@ func TestCountOverdueTasks(t *testing.T) {
 	tomorrow := time.Now().AddDate(0, 0, 1)
 
 	// Overdue task (past due date, not complete)
-	task1, err := NewTask("1", 1, TaskTypeTask, "Overdue")
+	task1, err := NewGenericTask("1", 1, "Overdue")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.DueDate = &yesterday
 
 	// Past due date but completed (should NOT count)
-	task2, err := NewTask("2", 2, TaskTypeTask, "Done Overdue")
+	task2, err := NewGenericTask("2", 2, "Done Overdue")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,20 +154,20 @@ func TestCountOverdueTasks(t *testing.T) {
 	task2.Complete()
 
 	// Future due date (should NOT count)
-	task3, err := NewTask("3", 3, TaskTypeTask, "Future")
+	task3, err := NewGenericTask("3", 3, "Future")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task3.DueDate = &tomorrow
 
 	// No due date (should NOT count)
-	task4, err := NewTask("4", 4, TaskTypeTask, "No Due Date")
+	task4, err := NewGenericTask("4", 4, "No Due Date")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Overdue and blocked (should count - still incomplete)
-	task5, err := NewTask("5", 5, TaskTypeTask, "Overdue Blocked")
+	task5, err := NewGenericTask("5", 5, "Overdue Blocked")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,28 +193,28 @@ func TestCountDueSoonTasks(t *testing.T) {
 	tenDays := time.Now().AddDate(0, 0, 10)
 
 	// Due in 2 days, within 3-day window (should count)
-	task1, err := NewTask("1", 1, TaskTypeTask, "Due Soon")
+	task1, err := NewGenericTask("1", 1, "Due Soon")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.DueDate = &twoDays
 
 	// Overdue (should NOT count - overdue is separate)
-	task2, err := NewTask("2", 2, TaskTypeTask, "Overdue")
+	task2, err := NewGenericTask("2", 2, "Overdue")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.DueDate = &yesterday
 
 	// Due in 10 days, outside 3-day window (should NOT count)
-	task3, err := NewTask("3", 3, TaskTypeTask, "Due Later")
+	task3, err := NewGenericTask("3", 3, "Due Later")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task3.DueDate = &tenDays
 
 	// Due in 2 days but completed (should NOT count)
-	task4, err := NewTask("4", 4, TaskTypeTask, "Done Due Soon")
+	task4, err := NewGenericTask("4", 4, "Done Due Soon")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +222,7 @@ func TestCountDueSoonTasks(t *testing.T) {
 	task4.Complete()
 
 	// No due date (should NOT count)
-	task5, err := NewTask("5", 5, TaskTypeTask, "No Due Date")
+	task5, err := NewGenericTask("5", 5, "No Due Date")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,24 +241,24 @@ func TestCountBlockedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Blocked 1")
+	task1, err := NewGenericTask("1", 1, "Blocked 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.Block()
 
-	task2, err := NewTask("2", 2, TaskTypeTask, "Blocked 2")
+	task2, err := NewGenericTask("2", 2, "Blocked 2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.Block()
 
-	task3, err := NewTask("3", 3, TaskTypeTask, "Todo")
+	task3, err := NewGenericTask("3", 3, "Todo")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	task4, err := NewTask("4", 4, TaskTypeTask, "InProgress")
+	task4, err := NewGenericTask("4", 4, "InProgress")
 	if err != nil {
 		t.Fatal(err)
 	}

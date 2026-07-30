@@ -17,7 +17,6 @@ func newStripTestTask() *models.Task {
 	return &models.Task{
 		ID:            "t1",
 		Title:         "metadata strip task",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateNext,
 		Priority:      2,
 		Tags:          []string{"backend", "infra"},
@@ -45,7 +44,6 @@ func TestTaskMetadataStripEmptyMetadata(t *testing.T) {
 	task := &models.Task{
 		ID:            "bare",
 		Title:         "bare",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      0, // suppressed: only 1–5 render
 	}
@@ -240,20 +238,6 @@ func TestTaskMetadataStripANSIWidthIsAccurate(t *testing.T) {
 	}
 }
 
-func TestTaskMetadataStripRecurrenceShowsStreak(t *testing.T) {
-	task := newStripTestTask()
-	task.Recurrence = &models.RecurrencePattern{
-		Interval: 1,
-		Unit:     models.RecurrenceDaily,
-		Streak:   7,
-	}
-	proj := newStripTestProject()
-	got := renderTaskMetadataStrip(TaskMetadataStripOpts{Task: task, Project: proj})
-	if !strings.Contains(ansi.Strip(got), "↻7") {
-		t.Errorf("expected recurrence indicator with streak in strip, got %q", ansi.Strip(got))
-	}
-}
-
 func TestTaskMetadataStripRecurrenceWithoutStreak(t *testing.T) {
 	task := newStripTestTask()
 	task.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
@@ -356,7 +340,6 @@ func TestTaskMetadataStripColumnConfigGatesOptionalGroups(t *testing.T) {
 		ColPriority:     false,
 		ColDueDate:      false,
 		ColTags:         false,
-		ColScore:        false,
 		ColDependencies: false,
 		ColComments:     false,
 		ColAttachments:  false,

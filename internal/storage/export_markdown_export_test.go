@@ -62,7 +62,7 @@ func TestExportProjectMarkdown_EmptyDestRejected(t *testing.T) {
 	}
 }
 
-func TestExportProjectMarkdown_PinnedOrdering(t *testing.T) {
+func TestExportProjectMarkdown_NotesUseRetainedMinimalShape(t *testing.T) {
 	tmp := t.TempDir()
 	notesDir := filepath.Join(tmp, "notes")
 	if err := os.MkdirAll(notesDir, 0o755); err != nil {
@@ -71,22 +71,21 @@ func TestExportProjectMarkdown_PinnedOrdering(t *testing.T) {
 
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	newer := &models.Note{
-		Title: "Newer Normal", Tags: []string{},
+		Title:     "Newer Normal",
 		CreatedAt: base, ModifiedAt: base,
 		Filename: models.GenerateNoteFilename("Newer Normal", base),
 	}
 	older := &models.Note{
-		Title: "Older Normal", Tags: []string{},
+		Title:     "Older Normal",
 		CreatedAt: base.Add(-time.Hour), ModifiedAt: base.Add(-time.Hour),
 		Filename: models.GenerateNoteFilename("Older Normal", base.Add(-time.Hour)),
 	}
-	pinned := &models.Note{
-		Title: "Pinned Note", Tags: []string{},
-		Pinned:    true,
+	oldest := &models.Note{
+		Title:     "Oldest Normal",
 		CreatedAt: base.Add(-2 * time.Hour), ModifiedAt: base.Add(-2 * time.Hour),
-		Filename: models.GenerateNoteFilename("Pinned Note", base.Add(-2*time.Hour)),
+		Filename: models.GenerateNoteFilename("Oldest Normal", base.Add(-2*time.Hour)),
 	}
-	for _, note := range []*models.Note{newer, older, pinned} {
+	for _, note := range []*models.Note{newer, older, oldest} {
 		if err := SaveNoteTo(notesDir, note); err != nil {
 			t.Fatalf("save note: %v", err)
 		}
@@ -104,17 +103,17 @@ func TestExportProjectMarkdown_PinnedOrdering(t *testing.T) {
 	}
 	s := string(got)
 
-	pinnedPos := strings.Index(s, "## Pinned Note")
 	newerPos := strings.Index(s, "## Newer Normal")
 	olderPos := strings.Index(s, "## Older Normal")
-	if pinnedPos < 0 || newerPos < 0 || olderPos < 0 {
+	oldestPos := strings.Index(s, "## Oldest Normal")
+	if oldestPos < 0 || newerPos < 0 || olderPos < 0 {
 		t.Fatalf("not all notes found in output: %q", s)
 	}
-	if pinnedPos > newerPos || pinnedPos > olderPos {
-		t.Errorf("pinned note should appear first: pinned=%d newer=%d older=%d", pinnedPos, newerPos, olderPos)
+	if newerPos >= olderPos || olderPos >= oldestPos {
+		t.Errorf("notes are not newest-first: newer=%d older=%d oldest=%d", newerPos, olderPos, oldestPos)
 	}
-	if newerPos > olderPos {
-		t.Errorf("newer note should appear before older: newer=%d older=%d", newerPos, olderPos)
+	if strings.Contains(s, "tags:") {
+		t.Fatalf("minimal note export restored retired tags metadata: %q", s)
 	}
 }
 
@@ -157,7 +156,7 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 
 	now := time.Now()
 	note := &models.Note{
-		Title: "My Note", Tags: []string{},
+		Title:     "My Note",
 		CreatedAt: now, ModifiedAt: now,
 		Filename: models.GenerateNoteFilename("My Note", now),
 		Body:     "note body",
@@ -166,7 +165,7 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 		t.Fatalf("save note: %v", err)
 	}
 
-	task := mustTask("t1", 1, models.TaskTypeTask, "My Task")
+	task := mustTask("t1", 1, "", "My Task")
 	task.Priority = 0
 	p := newProject("Combined", task)
 	p.Path = tmp
@@ -193,5 +192,53 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 	}
 	if taskPos >= sepPos || sepPos >= notesPos {
 		t.Errorf("expected task < --- < # Notes ordering: task=%d sep=%d notes=%d", taskPos, sepPos, notesPos)
+	}
+}
+
+func TestWriteProjectMarkdownCleanIncludesRetainedTaskRecordsAndAttachmentReferences(t *testing.T) {
+	now := time.Date(2026, 7, 29, 15, 30, 0, 0, time.UTC)
+	active := mustTask("active", 1, "", "Active task")
+	active.Priority = 0
+	active.DueDate = &now
+	active.DependsOn = []string{"other-project:dependency"}
+	active.Recurrence = &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly}
+	active.Checklist = []models.ChecklistItem{{Text: "First", Done: true}, {Text: "Second"}}
+	active.Comments = []*models.Comment{{Text: "A retained comment", CreatedAt: now}}
+	active.Decisions = []*models.Decision{{
+		Text: "A retained decision", Rationale: "Because", CreatedAt: now,
+	}}
+	active.Attachments = []models.Attachment{
+		{Filename: "spec.pdf", OriginalPath: "/source/spec.pdf", AddedAt: now},
+		{Filename: "https://example.test/item", OriginalPath: "https://example.test/item", IsURL: true, AddedAt: now},
+		{Filename: "internal/app/service.go", OriginalPath: "internal/app/service.go", IsCodeRef: true, LineNumber: 42, AddedAt: now},
+	}
+
+	terminal := mustTask("terminal", 2, "", "Terminal task")
+	terminal.Priority = 0
+	terminal.WorkflowState = models.StateDone
+	terminal.CompletedAt = &now
+
+	project := newProject("Export", active, terminal)
+	got := WriteProjectMarkdownClean(project)
+	for _, want := range []string{
+		"## Task: (#1) Active task [due 2026-07-29]",
+		"**Recurrence:** every 2 weeks",
+		"**Dependencies:**",
+		"- other-project:dependency",
+		"- [x] First",
+		"- [ ] Second",
+		"- A retained comment",
+		"- A retained decision",
+		"- File: spec.pdf",
+		"- URL: https://example.test/item",
+		"- Code: internal/app/service.go:42",
+		"## Task: (#2) Terminal task [done]",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("export missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "15:30") {
+		t.Fatalf("date-only v5 due value regained a retired due time:\n%s", got)
 	}
 }

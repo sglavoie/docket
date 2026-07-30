@@ -29,10 +29,5 @@ func (m *OutlinerModel) ContextualFooter() (StatusBarFooterSpec, bool) {
 	if hints == "" {
 		return StatusBarFooterSpec{}, false
 	}
-	if m.runtime != nil {
-		if right := onboardingStatus(m.runtime.Settings().GetOnboardingProgress()); right != "" {
-			hints += " · " + right
-		}
-	}
 	return StatusBarFooterSpec{Left: hints}, true
 }

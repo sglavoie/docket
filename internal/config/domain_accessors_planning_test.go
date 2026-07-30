@@ -1,181 +1,113 @@
 package config
 
 import (
+	"encoding/json"
 	"testing"
-	"time"
 )
 
-// TestPlanningAlertDismissalRoundTrip confirms the planning-domain dismissal
-// accessors mirror the config.Config facade behavior for the alert engine.
-func TestPlanningAlertDismissalRoundTrip(t *testing.T) {
-	p := NewPlanningState()
-
-	if p.IsAlertDismissed("k1") {
-		t.Fatal("fresh planning should have no dismissals")
-	}
-	p.DismissAlert("k1", "overdue")
-	if !p.IsAlertDismissed("k1") {
-		t.Fatal("DismissAlert did not record the dismissal")
-	}
-	// A duplicate dismiss of a still-live key is a no-op (single entry).
-	p.DismissAlert("k1", "overdue")
-	if got := len(p.GetAlertDismissals()); got != 1 {
-		t.Fatalf("dismissals = %d, want 1 after duplicate dismiss", got)
-	}
-
-	if !p.UndismissAlert("k1") {
-		t.Fatal("UndismissAlert should report removal")
-	}
-	if p.IsAlertDismissed("k1") {
-		t.Fatal("UndismissAlert did not clear the dismissal")
-	}
-}
-
-// TestPlanningPruneExpiredAlertDismissals confirms only expired dismissals are pruned.
-func TestPlanningPruneExpiredAlertDismissals(t *testing.T) {
-	p := NewPlanningState()
-	p.SetAlertDismissals([]AlertDismissal{
-		{Key: "fresh", DismissedAt: time.Now()},
-		{Key: "stale", DismissedAt: time.Now().Add(-alertDismissalMaxAge - time.Hour)},
-	})
-	if !p.PruneExpiredAlertDismissals() {
-		t.Fatal("prune should report a change")
-	}
-	if len(p.GetAlertDismissals()) != 1 || p.GetAlertDismissals()[0].Key != "fresh" {
-		t.Fatalf("prune kept the wrong set: %+v", p.GetAlertDismissals())
-	}
-	if p.PruneExpiredAlertDismissals() {
-		t.Fatal("second prune should report no change")
-	}
-}
-
-// TestPlanningReviewCompletionRoundTrip confirms the review completion accessors
-// live on the planning domain.
-func TestPlanningReviewCompletionRoundTrip(t *testing.T) {
-	p := NewPlanningState()
-	if p.GetLastDailyReviewAt() != nil || p.GetLastWeeklyReviewAt() != nil {
-		t.Fatal("review timestamps should default to nil")
-	}
-	now := time.Now()
-	p.SetLastDailyReviewAt(now)
-	p.SetLastWeeklyReviewAt(now)
-	if p.GetLastDailyReviewAt() == nil || p.GetLastWeeklyReviewAt() == nil {
-		t.Fatal("review timestamps not set")
-	}
-	p.ClearLastDailyReviewAt()
-	p.ClearLastWeeklyReviewAt()
-	if p.GetLastDailyReviewAt() != nil || p.GetLastWeeklyReviewAt() != nil {
-		t.Fatal("review timestamps not cleared")
-	}
-}
-
-// TestDomainOwnershipSeparation confirms alert policy and review bookkeeping
-// remain in distinct explicit domains.
-func TestDomainOwnershipSeparation(t *testing.T) {
-	enabled := false
-	settings := NewSettings()
-	settings.AlertOverdueEnabled = &enabled
-	when := time.Now()
+func TestPlanningSettersCanonicalizeProjectQualifiedIdentities(t *testing.T) {
 	planning := NewPlanningState()
-	planning.LastDailyReviewAt = &when
-	planning.AlertDismissals = []AlertDismissal{{Key: "k", DismissedAt: when}}
-
-	if settings.AlertOverdueEnabled == nil || *settings.AlertOverdueEnabled {
-		t.Error("alert policy should be owned by the Settings domain")
-	}
-	if planning.GetLastDailyReviewAt() == nil {
-		t.Error("review completion should be owned by the Planning domain")
-	}
-	if !planning.IsAlertDismissed("k") {
-		t.Error("alert dismissals should be owned by the Planning domain")
-	}
-	if settings.GetAlertDueSoonDays() != DefaultAlertDueSoonDays {
-		t.Errorf("Settings.GetAlertDueSoonDays = %d, want default %d",
-			settings.GetAlertDueSoonDays(), DefaultAlertDueSoonDays)
-	}
-}
-
-func TestPlanningQualifiedRemovalPreservesDuplicateIDInOtherProject(t *testing.T) {
-	planning := NewPlanningState()
-	planning.FocusQueue = []FocusQueueItem{
-		{ProjectID: "alpha", TaskID: "shared"},
-		{ProjectID: "beta", TaskID: "shared"},
-	}
-	planning.DailyPlan = []DailyPlanItem{
-		{ProjectID: "alpha", TaskID: "shared"},
-		{ProjectID: "beta", TaskID: "shared"},
-	}
-	planning.FocusDismissedIDs = []string{"shared", "other"}
-
-	removed := planning.RemoveDurableTaskLocators([]ProjectTaskLocator{{ProjectID: "beta", TaskID: "shared"}})
-	if removed != 2 {
-		t.Fatalf("removed = %d, want beta queue + daily entries", removed)
-	}
-	if len(planning.FocusQueue) != 1 || planning.FocusQueue[0].ProjectID != "alpha" {
-		t.Fatalf("focus queue = %+v, want alpha entry", planning.FocusQueue)
-	}
-	if len(planning.DailyPlan) != 1 || planning.DailyPlan[0].ProjectID != "alpha" {
-		t.Fatalf("daily plan = %+v, want alpha entry", planning.DailyPlan)
-	}
-	if len(planning.FocusDismissedIDs) != 2 || planning.FocusDismissedIDs[0] != "shared" {
-		t.Fatalf("dismissed IDs = %v, want legacy list unchanged", planning.FocusDismissedIDs)
-	}
-}
-
-func TestQualifiedMoveReassignmentPreservesDuplicateIDInOtherProject(t *testing.T) {
-	planning := NewPlanningState()
-	planning.FocusQueue = []FocusQueueItem{
-		{ProjectID: "alpha", TaskID: "shared"},
-		{ProjectID: "beta", TaskID: "shared"},
-	}
-	planning.DailyPlan = []DailyPlanItem{
-		{ProjectID: "alpha", TaskID: "shared"},
-		{ProjectID: "beta", TaskID: "shared"},
-	}
-	machine := NewMachineState()
-	machine.RecentTaskVisits = []RecentTaskVisit{
-		{ProjectID: "alpha", TaskID: "shared"},
-		{ProjectID: "beta", TaskID: "shared"},
-	}
-	moved := map[string]bool{"shared": true}
-
-	updated := planning.ReassignDurablePlanningProjectFrom(moved, "beta", "gamma")
-	updated += machine.ReassignRecentVisitsProjectFrom(moved, "beta", "gamma")
-	if updated != 3 {
-		t.Fatalf("updated = %d, want beta queue + daily + recent entries", updated)
-	}
-	if planning.FocusQueue[0].ProjectID != "alpha" || planning.FocusQueue[1].ProjectID != "gamma" {
-		t.Fatalf("focus queue = %+v, want alpha preserved and beta moved", planning.FocusQueue)
-	}
-	if planning.DailyPlan[0].ProjectID != "alpha" || planning.DailyPlan[1].ProjectID != "gamma" {
-		t.Fatalf("daily plan = %+v, want alpha preserved and beta moved", planning.DailyPlan)
-	}
-	if machine.RecentTaskVisits[0].ProjectID != "alpha" || machine.RecentTaskVisits[1].ProjectID != "gamma" {
-		t.Fatalf("recent visits = %+v, want alpha preserved and beta moved", machine.RecentTaskVisits)
-	}
-}
-
-func TestPlanningMembershipSettersCanonicalizeIdentities(t *testing.T) {
-	planning := NewPlanningState()
-	planning.SetFocusQueue([]FocusQueueItem{
+	input := []ProjectTaskLocator{
 		{TaskID: "", ProjectID: "p"},
+		{TaskID: "missing-project"},
 		{TaskID: "same", ProjectID: "p"},
 		{TaskID: "same", ProjectID: "p"},
 		{TaskID: "same", ProjectID: "other"},
+	}
+	planning.SetNextOrder(input)
+	planning.SetToday(input)
+
+	want := []ProjectTaskLocator{
+		{TaskID: "same", ProjectID: "p"},
+		{TaskID: "same", ProjectID: "other"},
+	}
+	if got := planning.GetNextOrder(); !planningRefsEqual(got, want) {
+		t.Fatalf("NextOrder = %+v, want %+v", got, want)
+	}
+	if got := planning.GetToday(); !planningRefsEqual(got, want) {
+		t.Fatalf("Today = %+v, want %+v", got, want)
+	}
+}
+
+func TestPlanningMutationsRequireExactProjectQualifiedIdentity(t *testing.T) {
+	planning := NewPlanningState()
+	if !planning.AddToNextOrder("shared", "alpha") ||
+		!planning.AddToNextOrder("shared", "beta") ||
+		planning.AddToNextOrder("shared", "alpha") {
+		t.Fatalf("Next-order additions were not project-qualified: %+v", planning.NextOrder)
+	}
+	if !planning.AddToToday("shared", "alpha") ||
+		!planning.AddToToday("shared", "beta") ||
+		planning.AddToToday("shared", "alpha") {
+		t.Fatalf("Today additions were not project-qualified: %+v", planning.Today)
+	}
+
+	if !planning.RemoveFromNextOrderInProject("shared", "beta") ||
+		!planning.RemoveFromTodayInProject("shared", "beta") {
+		t.Fatal("qualified removals reported no change")
+	}
+	if got := planning.NextOrder; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Fatalf("NextOrder = %+v, want alpha entry preserved", got)
+	}
+	if got := planning.Today; len(got) != 1 || got[0].ProjectID != "alpha" {
+		t.Fatalf("Today = %+v, want alpha entry preserved", got)
+	}
+}
+
+func TestPlanningQualifiedCleanupAndMovePreserveOtherProject(t *testing.T) {
+	planning := NewPlanningState()
+	planning.SetNextOrder([]ProjectTaskLocator{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
 	})
-	planning.SetDailyPlan([]DailyPlanItem{
-		{TaskID: "", ProjectID: "p"},
-		{TaskID: "same", ProjectID: "p", PlannedDate: "2026-07-25"},
-		{TaskID: "same", ProjectID: "p", PlannedDate: "2026-07-26"},
-		{TaskID: "same", ProjectID: "other", PlannedDate: "2026-07-25"},
+	planning.SetToday([]ProjectTaskLocator{
+		{ProjectID: "alpha", TaskID: "shared"},
+		{ProjectID: "beta", TaskID: "shared"},
 	})
 
-	if got := planning.GetFocusQueue(); len(got) != 2 ||
-		got[0].ProjectID != "p" || got[1].ProjectID != "other" {
-		t.Fatalf("FocusQueue = %+v, want one entry per project-qualified identity", got)
+	removed := planning.RemoveDurableTaskLocators([]ProjectTaskLocator{{
+		ProjectID: "beta", TaskID: "shared",
+	}})
+	if removed != 2 {
+		t.Fatalf("removed = %d, want beta Today + Next-order entries", removed)
 	}
-	if got := planning.GetDailyPlan(); len(got) != 2 ||
-		got[0].PlannedDate != "2026-07-25" || got[1].ProjectID != "other" {
-		t.Fatalf("DailyPlan = %+v, want first entry per project-qualified identity", got)
+	planning.AddToNextOrder("shared", "beta")
+	planning.AddToToday("shared", "beta")
+	if updated := planning.ReassignDurablePlanningProjectFrom(
+		map[string]bool{"shared": true}, "beta", "gamma",
+	); updated != 2 {
+		t.Fatalf("updated = %d, want two planning entries", updated)
 	}
+	if planning.NextOrder[0].ProjectID != "alpha" || planning.NextOrder[1].ProjectID != "gamma" {
+		t.Fatalf("NextOrder = %+v", planning.NextOrder)
+	}
+	if planning.Today[0].ProjectID != "alpha" || planning.Today[1].ProjectID != "gamma" {
+		t.Fatalf("Today = %+v", planning.Today)
+	}
+}
+
+func TestCanonicalV5PlanningJSONContainsOnlyLeanFields(t *testing.T) {
+	planning := PlanningState{
+		Today:     []ProjectTaskLocator{{TaskID: "today", ProjectID: "p"}},
+		NextOrder: []ProjectTaskLocator{{TaskID: "next", ProjectID: "p"}},
+	}
+	output, err := json.Marshal(planning)
+	if err != nil {
+		t.Fatalf("MarshalJSON: %v", err)
+	}
+	if got, want := string(output), `{"today":[{"task_id":"today","project_id":"p"}],"next_order":[{"task_id":"next","project_id":"p"}]}`; got != want {
+		t.Fatalf("canonical planning JSON = %s, want %s", got, want)
+	}
+}
+
+func planningRefsEqual(left, right []ProjectTaskLocator) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
 }

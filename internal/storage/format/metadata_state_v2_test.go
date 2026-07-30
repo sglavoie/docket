@@ -22,7 +22,6 @@ func unwrapMetadata(t *testing.T, meta string) string {
 func TestWriteMetadataV2_EmitsStateNotLegacyFields(t *testing.T) {
 	task := &models.Task{
 		ID:            "state-1",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateWaiting,
 		Priority:      2,
 	}
@@ -43,7 +42,7 @@ func TestWriteMetadataV2_EmitsStateNotLegacyFields(t *testing.T) {
 // writer parses back to a task whose derived state matches.
 func TestStateCodecRoundTrip(t *testing.T) {
 	for _, state := range models.AllWorkflowStates() {
-		task := &models.Task{ID: "rt", Type: models.TaskTypeTask, Priority: 1}
+		task := &models.Task{ID: "rt", Priority: 1}
 		task.ApplyWorkflowState(state)
 
 		meta := WriteMetadataV2(task)
@@ -79,18 +78,46 @@ func TestStateCodecMalformedWarns(t *testing.T) {
 func TestRetiredStageMetadataRemainsReadOnlyMigrationInput(t *testing.T) {
 	parsed := &models.Task{}
 	warnings := ParseMetadata(parsed, "id: legacy-review, status: todo, stage: Review, priority: 2")
-	if len(warnings) != 0 {
-		t.Fatalf("legacy stage metadata produced warnings: %v", warnings)
+	if len(warnings) != 1 || warnings[0].Type != WarningDeprecation {
+		t.Fatalf("legacy stage metadata warnings = %v, want one deprecation", warnings)
 	}
-	if got := parsed.State(); got != models.StateReview {
-		t.Fatalf("legacy review stage migrated to %q, want %q", got, models.StateReview)
+	if got := parsed.State(); got != models.StateReady {
+		t.Fatalf("legacy review stage migrated to %q, want %q", got, models.StateReady)
+	}
+	if !parsed.HasTag(models.LegacyReviewTag) {
+		t.Fatalf("legacy review stage lost review tag: %v", parsed.Tags)
 	}
 
 	written := WriteMetadataV2(parsed)
 	if strings.Contains(written, "stage:") {
 		t.Fatalf("current metadata writer resurrected retired stage field: %q", written)
 	}
-	if !strings.Contains(written, "state: review") {
-		t.Fatalf("current metadata writer lost migrated workflow state: %q", written)
+	if !strings.Contains(written, "state: ready") || !strings.Contains(written, "tags: review") {
+		t.Fatalf("current metadata writer lost normalized review meaning: %q", written)
+	}
+}
+
+func TestRetiredV2ReviewStateNormalizesOnReadAndWrite(t *testing.T) {
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, "id: legacy-review, state: review, tags: existing, priority: 2")
+	if len(warnings) != 1 || warnings[0].Type != WarningDeprecation {
+		t.Fatalf("state: review warnings = %v, want one deprecation", warnings)
+	}
+	if parsed.State() != models.StateReady || !parsed.HasTag("existing") || !parsed.HasTag(models.LegacyReviewTag) {
+		t.Fatalf("normalized task = state %q tags %v", parsed.State(), parsed.Tags)
+	}
+
+	directLegacy := &models.Task{
+		ID:            "direct-review",
+		WorkflowState: models.StateReview,
+		Priority:      2,
+		Tags:          []string{"existing"},
+	}
+	written := WriteMetadataV2(directLegacy)
+	if !strings.Contains(written, "state: ready") || !strings.Contains(written, "tags: existing;review") {
+		t.Fatalf("direct legacy output was not normalized: %q", written)
+	}
+	if directLegacy.State() != models.StateReview || directLegacy.HasTag(models.LegacyReviewTag) {
+		t.Fatalf("writer mutated caller: state %q tags %v", directLegacy.State(), directLegacy.Tags)
 	}
 }

@@ -1,161 +1,75 @@
 package models
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 )
 
-func TestToggleCommentResolved(t *testing.T) {
-	t.Run("toggles resolved state", func(t *testing.T) {
-		task := &Task{}
-		task.AddComment("First comment")
-		task.AddComment("Second comment")
+func TestAddCommentAtCreatesLeanTimestampedRecord(t *testing.T) {
+	task := &Task{}
+	now := time.Date(2026, 7, 28, 12, 30, 0, 0, time.UTC)
 
-		if task.Comments[0].Resolved {
-			t.Fatal("new comment should not be resolved")
-		}
+	task.AddCommentAt("  meaningful note  ", now)
 
-		ok := task.ToggleCommentResolved(0)
-		if !ok {
-			t.Fatal("ToggleCommentResolved returned false for valid index")
-		}
-		if !task.Comments[0].Resolved {
-			t.Error("comment should be resolved after toggle")
-		}
-
-		// Toggle back
-		ok = task.ToggleCommentResolved(0)
-		if !ok {
-			t.Fatal("ToggleCommentResolved returned false for valid index")
-		}
-		if task.Comments[0].Resolved {
-			t.Error("comment should be unresolved after second toggle")
-		}
-	})
-
-	t.Run("out of range returns false", func(t *testing.T) {
-		task := &Task{}
-		task.AddComment("Comment")
-
-		if task.ToggleCommentResolved(-1) {
-			t.Error("ToggleCommentResolved should return false for negative index")
-		}
-		if task.ToggleCommentResolved(1) {
-			t.Error("ToggleCommentResolved should return false for out-of-range index")
-		}
-		if task.ToggleCommentResolved(99) {
-			t.Error("ToggleCommentResolved should return false for far out-of-range index")
-		}
-	})
-
-	t.Run("empty comments returns false", func(t *testing.T) {
-		task := &Task{}
-		if task.ToggleCommentResolved(0) {
-			t.Error("ToggleCommentResolved should return false for empty comments")
-		}
-	})
-}
-
-func TestUnresolvedCommentCount(t *testing.T) {
-	t.Run("all unresolved", func(t *testing.T) {
-		task := &Task{}
-		task.AddComment("First")
-		task.AddComment("Second")
-		task.AddComment("Third")
-
-		if got := task.UnresolvedCommentCount(); got != 3 {
-			t.Errorf("UnresolvedCommentCount() = %d, want 3", got)
-		}
-	})
-
-	t.Run("some resolved", func(t *testing.T) {
-		task := &Task{}
-		task.AddComment("First")
-		task.AddComment("Second")
-		task.AddComment("Third")
-		task.Comments[1].Resolved = true
-
-		if got := task.UnresolvedCommentCount(); got != 2 {
-			t.Errorf("UnresolvedCommentCount() = %d, want 2", got)
-		}
-	})
-
-	t.Run("all resolved", func(t *testing.T) {
-		task := &Task{}
-		task.AddComment("First")
-		task.AddComment("Second")
-		task.Comments[0].Resolved = true
-		task.Comments[1].Resolved = true
-
-		if got := task.UnresolvedCommentCount(); got != 0 {
-			t.Errorf("UnresolvedCommentCount() = %d, want 0", got)
-		}
-	})
-
-	t.Run("no comments", func(t *testing.T) {
-		task := &Task{}
-		if got := task.UnresolvedCommentCount(); got != 0 {
-			t.Errorf("UnresolvedCommentCount() = %d, want 0", got)
-		}
-	})
-}
-
-func TestAddComment_RejectsEmptyAndWhitespace(t *testing.T) {
-	cases := []struct {
-		name string
-		text string
-	}{
-		{"empty", ""},
-		{"spaces", "   "},
-		{"tabs", "\t\t"},
-		{"newlines", "\n\n"},
-		{"mixed whitespace", " \t\n  "},
+	if len(task.Comments) != 1 {
+		t.Fatalf("comments = %d, want 1", len(task.Comments))
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			task := &Task{}
-			task.AddComment(tc.text)
-			if len(task.Comments) != 0 {
-				t.Fatalf("expected 0 comments after AddComment(%q), got %d", tc.text, len(task.Comments))
-			}
-		})
+	comment := task.Comments[0]
+	if comment.Text != "  meaningful note  " {
+		t.Errorf("text = %q, want preserved input", comment.Text)
+	}
+	if !comment.CreatedAt.Equal(now) || !task.UpdatedAt.Equal(now) {
+		t.Errorf("timestamps = comment %v task %v, want %v", comment.CreatedAt, task.UpdatedAt, now)
+	}
+
+	encoded, err := json.Marshal(comment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "resolved") {
+		t.Fatalf("canonical comment JSON contains retired state: %s", encoded)
 	}
 }
 
-func TestRemoveComment_NilsOutTailToReleasePointer(t *testing.T) {
+func TestAddCommentRejectsWhitespace(t *testing.T) {
+	for _, text := range []string{"", "   ", "\t\t", "\n\n", " \t\n  "} {
+		task := &Task{}
+		task.AddComment(text)
+		if len(task.Comments) != 0 {
+			t.Fatalf("AddComment(%q) created %d comments", text, len(task.Comments))
+		}
+	}
+}
+
+func TestRemoveCommentNilsBackingArrayTail(t *testing.T) {
 	task := &Task{}
 	task.AddComment("first")
 	task.AddComment("second")
 	task.AddComment("third")
-
-	// Capture the underlying backing array via a slice that includes the
-	// tail slot. After RemoveComment shrinks the visible length by one,
-	// the backing array's last slot must be nil — otherwise the removed
-	// *Comment is leaked through the underlying array.
 	full := task.Comments[:3]
 
 	if !task.RemoveComment(0) {
 		t.Fatal("RemoveComment(0) returned false")
 	}
-	if len(task.Comments) != 2 {
-		t.Fatalf("expected 2 comments after removal, got %d", len(task.Comments))
-	}
-	if task.Comments[0].Text != "second" || task.Comments[1].Text != "third" {
-		t.Fatalf("unexpected remaining comments: %q, %q",
-			task.Comments[0].Text, task.Comments[1].Text)
+	if len(task.Comments) != 2 || task.Comments[0].Text != "second" || task.Comments[1].Text != "third" {
+		t.Fatalf("remaining comments = %+v", task.Comments)
 	}
 	if full[2] != nil {
-		t.Errorf("expected backing-array tail slot to be nil after RemoveComment, "+
-			"but it still references a *Comment with text %q", full[2].Text)
+		t.Fatalf("removed comment remains in backing-array tail: %+v", full[2])
+	}
+	if task.RemoveComment(-1) || task.RemoveComment(2) {
+		t.Fatal("out-of-range removal succeeded")
 	}
 }
 
-func TestAddComment_KeepsNonEmptyTextWithSurroundingSpace(t *testing.T) {
+func TestClearComments(t *testing.T) {
 	task := &Task{}
-	task.AddComment("  meaningful note  ")
-	if len(task.Comments) != 1 {
-		t.Fatalf("expected 1 comment, got %d", len(task.Comments))
-	}
-	if task.Comments[0].Text != "  meaningful note  " {
-		t.Errorf("expected text to be preserved verbatim, got %q", task.Comments[0].Text)
+	task.AddComment("first")
+	task.AddComment("second")
+	task.ClearComments()
+	if len(task.Comments) != 0 {
+		t.Fatalf("comments after clear = %d, want 0", len(task.Comments))
 	}
 }

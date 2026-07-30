@@ -12,20 +12,12 @@ func (m *TaskFormModel) applyTextEditorResult(field, value string) {
 	switch field {
 	case "formDesc":
 		m.draft.desc = value
-	case "bugWorkaround":
-		m.draft.bugAttrs.Workaround = value
-	case "storyPersona":
-		m.draft.storyAttrs.Persona = value
-	case "epicMilestone":
-		m.draft.epicAttrs.Milestone = value
-	case "epicSuccessMetrics":
-		m.draft.epicAttrs.SuccessMetrics = value
 	}
 	m.hasChanges = true
 	m.err = nil
 }
 
-// buildValidParents returns tasks in the project that can parent the current draft type.
+// buildValidParents returns tasks in the project that can parent the current task.
 // In edit mode, the task being edited and all its descendants are excluded to
 // prevent circular parent-child relationships.
 func (m *TaskFormModel) buildValidParents() []*models.Task {
@@ -47,9 +39,7 @@ func (m *TaskFormModel) buildValidParents() []*models.Task {
 		if excluded[t.ID] {
 			continue
 		}
-		if t.CanAddChild(m.draft.taskType) {
-			parents = append(parents, t)
-		}
+		parents = append(parents, t)
 	}
 	return parents
 }
@@ -71,32 +61,12 @@ func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
 		m.dueTextInput, cmd = m.dueTextInput.Update(msg)
 		markDirty()
 		return m, cmd
-	case m.activeTab == formTabSchedule && m.focusIndex == 1:
-		var cmd tea.Cmd
-		m.startDateTextInput, cmd = m.startDateTextInput.Update(msg)
-		markDirty()
-		return m, cmd
-	case m.activeTab == formTabSchedule && m.focusIndex == 2:
-		var cmd tea.Cmd
-		m.estimatedDaysTextInput, cmd = m.estimatedDaysTextInput.Update(msg)
-		markDirty()
-		return m, cmd
-	case m.activeTab == formTabDetails && m.focusIndex == 0:
-		var cmd tea.Cmd
-		m.urlTextInput, cmd = m.urlTextInput.Update(msg)
-		markDirty()
-		return m, cmd
-	case m.activeTab == formTabDetails && m.focusIndex == 1:
-		var cmd tea.Cmd
-		m.sourceTextInput, cmd = m.sourceTextInput.Update(msg)
-		markDirty()
-		return m, cmd
 	}
 	return m, nil
 }
 
 // handleTextInputKey consolidates the common key handling for textinput fields
-// (due, URL, source). It calls commit before navigation/save/esc, and forwards
+// (due date). It calls commit before navigation/save/esc, and forwards
 // unrecognized keys to the textinput. Returns (cmd, true) if the key was consumed.
 func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), input *textinput.Model) (tea.Cmd, bool) {
 	switch msg.String() {

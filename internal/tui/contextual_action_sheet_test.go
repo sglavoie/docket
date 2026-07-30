@@ -17,7 +17,6 @@ func contextActionTestDescriptor(id OperationID, label string) OperationDescript
 		ID:                id,
 		Label:             label,
 		Category:          OperationCategoryScope,
-		Placement:         PlacementContextual,
 		TargetSource:      OperationTargetGlobal,
 		TargetCardinality: TargetCardinalityNone,
 		Risk:              OperationRiskMutation,
@@ -198,7 +197,7 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 		executor,
 		contextActionTestContext(),
 		[]OperationID{"test.act"},
-		ContextActionSheetConfig{Host: ContextActionHostFinder},
+		ContextActionSheetConfig{Host: ContextActionHostScopeHub},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
@@ -211,38 +210,11 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 	if !ok {
 		t.Fatalf("Esc returned %T, want ContextActionSheetClosedMsg", raw)
 	}
-	if closed.Host != ContextActionHostFinder {
+	if closed.Host != ContextActionHostScopeHub {
 		t.Fatalf("closed host = %q, want the opening host", closed.Host)
 	}
 	if executed {
 		t.Fatal("Esc executed the cursor action")
-	}
-}
-
-func TestContextActionSheetHostCompletionClosesOwnedStack(t *testing.T) {
-	app := newUITestApp()
-	cmd := app.applyContextActionSheetResult(ContextActionSheetResultMsg{
-		Host:       ContextActionHostFinder,
-		Completion: ContextActionCompleteCloseHost,
-	})
-	if cmd == nil {
-		t.Fatal("close-host completion produced no command")
-	}
-	msg := cmd()
-	if batch, ok := msg.(tea.BatchMsg); ok {
-		for _, inner := range batch {
-			if completed, ok := inner().(ContextActionSheetCompletedMsg); ok {
-				msg = completed
-				break
-			}
-		}
-	}
-	completed, ok := msg.(ContextActionSheetCompletedMsg)
-	if !ok {
-		t.Fatalf("close-host completion produced %T, want ContextActionSheetCompletedMsg", msg)
-	}
-	if completed.Host != ContextActionHostFinder {
-		t.Fatalf("completed host = %q, want the opening host", completed.Host)
 	}
 }
 
@@ -398,7 +370,7 @@ func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
 		sheet.config.Completion != ContextActionCompleteCloseSheet {
 		t.Fatalf("task sheet lifecycle = %+v", sheet.config)
 	}
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskSetSnooze))) {
+	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskChecklist))) {
 		t.Fatal("task sheet lost its stable task-action item IDs")
 	}
 }

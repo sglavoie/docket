@@ -1,0 +1,13 @@
+{
+  "name": "theme-toggle",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "switch from the default dark theme", "key": "T" },
+    { "type": "assert", "assert": "status_contains", "value": "Theme: light" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "switch back to dark", "key": "T" },
+    { "type": "assert", "assert": "status_contains", "value": "Theme: dark" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

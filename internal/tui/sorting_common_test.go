@@ -41,10 +41,10 @@ func TestCompareTasks_DeterministicTieBreak(t *testing.T) {
 	a := &models.Task{ID: "a", Priority: 3, WorkflowState: models.StateReady}
 	b := &models.Task{ID: "b", Priority: 3, WorkflowState: models.StateReady}
 
-	if c := CompareTasks(a, b, SortByPriority, "", nil); c >= 0 {
+	if c := CompareTasks(a, b, SortByPriority); c >= 0 {
 		t.Errorf("expected CompareTasks(a,b) < 0 (tie broken by ID), got %d", c)
 	}
-	if c := CompareTasks(b, a, SortByPriority, "", nil); c <= 0 {
+	if c := CompareTasks(b, a, SortByPriority); c <= 0 {
 		t.Errorf("expected CompareTasks(b,a) > 0 (tie broken by ID), got %d", c)
 	}
 }
@@ -64,7 +64,7 @@ func TestSortDescending_DoesNotPanicOnTies(t *testing.T) {
 	}
 
 	sort.Slice(tasks, func(i, j int) bool {
-		c := CompareTasks(tasks[i], tasks[j], SortByPriority, "", nil)
+		c := CompareTasks(tasks[i], tasks[j], SortByPriority)
 		return ApplySortDirection(c, false)
 	})
 

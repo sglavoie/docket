@@ -71,10 +71,10 @@ func TestParseTasksMarkdown_DuplicateID_PreservesParentID(t *testing.T) {
 	// the first Parent retains the original ID.
 	content := `# Project: Test
 
-## Epic: Parent
+## Task: Parent
 <!-- id: dup-id, status: todo, priority: 1 -->
 
-## Epic: Parent2
+## Task: Parent2
 <!-- id: dup-id, status: todo, priority: 2 -->
 
 ### Task: Child
@@ -144,46 +144,6 @@ func TestParseTasksMarkdown_OrphanedParentRef(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected a DataCorrection warning for orphaned parent reference, got none")
-	}
-}
-
-func TestParseTasksMarkdown_DuplicateID_PreservesRelatedTo(t *testing.T) {
-	// Task A and Task A2 share "dup-id". A2 gets reassigned.
-	// Task C has related: dup-id, which should still point to "dup-id" because
-	// Task A (the first) retains the original ID.
-	content := `# Project: Test
-
-## Task: Task A
-<!-- id: dup-id, status: todo, priority: 1 -->
-
-## Task: Task A2
-<!-- id: dup-id, status: todo, priority: 2 -->
-
-## Task: Task C
-<!-- id: unique-c, status: todo, priority: 3, related: dup-id -->
-`
-	result, err := ParseTasksMarkdownDocument(content)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(result.Tasks) != 3 {
-		t.Fatalf("expected 3 tasks, got %d", len(result.Tasks))
-	}
-
-	taskA2 := result.Tasks[1]
-	taskC := result.Tasks[2]
-
-	if taskA2.ID == "dup-id" {
-		t.Fatal("Task A2 should have been reassigned a new ID")
-	}
-
-	if len(taskC.RelatedTo) != 1 {
-		t.Fatalf("expected 1 related entry, got %d", len(taskC.RelatedTo))
-	}
-	// RelatedTo should still reference "dup-id" (Task A, the first occurrence)
-	if taskC.RelatedTo[0] != "dup-id" {
-		t.Errorf("Task C RelatedTo should still be %q (first task keeps original ID), got %q", "dup-id", taskC.RelatedTo[0])
 	}
 }
 

@@ -17,15 +17,15 @@ func TestBuildHierarchy(t *testing.T) {
 			name: "simple hierarchy",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "story1", Type: models.TaskTypeStory, Title: "Story 1"},
+					Task:  &models.Task{ID: "story1", Title: "Story 1"},
 					Level: 3,
 				},
 				{
-					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
+					Task:  &models.Task{ID: "task1", Title: "Task 1"},
 					Level: 4,
 				},
 			},
@@ -39,19 +39,19 @@ func TestBuildHierarchy(t *testing.T) {
 			name: "multiple siblings at same level",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "story1", Type: models.TaskTypeStory, Title: "Story 1"},
+					Task:  &models.Task{ID: "story1", Title: "Story 1"},
 					Level: 3,
 				},
 				{
-					Task:  &models.Task{ID: "story2", Type: models.TaskTypeStory, Title: "Story 2"},
+					Task:  &models.Task{ID: "story2", Title: "Story 2"},
 					Level: 3,
 				},
 				{
-					Task:  &models.Task{ID: "story3", Type: models.TaskTypeStory, Title: "Story 3"},
+					Task:  &models.Task{ID: "story3", Title: "Story 3"},
 					Level: 3,
 				},
 			},
@@ -66,11 +66,11 @@ func TestBuildHierarchy(t *testing.T) {
 			name: "task with explicit parent ID is preserved",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "story1", Type: models.TaskTypeStory, Title: "Story 1", ParentID: strPtr("other-epic")},
+					Task:  &models.Task{ID: "story1", Title: "Story 1", ParentID: strPtr("other-epic")},
 					Level: 3,
 				},
 			},
@@ -80,28 +80,29 @@ func TestBuildHierarchy(t *testing.T) {
 			wantNoParent: []string{"epic1"},
 		},
 		{
-			name: "type restriction prevents invalid parent",
+			name: "generic hierarchy permits parent",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
+					Task:  &models.Task{ID: "task1", Title: "Task 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 3,
 				},
 			},
-			wantNoParent: []string{"task1", "epic1"}, // Epic can't be child of Task
+			wantParents:  map[string]*string{"epic1": strPtr("task1")},
+			wantNoParent: []string{"task1"},
 		},
 		{
 			name: "level skip - find parent at multiple levels up",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
+					Task:  &models.Task{ID: "task1", Title: "Task 1"},
 					Level: 4, // Skip level 3
 				},
 			},
@@ -114,23 +115,23 @@ func TestBuildHierarchy(t *testing.T) {
 			name: "complex multi-level hierarchy",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "story1", Type: models.TaskTypeStory, Title: "Story 1"},
+					Task:  &models.Task{ID: "story1", Title: "Story 1"},
 					Level: 3,
 				},
 				{
-					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
+					Task:  &models.Task{ID: "task1", Title: "Task 1"},
 					Level: 4,
 				},
 				{
-					Task:  &models.Task{ID: "task2", Type: models.TaskTypeTask, Title: "Task 2"},
+					Task:  &models.Task{ID: "task2", Title: "Task 2"},
 					Level: 4,
 				},
 				{
-					Task:  &models.Task{ID: "story2", Type: models.TaskTypeStory, Title: "Story 2"},
+					Task:  &models.Task{ID: "story2", Title: "Story 2"},
 					Level: 3,
 				},
 			},
@@ -146,11 +147,11 @@ func TestBuildHierarchy(t *testing.T) {
 			name: "top-level tasks have no parent",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "epic2", Type: models.TaskTypeEpic, Title: "Epic 2"},
+					Task:  &models.Task{ID: "epic2", Title: "Epic 2"},
 					Level: 2,
 				},
 			},
@@ -160,11 +161,11 @@ func TestBuildHierarchy(t *testing.T) {
 			name: "heading level skip (## → #####) is clamped to direct child",
 			parsedTasks: []*ParsedTask{
 				{
-					Task:  &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"},
+					Task:  &models.Task{ID: "epic1", Title: "Epic 1"},
 					Level: 2,
 				},
 				{
-					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
+					Task:  &models.Task{ID: "task1", Title: "Task 1"},
 					Level: 5, // jumps 3 levels — clamped to level 3 (prevLevel+1)
 				},
 			},
@@ -221,8 +222,8 @@ func TestBuildHierarchy(t *testing.T) {
 
 func TestBuildHierarchy_HeadingLevelSkipWarning(t *testing.T) {
 	parsedTasks := []*ParsedTask{
-		{Task: &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"}, Level: 2},
-		{Task: &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"}, Level: 5},
+		{Task: &models.Task{ID: "epic1", Title: "Epic 1"}, Level: 2},
+		{Task: &models.Task{ID: "task1", Title: "Task 1"}, Level: 5},
 	}
 
 	_, warnings := BuildHierarchy(parsedTasks)
@@ -242,115 +243,6 @@ func TestBuildHierarchy_HeadingLevelSkipWarning(t *testing.T) {
 	}
 }
 
-func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
-	// Test that type restrictions are properly enforced
-	tests := []struct {
-		name       string
-		parentType models.TaskType
-		childType  models.TaskType
-		wantParent bool
-	}{
-		{
-			name:       "Epic can contain Story",
-			parentType: models.TaskTypeEpic,
-			childType:  models.TaskTypeStory,
-			wantParent: true,
-		},
-		{
-			name:       "Epic can contain Task",
-			parentType: models.TaskTypeEpic,
-			childType:  models.TaskTypeTask,
-			wantParent: true,
-		},
-		{
-			name:       "Epic can contain Bug",
-			parentType: models.TaskTypeEpic,
-			childType:  models.TaskTypeBug,
-			wantParent: true,
-		},
-		{
-			name:       "Epic can contain Idea",
-			parentType: models.TaskTypeEpic,
-			childType:  models.TaskTypeIdea,
-			wantParent: true,
-		},
-		{
-			name:       "Story can contain Task",
-			parentType: models.TaskTypeStory,
-			childType:  models.TaskTypeTask,
-			wantParent: true,
-		},
-		{
-			name:       "Story can contain Bug",
-			parentType: models.TaskTypeStory,
-			childType:  models.TaskTypeBug,
-			wantParent: true,
-		},
-		{
-			name:       "Story cannot contain Epic",
-			parentType: models.TaskTypeStory,
-			childType:  models.TaskTypeEpic,
-			wantParent: false,
-		},
-		{
-			name:       "Story cannot contain Story",
-			parentType: models.TaskTypeStory,
-			childType:  models.TaskTypeStory,
-			wantParent: false,
-		},
-		{
-			name:       "Task cannot contain Task",
-			parentType: models.TaskTypeTask,
-			childType:  models.TaskTypeTask,
-			wantParent: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parsedTasks := []*ParsedTask{
-				{
-					Task:  &models.Task{ID: "parent", Type: tt.parentType, Title: "Parent"},
-					Level: 2,
-				},
-				{
-					Task:  &models.Task{ID: "child", Type: tt.childType, Title: "Child"},
-					Level: 3,
-				},
-			}
-
-			tasks, _ := BuildHierarchy(parsedTasks)
-
-			var child *models.Task
-			for _, task := range tasks {
-				if task.ID == "child" {
-					child = task
-					break
-				}
-			}
-
-			if child == nil {
-				t.Fatal("child task not found")
-			}
-
-			hasParent := child.ParentID != nil
-			if hasParent != tt.wantParent {
-				if tt.wantParent {
-					t.Errorf("child should have parent but doesn't")
-				} else {
-					t.Errorf("child should not have parent but has: %s", *child.ParentID)
-				}
-			}
-
-			if hasParent && tt.wantParent {
-				if *child.ParentID != "parent" {
-					t.Errorf("child.ParentID = %s, want 'parent'", *child.ParentID)
-				}
-			}
-		})
-	}
-}
-
 // TestBuildHierarchy_ExplicitParentClearsStaleStack ensures that a task with
 // an explicit ParentID does not leave stale deeper-level entries in the
 // internal level stack. Previously, a level-2 task with a preset parent
@@ -358,10 +250,10 @@ func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
 // would attach to an unrelated sibling's child from an earlier group.
 func TestBuildHierarchy_ExplicitParentClearsStaleStack(t *testing.T) {
 	parsedTasks := []*ParsedTask{
-		{Task: &models.Task{ID: "epic1", Type: models.TaskTypeEpic, Title: "Epic 1"}, Level: 2},
-		{Task: &models.Task{ID: "story1", Type: models.TaskTypeStory, Title: "Story 1"}, Level: 3},
-		{Task: &models.Task{ID: "epic2", Type: models.TaskTypeEpic, Title: "Epic 2", ParentID: strPtr("external-epic")}, Level: 2},
-		{Task: &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"}, Level: 3},
+		{Task: &models.Task{ID: "epic1", Title: "Epic 1"}, Level: 2},
+		{Task: &models.Task{ID: "story1", Title: "Story 1"}, Level: 3},
+		{Task: &models.Task{ID: "epic2", Title: "Epic 2", ParentID: strPtr("external-epic")}, Level: 2},
+		{Task: &models.Task{ID: "task1", Title: "Task 1"}, Level: 3},
 	}
 
 	tasks, _ := BuildHierarchy(parsedTasks)

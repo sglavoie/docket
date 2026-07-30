@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -49,9 +47,6 @@ func newSession4LifecycleFixture(
 
 	seed := newTestConfigAt(dataDir)
 	setTestProjects(seed, projects)
-	if len(projects) > 0 && projects[0] != nil {
-		seed.Machine().CurrentProject = projects[0].ID
-	}
 	manager := config.NewManager(config.ConfigPathForDataDir(dataDir))
 	if err := saveTestRuntime(manager, seed); err != nil {
 		t.Fatalf("save lifecycle runtime: %v", err)
@@ -102,7 +97,7 @@ func attachSession4CrossOutliner(t *testing.T, app *AppModel) *OutlinerModel {
 	}
 	app.crossOutliner = cross
 	app.views.Register(ViewCrossProjectOutliner, cross)
-	setTestPresentationPath(app, ViewDashboard, ViewCrossProjectOutliner)
+	setTestPresentationPath(app, ViewUnknown, ViewCrossProjectOutliner)
 	return cross
 }
 
@@ -112,7 +107,7 @@ func newSession4Project(t *testing.T, name string) *models.Project {
 	if err != nil {
 		t.Fatalf("NewProject(%q): %v", name, err)
 	}
-	task, err := models.NewTask(name+"-task", 1, models.TaskTypeTask, name+" task")
+	task, err := models.NewGenericTask(name+"-task", 1, name+" task")
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", name, err)
 	}
@@ -170,8 +165,8 @@ func session4HasTaskRow(cross *OutlinerModel, projectID, taskID string) bool {
 
 func session4CommitCatalogProject(t *testing.T, app *AppModel, project *models.Project) {
 	t.Helper()
-	if err := commitCatalogToRuntime(app.runtime, func(catalog *config.WorkspaceCatalog) {
-		catalog.UpsertProject(project)
+	if err := commitCatalogToRuntime(app.runtime, func(catalog *config.WorkspaceCatalog) error {
+		return catalog.UpsertProject(project)
 	}); err != nil {
 		t.Fatalf("commit project catalog metadata: %v", err)
 	}
@@ -198,7 +193,11 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t, true)
 				created := newSession4EmptyProject(t, fixture.dataDir, "Created")
 				session4CommitCatalogProject(t, fixture.app, created)
-				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(fixture.app.runtime))
+				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(
+					fixture.app.runtime,
+					fixture.app.configManager,
+					fixture.app.appService,
+				))
 
 				handled, cmd := fixture.app.handleProjectMessages(ProjectCreatedMsg{Project: created})
 				if !handled || cmd == nil {
@@ -229,7 +228,11 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				session4CommitCatalogProject(t, fixture.app, created)
 				fixture.app.pendingProjectMoveTask = moved
 				fixture.app.pendingProjectMoveSource = liveSource
-				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(fixture.app.runtime))
+				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(
+					fixture.app.runtime,
+					fixture.app.configManager,
+					fixture.app.appService,
+				))
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectCreatedMsg{Project: created})
 				runSession2AppCommand(t, fixture.app, cmd)
@@ -257,7 +260,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project := newSession4Project(t, "Original")
 				fixture := newSession4LifecycleFixture(t, true, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.cross.filter.HideDimmed = true
 				fixture.cross.pushProjectScope(project.ID)
 				fixture.cross.cursor = session2TaskRow(t, fixture.cross, project.ID, project.Tasks[0].ID)
 				modeBefore := fixture.cross.activeOutlinerMode()
@@ -269,6 +271,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 					fixture.app.configManager,
 					fixture.app.runtime,
 					fixture.app.appService,
+					false,
 				))
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{Project: live})
@@ -281,8 +284,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if !session4HasTaskRow(fixture.cross, project.ID, project.Tasks[0].ID) {
 					t.Fatal("renamed project task row disappeared")
 				}
-				if fixture.cross.activeOutlinerMode() != modeBefore || !fixture.cross.filter.HideDimmed {
-					t.Fatal("metadata reload changed the active mode or filters")
+				if fixture.cross.activeOutlinerMode() != modeBefore {
+					t.Fatal("metadata reload changed the active mode")
 				}
 				if fixture.cross.scopedProjectID != project.ID {
 					t.Fatalf("metadata reload changed valid scope to %q", fixture.cross.scopedProjectID)
@@ -295,80 +298,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				disk := session4DiskProject(t, fixture.dataDir, project.ID)
 				if disk.Name != loaded.Name || disk.Context != loaded.Context {
 					t.Fatalf("durable metadata = name %q context %q", disk.Name, disk.Context)
-				}
-			},
-		},
-		{
-			name: "status text save",
-			run: func(t *testing.T) {
-				project := newSession4Project(t, "Status Text")
-				fixture := newSession4LifecycleFixture(t, true, project)
-				live := fixture.app.projectByID(project.ID)
-				live.Description = "Waiting for review"
-				session4CommitCatalogProject(t, fixture.app, live)
-				fixture.app.showView(ViewStatusInput, NewStatusInputModel(live, fixture.app.runtime))
-
-				handled, cmd := fixture.app.handleViewSelectionMessages(StatusUpdatedMsg{})
-				if !handled || cmd == nil {
-					t.Fatalf("StatusUpdatedMsg handled=%v cmd=%v, want returned refresh chain", handled, cmd)
-				}
-				runSession2AppCommand(t, fixture.app, cmd)
-
-				loaded := session4LoadedProject(t, fixture.cross, project.ID)
-				if loaded.Description != live.Description {
-					t.Fatalf("visible status text = %q, want %q", loaded.Description, live.Description)
-				}
-				if disk := session4DiskProject(t, fixture.dataDir, project.ID); disk.Description != live.Description {
-					t.Fatalf("durable status text = %q, want %q", disk.Description, live.Description)
-				}
-			},
-		},
-		{
-			name: "status icon close",
-			run: func(t *testing.T) {
-				project := newSession4Project(t, "Status Icon")
-				fixture := newSession4LifecycleFixture(t, true, project)
-				live := fixture.app.projectByID(project.ID)
-				fixture.app.showView(ViewStatusIconPicker, NewStatusIconPickerModel(live))
-
-				handled, cmd := fixture.app.handleViewSelectionMessages(StatusIconSelectedMsg{
-					Project: live,
-					Key:     "on-track",
-				})
-				if !handled || cmd != nil {
-					t.Fatalf("StatusIconSelectedMsg handled=%v cmd=%v, want deferred refresh", handled, cmd)
-				}
-				if fixture.app.currentView() != ViewStatusInput {
-					t.Fatalf("status icon selection revealed %s, want status input", fixture.app.currentView())
-				}
-				if live.StatusIcon != "" {
-					t.Fatalf("status icon draft published before submit: %q", live.StatusIcon)
-				}
-				if disk := session4DiskProject(t, fixture.dataDir, project.ID); disk.StatusIcon != "" {
-					t.Fatalf("status icon draft persisted before submit: %q", disk.StatusIcon)
-				}
-
-				statusInput, ok := fixture.app.views.Get(ViewStatusInput).(*StatusInputModel)
-				if !ok {
-					t.Fatal("status input model was not registered")
-				}
-				_, saveCmd := statusInput.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-				if saveCmd == nil {
-					t.Fatal("status draft submit returned no command")
-				}
-				saveMsg := saveCmd()
-				if _, ok := saveMsg.(StatusUpdatedMsg); !ok {
-					t.Fatalf("status draft submit returned %T, want StatusUpdatedMsg", saveMsg)
-				}
-				_, refreshCmd := fixture.app.Update(saveMsg)
-				runSession2AppCommand(t, fixture.app, refreshCmd)
-
-				loaded := session4LoadedProject(t, fixture.cross, project.ID)
-				if loaded.StatusIcon != "on-track" {
-					t.Fatalf("visible status icon = %q, want on-track", loaded.StatusIcon)
-				}
-				if disk := session4DiskProject(t, fixture.dataDir, project.ID); disk.StatusIcon != "on-track" {
-					t.Fatalf("durable status icon = %q, want on-track", disk.StatusIcon)
 				}
 			},
 		},
@@ -415,93 +344,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			},
 		},
 		{
-			name: "trash restore in-place scope picker",
-			run: func(t *testing.T) {
-				app, project, entryID := newTrashRestoreTestApp(t, config.ProjectReferences{})
-				cross := attachSession4CrossOutliner(t, app)
-				raw := app.restoreProjectFromTrash(entryID)()
-				restored, ok := raw.(projectRestoredFromTrashMsg)
-				if !ok {
-					t.Fatalf("restore command returned %T", raw)
-				}
-
-				_, cmd := app.handleProjectMessages(restored)
-				if !cross.crossLoading {
-					t.Fatal("in-place restore did not arm a direct visible reload")
-				}
-				runSession2AppCommand(t, app, cmd)
-
-				session4LoadedProject(t, cross, project.ID)
-			},
-		},
-		{
-			name: "trash recovery retry",
-			run: func(t *testing.T) {
-				app, project, entryID := newTrashRestoreTestApp(t, config.ProjectReferences{WasCurrent: true})
-				cross := attachSession4CrossOutliner(t, app)
-				raw := app.restoreProjectFromTrash(entryID)()
-				restored, ok := raw.(projectRestoredFromTrashMsg)
-				if !ok {
-					t.Fatalf("restore command returned %T", raw)
-				}
-				machineLock := blockTrashRestoreMachineCommit(t, app)
-
-				_, cmd := app.handleProjectMessages(restored)
-				batch, ok := cmd().(tea.BatchMsg)
-				if !ok || len(batch) != 2 {
-					t.Fatalf("partial recovery command = %T len=%d, want reload plus retry", cmd(), len(batch))
-				}
-				runSession2AppCommand(t, app, batch[0])
-				session4LoadedProject(t, cross, project.ID)
-				if _, pending := app.pendingTrashRestoreRecovery[project.ID]; !pending {
-					t.Fatal("partial recovery discarded its retry payload")
-				}
-
-				if err := os.RemoveAll(machineLock); err != nil {
-					t.Fatalf("repair machine lock: %v", err)
-				}
-				_, retryCmd := app.handleProjectMessages(retryTrashRestoreMachineRefsMsg{ProjectID: project.ID})
-				runSession2AppCommand(t, app, retryCmd)
-
-				if app.err != nil {
-					t.Fatalf("machine recovery retry failed: %v", app.err)
-				}
-				if app.runtime.Machine().CurrentProject != project.ID {
-					t.Fatalf("current project = %q, want %q", app.runtime.Machine().CurrentProject, project.ID)
-				}
-				session4LoadedProject(t, cross, project.ID)
-			},
-		},
-		{
-			name: "sandbox reset",
-			run: func(t *testing.T) {
-				app, project, notePath := newSandboxResetTUIFixture(t, nil)
-				taskID := project.Tasks[0].ID
-				cross := attachSession4CrossOutliner(t, app)
-				crossProject := *project
-				if err := storage.LoadProject(&crossProject); err != nil {
-					t.Fatalf("load independent sandbox copy: %v", err)
-				}
-				cross.loadedProjects = []*models.Project{&crossProject}
-				cross.crossForceRebuild = true
-				cross.crossProjectRebuildRows()
-				raw := app.executeSandboxReset()()
-				done, ok := raw.(SandboxResetDoneMsg)
-				if !ok {
-					t.Fatalf("sandbox reset returned %T", raw)
-				}
-
-				_, cmd := app.handleProjectMessages(done)
-				runSession2AppCommand(t, app, cmd)
-
-				loaded := session4LoadedProject(t, cross, project.ID)
-				if len(loaded.Tasks) != 0 || session4HasTaskRow(cross, project.ID, taskID) {
-					t.Fatal("sandbox reset left stale task rows in the cross-project Outliner")
-				}
-				assertSandboxResetTUIDiskCleared(t, project, notePath)
-			},
-		},
-		{
 			name: "mutation while another destination is active",
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Covered Restore")
@@ -509,7 +351,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t, false, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewCrossProjectOutliner, "Help"))
-				setTestPresentationPath(fixture.app, ViewDashboard, ViewCrossProjectOutliner, ViewHelp)
+				setTestPresentationPath(fixture.app, ViewUnknown, ViewCrossProjectOutliner, ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
 				if fixture.cross.crossLoading {

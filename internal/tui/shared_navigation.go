@@ -133,14 +133,6 @@ func AnyEscStepActive(steps []EscStep) bool {
 	return false
 }
 
-func MultiSelectEscStep(isActive func() bool, toggle func()) EscStep {
-	return EscStep{Active: isActive, Clear: toggle}
-}
-
-func SecondaryEscCapture(ivs *InteractiveViewState, steps []EscStep) bool {
-	return ivs.DefaultShouldCaptureEsc() || AnyEscStepActive(steps)
-}
-
 func helpCmd(source PresentationID, name string, items []HelpItem) tea.Cmd {
 	return func() tea.Msg {
 		return ShowHelpMsg{SourceView: source, ViewName: name, Items: items}

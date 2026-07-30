@@ -49,6 +49,3 @@ type ParseWarning struct {
 	Field   string      // Which field had the issue (e.g., "priority", "parent")
 	Message string      // Human-readable description of the issue
 }
-
-// MaxDimensionIDLength is the maximum allowed length for a score dimension ID.
-const MaxDimensionIDLength = 32

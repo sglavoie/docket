@@ -17,8 +17,6 @@ func (m *AppModel) handleTaskDecisionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case DecisionEditedMsg:
 		return m.handleDecisionEdited(msg)
 
-	case DecisionResolvedMsg:
-		return m.handleDecisionResolved(msg)
 	}
 	return false, nil
 }
@@ -39,26 +37,5 @@ func (m *AppModel) handleDecisionDeleted(msg DecisionDeletedMsg) (bool, tea.Cmd)
 // handleDecisionEdited handles the DecisionEditedMsg.
 func (m *AppModel) handleDecisionEdited(msg DecisionEditedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Decision updated")
-	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
-}
-
-// handleDecisionResolved handles the DecisionResolvedMsg.
-func (m *AppModel) handleDecisionResolved(msg DecisionResolvedMsg) (bool, tea.Cmd) {
-	if msg.Task != nil && len(msg.Task.Decisions) > 0 {
-		if view := m.views.Get(ViewTaskDecisions); view != nil {
-			if decisionsView, ok := view.(*TaskDecisionsModel); ok {
-				idx := decisionsView.cursor
-				if idx >= 0 && idx < len(msg.Task.Decisions) {
-					if msg.Task.Decisions[idx].Resolved {
-						m.setSuccessStatus("Decision resolved")
-					} else {
-						m.setSuccessStatus("Decision unresolved")
-					}
-					return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
-				}
-			}
-		}
-	}
-	m.setSuccessStatus("Decision resolved")
 	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
 }

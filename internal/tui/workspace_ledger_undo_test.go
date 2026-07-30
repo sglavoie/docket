@@ -160,7 +160,7 @@ func restartLedgerProject(src *models.Project) *models.Project {
 func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hostView PresentationID, taskID string, seed bool) *AppModel {
 	t.Helper()
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newScenarioRepo(commitSvc, project)
 	if seed {
@@ -171,7 +171,6 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 
 	cfg := newTestConfigAt(dataDir)
 	setTestProjects(cfg, []*models.Project{project})
-	cfg.Machine().CurrentProject = project.ID
 	manager := config.NewManager(filepath.Join(dataDir, "tt.json"))
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
@@ -193,10 +192,10 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[TaskIdentity]bool),
-		dailyPlan:            []FocusTask{},
-		dailyPlanIDs:         make(map[TaskIdentity]bool),
+		nextOrder:            []FocusTask{},
+		nextOrderIDs:         make(map[TaskIdentity]bool),
+		today:                []FocusTask{},
+		todayIDs:             make(map[TaskIdentity]bool),
 		operationRegistry:    NewOperationRegistry(),
 		navigation:           NewNavigationState(),
 	}
@@ -229,10 +228,9 @@ func seedTodayMembership(t *testing.T, manager *config.Manager, projectID, taskI
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	planning.SetDailyPlan([]config.DailyPlanItem{{
-		TaskID:      taskID,
-		ProjectID:   projectID,
-		PlannedDate: "2026-07-19",
+	planning.SetToday([]config.ProjectTaskLocator{{
+		TaskID:    taskID,
+		ProjectID: projectID,
 	}})
 	if err := manager.CommitPlanning(planning); err != nil {
 		t.Fatalf("commit planning: %v", err)
@@ -249,10 +247,10 @@ func planningTaskInToday(t *testing.T, manager *config.Manager, ids ...string) b
 		t.Fatalf("load planning: %v", err)
 	}
 	if len(ids) == 2 {
-		return dailyPlanContains(planning, TaskIdentity{ProjectID: ids[0], TaskID: ids[1]})
+		return todayContains(planning, TaskIdentity{ProjectID: ids[0], TaskID: ids[1]})
 	}
 	if len(ids) == 1 {
-		for _, item := range planning.GetDailyPlan() {
+		for _, item := range planning.GetToday() {
 			if item.TaskID == ids[0] {
 				return true
 			}

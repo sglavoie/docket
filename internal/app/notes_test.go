@@ -17,7 +17,7 @@ import (
 
 func newNoteTestService(t *testing.T, dataDir string, projects ...*models.Project) (*app.Service, *storageRepo) {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newStorageRepo(commitSvc, projects...)
 	repo.seed(t)
@@ -27,7 +27,6 @@ func newNoteTestService(t *testing.T, dataDir string, projects ...*models.Projec
 		fixedClock{t: time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)},
 		&seqIDs{},
 		app.NewStorageWorkspaceNotePort(dataDir),
-		nil,
 	)
 	return svc, repo
 }
@@ -37,7 +36,9 @@ func seedNoteTestCatalog(t *testing.T, dataDir string, projects ...*models.Proje
 	store := config.NewDomainFileStore(dataDir)
 	catalog := config.NewWorkspaceCatalog()
 	for _, project := range projects {
-		catalog.UpsertProject(project)
+		if err := catalog.UpsertProject(project); err != nil {
+			t.Fatalf("seed workspace catalog project: %v", err)
+		}
 	}
 	if err := store.SaveCatalog(catalog); err != nil {
 		t.Fatalf("seed workspace catalog: %v", err)
@@ -63,7 +64,7 @@ func TestWorkspaceNoteEmptyDataDirDerivesCanonicalWorkspaceRoot(t *testing.T) {
 	dataDir := t.TempDir()
 	project := realTestProject(t, dataDir, "alpha", "seed")
 	_, repo := newNoteTestService(t, dataDir, project)
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(""), nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(""))
 
 	created, err := svc.CreateNote(app.NoteCreateRequest{
 		Location: app.ProjectNoteLocation(project.ID),
@@ -256,13 +257,6 @@ func TestWorkspaceMalformedNoteNonDeleteMutationsRemainRejected(t *testing.T) {
 				return err
 			},
 		},
-		{
-			name: "move",
-			mutate: func(note *models.Note) error {
-				_, err := svc.MoveNote(app.NoteMoveRequest{Source: projectLocation, Destination: app.GlobalNoteLocation(), Note: note})
-				return err
-			},
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -276,9 +270,6 @@ func TestWorkspaceMalformedNoteNonDeleteMutationsRemainRejected(t *testing.T) {
 	got, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(got, raw) {
 		t.Fatalf("rejected mutations changed malformed source: equal=%v err=%v", bytes.Equal(got, raw), err)
-	}
-	if _, err := os.Stat(notePathForTest(dataDir, project, app.GlobalNoteLocation(), filename)); !os.IsNotExist(err) {
-		t.Fatalf("rejected move created a global destination: %v", err)
 	}
 }
 
@@ -315,60 +306,6 @@ func TestWorkspaceMalformedNoteDeleteBatchIsAtomicOnStaleRevision(t *testing.T) 
 	got, err := os.ReadFile(malformedPath)
 	if err != nil || !bytes.Equal(got, newerMalformed) {
 		t.Fatalf("stale malformed delete changed concurrent bytes: equal=%v err=%v", bytes.Equal(got, newerMalformed), err)
-	}
-}
-
-func TestWorkspaceNoteMoveIsAtomicOnConcurrentSourceEdit(t *testing.T) {
-	dataDir := t.TempDir()
-	project := realTestProject(t, dataDir, "alpha", "seed")
-	svc, _ := newNoteTestService(t, dataDir, project)
-	tasksBefore, err := os.ReadFile(storage.TasksFilePath(project.Path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	global := app.GlobalNoteLocation()
-	destination := app.ProjectNoteLocation(project.ID)
-
-	created, err := svc.CreateNote(app.NoteCreateRequest{Location: global, Note: &models.Note{Title: "move me", Filename: "move.md", Body: "base"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	stale := created.Note
-	concurrent := *stale
-	concurrent.Body = "concurrent"
-	content, err := storage.RenderNoteContent(&concurrent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sourcePath := notePathForTest(dataDir, project, global, stale.Filename)
-	if writeErr := os.WriteFile(sourcePath, []byte(content), storage.FilePermissions); writeErr != nil {
-		t.Fatal(writeErr)
-	}
-
-	_, err = svc.MoveNote(app.NoteMoveRequest{Source: global, Destination: destination, Note: stale})
-	if !errors.Is(err, storage.ErrStaleArtifact) {
-		t.Fatalf("MoveNote err = %v, want ErrStaleArtifact", err)
-	}
-	if _, statErr := os.Stat(notePathForTest(dataDir, project, destination, stale.Filename)); !os.IsNotExist(statErr) {
-		t.Fatalf("stale move created destination: %v", statErr)
-	}
-	if got, readErr := os.ReadFile(sourcePath); readErr != nil || !strings.Contains(string(got), "concurrent") {
-		t.Fatalf("stale move changed source: %q, %v", got, readErr)
-	}
-
-	fresh := noteByFilename(t, svc, global, stale.Filename)
-	moved, err := svc.MoveNote(app.NoteMoveRequest{Source: global, Destination: destination, Note: fresh})
-	if err != nil {
-		t.Fatalf("fresh MoveNote: %v", err)
-	}
-	if moved.Location != destination || moved.SourceLocation != global || moved.ProjectID != project.ID {
-		t.Fatalf("MoveNote result = %+v", moved)
-	}
-	if _, statErr := os.Stat(sourcePath); !os.IsNotExist(statErr) {
-		t.Fatalf("source remains after move: %v", statErr)
-	}
-	if tasksAfter, readErr := os.ReadFile(storage.TasksFilePath(project.Path)); readErr != nil || !bytes.Equal(tasksAfter, tasksBefore) {
-		t.Fatalf("note-only move changed tasks.md: equal=%v err=%v", bytes.Equal(tasksAfter, tasksBefore), readErr)
 	}
 }
 
@@ -417,7 +354,7 @@ func TestWorkspaceNoteCollisionRetriesAtCommitBoundary(t *testing.T) {
 	_, baseRepo := newNoteTestService(t, dataDir, project)
 	repo := &collisionRepo{storageRepo: baseRepo}
 	port := &guardedNotePort{WorkspaceNotePort: app.NewStorageWorkspaceNotePort(dataDir)}
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, port, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
 
 	result, err := svc.CreateNote(app.NoteCreateRequest{
 		Location: app.ProjectNoteLocation(project.ID),
@@ -500,8 +437,6 @@ func TestWorkspaceNoteBatchIsAllOrNoneOnStaleSource(t *testing.T) {
 
 func cloneNoteForTest(note *models.Note) *models.Note {
 	copyNote := *note
-	copyNote.Tags = append([]string(nil), note.Tags...)
-	copyNote.LinkedTasks = append([]string(nil), note.LinkedTasks...)
 	return &copyNote
 }
 
@@ -520,7 +455,7 @@ func mutateNoteTestCatalog(t *testing.T, dataDir string, mutate func(*config.Wor
 
 func noteUndoCount(t *testing.T, dataDir string) int {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	count, err := ledger.UndoCount(storage.GlobalScope())
 	if err != nil {
 		t.Fatalf("UndoCount: %v", err)
@@ -529,40 +464,26 @@ func noteUndoCount(t *testing.T, dataDir string) int {
 }
 
 func TestWorkspaceNoteEveryProjectMutationCarriesLocationGuard(t *testing.T) {
-	for _, operation := range []string{"create", "update", "rename", "delete", "global-to-project", "project-to-global"} {
+	for _, operation := range []string{"create", "update", "rename", "delete"} {
 		t.Run(operation, func(t *testing.T) {
 			dataDir := t.TempDir()
 			project := realTestProject(t, dataDir, "alpha", "seed")
 			baseService, repo := newNoteTestService(t, dataDir, project)
 			projectLocation := app.ProjectNoteLocation(project.ID)
-			globalLocation := app.GlobalNoteLocation()
 			tasksBefore, err := os.ReadFile(storage.TasksFilePath(project.Path))
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			var note *models.Note
-			var sourcePath, destinationPath string
 			switch operation {
 			case "create":
-			case "update", "rename", "delete", "project-to-global":
+			case "update", "rename", "delete":
 				created, createErr := baseService.CreateNote(app.NoteCreateRequest{Location: projectLocation, Note: &models.Note{Title: "guarded", Filename: "guarded.md", Body: "before"}})
 				if createErr != nil {
 					t.Fatal(createErr)
 				}
 				note = created.Note
-				if operation == "project-to-global" {
-					sourcePath = notePathForTest(dataDir, project, projectLocation, created.Filename)
-					destinationPath = notePathForTest(dataDir, project, globalLocation, created.Filename)
-				}
-			case "global-to-project":
-				created, createErr := baseService.CreateNote(app.NoteCreateRequest{Location: globalLocation, Note: &models.Note{Title: "guarded", Filename: "guarded.md"}})
-				if createErr != nil {
-					t.Fatal(createErr)
-				}
-				note = created.Note
-				sourcePath = notePathForTest(dataDir, project, globalLocation, created.Filename)
-				destinationPath = notePathForTest(dataDir, project, projectLocation, created.Filename)
 			}
 
 			baselineUndo := noteUndoCount(t, dataDir)
@@ -574,7 +495,7 @@ func TestWorkspaceNoteEveryProjectMutationCarriesLocationGuard(t *testing.T) {
 					})
 				},
 			}
-			guardedService := app.NewServiceWithArtifacts(repo, nil, nil, port, nil)
+			guardedService := app.NewServiceWithArtifacts(repo, nil, nil, port)
 			var mutate func() error
 			switch operation {
 			case "create":
@@ -598,16 +519,6 @@ func TestWorkspaceNoteEveryProjectMutationCarriesLocationGuard(t *testing.T) {
 					_, mutationErr := guardedService.RemoveNote(app.NoteDeleteRequest{Location: projectLocation, Note: note})
 					return mutationErr
 				}
-			case "global-to-project":
-				mutate = func() error {
-					_, mutationErr := guardedService.MoveNote(app.NoteMoveRequest{Source: globalLocation, Destination: projectLocation, Note: note})
-					return mutationErr
-				}
-			case "project-to-global":
-				mutate = func() error {
-					_, mutationErr := guardedService.MoveNote(app.NoteMoveRequest{Source: projectLocation, Destination: globalLocation, Note: note})
-					return mutationErr
-				}
 			}
 
 			err = mutate()
@@ -617,14 +528,6 @@ func TestWorkspaceNoteEveryProjectMutationCarriesLocationGuard(t *testing.T) {
 			}
 			if got := noteUndoCount(t, dataDir); got != baselineUndo {
 				t.Fatalf("undo count = %d, want unchanged %d", got, baselineUndo)
-			}
-			if sourcePath != "" {
-				if _, statErr := os.Stat(sourcePath); statErr != nil {
-					t.Fatalf("rejected move removed its source: %v", statErr)
-				}
-				if _, statErr := os.Stat(destinationPath); !os.IsNotExist(statErr) {
-					t.Fatalf("rejected move created its destination: %v", statErr)
-				}
 			}
 			tasksAfter, readErr := os.ReadFile(storage.TasksFilePath(project.Path))
 			if readErr != nil || !bytes.Equal(tasksAfter, tasksBefore) {
@@ -653,7 +556,7 @@ func TestWorkspaceNoteRejectsMissingAndMovedCatalogLocations(t *testing.T) {
 					})
 				},
 			}
-			svc := app.NewServiceWithArtifacts(repo, nil, nil, port, nil)
+			svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
 			_, err := svc.CreateNote(app.NoteCreateRequest{Location: app.ProjectNoteLocation(project.ID), Note: &models.Note{Title: "guarded", Filename: "guarded.md"}})
 			var conflict *app.ProjectLocationConflictError
 			if !errors.As(err, &conflict) || conflict.Reason != state || !errors.Is(err, storage.ErrStaleArtifact) {
@@ -701,7 +604,7 @@ func TestWorkspaceNoteBatchChecksEveryTouchedProjectLocation(t *testing.T) {
 			})
 		},
 	}
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, port, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
 	_, err = svc.ApplyNoteBatch(app.NoteBatchRequest{Operations: []app.NoteMutationRequest{
 		{Kind: app.NoteUpdate, Location: alphaLocation, Note: alphaUpdate},
 		{Kind: app.NoteUpdate, Location: betaLocation, Note: betaUpdate},
@@ -757,7 +660,7 @@ func TestWorkspaceNoteCatalogPreconditionClosesCommitRace(t *testing.T) {
 			}
 		},
 	}
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
 	_, err = svc.CreateNote(app.NoteCreateRequest{Location: app.ProjectNoteLocation(project.ID), Note: &models.Note{Title: "guarded", Filename: "guarded.md"}})
 	var conflict *storage.ArtifactConflictError
 	if !errors.As(err, &conflict) || !errors.Is(err, storage.ErrStaleArtifact) || conflict.Path != config.WorkspaceCatalogPath(dataDir) {
@@ -777,90 +680,31 @@ func TestWorkspaceNoteCatalogPreconditionClosesCommitRace(t *testing.T) {
 	}
 }
 
-func TestWorkspaceNoteCatalogRaceDoesNotRecreateStaleProjectDirectory(t *testing.T) {
+func TestWorkspaceNoteStaleProjectDirectoryIsNotRecreated(t *testing.T) {
 	dataDir := t.TempDir()
 	project := realTestProject(t, dataDir, "alpha", "seed")
-	baseService, baseRepo := newNoteTestService(t, dataDir, project)
-	globalLocation := app.GlobalNoteLocation()
+	_, repo := newNoteTestService(t, dataDir, project)
 	projectLocation := app.ProjectNoteLocation(project.ID)
-	created, err := baseService.CreateNote(app.NoteCreateRequest{Location: globalLocation, Note: &models.Note{Title: "move", Filename: "move.md"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sourcePath := notePathForTest(dataDir, project, globalLocation, created.Filename)
 	baselineUndo := noteUndoCount(t, dataDir)
-	repo := &catalogRaceRepo{
-		storageRepo: baseRepo,
-		beforeCommit: func() {
-			if removeErr := os.RemoveAll(project.Path); removeErr != nil {
-				t.Fatal(removeErr)
+	port := &guardedNotePort{
+		WorkspaceNotePort: app.NewStorageWorkspaceNotePort(dataDir),
+		before: func() {
+			if err := os.RemoveAll(project.Path); err != nil {
+				t.Fatal(err)
 			}
-			mutateNoteTestCatalog(t, dataDir, func(catalog *config.WorkspaceCatalog) {
-				catalog.Projects[0].Slug = "renamed"
-			})
+			mutateNoteTestCatalog(t, dataDir, func(catalog *config.WorkspaceCatalog) { catalog.Projects = nil })
 		},
 	}
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil)
-	_, err = svc.MoveNote(app.NoteMoveRequest{Source: globalLocation, Destination: projectLocation, Note: created.Note})
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
+	_, err := svc.CreateNote(app.NoteCreateRequest{Location: projectLocation, Note: &models.Note{Title: "guarded", Filename: "guarded.md"}})
 	if !errors.Is(err, storage.ErrStaleArtifact) {
-		t.Fatalf("MoveNote error = %v, want ErrStaleArtifact", err)
+		t.Fatalf("mutation error = %v, want ErrStaleArtifact", err)
 	}
 	if _, statErr := os.Stat(project.Path); !os.IsNotExist(statErr) {
-		t.Fatalf("catalog race recreated stale project directory: %v", statErr)
-	}
-	if _, statErr := os.Stat(sourcePath); statErr != nil {
-		t.Fatalf("catalog race removed global source: %v", statErr)
+		t.Fatalf("rejected mutation recreated stale project directory: %v", statErr)
 	}
 	if got := noteUndoCount(t, dataDir); got != baselineUndo {
 		t.Fatalf("undo count = %d, want unchanged %d", got, baselineUndo)
-	}
-}
-
-func TestWorkspaceNoteStaleProjectDirectoryIsNotRecreated(t *testing.T) {
-	for _, operation := range []string{"create", "project-to-global"} {
-		t.Run(operation, func(t *testing.T) {
-			dataDir := t.TempDir()
-			project := realTestProject(t, dataDir, "alpha", "seed")
-			baseService, repo := newNoteTestService(t, dataDir, project)
-			projectLocation := app.ProjectNoteLocation(project.ID)
-			var note *models.Note
-			if operation == "project-to-global" {
-				created, err := baseService.CreateNote(app.NoteCreateRequest{Location: projectLocation, Note: &models.Note{Title: "guarded", Filename: "guarded.md"}})
-				if err != nil {
-					t.Fatal(err)
-				}
-				note = created.Note
-			}
-			baselineUndo := noteUndoCount(t, dataDir)
-			port := &guardedNotePort{
-				WorkspaceNotePort: app.NewStorageWorkspaceNotePort(dataDir),
-				before: func() {
-					if err := os.RemoveAll(project.Path); err != nil {
-						t.Fatal(err)
-					}
-					mutateNoteTestCatalog(t, dataDir, func(catalog *config.WorkspaceCatalog) { catalog.Projects = nil })
-				},
-			}
-			svc := app.NewServiceWithArtifacts(repo, nil, nil, port, nil)
-			var err error
-			if operation == "create" {
-				_, err = svc.CreateNote(app.NoteCreateRequest{Location: projectLocation, Note: &models.Note{Title: "guarded", Filename: "guarded.md"}})
-			} else {
-				_, err = svc.MoveNote(app.NoteMoveRequest{Source: projectLocation, Destination: app.GlobalNoteLocation(), Note: note})
-			}
-			if !errors.Is(err, storage.ErrStaleArtifact) {
-				t.Fatalf("mutation error = %v, want ErrStaleArtifact", err)
-			}
-			if _, statErr := os.Stat(project.Path); !os.IsNotExist(statErr) {
-				t.Fatalf("rejected mutation recreated stale project directory: %v", statErr)
-			}
-			if _, statErr := os.Stat(filepath.Join(storage.GlobalNotesDir(dataDir), "guarded.md")); !os.IsNotExist(statErr) {
-				t.Fatalf("rejected mutation created global destination: %v", statErr)
-			}
-			if got := noteUndoCount(t, dataDir); got != baselineUndo {
-				t.Fatalf("undo count = %d, want unchanged %d", got, baselineUndo)
-			}
-		})
 	}
 }
 
@@ -872,7 +716,7 @@ func TestWorkspaceGlobalOnlyNoteMutationSkipsCatalogRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	port := &guardedNotePort{WorkspaceNotePort: app.NewStorageWorkspaceNotePort(dataDir)}
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, port, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
 	result, err := svc.CreateNote(app.NoteCreateRequest{Location: app.GlobalNoteLocation(), Note: &models.Note{Title: "global", Filename: "global.md"}})
 	if err != nil {
 		t.Fatalf("CreateNote: %v", err)

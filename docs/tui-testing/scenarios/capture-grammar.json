@@ -1,0 +1,22 @@
+{
+  "name": "capture-grammar",
+  "fixture": "fresh",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open protected-Inbox capture", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "? syntax" },
+    { "type": "key", "label": "open canonical capture syntax", "key": "?" },
+    { "type": "assert", "assert": "contains", "value": "Capture Syntax" },
+    { "type": "assert", "assert": "contains", "value": "!1-5" },
+    { "type": "assert", "assert": "contains", "value": "#tag" },
+    { "type": "assert", "assert": "contains", "value": "@date" },
+    { "type": "assert", "assert": "contains", "value": "~interval" },
+    { "type": "assert", "assert": "contains", "value": "$state" },
+    { "type": "assert", "assert": "contains", "value": "%project" },
+    { "type": "assert", "assert": "contains", "value": ">parent" },
+    { "type": "assert", "assert": "not_contains", "value": "priority:" },
+    { "type": "assert", "assert": "not_contains", "value": "state:" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

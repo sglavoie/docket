@@ -1,0 +1,17 @@
+{
+  "name": "notes-tool",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open combined Notes", "key": "N" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "contains", "value": "Notes" },
+    { "type": "assert", "assert": "contains", "value": "Global + active project" },
+    { "type": "key", "label": "start a new note", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "Create note in" },
+    { "type": "assert", "assert": "contains", "value": "Global" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "cancel destination choice", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" }
+  ]
+}

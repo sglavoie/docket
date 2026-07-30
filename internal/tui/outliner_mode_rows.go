@@ -10,7 +10,7 @@ import (
 )
 
 // OutlinerModeRow is the representation-neutral output of a purpose-built row
-// strategy (Today, Next, Backlog). It carries only the data a renderer needs so
+// strategy (Today and Next). It carries only the data a renderer needs so
 // the mode engine has a single row shape shared with the (still-operational)
 // Planner rather than a second implementation. Priority/Source are derived by
 // the caller when adapting to a concrete display row.
@@ -18,25 +18,24 @@ type OutlinerModeRow struct {
 	Task       *models.Task
 	Project    *models.Project
 	TreePrefix string // non-empty for auto-expanded Today descendants
+	Breadcrumb string // ancestor path when promoted into a synthetic section
 	ParentID   string // immediate parent task ID for Today descendants; empty for roots
 	Depth      int    // 0 for roots; n for n-th level Today descendant
 }
 
 // OutlinerModeInput bundles the scoped data a canonical row strategy needs. It
-// is the single seam through which the ten modes receive their inputs so the
+// is the single seam through which the five modes receive their inputs so the
 // membership and fixed-order strategies stay pure and testable.
 type OutlinerModeInput struct {
-	Projects     []*models.Project
-	DailyPlanIDs map[TaskIdentity]bool
+	Projects []*models.Project
+	TodayIDs map[TaskIdentity]bool
 	// CandidateTasks optionally narrows the tasks eligible to become Today
 	// roots per project. A missing project entry falls back to Project.Tasks.
 	CandidateTasks map[string][]*models.Task
-	// DailyPlanOrder is the durable Today ordering (daily-plan positions).
-	DailyPlanOrder []FocusTask
-	// FocusQueue is the durable Next order index (StateNext ordering only).
-	FocusQueue []config.FocusQueueItem
-	// Scorer feeds the cross-project backlog ranker (project scoring profiles).
-	Scorer *config.RuntimeState
+	// TodayOrder is the durable Today ordering (daily-plan positions).
+	TodayOrder []FocusTask
+	// NextOrder is the durable Next order index (StateNext ordering only).
+	NextOrder []config.ProjectTaskLocator
 	// ChildDepthLimit / FoldOverrides mirror the Planner's Today expansion knobs.
 	// -1 means unlimited depth.
 	ChildDepthLimit int
@@ -53,8 +52,9 @@ type OutlinerModeInput struct {
 	TaskExclude func(task *models.Task, project *models.Project) bool
 	// Now is the reference time for the snooze check; the zero value uses
 	// time.Now().
-	Now            time.Time
-	IncludeSnoozed bool
+	Now             time.Time
+	IncludeSnoozed  bool
+	IncludeTerminal bool
 }
 
 func (in OutlinerModeInput) now() time.Time {
@@ -84,14 +84,14 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 			if in.TaskExclude != nil && in.TaskExclude(task, project) {
 				continue
 			}
-			if in.DailyPlanIDs[taskIdentityFor(task, project)] {
+			if in.TodayIDs[taskIdentityFor(task, project)] {
 				roots = append(roots, OutlinerModeRow{Task: task, Project: project})
 			}
 		}
 	}
 
-	posMap := make(map[TaskIdentity]int, len(in.DailyPlanOrder))
-	for i, ft := range in.DailyPlanOrder {
+	posMap := make(map[TaskIdentity]int, len(in.TodayOrder))
+	for i, ft := range in.TodayOrder {
 		posMap[taskIdentityFor(ft.Task, ft.Project)] = i
 	}
 	sort.SliceStable(roots, func(i, j int) bool {
@@ -109,15 +109,15 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 		if in.TaskExclude != nil {
 			return expandFilteredTodayModeDescendants(
 				roots,
-				in.DailyPlanIDs,
+				in.TodayIDs,
 				isExpanded,
 				func(*models.Task, *models.Project) bool { return true },
 				in.TaskExclude,
 			)
 		}
-		return expandTodayModeDescendants(roots, in.DailyPlanIDs, isExpanded)
+		return expandTodayModeDescendants(roots, in.TodayIDs, isExpanded)
 	}
-	return expandFilteredTodayModeDescendants(roots, in.DailyPlanIDs, isExpanded, in.TaskFilter, in.TaskExclude)
+	return expandFilteredTodayModeDescendants(roots, in.TodayIDs, isExpanded, in.TaskFilter, in.TaskExclude)
 }
 
 // BuildNextModeRows realizes the Next horizon: every StateNext task (excluding
@@ -134,7 +134,7 @@ func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 			if task == nil {
 				continue
 			}
-			if task.IsTerminalState() || task.IsSnoozedAt(now) {
+			if task.IsTerminalState() || (task.IsSnoozedAt(now) && !in.IncludeSnoozed) {
 				continue
 			}
 			if task.IsInState(models.StateNext) {
@@ -143,44 +143,12 @@ func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 		}
 	}
 
-	rank := focus.FocusQueueRank(in.FocusQueue)
+	rank := focus.NextOrderRank(in.NextOrder)
 	sort.SliceStable(rows, func(i, j int) bool {
 		li := config.ProjectTaskLocator{ProjectID: rows[i].Project.ID, TaskID: rows[i].Task.ID}
 		lj := config.ProjectTaskLocator{ProjectID: rows[j].Project.ID, TaskID: rows[j].Task.ID}
 		return focus.RankOrUnindexed(rank, li) < focus.RankOrUnindexed(rank, lj)
 	})
-	return rows
-}
-
-// BuildBacklogModeRows realizes the Backlog horizon: exact StateReady work minus
-// Today, ranked by the shared cross-project scorer. StateNext and InProgress
-// have their own canonical groups and never enter Backlog.
-func BuildBacklogModeRows(in OutlinerModeInput) []OutlinerModeRow {
-	now := in.now()
-	var candidates []focus.FocusTask
-	for _, project := range in.Projects {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil || task.IsSnoozedAt(now) || !task.IsInState(models.StateReady) {
-				continue
-			}
-			if in.DailyPlanIDs[taskIdentityFor(task, project)] {
-				continue
-			}
-			candidates = append(candidates, focus.FocusTask{Task: task, Project: project})
-		}
-	}
-
-	ranked := focus.RankCrossProjectTasks(candidates, nil, in.Scorer)
-	rows := make([]OutlinerModeRow, 0, len(ranked))
-	for _, sft := range ranked {
-		if sft.Task == nil || sft.Project == nil {
-			continue
-		}
-		rows = append(rows, OutlinerModeRow{Task: sft.Task, Project: sft.Project})
-	}
 	return rows
 }
 
@@ -201,7 +169,7 @@ func todayModeExpanded(childDepthLimit int, foldOverrides map[TaskIdentity]bool)
 
 // expandTodayModeDescendants inserts descendants of each planned root into the
 // row list depth-first, mirroring the Planner's expandTodayChildren.
-func expandTodayModeDescendants(roots []OutlinerModeRow, dailyPlanIDs map[TaskIdentity]bool, isExpanded func(TaskIdentity, int) bool) []OutlinerModeRow {
+func expandTodayModeDescendants(roots []OutlinerModeRow, todayIDs map[TaskIdentity]bool, isExpanded func(TaskIdentity, int) bool) []OutlinerModeRow {
 	seen := make(map[TaskIdentity]bool, len(roots))
 	for _, r := range roots {
 		seen[taskIdentityFor(r.Task, r.Project)] = true
@@ -210,7 +178,7 @@ func expandTodayModeDescendants(roots []OutlinerModeRow, dailyPlanIDs map[TaskId
 	var expanded []OutlinerModeRow
 	for _, r := range roots {
 		expanded = append(expanded, r)
-		if dailyPlanIDs[taskIdentityFor(r.Task, r.Project)] {
+		if todayIDs[taskIdentityFor(r.Task, r.Project)] {
 			expandPlannedTodayDescendants(r.Task, r.Project, nil, seen, isExpanded,
 				func(child *models.Task, project *models.Project, treePrefix, parentID string, depth int) {
 					expanded = append(expanded, OutlinerModeRow{
@@ -234,7 +202,7 @@ func expandTodayModeDescendants(roots []OutlinerModeRow, dailyPlanIDs map[TaskId
 // prefixes and the tree stays coherent.
 func expandFilteredTodayModeDescendants(
 	roots []OutlinerModeRow,
-	dailyPlanIDs map[TaskIdentity]bool,
+	todayIDs map[TaskIdentity]bool,
 	isExpanded func(TaskIdentity, int) bool,
 	filter func(*models.Task, *models.Project) bool,
 	exclude func(*models.Task, *models.Project) bool,
@@ -276,7 +244,7 @@ func expandFilteredTodayModeDescendants(
 			continue
 		}
 		expanded = append(expanded, r)
-		if dailyPlanIDs[taskIdentityFor(r.Task, r.Project)] {
+		if todayIDs[taskIdentityFor(r.Task, r.Project)] {
 			emitFilteredTodayDescendants(r.Task, r.Project, nil, seen, isExpanded, keep,
 				func(child *models.Task, project *models.Project, treePrefix, parentID string, depth int) {
 					expanded = append(expanded, OutlinerModeRow{

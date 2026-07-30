@@ -33,7 +33,6 @@ func TestGetUnicodeDefault(t *testing.T) {
 	}{
 		{"overdue", "‼"},
 		{"due_today", "⧖"},
-		{"blockers", "⊜"},
 		{"inbox", "⊳"},
 		{"notes", "¶"},
 		{"pinned", "⌃"},
@@ -45,8 +44,6 @@ func TestGetUnicodeDefault(t *testing.T) {
 		{"archive", "⊟"},
 		{"edit", "✎"},
 		{"recur", "⟳"},
-		{"idea", "∗"},
-		{"note_type", "≡"},
 		{"status.todo", "□"},
 		{"status.in_progress", "▶"},
 		{"status.review", "◑"},
@@ -74,23 +71,6 @@ func TestGetUnicodeDefault(t *testing.T) {
 		{"success", "✓"},
 		{"error", "✕"},
 		{"close", "✕"},
-		{"type.epic", "◆"},
-		{"type.story", "◇"},
-		{"type.task", "□"},
-		{"type.bug", "⚠"},
-		{"type.idea", "∗"},
-		{"score_bucket", "◈"},
-		{"blocked_dot", "◈"},
-		{"project.planning", "△"},
-		{"project.wip", "⋙"},
-		{"project.active", "▣"},
-		{"project.review", "⊙"},
-		{"project.testing", "⋔"},
-		{"project.stabilizing", "⊢"},
-		{"project.maintenance", "⚒"},
-		{"project.bugfix", "⊠"},
-		{"project.paused", "⏏"},
-		{"project.archived", "⊔"},
 	}
 	for _, tt := range tests {
 		if got := Get(tt.key); got != tt.want {
@@ -108,7 +88,6 @@ func TestGetEmojiMode(t *testing.T) {
 	}{
 		{"overdue", "🔥"},
 		{"due_today", "⏰"},
-		{"blockers", "🚧"},
 		{"inbox", "📥"},
 		{"notes", "📝"},
 		{"pinned", "📌"},
@@ -120,8 +99,6 @@ func TestGetEmojiMode(t *testing.T) {
 		{"archive", "📦"},
 		{"edit", "✏️"},
 		{"recur", "↺"},
-		{"idea", "💡"},
-		{"note_type", "📝"},
 		{"status.todo", "📋"},
 		{"status.in_progress", "▶️"},
 		{"status.review", "🔎"},
@@ -149,23 +126,6 @@ func TestGetEmojiMode(t *testing.T) {
 		{"success", "✅"},
 		{"error", "❌"},
 		{"close", "❌"},
-		{"type.epic", "🏔️"},
-		{"type.story", "📖"},
-		{"type.task", "📋"},
-		{"type.bug", "🐛"},
-		{"type.idea", "💡"},
-		{"score_bucket", "💎"},
-		{"blocked_dot", "🚧"},
-		{"project.planning", "📐"},
-		{"project.wip", "🚧"},
-		{"project.active", "🟢"},
-		{"project.review", "🔍"},
-		{"project.testing", "🧪"},
-		{"project.stabilizing", "🔒"},
-		{"project.maintenance", "🔧"},
-		{"project.bugfix", "🐛"},
-		{"project.paused", "💤"},
-		{"project.archived", "📦"},
 	}
 	for _, tt := range tests {
 		if got := Get(tt.key); got != tt.want {
@@ -200,15 +160,6 @@ func TestColumnAlignedGroupsHaveConsistentWidth(t *testing.T) {
 		"priority": {
 			"priority.1", "priority.2", "priority.3",
 			"priority.4", "priority.5",
-		},
-		"type": {
-			"type.epic", "type.story", "type.task", "type.bug", "type.idea",
-		},
-		"project": {
-			"project.planning", "project.wip", "project.active",
-			"project.review", "project.testing", "project.stabilizing",
-			"project.maintenance", "project.bugfix", "project.paused",
-			"project.archived",
 		},
 		"checkbox": {"checkbox.checked", "checkbox.unchecked"},
 	}

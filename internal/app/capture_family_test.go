@@ -3,6 +3,7 @@ package app_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -10,9 +11,8 @@ import (
 )
 
 // TestService_Capture_ExtendedFields exercises the capture-family surface the TUI
-// capture flows depend on: a parsed status sigil applied as a workflow-state
-// state, recurrence, URL/Source
-// metadata, tag add + remove, and prepend positioning. It asserts the committed
+// capture flows depend on: a parsed status sigil applied as a workflow state,
+// recurrence, tag add + remove, and prepend positioning. It asserts the committed
 // task carries every field and lands at the FRONT of the project's tasks.
 func TestService_Capture_ExtendedFields(t *testing.T) {
 	existing := newTask("t-1", 1, "existing")
@@ -26,8 +26,6 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 		Priority:   2,
 		Tags:       []string{"keep", "drop"},
 		RemoveTags: []string{"drop"},
-		URL:        "https://example.com",
-		Source:     "slack",
 		Recurrence: models.ParseRecurrence("daily"),
 		State:      models.StateInProgress,
 		Prepend:    true,
@@ -50,9 +48,6 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 	}
 	if !task.HasTag("keep") || task.HasTag("drop") {
 		t.Errorf("tags = %v, want keep only (drop removed)", task.Tags)
-	}
-	if task.URL != "https://example.com" || task.Source != "slack" {
-		t.Errorf("url/source = %q/%q", task.URL, task.Source)
 	}
 	if task.Recurrence == nil {
 		t.Error("recurrence not set")
@@ -89,6 +84,27 @@ func TestService_Capture_DefaultInboxState(t *testing.T) {
 	}
 }
 
+func TestService_Capture_ChildDefaultsReady(t *testing.T) {
+	parent := newTask("parent", 1, "Parent")
+	project := newProject("proj-1", "Proj", parent)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	parentID := parent.ID
+	res, err := svc.Capture(app.CaptureRequest{
+		ProjectID: project.ID,
+		Title:     "Ready child",
+		ParentID:  &parentID,
+	})
+	if err != nil {
+		t.Fatalf("Capture: %v", err)
+	}
+	task := project.GetTaskByID(res.TaskID)
+	if task == nil || task.State() != models.StateReady {
+		t.Fatalf("child = %+v, want Ready", task)
+	}
+}
+
 // TestService_Capture_RejectsInvalidState verifies an invalid canonical state is
 // rejected before any commit.
 func TestService_Capture_RejectsInvalidState(t *testing.T) {
@@ -105,7 +121,25 @@ func TestService_Capture_RejectsInvalidState(t *testing.T) {
 	}
 }
 
-// newChildHierarchyProject builds a leaf task plus a story chain that reaches the
+func TestService_Capture_RejectsRetiredReviewState(t *testing.T) {
+	project := newProject("proj-1", "Proj")
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.Capture(app.CaptureRequest{
+		ProjectID: project.ID,
+		Title:     "review is legacy-only",
+		State:     models.StateReview,
+	})
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+	if len(repo.commits) != 0 || len(project.Tasks) != 0 {
+		t.Fatalf("rejected Review capture mutated state: commits=%d tasks=%d", len(repo.commits), len(project.Tasks))
+	}
+}
+
+// newChildHierarchyProject builds a task plus a chain that reaches the
 // nesting cap, so capture can be probed against every child placement the domain
 // accepts or rejects. Each case gets a fresh project because a successful capture
 // mutates it.
@@ -113,7 +147,7 @@ func newChildHierarchyProject() *models.Project {
 	tasks := []*models.Task{newTask("leaf", 1, "leaf")}
 	var previous *models.Task
 	for level := 0; level <= models.MaxNestingDepth; level++ {
-		story, err := models.NewTask(fmt.Sprintf("story-%d", level), level+2, models.TaskTypeStory, "story")
+		story, err := models.NewGenericTask(fmt.Sprintf("story-%d", level), level+2, "story")
 		if err != nil {
 			panic(err)
 		}
@@ -136,7 +170,7 @@ func TestService_Capture_ChildHierarchyRules(t *testing.T) {
 		parentID string
 		wantErr  error
 	}{
-		{name: "leaf parent cannot hold a child", parentID: "leaf", wantErr: app.ErrInvalidInput},
+		{name: "generic task parent is accepted", parentID: "leaf"},
 		{name: "parent at the nesting cap is refused", parentID: "story-6", wantErr: app.ErrInvalidInput},
 		{name: "parent one below the cap is accepted", parentID: "story-5"},
 		{name: "valid parent is accepted", parentID: "story-0"},
@@ -179,30 +213,6 @@ func TestService_Capture_ChildHierarchyRules(t *testing.T) {
 	}
 }
 
-// TestService_CreateLinkedTask_SubtaskRespectsDepthLimit verifies the subtask link
-// refuses a source already at the nesting cap instead of promoting it and writing
-// a child that would be detached back to the root.
-func TestService_CreateLinkedTask_SubtaskRespectsDepthLimit(t *testing.T) {
-	project := newChildHierarchyProject()
-	repo := newFakeRepo(project)
-	svc := newTestService(repo)
-
-	_, err := svc.CreateLinkedTask(app.LinkedTaskRequest{
-		Task:         app.CaptureRequest{ProjectID: project.ID, Title: "too deep"},
-		SourceTaskID: "story-6",
-		Link:         app.LinkSubtask,
-	})
-	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("error = %v, want ErrInvalidInput", err)
-	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("rejected linked subtask committed %d changesets", len(repo.commits))
-	}
-	if source := project.GetTaskByID("story-6"); source.Type != models.TaskTypeStory {
-		t.Errorf("source type = %s, want the untouched story", source.Type)
-	}
-}
-
 // TestService_CaptureMany_OneAtomicCommit verifies Bulk Capture semantics: every
 // task is created in ONE ChangeSet, prepended newest-first ahead of the existing
 // tasks, so the batch has a single undo entry.
@@ -239,127 +249,68 @@ func TestService_CaptureMany_OneAtomicCommit(t *testing.T) {
 	}
 }
 
-// TestService_CaptureMany_MixedProjectsRejected verifies a batch spanning
-// projects is rejected before any commit.
-func TestService_CaptureMany_MixedProjectsRejected(t *testing.T) {
+// TestService_CaptureMany_MixedProjectsCommitsAtomically verifies a routed
+// composer batch writes every touched project through one repository transaction.
+func TestService_CaptureMany_MixedProjectsCommitsAtomically(t *testing.T) {
+	p1 := newProject("proj-1", "One")
+	p2 := newProject("proj-2", "Two")
+	repo := newFakeRepo(p1, p2)
+	svc := newTestService(repo)
+
+	results, err := svc.CaptureMany([]app.CaptureRequest{
+		{ProjectID: p1.ID, Title: "a"},
+		{ProjectID: p2.ID, Title: "b"},
+	})
+	if err != nil {
+		t.Fatalf("CaptureMany: %v", err)
+	}
+	if len(results) != 2 || results[0].ProjectID != p1.ID || results[1].ProjectID != p2.ID {
+		t.Fatalf("results = %+v, want input-order project routing", results)
+	}
+	if len(repo.commits) != 1 || len(repo.commits[0]) != 2 {
+		t.Fatalf("commits = %+v, want one transaction with two changesets", repo.commits)
+	}
+	if p1.GetTaskByID(results[0].TaskID) == nil || p2.GetTaskByID(results[1].TaskID) == nil {
+		t.Fatal("routed tasks were not added to both projects")
+	}
+}
+
+func TestService_CaptureMany_LineFailureLeavesEveryProjectUntouched(t *testing.T) {
 	p1 := newProject("proj-1", "One")
 	p2 := newProject("proj-2", "Two")
 	repo := newFakeRepo(p1, p2)
 	svc := newTestService(repo)
 
 	_, err := svc.CaptureMany([]app.CaptureRequest{
-		{ProjectID: p1.ID, Title: "a"},
-		{ProjectID: p2.ID, Title: "b"},
+		{SourceLine: 1, ProjectID: p1.ID, Title: "valid"},
+		{SourceLine: 4, ProjectID: p2.ID, Title: "invalid", Priority: 9},
 	})
-	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	if !errors.Is(err, app.ErrInvalidInput) || !strings.Contains(err.Error(), "line 4") {
+		t.Fatalf("error = %v, want line 4 ErrInvalidInput", err)
 	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("rejected batch committed %d changesets", len(repo.commits))
-	}
-}
-
-// TestService_CreateLinkedTask_Relations exercises every link kind: the new task
-// and the mutated source commit as ONE ChangeSet, and the relationship is
-// established on the correct side.
-func TestService_CreateLinkedTask_Relations(t *testing.T) {
-	cases := []struct {
-		name string
-		link app.LinkKind
-		// verify inspects the committed project after the link is created.
-		verify func(t *testing.T, project *models.Project, source, created *models.Task)
-	}{
-		{
-			name: "blocker adds dependency to the source",
-			link: app.LinkBlocker,
-			verify: func(t *testing.T, _ *models.Project, source, created *models.Task) {
-				if !source.HasDependency(created.ID) {
-					t.Errorf("source should depend on the new blocker")
-				}
-			},
-		},
-		{
-			name: "dependent depends on the source",
-			link: app.LinkDependent,
-			verify: func(t *testing.T, _ *models.Project, source, created *models.Task) {
-				if !created.HasDependency(source.ID) {
-					t.Errorf("new task should depend on the source")
-				}
-			},
-		},
-		{
-			name: "subtask nests under the source and promotes it",
-			link: app.LinkSubtask,
-			verify: func(t *testing.T, _ *models.Project, source, created *models.Task) {
-				if created.ParentID == nil || *created.ParentID != source.ID {
-					t.Errorf("subtask parent = %v, want source %s", created.ParentID, source.ID)
-				}
-				if source.Type != models.TaskTypeStory {
-					t.Errorf("leaf source not promoted to story: %s", source.Type)
-				}
-			},
-		},
-		{
-			name: "follow-up relates both ways and copies tags",
-			link: app.LinkFollowUp,
-			verify: func(t *testing.T, _ *models.Project, source, created *models.Task) {
-				if !source.HasRelatedTo(created.ID) || !created.HasRelatedTo(source.ID) {
-					t.Errorf("follow-up should relate both ways")
-				}
-				if !created.HasTag("carried") {
-					t.Errorf("follow-up should inherit the source's tags, got %v", created.Tags)
-				}
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			source := newTask("src-1", 1, "source")
-			source.AddTag("carried")
-			project := newProject("proj-1", "Proj", source)
-			repo := newFakeRepo(project)
-			svc := newTestService(repo)
-
-			res, err := svc.CreateLinkedTask(app.LinkedTaskRequest{
-				Task:         app.CaptureRequest{ProjectID: project.ID, Title: "linked"},
-				SourceTaskID: source.ID,
-				Link:         tc.link,
-			})
-			if err != nil {
-				t.Fatalf("CreateLinkedTask: %v", err)
-			}
-			if len(repo.commits) != 1 {
-				t.Fatalf("expected 1 atomic commit, got %d", len(repo.commits))
-			}
-			created := project.GetTaskByID(res.New.TaskID)
-			if created == nil {
-				t.Fatal("created linked task not found")
-			}
-			if created.State() != models.StateInbox {
-				t.Fatalf("linked task state = %q, want canonical Inbox default", created.State())
-			}
-			tc.verify(t, project, project.GetTaskByID(source.ID), created)
-		})
+	if len(repo.commits) != 0 || len(p1.Tasks) != 0 || len(p2.Tasks) != 0 {
+		t.Fatalf("failed batch was partial: commits=%d p1=%d p2=%d", len(repo.commits), len(p1.Tasks), len(p2.Tasks))
 	}
 }
 
-// TestService_CreateLinkedTask_MissingSource verifies a missing source aborts
-// before any commit.
-func TestService_CreateLinkedTask_MissingSource(t *testing.T) {
-	project := newProject("proj-1", "Proj")
-	repo := newFakeRepo(project)
+func TestService_CaptureMany_CommitFailureRestoresEveryProject(t *testing.T) {
+	p1 := newProject("proj-1", "One")
+	p2 := newProject("proj-2", "Two")
+	repo := newFakeRepo(p1, p2)
+	repo.commitErr = errors.New("commit unavailable")
 	svc := newTestService(repo)
 
-	_, err := svc.CreateLinkedTask(app.LinkedTaskRequest{
-		Task:         app.CaptureRequest{ProjectID: project.ID, Title: "x"},
-		SourceTaskID: "nope",
-		Link:         app.LinkBlocker,
+	_, err := svc.CaptureMany([]app.CaptureRequest{
+		{ProjectID: p1.ID, Title: "one", Prepend: true},
+		{ProjectID: p2.ID, Title: "two", Prepend: true},
 	})
-	if !errors.Is(err, app.ErrTaskNotFound) {
-		t.Fatalf("error = %v, want ErrTaskNotFound", err)
+	if err == nil || !strings.Contains(err.Error(), "commit unavailable") {
+		t.Fatalf("error = %v, want commit failure", err)
 	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("rejected linked-task create committed %d changesets", len(repo.commits))
+	if len(repo.commits) != 0 || len(p1.Tasks) != 0 || len(p2.Tasks) != 0 {
+		t.Fatalf("failed commit was partial: commits=%d p1=%d p2=%d", len(repo.commits), len(p1.Tasks), len(p2.Tasks))
+	}
+	if p1.NextShortID != 1 || p2.NextShortID != 1 {
+		t.Fatalf("failed commit consumed short IDs: p1=%d p2=%d", p1.NextShortID, p2.NextShortID)
 	}
 }

@@ -28,10 +28,6 @@ func (s *stubMutator) CaptureMany([]app.CaptureRequest) ([]app.TaskResult, error
 	}
 	return []app.TaskResult{s.result}, nil
 }
-func (s *stubMutator) CreateLinkedTask(app.LinkedTaskRequest) (app.LinkedTaskResult, error) {
-	s.calls++
-	return app.LinkedTaskResult{New: s.result}, s.err
-}
 func (s *stubMutator) AddTaskWithChildren(app.AddTaskRequest) (app.FormCreateResult, error) {
 	s.calls++
 	return app.FormCreateResult{Task: s.result}, s.err

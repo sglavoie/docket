@@ -8,9 +8,9 @@ import (
 
 // newReparentTask builds a task with an explicit ID so the reparent tests can
 // resolve tasks across the wired snapshot by a stable identity.
-func newReparentTask(t *testing.T, id string, shortID int, typ models.TaskType, title string) *models.Task {
+func newReparentTask(t *testing.T, id string, shortID int, typ string, title string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, shortID, typ, title)
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		t.Fatalf("NewTask %s: %v", id, err)
 	}
@@ -24,11 +24,11 @@ func newReparentTask(t *testing.T, id string, shortID int, typ models.TaskType, 
 func TestCrossProjectReparent(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
-	alphaEpicA := newReparentTask(t, "alpha-epic-a", 1, models.TaskTypeEpic, "Epic A")
-	alphaEpicB := newReparentTask(t, "alpha-epic-b", 2, models.TaskTypeEpic, "Epic B")
-	alphaLeaf := newReparentTask(t, "alpha-leaf", 3, models.TaskTypeTask, "Leaf under A")
+	alphaEpicA := newReparentTask(t, "alpha-epic-a", 1, "", "Epic A")
+	alphaEpicB := newReparentTask(t, "alpha-epic-b", 2, "", "Epic B")
+	alphaLeaf := newReparentTask(t, "alpha-leaf", 3, "", "Leaf under A")
 	alphaLeaf.ParentID = strPtr("alpha-epic-a")
-	betaEpic := newReparentTask(t, "beta-epic", 1, models.TaskTypeEpic, "Beta Epic")
+	betaEpic := newReparentTask(t, "beta-epic", 1, "", "Beta Epic")
 
 	env := newCrossProjectTestEnv(t, []*models.Task{alphaEpicA, alphaEpicB, alphaLeaf}, []*models.Task{betaEpic})
 	m := newCrossOutlinerFromEnv(env)
@@ -65,38 +65,29 @@ func TestCrossProjectReparent(t *testing.T) {
 	}
 }
 
-// TestCrossProjectReparent_InvalidTargetNoSnapshot verifies that supplying an
-// invalid parent (type-incompatible: task -> task) is rejected by the
-// application layer before any commit, so the coordinator emits a
-// TransactionErrorMsg and the on-disk parent is unchanged.
-func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
-	leafA := newReparentTask(t, "leaf-a", 1, models.TaskTypeTask, "Leaf A")
-	leafB := newReparentTask(t, "leaf-b", 2, models.TaskTypeTask, "Leaf B")
+// TestCrossProjectReparent_GenericTaskParent verifies that generic tasks can be
+// nested without the retired type restrictions.
+func TestCrossProjectReparent_GenericTaskParent(t *testing.T) {
+	leafA := newReparentTask(t, "leaf-a", 1, "", "Leaf A")
+	leafB := newReparentTask(t, "leaf-b", 2, "", "Leaf B")
 
 	env := newCrossProjectTestEnv(t, []*models.Task{leafA, leafB})
 	m := newCrossOutlinerFromEnv(env)
 
-	// leafA cannot be a child of leafB (task type can't parent another task).
-	invalidParent := "leaf-b"
+	parentID := "leaf-b"
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
 		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf-a"},
-		ParentID:     &invalidParent,
+		ParentID:     &parentID,
 		Source:       ViewCrossProjectOutliner,
 	})
-	if cmd == nil {
-		t.Fatal("expected a command from an invalid reparent")
-	}
-	if _, ok := cmd().(TransactionErrorMsg); !ok {
-		t.Fatalf("expected TransactionErrorMsg for invalid reparent, got %T", cmd())
-	}
+	runResult(t, cmd)
 
-	// The parent must remain unchanged on disk (no commit for a rejected change).
 	got := env.reload(t, 0).GetTaskByID("leaf-a")
 	if got == nil {
 		t.Fatal("leaf-a missing after reload")
 	}
-	if got.ParentID != nil {
-		t.Errorf("leaf-a ParentID should still be nil, got %q", *got.ParentID)
+	if got.ParentID == nil || *got.ParentID != parentID {
+		t.Errorf("leaf-a ParentID = %v, want %q", got.ParentID, parentID)
 	}
 }
 
@@ -105,8 +96,8 @@ func TestCrossProjectReparent_InvalidTargetNoSnapshot(t *testing.T) {
 func TestCrossProjectReparentToRoot(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
-	epic := newReparentTask(t, "epic", 1, models.TaskTypeEpic, "Epic")
-	leaf := newReparentTask(t, "leaf", 2, models.TaskTypeTask, "Leaf")
+	epic := newReparentTask(t, "epic", 1, "", "Epic")
+	leaf := newReparentTask(t, "leaf", 2, "", "Leaf")
 	leaf.ParentID = strPtr("epic")
 
 	env := newCrossProjectTestEnv(t, []*models.Task{epic, leaf})

@@ -14,7 +14,6 @@ const (
 	ColPriority     = "priority"
 	ColDueDate      = "due_date"
 	ColTags         = "tags"
-	ColScore        = "score"
 	ColDependencies = "dependencies"
 	ColComments     = "comments"
 	ColAttachments  = "attachments"
@@ -32,7 +31,6 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColPriority:     true,
 	ColDueDate:      true,
 	ColTags:         true,
-	ColScore:        true,
 	ColDependencies: true,
 	ColComments:     true,
 	ColAttachments:  true,

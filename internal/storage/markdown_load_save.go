@@ -5,9 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -103,8 +101,6 @@ func loadProjectContentForRewrite(project *models.Project, content []byte) (*Pro
 func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
 	project.Tasks = []*models.Task{}
 	project.NextShortID = 1
-	project.Tags = []string{}
-	project.PinnedTags = []string{}
 	if auditErr := auditLoadedProject(project); auditErr != nil {
 		return nil, auditErr
 	}
@@ -123,91 +119,35 @@ func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadRe
 }
 
 func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, validateCrossRefs bool) (*ProjectLoadResult, error) {
-	result, err := ParseTasksMarkdownDocument(string(content))
+	schemaVersion, _, err := scanDocumentHeader(string(content))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 	}
-
-	project.Tasks = result.Tasks
-	project.Tags = result.Tags
-	project.PinnedTags = result.PinnedTags
-
-	maxShortID := 0
-	for _, task := range result.Tasks {
-		if task.ShortID > maxShortID {
-			maxShortID = task.ShortID
+	if schemaVersion == SchemaVersionV5 {
+		document, err := ParseProjectDocument(string(content))
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 		}
-	}
-	project.NextShortID = maxShortID + 1
-
-	project.BuildTaskTree()
-
-	if validateCrossRefs {
-		validateCrossProjectRefs(project, result)
-	}
-	populateProjectWarnings(project, result.Warnings)
-	if err := auditLoadedProject(project); err != nil {
-		return nil, err
-	}
-
-	return &ProjectLoadResult{
-		Warnings:       result.Warnings,
-		MigrationAudit: NewMigrationAudit(project.ID, result.MigrationAudit),
-	}, nil
-}
-
-func validateCrossProjectRefs(project *models.Project, result *ParseResult) {
-	dataDir := filepath.Dir(filepath.Dir(project.Path))
-	for _, task := range project.Tasks {
-		origDeps := len(task.DependsOn)
-		task.DependsOn = filterProjectRefs(task.DependsOn, dataDir, "depends", task.ID, func(projectID string) string {
-			return fmt.Sprintf("task %s has dependency on non-existent project %q, removing", task.ID, projectID)
-		}, &result.Warnings)
-		// A waiting task whose only remaining deps were cross-project refs to
-		// now-deleted projects has no resolvable reason to stay waiting. Reopen
-		// it so it is not silently stuck on load.
-		if task.IsInState(models.StateWaiting) && origDeps > 0 && len(task.DependsOn) == 0 {
-			task.Reopen()
-		}
-
-		task.RelatedTo = filterProjectRefs(task.RelatedTo, dataDir, "related", task.ID, func(projectID string) string {
-			return fmt.Sprintf("task %s has related ref to non-existent project %q, removing", task.ID, projectID)
-		}, &result.Warnings)
-	}
-}
-
-func filterProjectRefs(refs []string, dataDir, field, taskID string, warningMessage func(string) string, warnings *[]ParseWarning) []string {
-	if len(refs) == 0 {
-		return refs
-	}
-	var kept []string
-	for _, refValue := range refs {
-		ref := models.ParseTaskRef(refValue)
-		if ref.IsCrossProject() {
-			projectDir := filepath.Join(dataDir, "projects", ref.ProjectID)
-			if _, err := os.Stat(projectDir); os.IsNotExist(err) {
-				*warnings = append(*warnings, ParseWarning{
-					Type:    format.WarningDataCorrection,
-					TaskID:  taskID,
-					Field:   field,
-					Message: warningMessage(ref.ProjectID),
-				})
-				continue
+		project.Tasks = document.Tasks
+		maxShortID := 0
+		for _, task := range project.Tasks {
+			if task.ShortID > maxShortID {
+				maxShortID = task.ShortID
 			}
 		}
-		kept = append(kept, refValue)
-	}
-	return kept
-}
-
-func populateProjectWarnings(project *models.Project, warnings []ParseWarning) {
-	var repairWarnings []string
-	for _, warning := range warnings {
-		if warning.Type == format.WarningDataCorrection {
-			repairWarnings = append(repairWarnings, warning.Message)
+		project.NextShortID = maxShortID + 1
+		project.BuildTaskTree()
+		if err := auditLoadedProject(project); err != nil {
+			return nil, err
 		}
+		return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
 	}
-	project.Warnings = repairWarnings
+	return nil, fmt.Errorf(
+		"%w: task schema version %d requires the snapshot-first workspace migration to schema %d",
+		tterrors.ErrParseError,
+		schemaVersion,
+		SchemaVersionV5,
+	)
 }
 
 func auditLoadedProject(project *models.Project) error {
@@ -231,14 +171,6 @@ func auditProjectBeforeSave(project *models.Project) error {
 }
 
 // SaveProject saves a project's tasks to its tasks.md file.
-//
-// Note: There is a TOCTOU (time-of-check-time-of-use) race between the
-// old-content read (for activity diffing) and the atomic write. If another
-// process modifies tasks.md between those two operations, the diff may be
-// inaccurate and the write will silently overwrite those changes. This is
-// acceptable because tt is a single-user CLI tool — concurrent writes to
-// the same project are not an expected use case. If multi-process access
-// is ever needed, advisory file locking (e.g., flock) should be added.
 func SaveProject(project *models.Project) error {
 	if err := auditProjectBeforeSave(project); err != nil {
 		return err
@@ -251,17 +183,14 @@ func SaveProject(project *models.Project) error {
 	}
 
 	tasksPath := tasksFilePath(project.Path)
-	var opaque []OpaqueBlock
-	if oldContent, err := os.ReadFile(tasksPath); err == nil {
-		if oldDoc, parseErr := ParseProjectDocument(string(oldContent)); parseErr == nil {
-			diffAndRecordActivity(oldDoc.Tasks, project.Tasks, MaxActivityEntries)
-			opaque = append([]OpaqueBlock(nil), oldDoc.OpaqueBlocks...)
-		} else {
-			logging.Warn("could not diff activity for %s: %v", project.Name, parseErr)
-		}
+	document, err := CanonicalProjectDocument(project, nil)
+	if err != nil {
+		return fmt.Errorf("failed to render schema-v5 tasks file: %w", err)
 	}
-
-	content := ToProjectDocument(project, opaque).WriteV2()
+	content, err := document.WriteCurrent()
+	if err != nil {
+		return fmt.Errorf("failed to render schema-v5 tasks file: %w", err)
+	}
 	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}

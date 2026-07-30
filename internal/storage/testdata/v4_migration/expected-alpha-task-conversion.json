@@ -1,0 +1,577 @@
+{
+  "project_name": "Alpha Fixture",
+  "tasks": [
+    {
+      "id": "synthetic-alpha-rich",
+      "title": "Rich retained and retired fields",
+      "description": "Synthetic description retained by the v5 task model.",
+      "state": "in_progress",
+      "priority": 1,
+      "tags": [
+        "synthetic",
+        "Namespaced",
+        "type:legacy",
+        "type:epic",
+        "source:GitHub Issues"
+      ],
+      "created_at": "2026-01-02T08:00:00-06:00",
+      "updated_at": "2026-02-03T09:15:00-06:00",
+      "due_date": "2026-02-03",
+      "depends_on": [
+        "synthetic-beta-root"
+      ],
+      "pinned": true,
+      "pinned_at": "2026-02-03T09:15:30-06:00",
+      "attachments": [
+        {
+          "kind": "file",
+          "filename": "specification.txt",
+          "original_path": "/synthetic/source/specification.txt",
+          "added_at": "2026-02-01T12:00:00Z"
+        },
+        {
+          "kind": "url",
+          "filename": "https://example.invalid/reference",
+          "original_path": "https://example.invalid/reference",
+          "added_at": "2026-02-01T12:01:00Z"
+        },
+        {
+          "kind": "code",
+          "filename": "handler.go",
+          "original_path": "/synthetic/src/handler.go",
+          "line_number": 42,
+          "added_at": "2026-02-01T12:02:00Z"
+        },
+        {
+          "kind": "url",
+          "filename": "https://example.invalid/legacy-url",
+          "original_path": "https://example.invalid/legacy-url"
+        }
+      ],
+      "checklist": [
+        {
+          "text": "Retained incomplete item",
+          "done": false
+        },
+        {
+          "text": "Retained complete item",
+          "done": true
+        }
+      ],
+      "comments": [
+        {
+          "text": "Synthetic resolved comment text remains while its resolved flag is dropped.",
+          "created_at": "2026-02-01T10:00:00-06:00"
+        },
+        {
+          "text": "Synthetic open comment text.",
+          "created_at": "2026-02-02T10:00:00-06:00"
+        }
+      ],
+      "decisions": [
+        {
+          "text": "Keep the synthetic durable boundary.",
+          "rationale": "The rationale itself remains in v5.",
+          "created_at": "2026-02-01T11:00:00-06:00"
+        }
+      ]
+    },
+    {
+      "id": "synthetic-alpha-review",
+      "title": "Review task with yearly recurrence",
+      "state": "ready",
+      "priority": 2,
+      "parent_id": "synthetic-alpha-rich",
+      "tags": [
+        "approval",
+        "review",
+        "type:story"
+      ],
+      "created_at": "2026-01-03T08:00:00-06:00",
+      "updated_at": "2026-01-03T08:00:00-06:00",
+      "due_date": "2026-02-28",
+      "recurrence": {
+        "interval": 12,
+        "unit": "month"
+      }
+    },
+    {
+      "id": "synthetic-alpha-bug",
+      "title": "Waiting typed task",
+      "state": "waiting",
+      "priority": 2,
+      "parent_id": "synthetic-alpha-rich",
+      "tags": [
+        "defect",
+        "type:bug"
+      ],
+      "created_at": "2026-01-04T08:00:00-06:00",
+      "updated_at": "2026-01-04T08:00:00-06:00",
+      "depends_on": [
+        "synthetic-alpha-review"
+      ]
+    },
+    {
+      "id": "synthetic-alpha-idea",
+      "title": "Someday typed task",
+      "state": "someday",
+      "priority": 5,
+      "parent_id": "synthetic-alpha-rich",
+      "tags": [
+        "research",
+        "type:idea"
+      ],
+      "created_at": "2026-01-05T08:00:00-06:00",
+      "updated_at": "2026-01-05T08:00:00-06:00"
+    },
+    {
+      "id": "synthetic-alpha-weekday",
+      "title": "Next task with weekday recurrence",
+      "state": "next",
+      "priority": 3,
+      "parent_id": "synthetic-alpha-rich",
+      "tags": [
+        "schedule"
+      ],
+      "created_at": "2026-01-06T08:00:00-06:00",
+      "updated_at": "2026-01-06T08:00:00-06:00",
+      "due_date": "2026-02-06",
+      "recurrence": {
+        "interval": 2,
+        "unit": "week"
+      }
+    },
+    {
+      "id": "synthetic-alpha-paused",
+      "title": "Paused task with timestamp snooze",
+      "state": "paused",
+      "priority": 4,
+      "tags": [
+        "legacy-action",
+        "type:action"
+      ],
+      "created_at": "2026-01-07T08:00:00-06:00",
+      "updated_at": "2026-01-07T08:00:00-06:00",
+      "snoozed_until": "2026-02-04"
+    },
+    {
+      "id": "synthetic-alpha-note",
+      "title": "Inbox legacy heading",
+      "state": "inbox",
+      "priority": 3,
+      "tags": [
+        "legacy-note",
+        "type:note"
+      ],
+      "created_at": "2026-01-08T08:00:00-06:00",
+      "updated_at": "2026-01-08T08:00:00-06:00"
+    },
+    {
+      "id": "synthetic-alpha-canceled",
+      "title": "Canceled task",
+      "state": "canceled",
+      "priority": 3,
+      "tags": [
+        "terminal"
+      ],
+      "created_at": "2026-01-09T08:00:00-06:00",
+      "updated_at": "2026-01-09T08:00:00-06:00",
+      "completed_at": "2026-01-12T12:00:00-06:00"
+    },
+    {
+      "id": "synthetic-duplicate-active",
+      "title": "Active duplicate wins",
+      "state": "ready",
+      "priority": 3,
+      "tags": [
+        "active-wins"
+      ],
+      "created_at": "2026-01-10T08:00:00-06:00",
+      "updated_at": "2026-01-10T08:00:00-06:00"
+    },
+    {
+      "id": "synthetic-alpha-orphan",
+      "title": "Missing parent repair",
+      "state": "ready",
+      "priority": 3,
+      "parent_id": "synthetic-missing-parent",
+      "tags": [
+        "repair"
+      ],
+      "created_at": "2026-01-11T08:00:00-06:00",
+      "updated_at": "2026-01-11T08:00:00-06:00",
+      "depends_on": [
+        "synthetic-duplicate-active",
+        "synthetic-beta-root"
+      ]
+    },
+    {
+      "id": "synthetic-alpha-related",
+      "title": "Related-link target",
+      "state": "ready",
+      "priority": 3,
+      "tags": [
+        "relation-target"
+      ],
+      "created_at": "2026-01-12T08:00:00-06:00",
+      "updated_at": "2026-01-12T08:00:00-06:00"
+    }
+  ],
+  "audit": [
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "converted",
+      "field": "type",
+      "from": "Epic",
+      "to": "type:epic",
+      "reason": "v5 writes every task with the neutral Task heading"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "converted",
+      "field": "source",
+      "from": "GitHub Issues",
+      "to": "source:GitHub Issues",
+      "reason": "v5 represents source as a namespaced tag"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "converted",
+      "field": "due",
+      "from": "2026-02-03T14:30",
+      "to": "2026-02-03",
+      "reason": "v5 due values are local calendar dates"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "converted",
+      "field": "url",
+      "from": "https://example.invalid/legacy-url",
+      "to": "url attachment",
+      "reason": "v5 has no standalone URL field"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "comments[0].resolved",
+      "from": "true",
+      "reason": "v5 comments have no resolved state"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "decisions[0].category",
+      "from": "architecture",
+      "reason": "v5 decisions have no category"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "decisions[0].resolved",
+      "from": "true",
+      "reason": "v5 decisions have no resolved state"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "activity",
+      "from": "2 entries",
+      "reason": "activity history remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "start",
+      "from": "2026-01-15",
+      "reason": "retired scheduling metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "estimated_days",
+      "from": "3.5",
+      "reason": "retired scheduling metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "related",
+      "from": "synthetic-alpha-related",
+      "reason": "related links remain snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "dimmed",
+      "from": "true",
+      "reason": "dim state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "parked",
+      "from": "Synthetic resume context",
+      "reason": "parking data remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "parked_at",
+      "from": "2026-02-02 16:20",
+      "reason": "parking data remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "epic.scope",
+      "from": "evolving",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "epic.milestone",
+      "from": "Synthetic milestone",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "epic.metrics",
+      "from": "Synthetic metric one\\\\nSynthetic metric two",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "epic.initial_children",
+      "from": "4",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "epic.scope_baselined",
+      "from": "2026-01-20",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "score.impact",
+      "from": "5",
+      "reason": "scores remain snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-rich",
+      "action": "discarded",
+      "field": "score.effort",
+      "from": "2",
+      "reason": "scores remain snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "converted",
+      "field": "state",
+      "from": "review",
+      "to": "ready + tag:review",
+      "reason": "review is not a v5 workflow state"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "converted",
+      "field": "type",
+      "from": "Story",
+      "to": "type:story",
+      "reason": "v5 writes every task with the neutral Task heading"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "recurrence.mode",
+      "from": "from_completion",
+      "reason": "v5 recurrence always advances from the prior due date"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "converted",
+      "field": "recurrence.unit",
+      "from": "1y",
+      "to": "12 months",
+      "reason": "v5 recurrence has no yearly unit"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "recur.skipped",
+      "from": "2",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "recur.streak",
+      "from": "3",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "recur.max_streak",
+      "from": "7",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "recur.original_day",
+      "from": "28",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "story.points",
+      "from": "8",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-review",
+      "action": "discarded",
+      "field": "story.persona",
+      "from": "Synthetic reviewer",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-bug",
+      "action": "converted",
+      "field": "type",
+      "from": "Bug",
+      "to": "type:bug",
+      "reason": "v5 writes every task with the neutral Task heading"
+    },
+    {
+      "task_id": "synthetic-alpha-bug",
+      "action": "discarded",
+      "field": "bug.reproducible",
+      "from": "sometimes",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-bug",
+      "action": "discarded",
+      "field": "bug.severity",
+      "from": "major",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-bug",
+      "action": "discarded",
+      "field": "bug.workaround",
+      "from": "Use the synthetic fallback",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-idea",
+      "action": "converted",
+      "field": "type",
+      "from": "Idea",
+      "to": "type:idea",
+      "reason": "v5 writes every task with the neutral Task heading"
+    },
+    {
+      "task_id": "synthetic-alpha-idea",
+      "action": "discarded",
+      "field": "idea.category",
+      "from": "research",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-idea",
+      "action": "discarded",
+      "field": "idea.effort",
+      "from": "large",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-idea",
+      "action": "discarded",
+      "field": "idea.value",
+      "from": "high",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-idea",
+      "action": "discarded",
+      "field": "idea.validated",
+      "from": "true",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-weekday",
+      "action": "discarded",
+      "field": "recurrence.weekdays",
+      "from": "mon,wed,fri",
+      "reason": "v5 keeps the weekly interval anchored by the existing due date"
+    },
+    {
+      "task_id": "synthetic-alpha-weekday",
+      "action": "discarded",
+      "field": "recur.skipped",
+      "from": "1",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-weekday",
+      "action": "discarded",
+      "field": "recur.streak",
+      "from": "2",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-weekday",
+      "action": "discarded",
+      "field": "recur.max_streak",
+      "from": "4",
+      "reason": "rich recurrence state remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-weekday",
+      "action": "discarded",
+      "field": "task.effort",
+      "from": "medium",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-weekday",
+      "action": "discarded",
+      "field": "task.worktype",
+      "from": "testing",
+      "reason": "type-specific metadata remains snapshot-only"
+    },
+    {
+      "task_id": "synthetic-alpha-paused",
+      "action": "converted",
+      "field": "type",
+      "from": "Action",
+      "to": "type:action",
+      "reason": "v5 writes every task with the neutral Task heading"
+    },
+    {
+      "task_id": "synthetic-alpha-paused",
+      "action": "converted",
+      "field": "snoozed",
+      "from": "2026-02-04 21:45",
+      "to": "2026-02-04",
+      "reason": "v5 snooze values are local calendar dates"
+    },
+    {
+      "task_id": "synthetic-alpha-note",
+      "action": "converted",
+      "field": "type",
+      "from": "Note",
+      "to": "type:note",
+      "reason": "v5 writes every task with the neutral Task heading"
+    }
+  ]
+}

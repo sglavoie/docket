@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -10,17 +11,29 @@ import (
 )
 
 // typedTask builds a task of a specific type for hierarchy tests.
-func typedTask(id string, shortID int, taskType models.TaskType, title string) *models.Task {
-	tk, err := models.NewTask(id, shortID, taskType, title)
+func typedTask(id string, shortID int, taskType string, title string) *models.Task {
+	tk, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		panic(err)
 	}
 	return tk
 }
 
+func assertTaskIDs(t *testing.T, tasks []*models.Task, want ...string) {
+	t.Helper()
+	if len(tasks) != len(want) {
+		t.Fatalf("task count = %d, want %d", len(tasks), len(want))
+	}
+	for i, id := range want {
+		if tasks[i] == nil || tasks[i].ID != id {
+			t.Fatalf("task[%d] = %v, want %q", i, tasks[i], id)
+		}
+	}
+}
+
 func TestReparentUnderValidParent(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	task := typedTask("t1", 2, models.TaskTypeTask, "child task")
+	epic := typedTask("epic1", 1, "", "Epic")
+	task := typedTask("t1", 2, "", "child task")
 	projA := newProject("proj-a", "Alpha", epic, task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -38,8 +51,8 @@ func TestReparentUnderValidParent(t *testing.T) {
 }
 
 func TestReparentToRootClearsParent(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	task := typedTask("t1", 2, models.TaskTypeTask, "child task")
+	epic := typedTask("epic1", 1, "", "Epic")
+	task := typedTask("t1", 2, "", "child task")
 	parentID := "epic1"
 	task.ParentID = &parentID
 	projA := newProject("proj-a", "Alpha", epic, task)
@@ -54,26 +67,28 @@ func TestReparentToRootClearsParent(t *testing.T) {
 	}
 }
 
-func TestReparentRejectsIncompatibleType(t *testing.T) {
-	leaf := typedTask("leaf1", 1, models.TaskTypeTask, "leaf")
-	task := typedTask("t1", 2, models.TaskTypeTask, "another leaf")
+func TestReparentUsesLeanHierarchyWithoutTypeRestrictions(t *testing.T) {
+	leaf := typedTask("leaf1", 1, "", "leaf")
+	task := typedTask("t1", 2, "", "another leaf")
 	projA := newProject("proj-a", "Alpha", leaf, task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	// A task cannot be a child of another leaf task.
 	parentID := "leaf1"
-	if _, err := svc.Reparent("t1", &parentID); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("err = %v, want ErrInvalidInput", err)
+	if _, err := svc.Reparent("t1", &parentID); err != nil {
+		t.Fatalf("Reparent under generic task: %v", err)
 	}
-	if len(repo.commits) != 0 {
-		t.Errorf("rejected reparent committed %d times, want 0", len(repo.commits))
+	if task.ParentID == nil || *task.ParentID != leaf.ID {
+		t.Fatalf("ParentID = %v, want %s", task.ParentID, leaf.ID)
+	}
+	if len(repo.commits) != 1 {
+		t.Errorf("reparent committed %d times, want 1", len(repo.commits))
 	}
 }
 
 func TestReparentRejectsCycle(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	story := typedTask("story1", 2, models.TaskTypeStory, "Story")
+	epic := typedTask("epic1", 1, "", "Epic")
+	story := typedTask("story1", 2, "", "Story")
 	epicID := "epic1"
 	story.ParentID = &epicID // story is a child of epic
 	projA := newProject("proj-a", "Alpha", epic, story)
@@ -87,13 +102,42 @@ func TestReparentRejectsCycle(t *testing.T) {
 }
 
 func TestReparentUnknownParent(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "task")
+	task := typedTask("t1", 1, "", "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newTestService(repo)
 
 	ghost := "no-such-parent"
 	if _, err := svc.Reparent("t1", &ghost); !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
+	}
+}
+
+func TestReparentRejectsSubtreeThatWouldExceedDepth(t *testing.T) {
+	var chain []*models.Task
+	for i := 0; i < models.MaxNestingDepth; i++ {
+		task := typedTask(string(rune('a'+i)), i+1, "", "Ancestor")
+		if i > 0 {
+			parentID := chain[i-1].ID
+			task.ParentID = &parentID
+		}
+		chain = append(chain, task)
+	}
+	moved := typedTask("moved", 20, "", "Moved")
+	child := typedTask("child", 21, "", "Child")
+	child.ParentID = &moved.ID
+	project := newProject("proj-a", "Alpha", append(chain, moved, child)...)
+	repo := newFakeRepo(project)
+	service := newTestService(repo)
+
+	parentID := chain[len(chain)-1].ID
+	if _, err := service.Reparent("moved", &parentID); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("Reparent error = %v, want ErrInvalidInput", err)
+	}
+	if moved.ParentID != nil {
+		t.Fatalf("rejected reparent changed parent to %v", moved.ParentID)
+	}
+	if len(repo.commits) != 0 {
+		t.Fatalf("rejected reparent committed %d times", len(repo.commits))
 	}
 }
 
@@ -160,9 +204,72 @@ func TestMoveTaskDownAtBottomRejected(t *testing.T) {
 	}
 }
 
+func TestReorderSiblingTasksUsesExplicitVisibleTarget(t *testing.T) {
+	parentA := typedTask("parent-a", 1, "", "Parent A")
+	parentB := typedTask("parent-b", 2, "", "Parent B")
+	a1 := newTask("a1", 3, "A1")
+	a2 := newTask("a2", 4, "A2")
+	b1 := newTask("b1", 5, "B1")
+	b2 := newTask("b2", 6, "B2")
+	a1.ParentID = &parentA.ID
+	a2.ParentID = &parentA.ID
+	b1.ParentID = &parentB.ID
+	b2.ParentID = &parentB.ID
+	project := newProject("proj-a", "Alpha", parentA, a1, parentB, b1, a2, b2)
+	repo := newFakeRepo(project)
+	service := newTestService(repo)
+
+	if _, err := service.ReorderSiblingTasks("a1", "a2"); err != nil {
+		t.Fatalf("ReorderSiblingTasks: %v", err)
+	}
+	assertTaskIDs(t, project.GetSiblings(a1), "a2", "a1")
+	assertTaskIDs(t, project.GetSiblings(b1), "b1", "b2")
+	if len(repo.commits) != 1 {
+		t.Fatalf("commits = %d, want 1", len(repo.commits))
+	}
+}
+
+func TestReorderSiblingTasksRejectsDifferentParents(t *testing.T) {
+	parentA := typedTask("parent-a", 1, "", "Parent A")
+	parentB := typedTask("parent-b", 2, "", "Parent B")
+	a1 := newTask("a1", 3, "A1")
+	b1 := newTask("b1", 4, "B1")
+	a1.ParentID = &parentA.ID
+	b1.ParentID = &parentB.ID
+	project := newProject("proj-a", "Alpha", parentA, a1, parentB, b1)
+	repo := newFakeRepo(project)
+	service := newTestService(repo)
+
+	if _, err := service.ReorderSiblingTasks("a1", "b1"); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("ReorderSiblingTasks error = %v, want ErrInvalidInput", err)
+	}
+	assertTaskIDs(t, project.GetSiblings(a1), "a1")
+	assertTaskIDs(t, project.GetSiblings(b1), "b1")
+	if len(repo.commits) != 0 {
+		t.Fatalf("rejected reorder committed %d times", len(repo.commits))
+	}
+}
+
+func TestHierarchyReorderRollsBackSharedSnapshotOnCommitFailure(t *testing.T) {
+	first := newTask("t1", 1, "first")
+	second := newTask("t2", 2, "second")
+	project := newProject("proj-a", "Alpha", first, second)
+	repo := newFakeRepo(project)
+	repo.commitErr = errors.New("commit boom")
+	service := newTestService(repo)
+
+	if _, err := service.MoveTaskDown("t1"); err == nil {
+		t.Fatal("expected commit error")
+	}
+	assertTaskIDs(t, project.Tasks, "t1", "t2")
+	if project.Tasks[0] != first || project.Tasks[1] != second {
+		t.Fatal("rollback replaced repository-owned task pointers")
+	}
+}
+
 func TestIndentNestsUnderTaskAbove(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	task := typedTask("t1", 2, models.TaskTypeTask, "leaf")
+	epic := typedTask("epic1", 1, "", "Epic")
+	task := typedTask("t1", 2, "", "leaf")
 	projA := newProject("proj-a", "Alpha", epic, task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -176,7 +283,7 @@ func TestIndentNestsUnderTaskAbove(t *testing.T) {
 }
 
 func TestIndentRejectedWhenNoTaskAbove(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "only task")
+	task := typedTask("t1", 1, "", "only task")
 	projA := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -190,8 +297,8 @@ func TestIndentRejectedWhenNoTaskAbove(t *testing.T) {
 }
 
 func TestOutdentMovesToParentLevel(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	story := typedTask("story1", 2, models.TaskTypeStory, "Story")
+	epic := typedTask("epic1", 1, "", "Epic")
+	story := typedTask("story1", 2, "", "Story")
 	epicID := "epic1"
 	story.ParentID = &epicID
 	projA := newProject("proj-a", "Alpha", epic, story)
@@ -207,7 +314,7 @@ func TestOutdentMovesToParentLevel(t *testing.T) {
 }
 
 func TestOutdentRejectedAtRoot(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "root task")
+	task := typedTask("t1", 1, "", "root task")
 	projA := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -217,68 +324,9 @@ func TestOutdentRejectedAtRoot(t *testing.T) {
 	}
 }
 
-func TestChangeTaskTypePromote(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "leaf")
-	projA := newProject("proj-a", "Alpha", task)
-	repo := newFakeRepo(projA)
-	svc := newTestService(repo)
-
-	if _, err := svc.ChangeTaskType("t1", app.PromoteType); err != nil {
-		t.Fatalf("ChangeTaskType promote: %v", err)
-	}
-	if task.Type != models.TaskTypeStory {
-		t.Fatalf("Type = %s, want story", task.Type)
-	}
-}
-
-func TestChangeTaskTypeDemote(t *testing.T) {
-	epic := typedTask("e1", 1, models.TaskTypeEpic, "Epic")
-	projA := newProject("proj-a", "Alpha", epic)
-	repo := newFakeRepo(projA)
-	svc := newTestService(repo)
-
-	if _, err := svc.ChangeTaskType("e1", app.DemoteType); err != nil {
-		t.Fatalf("ChangeTaskType demote: %v", err)
-	}
-	if epic.Type != models.TaskTypeStory {
-		t.Fatalf("Type = %s, want story", epic.Type)
-	}
-}
-
-func TestChangeTaskTypeCycleRight(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "leaf")
-	projA := newProject("proj-a", "Alpha", task)
-	repo := newFakeRepo(projA)
-	svc := newTestService(repo)
-
-	if _, err := svc.ChangeTaskType("t1", app.CycleTypeRight); err != nil {
-		t.Fatalf("ChangeTaskType cycle: %v", err)
-	}
-	if task.Type != models.TaskTypeBug {
-		t.Fatalf("Type = %s, want bug", task.Type)
-	}
-}
-
-func TestChangeTaskTypePromoteRejectedAtTop(t *testing.T) {
-	epic := typedTask("e1", 1, models.TaskTypeEpic, "Epic")
-	projA := newProject("proj-a", "Alpha", epic)
-	repo := newFakeRepo(projA)
-	svc := newTestService(repo)
-
-	if _, err := svc.ChangeTaskType("e1", app.PromoteType); err == nil {
-		t.Fatal("expected error promoting an epic")
-	}
-	if len(repo.commits) != 0 {
-		t.Errorf("rejected type change committed %d times, want 0", len(repo.commits))
-	}
-	if epic.Type != models.TaskTypeEpic {
-		t.Errorf("Type = %s, want epic (unchanged)", epic.Type)
-	}
-}
-
 func TestMoveToProjectCarriesAttachmentOpsAndArtifact(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	child := typedTask("t1", 2, models.TaskTypeTask, "child")
+	epic := typedTask("epic1", 1, "", "Epic")
+	child := typedTask("t1", 2, "", "child")
 	epicID := "epic1"
 	child.ParentID = &epicID
 	projA := newProject("proj-a", "Alpha", epic, child)
@@ -334,10 +382,13 @@ func TestMoveToProjectCarriesAttachmentOpsAndArtifact(t *testing.T) {
 }
 
 func TestMoveToProjectAbortsOnCommitError(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "task")
+	task := typedTask("t1", 1, "", "task")
+	dependent := typedTask("dependent", 1, "", "dependent")
+	dependent.DependsOn = []string{"proj-a:t1", "proj-z:keep"}
 	projA := newProject("proj-a", "Alpha", task)
 	projB := newProject("proj-b", "Beta")
-	repo := newFakeRepo(projA, projB)
+	projC := newProject("proj-c", "Gamma", dependent)
+	repo := newFakeRepo(projA, projB, projC)
 	repo.commitErr = errors.New("commit boom")
 	svc := newTestService(repo)
 
@@ -347,11 +398,63 @@ func TestMoveToProjectAbortsOnCommitError(t *testing.T) {
 	if len(repo.commits) != 0 {
 		t.Errorf("failed commit recorded %d successful transactions, want 0", len(repo.commits))
 	}
+	if len(projA.Tasks) != 1 || projA.Tasks[0] != task {
+		t.Fatal("failed move did not restore the source project and task pointer")
+	}
+	if len(projB.Tasks) != 0 {
+		t.Fatal("failed move left the task in the destination project")
+	}
+	if task.ShortID != 1 || task.ParentID != nil {
+		t.Fatalf("failed move left task mutated: shortID=%d parent=%v", task.ShortID, task.ParentID)
+	}
+	if !reflect.DeepEqual(dependent.DependsOn, []string{"proj-a:t1", "proj-z:keep"}) {
+		t.Fatalf("failed move did not restore cross-project dependency: %v", dependent.DependsOn)
+	}
+}
+
+func TestMoveToProjectClearsStaleQualifiedReferencesWorkspaceWide(t *testing.T) {
+	moved := typedTask("moved", 1, "", "moved")
+	sourceDependent := typedTask("source-dependent", 2, "", "source dependent")
+	sourceDependent.DependsOn = []string{"moved", "alpha:moved"}
+	destDependent := typedTask("dest-dependent", 1, "", "destination dependent")
+	destDependent.DependsOn = []string{"proj-a:moved"}
+	otherDependent := typedTask("other-dependent", 1, "", "other dependent")
+	otherDependent.DependsOn = []string{"alpha:moved"}
+
+	projA := newProject("proj-a", "Alpha", moved, sourceDependent)
+	projB := newProject("proj-b", "Beta", destDependent)
+	projC := newProject("proj-c", "Gamma", otherDependent)
+	repo := newFakeRepo(projA, projB, projC)
+	svc := newTestService(repo)
+
+	result, err := svc.MoveToProject("moved", "proj-b")
+	if err != nil {
+		t.Fatalf("MoveToProject: %v", err)
+	}
+	if len(sourceDependent.DependsOn) != 0 {
+		t.Fatalf("source dependencies = %v, want stale bare and qualified refs cleared", sourceDependent.DependsOn)
+	}
+	if len(destDependent.DependsOn) != 0 {
+		t.Fatalf("destination dependencies = %v, want stale source-qualified ref cleared", destDependent.DependsOn)
+	}
+	if len(otherDependent.DependsOn) != 0 {
+		t.Fatalf("other-project dependencies = %v, want cleared", otherDependent.DependsOn)
+	}
+	if result.CrossProjectRefsCleared != 3 {
+		t.Fatalf("CrossProjectRefsCleared = %d, want 3", result.CrossProjectRefsCleared)
+	}
+	wantTouched := []string{"proj-a", "proj-b", "proj-c"}
+	if !reflect.DeepEqual(result.TouchedProjectIDs, wantTouched) {
+		t.Fatalf("TouchedProjectIDs = %v, want %v", result.TouchedProjectIDs, wantTouched)
+	}
+	if len(repo.commits) != 1 || len(repo.commits[0]) != 3 {
+		t.Fatalf("commit shape = %d transactions / %d changesets, want 1 / 3", len(repo.commits), len(repo.commits[0]))
+	}
 }
 
 func TestMoveToProjectMovesSubtreeInOneTransaction(t *testing.T) {
-	epic := typedTask("epic1", 1, models.TaskTypeEpic, "Epic")
-	child := typedTask("t1", 2, models.TaskTypeTask, "child")
+	epic := typedTask("epic1", 1, "", "Epic")
+	child := typedTask("t1", 2, "", "child")
 	epicID := "epic1"
 	child.ParentID = &epicID
 	projA := newProject("proj-a", "Alpha", epic, child)
@@ -390,7 +493,7 @@ func TestMoveToProjectMovesSubtreeInOneTransaction(t *testing.T) {
 }
 
 func TestMoveToProjectRejectsSameProject(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "task")
+	task := typedTask("t1", 1, "", "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newTestService(repo)
 
@@ -400,7 +503,7 @@ func TestMoveToProjectRejectsSameProject(t *testing.T) {
 }
 
 func TestMoveToProjectUnknownDestination(t *testing.T) {
-	task := typedTask("t1", 1, models.TaskTypeTask, "task")
+	task := typedTask("t1", 1, "", "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newTestService(repo)
 

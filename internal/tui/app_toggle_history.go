@@ -6,22 +6,22 @@ type toggleUndoKind uint8
 
 const (
 	toggleUndoNone toggleUndoKind = iota
-	toggleUndoDailyPlan
+	toggleUndoToday
 	toggleUndoQueue
 )
 
 func (m *AppModel) clearToggleRedoHistory() {
-	m.lastDailyPlanToggleRedo = nil
+	m.lastTodayToggleRedo = nil
 	m.lastQueueToggleRedo = nil
-	m.lastDailyPlanRedoAt = time.Time{}
+	m.lastTodayRedoAt = time.Time{}
 	m.lastQueueRedoAt = time.Time{}
 	m.lastToggleRedoKind = toggleUndoNone
 }
 
 func (m *AppModel) clearToggleHistory() {
-	m.lastDailyPlanToggle = nil
+	m.lastTodayToggle = nil
 	m.lastQueueToggle = nil
-	m.lastDailyPlanToggleAt = time.Time{}
+	m.lastTodayToggleAt = time.Time{}
 	m.lastQueueToggleAt = time.Time{}
 	m.lastToggleUndoKind = toggleUndoNone
 	m.clearToggleRedoHistory()
@@ -31,16 +31,16 @@ func (m *AppModel) nextUndoKind(excluding toggleUndoKind) toggleUndoKind {
 	switch excluding {
 	case toggleUndoNone:
 		return newerToggleKind(
-			toggleUndoDailyPlan, m.lastDailyPlanToggle != nil, m.lastDailyPlanToggleAt,
+			toggleUndoToday, m.lastTodayToggle != nil, m.lastTodayToggleAt,
 			toggleUndoQueue, m.lastQueueToggle != nil, m.lastQueueToggleAt,
 		)
-	case toggleUndoDailyPlan:
+	case toggleUndoToday:
 		if m.lastQueueToggle != nil {
 			return toggleUndoQueue
 		}
 	case toggleUndoQueue:
-		if m.lastDailyPlanToggle != nil {
-			return toggleUndoDailyPlan
+		if m.lastTodayToggle != nil {
+			return toggleUndoToday
 		}
 	}
 	return toggleUndoNone
@@ -50,16 +50,16 @@ func (m *AppModel) nextRedoKind(excluding toggleUndoKind) toggleUndoKind {
 	switch excluding {
 	case toggleUndoNone:
 		return newerToggleKind(
-			toggleUndoDailyPlan, m.lastDailyPlanToggleRedo != nil, m.lastDailyPlanRedoAt,
+			toggleUndoToday, m.lastTodayToggleRedo != nil, m.lastTodayRedoAt,
 			toggleUndoQueue, m.lastQueueToggleRedo != nil, m.lastQueueRedoAt,
 		)
-	case toggleUndoDailyPlan:
+	case toggleUndoToday:
 		if m.lastQueueToggleRedo != nil {
 			return toggleUndoQueue
 		}
 	case toggleUndoQueue:
-		if m.lastDailyPlanToggleRedo != nil {
-			return toggleUndoDailyPlan
+		if m.lastTodayToggleRedo != nil {
+			return toggleUndoToday
 		}
 	}
 	return toggleUndoNone
@@ -83,8 +83,8 @@ func newerToggleKind(a toggleUndoKind, hasA bool, atA time.Time, b toggleUndoKin
 
 func (m *AppModel) toggleUndoTimestamp(kind toggleUndoKind) time.Time {
 	switch kind {
-	case toggleUndoDailyPlan:
-		return m.lastDailyPlanToggleAt
+	case toggleUndoToday:
+		return m.lastTodayToggleAt
 	case toggleUndoQueue:
 		return m.lastQueueToggleAt
 	default:
@@ -94,8 +94,8 @@ func (m *AppModel) toggleUndoTimestamp(kind toggleUndoKind) time.Time {
 
 func (m *AppModel) toggleRedoTimestamp(kind toggleUndoKind) time.Time {
 	switch kind {
-	case toggleUndoDailyPlan:
-		return m.lastDailyPlanRedoAt
+	case toggleUndoToday:
+		return m.lastTodayRedoAt
 	case toggleUndoQueue:
 		return m.lastQueueRedoAt
 	default:

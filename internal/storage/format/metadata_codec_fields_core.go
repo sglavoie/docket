@@ -1,7 +1,6 @@
 package format
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -41,18 +40,9 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 			util.DateTimeFormat,
 		),
 		metadataDueFieldCodec(),
-		coreDatePtrField("start",
-			func(task *models.Task, value *time.Time) { task.StartDate = value },
-			func(task *models.Task) *time.Time { return task.StartDate },
-		),
-		metadataEstimatedDaysFieldCodec(),
 		coreStringSliceField("depends",
 			func(task *models.Task, values []string) { task.DependsOn = append(task.DependsOn, values...) },
 			func(task *models.Task) []string { return task.DependsOn },
-		),
-		coreStringSliceField("related",
-			func(task *models.Task, values []string) { task.RelatedTo = append(task.RelatedTo, values...) },
-			func(task *models.Task) []string { return task.RelatedTo },
 		),
 		coreBoolTrueField("pinned",
 			func(task *models.Task, value bool) { task.Pinned = value },
@@ -60,83 +50,18 @@ func metadataCoreFieldCodecs() []metadataFieldCodec {
 		),
 		metadataPinnedAtFieldCodec(),
 		legacyActiveFieldCodec(),
-		coreBoolTrueField("dimmed",
-			func(task *models.Task, value bool) { task.Dimmed = value },
-			func(task *models.Task) bool { return task.Dimmed },
-		),
 		coreDatePtrField("snoozed",
 			func(task *models.Task, value *time.Time) { task.SnoozedUntil = value },
 			func(task *models.Task) *time.Time { return task.SnoozedUntil },
 		),
-		coreEscapedStringField("parked",
-			func(task *models.Task, value string) { task.ParkedNote = value },
-			func(task *models.Task) string { return task.ParkedNote },
-		),
-		coreTimePtrField("parked_at",
-			func(task *models.Task, value *time.Time) { task.ParkedAt = value },
-			func(task *models.Task) *time.Time { return task.ParkedAt },
-			util.DateTimeFormat,
-		),
 		metadataRecurFieldCodec(),
-		coreRecurSubField("recur.skipped",
-			func(state *metadataParseState, value int) {
-				state.recurSubFields.skipped = value
-				state.recurSubFields.hasAny = true
-			},
-			func(task *models.Task) int {
-				if task.Recurrence == nil {
-					return 0
-				}
-				return task.Recurrence.Skipped
-			},
-		),
-		coreRecurSubField("recur.streak",
-			func(state *metadataParseState, value int) {
-				state.recurSubFields.streak = value
-				state.recurSubFields.hasAny = true
-			},
-			func(task *models.Task) int {
-				if task.Recurrence == nil {
-					return 0
-				}
-				return task.Recurrence.Streak
-			},
-		),
-		coreRecurSubField("recur.max_streak",
-			func(state *metadataParseState, value int) {
-				state.recurSubFields.maxStreak = value
-				state.recurSubFields.hasAny = true
-			},
-			func(task *models.Task) int {
-				if task.Recurrence == nil {
-					return 0
-				}
-				return task.Recurrence.MaxStreak
-			},
-		),
-		coreRecurSubField("recur.original_day",
-			func(state *metadataParseState, value int) {
-				state.recurSubFields.originalDay = value
-				state.recurSubFields.hasAny = true
-			},
-			func(task *models.Task) int {
-				if task.Recurrence == nil {
-					return 0
-				}
-				return task.Recurrence.OriginalDay
-			},
-		),
+		legacyRecurSubField("recur.skipped"),
+		legacyRecurSubField("recur.streak"),
+		legacyRecurSubField("recur.max_streak"),
+		legacyRecurSubField("recur.original_day"),
 		metadataAttachmentsFieldCodec(),
 		metadataChecklistFieldCodec(),
 		legacyStageFieldCodec(),
-		coreEscapedStringField("source",
-			func(task *models.Task, value string) { task.Source = value },
-			func(task *models.Task) string { return task.Source },
-		),
-		coreEscapedStringField("url",
-			func(task *models.Task, value string) { task.URL = value },
-			func(task *models.Task) string { return task.URL },
-		),
 	}
 }
 
@@ -148,19 +73,6 @@ func coreStringField(key string, set func(*models.Task, string), get func(*model
 		func(task *models.Task, parts *[]string) {
 			if value := get(task); value != "" {
 				appendMetadataPart(parts, key, value)
-			}
-		},
-	)
-}
-
-func coreEscapedStringField(key string, set func(*models.Task, string), get func(*models.Task) string) metadataFieldCodec {
-	return metadataField(key,
-		func(task *models.Task, value string, _ *metadataParseState, _ *[]ParseWarning) {
-			set(task, unescapeMetadataScalar(value))
-		},
-		func(task *models.Task, parts *[]string) {
-			if value := get(task); value != "" {
-				appendMetadataPart(parts, key, escapeMetadataScalar(value))
 			}
 		},
 	)
@@ -250,20 +162,14 @@ func coreDatePtrField(key string, set func(*models.Task, *time.Time), get func(*
 	)
 }
 
-func coreRecurSubField(key string, set func(*metadataParseState, int), get func(*models.Task) int) metadataFieldCodec {
+func legacyRecurSubField(key string) metadataFieldCodec {
 	return metadataField(key,
 		func(_ *models.Task, value string, state *metadataParseState, warnings *[]ParseWarning) {
-			if parsed, ok := parseIntOrWarn(value, key, warnings); ok {
-				set(state, parsed)
+			if _, ok := parseIntOrWarn(value, key, warnings); ok {
+				state.legacyRecurrenceSubFieldSeen = true
 			}
 		},
-		func(task *models.Task, parts *[]string) {
-			if task.Recurrence != nil {
-				if value := get(task); value > 0 {
-					appendMetadataPart(parts, key, strconv.Itoa(value))
-				}
-			}
-		},
+		func(*models.Task, *[]string) {},
 	)
 }
 
@@ -316,26 +222,7 @@ func metadataDueFieldCodec() metadataFieldCodec {
 			if task.DueDate == nil {
 				return
 			}
-			if task.HasTime {
-				appendMetadataPart(parts, "due", task.DueDate.Format(util.DateTimeDueFormat))
-				return
-			}
 			appendMetadataPart(parts, "due", task.DueDate.Format(util.DateFormat))
-		},
-	)
-}
-
-func metadataEstimatedDaysFieldCodec() metadataFieldCodec {
-	return metadataField("estimated_days",
-		func(task *models.Task, value string, _ *metadataParseState, warnings *[]ParseWarning) {
-			if parsed, ok := parseFloatOrWarn(value, "estimated_days", warnings); ok && parsed > 0 {
-				task.EstimatedDays = parsed
-			}
-		},
-		func(task *models.Task, parts *[]string) {
-			if task.EstimatedDays > 0 {
-				appendMetadataPart(parts, "estimated_days", fmt.Sprintf("%g", task.EstimatedDays))
-			}
 		},
 	)
 }
@@ -375,7 +262,9 @@ func metadataRecurFieldCodec() metadataFieldCodec {
 		},
 		func(task *models.Task, parts *[]string) {
 			if task.Recurrence != nil {
-				appendMetadataPart(parts, "recur", FormatRecurrence(task.Recurrence))
+				if value := FormatRecurrence(task.Recurrence); value != "" {
+					appendMetadataPart(parts, "recur", value)
+				}
 			}
 		},
 	)

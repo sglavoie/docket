@@ -7,31 +7,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestRoundTrip_RelatedTo(t *testing.T) {
-	task := &models.Task{
-		ID:            "rel-1",
-		Type:          models.TaskTypeTask,
-		WorkflowState: models.StateReady,
-		Priority:      2,
-		RelatedTo:     []string{"id1", "id2"},
-	}
-
-	parsed := &models.Task{}
-	warnings := parseWrittenMetadata(task, parsed)
-
-	if len(warnings) != 0 {
-		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
-	}
-	if !stringSlicesEqual(parsed.RelatedTo, []string{"id1", "id2"}) {
-		t.Errorf("RelatedTo = %v, want %v", parsed.RelatedTo, []string{"id1", "id2"})
-	}
-}
-
 func TestRoundTrip_ParentID(t *testing.T) {
 	parentID := "parent-abc-123"
 	task := &models.Task{
 		ID:            "child-xyz-456",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      2,
 		ParentID:      &parentID,
@@ -59,7 +38,6 @@ func TestRoundTrip_ParentID(t *testing.T) {
 func TestRoundTrip_NilParentID(t *testing.T) {
 	task := &models.Task{
 		ID:            "root-task-1",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      1,
 	}
@@ -83,7 +61,6 @@ func TestRoundTrip_NilParentID(t *testing.T) {
 func TestRoundTrip_DependsOnCrossProject(t *testing.T) {
 	task := &models.Task{
 		ID:            "local-task-1",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      2,
 		DependsOn: []string{
@@ -110,21 +87,14 @@ func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
 	parentID := "parent-epic-001"
 	task := &models.Task{
 		ID:            "full-task-1",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateInProgress,
 		Priority:      1,
 		ParentID:      &parentID,
 		Tags:          []string{"alpha", "beta"},
 		DependsOn:     []string{"dep-local", "proj2:dep-cross"},
-		RelatedTo:     []string{"rel-1"},
 		Recurrence: &models.RecurrencePattern{
 			Interval: 3,
 			Unit:     models.RecurrenceMonthly,
-		},
-		Source: "jira",
-		URL:    "https://jira.example.com/browse/PROJ-1",
-		ScoreDimensions: map[string]int{
-			"impact": 5,
 		},
 	}
 
@@ -142,9 +112,6 @@ func TestRoundTrip_KitchenSinkWithParentID(t *testing.T) {
 	}
 	if !stringSlicesEqual(parsed.DependsOn, task.DependsOn) {
 		t.Errorf("DependsOn = %v, want %v", parsed.DependsOn, task.DependsOn)
-	}
-	if !stringSlicesEqual(parsed.RelatedTo, task.RelatedTo) {
-		t.Errorf("RelatedTo = %v, want %v", parsed.RelatedTo, task.RelatedTo)
 	}
 	if parsed.Recurrence == nil {
 		t.Fatal("Recurrence is nil after round-trip")

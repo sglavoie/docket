@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// TestArtifactsContract exercises the note and blocker use cases plus the
+// TestArtifactsContract exercises the note use cases plus the
 // snapshot-backed queries against BOTH an in-memory repository and the real
 // filesystem commit service, proving every request behaves identically regardless
 // of the backing store.
@@ -21,7 +21,7 @@ func TestArtifactsContract(t *testing.T) {
 		project := newProject("p1", "alpha")
 		repo := newFakeRepo(project)
 		port := repo.artifactPort()
-		svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port, port)
+		svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port)
 		runArtifactContract(t, svc, project.ID)
 	})
 
@@ -61,39 +61,6 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 		t.Fatalf("Notes[0] = %+v, want title Design body containing 'hello world'", notes[0])
 	}
 
-	// Set a blocker list; the missing ID is minted and the count is reported.
-	blocker := &models.Blocker{Title: "API access"}
-	bRes, err := svc.SetBlockers(projectID, []*models.Blocker{blocker})
-	if err != nil {
-		t.Fatalf("SetBlockers: %v", err)
-	}
-	if bRes.Count != 1 || bRes.ActiveCount != 1 {
-		t.Fatalf("SetBlockers result = %+v, want Count 1 ActiveCount 1", bRes)
-	}
-	if blocker.ID == "" {
-		t.Fatalf("SetBlockers did not mint a blocker ID")
-	}
-	blockers, err := svc.Blockers(projectID)
-	if err != nil {
-		t.Fatalf("Blockers: %v", err)
-	}
-	if len(blockers) != 1 || blockers[0].Title != "API access" {
-		t.Fatalf("Blockers = %+v, want one titled 'API access'", blockers)
-	}
-	if got, countErr := svc.ActiveBlockerCount(projectID); countErr != nil || got != 1 {
-		t.Fatalf("ActiveBlockerCount = %d, %v, want 1, nil", got, countErr)
-	}
-
-	// Resolve the blocker and rewrite the list: the active count drops to zero.
-	blockers[0].Resolve()
-	bRes, err = svc.SetBlockers(projectID, blockers)
-	if err != nil {
-		t.Fatalf("SetBlockers (resolved): %v", err)
-	}
-	if bRes.ActiveCount != 0 {
-		t.Fatalf("ActiveCount after resolve = %d, want 0", bRes.ActiveCount)
-	}
-
 	// Delete the note; the query then reports none.
 	if _, deleteErr := svc.DeleteNote(projectID, "design.md"); deleteErr != nil {
 		t.Fatalf("DeleteNote: %v", deleteErr)
@@ -125,7 +92,7 @@ func TestArtifactsValidation(t *testing.T) {
 	project := newProject("p1", "alpha")
 	repo := newFakeRepo(project)
 	port := repo.artifactPort()
-	svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port, port)
+	svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port)
 
 	if _, err := svc.SaveNote(project.ID, &models.Note{Title: "  "}); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("SaveNote blank title err = %v, want ErrInvalidInput", err)
@@ -135,9 +102,6 @@ func TestArtifactsValidation(t *testing.T) {
 	}
 	if _, err := svc.SaveNote("missing", &models.Note{Title: "x", Filename: "x.md"}); !errors.Is(err, app.ErrProjectNotFound) {
 		t.Fatalf("SaveNote unknown project err = %v, want ErrProjectNotFound", err)
-	}
-	if _, err := svc.SetBlockers(project.ID, []*models.Blocker{{Title: ""}}); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("SetBlockers blank title err = %v, want ErrInvalidInput", err)
 	}
 	if _, err := svc.DeleteNote(project.ID, ""); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("DeleteNote blank filename err = %v, want ErrInvalidInput", err)

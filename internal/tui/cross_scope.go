@@ -12,10 +12,6 @@ import (
 // LoadCrossScopeTasks for cross-project surfaces such as the Outliner and
 // Planner.
 type CrossScopeOpts struct {
-	// IncludeSandbox includes Sandbox projects in the result when true.
-	// Defaults to false; matches existing per-caller behavior.
-	IncludeSandbox bool
-
 	// ActiveOnly restricts selection to RuntimeState.ActiveProjects, which
 	// admits exactly config.IsActiveContextMember — the same rule a context
 	// scope resolves by, so a scoped Outliner load can never be asked for a
@@ -60,7 +56,7 @@ func LoadCrossScopeTasks(runtime *config.RuntimeState, service *ProjectService, 
 	if service == nil {
 		service = NewProjectService()
 	}
-	return loadCrossScopeSelection(selectCrossScopeProjects(runtime, opts), opts.IncludeSandbox, service.workspaceLoader)
+	return loadCrossScopeSelection(selectCrossScopeProjects(runtime, opts), service.workspaceLoader)
 }
 
 // loadCrossScopeSelection loads an already-selected project set into an immutable
@@ -69,25 +65,17 @@ func LoadCrossScopeTasks(runtime *config.RuntimeState, service *ProjectService, 
 // by the config-facade LoadCrossScopeTasks and the domain-snapshot open-loops
 // counter, so both select projects from their own domain source and load them
 // identically.
-func loadCrossScopeSelection(selected []*models.Project, includeSandbox bool, loader *workspace.Loader) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
-	var kept []*models.Project
-	for _, p := range selected {
-		if !includeSandbox && p.Sandbox {
-			continue
-		}
-		kept = append(kept, p)
-	}
-
+func loadCrossScopeSelection(selected []*models.Project, loader *workspace.Loader) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
 	if loader == nil {
 		loader = workspace.NewLoader()
 	}
-	snap := loader.Build(kept)
+	snap := loader.Build(selected)
 	for _, diag := range snap.Diagnostics() {
 		failed = append(failed, diagnosticToLoadFailure(diag))
 	}
 	projects = snap.Projects()
-	catalogByID := make(map[string]*models.Project, len(kept))
-	for _, project := range kept {
+	catalogByID := make(map[string]*models.Project, len(selected))
+	for _, project := range selected {
 		if project != nil {
 			catalogByID[project.ID] = project
 		}

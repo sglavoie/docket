@@ -4,8 +4,6 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // FlashKind classifies a mutation flash so renderers and frame schedulers can
@@ -33,8 +31,6 @@ type InteractiveViewState struct {
 	mutationFlashKind FlashKind
 	statusMessage     string
 	confirm           ConfirmDialog
-	// Dispatcher is the declarative keymap dispatcher for this view.
-	Dispatcher *keymap.Dispatcher
 }
 
 // setStatus sets the status message.

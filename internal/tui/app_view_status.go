@@ -102,11 +102,6 @@ func (m *AppModel) renderStatusBar() string {
 		} else {
 			help = FooterEscapeHints
 		}
-		if !m.openLoops.HasTasks {
-			if onboarding := pipelineNextHintOnboarding(currentView); onboarding != "" {
-				help = onboarding
-			}
-		}
 	}
 
 	accent := m.currentAccentColor()
@@ -116,9 +111,6 @@ func (m *AppModel) renderStatusBar() string {
 		Padding(0, 1)
 
 	left := accentBarStyle.Render(status)
-	if onboarding := onboardingStatus(m.runtime.Settings().GetOnboardingProgress()); onboarding != "" {
-		left += ": " + InfoStatusStyle.Render(onboarding)
-	}
 
 	// Add filter pill if current view has active filters.
 	if view := m.activeView(); view != nil {
@@ -245,9 +237,6 @@ func (m *AppModel) buildBreadcrumb() string {
 func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string {
 	path := m.presentationPath()
 	var label string
-	if m.activeReviewHub() && len(path) > 0 && vt == path[len(path)-1] {
-		label = m.reviewHub.StatusBarLabel()
-	}
 	if m.activeManageHub() && len(path) > 0 && vt == path[len(path)-1] {
 		label = m.manageHub.StatusBarLabel()
 	}
@@ -267,17 +256,6 @@ func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string 
 					label = truncateToVisualWidth(label, maxProjectLen)
 				}
 			}
-		}
-	}
-
-	// Fallback labels for views that don't implement StatusBarLabeler.
-	if label == "" {
-		switch vt {
-		case ViewDailyReview:
-			label = "Daily Review"
-		case ViewWeeklyReview:
-			label = "Weekly Review"
-		default:
 		}
 	}
 

@@ -175,16 +175,6 @@ type BulkResult struct {
 	Tasks []TaskResult
 	// TouchedProjectIDs lists every distinct project committed together.
 	TouchedProjectIDs []string
-	// RuleTriggerCounts accumulates fired workflow-rule IDs when the request
-	// carried rules; the adapter persists them to its config store best-effort.
-	RuleTriggerCounts map[string]int
-	// Conflicts reports workflow rules that competed to set the same task field.
-	// The field is left unchanged; adapters may warn while existing TUI callers
-	// can continue ignoring the presentation-neutral details.
-	Conflicts []WorkflowConflict
-	// ProjectStatusChanges reports catalog-owned project status effects already
-	// committed through a revision-checked artifact in this transaction.
-	ProjectStatusChanges []WorkflowProjectStatusChange
 }
 
 // deleteTasks removes every root's subtree from its source project, carries the
@@ -402,8 +392,8 @@ func tasksMatching(tasks []*models.Task, ids map[string]bool) []*models.Task {
 }
 
 // filterOutTasks removes tasks whose UUID is in removed and clears same-project
-// dangling ParentID, DependsOn, and RelatedTo references in the survivors. The
-// post-mutation hooks reconcile derived state (auto-unblock, tree rebuild) after.
+// dangling ParentID and DependsOn references in the survivors. The
+// post-mutation hooks reconcile parent completion and rebuild the tree after.
 func filterOutTasks(tasks []*models.Task, removed map[string]bool) []*models.Task {
 	remaining := tasks[:0]
 	for _, t := range tasks {
@@ -415,9 +405,6 @@ func filterOutTasks(tasks []*models.Task, removed map[string]bool) []*models.Tas
 		}
 		if len(t.DependsOn) > 0 {
 			t.DependsOn = filterOutRefs(t.DependsOn, removed)
-		}
-		if len(t.RelatedTo) > 0 {
-			t.RelatedTo = filterOutRefs(t.RelatedTo, removed)
 		}
 		remaining = append(remaining, t)
 	}
@@ -437,7 +424,7 @@ func filterOutRefs(refs []string, removed map[string]bool) []string {
 	return out
 }
 
-// clearCrossProjectRefs drops dependency/related references in project p that point
+// clearCrossProjectRefs drops dependency references in project p that point
 // at a removed task in the deleted project, matching the cross-project reference by
 // the deleted project's ID or slug. It returns how many references were cleared.
 func clearCrossProjectRefs(p *models.Project, deleted *models.Project, removed map[string]bool) int {
@@ -446,10 +433,6 @@ func clearCrossProjectRefs(p *models.Project, deleted *models.Project, removed m
 		before := len(t.DependsOn)
 		t.DependsOn = filterCrossRefs(t.DependsOn, deleted, removed)
 		cleared += before - len(t.DependsOn)
-
-		before = len(t.RelatedTo)
-		t.RelatedTo = filterCrossRefs(t.RelatedTo, deleted, removed)
-		cleared += before - len(t.RelatedTo)
 	}
 	return cleared
 }

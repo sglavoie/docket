@@ -139,7 +139,6 @@ func applyQuickEdit(task *models.Task, project *models.Project, result *quickEdi
 			} else {
 				t.DueDate = result.dueDate
 			}
-			t.HasTime = false
 		}
 		if hasTargetState {
 			_ = t.ApplyStateTransition(targetState)

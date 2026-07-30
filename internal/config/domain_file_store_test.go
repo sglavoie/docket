@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -46,25 +45,13 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	}
 
 	planning := NewPlanningState()
-	planning.StreakCount = 4
+	planning.AddToToday("today", "p1")
 	if err := s.SavePlanning(planning); err != nil {
 		t.Fatalf("SavePlanning: %v", err)
 	}
 
-	settings := NewSettings()
-	settings.DefaultContext = "work"
-	if err := s.SaveSettings(settings); err != nil {
-		t.Fatalf("SaveSettings: %v", err)
-	}
-
-	automation := NewAutomationConfig()
-	automation.DefaultRulesInitialized = true
-	if err := s.SaveAutomation(automation); err != nil {
-		t.Fatalf("SaveAutomation: %v", err)
-	}
-
 	machine := NewMachineState()
-	machine.CurrentProject = "p1"
+	machine.Theme = "light"
 	if err := s.SaveMachine(machine); err != nil {
 		t.Fatalf("SaveMachine: %v", err)
 	}
@@ -91,118 +78,16 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPlanning: %v", err)
 	}
-	if gotPlanning.StreakCount != 4 {
+	if len(gotPlanning.Today) != 1 || gotPlanning.Today[0].TaskID != "today" {
 		t.Fatalf("planning round-trip mismatch: %+v", gotPlanning)
-	}
-
-	gotSettings, err := s2.LoadSettings()
-	if err != nil {
-		t.Fatalf("LoadSettings: %v", err)
-	}
-	if gotSettings.DefaultContext != "work" {
-		t.Fatalf("settings round-trip mismatch: %+v", gotSettings)
-	}
-
-	gotAutomation, err := s2.LoadAutomation()
-	if err != nil {
-		t.Fatalf("LoadAutomation: %v", err)
-	}
-	if !gotAutomation.DefaultRulesInitialized {
-		t.Fatalf("automation round-trip mismatch: %+v", gotAutomation)
 	}
 
 	gotMachine, err := s2.LoadMachine()
 	if err != nil {
 		t.Fatalf("LoadMachine: %v", err)
 	}
-	if gotMachine.CurrentProject != "p1" {
+	if gotMachine.Theme != "light" {
 		t.Fatalf("machine round-trip mismatch: %+v", gotMachine)
-	}
-}
-
-func TestDomainFileStore_LoadAutomationRewritesLegacyTemplateStates(t *testing.T) {
-	store := newIsolatedStore(t)
-	path := AutomationPath(store.DataDir())
-	payload := json.RawMessage(`{
-		"task_templates":[{
-			"id":"legacy-template",
-			"name":"Legacy template",
-			"enabled":true,
-			"source":"imported",
-			"category":"process",
-			"type":"story",
-			"priority":2,
-			"tags":["b","a"],
-			"section":"Waiting",
-			"description":"preserved",
-			"children":[{"title":"second","type":"bug","optional":true},{"title":"first","type":"task","optional":false}],
-			"checklist":["second","first"],
-			"use_count":9
-		}]
-	}`)
-	raw, err := json.MarshalIndent(domainEnvelope{
-		SchemaVersion: CurrentDomainSchemaVersion,
-		WorkspaceID:   testWorkspaceID,
-		Kind:          domainAutomation.name(),
-		Data:          payload,
-	}, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal legacy envelope: %v", err)
-	}
-	if writeErr := os.WriteFile(path, raw, FilePermissions); writeErr != nil {
-		t.Fatalf("write legacy automation: %v", writeErr)
-	}
-
-	loaded, migratedRevision, err := store.LoadAutomationChecked()
-	if err != nil {
-		t.Fatalf("LoadAutomationChecked: %v", err)
-	}
-	if len(loaded.TaskTemplates) != 1 {
-		t.Fatalf("templates = %d, want 1", len(loaded.TaskTemplates))
-	}
-	got := loaded.TaskTemplates[0]
-	if got.ID != "legacy-template" || got.Name != "Legacy template" || !got.Enabled ||
-		got.Source != "imported" || got.Category != "process" ||
-		got.Type != models.TaskTypeStory || got.Priority != 2 ||
-		got.State != models.StateWaiting || got.Description != "preserved" ||
-		got.UseCount != 9 {
-		t.Fatalf("migrated template metadata mismatch: %+v", got)
-	}
-	if strings.Join(got.Tags, ",") != "b,a" ||
-		strings.Join(got.Checklist, ",") != "second,first" ||
-		len(got.Children) != 2 || got.Children[0].Title != "second" ||
-		!got.Children[0].Optional || got.Children[1].Title != "first" {
-		t.Fatalf("migrated ordered content mismatch: %+v", got)
-	}
-
-	canonicalBytes, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read canonical automation: %v", err)
-	}
-	var canonicalEnvelope domainEnvelope
-	if decodeErr := json.Unmarshal(canonicalBytes, &canonicalEnvelope); decodeErr != nil {
-		t.Fatalf("decode canonical envelope: %v", decodeErr)
-	}
-	var canonicalPayload struct {
-		TaskTemplates []map[string]json.RawMessage `json:"task_templates"`
-	}
-	if decodeErr := json.Unmarshal(canonicalEnvelope.Data, &canonicalPayload); decodeErr != nil {
-		t.Fatalf("decode canonical payload: %v", decodeErr)
-	}
-	fields := canonicalPayload.TaskTemplates[0]
-	if _, ok := fields["section"]; ok {
-		t.Fatalf("canonical automation retained legacy section: %s", canonicalEnvelope.Data)
-	}
-	if string(fields["state"]) != `"waiting"` {
-		t.Fatalf("canonical state = %s, want waiting", fields["state"])
-	}
-
-	_, stableRevision, err := store.LoadAutomationChecked()
-	if err != nil {
-		t.Fatalf("second LoadAutomationChecked: %v", err)
-	}
-	if stableRevision != migratedRevision {
-		t.Fatalf("idempotent reload revision = %q, want %q", stableRevision, migratedRevision)
 	}
 }
 
@@ -263,7 +148,6 @@ func TestDomainFileStore_LoadCatalogAllowsRepairableOutOfRangeColorSlots(t *test
 		Projects: []CatalogProject{
 			{ID: "assigned", Slug: "assigned", ColorSlot: 1},
 			{ID: "eligible", Slug: "eligible", ColorSlot: ProjectColorSlotCount + 1},
-			{ID: "internal", Slug: "internal", Internal: true, ColorSlot: -1},
 		},
 	}
 	payload, err := json.Marshal(catalog)
@@ -319,11 +203,11 @@ func TestDomainFileStore_RejectsInvalidCatalogBeforeSaveEffects(t *testing.T) {
 
 func TestDomainFileStore_StampsSchemaAndWorkspaceID(t *testing.T) {
 	s := newIsolatedStore(t)
-	if err := s.SaveSettings(NewSettings()); err != nil {
-		t.Fatalf("SaveSettings: %v", err)
+	if err := s.SavePlanning(NewPlanningState()); err != nil {
+		t.Fatalf("SavePlanning: %v", err)
 	}
 
-	data, err := os.ReadFile(SettingsPath(s.DataDir()))
+	data, err := os.ReadFile(PlanningStatePath(s.DataDir()))
 	if err != nil {
 		t.Fatalf("read settings.json: %v", err)
 	}
@@ -337,20 +221,19 @@ func TestDomainFileStore_StampsSchemaAndWorkspaceID(t *testing.T) {
 	if env.WorkspaceID != testWorkspaceID {
 		t.Fatalf("workspace id = %q, want %q", env.WorkspaceID, testWorkspaceID)
 	}
-	if env.Kind != "settings" {
-		t.Fatalf("kind = %q, want settings", env.Kind)
+	if env.Kind != "planning" {
+		t.Fatalf("kind = %q, want planning", env.Kind)
 	}
 }
 
 func TestDomainFileStore_LoadDefaultsWhenAbsent(t *testing.T) {
 	s := newIsolatedStore(t)
-	settings, err := s.LoadSettings()
+	planning, err := s.LoadPlanning()
 	if err != nil {
-		t.Fatalf("LoadSettings on empty store: %v", err)
+		t.Fatalf("LoadPlanning on empty store: %v", err)
 	}
-	// NewSettings defaults, not a zero value.
-	if !settings.FzfEnabled || settings.UndoHistoryDepth == nil {
-		t.Fatalf("absent settings should fall back to defaults, got %+v", settings)
+	if planning == nil || len(planning.Today) != 0 || len(planning.NextOrder) != 0 {
+		t.Fatalf("absent planning should fall back to defaults, got %+v", planning)
 	}
 }
 
@@ -373,7 +256,7 @@ func TestDomainFileStore_CustomPathIsolation(t *testing.T) {
 	}
 
 	planA := NewPlanningState()
-	planA.StreakCount = 11
+	planA.AddToToday("workspace-a", "project-a")
 	if err := storeA.SavePlanning(planA); err != nil {
 		t.Fatalf("SavePlanning A: %v", err)
 	}
@@ -383,7 +266,7 @@ func TestDomainFileStore_CustomPathIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPlanning B: %v", err)
 	}
-	if planB.StreakCount != 0 {
+	if len(planB.Today) != 0 {
 		t.Fatalf("store B leaked data from store A: %+v", planB)
 	}
 
@@ -455,8 +338,8 @@ func TestDomainFileStore_RejectsInvalidAndMismatchedWorkspaceIDs(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "workspace")
 
 	invalid := NewDomainFileStoreWithWorkspace(dataDir, "../not-a-workspace-uuid")
-	if err := invalid.SaveSettings(NewSettings()); !errors.Is(err, ErrInvalidWorkspaceID) {
-		t.Fatalf("SaveSettings invalid workspace ID error = %v, want ErrInvalidWorkspaceID", err)
+	if err := invalid.SavePlanning(NewPlanningState()); !errors.Is(err, ErrInvalidWorkspaceID) {
+		t.Fatalf("SavePlanning invalid workspace ID error = %v, want ErrInvalidWorkspaceID", err)
 	}
 
 	seed := NewDomainFileStore(dataDir)
@@ -555,8 +438,6 @@ func TestDomainFileStore_FreshBundleStampsOneWorkspaceID(t *testing.T) {
 	paths := []string{
 		WorkspaceCatalogPath(dataDir),
 		PlanningStatePath(dataDir),
-		SettingsPath(dataDir),
-		AutomationPath(dataDir),
 		machinePath,
 	}
 	for _, path := range paths {
@@ -633,17 +514,17 @@ func TestDomainFileStore_RecoversFromBackupWithRepairedRevision(t *testing.T) {
 	s := newIsolatedStore(t)
 
 	planning := NewPlanningState()
-	planning.StreakCount = 7
+	planning.SetToday([]ProjectTaskLocator{{TaskID: "version-7", ProjectID: "project"}})
 	if err := s.SavePlanning(planning); err != nil {
 		t.Fatalf("first SavePlanning: %v", err)
 	}
 	// A second save produces a .bak of the first good file.
-	planning.StreakCount = 8
+	planning.SetToday([]ProjectTaskLocator{{TaskID: "version-8", ProjectID: "project"}})
 	if err := s.SavePlanning(planning); err != nil {
 		t.Fatalf("second SavePlanning: %v", err)
 	}
 
-	// Corrupt the primary; the .bak (streak 7) should be recovered.
+	// Corrupt the primary; the first planning payload should be recovered.
 	path := PlanningStatePath(s.DataDir())
 	backupData, err := os.ReadFile(path + ".bak")
 	if err != nil {
@@ -657,8 +538,8 @@ func TestDomainFileStore_RecoversFromBackupWithRepairedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPlanningChecked after corruption: %v", err)
 	}
-	if recovered.StreakCount != 7 {
-		t.Fatalf("recovered streak = %d, want 7 from backup", recovered.StreakCount)
+	if len(recovered.Today) != 1 || recovered.Today[0].TaskID != "version-7" {
+		t.Fatalf("recovered planning = %+v, want version-7 from backup", recovered.Today)
 	}
 	repairedData, err := os.ReadFile(path)
 	if err != nil {
@@ -674,7 +555,7 @@ func TestDomainFileStore_RecoversFromBackupWithRepairedRevision(t *testing.T) {
 	// The revision returned by the recovering load must be immediately usable as
 	// a checked transaction baseline; hashing the corrupt pre-recovery bytes would
 	// make this commit fail stale.
-	recovered.StreakCount = 9
+	recovered.SetToday([]ProjectTaskLocator{{TaskID: "version-9", ProjectID: "project"}})
 	updated, err := encodeDomainEnvelope(domainPlanning, testWorkspaceID, recovered)
 	if err != nil {
 		t.Fatalf("encode recovered planning update: %v", err)
@@ -691,15 +572,15 @@ func TestDomainFileStore_RecoversFromBackupWithRepairedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload committed planning: %v", err)
 	}
-	if fresh.StreakCount != 9 {
-		t.Fatalf("committed streak = %d, want 9", fresh.StreakCount)
+	if len(fresh.Today) != 1 || fresh.Today[0].TaskID != "version-9" {
+		t.Fatalf("committed planning = %+v, want version-9", fresh.Today)
 	}
 }
 
 func TestDomainFileStore_RecoversTransactionalDomainBackup(t *testing.T) {
 	s := newIsolatedStore(t)
 	planning := NewPlanningState()
-	planning.StreakCount = 7
+	planning.SetToday([]ProjectTaskLocator{{TaskID: "version-7", ProjectID: "project"}})
 	if err := s.SavePlanning(planning); err != nil {
 		t.Fatalf("seed planning: %v", err)
 	}
@@ -708,7 +589,7 @@ func TestDomainFileStore_RecoversTransactionalDomainBackup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPlanningChecked: %v", err)
 	}
-	before.StreakCount = 8
+	before.SetToday([]ProjectTaskLocator{{TaskID: "version-8", ProjectID: "project"}})
 	updated, err := encodeDomainEnvelope(domainPlanning, testWorkspaceID, before)
 	if err != nil {
 		t.Fatalf("encode planning update: %v", err)
@@ -729,8 +610,8 @@ func TestDomainFileStore_RecoversTransactionalDomainBackup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPlanningChecked after corruption: %v", err)
 	}
-	if recovered.StreakCount != 7 {
-		t.Fatalf("recovered streak = %d, want 7", recovered.StreakCount)
+	if len(recovered.Today) != 1 || recovered.Today[0].TaskID != "version-7" {
+		t.Fatalf("recovered planning = %+v, want version-7", recovered.Today)
 	}
 	if repaired, err := os.ReadFile(path); err != nil {
 		t.Fatalf("read repaired primary: %v", err)
@@ -740,7 +621,9 @@ func TestDomainFileStore_RecoversTransactionalDomainBackup(t *testing.T) {
 }
 
 func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T) {
-	goodBackup, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDA, &PlanningState{StreakCount: 7})
+	goodBackup, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDA, &PlanningState{
+		Today: []ProjectTaskLocator{{TaskID: "backup", ProjectID: "project"}},
+	})
 	if err != nil {
 		t.Fatalf("encode backup: %v", err)
 	}
@@ -754,7 +637,9 @@ func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T
 	if err != nil {
 		t.Fatalf("encode unsupported primary: %v", err)
 	}
-	mismatchedData, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDB, &PlanningState{StreakCount: 8})
+	mismatchedData, err := encodeDomainEnvelope(domainPlanning, testWorkspaceIDB, &PlanningState{
+		Today: []ProjectTaskLocator{{TaskID: "mismatch", ProjectID: "project"}},
+	})
 	if err != nil {
 		t.Fatalf("encode mismatched primary: %v", err)
 	}
@@ -808,14 +693,14 @@ func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T
 
 func TestDomainFileStore_WritesPrivatePermissions(t *testing.T) {
 	s := newIsolatedStore(t)
-	if err := s.SaveSettings(NewSettings()); err != nil {
-		t.Fatalf("SaveSettings: %v", err)
+	if err := s.SavePlanning(NewPlanningState()); err != nil {
+		t.Fatalf("SavePlanning: %v", err)
 	}
-	info, err := os.Stat(SettingsPath(s.DataDir()))
+	info, err := os.Stat(PlanningStatePath(s.DataDir()))
 	if err != nil {
 		t.Fatalf("stat settings.json: %v", err)
 	}
 	if got := info.Mode().Perm(); got != os.FileMode(FilePermissions) {
-		t.Fatalf("settings.json perms = %o, want %o", got, FilePermissions)
+		t.Fatalf("planning.json perms = %o, want %o", got, FilePermissions)
 	}
 }

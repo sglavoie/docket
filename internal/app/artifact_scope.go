@@ -11,8 +11,7 @@ const (
 	// ScopeUnknown is the zero value for an unclassified artifact.
 	ScopeUnknown ArtifactScope = iota
 	// ScopeDurable marks synced state persisted with the workspace (task markdown,
-	// notes, blockers, project metadata and tags, templates, scoring profiles,
-	// workflow rules, review completion, and the planning collections). It is the
+	// notes, project metadata, and planning collections). It is the
 	// only scope the application layer commits through the transactional
 	// Repository.
 	ScopeDurable
@@ -30,17 +29,11 @@ type ArtifactKind string
 
 const (
 	// Durable synced artifacts.
-	ArtifactTasks            ArtifactKind = "tasks"
-	ArtifactNotes            ArtifactKind = "notes"
-	ArtifactBlockers         ArtifactKind = "blockers"
-	ArtifactProjectMetadata  ArtifactKind = "project_metadata"
-	ArtifactProjectTags      ArtifactKind = "project_tags"
-	ArtifactTemplates        ArtifactKind = "templates"
-	ArtifactScoringProfiles  ArtifactKind = "scoring_profiles"
-	ArtifactWorkflowRules    ArtifactKind = "workflow_rules"
-	ArtifactReviewCompletion ArtifactKind = "review_completion"
-	ArtifactFocusQueue       ArtifactKind = "focus_queue"
-	ArtifactDailyPlan        ArtifactKind = "daily_plan"
+	ArtifactTasks           ArtifactKind = "tasks"
+	ArtifactNotes           ArtifactKind = "notes"
+	ArtifactProjectMetadata ArtifactKind = "project_metadata"
+	ArtifactToday           ArtifactKind = "today"
+	ArtifactNextOrder       ArtifactKind = "next_order"
 
 	// Machine-local UI artifacts.
 	ArtifactEditors      ArtifactKind = "editors"
@@ -57,10 +50,8 @@ const (
 // a programming error the mutation path rejects.
 func ClassifyArtifact(kind ArtifactKind) ArtifactScope {
 	switch kind {
-	case ArtifactTasks, ArtifactNotes, ArtifactBlockers, ArtifactProjectMetadata,
-		ArtifactProjectTags, ArtifactTemplates, ArtifactScoringProfiles,
-		ArtifactWorkflowRules, ArtifactReviewCompletion,
-		ArtifactFocusQueue, ArtifactDailyPlan:
+	case ArtifactTasks, ArtifactNotes, ArtifactProjectMetadata,
+		ArtifactToday, ArtifactNextOrder:
 		return ScopeDurable
 	case ArtifactEditors, ArtifactIntegrations, ArtifactNavigation,
 		ArtifactHistories, ArtifactLayout, ArtifactRecentVisits:

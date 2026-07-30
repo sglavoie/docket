@@ -99,21 +99,17 @@ func selectableContextScope(runtime *config.RuntimeState, scope ContextScope) Co
 }
 
 // ContextScopeSummary pairs a scope with the counts pickers and the context hub
-// render. ArchivedProjectCount, HiddenProjectCount, and StaleReferenceCount are
-// only ever non-zero for custom scopes: those store project IDs that outlive
-// archival, hiding, and deletion, whereas All and regular scopes are derived
-// from the live active-project set and so have nothing to go stale. The four
-// counts partition the stored membership, so ActiveProjectCount always matches
-// the project set applying the scope produces.
+// render. ArchivedProjectCount and StaleReferenceCount are only ever non-zero
+// for custom scopes: those store project IDs that outlive archival and deletion,
+// whereas All and regular scopes are derived from the live active-project set.
 type ContextScopeSummary struct {
 	Scope                ContextScope
 	ActiveProjectCount   int
 	ArchivedProjectCount int
-	HiddenProjectCount   int
 	StaleReferenceCount  int
 }
 
-// SummarizeContextScope computes the active, archived, hidden, and stale counts
+// SummarizeContextScope computes the active, archived, and stale counts
 // a scope resolves to.
 func SummarizeContextScope(runtime *config.RuntimeState, scope ContextScope) ContextScopeSummary {
 	summary := ContextScopeSummary{
@@ -122,7 +118,6 @@ func SummarizeContextScope(runtime *config.RuntimeState, scope ContextScope) Con
 	}
 	if scope.IsCustom() {
 		summary.ArchivedProjectCount = runtime.CustomContextArchivedProjectCount(scope.Name)
-		summary.HiddenProjectCount = runtime.CustomContextHiddenProjectCount(scope.Name)
 		summary.StaleReferenceCount = runtime.CustomContextStaleReferenceCount(scope.Name)
 	}
 	return summary

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
@@ -23,6 +24,18 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case RecurrenceEditorDoneMsg:
 		m.popView()
+		if m.pendingTaskRecurrenceRequest != nil {
+			request := *m.pendingTaskRecurrenceRequest
+			m.pendingTaskRecurrenceRequest = nil
+			m.contextActionSheet = m.suspendedTaskActionSheet
+			m.suspendedTaskActionSheet = nil
+			if msg.Canceled {
+				return true, nil
+			}
+			request.Value = OperationRecurrenceValue{Pattern: cloneRecurrence(msg.Pattern)}
+			request.HasValue = true
+			return true, m.resumeContextActionRequest(request)
+		}
 		// Forward the message to the parent view (task editor or task creator)
 		// so it can update the recurrence pattern
 		cmd := m.views.Update(m.currentView(), msg)
@@ -30,6 +43,33 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTextEditorMsg:
 		return m.showViewInit(ViewTextEditor, NewTextEditorModel(msg.FieldName, msg.CurrentValue))
+
+	case ShowTaskTextEditorMsg:
+		if msg.Task == nil || msg.Project == nil {
+			return true, nil
+		}
+		fieldName := ""
+		currentValue := ""
+		switch msg.Operation {
+		case app.TaskOperationEditTitle:
+			fieldName = "title"
+			currentValue = msg.Task.Title
+		case app.TaskOperationEditDescription:
+			fieldName = "description"
+			currentValue = msg.Task.Description
+		default:
+			return true, errorCmd("unsupported task text operation %q", msg.Operation)
+		}
+		m.pendingTaskTextEdit = &struct {
+			Identity  TaskIdentity
+			Operation app.TaskOperation
+			Original  string
+		}{
+			Identity:  taskIdentityFor(msg.Task, msg.Project),
+			Operation: msg.Operation,
+			Original:  currentValue,
+		}
+		return m.showViewInit(ViewTextEditor, NewTextEditorModel(fieldName, currentValue))
 
 	case ShowDescriptionEditorMsg:
 		// Store context for when editing completes
@@ -44,6 +84,24 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TextEditorDoneMsg:
 		m.popView()
+		if m.pendingTaskTextEdit != nil {
+			pending := m.pendingTaskTextEdit
+			m.pendingTaskTextEdit = nil
+			if msg.Canceled || msg.Value == pending.Original {
+				return true, nil
+			}
+			action := "Edit Title"
+			summary := "Title updated"
+			if pending.Operation == app.TaskOperationEditDescription {
+				action = "Edit Description"
+				summary = "Description updated"
+			}
+			return true, m.secondaryFeatures.TaskItem.ExecuteOperation(app.TaskOperationRequest{
+				Operation: pending.Operation,
+				Targets:   []app.TaskLocator{pending.Identity.Locator()},
+				Text:      msg.Value,
+			}, action, summary)
+		}
 		// Check if this is a description edit from td keybinding
 		if m.pendingDescEdit != nil {
 			pending := m.pendingDescEdit
@@ -95,7 +153,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			path = m.runtime.DataDir()
 		}
 
-		editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
+		editor, editorErr := external.ResolveEditor("")
 		if editorErr != nil {
 			return true, errorCmd("%s", editorErr)
 		}
@@ -117,7 +175,7 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 		return true, errorCmd("%s", err)
 	}
 
-	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
+	editor, editorErr := external.ResolveEditor("")
 	if editorErr != nil {
 		_ = os.Remove(tmpPath)
 		return true, errorCmd("%s", editorErr)

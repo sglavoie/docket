@@ -19,7 +19,6 @@ type TaskDecisionsModel struct {
 	addMode        bool
 	textInput      textarea.Model
 	rationaleInput textarea.Model
-	categoryIndex  int
 	activeField    int // 0=text, 1=rationale
 
 	// Edit mode
@@ -27,7 +26,6 @@ type TaskDecisionsModel struct {
 	editIndex       int
 	editTextInput   textarea.Model
 	editRationale   textarea.Model
-	editCategoryIdx int
 	editActiveField int // 0=text, 1=rationale
 
 	// Expanded view mode (show full decision)
@@ -114,8 +112,6 @@ func (m *TaskDecisionsModel) OnExit() {
 	m.editIndex = 0
 	m.activeField = 0
 	m.editActiveField = 0
-	m.categoryIndex = 0
-	m.editCategoryIdx = 0
 	m.textInput.Reset()
 	m.rationaleInput.Reset()
 	m.editTextInput.Reset()
@@ -128,8 +124,3 @@ func (m *TaskDecisionsModel) ShouldCaptureEsc() bool {
 }
 
 func (m *TaskDecisionsModel) StatusBarLabel() string { return "Decisions" }
-
-// allCategories returns the slice of valid decision categories.
-func allDecisionCategories() []models.DecisionCategory {
-	return models.ValidDecisionCategories()
-}

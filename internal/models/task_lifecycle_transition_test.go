@@ -16,7 +16,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{"ready→done", StateReady, StateDone, true},
 		{"ready→waiting", StateReady, StateWaiting, true},
 		{"ready→ready", StateReady, StateReady, false},
-		{"review→paused", StateReview, StatePaused, true},
+		{"waiting→paused", StateWaiting, StatePaused, true},
 		{"waiting→canceled", StateWaiting, StateCanceled, true},
 		{"done→inbox", StateDone, StateInbox, true},
 		{"done→ready", StateDone, StateReady, false},
@@ -50,7 +50,6 @@ func TestApplyTransition(t *testing.T) {
 		{"to blocked", StateWaiting, StateWaiting},
 		{"to canceled", StateCanceled, StateCanceled},
 		{"to todo (reopen)", StateReady, StateReady},
-		{"to review", StateReview, StateReview},
 		{"to standby", StatePaused, StatePaused},
 	}
 
@@ -114,12 +113,6 @@ func TestApplyStateTransitionAtOwnsLifecycleSideEffectsForEveryState(t *testing.
 			task := newLifecycleTestTask(t, "t1", 1)
 			task.CompletedAt = &staleCompletion
 			task.SnoozedUntil = &snoozedUntil
-			task.Dimmed = true
-			if state == StateDone {
-				parkedAt := now.Add(-time.Hour)
-				task.ParkedAt = &parkedAt
-				task.ParkedNote = "resume here"
-			}
 
 			if err := task.ApplyStateTransitionAt(state, now); err != nil {
 				t.Fatalf("ApplyStateTransitionAt(%q): %v", state, err)
@@ -140,15 +133,6 @@ func TestApplyStateTransitionAtOwnsLifecycleSideEffectsForEveryState(t *testing.
 			} else if task.CompletedAt != nil {
 				t.Errorf("CompletedAt = %v, want nil", task.CompletedAt)
 			}
-			if state == StateInbox && task.Dimmed {
-				t.Error("inbox transition should clear Dimmed")
-			}
-			if state != StateInbox && !task.Dimmed {
-				t.Errorf("%q transition unexpectedly cleared Dimmed", state)
-			}
-			if state == StateDone && task.IsParked() {
-				t.Error("done transition should clear parking")
-			}
 		})
 	}
 }
@@ -161,7 +145,6 @@ func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
 	task.WorkflowState = StateNext
 	task.CompletedAt = &completedAt
 	task.SnoozedUntil = &snoozedUntil
-	task.Dimmed = true
 	task.UpdatedAt = completedAt
 
 	if err := task.ApplyStateTransitionAt(WorkflowState("todo"), now); err == nil {
@@ -173,7 +156,7 @@ func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
 	if task.CompletedAt != &completedAt || task.SnoozedUntil != &snoozedUntil {
 		t.Error("invalid transition changed lifecycle timestamps")
 	}
-	if !task.UpdatedAt.Equal(completedAt) || !task.Dimmed {
+	if !task.UpdatedAt.Equal(completedAt) {
 		t.Error("invalid transition changed task metadata")
 	}
 }
@@ -199,7 +182,7 @@ func TestApplyStateTransitionReopenClearsTerminal(t *testing.T) {
 
 func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.WorkflowState = StateReview
+	task.WorkflowState = StateWaiting
 	if err := task.ApplyStateTransition(StateInProgress); err != nil {
 		t.Fatalf("ApplyStateTransition(in_progress): %v", err)
 	}

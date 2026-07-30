@@ -15,8 +15,8 @@ import (
 type planningReorderKind uint8
 
 const (
-	reorderFocusQueue planningReorderKind = iota
-	reorderDailyPlan
+	reorderNextOrder planningReorderKind = iota
+	reorderToday
 )
 
 // OutlinerPlanningReorderMsg carries a durable planning-order reorder produced by
@@ -39,13 +39,17 @@ type OutlinerPlanningReorderMsg struct {
 // Queue. Context descendants beneath Today also return true so J/K is a quiet
 // no-op instead of accidentally mutating the underlying hierarchy.
 func (m *OutlinerModel) isPlanningReorderMode() bool {
-	if m.project != nil {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
-	if m.primaryMode == ModeNext {
+	row := m.rows[m.cursor]
+	if row.IsPinnedSection {
+		return false
+	}
+	if m.primaryMode == ModeNext && row.isTaskRow() {
 		return true
 	}
-	return m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsTodaySection
+	return row.IsTodaySection
 }
 
 // planningReorderMove builds the durable planning-order reorder for a J/K move in
@@ -65,10 +69,10 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	kind := reorderDailyPlan
-	order := m.globalDailyPlanOrder()
+	kind := reorderToday
+	order := m.globalTodayOrder()
 	if m.primaryMode == ModeNext {
-		kind = reorderFocusQueue
+		kind = reorderNextOrder
 		order = m.globalNextOrder()
 	}
 
@@ -87,7 +91,7 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	if !ok {
 		return m, nil // visible boundary: nothing to swap with.
 	}
-	if kind == reorderDailyPlan && TodayStateOrder(task.State()) != TodayStateOrder(targetTask.State()) {
+	if kind == reorderToday && TodayStateOrder(task.State()) != TodayStateOrder(targetTask.State()) {
 		// Today renders state buckets before durable Daily Plan position. Swapping
 		// across buckets would change persisted order without moving either task
 		// visibly, so treat the bucket edge as a silent boundary.
@@ -125,10 +129,14 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 	}
 	for i := m.cursor + step; i >= 0 && i < len(m.rows); i += step {
 		row := m.rows[i]
+		if row.IsSectionHeader || row.IsProjectHeader || row.IsSeparator || row.IsPinnedSection {
+			break
+		}
 		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
-		loc := config.ProjectTaskLocator{ProjectID: row.ProjectID, TaskID: row.task.ID}
+		identity := m.taskIdentityForRow(row)
+		loc := config.ProjectTaskLocator{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
 		if members[loc] {
 			return loc, row.task, true
 		}
@@ -141,7 +149,8 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 // with unindexed StateNext members stable at the end. Reordering over this full
 // sequence (rather than only the visible scope) keeps the global order coherent.
 func (m *OutlinerModel) globalNextOrder() []config.ProjectTaskLocator {
-	rows := BuildNextModeRows(m.buildOutlinerModeInput(m.loadedProjects))
+	projects := m.projectsInCatalogOrder(m.planningProjects())
+	rows := BuildNextModeRows(m.buildOutlinerModeInput(projects))
 	order := make([]config.ProjectTaskLocator, 0, len(rows))
 	for _, r := range rows {
 		if r.Task == nil || r.Project == nil {
@@ -152,11 +161,11 @@ func (m *OutlinerModel) globalNextOrder() []config.ProjectTaskLocator {
 	return order
 }
 
-// globalDailyPlanOrder returns the workspace-wide Daily Plan as project-qualified
+// globalTodayOrder returns the workspace-wide Daily Plan as project-qualified
 // locators in their durable plan order (not the state-sorted Today display order),
 // so J/K moves a task within the persisted plan.
-func (m *OutlinerModel) globalDailyPlanOrder() []config.ProjectTaskLocator {
-	plan := m.resolveDailyPlanOrder(m.loadedProjects)
+func (m *OutlinerModel) globalTodayOrder() []config.ProjectTaskLocator {
+	plan := m.resolveTodayOrder(m.projectsInCatalogOrder(m.planningProjects()))
 	order := make([]config.ProjectTaskLocator, 0, len(plan))
 	for _, ft := range plan {
 		if ft.Task == nil || ft.Project == nil {
@@ -165,6 +174,16 @@ func (m *OutlinerModel) globalDailyPlanOrder() []config.ProjectTaskLocator {
 		order = append(order, config.ProjectTaskLocator{ProjectID: ft.Project.ID, TaskID: ft.Task.ID})
 	}
 	return order
+}
+
+func (m *OutlinerModel) planningProjects() []*models.Project {
+	if m == nil {
+		return nil
+	}
+	if m.project != nil {
+		return []*models.Project{m.project}
+	}
+	return m.loadedProjects
 }
 
 // locatorIndex returns the position of loc in order, or -1 when absent.
@@ -188,9 +207,9 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg)
 	}
 	var err error
 	switch msg.Kind {
-	case reorderFocusQueue:
+	case reorderNextOrder:
 		err = m.appService.ReorderNext(order)
-	case reorderDailyPlan:
+	case reorderToday:
 		err = m.appService.ReorderToday(order)
 	}
 	if err != nil {

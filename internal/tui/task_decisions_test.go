@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ func TestTaskDecisionsSaveDecisionMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -22,7 +23,6 @@ func TestTaskDecisionsSaveDecisionMutatesSynchronously(t *testing.T) {
 	model := NewTaskDecisionsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.addMode = true
-	model.categoryIndex = decisionCategoryIndex(models.DecisionCategoryArchitecture)
 	model.textInput.SetValue("Use PostgreSQL")
 	model.rationaleInput.SetValue("Better for complex queries")
 
@@ -43,9 +43,6 @@ func TestTaskDecisionsSaveDecisionMutatesSynchronously(t *testing.T) {
 	if model.task.Decisions[0].Rationale != "Better for complex queries" {
 		t.Fatalf("expected rationale %q, got %q", "Better for complex queries", model.task.Decisions[0].Rationale)
 	}
-	if model.task.Decisions[0].Category != models.DecisionCategoryArchitecture {
-		t.Fatalf("expected category %q, got %q", models.DecisionCategoryArchitecture, model.task.Decisions[0].Category)
-	}
 	if model.cursor != 0 {
 		t.Fatalf("expected cursor at 0, got %d", model.cursor)
 	}
@@ -60,7 +57,7 @@ func TestTaskDecisionsSaveDecisionEmptyText(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -87,13 +84,13 @@ func TestTaskDecisionsDeleteMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	task.Decisions = []*models.Decision{
-		{Text: "decision 1", Category: models.DecisionCategoryDesign, CreatedAt: time.Now()},
-		{Text: "decision 2", Category: models.DecisionCategoryScope, CreatedAt: time.Now()},
+		{Text: "decision 1", CreatedAt: time.Now()},
+		{Text: "decision 2", CreatedAt: time.Now()},
 	}
 	project.Tasks = []*models.Task{task}
 
@@ -123,7 +120,7 @@ func TestTaskDecisionsSaveEditMutatesSynchronously(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -132,7 +129,6 @@ func TestTaskDecisionsSaveEditMutatesSynchronously(t *testing.T) {
 		{
 			Text:      "original text",
 			Rationale: "original rationale",
-			Category:  models.DecisionCategoryDesign,
 			CreatedAt: created,
 		},
 	}
@@ -142,7 +138,6 @@ func TestTaskDecisionsSaveEditMutatesSynchronously(t *testing.T) {
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
 	model.editMode = true
 	model.editIndex = 0
-	model.editCategoryIdx = decisionCategoryIndex(models.DecisionCategoryUX)
 	model.editTextInput.SetValue("edited text")
 	model.editRationale.SetValue("edited rationale")
 
@@ -160,9 +155,6 @@ func TestTaskDecisionsSaveEditMutatesSynchronously(t *testing.T) {
 	if model.task.Decisions[0].Rationale != "edited rationale" {
 		t.Fatalf("expected rationale %q, got %q", "edited rationale", model.task.Decisions[0].Rationale)
 	}
-	if model.task.Decisions[0].Category != models.DecisionCategoryUX {
-		t.Fatalf("expected category %q, got %q", models.DecisionCategoryUX, model.task.Decisions[0].Category)
-	}
 	if !model.task.Decisions[0].CreatedAt.Equal(created) {
 		t.Fatalf("expected timestamp to be preserved, got %v", model.task.Decisions[0].CreatedAt)
 	}
@@ -177,12 +169,12 @@ func TestTaskDecisionsRenderEditModeOOB(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	task.Decisions = []*models.Decision{
-		{Text: "only decision", Category: models.DecisionCategoryDesign, CreatedAt: time.Now()},
+		{Text: "only decision", CreatedAt: time.Now()},
 	}
 	project.Tasks = []*models.Task{task}
 
@@ -205,12 +197,12 @@ func TestTaskDecisionsEditExternalEditorFromEditModeOOB(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	task.Decisions = []*models.Decision{
-		{Text: "only decision", Category: models.DecisionCategoryDesign, CreatedAt: time.Now()},
+		{Text: "only decision", CreatedAt: time.Now()},
 	}
 	project.Tasks = []*models.Task{task}
 
@@ -236,12 +228,12 @@ func TestTaskDecisionsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	task.Decisions = []*models.Decision{
-		{Text: "original", Category: models.DecisionCategoryDesign, CreatedAt: time.Now()},
+		{Text: "original", CreatedAt: time.Now()},
 	}
 	project.Tasks = []*models.Task{task}
 
@@ -262,31 +254,34 @@ func TestTaskDecisionsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	}
 }
 
-func TestTaskDecisionsToggleResolvedMutatesSynchronously(t *testing.T) {
+func TestTaskDecisionsLeanPanelHasNoResolvedOrCategoryControls(t *testing.T) {
 	project, err := models.NewProject("project-1", "Decisions Project", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
 	task.Decisions = []*models.Decision{
-		{Text: "decision", Category: models.DecisionCategoryDesign, CreatedAt: time.Now()},
+		{Text: "decision", CreatedAt: time.Now()},
 	}
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskDecisionsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.cursor = 0
-
-	cmd := model.toggleResolved()
-	if cmd == nil {
-		t.Fatal("expected non-nil command from toggleResolved")
+	if cmd := model.handleNormalKey("r"); cmd != nil {
+		t.Fatalf("retired resolved key emitted command %#v", cmd())
 	}
-
-	if !model.task.Decisions[0].Resolved {
-		t.Fatal("expected decision to be resolved after toggleResolved()")
+	for _, key := range model.HandledKeys() {
+		if key == "r" || key == "ctrl+y" {
+			t.Fatalf("retired decision key %q remains in key map", key)
+		}
+	}
+	model.SetSize(80, 24)
+	if got := model.View().Content; strings.Contains(strings.ToLower(got), "category") ||
+		strings.Contains(strings.ToLower(got), "resolved") {
+		t.Fatalf("lean decision view exposes retired fields:\n%s", got)
 	}
 }

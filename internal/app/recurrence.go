@@ -8,9 +8,9 @@ import (
 )
 
 // RecurrenceResult is the outcome of a recurrence mutation. Task is the
-// presentation-neutral task outcome shared with every other mutation; Pattern,
-// DueDate, and HasTime carry the post-mutation recurrence display fields a CLI or
-// TUI adapter renders (the pattern string after a set/mode change, the next due
+// presentation-neutral task outcome shared with every other mutation; Pattern
+// and DueDate carry the post-mutation recurrence display fields a CLI or TUI
+// adapter renders (the pattern string after a set change, the next due
 // date after a skip/defer) without reaching back into the domain model.
 type RecurrenceResult struct {
 	// Task is the standard task mutation result.
@@ -20,8 +20,6 @@ type RecurrenceResult struct {
 	Pattern string
 	// DueDate is the task's due date after the mutation.
 	DueDate *time.Time
-	// HasTime reports whether DueDate carries a meaningful time-of-day component.
-	HasTime bool
 }
 
 // mutateRecurrence is the shared runner for every single-task recurrence
@@ -38,10 +36,20 @@ func (s *Service) mutateRecurrenceByLocator(locator TaskLocator, undoAction stri
 }
 
 func (s *Service) mutateRecurrenceSelection(taskID string, locator TaskLocator, undoAction string, undoContext func(*models.Task) string, mutate func(*models.Task) error) (RecurrenceResult, error) {
-	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return RecurrenceResult{}, err
 	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return RecurrenceResult{}, fmt.Errorf("capture recurrence rollback state: %w", err)
+	}
+	keepMutation := false
+	defer func() {
+		if !keepMutation {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
 	if mutateErr := mutate(ref.Task); mutateErr != nil {
 		return RecurrenceResult{}, mutateErr
 	}
@@ -49,11 +57,11 @@ func (s *Service) mutateRecurrenceSelection(taskID string, locator TaskLocator, 
 	if err != nil {
 		return RecurrenceResult{}, err
 	}
+	keepMutation = true
 	return RecurrenceResult{
 		Task:    res,
 		Pattern: ref.Task.Recurrence.String(),
 		DueDate: ref.Task.DueDate,
-		HasTime: ref.Task.HasTime,
 	}, nil
 }
 
@@ -90,35 +98,6 @@ func (s *Service) SetRecurrenceByLocator(locator TaskLocator, pattern *models.Re
 		})
 }
 
-// SetRecurrenceMode changes the scheduling mode ("from due" vs "from completion")
-// of an existing recurrence without altering the pattern. A task that is not
-// recurring is rejected: there is no mode to update.
-func (s *Service) SetRecurrenceMode(taskID string, mode models.RecurMode) (RecurrenceResult, error) {
-	return s.mutateRecurrence(taskID, "Set Recurrence Mode",
-		func(t *models.Task) string { return fmt.Sprintf("%s #%d", mode, t.ShortID) },
-		func(t *models.Task) error {
-			if t.Recurrence == nil {
-				return invalidInput("recurrence", "task is not recurring")
-			}
-			t.Recurrence.Mode = mode
-			t.UpdatedAt = s.clock.Now()
-			return nil
-		})
-}
-
-func (s *Service) SetRecurrenceModeByLocator(locator TaskLocator, mode models.RecurMode) (RecurrenceResult, error) {
-	return s.mutateRecurrenceByLocator(locator, "Set Recurrence Mode",
-		func(t *models.Task) string { return fmt.Sprintf("%s #%d", mode, t.ShortID) },
-		func(t *models.Task) error {
-			if t.Recurrence == nil {
-				return invalidInput("recurrence", "task is not recurring")
-			}
-			t.Recurrence.Mode = mode
-			t.UpdatedAt = s.clock.Now()
-			return nil
-		})
-}
-
 // ClearRecurrence removes a task's recurrence pattern. Clearing a task that is
 // not recurring is a no-op that still commits the (unchanged) project, matching
 // the idempotent attribute mutations; adapters that want to avoid recording a
@@ -141,8 +120,8 @@ func (s *Service) ClearRecurrenceByLocator(locator TaskLocator) (RecurrenceResul
 		})
 }
 
-// SkipRecurrence advances a recurring task to its next occurrence without
-// completing it, breaking the streak. A non-recurring task is rejected.
+// SkipRecurrence is a temporary compatibility action that advances a recurring
+// task to its next interval without completing it.
 func (s *Service) SkipRecurrence(taskID string) (RecurrenceResult, error) {
 	return s.mutateRecurrence(taskID, "Skip Recurrence",
 		func(t *models.Task) string { return fmt.Sprintf("#%d", t.ShortID) },
@@ -167,9 +146,8 @@ func (s *Service) SkipRecurrenceByLocator(locator TaskLocator) (RecurrenceResult
 		})
 }
 
-// DeferRecurrence pushes a recurring task's due date forward by the given number
-// of days without touching its streak. The day count must be positive, and the
-// task must already be recurring.
+// DeferRecurrence is a temporary compatibility action that pushes a recurring
+// task's due date forward by a positive number of days.
 func (s *Service) DeferRecurrence(taskID string, days int) (RecurrenceResult, error) {
 	if days <= 0 {
 		return RecurrenceResult{}, invalidInput("defer", fmt.Sprintf("days must be a positive number, got %d", days))

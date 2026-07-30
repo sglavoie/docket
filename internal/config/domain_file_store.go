@@ -15,9 +15,8 @@ import (
 )
 
 // CurrentDomainSchemaVersion is the on-disk schema version stamped into every
-// decomposed-config artifact (workspace/planning/settings/automation/machine
-// .json). It is independent of the legacy single-file CurrentConfigVersion so
-// the two formats can evolve separately during the migration.
+// runtime configuration artifact. It is independent of the legacy single-file
+// CurrentConfigVersion so the two formats can evolve separately.
 const CurrentDomainSchemaVersion = 1
 
 // ErrStaleObject is returned by the *Checked save methods when the on-disk
@@ -40,14 +39,12 @@ var ErrWorkspaceIDMismatch = errors.New("config: workspace ID mismatch")
 // synced workspace catalog established the workspace identity.
 var ErrWorkspaceIDRequired = errors.New("config: workspace ID is required")
 
-// domainKind identifies one of the five decomposed configuration domains.
+// domainKind identifies one of the three runtime configuration domains.
 type domainKind int
 
 const (
 	domainCatalog domainKind = iota
 	domainPlanning
-	domainSettings
-	domainAutomation
 	domainMachine
 )
 
@@ -59,10 +56,6 @@ func (k domainKind) name() string {
 		return "workspace"
 	case domainPlanning:
 		return "planning"
-	case domainSettings:
-		return "settings"
-	case domainAutomation:
-		return "automation"
 	case domainMachine:
 		return "machine"
 	default:
@@ -72,7 +65,7 @@ func (k domainKind) name() string {
 
 // domainEnvelope wraps a domain payload on disk with the schema version and
 // workspace ID required of every artifact. The payload itself is stored under
-// Data so the envelope metadata stays uniform across the five files.
+// Data so the envelope metadata stays uniform across the three runtime files.
 type domainEnvelope struct {
 	SchemaVersion int             `json:"schema_version"`
 	WorkspaceID   string          `json:"workspace_id,omitempty"`
@@ -96,13 +89,11 @@ func validateWorkspaceID(workspaceID string) error {
 	return nil
 }
 
-// DomainFileStore persists the five decomposed configuration domains to their
+// DomainFileStore persists the three runtime configuration domains to their
 // own JSON files, mirroring the durable layout in context.md:
 //
 //   - <data>/.tt/workspace.json   (synced)  — WorkspaceCatalog
 //   - <data>/.tt/planning.json    (synced)  — PlanningState
-//   - <data>/.tt/settings.json    (synced)  — Settings
-//   - <data>/.tt/automation.json  (synced)  — AutomationConfig
 //   - ~/.tt/runtime/<workspace-id>/machine.json (machine-local) — MachineState
 //
 // Every file is wrapped in a versioned envelope carrying a schema version and
@@ -112,12 +103,6 @@ func validateWorkspaceID(workspaceID string) error {
 // and backed up; the Save*Checked variants add optimistic concurrency by
 // failing with ErrStaleObject when the on-disk revision no longer matches the
 // one observed at load time.
-//
-// This is additive persistence infrastructure: the legacy single-file Config
-// remains canonical until later sessions route the application through these
-// per-domain files. Because Decompose/ApplyTo cover only each domain's owned
-// subset of Config, flipping the canonical format is intentionally out of scope
-// here.
 type DomainFileStore struct {
 	dataDir     string
 	workspaceID string
@@ -201,10 +186,6 @@ func (s *DomainFileStore) pathFor(kind domainKind) (string, error) {
 		return WorkspaceCatalogPath(s.dataDir), nil
 	case domainPlanning:
 		return PlanningStatePath(s.dataDir), nil
-	case domainSettings:
-		return SettingsPath(s.dataDir), nil
-	case domainAutomation:
-		return AutomationPath(s.dataDir), nil
 	case domainMachine:
 		workspaceID, err := s.validatedWorkspaceID()
 		if err != nil {
@@ -287,6 +268,11 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 			return nil, fmt.Errorf("invalid workspace catalog: %w", err)
 		}
 	}
+	if planning, ok := payload.(*PlanningState); ok {
+		if err := planning.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid planning state: %w", err)
+		}
+	}
 	rawPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %s payload: %w", kind.name(), err)
@@ -304,161 +290,12 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 	return out, nil
 }
 
-// persistLoadedMigration commits one already-loaded domain against the exact
-// revision that produced it, then returns the revision of the migrated bytes.
-// The existing save path supplies locking, backup, and atomic replacement.
-func (s *DomainFileStore) persistLoadedMigration(kind domainKind, payload any, loadedRevision string) (string, error) {
-	if loadedRevision == "" {
-		// A missing artifact is a default in-memory domain, not something load is
-		// allowed to create. Bootstrap or the next explicit commit will persist
-		// the already-migrated defaults.
-		return "", nil
-	}
-	if err := s.save(kind, payload, loadedRevision); err != nil {
-		return loadedRevision, fmt.Errorf("failed to persist %s TUI-state migration: %w", kind.name(), err)
-	}
-	data, err := encodeDomainEnvelope(kind, s.workspaceID, payload)
-	if err != nil {
-		return loadedRevision, err
-	}
-	return revisionOf(data), nil
-}
-
-// persistCurrentSyncedCleanup keeps v3 payload rewrites under the bundle
-// migration transaction. Direct domain loads may still return a canonicalized
-// in-memory value, but only a catalog already stamped at the current payload
-// version permits a maintenance rewrite of one synced domain.
-func (s *DomainFileStore) persistCurrentSyncedCleanup(
-	kind domainKind,
-	payload any,
-	loadedRevision string,
-) (string, error) {
-	catalog := NewWorkspaceCatalog()
-	catalogRevision, err := s.load(domainCatalog, catalog)
-	if err != nil {
-		return loadedRevision, err
-	}
-	if catalogRevision == "" || catalog.SchemaVersion != CurrentConfigVersion {
-		return loadedRevision, nil
-	}
-	return s.persistLoadedMigration(kind, payload, loadedRevision)
-}
-
 func decodeEnvelope(data []byte) (domainEnvelope, error) {
 	var env domainEnvelope
 	if err := json.Unmarshal(data, &env); err != nil {
 		return domainEnvelope{}, err
 	}
 	return env, nil
-}
-
-// migrateLegacyMachineState imports the first former path-local machine file
-// into the canonical workspace-ID namespace. The source is deliberately kept
-// byte-for-byte as rollback evidence. A canonical file always wins, including
-// over a stale or mismatched legacy copy, so restart is idempotent.
-func (s *DomainFileStore) migrateLegacyMachineState() error {
-	workspaceID, err := s.validatedWorkspaceID()
-	if err != nil {
-		return err
-	}
-	canonicalPath, err := MachineStatePath(workspaceID)
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(canonicalPath); err == nil {
-		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("failed to inspect canonical machine state %s: %w", canonicalPath, err)
-	}
-	if err := os.MkdirAll(filepath.Dir(canonicalPath), DirPermissions); err != nil {
-		return fmt.Errorf("failed to create canonical machine-state directory: %w", err)
-	}
-
-	return util.WithFileLock(canonicalPath+".lock", true, func() error {
-		if _, statErr := os.Stat(canonicalPath); statErr == nil {
-			return nil
-		} else if !errors.Is(statErr, os.ErrNotExist) {
-			return fmt.Errorf("failed to inspect canonical machine state %s: %w", canonicalPath, statErr)
-		}
-
-		for _, legacyPath := range legacyMachineStatePaths(s.dataDir) {
-			legacyData, readErr := os.ReadFile(legacyPath)
-			if errors.Is(readErr, os.ErrNotExist) {
-				continue
-			}
-			if readErr != nil {
-				return fmt.Errorf("failed to read legacy machine state %s: %w", legacyPath, readErr)
-			}
-			candidatePath, candidateData, candidateErr := legacyMachineEnvelopeCandidate(legacyPath, legacyData)
-			if candidateErr != nil {
-				return candidateErr
-			}
-			migrated, migrateErr := migratedMachineEnvelope(candidatePath, candidateData, workspaceID)
-			if migrateErr != nil {
-				return migrateErr
-			}
-			if writeErr := util.AtomicWriteFile(canonicalPath, migrated, FilePermissions); writeErr != nil {
-				return fmt.Errorf("failed to import legacy machine state from %s: %w", legacyPath, writeErr)
-			}
-			return nil
-		}
-		return nil
-	})
-}
-
-// legacyMachineEnvelopeCandidate selects the primary legacy bytes unless they
-// cannot decode as an envelope. Only that syntactic failure permits consulting
-// the .bak sidecar; semantic validation remains in migratedMachineEnvelope.
-// Neither rollback source is rewritten during migration.
-func legacyMachineEnvelopeCandidate(path string, data []byte) (string, []byte, error) {
-	_, primaryErr := decodeEnvelope(data)
-	if primaryErr == nil {
-		return path, data, nil
-	}
-	backupPath := path + ".bak"
-	backupData, readErr := os.ReadFile(backupPath)
-	if readErr != nil {
-		return "", nil, fmt.Errorf("failed to parse legacy machine state %s (%w); backup %s is unavailable: %w", path, primaryErr, backupPath, readErr)
-	}
-	if _, backupErr := decodeEnvelope(backupData); backupErr != nil {
-		return "", nil, fmt.Errorf("failed to parse legacy machine state %s (%w); backup %s is also corrupted: %w", path, primaryErr, backupPath, backupErr)
-	}
-	return backupPath, backupData, nil
-}
-
-// migratedMachineEnvelope validates a legacy candidate before it can select
-// state for a catalog identity. Empty legacy IDs are claimed by the catalog;
-// non-empty IDs must already match. The payload is decoded as MachineState so a
-// wrong-kind or malformed file cannot be copied into the canonical namespace.
-func migratedMachineEnvelope(path string, data []byte, workspaceID string) ([]byte, error) {
-	env, err := decodeEnvelope(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse legacy machine state %s: %w", path, err)
-	}
-	if env.SchemaVersion > CurrentDomainSchemaVersion {
-		return nil, fmt.Errorf("legacy machine state %s schema version %d not supported, please upgrade tt", path, env.SchemaVersion)
-	}
-	if env.Kind != domainMachine.name() {
-		return nil, fmt.Errorf("legacy machine state %s has artifact kind %q, want %q", path, env.Kind, domainMachine.name())
-	}
-	if env.WorkspaceID != "" && env.WorkspaceID != workspaceID {
-		return nil, fmt.Errorf("legacy machine state %s: %w: catalog has %q, envelope has %q", path, ErrWorkspaceIDMismatch, workspaceID, env.WorkspaceID)
-	}
-	if len(env.Data) > 0 {
-		var machine MachineState
-		if decodeErr := json.Unmarshal(env.Data, &machine); decodeErr != nil {
-			return nil, fmt.Errorf("failed to parse legacy machine-state payload %s: %w", path, decodeErr)
-		}
-	}
-	if env.WorkspaceID == workspaceID {
-		return data, nil
-	}
-	env.WorkspaceID = workspaceID
-	out, err := json.MarshalIndent(env, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to stamp migrated machine state from %s: %w", path, err)
-	}
-	return out, nil
 }
 
 // recoverEnvelopeFromBackup restores an artifact from its .bak sidecar when the
@@ -630,16 +467,6 @@ func (s *DomainFileStore) LoadPlanningChecked() (*PlanningState, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	changed, err := out.MigrateTUIState()
-	if err != nil {
-		return nil, rev, err
-	}
-	if changed {
-		rev, err = s.persistCurrentSyncedCleanup(domainPlanning, out, rev)
-		if err != nil {
-			return nil, rev, err
-		}
-	}
 	return out, rev, nil
 }
 
@@ -659,87 +486,6 @@ func (s *DomainFileStore) SavePlanningChecked(planning *PlanningState, rev strin
 	return s.save(domainPlanning, planning, rev)
 }
 
-// LoadSettings implements SettingsStore.
-func (s *DomainFileStore) LoadSettings() (*Settings, error) {
-	st, _, err := s.LoadSettingsChecked()
-	return st, err
-}
-
-// LoadSettingsChecked loads settings and their revision.
-func (s *DomainFileStore) LoadSettingsChecked() (*Settings, string, error) {
-	out := NewSettings()
-	rev, err := s.load(domainSettings, out)
-	if err != nil {
-		return nil, "", err
-	}
-	changed, err := out.MigrateTUIState()
-	if err != nil {
-		return nil, rev, err
-	}
-	if changed {
-		rev, err = s.persistCurrentSyncedCleanup(domainSettings, out, rev)
-		if err != nil {
-			return nil, rev, err
-		}
-	}
-	return out, rev, nil
-}
-
-// SaveSettings implements SettingsStore (last-writer-wins).
-func (s *DomainFileStore) SaveSettings(settings *Settings) error {
-	return s.SaveSettingsChecked(settings, "")
-}
-
-// SaveSettingsChecked saves settings with an optimistic concurrency check.
-func (s *DomainFileStore) SaveSettingsChecked(settings *Settings, rev string) error {
-	if settings == nil {
-		return fmt.Errorf("config: nil settings")
-	}
-	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
-		return err
-	}
-	return s.save(domainSettings, settings, rev)
-}
-
-// LoadAutomation implements AutomationStore.
-func (s *DomainFileStore) LoadAutomation() (*AutomationConfig, error) {
-	a, _, err := s.LoadAutomationChecked()
-	return a, err
-}
-
-// LoadAutomationChecked loads automation config and its revision.
-func (s *DomainFileStore) LoadAutomationChecked() (*AutomationConfig, string, error) {
-	out := NewAutomationConfig()
-	rev, err := s.load(domainAutomation, out)
-	if err != nil {
-		return nil, "", err
-	}
-	if out.MigrateTaskTemplateStates() {
-		rev, err = s.persistCurrentSyncedCleanup(domainAutomation, out, rev)
-		if err != nil {
-			return nil, rev, err
-		}
-	}
-	return out, rev, nil
-}
-
-// SaveAutomation implements AutomationStore (last-writer-wins).
-func (s *DomainFileStore) SaveAutomation(automation *AutomationConfig) error {
-	return s.SaveAutomationChecked(automation, "")
-}
-
-// SaveAutomationChecked saves automation config with an optimistic concurrency
-// check.
-func (s *DomainFileStore) SaveAutomationChecked(automation *AutomationConfig, rev string) error {
-	if automation == nil {
-		return fmt.Errorf("config: nil automation config")
-	}
-	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
-		return err
-	}
-	return s.save(domainAutomation, automation, rev)
-}
-
 // LoadMachine implements MachineStore.
 func (s *DomainFileStore) LoadMachine() (*MachineState, error) {
 	m, _, err := s.LoadMachineChecked()
@@ -751,23 +497,10 @@ func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
 		return nil, "", err
 	}
-	if err := s.migrateLegacyMachineState(); err != nil {
-		return nil, "", err
-	}
 	out := NewMachineState()
 	rev, err := s.load(domainMachine, out)
 	if err != nil {
 		return nil, "", err
-	}
-	changed, err := out.MigrateTUIState()
-	if err != nil {
-		return nil, rev, err
-	}
-	if changed {
-		rev, err = s.persistLoadedMigration(domainMachine, out, rev)
-		if err != nil {
-			return nil, rev, err
-		}
 	}
 	return out, rev, nil
 }
@@ -794,7 +527,5 @@ func (s *DomainFileStore) SaveMachineChecked(machine *MachineState, rev string) 
 var (
 	_ WorkspaceCatalogStore = (*DomainFileStore)(nil)
 	_ PlanningStore         = (*DomainFileStore)(nil)
-	_ SettingsStore         = (*DomainFileStore)(nil)
-	_ AutomationStore       = (*DomainFileStore)(nil)
 	_ MachineStore          = (*DomainFileStore)(nil)
 )

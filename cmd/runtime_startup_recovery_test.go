@@ -7,10 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/spf13/viper"
-
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/transaction"
@@ -31,7 +28,7 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 
 	project := testutil.NewTestProject("Recovered Project")
 	project.Path = filepath.Join(dataDir, "projects", project.Slug)
-	task := testutil.NewTestTask("Recovered task", models.TaskTypeTask)
+	task := testutil.NewTestTask("Recovered task")
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID = 2
 	if saveErr := storage.SaveProject(project); saveErr != nil {
@@ -42,8 +39,10 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 	if err != nil {
 		t.Fatalf("CloneDomains: %v", err)
 	}
-	domains.Catalog.UpsertProject(project)
-	domains.Planning.SetFocusQueue([]config.FocusQueueItem{{ProjectID: project.ID, TaskID: task.ID}})
+	if upsertErr := domains.Catalog.UpsertProject(project); upsertErr != nil {
+		t.Fatalf("UpsertProject: %v", upsertErr)
+	}
+	domains.Planning.SetNextOrder([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: task.ID}})
 	artifacts, err := runtime.CheckedSyncedArtifacts(domains)
 	if err != nil {
 		t.Fatalf("CheckedSyncedArtifacts: %v", err)
@@ -80,27 +79,6 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 	return configPath, project.ID, task.ID
 }
 
-func writeCLILegacyMachineState(t *testing.T, dataDir, workspaceID string, machine *config.MachineState) string {
-	t.Helper()
-	legacyPath := filepath.Join(config.LocalRuntimeDirForDataDir(dataDir), "machine.json")
-	data, err := json.MarshalIndent(map[string]any{
-		"schema_version": config.CurrentDomainSchemaVersion,
-		"workspace_id":   workspaceID,
-		"kind":           "machine",
-		"data":           machine,
-	}, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal legacy machine state: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(legacyPath), config.DirPermissions); err != nil {
-		t.Fatalf("mkdir legacy machine dir: %v", err)
-	}
-	if err := os.WriteFile(legacyPath, data, config.FilePermissions); err != nil {
-		t.Fatalf("write legacy machine state: %v", err)
-	}
-	return legacyPath
-}
-
 func TestLoadCLIWorkspaceRejectsLegacyBeforeStartupEffects(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -121,9 +99,7 @@ func TestLoadCLIWorkspaceRejectsLegacyBeforeStartupEffects(t *testing.T) {
 				t.Fatalf("write legacy config: %v", err)
 			}
 
-			oldConfig := viper.GetString("config")
-			viper.Set("config", legacyPath)
-			t.Cleanup(func() { viper.Set("config", oldConfig) })
+			setCommandDataDir(t, dataDir)
 
 			workspace, err := tc.load()
 			if workspace != nil {
@@ -159,49 +135,11 @@ func TestLoadCLIWorkspaceRejectsLegacyBeforeStartupEffects(t *testing.T) {
 	}
 }
 
-func TestLoadCLIWorkspaceMigratesMachineStateAtStartup(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	dataDir := filepath.Join(t.TempDir(), "workspace")
-	configPath := config.ConfigPathForDataDir(dataDir)
-	manager := config.NewManager(configPath)
-	domains, err := manager.LoadOrCreateDomains()
-	if err != nil {
-		t.Fatalf("LoadOrCreateDomains: %v", err)
-	}
-	canonicalPath, err := config.MachineStatePath(domains.Catalog.WorkspaceID)
-	if err != nil {
-		t.Fatalf("MachineStatePath: %v", err)
-	}
-	if removeErr := os.Remove(canonicalPath); removeErr != nil {
-		t.Fatalf("remove canonical machine fixture: %v", removeErr)
-	}
-	legacyPath := writeCLILegacyMachineState(t, dataDir, domains.Catalog.WorkspaceID, &config.MachineState{Editor: "cli-legacy-editor"})
-
-	oldConfig := viper.GetString("config")
-	viper.Set("config", configPath)
-	t.Cleanup(func() { viper.Set("config", oldConfig) })
-	workspace, err := LoadCLIWorkspaceStrict()
-	if err != nil {
-		t.Fatalf("LoadCLIWorkspaceStrict: %v", err)
-	}
-	if got := workspace.Runtime.Machine().Editor; got != "cli-legacy-editor" {
-		t.Fatalf("CLI startup editor = %q, want cli-legacy-editor", got)
-	}
-	if _, err := os.Stat(canonicalPath); err != nil {
-		t.Fatalf("canonical machine state not created: %v", err)
-	}
-	if _, err := os.Stat(legacyPath); err != nil {
-		t.Fatalf("legacy rollback source not retained: %v", err)
-	}
-}
-
 func TestLoadCLIWorkspaceRecoversTransactionsBeforeLoadingDomains(t *testing.T) {
 	for _, state := range []transaction.State{transaction.StatePrepared, transaction.StateCommitting} {
 		t.Run(string(state), func(t *testing.T) {
 			configPath, projectID, taskID := prepareCLIStartupRecovery(t, state)
-			oldConfig := viper.GetString("config")
-			viper.Set("config", configPath)
-			t.Cleanup(func() { viper.Set("config", oldConfig) })
+			setCommandDataDir(t, config.WorkspaceRootFromConfigPath(configPath))
 
 			workspace, err := LoadCLIWorkspaceStrict()
 			if err != nil {
@@ -210,7 +148,7 @@ func TestLoadCLIWorkspaceRecoversTransactionsBeforeLoadingDomains(t *testing.T) 
 			if project := workspace.Runtime.GetProject(projectID); project == nil {
 				t.Fatalf("recovered catalog missing project %q", projectID)
 			}
-			queue := workspace.Runtime.Planning().GetFocusQueue()
+			queue := workspace.Runtime.Planning().GetNextOrder()
 			if len(queue) != 1 || queue[0].ProjectID != projectID || queue[0].TaskID != taskID {
 				t.Fatalf("recovered focus queue = %+v", queue)
 			}
@@ -233,9 +171,7 @@ func TestLoadCLIWorkspaceBlocksOnRecoveryQuarantine(t *testing.T) {
 		t.Fatalf("write corrupt manifest: %v", err)
 	}
 
-	oldConfig := viper.GetString("config")
-	viper.Set("config", configPath)
-	t.Cleanup(func() { viper.Set("config", oldConfig) })
+	setCommandDataDir(t, dataDir)
 	workspace, err := LoadCLIWorkspaceStrict()
 	if err == nil {
 		t.Fatal("LoadCLIWorkspaceStrict succeeded with quarantined transaction")

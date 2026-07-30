@@ -78,20 +78,3 @@ func TestHandleTaskMessagesDecisionEdited(t *testing.T) {
 		t.Error("DecisionEditedMsg should return a status timeout command")
 	}
 }
-
-func TestHandleTaskMessagesDecisionResolved(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := DecisionResolvedMsg{}
-	handled, cmd := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("DecisionResolvedMsg should be handled")
-	}
-	if app.statusMessage != "Decision resolved" {
-		t.Errorf("statusMessage should be 'Decision resolved', got %q", app.statusMessage)
-	}
-	if cmd == nil {
-		t.Error("DecisionResolvedMsg should return a status timeout command")
-	}
-}

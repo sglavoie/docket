@@ -6,5 +6,4 @@ import "time"
 type Comment struct {
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
-	Resolved  bool      `json:"resolved,omitempty"`
 }

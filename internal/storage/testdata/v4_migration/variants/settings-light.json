@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "workspace_id": "00000000-0000-4000-8000-000000000004",
+  "kind": "settings",
+  "data": {
+    "tui_state_version": 4,
+    "fzf_enabled": true,
+    "glow_enabled": true,
+    "active_theme": "light",
+    "theme_light_name": "Synthetic Light",
+    "theme_light_rev": 3
+  }
+}

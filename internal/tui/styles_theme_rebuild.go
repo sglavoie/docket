@@ -14,14 +14,6 @@ func rebuildTextStyles() {
 	TitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	SubtitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).MarginBottom(1)
 	DimStyle = lipgloss.NewStyle().Foreground(ColorDimmed).Faint(true)
-	DimmedTaskStyle = lipgloss.NewStyle().
-		Background(ColorDimmedBg).
-		Foreground(ColorDimmedFg).
-		Italic(true)
-	DimmedSelectedStyle = lipgloss.NewStyle().
-		Background(ColorDimmedBg).
-		Foreground(ColorSelectedFg).
-		Italic(true)
 	MutedStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 
 	HelpStyle = lipgloss.NewStyle().Foreground(ColorMuted)
@@ -37,7 +29,6 @@ func rebuildTextStyles() {
 func rebuildTaskStyles() {
 	TodoStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	ReviewStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	DoneStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	BlockedStyle = lipgloss.NewStyle().Foreground(ColorError)
 	StandbyStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
@@ -63,14 +54,6 @@ func rebuildTaskStyles() {
 	}
 	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(blockedDepsFg).Background(ColorError)
 
-	EpicStyle = lipgloss.NewStyle().Foreground(ColorPurple)
-	StoryStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
-	TaskStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	BugStyle = lipgloss.NewStyle().Foreground(ColorError)
-	IdeaStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	NoteStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	ActionStyle = lipgloss.NewStyle().Foreground(ColorOrange)
-
 	PinnedProjectStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
 	PinnedNumberStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	ActiveStyle = lipgloss.NewStyle().Foreground(ColorAccent)
@@ -81,17 +64,8 @@ func rebuildTaskStyles() {
 }
 
 func rebuildBadgeStyles() {
-	EpicBadgeStyle = lipgloss.NewStyle().Foreground(ColorPurple)
-	StoryBadgeStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
-	TaskBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	BugBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
-	IdeaBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	NoteBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted).Background(ColorDimmedBg)
-	ActionBadgeStyle = lipgloss.NewStyle().Foreground(ColorOrange)
-
 	TodoBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	ReviewBadgeStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	DoneBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	BlockedBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
 	if activeThemeName == "light" {
@@ -128,9 +102,7 @@ func rebuildLayoutStyles() {
 	ProgressEmptyStyle = lipgloss.NewStyle().Foreground(ColorProgressEmpty)
 	ScrollbarThumbStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	ScrollbarTrackStyle = lipgloss.NewStyle().Foreground(ColorBorder)
-	TaskJumperListStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, true, false, false).BorderForeground(ColorBorder)
-	TaskJumperPreviewStyle = lipgloss.NewStyle().Padding(0, 1)
-	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	ListPreviewHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	GroupHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
 	SectionHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary)
 
@@ -171,12 +143,6 @@ func rebuildFormStyles() {
 	FilterValueStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 	FilterClearStyle = lipgloss.NewStyle().Foreground(ColorError)
 
-	TagManagerBoxStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorPrimary).Padding(1, 2)
-	TagManagerItemStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	TagManagerItemSelectedStyle = lipgloss.NewStyle().Foreground(ColorSelectedTextFg).Bold(true)
-	TagManagerCountStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
-	TagManagerErrorStyle = lipgloss.NewStyle().Foreground(ColorError)
-
 	SelectorTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
 	SelectorSearchStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginBottom(1)
 	SelectorCountStyle = lipgloss.NewStyle().Foreground(ColorMuted).MarginBottom(1)
@@ -196,7 +162,6 @@ func rebuildViewStyles() {
 	ViewModeWaitingStyle = makeViewModeStyle("#5c3a1e", "#92400e")
 	ViewModeSomedayStyle = makeViewModeStyle("#3d2a5c", "#6d28d9")
 	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
-	ViewModeReviewStyle = makeViewModeStyle("#1e3a3f", "#0f766e")
 	ViewModeStandbyStyle = makeViewModeStyle("#4a2e6a", "#7c3aed")
 	ViewModeSnoozedStyle = makeViewModeStyle("#4a2e3a", "#7c2d12")
 	ViewModeCanceledStyle = makeViewModeStyle("#4a2430", "#991b1b")
@@ -204,7 +169,7 @@ func rebuildViewStyles() {
 }
 
 func rebuildSelectionStyles() {
-	TaskJumperSelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
+	PickerSelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
 	SelectedStyle = lipgloss.NewStyle().Background(ColorSelectedBg).Foreground(ColorSelectedFg).Bold(true)
 	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedTextFg)
 	SelectionRowStyle = lipgloss.NewStyle().Background(ColorSelectedBg)
@@ -268,5 +233,4 @@ func rebuildMiscStyles() {
 	BoldSecondaryStyle = BoldStyle.Foreground(ColorSecondary)
 	BoldPrimaryUnderlineStyle = BoldStyle.Foreground(ColorPrimary).Underline(true)
 	PurpleStyle = lipgloss.NewStyle().Foreground(ColorPurple)
-	alertIndicatorStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 }

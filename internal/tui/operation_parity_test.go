@@ -63,9 +63,7 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 var delegatedDestructiveConfirmations = map[OperationID]string{
 	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
-	operationGlobalSandboxReset:  "the sandbox reset preview arms pendingSandboxReset",
 	operationScopeDeleteContext:  "requestDeleteSelected shows the Scope Hub confirm",
-	operationScopePurgeTrash:     "the Scope Hub purge confirm names the trashed count",
 }
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
@@ -117,66 +115,6 @@ func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
 	}
 }
 
-func TestFinderDiscoveryListsEveryDestinationExactlyOnce(t *testing.T) {
-	app := parityAuditApp(t)
-	registry := app.GetOperationRegistry()
-	ctx := app.operationCommandContext()
-
-	finder, err := NewRuntimeFinder(app.runtime, registry, ctx)
-	if err != nil {
-		t.Fatalf("NewRuntimeFinder: %v", err)
-	}
-	seenItems := make(map[ListItemID]bool)
-	for _, item := range finder.Items() {
-		if seenItems[item.ID] {
-			t.Errorf("finder lists item %s more than once", item.ID)
-		}
-		seenItems[item.ID] = true
-	}
-
-	// Placement decides membership, so a label collision between an operation row
-	// and a tool row is the only way one destination can still appear twice.
-	labels := make(map[string]OperationID)
-	for _, descriptor := range registry.All() {
-		if !descriptor.Placement.DiscoverableInFinder() || !descriptor.Applicable(ctx) {
-			continue
-		}
-		key := strings.ToLower(descriptor.Label)
-		if owner, exists := labels[key]; exists {
-			t.Errorf("finder label %q is claimed by both %s and %s", descriptor.Label, owner, descriptor.ID)
-		}
-		labels[key] = descriptor.ID
-	}
-}
-
-func TestEveryFinderRowAdvertisesRegisteredExecutableOperations(t *testing.T) {
-	app := parityAuditApp(t)
-	registry := app.GetOperationRegistry()
-	executor := app.operationExecutor
-	ctx := app.operationCommandContext()
-
-	finder, err := NewRuntimeFinder(app.runtime, registry, ctx)
-	if err != nil {
-		t.Fatalf("NewRuntimeFinder: %v", err)
-	}
-	advertised := 0
-	for _, item := range finder.Items() {
-		for _, id := range item.OperationIDs {
-			advertised++
-			if _, ok := registry.Descriptor(id); !ok {
-				t.Errorf("finder row %s advertises unregistered operation %s", item.ID, id)
-				continue
-			}
-			if len(executor.bindings[id]) == 0 {
-				t.Errorf("finder row %s advertises unexecutable operation %s", item.ID, id)
-			}
-		}
-	}
-	if advertised == 0 {
-		t.Fatal("no finder row advertised a contextual operation")
-	}
-}
-
 func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
@@ -197,9 +135,6 @@ func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 			continue
 		}
 		harness++
-		if descriptor.Placement != PlacementHidden {
-			t.Errorf("harness operation %s has placement %s, want hidden", descriptor.ID, descriptor.Placement)
-		}
 		if descriptor.Applicable(ctx) {
 			t.Errorf("harness operation %s is applicable in a production context", descriptor.ID)
 		}
@@ -360,20 +295,10 @@ func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 	}
 }
 
-func TestSpaceAndFinderProjectionsStayInsideTheDeclaredPlacements(t *testing.T) {
+func TestSpaceProjectionUsesTheDeclaredTaskManifest(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
 	executor := app.operationExecutor
-	ctx := app.operationCommandContext()
-
-	for _, descriptor := range finderOperationDescriptors(registry, ctx) {
-		if descriptor.Placement != PlacementFinderOperation {
-			t.Errorf("finder operations include %s with placement %s", descriptor.ID, descriptor.Placement)
-		}
-		if !descriptor.Applicable(ctx) {
-			t.Errorf("finder operations include inapplicable %s", descriptor.ID)
-		}
-	}
 
 	sheetContext := taskActionParityContext(t, app)
 	descriptors := TaskActionSheetDescriptors(registry, sheetContext)
@@ -397,18 +322,11 @@ func TestSpaceAndFinderProjectionsStayInsideTheDeclaredPlacements(t *testing.T) 
 		if entry.DirectOnly {
 			t.Errorf("Space sheet repeats direct-only operation %s", descriptor.ID)
 		}
-		// Manifest actions reach users through the row they act on. Only the two
-		// reused core operations keep a Finder placement, because their direct key
-		// is also their Finder row.
-		if descriptor.Placement != PlacementContextual &&
-			descriptor.ID != operationCoreEdit &&
-			descriptor.ID != operationCoreDetail {
-			t.Errorf("task action %s has placement %s, want contextual", descriptor.ID, descriptor.Placement)
-		}
+		// Manifest actions reach users through the row they act on.
 	}
 
-	// Every action a Finder task row advertises must be the same catalog, minus
-	// the direct-only entries whose key the footer already advertises.
+	// The menu catalog excludes direct-only entries whose key the footer already
+	// advertises.
 	rowActions := taskOperationManifestIDs()
 	for _, id := range rowActions {
 		if _, ok := registry.Descriptor(id); !ok {

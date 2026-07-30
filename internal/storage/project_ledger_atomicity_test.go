@@ -35,7 +35,7 @@ func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 	alpha.Tasks[0].Title = "alpha after"
 	beta.Tasks[0].Title = "beta after"
 
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	results, err := service.CommitMulti([]ChangeSet{
 		{
@@ -61,14 +61,14 @@ func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 	if entry.TransactionID != results[0].TransactionID {
 		t.Fatalf("ledger transaction id = %q, want %q", entry.TransactionID, results[0].TransactionID)
 	}
-	for _, projectID := range []string{undoProjectID(alpha), undoProjectID(beta)} {
+	for _, projectID := range []string{ledgerProjectID(alpha), ledgerProjectID(beta)} {
 		selected, selectable, selectErr := ledger.SelectNewestUndo(ProjectScope(projectID))
 		if selectErr != nil || !selectable || selected.TransactionID != entry.TransactionID {
 			t.Fatalf("SelectNewestUndo(%s) = %#v ok=%v err=%v", projectID, selected, selectable, selectErr)
 		}
 	}
 
-	if _, err := ledger.Undo(ProjectScope(undoProjectID(beta))); err != nil {
+	if _, err := ledger.Undo(ProjectScope(ledgerProjectID(beta))); err != nil {
 		t.Fatalf("Undo(beta): %v", err)
 	}
 	assertArtifactBytes(t, alphaPath, alphaBefore)
@@ -109,7 +109,7 @@ func TestCommitMultiLedgerPreparationFailureChangesNoUserArtifacts(t *testing.T)
 	alpha.Tasks[0].Title = "alpha after"
 	beta.Tasks[0].Title = "beta after"
 	malformed := []byte("{not-json")
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	writeArtifactBytes(t, ledger.ledgerPath(), malformed)
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 
@@ -250,12 +250,12 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 		{Kind: transaction.OpWrite, Target: artifactPath, Data: artifactAfter, Mode: FilePermissions},
 		{Kind: transaction.OpWrite, Target: betaPath, Data: betaAfter, Mode: FilePermissions},
 	}
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	journal := transaction.NewJournal(transactionsDir, []string{dataDir})
 	manifest, ledgerPlan, err := service.prepareTransaction(journal, userOps, &LedgerRecord{
 		Action:     "change both projects",
-		ProjectIDs: []string{undoProjectID(alpha), undoProjectID(beta)},
+		ProjectIDs: []string{ledgerProjectID(alpha), ledgerProjectID(beta)},
 		Artifacts:  ledgerImages,
 	})
 	if err != nil {

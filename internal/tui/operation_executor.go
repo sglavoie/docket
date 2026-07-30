@@ -20,7 +20,6 @@ type OperationInvocationSource string
 const (
 	OperationSourceCommand     OperationInvocationSource = "command"
 	OperationSourceDirectKey   OperationInvocationSource = "direct-key"
-	OperationSourceFinder      OperationInvocationSource = "finder"
 	OperationSourceActionSheet OperationInvocationSource = "action-sheet"
 	OperationSourceBulk        OperationInvocationSource = "bulk"
 	OperationSourceHarness     OperationInvocationSource = "harness"
@@ -122,14 +121,14 @@ type OperationStatusEvent struct {
 	Err         error
 	// OwnsUserFeedback reports that this event's Status is the outcome's only
 	// user-visible feedback. A reporter that shows anything else duplicates a
-	// notification the message seam already delivers.
+	// status the message seam already delivers.
 	OwnsUserFeedback bool
 }
 
 type OperationStatusReporter func(OperationStatusEvent)
 
 // OperationConfirmationRequestMsg is renderer-neutral. Action sheets, direct
-// keys, and future finder/list surfaces can present it with their own chrome and
+// keys and retained list surfaces can present it with their own chrome and
 // resubmit Request after setting Confirmed.
 type OperationConfirmationRequestMsg struct {
 	Request OperationExecutionRequest

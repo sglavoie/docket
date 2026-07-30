@@ -71,11 +71,10 @@ func TestSaveCustomContextRenamePreservesArchivedAndStaleReferences(t *testing.T
 	assertIDs(t, runtime.Machine().GetCustomContext("Deep Work"), "p1", "p4", "missing", "p2")
 }
 
-// TestSaveCustomContextPreservesSandboxAndInternalMembers is the merge half of
-// the eligibility rule: a sandbox or internal member is as unlistable as an
-// archived one, so an editor selection that cannot mention it must not delete
-// it — while a project the editor did show and the user did uncheck still goes.
-func TestSaveCustomContextPreservesSandboxAndInternalMembers(t *testing.T) {
+// TestSaveCustomContextPreservesArchivedAndStaleMembers is the merge half of
+// the eligibility rule: an archived or stale member is not listable, so an
+// editor selection that cannot mention it must not delete it.
+func TestSaveCustomContextPreservesArchivedAndStaleMembers(t *testing.T) {
 	runtime := hiddenMemberFixture(t)
 	mutator := NewContextMutator(runtime, nil, nil)
 
@@ -87,7 +86,7 @@ func TestSaveCustomContextPreservesSandboxAndInternalMembers(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("SaveCustomContext: %v", err)
 	}
-	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p1", "p4", "p5", "p6", "missing")
+	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p1", "p4", "missing")
 
 	// Swapping the one listed member keeps every hidden one and drops only the
 	// project the user could actually see unchecked.
@@ -98,7 +97,7 @@ func TestSaveCustomContextPreservesSandboxAndInternalMembers(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("SaveCustomContext: %v", err)
 	}
-	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p4", "p5", "p6", "missing", "p2")
+	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p4", "missing", "p2")
 }
 
 func TestSaveCustomContextRejectsDuplicateNameWithoutMutatingLiveState(t *testing.T) {

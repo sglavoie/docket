@@ -180,7 +180,7 @@ func TestResolveConflict_UseFileValidatesAndCommits(t *testing.T) {
 		tk.ApplyWorkflowState(models.StatePaused)
 	})
 	mergedPath := filepath.Join(t.TempDir(), "merged.md")
-	if err := os.WriteFile(mergedPath, []byte(mergedDoc.WriteV2()), 0o600); err != nil {
+	if err := os.WriteFile(mergedPath, []byte(mustWriteCurrentDocument(t, mergedDoc)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

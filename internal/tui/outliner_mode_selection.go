@@ -2,15 +2,16 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// workModeCycleOrder is derived from the catalog's stable TabIndex metadata so
-// picker order, persisted identity, and keyboard cycling cannot drift.
+// workModeCycleOrder is derived from the catalog so presentation identity and
+// keyboard cycling cannot drift.
 var workModeCycleOrder = func() []OutlinerModeID {
 	modes := OutlinerTabModes()
 	ids := make([]OutlinerModeID, len(modes))
@@ -100,8 +101,8 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 }
 
 // selectOutlinerMode applies the named catalog mode. It is the sole entry
-// point used by Tab cycling, eligible mode-picker selections, startup, and any
-// command that jumps directly to a mode. It captures the selected task identity
+// point used by Tab cycling, startup, and any command that jumps directly to a
+// mode. It captures the selected task identity
 // before rebuilding and restores it afterward (see restoreModeCursor) so an
 // eligible task keeps focus and scroll position across the reshape.
 func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cmd) {
@@ -114,19 +115,13 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 
 	m.applyOutlinerModeTransition(mode)
 	m.primaryMode = mode.ID
-	if mode.RowStrategy == RowStrategyReview {
-		m.zoomStack = nil
-		m.crossZoomStack = nil
-		m.resetViewScrollOffset()
-	}
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	return m, nil
 }
 
-// cycleWorkMode advances the active mode by delta within the four-item Work
-// cycle. Entering from a mode outside the cycle starts at Next when moving
-// forward and All when moving backward, matching the pinned tab-bar order.
+// cycleWorkMode advances the active mode by delta within the exact five-item
+// cycle.
 func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 	current := m.activeOutlinerMode()
 	idx := -1
@@ -164,19 +159,22 @@ func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
 }
 
 // orderingUnavailableStatus explains why J/K cannot reorder rows in the active
-// computed mode.
+// mode.
 func (m *OutlinerModel) orderingUnavailableStatus() {
+	if m != nil && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsPinnedSection {
+		m.setStatus("Pinned order is newest first — J/K is unavailable")
+		return
+	}
 	mode := m.activeOutlinerModeEntry()
 	m.setStatus(fmt.Sprintf(
-		"Ordering is automatic in %s mode — J/K reorder only within one project in All, Inbox, Next, or Backlog",
+		"Ordering is automatic in %s mode — J/K reorder hierarchical or planning rows only",
 		mode.Label,
 	))
 }
 
-// workModeScopeProjects returns the projects the computed work horizons and
-// Today section range over: the single project when scoped, otherwise the loaded
-// projects admitted by the active Context. Routing through scopeProjects keeps
-// the tree, Priority, and computed paths on the same visible project set.
+// workModeScopeProjects returns the projects the five modes and Today section
+// range over: the single project when scoped, otherwise the loaded projects
+// admitted by the active Context.
 func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 	if m.project != nil {
 		return []*models.Project{m.project}
@@ -184,21 +182,15 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 	return m.scopeProjects()
 }
 
-// workModeFilterPredicate returns the per-task predicate applying the active
-// common filters, search, pinned tag, and actionable constraints. It mirrors
-// crossPriorityRowPredicate minus the priority eligibility gate so computed work
-// horizons honor the same visible filters as the tree modes.
-func (m *OutlinerModel) workModeFilterPredicate(proj *models.Project) func(*models.Task) bool {
+func (m *OutlinerModel) workModeFilterPredicateWithResolverAt(
+	proj *models.Project,
+	resolver *app.WorkspaceResolver,
+	now time.Time,
+) func(*models.Task) bool {
 	pinnedTag := m.activePinnedTagFilter()
 	query := m.SearchQuery()
 	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
 	actionable := m.filter.Actionable
-	var planning *config.PlanningState
-	var automation *config.AutomationConfig
-	if m.runtime != nil {
-		planning = m.runtime.Planning()
-		automation = m.runtime.Automation()
-	}
 
 	return func(t *models.Task) bool {
 		if t == nil {
@@ -207,10 +199,16 @@ func (m *OutlinerModel) workModeFilterPredicate(proj *models.Project) func(*mode
 		if pinnedTag != "" && !t.HasTag(pinnedTag) {
 			return false
 		}
-		if query != "" && !matchesSearch(t, query, planning) {
+		if query != "" && !TaskMatchesSearch(t, query) {
 			return false
 		}
-		if hasCommon && !passesCommonFilters(t, &m.filter.CommonFilterState, proj, automation) {
+		if hasCommon && !passesCommonFiltersWithResolverAt(
+			t,
+			&m.filter.CommonFilterState,
+			proj,
+			resolver,
+			now,
+		) {
 			return false
 		}
 		if actionable && !taskIsActionableState(t, proj) {

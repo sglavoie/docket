@@ -133,29 +133,3 @@ func TestHandleTaskMessagesCloseTaskChecklist(t *testing.T) {
 		t.Errorf("currentView should be Outliner after closing checklist, got %v", app.currentView())
 	}
 }
-
-func TestHandleTaskMessagesOpenTaskActivity(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	task := project.Tasks[0]
-
-	msg := OpenTaskActivityMsg{Task: task, Project: project}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("OpenTaskActivityMsg should be handled")
-	}
-	if app.currentView() != ViewTaskActivity {
-		t.Errorf("currentView should be TaskActivity, got %v", app.currentView())
-	}
-}
-
-func TestHandleTaskMessagesCloseTaskActivity(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewTaskActivity)
-
-	app.Update(CloseTaskActivityMsg{})
-
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after closing activity, got %v", app.currentView())
-	}
-}

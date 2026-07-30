@@ -1,5 +1,7 @@
 package tui
 
+import "fmt"
+
 // taskOperationManifestEntry describes one ordered production task action.
 type taskOperationManifestEntry struct {
 	ID       OperationID
@@ -17,7 +19,7 @@ type taskOperationManifestEntry struct {
 	Core bool
 	// DirectOnly marks entries the input strategy reaches faster than any list
 	// can. They keep their descriptor, bulk coordinator and value provider but
-	// leave the row action list, so the action sheet and Finder do not repeat a
+	// leave the row action list, so the action sheet does not repeat a
 	// key the footer already advertises.
 	DirectOnly bool
 }
@@ -28,74 +30,12 @@ type taskOperationManifestEntry struct {
 func taskOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{
 		{
-			ID:         operationTaskSetState,
-			Label:      "Set State",
-			Aliases:    []string{"workflow state", "status"},
-			Provider:   ValueProviderState,
-			Category:   taskActionCategoryPlan,
-			Risk:       OperationRiskMutation,
-			Bulk:       true,
-			DirectOnly: true,
-		},
-		{
-			ID:         operationTaskSetPriority,
-			Label:      "Set Priority",
-			Aliases:    []string{"importance"},
-			Provider:   ValueProviderPriority,
-			Category:   taskActionCategoryPlan,
-			Risk:       OperationRiskMutation,
-			Bulk:       true,
-			DirectOnly: true,
-		},
-		{
-			ID:         operationTaskSetDueDate,
-			Label:      "Set Due Date",
-			Aliases:    []string{"deadline"},
-			Provider:   ValueProviderDueDate,
-			Category:   taskActionCategoryPlan,
-			Risk:       OperationRiskMutation,
-			Bulk:       true,
-			DirectOnly: true,
-		},
-		{
-			ID:       operationTaskSetSnooze,
-			Label:    "Set Snooze",
-			Aliases:  []string{"hide until"},
-			Provider: ValueProviderSnooze,
+			ID:       operationTaskRecurrence,
+			Label:    "Recurrence",
+			Aliases:  []string{"repeat", "schedule"},
+			Provider: ValueProviderRecurrence,
 			Category: taskActionCategoryPlan,
 			Risk:     OperationRiskMutation,
-			Bulk:     true,
-		},
-		{
-			ID:       operationTaskScore,
-			Label:    "Score Editor",
-			Aliases:  []string{"edit score", "scoring", "set score"},
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskPark,
-			Label:    "Park Task",
-			Aliases:  []string{"parking note", "note where you left off", "resume note"},
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskUnpark,
-			Label:    "Unpark Task",
-			Aliases:  []string{"resume task", "clear parking note"},
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:         operationTaskSetTags,
-			Label:      "Set Tags",
-			Aliases:    []string{"labels"},
-			Provider:   ValueProviderTags,
-			Category:   taskActionCategoryOrganize,
-			Risk:       OperationRiskMutation,
-			Bulk:       true,
-			DirectOnly: true,
 		},
 		{
 			ID:       operationTaskMoveProject,
@@ -106,114 +46,6 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskPin,
-			Label:    "Pin Task",
-			Aliases:  []string{"pin", "keep on top"},
-			Category: taskActionCategoryOrganize,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskUnpin,
-			Label:    "Unpin Task",
-			Aliases:  []string{"unpin", "remove pin"},
-			Category: taskActionCategoryOrganize,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskDim,
-			Label:    "Dim Task",
-			Aliases:  []string{"mute task", "fade task"},
-			Category: taskActionCategoryOrganize,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskUndim,
-			Label:    "Undim Task",
-			Aliases:  []string{"unmute task", "unfade task"},
-			Category: taskActionCategoryOrganize,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationCoreEdit,
-			Category: taskActionCategoryContent,
-			Core:     true,
-		},
-		{
-			ID:       operationCoreDetail,
-			Category: taskActionCategoryContent,
-			Core:     true,
-		},
-		{
-			ID:       operationTaskChecklist,
-			Label:    "Task Checklist",
-			Aliases:  []string{"checklist", "checklist items"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskComments,
-			Label:    "Task Comments",
-			Aliases:  []string{"comments", "add comment"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskQuickNote,
-			Label:    "Quick Note",
-			Aliases:  []string{"jot note", "quick comment"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskDecisions,
-			Label:    "Task Decisions",
-			Aliases:  []string{"decisions", "design decisions", "architecture decisions"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskAttachments,
-			Label:    "Task Attachments",
-			Aliases:  []string{"attachments", "add attachment"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskActivity,
-			Label:    "Task Activity",
-			Aliases:  []string{"activity log", "task history"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskReadOnly,
-		},
-		{
-			ID:       operationTaskCopyTitle,
-			Label:    "Copy Title",
-			Aliases:  []string{"yank title", "clipboard title"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskReadOnly,
-		},
-		{
-			ID:       operationTaskCopyTitleDescription,
-			Label:    "Copy Title and Description",
-			Aliases:  []string{"copy with description", "yank description"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskReadOnly,
-		},
-		{
-			ID:       operationTaskCopyDetails,
-			Label:    "Copy Details",
-			Aliases:  []string{"yank details", "clipboard details"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskReadOnly,
-		},
-		{
-			ID:       operationTaskCopyReference,
-			Label:    "Copy Reference",
-			Aliases:  []string{"yank reference", "copy task id"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskReadOnly,
-		},
-		{
 			ID:       operationTaskSetParent,
 			Label:    "Set Parent",
 			Aliases:  []string{"reparent", "clear parent"},
@@ -222,64 +54,78 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskIndent,
-			Label:    "Indent",
-			Aliases:  []string{"nest under previous task"},
-			Category: taskActionCategoryRelationships,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskOutdent,
-			Label:    "Outdent",
-			Aliases:  []string{"move to parent level"},
-			Category: taskActionCategoryRelationships,
-			Risk:     OperationRiskMutation,
-		},
-		{
 			ID:       operationTaskSetDependencies,
-			Label:    "Set Dependencies",
+			Label:    "Dependencies",
 			Aliases:  []string{"blocked by"},
 			Provider: ValueProviderDependencies,
 			Category: taskActionCategoryRelationships,
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskLinkedTasks,
-			Label:    "Go to Linked Task",
-			Aliases:  []string{"navigate linked tasks", "show linked", "linked tasks"},
-			Category: taskActionCategoryRelationships,
-			Risk:     OperationRiskReadOnly,
-		},
-		{
-			ID:       operationTaskNewChild,
-			Label:    "New Child Task",
-			Aliases:  []string{"create child task", "add child", "new subtask"},
-			Category: taskActionCategoryRelationships,
+			ID:       operationTaskChecklist,
+			Label:    "Checklist",
+			Aliases:  []string{"checklist", "checklist items"},
+			Category: taskActionCategoryContent,
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskNewChildFromTemplate,
-			Label:    "New Child Task from Template",
-			Aliases:  []string{"create child task with template", "add child with template"},
-			Category: taskActionCategoryRelationships,
+			ID:       operationTaskComments,
+			Label:    "Comments",
+			Aliases:  []string{"add comment"},
+			Category: taskActionCategoryContent,
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskNewLinkedSubtask,
-			Label:    "New Linked Subtask",
-			Aliases:  []string{"create linked subtask", "add linked subtask", "linked subtask"},
-			Category: taskActionCategoryRelationships,
+			ID:       operationTaskDecisions,
+			Label:    "Decisions",
+			Aliases:  []string{"design decisions", "architecture decisions"},
+			Category: taskActionCategoryContent,
+			Risk:     OperationRiskMutation,
+		},
+		{
+			ID:       operationTaskAttachments,
+			Label:    "Attachments",
+			Aliases:  []string{"add attachment"},
+			Category: taskActionCategoryContent,
 			Risk:     OperationRiskMutation,
 		},
 		{
 			ID:       operationTaskDelete,
-			Label:    "Delete Task",
+			Label:    "Delete",
 			Aliases:  []string{"remove task", "destroy task", "delete subtree"},
 			Category: taskActionCategoryDanger,
 			Risk:     OperationRiskDestructive,
 			Bulk:     true,
 		},
 	}
+}
+
+// taskDirectOperationManifest keeps the direct grammar descriptors registered
+// without making them task-menu rows. The task menu itself is exactly the nine
+// entries returned by taskOperationManifest.
+func taskDirectOperationManifest() []taskOperationManifestEntry {
+	return []taskOperationManifestEntry{
+		{ID: operationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: ValueProviderState, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: ValueProviderPriority, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskSetDueDate, Label: "Set Due Date", Aliases: []string{"deadline"}, Provider: ValueProviderDueDate, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskSetSnooze, Label: "Set Snooze", Aliases: []string{"hide until"}, Provider: ValueProviderSnooze, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskSetTags, Label: "Set Tags", Aliases: []string{"labels"}, Provider: ValueProviderTags, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
+		{ID: operationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
+		{ID: operationCoreDetail, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
+		{ID: operationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationTaskIndent, Label: "Indent", Aliases: []string{"nest under previous task"}, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
+		{ID: operationTaskOutdent, Label: "Outdent", Aliases: []string{"move to parent level"}, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
+		{ID: operationTaskNewChild, Label: "New Child Task", Aliases: []string{"create child task", "add child", "new subtask"}, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
+	}
+}
+
+func taskOperationDescriptorManifest() []taskOperationManifestEntry {
+	entries := append([]taskOperationManifestEntry(nil), taskOperationManifest()...)
+	return append(entries, taskDirectOperationManifest()...)
 }
 
 // taskOperationManifestIDs returns the authoritative action list a task row
@@ -298,7 +144,7 @@ func taskOperationManifestIDs() []OperationID {
 }
 
 func taskOperationManifestEntryFor(id OperationID) (taskOperationManifestEntry, bool) {
-	for _, entry := range taskOperationManifest() {
+	for _, entry := range taskOperationDescriptorManifest() {
 		if entry.ID == id {
 			return entry, true
 		}
@@ -323,4 +169,29 @@ func taskOperationManifestRank(id OperationID) int {
 func taskOperationSupportsBulk(id OperationID) bool {
 	entry, ok := taskOperationManifestEntryFor(id)
 	return ok && entry.Bulk
+}
+
+// validateTaskOperationOnePath rejects drift between the direct grammar and
+// the task menu before the application starts. A manifested operation is either
+// bound directly and marked DirectOnly or listed in the menu, never both.
+func validateTaskOperationOnePath(strategy InputStrategy) error {
+	direct := make(map[OperationID]bool, len(strategy.Bindings))
+	for _, binding := range strategy.Bindings {
+		direct[binding.OperationID] = true
+	}
+	for _, entry := range taskOperationDescriptorManifest() {
+		switch {
+		case direct[entry.ID] && !entry.DirectOnly:
+			return fmt.Errorf(
+				"task operation %s is bound directly and listed in the task menu",
+				entry.ID,
+			)
+		case entry.DirectOnly && !direct[entry.ID]:
+			return fmt.Errorf(
+				"task operation %s is direct-only but has no direct binding",
+				entry.ID,
+			)
+		}
+	}
+	return nil
 }

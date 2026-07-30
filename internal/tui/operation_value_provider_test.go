@@ -2,10 +2,12 @@ package tui
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -66,6 +68,122 @@ func TestOperationValuePickerMultiSelectionReturnsStableValues(t *testing.T) {
 	}
 }
 
+func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
+	common := newBulkPickerTestTask(t, 1, "first", "common", "first-only")
+	other := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
+	env := newAppBulkPickerEnv(t, []*models.Task{common}, []*models.Task{other})
+	model := env.appModel()
+	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Selection.Visual = true
+	for index, task := range []*models.Task{common, other} {
+		project := env.projects[index]
+		context.Selection.Tasks = append(context.Selection.Tasks, taskIdentityFor(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
+	}
+	context.Entity = context.Selection.Entities[0]
+	request := OperationExecutionRequest{
+		ID:      operationTaskSetTags,
+		Context: context,
+		Source:  OperationSourceBulk,
+	}
+	picker, err := model.newOperationValuePicker(request, ValueProviderTags)
+	if err != nil {
+		t.Fatalf("newOperationValuePicker: %v", err)
+	}
+	if !picker.surface.IsSelected("tag:common") {
+		t.Fatal("tag on every task is not rendered as selected")
+	}
+	items := picker.surface.Items()
+	indeterminate := map[ListItemID]bool{}
+	for _, item := range items {
+		indeterminate[item.ID] = item.Indeterminate
+	}
+	if !indeterminate["tag:first-only"] || !indeterminate["tag:second-only"] {
+		t.Fatalf("partial tag membership = %v, want both task-specific tags indeterminate", indeterminate)
+	}
+	if rendered := picker.render(90); !strings.Contains(rendered, "[-]") {
+		t.Fatalf("tri-state picker did not render an indeterminate marker:\n%s", rendered)
+	}
+
+	if !picker.surface.SetCursorToID("tag:first-only") {
+		t.Fatal("first-only tag is missing")
+	}
+	if toggleErr := picker.toggleCurrentMultiValue(); toggleErr != nil {
+		t.Fatalf("promote partial tag to all: %v", toggleErr)
+	}
+	if !picker.surface.SetCursorToID("tag:common") {
+		t.Fatal("common tag is missing")
+	}
+	if toggleErr := picker.toggleCurrentMultiValue(); toggleErr != nil {
+		t.Fatalf("remove common tag: %v", toggleErr)
+	}
+	value, err := picker.selectedValue()
+	if err != nil {
+		t.Fatalf("selectedValue: %v", err)
+	}
+	patch, ok := value.(OperationTagsValue)
+	if !ok {
+		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+	}
+	if !reflect.DeepEqual(patch.Add, []string{"first-only"}) ||
+		!reflect.DeepEqual(patch.Remove, []string{"common"}) {
+		t.Fatalf("tag patch = %+v, want add first-only and remove common", patch)
+	}
+}
+
+func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testing.T) {
+	first := newBulkPickerTestTask(t, 1, "first", "common", "first-only")
+	second := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
+	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
+	model := env.appModel()
+	model.operationRegistry = NewOperationRegistry()
+	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
+	if err := model.registerTaskActionOperations(); err != nil {
+		t.Fatalf("registerTaskActionOperations: %v", err)
+	}
+	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
+	outliner.loadedProjects = env.projects
+	outliner.rows = []outlinerRow{
+		{task: first, ProjectID: env.projects[0].ID},
+		{task: second, ProjectID: env.projects[1].ID},
+	}
+	outliner.multiSelectMode = true
+	outliner.SelectTaskIdentity(taskIdentityFor(first, env.projects[0]))
+	outliner.SelectTaskIdentity(taskIdentityFor(second, env.projects[1]))
+	model.crossOutliner = outliner
+	model.views.Register(ViewCrossProjectOutliner, outliner)
+
+	context := model.operationCommandContext()
+	outliner.cursor = 1
+	result := model.operationExecutor.Execute(OperationExecutionRequest{
+		ID:       operationTaskSetTags,
+		Context:  context,
+		Source:   OperationSourceBulk,
+		Value:    OperationTagsValue{Add: []string{"first-only"}, Remove: []string{"common"}},
+		HasValue: true,
+	})
+	if result.Err != nil {
+		t.Fatalf("execute frozen tag patch: %v", result.Err)
+	}
+	command, ok := result.Message.(OperationCommandResultMsg)
+	if !ok {
+		t.Fatalf("result message = %T, want OperationCommandResultMsg", result.Message)
+	}
+	batch := runBatchResult(t, command.Cmd)
+	model.handleBatchTransactionResult(batch)
+
+	if got := env.reload(t, 0).GetTaskByID(first.ID).Tags; !reflect.DeepEqual(got, []string{"first-only"}) {
+		t.Fatalf("first tags = %v, want [first-only]", got)
+	}
+	if got := env.reload(t, 1).GetTaskByID(second.ID).Tags; !reflect.DeepEqual(got, []string{"second-only", "first-only"}) {
+		t.Fatalf("second tags = %v, want preserved partial membership plus first-only", got)
+	}
+	if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
+		t.Fatalf("selection after committed rebuild = active %v count %d, want active/2", outliner.multiSelectMode, outliner.SelectedCount())
+	}
+}
+
 func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	model := newUITestApp()
 	model.operationRegistry = NewOperationRegistry()
@@ -98,8 +216,9 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 		WorkflowState: models.StateReady,
 	}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
+	other := &models.Project{ID: "other", Name: "Other", Slug: "other"}
 	project.BuildTaskTree()
-	setTestAppProjects(model, project)
+	setTestAppProjects(model, project, other)
 	model.operationRegistry = NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
@@ -108,15 +227,15 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		model.operationRegistry,
 		model.operationExecutor,
-		taskActionTestContext(models.StateReady),
+		taskOperationTestContext(task, project),
 		"Task",
 	)
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
 	model.contextActionSheet = sheet
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskSetSnooze))) {
-		t.Fatal("task sheet is missing the snooze action")
+	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskMoveProject))) {
+		t.Fatal("task sheet is missing the move-project action")
 	}
 
 	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -128,7 +247,7 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 		t.Fatalf("sheet selection = handled %v, cmd %T; want picker opened synchronously", handled, cmd)
 	}
 	if model.operationValuePicker == nil {
-		t.Fatal("snooze action did not open its ListSurface value picker")
+		t.Fatal("move-project action did not open its ListSurface value picker")
 	}
 	if model.contextActionSheet == nil {
 		t.Fatal("opening a value picker discarded the action sheet beneath it")
@@ -146,6 +265,62 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 	}
 }
 
+func TestRelationValuePickerEscUnwindsSearchBeforeCancel(t *testing.T) {
+	source := ListSource{Items: []ListItem{{
+		ID: "parent:none", PrimaryText: "No parent", Data: OperationParentValue{},
+	}}}
+	picker, err := newOperationValuePickerModel(
+		OperationExecutionRequest{ID: operationTaskSetParent},
+		ValueProviderParent,
+		"Set Parent",
+		"Task",
+		source,
+		false,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("newOperationValuePickerModel: %v", err)
+	}
+	_, dismissed, _ := picker.handleKey(tea.KeyPressMsg{Code: '/'})
+	if dismissed || !picker.searching {
+		t.Fatal("search entry unexpectedly dismissed relation picker")
+	}
+	_, dismissed, _ = picker.handleKey(tea.KeyPressMsg{Code: 'x', Text: "x"})
+	if dismissed || picker.surface.Query().Raw != "x" {
+		t.Fatalf("search query = %q dismissed=%v", picker.surface.Query().Raw, dismissed)
+	}
+	_, dismissed, _ = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if dismissed || picker.surface.Query().Raw != "" || !picker.searching {
+		t.Fatal("first Esc did not clear the active relation query")
+	}
+	_, dismissed, _ = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if dismissed || picker.searching {
+		t.Fatal("second Esc did not leave relation search mode")
+	}
+	_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if !dismissed {
+		t.Fatal("third Esc did not cancel the relation picker")
+	}
+	if _, ok := result.(OperationValueCanceledMsg); !ok {
+		t.Fatalf("cancel result = %T, want OperationValueCanceledMsg", result)
+	}
+}
+
+func TestMovedTaskMenuOperationRetargetsAsyncReloadAnchor(t *testing.T) {
+	outliner := &OutlinerModel{crossReloadProjectID: "source", crossReloadTaskID: "task"}
+	model := &AppModel{crossOutliner: outliner}
+	task := &models.Task{ID: "task"}
+	destination := &models.Project{ID: "destination"}
+
+	model.preserveMovedOutlinerTarget(TaskMovedToProjectMsg{
+		Task: task, DestProject: destination, FromGlobal: true,
+	})
+	if outliner.crossReloadProjectID != destination.ID || outliner.crossReloadTaskID != task.ID {
+		t.Fatalf("reload anchor = %s/%s, want %s/%s",
+			outliner.crossReloadProjectID, outliner.crossReloadTaskID, destination.ID, task.ID)
+	}
+}
+
 func TestDependencyValueSourcePreservesExternalExistingEdges(t *testing.T) {
 	task := &models.Task{
 		ID:            "task",
@@ -160,8 +335,10 @@ func TestDependencyValueSourcePreservesExternalExistingEdges(t *testing.T) {
 	}
 	project := &models.Project{ID: "project", Tasks: []*models.Task{task, local}}
 	project.BuildTaskTree()
+	model := newUITestApp()
+	setTestAppProjects(model, project)
 
-	source, selected := dependencyOperationListSource(task, project)
+	source, selected := model.dependencyOperationListSource(task, project)
 	if !slicesContainsListItemID(selected, "dependency:other-project:blocker") {
 		t.Fatalf("selected dependencies = %v, missing external edge", selected)
 	}
@@ -173,6 +350,39 @@ func TestDependencyValueSourcePreservesExternalExistingEdges(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("external existing dependency is not represented by the value source")
+	}
+}
+
+func TestDependencyValueSourceIncludesSafeCrossProjectCandidates(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Task", WorkflowState: models.StateReady}
+	local := &models.Task{ID: "local", ShortID: 2, Title: "Local", WorkflowState: models.StateReady}
+	blocker := &models.Task{ID: "blocker", ShortID: 1, Title: "Cross blocker", WorkflowState: models.StateReady}
+	cycle := &models.Task{
+		ID: "cycle", ShortID: 2, Title: "Would cycle", WorkflowState: models.StateReady,
+		DependsOn: []string{"alpha:task"},
+	}
+	owner := &models.Project{ID: "alpha", Name: "Alpha", Slug: "alpha", Tasks: []*models.Task{task, local}}
+	other := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Tasks: []*models.Task{blocker, cycle}}
+	owner.BuildTaskTree()
+	other.BuildTaskTree()
+	model := newUITestApp()
+	setTestAppProjects(model, owner, other)
+
+	source, _ := model.dependencyOperationListSource(task, owner)
+	byData := make(map[string]ListItem)
+	for _, item := range source.Items {
+		if value, ok := item.Data.(string); ok {
+			byData[value] = item
+		}
+	}
+	if _, ok := byData["beta:blocker"]; !ok {
+		t.Fatal("cross-project dependency candidate is missing")
+	}
+	if _, ok := byData["beta:cycle"]; ok {
+		t.Fatal("workspace-cyclic dependency candidate was offered")
+	}
+	if got := byData["beta:blocker"].SecondaryText; !strings.Contains(got, "Beta") {
+		t.Fatalf("cross-project candidate lacks project context: %q", got)
 	}
 }
 
@@ -241,21 +451,54 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	}
 }
 
+func TestNarrowTaskEditorsCommitThroughCommonApplicationOperation(t *testing.T) {
+	task := newBulkPickerTestTask(t, 1, "Before")
+	task.Description = "Old body"
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	model := env.appModel()
+	project := env.projects[0]
+
+	for _, testCase := range []struct {
+		operation app.TaskOperation
+		value     string
+	}{
+		{operation: app.TaskOperationEditTitle, value: "After"},
+		{operation: app.TaskOperationEditDescription, value: "New body"},
+	} {
+		handled, _ := model.handleEditorMessages(ShowTaskTextEditorMsg{
+			Task: task, Project: project, Operation: testCase.operation,
+		})
+		if !handled || model.currentView() != ViewTextEditor {
+			t.Fatalf("%s did not open the narrow editor", testCase.operation)
+		}
+		handled, cmd := model.handleEditorMessages(TextEditorDoneMsg{Value: testCase.value})
+		if !handled || cmd == nil {
+			t.Fatalf("%s did not produce a service command", testCase.operation)
+		}
+		runBatchResult(t, cmd)
+	}
+
+	fresh := env.reload(t, 0).GetTaskByID(task.ID)
+	if fresh == nil || fresh.Title != "After" || fresh.Description != "New body" {
+		t.Fatalf("persisted narrow edits = %+v", fresh)
+	}
+}
+
 // newTaskStructureTestProject lays out one epic with a story child followed by a
 // loose root task, which is the smallest shape covering every legal and illegal
 // indent/outdent/reparent case.
 func newTaskStructureTestProject() *models.Project {
 	epic := &models.Task{
 		ID: "epic", ShortID: 1, Title: "Epic",
-		Type: models.TaskTypeEpic, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	story := &models.Task{
 		ID: "story", ShortID: 2, Title: "Story", ParentID: strPtr("epic"),
-		Type: models.TaskTypeStory, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	loose := &models.Task{
 		ID: "loose", ShortID: 3, Title: "Loose",
-		Type: models.TaskTypeTask, WorkflowState: models.StateReady,
+		WorkflowState: models.StateReady,
 	}
 	project := &models.Project{
 		ID: "alpha", Name: "Alpha", Slug: "alpha",
@@ -287,7 +530,7 @@ func taskOperationApplicable(
 	return descriptor.Applicable(taskOperationTestContext(task, project))
 }
 
-func TestTaskOperationIndentAndOutdentApplicabilityFollowsHierarchyLegality(t *testing.T) {
+func TestDirectIndentAndOutdentRemainResolvableAcrossHierarchyPositions(t *testing.T) {
 	model := newUITestApp()
 	project := newTaskStructureTestProject()
 	setTestAppProjects(model, project)
@@ -298,9 +541,9 @@ func TestTaskOperationIndentAndOutdentApplicabilityFollowsHierarchyLegality(t *t
 		want   bool
 	}{
 		{taskID: "loose", id: operationTaskIndent, want: true},
-		{taskID: "epic", id: operationTaskIndent, want: false},
+		{taskID: "epic", id: operationTaskIndent, want: true},
 		{taskID: "story", id: operationTaskOutdent, want: true},
-		{taskID: "loose", id: operationTaskOutdent, want: false},
+		{taskID: "loose", id: operationTaskOutdent, want: true},
 	} {
 		task := project.GetTaskByID(testCase.taskID)
 		if task == nil {
@@ -322,8 +565,8 @@ func TestTaskOperationParentAndMoveApplicabilityRequireCandidates(t *testing.T) 
 	if !taskOperationApplicable(t, model, operationTaskSetParent, loose, project) {
 		t.Error("set-parent is unavailable for a task with valid parent candidates")
 	}
-	if taskOperationApplicable(t, model, operationTaskSetParent, epic, project) {
-		t.Error("set-parent is offered for a root epic that nothing can parent")
+	if !taskOperationApplicable(t, model, operationTaskSetParent, epic, project) {
+		t.Error("set-parent is unavailable for a generic task with valid lean parent candidates")
 	}
 	if taskOperationApplicable(t, model, operationTaskMoveProject, loose, project) {
 		t.Error("move-project is offered with no other active project")
@@ -355,34 +598,17 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 			ordered = append(ordered, descriptor.ID)
 		}
 	}
-	// Unpark, unpin, and undim are absent because the loose task is none of
-	// those; Outdent is absent because a top-level task has no parent to leave;
-	// both child creators are absent because a leaf type cannot hold a child.
-	// State, priority, due date, and tags are absent because they are direct-only.
+	// Every direct and retired operation is absent. The remaining projection is
+	// the exact nine-item task menu in its canonical order.
 	want := []OperationID{
-		operationTaskSetSnooze,
-		operationTaskScore,
-		operationTaskPark,
+		operationTaskRecurrence,
 		operationTaskMoveProject,
-		operationTaskPin,
-		operationTaskDim,
-		operationCoreEdit,
-		operationCoreDetail,
+		operationTaskSetParent,
+		operationTaskSetDependencies,
 		operationTaskChecklist,
 		operationTaskComments,
-		operationTaskQuickNote,
 		operationTaskDecisions,
 		operationTaskAttachments,
-		operationTaskActivity,
-		operationTaskCopyTitle,
-		operationTaskCopyTitleDescription,
-		operationTaskCopyDetails,
-		operationTaskCopyReference,
-		operationTaskSetParent,
-		operationTaskIndent,
-		operationTaskSetDependencies,
-		operationTaskLinkedTasks,
-		operationTaskNewLinkedSubtask,
 		operationTaskDelete,
 	}
 	if !reflect.DeepEqual(ordered, want) {

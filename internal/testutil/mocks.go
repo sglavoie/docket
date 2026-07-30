@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"fmt"
-	"maps"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -147,18 +146,15 @@ func (m *MockEditor) EditContent(content string, extension string) (string, erro
 
 // MockRepository implements storage.ProjectRepository for testing.
 type MockRepository struct {
-	Projects    map[string]*models.Project
-	Backups     map[string]*models.Project
-	LastSaved   *models.Project // Most recently saved project copy for assertions
-	LoadError   error
-	SaveError   error
-	BackupError error
+	Projects  map[string]*models.Project
+	LastSaved *models.Project // Most recently saved project copy for assertions
+	LoadError error
+	SaveError error
 }
 
 func NewMockRepository() *MockRepository {
 	return &MockRepository{
 		Projects: make(map[string]*models.Project),
-		Backups:  make(map[string]*models.Project),
 	}
 }
 
@@ -169,8 +165,6 @@ func (m *MockRepository) Load(project *models.Project) error {
 	if stored, ok := m.Projects[project.ID]; ok {
 		loaded := cloneProject(stored)
 		project.NextShortID = loaded.NextShortID
-		project.Tags = loaded.Tags
-		project.PinnedTags = loaded.PinnedTags
 		project.Tasks = loaded.Tasks
 		project.Warnings = loaded.Warnings
 		assignProjectPointers(project)
@@ -196,8 +190,6 @@ func cloneProject(project *models.Project) *models.Project {
 	projectCopy := *project
 	projectCopy.ArchivedAt = clonePointer(project.ArchivedAt)
 	projectCopy.PinnedAt = clonePointer(project.PinnedAt)
-	projectCopy.Tags = append([]string{}, project.Tags...)
-	projectCopy.PinnedTags = append([]string{}, project.PinnedTags...)
 	projectCopy.Warnings = append([]string{}, project.Warnings...)
 
 	projectCopy.Tasks = make([]*models.Task, len(project.Tasks))
@@ -311,23 +303,13 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.CompletedAt = clonePointer(task.CompletedAt)
 	taskCopy.DueDate = clonePointer(task.DueDate)
 	taskCopy.DependsOn = append([]string{}, task.DependsOn...)
-	taskCopy.RelatedTo = append([]string{}, task.RelatedTo...)
 	taskCopy.PinnedAt = clonePointer(task.PinnedAt)
 	taskCopy.Comments = clonePointerSlice(task.Comments)
 	taskCopy.Decisions = clonePointerSlice(task.Decisions)
 	taskCopy.Recurrence = cloneRecurrencePattern(task.Recurrence)
 	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
 	taskCopy.SnoozedUntil = clonePointer(task.SnoozedUntil)
-	taskCopy.ParkedAt = clonePointer(task.ParkedAt)
-	taskCopy.Activity = clonePointerSlice(task.Activity)
 	taskCopy.Checklist = append([]models.ChecklistItem{}, task.Checklist...)
-	taskCopy.StartDate = clonePointer(task.StartDate)
-	taskCopy.ScoreDimensions = maps.Clone(task.ScoreDimensions)
-	taskCopy.BugAttrs = clonePointer(task.BugAttrs)
-	taskCopy.IdeaAttrs = clonePointer(task.IdeaAttrs)
-	taskCopy.TaskAttrs = clonePointer(task.TaskAttrs)
-	taskCopy.StoryAttrs = clonePointer(task.StoryAttrs)
-	taskCopy.EpicAttrs = cloneEpicAttrs(task.EpicAttrs)
 
 	taskCopy.Children = nil
 	taskCopy.Parent = nil
@@ -336,21 +318,11 @@ func cloneTask(task *models.Task) *models.Task {
 	return &taskCopy
 }
 
-func cloneEpicAttrs(attrs *models.EpicAttrs) *models.EpicAttrs {
-	if attrs == nil {
-		return nil
-	}
-	attrsCopy := *attrs
-	attrsCopy.ScopeBaselinedAt = clonePointer(attrs.ScopeBaselinedAt)
-	return &attrsCopy
-}
-
 func cloneRecurrencePattern(pattern *models.RecurrencePattern) *models.RecurrencePattern {
 	if pattern == nil {
 		return nil
 	}
 	patternCopy := *pattern
-	patternCopy.Weekdays = append([]int{}, pattern.Weekdays...)
 	return &patternCopy
 }
 
@@ -371,49 +343,6 @@ func clonePointerSlice[T any](values []*T) []*T {
 		valuesCopy[i] = clonePointer(value)
 	}
 	return valuesCopy
-}
-
-func (m *MockRepository) Backup(project *models.Project) error {
-	if m.BackupError != nil {
-		return m.BackupError
-	}
-	if project == nil {
-		return nil
-	}
-	if m.Backups == nil {
-		m.Backups = make(map[string]*models.Project)
-	}
-	if stored, ok := m.Projects[project.ID]; ok {
-		m.Backups[project.ID] = cloneProject(stored)
-		return nil
-	}
-	m.Backups[project.ID] = cloneProject(project)
-	return nil
-}
-
-func (m *MockRepository) RestoreFromBackup(project *models.Project) error {
-	if project == nil {
-		return fmt.Errorf("backup not found")
-	}
-	backup, ok := m.Backups[project.ID]
-	if !ok {
-		return fmt.Errorf("backup not found")
-	}
-
-	current := cloneProject(project)
-	if stored, ok := m.Projects[project.ID]; ok {
-		current = cloneProject(stored)
-	}
-
-	restored := cloneProject(backup)
-	m.Projects[project.ID] = cloneProject(restored)
-	m.Backups[project.ID] = current
-
-	project.NextShortID = restored.NextShortID
-	project.Tasks = restored.Tasks
-	project.Warnings = restored.Warnings
-	assignProjectPointers(project)
-	return nil
 }
 
 func (m *MockRepository) Exists(projectPath string) bool {
@@ -437,14 +366,6 @@ func (m *MockRepository) DeleteDir(projectPath string) error {
 		}
 	}
 	return nil
-}
-
-func (m *MockRepository) BackupExists(project *models.Project) bool {
-	if project == nil {
-		return false
-	}
-	_, ok := m.Backups[project.ID]
-	return ok
 }
 
 // Ensure mocks implement their interfaces.

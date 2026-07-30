@@ -33,9 +33,6 @@ func AuditProject(p *Project) error {
 		if err := auditTaskDependencies(p, task, taskMap); err != nil {
 			return err
 		}
-		if err := auditTaskRelatedRefs(task, taskMap); err != nil {
-			return err
-		}
 		if err := auditTaskSectionState(task); err != nil {
 			return err
 		}
@@ -63,9 +60,12 @@ func auditTaskHierarchy(task *Task, taskMap map[string]*Task) error {
 		return fmt.Errorf("%s has cyclic parent chain through %s", auditTaskLabel(task), auditTaskLabel(parent))
 	}
 
-	if !task.Type.CanBeChildOf(parent.Type) {
-		return fmt.Errorf("%s of type %s cannot be child of %s of type %s",
-			auditTaskLabel(task), task.Type, auditTaskLabel(parent), parent.Type)
+	depth, err := taskHierarchyDepth(taskMap, task.ID)
+	if err != nil {
+		return fmt.Errorf("%s has invalid parent chain: %w", auditTaskLabel(task), err)
+	}
+	if depth > MaxNestingDepth {
+		return fmt.Errorf("%s is nested at depth %d, exceeding maximum depth %d", auditTaskLabel(task), depth, MaxNestingDepth)
 	}
 
 	return nil
@@ -101,32 +101,8 @@ func auditTaskDependencies(p *Project, task *Task, taskMap map[string]*Task) err
 	return nil
 }
 
-func auditTaskRelatedRefs(task *Task, taskMap map[string]*Task) error {
-	for _, relatedValue := range task.RelatedTo {
-		if strings.TrimSpace(relatedValue) == "" {
-			return fmt.Errorf("%s has empty related reference", auditTaskLabel(task))
-		}
-
-		relatedRef := ParseTaskRef(relatedValue)
-		if relatedRef.IsEmpty() {
-			return fmt.Errorf("%s has malformed related reference %q", auditTaskLabel(task), relatedValue)
-		}
-		if relatedRef.IsCrossProject() {
-			continue
-		}
-		if relatedRef.TaskID == task.ID {
-			return fmt.Errorf("%s is related to itself", auditTaskLabel(task))
-		}
-		if _, ok := taskMap[relatedRef.TaskID]; !ok {
-			return fmt.Errorf("%s is related to missing local task %q", auditTaskLabel(task), relatedRef.TaskID)
-		}
-	}
-
-	return nil
-}
-
-// auditTaskSectionState validates the task's canonical workflow state: a stored
-// state, when present, must be one of the ten valid states. The retired legacy
+// auditTaskSectionState validates the task's target workflow state: a stored
+// state, when present, must be one of the nine valid states. The retired legacy
 // Section field no longer exists, so there is nothing else to check here.
 func auditTaskSectionState(task *Task) error {
 	if task.WorkflowState != "" && !task.WorkflowState.IsValid() {

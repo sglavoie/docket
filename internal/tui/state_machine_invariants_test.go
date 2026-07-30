@@ -2,14 +2,12 @@ package tui
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -90,7 +88,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 }
 
-func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
+func TestTUIStateMachine_QueueAndTodayStayExclusive(t *testing.T) {
 	// The Outliner is the sole planning surface after the Focus
 	// View retirement. On the Planner the global q/w/u/ctrl+r keys are owned by
 	// the Today simple grammar (currentViewUsesTodaySimpleGrammar), so this test
@@ -102,7 +100,7 @@ func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
 		_ = app.toggleQueue()
 		assertExclusiveMembership(t, app, task.ID, true, false)
 
-		_ = app.toggleDailyPlan()
+		_ = app.toggleToday()
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
 		_ = app.handleUndoToggle()
@@ -115,7 +113,7 @@ func TestTUIStateMachine_QueueAndDailyPlanStayExclusive(t *testing.T) {
 	t.Run("daily plan to queue", func(t *testing.T) {
 		app, task := newFocusToggleTestApp(t)
 
-		_ = app.toggleDailyPlan()
+		_ = app.toggleToday()
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
 		_ = app.toggleQueue()
@@ -138,7 +136,7 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 	t.Run("q on unindexed StateNext leaves Next", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewCrossProjectOutliner)
 		identity := taskIdentityFor(task, app.currentProject)
-		if app.focusQueueIDs[identity] {
+		if app.nextOrderIDs[identity] {
 			t.Fatal("precondition: StateNext task must start unindexed in the order list")
 		}
 
@@ -151,7 +149,7 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 		if fresh.State() == models.StateNext {
 			t.Fatalf("q on an unindexed StateNext task must leave Next, still %v", fresh.State())
 		}
-		if app.focusQueueIDs[identity] {
+		if app.nextOrderIDs[identity] {
 			t.Fatal("removed task must not retain an order-index entry")
 		}
 	})
@@ -159,13 +157,13 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 	t.Run("adding unindexed StateNext task to Today removes it from Next", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewCrossProjectOutliner)
 		identity := taskIdentityFor(task, app.currentProject)
-		if app.focusQueueIDs[identity] {
+		if app.nextOrderIDs[identity] {
 			t.Fatal("precondition: StateNext task must start unindexed in the order list")
 		}
 
-		_ = app.toggleDailyPlan()
+		_ = app.toggleToday()
 
-		if !app.dailyPlanIDs[identity] {
+		if !app.todayIDs[identity] {
 			t.Fatal("task should be planned for Today")
 		}
 		fresh := app.currentProject.GetTaskByID(task.ID)
@@ -175,43 +173,11 @@ func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
 		if fresh.State() == models.StateNext {
 			t.Fatalf("Today and Next are exclusive: task must leave Next, still %v", fresh.State())
 		}
-		if app.focusQueueIDs[identity] {
+		if app.nextOrderIDs[identity] {
 			t.Fatal("task must not retain an order-index entry after moving to Today")
 		}
 	})
 
-	t.Run("ranking signal follows state not the persisted list", func(t *testing.T) {
-		project, err := models.NewProject("rank-proj", "rank", "")
-		if err != nil {
-			t.Fatalf("NewProject: %v", err)
-		}
-		nextTask := seedTask(t, 1, "On deck", models.StateNext)
-		staleTask := seedTask(t, 2, "Left Next", models.StateReady)
-		project.Tasks = []*models.Task{nextTask, staleTask}
-		project.BuildTaskTree()
-
-		// The persisted Focus Queue still lists the non-Next task (a stale index
-		// entry). Membership must ignore it and follow the workflow state.
-		domains := config.NewDomains()
-		domains.Planning.AddToFocusQueue(staleTask.ID, project.ID)
-		cfg := config.NewRuntimeState("", domains)
-
-		ranked := focus.RankCrossProjectTasks([]focus.FocusTask{
-			{Task: nextTask, Project: project},
-			{Task: staleTask, Project: project},
-		}, nil, cfg)
-
-		reasons := make(map[string]string, len(ranked))
-		for _, sft := range ranked {
-			reasons[sft.Task.ID] = sft.Reason
-		}
-		if !strings.Contains(reasons[nextTask.ID], "focus queue") {
-			t.Fatalf("unindexed StateNext task should carry the Next signal, reason=%q", reasons[nextTask.ID])
-		}
-		if strings.Contains(reasons[staleTask.ID], "focus queue") {
-			t.Fatalf("stale indexed non-Next task must not carry the Next signal, reason=%q", reasons[staleTask.ID])
-		}
-	})
 }
 
 // TestNextMembershipConsumersUseWorkflowState locks FR-008-002 for the live TUI
@@ -234,8 +200,8 @@ func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
 	// non-Next task. Membership must ignore the stale entry and include the
 	// unindexed StateNext task absent from the list.
 	domains := config.NewDomains()
-	domains.Planning.AddToFocusQueue(indexedNext.ID, project.ID)
-	domains.Planning.AddToFocusQueue(stale.ID, project.ID)
+	domains.Planning.AddToNextOrder(indexedNext.ID, project.ID)
+	domains.Planning.AddToNextOrder(stale.ID, project.ID)
 	runtime := config.NewRuntimeState("", domains)
 	setTestProjects(runtime, []*models.Project{project})
 
@@ -272,24 +238,6 @@ func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
 		}
 	})
 
-	t.Run("priority urgency signal follows state not the order index", func(t *testing.T) {
-		if !taskIsNext(unindexedNext) {
-			t.Fatal("unindexed StateNext task must be a Next member")
-		}
-		if taskIsNext(stale) {
-			t.Fatal("stale indexed non-Next task must not be a Next member")
-		}
-		// The urgency bonus is driven by taskIsNext, so the unindexed StateNext
-		// task carries the +200 Next bonus while the stale indexed task does not.
-		withNext := ComputeUrgencyScore(unindexedNext, taskIsNext(unindexedNext))
-		withoutNext := ComputeUrgencyScore(unindexedNext, false)
-		if withNext-withoutNext != 200 {
-			t.Fatalf("Next bonus = %d, want 200", withNext-withoutNext)
-		}
-		if got := ComputeUrgencyScore(stale, taskIsNext(stale)); got != ComputeUrgencyScore(stale, false) {
-			t.Fatal("stale indexed non-Next task must not receive the Next urgency bonus")
-		}
-	})
 }
 
 func TestTUIStateMachine_LatestUndoToastWins(t *testing.T) {
@@ -376,7 +324,7 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *Outl
 	app.wireOutlinerOperationExecutor(outliner)
 }
 
-func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T) {
+func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.T) {
 	project := &models.Project{
 		ID:   "selection-project",
 		Name: "Selection Project",
@@ -401,7 +349,9 @@ func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T
 		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateNext), true)
 		outliner.rebuildRows()
 
-		assertSelectedOutlinerTasksVisible(t, outliner, "next-task")
+		if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
+			t.Fatalf("single-project selection after filter = active %v count %d, want active/2", outliner.multiSelectMode, outliner.SelectedCount())
+		}
 	})
 
 	t.Run("cross project", func(t *testing.T) {
@@ -421,7 +371,9 @@ func TestTUIStateMachine_OutlinerSelectionStaysScopedToVisibleTasks(t *testing.T
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()
 
-		assertSelectedOutlinerTasksVisible(t, outliner, "next-task")
+		if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
+			t.Fatalf("cross-project selection after filter = active %v count %d, want active/2", outliner.multiSelectMode, outliner.SelectedCount())
+		}
 	})
 }
 
@@ -453,7 +405,7 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ Pres
 	project.NextShortID = 2
 	project.BuildTaskTree()
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newScenarioRepo(commitSvc, project)
 	repo.seed(t)
@@ -461,7 +413,6 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ Pres
 
 	cfg := newTestConfigAt(dataDir)
 	setTestProjects(cfg, []*models.Project{project})
-	cfg.Machine().CurrentProject = project.ID
 	manager := config.NewManager(filepath.Join(dataDir, "tt.json"))
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
@@ -477,10 +428,10 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ Pres
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[TaskIdentity]bool),
-		dailyPlan:            []FocusTask{},
-		dailyPlanIDs:         make(map[TaskIdentity]bool),
+		nextOrder:            []FocusTask{},
+		nextOrderIDs:         make(map[TaskIdentity]bool),
+		today:                []FocusTask{},
+		todayIDs:             make(map[TaskIdentity]bool),
 		operationRegistry:    NewOperationRegistry(),
 		navigation:           NewNavigationState(),
 	}
@@ -510,19 +461,19 @@ func assertExclusiveMembership(t *testing.T, app *AppModel, taskID string, inQue
 	t.Helper()
 
 	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
-	if app.focusQueueIDs[identity] != inQueue {
-		t.Fatalf("queue membership = %v, want %v", app.focusQueueIDs[identity], inQueue)
+	if app.nextOrderIDs[identity] != inQueue {
+		t.Fatalf("queue membership = %v, want %v", app.nextOrderIDs[identity], inQueue)
 	}
-	if app.dailyPlanIDs[identity] != inDaily {
-		t.Fatalf("daily-plan membership = %v, want %v", app.dailyPlanIDs[identity], inDaily)
+	if app.todayIDs[identity] != inDaily {
+		t.Fatalf("daily-plan membership = %v, want %v", app.todayIDs[identity], inDaily)
 	}
-	if app.focusQueueIDs[identity] && app.dailyPlanIDs[identity] {
+	if app.nextOrderIDs[identity] && app.todayIDs[identity] {
 		t.Fatal("task must never be in both queue and daily plan")
 	}
-	if got := taskMembershipCount(app.focusQueue, taskID); got != boolCount(inQueue) {
+	if got := taskMembershipCount(app.nextOrder, taskID); got != boolCount(inQueue) {
 		t.Fatalf("queue slice membership count = %d, want %d", got, boolCount(inQueue))
 	}
-	if got := taskMembershipCount(app.dailyPlan, taskID); got != boolCount(inDaily) {
+	if got := taskMembershipCount(app.today, taskID); got != boolCount(inDaily) {
 		t.Fatalf("daily-plan slice membership count = %d, want %d", got, boolCount(inDaily))
 	}
 }
@@ -542,37 +493,4 @@ func boolCount(v bool) int {
 		return 1
 	}
 	return 0
-}
-
-func assertSelectedOutlinerTasksVisible(t *testing.T, m *OutlinerModel, wantIDs ...string) {
-	t.Helper()
-
-	visible := make(map[TaskIdentity]bool)
-	for _, row := range m.rows {
-		if row.IsSectionHeader || row.IsSeparator || row.task == nil {
-			continue
-		}
-		visible[m.taskIdentityForRow(row)] = true
-	}
-
-	if got := m.SelectedCount(); got != len(wantIDs) {
-		t.Fatalf("selected task count = %d, want %d", got, len(wantIDs))
-	}
-	for _, wantID := range wantIDs {
-		found := false
-		for _, row := range m.rows {
-			if row.task != nil && row.task.ID == wantID && m.isRowSelected(row) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("expected selected task %q, got %v", wantID, m.selectedTaskIdentities)
-		}
-	}
-	for identity := range m.selectedTaskIdentities {
-		if !visible[identity] {
-			t.Fatalf("selected task %v is no longer visible", identity)
-		}
-	}
 }

@@ -9,28 +9,23 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 const (
 	scopeHubCategoryBase     ListCategoryID = "scope-hub:base"
 	scopeHubCategoryActive   ListCategoryID = "scope-hub:active"
 	scopeHubCategoryArchived ListCategoryID = "scope-hub:archived"
-	scopeHubCategoryTrash    ListCategoryID = "scope-hub:trash"
 
 	scopeHubActionCategoryContext  ListCategoryID = "scope-hub-actions:context"
 	scopeHubActionCategoryProject  ListCategoryID = "scope-hub-actions:project"
 	scopeHubActionCategoryRecovery ListCategoryID = "scope-hub-actions:recovery"
 	scopeHubActionCategoryDanger   ListCategoryID = "scope-hub-actions:danger"
-
-	scopeHubConfirmPurge = "scope-hub-purge"
 )
 
 var scopeHubCategories = []ListCategory{
 	{ID: scopeHubCategoryBase, Label: "Base Scopes"},
 	{ID: scopeHubCategoryActive, Label: "Active Projects"},
 	{ID: scopeHubCategoryArchived, Label: "Archived Projects"},
-	{ID: scopeHubCategoryTrash, Label: "Trash"},
 }
 
 var scopeHubActionCategories = []ListCategory{
@@ -46,25 +41,20 @@ const (
 	scopeHubEntryBase scopeHubEntryKind = iota
 	scopeHubEntryActiveProject
 	scopeHubEntryArchivedProject
-	scopeHubEntryTrash
 )
 
-// scopeHubEntry is the typed, lifecycle-safe payload behind one ListSurface
-// row. Trashed generations never masquerade as live projects.
+// scopeHubEntry is the typed, lifecycle-safe payload behind one ListSurface row.
 type scopeHubEntry struct {
 	Kind    scopeHubEntryKind
 	Scope   ContextScope
 	Project *models.Project
-	Trash   storage.TrashEntry
 }
 
 // scopeHubActionTarget freezes stable identity at the moment Space opens the
 // action sheet. No later cursor movement can retarget the selected operation.
 type scopeHubActionTarget struct {
-	Scope        ContextScope
-	ProjectID    string
-	TrashEntryID string
-	TrashSlug    string
+	Scope     ContextScope
+	ProjectID string
 }
 
 type scopeHubInlineActionMsg struct {
@@ -80,8 +70,6 @@ const (
 	operationScopeRenameContext OperationID = "tui.scope.rename-context"
 	operationScopeDeleteContext OperationID = "tui.scope.delete-context"
 	operationScopeCreateProject OperationID = "tui.scope.create-project"
-	operationScopeRestoreTrash  OperationID = "tui.scope.restore-trash"
-	operationScopePurgeTrash    OperationID = "tui.scope.purge-trash"
 )
 
 func scopeHubOperationDescriptors() []OperationDescriptor {
@@ -110,13 +98,11 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 		descriptor(operationScopeRenameContext, "Rename context", OperationCategoryScope, OperationRiskMutation),
 		descriptor(operationScopeDeleteContext, "Delete context", OperationCategoryScope, OperationRiskDestructive),
 		descriptor(operationScopeCreateProject, "New project", OperationCategoryProject, OperationRiskMutation, "create project"),
-		descriptor(operationScopeRestoreTrash, "Restore from trash", OperationCategoryProject, OperationRiskMutation, "recover project", "undelete"),
-		descriptor(operationScopePurgeTrash, "Permanently delete", OperationCategoryProject, OperationRiskDestructive, "purge trash"),
 	}
 }
 
 // registerScopeHubOperations makes the same stable operations available to the
-// Scope Hub action sheet, harness discovery, and future finder projections.
+// Scope Hub action sheet and harness discovery.
 func (m *AppModel) registerScopeHubOperations() error {
 	for _, descriptor := range scopeHubOperationDescriptors() {
 		id := descriptor.ID
@@ -153,15 +139,10 @@ func (m *AppModel) scopeHubOperationMessage(id OperationID, target scopeHubActio
 	case operationScopeCreateContext,
 		operationScopeEditContext,
 		operationScopeRenameContext,
-		operationScopeDeleteContext,
-		operationScopePurgeTrash:
+		operationScopeDeleteContext:
 		return scopeHubInlineActionMsg{OperationID: id, Target: target}
 	case operationScopeCreateProject:
 		return CreateProjectMsg{}
-	case operationScopeRestoreTrash:
-		if target.TrashEntryID != "" {
-			return RestoreFromTrashMsg{EntryID: target.TrashEntryID, Slug: target.TrashSlug}
-		}
 	default:
 	}
 	return ErrorMsg{Err: fmt.Errorf("scope action target is no longer available")}
@@ -209,19 +190,14 @@ func (m *ContextHubModel) currentScopeHubItemID() ListItemID {
 	return item.ID
 }
 
-// rebuildScopeSurface reloads all four lifecycle categories while preserving a
+// rebuildScopeSurface reloads the scope and lean project lifecycle categories while preserving a
 // stable cursor identity and the current fuzzy query.
 func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 	if m.runtime == nil {
 		return
 	}
 	m.summaries = ContextScopeSummaries(m.runtime)
-	trash, err := storage.ListTrashEntries(m.runtime.DataDir())
-	if err != nil {
-		m.notice = "Trash is unavailable: " + err.Error()
-		trash = nil
-	}
-	items := m.scopeHubItems(trash)
+	items := m.scopeHubItems()
 	if m.surface == nil {
 		surface, surfaceErr := NewListSurfaceModel(items, scopeHubCategories, ListSurfaceConfig{
 			SelectionMode: ListSelectionSingle,
@@ -231,7 +207,7 @@ func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 			},
 			NoMatchState: ListEmptyState{
 				Title:  "No contexts match this search.",
-				Detail: "Change the query to search scopes, projects, and trash.",
+				Detail: "Change the query to search scopes and projects.",
 			},
 		})
 		if surfaceErr != nil {
@@ -249,8 +225,8 @@ func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 	}
 }
 
-func (m *ContextHubModel) scopeHubItems(trash []storage.TrashEntry) []ListItem {
-	items := make([]ListItem, 0, len(m.summaries)+len(m.runtime.AllProjects())+len(trash))
+func (m *ContextHubModel) scopeHubItems() []ListItem {
+	items := make([]ListItem, 0, len(m.summaries)+len(m.runtime.AllProjects()))
 	for _, summary := range m.summaries {
 		scope := summary.Scope
 		label := contextScopeDisplayName(scope)
@@ -307,14 +283,9 @@ func (m *ContextHubModel) scopeHubItems(trash []storage.TrashEntry) []ListItem {
 				operationProjectOpen,
 				operationScopeCreateProject,
 				operationScopeRenameProject,
-				operationScopeStatusProject,
 				operationScopePinProject,
 				operationScopeArchiveProject,
 				operationScopeOpenProjectNote,
-				operationProjectMetrics,
-				operationProjectExport,
-				operationProjectOpenFolder,
-				operationProjectArchiveCompleted,
 			},
 			Data: scopeHubEntry{Kind: scopeHubEntryActiveProject, Project: project},
 		})
@@ -333,36 +304,9 @@ func (m *ContextHubModel) scopeHubItems(trash []storage.TrashEntry) []ListItem {
 			OperationIDs: []OperationID{
 				operationScopeRenameProject,
 				operationScopeRestoreProject,
-				operationProjectExport,
-				operationProjectOpenFolder,
+				operationScopeOpenProjectNote,
 			},
 			Data: scopeHubEntry{Kind: scopeHubEntryArchivedProject, Project: project},
-		})
-	}
-	for _, entry := range trash {
-		name := entry.Name
-		if name == "" {
-			name = entry.Slug
-		}
-		items = append(items, ListItem{
-			ID:            ListItemID("scope-hub:trash:" + entry.EntryID),
-			CategoryID:    scopeHubCategoryTrash,
-			PrimaryText:   name,
-			SecondaryText: "deleted " + storage.FormatRelativeTime(entry.DeletedAt),
-			Aliases:       []string{name, entry.Slug, entry.EntryID, "trash", "deleted"},
-			Preview: ListPreview{
-				Title:   name,
-				Summary: "Deleted project generation",
-				Fields: []ListPreviewField{
-					{Label: "Slug", Value: entry.Slug},
-					{Label: "Deleted", Value: storage.FormatRelativeTime(entry.DeletedAt)},
-					{Label: "Reason", Value: entry.Reason},
-					{Label: "Legacy", Value: strconv.FormatBool(entry.Legacy)},
-				},
-				Body: "Restore keeps the captured project metadata and machine references. Permanent deletion cannot be undone.",
-			},
-			OperationIDs: []OperationID{operationScopeRestoreTrash, operationScopePurgeTrash},
-			Data:         scopeHubEntry{Kind: scopeHubEntryTrash, Trash: entry},
 		})
 	}
 	return items
@@ -442,9 +386,9 @@ func (m *ContextHubModel) activeProjectFocusID() string {
 	return m.focusedProjectID
 }
 
-func (m *ContextHubModel) scopeHubLifecycleCounts() (active, archived, trash int) {
+func (m *ContextHubModel) scopeHubLifecycleCounts() (active, archived int) {
 	if m.surface == nil {
-		return len(m.runtime.ActiveProjects()), len(m.runtime.ArchivedProjects()), 0
+		return len(m.runtime.ActiveProjects()), len(m.runtime.ArchivedProjects())
 	}
 	for _, item := range m.surface.Items() {
 		entry, ok := item.Data.(scopeHubEntry)
@@ -456,12 +400,10 @@ func (m *ContextHubModel) scopeHubLifecycleCounts() (active, archived, trash int
 			active++
 		case scopeHubEntryArchivedProject:
 			archived++
-		case scopeHubEntryTrash:
-			trash++
 		default:
 		}
 	}
-	return active, archived, trash
+	return active, archived
 }
 
 func (m *ContextHubModel) selectedScopeHubEntry() (scopeHubEntry, bool) {
@@ -496,8 +438,6 @@ func (m *ContextHubModel) activateScopeHubCurrent() tea.Cmd {
 		}
 	case scopeHubEntryArchivedProject:
 		m.notice = "Archived projects must be unarchived from Space actions before they can be focused"
-	case scopeHubEntryTrash:
-		m.notice = "Deleted projects must be restored from Space actions before they can be focused"
 	}
 	return nil
 }
@@ -522,10 +462,6 @@ func scopeHubTarget(entry scopeHubEntry) scopeHubActionTarget {
 	target := scopeHubActionTarget{Scope: entry.Scope}
 	if entry.Project != nil {
 		target.ProjectID = entry.Project.ID
-	}
-	if entry.Kind == scopeHubEntryTrash {
-		target.TrashEntryID = entry.Trash.EntryID
-		target.TrashSlug = entry.Trash.Slug
 	}
 	return target
 }
@@ -578,7 +514,7 @@ func scopeHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
 		operationScopeEditContext,
 		operationScopeRenameContext:
 		return scopeHubActionCategoryContext
-	case operationScopeRestoreProject, operationScopeRestoreTrash:
+	case operationScopeRestoreProject:
 		return scopeHubActionCategoryRecovery
 	default:
 		return scopeHubActionCategoryProject
@@ -593,11 +529,6 @@ func scopeHubEntryLabel(entry scopeHubEntry) string {
 		if entry.Project != nil {
 			return entry.Project.Name
 		}
-	case scopeHubEntryTrash:
-		if entry.Trash.Name != "" {
-			return entry.Trash.Name
-		}
-		return entry.Trash.Slug
 	}
 	return "Scope item"
 }
@@ -714,16 +645,6 @@ func (m *ContextHubModel) applyScopeHubInlineAction(msg scopeHubInlineActionMsg)
 	case operationScopeDeleteContext:
 		m.focusScopeHubContext(msg.Target.Scope)
 		m.requestDeleteSelected()
-	case operationScopePurgeTrash:
-		if msg.Target.TrashEntryID == "" {
-			m.notice = "Trash entry is no longer available"
-			return
-		}
-		m.pendingPurge = msg.Target
-		m.confirm.Show(
-			scopeHubConfirmPurge,
-			fmt.Sprintf("Permanently delete %q from trash? This cannot be undone.", msg.Target.TrashSlug),
-		)
 	default:
 	}
 }
@@ -757,8 +678,8 @@ func (m *ContextHubModel) scopeHubActionFooterHelpVariants() []string {
 	}
 }
 
-// RefreshScopeHub re-reads contexts, project lifecycle, and trash after an
-// external project editor or checked lifecycle mutation completes.
+// RefreshScopeHub re-reads contexts and project lifecycle after an external
+// project editor or checked lifecycle mutation completes.
 func (m *ContextHubModel) RefreshScopeHub() {
 	m.rebuildScopeSurface(m.currentScopeHubItemID())
 }

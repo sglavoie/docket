@@ -3,10 +3,6 @@ package config
 import (
 	"encoding/json"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/models"
-	tasktemplate "github.com/sglavoie/tt/internal/template"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 func baselineJSONFields(t *testing.T, value any) map[string]json.RawMessage {
@@ -36,55 +32,20 @@ func requireBaselineFields(t *testing.T, fields map[string]json.RawMessage, pres
 	}
 }
 
-// TestDailyLoopCurrentPlanningAndAutomationJSONShapes records each canonical
-// persistence shape as its staged migration lands.
-func TestDailyLoopCurrentPlanningAndAutomationJSONShapes(t *testing.T) {
+// TestDailyLoopCurrentPlanningJSONShape records the canonical planning
+// persistence shape.
+func TestDailyLoopCurrentPlanningJSONShape(t *testing.T) {
 	t.Run("planning memberships", func(t *testing.T) {
 		fields := baselineJSONFields(t, PlanningState{
-			FocusQueue: []FocusQueueItem{{TaskID: "next-task", ProjectID: "project"}},
-			DailyPlan:  []DailyPlanItem{{TaskID: "today-task", ProjectID: "project"}},
+			NextOrder: []ProjectTaskLocator{{TaskID: "next-task", ProjectID: "project"}},
+			Today:     []ProjectTaskLocator{{TaskID: "today-task", ProjectID: "project"}},
 		})
-		requireBaselineFields(t, fields, []string{"focus_queue", "daily_plan"}, nil)
+		requireBaselineFields(
+			t,
+			fields,
+			[]string{"today", "next_order"},
+			[]string{"focus_queue", "daily_plan", "streak_count", "alert_dismissals", "saved_views", "smart_lists"},
+		)
 	})
 
-	t.Run("planning drops retired sections", func(t *testing.T) {
-		fields := baselineJSONFields(t, PlanningState{StreakCount: 3})
-		requireBaselineFields(t, fields, nil, []string{"saved_views", "smart_lists"})
-	})
-
-	t.Run("task template", func(t *testing.T) {
-		fields := baselineJSONFields(t, tasktemplate.TaskTemplate{
-			ID:      "template",
-			Name:    "Canonical template",
-			Enabled: true,
-			Type:    models.TaskTypeTask,
-			State:   models.StateInbox,
-		})
-		requireBaselineFields(t, fields, []string{"state"}, []string{"section"})
-	})
-
-	t.Run("workflow rule", func(t *testing.T) {
-		fields := baselineJSONFields(t, workflow.WorkflowRule{
-			ID:      "rule",
-			Name:    "Canonical workflow",
-			Enabled: true,
-			Triggers: []workflow.RuleTrigger{{
-				Field:     workflow.FieldStateChanged,
-				Operation: workflow.OpEquals,
-				Value:     "ready,next->in_progress",
-			}},
-			Actions: []workflow.RuleAction{{
-				ActionType: workflow.ActionSetState,
-				Value:      string(models.StateDone),
-			}},
-			Scope: &workflow.RuleScope{States: []models.WorkflowState{models.StateNext}},
-		})
-		requireBaselineFields(t, fields, []string{"triggers", "actions", "scope"}, []string{"trigger"})
-
-		var scopeFields map[string]json.RawMessage
-		if err := json.Unmarshal(fields["scope"], &scopeFields); err != nil {
-			t.Fatalf("decode workflow scope: %v", err)
-		}
-		requireBaselineFields(t, scopeFields, []string{"states"}, []string{"sections"})
-	})
 }

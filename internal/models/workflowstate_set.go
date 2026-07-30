@@ -30,7 +30,7 @@ func NewWorkflowStateSet(states ...WorkflowState) (WorkflowStateSet, error) {
 	return set, nil
 }
 
-// AllWorkflowStateSet returns a set containing all ten canonical states.
+// AllWorkflowStateSet returns a set containing all nine target states.
 func AllWorkflowStateSet() WorkflowStateSet {
 	set, err := NewWorkflowStateSet(AllWorkflowStates()...)
 	if err != nil {

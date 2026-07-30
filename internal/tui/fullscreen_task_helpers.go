@@ -55,16 +55,11 @@ func renderTaskScopedFullscreenTitle(prefix string, task *models.Task, subtitle 
 	return fitStyledChromeToWidth("fullscreen title", renderFullscreenTitleContent(titleContent, subtitle), width)
 }
 
-// titleCounterAlertReserve mirrors the alert-indicator reserve used by
-// fullscreen views so the right-aligned open-loops counter never collides with
-// the proactive-alert badge rendered by the app shell.
-const titleCounterAlertReserve = 10
-
 // renderFullscreenTitleWithCounter wraps renderFullscreenTitle with a
 // right-aligned open-loops counter. The counter is dropped silently when
-// width <= 0, counter == "", or there isn't enough room left after the title +
-// subtitle + alert reserve to render it cleanly (the subtitle wins because it
-// is view-state-specific).
+// width <= 0, counter == "", or there isn't enough room left after the title
+// and subtitle to render it cleanly (the subtitle wins because it is
+// view-state-specific).
 func renderFullscreenTitleWithCounter(title, subtitle, counter string, width int, accent ...color.Color) string {
 	return appendFullscreenTitleCounter(renderFullscreenTitle(title, subtitle, accent...), counter, width)
 }
@@ -74,7 +69,7 @@ func appendFullscreenTitleCounter(base, counter string, width int) string {
 		return base
 	}
 	rendered := MutedStyle.Render(counter)
-	gap := width - lipgloss.Width(base) - lipgloss.Width(rendered) - titleCounterAlertReserve
+	gap := width - lipgloss.Width(base) - lipgloss.Width(rendered)
 	if gap <= 0 {
 		return base
 	}
@@ -91,10 +86,8 @@ func renderPriorityBadge(priority int) string {
 	return GetPriorityStyle(priority).Render(PriorityIcon(priority))
 }
 
-// renderTaskHeaderContent builds the common task header content:
-// title, type badge + status line, priority badge + ID, and optional snooze line.
+// renderTaskHeaderContent builds the common task header content.
 func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnooze bool) string {
-	typeStyle := GetTypeStyle(string(task.Type))
 	state := task.State()
 	statusStyle := GetStateStyle(state)
 
@@ -103,14 +96,13 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 	}
 
 	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
-	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(state.Icon() + " " + string(state))
 	idLine := fmt.Sprintf("#%d", task.ShortID)
 	if priorityBadge := renderPriorityBadge(task.Priority); priorityBadge != "" {
 		idLine += " " + priorityBadge
 	}
 
-	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
+	content := title + "\n" + statusLine + " " + idLine
 
 	if showSnooze && task.IsSnoozed() {
 		snoozeStr := task.SnoozedUntil.Format("Jan 2")
@@ -120,37 +112,14 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 		content += "\n" + MutedStyle.Render("zzz "+snoozeStr)
 	}
 
-	if parked := parkedTaskCardLine(task); parked != "" {
-		content += "\n" + parked
-	}
-
 	return content
-}
-
-// parkedTaskCardLine renders the parked status shown at the end of the Task
-// card (task-detail header). Format mirrors the former
-// standalone banner: "⏸ Parked <relative time> — <note>".
-func parkedTaskCardLine(task *models.Task) string {
-	if task == nil || !task.IsParked() {
-		return ""
-	}
-	parts := []string{"⏸ Parked"}
-	if task.ParkedAt != nil {
-		parts = append(parts, formatRelativeTime(*task.ParkedAt))
-	}
-	line := strings.Join(parts, " ")
-	if note := strings.TrimSpace(task.ParkedNote); note != "" {
-		line += " — " + note
-	}
-	return InfoStatusStyle.Render(line)
 }
 
 // renderDueDateContentOpts builds the styled due date string. When hideRecurrence
 // is true, the "Recurs:" line is omitted (useful when a dedicated Recurrence card
-// is shown nearby). timeFormat is a Go time layout string.
-func renderDueDateContentOpts(task *models.Task, hideRecurrence bool, timeFormat string) string {
+// is shown nearby).
+func renderDueDateContentOpts(task *models.Task, hideRecurrence bool) string {
 	dueAbsolute := task.DueDate.Format(util.DateFormat)
-	dueAbsolute = AppendTimeIfHasTime(task, dueAbsolute, timeFormat)
 	dueRelative := formatRelativeDueVerbose(task.DueDate)
 	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
 
@@ -190,23 +159,6 @@ func renderMetadataContentOpts(task *models.Task, project *models.Project, inner
 		sectionStyle := lipgloss.NewStyle().Foreground(GetWorkflowStateGroupAccent(taskStateGroup(task)))
 		sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 		lines = append(lines, sectionLine)
-	}
-
-	if task.Source != "" {
-		lines = append(lines, MutedStyle.Render("Source:  ")+task.Source)
-	}
-	if task.URL != "" {
-		display := truncateToVisualWidth(task.URL, innerWidth-5)
-		link := Hyperlink(task.URL, display)
-		lines = append(lines, MutedStyle.Render("URL:     ")+link)
-	}
-
-	if len(showAttrs) == 0 || showAttrs[0] {
-		attrLines := formatTaskAttributes(task, innerWidth)
-		if len(attrLines) > 0 {
-			lines = append(lines, "")
-			lines = append(lines, attrLines...)
-		}
 	}
 
 	return strings.Join(lines, "\n")

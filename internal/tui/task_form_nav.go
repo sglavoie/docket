@@ -1,10 +1,6 @@
 package tui
 
-import (
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import tea "charm.land/bubbletea/v2"
 
 func (m *TaskFormModel) Init() tea.Cmd { return nil }
 
@@ -49,13 +45,13 @@ func (m *TaskFormModel) prevTab() {
 }
 
 // fieldCountForActiveTab returns the number of focusable fields on the current tab.
-// Basics tab includes dynamic type-attr rows. Children tab is computed dynamically.
+// Children tab is computed dynamically.
 func (m *TaskFormModel) fieldCountForActiveTab() int {
 	if m.activeTab == formTabBasics {
 		if m.collapsedBasics {
-			return 4 // Title, Type, Priority, "+ more fields"
+			return 3 // Title, Priority, "+ more fields"
 		}
-		return formBasicsFieldCount + formAttrFieldCount(m.draft.taskType)
+		return formBasicsFieldCount
 	}
 	if m.activeTab == formTabSchedule && m.collapsedSchedule {
 		return 2 // Due, "+ more fields"
@@ -72,7 +68,7 @@ func (m *TaskFormModel) fieldCountForChildren() int {
 	if m.checklistExpanded {
 		count += len(m.draft.checklist)
 	}
-	if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) {
+	if m.mode == FormModeCreate {
 		count++ // subtasks section header
 		if m.subtasksExpanded {
 			count += len(m.draft.subtasks)
@@ -101,7 +97,7 @@ func (m *TaskFormModel) focusedChildItem() (childFocusKind, int) {
 		}
 	}
 
-	if m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType) && m.subtasksExpanded {
+	if m.mode == FormModeCreate && m.subtasksExpanded {
 		stStart := m.childrenSubtasksHeaderIdx() + 1
 		stEnd := stStart + len(m.draft.subtasks)
 		if m.focusIndex >= stStart && m.focusIndex < stEnd {
@@ -130,9 +126,6 @@ func (m *TaskFormModel) focusNext() {
 		return
 	}
 	m.focusIndex = (m.focusIndex + 1) % count
-	if m.isFieldDisabled(m.focusIndex) {
-		m.focusIndex = (m.focusIndex + 1) % count
-	}
 }
 
 func (m *TaskFormModel) focusPrev() {
@@ -141,35 +134,4 @@ func (m *TaskFormModel) focusPrev() {
 		return
 	}
 	m.focusIndex = (m.focusIndex + count - 1) % count
-	if m.isFieldDisabled(m.focusIndex) {
-		m.focusIndex = (m.focusIndex + count - 1) % count
-	}
-}
-
-// isFieldDisabled returns true when the field at the given index should be
-// skipped during navigation. Currently only the Parent row (Basics field 4)
-// is disabled — Epics are always top-level and cannot have a parent.
-func (m *TaskFormModel) isFieldDisabled(idx int) bool {
-	return m.activeTab == formTabBasics && idx == 4 && m.draft.taskType == models.TaskTypeEpic
-}
-
-// attrRowFocused returns true when the active tab is Basics and focus is on
-// the attr row at the given local index (0-based within the type-attr section).
-func (m *TaskFormModel) attrRowFocused(localIdx int) bool {
-	return m.activeTab == formTabBasics && m.focusIndex == formBasicsFieldCount+localIdx
-}
-
-// formTypeCanHaveSubtasks reports whether a task type can have subtask children.
-func formTypeCanHaveSubtasks(t models.TaskType) bool {
-	return t == models.TaskTypeEpic || t == models.TaskTypeStory
-}
-
-// formSubtaskTypeCursorFor returns the cursor index in formSubtaskTypes for the given type.
-func formSubtaskTypeCursorFor(t models.TaskType) int {
-	for i, st := range formSubtaskTypes {
-		if st == t {
-			return i
-		}
-	}
-	return 0
 }

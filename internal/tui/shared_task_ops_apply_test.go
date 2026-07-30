@@ -7,21 +7,19 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestApplyBulkDueDate_ClearsHasTime(t *testing.T) {
+func TestApplyBulkDueDate_SetsDueDate(t *testing.T) {
 	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task one")
+	task1, err := models.NewGenericTask("task-1", 1, "Task one")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.HasTime = true // Simulate a task that previously had a time component
-	task2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Task two")
+	task2, err := models.NewGenericTask("task-2", 2, "Task two")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.HasTime = true
 	project.Tasks = []*models.Task{task1, task2}
 	project.BuildTaskTree()
 
@@ -32,9 +30,6 @@ func TestApplyBulkDueDate_ClearsHasTime(t *testing.T) {
 	}
 
 	for _, task := range project.Tasks {
-		if task.HasTime {
-			t.Errorf("task %s: HasTime should be false after bulk due date set", task.ID)
-		}
 		if task.DueDate == nil {
 			t.Errorf("task %s: DueDate should be set", task.ID)
 		}
@@ -46,11 +41,11 @@ func TestApplyBulkDueDate_EachTaskOwnsDueDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task one")
+	task1, err := models.NewGenericTask("task-1", 1, "Task one")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Task two")
+	task2, err := models.NewGenericTask("task-2", 2, "Task two")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,16 +65,15 @@ func TestApplyBulkDueDate_EachTaskOwnsDueDate(t *testing.T) {
 	}
 }
 
-func TestApplyBulkDueDate_ClearsHasTimeOnNil(t *testing.T) {
+func TestApplyBulkDueDate_ClearsDueDateOnNil(t *testing.T) {
 	project, err := models.NewProject("proj-1", "TestProject", t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task one")
+	task, err := models.NewGenericTask("task-1", 1, "Task one")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.HasTime = true
 	tomorrow := time.Now().AddDate(0, 0, 1)
 	task.DueDate = &tomorrow
 	project.Tasks = []*models.Task{task}
@@ -91,8 +85,5 @@ func TestApplyBulkDueDate_ClearsHasTimeOnNil(t *testing.T) {
 	}
 	if task.DueDate != nil {
 		t.Error("DueDate should be nil after clearing")
-	}
-	if task.HasTime {
-		t.Error("HasTime should be false after clearing due date")
 	}
 }

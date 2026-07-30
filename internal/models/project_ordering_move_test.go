@@ -23,11 +23,11 @@ func TestMoveTaskUpCompletionBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // uncompleted
+	task1, err := NewGenericTask("1", 1, "Task 1") // uncompleted
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,11 +56,11 @@ func TestMoveTaskDownCompletionBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // uncompleted
+	task1, err := NewGenericTask("1", 1, "Task 1") // uncompleted
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,12 +89,12 @@ func TestMoveTaskUpWithinCompletedGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.Complete()
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,11 +122,11 @@ func TestMoveTaskDownWithinUncompletedGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,15 +153,15 @@ func TestMoveChildTaskIgnoresBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,15 +194,15 @@ func TestSwapTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,15 +228,15 @@ func TestMoveTaskDownRebuildsParentChildrenOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,19 +263,19 @@ func TestSwapTasksRebuildsStoryChildrenOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	story, err := NewGenericTask("story", 2, "Story")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := NewTask("task1", 3, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task1", 3, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 4, TaskTypeBug, "Task 2")
+	task2, err := NewGenericTask("task2", 4, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,11 +300,11 @@ func TestSwapTasksUpdatesCanonicalTimestampsForClonedInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,14 +331,14 @@ func TestSwapTasksNilTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	project.Tasks = []*Task{task1}
 
 	// Swap with a task not in the project — should be a no-op
-	notInProject, err := NewTask("ghost", 99, TaskTypeTask, "Ghost")
+	notInProject, err := NewGenericTask("ghost", 99, "Ghost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,11 +362,11 @@ func TestMoveTaskNilTaskNoOp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}

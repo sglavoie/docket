@@ -8,6 +8,10 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ShowTaskInspectorMsg:
+		m.showInspectorOverlay(msg.Task, msg.Project)
+		return true, nil
+
 	case ShowTaskDetailMsg:
 		return m.handleShowTaskDetail(msg)
 
@@ -19,9 +23,6 @@ func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTaskDecisionsMsg:
 		return m.handleShowTaskDecisions(msg)
-
-	case OpenTaskActivityMsg:
-		return m.handleOpenTaskActivity(msg)
 
 	case TaskDetailTabChangedMsg:
 		return true, m.syncTaskDetailTab(msg.Tab)
@@ -47,9 +48,4 @@ func (m *AppModel) handleShowTaskChecklist(msg ShowTaskChecklistMsg) (bool, tea.
 // handleShowTaskDecisions handles the ShowTaskDecisionsMsg.
 func (m *AppModel) handleShowTaskDecisions(msg ShowTaskDecisionsMsg) (bool, tea.Cmd) {
 	return true, m.activateTaskDetail(msg.Task, msg.Project, TaskDecisions)
-}
-
-// handleOpenTaskActivity handles the OpenTaskActivityMsg.
-func (m *AppModel) handleOpenTaskActivity(msg OpenTaskActivityMsg) (bool, tea.Cmd) {
-	return true, m.activateTaskDetail(msg.Task, msg.Project, TaskActivity)
 }

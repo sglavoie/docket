@@ -15,7 +15,6 @@ type ContextActionSheetHost string
 
 const (
 	ContextActionHostOutliner ContextActionSheetHost = "outliner"
-	ContextActionHostFinder   ContextActionSheetHost = "finder"
 	ContextActionHostScopeHub ContextActionSheetHost = "scope-hub"
 )
 
@@ -27,9 +26,6 @@ const (
 	// ContextActionCompleteCloseSheet closes only the sheet and leaves the host
 	// route exactly as it was.
 	ContextActionCompleteCloseSheet ContextActionSheetCompletion = "close-sheet"
-	// ContextActionCompleteCloseHost also asks the host to close the overlay
-	// stack it owns, once.
-	ContextActionCompleteCloseHost ContextActionSheetCompletion = "close-host"
 )
 
 // ContextActionSheetClosedMsg dismisses a sheet without executing anything.
@@ -44,15 +40,6 @@ type ContextActionSheetResultMsg struct {
 	Completion ContextActionSheetCompletion
 	Request    OperationExecutionRequest
 	Result     OperationExecutionResult
-}
-
-// ContextActionSheetCompletedMsg tells a host that owns its own overlay stack
-// to close it after one successful action. Cmd carries the action's own outcome
-// so the host can unwind first and then release it; batching the two instead
-// would let a destination the action opens be popped along with the host.
-type ContextActionSheetCompletedMsg struct {
-	Host ContextActionSheetHost
-	Cmd  tea.Cmd
 }
 
 // ContextActionSheetConfig is the complete host-supplied description of one
@@ -71,6 +58,9 @@ type ContextActionSheetConfig struct {
 	CategoryFor  func(OperationDescriptor) ListCategoryID
 	SecondaryFor func(OperationDescriptor) string
 	DisabledFor  func(OperationDescriptor) string
+	// ImmediateFilter makes printable text update the plain list query without
+	// requiring a search-mode key. Arrow keys remain navigation.
+	ImmediateFilter bool
 	// Value is a frozen host payload delivered to the executor with every
 	// request raised from this sheet.
 	Value    any
@@ -84,7 +74,7 @@ type ContextActionSheetConfig struct {
 
 // ContextActionSheetModel is the shared ListSurface projection of the
 // operations available to one frozen target set. It knows nothing about tasks,
-// Finder, or Scope Hub: hosts supply identity, ordering, and decoration.
+// Scope Hub or the Outliner: hosts supply identity, ordering, and decoration.
 type ContextActionSheetModel struct {
 	surface   *ListSurfaceModel
 	registry  *OperationRegistry
@@ -251,11 +241,61 @@ func (model *ContextActionSheetModel) Execute(
 }
 
 // handleKey implements the shell's compact key-interceptor contract.
+//
+//nolint:gocyclo // Key dispatch stays centralized so every action-sheet state has one unwind path.
 func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
 		return nil, true, ContextActionSheetClosedMsg{}
 	}
 	key := msg.String()
+	if model.config.ImmediateFilter {
+		switch key {
+		case "esc":
+			if model.surface.Query().Raw != "" {
+				model.surface.SetQuery("")
+				model.searching = false
+				return nil, false, nil
+			}
+			return nil, true, ContextActionSheetClosedMsg{Host: model.config.Host}
+		case "backspace":
+			query := model.surface.Query().Raw
+			if query != "" {
+				_, size := utf8.DecodeLastRuneInString(query)
+				model.surface.SetQuery(query[:len(query)-size])
+			}
+			model.searching = model.surface.Query().Raw != ""
+			return nil, false, nil
+		case "/":
+			model.searching = true
+			return nil, false, nil
+		case "up":
+			model.surface.MoveCursor(-1)
+			return nil, false, nil
+		case "down":
+			model.surface.MoveCursor(1)
+			return nil, false, nil
+		case "home":
+			model.surface.MoveCursorToStart()
+			return nil, false, nil
+		case "end":
+			model.surface.MoveCursorToEnd()
+			return nil, false, nil
+		case "pgup":
+			model.surface.PageCursor(-1)
+			return nil, false, nil
+		case "pgdown":
+			model.surface.PageCursor(1)
+			return nil, false, nil
+		case "enter":
+			return model.activateCursor()
+		default:
+			if msg.Text != "" {
+				model.surface.SetQuery(model.surface.Query().Raw + msg.Text)
+				model.searching = true
+			}
+			return nil, false, nil
+		}
+	}
 	if model.searching {
 		switch key {
 		case "esc":
@@ -338,6 +378,9 @@ func (model *ContextActionSheetModel) render(width int) string {
 	listHeight := min(max(len(model.surface.Rows()), 7), 16)
 	query := model.surface.Query().Raw
 	search := "Press / to search"
+	if model.config.ImmediateFilter {
+		search = "Type to filter"
+	}
 	if model.searching || query != "" {
 		cursor := ""
 		if model.searching {
@@ -360,6 +403,10 @@ func (model *ContextActionSheetModel) render(width int) string {
 		titleText += ": " + truncateToVisualWidth(model.config.Subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
-	footer := HelpStyle.Render("Enter choose · / search · Esc close")
+	footerText := "Enter choose · / search · Esc close"
+	if model.config.ImmediateFilter {
+		footerText = "Type filter · ↑↓ move · Enter · Esc"
+	}
+	footer := HelpStyle.Render(footerText)
 	return renderTitledBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
 }

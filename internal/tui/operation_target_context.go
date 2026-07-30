@@ -22,9 +22,6 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	ctx := PresentationCommandContext(view)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	ctx.FocusedProjectID = m.operationFocusedProjectID()
-	if review, ok := m.activeView().(*ReviewHubModel); ok {
-		ctx = review.CommandContext()
-	}
 	if manage, ok := m.activeView().(*ManageHubModel); ok {
 		ctx = manage.CommandContext()
 	}
@@ -38,7 +35,7 @@ func (m *AppModel) operationCommandContext() CommandContext {
 			Mutable:   !task.IsTerminalState(),
 			Archived:  project.Archived,
 		}
-	} else if m.currentProject != nil {
+	} else if m.activeOutliner() == nil && m.currentProject != nil {
 		ctx.Entity.ProjectID = m.currentProject.ID
 		ctx.Entity.Archived = m.currentProject.Archived
 		ctx.Entity.Mutable = !m.currentProject.Archived
@@ -96,9 +93,6 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 			}
 		}
 		return normalizedProjectIDs(ids)
-	}
-	if review, ok := m.activeView().(*ReviewHubModel); ok {
-		return review.ScopeProjectIDs()
 	}
 	if manage, ok := m.activeView().(*ManageHubModel); ok {
 		return manage.ScopeProjectIDs()

@@ -15,7 +15,7 @@ import (
 // validates every retained image before staging the first target. One missing
 // blob leaves all user files and both ledger stacks untouched.
 func TestLedgerRestoreAtomicPreflightRejectsMissingBlob(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	first := filepath.Join(root, "projects", "alpha", "tasks.md")
 	second := filepath.Join(root, "projects", "beta", "tasks.md")
 	writeFile(t, first, "alpha after")
@@ -41,7 +41,7 @@ func TestLedgerRestoreAtomicPreflightRejectsMissingBlob(t *testing.T) {
 // no longer matches the entry's after-image. Preflight detects the drift before
 // the earlier artifact can be restored.
 func TestLedgerRestoreAtomicRevisionDrift(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	first := filepath.Join(root, "projects", "alpha", "tasks.md")
 	second := filepath.Join(root, "projects", "beta", "tasks.md")
 	writeFile(t, first, "alpha after")
@@ -102,7 +102,7 @@ func TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation(t *testing.T) {
 // outcomes: commit-then-undo, or undo followed by a stale commit rejection.
 func TestUndoConcurrentCommitSerializesLedgerRestore(t *testing.T) {
 	root := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), testWorkspaceLedgerDepth, []string{root})
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), []string{root})
 	service := NewCommitServiceWithLedger(filepath.Join(root, ".tt", "transactions"), []string{root}, ledger)
 	path := filepath.Join(root, "notes", "race.md")
 	writeFile(t, path, "before")
@@ -162,10 +162,11 @@ func TestUndoConcurrentCommitSerializesLedgerRestore(t *testing.T) {
 }
 
 // TestUndoRedoConcurrentCallersSerializeStackMovement starts global undo and
-// redo together while both stacks are populated. The result must match one of
-// the two legal serial orders, with neither entry duplicated or lost.
+// redo together after a forward record invalidated the old redo branch. The
+// result must match one of the two legal serial orders, with the reachable entry
+// neither duplicated nor lost.
 func TestUndoRedoConcurrentCallersSerializeStackMovement(t *testing.T) {
-	ledger, root := newTestLedger(t, testWorkspaceLedgerDepth)
+	ledger, root := newTestLedger(t)
 	first := filepath.Join(root, "first.md")
 	second := filepath.Join(root, "second.md")
 	writeFile(t, first, "one after")
@@ -179,7 +180,7 @@ func TestUndoRedoConcurrentCallersSerializeStackMovement(t *testing.T) {
 	recordLedgerRestoreGroup(t, ledger, "txn-two", "second", []LedgerArtifact{{
 		Path: second, BeforeExists: true, Before: []byte("two before"), AfterExists: true, After: []byte("two after"),
 	}})
-	assertLedgerRestoreStacks(t, ledger, 1, 1)
+	assertLedgerRestoreStacks(t, ledger, 1, 0)
 
 	type concurrentRestore struct {
 		action string
@@ -201,23 +202,23 @@ func TestUndoRedoConcurrentCallersSerializeStackMovement(t *testing.T) {
 	close(start)
 	undo := <-undoDone
 	redo := <-redoDone
-	if undo.err != nil || redo.err != nil {
-		t.Fatalf("concurrent restore errors: undo=%v redo=%v", undo.err, redo.err)
-	}
-	if undo.action != "second" {
+	if undo.err != nil || undo.action != "second" {
 		t.Fatalf("concurrent undo action = %q, want second", undo.action)
 	}
-	switch redo.action {
-	case "first":
-		assertLedgerRestoreContent(t, first, "one after")
-		assertLedgerRestoreContent(t, second, "two before")
-	case "second":
-		assertLedgerRestoreContent(t, first, "one before")
+	switch {
+	case redo.err == nil:
+		if redo.action != "second" {
+			t.Fatalf("concurrent redo action = %q, want second", redo.action)
+		}
 		assertLedgerRestoreContent(t, second, "two after")
+		assertLedgerRestoreStacks(t, ledger, 1, 0)
+	case redo.action == "" && redo.err != nil:
+		assertLedgerRestoreContent(t, second, "two before")
+		assertLedgerRestoreStacks(t, ledger, 0, 1)
 	default:
-		t.Fatalf("concurrent redo action = %q, want first or second", redo.action)
+		t.Fatalf("concurrent redo = action %q err %v, want txn-two or unavailable", redo.action, redo.err)
 	}
-	assertLedgerRestoreStacks(t, ledger, 1, 1)
+	assertLedgerRestoreContent(t, first, "one before")
 	lf, err := ledger.load()
 	if err != nil {
 		t.Fatalf("load ledger: %v", err)
@@ -229,7 +230,7 @@ func TestUndoRedoConcurrentCallersSerializeStackMovement(t *testing.T) {
 		}
 		seen[entry.TransactionID] = true
 	}
-	if !seen["txn-one"] || !seen["txn-two"] {
+	if seen["txn-one"] || !seen["txn-two"] {
 		t.Fatalf("ledger entries after concurrent restores = %v", seen)
 	}
 }
@@ -247,7 +248,7 @@ func prepareLedgerRestoreCrashFixture(t *testing.T) ledgerRestoreCrashFixture {
 	t.Helper()
 	root := t.TempDir()
 	transactionsDir := filepath.Join(root, ".tt", "transactions")
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), testWorkspaceLedgerDepth, []string{root})
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), []string{root})
 	editedPath := filepath.Join(root, "projects", "alpha", "tasks.md")
 	createdPath := filepath.Join(root, "notes", "created.md")
 	writeFile(t, editedPath, "edited after")

@@ -2,18 +2,18 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
+	if m.combined {
+		return m.updateCombined(msg)
+	}
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
@@ -163,24 +163,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 				return m, nil
 			}
 			return m, m.deleteCurrentNote()
-		case "L":
-			if m.isGlobal {
-				return m, nil // no task linking in global notes
-			}
-			if m.multiSelectMode && m.selectedNoteCount() > 0 {
-				return m, m.bulkLinkNotes()
-			}
-			return m, m.linkCurrentNote()
-		case "m":
-			if m.isGlobal {
-				return m, m.moveNoteToProject()
-			}
 		case "u":
 			return m, m.undoDelete()
 		case "ctrl+r":
 			return m, m.redoNoteMutation()
-		case "p":
-			return m, m.togglePin()
 		case "s":
 			m.cycleSortMode()
 			return m, nil
@@ -193,31 +179,6 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 		case "r":
 			m.startRename()
 			return m, nil
-		case "t":
-			if m.multiSelectMode && m.selectedNoteCount() > 0 {
-				return m, m.bulkTagNotes()
-			}
-			return m, m.showTagSelector()
-		case "T":
-			tags := buildNoteFilterTagList(m.project, m.notesDir)
-			filterTags := m.filterTags
-			return m, func() tea.Msg {
-				return ShowTagFilterMsg{Tags: tags, Selected: filterTags, Source: ViewNotes, Title: "Filter Notes by Tags"}
-			}
-		case "C":
-			if len(m.filterTags) > 0 {
-				m.filterTags = make(map[string]bool)
-				m.loadNotes()
-				m.setStatus("Filter cleared")
-				return m, nil
-			}
-		case "/":
-			if m.isGlobal {
-				return m, nil // search not yet available for global notes
-			}
-			return m, func() tea.Msg {
-				return ShowNotesSearchMsg{Project: m.project}
-			}
 		case "?":
 			sourceView := ViewNotes
 			viewName := "Notes"
@@ -232,16 +193,102 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:goc
 	case NotesRefreshMsg:
 		m.tasksLoaded = false
 		m.loadNotes()
-	case NoteTaskLinkedMsg:
-		m.loadNotes()
-		m.setStatus("Linked note to task")
 	}
 	return m, nil
 }
 
-// ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
+//nolint:gocyclo // The combined Notes tool keeps its keyboard-state transitions in one dispatcher.
+func (m *NotesViewModel) updateCombined(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		if m.renaming {
+			var cmd tea.Cmd
+			m.renameInput, cmd = m.renameInput.Update(msg)
+			return m, cmd
+		}
+	case tea.KeyPressMsg:
+		key := msg.String()
+		if m.confirmDiscard {
+			switch key {
+			case "y", "Y":
+				m.confirmDiscard = false
+				m.renaming = false
+				m.setStatus("Rename canceled")
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+			}
+			return m, nil
+		}
+		if m.renaming {
+			return m.handleRenameKey(msg)
+		}
+		if m.destinationPicker {
+			switch key {
+			case "j", "down":
+				if m.destinationCursor < len(m.destinations)-1 {
+					m.destinationCursor++
+				}
+			case "k", "up":
+				if m.destinationCursor > 0 {
+					m.destinationCursor--
+				}
+			case "enter":
+				location := m.destinations[m.destinationCursor]
+				m.destinationPicker = false
+				return m, m.createNoteAt(location)
+			case "esc":
+				m.destinationPicker = false
+				m.setStatus("Note creation canceled")
+			}
+			return m, nil
+		}
+		if m.confirm.IsActive() {
+			if confirmed, handled := m.handleConfirmKey(key); handled {
+				if confirmed && m.pendingDeleteIdx < len(m.notes) {
+					return m, m.performDelete()
+				}
+				return m, nil
+			}
+		}
+
+		m.clearStatus()
+		switch key {
+		case "j", "down", "k", "up", "G", "ctrl+u", "pgup", "ctrl+d", "pgdown":
+			_, cmd := handleListNavigation(key, &m.cursor, len(m.notes), m.height, &m.cursorFlash)
+			return m, cmd
+		case "home":
+			m.cursor = 0
+		case "enter":
+			return m, m.editCurrentNote()
+		case "n":
+			m.beginDestinationPicker()
+		case "r":
+			m.startRename()
+		case "x":
+			return m, m.deleteCurrentNote()
+		case "u":
+			return m, m.undoDelete()
+		case "ctrl+r":
+			return m, m.redoNoteMutation()
+		case "?":
+			return m, helpCmd(ViewNotes, "Notes", m.GetHelpItems())
+		case "esc":
+			if m.preferred.Scope == app.NoteScopeProject {
+				return m, func() tea.Msg { return CloseNotesMsg{} }
+			}
+			return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
+		}
+	case tea.WindowSizeMsg:
+		m.SetSize(msg.Width, msg.Height)
+	case NotesRefreshMsg:
+		m.loadNotes()
+	}
+	return m, nil
+}
+
+// ShouldCaptureEsc returns true while Notes owns an internal interaction layer.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirm.IsActive() || m.detailsPane.Focused || m.multiSelectMode || m.renaming || m.fullscreenPane || m.confirmDiscard
+	return m.confirm.IsActive() || m.detailsPane.Focused || m.multiSelectMode || m.renaming || m.fullscreenPane || m.confirmDiscard || m.destinationPicker
 }
 
 // HasTextInput returns false since search is now a separate view.
@@ -288,7 +335,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			m.setStatus("Rename canceled: same title")
 			return m, nil
 		}
-		location := m.noteLocation()
+		location := m.noteLocationFor(note)
 		m.renaming = false
 		return m, noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
 			Operations:  []app.NoteMutationRequest{{Kind: app.NoteRename, Location: location, Note: note, NewTitle: newTitle}},
@@ -310,40 +357,13 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	}
 }
 
-// buildNoteFilterTagList scans all notes and builds a sorted list of tags with counts.
-func buildNoteFilterTagList(project *models.Project, notesDir string) []TagInfo {
-	tagCounts := make(map[string]int)
-	var notes []*models.Note
-	if project != nil {
-		notes, _ = storage.ListNotes(project)
-	} else if notesDir != "" {
-		notes, _ = storage.ListNotesFrom(notesDir)
-	}
-	for _, n := range notes {
-		for _, tag := range n.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
-}
-
 // startRename begins inline rename mode for the current note.
 func (m *NotesViewModel) startRename() {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return
 	}
 	if m.notes[m.cursor].ParseError != "" {
-		m.setErrorStatus("cannot rename — note has parse error. Press e to edit.")
+		m.setErrorStatus("cannot rename — note has a parse error; press Enter to repair it")
 		return
 	}
 	ti := textinput.New()

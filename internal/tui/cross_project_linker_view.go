@@ -150,8 +150,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 			continue
 		}
 		statusIcon := GetStateBadge(t.State())
-		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
-		prefix := fmt.Sprintf("  %s %s #%d ", statusIcon, typeIcon, t.ShortID)
+		prefix := fmt.Sprintf("  %s #%d ", statusIcon, t.ShortID)
 		maxTitleLen := max(contentWidth-lipgloss.Width(prefix), 1)
 		title := truncateToVisualWidth(t.Title, maxTitleLen)
 		titleRendered := TaskTitleStyleFor(t, TaskTitleStyleOptions{
@@ -202,7 +201,6 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 	}{
 		{name: "Blocks", desc: fmt.Sprintf("#%d blocks #%d (source depends on target)", m.targetTask.ShortID, m.sourceTask.ShortID)},
 		{name: "Blocked By", desc: fmt.Sprintf("#%d depends on #%d (target depends on source)", m.targetTask.ShortID, m.sourceTask.ShortID)},
-		{name: "Related", desc: fmt.Sprintf("#%d ↔ #%d (bidirectional)", m.sourceTask.ShortID, m.targetTask.ShortID)},
 	}
 
 	for i, lt := range linkTypes {

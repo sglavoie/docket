@@ -66,7 +66,7 @@ func TestTaskDetailNarrowMarkdownTableStaysWithinWidth(t *testing.T) {
 		"Follow-up notes with a fairly long trailing sentence that also needs to wrap on narrow widths.",
 	}, "\n")
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Fix narrow markdown overflow")
+	task, err := models.NewGenericTask("task-1", 1, "Fix narrow markdown overflow")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestTaskDetailStaysWithinWidthAcrossSizes(t *testing.T) {
 				t.Fatalf("NewProject: %v", err)
 			}
 
-			task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Fix task detail width")
+			task, err := models.NewGenericTask("task-1", 1, "Fix task detail width")
 			if err != nil {
 				t.Fatalf("NewTask: %v", err)
 			}
@@ -150,7 +150,7 @@ func TestTaskDetailStaysWithinWidthAcrossSizes(t *testing.T) {
 			// Add comments and decisions so the History cluster divider renders and
 			// its width is exercised alongside the section divider.
 			task.AddComment("A comment that adds some history to the task detail.")
-			task.AddDecision("A decision recorded for this task.", "Because it matters for the divider width path.", models.DecisionCategoryDesign)
+			task.AddDecision("A decision recorded for this task.", "Because it matters for the divider width path.")
 			project.Tasks = []*models.Task{task}
 
 			m := &TaskDetailModel{task: task, project: project}
@@ -207,7 +207,7 @@ func TestTaskDetailScreenshotRegressionAcrossWidths(t *testing.T) {
 				t.Fatalf("NewProject: %v", err)
 			}
 
-			task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Fix pricing summary overflow")
+			task, err := models.NewGenericTask("task-1", 1, "Fix pricing summary overflow")
 			if err != nil {
 				t.Fatalf("NewTask: %v", err)
 			}
@@ -277,7 +277,7 @@ func TestTaskDetailScreenshotScrollAccounting(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Fix pricing summary overflow")
+	task, err := models.NewGenericTask("task-1", 1, "Fix pricing summary overflow")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestTaskDetailFooterWrapsAtMinimumWidth(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Footer wrapping")
+	task, err := models.NewGenericTask("task-1", 1, "Footer wrapping")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestTaskDetailFooterWrapsAtMinimumWidth(t *testing.T) {
 		t.Fatalf("task detail footer layout issues: %+v\n\n%s", issues, plain)
 	}
 
-	for _, want := range []string{"c: comments", "D: decisions", "H: toggle history", "Esc: close"} {
+	for _, want := range []string{"H: toggle history", "e: edit", "d: due", "Esc: close"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("wrapped footer missing %q:\n%s", want, plain)
 		}
@@ -352,7 +352,7 @@ func TestTaskDetailWrappedFooterCountsTowardScrollHeight(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Scrollable footer wrapping")
+	task, err := models.NewGenericTask("task-1", 1, "Scrollable footer wrapping")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}

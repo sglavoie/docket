@@ -137,74 +137,21 @@ func TestExtractCommentsFromDescription_UnmatchedEndMarkerPreserved(t *testing.T
 	}
 }
 
-func TestExtractCommentsFromDescription_Resolved(t *testing.T) {
-	t.Run("parses resolved comment header", func(t *testing.T) {
-		description := `Task description
+func TestExtractCommentsFromDescription_DiscardsLegacyResolvedSuffix(t *testing.T) {
+	description := `Task description
 
 <!-- COMMENTS -->
 <!-- comment: 2025-01-15 10:30, resolved -->
-This is a resolved comment
+Legacy comment
 <!-- /COMMENTS -->`
 
-		task := &models.Task{Description: description}
-		ExtractCommentsFromDescription(task)
+	task := &models.Task{Description: description}
+	ExtractCommentsFromDescription(task)
 
-		if len(task.Comments) != 1 {
-			t.Fatalf("got %d comments, want 1", len(task.Comments))
-		}
-		if !task.Comments[0].Resolved {
-			t.Error("expected comment to be resolved")
-		}
-		if task.Comments[0].Text != "This is a resolved comment" {
-			t.Errorf("Comment text = %q, want %q", task.Comments[0].Text, "This is a resolved comment")
-		}
-	})
-
-	t.Run("old format parses as unresolved", func(t *testing.T) {
-		description := `Task description
-
-<!-- COMMENTS -->
-<!-- comment: 2025-01-15 10:30 -->
-Old format comment
-<!-- /COMMENTS -->`
-
-		task := &models.Task{Description: description}
-		ExtractCommentsFromDescription(task)
-
-		if len(task.Comments) != 1 {
-			t.Fatalf("got %d comments, want 1", len(task.Comments))
-		}
-		if task.Comments[0].Resolved {
-			t.Error("expected old-format comment to be unresolved")
-		}
-	})
-
-	t.Run("mixed resolved and unresolved", func(t *testing.T) {
-		description := `Task description
-
-<!-- COMMENTS -->
-<!-- comment: 2025-01-15 10:30 -->
-Unresolved comment
-<!-- comment: 2025-01-16 14:20, resolved -->
-Resolved comment
-<!-- comment: 2025-01-17 09:00 -->
-Another unresolved
-<!-- /COMMENTS -->`
-
-		task := &models.Task{Description: description}
-		ExtractCommentsFromDescription(task)
-
-		if len(task.Comments) != 3 {
-			t.Fatalf("got %d comments, want 3", len(task.Comments))
-		}
-		if task.Comments[0].Resolved {
-			t.Error("comment 0 should be unresolved")
-		}
-		if !task.Comments[1].Resolved {
-			t.Error("comment 1 should be resolved")
-		}
-		if task.Comments[2].Resolved {
-			t.Error("comment 2 should be unresolved")
-		}
-	})
+	if len(task.Comments) != 1 || task.Comments[0].Text != "Legacy comment" {
+		t.Fatalf("comments = %+v, want one retained text record", task.Comments)
+	}
+	if rewritten := WriteComments(task); strings.Contains(rewritten, "resolved") {
+		t.Fatalf("lean rewrite retained legacy resolved suffix:\n%s", rewritten)
+	}
 }

@@ -114,8 +114,6 @@ func TestManagerLoad_ResolvesCatalogWorkspaceIDBeforeMachinePath(t *testing.T) {
 		payload any
 	}{
 		{domainPlanning, PlanningStatePath(dataDir), NewPlanningState()},
-		{domainSettings, SettingsPath(dataDir), NewSettings()},
-		{domainAutomation, AutomationPath(dataDir), NewAutomationConfig()},
 	} {
 		data, err := encodeDomainEnvelope(spec.kind, testWorkspaceIDA, spec.payload)
 		if err != nil {
@@ -147,7 +145,7 @@ func TestDomainCoordinator_CheckedArtifactsCaptureLoadRevision(t *testing.T) {
 		t.Fatalf("coordinator Load: %v", err)
 	}
 
-	arts, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning, loaded.Settings, loaded.Automation)
+	arts, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning)
 	if err != nil {
 		t.Fatalf("CheckedArtifacts: %v", err)
 	}
@@ -186,7 +184,7 @@ func TestDomainCoordinator_AbsentDomainRequiresAbsence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("coordinator Load on empty workspace: %v", err)
 	}
-	arts, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning, loaded.Settings, loaded.Automation)
+	arts, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning)
 	if err != nil {
 		t.Fatalf("CheckedArtifacts: %v", err)
 	}
@@ -208,14 +206,14 @@ func TestDomainCoordinator_AdoptArtifactsAdvancesBaseline(t *testing.T) {
 		t.Fatalf("coordinator Load: %v", err)
 	}
 
-	first, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning, loaded.Settings, loaded.Automation)
+	first, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning)
 	if err != nil {
 		t.Fatalf("CheckedArtifacts: %v", err)
 	}
 	// Simulate committing those bytes and adopting them as the new baseline.
 	coord.AdoptArtifacts(first)
 
-	second, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning, loaded.Settings, loaded.Automation)
+	second, err := coord.CheckedDomainArtifacts(loaded.Catalog, loaded.Planning)
 	if err != nil {
 		t.Fatalf("CheckedArtifacts second: %v", err)
 	}
@@ -230,37 +228,6 @@ func TestDomainCoordinator_AdoptArtifactsAdvancesBaseline(t *testing.T) {
 		if want := revisionOf(byPath[a.Path]); *a.ExpectedRevision != want {
 			t.Fatalf("artifact %s baseline = %s after adopt, want %s (hash of committed bytes)", filepath.Base(a.Path), *a.ExpectedRevision, want)
 		}
-	}
-}
-
-func TestDomainCoordinator_CheckedAutomationArtifactIsScopedAndRevisionChecked(t *testing.T) {
-	manager, _ := seededManager(t)
-	coord := manager.DomainCoordinator()
-	automation, err := coord.LoadAutomation()
-	if err != nil {
-		t.Fatalf("LoadAutomation: %v", err)
-	}
-
-	artifact, err := coord.CheckedAutomationArtifact(automation)
-	if err != nil {
-		t.Fatalf("CheckedAutomationArtifact: %v", err)
-	}
-	if artifact.Path != AutomationPath(coord.store.DataDir()) {
-		t.Fatalf("artifact path = %q, want automation.json only", artifact.Path)
-	}
-	if artifact.ExpectedRevision == nil {
-		t.Fatal("automation artifact has no expected revision")
-	}
-	raw, err := os.ReadFile(artifact.Path)
-	if err != nil {
-		t.Fatalf("read automation: %v", err)
-	}
-	if got, want := *artifact.ExpectedRevision, revisionOf(raw); got != want {
-		t.Fatalf("expected revision = %q, want load-time revision %q", got, want)
-	}
-	change := artifact.StorageChange()
-	if change.Path != artifact.Path || change.BackupPath != artifact.Path+".bak" {
-		t.Fatalf("storage change = %+v, want scoped transactional backup", change)
 	}
 }
 

@@ -1,5 +1,5 @@
-// Package textgrammar owns the inline metadata language shared by capture,
-// quick edit, and structured search.
+// Package textgrammar owns the inline metadata language shared by capture and
+// quick edit.
 package textgrammar
 
 import (
@@ -17,7 +17,6 @@ type Surface uint8
 const (
 	SurfaceCapture Surface = 1 << iota
 	SurfaceEdit
-	SurfaceSearch
 )
 
 // Field identifies one family of inline metadata tokens.
@@ -29,13 +28,9 @@ const (
 	FieldRemoveTag  Field = "remove_tag"
 	FieldDue        Field = "due"
 	FieldRecurrence Field = "recurrence"
-	FieldTaskType   Field = "type"
 	FieldParent     Field = "parent"
 	FieldProject    Field = "project"
 	FieldState      Field = "state"
-	FieldHas        Field = "has"
-	FieldNo         Field = "no"
-	FieldIs         Field = "is"
 )
 
 // Definition supplies parser-adjacent UI metadata. Help, completion, and
@@ -54,108 +49,60 @@ type Definition struct {
 	Surfaces    Surface
 }
 
-var priorityNames = []string{
-	"1", "2", "3", "4", "5",
-	"critical", "urgent", "high", "normal", "medium", "low", "lowest",
-	"c", "cr", "u", "ur", "h", "hi", "n", "no", "m", "me", "med", "l", "lo",
-}
+var priorityNames = []string{"1", "2", "3", "4", "5"}
 
 var captureDueValues = []string{
 	"today", "tomorrow", "+1d", "+3d", "+1w", "+2w", "+1m",
 	"monday", "friday", "next monday", "next friday", "in 3 days", "in 1 week", "in 2 weeks",
 }
 
-var searchDueValues = []string{"today", "tomorrow", "week", "overdue", "none"}
-
 var recurrenceValues = []string{
-	"daily", "weekly", "biweekly", "monthly", "yearly", "2d", "3d", "2w", "3w",
+	"daily", "weekly", "biweekly", "monthly", "2d", "3d", "2w", "3w", "2m",
 }
 
-var hasValues = []string{
-	"description", "comment", "checklist", "attachment", "issue", "due",
-	"dependency", "relation", "recurrence", "url", "parent", "children", "tag",
-}
-
-var isValues = []string{
-	"note", "pinned", "dimmed", "blocked", "overdue", "snoozed", "recurring", "leaf", "root",
-}
-
-// Definitions returns defensive copies of the definitions available on a
-// surface. Legacy definitions are included so callers can decide whether to
-// advertise compatibility forms.
+// Definitions returns defensive copies of the canonical definitions available
+// on a surface.
 func Definitions(surface Surface) []Definition {
-	typeNames := TaskTypeNames()
 	stateNames := StateNames()
-	dueValues := captureDueValues
-	if surface == SurfaceSearch {
-		dueValues = searchDueValues
-		typeNames = append(typeNames, "note")
-	}
 
 	defs := []Definition{
 		{
-			Field: FieldTaskType, Group: "Basics", Forms: []string{"^type", "type:"},
-			Label: "Type", Description: "Task type", Values: typeNames,
-			Examples: prefixed(typeNames[:min(3, len(typeNames))], "^"),
-			Surfaces: SurfaceCapture | SurfaceSearch,
-		},
-		{
-			Field: FieldPriority, Group: "Priority & Tags", Forms: []string{"!", "pri:", "priority:"},
+			Field: FieldPriority, Group: "Priority & Tags", Forms: []string{"!1-5"},
 			Label: "Priority", Description: "Priority (1-5)", Values: slices.Clone(priorityNames),
-			Examples: []string{"!1", "!urgent", "!normal", "!low", "pri:2", "priority:high"},
-			Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch,
+			Examples: []string{"!1", "!3", "!5"},
+			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
-			Field: FieldTag, Group: "Priority & Tags", Forms: []string{"#", "tag:"},
-			Label: "Tag", Description: "Add tag", Examples: []string{"#backend", "#urgent", "tag:api"},
-			Repeatable: true, Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch,
+			Field: FieldTag, Group: "Priority & Tags", Forms: []string{"#tag"},
+			Label: "Tag", Description: "Add tag", Examples: []string{"#backend", "#type:bug", "#source:github"},
+			Repeatable: true, Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
-			Field: FieldRemoveTag, Group: "Priority & Tags", Forms: []string{"-#tag"},
-			Label: "Remove tag", Description: "Remove tag", Examples: []string{"-#blocked"},
-			Repeatable: true, Surfaces: SurfaceEdit,
+			Field: FieldDue, Group: "Schedule", Forms: []string{"@date"},
+			Label: "Due", Description: "Due date", Values: slices.Clone(captureDueValues),
+			Examples: []string{"@tomorrow", "@friday", "@+3d", "@next monday"},
+			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
-			Field: FieldDue, Group: "Schedule", Forms: []string{"@", "due:"},
-			Label: "Due", Description: "Due date", Values: slices.Clone(dueValues),
-			Examples: []string{"@tomorrow", "@friday", "@+3d", "@next monday", "due:2w"},
-			Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch,
-		},
-		{
-			Field: FieldRecurrence, Group: "Schedule", Forms: []string{"~", "recur:"},
+			Field: FieldRecurrence, Group: "Schedule", Forms: []string{"~interval"},
 			Label: "Recurrence", Description: "Recurrence", Values: slices.Clone(recurrenceValues),
-			Examples: []string{"~daily", "~weekly", "~2w", "recur:monthly", "~weekly:mon,fri"},
+			Examples: []string{"~daily", "~weekly", "~monthly", "~2w"},
 			Surfaces: SurfaceCapture,
 		},
 		{
-			Field: FieldParent, Group: "Placement", Forms: []string{">", "parent:"},
-			Label: "Parent", Description: "Parent task", Examples: []string{">1", ">Login", "parent:2"},
+			Field: FieldParent, Group: "Placement", Forms: []string{">parent"},
+			Label: "Parent", Description: "Parent task", Examples: []string{">1", ">Login"},
 			Surfaces: SurfaceCapture,
 		},
 		{
-			Field: FieldProject, Group: "Project Routing", Forms: []string{"%", "p:", "proj:"},
-			Label: "Project", Description: "Target project", Examples: []string{"%slug", "p:slug", "proj:name"},
-			Surfaces: SurfaceCapture | SurfaceSearch,
+			Field: FieldProject, Group: "Project Routing", Forms: []string{"%project"},
+			Label: "Project", Description: "Target project", Examples: []string{"%project-slug"},
+			Surfaces: SurfaceCapture,
 		},
 		{
-			Field: FieldState, Group: "State", Forms: []string{"$", "state:"},
+			Field: FieldState, Group: "State", Forms: []string{"$state"},
 			Label: "State", Description: "Canonical workflow state", Values: stateNames,
-			Examples: prefixed(stateNames, "$"), Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch,
-		},
-		{
-			Field: FieldHas, Group: "Properties", Forms: []string{"has:X"},
-			Label: "Has", Description: "Task has property", Values: slices.Clone(hasValues),
-			Surfaces: SurfaceSearch,
-		},
-		{
-			Field: FieldNo, Group: "Properties", Forms: []string{"no:X"},
-			Label: "No", Description: "Task lacks property", Values: slices.Clone(hasValues),
-			Surfaces: SurfaceSearch,
-		},
-		{
-			Field: FieldIs, Group: "Properties", Forms: []string{"is:X"},
-			Label: "Is", Description: "Task matches derived property", Values: slices.Clone(isValues),
-			Surfaces: SurfaceSearch,
+			Examples: prefixed(stateNames, "$"), Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 	}
 
@@ -182,22 +129,12 @@ func DefinitionFor(surface Surface, field Field) (Definition, bool) {
 	return Definition{}, false
 }
 
-// StateNames returns all ten canonical state names in model order.
+// StateNames returns all nine canonical state names in model order.
 func StateNames() []string {
 	states := models.AllWorkflowStates()
 	result := make([]string, len(states))
 	for i, state := range states {
 		result[i] = state.String()
-	}
-	return result
-}
-
-// TaskTypeNames returns every valid task type in model order.
-func TaskTypeNames() []string {
-	types := models.AllTaskTypes()
-	result := make([]string, len(types))
-	for i, taskType := range types {
-		result[i] = taskType.String()
 	}
 	return result
 }
@@ -217,8 +154,6 @@ func StateDescription(state models.WorkflowState) string {
 		return "waiting externally"
 	case models.StatePaused:
 		return "paused"
-	case models.StateReview:
-		return "awaiting review"
 	case models.StateSomeday:
 		return "deferred someday"
 	case models.StateDone:
@@ -267,6 +202,7 @@ func retiredStateReplacement(raw string) (string, bool) {
 		"blocked":   "$waiting",
 		"standby":   "$paused",
 		"hold":      "$paused",
+		"review":    "$ready",
 		"maybe":     "$someday",
 		"complete":  "$done",
 		"completed": "$done",
@@ -277,8 +213,8 @@ func retiredStateReplacement(raw string) (string, bool) {
 	return replacement, ok
 }
 
-// ParsePriority resolves a numeric or named priority. Search may opt into an
-// inclusive N-M range.
+// ParsePriority resolves a canonical numeric priority. Callers may opt into an
+// inclusive N-M range for legacy input inspection.
 func ParsePriority(value string, allowRange bool) ([]int, bool) {
 	value = strings.ToLower(strings.TrimSpace(value))
 	if allowRange {
@@ -298,27 +234,11 @@ func ParsePriority(value string, allowRange bool) ([]int, bool) {
 		}
 	}
 
-	aliases := map[string]int{
-		"critical": 1, "urgent": 1, "high": 1,
-		"c": 1, "cr": 1, "u": 1, "ur": 1, "h": 1, "hi": 1,
-		"normal": 3, "medium": 3,
-		"n": 3, "no": 3, "m": 3, "me": 3, "med": 3,
-		"low": 5, "lowest": 5, "l": 5, "lo": 5,
-	}
-	if priority, ok := aliases[value]; ok {
-		return []int{priority}, true
-	}
 	priority, err := strconv.Atoi(value)
 	if err != nil || priority < 1 || priority > 5 {
 		return nil, false
 	}
 	return []int{priority}, true
-}
-
-// ContainsDefinitionValue reports whether value is advertised for a field.
-func ContainsDefinitionValue(surface Surface, field Field, value string) bool {
-	def, ok := DefinitionFor(surface, field)
-	return ok && slices.Contains(def.Values, strings.ToLower(value))
 }
 
 func prefixed(values []string, prefix string) []string {

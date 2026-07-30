@@ -68,7 +68,7 @@ func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestTaskAttachmentsKeepDispatchesCoordinator(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
 				t.Fatalf("NewProject: %v", err)
 			}
 
-			task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+			task, err := models.NewGenericTask("task-1", 1, "Test task")
 			if err != nil {
 				t.Fatalf("NewTask: %v", err)
 			}
@@ -295,7 +295,7 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 		t.Fatalf("NewProject: %v", err)
 	}
 
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test task")
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -310,10 +310,7 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	// Actually, easier: just verify the config routing by checking the model
 	// returns an error about the file not existing (which means it got past
 	// the "empty editor" branch) vs. a "no editor found" error.
-	// We do this by creating a model with an empty AttachmentEditor config.
-
 	cfg := newTestConfig()
-	cfg.Machine().AttachmentEditor = "" // empty = use OS default
 
 	task.Attachments = []models.Attachment{
 		{Filename: "note.txt", OriginalPath: "/nonexistent/note.txt", AddedAt: time.Now()},
@@ -323,7 +320,7 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	model := NewTaskAttachmentsModel(task, project, testRuntimeAt(cfg.DataDir(), cfg), AttachmentCoordinator{})
 	model.cursor = 0
 
-	// With an empty AttachmentEditor, openAttachmentInEditor should attempt
+	// openAttachmentInEditor should attempt
 	// buildOpenCommand (OS default). Since the file doesn't exist in the
 	// expected attachment directory, it sets model.err about "file not found",
 	// NOT about "no editor configured" or "not found in PATH".

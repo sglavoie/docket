@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -29,8 +28,8 @@ func (m *AppModel) handleUndoToggle() tea.Cmd {
 	var cmd tea.Cmd
 	switch m.lastToggleUndoKind {
 	case toggleUndoNone:
-	case toggleUndoDailyPlan:
-		cmd = m.undoDailyPlanToggle()
+	case toggleUndoToday:
+		cmd = m.undoTodayToggle()
 	case toggleUndoQueue:
 		cmd = m.undoQueueToggle()
 	}
@@ -56,8 +55,8 @@ func (m *AppModel) handleRedoToggle() tea.Cmd {
 	var cmd tea.Cmd
 	switch m.lastToggleRedoKind {
 	case toggleUndoNone:
-	case toggleUndoDailyPlan:
-		cmd = m.redoDailyPlanToggle()
+	case toggleUndoToday:
+		cmd = m.redoTodayToggle()
 	case toggleUndoQueue:
 		cmd = m.redoQueueToggle()
 	}
@@ -78,41 +77,20 @@ func (m *AppModel) currentViewOwnsPlanningToggle() bool {
 }
 
 func (m *AppModel) localToggleUndoIsNewest() bool {
-	return m.localToggleIsNewest(m.toggleUndoTimestamp(m.lastToggleUndoKind))
+	return m.localToggleIsNewest(m.toggleUndoTimestamp(m.lastToggleUndoKind), false)
 }
 
 func (m *AppModel) localToggleRedoIsNewest() bool {
-	return m.localToggleIsNewest(m.toggleRedoTimestamp(m.lastToggleRedoKind))
+	return m.localToggleIsNewest(m.toggleRedoTimestamp(m.lastToggleRedoKind), true)
 }
 
-func (m *AppModel) localToggleIsNewest(localAt time.Time) bool {
+func (m *AppModel) localToggleIsNewest(localAt time.Time, redo bool) bool {
 	if localAt.IsZero() {
 		return true
 	}
-	_, project := m.getCurrentCursorTaskAndProject()
-	if project == nil {
+	entry, ok, err := ledgerNewestEntry(workspaceLedgerFromConfig(m.runtime), storage.GlobalScope(), redo)
+	if err != nil || !ok {
 		return true
 	}
-	persistentAt := latestPersistentTaskHistoryTimestamp(project)
-	return persistentAt.IsZero() || !persistentAt.After(localAt)
-}
-
-func latestPersistentTaskHistoryTimestamp(project *models.Project) time.Time {
-	var latest time.Time
-	if entries, err := storage.LoadUndoHistory(project); err == nil {
-		latest = latestUndoEntryTimestamp(latest, entries)
-	}
-	if entries, err := storage.LoadRedoHistory(project); err == nil {
-		latest = latestUndoEntryTimestamp(latest, entries)
-	}
-	return latest
-}
-
-func latestUndoEntryTimestamp(latest time.Time, entries []storage.UndoEntry) time.Time {
-	for _, entry := range entries {
-		if entry.Timestamp.After(latest) {
-			latest = entry.Timestamp
-		}
-	}
-	return latest
+	return !entry.Timestamp.After(localAt)
 }

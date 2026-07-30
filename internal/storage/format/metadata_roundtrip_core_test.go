@@ -18,7 +18,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 
 	task := &models.Task{
 		ID:            "kitchen-sink-1",
-		Type:          models.TaskTypeBug,
 		WorkflowState: models.StateDone,
 		Priority:      1,
 		Tags:          []string{"backend", "urgent", "p0"},
@@ -27,17 +26,12 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 		CompletedAt:   &completed,
 		DueDate:       &due,
 		DependsOn:     []string{"dep-1", "dep-2", "dep-3"},
-		RelatedTo:     []string{"rel-1", "rel-2"},
 		Pinned:        true,
 		PinnedAt:      &pinnedAt,
 		SnoozedUntil:  &snoozed,
 		Recurrence: &models.RecurrencePattern{
-			Interval:  2,
-			Unit:      models.RecurrenceWeekly,
-			Weekdays:  []int{1, 3, 5},
-			Skipped:   7,
-			Streak:    12,
-			MaxStreak: 20,
+			Interval: 2,
+			Unit:     models.RecurrenceWeekly,
 		},
 		Attachments: []models.Attachment{
 			{
@@ -56,20 +50,9 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 			{Text: "Step one", Done: true},
 			{Text: "Step two", Done: false},
 		},
-		Source: "github",
-		URL:    "https://github.com/org/repo/issues/42",
-		ScoreDimensions: map[string]int{
-			"impact": 4,
-			"effort": 2,
-		},
-		BugAttrs: &models.BugAttrs{
-			Reproducible: models.BugReproducibleYes,
-			Severity:     models.BugSeverityMajor,
-			Workaround:   "use the old endpoint",
-		},
 	}
 
-	parsed := &models.Task{Type: task.Type}
+	parsed := &models.Task{}
 	warnings := parseWrittenMetadata(task, parsed)
 
 	if len(warnings) != 0 {
@@ -118,9 +101,6 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	if !stringSlicesEqual(parsed.DependsOn, task.DependsOn) {
 		t.Errorf("DependsOn = %v, want %v", parsed.DependsOn, task.DependsOn)
 	}
-	if !stringSlicesEqual(parsed.RelatedTo, task.RelatedTo) {
-		t.Errorf("RelatedTo = %v, want %v", parsed.RelatedTo, task.RelatedTo)
-	}
 	if !parsed.Pinned {
 		t.Errorf("Pinned = false, want true")
 	}
@@ -162,32 +142,5 @@ func TestRoundTrip_KitchenSink(t *testing.T) { //nolint:gocyclo
 	}
 	if parsed.Checklist[1].Text != "Step two" || parsed.Checklist[1].Done {
 		t.Errorf("checklist[1] = {%q, %v}, want {%q, false}", parsed.Checklist[1].Text, parsed.Checklist[1].Done, "Step two")
-	}
-	if parsed.Source != "github" {
-		t.Errorf("Source = %q, want %q", parsed.Source, "github")
-	}
-	if parsed.URL != "https://github.com/org/repo/issues/42" {
-		t.Errorf("URL = %q, want %q", parsed.URL, "https://github.com/org/repo/issues/42")
-	}
-	if len(parsed.ScoreDimensions) != 2 {
-		t.Fatalf("got %d score dimensions, want 2", len(parsed.ScoreDimensions))
-	}
-	if parsed.ScoreDimensions["impact"] != 4 {
-		t.Errorf("score.impact = %d, want 4", parsed.ScoreDimensions["impact"])
-	}
-	if parsed.ScoreDimensions["effort"] != 2 {
-		t.Errorf("score.effort = %d, want 2", parsed.ScoreDimensions["effort"])
-	}
-	if parsed.BugAttrs == nil {
-		t.Fatal("BugAttrs is nil")
-	}
-	if parsed.BugAttrs.Reproducible != models.BugReproducibleYes {
-		t.Errorf("bug.Reproducible = %q, want %q", parsed.BugAttrs.Reproducible, models.BugReproducibleYes)
-	}
-	if parsed.BugAttrs.Severity != models.BugSeverityMajor {
-		t.Errorf("bug.Severity = %q, want %q", parsed.BugAttrs.Severity, models.BugSeverityMajor)
-	}
-	if parsed.BugAttrs.Workaround != "use the old endpoint" {
-		t.Errorf("bug.Workaround = %q, want %q", parsed.BugAttrs.Workaround, "use the old endpoint")
 	}
 }

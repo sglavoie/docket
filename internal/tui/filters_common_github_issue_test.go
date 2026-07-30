@@ -9,16 +9,19 @@ import (
 
 func TestCommonFilterGitHubIssueMatching(t *testing.T) {
 	issueTask := mustCommonFilterTask(t, "issue-task")
-	issueTask.URL = "https://github.com/sglavoie/tt/issues/123"
+	issueTask.Attachments = []models.Attachment{{
+		Filename: "https://github.com/sglavoie/tt/issues/123",
+		IsURL:    true,
+	}}
 	plainTask := mustCommonFilterTask(t, "plain-task")
 
 	filter := newFilterState()
 	filter.GitHubIssue = true
 
-	if !passesCommonFilters(issueTask, &filter, nil, nil) {
+	if !passesCommonFilters(issueTask, &filter, nil) {
 		t.Fatal("task with a GitHub issue URL should pass the GitHub issue filter")
 	}
-	if passesCommonFilters(plainTask, &filter, nil, nil) {
+	if passesCommonFilters(plainTask, &filter, nil) {
 		t.Fatal("task without a GitHub issue URL should not pass the GitHub issue filter")
 	}
 }
@@ -58,7 +61,7 @@ func TestCommonFilterGitHubIssueBadgeCountAndClear(t *testing.T) {
 
 func mustCommonFilterTask(t *testing.T, id string) *models.Task {
 	t.Helper()
-	task, err := models.NewTask(id, 1, models.TaskTypeTask, "Task "+id)
+	task, err := models.NewGenericTask(id, 1, "Task "+id)
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}

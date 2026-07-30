@@ -17,14 +17,14 @@ func newConsolidatedTaskDetailFixture(t *testing.T) (*TaskDetailModel, *models.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := models.NewTask("detail-task", 1, models.TaskTypeTask, "Consolidated detail")
+	task, err := models.NewGenericTask("detail-task", 1, "Consolidated detail")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task.Description = "Overview description"
 	task.Checklist = []models.ChecklistItem{{Text: "Verify the unified surface"}}
 	task.AddComment("A preserved comment")
-	task.AddDecision("Use tabs", "One route keeps parent state stable", models.DecisionCategoryDesign)
+	task.AddDecision("Use tabs", "One route keeps parent state stable")
 	project.Tasks = []*models.Task{task}
 	model := NewTaskDetailModelForTab(
 		task,
@@ -38,7 +38,7 @@ func newConsolidatedTaskDetailFixture(t *testing.T) (*TaskDetailModel, *models.T
 	return model, task, project
 }
 
-func TestTaskDetailContainsEveryConsolidatedTab(t *testing.T) {
+func TestTaskDetailHostsEachDedicatedTaskToolWithoutCrossToolTabs(t *testing.T) {
 	model, _, _ := newConsolidatedTaskDetailFixture(t)
 	model.SetSize(80, 28)
 	model.SetPlanningMembership(true, true)
@@ -49,17 +49,16 @@ func TestTaskDetailContainsEveryConsolidatedTab(t *testing.T) {
 		TaskComments:    "A preserved comment",
 		TaskDecisions:   "Use tabs",
 		TaskAttachments: "No attachments",
-		TaskActivity:    "Activity Log",
 	}
 	for _, tab := range taskDetailTabOrder {
 		t.Run(tab.String(), func(t *testing.T) {
 			model.SetTab(tab)
 			content := ansi.Strip(model.View().Content)
-			if !strings.Contains(content, "["+tab.String()+"]") {
-				t.Fatalf("active tab %s is not visible:\n%s", tab, content)
-			}
 			if !strings.Contains(content, wantContent[tab]) {
 				t.Fatalf("tab %s missing preserved content %q:\n%s", tab, wantContent[tab], content)
+			}
+			if tab != TaskOverview && strings.Contains(content, "[Overview]") {
+				t.Fatalf("subordinate %s tool exposes cross-tool tab navigation:\n%s", tab, content)
 			}
 		})
 	}
@@ -82,7 +81,6 @@ func TestTaskDetailLegacyMessagesChangeOneTypedRouteMode(t *testing.T) {
 		{ShowTaskCommentsMsg{Task: task, Project: project}, TaskComments},
 		{ShowTaskDecisionsMsg{Task: task, Project: project}, TaskDecisions},
 		{ShowTaskAttachmentsMsg{Task: task, Project: project}, TaskAttachments},
-		{OpenTaskActivityMsg{Task: task, Project: project}, TaskActivity},
 	}
 	for _, tc := range messages {
 		if _, cmd := app.Update(tc.msg); cmd != nil {
@@ -116,7 +114,7 @@ func TestTaskDetailLegacyMessagesChangeOneTypedRouteMode(t *testing.T) {
 	}
 }
 
-func TestTaskDetailClosePreservesWorkspaceCursorFiltersAndSelection(t *testing.T) {
+func TestTaskMenuToolsCloseToSameWorkspaceCursorFiltersAndSelection(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
 	if len(project.Tasks) < 2 {
@@ -139,38 +137,37 @@ func TestTaskDetailClosePreservesWorkspaceCursorFiltersAndSelection(t *testing.T
 	for identity, selected := range outliner.selectedTaskIdentities {
 		beforeSelected[identity] = selected
 	}
-	_ = app.activateTaskDetail(project.Tasks[0], project, TaskOverview)
-	if !app.popTypedPresentation() {
-		t.Fatal("failed to close Task Detail")
-	}
-
-	if outliner.SearchQuery() != beforeSearch || outliner.cursor != beforeCursor {
-		t.Fatalf("Outliner return state changed: search=%q cursor=%d", outliner.SearchQuery(), outliner.cursor)
-	}
-	if len(outliner.selectedTaskIdentities) != len(beforeSelected) {
-		t.Fatalf("selection size changed: got %+v want %+v", outliner.selectedTaskIdentities, beforeSelected)
-	}
-	for identity, selected := range beforeSelected {
-		if outliner.selectedTaskIdentities[identity] != selected {
-			t.Fatalf("selection changed: got %+v want %+v", outliner.selectedTaskIdentities, beforeSelected)
+	for _, tool := range []TaskDetailTab{TaskChecklist, TaskComments, TaskDecisions, TaskAttachments} {
+		_ = app.activateTaskDetail(project.Tasks[0], project, tool)
+		if !app.popTypedPresentation() {
+			t.Fatalf("failed to close %s task tool", tool)
+		}
+		if outliner.SearchQuery() != beforeSearch || outliner.cursor != beforeCursor {
+			t.Fatalf("%s changed Outliner return state: search=%q cursor=%d", tool, outliner.SearchQuery(), outliner.cursor)
+		}
+		if len(outliner.selectedTaskIdentities) != len(beforeSelected) {
+			t.Fatalf("%s changed selection size: got %+v want %+v", tool, outliner.selectedTaskIdentities, beforeSelected)
+		}
+		for identity, selected := range beforeSelected {
+			if outliner.selectedTaskIdentities[identity] != selected {
+				t.Fatalf("%s changed selection: got %+v want %+v", tool, outliner.selectedTaskIdentities, beforeSelected)
+			}
 		}
 	}
 }
 
-func TestTaskDetailTabNavigationAndInlineInputCapture(t *testing.T) {
+func TestTaskDetailSubordinateToolsDoNotCycleOnTab(t *testing.T) {
 	model, _, _ := newConsolidatedTaskDetailFixture(t)
 	model.SetSize(80, 28)
+	model.SetTab(TaskChecklist)
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	if updated != model || model.Tab() != TaskChecklist || cmd == nil {
+	if updated != model || model.Tab() != TaskChecklist || cmd != nil {
 		t.Fatalf("Tab result model=%T tab=%s cmd=%T", updated, model.Tab(), cmd)
-	}
-	if msg := cmd(); msg != (TaskDetailTabChangedMsg{Tab: TaskChecklist}) {
-		t.Fatalf("Tab message = %#v", msg)
 	}
 
 	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
-	if model.Tab() != TaskOverview || cmd == nil {
+	if model.Tab() != TaskChecklist || cmd != nil {
 		t.Fatalf("Shift+Tab tab=%s cmd=%T", model.Tab(), cmd)
 	}
 
@@ -197,12 +194,6 @@ func TestTaskDetailChildOperationsAreNotShadowedByGlobalKeys(t *testing.T) {
 		t.Fatal("global task-title copy shadowed Comments copy action")
 	}
 
-	_ = app.activateTaskDetail(task, app.currentProject, TaskActivity)
-	before := app.taskDetail.activity.activeTab
-	_, _ = app.taskDetail.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if app.taskDetail.activity.activeTab == before {
-		t.Fatal("Activity filter navigation was not preserved")
-	}
 }
 
 func TestTaskDetailDeletedTaskReturnsToParent(t *testing.T) {

@@ -1,0 +1,1 @@
+Synthetic orphan attachment used to exercise an audit-report outcome.

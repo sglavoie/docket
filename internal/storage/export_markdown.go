@@ -36,10 +36,10 @@ func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
 	return destPath, nil
 }
 
-// WriteProjectMarkdownClean generates a human-readable markdown export of a project.
-// Unlike WriteTasksMarkdown, it omits HTML metadata comments, activity logs,
-// and comments. Each task heading includes an inline badge (status, priority,
-// due date, snooze date) and is prefixed with its short ID for traceability.
+// WriteProjectMarkdownClean generates a human-readable markdown export of a
+// project. Unlike canonical task storage, it omits HTML metadata comments while
+// retaining the user-facing v5 task fields and rich records. Each task heading
+// includes an inline badge and is prefixed with its short ID for traceability.
 func WriteProjectMarkdownClean(p *models.Project) string {
 	var builder strings.Builder
 
@@ -59,9 +59,9 @@ func WriteProjectMarkdownClean(p *models.Project) string {
 
 // writeNotesSectionClean renders the trailing Notes section for a clean
 // project export. Returns "" when notes is empty; otherwise emits a
-// "\n---\n\n# Notes\n" separator followed by each note as "## Title",
-// an optional tags line, and the body verbatim. Notes flagged with a
-// ParseError get a " [parse error]" suffix on the heading.
+// "\n---\n\n# Notes\n" separator followed by each note as "## Title" and the
+// body verbatim. Notes flagged with a ParseError get a " [parse error]" suffix
+// on the heading.
 func writeNotesSectionClean(notes []*models.Note) string {
 	if len(notes) == 0 {
 		return ""
@@ -77,10 +77,6 @@ func writeNotesSectionClean(notes []*models.Note) string {
 			b.WriteString(" [parse error]")
 		}
 		b.WriteString("\n")
-
-		if len(note.Tags) > 0 {
-			fmt.Fprintf(&b, "tags: %s\n", strings.Join(note.Tags, ", "))
-		}
 
 		if note.Body != "" {
 			b.WriteString("\n")
@@ -109,7 +105,7 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 		title = title + " " + badge
 	}
 
-	fmt.Fprintf(builder, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), title)
+	fmt.Fprintf(builder, "%s Task: %s\n", hashes, title)
 
 	if len(task.Tags) > 0 {
 		fmt.Fprintf(builder, "tags: %s\n", strings.Join(task.Tags, ", "))
@@ -121,15 +117,71 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 		builder.WriteString("\n")
 	}
 
+	if task.Recurrence != nil {
+		if recurrence := task.Recurrence.String(); recurrence != "" {
+			fmt.Fprintf(builder, "\n**Recurrence:** %s\n", recurrence)
+		}
+	}
+
+	if len(task.DependsOn) > 0 {
+		builder.WriteString("\n**Dependencies:**\n")
+		for _, dependency := range task.DependsOn {
+			fmt.Fprintf(builder, "- %s\n", dependency)
+		}
+	}
+
+	if len(task.Checklist) > 0 {
+		builder.WriteString("\n**Checklist:**\n")
+		for _, item := range task.Checklist {
+			marker := " "
+			if item.Done {
+				marker = "x"
+			}
+			fmt.Fprintf(builder, "- [%s] %s\n", marker, item.Text)
+		}
+	}
+
+	if len(task.Comments) > 0 {
+		builder.WriteString("\n**Comments:**\n")
+		for _, comment := range task.Comments {
+			if comment == nil {
+				continue
+			}
+			fmt.Fprintf(builder, "- %s\n", comment.Text)
+		}
+	}
+
 	if len(task.Decisions) > 0 {
 		builder.WriteString("\n**Decisions:**\n")
 		for _, d := range task.Decisions {
-			fmt.Fprintf(builder, "- **[%s]** %s\n", string(d.Category), d.Text)
+			if d == nil {
+				continue
+			}
+			fmt.Fprintf(builder, "- %s\n", d.Text)
 			if d.Rationale != "" {
 				fmt.Fprintf(builder, "  *Rationale:* %s\n", d.Rationale)
 			}
-			if d.Resolved {
-				builder.WriteString("  *(resolved)*\n")
+		}
+	}
+
+	if len(task.Attachments) > 0 {
+		builder.WriteString("\n**Attachments:**\n")
+		for _, attachment := range task.Attachments {
+			switch {
+			case attachment.IsURL:
+				target := attachment.OriginalPath
+				if target == "" {
+					target = attachment.Filename
+				}
+				fmt.Fprintf(builder, "- URL: %s\n", target)
+			case attachment.IsCodeRef:
+				target := attachment.OriginalPath
+				if target == "" {
+					target = attachment.Filename
+				}
+				fmt.Fprintf(builder, "- Code: %s:%d\n", target, attachment.LineNumber)
+			default:
+				fmt.Fprintf(builder, "- File: %s\n", attachment.Filename)
 			}
 		}
 	}
@@ -153,11 +205,7 @@ func buildExportBadge(task *models.Task) string {
 		parts = append(parts, fmt.Sprintf("!%d", task.Priority))
 	}
 	if task.DueDate != nil {
-		if task.HasTime {
-			parts = append(parts, "due "+task.DueDate.Format("2006-01-02 15:04"))
-		} else {
-			parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
-		}
+		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
 	}
 	if task.SnoozedUntil != nil {
 		parts = append(parts, "snoozed until "+task.SnoozedUntil.Format("2006-01-02"))

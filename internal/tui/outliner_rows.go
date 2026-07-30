@@ -157,12 +157,9 @@ func (m *OutlinerModel) clampCursor() {
 
 const crossProjectPinnedTagTabKey = "_cross_project_pinned_tag_tab"
 
-// pinnedTagTabs returns ["All"] + pinned tag labels, or nil if no tags are pinned.
+// pinnedTagTabs is inert because tag pin catalogs are retired.
 func (m *OutlinerModel) pinnedTagTabs() []string {
-	if m.project == nil {
-		return GlobalPinnedTagTabsForProjects(m.runtime.Settings(), m.loadedProjects)
-	}
-	return PinnedTagTabs(m.project)
+	return nil
 }
 
 // pinnedTagTabIndex returns the active tab index for the current outliner scope.
@@ -253,14 +250,6 @@ func (m *OutlinerModel) pinnedTagTabStorageKey() string {
 		return crossProjectPinnedTagTabKey
 	}
 	return m.project.ID
-}
-
-// searchTagCache returns all unique tags across the outliner's project(s).
-func (m *OutlinerModel) searchTagCache() []string {
-	if m.project != nil {
-		return CollectTagNamesForProject(m.project)
-	}
-	return CollectTagNamesForProjects(m.loadedProjects)
 }
 
 // contentHeight returns the number of task rows visible on screen,

@@ -44,20 +44,6 @@ func (m *RecurrenceEditorModel) View() tea.View {
 	b.WriteString(m.renderUnitSelector())
 	b.WriteString("\n\n")
 
-	// Weekdays section (only for weekly)
-	if m.isWeeklyUnit() {
-		var weekdaysLabel string
-		if m.focusSection == 2 {
-			weekdaysLabel = FieldLabelFocusedStyle.Render("Weekdays: ")
-		} else {
-			weekdaysLabel = FieldLabelStyle.Render("Weekdays: ")
-		}
-		b.WriteString(weekdaysLabel)
-		b.WriteString("\n")
-		b.WriteString(m.renderWeekdays())
-		b.WriteString("\n")
-	}
-
 	// Separator
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("─────────────────────────────────────────"))
@@ -70,22 +56,6 @@ func (m *RecurrenceEditorModel) View() tea.View {
 		b.WriteString(BoldStyle.Render(pattern.String()))
 	}
 	b.WriteString("\n")
-
-	// Mode row
-	b.WriteString(FieldLabelStyle.Render("Mode:    "))
-	if m.mode == models.RecurModeFromCompletion {
-		b.WriteString(BoldStyle.Render("from completion"))
-	} else {
-		b.WriteString(MutedStyle.Render("from due (default)"))
-	}
-	b.WriteString("\n")
-
-	// Streak info (from existing pattern)
-	if m.streak > 0 {
-		b.WriteString(FieldLabelStyle.Render("Streak:  "))
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("%d", m.streak)))
-		b.WriteString("\n")
-	}
 
 	// Next occurrences
 	tempTask := &models.Task{
@@ -109,7 +79,7 @@ func (m *RecurrenceEditorModel) View() tea.View {
 		b.WriteString("\n")
 	}
 
-	left := HelpStyle.Render("Tab: nav · ←→: select · Space: toggle · m: mode · Enter: confirm")
+	left := HelpStyle.Render("Tab: nav · ←→: select · Enter: set · c: clear · Esc: cancel")
 
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle("Custom Recurrence", ""))
@@ -124,7 +94,7 @@ func (m *RecurrenceEditorModel) View() tea.View {
 func (m *RecurrenceEditorModel) renderUnitSelector() string {
 	var b strings.Builder
 
-	unitNames := []string{"day", "week", "month", "year"}
+	unitNames := []string{"day", "week", "month"}
 
 	for i, name := range unitNames {
 		if i == m.unitCursor {
@@ -139,50 +109,4 @@ func (m *RecurrenceEditorModel) renderUnitSelector() string {
 	}
 
 	return b.String()
-}
-
-func (m *RecurrenceEditorModel) renderWeekdays() string {
-	var b strings.Builder
-
-	dayNames := []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
-
-	// First row: Sun, Mon, Tue, Wed (0-3)
-	b.WriteString("  ")
-	for i := range 4 {
-		b.WriteString(m.renderWeekdayToggle(i, dayNames[i]))
-		if i < 3 {
-			b.WriteString("  ")
-		}
-	}
-	b.WriteString("\n")
-
-	// Second row: Thu, Fri, Sat (4-6)
-	b.WriteString("  ")
-	for i := 4; i < 7; i++ {
-		b.WriteString(m.renderWeekdayToggle(i, dayNames[i]))
-		if i < 6 {
-			b.WriteString("  ")
-		}
-	}
-
-	return b.String()
-}
-
-func (m *RecurrenceEditorModel) renderWeekdayToggle(dayNum int, name string) string {
-	selected := m.weekdays[dayNum]
-	focused := m.focusSection == 2 && m.weekdayCursor == dayNum
-
-	icon := "○"
-	if selected {
-		icon = "●"
-	}
-
-	display := fmt.Sprintf("%s %s", icon, name)
-
-	if focused {
-		return SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", display))
-	} else if selected {
-		return BoldStyle.Render(display)
-	}
-	return SelectorOptionStyle.Render(display)
 }

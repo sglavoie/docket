@@ -62,7 +62,7 @@ func TestCommitRejectsExistingProjectSymlinkEscapesBeforeEffects(t *testing.T) {
 		t.Skip("symlink creation is unreliable on Windows CI")
 	}
 
-	for _, role := range []string{"directory", "tasks", "backup", "lock"} {
+	for _, role := range []string{"directory", "tasks", "lock"} {
 		t.Run(role, func(t *testing.T) {
 			root := t.TempDir()
 			outside := t.TempDir()
@@ -83,9 +83,8 @@ func TestCommitRejectsExistingProjectSymlinkEscapesBeforeEffects(t *testing.T) {
 					t.Fatal(err)
 				}
 				linkPath := map[string]string{
-					"tasks":  tasksFilePath(project.Path),
-					"backup": backupFilePath(project.Path),
-					"lock":   filepath.Join(project.Path, LockFileName),
+					"tasks": tasksFilePath(project.Path),
+					"lock":  filepath.Join(project.Path, LockFileName),
 				}[role]
 				if err := os.Symlink(sentinelPath, linkPath); err != nil {
 					t.Skipf("symlinks unavailable: %v", err)

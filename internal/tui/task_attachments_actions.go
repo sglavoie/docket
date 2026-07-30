@@ -152,35 +152,23 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 		return nil
 	}
 
-	target := storage.GetAttachmentPath(m.project, m.task, att.Filename)
+	target, err := storage.ResolveAttachmentPath(m.project, m.task, att.Filename)
+	if err != nil {
+		m.err = fmt.Errorf("invalid attachment path: %w", err)
+		return nil
+	}
 	if !storage.AttachmentExists(m.project, m.task, att.Filename) {
 		m.err = fmt.Errorf("file not found: %s", att.Filename)
 		return nil
 	}
 
-	// Empty attachment_editor means "use OS default app", not a text editor.
-	if m.runtime.Machine().GetAttachmentEditor() == "" {
-		openCmd, err := buildOpenCommand(target)
-		if err != nil {
-			return errorCmd("%s", err)
-		}
-		return tea.ExecProcess(openCmd, func(err error) tea.Msg {
-			if err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
-			}
-			return nil
-		})
+	openCmd, err := buildOpenCommand(target)
+	if err != nil {
+		return errorCmd("%s", err)
 	}
-
-	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetAttachmentEditor())
-	if editorErr != nil {
-		return errorCmd("%s", editorErr)
-	}
-
-	openCmd := external.EditorCommand(editor, target)
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to open in editor: %w", err)}
+			return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
 		}
 		return nil
 	})
@@ -208,6 +196,9 @@ func (m *TaskAttachmentsModel) openAttachmentsDir() tea.Cmd {
 
 func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 	path := m.attachmentClipboardPath(m.task.Attachments[m.cursor], false)
+	if path == "" {
+		return nil
+	}
 	if err := copyToClipboard(path); err != nil {
 		m.err = err
 		return nil
@@ -220,6 +211,9 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 func (m *TaskAttachmentsModel) copyPathWithLine() tea.Cmd {
 	att := m.task.Attachments[m.cursor]
 	path := m.attachmentClipboardPath(att, true)
+	if path == "" {
+		return nil
+	}
 	if err := copyToClipboard(path); err != nil {
 		m.err = err
 		return nil
@@ -298,8 +292,7 @@ func (m *TaskAttachmentsModel) openCodeReference(att models.Attachment) tea.Cmd 
 		m.err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
 		return nil
 	}
-	codeEditor := m.runtime.Machine().GetCodeEditor()
-	if err := external.OpenCodeReference(codeEditor, att.OriginalPath, att.LineNumber); err != nil {
+	if err := external.OpenCodeReference("", att.OriginalPath, att.LineNumber); err != nil {
 		m.err = fmt.Errorf("failed to open code reference: %w", err)
 		return nil
 	}
@@ -312,7 +305,11 @@ func (m *TaskAttachmentsModel) attachmentOpenTarget(att models.Attachment) strin
 		return att.Filename
 	}
 
-	target := storage.GetAttachmentPath(m.project, m.task, att.Filename)
+	target, err := storage.ResolveAttachmentPath(m.project, m.task, att.Filename)
+	if err != nil {
+		m.err = fmt.Errorf("invalid attachment path: %w", err)
+		return ""
+	}
 	if !storage.AttachmentExists(m.project, m.task, att.Filename) {
 		m.err = fmt.Errorf("file not found: %s", att.Filename)
 		return ""
@@ -333,9 +330,13 @@ func (m *TaskAttachmentsModel) selectedAttachmentDir() string {
 		}
 	}
 
-	dir := storage.GetTaskAttachmentsDir(m.project, m.task)
 	if err := storage.EnsureTaskAttachmentsDir(m.project, m.task); err != nil {
 		m.err = fmt.Errorf("failed to create directory: %w", err)
+		return ""
+	}
+	dir, err := storage.ResolveTaskAttachmentsDir(m.project, m.task)
+	if err != nil {
+		m.err = fmt.Errorf("invalid attachments directory: %w", err)
 		return ""
 	}
 	return dir
@@ -351,7 +352,12 @@ func (m *TaskAttachmentsModel) attachmentClipboardPath(att models.Attachment, in
 	if att.IsURL {
 		return att.Filename
 	}
-	return storage.GetAttachmentPath(m.project, m.task, att.Filename)
+	path, err := storage.ResolveAttachmentPath(m.project, m.task, att.Filename)
+	if err != nil {
+		m.err = fmt.Errorf("invalid attachment path: %w", err)
+		return ""
+	}
+	return path
 }
 
 func copyToClipboard(value string) error {

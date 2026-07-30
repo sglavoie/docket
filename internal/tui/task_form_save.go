@@ -1,15 +1,11 @@
 package tui
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -38,24 +34,6 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 		return nil
 	}
 
-	// Parse start date from text input (Schedule tab, field 1).
-	if err := m.parseDraftStartDate(); err != nil {
-		m.err = err
-		m.activeTab = formTabSchedule
-		m.focusIndex = 1
-		m.syncInputFocus()
-		return nil
-	}
-
-	// Parse estimated days from text input (Schedule tab, field 2).
-	if err := m.parseDraftEstimatedDays(); err != nil {
-		m.err = err
-		m.activeTab = formTabSchedule
-		m.focusIndex = 2
-		m.syncInputFocus()
-		return nil
-	}
-
 	if m.mode == FormModeCreate {
 		return m.saveCreate()
 	}
@@ -67,10 +45,6 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 func (m *TaskFormModel) commitAllTextInputs() {
 	m.draft.title = strings.TrimSpace(strings.ReplaceAll(m.titleInput.Value(), "\n", " "))
 	m.draft.dueInput = m.dueTextInput.Value()
-	m.draft.startDateInput = m.startDateTextInput.Value()
-	m.draft.estimatedDaysInput = m.estimatedDaysTextInput.Value()
-	m.draft.url = strings.TrimSpace(m.urlTextInput.Value())
-	m.draft.source = strings.TrimSpace(m.sourceTextInput.Value())
 }
 
 // parseDraftDueDate parses draft.dueInput and stores the result in draft.dueDate.
@@ -80,106 +54,29 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 	value := strings.TrimSpace(m.draft.dueInput)
 	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
 		m.draft.dueDate = nil
-		m.draft.hasTime = false
 		return nil
 	}
-	weekEndDay := m.runtime.Settings().GetWeekEndDay()
-	date, hasTime, err := util.ParseRelativeDateWithTime(value, weekEndDay)
+	date, err := util.ParseRelativeDateWithConfig(value, "sun")
 	if err != nil {
 		return err
 	}
 	m.draft.dueDate = &date
-	m.draft.hasTime = hasTime
 	return nil
-}
-
-// parseDraftStartDate parses draft.startDateInput and stores the result in
-// draft.startDate. Empty / "none" / "clear" clears the start date.
-func (m *TaskFormModel) parseDraftStartDate() error {
-	value := strings.TrimSpace(m.draft.startDateInput)
-	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
-		m.draft.startDate = nil
-		return nil
-	}
-	weekEndDay := m.runtime.Settings().GetWeekEndDay()
-	date, _, err := util.ParseRelativeDateWithTime(value, weekEndDay)
-	if err != nil {
-		return err
-	}
-	m.draft.startDate = &date
-	return nil
-}
-
-// parseDraftEstimatedDays parses draft.estimatedDaysInput and stores the
-// result in draft.estimatedDays. Empty / "none" / "clear" resets to 0.
-// Returns an error if the value is not a valid non-negative number.
-func (m *TaskFormModel) parseDraftEstimatedDays() error {
-	value := strings.TrimSpace(m.draft.estimatedDaysInput)
-	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
-		m.draft.estimatedDays = 0
-		return nil
-	}
-	days, err := strconv.ParseFloat(value, 64)
-	if err != nil || days < 0 {
-		return fmt.Errorf("estimated days must be a non-negative number")
-	}
-	m.draft.estimatedDays = days
-	return nil
-}
-
-// buildDraftTaskAttrs constructs the type-specific attrs pointers from draft
-// state. Only the pointer for the active task type is returned non-nil.
-func (m *TaskFormModel) buildDraftTaskAttrs() (
-	bugAttrs *models.BugAttrs,
-	ideaAttrs *models.IdeaAttrs,
-	taskAttrs *models.TaskAttrs,
-	storyAttrs *models.StoryAttrs,
-	epicAttrs *models.EpicAttrs,
-) {
-	switch m.draft.taskType {
-	case models.TaskTypeBug:
-		a := m.draft.bugAttrs
-		if !a.IsEmpty() {
-			bugAttrs = &a
-		}
-	case models.TaskTypeIdea:
-		a := m.draft.ideaAttrs
-		if !a.IsEmpty() {
-			ideaAttrs = &a
-		}
-	case models.TaskTypeTask:
-		a := m.draft.taskAttrs
-		if !a.IsEmpty() {
-			taskAttrs = &a
-		}
-	case models.TaskTypeStory:
-		a := m.draft.storyAttrs
-		if !a.IsEmpty() {
-			storyAttrs = &a
-		}
-	case models.TaskTypeEpic:
-		a := m.draft.epicAttrs
-		if !a.IsEmpty() {
-			epicAttrs = &a
-		}
-	}
-	return
 }
 
 // saveCreate builds an AddTaskRequest from the draft and routes creation through
-// the task-form coordinator, which commits the new task (and any subtasks and
-// template artifact) as one atomic ChangeSet. The returned Cmd emits a
+// the task-form coordinator, which commits the new task and any subtasks as one
+// atomic ChangeSet. The returned Cmd emits a
 // TaskCreatedMsg carrying the committed result; the shell reloads and re-resolves
 // the task pointers for navigation, status, and open-after.
 func (m *TaskFormModel) saveCreate() tea.Cmd {
-	bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildDraftTaskAttrs()
 	state := creationStateFromPreset(m.draft.state)
 
 	// Build the subtask request list (blank titles skipped) and map the draft
 	// open-after index onto the created (non-blank) subtask index.
 	var subReqs []app.AddSubtaskRequest
 	openCreatedIdx := -1
-	if formTypeCanHaveSubtasks(m.draft.taskType) {
+	if m.mode == FormModeCreate {
 		wantOpen := m.subtaskOpenDetail || m.subtaskOpenContent
 		created := 0
 		for i, st := range m.draft.subtasks {
@@ -187,7 +84,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 			if title == "" {
 				continue
 			}
-			subReqs = append(subReqs, app.AddSubtaskRequest{Title: title, Type: st.taskType})
+			subReqs = append(subReqs, app.AddSubtaskRequest{Title: title})
 			if wantOpen && i == m.subtaskOpenIdx {
 				openCreatedIdx = created
 			}
@@ -196,43 +93,19 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	}
 
 	req := app.AddTaskRequest{
-		ProjectID:          m.project.ID,
-		Title:              m.draft.title,
-		Type:               m.draft.taskType,
-		Priority:           m.draft.priority,
-		Tags:               append([]string{}, m.draft.tags...),
-		Description:        strings.TrimSpace(m.draft.desc),
-		State:              state,
-		Recurrence:         m.draft.recurrence,
-		ParentID:           m.draft.parentID,
-		ChecklistItems:     append([]models.ChecklistItem(nil), m.draft.checklist...),
-		DueDate:            m.draft.dueDate,
-		HasTime:            m.draft.hasTime,
-		StartDate:          m.draft.startDate,
-		EstimatedDays:      m.draft.estimatedDays,
-		URL:                m.draft.url,
-		Source:             m.draft.source,
-		Pinned:             m.draft.pinned,
-		Dimmed:             m.draft.dimmed,
-		InsertBeforeDimmed: true,
-		Subtasks:           subReqs,
-		BugAttrs:           bugAttrs,
-		IdeaAttrs:          ideaAttrs,
-		TaskAttrs:          taskAttrs,
-		StoryAttrs:         storyAttrs,
-		EpicAttrs:          epicAttrs,
-		PlanningArtifacts:  m.presetPlan,
-	}
-
-	// Increment template use count when created from a template. This is a config
-	// write (not a tasks.md save), left as a separate persistence step exactly as
-	// the legacy path had it.
-	if m.fromTemplate != nil {
-		if err := commitAutomationToRuntime(m.runtime, func(automation *config.AutomationConfig) {
-			automation.IncrementTemplateUseCount(m.fromTemplate.ID)
-		}); err != nil {
-			logging.Warn("failed to save automation after template use: %v", err)
-		}
+		ProjectID:         m.project.ID,
+		Title:             m.draft.title,
+		Priority:          m.draft.priority,
+		Tags:              append([]string{}, m.draft.tags...),
+		Description:       strings.TrimSpace(m.draft.desc),
+		State:             state,
+		Recurrence:        m.draft.recurrence,
+		ParentID:          m.draft.parentID,
+		ChecklistItems:    append([]models.ChecklistItem(nil), m.draft.checklist...),
+		DueDate:           m.draft.dueDate,
+		Pinned:            m.draft.pinned,
+		Subtasks:          subReqs,
+		PlanningArtifacts: m.presetPlan,
 	}
 
 	openContent, openDetail := false, false
@@ -251,30 +124,16 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 // ChangeSet. The returned Cmd emits a TaskUpdatedMsg carrying the committed
 // result; the shell reloads and re-resolves the live task pointer.
 func (m *TaskFormModel) saveEdit() tea.Cmd {
-	bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildDraftTaskAttrs()
-
 	form := &app.FormEdit{
-		Title:         m.draft.title,
-		Type:          m.draft.taskType,
-		Priority:      m.draft.priority,
-		ParentID:      m.draft.parentID,
-		Description:   strings.TrimSpace(m.draft.desc),
-		Tags:          append([]string{}, m.draft.tags...),
-		DueDate:       m.draft.dueDate,
-		HasTime:       m.draft.hasTime,
-		StartDate:     m.draft.startDate,
-		EstimatedDays: m.draft.estimatedDays,
-		URL:           m.draft.url,
-		Source:        m.draft.source,
-		Dimmed:        m.draft.dimmed,
-		Pinned:        m.draft.pinned,
-		Recurrence:    m.draft.recurrence,
-		Checklist:     append([]models.ChecklistItem(nil), m.draft.checklist...),
-		BugAttrs:      bugAttrs,
-		IdeaAttrs:     ideaAttrs,
-		TaskAttrs:     taskAttrs,
-		StoryAttrs:    storyAttrs,
-		EpicAttrs:     epicAttrs,
+		Title:       m.draft.title,
+		Priority:    m.draft.priority,
+		ParentID:    m.draft.parentID,
+		Description: strings.TrimSpace(m.draft.desc),
+		Tags:        append([]string{}, m.draft.tags...),
+		DueDate:     m.draft.dueDate,
+		Pinned:      m.draft.pinned,
+		Recurrence:  m.draft.recurrence,
+		Checklist:   append([]models.ChecklistItem(nil), m.draft.checklist...),
 	}
 
 	state := m.draft.state

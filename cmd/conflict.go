@@ -22,6 +22,10 @@ Use these commands to review what diverged and to resolve each conflict by
 keeping your local edits, adopting the remote state, or supplying a merged file.
 Conflicts from aborted transactions are retry-only: adopt remote to clear the
 record, then retry the original operation so all side effects stay atomic.`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return cmd.Help()
+	},
 }
 
 func init() {

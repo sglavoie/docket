@@ -84,29 +84,6 @@ func TestDirectMutationRejectsAmbiguousIDAndLocatorTargetsOneProject(t *testing.
 	}
 }
 
-func TestWorkflowMutationRejectsAmbiguousIDAndLocatorTargetsOneProject(t *testing.T) {
-	alphaTask, betaTask, repo, service := duplicateTaskFixture()
-	alphaPriority, betaPriority := alphaTask.Priority, betaTask.Priority
-
-	_, err := service.SetPriorityWithWorkflow("shared", 1, app.SingleTaskWorkflowOptions{})
-	requireAmbiguousTaskID(t, err)
-	if len(repo.commits) != 0 || alphaTask.Priority != alphaPriority || betaTask.Priority != betaPriority {
-		t.Fatalf("ambiguous workflow mutation changed state or committed")
-	}
-
-	_, err = service.SetPriorityWithWorkflowByLocator(
-		app.TaskLocator{ProjectID: "alpha", TaskID: "shared"},
-		1,
-		app.SingleTaskWorkflowOptions{},
-	)
-	if err != nil {
-		t.Fatalf("SetPriorityWithWorkflowByLocator: %v", err)
-	}
-	if len(repo.commits) != 1 || alphaTask.Priority != 1 || betaTask.Priority != betaPriority {
-		t.Fatalf("locator workflow mutation priorities: alpha=%d beta=%d commits=%d", alphaTask.Priority, betaTask.Priority, len(repo.commits))
-	}
-}
-
 func TestDeleteRejectsAmbiguousIDAndLocatorDeletesOneProject(t *testing.T) {
 	alphaTask, betaTask, repo, service := duplicateTaskFixture()
 
@@ -158,20 +135,6 @@ func TestTwoTaskMutationResolvesBothTargetsBeforeMutation(t *testing.T) {
 	}
 	if !unique.PinnedAt.Equal(sharedTime) || !sharedB.PinnedAt.Equal(uniqueTime) || !sharedA.PinnedAt.Equal(otherSharedTime) {
 		t.Fatalf("locator reorder timestamps: unique=%v sharedA=%v sharedB=%v", unique.PinnedAt, sharedA.PinnedAt, sharedB.PinnedAt)
-	}
-}
-
-func TestActionPlanRejectsAmbiguousTaskIDBeforeMutation(t *testing.T) {
-	alphaTask, betaTask, repo, service := duplicateTaskFixture()
-	alphaPriority, betaPriority := alphaTask.Priority, betaTask.Priority
-
-	_, err := service.PrepareActionPlan(app.ActionPlan{
-		Version: app.ActionPlanVersion,
-		Actions: []app.Action{{Type: app.ActionSetPriority, TaskID: "shared", Priority: intptr(1)}},
-	})
-	requireAmbiguousTaskID(t, err)
-	if len(repo.commits) != 0 || alphaTask.Priority != alphaPriority || betaTask.Priority != betaPriority {
-		t.Fatal("ambiguous action plan changed state or committed")
 	}
 }
 

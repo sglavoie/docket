@@ -18,7 +18,7 @@ type TitleParams struct {
 	SortField     SortField
 	SortAscending bool
 	// Width is the room the title line owns, already net of any right-side
-	// reservation the caller makes (alert indicator, counter). 0 = no truncation.
+	// reservation the caller makes (such as a counter). 0 = no truncation.
 	Width int
 }
 

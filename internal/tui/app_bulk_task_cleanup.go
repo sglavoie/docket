@@ -40,25 +40,6 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 			}
 		}
 	}
-	m.clearViewBulkTaskSelectionForIdentities(ViewWeeklyReview, set)
-}
-
-func (m *AppModel) clearViewBulkTaskSelectionForIdentities(vt PresentationID, selected map[TaskIdentity]bool) {
-	if m.views == nil {
-		return
-	}
-	clearSelected := func(state *MultiSelectState) {
-		for identity := range selected {
-			state.DeselectTaskIdentity(identity)
-		}
-		if state.SelectedCount() == 0 {
-			state.ExitMultiSelect()
-		}
-	}
-	switch view := m.views.Get(vt).(type) {
-	case *WeeklyReviewModel:
-		clearSelected(&view.MultiSelectState)
-	}
 }
 
 func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bool) {
@@ -70,12 +51,7 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 		m.crossOutliner.clearMultiSelect()
 	}
 
-	for _, vt := range []PresentationID{
-		ViewWeeklyReview,
-		ViewCrossProjectOutliner,
-	} {
-		m.clearViewBulkTaskSelectionForRefs(vt, selectedIDs)
-	}
+	m.clearViewBulkTaskSelectionForRefs(ViewCrossProjectOutliner, selectedIDs)
 }
 
 func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt PresentationID, selectedIDs map[string]bool) {
@@ -84,8 +60,6 @@ func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt PresentationID, selected
 	}
 	view := m.views.Get(vt)
 	switch v := view.(type) {
-	case *WeeklyReviewModel:
-		clearMultiSelectStateForTaskIDs(&v.MultiSelectState, selectedIDs)
 	case *OutlinerModel:
 		if multiSelectStateHasTaskID(&v.MultiSelectState, selectedIDs) {
 			v.clearMultiSelect()

@@ -204,34 +204,6 @@ func TestFoundationInvariants(t *testing.T) {
 		}
 	})
 
-	t.Run("descriptor placement defaults keep harness links undiscoverable", func(t *testing.T) {
-		production, err := normalizeOperationDescriptor(operationTestDescriptor("tui.task.edit", "Edit task"))
-		if err != nil {
-			t.Fatalf("normalize production descriptor: %v", err)
-		}
-		if production.Placement != PlacementFinderOperation {
-			t.Fatalf("default placement = %q, want %q", production.Placement, PlacementFinderOperation)
-		}
-
-		harness := operationTestDescriptor("tui.harness.reset", "Reset")
-		harness.RequiredCapabilities = NewCapabilitySet(CapabilityHarness)
-		normalized, err := normalizeOperationDescriptor(harness)
-		if err != nil {
-			t.Fatalf("normalize harness descriptor: %v", err)
-		}
-		if normalized.Placement != PlacementHidden {
-			t.Fatalf("harness placement = %q, want %q", normalized.Placement, PlacementHidden)
-		}
-		if normalized.Placement.DiscoverableInFinder() {
-			t.Fatal("harness placement should never be discoverable in Finder")
-		}
-
-		harness.Placement = PlacementFinderTool
-		if _, err := normalizeOperationDescriptor(harness); err == nil ||
-			!strings.Contains(err.Error(), "test harness") {
-			t.Fatalf("harness Finder placement error = %v, want a harness rejection", err)
-		}
-	})
 }
 
 func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
@@ -357,7 +329,7 @@ func TestOperationTargetResolverRejectsStaleAndEmptyTargets(t *testing.T) {
 	}
 }
 
-func TestOperationRegistryValidatesPlacementAndCapabilities(t *testing.T) {
+func TestOperationRegistryValidatesCapabilities(t *testing.T) {
 	registry := NewOperationRegistry()
 
 	unknownCapability := operationTestDescriptor("task.typo", "Typo")
@@ -367,42 +339,6 @@ func TestOperationRegistryValidatesPlacementAndCapabilities(t *testing.T) {
 		t.Fatalf("unknown capability error = %v, want a capability rejection", err)
 	}
 
-	unknownPlacement := operationTestDescriptor("task.misplaced", "Misplaced")
-	unknownPlacement.Placement = "sidebar"
-	if err := registry.Register(unknownPlacement); err == nil ||
-		!strings.Contains(err.Error(), "placement") {
-		t.Fatalf("unknown placement error = %v, want a placement rejection", err)
-	}
-
-	contextual := operationTestDescriptor("task.delete", "Delete task")
-	contextual.Placement = PlacementContextual
-	tool := operationTestDescriptor("tool.weekly-review", "Weekly Review")
-	tool.Category = OperationCategoryReview
-	tool.Placement = PlacementFinderTool
-	tool.TargetCardinality = TargetCardinalityNone
-	tool.TargetSource = OperationTargetGlobal
-	listed := operationTestDescriptor("task.edit", "Edit task")
-	for _, descriptor := range []OperationDescriptor{contextual, tool, listed} {
-		if err := registry.Register(descriptor); err != nil {
-			t.Fatalf("Register(%s): %v", descriptor.ID, err)
-		}
-	}
-
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
-	operations, err := registry.ForPlacement(ctx, PlacementFinderOperation)
-	if err != nil {
-		t.Fatalf("ForPlacement operations: %v", err)
-	}
-	if len(operations) != 1 || operations[0].ID != listed.ID {
-		t.Fatalf("Finder operations = %v, want only %s", operations, listed.ID)
-	}
-	tools, err := registry.ForPlacement(ctx, PlacementFinderTool)
-	if err != nil {
-		t.Fatalf("ForPlacement tools: %v", err)
-	}
-	if len(tools) != 1 || tools[0].ID != tool.ID {
-		t.Fatalf("Finder tools = %v, want only %s", tools, tool.ID)
-	}
 }
 
 func TestCommandContextCloneIsolatesTypedSelection(t *testing.T) {
@@ -458,7 +394,6 @@ func TestOperationExecutorPassesTypedIdentitiesToHandlers(t *testing.T) {
 	registry := NewOperationRegistry()
 	descriptor := OperationDescriptor{
 		ID: "tag.rename", Label: "Rename tag", Category: OperationCategoryTag,
-		Placement:    PlacementContextual,
 		TargetSource: OperationTargetSelectedEntities, TargetCardinality: TargetCardinalityOneOrMore,
 		Risk: OperationRiskMutation,
 	}

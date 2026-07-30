@@ -1,11 +1,7 @@
 package tui
 
 import (
-	"os/exec"
-	"runtime"
 	"strings"
-
-	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
@@ -56,20 +52,4 @@ func buildBoardTreePrefix(ancestorIsLast []bool, isLast bool) string {
 		b.WriteString("├─── ")
 	}
 	return b.String()
-}
-
-// openBrowserCmd opens a URL in the platform browser.
-func openBrowserCmd(url string) tea.Cmd {
-	return func() tea.Msg {
-		var cmd *exec.Cmd
-		if runtime.GOOS == "darwin" {
-			cmd = exec.Command("open", url)
-		} else {
-			cmd = exec.Command("xdg-open", url)
-		}
-		if err := cmd.Start(); err == nil {
-			go func() { _ = cmd.Wait() }()
-		}
-		return nil
-	}
 }

@@ -1,12 +1,9 @@
 package external
 
 import (
-	"fmt"
 	"os/exec"
 	"sync"
 	"time"
-
-	"github.com/sglavoie/tt/internal/aiharness"
 )
 
 const cacheTTL = 5 * time.Minute
@@ -30,12 +27,9 @@ func (c *cachedPath) lookup(name string) (string, error) {
 }
 
 var (
-	fzfCache     cachedPath
-	glowCache    cachedPath
-	codeCache    cachedPath
-	claudeCache  cachedPath
-	codexCache   cachedPath
-	copilotCache cachedPath
+	fzfCache  cachedPath
+	glowCache cachedPath
+	codeCache cachedPath
 )
 
 // CachedFzfPath returns the TTL-cached result of exec.LookPath("fzf").
@@ -51,19 +45,4 @@ func CachedGlowPath() (string, error) {
 // CachedCodePath returns the TTL-cached result of exec.LookPath("code").
 func CachedCodePath() (string, error) {
 	return codeCache.lookup("code")
-}
-
-// CachedHarnessPath returns the TTL-cached executable path for a supported AI
-// harness.
-func CachedHarnessPath(harness aiharness.Name) (string, error) {
-	switch harness {
-	case aiharness.Claude:
-		return claudeCache.lookup(harness.Executable())
-	case aiharness.Codex:
-		return codexCache.lookup(harness.Executable())
-	case aiharness.Copilot:
-		return copilotCache.lookup(harness.Executable())
-	default:
-		return "", fmt.Errorf("resolve AI harness executable: %w", aiharness.ErrUnknownHarness)
-	}
 }

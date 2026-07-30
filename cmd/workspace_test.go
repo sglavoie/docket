@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/viper"
-
 	"github.com/sglavoie/tt/internal/config"
 )
 
@@ -24,9 +22,7 @@ func TestWorkspaceMoveCommand_MovesAndSwitchesPointer(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-	viper.Set("data-dir", src)
-	viper.Set("config", "")
-	t.Cleanup(func() { viper.Set("data-dir", "") })
+	setCommandDataDir(t, src)
 
 	workspaceMoveForce = true
 	t.Cleanup(func() { workspaceMoveForce = false })
@@ -56,9 +52,7 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 	if err := os.MkdirAll(src, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	viper.Set("data-dir", src)
-	viper.Set("config", "")
-	t.Cleanup(func() { viper.Set("data-dir", "") })
+	setCommandDataDir(t, src)
 
 	if err := runWorkspaceLocation(nil, nil); err != nil {
 		t.Fatalf("runWorkspaceLocation: %v", err)

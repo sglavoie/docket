@@ -3,10 +3,9 @@
   "fixture": "rich",
   "size": "72x20",
   "actions": [
-    { "type": "key", "label": "open the mode finder", "key": "m" },
-    { "type": "text", "label": "find Inbox", "text": "inbox" },
-    { "type": "key", "label": "activate Inbox", "key": "enter" },
+    { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "◆ Inbox" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

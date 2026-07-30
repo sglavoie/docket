@@ -79,23 +79,6 @@ func TestHandleTaskMessagesCommentEdited(t *testing.T) {
 	}
 }
 
-func TestHandleTaskMessagesCommentResolved(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := CommentResolvedMsg{}
-	handled, cmd := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("CommentResolvedMsg should be handled")
-	}
-	if app.statusMessage != "Comment resolved" {
-		t.Errorf("statusMessage should be 'Comment resolved', got %q", app.statusMessage)
-	}
-	if cmd == nil {
-		t.Error("CommentResolvedMsg should return a status timeout command")
-	}
-}
-
 func TestHandleTaskMessagesChecklistItemAdded(t *testing.T) {
 	app := newTestAppModel()
 

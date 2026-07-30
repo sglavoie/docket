@@ -25,10 +25,7 @@ func newQuickCaptureParser(input string, project *models.Project, allProjects []
 		allProjects: allProjects,
 		skipProject: skipProject,
 		strict:      strict,
-		result: &quickCaptureResult{
-			taskType: models.TaskTypeTask,
-			priority: 3,
-		},
+		result:      &quickCaptureResult{priority: 3},
 	}
 }
 
@@ -42,10 +39,6 @@ func (p *quickCaptureParser) failf(format string, args ...any) bool {
 		p.errMsg = msg
 	}
 	return false
-}
-
-func (p *quickCaptureParser) addAliasUsed(alias string) {
-	p.result.aliasesUsed = append(p.result.aliasesUsed, alias)
 }
 
 func (p *quickCaptureParser) finalizeTitle() {

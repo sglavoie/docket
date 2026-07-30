@@ -31,8 +31,8 @@ func addTask(project *models.Project, task *models.Task) {
 }
 
 // mustNewTask is a helper that panics on error (for non-test-context helpers).
-func mustNewTask(id string, shortID int, taskType models.TaskType, title string) *models.Task {
-	task, err := models.NewTask(id, shortID, taskType, title)
+func mustNewTask(id string, shortID int, title string) *models.Task {
+	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		panic(fmt.Sprintf("mustNewTask(%q): %v", title, err))
 	}
@@ -44,31 +44,31 @@ func NewTestProjectWithTasks(name string) *models.Project {
 	project := NewTestProject(name)
 
 	// Add an epic
-	epic := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeEpic, "Setup Infrastructure")
+	epic := mustNewTask(uuid.New().String(), project.NextShortID, "Setup Infrastructure")
 	epic.Description = "Set up the development infrastructure"
 	epic.Priority = 1
 	addTask(project, epic)
 
 	// Add a story under the epic
-	story := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeStory, "User Authentication")
+	story := mustNewTask(uuid.New().String(), project.NextShortID, "User Authentication")
 	story.Description = "Implement user login and registration"
 	story.Priority = 2
 	story.ParentID = &epic.ID
 	addTask(project, story)
 
 	// Add tasks under the story
-	task1 := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, "Create login form")
+	task1 := mustNewTask(uuid.New().String(), project.NextShortID, "Create login form")
 	task1.ParentID = &story.ID
 	task1.WorkflowState = models.StateInProgress
 	addTask(project, task1)
 
-	task2 := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, "Add password validation")
+	task2 := mustNewTask(uuid.New().String(), project.NextShortID, "Add password validation")
 	task2.ParentID = &story.ID
 	task2.WorkflowState = models.StateReady
 	addTask(project, task2)
 
 	// Add a completed task
-	task3 := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeTask, "Design login page mockup")
+	task3 := mustNewTask(uuid.New().String(), project.NextShortID, "Design login page mockup")
 	task3.ParentID = &story.ID
 	task3.WorkflowState = models.StateDone
 	now := time.Now()
@@ -76,13 +76,13 @@ func NewTestProjectWithTasks(name string) *models.Project {
 	addTask(project, task3)
 
 	// Add a bug
-	bug := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeBug, "Fix login redirect")
+	bug := mustNewTask(uuid.New().String(), project.NextShortID, "Fix login redirect")
 	bug.Priority = 1
 	bug.Tags = []string{"urgent", "auth"}
 	addTask(project, bug)
 
 	// Add an idea
-	idea := mustNewTask(uuid.New().String(), project.NextShortID, models.TaskTypeIdea, "Add social login")
+	idea := mustNewTask(uuid.New().String(), project.NextShortID, "Add social login")
 	idea.Description = "Consider adding Google/GitHub OAuth"
 	addTask(project, idea)
 
@@ -110,60 +110,12 @@ func TempProjectDir(t *testing.T) (string, func()) {
 }
 
 // NewTestTask creates a simple task for testing.
-func NewTestTask(title string, taskType models.TaskType) *models.Task {
-	task, err := models.NewTask(uuid.New().String(), 1, taskType, title)
+func NewTestTask(title string) *models.Task {
+	task, err := models.NewGenericTask(uuid.New().String(), 1, title)
 	if err != nil {
 		panic(fmt.Sprintf("NewTestTask(%q): %v", title, err))
 	}
 	return task
-}
-
-// NewTestTaskWithState creates a task in the requested canonical workflow state.
-func NewTestTaskWithState(title string, state models.WorkflowState) *models.Task {
-	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
-	if err != nil {
-		panic(fmt.Sprintf("NewTestTaskWithState(%q): %v", title, err))
-	}
-	task.WorkflowState = state
-	if state == models.StateDone {
-		now := time.Now()
-		task.CompletedAt = &now
-	}
-	return task
-}
-
-// NewTestTaskWithPriority creates a task with a specific priority.
-func NewTestTaskWithPriority(title string, priority int) *models.Task {
-	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
-	if err != nil {
-		panic(fmt.Sprintf("NewTestTaskWithPriority(%q): %v", title, err))
-	}
-	task.Priority = priority
-	return task
-}
-
-// AssertTaskCount checks that a project has the expected number of tasks.
-func AssertTaskCount(t *testing.T, project *models.Project, expected int) {
-	t.Helper()
-	if got := len(project.Tasks); got != expected {
-		t.Errorf("expected %d tasks, got %d", expected, got)
-	}
-}
-
-// AssertTaskState checks a task's canonical workflow state.
-func AssertTaskState(t *testing.T, task *models.Task, expected models.WorkflowState) {
-	t.Helper()
-	if got := task.State(); got != expected {
-		t.Errorf("expected state %s, got %s", expected, got)
-	}
-}
-
-// AssertNoError fails the test if err is not nil.
-func AssertNoError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
 }
 
 // AssertEqual fails the test if got != want.

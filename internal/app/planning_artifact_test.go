@@ -12,18 +12,18 @@ import (
 
 func TestReconcilePlanningStateSanitizesAndIsIdempotent(t *testing.T) {
 	planning := config.NewPlanningState()
-	planning.FocusQueue = []config.FocusQueueItem{
+	planning.NextOrder = []config.ProjectTaskLocator{
 		{TaskID: "ready", ProjectID: "p"},
 		{TaskID: "next", ProjectID: "p"},
 		{TaskID: "next", ProjectID: "p"},
 		{TaskID: "missing", ProjectID: "p"},
 	}
-	planning.DailyPlan = []config.DailyPlanItem{
+	planning.Today = []config.ProjectTaskLocator{
 		{TaskID: "inbox", ProjectID: "p"},
 		{TaskID: "next", ProjectID: "p"},
 		{TaskID: "done", ProjectID: "p"},
-		{TaskID: "ready", ProjectID: "p", PlannedDate: "2026-07-25"},
-		{TaskID: "ready", ProjectID: "p", PlannedDate: "2026-07-25"},
+		{TaskID: "ready", ProjectID: "p"},
+		{TaskID: "ready", ProjectID: "p"},
 		{TaskID: "missing", ProjectID: "p"},
 	}
 	req := app.PlanningReconcileRequest{
@@ -40,10 +40,11 @@ func TestReconcilePlanningStateSanitizesAndIsIdempotent(t *testing.T) {
 	if !app.ReconcilePlanningState(planning, req) {
 		t.Fatal("reconciliation reported no change")
 	}
-	if got := planning.FocusQueue; len(got) != 1 || got[0].TaskID != "next" {
-		t.Fatalf("FocusQueue = %+v, want only the valid existing StateNext order entry", got)
+	if got := planning.NextOrder; len(got) != 2 ||
+		got[0].TaskID != "next" || got[1].TaskID != "next-unindexed" {
+		t.Fatalf("NextOrder = %+v, want every StateNext task in deterministic order", got)
 	}
-	if got := planning.DailyPlan; len(got) != 1 || got[0].TaskID != "ready" {
+	if got := planning.Today; len(got) != 1 || got[0].TaskID != "ready" {
 		t.Fatalf("DailyPlan = %+v, want only eligible ready task", got)
 	}
 	if app.ReconcilePlanningState(planning, req) {
@@ -70,11 +71,11 @@ func TestApplyPlanningPromotesInboxToTodayAndBacklogClearsToday(t *testing.T) {
 	if task.State() != models.StateReady {
 		t.Fatalf("state = %s, want ready after Inbox-to-Today promotion", task.State())
 	}
-	if len(planning.DailyPlan) != 1 || planning.DailyPlan[0].TaskID != task.ID {
-		t.Fatalf("DailyPlan = %+v, want promoted task", planning.DailyPlan)
+	if len(planning.Today) != 1 || planning.Today[0].TaskID != task.ID {
+		t.Fatalf("DailyPlan = %+v, want promoted task", planning.Today)
 	}
-	if len(planning.FocusQueue) != 0 {
-		t.Fatalf("FocusQueue = %+v, want empty", planning.FocusQueue)
+	if len(planning.NextOrder) != 0 {
+		t.Fatalf("FocusQueue = %+v, want empty", planning.NextOrder)
 	}
 
 	if _, err := svc.ApplyPlanning(app.PlanningRequest{
@@ -83,8 +84,8 @@ func TestApplyPlanningPromotesInboxToTodayAndBacklogClearsToday(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(planning.DailyPlan) != 0 {
-		t.Fatalf("DailyPlan after Backlog = %+v, want empty", planning.DailyPlan)
+	if len(planning.Today) != 0 {
+		t.Fatalf("DailyPlan after Backlog = %+v, want empty", planning.Today)
 	}
 }
 
@@ -93,8 +94,8 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 	project := newProject("project", "Project", task)
 	repo := newFakeRepo(project)
 	planning := config.NewPlanningState()
-	planning.DailyPlan = []config.DailyPlanItem{{
-		TaskID: task.ID, ProjectID: project.ID, PlannedDate: "2026-07-25",
+	planning.Today = []config.ProjectTaskLocator{{
+		TaskID: task.ID, ProjectID: project.ID,
 	}}
 	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
@@ -104,8 +105,8 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if task.State() != models.StateNext || len(planning.FocusQueue) != 1 || len(planning.DailyPlan) != 0 {
-		t.Fatalf("Next result: state=%s focus=%+v daily=%+v", task.State(), planning.FocusQueue, planning.DailyPlan)
+	if task.State() != models.StateNext || len(planning.NextOrder) != 1 || len(planning.Today) != 0 {
+		t.Fatalf("Next result: state=%s focus=%+v daily=%+v", task.State(), planning.NextOrder, planning.Today)
 	}
 
 	if _, err := svc.Transition(app.StateRequest{
@@ -114,8 +115,37 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(planning.FocusQueue) != 0 || len(planning.DailyPlan) != 0 {
-		t.Fatalf("terminal cleanup left planning refs: focus=%+v daily=%+v", planning.FocusQueue, planning.DailyPlan)
+	if len(planning.NextOrder) != 0 || len(planning.Today) != 0 {
+		t.Fatalf("terminal cleanup left planning refs: focus=%+v daily=%+v", planning.NextOrder, planning.Today)
+	}
+}
+
+func TestUnrelatedMutationPreservesWaitingTaskInTodayAfterDependenciesResolve(t *testing.T) {
+	blocker := newTask("blocker", 1, "resolved dependency")
+	blocker.Complete()
+	waiting := newTask("waiting", 2, "user-chosen waiting")
+	waiting.WorkflowState = models.StateWaiting
+	waiting.DependsOn = []string{blocker.ID}
+	unrelated := newTask("unrelated", 3, "edit me")
+	project := newProject("project", "Project", blocker, waiting, unrelated)
+	repo := newFakeRepo(project)
+	planning := config.NewPlanningState()
+	planning.Today = []config.ProjectTaskLocator{{
+		TaskID: waiting.ID, ProjectID: project.ID,
+	}}
+	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
+
+	title := "edited"
+	if _, err := svc.Edit(app.EditRequest{TaskID: unrelated.ID, Title: &title}); err != nil {
+		t.Fatalf("Edit unrelated task: %v", err)
+	}
+
+	if got := waiting.State(); got != models.StateWaiting {
+		t.Fatalf("waiting task state = %s, want user-selected waiting", got)
+	}
+	if got := planning.Today; len(got) != 1 ||
+		got[0].ProjectID != project.ID || got[0].TaskID != waiting.ID {
+		t.Fatalf("Today = %+v, want waiting task preserved", got)
 	}
 }
 
@@ -135,8 +165,8 @@ func TestApplyPlanningRejectsTerminalTodayWithoutMutation(t *testing.T) {
 	}); err == nil {
 		t.Fatal("terminal Today add unexpectedly succeeded")
 	}
-	if len(repo.commits) != 0 || len(repo.artifactCommits) != 0 || len(planning.DailyPlan) != 0 {
-		t.Fatalf("rejected add mutated state: commits=%d artifacts=%d plan=%+v", len(repo.commits), len(repo.artifactCommits), planning.DailyPlan)
+	if len(repo.commits) != 0 || len(repo.artifactCommits) != 0 || len(planning.Today) != 0 {
+		t.Fatalf("rejected add mutated state: commits=%d artifacts=%d plan=%+v", len(repo.commits), len(repo.artifactCommits), planning.Today)
 	}
 }
 
@@ -160,6 +190,72 @@ func TestApplyPlanningRollsBackTaskWhenPlanningBuildFails(t *testing.T) {
 	}
 	if len(repo.commits) != 0 || len(repo.artifactCommits) != 0 {
 		t.Fatalf("failed mutation committed: project=%d artifact=%d", len(repo.commits), len(repo.artifactCommits))
+	}
+}
+
+func TestApplyPlanningBulkCommitsMixedProjectsAndPlanningAtomically(t *testing.T) {
+	first := newTask("first", 1, "first")
+	if err := first.ApplyStateTransitionAt(models.StateInbox, first.UpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+	second := newTask("second", 1, "second")
+	projectA := newProject("project-a", "Alpha", first)
+	projectB := newProject("project-b", "Beta", second)
+	repo := newFakeRepo(projectA, projectB)
+	planning := config.NewPlanningState()
+	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
+
+	result, err := svc.ApplyPlanningBulk(app.PlanningBulkRequest{
+		Targets: []app.TaskLocator{
+			{ProjectID: projectA.ID, TaskID: first.ID},
+			{ProjectID: projectB.ID, TaskID: second.ID},
+		},
+		Action: app.PlanningAddToday,
+	})
+	if err != nil {
+		t.Fatalf("ApplyPlanningBulk: %v", err)
+	}
+	if first.State() != models.StateReady || second.State() != models.StateReady {
+		t.Fatalf("states = %s/%s, want ready/ready", first.State(), second.State())
+	}
+	if len(planning.Today) != 2 {
+		t.Fatalf("Today = %+v, want both selected tasks", planning.Today)
+	}
+	if len(result.Tasks) != 2 || len(repo.commits) != 1 || len(repo.commits[0]) != 2 {
+		t.Fatalf("bulk result/commit = %+v commits=%+v", result, repo.commits)
+	}
+	artifactCount := 0
+	for _, change := range repo.commits[0] {
+		artifactCount += len(change.Artifacts)
+	}
+	if artifactCount != 1 {
+		t.Fatalf("planning artifacts in grouped commit = %d, want 1", artifactCount)
+	}
+}
+
+func TestApplyPlanningBulkRejectsInvalidMemberWithoutPartialMutation(t *testing.T) {
+	ready := newTask("ready", 1, "ready")
+	done := newTask("done", 2, "done")
+	if err := done.ApplyStateTransitionAt(models.StateDone, done.UpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+	project := newProject("project", "Project", ready, done)
+	repo := newFakeRepo(project)
+	planning := config.NewPlanningState()
+	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
+
+	_, err := svc.ApplyPlanningBulk(app.PlanningBulkRequest{
+		Targets: []app.TaskLocator{
+			{ProjectID: project.ID, TaskID: ready.ID},
+			{ProjectID: project.ID, TaskID: done.ID},
+		},
+		Action: app.PlanningAddToday,
+	})
+	if err == nil {
+		t.Fatal("terminal member did not reject bulk Today")
+	}
+	if ready.State() != models.StateReady || len(planning.Today) != 0 || len(repo.commits) != 0 {
+		t.Fatalf("rejected bulk planning mutated data: state=%s Today=%+v commits=%d", ready.State(), planning.Today, len(repo.commits))
 	}
 }
 

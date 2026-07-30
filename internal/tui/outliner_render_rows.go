@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -14,7 +13,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 	var colLayout *ColumnLayout
 	if viewport.rowWidth >= MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx], m.columnConfig)
-		// Augment with status/type widths from the same row set.
+		// Augment with status widths from the same row set.
 		var visibleTasks []*models.Task
 		for _, row := range m.rows[viewport.startIdx:viewport.endIdx] {
 			if !row.isTaskRow() || row.task == nil {
@@ -24,15 +23,12 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int)
 		}
 		if badge := ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
 			IncludeStatus: true,
-			IncludeType:   true,
 		}); badge != nil {
 			if colLayout == nil {
 				colLayout = badge
 			} else {
 				colLayout.HasStatus = badge.HasStatus
 				colLayout.StatusWidth = badge.StatusWidth
-				colLayout.HasType = badge.HasType
-				colLayout.TypeWidth = badge.TypeWidth
 			}
 		}
 	}
@@ -88,10 +84,6 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		Prefix:      prefix,
 	})
 
-	limit := m.runtime.Settings().GetStateGroupLimit(row.StateGroup)
-	if !row.IsComputedHeader && limit > 0 && row.SectionCount > limit {
-		line += "  " + PreviewWarningStyle.Render(sectionLimitWarning(row.SectionCount-limit, limit))
-	}
 	if row.ProjectID != "" {
 		project := m.resolveProjectForRow(row)
 		projectName := row.ProjectID
@@ -153,34 +145,28 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	foldIndicator := m.renderTaskFoldIndicator(row)
 	projBadge := m.renderTaskProjectBadge(row)
 	proj := m.resolveProjectForRow(row)
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 	statusIcon := m.renderTaskStatusIcon(task, proj)
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
-	}
-	if colLayout != nil && colLayout.HasType {
-		typeIcon = PadBadge(typeIcon, colLayout.TypeWidth)
 	}
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
 	indicators := m.renderTaskIndicators(task, rowWidth)
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands
-	// out. pickHeroAttribute already returns HeroNone for completed/dimmed rows
-	// (session 1 contract), so no extra dimmed guard is needed here.
+	// out.
 	hero := pickHeroAttribute(task, proj)
 	if hero != HeroNone {
 		if !statusIsHero(hero) {
 			statusIcon = demoteBadge(statusIcon)
 		}
-		typeIcon = demoteBadge(typeIcon)
 		if !priorityIsHero(hero) && prioritySegment != "" {
 			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
 				prioritySegment = demoteBadge(trimmed) + " "
 			}
 		}
 	}
-	cursorPrefix := RenderCursorPrefix(selected, task.Pinned, task.Dimmed)
+	cursorPrefix := RenderCursorPrefix(selected, task.Pinned)
 	queueIndicator := m.renderTaskQueueIndicator(task, proj)
 	checkbox := m.renderTaskCheckbox(row)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
@@ -191,7 +177,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	// remain; lower-priority badges are progressively removed as space tightens.
 	titleTarget := min(10, max(rowWidth/4, 4))
 	availableTitleWidth := func() int {
-		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
+		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
 	}
 	if availableTitleWidth() < titleTarget {
 		indicators = ""
@@ -202,19 +188,15 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	if availableTitleWidth() < titleTarget {
 		projBadge = ""
 	}
-	if availableTitleWidth() < titleTarget {
-		typeIcon = ""
-	}
-	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
+	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
 
-	line := fmt.Sprintf("%s%s%s%s%s%s%s %s %s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s%s%s %s%s%s",
 		cursorPrefix,
 		queueIndicator,
 		checkbox,
 		prefixStr,
 		foldIndicator,
 		projBadge,
-		typeIcon,
 		statusIcon,
 		prioritySegment,
 		title,
@@ -299,18 +281,15 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 // the short ID (so keyboard nav targets stay visible) and the overdue/due-today
 // text (the urgency hero for date-driven attention). Every other secondary
 // indicator — future due dates, snooze, recurrence, progress, dependencies,
-// score, tags, comments, description, attachments, checklist, decisions —
+// tags, comments, description, attachments, checklist, decisions —
 // moves to the selected-task metadata strip rendered beneath the row.
 func (m *OutlinerModel) renderTaskIndicators(task *models.Task, rowWidth int) string {
 	var parts []string
 	if m.columnConfig.IsVisible(ColShortID) {
 		parts = append(parts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
 	}
-	if parked := parkedRowSnippet(task, rowWidth); parked != "" {
-		parts = append(parts, parked)
-	}
 	if m.columnConfig.IsVisible(ColDueDate) && dueIsInlineHero(task) {
-		if dueStr := formatDueDate(task, m.runtime.Settings().GetTimeFormat()); dueStr != "" {
+		if dueStr := formatDueDate(task); dueStr != "" {
 			parts = append(parts, dueStr)
 		}
 	}
@@ -335,15 +314,8 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 	return priorityBadge + " "
 }
 
-func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.Project) string {
+func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
 	var contentParts []string
-	if m.columnConfig.IsVisible(ColScore) && m.runtime != nil && proj != nil {
-		if profile := m.runtime.Automation().GetProjectScoringProfile(proj.ID); profile != nil {
-			if score := RenderScoreBadge(task, profile); score != "" {
-				contentParts = append(contentParts, score)
-			}
-		}
-	}
 	if m.columnConfig.IsVisible(ColTags) {
 		if tags := renderTruncatedTags(task.Tags, 2, 8); tags != "" {
 			contentParts = append(contentParts, tags)
@@ -381,7 +353,7 @@ func (m *OutlinerModel) renderTaskContentGroup(task *models.Task, proj *models.P
 }
 
 func (m *OutlinerModel) renderTaskQueueIndicator(task *models.Task, project *models.Project) string {
-	if m.dailyPlanIDs[taskIdentityFor(task, project)] {
+	if m.todayIDs[taskIdentityFor(task, project)] {
 		return ActiveStyle.Render("w") + " "
 	}
 	if taskIsNext(task) {
@@ -426,8 +398,8 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) string {
-	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators)
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators string) string {
+	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
 	availableWidth := max(rowWidth-nonTitleWidth, 1)
 	title := task.Title
 	remainingWidth := availableWidth - lipgloss.Width(title)
@@ -435,12 +407,12 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, ti
 		title = truncateToVisualWidth(title, availableWidth)
 		remainingWidth = 0
 	}
-	query := strings.TrimSpace(ExtractSearchTextQuery(m.SearchQuery()))
+	query := strings.TrimSpace(m.SearchQuery())
 	titleRendered := ""
 	if query == "" {
 		titleRendered = titleStyle.Render(title)
 	} else {
-		_, positions := fuzzy.ScoreTermsWithPositions(title, query)
+		positions := searchSubstringPositions(title, query)
 		if len(positions) == 0 {
 			titleRendered = titleStyle.Render(title)
 		} else {
@@ -477,21 +449,15 @@ func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
 	return truncateToVisualWidth(compacted, maxWidth)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, typeIcon, statusIcon, prioritySegment, indicators string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators string) int {
 	return lipgloss.Width(cursorPrefix) + 2 + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
-		lipgloss.Width(projBadge) + lipgloss.Width(typeIcon) + 1 +
+		lipgloss.Width(projBadge) + 1 +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
 }
 
 func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, proj *models.Project, selected bool, rowWidth, rowIndex int) string {
-	if task.Dimmed {
-		if selected {
-			return DimSelectedLine(line, rowWidth)
-		}
-		return DimLine(line)
-	}
 	if selected {
 		if m.mutationFlash {
 			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)

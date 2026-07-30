@@ -29,7 +29,7 @@ func Test_validateAttachmentPath(t *testing.T) {
 }
 
 func TestAddAttachment(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestAddAttachment(t *testing.T) {
 }
 
 func TestAddCodeReference(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestAddCodeReference(t *testing.T) {
 }
 
 func TestRemoveAttachment(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestRemoveAttachment(t *testing.T) {
 }
 
 func TestAttachmentCountAndHas(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestAttachmentCountAndHas(t *testing.T) {
 }
 
 func TestGetAttachment(t *testing.T) {
-	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewGenericTask("t1", 1, "Test")
 	if err != nil {
 		t.Fatal(err)
 	}

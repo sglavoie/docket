@@ -73,6 +73,41 @@ func TestCompleteBlockedByUnresolvableCrossProjectDependency(t *testing.T) {
 	}
 }
 
+func TestWorkspaceDependencyQueriesResolveForwardReverseAndDerivedStatus(t *testing.T) {
+	incomplete := newTask("b1", 1, "incomplete blocker")
+	complete := completedTask("c1", 1, "complete blocker")
+	first := newTask("a1", 1, "first dependent")
+	second := newTask("a2", 2, "second dependent")
+	first.DependsOn = []string{"beta:b1", "proj-c:c1"}
+	second.DependsOn = []string{"proj-b:b1"}
+
+	projA := newProject("proj-a", "Alpha", first, second)
+	projB := newProject("proj-b", "Beta", incomplete)
+	projC := newProject("proj-c", "Gamma", complete)
+	repo := newFakeRepo(projA, projB, projC)
+	snap, err := repo.Snapshot()
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	resolver := app.NewWorkspaceResolver(snap)
+
+	blockers := resolver.GetBlockingTasks(first, projA)
+	if len(blockers) != 2 || blockers[0].Task != incomplete || blockers[0].Project != projB || blockers[1].Task != complete || blockers[1].Project != projC {
+		t.Fatalf("GetBlockingTasks = %+v, want beta/b1 then gamma/c1", blockers)
+	}
+	blocked := resolver.GetBlockedByTasks(incomplete, projB)
+	if len(blocked) != 2 || blocked[0].Task != first || blocked[1].Task != second {
+		t.Fatalf("GetBlockedByTasks = %+v, want a1 then a2", blocked)
+	}
+	if !resolver.IsDependencyBlocked(first, projA) {
+		t.Fatal("derived blocked status ignored an incomplete cross-project dependency")
+	}
+	incomplete.Complete()
+	if resolver.IsDependencyBlocked(first, projA) {
+		t.Fatal("derived blocked status retained only completed cross-project dependencies")
+	}
+}
+
 func TestAddDependencySameProject(t *testing.T) {
 	a1 := newTask("a1", 1, "task one")
 	a2 := newTask("a2", 2, "task two")
@@ -150,6 +185,43 @@ func TestSetDependenciesDeduplicatesProjectQualifierAliases(t *testing.T) {
 	}
 	if len(a1.DependsOn) != 1 || a1.DependsOn[0] != "beta:b1" {
 		t.Fatalf("DependsOn = %v, want one identity-preserving ref", a1.DependsOn)
+	}
+}
+
+func TestSetDependenciesValidatesWholeReplacementBeforeMutation(t *testing.T) {
+	tests := []struct {
+		name string
+		deps []string
+		want error
+	}{
+		{name: "empty", deps: []string{" "}, want: app.ErrInvalidInput},
+		{name: "missing", deps: []string{"proj-b:missing"}, want: app.ErrTaskNotFound},
+		{name: "self", deps: []string{"a1"}, want: app.ErrInvalidInput},
+		{name: "cross-project cycle", deps: []string{"proj-b:b1"}, want: app.ErrInvalidInput},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a1 := newTask("a1", 1, "alpha")
+			a2 := newTask("a2", 2, "original")
+			b1 := newTask("b1", 1, "beta")
+			a1.DependsOn = []string{"a2"}
+			b1.DependsOn = []string{"proj-a:a1"}
+			projA := newProject("proj-a", "Alpha", a1, a2)
+			projB := newProject("proj-b", "Beta", b1)
+			repo := newFakeRepo(projA, projB)
+			svc := newTestService(repo)
+
+			_, err := svc.SetDependencies("a1", tc.deps)
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("SetDependencies error = %v, want %v", err, tc.want)
+			}
+			if len(a1.DependsOn) != 1 || a1.DependsOn[0] != "a2" {
+				t.Fatalf("rejected replacement mutated dependencies: %v", a1.DependsOn)
+			}
+			if len(repo.commits) != 0 {
+				t.Fatalf("rejected replacement committed %d transactions", len(repo.commits))
+			}
+		})
 	}
 }
 
@@ -274,49 +346,5 @@ func TestSetDependencies(t *testing.T) {
 	}
 	if len(a1.DependsOn) != 0 {
 		t.Errorf("DependsOn = %v, want empty after clearing", a1.DependsOn)
-	}
-}
-
-func TestAddAndRemoveRelated(t *testing.T) {
-	a1 := newTask("a1", 1, "one")
-	a2 := newTask("a2", 2, "two")
-	projA := newProject("proj-a", "Alpha", a1, a2)
-	repo := newFakeRepo(projA)
-	svc := newTestService(repo)
-
-	if _, err := svc.AddRelated("a1", "a2"); err != nil {
-		t.Fatalf("AddRelated: %v", err)
-	}
-	if !a1.HasRelatedTo("a2") {
-		t.Errorf("RelatedTo = %v, want a2", a1.RelatedTo)
-	}
-	if _, err := svc.RemoveRelated("a1", "a2"); err != nil {
-		t.Fatalf("RemoveRelated: %v", err)
-	}
-	if a1.HasRelatedTo("a2") {
-		t.Errorf("RelatedTo = %v, want a2 removed", a1.RelatedTo)
-	}
-}
-
-func TestRelatedIdentityDeduplicatesSlugAndIDAndRemovesBoth(t *testing.T) {
-	a1 := newTask("a1", 1, "alpha task")
-	b1 := newTask("b1", 1, "beta task")
-	projA := newProject("proj-a", "Alpha", a1)
-	projB := newProject("proj-b", "Beta", b1)
-	a1.RelatedTo = []string{"beta:b1", "proj-b:b1"}
-	repo := newFakeRepo(projA, projB)
-	svc := newTestService(repo)
-
-	if _, err := svc.AddRelated("a1", "proj-b:b1"); err != nil {
-		t.Fatalf("AddRelated: %v", err)
-	}
-	if len(a1.RelatedTo) != 1 || a1.RelatedTo[0] != "beta:b1" {
-		t.Fatalf("RelatedTo after identity dedup = %v, want [beta:b1]", a1.RelatedTo)
-	}
-	if _, err := svc.RemoveRelated("a1", "proj-b:b1"); err != nil {
-		t.Fatalf("RemoveRelated: %v", err)
-	}
-	if len(a1.RelatedTo) != 0 {
-		t.Fatalf("RelatedTo after stable-ID removal = %v, want empty", a1.RelatedTo)
 	}
 }

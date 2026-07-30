@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -90,7 +91,7 @@ func TestBulkSetPriorityAcrossProjectsCommitsOneTransaction(t *testing.T) {
 	}
 }
 
-func TestBulkSetDueDateSetsDueAndTime(t *testing.T) {
+func TestBulkSetDueDateSetsDue(t *testing.T) {
 	t1 := newTask("t1", 1, "first")
 	t2 := newTask("t2", 2, "second")
 	projA := newProject("proj-a", "Alpha", t1, t2)
@@ -98,15 +99,12 @@ func TestBulkSetDueDateSetsDueAndTime(t *testing.T) {
 	svc := newTestService(repo)
 
 	due := time.Date(2026, 8, 1, 9, 30, 0, 0, time.UTC)
-	if _, err := svc.BulkSetDueDate([]string{"t1", "t2"}, due, true); err != nil {
+	if _, err := svc.BulkSetDueDate([]string{"t1", "t2"}, due); err != nil {
 		t.Fatalf("BulkSetDueDate: %v", err)
 	}
 	for _, task := range []*models.Task{t1, t2} {
-		if task.DueDate == nil || !task.DueDate.Equal(due) {
-			t.Errorf("task %s due = %v, want %v", task.ID, task.DueDate, due)
-		}
-		if !task.HasTime {
-			t.Errorf("task %s HasTime = false, want true", task.ID)
+		if task.DueDate == nil || task.DueDate.Format("2006-01-02") != due.Format("2006-01-02") {
+			t.Errorf("task %s due = %v, want date %s", task.ID, task.DueDate, due.Format("2006-01-02"))
 		}
 	}
 	// Each task holds its own copy of the due date, not a shared pointer.
@@ -119,7 +117,6 @@ func TestBulkClearDueDateClearsAndIsNoOpWhenAbsent(t *testing.T) {
 	due := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	t1 := newTask("t1", 1, "has due")
 	t1.DueDate = &due
-	t1.HasTime = true
 	t2 := newTask("t2", 2, "no due")
 	projA := newProject("proj-a", "Alpha", t1, t2)
 	repo := newFakeRepo(projA)
@@ -132,9 +129,6 @@ func TestBulkClearDueDateClearsAndIsNoOpWhenAbsent(t *testing.T) {
 	for _, task := range []*models.Task{t1, t2} {
 		if task.DueDate != nil {
 			t.Errorf("task %s due = %v, want nil", task.ID, task.DueDate)
-		}
-		if task.HasTime {
-			t.Errorf("task %s HasTime = true, want false", task.ID)
 		}
 	}
 	if len(res.Tasks) != 2 {
@@ -260,6 +254,58 @@ func TestBulkSetTagsRejectsInvalidTag(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("Commit called %d times, want 0 (invalid tag aborts before commit)", len(repo.commits))
+	}
+}
+
+func TestBulkPatchTagsPreservesSomeMembershipAndCommitsOnce(t *testing.T) {
+	t1 := newTask("t1", 1, "first")
+	t1.Tags = []string{"common", "first-only"}
+	t2 := newTask("t2", 1, "second")
+	t2.Tags = []string{"common", "second-only"}
+	projA := newProject("proj-a", "Alpha", t1)
+	projB := newProject("proj-b", "Beta", t2)
+	repo := newFakeRepo(projA, projB)
+	svc := newTestService(repo)
+
+	_, err := svc.BulkPatchTagsByLocators(
+		[]app.TaskLocator{
+			{ProjectID: projA.ID, TaskID: t1.ID},
+			{ProjectID: projB.ID, TaskID: t2.ID},
+		},
+		[]string{"first-only"},
+		[]string{"common"},
+	)
+	if err != nil {
+		t.Fatalf("BulkPatchTagsByLocators: %v", err)
+	}
+	if got := t1.Tags; !slices.Equal(got, []string{"first-only"}) {
+		t.Fatalf("first tags = %v, want [first-only]", got)
+	}
+	if got := t2.Tags; !slices.Equal(got, []string{"second-only", "first-only"}) {
+		t.Fatalf("second tags = %v, want its partial tag plus first-only", got)
+	}
+	if len(repo.commits) != 1 || len(repo.commits[0]) != 2 {
+		t.Fatalf("tag patch commits = %+v, want one two-project transaction", repo.commits)
+	}
+}
+
+func TestBulkPatchTagsRejectsConflictingPatchBeforeMutation(t *testing.T) {
+	task := newTask("task", 1, "task")
+	task.Tags = []string{"keep"}
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.BulkPatchTagsByLocators(
+		[]app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		[]string{"same"},
+		[]string{"same"},
+	)
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+	if !slices.Equal(task.Tags, []string{"keep"}) || len(repo.commits) != 0 {
+		t.Fatalf("conflicting patch mutated task or committed: tags=%v commits=%d", task.Tags, len(repo.commits))
 	}
 }
 

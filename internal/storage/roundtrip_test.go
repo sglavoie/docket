@@ -2,7 +2,6 @@ package storage
 
 import (
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 )
 
 // TestRoundTrip_AllFields verifies that a project with varied tasks (different
-// types, statuses, priorities, tags, descriptions, code refs, comments,
+// states, priorities, tags, descriptions, code refs, comments,
 // dependencies, recurrence) survives a full SaveProject → LoadProject cycle.
 func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	dir, cleanup := testutil.TempProjectDir(t)
@@ -24,11 +23,9 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 
 	project := testutil.NewTestProject("Round-Trip Project")
 	project.Path = filepath.Join(dir, "roundtrip")
-	project.Tags = []string{"backend", "release", "urgent"}
-	project.PinnedTags = []string{"backend", "urgent"}
 
 	// Epic with description and tags
-	epic, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeEpic, "Main Epic")
+	epic, err := models.NewGenericTask(uuid.New().String(), 1, "Main Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,10 +38,9 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	epic.WorkflowState = models.StateNext
 	epic.CreatedAt = now
 	epic.UpdatedAt = now
-	epic.ScoreDimensions = map[string]int{"impact": 5, "effort": 3}
 
 	// Story under epic
-	story, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeStory, "Auth Story")
+	story, err := models.NewGenericTask(uuid.New().String(), 2, "Auth Story")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +51,7 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	story.UpdatedAt = now
 
 	// Task with dependency, due date, pinned
-	task1, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Implement login")
+	task1, err := models.NewGenericTask(uuid.New().String(), 3, "Implement login")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +68,7 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 
 	// Task with comments
 	commentTime := now.Add(time.Hour)
-	task2, err := models.NewTask(uuid.New().String(), 4, models.TaskTypeTask, "Write tests")
+	task2, err := models.NewGenericTask(uuid.New().String(), 4, "Write tests")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +83,7 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	task2.UpdatedAt = now
 
 	// Bug with code ref attachment
-	bug, err := models.NewTask(uuid.New().String(), 5, models.TaskTypeBug, "Fix null pointer")
+	bug, err := models.NewGenericTask(uuid.New().String(), 5, "Fix null pointer")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,20 +102,19 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	bug.UpdatedAt = now
 
 	// Recurring task
-	recurring, err := models.NewTask(uuid.New().String(), 6, models.TaskTypeTask, "Weekly sync")
+	recurring, err := models.NewGenericTask(uuid.New().String(), 6, "Weekly sync")
 	if err != nil {
 		t.Fatal(err)
 	}
 	recurring.Recurrence = &models.RecurrencePattern{
 		Interval: 1,
 		Unit:     models.RecurrenceWeekly,
-		Weekdays: []int{1, 3},
 	}
 	recurring.CreatedAt = now
 	recurring.UpdatedAt = now
 
 	// Idea
-	idea, err := models.NewTask(uuid.New().String(), 7, models.TaskTypeIdea, "New feature idea")
+	idea, err := models.NewGenericTask(uuid.New().String(), 7, "New feature idea")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +123,7 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	idea.UpdatedAt = now
 
 	// Completed task
-	done, err := models.NewTask(uuid.New().String(), 8, models.TaskTypeTask, "Completed task")
+	done, err := models.NewGenericTask(uuid.New().String(), 8, "Completed task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,9 +172,6 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 		if got.Title != orig.Title {
 			t.Errorf("%q: title got %q, want %q", orig.ID, got.Title, orig.Title)
 		}
-		if got.Type != orig.Type {
-			t.Errorf("%q: type got %s, want %s", orig.ID, got.Type, orig.Type)
-		}
 		if got.State() != orig.State() {
 			t.Errorf("%q: state got %s, want %s", orig.ID, got.State(), orig.State())
 		}
@@ -203,20 +195,9 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	if len(gotEpic.Tags) != 2 || gotEpic.Tags[0] != "backend" || gotEpic.Tags[1] != "release" {
 		t.Errorf("epic tags: got %v, want [backend release]", gotEpic.Tags)
 	}
-	if !slices.Equal(loaded.PinnedTags, project.PinnedTags) {
-		t.Errorf("project pinned tags: got %v, want %v", loaded.PinnedTags, project.PinnedTags)
-	}
 
 	if got := gotEpic.State(); got != models.StateNext {
 		t.Errorf("epic state: got %q, want %q", got, models.StateNext)
-	}
-
-	// Score dimensions preserved
-	if gotEpic.ScoreDimensions["impact"] != 5 {
-		t.Errorf("epic score impact: got %d, want 5", gotEpic.ScoreDimensions["impact"])
-	}
-	if gotEpic.ScoreDimensions["effort"] != 3 {
-		t.Errorf("epic score effort: got %d, want 3", gotEpic.ScoreDimensions["effort"])
 	}
 
 	// Dependency preserved
@@ -274,9 +255,6 @@ func TestRoundTrip_AllFields(t *testing.T) { //nolint:gocyclo
 	}
 	if gotRecurring.Recurrence.Unit != models.RecurrenceWeekly {
 		t.Errorf("recurring unit: got %s, want %s", gotRecurring.Recurrence.Unit, models.RecurrenceWeekly)
-	}
-	if len(gotRecurring.Recurrence.Weekdays) != 2 {
-		t.Errorf("recurring weekdays: got %v, want [1 3]", gotRecurring.Recurrence.Weekdays)
 	}
 
 	// CompletedAt preserved
@@ -365,7 +343,7 @@ func TestRoundTrip_DescriptionWithHeadingPattern(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			task, err := models.NewTask("id-1", 1, models.TaskTypeTask, "My Task")
+			task, err := models.NewGenericTask("id-1", 1, "My Task")
 			if err != nil {
 				t.Fatal(err)
 			}

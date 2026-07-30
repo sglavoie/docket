@@ -41,24 +41,22 @@ func isValidLegacyProjectColor(color string) bool {
 }
 
 var (
-	// Matches headings like "## Epic: Title" or "### Story: Title".
+	// Matches canonical generic task headings.
 	// The title capture permits empty values so manually-edited malformed
 	// headings like "## Task:" still become tasks and flow through
 	// newTaskForHeading's data-preserving validation path instead of being
 	// swallowed as description text for the previous task.
-	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.*)$`)
+	headingRegex = regexp.MustCompile(`^(#{2,6})\s+Task:\s*(.*)$`)
+
+	// Legacy typed headings are migration-only input. The normal parser refuses
+	// them instead of silently constructing a typed runtime task.
+	legacyTypedHeadingRegex = regexp.MustCompile(`^#{2,6}\s+(Epic|Story|Bug|Idea|Note|Action):`)
 
 	// Matches project title like "# Project: Name"
 	projectRegex = regexp.MustCompile(`^#\s+Project:\s*(.+)$`)
 
 	// Matches sections metadata like "<!-- sections: Backlog;Active;Done -->"
 	sectionsRegex = regexp.MustCompile(`^<!--\s*sections:\s*(.+?)\s*-->$`)
-
-	// Matches project tag metadata like "<!-- tags: backend;frontend;urgent -->"
-	tagsRegex = regexp.MustCompile(`^<!--\s*tags:\s*(.*?)\s*-->$`)
-
-	// Matches project pinned tag metadata like "<!-- pinned_tags: backend;urgent -->"
-	pinnedTagsRegex = regexp.MustCompile(`^<!--\s*pinned_tags:\s*(.*?)\s*-->$`)
 )
 
 // ParseWarning represents a non-fatal issue found during parsing.
@@ -68,8 +66,6 @@ type ParseWarning = format.ParseWarning
 type ParseResult struct {
 	ProjectName         string
 	Tasks               []*models.Task
-	Tags                []string
-	PinnedTags          []string
 	Warnings            []ParseWarning // Non-fatal issues found during parsing
 	legacySections      []string
 	legacySectionColors map[string]string
@@ -104,8 +100,6 @@ func ParseTasksMarkdownDocument(content string) (*ParseResult, error) {
 	scanner.Buffer(make([]byte, 0, scannerInitBufSize), scannerMaxBufSize)
 	var projectName string
 	var sections []string
-	var tags []string
-	var pinnedTags []string
 	sectionColors := make(map[string]string)
 	var parsedTasks []*format.ParsedTask
 	var currentTask *format.ParsedTask
@@ -133,12 +127,8 @@ func ParseTasksMarkdownDocument(content string) (*ParseResult, error) {
 			continue
 		}
 
-		if parseTagsMetadataLine(line, foundFirstTask, &tags, &metadataWarnings) {
-			continue
-		}
-
-		if parsePinnedTagsMetadataLine(line, foundFirstTask, &pinnedTags, &metadataWarnings) {
-			continue
+		if legacyTypedHeadingRegex.MatchString(line) {
+			return nil, fmt.Errorf("%w: legacy typed task heading requires v5 migration", tterrors.ErrParseError)
 		}
 
 		if parseTaskHeadingLine(line, &currentTask, &parsedTasks, &descBuilder, &nextShortID, &foundFirstTask, &metadataParsed, &metadataWarnings) {
@@ -193,11 +183,10 @@ func ParseTasksMarkdownDocument(content string) (*ParseResult, error) {
 	idWarnings := assignMissingIDsAndTimestamps(tasks)
 	metadataWarnings = append(metadataWarnings, idWarnings...)
 
-	// Extract activity and comments from task descriptions, then description block.
-	// ACTIVITY/COMMENTS are stripped first (sibling blocks outside DESCRIPTION markers).
-	// DESCRIPTION extraction runs on what remains.
+	// Strip retired v4 activity blocks without materializing them, then extract
+	// the retained rich-record blocks and task description.
 	for _, t := range tasks {
-		format.ExtractActivityFromDescription(t)
+		_, t.Description = format.ExtractBlock(t.Description, legacyActivityStartMarkerRegex, legacyActivityEndMarkerRegex)
 		format.ExtractCommentsFromDescription(t)
 		format.ExtractDecisionsFromDescription(t)
 		descWarnings := format.ExtractDescriptionBlock(t)
@@ -218,8 +207,6 @@ func ParseTasksMarkdownDocument(content string) (*ParseResult, error) {
 	return &ParseResult{
 		ProjectName:         projectName,
 		Tasks:               tasks,
-		Tags:                tags,
-		PinnedTags:          pinnedTags,
 		Warnings:            metadataWarnings,
 		legacySections:      sections,
 		legacySectionColors: sectionColors,
@@ -329,86 +316,6 @@ func parseSectionsMetadataLine(line string, foundFirstTask bool, sections *[]str
 	return true
 }
 
-func parseTagsMetadataLine(line string, foundFirstTask bool, tags *[]string, warnings *[]ParseWarning) bool {
-	if foundFirstTask {
-		return false
-	}
-
-	matches := tagsRegex.FindStringSubmatch(line)
-	if matches == nil {
-		return false
-	}
-
-	seenTags := make(map[string]bool, len(*tags))
-	for _, existing := range *tags {
-		seenTags[existing] = true
-	}
-
-	for tagSpec := range strings.SplitSeq(matches[1], ";") {
-		rawTag := strings.TrimSpace(tagSpec)
-		if rawTag == "" {
-			continue
-		}
-
-		tag := models.NormalizeTag(rawTag)
-		if err := models.ValidateTag(tag); err != nil {
-			*warnings = append(*warnings, ParseWarning{
-				Type:    format.WarningValidation,
-				Field:   "tags",
-				Message: fmt.Sprintf("project tag %q is invalid: %v, skipping", rawTag, err),
-			})
-			continue
-		}
-
-		if !seenTags[tag] {
-			*tags = append(*tags, tag)
-			seenTags[tag] = true
-		}
-	}
-
-	return true
-}
-
-func parsePinnedTagsMetadataLine(line string, foundFirstTask bool, pinnedTags *[]string, warnings *[]ParseWarning) bool {
-	if foundFirstTask {
-		return false
-	}
-
-	matches := pinnedTagsRegex.FindStringSubmatch(line)
-	if matches == nil {
-		return false
-	}
-
-	seenTags := make(map[string]bool, len(*pinnedTags))
-	for _, existing := range *pinnedTags {
-		seenTags[existing] = true
-	}
-
-	for tagSpec := range strings.SplitSeq(matches[1], ";") {
-		rawTag := strings.TrimSpace(tagSpec)
-		if rawTag == "" {
-			continue
-		}
-
-		tag := models.NormalizeTag(rawTag)
-		if err := models.ValidateTag(tag); err != nil {
-			*warnings = append(*warnings, ParseWarning{
-				Type:    format.WarningValidation,
-				Field:   "pinned_tags",
-				Message: fmt.Sprintf("project pinned tag %q is invalid: %v, skipping", rawTag, err),
-			})
-			continue
-		}
-
-		if !seenTags[tag] {
-			*pinnedTags = append(*pinnedTags, tag)
-			seenTags[tag] = true
-		}
-	}
-
-	return true
-}
-
 func parseTaskHeadingLine(line string, currentTask **format.ParsedTask, parsedTasks *[]*format.ParsedTask, descBuilder *strings.Builder, nextShortID *int, foundFirstTask *bool, metadataParsed *bool, warnings *[]ParseWarning) bool {
 	matches := headingRegex.FindStringSubmatch(line)
 	if matches == nil {
@@ -421,8 +328,7 @@ func parseTaskHeadingLine(line string, currentTask **format.ParsedTask, parsedTa
 	}
 
 	shortID := *nextShortID
-	taskType := parseTaskTypeForHeading(strings.ToLower(matches[2]), shortID, warnings)
-	task := newTaskForHeading(shortID, taskType, strings.TrimSpace(matches[3]), warnings)
+	task := newTaskForHeading(shortID, strings.TrimSpace(matches[2]), warnings)
 	*currentTask = &format.ParsedTask{
 		Task:  task,
 		Level: len(matches[1]),
@@ -434,31 +340,7 @@ func parseTaskHeadingLine(line string, currentTask **format.ParsedTask, parsedTa
 	return true
 }
 
-func parseTaskTypeForHeading(typeStr string, shortID int, warnings *[]ParseWarning) models.TaskType {
-	taskType, ok := models.ParseTaskType(typeStr)
-	if ok {
-		return taskType
-	}
-
-	if typeStr == "action" || typeStr == "note" {
-		*warnings = append(*warnings, ParseWarning{
-			Type:    format.WarningDeprecation,
-			Field:   "type",
-			Message: fmt.Sprintf("task #%d has deprecated type '%s', migrated to 'task'", shortID, typeStr),
-		})
-		return models.TaskTypeTask
-	}
-
-	*warnings = append(*warnings, ParseWarning{
-		Type:    format.WarningValidation,
-		Field:   "type",
-		Message: fmt.Sprintf("task #%d has unrecognized type '%s', treated as 'task'", shortID, typeStr),
-	})
-
-	return models.TaskTypeTask
-}
-
-func newTaskForHeading(shortID int, taskType models.TaskType, title string, warnings *[]ParseWarning) *models.Task {
+func newTaskForHeading(shortID int, title string, warnings *[]ParseWarning) *models.Task {
 	if len(title) > models.MaxTaskTitleLength {
 		// Bypass NewTask validation for overlong titles to avoid a double
 		// warning (one here, one from NewTask). The task already exists in
@@ -468,10 +350,10 @@ func newTaskForHeading(shortID int, taskType models.TaskType, title string, warn
 			Field:   "title",
 			Message: fmt.Sprintf("task #%d title is overlong (%d chars, max %d)", shortID, len(title), models.MaxTaskTitleLength),
 		})
-		return newTaskForLoad(shortID, taskType, title)
+		return newTaskForLoad(shortID, title)
 	}
 
-	task, err := models.NewTask("", shortID, taskType, title)
+	task, err := models.NewGenericTask("", shortID, title)
 	if err != nil {
 		// Preserve tasks with invalid titles (e.g. empty) to avoid data loss.
 		*warnings = append(*warnings, ParseWarning{
@@ -479,7 +361,7 @@ func newTaskForHeading(shortID int, taskType models.TaskType, title string, warn
 			Field:   "title",
 			Message: fmt.Sprintf("task #%d has invalid title: %v", shortID, err),
 		})
-		return newTaskForLoad(shortID, taskType, title)
+		return newTaskForLoad(shortID, title)
 	}
 
 	return resetParsedTaskTimestamps(task)
@@ -525,8 +407,8 @@ func finalizeParsedTask(currentTask *format.ParsedTask, parsedTasks *[]*format.P
 	*parsedTasks = append(*parsedTasks, currentTask)
 }
 
-func newTaskForLoad(shortID int, taskType models.TaskType, title string) *models.Task {
-	return resetParsedTaskTimestamps(newFallbackTask(shortID, taskType, title))
+func newTaskForLoad(shortID int, title string) *models.Task {
+	return resetParsedTaskTimestamps(newFallbackTask(shortID, title))
 }
 
 func resetParsedTaskTimestamps(task *models.Task) *models.Task {
@@ -541,18 +423,15 @@ func resetParsedTaskTimestamps(task *models.Task) *models.Task {
 // newFallbackTask creates a Task with safe defaults, bypassing NewTask
 // validation. Used when parsing tasks from disk that have invalid titles
 // (overlong, empty, etc.) — we preserve them as-is to avoid data loss.
-func newFallbackTask(shortID int, taskType models.TaskType, title string) *models.Task {
+func newFallbackTask(shortID int, title string) *models.Task {
 	return &models.Task{
-		ShortID:         shortID,
-		Type:            taskType,
-		Title:           title,
-		WorkflowState:   models.StateReady,
-		Priority:        models.PriorityDefault,
-		Tags:            []string{},
-		DependsOn:       []string{},
-		RelatedTo:       []string{},
-		ScoreDimensions: map[string]int{},
-		Children:        []*models.Task{},
+		ShortID:       shortID,
+		Title:         title,
+		WorkflowState: models.StateReady,
+		Priority:      models.PriorityDefault,
+		Tags:          []string{},
+		DependsOn:     []string{},
+		Children:      []*models.Task{},
 	}
 }
 
@@ -593,7 +472,7 @@ func normalizeUpdatedAt(tasks []*models.Task) {
 
 // detectAndReassignDuplicateIDs detects duplicate task IDs and reassigns new
 // UUIDs to duplicates. The first task with a given ID keeps it; subsequent
-// duplicates get new UUIDs. References (ParentID, DependsOn, RelatedTo) are
+// duplicates get new UUIDs. References (ParentID and DependsOn) are
 // NOT remapped because the first task retains the original ID, so existing
 // references to that ID remain valid. Returns the set of all known IDs and
 // any warnings generated.

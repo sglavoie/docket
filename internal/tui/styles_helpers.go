@@ -33,8 +33,6 @@ func GetStateStyle(state models.WorkflowState) lipgloss.Style {
 		return BlockedStyle
 	case models.StatePaused:
 		return StandbyStyle
-	case models.StateReview:
-		return ReviewStyle
 	case models.StateSomeday:
 		return MaybeStyle
 	case models.StateDone:
@@ -91,7 +89,7 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 		return NormalStyle
 	}
 
-	isMuted := opts.Muted || opts.Disabled || task.Dimmed
+	isMuted := opts.Muted || opts.Disabled
 	isCanceled := task.IsInState(models.StateCanceled)
 	if opts.CursorSelected && !isMuted && !isCanceled {
 		return SelectedTaskTitleStyle
@@ -103,74 +101,6 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 		return CanceledStyle
 	}
 	return GetTitlePriorityStyle(task.Priority)
-}
-
-// GetTypeStyle returns the appropriate style for a task type.
-func GetTypeStyle(taskType string) lipgloss.Style {
-	switch taskType {
-	case "epic":
-		return EpicStyle
-	case "story":
-		return StoryStyle
-	case "task":
-		return TaskStyle
-	case "bug":
-		return BugStyle
-	case "idea":
-		return IdeaStyle
-	case "note":
-		return NoteStyle
-	case "action":
-		return ActionStyle
-	default:
-		return NormalStyle
-	}
-}
-
-// GetTypeBadge returns the task type icon rendered as a styled badge with background.
-func GetTypeBadge(taskType, icon string) string {
-	switch taskType {
-	case "epic":
-		return EpicBadgeStyle.Render(icon)
-	case "story":
-		return StoryBadgeStyle.Render(icon)
-	case "task":
-		return TaskBadgeStyle.Render(icon)
-	case "bug":
-		return BugBadgeStyle.Render(icon)
-	case "idea":
-		return IdeaBadgeStyle.Render(icon)
-	case "note":
-		return NoteBadgeStyle.Render(icon)
-	case "action":
-		return ActionBadgeStyle.Render(icon)
-	default:
-		return NormalStyle.Render(icon)
-	}
-}
-
-// GetStatusBadge returns the task status icon rendered as a styled badge with background.
-func GetStatusBadge(status, icon string) string {
-	switch status {
-	case "todo":
-		return TodoBadgeStyle.Render(icon)
-	case "in_progress":
-		return InProgressBadgeStyle.Render(icon)
-	case "review":
-		return ReviewBadgeStyle.Render(icon)
-	case "standby":
-		return StandbyBadgeStyle.Render(icon)
-	case "maybe":
-		return MaybeBadgeStyle.Render(icon)
-	case "done":
-		return DoneBadgeStyle.Render(icon)
-	case "blocked":
-		return BlockedBadgeStyle.Render(icon)
-	case "canceled":
-		return CanceledBadgeStyle.Render(icon)
-	default:
-		return NormalStyle.Render(icon)
-	}
 }
 
 // GetStateBadge returns the workflow-state icon rendered as a styled badge
@@ -188,8 +118,6 @@ func GetStateBadge(state models.WorkflowState) string {
 		return BlockedBadgeStyle.Render(state.Icon())
 	case models.StatePaused:
 		return StandbyBadgeStyle.Render(state.Icon())
-	case models.StateReview:
-		return ReviewBadgeStyle.Render(state.Icon())
 	case models.StateSomeday:
 		return MaybeBadgeStyle.Render(state.Icon())
 	case models.StateDone:
@@ -260,8 +188,6 @@ func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style 
 		return ViewModeInboxStyle
 	case models.StateThemeNext:
 		return ViewModeNextStyle
-	case models.StateThemeReview:
-		return ViewModeReviewStyle
 	case models.StateThemeWaiting:
 		return ViewModeWaitingStyle
 	case models.StateThemePaused:
@@ -289,8 +215,6 @@ func GetWorkflowStateGroupAccent(group models.WorkflowStateGroup) color.Color {
 		return AccentTriage
 	case models.StateThemeBacklog:
 		return AccentSupport
-	case models.StateThemeReview:
-		return AccentReview
 	case models.StateThemeWaiting:
 		return ColorWarning
 	case models.StateThemePaused, models.StateThemeSomeday:
@@ -304,7 +228,7 @@ func GetWorkflowStateGroupAccent(group models.WorkflowStateGroup) color.Color {
 	}
 }
 
-// GetOutlinerModeStyle resolves one of the final ten mode identities to its
+// GetOutlinerModeStyle resolves one of the final five mode identities to its
 // static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
 func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 	switch mode {
@@ -316,23 +240,13 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 		return GetWorkflowStateGroupStyle(models.StateGroupNext)
 	case ModeBacklog:
 		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
-	case ModePriority:
-		return GetWorkflowStateGroupStyle(models.StateGroupInProgress)
-	case ModeBlocked:
-		return GetWorkflowStateGroupStyle(models.StateGroupWaiting)
-	case ModeParked:
-		return GetWorkflowStateGroupStyle(models.StateGroupPaused)
-	case ModeDailyReview:
-		return GetWorkflowStateGroupStyle(models.StateGroupReview)
-	case ModeActivity:
-		return ViewModeAllStyle
 	default:
 		return ViewModeAllStyle
 	}
 }
 
 // RenderCursorPrefix returns the 3-character cursor prefix string based on row state.
-func RenderCursorPrefix(selected, pinned, dimmed bool) string {
+func RenderCursorPrefix(selected, pinned bool) string {
 	var prefix string
 	switch {
 	case selected && pinned:
@@ -344,40 +258,7 @@ func RenderCursorPrefix(selected, pinned, dimmed bool) string {
 	default:
 		prefix = "   "
 	}
-	if dimmed && len(prefix) > 0 && prefix[0] == ' ' {
-		prefix = "◌" + prefix[1:]
-	}
 	return prefix
-}
-
-// RenderSelectableRow renders a row with cursor prefix and optional full-width selection highlight.
-// overdue and blocked apply a subtle background tint when the row is not selected or dimmed.
-func RenderSelectableRow(selected, pinned, flash, overdue, blocked bool, content string, width int, dimmed ...bool) string {
-	isDimmed := len(dimmed) > 0 && dimmed[0]
-	row := RenderCursorPrefix(selected, pinned, isDimmed) + content
-	// Truncate to prevent terminal wrapping.
-	if width > 0 {
-		row = truncateToVisualWidth(row, width)
-	}
-	if isDimmed && selected {
-		return DimSelectedLine(row, width)
-	}
-	if isDimmed {
-		return DimLine(row)
-	}
-	if selected {
-		if flash {
-			return SelectedFlashLine(row, width)
-		}
-		return SelectedLine(row, width)
-	}
-	if blocked {
-		return BlockedRowStyle.Width(width).Render(row)
-	}
-	if overdue {
-		return OverdueRowStyle.Width(width).Render(row)
-	}
-	return row
 }
 
 // Hyperlink creates a clickable OSC 8 hyperlink in supported terminals.

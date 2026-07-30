@@ -25,60 +25,6 @@ func DefaultCardConfig() CardConfig {
 	}
 }
 
-// DashboardCardConfig returns config for full-width dashboard cards.
-func DashboardCardConfig() CardConfig {
-	return CardConfig{
-		Style:      DashboardCardStyle,
-		TitleStyle: DashboardCardTitleStyle,
-		Focused:    false,
-	}
-}
-
-// renderOverlaySplitPane renders a split-pane layout for overlays (list on left, preview on right).
-// Uses a styled vertical separator between panes.
-func renderOverlaySplitPane(leftContent, rightContent string, leftWidth, rightWidth, height int) string {
-	// Split into lines
-	leftLines := strings.Split(leftContent, "\n")
-	rightLines := strings.Split(rightContent, "\n")
-
-	// Right pane has 1 char padding, so content area is rightWidth-1
-	rightContentWidth := rightWidth - 1
-
-	// Ensure we have exactly 'height' lines for each pane
-	for len(leftLines) < height {
-		leftLines = append(leftLines, "")
-	}
-	if len(leftLines) > height {
-		leftLines = leftLines[:height]
-	}
-	for len(rightLines) < height {
-		rightLines = append(rightLines, "")
-	}
-	if len(rightLines) > height {
-		rightLines = rightLines[:height]
-	}
-
-	// Build the split pane line by line
-	var result strings.Builder
-	sep := OverlaySplitStyle.Render("┃")
-
-	for i := range height {
-		// Truncate left line to exact width and pad with spaces
-		leftLine := truncateAndPad(leftLines[i], leftWidth)
-		// Truncate right line to content width and pad with spaces (then add 1 space for padding)
-		rightLine := " " + truncateAndPad(rightLines[i], rightContentWidth)
-
-		result.WriteString(leftLine)
-		result.WriteString(sep)
-		result.WriteString(rightLine)
-		if i < height-1 {
-			result.WriteString("\n")
-		}
-	}
-
-	return result.String()
-}
-
 // truncateAndPad truncates a line to exactly maxWidth visual characters,
 // padding with spaces if shorter, truncating with "..." if longer.
 func truncateAndPad(line string, maxWidth int) string {

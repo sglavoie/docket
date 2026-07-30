@@ -186,13 +186,6 @@ func (sc UITestScenario) resolveFixture(def string) string {
 	return def
 }
 
-// ParseSize parses a "WxH" terminal size (e.g. "100x30") into positive width
-// and height. It is the exported entry point the hidden `tt tui-test` CLI uses
-// to validate the --size flag against the same rules scenario files follow.
-func ParseSize(s string) (int, int, error) {
-	return parseSize(s)
-}
-
 // parseSize parses a "WxH" terminal size (e.g. "100x30"). Both dimensions must
 // be positive integers.
 func parseSize(s string) (int, int, error) {

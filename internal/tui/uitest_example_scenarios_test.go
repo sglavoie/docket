@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -11,14 +12,58 @@ import (
 // change, or a layout regression that breaks a documented scenario fails here.
 const exampleScenariosDir = "../../docs/tui-testing/scenarios"
 
+func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
+	required := []string{
+		"capture-grammar.json",
+		"daily-loop.json",
+		"filter-chord-priority.json",
+		"filter-chord-states.json",
+		"filter-chord-clear.json",
+		"context-hub-open.json",
+		"notes-tool.json",
+		"rich-tools.json",
+		"outliner-inspector-wide-layout.json",
+		"outliner-inspector-narrow-layout.json",
+		"outliner-bulk-action-intersection.json",
+		"theme-toggle.json",
+		"in-app-help.json",
+	}
+	for _, name := range required {
+		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); err != nil {
+			t.Errorf("required final-product scenario %q: %v", name, err)
+		}
+	}
+
+	retired := []string{
+		"command-action-help.json",
+		"promoted-tools.json",
+		"task-composer-minimum-layout.json",
+		"task-detail-narrow-layout.json",
+	}
+	for _, name := range retired {
+		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); !os.IsNotExist(err) {
+			t.Errorf("retired scenario %q is still committed", name)
+		}
+	}
+}
+
 // TestExampleScenariosPass loads every committed example scenario, runs it
-// against its own fixture, and asserts it passes with a clean result. Each
-// scenario is self-contained (it names its fixture and size), so no CLI flags
-// are involved — this mirrors `tt tui-test run --scenario <file>`.
+// against its own fixture, and asserts it passes with a clean result. Set
+// TT_TUI_SCENARIO to one path while authoring; the default discovers every
+// committed JSON file.
 func TestExampleScenariosPass(t *testing.T) {
-	paths, err := filepath.Glob(filepath.Join(exampleScenariosDir, "*.json"))
-	if err != nil {
-		t.Fatalf("glob example scenarios: %v", err)
+	var paths []string
+	if selected := os.Getenv("TT_TUI_SCENARIO"); selected != "" {
+		if !filepath.IsAbs(selected) {
+			selected = filepath.Join("../..", selected)
+		}
+		paths = []string{filepath.Clean(selected)}
+	} else {
+		var err error
+		paths, err = filepath.Glob(filepath.Join(exampleScenariosDir, "*.json"))
+		if err != nil {
+			t.Fatalf("glob example scenarios: %v", err)
+		}
 	}
 	if len(paths) == 0 {
 		t.Fatalf("no example scenarios found in %s", exampleScenariosDir)
@@ -47,7 +92,11 @@ func TestExampleScenariosPass(t *testing.T) {
 				if result.Error != nil {
 					reason = result.Error.Error()
 				}
-				t.Fatalf("example scenario %q failed after %d action(s): %s", path, result.ActionsRun, reason)
+				screen := ""
+				if result.FinalObservation != nil {
+					screen = "\n\nFinal screen:\n" + result.FinalObservation.PlainScreen
+				}
+				t.Fatalf("example scenario %q failed after %d action(s): %s%s", path, result.ActionsRun, reason, screen)
 			}
 			if result.ActionsRun != len(sc.Actions) {
 				t.Fatalf("example scenario %q ran %d/%d actions", path, result.ActionsRun, len(sc.Actions))

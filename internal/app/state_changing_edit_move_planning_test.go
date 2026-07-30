@@ -16,7 +16,6 @@ func formEditReplacing(task *models.Task, state models.WorkflowState) app.EditRe
 		TaskID: task.ID,
 		Form: &app.FormEdit{
 			Title:    task.Title,
-			Type:     task.Type,
 			Priority: task.Priority,
 			Tags:     []string{},
 		},
@@ -25,8 +24,8 @@ func formEditReplacing(task *models.Task, state models.WorkflowState) app.EditRe
 }
 
 // TestStateChangingEditAndMovePreservePlanningExclusivity locks FR-011-002 at the
-// application layer: a full-form edit (and its workflow-aware variant) that changes
-// a task's section — and therefore its workflow state — must fold the same
+// application layer: a full-form edit that changes a task's section — and
+// therefore its workflow state — must fold the same
 // Today/Next exclusivity reconciliation a state transition does, and a cross-project
 // move into a section applies that destination state so its caller reconciles the
 // task's true final state rather than its pre-move state.
@@ -37,7 +36,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		project := newProject("proj", "Proj", task)
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
-		planning.SetDailyPlan([]config.DailyPlanItem{{TaskID: task.ID, ProjectID: project.ID, PlannedDate: "2026-07-19"}})
+		planning.SetToday([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: project.ID}})
 		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
 		if _, err := svc.Edit(formEditReplacing(task, models.StateNext)); err != nil {
@@ -46,7 +45,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		if got := project.GetTaskByID(task.ID).State(); got != models.StateNext {
 			t.Fatalf("state = %s, want next", got)
 		}
-		if got := planning.GetDailyPlan(); len(got) != 0 {
+		if got := planning.GetToday(); len(got) != 0 {
 			t.Fatalf("daily plan after form edit into Next = %+v, want empty", got)
 		}
 	})
@@ -57,7 +56,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		project := newProject("proj", "Proj", task)
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
-		planning.SetFocusQueue([]config.FocusQueueItem{{TaskID: task.ID, ProjectID: project.ID}})
+		planning.SetNextOrder([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: project.ID}})
 		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
 		if _, err := svc.Edit(formEditReplacing(task, models.StateWaiting)); err != nil {
@@ -66,28 +65,8 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		if got := project.GetTaskByID(task.ID).State(); got != models.StateWaiting {
 			t.Fatalf("state = %s, want waiting", got)
 		}
-		if got := planning.GetFocusQueue(); len(got) != 0 {
+		if got := planning.GetNextOrder(); len(got) != 0 {
 			t.Fatalf("focus queue after form edit out of Next = %+v, want empty", got)
-		}
-	})
-
-	t.Run("workflow-aware EditWithWorkflow into Next drops Today", func(t *testing.T) {
-		task := newTask("task-1", 1, "Today task")
-		task.ApplyWorkflowState(models.StateReady)
-		project := newProject("proj", "Proj", task)
-		repo := newFakeRepo(project)
-		planning := config.NewDomains().Planning
-		planning.SetDailyPlan([]config.DailyPlanItem{{TaskID: task.ID, ProjectID: project.ID, PlannedDate: "2026-07-19"}})
-		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
-
-		if _, err := svc.EditWithWorkflow(formEditReplacing(task, models.StateNext), app.SingleTaskWorkflowOptions{}); err != nil {
-			t.Fatalf("EditWithWorkflow: %v", err)
-		}
-		if got := project.GetTaskByID(task.ID).State(); got != models.StateNext {
-			t.Fatalf("state = %s, want next", got)
-		}
-		if got := planning.GetDailyPlan(); len(got) != 0 {
-			t.Fatalf("daily plan after workflow form edit into Next = %+v, want empty", got)
 		}
 	})
 
@@ -116,7 +95,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 	})
 }
 
-func TestWorkflowEditStateChangeUsesCanonicalTransitionGuards(t *testing.T) {
+func TestEditStateChangeUsesCanonicalTransitionGuards(t *testing.T) {
 	target := newTask("target", 1, "Target")
 	blocker := newTask("blocker", 2, "Blocker")
 	target.DependsOn = []string{blocker.ID}
@@ -125,12 +104,12 @@ func TestWorkflowEditStateChangeUsesCanonicalTransitionGuards(t *testing.T) {
 	svc := newTestService(repo)
 	done := models.StateDone
 
-	_, err := svc.EditWithWorkflow(app.EditRequest{
+	_, err := svc.Edit(app.EditRequest{
 		TaskID:        target.ID,
 		WorkflowState: &done,
-	}, app.SingleTaskWorkflowOptions{})
+	})
 	if !errors.Is(err, app.ErrDependencyBlocked) {
-		t.Fatalf("EditWithWorkflow error = %v, want ErrDependencyBlocked", err)
+		t.Fatalf("Edit error = %v, want ErrDependencyBlocked", err)
 	}
 	if got := project.GetTaskByID(target.ID).State(); got != models.StateReady {
 		t.Fatalf("target state = %q, want unchanged ready", got)

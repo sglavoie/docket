@@ -123,18 +123,6 @@ func (m *AppModel) newOperationTextPrompt(
 		return newOperationTextPromptModel(
 			request, provider, label, note.Note.Title, note.Note.Title, "new note title",
 		), nil
-	case ValueProviderTagName:
-		tag, err := m.resolveTagTarget(identity)
-		if err != nil {
-			return nil, err
-		}
-		subtitle := tag.Name
-		if tag.Project != nil {
-			subtitle = tag.Name + " · " + tag.Project.Name
-		}
-		return newOperationTextPromptModel(
-			request, provider, label, subtitle, tag.Name, "new tag name",
-		), nil
 	default:
 		return nil, fmt.Errorf("unknown operation text value provider %q", provider)
 	}

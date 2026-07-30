@@ -16,15 +16,12 @@ func NewRecurrenceEditorModel(current *models.RecurrencePattern, dueDate *time.T
 			models.RecurrenceDaily,
 			models.RecurrenceWeekly,
 			models.RecurrenceMonthly,
-			models.RecurrenceYearly,
 		},
-		unitCursor:    0,
-		weekdays:      make(map[int]bool),
-		dueDate:       dueDate,
-		focusSection:  0,
-		weekdayCursor: 0,
-		width:         80,
-		height:        24,
+		unitCursor:   0,
+		dueDate:      dueDate,
+		focusSection: 0,
+		width:        80,
+		height:       24,
 	}
 
 	// Load from existing pattern if provided
@@ -39,15 +36,6 @@ func NewRecurrenceEditorModel(current *models.RecurrencePattern, dueDate *time.T
 			}
 		}
 
-		// Load weekdays
-		for _, wd := range current.Weekdays {
-			if wd >= 0 && wd < 7 {
-				m.weekdays[wd] = true
-			}
-		}
-
-		m.streak = current.Streak
-		m.mode = current.Mode
 	}
 
 	return m
@@ -80,10 +68,9 @@ func (m *RecurrenceEditorModel) HandledKeys() []string {
 		"tab", "shift+tab",
 		"up", "down", "j", "k",
 		"left", "right", "h", "l",
-		"space",
 		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 		"backspace",
-		"m",
+		"c",
 		"enter",
 		"esc",
 	}

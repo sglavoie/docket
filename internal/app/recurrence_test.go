@@ -119,9 +119,6 @@ func TestSkipRecurrenceAdvancesDueAndCommits(t *testing.T) {
 	if res.DueDate == nil {
 		t.Fatal("expected a due date after skip")
 	}
-	if task.Recurrence.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1", task.Recurrence.Skipped)
-	}
 	if cs, _ := repo.lastCommit(); cs.UndoAction != "Skip Recurrence" {
 		t.Errorf("UndoAction = %q, want Skip Recurrence", cs.UndoAction)
 	}
@@ -163,36 +160,6 @@ func TestDeferRecurrenceNonRecurringRejected(t *testing.T) {
 	}
 }
 
-func TestSetRecurrenceModeUpdates(t *testing.T) {
-	task := recurringTask(t, "t1", 1, "weekly")
-	repo := newFakeRepo(newProject("p1", "Alpha", task))
-	svc := newTestService(repo)
-
-	res, err := svc.SetRecurrenceMode(task.ID, models.RecurModeFromCompletion)
-	if err != nil {
-		t.Fatalf("SetRecurrenceMode: %v", err)
-	}
-	if task.Recurrence.Mode != models.RecurModeFromCompletion {
-		t.Errorf("Mode = %q, want from_completion", task.Recurrence.Mode)
-	}
-	if res.Pattern == "" {
-		t.Error("expected a non-empty pattern string after mode change")
-	}
-	if cs, _ := repo.lastCommit(); cs.UndoAction != "Set Recurrence Mode" {
-		t.Errorf("UndoAction = %q, want Set Recurrence Mode", cs.UndoAction)
-	}
-}
-
-func TestSetRecurrenceModeNonRecurringRejected(t *testing.T) {
-	task := newTask("t1", 1, "Task")
-	repo := newFakeRepo(newProject("p1", "Alpha", task))
-	svc := newTestService(repo)
-
-	if _, err := svc.SetRecurrenceMode(task.ID, models.RecurModeFromCompletion); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("SetRecurrenceMode(non-recurring) error = %v, want ErrInvalidInput", err)
-	}
-}
-
 func TestSetRecurrenceCommitErrorSurfaces(t *testing.T) {
 	task := newTask("t1", 1, "Task")
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
@@ -203,6 +170,9 @@ func TestSetRecurrenceCommitErrorSurfaces(t *testing.T) {
 	_, err := svc.SetRecurrence(task.ID, models.ParseRecurrence("weekly"))
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("SetRecurrence error = %v, want injected failure", err)
+	}
+	if task.Recurrence != nil {
+		t.Fatalf("failed SetRecurrence left pattern %+v, want rollback to nil", task.Recurrence)
 	}
 }
 

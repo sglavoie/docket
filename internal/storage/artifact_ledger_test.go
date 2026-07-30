@@ -13,7 +13,7 @@ import (
 func newArtifactLedgerTestService(t *testing.T) (*CommitService, *WorkspaceLedger, string) {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	return service, ledger, dataDir
 }
@@ -318,7 +318,7 @@ func TestCommitArtifactTransaction_LedgerPreparationFailureIsAllOrNone(t *testin
 func TestCommitArtifactTransaction_LedgerOutsideJournalRootIsAllOrNone(t *testing.T) {
 	dataDir := t.TempDir()
 	outsideDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(outsideDir, "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(outsideDir, "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	path := filepath.Join(dataDir, "notes", "must-not-land.md")
 

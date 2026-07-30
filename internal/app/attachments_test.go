@@ -47,6 +47,20 @@ func TestAttachURLRejectsReservedDelimiter(t *testing.T) {
 	}
 }
 
+func TestAttachURLRejectsNonWebOrRelativeValues(t *testing.T) {
+	for _, value := range []string{"example.com/file", "file:///tmp/file", "https:///missing-host"} {
+		task := newTask("t1", 1, "Task")
+		repo := newFakeRepo(newProject("p1", "Alpha", task))
+		svc := newTestService(repo)
+		if _, err := svc.AttachURL(task.ID, value); !errors.Is(err, app.ErrInvalidInput) {
+			t.Errorf("AttachURL(%q) error = %v, want ErrInvalidInput", value, err)
+		}
+		if len(repo.commits) != 0 {
+			t.Errorf("AttachURL(%q) committed invalid URL", value)
+		}
+	}
+}
+
 func TestAttachCodeReferenceRecordsMetadataOnly(t *testing.T) {
 	task := newTask("t1", 1, "Task")
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
@@ -121,6 +135,19 @@ func TestAttachFileMissingSourceRejected(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("expected no commit, got %d", len(repo.commits))
+	}
+}
+
+func TestAttachFileRejectsUnsafeDestinationNameBeforeMutation(t *testing.T) {
+	task := newTask("t1", 1, "Task")
+	repo := newFakeRepo(newProject("p1", "Alpha", task))
+	svc := newTestService(repo)
+
+	if _, err := svc.AttachFile(task.ID, ".."); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("AttachFile(..) error = %v, want ErrInvalidInput", err)
+	}
+	if len(task.Attachments) != 0 || len(repo.commits) != 0 {
+		t.Fatalf("unsafe filename mutated state: attachments=%v commits=%d", task.Attachments, len(repo.commits))
 	}
 }
 
@@ -240,6 +267,23 @@ func TestRemoveAttachmentCommitErrorSurfaces(t *testing.T) {
 	if _, err := svc.RemoveAttachment(task.ID, 0, true); !errors.Is(err, sentinel) {
 		t.Fatalf("RemoveAttachment error = %v, want injected failure", err)
 	}
+	if len(task.Attachments) != 1 || task.Attachments[0].Filename != "gone.txt" {
+		t.Fatalf("failed removal commit left metadata mutated: %+v", task.Attachments)
+	}
+}
+
+func TestAttachFileCommitErrorRestoresMetadata(t *testing.T) {
+	task := newTask("t1", 1, "Task")
+	repo := newFakeRepo(newProject("p1", "Alpha", task))
+	repo.commitErr = errors.New("commit failed")
+	svc := newTestService(repo)
+
+	if _, err := svc.AttachFile(task.ID, "/external/report.pdf"); err == nil {
+		t.Fatal("AttachFile unexpectedly succeeded")
+	}
+	if len(task.Attachments) != 0 {
+		t.Fatalf("failed attachment commit left metadata mutated: %+v", task.Attachments)
+	}
 }
 
 // TestAttachFileUndoRedoAcceptance drives the whole wired path against a real
@@ -248,7 +292,7 @@ func TestRemoveAttachmentCommitErrorSurfaces(t *testing.T) {
 // undo removes the ingested bytes, and redo re-ingests them.
 func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "attach me")
@@ -291,7 +335,7 @@ func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 // same directory is never touched.
 func TestRemoveAttachmentUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "has attachments")

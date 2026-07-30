@@ -58,11 +58,8 @@ func BuildHierarchy(parsedTasks []*ParsedTask) ([]*models.Task, []ParseWarning) 
 			// Find potential parent at a higher level (lower number)
 			for checkLevel := level - 1; checkLevel >= 2; checkLevel-- {
 				if parent, ok := levelStack[checkLevel]; ok {
-					// Check if this task type can be a child of the parent type
-					if task.Type.CanBeChildOf(parent.Type) {
-						task.ParentID = &parent.ID
-						break
-					}
+					task.ParentID = &parent.ID
+					break
 				}
 			}
 		}

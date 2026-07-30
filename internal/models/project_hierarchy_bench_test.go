@@ -10,7 +10,7 @@ func BenchmarkBuildTaskTreeLargeProject(b *testing.B) {
 	project := &Project{ID: "large", Name: "Large", Tasks: make([]*Task, 0, taskCount)}
 	for i := range taskCount {
 		id := fmt.Sprintf("task-%05d", i)
-		task, err := NewTask(id, i+1, TaskTypeTask, fmt.Sprintf("Large hierarchy task %d", i))
+		task, err := NewGenericTask(id, i+1, fmt.Sprintf("Large hierarchy task %d", i))
 		if err != nil {
 			b.Fatalf("create task: %v", err)
 		}

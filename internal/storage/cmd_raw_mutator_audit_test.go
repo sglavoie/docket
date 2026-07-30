@@ -13,9 +13,8 @@ import (
 )
 
 // This audit enforces the session-28 boundary: Cobra command implementations
-// must route user-visible task/project mutations through the application layer
-// (internal/app via newAppService), not through raw storage mutators. The legacy
-// cmd.SaveProject helper is gone; this audit still treats any future bare
+// must not route user-visible task/project mutations through raw storage
+// mutators. The legacy cmd.SaveProject helper is gone; this audit still treats any future bare
 // SaveProject call as a forbidden reintroduction and flags every direct storage
 // save inside cmd/.
 //
@@ -24,12 +23,7 @@ import (
 const cmdSaveInfra = "infra: privileged repair/restore or test-repository adapter path below the app layer"
 
 var cmdLegacySaveAllowlist = map[string]string{
-	"cmd/app_service.go:(*cliRepository).Commit:storage.SaveProject(cs.Project)":    cmdSaveInfra,
-	"cmd/doctor.go:fixAutoRepaired:storage.SaveProjectLocked(project)":              cmdSaveInfra,
-	"cmd/doctor.go:fixFocusQueueNotNext:storage.SaveProjectLocked(project)":         cmdSaveInfra,
-	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                    cmdSaveInfra,
-	"cmd/doctor.go:fixMissingDescriptionMarkers:storage.SaveProjectLocked(project)": cmdSaveInfra,
-	"cmd/undo.go:reapplySideEffectsAndSave:storage.SaveProject(project)":            cmdSaveInfra,
+	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)": cmdSaveInfra,
 }
 
 func TestCmdCommandsDoNotUseLegacyProjectSave(t *testing.T) {
@@ -58,8 +52,7 @@ func TestCmdCommandsDoNotUseLegacyProjectSave(t *testing.T) {
 		sort.Strings(stale)
 		var b strings.Builder
 		if len(unexpected) > 0 {
-			b.WriteString("Cobra commands must persist user mutations through the application layer " +
-				"(newAppService), not a reintroduced cmd.SaveProject helper or raw storage saves. " +
+			b.WriteString("Cobra commands must not use a reintroduced cmd.SaveProject helper or raw storage saves. " +
 				"Migrate these callsites, or add a justified allowlist entry if they are infra/repair paths:\n")
 			for _, key := range unexpected {
 				fmt.Fprintf(&b, "\t%q: cmdSaveLegacy, // or cmdSaveInfra\n", key)

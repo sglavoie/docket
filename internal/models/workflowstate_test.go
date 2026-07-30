@@ -4,8 +4,8 @@ import "testing"
 
 func TestAllWorkflowStatesAreValidAndComplete(t *testing.T) {
 	all := AllWorkflowStates()
-	if len(all) != 10 {
-		t.Fatalf("AllWorkflowStates() len = %d, want 10", len(all))
+	if len(all) != 9 {
+		t.Fatalf("AllWorkflowStates() len = %d, want 9", len(all))
 	}
 	seen := make(map[WorkflowState]bool, len(all))
 	for _, s := range all {
@@ -25,10 +25,27 @@ func TestWorkflowStateIsValid(t *testing.T) {
 			t.Errorf("%q should be valid", s)
 		}
 	}
-	for _, bad := range []WorkflowState{"", "todo", "in-progress", "Done", "blocked", "unknown"} {
+	for _, bad := range []WorkflowState{"", StateReview, "todo", "in-progress", "Done", "blocked", "unknown"} {
 		if bad.IsValid() {
 			t.Errorf("%q should not be valid", bad)
 		}
+	}
+}
+
+func TestLegacyReviewCompatibilityIsExplicit(t *testing.T) {
+	if StateReview.IsValid() {
+		t.Fatal("retired Review state is valid for target operations")
+	}
+	legacy, ok := ParseLegacyWorkflowState("review")
+	if !ok || legacy != StateReview {
+		t.Fatalf("ParseLegacyWorkflowState(review) = (%q, %v)", legacy, ok)
+	}
+	target, ok := TargetStateForLegacy(legacy)
+	if !ok || target != StateReady {
+		t.Fatalf("TargetStateForLegacy(review) = (%q, %v), want ready", target, ok)
+	}
+	if got := len(AllLegacyWorkflowStates()); got != 10 {
+		t.Fatalf("legacy state count = %d, want 10", got)
 	}
 }
 

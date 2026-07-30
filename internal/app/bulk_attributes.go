@@ -14,17 +14,17 @@ import (
 // view's legacy "move selection to section X" bulk action is therefore not a
 // new attribute use case — it is a state transition, and its target section
 // maps onto a WorkflowState (Next->next, Waiting->waiting, Someday->someday,
-// Inbox->inbox, Completed->done, ...). Route those through BulkTransition /
-// BulkTransitionWithWorkflow, which validate the transition and run the same
-// atomic single-commit path these attribute operations use.
+// Inbox->inbox, Completed->done, ...). Route those through BulkTransition,
+// which validates the transition and runs the same atomic single-commit path
+// these attribute operations use.
 //
 // Custom-stage bulk assignment has no WorkflowState equivalent and is retired
 // outright: when a view that offered a bulk "set stage" action migrates, that
 // action is dropped rather than reimplemented here. This is why no
 // BulkSetStage exists to call.
 
-// bulkAttribute is the shared runner for every non-workflow bulk attribute
-// mutation. It mirrors the plain (rules-less) BulkTransition path: load a
+// bulkAttribute is the shared runner for every bulk attribute mutation. It
+// mirrors the BulkTransition path: load a
 // revision-consistent snapshot, resolve the distinct target tasks (duplicates
 // collapsed, an unresolved id aborts the batch), validate every resolved task
 // before touching any, apply mutate to each, and commit every distinct project
@@ -44,6 +44,17 @@ func (s *Service) bulkAttribute(taskIDs []string, locators []TaskLocator, undoAc
 	if err != nil {
 		return BulkResult{}, err
 	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return BulkResult{}, fmt.Errorf("capture bulk attribute rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
 	if validate != nil {
 		for _, r := range refs {
 			if validationErr := validate(r); validationErr != nil {
@@ -60,6 +71,7 @@ func (s *Service) bulkAttribute(taskIDs []string, locators []TaskLocator, undoAc
 	if err != nil {
 		return BulkResult{}, err
 	}
+	committed = true
 
 	out := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
 	for _, r := range refs {
@@ -93,28 +105,25 @@ func (s *Service) bulkSetPriority(taskIDs []string, locators []TaskLocator, prio
 	})
 }
 
-// BulkSetDueDate sets one due date on every selected task, committing every
-// touched project as ONE transaction. hasTime marks a meaningful time-of-day on
-// the due date; when false the clock component is dropped, matching single-task
-// SetDueDate. Use BulkClearDueDate to remove a due date. Tasks may span projects.
-func (s *Service) BulkSetDueDate(taskIDs []string, due time.Time, hasTime bool) (BulkResult, error) {
-	return s.bulkSetDueDate(taskIDs, nil, due, hasTime)
+// BulkSetDueDate sets one calendar due date on every selected task, committing
+// every touched project as ONE transaction. Use BulkClearDueDate to remove a
+// due date. Tasks may span projects.
+func (s *Service) BulkSetDueDate(taskIDs []string, due time.Time) (BulkResult, error) {
+	return s.bulkSetDueDate(taskIDs, nil, due)
 }
 
-func (s *Service) BulkSetDueDateByLocators(locators []TaskLocator, due time.Time, hasTime bool) (BulkResult, error) {
-	return s.bulkSetDueDate(nil, locators, due, hasTime)
+func (s *Service) BulkSetDueDateByLocators(locators []TaskLocator, due time.Time) (BulkResult, error) {
+	return s.bulkSetDueDate(nil, locators, due)
 }
 
-func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due time.Time, hasTime bool) (BulkResult, error) {
+func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due time.Time) (BulkResult, error) {
 	return s.bulkAttribute(taskIDs, locators, "Set Due Date", "due date", nil, func(t *models.Task) {
-		d := due
-		t.DueDate = &d
-		t.HasTime = hasTime
+		t.DueDate = cloneCalendarDatePtr(&due)
 		t.UpdatedAt = s.clock.Now()
 	})
 }
 
-// BulkClearDueDate removes the due date (and its clock component) from every
+// BulkClearDueDate removes the due date from every
 // selected task, committing every touched project as ONE transaction. Clearing a
 // task that has no due date is a no-op that still commits the (unchanged)
 // project, matching the idempotent single-task attribute mutations. Tasks may
@@ -130,7 +139,6 @@ func (s *Service) BulkClearDueDateByLocators(locators []TaskLocator) (BulkResult
 func (s *Service) bulkClearDueDate(taskIDs []string, locators []TaskLocator) (BulkResult, error) {
 	return s.bulkAttribute(taskIDs, locators, "Clear Due Date", "due date", nil, func(t *models.Task) {
 		t.DueDate = nil
-		t.HasTime = false
 		t.UpdatedAt = s.clock.Now()
 	})
 }
@@ -186,12 +194,76 @@ func (s *Service) BulkSetTagsByLocators(locators []TaskLocator, tags []string) (
 }
 
 func (s *Service) bulkSetTags(taskIDs []string, locators []TaskLocator, tags []string) (BulkResult, error) {
+	normalized, err := normalizeBulkTags(tags)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	return s.bulkAttribute(taskIDs, locators, "Set Tags", "tags", nil, func(t *models.Task) {
+		t.Tags = append([]string{}, normalized...)
+		t.UpdatedAt = s.clock.Now()
+	})
+}
+
+// BulkPatchTagsByLocators applies a tri-state tag edit to every selected task.
+// Tags in add are made present everywhere, tags in remove are made absent
+// everywhere, and all other memberships are preserved independently. The two
+// sets are validated before any task is touched and every project commits in
+// the same transaction.
+func (s *Service) BulkPatchTagsByLocators(
+	locators []TaskLocator,
+	add []string,
+	remove []string,
+) (BulkResult, error) {
+	normalizedAdd, err := normalizeBulkTags(add)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	normalizedRemove, err := normalizeBulkTags(remove)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	removeSet := make(map[string]bool, len(normalizedRemove))
+	for _, tag := range normalizedRemove {
+		removeSet[tag] = true
+	}
+	for _, tag := range normalizedAdd {
+		if removeSet[tag] {
+			return BulkResult{}, invalidInput("tag", fmt.Sprintf("%q cannot be added and removed", tag))
+		}
+	}
+	addSet := make(map[string]bool, len(normalizedAdd))
+	for _, tag := range normalizedAdd {
+		addSet[tag] = true
+	}
+	return s.bulkAttribute(nil, locators, "Set Tags", "tags", nil, func(t *models.Task) {
+		next := make([]string, 0, len(t.Tags)+len(normalizedAdd))
+		present := make(map[string]bool, len(t.Tags)+len(normalizedAdd))
+		for _, existing := range models.DedupeTags(t.Tags) {
+			if removeSet[existing] || present[existing] {
+				continue
+			}
+			present[existing] = true
+			next = append(next, existing)
+		}
+		for _, tag := range normalizedAdd {
+			if present[tag] {
+				continue
+			}
+			present[tag] = true
+			next = append(next, tag)
+		}
+		t.Tags = next
+		t.UpdatedAt = s.clock.Now()
+	})
+}
+
+func normalizeBulkTags(tags []string) ([]string, error) {
 	normalized := make([]string, 0, len(tags))
 	seen := make(map[string]bool, len(tags))
 	for _, raw := range tags {
 		tag := models.NormalizeTag(raw)
 		if err := models.ValidateTag(tag); err != nil {
-			return BulkResult{}, invalidInput("tag", err.Error())
+			return nil, invalidInput("tag", err.Error())
 		}
 		if seen[tag] {
 			continue
@@ -199,8 +271,34 @@ func (s *Service) bulkSetTags(taskIDs []string, locators []TaskLocator, tags []s
 		seen[tag] = true
 		normalized = append(normalized, tag)
 	}
-	return s.bulkAttribute(taskIDs, locators, "Set Tags", "tags", nil, func(t *models.Task) {
-		t.Tags = append([]string{}, normalized...)
-		t.UpdatedAt = s.clock.Now()
+	return normalized, nil
+}
+
+// BulkSetPinned pins or unpins every selected task, committing every touched
+// project as one transaction. Each newly pinned task receives the same operation
+// timestamp; unpinning clears both the flag and ordering timestamp.
+func (s *Service) BulkSetPinned(taskIDs []string, pinned bool) (BulkResult, error) {
+	return s.bulkSetPinned(taskIDs, nil, pinned)
+}
+
+func (s *Service) BulkSetPinnedByLocators(locators []TaskLocator, pinned bool) (BulkResult, error) {
+	return s.bulkSetPinned(nil, locators, pinned)
+}
+
+func (s *Service) bulkSetPinned(taskIDs []string, locators []TaskLocator, pinned bool) (BulkResult, error) {
+	now := s.clock.Now()
+	action := "Unpin Tasks"
+	if pinned {
+		action = "Pin Tasks"
+	}
+	return s.bulkAttribute(taskIDs, locators, action, "pin", nil, func(t *models.Task) {
+		t.Pinned = pinned
+		if pinned {
+			pinnedAt := now
+			t.PinnedAt = &pinnedAt
+		} else {
+			t.PinnedAt = nil
+		}
+		t.UpdatedAt = now
 	})
 }

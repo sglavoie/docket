@@ -60,9 +60,8 @@ func TestCollectTaskTagNames(t *testing.T) {
 	}
 }
 
-func TestBuildProjectTagListIncludesCatalogTagsWithTaskCounts(t *testing.T) {
+func TestBuildProjectTagListUsesTaskCounts(t *testing.T) {
 	project := &models.Project{
-		Tags: []string{"unused", "frontend"},
 		Tasks: []*models.Task{
 			{Tags: []string{"backend", "frontend"}},
 			{Tags: []string{"backend", "api", "api"}},
@@ -71,51 +70,48 @@ func TestBuildProjectTagListIncludesCatalogTagsWithTaskCounts(t *testing.T) {
 	}
 
 	got := summarizeTagInfos(BuildProjectTagList(project, false))
-	want := []string{"api:1", "backend:2", "done-only:1", "frontend:1", "unused:0"}
+	want := []string{"api:1", "backend:2", "done-only:1", "frontend:1"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuildProjectTagList() = %v, want %v", got, want)
 	}
 
 	got = summarizeTagInfos(BuildProjectTagList(project, true))
-	want = []string{"api:1", "backend:2", "frontend:1", "unused:0"}
+	want = []string{"api:1", "backend:2", "frontend:1"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuildProjectTagList(excludeCompleted) = %v, want %v", got, want)
 	}
 }
 
-func TestBuildProjectsTagListMergesCatalogTagsAndTaskCounts(t *testing.T) {
+func TestBuildProjectsTagListMergesTaskCounts(t *testing.T) {
 	alpha := &models.Project{
-		ID:   "alpha",
-		Tags: []string{"catalog-only", "shared"},
+		ID: "alpha",
 		Tasks: []*models.Task{
 			{Tags: []string{"shared", "alpha-task"}},
 		},
 	}
 	beta := &models.Project{
-		ID:   "beta",
-		Tags: []string{"beta-catalog"},
+		ID: "beta",
 		Tasks: []*models.Task{
 			{Tags: []string{"shared"}},
 		},
 	}
 
 	got := summarizeTagInfos(BuildProjectsTagList([]*models.Project{alpha, beta, alpha}, false))
-	want := []string{"alpha-task:1", "beta-catalog:0", "catalog-only:0", "shared:2"}
+	want := []string{"alpha-task:1", "shared:2"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuildProjectsTagList() = %v, want %v", got, want)
 	}
 }
 
-func TestCollectTagNamesForProjectIncludesCatalogTags(t *testing.T) {
+func TestCollectTagNamesForProjectUsesTaskTags(t *testing.T) {
 	project := &models.Project{
-		Tags: []string{"catalog-only"},
 		Tasks: []*models.Task{
 			{Tags: []string{"task-used"}},
 		},
 	}
 
 	got := CollectTagNamesForProject(project)
-	want := []string{"catalog-only", "task-used"}
+	want := []string{"task-used"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("CollectTagNamesForProject() = %v, want %v", got, want)
 	}

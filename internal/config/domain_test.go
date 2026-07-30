@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -61,10 +62,12 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "sandbox slug on sandbox project",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "sandbox", Slug: "_sandbox", Sandbox: true}}}},
+			name:    "archived system inbox",
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "inbox", Slug: "inbox", Archived: true}}, SystemInboxProjectID: "inbox"},
+			wantErr: true,
+		},
 		{
-			name:    "sandbox slug on ordinary project",
+			name:    "retired sandbox slug",
 			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "not-sandbox", Slug: "_sandbox"}}}, wantErr: true,
 		},
 		{
@@ -132,19 +135,17 @@ func TestWorkspaceCatalogEnsureProjectColorSlotsDeterministicAndIdempotent(t *te
 		SchemaVersion: CurrentConfigVersion,
 		Projects: []CatalogProject{
 			{ID: "c", Slug: "c", CreatedAt: created.Add(time.Hour), Archived: true},
-			{ID: "hidden", Slug: "hidden", CreatedAt: created.Add(-time.Hour), Internal: true},
 			{ID: "b", Slug: "b", CreatedAt: created},
 			{ID: "preserved", Slug: "preserved", CreatedAt: created.Add(-2 * time.Hour), ColorSlot: 5},
 			{ID: "duplicate", Slug: "duplicate", CreatedAt: created.Add(-time.Hour), ColorSlot: 5},
 			{ID: "a", Slug: "a", CreatedAt: created, ColorSlot: ProjectColorSlotCount + 1},
-			{ID: "sandbox", Slug: "_sandbox", CreatedAt: created.Add(-time.Hour), Sandbox: true, ColorSlot: -1},
 		},
 	}
 	if !catalog.EnsureProjectColorSlots() {
 		t.Fatal("expected legacy catalog to change")
 	}
 
-	want := map[string]int{"a": 1, "b": 2, "c": 3, "preserved": 5, "duplicate": 5, "hidden": 0, "sandbox": 0}
+	want := map[string]int{"a": 1, "b": 2, "c": 3, "preserved": 5, "duplicate": 5}
 	for _, project := range catalog.Projects {
 		if project.ColorSlot != want[project.ID] {
 			t.Errorf("project %s ColorSlot = %d, want %d", project.ID, project.ColorSlot, want[project.ID])
@@ -162,7 +163,9 @@ func TestWorkspaceCatalogProjectColorSlotAllocationIsUniqueThenBalanced(t *testi
 	for i := 1; i <= ProjectColorSlotCount*2+1; i++ {
 		id := fmt.Sprintf("project-%03d", i)
 		project := &models.Project{ID: id, Slug: id, Name: id, CreatedAt: time.Unix(int64(i), 0)}
-		catalog.UpsertProject(project)
+		if err := catalog.UpsertProject(project); err != nil {
+			t.Fatalf("UpsertProject: %v", err)
+		}
 		if !validProjectColorSlot(project.ColorSlot) {
 			t.Fatalf("project %d received invalid slot %d", i, project.ColorSlot)
 		}
@@ -195,36 +198,36 @@ func TestWorkspaceCatalogProjectColorSlotAllocationIsUniqueThenBalanced(t *testi
 func TestWorkspaceCatalogProjectColorSlotLifecyclePreservationAndRelease(t *testing.T) {
 	catalog := NewWorkspaceCatalog()
 	project := &models.Project{ID: "project", Slug: "project", Name: "Project"}
-	catalog.UpsertProject(project)
+	if err := catalog.UpsertProject(project); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
 	originalSlot := project.ColorSlot
 
 	project.Name = "Renamed"
 	project.Archived = true
 	project.Pinned = true
 	project.ColorSlot = ProjectColorSlotCount
-	catalog.UpsertProject(project)
+	if err := catalog.UpsertProject(project); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
 	if project.ColorSlot != originalSlot || catalog.Projects[0].ColorSlot != originalSlot {
 		t.Fatalf("existing slot was overwritten: model=%d catalog=%d want=%d", project.ColorSlot, catalog.Projects[0].ColorSlot, originalSlot)
 	}
 
-	sandbox := &models.Project{ID: "sandbox", Slug: "_sandbox", Name: "Sandbox", Sandbox: true}
-	internal := &models.Project{ID: "internal", Slug: "internal", Name: "Internal", Internal: true}
-	catalog.UpsertProject(sandbox)
-	catalog.UpsertProject(internal)
-	if sandbox.ColorSlot != 0 || internal.ColorSlot != 0 {
-		t.Fatalf("hidden projects received slots: sandbox=%d internal=%d", sandbox.ColorSlot, internal.ColorSlot)
-	}
-
 	second := &models.Project{ID: "second", Slug: "second", Name: "Second"}
-	catalog.UpsertProject(second)
+	if err := catalog.UpsertProject(second); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
 	if second.ColorSlot != 2 {
-		t.Fatalf("hidden projects consumed allocation capacity: second slot=%d, want 2", second.ColorSlot)
+		t.Fatalf("archived projects consumed allocation capacity: second slot=%d, want 2", second.ColorSlot)
 	}
 	if !catalog.RemoveProjectReferences(project.ID, project.Slug) {
 		t.Fatal("expected project deletion to change catalog")
 	}
 	replacement := &models.Project{ID: "replacement", Slug: "replacement", Name: "Replacement"}
-	catalog.UpsertProject(replacement)
+	if err := catalog.UpsertProject(replacement); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
 	if replacement.ColorSlot != originalSlot {
 		t.Fatalf("deleted slot was not released: got %d want %d", replacement.ColorSlot, originalSlot)
 	}
@@ -236,9 +239,13 @@ func TestWorkspaceCatalogProjectColorSlotLifecyclePreservationAndRelease(t *test
 func TestWorkspaceCatalogProjectColorSlotRestoreCollisions(t *testing.T) {
 	t.Run("free tombstoned slot is retained", func(t *testing.T) {
 		catalog := NewWorkspaceCatalog()
-		catalog.UpsertProject(&models.Project{ID: "active", Slug: "active", Name: "Active"})
+		if err := catalog.UpsertProject(&models.Project{ID: "active", Slug: "active", Name: "Active"}); err != nil {
+			t.Fatalf("UpsertProject: %v", err)
+		}
 		restored := &models.Project{ID: "restored", Slug: "restored", Name: "Restored", ColorSlot: 7}
-		catalog.UpsertProject(restored)
+		if err := catalog.UpsertProject(restored); err != nil {
+			t.Fatalf("UpsertProject: %v", err)
+		}
 		if restored.ColorSlot != 7 {
 			t.Fatalf("restored ColorSlot = %d, want 7", restored.ColorSlot)
 		}
@@ -248,7 +255,9 @@ func TestWorkspaceCatalogProjectColorSlotRestoreCollisions(t *testing.T) {
 		catalog := NewWorkspaceCatalog()
 		catalog.Projects = []CatalogProject{{ID: "active", Slug: "active", Name: "Active", ColorSlot: 7}}
 		restored := &models.Project{ID: "restored", Slug: "restored", Name: "Restored", ColorSlot: 7}
-		catalog.UpsertProject(restored)
+		if err := catalog.UpsertProject(restored); err != nil {
+			t.Fatalf("UpsertProject: %v", err)
+		}
 		if restored.ColorSlot != 1 {
 			t.Fatalf("restored ColorSlot = %d, want first unused slot 1", restored.ColorSlot)
 		}
@@ -261,10 +270,14 @@ func TestWorkspaceCatalogProjectColorSlotRestoreCollisions(t *testing.T) {
 		catalog := NewWorkspaceCatalog()
 		for i := 1; i <= ProjectColorSlotCount; i++ {
 			id := fmt.Sprintf("active-%02d", i)
-			catalog.UpsertProject(&models.Project{ID: id, Slug: id, Name: id})
+			if err := catalog.UpsertProject(&models.Project{ID: id, Slug: id, Name: id}); err != nil {
+				t.Fatalf("UpsertProject: %v", err)
+			}
 		}
 		restored := &models.Project{ID: "restored", Slug: "restored", Name: "Restored", ColorSlot: 17}
-		catalog.UpsertProject(restored)
+		if err := catalog.UpsertProject(restored); err != nil {
+			t.Fatalf("UpsertProject: %v", err)
+		}
 		if restored.ColorSlot != 17 {
 			t.Fatalf("restored ColorSlot = %d, want tombstoned slot 17", restored.ColorSlot)
 		}
@@ -275,19 +288,112 @@ func TestWorkspaceCatalogRemoveProjectReferences(t *testing.T) {
 	c := WorkspaceCatalog{
 		SchemaVersion:        3,
 		Projects:             []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop-slug"}},
-		SystemInboxProjectID: "drop",
+		SystemInboxProjectID: "keep",
 	}
-	if !c.RemoveProjectReferences("drop", "drop-slug") {
+	changed, err := c.RemoveProject("drop", "drop-slug")
+	if err != nil {
+		t.Fatalf("RemoveProject: %v", err)
+	}
+	if !changed {
 		t.Fatal("expected change")
 	}
 	if len(c.Projects) != 1 || c.Projects[0].ID != "keep" {
 		t.Errorf("expected only 'keep' to remain, got %+v", c.Projects)
 	}
-	if c.SystemInboxProjectID != "" {
-		t.Errorf("system inbox reference should be cleared, got %q", c.SystemInboxProjectID)
+	if c.SystemInboxProjectID != "keep" {
+		t.Errorf("system inbox reference changed, got %q", c.SystemInboxProjectID)
+	}
+	if _, err := c.RemoveProject("keep", "keep"); !errors.Is(err, ErrProtectedSystemInbox) {
+		t.Fatalf("RemoveProject(system Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	}
+	if len(c.Projects) != 1 || c.Projects[0].ID != "keep" {
+		t.Fatalf("protected removal mutated catalog: %+v", c.Projects)
 	}
 	if c.RemoveProjectReferences("nonexistent", "") {
 		t.Error("removing a missing project should report no change")
+	}
+}
+
+func TestWorkspaceCatalogProtectedInboxUpdatesFailClosed(t *testing.T) {
+	created := time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)
+	catalog := WorkspaceCatalog{
+		SchemaVersion: CurrentConfigVersion,
+		Projects: []CatalogProject{{
+			ID: "inbox", Slug: "inbox", Name: "Inbox", Context: "personal",
+			CreatedAt: created, UpdatedAt: created, ColorSlot: 9,
+		}},
+		SystemInboxProjectID: "inbox",
+	}
+
+	rename := catalog.Projects[0].ToModel("/workspace")
+	rename.Name = "Renamed"
+	rename.Slug = "renamed"
+	if err := catalog.UpsertProject(rename); !errors.Is(err, ErrProtectedSystemInbox) {
+		t.Fatalf("UpsertProject(rename system Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	}
+	if got := catalog.Projects[0]; got.Name != "Inbox" || got.Slug != "inbox" || got.ColorSlot != 9 {
+		t.Fatalf("rejected rename mutated catalog: %+v", got)
+	}
+
+	archive := catalog.Projects[0].ToModel("/workspace")
+	archive.Archive()
+	if err := catalog.UpsertProject(archive); !errors.Is(err, ErrProtectedSystemInbox) {
+		t.Fatalf("UpsertProject(archive system Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	}
+	if catalog.Projects[0].Archived || catalog.Projects[0].ArchivedAt != nil {
+		t.Fatalf("rejected archive mutated catalog: %+v", catalog.Projects[0])
+	}
+
+	edit := catalog.Projects[0].ToModel("/workspace")
+	edit.Description = "Visible capture project"
+	edit.Context = "work"
+	edit.Pin()
+	edit.ColorSlot = 48
+	if err := catalog.UpsertProject(edit); err != nil {
+		t.Fatalf("UpsertProject(allowed system Inbox metadata): %v", err)
+	}
+	if got := catalog.Projects[0]; got.Description != edit.Description || got.Context != "work" || !got.Pinned || got.ColorSlot != 9 {
+		t.Fatalf("allowed metadata update lost fields or durable color: %+v", got)
+	}
+
+	ordinary := &models.Project{
+		ID: "ordinary", Slug: "ordinary", Name: "Inbox", Context: "personal",
+		CreatedAt: created, UpdatedAt: created,
+	}
+	if err := catalog.UpsertProject(ordinary); err != nil {
+		t.Fatalf("display-name match was treated as protected identity: %v", err)
+	}
+	ordinary.Name = "Renamed Into Inbox"
+	ordinary.Slug = "inbox"
+	if err := catalog.UpsertProject(ordinary); err == nil {
+		t.Fatal("ordinary project renamed into the protected Inbox slug")
+	}
+	if got := catalog.Projects[1]; got.Slug != "ordinary" {
+		t.Fatalf("rejected protected-slug collision mutated ordinary project: %+v", got)
+	}
+}
+
+func TestWorkspaceCatalogSystemInboxRepairIsExplicit(t *testing.T) {
+	catalog := WorkspaceCatalog{
+		SchemaVersion: CurrentConfigVersion,
+		Projects: []CatalogProject{{
+			ID: "legacy", Slug: LegacyActionInboxSlug, Name: "Action Inbox", Context: "personal",
+		}},
+		SystemInboxProjectID: "legacy",
+	}
+	project := catalog.Projects[0].ToModel("/workspace")
+	project.Name = SystemInboxName
+	if err := catalog.UpsertProject(project); !errors.Is(err, ErrProtectedSystemInbox) {
+		t.Fatalf("ordinary Inbox rename error = %v, want ErrProtectedSystemInbox", err)
+	}
+	if err := catalog.RepairSystemInboxProject(project); err != nil {
+		t.Fatalf("RepairSystemInboxProject: %v", err)
+	}
+	if got := catalog.Projects[0]; got.Name != SystemInboxName || got.ID != catalog.SystemInboxProjectID {
+		t.Fatalf("system Inbox repair = %+v, id = %q", got, catalog.SystemInboxProjectID)
+	}
+	if !validProjectColorSlot(catalog.Projects[0].ColorSlot) {
+		t.Fatalf("system Inbox repair did not allocate a color: %+v", catalog.Projects[0])
 	}
 }
 
@@ -300,15 +406,18 @@ func TestNewPlanningStateDefaults(t *testing.T) {
 
 func TestPlanningStateValidate(t *testing.T) {
 	valid := &PlanningState{
-		FocusQueue: []FocusQueueItem{{TaskID: "t", ProjectID: "p"}},
-		DailyPlan:  []DailyPlanItem{{TaskID: "t", ProjectID: "p"}},
+		NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}},
+		Today:     []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Errorf("valid planning should pass: %v", err)
 	}
 
 	cases := []*PlanningState{
-		{FocusQueue: []FocusQueueItem{{ProjectID: "p"}}}, {DailyPlan: []DailyPlanItem{{ProjectID: "p"}}}}
+		{NextOrder: []ProjectTaskLocator{{ProjectID: "p"}}},
+		{Today: []ProjectTaskLocator{{ProjectID: "p"}}},
+		{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}, {TaskID: "t", ProjectID: "p"}}},
+	}
 	for i, c := range cases {
 		if err := c.Validate(); err == nil {
 			t.Errorf("case %d: expected validation error", i)
@@ -318,96 +427,24 @@ func TestPlanningStateValidate(t *testing.T) {
 
 func TestPlanningStateRemoveProjectReferences(t *testing.T) {
 	p := &PlanningState{
-		FocusQueue: []FocusQueueItem{{TaskID: "t1", ProjectID: "keep"}, {TaskID: "t2", ProjectID: "drop"}},
-		DailyPlan:  []DailyPlanItem{{TaskID: "t3", ProjectID: "drop-slug"}},
+		NextOrder: []ProjectTaskLocator{{TaskID: "t1", ProjectID: "keep"}, {TaskID: "t2", ProjectID: "drop"}},
+		Today:     []ProjectTaskLocator{{TaskID: "t3", ProjectID: "drop-slug"}},
 	}
 	if !p.RemoveProjectReferences("drop", "drop-slug") {
 		t.Fatal("expected change")
 	}
-	if len(p.FocusQueue) != 1 || p.FocusQueue[0].ProjectID != "keep" {
-		t.Errorf("focus queue not cleaned: %+v", p.FocusQueue)
+	if len(p.NextOrder) != 1 || p.NextOrder[0].ProjectID != "keep" {
+		t.Errorf("focus queue not cleaned: %+v", p.NextOrder)
 	}
-	if len(p.DailyPlan) != 0 {
-		t.Errorf("daily plan not cleaned: %+v", p.DailyPlan)
-	}
-}
-
-func TestNewSettingsDefaults(t *testing.T) {
-	s := NewSettings()
-	if !s.FzfEnabled || !s.GlowEnabled {
-		t.Error("fzf/glow should default enabled")
-	}
-	if s.DefaultContext != "personal" {
-		t.Errorf("DefaultContext = %q, want personal", s.DefaultContext)
-	}
-	if s.UndoHistoryDepth == nil || *s.UndoHistoryDepth != DefaultUndoHistoryDepth {
-		t.Errorf("UndoHistoryDepth should default to %d", DefaultUndoHistoryDepth)
-	}
-	if err := s.Validate(); err != nil {
-		t.Errorf("default settings should validate: %v", err)
-	}
-}
-
-func TestSettingsValidate(t *testing.T) {
-	neg := -1
-	if err := (&Settings{FzfTimeout: &neg}).Validate(); err == nil {
-		t.Error("negative fzf timeout should fail")
-	}
-	if err := (&Settings{UndoHistoryDepth: &neg}).Validate(); err == nil {
-		t.Error("negative undo depth should fail")
-	}
-	zero := 0
-	if err := (&Settings{FzfTimeout: &zero, UndoHistoryDepth: &zero}).Validate(); err != nil {
-		t.Errorf("zero values should validate: %v", err)
-	}
-}
-
-func TestSettingsAIConsentDefaultsOff(t *testing.T) {
-	s := NewSettings()
-	if s.AIConsent.Granted {
-		t.Error("AI consent must default to not granted (explicit opt-in)")
-	}
-}
-
-func TestNewAutomationConfigDefaults(t *testing.T) {
-	a := NewAutomationConfig()
-	if err := a.Validate(); err != nil {
-		t.Errorf("default automation should validate: %v", err)
-	}
-}
-
-func TestAutomationConfigValidate(t *testing.T) {
-	if err := (&AutomationConfig{ScoringProfiles: nil}).Validate(); err != nil {
-		t.Errorf("empty automation should validate: %v", err)
-	}
-}
-
-func TestAutomationConfigRemoveProjectReferences(t *testing.T) {
-	a := &AutomationConfig{
-		ProjectScoringProfile: map[string]string{"keep": "prof", "drop": "prof2"},
-		WorkflowEvalStates:    map[string]WorkflowEvalState{"drop-slug": {}},
-	}
-	if !a.RemoveProjectReferences("drop", "drop-slug") {
-		t.Fatal("expected change")
-	}
-	if _, ok := a.ProjectScoringProfile["drop"]; ok {
-		t.Error("scoring profile for dropped project should be removed")
-	}
-	if _, ok := a.ProjectScoringProfile["keep"]; !ok {
-		t.Error("scoring profile for kept project should remain")
-	}
-	if _, ok := a.WorkflowEvalStates["drop-slug"]; ok {
-		t.Error("workflow eval state for dropped slug should be removed")
-	}
-	if a.RemoveProjectReferences("missing", "") {
-		t.Error("removing a missing project should report no change")
+	if len(p.Today) != 0 {
+		t.Errorf("daily plan not cleaned: %+v", p.Today)
 	}
 }
 
 func TestNewMachineStateDefaults(t *testing.T) {
 	m := NewMachineState()
-	if m.Editor != "code" {
-		t.Errorf("Editor = %q, want code", m.Editor)
+	if m.Theme != "dark" {
+		t.Errorf("Theme = %q, want deterministic dark default", m.Theme)
 	}
 	if err := m.Validate(); err != nil {
 		t.Errorf("default machine should validate: %v", err)
@@ -415,8 +452,8 @@ func TestNewMachineStateDefaults(t *testing.T) {
 }
 
 func TestMachineStateValidate(t *testing.T) {
-	if err := (&MachineState{AIHarness: "unknown-harness"}).Validate(); err == nil {
-		t.Error("unknown AI harness should fail")
+	if err := (&MachineState{Theme: "sepia"}).Validate(); err == nil {
+		t.Error("unknown machine theme should fail")
 	}
 }
 
@@ -436,60 +473,65 @@ func TestMachineStateOmitsRetiredStartupAndLayoutFields(t *testing.T) {
 
 func TestMachineStateRemoveProjectReferences(t *testing.T) {
 	m := &MachineState{
-		CurrentProject:   "drop",
-		RecentTaskVisits: []RecentTaskVisit{{TaskID: "t", ProjectID: "drop"}, {TaskID: "t2", ProjectID: "keep"}},
-		CustomContexts:   map[string][]string{"work": {"drop"}},
-		ProjectRoutes: map[string]OutlinerRouteState{
-			"drop-slug": {Mode: OutlinerModeDue},
-			"keep":      {Mode: OutlinerModeActivity},
-		},
+		CustomContexts: map[string][]string{"work": {"drop"}, "home": {"keep"}},
 	}
 	if !m.RemoveProjectReferences("drop", "drop-slug") {
 		t.Fatal("expected change")
 	}
-	if m.CurrentProject != "" {
-		t.Errorf("current project should be cleared, got %q", m.CurrentProject)
-	}
-	if len(m.RecentTaskVisits) != 1 || m.RecentTaskVisits[0].ProjectID != "keep" {
-		t.Errorf("recent visits not cleaned: %+v", m.RecentTaskVisits)
-	}
 	if got := m.CustomContexts["work"]; len(got) != 0 {
 		t.Errorf("custom context not cleaned: %+v", got)
 	}
-	if _, ok := m.ProjectRoutes["drop-slug"]; ok || m.ProjectRoutes["keep"].Mode != OutlinerModeActivity {
-		t.Errorf("project routes not cleaned selectively: %+v", m.ProjectRoutes)
+	if got := m.CustomContexts["home"]; len(got) != 1 || got[0] != "keep" {
+		t.Errorf("unrelated custom context changed: %+v", got)
 	}
 }
 
 func TestNewDomainsYieldsDefaults(t *testing.T) {
 	d := NewDomains()
-	if d.Catalog == nil || d.Planning == nil || d.Settings == nil || d.Automation == nil || d.Machine == nil {
+	if d.Catalog == nil || d.Planning == nil || d.Machine == nil {
 		t.Fatal("all domains should be populated with defaults")
-	}
-	if d.Settings.DefaultContext != "personal" {
-		t.Errorf("nil-config settings should carry defaults, got %q", d.Settings.DefaultContext)
 	}
 }
 
 func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 	d := &Domains{
-		Catalog:  &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "drop", Slug: "drop"}}, SystemInboxProjectID: "drop"},
-		Planning: &PlanningState{FocusQueue: []FocusQueueItem{{TaskID: "t", ProjectID: "drop"}}}, Automation: &AutomationConfig{ProjectScoringProfile: map[string]string{"drop": "p"}},
-		Machine: &MachineState{CurrentProject: "drop"},
+		Catalog:  &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop"}}, SystemInboxProjectID: "keep"},
+		Planning: &PlanningState{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "drop"}}},
+		Machine:  &MachineState{CustomContexts: map[string][]string{"work": {"drop"}}},
 	}
-	if !d.RemoveProjectReferences("drop", "drop") {
+	changed, err := d.RemoveProject("drop", "drop")
+	if err != nil {
+		t.Fatalf("RemoveProject: %v", err)
+	}
+	if !changed {
 		t.Fatal("expected change across domains")
 	}
-	if len(d.Catalog.Projects) != 0 {
+	if len(d.Catalog.Projects) != 1 || d.Catalog.Projects[0].ID != "keep" {
 		t.Error("catalog project not removed")
 	}
-	if len(d.Planning.FocusQueue) != 0 {
+	if len(d.Planning.NextOrder) != 0 {
 		t.Error("planning focus queue not cleaned")
 	}
-	if _, ok := d.Automation.ProjectScoringProfile["drop"]; ok {
-		t.Error("automation scoring profile not cleaned")
+	if len(d.Machine.CustomContexts["work"]) != 0 {
+		t.Error("machine custom context not cleaned")
 	}
-	if d.Machine.CurrentProject != "" {
-		t.Error("machine current project not cleared")
+}
+
+func TestDomainsProtectedInboxRemovalIsAtomic(t *testing.T) {
+	d := &Domains{
+		Catalog: &WorkspaceCatalog{
+			SchemaVersion:        CurrentConfigVersion,
+			Projects:             []CatalogProject{{ID: "inbox", Slug: "inbox", Name: "Inbox"}},
+			SystemInboxProjectID: "inbox",
+		},
+		Planning: &PlanningState{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "inbox"}}},
+		Machine:  &MachineState{CustomContexts: map[string][]string{"work": {"inbox"}}},
+	}
+	if changed, err := d.RemoveProject("inbox", "inbox"); changed || !errors.Is(err, ErrProtectedSystemInbox) {
+		t.Fatalf("RemoveProject(system Inbox) = (%v, %v), want false and ErrProtectedSystemInbox", changed, err)
+	}
+	if len(d.Catalog.Projects) != 1 || len(d.Planning.NextOrder) != 1 ||
+		len(d.Machine.CustomContexts["work"]) != 1 {
+		t.Fatalf("protected removal partially mutated domains: %+v", d)
 	}
 }

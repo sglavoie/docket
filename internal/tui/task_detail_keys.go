@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -49,46 +50,25 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		m.clampScroll()
 		return m, nil
 
-	// Tab launchers. These change the mode of the current typed Task Detail
-	// route; they never push a child route.
-	case "c":
-		return m.selectTab(TaskComments)
-	case "l":
-		return m.selectTab(TaskChecklist)
-	case "a":
-		return m.selectTab(TaskAttachments)
-	case "h":
-		return m.selectTab(TaskActivity)
-	case "p":
-		return m, func() tea.Msg {
-			return ShowDependencyViewerMsg{Task: m.task, Project: m.project}
-		}
-	case "S":
-		return m, func() tea.Msg {
-			return ShowScoreEditorMsg{Task: m.task, Project: m.project}
-		}
-	case "D":
-		return m.selectTab(TaskDecisions)
 	case "d":
 		return m, func() tea.Msg {
 			return SetDueDateMsg{Task: m.task, Project: m.project}
-		}
-	case "P":
-		return m, func() tea.Msg {
-			return ShowParkInputMsg{Task: m.task, Project: m.project}
 		}
 	case "o":
 		return m, func() tea.Msg {
 			return CloseTaskDetailMsg{}
 		}
 	case "O":
-		if m.task.URL != "" {
-			return m, openBrowserCmd(m.task.URL)
-		}
 		return m, nil
 	case "e":
 		return m, func() tea.Msg {
-			return EditTaskMsg{Task: m.task}
+			return EditTaskMsg{Task: m.task, Project: m.project}
+		}
+	case "E":
+		return m, func() tea.Msg {
+			return ShowTaskTextEditorMsg{
+				Task: m.task, Project: m.project, Operation: app.TaskOperationEditDescription,
+			}
 		}
 	case "g":
 		if m.scrollOffset > 0 {
@@ -110,11 +90,6 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-func (m *TaskDetailModel) selectTab(tab TaskDetailTab) (tea.Model, tea.Cmd) {
-	m.SetTab(tab)
-	return m, func() tea.Msg { return TaskDetailTabChangedMsg{Tab: tab} }
-}
-
 // getTaskRef returns the task and project for the current detail view.
 func (m *TaskDetailModel) getTaskRef() (*models.Task, *models.Project) {
 	return m.task, m.project
@@ -127,10 +102,10 @@ func (m *TaskDetailModel) HandledKeys() []string {
 		"esc", "enter",
 		"j", "down", "k", "up",
 		"ctrl+d", "ctrl+u",
-		"G", "tab", "shift+tab",
+		"G",
 		"H",
-		"c", "l", "a", "h", "p", "S", "D", "d",
-		"P", "o", "O", "e", "g",
+		"d",
+		"o", "O", "e", "E", "g",
 		"?",
 	}
 }
@@ -149,21 +124,13 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 			items = helpItemsFromKeyMap(m.decisions.buildKeyMap())
 		case TaskAttachments:
 			items = helpItemsFromKeyMap(m.attachments.buildKeyMap())
-		case TaskActivity:
-			items = []HelpItem{
-				{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
-				{Key: "Esc", Description: "Close activity", Category: "Navigation"},
-			}
 		default:
 		}
-		return append(items, HelpItem{
-			Key: "Tab/Shift+Tab", Description: "Next/previous detail tab", Category: "Navigation",
-		})
+		return items
 	}
 	items := getGlobalHelpItems()
 	return append(items, []HelpItem{
 		{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
-		{Key: "Tab/Shift+Tab", Description: "Next/previous detail tab", Category: "Navigation"},
 		{Key: "Ctrl+D/U", Description: "Half page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
 		{Key: "o/Esc", Description: "Close detail view", Category: "Navigation"},
@@ -171,15 +138,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: ",s/d/b/x/o/r", Description: "State: start/done/waiting/cancel/reopen/review", Category: "Actions"},
 		{Key: "!1-5", Description: "Set priority", Category: "Actions"},
 		{Key: "O", Description: "Open external URL", Category: "Actions"},
-		{Key: "e", Description: "Edit task", Category: "Actions"},
+		{Key: "e/E", Description: "Edit title/description", Category: "Actions"},
 		{Key: "d", Description: "Set due date", Category: "Actions"},
-		{Key: "P", Description: "Park task", Category: "Actions"},
-		{Key: "c", Description: "Comments tab", Category: "Tabs"},
-		{Key: "l", Description: "Checklist tab", Category: "Tabs"},
-		{Key: "a", Description: "Attachments tab", Category: "Tabs"},
-		{Key: "h", Description: "Activity tab", Category: "Tabs"},
-		{Key: "D", Description: "Decisions tab", Category: "Tabs"},
-		{Key: "p", Description: "Dependencies", Category: "Actions"},
-		{Key: "S", Description: "Score editor", Category: "Actions"},
 	}...)
 }

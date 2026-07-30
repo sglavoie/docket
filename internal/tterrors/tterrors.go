@@ -66,11 +66,6 @@ func NewProjectNotFoundError(projectID any) error {
 	return fmt.Errorf("%w: '%v'", ErrProjectNotFound, projectID)
 }
 
-// NewProjectNotFoundInTrashError creates a project not found in trash error with the specified project identifier.
-func NewProjectNotFoundInTrashError(projectID any) error {
-	return fmt.Errorf("%w in trash: '%v'", ErrProjectNotFound, projectID)
-}
-
 // NewRequiredFieldError creates an error for a missing required field.
 // Use this for consistent validation error messaging across the codebase.
 func NewRequiredFieldError(field string) error {

@@ -33,18 +33,6 @@ func stringSlicesEqual(a, b []string) bool {
 	return true
 }
 
-func intSlicesEqual(a, b []int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func stringPtrEqual(a, b *string) bool {
 	if a == nil && b == nil {
 		return true
@@ -86,9 +74,7 @@ func recurrenceEqual(a, b *models.RecurrencePattern) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	return a.Interval == b.Interval && a.Unit == b.Unit && intSlicesEqual(a.Weekdays, b.Weekdays) &&
-		a.Skipped == b.Skipped && a.Streak == b.Streak && a.MaxStreak == b.MaxStreak &&
-		a.OriginalDay == b.OriginalDay && a.Mode == b.Mode
+	return a.Interval == b.Interval && a.Unit == b.Unit
 }
 
 func assertTaskFields(t *testing.T, task, want *models.Task) {
@@ -179,10 +165,6 @@ func assertTaskFieldsAfterV2RoundTrip(t *testing.T, task, want *models.Task) {
 	if !recurrenceEqual(task.Recurrence, want.Recurrence) {
 		t.Errorf("Recurrence = %+v, want %+v", task.Recurrence, want.Recurrence)
 	}
-}
-
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[:len(substr)] == substr || containsString(s[1:], substr)))
 }
 
 func hasWarningField(warnings []ParseWarning, field string) bool {

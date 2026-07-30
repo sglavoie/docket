@@ -2,8 +2,6 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 // ApplyProjectScopeMsg applies a Context Hub or project-header selection to the
@@ -30,10 +28,6 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 		m.setInfoStatus("That project isn't loaded — restore it before scoping")
 		return true, nil
 	}
-	m.recordFinderDestination(config.RecentDestination{
-		Kind: config.RecentDestinationProject,
-		ID:   msg.ProjectID,
-	})
 	m.crossOutliner.pushProjectScope(msg.ProjectID)
 	if returnToOutliner {
 		return true, m.returnToOutlinerAfterContextSelection()

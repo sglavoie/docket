@@ -35,9 +35,8 @@ func (m *TaskDecisionsModel) panelActions() taskItemPanelActions {
 		showIndexedDeleteConfirm: func() {
 			m.confirm.Show("delete", fmt.Sprintf("Delete decision [%d]?", m.cursor))
 		},
-		toggleResolved: m.toggleResolved,
-		copyText:       m.copyDecisionText,
-		copyAllText:    m.copyAllDecisionsText,
+		copyText:    m.copyDecisionText,
+		copyAllText: m.copyAllDecisionsText,
 		expandSelection: func() {
 			m.expandedView = true
 		},
@@ -56,16 +55,6 @@ func (m *TaskDecisionsModel) buildKeyMap() *keymap.KeyMap {
 			if m.addMode {
 				m.activeField = 1 - m.activeField
 				return m, m.focusAddField()
-			}
-			return m, nil
-		}),
-		keymap.Bind("ctrl+y", "Cycle category", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.editMode {
-				cats := allDecisionCategories()
-				m.editCategoryIdx = (m.editCategoryIdx + 1) % len(cats)
-			} else if m.addMode {
-				cats := allDecisionCategories()
-				m.categoryIndex = (m.categoryIndex + 1) % len(cats)
 			}
 			return m, nil
 		}),

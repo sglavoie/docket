@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -86,5 +87,44 @@ func TestExecuteCommandReturnsCobraValidationError(t *testing.T) {
 	}
 	if got := err.Error(); got == "" {
 		t.Fatal("executeCommand returned an empty error")
+	}
+}
+
+func TestRemovedCommandsFailAsUnknown(t *testing.T) {
+	root := RootCmd()
+	previousSilenceErrors := root.SilenceErrors
+	previousSilenceUsage := root.SilenceUsage
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	t.Cleanup(func() {
+		root.SetArgs(nil)
+		root.SilenceErrors = previousSilenceErrors
+		root.SilenceUsage = previousSilenceUsage
+	})
+
+	for _, path := range []string{
+		"task",
+		"note",
+		"context",
+		"search",
+		"focus",
+		"theme",
+		"undo",
+		"redo",
+		"project new",
+		"project delete",
+		"conflict delete",
+		"workspace delete",
+	} {
+		t.Run(strings.ReplaceAll(path, " ", "_"), func(t *testing.T) {
+			root.SetArgs(strings.Fields(path))
+			err := root.Execute()
+			if err == nil {
+				t.Fatalf("removed command %q is still accepted", path)
+			}
+			if !strings.Contains(err.Error(), "unknown command") {
+				t.Fatalf("removed command %q error = %v, want unknown command", path, err)
+			}
+		})
 	}
 }

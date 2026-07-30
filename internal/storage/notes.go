@@ -177,14 +177,12 @@ func listNotesFrom(dir string, failOnUnreadable bool) ([]*models.Note, error) {
 	}
 
 	sort.Slice(notes, func(i, j int) bool {
-		// Pinned first, then normal, then broken
+		// Broken notes remain visible but sort after editable notes. Otherwise
+		// the minimal model has one ordering: most recently modified first.
 		iErr := notes[i].ParseError != ""
 		jErr := notes[j].ParseError != ""
 		if iErr != jErr {
 			return !iErr // non-error sorts before error
-		}
-		if !iErr && notes[i].Pinned != notes[j].Pinned {
-			return notes[i].Pinned
 		}
 		return notes[i].ModifiedAt.After(notes[j].ModifiedAt)
 	})
@@ -299,14 +297,13 @@ func ParseNoteContent(filename, content string) (*models.Note, error) {
 	return parseNote(filename, content)
 }
 
-// frontmatter holds the YAML frontmatter fields for serialization.
+// frontmatter is the complete v5 note metadata contract. Note location is
+// represented by the containing directory, while tags, links, and pin state
+// are legacy metadata that must not be re-emitted after a note is loaded.
 type frontmatter struct {
-	Title       string   `yaml:"title"`
-	Tags        []string `yaml:"tags,omitempty"`
-	Created     string   `yaml:"created"`
-	Modified    string   `yaml:"modified"`
-	LinkedTasks []string `yaml:"linked_tasks,omitempty"`
-	Pinned      bool     `yaml:"pinned,omitempty"`
+	Title    string `yaml:"title"`
+	Created  string `yaml:"created"`
+	Modified string `yaml:"modified"`
 }
 
 const timeFormat = "2006-01-02T15:04:05Z07:00"
@@ -317,40 +314,26 @@ func parseNote(filename, content string) (*models.Note, error) {
 	fm, body, err := splitFrontmatter(content)
 	if err != nil {
 		return &models.Note{
-			Filename:    filename,
-			Title:       models.TitleFromFilename(filename),
-			Tags:        []string{},
-			LinkedTasks: []string{},
-			ParseError:  fmt.Sprintf("invalid frontmatter: %v", err),
+			Filename:   filename,
+			Title:      models.TitleFromFilename(filename),
+			ParseError: fmt.Sprintf("invalid frontmatter: %v", err),
 		}, nil
 	}
 
 	var meta frontmatter
 	if err := yaml.Unmarshal([]byte(fm), &meta); err != nil {
 		return &models.Note{
-			Filename:    filename,
-			Title:       models.TitleFromFilename(filename),
-			Tags:        []string{},
-			LinkedTasks: []string{},
-			Body:        body,
-			ParseError:  fmt.Sprintf("invalid YAML: %v", err),
+			Filename:   filename,
+			Title:      models.TitleFromFilename(filename),
+			Body:       body,
+			ParseError: fmt.Sprintf("invalid YAML: %v", err),
 		}, nil
 	}
 
 	note := &models.Note{
-		Title:       meta.Title,
-		Tags:        meta.Tags,
-		LinkedTasks: meta.LinkedTasks,
-		Pinned:      meta.Pinned,
-		Filename:    filename,
-		Body:        body,
-	}
-
-	if note.Tags == nil {
-		note.Tags = []string{}
-	}
-	if note.LinkedTasks == nil {
-		note.LinkedTasks = []string{}
+		Title:    meta.Title,
+		Filename: filename,
+		Body:     body,
 	}
 
 	if t, err := parseTime(meta.Created); err == nil {
@@ -370,12 +353,9 @@ func parseNote(filename, content string) (*models.Note, error) {
 // renderNote serializes a Note to markdown with YAML frontmatter.
 func renderNote(note *models.Note) (string, error) {
 	meta := frontmatter{
-		Title:       note.Title,
-		Tags:        note.Tags,
-		Created:     note.CreatedAt.Format(timeFormat),
-		Modified:    note.ModifiedAt.Format(timeFormat),
-		LinkedTasks: note.LinkedTasks,
-		Pinned:      note.Pinned,
+		Title:    note.Title,
+		Created:  note.CreatedAt.Format(timeFormat),
+		Modified: note.ModifiedAt.Format(timeFormat),
 	}
 
 	yamlBytes, err := yaml.Marshal(&meta)

@@ -35,7 +35,6 @@ func ExtractCommentsFromDescription(task *models.Task) {
 	// Parse block lines into comments (header + accumulated text lines)
 	var currentCommentText strings.Builder
 	var currentCommentTime time.Time
-	var currentCommentResolved bool
 	var hasCurrentComment bool
 
 	flushComment := func() {
@@ -47,7 +46,6 @@ func ExtractCommentsFromDescription(task *models.Task) {
 			task.Comments = append(task.Comments, &models.Comment{
 				Text:      unescapeBlockText(text),
 				CreatedAt: currentCommentTime,
-				Resolved:  currentCommentResolved,
 			})
 		}
 	}
@@ -55,14 +53,10 @@ func ExtractCommentsFromDescription(task *models.Task) {
 	for _, bl := range blockLines {
 		if matches := commentHeaderRegex.FindStringSubmatch(bl.Trimmed); matches != nil {
 			flushComment()
-			// Parse header value: "2025-01-15 10:30" or "2025-01-15 10:30, resolved"
-			headerValue := matches[1]
-			currentCommentResolved = false
-			parts := strings.SplitN(headerValue, ",", 2)
-			timeStr := strings.TrimSpace(parts[0])
-			if len(parts) > 1 && strings.TrimSpace(parts[1]) == "resolved" {
-				currentCommentResolved = true
-			}
+			// Legacy headers may carry a retired ", resolved" suffix. Parse only
+			// the timestamp so live records normalize to timestamped text.
+			timeStr, _, _ := strings.Cut(matches[1], ",")
+			timeStr = strings.TrimSpace(timeStr)
 			if t, ok := ParseTimeField(timeStr); ok {
 				currentCommentTime = t
 			} else {
@@ -108,11 +102,7 @@ func WriteComments(task *models.Task) string {
 			b.WriteString("<!-- COMMENTS -->\n")
 			headerWritten = true
 		}
-		resolvedSuffix := ""
-		if comment.Resolved {
-			resolvedSuffix = ", resolved"
-		}
-		fmt.Fprintf(&b, "<!-- comment: %s%s -->\n", comment.CreatedAt.Format(util.DateTimeFormat), resolvedSuffix)
+		fmt.Fprintf(&b, "<!-- comment: %s -->\n", comment.CreatedAt.Format(util.DateTimeFormat))
 		// Escape HTML comment markers and heading-like lines to prevent parser corruption.
 		b.WriteString(escapeBlockText(text))
 		b.WriteString("\n")

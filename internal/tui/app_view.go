@@ -43,9 +43,6 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		if injector, ok := current.(openLoopsAware); ok {
 			injector.setOpenLoops(m.openLoops)
 		}
-		if injector, ok := current.(alertCountAware); ok {
-			injector.setAlertCount(m.alertCount())
-		}
 	}
 	resultView := tea.NewView("")
 	if current := m.activeView(); current != nil {
@@ -54,13 +51,6 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	content := resultView.Content
 	if content == "" {
 		content = "Unknown view"
-	}
-
-	// Overlay the alert indicator on the first row of views that do not compose
-	// it into their own title row.
-	if m.shouldShowAlertIndicator() {
-		indicator := renderAlertIndicator(m.alertCount())
-		content = overlayAlertIndicator(content, indicator, m.width)
 	}
 
 	// Full-height views render their own footer and skip the external status bar.

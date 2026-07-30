@@ -14,8 +14,8 @@ func TestTaskForm_Children_FieldCount_DefaultTask(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	got := m.fieldCountForActiveTab()
-	if got != 1 {
-		t.Errorf("Children tab field count for Task type: expected 1 (header only), got %d", got)
+	if got != 2 {
+		t.Errorf("Children tab field count: expected 2 section headers, got %d", got)
 	}
 }
 
@@ -25,19 +25,19 @@ func TestTaskForm_Children_FieldCount_ExpandedChecklist(t *testing.T) {
 	m.draft.checklist = []models.ChecklistItem{{Text: "a"}, {Text: "b"}}
 	m.checklistExpanded = true
 	got := m.fieldCountForActiveTab()
-	if got != 3 {
-		t.Errorf("Children tab field count with 2 checklist items: expected 3, got %d", got)
+	if got != 4 {
+		t.Errorf("Children tab field count with 2 checklist items: expected 4, got %d", got)
 	}
 }
 
-func TestTaskForm_Children_FieldCount_EpicWithSubtasks(t *testing.T) {
-	m := newEpicTaskForm()
+func TestTaskForm_Children_FieldCountWithSubtasks(t *testing.T) {
+	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
-	m.draft.subtasks = []formSubtaskDraft{{title: "s1", taskType: models.TaskTypeTask}}
+	m.draft.subtasks = []formSubtaskDraft{{title: "s1"}}
 	m.subtasksExpanded = true
 	got := m.fieldCountForActiveTab()
 	if got != 3 {
-		t.Errorf("Children tab Epic with 1 subtask expanded: expected 3, got %d", got)
+		t.Errorf("Children tab with 1 subtask expanded: expected 3, got %d", got)
 	}
 }
 
@@ -57,21 +57,12 @@ func TestTaskForm_Children_CKey_TogglesChecklistExpand(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Children_SKey_TogglesSubtasksExpand_EpicType(t *testing.T) {
-	m := newEpicTaskForm()
-	m = navigateToChildrenTab(m)
-	m = sendFormKey(m, syntheticKey('S'))
-	if !m.subtasksExpanded {
-		t.Error("S should expand subtasks section for Epic type")
-	}
-}
-
-func TestTaskForm_Children_SKey_NoOpForTaskType(t *testing.T) {
+func TestTaskForm_Children_SKey_TogglesSubtasksExpand(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	m = sendFormKey(m, syntheticKey('S'))
-	if m.subtasksExpanded {
-		t.Error("S should be no-op for Task type (no subtasks)")
+	if !m.subtasksExpanded {
+		t.Error("S should expand subtasks section")
 	}
 }
 
@@ -207,7 +198,7 @@ func TestTaskForm_Children_Space_TogglesChecklistDone(t *testing.T) {
 }
 
 func TestTaskForm_Children_CtrlT_AddsSubtaskAndOpensOverlay(t *testing.T) {
-	m := newEpicTaskForm()
+	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	m = sendFormKey(m, syntheticCtrlKey('t'))
 	if len(m.draft.subtasks) != 1 {
@@ -221,17 +212,8 @@ func TestTaskForm_Children_CtrlT_AddsSubtaskAndOpensOverlay(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Children_CtrlT_NoOpForTaskType(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToChildrenTab(m)
-	m = sendFormKey(m, syntheticCtrlKey('t'))
-	if len(m.draft.subtasks) != 0 {
-		t.Error("Ctrl+T should be no-op for Task type")
-	}
-}
-
 func TestTaskForm_Children_SubtaskEdit_Commit_UpdatesDraft(t *testing.T) {
-	m := newEpicTaskForm()
+	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	m = sendFormKey(m, syntheticCtrlKey('t'))
 	m = sendFormKey(m, syntheticKey('F'))
@@ -245,13 +227,13 @@ func TestTaskForm_Children_SubtaskEdit_Commit_UpdatesDraft(t *testing.T) {
 	if len(m.draft.subtasks) != 1 {
 		t.Fatalf("expected 1 subtask, got %d", len(m.draft.subtasks))
 	}
-	if m.draft.subtasks[0].taskType != models.TaskTypeBug {
-		t.Errorf("expected subtask type Bug, got %v", m.draft.subtasks[0].taskType)
+	if m.draft.subtasks[0].title != "Fooj" {
+		t.Errorf("expected subtask title Fooj, got %q", m.draft.subtasks[0].title)
 	}
 }
 
 func TestTaskForm_Children_SubtaskEdit_Cancel_RemovesNewSubtask(t *testing.T) {
-	m := newEpicTaskForm()
+	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	m = sendFormKey(m, syntheticCtrlKey('t'))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
@@ -261,8 +243,8 @@ func TestTaskForm_Children_SubtaskEdit_Cancel_RemovesNewSubtask(t *testing.T) {
 }
 
 func TestTaskForm_Children_CtrlO_TogglesSubtaskOptional(t *testing.T) {
-	m := newEpicTaskForm()
-	m.draft.subtasks = []formSubtaskDraft{{title: "s1", taskType: models.TaskTypeTask, optional: false}}
+	m := newTestTaskForm()
+	m.draft.subtasks = []formSubtaskDraft{{title: "s1", optional: false}}
 	m.subtasksExpanded = true
 	m = navigateToChildrenTab(m)
 	m.focusIndex = m.childrenSubtasksHeaderIdx() + 1
@@ -276,10 +258,10 @@ func TestTaskForm_Children_CtrlO_TogglesSubtaskOptional(t *testing.T) {
 }
 
 func TestTaskForm_Children_SubtaskReorder(t *testing.T) {
-	m := newEpicTaskForm()
+	m := newTestTaskForm()
 	m.draft.subtasks = []formSubtaskDraft{
-		{title: "first", taskType: models.TaskTypeTask},
-		{title: "second", taskType: models.TaskTypeBug},
+		{title: "first"},
+		{title: "second"},
 	}
 	m.subtasksExpanded = true
 	m = navigateToChildrenTab(m)
@@ -317,21 +299,12 @@ func TestTaskForm_Children_RendersChecklistItems_WhenExpanded(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Children_EpicRendersSubtasksSection(t *testing.T) {
-	m := newEpicTaskForm()
-	m = navigateToChildrenTab(m)
-	view := m.View().Content
-	if !strings.Contains(view, "Subtasks") {
-		t.Errorf("Children tab for Epic should render Subtasks section; got:\n%s", view)
-	}
-}
-
-func TestTaskForm_Children_TaskTypeHidesSubtasksSection(t *testing.T) {
+func TestTaskForm_Children_RendersSubtasksSection(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToChildrenTab(m)
 	view := m.View().Content
-	if strings.Contains(view, IconExpanded+" Subtasks") || strings.Contains(view, IconCollapsed+" Subtasks") {
-		t.Errorf("Children tab for Task type should not show Subtasks section header; got:\n%s", view)
+	if !strings.Contains(view, "Subtasks") {
+		t.Errorf("Children tab should render Subtasks section; got:\n%s", view)
 	}
 }
 
@@ -363,7 +336,6 @@ func TestTaskForm_EditMode_SubtasksHiddenWithHint(t *testing.T) {
 		t.Skip("test project has no tasks")
 	}
 	task := project.Tasks[0]
-	task.Type = models.TaskTypeEpic
 	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
 	m.activeTab = formTabChildren
 	view := m.View().Content
@@ -377,13 +349,12 @@ func TestSubtaskEditEmptyTitleRemovesSubtask(t *testing.T) {
 	cfg := newTestConfig()
 
 	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
-	m.draft.taskType = models.TaskTypeEpic
 	m.draft.subtasks = []formSubtaskDraft{
-		{title: "Sub 1", taskType: models.TaskTypeTask},
-		{title: "Sub 2", taskType: models.TaskTypeTask},
+		{title: "Sub 1"},
+		{title: "Sub 2"},
 	}
 
-	msg := TaskFormSubtaskEditedMsg{Idx: 0, Title: "", TaskType: models.TaskTypeTask}
+	msg := TaskFormSubtaskEditedMsg{Idx: 0, Title: ""}
 	m.applyFormOverlayResult(msg)
 
 	if len(m.draft.subtasks) != 1 {
@@ -399,12 +370,11 @@ func TestSubtaskEditNonEmptyTitlePreserved(t *testing.T) {
 	cfg := newTestConfig()
 
 	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
-	m.draft.taskType = models.TaskTypeEpic
 	m.draft.subtasks = []formSubtaskDraft{
-		{title: "Old Title", taskType: models.TaskTypeTask},
+		{title: "Old Title"},
 	}
 
-	msg := TaskFormSubtaskEditedMsg{Idx: 0, Title: "New Title", TaskType: models.TaskTypeBug}
+	msg := TaskFormSubtaskEditedMsg{Idx: 0, Title: "New Title"}
 	m.applyFormOverlayResult(msg)
 
 	if len(m.draft.subtasks) != 1 {
@@ -412,8 +382,5 @@ func TestSubtaskEditNonEmptyTitlePreserved(t *testing.T) {
 	}
 	if m.draft.subtasks[0].title != "New Title" {
 		t.Errorf("expected title 'New Title', got %q", m.draft.subtasks[0].title)
-	}
-	if m.draft.subtasks[0].taskType != models.TaskTypeBug {
-		t.Errorf("expected type bug, got %s", m.draft.subtasks[0].taskType)
 	}
 }

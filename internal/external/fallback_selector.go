@@ -65,7 +65,7 @@ func FallbackSelectTask(tasks []*models.Task, prompt string) (*models.Task, erro
 
 	items := make([]string, len(tasks))
 	for i, t := range tasks {
-		items[i] = fmt.Sprintf("#%d %s %s %s", t.ShortID, t.Type.Icon(), t.State().Icon(), t.Title)
+		items[i] = fmt.Sprintf("#%d %s %s", t.ShortID, t.State().Icon(), t.Title)
 	}
 
 	idx, err := fallbackSelectOne(items, prompt)
@@ -83,7 +83,7 @@ func FallbackMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Ta
 
 	fmt.Println(prompt)
 	for i, t := range tasks {
-		fmt.Printf("  %d) #%d %s %s %s\n", i+1, t.ShortID, t.Type.Icon(), t.State().Icon(), t.Title)
+		fmt.Printf("  %d) #%d %s %s\n", i+1, t.ShortID, t.State().Icon(), t.Title)
 	}
 	fmt.Print("Enter numbers (comma- or space-separated): ")
 

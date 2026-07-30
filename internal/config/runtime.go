@@ -4,38 +4,32 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/template"
 )
 
-// DomainStore is the composite of the five narrow domain-store interfaces. It is
+// DomainStore is the composite of the three narrow domain-store interfaces. It is
 // the single backing capability a RuntimeDependencies is built from. The
-// production implementation is *DomainFileStore (one synced file per domain);
-// tests may supply a fake that satisfies the five interfaces.
+// production implementation is *DomainFileStore (one file per domain);
+// tests may supply a fake that satisfies the three interfaces.
 type DomainStore interface {
 	WorkspaceCatalogStore
 	PlanningStore
-	SettingsStore
-	AutomationStore
 	MachineStore
 }
 
 // RuntimeDependencies is the narrow, domain-backed composition seam constructed
 // at startup. It lets callers obtain each configuration domain's capability
-// (catalog, planning, settings, automation, machine) without loading the whole
+// (catalog, planning, machine) without loading the whole
 // config.Config facade. Every field is one of the narrow domain-store
 // interfaces, so a caller depends only on the domain it actually needs and tests
 // can inject per-domain fakes.
 //
 // It is the seam the remaining Config-facade migration children route callers
-// through: today a caller that needs the Focus Queue reads it via the Planning
-// dependency (see FocusQueue) rather than treating Queue membership as task
-// state.
+// through: callers that need durable Today/Next ordering read it via the
+// Planning dependency rather than treating an order entry as workflow state.
 type RuntimeDependencies struct {
-	Catalog    WorkspaceCatalogStore
-	Planning   PlanningStore
-	Settings   SettingsStore
-	Automation AutomationStore
-	Machine    MachineStore
+	Catalog  WorkspaceCatalogStore
+	Planning PlanningStore
+	Machine  MachineStore
 }
 
 // NewRuntimeDependencies builds the runtime composition from a single backing
@@ -47,27 +41,23 @@ func NewRuntimeDependencies(store DomainStore) *RuntimeDependencies {
 		return nil
 	}
 	return &RuntimeDependencies{
-		Catalog:    store,
-		Planning:   store,
-		Settings:   store,
-		Automation: store,
-		Machine:    store,
+		Catalog:  store,
+		Planning: store,
+		Machine:  store,
 	}
 }
 
 // RuntimeDependencies constructs the domain-backed runtime composition for this
 // manager's workspace, backed by the canonical per-domain-file store. It is the
-// centralized startup construction point: callers obtain catalog, planning,
-// settings, automation, and machine capabilities from the returned seam without
-// loading config.Config.
+// centralized startup construction point: callers obtain catalog, planning, and
+// machine capabilities from the returned seam without loading config.Config.
 func (m *Manager) RuntimeDependencies() *RuntimeDependencies {
 	return NewRuntimeDependencies(m.domainStore())
 }
 
-// FocusQueue returns the persisted Focus Queue via the Planning dependency. It
-// is loaded from the owning planning domain, not derived from task state or the
-// Active section.
-func (r *RuntimeDependencies) FocusQueue() ([]FocusQueueItem, error) {
+// NextOrder returns the persisted workspace-wide order of StateNext tasks via
+// the Planning dependency. Presence does not confer Next membership.
+func (r *RuntimeDependencies) NextOrder() ([]ProjectTaskLocator, error) {
 	if r == nil || r.Planning == nil {
 		return nil, nil
 	}
@@ -75,22 +65,21 @@ func (r *RuntimeDependencies) FocusQueue() ([]FocusQueueItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	return planning.FocusQueue, nil
+	return planning.NextOrder, nil
 }
 
-// TaskInFocusQueue reports whether the task is a member of the persisted Focus
-// Queue, resolved through the Planning dependency. It mirrors the membership
-// check callers previously performed against config.Config.FocusQueue.
-func (r *RuntimeDependencies) TaskInFocusQueue(taskID string) (bool, error) {
-	if taskID == "" {
+// TaskInNextOrder reports whether the exact project-qualified task has a
+// persisted order entry. It deliberately does not report workflow membership.
+func (r *RuntimeDependencies) TaskInNextOrder(locator ProjectTaskLocator) (bool, error) {
+	if !locator.Valid() {
 		return false, nil
 	}
-	queue, err := r.FocusQueue()
+	order, err := r.NextOrder()
 	if err != nil {
 		return false, err
 	}
-	for _, item := range queue {
-		if item.TaskID == taskID {
+	for _, item := range order {
+		if item == locator {
 			return true, nil
 		}
 	}
@@ -118,9 +107,7 @@ func (r *RuntimeDependencies) projectsFromCatalog(dataDir string) ([]*models.Pro
 	return projects, nil
 }
 
-// ActiveProjects returns the non-archived, non-sandbox, non-internal projects
-// sorted with pinned first then alphabetically, mirroring
-// config.Config.GetActiveProjects but sourced from the catalog domain.
+// ActiveProjects returns non-archived projects sorted with pinned first.
 func (r *RuntimeDependencies) ActiveProjects(dataDir string) ([]*models.Project, error) {
 	all, err := r.projectsFromCatalog(dataDir)
 	if err != nil {
@@ -128,7 +115,7 @@ func (r *RuntimeDependencies) ActiveProjects(dataDir string) ([]*models.Project,
 	}
 	var active []*models.Project
 	for _, p := range all {
-		if !p.Archived && !p.Sandbox && !p.Internal {
+		if !p.Archived {
 			active = append(active, p)
 		}
 	}
@@ -173,25 +160,7 @@ func (r *RuntimeDependencies) Project(dataDir, idOrSlug string) (*models.Project
 	return nil, nil
 }
 
-// SandboxProject returns the sandbox project, or nil when the workspace has none
-// (mirroring config.Config.GetSandboxProject) sourced from the catalog domain.
-func (r *RuntimeDependencies) SandboxProject(dataDir string) (*models.Project, error) {
-	all, err := r.projectsFromCatalog(dataDir)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range all {
-		if p.Sandbox {
-			return p, nil
-		}
-	}
-	return nil, nil
-}
-
-// AllProjects returns every cataloged project (archived, sandbox, and internal
-// included) in catalog order, mirroring the raw config.Config.Projects slice for
-// the command consumers that need the unfiltered set (e.g. doctor's cross-project
-// reference audit). It is sourced from the catalog domain rather than the facade.
+// AllProjects returns every cataloged project in catalog order.
 func (r *RuntimeDependencies) AllProjects(dataDir string) ([]*models.Project, error) {
 	return r.projectsFromCatalog(dataDir)
 }
@@ -219,19 +188,4 @@ func (r *RuntimeDependencies) CustomContextNames() ([]string, error) {
 	}
 	slices.Sort(names)
 	return names, nil
-}
-
-// TaskTemplates returns the persisted task templates via the Automation
-// dependency, mirroring reads of config.Config.TaskTemplates. Templates are
-// automation configuration, so they are loaded from the owning automation domain
-// instead of the config.Config facade.
-func (r *RuntimeDependencies) TaskTemplates() ([]template.TaskTemplate, error) {
-	if r == nil || r.Automation == nil {
-		return nil, nil
-	}
-	automation, err := r.Automation.LoadAutomation()
-	if err != nil {
-		return nil, err
-	}
-	return automation.TaskTemplates, nil
 }

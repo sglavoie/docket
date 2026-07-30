@@ -23,7 +23,7 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 		return true, errorCmd("%s", err)
 	}
 
-	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
+	editor, editorErr := external.ResolveEditor("")
 	if editorErr != nil {
 		_ = os.Remove(tmpPath)
 		return true, errorCmd("%s", editorErr)

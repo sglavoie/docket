@@ -119,7 +119,11 @@ func (s *ConflictStore) Save(record ConflictRecord, base, local, remote *Project
 		conflictLocalFileName:  local,
 		conflictRemoteFileName: remote,
 	} {
-		if writeErr := util.AtomicWriteFile(filepath.Join(dir, name), []byte(documentMarkdown(doc)), FilePermissions); writeErr != nil {
+		content, renderErr := documentMarkdown(doc)
+		if renderErr != nil {
+			return "", fmt.Errorf("rendering conflict document %s: %w", name, renderErr)
+		}
+		if writeErr := util.AtomicWriteFile(filepath.Join(dir, name), []byte(content), FilePermissions); writeErr != nil {
 			return "", fmt.Errorf("writing conflict document %s: %w", name, writeErr)
 		}
 	}
@@ -219,13 +223,13 @@ func (s *ConflictStore) loadRecord(id string) (*ConflictRecord, error) {
 	return &record, nil
 }
 
-// documentMarkdown renders a document to canonical v2 markdown, treating a nil
+// documentMarkdown renders a document to its canonical schema, treating a nil
 // document as empty content.
-func documentMarkdown(doc *ProjectDocument) string {
+func documentMarkdown(doc *ProjectDocument) (string, error) {
 	if doc == nil {
-		return ""
+		return "", nil
 	}
-	return doc.WriteV2()
+	return doc.WriteCurrent()
 }
 
 // loadDocumentFile reads and parses a stored document markdown file back into a

@@ -13,7 +13,6 @@ func TestWriteTasksMarkdown(t *testing.T) {
 		{
 			ID:            "epic1",
 			ShortID:       1,
-			Type:          models.TaskTypeEpic,
 			Title:         "Test Epic",
 			WorkflowState: models.StateInProgress,
 			Priority:      1,
@@ -23,7 +22,6 @@ func TestWriteTasksMarkdown(t *testing.T) {
 		{
 			ID:            "task1",
 			ShortID:       2,
-			Type:          models.TaskTypeTask,
 			Title:         "Test Task",
 			WorkflowState: models.StateReady,
 			Priority:      3,
@@ -38,9 +36,9 @@ func TestWriteTasksMarkdown(t *testing.T) {
 		t.Error("content should contain project header")
 	}
 
-	// Check epic
-	if !strings.Contains(content, "## Epic: Test Epic") {
-		t.Error("content should contain epic heading")
+	// Every task uses the generic heading.
+	if !strings.Contains(content, "## Task: Test Epic") {
+		t.Error("content should contain generic task heading")
 	}
 	if !strings.Contains(content, "id: epic1") {
 		t.Error("content should contain epic ID")
@@ -69,7 +67,6 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 		{
 			ID:            "epic1",
 			ShortID:       1,
-			Type:          models.TaskTypeEpic,
 			Title:         "Parent Epic",
 			WorkflowState: models.StateInProgress,
 			Priority:      1,
@@ -78,7 +75,6 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 		{
 			ID:            "story1",
 			ShortID:       2,
-			Type:          models.TaskTypeStory,
 			Title:         "Child Story",
 			WorkflowState: models.StateReady,
 			Priority:      2,
@@ -88,7 +84,6 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 		{
 			ID:            "task1",
 			ShortID:       3,
-			Type:          models.TaskTypeTask,
 			Title:         "Grandchild Task",
 			WorkflowState: models.StateReady,
 			Priority:      3,
@@ -100,11 +95,11 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 	content := WriteTasksMarkdown("Test", tasks)
 
 	// Check heading levels
-	if !strings.Contains(content, "## Epic:") {
-		t.Error("epic should have ## heading")
+	if !strings.Contains(content, "## Task:") {
+		t.Error("parent should have ## heading")
 	}
-	if !strings.Contains(content, "### Story:") {
-		t.Error("story should have ### heading (child of epic)")
+	if !strings.Contains(content, "### Task:") {
+		t.Error("child should have ### heading")
 	}
 	if !strings.Contains(content, "#### Task:") {
 		t.Error("task should have #### heading (grandchild)")
@@ -112,18 +107,18 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 }
 
 func TestWriteTasksMarkdown_WithDependencies(t *testing.T) {
-	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Blocked Task")
+	task1, err := models.NewGenericTask("task1", 1, "Blocked Task")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.WorkflowState = models.StateWaiting
 	task1.DependsOn = []string{"blocker1", "blocker2"}
 
-	task2, err := models.NewTask("blocker1", 2, models.TaskTypeTask, "Blocker 1")
+	task2, err := models.NewGenericTask("blocker1", 2, "Blocker 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := models.NewTask("blocker2", 3, models.TaskTypeTask, "Blocker 2")
+	task3, err := models.NewGenericTask("blocker2", 3, "Blocker 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +137,6 @@ func TestRoundTrip(t *testing.T) {
 		{
 			ID:            "e1",
 			ShortID:       1,
-			Type:          models.TaskTypeEpic,
 			Title:         "Round Trip Epic",
 			Description:   "Epic description",
 			WorkflowState: models.StateInProgress,
@@ -153,7 +147,6 @@ func TestRoundTrip(t *testing.T) {
 		{
 			ID:            "t1",
 			ShortID:       2,
-			Type:          models.TaskTypeTask,
 			Title:         "Round Trip Task",
 			Description:   "Task description\nWith multiple lines",
 			WorkflowState: models.StateDone,
@@ -185,9 +178,6 @@ func TestRoundTrip(t *testing.T) {
 		if p.ID != orig.ID {
 			t.Errorf("task %d: ID mismatch: %s vs %s", i, p.ID, orig.ID)
 		}
-		if p.Type != orig.Type {
-			t.Errorf("task %d: Type mismatch: %s vs %s", i, p.Type, orig.Type)
-		}
 		if p.Title != orig.Title {
 			t.Errorf("task %d: Title mismatch: %s vs %s", i, p.Title, orig.Title)
 		}
@@ -201,7 +191,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestDependenciesRoundTrip(t *testing.T) {
-	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task with deps")
+	original, err := models.NewGenericTask("task1", 1, "Task with deps")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +228,6 @@ func TestParentIDRoundTrip(t *testing.T) {
 		{
 			ID:            "epic1",
 			ShortID:       1,
-			Type:          models.TaskTypeEpic,
 			Title:         "Parent Epic",
 			WorkflowState: models.StateInProgress,
 			Priority:      1,
@@ -247,7 +236,6 @@ func TestParentIDRoundTrip(t *testing.T) {
 		{
 			ID:            "story1",
 			ShortID:       2,
-			Type:          models.TaskTypeStory,
 			Title:         "Child Story",
 			WorkflowState: models.StateReady,
 			Priority:      2,
@@ -257,7 +245,6 @@ func TestParentIDRoundTrip(t *testing.T) {
 		{
 			ID:            "task1",
 			ShortID:       3,
-			Type:          models.TaskTypeTask,
 			Title:         "Grandchild Task",
 			WorkflowState: models.StateReady,
 			Priority:      3,
@@ -352,7 +339,6 @@ func TestHeadingLevelCappedAtSix(t *testing.T) {
 		{
 			ID:            "epic1",
 			ShortID:       1,
-			Type:          models.TaskTypeEpic,
 			Title:         "Root Epic",
 			WorkflowState: models.StateReady,
 			Priority:      1,
@@ -361,7 +347,6 @@ func TestHeadingLevelCappedAtSix(t *testing.T) {
 		{
 			ID:            "story1",
 			ShortID:       2,
-			Type:          models.TaskTypeStory,
 			Title:         "Child Story",
 			WorkflowState: models.StateReady,
 			Priority:      2,
@@ -371,7 +356,6 @@ func TestHeadingLevelCappedAtSix(t *testing.T) {
 		{
 			ID:            "task1",
 			ShortID:       3,
-			Type:          models.TaskTypeTask,
 			Title:         "Deep Task",
 			WorkflowState: models.StateReady,
 			Priority:      3,

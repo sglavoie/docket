@@ -88,7 +88,7 @@ func (r *storageRepo) RawSaveProject(project *models.Project) error {
 // fully reversible through the transactional undo ledger.
 func TestDeleteUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "delete me")
@@ -130,7 +130,7 @@ func TestDeleteUndoRedoAcceptance(t *testing.T) {
 // of the move command's durable planning-ref cleanup riding the same transaction.
 func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "delete me")
@@ -180,7 +180,7 @@ func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 // attachment bytes survive intact.
 func TestDeleteRollsBackWhenArtifactEscapesRoot(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "keep me")
@@ -220,7 +220,7 @@ func realTestProject(t *testing.T, dataDir, slug, title string) *models.Project 
 	}
 	p.Slug = slug
 	p.Path = filepath.Join(dataDir, "projects", slug)
-	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(uuid.New().String(), 1, title)
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}

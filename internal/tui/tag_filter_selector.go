@@ -8,6 +8,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// TagInfo holds a task tag name and its usage count.
+type TagInfo struct {
+	Name      string
+	TaskCount int
+}
+
 // ShowTagFilterMsg is the unified message to open the tag filter selector.
 // Callers pre-build the tag list and pass currently selected tags.
 type ShowTagFilterMsg struct {
@@ -65,8 +71,7 @@ func BuildTagList(tasks []*models.Task, excludeCompleted bool) []TagInfo {
 	return tagInfosFromCounts(tagCounts)
 }
 
-// BuildProjectTagList builds a sorted catalog-aware tag list for a project.
-// Catalog-only tags are included with a zero task count.
+// BuildProjectTagList builds a sorted task-used tag list for a project.
 func BuildProjectTagList(project *models.Project, excludeCompleted bool) []TagInfo {
 	if project == nil {
 		return []TagInfo{}
@@ -74,9 +79,7 @@ func BuildProjectTagList(project *models.Project, excludeCompleted bool) []TagIn
 	return BuildCatalogTagList([]*models.Project{project}, project.Tasks, excludeCompleted)
 }
 
-// BuildProjectsTagList builds a sorted catalog-aware tag list across projects.
-// Counts still reflect task usages only; catalog definitions add missing tags
-// with a zero count.
+// BuildProjectsTagList builds a sorted task-used tag list across projects.
 func BuildProjectsTagList(projects []*models.Project, excludeCompleted bool) []TagInfo {
 	var tasks []*models.Task
 	for _, project := range uniqueProjects(projects) {
@@ -85,25 +88,12 @@ func BuildProjectsTagList(projects []*models.Project, excludeCompleted bool) []T
 	return BuildCatalogTagList(projects, tasks, excludeCompleted)
 }
 
-// BuildCatalogTagList builds a sorted tag list from project catalogs plus the
-// supplied task pool. Catalog definitions contribute missing tags with a zero
-// count; task counts come only from the supplied tasks.
+// BuildCatalogTagList is a compatibility wrapper over task-derived tag counts.
 func BuildCatalogTagList(projects []*models.Project, tasks []*models.Task, excludeCompleted bool) []TagInfo {
 	tagCounts := make(map[string]int)
-	for _, project := range uniqueProjects(projects) {
-		addCatalogTags(tagCounts, project.Tags)
-	}
 	addTaskTagCounts(tagCounts, tasks, excludeCompleted)
 
 	return tagInfosFromCounts(tagCounts)
-}
-
-func addCatalogTags(tagCounts map[string]int, tags []string) {
-	for _, tag := range models.DedupeTags(tags) {
-		if _, exists := tagCounts[tag]; !exists {
-			tagCounts[tag] = 0
-		}
-	}
 }
 
 func addTaskTagCounts(tagCounts map[string]int, tasks []*models.Task, excludeCompleted bool) {

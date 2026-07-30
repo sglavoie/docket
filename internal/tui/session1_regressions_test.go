@@ -48,7 +48,7 @@ func newChecklistFixture(t *testing.T, items ...models.ChecklistItem) *TaskCheck
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := models.NewTask("cl-task", 1, models.TaskTypeTask, "Checklist task")
+	task, err := models.NewGenericTask("cl-task", 1, "Checklist task")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,21 +205,19 @@ func TestChecklistCopyAllClipboardError(t *testing.T) {
 	}
 }
 
-func TestCommentsAndDecisionsCopyAllIncludeResolved(t *testing.T) {
+func TestCommentsAndDecisionsCopyAllIncludeEveryRecord(t *testing.T) {
 	project, err := models.NewProject("cd-project", "CD", t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := models.NewTask("cd-task", 1, models.TaskTypeTask, "CD task")
+	task, err := models.NewGenericTask("cd-task", 1, "CD task")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task.AddComment("first comment")
 	task.AddComment("second comment")
-	task.ToggleCommentResolved(0)
-	task.AddDecision("first decision", "why", models.DecisionCategoryDesign)
-	task.AddDecision("second decision", "why2", models.DecisionCategoryDesign)
-	task.ToggleDecisionResolved(0)
+	task.AddDecision("first decision", "why")
+	task.AddDecision("second decision", "why2")
 	project.Tasks = []*models.Task{task}
 
 	coords := newTestSecondaryCoordinators(project)
@@ -249,7 +247,7 @@ func TestCommentsAndDecisionsCopyAllIncludeResolved(t *testing.T) {
 
 func TestCommentsCopyAllEmptyNothingToCopy(t *testing.T) {
 	project, _ := models.NewProject("empty-project", "Empty", t.TempDir())
-	task, _ := models.NewTask("empty-task", 1, models.TaskTypeTask, "Empty task")
+	task, _ := models.NewGenericTask("empty-task", 1, "Empty task")
 	project.Tasks = []*models.Task{task}
 	coords := newTestSecondaryCoordinators(project)
 

@@ -35,27 +35,3 @@ func TestTogglePinned(t *testing.T) {
 		t.Error("expected Pinned to be false after second toggle")
 	}
 }
-
-func TestDimUndim(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.Dim()
-	if !task.Dimmed {
-		t.Error("expected Dimmed to be true after Dim")
-	}
-	task.Undim()
-	if task.Dimmed {
-		t.Error("expected Dimmed to be false after Undim")
-	}
-}
-
-func TestToggleDimmed(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	task.ToggleDimmed()
-	if !task.Dimmed {
-		t.Error("expected Dimmed to be true after first ToggleDimmed")
-	}
-	task.ToggleDimmed()
-	if task.Dimmed {
-		t.Error("expected Dimmed to be false after second ToggleDimmed")
-	}
-}

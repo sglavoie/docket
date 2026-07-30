@@ -16,7 +16,6 @@ func TestTaskIsTerminalState(t *testing.T) {
 	nonterminalCases := []*Task{
 		{WorkflowState: StateReady},
 		{WorkflowState: StateInProgress},
-		{WorkflowState: StateReview},
 		{WorkflowState: StateWaiting},
 		{WorkflowState: StateInbox},
 	}
@@ -42,8 +41,8 @@ func TestTaskIsDependencyBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocker, _ := NewTask("b", 1, TaskTypeTask, "Blocker")
-	blocked, _ := NewTask("k", 2, TaskTypeTask, "Blocked")
+	blocker, _ := NewGenericTask("b", 1, "Blocker")
+	blocked, _ := NewGenericTask("k", 2, "Blocked")
 	blocked.DependsOn = []string{"b"}
 	project.Tasks = []*Task{blocker, blocked}
 

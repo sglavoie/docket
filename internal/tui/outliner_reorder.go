@@ -23,46 +23,27 @@ func (m *OutlinerModel) reorderTask(delta int) tea.Cmd {
 		return nil
 	}
 	other := siblings[target]
-	if task.IsRoot() {
-		if delta > 0 && !task.IsComplete() && other.IsComplete() {
-			return func() tea.Msg {
-				return MoveBlockedMsg{Reason: "cannot move uncompleted task below completed task"}
-			}
-		}
-		if delta < 0 && task.IsComplete() && !other.IsComplete() {
-			return func() tea.Msg {
-				return MoveBlockedMsg{Reason: "cannot move completed task above uncompleted task"}
-			}
-		}
+	project := m.resolveProjectForRow(row)
+	if project == nil {
+		return nil
+	}
+	taskIdentity := taskIdentityFor(task, project)
+	targetIdentity := taskIdentityFor(other, project)
+	if m.taskItem.task != nil {
+		return m.taskItem.ReorderSiblings(taskIdentity, targetIdentity)
 	}
 
-	if m.project == nil {
-		_, project, ok := m.crossGetMutationTarget()
-		if !ok {
-			return nil
-		}
-		identity := taskIdentityFor(task, project)
-		if delta > 0 {
-			return m.taskItem.MoveDown(identity)
-		}
-		return m.taskItem.MoveUp(identity)
-	}
-
-	task = m.project.GetTaskByID(task.ID)
-	other = m.project.GetTaskByID(other.ID)
+	// Isolated Outliner models have no transaction coordinator. Preserve their
+	// in-memory structural behavior for focused rendering/navigation tests while
+	// production always takes the checked application transaction above.
+	task = project.GetTaskByID(task.ID)
+	other = project.GetTaskByID(other.ID)
 	if task == nil || other == nil {
 		return nil
 	}
-	m.project.SwapTasks(task, other)
-	action := "Move Up"
-	if delta > 0 {
-		action = "Move Down"
-	}
-	m.setUndoContext(action, task.Title)
-	m.undo.TaskIDs = []string{task.ID}
-	m.rebuildRows()
-	m.moveCursorToTask(task.ID)
-	return m.saveWithWorkflow()
+	project.SwapTasks(task, other)
+	rebuildOutlinerPreservingCursor(m)
+	return nil
 }
 
 func siblingIndex(siblings []*models.Task, taskID string) int {

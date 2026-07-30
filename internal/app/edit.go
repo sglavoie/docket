@@ -21,9 +21,6 @@ type EditRequest struct {
 	Title *string
 	// Description, when non-nil, replaces the task description.
 	Description *string
-	// Type, when non-nil, changes the task type and clears stale type-specific
-	// attributes from the previous type.
-	Type *models.TaskType
 	// Form, when non-nil, replaces the task's complete editable field set from the
 	// task form. Unlike the granular pointer fields above (used by `tt task edit`),
 	// the task form always writes every editable field, so full replacement — not
@@ -45,30 +42,15 @@ type EditRequest struct {
 // unconditionally, mirroring the form's legacy in-place mutation: the draft holds
 // the complete post-edit state, so the use case replaces rather than patches.
 type FormEdit struct {
-	Title         string
-	Type          models.TaskType
-	Priority      int
-	ParentID      *string
-	Description   string
-	Tags          []string
-	DueDate       *time.Time
-	HasTime       bool
-	StartDate     *time.Time
-	EstimatedDays float64
-	URL           string
-	Source        string
-	Dimmed        bool
-	Pinned        bool
-	Recurrence    *models.RecurrencePattern
-	Checklist     []models.ChecklistItem
-	// Type-specific attribute pointers. The form writes all five (only the active
-	// type's pointer is non-nil), so assigning them replaces and clears stale
-	// attributes from a previous type in one step.
-	BugAttrs   *models.BugAttrs
-	IdeaAttrs  *models.IdeaAttrs
-	TaskAttrs  *models.TaskAttrs
-	StoryAttrs *models.StoryAttrs
-	EpicAttrs  *models.EpicAttrs
+	Title       string
+	Priority    int
+	ParentID    *string
+	Description string
+	Tags        []string
+	DueDate     *time.Time
+	Pinned      bool
+	Recurrence  *models.RecurrencePattern
+	Checklist   []models.ChecklistItem
 }
 
 // Edit applies content changes to a task and commits them as one ChangeSet. A
@@ -81,6 +63,17 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("capture edit rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
 	if guardErr := validateEditStateTransition(ref, NewWorkspaceResolver(snap), req.WorkflowState); guardErr != nil {
 		return TaskResult{}, guardErr
 	}
@@ -93,25 +86,12 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Edit Task", "")
-}
-
-// EditWithWorkflow applies the same edit mutation as Edit, then evaluates rules
-// contextually against the true pre-edit task states captured from the shared
-// workflow snapshot. Contextual evaluation is mandatory because edit rules may
-// depend on field transitions.
-func (s *Service) EditWithWorkflow(req EditRequest, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	if opts.UndoAction == "" {
-		opts.UndoAction = "Edit Task"
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Edit Task", "")
+	if err != nil {
+		return TaskResult{}, err
 	}
-	// Fold Today/Next reconciliation into the same cascade transaction.
-	opts.PlanningArtifacts = s.defaultedPlanningArtifacts(opts.PlanningArtifacts)
-	return s.mutateWithWorkflowSelection(req.TaskID, req.Locator, opts, nil, func(ref TaskRef, resolver *WorkspaceResolver) error {
-		if guardErr := validateEditStateTransition(ref, resolver, req.WorkflowState); guardErr != nil {
-			return guardErr
-		}
-		return s.applyEdit(ref.Task, req)
-	})
+	committed = true
+	return result, nil
 }
 
 // validateEditStateTransition makes a state-changing edit obey the same guards
@@ -130,30 +110,15 @@ func validateEditStateTransition(ref TaskRef, resolver *WorkspaceResolver, targe
 	if *target == from {
 		return nil
 	}
-	if reason := models.CanTransitionState(from, *target); reason != "" {
-		return invalidInput("workflow state", reason)
-	}
-	if *target == models.StateDone && resolver != nil && resolver.HasIncompleteDependencies(ref.Task, ref.Project) {
-		return fmt.Errorf("%w: task #%d", ErrDependencyBlocked, ref.Task.ShortID)
-	}
-	if err := childrenCompletionGuard(ref.Task, *target); err != nil {
-		return err
-	}
-	return nil
+	return validateLifecycleTransition(ref, resolver, *target)
 }
 
-// applyEdit is the shared validation and mutation seam for bare and
-// workflow-aware edits.
+// applyEdit is the shared validation and mutation seam for task edits.
 func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 	originalState := task.State()
 	if req.WorkflowState != nil {
 		if !req.WorkflowState.IsValid() {
 			return invalidInput("workflow state", fmt.Sprintf("%q is not a valid workflow state", *req.WorkflowState))
-		}
-		if *req.WorkflowState != originalState {
-			if reason := models.CanTransitionState(originalState, *req.WorkflowState); reason != "" {
-				return invalidInput("workflow state", reason)
-			}
 		}
 	}
 	if req.Form != nil {
@@ -171,15 +136,6 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 		if req.Description != nil {
 			task.Description = *req.Description
 		}
-		if req.Type != nil {
-			if !req.Type.IsValid() {
-				return invalidInput("type", string(*req.Type)+" is not a valid task type")
-			}
-			if task.Type != *req.Type {
-				task.ClearTypeAttrs()
-				task.Type = *req.Type
-			}
-		}
 	}
 	if req.WorkflowState != nil {
 		if *req.WorkflowState == originalState {
@@ -195,7 +151,7 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 }
 
 // applyFormEdit replaces a task's editable fields from the task form's draft,
-// validating title, type, priority, and tags before mutating so a
+// validating title, priority, and tags before mutating so a
 // rejected edit never persists. It mirrors the field-application order the form
 // used before the migration (title/type/priority/parent, then dates,
 // tags, flags, recurrence, links, description, checklist, type attrs, pinned).
@@ -203,9 +159,6 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	title := strings.TrimSpace(f.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return invalidInput("title", err.Error())
-	}
-	if !f.Type.IsValid() {
-		return invalidInput("type", fmt.Sprintf("%q is not a valid task type", f.Type))
 	}
 	if err := models.ValidatePriority(f.Priority, true); err != nil {
 		return invalidInput("priority", err.Error())
@@ -216,26 +169,13 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	}
 
 	task.Title = title
-	task.Type = f.Type
 	task.Priority = f.Priority
 	task.ParentID = f.ParentID
-	task.DueDate = cloneTimePtr(f.DueDate)
-	task.HasTime = f.HasTime
-	task.StartDate = cloneTimePtr(f.StartDate)
-	task.EstimatedDays = f.EstimatedDays
+	task.DueDate = cloneCalendarDatePtr(f.DueDate)
 	task.Tags = append([]string{}, normalizedTags...)
-	task.Dimmed = f.Dimmed
 	task.Recurrence = f.Recurrence
-	task.URL = f.URL
-	task.Source = f.Source
 	task.Description = strings.TrimSpace(f.Description)
 	task.Checklist = filterChecklist(f.Checklist)
-	task.BugAttrs = f.BugAttrs
-	task.IdeaAttrs = f.IdeaAttrs
-	task.TaskAttrs = f.TaskAttrs
-	task.StoryAttrs = f.StoryAttrs
-	task.EpicAttrs = f.EpicAttrs
-
 	// Update PinnedAt only when the pinned flag actually changes, matching the
 	// form's legacy behavior.
 	if f.Pinned != task.Pinned {
@@ -251,14 +191,15 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	return nil
 }
 
-// cloneTimePtr returns a deep copy of a *time.Time, or nil for nil input, so a
-// committed task never aliases the caller's time pointer.
-func cloneTimePtr(t *time.Time) *time.Time {
+// cloneCalendarDatePtr returns the local calendar date represented by t with
+// its clock component removed.
+func cloneCalendarDatePtr(t *time.Time) *time.Time {
 	if t == nil {
 		return nil
 	}
-	cp := *t
-	return &cp
+	year, month, day := t.Date()
+	value := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+	return &value
 }
 
 // filterChecklist copies a checklist skipping blank-text items, matching the

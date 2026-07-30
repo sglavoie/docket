@@ -74,8 +74,9 @@ func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testi
 	}
 }
 
-func TestSimplifiedEnterAlwaysOpensTaskDetail(t *testing.T) {
+func TestSimplifiedEnterUsesResponsiveInspector(t *testing.T) {
 	app := newUITestApp()
+	app.width = inspectorWideBreakpoint - 1
 	project := scopeTestProject("project", "Project", "parent")
 	task := project.Tasks[0]
 	child := makeTask("child", "Child", "")
@@ -98,12 +99,21 @@ func TestSimplifiedEnterAlwaysOpensTaskDetail(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("execute detail: %v", result.Err)
 	}
-	detail, ok := result.Message.(ShowTaskDetailMsg)
+	detail, ok := result.Message.(ShowTaskInspectorMsg)
 	if !ok {
-		t.Fatalf("Enter returned %T, want ShowTaskDetailMsg", result.Message)
+		t.Fatalf("narrow Enter returned %T, want ShowTaskInspectorMsg", result.Message)
 	}
 	if detail.Task != task || detail.Project != project {
 		t.Fatalf("detail target = (%v, %v), want (%v, %v)", detail.Task, detail.Project, task, project)
+	}
+	app.width = inspectorWideBreakpoint
+	result = app.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      operationCoreDetail,
+		Context: app.operationCommandContext(),
+		Source:  OperationSourceDirectKey,
+	})
+	if result.Err != nil || result.Message != nil {
+		t.Fatalf("wide Enter result = message %T err %v, want no-op", result.Message, result.Err)
 	}
 	if len(app.crossOutliner.crossZoomStack) != 0 || len(app.crossOutliner.zoomStack) != 0 {
 		t.Fatal("Enter unexpectedly changed task zoom")
@@ -200,13 +210,14 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 	m.primaryMode = ModeAll
 	m.loadedProjects = []*models.Project{project}
 	m.rows[0].ProjectID = project.ID
-	if m.simplifiedReorderEligible() {
-		t.Fatal("base all-project scope allowed manual reorder")
-	}
-	m.scopedProjectID = project.ID
 	if !m.simplifiedReorderEligible() {
-		t.Fatal("focused project scope did not allow manual reorder")
+		t.Fatal("base all-project hierarchy did not allow same-project sibling reorder")
 	}
+	m.rows[0].IsPinnedSection = true
+	if m.simplifiedReorderEligible() {
+		t.Fatal("automatic Pinned section allowed manual reorder")
+	}
+	m.rows[0].IsPinnedSection = false
 	m.multiSelectMode = true
 	if m.simplifiedReorderEligible() {
 		t.Fatal("visual selection allowed cursor-only reorder")
@@ -276,26 +287,20 @@ func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 	if len(tasks) == 0 {
 		t.Fatal("fixture has no tasks")
 	}
-	m.openModePicker()
 	m.confirm.Show("delete", "Delete?")
 	m.quickEdit.Enter(tasks[0], false)
 	m.crossQuickEditProject = m.loadedProjects[0]
-	m.scoreFilterInput.Enter(nil)
 
 	m.resetToGlobalAll()
 
-	if m.modePickerActive() ||
-		m.confirm.IsActive() ||
+	if m.confirm.IsActive() ||
 		m.quickEdit.IsActive() ||
-		m.crossQuickEditProject != nil ||
-		m.scoreFilterInput.IsActive() {
+		m.crossQuickEditProject != nil {
 		t.Fatalf(
-			"reset left inline state: picker=%v confirm=%v edit=%v editProject=%v score=%v",
-			m.modePickerActive(),
+			"reset left inline state: confirm=%v edit=%v editProject=%v",
 			m.confirm.IsActive(),
 			m.quickEdit.IsActive(),
 			m.crossQuickEditProject,
-			m.scoreFilterInput.IsActive(),
 		)
 	}
 }

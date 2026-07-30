@@ -127,7 +127,7 @@ func TestMutateTask_NotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task, err := NewGenericTask("task-1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,12 +174,12 @@ func TestMutateTask_EmptyIDReturnsFalse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	good, err := NewTask("good-id", 1, TaskTypeTask, "Good Task")
+	good, err := NewGenericTask("good-id", 1, "Good Task")
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Simulate a corrupt on-disk entry bypassing NewTask.
-	corrupt, err := NewTask("placeholder", 2, TaskTypeTask, "Corrupt Task")
+	corrupt, err := NewGenericTask("placeholder", 2, "Corrupt Task")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -58,6 +58,7 @@ func TestProjectRelabelOutsideHubFallsBackToAllContextScope(t *testing.T) {
 		fixture.app.configManager,
 		fixture.app.runtime,
 		fixture.app.appService,
+		false,
 	))
 
 	_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{Project: live})
@@ -73,18 +74,6 @@ func TestProjectArchiveOutsideHubFallsBackToAllContextScope(t *testing.T) {
 	fixture, alpha, beta := externalContextMutationFixture(t)
 
 	_, cmd := fixture.app.handleProjectMessages(ProjectArchivedMsg{Project: fixture.app.projectByID(alpha.ID)})
-	runSession2AppCommand(t, fixture.app, cmd)
-
-	assertContextScopeFellBackToAll(t, fixture.cross, beta.ID)
-}
-
-// TestProjectDeletionOutsideHubFallsBackToAllContextScope covers deletion, which
-// drops the cataloged project outright and resets navigation to the Outliner
-// root — the scope must be reconciled on the way back rather than after.
-func TestProjectDeletionOutsideHubFallsBackToAllContextScope(t *testing.T) {
-	fixture, alpha, beta := externalContextMutationFixture(t)
-
-	_, cmd := fixture.app.handleProjectMessages(ProjectDeletedMsg{Project: fixture.app.projectByID(alpha.ID)})
 	runSession2AppCommand(t, fixture.app, cmd)
 
 	assertContextScopeFellBackToAll(t, fixture.cross, beta.ID)

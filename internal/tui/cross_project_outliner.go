@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -55,8 +56,8 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 
 // loadCrossProjectsCmd returns a Cmd that loads all active (context-filtered)
 // projects from disk. Failed projects are skipped; their load errors are
-// collected for a non-blocking status bar warning plus message-log details,
-// matching the AllTasks continue-on-error pattern.
+// collected for a non-blocking status bar warning, matching the AllTasks
+// continue-on-error pattern.
 func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	gen := m.crossLoadGen
 	runtime := m.runtime
@@ -103,6 +104,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
+	m.workspaceResolver = app.NewWorkspaceResolver(app.NewSnapshot(msg.projects, nil, nil))
 	m.refreshContextScopeProjects()
 	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
@@ -111,7 +113,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.restoreCrossOutlinerCursorAfterReload()
 
 	var cmds []tea.Cmd
-	// A scoped project may have been archived, trashed, or deleted externally
+	// A scoped project may have been archived or removed externally
 	// while the reload was in flight; unwind to the nearest valid scope.
 	if scopeMsg, repaired := m.reconcileProjectScope(); repaired {
 		cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(scopeMsg) })
@@ -123,21 +125,12 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 		}
 		return tea.Batch(cmds...)
 	}
-	for _, failure := range msg.failedLoads {
-		f := failure // capture for closure
-		cmds = append(cmds, func() tea.Msg {
-			return AppendToMessageLogMsg{
-				Message: "Outliner: " + f.Detail,
-				Level:   MessageLogLevelError,
-			}
-		})
-	}
 	count := len(msg.failedLoads)
 	noun := "project"
 	if count > 1 {
 		noun = "projects"
 	}
-	warning := fmt.Sprintf("%d %s failed to load — see message log (Alt+L)", count, noun)
+	warning := fmt.Sprintf("%d %s failed to load: %s", count, noun, msg.failedLoads[0].Detail)
 	cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(warning) })
 	return tea.Batch(cmds...)
 }
@@ -200,11 +193,10 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
-	fmt.Fprintf(&b, "review=%s|", reviewCollapsedFingerprint(m.reviewCollapsedSections))
 	fmt.Fprintf(&b, "today-fold=%t|", m.collapsedSections[todaySectionCollapseKey])
 	b.WriteString("today-plan=")
 	if m.runtime != nil {
-		for _, item := range m.runtime.Planning().GetDailyPlan() {
+		for _, item := range m.runtime.Planning().GetToday() {
 			fmt.Fprintf(&b, "%s:%s,", item.ProjectID, item.TaskID)
 		}
 	}
@@ -263,7 +255,13 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 // so any in-flight stale result is discarded on arrival.
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	m.preserveCrossOutlinerPinnedTagTabForReload()
-	m.preserveCrossOutlinerCursorForReload()
+	if m.crossReloadFromTop {
+		m.crossReloadProjectID = ""
+		m.crossReloadTaskID = ""
+		m.crossReloadFromTop = false
+	} else {
+		m.preserveCrossOutlinerCursorForReload()
+	}
 	m.loadedProjects = nil
 	m.rows = m.rows[:0]
 	m.resetViewScrollOffset()

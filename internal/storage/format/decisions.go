@@ -37,8 +37,6 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 		text      strings.Builder
 		rationale strings.Builder
 		createdAt time.Time
-		category  models.DecisionCategory
-		resolved  bool
 	}
 
 	var current *decisionDraft
@@ -61,9 +59,7 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 		task.Decisions = append(task.Decisions, &models.Decision{
 			Text:      unescapeBlockText(text),
 			Rationale: unescapeBlockText(rationale),
-			Category:  current.category,
 			CreatedAt: current.createdAt,
-			Resolved:  current.resolved,
 		})
 		current = nil
 		collectingRationale = false
@@ -81,22 +77,12 @@ func ExtractDecisionsFromDescription(task *models.Task) {
 				parts[i] = strings.TrimSpace(parts[i])
 			}
 
-			// Parse fields by recognized prefix rather than position so
-			// that a header missing the category (e.g. "<!-- decision: ts,
-			// resolved -->") still records the resolved flag instead of
-			// misassigning "resolved" to category.
+			// Legacy headers may carry retired category and resolved fields.
+			// Parse only the timestamp so live records normalize to the lean
+			// text/rationale/timestamp shape.
 			if len(parts) >= 1 {
 				if t, ok := ParseTimeField(parts[0]); ok {
 					current.createdAt = t
-				}
-			}
-			for _, p := range parts[1:] {
-				switch {
-				case strings.HasPrefix(p, "category:"):
-					catStr := strings.TrimPrefix(p, "category:")
-					current.category = models.DecisionCategory(strings.TrimSpace(catStr))
-				case p == "resolved":
-					current.resolved = true
 				}
 			}
 			continue
@@ -154,15 +140,7 @@ func WriteDecisions(task *models.Task) string {
 			b.WriteString("<!-- DECISIONS -->\n")
 			headerWritten = true
 		}
-		resolvedSuffix := ""
-		if d.Resolved {
-			resolvedSuffix = ", resolved"
-		}
-		fmt.Fprintf(&b, "<!-- decision: %s, category:%s%s -->\n",
-			d.CreatedAt.Format(util.DateTimeFormat),
-			string(d.Category),
-			resolvedSuffix,
-		)
+		fmt.Fprintf(&b, "<!-- decision: %s -->\n", d.CreatedAt.Format(util.DateTimeFormat))
 		b.WriteString(escapeBlockText(text))
 		b.WriteString("\n")
 		b.WriteString("<!-- rationale -->\n")

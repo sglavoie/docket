@@ -40,7 +40,6 @@ type Loader struct {
 	// Overridable for tests; defaults to storage.LoadProject.
 	loadProject func(*models.Project) error
 	// revisionOf computes the canonical content revision of a loaded project.
-	// Overridable for tests; defaults to the v2 document revision.
 	revisionOf func(*models.Project) string
 	// statSource returns the source identity of a project's tasks.md.
 	// Overridable for tests; defaults to stat of storage.TasksFilePath.

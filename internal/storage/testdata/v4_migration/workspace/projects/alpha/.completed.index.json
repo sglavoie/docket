@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "generated_at": "2026-02-03T12:00:00Z",
+  "sources": [
+    {
+      "file_name": "completed.md",
+      "size_bytes": 527,
+      "mod_time": "2026-02-03T12:00:00Z",
+      "task_count": 2,
+      "sha256": "synthetic-stale-index-hash"
+    }
+  ],
+  "tasks": []
+}

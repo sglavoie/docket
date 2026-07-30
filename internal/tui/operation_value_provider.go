@@ -29,17 +29,37 @@ const (
 	operationTaskOutdent         OperationID = "tui.task.outdent"
 )
 
-// OperationDateValue is the picker-neutral due/snooze payload. Nil clears the
-// field; HasTime is retained for future time-bearing due presets.
+// OperationDateValue is the picker-neutral due/snooze payload. Nil clears the field.
 type OperationDateValue struct {
-	Date    *time.Time
-	HasTime bool
+	Date *time.Time
+}
+
+// OperationRecurrenceValue distinguishes an explicit clear (nil Pattern) from
+// canceling the editor, which never resumes the frozen operation request.
+type OperationRecurrenceValue struct {
+	Pattern *models.RecurrencePattern
 }
 
 // OperationParentValue distinguishes "no parent" from an invalid/missing value.
 type OperationParentValue struct {
 	ParentID *string
 }
+
+// OperationTagsValue is the tri-state bulk tag edit emitted by the value
+// picker. Add and Remove are uniform patches; tags in neither set preserve
+// their existing per-task membership.
+type OperationTagsValue struct {
+	Add    []string
+	Remove []string
+}
+
+type operationTagMembership uint8
+
+const (
+	operationTagNone operationTagMembership = iota
+	operationTagSome
+	operationTagAll
+)
 
 // OperationValueSelectedMsg resumes a pending operation with the chosen value.
 type OperationValueSelectedMsg struct {
@@ -54,13 +74,15 @@ type OperationValueCanceledMsg struct{}
 
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
-	surface   *ListSurfaceModel
-	request   OperationExecutionRequest
-	provider  ValueProviderID
-	title     string
-	subtitle  string
-	multi     bool
-	searching bool
+	surface    *ListSurfaceModel
+	request    OperationExecutionRequest
+	provider   ValueProviderID
+	title      string
+	subtitle   string
+	multi      bool
+	searching  bool
+	tagInitial map[ListItemID]operationTagMembership
+	tagCurrent map[ListItemID]operationTagMembership
 }
 
 func newOperationValuePickerModel(
@@ -158,7 +180,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		model.surface.PageCursor(1)
 	case "space":
 		if model.multi {
-			if _, err := model.surface.ToggleCurrentSelection(); err != nil {
+			if err := model.toggleCurrentMultiValue(); err != nil {
 				return nil, false, StatusMsg(err.Error())
 			}
 		}
@@ -187,7 +209,87 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	return nil, false, nil
 }
 
+func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
+	if model.provider != ValueProviderTags || len(model.tagCurrent) == 0 {
+		_, err := model.surface.ToggleCurrentSelection()
+		return err
+	}
+	item, ok := model.surface.CurrentItem()
+	if !ok {
+		return ErrListItemNotFound
+	}
+	state := model.tagCurrent[item.ID]
+	if state == operationTagAll {
+		if _, err := model.surface.ToggleCurrentSelection(); err != nil {
+			return err
+		}
+		model.tagCurrent[item.ID] = operationTagNone
+	} else {
+		if !model.surface.IsSelected(item.ID) {
+			if _, err := model.surface.ToggleCurrentSelection(); err != nil {
+				return err
+			}
+		}
+		model.tagCurrent[item.ID] = operationTagAll
+	}
+	return model.syncTagMembershipRows()
+}
+
+func (model *OperationValuePickerModel) configureTagMembership(
+	membership map[ListItemID]operationTagMembership,
+) error {
+	if model == nil || model.surface == nil {
+		return nil
+	}
+	model.tagInitial = make(map[ListItemID]operationTagMembership, len(membership))
+	model.tagCurrent = make(map[ListItemID]operationTagMembership, len(membership))
+	selected := make([]ListItemID, 0, len(membership))
+	for id, state := range membership {
+		model.tagInitial[id] = state
+		model.tagCurrent[id] = state
+		if state == operationTagAll {
+			selected = append(selected, id)
+		}
+	}
+	if err := model.surface.SetSelectedIDs(selected); err != nil {
+		return err
+	}
+	return model.syncTagMembershipRows()
+}
+
+func (model *OperationValuePickerModel) syncTagMembershipRows() error {
+	items := model.surface.Items()
+	for index := range items {
+		items[index].Indeterminate = model.tagCurrent[items[index].ID] == operationTagSome
+	}
+	return model.surface.SetItems(items)
+}
+
 func (model *OperationValuePickerModel) selectedValue() (any, error) {
+	if model.provider == ValueProviderTags && len(model.tagCurrent) > 0 {
+		value := OperationTagsValue{}
+		for _, item := range model.surface.Items() {
+			initial := model.tagInitial[item.ID]
+			current := model.tagCurrent[item.ID]
+			switch {
+			case current == operationTagAll && initial != operationTagAll:
+				tag, ok := item.Data.(string)
+				if !ok {
+					return nil, fmt.Errorf("selected value %s has invalid payload", item.ID)
+				}
+				value.Add = append(value.Add, tag)
+			case current == operationTagNone && initial != operationTagNone:
+				tag, ok := item.Data.(string)
+				if !ok {
+					return nil, fmt.Errorf("selected value %s has invalid payload", item.ID)
+				}
+				value.Remove = append(value.Remove, tag)
+			}
+		}
+		sort.Strings(value.Add)
+		sort.Strings(value.Remove)
+		return value, nil
+	}
 	if model.multi {
 		items := model.surface.SelectedItems()
 		values := make([]string, 0, len(items))
@@ -247,7 +349,7 @@ func (model *OperationValuePickerModel) render(width int) string {
 }
 
 func (m *AppModel) taskActionOperationDescriptors() []OperationDescriptor {
-	manifest := taskOperationManifest()
+	manifest := taskOperationDescriptorManifest()
 	descriptors := make([]OperationDescriptor, 0, len(manifest))
 	for _, entry := range manifest {
 		if entry.Core {
@@ -259,14 +361,9 @@ func (m *AppModel) taskActionOperationDescriptors() []OperationDescriptor {
 		}
 		id := entry.ID
 		descriptors = append(descriptors, OperationDescriptor{
-			ID:      id,
-			Label:   entry.Label,
-			Aliases: entry.Aliases,
-			// A manifest action reaches a user through the row it acts on, so it
-			// is contextual: the Outliner sheet and the Finder task sheet both
-			// project the manifest, and Finder never lists it a second time as a
-			// standalone operation aimed at whatever the cursor happens to be on.
-			Placement:            PlacementContextual,
+			ID:                   id,
+			Label:                entry.Label,
+			Aliases:              entry.Aliases,
 			Category:             OperationCategoryTask,
 			TargetSource:         source,
 			TargetCardinality:    cardinality,
@@ -286,6 +383,17 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		return false
 	}
 	entry, _ := taskOperationManifestEntryFor(id)
+	// Direct operations describe a stable grammar, not a menu projection. They
+	// stay resolvable over headers and otherwise invalid cursor positions so the
+	// executor can report the canonical missing-target error. A visual
+	// selection still suppresses single-target operations instead of silently
+	// falling back to the cursor.
+	if entry.DirectOnly {
+		if context.Selection.Visual {
+			return entry.Bulk
+		}
+		return true
+	}
 	entities := []EntityContext{context.Entity}
 	if context.Selection.Visual {
 		selected := normalizedTaskIdentities(context.Selection.Tasks)
@@ -320,7 +428,7 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 func taskStateAllowsSnooze(state string) bool {
 	switch models.WorkflowState(state) {
 	case models.StateInbox, models.StateReady, models.StateNext,
-		models.StateWaiting, models.StatePaused, models.StateReview, models.StateSomeday:
+		models.StateWaiting, models.StatePaused, models.StateSomeday:
 		return true
 	default:
 		return false
@@ -395,6 +503,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		ValueProviderProject,
 		ValueProviderDependencies,
 		ValueProviderParent,
+		ValueProviderRecurrence,
 	} {
 		if err := executor.RegisterValueProvider(provider, func(OperationInvocation) OperationValueProviderResult {
 			// Returning no immediate value asks the shell to construct the
@@ -445,8 +554,11 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		_, ok := value.(OperationDateValue)
 		return ok
 	case ValueProviderTags, ValueProviderDependencies:
-		_, ok := value.([]string)
-		return ok
+		if _, ok := value.([]string); ok {
+			return true
+		}
+		_, ok := value.(OperationTagsValue)
+		return id == ValueProviderTags && ok
 	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName:
 		_, ok := value.(string)
 		return ok
@@ -472,6 +584,17 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operationTaskDelete {
 		return m.executeTaskDeleteOperation(invocation)
 	}
+	if invocation.Descriptor.ID == operationTaskTogglePin {
+		return m.executeTaskTogglePinOperation(invocation)
+	}
+	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
+		if err != nil {
+			return OperationHandlerResult{Err: err}
+		}
+		return OperationHandlerResult{Message: OperationCommandResultMsg{
+			Cmd: m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary),
+		}}
+	}
 	if len(invocation.Targets.Targets) > 1 {
 		return m.executeBulkTaskValueOperation(invocation)
 	}
@@ -481,6 +604,155 @@ func (m *AppModel) executeTaskOperation(
 		return OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 	}
 	return m.executeSingleTaskOperation(invocation, identity)
+}
+
+// executeTaskTogglePinOperation applies one deterministic toggle to the whole
+// frozen target set: if every target is pinned it unpins all of them, otherwise
+// it pins all of them. The application operation validates and commits the
+// project-qualified set atomically.
+func (m *AppModel) executeTaskTogglePinOperation(
+	invocation OperationInvocation,
+) OperationHandlerResult {
+	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
+	allPinned := true
+	for _, target := range invocation.Targets.Targets {
+		if !target.Task.Valid() {
+			return OperationHandlerResult{Err: fmt.Errorf(
+				"operation %s resolved an invalid task",
+				invocation.Descriptor.ID,
+			)}
+		}
+		task, _ := m.taskAndProjectForIdentity(target.Task)
+		if task == nil {
+			return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+		}
+		allPinned = allPinned && task.Pinned
+		locators = append(locators, target.Task.Locator())
+	}
+	pinned := !allPinned
+	action, verb := "Pin Task", "Pinned"
+	if !pinned {
+		action, verb = "Unpin Task", "Unpinned"
+	}
+	return OperationHandlerResult{Message: OperationCommandResultMsg{
+		Cmd: m.secondaryFeatures.TaskItem.ExecuteOperation(
+			app.TaskOperationRequest{
+				Operation: app.TaskOperationSetPinned,
+				Targets:   locators,
+				Pinned:    pinned,
+			},
+			action,
+			fmt.Sprintf("%s %d task(s)", verb, len(locators)),
+		),
+	}}
+}
+
+func applicationTaskOperationRequest(
+	invocation OperationInvocation,
+) (app.TaskOperationRequest, string, string, bool, error) {
+	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
+	for _, target := range invocation.Targets.Targets {
+		if !target.Task.Valid() {
+			return app.TaskOperationRequest{}, "", "", true, fmt.Errorf(
+				"operation %s resolved an invalid task",
+				invocation.Descriptor.ID,
+			)
+		}
+		locators = append(locators, target.Task.Locator())
+	}
+	request := app.TaskOperationRequest{Targets: locators}
+	count := len(locators)
+
+	switch invocation.Descriptor.ID {
+	case operationTaskSetState:
+		state, ok := invocation.Value.(models.WorkflowState)
+		if !ok || !state.IsValid() {
+			return request, "", "", true, fmt.Errorf("invalid state value")
+		}
+		request.Operation = app.TaskOperationSetState
+		request.State = state
+		return request, "Change State",
+			fmt.Sprintf("Change State · Changed %d task(s) to %s", count, state), true, nil
+
+	case operationTaskSetPriority:
+		priority, ok := invocation.Value.(int)
+		if !ok || priority < 0 || priority > models.PriorityMax {
+			return request, "", "", true, fmt.Errorf("invalid priority value")
+		}
+		request.Operation = app.TaskOperationSetPriority
+		request.Priority = priority
+		return request, "Set Priority",
+			fmt.Sprintf("Set Priority · Set priority on %d task(s)", count), true, nil
+
+	case operationTaskSetDueDate:
+		value, ok := invocation.Value.(OperationDateValue)
+		if !ok {
+			return request, "", "", true, fmt.Errorf("invalid due-date value")
+		}
+		request.Operation = app.TaskOperationSetDueDate
+		request.Date = cloneOperationDate(value.Date)
+		verb := "Set due date on"
+		if value.Date == nil {
+			verb = "Cleared due date on"
+		}
+		return request, "Set Due Date",
+			fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
+
+	case operationTaskSetSnooze:
+		value, ok := invocation.Value.(OperationDateValue)
+		if !ok {
+			return request, "", "", true, fmt.Errorf("invalid snooze value")
+		}
+		request.Operation = app.TaskOperationSetSnooze
+		request.Date = cloneOperationDate(value.Date)
+		verb := "Snoozed"
+		if value.Date == nil {
+			verb = "Cleared snooze on"
+		}
+		return request, "Set Snooze",
+			fmt.Sprintf("Set Snooze · %s %d task(s)", verb, count), true, nil
+
+	case operationTaskSetTags:
+		switch value := invocation.Value.(type) {
+		case []string:
+			request.Tags = append([]string(nil), value...)
+		case OperationTagsValue:
+			request.TagPatch = true
+			request.TagsToAdd = append([]string(nil), value.Add...)
+			request.TagsToRemove = append([]string(nil), value.Remove...)
+		default:
+			return request, "", "", true, fmt.Errorf("invalid tag value")
+		}
+		request.Operation = app.TaskOperationSetTags
+		return request, "Set Tags",
+			fmt.Sprintf("Set Tags · Tagged %d task(s)", count), true, nil
+
+	case operationTaskPin, operationTaskUnpin:
+		request.Operation = app.TaskOperationSetPinned
+		request.Pinned = invocation.Descriptor.ID == operationTaskPin
+		action := "Unpin Task"
+		verb := "Unpinned"
+		if request.Pinned {
+			action = "Pin Task"
+			verb = "Pinned"
+		}
+		return request, action, fmt.Sprintf("%s %d task(s)", verb, count), true, nil
+
+	case operationTaskCopyTitle:
+		request.Operation = app.TaskOperationCopyTitle
+		return request, "Copy Title", "", true, nil
+
+	case operationTaskCopyDetails:
+		request.Operation = app.TaskOperationCopyDescription
+		return request, "Copy Description", "", true, nil
+
+	case operationTaskCopyTitleDescription:
+		request.Operation = app.TaskOperationCopyTitleDescription
+		return request, "Copy Title and Description", "", true, nil
+
+	default:
+		return app.TaskOperationRequest{}, "", "", false, nil
+	}
 }
 
 func (m *AppModel) executeSingleTaskOperation(
@@ -509,7 +781,7 @@ func (m *AppModel) executeSingleTaskOperation(
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid due-date value")}
 		}
-		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date), value.HasTime))
+		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date)))
 	case operationTaskSetSnooze:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
@@ -525,6 +797,18 @@ func (m *AppModel) executeSingleTaskOperation(
 			[]app.TaskLocator{identity.Locator()},
 			tags,
 		))
+	case operationTaskRecurrence:
+		value, ok := invocation.Value.(OperationRecurrenceValue)
+		if !ok {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid recurrence value")}
+		}
+		if value.Pattern == nil {
+			return cmdResult(m.secondaryFeatures.TaskItem.ClearRecurrence(identity))
+		}
+		if err := value.Pattern.Validate(); err != nil {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid recurrence value: %w", err)}
+		}
+		return cmdResult(m.secondaryFeatures.TaskItem.SetRecurrence(identity, value.Pattern))
 	case operationTaskMoveProject:
 		destination, ok := invocation.Value.(string)
 		if !ok || strings.TrimSpace(destination) == "" {
@@ -582,18 +866,9 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		if !ok || !state.IsValid() {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid state value")}
 		}
-		req := app.BulkTransitionRequest{
-			TaskLocators: locators,
-			Target:       state,
-			UndoAction:   "Set State",
-			UndoContext:  fmt.Sprintf("%d tasks", count),
-			SkipInvalid:  true,
-		}
-		if m.runtime != nil {
-			req.Rules = m.runtime.Automation().GetEnabledWorkflowRules()
-		}
-		return cmdResult(m.secondaryFeatures.Bulk.TransitionWithWorkflow(
-			req,
+		return cmdResult(m.secondaryFeatures.Bulk.TransitionLocators(
+			locators,
+			state,
 			func(changed int) string {
 				return fmt.Sprintf("Changed %d task(s) to %s", changed, state)
 			},
@@ -615,7 +890,6 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		return cmdResult(m.secondaryFeatures.Bulk.SetDueDateLocators(
 			locators,
 			*cloneOperationDate(value.Date),
-			value.HasTime,
 		))
 	case operationTaskSetSnooze:
 		value, ok := invocation.Value.(OperationDateValue)
@@ -655,6 +929,7 @@ func (m *AppModel) taskAndProjectForIdentity(identity TaskIdentity) (*models.Tas
 	return project.GetTaskByID(identity.TaskID), project
 }
 
+//nolint:gocyclo // One factory exhaustively maps typed operation values to their picker contracts.
 func (m *AppModel) newOperationValuePicker(
 	request OperationExecutionRequest,
 	provider ValueProviderID,
@@ -666,6 +941,8 @@ func (m *AppModel) newOperationValuePicker(
 		return m.newFilterStatesPicker(request)
 	case ValueProviderFilterTags:
 		return m.newFilterTagsPicker(request)
+	case ValueProviderFilterDue:
+		return m.newFilterDuePicker(request)
 	default:
 	}
 	refs, err := m.operationTaskRefs(request.Context)
@@ -745,14 +1022,34 @@ func (m *AppModel) newOperationValuePicker(
 				source.Items[index].Data = tag.Name
 			}
 		}
-		commonTags := commonTaskTags(refs)
-		selected := make([]ListItemID, 0, len(commonTags))
-		for _, tag := range commonTags {
-			selected = append(selected, ListItemID("tag:"+tag))
+		membership := taskTagMembership(refs)
+		selected := make([]ListItemID, 0, len(membership))
+		for tag, state := range membership {
+			if state == operationTagAll {
+				selected = append(selected, ListItemID("tag:"+tag))
+			}
 		}
-		return newOperationValuePickerModel(
+		picker, err := newOperationValuePickerModel(
 			request, provider, "Set Tags", subtitle, source, true, selected,
 		)
+		if err != nil {
+			return nil, err
+		}
+		if request.Context.Selection.Visual {
+			byID := make(map[ListItemID]operationTagMembership, len(membership))
+			for tag, state := range membership {
+				byID[ListItemID("tag:"+tag)] = state
+			}
+			for _, item := range picker.surface.Items() {
+				if _, ok := byID[item.ID]; !ok {
+					byID[item.ID] = operationTagNone
+				}
+			}
+			if err := picker.configureTagMembership(byID); err != nil {
+				return nil, err
+			}
+		}
+		return picker, nil
 	case ValueProviderProject:
 		if len(refs) != 1 {
 			return nil, fmt.Errorf("move project is available for one task at a time")
@@ -771,7 +1068,7 @@ func (m *AppModel) newOperationValuePicker(
 		if len(refs) != 1 {
 			return nil, fmt.Errorf("dependencies are available for one task at a time")
 		}
-		source, selected := dependencyOperationListSource(task, project)
+		source, selected := m.dependencyOperationListSource(task, project)
 		return newOperationValuePickerModel(
 			request, provider, "Set Dependencies", subtitle, source, true, selected,
 		)
@@ -851,33 +1148,25 @@ func sameOperationDate(left, right *time.Time) bool {
 	return left.Equal(*right)
 }
 
-func commonTaskTags(refs []TaskProjectRef) []string {
-	if len(refs) == 0 || refs[0].Task == nil {
-		return nil
-	}
-	common := make(map[string]bool)
-	for _, tag := range models.DedupeTags(refs[0].Task.Tags) {
-		common[tag] = true
-	}
-	for _, ref := range refs[1:] {
-		present := make(map[string]bool)
-		if ref.Task != nil {
-			for _, tag := range models.DedupeTags(ref.Task.Tags) {
-				present[tag] = true
-			}
+func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership {
+	counts := make(map[string]int)
+	for _, ref := range refs {
+		if ref.Task == nil {
+			continue
 		}
-		for tag := range common {
-			if !present[tag] {
-				delete(common, tag)
-			}
+		for _, tag := range models.DedupeTags(ref.Task.Tags) {
+			counts[tag]++
 		}
 	}
-	tags := make([]string, 0, len(common))
-	for tag := range common {
-		tags = append(tags, tag)
+	membership := make(map[string]operationTagMembership, len(counts))
+	for tag, count := range counts {
+		if count == len(refs) {
+			membership[tag] = operationTagAll
+		} else if count > 0 {
+			membership[tag] = operationTagSome
+		}
 	}
-	sort.Strings(tags)
-	return tags
+	return membership
 }
 
 func operationDateListSource(snooze bool) ListSource {
@@ -955,51 +1244,113 @@ func relativeDateSelectedID(date *time.Time, snooze bool) []ListItemID {
 	return nil
 }
 
-func dependencyOperationListSource(
+func (m *AppModel) dependencyOperationListSource(
 	task *models.Task,
-	project *models.Project,
+	owner *models.Project,
 ) (ListSource, []ListItemID) {
-	candidates := buildDependencyCandidates(task, project)
-	items := make([]ListItem, 0, len(candidates))
-	available := make(map[string]bool, len(candidates))
-	for _, candidate := range candidates {
-		if candidate.Task == nil {
+	if task == nil || owner == nil {
+		return ListSource{}, nil
+	}
+	projects := m.activeProjects()
+	resolver := app.NewWorkspaceResolver(app.NewSnapshot(projects, nil, nil))
+	selectedIdentities, unresolved := dependencySelectionIdentities(task.DependsOn, owner, projects)
+	descendants := taskDescendantIDs(task)
+	items := make([]ListItem, 0)
+	selected := make([]ListItemID, 0, len(task.DependsOn))
+	available := make(map[string]bool)
+
+	for _, project := range projects {
+		if project == nil || project.Archived {
 			continue
 		}
-		ref := candidate.Task.ID
-		available[ref] = true
-		items = append(items, ListItem{
-			ID:            ListItemID("dependency:" + ref),
-			PrimaryText:   fmt.Sprintf("#%d %s", candidate.Task.ShortID, candidate.Task.Title),
-			SecondaryText: workflowStateListLabel(candidate.Task.State()),
-			Aliases:       append([]string{candidate.Task.Title, candidate.Task.State().String()}, candidate.Task.Tags...),
-			Preview: ListPreview{
-				Title:   candidate.Task.Title,
-				Summary: candidate.Task.Description,
-			},
-			Data: ref,
-		})
+		for _, candidate := range project.Tasks {
+			if candidate == nil || (project.ID == owner.ID && candidate.ID == task.ID) {
+				continue
+			}
+			if project.ID == owner.ID && descendants[candidate.ID] {
+				continue
+			}
+			ref := dependencyReference(owner, project, candidate.ID)
+			identity := TaskIdentity{ProjectID: project.ID, TaskID: candidate.ID}
+			isSelected := selectedIdentities[identity]
+			if !isSelected && (candidate.IsComplete() ||
+				resolver.WouldCreateDependencyCycle(owner, task.ID, ref)) {
+				continue
+			}
+			id := ListItemID("dependency:" + ref)
+			available[ref] = true
+			secondary := project.Name + " · " + workflowStateListLabel(candidate.State())
+			items = append(items, ListItem{
+				ID:            id,
+				PrimaryText:   fmt.Sprintf("#%d %s", candidate.ShortID, candidate.Title),
+				SecondaryText: secondary,
+				Aliases: append(
+					[]string{candidate.Title, candidate.State().String(), project.Name, project.Slug},
+					candidate.Tags...,
+				),
+				Preview: ListPreview{
+					Title:   project.Name + " › " + candidate.Title,
+					Summary: candidate.Description,
+				},
+				Data: ref,
+			})
+			if isSelected {
+				selected = append(selected, id)
+			}
+		}
 	}
-	// Keep qualified or otherwise non-local existing dependencies selectable so
-	// confirming the picker without edits cannot silently drop an external edge.
-	for _, dependency := range task.DependsOn {
+
+	// Surface unresolved pre-existing references so the user can explicitly
+	// remove them. The application boundary rejects them if they remain selected.
+	for _, dependency := range unresolved {
 		if available[dependency] {
 			continue
 		}
-		available[dependency] = true
 		items = append(items, ListItem{
 			ID:            ListItemID("dependency:" + dependency),
 			PrimaryText:   dependency,
-			SecondaryText: "existing external dependency",
+			SecondaryText: "unresolved existing dependency",
 			Aliases:       []string{dependency},
 			Data:          dependency,
 		})
-	}
-	selected := make([]ListItemID, 0, len(task.DependsOn))
-	for _, dependency := range task.DependsOn {
 		selected = append(selected, ListItemID("dependency:"+dependency))
 	}
 	return ListSource{Items: items}, selected
+}
+
+func dependencyReference(owner, target *models.Project, taskID string) string {
+	if owner != nil && target != nil && owner.ID == target.ID {
+		return taskID
+	}
+	return models.TaskRef{ProjectID: target.ID, TaskID: taskID}.String()
+}
+
+func dependencySelectionIdentities(
+	dependencies []string,
+	owner *models.Project,
+	projects []*models.Project,
+) (map[TaskIdentity]bool, []string) {
+	selected := make(map[TaskIdentity]bool, len(dependencies))
+	var unresolved []string
+	for _, dependency := range dependencies {
+		parsed := models.ParseTaskRef(dependency)
+		project := owner
+		if parsed.IsCrossProject() {
+			project = nil
+			for _, candidate := range projects {
+				if candidate != nil && (candidate.ID == parsed.ProjectID || candidate.Slug == parsed.ProjectID) {
+					project = candidate
+					break
+				}
+			}
+		}
+		if project == nil || project.GetTaskByID(parsed.TaskID) == nil {
+			unresolved = append(unresolved, dependency)
+			continue
+		}
+		selected[TaskIdentity{ProjectID: project.ID, TaskID: parsed.TaskID}] = true
+	}
+	return selected, unresolved
 }
 
 func parentOperationListSource(
@@ -1050,6 +1401,23 @@ func (m *AppModel) executeOperationOverlayRequest(
 // openOperationValueStep opens the value overlay one provider needs: a typed
 // prompt for text values, the ListSurface picker for everything else.
 func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.Cmd {
+	if request.Provider == ValueProviderRecurrence {
+		refs, err := m.operationTaskRefs(request.Request.Context)
+		if err != nil || len(refs) != 1 {
+			if err == nil {
+				err = fmt.Errorf("recurrence is available for one task at a time")
+			}
+			m.err = err
+			return statusTimeout(5 * time.Second)
+		}
+		frozenRequest := request.Request
+		m.pendingTaskRecurrenceRequest = &frozenRequest
+		m.suspendedTaskActionSheet = m.contextActionSheet
+		m.contextActionSheet = nil
+		task := refs[0].Task
+		m.showView(ViewRecurrenceEditor, NewRecurrenceEditorModel(task.Recurrence, task.DueDate))
+		return nil
+	}
 	if request.Provider.textEntry() {
 		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {
@@ -1126,12 +1494,7 @@ func (m *AppModel) applyContextActionSheetResult(msg ContextActionSheetResultMsg
 		m.showOperationConfirmation(*msg.Result.ConfirmationRequired)
 		return nil
 	}
-	cmd := operationResultCmd(msg.Result)
-	if msg.Completion != ContextActionCompleteCloseHost {
-		return cmd
-	}
-	completed := ContextActionSheetCompletedMsg{Host: msg.Host, Cmd: cmd}
-	return func() tea.Msg { return completed }
+	return operationResultCmd(msg.Result)
 }
 
 // resumeContextActionRequest re-enters the executor after a nested value or

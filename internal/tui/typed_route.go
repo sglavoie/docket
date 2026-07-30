@@ -68,18 +68,6 @@ type TaskWorkspaceParams struct {
 
 func (TaskWorkspaceParams) routeParams() {}
 
-// ReviewModule and ManageModule identify a specific secondary tool. Secondary
-// routes always name a real module; there are no landing sentinels.
-type ReviewModule uint8
-
-const (
-	ReviewDaily ReviewModule = iota
-	ReviewWeekly
-	ReviewActivity
-	ReviewMetrics
-	ReviewRoadmap
-)
-
 // ProjectSetScope captures the exact project set admitted by the launching
 // Outliner scope. Explicit distinguishes an intentionally empty Context from
 // legacy callers that omit a project set and expect the tool's app-wide
@@ -106,38 +94,17 @@ func (scope ProjectSetScope) ProjectIDs() []string {
 	return strings.Split(scope.projectIDs, "\x1f")
 }
 
-type ReviewParams struct {
-	Module     ReviewModule
-	ProjectSet ProjectSetScope
-}
-
-func (ReviewParams) routeParams() {}
-
 type ManageModule uint8
 
 const (
 	ManageNotes ManageModule = iota
-	ManageBlockers
-	ManageRules
-	ManageTemplates
-	ManageTags
-	ManageNotifications
-	ManageSettings
 	ManageContexts
 )
 
-type NotificationMode uint8
-
-const (
-	NotificationAlerts NotificationMode = iota
-	NotificationLog
-)
-
 type ManageParams struct {
-	Module           ManageModule
-	Scope            EntityScope
-	ProjectSet       ProjectSetScope
-	NotificationMode NotificationMode
+	Module     ManageModule
+	Scope      EntityScope
+	ProjectSet ProjectSetScope
 }
 
 func (ManageParams) routeParams() {}
@@ -150,7 +117,6 @@ const (
 	TaskComments
 	TaskDecisions
 	TaskAttachments
-	TaskActivity
 )
 
 type TaskDetailParams struct {
@@ -165,8 +131,6 @@ type ReferenceKind uint8
 
 const (
 	ReferenceHelp ReferenceKind = iota
-	ReferenceAsk
-	ReferenceTutor
 )
 
 type ReferenceParams struct{ Kind ReferenceKind }
@@ -242,22 +206,9 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		return p, nil
 	case SecondaryTool:
 		switch p := params.(type) {
-		case ReviewParams:
-			if p.Module > ReviewRoadmap {
-				return nil, invalidParams(id, "unknown review tool")
-			}
-			if p.Module == ReviewWeekly {
-				p.ProjectSet = canonicalProjectSetScope(p.ProjectSet)
-			} else {
-				p.ProjectSet = ProjectSetScope{}
-			}
-			return p, nil
 		case ManageParams:
 			if p.Module > ManageContexts {
 				return nil, invalidParams(id, "unknown manage tool")
-			}
-			if p.NotificationMode > NotificationLog {
-				return nil, invalidParams(id, "unknown notification mode")
 			}
 			if manageModuleSupportsScope(p.Module) {
 				scope, err := canonicalEntityScope(id, p.Scope)
@@ -268,14 +219,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 			} else {
 				p.Scope = AppEntityScope()
 			}
-			if p.Module == ManageTags && p.Scope.Kind == ScopeApp {
-				p.ProjectSet = canonicalProjectSetScope(p.ProjectSet)
-			} else {
-				p.ProjectSet = ProjectSetScope{}
-			}
-			if p.Module != ManageNotifications {
-				p.NotificationMode = NotificationAlerts
-			}
+			p.ProjectSet = ProjectSetScope{}
 			return p, nil
 		default:
 			return nil, paramsTypeError(id, params)
@@ -291,7 +235,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		if p.TaskID == "" {
 			return nil, ErrTaskRequired
 		}
-		if p.Tab > TaskActivity {
+		if p.Tab > TaskAttachments {
 			return nil, invalidParams(id, "unknown task detail tab")
 		}
 		return p, nil
@@ -300,7 +244,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		if !ok {
 			return nil, paramsTypeError(id, params)
 		}
-		if p.Kind > ReferenceTutor {
+		if p.Kind > ReferenceHelp {
 			return nil, invalidParams(id, "unknown reference kind")
 		}
 		return p, nil
@@ -323,12 +267,7 @@ func projectSetScopeEqual(left, right ProjectSetScope) bool {
 func manageParamsEqual(left, right ManageParams) bool {
 	return left.Module == right.Module &&
 		left.Scope == right.Scope &&
-		projectSetScopeEqual(left.ProjectSet, right.ProjectSet) &&
-		left.NotificationMode == right.NotificationMode
-}
-
-func reviewParamsEqual(left, right ReviewParams) bool {
-	return left.Module == right.Module && projectSetScopeEqual(left.ProjectSet, right.ProjectSet)
+		projectSetScopeEqual(left.ProjectSet, right.ProjectSet)
 }
 
 func canonicalEntityScope(id RouteID, scope EntityScope) (EntityScope, error) {
@@ -347,7 +286,7 @@ func canonicalEntityScope(id RouteID, scope EntityScope) (EntityScope, error) {
 }
 
 func manageModuleSupportsScope(module ManageModule) bool {
-	return module == ManageNotes || module == ManageBlockers || module == ManageTags
+	return module == ManageNotes
 }
 
 func paramsTypeError(id RouteID, params RouteParams) error {
@@ -383,9 +322,6 @@ func (r Route) Accent() color.Color {
 	case TaskWorkspace, TaskDetail:
 		return accentColorForCategory(AccentCatExecute)
 	case SecondaryTool:
-		if _, ok := r.params.(ReviewParams); ok {
-			return accentColorForCategory(AccentCatReview)
-		}
 		return accentColorForCategory(AccentCatSupport)
 	case Reference:
 		return accentColorForCategory(AccentCatSupport)

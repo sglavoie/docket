@@ -9,18 +9,12 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/template"
 )
 
-// formAttrsLabelWidth is the fixed label column width for type-attr rows.
-// "Reproducible:" (13 chars) is the widest; +1 pad = 14.
-const formAttrsLabelWidth = 14
-
 // formSubtaskDraft is a draft subtask entry on the Children tab.
-// Only used in FormModeCreate for Epic/Story types.
+// Only used in FormModeCreate.
 type formSubtaskDraft struct {
 	title    string
-	taskType models.TaskType
 	optional bool
 }
 
@@ -35,32 +29,16 @@ const (
 // taskFormDraft holds all editable state for the form, independent of mode.
 // Populated from a new task (create) or an existing task (edit).
 type taskFormDraft struct {
-	title              string
-	taskType           models.TaskType
-	priority           int
-	parentID           *string
-	state              models.WorkflowState
-	pinned             bool
-	dimmed             bool
-	tags               []string
-	dueDate            *time.Time
-	dueInput           string
-	hasTime            bool
-	recurrence         *models.RecurrencePattern
-	startDate          *time.Time
-	startDateInput     string
-	estimatedDays      float64
-	estimatedDaysInput string
-	desc               string
-	url                string
-	source             string
-
-	// Type-specific attributes (only one set is active per taskType).
-	bugAttrs   models.BugAttrs
-	ideaAttrs  models.IdeaAttrs
-	taskAttrs  models.TaskAttrs
-	storyAttrs models.StoryAttrs
-	epicAttrs  models.EpicAttrs
+	title      string
+	priority   int
+	parentID   *string
+	state      models.WorkflowState
+	pinned     bool
+	tags       []string
+	dueDate    *time.Time
+	dueInput   string
+	recurrence *models.RecurrencePattern
+	desc       string
 
 	// Children tab data.
 	checklist []models.ChecklistItem
@@ -69,15 +47,14 @@ type taskFormDraft struct {
 
 // TaskFormModel drives both Create and Edit flows (D1, D11).
 type TaskFormModel struct {
-	mode         FormMode
-	project      *models.Project
-	task         *models.Task // non-nil in FormModeEdit
-	draft        taskFormDraft
-	runtime      *config.RuntimeState
-	fromTemplate *template.TaskTemplate
-	taskForm     TaskFormCoordinator
-	presetPlan   app.PlanningArtifactBuilder
-	hostTitle    string
+	mode       FormMode
+	project    *models.Project
+	task       *models.Task // non-nil in FormModeEdit
+	draft      taskFormDraft
+	runtime    *config.RuntimeState
+	taskForm   TaskFormCoordinator
+	presetPlan app.PlanningArtifactBuilder
+	hostTitle  string
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model
@@ -85,22 +62,12 @@ type TaskFormModel struct {
 	// Due date input (Schedule tab, field 0)
 	dueTextInput textinput.Model
 
-	// Start date and estimated days inputs (Schedule tab, fields 1 and 2)
-	startDateTextInput     textinput.Model
-	estimatedDaysTextInput textinput.Model
-
-	// URL and Source inputs (Details tab, fields 0 and 1)
-	urlTextInput    textinput.Model
-	sourceTextInput textinput.Model
-
 	// Inline overlays (Basics and Schedule tabs)
 	activeOverlay  formOverlayKind
-	typePicker     *formTypePicker
 	priorityPicker *formPriorityPicker
 	statePicker    *formStatePicker
 	flagsPicker    *formFlagsPicker
 	duePicker      *formDueDatePicker
-	attrPicker     *formAttrPicker
 
 	// Children tab state
 	checklistExpanded bool
@@ -111,12 +78,11 @@ type TaskFormModel struct {
 	// Inline edit inputs for Children tab overlays
 	checklistItemInput textinput.Model
 	subtaskItemInput   textinput.Model
-	subtaskTypeCursor  int // cursor within formSubtaskTypes[] for subtask edit overlay
 
 	// Navigation state
 	activeTab         int
 	focusIndex        int
-	collapsedBasics   bool // true = show only Title/Type/Priority + expand row
+	collapsedBasics   bool // true = show only Title/Priority + expand row
 	collapsedSchedule bool // true = show only Due + expand row
 
 	// Dimensions
@@ -143,10 +109,3 @@ const (
 	childFocusChecklistItem                // a checklist item (idx valid)
 	childFocusSubtaskItem                  // a subtask draft  (idx valid)
 )
-
-// formSubtaskTypes lists the available child types selectable in the subtask edit overlay.
-var formSubtaskTypes = []models.TaskType{
-	models.TaskTypeTask,
-	models.TaskTypeBug,
-	models.TaskTypeIdea,
-}

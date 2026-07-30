@@ -13,10 +13,10 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// focusQueueContains reports whether the Next order index already lists the
+// nextOrderContains reports whether the Next order index already lists the
 // project-qualified task.
-func focusQueueContains(planning *config.PlanningState, identity TaskIdentity) bool {
-	for _, item := range planning.GetFocusQueue() {
+func nextOrderContains(planning *config.PlanningState, identity TaskIdentity) bool {
+	for _, item := range planning.GetNextOrder() {
 		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true
 		}
@@ -24,10 +24,10 @@ func focusQueueContains(planning *config.PlanningState, identity TaskIdentity) b
 	return false
 }
 
-// dailyPlanContains reports whether the Daily Plan (Today) already lists the
+// todayContains reports whether the Daily Plan (Today) already lists the
 // project-qualified task.
-func dailyPlanContains(planning *config.PlanningState, identity TaskIdentity) bool {
-	for _, item := range planning.GetDailyPlan() {
+func todayContains(planning *config.PlanningState, identity TaskIdentity) bool {
+	for _, item := range planning.GetToday() {
 		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true
 		}
@@ -39,14 +39,6 @@ func dailyPlanContains(planning *config.PlanningState, identity TaskIdentity) bo
 // and gives isolated in-memory UI tests the same app-owned state/invariant logic
 // without manufacturing a filesystem repository.
 func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.PlanningAction) (*models.Task, *models.Project, error) {
-	triagingInbox := false
-	if m.activeInboxTriage() {
-		if project := m.projectByID(projectID); project != nil {
-			if task := project.GetTaskByID(taskID); task != nil {
-				triagingInbox = task.State() == models.StateInbox
-			}
-		}
-	}
 	if m.appService != nil && m.configManager != nil {
 		stateChanged := false
 		if project := m.projectByID(projectID); project != nil {
@@ -90,9 +82,6 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 			return nil, nil, nil
 		}
 		task := project.GetTaskByID(taskID)
-		if triagingInbox && task != nil && task.State() != models.StateInbox {
-			m.markInboxTriaged()
-		}
 		return task, project, nil
 	}
 
@@ -108,7 +97,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		return nil, project, fmt.Errorf("planning task %s is unavailable", taskID)
 	}
 	target, _, err := app.ApplyPlanningActionToTask(
-		task, project.ID, action, time.Now().Format("2006-01-02"), time.Now(),
+		task, project.ID, action, time.Now(),
 	)
 	if err != nil {
 		return nil, project, err
@@ -118,9 +107,6 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 			Targets: []app.PlanningReconcileTarget{target},
 		})
 		m.rebuildPlanningFromRuntime()
-	}
-	if triagingInbox && task.State() != models.StateInbox {
-		m.markInboxTriaged()
 	}
 	return task, project, nil
 }
@@ -134,36 +120,36 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 		return
 	}
 	planning := m.runtime.Planning()
-	m.focusQueue = m.focusQueue[:0]
-	if m.focusQueueIDs == nil {
-		m.focusQueueIDs = make(map[TaskIdentity]bool)
+	m.nextOrder = m.nextOrder[:0]
+	if m.nextOrderIDs == nil {
+		m.nextOrderIDs = make(map[TaskIdentity]bool)
 	} else {
-		clear(m.focusQueueIDs)
+		clear(m.nextOrderIDs)
 	}
-	for _, item := range planning.GetFocusQueue() {
+	for _, item := range planning.GetNextOrder() {
 		p := m.projectByID(item.ProjectID)
 		if p == nil {
 			continue
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
-			m.focusQueue = append(m.focusQueue, FocusTask{Task: t, Project: p})
-			m.focusQueueIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+			m.nextOrder = append(m.nextOrder, FocusTask{Task: t, Project: p})
+			m.nextOrderIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
-	m.dailyPlan = m.dailyPlan[:0]
-	if m.dailyPlanIDs == nil {
-		m.dailyPlanIDs = make(map[TaskIdentity]bool)
+	m.today = m.today[:0]
+	if m.todayIDs == nil {
+		m.todayIDs = make(map[TaskIdentity]bool)
 	} else {
-		clear(m.dailyPlanIDs)
+		clear(m.todayIDs)
 	}
-	for _, item := range planning.GetDailyPlan() {
+	for _, item := range planning.GetToday() {
 		p := m.projectByID(item.ProjectID)
 		if p == nil {
 			continue
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
-			m.dailyPlan = append(m.dailyPlan, FocusTask{Task: t, Project: p})
-			m.dailyPlanIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+			m.today = append(m.today, FocusTask{Task: t, Project: p})
+			m.todayIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
 }
@@ -186,8 +172,7 @@ func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
 	}
 	entry, desc, err := restore(scope)
 	if err != nil {
-		// An exhausted ledger is not an error here: fall through so u/ctrl+r can
-		// defer to the per-project history fallback rather than toasting.
+		// An exhausted ledger is not an error here.
 		if strings.Contains(err.Error(), "history available") {
 			return nil
 		}

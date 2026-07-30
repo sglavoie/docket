@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"cmp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -20,6 +22,7 @@ type pinnedTaskInfo struct {
 func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 	projects := m.activeProjects()
 	var pinned []pinnedTaskInfo
+	now := time.Now()
 
 	for _, project := range projects {
 		if project.Tasks == nil {
@@ -31,7 +34,7 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 			if task == nil {
 				continue
 			}
-			if task.Pinned && !task.IsComplete() {
+			if task.Pinned && !task.IsTerminalState() && !task.IsSnoozedAt(now) {
 				info := pinnedTaskInfo{
 					Title:       task.Title,
 					ShortID:     task.ShortID,
@@ -47,8 +50,22 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 		}
 	}
 
-	sort.Slice(pinned, func(i, j int) bool {
-		return pinned[i].PinnedAt.Before(pinned[j].PinnedAt)
+	sort.SliceStable(pinned, func(i, j int) bool {
+		switch {
+		case !pinned[i].PinnedAt.IsZero() && pinned[j].PinnedAt.IsZero():
+			return true
+		case pinned[i].PinnedAt.IsZero() && !pinned[j].PinnedAt.IsZero():
+			return false
+		case !pinned[i].PinnedAt.Equal(pinned[j].PinnedAt):
+			return pinned[i].PinnedAt.After(pinned[j].PinnedAt)
+		}
+		if c := cmp.Compare(strings.ToLower(pinned[i].ProjectName), strings.ToLower(pinned[j].ProjectName)); c != 0 {
+			return c < 0
+		}
+		if c := cmp.Compare(pinned[i].ShortID, pinned[j].ShortID); c != 0 {
+			return c < 0
+		}
+		return pinned[i].Task.ID < pinned[j].Task.ID
 	})
 
 	return pinned

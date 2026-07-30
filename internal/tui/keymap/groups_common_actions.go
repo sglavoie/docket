@@ -12,8 +12,6 @@ type CommonTaskActionDeps struct {
 	EditTask Action
 	// ToggleHelp shows or hides the help panel.
 	ToggleHelp Action
-	// EditScore opens the score-dimensions editor.
-	EditScore Action
 	// OpenURL opens the task's URL in a browser. Nil if not supported.
 	OpenURL Action
 	// MoveToProject opens the project-move dialog. Nil if not supported.
@@ -23,7 +21,7 @@ type CommonTaskActionDeps struct {
 }
 
 // CommonTaskActionGroup returns top-level task-action bindings shared across
-// primary views: o, Z, D, e, ?, S, and optional O / ctrl+b / ctrl+.
+// primary views: o, Z, D, e, ?, and optional O / ctrl+b / ctrl+.
 func CommonTaskActionGroup(deps CommonTaskActionDeps) []Entry {
 	cat := "Task Actions"
 	entries := []Entry{
@@ -34,8 +32,6 @@ func CommonTaskActionGroup(deps CommonTaskActionDeps) []Entry {
 		Bind("e", "Edit task", cat, deps.EditTask,
 			WithOperationID("tui.command.edit.task")),
 		Bind("?", "Toggle help", cat, deps.ToggleHelp),
-		Bind("S", "Edit score dimensions", cat, deps.EditScore,
-			WithOperationID("tui.command.score.editor")),
 	}
 	if deps.OpenURL != nil {
 		entries = append(entries, Bind("O", "Open URL in browser", cat, deps.OpenURL))

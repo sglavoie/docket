@@ -10,25 +10,20 @@ import (
 // Legacy child messages call this seam with their corresponding tab, making
 // those messages aliases instead of independent navigation participants.
 func (m *AppModel) activateTaskDetail(task *models.Task, project *models.Project, tab TaskDetailTab) tea.Cmd {
-	if task == nil || project == nil || tab > TaskActivity {
+	if task == nil || project == nil || tab > TaskAttachments {
 		return nil
 	}
 
 	m.lastNavigatedTaskID = task.ID
-	m.recordTaskVisit(task, project)
 
 	if m.taskDetail == nil || m.taskDetail.task == nil || m.taskDetail.project == nil ||
 		m.taskDetail.task.ID != task.ID || m.taskDetail.project.ID != project.ID {
-		editor := ""
-		if m.runtime != nil {
-			editor = m.runtime.Machine().GetEditor()
-		}
 		m.taskDetail = NewTaskDetailModelForTab(
 			task,
 			project,
 			m.runtime,
 			tab,
-			editor,
+			"",
 			m.secondaryFeatures.Subview,
 			m.secondaryFeatures.Attachment,
 		)
@@ -42,7 +37,7 @@ func (m *AppModel) activateTaskDetail(task *models.Task, project *models.Project
 		m.taskDetail.syncEmbeddedTasks()
 	}
 	identity := taskIdentityFor(task, project)
-	m.taskDetail.SetPlanningMembership(m.dailyPlanIDs[identity], m.focusQueueIDs[identity])
+	m.taskDetail.SetPlanningMembership(m.todayIDs[identity], m.nextOrderIDs[identity])
 
 	route, err := NewRoute(TaskDetail, TaskDetailParams{
 		ProjectID: project.ID,
@@ -74,11 +69,10 @@ func (m *AppModel) registerTaskDetailPresentations() {
 	m.views.Register(ViewTaskComments, m.taskDetail.comments)
 	m.views.Register(ViewTaskDecisions, m.taskDetail.decisions)
 	m.views.Register(ViewTaskAttachments, m.taskDetail.attachments)
-	m.views.Register(ViewTaskActivity, m.taskDetail.activity)
 }
 
 func (m *AppModel) syncTaskDetailTab(tab TaskDetailTab) tea.Cmd {
-	if m.taskDetail == nil || tab > TaskActivity {
+	if m.taskDetail == nil || tab > TaskAttachments {
 		return nil
 	}
 	current := m.navigation.Primary.Current()

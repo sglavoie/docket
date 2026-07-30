@@ -10,9 +10,6 @@ type UndoContext struct {
 	ProjectIDs []string // Affected project IDs (cross-project operations)
 	TaskIDs    []string // Task IDs explicitly changed by user (enables targeted undo)
 	GroupID    string   // Shared transaction ID for grouped project snapshots
-	// BackupPaths is intentionally omitted: storage.RestoreFromBackup derives
-	// the backup path from the project automatically, so callers never need to
-	// store it. Use crossHandleUndo → RestoreFromBackup for all undo operations.
 }
 
 // Set records the action and context for the next undo snapshot. Targeted

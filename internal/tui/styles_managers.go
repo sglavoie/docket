@@ -4,24 +4,6 @@ import "charm.land/lipgloss/v2"
 
 // Manager panel styles.
 var (
-	TagManagerBoxStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary).
-				Padding(1, 2)
-
-	TagManagerItemStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted)
-
-	TagManagerItemSelectedStyle = lipgloss.NewStyle().
-					Foreground(ColorSelectedFg).
-					Bold(true)
-
-	TagManagerCountStyle = lipgloss.NewStyle().
-				Foreground(ColorSecondary)
-
-	TagManagerErrorStyle = lipgloss.NewStyle().
-				Foreground(ColorError)
-
 	SectionBadgeStyle = lipgloss.NewStyle().
 				Foreground(ColorBadgeText).
 				Background(ColorBackground)

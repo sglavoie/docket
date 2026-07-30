@@ -8,10 +8,9 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
-// RuntimeState is the startup-loaded, in-memory snapshot of the five owned
+// RuntimeState is the startup-loaded, in-memory snapshot of the three owned
 // configuration domains, the raw revision observed for each at load time, and
 // the workspace data directory. It is the composition-root state a long-lived
 // runtime (the TUI shell) holds instead of the config.Config facade: views read
@@ -21,7 +20,7 @@ import (
 //
 // It wraps a DomainCoordinator so the same optimistic-concurrency machinery the
 // CLI uses is available to the TUI runtime: the CommitCatalog/CommitPlanning/
-// CommitSettings/CommitAutomation/CommitMachine seams persist only the changed
+// CommitMachine seams persist only the changed
 // domain(s) under a revision check (no config.Config rebuilt or saved), and each
 // refreshes the in-memory snapshot so the views observe the committed state
 // without a render-time disk load.
@@ -89,23 +88,11 @@ func (m *Manager) LoadRuntimeState() (*RuntimeState, error) {
 // Reload re-reads every domain from disk through the coordinator, refreshing both
 // the in-memory domain snapshot the accessors return and the raw-revision
 // baseline CheckedArtifacts stamps. It is the only place the snapshot touches
-// disk, so render/update helpers stay disk-free by reading the cached accessors
-// instead. A retired-action migration may perform one additional load after its
-// checked automation write so every consumer receives the persisted snapshot.
+// disk, so render/update helpers stay disk-free by reading the cached accessors.
 func (rs *RuntimeState) Reload() error {
 	domains, err := rs.coord.LoadDomains()
 	if err != nil {
 		return err
-	}
-	if domains.Automation.SanitizeRetiredWorkflowActions() {
-		// The domain coordinator retained the revision that produced this
-		// snapshot. Saving with that exact baseline refuses a concurrent writer
-		// instead of silently overwriting automation changes made after load.
-		loadedRevision := rs.coord.revs[domainAutomation]
-		if err := rs.coord.store.SaveAutomationChecked(domains.Automation, loadedRevision); err != nil {
-			return err
-		}
-		return rs.Reload()
 	}
 	rs.domains = domains
 	rs.revs = make(map[domainKind]string, len(rs.coord.revs))
@@ -157,29 +144,9 @@ func (rs *RuntimeState) Planning() *PlanningState {
 	return rs.domainsOrDefault().Planning
 }
 
-// Settings returns the loaded settings domain.
-func (rs *RuntimeState) Settings() *Settings {
-	if rs == nil {
-		return NewSettings()
-	}
-	return rs.domainsOrDefault().Settings
-}
-
-// Automation returns the loaded automation domain.
-func (rs *RuntimeState) Automation() *AutomationConfig {
-	if rs == nil {
-		return NewAutomationConfig()
-	}
-	return rs.domainsOrDefault().Automation
-}
-
-// GetFocusQueue and GetProjectScoringProfile let domain-native consumers use
-// the same narrow scoring capability as legacy callers without accepting a
-// Config facade.
-func (rs *RuntimeState) GetFocusQueue() []FocusQueueItem { return rs.Planning().GetFocusQueue() }
-func (rs *RuntimeState) GetProjectScoringProfile(projectID string) *scoring.ScoringProfile {
-	return rs.Automation().GetProjectScoringProfile(projectID)
-}
+// GetNextOrder lets domain-native consumers read durable Next ordering without
+// accepting a Config facade.
+func (rs *RuntimeState) GetNextOrder() []ProjectTaskLocator { return rs.Planning().GetNextOrder() }
 
 // Machine returns the loaded machine-local domain.
 func (rs *RuntimeState) Machine() *MachineState {
@@ -189,7 +156,7 @@ func (rs *RuntimeState) Machine() *MachineState {
 	return rs.domainsOrDefault().Machine
 }
 
-// CloneDomains returns a deep, independently mutable copy of the runtime's five
+// CloneDomains returns a deep, independently mutable copy of the runtime's three
 // cached domains. CLI lifecycle commands use the copy to assemble a checked
 // multi-domain transaction without mutating the loaded snapshot before the
 // transaction succeeds. The domains are their own JSON persistence aggregates,
@@ -200,11 +167,9 @@ func (rs *RuntimeState) CloneDomains() (*Domains, error) {
 		return nil, fmt.Errorf("runtime state is unavailable")
 	}
 	source := &Domains{
-		Catalog:    rs.Catalog(),
-		Planning:   rs.Planning(),
-		Settings:   rs.Settings(),
-		Automation: rs.Automation(),
-		Machine:    rs.Machine(),
+		Catalog:  rs.Catalog(),
+		Planning: rs.Planning(),
+		Machine:  rs.Machine(),
 	}
 	data, err := json.Marshal(source)
 	if err != nil {
@@ -231,8 +196,6 @@ func (rs *RuntimeState) CheckedSyncedArtifacts(domains *Domains) ([]DomainArtifa
 	return rs.coord.CheckedDomainArtifacts(
 		domains.Catalog,
 		domains.Planning,
-		domains.Settings,
-		domains.Automation,
 	)
 }
 
@@ -246,24 +209,14 @@ func (rs *RuntimeState) CheckedCatalogArtifact(catalog *WorkspaceCatalog) (Domai
 }
 
 // CheckedPlanningArtifact renders a planning-only mutation against the
-// revision this runtime observed at startup, leaving catalog, settings, and
-// automation untouched. Task transactions use it to make planning-reference
-// cleanup atomic without widening the config write set.
+// revision this runtime observed at startup, leaving every other domain
+// untouched. Task transactions use it to make planning-reference cleanup
+// atomic without widening the config write set.
 func (rs *RuntimeState) CheckedPlanningArtifact(planning *PlanningState) (DomainArtifact, error) {
 	if rs == nil || rs.coord == nil {
 		return DomainArtifact{}, fmt.Errorf("runtime state is unavailable")
 	}
 	return rs.coord.CheckedPlanningArtifact(planning)
-}
-
-// CheckedAutomationArtifact renders an automation-only mutation against the
-// revision this runtime observed at startup, leaving catalog, planning, and
-// settings untouched. It is used when automation state must join a task commit.
-func (rs *RuntimeState) CheckedAutomationArtifact(automation *AutomationConfig) (DomainArtifact, error) {
-	if rs == nil || rs.coord == nil {
-		return DomainArtifact{}, fmt.Errorf("runtime state is unavailable")
-	}
-	return rs.coord.CheckedAutomationArtifact(automation)
 }
 
 // CommitCatalog persists a mutated workspace-catalog domain under an optimistic
@@ -276,48 +229,10 @@ func (rs *RuntimeState) CommitCatalog(catalog *WorkspaceCatalog) error {
 	return rs.commitThenRefresh(func() error { return rs.coord.CommitCatalog(catalog) })
 }
 
-// CommitPlanning persists a mutated planning domain (focus queue, daily plan,
-// saved views/filters, review completion) under an optimistic concurrency check
-// and refreshes the snapshot. Only the planning domain is written.
+// CommitPlanning persists mutated Today/Next ordering under an optimistic
+// concurrency check and refreshes the snapshot.
 func (rs *RuntimeState) CommitPlanning(planning *PlanningState) error {
 	return rs.commitThenRefresh(func() error { return rs.coord.CommitPlanning(planning) })
-}
-
-// CommitSettings persists a mutated portable-settings domain plus the
-// machine-local domain under optimistic concurrency and refreshes the snapshot.
-// It mirrors the settings-editor commit: settings.json (synced) and machine.json
-// (machine-local) are each written under a checked revision without rewriting the
-// planning, catalog, or automation domains.
-func (rs *RuntimeState) CommitSettings(settings *Settings, machine *MachineState) error {
-	if settings == nil {
-		return fmt.Errorf("settings are required")
-	}
-	if machine == nil {
-		return fmt.Errorf("machine state is required")
-	}
-	return rs.commitThenRefresh(func() error {
-		if err := rs.coord.CommitSettings(settings); err != nil {
-			return err
-		}
-		return rs.coord.CommitMachine(machine)
-	})
-}
-
-// CommitPortableSettings persists only settings.json and refreshes the runtime
-// snapshot. CLI mutations such as global pinned-tag changes use this seam when
-// they do not also change machine-local state.
-func (rs *RuntimeState) CommitPortableSettings(settings *Settings) error {
-	if settings == nil {
-		return fmt.Errorf("settings are required")
-	}
-	return rs.commitThenRefresh(func() error { return rs.coord.CommitSettings(settings) })
-}
-
-// CommitAutomation persists a mutated automation domain (workflow rules,
-// templates, scoring) under an optimistic concurrency check and refreshes the
-// snapshot. Only the automation domain is written.
-func (rs *RuntimeState) CommitAutomation(automation *AutomationConfig) error {
-	return rs.commitThenRefresh(func() error { return rs.coord.CommitAutomation(automation) })
 }
 
 // CommitMachine persists a mutated machine-local domain (navigation, layout,
@@ -353,16 +268,6 @@ func (rs *RuntimeState) SetCatalogInMemory(catalog *WorkspaceCatalog) {
 	rs.domainsOrDefault().Catalog = catalog
 }
 
-// SetSettingsInMemory replaces the cached portable-settings domain without
-// persisting it. Isolated shell tests use this path when no workspace data
-// directory exists, avoiding writes relative to the package working directory.
-func (rs *RuntimeState) SetSettingsInMemory(settings *Settings) {
-	if rs == nil {
-		return
-	}
-	rs.domainsOrDefault().Settings = settings
-}
-
 // SetDomainsInMemory replaces all cached domains without persistence. It is the
 // composition-root test seam for a domain-spanning mutation on a runtime with
 // no writable workspace directory.
@@ -395,7 +300,7 @@ func (rs *RuntimeState) commitThenRefresh(commit func() error) error {
 // sandbox, internal, or absent — is a hidden context member, preserved on save
 // rather than resolved.
 func IsActiveContextMember(p *models.Project) bool {
-	return p != nil && !p.Archived && !p.Sandbox && !p.Internal
+	return p != nil && !p.Archived
 }
 
 // ActiveProjects returns the non-archived, non-sandbox, non-internal cataloged
@@ -462,21 +367,9 @@ func (rs *RuntimeState) catalogProjects() []*models.Project {
 	return projects
 }
 
-// FocusQueue returns the persisted Focus Queue from the loaded planning domain.
-func (rs *RuntimeState) FocusQueue() []FocusQueueItem {
-	return rs.Planning().FocusQueue
-}
-
-// GetSandboxProject returns the cataloged sandbox project (rehydrated with its
-// derived path), or nil when none exists. It mirrors
-// (*Config).GetSandboxProject from the in-memory catalog snapshot.
-func (rs *RuntimeState) GetSandboxProject() *models.Project {
-	for _, p := range rs.catalogProjects() {
-		if p.Sandbox {
-			return p
-		}
-	}
-	return nil
+// NextOrder returns the persisted workspace-wide order of StateNext tasks.
+func (rs *RuntimeState) NextOrder() []ProjectTaskLocator {
+	return rs.Planning().NextOrder
 }
 
 // SystemInboxProject returns the catalog-owned visible Inbox project, or nil
@@ -493,13 +386,11 @@ func (rs *RuntimeState) IsSystemInboxProject(id string) bool {
 	return rs != nil && rs.Catalog().IsSystemInboxProject(id)
 }
 
-// ArchivedProjects returns the archived, non-sandbox cataloged projects sorted
-// by name, mirroring (*Config).GetArchivedProjects from the in-memory catalog
-// snapshot.
+// ArchivedProjects returns archived cataloged projects sorted by name.
 func (rs *RuntimeState) ArchivedProjects() []*models.Project {
 	var archived []*models.Project
 	for _, p := range rs.catalogProjects() {
-		if p.Archived && !p.Sandbox {
+		if p.Archived {
 			archived = append(archived, p)
 		}
 	}
@@ -515,10 +406,9 @@ func (rs *RuntimeState) ProjectPath(slug string) string {
 	return filepath.Join(rs.dataDir, "projects", slug)
 }
 
-// DefaultContext returns the portable default project context from the settings
-// domain, mirroring the former config.Config.DefaultContext field.
+// DefaultContext is the built-in context for newly created projects.
 func (rs *RuntimeState) DefaultContext() string {
-	return rs.Settings().DefaultContext
+	return "personal"
 }
 
 // EnsureDataDir creates the workspace data directory, its internal directory,
@@ -535,9 +425,8 @@ func (rs *RuntimeState) EnsureDataDir() error {
 }
 
 // AllContexts returns the sorted, unique context values across every cataloged
-// project. It mirrors (*Config).GetAllContexts but reads the in-memory catalog
-// domain instead of the facade, so the settings context selector no longer needs
-// config.Config.
+// project. It reads the in-memory catalog domain without rebuilding the legacy
+// Config facade.
 func (rs *RuntimeState) AllContexts() []string {
 	contextSet := make(map[string]bool)
 	for _, p := range rs.Catalog().Projects {

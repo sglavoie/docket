@@ -106,126 +106,16 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			Module: ManageNotes,
 			Scope:  ProjectEntityScope(msg.Project.ID),
 		})
-		m.selectFinderNote(msg.Focus)
+		m.selectActiveNote(msg.Focus)
 		return true, cmd
 
 	case ShowGlobalNotesMsg:
 		cmd := m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
-		m.selectFinderNote(msg.Focus)
+		m.selectActiveNote(msg.Focus)
 		return true, cmd
 
 	case ShowGlobalNoteCreatorMsg:
 		return m.handleCreateGlobalNote()
-
-	case ShowGlobalNoteMoveMsg:
-		// Open a project picker for moving the note
-		projects := m.activeProjects()
-		if len(projects) == 0 {
-			m.setInfoStatus("No projects available")
-			return true, nil
-		}
-		m.pendingGlobalNoteMove = &pendingNoteMove{Source: msg.Source}
-		m.showView(ViewProjectSelector, NewGlobalNoteMoveProjectSelectorModel(projects))
-		return true, nil
-
-	case GlobalNoteMoveDoneMsg:
-		if msg.ProjectID == "" {
-			m.pendingGlobalNoteMove = nil
-			m.popView()
-			return true, nil
-		}
-		if m.pendingGlobalNoteMove != nil {
-			source := m.pendingGlobalNoteMove.Source
-			m.pendingGlobalNoteMove = nil
-			m.popView()
-			note := source.noteCopy()
-			return true, noteMutationCmd(m.appService, app.GlobalNoteLocation(), app.NoteBatchRequest{
-				Operations: []app.NoteMutationRequest{{
-					Kind:        app.NoteMove,
-					Location:    source.Location,
-					Destination: app.ProjectNoteLocation(msg.ProjectID),
-					Note:        note,
-				}},
-				UndoAction:  "Move Note",
-				UndoContext: note.Title,
-			}, fmt.Sprintf("Moved '%s' to %s", note.Title, msg.ProjectName), false)
-		}
-		return true, nil
-
-	case ShowNotesSearchMsg:
-		if msg.Project != nil {
-			m.showView(ViewNotesSearch, NewNotesSearchModel(msg.Project))
-		}
-		return true, nil
-
-	case NotesSearchSelectMsg:
-		// Pop search view, then select the note in the notes view
-		m.popView()
-		// Find the note index in the notes view and set cursor
-		if v := m.views.Get(ViewNotes); v != nil {
-			if notesView, ok := v.(*NotesViewModel); ok {
-				for i, n := range notesView.notes {
-					if n.Filename == msg.Note.Filename {
-						notesView.cursor = i
-						break
-					}
-				}
-			}
-		}
-		return true, nil
-
-	case BulkNoteLinkMsg:
-		if msg.Project != nil && len(msg.Notes) > 0 {
-			// Toggle a copied preview; the result is applied to every selected
-			// note as one application-layer batch when the overlay closes.
-			m.pendingBulkNotes = newNoteMutationRefs(app.ProjectNoteLocation(msg.Project.ID), msg.Notes)
-			m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModelWithService(msg.Project, msg.Notes[0], m.appService, true))
-		}
-		return true, nil
-
-	case ShowNoteTaskLinkerMsg:
-		if msg.Project == nil || msg.Note == nil {
-			return true, errorCmd("cannot link: a note link names a task in the note's own project")
-		}
-		m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModelWithService(msg.Project, msg.Note, m.appService, false))
-		return true, nil
-
-	case CloseNoteTaskLinkerMsg:
-		m.popView()
-		m.pendingBulkNotes = nil
-		return true, nil
-
-	case NoteTaskLinkedMsg:
-		m.popView()
-		// Forward to notes view to refresh
-		cmd := m.views.Update(ViewNotes, msg)
-		return true, cmd
-
-	case BulkNoteLinkDoneMsg:
-		m.popView()
-		if msg.Canceled || len(m.pendingBulkNotes) == 0 || len(msg.LinkChanges) == 0 {
-			m.pendingBulkNotes = nil
-			return true, nil
-		}
-		projectID := msg.ProjectID
-		location := app.ProjectNoteLocation(projectID)
-		operations := make([]app.NoteMutationRequest, 0, len(m.pendingBulkNotes))
-		for _, ref := range m.pendingBulkNotes {
-			updated := ref.noteCopy()
-			for taskID, linked := range msg.LinkChanges {
-				if linked {
-					updated.AddLink(taskID)
-				} else {
-					updated.RemoveLink(taskID)
-				}
-			}
-			operations = append(operations, app.NoteMutationRequest{Kind: app.NoteUpdate, Location: location, Note: updated})
-		}
-		return true, projectNoteMutationCmd(m.appService, projectID, app.NoteBatchRequest{
-			Operations:  operations,
-			UndoAction:  "Link Notes to Tasks",
-			UndoContext: fmt.Sprintf("%d notes", len(operations)),
-		}, fmt.Sprintf("Updated links on %d notes", len(operations)), true)
 
 	case ShowNoteCreatorMsg:
 		if msg.Project != nil {
@@ -236,6 +126,22 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		return true, nil
 	}
 	return false, nil
+}
+
+func (m *AppModel) selectActiveNote(filename string) {
+	if filename == "" || m.manageHub == nil {
+		return
+	}
+	notes, ok := m.manageHub.ActiveModuleView().(*NotesViewModel)
+	if !ok {
+		return
+	}
+	for index, note := range notes.notes {
+		if note != nil && note.Filename == filename {
+			notes.cursor = index
+			return
+		}
+	}
 }
 
 func ledgerRestoreLabel(redo bool) string {
@@ -250,8 +156,6 @@ func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
 	nv := m.getActiveNotesView()
 	if !noteViewMatchesLocation(nv, location) {
 		m.setSuccessStatus(msg.SuccessMessage)
-		m.refreshNotesSearchState()
-		m.refreshFinderItems()
 		return
 	}
 	preferred := ""
@@ -262,19 +166,16 @@ func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
 	if msg.ClearSelection {
 		nv.selectedNotes = make(map[string]bool)
 		nv.multiSelectMode = false
-		m.pendingBulkNotes = nil
 	}
 	if preferred != "" {
 		for i, note := range nv.notes {
-			if note.Filename == preferred {
+			if note.Filename == preferred && (!nv.combined || nv.noteLocationFor(note) == location) {
 				nv.cursor = i
 				break
 			}
 		}
 	}
 	nv.setStatus(msg.SuccessMessage)
-	m.refreshNotesSearchState()
-	m.refreshFinderItems()
 }
 
 func normalizedNoteLocation(location app.NoteLocation, projectID string) app.NoteLocation {
@@ -291,6 +192,12 @@ func noteViewMatchesLocation(view *NotesViewModel, location app.NoteLocation) bo
 	if view == nil {
 		return false
 	}
+	if view.combined {
+		if location.Scope == app.NoteScopeGlobal {
+			return true
+		}
+		return view.project != nil && view.project.ID == location.ProjectID
+	}
 	if location.Scope == app.NoteScopeGlobal {
 		return view.isGlobal
 	}
@@ -300,7 +207,7 @@ func noteViewMatchesLocation(view *NotesViewModel, location app.NoteLocation) bo
 // handleCreateGlobalNote creates a new global note and opens it in the editor.
 func (m *AppModel) handleCreateGlobalNote() (bool, tea.Cmd) {
 	note := models.NewNote("Untitled Note")
-	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
+	editor, editorErr := external.ResolveNoteEditor()
 	if editorErr != nil {
 		return true, errorCmd("%s", editorErr)
 	}
@@ -310,7 +217,7 @@ func (m *AppModel) handleCreateGlobalNote() (bool, tea.Cmd) {
 // handleCreateNote creates a new note and opens it in the editor.
 func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 	note := models.NewNote("Untitled Note")
-	editor, editorErr := external.ResolveEditor(m.runtime.Machine().GetEditor())
+	editor, editorErr := external.ResolveNoteEditor()
 	if editorErr != nil {
 		return true, errorCmd("%s", editorErr)
 	}
@@ -375,6 +282,8 @@ func parseProjectNoteEditorResult(original *models.Note, modified string, create
 		updated.Filename = ""
 		updated.RawRevision = ""
 	} else {
+		updated.CreatedAt = original.CreatedAt
+		updated.ModifiedAt = time.Now()
 		updated.Filename = original.Filename
 		updated.RawRevision = original.RawRevision
 	}

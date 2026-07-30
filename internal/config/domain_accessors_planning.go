@@ -1,345 +1,185 @@
 package config
 
-import (
-	"time"
-)
-
-// This file gives the PlanningState domain the same defaulting/mutation
-// accessors the config.Config facade exposes for the planning-owned bookkeeping
-// the alert engine and review flows consume: alert dismissals and daily/weekly
-// review completion timestamps. The bodies mirror their (*Config) counterparts
-// field-for-field, keeping the observable behavior identical, but live on the
-// owning domain so the TUI alert/review consumers read and commit this state
-// through RuntimeState.Planning without dereferencing config.Config. Per the
-// domain ownership map, review completion and dismissals are Planning state and
-// must never be folded into the Settings domain.
-
-// --- PlanningState: alert dismissals ---------------------------------------
-
-// GetAlertDismissals mirrors (*Config).GetAlertDismissals.
-func (p *PlanningState) GetAlertDismissals() []AlertDismissal {
-	return p.AlertDismissals
-}
-
-// SetAlertDismissals mirrors (*Config).SetAlertDismissals.
-func (p *PlanningState) SetAlertDismissals(d []AlertDismissal) {
-	p.AlertDismissals = d
-}
-
-// PruneExpiredAlertDismissals mirrors (*Config).PruneExpiredAlertDismissals.
-func (p *PlanningState) PruneExpiredAlertDismissals() bool {
-	if len(p.AlertDismissals) == 0 {
-		return false
+// RemoveDurableTaskLocators removes matching Today and Next-order references.
+func (p *PlanningState) RemoveDurableTaskLocators(locators []ProjectTaskLocator) int {
+	if p == nil || len(locators) == 0 {
+		return 0
 	}
-	cutoff := time.Now().Add(-alertDismissalMaxAge)
-	kept := make([]AlertDismissal, 0, len(p.AlertDismissals))
-	for _, d := range p.AlertDismissals {
-		if d.DismissedAt.After(cutoff) {
-			kept = append(kept, d)
+	remove := make(map[ProjectTaskLocator]bool, len(locators))
+	for _, locator := range locators {
+		if locator.Valid() {
+			remove[locator] = true
 		}
 	}
-	if len(kept) == len(p.AlertDismissals) {
-		return false
-	}
-	p.AlertDismissals = kept
-	return true
-}
-
-// DismissAlert mirrors (*Config).DismissAlert.
-func (p *PlanningState) DismissAlert(key, category string) {
-	cutoff := time.Now().Add(-alertDismissalMaxAge)
-	for i, d := range p.AlertDismissals {
-		if d.Key == key {
-			if d.DismissedAt.After(cutoff) {
-				return
+	removed := 0
+	filter := func(items []ProjectTaskLocator) []ProjectTaskLocator {
+		kept := items[:0]
+		for _, item := range items {
+			if remove[item] {
+				removed++
+				continue
 			}
-			p.AlertDismissals[i].Category = category
-			p.AlertDismissals[i].DismissedAt = time.Now()
-			return
+			kept = append(kept, item)
 		}
+		return kept
 	}
-	p.AlertDismissals = append(p.AlertDismissals, AlertDismissal{
-		Key:         key,
-		Category:    category,
-		DismissedAt: time.Now(),
-	})
-}
-
-// IsAlertDismissed mirrors (*Config).IsAlertDismissed.
-func (p *PlanningState) IsAlertDismissed(key string) bool {
-	cutoff := time.Now().Add(-alertDismissalMaxAge)
-	for _, d := range p.AlertDismissals {
-		if d.Key == key && d.DismissedAt.After(cutoff) {
-			return true
-		}
-	}
-	return false
-}
-
-// UndismissAlert mirrors (*Config).UndismissAlert.
-func (p *PlanningState) UndismissAlert(key string) bool {
-	for i, d := range p.AlertDismissals {
-		if d.Key == key {
-			p.AlertDismissals = append(p.AlertDismissals[:i], p.AlertDismissals[i+1:]...)
-			return true
-		}
-	}
-	return false
-}
-
-// ClearAlertDismissals mirrors (*Config).ClearAlertDismissals.
-func (p *PlanningState) ClearAlertDismissals() {
-	p.AlertDismissals = nil
-}
-
-// --- PlanningState: review completion --------------------------------------
-
-// GetLastDailyReviewAt mirrors (*Config).GetLastDailyReviewAt.
-func (p *PlanningState) GetLastDailyReviewAt() *time.Time {
-	return p.LastDailyReviewAt
-}
-
-// SetLastDailyReviewAt mirrors (*Config).SetLastDailyReviewAt.
-func (p *PlanningState) SetLastDailyReviewAt(t time.Time) {
-	p.LastDailyReviewAt = &t
-}
-
-// ClearLastDailyReviewAt mirrors (*Config).ClearLastDailyReviewAt.
-func (p *PlanningState) ClearLastDailyReviewAt() {
-	p.LastDailyReviewAt = nil
-}
-
-// GetLastWeeklyReviewAt mirrors (*Config).GetLastWeeklyReviewAt.
-func (p *PlanningState) GetLastWeeklyReviewAt() *time.Time {
-	return p.LastWeeklyReviewAt
-}
-
-// SetLastWeeklyReviewAt mirrors (*Config).SetLastWeeklyReviewAt.
-func (p *PlanningState) SetLastWeeklyReviewAt(t time.Time) {
-	p.LastWeeklyReviewAt = &t
-}
-
-// ClearLastWeeklyReviewAt mirrors (*Config).ClearLastWeeklyReviewAt.
-func (p *PlanningState) ClearLastWeeklyReviewAt() {
-	p.LastWeeklyReviewAt = nil
-}
-
-// --- PlanningState: focus queue --------------------------------------------
-
-// GetFocusQueue mirrors (*Config).GetFocusQueue.
-func (p *PlanningState) GetFocusQueue() []FocusQueueItem {
-	return p.FocusQueue
-}
-
-// SetFocusQueue mirrors (*Config).SetFocusQueue.
-func (p *PlanningState) SetFocusQueue(items []FocusQueueItem) {
-	p.FocusQueue = canonicalFocusQueue(items)
-}
-
-// AddToFocusQueue appends a task to the Next order index (idempotent by task ID).
-// Membership in Next is the task's StateNext workflow state; this only records
-// ordering, so callers set StateNext through the task-mutation boundary
-// separately. Mirrors (*Config).AddToFocusQueue.
-func (p *PlanningState) AddToFocusQueue(taskID, projectID string) bool {
-	if taskID == "" {
-		return false
-	}
-	for _, item := range p.FocusQueue {
-		if item.TaskID == taskID {
-			return false
-		}
-	}
-	p.FocusQueue = append(p.FocusQueue, FocusQueueItem{TaskID: taskID, ProjectID: projectID})
-	return true
-}
-
-// RemoveFromFocusQueue drops a task's entry from the Next order index. It is
-// ordering-only maintenance; leaving StateNext (which clears Next membership) is
-// done through the task-mutation boundary separately. Mirrors
-// (*Config).RemoveFromFocusQueue.
-func (p *PlanningState) RemoveFromFocusQueue(taskID string) bool {
-	if taskID == "" || len(p.FocusQueue) == 0 {
-		return false
-	}
-	filtered := p.FocusQueue[:0]
-	removed := false
-	for _, item := range p.FocusQueue {
-		if item.TaskID == taskID {
-			removed = true
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	p.FocusQueue = filtered
+	p.Today = filter(p.Today)
+	p.NextOrder = filter(p.NextOrder)
 	return removed
 }
 
-func (p *PlanningState) RemoveFromFocusQueueInProject(taskID, projectID string) bool {
-	if projectID == "" {
-		return p.RemoveFromFocusQueue(taskID)
+// ReassignDurablePlanningProjectFrom moves matching task references from one
+// project identity to another while preserving collection order.
+func (p *PlanningState) ReassignDurablePlanningProjectFrom(taskIDs map[string]bool, fromProjectID, toProjectID string) int {
+	if p == nil || fromProjectID == "" || toProjectID == "" || fromProjectID == toProjectID {
+		return 0
 	}
-	filtered := p.FocusQueue[:0]
-	removed := false
-	for _, item := range p.FocusQueue {
-		if item.TaskID == taskID && item.ProjectID == projectID {
-			removed = true
-			continue
+	changed := 0
+	update := func(items []ProjectTaskLocator) {
+		for i := range items {
+			if items[i].ProjectID == fromProjectID && taskIDs[items[i].TaskID] {
+				items[i].ProjectID = toProjectID
+				changed++
+			}
 		}
-		filtered = append(filtered, item)
 	}
-	p.FocusQueue = filtered
-	return removed
-}
-
-// --- PlanningState: daily plan ---------------------------------------------
-
-// GetDailyPlan mirrors (*Config).GetDailyPlan.
-func (p *PlanningState) GetDailyPlan() []DailyPlanItem {
-	return p.DailyPlan
-}
-
-// SetDailyPlan mirrors (*Config).SetDailyPlan.
-func (p *PlanningState) SetDailyPlan(items []DailyPlanItem) {
-	p.DailyPlan = canonicalDailyPlan(items)
-}
-
-// NormalizePlanningMemberships removes structurally stale empty and duplicate
-// identities during decode and before semantic app-layer reconciliation. Task
-// existence and workflow-state eligibility require a workspace snapshot and are
-// therefore enforced by app.ReconcilePlanningState.
-func (p *PlanningState) NormalizePlanningMemberships() bool {
-	if p == nil {
-		return false
-	}
-	focus := canonicalFocusQueue(p.FocusQueue)
-	daily := canonicalDailyPlan(p.DailyPlan)
-	changed := len(focus) != len(p.FocusQueue) || len(daily) != len(p.DailyPlan)
-	p.FocusQueue = focus
-	p.DailyPlan = daily
+	update(p.Today)
+	update(p.NextOrder)
 	return changed
 }
 
-func canonicalFocusQueue(items []FocusQueueItem) []FocusQueueItem {
-	if items == nil {
+// GetToday returns the durable project-qualified Today membership in its
+// workspace-wide order.
+func (p *PlanningState) GetToday() []ProjectTaskLocator {
+	if p == nil {
 		return nil
 	}
-	out := make([]FocusQueueItem, 0, len(items))
-	seen := make(map[ProjectTaskLocator]bool, len(items))
-	for _, item := range items {
-		locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
-		if item.TaskID == "" || seen[locator] {
-			continue
-		}
-		seen[locator] = true
-		out = append(out, item)
-	}
-	return out
+	return p.Today
 }
 
-func canonicalDailyPlan(items []DailyPlanItem) []DailyPlanItem {
-	if items == nil {
-		return nil
+// SetToday replaces Today membership/order and keeps the first occurrence of
+// each valid project-qualified identity.
+func (p *PlanningState) SetToday(items []ProjectTaskLocator) {
+	if p == nil {
+		return
 	}
-	out := make([]DailyPlanItem, 0, len(items))
-	seen := make(map[ProjectTaskLocator]bool, len(items))
-	for _, item := range items {
-		locator := ProjectTaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
-		if item.TaskID == "" || seen[locator] {
-			continue
-		}
-		seen[locator] = true
-		out = append(out, item)
-	}
-	return out
+	p.Today = canonicalPlanningRefs(items)
 }
 
-// RemoveFromDailyPlan drops a task's Today (Daily Plan) entry, returning true
-// when the task was planned. Today and Next are mutually exclusive horizons, so
-// the queue and today mutations call this to enforce exclusivity when a task
-// moves between them.
-func (p *PlanningState) RemoveFromDailyPlan(taskID string) bool {
-	if taskID == "" || len(p.DailyPlan) == 0 {
+// AddToToday appends one project-qualified task to Today if it is not already a
+// member.
+func (p *PlanningState) AddToToday(taskID, projectID string) bool {
+	if p == nil {
 		return false
 	}
-	filtered := p.DailyPlan[:0]
-	removed := false
-	for _, item := range p.DailyPlan {
-		if item.TaskID == taskID {
-			removed = true
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	p.DailyPlan = filtered
-	return removed
-}
-
-func (p *PlanningState) RemoveFromDailyPlanInProject(taskID, projectID string) bool {
-	if projectID == "" {
-		return p.RemoveFromDailyPlan(taskID)
-	}
-	filtered := p.DailyPlan[:0]
-	removed := false
-	for _, item := range p.DailyPlan {
-		if item.TaskID == taskID && item.ProjectID == projectID {
-			removed = true
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	p.DailyPlan = filtered
-	return removed
-}
-
-// --- PlanningState: dismissed suggestions ----------------------------------
-
-// GetFocusDismissedIDs mirrors (*Config).GetFocusDismissedIDs.
-func (p *PlanningState) GetFocusDismissedIDs() []string {
-	return p.FocusDismissedIDs
-}
-
-// SetFocusDismissedIDs mirrors (*Config).SetFocusDismissedIDs.
-func (p *PlanningState) SetFocusDismissedIDs(ids []string) {
-	p.FocusDismissedIDs = ids
-}
-
-// PruneFocusDismissedIDs mirrors (*Config).PruneFocusDismissedIDs.
-func (p *PlanningState) PruneFocusDismissedIDs() bool {
-	if len(p.FocusDismissedIDs) <= maxFocusDismissedIDs {
+	locator := ProjectTaskLocator{TaskID: taskID, ProjectID: projectID}
+	if !locator.Valid() || containsPlanningRef(p.Today, locator) {
 		return false
 	}
-	p.FocusDismissedIDs = p.FocusDismissedIDs[:maxFocusDismissedIDs]
+	p.Today = append(p.Today, locator)
 	return true
 }
 
-// --- PlanningState: today clearing and streaks -----------------------------
-
-// GetTodayClearedAt mirrors reading (*Config).TodayClearedAt.
-func (p *PlanningState) GetTodayClearedAt() string {
-	return p.TodayClearedAt
+// RemoveFromToday removes exactly one project-qualified Today membership.
+func (p *PlanningState) RemoveFromTodayInProject(taskID, projectID string) bool {
+	if p == nil {
+		return false
+	}
+	return removePlanningRef(&p.Today, ProjectTaskLocator{TaskID: taskID, ProjectID: projectID})
 }
 
-// SetTodayClearedAt mirrors writing (*Config).TodayClearedAt.
-func (p *PlanningState) SetTodayClearedAt(day string) {
-	p.TodayClearedAt = day
+// GetNextOrder returns the preferred workspace-wide order for StateNext tasks.
+// Presence in this list never confers Next membership.
+func (p *PlanningState) GetNextOrder() []ProjectTaskLocator {
+	if p == nil {
+		return nil
+	}
+	return p.NextOrder
 }
 
-// GetStreakCount mirrors reading (*Config).StreakCount.
-func (p *PlanningState) GetStreakCount() int {
-	return p.StreakCount
+// SetNextOrder replaces the preferred Next order and keeps the first
+// occurrence of each valid project-qualified identity.
+func (p *PlanningState) SetNextOrder(items []ProjectTaskLocator) {
+	if p == nil {
+		return
+	}
+	p.NextOrder = canonicalPlanningRefs(items)
 }
 
-// SetStreakCount mirrors writing (*Config).StreakCount.
-func (p *PlanningState) SetStreakCount(n int) {
-	p.StreakCount = n
+// AddToNextOrder appends one project-qualified ordering entry if absent.
+func (p *PlanningState) AddToNextOrder(taskID, projectID string) bool {
+	if p == nil {
+		return false
+	}
+	locator := ProjectTaskLocator{TaskID: taskID, ProjectID: projectID}
+	if !locator.Valid() || containsPlanningRef(p.NextOrder, locator) {
+		return false
+	}
+	p.NextOrder = append(p.NextOrder, locator)
+	return true
 }
 
-// GetStreakLastDate mirrors reading (*Config).StreakLastDate.
-func (p *PlanningState) GetStreakLastDate() string {
-	return p.StreakLastDate
+// RemoveFromNextOrder removes exactly one project-qualified ordering entry.
+func (p *PlanningState) RemoveFromNextOrderInProject(taskID, projectID string) bool {
+	if p == nil {
+		return false
+	}
+	return removePlanningRef(&p.NextOrder, ProjectTaskLocator{TaskID: taskID, ProjectID: projectID})
 }
 
-// SetStreakLastDate mirrors writing (*Config).StreakLastDate.
-func (p *PlanningState) SetStreakLastDate(day string) {
-	p.StreakLastDate = day
+// NormalizePlanningReferences removes incomplete and duplicate identities while
+// preserving the first-seen order of each collection. Workspace existence and
+// workflow-state eligibility remain application-owned reconciliation concerns.
+func (p *PlanningState) NormalizePlanningReferences() bool {
+	if p == nil {
+		return false
+	}
+	today := canonicalPlanningRefs(p.Today)
+	next := canonicalPlanningRefs(p.NextOrder)
+	changed := len(today) != len(p.Today) || len(next) != len(p.NextOrder)
+	p.Today = today
+	p.NextOrder = next
+	return changed
+}
+
+func canonicalPlanningRefs(items []ProjectTaskLocator) []ProjectTaskLocator {
+	if items == nil {
+		return nil
+	}
+	out := make([]ProjectTaskLocator, 0, len(items))
+	seen := make(map[ProjectTaskLocator]bool, len(items))
+	for _, item := range items {
+		if !item.Valid() || seen[item] {
+			continue
+		}
+		seen[item] = true
+		out = append(out, item)
+	}
+	return out
+}
+
+func containsPlanningRef(items []ProjectTaskLocator, locator ProjectTaskLocator) bool {
+	for _, item := range items {
+		if item == locator {
+			return true
+		}
+	}
+	return false
+}
+
+func removePlanningRef(items *[]ProjectTaskLocator, locator ProjectTaskLocator) bool {
+	if items == nil || !locator.Valid() {
+		return false
+	}
+	filtered := (*items)[:0]
+	removed := false
+	for _, item := range *items {
+		if item == locator {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	*items = filtered
+	return removed
 }

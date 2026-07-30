@@ -39,17 +39,15 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 	// inheriting a selection or project default that the cursor can outrun.
 	withTaskTarget := func(descriptor OperationDescriptor) OperationDescriptor {
 		descriptor.TargetSource = OperationTargetCurrentTask
-		return descriptor
-	}
-	// Direct keys that open a global tool are shortcuts to that tool's own
-	// descriptor, so Finder lists the tool once and never the shortcut.
-	toolShortcut := func(descriptor OperationDescriptor) OperationDescriptor {
-		descriptor.Placement = PlacementHidden
+		descriptor.Applicability = func(ctx CommandContext) bool {
+			return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
+		}
 		return descriptor
 	}
 	return []OperationDescriptor{
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
-		withTaskTarget(core(operationCoreEdit, "Edit Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "modify task", "rename task", "change title")),
+		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
+		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
 		core(operationCoreStart, "Start Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "in progress"),
 		core(operationCoreDone, "Complete Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "done", "finish task"),
 		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "ready"),
@@ -66,21 +64,17 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
-		withTaskTarget(core(operationCoreDetail, "Open Task Detail", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskReadOnly, "task detail", "peek task", "task overview")),
+		withTaskTarget(core(operationCoreDetail, "Inspect Task", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskReadOnly, "task inspector", "task overview")),
 		core(operationCoreVisibleSearch, "Search Visible Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "filter visible list"),
-		core(operationCoreFinder, "Global Finder", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "find anything"),
-		core(operationCoreModes, "Choose Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "modes"),
 		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "projects", "contexts"),
-		core(operationCoreMultiSelect, "Toggle Multi-select", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
-		toolShortcut(core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes")),
-		toolShortcut(core(operationCoreWeeklyReview, "Weekly Review", OperationCategoryReview, TargetCardinalityNone, OperationRiskReadOnly)),
-		toolShortcut(core(operationCoreTags, "Tags", OperationCategoryTag, TargetCardinalityNone, OperationRiskReadOnly)),
-		toolShortcut(core(operationCoreNotifications, "Notifications", OperationCategoryNotification, TargetCardinalityNone, OperationRiskReadOnly, "alerts")),
+		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
+		core(operationCoreSelectAll, "Select All Visible Tasks", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "select visible"),
+		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
+		core(operationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
 		core(operationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
-		core(operationCoreReset, "Reset to All Projects", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "root", "global all"),
-		toolShortcut(core(operationCoreHelp, "Help", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "keyboard shortcuts")),
+		core(operationCoreHelp, "Help", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "keyboard shortcuts"),
 		core(operationCoreQuit, "Quit", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "exit"),
 		core(operationCoreNextWorkMode, "Next Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCorePreviousWorkMode, "Previous Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
@@ -96,7 +90,7 @@ func (m *AppModel) registerCoreInputOperations() error {
 	for _, descriptor := range coreInputOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
 			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
-			Applicability:            coreOutlinerApplicability,
+			Applicability:            descriptor.Applicability,
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,
 			DelegateConfirmation:     true,
@@ -112,29 +106,48 @@ func (m *AppModel) registerCoreInputOperations() error {
 //nolint:gocyclo // The direct-key dispatcher keeps the final key grammar in one auditable switch.
 func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) OperationHandlerResult {
 	var message tea.Msg
+	var err error
 	//nolint:exhaustive // Only core input operations are registered with this handler.
 	switch invocation.Descriptor.ID {
 	case operationCoreCapture:
 		message = m.coreCaptureMessage()
 	case operationCoreEdit:
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
-			message = EditTaskMsg{Task: task, Project: project}
+			message = ShowTaskTextEditorMsg{
+				Task: task, Project: project, Operation: app.TaskOperationEditTitle,
+			}
+		}
+	case operationCoreEditDescription:
+		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
+			message = ShowTaskTextEditorMsg{
+				Task: task, Project: project, Operation: app.TaskOperationEditDescription,
+			}
 		}
 	case operationCoreStart:
-		message = commandMessage(m.coreTransitionTask(models.StateInProgress))
+		message = commandMessage(m.coreStateOperation(invocation.Targets, models.StateInProgress))
 	case operationCoreDone:
-		message = commandMessage(m.coreTransitionTask(models.StateDone))
+		message = commandMessage(m.coreStateOperation(invocation.Targets, models.StateDone))
 	case operationCoreBacklog:
-		message = commandMessage(m.coreMoveToBacklog())
+		if invocation.Context.Selection.Visual {
+			message = commandMessage(m.corePlanningOperation(invocation.Targets, app.PlanningBacklog))
+		} else {
+			message = commandMessage(m.coreMoveToBacklogSingle())
+		}
 	case operationCoreToday:
-		message = commandMessage(m.toggleDailyPlan())
+		if invocation.Context.Selection.Visual {
+			message = commandMessage(m.coreToggleToday(invocation.Targets))
+		} else {
+			message = commandMessage(m.toggleToday())
+		}
 	case operationCoreNext:
-		message = commandMessage(m.toggleQueue())
+		if invocation.Context.Selection.Visual {
+			message = commandMessage(m.coreToggleNext(invocation.Targets))
+		} else {
+			message = commandMessage(m.toggleQueue())
+		}
 	case operationCoreActions:
-		if out, _, ok := m.outlinerPrimary(); ok && out.multiSelectMode {
-			out.toggleCursorSelection()
-		} else if err := m.openTaskActionSheet(invocation.Context); err != nil {
-			m.setInfoStatus(err.Error())
+		if actionErr := m.openTaskActionSheet(invocation.Context); actionErr != nil {
+			m.setInfoStatus(actionErr.Error())
 		}
 	case operationCoreCursorDown:
 		message = commandMessage(m.coreMoveCursor("j"))
@@ -161,35 +174,36 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreReorderUp:
 		message = commandMessage(m.coreReorder(-1))
 	case operationCoreDetail:
-		if out, _, ok := m.outlinerPrimary(); ok && out.multiSelectMode {
-			if err := m.openTaskActionSheet(invocation.Context); err != nil {
-				out.setStatus(err.Error())
+		if m.width < inspectorWideBreakpoint {
+			if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil && project != nil {
+				message = ShowTaskInspectorMsg{Task: task, Project: project}
 			}
-		} else if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil && project != nil {
-			message = ShowTaskDetailMsg{Task: task, Project: project}
 		}
 	case operationCoreVisibleSearch:
 		if out, _, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.ActivateSearch())
 		}
-	case operationCoreFinder:
-		message = ShowFinderMsg{}
-	case operationCoreModes:
-		message = ShowModeListMsg{}
 	case operationCoreScope:
 		message = ShowContextHubMsg{}
 	case operationCoreMultiSelect:
 		if out, _, ok := m.outlinerPrimary(); ok {
-			out.toggleMultiSelectMode()
+			out.toggleCursorSelection()
+		}
+	case operationCoreSelectAll:
+		if out, _, ok := m.outlinerPrimary(); ok {
+			out.multiSelectMode = true
+			out.selectAllVisible()
+			out.updateVisualSelectionStatus()
 		}
 	case operationCoreNotes:
-		message = m.globalOperationMessage(operationToolNotes, invocation.Context)
-	case operationCoreWeeklyReview:
-		message = m.globalOperationMessage(operationToolWeeklyReview, invocation.Context)
-	case operationCoreTags:
-		message = m.globalOperationMessage(operationToolTags, invocation.Context)
-	case operationCoreNotifications:
-		message = m.globalOperationMessage(operationToolNotifications, invocation.Context)
+		project := m.projectByID(invocation.Context.FocusedProjectID)
+		if project != nil {
+			message = ShowNotesMsg{Project: project}
+		} else {
+			message = ShowGlobalNotesMsg{}
+		}
+	case operationCoreToggleTheme:
+		err = m.coreToggleTheme()
 	case operationCoreUndo:
 		message = commandMessage(m.coreUndo())
 	case operationCoreRedo:
@@ -198,10 +212,12 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if out, _, ok := m.outlinerPrimary(); ok {
 			RunEscCascade(out.escSteps())
 		}
-	case operationCoreReset:
-		message = JumpDashboardMsg{}
 	case operationCoreHelp:
-		message = m.globalOperationMessage(operationToolReference, invocation.Context)
+		message = ShowHelpMsg{
+			SourceView: m.currentView(),
+			ViewName:   "Outliner",
+			Items:      m.coreInputHelpItems(),
+		}
 	case operationCoreQuit:
 		message = QuitMsg{}
 	case operationCoreNextWorkMode:
@@ -214,7 +230,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	default:
 	}
-	return OperationHandlerResult{Message: message}
+	return OperationHandlerResult{Message: message, Err: err}
 }
 
 func commandMessage(cmd tea.Cmd) tea.Msg {
@@ -258,45 +274,58 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 	return m.captureComposerMessage(project, m.activeProjects())
 }
 
-func (m *AppModel) coreTransitionTask(target models.WorkflowState) tea.Cmd {
-	out, _, ok := m.outlinerPrimary()
-	if !ok || out == nil {
+func (m *AppModel) coreStateOperation(targets ResolvedOperationTargets, target models.WorkflowState) tea.Cmd {
+	locators := operationTargetLocators(targets)
+	if len(locators) == 0 {
 		return nil
 	}
-	task, project := out.getTaskRef()
-	if task == nil || project == nil {
-		return nil
+	request := app.TaskOperationRequest{
+		Operation: app.TaskOperationSetState,
+		Targets:   locators,
+		State:     target,
 	}
-	if out.taskItem.task != nil {
-		return out.taskItem.Transition(taskIdentityFor(task, project), target)
-	}
-	// Canonical mode rows are filtered tree projections and may carry cloned
-	// task nodes. Isolated models without a coordinator must mutate the owning
-	// project's live task, never the projection that the next rebuild discards.
-	if live := project.GetTaskByID(task.ID); live != nil {
-		task = live
-	}
-	triagingInbox := m.activeInboxTriage() && task.State() == models.StateInbox
-	if err := task.ApplyStateTransitionAt(target, time.Now()); err != nil {
-		out.setStatus(err.Error())
-		return nil
-	}
-	if m.runtime != nil {
-		app.ReconcilePlanningState(m.runtime.Planning(), app.PlanningReconcileRequest{
-			Targets: []app.PlanningReconcileTarget{{
-				TaskID: task.ID, ProjectID: project.ID, State: task.State(),
-			}},
-		})
-		m.rebuildPlanningFromRuntime()
-	}
-	if triagingInbox && task.State() != models.StateInbox {
-		m.markInboxTriaged()
-	}
-	out.rebuildRows()
-	return nil
+	return m.secondaryFeatures.TaskItem.ExecuteOperation(
+		request,
+		"Change State",
+		fmt.Sprintf("Change State · Changed %d task(s) to %s", len(locators), target),
+	)
 }
 
-func (m *AppModel) coreMoveToBacklog() tea.Cmd {
+func operationTargetLocators(targets ResolvedOperationTargets) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(targets.Targets))
+	for _, target := range targets.Targets {
+		if target.Task.Valid() {
+			locators = append(locators, target.Task.Locator())
+		}
+	}
+	return locators
+}
+
+func (m *AppModel) corePlanningOperation(
+	targets ResolvedOperationTargets,
+	action app.PlanningAction,
+) tea.Cmd {
+	locators := operationTargetLocators(targets)
+	if len(locators) == 0 {
+		return nil
+	}
+	summary := fmt.Sprintf("Updated %d task(s)", len(locators))
+	switch action {
+	case app.PlanningAddToday:
+		summary = fmt.Sprintf("Added %d task(s) to Today", len(locators))
+	case app.PlanningRemoveToday:
+		summary = fmt.Sprintf("Removed %d task(s) from Today", len(locators))
+	case app.PlanningAddNext:
+		summary = fmt.Sprintf("Moved %d task(s) to Next", len(locators))
+	case app.PlanningRemoveNext:
+		summary = fmt.Sprintf("Removed %d task(s) from Next", len(locators))
+	case app.PlanningBacklog:
+		summary = fmt.Sprintf("Moved %d task(s) to Backlog", len(locators))
+	}
+	return m.secondaryFeatures.Bulk.ApplyPlanningLocators(locators, action, summary)
+}
+
+func (m *AppModel) coreMoveToBacklogSingle() tea.Cmd {
 	task, project := m.outlinerTarget()
 	if task == nil || project == nil {
 		return nil
@@ -308,6 +337,45 @@ func (m *AppModel) coreMoveToBacklog() tea.Cmd {
 	}
 	m.setInfoStatus(fmt.Sprintf("Moved to Backlog: %s", taskTitleOrFallback(fresh, task)))
 	return m.queueToggleResultCmd()
+}
+
+func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets) tea.Cmd {
+	locators := operationTargetLocators(targets)
+	if len(locators) == 0 {
+		return nil
+	}
+	allToday := true
+	for _, locator := range locators {
+		if !m.todayIDs[taskIdentityFromLocator(locator)] {
+			allToday = false
+			break
+		}
+	}
+	action := app.PlanningAddToday
+	if allToday {
+		action = app.PlanningRemoveToday
+	}
+	return m.corePlanningOperation(targets, action)
+}
+
+func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets) tea.Cmd {
+	locators := operationTargetLocators(targets)
+	if len(locators) == 0 {
+		return nil
+	}
+	allNext := true
+	for _, locator := range locators {
+		task, _ := m.taskAndProjectForIdentity(taskIdentityFromLocator(locator))
+		if !taskIsNext(task) {
+			allNext = false
+			break
+		}
+	}
+	action := app.PlanningAddNext
+	if allNext {
+		action = app.PlanningRemoveNext
+	}
+	return m.corePlanningOperation(targets, action)
 }
 
 // coreMoveCursor takes a shared list-navigation key rather than a delta so steps,
@@ -367,6 +435,26 @@ func (m *AppModel) coreRedo() tea.Cmd {
 	}
 	_, project := m.getCurrentCursorTaskAndProject()
 	return m.performGlobalTaskUndoRedoForProject(project, true)
+}
+
+// coreToggleTheme flips exactly between the two maintained machine-local
+// variants and rebuilds every active style immediately.
+func (m *AppModel) coreToggleTheme() error {
+	if m.runtime == nil || m.runtime.Machine() == nil {
+		return fmt.Errorf("machine theme is unavailable")
+	}
+	machine := *m.runtime.Machine()
+	if machine.Theme == "light" {
+		machine.Theme = "dark"
+	} else {
+		machine.Theme = "light"
+	}
+	if err := m.runtime.CommitMachine(&machine); err != nil {
+		return fmt.Errorf("save theme: %w", err)
+	}
+	ApplyTheme(NewThemeConfig(m.runtime.Machine()))
+	m.setInfoStatus("Theme: " + machine.Theme)
+	return nil
 }
 
 func (m *AppModel) coreInputHelpItems() []HelpItem {

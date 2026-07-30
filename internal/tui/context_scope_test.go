@@ -92,8 +92,8 @@ func TestCustomContextScopeApplyDropsArchivedAndStaleReferences(t *testing.T) {
 }
 
 // hiddenMemberFixture stores a custom context whose membership spans every
-// eligibility bucket at once: one active project, one archived, one sandbox,
-// one internal, and one reference to a project that no longer exists.
+// eligibility buckets at once: one active project, one archived project, and
+// one reference to a project that no longer exists.
 func hiddenMemberFixture(t *testing.T) *config.RuntimeState {
 	t.Helper()
 	runtime := newTestConfig()
@@ -101,36 +101,32 @@ func hiddenMemberFixture(t *testing.T) *config.RuntimeState {
 		{ID: "p1", Slug: "alpha", Name: "Alpha", Context: "work"},
 		{ID: "p2", Slug: "bravo", Name: "Bravo", Context: "work"},
 		{ID: "p4", Slug: "delta", Name: "Delta", Context: "work", Archived: true},
-		{ID: "p5", Slug: "_sandbox", Name: "Sandbox", Context: "work", Sandbox: true},
-		{ID: "p6", Slug: "inbox", Name: "Inbox", Context: "work", Internal: true},
 	})
-	runtime.Machine().SetCustomContext("Work", []string{"p1", "p4", "p5", "p6", "missing"})
+	runtime.Machine().SetCustomContext("Work", []string{"p1", "p4", "missing"})
 	return runtime
 }
 
-// TestCustomContextScopeExcludesSandboxAndInternalMembers pins the eligibility
-// rule: sandbox and internal members are as unresolvable as archived ones, and
-// the four counts partition the stored membership so none of them is invisible.
-func TestCustomContextScopeExcludesSandboxAndInternalMembers(t *testing.T) {
+// TestCustomContextScopeClassifiesArchivedAndStaleMembers pins the eligibility
+// rule and ensures the counts partition stored membership.
+func TestCustomContextScopeClassifiesArchivedAndStaleMembers(t *testing.T) {
 	runtime := hiddenMemberFixture(t)
 
 	assertIDs(t, CustomContextScope("Work").ProjectIDs(runtime), "p1")
 
 	summary := SummarizeContextScope(runtime, CustomContextScope("Work"))
 	if summary.ActiveProjectCount != 1 || summary.ArchivedProjectCount != 1 ||
-		summary.HiddenProjectCount != 2 || summary.StaleReferenceCount != 1 {
-		t.Fatalf("summary = %+v, want active=1 archived=1 hidden=2 missing=1", summary)
+		summary.StaleReferenceCount != 1 {
+		t.Fatalf("summary = %+v, want active=1 archived=1 missing=1", summary)
 	}
 
 	stored := runtime.Machine().GetCustomContext("Work")
 	counted := summary.ActiveProjectCount + summary.ArchivedProjectCount +
-		summary.HiddenProjectCount + summary.StaleReferenceCount
+		summary.StaleReferenceCount
 	if counted != len(stored) {
 		t.Fatalf("counts total %d, want the %d stored members %v", counted, len(stored), stored)
 	}
 
-	// A sandbox or internal project carrying the label is equally invisible to a
-	// regular scope, which is derived from the active-project set.
+	// Regular scopes are derived from the active-project set.
 	assertIDs(t, RegularContextScope("work").ProjectIDs(runtime), "p1", "p2")
 }
 

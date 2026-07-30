@@ -28,7 +28,7 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 
 	project := testutil.NewTestProject("Recovered Project")
 	project.Path = filepath.Join(dataDir, "projects", project.Slug)
-	task := testutil.NewTestTask("Recovered task", models.TaskTypeTask)
+	task := testutil.NewTestTask("Recovered task")
 	// Queue membership is the StateNext workflow state, so a hydrated member must
 	// be StateNext to survive prune-on-load.
 	task.WorkflowState = models.StateNext
@@ -42,8 +42,10 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 	if err != nil {
 		t.Fatalf("CloneDomains: %v", err)
 	}
-	domains.Catalog.UpsertProject(project)
-	domains.Planning.SetFocusQueue([]config.FocusQueueItem{{ProjectID: project.ID, TaskID: task.ID}})
+	if upsertErr := domains.Catalog.UpsertProject(project); upsertErr != nil {
+		t.Fatalf("UpsertProject: %v", upsertErr)
+	}
+	domains.Planning.SetNextOrder([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: task.ID}})
 	artifacts, err := staleRuntime.CheckedSyncedArtifacts(domains)
 	if err != nil {
 		t.Fatalf("CheckedSyncedArtifacts: %v", err)
@@ -80,63 +82,6 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 	return staleRuntime, manager, project.ID, task.ID
 }
 
-func writeTUILegacyMachineState(t *testing.T, dataDir, workspaceID string, machine *config.MachineState) string {
-	t.Helper()
-	legacyPath := filepath.Join(config.LocalRuntimeDirForDataDir(dataDir), "machine.json")
-	data, err := json.MarshalIndent(map[string]any{
-		"schema_version": config.CurrentDomainSchemaVersion,
-		"workspace_id":   workspaceID,
-		"kind":           "machine",
-		"data":           machine,
-	}, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal legacy machine state: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(legacyPath), config.DirPermissions); err != nil {
-		t.Fatalf("mkdir legacy machine dir: %v", err)
-	}
-	if err := os.WriteFile(legacyPath, data, config.FilePermissions); err != nil {
-		t.Fatalf("write legacy machine state: %v", err)
-	}
-	return legacyPath
-}
-
-func TestTUIStartupUsesMigratedMachineState(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	dataDir := filepath.Join(t.TempDir(), "workspace")
-	manager := config.NewManager(config.ConfigPathForDataDir(dataDir))
-	domains, err := manager.LoadOrCreateDomains()
-	if err != nil {
-		t.Fatalf("LoadOrCreateDomains: %v", err)
-	}
-	canonicalPath, err := config.MachineStatePath(domains.Catalog.WorkspaceID)
-	if err != nil {
-		t.Fatalf("MachineStatePath: %v", err)
-	}
-	if removeErr := os.Remove(canonicalPath); removeErr != nil {
-		t.Fatalf("remove canonical machine fixture: %v", removeErr)
-	}
-	legacyPath := writeTUILegacyMachineState(t, dataDir, domains.Catalog.WorkspaceID, &config.MachineState{Editor: "tui-legacy-editor"})
-
-	runtime, err := manager.LoadRuntimeState()
-	if err != nil {
-		t.Fatalf("LoadRuntimeState: %v", err)
-	}
-	app, err := NewAppModel(runtime, manager)
-	if err != nil {
-		t.Fatalf("NewAppModel: %v", err)
-	}
-	if got := app.runtime.Machine().Editor; got != "tui-legacy-editor" {
-		t.Fatalf("TUI startup editor = %q, want tui-legacy-editor", got)
-	}
-	if _, err := os.Stat(canonicalPath); err != nil {
-		t.Fatalf("canonical machine state not created: %v", err)
-	}
-	if _, err := os.Stat(legacyPath); err != nil {
-		t.Fatalf("legacy rollback source not retained: %v", err)
-	}
-}
-
 func TestNewAppModelRecoversTransactionsBeforeLoadingWorkspace(t *testing.T) {
 	for _, state := range []transaction.State{transaction.StatePrepared, transaction.StateCommitting} {
 		t.Run(string(state), func(t *testing.T) {
@@ -148,8 +93,8 @@ func TestNewAppModelRecoversTransactionsBeforeLoadingWorkspace(t *testing.T) {
 			if project := app.runtime.GetProject(projectID); project == nil {
 				t.Fatalf("recovered catalog missing project %q", projectID)
 			}
-			if len(app.focusQueue) != 1 || app.focusQueue[0].Task.ID != taskID {
-				t.Fatalf("recovered focus queue = %+v", app.focusQueue)
+			if len(app.nextOrder) != 1 || app.nextOrder[0].Task.ID != taskID {
+				t.Fatalf("recovered focus queue = %+v", app.nextOrder)
 			}
 		})
 	}

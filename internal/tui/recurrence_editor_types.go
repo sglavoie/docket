@@ -9,19 +9,15 @@ import (
 // RecurrenceEditorModel handles editing a custom recurrence pattern.
 type RecurrenceEditorModel struct {
 	// Pattern components
-	interval   int          // 1-99
-	unitCursor int          // 0=day, 1=week, 2=month, 3=year
-	weekdays   map[int]bool // 0=Sun, 1=Mon, ..., 6=Sat (only for weekly)
+	interval   int // 1-99
+	unitCursor int // 0=day, 1=week, 2=month
 	units      []models.RecurrenceUnit
-	mode       models.RecurMode // from-due (default) or from-completion
 
 	// For preview calculation
 	dueDate *time.Time
-	streak  int // Current streak from existing pattern (display only)
 
-	// Focus: 0=interval, 1=unit, 2=weekdays (weekday cursor when focused)
-	focusSection  int
-	weekdayCursor int // 0-6 when in weekdays section
+	// Focus: 0=interval, 1=unit.
+	focusSection int
 
 	// intervalEditing tracks if user has started typing digits (first digit replaces, subsequent append)
 	intervalEditing bool

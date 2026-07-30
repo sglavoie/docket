@@ -1,11 +1,11 @@
 package tui
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -33,7 +33,7 @@ type projectNoteTUIEnv struct {
 func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), testWorkspaceLedgerDepth, []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 
 	project, err := models.NewProject(uuid.New().String(), "notes", "")
@@ -52,8 +52,14 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 		}
 	}
 
-	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir), nil)
-	view := NewNotesViewModelWithService(project, svc, ledger)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
+	view := NewCombinedNotesViewModelWithService(
+		storage.GlobalNotesDir(dataDir),
+		project,
+		app.ProjectNoteLocation(project.ID),
+		svc,
+		ledger,
+	)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
 	views.Register(ViewNotes, view)
@@ -70,7 +76,9 @@ func seedNoteMigrationCatalog(t *testing.T, dataDir string, projects ...*models.
 	store := config.NewDomainFileStore(dataDir)
 	catalog := config.NewWorkspaceCatalog()
 	for _, project := range projects {
-		catalog.UpsertProject(project)
+		if err := catalog.UpsertProject(project); err != nil {
+			t.Fatalf("seed workspace catalog project: %v", err)
+		}
 	}
 	if err := store.SaveCatalog(catalog); err != nil {
 		t.Fatalf("seed workspace catalog: %v", err)
@@ -125,51 +133,27 @@ func projectNoteIndex(t *testing.T, notes []*models.Note, filename string) int {
 }
 
 func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
-	env := newProjectNoteTUIEnv(t, "Pin me")
+	env := newProjectNoteTUIEnv(t, "Edit me")
 	before := env.view.notes[0]
-	if before.Pinned {
-		t.Fatal("seed note unexpectedly pinned")
-	}
-
-	cmd := env.view.togglePin()
+	updated := cloneNoteForCommand(before)
+	updated.Body = "edited body"
+	updated.ModifiedAt = time.Now()
+	location := app.ProjectNoteLocation(env.project.ID)
+	cmd := noteMutationCmd(env.svc, location, app.NoteBatchRequest{
+		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
+		UndoAction: "Edit Note",
+	}, "Edited", false)
 	msg := runProjectNoteMutation(t, func() any { return cmd() })
-	if env.view.notes[0] != before || env.view.notes[0].Pinned {
+	if env.view.notes[0] != before || env.view.notes[0].Body != "Edit me body" {
 		t.Fatal("command goroutine mutated the live notes view cache")
 	}
-	if disk := env.note(t, before.Filename); !disk.Pinned {
-		t.Fatal("typed transaction did not persist pin")
+	if disk := env.note(t, before.Filename); disk.Body != "edited body" {
+		t.Fatal("typed transaction did not persist body edit")
 	}
 
 	env.shell.handleNotesMessages(msg)
-	if !env.view.notes[0].Pinned || env.view.notes[0] == before {
+	if env.view.notes[0].Body != "edited body" || env.view.notes[0] == before {
 		t.Fatal("Update handling did not replace the cache from committed state")
-	}
-}
-
-func TestProjectNoteStaleCommitPreservesDiskAndViewCache(t *testing.T) {
-	env := newProjectNoteTUIEnv(t, "Race")
-	cached := env.view.notes[0]
-	concurrent := env.note(t, cached.Filename)
-	concurrent.Body = "concurrent body"
-	if err := storage.SaveNote(env.project, concurrent); err != nil {
-		t.Fatalf("concurrent save: %v", err)
-	}
-
-	cmd := env.view.togglePin()
-	msg, ok := cmd().(ProjectNoteMutationErrorMsg)
-	if !ok {
-		t.Fatalf("stale mutation = %T, want ProjectNoteMutationErrorMsg", cmd())
-	}
-	var conflict *storage.ArtifactConflictError
-	if !errors.As(msg.Err, &conflict) {
-		t.Fatalf("stale error = %T %v, want ArtifactConflictError", msg.Err, msg.Err)
-	}
-	env.shell.handleNotesMessages(msg)
-	if env.view.notes[0] != cached || env.view.notes[0].Pinned || env.view.notes[0].Body != "Race body" {
-		t.Fatal("failed commit changed the live view cache")
-	}
-	if disk := env.note(t, cached.Filename); disk.Pinned || disk.Body != "concurrent body" {
-		t.Fatalf("failed commit changed canonical note: pinned=%v body=%q", disk.Pinned, disk.Body)
 	}
 }
 
@@ -250,68 +234,7 @@ func TestProjectMalformedNoteBulkDeleteIsAtomicAndKeepsSelectionOnFailure(t *tes
 }
 
 func TestProjectNoteBulkTagsAndLinksCommitAsSingleBatches(t *testing.T) {
-	env := newProjectNoteTUIEnv(t, "One", "Two")
-	notes := append([]*models.Note(nil), env.view.notes...)
-	env.shell.pendingBulkNotes = newNoteMutationRefs(app.ProjectNoteLocation(env.project.ID), notes)
-	env.view.multiSelectMode = true
-	for _, note := range notes {
-		env.view.selectedNotes[note.Filename] = true
-	}
-
-	tagCmd := env.shell.applyProjectNoteTags(env.project.ID, notes, []string{"batch"}, true)
-	tagResult := runProjectNoteMutation(t, func() any { return tagCmd() })
-	if len(tagResult.Result.Results) != 2 || tagResult.Result.Results[0].TransactionID != tagResult.Result.Results[1].TransactionID {
-		t.Fatal("bulk tag did not report one shared transaction")
-	}
-	env.shell.handleNotesMessages(tagResult)
-	for _, note := range env.view.notes {
-		if got := env.note(t, note.Filename); len(got.Tags) != 1 || got.Tags[0] != "batch" {
-			t.Fatalf("bulk tag missing from %s: %v", note.Filename, got.Tags)
-		}
-	}
-
-	env.shell.pendingBulkNotes = newNoteMutationRefs(app.ProjectNoteLocation(env.project.ID), env.view.notes)
-	setTestPresentationPath(env.shell, ViewNotes, ViewNoteTaskLinker)
-	handled, linkCmd := env.shell.handleNotesMessages(BulkNoteLinkDoneMsg{
-		ProjectID:   env.project.ID,
-		LinkChanges: map[string]bool{"task-1": true},
-	})
-	if !handled {
-		t.Fatal("bulk link result was not handled")
-	}
-	linkResult := runProjectNoteMutation(t, func() any { return linkCmd() })
-	if len(linkResult.Result.Results) != 2 || linkResult.Result.Results[0].TransactionID != linkResult.Result.Results[1].TransactionID {
-		t.Fatal("bulk link did not report one shared transaction")
-	}
-	env.shell.handleNotesMessages(linkResult)
-	for _, note := range env.view.notes {
-		if got := env.note(t, note.Filename); !got.HasLink("task-1") {
-			t.Fatalf("bulk link missing from %s", note.Filename)
-		}
-	}
-}
-
-func TestProjectNoteTaskLinkerDoesNotMutateSourceBeforeCommit(t *testing.T) {
-	env := newProjectNoteTUIEnv(t, "Linked")
-	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task")
-	if err != nil {
-		t.Fatal(err)
-	}
-	env.project.Tasks = []*models.Task{task}
-	source := env.view.notes[0]
-	linker := NewNoteTaskLinkerModelWithService(env.project, source, env.svc, false)
-	cmd := linker.toggleLink(task)
-	msg, ok := cmd().(noteTaskLinkCommitResultMsg)
-	if !ok {
-		t.Fatalf("link commit = %T", cmd())
-	}
-	if source.HasLink(task.ID) || linker.note.HasLink(task.ID) {
-		t.Fatal("link command mutated a live or overlay note before Update")
-	}
-	linker.Update(msg)
-	if !linker.note.HasLink(task.ID) || source.HasLink(task.ID) {
-		t.Fatal("linker failed to reconcile committed copy without mutating source")
-	}
+	t.Skip("retired: combined Notes has no tags links or bulk mutations")
 }
 
 func TestProjectNoteEditorResultCommitsTempContentAndRejectsMalformedOutput(t *testing.T) {
@@ -413,10 +336,18 @@ func TestProjectNoteEditorCreateDoesNotPersistPlaceholder(t *testing.T) {
 func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Undoable")
 	filename := env.view.notes[0].Filename
-	mutation := runProjectNoteMutation(t, func() any { return env.view.togglePin()() })
+	updated := cloneNoteForCommand(env.view.notes[0])
+	updated.Body = "undoable edit"
+	updated.ModifiedAt = time.Now()
+	location := app.ProjectNoteLocation(env.project.ID)
+	cmd := noteMutationCmd(env.svc, location, app.NoteBatchRequest{
+		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
+		UndoAction: "Edit Note",
+	}, "Edited", false)
+	mutation := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(mutation)
-	if !env.note(t, filename).Pinned {
-		t.Fatal("pin mutation did not commit")
+	if env.note(t, filename).Body != "undoable edit" {
+		t.Fatal("edit mutation did not commit")
 	}
 
 	undo, ok := env.view.undoDelete()().(ProjectNoteLedgerResultMsg)
@@ -424,7 +355,7 @@ func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T)
 		t.Fatalf("undo result = %#v", undo)
 	}
 	env.shell.handleNotesMessages(undo)
-	if env.note(t, filename).Pinned || env.view.notes[0].Pinned {
+	if env.note(t, filename).Body != "Undoable body" || env.view.notes[0].Body != "Undoable body" {
 		t.Fatal("project-scoped workspace undo did not refresh restored note")
 	}
 
@@ -433,7 +364,7 @@ func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T)
 		t.Fatalf("redo result = %#v", redo)
 	}
 	env.shell.handleNotesMessages(redo)
-	if !env.note(t, filename).Pinned || !env.view.notes[0].Pinned {
+	if env.note(t, filename).Body != "undoable edit" || env.view.notes[0].Body != "undoable edit" {
 		t.Fatal("project-scoped workspace redo did not refresh replayed note")
 	}
 }

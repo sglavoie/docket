@@ -7,13 +7,14 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 	t.Helper()
-	task, err := models.NewTask(name+"-task", 1, models.TaskTypeTask, name+" task")
+	task, err := models.NewGenericTask(name+"-task", 1, name+" task")
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
@@ -38,8 +39,13 @@ func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 func newSession2OutlinerApp(t *testing.T, dataDir string, typed bool, projects ...*models.Project) (*AppModel, *OutlinerModel) {
 	t.Helper()
 	app := newTestAppModel()
-	app.runtime = testRuntimeAt(dataDir, newTestConfigAt(dataDir))
-	app.deps = newShellDeps(app.runtime, nil, app.configManager, nil)
+	seed := newTestConfigAt(dataDir)
+	setTestProjects(seed, projects)
+	app.runtime = testRuntimeAt(dataDir, seed)
+	app.configManager = config.NewManager(config.ConfigPathForDataDir(dataDir))
+	ledger := workspaceLedgerFromConfig(app.runtime)
+	app.appService = newTUIAppService(dataDir, app.configManager.RuntimeDependencies(), ledger)
+	app.deps = newShellDeps(app.runtime, app.appService, app.configManager, ledger)
 	setTestAppProjects(app, projects...)
 
 	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
@@ -49,7 +55,7 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, typed bool, projects .
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(ViewCrossProjectOutliner, cross)
-	setTestPresentationPath(app, ViewDashboard, ViewCrossProjectOutliner)
+	setTestPresentationPath(app, ViewUnknown, ViewCrossProjectOutliner)
 	return app, cross
 }
 
@@ -141,40 +147,6 @@ func TestValidateCurrentProjectReturnsReloadCommand(t *testing.T) {
 	}
 	if len(cross.loadedProjects) != 1 || cross.loadedProjects[0].ID != survivor.ID {
 		t.Fatalf("fallback loaded projects = %#v, want only survivor", cross.loadedProjects)
-	}
-}
-
-func TestProjectDeletedReturnsReloadAndReconcilesScope(t *testing.T) {
-	dataDir := t.TempDir()
-	deleted := newSession2Project(t, dataDir, "deleted")
-	survivor := newSession2Project(t, dataDir, "remaining")
-	app, cross := newSession2OutlinerApp(t, dataDir, true, deleted, survivor)
-	app.currentProject = deleted
-	cross.pushProjectScope(deleted.ID)
-
-	_, cmd := app.Update(ProjectDeletedMsg{Project: deleted})
-	if cmd == nil {
-		t.Fatal("ProjectDeletedMsg dropped the fallback Outliner reload command")
-	}
-	if app.currentProject != nil {
-		t.Fatal("deleted current project was not cleared")
-	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Fatalf("post-delete view = %s, want %s", app.currentView(), ViewCrossProjectOutliner)
-	}
-
-	runSession2AppCommand(t, app, cmd)
-
-	if cross.crossLoading {
-		t.Fatal("returned project-deletion reload command did not settle")
-	}
-	if cross.scopedProjectID != "" {
-		t.Fatalf("vanished project scope was not reconciled: %q", cross.scopedProjectID)
-	}
-	for _, project := range cross.loadedProjects {
-		if project.ID == deleted.ID {
-			t.Fatalf("deleted project %q remained in the loaded cache", deleted.ID)
-		}
 	}
 }
 

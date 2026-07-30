@@ -80,6 +80,43 @@ func ResolveEditor(configEditor string) (string, error) {
 	return "", fmt.Errorf("no editor found: set $VISUAL or $EDITOR, or install VS Code")
 }
 
+// ResolveNoteEditor resolves the deliberately environment-only editor contract
+// used by the combined Notes tool. Notes do not consult machine settings or
+// silently fall back to an installed editor: the first available executable in
+// TT_EDITOR, VISUAL, then EDITOR order wins.
+func ResolveNoteEditor() (string, error) {
+	type candidate struct {
+		name  string
+		value string
+	}
+	candidates := []candidate{
+		{name: "TT_EDITOR", value: os.Getenv("TT_EDITOR")},
+		{name: "VISUAL", value: os.Getenv("VISUAL")},
+		{name: "EDITOR", value: os.Getenv("EDITOR")},
+	}
+	var unavailable []string
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate.value) == "" {
+			continue
+		}
+		exe, _ := SplitEditorString(candidate.value)
+		if exe == "" {
+			continue
+		}
+		if _, err := exec.LookPath(exe); err == nil {
+			return candidate.value, nil
+		}
+		unavailable = append(unavailable, fmt.Sprintf("$%s (%s)", candidate.name, exe))
+	}
+	if len(unavailable) > 0 {
+		return "", fmt.Errorf(
+			"no configured notes editor is executable: checked %s; set TT_EDITOR, VISUAL, or EDITOR to an editor command available in PATH",
+			strings.Join(unavailable, ", "),
+		)
+	}
+	return "", fmt.Errorf("no notes editor configured: set TT_EDITOR, VISUAL, or EDITOR to an editor command")
+}
+
 // stripWaitFlags removes blocking wait flags from a list of pre-configured
 // editor arguments. This ensures OpenFolderCommand is always fire-and-forget,
 // even when the editor is configured as e.g. "code --wait" or "subl -w".

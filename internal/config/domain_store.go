@@ -17,65 +17,58 @@ type PlanningStore interface {
 	SavePlanning(*PlanningState) error
 }
 
-// SettingsStore loads and saves portable settings.
-type SettingsStore interface {
-	LoadSettings() (*Settings, error)
-	SaveSettings(*Settings) error
-}
-
-// AutomationStore loads and saves automation configuration.
-type AutomationStore interface {
-	LoadAutomation() (*AutomationConfig, error)
-	SaveAutomation(*AutomationConfig) error
-}
-
 // MachineStore loads and saves machine-local state.
 type MachineStore interface {
 	LoadMachine() (*MachineState, error)
 	SaveMachine(*MachineState) error
 }
 
-// Domains bundles the five explicit configuration aggregates used by runtime
+// Domains bundles the three explicit configuration aggregates used by runtime
 // composition and transactions. It is not a persistence facade: callers read
 // and commit the owning domain directly.
 type Domains struct {
-	Catalog    *WorkspaceCatalog
-	Planning   *PlanningState
-	Settings   *Settings
-	Automation *AutomationConfig
-	Machine    *MachineState
+	Catalog  *WorkspaceCatalog
+	Planning *PlanningState
+	Machine  *MachineState
 }
 
 // NewDomains returns a fully defaulted explicit domain bundle.
 func NewDomains() *Domains {
 	return &Domains{
-		Catalog:    NewWorkspaceCatalog(),
-		Planning:   NewPlanningState(),
-		Settings:   NewSettings(),
-		Automation: NewAutomationConfig(),
-		Machine:    NewMachineState(),
+		Catalog:  NewWorkspaceCatalog(),
+		Planning: NewPlanningState(),
+		Machine:  NewMachineState(),
 	}
 }
 
-// RemoveProjectReferences fans a project deletion out to every domain, so each
-// aggregate strips only the references it owns. It returns true when any domain
-// changed.
-func (d *Domains) RemoveProjectReferences(id, slug string) bool {
+// RemoveProject fans a project deletion out to every domain after the catalog
+// accepts it. The catalog check happens first so a protected system Inbox
+// rejection cannot partially strip planning or machine references.
+func (d *Domains) RemoveProject(id, slug string) (bool, error) {
 	if d == nil {
-		return false
+		return false, nil
 	}
 	changed := false
 	if d.Catalog != nil {
-		changed = d.Catalog.RemoveProjectReferences(id, slug) || changed
+		catalogChanged, err := d.Catalog.RemoveProject(id, slug)
+		if err != nil {
+			return false, err
+		}
+		changed = catalogChanged || changed
 	}
 	if d.Planning != nil {
 		changed = d.Planning.RemoveProjectReferences(id, slug) || changed
 	}
-	if d.Automation != nil {
-		changed = d.Automation.RemoveProjectReferences(id, slug) || changed
-	}
 	if d.Machine != nil {
 		changed = d.Machine.RemoveProjectReferences(id, slug) || changed
 	}
+	return changed, nil
+}
+
+// RemoveProjectReferences is the compatibility form for callers that only
+// need best-effort cleanup. It fails closed when RemoveProject rejects the
+// protected system Inbox. Lifecycle adapters should call RemoveProject.
+func (d *Domains) RemoveProjectReferences(id, slug string) bool {
+	changed, _ := d.RemoveProject(id, slug)
 	return changed
 }

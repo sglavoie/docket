@@ -1,0 +1,135 @@
+package tui
+
+import (
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+func TestOutlinerModeCatalogIsExactFiveModeCycle(t *testing.T) {
+	want := []OutlinerModeID{ModeAll, ModeInbox, ModeNext, ModeBacklog, ModeDue}
+	catalog := OutlinerModeCatalog()
+	tabModes := OutlinerTabModes()
+	if len(catalog) != len(want) {
+		t.Fatalf("mode catalog length = %d, want %d", len(catalog), len(want))
+	}
+	if len(tabModes) != len(want) {
+		t.Fatalf("Tab cycle length = %d, want %d", len(tabModes), len(want))
+	}
+	for index, mode := range catalog {
+		if mode.ID != want[index] {
+			t.Errorf("catalog[%d] = %q, want %q", index, mode.ID, want[index])
+		}
+		if mode.TabIndex != index || !mode.InTabCycle() {
+			t.Errorf("mode %q Tab metadata = %d/%t, want %d/true",
+				mode.ID, mode.TabIndex, mode.InTabCycle(), index)
+		}
+		if tabModes[index].ID != mode.ID {
+			t.Errorf("Tab cycle[%d] = %q, want catalog mode %q",
+				index, tabModes[index].ID, mode.ID)
+		}
+	}
+	for _, retired := range []OutlinerModeID{
+		"priority", "blocked", "parked", "daily-review", "activity",
+	} {
+		if _, ok := OutlinerModeByID(retired); ok {
+			t.Errorf("retired mode %q remains selectable", retired)
+		}
+	}
+
+	for _, binding := range SimplifiedInputStrategy().Bindings {
+		if slices.Contains(binding.Keys, "m") {
+			t.Errorf("dedicated mode-picker key remains bound to %s", binding.OperationID)
+		}
+	}
+}
+
+func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossFiveModes(t *testing.T) {
+	project := primaryRowsProject("alpha")
+	outliner := NewOutlinerModel(project, nil, nil)
+
+	for _, want := range []OutlinerModeID{
+		ModeInbox, ModeNext, ModeBacklog, ModeDue, ModeAll,
+	} {
+		outliner.cycleWorkMode(1)
+		if got := outliner.activeOutlinerMode(); got != want {
+			t.Fatalf("forward cycle mode = %q, want %q", got, want)
+		}
+	}
+	for _, want := range []OutlinerModeID{
+		ModeDue, ModeBacklog, ModeNext, ModeInbox, ModeAll,
+	} {
+		outliner.cycleWorkMode(-1)
+		if got := outliner.activeOutlinerMode(); got != want {
+			t.Fatalf("reverse cycle mode = %q, want %q", got, want)
+		}
+	}
+}
+
+func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
+	now := time.Now()
+	dueTask := func(id string, dayOffset int) *models.Task {
+		task := primaryRowsTask(id, models.StateReady)
+		due := now.AddDate(0, 0, dayOffset)
+		task.DueDate = &due
+		return task
+	}
+
+	alphaOverdue := dueTask("alpha-overdue", -2)
+	alphaToday := dueTask("alpha-today", 0)
+	alphaUndated := primaryRowsTask("alpha-undated", models.StateReady)
+	alphaDone := dueTask("alpha-done", -3)
+	alphaDone.WorkflowState = models.StateDone
+	alpha := primaryRowsProject("alpha", alphaOverdue, alphaToday, alphaUndated, alphaDone)
+
+	betaOverdue := dueTask("beta-overdue", -1)
+	betaLater := dueTask("beta-later", 8)
+	betaSnoozed := dueTask("beta-snoozed", 1)
+	snooze := now.AddDate(0, 0, 2)
+	betaSnoozed.SnoozedUntil = &snooze
+	beta := primaryRowsProject("beta", betaOverdue, betaLater, betaSnoozed)
+
+	outliner, _ := primaryRowsOutliner(alpha, beta)
+	outliner.selectOutlinerMode(ModeDue)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+		alphaOverdue.ID,
+		betaOverdue.ID,
+		alphaToday.ID,
+		betaLater.ID,
+	}) {
+		t.Fatalf("global Due rows = %v, want dated open work in date order", got)
+	}
+
+	outliner.scopedProjectID = alpha.ID
+	outliner.selectOutlinerMode(ModeDue)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+		alphaOverdue.ID,
+		alphaToday.ID,
+	}) {
+		t.Fatalf("project-scoped Due rows = %v, want alpha dated open work", got)
+	}
+}
+
+func TestBacklogRetainsProjectHierarchyAndManualSiblingOrder(t *testing.T) {
+	parent := primaryRowsTask("parent", models.StateReady)
+	child := primaryRowsTask("child", models.StateReady)
+	child.ParentID = &parent.ID
+	firstSibling := primaryRowsTask("first-sibling", models.StateReady)
+	firstSibling.Priority = models.PriorityMin
+	secondSibling := primaryRowsTask("second-sibling", models.StateReady)
+	secondSibling.Priority = models.PriorityMax
+	project := primaryRowsProject("alpha", parent, child, firstSibling, secondSibling)
+
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.selectOutlinerMode(ModeBacklog)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+		parent.ID,
+		child.ID,
+		firstSibling.ID,
+		secondSibling.ID,
+	}) {
+		t.Fatalf("Backlog rows = %v, want manual hierarchy order", got)
+	}
+}

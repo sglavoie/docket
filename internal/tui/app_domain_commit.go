@@ -1,45 +1,23 @@
 package tui
 
 import (
-	"maps"
 	"slices"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // This file holds the shell-level helpers that commit one owning configuration
 // domain through RuntimeState. Each helper mutates a defensive copy and commits
 // it under the runtime's optimistic-concurrency check.
 
-// commitPlanningMutation applies a mutation to a defensively-copied planning
-// domain and commits only the planning domain. Planning owns review-completion
-// timestamps and alert dismissals, so these mutations never fold into the
-// settings domain or a whole-config save.
-func (m *AppModel) commitPlanningMutation(mutate func(*config.PlanningState)) error {
-	// A runtime without a writable data directory (some isolated unit tests) can
-	// never persist a domain file; skip the commit so the in-memory shell state,
-	// which callers mutate before persisting, remains the source of truth and no
-	// stray planning.json is written to the process working directory.
-	if m.runtime == nil || m.runtime.DataDir() == "" {
-		return nil
-	}
-	planning := clonePlanningState(m.runtime.Planning())
-	mutate(planning)
-	if err := m.runtime.CommitPlanning(planning); err != nil {
-		return err
-	}
-	return nil
-}
-
 // clonePlanningState returns a defensive copy of a planning snapshot whose
 // mutable slices are freshly allocated, so a mutation applied before a checked
 // commit can never alias and corrupt the cached RuntimeState snapshot.
 func clonePlanningState(p *config.PlanningState) *config.PlanningState {
 	cp := *p
-	cp.FocusQueue = append([]config.FocusQueueItem(nil), p.FocusQueue...)
-	cp.DailyPlan = append([]config.DailyPlanItem(nil), p.DailyPlan...)
-	cp.FocusDismissedIDs = append([]string(nil), p.FocusDismissedIDs...)
-	cp.AlertDismissals = append([]config.AlertDismissal(nil), p.AlertDismissals...)
+	cp.NextOrder = append([]config.ProjectTaskLocator(nil), p.NextOrder...)
+	cp.Today = append([]config.ProjectTaskLocator(nil), p.Today...)
 	return &cp
 }
 
@@ -57,33 +35,6 @@ func commitPlanningToRuntime(runtime *config.RuntimeState, mutate func(*config.P
 	planning := clonePlanningState(runtime.Planning())
 	mutate(planning)
 	return runtime.CommitPlanning(planning)
-}
-
-// commitMachineMutation applies a mutation to a defensively-copied machine-local
-// domain and commits only the machine domain through the runtime's checked
-// commit, then syncs the legacy facade. Machine owns project-view state, the
-// outliner/tree/cross-outliner layout, dashboard split/info-panel state, tab
-// order, and task-form collapse, so these layout mutations never fold into a
-// synced domain or a whole-config save. A runtime without a writable data
-// directory (isolated unit tests) is a silent no-op so the caller's in-memory
-// view state remains authoritative and no stray machine.json is written.
-func (m *AppModel) commitMachineMutation(mutate func(*config.MachineState)) error {
-	if m.runtime == nil {
-		return nil
-	}
-	machine := cloneMachineState(m.runtime.Machine())
-	mutate(machine)
-	if m.runtime.DataDir() == "" {
-		// No writable workspace (isolated tests): apply in memory so reads via
-		// runtime.Machine() observe the mutation, without touching disk or
-		// reloading the facade (which would discard the test's in-memory state).
-		m.runtime.SetMachineInMemory(machine)
-		return nil
-	}
-	if err := m.runtime.CommitMachine(machine); err != nil {
-		return err
-	}
-	return nil
 }
 
 // commitMachineToRuntime commits a machine-local mutation through a runtime
@@ -105,54 +56,39 @@ func commitMachineToRuntime(runtime *config.RuntimeState, mutate func(*config.Ma
 	return runtime.CommitMachine(machine)
 }
 
-// commitAutomationToRuntime applies an automation-only mutation without
-// rebuilding or saving the Config facade. Isolated no-data-dir views retain the
-// historical no-persistence behavior.
-func commitAutomationToRuntime(runtime *config.RuntimeState, mutate func(*config.AutomationConfig)) error {
-	if runtime == nil || runtime.DataDir() == "" {
-		return nil
-	}
-	automation := cloneAutomationConfig(runtime.Automation())
-	mutate(automation)
-	return runtime.CommitAutomation(automation)
-}
-
-// commitSettingsToRuntime commits a portable-settings mutation through a runtime
-// snapshot without touching the legacy config.Config facade. It is the
-// view-level counterpart for settings-owned mutations. A nil or non-writable
-// runtime is a silent no-op.
-func commitSettingsToRuntime(runtime *config.RuntimeState, mutate func(*config.Settings)) error {
-	if runtime == nil || runtime.DataDir() == "" {
-		return nil
-	}
-	domains, err := runtime.CloneDomains()
-	if err != nil {
-		return err
-	}
-	mutate(domains.Settings)
-	return runtime.CommitSettings(domains.Settings, domains.Machine)
-}
-
-// commitCatalogMutation applies a mutation to a defensively-copied
-// workspace-catalog domain and commits only the catalog domain through the
-// runtime's checked commit, then syncs the legacy facade. Catalog owns the
-// project list, so project create/archive/unarchive/pin/rename/delete write
-// their durable effect here — one checked catalog rewrite through the journaled
-// transaction boundary — instead of a whole-config Manager.Save. A runtime
-// without a writable data directory (isolated unit tests) applies the mutation
-// in memory so runtime.Catalog() observes it, without touching disk.
-func (m *AppModel) commitCatalogMutation(mutate func(*config.WorkspaceCatalog)) error {
+// commitCatalogProjectMutation is the ledger-aware catalog boundary for
+// user-facing project pin and restore changes. The catalog rewrite and its undo
+// record are one application transaction.
+func (m *AppModel) commitCatalogProjectMutation(
+	action string,
+	projectIDs []string,
+	mutate func(*config.WorkspaceCatalog) error,
+) error {
 	if m.runtime == nil {
 		return nil
 	}
 	catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
-	mutate(catalog)
-	if m.runtime.DataDir() == "" {
+	if err := mutate(catalog); err != nil {
+		return err
+	}
+	if m.runtime.DataDir() == "" || m.appService == nil || m.configManager == nil {
 		m.runtime.SetCatalogInMemory(catalog)
 		m.syncProjectCache()
 		return nil
 	}
-	if err := m.runtime.CommitCatalog(catalog); err != nil {
+	artifacts, err := catalogDomainArtifact(m.configManager, catalog)
+	if err != nil {
+		return err
+	}
+	if err := m.appService.CommitProjectArtifacts(storage.ArtifactCommitRequest{
+		Artifacts:   artifacts,
+		ProjectIDs:  projectIDs,
+		UndoAction:  action,
+		UndoContext: action,
+	}); err != nil {
+		return err
+	}
+	if err := m.runtime.RefreshAfterCommit(); err != nil {
 		return err
 	}
 	m.syncProjectCache()
@@ -166,12 +102,14 @@ func (m *AppModel) commitCatalogMutation(mutate func(*config.WorkspaceCatalog)) 
 // catalog-owned writes off it. A nil or non-writable runtime applies the
 // mutation in memory so runtime.Catalog() observes it; the caller's in-memory
 // shell state remains authoritative.
-func commitCatalogToRuntime(runtime *config.RuntimeState, mutate func(*config.WorkspaceCatalog)) error {
+func commitCatalogToRuntime(runtime *config.RuntimeState, mutate func(*config.WorkspaceCatalog) error) error {
 	if runtime == nil {
 		return nil
 	}
 	catalog := cloneWorkspaceCatalog(runtime.Catalog())
-	mutate(catalog)
+	if err := mutate(catalog); err != nil {
+		return err
+	}
 	if runtime.DataDir() == "" {
 		runtime.SetCatalogInMemory(catalog)
 		return nil
@@ -190,34 +128,14 @@ func cloneWorkspaceCatalog(c *config.WorkspaceCatalog) *config.WorkspaceCatalog 
 	return &cp
 }
 
-// cloneAutomationConfig returns a defensive copy of an automation snapshot whose
-// mutable slices and maps are freshly allocated, so a rule/template mutation
-// applied before a checked commit can never alias and corrupt the cached
-// RuntimeState snapshot. Rule/template entries are shallow-copied because every
-// mutation replaces a whole entry or sets a scalar field on the cloned backing
-// array; nested slices/pointers are never mutated in place.
-func cloneAutomationConfig(a *config.AutomationConfig) *config.AutomationConfig {
-	cp := *a
-	cp.WorkflowRules = slices.Clone(a.WorkflowRules)
-	cp.TaskTemplates = slices.Clone(a.TaskTemplates)
-	cp.ScoringProfiles = slices.Clone(a.ScoringProfiles)
-	cp.WorkflowEvalStates = maps.Clone(a.WorkflowEvalStates)
-	cp.ProjectScoringProfile = maps.Clone(a.ProjectScoringProfile)
-	return &cp
-}
-
 func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 	if runtime == nil {
 		return nil
 	}
-	settings := *runtime.Settings()
-	settings.StateGroupLimits = maps.Clone(settings.StateGroupLimits)
 	return &config.Domains{
-		Catalog:    cloneWorkspaceCatalog(runtime.Catalog()),
-		Planning:   clonePlanningState(runtime.Planning()),
-		Settings:   &settings,
-		Automation: cloneAutomationConfig(runtime.Automation()),
-		Machine:    cloneMachineState(runtime.Machine()),
+		Catalog:  cloneWorkspaceCatalog(runtime.Catalog()),
+		Planning: clonePlanningState(runtime.Planning()),
+		Machine:  cloneMachineState(runtime.Machine()),
 	}
 }
 
@@ -237,13 +155,11 @@ func runtimeDomainsMachineFailure(result runtimeDomainsCommitResult, machineErr 
 	return result, nil
 }
 
-// commitRuntimeDomains commits a domain-spanning lifecycle mutation. The four
-// synced artifacts land as one application-layer transaction; machine-local
-// state is checked and committed separately because it lives outside the
-// workspace transaction root. Once the synced transaction lands it is
-// authoritative: a later machine failure is reported in the result rather than
-// masquerading as a rollback of already-durable workspace state.
-func (m *AppModel) commitRuntimeDomains(domains *config.Domains) (runtimeDomainsCommitResult, error) {
+func (m *AppModel) commitRuntimeDomainsWithUndo(
+	domains *config.Domains,
+	action string,
+	projectIDs []string,
+) (runtimeDomainsCommitResult, error) {
 	if m == nil || m.runtime == nil || domains == nil {
 		return runtimeDomainsCommitResult{}, nil
 	}
@@ -256,14 +172,23 @@ func (m *AppModel) commitRuntimeDomains(domains *config.Domains) (runtimeDomains
 		m.configManager,
 		domains.Catalog,
 		domains.Planning,
-		domains.Settings,
-		domains.Automation,
 	)
 	if err != nil {
 		return runtimeDomainsCommitResult{}, err
 	}
-	if err := m.appService.CommitConfig(arts...); err != nil {
-		return runtimeDomainsCommitResult{}, err
+	if action == "" {
+		if err := m.appService.CommitConfig(arts...); err != nil {
+			return runtimeDomainsCommitResult{}, err
+		}
+	} else {
+		if err := m.appService.CommitProjectArtifacts(storage.ArtifactCommitRequest{
+			Artifacts:   arts,
+			ProjectIDs:  projectIDs,
+			UndoAction:  action,
+			UndoContext: action,
+		}); err != nil {
+			return runtimeDomainsCommitResult{}, err
+		}
 	}
 	result := runtimeDomainsCommitResult{WorkspaceCommitted: true}
 	if err := m.runtime.CommitMachine(domains.Machine); err != nil {
@@ -279,18 +204,9 @@ func (m *AppModel) commitRuntimeDomains(domains *config.Domains) (runtimeDomains
 	return result, nil
 }
 
-// cloneMachineState returns a defensive copy of a machine snapshot whose mutable
-// maps and slices are freshly allocated, so a mutation applied before a checked
-// commit can never alias and corrupt the cached RuntimeState snapshot. Pointer
-// fields are shallow-copied because every mutation path replaces the pointer
-// (via the Set* accessors) rather than mutating the pointed-to value in place.
+// cloneMachineState returns a defensive copy of the lean machine snapshot.
 func cloneMachineState(m *config.MachineState) *config.MachineState {
 	cp := *m
-	cp.RecentTaskVisits = slices.Clone(m.RecentTaskVisits)
-	cp.RecentPaletteItems = slices.Clone(m.RecentPaletteItems)
-	cp.RecentDestinations = slices.Clone(m.RecentDestinations)
-	cp.ProjectRoutes = maps.Clone(m.ProjectRoutes)
-
 	cp.CustomContexts = cloneStringSliceMap(m.CustomContexts)
 	return &cp
 }
@@ -306,44 +222,4 @@ func cloneStringSliceMap(src map[string][]string) map[string][]string {
 		dst[k] = slices.Clone(v)
 	}
 	return dst
-}
-
-// commitSettingsMutation applies a mutation to a copy of the settings domain and
-// commits the settings (+ machine-local) domains through the runtime's checked
-// commit, then syncs the legacy facade. It is used for portable behavior
-// preferences mutated outside the settings editor (e.g. tutor dismissal).
-func (m *AppModel) commitSettingsMutation(mutate func(*config.Settings)) error {
-	if m.runtime == nil {
-		return nil
-	}
-	domains, err := m.runtime.CloneDomains()
-	if err != nil {
-		return err
-	}
-	mutate(domains.Settings)
-	if m.runtime.DataDir() == "" {
-		m.runtime.SetSettingsInMemory(domains.Settings)
-		return nil
-	}
-	if err := m.runtime.CommitSettings(domains.Settings, domains.Machine); err != nil {
-		return err
-	}
-	return nil
-}
-
-// commitAutomationMutation applies a mutation to a defensively-copied automation
-// domain and commits only the automation domain through the runtime's checked
-// commit, then syncs the legacy facade. Automation owns workflow rules,
-// templates, and scoring configuration, so these mutations never fold into a
-// synced behavior/appearance domain or a whole-config save.
-func (m *AppModel) commitAutomationMutation(mutate func(*config.AutomationConfig)) error {
-	if m.runtime == nil || m.runtime.DataDir() == "" {
-		return nil
-	}
-	automation := cloneAutomationConfig(m.runtime.Automation())
-	mutate(automation)
-	if err := m.runtime.CommitAutomation(automation); err != nil {
-		return err
-	}
-	return nil
 }

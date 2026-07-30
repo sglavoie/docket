@@ -72,8 +72,6 @@ func (m *TaskFormModel) View() tea.View {
 			tabContent = m.renderBasicsTab()
 		case formTabSchedule:
 			tabContent = m.renderScheduleTab()
-		case formTabDetails:
-			tabContent = m.renderDetailsTab()
 		case formTabChildren:
 			tabContent = m.renderChildrenTab()
 		}
@@ -102,7 +100,7 @@ func (m *TaskFormModel) View() tea.View {
 	// ── Footer ────────────────────────────────────────────────────────────────
 	helpText := "[]: tabs · Tab: next · Ctrl+S: save · Esc: cancel"
 	if m.activeTab == formTabChildren {
-		showSubtasks := m.mode == FormModeCreate && formTypeCanHaveSubtasks(m.draft.taskType)
+		showSubtasks := m.mode == FormModeCreate
 		helpText = "[]: tabs · Tab: next · c: checklist"
 		if showSubtasks {
 			helpText += " · S: subtasks"

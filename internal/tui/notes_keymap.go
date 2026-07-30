@@ -8,6 +8,27 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for NotesViewModel.
 func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
+	if m.combined {
+		entries := []keymap.Entry{
+			keymap.Bind("j", "Move cursor down", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }),
+			keymap.Bind("k", "Move cursor up", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }),
+			keymap.Bind("down", "Move cursor down", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
+			keymap.Bind("up", "Move cursor up", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
+			keymap.Bind("enter", "Open in external editor", "Actions", func() (tea.Model, tea.Cmd) { return m, m.editCurrentNote() }),
+			keymap.Bind("n", "Create note after choosing location", "Actions", func() (tea.Model, tea.Cmd) {
+				m.beginDestinationPicker()
+				return m, nil
+			}),
+			keymap.Bind("r", "Rename note", "Actions", func() (tea.Model, tea.Cmd) {
+				m.startRename()
+				return m, nil
+			}),
+			keymap.Bind("x", "Delete note", "Actions", func() (tea.Model, tea.Cmd) { return m, m.deleteCurrentNote() }),
+			keymap.Bind("u", "Undo workspace change", "Actions", func() (tea.Model, tea.Cmd) { return m, m.undoDelete() }),
+			keymap.Bind("ctrl+r", "Redo workspace change", "Actions", func() (tea.Model, tea.Cmd) { return m, m.redoNoteMutation() }),
+		}
+		return &keymap.KeyMap{ViewName: "Notes", Entries: entries}
+	}
 	var entries []keymap.Entry
 	undoDescription := "Undo project change"
 	redoDescription := "Redo project change"
@@ -78,24 +99,6 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("ctrl+r", redoDescription, "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.redoNoteMutation()
 		}),
-		keymap.Bind("L", "Link note to task", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.isGlobal {
-				return m, nil
-			}
-			if m.multiSelectMode && m.selectedNoteCount() > 0 {
-				return m, m.bulkLinkNotes()
-			}
-			return m, m.linkCurrentNote()
-		}),
-		keymap.Bind("m", "Move note to project", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.isGlobal {
-				return m, m.moveNoteToProject()
-			}
-			return m, nil
-		}),
-		keymap.Bind("p", "Toggle pin", "Actions", func() (tea.Model, tea.Cmd) {
-			return m, m.togglePin()
-		}),
 		keymap.Bind("r", "Rename note (inline)", "Actions", func() (tea.Model, tea.Cmd) {
 			m.startRename()
 			return m, nil
@@ -105,28 +108,8 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		}),
 	)
 
-	// Tags
-	entries = append(entries,
-		keymap.Bind("t", "Edit note tags", "Tags", func() (tea.Model, tea.Cmd) {
-			if m.multiSelectMode && m.selectedNoteCount() > 0 {
-				return m, m.bulkTagNotes()
-			}
-			return m, m.showTagSelector()
-		}),
-		keymap.Bind("T", "Cycle tag filter", "Tags", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("C", "Clear tag filters", "Tags", func() (tea.Model, tea.Cmd) {
-			if len(m.filterTags) > 0 {
-				m.filterTags = make(map[string]bool)
-				m.loadNotes()
-				m.setStatus("Filter cleared")
-			}
-			return m, nil
-		}),
-	)
-
 	// Filters
 	entries = append(entries,
-		keymap.Bind("/", "Search notes", "Filters", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("s", "Cycle sort mode", "Filters", func() (tea.Model, tea.Cmd) {
 			m.cycleSortMode()
 			return m, nil

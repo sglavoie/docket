@@ -9,14 +9,11 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// AddTaskRequest is the full typed representation of a `tt task add` invocation:
-// every supported input — metadata (type, priority, tags, description, state),
-// hierarchy placement, recurrence, task-type attributes, and a
-// template-materialized checklist — plus any auxiliary durable artifacts that must
-// commit atomically with the new task (the config store carrying an incremented
-// template use-count). The adapter resolves presentation concerns (flag
-// precedence, template lookup, reference parsing) and hands this request
-// fully-resolved primitives; the use case owns the snapshot, validation,
+// AddTaskRequest is the full representation of a task-add request: metadata,
+// hierarchy placement, recurrence, checklist content, and
+// any auxiliary durable artifacts that must commit atomically with the new task.
+// The adapter resolves presentation concerns and hands this request fully-resolved
+// primitives; the use case owns the snapshot, validation,
 // ID/short-ID minting, and the single ChangeSet commit. It is the richer sibling
 // of CaptureRequest, which covers only the minimal quick-capture fields.
 type AddTaskRequest struct {
@@ -24,8 +21,6 @@ type AddTaskRequest struct {
 	ProjectID string
 	// Title is the task title. Required; validated with models.ValidateTaskTitle.
 	Title string
-	// Type is the task type; empty defaults to a leaf "task".
-	Type models.TaskType
 	// Priority is 1..5; zero (or unset) defaults to the medium priority.
 	Priority int
 	// Tags are normalized and validated; a malformed tag aborts the add.
@@ -36,24 +31,20 @@ type AddTaskRequest struct {
 	// Inbox.
 	State models.WorkflowState
 	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
-	// task.SetRecurrence (which populates derived fields such as OriginalDay).
+	// task.SetRecurrence.
 	Recurrence *models.RecurrencePattern
 	// ParentID, when non-nil, nests the new task under an existing task in the
-	// same project; the parent must exist and accept a child of Type.
+	// same project; the parent must exist and preserve the depth limit.
 	ParentID *string
-	// Checklist holds the materialized checklist item texts (typically from a
-	// template). Each becomes an unchecked models.ChecklistItem.
+	// Checklist holds checklist item texts. Each becomes an unchecked
+	// models.ChecklistItem.
 	Checklist []string
 	// ChecklistItems holds full checklist items (text + done) set by the task
 	// form, which can seed items already marked done. Blank-text items are
 	// skipped. Applied after Checklist.
 	ChecklistItems []models.ChecklistItem
-	// Attrs carries type-specific attributes applied through
-	// models.ApplyTypeAttrValues; the zero value applies nothing.
-	Attrs models.TypeAttrValues
 	// Artifacts are auxiliary durable artifact writes committed in the SAME
-	// ChangeSet as the new task (e.g. the config store with an incremented
-	// template use-count), so the add and its side effects are atomic.
+	// ChangeSet as the new task, so the add and its side effects are atomic.
 	Artifacts []storage.ArtifactChange
 	// PlanningArtifacts carries route-local composer presets (notably Planner
 	// Today/Next) through the full expanded form path.
@@ -63,31 +54,12 @@ type AddTaskRequest struct {
 	// AddTaskWithChildren); the CLI `tt task add` path leaves them zero/nil so its
 	// behavior is unchanged.
 
-	// DueDate/HasTime, StartDate, EstimatedDays, URL, and Source carry the form's
-	// scheduling and reference metadata.
-	DueDate       *time.Time
-	HasTime       bool
-	StartDate     *time.Time
-	EstimatedDays float64
-	URL           string
-	Source        string
-	// Pinned and Dimmed carry the form's flag state. Pinned also records PinnedAt.
+	// DueDate carries the form's calendar-date planning metadata.
+	DueDate *time.Time
+	// Pinned carries the form's flag state and records PinnedAt.
 	// Focus Queue membership is independent planning state handled at the
 	// config-aware layer, not a task field set here.
 	Pinned bool
-	Dimmed bool
-	// InsertBeforeDimmed positions a new ROOT task before the first dimmed root
-	// task sharing its display section (the task form's create positioning),
-	// rather than appending at the end.
-	InsertBeforeDimmed bool
-	// Type-specific attribute pointers set by the form (only the active type's
-	// pointer is non-nil). The CLI uses Attrs above instead; a set pointer here is
-	// assigned after ApplyTypeAttrValues.
-	BugAttrs   *models.BugAttrs
-	IdeaAttrs  *models.IdeaAttrs
-	TaskAttrs  *models.TaskAttrs
-	StoryAttrs *models.StoryAttrs
-	EpicAttrs  *models.EpicAttrs
 	// Subtasks are child tasks created under the new task in the SAME ChangeSet
 	// (task-form Epic/Story create). Each inherits the parent's priority, state,
 	// and tags; a blank-title subtask is skipped.
@@ -95,10 +67,9 @@ type AddTaskRequest struct {
 }
 
 // AddSubtaskRequest is one child task the task form creates under a new
-// Epic/Story parent.
+// parent.
 type AddSubtaskRequest struct {
 	Title string
-	Type  models.TaskType
 }
 
 // FormCreateResult is the outcome of a task-form create: the parent task plus a
@@ -111,12 +82,9 @@ type FormCreateResult struct {
 
 // AddTask creates a fully-specified task in the target project and commits it —
 // together with any auxiliary durable artifacts the request carries — as ONE
-// ChangeSet. It validates the title, type, priority, tags, state, parent
-// placement, recurrence, and type attributes before mutating, so a rejected
-// request never persists a partial task or a dangling config write. It is the
-// task-add parity path routed through the application layer; the pre-application
-// CLI committed the task and the template use-count in two separate writes, which
-// this use case collapses into one atomic transaction.
+// ChangeSet. It validates the title, priority, tags, state, parent placement,
+// and recurrence before mutating, so a rejected
+// request never persists a partial task or a dangling config write.
 func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	ref, revision, err := s.buildAddTask(req)
 	if err != nil {
@@ -130,69 +98,8 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 }
 
-// AddTaskWithWorkflow creates a fully-specified task and runs a stateless
-// workflow cascade over the resulting project, committing the new task, any
-// caller-supplied artifacts, follow-ups, catalog effects, and deferred
-// cross-project moves as one grouped transaction. Creation deliberately has no
-// previous-state map: event-only rules must not treat a newly created task as a
-// transition from a fabricated prior state.
-func (s *Service) AddTaskWithWorkflow(req AddTaskRequest, opts SingleTaskWorkflowOptions) (BulkResult, error) {
-	normalized, err := normalizeAddTaskRequest(req)
-	if err != nil {
-		return BulkResult{}, err
-	}
-
-	undoAction := opts.UndoAction
-	if undoAction == "" {
-		undoAction = "Add Task"
-	}
-	var ref TaskRef
-	orchestrated, err := s.runWorkflowOrchestration(workflowOrchestrationRequest{
-		rules:                  opts.Rules,
-		projectStatusArtifacts: opts.ProjectStatusArtifacts,
-		undoAction:             undoAction,
-		undoContext:            opts.UndoContext,
-		forceCommit:            true,
-		prepare: func(snap Snapshot) (workflowMutationPlan, error) {
-			built, revision, buildErr := s.buildNormalizedAddTask(snap, req, normalized)
-			if buildErr != nil {
-				return workflowMutationPlan{}, buildErr
-			}
-			ref = built
-			undoContext := opts.UndoContext
-			if undoContext == "" {
-				undoContext = fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
-			}
-			return workflowMutationPlan{
-				commits: []projectCommit{{
-					project:          ref.Project,
-					expectedRevision: revision,
-					base:             ref.Base,
-					artifacts:        req.Artifacts,
-				}},
-				sources: []*models.Project{ref.Project},
-				mutate: func(*WorkspaceResolver) error {
-					// Snapshot indexes predate this new task; rebuild the model tree so
-					// hierarchical rules see its real parent and level.
-					ref.Project.BuildTaskTree()
-					return nil
-				},
-				undoContext: undoContext,
-			}, nil
-		},
-	})
-	if err != nil {
-		return BulkResult{}, err
-	}
-
-	out := bulkResultFromWorkflow(orchestrated)
-	out.Tasks = []TaskResult{taskResultFromWorkflow(orchestrated, ref, ref.Project.ID)}
-	return out, nil
-}
-
 type normalizedAddTaskRequest struct {
 	title    string
-	taskType models.TaskType
 	priority int
 	tags     []string
 	state    models.WorkflowState
@@ -202,13 +109,6 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 	title := strings.TrimSpace(req.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return normalizedAddTaskRequest{}, invalidInput("title", err.Error())
-	}
-
-	taskType := req.Type
-	if taskType == "" {
-		taskType = models.TaskTypeTask
-	} else if !taskType.IsValid() {
-		return normalizedAddTaskRequest{}, invalidInput("type", fmt.Sprintf("%q is not a valid task type", taskType))
 	}
 
 	priority := req.Priority
@@ -228,14 +128,12 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 	if err != nil {
 		return normalizedAddTaskRequest{}, err
 	}
-	return normalizedAddTaskRequest{title: title, taskType: taskType, priority: priority, tags: tags, state: state}, nil
+	return normalizedAddTaskRequest{title: title, priority: priority, tags: tags, state: state}, nil
 }
 
 // buildAddTask validates an AddTaskRequest against a fresh snapshot and appends
 // the fully-constructed task to its project WITHOUT committing, returning the
-// task reference and the revision the project was loaded at. AddTask commits it
-// directly; ApplyTemplate appends the template's child tasks first so the whole
-// template materializes in one transaction.
+// task reference and the revision the project was loaded at.
 func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
 	normalized, err := normalizeAddTaskRequest(req)
 	if err != nil {
@@ -251,9 +149,8 @@ func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
 
 // buildNormalizedAddTask constructs a validated task inside a caller-owned
 // snapshot without committing it. Bare creation obtains its own snapshot before
-// calling this helper; workflow-aware creation supplies the orchestration
-// runner's snapshot so validation, mutation, rule evaluation, and commit all
-// share one revision-consistent workspace view.
+// calling this helper. Grouped creation paths can supply their own snapshot so
+// validation, mutation, and commit share one revision-consistent workspace view.
 func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, normalized normalizedAddTaskRequest) (TaskRef, string, error) {
 	project := snap.ProjectByID(req.ProjectID)
 	if project == nil {
@@ -266,14 +163,14 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	// possibly-stale load.
 	var parent *models.Task
 	if req.ParentID != nil {
-		resolved, parentErr := resolveChildParent(project, normalized.taskType, *req.ParentID)
+		resolved, parentErr := resolveChildParent(project, *req.ParentID)
 		if parentErr != nil {
 			return TaskRef{}, "", parentErr
 		}
 		parent = resolved
 	}
 
-	task, err := models.NewTask(s.ids.NewID(), project.GetNextShortID(), normalized.taskType, normalized.title)
+	task, err := newTaskForCreation(s.ids.NewID(), project.GetNextShortID(), normalized.title)
 	if err != nil {
 		return TaskRef{}, "", invalidInput("title", err.Error())
 	}
@@ -294,26 +191,6 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		parentID := parent.ID
 		task.ParentID = &parentID
 	}
-	if err := models.ApplyTypeAttrValues(task, req.Attrs); err != nil {
-		return TaskRef{}, "", invalidInput("attributes", err.Error())
-	}
-	// Form path: assign the concrete attr struct for the active type directly
-	// (only one pointer is non-nil), mirroring the form's legacy field assignment.
-	if req.BugAttrs != nil {
-		task.BugAttrs = req.BugAttrs
-	}
-	if req.IdeaAttrs != nil {
-		task.IdeaAttrs = req.IdeaAttrs
-	}
-	if req.TaskAttrs != nil {
-		task.TaskAttrs = req.TaskAttrs
-	}
-	if req.StoryAttrs != nil {
-		task.StoryAttrs = req.StoryAttrs
-	}
-	if req.EpicAttrs != nil {
-		task.EpicAttrs = req.EpicAttrs
-	}
 	for _, item := range req.Checklist {
 		task.Checklist = append(task.Checklist, models.ChecklistItem{Text: item, Done: false})
 	}
@@ -327,37 +204,24 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 
 	// Form-originated scheduling/reference/flag metadata. All zero/nil for the CLI.
 	if req.DueDate != nil {
-		task.DueDate = cloneTimePtr(req.DueDate)
-		task.HasTime = req.HasTime
+		task.DueDate = cloneCalendarDatePtr(req.DueDate)
 	}
-	if req.StartDate != nil {
-		task.StartDate = cloneTimePtr(req.StartDate)
-	}
-	task.EstimatedDays = req.EstimatedDays
-	task.URL = req.URL
-	task.Source = req.Source
-	task.Dimmed = req.Dimmed
 	if req.Pinned {
 		now := s.clock.Now()
 		task.Pinned = true
 		task.PinnedAt = &now
 	}
 
-	if req.InsertBeforeDimmed {
-		project.Tasks = insertBeforeDimmedInState(project.Tasks, task)
-	} else {
-		project.Tasks = append(project.Tasks, task)
-	}
+	project.Tasks = append(project.Tasks, task)
 
 	return TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}, revision, nil
 }
 
 // AddTaskWithChildren creates a fully-specified parent task and its subtasks and
-// commits them — with any auxiliary artifacts (e.g. a template use-count bump) —
+// commits them — with any auxiliary artifacts —
 // as ONE ChangeSet, preserving the task form's atomic Epic/Story creation and
 // single undo entry. Each subtask inherits the parent's priority, state, and
-// tags; a blank-title subtask is skipped. The parent is positioned per
-// InsertBeforeDimmed. It returns the parent result plus a result per created
+// tags; a blank-title subtask is skipped. It returns the parent result plus a result per created
 // subtask in creation order.
 func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, error) {
 	ref, revision, err := s.buildAddTask(req)
@@ -371,13 +235,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		if title == "" {
 			continue
 		}
-		subType := sub.Type
-		if subType == "" {
-			subType = models.TaskTypeTask
-		} else if !subType.IsValid() {
-			return FormCreateResult{}, invalidInput("type", fmt.Sprintf("%q is not a valid task type", subType))
-		}
-		child, buildErr := models.NewTask(s.ids.NewID(), ref.Project.GetNextShortID(), subType, title)
+		child, buildErr := newTaskForCreation(s.ids.NewID(), ref.Project.GetNextShortID(), title)
 		if buildErr != nil {
 			return FormCreateResult{}, invalidInput("title", buildErr.Error())
 		}
@@ -409,25 +267,4 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		out.Subtasks = append(out.Subtasks, newTaskResult(cref, result.Revision))
 	}
 	return out, nil
-}
-
-// insertBeforeDimmedInState inserts newTask before the first dimmed root task
-// in the same canonical state. Child positions are managed by the tree.
-func insertBeforeDimmedInState(tasks []*models.Task, newTask *models.Task) []*models.Task {
-	if newTask.ParentID != nil {
-		return append(tasks, newTask)
-	}
-	for i, t := range tasks {
-		if t.ParentID != nil {
-			continue
-		}
-		if t.Dimmed && t.State() == newTask.State() {
-			result := make([]*models.Task, 0, len(tasks)+1)
-			result = append(result, tasks[:i]...)
-			result = append(result, newTask)
-			result = append(result, tasks[i:]...)
-			return result
-		}
-	}
-	return append(tasks, newTask)
 }

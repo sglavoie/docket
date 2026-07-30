@@ -156,7 +156,7 @@ func (m *CrossProjectLinkerModel) goToLast() {
 			m.taskCursor = len(m.filteredTasks) - 1
 		}
 	case StepSelectLinkType:
-		m.linkTypeCursor = 2
+		m.linkTypeCursor = 1
 	}
 }
 
@@ -169,7 +169,7 @@ func (m *CrossProjectLinkerModel) moveCursor(delta int) {
 		maxCursor := max(len(m.filteredTasks)-1, 0)
 		m.taskCursor = clamp(m.taskCursor+delta, 0, maxCursor)
 	case StepSelectLinkType:
-		m.linkTypeCursor = clamp(m.linkTypeCursor+delta, 0, 2)
+		m.linkTypeCursor = clamp(m.linkTypeCursor+delta, 0, 1)
 	}
 }
 
@@ -184,26 +184,18 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 		linkType = LinkTypeBlocker
 	case 1:
 		linkType = LinkTypeDependent
-	case 2:
-		linkType = LinkTypeFollowUp
 	}
 
 	targetRef := m.targetProject.ID + ":" + m.targetTask.ID
 	sourceRef := m.sourceProject.ID + ":" + m.sourceTask.ID
 
-	// The dependency directions store one edge on the depending task; a
-	// follow-up stores reciprocal related references on both tasks. Every shape
-	// commits through the link coordinator as one transaction (a follow-up
-	// commits both projects atomically), with existence and cross-project cycle
-	// validation the legacy raw save never had.
+	// The dependency directions store one edge on the depending task.
 	var commit tea.Cmd
 	switch linkType { //nolint:exhaustive
 	case LinkTypeBlocker:
 		commit = m.coordinator.AddDependency(taskIdentityFor(m.sourceTask, m.sourceProject), targetRef)
 	case LinkTypeDependent:
 		commit = m.coordinator.AddDependency(taskIdentityFor(m.targetTask, m.targetProject), sourceRef)
-	case LinkTypeFollowUp:
-		commit = m.coordinator.RelateBidirectional(taskIdentityFor(m.sourceTask, m.sourceProject), targetRef)
 	}
 	if commit == nil {
 		return nil

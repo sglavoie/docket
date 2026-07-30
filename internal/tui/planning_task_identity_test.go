@@ -2,7 +2,6 @@ package tui
 
 import (
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -20,7 +19,7 @@ func duplicatePlanningProjects(t *testing.T) (*models.Project, *models.Project, 
 		if err != nil {
 			t.Fatalf("NewProject(%s): %v", name, err)
 		}
-		task, err := models.NewTask(sharedID, 1, models.TaskTypeTask, title)
+		task, err := models.NewGenericTask(sharedID, 1, title)
 		if err != nil {
 			t.Fatalf("NewTask(%s): %v", title, err)
 		}
@@ -38,11 +37,11 @@ func duplicatePlanningProjects(t *testing.T) (*models.Project, *models.Project, 
 func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
 	todaySharedID := uuid.NewString()
-	alphaToday, err := models.NewTask(todaySharedID, 2, models.TaskTypeTask, "Alpha Today shared")
+	alphaToday, err := models.NewGenericTask(todaySharedID, 2, "Alpha Today shared")
 	if err != nil {
 		t.Fatalf("NewTask(alpha Today): %v", err)
 	}
-	betaToday, err := models.NewTask(todaySharedID, 2, models.TaskTypeTask, "Beta Today shared")
+	betaToday, err := models.NewGenericTask(todaySharedID, 2, "Beta Today shared")
 	if err != nil {
 		t.Fatalf("NewTask(beta Today): %v", err)
 	}
@@ -53,47 +52,41 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	alpha.BuildTaskTree()
 	beta.BuildTaskTree()
 	runtime := testConfigWithProjects(alpha, beta)
-	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
-	runtime.Planning().SetFocusQueue([]config.FocusQueueItem{
+	runtime.Planning().SetNextOrder([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
-	runtime.Planning().SetDailyPlan([]config.DailyPlanItem{
-		{ProjectID: alpha.ID, TaskID: alphaToday.ID, PlannedDate: yesterday},
-		{ProjectID: beta.ID, TaskID: betaToday.ID, PlannedDate: yesterday},
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{
+		{ProjectID: alpha.ID, TaskID: alphaToday.ID},
+		{ProjectID: beta.ID, TaskID: betaToday.ID},
 	})
 
 	persister := NewMockPersister()
 	persister.Projects[alpha.ID] = alpha
 	persister.Projects[beta.ID] = beta
 	shell := &AppModel{
-		runtime:               runtime,
-		persister:             persister,
-		focusQueueIDs:         make(map[TaskIdentity]bool),
-		dailyPlanIDs:          make(map[TaskIdentity]bool),
-		dailyPlanCarriedIDs:   make(map[TaskIdentity]bool),
-		focusQueue:            []FocusTask{},
-		dailyPlan:             []FocusTask{},
-		outlinerToggleStates:  make(map[string]*OutlinerToggleState),
-		dailyPlanCarriedShown: true,
+		runtime:              runtime,
+		persister:            persister,
+		nextOrderIDs:         make(map[TaskIdentity]bool),
+		todayIDs:             make(map[TaskIdentity]bool),
+		nextOrder:            []FocusTask{},
+		today:                []FocusTask{},
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 	}
 
 	loads := make(map[string]error)
-	shell.hydrateFocusQueue([]*models.Project{alpha, beta}, loads, true)
-	shell.hydrateDailyPlan([]*models.Project{alpha, beta}, loads)
+	shell.hydrateNextOrder([]*models.Project{alpha, beta}, loads, true)
+	shell.hydrateToday([]*models.Project{alpha, beta}, loads)
 
 	alphaID := taskIdentityFor(alphaTask, alpha)
 	betaID := taskIdentityFor(betaTask, beta)
 	alphaTodayID := taskIdentityFor(alphaToday, alpha)
 	betaTodayID := taskIdentityFor(betaToday, beta)
-	if len(shell.focusQueue) != 2 || !shell.focusQueueIDs[alphaID] || !shell.focusQueueIDs[betaID] {
-		t.Fatalf("qualified Next hydration = slice:%d map:%v", len(shell.focusQueue), shell.focusQueueIDs)
+	if len(shell.nextOrder) != 2 || !shell.nextOrderIDs[alphaID] || !shell.nextOrderIDs[betaID] {
+		t.Fatalf("qualified Next hydration = slice:%d map:%v", len(shell.nextOrder), shell.nextOrderIDs)
 	}
-	if len(shell.dailyPlan) != 2 || !shell.dailyPlanIDs[alphaTodayID] || !shell.dailyPlanIDs[betaTodayID] {
-		t.Fatalf("qualified Today hydration = slice:%d map:%v", len(shell.dailyPlan), shell.dailyPlanIDs)
-	}
-	if shell.dailyPlanCarried != 2 || !shell.dailyPlanCarriedIDs[alphaTodayID] || !shell.dailyPlanCarriedIDs[betaTodayID] {
-		t.Fatalf("qualified carry-over hydration = count:%d map:%v", shell.dailyPlanCarried, shell.dailyPlanCarriedIDs)
+	if len(shell.today) != 2 || !shell.todayIDs[alphaTodayID] || !shell.todayIDs[betaTodayID] {
+		t.Fatalf("qualified Today hydration = slice:%d map:%v", len(shell.today), shell.todayIDs)
 	}
 }
 
@@ -104,21 +97,21 @@ func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
 	alphaID := taskIdentityFor(alphaTask, alpha)
 	betaID := taskIdentityFor(betaTask, beta)
 	shell := &AppModel{
-		runtime:      config.EmptyRuntimeState(""),
-		dailyPlan:    []FocusTask{{Task: alphaTask, Project: alpha}, {Task: betaTask, Project: beta}},
-		dailyPlanIDs: map[TaskIdentity]bool{alphaID: true, betaID: true},
+		runtime:  config.EmptyRuntimeState(""),
+		today:    []FocusTask{{Task: alphaTask, Project: alpha}, {Task: betaTask, Project: beta}},
+		todayIDs: map[TaskIdentity]bool{alphaID: true, betaID: true},
 	}
 
-	shell.lastDailyPlanToggle = &dailyPlanToggleAction{Task: betaTask, Project: beta, WasAdd: true}
-	shell.lastToggleUndoKind = toggleUndoDailyPlan
-	_ = shell.undoDailyPlanToggle()
-	if !shell.dailyPlanIDs[alphaID] || shell.dailyPlanIDs[betaID] || len(shell.dailyPlan) != 1 {
-		t.Fatalf("undo crossed project boundary: slice:%v map:%v", shell.dailyPlan, shell.dailyPlanIDs)
+	shell.lastTodayToggle = &todayToggleAction{Task: betaTask, Project: beta, WasAdd: true}
+	shell.lastToggleUndoKind = toggleUndoToday
+	_ = shell.undoTodayToggle()
+	if !shell.todayIDs[alphaID] || shell.todayIDs[betaID] || len(shell.today) != 1 {
+		t.Fatalf("undo crossed project boundary: slice:%v map:%v", shell.today, shell.todayIDs)
 	}
 
-	_ = shell.redoDailyPlanToggle()
-	if !shell.dailyPlanIDs[alphaID] || !shell.dailyPlanIDs[betaID] || len(shell.dailyPlan) != 2 {
-		t.Fatalf("redo failed to restore qualified task: slice:%v map:%v", shell.dailyPlan, shell.dailyPlanIDs)
+	_ = shell.redoTodayToggle()
+	if !shell.todayIDs[alphaID] || !shell.todayIDs[betaID] || len(shell.today) != 2 {
+		t.Fatalf("redo failed to restore qualified task: slice:%v map:%v", shell.today, shell.todayIDs)
 	}
 }
 
@@ -129,7 +122,7 @@ func TestPlanningRenderingAndOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testin
 	alphaID := taskIdentityFor(alphaTask, alpha)
 
 	outliner := NewOutlinerModel(nil, nil, nil)
-	outliner.dailyPlanIDs = map[TaskIdentity]bool{alphaID: true}
+	outliner.todayIDs = map[TaskIdentity]bool{alphaID: true}
 	if got := outliner.renderTaskQueueIndicator(alphaTask, alpha); got == "  " {
 		t.Fatal("planned alpha task lost its Today indicator")
 	}
@@ -154,15 +147,15 @@ func TestPlanningRenderingAndOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testin
 func TestPlanningArtifactMembershipIsProjectQualified(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
 	planning := &config.PlanningState{
-		FocusQueue: []config.FocusQueueItem{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
-		DailyPlan:  []config.DailyPlanItem{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
+		NextOrder: []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
+		Today:     []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
 	}
-	if !focusQueueContains(planning, taskIdentityFor(alphaTask, alpha)) ||
-		!dailyPlanContains(planning, taskIdentityFor(alphaTask, alpha)) {
+	if !nextOrderContains(planning, taskIdentityFor(alphaTask, alpha)) ||
+		!todayContains(planning, taskIdentityFor(alphaTask, alpha)) {
 		t.Fatal("alpha membership was not found")
 	}
-	if focusQueueContains(planning, taskIdentityFor(betaTask, beta)) ||
-		dailyPlanContains(planning, taskIdentityFor(betaTask, beta)) {
+	if nextOrderContains(planning, taskIdentityFor(betaTask, beta)) ||
+		todayContains(planning, taskIdentityFor(betaTask, beta)) {
 		t.Fatal("beta duplicate inherited alpha's persisted membership")
 	}
 }

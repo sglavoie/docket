@@ -248,18 +248,7 @@ func (c *ContextMutator) SaveRegularContext(req RegularContextSaveRequest) (Regu
 		selected[id] = true
 	}
 
-	// Renaming the label the default names moves the setting with it. The
-	// destination rules below then resolve against the new name, which is what the
-	// default context is by the time this save lands.
-	var settings *config.Settings
 	fallback := c.runtime.DefaultContext()
-	if result.Renamed && strings.EqualFold(oldName, fallback) {
-		moved := *c.runtime.Settings()
-		moved.DefaultContext = label
-		settings = &moved
-		fallback = label
-		result.DefaultContextMoved = true
-	}
 	if strings.EqualFold(label, fallback) {
 		// The renamed clone is the snapshot the removals are resolved against, so
 		// a rename into the default label demands the same destination a direct
@@ -276,7 +265,7 @@ func (c *ContextMutator) SaveRegularContext(req RegularContextSaveRequest) (Regu
 	if !result.Renamed && result.Assigned == 0 && result.Removed == 0 {
 		return result, nil
 	}
-	if err := c.commitCatalogAndSettings(catalog, settings); err != nil {
+	if err := c.commitCatalog(catalog); err != nil {
 		return RegularContextSaveResult{}, err
 	}
 	return result, nil
@@ -367,34 +356,6 @@ func (c *ContextMutator) commitCatalog(catalog *config.WorkspaceCatalog) error {
 	artifacts, err := catalogDomainArtifact(c.manager, catalog)
 	if err != nil {
 		return fmt.Errorf("failed to encode workspace catalog: %w", err)
-	}
-	if err := c.service.CommitConfig(artifacts...); err != nil {
-		return err
-	}
-	return c.runtime.RefreshAfterCommit()
-}
-
-// commitCatalogAndSettings persists a mutated catalog together with a mutated
-// settings domain as one revision-checked transaction; nil settings degrades to
-// the catalog-only commit. The pair must land together because a default context
-// naming a label no project carries is not reachable from the hub to repair, so a
-// writable workspace without the transaction boundary refuses the save rather
-// than writing the two domains one after the other.
-func (c *ContextMutator) commitCatalogAndSettings(catalog *config.WorkspaceCatalog, settings *config.Settings) error {
-	if settings == nil {
-		return c.commitCatalog(catalog)
-	}
-	if c.runtime.DataDir() == "" {
-		c.runtime.SetCatalogInMemory(catalog)
-		c.runtime.SetSettingsInMemory(settings)
-		return nil
-	}
-	if c.manager == nil || c.service == nil {
-		return fmt.Errorf("renaming the default context requires a transactional commit boundary")
-	}
-	artifacts, err := catalogAndSettingsDomainArtifacts(c.manager, catalog, settings)
-	if err != nil {
-		return fmt.Errorf("failed to encode workspace catalog and settings: %w", err)
 	}
 	if err := c.service.CommitConfig(artifacts...); err != nil {
 		return err

@@ -25,7 +25,6 @@ func TestCommitMultiProjectPreconditionExpiresBeforeMergeOrConflictRecording(t *
 
 	alphaLocalDoc := cloneEdit(alphaBase, func(task *models.Task) { task.Title = "alpha local" })
 	alphaLocal := projectFromDocument(alpha, alphaLocalDoc)
-	activityBefore := len(alphaLocal.Tasks[0].Activity)
 	_, err := env.svc.Commit(ChangeSet{
 		Project:          alphaLocal,
 		ExpectedRevision: alphaBase.Revision,
@@ -43,9 +42,6 @@ func TestCommitMultiProjectPreconditionExpiresBeforeMergeOrConflictRecording(t *
 	var conflict *RevisionConflictError
 	if !errors.As(err, &conflict) || conflict.ProjectID != beta.ID || conflict.Expected != betaBase.Revision || conflict.Actual != betaCurrent.Revision {
 		t.Fatalf("revision conflict = %#v, want beta expected/actual revisions", conflict)
-	}
-	if got := len(alphaLocal.Tasks[0].Activity); got != activityBefore {
-		t.Fatalf("failed precondition recorded %d activity entries, want %d", got, activityBefore)
 	}
 	if records, listErr := env.store.List(); listErr != nil || len(records) != 0 {
 		t.Fatalf("failed precondition recorded conflict bundles: records=%v err=%v", records, listErr)
@@ -81,7 +77,7 @@ func TestCommitMultiProjectPreconditionIsReadOnlyAndExcludedFromUndo(t *testing.
 		t.Fatalf("LoadProjectDocument beta: %v", err)
 	}
 
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), 10, []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	alphaLocalDoc := cloneEdit(alphaBase, func(task *models.Task) { task.Title = "alpha after" })
 	if _, commitErr := service.Commit(ChangeSet{

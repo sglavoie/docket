@@ -18,20 +18,20 @@ func TestCollectActionableTasks_BlockedExcluded(t *testing.T) {
 	}
 
 	// Blocked task with no deps — should be excluded.
-	blockedNoDeps, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocked no deps")
+	blockedNoDeps, err := models.NewGenericTask(uuid.New().String(), 1, "Blocked no deps")
 	if err != nil {
 		t.Fatal(err)
 	}
 	blockedNoDeps.WorkflowState = models.StateWaiting
 
 	// Blocked task that also has a completed dependency — should still be excluded.
-	dep, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Completed dep")
+	dep, err := models.NewGenericTask(uuid.New().String(), 1, "Completed dep")
 	if err != nil {
 		t.Fatal(err)
 	}
 	dep.WorkflowState = models.StateDone
 
-	blockedWithDoneDep, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocked with done dep")
+	blockedWithDoneDep, err := models.NewGenericTask(uuid.New().String(), 1, "Blocked with done dep")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestCollectActionableTasks_BlockedExcluded(t *testing.T) {
 	blockedWithDoneDep.DependsOn = []string{dep.ID}
 
 	// Normal todo task — should be included.
-	actionable, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Actionable")
+	actionable, err := models.NewGenericTask(uuid.New().String(), 1, "Actionable")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,30 +66,30 @@ func TestCollectActionableTasks_CrossProjectDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	doneDep, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Done dependency")
+	doneDep, err := models.NewGenericTask(uuid.New().String(), 1, "Done dependency")
 	if err != nil {
 		t.Fatal(err)
 	}
 	doneDep.WorkflowState = models.StateDone
 
-	openDep, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Open dependency")
+	openDep, err := models.NewGenericTask(uuid.New().String(), 2, "Open dependency")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	unblocked, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Unblocked")
+	unblocked, err := models.NewGenericTask(uuid.New().String(), 1, "Unblocked")
 	if err != nil {
 		t.Fatal(err)
 	}
 	unblocked.DependsOn = []string{depProject.ID + ":" + doneDep.ID}
 
-	blockedByOpen, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Blocked by open")
+	blockedByOpen, err := models.NewGenericTask(uuid.New().String(), 2, "Blocked by open")
 	if err != nil {
 		t.Fatal(err)
 	}
 	blockedByOpen.DependsOn = []string{depProject.ID + ":" + openDep.ID}
 
-	blockedByMissing, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "Blocked by missing")
+	blockedByMissing, err := models.NewGenericTask(uuid.New().String(), 3, "Blocked by missing")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,13 +121,13 @@ func TestCollectActionableTasks_MissingLocalDependencyBlocksTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blockedByMissing, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Blocked by missing")
+	blockedByMissing, err := models.NewGenericTask(uuid.New().String(), 1, "Blocked by missing")
 	if err != nil {
 		t.Fatal(err)
 	}
 	blockedByMissing.DependsOn = []string{"missing"}
 
-	actionable, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Actionable")
+	actionable, err := models.NewGenericTask(uuid.New().String(), 2, "Actionable")
 	if err != nil {
 		t.Fatal(err)
 	}

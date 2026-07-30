@@ -15,10 +15,8 @@ import (
 type projectAdminAction int
 
 const (
-	adminActionPreview projectAdminAction = iota
-	adminActionScope
+	adminActionScope projectAdminAction = iota
 	adminActionEdit
-	adminActionStatus
 	adminActionPin
 	adminActionArchive
 	adminActionNotes
@@ -30,9 +28,8 @@ type projectAdminMenuItem struct {
 }
 
 // ProjectAdminMenuModel is the Shift+Enter overlay for a project header. It
-// offers a preview (metrics) plus the contextual edit/status/pin/archive/notes
-// lifecycle commands for one project, each dispatched through the existing
-// project messages.
+// offers only the retained contextual scope/edit/pin/archive/notes lifecycle
+// commands for one project, each dispatched through the existing messages.
 type ProjectAdminMenuModel struct {
 	project *models.Project
 	items   []projectAdminMenuItem
@@ -51,10 +48,8 @@ func newProjectAdminMenu(project *models.Project) *ProjectAdminMenuModel {
 		archiveLabel = "Unarchive project"
 	}
 	items := []projectAdminMenuItem{
-		{adminActionPreview, "Preview metrics"},
 		{adminActionScope, "Scope to project"},
 		{adminActionEdit, "Edit project"},
-		{adminActionStatus, "Set status"},
 		{adminActionPin, pinLabel},
 		{adminActionArchive, archiveLabel},
 		{adminActionNotes, "Open notes"},
@@ -86,14 +81,10 @@ func (m *ProjectAdminMenuModel) dispatch() tea.Msg {
 		return nil
 	}
 	switch m.items[m.cursor].action {
-	case adminActionPreview:
-		return ShowMetricsDashboardMsg{Project: p}
 	case adminActionScope:
 		return ApplyProjectScopeMsg{ProjectID: p.ID}
 	case adminActionEdit:
 		return EditProjectMsg{Project: p}
-	case adminActionStatus:
-		return ShowStatusIconPickerMsg{Project: p}
 	case adminActionPin:
 		return ProjectPinRequestMsg{Project: p, Pinned: !p.Pinned}
 	case adminActionArchive:

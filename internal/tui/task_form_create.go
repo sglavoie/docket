@@ -5,7 +5,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/template"
 )
 
 // NewTaskFormModelCreate creates a TaskFormModel for creating a new task.
@@ -15,11 +14,10 @@ func NewTaskFormModelCreate(
 	suggestedParent *models.Task,
 ) *TaskFormModel {
 	draft := taskFormDraft{
-		taskType: models.TaskTypeTask,
 		priority: 3,
 		state:    models.StateNext,
 	}
-	draft.parentID = formNearestValidParentID(suggestedParent, draft.taskType)
+	draft.parentID = formNearestValidParentID(suggestedParent)
 
 	m := &TaskFormModel{
 		mode:       FormModeCreate,
@@ -33,70 +31,16 @@ func NewTaskFormModelCreate(
 	}
 	m.initTitleInput("")
 	m.initDueInput("")
-	m.initStartDateInput("")
-	m.initEstimatedDaysInput("")
-	m.initURLInput("")
-	m.initSourceInput("")
 	m.initChecklistItemInput("")
 	m.initSubtaskItemInput("")
 	return m
 }
 
-// NewTaskFormModelCreateFromTemplate creates a TaskFormModel pre-filled from a template.
-func NewTaskFormModelCreateFromTemplate(
-	project *models.Project,
-	runtime *config.RuntimeState,
-	suggestedParent *models.Task,
-	tmpl *template.TaskTemplate,
-) *TaskFormModel {
-	m := NewTaskFormModelCreate(project, runtime, suggestedParent)
-	m.fromTemplate = tmpl
-
-	if tmpl == nil {
-		return m
-	}
-
-	m.draft.taskType = tmpl.Type
-	// The suggested parent was resolved for the default type, so it is rechecked
-	// against the template's own type rather than kept as an illegal nesting.
-	m.draft.parentID = formNearestValidParentID(suggestedParent, tmpl.Type)
-	if tmpl.Priority > 0 {
-		m.draft.priority = tmpl.Priority
-	}
-	if len(tmpl.Tags) > 0 {
-		m.draft.tags = append([]string{}, tmpl.Tags...)
-	}
-	m.draft.state = tmpl.EffectiveState()
-	if tmpl.Description != "" {
-		m.draft.desc = tmpl.Description
-	}
-
-	if len(tmpl.Checklist) > 0 {
-		for _, item := range tmpl.Checklist {
-			m.draft.checklist = append(m.draft.checklist, models.ChecklistItem{
-				Text: item,
-				Done: false,
-			})
-		}
-	} else if len(tmpl.Children) > 0 {
-		for _, child := range tmpl.Children {
-			m.draft.checklist = append(m.draft.checklist, models.ChecklistItem{
-				Text: child.Title,
-				Done: false,
-			})
-		}
-	}
-
-	return m
-}
-
 // formNearestValidParentID walks up from the suggested parent to the nearest
-// ancestor that can hold childType without breaching the nesting cap, so a
-// pre-filled parent is never a relationship the domain would reject. It returns
-// nil when no ancestor qualifies.
-func formNearestValidParentID(suggestedParent *models.Task, childType models.TaskType) *string {
+// ancestor that can hold a child without breaching the nesting cap.
+func formNearestValidParentID(suggestedParent *models.Task) *string {
 	for candidate := suggestedParent; candidate != nil; candidate = candidate.Parent {
-		if candidate.CanAddChild(childType) && candidate.Level+1 <= models.MaxNestingDepth {
+		if candidate.Level+1 <= models.MaxNestingDepth {
 			id := candidate.ID
 			return &id
 		}
@@ -111,43 +55,17 @@ func NewTaskFormModelEdit(
 	runtime *config.RuntimeState,
 ) *TaskFormModel {
 	draft := taskFormDraft{
-		taskType:           task.Type,
-		priority:           task.Priority,
-		parentID:           task.ParentID,
-		state:              task.State(),
-		pinned:             task.Pinned,
-		dimmed:             task.Dimmed,
-		tags:               append([]string{}, task.Tags...),
-		dueDate:            cloneTime(task.DueDate),
-		dueInput:           formatDateInput(task.DueDate, task.HasTime),
-		hasTime:            task.HasTime,
-		recurrence:         cloneRecurrence(task.Recurrence),
-		startDate:          cloneTime(task.StartDate),
-		startDateInput:     formatDateInput(task.StartDate, false),
-		estimatedDays:      task.EstimatedDays,
-		estimatedDaysInput: formatEstimatedDaysInput(task.EstimatedDays),
-		desc:               task.Description,
-		url:                task.URL,
-		source:             task.Source,
-		title:              task.Title,
-		checklist:          append([]models.ChecklistItem(nil), task.Checklist...),
-	}
-
-	// Load type-specific attrs from the task.
-	if task.BugAttrs != nil {
-		draft.bugAttrs = *task.BugAttrs
-	}
-	if task.IdeaAttrs != nil {
-		draft.ideaAttrs = *task.IdeaAttrs
-	}
-	if task.TaskAttrs != nil {
-		draft.taskAttrs = *task.TaskAttrs
-	}
-	if task.StoryAttrs != nil {
-		draft.storyAttrs = *task.StoryAttrs
-	}
-	if task.EpicAttrs != nil {
-		draft.epicAttrs = *task.EpicAttrs
+		priority:   task.Priority,
+		parentID:   task.ParentID,
+		state:      task.State(),
+		pinned:     task.Pinned,
+		tags:       append([]string{}, task.Tags...),
+		dueDate:    cloneTime(task.DueDate),
+		dueInput:   formatDateInput(task.DueDate),
+		recurrence: cloneRecurrence(task.Recurrence),
+		desc:       task.Description,
+		title:      task.Title,
+		checklist:  append([]models.ChecklistItem(nil), task.Checklist...),
 	}
 
 	m := &TaskFormModel{
@@ -163,10 +81,6 @@ func NewTaskFormModelEdit(
 	}
 	m.initTitleInput(draft.title)
 	m.initDueInput(draft.dueInput)
-	m.initStartDateInput(draft.startDateInput)
-	m.initEstimatedDaysInput(draft.estimatedDaysInput)
-	m.initURLInput(draft.url)
-	m.initSourceInput(draft.source)
 	m.initChecklistItemInput("")
 	m.initSubtaskItemInput("")
 	return m
@@ -182,15 +96,10 @@ func cloneTime(t *time.Time) *time.Time {
 }
 
 // cloneRecurrence returns a deep copy of a *models.RecurrencePattern, or nil.
-// The Weekdays slice is also copied so mutations on the clone do not alias
-// the original task's slice (and vice versa).
 func cloneRecurrence(value *models.RecurrencePattern) *models.RecurrencePattern {
 	if value == nil {
 		return nil
 	}
 	cp := *value
-	if len(value.Weekdays) > 0 {
-		cp.Weekdays = append([]int(nil), value.Weekdays...)
-	}
 	return &cp
 }

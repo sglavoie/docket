@@ -127,8 +127,7 @@ func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
 	return m.operationValuePicker != nil ||
 		m.operationTextPrompt != nil ||
-		m.contextActionSheet != nil ||
-		m.quickNoteOverlay != nil
+		m.contextActionSheet != nil
 }
 
 // Active reports whether any transient overlay is currently shown.
@@ -138,7 +137,6 @@ func (o OverlayManager) Active() bool {
 		m.contextActionSheet != nil ||
 		m.operationValuePicker != nil ||
 		m.operationTextPrompt != nil ||
-		m.quickNoteOverlay != nil ||
 		m.projectAdminMenu != nil
 }
 
@@ -152,6 +150,5 @@ func (o OverlayManager) ClearAll() {
 	m.operationTextPrompt = nil
 	m.operationConfirm.Cancel()
 	m.pendingOperationRequest = OperationExecutionRequest{}
-	m.quickNoteOverlay = nil
 	m.projectAdminMenu = nil
 }

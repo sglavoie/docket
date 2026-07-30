@@ -3,7 +3,7 @@ package models
 import "testing"
 
 func TestTaskProgress(t *testing.T) {
-	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent Epic")
+	parent, err := NewGenericTask("parent", 1, "Parent Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,14 +17,16 @@ func TestTaskProgress(t *testing.T) {
 	if parent.GetProgress() != 100 {
 		t.Errorf("expected 100 progress for complete leaf, got %f", parent.GetProgress())
 	}
-	parent.Reopen()
+	if err = parent.ApplyStateTransition(StateInbox); err != nil {
+		t.Fatal(err)
+	}
 
 	// Add children
-	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,23 +57,23 @@ func TestTaskProgress(t *testing.T) {
 }
 
 func TestTaskCountChildren(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story1, err := NewTask("story1", 2, TaskTypeStory, "Story 1")
+	story1, err := NewGenericTask("story1", 2, "Story 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	story2, err := NewTask("story2", 3, TaskTypeStory, "Story 2")
+	story2, err := NewGenericTask("story2", 3, "Story 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := NewTask("task1", 4, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task1", 4, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 5, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task2", 5, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,19 +108,19 @@ func TestTaskCountChildren(t *testing.T) {
 }
 
 func TestTaskCountCompletedChildren(t *testing.T) {
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1, err := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("task1", 2, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("task2", 3, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("task2", 3, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("task3", 4, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("task3", 4, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,11 +152,11 @@ func TestTaskCountCompletedChildren(t *testing.T) {
 }
 
 func TestMaxDescendantDepth(t *testing.T) {
-	root, _ := NewTask("root", 1, TaskTypeEpic, "Root")
+	root, _ := NewGenericTask("root", 1, "Root")
 	root.Level = 0
-	child, _ := NewTask("child", 2, TaskTypeStory, "Child")
+	child, _ := NewGenericTask("child", 2, "Child")
 	child.Level = 1
-	grandchild, _ := NewTask("gc", 3, TaskTypeTask, "Grandchild")
+	grandchild, _ := NewGenericTask("gc", 3, "Grandchild")
 	grandchild.Level = 2
 	root.Children = []*Task{child}
 	child.Children = []*Task{grandchild}

@@ -13,7 +13,6 @@ const (
 	StateGroupInbox      WorkflowStateGroup = "inbox"
 	StateGroupNext       WorkflowStateGroup = "next"
 	StateGroupBacklog    WorkflowStateGroup = "backlog"
-	StateGroupReview     WorkflowStateGroup = "review"
 	StateGroupWaiting    WorkflowStateGroup = "waiting"
 	StateGroupPaused     WorkflowStateGroup = "paused"
 	StateGroupSomeday    WorkflowStateGroup = "someday"
@@ -33,7 +32,6 @@ const (
 	StateThemeInbox    WorkflowStateThemeRole = "inbox"
 	StateThemeNext     WorkflowStateThemeRole = "next"
 	StateThemeBacklog  WorkflowStateThemeRole = "backlog"
-	StateThemeReview   WorkflowStateThemeRole = "review"
 	StateThemeWaiting  WorkflowStateThemeRole = "waiting"
 	StateThemePaused   WorkflowStateThemeRole = "paused"
 	StateThemeSomeday  WorkflowStateThemeRole = "someday"
@@ -51,7 +49,6 @@ func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 		StateGroupInbox,
 		StateGroupNext,
 		StateGroupBacklog,
-		StateGroupReview,
 		StateGroupWaiting,
 		StateGroupPaused,
 		StateGroupSomeday,
@@ -68,9 +65,11 @@ func AllWorkflowStateGroups() []WorkflowStateGroup {
 func (g WorkflowStateGroup) IsValid() bool {
 	switch g {
 	case StateGroupToday, StateGroupInProgress, StateGroupInbox, StateGroupNext,
-		StateGroupBacklog, StateGroupReview, StateGroupWaiting, StateGroupPaused,
+		StateGroupBacklog, StateGroupWaiting, StateGroupPaused,
 		StateGroupSomeday, StateGroupDone, StateGroupCanceled:
 		return true
+	case StateGroupReview:
+		return false
 	}
 	return false
 }
@@ -157,8 +156,6 @@ func WorkflowStateGroupForState(state WorkflowState) WorkflowStateGroup {
 		return StateGroupWaiting
 	case StatePaused:
 		return StateGroupPaused
-	case StateReview:
-		return StateGroupReview
 	case StateSomeday:
 		return StateGroupSomeday
 	case StateDone:
@@ -187,7 +184,8 @@ func (g WorkflowStateGroup) WorkflowState() (WorkflowState, bool) {
 	case StateGroupPaused:
 		return StatePaused, true
 	case StateGroupReview:
-		return StateReview, true
+		// StateGroupReview is retained for legacy presentation callers only.
+		return StateReady, true
 	case StateGroupSomeday:
 		return StateSomeday, true
 	case StateGroupDone:

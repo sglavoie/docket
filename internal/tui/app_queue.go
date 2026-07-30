@@ -28,23 +28,23 @@ func taskIsNext(task *models.Task) bool {
 // task's pre-toggle state (PrevState) so the compensating undo can restore both
 // the workflow state and the Next order-list entry atomically.
 type queueToggleAction struct {
-	Task           *models.Task
-	Project        *models.Project
-	WasAdd         bool                 // true = task was added to queue
-	WasInDailyPlan bool                 // true = task was in daily plan before (restore on undo)
-	PrevState      models.WorkflowState // task's workflow state before the toggle
+	Task       *models.Task
+	Project    *models.Project
+	WasAdd     bool                 // true = task was added to queue
+	WasInToday bool                 // true = task was in daily plan before (restore on undo)
+	PrevState  models.WorkflowState // task's workflow state before the toggle
 }
 
-// removeFromDailyPlan drops exactly one project-qualified task from the
+// removeFromToday drops exactly one project-qualified task from the
 // in-memory daily plan.
-func (m *AppModel) removeFromDailyPlan(identity TaskIdentity) {
-	for i, ft := range m.dailyPlan {
+func (m *AppModel) removeFromToday(identity TaskIdentity) {
+	for i, ft := range m.today {
 		if taskIdentityFor(ft.Task, ft.Project) == identity {
-			m.dailyPlan = append(m.dailyPlan[:i], m.dailyPlan[i+1:]...)
+			m.today = append(m.today[:i], m.today[i+1:]...)
 			break
 		}
 	}
-	delete(m.dailyPlanIDs, identity)
+	delete(m.todayIDs, identity)
 }
 
 // queueToggleResultCmd fans the state change out to every task view (mirroring a
@@ -63,7 +63,7 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 // toggleQueue adds or removes the focused task from the Next queue. Adding sets
 // the task's workflow state to StateNext, drops any Today (Daily Plan) entry, and
 // appends the Next order entry — all folded into ONE workspace-ledger transaction
-// via focusQueueAddArtifactBuilder. Removing transitions the task out of StateNext
+// via nextOrderAddArtifactBuilder. Removing transitions the task out of StateNext
 // (to StateReady), which drops the stale order entry through the service's
 // exclusivity reconciliation in the same transaction. Because the whole move is a
 // single durable ledger entry, undo/redo route through the ledger

@@ -12,8 +12,8 @@ import (
 
 func TestRenderGitHubIssueIndicator(t *testing.T) {
 	task := &models.Task{
-		URL: "https://github.com/acme/roadmap/issues/123",
 		Attachments: []models.Attachment{
+			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
 			{Filename: "https://github.com/acme/roadmap/issues/456", IsURL: true},
 		},
 	}
@@ -23,7 +23,10 @@ func TestRenderGitHubIssueIndicator(t *testing.T) {
 		t.Fatalf("expected compact issue indicator with overflow count, got %q", got)
 	}
 
-	plainTask := &models.Task{URL: "https://example.com/acme/roadmap/issues/123"}
+	plainTask := &models.Task{Attachments: []models.Attachment{{
+		Filename: "https://example.com/acme/roadmap/issues/123",
+		IsURL:    true,
+	}}}
 	if got := renderGitHubIssueIndicator(plainTask); got != "" {
 		t.Fatalf("expected no issue indicator for non-GitHub URL, got %q", got)
 	}
@@ -42,7 +45,7 @@ func TestGitHubIssueMetadataPreservesAttachmentCount(t *testing.T) {
 	outliner := &OutlinerModel{
 		columnConfig: NewColumnConfig(map[string]bool{ColAttachments: true}, nil, DefaultOutlinerColumns, ""),
 	}
-	outlinerContent := ansi.Strip(outliner.renderTaskContentGroup(task, &models.Project{ID: "p"}))
+	outlinerContent := ansi.Strip(outliner.renderTaskContentGroup(task))
 	if !strings.Contains(outlinerContent, wantIssue) {
 		t.Fatalf("outliner content missing GitHub issue indicator %q: %q", wantIssue, outlinerContent)
 	}
@@ -55,9 +58,11 @@ func TestCrossProjectTaskLineShowsGitHubIssueIndicator(t *testing.T) {
 	task := &models.Task{
 		ID:            "t1",
 		Title:         "Fix sync",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
-		URL:           "https://github.com/acme/roadmap/issues/123",
+		Attachments: []models.Attachment{{
+			Filename: "https://github.com/acme/roadmap/issues/123",
+			IsURL:    true,
+		}},
 	}
 	proj := &models.Project{ID: "p1", Name: "Roadmap"}
 

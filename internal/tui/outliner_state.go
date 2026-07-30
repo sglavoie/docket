@@ -6,30 +6,20 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
-// commitWorkflowOpts constructs the project-scoped workflow options for the
-// application-layer commit, draining the pending undo context. Workflow rules come
-// from config (nil-guarded for isolated tests); callers may supply an already-
-// captured snapshot or let the service infer it from storage.
-func (m *OutlinerModel) commitWorkflowOpts(prevStates map[string]*models.Task) app.ProjectWorkflowOptions {
-	var rules []workflow.WorkflowRule
-	if m.runtime != nil {
-		rules = m.runtime.Automation().GetEnabledWorkflowRules()
-	}
+// projectCommitOpts constructs the project-scoped options for the
+// application-layer commit and drains the pending undo context.
+func (m *OutlinerModel) projectCommitOpts() app.ProjectCommitOptions {
 	action, context := m.undo.Action, m.undo.Context
 	// The pending undo TaskIDs name the tasks this mutation targeted; forward them
 	// as the planning-reconcile set so a whole-project commit that changed a task's
-	// workflow state (quick edit, section move, paste) folds Today/Next exclusivity
+	// state (quick edit, section move, paste) folds Today/Next exclusivity
 	// into the same transaction. A task whose state did not change reconciles to no
 	// planning artifact, so this is harmless for structural-only mutations.
 	planningTaskIDs := append([]string(nil), m.undo.TaskIDs...)
 	m.undo.Clear()
-	return app.ProjectWorkflowOptions{
-		Rules:           rules,
-		PrevStates:      prevStates,
+	return app.ProjectCommitOptions{
 		UndoAction:      action,
 		UndoContext:     context,
 		PlanningTaskIDs: planningTaskIDs,
@@ -102,11 +92,10 @@ func copyBoolMap[K comparable](src map[K]bool) map[K]bool {
 // outlinerRefreshMsg signals that the outliner should refresh its rows.
 type outlinerRefreshMsg struct{}
 
-// saveWithWorkflow persists the project's current in-memory state through the
-// application layer (workflow cascade + grouped ledger undo) and the shell reloads
-// the rows on the resulting BatchTransactionResultMsg. The caller has already
+// saveProject persists the project's current in-memory state through the
+// application layer and grouped ledger undo. The caller has already
 // applied its structural mutation (swap/indent/outdent/section move/paste) to
 // m.project in memory.
-func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
-	return m.taskItem.CommitProjectWorkflow(m.project, m.commitWorkflowOpts(nil), "")
+func (m *OutlinerModel) saveProject() tea.Cmd {
+	return m.taskItem.CommitProject(m.project, m.projectCommitOpts(), "")
 }

@@ -42,27 +42,13 @@ type tokenPattern struct {
 }
 
 var tokenPatterns = []tokenPattern{
-	{regexp.MustCompile(`(?i)(?:^|\s)type:(\S+)`), FieldTaskType, "type:", false, SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)\^(\S+)`), FieldTaskType, "^", false, SurfaceCapture | SurfaceSearch},
-	{regexp.MustCompile(`(?i)(?:^|\s)(?:pri|priority):(\S+)`), FieldPriority, "pri:", false, SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)!([^\s]+)`), FieldPriority, "!", false, SurfaceCapture | SurfaceEdit | SurfaceSearch},
-	{regexp.MustCompile(`(?:^|\s)-#([\w][\w.-]*)`), FieldRemoveTag, "-#", false, SurfaceEdit},
-	{regexp.MustCompile(`(?i)(?:^|\s)tag:([\w][\w.-]*)`), FieldTag, "tag:", false, SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)#([\w][\w.-]*)`), FieldTag, "#", false, SurfaceCapture | SurfaceEdit | SurfaceSearch},
-	{regexp.MustCompile(`(?i)(?:^|\s)due:(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "due:", false, SurfaceCapture | SurfaceEdit},
+	{regexp.MustCompile(`(?:^|\s)!([^\s]+)`), FieldPriority, "!", false, SurfaceCapture | SurfaceEdit},
+	{regexp.MustCompile(`(?:^|\s)#([\w][\w.:-]*)`), FieldTag, "#", false, SurfaceCapture | SurfaceEdit},
 	{regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "@", false, SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?i)(?:^|\s)@(today|tomorrow|week|overdue|none)(?:\s|$)`), FieldDue, "@", false, SurfaceSearch},
-	{regexp.MustCompile(`(?i)(?:^|\s)recur:(\S+)`), FieldRecurrence, "recur:", false, SurfaceCapture},
 	{regexp.MustCompile(`(?:^|\s)~(\S+)`), FieldRecurrence, "~", false, SurfaceCapture},
-	{regexp.MustCompile(`(?i)(?:^|\s)(?:p|proj|project):(\S+)`), FieldProject, "p:", false, SurfaceCapture | SurfaceSearch},
+	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", false, SurfaceCapture | SurfaceEdit},
 	{regexp.MustCompile(`(?:^|\s)%(\S+)`), FieldProject, "%", false, SurfaceCapture},
-	{regexp.MustCompile(`(?i)(?:^|\s)parent:(\S+)`), FieldParent, "parent:", false, SurfaceCapture},
 	{regexp.MustCompile(`(?:^|\s)>(\S+)`), FieldParent, ">", false, SurfaceCapture},
-	{regexp.MustCompile(`(?i)(?:^|\s)state:(\w+)`), FieldState, "state:", false, SurfaceCapture | SurfaceEdit | SurfaceSearch},
-	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", false, SurfaceCapture | SurfaceEdit | SurfaceSearch},
-	{regexp.MustCompile(`(?i)(?:^|\s)has:(\w+)`), FieldHas, "has:", false, SurfaceSearch},
-	{regexp.MustCompile(`(?i)(?:^|\s)no:(\w+)`), FieldNo, "no:", false, SurfaceSearch},
-	{regexp.MustCompile(`(?i)(?:^|\s)is:(\w+)`), FieldIs, "is:", false, SurfaceSearch},
 }
 
 // Parse extracts every token enabled for surface using the one shared grammar.
@@ -94,12 +80,23 @@ func extractTokens(input string, pattern tokenPattern) (string, []Token) {
 			continue
 		}
 		rebuilt.WriteString(input[last:match[0]])
+		value := input[match[2]:match[3]]
+		if pattern.field == FieldPriority && !validPriorityTokenValue(value) {
+			rebuilt.WriteString(input[match[0]:match[1]])
+			last = match[1]
+			continue
+		}
+		if (pattern.field == FieldTag || pattern.field == FieldRemoveTag) && !validTagTokenValue(value) {
+			rebuilt.WriteString(input[match[0]:match[1]])
+			last = match[1]
+			continue
+		}
 		rebuilt.WriteByte(' ')
 		raw := strings.TrimSpace(input[match[0]:match[1]])
 		tokens = append(tokens, Token{
 			Field:  pattern.field,
 			Raw:    raw,
-			Value:  input[match[2]:match[3]],
+			Value:  value,
 			Form:   pattern.form,
 			Legacy: pattern.legacy,
 		})
@@ -107,6 +104,28 @@ func extractTokens(input string, pattern tokenPattern) (string, []Token) {
 	}
 	rebuilt.WriteString(input[last:])
 	return rebuilt.String(), tokens
+}
+
+func validPriorityTokenValue(value string) bool {
+	return len(value) == 1 && value[0] >= '1' && value[0] <= '5'
+}
+
+func validTagTokenValue(value string) bool {
+	for segment := range strings.SplitSeq(value, ":") {
+		if segment == "" {
+			return false
+		}
+		for i, r := range segment {
+			if i == 0 && (r == '_' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z') {
+				continue
+			}
+			if i > 0 && (r == '_' || r == '.' || r == '-' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z') {
+				continue
+			}
+			return false
+		}
+	}
+	return value != ""
 }
 
 // NormalizeText trims and collapses whitespace in the free-text remainder.

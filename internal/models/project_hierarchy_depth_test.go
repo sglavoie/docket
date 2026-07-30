@@ -15,7 +15,7 @@ func TestBuildTaskTree_MaxNestingDepth(t *testing.T) {
 	const chainLen = 8
 	tasks := make([]*Task, chainLen)
 	for i := range chainLen {
-		task, err := NewTask(fmt.Sprintf("task-%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task depth %d", i))
+		task, err := NewGenericTask(fmt.Sprintf("task-%d", i), i+1, fmt.Sprintf("Task depth %d", i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
 	tasks := make([]*Task, chainLen)
 	for i := range chainLen {
 		var task *Task
-		task, err = NewTask(fmt.Sprintf("chain-%d", i), i+1, TaskTypeTask, fmt.Sprintf("Chain %d", i))
+		task, err = NewGenericTask(fmt.Sprintf("chain-%d", i), i+1, fmt.Sprintf("Chain %d", i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,11 +83,11 @@ func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
 
 	// Add two children to the task that will be detached
 	detachedRoot := tasks[chainLen-1]
-	childA, err := NewTask("child-a", 100, TaskTypeTask, "Child A")
+	childA, err := NewGenericTask("child-a", 100, "Child A")
 	if err != nil {
 		t.Fatal(err)
 	}
-	childB, err := NewTask("child-b", 101, TaskTypeTask, "Child B")
+	childB, err := NewGenericTask("child-b", 101, "Child B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,13 +112,13 @@ func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
 }
 
 func TestAddChild_ExceedsMaxNestingDepth(t *testing.T) {
-	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	parent, err := NewGenericTask("parent", 1, "Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
 	parent.Level = MaxNestingDepth // simulate being at the deepest allowed level
 
-	child, err := NewTask("child", 2, TaskTypeStory, "Child")
+	child, err := NewGenericTask("child", 2, "Child")
 	if err != nil {
 		t.Fatal(err)
 	}

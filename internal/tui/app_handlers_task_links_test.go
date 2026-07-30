@@ -19,21 +19,6 @@ func TestHandleTaskMessagesManageDependencies(t *testing.T) {
 	}
 }
 
-func TestHandleTaskMessagesCreateLinkedTask(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	task := project.Tasks[0]
-
-	msg := CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: LinkTypeBlocker}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("CreateLinkedTaskMsg should be handled")
-	}
-	if app.currentView() != ViewTaskComposer {
-		t.Errorf("currentView should be LinkedTaskCreator, got %v", app.currentView())
-	}
-}
-
 func TestHandleTaskMessagesShowCrossProjectLinker(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := project.Tasks[0]

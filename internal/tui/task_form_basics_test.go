@@ -5,57 +5,11 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
-
-func TestTaskForm_EnterOnType_OpensTypePicker(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToField(m, 2)
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
-	if m.activeOverlay != formOverlayType {
-		t.Errorf("expected formOverlayType, got %v", m.activeOverlay)
-	}
-	if m.typePicker == nil {
-		t.Error("expected typePicker to be non-nil")
-	}
-}
-
-func TestTaskForm_TypePicker_SelectBug_UpdatesDraft(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToField(m, 2)
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
-	m = sendFormKey(m, syntheticKey('j'))
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
-	if m.draft.taskType != models.TaskTypeBug {
-		t.Errorf("expected draft.taskType=Bug, got %v", m.draft.taskType)
-	}
-	if !m.hasChanges {
-		t.Error("expected hasChanges=true after type change")
-	}
-	if m.activeOverlay != formOverlayNone {
-		t.Error("expected overlay dismissed after selection")
-	}
-}
-
-func TestTaskForm_TypePicker_EscCancels(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToField(m, 2)
-	original := m.draft.taskType
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
-	if m.draft.taskType != original {
-		t.Errorf("cancel should preserve taskType; got %v", m.draft.taskType)
-	}
-	if m.activeOverlay != formOverlayNone {
-		t.Error("expected overlay dismissed after Esc")
-	}
-}
 
 func TestTaskForm_EnterOnPriority_OpensPriorityPicker(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 3)
+	m = navigateToField(m, 2)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	if m.activeOverlay != formOverlayPriority {
 		t.Errorf("expected formOverlayPriority, got %v", m.activeOverlay)
@@ -64,7 +18,7 @@ func TestTaskForm_EnterOnPriority_OpensPriorityPicker(t *testing.T) {
 
 func TestTaskForm_PriorityPicker_DirectKey_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 3)
+	m = navigateToField(m, 2)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticKey('1'))
 	if m.draft.priority != 1 {
@@ -80,7 +34,7 @@ func TestTaskForm_PriorityPicker_DirectKey_UpdatesDraft(t *testing.T) {
 
 func TestTaskForm_PriorityPicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 3)
+	m = navigateToField(m, 2)
 	original := m.draft.priority
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
@@ -91,7 +45,7 @@ func TestTaskForm_PriorityPicker_EscCancels(t *testing.T) {
 
 func TestTaskForm_EnterOnFlags_OpensFlagsPicker(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 6)
+	m = navigateToField(m, 5)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	if m.activeOverlay != formOverlayFlags {
 		t.Errorf("expected formOverlayFlags, got %v", m.activeOverlay)
@@ -100,7 +54,7 @@ func TestTaskForm_EnterOnFlags_OpensFlagsPicker(t *testing.T) {
 
 func TestTaskForm_FlagsPicker_Toggle_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 6)
+	m = navigateToField(m, 5)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeySpace))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
@@ -114,7 +68,7 @@ func TestTaskForm_FlagsPicker_Toggle_UpdatesDraft(t *testing.T) {
 
 func TestTaskForm_FlagsPicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 6)
+	m = navigateToField(m, 5)
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeySpace))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
@@ -138,7 +92,7 @@ func TestTaskForm_ParentSelectedMsg_UpdatesDraft(t *testing.T) {
 func TestTaskForm_ParentSelectedMsg_WrongSource_NoChange(t *testing.T) {
 	m := newTestTaskForm()
 	parentID := "some-parent-id"
-	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: ViewDashboard})
+	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: ViewUnknown})
 	if m.draft.parentID != nil {
 		t.Error("wrong-source ParentSelectedMsg should not update draft")
 	}
@@ -169,20 +123,10 @@ func TestTaskForm_BasicsTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m.activeTab = formTabBasics
 	view := m.View().Content
-	for _, label := range []string{"Title:", "Description:", "Type:", "Priority:", "Parent:", "State:", "Flags:", "Tags:"} {
+	for _, label := range []string{"Title:", "Description:", "Priority:", "Parent:", "State:", "Flags:", "Tags:"} {
 		if !strings.Contains(view, label) {
 			t.Errorf("Basics tab should contain label %q; got:\n%s", label, view)
 		}
-	}
-}
-
-func TestTaskForm_BasicsTab_OverlayVisible_WhenTypePickerActive(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToField(m, 2)
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
-	view := m.View().Content
-	if !strings.Contains(view, "Set Type") {
-		t.Errorf("view should show 'Set Type' when type picker is active; got:\n%s", view)
 	}
 }
 
@@ -200,7 +144,7 @@ func TestTaskForm_TypingTitle_SetsHasChanges(t *testing.T) {
 func TestPriorityDirectSet(t *testing.T) {
 	for _, want := range []int{1, 2, 3, 4, 5} {
 		m := newTestTaskForm()
-		m = navigateToField(m, 3)
+		m = navigateToField(m, 2)
 		m = sendFormKey(m, syntheticKey(rune('0'+want)))
 		if m.draft.priority != want {
 			t.Errorf("key '%d': expected priority=%d, got %d", want, want, m.draft.priority)
@@ -216,7 +160,7 @@ func TestPriorityDirectSet(t *testing.T) {
 
 func TestPriorityCycleUpDown(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToField(m, 3)
+	m = navigateToField(m, 2)
 	m.draft.priority = 3
 	m = sendFormKey(m, syntheticKey('k'))
 	if m.draft.priority != 2 {
@@ -232,7 +176,7 @@ func TestPriorityCycleUpDown(t *testing.T) {
 	}
 
 	m2 := newTestTaskForm()
-	m2 = navigateToField(m2, 3)
+	m2 = navigateToField(m2, 2)
 	m2.draft.priority = 3
 	m2 = sendFormKey(m2, syntheticKey('j'))
 	if m2.draft.priority != 4 {
@@ -248,84 +192,5 @@ func TestPriorityCycleUpDown(t *testing.T) {
 	}
 	if !m2.hasChanges {
 		t.Error("expected hasChanges=true after cycling")
-	}
-}
-
-func TestTypeCycleHL(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToField(m, 2)
-
-	m = sendFormKey(m, syntheticKey('l'))
-	if m.draft.taskType != models.TaskTypeBug {
-		t.Errorf("l from Task: expected Bug, got %v", m.draft.taskType)
-	}
-
-	m = sendFormKey(m, syntheticKey('l'))
-	if m.draft.taskType != models.TaskTypeIdea {
-		t.Errorf("l from Bug: expected Idea, got %v", m.draft.taskType)
-	}
-
-	m = sendFormKey(m, syntheticKey('l'))
-	if m.draft.taskType != models.TaskTypeEpic {
-		t.Errorf("l from Idea (wrap): expected Epic, got %v", m.draft.taskType)
-	}
-
-	m = sendFormKey(m, syntheticKey('h'))
-	if m.draft.taskType != models.TaskTypeIdea {
-		t.Errorf("h from Epic (wrap): expected Idea, got %v", m.draft.taskType)
-	}
-
-	m.draft.taskType = models.TaskTypeIdea
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyRight))
-	if m.draft.taskType != models.TaskTypeEpic {
-		t.Errorf("right from Idea: expected Epic, got %v", m.draft.taskType)
-	}
-
-	m = sendFormKey(m, syntheticSpecialKey(tea.KeyLeft))
-	if m.draft.taskType != models.TaskTypeIdea {
-		t.Errorf("left from Epic: expected Idea, got %v", m.draft.taskType)
-	}
-
-	if !m.hasChanges {
-		t.Error("expected hasChanges=true after type cycling")
-	}
-}
-
-func TestTypeCycleSideEffects(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-
-	var epicTask *models.Task
-	for _, tsk := range project.Tasks {
-		if tsk.Type == models.TaskTypeEpic {
-			epicTask = tsk
-			break
-		}
-	}
-	if epicTask == nil {
-		t.Skip("test project has no Epic tasks")
-	}
-
-	m := NewTaskFormModelCreate(project, testRuntimeAt(cfg.DataDir(), cfg), nil)
-	m.draft.taskType = models.TaskTypeTask
-	epicID := epicTask.ID
-	m.draft.parentID = &epicID
-	m = navigateToField(m, 2)
-
-	m = sendFormKey(m, syntheticKey('l'))
-	if m.draft.taskType != models.TaskTypeBug {
-		t.Fatalf("expected Bug, got %v", m.draft.taskType)
-	}
-	if m.draft.parentID == nil {
-		t.Error("parent should be preserved when cycling to compatible type Bug")
-	}
-
-	m = sendFormKey(m, syntheticKey('l'))
-	m = sendFormKey(m, syntheticKey('l'))
-	if m.draft.taskType != models.TaskTypeEpic {
-		t.Fatalf("expected Epic, got %v", m.draft.taskType)
-	}
-	if m.draft.parentID != nil {
-		t.Error("parent should be cleared when cycling to Epic (Epic can't be child of Epic)")
 	}
 }

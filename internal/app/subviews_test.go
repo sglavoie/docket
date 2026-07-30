@@ -13,7 +13,7 @@ func TestDecisionLifecycle(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	res, err := svc.AddDecision("t1", "  use sqlite  ", "  simpler ops  ", models.DecisionCategoryArchitecture)
+	res, err := svc.AddDecision("t1", "  use sqlite  ", "  simpler ops  ")
 	if err != nil {
 		t.Fatalf("AddDecision: %v", err)
 	}
@@ -23,36 +23,15 @@ func TestDecisionLifecycle(t *testing.T) {
 	if len(task.Decisions) != 1 || task.Decisions[0].Text != "use sqlite" || task.Decisions[0].Rationale != "simpler ops" {
 		t.Fatalf("decisions = %+v, want one trimmed decision", task.Decisions)
 	}
-	if task.Decisions[0].Category != models.DecisionCategoryArchitecture {
-		t.Fatalf("category = %q, want architecture", task.Decisions[0].Category)
-	}
 	if cs, ok := repo.lastCommit(); !ok || cs.UndoAction != "Add Decision" {
 		t.Fatalf("lastCommit = %+v ok=%v, want Add Decision", cs, ok)
 	}
 
-	// nil category keeps the existing one (external-editor edit shape).
-	if _, editErr := svc.EditDecision("t1", 0, "use postgres", "scale", nil); editErr != nil {
+	if _, editErr := svc.EditDecision("t1", 0, "use postgres", "scale"); editErr != nil {
 		t.Fatalf("EditDecision: %v", editErr)
 	}
-	if task.Decisions[0].Text != "use postgres" || task.Decisions[0].Category != models.DecisionCategoryArchitecture {
-		t.Fatalf("decision after edit = %+v, want text replaced, category preserved", task.Decisions[0])
-	}
-
-	// non-nil category replaces it (panel edit shape).
-	scope := models.DecisionCategoryScope
-	if _, catErr := svc.EditDecision("t1", 0, "use postgres", "scale", &scope); catErr != nil {
-		t.Fatalf("EditDecision with category: %v", catErr)
-	}
-	if task.Decisions[0].Category != models.DecisionCategoryScope {
-		t.Fatalf("category = %q, want scope", task.Decisions[0].Category)
-	}
-
-	toggled, err := svc.ToggleDecisionResolved("t1", 0)
-	if err != nil {
-		t.Fatalf("ToggleDecisionResolved: %v", err)
-	}
-	if !toggled.Resolved || !task.Decisions[0].Resolved {
-		t.Fatal("decision should be resolved after toggle")
+	if task.Decisions[0].Text != "use postgres" || task.Decisions[0].Rationale != "scale" {
+		t.Fatalf("decision after edit = %+v, want text and rationale replaced", task.Decisions[0])
 	}
 
 	removed, err := svc.RemoveDecision("t1", 0)
@@ -68,10 +47,10 @@ func TestDecisionValidation(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", newTask("t1", 1, "Task")))
 	svc := newTestService(repo)
 
-	if _, err := svc.AddDecision("t1", "   ", "", models.DecisionCategoryDesign); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.AddDecision("t1", "   ", ""); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("empty text err = %v, want ErrInvalidInput", err)
 	}
-	if _, err := svc.EditDecision("t1", 0, "text", "", nil); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.EditDecision("t1", 0, "text", ""); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range edit err = %v, want ErrInvalidInput", err)
 	}
 	if _, err := svc.RemoveDecision("t1", 3); !errors.Is(err, app.ErrInvalidInput) {
@@ -79,6 +58,29 @@ func TestDecisionValidation(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Fatal("rejected decision mutations must not commit")
+	}
+}
+
+func TestRichRecordCommitFailureRestoresTask(t *testing.T) {
+	task := newTask("t1", 1, "Task")
+	task.Decisions = []*models.Decision{{Text: "original decision"}}
+	task.Checklist = []models.ChecklistItem{{Text: "original item"}}
+	repo := newFakeRepo(newProject("p1", "Alpha", task))
+	repo.commitErr = errors.New("commit failed")
+	svc := newTestService(repo)
+
+	if _, err := svc.EditDecision("t1", 0, "transient", "transient"); err == nil {
+		t.Fatal("EditDecision unexpectedly succeeded")
+	}
+	if task.Decisions[0].Text != "original decision" {
+		t.Fatalf("failed decision commit left task mutated: %+v", task.Decisions)
+	}
+
+	if _, err := svc.ToggleChecklistItem("t1", 0); err == nil {
+		t.Fatal("ToggleChecklistItem unexpectedly succeeded")
+	}
+	if task.Checklist[0].Done {
+		t.Fatalf("failed checklist commit left task mutated: %+v", task.Checklist)
 	}
 }
 

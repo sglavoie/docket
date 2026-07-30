@@ -13,7 +13,7 @@ import (
 func TestFormatTaskReferenceMarkdownIncludesReferenceSections(t *testing.T) {
 	now := time.Date(2026, 6, 10, 9, 30, 0, 0, time.UTC)
 
-	task, err := models.NewTask("task-1", 42, models.TaskTypeStory, "Ship reference snapshots")
+	task, err := models.NewGenericTask("task-1", 42, "Ship reference snapshots")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,12 +30,9 @@ func TestFormatTaskReferenceMarkdownIncludesReferenceSections(t *testing.T) {
 	task.Decisions = []*models.Decision{{
 		Text:      "Use cached temp files.",
 		Rationale: "Async editors need the file after launch.",
-		Category:  models.DecisionCategoryArchitecture,
 		CreatedAt: now,
 	}}
-	task.RelatedTo = []string{"related-task"}
-
-	child, err := models.NewTask("child-1", 43, models.TaskTypeTask, "Wire TUI")
+	child, err := models.NewGenericTask("child-1", 43, "Wire TUI")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,43 +62,8 @@ func TestFormatTaskReferenceMarkdownIncludesReferenceSections(t *testing.T) {
 	assertContains(t, got, "## Decisions")
 	assertContains(t, got, "Use cached temp files.")
 	assertContains(t, got, "Rationale: Async editors need the file after launch.")
-	assertContains(t, got, "## Related Tasks")
-	assertContains(t, got, "related-task")
 	assertContains(t, got, "## Linked Notes")
 	assertContains(t, got, "Reference behavior (2026-06-10-reference-behavior.md)")
-}
-
-func TestFormatNoteReferenceMarkdownIncludesLinkedTaskSummaryAndWarning(t *testing.T) {
-	created := time.Date(2026, 6, 9, 8, 0, 0, 0, time.UTC)
-	modified := time.Date(2026, 6, 10, 10, 15, 0, 0, time.UTC)
-	note := &models.Note{
-		Title:       "Launch notes",
-		Tags:        []string{"release", "reference"},
-		CreatedAt:   created,
-		ModifiedAt:  modified,
-		LinkedTasks: []string{"task-1", "missing-task"},
-		Filename:    "2026-06-10-launch-notes.md",
-		Body:        "## Context\n\nUse Ctrl+O for references.\n",
-	}
-	task, err := models.NewTask("task-1", 7, models.TaskTypeStory, "Open references")
-	if err != nil {
-		t.Fatal(err)
-	}
-	task.WorkflowState = models.StateInProgress
-
-	got := FormatNoteReferenceMarkdownWithTasks(note, []*models.Task{task})
-
-	assertContains(t, got, "# Note: Launch notes")
-	assertContains(t, got, ReferenceSnapshotWarning)
-	assertContains(t, got, "| Filename | 2026-06-10-launch-notes.md |")
-	assertContains(t, got, "| Tags | release, reference |")
-	assertContains(t, got, "| Created | 2026-06-09 08:00 |")
-	assertContains(t, got, "| Modified | 2026-06-10 10:15 |")
-	assertContains(t, got, "## Linked Tasks")
-	assertContains(t, got, "#7 Story: Open references (in_progress) [task-1]")
-	assertContains(t, got, "missing-task")
-	assertContains(t, got, "## Body")
-	assertContains(t, got, "Use Ctrl+O for references.")
 }
 
 func TestCreateReferenceSnapshotFileUsesCacheAndCleansStaleFiles(t *testing.T) {

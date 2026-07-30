@@ -11,10 +11,8 @@ import (
 // committed to the shared workspace.
 func TestClassifyArtifact(t *testing.T) {
 	durable := []app.ArtifactKind{
-		app.ArtifactTasks, app.ArtifactNotes, app.ArtifactBlockers,
-		app.ArtifactProjectMetadata, app.ArtifactProjectTags, app.ArtifactTemplates,
-		app.ArtifactScoringProfiles, app.ArtifactWorkflowRules,
-		app.ArtifactReviewCompletion, app.ArtifactFocusQueue, app.ArtifactDailyPlan,
+		app.ArtifactTasks, app.ArtifactNotes,
+		app.ArtifactProjectMetadata, app.ArtifactToday, app.ArtifactNextOrder,
 	}
 	for _, k := range durable {
 		if app.ClassifyArtifact(k) != app.ScopeDurable {

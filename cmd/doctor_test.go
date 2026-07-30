@@ -7,10 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -52,8 +50,8 @@ func TestCheckEmptyProjects(t *testing.T) {
 func TestCheckDuplicateIDs(t *testing.T) {
 	t.Run("duplicate within project", func(t *testing.T) {
 		project := testutil.NewTestProject("P1")
-		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1 := testutil.NewTestTask("Task A")
+		task2 := testutil.NewTestTask("Task B")
 		task2.ID = task1.ID // force duplicate
 		project.Tasks = []*models.Task{task1, task2}
 
@@ -68,8 +66,8 @@ func TestCheckDuplicateIDs(t *testing.T) {
 	t.Run("duplicate across projects", func(t *testing.T) {
 		p1 := testutil.NewTestProject("P1")
 		p2 := testutil.NewTestProject("P2")
-		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1 := testutil.NewTestTask("Task A")
+		task2 := testutil.NewTestTask("Task B")
 		task2.ID = task1.ID // force same ID across projects
 		p1.Tasks = []*models.Task{task1}
 		p2.Tasks = []*models.Task{task2}
@@ -84,8 +82,8 @@ func TestCheckDuplicateIDs(t *testing.T) {
 
 	t.Run("no duplicates", func(t *testing.T) {
 		project := testutil.NewTestProject("P1")
-		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1 := testutil.NewTestTask("Task A")
+		task2 := testutil.NewTestTask("Task B")
 		project.Tasks = []*models.Task{task1, task2}
 
 		results := &doctorResults{}
@@ -100,8 +98,8 @@ func TestCheckDuplicateIDs(t *testing.T) {
 func TestCheckDuplicateShortIDs(t *testing.T) {
 	t.Run("duplicate within project", func(t *testing.T) {
 		project := testutil.NewTestProject("P1")
-		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1 := testutil.NewTestTask("Task A")
+		task2 := testutil.NewTestTask("Task B")
 		task1.ShortID = 5
 		task2.ShortID = 5 // force duplicate
 
@@ -117,8 +115,8 @@ func TestCheckDuplicateShortIDs(t *testing.T) {
 
 	t.Run("no duplicates", func(t *testing.T) {
 		project := testutil.NewTestProject("P1")
-		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1 := testutil.NewTestTask("Task A")
+		task2 := testutil.NewTestTask("Task B")
 		task1.ShortID = 1
 		task2.ShortID = 2
 
@@ -135,8 +133,8 @@ func TestCheckDuplicateShortIDs(t *testing.T) {
 	t.Run("duplicates across projects not flagged", func(t *testing.T) {
 		p1 := testutil.NewTestProject("P1")
 		p2 := testutil.NewTestProject("P2")
-		task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-		task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+		task1 := testutil.NewTestTask("Task A")
+		task2 := testutil.NewTestTask("Task B")
 		task1.ShortID = 1
 		task2.ShortID = 1 // same short ID but different projects — OK
 
@@ -154,9 +152,9 @@ func TestCheckDuplicateShortIDs(t *testing.T) {
 
 func TestCheckBrokenParentRefs(t *testing.T) {
 	project := testutil.NewTestProject("P1")
-	parent := testutil.NewTestTask("Parent", models.TaskTypeEpic)
-	child := testutil.NewTestTask("Child", models.TaskTypeTask)
-	orphan := testutil.NewTestTask("Orphan", models.TaskTypeTask)
+	parent := testutil.NewTestTask("Parent")
+	child := testutil.NewTestTask("Child")
+	orphan := testutil.NewTestTask("Orphan")
 
 	child.ParentID = &parent.ID
 	badID := "nonexistent-uuid"
@@ -177,8 +175,8 @@ func TestCheckBrokenParentRefs(t *testing.T) {
 
 func TestCheckDeadDependencies(t *testing.T) {
 	project := testutil.NewTestProject("P1")
-	task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-	task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+	task1 := testutil.NewTestTask("Task A")
+	task2 := testutil.NewTestTask("Task B")
 	task2.DependsOn = []string{task1.ID}        // valid
 	task1.DependsOn = []string{"nonexistent-x"} // dead
 
@@ -195,36 +193,17 @@ func TestCheckDeadDependencies(t *testing.T) {
 	}
 }
 
-func TestCheckDeadRelatedTo(t *testing.T) {
-	project := testutil.NewTestProject("P1")
-	task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-	task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
-	task1.RelatedTo = []string{task2.ID}            // valid
-	task2.RelatedTo = []string{"nonexistent-rel-x"} // dead
-
-	project.Tasks = []*models.Task{task1, task2}
-
-	results := &doctorResults{}
-	checkDeadDependencies([]*models.Project{project}, results)
-
-	if len(results.deadDependencies) != 1 {
-		t.Fatalf("expected 1 dead RelatedTo ref, got %d", len(results.deadDependencies))
-	}
-	if results.deadDependencies[0].task != task2.ID {
-		t.Errorf("expected task %q, got %q", task2.ID, results.deadDependencies[0].task)
-	}
-}
-
 func TestCheckOrphanedCrossRefs(t *testing.T) {
 	p1 := testutil.NewTestProject("P1")
 	p2 := testutil.NewTestProject("P2")
-	task1 := testutil.NewTestTask("Task A", models.TaskTypeTask)
-	task2 := testutil.NewTestTask("Task B", models.TaskTypeTask)
+	task1 := testutil.NewTestTask("Task A")
+	task2 := testutil.NewTestTask("Task B")
 
 	// Valid cross-project ref
-	task1.DependsOn = []string{p2.Slug + ":" + task2.ID}
-	// Orphaned cross-project ref to nonexistent project
-	task1.RelatedTo = []string{"nonexistent-project:some-task-id"}
+	task1.DependsOn = []string{
+		p2.Slug + ":" + task2.ID,
+		"nonexistent-project:some-task-id",
+	}
 
 	p1.Tasks = []*models.Task{task1}
 	p2.Tasks = []*models.Task{task2}
@@ -248,8 +227,8 @@ func TestCheckOrphanedCrossRefs_ArchivedProjectNotOrphaned(t *testing.T) {
 	archivedProject := testutil.NewTestProject("Archived")
 	archivedProject.Archived = true
 
-	activeTask := testutil.NewTestTask("Active Task", models.TaskTypeTask)
-	archivedTask := testutil.NewTestTask("Archived Task", models.TaskTypeTask)
+	activeTask := testutil.NewTestTask("Active Task")
+	archivedTask := testutil.NewTestTask("Archived Task")
 
 	// Active project references a task in the archived project
 	activeTask.DependsOn = []string{archivedProject.Slug + ":" + archivedTask.ID}
@@ -287,8 +266,8 @@ func TestFixIssues(t *testing.T) {
 	deps, project := setupTestDepsWithProject(t, "FixTest")
 	defer deps.Cleanup()
 
-	task1 := testutil.NewTestTask("Good Task", models.TaskTypeTask)
-	task2 := testutil.NewTestTask("Broken Task", models.TaskTypeTask)
+	task1 := testutil.NewTestTask("Good Task")
+	task2 := testutil.NewTestTask("Broken Task")
 	badParent := "nonexistent-parent"
 	task2.ParentID = &badParent
 	task2.DependsOn = []string{"nonexistent-dep"}
@@ -311,276 +290,6 @@ func TestFixIssues(t *testing.T) {
 	if len(task2.DependsOn) != 0 {
 		t.Errorf("expected DependsOn to be empty, got %v", task2.DependsOn)
 	}
-}
-
-func TestFixIssues_CleansDeadRelatedTo(t *testing.T) {
-	deps, project := setupTestDepsWithProject(t, "FixRelated")
-	defer deps.Cleanup()
-
-	task1 := testutil.NewTestTask("Good Task", models.TaskTypeTask)
-	task2 := testutil.NewTestTask("Broken Related", models.TaskTypeTask)
-	task2.RelatedTo = []string{task1.ID, "nonexistent-rel"}
-
-	project.Tasks = []*models.Task{task1, task2}
-	deps.Repository.Projects[project.ID] = project
-
-	cfg := newTestConfig()
-	fixIssues([]*models.Project{project}, cfg)
-
-	if len(task2.RelatedTo) != 1 {
-		t.Errorf("expected 1 RelatedTo ref after fix, got %d: %v", len(task2.RelatedTo), task2.RelatedTo)
-	}
-	if len(task2.RelatedTo) > 0 && task2.RelatedTo[0] != task1.ID {
-		t.Errorf("expected RelatedTo[0] to be %q, got %q", task1.ID, task2.RelatedTo[0])
-	}
-}
-
-func TestFocusQueueNotNextMigration(t *testing.T) {
-	tmpDir := t.TempDir()
-	project, err := models.NewProject("proj-migrate", "Migrate", "")
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	project.Slug = "migrate"
-	project.Path = filepath.Join(tmpDir, "projects", "migrate")
-
-	queued := testutil.NewTestTask("Legacy queued", models.TaskTypeTask)
-	queued.ShortID = 1
-	queued.WorkflowState = models.StateReady // legacy: queued but not yet StateNext
-	unqueued := testutil.NewTestTask("Unrelated", models.TaskTypeTask)
-	unqueued.ShortID = 2
-	unqueued.WorkflowState = models.StateReady
-	project.Tasks = []*models.Task{queued, unqueued}
-	project.NextShortID = 3
-	project.BuildTaskTree()
-
-	oldRepo := storage.DefaultRepository
-	storage.DefaultRepository = storage.NewFileSystemRepository()
-	defer func() { storage.DefaultRepository = oldRepo }()
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
-	}
-
-	planning := &config.PlanningState{
-		FocusQueue: []config.FocusQueueItem{{TaskID: queued.ID, ProjectID: project.ID}},
-	}
-
-	results := &doctorResults{}
-	checkFocusQueueNotNext(planning, []*models.Project{project}, results)
-	if len(results.focusQueueNotNext) != 1 || results.focusQueueNotNext[0].task != queued.ID {
-		t.Fatalf("expected exactly the legacy queued task flagged, got %+v", results.focusQueueNotNext)
-	}
-
-	fixFocusQueueNotNext(results.focusQueueNotNext, []*models.Project{project})
-
-	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
-	if err := storage.LoadProject(fresh); err != nil {
-		t.Fatalf("reload: %v", err)
-	}
-	if got := fresh.GetTaskByID(queued.ID); got == nil || got.State() != models.StateNext {
-		t.Fatalf("queued task after migration = %v, want StateNext", got.State())
-	}
-	if got := fresh.GetTaskByID(unqueued.ID); got == nil || got.State() != models.StateReady {
-		t.Fatalf("non-queue task should be untouched, got %v", got.State())
-	}
-
-	// The migration is idempotent: a second scan finds nothing to fix.
-	rescanned := &doctorResults{}
-	checkFocusQueueNotNext(planning, []*models.Project{fresh}, rescanned)
-	if len(rescanned.focusQueueNotNext) != 0 {
-		t.Fatalf("expected no issues after migration, got %+v", rescanned.focusQueueNotNext)
-	}
-}
-
-func TestCheckMissingDescriptionMarkers(t *testing.T) {
-	t.Run("flags project with old-format descriptions", func(t *testing.T) {
-		dir := t.TempDir()
-		project := testutil.NewTestProject("OldFormat")
-		project.Path = dir
-
-		task := testutil.NewTestTask("My Task", models.TaskTypeTask)
-		task.Description = "Some description"
-		project.Tasks = []*models.Task{task}
-
-		// Old-format file: description inline, no DESCRIPTION markers
-		content := "## Task: My Task\n<!-- id: " + task.ID + " -->\n\nSome description\n"
-		if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
-			t.Fatalf("failed to write tasks.md: %v", err)
-		}
-
-		results := &doctorResults{}
-		checkMissingDescriptionMarkers([]*models.Project{project}, results)
-
-		if len(results.missingDescMarkers) != 1 {
-			t.Fatalf("expected 1 issue, got %d", len(results.missingDescMarkers))
-		}
-		if results.missingDescMarkers[0].project != "OldFormat" {
-			t.Errorf("expected project 'OldFormat', got %q", results.missingDescMarkers[0].project)
-		}
-	})
-
-	t.Run("no issue when tasks have no descriptions", func(t *testing.T) {
-		dir := t.TempDir()
-		project := testutil.NewTestProject("NoDesc")
-		project.Path = dir
-
-		task := testutil.NewTestTask("My Task", models.TaskTypeTask)
-		project.Tasks = []*models.Task{task}
-
-		content := "## Task: My Task\n<!-- id: " + task.ID + " -->\n"
-		if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
-			t.Fatalf("failed to write tasks.md: %v", err)
-		}
-
-		results := &doctorResults{}
-		checkMissingDescriptionMarkers([]*models.Project{project}, results)
-
-		if len(results.missingDescMarkers) != 0 {
-			t.Fatalf("expected 0 issues, got %d", len(results.missingDescMarkers))
-		}
-	})
-}
-
-func TestCheckMissingDescriptionMarkers_NoFalsePositive_NewFormat(t *testing.T) {
-	dir := t.TempDir()
-	project := testutil.NewTestProject("NewFormat")
-	project.Path = dir
-
-	task := testutil.NewTestTask("My Task", models.TaskTypeTask)
-	task.Description = "Some description"
-	project.Tasks = []*models.Task{task}
-
-	// New-format file: description already wrapped in DESCRIPTION markers
-	content := "## Task: My Task\n<!-- id: " + task.ID + " -->\n\n<!-- DESCRIPTION -->\nSome description\n<!-- /DESCRIPTION -->\n"
-	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	results := &doctorResults{}
-	checkMissingDescriptionMarkers([]*models.Project{project}, results)
-
-	if len(results.missingDescMarkers) != 0 {
-		t.Fatalf("expected 0 issues (already new format), got %d", len(results.missingDescMarkers))
-	}
-}
-
-func TestDoctor_Fix_MigratesDescriptionMarkers(t *testing.T) {
-	dir := t.TempDir()
-	project := testutil.NewTestProject("MigrateTest")
-	project.Path = dir
-
-	task := testutil.NewTestTask("Task With Desc", models.TaskTypeTask)
-	task.ShortID = 1
-	task.Description = "Some description"
-	project.Tasks = []*models.Task{task}
-
-	// Write old-format file
-	content := "## Task: Task With Desc\n<!-- id: " + task.ID + " -->\n\nSome description\n"
-	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("failed to write tasks.md: %v", err)
-	}
-
-	// Check before fix — should be flagged
-	results := &doctorResults{}
-	checkMissingDescriptionMarkers([]*models.Project{project}, results)
-	if len(results.missingDescMarkers) != 1 {
-		t.Fatalf("expected 1 issue before fix, got %d", len(results.missingDescMarkers))
-	}
-
-	// Fix — SaveProjectLocked re-writes tasks.md with DESCRIPTION markers
-	fixMissingDescriptionMarkers(results.missingDescMarkers, []*models.Project{project})
-
-	// Check after fix — should be clean
-	results2 := &doctorResults{}
-	checkMissingDescriptionMarkers([]*models.Project{project}, results2)
-	if len(results2.missingDescMarkers) != 0 {
-		t.Fatalf("expected 0 issues after fix, got %d", len(results2.missingDescMarkers))
-	}
-
-	// Verify the written file contains DESCRIPTION markers
-	raw, err := os.ReadFile(filepath.Join(dir, "tasks.md"))
-	if err != nil {
-		t.Fatalf("failed to read tasks.md: %v", err)
-	}
-	if !strings.Contains(string(raw), "<!-- DESCRIPTION -->") {
-		t.Error("expected DESCRIPTION markers in tasks.md after fix")
-	}
-}
-
-func TestCheckArchiveIndexIssuesAndFix(t *testing.T) {
-	dir := t.TempDir()
-	project := testutil.NewTestProject("Archive Repair")
-	project.Path = dir
-
-	task := archiveAccessTestTask(t, "arch-doctor-repair-0001", 31, models.TaskTypeTask, "Doctor repair target", time.Date(2026, 6, 8, 10, 0, 0, 0, time.Local))
-	writeArchiveAccessArchive(t, project, "completed.md", []*models.Task{task})
-
-	results := &doctorResults{}
-	checkArchiveIndexIssues([]*models.Project{project}, results)
-	if len(results.archiveIndexIssues) != 1 {
-		t.Fatalf("expected 1 archive index issue, got %d", len(results.archiveIndexIssues))
-	}
-	if !strings.Contains(results.archiveIndexIssues[0].detail, "missing") || !strings.Contains(results.archiveIndexIssues[0].detail, "rebuild-index") {
-		t.Fatalf("archive index issue detail is not actionable: %q", results.archiveIndexIssues[0].detail)
-	}
-
-	stdout, _, _ := captureDoctorOutput(t, func() error {
-		fixArchiveIndexIssues(results.archiveIndexIssues, []*models.Project{project})
-		return nil
-	})
-	if !strings.Contains(stdout, "rebuilt archive index") {
-		t.Fatalf("fixArchiveIndexIssues output missing repair confirmation:\n%s", stdout)
-	}
-
-	after := &doctorResults{}
-	checkArchiveIndexIssues([]*models.Project{project}, after)
-	if len(after.archiveIndexIssues) != 0 {
-		t.Fatalf("expected archive index issues to be fixed, got %+v", after.archiveIndexIssues)
-	}
-}
-
-func TestCheckArchiveIndexIssuesReportsCorruptIndex(t *testing.T) {
-	dir := t.TempDir()
-	project := testutil.NewTestProject("Corrupt Archive Index")
-	project.Path = dir
-
-	task := archiveAccessTestTask(t, "arch-doctor-corrupt-0001", 32, models.TaskTypeBug, "Doctor corrupt target", time.Date(2026, 6, 8, 10, 0, 0, 0, time.Local))
-	writeArchiveAccessArchive(t, project, "completed.md", []*models.Task{task})
-	if err := os.WriteFile(filepath.Join(project.Path, ".completed.index.json"), []byte("{not-json"), storage.FilePermissions); err != nil {
-		t.Fatalf("write corrupt index: %v", err)
-	}
-
-	results := &doctorResults{}
-	checkArchiveIndexIssues([]*models.Project{project}, results)
-	if len(results.archiveIndexIssues) != 1 {
-		t.Fatalf("expected 1 archive index issue, got %d", len(results.archiveIndexIssues))
-	}
-	if !strings.Contains(results.archiveIndexIssues[0].detail, "corrupt") || !strings.Contains(results.archiveIndexIssues[0].detail, "doctor --fix") {
-		t.Fatalf("archive index issue detail is not actionable: %q", results.archiveIndexIssues[0].detail)
-	}
-}
-
-func TestReportBatchErrors(t *testing.T) {
-	t.Run("no errors returns nil", func(t *testing.T) {
-		err := ReportBatchErrors(3, nil)
-		if err != nil {
-			t.Errorf("expected nil, got %v", err)
-		}
-	})
-
-	t.Run("partial success returns nil", func(t *testing.T) {
-		err := ReportBatchErrors(2, []string{"task 5: not found"})
-		if err != nil {
-			t.Errorf("expected nil for partial success, got %v", err)
-		}
-	})
-
-	t.Run("total failure returns error", func(t *testing.T) {
-		err := ReportBatchErrors(0, []string{"task 1: not found", "task 2: not found"})
-		if err == nil {
-			t.Error("expected error for total failure, got nil")
-		}
-	})
 }
 
 func captureDoctorOutput(t *testing.T, fn func() error) (stdout string, stderr string, runErr error) {
@@ -613,128 +322,174 @@ func captureDoctorOutput(t *testing.T, fn func() error) (stdout string, stderr s
 	return stdoutBuf.String(), stderrBuf.String(), runErr
 }
 
-func TestRunDoctor_ReportsProjectLoadFailures(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, "config.json")
-	viper.Set("config", configPath)
-	t.Cleanup(func() { viper.Set("config", "") })
+//nolint:govet // The test-local data directory is intentionally independent of the command flag.
+func TestRunDoctorFreshWorkspaceBootstrapsProtectedInboxIdempotently(t *testing.T) {
+	dataDir := t.TempDir()
+	setCommandDataDir(t, dataDir)
 
 	oldRepo := storage.DefaultRepository
 	storage.DefaultRepository = storage.NewFileSystemRepository()
 	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
 
-	project := testutil.NewTestProject("Broken Project")
-	project.Path = filepath.Join(dir, "projects", project.Slug)
-	if err := os.MkdirAll(project.Path, 0o755); err != nil {
-		t.Fatalf("MkdirAll(%q): %v", project.Path, err)
-	}
-
-	parent, err := models.NewTask("parent-task", 1, models.TaskTypeTask, "Leaf parent")
+	first, err := LoadCLIWorkspace()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("first LoadCLIWorkspace: %v", err)
 	}
-	child, err := models.NewTask("child-story", 2, models.TaskTypeStory, "Story child")
+	inbox := first.Runtime.SystemInboxProject()
+	if inbox == nil {
+		t.Fatal("fresh workspace has no protected system Inbox")
+	}
+	if inbox.ID != first.Runtime.Catalog().SystemInboxProjectID ||
+		inbox.Name != config.SystemInboxName ||
+		inbox.Slug != config.SystemInboxSlug {
+		t.Fatalf("fresh protected Inbox = %+v, catalog id = %q", inbox, first.Runtime.Catalog().SystemInboxProjectID)
+	}
+	taskPath := storage.TasksFilePath(inbox.Path)
+	before, err := os.ReadFile(taskPath)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("read fresh Inbox task document: %v", err)
 	}
-	child.ParentID = &parent.ID
-	content := storage.WriteTasksMarkdownWithProjectMetadata(project.Name, []*models.Task{parent, child}, nil, nil)
-	if writeErr := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); writeErr != nil {
-		t.Fatalf("WriteFile(tasks.md): %v", writeErr)
+	document, err := storage.ParseProjectDocument(string(before))
+	if err != nil {
+		t.Fatalf("parse fresh Inbox task document: %v", err)
 	}
-
-	domains := config.NewDomains()
-	domains.Catalog.UpsertProject(project)
-	domains.Machine.CurrentProject = project.ID
-	cfg := config.NewRuntimeState(dir, domains)
-	if saveErr := saveTestRuntime(config.NewManager(configPath), cfg); saveErr != nil {
-		t.Fatalf("Save(config): %v", saveErr)
+	if len(document.Tasks) != 0 {
+		t.Fatalf("fresh Inbox has %d tasks, want 0", len(document.Tasks))
 	}
 
-	cmd := &cobra.Command{}
-	cmd.Flags().Bool("fix", false, "")
-	stdout, stderr, err := captureDoctorOutput(t, func() error {
-		return runDoctor(cmd, nil)
+	second, err := LoadCLIWorkspace()
+	if err != nil {
+		t.Fatalf("second LoadCLIWorkspace: %v", err)
+	}
+	if got := second.Runtime.Catalog().SystemInboxProjectID; got != inbox.ID {
+		t.Fatalf("repeat bootstrap changed Inbox id from %q to %q", inbox.ID, got)
+	}
+	after, err := os.ReadFile(taskPath)
+	if err != nil {
+		t.Fatalf("read Inbox task document after repeat load: %v", err)
+	}
+	if !bytes.Equal(after, before) {
+		t.Fatal("repeat workspace load rewrote the canonical Inbox task document")
+	}
+
+	command := &cobra.Command{}
+	command.Flags().Bool("fix", false, "")
+	stdout, stderr, runErr := captureDoctorOutput(t, func() error {
+		return runDoctor(command, nil)
 	})
-	if err == nil {
-		t.Fatal("runDoctor() error = nil, want load failure")
-	}
-	if !strings.Contains(stdout, "Project load failures: 1") {
-		t.Fatalf("stdout = %q, want project load failures section", stdout)
-	}
-	if !strings.Contains(stdout, "cannot be child") {
-		t.Fatalf("stdout = %q, want actionable load error detail", stdout)
-	}
-	if strings.Contains(stdout, "All checks passed") {
-		t.Fatalf("stdout = %q, should not report success", stdout)
+	if runErr != nil {
+		t.Fatalf("doctor on fresh workspace: %v\n%s", runErr, stdout)
 	}
 	if stderr != "" {
-		t.Fatalf("stderr = %q, want empty", stderr)
+		t.Fatalf("doctor stderr = %q, want empty", stderr)
+	}
+	if !strings.Contains(stdout, "Workspace integrity issues: 0") ||
+		!strings.Contains(stdout, "[Migration] workspace schema 5 is current") ||
+		!strings.Contains(stdout, "[Undo] workspace ledger is valid (0 undo entries, 0 redo entries)") ||
+		!strings.Contains(stdout, "[Migration] clean workspace; no recorded pre-v5 migration") ||
+		!strings.Contains(stdout, "All checks passed") {
+		t.Fatalf("doctor did not report a healthy fresh workspace:\n%s", stdout)
+	}
+	if _, err := os.Lstat(config.PreSimplificationV5BackupsDir(dataDir)); !os.IsNotExist(err) {
+		t.Fatalf("doctor created or changed the migration backups directory: %v", err)
 	}
 }
 
-func TestRunDoctorFix_PersistsAutoRepairedDualSections(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, "config.json")
-	viper.Set("config", configPath)
-	t.Cleanup(func() { viper.Set("config", "") })
-
-	oldRepo := storage.DefaultRepository
-	storage.DefaultRepository = storage.NewFileSystemRepository()
-	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
-
-	project := testutil.NewTestProject("Legacy Project")
-	project.Path = filepath.Join(dir, "projects", project.Slug)
-	if err := os.MkdirAll(project.Path, 0o755); err != nil {
-		t.Fatalf("MkdirAll(%q): %v", project.Path, err)
+func TestCheckProtectedInboxReportsMissingAndInvalidIdentity(t *testing.T) {
+	results := &doctorResults{}
+	checkProtectedInbox(config.NewWorkspaceCatalog(), results)
+	if len(results.workspaceIssues) != 1 || !strings.Contains(results.workspaceIssues[0].detail, "ID is missing") {
+		t.Fatalf("missing Inbox issues = %+v", results.workspaceIssues)
 	}
 
-	legacyTaskSectionField := "custom" + "_section"
-	content := "# Project: Legacy Project\n" +
-		"<!-- sections: Next;Sprint-1 -->\n\n" +
-		"## Task: Legacy dual section\n" +
-		"<!-- id: task-1, status: todo, priority: 1, section: Next, " + legacyTaskSectionField + ": Sprint-1 -->\n"
-	if err := os.WriteFile(filepath.Join(project.Path, "tasks.md"), []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile(tasks.md): %v", err)
+	catalog := config.NewWorkspaceCatalog()
+	project := testutil.NewTestProject("Wrong Name")
+	project.Slug = "wrong-name"
+	if err := catalog.UpsertProject(project); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+	catalog.SystemInboxProjectID = project.ID
+	results = &doctorResults{}
+	checkProtectedInbox(catalog, results)
+	if len(results.workspaceIssues) != 1 || !strings.Contains(results.workspaceIssues[0].detail, "want \"Inbox\"/\"inbox\"") {
+		t.Fatalf("invalid Inbox identity issues = %+v", results.workspaceIssues)
+	}
+}
+
+//nolint:govet // The test-local data directory is intentionally independent of the command flag.
+func TestCheckMigrationSnapshotsReportsIncompletePairWithoutMutation(t *testing.T) {
+	dataDir := t.TempDir()
+	backupsDir := config.PreSimplificationV5BackupsDir(dataDir)
+	if err := os.MkdirAll(backupsDir, 0o700); err != nil {
+		t.Fatalf("create backups dir: %v", err)
+	}
+	archivePath := filepath.Join(backupsDir, "pre-simplification-v5-20260729T010203Z.tar.gz")
+	want := []byte("immutable archive")
+	if err := os.WriteFile(archivePath, want, 0o400); err != nil {
+		t.Fatalf("write archive: %v", err)
 	}
 
-	domains := config.NewDomains()
-	domains.Catalog.UpsertProject(project)
-	domains.Machine.CurrentProject = project.ID
-	cfg := config.NewRuntimeState(dir, domains)
-	if err := saveTestRuntime(config.NewManager(configPath), cfg); err != nil {
-		t.Fatalf("Save(config): %v", err)
+	results := &doctorResults{}
+	checkMigrationSnapshots(dataDir, config.V5ConfigSchemaVersion, results)
+	if len(results.workspaceIssues) != 1 ||
+		!strings.Contains(results.workspaceIssues[0].detail, "missing its audit report") {
+		t.Fatalf("snapshot issues = %+v", results.workspaceIssues)
+	}
+	got, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatalf("read archive after doctor check: %v", err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("snapshot check changed the rollback archive")
+	}
+	auditPath := filepath.Join(backupsDir, "pre-simplification-v5-20260729T010203Z.audit.md")
+	if _, err := os.Lstat(auditPath); !os.IsNotExist(err) {
+		t.Fatalf("snapshot check recreated a missing audit report: %v", err)
+	}
+}
+
+//nolint:govet // The test-local data directory is intentionally independent of the command flag.
+func TestCheckWorkspaceUndoLedgerReportsCorruption(t *testing.T) {
+	dataDir := t.TempDir()
+	undoDir := config.UndoLedgerDir(dataDir)
+	if err := os.MkdirAll(undoDir, 0o700); err != nil {
+		t.Fatalf("create undo dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(undoDir, "ledger.json"), []byte("{not-json"), 0o600); err != nil {
+		t.Fatalf("write corrupt ledger: %v", err)
 	}
 
-	cmd := &cobra.Command{}
-	cmd.Flags().Bool("fix", true, "")
-	stdout, _, err := captureDoctorOutput(t, func() error {
-		return runDoctor(cmd, nil)
-	})
-	if err == nil {
-		t.Fatal("runDoctor() error = nil, want issue count after fix")
+	results := &doctorResults{}
+	checkWorkspaceUndoLedger(dataDir, results)
+	if len(results.workspaceIssues) != 1 ||
+		!strings.Contains(results.workspaceIssues[0].detail, "failed to parse undo ledger") {
+		t.Fatalf("undo issues = %+v", results.workspaceIssues)
 	}
-	if !strings.Contains(stdout, "Auto-repaired on load: 1") {
-		t.Fatalf("stdout = %q, want auto-repair section", stdout)
+}
+
+//nolint:govet // The test-local data directory is intentionally independent of the command flag.
+func TestCheckRetainedV5DomainsDoesNotCreateRetiredFiles(t *testing.T) {
+	dataDir := t.TempDir()
+	if err := os.MkdirAll(config.InternalDir(dataDir), 0o700); err != nil {
+		t.Fatalf("create internal dir: %v", err)
 	}
-	if !strings.Contains(stdout, "persisted auto-repaired data") {
-		t.Fatalf("stdout = %q, want persisted repair confirmation", stdout)
+	for _, path := range []string{
+		config.WorkspaceCatalogPath(dataDir),
+		config.PlanningStatePath(dataDir),
+	} {
+		if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+			t.Fatalf("write retained domain: %v", err)
+		}
 	}
 
-	reloaded := testutil.NewTestProject("Legacy Project")
-	reloaded.Path = project.Path
-	result, loadErr := storage.LoadProjectWithWarnings(reloaded)
-	if loadErr != nil {
-		t.Fatalf("LoadProjectWithWarnings() after doctor --fix failed: %v", loadErr)
+	results := &doctorResults{}
+	checkRetainedDomainArtifacts(dataDir, config.V5ConfigSchemaVersion, results)
+	if len(results.workspaceIssues) != 0 {
+		t.Fatalf("retained v5 domain issues = %+v", results.workspaceIssues)
 	}
-	if len(result.Warnings) != 0 {
-		t.Fatalf("warnings after doctor --fix = %v, want none", result.Warnings)
-	}
-	if len(reloaded.Tasks) != 1 {
-		t.Fatalf("loaded %d tasks, want 1", len(reloaded.Tasks))
-	}
-	task := reloaded.Tasks[0]
-	if got := task.State(); got != models.StateReady {
-		t.Fatalf("task state = %q, want ready after persisted repair", got)
+	for _, path := range []string{config.SettingsPath(dataDir), config.AutomationPath(dataDir)} {
+		if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			t.Fatalf("domain check recreated retired file %s: %v", path, err)
+		}
 	}
 }

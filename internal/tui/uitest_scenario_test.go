@@ -213,90 +213,6 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioFinderSearchStartsBlank(t *testing.T) {
-	driver, ws, err := NewFixtureDriver(FixtureRich, 100, 35)
-	if err != nil {
-		t.Fatalf("NewFixtureDriver: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	sc := UITestScenario{
-		Name: "finder search starts blank",
-		Actions: []UITestAction{
-			{Type: UITestActionKey, Key: ":"},
-			{Type: UITestActionText, Text: "choose scope"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionAssert, Assert: "view", Value: "ContextHub"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result := driver.RunScenarioResult(sc, RunScenarioOptions{})
-	if !result.OK {
-		t.Fatalf("Finder search should not inherit persisted category, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioRoadmapLayoutNoOverflow(t *testing.T) {
-	raw := `{
-		"name": "rich roadmap layout",
-		"fixture": "rich",
-		"size": "100x35",
-		"actions": [
-			{"type": "command", "command": "roadmap"},
-			{"type": "assert", "assert": "view", "value": "Roadmap"},
-			{"type": "assert", "assert": "no_layout_issues"}
-		]
-	}`
-	sc, err := ParseScenario([]byte(raw))
-	if err != nil {
-		t.Fatalf("ParseScenario error: %v", err)
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("roadmap layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioRoadmapEmptyForecastsNoOverflow(t *testing.T) {
-	raw := `{
-		"name": "narrow roadmap empty forecasts layout",
-		"fixture": "narrow",
-		"size": "72x20",
-		"actions": [
-			{"type": "command", "command": "roadmap"},
-			{"type": "assert", "assert": "view", "value": "Roadmap"},
-			{"type": "assert", "assert": "no_layout_issues"},
-			{"type": "key", "key": "tab"},
-			{"type": "wait"},
-			{"type": "assert", "assert": "no_layout_issues"},
-			{"type": "key", "key": "tab"},
-			{"type": "wait"},
-			{"type": "assert", "assert": "no_layout_issues"}
-		]
-	}`
-	sc, err := ParseScenario([]byte(raw))
-	if err != nil {
-		t.Fatalf("ParseScenario error: %v", err)
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("roadmap empty forecasts layout should pass, got error: %+v", result.Error)
-	}
-}
-
 func TestUITestScenarioTaskDetailFromGlobalInboxModeNoOverflow(t *testing.T) {
 	raw := `{
 		"name": "task detail from global inbox layout",
@@ -348,35 +264,12 @@ func TestUITestScenarioHelpMinimumHeightNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioNotificationCenterAlertHeavyMinimumLayoutNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "notification center alert-heavy minimum layout",
-		Fixture: "alerts",
-		Size:    "72x20",
-		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "notifications"},
-			{Type: UITestActionAssert, Assert: "view", Value: "NotificationCenter"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("notification center layout should pass, got error: %+v", result.Error)
-	}
-}
-
 func TestUITestScenarioDashboardNarrowLayoutNoOverflow(t *testing.T) {
 	// Regression: at narrow widths (<100 cols) the dashboard stacks its info
 	// cards vertically. Each card used to be padded to the full section height,
 	// so N cards overflowed the terminal. Fixtures with 0 info cards (empty)
 	// never regressed, which is why the earlier regression set missed this.
-	fixtures := []string{"rich", "narrow", "alerts", "workflow"}
+	fixtures := []string{"rich", "narrow", "busy", "workflow"}
 	sizes := []string{"80x24", "72x20"}
 
 	for _, fixture := range fixtures {
@@ -406,10 +299,10 @@ func TestUITestScenarioDashboardNarrowLayoutNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioDashboardSearchAlertHeavyMinimumLayoutNoOverflow(t *testing.T) {
+func TestUITestScenarioDashboardSearchBusyMinimumLayoutNoOverflow(t *testing.T) {
 	sc := UITestScenario{
-		Name:    "dashboard search alert-heavy minimum layout",
-		Fixture: "alerts",
+		Name:    "dashboard search busy minimum layout",
+		Fixture: "busy",
 		Size:    "60x20",
 		Actions: []UITestAction{
 			{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"},
@@ -424,37 +317,7 @@ func TestUITestScenarioDashboardSearchAlertHeavyMinimumLayoutNoOverflow(t *testi
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	if !result.OK {
-		t.Fatalf("dashboard search alert-heavy layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioWorkflowWizardFinalReviewMinimumLayoutNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "workflow wizard final review minimum layout",
-		Fixture: "rich",
-		Size:    "72x20",
-		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "workflow rules"},
-			{Type: UITestActionKey, Key: "w"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionText, Text: "done"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionAssert, Assert: "view", Value: "WorkflowWizard"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("workflow wizard final review layout should pass, got error: %+v", result.Error)
+		t.Fatalf("dashboard search busy layout should pass, got error: %+v", result.Error)
 	}
 }
 
@@ -465,9 +328,6 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 		command string
 		view    string
 	}{
-		{"settings", nil, "settings", "Settings"},
-		{"metrics dashboard", nil, "metrics dashboard", "MetricsDashboard"},
-		{"task template creator", nil, "create task template", "TaskTemplateCreator"},
 		{"project creator", nil, "new project", "ProjectCreator"},
 		// rename project now targets the project under the visible Outliner
 		// cursor (not the stale current project), so reset to All and land the
@@ -479,7 +339,6 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 			{Type: UITestActionKey, Key: "down"},
 			{Type: UITestActionKey, Key: "down"},
 		}, "rename project", "ProjectEditor"},
-		{"workflow rule creator", nil, "new workflow rule", "WorkflowRuleCreator"},
 		// Project Inbox mode needs a project under the cursor in the global
 		// Outliner, so switch to All first and land on a task row.
 		{"project Inbox mode", []UITestAction{
@@ -556,42 +415,6 @@ func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioMinimumTerminalEmptyStatesNoOverflow(t *testing.T) {
-	tests := []struct {
-		name    string
-		command string
-		view    string
-	}{
-		{"workflow rules empty state", "workflow rules", "WorkflowRules"},
-		{"task templates empty state", "task templates", "TaskTemplates"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sc := UITestScenario{
-				Name:    tt.name + " minimum terminal layout",
-				Fixture: "rich",
-				Size:    "60x20",
-				Actions: []UITestAction{
-					{Type: UITestActionCommand, Command: tt.command},
-					{Type: UITestActionAssert, Assert: "view", Value: tt.view},
-					{Type: UITestActionAssert, Assert: "no_layout_issues"},
-				},
-			}
-
-			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-			if err != nil {
-				t.Fatalf("RunScenarioFixture error: %v", err)
-			}
-			t.Cleanup(func() { _ = ws.Cleanup() })
-
-			if !result.OK {
-				t.Fatalf("%s layout should pass, got error: %+v", tt.name, result.Error)
-			}
-		})
-	}
-}
-
 func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 	longValue := strings.Repeat("abcdefghijklmnopqrstuvwxyz", 4)
 	tests := []struct {
@@ -650,151 +473,6 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioScoreProfilePresetPickerMinimumLayoutNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "score profile preset picker minimum layout",
-		Fixture: "rich",
-		Size:    "72x20",
-		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "scoring profiles"},
-			{Type: UITestActionKey, Key: "a"},
-			{Type: UITestActionAssert, Assert: "view", Value: "ScoreProfileManager"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("score profile preset picker layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioScoreProfileDetailPaneBoundaryNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "score profile detail pane boundary layout",
-		Fixture: "rich",
-		Size:    "100x35",
-		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "scoring profiles"},
-			{Type: UITestActionKey, Key: "a"},
-			{Type: UITestActionKey, Key: "enter"},
-			{Type: UITestActionResize, Width: 81, Height: 20},
-			{Type: UITestActionAssert, Assert: "view", Value: "ScoreProfileManager"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("score profile detail pane boundary layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioLongNoMatchSearchQueriesMinimumLayoutNoOverflow(t *testing.T) {
-	tests := []struct {
-		name    string
-		view    string
-		actions []UITestAction
-	}{
-		{
-			name: "finder key",
-			view: "Finder",
-			actions: []UITestAction{
-				{Type: UITestActionKey, Key: ":"},
-				{Type: UITestActionText, Text: strings.Repeat("a", 56)},
-			},
-		},
-		{
-			name: "finder command",
-			view: "Finder",
-			actions: []UITestAction{
-				{Type: UITestActionCommand, Command: "finder"},
-				{Type: UITestActionText, Text: strings.Repeat("a", 60)},
-			},
-		},
-		{
-			name: "notes search",
-			view: "NotesSearch",
-			actions: []UITestAction{
-				// Scope into the fixture project through the combined Scope Hub
-				// so "show notes" resolves the active project focus. The global
-				// All root is empty, so without a focus the notes command correctly
-				// refuses to open a stale off-screen project (FR17-003).
-				{Type: UITestActionCommand, Command: "choose scope"},
-				{Type: UITestActionKey, Key: "/"},
-				{Type: UITestActionText, Text: "rprj"},
-				{Type: UITestActionKey, Key: "enter"},
-				{Type: UITestActionKey, Key: "G"},
-				{Type: UITestActionKey, Key: "enter"},
-				{Type: UITestActionCommand, Command: "show notes"},
-				{Type: UITestActionCommand, Command: "search notes"},
-				{Type: UITestActionText, Text: strings.Repeat("a", 72)},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actions := append([]UITestAction{}, tt.actions...)
-			actions = append(actions,
-				UITestAction{Type: UITestActionAssert, Assert: "view", Value: tt.view},
-				UITestAction{Type: UITestActionAssert, Assert: "no_layout_issues"},
-			)
-			sc := UITestScenario{
-				Name:    tt.name + " long no-match query minimum layout",
-				Fixture: "rich",
-				Size:    "72x20",
-				Actions: actions,
-			}
-
-			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-			if err != nil {
-				t.Fatalf("RunScenarioFixture error: %v", err)
-			}
-			t.Cleanup(func() { _ = ws.Cleanup() })
-
-			if !result.OK {
-				t.Fatalf("%s layout should pass, got error: %+v", tt.name, result.Error)
-			}
-		})
-	}
-}
-
-func TestUITestScenarioFinderTaskActionModeLongTitleNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "Finder task action mode long title layout",
-		Fixture: "narrow",
-		Size:    "72x20",
-		Actions: []UITestAction{
-			{Type: UITestActionKey, Key: ":"},
-			{Type: UITestActionText, Text: ":task "},
-			{Type: UITestActionKey, Key: "tab"},
-			{Type: UITestActionAssert, Assert: "view", Value: "Finder"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("Finder task action mode layout should pass, got error: %+v", result.Error)
-	}
-}
-
 func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 	views := []struct {
 		name    string
@@ -804,7 +482,6 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 		{"attachments", "task attachments", "TaskAttachments"},
 		{"comments", "task comments", "TaskComments"},
 		{"decisions", "manage decisions", "TaskDecisions"},
-		{"activity", "task activity", "TaskActivity"},
 	}
 
 	for _, size := range []string{"100x35", "72x20", "60x20"} {
@@ -860,57 +537,6 @@ func TestUITestScenarioExportProjectStatusLayoutNoOverflow(t *testing.T) {
 
 	if !result.OK {
 		t.Fatalf("export project status layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioMessageLogExportProjectMinimumLayoutNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "message log export project minimum layout",
-		Fixture: "rich",
-		Size:    "60x20",
-		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "export project"},
-			{Type: UITestActionCommand, Command: "message log"},
-			{Type: UITestActionAssert, Assert: "view", Value: "MessageLog"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("message log export project layout should pass, got error: %+v", result.Error)
-	}
-}
-
-func TestUITestScenarioWorkflowRuleCreatorWideLayoutsNoOverflow(t *testing.T) {
-	for _, size := range []string{"100x30", "100x35", "120x40"} {
-		t.Run(size, func(t *testing.T) {
-			sc := UITestScenario{
-				Name:    "workflow rule creator wide layout",
-				Fixture: "rich",
-				Size:    size,
-				Actions: []UITestAction{
-					{Type: UITestActionCommand, Command: "new workflow rule"},
-					{Type: UITestActionAssert, Assert: "view", Value: "WorkflowRuleCreator"},
-					{Type: UITestActionAssert, Assert: "no_layout_issues"},
-				},
-			}
-
-			result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-			if err != nil {
-				t.Fatalf("RunScenarioFixture error: %v", err)
-			}
-			t.Cleanup(func() { _ = ws.Cleanup() })
-
-			if !result.OK {
-				t.Fatalf("workflow rule creator layout should pass, got error: %+v", result.Error)
-			}
-		})
 	}
 }
 

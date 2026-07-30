@@ -32,6 +32,24 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	if sourceTask != task {
 		return nil, fmt.Errorf("task %q does not match source project task", task.ID)
 	}
+	prospectiveMovedIDs := map[string]bool{task.ID: true}
+	for changed := true; changed; {
+		changed = false
+		for _, candidate := range p.Tasks {
+			if candidate == nil || candidate.ParentID == nil || prospectiveMovedIDs[candidate.ID] {
+				continue
+			}
+			if prospectiveMovedIDs[*candidate.ParentID] {
+				prospectiveMovedIDs[candidate.ID] = true
+				changed = true
+			}
+		}
+	}
+	for _, candidate := range dest.Tasks {
+		if candidate != nil && prospectiveMovedIDs[candidate.ID] {
+			return nil, fmt.Errorf("destination project already contains task %q", candidate.ID)
+		}
+	}
 
 	// Build tree to ensure parent-child relationships are set
 	p.BuildTaskTree()
@@ -69,7 +87,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	p.Tasks = newTasks
 	p.UpdatedAt = now
 
-	// Clear same-project dependencies and RelatedTo in source project that pointed to moved tasks.
+	// Clear same-project dependencies in the source project that pointed to moved tasks.
 	// Cross-project qualified references are never affected here since movedIDs only contains
 	// plain task UUIDs.
 	for _, t := range p.Tasks {
@@ -81,17 +99,6 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		}
 		if len(newDeps) != len(t.DependsOn) {
 			t.DependsOn = newDeps
-			t.UpdatedAt = now
-		}
-
-		newRelated := make([]string, 0, len(t.RelatedTo))
-		for _, relID := range t.RelatedTo {
-			if !movedIDs[relID] {
-				newRelated = append(newRelated, relID)
-			}
-		}
-		if len(newRelated) != len(t.RelatedTo) {
-			t.RelatedTo = newRelated
 			t.UpdatedAt = now
 		}
 	}
@@ -111,8 +118,8 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	}, nil
 }
 
-// rewriteMovedTaskRefs strips same-project DependsOn/RelatedTo entries that
-// point outside the moved set. Cross-project qualified refs are preserved.
+// rewriteMovedTaskRefs strips same-project DependsOn entries that point outside
+// the moved set. Cross-project qualified refs are preserved.
 // Returns the dropped dependency IDs so the caller can report them.
 func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
 	var dropped []string
@@ -125,14 +132,6 @@ func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
 		}
 	}
 	t.DependsOn = newDeps
-
-	newRelated := make([]string, 0, len(t.RelatedTo))
-	for _, relID := range t.RelatedTo {
-		if ParseTaskRef(relID).IsCrossProject() || movedIDs[relID] {
-			newRelated = append(newRelated, relID)
-		}
-	}
-	t.RelatedTo = newRelated
 	return dropped
 }
 

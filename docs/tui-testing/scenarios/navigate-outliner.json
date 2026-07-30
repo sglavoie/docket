@@ -4,16 +4,18 @@
   "size": "120x40",
   "actions": [
     { "type": "resize", "width": 120, "height": 40 },
-    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "command", "label": "reset to All over All Projects", "command": "Reset to All Projects" },
+    { "type": "command", "label": "reset to All over All Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "open the mode finder", "key": "m" },
-    { "type": "text", "label": "find Due", "text": "due" },
-    { "type": "key", "label": "activate Due", "key": "enter" },
+    { "type": "key", "label": "cycle to Inbox", "key": "tab" },
+    { "type": "key", "label": "cycle to Next", "key": "tab" },
+    { "type": "key", "label": "cycle to Backlog", "key": "tab" },
+    { "type": "key", "label": "cycle to Due", "key": "tab" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "◆ Due" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

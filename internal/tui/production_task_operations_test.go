@@ -3,14 +3,13 @@ package tui
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // productionTaskShape is one live task arrangement the manifest is exercised
-// against. setup runs before every probe so the paired park/pin/dim halves each
-// get a context where they are legally offered.
+// against. setup runs before every probe so paired operations get a context
+// where they are legally offered.
 type productionTaskShape struct {
 	name  string
 	setup func()
@@ -20,7 +19,7 @@ type productionTaskShape struct {
 // productionTaskOperationShapes builds the real registry over a hierarchy that
 // covers every structural precondition in the manifest: a nested task that can
 // outdent and reparent, a root task that can indent, a second project for
-// move-project, and the parked/pinned/dimmed variants.
+// move-project and the pinned variant.
 func productionTaskOperationShapes(
 	t *testing.T,
 ) (*AppModel, *models.Project, []productionTaskShape) {
@@ -32,9 +31,7 @@ func productionTaskOperationShapes(
 	loose := project.GetTaskByID("loose")
 
 	reset := func() {
-		loose.ParkedAt = nil
 		loose.Pinned = false
-		loose.Dimmed = false
 	}
 	shape := func(name string, task *models.Task, mutate func()) productionTaskShape {
 		return productionTaskShape{
@@ -51,12 +48,7 @@ func productionTaskOperationShapes(
 	return model, project, []productionTaskShape{
 		shape("root task", loose, nil),
 		shape("nested task", story, nil),
-		shape("parked task", loose, func() {
-			parked := time.Now()
-			loose.ParkedAt = &parked
-		}),
 		shape("pinned task", loose, func() { loose.Pinned = true }),
-		shape("dimmed task", loose, func() { loose.Dimmed = true }),
 	}
 }
 

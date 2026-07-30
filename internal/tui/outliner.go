@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -31,12 +32,16 @@ type CrossProjectZoomEntry struct {
 type OutlinerModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	PrimaryViewBundle
 	MultiSelectState
 
+	runtime        *config.RuntimeState
+	taskItem       TaskItemCoordinator
+	projectService *ProjectService
+	quickEdit      *QuickEditComponent
+
 	// Queue / daily-plan indicator support
-	queueIDs     map[TaskIdentity]bool
-	dailyPlanIDs map[TaskIdentity]bool
+	queueIDs map[TaskIdentity]bool
+	todayIDs map[TaskIdentity]bool
 
 	project *models.Project
 
@@ -51,16 +56,13 @@ type OutlinerModel struct {
 	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
 	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
 
-	filter           FilterState      // Unified filter state (common + sections + actionable)
-	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
+	filter FilterState // Unified filter state (common + sections + actionable)
 
 	pinnedTagTab      map[string]int        // Active pinned tag tab index per projectID (0 = All)
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool       // Section collapse state for All mode
 
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
-
-	archiveTargetProject *models.Project // Project to archive completed tasks for when "archive-tasks" confirms
 
 	undo UndoContext // Action label and context for next undo snapshot
 
@@ -85,15 +87,17 @@ type OutlinerModel struct {
 
 	// Cross-project mode fields (used when m.project == nil)
 	loadedProjects        []*models.Project // Successfully loaded projects
-	crossLoading          bool              // True while cross-project load is in progress
-	crossSpinnerVisible   bool              // True once the 200ms delay has elapsed during load
-	crossLoadGen          int               // Generation counter; discards stale load results
-	crossSpinner          SpinnerModel      // View-local spinner, independent of global save spinner
-	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
-	crossReloadTabName    string            // Pinned tag tab name preserved while async reload clears loadedProjects
-	crossReloadTabSet     bool              // True when crossReloadTabName is an intentional live selection, including All
-	crossReloadProjectID  string            // Project owning the cursor task captured before an async reload
-	crossReloadTaskID     string            // Cursor task captured before an async reload; restored after rows rebuild
+	workspaceResolver     *app.WorkspaceResolver
+	crossLoading          bool            // True while cross-project load is in progress
+	crossSpinnerVisible   bool            // True once the 200ms delay has elapsed during load
+	crossLoadGen          int             // Generation counter; discards stale load results
+	crossSpinner          SpinnerModel    // View-local spinner, independent of global save spinner
+	crossQuickEditProject *models.Project // Resolved project for quick edit in cross-project mode
+	crossReloadTabName    string          // Pinned tag tab name preserved while async reload clears loadedProjects
+	crossReloadTabSet     bool            // True when crossReloadTabName is an intentional live selection, including All
+	crossReloadProjectID  string          // Project owning the cursor task captured before an async reload
+	crossReloadTaskID     string          // Cursor task captured before an async reload; restored after rows rebuild
+	crossReloadFromTop    bool            // One-shot scope-change guard that suppresses stale cursor restoration
 
 	// Memoization guard for crossProjectRebuildRows
 	crossLastRowsFingerprint string
@@ -114,34 +118,16 @@ type OutlinerModel struct {
 	// bottom of the stack is the base all-projects frame.
 	scopeStack []outlinerScopeFrame
 
-	// reviewCollapsedSections tracks which review section headers are collapsed,
-	// keyed by the header's CollapseKey ("_rv:*" sentinel). Session-only, shared
-	// by both review modes; distinct key spaces keep Daily Review and Activity
-	// folds independent.
-	reviewCollapsedSections map[string]bool
-
-	// modePicker is the inline searchable, categorized mode selector opened with
-	// P. Nil when closed; when non-nil it intercepts key input in handleKeyMsg.
-	modePicker *outlinerModePicker
-
 	// operationRegistry projects help, handled keys, and footer hints from the
 	// same operation metadata used by shell dispatch.
 	operationRegistry *OperationRegistry
 
 	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
 	openLoops OpenLoops
-
-	// alertCount mirrors AppModel.alertCount() for the title-row notification
-	// indicator, which the outliner composes itself rather than receiving as a
-	// post-render overlay.
-	alertCount int
 }
 
 // setOpenLoops injects the latest cross-project open-loop counts into the view.
 func (m *OutlinerModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
-
-// setAlertCount injects the latest proactive-alert count into the view.
-func (m *OutlinerModel) setAlertCount(count int) { m.alertCount = count }
 
 func (m *OutlinerModel) resetViewScrollOffset() {
 	m.viewScrollOffset = 0
@@ -166,8 +152,11 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
+	_ = cfgManager
 	m := &OutlinerModel{
-		PrimaryViewBundle: NewPrimaryViewBundle(cfgManager, runtime),
+		runtime:           runtime,
+		projectService:    NewProjectService(),
+		quickEdit:         NewQuickEditComponent(),
 		project:           project,
 		primaryMode:       ModeAll,
 		filterBar:         NewFilterBarComponent(),
@@ -182,6 +171,11 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
 	return m
+}
+
+// SetTaskItemCoordinator wires the retained application mutation seam.
+func (m *OutlinerModel) SetTaskItemCoordinator(coordinator TaskItemCoordinator) {
+	m.taskItem = coordinator
 }
 
 // Init implements tea.Model.

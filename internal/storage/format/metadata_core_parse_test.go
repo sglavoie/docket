@@ -107,16 +107,15 @@ func TestParseMetadata(t *testing.T) {
 			warnings: 0,
 		},
 		{
-			name:    "task with weekly recurrence and weekdays",
-			metaStr: "id: t6, status: todo, priority: 2, recur: 1w:mon,wed,fri",
+			name:    "task with multi-week recurrence",
+			metaStr: "id: t6, status: todo, priority: 2, recur: 2w",
 			want: &models.Task{
 				ID:            "t6",
 				WorkflowState: models.StateReady,
 				Priority:      2,
 				Recurrence: &models.RecurrencePattern{
-					Interval: 1,
+					Interval: 2,
 					Unit:     models.RecurrenceWeekly,
-					Weekdays: []int{1, 3, 5},
 				},
 			},
 			warnings: 0,
@@ -265,7 +264,6 @@ func TestParseMetadata_EmptyAndMalformedComment(t *testing.T) {
 func TestParseMetadata_DedupsDependsOn(t *testing.T) {
 	task := &models.Task{
 		DependsOn: []string{},
-		RelatedTo: []string{},
 	}
 	_ = ParseMetadata(task, "id: abc, depends: dep1;dep2;dep1;dep3;dep2")
 	if len(task.DependsOn) != 3 {
@@ -279,27 +277,9 @@ func TestParseMetadata_DedupsDependsOn(t *testing.T) {
 	}
 }
 
-func TestParseMetadata_DedupsRelatedTo(t *testing.T) {
-	task := &models.Task{
-		DependsOn: []string{},
-		RelatedTo: []string{},
-	}
-	_ = ParseMetadata(task, "id: abc, related: rel1;rel2;rel1;rel3;rel2")
-	if len(task.RelatedTo) != 3 {
-		t.Errorf("expected 3 unique related, got %d: %v", len(task.RelatedTo), task.RelatedTo)
-	}
-	want := []string{"rel1", "rel2", "rel3"}
-	for i, w := range want {
-		if i >= len(task.RelatedTo) || task.RelatedTo[i] != w {
-			t.Errorf("RelatedTo[%d] = %q, want %q", i, task.RelatedTo[i], w)
-		}
-	}
-}
-
 func TestParseMetadata_NoDuplicateWithSingleDep(t *testing.T) {
 	task := &models.Task{
 		DependsOn: []string{},
-		RelatedTo: []string{},
 	}
 	_ = ParseMetadata(task, "id: abc, depends: only-one")
 	if len(task.DependsOn) != 1 {
@@ -338,7 +318,6 @@ func TestParseMetadata_InvalidTimeFieldsWarnAndPreserveExistingValues(t *testing
 	updated := time.Date(2025, 1, 11, 9, 15, 0, 0, time.Local)
 	completed := time.Date(2025, 1, 12, 10, 30, 0, 0, time.Local)
 	due := time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local)
-	start := time.Date(2025, 1, 9, 0, 0, 0, 0, time.Local)
 	snoozed := time.Date(2025, 1, 20, 0, 0, 0, 0, time.Local)
 
 	task := &models.Task{
@@ -346,12 +325,10 @@ func TestParseMetadata_InvalidTimeFieldsWarnAndPreserveExistingValues(t *testing
 		UpdatedAt:    updated,
 		CompletedAt:  timePtr(completed),
 		DueDate:      timePtr(due),
-		StartDate:    timePtr(start),
 		SnoozedUntil: timePtr(snoozed),
-		HasTime:      true,
 	}
 
-	warnings := ParseMetadata(task, "created: not-a-date, updated: nope, completed: later, due: tomorrow-ish, start: 2025/01/09, snoozed: soon")
+	warnings := ParseMetadata(task, "created: not-a-date, updated: nope, completed: later, due: tomorrow-ish, snoozed: soon")
 
 	if !task.CreatedAt.Equal(created) {
 		t.Errorf("CreatedAt = %v, want %v", task.CreatedAt, created)
@@ -365,17 +342,11 @@ func TestParseMetadata_InvalidTimeFieldsWarnAndPreserveExistingValues(t *testing
 	if task.DueDate == nil || !task.DueDate.Equal(due) {
 		t.Errorf("DueDate = %v, want %v", task.DueDate, due)
 	}
-	if task.StartDate == nil || !task.StartDate.Equal(start) {
-		t.Errorf("StartDate = %v, want %v", task.StartDate, start)
-	}
 	if task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(snoozed) {
 		t.Errorf("SnoozedUntil = %v, want %v", task.SnoozedUntil, snoozed)
 	}
-	if !task.HasTime {
-		t.Error("HasTime should remain unchanged when due parsing fails")
-	}
 
-	wantFields := []string{"created", "updated", "completed", "due", "start", "snoozed"}
+	wantFields := []string{"created", "updated", "completed", "due", "snoozed"}
 	if len(warnings) != len(wantFields) {
 		t.Fatalf("got %d warnings, want %d: %v", len(warnings), len(wantFields), warnings)
 	}

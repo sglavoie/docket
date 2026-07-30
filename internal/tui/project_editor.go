@@ -16,10 +16,11 @@ import (
 
 // ProjectEditorModel handles editing an existing project via TUI.
 type ProjectEditorModel struct {
-	project       *models.Project
-	configManager *config.Manager
-	runtime       *config.RuntimeState
-	appService    *app.Service
+	project           *models.Project
+	configManager     *config.Manager
+	runtime           *config.RuntimeState
+	appService        *app.Service
+	identityProtected bool
 
 	// Original values for change detection
 	originalName        string
@@ -48,7 +49,13 @@ type ProjectEditorModel struct {
 // NewProjectEditorModel creates a domain-native project editor. Catalog metadata
 // is encoded from RuntimeState and committed atomically with directory/reference
 // changes through the application service.
-func NewProjectEditorModel(project *models.Project, manager *config.Manager, runtime *config.RuntimeState, svc *app.Service) *ProjectEditorModel {
+func NewProjectEditorModel(
+	project *models.Project,
+	manager *config.Manager,
+	runtime *config.RuntimeState,
+	svc *app.Service,
+	identityProtected bool,
+) *ProjectEditorModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInputWithValue(project.Name, "")
@@ -78,6 +85,7 @@ func NewProjectEditorModel(project *models.Project, manager *config.Manager, run
 		configManager:       manager,
 		runtime:             runtime,
 		appService:          svc,
+		identityProtected:   identityProtected,
 		originalName:        project.Name,
 		originalContext:     project.Context,
 		originalDescription: project.Description,
@@ -269,17 +277,24 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 	configManager := m.configManager
 	runtime := m.runtime
 	svc := m.appService
+	identityProtected := m.identityProtected
 	return func() tea.Msg {
 		if name == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
 		}
+		if identityProtected && name != originalName {
+			return ErrorMsg{Err: fmt.Errorf("the system Inbox name and slug are immutable")}
+		}
+		if configManager == nil || svc == nil {
+			return ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
+		}
 
-		// Generate new slug if name changed
+		updated := *project
 		newSlug := models.Slugify(name)
 		if newSlug == "" {
 			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
 		}
-		oldSlug := models.Slugify(originalName)
+		oldSlug := project.Slug
 		if name != originalName {
 			// Check for duplicate slug (excluding self)
 			if p := runtime.GetProject(newSlug); p != nil && p.ID != project.ID {
@@ -293,40 +308,40 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 			ctx = runtime.DefaultContext()
 		}
 
-		// Update project fields on the in-memory facade project (the catalog
-		// artifacts encode from it), then commit the rename — the directory move,
-		// tasks.md heading rewrite, catalog rewrite, and cross-reference repair —
-		// as ONE atomic journaled transaction through the application layer,
-		// replacing the eager storage rename plus whole-config Manager.Save.
-		project.Name = name
-		project.Slug = newSlug
-		project.Context = ctx
-		project.Description = description
-		project.UpdatedAt = time.Now()
+		// Prepare on an isolated copy. Publication to the live project pointer
+		// happens only after the journal and workspace ledger both commit.
+		updated.Name = name
+		updated.Slug = newSlug
+		updated.Context = ctx
+		updated.Description = description
+		updated.UpdatedAt = time.Now()
 
 		var tasksMarkdown []byte
 		var tasksExpectedRevision *string
-		if expected, err := storage.LoadProjectForRewrite(project); err == nil {
-			tasksMarkdown = []byte(storage.WriteTasksMarkdownWithProjectMetadata(
-				project.Name, project.Tasks, project.Tags, project.PinnedTags))
+		if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
+			tasksMarkdown = []byte(storage.WriteTasksMarkdown(updated.Name, updated.Tasks))
 			tasksExpectedRevision = expected
 		}
 
 		var crossRefWrites []storage.ArtifactChange
 		if oldSlug != newSlug {
-			crossRefWrites, _ = planTUICrossProjectRefRewrites(runtime.AllProjects(), oldSlug, newSlug, project.ID)
+			crossRefWrites, _ = planTUICrossProjectRefRewrites(runtime.AllProjects(), oldSlug, newSlug, updated.ID)
 		}
 
 		catalog := cloneWorkspaceCatalog(runtime.Catalog())
-		catalog.UpsertProject(project)
+		if err := catalog.UpsertProject(&updated); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
+		}
 		configArts, err := catalogDomainArtifact(configManager, catalog)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
 		}
 
 		if _, err := svc.RenameProject(app.RenameProjectRequest{
-			Project:               project,
+			Project:               &updated,
+			SystemInboxProjectID:  runtime.Catalog().SystemInboxProjectID,
 			DataDir:               runtime.DataDir(),
+			OldName:               originalName,
 			OldSlug:               oldSlug,
 			NewSlug:               newSlug,
 			TasksMarkdown:         tasksMarkdown,
@@ -340,6 +355,7 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 		}
 
+		copyCatalogMetadata(project, &updated)
 		return ProjectUpdatedMsg{Project: project}
 	}
 }
@@ -364,12 +380,9 @@ func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, ne
 			var n int
 			task.DependsOn, n = rewriteCrossRefs(task.DependsOn, originalSlug, newSlug)
 			projectUpdated += n
-			task.RelatedTo, n = rewriteCrossRefs(task.RelatedTo, originalSlug, newSlug)
-			projectUpdated += n
 		}
 		if projectUpdated > 0 {
-			content := storage.WriteTasksMarkdownWithProjectMetadata(
-				p.Name, p.Tasks, p.Tags, p.PinnedTags)
+			content := storage.WriteTasksMarkdown(p.Name, p.Tasks)
 			writes = append(writes, storage.ArtifactChange{
 				Path:             storage.TasksFilePath(p.Path),
 				Data:             []byte(content),

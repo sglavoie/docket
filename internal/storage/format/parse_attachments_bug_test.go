@@ -23,7 +23,6 @@ func TestRoundTrip_CodeRefPortLikePathNotMisparsed(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	task := &models.Task{
 		ID:            "code-port",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      3,
 		Attachments: []models.Attachment{
@@ -95,7 +94,6 @@ func TestRoundTrip_CodeRefPathContainingDotAndLineNumber(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	task := &models.Task{
 		ID:            "code-ok",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      3,
 		Attachments: []models.Attachment{
@@ -180,7 +178,6 @@ func TestRoundTrip_AttachmentSemicolonPreserved(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
 				ID:            "att-" + tc.name,
-				Type:          models.TaskTypeTask,
 				WorkflowState: models.StateReady,
 				Priority:      3,
 				Attachments:   []models.Attachment{tc.att},

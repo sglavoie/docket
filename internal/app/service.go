@@ -16,13 +16,12 @@ import (
 // revision, apply domain rules, run the shared post-mutation hooks, and commit
 // exactly one ChangeSet.
 type Service struct {
-	repo     Repository
-	clock    Clock
-	ids      IDGenerator
-	notes    WorkspaceNotePort
-	blockers ProjectBlockerPort
+	repo  Repository
+	clock Clock
+	ids   IDGenerator
+	notes WorkspaceNotePort
 	// planning is the default planning-artifact builder consulted by direct state
-	// changes and every workflow cascade when a call does not supply its own. It
+	// changes when a call does not supply its own. It
 	// folds Today/Next exclusivity into the same ledger transaction as the task
 	// write for every adapter, so rule-driven state changes cannot bypass durable
 	// reconciliation. Nil disables it.
@@ -30,7 +29,7 @@ type Service struct {
 }
 
 // WithPlanningArtifacts sets the default planning-artifact builder used by the
-// service's direct state changes and workflow cascades. It returns the service
+// service's direct state changes. It returns the service
 // for chaining at construction. A per-call PlanningArtifacts still overrides
 // this default.
 func (s *Service) WithPlanningArtifacts(builder PlanningArtifactBuilder) *Service {
@@ -47,18 +46,16 @@ func (s *Service) defaultedPlanningArtifacts(builder PlanningArtifactBuilder) Pl
 	return s.planning
 }
 
-// NewService constructs a Service backed by the storage note/blocker artifact
-// ports. A nil clock or ID generator falls back to the system implementations, so
-// production callers can pass only the repository.
+// NewService constructs a Service backed by the storage note port. A nil clock
+// or ID generator falls back to the system implementations.
 func NewService(repo Repository, clock Clock, ids IDGenerator) *Service {
-	return NewServiceWithArtifacts(repo, clock, ids, nil, nil)
+	return NewServiceWithArtifacts(repo, clock, ids, nil)
 }
 
-// NewServiceWithArtifacts constructs a Service with explicit, deliberately
-// separate note and blocker ports. A nil port falls back to storage. The default
-// note port supports project notes; callers that need global notes inject
+// NewServiceWithArtifacts constructs a Service with an explicit note port. A nil
+// port falls back to storage. Callers that need global notes inject
 // NewStorageWorkspaceNotePort with the active workspace data directory.
-func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, notes WorkspaceNotePort, blockers ProjectBlockerPort) *Service {
+func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, notes WorkspaceNotePort) *Service {
 	if clock == nil {
 		clock = SystemClock()
 	}
@@ -68,15 +65,12 @@ func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, note
 	if notes == nil {
 		notes = NewStorageWorkspaceNotePort("")
 	}
-	if blockers == nil {
-		blockers = storageProjectBlockerPort{}
-	}
-	return &Service{repo: repo, clock: clock, ids: ids, notes: notes, blockers: blockers}
+	return &Service{repo: repo, clock: clock, ids: ids, notes: notes}
 }
 
 // resolveProject loads a snapshot and resolves a project by its ID, returning the
 // snapshot, the project, and the revision it was loaded at. Project-scoped
-// mutations and queries (notes, blockers, workspace metadata) use it the way
+// mutations and queries (notes and workspace metadata) use it the way
 // resolveTask serves single-task mutations.
 func (s *Service) resolveProject(projectID string) (Snapshot, *models.Project, string, error) {
 	if strings.TrimSpace(projectID) == "" {
@@ -175,13 +169,13 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 }
 
 // commitProjectWithArtifacts commits a project write plus zero or more auxiliary
-// durable artifacts (e.g. a config store carrying a bumped template use-count) as
+// durable artifacts supplied by an adapter as
 // ONE ChangeSet, so a mutation whose side effects live outside tasks.md stays
 // atomic with the task write — either the task and its side effects all land or
 // none do. It is the single-project analog of the note/blocker commitArtifact
 // path, generalized to carry an already-encoded artifact set the caller assembled.
 func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
-	generated := applyPostMutationHooksAt(ref.Project, s.clock.Now())
+	generated := applyPostMutationHooksAtWithID(ref.Project, s.clock.Now(), s.ids.NewID)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
@@ -222,7 +216,7 @@ type projectCommit struct {
 
 // groupedCommitOutcome retains both the storage result for each changeset and
 // application-level effects produced while preparing that project for commit.
-// Keeping recurring counts keyed by project prevents a grouped workflow commit
+// Keeping recurring counts keyed by project prevents a grouped state commit
 // from losing which project generated each new instance.
 type groupedCommitOutcome struct {
 	results              []*storage.CommitResult
@@ -231,7 +225,7 @@ type groupedCommitOutcome struct {
 
 // commitProjects runs the post-mutation hooks on every project and commits their
 // ChangeSets as ONE transaction, so a cascade that spans projects (a cross-project
-// move, a workflow move_to_project) applies atomically or not at all. Any per-commit
+// move) applies atomically or not at all. Any per-commit
 // artifacts and attachment ops ride the same transaction. The storage results are
 // retained in commit order, while recurring-instance counts remain associated with
 // their projects. A stale revision on any project aborts the whole commit.
@@ -240,7 +234,7 @@ func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContex
 	recurring := make(map[string]int, len(commits))
 	now := s.clock.Now()
 	for i, c := range commits {
-		recurring[c.project.ID] += applyPostMutationHooksAt(c.project, now)
+		recurring[c.project.ID] += applyPostMutationHooksAtWithID(c.project, now, s.ids.NewID)
 		changesets[i] = storage.ChangeSet{
 			Project:          c.project,
 			ExpectedRevision: c.expectedRevision,
@@ -269,10 +263,11 @@ func revisionAt(results []*storage.CommitResult, i int) string {
 
 // applyPostMutationHooks runs the same post-mutation reconciliation the legacy
 // SaveProject path runs, so a mutation committed through the application layer
-// leaves the project in the identical reconciled shape: dependents auto-unblock,
-// illegal completed-parent-with-incomplete-child states are reconciled, recurring
-// instances are generated for freshly completed recurring tasks, the task tree is
-// rebuilt, and root tasks are reordered by completion. It returns the number of
+// leaves the project in the identical reconciled shape: illegal
+// completed-parent-with-incomplete-child states are reconciled, recurring instances
+// are generated for freshly completed recurring tasks, the task tree is rebuilt,
+// and root tasks are reordered by completion. Dependency blocking remains derived
+// and never changes a user-selected workflow state. It returns the number of
 // recurring instances generated so single-task callers can surface that count.
 func applyPostMutationHooks(project *models.Project) int {
 	return applyPostMutationHooksAt(project, time.Now())
@@ -283,9 +278,12 @@ func applyPostMutationHooks(project *models.Project) int {
 // timestamp instead of overwriting a just-transitioned task with wall-clock
 // time.
 func applyPostMutationHooksAt(project *models.Project, now time.Time) int {
-	project.CheckAndAutoUnblock()
+	return applyPostMutationHooksAtWithID(project, now, nil)
+}
+
+func applyPostMutationHooksAtWithID(project *models.Project, now time.Time, newID func() string) int {
 	project.ReconcileParentCompletion()
-	generated := project.GenerateRecurringInstancesAt(now)
+	generated := project.GenerateRecurringInstancesAtWithID(now, newID)
 	project.BuildTaskTree()
 	project.ReorderRootTasksByCompletion()
 	return generated

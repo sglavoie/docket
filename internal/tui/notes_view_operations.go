@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -46,9 +45,6 @@ func notePreviewCmd(note *models.Note) (tea.Cmd, error) {
 	}
 
 	content := fmt.Sprintf("# %s\n\n", note.Title)
-	if len(note.Tags) > 0 {
-		content += fmt.Sprintf("Tags: %s\n\n", strings.Join(note.Tags, ", "))
-	}
 	content += note.Body
 
 	tmpFile, err := os.CreateTemp("", "tt-note-*.md")
@@ -76,11 +72,7 @@ func (m *NotesViewModel) openCurrentNoteReference() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 
-	externalEditor := ""
-	if m.config != nil {
-		externalEditor = m.config.GetExternalEditor()
-	}
-	status, err := openNoteReference(note, m.effectiveDir(), externalEditor, m.linkedTasksForReferenceNote(note))
+	status, err := openNoteReference(note, m.effectiveDir(), "")
 	if err != nil {
 		return errorCmd("%s", err)
 	}
@@ -93,7 +85,7 @@ func (m *NotesViewModel) openCurrentNoteReference() tea.Cmd {
 // external editor, returning the status the caller should surface. An editor
 // that cannot open a detached snapshot is reported as a status, not an error,
 // so the note view keeps its existing non-fatal message.
-func openNoteReference(note *models.Note, dir, externalEditor string, linked []*models.Task) (string, error) {
+func openNoteReference(note *models.Note, dir, externalEditor string) (string, error) {
 	if note == nil {
 		return "", fmt.Errorf("note is unavailable")
 	}
@@ -101,7 +93,7 @@ func openNoteReference(note *models.Note, dir, externalEditor string, linked []*
 	if err != nil {
 		return "", fmt.Errorf("invalid note path: %w", err)
 	}
-	content, err := noteReferenceMarkdown(note, path, linked)
+	content, err := noteReferenceMarkdown(note, path)
 	if err != nil {
 		return "", fmt.Errorf("failed to prepare note reference: %w", err)
 	}
@@ -119,7 +111,7 @@ func openNoteReference(note *models.Note, dir, externalEditor string, linked []*
 	return "Opened note reference copy", nil
 }
 
-func noteReferenceMarkdown(note *models.Note, path string, linked []*models.Task) (string, error) {
+func noteReferenceMarkdown(note *models.Note, path string) (string, error) {
 	if note.ParseError != "" {
 		raw, err := os.ReadFile(path)
 		if err != nil {
@@ -128,42 +120,7 @@ func noteReferenceMarkdown(note *models.Note, path string, linked []*models.Task
 		return formatRawNoteReferenceMarkdown(note, string(raw)), nil
 	}
 
-	return external.FormatNoteReferenceMarkdownWithTasks(note, linked), nil
-}
-
-func (m *NotesViewModel) linkedTasksForReferenceNote(note *models.Note) []*models.Task {
-	tasks := m.cachedTasks
-	if len(tasks) == 0 && m.project != nil {
-		tasks = m.project.Tasks
-	}
-	return notesLinkedTasks(note, tasks)
-}
-
-func notesLinkedTasks(note *models.Note, tasks []*models.Task) []*models.Task {
-	if note == nil || len(note.LinkedTasks) == 0 {
-		return nil
-	}
-
-	taskByID := make(map[string]*models.Task, len(tasks))
-	for _, task := range tasks {
-		if task != nil && task.ID != "" {
-			taskByID[task.ID] = task
-		}
-	}
-
-	linked := make([]*models.Task, 0, len(note.LinkedTasks))
-	seen := make(map[string]bool, len(note.LinkedTasks))
-	for _, id := range note.LinkedTasks {
-		id = strings.TrimSpace(id)
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		if task := taskByID[id]; task != nil {
-			linked = append(linked, task)
-		}
-	}
-	return linked
+	return external.FormatNoteReferenceMarkdownWithTasks(note, nil), nil
 }
 
 func formatRawNoteReferenceMarkdown(note *models.Note, raw string) string {
@@ -193,15 +150,19 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 
-	configEditor := ""
-	if m.config != nil {
-		configEditor = m.config.GetEditor()
+	var (
+		editor    string
+		editorErr error
+	)
+	if m.combined {
+		editor, editorErr = external.ResolveNoteEditor()
+	} else {
+		editor, editorErr = external.ResolveEditor("")
 	}
-	editor, editorErr := external.ResolveEditor(configEditor)
 	if editorErr != nil {
 		return errorCmd("%s", editorErr)
 	}
-	location := m.noteLocation()
+	location := m.noteLocationFor(note)
 	if location.Scope == "" {
 		return errorCmd("cannot edit note without a location")
 	}
@@ -236,6 +197,30 @@ func (m *NotesViewModel) createNote() tea.Cmd {
 	}
 }
 
+func (m *NotesViewModel) beginDestinationPicker() {
+	m.destinations = []app.NoteLocation{app.GlobalNoteLocation()}
+	if m.project != nil {
+		m.destinations = append(m.destinations, app.ProjectNoteLocation(m.project.ID))
+	}
+	m.destinationCursor = 0
+	for i, location := range m.destinations {
+		if location == m.preferred {
+			m.destinationCursor = i
+			break
+		}
+	}
+	m.destinationPicker = true
+}
+
+func (m *NotesViewModel) createNoteAt(location app.NoteLocation) tea.Cmd {
+	editor, err := external.ResolveNoteEditor()
+	if err != nil {
+		m.setErrorStatus(err.Error())
+		return nil
+	}
+	return startNoteEditor(editor, location, models.NewNote("Untitled Note"), true)
+}
+
 func (m *NotesViewModel) deleteCurrentNote() tea.Cmd {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return nil
@@ -252,7 +237,7 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 		return nil
 	}
 	note := m.notes[m.pendingDeleteIdx]
-	location := m.noteLocation()
+	location := m.noteLocationFor(note)
 	return noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
 		Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: location, Note: note}},
 		UndoAction:  "Delete Note",
@@ -262,7 +247,9 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 
 func (m *NotesViewModel) undoDelete() tea.Cmd {
 	location := m.noteLocation()
-	if location.Scope == "" {
+	if m.combined {
+		location = app.GlobalNoteLocation()
+	} else if location.Scope == "" {
 		return nil
 	}
 	return noteLedgerRestoreCmd(m.noteLedger, location, m.noteLedgerScope(), false)
@@ -270,66 +257,12 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 
 func (m *NotesViewModel) redoNoteMutation() tea.Cmd {
 	location := m.noteLocation()
-	if location.Scope == "" {
+	if m.combined {
+		location = app.GlobalNoteLocation()
+	} else if location.Scope == "" {
 		return nil
 	}
 	return noteLedgerRestoreCmd(m.noteLedger, location, m.noteLedgerScope(), true)
-}
-
-func (m *NotesViewModel) linkCurrentNote() tea.Cmd {
-	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return nil
-	}
-	note := m.notes[m.cursor]
-	if note.ParseError != "" {
-		m.setErrorStatus("cannot link — note has parse error. Press e to edit.")
-		return nil
-	}
-	return func() tea.Msg {
-		return ShowNoteTaskLinkerMsg{Project: m.project, Note: note}
-	}
-}
-
-func (m *NotesViewModel) showTagSelector() tea.Cmd {
-	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return nil
-	}
-	note := m.notes[m.cursor]
-	if note.ParseError != "" {
-		m.setErrorStatus("cannot edit tags — note has parse error. Press e to edit.")
-		return nil
-	}
-	return func() tea.Msg {
-		return ShowNoteTagSelectorMsg{
-			Source:        newNoteMutationRef(m.noteLocation(), note),
-			AvailableTags: m.noteTagOptions(),
-			CurrentTags:   append([]string(nil), note.Tags...),
-		}
-	}
-}
-
-func (m *NotesViewModel) togglePin() tea.Cmd {
-	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return nil
-	}
-	note := m.notes[m.cursor]
-	if note.ParseError != "" {
-		m.setErrorStatus("cannot pin — note has parse error. Press e to edit.")
-		return nil
-	}
-	updated := cloneNoteForCommand(note)
-	updated.Pinned = !updated.Pinned
-	updated.ModifiedAt = time.Now()
-	status := "Pinned: " + note.Title
-	if note.Pinned {
-		status = "Unpinned: " + note.Title
-	}
-	location := m.noteLocation()
-	return noteMutationCmd(m.noteService, location, app.NoteBatchRequest{
-		Operations:  []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
-		UndoAction:  "Toggle Note Pin",
-		UndoContext: note.Title,
-	}, status, false)
 }
 
 func (m *NotesViewModel) performBulkDelete() tea.Cmd {
@@ -348,42 +281,6 @@ func (m *NotesViewModel) performBulkDelete() tea.Cmd {
 		UndoAction:  "Delete Notes",
 		UndoContext: fmt.Sprintf("%d notes", len(selected)),
 	}, fmt.Sprintf("Deleted %d notes", len(selected)), true)
-}
-
-func (m *NotesViewModel) bulkTagNotes() tea.Cmd {
-	selected := m.getSelectedNotesList()
-	if len(selected) == 0 {
-		return nil
-	}
-	return func() tea.Msg {
-		return BulkNoteTagMsg{
-			Sources:       newNoteMutationRefs(m.noteLocation(), selected),
-			AvailableTags: m.noteTagOptions(),
-		}
-	}
-}
-
-func (m *NotesViewModel) noteTagOptions() []TagInfo {
-	notes := m.notes
-	if m.noteService != nil {
-		if loaded, err := m.noteService.NotesAt(m.noteLocation()); err == nil {
-			notes = loaded
-		}
-	}
-	return buildNoteTagList(notes, m.project)
-}
-
-func (m *NotesViewModel) bulkLinkNotes() tea.Cmd {
-	selected := m.getSelectedNotesList()
-	if len(selected) == 0 {
-		return nil
-	}
-	return func() tea.Msg {
-		return BulkNoteLinkMsg{
-			Notes:   selected,
-			Project: m.project,
-		}
-	}
 }
 
 func (m *NotesViewModel) cycleSortMode() {
@@ -445,18 +342,4 @@ func (m *NotesViewModel) copyNoteTitleAndBody() tea.Cmd {
 		external.CopyNoteTitleAndBody, external.CopyNoteTitlesAndBodies,
 		"Copied title and body to clipboard", "Copied %d notes to clipboard",
 	)
-}
-
-func (m *NotesViewModel) moveNoteToProject() tea.Cmd {
-	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return nil
-	}
-	note := m.notes[m.cursor]
-	if note.ParseError != "" {
-		m.setErrorStatus("cannot move — note has parse error. Press e to edit.")
-		return nil
-	}
-	return func() tea.Msg {
-		return ShowGlobalNoteMoveMsg{Source: newNoteMutationRef(app.GlobalNoteLocation(), note)}
-	}
 }

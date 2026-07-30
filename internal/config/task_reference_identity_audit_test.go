@@ -21,9 +21,8 @@ func TestKnownOwnerProductionPathsAvoidIDOnlyTaskReferenceHelpers(t *testing.T) 
 		"RemoveDurableTaskRefs":          true,
 		"RemoveMachineLocalTaskRefs":     true,
 		"ReassignDurablePlanningProject": true,
-		"ReassignRecentVisitsProject":    true,
-		"RemoveFromFocusQueue":           true,
-		"RemoveFromDailyPlan":            true,
+		"RemoveFromNextOrder":            true,
+		"RemoveFromToday":                true,
 	}
 
 	for _, relDir := range []string{"cmd", "internal/app", "internal/tui"} {

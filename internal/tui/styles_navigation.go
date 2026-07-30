@@ -4,21 +4,14 @@ import "charm.land/lipgloss/v2"
 
 // Navigation and selection styles.
 var (
-	TaskJumperListStyle = lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder(), false, true, false, false).
-				BorderForeground(ColorBorder)
-
-	TaskJumperPreviewStyle = lipgloss.NewStyle().
-				Padding(0, 1)
-
-	TaskJumperSelectedStyle = lipgloss.NewStyle().
+	PickerSelectedStyle = lipgloss.NewStyle().
 				Background(ColorSelectedBg).
 				Foreground(ColorSelectedFg).
 				Bold(true)
 
-	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().
-					Bold(true).
-					Foreground(ColorPrimary)
+	ListPreviewHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorPrimary)
 
 	GroupHeaderStyle = lipgloss.NewStyle().
 				Bold(true).

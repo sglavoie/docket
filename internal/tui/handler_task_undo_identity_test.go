@@ -17,26 +17,19 @@ func TestUndoReferenceRepairUsesProjectQualifiedTaskIdentity(t *testing.T) {
 	newBeta := &models.Project{ID: "beta", Tasks: []*models.Task{newBetaTask}}
 
 	m := &AppModel{
-		focusQueue: []FocusTask{
+		nextOrder: []FocusTask{
 			{Task: oldAlphaTask, Project: oldAlpha},
 			{Task: oldBetaTask, Project: oldBeta},
 		},
-		dailyPlan: []FocusTask{{Task: oldBetaTask, Project: oldBeta}},
-		recentTaskVisits: []RecentTaskVisitEntry{
-			{Task: oldAlphaTask, Project: oldAlpha},
-			{Task: oldBetaTask, Project: oldBeta},
-		},
+		today: []FocusTask{{Task: oldBetaTask, Project: oldBeta}},
 	}
 	m.rewireTaskProjectRefsAfterRestore([]*models.Project{newAlpha, newBeta})
 
-	if m.focusQueue[0].Task != newAlphaTask || m.focusQueue[1].Task != newBetaTask {
-		t.Fatalf("focus queue rewired to wrong duplicate: %+v", m.focusQueue)
+	if m.nextOrder[0].Task != newAlphaTask || m.nextOrder[1].Task != newBetaTask {
+		t.Fatalf("focus queue rewired to wrong duplicate: %+v", m.nextOrder)
 	}
-	if m.dailyPlan[0].Task != newBetaTask || m.dailyPlan[0].Project != newBeta {
-		t.Fatalf("daily plan rewired to wrong duplicate: %+v", m.dailyPlan)
-	}
-	if m.recentTaskVisits[0].Task != newAlphaTask || m.recentTaskVisits[1].Task != newBetaTask {
-		t.Fatalf("recent visits rewired to wrong duplicate: %+v", m.recentTaskVisits)
+	if m.today[0].Task != newBetaTask || m.today[0].Project != newBeta {
+		t.Fatalf("daily plan rewired to wrong duplicate: %+v", m.today)
 	}
 }
 

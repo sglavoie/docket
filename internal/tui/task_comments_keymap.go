@@ -35,9 +35,8 @@ func (m *TaskCommentsModel) panelActions() taskItemPanelActions {
 		showIndexedDeleteConfirm: func() {
 			m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.cursor))
 		},
-		toggleResolved: m.toggleResolved,
-		copyText:       m.copyCommentText,
-		copyAllText:    m.copyAllCommentsText,
+		copyText:    m.copyCommentText,
+		copyAllText: m.copyAllCommentsText,
 		expandSelection: func() {
 			m.expandedView = true
 		},

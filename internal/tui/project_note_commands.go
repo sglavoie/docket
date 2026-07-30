@@ -18,51 +18,11 @@ type projectNoteService interface {
 	ApplyNoteBatch(app.NoteBatchRequest) (app.NoteBatchResult, error)
 }
 
-// noteMutationRef is an immutable, path-free snapshot of a note selected for a
-// pending operation. Keeping the note by value prevents later view mutations
-// from changing the revision or content that the eventual command will commit.
-type noteMutationRef struct {
-	Location app.NoteLocation
-	Note     models.Note
-}
-
-func newNoteMutationRef(location app.NoteLocation, note *models.Note) noteMutationRef {
-	copyNote := cloneNoteForCommand(note)
-	if copyNote == nil {
-		return noteMutationRef{Location: location}
-	}
-	return noteMutationRef{Location: location, Note: *copyNote}
-}
-
-func newNoteMutationRefs(location app.NoteLocation, notes []*models.Note) []noteMutationRef {
-	refs := make([]noteMutationRef, 0, len(notes))
-	for _, note := range notes {
-		if note != nil {
-			refs = append(refs, newNoteMutationRef(location, note))
-		}
-	}
-	return refs
-}
-
-func (r noteMutationRef) noteCopy() *models.Note {
-	return cloneNoteForCommand(&r.Note)
-}
-
-func noteRefsToCopies(refs []noteMutationRef) []*models.Note {
-	notes := make([]*models.Note, 0, len(refs))
-	for _, ref := range refs {
-		notes = append(notes, ref.noteCopy())
-	}
-	return notes
-}
-
 func cloneNoteForCommand(note *models.Note) *models.Note {
 	if note == nil {
 		return nil
 	}
 	clone := *note
-	clone.Tags = append([]string(nil), note.Tags...)
-	clone.LinkedTasks = append([]string(nil), note.LinkedTasks...)
 	return &clone
 }
 
@@ -74,12 +34,6 @@ func cloneNoteBatchRequest(req app.NoteBatchRequest) app.NoteBatchRequest {
 		copyReq.Operations[i].Note = cloneNoteForCommand(operation.Note)
 	}
 	return copyReq
-}
-
-// projectNoteMutationCmd freezes the complete request before starting the
-// asynchronous commit. A command never retains a live Bubble Tea note pointer.
-func projectNoteMutationCmd(service projectNoteService, projectID string, req app.NoteBatchRequest, success string, clearSelection bool) tea.Cmd {
-	return noteMutationCmd(service, app.ProjectNoteLocation(projectID), req, success, clearSelection)
 }
 
 // noteMutationCmd freezes the complete request before starting an asynchronous

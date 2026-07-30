@@ -18,7 +18,6 @@ func applyBulkDueDate(project *models.Project, tasks []*models.Task, dueDate *ti
 			} else {
 				t.DueDate = nil
 			}
-			t.HasTime = false // Bulk presets are always date-only.
 		}) {
 			count++
 		}

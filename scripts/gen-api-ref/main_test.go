@@ -12,7 +12,7 @@ import (
 
 func TestPrintCommandSkipsDefaultHelpCommand(t *testing.T) {
 	root := &cobra.Command{Use: "tt"}
-	root.AddCommand(&cobra.Command{Use: "add"})
+	root.AddCommand(&cobra.Command{Use: "doctor"})
 	root.InitDefaultHelpCmd()
 
 	var out bytes.Buffer
@@ -24,7 +24,7 @@ func TestPrintCommandSkipsDefaultHelpCommand(t *testing.T) {
 	if strings.Contains(got, "## tt help") {
 		t.Fatalf("printCommand() included Cobra default help command:\n%s", got)
 	}
-	if !strings.Contains(got, "## tt add") {
+	if !strings.Contains(got, "## tt doctor") {
 		t.Fatalf("printCommand() did not include normal subcommand:\n%s", got)
 	}
 }
@@ -110,7 +110,7 @@ func TestCollectFlagsKeepsStringDefaultsThatLookZeroValued(t *testing.T) {
 
 func TestCollectFlagsSuppressesBoolAndNumericZeroDefaults(t *testing.T) {
 	flags := pflag.NewFlagSet("test", pflag.ContinueOnError)
-	flags.Bool("verbose", false, "show verbose output")
+	flags.Bool("enabled", false, "enable output")
 	flags.Int("limit", 0, "maximum items")
 
 	got := collectFlags(flags)
@@ -119,8 +119,8 @@ func TestCollectFlagsSuppressesBoolAndNumericZeroDefaults(t *testing.T) {
 	}
 
 	want := []string{
+		"--enabled bool    enable output",
 		"--limit int    maximum items",
-		"--verbose bool    show verbose output",
 	}
 	for i := range want {
 		if got[i] != want[i] {

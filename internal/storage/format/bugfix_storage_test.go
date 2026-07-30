@@ -17,7 +17,6 @@ func TestRoundTrip_PlainAttachmentNamedLikeCodeOrURL(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	task := &models.Task{
 		ID:            "t1",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      2,
 		Attachments: []models.Attachment{
@@ -70,32 +69,6 @@ func TestRoundTrip_EscapeNewlinesIncludesCR(t *testing.T) {
 		if strings.ContainsAny(escapeNewlines(in), "\r\n") {
 			t.Errorf("escaped form still contains raw CR/LF: %q", escapeNewlines(in))
 		}
-	}
-}
-
-// TestRoundTrip_BugWorkaroundWithCRLF exercises the escape pipeline end-to-end
-// through the bug.workaround typed field, which historically lost CR bytes on
-// reload because the escape helpers ignored "\r".
-func TestRoundTrip_BugWorkaroundWithCRLF(t *testing.T) {
-	original := "Step 1: restart\r\nStep 2: retry"
-	task := &models.Task{
-		ID:            "bug-1",
-		Type:          models.TaskTypeBug,
-		WorkflowState: models.StateReady,
-		Priority:      2,
-		BugAttrs:      &models.BugAttrs{Workaround: original},
-	}
-	parsed := &models.Task{Type: models.TaskTypeBug}
-	if w := parseWrittenMetadata(task, parsed); len(w) != 0 {
-		t.Errorf("unexpected warnings: %v", w)
-	}
-	if parsed.BugAttrs == nil || parsed.BugAttrs.Workaround != original {
-		t.Errorf("bug.workaround not preserved:\n want: %q\n got:  %q", original, func() string {
-			if parsed.BugAttrs == nil {
-				return "<nil>"
-			}
-			return parsed.BugAttrs.Workaround
-		}())
 	}
 }
 

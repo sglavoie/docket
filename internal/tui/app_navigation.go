@@ -4,8 +4,6 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // GetOperationRegistry returns the authoritative operation catalog.
@@ -67,7 +65,6 @@ func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	if m.projectByID(m.currentProject.ID) != nil {
 		return false, nil
 	}
-	m.exitAskView()
 	m.currentProject = nil
 	presentationCmd := m.prepareCrossProjectOutliner()
 	m.navigation.ResetRoot()
@@ -83,7 +80,7 @@ func (m *AppModel) currentView() PresentationID {
 }
 
 // baseProjectView walks the view stack from the top to find the underlying
-// project-level Outliner beneath transient overlays such as Finder. This is
+// project-level Outliner beneath transient overlays. This is
 // needed by operation handlers that execute while an overlay is current but
 // still need the owning task-workspace renderer.
 func (m *AppModel) baseProjectView() PresentationID {
@@ -100,24 +97,16 @@ func (m *AppModel) baseProjectView() PresentationID {
 
 // pushView installs a renderer on the authoritative route or overlay stack.
 func (m *AppModel) pushView(view PresentationID) {
-	if m.installTypedPresentation(view) {
-		m.installPendingStartupRoute(view)
-	}
+	m.installTypedPresentation(view)
 }
 
 // popView removes the top view from the stack. It returns any commands needed
 // by the newly revealed view, including eager reload and resume hooks.
 func (m *AppModel) popView() tea.Cmd {
-	hadOverlay := m.navigation.Overlays.Active()
-	hadPrimaryChild := !hadOverlay && m.navigation.Primary.Depth() > 1
 	popped := m.popTypedPresentation()
 	cv := m.currentView()
-	// Re-evaluate alerts when a primary child returns to the Outliner root.
 	// Closing a transient overlay must not reload project data: picker models
 	// commit or reconcile their mutations after the overlay has been dismissed.
-	if hadPrimaryChild && m.navigation.Primary.Depth() == 1 && !m.navigation.Overlays.Active() {
-		m.reevaluateAlerts()
-	}
 	// Update accent and resume the now-top view.
 	var resumeCmd tea.Cmd
 	if v := m.views.Get(cv); v != nil {
@@ -163,7 +152,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 			}
 		}
 		cmd := m.popView()
-		if closingLabel != "" && closingView != ViewFinder {
+		if closingLabel != "" {
 			m.setInfoStatus("Closed " + closingLabel)
 			return true, tea.Batch(cmd, defaultStatusTimeout())
 		}
@@ -206,7 +195,6 @@ func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
 		m.crossOutliner.resetToGlobalAll()
 		m.setAccentOnView(m.crossOutliner)
 	}
-	m.reevaluateAlerts()
 	return presentationCmd
 }
 
@@ -222,9 +210,6 @@ func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
 func (m *AppModel) clearTransientNavigationState() {
 	m.dismissPeek()
 	m.pendingChord = nil
-	m.pendingSandboxReset = false
-	m.pendingSandboxProjectID = ""
-	m.pendingSandboxTaskCount = 0
 	m.clearPendingProjectArchive()
 	m.clearPendingTaskDelete()
 
@@ -233,13 +218,10 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingBulkTasks = nil
 	m.pendingBulkSectionTasks = nil
 	m.pendingBulkSectionProject = nil
-	m.pendingBulkNotes = nil
-	m.pendingGlobalNoteMove = nil
-	m.pendingCreateTaskParent = nil
-	m.pendingCreateTaskProject = nil
-	m.pendingVarFillerTemplate = nil
 	m.pendingDescEdit = nil
-	m.pendingParkNav = nil
+	m.pendingTaskTextEdit = nil
+	m.pendingTaskRecurrenceRequest = nil
+	m.suspendedTaskActionSheet = nil
 
 }
 
@@ -347,12 +329,6 @@ func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
 }
 
 func (m *AppModel) showView(viewType PresentationID, view View) {
-	// Ask stream messages are routed only to the current view. Cancel an Ask
-	// request before covering that model, or before replacing the registry's
-	// existing Ask instance, so its provider cannot outlive the view lifecycle.
-	if m.currentView() == ViewAsk || viewType == ViewAsk {
-		m.exitAskView()
-	}
 	// All views (including full-height ones) are sized to height-2. Register
 	// re-applies the registry's stored height-2, so a full-height SetSize here
 	// would be immediately clobbered anyway; this also matches handleWindowSize.
@@ -373,53 +349,4 @@ func (m *AppModel) showView(viewType PresentationID, view View) {
 func (m *AppModel) showViewInit(viewType PresentationID, view View) (bool, tea.Cmd) {
 	m.showView(viewType, view)
 	return true, view.Init()
-}
-
-func (m *AppModel) exitAskView() {
-	if m.views == nil {
-		return
-	}
-	if ask, ok := m.views.Get(ViewAsk).(*AskViewModel); ok {
-		ask.OnExit()
-	}
-}
-
-// popAndNavigateToTask pops the current view and navigates to a task in its project.
-// If either task or project is nil, it just pops and returns. This encapsulates the
-// common "select from overview" pattern used by many *SelectMsg handlers.
-func (m *AppModel) popAndNavigateToTask(task *models.Task, project *models.Project) (bool, tea.Cmd) {
-	popCmd := m.popView()
-	if task != nil && project != nil {
-		return true, m.navigateToTaskInProject(task, project)
-	}
-	return true, popCmd
-}
-
-// navigateToTaskInProject switches to the given project using the user's
-// configured default view (or last-used view) and positions the cursor on
-// the specified task. When task is nil it just opens the project view.
-// Returns a tea.Cmd if any notification needs to be shown (e.g. filters cleared).
-func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Project) tea.Cmd {
-	target := TaskIdentity{}
-	if task != nil && project != nil {
-		target = taskIdentityFor(task, project)
-	}
-	cmd, _ := m.maybePromptPark(target, func() tea.Cmd {
-		return m.navigateToTaskInProjectNow(task, project)
-	})
-	return cmd
-}
-
-func (m *AppModel) navigateToTaskInProjectNow(task *models.Task, project *models.Project) tea.Cmd {
-	m.switchToProject(project, true)
-
-	// Re-resolve task in the freshly loaded project so parent pointers are valid.
-	if task != nil {
-		if resolved := project.GetTaskByID(task.ID); resolved != nil {
-			task = resolved
-		}
-	}
-	// Task deep links push a project scope onto the single authoritative Outliner
-	// and reveal the task, rather than constructing a separate project root.
-	return m.enterProjectScopeOutliner(project, task, OutlinerOpenOptions{})
 }

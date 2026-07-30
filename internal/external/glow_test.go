@@ -229,7 +229,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	now := time.Now()
 
 	t.Run("basic task format", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 42, models.TaskTypeTask, "My Task")
+		task, err := models.NewGenericTask("uuid-1", 42, "My Task")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +254,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("task with description", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with desc")
+		task, err := models.NewGenericTask("uuid-1", 1, "Task with desc")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -271,7 +271,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("task without description", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "No description task")
+		task, err := models.NewGenericTask("uuid-1", 1, "No description task")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -285,7 +285,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("task with tags", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Tagged task")
+		task, err := models.NewGenericTask("uuid-1", 1, "Tagged task")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -299,7 +299,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("task without tags", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Untagged task")
+		task, err := models.NewGenericTask("uuid-1", 1, "Untagged task")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -313,27 +313,21 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("escapes pipes in table cells", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeBug, "Bug with table chars")
+		task, err := models.NewGenericTask("uuid-1", 1, "Bug with table chars")
 		if err != nil {
 			t.Fatal(err)
 		}
 		task.Tags = []string{"api|db"}
-		task.BugAttrs = &models.BugAttrs{
-			Workaround: "run alpha|beta\nthen retry",
-		}
 
 		result := FormatTaskAsMarkdown(task)
 
 		if !strings.Contains(result, "| Tags | api\\|db |") {
 			t.Errorf("expected escaped pipe in tags row, got:\n%s", result)
 		}
-		if !strings.Contains(result, "| Workaround | run alpha\\|beta then retry |") {
-			t.Errorf("expected escaped pipe and normalized newline in workaround row, got:\n%s", result)
-		}
 	})
 
 	t.Run("task with due date", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with due date")
+		task, err := models.NewGenericTask("uuid-1", 1, "Task with due date")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -351,7 +345,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("completed task", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Completed task")
+		task, err := models.NewGenericTask("uuid-1", 1, "Completed task")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -367,15 +361,15 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 	})
 
 	t.Run("task with children shows subtasks section", func(t *testing.T) {
-		parent, err := models.NewTask("parent-uuid", 1, models.TaskTypeStory, "Parent Story")
+		parent, err := models.NewGenericTask("parent-uuid", 1, "Parent Story")
 		if err != nil {
 			t.Fatal(err)
 		}
-		child1, err := models.NewTask("child1-uuid", 2, models.TaskTypeTask, "Child Task 1")
+		child1, err := models.NewGenericTask("child1-uuid", 2, "Child Task 1")
 		if err != nil {
 			t.Fatal(err)
 		}
-		child2, err := models.NewTask("child2-uuid", 3, models.TaskTypeTask, "Child Task 2")
+		child2, err := models.NewGenericTask("child2-uuid", 3, "Child Task 2")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -407,29 +401,16 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		}
 	})
 
-	t.Run("epic type header format", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 5, models.TaskTypeEpic, "My Epic")
+	t.Run("generic header ignores compatibility type", func(t *testing.T) {
+		task, err := models.NewGenericTask("uuid-1", 5, "My Epic")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		result := FormatTaskAsMarkdown(task)
 
-		if !strings.Contains(result, "# Epic #5: My Epic") {
-			t.Error("output should contain Epic heading prefix")
-		}
-	})
-
-	t.Run("bug type header format", func(t *testing.T) {
-		task, err := models.NewTask("uuid-1", 10, models.TaskTypeBug, "Critical Bug")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		result := FormatTaskAsMarkdown(task)
-
-		if !strings.Contains(result, "# Bug #10: Critical Bug") {
-			t.Error("output should contain Bug heading prefix")
+		if !strings.Contains(result, "# Task #5: My Epic") {
+			t.Error("output should contain generic Task heading prefix")
 		}
 	})
 

@@ -10,27 +10,17 @@ import (
 
 const zebraBackgroundDarkenFactor = 0.08
 
-// ThemeConfig bundles all user-configurable theme values for ApplyTheme.
+// ThemeConfig identifies one of the two maintained themes.
 type ThemeConfig struct {
-	Name          string // "light" or "dark"
-	BgColor       string
-	CursorBg      string
-	CursorFg      string
-	Palette       config.PaletteColors
-	ZebraStriping bool
+	Name string // "light" or "dark"; every other value resolves to dark
 }
 
-// NewThemeConfig constructs a ThemeConfig from the portable settings domain.
-func NewThemeConfig(s *config.Settings) ThemeConfig {
-	t := s.ActiveThemeConfig()
-	return ThemeConfig{
-		Name:          s.ActiveTheme,
-		BgColor:       t.BackgroundColor,
-		CursorBg:      t.CursorColor,
-		CursorFg:      t.CursorTextColor,
-		Palette:       t.Palette,
-		ZebraStriping: s.ZebraStriping(),
+// NewThemeConfig constructs a ThemeConfig from machine-local state.
+func NewThemeConfig(machine *config.MachineState) ThemeConfig {
+	if machine != nil && machine.Theme == "light" {
+		return ThemeConfig{Name: "light"}
 	}
+	return ThemeConfig{Name: "dark"}
 }
 
 // ThemeSpacer renders an empty block of the given width, filled with the theme
@@ -59,35 +49,29 @@ func rebuildStyles() {
 	rebuildPriorityTitleStyles()
 }
 
-// ApplyTheme reconfigures cursor/selection colors and background propagation.
-// Call at startup and after settings save.
+// ApplyTheme rebuilds every active style from one maintained built-in theme.
+// Unknown or empty names deterministically select dark.
 func ApplyTheme(tc ThemeConfig) {
+	if tc.Name != "light" {
+		tc.Name = "dark"
+	}
 	activeThemeName = tc.Name
 
 	themeDefaults := config.DefaultTheme(tc.Name)
 
-	effectiveBgColor := tc.BgColor
-	if effectiveBgColor == "" {
-		effectiveBgColor = themeDefaults.BackgroundColor
-	}
+	effectiveBgColor := themeDefaults.BackgroundColor
 	themeBgColor = effectiveBgColor
 	ColorBackground = lipgloss.Color(effectiveBgColor)
 
 	rebuildAccentColors()
-	rebuildPalette(tc.Palette)
+	rebuildPalette(themeDefaults.Palette)
 	rebuildStyles()
 	buildViewAccentMap()
 	ThemedTextInputStyles = themedTextInputStyles()
 	ThemedTextareaStyles = themedTextareaStyles()
 
-	effectiveBg := tc.CursorBg
-	if effectiveBg == "" {
-		effectiveBg = themeDefaults.CursorColor
-	}
-	effectiveFg := tc.CursorFg
-	if effectiveFg == "" {
-		effectiveFg = themeDefaults.CursorTextColor
-	}
+	effectiveBg := themeDefaults.CursorColor
+	effectiveFg := themeDefaults.CursorTextColor
 	effectiveFlash := lightenHex(effectiveBg, 0.4)
 
 	ColorSelectedBg = lipgloss.Color(effectiveBg)
@@ -110,16 +94,12 @@ func ApplyTheme(tc ThemeConfig) {
 	CursorFlashRowStyle = lipgloss.NewStyle().
 		Background(ColorFlashBg)
 
-	TaskJumperSelectedStyle = lipgloss.NewStyle().
+	PickerSelectedStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg).
 		Foreground(ColorSelectedFg).
 		Bold(true)
 
 	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedTextFg)
-
-	TagManagerItemSelectedStyle = lipgloss.NewStyle().
-		Foreground(ColorSelectedTextFg).
-		Bold(true)
 
 	FilterItemSelectedStyle = lipgloss.NewStyle().
 		Foreground(ColorSelectedTextFg).
@@ -130,16 +110,11 @@ func ApplyTheme(tc ThemeConfig) {
 		Foreground(ColorSelectedTextFg).
 		Padding(0, 1)
 
-	DimmedSelectedStyle = lipgloss.NewStyle().
-		Background(ColorDimmedBg).
-		Foreground(ColorSelectedFg).
-		Italic(true)
-
 	SelectedTaskTitleStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(ColorSelectedTextFg)
 
-	zebraEnabled = tc.ZebraStriping
+	zebraEnabled = false
 
 	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
 	if effectiveBgColor != "" {
@@ -198,21 +173,9 @@ func ApplyTheme(tc ThemeConfig) {
 		BorderForeground(ColorBorder).
 		Padding(0, 1)
 
-	TaskJumperListStyle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, true, false, false).
-		BorderForeground(ColorBorder)
-
-	TaskJumperPreviewStyle = lipgloss.NewStyle().
-		Padding(0, 1)
-
 	OverlayBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPurple).
-		Padding(1, 2)
-
-	TagManagerBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
 		Padding(1, 2)
 
 	SelectorBaseStyle = lipgloss.NewStyle().

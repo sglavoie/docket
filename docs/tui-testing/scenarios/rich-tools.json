@@ -1,0 +1,42 @@
+{
+  "name": "rich-tools",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+
+    { "type": "key", "label": "open task actions for checklist", "key": "space" },
+    { "type": "text", "text": "checklist" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskChecklist" },
+    { "type": "assert", "assert": "contains", "value": "Checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to Outliner", "key": "esc" },
+
+    { "type": "key", "label": "open task actions for comments", "key": "space" },
+    { "type": "text", "text": "comments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "contains", "value": "Comments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to Outliner", "key": "esc" },
+
+    { "type": "key", "label": "open task actions for decisions", "key": "space" },
+    { "type": "text", "text": "decisions" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskDecisions" },
+    { "type": "assert", "assert": "contains", "value": "Decisions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to Outliner", "key": "esc" },
+
+    { "type": "key", "label": "open task actions for attachments", "key": "space" },
+    { "type": "text", "text": "attachments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "assert": "contains", "value": "Attachments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
+  ]
+}

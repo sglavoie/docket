@@ -88,9 +88,13 @@ type ListItem struct {
 	SecondaryText  string
 	Aliases        []string
 	DisabledReason string
-	Preview        ListPreview
-	OperationIDs   []OperationID
-	Data           any
+	// Indeterminate renders the third state used by bulk membership editors.
+	// It is presentation metadata only; adapters still own how toggling the row
+	// changes the underlying value.
+	Indeterminate bool
+	Preview       ListPreview
+	OperationIDs  []OperationID
+	Data          any
 }
 
 // Enabled reports whether the item may be selected or activated.

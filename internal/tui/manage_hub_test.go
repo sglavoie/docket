@@ -2,12 +2,11 @@ package tui
 
 import (
 	"slices"
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
+	apppkg "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -23,24 +22,6 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 		{name: "global notes", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
 			return app.handleNotesMessages(ShowGlobalNotesMsg{})
 		}, params: ManageParams{Module: ManageNotes, Scope: AppEntityScope()}},
-		{name: "project blockers", open: func(app *AppModel, project *models.Project) (bool, tea.Cmd) {
-			return app.handleViewSupportMessages(ShowBlockersMsg{Project: project})
-		}, params: ManageParams{Module: ManageBlockers, Scope: ProjectEntityScope("project")}},
-		{name: "global blockers", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleViewSupportMessages(ShowGlobalBlockersMsg{})
-		}, params: ManageParams{Module: ManageBlockers, Scope: AppEntityScope()}},
-		{name: "project tags", open: func(app *AppModel, project *models.Project) (bool, tea.Cmd) {
-			return app.handleTagMessages(ShowTagManagerMsg{Project: project})
-		}, params: ManageParams{Module: ManageTags, Scope: ProjectEntityScope("project")}},
-		{name: "global tags", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleTagMessages(ShowGlobalTagManagerMsg{})
-		}, params: ManageParams{Module: ManageTags, Scope: AppEntityScope()}},
-		{name: "alerts", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleNotificationMessages(ShowNotificationCenterMsg{})
-		}, params: ManageParams{Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationAlerts}},
-		{name: "message log", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleViewCoreMessages(ShowMessageLogMsg{})
-		}, params: ManageParams{Module: ManageNotifications, Scope: AppEntityScope(), NotificationMode: NotificationLog}},
 	}
 
 	for _, tc := range tests {
@@ -78,7 +59,7 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 	}
 }
 
-func TestManageHubScopeAndNotificationModeUseRouteParams(t *testing.T) {
+func TestManageHubScopeUsesRouteParams(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
 	app.handleNotesMessages(ShowGlobalNotesMsg{})
@@ -109,24 +90,6 @@ func TestManageHubScopeAndNotificationModeUseRouteParams(t *testing.T) {
 		t.Fatalf("project scope = %#v/%T/%p, want %q/%p", params.Scope, app.manageHub.ActiveModuleView(), notes.project, project.ID, project)
 	}
 
-	app.messageLog.Append("background sync finished", MessageLogLevelSuccess)
-	app.activateManageHub(ManageParams{Module: ManageNotifications, Scope: ProjectEntityScope(project.ID)})
-	params = app.CurrentRoute().Params().(ManageParams)
-	if params.Scope != AppEntityScope() {
-		t.Fatalf("global-only Notifications retained project scope: %#v", params.Scope)
-	}
-	app.manageHub.Update(syntheticKey('v'))
-	app.manageHub.pickerCursor = 1
-	_, cmd = app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	app.handleManageHubMessages(cmd())
-	params = app.CurrentRoute().Params().(ManageParams)
-	logView, ok := app.manageHub.ActiveModuleView().(*MessageLogViewModel)
-	if params.NotificationMode != NotificationLog || !ok {
-		t.Fatalf("notification mode/view = %s/%T, want Log", params.NotificationMode, app.manageHub.ActiveModuleView())
-	}
-	if !strings.Contains(ansi.Strip(logView.View().Content), "background sync finished") {
-		t.Fatal("Manage Notifications/Log omitted the app message history")
-	}
 }
 
 func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
@@ -137,27 +100,19 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
 	notes.notes = []*models.Note{{Filename: "one.md", Title: "One"}}
 	app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	if !notes.multiSelectMode || !notes.selectedNotes["one.md"] {
-		t.Fatal("Space did not enter Notes multi-select and select the current row")
+	if notes.multiSelectMode || len(notes.selectedNotes) != 0 {
+		t.Fatal("Space exposed retired Notes multi-select")
 	}
-	notes.multiSelectMode = false
-	notes.selectedNotes = make(map[string]bool)
 	_, cmd := app.manageHub.Update(syntheticKey('a'))
-	if cmd == nil {
-		t.Fatal("Notes a did not dispatch add")
+	if cmd != nil {
+		t.Fatal("Notes creation bypassed explicit destination confirmation")
 	}
-	if _, ok := cmd().(ShowNoteCreatorMsg); !ok {
-		t.Fatalf("Notes a emitted %T, want ShowNoteCreatorMsg", cmd())
+	if !notes.destinationPicker {
+		t.Fatal("Notes a did not open the destination picker")
 	}
-
-	app.handleTagMessages(ShowTagManagerMsg{Project: project})
-	tags := app.manageHub.ActiveModuleView().(*TagManagerModel)
-	tags.tags = []TagInfo{{Name: "alpha", TaskCount: 1}}
-	app.manageHub.Update(syntheticKey('e'))
-	if !tags.renameMode || tags.renameTarget != "alpha" {
-		t.Fatal("Tags e did not enter edit mode")
+	if notes.destinations[notes.destinationCursor] != apppkg.ProjectNoteLocation(project.ID) {
+		t.Fatalf("project Notes preselection = %+v, want project", notes.destinations[notes.destinationCursor])
 	}
-	app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	wantHelp := []string{"j/k", "enter", "a/e/x", "space", "/", "v"}
 	help := app.manageHub.GetHelpItems()
@@ -191,20 +146,5 @@ func TestManageHubRemovedProjectFallsBackToAppScope(t *testing.T) {
 	}
 	if app.currentProject != nil {
 		t.Fatal("removed project pointer remained selected")
-	}
-}
-
-func TestManageHubProjectDeletionStaysInTheCollectionAtAppScope(t *testing.T) {
-	app := typedTestApp(t)
-	project := app.currentProject
-	app.handleNotesMessages(ShowNotesMsg{Project: project})
-
-	handled, _ := app.handleProjectMessages(ProjectDeletedMsg{Project: project})
-	if !handled {
-		t.Fatal("ProjectDeletedMsg was not handled")
-	}
-	params := app.CurrentRoute().Params().(ManageParams)
-	if app.CurrentRoute().ID() != SecondaryTool || params.Module != ManageNotes || params.Scope != AppEntityScope() {
-		t.Fatalf("delete fallback = %s/%#v, want Manage Notes app scope", app.CurrentRoute().ID(), params)
 	}
 }

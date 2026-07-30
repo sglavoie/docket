@@ -1,0 +1,86 @@
+{
+  "input_tasks": 16,
+  "retained_tasks": 15,
+  "omitted_tasks": 1,
+  "entries": [
+    {
+      "project_id": "project-alpha",
+      "task_id": "synthetic-alpha-archived",
+      "action": "qualified",
+      "field": "depends_on",
+      "source": "alpha/completed.md",
+      "from": "synthetic-beta-root",
+      "to": "project-beta:synthetic-beta-root",
+      "reason": "dependency reference uses the retained target project identity"
+    },
+    {
+      "project_id": "project-alpha",
+      "task_id": "synthetic-alpha-archived",
+      "action": "reassigned",
+      "field": "short_id",
+      "source": "alpha/completed.md",
+      "from": "2",
+      "to": "12",
+      "reason": "ShortIDs are assigned once across active and reintegrated archive tasks"
+    },
+    {
+      "project_id": "project-alpha",
+      "task_id": "synthetic-alpha-orphan",
+      "action": "cleared",
+      "field": "parent_id",
+      "source": "active",
+      "from": "synthetic-missing-parent",
+      "reason": "parent does not exist in the retained project task set"
+    },
+    {
+      "project_id": "project-alpha",
+      "task_id": "synthetic-alpha-orphan",
+      "action": "qualified",
+      "field": "depends_on",
+      "source": "active",
+      "from": "synthetic-beta-root",
+      "to": "project-beta:synthetic-beta-root",
+      "reason": "dependency reference uses the retained target project identity"
+    },
+    {
+      "project_id": "project-alpha",
+      "task_id": "synthetic-alpha-rich",
+      "action": "qualified",
+      "field": "depends_on",
+      "source": "active",
+      "from": "synthetic-beta-root",
+      "to": "project-beta:synthetic-beta-root",
+      "reason": "dependency reference uses the retained target project identity"
+    },
+    {
+      "project_id": "project-alpha",
+      "task_id": "synthetic-duplicate-active",
+      "action": "omitted",
+      "field": "task",
+      "source": "alpha/completed.md",
+      "from": "archive",
+      "to": "active",
+      "reason": "active task with the same stable ID takes precedence"
+    },
+    {
+      "project_id": "project-beta",
+      "task_id": "synthetic-beta-archived",
+      "action": "reassigned",
+      "field": "short_id",
+      "source": "beta/completed.md",
+      "from": "1",
+      "to": "3",
+      "reason": "ShortIDs are assigned once across active and reintegrated archive tasks"
+    },
+    {
+      "project_id": "project-beta",
+      "task_id": "synthetic-beta-root",
+      "action": "qualified",
+      "field": "depends_on",
+      "source": "active",
+      "from": "synthetic-alpha-review",
+      "to": "project-alpha:synthetic-alpha-review",
+      "reason": "dependency reference uses the retained target project identity"
+    }
+  ]
+}

@@ -10,12 +10,10 @@ type ColumnLayout struct {
 	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
 	ShortIDWidth  int // max rendered "#N" visual width; 0 if column not visible
 	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
-	TypeWidth     int // max rendered type badge visual width; 0 when column inactive
 	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
 	HasPriority   bool
 	HasShortID    bool
 	HasStatus     bool
-	HasType       bool
 	HasProject    bool
 }
 
@@ -46,12 +44,6 @@ const (
 	// header chrome (title, view mode tabs, status stats, etc.).
 	// Filter/sort info is now inline on the title line, so no extra line needed.
 	TreeHeaderOffset = 7
-
-	// DashboardBottomPaneHeight is the minimum-clamp height for the bottom
-	// info section (summary/alerts cards) in the dashboard horizontal
-	// layout. Session 2 will compute the actual height from the configured
-	// horizontal split percentage and clamp the result against this value.
-	DashboardBottomPaneHeight = 12
 
 	// CompactCardHeight is the height reserved for an inert one-line
 	// summary row in compact dashboard card mode.

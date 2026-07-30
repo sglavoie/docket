@@ -5,8 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // TaskFormChecklistItemEditedMsg is emitted when a checklist item edit is confirmed.
@@ -52,7 +50,6 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 type TaskFormSubtaskEditedMsg struct {
 	Idx         int
 	Title       string
-	TaskType    models.TaskType
 	OpenDetail  bool
 	OpenContent bool
 }
@@ -62,26 +59,14 @@ func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	switch msg.String() {
 	case "enter", "ctrl+o", "ctrl+d":
 		title := strings.TrimSpace(m.subtaskItemInput.Value())
-		t := formSubtaskTypes[m.subtaskTypeCursor]
 		return nil, true, TaskFormSubtaskEditedMsg{
 			Idx:         m.childrenEditIdx,
 			Title:       title,
-			TaskType:    t,
 			OpenDetail:  msg.String() == "ctrl+o",
 			OpenContent: msg.String() == "ctrl+d",
 		}
 	case "esc":
 		return nil, true, nil // cancel
-	case "up", "k", "shift+tab":
-		if m.subtaskTypeCursor > 0 {
-			m.subtaskTypeCursor--
-		}
-		return nil, false, nil
-	case "down", "j", "tab":
-		if m.subtaskTypeCursor < len(formSubtaskTypes)-1 {
-			m.subtaskTypeCursor++
-		}
-		return nil, false, nil
 	default:
 		var cmd tea.Cmd
 		m.subtaskItemInput, cmd = m.subtaskItemInput.Update(msg)
@@ -89,11 +74,11 @@ func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	}
 }
 
-// renderSubtaskEditOverlay renders the inline subtask edit overlay (title + type).
+// renderSubtaskEditOverlay renders the inline subtask title editor.
 func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Subtask")
-	footerText := HelpStyle.Render("j/k: type · Enter: save · Ctrl+O: save & open · Ctrl+D: save & edit desc · Esc: cancel")
+	footerText := HelpStyle.Render("Enter: save · Ctrl+O: save & open · Ctrl+D: save & edit desc · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2
@@ -103,17 +88,5 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	m.subtaskItemInput.SetWidth(innerWidth - 6)
 	applyThemedTextInput(&m.subtaskItemInput)
 
-	var content strings.Builder
-	content.WriteString(" " + m.subtaskItemInput.View() + "\n")
-	content.WriteString(" " + MutedStyle.Render("Type:") + "  ")
-	for i, st := range formSubtaskTypes {
-		badge := GetTypeBadge(string(st), st.Icon())
-		if i == m.subtaskTypeCursor {
-			content.WriteString(SelectorOptionSelectedStyle.Render(" " + badge + " " + string(st) + " "))
-		} else {
-			content.WriteString(MutedStyle.Render(" " + badge + " " + string(st) + " "))
-		}
-	}
-
-	return renderTitledBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return renderTitledBox(" "+m.subtaskItemInput.View(), innerWidth, title, footerText, borderStyle)
 }

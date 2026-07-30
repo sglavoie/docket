@@ -1,18 +1,14 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-
-	"github.com/sglavoie/tt/internal/alerts"
-	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestNotificationCenterTruncateToWidthUsesVisualWidth(t *testing.T) {
+func TestTruncateToWidthUsesVisualWidth(t *testing.T) {
 	input := "修复界面布局  详情说明内容"
 	truncated := truncateToVisualWidth(input, 10)
 
@@ -24,38 +20,10 @@ func TestNotificationCenterTruncateToWidthUsesVisualWidth(t *testing.T) {
 	}
 }
 
-func TestNotificationCenterViewRespectsVisualWidth(t *testing.T) {
-	snapshot := &alerts.AlertSnapshot{
-		Groups: []alerts.AlertGroup{{
-			Category: alerts.CategoryOverdue,
-			Label:    "Overdue (1)",
-			Alerts: []alerts.Alert{{
-				Category:    alerts.CategoryOverdue,
-				Title:       "修复界面布局",
-				Details:     "详情说明内容很长需要截断",
-				ProjectID:   "proj-1",
-				ProjectName: "超长项目名称用于截断",
-				Severity:    alerts.SeverityWarning,
-			}},
-		}},
-		TotalCount: 1,
-	}
-
-	m := NewNotificationCenterModel(snapshot, snapshot, map[string]bool{})
-	m.SetSize(18, 10)
-	rendered := m.View().Content
-
-	for line := range strings.SplitSeq(rendered, "\n") {
-		if lipgloss.Width(line) > 18 {
-			t.Fatalf("notification center line exceeds width 18: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(line), ansi.Strip(rendered))
-		}
-	}
-}
-
 func TestRenderStatusBarFooterRespectsWidth(t *testing.T) {
 	footer := renderStatusBarFooter(
-		HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: open · d: dismiss · D: show all · Esc: close"),
-		MutedStyle.Render("1 alerts"),
+		HelpStyle.Render("j/k: navigate · Tab: expand · Enter: open · Esc: close"),
+		MutedStyle.Render("3 items"),
 		24,
 	)
 
@@ -77,8 +45,8 @@ func TestRenderStatusBarFooterWrapsHelpInsteadOfClipping(t *testing.T) {
 	var footer string
 	_, issues := withRenderAudit(func() string {
 		footer = renderStatusBarFooter(
-			HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: open · d: dismiss · D: show all · Esc: close"),
-			MutedStyle.Render("1 alerts"),
+			HelpStyle.Render("j/k: navigate · Tab: expand · Enter: open · Esc: close"),
+			MutedStyle.Render("3 items"),
 			width,
 		)
 		return footer
@@ -129,18 +97,18 @@ func TestRenderStatusBarFooterRecordsAuditIssue(t *testing.T) {
 	}
 }
 
-// TestFullscreenContentHeightForBlocksBudgetsWrappedFooter verifies the shared
-// JoinVertical-based content-height helper (used by Roadmap and the metrics
-// dashboard) reserves the actual rendered footer height. At a narrow width the
+// TestFullscreenContentHeightForBlocksBudgetsWrappedFooter verifies that the
+// shared JoinVertical-based content-height helper reserves the actual rendered
+// footer height. At a narrow width the
 // footer help wraps beyond the historical two rows, and the joined
 // title/tabBar/content/footer view must still fit its height budget rather than
 // overflowing by the extra wrapped rows.
 func TestFullscreenContentHeightForBlocksBudgetsWrappedFooter(t *testing.T) {
 	const width, height = 40, 20
 
-	title := renderFullscreenTitle("Roadmap", "Week · All Projects", nil)
-	tabBar := RenderTabBar([]string{"Timeline", "Critical Path", "Forecasts"}, 0, width, 1, nil)
-	helpText := HelpStyle.Render("Tab tabs · j/k cursor · H/L scroll · z zoom · space expand · ↵ task · c crit path · r refresh · ? help")
+	title := renderFullscreenTitle("Example", "All Projects", nil)
+	tabBar := RenderTabBar([]string{"First", "Second", "Third"}, 0, width, 1, nil)
+	helpText := HelpStyle.Render("Tab tabs · j/k cursor · H/L scroll · space expand · ↵ open · r refresh · ? help")
 	footer := renderStatusBarFooter("", helpText, width, nil)
 
 	// Guard: the scenario only exercises the multi-row-footer budgeting path when
@@ -183,86 +151,5 @@ func TestRenderStatusBarFooterConstrainsOverWideLabel(t *testing.T) {
 	plain, geomIssues := normalizeScreen(footer, width, len(lines))
 	if len(geomIssues) > 0 {
 		t.Fatalf("expected no geometry issues for the constrained footer, got %+v\n\n%s", geomIssues, plain)
-	}
-}
-
-// TestRoadmapViewBudgetsWrappedFooterHeight renders a real Roadmap timeline view
-// at a narrow, short terminal size where the footer help wraps beyond two rows
-// and there are far more rows than fit, so the timeline appends its
-// "row N/M" scroll-position line. It asserts the final RoadmapModel.View().Content
-// height stays within the configured terminal height. Without the renderer's
-// post-render clamp (fitBlockHeight in roadmap_render.go), the appended
-// scroll-position row would push the joined view one line past the budget.
-func TestRoadmapViewBudgetsWrappedFooterHeight(t *testing.T) {
-	const width, height = 40, 18
-	cfg := newTestConfig()
-
-	m := &RoadmapModel{
-		runtime:    testRuntimeAt(cfg.DataDir(), cfg),
-		isGlobal:   true,
-		zoom:       ZoomWeek,
-		collapsed:  make(map[TaskIdentity]bool),
-		labelWidth: 30,
-		activeTab:  RoadmapTabTimeline,
-	}
-	m.SetSize(width, height)
-
-	// A narrow time axis with a label for every column so renderAxisHeader can
-	// index Labels safely.
-	const totalCols = 8
-	labels := make([]string, totalCols)
-	for i := range labels {
-		labels[i] = fmt.Sprintf("W%d", i+1)
-	}
-	m.axis = TimelineAxis{
-		UnitDays:  1,
-		TotalCols: totalCols,
-		Labels:    labels,
-		TodayCol:  1,
-	}
-
-	// Far more rows than the content budget so the timeline overflows and appends
-	// its "row N/M" scroll-position line.
-	const rowCount = 40
-	for i := 0; i < rowCount; i++ {
-		task, err := models.NewTask(fmt.Sprintf("task-%d", i+1), i+1, models.TaskTypeTask, fmt.Sprintf("Roadmap timeline task %d", i+1))
-		if err != nil {
-			t.Fatalf("NewTask: %v", err)
-		}
-		m.rows = append(m.rows, TimelineRow{
-			Task:     task,
-			BarStart: 1,
-			BarEnd:   4,
-		})
-	}
-
-	// Guard: the footer help must actually wrap beyond two rows at this width, or
-	// the wrapped-footer budgeting path is not exercised. Mirror View's timeline
-	// help composition.
-	helpText := HelpStyle.Render(strings.Join(
-		[]string{"Tab tabs", "j/k cursor", "H/L scroll", "z zoom", "space expand", "↵ task", "c crit path", "r refresh", "? help"},
-		" · "))
-	footer := renderStatusBarFooter("", helpText, width, m.AccentColor())
-	if got := lipgloss.Height(footer); got <= 2 {
-		t.Fatalf("expected the Roadmap footer to wrap beyond two rows at width %d, got height %d", width, got)
-	}
-
-	// Guard: the fixture must actually trigger the scroll-position path. Rendered
-	// unclamped at a small budget, the timeline appends its "row N/M" line beyond
-	// the requested height — precisely the overflow the View-level clamp defends
-	// against. (The final clamped View trims this extra row, so it is asserted
-	// here on the raw tab, not on the final view.)
-	const probeHeight = 9
-	rawTab := m.renderTimelineTab(probeHeight, m.timelineLayout())
-	if !strings.Contains(ansi.Strip(rawTab), fmt.Sprintf("row 1/%d", rowCount)) {
-		t.Fatalf("expected the unclamped timeline tab to append the scroll-position row, got:\n\n%s", ansi.Strip(rawTab))
-	}
-	if got := lipgloss.Height(rawTab); got <= probeHeight {
-		t.Fatalf("expected the unclamped timeline tab to overflow probe height %d, got %d", probeHeight, got)
-	}
-
-	view := m.View().Content
-	if got := lipgloss.Height(view); got > height {
-		t.Fatalf("Roadmap view height %d exceeds budget %d\n\n%s", got, height, ansi.Strip(view))
 	}
 }

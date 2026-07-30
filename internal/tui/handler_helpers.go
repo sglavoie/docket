@@ -31,10 +31,7 @@ func (m *AppModel) requestCrossProjectOutlinerReload() tea.Cmd {
 }
 
 // reloadCrossProjectOutlinerProject refreshes one project object already owned
-// by the sole cross-project Outliner. Sandbox projects are intentionally absent
-// from the normal active-project reload selection, so a sandbox reset must
-// update that scoped copy directly instead of launching a reload that would
-// omit it.
+// by the sole cross-project Outliner.
 func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 	if projectID == "" || m.crossOutliner == nil || m.persister == nil {
 		return
@@ -139,8 +136,7 @@ func (m *AppModel) setSuccessStatus(msg string) {
 	m.statusUpdatedAt = time.Now()
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
-	m.messageLog.Append(msg, MessageLogLevelSuccess)
-	m.openLoops = ComputeOpenLoops(m.runtime, m.dailyPlanIDs)
+	m.openLoops = ComputeOpenLoops(m.runtime, m.todayIDs)
 }
 
 // setInfoStatus sets a status message with informational styling (neutral color, no checkmark).
@@ -152,31 +148,16 @@ func (m *AppModel) setInfoStatus(msg string) {
 	m.statusUpdatedAt = time.Now()
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
-	m.messageLog.Append(msg, MessageLogLevelInfo)
 }
 
 // setWarningStatus sets a non-fatal warning while preserving the committed
-// operation's success semantics. Warnings use the neutral status surface and
-// retain their own severity in the message log.
+// operation's success semantics. Warnings use the neutral status surface.
 func (m *AppModel) setWarningStatus(msg string) {
 	m.statusMessage = msg
 	m.statusIsInfo = true
 	m.statusUpdatedAt = time.Now()
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
-	m.messageLog.Append(msg, MessageLogLevelWarning)
-}
-
-// setBackgroundErrorStatus reports a background failure through the transient
-// status and message-log surfaces without replacing m.err, which may belong to
-// an unrelated operation that is still in flight.
-func (m *AppModel) setBackgroundErrorStatus(msg string) {
-	m.statusMessage = msg
-	m.statusIsInfo = true
-	m.statusUpdatedAt = time.Now()
-	m.statusUndoCb = nil
-	m.statusExpiresAt = time.Time{}
-	m.messageLog.Append(msg, MessageLogLevelError)
 }
 
 // UndoToastTimeout is how long a transient undo-available toast remains
@@ -217,15 +198,6 @@ func formatUndoToast(action, context string) string {
 	return fmt.Sprintf("%s '%s' · u to undo", action, context)
 }
 
-// formatSuccessWithNext renders "<action> — <nextHint>" for status messages that guide the
-// user to their next step. Returns action unchanged when nextHint is empty.
-func formatSuccessWithNext(action, nextHint string) string {
-	if nextHint == "" {
-		return action
-	}
-	return action + " — " + nextHint
-}
-
 // clearStatus clears the status message and resets the info flag.
 func (m *AppModel) clearStatus() {
 	m.statusMessage = ""
@@ -237,9 +209,7 @@ func (m *AppModel) clearStatus() {
 }
 
 // pruneDeletedTaskRefs removes tasks that no longer exist in any active project
-// from the in-memory focusQueue, dailyPlan, and recentTaskVisits.
-// It then persists the cleaned lists to config. Call this after task deletion
-// or archiving to prevent stale entries from being re-persisted.
+// from the in-memory planning collections and reconciles durable planning.
 func (m *AppModel) pruneDeletedTaskRefs() {
 	// Build a set of all valid project-qualified task identities.
 	// Projects not yet loaded from disk have nil Tasks; load them
@@ -252,7 +222,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 				logging.Warn("pruneDeletedTaskRefs: failed to load project %s: %v", p.Name, err)
 				// A transient load failure must not be treated as
 				// "project has zero tasks" — that would prune every
-				// focusQueue / dailyPlan / recentTaskVisits entry
+				// planning entry
 				// belonging to this project. Abort the prune entirely
 				// so stale-but-recoverable references survive until the
 				// next successful load.
@@ -271,43 +241,31 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 
 	// Prune focus queue
 	n := 0
-	for _, ft := range m.focusQueue {
+	for _, ft := range m.nextOrder {
 		identity := taskIdentityFor(ft.Task, ft.Project)
 		if validTasks[identity] {
-			m.focusQueue[n] = ft
+			m.nextOrder[n] = ft
 			n++
 		} else {
-			delete(m.focusQueueIDs, identity)
+			delete(m.nextOrderIDs, identity)
 			dirty = true
 		}
 	}
-	m.focusQueue = m.focusQueue[:n]
+	m.nextOrder = m.nextOrder[:n]
 
 	// Prune daily plan
 	n = 0
-	for _, ft := range m.dailyPlan {
+	for _, ft := range m.today {
 		identity := taskIdentityFor(ft.Task, ft.Project)
 		if validTasks[identity] {
-			m.dailyPlan[n] = ft
+			m.today[n] = ft
 			n++
 		} else {
-			delete(m.dailyPlanIDs, identity)
+			delete(m.todayIDs, identity)
 			dirty = true
 		}
 	}
-	m.dailyPlan = m.dailyPlan[:n]
-
-	// Prune recent task visits
-	n = 0
-	for _, rv := range m.recentTaskVisits {
-		if validTasks[taskIdentityFor(rv.Task, rv.Project)] {
-			m.recentTaskVisits[n] = rv
-			n++
-		} else {
-			dirty = true
-		}
-	}
-	m.recentTaskVisits = m.recentTaskVisits[:n]
+	m.today = m.today[:n]
 
 	if dirty {
 		if m.appService != nil {
@@ -318,7 +276,6 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 				m.rebuildPlanningFromRuntime()
 			}
 		}
-		m.persistRecentTaskVisits()
 	}
 }
 

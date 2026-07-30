@@ -5,13 +5,11 @@ import (
 	"fmt"
 )
 
-// The domain committers are the whole-config Save's domain-scoped replacements:
-// a settings-editor change persists only the settings + machine-local domains and
-// a workflow/scoring change persists only the automation domain, each under an
-// optimistic-concurrency check rather than blindly rewriting every synced file.
-// Unlike Manager.Save (which decomposes and last-writer-wins every domain), a
-// committer never touches the domains it does not own, so a concurrent planning
-// or catalog write is not clobbered by a settings save that carried a stale copy.
+// The domain committers are the whole-config Save's domain-scoped replacements.
+// Each persists only its owning catalog, planning, or machine domain under an
+// optimistic-concurrency check rather than blindly rewriting every file.
+// A committer never touches the domains it does not own, so concurrent writes
+// to separate domains cannot clobber one another through stale snapshots.
 //
 // Machine-local state stays outside the synced workspace set: a machine commit
 // writes machine.json through its own checked save (machine.json lives under the
@@ -96,38 +94,6 @@ func (c *DomainCoordinator) CommitPlanning(planning *PlanningState) error {
 	)
 }
 
-// CommitSettings persists only the portable settings domain under an optimistic
-// concurrency check. It does not touch machine.json; a settings-editor change
-// that also mutates machine-local state commits the machine domain separately
-// through CommitMachine (see Manager.CommitSettings / RuntimeState.CommitSettings).
-func (c *DomainCoordinator) CommitSettings(settings *Settings) error {
-	if settings == nil {
-		return fmt.Errorf("settings are required")
-	}
-	if err := adoptWorkspaceID(c.store); err != nil {
-		return err
-	}
-	return commitChecked(
-		func() (string, error) { _, rev, err := c.store.LoadSettingsChecked(); return rev, err },
-		func(rev string) error { return c.store.SaveSettingsChecked(settings, rev) },
-	)
-}
-
-// CommitAutomation persists only the automation domain (workflow rules,
-// templates, scoring configuration) under an optimistic concurrency check.
-func (c *DomainCoordinator) CommitAutomation(automation *AutomationConfig) error {
-	if automation == nil {
-		return fmt.Errorf("automation config is required")
-	}
-	if err := adoptWorkspaceID(c.store); err != nil {
-		return err
-	}
-	return commitChecked(
-		func() (string, error) { _, rev, err := c.store.LoadAutomationChecked(); return rev, err },
-		func(rev string) error { return c.store.SaveAutomationChecked(automation, rev) },
-	)
-}
-
 // CommitMachine persists only the machine-local domain under an optimistic
 // concurrency check. machine.json lives under the local runtime root, outside the
 // synced <data>/.tt/ set, so it never rides a synced transaction.
@@ -156,34 +122,6 @@ func (m *Manager) CommitCatalog(catalog *WorkspaceCatalog) error {
 // saved-view/filter change through the whole-config Save.
 func (m *Manager) CommitPlanning(planning *PlanningState) error {
 	return m.DomainCoordinator().CommitPlanning(planning)
-}
-
-// CommitSettings persists the portable settings domain and the machine-local
-// state domain with optimistic concurrency, without rewriting the other synced
-// domains. It is the domain-scoped replacement for routing a settings-editor
-// change through the whole-config Save: settings.json (synced) and machine.json
-// (machine-local) are each written under a checked revision so a concurrent
-// writer is detected, and the machine-local file stays outside the synced set.
-func (m *Manager) CommitSettings(settings *Settings, machine *MachineState) error {
-	if settings == nil {
-		return fmt.Errorf("settings are required")
-	}
-	if machine == nil {
-		return fmt.Errorf("machine state is required")
-	}
-	coord := m.DomainCoordinator()
-	if err := coord.CommitSettings(settings); err != nil {
-		return err
-	}
-	return coord.CommitMachine(machine)
-}
-
-// CommitAutomation persists the automation domain (workflow rules, templates,
-// scoring configuration) with optimistic concurrency, without rewriting the other
-// synced domains. It is the domain-scoped replacement for routing a workflow-rule
-// or scoring change through the whole-config Save.
-func (m *Manager) CommitAutomation(automation *AutomationConfig) error {
-	return m.DomainCoordinator().CommitAutomation(automation)
 }
 
 // CommitMachine persists only the machine-local state domain with optimistic

@@ -9,20 +9,20 @@ func TestReorderRootTasksByCompletion(t *testing.T) {
 	}
 
 	// Create tasks: some completed, some not
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // uncompleted
+	task1, err := NewGenericTask("1", 1, "Task 1") // uncompleted
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Complete()                                      // completed
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3") // uncompleted
+	task2.Complete()                               // completed
+	task3, err := NewGenericTask("3", 3, "Task 3") // uncompleted
 	if err != nil {
 		t.Fatal(err)
 	}
-	task4, err := NewTask("4", 4, TaskTypeTask, "Task 4")
+	task4, err := NewGenericTask("4", 4, "Task 4")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,17 +54,17 @@ func TestReorderRootTasksByCompletionPreservesRelativeOrder(t *testing.T) {
 	}
 
 	// Create completed tasks in specific order
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task1.Complete()
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task2.Complete()
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,16 +87,16 @@ func TestReorderRootTasksByCompletionWithChildren(t *testing.T) {
 	}
 
 	// Create an epic with children, then a root task
-	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {
 		t.Fatal(err)
 	}
 	epic.Complete() // completed epic
-	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child1, err := NewGenericTask("child1", 2, "Child 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child2, err := NewGenericTask("child2", 3, "Child 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestReorderRootTasksByCompletionWithChildren(t *testing.T) {
 	child1.ParentID = &epicID
 	child2.ParentID = &epicID
 
-	rootTask, err := NewTask("root", 4, TaskTypeTask, "Root Task") // uncompleted root
+	rootTask, err := NewGenericTask("root", 4, "Root Task") // uncompleted root
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,15 +153,15 @@ func TestReorderRootTasksByCompletionAllUncompleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewGenericTask("1", 1, "Task 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewGenericTask("2", 2, "Task 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewGenericTask("3", 3, "Task 3")
 	if err != nil {
 		t.Fatal(err)
 	}

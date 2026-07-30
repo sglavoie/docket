@@ -34,7 +34,6 @@ func TestParse_PinnedAtValidStillRoundTrips(t *testing.T) {
 	at := time.Date(2024, 6, 15, 12, 30, 45, 0, time.Local)
 	task := &models.Task{
 		ID:            "pin-ok",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      3,
 		Pinned:        true,
@@ -65,7 +64,6 @@ func TestRoundTrip_CodeRefLineNumberPreservedWithoutOriginalPath(t *testing.T) {
 	now := time.Now()
 	task := &models.Task{
 		ID:            "code-ref-no-path",
-		Type:          models.TaskTypeTask,
 		WorkflowState: models.StateReady,
 		Priority:      3,
 		Attachments: []models.Attachment{

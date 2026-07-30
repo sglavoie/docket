@@ -9,6 +9,17 @@ import (
 // handleProjectViewMessages handles project tree and outliner view transitions.
 func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case launchOutlinerMsg:
+		presentationCmd := m.prepareCrossProjectOutliner()
+		m.clearTransientNavigationState()
+		m.taskDetail = nil
+		m.taskComposer = nil
+		m.projectStack = nil
+		m.navigation.ResetRoot()
+		m.crossOutliner.resetToGlobalAll()
+		m.setAccentOnView(m.crossOutliner)
+		return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd)
+
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
 			return true, m.enterProjectScopeOutliner(msg.Project, msg.OpenAtTask, msg.Options)
@@ -84,8 +95,8 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 	if m.crossOutliner == nil {
 		m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
-		m.crossOutliner.queueIDs = m.focusQueueIDs
-		m.crossOutliner.dailyPlanIDs = m.dailyPlanIDs
+		m.crossOutliner.queueIDs = m.nextOrderIDs
+		m.crossOutliner.todayIDs = m.todayIDs
 		m.crossOutliner.SetSize(m.width, m.height-2)
 		m.wireSecondaryCoordinators(m.crossOutliner)
 		m.views.Register(ViewCrossProjectOutliner, m.crossOutliner)

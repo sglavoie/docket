@@ -19,7 +19,7 @@ func TestCreationRequestsExposeOnlyCanonicalState(t *testing.T) {
 			if field, ok := requestType.FieldByName("State"); !ok || field.Type != reflect.TypeOf(models.WorkflowState("")) {
 				t.Fatalf("%s request State field = %#v, want models.WorkflowState", name, field)
 			}
-			for _, legacy := range []string{"Section", "InitialState", "Status"} {
+			for _, legacy := range []string{"Section", "InitialState", "Status", "Type", "Attrs"} {
 				if _, ok := requestType.FieldByName(legacy); ok {
 					t.Fatalf("%s request still exposes legacy creation field %s", name, legacy)
 				}
@@ -28,14 +28,14 @@ func TestCreationRequestsExposeOnlyCanonicalState(t *testing.T) {
 	}
 }
 
-// TestService_AddTask_Parity exercises the full typed-capture surface: type,
+// TestService_AddTask_Parity exercises the full capture surface:
 // priority, tags, description, state, recurrence, parent placement,
-// checklist, and type-specific attributes, plus an auxiliary durable artifact
+// checklist, plus an auxiliary durable artifact
 // (standing in for the config store with an incremented template use-count). It
 // asserts the created task carries every field AND that the task write and the
 // auxiliary artifact are committed as ONE atomic ChangeSet.
 func TestService_AddTask_Parity(t *testing.T) {
-	epic, err := models.NewTask("epic-1", 1, models.TaskTypeEpic, "Epic Parent")
+	epic, err := models.NewGenericTask("epic-1", 1, "Epic Parent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,6 @@ func TestService_AddTask_Parity(t *testing.T) {
 	res, err := svc.AddTask(app.AddTaskRequest{
 		ProjectID:   project.ID,
 		Title:       "Child task",
-		Type:        models.TaskTypeTask,
 		Priority:    1,
 		Tags:        []string{"backend", "api"},
 		Description: "body text",
@@ -56,7 +55,6 @@ func TestService_AddTask_Parity(t *testing.T) {
 		Recurrence:  models.ParseRecurrence("weekly"),
 		ParentID:    &parentID,
 		Checklist:   []string{"step 1", "step 2"},
-		Attrs:       models.TypeAttrValues{TaskEffort: "small"},
 		Artifacts:   []storage.ArtifactChange{configArtifact},
 	})
 	if err != nil {
@@ -97,10 +95,6 @@ func TestService_AddTask_Parity(t *testing.T) {
 	if len(task.Checklist) != 2 {
 		t.Errorf("checklist = %d items, want 2", len(task.Checklist))
 	}
-	if task.TaskAttrs == nil || task.TaskAttrs.Effort != models.EffortSmall {
-		t.Errorf("task attributes not applied: %+v", task.TaskAttrs)
-	}
-
 	// Atomicity: exactly ONE changeset, carrying the project write AND the auxiliary
 	// artifact together.
 	if len(repo.commits) != 1 {
@@ -182,29 +176,6 @@ func TestService_AddTask_InvalidParentRef(t *testing.T) {
 	_, err := svc.AddTask(app.AddTaskRequest{ProjectID: project.ID, Title: "orphan", ParentID: &missing})
 	if !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("error = %v, want ErrTaskNotFound", err)
-	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("a rejected add must not commit, got %d commits", len(repo.commits))
-	}
-}
-
-// TestService_AddTask_InvalidParentType verifies hierarchy rules are enforced: an
-// epic cannot be nested under a leaf task. The rejected request commits nothing.
-func TestService_AddTask_InvalidParentType(t *testing.T) {
-	leaf := newTask("t-1", 1, "leaf task")
-	project := newProject("proj-1", "Proj", leaf)
-	repo := newFakeRepo(project)
-	svc := newTestService(repo)
-
-	parentID := leaf.ID
-	_, err := svc.AddTask(app.AddTaskRequest{
-		ProjectID: project.ID,
-		Title:     "an epic",
-		Type:      models.TaskTypeEpic,
-		ParentID:  &parentID,
-	})
-	if err == nil {
-		t.Fatal("expected error nesting an epic under a task")
 	}
 	if len(repo.commits) != 0 {
 		t.Fatalf("a rejected add must not commit, got %d commits", len(repo.commits))

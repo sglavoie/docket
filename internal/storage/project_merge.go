@@ -75,8 +75,8 @@ func (r *ProjectMergeResult) HasConflicts() bool {
 // mergeableTaskFields lists the struct-field indexes of models.Task that carry
 // user-authored persisted state and therefore participate in the field-level
 // merge. Computed fields (Children, Parent, Project, Level — tagged json:"-")
-// and derived persistence metadata (UpdatedAt and Activity) are excluded: the
-// former are rebuilt from merged content, while the latter are reconciled by
+// and derived persistence metadata (UpdatedAt) are excluded: the former are
+// rebuilt from merged content, while the latter is reconciled by
 // mergeTaskFields and the commit boundary without producing user conflicts.
 // Computed once from the type so the field set can never drift from the struct
 // definition.
@@ -94,10 +94,9 @@ func buildMergeableTaskFields() []taskFieldDescriptor {
 			continue
 		}
 		// UpdatedAt is stamped by every business mutation, so concurrent edits to
-		// different fields naturally carry different values. Activity is likewise
-		// derived from accepted business deltas. Neither is user-authored conflict
-		// material; mergeTaskFields reconciles them explicitly below.
-		if field.Name == "UpdatedAt" || field.Name == "Activity" {
+		// different fields naturally carry different values. It is not
+		// user-authored conflict material; mergeTaskFields reconciles it below.
+		if field.Name == "UpdatedAt" {
 			continue
 		}
 		if name == "" {
@@ -157,12 +156,17 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 		return result, nil
 	}
 
+	schemaVersion := SchemaVersionV2
+	if base.SchemaVersion == SchemaVersionV5 ||
+		local.SchemaVersion == SchemaVersionV5 ||
+		current.SchemaVersion == SchemaVersionV5 {
+		schemaVersion = SchemaVersionV5
+		opaque = nil
+	}
 	merged := &ProjectDocument{
 		ProjectName:   name,
-		Tags:          mergeStringSet(base.Tags, local.Tags, current.Tags),
-		PinnedTags:    mergeStringSet(base.PinnedTags, local.PinnedTags, current.PinnedTags),
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
-		SchemaVersion: SchemaVersionV2,
+		SchemaVersion: schemaVersion,
 		OpaqueBlocks:  opaque,
 	}
 
@@ -285,73 +289,137 @@ func mergeTaskFields(id string, base, local, current *models.Task) (*models.Task
 		merged.UpdatedAt = current.UpdatedAt
 	}
 
-	// The current document is the durable activity-history authority. Local
-	// activity is derived metadata from the caller's older base and must neither
-	// conflict with nor replace current history. After a clean stale merge, the
-	// commit boundary appends the accepted local business delta exactly once.
-	merged.Activity = append([]*models.ActivityEntry(nil), current.Activity...)
-
 	return merged, conflicts
 }
 
-// mergeTaskOrder three-way merges sibling order. It compares each side's
-// relative ordering of the tasks it shares with base: if only one side reordered
-// its order wins; if both reordered but agree on their shared subsequence the
-// result coalesces; if both reordered incompatibly it is a hierarchy conflict.
-// Tasks added by a side are appended after the authoritative order so every
-// surviving task appears exactly once, deterministically.
+// mergeTaskOrder three-way merges each sibling group independently. The flat
+// document slice is only a carrier for manual order: tasks with different
+// parents do not participate in the same ordering decision. Independent
+// reorders under different parents therefore coalesce, while incompatible
+// reorders within one parent group remain hierarchy conflicts.
 func mergeTaskOrder(base, local, current *ProjectDocument, survivors map[string]*models.Task) ([]string, []MergeConflict) {
-	baseIDs := taskIDs(base.Tasks)
-	localIDs := taskIDs(local.Tasks)
-	currentIDs := taskIDs(current.Tasks)
+	backbone := survivingTaskOrder(survivors, base.Tasks, local.Tasks, current.Tasks)
+	groupMembers := make(map[string]map[string]bool)
+	groupOrder := make([]string, 0)
+	for _, id := range backbone {
+		group := taskSiblingGroup(survivors[id])
+		if groupMembers[group] == nil {
+			groupMembers[group] = make(map[string]bool)
+			groupOrder = append(groupOrder, group)
+		}
+		groupMembers[group][id] = true
+	}
 
+	mergedGroups := make(map[string][]string, len(groupMembers))
+	var conflicts []MergeConflict
+	for _, group := range groupOrder {
+		members := groupMembers[group]
+		baseIDs := documentSiblingOrder(base.Tasks, group, members)
+		localIDs := documentSiblingOrder(local.Tasks, group, members)
+		currentIDs := documentSiblingOrder(current.Tasks, group, members)
+
+		authoritative, conflict := mergeSiblingOrder(group, baseIDs, localIDs, currentIDs)
+		if conflict != nil {
+			conflicts = append(conflicts, *conflict)
+			continue
+		}
+		mergedGroups[group] = completeSiblingOrder(authoritative, localIDs, currentIDs, baseIDs, filterOrder(backbone, members))
+	}
+	if len(conflicts) > 0 {
+		return nil, conflicts
+	}
+
+	// Keep the cross-group slot pattern from the deterministic backbone and fill
+	// each group's slots from its independently merged order. This changes only
+	// sibling order; unrelated groups retain their own relative order.
+	next := make(map[string]int, len(mergedGroups))
+	ordered := make([]string, 0, len(backbone))
+	for _, id := range backbone {
+		group := taskSiblingGroup(survivors[id])
+		index := next[group]
+		ordered = append(ordered, mergedGroups[group][index])
+		next[group] = index + 1
+	}
+	return ordered, nil
+}
+
+func mergeSiblingOrder(group string, baseIDs, localIDs, currentIDs []string) ([]string, *MergeConflict) {
 	localReordered := relativeOrderChanged(baseIDs, localIDs)
 	currentReordered := relativeOrderChanged(baseIDs, currentIDs)
 
-	var authoritative []string
 	switch {
 	case !localReordered && !currentReordered:
-		authoritative = baseIDs
+		return baseIDs, nil
 	case localReordered && !currentReordered:
-		authoritative = localIDs
+		return localIDs, nil
 	case !localReordered && currentReordered:
-		authoritative = currentIDs
+		return currentIDs, nil
 	default:
-		// Both reordered: reconcilable only if they agree on the tasks they share.
 		shared := intersectionSet(localIDs, currentIDs)
 		if stringSlicesEqual(filterOrder(localIDs, shared), filterOrder(currentIDs, shared)) {
-			authoritative = localIDs
-			break
+			return localIDs, nil
 		}
-		return nil, []MergeConflict{{
+		label := "root tasks"
+		if group != "" {
+			label = fmt.Sprintf("children of task %q", group)
+		}
+		return nil, &MergeConflict{
 			Kind:   MergeConflictHierarchy,
 			Field:  "order",
-			Detail: "local and current reordered sibling tasks incompatibly",
-		}}
+			Detail: fmt.Sprintf("local and current reordered %s incompatibly", label),
+		}
 	}
+}
 
-	ordered := make([]string, 0, len(survivors))
-	placed := make(map[string]bool, len(survivors))
-	appendSurviving := func(ids []string) {
-		for _, id := range ids {
+func completeSiblingOrder(sequences ...[]string) []string {
+	var ordered []string
+	placed := make(map[string]bool)
+	for _, sequence := range sequences {
+		for _, id := range sequence {
 			if placed[id] {
-				continue
-			}
-			if _, ok := survivors[id]; !ok {
 				continue
 			}
 			ordered = append(ordered, id)
 			placed[id] = true
 		}
 	}
-	// Authoritative order first, then any survivor (e.g. an addition from the
-	// non-authoritative side) in a deterministic follow-up scan.
-	appendSurviving(authoritative)
-	appendSurviving(localIDs)
-	appendSurviving(currentIDs)
-	appendSurviving(baseIDs)
+	return ordered
+}
 
-	return ordered, nil
+func survivingTaskOrder(survivors map[string]*models.Task, taskSets ...[]*models.Task) []string {
+	ordered := make([]string, 0, len(survivors))
+	placed := make(map[string]bool, len(survivors))
+	for _, tasks := range taskSets {
+		for _, task := range tasks {
+			if task == nil || placed[task.ID] {
+				continue
+			}
+			if _, ok := survivors[task.ID]; !ok {
+				continue
+			}
+			ordered = append(ordered, task.ID)
+			placed[task.ID] = true
+		}
+	}
+	return ordered
+}
+
+func documentSiblingOrder(tasks []*models.Task, group string, members map[string]bool) []string {
+	ordered := make([]string, 0, len(members))
+	for _, task := range tasks {
+		if task == nil || !members[task.ID] || taskSiblingGroup(task) != group {
+			continue
+		}
+		ordered = append(ordered, task.ID)
+	}
+	return ordered
+}
+
+func taskSiblingGroup(task *models.Task) string {
+	if task == nil || task.ParentID == nil {
+		return ""
+	}
+	return *task.ParentID
 }
 
 // auditMergedDocument re-runs the structural audit, dependency checks, and state
@@ -360,10 +428,8 @@ func mergeTaskOrder(base, local, current *ProjectDocument, survivors map[string]
 // so a genuine invariant break surfaces instead of being papered over.
 func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 	project := &models.Project{
-		Name:       doc.ProjectName,
-		Tasks:      doc.Tasks,
-		Tags:       doc.Tags,
-		PinnedTags: doc.PinnedTags,
+		Name:  doc.ProjectName,
+		Tasks: doc.Tasks,
 	}
 
 	var conflicts []MergeConflict
@@ -445,47 +511,6 @@ func mergeOpaqueBlocks(base, local, current *ProjectDocument) ([]OpaqueBlock, *M
 			Detail:  "local and current edited the opaque header region differently",
 		}
 	}
-}
-
-// mergeStringSet three-way merges an ordered string list with set semantics: an
-// item survives only if both sides kept it (delete-versus-unchanged deletes),
-// and additions from either side are unioned in a deterministic order. This
-// never conflicts, matching the "independent additions merge automatically"
-// rule for tags, pinned tags, and section definitions.
-func mergeStringSet(base, local, current []string) []string {
-	localSet := toSet(local)
-	currentSet := toSet(current)
-	baseSet := toSet(base)
-
-	result := make([]string, 0, len(base))
-	seen := make(map[string]bool)
-	add := func(v string) {
-		if seen[v] {
-			return
-		}
-		seen[v] = true
-		result = append(result, v)
-	}
-
-	// Keep base items only if both sides retained them.
-	for _, v := range base {
-		if localSet[v] && currentSet[v] {
-			add(v)
-		}
-	}
-	// Union additions: local-side first, then current-side, preserving each
-	// side's order.
-	for _, v := range local {
-		if !baseSet[v] {
-			add(v)
-		}
-	}
-	for _, v := range current {
-		if !baseSet[v] {
-			add(v)
-		}
-	}
-	return result
 }
 
 // --- small helpers -------------------------------------------------------
@@ -629,6 +654,18 @@ func scalarThreeWay(base, local, current string) (string, bool) {
 func relativeOrderChanged(base, side []string) bool {
 	shared := intersectionSet(base, side)
 	return !stringSlicesEqual(filterOrder(base, shared), filterOrder(side, shared))
+}
+
+func stringSlicesEqual(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func intersectionSet(a, b []string) map[string]bool {

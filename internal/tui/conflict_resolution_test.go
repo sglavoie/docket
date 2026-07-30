@@ -29,14 +29,14 @@ func newConflictTUIEnv(t *testing.T) (*AppModel, *storage.ConflictStore, string)
 
 func tuiTestDoc(t *testing.T, title string) *storage.ProjectDocument {
 	t.Helper()
-	task, err := models.NewTask(uuid.NewString(), 1, models.TaskTypeTask, title)
+	task, err := models.NewGenericTask(uuid.NewString(), 1, title)
 	if err != nil {
 		t.Fatalf("new task: %v", err)
 	}
 	doc := &storage.ProjectDocument{
 		ProjectName:   "Alpha",
 		Tasks:         []*models.Task{task},
-		SchemaVersion: storage.SchemaVersionV2,
+		SchemaVersion: storage.SchemaVersionV5,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
@@ -57,8 +57,8 @@ func recordTUIConflict(t *testing.T, store *storage.ConflictStore, dataDir strin
 	return id
 }
 
-// TestOpenConflictsMsgOpensView verifies the notification entry point opens the
-// resolution view when a conflict exists.
+// TestOpenConflictsMsgOpensView verifies the message opens the resolution view
+// when a conflict exists.
 func TestOpenConflictsMsgOpensView(t *testing.T) {
 	app, store, dataDir := newConflictTUIEnv(t)
 	recordTUIConflict(t, store, dataDir)

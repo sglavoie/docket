@@ -52,7 +52,7 @@ func TestPrimaryRouteStackBoundsChildrenAndPreservesRootFocus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageSettings, Scope: AppEntityScope()})
+	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
 	if err := stack.PushChild(secondary, FocusTarget{ControlID: "detail-tab"}); err != nil {
 		t.Fatal(err)
 	}
@@ -105,18 +105,18 @@ func TestTaskWorkspaceRejectsProjectRouteScope(t *testing.T) {
 
 func TestOverlayStackNestingFocusAndCancellation(t *testing.T) {
 	var canceled []string
-	first, _ := NewOverlay(OverlayFinder, "finder")
+	first, _ := NewOverlay(OverlaySearch, "search")
 	second, _ := NewOverlay(OverlayPicker, "status")
 	stack := OverlayStack{}
 	stack.Push(first, FocusTarget{ControlID: "workspace", EntityID: "t1"}, func() {
-		canceled = append(canceled, "palette")
+		canceled = append(canceled, "search")
 	})
-	stack.Push(second, FocusTarget{ControlID: "palette-query"}, func() {
+	stack.Push(second, FocusTarget{ControlID: "search-query"}, func() {
 		canceled = append(canceled, "status")
 	})
 
 	closed, restored, ok := stack.CloseTop()
-	if !ok || closed.Kind() != OverlayPicker || restored.ControlID != "palette-query" {
+	if !ok || closed.Kind() != OverlayPicker || restored.ControlID != "search-query" {
 		t.Fatalf("close top = %s restore=%+v ok=%v", closed.Kind(), restored, ok)
 	}
 	if len(canceled) != 0 {
@@ -124,7 +124,7 @@ func TestOverlayStackNestingFocusAndCancellation(t *testing.T) {
 	}
 	stack.Push(second, FocusTarget{}, func() { canceled = append(canceled, "status") })
 	stack.CancelAll()
-	if stack.Active() || !reflect.DeepEqual(canceled, []string{"status", "palette"}) {
+	if stack.Active() || !reflect.DeepEqual(canceled, []string{"status", "search"}) {
 		t.Errorf("cancel order = %v active=%v", canceled, stack.Active())
 	}
 }

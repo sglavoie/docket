@@ -169,16 +169,14 @@ func linkParentChild(tasks []*Task, taskMap map[string]*Task) {
 	}
 }
 
-// pruneAllOrphanedRefs removes orphaned dependency and related-to IDs
-// (references to deleted tasks). Cross-project qualified references
-// (format "projectID:taskID") are preserved.
+// pruneAllOrphanedRefs removes orphaned dependency IDs. Cross-project qualified
+// references (format "projectID:taskID") are preserved.
 func pruneAllOrphanedRefs(tasks []*Task, taskMap map[string]*Task) {
 	for _, task := range tasks {
 		if task == nil {
 			continue
 		}
 		task.DependsOn = pruneOrphanedRefs(task, taskMap, task.DependsOn, "depends on")
-		task.RelatedTo = pruneOrphanedRefs(task, taskMap, task.RelatedTo, "has related ref to")
 	}
 }
 
@@ -254,8 +252,15 @@ func (p *Project) GetSiblings(task *Task) []*Task {
 	if task == nil {
 		return nil
 	}
+	task = p.GetTaskByID(task.ID)
+	if task == nil {
+		return nil
+	}
 	var siblings []*Task
 	for _, t := range p.Tasks {
+		if t == nil {
+			continue
+		}
 		if (task.ParentID == nil && t.ParentID == nil) ||
 			(task.ParentID != nil && t.ParentID != nil && *task.ParentID == *t.ParentID) {
 			siblings = append(siblings, t)
@@ -342,23 +347,9 @@ func (p *Project) IndentTask(task *Task) error {
 	if ok, reason := task.CanIndent(targetParent); !ok {
 		return fmt.Errorf("cannot indent: %s", reason)
 	}
-
-	// Check for cycles before reparenting
-	taskMap := make(map[string]*Task, len(p.Tasks))
-	for _, t := range p.Tasks {
-		taskMap[t.ID] = t
+	if err := p.ReparentTask(task, targetParent); err != nil {
+		return fmt.Errorf("cannot indent: %w", err)
 	}
-	if WouldCreateCycle(taskMap, task.ID, targetParent.ID) {
-		return fmt.Errorf("cannot indent: would create a circular parent reference")
-	}
-
-	// Update the parent reference
-	task.ParentID = &targetParent.ID
-	task.UpdatedAt = time.Now()
-
-	// Rebuild the tree to update computed fields
-	p.BuildTaskTree()
-
 	return nil
 }
 
@@ -376,18 +367,129 @@ func (p *Project) OutdentTask(task *Task) error {
 		return fmt.Errorf("cannot outdent: already at root level")
 	}
 
-	// Set new parent to grandparent (or nil if parent is root)
-	if currentParent.ParentID != nil {
-		task.ParentID = currentParent.ParentID
-	} else {
+	if err := p.ReparentTask(task, currentParent.Parent); err != nil {
+		return fmt.Errorf("cannot outdent: %w", err)
+	}
+	return nil
+}
+
+// ReparentTask moves task under newParent, or promotes it to a root when
+// newParent is nil. Both non-nil tasks must be the canonical objects owned by
+// this project. Validation is completed before mutation so a rejected request
+// cannot partially rewrite the tree.
+func (p *Project) ReparentTask(task, newParent *Task) error {
+	if p == nil {
+		return fmt.Errorf("project is nil")
+	}
+	if task == nil {
+		return fmt.Errorf("task is nil")
+	}
+	canonicalTask := p.GetTaskByID(task.ID)
+	if canonicalTask == nil {
+		return fmt.Errorf("task %q is not in project", task.ID)
+	}
+	if canonicalTask != task {
+		return fmt.Errorf("task %q does not match project task", task.ID)
+	}
+
+	taskMap := make(map[string]*Task, len(p.Tasks))
+	children := make(map[string][]string, len(p.Tasks))
+	for _, candidate := range p.Tasks {
+		if candidate == nil {
+			continue
+		}
+		taskMap[candidate.ID] = candidate
+		if candidate.ParentID != nil {
+			children[*candidate.ParentID] = append(children[*candidate.ParentID], candidate.ID)
+		}
+	}
+
+	newDepth := 0
+	if newParent != nil {
+		canonicalParent := p.GetTaskByID(newParent.ID)
+		if canonicalParent == nil {
+			return fmt.Errorf("parent %q is not in project", newParent.ID)
+		}
+		if canonicalParent != newParent {
+			return fmt.Errorf("parent %q does not match project task", newParent.ID)
+		}
+		if task.ID == newParent.ID {
+			return fmt.Errorf("task cannot be its own parent")
+		}
+		if WouldCreateCycle(taskMap, task.ID, newParent.ID) {
+			return fmt.Errorf("would create a circular parent reference")
+		}
+		parentDepth, err := taskHierarchyDepth(taskMap, newParent.ID)
+		if err != nil {
+			return err
+		}
+		newDepth = parentDepth + 1
+	}
+
+	height, err := taskSubtreeHeight(task.ID, children, make(map[string]bool))
+	if err != nil {
+		return err
+	}
+	if newDepth+height > MaxNestingDepth {
+		return fmt.Errorf("subtree would exceed maximum nesting depth of %d levels", MaxNestingDepth)
+	}
+
+	if newParent == nil {
 		task.ParentID = nil
+	} else {
+		parentID := newParent.ID
+		task.ParentID = &parentID
 	}
 	task.UpdatedAt = time.Now()
-
-	// Rebuild the tree to update computed fields
 	p.BuildTaskTree()
-
 	return nil
+}
+
+// taskHierarchyDepth returns the root-relative depth of taskID without relying
+// on computed Level fields, which may be stale before a project rebuild.
+func taskHierarchyDepth(taskMap map[string]*Task, taskID string) (int, error) {
+	depth := 0
+	seen := make(map[string]bool)
+	currentID := taskID
+	for {
+		if seen[currentID] {
+			return 0, fmt.Errorf("task %q has a circular parent reference", taskID)
+		}
+		seen[currentID] = true
+		current := taskMap[currentID]
+		if current == nil {
+			return 0, fmt.Errorf("task %q is not in project", currentID)
+		}
+		if current.ParentID == nil {
+			return depth, nil
+		}
+		if taskMap[*current.ParentID] == nil {
+			return 0, fmt.Errorf("task %q references missing parent %q", current.ID, *current.ParentID)
+		}
+		depth++
+		currentID = *current.ParentID
+	}
+}
+
+// taskSubtreeHeight returns the maximum descendant distance below taskID.
+func taskSubtreeHeight(taskID string, children map[string][]string, visiting map[string]bool) (int, error) {
+	if visiting[taskID] {
+		return 0, fmt.Errorf("task %q has a circular child reference", taskID)
+	}
+	visiting[taskID] = true
+	defer delete(visiting, taskID)
+
+	height := 0
+	for _, childID := range children[taskID] {
+		childHeight, err := taskSubtreeHeight(childID, children, visiting)
+		if err != nil {
+			return 0, err
+		}
+		if childHeight+1 > height {
+			height = childHeight + 1
+		}
+	}
+	return height, nil
 }
 
 // ReorderRootTasksByCompletion reorganizes the Tasks slice so that uncompleted
