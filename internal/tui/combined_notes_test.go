@@ -15,13 +15,15 @@ import (
 
 type combinedNotesService struct {
 	byLocation map[app.NoteLocation][]*models.Note
+	requests   []app.NoteBatchRequest
 }
 
 func (s *combinedNotesService) NotesAt(location app.NoteLocation) ([]*models.Note, error) {
 	return append([]*models.Note(nil), s.byLocation[location]...), nil
 }
 
-func (s *combinedNotesService) ApplyNoteBatch(app.NoteBatchRequest) (app.NoteBatchResult, error) {
+func (s *combinedNotesService) ApplyNoteBatch(request app.NoteBatchRequest) (app.NoteBatchResult, error) {
+	s.requests = append(s.requests, request)
 	return app.NoteBatchResult{}, nil
 }
 
@@ -93,6 +95,40 @@ func TestCombinedNotesCreationRequiresLocationConfirmation(t *testing.T) {
 	}
 	if cmd == nil {
 		t.Fatal("confirmed destination did not start the external editor")
+	}
+}
+
+func TestCombinedNotesCreationOffersEveryActiveProject(t *testing.T) {
+	alpha := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
+	beta := &models.Project{ID: "beta", Name: "Beta", Path: t.TempDir()}
+	view := NewCombinedNotesViewModelWithService(
+		t.TempDir(),
+		nil,
+		app.GlobalNoteLocation(),
+		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
+		nil,
+		alpha,
+		beta,
+	)
+	view.SetSize(80, 24)
+
+	_, cmd := view.Update(syntheticKey('n'))
+	if cmd != nil {
+		t.Fatal("n started creation before location confirmation")
+	}
+	want := []app.NoteLocation{
+		app.GlobalNoteLocation(),
+		app.ProjectNoteLocation(alpha.ID),
+		app.ProjectNoteLocation(beta.ID),
+	}
+	if !slices.Equal(view.destinations, want) {
+		t.Fatalf("destinations = %+v, want %+v", view.destinations, want)
+	}
+	rendered := view.View().Content
+	for _, label := range []string{"Global", alpha.Name, beta.Name} {
+		if !strings.Contains(rendered, label) {
+			t.Fatalf("destination picker missing %q:\n%s", label, rendered)
+		}
 	}
 }
 

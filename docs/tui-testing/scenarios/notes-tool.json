@@ -10,6 +10,7 @@
     { "type": "key", "label": "start a new note", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "Create note in" },
     { "type": "assert", "assert": "contains", "value": "Global" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "cancel destination choice", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" }

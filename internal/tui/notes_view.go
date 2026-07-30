@@ -66,7 +66,9 @@ type NotesViewModel struct {
 	// New-note creation always pauses at this explicit destination selector.
 	destinationPicker bool
 	destinationCursor int
+	destinationScroll int
 	destinations      []app.NoteLocation
+	creationProjects  []*models.Project
 }
 
 // setStatus sets a status message and clears the error flag.
@@ -137,13 +139,15 @@ func (s noteSortMode) String() string {
 // NewCombinedNotesViewModelWithService creates the one location-aware Notes
 // tool. It lists global notes together with notes from the active project (when
 // one exists). preferred controls only the initial row in the explicit
-// creation destination picker; it never bypasses confirmation.
+// creation destination picker; it never bypasses confirmation. projects are
+// the active projects that can own a newly created note.
 func NewCombinedNotesViewModelWithService(
 	notesDir string,
 	project *models.Project,
 	preferred app.NoteLocation,
 	service projectNoteService,
 	ledger *storage.WorkspaceLedger,
+	projects ...*models.Project,
 ) *NotesViewModel {
 	m := &NotesViewModel{
 		project:       project,
@@ -159,8 +163,24 @@ func NewCombinedNotesViewModelWithService(
 	if preferred.Scope == "" {
 		m.preferred = app.GlobalNoteLocation()
 	}
+	m.setCreationProjects(projects)
 	m.loadNotes()
 	return m
+}
+
+func (m *NotesViewModel) setCreationProjects(projects []*models.Project) {
+	seen := make(map[string]bool, len(projects)+1)
+	m.creationProjects = make([]*models.Project, 0, len(projects)+1)
+	for _, candidate := range projects {
+		if candidate == nil || candidate.ID == "" || seen[candidate.ID] {
+			continue
+		}
+		seen[candidate.ID] = true
+		m.creationProjects = append(m.creationProjects, candidate)
+	}
+	if m.project != nil && m.project.ID != "" && !seen[m.project.ID] {
+		m.creationProjects = append(m.creationProjects, m.project)
+	}
 }
 
 func (m *NotesViewModel) noteLocation() app.NoteLocation {

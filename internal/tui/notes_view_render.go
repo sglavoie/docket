@@ -124,7 +124,15 @@ func (m *NotesViewModel) viewCombined() tea.View {
 	if m.destinationPicker {
 		b.WriteString(TitleStyle.Render("Create note in"))
 		b.WriteString("\n\n")
-		for i, location := range m.destinations {
+		listHeight := max(m.Height()-7, 1)
+		start, end := persistentIndexWindow(
+			m.destinationCursor,
+			len(m.destinations),
+			listHeight,
+			&m.destinationScroll,
+		)
+		for i := start; i < end; i++ {
+			location := m.destinations[i]
 			label := m.locationLabel(location)
 			if i == m.destinationCursor {
 				b.WriteString(PickerSelectedStyle.Render("> " + label))
@@ -182,6 +190,11 @@ func (m *NotesViewModel) locationLabel(location app.NoteLocation) string {
 	}
 	if m.project != nil && location.ProjectID == m.project.ID {
 		return m.project.Name
+	}
+	for _, project := range m.creationProjects {
+		if project.ID == location.ProjectID {
+			return project.Name
+		}
 	}
 	if location.ProjectID != "" {
 		return location.ProjectID

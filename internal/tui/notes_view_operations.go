@@ -199,10 +199,11 @@ func (m *NotesViewModel) createNote() tea.Cmd {
 
 func (m *NotesViewModel) beginDestinationPicker() {
 	m.destinations = []app.NoteLocation{app.GlobalNoteLocation()}
-	if m.project != nil {
-		m.destinations = append(m.destinations, app.ProjectNoteLocation(m.project.ID))
+	for _, project := range m.creationProjects {
+		m.destinations = append(m.destinations, app.ProjectNoteLocation(project.ID))
 	}
 	m.destinationCursor = 0
+	m.destinationScroll = 0
 	for i, location := range m.destinations {
 		if location == m.preferred {
 			m.destinationCursor = i

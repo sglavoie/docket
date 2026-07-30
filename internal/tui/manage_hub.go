@@ -137,8 +137,6 @@ func (m *ManageHubModel) normalizeCollectionKey(key tea.KeyPressMsg) tea.Msg {
 		switch key.String() {
 		case "a":
 			return syntheticKey('n')
-		case "x":
-			return syntheticKey('d')
 		}
 	}
 	return key
@@ -276,6 +274,7 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			preferred,
 			m.deps.NoteService,
 			m.deps.HistoryLedger,
+			m.deps.Runtime.ActiveProjects()...,
 		)
 	case ManageContexts:
 		active := AllContextScope()

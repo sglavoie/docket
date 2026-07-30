@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -95,6 +96,8 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
+	other := &models.Project{ID: "other", Name: "Other Project", Slug: "other"}
+	setTestAppProjects(app, project, other)
 
 	app.handleNotesMessages(ShowNotesMsg{Project: project})
 	notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
@@ -113,6 +116,9 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	if notes.destinations[notes.destinationCursor] != apppkg.ProjectNoteLocation(project.ID) {
 		t.Fatalf("project Notes preselection = %+v, want project", notes.destinations[notes.destinationCursor])
 	}
+	if !slices.Contains(notes.destinations, apppkg.ProjectNoteLocation(other.ID)) {
+		t.Fatalf("Notes creation destinations omitted active project %q: %+v", other.ID, notes.destinations)
+	}
 
 	wantHelp := []string{"j/k", "enter", "a/e/x", "space", "/", "v"}
 	help := app.manageHub.GetHelpItems()
@@ -127,6 +133,73 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	app.handleNotesMessages(ShowNotesMsg{})
 	if app.CurrentRoute().ID() != SecondaryTool || app.manageHub.pickerTitle != "Select project" {
 		t.Fatalf("missing project fallback = %s/%q, want Manage project picker", app.CurrentRoute().ID(), app.manageHub.pickerTitle)
+	}
+}
+
+func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
+	tests := []struct {
+		name     string
+		location apppkg.NoteLocation
+		open     func(*AppModel, *models.Project)
+	}{
+		{
+			name:     "global",
+			location: apppkg.GlobalNoteLocation(),
+			open: func(app *AppModel, _ *models.Project) {
+				app.handleNotesMessages(ShowGlobalNotesMsg{})
+			},
+		},
+		{
+			name:     "project",
+			location: apppkg.ProjectNoteLocation("project"),
+			open: func(app *AppModel, project *models.Project) {
+				app.handleNotesMessages(ShowNotesMsg{Project: project})
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			app := typedTestApp(t)
+			project := app.currentProject
+			location := test.location
+			if location.Scope == apppkg.NoteScopeProject {
+				location.ProjectID = project.ID
+			}
+			test.open(app, project)
+
+			note := &models.Note{Filename: test.name + ".md", Title: test.name + " note"}
+			service := &combinedNotesService{byLocation: map[apppkg.NoteLocation][]*models.Note{}}
+			notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
+			notes.noteService = service
+			notes.notes = []*models.Note{note}
+			notes.locations = map[*models.Note]apppkg.NoteLocation{note: location}
+
+			_, cmd := app.manageHub.Update(syntheticKey('x'))
+			if cmd != nil || !notes.confirm.IsActive() {
+				t.Fatalf("x did not open delete confirmation: cmd=%v active=%t", cmd, notes.confirm.IsActive())
+			}
+			if overlay := app.renderConfirmDialogOverlay(); !strings.Contains(overlay, note.Title) {
+				t.Fatalf("delete confirmation overlay missing note title %q: %q", note.Title, overlay)
+			}
+
+			_, cmd = app.manageHub.Update(syntheticKey('y'))
+			if cmd == nil {
+				t.Fatal("confirmed delete emitted no mutation command")
+			}
+			result, ok := cmd().(ProjectNoteMutationResultMsg)
+			if !ok || result.Location != location {
+				t.Fatalf("delete result = %#v, want location %+v", result, location)
+			}
+			if len(service.requests) != 1 || len(service.requests[0].Operations) != 1 {
+				t.Fatalf("delete requests = %#v, want one operation", service.requests)
+			}
+			operation := service.requests[0].Operations[0]
+			if operation.Kind != apppkg.NoteDelete || operation.Location != location ||
+				operation.Note.Filename != note.Filename {
+				t.Fatalf("delete operation = %#v, want %s at %+v", operation, note.Filename, location)
+			}
+		})
 	}
 }
 
