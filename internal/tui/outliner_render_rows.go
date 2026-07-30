@@ -151,7 +151,6 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {
 	task := row.task
 	foldIndicator := m.renderTaskFoldIndicator(row)
-	projBadge := m.renderTaskProjectBadge(row)
 	proj := m.resolveProjectForRow(row)
 	statusIcon := m.renderTaskStatusIcon(task, proj)
 	if colLayout != nil && colLayout.HasStatus {
@@ -185,7 +184,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	// remain; lower-priority badges are progressively removed as space tightens.
 	titleTarget := min(8, max(rowWidth/4, 4))
 	availableTitleWidth := func() int {
-		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
+		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators)
 	}
 	if availableTitleWidth() < titleTarget {
 		indicatorSegments.recurrence = ""
@@ -199,19 +198,13 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		indicatorSegments.dependencies = ""
 		indicators = indicatorSegments.render()
 	}
-	if availableTitleWidth() < titleTarget {
-		// Cross-project headers retain scope identity; at the narrowest/deepest
-		// rows the repeated inline badge yields to urgency and a readable title.
-		projBadge = ""
-	}
-	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
+	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators)
 
-	line := fmt.Sprintf("%s%s%s%s%s%s %s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s %s%s%s",
 		cursorPrefix,
 		checkbox,
 		prefixStr,
 		foldIndicator,
-		projBadge,
 		statusIcon,
 		prioritySegment,
 		title,
@@ -257,27 +250,6 @@ func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
 		return MutedStyle.Render(IconExpanded) + " "
 	}
 	return MutedStyle.Render(IconCollapsed) + " "
-}
-
-func (m *OutlinerModel) renderTaskProjectBadge(row outlinerRow) string {
-	if row.ProjectID == "" {
-		return ""
-	}
-	// Every cross-project mode renders the colored `[slug]` badge inline
-	// so each task row carries its own project identity, matching Planner's
-	// deterministic project-color treatment. Group headers and project
-	// sub-headers still cluster rows visually; the inline badge is the primary
-	// per-row identity cue and survives the narrow-row fallback order below.
-	project := m.resolveProjectForRow(row)
-	projectSlug := row.ProjectID
-	if project != nil {
-		projectSlug = project.Slug
-		if projectSlug == "" {
-			projectSlug = project.Name
-		}
-	}
-	projectSlug = truncateIntentional(projectSlug, 12, "…")
-	return projectColorStyle(project).Render("["+projectSlug+"]") + " "
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task, proj *models.Project) string {
@@ -441,8 +413,8 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators string) string {
-	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators)
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators string) string {
+	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators)
 	availableWidth := max(rowWidth-nonTitleWidth, 1)
 	title := task.Title
 	remainingWidth := availableWidth - lipgloss.Width(title)
@@ -492,10 +464,9 @@ func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
 	return truncateToVisualWidth(compacted, maxWidth)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, projBadge, statusIcon, prioritySegment, indicators string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
-		lipgloss.Width(projBadge) + 1 +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
 }
