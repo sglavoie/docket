@@ -165,11 +165,12 @@ and relation operations, edits, inspection, and clipboard actions reject visual
 selection rather than falling back to the cursor. The bulk `Space` menu contains
 Delete only.
 
-Scope Hub resolves All Projects, regular context labels, custom machine-local
-contexts, and projects. Applying scope clears navigation and selection but
-preserves the active mode, search, and filters. Project administration supports
-create, edit, pin, archive, restore, and project Notes. The catalog-owned Inbox
-ID is the protection authority.
+Scope Hub resolves only All Projects, regular context labels, and custom
+machine-local contexts. Applying scope clears navigation and selection but
+preserves the active mode, search, and filters. Select Project opens separately
+with search focused and includes active and archived projects. Project
+administration supports create, edit, pin, archive, restore, and project Notes.
+The catalog-owned Inbox ID is the protection authority.
 
 The combined Notes tool carries an explicit location with every row. It loads
 Global notes plus the focused project's notes, if any. Creation always pauses

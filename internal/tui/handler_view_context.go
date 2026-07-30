@@ -13,6 +13,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowContextHubMsg:
 		return true, m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
 
+	case ShowProjectHubMsg:
+		return true, m.activateManageHub(ManageParams{Module: ManageProjects, Scope: AppEntityScope()})
+
 	case scopeHubInlineActionMsg:
 		return true, m.openScopeHubForInlineAction(msg)
 

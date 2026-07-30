@@ -3,35 +3,26 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 const (
-	scopeHubCategoryBase     ListCategoryID = "scope-hub:base"
-	scopeHubCategoryActive   ListCategoryID = "scope-hub:active"
-	scopeHubCategoryArchived ListCategoryID = "scope-hub:archived"
+	scopeHubCategoryBase   ListCategoryID = "scope-hub:base"
+	scopeHubCategoryCustom ListCategoryID = "scope-hub:custom"
 
-	scopeHubActionCategoryContext  ListCategoryID = "scope-hub-actions:context"
-	scopeHubActionCategoryProject  ListCategoryID = "scope-hub-actions:project"
-	scopeHubActionCategoryRecovery ListCategoryID = "scope-hub-actions:recovery"
-	scopeHubActionCategoryDanger   ListCategoryID = "scope-hub-actions:danger"
+	scopeHubActionCategoryContext ListCategoryID = "scope-hub-actions:context"
+	scopeHubActionCategoryDanger  ListCategoryID = "scope-hub-actions:danger"
 )
 
 var scopeHubCategories = []ListCategory{
 	{ID: scopeHubCategoryBase, Label: "Base Scopes"},
-	{ID: scopeHubCategoryActive, Label: "Active Projects"},
-	{ID: scopeHubCategoryArchived, Label: "Archived Projects"},
+	{ID: scopeHubCategoryCustom, Label: "Custom Contexts"},
 }
 
 var scopeHubActionCategories = []ListCategory{
 	{ID: scopeHubActionCategoryContext, Label: "Context"},
-	{ID: scopeHubActionCategoryProject, Label: "Project"},
-	{ID: scopeHubActionCategoryRecovery, Label: "Recovery"},
 	{ID: scopeHubActionCategoryDanger, Label: "Danger"},
 }
 
@@ -39,22 +30,18 @@ type scopeHubEntryKind uint8
 
 const (
 	scopeHubEntryBase scopeHubEntryKind = iota
-	scopeHubEntryActiveProject
-	scopeHubEntryArchivedProject
 )
 
-// scopeHubEntry is the typed, lifecycle-safe payload behind one ListSurface row.
+// scopeHubEntry is the typed payload behind one selectable scope row.
 type scopeHubEntry struct {
-	Kind    scopeHubEntryKind
-	Scope   ContextScope
-	Project *models.Project
+	Kind  scopeHubEntryKind
+	Scope ContextScope
 }
 
 // scopeHubActionTarget freezes stable identity at the moment Space opens the
 // action sheet. No later cursor movement can retarget the selected operation.
 type scopeHubActionTarget struct {
-	Scope     ContextScope
-	ProjectID string
+	Scope ContextScope
 }
 
 type scopeHubInlineActionMsg struct {
@@ -69,7 +56,6 @@ const (
 	operationScopeEditContext   OperationID = "tui.scope.edit-context"
 	operationScopeRenameContext OperationID = "tui.scope.rename-context"
 	operationScopeDeleteContext OperationID = "tui.scope.delete-context"
-	operationScopeCreateProject OperationID = "tui.scope.create-project"
 )
 
 func scopeHubOperationDescriptors() []OperationDescriptor {
@@ -97,7 +83,6 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 		descriptor(operationScopeEditContext, "Edit membership", OperationCategoryScope, OperationRiskMutation, "edit context"),
 		descriptor(operationScopeRenameContext, "Rename context", OperationCategoryScope, OperationRiskMutation),
 		descriptor(operationScopeDeleteContext, "Delete context", OperationCategoryScope, OperationRiskDestructive),
-		descriptor(operationScopeCreateProject, "New project", OperationCategoryProject, OperationRiskMutation, "create project"),
 	}
 }
 
@@ -141,8 +126,6 @@ func (m *AppModel) scopeHubOperationMessage(id OperationID, target scopeHubActio
 		operationScopeRenameContext,
 		operationScopeDeleteContext:
 		return scopeHubInlineActionMsg{OperationID: id, Target: target}
-	case operationScopeCreateProject:
-		return CreateProjectMsg{}
 	default:
 	}
 	return ErrorMsg{Err: fmt.Errorf("scope action target is no longer available")}
@@ -153,14 +136,6 @@ func (m *ContextHubModel) SetOperationSystem(registry *OperationRegistry, execut
 	m.executor = executor
 }
 
-func (m *ContextHubModel) SetProjectFocus(projectID string) {
-	if m.focusedProjectID == projectID {
-		return
-	}
-	m.focusedProjectID = projectID
-	m.rebuildScopeSurface(m.currentScopeHubItemID())
-}
-
 func (m *ContextHubModel) scopeHubCommandContext() CommandContext {
 	ctx := PresentationCommandContext(ViewContextHub)
 	ctx.Capabilities.Add(CapabilityScopeHub)
@@ -168,15 +143,9 @@ func (m *ContextHubModel) scopeHubCommandContext() CommandContext {
 }
 
 // scopeHubActionContext carries the frozen row identity into the shared
-// operation pipeline. Project operations resolve their target from it rather
-// than from the live cursor, so a later rebuild cannot retarget them.
-func (m *ContextHubModel) scopeHubActionContext(target scopeHubActionTarget) CommandContext {
-	ctx := m.scopeHubCommandContext()
-	if target.ProjectID != "" {
-		ctx.CurrentEntity = ProjectEntity(target.ProjectID)
-		ctx.FocusedProjectID = target.ProjectID
-	}
-	return ctx
+// operation pipeline.
+func (m *ContextHubModel) scopeHubActionContext(_ scopeHubActionTarget) CommandContext {
+	return m.scopeHubCommandContext()
 }
 
 func (m *ContextHubModel) currentScopeHubItemID() ListItemID {
@@ -190,8 +159,8 @@ func (m *ContextHubModel) currentScopeHubItemID() ListItemID {
 	return item.ID
 }
 
-// rebuildScopeSurface reloads the scope and lean project lifecycle categories while preserving a
-// stable cursor identity and the current fuzzy query.
+// rebuildScopeSurface reloads base scopes and custom contexts while preserving
+// a stable cursor identity and the current fuzzy query.
 func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 	if m.runtime == nil {
 		return
@@ -202,12 +171,12 @@ func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 		surface, surfaceErr := NewListSurfaceModel(items, scopeHubCategories, ListSurfaceConfig{
 			SelectionMode: ListSelectionSingle,
 			EmptyState: ListEmptyState{
-				Title:  "No scopes or projects are available.",
-				Detail: "Create a project to start using workspace scopes.",
+				Title:  "No scopes are available.",
+				Detail: "Create a custom context or add a project context.",
 			},
 			NoMatchState: ListEmptyState{
 				Title:  "No contexts match this search.",
-				Detail: "Change the query to search scopes and projects.",
+				Detail: "Change the query to search scopes and contexts.",
 			},
 		})
 		if surfaceErr != nil {
@@ -226,7 +195,7 @@ func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 }
 
 func (m *ContextHubModel) scopeHubItems() []ListItem {
-	items := make([]ListItem, 0, len(m.summaries)+len(m.runtime.AllProjects()))
+	items := make([]ListItem, 0, len(m.summaries))
 	for _, summary := range m.summaries {
 		scope := summary.Scope
 		label := contextScopeDisplayName(scope)
@@ -242,7 +211,7 @@ func (m *ContextHubModel) scopeHubItems() []ListItem {
 				aliases = append(aliases, project.Name, project.Slug)
 			}
 		}
-		operations := []OperationID{operationScopeCreateContext, operationScopeCreateProject}
+		operations := []OperationID{operationScopeCreateContext}
 		if !scope.IsAll() {
 			operations = append(operations,
 				operationScopeEditContext,
@@ -252,61 +221,19 @@ func (m *ContextHubModel) scopeHubItems() []ListItem {
 				operations = append(operations, operationScopeDeleteContext)
 			}
 		}
+		category := scopeHubCategoryBase
+		if scope.IsCustom() {
+			category = scopeHubCategoryCustom
+		}
 		items = append(items, ListItem{
 			ID:            contextScopeListItemID(scope),
-			CategoryID:    scopeHubCategoryBase,
+			CategoryID:    category,
 			PrimaryText:   label,
 			SecondaryText: contextHubRowDetail(summary),
 			Aliases:       aliases,
 			Preview:       m.scopeHubContextPreview(summary),
 			OperationIDs:  operations,
 			Data:          scopeHubEntry{Kind: scopeHubEntryBase, Scope: scope},
-		})
-	}
-
-	for _, project := range m.runtime.ActiveProjects() {
-		if project == nil {
-			continue
-		}
-		label := project.Name
-		if m.scopeHubProjectFocused(project.ID) {
-			label += " (focused)"
-		}
-		items = append(items, ListItem{
-			ID:            ListItemID("scope-hub:active:" + project.ID),
-			CategoryID:    scopeHubCategoryActive,
-			PrimaryText:   label,
-			SecondaryText: m.scopeHubProjectSecondary(project),
-			Aliases:       []string{project.Name, project.Slug, project.Context, "active project"},
-			Preview:       m.scopeHubProjectPreview(project, false),
-			OperationIDs: []OperationID{
-				operationProjectOpen,
-				operationScopeCreateProject,
-				operationScopeRenameProject,
-				operationScopePinProject,
-				operationScopeArchiveProject,
-				operationScopeOpenProjectNote,
-			},
-			Data: scopeHubEntry{Kind: scopeHubEntryActiveProject, Project: project},
-		})
-	}
-	for _, project := range m.runtime.ArchivedProjects() {
-		if project == nil {
-			continue
-		}
-		items = append(items, ListItem{
-			ID:            ListItemID("scope-hub:archived:" + project.ID),
-			CategoryID:    scopeHubCategoryArchived,
-			PrimaryText:   project.Name,
-			SecondaryText: "archived · " + project.Context,
-			Aliases:       []string{project.Name, project.Slug, project.Context, "archived project"},
-			Preview:       m.scopeHubProjectPreview(project, true),
-			OperationIDs: []OperationID{
-				operationScopeRenameProject,
-				operationScopeRestoreProject,
-				operationScopeOpenProjectNote,
-			},
-			Data: scopeHubEntry{Kind: scopeHubEntryArchivedProject, Project: project},
 		})
 	}
 	return items
@@ -340,72 +267,6 @@ func (m *ContextHubModel) scopeHubContextPreview(summary ContextScopeSummary) Li
 	}
 }
 
-func (m *ContextHubModel) scopeHubProjectPreview(project *models.Project, archived bool) ListPreview {
-	lifecycle := "Active"
-	if archived {
-		lifecycle = "Archived"
-	}
-	return ListPreview{
-		Title:   project.Name,
-		Summary: project.Description,
-		Fields: []ListPreviewField{
-			{Label: "Lifecycle", Value: lifecycle},
-			{Label: "Context", Value: project.Context},
-			{Label: "Tasks", Value: strconv.Itoa(m.scopeHubTaskCount(project))},
-			{Label: "Pinned", Value: strconv.FormatBool(project.Pinned)},
-			{Label: "Slug", Value: project.Slug},
-		},
-	}
-}
-
-func (m *ContextHubModel) scopeHubTaskCount(project *models.Project) int {
-	if project == nil {
-		return 0
-	}
-	if count, ok := m.taskCounts[project.ID]; ok {
-		return count
-	}
-	return project.CountTasks()
-}
-
-func (m *ContextHubModel) scopeHubProjectSecondary(project *models.Project) string {
-	context := project.Context
-	if context == "" {
-		context = "no context"
-	}
-	return fmt.Sprintf("%s · %d tasks", context, m.scopeHubTaskCount(project))
-}
-
-func (m *ContextHubModel) scopeHubProjectFocused(projectID string) bool {
-	return m.activeProjectFocusID() == projectID
-}
-
-// activeProjectFocusID is overridden by SetProjectFocus below; keeping it on
-// the hub avoids reaching into the Outliner from this renderer.
-func (m *ContextHubModel) activeProjectFocusID() string {
-	return m.focusedProjectID
-}
-
-func (m *ContextHubModel) scopeHubLifecycleCounts() (active, archived int) {
-	if m.surface == nil {
-		return len(m.runtime.ActiveProjects()), len(m.runtime.ArchivedProjects())
-	}
-	for _, item := range m.surface.Items() {
-		entry, ok := item.Data.(scopeHubEntry)
-		if !ok {
-			continue
-		}
-		switch entry.Kind {
-		case scopeHubEntryActiveProject:
-			active++
-		case scopeHubEntryArchivedProject:
-			archived++
-		default:
-		}
-	}
-	return active, archived
-}
-
 func (m *ContextHubModel) selectedScopeHubEntry() (scopeHubEntry, bool) {
 	if m.surface == nil {
 		return scopeHubEntry{}, false
@@ -432,38 +293,12 @@ func (m *ContextHubModel) activateScopeHubCurrent() tea.Cmd {
 				IsCustomContext: scope.IsCustom(),
 			}
 		}
-	case scopeHubEntryActiveProject:
-		if entry.Project != nil {
-			return m.executeScopeHubProjectOperation(operationProjectOpen, entry)
-		}
-	case scopeHubEntryArchivedProject:
-		m.notice = "Archived projects must be unarchived from Space actions before they can be focused"
 	}
 	return nil
 }
 
-// executeScopeHubProjectOperation runs a project operation from a browse key
-// through the same executor path the action sheet uses, so Enter and Space
-// share one handler instead of emitting their own message.
-func (m *ContextHubModel) executeScopeHubProjectOperation(id OperationID, entry scopeHubEntry) tea.Cmd {
-	if m.executor == nil {
-		m.notice = "Scope actions are unavailable"
-		return nil
-	}
-	target := scopeHubTarget(entry)
-	return m.applyScopeHubExecutionResult(m.executor.Execute(OperationExecutionRequest{
-		ID:      id,
-		Context: m.scopeHubActionContext(target),
-		Source:  OperationSourceDirectKey,
-	}))
-}
-
 func scopeHubTarget(entry scopeHubEntry) scopeHubActionTarget {
-	target := scopeHubActionTarget{Scope: entry.Scope}
-	if entry.Project != nil {
-		target.ProjectID = entry.Project.ID
-	}
-	return target
+	return scopeHubActionTarget{Scope: entry.Scope}
 }
 
 func (m *ContextHubModel) openScopeHubActions() {
@@ -514,23 +349,13 @@ func scopeHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
 		operationScopeEditContext,
 		operationScopeRenameContext:
 		return scopeHubActionCategoryContext
-	case operationScopeRestoreProject:
-		return scopeHubActionCategoryRecovery
 	default:
-		return scopeHubActionCategoryProject
+		return scopeHubActionCategoryContext
 	}
 }
 
 func scopeHubEntryLabel(entry scopeHubEntry) string {
-	switch entry.Kind {
-	case scopeHubEntryBase:
-		return contextScopeDisplayName(entry.Scope)
-	case scopeHubEntryActiveProject, scopeHubEntryArchivedProject:
-		if entry.Project != nil {
-			return entry.Project.Name
-		}
-	}
-	return "Scope item"
+	return contextScopeDisplayName(entry.Scope)
 }
 
 // updateScopeHubActions translates the shared sheet's compact key contract into
@@ -678,14 +503,20 @@ func (m *ContextHubModel) scopeHubActionFooterHelpVariants() []string {
 	}
 }
 
-// RefreshScopeHub re-reads contexts and project lifecycle after an external
-// project editor or checked lifecycle mutation completes.
+// RefreshScopeHub re-reads contexts after an external checked mutation.
 func (m *ContextHubModel) RefreshScopeHub() {
 	m.rebuildScopeSurface(m.currentScopeHubItemID())
 }
 
 func (m *AppModel) refreshScopeHubIfActive() {
-	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != ManageContexts {
+	if m == nil || m.manageHub == nil {
+		return
+	}
+	if m.manageHub.Params().Module == ManageProjects {
+		m.refreshProjectHubIfActive()
+		return
+	}
+	if m.manageHub.Params().Module != ManageContexts {
 		return
 	}
 	hub, ok := m.manageHub.ActiveModuleView().(*ContextHubModel)
@@ -695,6 +526,5 @@ func (m *AppModel) refreshScopeHubIfActive() {
 	hub.RefreshScopeHub()
 	if m.crossOutliner != nil {
 		hub.SetLoadedProjects(m.crossOutliner.loadedProjects)
-		hub.SetProjectFocus(m.crossOutliner.scopedProjectID)
 	}
 }

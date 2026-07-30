@@ -94,7 +94,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled, `st` toggle Today",
 		"`!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
-		"`c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
+		"`c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix have no compatibility action",
 		"`a` creates and selects a new tag",
 	})

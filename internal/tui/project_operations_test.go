@@ -4,11 +4,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
-// projectOperationContext mimics a non-Scope-Hub host naming one frozen
+// projectOperationContext mimics a non-Project-Hub host naming one frozen
 // project.
 func projectOperationContext(projectID string) CommandContext {
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
@@ -27,19 +25,18 @@ func executeProjectOperation(app *AppModel, id OperationID, ctx CommandContext) 
 
 func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 	app := contextHubApp(t)
-	hub := openContextHub(t, app)
-	focusScopeHubItem(t, hub, "scope-hub:active:beta")
+	hub := openProjectHub(t, app)
 
 	fromHub := executeProjectOperation(
 		app,
 		operationScopeOpenProjectNote,
-		hub.scopeHubActionContext(scopeHubActionTarget{ProjectID: "beta"}),
+		hub.projectHubCommandContext("beta"),
 	)
 	fromOtherHost := executeProjectOperation(app, operationScopeOpenProjectNote, projectOperationContext("beta"))
 
 	hubMsg, ok := fromHub.Message.(ShowNotesMsg)
 	if !ok || hubMsg.Project == nil || hubMsg.Project.ID != "beta" {
-		t.Fatalf("Scope Hub notes emitted %#v, want beta", fromHub.Message)
+		t.Fatalf("Project Hub notes emitted %#v, want beta", fromHub.Message)
 	}
 	otherHostMsg, ok := fromOtherHost.Message.(ShowNotesMsg)
 	if !ok || otherHostMsg.Project != hubMsg.Project {
@@ -49,8 +46,9 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 
 func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	app := contextHubApp(t)
-	hub := openContextHub(t, app)
-	focusScopeHubItem(t, hub, "scope-hub:active:beta")
+	hub := openProjectHub(t, app)
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	focusProjectHubItem(t, hub, "project-hub:active:beta")
 	hub.Update(syntheticKey(' '))
 	if hub.actions == nil {
 		t.Fatal("Space did not freeze the project action target")
@@ -61,7 +59,7 @@ func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	beta := app.projectByID("beta")
 	beta.Pin()
 
-	if !hub.actions.surface.SetCursorToID(ListItemID("scope-hub-action:" + string(operationScopePinProject))) {
+	if !hub.actions.surface.SetCursorToID(ListItemID("project-hub-action:" + string(operationScopePinProject))) {
 		t.Fatal("pin action was not selectable")
 	}
 	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -142,12 +140,13 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	}
 }
 
-func TestScopeHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
-	hub := openContextHub(t, contextHubApp(t))
-	focusScopeHubItem(t, hub, "scope-hub:active:beta")
+func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
+	hub := openProjectHub(t, contextHubApp(t))
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	focusProjectHubItem(t, hub, "project-hub:active:beta")
 	hub.Update(syntheticKey(' '))
 
-	got := scopeHubActionIDs(hub)
+	got := projectHubActionIDs(hub)
 	for _, want := range []OperationID{
 		operationProjectOpen,
 		operationScopeRenameProject,
@@ -167,10 +166,11 @@ func TestScopeHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
 	}
 }
 
-func TestScopeHubEnterSharesTheOpenProjectOperation(t *testing.T) {
+func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	app := contextHubApp(t)
-	hub := openContextHub(t, app)
-	focusScopeHubItem(t, hub, "scope-hub:active:beta")
+	hub := openProjectHub(t, app)
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	focusProjectHubItem(t, hub, "project-hub:active:beta")
 
 	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
@@ -184,10 +184,7 @@ func TestScopeHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	archived := scopeTestProject("stale", "Stale", "1")
 	archived.Archived = true
 	addTestAppProject(app, archived)
-	if cmd := hub.executeScopeHubProjectOperation(operationProjectOpen, scopeHubEntry{
-		Kind:    scopeHubEntryActiveProject,
-		Project: &models.Project{ID: "stale"},
-	}); cmd != nil {
+	if cmd := hub.executeProjectOperation(operationProjectOpen, "stale"); cmd != nil {
 		t.Fatalf("opening an archived project emitted %#v", cmd())
 	}
 	if hub.notice == "" {

@@ -63,7 +63,7 @@ asks for them.
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles one row; `V` selects every visible task |
-| Global | `c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 The operation descriptors are the single source for dispatch, the compact
 footer, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
@@ -178,11 +178,12 @@ recurrence fields.
 
 ## Scope, projects, and Notes
 
-`c` opens Scope Hub for All Projects, regular contexts, custom contexts, and
-project administration. Scope is session-only. Opening a project focuses the
-same Outliner rather than creating another task root. Project administration
-supports create, edit, pin, archive, restore, and project Notes. The catalog ID,
-not a display name, protects the system Inbox.
+`c` opens Scope Hub for All Projects, regular contexts, and custom contexts.
+Scope is session-only. `C` opens Select Project with search focused immediately
+and includes active and archived projects. `Enter` focuses the matching active
+project in the same Outliner; `Esc` clears search and leaves the project surface
+open. Project administration supports create, edit, pin, archive, restore, and
+project Notes. The catalog ID, not a display name, protects the system Inbox.
 
 `N` opens the combined Notes tool. It shows Global notes and, when a project is
 focused, that project's notes. `n` always asks for a Global or active-project

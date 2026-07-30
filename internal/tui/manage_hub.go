@@ -33,6 +33,7 @@ type manageHubViewMenuMsg struct{ Open bool }
 var manageModuleNames = [...]string{
 	"Notes",
 	"Contexts",
+	"Projects",
 }
 
 func (module ManageModule) String() string {
@@ -251,9 +252,10 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		return err
 	}
 	key := manageModuleCacheKey(params)
-	// Contexts read live state at construction time, so a cached instance would
-	// show a stale snapshot.
-	if key == m.activeKey && m.active != nil && params.Module != ManageContexts {
+	// Contexts and Projects read live state at construction time, so cached
+	// instances would show stale rows and Projects would not reopen in search.
+	if key == m.activeKey && m.active != nil &&
+		params.Module != ManageContexts && params.Module != ManageProjects {
 		return nil
 	}
 
@@ -281,6 +283,13 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			active = m.deps.ActiveContext()
 		}
 		hub := NewContextHubModel(m.deps.Runtime, m.deps.ConfigManager, m.deps.AppService, active)
+		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor)
+		if m.deps.LoadedProjects != nil {
+			hub.SetLoadedProjects(m.deps.LoadedProjects())
+		}
+		view = hub
+	case ManageProjects:
+		hub := NewProjectHubModel(m.deps.Runtime)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor)
 		if m.deps.ActiveProjectFocus != nil {
 			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
@@ -460,7 +469,7 @@ func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *ManageHubModel) GetHelpItems() []HelpItem {
-	if m.params.Module == ManageContexts {
+	if m.params.Module == ManageContexts || m.params.Module == ManageProjects {
 		if provider, ok := m.active.(HelpProvider); ok {
 			return append([]HelpItem(nil), provider.GetHelpItems()...)
 		}
@@ -476,8 +485,8 @@ func (m *ManageHubModel) GetHelpItems() []HelpItem {
 }
 
 func (m *ManageHubModel) StatusBarLabel() string {
-	if m.params.Module == ManageContexts {
-		return "Contexts"
+	if m.params.Module == ManageContexts || m.params.Module == ManageProjects {
+		return m.params.Module.String()
 	}
 	if m.params.Scope.Kind == ScopeProject {
 		return m.params.Module.String() + " · Project"
@@ -539,6 +548,8 @@ func manageModulePresentation(params ManageParams) (PresentationID, bool) {
 		return ViewGlobalNotes, true
 	case ManageContexts:
 		return ViewContextHub, true
+	case ManageProjects:
+		return ViewProjectHub, true
 	default:
 		return 0, false
 	}

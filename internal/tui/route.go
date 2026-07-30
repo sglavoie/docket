@@ -27,7 +27,7 @@ const (
 // Navigation identity is owned exclusively by RouteID and its typed params.
 func presentationScope(view PresentationID) RouteScope {
 	switch view {
-	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewContextHub:
+	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewContextHub, ViewProjectHub:
 		return ScopeApp
 	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail,
 		ViewTaskAttachments:
@@ -45,7 +45,7 @@ func presentationAccentCategory(view PresentationID) AccentCategory {
 		return AccentCatCapture
 	case ViewCrossProjectOutliner:
 		return AccentCatTriage
-	case ViewGlobalNotes, ViewNotes, ViewContextHub:
+	case ViewGlobalNotes, ViewNotes, ViewContextHub, ViewProjectHub:
 		return AccentCatSupport
 	default:
 		return AccentCatNone
@@ -70,8 +70,8 @@ func accentColorForCategory(category AccentCategory) color.Color {
 
 // allPresentations returns the contiguous renderer inventory.
 func allPresentations() []PresentationID {
-	presentations := make([]PresentationID, 0, int(ViewContextHub))
-	for presentation := ViewProjectCreator; presentation <= ViewContextHub; presentation++ {
+	presentations := make([]PresentationID, 0, int(ViewProjectHub))
+	for presentation := ViewProjectCreator; presentation <= ViewProjectHub; presentation++ {
 		presentations = append(presentations, presentation)
 	}
 	return presentations

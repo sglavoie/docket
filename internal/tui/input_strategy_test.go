@@ -593,7 +593,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
 	for _, retired := range []string{
-		"F", "C", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
+		"F", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
 		":", "R", "p", "ctrl+esc", "m", "b", "d", "n", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)
@@ -621,7 +621,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 		keys[item.Key] = true
 	}
 	for _, retired := range []string{
-		"F", "C", "q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
+		"F", "q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
 		":", "R", "p", "Ctrl+Esc", "m",
 	} {
 		if keys[retired] {

@@ -8,6 +8,10 @@ package tui
 // ShowContextHubMsg opens the Context Hub.
 type ShowContextHubMsg struct{}
 
+// ShowProjectHubMsg opens the searchable project selection and administration
+// surface.
+type ShowProjectHubMsg struct{}
+
 // ContextScopeSelectedMsg reports the active project scope the user chose, or a
 // cancel. The scope is session-only and is never persisted.
 type ContextScopeSelectedMsg struct {

@@ -37,6 +37,9 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerScopeHubOperations(); err != nil {
 		t.Fatalf("register scope hub operations: %v", err)
 	}
+	if err := model.registerProjectHubOperations(); err != nil {
+		t.Fatalf("register project hub operations: %v", err)
+	}
 	if err := model.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
 	}

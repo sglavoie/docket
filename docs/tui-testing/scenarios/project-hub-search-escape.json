@@ -1,0 +1,22 @@
+{
+  "name": "project-hub-search-and-escape",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "Select Project" },
+    { "type": "assert", "assert": "contains", "value": "ACTIVE PROJECTS" },
+    { "type": "text", "label": "fuzzy-search Rich Project", "text": "rprj" },
+    { "type": "assert", "assert": "contains", "value": "Enter select" },
+    { "type": "key", "label": "leave search without closing Projects", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "not_contains", "value": "/rprj" },
+    { "type": "key", "label": "re-enter search", "key": "/" },
+    { "type": "text", "label": "find Rich Project again", "text": "rprj" },
+    { "type": "key", "label": "select the search result immediately", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

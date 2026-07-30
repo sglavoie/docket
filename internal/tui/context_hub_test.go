@@ -161,7 +161,7 @@ func contextHubModuleView(t *testing.T, app *AppModel) *ContextHubModel {
 }
 
 // TestManageHubHostsContextsAsOneTypedRoute locks session 4's core promise: the
-// `C` key resolves to the Manage Contexts route rather than a standalone picker
+// `c` key resolves to the Manage Contexts route rather than a standalone picker
 // overlay, and a single Esc returns to the Outliner root.
 func TestManageHubHostsContextsAsOneTypedRoute(t *testing.T) {
 	app := contextHubApp(t)
@@ -282,7 +282,7 @@ func TestManageHubContextsRendersEveryScopeWithCounts(t *testing.T) {
 
 // TestRouteValidatesManageContexts locks the sealed-enum extension: Contexts is
 // an accepted app-scoped Manage module, project scope is canonicalized away, and
-// the module after it is still rejected.
+// Projects is also accepted and the module after it remains rejected.
 func TestRouteValidatesManageContexts(t *testing.T) {
 	route, err := NewRoute(SecondaryTool, ManageParams{Module: ManageContexts, Scope: ProjectEntityScope("alpha")})
 	if err != nil {
@@ -295,8 +295,8 @@ func TestRouteValidatesManageContexts(t *testing.T) {
 	if got := ManageContexts.String(); got != "Contexts" {
 		t.Fatalf("ManageContexts.String() = %q, want %q", got, "Contexts")
 	}
-	if _, err := NewRoute(SecondaryTool, ManageParams{Module: ManageContexts + 1}); err == nil {
-		t.Fatal("module past Contexts must remain invalid")
+	if _, err := NewRoute(SecondaryTool, ManageParams{Module: ManageProjects + 1}); err == nil {
+		t.Fatal("module past Projects must remain invalid")
 	}
 }
 
@@ -308,7 +308,7 @@ func TestContextHubGroupsScopesAndPreviewsMembers(t *testing.T) {
 
 	rendered := contextHubRender(hub)
 	for _, want := range []string{
-		"BASE SCOPES", "ACTIVE PROJECTS",
+		"BASE SCOPES", "CUSTOM CONTEXTS",
 		"Every active project", "2 active project(s) · 3 task(s)",
 		"Projects", "Alpha 2 task(s)", "Beta 1 task(s)",
 	} {

@@ -156,6 +156,7 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"task action", app.registerTaskActionOperations},
 		{"filter", app.registerFilterOperations},
 		{"scope hub", app.registerScopeHubOperations},
+		{"project hub", app.registerProjectHubOperations},
 		{"project", app.registerProjectOperations},
 		{"note", app.registerNoteOperations},
 		{"harness", app.registerHarnessOperations},

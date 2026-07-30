@@ -17,8 +17,8 @@ import (
 func contextHubCrowdedApp(t *testing.T) *AppModel {
 	t.Helper()
 	app := typedTestApp(t)
-	projects := make([]*models.Project, 0, 14)
-	for i := 0; i < 14; i++ {
+	projects := make([]*models.Project, 0, 24)
+	for i := 0; i < 24; i++ {
 		project := scopeTestProject(fmt.Sprintf("p%02d", i), fmt.Sprintf("Project %02d", i), "1")
 		project.Slug = fmt.Sprintf("p%02d", i)
 		project.Context = fmt.Sprintf("label-%02d", i)
@@ -87,7 +87,7 @@ func TestContextHubListScrollsToTheSelectedContext(t *testing.T) {
 
 	hub.Update(syntheticKey('G'))
 	render := contextHubRender(hub)
-	if !strings.Contains(render, "label-13") {
+	if !strings.Contains(render, "label-23") {
 		t.Errorf("last context not scrolled into view:\n%s", render)
 	}
 	if !strings.Contains(render, "↑") || !strings.Contains(render, "more") {
@@ -124,8 +124,8 @@ func TestContextHubListFollowsEachJToTheLastProject(t *testing.T) {
 	}
 
 	current, ok := hub.surface.CurrentItem()
-	if !ok || current.PrimaryText != "Project 13" {
-		t.Fatalf("last item = (%q, %v), want Project 13", current.PrimaryText, ok)
+	if !ok || current.PrimaryText != "label-23" {
+		t.Fatalf("last item = (%q, %v), want label-23", current.PrimaryText, ok)
 	}
 }
 

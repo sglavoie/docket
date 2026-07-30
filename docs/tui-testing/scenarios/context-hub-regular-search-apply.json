@@ -8,7 +8,7 @@
     { "type": "text", "label": "search for the work label", "text": "work" },
     { "type": "assert", "assert": "contains", "value": "Enter keep filter · Esc clear" },
     { "type": "key", "label": "keep the query and return to the list", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "/work  (3 matches)" },
+    { "type": "assert", "assert": "contains", "value": "/work  (1 matches)" },
     { "type": "assert", "assert": "not_contains", "value": "personal" },
     { "type": "key", "label": "apply the work context", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

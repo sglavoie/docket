@@ -99,6 +99,7 @@ type ManageModule uint8
 const (
 	ManageNotes ManageModule = iota
 	ManageContexts
+	ManageProjects
 )
 
 type ManageParams struct {
@@ -207,7 +208,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 	case SecondaryTool:
 		switch p := params.(type) {
 		case ManageParams:
-			if p.Module > ManageContexts {
+			if p.Module > ManageProjects {
 				return nil, invalidParams(id, "unknown manage tool")
 			}
 			if manageModuleSupportsScope(p.Module) {

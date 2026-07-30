@@ -32,6 +32,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"<": operationTaskOutdent, ">": operationTaskIndent,
 		"enter": operationCoreDetail,
 		"/":     operationCoreVisibleSearch, "c": operationCoreScope,
+		"C": operationCoreSelectProject,
 		"v": operationCoreMultiSelect, "V": operationCoreSelectAll,
 		"N": operationCoreNotes, "T": operationCoreToggleTheme,
 		"u": operationCoreUndo, "ctrl+r": operationCoreRedo,

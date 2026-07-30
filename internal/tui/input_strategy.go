@@ -208,6 +208,7 @@ const (
 	operationCoreDetail           OperationID = "tui.core.detail"
 	operationCoreVisibleSearch    OperationID = "tui.core.visible-search"
 	operationCoreScope            OperationID = "tui.core.scope"
+	operationCoreSelectProject    OperationID = "tui.core.select-project"
 	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
 	operationCoreSelectAll        OperationID = "tui.core.select-all"
 	operationCoreNotes            OperationID = "tui.core.notes"
@@ -248,6 +249,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreDetail, Keys: []string{"enter"}, DisplayKey: "Enter"},
 			{OperationID: operationCoreVisibleSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
 			{OperationID: operationCoreScope, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 7, FooterLabel: "scope"},
+			{OperationID: operationCoreSelectProject, Keys: []string{"C"}, DisplayKey: "C", FooterRank: 8, FooterLabel: "project"},
 			{OperationID: operationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v"},
 			{OperationID: operationCoreSelectAll, Keys: []string{"V"}, DisplayKey: "V"},
 			{OperationID: operationCoreNotes, Keys: []string{"N"}, DisplayKey: "N"},

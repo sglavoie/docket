@@ -139,9 +139,10 @@ closes Peek; while selection exists, structural, edit, Peek, relation, and
 clipboard operations must reject it instead of falling back to the cursor.
 The bulk `Space` menu contains Delete only.
 
-Scope Hub owns All, regular/custom contexts, project focus, and lean project
-administration. `N` opens combined Global/focused-project Notes; note creation
-always asks for a destination. `T` toggles only dark/light.
+Scope Hub owns All and regular/custom contexts. `C` opens the search-first
+project selector for project focus and lean project administration. `N` opens
+combined Global/focused-project Notes; note creation always asks for a
+destination. `T` toggles only dark/light.
 
 ## Capture grammar
 

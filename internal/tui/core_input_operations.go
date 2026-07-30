@@ -76,7 +76,8 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		peek,
 		core(operationCoreVisibleSearch, "Search Visible Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "filter visible list"),
-		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "projects", "contexts"),
+		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "contexts"),
+		core(operationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
 		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
 		core(operationCoreSelectAll, "Select All Visible Tasks", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "select visible"),
 		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
@@ -193,6 +194,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreScope:
 		message = ShowContextHubMsg{}
+	case operationCoreSelectProject:
+		message = ShowProjectHubMsg{}
 	case operationCoreMultiSelect:
 		if out, _, ok := m.outlinerPrimary(); ok {
 			out.toggleCursorSelection()

@@ -3,11 +3,8 @@
   "fixture": "rich",
   "size": "100x40",
   "actions": [
-    { "type": "key", "label": "open the Scope Hub", "key": "c" },
-    { "type": "key", "label": "search the Scope Hub", "key": "/" },
+    { "type": "key", "label": "open Select Project", "key": "C" },
     { "type": "text", "label": "find Rich Project", "text": "rprj" },
-    { "type": "key", "label": "keep the project filter", "key": "enter" },
-    { "type": "key", "label": "select the active project", "key": "G" },
     { "type": "key", "label": "focus the selected project", "key": "enter" },
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

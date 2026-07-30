@@ -14,7 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Projects (2 selected)" },
     { "type": "key", "label": "save the custom context", "key": "ctrl+s" },
     { "type": "assert", "assert": "status_contains", "value": "Created custom context 'Clients' with 2 projects" },
-    { "type": "assert", "assert": "contains", "value": "5 base scopes · 5 active" },
+    { "type": "assert", "assert": "contains", "value": "4 base scopes · 1 custom context" },
     { "type": "assert", "assert": "contains", "value": "Clients  custom · 2 project(s)" },
     { "type": "key", "label": "apply the new custom context", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

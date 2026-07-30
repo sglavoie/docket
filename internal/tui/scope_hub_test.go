@@ -2,7 +2,6 @@ package tui
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -42,51 +41,37 @@ func TestScopeHubUsesTheLeanCanonicalListSurfaceCategories(t *testing.T) {
 	got := hub.surface.Categories()
 	want := []ListCategory{
 		{ID: scopeHubCategoryBase, Label: "Base Scopes"},
-		{ID: scopeHubCategoryActive, Label: "Active Projects"},
-		{ID: scopeHubCategoryArchived, Label: "Archived Projects"},
+		{ID: scopeHubCategoryCustom, Label: "Custom Contexts"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("scope categories = %#v, want %#v", got, want)
 	}
 
-	kinds := make(map[scopeHubEntryKind]int)
+	scopes := make(map[ContextScope]ListCategoryID)
 	for _, item := range hub.surface.Items() {
 		entry, ok := item.Data.(scopeHubEntry)
 		if ok {
-			kinds[entry.Kind]++
+			scopes[entry.Scope] = item.CategoryID
 		}
 	}
-	for _, kind := range []scopeHubEntryKind{scopeHubEntryBase, scopeHubEntryActiveProject, scopeHubEntryArchivedProject} {
-		if kinds[kind] == 0 {
-			t.Fatalf("scope hub omitted lifecycle kind %d: %#v", kind, kinds)
+	if scopes[AllContextScope()] != scopeHubCategoryBase ||
+		scopes[RegularContextScope("work")] != scopeHubCategoryBase ||
+		scopes[CustomContextScope("focus")] != scopeHubCategoryCustom {
+		t.Fatalf("scope categories by row = %#v", scopes)
+	}
+	for _, item := range hub.surface.Items() {
+		if entry, ok := item.Data.(scopeHubEntry); !ok || entry.Kind != scopeHubEntryBase {
+			t.Fatalf("Scope Hub retained a non-scope row: %#v", item.Data)
 		}
 	}
 }
 
-func TestScopeHubEnterActivatesOnlyBaseScopesAndActiveProjects(t *testing.T) {
+func TestScopeHubEnterActivatesBaseScopes(t *testing.T) {
 	app := contextHubApp(t)
 	hub := openContextHub(t, app)
 
-	focusScopeHubItem(t, hub, "scope-hub:active:beta")
-	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd == nil {
-		t.Fatal("active project Enter emitted no focus request")
-	}
-	focus, ok := cmd().(ApplyProjectScopeMsg)
-	if !ok || focus.ProjectID != "beta" {
-		t.Fatalf("active project Enter emitted %#v, want beta focus", cmd())
-	}
-	app.handleViewActionMessages(focus)
-	if app.crossOutliner.scopedProjectID != "beta" {
-		t.Fatalf("project focus = %q, want beta", app.crossOutliner.scopedProjectID)
-	}
-	if app.CurrentRoute().ID() != TaskWorkspace {
-		t.Fatalf("project focus left route %s, want Outliner root", app.CurrentRoute().ID())
-	}
-
-	hub = openContextHub(t, app)
 	focusScopeHubItem(t, hub, contextScopeListItemID(RegularContextScope("work")))
-	_, cmd = hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	selected, ok := cmd().(ContextScopeSelectedMsg)
 	if !ok {
 		t.Fatalf("base scope Enter emitted %T, want ContextScopeSelectedMsg", cmd())
@@ -215,7 +200,7 @@ func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing
 				RequiredCapabilities: NewCapabilitySet(CapabilityScopeHub),
 				Handler: func(got OperationInvocation) OperationHandlerResult {
 					invocation = got
-					focusScopeHubItem(t, hub, "scope-hub:active:beta")
+					focusScopeHubItem(t, hub, contextScopeListItemID(RegularContextScope("home")))
 					target, _ := got.Value.(scopeHubActionTarget)
 					return OperationHandlerResult{
 						Message: scopeHubInlineActionMsg{OperationID: tc.operation, Target: target},
@@ -239,8 +224,7 @@ func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing
 				t.Fatalf("invocation source = %q, want %q", invocation.Source, OperationSourceDirectKey)
 			}
 			target, ok := invocation.Value.(scopeHubActionTarget)
-			if !ok || !invocation.HasValue || target.Scope != CustomContextScope("focus") ||
-				target.ProjectID != "" {
+			if !ok || !invocation.HasValue || target.Scope != CustomContextScope("focus") {
 				t.Fatalf("frozen invocation target = %#v/%v, want custom context focus", invocation.Value, invocation.HasValue)
 			}
 			tc.assert(t, hub)
@@ -249,87 +233,6 @@ func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing
 				if !ok || entry.Kind != scopeHubEntryBase || entry.Scope != CustomContextScope("focus") {
 					t.Fatalf("inline action followed the moved cursor to %#v/%v", entry, ok)
 				}
-			}
-		})
-	}
-}
-
-func TestScopeHubContextBrowseKeysRejectNonContextRowsWithVisibleNotice(t *testing.T) {
-	for _, row := range []struct {
-		name string
-		id   ListItemID
-	}{
-		{name: "active project", id: "scope-hub:active:beta"},
-		{name: "archived project", id: "scope-hub:archived:archived"},
-	} {
-		for _, key := range []rune{'e', 'r', 'd'} {
-			t.Run(row.name+"/"+string(key), func(t *testing.T) {
-				app := contextHubApp(t)
-				app.runtime = testRuntimeAt(t.TempDir(), app.runtime)
-				app.crossOutliner.runtime = app.runtime
-				archived := scopeTestProject("archived", "Archived", "1")
-				archived.Slug = "archived"
-				archived.Context = "work"
-				archived.Archived = true
-				archived.Path = t.TempDir()
-				addTestAppProject(app, archived)
-
-				hub := openContextHub(t, app)
-				itemID := row.id
-				focusScopeHubItem(t, hub, itemID)
-				hub.Update(syntheticKey(key))
-
-				if hub.notice == "" {
-					t.Fatalf("%q on %s produced no notice", string(key), row.name)
-				}
-				if hub.editor != nil || hub.confirm.IsActive() {
-					t.Fatalf("%q on %s opened editor=%v confirm=%v", string(key), row.name, hub.editor != nil, hub.confirm.IsActive())
-				}
-				item, ok := hub.surface.CurrentItem()
-				if !ok || item.ID != itemID {
-					t.Fatalf("%q on %s moved cursor to %#v/%v", string(key), row.name, item, ok)
-				}
-				if rendered := hub.View().Content; !strings.Contains(rendered, hub.notice) {
-					t.Fatalf("notice %q is not visible in the rendered hub:\n%s", hub.notice, rendered)
-				}
-			})
-		}
-	}
-}
-
-func TestScopeHubNewContextBrowseKeyOpensFromEveryNonContextRow(t *testing.T) {
-	for _, row := range []struct {
-		name string
-		id   ListItemID
-	}{
-		{name: "active project", id: "scope-hub:active:beta"},
-		{name: "archived project", id: "scope-hub:archived:archived"},
-	} {
-		t.Run(row.name, func(t *testing.T) {
-			app := contextHubApp(t)
-			app.runtime = testRuntimeAt(t.TempDir(), app.runtime)
-			app.crossOutliner.runtime = app.runtime
-			archived := scopeTestProject("archived", "Archived", "1")
-			archived.Slug = "archived"
-			archived.Context = "work"
-			archived.Archived = true
-			archived.Path = t.TempDir()
-			addTestAppProject(app, archived)
-
-			hub := openContextHub(t, app)
-			itemID := row.id
-			focusScopeHubItem(t, hub, itemID)
-			hub.Update(syntheticKey('n'))
-
-			if hub.editor == nil || !hub.editor.isNew() {
-				t.Fatalf("n on %s opened editor %#v", row.name, hub.editor)
-			}
-			if hub.notice != "" {
-				t.Fatalf("n on %s produced notice %q", row.name, hub.notice)
-			}
-			item, ok := hub.surface.CurrentItem()
-			if !ok || item.ID != itemID {
-				t.Fatalf("n on %s moved cursor to %#v/%v", row.name, item, ok)
 			}
 		})
 	}
@@ -417,33 +320,6 @@ func TestScopeHubHelpDocumentsEveryBrowseKey(t *testing.T) {
 		if !keys[key] {
 			t.Fatalf("Scope Hub help omits browse key %q: %#v", key, hub.GetHelpItems())
 		}
-	}
-}
-
-func TestScopeHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
-	app := contextHubApp(t)
-	hub := openContextHub(t, app)
-	if hub.registry != app.operationRegistry || hub.executor != app.operationExecutor {
-		t.Fatal("Scope Hub did not receive the production operation system")
-	}
-
-	focusScopeHubItem(t, hub, "scope-hub:active:beta")
-	hub.Update(syntheticKey(' '))
-	if hub.actions == nil {
-		t.Fatal("Space did not freeze the project action target")
-	}
-	if !hub.actions.surface.SetCursorToID(ListItemID("scope-hub-action:" + string(operationScopeRenameProject))) {
-		t.Fatal("rename action was not selectable")
-	}
-
-	alpha := app.projectByID("alpha")
-	setTestAppProjects(app, alpha)
-	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd != nil {
-		t.Fatalf("stale project action still emitted %#v", cmd())
-	}
-	if hub.notice != "project beta is no longer available" {
-		t.Fatalf("stale project action notice = %q, want the production executor error", hub.notice)
 	}
 }
 

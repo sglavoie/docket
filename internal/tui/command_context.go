@@ -14,9 +14,12 @@ const (
 	// CapabilitySimplifiedInput exposes the staged final key grammar without
 	// making its operations visible to the legacy command adapter.
 	CapabilitySimplifiedInput Capability = "input:simplified"
-	// CapabilityScopeHub limits scope/context/project lifecycle operations to
-	// the one routed Scope Hub that supplies their frozen targets.
+	// CapabilityScopeHub limits scope/context lifecycle operations to the
+	// routed Scope Hub that supplies their frozen targets.
 	CapabilityScopeHub Capability = "surface:scope-hub"
+	// CapabilityProjectHub limits global project creation to the routed project
+	// selection and administration surface.
+	CapabilityProjectHub Capability = "surface:project-hub"
 	// CapabilityHarness exposes setup-only operations to semantic scenario
 	// commands without advertising them in help or direct input.
 	CapabilityHarness      Capability = "surface:test-harness"
@@ -43,6 +46,7 @@ func validCapability(capability Capability) bool {
 	case CapabilityCommandDiscovery,
 		CapabilitySimplifiedInput,
 		CapabilityScopeHub,
+		CapabilityProjectHub,
 		CapabilityHarness,
 		CapabilityAppScope,
 		CapabilityProjectScope,

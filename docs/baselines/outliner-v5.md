@@ -39,7 +39,7 @@ The direct interaction grammar is:
 | Structure | `<`, `>`, `J`, `K` |
 | Clipboard | `y`, `Y`, `Ctrl+Y` |
 | Selection and task menu | `v`, `V`, `Space` |
-| Global | `c`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
+| Global | `c`, `C`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
 
 Filters use `fp0`, `fp1`–`fp5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`.
 Quick capture accepts only `!1-5`, `#tag`, `@date`, `~interval`, `$state`,

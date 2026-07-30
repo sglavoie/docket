@@ -103,6 +103,7 @@ func OutlinerV5TargetContract() OutlinerV5Contract {
 			{Key: "V", Action: "select-visible", Area: "selection"},
 			{Key: "Space", Action: "task-menu", Area: "task-menu"},
 			{Key: "c", Action: "scope-hub", Area: "global"},
+			{Key: "C", Action: "select-project", Area: "global"},
 			{Key: "N", Action: "notes", Area: "global"},
 			{Key: "T", Action: "toggle-theme", Area: "global"},
 			{Key: "/", Action: "visible-search", Area: "global"},

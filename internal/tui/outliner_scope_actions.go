@@ -4,7 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// ApplyProjectScopeMsg applies a Context Hub or project-header selection to the
+// ApplyProjectScopeMsg applies a Project Hub or project-header selection to the
 // sole Outliner scope stack.
 type ApplyProjectScopeMsg struct {
 	ProjectID string
@@ -16,7 +16,7 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 		m.setInfoStatus("Project scope is available from the global Outliner")
 		return true, nil
 	}
-	returnToOutliner := m.currentView() == ViewContextHub
+	returnToOutliner := m.currentView() == ViewContextHub || m.currentView() == ViewProjectHub
 	if msg.Clear {
 		m.crossOutliner.clearProjectScope()
 		if returnToOutliner {

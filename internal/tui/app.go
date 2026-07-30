@@ -43,6 +43,7 @@ const (
 	ViewTaskDecisions
 	ViewConflictResolution
 	ViewContextHub
+	ViewProjectHub
 )
 
 // sessionStats tracks task changes during a single TUI session for the

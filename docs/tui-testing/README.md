@@ -129,7 +129,7 @@ The committed suite exercises the product contracts directly:
 | Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
 | Five modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Priority, workflow, blocked, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
-| Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-*.json` |
+| Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-hub-*.json`, `project-*.json` |
 | Combined Global/project Notes | `notes-tool.json`, `global-notes-resize-minimum-layout.json` |
 | Checklist, comments, decisions, and attachments | `rich-tools.json` |
 | Exact nine-item `Space` menu | `outliner-space-action-catalog.json` |

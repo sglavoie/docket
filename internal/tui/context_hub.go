@@ -26,16 +26,15 @@ const contextHubFooterLabel = "Scope Hub"
 // commit through ContextMutator.
 type ContextHubModel struct {
 	BaseSearchableView
-	runtime          *config.RuntimeState
-	mutator          *ContextMutator
-	summaries        []ContextScopeSummary
-	active           ContextScope
-	taskCounts       map[string]int
-	surface          *ListSurfaceModel
-	actions          *ContextActionSheetModel
-	registry         *OperationRegistry
-	executor         *OperationExecutor
-	focusedProjectID string
+	runtime    *config.RuntimeState
+	mutator    *ContextMutator
+	summaries  []ContextScopeSummary
+	active     ContextScope
+	taskCounts map[string]int
+	surface    *ListSurfaceModel
+	actions    *ContextActionSheetModel
+	registry   *OperationRegistry
+	executor   *OperationExecutor
 
 	editor         *contextEditor
 	confirm        ConfirmDialog
@@ -349,12 +348,13 @@ func (m *ContextHubModel) subtitle() string {
 			regular++
 		}
 	}
-	activeProjects, archivedProjects := m.scopeHubLifecycleCounts()
+	base := 1 + regular
 	return fmt.Sprintf(
-		"%d base scopes · %d active · %d archived",
-		1+custom+regular,
-		activeProjects,
-		archivedProjects,
+		"%d base scope%s · %d custom context%s",
+		base,
+		pluralize(base, "", "s"),
+		custom,
+		pluralize(custom, "", "s"),
 	)
 }
 
@@ -467,9 +467,9 @@ func (m *ContextHubModel) GetHelpItems() []HelpItem {
 		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
 		{Key: "Ctrl+d/u", Description: "Move half a page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Jump to the first or last scope item", Category: "Navigation"},
-		{Key: "/", Description: "Search scopes and projects", Category: "Filters"},
-		{Key: "enter", Description: "Activate a base scope or project focus", Category: "Actions"},
-		{Key: "space", Description: "Open contextual administration actions", Category: "Actions"},
+		{Key: "/", Description: "Search scopes and contexts", Category: "Filters"},
+		{Key: "enter", Description: "Activate the selected scope", Category: "Actions"},
+		{Key: "space", Description: "Open context administration actions", Category: "Actions"},
 		{Key: "n", Description: "Create a custom context", Category: "Actions"},
 		{Key: "e", Description: "Edit context membership", Category: "Actions"},
 		{Key: "r", Description: "Rename a context", Category: "Actions"},

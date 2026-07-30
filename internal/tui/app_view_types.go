@@ -29,6 +29,7 @@ var viewTypeNames = map[PresentationID]string{
 	ViewTaskDecisions:        "TaskDecisions",
 	ViewConflictResolution:   "ConflictResolution",
 	ViewContextHub:           "ContextHub",
+	ViewProjectHub:           "ProjectHub",
 }
 
 // String returns the name of the PresentationID for readable test output.
