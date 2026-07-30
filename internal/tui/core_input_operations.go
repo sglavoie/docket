@@ -214,6 +214,9 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreToggleTheme:
 		err = m.coreToggleTheme()
+		if err == nil {
+			message = commandMessage(defaultStatusTimeout())
+		}
 	case operationCoreUndo:
 		message = commandMessage(m.coreUndo())
 	case operationCoreRedo:

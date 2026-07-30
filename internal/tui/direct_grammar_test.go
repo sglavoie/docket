@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -223,6 +224,19 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	)
 	if themeResult.Err != nil {
 		t.Fatalf("toggle theme: %v", themeResult.Err)
+	}
+	timeout, ok := themeResult.Message.(OperationCommandResultMsg)
+	if !ok || timeout.Cmd == nil {
+		t.Fatalf("toggle theme message = %T, want a status timeout command", themeResult.Message)
+	}
+	if app.statusMessage != "Theme: "+app.runtime.Machine().Theme {
+		t.Fatalf("theme status = %q, want the active theme", app.statusMessage)
+	}
+	if handled, _ := app.handleViewMessages(StatusClearMsg{ScheduledAt: app.statusUpdatedAt.Add(time.Nanosecond)}); !handled {
+		t.Fatal("theme status clear message was not handled")
+	}
+	if app.statusMessage != "" {
+		t.Fatalf("theme status = %q after timeout, want empty", app.statusMessage)
 	}
 	afterTheme := app.runtime.Machine().Theme
 	if afterTheme == beforeTheme || (afterTheme != "dark" && afterTheme != "light") {
