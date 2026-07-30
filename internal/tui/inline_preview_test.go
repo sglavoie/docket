@@ -106,6 +106,27 @@ func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
 	}
 }
 
+func TestInlinePeekShowsAttachmentNamesAndDecisionCount(t *testing.T) {
+	task := &models.Task{
+		Attachments: []models.Attachment{
+			{Filename: "design-spec.pdf"},
+			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
+			{Filename: "notes.md"},
+		},
+		Decisions: []*models.Decision{{Text: "Use the compact layout"}, {Text: "Keep Peek concise"}},
+	}
+
+	plain := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{Task: task, Width: 80}), "\n"))
+	for _, want := range []string{
+		"Attachments: design-spec.pdf · acme/roadmap#123 · +1 more",
+		"Decisions: 2",
+	} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("Peek missing %q:\n%s", want, plain)
+		}
+	}
+}
+
 func TestInlinePeekQualifiesCrossProjectDependencyWithoutTaskID(t *testing.T) {
 	owner := &models.Project{ID: "owner", Slug: "own", Name: "Owner"}
 	other := &models.Project{ID: "other", Slug: "api", Name: "API"}

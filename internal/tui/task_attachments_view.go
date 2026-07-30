@@ -139,13 +139,7 @@ func (m *TaskAttachmentsModel) attachmentTypeLabel(att models.Attachment) string
 }
 
 func (m *TaskAttachmentsModel) attachmentDisplayName(att models.Attachment) string {
-	if ref, ok := gitHubIssueAttachmentRef(att); ok {
-		return formatGitHubIssueRef(ref)
-	}
-	if att.IsCodeRef {
-		return fmt.Sprintf("%s:%d", att.OriginalPath, att.LineNumber)
-	}
-	return att.Filename
+	return attachmentDisplayName(att)
 }
 
 func (m *TaskAttachmentsModel) attachmentMeta(att models.Attachment) string {

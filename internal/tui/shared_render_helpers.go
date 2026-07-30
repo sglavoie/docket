@@ -188,6 +188,16 @@ func gitHubIssueAttachmentRef(att models.Attachment) (models.GitHubIssueRef, boo
 	return models.GitHubIssueRef{}, false
 }
 
+func attachmentDisplayName(att models.Attachment) string {
+	if ref, ok := gitHubIssueAttachmentRef(att); ok {
+		return formatGitHubIssueRef(ref)
+	}
+	if att.IsCodeRef {
+		return fmt.Sprintf("%s:%d", att.OriginalPath, att.LineNumber)
+	}
+	return att.Filename
+}
+
 // renderChecklistIndicator renders a compact checklist progress indicator.
 func renderChecklistIndicator(task *models.Task) string {
 	if len(task.Checklist) == 0 {

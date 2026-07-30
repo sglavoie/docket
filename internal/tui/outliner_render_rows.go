@@ -272,6 +272,8 @@ type taskIndicatorSegments struct {
 	dependencies string
 	recurrence   string
 	checklist    string
+	comments     string
+	attachments  string
 }
 
 func (segments taskIndicatorSegments) render() string {
@@ -281,6 +283,8 @@ func (segments taskIndicatorSegments) render() string {
 		segments.dependencies,
 		segments.recurrence,
 		segments.checklist,
+		segments.comments,
+		segments.attachments,
 	)
 	if rendered == "" {
 		return ""
@@ -288,10 +292,10 @@ func (segments taskIndicatorSegments) render() string {
 	return " " + rendered
 }
 
-// renderTaskIndicatorSegments promotes operational task state into the row.
-// Rich content stays in Peek; tags and rich-record counts stay in their tools.
-// The caller progressively drops recurrence, checklist, then dependency counts
-// only when preserving all signals would leave an unreadably small title.
+// renderTaskIndicatorSegments promotes operational task state and concise
+// activity counts into the row. Rich content stays in Peek. The caller
+// progressively drops recurrence, checklist, then dependency counts only when
+// preserving all signals would leave an unreadably small title.
 func (m *OutlinerModel) renderTaskIndicatorSegments(
 	task *models.Task,
 	project *models.Project,
@@ -315,6 +319,12 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(
 	}
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)
+	}
+	if m.columnConfig.IsVisible(ColComments) {
+		segments.comments = renderCommentIndicator(task)
+	}
+	if m.columnConfig.IsVisible(ColAttachments) {
+		segments.attachments = renderAttachmentIndicator(task)
 	}
 	return segments
 }

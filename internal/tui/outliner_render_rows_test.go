@@ -39,3 +39,23 @@ func TestCrossProjectTaskRowsOmitProjectBadge(t *testing.T) {
 		}
 	}
 }
+
+func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
+	task := &models.Task{
+		ID:            "task",
+		Title:         "Review compact metadata",
+		WorkflowState: models.StateReady,
+		Comments:      []*models.Comment{{Text: "One"}, {Text: "Two"}},
+		Attachments:   []models.Attachment{{Filename: "design.pdf"}},
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := outlinerRow{task: task, ProjectID: project.ID}
+
+	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	for _, want := range []string{"💬 2", "📎 1"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("task row missing %q: %q", want, plain)
+		}
+	}
+}

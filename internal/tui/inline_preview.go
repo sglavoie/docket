@@ -57,8 +57,8 @@ func (m *OutlinerModel) relationshipProjects(owner *models.Project) []*models.Pr
 
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
-// contains only richer content plus tags: description, tags, checklist items,
-// dependency names, and recurrence detail.
+// contains only richer content plus tags: description, attachment names,
+// decision counts, checklist items, dependency names, and recurrence detail.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
@@ -67,6 +67,14 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
 	lines := make([]string, 0, inlinePeekMaxLines)
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
+
+	if attachments := inlinePeekAttachmentsLine(opts.Task, available); attachments != "" {
+		lines = append(lines, opts.Indent+MutedStyle.Render(attachments))
+	}
+
+	if decisions := inlinePeekDecisionCountLine(opts.Task, available); decisions != "" {
+		lines = append(lines, opts.Indent+MutedStyle.Render(decisions))
+	}
 
 	if tags := inlinePeekTagsLine(opts.Task, available); tags != "" {
 		lines = append(lines, opts.Indent+tags)
@@ -96,6 +104,35 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 		lines = lines[:inlinePeekMaxLines]
 	}
 	return lines
+}
+
+func inlinePeekAttachmentsLine(task *models.Task, width int) string {
+	if task == nil || len(task.Attachments) == 0 || width <= 0 {
+		return ""
+	}
+
+	const maxAttachments = 2
+	parts := make([]string, 0, min(len(task.Attachments), maxAttachments+1))
+	for i, attachment := range task.Attachments {
+		if i >= maxAttachments {
+			parts = append(parts, fmt.Sprintf("+%d more", len(task.Attachments)-maxAttachments))
+			break
+		}
+		if name := strings.TrimSpace(attachmentDisplayName(attachment)); name != "" {
+			parts = append(parts, name)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return truncateIntentional("Attachments: "+strings.Join(parts, " · "), width, "…")
+}
+
+func inlinePeekDecisionCountLine(task *models.Task, width int) string {
+	if task == nil || len(task.Decisions) == 0 || width <= 0 {
+		return ""
+	}
+	return truncateIntentional(fmt.Sprintf("Decisions: %d", len(task.Decisions)), width, "…")
 }
 
 func inlinePeekTagsLine(task *models.Task, width int) string {
