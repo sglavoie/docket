@@ -8,10 +8,10 @@ import (
 
 // TestPlanningToggleUndoRedoKeyFlow drives the Next/Today planning toggles and their
 // u / ctrl+r undo-redo through the real AppModel key path (app.Update) from the
-// Outliner scopes where q and w actually work — project and global — not
+// Outliner scope where the state chord actually works, rather than
 // by calling the toggle helpers directly. It is the FR-007-001 regression: the
 // bespoke atomic planning undo used to be reachable only inside the retired planner,
-// where q and w are disabled, so an immediate u/ctrl+r in the view that created
+// so an immediate u/ctrl+r in the view that created
 // the toggle fell through to ordinary project-history undo and could not restore
 // the Next order index or Daily Plan entry as one logical action.
 func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
@@ -20,6 +20,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	t.Run("outliner queue toggle restores state and order index", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 
+		app = sendAppKey(app, syntheticKey('s'))
 		app = sendAppKey(app, syntheticKey('n'))
 		assertQueueKeyFlow(t, app, task.ID, true)
 
@@ -33,6 +34,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	t.Run("global outliner daily-plan toggle restores plan entry", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
 
+		app = sendAppKey(app, syntheticKey('s'))
 		app = sendAppKey(app, syntheticKey('t'))
 		assertTodayKeyFlow(t, app, task.ID, true)
 

@@ -59,8 +59,6 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
 		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
-		core(operationCoreStart, "Start Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "in progress"),
-		core(operationCoreDone, "Complete Task", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "done", "finish task"),
 		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "ready"),
 		core(operationCoreToday, "Toggle Today", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "daily plan"),
 		core(operationCoreNext, "Toggle Next", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "on deck"),
@@ -135,10 +133,6 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 				Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 			}
 		}
-	case operationCoreStart:
-		message = commandMessage(m.coreStateOperation(invocation.Targets, models.StateInProgress))
-	case operationCoreDone:
-		message = commandMessage(m.coreStateOperation(invocation.Targets, models.StateDone))
 	case operationCoreBacklog:
 		if invocation.Context.Selection.Visual {
 			message = commandMessage(m.corePlanningOperation(invocation.Targets, app.PlanningBacklog))
@@ -290,23 +284,6 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 		return m.captureComposerMessage(inbox, m.activeProjects())
 	}
 	return m.captureComposerMessage(project, m.activeProjects())
-}
-
-func (m *AppModel) coreStateOperation(targets ResolvedOperationTargets, target models.WorkflowState) tea.Cmd {
-	locators := operationTargetLocators(targets)
-	if len(locators) == 0 {
-		return nil
-	}
-	request := app.TaskOperationRequest{
-		Operation: app.TaskOperationSetState,
-		Targets:   locators,
-		State:     target,
-	}
-	return m.secondaryFeatures.TaskItem.ExecuteOperation(
-		request,
-		"Change State",
-		fmt.Sprintf("Change State · Changed %d task(s) to %s", len(locators), target),
-	)
 }
 
 func operationTargetLocators(targets ResolvedOperationTargets) []app.TaskLocator {

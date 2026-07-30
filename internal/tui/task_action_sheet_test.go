@@ -97,8 +97,6 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	// task actions; the metadata operations the input strategy binds directly
 	// leave the sheet rather than repeating their key as a row.
 	for _, excluded := range []OperationID{
-		operationCoreStart,
-		operationCoreDone,
 		operationCoreActions,
 		operationCoreCapture,
 		operationCoreMultiSelect,

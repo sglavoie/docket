@@ -28,8 +28,8 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `Tab` moves to Inbox for triage.
-3. `b`, `n`, and `t` move work to Backlog, Next, or Today.
-4. `s` starts work and `d` completes it.
+3. `s` opens the shared state and planning overlay.
+4. `sr`, `sn`, and `st` plan work; `sg` starts it and `sd` completes it.
 5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
 6. `Space` opens the nine occasional task tools.
 
@@ -58,8 +58,7 @@ asks for them.
 | Modes | `Tab` / `Shift+Tab` cycle the five modes |
 | Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description |
-| Daily state | `s` In Progress, `d` Done, `b` Ready/Backlog, `t` Today, `n` Next |
-| Other state | `,i` Inbox, `,w` Waiting, `,p` Paused, `,s` Someday, `,c` Canceled |
+| State and planning | `s` opens the state overlay: `si` Inbox, `sr` Ready/Backlog, `sn` toggle Next, `sg` In Progress, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled, `st` toggle Today |
 | Metadata | `!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
@@ -67,8 +66,9 @@ asks for them.
 | Global | `c` Scope Hub, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 The operation descriptors are the single source for dispatch, the compact
-footer, chord hints, and `?` help. Removed keys such as `m`, `:`, `R`, `p`, and
-`Ctrl+Esc` have no compatibility action.
+footer, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
+actions and comma state prefix have no compatibility action; neither do removed
+keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
 
 `#` opens Set Tags for the current task or visual selection. Inside the
 overlay, `Space` toggles tags, `a` creates and selects a new tag, and `Enter`

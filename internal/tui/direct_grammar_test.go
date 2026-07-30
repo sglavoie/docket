@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -17,8 +18,6 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]OperationID{
 		"a": operationCoreCapture, "A": operationTaskNewChild,
 		"e": operationCoreEdit, "E": operationCoreEditDescription,
-		"s": operationCoreStart, "d": operationCoreDone, "b": operationCoreBacklog,
-		"t": operationCoreToday, "n": operationCoreNext,
 		"space": operationCoreActions,
 		"j":     operationCoreCursorDown, "down": operationCoreCursorDown,
 		"k": operationCoreCursorUp, "up": operationCoreCursorUp,
@@ -62,7 +61,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		}
 	}
 
-	for _, removed := range []string{"m", ":", "R", "p", "ctrl+esc"} {
+	for _, removed := range []string{"b", "d", "n", "t", ",", "m", ":", "R", "p", "ctrl+esc"} {
 		if owner := owners[removed]; owner != "" {
 			t.Errorf("removed key %q still resolves to %s", removed, owner)
 		}
@@ -98,34 +97,48 @@ func TestFinalPriorityChordUsesBangPrefix(t *testing.T) {
 	}
 }
 
-func TestFinalStateChordHasExactlyFiveTerminalOperations(t *testing.T) {
+func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
-	got := make(map[string]any)
+	type terminal struct {
+		operation OperationID
+		value     any
+		hasValue  bool
+	}
+	got := make(map[string]terminal)
 	for _, binding := range strategy.Bindings {
-		if binding.OperationID != operationTaskSetState ||
-			len(binding.Sequence) != 2 ||
-			binding.Sequence[0] != "," {
+		if len(binding.Sequence) != 2 || binding.Sequence[0] != "s" {
 			continue
 		}
-		got[binding.Sequence[1]] = binding.PresetValue
+		got[binding.Sequence[1]] = terminal{
+			operation: binding.OperationID,
+			value:     binding.PresetValue,
+			hasValue:  binding.HasPresetValue,
+		}
 	}
-	want := map[string]any{
-		"i": models.StateInbox,
-		"w": models.StateWaiting,
-		"p": models.StatePaused,
-		"s": models.StateSomeday,
-		"c": models.StateCanceled,
+	want := map[string]terminal{
+		"i": {operation: operationTaskSetState, value: models.StateInbox, hasValue: true},
+		"r": {operation: operationCoreBacklog},
+		"n": {operation: operationCoreNext},
+		"g": {operation: operationTaskSetState, value: models.StateInProgress, hasValue: true},
+		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true},
+		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true},
+		"m": {operation: operationTaskSetState, value: models.StateSomeday, hasValue: true},
+		"d": {operation: operationTaskSetState, value: models.StateDone, hasValue: true},
+		"c": {operation: operationTaskSetState, value: models.StateCanceled, hasValue: true},
+		"t": {operation: operationCoreToday},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
 	}
-	for key, state := range want {
-		if got[key] != state {
-			t.Errorf(",%s = %v, want %v", key, got[key], state)
+	for key, terminal := range want {
+		if !reflect.DeepEqual(got[key], terminal) {
+			t.Errorf("s%s = %+v, want %+v", key, got[key], terminal)
 		}
 	}
-	if _, retained := got["r"]; retained {
-		t.Error("retired Review chord ,r remains registered")
+	for _, binding := range strategy.Bindings {
+		if len(binding.Sequence) > 0 && binding.Sequence[0] == "," {
+			t.Errorf("retired comma state prefix remains registered: %v", binding.Sequence)
+		}
 	}
 }
 

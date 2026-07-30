@@ -93,8 +93,7 @@ The final public grammar is:
 Tab/Shift+Tab                    All, Inbox, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 a/A e/E                          capture and edit
-s d b t n                        daily state and planning
-,i ,w ,p ,s ,c                  other workflow states
+si sr sn sg sw sp sm sd sc st    state and planning overlay
 !0-5 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
@@ -103,7 +102,8 @@ c N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-5 fs ft fd fb fz fx         filters
 ```
 
-`m`, `:`, `R`, `p`, and `Ctrl+Esc` are intentionally unbound.
+The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix are
+intentionally unbound, as are `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
 
 ### Assertions
 
@@ -126,7 +126,7 @@ The committed suite exercises the product contracts directly:
 | Contract | Representative scenarios |
 | --- | --- |
 | Capture grammar and protected-Inbox routing | `capture-grammar.json`, `fresh-install-capture.json` |
-| Inbox triage and daily `n`/`b`/`t`/`s`/`d` loop | `daily-loop.json` |
+| Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
 | Five modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Priority, workflow, blocked, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-*.json` |

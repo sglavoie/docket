@@ -100,7 +100,7 @@ func TestOutlinerV5TargetGrammarIsCanonicalAndSingleOwner(t *testing.T) {
 		directActions[binding.Action] = true
 	}
 
-	for _, removed := range []string{"m", ":", "R", "p", "Ctrl+Esc"} {
+	for _, removed := range []string{"b", "d", "n", "t", ",", "m", ":", "R", "p", "Ctrl+Esc"} {
 		if action, ok := seenKeys[removed]; ok {
 			t.Errorf("removed key %q still owns %q", removed, action)
 		}
@@ -113,7 +113,16 @@ func TestOutlinerV5TargetGrammarIsCanonicalAndSingleOwner(t *testing.T) {
 		"e",
 		"E",
 		"S",
-		",i",
+		"si",
+		"sr",
+		"sn",
+		"sg",
+		"sw",
+		"sp",
+		"sm",
+		"sd",
+		"sc",
+		"st",
 		"!0",
 		"!1-!5",
 		"Space",

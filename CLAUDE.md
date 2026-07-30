@@ -97,8 +97,7 @@ The direct grammar is:
 Tab / Shift+Tab                 five modes
 j/k, arrows, h/l, S, Home/End  navigation
 a/A, e/E                       capture/edit
-s d b t n                      daily state/planning
-,i ,w ,p ,s ,c                 other state
+si sr sn sg sw sp sm sd sc st  state/planning overlay
 !0-5 @ # z P                   metadata
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
@@ -106,10 +105,16 @@ v V Space                      selection/actions
 c N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
+Pressing `s` shows the state overlay. Its second keys are `i` Inbox, `r`
+Ready/Backlog, `n` Next, `g` In Progress, `w` Waiting, `p` Paused, `m`
+Someday, `d` Done, `c` Canceled, and `t` Today. Next and Today retain their
+toggle behavior, and Ready/Backlog still removes Today membership.
+
 Filter chords are `fp0-5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`. `fd` opens
 the due-date facet picker for overdue, today, this week, or no due date, and
-`fx` clears every facet. Removed keys `m`, `:`, `R`, `p`, and `Ctrl+Esc` must
-remain unbound.
+`fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
+comma state prefix must remain unbound, along with `m`, `:`, `R`, `p`, and
+`Ctrl+Esc`.
 
 The `Space` menu is exactly:
 

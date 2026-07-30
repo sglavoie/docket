@@ -50,11 +50,13 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
 		{path: []string{"!", "1"}, want: operationTaskSetPriority, value: 1},
 		{path: []string{"!", "5"}, want: operationTaskSetPriority, value: 5},
-		{path: []string{",", "i"}, want: operationTaskSetState, value: models.StateInbox},
-		{path: []string{",", "w"}, want: operationTaskSetState, value: models.StateWaiting},
-		{path: []string{",", "p"}, want: operationTaskSetState, value: models.StatePaused},
-		{path: []string{",", "s"}, want: operationTaskSetState, value: models.StateSomeday},
-		{path: []string{",", "c"}, want: operationTaskSetState, value: models.StateCanceled},
+		{path: []string{"s", "i"}, want: operationTaskSetState, value: models.StateInbox},
+		{path: []string{"s", "g"}, want: operationTaskSetState, value: models.StateInProgress},
+		{path: []string{"s", "w"}, want: operationTaskSetState, value: models.StateWaiting},
+		{path: []string{"s", "p"}, want: operationTaskSetState, value: models.StatePaused},
+		{path: []string{"s", "m"}, want: operationTaskSetState, value: models.StateSomeday},
+		{path: []string{"s", "d"}, want: operationTaskSetState, value: models.StateDone},
+		{path: []string{"s", "c"}, want: operationTaskSetState, value: models.StateCanceled},
 	}
 
 	for _, preset := range presets {
@@ -87,6 +89,28 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 			if result.Message == nil {
 				t.Errorf("%s %v produced no coordinator work", name, preset.path)
 			}
+		}
+	}
+
+	for _, action := range []struct {
+		path []string
+		want OperationID
+	}{
+		{path: []string{"s", "r"}, want: operationCoreBacklog},
+		{path: []string{"s", "n"}, want: operationCoreNext},
+		{path: []string{"s", "t"}, want: operationCoreToday},
+	} {
+		ctx := taskOperationTestContext(loose, project)
+		binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
+			InputStrategySimplified,
+			action.path,
+			ctx,
+		)
+		if resolution != ChordTerminal || descriptor.ID != action.want {
+			t.Errorf("%v resolved to %s/%v, want %s/terminal", action.path, descriptor.ID, resolution, action.want)
+		}
+		if binding.HasPresetValue {
+			t.Errorf("%v unexpectedly carries preset %v", action.path, binding.PresetValue)
 		}
 	}
 
@@ -159,12 +183,33 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		}
 	})
 
-	t.Run("state chord dispatches a transition", func(t *testing.T) {
+	t.Run("state prefix shows every action and dispatches a transition", func(t *testing.T) {
 		app, _ := newApp(t)
-		app.handleGlobalKeyPress(tea.KeyPressMsg{Code: ',', Text: ","})
-		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
+		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 's', Text: "s"})
+		if !handled || cmd != nil {
+			t.Fatalf("s = handled %v cmd %T; want a pending prefix", handled, cmd)
+		}
+		row := app.pendingChordHintRow()
+		for _, want := range []string{
+			"i inbox",
+			"r ready / backlog",
+			"n next",
+			"g in progress",
+			"w waiting",
+			"p paused",
+			"m someday",
+			"d done",
+			"c canceled",
+			"t today",
+		} {
+			if !strings.Contains(row, want) {
+				t.Errorf("which-key row %q omits %q", row, want)
+			}
+		}
+
+		handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		if !handled || cmd == nil {
-			t.Fatalf(",w = handled %v cmd %T; want the waiting transition", handled, cmd)
+			t.Fatalf("sw = handled %v cmd %T; want the waiting transition", handled, cmd)
 		}
 	})
 

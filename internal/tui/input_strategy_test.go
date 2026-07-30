@@ -89,7 +89,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 		simplifiedOperationContext(),
 		0,
 	)
-	for _, want := range []string{"a capture", "/ search", "T theme", "? help"} {
+	for _, want := range []string{"a capture", "s state", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
 		}
@@ -594,7 +594,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 	for _, retired := range []string{
 		"F", "C", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
-		":", "R", "p", "ctrl+esc", "m",
+		":", "R", "p", "ctrl+esc", "m", "b", "d", "n", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {

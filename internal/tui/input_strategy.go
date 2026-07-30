@@ -190,8 +190,6 @@ const (
 	operationCoreCapture          OperationID = "tui.core.capture"
 	operationCoreEdit             OperationID = "tui.core.edit"
 	operationCoreEditDescription  OperationID = "tui.core.edit-description"
-	operationCoreStart            OperationID = "tui.core.start"
-	operationCoreDone             OperationID = "tui.core.done"
 	operationCoreBacklog          OperationID = "tui.core.backlog"
 	operationCoreToday            OperationID = "tui.core.today"
 	operationCoreNext             OperationID = "tui.core.next"
@@ -233,11 +231,6 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 10, FooterLabel: "title"},
 			{OperationID: operationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
 			{OperationID: operationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
-			{OperationID: operationCoreStart, Keys: []string{"s"}, DisplayKey: "s", FooterRank: 11, FooterLabel: "start"},
-			{OperationID: operationCoreDone, Keys: []string{"d"}, DisplayKey: "d", FooterRank: 3, FooterLabel: "done"},
-			{OperationID: operationCoreBacklog, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 12, FooterLabel: "backlog"},
-			{OperationID: operationCoreToday, Keys: []string{"t"}, DisplayKey: "t", FooterRank: 13, FooterLabel: "today"},
-			{OperationID: operationCoreNext, Keys: []string{"n"}, DisplayKey: "n", FooterRank: 14, FooterLabel: "next"},
 			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 2, FooterLabel: "actions"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
@@ -279,11 +272,16 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskSetPriority, Sequence: []string{"!", "3"}, DisplayKey: "!0-5", HintLabel: "normal", PresetValue: 3, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"!", "4"}, DisplayKey: "!0-5", HintLabel: "low", PresetValue: 4, HasPresetValue: true},
 			{OperationID: operationTaskSetPriority, Sequence: []string{"!", "5"}, DisplayKey: "!0-5", HintLabel: "lowest", PresetValue: 5, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "i"}, DisplayKey: ",iwpsc", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "w"}, DisplayKey: ",iwpsc", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "p"}, DisplayKey: ",iwpsc", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "s"}, DisplayKey: ",iwpsc", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
-			{OperationID: operationTaskSetState, Sequence: []string{",", "c"}, DisplayKey: ",iwpsc", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "i"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
+			{OperationID: operationCoreBacklog, Sequence: []string{"s", "r"}, DisplayKey: "sr", HintLabel: "ready / backlog"},
+			{OperationID: operationCoreNext, Sequence: []string{"s", "n"}, DisplayKey: "sn", HintLabel: "next"},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "g"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "in progress", PresetValue: models.StateInProgress, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "w"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "p"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "m"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "d"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "done", PresetValue: models.StateDone, HasPresetValue: true},
+			{OperationID: operationTaskSetState, Sequence: []string{"s", "c"}, DisplayKey: "si/sg/sw/sp/sm/sd/sc", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
+			{OperationID: operationCoreToday, Sequence: []string{"s", "t"}, DisplayKey: "st", HintLabel: "today"},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "0"}, DisplayKey: "fp0-5", HintLabel: "all", PresetValue: 0, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "1"}, DisplayKey: "fp0-5", HintLabel: "<=1", PresetValue: 1, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "2"}, DisplayKey: "fp0-5", HintLabel: "<=2", PresetValue: 2, HasPresetValue: true},
@@ -299,7 +297,7 @@ func SimplifiedInputStrategy() InputStrategy {
 		},
 		ChordGroups: []OperationChordGroup{
 			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 17, FooterLabel: "priority"},
-			{Sequence: []string{","}, HintLabel: "state", FooterRank: 18, FooterLabel: "state"},
+			{Sequence: []string{"s"}, HintLabel: "state", FooterRank: 11, FooterLabel: "state"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "p"}, HintLabel: "priority threshold"},
 		},

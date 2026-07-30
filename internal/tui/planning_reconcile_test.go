@@ -190,6 +190,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 			t.Fatalf("seed daily plan: %v", err)
 		}
 
+		app = sendAppKey(app, syntheticKey('s'))
 		app = sendAppKey(app, syntheticKey('n'))
 		assertQueueKeyFlow(t, app, task.ID, true)
 
@@ -226,6 +227,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		newPriority := origPriority + 1
 
 		// Promote to Next (ledger transaction #1).
+		app = sendAppKey(app, syntheticKey('s'))
 		app = sendAppKey(app, syntheticKey('n'))
 		assertQueueKeyFlow(t, app, task.ID, true)
 

@@ -76,7 +76,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
 		"nine-state, five-mode, Outliner-only product",
-		"keys `m`, `:`, `R`, `p`, and `Ctrl+Esc` must remain unbound",
+		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix must remain unbound",
 		"The `Space` menu is exactly",
 		"!1-5 #tag @date ~interval $state %project >parent",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
