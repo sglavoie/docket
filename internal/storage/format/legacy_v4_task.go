@@ -13,11 +13,15 @@ const legacyV4TaskScannerMaxBytes = 16 * 1024 * 1024
 const legacyV4MaxScoreDimensionIDLength = 32
 
 var (
-	legacyV4ProjectRegex       = regexp.MustCompile(`^#\s+Project:\s*(.+?)\s*$`)
-	legacyV4SchemaRegex        = regexp.MustCompile(`^<!--\s*tt-schema:\s*(\d+)\s*-->\s*$`)
-	legacyV4HeadingRegex       = regexp.MustCompile(`^(#{2,7})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.+?)\s*$`)
-	legacyV4ActivityStartRegex = regexp.MustCompile(`^<!--\s*ACTIVITY\s*-->$`)
-	legacyV4ActivityEndRegex   = regexp.MustCompile(`^<!--\s*/ACTIVITY\s*-->$`)
+	legacyV4ProjectRegex = regexp.MustCompile(`^#\s+Project:\s*(.+?)\s*$`)
+	// Completed v4 archives did not repeat the active document's "# Project"
+	// heading. Their durable project identity lived in this archive header
+	// instead, so migration must recognize both document shapes.
+	legacyV4ArchiveProjectRegex = regexp.MustCompile(`^<!--\s*project:\s*(.+?)(?:,\s*count:\s*\d+)?\s*-->\s*$`)
+	legacyV4SchemaRegex         = regexp.MustCompile(`^<!--\s*tt-schema:\s*(\d+)\s*-->\s*$`)
+	legacyV4HeadingRegex        = regexp.MustCompile(`^(#{2,7})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.+?)\s*$`)
+	legacyV4ActivityStartRegex  = regexp.MustCompile(`^<!--\s*ACTIVITY\s*-->$`)
+	legacyV4ActivityEndRegex    = regexp.MustCompile(`^<!--\s*/ACTIVITY\s*-->$`)
 )
 
 // Keep this list local to the v4 decoder. The live metadata registry will shed
@@ -128,6 +132,12 @@ func DecodeLegacyV4TaskDocument(content string, location *time.Location) (Legacy
 		if match := legacyV4ProjectRegex.FindStringSubmatch(line); match != nil {
 			document.ProjectName = strings.TrimSpace(match[1])
 			continue
+		}
+		if document.ProjectName == "" {
+			if match := legacyV4ArchiveProjectRegex.FindStringSubmatch(line); match != nil {
+				document.ProjectName = strings.TrimSpace(match[1])
+				continue
+			}
 		}
 		if match := legacyV4SchemaRegex.FindStringSubmatch(line); match != nil {
 			version, err := strconv.Atoi(match[1])

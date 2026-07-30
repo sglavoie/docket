@@ -189,12 +189,19 @@ func PlanV5ArchiveReintegration(input V5TaskReintegrationInput) (V5TaskReintegra
 			}
 			sourceIDs[sourceID] = true
 			if archive.Conversion.ProjectName != project.projectName {
-				return V5TaskReintegrationPlan{}, fmt.Errorf(
-					"v5 task reintegration archive %q project name %q does not match active project name %q",
-					sourceID,
-					archive.Conversion.ProjectName,
-					project.projectName,
-				)
+				// Archive headers preserve the display name at the time of
+				// archival, while the containing project directory identifies
+				// the current project. A later project rename must not strand
+				// its historical completed work during migration.
+				report.Entries = append(report.Entries, V5TaskRepairEntry{
+					ProjectID: projectID,
+					Action:    "normalized",
+					Field:     "project_name",
+					Source:    sourceID,
+					From:      archive.Conversion.ProjectName,
+					To:        project.projectName,
+					Reason:    "archive is associated with its containing project directory",
+				})
 			}
 			cleanPath, pathErr := validateV5ArchiveCleanupPath(archive.Path)
 			if pathErr != nil {
@@ -208,12 +215,21 @@ func PlanV5ArchiveReintegration(input V5TaskReintegrationInput) (V5TaskReintegra
 
 			for ordinal, record := range archive.Conversion.Tasks {
 				if record.State != "done" && record.State != "canceled" {
-					return V5TaskReintegrationPlan{}, fmt.Errorf(
-						"v5 task reintegration archive %q task %q has nonterminal state %q",
-						sourceID,
-						record.ID,
-						record.State,
-					)
+					// Legacy completed.md membership is authoritative: old writers
+					// could leave a pre-completion status beside a completion
+					// timestamp. Retain the task and make its v5 state agree with
+					// the archive, recording the repair in the migration audit.
+					report.Entries = append(report.Entries, V5TaskRepairEntry{
+						ProjectID: projectID,
+						TaskID:    record.ID,
+						Action:    "normalized",
+						Field:     "state",
+						Source:    sourceID,
+						From:      record.State,
+						To:        "done",
+						Reason:    "legacy completed archive membership is authoritative",
+					})
+					record.State = "done"
 				}
 				candidate, candidateErr := newV5TaskCandidate(
 					projectIndex,

@@ -77,6 +77,24 @@ func TestLegacyV4TaskConversionUsesWorkspaceTimezoneForDateReduction(t *testing.
 	}
 }
 
+func TestLegacyV4ArchiveTaskDocumentUsesArchiveProjectHeader(t *testing.T) {
+	content := "## Archived: 2026-01-28 13:33\n" +
+		"<!-- project: Archived Fixture, count: 1 -->\n\n" +
+		"### Task: Preserve archived work\n" +
+		"<!-- id: archived-task, state: done, priority: 3, created: 2026-01-28 12:00, completed: 2026-01-28 13:00 -->\n"
+
+	document, err := DecodeLegacyV4TaskDocument(content, time.UTC)
+	if err != nil {
+		t.Fatalf("decode archive document: %v", err)
+	}
+	if document.ProjectName != "Archived Fixture" {
+		t.Fatalf("project name = %q, want archive header name", document.ProjectName)
+	}
+	if len(document.Tasks) != 1 || document.Tasks[0].Title != "Preserve archived work" {
+		t.Fatalf("tasks = %+v, want the archived task", document.Tasks)
+	}
+}
+
 func TestLegacyV4WeekdayRecurrenceRequiresDueDateAnchor(t *testing.T) {
 	location := time.UTC
 	content := "# Project: Recurrence Fixture\n" +

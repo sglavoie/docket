@@ -325,8 +325,8 @@ func TestPlanV5ArchiveReintegrationRejectsInvalidCandidates(t *testing.T) {
 		}
 	})
 
-	t.Run("nonterminal archive task", func(t *testing.T) {
-		_, err := PlanV5ArchiveReintegration(V5TaskReintegrationInput{
+	t.Run("nonterminal archive task is normalized from archive membership", func(t *testing.T) {
+		plan, err := PlanV5ArchiveReintegration(V5TaskReintegrationInput{
 			Projects: []V5ProjectTaskReintegrationInput{{
 				ProjectID: "project",
 				Active:    format.V5TaskConversionResult{ProjectName: "Project"},
@@ -340,8 +340,41 @@ func TestPlanV5ArchiveReintegrationRejectsInvalidCandidates(t *testing.T) {
 				}},
 			}},
 		})
-		if err == nil || !strings.Contains(err.Error(), "nonterminal") {
-			t.Fatalf("error = %v, want nonterminal archive rejection", err)
+		if err != nil {
+			t.Fatalf("plan archive reintegration: %v", err)
+		}
+		tasks := plan.Projects[0].Tasks
+		if len(tasks) != 1 || tasks[0].State != "done" {
+			t.Fatalf("archive tasks = %+v, want normalized done task", tasks)
+		}
+		if !v5RepairReportHasAction(plan.Report, "normalized", "state") {
+			t.Fatalf("repair report lacks archive state normalization: %+v", plan.Report.Entries)
+		}
+	})
+
+	t.Run("archive project name is normalized after a project rename", func(t *testing.T) {
+		plan, err := PlanV5ArchiveReintegration(V5TaskReintegrationInput{
+			Projects: []V5ProjectTaskReintegrationInput{{
+				ProjectID: "project",
+				Active:    format.V5TaskConversionResult{ProjectName: "Current Name"},
+				Archives: []V5ArchiveTaskSource{{
+					SourceID: "project/completed.md",
+					Path:     "/workspace/projects/project/completed.md",
+					Conversion: format.V5TaskConversionResult{
+						ProjectName: "Historical Name",
+						Tasks:       []format.V5TaskRecord{{ID: "archived", State: "done"}},
+					},
+				}},
+			}},
+		})
+		if err != nil {
+			t.Fatalf("plan archive reintegration: %v", err)
+		}
+		if plan.Projects[0].ProjectName != "Current Name" {
+			t.Fatalf("project name = %q, want current catalog name", plan.Projects[0].ProjectName)
+		}
+		if !v5RepairReportHasAction(plan.Report, "normalized", "project_name") {
+			t.Fatalf("repair report lacks archive project-name normalization: %+v", plan.Report.Entries)
 		}
 	})
 }

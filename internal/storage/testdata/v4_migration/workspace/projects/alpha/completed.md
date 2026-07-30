@@ -1,5 +1,5 @@
-# Project: Alpha Fixture
-<!-- tt-schema: 2 -->
+## Archived: 2025-12-21 12:00
+<!-- project: Alpha Fixture, count: 2 -->
 
 ## Task: Archived duplicate loses to active
 <!-- id: synthetic-duplicate-active, state: done, priority: 4, tags: archived-duplicate, created: 2025-12-01 08:00, completed: 2025-12-20 12:00 -->
