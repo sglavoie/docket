@@ -78,6 +78,18 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 		t.Fatalf("open note emitted %#v, want an external-editor command", result.Message)
 	}
 
+	move := executeEntityOperation(model, operationNoteMove, ProjectNoteEntity(project.ID, filename))
+	moveManager, ok := move.Message.(ShowNotesManagerMsg)
+	if !ok || moveManager.Scope != AllNotesScope() ||
+		moveManager.Focus != (NoteRowIdentity{
+			Location: app.ProjectNoteLocation(project.ID),
+			Filename: filename,
+		}) ||
+		!moveManager.MoveSource.valid() ||
+		moveManager.MoveSource.Location != app.ProjectNoteLocation(project.ID) {
+		t.Fatalf("move note emitted %#v, want the searchable manager on its frozen source", move.Message)
+	}
+
 	// The note disappears after the row was built: the next execution must fail
 	// rather than act on the stale identity.
 	if err := os.Remove(filepath.Join(storage.NotesDir(project), filename)); err != nil {
@@ -126,6 +138,7 @@ func TestNoteOperationsPreserveMalformedNoteRestrictions(t *testing.T) {
 		operationNoteCopyTitle,
 		operationNoteCopyBody,
 		operationNoteCopyTitleBody,
+		operationNoteMove,
 	} {
 		if result := executeEntityOperation(model, id, entity); result.Err == nil {
 			t.Fatalf("%s ran on a malformed note and emitted %#v", id, result.Message)

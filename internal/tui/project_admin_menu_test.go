@@ -40,7 +40,7 @@ func TestProjectAdminMenuDispatchesContextualCommands(t *testing.T) {
 			}
 		}},
 		{"notes", adminActionNotes, func(t *testing.T, msg any) {
-			if m, ok := msg.(ShowNotesMsg); !ok || m.Project != project {
+			if m, ok := msg.(ShowNotesManagerMsg); !ok || m.Scope != ProjectNotesScope(project.ID) {
 				t.Fatalf("expected notes, got %#v", msg)
 			}
 		}},

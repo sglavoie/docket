@@ -100,7 +100,7 @@ func TestOutlinerV5TargetGrammarIsCanonicalAndSingleOwner(t *testing.T) {
 		directActions[binding.Action] = true
 	}
 
-	for _, removed := range []string{"b", "d", "n", "t", ",", "m", ":", "R", "p", "Ctrl+Esc"} {
+	for _, removed := range []string{"b", "d", "n", "t", ",", "m", ":", "R", "p", "Ctrl+Esc", "Ctrl+N"} {
 		if action, ok := seenKeys[removed]; ok {
 			t.Errorf("removed key %q still owns %q", removed, action)
 		}
@@ -146,6 +146,32 @@ func TestOutlinerV5TargetGrammarIsCanonicalAndSingleOwner(t *testing.T) {
 		if directActions[strings.ToLower(strings.ReplaceAll(action, " ", "-"))] {
 			t.Errorf("task-menu action %q duplicates a direct action", action)
 		}
+	}
+}
+
+func TestOutlinerV5TargetContractIncludesWorkspaceWideNotes(t *testing.T) {
+	contract := OutlinerV5TargetContract()
+	for _, rule := range []string{
+		"N opens All Notes across Global and every active project",
+		"Notes v scopes s searches titles and bodies and m moves one note atomically",
+		"Notes support open edit create rename move delete undo and redo",
+		"archived projects and Ctrl+N remain outside Notes",
+	} {
+		if !slices.Contains(contract.InteractionRules, rule) {
+			t.Errorf("Notes interaction contract is missing %q", rule)
+		}
+	}
+	if slices.Contains(
+		contract.RemovedCapabilities,
+		"note tags task links pinning search previews and moving",
+	) {
+		t.Error("restored Notes search and moving remain listed as removed")
+	}
+	if !slices.Contains(
+		contract.RemovedCapabilities,
+		"note tags task links pinning bulk actions and previews",
+	) {
+		t.Error("retired Notes metadata, bulk actions, and previews are missing from the removal contract")
 	}
 }
 

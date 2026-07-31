@@ -19,8 +19,6 @@ import (
 // mutation semantics are reviewed.
 var allowedNoteStorageReads = map[string]string{
 	"GlobalNotesDir":   "derives the canonical global collection path without changing it",
-	"ListNotes":        "reads a project note collection",
-	"ListNotesFrom":    "reads an explicitly selected note collection",
 	"NoteFilePathIn":   "validates and derives a path for read-only editor/reference input",
 	"NotesDir":         "derives a project note collection path without changing it",
 	"NotesExist":       "checks whether a project has notes",

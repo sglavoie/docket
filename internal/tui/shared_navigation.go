@@ -90,24 +90,6 @@ func navigateToPrevSection(cursor int, sectionStarts []int) int {
 	return sectionStarts[prev]
 }
 
-func handleTabCycleKey(key string, tabs *TabState, afterCycle func()) bool {
-	delta := 0
-	switch key {
-	case "shift+left":
-		delta = -1
-	case "shift+right":
-		delta = 1
-	}
-	if delta == 0 {
-		return false
-	}
-	tabs.Cycle(delta)
-	if afterCycle != nil {
-		afterCycle()
-	}
-	return true
-}
-
 // EscStep represents one layer in an Esc-key dismissal cascade.
 type EscStep struct {
 	Active func() bool

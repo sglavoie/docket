@@ -25,9 +25,9 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 		}
 	}
 
-	shell.handleNotesMessages(ShowNotesMsg{Project: project})
+	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
 	assertLedger("direct project notes", ViewNotes)
-	shell.handleNotesMessages(ShowGlobalNotesMsg{})
+	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()})
 	assertLedger("direct global notes", ViewGlobalNotes)
 
 }
@@ -44,8 +44,8 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 	shell.appService = service
 	shell.deps = newShellDeps(shell.runtime, service, workspace.Manager, nil)
 
-	if handled, _ := shell.handleNotesMessages(ShowGlobalNotesMsg{}); !handled {
-		t.Fatal("ShowGlobalNotesMsg was not handled")
+	if handled, _ := shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()}); !handled {
+		t.Fatal("ShowNotesManagerMsg was not handled")
 	}
 	notes, ok := shell.views.Get(ViewGlobalNotes).(*NotesViewModel)
 	if !ok {

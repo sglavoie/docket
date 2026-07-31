@@ -185,11 +185,20 @@ project in the same Outliner; `Esc` clears search and leaves the project surface
 open. Project administration supports create, edit, pin, archive, restore, and
 project Notes. The catalog ID, not a display name, protects the system Inbox.
 
-`N` opens the combined Notes tool. It shows Global notes and, when a project is
-focused, that project's notes. `n` always asks for a Global or active-project
-destination before starting the editor. `Enter` opens the selected note in
+`N` opens All Notes, a workspace-wide manager that scans Global plus every
+project returned by the active-project catalog, including the visible System
+Inbox and excluding archived projects. Rows are ordered by most recent
+modification and carry an owner label. `v` opens a searchable All, Global, or
+active-project scope picker, while `s` applies a persistent title/body search
+inside the selected scope.
+
+`n` always asks for a Global or active-project destination before starting the
+editor, and `m` moves the selected note to another such owner as one atomic
+workspace transaction. `Enter` opens and edits the selected note in
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
-configure one. Notes support list, create, open, rename, and delete only.
+configure one. Notes support open/edit, create, rename, move, delete, undo, and
+redo. Note tags, task links, pins, bulk actions, previews, archived-project
+ownership, and a `Ctrl+N` alias remain excluded.
 
 `T` toggles exactly two maintained machine-local themes: dark and light.
 

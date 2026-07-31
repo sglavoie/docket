@@ -11,18 +11,6 @@ func (m *AppModel) GetOperationRegistry() *OperationRegistry {
 	return m.operationRegistry
 }
 
-// isNotesFullscreen returns true when the notes view is in fullscreen pane mode.
-func (m *AppModel) isNotesFullscreen() bool {
-	cv := m.currentView()
-	if cv != ViewNotes && cv != ViewGlobalNotes {
-		return false
-	}
-	if nv := m.getActiveNotesView(); nv != nil {
-		return nv.fullscreenPane
-	}
-	return false
-}
-
 // getActiveNotesView returns the currently active NotesViewModel (project or global).
 func (m *AppModel) getActiveNotesView() *NotesViewModel {
 	cv := m.currentView()

@@ -26,7 +26,7 @@ func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 		rowIndex := findPrimaryRowStyleOutlinerRow(t, m.rows, task.ID)
 		line := m.renderOutlinerTaskRow(m.rows[rowIndex], false, 120, 120, rowIndex, nil)
 		assertPrimaryRowTitleStyle(t, line, task)
-		assertPlanningMarkerColumnRemoved(t, line, task)
+		assertPlanningMarkerColumnRemoved(t, line, m.rows[rowIndex], task)
 	}
 }
 
@@ -103,12 +103,12 @@ func assertPrimaryRowTitleStyle(t *testing.T, line string, task *models.Task) {
 	}
 }
 
-func assertPlanningMarkerColumnRemoved(t *testing.T, line string, task *models.Task) {
+func assertPlanningMarkerColumnRemoved(t *testing.T, line string, row outlinerRow, task *models.Task) {
 	t.Helper()
 
 	plain := ansi.Strip(line)
-	wantPrefix := RenderCursorPrefix() + task.State().Icon()
+	wantPrefix := RenderCursorPrefix() + row.prefix + task.State().Icon()
 	if !strings.HasPrefix(plain, wantPrefix) {
-		t.Fatalf("planned task row should place its state badge directly after the cursor gutter; got:\n%s", plain)
+		t.Fatalf("planned task row should place its state badge directly after the tree prefix; got:\n%s", plain)
 	}
 }

@@ -7,16 +7,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestPromotedToolOperationsPreserveActiveScopeSemantics(t *testing.T) {
+func TestPromotedToolNotesAlwaysOpenAllNotes(t *testing.T) {
 	workA := &models.Project{ID: "work-a", Name: "Work A", Slug: "work-a", Context: "work"}
 	workB := &models.Project{ID: "work-b", Name: "Work B", Slug: "work-b", Context: "work"}
 	home := &models.Project{ID: "home", Name: "Home", Slug: "home", Context: "home"}
 
 	tests := []struct {
-		name             string
-		configure        func(*OutlinerModel)
-		wantProjectIDs   []string
-		wantProjectNotes *models.Project
+		name           string
+		configure      func(*OutlinerModel)
+		wantProjectIDs []string
 	}{
 		{
 			name:           "all",
@@ -36,8 +35,7 @@ func TestPromotedToolOperationsPreserveActiveScopeSemantics(t *testing.T) {
 			configure: func(out *OutlinerModel) {
 				out.scopedProjectID = workB.ID
 			},
-			wantProjectIDs:   []string{workB.ID},
-			wantProjectNotes: workB,
+			wantProjectIDs: []string{workB.ID},
 		},
 	}
 
@@ -59,15 +57,9 @@ func TestPromotedToolOperationsPreserveActiveScopeSemantics(t *testing.T) {
 			}
 
 			notes := executePromotedTool(t, app, operationCoreNotes, context)
-			if test.wantProjectNotes == nil {
-				if _, ok := notes.(ShowGlobalNotesMsg); !ok {
-					t.Fatalf("Notes message = %T, want ShowGlobalNotesMsg", notes)
-				}
-			} else {
-				msg, ok := notes.(ShowNotesMsg)
-				if !ok || msg.Project != test.wantProjectNotes {
-					t.Fatalf("Notes message = %#v, want project %s", notes, test.wantProjectNotes.ID)
-				}
+			msg, ok := notes.(ShowNotesManagerMsg)
+			if !ok || msg.Scope != AllNotesScope() || msg.Focus != (NoteRowIdentity{}) {
+				t.Fatalf("Notes message = %#v, want an unfocused All Notes manager", notes)
 			}
 		})
 	}
@@ -80,12 +72,22 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 		check   func(*testing.T, RouteParams)
 	}{
 		{
-			name:    "global notes",
-			message: ShowGlobalNotesMsg{},
+			name:    "all notes",
+			message: ShowNotesManagerMsg{Scope: AllNotesScope()},
 			check: func(t *testing.T, params RouteParams) {
 				got, ok := params.(ManageParams)
-				if !ok || got.Module != ManageNotes || got.Scope.Kind != ScopeApp {
-					t.Fatalf("global Notes route params = %#v", params)
+				if !ok || got != (ManageParams{Module: ManageNotes, NotesScope: AllNotesScope()}) {
+					t.Fatalf("All Notes route params = %#v", params)
+				}
+			},
+		},
+		{
+			name:    "global notes",
+			message: ShowNotesManagerMsg{Scope: GlobalNotesScope()},
+			check: func(t *testing.T, params RouteParams) {
+				got, ok := params.(ManageParams)
+				if !ok || got != (ManageParams{Module: ManageNotes, NotesScope: GlobalNotesScope()}) {
+					t.Fatalf("Global Notes route params = %#v", params)
 				}
 			},
 		},

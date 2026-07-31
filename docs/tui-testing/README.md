@@ -130,7 +130,7 @@ The committed suite exercises the product contracts directly:
 | Five modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Priority, workflow, blocked, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-hub-*.json`, `project-*.json` |
-| Combined Global/project Notes | `notes-tool.json`, `global-notes-resize-minimum-layout.json` |
+| Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Checklist, comments, decisions, and attachments | `rich-tools.json` |
 | Exact nine-item `Space` menu | `outliner-space-action-catalog.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |

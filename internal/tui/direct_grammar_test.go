@@ -63,9 +63,26 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		}
 	}
 
-	for _, removed := range []string{"b", "d", "n", "t", ",", "m", ":", "R", "p", "ctrl+esc"} {
+	for _, removed := range []string{"b", "d", "n", "t", ",", "m", ":", "R", "p", "ctrl+esc", "ctrl+n"} {
 		if owner := owners[removed]; owner != "" {
 			t.Errorf("removed key %q still resolves to %s", removed, owner)
+		}
+	}
+}
+
+func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
+	view := &NotesViewModel{}
+	want := []string{
+		"j", "k", "down", "up", "enter", "n", "v", "s", "r", "m", "x", "u", "ctrl+r",
+	}
+	if got := view.HandledKeys(); !slices.Equal(got, want) {
+		t.Fatalf("Notes direct keys = %v, want %v", got, want)
+	}
+	for _, excluded := range []string{
+		"ctrl+n", "space", "p", "t", "/", "ctrl+o",
+	} {
+		if slices.Contains(view.HandledKeys(), excluded) {
+			t.Errorf("Notes direct grammar exposes excluded key %q", excluded)
 		}
 	}
 }

@@ -134,6 +134,7 @@ func newOperationValuePickerModel(
 	return model, nil
 }
 
+//nolint:gocyclo // Centralized key dispatch preserves picker, freeform, and tag-input precedence.
 func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
 		return nil, true, OperationValueCanceledMsg{}

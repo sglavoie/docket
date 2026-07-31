@@ -14,8 +14,32 @@ import (
 // note views and overlays. Production supplies *app.Service; tests can inject a
 // deterministic fake without exposing canonical note paths.
 type projectNoteService interface {
-	NotesAt(app.NoteLocation) ([]*models.Note, error)
+	NotesAtLocations([]app.NoteLocation) ([]app.NoteCollectionResult, error)
 	ApplyNoteBatch(app.NoteBatchRequest) (app.NoteBatchResult, error)
+}
+
+// noteMutationRef is an immutable, path-free snapshot of a note selected for a
+// pending operation. Keeping the note by value prevents later view refreshes
+// from changing the revision or content that the eventual command commits.
+type noteMutationRef struct {
+	Location app.NoteLocation
+	Note     models.Note
+}
+
+func newNoteMutationRef(location app.NoteLocation, note *models.Note) noteMutationRef {
+	copyNote := cloneNoteForCommand(note)
+	if copyNote == nil {
+		return noteMutationRef{Location: location}
+	}
+	return noteMutationRef{Location: location, Note: *copyNote}
+}
+
+func (r noteMutationRef) valid() bool {
+	return r.Location.Scope != "" && r.Note.Filename != ""
+}
+
+func (r noteMutationRef) noteCopy() *models.Note {
+	return cloneNoteForCommand(&r.Note)
 }
 
 func cloneNoteForCommand(note *models.Note) *models.Note {

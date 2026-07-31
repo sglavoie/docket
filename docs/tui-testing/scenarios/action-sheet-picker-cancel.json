@@ -21,7 +21,8 @@
     { "type": "key", "label": "cancel the sheet", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
-    { "type": "assert", "assert": "contains", "value": "[rich-project] ▶   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project] (1)" },
+    { "type": "assert", "assert": "contains", "value": "▶   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "reopen the contextual action sheet", "key": "space" },
@@ -32,7 +33,8 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Move Project: Build login form" },
-    { "type": "assert", "assert": "contains", "value": "[inbox] ▶   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "[inbox] (1)" },
+    { "type": "assert", "assert": "contains", "value": "▶   Build login form" },
     { "type": "assert", "assert": "status_contains", "value": "Moved" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

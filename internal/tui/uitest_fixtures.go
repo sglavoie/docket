@@ -84,6 +84,15 @@ type uitestWorkspace struct {
 	// startAtDefault asks launch to apply the same startup navigation selected by
 	// AppModel.Init, without scheduling the real program's periodic timers.
 	startAtDefault bool
+	// noteSeeds are initial fixture artifacts, committed without an undo ledger
+	// before the app launches. Scenarios then observe them as pre-existing
+	// workspace content rather than as user mutations available to undo.
+	noteSeeds []fixtureNoteSeed
+}
+
+type fixtureNoteSeed struct {
+	dir  string
+	note *models.Note
 }
 
 // Cleanup removes the workspace's temp directory. It is safe to call more than
@@ -170,6 +179,9 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 		return nil, fmt.Errorf("failed to reload workspace domains: %w", err)
 	}
 	w.Runtime.SetMachineInMemory(machine)
+	if err := w.persistNoteSeeds(); err != nil {
+		return nil, err
+	}
 	app, err := NewAppModel(w.Runtime, w.Manager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
@@ -195,6 +207,38 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 		}
 	}
 	return driver, nil
+}
+
+func (w *uitestWorkspace) persistNoteSeeds() error {
+	if len(w.noteSeeds) == 0 {
+		return nil
+	}
+	artifacts := make([]storage.ArtifactChange, 0, len(w.noteSeeds))
+	for _, seed := range w.noteSeeds {
+		if seed.note == nil {
+			return fmt.Errorf("fixture note seed is nil")
+		}
+		path, err := storage.NoteFilePathIn(seed.dir, seed.note.Filename)
+		if err != nil {
+			return fmt.Errorf("resolve fixture note %q: %w", seed.note.Title, err)
+		}
+		content, err := storage.RenderNoteContent(seed.note)
+		if err != nil {
+			return fmt.Errorf("render fixture note %q: %w", seed.note.Title, err)
+		}
+		artifacts = append(artifacts, storage.ArtifactChange{
+			Path: path,
+			Data: []byte(content),
+		})
+	}
+	committer := storage.NewCommitService(
+		filepath.Join(w.DataDir, ".tt", "transactions"),
+		[]string{w.DataDir},
+	)
+	if _, err := committer.CommitArtifacts(artifacts); err != nil {
+		return fmt.Errorf("commit fixture notes: %w", err)
+	}
+	return nil
 }
 
 func (w *uitestWorkspace) persistSyncedDomains() error {
@@ -398,6 +442,24 @@ func buildRichFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
+	globalNote := &models.Note{
+		Title:      "Workspace launch brief",
+		CreatedAt:  time.Date(2025, time.January, 2, 9, 0, 0, 0, time.UTC),
+		ModifiedAt: time.Date(2025, time.January, 2, 10, 0, 0, 0, time.UTC),
+		Filename:   "2025-01-02-090000-workspace-launch-brief.md",
+		Body:       "Shared launch context for every active project.\n",
+	}
+	projectNote := &models.Note{
+		Title:      "Rich Project delivery plan",
+		CreatedAt:  time.Date(2025, time.January, 3, 9, 0, 0, 0, time.UTC),
+		ModifiedAt: time.Date(2025, time.January, 3, 10, 0, 0, 0, time.UTC),
+		Filename:   "2025-01-03-090000-rich-project-delivery-plan.md",
+		Body:       "Track the authentication milestone and release readiness.\n",
+	}
+	w.noteSeeds = append(w.noteSeeds,
+		fixtureNoteSeed{dir: storage.GlobalNotesDir(w.DataDir), note: globalNote},
+		fixtureNoteSeed{dir: storage.NotesDir(project), note: projectNote},
+	)
 	w.setCurrentProject(project.ID)
 	return nil
 }

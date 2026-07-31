@@ -1,0 +1,22 @@
+{
+  "name": "notes-apply-and-clear-persistent-search",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open All Notes", "key": "N" },
+    { "type": "key", "label": "start title and body search", "key": "s" },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "text", "label": "search project note body", "text": "authentication" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
+    { "type": "assert", "assert": "contains", "value": "· body" },
+    { "type": "key", "label": "accept persistent search", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"authentication\"" },
+    { "type": "assert", "assert": "contains", "value": "1 of 2 notes match \"authentication\" in All Notes" },
+    { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },
+    { "type": "key", "label": "clear accepted search", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Search: \"authentication\"" },
+    { "type": "assert", "assert": "contains", "value": "2 notes across 3 owners" },
+    { "type": "assert", "assert": "contains", "value": "Workspace launch brief" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -53,7 +54,7 @@ func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
 	row := outlinerRow{task: task, ProjectID: project.ID}
 
 	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 120, 120, 0, nil))
-	for _, want := range []string{"💬 2", "📎 1"} {
+	for _, want := range []string{"▪ 2", "⊕ 1"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("task row missing %q: %q", want, plain)
 		}

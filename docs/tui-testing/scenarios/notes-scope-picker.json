@@ -1,0 +1,22 @@
+{
+  "name": "notes-search-and-select-project-scope",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open All Notes", "key": "N" },
+    { "type": "assert", "assert": "contains", "value": "All Notes" },
+    { "type": "key", "label": "open searchable scope picker", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "Select scope" },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "contains", "value": "All Notes" },
+    { "type": "assert", "assert": "contains", "value": "Global" },
+    { "type": "text", "label": "fuzzy-search Rich Project", "text": "rprj" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project" },
+    { "type": "key", "label": "select Rich Project scope", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "Notes" },
+    { "type": "assert", "assert": "contains", "value": "1 notes in Rich Project" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
+    { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

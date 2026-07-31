@@ -220,6 +220,7 @@ const (
 	NoteCreate NoteMutationKind = "create"
 	NoteUpdate NoteMutationKind = "update"
 	NoteRename NoteMutationKind = "rename"
+	NoteMove   NoteMutationKind = "move"
 	NoteDelete NoteMutationKind = "delete"
 )
 
@@ -245,6 +246,14 @@ type NoteRenameRequest struct {
 	NewTitle string
 }
 
+// NoteMoveRequest atomically moves an observed note between explicit workspace
+// locations without exposing either location's canonical directory.
+type NoteMoveRequest struct {
+	Source      NoteLocation
+	Destination NoteLocation
+	Note        *models.Note
+}
+
 // NoteDeleteRequest deletes an observed note. Note.RawRevision is mandatory.
 type NoteDeleteRequest struct {
 	Location NoteLocation
@@ -252,13 +261,14 @@ type NoteDeleteRequest struct {
 }
 
 // NoteMutationRequest is the batch representation of create, update, rename,
-// and delete. The single-operation request types above are converted into
+// move, and delete. The single-operation request types above are converted into
 // this form by their corresponding Service methods.
 type NoteMutationRequest struct {
-	Kind     NoteMutationKind
-	Location NoteLocation
-	Note     *models.Note
-	NewTitle string
+	Kind        NoteMutationKind
+	Location    NoteLocation
+	Destination NoteLocation
+	Note        *models.Note
+	NewTitle    string
 }
 
 // NoteBatchRequest applies every operation as one journal and ledger entry.
@@ -273,6 +283,7 @@ type NoteBatchRequest struct {
 type NoteResult struct {
 	Kind             NoteMutationKind
 	Location         NoteLocation
+	SourceLocation   NoteLocation
 	ProjectID        string // compatibility convenience; mirrors Location.ProjectID
 	Filename         string
 	PreviousFilename string
@@ -302,6 +313,11 @@ func (s *Service) UpdateNote(req NoteUpdateRequest) (NoteResult, error) {
 // RenameNote atomically renames one project or global note.
 func (s *Service) RenameNote(req NoteRenameRequest) (NoteResult, error) {
 	return s.singleNoteMutation(NoteBatchRequest{Operations: []NoteMutationRequest{{Kind: NoteRename, Location: req.Location, Note: req.Note, NewTitle: req.NewTitle}}, UndoAction: "Rename Note"})
+}
+
+// MoveNote atomically moves one note between project/global locations.
+func (s *Service) MoveNote(req NoteMoveRequest) (NoteResult, error) {
+	return s.singleNoteMutation(NoteBatchRequest{Operations: []NoteMutationRequest{{Kind: NoteMove, Location: req.Source, Destination: req.Destination, Note: req.Note}}, UndoAction: "Move Note"})
 }
 
 // RemoveNote commits one revision-checked project or global note delete.
@@ -361,6 +377,7 @@ const maxNoteCollisionAttempts = 1000
 type preparedNoteOperation struct {
 	kind             NoteMutationKind
 	source           NoteLocation
+	destination      NoteLocation
 	note             *models.Note
 	previousFilename string
 	baseFilename     string
@@ -446,7 +463,7 @@ func (s *Service) prepareNoteOperations(snap Snapshot, requests []NoteMutationRe
 		if err := validateNoteMutation(req.Kind, note); err != nil {
 			return nil, err
 		}
-		op := preparedNoteOperation{kind: req.Kind, source: req.Location, note: note, previousFilename: note.Filename, collisionIndex: 1}
+		op := preparedNoteOperation{kind: req.Kind, source: req.Location, destination: req.Location, note: note, previousFilename: note.Filename, collisionIndex: 1}
 		switch req.Kind {
 		case NoteCreate:
 			if _, err := resolveNoteLocation(snap, req.Location); err != nil {
@@ -492,6 +509,21 @@ func (s *Service) prepareNoteOperations(snap Snapshot, requests []NoteMutationRe
 			note.ModifiedAt = s.clock.Now()
 			op.baseFilename = models.GenerateNoteFilename(newTitle, note.CreatedAt)
 			note.Filename = op.baseFilename
+		case NoteMove:
+			if _, err := resolveNoteLocation(snap, req.Location); err != nil {
+				return nil, err
+			}
+			if _, err := resolveNoteLocation(snap, req.Destination); err != nil {
+				return nil, err
+			}
+			if req.Location == req.Destination {
+				return nil, invalidInput("note destination", "source and destination must differ")
+			}
+			if err := requireObservedNote(note); err != nil {
+				return nil, err
+			}
+			op.destination = req.Destination
+			op.baseFilename = note.Filename
 		case NoteDelete:
 			if _, err := resolveNoteLocation(snap, req.Location); err != nil {
 				return nil, err
@@ -532,20 +564,28 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 		if err != nil {
 			return nil, nil, false, err
 		}
+		destinationProject := sourceProject
+		if op.destination != op.source {
+			destinationProject, err = resolveNoteLocation(snap, op.destination)
+			if err != nil {
+				return nil, nil, false, err
+			}
+		}
 		note := cloneNote(op.note)
 		note.Filename = collisionFilename(op.baseFilename, op.collisionIndex)
 
 		result := NoteResult{
 			Kind:             op.kind,
-			Location:         op.source,
-			ProjectID:        op.source.ProjectID,
+			Location:         op.destination,
+			SourceLocation:   op.source,
+			ProjectID:        op.destination.ProjectID,
 			Filename:         note.Filename,
 			PreviousFilename: op.previousFilename,
 			Title:            note.Title,
 		}
 		switch op.kind {
 		case NoteCreate:
-			change, encErr := s.notes.EncodeNoteSave(op.source, sourceProject, note)
+			change, encErr := s.notes.EncodeNoteSave(op.destination, destinationProject, note)
 			if encErr != nil {
 				return nil, nil, false, encErr
 			}
@@ -562,8 +602,8 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			note.RawRevision = storage.RawArtifactRevision(change.Data)
 			result.Revision, result.Note = note.RawRevision, note
 			artifacts = append(artifacts, preparedNoteArtifact{change: change, operation: i})
-		case NoteRename:
-			write, encErr := s.notes.EncodeNoteSave(op.source, sourceProject, note)
+		case NoteRename, NoteMove:
+			write, encErr := s.notes.EncodeNoteSave(op.destination, destinationProject, note)
 			if encErr != nil {
 				return nil, nil, false, encErr
 			}
@@ -615,7 +655,7 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 func resolveNoteLocation(snap Snapshot, location NoteLocation) (*models.Project, error) {
 	switch location.Scope {
 	case NoteScopeGlobal:
-		if strings.TrimSpace(location.ProjectID) != "" {
+		if location.ProjectID != "" {
 			return nil, invalidInput("note location", "global scope cannot carry a project id")
 		}
 		return nil, nil
@@ -691,10 +731,11 @@ func noteProjectIDs(operations []preparedNoteOperation) []string {
 	seen := make(map[string]bool)
 	var ids []string
 	for _, operation := range operations {
-		location := operation.source
-		if location.Scope == NoteScopeProject && !seen[location.ProjectID] {
-			seen[location.ProjectID] = true
-			ids = append(ids, location.ProjectID)
+		for _, location := range []NoteLocation{operation.source, operation.destination} {
+			if location.Scope == NoteScopeProject && !seen[location.ProjectID] {
+				seen[location.ProjectID] = true
+				ids = append(ids, location.ProjectID)
+			}
 		}
 	}
 	return ids

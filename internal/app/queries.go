@@ -4,6 +4,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// NoteCollectionResult is one location's outcome from a workspace-wide note
+// query. Err is scoped to Location: other successfully loaded collections
+// remain available to callers.
+type NoteCollectionResult struct {
+	Location NoteLocation
+	Notes    []*models.Note
+	Err      error
+}
+
 // ProjectSummary is the presentation-neutral view of a project's durable metadata,
 // derived from the WorkspaceSnapshot. It carries the stable identity, the synced
 // catalog fields, and the derived per-project tag vocabulary so an
@@ -71,6 +80,28 @@ func (s *Service) NotesAt(location NoteLocation) ([]*models.Note, error) {
 		return nil, err
 	}
 	return s.notes.Notes(location, project)
+}
+
+// NotesAtLocations loads all requested note collections against one
+// revision-consistent workspace snapshot. Snapshot failures abort the complete
+// query; location resolution and note-port failures are retained on their
+// corresponding result so callers can still use every successful collection.
+func (s *Service) NotesAtLocations(locations []NoteLocation) ([]NoteCollectionResult, error) {
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return nil, err
+	}
+	results := make([]NoteCollectionResult, len(locations))
+	for i, location := range locations {
+		results[i].Location = location
+		project, resolveErr := resolveNoteLocation(snap, location)
+		if resolveErr != nil {
+			results[i].Err = resolveErr
+			continue
+		}
+		results[i].Notes, results[i].Err = s.notes.Notes(location, project)
+	}
+	return results, nil
 }
 
 // projectSummary builds a ProjectSummary from a project and its revision, copying

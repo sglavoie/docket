@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -16,7 +17,11 @@ func TestNotesViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 		})
 	}
 
-	m := &NotesViewModel{notes: notes}
+	rows := make([]LocatedNoteRow, len(notes))
+	for i := range notes {
+		rows[i] = LocatedNoteRow{Note: notes[i], Location: app.GlobalNoteLocation(), OwnerLabel: "Global"}
+	}
+	m := &NotesViewModel{visibleRows: rows}
 	m.SetSize(80, 10)
 
 	m.cursor = 5

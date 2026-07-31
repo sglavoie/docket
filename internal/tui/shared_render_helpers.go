@@ -271,11 +271,6 @@ func renderProgressFraction(task *models.Task) string {
 	return bar + " " + MutedStyle.Render(fraction)
 }
 
-// renderDependencyIndicators renders compact dependency arrow indicators.
-func renderDependencyIndicators(task *models.Task, project *models.Project) string {
-	return renderDependencyIndicatorCounts(len(task.DependsOn), len(project.GetBlockedByTasks(task)))
-}
-
 func renderDependencyIndicatorCounts(needs, blocks int) string {
 	var parts []string
 	if needs > 0 {

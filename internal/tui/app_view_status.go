@@ -93,9 +93,6 @@ func (m *AppModel) renderStatusBar() string {
 	}
 
 	help := ""
-	if showHelp && m.isNotesFullscreen() {
-		showHelp = false
-	}
 	if showHelp {
 		if hint := pipelineNextHint(currentView); hint != "" {
 			help = hint

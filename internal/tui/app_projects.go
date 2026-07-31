@@ -136,6 +136,17 @@ func (m *AppModel) projectByID(idOrSlug string) *models.Project {
 	return nil
 }
 
+func (m *AppModel) activeProjectByID(projectID string) *models.Project {
+	if m == nil || projectID == "" {
+		return nil
+	}
+	project := m.projects[projectID]
+	if project == nil || project.Archived {
+		return nil
+	}
+	return project
+}
+
 func (m *AppModel) projectsInRuntimeOrder(projects []*models.Project) []*models.Project {
 	result := make([]*models.Project, 0, len(projects))
 	for _, project := range projects {

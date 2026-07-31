@@ -40,54 +40,6 @@ func FormatTaskReferenceMarkdownWithNotes(task *models.Task, linkedNotes []*mode
 	return b.String()
 }
 
-// FormatNoteReferenceMarkdownWithTasks formats a note as a read-only reference
-// snapshot and summarizes linked tasks when task records are available.
-func FormatNoteReferenceMarkdownWithTasks(note *models.Note, _ []*models.Task) string {
-	var b strings.Builder
-	if note == nil {
-		b.WriteString("# Note Reference\n\n")
-		writeReferenceWarning(&b)
-		b.WriteString("Note unavailable.\n")
-		return b.String()
-	}
-
-	title := note.Title
-	if title == "" {
-		title = models.TitleFromFilename(note.Filename)
-	}
-	fmt.Fprintf(&b, "# Note: %s\n\n", title)
-	writeReferenceWarning(&b)
-
-	b.WriteString("| Property | Value |\n")
-	b.WriteString("|----------|-------|\n")
-	if note.Filename != "" {
-		fmt.Fprintf(&b, "| Filename | %s |\n", markdownTableCell(note.Filename))
-	}
-	if !note.CreatedAt.IsZero() {
-		fmt.Fprintf(&b, "| Created | %s |\n", note.CreatedAt.Format(util.DateTimeFormat))
-	}
-	if !note.ModifiedAt.IsZero() {
-		fmt.Fprintf(&b, "| Modified | %s |\n", note.ModifiedAt.Format(util.DateTimeFormat))
-	}
-	b.WriteString("\n")
-
-	if note.ParseError != "" {
-		b.WriteString("## Parse Error\n\n")
-		b.WriteString(note.ParseError)
-		b.WriteString("\n\n")
-	}
-
-	if strings.TrimSpace(note.Body) != "" {
-		b.WriteString("## Body\n\n")
-		b.WriteString(note.Body)
-		if !strings.HasSuffix(note.Body, "\n") {
-			b.WriteString("\n")
-		}
-	}
-
-	return b.String()
-}
-
 // CreateReferenceSnapshotFile stages markdown in tt's reference snapshot cache.
 // The file intentionally survives after launch so async GUI editors can read it.
 // Stale cached snapshots are removed opportunistically before each new snapshot.

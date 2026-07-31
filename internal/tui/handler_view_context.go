@@ -11,10 +11,10 @@ import (
 func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowContextHubMsg:
-		return true, m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
+		return true, m.activateManageHub(ManageParams{Module: ManageContexts})
 
 	case ShowProjectHubMsg:
-		return true, m.activateManageHub(ManageParams{Module: ManageProjects, Scope: AppEntityScope()})
+		return true, m.activateManageHub(ManageParams{Module: ManageProjects})
 
 	case scopeHubInlineActionMsg:
 		return true, m.openScopeHubForInlineAction(msg)
@@ -76,7 +76,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 // own inline actions before they reach the shell, so this only ever runs for a
 // scope action started somewhere else, such as a Scope Hub row.
 func (m *AppModel) openScopeHubForInlineAction(msg scopeHubInlineActionMsg) tea.Cmd {
-	cmd := m.activateManageHub(ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
+	cmd := m.activateManageHub(ManageParams{Module: ManageContexts})
 	if m.manageHub == nil {
 		return cmd
 	}

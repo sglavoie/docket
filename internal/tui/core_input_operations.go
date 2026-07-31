@@ -213,12 +213,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			out.updateVisualSelectionStatus()
 		}
 	case operationCoreNotes:
-		project := m.projectByID(invocation.Context.FocusedProjectID)
-		if project != nil {
-			message = ShowNotesMsg{Project: project}
-		} else {
-			message = ShowGlobalNotesMsg{}
-		}
+		message = ShowNotesManagerMsg{Scope: AllNotesScope()}
 	case operationCoreToggleTheme:
 		err = m.coreToggleTheme()
 		if err == nil {

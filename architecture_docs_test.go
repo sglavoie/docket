@@ -33,7 +33,14 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`Enter` toggles a session-only, project-qualified Peek below the cursor task",
 		"Entering visual selection disables Peek",
 		"The bulk `Space` menu contains Delete only",
-		"The combined Notes tool carries an explicit location with every row",
+		"The workspace-wide Notes manager carries an explicit `NoteLocation` plus filename identity with every row",
+		"always opens in All Notes",
+		"`Runtime.ActiveProjects()`",
+		"`v` opens the searchable scope picker",
+		"`s` edits the accepted search",
+		"`m` moves one parsed note",
+		"Malformed notes remain available for raw editing and deletion",
+		"Note tags, task links, pins, bulk actions, previews, archived owners, and `Ctrl+N` remain outside the product",
 		"## Persistence layout",
 		"workspace.json",
 		"planning.json",
@@ -65,6 +72,8 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 		"live schema 4",
 		"task mutation CLI",
 		"Ctrl+Esc reset",
+		"focused project's notes",
+		"Global notes plus the focused project",
 	} {
 		if strings.Contains(content, stale) {
 			t.Errorf("architecture documentation contains retired runtime guidance %q", stale)
@@ -81,6 +90,10 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"!1-5 #tag @date ~interval $state %project >parent",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
+		"`N` always opens All Notes across Global and every project returned by `Runtime.ActiveProjects()`",
+		"`v` chooses All, Global, or one active project",
+		"`s` persistently searches titles and bodies",
+		"`m` atomically moves one note between active owners",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)

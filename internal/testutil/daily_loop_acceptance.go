@@ -213,9 +213,9 @@ func DailyLoopTargetContract() DailyLoopContract {
 			"ctrl+esc clears children, overlays, transient filters, search, and selection",
 		},
 		ScopeRules: []string{
-			"project focus opens project notes; base scope opens global scratch notes",
+			"N always opens All Notes across Global and every active project",
 			"tags use the active scope project set",
-			"notes and tags follow the active scope",
+			"Notes v scopes s searches title and body and m moves one note; archived projects and Ctrl+N are excluded",
 		},
 		Visibility: []string{
 			"Today is synthetic and deduplicated",

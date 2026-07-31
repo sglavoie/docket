@@ -263,14 +263,6 @@ func (m *AppModel) popTypedPresentation() bool {
 	return false
 }
 
-func (m *AppModel) closeTypedOverlay(kind OverlayKind, key string) {
-	current, ok := m.navigation.Overlays.Current()
-	if !ok || current.Kind() != kind || (key != "" && current.Key() != key) {
-		return
-	}
-	m.navigation.Overlays.CloseTop()
-}
-
 func (m *AppModel) pushTypedOverlay(kind OverlayKind, key string) {
 	if current, ok := m.navigation.Overlays.Current(); ok && current.Kind() == kind && current.Key() == key {
 		return
@@ -292,10 +284,6 @@ func (m *AppModel) cancelTypedOverlayPresentation(kind OverlayKind, key string) 
 	case OverlayComposer:
 		if key == taskComposerOverlayKey {
 			m.taskComposer = nil
-		}
-	case OverlayViewMenu:
-		if key == manageHubViewMenuOverlayKey && m.manageHub != nil {
-			m.manageHub.closePicker()
 		}
 	default:
 	}

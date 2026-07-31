@@ -53,12 +53,13 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	}
 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
-	view := NewCombinedNotesViewModelWithService(
+	view := NewNotesViewModelWithService(
 		storage.GlobalNotesDir(dataDir),
-		project,
+		AllNotesScope(),
 		app.ProjectNoteLocation(project.ID),
 		svc,
 		ledger,
+		project,
 	)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
@@ -132,9 +133,17 @@ func projectNoteIndex(t *testing.T, notes []*models.Note, filename string) int {
 	return -1
 }
 
+func noteModels(rows []LocatedNoteRow) []*models.Note {
+	notes := make([]*models.Note, len(rows))
+	for i := range rows {
+		notes[i] = rows[i].Note
+	}
+	return notes
+}
+
 func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Edit me")
-	before := env.view.notes[0]
+	before := env.view.visibleRows[0].Note
 	updated := cloneNoteForCommand(before)
 	updated.Body = "edited body"
 	updated.ModifiedAt = time.Now()
@@ -144,7 +153,7 @@ func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
 		UndoAction: "Edit Note",
 	}, "Edited", false)
 	msg := runProjectNoteMutation(t, func() any { return cmd() })
-	if env.view.notes[0] != before || env.view.notes[0].Body != "Edit me body" {
+	if env.view.visibleRows[0].Note != before || env.view.visibleRows[0].Note.Body != "Edit me body" {
 		t.Fatal("command goroutine mutated the live notes view cache")
 	}
 	if disk := env.note(t, before.Filename); disk.Body != "edited body" {
@@ -152,20 +161,21 @@ func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
 	}
 
 	env.shell.handleNotesMessages(msg)
-	if env.view.notes[0].Body != "edited body" || env.view.notes[0] == before {
+	if env.view.visibleRows[0].Note.Body != "edited body" || env.view.visibleRows[0].Note == before {
 		t.Fatal("Update handling did not replace the cache from committed state")
 	}
 }
 
-func TestProjectMalformedNoteDeleteSingleAndMixedBulk(t *testing.T) {
+func TestProjectMalformedNoteDelete(t *testing.T) {
 	t.Run("single", func(t *testing.T) {
 		env := newProjectNoteTUIEnv(t)
 		path := writeMalformedProjectNote(t, env, "malformed-single.md", []byte("missing frontmatter\n"))
-		index := projectNoteIndex(t, env.view.notes, "malformed-single.md")
-		if env.view.notes[index].ParseError == "" || env.view.notes[index].RawRevision == "" {
-			t.Fatalf("view did not retain malformed note evidence: %+v", env.view.notes[index])
+		notes := noteModels(env.view.visibleRows)
+		index := projectNoteIndex(t, notes, "malformed-single.md")
+		if notes[index].ParseError == "" || notes[index].RawRevision == "" {
+			t.Fatalf("view did not retain malformed note evidence: %+v", notes[index])
 		}
-		env.view.pendingDeleteIdx = index
+		env.view.pendingDelete = env.view.visibleRows[index].Identity()
 
 		result := runProjectNoteMutation(t, func() any { return env.view.performDelete()() })
 		if len(result.Result.Results) != 1 || result.Result.Results[0].Note.ParseError == "" {
@@ -175,71 +185,15 @@ func TestProjectMalformedNoteDeleteSingleAndMixedBulk(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("single malformed note still exists: %v", err)
 		}
-		if len(env.view.notes) != 0 {
-			t.Fatalf("view retained deleted malformed note: %+v", env.view.notes)
+		if len(env.view.visibleRows) != 0 {
+			t.Fatalf("view retained deleted malformed note: %+v", env.view.visibleRows)
 		}
 	})
-
-	t.Run("mixed bulk", func(t *testing.T) {
-		env := newProjectNoteTUIEnv(t, "Valid")
-		malformedPath := writeMalformedProjectNote(t, env, "malformed-bulk.md", []byte("missing frontmatter\n"))
-		for _, note := range env.view.notes {
-			env.view.selectedNotes[note.Filename] = true
-		}
-		env.view.multiSelectMode = true
-
-		result := runProjectNoteMutation(t, func() any { return env.view.performBulkDelete()() })
-		if len(result.Result.Results) != 2 || result.Result.Results[0].TransactionID != result.Result.Results[1].TransactionID {
-			t.Fatalf("mixed bulk delete did not commit as one batch: %+v", result.Result)
-		}
-		env.shell.handleNotesMessages(result)
-		if _, err := os.Stat(malformedPath); !os.IsNotExist(err) {
-			t.Fatalf("bulk delete retained malformed note: %v", err)
-		}
-		if len(env.view.notes) != 0 || env.view.multiSelectMode || len(env.view.selectedNotes) != 0 {
-			t.Fatalf("bulk delete reconciliation left stale view state: notes=%d multi=%v selected=%d", len(env.view.notes), env.view.multiSelectMode, len(env.view.selectedNotes))
-		}
-	})
-}
-
-func TestProjectMalformedNoteBulkDeleteIsAtomicAndKeepsSelectionOnFailure(t *testing.T) {
-	env := newProjectNoteTUIEnv(t, "Valid")
-	malformedPath := writeMalformedProjectNote(t, env, "malformed-stale.md", []byte("original malformed bytes\n"))
-	for _, note := range env.view.notes {
-		env.view.selectedNotes[note.Filename] = true
-	}
-	env.view.multiSelectMode = true
-	staleIndex := projectNoteIndex(t, env.view.notes, "malformed-stale.md")
-	if env.view.notes[staleIndex].ParseError == "" {
-		t.Fatal("stale source is not malformed")
-	}
-	if err := os.WriteFile(malformedPath, []byte("newer malformed bytes\n"), storage.FilePermissions); err != nil {
-		t.Fatalf("concurrent malformed write: %v", err)
-	}
-
-	cmd := env.view.performBulkDelete()
-	msg, ok := cmd().(ProjectNoteMutationErrorMsg)
-	if !ok {
-		t.Fatalf("bulk delete = %T, want ProjectNoteMutationErrorMsg", cmd())
-	}
-	env.shell.handleNotesMessages(msg)
-	if !env.view.multiSelectMode || len(env.view.selectedNotes) != 2 {
-		t.Fatal("rejected batch cleared the retryable selection")
-	}
-	for _, note := range env.view.notes {
-		if _, err := storage.LoadNote(env.project, note.Filename); err != nil {
-			t.Fatalf("atomic batch partially deleted %s: %v", note.Filename, err)
-		}
-	}
-}
-
-func TestProjectNoteBulkTagsAndLinksCommitAsSingleBatches(t *testing.T) {
-	t.Skip("retired: combined Notes has no tags links or bulk mutations")
 }
 
 func TestProjectNoteEditorResultCommitsTempContentAndRejectsMalformedOutput(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Editable")
-	original := env.view.notes[0]
+	original := env.view.visibleRows[0].Note
 	originalContent, err := storage.RenderNoteContent(original)
 	if err != nil {
 		t.Fatal(err)
@@ -335,8 +289,8 @@ func TestProjectNoteEditorCreateDoesNotPersistPlaceholder(t *testing.T) {
 
 func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Undoable")
-	filename := env.view.notes[0].Filename
-	updated := cloneNoteForCommand(env.view.notes[0])
+	filename := env.view.visibleRows[0].Note.Filename
+	updated := cloneNoteForCommand(env.view.visibleRows[0].Note)
 	updated.Body = "undoable edit"
 	updated.ModifiedAt = time.Now()
 	location := app.ProjectNoteLocation(env.project.ID)
@@ -355,7 +309,7 @@ func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T)
 		t.Fatalf("undo result = %#v", undo)
 	}
 	env.shell.handleNotesMessages(undo)
-	if env.note(t, filename).Body != "Undoable body" || env.view.notes[0].Body != "Undoable body" {
+	if env.note(t, filename).Body != "Undoable body" || env.view.visibleRows[0].Note.Body != "Undoable body" {
 		t.Fatal("project-scoped workspace undo did not refresh restored note")
 	}
 
@@ -364,7 +318,7 @@ func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T)
 		t.Fatalf("redo result = %#v", redo)
 	}
 	env.shell.handleNotesMessages(redo)
-	if env.note(t, filename).Body != "undoable edit" || env.view.notes[0].Body != "undoable edit" {
+	if env.note(t, filename).Body != "undoable edit" || env.view.visibleRows[0].Note.Body != "undoable edit" {
 		t.Fatal("project-scoped workspace redo did not refresh replayed note")
 	}
 }

@@ -198,11 +198,7 @@ func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.todayClearedBanner = ""
 		return true, nil
 	case NotesRefreshMsg:
-		if nv := m.getActiveNotesView(); nv != nil {
-			nv.tasksLoaded = false
-			nv.loadNotes()
-		}
-		return true, nil
+		return true, m.refreshActiveNotesManager()
 	default:
 		return false, nil
 	}

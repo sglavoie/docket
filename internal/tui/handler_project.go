@@ -29,6 +29,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		popCmd := m.popView()
 		m.syncProjectCache()
 		m.refreshScopeHubIfActive()
+		notesCmd := m.refreshActiveNotesManager()
 		moveTask := m.pendingProjectMoveTask
 		moveSource := m.pendingProjectMoveSource
 		m.pendingProjectMoveTask = nil
@@ -43,9 +44,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 					FromGlobal:    true,
 				}
 			}
-			return true, tea.Batch(popCmd, moveCmd, reloadCmd)
+			return true, tea.Batch(popCmd, moveCmd, reloadCmd, notesCmd)
 		}
-		return true, tea.Batch(popCmd, reloadCmd)
+		return true, tea.Batch(popCmd, reloadCmd, notesCmd)
 
 	case ProjectArchiveRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemInboxProject(msg.Project.ID) {
@@ -86,7 +87,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		m.setSuccessStatus(statusMsg)
 		m.refreshScopeHubIfActive()
-		return true, tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
+		return true, tea.Batch(
+			m.requestCrossProjectOutlinerReload(),
+			m.refreshActiveNotesManager(),
+			defaultStatusTimeout(),
+		)
 
 	case ProjectRestoredMsg:
 		return true, m.commitProjectUnarchive(msg.Project)
@@ -108,7 +113,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.syncProjectCache()
 		m.refreshProjectView()
 		m.refreshScopeHubIfActive()
-		return true, tea.Batch(popCmd, m.requestCrossProjectOutlinerReload())
+		return true, tea.Batch(
+			popCmd,
+			m.requestCrossProjectOutlinerReload(),
+			m.refreshActiveNotesManager(),
+		)
 
 	}
 	return false, nil
@@ -227,7 +236,12 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		m.setSuccessStatus(action)
 	}
 	m.refreshScopeHubIfActive()
-	return tea.Batch(m.requestCrossProjectOutlinerReload(), repairCmd, defaultStatusTimeout())
+	return tea.Batch(
+		m.requestCrossProjectOutlinerReload(),
+		m.refreshActiveNotesManager(),
+		repairCmd,
+		defaultStatusTimeout(),
+	)
 }
 
 // commitProjectUnarchive mirrors commitProjectArchive for the catalog-only
@@ -247,5 +261,9 @@ func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
 	copyCatalogMetadata(project, &updated)
 	m.setSuccessStatus(fmt.Sprintf("Unarchived %s", updated.Name))
 	m.refreshScopeHubIfActive()
-	return tea.Batch(m.requestCrossProjectOutlinerReload(), defaultStatusTimeout())
+	return tea.Batch(
+		m.requestCrossProjectOutlinerReload(),
+		m.refreshActiveNotesManager(),
+		defaultStatusTimeout(),
+	)
 }

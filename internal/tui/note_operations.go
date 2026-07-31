@@ -26,6 +26,7 @@ const (
 	operationNoteCopyTitle     OperationID = "tui.note.copy-title"
 	operationNoteCopyBody      OperationID = "tui.note.copy-body"
 	operationNoteCopyTitleBody OperationID = "tui.note.copy-title-body"
+	operationNoteMove          OperationID = "tui.note.move-to-project"
 	operationNoteDelete        OperationID = "tui.note.delete"
 )
 
@@ -69,6 +70,7 @@ func noteOperationDescriptors() []OperationDescriptor {
 			note(operationNoteRename, "Rename note", "Give this note a new title", OperationRiskMutation),
 			ValueProviderNoteTitle,
 		),
+		note(operationNoteMove, "Move note", "Move this note to another location", OperationRiskMutation),
 		note(operationNoteDelete, "Delete note", "Delete this note", OperationRiskDestructive),
 	}
 }
@@ -80,9 +82,13 @@ func noteOperationApplicable(ctx CommandContext) bool {
 	return currentEntityIdentity(ctx).Kind == EntityKindNote
 }
 
-// noteOperationsBlockedByParseError lists the actions that need parsed note
-// content. Edit, reference, rename, and delete stay available so a malformed
-// note can still be repaired or removed.
+// noteOperationsBlockedByParseError lists the restored actions that need parsed
+// note content. Open and delete stay available so a malformed note can still be
+// repaired or removed.
+var noteOperationsBlockedByParseError = map[OperationID]bool{
+	operationNoteMove: true,
+}
+
 func (m *AppModel) registerNoteOperations() error {
 	if m == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
@@ -168,6 +174,15 @@ func (m *AppModel) executeNoteOperation(
 	if err != nil {
 		return OperationHandlerResult{Err: err}
 	}
+	if resolved.Note.ParseError != "" && noteOperationsBlockedByParseError[invocation.Descriptor.ID] {
+		return OperationHandlerResult{
+			Err: fmt.Errorf(
+				"%s is unavailable while %s has a parse error; edit the note to repair it",
+				invocation.Descriptor.Label,
+				resolved.Note.Filename,
+			),
+		}
+	}
 	return m.noteOperationResult(invocation, resolved)
 }
 
@@ -191,6 +206,16 @@ func (m *AppModel) noteOperationResult(
 
 	case operationNoteRename:
 		return m.renameNoteOperation(invocation, resolved)
+
+	case operationNoteMove:
+		return OperationHandlerResult{Message: ShowNotesManagerMsg{
+			Scope: AllNotesScope(),
+			Focus: NoteRowIdentity{
+				Location: resolved.Location,
+				Filename: note.Filename,
+			},
+			MoveSource: newNoteMutationRef(resolved.Location, note),
+		}}
 
 	case operationNoteDelete:
 		return command(noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{

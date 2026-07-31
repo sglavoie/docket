@@ -143,6 +143,24 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	})
 }
 
+func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"`N` opens All Notes",
+		"Global plus every project returned by the active-project catalog",
+		"`v` opens a searchable All, Global, or active-project scope picker",
+		"`s` applies a persistent title/body search",
+		"`m` moves the selected note to another such owner as one atomic workspace transaction",
+		"Notes support open/edit, create, rename, move, delete, undo, and redo",
+		"Note tags, task links, pins, bulk actions, previews, archived-project ownership, and a `Ctrl+N` alias remain excluded",
+	})
+	rejectDocumentationText(t, content, []string{
+		"Global notes and, when a project is focused",
+		"focused-project Notes",
+		"search and moving are removed",
+	})
+}
+
 func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{

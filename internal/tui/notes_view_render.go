@@ -3,454 +3,256 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *NotesViewModel) View() tea.View {
-	if m.combined {
-		return m.viewCombined()
-	}
-	var b strings.Builder
-
-	// Title
-	var title string
-	if m.isGlobal {
-		title = "Global Notes"
-	} else {
-		title = fmt.Sprintf("%s - Notes", m.project.Name)
-	}
-	b.WriteString(renderFullscreenTitle(title, "", m.AccentColor()))
-	b.WriteString("\n")
-
-	// Tab bar and count info (hidden when bottom pane is fullscreen)
-	if !m.fullscreenPane || !m.detailsPane.Focused {
-		b.WriteString(m.renderNotesTabBar())
-		b.WriteString("\n")
-
-		// Note count and sort mode
-		countInfo := fmt.Sprintf("%d notes", len(m.notes))
-		if m.sortMode != noteSortModified {
-			countInfo += fmt.Sprintf(" (sort: %s)", m.sortMode)
-		}
-		b.WriteString(MutedStyle.Render(countInfo))
-		b.WriteString("\n\n")
+	if m.locationPicker != nil {
+		return m.locationPicker.View()
 	}
 
-	if m.fullscreenPane && m.detailsPane.Focused {
-		// Fullscreen details pane (overhead: title + \n + \n before status + status bar)
-		fullHeight := max(m.Height()-2, 4)
-		var detailsContent string
-		if len(m.notes) > 0 && m.cursor < len(m.notes) {
-			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.Width(), fullHeight)
-		}
-		if detailsContent != "" {
-			b.WriteString(detailsContent)
-			detailLines := strings.Count(detailsContent, "\n") + 1
-			for i := detailLines; i < fullHeight; i++ {
-				b.WriteString("\n")
-			}
-		} else {
-			for range fullHeight {
-				b.WriteString("\n")
-			}
-		}
-		b.WriteString("\n")
-		b.WriteString(m.renderStatusBar())
-	} else if m.fullscreenPane && !m.detailsPane.Focused {
-		// Fullscreen list pane (same header overhead as split view)
-		usable := max(m.Height()-5, 4)
-		origListHeight := m.listHeight
-		m.listHeight = usable
-		b.WriteString(m.renderListPane())
-		m.listHeight = origListHeight
-		b.WriteString(m.renderFooter())
-		b.WriteString("\n")
-		b.WriteString(m.renderStatusBar())
-	} else {
-		// Normal split view
-		b.WriteString(m.renderListPane())
-		b.WriteString(m.renderFooter())
-		b.WriteString("\n")
-
-		// Details pane (render first so scroll values are clamped before building divider)
-		detailsHeight := m.detailsPane.Height
-		if detailsHeight < 1 {
-			detailsHeight = 5
-		}
-		var detailsContent string
-		if len(m.notes) > 0 && m.cursor < len(m.notes) {
-			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.Width(), detailsHeight)
-		}
-
-		b.WriteString(m.renderDivider())
-		b.WriteString("\n")
-
-		// Output pre-rendered details
-		if detailsContent != "" {
-			b.WriteString(detailsContent)
-			detailLines := strings.Count(detailsContent, "\n") + 1
-			for i := detailLines; i < detailsHeight; i++ {
-				b.WriteString("\n")
-			}
-		} else {
-			for i := 0; i < detailsHeight; i++ {
-				b.WriteString("\n")
-			}
-		}
-
-		b.WriteString("\n")
-		b.WriteString(m.renderStatusBar())
-	}
-	return tea.NewView(b.String())
-}
-
-func (m *NotesViewModel) viewCombined() tea.View {
-	var b strings.Builder
-	subtitle := "Global + active project"
-	if m.Width() < 48 {
+	width := max(m.Width(), 1)
+	height := max(m.Height(), 1)
+	subtitle := m.scopeLabel()
+	titleWidth := lipgloss.Width(fullscreenTitleStyle(m.AccentColor()).Render("Notes"))
+	if width < 40 {
 		subtitle = ""
-	}
-	b.WriteString(renderFullscreenTitle("Notes", subtitle, m.AccentColor()))
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d notes", len(m.notes))))
-	b.WriteString("\n\n")
-
-	if m.destinationPicker {
-		b.WriteString(TitleStyle.Render("Create note in"))
-		b.WriteString("\n\n")
-		listHeight := max(m.Height()-7, 1)
-		start, end := persistentIndexWindow(
-			m.destinationCursor,
-			len(m.destinations),
-			listHeight,
-			&m.destinationScroll,
-		)
-		for i := start; i < end; i++ {
-			location := m.destinations[i]
-			label := m.locationLabel(location)
-			if i == m.destinationCursor {
-				b.WriteString(PickerSelectedStyle.Render("> " + label))
-			} else {
-				b.WriteString("  " + label)
-			}
-			b.WriteString("\n")
-		}
-		b.WriteString("\n")
-		b.WriteString(HelpStyle.Render("j/k: choose · Enter: confirm location · Esc: cancel"))
-		return tea.NewView(b.String())
-	}
-
-	if len(m.notes) == 0 {
-		b.WriteString(renderEmptyState("No notes yet.", "Press n to choose a location and create one."))
-		b.WriteString("\n")
 	} else {
-		listHeight := max(m.Height()-7, 1)
-		start, end := persistentIndexWindow(m.cursor, len(m.notes), listHeight, &m.scrollOffset)
-		for i := start; i < end; i++ {
-			note := m.notes[i]
-			location := m.noteLocationFor(note)
-			scopeWidth := min(24, max(m.Width()/3, 6))
-			scope := truncateAndPad(m.locationLabel(location), scopeWidth)
-			title := truncateToVisualWidth(note.Title, max(m.Width()-scopeWidth-2, 1))
-			row := fmt.Sprintf("%s  %s", MutedStyle.Render(scope), title)
-			if note.ParseError != "" {
-				row = WarningIconStyle.Render("! ") + row
-			}
-			if i == m.cursor {
-				b.WriteString(PickerSelectedStyle.Render(row))
-			} else {
-				b.WriteString(row)
-			}
-			b.WriteString("\n")
-		}
+		subtitle = truncateToVisualWidth(subtitle, max(width-titleWidth-2, 1))
 	}
-	b.WriteString("\n")
+	header := []string{
+		renderFullscreenTitle("Notes", subtitle, m.AccentColor()),
+		MutedStyle.Render(truncateToVisualWidth(m.scopeCountLabel(), width)),
+	}
+	if search := m.renderSearchLine(); search != "" {
+		header = append(header, fitStyledLineToWidth(search, width))
+	}
+	errorLines := m.renderCollectionErrors()
+	if errorLines != "" {
+		header = append(header, errorLines)
+	}
+
+	var footer []string
 	if m.renaming {
-		b.WriteString("Rename: " + m.renameInput.View())
+		footer = append(footer, fitStyledLineToWidth("Rename: "+m.renameInput.View(), width))
+	} else if m.searchEditing {
+		help := "Enter: apply · Esc: cancel · ↑/↓ or Ctrl+J/K: navigate"
+		footer = append(footer, HelpStyle.Render(renderWrappingHelpLine(help, width)))
 	} else {
-		help := "Enter: open · n: new · r: rename · x: delete · u: undo · Ctrl+R: redo · Esc: close"
-		b.WriteString(HelpStyle.Render(renderWrappingHelpLine(help, m.Width())))
+		escHelp := "Esc: close"
+		if m.searchApplied != "" {
+			escHelp = "Esc: clear search"
+		}
+		help := "Enter: open/edit · n: new · v: scope · s: search · r: rename · m: move · x: delete · u: undo · Ctrl+R: redo · " + escHelp
+		footer = append(footer, HelpStyle.Render(renderWrappingHelpLine(help, width)))
 	}
 	if m.statusMessage != "" {
-		b.WriteString("\n")
-		b.WriteString(m.renderStatusBar())
+		footer = append(footer, fitStyledLineToWidth(m.renderStatusBar(), width))
 	}
-	return tea.NewView(b.String())
-}
 
-func (m *NotesViewModel) locationLabel(location app.NoteLocation) string {
-	if location.Scope == app.NoteScopeGlobal {
-		return "Global"
-	}
-	if m.project != nil && location.ProjectID == m.project.ID {
-		return m.project.Name
-	}
-	for _, project := range m.creationProjects {
-		if project.ID == location.ProjectID {
-			return project.Name
-		}
-	}
-	if location.ProjectID != "" {
-		return location.ProjectID
-	}
-	return "Unknown"
+	headerBlock := strings.Join(header, "\n")
+	footerBlock := strings.Join(footer, "\n")
+	contentHeight := fullscreenContentHeightForBlocks(height, headerBlock, footerBlock)
+	content := fitBlockHeight(m.renderListPaneHeight(contentHeight), contentHeight)
+	return tea.NewView(lipgloss.JoinVertical(
+		lipgloss.Left,
+		headerBlock,
+		content,
+		footerBlock,
+	))
 }
 
 func (m *NotesViewModel) renderListPane() string {
-	if len(m.notes) == 0 {
-		return renderEmptyState("No notes yet.", "Press n to create one.") + "\n"
+	errorRows := len(m.collectionErrors)
+	if m.snapshotError != nil {
+		errorRows = 1
+	}
+	searchRows := 0
+	if m.searchEditing || m.searchApplied != "" {
+		searchRows = 1
+	}
+	return m.renderListPaneHeight(max(m.Height()-7-errorRows-searchRows, 1))
+}
+
+func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
+	if m.snapshotError != nil {
+		return renderEmptyState("Notes are unavailable.", "Resolve the workspace error and reopen Notes.") + "\n"
+	}
+	if len(m.visibleRows) == 0 {
+		if strings.TrimSpace(m.activeSearchQuery()) != "" {
+			hint := "Press s to edit the search or Esc to clear it."
+			if m.searchEditing {
+				hint = "Keep typing or press Esc to restore the accepted search."
+			}
+			return renderEmptyState(
+				"No matching notes.",
+				hint,
+			) + "\n"
+		}
+		message := "No notes yet."
+		if len(m.collectionErrors) > 0 {
+			message = "No notes loaded from the available owners."
+		}
+		return renderEmptyState(message, "Press n to choose a location and create one.") + "\n"
 	}
 
 	var b strings.Builder
-
-	listHeight := m.listHeight
-	if listHeight < 1 {
-		listHeight = 10
-	}
-	noteListHeight := max(
-		// -1 for footer in list pane
-		listHeight-1, 1)
-
-	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.notes), noteListHeight, &m.scrollOffset)
-
-	selectedStyle := PickerSelectedStyle
-	if m.detailsPane.Focused {
-		selectedStyle = MutedStyle
-	}
-
-	for i := startIdx; i < endIdx; i++ {
-		note := m.notes[i]
-		isCurrent := i == m.cursor
-
-		checkbox := ""
-		if m.multiSelectMode {
-			if m.isNoteSelected(note.Filename) {
-				checkbox = "[x] "
-			} else {
-				checkbox = "[ ] "
-			}
+	listHeight = max(listHeight, 1)
+	start, end := persistentIndexWindow(m.cursor, len(m.visibleRows), listHeight, &m.scrollOffset)
+	width := max(m.Width(), 1)
+	scopeWidth := min(24, max(width/3, 6))
+	for i := start; i < end; i++ {
+		row := m.visibleRows[i]
+		owner := truncateAndPad(row.OwnerLabel, scopeWidth)
+		match := m.searchMatches[row.Identity()]
+		bodyIndicator := ""
+		if match.bodyMatched {
+			bodyIndicator = "  " + MutedStyle.Render("· body")
 		}
-
-		var row string
-		if note.ParseError != "" {
-			// Error indicator for broken notes
-			indicator := WarningIconStyle.Render("!")
-			maxTitle := 40
-			if m.multiSelectMode {
-				maxTitle = 36
-			}
-			paddedTitle := truncateAndPad(checkbox+truncateToVisualWidth(note.Title, maxTitle), 40)
-			paddedTitle = MutedStyle.Render(paddedTitle)
-			row = fmt.Sprintf("%s %s %8s", indicator, paddedTitle, MutedStyle.Render("error"))
+		bodyColumns := 0
+		if match.bodyMatched {
+			bodyColumns = 8
+		}
+		parseColumns := 0
+		if row.Note.ParseError != "" {
+			parseColumns = 2
+		}
+		titleWidth := max(width-scopeWidth-2-bodyColumns-parseColumns, 1)
+		title := truncateToVisualWidth(row.Note.Title, titleWidth)
+		renderedTitle := title
+		if len(match.titlePositions) > 0 {
+			renderedTitle = HighlightText(title, match.titlePositions, NormalStyle)
+		}
+		line := fmt.Sprintf("%s  %s%s", MutedStyle.Render(owner), renderedTitle, bodyIndicator)
+		if row.Note.ParseError != "" {
+			line = WarningIconStyle.Render("! ") + line
+		}
+		line = fitStyledLineToWidth(line, width)
+		if i == m.cursor {
+			b.WriteString(PickerSelectedStyle.Render(line))
 		} else {
-			maxTitle := 40
-			if m.multiSelectMode {
-				maxTitle = 36
-			}
-			paddedTitle := truncateAndPad(checkbox+truncateToVisualWidth(note.Title, maxTitle), 40)
-
-			age := formatNoteAge(note.ModifiedAt)
-			row = fmt.Sprintf("  %s %8s", paddedTitle, age)
+			b.WriteString(line)
 		}
-
-		if isCurrent {
-			b.WriteString(selectedStyle.Render(row))
-		} else {
-			b.WriteString(row)
-		}
-		b.WriteString("\n")
-	}
-	// Pad remaining list lines
-	rendered := endIdx - startIdx
-	for i := rendered; i < noteListHeight; i++ {
 		b.WriteString("\n")
 	}
 	return b.String()
 }
 
-func (m *NotesViewModel) renderFooter() string {
-	var helpText string
-	if m.renaming {
-		helpText = "Enter: confirm · Esc: cancel"
-	} else if m.detailsPane.Focused {
-		zHint := "Z:fullscreen"
-		if m.fullscreenPane {
-			zHint = "Z:exit fullscreen"
-		}
-		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+D/U: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · Esc: close"
-	} else if m.multiSelectMode {
-		helpText = "space: toggle · a: all · gX: clear · d: delete · V/Esc: exit multi-select"
-	} else {
-		zHint := "Z:fullscreen"
-		if m.fullscreenPane {
-			zHint = "Z:exit fullscreen"
-		}
-		helpText = "j/k: nav · Tab: pane · e: edit · n: new · d: del · r: rename · s: sort · y: copy · " + zHint
+func (m *NotesViewModel) renderCollectionErrors() string {
+	width := max(m.Width(), 1)
+	if m.snapshotError != nil {
+		line := truncateToVisualWidth("! Workspace: "+m.snapshotError.Error(), width)
+		return WarningIconStyle.Render(line)
 	}
-	helpText += " · ?: help"
-	return HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width()))
+	const maxErrorLines = 2
+	var lines []string
+	visibleFailures := min(len(m.collectionErrors), maxErrorLines)
+	if len(m.collectionErrors) > maxErrorLines {
+		visibleFailures = maxErrorLines - 1
+	}
+	for _, failure := range m.collectionErrors[:visibleFailures] {
+		line := truncateToVisualWidth(
+			fmt.Sprintf("! %s: %v", failure.OwnerLabel, failure.Err),
+			width,
+		)
+		lines = append(lines, WarningIconStyle.Render(
+			line,
+		))
+	}
+	if remaining := len(m.collectionErrors) - visibleFailures; remaining > 0 {
+		summary := fmt.Sprintf(
+			"! %d more %s unavailable",
+			remaining,
+			pluralize(remaining, "owner", "owners"),
+		)
+		lines = append(lines, WarningIconStyle.Render(truncateToVisualWidth(summary, width)))
+	}
+	return strings.Join(lines, "\n")
 }
 
-func (m *NotesViewModel) renderDivider() string {
-	dividerColor := ColorMuted
-	if m.detailsPane.Focused {
-		dividerColor = ColorPrimary
+func (m *NotesViewModel) scopeLabel() string {
+	switch m.scope.Kind {
+	case NotesScopeGlobal:
+		return "Global"
+	case NotesScopeProject:
+		return m.locationLabel(app.ProjectNoteLocation(m.scope.ProjectID))
+	default:
+		return "All Notes"
 	}
+}
 
-	var opts []DividerOption
-	opts = append(opts, WithDividerColor(dividerColor))
-
-	if m.detailsPane.MaxScroll > 0 && len(m.notes) > 0 && m.cursor < len(m.notes) {
-		indicator := fmt.Sprintf(" [%d/%d] ", m.detailsPane.Scroll+1, m.detailsPane.MaxScroll+1)
-		opts = append(opts, WithRightIndicator(indicator))
+func (m *NotesViewModel) scopeCountLabel() string {
+	count := len(m.visibleRows)
+	if query := strings.TrimSpace(m.activeSearchQuery()); query != "" {
+		return fmt.Sprintf(
+			"%d of %d notes match %q in %s",
+			count,
+			m.scopedRowCount(),
+			query,
+			m.scopeLabel(),
+		)
 	}
+	switch m.scope.Kind {
+	case NotesScopeGlobal:
+		return fmt.Sprintf("%d Global notes", count)
+	case NotesScopeProject:
+		return fmt.Sprintf("%d notes in %s", count, m.scopeLabel())
+	default:
+		ownerCount := len(m.requestedLocations()) - len(m.collectionErrors)
+		if ownerCount < 0 {
+			ownerCount = 0
+		}
+		return fmt.Sprintf("%d notes across %d owners", count, ownerCount)
+	}
+}
 
-	return renderHorizontalDivider(m.Width(), opts...)
+func (m *NotesViewModel) renderSearchLine() string {
+	if m.searchEditing {
+		return "Search: " + m.searchInput.View()
+	}
+	if m.searchApplied != "" {
+		return MutedStyle.Render(fmt.Sprintf("Search: %q", m.searchApplied))
+	}
+	return ""
+}
+
+func (m *NotesViewModel) locationLabel(location app.NoteLocation) string {
+	return m.ownerForLocation(location).Label
 }
 
 func (m *NotesViewModel) renderStatusBar() string {
 	if m.renaming {
 		return "Rename: " + m.renameInput.View()
 	}
-	if m.statusMessage != "" {
-		if m.statusIsError {
-			return WarningIconStyle.Render(m.statusMessage)
-		}
-		return SuccessStyle.Render(m.statusMessage)
-	}
-	return ""
-}
-
-func (m *NotesViewModel) renderNotesTabBar() string {
-	return RenderTabBar(m.tabs.Names, m.tabs.Active, min(m.Width()-6, 54)-2, 1, m.AccentColor())
-}
-
-func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int) string {
-	if note == nil || height <= 0 {
+	if m.statusMessage == "" {
 		return ""
 	}
-
-	var lines []string
-
-	if note.ParseError != "" {
-		lines = append(lines, WarningIconStyle.Render("Parse Error"))
-		lines = append(lines, "")
-		lines = append(lines, MutedStyle.Render("File: "+note.Filename))
-		lines = append(lines, WarningIconStyle.Render(note.ParseError))
-		lines = append(lines, "")
-		lines = append(lines, MutedStyle.Render("Press e to edit and fix this note"))
-	} else {
-		// Title
-		titleLine := TitleStyle.Render(truncateToVisualWidth(note.Title, max(width-2, 1)))
-		lines = append(lines, titleLine)
-
-		lines = append(lines, "")
-
-		// Body: render as markdown
-		if note.Body != "" {
-			rendered := renderMarkdown(note.Body, width)
-			lines = append(lines, strings.Split(rendered, "\n")...)
-		}
+	if m.statusIsError {
+		return WarningIconStyle.Render(m.statusMessage)
 	}
-
-	// Clamp scroll so the last line is always visible at the bottom
-	maxScroll := max(len(lines)-height, 0)
-	m.detailsPane.MaxScroll = maxScroll
-	m.detailsPane.ClampScroll()
-
-	// Apply scroll offset and cap to available height
-	lines = lines[m.detailsPane.Scroll:]
-	if len(lines) > height {
-		lines = lines[:height]
-	}
-
-	return strings.Join(lines, "\n")
+	return SuccessStyle.Render(m.statusMessage)
 }
 
-// GetHelpItems returns keybinding help for the notes view.
+// GetHelpItems returns keybinding help for the Notes manager.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
-	if m.combined {
-		return []HelpItem{
-			{Key: "j/k", Description: "Navigate"},
-			{Key: "Enter", Description: "Open in external editor"},
-			{Key: "n", Description: "Create after confirming location"},
-			{Key: "r", Description: "Rename note"},
-			{Key: "x", Description: "Delete note"},
-			{Key: "u", Description: "Undo workspace change"},
-			{Key: "Ctrl+R", Description: "Redo workspace change"},
-			{Key: "Esc", Description: "Close Notes"},
-		}
+	if m.locationPicker != nil {
+		return m.locationPicker.GetHelpItems()
 	}
-	items := []HelpItem{
-		{Key: "shift+←/→", Description: "Switch tab"},
-		{Key: "j/k", Description: "Navigate up/down"},
-		{Key: "Tab", Description: "Switch pane (list/details)"},
-		{Key: "Enter", Description: "View note (glow)"},
-		{Key: "e", Description: "Edit note"},
-		{Key: "Ctrl+O", Description: "Open note reference copy"},
-		{Key: "n", Description: "Create new note"},
-		{Key: "d", Description: "Delete note (confirm)"},
+	return []HelpItem{
+		{Key: "j/k", Description: "Navigate"},
+		{Key: "Enter", Description: "Open in external editor"},
+		{Key: "n", Description: "Create in Global or an active project"},
+		{Key: "v", Description: "Choose All, Global, or active-project scope"},
+		{Key: "s", Description: "Search note titles and bodies"},
 		{Key: "r", Description: "Rename note"},
-		{Key: "s", Description: "Cycle sort mode"},
-		{Key: "y", Description: "Copy title to clipboard"},
-		{Key: "Y", Description: "Copy body to clipboard"},
-		{Key: "Ctrl+Y", Description: "Copy title and body to clipboard"},
-	}
-	if m.isGlobal {
-		items = append(items,
-			HelpItem{Key: "u", Description: "Undo last note change"},
-			HelpItem{Key: "Ctrl+R", Description: "Redo last note change"},
-		)
-	} else {
-		items = append(items,
-			HelpItem{Key: "u", Description: "Undo project change"},
-			HelpItem{Key: "Ctrl+R", Description: "Redo project change"},
-			HelpItem{Key: "L", Description: "Link note to task"},
-		)
-	}
-	items = append(items,
-		HelpItem{Key: "p", Description: "Toggle pin"},
-		HelpItem{Key: "t", Description: "Edit note tags"},
-	)
-	if !m.isGlobal {
-		items = append(items,
-			HelpItem{Key: "T", Description: "Filter by tags"},
-			HelpItem{Key: "C", Description: "Clear tag filter"},
-			HelpItem{Key: "/", Description: "Search notes"},
-		)
-	}
-	items = append(items,
-		HelpItem{Key: "g/G", Description: "Jump to top/bottom"},
-		HelpItem{Key: "V", Description: "Toggle multi-select mode"},
-		HelpItem{Key: "space", Description: "Toggle selection (multi-select)"},
-		HelpItem{Key: "a", Description: "Select all (multi-select)"},
-		HelpItem{Key: "gX", Description: "Deselect all (multi-select)"},
-		HelpItem{Key: "Z", Description: "Toggle fullscreen pane"},
-		HelpItem{Key: "esc", Description: "Close notes view"},
-	)
-	return items
-}
-
-func formatNoteAge(t time.Time) string {
-	d := time.Since(t)
-	switch {
-	case d < time.Minute:
-		return "now"
-	case d < time.Hour:
-		return fmt.Sprintf("%dm ago", int(d.Minutes()))
-	case d < util.Day:
-		return fmt.Sprintf("%dh ago", int(d.Hours()))
-	default:
-		days := int(d.Hours() / 24)
-		if days == 1 {
-			return "1d ago"
-		}
-		return fmt.Sprintf("%dd ago", days)
+		{Key: "m", Description: "Move to Global or an active project"},
+		{Key: "x", Description: "Delete note"},
+		{Key: "u", Description: "Undo workspace change"},
+		{Key: "Ctrl+R", Description: "Redo workspace change"},
+		{Key: "Esc", Description: "Cancel search, clear it, or close Notes"},
 	}
 }

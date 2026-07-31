@@ -90,7 +90,7 @@ func (m *ProjectAdminMenuModel) dispatch() tea.Msg {
 	case adminActionArchive:
 		return ProjectArchiveRequestMsg{Project: p, Archive: !p.Archived}
 	case adminActionNotes:
-		return ShowNotesMsg{Project: p}
+		return ShowNotesManagerMsg{Scope: ProjectNotesScope(p.ID)}
 	}
 	return nil
 }

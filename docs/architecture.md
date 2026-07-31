@@ -172,11 +172,25 @@ with search focused and includes active and archived projects. Project
 administration supports create, edit, pin, archive, restore, and project Notes.
 The catalog-owned Inbox ID is the protection authority.
 
-The combined Notes tool carries an explicit location with every row. It loads
-Global notes plus the focused project's notes, if any. Creation always pauses
-at a destination picker. Note mutations and external-editor results commit
-through the workspace ledger. Editor resolution is `TT_EDITOR`, then `VISUAL`,
-then `EDITOR`.
+The workspace-wide Notes manager carries an explicit `NoteLocation` plus
+filename identity with every row and always opens in All Notes. One workspace
+snapshot loads Global plus every project returned by
+`Runtime.ActiveProjects()`; archived projects are not owners. Successfully
+loaded rows form one canonical collection, then the selected All, Global, or
+project scope and persistent title/body search derive the visible list. Rows
+sort by modified time unless a search is active, when relevance leads and
+modified time breaks ties, and every row renders its owner label.
+
+`v` opens the searchable scope picker, `s` edits the accepted search, `n`
+chooses a creation destination, and `m` moves one parsed note to another Global
+or active-project owner. Open/edit, create, rename, move, delete, undo, and redo
+all refresh the affected canonical collections through the workspace ledger;
+move commits its destination write and revision-checked source delete as one
+artifact transaction. Malformed notes remain available for raw editing and
+deletion but cannot be renamed or moved until repaired. Search and scope are
+session-only. Note tags, task links, pins, bulk actions, previews, archived
+owners, and `Ctrl+N` remain outside the product. Editor resolution is
+`TT_EDITOR`, then `VISUAL`, then `EDITOR`.
 
 ## Persistence layout
 

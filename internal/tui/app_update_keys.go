@@ -3,7 +3,6 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -15,11 +14,6 @@ func (m *AppModel) currentViewAsModel() tea.Model {
 type taskReferenceProvider interface {
 	getTaskRef() (*models.Task, *models.Project)
 }
-
-var (
-	createReferenceSnapshotFile = external.CreateReferenceSnapshotFile
-	openReferenceFile           = external.OpenReferenceFile
-)
 
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo
 	key := msg.String()

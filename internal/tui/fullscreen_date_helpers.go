@@ -6,54 +6,9 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
-
-// FormatRelativeDue formats a due date relative to today.
-// When styled is true, overdue/today/normal ranges are wrapped in color styles.
-func FormatRelativeDue(dueDate *time.Time, styled bool) string {
-	if dueDate == nil {
-		return ""
-	}
-
-	now := time.Now()
-	daysUntil := util.DaysBetween(now, *dueDate)
-
-	var text string
-	var style lipgloss.Style
-
-	switch {
-	case daysUntil < -1:
-		text = fmt.Sprintf("%d days ago", -daysUntil)
-		style = OverdueStyle
-	case daysUntil == -1:
-		text = "yesterday"
-		style = OverdueStyle
-	case daysUntil == 0:
-		text = "today"
-		style = DueTodayStyle
-	case daysUntil == 1:
-		text = "tomorrow"
-		style = DueDateStyle
-	case daysUntil < 7:
-		text = dueDate.Format("Mon")
-		style = DueDateStyle
-	default:
-		if dueDate.Year() != now.Year() {
-			text = dueDate.Format("Jan 2 '06")
-		} else {
-			text = dueDate.Format("Jan 2")
-		}
-		style = DueDateStyle
-	}
-
-	if styled {
-		return style.Render(text)
-	}
-	return text
-}
 
 // formatRelativeDueVerbose returns a verbose relative due date string
 // (e.g. "in 3 weeks", "in 2 months") for use in detail panels.
@@ -128,9 +83,4 @@ func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 		}
 		return dueDate.Format("Jan 2"), DueDateStyle
 	}
-}
-
-// FormatRelativeDueTask formats the task's date-only due value.
-func FormatRelativeDueTask(task *models.Task, styled bool) string {
-	return FormatRelativeDue(task.DueDate, styled)
 }

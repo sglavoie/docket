@@ -139,6 +139,14 @@ func TestDailyLoopTargetContractInventory(t *testing.T) {
 	if len(contract.ScopeRules) != 3 || len(contract.Visibility) != 4 {
 		t.Errorf("scope/visibility contract is incomplete: %v / %v", contract.ScopeRules, contract.Visibility)
 	}
+	for _, rule := range []string{
+		"N always opens All Notes across Global and every active project",
+		"Notes v scopes s searches title and body and m moves one note; archived projects and Ctrl+N are excluded",
+	} {
+		if !slices.Contains(contract.ScopeRules, rule) {
+			t.Errorf("scope contract is missing %q", rule)
+		}
+	}
 	if slices.ContainsFunc(contract.Keys, func(binding KeyAcceptance) bool {
 		return binding.Key == "R" || binding.Action == "weekly review"
 	}) {

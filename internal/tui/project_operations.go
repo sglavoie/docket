@@ -209,7 +209,7 @@ func (m *AppModel) projectOperationMessage(id OperationID, project *models.Proje
 	case operationScopeRestoreProject:
 		return ProjectArchiveRequestMsg{Project: project, Archive: false}
 	case operationScopeOpenProjectNote:
-		return ShowNotesMsg{Project: project}
+		return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
 	default:
 		return nil
 	}

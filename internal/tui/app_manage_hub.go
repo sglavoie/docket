@@ -29,8 +29,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 		HistoryLedger:  historyLedger,
 		Tags:           m.secondaryFeatures.Tag,
 		Wire:           m.wireSecondaryCoordinators,
-		ResolveProject: m.projectByID,
-		CurrentProject: func() *models.Project { return m.currentProject },
+		ResolveProject: m.activeProjectByID,
 		ActiveContext: func() ContextScope {
 			if m.crossOutliner == nil {
 				return AllContextScope()
@@ -79,23 +78,22 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 	params = route.Params().(ManageParams)
 
 	hub := m.ensureManageHub()
-	missingProject := params.Scope.Kind == ScopeProject && m.projectByID(params.Scope.ProjectID) == nil
+	missingProject := params.Module == ManageNotes &&
+		params.NotesScope.Kind == NotesScopeProject &&
+		m.activeProjectByID(params.NotesScope.ProjectID) == nil
 	if missingProject {
-		params.Scope = AppEntityScope()
+		params.NotesScope = AllNotesScope()
 		route, err = NewRoute(SecondaryTool, params)
 		if err != nil {
 			return func() tea.Msg { return ErrorMsg{Err: err} }
 		}
+		params = route.Params().(ManageParams)
 	}
-	if err := hub.Activate(params); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
+	if activateErr := hub.Activate(params); activateErr != nil {
+		return func() tea.Msg { return ErrorMsg{Err: activateErr} }
 	}
-	projectPickerOpen := false
 	if missingProject {
-		projectPickerOpen = hub.OpenProjectPicker(params.Module)
-		if !projectPickerOpen {
-			m.setInfoStatus("No projects available")
-		}
+		m.setInfoStatus("Project is unavailable — showing All Notes")
 	}
 
 	active := hub.ActiveModuleView()
@@ -105,11 +103,14 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		m.registerManageModulePresentation(params, active)
 	}
 
-	if err := m.navigation.PushChild(route, m.currentFocusTarget()); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
+	if m.navigation.Primary.Current().ID() == SecondaryTool {
+		m.navigation.Overlays.CancelAll()
+		err = m.navigation.Primary.ReplaceCurrentMode(route)
+	} else {
+		err = m.navigation.PushChild(route, m.currentFocusTarget())
 	}
-	if projectPickerOpen {
-		m.pushTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 	m.setAccentOnView(hub)
 	if active != nil {
@@ -117,10 +118,6 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		return active.Init()
 	}
 	return nil
-}
-
-func (m *AppModel) activateManageProjectPicker(module ManageModule) tea.Cmd {
-	return m.activateManageHub(ManageParams{Module: module, Scope: ProjectEntityScope("missing-project")})
 }
 
 func (m *AppModel) registerManageModulePresentation(params ManageParams, view View) {
@@ -139,15 +136,7 @@ func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowManageHubMsg:
 		return true, m.activateManageHub(msg.Params)
 	case ManageHubModuleSelectedMsg:
-		m.closeTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
 		return true, m.activateManageHub(msg.Params)
-	case manageHubViewMenuMsg:
-		if msg.Open {
-			m.pushTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
-		} else {
-			m.closeTypedOverlay(OverlayViewMenu, manageHubViewMenuOverlayKey)
-		}
-		return true, nil
 	default:
 		return false, nil
 	}
@@ -155,13 +144,49 @@ func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) handleInvalidManageProjectScope() (bool, tea.Cmd) {
 	_, params, ok := m.manageHubPrimary()
-	if !ok || params.Scope.Kind != ScopeProject || m.projectByID(params.Scope.ProjectID) != nil {
+	if !ok || params.Module != ManageNotes ||
+		params.NotesScope.Kind != NotesScopeProject ||
+		m.activeProjectByID(params.NotesScope.ProjectID) != nil {
 		return false, nil
 	}
-	if m.currentProject != nil && m.currentProject.ID == params.Scope.ProjectID {
+	if m.currentProject != nil && m.currentProject.ID == params.NotesScope.ProjectID {
 		m.currentProject = nil
 	}
-	params.Scope = AppEntityScope()
-	m.setInfoStatus("Project was removed — showing all " + params.Module.String())
+	if notes := m.getActiveNotesView(); notes != nil {
+		notes.RefreshWorkspace(m.activeProjects()...)
+	}
+	params.NotesScope = AllNotesScope()
+	m.setInfoStatus("Project was removed — showing All Notes")
 	return true, m.activateManageHub(params)
+}
+
+// refreshActiveNotesManager rebuilds the live owner catalog after a workspace
+// lifecycle change. If the current project scope disappeared, both the model
+// and the canonical typed route are replaced immediately instead of waiting for
+// the next keypress.
+func (m *AppModel) refreshActiveNotesManager() tea.Cmd {
+	notes := m.getActiveNotesView()
+	if notes == nil {
+		return nil
+	}
+	if !notes.RefreshWorkspace(m.activeProjects()...) {
+		return nil
+	}
+	if m.manageHub == nil {
+		notes.setErrorStatus("Project is unavailable; reopen Notes to use All Notes")
+		return nil
+	}
+
+	if m.currentProject != nil && m.currentProject.ID == m.manageHub.params.NotesScope.ProjectID {
+		m.currentProject = nil
+	}
+	params := m.manageHub.params
+	params.NotesScope = AllNotesScope()
+	message := "Project is unavailable — showing All Notes"
+	m.setInfoStatus(message)
+	cmd := m.activateManageHub(params)
+	if active := m.getActiveNotesView(); active != nil {
+		active.setStatus(message)
+	}
+	return cmd
 }

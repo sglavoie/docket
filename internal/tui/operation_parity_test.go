@@ -224,6 +224,38 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	}
 }
 
+func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
+	app := parityAuditApp(t)
+	wantKeys := map[OperationID]string{
+		operationNoteOpen:   "enter",
+		operationNoteRename: "r",
+		operationNoteMove:   "m",
+		operationNoteDelete: "x",
+	}
+	descriptors := noteOperationDescriptors()
+	if len(descriptors) != len(wantKeys) {
+		t.Fatalf("note operation count = %d, want %d", len(descriptors), len(wantKeys))
+	}
+	handled := (&NotesViewModel{}).HandledKeys()
+	for _, descriptor := range descriptors {
+		key, ok := wantKeys[descriptor.ID]
+		if !ok {
+			t.Errorf("unexpected note operation %s", descriptor.ID)
+			continue
+		}
+		if !slices.Contains(handled, key) {
+			t.Errorf("note operation %s has no Notes direct key %q", descriptor.ID, key)
+		}
+		registered, ok := app.GetOperationRegistry().Descriptor(descriptor.ID)
+		if !ok || registered.Label != descriptor.Label {
+			t.Errorf("note operation %s registry descriptor = %#v, want label %q", descriptor.ID, registered, descriptor.Label)
+		}
+		if len(app.operationExecutor.bindings[descriptor.ID]) == 0 {
+			t.Errorf("note operation %s has no executable binding", descriptor.ID)
+		}
+	}
+}
+
 // TestChordBindingsStayPrefixFreeExecutableAndLabeled audits the chord half of
 // the one grammar: no key path shadows another, presets match the value their
 // handler asserts, every chord reaches a compatible handler, and every prefix

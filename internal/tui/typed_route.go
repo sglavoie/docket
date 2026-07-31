@@ -68,32 +68,6 @@ type TaskWorkspaceParams struct {
 
 func (TaskWorkspaceParams) routeParams() {}
 
-// ProjectSetScope captures the exact project set admitted by the launching
-// Outliner scope. Explicit distinguishes an intentionally empty Context from
-// legacy callers that omit a project set and expect the tool's app-wide
-// default.
-type ProjectSetScope struct {
-	projectIDs string
-	Explicit   bool
-}
-
-// ActiveProjectSetScope returns an explicit, defensively copied project set.
-// NewRoute canonicalizes ordering and duplicates before storing it.
-func ActiveProjectSetScope(projectIDs []string) ProjectSetScope {
-	return ProjectSetScope{
-		projectIDs: strings.Join(normalizedProjectIDs(projectIDs), "\x1f"),
-		Explicit:   true,
-	}
-}
-
-// ProjectIDs returns a defensive, canonical copy of the scoped identities.
-func (scope ProjectSetScope) ProjectIDs() []string {
-	if !scope.Explicit || scope.projectIDs == "" {
-		return nil
-	}
-	return strings.Split(scope.projectIDs, "\x1f")
-}
-
 type ManageModule uint8
 
 const (
@@ -102,10 +76,35 @@ const (
 	ManageProjects
 )
 
+// NotesScopeKind identifies the collection subset selected by the workspace-wide
+// Notes manager. Unlike EntityScope, it preserves the meaningful distinction
+// between All Notes and the workspace-global note collection.
+type NotesScopeKind uint8
+
+const (
+	NotesScopeAll NotesScopeKind = iota
+	NotesScopeGlobal
+	NotesScopeProject
+)
+
+// NotesScope selects All Notes, Global, or one active project. ProjectID is
+// meaningful only for project scope.
+type NotesScope struct {
+	Kind      NotesScopeKind
+	ProjectID string
+}
+
+func AllNotesScope() NotesScope { return NotesScope{Kind: NotesScopeAll} }
+
+func GlobalNotesScope() NotesScope { return NotesScope{Kind: NotesScopeGlobal} }
+
+func ProjectNotesScope(projectID string) NotesScope {
+	return NotesScope{Kind: NotesScopeProject, ProjectID: projectID}
+}
+
 type ManageParams struct {
 	Module     ManageModule
-	Scope      EntityScope
-	ProjectSet ProjectSetScope
+	NotesScope NotesScope
 }
 
 func (ManageParams) routeParams() {}
@@ -211,16 +210,15 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 			if p.Module > ManageProjects {
 				return nil, invalidParams(id, "unknown manage tool")
 			}
-			if manageModuleSupportsScope(p.Module) {
-				scope, err := canonicalEntityScope(id, p.Scope)
+			if p.Module == ManageNotes {
+				scope, err := canonicalNotesScope(id, p.NotesScope)
 				if err != nil {
 					return nil, err
 				}
-				p.Scope = scope
+				p.NotesScope = scope
 			} else {
-				p.Scope = AppEntityScope()
+				p.NotesScope = NotesScope{}
 			}
-			p.ProjectSet = ProjectSetScope{}
 			return p, nil
 		default:
 			return nil, paramsTypeError(id, params)
@@ -254,21 +252,30 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 	}
 }
 
-func canonicalProjectSetScope(scope ProjectSetScope) ProjectSetScope {
-	if !scope.Explicit {
-		return ProjectSetScope{}
-	}
-	return ActiveProjectSetScope(scope.ProjectIDs())
-}
-
-func projectSetScopeEqual(left, right ProjectSetScope) bool {
-	return canonicalProjectSetScope(left) == canonicalProjectSetScope(right)
-}
-
 func manageParamsEqual(left, right ManageParams) bool {
-	return left.Module == right.Module &&
-		left.Scope == right.Scope &&
-		projectSetScopeEqual(left.ProjectSet, right.ProjectSet)
+	return left == right
+}
+
+func canonicalNotesScope(id RouteID, scope NotesScope) (NotesScope, error) {
+	switch scope.Kind {
+	case NotesScopeAll, NotesScopeGlobal:
+		scope.ProjectID = ""
+		return scope, nil
+	case NotesScopeProject:
+		if strings.TrimSpace(scope.ProjectID) == "" {
+			return NotesScope{}, ErrProjectRequired
+		}
+		return scope, nil
+	default:
+		return NotesScope{}, invalidParams(id, "notes scope must be all, global, or project")
+	}
+}
+
+func (scope NotesScope) commandScope() EntityScope {
+	if scope.Kind == NotesScopeProject {
+		return ProjectEntityScope(scope.ProjectID)
+	}
+	return AppEntityScope()
 }
 
 func canonicalEntityScope(id RouteID, scope EntityScope) (EntityScope, error) {
@@ -284,10 +291,6 @@ func canonicalEntityScope(id RouteID, scope EntityScope) (EntityScope, error) {
 	default:
 		return EntityScope{}, invalidParams(id, "scope must be app or project")
 	}
-}
-
-func manageModuleSupportsScope(module ManageModule) bool {
-	return module == ManageNotes
 }
 
 func paramsTypeError(id RouteID, params RouteParams) error {

@@ -10,15 +10,17 @@ import (
 // Notes Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowNotesMsg opens the notes view. Focus optionally names the note filename
-// the cursor should land on.
-type ShowNotesMsg struct {
-	Project *models.Project
-	Focus   string
+// ShowNotesManagerMsg opens the workspace-wide Notes manager. Scope selects its
+// initial All/Global/project view. Focus is optional; its zero value leaves the
+// manager's default selection unchanged.
+type ShowNotesManagerMsg struct {
+	Scope      NotesScope
+	Focus      NoteRowIdentity
+	MoveSource noteMutationRef
 }
 
-// CloseNotesMsg closes the notes view.
-type CloseNotesMsg struct{ PopViewMsg }
+// CloseNotesManagerMsg closes the Notes manager's single secondary-tool route.
+type CloseNotesManagerMsg struct{ PopViewMsg }
 
 // NotesRefreshMsg refreshes the notes list.
 type NotesRefreshMsg struct{}
@@ -71,18 +73,4 @@ type ProjectNoteEditorDoneMsg struct {
 	Modified        string
 	Create          bool
 	Err             error
-}
-
-// ShowGlobalNotesMsg opens the global notes view. Focus optionally names the
-// note filename the cursor should land on.
-type ShowGlobalNotesMsg struct {
-	Focus string
-}
-
-// CloseGlobalNotesMsg closes the global notes view.
-type CloseGlobalNotesMsg struct{ PopToAnchorMsg }
-
-// ShowNoteCreatorMsg opens a quick note creation prompt.
-type ShowNoteCreatorMsg struct {
-	Project *models.Project
 }

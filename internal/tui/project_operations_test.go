@@ -34,12 +34,12 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 	)
 	fromOtherHost := executeProjectOperation(app, operationScopeOpenProjectNote, projectOperationContext("beta"))
 
-	hubMsg, ok := fromHub.Message.(ShowNotesMsg)
-	if !ok || hubMsg.Project == nil || hubMsg.Project.ID != "beta" {
+	hubMsg, ok := fromHub.Message.(ShowNotesManagerMsg)
+	if !ok || hubMsg.Scope != ProjectNotesScope("beta") {
 		t.Fatalf("Project Hub notes emitted %#v, want beta", fromHub.Message)
 	}
-	otherHostMsg, ok := fromOtherHost.Message.(ShowNotesMsg)
-	if !ok || otherHostMsg.Project != hubMsg.Project {
+	otherHostMsg, ok := fromOtherHost.Message.(ShowNotesManagerMsg)
+	if !ok || otherHostMsg != hubMsg {
 		t.Fatalf("other host notes emitted %#v, want the same project handler path", fromOtherHost.Message)
 	}
 }

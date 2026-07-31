@@ -92,9 +92,9 @@ func (m *AppModel) registerHarnessOperations() error {
 		{operationHarnessProjectNotes, "show notes", OperationCategoryNote, func() tea.Msg {
 			_, project := m.outlinerTarget()
 			if project != nil {
-				return ShowNotesMsg{Project: project}
+				return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
 			}
-			return ShowGlobalNotesMsg{}
+			return ShowNotesManagerMsg{Scope: AllNotesScope()}
 		}},
 	}
 

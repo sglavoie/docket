@@ -176,7 +176,7 @@ func TestManageHubHostsContextsAsOneTypedRoute(t *testing.T) {
 
 	route := app.CurrentRoute()
 	params, ok := route.Params().(ManageParams)
-	want := ManageParams{Module: ManageContexts, Scope: AppEntityScope()}
+	want := ManageParams{Module: ManageContexts}
 	if route.ID() != SecondaryTool || !ok || params != want {
 		t.Fatalf("context route = %s/%#v, want Manage/%#v", route.ID(), route.Params(), want)
 	}
@@ -281,14 +281,17 @@ func TestManageHubContextsRendersEveryScopeWithCounts(t *testing.T) {
 }
 
 // TestRouteValidatesManageContexts locks the sealed-enum extension: Contexts is
-// an accepted app-scoped Manage module, project scope is canonicalized away, and
+// an accepted Manage module, Notes-only scope is canonicalized away, and
 // Projects is also accepted and the module after it remains rejected.
 func TestRouteValidatesManageContexts(t *testing.T) {
-	route, err := NewRoute(SecondaryTool, ManageParams{Module: ManageContexts, Scope: ProjectEntityScope("alpha")})
+	route, err := NewRoute(SecondaryTool, ManageParams{
+		Module:     ManageContexts,
+		NotesScope: ProjectNotesScope("alpha"),
+	})
 	if err != nil {
 		t.Fatalf("NewRoute(ManageContexts): %v", err)
 	}
-	want := ManageParams{Module: ManageContexts, Scope: AppEntityScope()}
+	want := ManageParams{Module: ManageContexts}
 	if got := route.Params().(ManageParams); got != want {
 		t.Fatalf("canonical Contexts params = %#v, want %#v", got, want)
 	}

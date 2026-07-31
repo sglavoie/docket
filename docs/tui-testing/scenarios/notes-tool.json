@@ -3,16 +3,18 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open combined Notes", "key": "N" },
+    { "type": "key", "label": "open workspace-wide Notes", "key": "N" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "contains", "value": "Notes" },
-    { "type": "assert", "assert": "contains", "value": "Global + active project" },
-    { "type": "key", "label": "start a new note", "key": "n" },
-    { "type": "assert", "assert": "contains", "value": "Create note in" },
+    { "type": "assert", "assert": "contains", "value": "All Notes" },
+    { "type": "assert", "assert": "contains", "value": "2 notes across 3 owners" },
+    { "type": "assert", "assert": "contains", "value": "Workspace launch brief" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
     { "type": "assert", "assert": "contains", "value": "Global" },
     { "type": "assert", "assert": "contains", "value": "Rich Project" },
+    { "type": "assert", "assert": "contains", "value": "m: move" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "cancel destination choice", "key": "esc" },
-    { "type": "assert", "assert": "view", "value": "GlobalNotes" }
+    { "type": "key", "label": "close Notes", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
   ]
 }

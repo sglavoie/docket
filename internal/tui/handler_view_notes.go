@@ -98,46 +98,39 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			UndoContext: updated.Title,
 		}, undoAction+": "+updated.Title, false)
 
-	case ShowNotesMsg:
-		if msg.Project == nil {
-			return true, m.activateManageProjectPicker(ManageNotes)
+	case ShowNotesManagerMsg:
+		hadNotesManager := false
+		if m.manageHub != nil {
+			_, hadNotesManager = m.manageHub.ActiveModuleView().(*NotesViewModel)
 		}
-		cmd := m.activateManageHub(ManageParams{
-			Module: ManageNotes,
-			Scope:  ProjectEntityScope(msg.Project.ID),
-		})
+		cmd := m.activateManageHub(ManageParams{Module: ManageNotes, NotesScope: msg.Scope})
+		if hadNotesManager {
+			if nv := m.getActiveNotesView(); nv != nil {
+				nv.RefreshWorkspace(m.activeProjects()...)
+			}
+		}
 		m.selectActiveNote(msg.Focus)
+		if msg.MoveSource.valid() {
+			if nv := m.getActiveNotesView(); nv != nil {
+				return true, tea.Batch(cmd, nv.beginMovePickerForSource(msg.MoveSource))
+			}
+		}
 		return true, cmd
 
-	case ShowGlobalNotesMsg:
-		cmd := m.activateManageHub(ManageParams{Module: ManageNotes, Scope: AppEntityScope()})
-		m.selectActiveNote(msg.Focus)
-		return true, cmd
-
-	case ShowGlobalNoteCreatorMsg:
-		return m.handleCreateGlobalNote()
-
-	case ShowNoteCreatorMsg:
-		if msg.Project != nil {
-			// Edit a temporary note and create it only after the application
-			// transaction accepts the final content.
-			return m.handleCreateNote(msg.Project)
-		}
-		return true, nil
 	}
 	return false, nil
 }
 
-func (m *AppModel) selectActiveNote(filename string) {
-	if filename == "" || m.manageHub == nil {
+func (m *AppModel) selectActiveNote(identity NoteRowIdentity) {
+	if identity.Filename == "" || identity.Location.Scope == "" || m.manageHub == nil {
 		return
 	}
 	notes, ok := m.manageHub.ActiveModuleView().(*NotesViewModel)
 	if !ok {
 		return
 	}
-	for index, note := range notes.notes {
-		if note != nil && note.Filename == filename {
+	for index, row := range notes.visibleRows {
+		if row.Identity() == identity {
 			notes.cursor = index
 			return
 		}
@@ -158,18 +151,18 @@ func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
 		m.setSuccessStatus(msg.SuccessMessage)
 		return
 	}
-	preferred := ""
+	target := NoteRowIdentity{}
 	if len(msg.Result.Results) > 0 {
-		preferred = msg.Result.Results[len(msg.Result.Results)-1].Filename
+		result := msg.Result.Results[len(msg.Result.Results)-1]
+		target = NoteRowIdentity{
+			Location: normalizedNoteLocation(result.Location, result.ProjectID),
+			Filename: result.Filename,
+		}
 	}
 	nv.loadNotes()
-	if msg.ClearSelection {
-		nv.selectedNotes = make(map[string]bool)
-		nv.multiSelectMode = false
-	}
-	if preferred != "" {
-		for i, note := range nv.notes {
-			if note.Filename == preferred && (!nv.combined || nv.noteLocationFor(note) == location) {
+	if target.Filename != "" {
+		for i, row := range nv.visibleRows {
+			if row.Identity() == target {
 				nv.cursor = i
 				break
 			}
@@ -192,43 +185,12 @@ func noteViewMatchesLocation(view *NotesViewModel, location app.NoteLocation) bo
 	if view == nil {
 		return false
 	}
-	if view.combined {
-		if location.Scope == app.NoteScopeGlobal {
-			return true
-		}
-		return view.project != nil && view.project.ID == location.ProjectID
-	}
 	if location.Scope == app.NoteScopeGlobal {
-		return view.isGlobal
+		_, ok := view.owners[app.GlobalNoteLocation()]
+		return ok
 	}
-	return !view.isGlobal && view.project != nil && view.project.ID == location.ProjectID
-}
-
-// handleCreateGlobalNote creates a new global note and opens it in the editor.
-func (m *AppModel) handleCreateGlobalNote() (bool, tea.Cmd) {
-	note := models.NewNote("Untitled Note")
-	editor, editorErr := external.ResolveNoteEditor()
-	if editorErr != nil {
-		return true, errorCmd("%s", editorErr)
-	}
-	return true, startNoteEditor(editor, app.GlobalNoteLocation(), note, true)
-}
-
-// handleCreateNote creates a new note and opens it in the editor.
-func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
-	note := models.NewNote("Untitled Note")
-	editor, editorErr := external.ResolveNoteEditor()
-	if editorErr != nil {
-		return true, errorCmd("%s", editorErr)
-	}
-	return true, startProjectNoteEditor(editor, project.ID, note, true)
-}
-
-// startProjectNoteEditor opens a serialized copy in a temporary file. The
-// callback reads and removes only that temporary file, then returns copied data
-// for Update to validate and commit through the application layer.
-func startProjectNoteEditor(editor, projectID string, note *models.Note, create bool) tea.Cmd {
-	return startNoteEditor(editor, app.ProjectNoteLocation(projectID), note, create)
+	_, ok := view.owners[location]
+	return ok
 }
 
 func startNoteEditor(editor string, location app.NoteLocation, note *models.Note, create bool) tea.Cmd {

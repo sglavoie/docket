@@ -74,6 +74,15 @@ func (p *alwaysSearchSinglePicker[T]) Update(msg tea.Msg) (bool, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		p.picker.SetSize(msg.Width, msg.Height)
 		return true, nil
+	case tea.PasteMsg:
+		oldValue := p.picker.searchInput.Value()
+		var cmd tea.Cmd
+		p.picker.searchInput, cmd = p.picker.searchInput.Update(msg)
+		if value := p.picker.searchInput.Value(); value != oldValue {
+			p.picker.SetSearchQuery(value)
+			p.fuzzyFilter(value)
+		}
+		return true, cmd
 	case tea.KeyPressMsg:
 		return true, p.handleKey(msg)
 	default:
@@ -130,11 +139,13 @@ func (p *alwaysSearchSinglePicker[T]) fuzzyFilter(query string) {
 }
 
 func (p *alwaysSearchSinglePicker[T]) selectCurrent() tea.Cmd {
-	if p.selectMsg == nil {
+	filtered := p.picker.FilteredItems()
+	cursor := p.picker.CursorIndex()
+	if p.selectMsg == nil || cursor < 0 || cursor >= len(filtered) {
 		return nil
 	}
 	return func() tea.Msg {
-		return p.selectMsg(p.picker.CursorIndex(), p.picker.FilteredItems())
+		return p.selectMsg(cursor, filtered)
 	}
 }
 

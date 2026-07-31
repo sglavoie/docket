@@ -63,11 +63,44 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 	}
 
 	manage := mustRoute(t, SecondaryTool, ManageParams{
-		Module: ManageContexts,
-		Scope:  EntityScope{Kind: ScopeProject, ProjectID: "p1"},
+		Module:     ManageContexts,
+		NotesScope: ProjectNotesScope("p1"),
 	}).Params().(ManageParams)
-	if manage.Scope != AppEntityScope() {
+	if manage != (ManageParams{Module: ManageContexts}) {
 		t.Errorf("irrelevant manage params not canonical: %+v", manage)
+	}
+	allNotes := mustRoute(t, SecondaryTool, ManageParams{
+		Module:     ManageNotes,
+		NotesScope: NotesScope{Kind: NotesScopeAll, ProjectID: "irrelevant"},
+	}).Params().(ManageParams)
+	if allNotes.NotesScope != AllNotesScope() {
+		t.Errorf("All Notes params not canonical: %+v", allNotes)
+	}
+	globalNotes := mustRoute(t, SecondaryTool, ManageParams{
+		Module:     ManageNotes,
+		NotesScope: NotesScope{Kind: NotesScopeGlobal, ProjectID: "irrelevant"},
+	}).Params().(ManageParams)
+	if globalNotes.NotesScope != GlobalNotesScope() {
+		t.Errorf("Global Notes params not canonical: %+v", globalNotes)
+	}
+	projectNotes := mustRoute(t, SecondaryTool, ManageParams{
+		Module:     ManageNotes,
+		NotesScope: ProjectNotesScope("p1"),
+	}).Params().(ManageParams)
+	if projectNotes.NotesScope != ProjectNotesScope("p1") {
+		t.Errorf("project Notes params not canonical: %+v", projectNotes)
+	}
+	if _, err := NewRoute(SecondaryTool, ManageParams{
+		Module:     ManageNotes,
+		NotesScope: ProjectNotesScope(""),
+	}); !errors.Is(err, ErrProjectRequired) {
+		t.Fatalf("project Notes without project error = %v", err)
+	}
+	if _, err := NewRoute(SecondaryTool, ManageParams{
+		Module:     ManageNotes,
+		NotesScope: NotesScope{Kind: NotesScopeKind(99)},
+	}); !errors.Is(err, ErrInvalidRouteParams) {
+		t.Fatalf("invalid Notes scope error = %v", err)
 	}
 	if _, err := NewRoute(SecondaryTool, TaskWorkspaceParams{}); !errors.Is(err, ErrRouteParamsType) {
 		t.Fatalf("secondary tool with foreign params error = %v", err)

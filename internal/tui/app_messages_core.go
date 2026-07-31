@@ -32,11 +32,6 @@ type PopViewMsg struct{}
 
 func (PopViewMsg) closePopStyle() popStyle { return popOne }
 
-// PopToAnchorMsg is embedded in Close*Msg types that need popToAnchorView().
-type PopToAnchorMsg struct{}
-
-func (PopToAnchorMsg) closePopStyle() popStyle { return popToAnchor }
-
 // =============================================================================
 // Navigation Messages
 // =============================================================================

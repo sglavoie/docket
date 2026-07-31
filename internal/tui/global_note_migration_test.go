@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,12 +47,13 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	}
 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
-	view := NewCombinedNotesViewModelWithService(
+	view := NewNotesViewModelWithService(
 		dir,
-		project,
+		AllNotesScope(),
 		app.GlobalNoteLocation(),
 		svc,
 		ledger,
+		project,
 	)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
@@ -77,7 +77,7 @@ func (e *globalNoteTUIEnv) note(t *testing.T, filename string) *models.Note {
 
 func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Edit me")
-	before := env.view.notes[0]
+	before := env.view.visibleRows[0].Note
 	updated := cloneNoteForCommand(before)
 	updated.Body = "edited body"
 	updated.ModifiedAt = time.Now()
@@ -89,7 +89,7 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 	if result.Location != app.GlobalNoteLocation() {
 		t.Fatalf("result location = %#v", result.Location)
 	}
-	if env.view.notes[0] != before || env.view.notes[0].Body != "Edit me body" {
+	if env.view.visibleRows[0].Note != before || env.view.visibleRows[0].Note.Body != "Edit me body" {
 		t.Fatal("command mutated the global view cache before Update")
 	}
 	if disk := env.note(t, before.Filename); disk.Body != "edited body" {
@@ -103,14 +103,14 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 		t.Fatalf("global-only transaction carried project IDs: %v", entry.ProjectIDs)
 	}
 	env.shell.handleNotesMessages(result)
-	if env.view.notes[0].Body != "edited body" || env.view.notes[0] == before {
+	if env.view.visibleRows[0].Note.Body != "edited body" || env.view.visibleRows[0].Note == before {
 		t.Fatal("Update did not reconcile the committed global note")
 	}
 }
 
 func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Scoped note")
-	note := env.view.notes[0]
+	note := env.view.visibleRows[0].Note
 	updated := cloneNoteForCommand(note)
 	updated.Body = "updated scoped body"
 	updated.ModifiedAt = time.Now()
@@ -164,46 +164,9 @@ func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 	}
 }
 
-func TestGlobalBulkNoteDeleteIsAtomicOnStaleRevision(t *testing.T) {
-	env := newGlobalNoteTUIEnv(t, "Alpha", "Beta")
-	for _, note := range env.view.notes {
-		env.view.selectedNotes[note.Filename] = true
-	}
-	env.view.multiSelectMode = true
-	stale := env.view.notes[1]
-	concurrent := env.note(t, stale.Filename)
-	concurrent.Body = "newer beta"
-	if err := storage.SaveNoteTo(env.dir, concurrent); err != nil {
-		t.Fatalf("concurrent save: %v", err)
-	}
-
-	cmd := env.view.performBulkDelete()
-	msg, ok := cmd().(ProjectNoteMutationErrorMsg)
-	if !ok {
-		t.Fatalf("global bulk delete = %T, want ProjectNoteMutationErrorMsg", cmd())
-	}
-	var conflict *storage.ArtifactConflictError
-	if !errors.As(msg.Err, &conflict) {
-		t.Fatalf("global stale error = %T %v", msg.Err, msg.Err)
-	}
-	env.shell.handleNotesMessages(msg)
-	if !env.view.multiSelectMode || len(env.view.selectedNotes) != 2 {
-		t.Fatal("rejected global batch cleared the retryable selection")
-	}
-	for _, note := range env.view.notes {
-		if _, err := storage.LoadNoteFrom(env.dir, note.Filename); err != nil {
-			t.Fatalf("atomic global batch partially deleted %s: %v", note.Filename, err)
-		}
-	}
-}
-
-func TestGlobalBulkNoteTagsCommitAsOneTransaction(t *testing.T) {
-	t.Skip("retired: combined Notes has no tags or bulk mutations")
-}
-
 func TestGlobalNoteEditorResultUsesTypedRenameTransaction(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Editable")
-	original := env.view.notes[0]
+	original := env.view.visibleRows[0].Note
 	content, err := storage.RenderNoteContent(original)
 	if err != nil {
 		t.Fatal(err)
@@ -220,8 +183,8 @@ func TestGlobalNoteEditorResultUsesTypedRenameTransaction(t *testing.T) {
 	}
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(result)
-	if len(env.view.notes) != 1 || env.view.notes[0].Title != "Edited globally" {
-		t.Fatalf("global editor reconciliation = %#v", env.view.notes)
+	if len(env.view.visibleRows) != 1 || env.view.visibleRows[0].Note.Title != "Edited globally" {
+		t.Fatalf("global editor reconciliation = %#v", env.view.visibleRows)
 	}
 	if _, err := os.Stat(filepath.Join(env.dir, original.Filename)); !os.IsNotExist(err) {
 		t.Fatalf("global rename left original canonical file: %v", err)
@@ -252,7 +215,7 @@ func TestGlobalNoteCreateEditorResultDoesNotPersistPlaceholder(t *testing.T) {
 	}
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(result)
-	if len(env.view.notes) != 1 || env.view.notes[0].Title != "Created globally" || env.view.notes[0].Body != "created body" {
-		t.Fatalf("created global note = %#v", env.view.notes)
+	if len(env.view.visibleRows) != 1 || env.view.visibleRows[0].Note.Title != "Created globally" || env.view.visibleRows[0].Note.Body != "created body" {
+		t.Fatalf("created global note = %#v", env.view.visibleRows)
 	}
 }

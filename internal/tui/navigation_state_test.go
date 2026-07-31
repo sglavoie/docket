@@ -52,7 +52,7 @@ func TestPrimaryRouteStackBoundsChildrenAndPreservesRootFocus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts, Scope: AppEntityScope()})
+	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
 	if err := stack.PushChild(secondary, FocusTarget{ControlID: "detail-tab"}); err != nil {
 		t.Fatal(err)
 	}

@@ -211,6 +211,35 @@ func TestUITestFixtureRichLoadsTasksFromDisk(t *testing.T) {
 	}
 }
 
+func TestUITestFixtureRichLoadsGlobalAndProjectNotesFromDisk(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureRich, 120, 40)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver(rich) error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	project := driver.App().currentProject
+	if project == nil {
+		t.Fatal("rich fixture has no current project")
+	}
+	globalNotes, err := storage.ListNotesFrom(storage.GlobalNotesDir(ws.DataDir))
+	if err != nil {
+		t.Fatalf("load rich Global notes: %v", err)
+	}
+	projectNotes, err := storage.ListNotes(project)
+	if err != nil {
+		t.Fatalf("load rich project notes: %v", err)
+	}
+	if len(globalNotes) != 1 || globalNotes[0].Title != "Workspace launch brief" {
+		t.Fatalf("rich Global notes = %#v", globalNotes)
+	}
+	if len(projectNotes) != 1 ||
+		projectNotes[0].Title != "Rich Project delivery plan" ||
+		!strings.Contains(projectNotes[0].Body, "authentication milestone") {
+		t.Fatalf("rich project notes = %#v", projectNotes)
+	}
+}
+
 func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	src := newSourceWorkspace(t)
 	srcProject := src.Runtime.ActiveProjects()[0]

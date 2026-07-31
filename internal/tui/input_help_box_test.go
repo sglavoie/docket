@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -84,6 +85,26 @@ func TestSnoozeInputLongTaskTitleFitsMinimumWidth(t *testing.T) {
 	plain, issues := normalizeScreen(m.View().Content, 60, 20)
 	if len(issues) > 0 {
 		t.Fatalf("SnoozeInput should fit 60x20 with a long task title, got %+v:\n%s", issues, plain)
+	}
+}
+
+func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
+	got := (&NotesViewModel{}).GetHelpItems()
+	want := []HelpItem{
+		{Key: "j/k", Description: "Navigate"},
+		{Key: "Enter", Description: "Open in external editor"},
+		{Key: "n", Description: "Create in Global or an active project"},
+		{Key: "v", Description: "Choose All, Global, or active-project scope"},
+		{Key: "s", Description: "Search note titles and bodies"},
+		{Key: "r", Description: "Rename note"},
+		{Key: "m", Description: "Move to Global or an active project"},
+		{Key: "x", Description: "Delete note"},
+		{Key: "u", Description: "Undo workspace change"},
+		{Key: "Ctrl+R", Description: "Redo workspace change"},
+		{Key: "Esc", Description: "Cancel search, clear it, or close Notes"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Notes help = %#v, want %#v", got, want)
 	}
 }
 
