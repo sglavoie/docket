@@ -45,11 +45,11 @@ All mode shows open, unsnoozed work in this order:
 Pinned, Today, In Progress, Inbox, Next, Backlog, Waiting, Paused, Someday
 ```
 
-Pinned tasks appear once, newest pin first, with project and parent
-breadcrumbs. All, Inbox, and Backlog preserve hierarchy and manual sibling
-order. Today and Next preserve workspace-wide planning order. Due is date
-ordered. Done, Canceled, and snoozed work stay hidden unless a filter explicitly
-asks for them.
+Pinned tasks appear once in project groups. Groups sort by their newest pin and
+tasks within each group remain newest-first, with parent breadcrumbs. All,
+Inbox, and Backlog preserve hierarchy and manual sibling order. Today and Next
+preserve workspace-wide planning order. Due is date ordered. Done, Canceled,
+and snoozed work stay hidden unless a filter explicitly asks for them.
 
 ## Outliner grammar
 

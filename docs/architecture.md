@@ -106,9 +106,10 @@ The five modes are All, Inbox, Next, Backlog, and Due.
 frame in the same Outliner, never a second root.
 
 All mode projects open, unsnoozed work as Pinned, Today, In Progress, Inbox,
-Next, Backlog, Waiting, Paused, and Someday. Pinned is a transient
-newest-first projection with project/parent breadcrumbs and an identity
-suppression set, so promoted tasks appear only once.
+Next, Backlog, Waiting, Paused, and Someday. Pinned is a transient projection
+grouped by project: groups sort by their newest pin and tasks within each group
+remain newest-first. It retains parent breadcrumbs and an identity suppression
+set, so promoted tasks appear only once.
 
 ### One operation grammar
 
