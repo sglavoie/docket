@@ -18,8 +18,9 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]OperationID{
 		"a": operationCoreCapture, "A": operationTaskNewChild,
 		"e": operationCoreEdit, "E": operationCoreEditDescription,
-		"space": operationCoreActions,
-		"j":     operationCoreCursorDown, "down": operationCoreCursorDown,
+		"ctrl+e": operationCoreExternalEditor,
+		"space":  operationCoreActions,
+		"j":      operationCoreCursorDown, "down": operationCoreCursorDown,
 		"k": operationCoreCursorUp, "up": operationCoreCursorUp,
 		"g": operationCoreCursorTop, "home": operationCoreCursorTop,
 		"G": operationCoreCursorBottom, "end": operationCoreCursorBottom,

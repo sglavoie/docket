@@ -57,7 +57,7 @@ asks for them.
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the five modes |
 | Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
-| Capture and edit | `a` capture, `A` child, `e` title, `E` description |
+| Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
 | State and planning | `s` opens the state overlay: `si` Inbox, `sr` Ready/Backlog, `sn` toggle Next, `sg` In Progress, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled, `st` toggle Today |
 | Metadata | `!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |

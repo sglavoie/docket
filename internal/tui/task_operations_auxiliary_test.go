@@ -197,6 +197,10 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 	if got := edit.Message.(ShowTaskTextEditorMsg).Task; got != task {
 		t.Errorf("edit target = %v, want the frozen task %v", got, task)
 	}
+	externalEdit := executeTaskOperationForTest(t, model, operationCoreExternalEditor, context)
+	if got := externalEdit.Message.(EditTaskContentMsg).Task; got != task {
+		t.Errorf("external editor target = %v, want the frozen task %v", got, task)
+	}
 	copied := executeTaskOperationForTest(t, model, operationTaskCopyTitle, context)
 	if copied.Message.(OperationCommandResultMsg).Cmd == nil {
 		t.Error("copy produced no application operation command")

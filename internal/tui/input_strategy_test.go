@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func registeredSimplifiedOperationRegistry(t *testing.T) *OperationRegistry {
@@ -114,6 +116,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		{key: "l", want: operationCoreExpand},
 		{key: "right", want: operationCoreExpand},
 		{key: "S", want: operationCoreToggleSections},
+		{key: "ctrl+e", want: operationCoreExternalEditor},
 	}
 	for _, test := range tests {
 		binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, test.key, ctx)
@@ -136,6 +139,51 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	}
 	if _, _, ok := registry.InputBindingForKey(InputStrategySimplified, ":", ctx); ok {
 		t.Error("removed Finder key still resolves")
+	}
+}
+
+func TestSimplifiedCtrlEOpensCursorTaskInExternalEditor(t *testing.T) {
+	app := newUITestApp()
+	first := &models.Task{
+		ID: "first", ShortID: 1, Title: "First",
+		WorkflowState: models.StateReady,
+	}
+	selected := &models.Task{
+		ID: "selected", ShortID: 2, Title: "Selected",
+		WorkflowState: models.StateReady,
+	}
+	project := &models.Project{
+		ID: "alpha", Name: "Alpha", Slug: "alpha",
+		Tasks: []*models.Task{first, selected},
+	}
+	project.BuildTaskTree()
+	setTestAppProjects(app, project)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.rows = []outlinerRow{
+		{task: first, ProjectID: project.ID},
+		{task: selected, ProjectID: project.ID},
+	}
+	app.crossOutliner.cursor = 1
+
+	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{
+		Code: 'e',
+		Mod:  tea.ModCtrl,
+	})
+	if !handled || cmd == nil {
+		t.Fatalf("Ctrl+E = handled %v cmd %v, want external-editor dispatch", handled, cmd)
+	}
+	msg, ok := cmd().(EditTaskContentMsg)
+	if !ok {
+		t.Fatalf("Ctrl+E emitted %T, want EditTaskContentMsg", cmd())
+	}
+	if msg.Task != selected || msg.Project != project {
+		t.Fatalf(
+			"Ctrl+E target = task %v project %v, want selected task %v project %v",
+			msg.Task,
+			msg.Project,
+			selected,
+			project,
+		)
 	}
 }
 

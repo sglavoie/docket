@@ -59,6 +59,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
 		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
+		withTaskTarget(core(operationCoreExternalEditor, "Open in External Editor", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task externally", "external editor")),
 		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "ready"),
 		core(operationCoreToday, "Toggle Today", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "daily plan"),
 		core(operationCoreNext, "Toggle Next", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "on deck"),
@@ -133,6 +134,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			message = ShowTaskTextEditorMsg{
 				Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 			}
+		}
+	case operationCoreExternalEditor:
+		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
+			message = EditTaskContentMsg{Task: task, Project: project}
 		}
 	case operationCoreBacklog:
 		if invocation.Context.Selection.Visual {

@@ -76,6 +76,7 @@ func OutlinerV5TargetContract() OutlinerV5Contract {
 			{Key: "A", Action: "capture-child", Area: "edit"},
 			{Key: "e", Action: "edit-title", Area: "edit"},
 			{Key: "E", Action: "edit-description", Area: "edit"},
+			{Key: "Ctrl+E", Action: "open-external-editor", Area: "edit"},
 			{Key: "si", Action: "state-inbox", Area: "state-chord"},
 			{Key: "sr", Action: "state-ready-backlog", Area: "state-chord"},
 			{Key: "sn", Action: "toggle-next", Area: "state-chord"},

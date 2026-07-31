@@ -190,6 +190,7 @@ const (
 	operationCoreCapture          OperationID = "tui.core.capture"
 	operationCoreEdit             OperationID = "tui.core.edit"
 	operationCoreEditDescription  OperationID = "tui.core.edit-description"
+	operationCoreExternalEditor   OperationID = "tui.core.external-editor"
 	operationCoreBacklog          OperationID = "tui.core.backlog"
 	operationCoreToday            OperationID = "tui.core.today"
 	operationCoreNext             OperationID = "tui.core.next"
@@ -231,6 +232,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 1, FooterLabel: "capture"},
 			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 10, FooterLabel: "title"},
 			{OperationID: operationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
+			{OperationID: operationCoreExternalEditor, Keys: []string{"ctrl+e"}, DisplayKey: "Ctrl+E", FooterRank: 21, FooterLabel: "editor"},
 			{OperationID: operationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
 			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 2, FooterLabel: "actions"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},

@@ -128,6 +128,7 @@ func TestOutlinerV5TargetGrammarIsCanonicalAndSingleOwner(t *testing.T) {
 		"Space",
 		"v",
 		"V",
+		"Ctrl+E",
 		"Ctrl+Y",
 		"Ctrl+R",
 	} {

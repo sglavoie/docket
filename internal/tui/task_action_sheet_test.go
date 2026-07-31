@@ -111,6 +111,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationTaskOutdent,
 		operationCoreEdit,
 		operationCoreEditDescription,
+		operationCoreExternalEditor,
 		operationCoreDetail,
 		operationTaskCopyTitle,
 		operationTaskCopyDetails,
