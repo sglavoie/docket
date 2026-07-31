@@ -50,7 +50,6 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	view := NewNotesViewModelWithService(
 		dir,
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		svc,
 		ledger,
 		project,

@@ -48,7 +48,6 @@ func TestNotesMovePickerOffersEveryOtherOwner(t *testing.T) {
 			view := NewNotesViewModelWithService(
 				t.TempDir(),
 				AllNotesScope(),
-				app.GlobalNoteLocation(),
 				service,
 				nil,
 				alpha,
@@ -105,7 +104,6 @@ func TestNotesMoveEnterCommitsFrozenLocatedRequestWithoutConfirmation(t *testing
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		alpha,
@@ -164,7 +162,6 @@ func TestNotesMoveRejectsMalformedNotesAndMissingDestinations(t *testing.T) {
 		view := NewNotesViewModelWithService(
 			t.TempDir(),
 			AllNotesScope(),
-			app.GlobalNoteLocation(),
 			service,
 			nil,
 			project,
@@ -187,7 +184,6 @@ func TestNotesMoveRejectsMalformedNotesAndMissingDestinations(t *testing.T) {
 		view := NewNotesViewModelWithService(
 			t.TempDir(),
 			AllNotesScope(),
-			app.GlobalNoteLocation(),
 			service,
 			nil,
 		)
@@ -358,7 +354,6 @@ func TestNotesMoveFailureKeepsVisibleOwnership(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		project,
@@ -382,7 +377,7 @@ func TestNotesMoveFailureKeepsVisibleOwnership(t *testing.T) {
 func TestNotesMoveKeymapAndHelpStayInParity(t *testing.T) {
 	view := &NotesViewModel{}
 	wantKeys := []string{
-		"j", "k", "down", "up", "enter", "n", "v", "s", "r", "m", "x", "u", "ctrl+r",
+		"j", "k", "down", "up", "enter", "n", "a", "v", "s", "r", "m", "x", "u", "ctrl+r",
 	}
 	if got := view.HandledKeys(); !slices.Equal(got, wantKeys) {
 		t.Fatalf("Notes handled keys = %v, want %v", got, wantKeys)

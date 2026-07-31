@@ -67,7 +67,6 @@ type NotesViewModel struct {
 
 	notesDir    string
 	scope       NotesScope
-	preferred   app.NoteLocation
 	noteService projectNoteService
 	noteLedger  *storage.WorkspaceLedger
 
@@ -109,7 +108,6 @@ type NotesViewModel struct {
 func NewNotesViewModelWithService(
 	notesDir string,
 	scope NotesScope,
-	_ app.NoteLocation,
 	service projectNoteService,
 	ledger *storage.WorkspaceLedger,
 	projects ...*models.Project,
@@ -117,7 +115,6 @@ func NewNotesViewModelWithService(
 	m := &NotesViewModel{
 		notesDir:    notesDir,
 		scope:       scope,
-		preferred:   notesCreationDefaultLocation(scope),
 		noteService: service,
 		noteLedger:  ledger,
 	}
@@ -174,7 +171,6 @@ func (m *NotesViewModel) RefreshWorkspace(projects ...*models.Project) bool {
 		!m.locationAvailable(app.ProjectNoteLocation(m.scope.ProjectID))
 	if scopeInvalid {
 		m.scope = AllNotesScope()
-		m.preferred = app.GlobalNoteLocation()
 	}
 	m.refreshLocationPicker()
 	m.loadNotes()
@@ -303,7 +299,6 @@ func (m *NotesViewModel) SetScope(scope NotesScope) {
 	m.locationPicker = nil
 	m.moveSource = nil
 	m.scope = scope
-	m.preferred = notesCreationDefaultLocation(scope)
 	m.deriveVisibleRows()
 	m.restoreVisibleSelection(selectedID, preserveSelection)
 }

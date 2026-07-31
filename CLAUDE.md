@@ -144,8 +144,9 @@ project selector for project focus and lean project administration. `N` always
 opens All Notes across Global and every project returned by
 `Runtime.ActiveProjects()`. Inside Notes, `v` chooses All, Global, or one active
 project, `s` persistently searches titles and bodies, and `m` atomically moves
-one note between active owners. Creation always asks for a destination; the
-remaining mutation grammar is open/edit, rename, delete, undo, and redo. Keep
+one note between active owners. Creation with `n` or its `a` alias always asks
+for a destination; the remaining mutation grammar is open/edit, rename,
+delete, undo, and redo. Keep
 note identity location-qualified, keep archived projects and `Ctrl+N` excluded,
 and do not restore note tags, task links, pins, bulk actions, or previews. `T`
 toggles only dark/light.

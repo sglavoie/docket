@@ -192,9 +192,10 @@ modification and carry an owner label. `v` opens a searchable All, Global, or
 active-project scope picker, while `s` applies a persistent title/body search
 inside the selected scope.
 
-`n` always asks for a Global or active-project destination before starting the
-editor, and `m` moves the selected note to another such owner as one atomic
-workspace transaction. `Enter` opens and edits the selected note in
+`n` (or its `a` alias) always asks for a Global or active-project destination
+before starting the editor, and `m` moves the selected note to another such
+owner as one atomic workspace transaction. `Enter` opens and edits the selected
+note in
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
 configure one. Notes support open/edit, create, rename, move, delete, undo, and
 redo. Note tags, task links, pins, bulk actions, previews, archived-project

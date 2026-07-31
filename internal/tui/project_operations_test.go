@@ -108,6 +108,44 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 	}
 }
 
+func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
+	app := contextHubApp(t)
+	archived := scopeTestProject("archived", "Archived", "1")
+	archived.Archived = true
+	addTestAppProject(app, archived)
+
+	hub := openProjectHub(t, app)
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	focusProjectHubItem(t, hub, "project-hub:archived:archived")
+	hub.Update(syntheticKey(' '))
+	if got := projectHubActionIDs(hub); containsOperationID(got, operationScopeOpenProjectNote) {
+		t.Fatalf("archived project offered Open project notes: %v", got)
+	}
+
+	result := executeProjectOperation(app, operationScopeOpenProjectNote, projectOperationContext("archived"))
+	if result.Err == nil {
+		t.Fatalf("Open project notes emitted %#v for an archived project", result.Message)
+	}
+	if _, ok := result.Message.(ShowNotesManagerMsg); ok {
+		t.Fatalf("Open project notes emitted a Notes manager message for an archived project: %#v", result.Message)
+	}
+
+	descriptor, ok := app.operationRegistry.Descriptor(operationScopeOpenProjectNote)
+	if !ok {
+		t.Fatal("Open project notes operation is not registered")
+	}
+	handlerResult := app.executeProjectOperation(
+		OperationInvocation{Descriptor: descriptor},
+		operationTargetFor(OperationTargetCurrentEntity, ProjectEntity("archived")),
+	)
+	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open project notes is unavailable while Archived is archived" {
+		t.Fatalf("archived handler error = %v, want the shared lifecycle refusal", handlerResult.Err)
+	}
+	if _, ok := handlerResult.Message.(ShowNotesManagerMsg); ok {
+		t.Fatalf("archived handler emitted a Notes manager message: %#v", handlerResult.Message)
+	}
+}
+
 func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.ScopeProjectIDs = []string{"alpha", "beta"}

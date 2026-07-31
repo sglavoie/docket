@@ -47,7 +47,7 @@ func (m *NotesViewModel) View() tea.View {
 		if m.searchApplied != "" {
 			escHelp = "Esc: clear search"
 		}
-		help := "Enter: open/edit · n: new · v: scope · s: search · r: rename · m: move · x: delete · u: undo · Ctrl+R: redo · " + escHelp
+		help := "Enter: open/edit · n/a: new · v: scope · s: search · r: rename · m: move · x: delete · u: undo · Ctrl+R: redo · " + escHelp
 		footer = append(footer, HelpStyle.Render(renderWrappingHelpLine(help, width)))
 	}
 	if m.statusMessage != "" {
@@ -64,18 +64,6 @@ func (m *NotesViewModel) View() tea.View {
 		content,
 		footerBlock,
 	))
-}
-
-func (m *NotesViewModel) renderListPane() string {
-	errorRows := len(m.collectionErrors)
-	if m.snapshotError != nil {
-		errorRows = 1
-	}
-	searchRows := 0
-	if m.searchEditing || m.searchApplied != "" {
-		searchRows = 1
-	}
-	return m.renderListPaneHeight(max(m.Height()-7-errorRows-searchRows, 1))
 }
 
 func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
@@ -97,7 +85,7 @@ func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
 		if len(m.collectionErrors) > 0 {
 			message = "No notes loaded from the available owners."
 		}
-		return renderEmptyState(message, "Press n to choose a location and create one.") + "\n"
+		return renderEmptyState(message, "Press n or a to choose a location and create one.") + "\n"
 	}
 
 	var b strings.Builder
@@ -245,7 +233,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
 		{Key: "j/k", Description: "Navigate"},
 		{Key: "Enter", Description: "Open in external editor"},
-		{Key: "n", Description: "Create in Global or an active project"},
+		{Key: "n/a", Description: "Create in Global or an active project"},
 		{Key: "v", Description: "Choose All, Global, or active-project scope"},
 		{Key: "s", Description: "Search note titles and bodies"},
 		{Key: "r", Description: "Rename note"},

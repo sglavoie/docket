@@ -56,7 +56,6 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	view := NewNotesViewModelWithService(
 		storage.GlobalNotesDir(dataDir),
 		AllNotesScope(),
-		app.ProjectNoteLocation(project.ID),
 		svc,
 		ledger,
 		project,

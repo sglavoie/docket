@@ -156,10 +156,11 @@ type projectOperationRequirement struct {
 }
 
 var projectOperationRequirements = map[OperationID]projectOperationRequirement{
-	operationProjectOpen:         {requireActive: true},
-	operationScopePinProject:     {requireActive: true},
-	operationScopeArchiveProject: {requireActive: true, rejectSystemInbox: true},
-	operationScopeRestoreProject: {requireArchived: true},
+	operationProjectOpen:          {requireActive: true},
+	operationScopePinProject:      {requireActive: true},
+	operationScopeArchiveProject:  {requireActive: true, rejectSystemInbox: true},
+	operationScopeRestoreProject:  {requireArchived: true},
+	operationScopeOpenProjectNote: {requireActive: true},
 }
 
 // projectOperationUnavailable checks the freshly reloaded project rather than

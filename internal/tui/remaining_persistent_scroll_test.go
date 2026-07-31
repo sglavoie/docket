@@ -24,15 +24,15 @@ func TestNotesViewPersistentScrollKeepsWindowOnMoveUp(t *testing.T) {
 	m := &NotesViewModel{visibleRows: rows}
 	m.SetSize(80, 10)
 
-	m.cursor = 5
-	_ = m.renderListPane()
+	m.cursor = len(rows) - 1
+	_ = m.View()
 	start := m.scrollOffset
 	if start == 0 {
 		t.Fatalf("expected notes list to scroll down, offset stayed at 0")
 	}
 
-	m.cursor = 4
-	_ = m.renderListPane()
+	m.cursor--
+	_ = m.View()
 	if m.scrollOffset != start {
 		t.Fatalf("moving up inside viewport changed first rendered row: offset=%d want %d", m.scrollOffset, start)
 	}

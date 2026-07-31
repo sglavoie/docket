@@ -17,6 +17,9 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("n", "Create note after choosing location", "Actions", func() (tea.Model, tea.Cmd) {
 			return m, m.beginDestinationPicker()
 		}),
+		keymap.Bind("a", "Create note after choosing location", "Actions", func() (tea.Model, tea.Cmd) {
+			return m, m.beginDestinationPicker()
+		}),
 		keymap.Bind("v", "Choose Notes scope", "View", func() (tea.Model, tea.Cmd) { return m, m.beginScopePicker() }),
 		keymap.Bind("s", "Search note titles and bodies", "View", func() (tea.Model, tea.Cmd) {
 			return m, m.beginSearch()

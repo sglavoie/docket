@@ -28,7 +28,6 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		alpha,
@@ -336,7 +335,6 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		projects...,

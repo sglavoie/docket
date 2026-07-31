@@ -109,12 +109,16 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 	}
 	if params.NotesScope != ProjectNotesScope(project.ID) || !ok ||
 		notes.scope != ProjectNotesScope(project.ID) ||
-		notes.preferred != apppkg.ProjectNoteLocation(project.ID) ||
 		resolvedProject == nil || resolvedProject.ID != project.ID {
-		t.Fatalf("project scope = %#v/%T/%+v, want %q/%p", params.NotesScope, app.manageHub.ActiveModuleView(), notes.preferred, project.ID, project)
+		t.Fatalf("project scope = %#v/%T, want %q/%p", params.NotesScope, app.manageHub.ActiveModuleView(), project.ID, project)
 	}
 	if notes != globalNotes {
 		t.Fatal("scope selection rebuilt the Notes manager")
+	}
+	_, _ = app.manageHub.Update(syntheticKey('n'))
+	if notes.locationPicker == nil || notes.locationPicker.purpose != notesLocationPickerCreation ||
+		notes.locationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
+		t.Fatalf("project scope creation picker = %#v, want project %q selected", notes.locationPicker, project.ID)
 	}
 	if app.navigation.Primary.Depth() != 2 {
 		t.Fatalf("scope replacement depth = %d, want root plus one child", app.navigation.Primary.Depth())

@@ -275,7 +275,6 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 				operationScopeCreateProject,
 				operationScopeRenameProject,
 				operationScopeRestoreProject,
-				operationScopeOpenProjectNote,
 			},
 			Data: projectHubEntry{Kind: projectHubEntryArchived, Project: project},
 		})

@@ -62,7 +62,6 @@ func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		alpha,
@@ -112,7 +111,6 @@ func TestNotesManagerRetainsPartialResultsAndOwnerErrors(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		alpha,
@@ -142,7 +140,6 @@ func TestNotesManagerScopeDerivationAndRefreshPreserveLocatedSelection(t *testin
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		alpha,
@@ -179,7 +176,6 @@ func TestNotesManagerTotalSnapshotFailureBlocksRows(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		&combinedNotesService{snapshotErr: snapshotErr},
 		nil,
 	)
@@ -211,7 +207,6 @@ func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.ProjectNoteLocation(alpha.ID),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 			app.ProjectNoteLocation(beta.ID): {malformed},
 		}},
@@ -243,7 +238,6 @@ func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.ProjectNoteLocation(project.ID),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 		project,
@@ -286,7 +280,6 @@ func TestNotesManagerCreationOffersEveryActiveProject(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 		alpha,
@@ -324,7 +317,6 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		GlobalNotesScope(),
-		app.GlobalNoteLocation(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 		alpha,
@@ -377,7 +369,6 @@ func TestNotesScopePickerEmptyResultsAreSafeAndResize(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 	)

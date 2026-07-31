@@ -93,7 +93,7 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 	want := []HelpItem{
 		{Key: "j/k", Description: "Navigate"},
 		{Key: "Enter", Description: "Open in external editor"},
-		{Key: "n", Description: "Create in Global or an active project"},
+		{Key: "n/a", Description: "Create in Global or an active project"},
 		{Key: "v", Description: "Choose All, Global, or active-project scope"},
 		{Key: "s", Description: "Search note titles and bodies"},
 		{Key: "r", Description: "Rename note"},

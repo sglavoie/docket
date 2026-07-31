@@ -73,7 +73,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
 	view := &NotesViewModel{}
 	want := []string{
-		"j", "k", "down", "up", "enter", "n", "v", "s", "r", "m", "x", "u", "ctrl+r",
+		"j", "k", "down", "up", "enter", "n", "a", "v", "s", "r", "m", "x", "u", "ctrl+r",
 	}
 	if got := view.HandledKeys(); !slices.Equal(got, want) {
 		t.Fatalf("Notes direct keys = %v, want %v", got, want)

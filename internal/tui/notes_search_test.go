@@ -56,7 +56,6 @@ func TestNotesSearchRankingPrefersTitlesAndUsesDeterministicTies(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		alpha,
@@ -100,7 +99,6 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		project,
@@ -210,7 +208,6 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
 		AllNotesScope(),
-		app.GlobalNoteLocation(),
 		service,
 		nil,
 		project,

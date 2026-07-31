@@ -170,14 +170,6 @@ func notesCreationDefaultScope(scope NotesScope) NotesScope {
 	return GlobalNotesScope()
 }
 
-func notesCreationDefaultLocation(scope NotesScope) app.NoteLocation {
-	defaultScope := notesCreationDefaultScope(scope)
-	if defaultScope.Kind == NotesScopeProject {
-		return app.ProjectNoteLocation(defaultScope.ProjectID)
-	}
-	return app.GlobalNoteLocation()
-}
-
 func (picker *notesLocationPicker) Init() tea.Cmd {
 	return picker.alwaysSearch.Init()
 }

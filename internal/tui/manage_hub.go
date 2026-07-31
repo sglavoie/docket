@@ -127,8 +127,7 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	}
 	params = route.Params().(ManageParams)
 	m.params = params
-	project, err := m.projectForNotesScope(params)
-	if err != nil {
+	if _, err := m.projectForNotesScope(params); err != nil {
 		return err
 	}
 	key := manageModuleCacheKey(params)
@@ -150,14 +149,9 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	var view View
 	switch params.Module {
 	case ManageNotes:
-		preferred := app.GlobalNoteLocation()
-		if project != nil {
-			preferred = app.ProjectNoteLocation(project.ID)
-		}
 		view = NewNotesViewModelWithService(
 			storage.GlobalNotesDir(m.deps.Runtime.DataDir()),
 			params.NotesScope,
-			preferred,
 			m.deps.NoteService,
 			m.deps.HistoryLedger,
 			m.deps.Runtime.ActiveProjects()...,
