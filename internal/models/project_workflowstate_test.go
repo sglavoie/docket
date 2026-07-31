@@ -37,9 +37,9 @@ func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 		StateGroupInProgress,
 		StateGroupInbox,
 		StateGroupNext,
+		StateGroupPaused,
 		StateGroupBacklog,
 		StateGroupWaiting,
-		StateGroupPaused,
 		StateGroupSomeday,
 	}
 	if got := AllModeWorkflowStateGroups(); !slices.Equal(got, want) {

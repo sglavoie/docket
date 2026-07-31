@@ -48,9 +48,9 @@ func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 		StateGroupInProgress,
 		StateGroupInbox,
 		StateGroupNext,
+		StateGroupPaused,
 		StateGroupBacklog,
 		StateGroupWaiting,
-		StateGroupPaused,
 		StateGroupSomeday,
 	}
 }

@@ -73,7 +73,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	})
 	// The final section catalog is intentionally checked as one ordered string.
 	requireDocumentationText(t, content, []string{
-		"Pinned, Today, In Progress, Inbox, Next, Backlog, Waiting, Paused, Someday",
+		"Pinned, Today, In Progress, Inbox, Next, Paused, Backlog, Waiting, Someday",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Next → Backlog → Active → All",

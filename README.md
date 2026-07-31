@@ -42,7 +42,7 @@ reverses that cycle.
 All mode shows open, unsnoozed work in this order:
 
 ```text
-Pinned, Today, In Progress, Inbox, Next, Backlog, Waiting, Paused, Someday
+Pinned, Today, In Progress, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 Pinned tasks appear once in project groups. Groups sort by their newest pin and
