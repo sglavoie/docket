@@ -547,7 +547,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	cross.loadedProjects = []*models.Project{project}
 	cross.crossForceRebuild = true
 	cross.crossProjectRebuildRows()
-	cross.restoreCrossOutlinerCursorAfterReload()
+	cross.restoreCrossOutlinerCursorAfterReload(cross.cursor, cross.viewScrollOffset)
 	if task, selectedProject := cross.getTaskRef(); task == nil || selectedProject == nil ||
 		task.ID != firstID || selectedProject.ID != "hierarchy" {
 		t.Fatalf("cursor after reorder = %v/%v, want hierarchy/%s", selectedProject, task, firstID)

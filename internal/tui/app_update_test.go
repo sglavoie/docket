@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 type panicCustomMsg struct{}
@@ -36,5 +39,46 @@ func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 	}
 	if app.err == nil {
 		t.Fatal("expected err to be set after panic recovery")
+	}
+}
+
+func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
+	app := newTestAppModel()
+	project := scopeTestProject("alpha", "Alpha", "task")
+	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross.loadedProjects = []*models.Project{project}
+	cross.crossSnapshotReady = true
+	cross.SetSize(app.width, app.height-2)
+	cross.crossForceRebuild = true
+	cross.crossProjectRebuildRows()
+	app.crossOutliner = cross
+	app.views.Register(ViewCrossProjectOutliner, cross)
+	app.views.Register(ViewTaskDetail, &panicOnCustomView{})
+	pushTestPresentationOverlay(app, ViewTaskDetail)
+
+	_ = cross.reloadCrossProjects()
+	abandonedGeneration := cross.crossLoadGen
+	cross.crossSpinnerVisible = true
+
+	model, cmd := app.Update(panicCustomMsg{})
+	if model == nil || cmd != nil {
+		t.Fatalf("panic recovery = model %T cmd %T, want model and no abandoned command", model, cmd)
+	}
+	if cross.crossLoading || cross.crossSpinnerVisible {
+		t.Fatal("panic recovery left the cross-project refresh active")
+	}
+	if cross.crossLoadGen == abandonedGeneration {
+		t.Fatal("panic recovery did not invalidate the abandoned load generation")
+	}
+	if got := app.currentView(); got != ViewCrossProjectOutliner {
+		t.Fatalf("recovery view = %s, want CrossProjectOutliner", got)
+	}
+	if content := app.View().Content; content == "" || strings.Contains(content, "Unknown view") {
+		t.Fatalf("recovered root is not renderable:\n%s", content)
+	}
+
+	app.Update(crossProjectsLoadedMsg{generation: abandonedGeneration})
+	if len(cross.loadedProjects) != 1 || cross.loadedProjects[0].ID != project.ID {
+		t.Fatalf("stale load replaced the recovered snapshot: %#v", cross.loadedProjects)
 	}
 }

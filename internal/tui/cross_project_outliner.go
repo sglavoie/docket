@@ -19,7 +19,7 @@ type crossProjectsLoadedMsg struct {
 	generation  int
 }
 
-// crossSpinnerDelayMsg fires after 200ms to reveal the loading spinner.
+// crossSpinnerDelayMsg fires after 200ms to animate the initial-load spinner.
 type crossSpinnerDelayMsg struct{}
 
 // crossSpinnerTickMsg wraps a spinner tick so it can be distinguished from
@@ -40,9 +40,12 @@ func crossSpinnerTickFwd(cmd tea.Cmd) tea.Cmd {
 	}
 }
 
-// startCrossProjectLoad sets loading state and returns a Cmd that begins
-// async loading of all context-filtered projects and a 200ms spinner delay.
+// startCrossProjectLoad sets loading state and returns a Cmd that begins async
+// loading of all context-filtered projects plus a 200ms initial-spinner delay.
 func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
+	if !m.hasCrossProjectSnapshot() {
+		m.crossSpinner = NewSpinner()
+	}
 	m.crossLoading = true
 	m.crossLoadGen++
 	return tea.Batch(
@@ -97,6 +100,8 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	if msg.generation != m.crossLoadGen {
 		return nil // Stale result from a superseded load; discard.
 	}
+	fallbackCursor := m.cursor
+	fallbackScrollOffset := m.viewScrollOffset
 	pinnedTagTabName, hasPinnedTagTab := m.consumeCrossOutlinerReloadPinnedTagTab()
 	if !hasPinnedTagTab {
 		pinnedTagTabName, _ = m.crossProjectPinnedTagTabBeforeLoad()
@@ -104,13 +109,13 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
+	m.crossSnapshotReady = true
 	m.workspaceResolver = app.NewWorkspaceResolver(app.NewSnapshot(msg.projects, nil, nil))
 	m.refreshContextScopeProjects()
 	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
-	m.resetViewScrollOffset()
 	m.crossProjectRebuildRows()
-	m.restoreCrossOutlinerCursorAfterReload()
+	m.restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
 
 	var cmds []tea.Cmd
 	// A scoped project may have been archived or removed externally
@@ -218,24 +223,30 @@ func loadedProjectIDsFingerprint(projects []*models.Project) string {
 	return strings.Join(ids, "\x1f")
 }
 
-// crossProjectView renders the cross-project outliner. It shows a centered
-// loading spinner while projects are being loaded, then delegates to
-// renderCrossProjectContent once loading is complete.
+// crossProjectView renders the cross-project outliner. A cold load shows a
+// centered loading state. Later reloads retain the last accepted snapshot until
+// its replacement is ready, so rendering never passes through an empty frame.
 func (m *OutlinerModel) crossProjectView() string {
-	if m.crossSpinnerVisible {
-		return m.renderCrossSpinner()
-	}
-	if m.crossLoading {
-		// Load started but 200ms hasn't elapsed yet — render empty frame.
-		return ""
+	if m.crossLoading && !m.hasCrossProjectSnapshot() {
+		return m.renderCrossLoadingState()
 	}
 	return m.renderCrossProjectContent()
 }
 
-// renderCrossSpinner renders a centered loading spinner using the Dot style.
-func (m *OutlinerModel) renderCrossSpinner() string {
-	spinnerView := m.crossSpinner.View()
-	label := spinnerView + " Loading projects…"
+// hasCrossProjectSnapshot reports whether there is stable content to render
+// while a refresh is in flight. The loadedProjects fallback keeps older tests
+// and callers that install an in-memory snapshot directly compatible.
+func (m *OutlinerModel) hasCrossProjectSnapshot() bool {
+	return m.crossSnapshotReady || len(m.loadedProjects) > 0
+}
+
+// renderCrossLoadingState renders a non-empty cold-load frame immediately,
+// adding the animated Dot spinner only after its short anti-flicker delay.
+func (m *OutlinerModel) renderCrossLoadingState() string {
+	label := "Loading projects…"
+	if m.crossSpinnerVisible {
+		label = m.crossSpinner.View() + " " + label
+	}
 	centered := lipgloss.NewStyle().
 		Width(m.width).
 		Height(m.height).
@@ -248,7 +259,7 @@ func (m *OutlinerModel) renderCrossSpinner() string {
 // It delegates to the unified renderOutlinerTreeContent after rebuilding rows.
 func (m *OutlinerModel) renderCrossProjectContent() string {
 	m.crossProjectRebuildRows()
-	return m.renderOutlinerTreeContent(m.width)
+	return m.renderFullWidth()
 }
 
 // reloadCrossProjects triggers a new load, incrementing the generation counter
@@ -262,16 +273,14 @@ func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	} else {
 		m.preserveCrossOutlinerCursorForReload()
 	}
-	m.loadedProjects = nil
-	m.rows = m.rows[:0]
-	m.resetViewScrollOffset()
 	return m.startCrossProjectLoad()
 }
 
 // preserveCrossOutlinerCursorForReload captures the selected task by project and
-// task ID before reloadCrossProjects clears the rows. If a superseding reload
-// starts while rows are already empty, keep the existing target for the newest
-// accepted load instead of losing the user's selection.
+// task ID before reloadCrossProjects starts replacing the snapshot. If a
+// superseding reload starts after the task has already disappeared, keep the
+// existing target for the newest accepted load instead of losing the user's
+// selection.
 func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
 	if m.cursor < 0 || m.cursor >= len(m.rows) {
 		return
@@ -285,17 +294,70 @@ func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
 }
 
 // restoreCrossOutlinerCursorAfterReload consumes the captured cursor identity
-// after the accepted load rebuilds rows. If the task disappeared or is hidden by
-// the current view, crossProjectRebuildRows has already clamped the numeric cursor
-// to a valid fallback position.
-func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload() {
+// after the accepted load rebuilds rows. If the task disappeared or is hidden,
+// focus falls back to the nearest task around the old numeric row, preferring a
+// following task at equal distance. When no tasks remain, the ordinary navigable
+// row clamp still permits an empty section or project header to receive focus.
+func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset int) {
 	projectID, taskID := m.crossReloadProjectID, m.crossReloadTaskID
 	m.crossReloadProjectID = ""
 	m.crossReloadTaskID = ""
+	m.viewScrollOffset = fallbackScrollOffset
 	if projectID == "" || taskID == "" {
+		m.cursor = fallbackCursor
+		m.clampCursor()
 		return
 	}
-	m.moveCursorToProjectTask(taskID, projectID)
+	if m.moveCursorToProjectTask(taskID, projectID) {
+		return
+	}
+	m.moveCursorToNearestTask(fallbackCursor)
+}
+
+func (m *OutlinerModel) moveCursorToNearestTask(origin int) bool {
+	if len(m.rows) == 0 {
+		m.cursor = 0
+		return false
+	}
+	if origin < 0 {
+		origin = 0
+	}
+	if origin >= len(m.rows) {
+		origin = len(m.rows) - 1
+	}
+	for distance := 0; distance < len(m.rows); distance++ {
+		next := origin + distance
+		if next < len(m.rows) && m.rows[next].isTaskRow() && m.rows[next].task != nil {
+			m.cursor = next
+			return true
+		}
+		previous := origin - distance
+		if distance > 0 && previous >= 0 && m.rows[previous].isTaskRow() && m.rows[previous].task != nil {
+			m.cursor = previous
+			return true
+		}
+	}
+	m.cursor = origin
+	m.clampCursor()
+	return false
+}
+
+// cancelCrossProjectLoad settles an abandoned refresh and invalidates any
+// result already in flight. The last accepted snapshot remains renderable.
+func (m *OutlinerModel) cancelCrossProjectLoad() {
+	if m == nil || m.project != nil {
+		return
+	}
+	if m.crossLoading {
+		m.crossLoadGen++
+	}
+	m.crossLoading = false
+	m.crossSpinnerVisible = false
+	m.crossReloadTabName = ""
+	m.crossReloadTabSet = false
+	m.crossReloadProjectID = ""
+	m.crossReloadTaskID = ""
+	m.crossReloadFromTop = false
 }
 
 // crossStatusBarLabel returns the status bar label for the global Outliner,

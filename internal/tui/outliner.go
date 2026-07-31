@@ -90,12 +90,13 @@ type OutlinerModel struct {
 	// Cross-project mode fields (used when m.project == nil)
 	loadedProjects        []*models.Project // Successfully loaded projects
 	workspaceResolver     *app.WorkspaceResolver
+	crossSnapshotReady    bool            // True after the first cross-project snapshot has been accepted
 	crossLoading          bool            // True while cross-project load is in progress
-	crossSpinnerVisible   bool            // True once the 200ms delay has elapsed during load
+	crossSpinnerVisible   bool            // True once the 200ms delay has elapsed during an initial load
 	crossLoadGen          int             // Generation counter; discards stale load results
 	crossSpinner          SpinnerModel    // View-local spinner, independent of global save spinner
 	crossQuickEditProject *models.Project // Resolved project for quick edit in cross-project mode
-	crossReloadTabName    string          // Pinned tag tab name preserved while async reload clears loadedProjects
+	crossReloadTabName    string          // Pinned tag tab name preserved across an async snapshot replacement
 	crossReloadTabSet     bool            // True when crossReloadTabName is an intentional live selection, including All
 	crossReloadProjectID  string          // Project owning the cursor task captured before an async reload
 	crossReloadTaskID     string          // Cursor task captured before an async reload; restored after rows rebuild
@@ -233,7 +234,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case crossProjectsLoadedMsg:
 		return m, m.handleCrossProjectsLoaded(msg)
 	case crossSpinnerDelayMsg:
-		if m.crossLoading {
+		if m.crossLoading && !m.hasCrossProjectSnapshot() {
 			m.crossSpinnerVisible = true
 			m.crossSpinner = NewSpinner()
 			return m, m.crossSpinner.Tick()

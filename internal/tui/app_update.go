@@ -15,6 +15,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			stack := debug.Stack()
 			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
 			m.err = fmt.Errorf("internal error: %v", r)
+			if m.crossOutliner != nil {
+				m.crossOutliner.cancelCrossProjectLoad()
+			}
 			m.navigation.ResetRoot()
 			m.contextActionSheet = nil
 			m.pendingTaskRecurrenceRequest = nil

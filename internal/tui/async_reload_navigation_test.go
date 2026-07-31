@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -11,6 +12,19 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+func TestCrossProjectColdLoadAlwaysRendersLoadingFrame(t *testing.T) {
+	outliner := NewOutlinerModel(nil, nil, nil)
+	outliner.SetSize(100, 30)
+	if cmd := outliner.Init(); cmd == nil {
+		t.Fatal("cold Outliner did not start its initial load")
+	}
+
+	content := outliner.View().Content
+	if content == "" || !strings.Contains(content, "Loading projects") {
+		t.Fatalf("cold loading frame = %q, want non-empty loading state", content)
+	}
+}
 
 func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 	t.Helper()
@@ -205,6 +219,85 @@ func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing
 	row := cross.rows[cross.cursor]
 	if !row.isTaskRow() || row.task == nil || row.ProjectID != project.ID || row.task.ID != task.ID {
 		t.Fatalf("cursor identity was not restored after reload: %#v", row)
+	}
+}
+
+func TestCrossProjectRefreshKeepsAcceptedSnapshotVisible(t *testing.T) {
+	dataDir := t.TempDir()
+	project := newSession2Project(t, dataDir, "visible refresh")
+	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+	cross.crossSnapshotReady = true
+	cross.SetSize(100, 30)
+	cross.cursor = session2TaskRow(t, cross, project.ID, project.Tasks[0].ID)
+	cross.viewScrollOffset = 1
+	projectsBefore := cross.loadedProjects
+	rowsBefore := len(cross.rows)
+
+	loadCmd := cross.reloadCrossProjects()
+	if loadCmd == nil || !cross.crossLoading {
+		t.Fatal("refresh did not start")
+	}
+	if len(cross.loadedProjects) != len(projectsBefore) || len(cross.rows) != rowsBefore ||
+		len(projectsBefore) > 0 && cross.loadedProjects[0] != projectsBefore[0] {
+		t.Fatalf("refresh cleared accepted content: projects=%d rows=%d", len(cross.loadedProjects), len(cross.rows))
+	}
+	if cross.viewScrollOffset != 1 {
+		t.Fatalf("refresh reset scroll offset to %d", cross.viewScrollOffset)
+	}
+	content := app.View().Content
+	if content == "" || strings.Contains(content, "Unknown view") || !strings.Contains(content, project.Tasks[0].Title) {
+		t.Fatalf("refresh frame did not retain task content:\n%s", content)
+	}
+
+	_, spinnerCmd := cross.Update(crossSpinnerDelayMsg{})
+	if spinnerCmd != nil || cross.crossSpinnerVisible {
+		t.Fatal("background refresh replaced content with the initial-load spinner")
+	}
+	if content = app.View().Content; content == "" || strings.Contains(content, "Unknown view") {
+		t.Fatalf("delayed refresh frame became invalid:\n%s", content)
+	}
+
+	// Rendering a short list legitimately clamps its viewport to the top. Set a
+	// non-zero offset immediately before the accepted result to isolate the
+	// reload handler's preservation behavior.
+	cross.viewScrollOffset = 1
+	runSession2AppCommand(t, app, loadCmd)
+	if cross.crossLoading {
+		t.Fatal("refresh did not settle")
+	}
+	if cross.viewScrollOffset != 1 {
+		t.Fatalf("accepted refresh changed scroll offset to %d", cross.viewScrollOffset)
+	}
+}
+
+func TestCrossProjectReloadMissingCursorTaskPrefersFollowingTask(t *testing.T) {
+	original := scopeTestProject("alpha", "Alpha", "before", "removed", "after")
+	cross := NewOutlinerModel(nil, nil, nil)
+	cross.loadedProjects = []*models.Project{original}
+	cross.crossSnapshotReady = true
+	cross.pushProjectScope(original.ID)
+	cross.crossForceRebuild = true
+	cross.crossProjectRebuildRows()
+	cross.cursor = session2TaskRow(t, cross, original.ID, "removed")
+	cross.viewScrollOffset = 1
+
+	_ = cross.reloadCrossProjects()
+	generation := cross.crossLoadGen
+	replacement := scopeTestProject("alpha", "Alpha", "before", "after")
+	cross.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:   []*models.Project{replacement},
+		generation: generation,
+	})
+
+	if cross.cursor < 0 || cross.cursor >= len(cross.rows) {
+		t.Fatalf("cursor %d is outside %d rebuilt rows", cross.cursor, len(cross.rows))
+	}
+	row := cross.rows[cross.cursor]
+	if !row.isTaskRow() || row.task == nil || row.task.ID != "after" {
+		t.Fatalf("fallback cursor = %#v, want following task", row)
+	}
+	if cross.viewScrollOffset != 1 {
+		t.Fatalf("fallback changed scroll offset to %d", cross.viewScrollOffset)
 	}
 }
 
