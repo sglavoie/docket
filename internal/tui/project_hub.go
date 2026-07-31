@@ -126,6 +126,12 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch key.String() {
 		case "enter":
 			return m, m.activateProjectHubCurrent()
+		case "up", "ctrl+k":
+			m.surface.MoveCursor(-1)
+			return m, nil
+		case "down", "ctrl+j":
+			m.surface.MoveCursor(1)
+			return m, nil
 		case "ctrl+d":
 			m.moveProjectHubHalfPage(1)
 			return m, nil
@@ -523,8 +529,8 @@ func (m *ProjectHubModel) footerHelp(width int) string {
 		variants = []string{"j/k choose · Enter run · / search · Esc back", "Enter run · Esc back"}
 	case m.HasActiveSearch():
 		variants = []string{
-			"Type to filter · Ctrl+d/u half page · Enter select · Esc clear and browse",
-			"Type · Enter select · Esc browse",
+			"Type to filter · ↑↓/Ctrl+j/k move · Ctrl+d/u half page · Enter select · Esc clear and browse",
+			"↑↓/Ctrl+j/k move · Enter select · Esc browse",
 			"Enter select · Esc browse",
 		}
 	case m.SearchQuery() != "":

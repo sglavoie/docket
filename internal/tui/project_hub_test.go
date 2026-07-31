@@ -137,6 +137,62 @@ func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
 	}
 }
 
+func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
+	app := contextHubApp(t)
+	hub := openProjectHub(t, app)
+	hub.Update(syntheticKey('a'))
+
+	assertCurrent := func(want ListItemID) {
+		t.Helper()
+		current, ok := hub.surface.CurrentItem()
+		if !ok || current.ID != want {
+			t.Fatalf("current project = %q (present=%v), want %q", current.ID, ok, want)
+		}
+		if query := hub.SearchQuery(); query != "a" {
+			t.Fatalf("search navigation changed query to %q, want %q", query, "a")
+		}
+		if !hub.HasActiveSearch() {
+			t.Fatal("search navigation deactivated search")
+		}
+	}
+
+	assertCurrent("project-hub:active:alpha")
+	hub.Update(syntheticCtrlKey('j'))
+	assertCurrent("project-hub:active:beta")
+	hub.Update(syntheticCtrlKey('k'))
+	assertCurrent("project-hub:active:alpha")
+	hub.Update(syntheticSpecialKey(tea.KeyDown))
+	assertCurrent("project-hub:active:beta")
+	hub.Update(syntheticSpecialKey(tea.KeyUp))
+	assertCurrent("project-hub:active:alpha")
+	hub.Update(syntheticSpecialKey(tea.KeyDown))
+
+	_, cmd := hub.Update(syntheticSpecialKey(tea.KeyEnter))
+	if cmd == nil {
+		t.Fatal("Enter after search navigation emitted no selection")
+	}
+	selected, ok := cmd().(ApplyProjectScopeMsg)
+	if !ok || selected.ProjectID != "beta" {
+		t.Fatalf("Enter after search navigation emitted %#v, want beta", cmd())
+	}
+	if help := hub.footerHelp(120); !strings.Contains(help, "↑↓/Ctrl+j/k move") {
+		t.Fatalf("search footer does not advertise navigation: %q", help)
+	}
+}
+
+func TestProjectHubSearchPlainJAndKRemainQueryInput(t *testing.T) {
+	hub := openProjectHub(t, contextHubApp(t))
+	hub.Update(syntheticKey('j'))
+	hub.Update(syntheticKey('k'))
+
+	if query := hub.SearchQuery(); query != "jk" {
+		t.Fatalf("plain j/k query = %q, want %q", query, "jk")
+	}
+	if !hub.HasActiveSearch() {
+		t.Fatal("plain j/k deactivated search")
+	}
+}
+
 func TestProjectHubArchivedEnterKeepsHubOpenWithNotice(t *testing.T) {
 	app := contextHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
