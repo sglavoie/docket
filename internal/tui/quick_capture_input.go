@@ -19,6 +19,7 @@ const (
 	acModeNone     = iota // No autocomplete active
 	acModeTag             // Completing a #tag
 	acModeParent          // Completing a >parent
+	acModeType            // Completing a ^type
 	acModePriority        // Completing a !priority
 	acModeDate            // Completing a @date
 	acModeRecur           // Completing a ~recurrence
@@ -48,6 +49,7 @@ type quickCaptureResult struct {
 var quickCaptureTriggers = []ACTrigger{
 	{'#', acModeTag},
 	{'>', acModeParent},
+	{'^', acModeType},
 	{'!', acModePriority},
 	{'@', acModeDate},
 	{'~', acModeRecur},
@@ -254,6 +256,29 @@ func (q *quickCaptureInput) handleAutocompleteKey(key string) bool {
 	})
 }
 
+// autocompleteLiteralComplete reports whether the active tag/type token is
+// already valid as typed. The composer uses this to let Enter submit a complete
+// literal while Tab remains the explicit completion key.
+func (q *quickCaptureInput) autocompleteLiteralComplete() bool {
+	if !q.ac.IsActive() {
+		return false
+	}
+	mode, _, partial := DetectTrigger(q.input.Value(), q.triggers)
+	if mode != q.ac.Mode || partial == "" {
+		return false
+	}
+	switch mode {
+	case acModeType:
+		_, ok := models.ParseTaskMarker(partial)
+		return ok
+	case acModeTag:
+		parsed := textgrammar.Parse("#"+partial, textgrammar.SurfaceCapture)
+		return parsed.Text == "" && len(parsed.TokensFor(textgrammar.FieldTag)) == 1
+	default:
+		return false
+	}
+}
+
 // updateInput updates the textarea and refreshes autocomplete/preview state.
 func (q *quickCaptureInput) updateInput(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
@@ -279,6 +304,8 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getTagSuggestions(partial)
 	case acModeParent:
 		items = q.getParentSuggestions(partial)
+	case acModeType:
+		items = q.getTypeSuggestions(partial)
 	case acModePriority:
 		items = q.getPrioritySuggestions(partial)
 	case acModeDate:
@@ -306,12 +333,12 @@ func (q *quickCaptureInput) updatePreview() {
 }
 
 // previewGroupLabelWidth is the padded width used for the leading group label
-// column ("Task", "Route", "Schedule", "Metadata"). Sized to the
+// column ("Task", "Route", "Schedule", "Priority", "Tags"). Sized to the
 // longest label plus a trailing space so the body column lines up.
 const previewGroupLabelWidth = 9
 
-// previewGroup is one labeled cluster of parsed-metadata chunks (Task, Route,
-// Schedule, Metadata). Both the full grouped preview and the compact
+// previewGroup is one labeled cluster of parsed attributes (Task, Route,
+// Schedule, Priority, Tags). Both the full grouped preview and the compact
 // two-row fallback are built from the same groups so they can never disagree
 // about what the parser understood.
 type previewGroup struct {
@@ -328,7 +355,11 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		return nil, false
 	}
 
-	taskChunks := []string{q.preview.title}
+	taskTitle := q.preview.title
+	if marker, exists := models.TaskMarkerFromTags(q.preview.tags); exists {
+		taskTitle = renderTaskMarker(marker) + " " + taskTitle
+	}
+	taskChunks := []string{taskTitle}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 
 	state := models.StateInbox
@@ -354,26 +385,22 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})
 	}
 
-	var metaChunks []string
 	if q.preview.priority != 3 {
-		metaChunks = append(metaChunks, fmt.Sprintf("!%d", q.preview.priority))
+		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("!%d", q.preview.priority)}})
 	}
 	if len(q.preview.tags) > 0 {
 		tagStrs := make([]string, len(q.preview.tags))
 		for i, t := range q.preview.tags {
 			tagStrs[i] = "#" + t
 		}
-		metaChunks = append(metaChunks, strings.Join(tagStrs, " "))
-	}
-	if len(metaChunks) > 0 {
-		groups = append(groups, previewGroup{label: "Metadata", chunks: metaChunks})
+		groups = append(groups, previewGroup{label: "Tags", chunks: []string{strings.Join(tagStrs, " ")}})
 	}
 
 	return groups, true
 }
 
 // renderPreview formats the parsed preview for display. The output is chunked
-// into labeled groups (Task / Route / Schedule / Metadata) so the user can
+// into labeled groups (Task / Route / Schedule / Priority / Tags) so the user can
 // scan what the parser understood without parsing a separator-soup. Only
 // populated groups are shown.
 func (q *quickCaptureInput) renderPreview() string {
@@ -546,12 +573,16 @@ func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 			examples: strings.Join(def.Examples, "  "),
 		}
 		switch def.Field {
+		case textgrammar.FieldTaskType:
+			for _, value := range def.Values {
+				entry.validation = append(entry.validation, "Task ^"+value)
+			}
 		case textgrammar.FieldPriority:
 			for _, value := range def.Values {
 				entry.validation = append(entry.validation, "Task !"+value)
 			}
 		case textgrammar.FieldTag:
-			entry.validation = []string{"Task #backend", "Task #urgent #api", "Task #type:bug"}
+			entry.validation = []string{"Task #backend", "Task #urgent #api", "Task #bug"}
 		case textgrammar.FieldDue:
 			entry.validation = []string{
 				"Task @tomorrow", "Task @friday", "Task @+3d", "Task @next monday",

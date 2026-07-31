@@ -48,14 +48,14 @@ func TestInvalidStateErrorExplainsRetiredReviewReplacement(t *testing.T) {
 
 func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	parsed := Parse(
-		"Build API !1 #backend @tomorrow ~weekly >1 %core $ready",
+		"Build API ^bug !1 #backend @tomorrow ~weekly >1 %core $ready",
 		SurfaceCapture,
 	)
 	if parsed.Text != "Build API" {
 		t.Fatalf("Text = %q, want Build API", parsed.Text)
 	}
 	for _, field := range []Field{
-		FieldPriority, FieldTag, FieldDue, FieldRecurrence, FieldParent,
+		FieldTaskType, FieldPriority, FieldTag, FieldDue, FieldRecurrence, FieldParent,
 		FieldProject, FieldState,
 	} {
 		if len(parsed.TokensFor(field)) == 0 {
@@ -64,9 +64,9 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserRecognizesExactlySevenCanonicalSigils(t *testing.T) {
+func TestSharedParserRecognizesExactlyEightCanonicalSigils(t *testing.T) {
 	parsed := Parse(
-		"Keep type:bug ^bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 state:ready -#old has:due no:tag is:pinned",
+		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 state:ready -#old has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
 	)
 	if len(parsed.Tokens) != 0 {
@@ -77,10 +77,10 @@ func TestSharedParserRecognizesExactlySevenCanonicalSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 7 {
-		t.Fatalf("capture definitions = %d, want 7: %+v", len(defs), defs)
+	if len(defs) != 8 {
+		t.Fatalf("capture definitions = %d, want 8: %+v", len(defs), defs)
 	}
-	wantForms := []string{"!1-5", "#tag", "@date", "~interval", ">parent", "%project", "$state"}
+	wantForms := []string{"^type", "!1-5", "#tag", "@date", "~interval", ">parent", "%project", "$state"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -90,6 +90,13 @@ func TestSharedParserRecognizesExactlySevenCanonicalSigils(t *testing.T) {
 	}
 	if !reflect.DeepEqual(gotForms, wantForms) {
 		t.Fatalf("capture forms = %v, want %v", gotForms, wantForms)
+	}
+}
+
+func TestTaskMarkerNamesComeFromModelOrder(t *testing.T) {
+	want := []string{"epic", "story", "bug", "idea"}
+	if got := TaskMarkerNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("TaskMarkerNames() = %v, want %v", got, want)
 	}
 }
 

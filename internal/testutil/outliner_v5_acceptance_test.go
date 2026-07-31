@@ -185,14 +185,14 @@ func TestOutlinerV5CaptureGrammarContainsCanonicalSigilsOnly(t *testing.T) {
 		if sigil.ValuePolicy == "" {
 			t.Errorf("capture sigil is missing its value policy: %+v", sigil)
 		}
-		if strings.Contains(sigil.Form, ":") || strings.HasPrefix(sigil.Form, "^") {
+		if strings.Contains(sigil.Form, ":") {
 			t.Errorf("capture grammar retained an alias form %q", sigil.Form)
 		}
 	}
-	if !slices.Equal(forms, []string{"!1-5", "#tag", "@date", "~interval", "$state", "%project", ">parent"}) {
+	if !slices.Equal(forms, []string{"^type", "!1-5", "#tag", "@date", "~interval", "$state", "%project", ">parent"}) {
 		t.Errorf("capture forms = %v", forms)
 	}
-	if !slices.Equal(fields, []string{"priority", "tag", "due", "recurrence", "state", "project", "parent"}) {
+	if !slices.Equal(fields, []string{"type", "priority", "tag", "due", "recurrence", "state", "project", "parent"}) {
 		t.Errorf("capture fields = %v", fields)
 	}
 }

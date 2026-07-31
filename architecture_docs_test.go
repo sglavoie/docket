@@ -87,7 +87,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"nine-state, five-mode, Outliner-only product",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix must remain unbound",
 		"The `Space` menu is exactly",
-		"!1-5 #tag @date ~interval $state %project >parent",
+		"^type !1-5 #tag @date ~interval $state %project >parent",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
 		"`N` always opens All Notes across Global and every project returned by `Runtime.ActiveProjects()`",

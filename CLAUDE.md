@@ -156,12 +156,17 @@ toggles only dark/light.
 Canonical capture/edit sigils are:
 
 ```text
-!1-5  #tag  @date  ~interval  $state  %project  >parent
+^type  !1-5  #tag  @date  ~interval  $state  %project  >parent
 ```
 
-Do not reintroduce aliases such as `priority:`, `due:`, `state:`, `proj:`, or
-`^type`. Multiline capture validates every nonblank line before committing one
-transaction. Resolve the target project before the project-local parent.
+`^type` accepts `epic`, `story`, `bug`, or `idea` and stores the choice as that
+raw tag, never as a first-class task field. Those four semantic markers are
+mutually exclusive. `#tag` creates valid tags on the fly; the exact legacy
+spellings `type:epic`, `type:story`, `type:bug`, and `type:idea` canonicalize to
+their raw equivalents. Do not reintroduce aliases such as `priority:`, `due:`,
+`state:`, or `proj:`. Multiline capture validates every nonblank line before
+committing one transaction. Resolve the target project before the project-local
+parent.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.

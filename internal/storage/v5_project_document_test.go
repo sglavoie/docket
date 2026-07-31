@@ -23,7 +23,7 @@ func TestV5ProjectDocumentRoundTripUsesGenericHeadingsAndNoCatalog(t *testing.T)
 				Description: "Description with\n## Bug: legacy-looking text",
 				State:       "ready",
 				Priority:    3,
-				Tags:        []string{"type:story", "source:github"},
+				Tags:        []string{"story", "source:github"},
 				CreatedAt:   now,
 				UpdatedAt:   now,
 			},
@@ -123,7 +123,7 @@ func TestDerivedV5WorkspaceTagsIgnoresCatalogMetadata(t *testing.T) {
 		},
 	}
 	got := DerivedV5WorkspaceTags(documents)
-	want := []string{"backend", "source:github", "team:platform", "type:bug"}
+	want := []string{"backend", "bug", "source:github", "team:platform"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("DerivedV5WorkspaceTags() = %v, want %v", got, want)
 	}

@@ -21,7 +21,7 @@ func TestV5TaskBodyRoundTripExact(t *testing.T) {
 		State:        "done",
 		Priority:     1,
 		ParentID:     "task-parent",
-		Tags:         []string{"type:bug", "source:github", "café"},
+		Tags:         []string{"bug", "source:github", "café"},
 		CreatedAt:    created,
 		UpdatedAt:    updated,
 		CompletedAt:  &completed,
@@ -98,7 +98,7 @@ func TestV5MetadataContainsOnlyTargetFields(t *testing.T) {
 		Priority:  3,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Tags:      []string{"type:bug", "source:github"},
+		Tags:      []string{"bug", "source:github"},
 	}
 	metadata, err := WriteV5TaskMetadata(task)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestV5MetadataContainsOnlyTargetFields(t *testing.T) {
 			t.Errorf("v5 metadata contains retired field %q: %s", retired, metadata)
 		}
 	}
-	if !strings.Contains(metadata, "tags: type:bug;source:github") {
+	if !strings.Contains(metadata, "tags: bug;source:github") {
 		t.Fatalf("v5 metadata lost namespaced tags: %s", metadata)
 	}
 	parsed, err := ParseV5TaskMetadata(metadata)
@@ -128,8 +128,16 @@ func TestV5MetadataContainsOnlyTargetFields(t *testing.T) {
 		t.Fatalf("v5 metadata is not a fixed point:\nfirst:  %s\nsecond: %s", metadata, second)
 	}
 
-	if _, err := ParseV5TaskMetadata("<!-- id: old, short_id: 1, state: ready, priority: 3, created: 2026-07-28T12:00:00Z, updated: 2026-07-28T12:00:00Z, source: github -->"); err == nil {
+	if _, parseErr := ParseV5TaskMetadata("<!-- id: old, short_id: 1, state: ready, priority: 3, created: 2026-07-28T12:00:00Z, updated: 2026-07-28T12:00:00Z, source: github -->"); parseErr == nil {
 		t.Fatal("ParseV5TaskMetadata accepted retired source field")
+	}
+
+	legacy, err := ParseV5TaskMetadata("<!-- id: old-tag, short_id: 2, state: ready, priority: 3, tags: type:bug;backend, created: 2026-07-28T12:00:00Z, updated: 2026-07-28T12:00:00Z -->")
+	if err != nil {
+		t.Fatalf("ParseV5TaskMetadata legacy marker: %v", err)
+	}
+	if !slices.Equal(legacy.Tags, []string{"bug", "backend"}) {
+		t.Fatalf("legacy marker tags = %v, want [bug backend]", legacy.Tags)
 	}
 }
 
@@ -139,7 +147,7 @@ func TestDerivedV5TaskTagsUsesTaskRecordsOnly(t *testing.T) {
 		{Tags: []string{"backend", "#team:platform", "bad,tag"}},
 	}
 	got := DerivedV5TaskTags(tasks)
-	want := []string{"backend", "source:github", "team:platform", "type:bug"}
+	want := []string{"backend", "bug", "source:github", "team:platform"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("DerivedV5TaskTags() = %v, want %v", got, want)
 	}
@@ -159,6 +167,7 @@ func TestValidateV5TaskRecordRequiresCanonicalTags(t *testing.T) {
 	for _, tags := range [][]string{
 		{"#type:bug"},
 		{"type:bug", "type:bug"},
+		{"bug", "idea"},
 		{"bad,tag"},
 	} {
 		task := base

@@ -95,6 +95,25 @@ func TestLegacyV4ArchiveTaskDocumentUsesArchiveProjectHeader(t *testing.T) {
 	}
 }
 
+func TestLegacyV4TaskConversionDedupesHeadingAndLegacyMarkerTag(t *testing.T) {
+	content := "# Project: Marker Fixture\n" +
+		"<!-- tt-schema: 2 -->\n\n" +
+		"## Bug: Canonical marker\n" +
+		"<!-- id: marker-task, state: ready, priority: 3, tags: type:bug;keep, created: 2026-01-01 08:00 -->\n"
+
+	document, err := DecodeLegacyV4TaskDocument(content, time.UTC)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	result, err := ConvertLegacyV4TaskDocument(document, time.UTC)
+	if err != nil {
+		t.Fatalf("convert: %v", err)
+	}
+	if got := result.Tasks[0].Tags; len(got) != 2 || got[0] != "bug" || got[1] != "keep" {
+		t.Fatalf("tags = %v, want [bug keep]", got)
+	}
+}
+
 func TestLegacyV4WeekdayRecurrenceRequiresDueDateAnchor(t *testing.T) {
 	location := time.UTC
 	content := "# Project: Recurrence Fixture\n" +

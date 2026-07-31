@@ -157,7 +157,17 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
 	}
 	titleStyle := m.renderTaskTitleStyle(task, selected)
+	markerSegment := renderTaskMarkerForTask(task)
+	if markerSegment != "" {
+		markerSegment += " "
+	}
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
+	tagSegment := ""
+	if m.columnConfig.IsVisible(ColTags) {
+		if rendered := renderTruncatedTags(task.Tags, 2, 8); rendered != "" {
+			tagSegment = " " + rendered
+		}
+	}
 	indicatorSegments := m.renderTaskIndicatorSegments(task, proj)
 	indicators := indicatorSegments.render()
 
@@ -184,7 +194,10 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	// remain; lower-priority badges are progressively removed as space tightens.
 	titleTarget := min(8, max(rowWidth/4, 4))
 	availableTitleWidth := func() int {
-		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators)
+		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, markerSegment, prioritySegment, tagSegment, indicators)
+	}
+	if availableTitleWidth() < titleTarget {
+		tagSegment = ""
 	}
 	if availableTitleWidth() < titleTarget {
 		indicatorSegments.recurrence = ""
@@ -198,16 +211,18 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		indicatorSegments.dependencies = ""
 		indicators = indicatorSegments.render()
 	}
-	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators)
+	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, markerSegment, prioritySegment, tagSegment, indicators)
 
-	line := fmt.Sprintf("%s%s%s%s%s %s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s",
 		cursorPrefix,
 		checkbox,
 		prefixStr,
 		foldIndicator,
 		statusIcon,
+		markerSegment,
 		prioritySegment,
 		title,
+		tagSegment,
 		indicators,
 	)
 
@@ -423,8 +438,8 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators string) string {
-	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators)
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, markerSegment, prioritySegment, tagSegment, indicators string) string {
+	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, markerSegment, prioritySegment, tagSegment, indicators)
 	availableWidth := max(rowWidth-nonTitleWidth, 1)
 	title := task.Title
 	remainingWidth := availableWidth - lipgloss.Width(title)
@@ -474,11 +489,12 @@ func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
 	return truncateToVisualWidth(compacted, maxWidth)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, indicators string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, markerSegment, prioritySegment, tagSegment, indicators string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
-		lipgloss.Width(prioritySegment) + lipgloss.Width(indicators)
+		lipgloss.Width(markerSegment) + lipgloss.Width(prioritySegment) +
+		lipgloss.Width(tagSegment) + lipgloss.Width(indicators)
 }
 
 func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, proj *models.Project, selected bool, rowWidth, rowIndex int) string {

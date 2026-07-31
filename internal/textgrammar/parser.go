@@ -42,6 +42,7 @@ type tokenPattern struct {
 }
 
 var tokenPatterns = []tokenPattern{
+	{regexp.MustCompile(`(?:^|\s)\^(\S+)`), FieldTaskType, "^", false, SurfaceCapture},
 	{regexp.MustCompile(`(?:^|\s)!([^\s]+)`), FieldPriority, "!", false, SurfaceCapture | SurfaceEdit},
 	{regexp.MustCompile(`(?:^|\s)#([\w][\w.:-]*)`), FieldTag, "#", false, SurfaceCapture | SurfaceEdit},
 	{regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "@", false, SurfaceCapture | SurfaceEdit},

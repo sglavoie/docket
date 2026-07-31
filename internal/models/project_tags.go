@@ -13,8 +13,8 @@ func DedupeTags(tags []string) []string {
 	seen := make(map[string]bool, len(tags))
 	deduped := make([]string, 0, len(tags))
 	for _, tag := range tags {
-		normalized := NormalizeTag(tag)
-		if ValidateTag(normalized) != nil || seen[normalized] {
+		normalized, err := NormalizeTaskTag(tag)
+		if err != nil || seen[normalized] {
 			continue
 		}
 		seen[normalized] = true

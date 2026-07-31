@@ -42,6 +42,25 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
+// getTypeSuggestions returns the four semantic marker tags. The canonical
+// grammar and the model share the same ordered vocabulary.
+func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
+	partial = strings.ToLower(partial)
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTaskType)
+	suggestions := make([]ACSuggestion, 0, len(def.Values))
+	for _, value := range def.Values {
+		if partial != "" && !strings.Contains(value, partial) {
+			continue
+		}
+		marker, _ := models.ParseTaskMarker(value)
+		suggestions = append(suggestions, ACSuggestion{
+			Display: "^" + value + " " + renderTaskMarker(marker),
+			Value:   value,
+		})
+	}
+	return suggestions
+}
+
 // getPrioritySuggestions returns matching priority options for the partial query.
 func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
 	descriptions := map[string]string{

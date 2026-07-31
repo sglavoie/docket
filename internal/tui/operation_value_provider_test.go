@@ -178,6 +178,38 @@ func TestBulkOperationTagPickerCreatesAndPromotesTagsAsAddPatch(t *testing.T) {
 	}
 }
 
+func TestBulkOperationTagPickerReplacesOtherTaskMarkers(t *testing.T) {
+	picker := newOperationTagPickerForTest(t, "bug", "idea", "keep")
+	if err := picker.configureTagMembership(map[ListItemID]operationTagMembership{
+		"tag:bug":  operationTagSome,
+		"tag:idea": operationTagNone,
+		"tag:keep": operationTagAll,
+	}); err != nil {
+		t.Fatalf("configureTagMembership: %v", err)
+	}
+	if !picker.surface.SetCursorToID("tag:idea") {
+		t.Fatal("idea tag is missing")
+	}
+	if err := picker.toggleCurrentMultiValue(); err != nil {
+		t.Fatalf("toggle idea: %v", err)
+	}
+
+	value, err := picker.selectedValue()
+	if err != nil {
+		t.Fatalf("selectedValue: %v", err)
+	}
+	patch, ok := value.(OperationTagsValue)
+	if !ok {
+		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+	}
+	if !reflect.DeepEqual(patch.Add, []string{"idea"}) || !reflect.DeepEqual(patch.Remove, []string{"bug"}) {
+		t.Fatalf("tag patch = %+v, want add idea and remove bug", patch)
+	}
+	if picker.tagCurrent["tag:keep"] != operationTagAll {
+		t.Fatal("ordinary tag selection changed while replacing a marker")
+	}
+}
+
 func TestOperationValuePickerMultiSelectionReturnsStableValues(t *testing.T) {
 	source := ListSource{Items: []ListItem{
 		{ID: "tag:z", PrimaryText: "z", Data: "z"},

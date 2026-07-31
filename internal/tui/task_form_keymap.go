@@ -20,10 +20,6 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("k", "Cycle priority up", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 		keymap.Bind("up", "Cycle priority up", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 		keymap.Bind("down", "Cycle priority down", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("h", "Cycle task type left", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("l", "Cycle task type right", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("left", "Cycle task type left", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("right", "Cycle task type right", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 	)
 
 	// Actions

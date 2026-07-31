@@ -49,9 +49,14 @@ func validateTag(tag string) error {
 // AddTag adds a tag if not already present. The tag is normalized (trimmed)
 // before storing. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {
-	tag = NormalizeTag(tag)
-	if ValidateTag(tag) != nil {
+	tag, err := NormalizeTaskTag(tag)
+	if err != nil {
 		return
+	}
+	if marker, semantic := ParseTaskMarker(tag); semantic {
+		if current, exists := t.Marker(); exists && current != marker {
+			return
+		}
 	}
 	var added bool
 	t.Tags, added = util.SliceAdd(t.Tags, tag)
@@ -63,9 +68,19 @@ func (t *Task) AddTag(tag string) {
 // RemoveTag removes a tag if present. The tag is normalized (trimmed)
 // before comparison.
 func (t *Task) RemoveTag(tag string) {
-	tag = NormalizeTag(tag)
+	if normalized, err := NormalizeTaskTag(tag); err == nil {
+		tag = normalized
+	} else {
+		tag = NormalizeTag(tag)
+	}
 	var removed bool
-	t.Tags, removed = util.SliceRemove(t.Tags, tag)
+	for _, existing := range slices.Clone(t.Tags) {
+		normalized, err := NormalizeTaskTag(existing)
+		if err == nil && normalized == tag {
+			t.Tags, removed = util.SliceRemove(t.Tags, existing)
+			break
+		}
+	}
 	if removed {
 		t.UpdatedAt = time.Now()
 	}
@@ -76,9 +91,15 @@ func (t *Task) RemoveTag(tag string) {
 // false so a missing or unset filter argument cannot accidentally match a
 // malformed empty tag that bypassed validation.
 func (t *Task) HasTag(tag string) bool {
-	normalized := NormalizeTag(tag)
-	if normalized == "" {
+	normalized, err := NormalizeTaskTag(tag)
+	if err != nil || normalized == "" {
 		return false
 	}
-	return slices.Contains(t.Tags, normalized)
+	for _, existing := range t.Tags {
+		candidate, candidateErr := NormalizeTaskTag(existing)
+		if candidateErr == nil && candidate == normalized {
+			return true
+		}
+	}
+	return false
 }

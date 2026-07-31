@@ -231,8 +231,8 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		name := key.String()
-		if m.handleAutocompleteKey(name) {
-			return m, nil
+		if handled, cmd := m.handleComposerAutocompleteKey(name); handled {
+			return m, cmd
 		}
 		if m.helpExpanded && !m.isAutocompleteActive() {
 			switch name {
@@ -290,6 +290,16 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, m.updateInput(msg)
+}
+
+func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, tea.Cmd) {
+	if name == "enter" && m.autocompleteLiteralComplete() {
+		return true, m.createCompact(false, false)
+	}
+	if m.handleAutocompleteKey(name) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (m *TaskComposerModel) createCompact(openContent, openDetail bool) tea.Cmd {
@@ -407,6 +417,16 @@ func cloneStringPtr(value *string) *string {
 }
 
 func mergeComposerTags(shared, line []string) []string {
+	if _, hasExplicitMarker := models.TaskMarkerFromTags(line); hasExplicitMarker {
+		withoutSharedMarker := make([]string, 0, len(shared))
+		for _, tag := range shared {
+			if _, isMarker := models.ParseTaskMarkerTag(tag); isMarker {
+				continue
+			}
+			withoutSharedMarker = append(withoutSharedMarker, tag)
+		}
+		shared = withoutSharedMarker
+	}
 	result := make([]string, 0, len(shared)+len(line))
 	seen := make(map[string]bool, len(shared)+len(line))
 	for _, tag := range append(append([]string(nil), shared...), line...) {

@@ -60,3 +60,22 @@ func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
 		}
 	}
 }
+
+func TestOutlinerTaskRowShowsSemanticMarkerAndRawTag(t *testing.T) {
+	task := &models.Task{
+		ID:            "bug-task",
+		Title:         "Fix capture grammar",
+		WorkflowState: models.StateReady,
+		Tags:          []string{"bug", "composer"},
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := outlinerRow{task: task, ProjectID: project.ID}
+
+	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	for _, want := range []string{"B", "Fix capture grammar", "#bug", "#composer"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("task row missing %q: %q", want, plain)
+		}
+	}
+}

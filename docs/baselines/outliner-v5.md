@@ -42,8 +42,11 @@ The direct interaction grammar is:
 | Global | `c`, `C`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
 
 Filters use `fp0`, `fp1`–`fp5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`.
-Quick capture accepts only `!1-5`, `#tag`, `@date`, `~interval`, `$state`,
-`%project`, and `>parent`; colon aliases and `^type` are not part of v5.
+Quick capture accepts `^type`, `!1-5`, `#tag`, `@date`, `~interval`, `$state`,
+`%project`, and `>parent`. `^type` maps epic, story, bug, or idea to a mutually
+exclusive raw tag; it does not restore a persisted type field. `#tag` creates
+valid tags on the fly. The four exact legacy `type:` marker tags canonicalize
+to raw tags, while other colon aliases are not part of v5.
 
 The removal contract covers alternate primary views and duplicate commands;
 mode picker, command palette, Finder, and recent destinations; AI and Ask;

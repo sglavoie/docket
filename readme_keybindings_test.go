@@ -129,8 +129,9 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"!1-5 #tag @date ~interval $state %project >parent",
-		"Aliases such as `priority:`, `due:`, `state:`, `proj:`, and `^type` are literal title text",
+		"^type !1-5 #tag @date ~interval $state %project >parent",
+		"`^epic`, `^story`, `^bug`, and `^idea` set the task's visual type marker",
+		"`#tag` creates and sets any valid tag on the fly",
 		"inbox ready next in_progress waiting paused someday done canceled",
 		"Today and Next are mutually exclusive",
 		"Unresolved dependencies block Done",

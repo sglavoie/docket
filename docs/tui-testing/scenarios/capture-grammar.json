@@ -1,13 +1,14 @@
 {
   "name": "capture-grammar",
   "fixture": "fresh",
-  "size": "100x35",
+  "size": "100x40",
   "actions": [
     { "type": "key", "label": "open protected-Inbox capture", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "assert", "assert": "contains", "value": "? syntax" },
     { "type": "key", "label": "open canonical capture syntax", "key": "?" },
     { "type": "assert", "assert": "contains", "value": "Capture Syntax" },
+    { "type": "assert", "assert": "contains", "value": "^type" },
     { "type": "assert", "assert": "contains", "value": "!1-5" },
     { "type": "assert", "assert": "contains", "value": "#tag" },
     { "type": "assert", "assert": "contains", "value": "@date" },

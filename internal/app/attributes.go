@@ -52,8 +52,11 @@ func (s *Service) SetPriorityByLocator(locator TaskLocator, priority int) (TaskR
 // ErrInvalidInput rather than silently dropped.
 func (s *Service) AddTag(taskID, tag string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Add Tag", tag, func(ref TaskRef) error {
-		normalized := models.NormalizeTag(tag)
-		if err := models.ValidateTag(normalized); err != nil {
+		normalized, err := models.NormalizeTaskTag(tag)
+		if err != nil {
+			return invalidInput("tag", err.Error())
+		}
+		if _, err := models.NormalizeTaskTags(append(append([]string{}, ref.Task.Tags...), normalized)); err != nil {
 			return invalidInput("tag", err.Error())
 		}
 		ref.Task.AddTag(normalized)
@@ -63,8 +66,11 @@ func (s *Service) AddTag(taskID, tag string) (TaskResult, error) {
 
 func (s *Service) AddTagByLocator(locator TaskLocator, tag string) (TaskResult, error) {
 	return s.mutateTaskByLocator(locator, "Add Tag", tag, func(ref TaskRef) error {
-		normalized := models.NormalizeTag(tag)
-		if err := models.ValidateTag(normalized); err != nil {
+		normalized, err := models.NormalizeTaskTag(tag)
+		if err != nil {
+			return invalidInput("tag", err.Error())
+		}
+		if _, err := models.NormalizeTaskTags(append(append([]string{}, ref.Task.Tags...), normalized)); err != nil {
 			return invalidInput("tag", err.Error())
 		}
 		ref.Task.AddTag(normalized)
@@ -76,8 +82,8 @@ func (s *Service) AddTagByLocator(locator TaskLocator, tag string) (TaskResult, 
 // a no-op that still commits the (unchanged) project.
 func (s *Service) RemoveTag(taskID, tag string) (TaskResult, error) {
 	return s.mutateTask(taskID, "Remove Tag", tag, func(ref TaskRef) error {
-		normalized := models.NormalizeTag(tag)
-		if err := models.ValidateTag(normalized); err != nil {
+		normalized, err := models.NormalizeTaskTag(tag)
+		if err != nil {
 			return invalidInput("tag", err.Error())
 		}
 		ref.Task.RemoveTag(normalized)
@@ -87,8 +93,8 @@ func (s *Service) RemoveTag(taskID, tag string) (TaskResult, error) {
 
 func (s *Service) RemoveTagByLocator(locator TaskLocator, tag string) (TaskResult, error) {
 	return s.mutateTaskByLocator(locator, "Remove Tag", tag, func(ref TaskRef) error {
-		normalized := models.NormalizeTag(tag)
-		if err := models.ValidateTag(normalized); err != nil {
+		normalized, err := models.NormalizeTaskTag(tag)
+		if err != nil {
 			return invalidInput("tag", err.Error())
 		}
 		ref.Task.RemoveTag(normalized)

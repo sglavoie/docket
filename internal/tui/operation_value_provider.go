@@ -268,6 +268,9 @@ func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
 			return err
 		}
 	}
+	if err := model.enforceExclusiveTaskMarker(id); err != nil {
+		return err
+	}
 	if model.tagCurrent != nil {
 		if err := model.syncTagMembershipRows(); err != nil {
 			return err
@@ -301,8 +304,56 @@ func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
 			}
 		}
 		model.tagCurrent[item.ID] = operationTagAll
+		if err := model.enforceExclusiveTaskMarker(item.ID); err != nil {
+			return err
+		}
 	}
 	return model.syncTagMembershipRows()
+}
+
+// enforceExclusiveTaskMarker clears every other semantic marker when target is
+// selected for all tasks. In the tri-state bulk picker, changing Some/All to
+// None also emits the removals needed to keep each resulting task valid.
+func (model *OperationValuePickerModel) enforceExclusiveTaskMarker(target ListItemID) error {
+	items := model.surface.Items()
+	var targetIsMarker bool
+	markerIDs := make(map[ListItemID]bool)
+	for _, item := range items {
+		tag, ok := item.Data.(string)
+		if !ok {
+			continue
+		}
+		if _, semantic := models.ParseTaskMarkerTag(tag); semantic {
+			markerIDs[item.ID] = true
+			if item.ID == target {
+				targetIsMarker = true
+			}
+		}
+	}
+	if !targetIsMarker {
+		return nil
+	}
+	if model.tagCurrent != nil {
+		for id := range markerIDs {
+			if id != target {
+				model.tagCurrent[id] = operationTagNone
+			}
+		}
+	}
+
+	selected := model.surface.SelectedIDs()
+	next := make([]ListItemID, 0, len(selected))
+	for _, id := range selected {
+		if id == target {
+			next = append(next, id)
+			continue
+		}
+		if markerIDs[id] {
+			continue
+		}
+		next = append(next, id)
+	}
+	return model.surface.SetSelectedIDs(next)
 }
 
 func (model *OperationValuePickerModel) configureTagMembership(

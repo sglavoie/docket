@@ -28,6 +28,7 @@ const (
 	FieldRemoveTag  Field = "remove_tag"
 	FieldDue        Field = "due"
 	FieldRecurrence Field = "recurrence"
+	FieldTaskType   Field = "type"
 	FieldParent     Field = "parent"
 	FieldProject    Field = "project"
 	FieldState      Field = "state"
@@ -64,8 +65,14 @@ var recurrenceValues = []string{
 // on a surface.
 func Definitions(surface Surface) []Definition {
 	stateNames := StateNames()
+	typeNames := TaskMarkerNames()
 
 	defs := []Definition{
+		{
+			Field: FieldTaskType, Group: "Basics", Forms: []string{"^type"},
+			Label: "Type", Description: "Visual task type", Values: typeNames,
+			Examples: prefixed(typeNames, "^"), Surfaces: SurfaceCapture,
+		},
 		{
 			Field: FieldPriority, Group: "Priority & Tags", Forms: []string{"!1-5"},
 			Label: "Priority", Description: "Priority (1-5)", Values: slices.Clone(priorityNames),
@@ -74,7 +81,7 @@ func Definitions(surface Surface) []Definition {
 		},
 		{
 			Field: FieldTag, Group: "Priority & Tags", Forms: []string{"#tag"},
-			Label: "Tag", Description: "Add tag", Examples: []string{"#backend", "#type:bug", "#source:github"},
+			Label: "Tag", Description: "Add tag", Examples: []string{"#backend", "#bug", "#source:github"},
 			Repeatable: true, Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
@@ -115,6 +122,16 @@ func Definitions(surface Surface) []Definition {
 		def.Values = slices.Clone(def.Values)
 		def.Examples = slices.Clone(def.Examples)
 		result = append(result, def)
+	}
+	return result
+}
+
+// TaskMarkerNames returns the four semantic task-marker tags in model order.
+func TaskMarkerNames() []string {
+	markers := models.AllTaskMarkers()
+	result := make([]string, len(markers))
+	for i, marker := range markers {
+		result[i] = marker.String()
 	}
 	return result
 }

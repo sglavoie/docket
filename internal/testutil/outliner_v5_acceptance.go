@@ -125,8 +125,9 @@ func OutlinerV5TargetContract() OutlinerV5Contract {
 			{Key: "fx", Action: "clear-filters", Area: "filter"},
 		},
 		CaptureGrammar: []CaptureSigilAcceptance{
+			{Form: "^type", Field: "type", ValuePolicy: "epic story bug or idea stored as one mutually exclusive raw tag"},
 			{Form: "!1-5", Field: "priority", ValuePolicy: "integer from 1 through 5"},
-			{Form: "#tag", Field: "tag", ValuePolicy: "normalized tag including namespaced tags"},
+			{Form: "#tag", Field: "tag", ValuePolicy: "valid normalized tag created on the fly including namespaced tags"},
 			{Form: "@date", Field: "due", ValuePolicy: "supported date expression normalized to a local date"},
 			{Form: "~interval", Field: "recurrence", ValuePolicy: "daily weekly monthly or an integer day week or month interval"},
 			{Form: "$state", Field: "state", ValuePolicy: "one canonical v5 workflow state"},
@@ -186,7 +187,7 @@ func OutlinerV5TargetContract() OutlinerV5Contract {
 			"project trash delete purge Sandbox and Internal projects",
 			"Settings TUI custom themes and custom color editing",
 			"note tags task links pinning bulk actions and previews",
-			"task type fields and other retired v4 task metadata",
+			"persisted task type fields and other retired v4 task metadata",
 			"daily task project CRUD context note focus search scoring workflow template theme archive sandbox roadmap TUI-test undo redo and compatibility CLI commands",
 		},
 	}

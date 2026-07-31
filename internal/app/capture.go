@@ -253,7 +253,7 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 	if err != nil {
 		return preparedCapture{}, err
 	}
-	removeTags, err := normalizeTags(req.RemoveTags)
+	removeTags, err := normalizeTagList(req.RemoveTags)
 	if err != nil {
 		return preparedCapture{}, err
 	}
@@ -344,13 +344,28 @@ func insertCapturedTask(project *models.Project, task *models.Task, prepend bool
 // rejected rather than silently dropping the tag (models.AddTag ignores invalid
 // tags on its own).
 func normalizeTags(tags []string) ([]string, error) {
+	out, err := models.NormalizeTaskTags(tags)
+	if err != nil {
+		return nil, invalidInput("tag", err.Error())
+	}
+	return out, nil
+}
+
+// normalizeTagList validates and canonicalizes a tag operation list without
+// treating multiple marker names as a conflict. Removal lists may legitimately
+// clear different markers from different tasks in one bulk operation.
+func normalizeTagList(tags []string) ([]string, error) {
 	out := make([]string, 0, len(tags))
+	seen := make(map[string]bool, len(tags))
 	for _, raw := range tags {
-		tag := models.NormalizeTag(raw)
-		if err := models.ValidateTag(tag); err != nil {
+		tag, err := models.NormalizeTaskTag(raw)
+		if err != nil {
 			return nil, invalidInput("tag", err.Error())
 		}
-		out = append(out, tag)
+		if !seen[tag] {
+			seen[tag] = true
+			out = append(out, tag)
+		}
 	}
 	return out, nil
 }

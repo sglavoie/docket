@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -85,11 +86,11 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 		Project: env.project,
 		Shared: TaskComposerSharedAttributes{
 			State: models.StateNext,
-			Tags:  []string{"shared"},
+			Tags:  []string{"shared", "story"},
 		},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("First #one\nSecond !1")
+	composer.input.SetValue("First #one ^bug\nSecond !1")
 
 	cmd := composer.createCompact(false, false)
 	if cmd == nil {
@@ -100,13 +101,49 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 		t.Fatalf("bulk result = %#v, want TaskCreatedMsg count 2", msg)
 	}
 	fresh := env.reload(t)
-	if len(fresh.Tasks) != 2 || !fresh.Tasks[0].HasTag("shared") || !fresh.Tasks[0].HasTag("one") || fresh.Tasks[1].Priority != 1 {
+	if len(fresh.Tasks) != 2 || !fresh.Tasks[0].HasTag("shared") || !fresh.Tasks[0].HasTag("one") ||
+		!fresh.Tasks[0].HasTag("bug") || fresh.Tasks[0].HasTag("story") ||
+		!fresh.Tasks[1].HasTag("story") || fresh.Tasks[1].Priority != 1 {
 		t.Fatalf("shared/per-line attributes not committed: %+v", fresh.Tasks)
 	}
 
 	env.undo(t)
 	if got := len(env.reload(t).Tasks); got != 0 {
 		t.Fatalf("one undo left %d composer tasks", got)
+	}
+}
+
+func TestTaskComposerEnterSubmitsCompleteNewTagDespiteFuzzySuggestion(t *testing.T) {
+	existing, err := models.NewGenericTask("existing", 1, "Existing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing.Tags = []string{"backend"}
+	env := newScenarioEnv(t, "composer-new-tag", existing)
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:    ComposerProject,
+		Project: env.project,
+		Shared:  TaskComposerSharedAttributes{State: models.StateInbox},
+	}, nil)
+	composer.SetCaptureCoordinator(env.features.Capture)
+	composer.input.SetValue("Fresh task #back")
+	composer.updatePreview()
+	composer.refreshAutocomplete()
+	if !composer.ac.IsActive() || !composer.autocompleteLiteralComplete() {
+		t.Fatalf("expected active fuzzy suggestions for a complete literal: %+v", composer.ac)
+	}
+
+	_, cmd := composer.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("Enter accepted autocomplete instead of submitting the complete literal")
+	}
+	if msg, ok := cmd().(TaskCreatedMsg); !ok || msg.Result == nil {
+		t.Fatalf("submit result = %#v", msg)
+	}
+	fresh := env.reload(t)
+	created := fresh.GetTaskByShortID(2)
+	if created == nil || !created.HasTag("back") {
+		t.Fatalf("created task = %+v, want on-the-fly #back tag", created)
 	}
 }
 
@@ -175,7 +212,8 @@ func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
 	if composer.mode != ComposerExpanded || composer.expanded == nil {
 		t.Fatal("single line did not expand")
 	}
-	if composer.expanded.draft.title != "Ship it ^bug" || composer.expanded.draft.priority != 1 {
+	if composer.expanded.draft.title != "Ship it" || composer.expanded.draft.priority != 1 ||
+		!slices.Contains(composer.expanded.draft.tags, "bug") || !slices.Contains(composer.expanded.draft.tags, "release") {
 		t.Fatalf("expanded draft lost compact fields: %+v", composer.expanded.draft)
 	}
 }

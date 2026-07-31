@@ -174,19 +174,12 @@ func validateV5StringSet(field, taskID string, values []string) error {
 }
 
 func validateCanonicalV5Tags(taskID string, tags []string) error {
-	seen := make(map[string]bool, len(tags))
-	for _, tag := range tags {
-		normalized := models.NormalizeTag(tag)
-		if err := models.ValidateTag(normalized); err != nil {
-			return fmt.Errorf("v5 task %q tag %q: %w", taskID, tag, err)
-		}
-		if tag != normalized {
-			return fmt.Errorf("v5 task %q tag %q is not normalized", taskID, tag)
-		}
-		if seen[tag] {
-			return fmt.Errorf("v5 task %q has duplicate tag %q", taskID, tag)
-		}
-		seen[tag] = true
+	normalized, err := models.NormalizeTaskTags(tags)
+	if err != nil {
+		return fmt.Errorf("v5 task %q tags: %w", taskID, err)
+	}
+	if !slices.Equal(tags, normalized) {
+		return fmt.Errorf("v5 task %q tags are not canonical: got %v, want %v", taskID, tags, normalized)
 	}
 	return nil
 }
@@ -323,6 +316,10 @@ func ParseV5TaskMetadata(comment string) (V5TaskRecord, error) {
 		DueDate:      values["due"],
 		SnoozedUntil: values["snoozed"],
 		DependsOn:    splitV5Set(values["depends"]),
+	}
+	task.Tags, err = models.NormalizeTaskTags(task.Tags)
+	if err != nil {
+		return V5TaskRecord{}, fmt.Errorf("parse v5 tags: %w", err)
 	}
 	if values["completed"] != "" {
 		parsed, parseErr := parseV5Time(values["completed"])

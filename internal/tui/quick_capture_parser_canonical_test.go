@@ -9,7 +9,6 @@ import (
 func TestParseQuickCaptureLegacyFormsRemainTitleText(t *testing.T) {
 	runQuickCaptureParseTests(t, []quickCaptureParseTestCase{
 		{name: "type word", input: "Fix crash type:bug", wantTitle: "Fix crash type:bug", wantPriority: 3},
-		{name: "type sigil", input: "^bug Fix crash", wantTitle: "^bug Fix crash", wantPriority: 3},
 		{name: "priority", input: "Fix crash priority:1", wantTitle: "Fix crash priority:1", wantPriority: 3},
 		{name: "short priority", input: "Fix crash pri:1", wantTitle: "Fix crash pri:1", wantPriority: 3},
 		{name: "tag", input: "Fix crash tag:backend", wantTitle: "Fix crash tag:backend", wantPriority: 3},
@@ -19,6 +18,16 @@ func TestParseQuickCaptureLegacyFormsRemainTitleText(t *testing.T) {
 		{name: "short project", input: "Ship proj:core", wantTitle: "Ship proj:core", wantPriority: 3},
 		{name: "parent", input: "Child parent:1", wantTitle: "Child parent:1", wantPriority: 3},
 		{name: "state", input: "Ship state:ready", wantTitle: "Ship state:ready", wantPriority: 3},
+	})
+}
+
+func TestParseQuickCaptureSemanticTaskMarkers(t *testing.T) {
+	runQuickCaptureParseTests(t, []quickCaptureParseTestCase{
+		{name: "bug sigil", input: "^bug Fix crash", wantTitle: "Fix crash", wantPriority: 3, wantTags: []string{"bug"}},
+		{name: "case insensitive", input: "Plan launch ^EPIC", wantTitle: "Plan launch", wantPriority: 3, wantTags: []string{"epic"}},
+		{name: "legacy tag canonicalized", input: "Fix crash #type:bug", wantTitle: "Fix crash", wantPriority: 3, wantTags: []string{"bug"}},
+		{name: "unknown type", input: "Fix crash ^task", wantErr: true, errContains: "invalid task type"},
+		{name: "conflicting markers", input: "Fix crash #bug ^idea", wantErr: true, errContains: "only one type marker"},
 	})
 }
 
@@ -104,11 +113,11 @@ func TestParseQuickCaptureStructureAndState(t *testing.T) {
 			errContains: "use $paused",
 		},
 		{
-			name:           "all seven sigils combined",
-			input:          "Critical fix !1 #type:bug #production @tomorrow ~weekly $next >1",
+			name:           "all eight sigils combined",
+			input:          "Critical fix ^bug !1 #production @tomorrow ~weekly $next >1",
 			wantTitle:      "Critical fix",
 			wantPriority:   1,
-			wantTags:       []string{"type:bug", "production"},
+			wantTags:       []string{"bug", "production"},
 			wantHasDueDate: true,
 			wantParentID:   strPtr("epic-1"),
 			wantState:      models.StateNext,

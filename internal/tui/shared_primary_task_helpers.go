@@ -6,8 +6,8 @@ import (
 
 // buildReparentValidParents returns project-local tasks that can accept task's
 // complete subtree without creating a cycle or exceeding the lean hierarchy's
-// six-level depth cap. Task types are migration-only metadata and do not
-// constrain parent relationships.
+// six-level depth cap. Semantic task-marker tags do not constrain parent
+// relationships.
 func buildReparentValidParents(project *models.Project, task *models.Task) []*models.Task {
 	if project == nil || task == nil {
 		return nil

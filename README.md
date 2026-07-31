@@ -135,11 +135,14 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-5  #tag  @date  ~interval  $state  %project  >parent
+^type  !1-5  #tag  @date  ~interval  $state  %project  >parent
 ```
 
+- `^epic`, `^story`, `^bug`, and `^idea` set the task's visual type marker.
+  These are mutually exclusive raw tags; a task without one is a normal task.
 - `!1` through `!5` set priority.
-- `#tag` accepts normalized tags, including `type:bug` and `source:github`.
+- `#tag` creates and sets any valid tag on the fly, including semantic tags such
+  as `#bug` and namespaced tags such as `#source:github`.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
 - `~interval` accepts daily, weekly, monthly, or an integer day/week/month
@@ -148,9 +151,11 @@ validated before one atomic transaction is committed.
 - `%project` overrides scope routing.
 - `>parent` resolves inside the selected project after project routing.
 
-Aliases such as `priority:`, `due:`, `state:`, `proj:`, and `^type` are literal
-title text, not metadata. Root capture defaults to Inbox. A new child defaults
-to Ready under its selected parent.
+The exact legacy tags `type:epic`, `type:story`, `type:bug`, and `type:idea` are
+read as their raw equivalents for compatibility. Other aliases such as
+`priority:`, `due:`, `state:`, and `proj:` are literal title text, not task
+attributes. Root capture defaults to Inbox. A new child defaults to Ready under
+its selected parent.
 
 ## Workflow, hierarchy, and recurrence
 

@@ -143,8 +143,8 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 	plain := ansi.Strip(q.renderPreview())
 	lines := strings.Split(plain, "\n")
 
-	if len(lines) != 4 {
-		t.Fatalf("expected 4 lines, got %d:\n%s", len(lines), plain)
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines, got %d:\n%s", len(lines), plain)
 	}
 
 	expectations := []struct {
@@ -154,7 +154,8 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		{"Task", []string{"Ship release"}},
 		{"Route", []string{"$in_progress", "Web App"}},
 		{"Schedule", []string{"@Feb 15", "~"}},
-		{"Metadata", []string{"!1", "#backend", "#urgent"}},
+		{"Priority", []string{"!1"}},
+		{"Tags", []string{"#backend", "#urgent"}},
 	}
 	for i, exp := range expectations {
 		if !strings.HasPrefix(lines[i], exp.prefix) {
@@ -165,6 +166,24 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 				t.Errorf("line %d (%s): expected substring %q, got %q", i, exp.prefix, s, lines[i])
 			}
 		}
+	}
+}
+
+func TestRenderPreview_ShowsSemanticMarkerAndDedicatedTags(t *testing.T) {
+	q := makePreviewInput(t, &quickCaptureResult{
+		title:    "Fix composer",
+		priority: 3,
+		tags:     []string{"bug", "capture"},
+	}, "", 80)
+
+	plain := ansi.Strip(q.renderPreview())
+	for _, want := range []string{"Task", "B Fix composer", "Tags", "#bug", "#capture"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("preview missing %q:\n%s", want, plain)
+		}
+	}
+	if strings.Contains(plain, "Metadata") {
+		t.Fatalf("preview retained misleading Metadata group:\n%s", plain)
 	}
 }
 
@@ -222,7 +241,7 @@ func TestRenderPreview_ContinuationLinesAlignToLabelColumn(t *testing.T) {
 			t.Fatalf("preview line exceeds width 28: %q (width=%d)", stripped, w)
 		}
 	}
-	// At least one Metadata continuation should appear when the tag list wraps.
+	// At least one Tags continuation should appear when the tag list wraps.
 	if !strings.Contains(ansi.Strip(rendered), "#alpha") {
 		t.Fatalf("expected tags to render, got:\n%s", ansi.Strip(rendered))
 	}

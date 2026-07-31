@@ -218,7 +218,7 @@ func (s *Service) BulkPatchTagsByLocators(
 	if err != nil {
 		return BulkResult{}, err
 	}
-	normalizedRemove, err := normalizeBulkTags(remove)
+	normalizedRemove, err := normalizeTagList(remove)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -235,41 +235,32 @@ func (s *Service) BulkPatchTagsByLocators(
 	for _, tag := range normalizedAdd {
 		addSet[tag] = true
 	}
-	return s.bulkAttribute(nil, locators, "Set Tags", "tags", nil, func(t *models.Task) {
-		next := make([]string, 0, len(t.Tags)+len(normalizedAdd))
-		present := make(map[string]bool, len(t.Tags)+len(normalizedAdd))
-		for _, existing := range models.DedupeTags(t.Tags) {
-			if removeSet[existing] || present[existing] {
-				continue
+	patchedTags := func(current []string) ([]string, error) {
+		next := make([]string, 0, len(current)+len(normalizedAdd))
+		for _, existing := range models.DedupeTags(current) {
+			if !removeSet[existing] {
+				next = append(next, existing)
 			}
-			present[existing] = true
-			next = append(next, existing)
 		}
-		for _, tag := range normalizedAdd {
-			if present[tag] {
-				continue
-			}
-			present[tag] = true
-			next = append(next, tag)
+		next = append(next, normalizedAdd...)
+		return models.NormalizeTaskTags(next)
+	}
+	validate := func(ref TaskRef) error {
+		if _, err := patchedTags(ref.Task.Tags); err != nil {
+			return invalidInput("tag", err.Error())
 		}
-		t.Tags = next
+		return nil
+	}
+	return s.bulkAttribute(nil, locators, "Set Tags", "tags", validate, func(t *models.Task) {
+		t.Tags, _ = patchedTags(t.Tags)
 		t.UpdatedAt = s.clock.Now()
 	})
 }
 
 func normalizeBulkTags(tags []string) ([]string, error) {
-	normalized := make([]string, 0, len(tags))
-	seen := make(map[string]bool, len(tags))
-	for _, raw := range tags {
-		tag := models.NormalizeTag(raw)
-		if err := models.ValidateTag(tag); err != nil {
-			return nil, invalidInput("tag", err.Error())
-		}
-		if seen[tag] {
-			continue
-		}
-		seen[tag] = true
-		normalized = append(normalized, tag)
+	normalized, err := models.NormalizeTaskTags(tags)
+	if err != nil {
+		return nil, invalidInput("tag", err.Error())
 	}
 	return normalized, nil
 }

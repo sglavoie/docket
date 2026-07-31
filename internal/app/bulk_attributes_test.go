@@ -257,6 +257,18 @@ func TestBulkSetTagsRejectsInvalidTag(t *testing.T) {
 	}
 }
 
+func TestBulkSetTagsRejectsConflictingTaskMarkers(t *testing.T) {
+	task := newTask("t1", 1, "first")
+	project := newProject("proj-a", "Alpha", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.BulkSetTags([]string{task.ID}, []string{"bug", "idea"})
+	if !errors.Is(err, app.ErrInvalidInput) || len(repo.commits) != 0 {
+		t.Fatalf("conflicting markers error=%v commits=%d", err, len(repo.commits))
+	}
+}
+
 func TestBulkPatchTagsPreservesSomeMembershipAndCommitsOnce(t *testing.T) {
 	t1 := newTask("t1", 1, "first")
 	t1.Tags = []string{"common", "first-only"}
@@ -306,6 +318,53 @@ func TestBulkPatchTagsRejectsConflictingPatchBeforeMutation(t *testing.T) {
 	}
 	if !slices.Equal(task.Tags, []string{"keep"}) || len(repo.commits) != 0 {
 		t.Fatalf("conflicting patch mutated task or committed: tags=%v commits=%d", task.Tags, len(repo.commits))
+	}
+}
+
+func TestBulkPatchTagsRejectsMarkerConflictWithExistingTask(t *testing.T) {
+	task := newTask("task", 1, "task")
+	task.Tags = []string{"idea", "keep"}
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.BulkPatchTagsByLocators(
+		[]app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		[]string{"bug"},
+		nil,
+	)
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+	if !slices.Equal(task.Tags, []string{"idea", "keep"}) || len(repo.commits) != 0 {
+		t.Fatalf("marker conflict mutated task: tags=%v commits=%d", task.Tags, len(repo.commits))
+	}
+}
+
+func TestBulkPatchTagsReplacesDifferentExistingTaskMarkers(t *testing.T) {
+	bug := newTask("bug", 1, "bug")
+	bug.Tags = []string{"bug", "keep"}
+	idea := newTask("idea", 2, "idea")
+	idea.Tags = []string{"idea", "keep"}
+	project := newProject("project", "Project", bug, idea)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.BulkPatchTagsByLocators(
+		[]app.TaskLocator{
+			{ProjectID: project.ID, TaskID: bug.ID},
+			{ProjectID: project.ID, TaskID: idea.ID},
+		},
+		[]string{"story"},
+		[]string{"bug", "idea"},
+	)
+	if err != nil {
+		t.Fatalf("BulkPatchTagsByLocators: %v", err)
+	}
+	for _, task := range []*models.Task{bug, idea} {
+		if !slices.Equal(task.Tags, []string{"keep", "story"}) {
+			t.Fatalf("task %s tags = %v, want [keep story]", task.ID, task.Tags)
+		}
 	}
 }
 

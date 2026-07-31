@@ -171,7 +171,11 @@ func convertLegacyV4Task(legacy LegacyV4Task, location *time.Location) (V5TaskRe
 
 	if legacy.HeadingType != "Task" {
 		switch legacy.HeadingType {
-		case "Epic", "Story", "Bug", "Idea", "Action", "Note":
+		case "Epic", "Story", "Bug", "Idea":
+			tag := strings.ToLower(legacy.HeadingType)
+			addV5TaskTag(&task.Tags, tag)
+			addAudit("converted", "type", legacy.HeadingType, tag, "v5 writes every task with the neutral Task heading")
+		case "Action", "Note":
 			tag := "type:" + strings.ToLower(legacy.HeadingType)
 			addV5TaskTag(&task.Tags, tag)
 			addAudit("converted", "type", legacy.HeadingType, tag, "v5 writes every task with the neutral Task heading")
@@ -179,7 +183,6 @@ func convertLegacyV4Task(legacy LegacyV4Task, location *time.Location) (V5TaskRe
 			return V5TaskRecord{}, nil, fmt.Errorf("unsupported legacy heading type %q", legacy.HeadingType)
 		}
 	}
-
 	if source := strings.TrimSpace(unescapeLegacyV4MetadataScalar(metadata["source"])); source != "" {
 		tag, tagErr := normalizeLegacyV4Tag("source:" + source)
 		if tagErr != nil {
@@ -352,6 +355,16 @@ func normalizeLegacyV4Tag(raw string) (string, error) {
 	}
 	if strings.ContainsAny(tag, ",;\n\r") {
 		return "", fmt.Errorf("tag %q contains an invalid delimiter", tag)
+	}
+	switch strings.ToLower(tag) {
+	case "epic", "type:epic":
+		return "epic", nil
+	case "story", "type:story":
+		return "story", nil
+	case "bug", "type:bug":
+		return "bug", nil
+	case "idea", "type:idea":
+		return "idea", nil
 	}
 	return tag, nil
 }

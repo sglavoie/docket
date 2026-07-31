@@ -10,11 +10,19 @@ import (
 func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	p.input = parsed.Text
 
+	p.parseTaskTypeTokens(parsed.TokensFor(textgrammar.FieldTaskType))
+	if p.err != nil {
+		return
+	}
 	p.parsePriorityTokens(parsed.TokensFor(textgrammar.FieldPriority))
 	if p.err != nil {
 		return
 	}
 	p.parseTagTokens(parsed.TokensFor(textgrammar.FieldTag))
+	p.normalizeTagTokens()
+	if p.err != nil {
+		return
+	}
 	p.parseDueTokens(parsed.TokensFor(textgrammar.FieldDue))
 	if p.err != nil {
 		return
@@ -32,6 +40,19 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 		return
 	}
 	p.parseStateTokens(parsed.TokensFor(textgrammar.FieldState))
+}
+
+func (p *quickCaptureParser) parseTaskTypeTokens(tokens []textgrammar.Token) {
+	for _, token := range tokens {
+		marker, ok := models.ParseTaskMarker(token.Value)
+		if !ok {
+			if p.failf("invalid task type: %s (use ^epic, ^story, ^bug, or ^idea)", token.Value) {
+				return
+			}
+			continue
+		}
+		p.result.tags = append(p.result.tags, marker.String())
+	}
 }
 
 func (p *quickCaptureParser) parsePriorityTokens(tokens []textgrammar.Token) {
@@ -52,6 +73,15 @@ func (p *quickCaptureParser) parseTagTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		p.result.tags = append(p.result.tags, token.Value)
 	}
+}
+
+func (p *quickCaptureParser) normalizeTagTokens() {
+	tags, err := models.NormalizeTaskTags(p.result.tags)
+	if err != nil {
+		p.failf("invalid tags: %s", err)
+		return
+	}
+	p.result.tags = tags
 }
 
 func (p *quickCaptureParser) parseDueTokens(tokens []textgrammar.Token) {

@@ -2,6 +2,8 @@ package app_test
 
 import (
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -92,6 +94,34 @@ func TestCaptureRejectsInvalidTag(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("a rejected capture committed %d times, want 0", len(repo.commits))
+	}
+}
+
+func TestCaptureCanonicalizesLegacyTaskMarkerTag(t *testing.T) {
+	project := newProject("proj-1", "Alpha")
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	res, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Fix", Tags: []string{"type:BUG", "backend"}})
+	if err != nil {
+		t.Fatalf("Capture: %v", err)
+	}
+	if got := project.GetTaskByID(res.TaskID).Tags; !slices.Equal(got, []string{"bug", "backend"}) {
+		t.Fatalf("tags = %v, want [bug backend]", got)
+	}
+}
+
+func TestCaptureRejectsConflictingTaskMarkers(t *testing.T) {
+	project := newProject("proj-1", "Alpha")
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Ambiguous", Tags: []string{"bug", "idea"}})
+	if !errors.Is(err, app.ErrInvalidInput) || !strings.Contains(err.Error(), "only one type marker") {
+		t.Fatalf("err = %v, want task marker conflict", err)
+	}
+	if len(project.Tasks) != 0 || len(repo.commits) != 0 {
+		t.Fatalf("conflicting capture mutated state: tasks=%d commits=%d", len(project.Tasks), len(repo.commits))
 	}
 }
 
@@ -431,6 +461,21 @@ func TestAddAndRemoveTag(t *testing.T) {
 	}
 	if task.HasTag("backend") {
 		t.Errorf("tags = %v, want backend removed", task.Tags)
+	}
+}
+
+func TestAddTagRejectsConflictingTaskMarker(t *testing.T) {
+	task := newTask("t1", 1, "task")
+	task.Tags = []string{"idea", "keep"}
+	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
+	svc := newTestService(repo)
+
+	_, err := svc.AddTag("t1", "bug")
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("err = %v, want ErrInvalidInput", err)
+	}
+	if !slices.Equal(task.Tags, []string{"idea", "keep"}) || len(repo.commits) != 0 {
+		t.Fatalf("conflicting add mutated task: tags=%v commits=%d", task.Tags, len(repo.commits))
 	}
 }
 
