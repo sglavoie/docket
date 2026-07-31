@@ -174,7 +174,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 	manager := config.NewManager(filepath.Join(dataDir, "tt.json"))
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	// Mirror app_init.go: fold Today/Next exclusivity into every transition so a
 	// planning-aware move rides the same durable ledger transaction as the task
 	// write.

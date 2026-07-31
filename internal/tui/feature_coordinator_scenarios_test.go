@@ -115,7 +115,7 @@ func newScenarioEnv(t *testing.T, slug string, tasks ...*models.Task) *scenarioE
 
 	repo := newScenarioRepo(commitSvc, project)
 	repo.seed(t)
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	return &scenarioEnv{
 		dataDir:  dataDir,
 		ledger:   ledger,

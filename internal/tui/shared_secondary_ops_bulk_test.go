@@ -45,27 +45,6 @@ func TestGroupTaskProjectRefsByProjectStableOrderAndNilFiltering(t *testing.T) {
 	}
 }
 
-func TestTaskIDsByProjectFromTaskRefs(t *testing.T) {
-	projectA := mustBulkRefProject(t, "project-a", "Project A")
-	projectB := mustBulkRefProject(t, "project-b", "Project B")
-
-	idsByProject := taskIDsByProjectFromTaskRefs([]TaskProjectRef{
-		{Task: mustBulkRefTask(t, "task-1", 1), Project: projectA},
-		{Task: mustBulkRefTask(t, "task-2", 2), Project: projectB},
-		{Task: mustBulkRefTask(t, "task-3", 3), Project: projectA},
-		{Task: mustBulkRefTask(t, "", 4), Project: projectA},
-		{Task: nil, Project: projectB},
-		{Task: mustBulkRefTask(t, "task-4", 5), Project: nil},
-	})
-
-	if want := []string{"task-1", "task-3"}; !reflect.DeepEqual(idsByProject[projectA.ID], want) {
-		t.Fatalf("projectA IDs = %v, want %v", idsByProject[projectA.ID], want)
-	}
-	if want := []string{"task-2"}; !reflect.DeepEqual(idsByProject[projectB.ID], want) {
-		t.Fatalf("projectB IDs = %v, want %v", idsByProject[projectB.ID], want)
-	}
-}
-
 func TestAffectedProjectsFromTaskRefsStableOrder(t *testing.T) {
 	projectA := mustBulkRefProject(t, "project-a", "Project A")
 	projectB := mustBulkRefProject(t, "project-b", "Project B")
@@ -82,29 +61,6 @@ func TestAffectedProjectsFromTaskRefsStableOrder(t *testing.T) {
 	}
 	if projects[0] != projectB || projects[1] != projectA {
 		t.Fatalf("projects = %#v, want [projectB projectA]", projects)
-	}
-}
-
-func TestFinishTaskBulkSelection(t *testing.T) {
-	status := ""
-	state := &MultiSelectState{
-		multiSelectMode: true,
-		selectedTaskIdentities: map[TaskIdentity]bool{
-			{ProjectID: "project", TaskID: "task-1"}: true,
-			{ProjectID: "project", TaskID: "task-2"}: true,
-		},
-	}
-
-	finishTaskBulkSelection(state, &status, "Changed 2 tasks")
-
-	if state.multiSelectMode {
-		t.Fatal("expected multi-select mode to be disabled")
-	}
-	if state.SelectedCount() != 0 {
-		t.Fatalf("expected selection to be cleared, got %d selections", state.SelectedCount())
-	}
-	if status != "Changed 2 tasks" {
-		t.Fatalf("status = %q, want %q", status, "Changed 2 tasks")
 	}
 }
 

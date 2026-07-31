@@ -158,7 +158,7 @@ func TestWorkspaceLedger_ProjectScopeOutOfOrder(t *testing.T) {
 	mustRecord(t, ledger, "txn-2", "p2", f2, "x", "y")
 
 	// Newest-for-p1 is the older entry (txn-1); undoing it must not touch p2.
-	if _, err := ledger.Undo(ProjectScope("p1")); err != nil {
+	if _, err := ledger.Undo(LedgerScope{ProjectID: "p1"}); err != nil {
 		t.Fatalf("Undo p1: %v", err)
 	}
 	if got := readFile(t, f1); got != "a" {
@@ -177,7 +177,7 @@ func TestWorkspaceLedger_ProjectScopeOutOfOrder(t *testing.T) {
 	}
 
 	// Redo p1 replays txn-1.
-	if _, err := ledger.Redo(ProjectScope("p1")); err != nil {
+	if _, err := ledger.Redo(LedgerScope{ProjectID: "p1"}); err != nil {
 		t.Fatalf("Redo p1: %v", err)
 	}
 	if got := readFile(t, f1); got != "b" {
@@ -188,7 +188,7 @@ func TestWorkspaceLedger_ProjectScopeOutOfOrder(t *testing.T) {
 func TestLedgerScope_ArtifactRootMatchesAllArtifactTransitions(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "notes")
 	sibling := root + "-other"
-	scope := ArtifactRootScope(filepath.Join(root, "."))
+	scope := LedgerScope{ArtifactRoot: filepath.Join(root, ".")}
 	tests := []struct {
 		name      string
 		artifacts []ArtifactImage
@@ -252,7 +252,7 @@ func TestWorkspaceLedger_ArtifactRootScopeOutOfOrder(t *testing.T) {
 	}
 	mustRecord(t, ledger, "task-txn", "p1", taskPath, "task before", "task after")
 
-	scope := ArtifactRootScope(notesRoot)
+	scope := LedgerScope{ArtifactRoot: notesRoot}
 	if count, err := ledger.UndoCount(scope); err != nil || count != 1 {
 		t.Fatalf("UndoCount(notes) = %d, err=%v, want 1", count, err)
 	}
@@ -307,12 +307,12 @@ func TestWorkspaceLedger_GroupedEntryRestoresAllProjects(t *testing.T) {
 
 	// Selectable via either member project.
 	for _, pid := range []string{"p1", "p2"} {
-		if _, ok, err := ledger.SelectNewestUndo(ProjectScope(pid)); err != nil || !ok {
+		if _, ok, err := ledger.SelectNewestUndo(LedgerScope{ProjectID: pid}); err != nil || !ok {
 			t.Fatalf("SelectNewestUndo(%s) ok=%v err=%v", pid, ok, err)
 		}
 	}
 
-	if _, err := ledger.Undo(ProjectScope("p2")); err != nil {
+	if _, err := ledger.Undo(LedgerScope{ProjectID: "p2"}); err != nil {
 		t.Fatalf("Undo p2: %v", err)
 	}
 	if got := readFile(t, f1); got != "a" {

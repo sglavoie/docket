@@ -132,8 +132,11 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	if child == nil {
 		t.Fatal("child missing after reopen")
 	}
-	if !OutdentTask(project, child) {
-		t.Fatal("expected outdent of child to succeed")
+	if ok, reason := child.CanOutdent(); !ok {
+		t.Fatalf("expected outdent of child to be allowed: %s", reason)
+	}
+	if err := project.OutdentTask(child); err != nil {
+		t.Fatalf("outdent child: %v", err)
 	}
 
 	story = project.GetTaskByID(parentID)

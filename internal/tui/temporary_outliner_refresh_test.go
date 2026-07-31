@@ -74,7 +74,7 @@ func TestScopedDrilldownEscRestoresCrossProjectParent(t *testing.T) {
 	}
 }
 
-func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) {
+func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { //nolint:gocyclo // End-to-end regression keeps the complete UI transition in one scenario.
 	driver, project := openScopedProjectDrilldown(t)
 	cross := driver.App().crossOutliner
 

@@ -41,7 +41,7 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	for _, title := range titles {
 		note := models.NewNote(title)
 		note.Body = title + " body"
-		if err := storage.SaveNoteTo(dir, note); err != nil {
+		if err := saveTestNote(dir, note); err != nil {
 			t.Fatalf("seed global note %q: %v", title, err)
 		}
 	}

@@ -141,23 +141,6 @@ func TestDemoteBadgeEmpty(t *testing.T) {
 	}
 }
 
-func TestDueIsInlineHeroHonorsQuietStates(t *testing.T) {
-	today := time.Now()
-
-	open := &models.Task{ID: "open", WorkflowState: models.StateReady, DueDate: &today}
-	done := &models.Task{ID: "done", WorkflowState: models.StateDone, DueDate: &today}
-	canceled := &models.Task{ID: "canceled", WorkflowState: models.StateCanceled, DueDate: &today}
-
-	if !dueIsInlineHero(open) {
-		t.Fatal("open due-today task should be eligible for inline due hero")
-	}
-	for _, task := range []*models.Task{done, canceled} {
-		if dueIsInlineHero(task) {
-			t.Fatalf("%s task should not be eligible for inline due hero", task.State())
-		}
-	}
-}
-
 func TestDemoteBadgePreservesGlyph(t *testing.T) {
 	original := GetStateBadge(models.StateDone)
 	if original == "" {

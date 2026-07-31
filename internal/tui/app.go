@@ -255,9 +255,6 @@ type AppModel struct {
 	// Keyboard enhancements reported by the terminal (Kitty protocol).
 	keyboardEnhancements tea.KeyboardEnhancementsMsg
 
-	// Contextual project administration menu for a focused Outliner project header
-	projectAdminMenu *ProjectAdminMenuModel
-
 	// The contextual action flow is the only generic two-level overlay:
 	// action sheet -> value step. The sheet is host-agnostic; the host it was
 	// opened for travels on every message it emits. The value step is a

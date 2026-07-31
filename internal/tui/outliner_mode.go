@@ -71,9 +71,6 @@ func (mode OutlinerMode) FixedOrder() bool {
 	return mode.OrderPolicy != OrderPolicyTree
 }
 
-// InTabCycle reports whether the mode participates in Tab/Shift+Tab.
-func (mode OutlinerMode) InTabCycle() bool { return mode.TabIndex >= 0 }
-
 // outlinerModes is the ordered catalog and the exact Tab/Shift+Tab cycle.
 var outlinerModes = []OutlinerMode{
 	{ID: ModeAll, Label: "All", Aliases: []string{"all", "all tasks", "cross-project tasks", "every task"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, TabIndex: 0},

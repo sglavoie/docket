@@ -12,7 +12,7 @@ import (
 func typedTestApp(t *testing.T) *AppModel {
 	t.Helper()
 	model, project := newTestAppModelWithProject()
-	service := app.NewService(newTestAppRepo(project), nil, nil)
+	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
 	model.appService = service
 	model.features = newFeatureCoordinators(service, service)
 	model.secondaryFeatures = newSecondaryCoordinators(service)

@@ -52,7 +52,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
-	svc := app.NewService(repo, nil, nil).
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil).
 		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 
 	projectMap := make(map[string]*models.Project, len(projects))

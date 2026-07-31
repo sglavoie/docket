@@ -3,7 +3,6 @@ package storage
 import (
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -25,7 +24,6 @@ const (
 
 // ProjectLoadResult contains the result of loading a project, including any warnings.
 type ProjectLoadResult struct {
-	Warnings []ParseWarning
 	// RawRevision is the optimistic-concurrency revision of the exact tasks.md
 	// bytes parsed by this load. A non-nil pointer to "" means the file was
 	// absent; nil means the active test repository cannot provide a filesystem
@@ -48,9 +46,4 @@ func tasksFilePath(projectPath string) string {
 // snapshot loader uses to decide whether a cached parse is still fresh.
 func TasksFilePath(projectPath string) string {
 	return tasksFilePath(projectPath)
-}
-
-// GetTasksFilePath returns the path to a project's tasks.md file.
-func GetTasksFilePath(project *models.Project) string {
-	return tasksFilePath(project.Path)
 }

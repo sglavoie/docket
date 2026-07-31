@@ -116,7 +116,7 @@ func TestProtectedSystemInboxRenameRejectedBeforeCommit(t *testing.T) {
 	dataDir := t.TempDir()
 	project := seedProjectDir(t, dataDir, "inbox", "Inbox")
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	_, renameErr := svc.RenameProject(app.RenameProjectRequest{
 		Project:              project,
@@ -144,7 +144,7 @@ func TestRenameProjectCommitsAtomically(t *testing.T) {
 	dataDir := t.TempDir()
 	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	// Rename Alpha -> Beta in memory, then commit through the use case.
 	project.Name = "Beta"
@@ -198,7 +198,7 @@ func TestRenameProjectRejectsUncheckedTasksRewrite(t *testing.T) {
 	dataDir := t.TempDir()
 	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	_, err := svc.RenameProject(app.RenameProjectRequest{
 		Project:       project,
@@ -229,7 +229,7 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 			[]string{dataDir},
 		),
 	}
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	project.Name = "Beta"
 	project.Slug = "beta"
@@ -287,7 +287,7 @@ func TestRenameProjectRealCommitRejectsConcurrentTaskEdit(t *testing.T) {
 			[]string{dataDir},
 		),
 	}
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	project.Name = "Beta"
 	project.Slug = "beta"
@@ -325,7 +325,7 @@ func TestRenameProjectSlugUnchangedRewritesInPlace(t *testing.T) {
 	dataDir := t.TempDir()
 	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	newTasks := []byte("# Alpha Renamed\n")
 	expected := tasksExpectedRevision(t, project)

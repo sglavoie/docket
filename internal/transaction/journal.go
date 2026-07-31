@@ -355,31 +355,6 @@ func (j *Journal) writeManifest(m *Manifest) error {
 	return j.writeFile(j.ManifestPath(m.ID), data, util.FilePermissions)
 }
 
-// List returns every valid manifest currently stored in the transactions
-// directory, sorted by id. A missing directory yields no manifests. It is the
-// entry point crash recovery uses to enumerate in-flight transactions.
-func (j *Journal) List() ([]*Manifest, error) {
-	entries, err := os.ReadDir(j.dir)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("reading transactions directory: %w", err)
-	}
-	var out []*Manifest
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), manifestSuffix) {
-			continue
-		}
-		m, err := LoadManifest(filepath.Join(j.dir, e.Name()))
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, m)
-	}
-	return out, nil
-}
-
 // LoadManifest reads and validates a manifest from disk.
 func LoadManifest(path string) (*Manifest, error) {
 	data, err := os.ReadFile(path)

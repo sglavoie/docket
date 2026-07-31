@@ -9,68 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestRenderGitHubIssueIndicator(t *testing.T) {
-	task := &models.Task{
-		Attachments: []models.Attachment{
-			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
-			{Filename: "https://github.com/acme/roadmap/issues/456", IsURL: true},
-		},
-	}
-
-	got := ansi.Strip(renderGitHubIssueIndicator(task))
-	if !strings.Contains(got, "GH acme/roadmap#123 +1") {
-		t.Fatalf("expected compact issue indicator with overflow count, got %q", got)
-	}
-
-	plainTask := &models.Task{Attachments: []models.Attachment{{
-		Filename: "https://example.com/acme/roadmap/issues/123",
-		IsURL:    true,
-	}}}
-	if got := renderGitHubIssueIndicator(plainTask); got != "" {
-		t.Fatalf("expected no issue indicator for non-GitHub URL, got %q", got)
-	}
-}
-
-func TestGitHubIssueMetadataPreservesAttachmentCount(t *testing.T) {
-	task := &models.Task{
-		Attachments: []models.Attachment{
-			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
-			{Filename: "notes.md"},
-		},
-	}
-	wantIssue := ansi.Strip(renderGitHubIssueIndicator(task))
-	wantAttachments := ansi.Strip(renderAttachmentIndicator(task))
-
-	outliner := &OutlinerModel{
-		columnConfig: NewColumnConfig(map[string]bool{ColAttachments: true}, nil, DefaultOutlinerColumns, ""),
-	}
-	outlinerContent := ansi.Strip(outliner.renderTaskContentGroup(task))
-	if !strings.Contains(outlinerContent, wantIssue) {
-		t.Fatalf("outliner content missing GitHub issue indicator %q: %q", wantIssue, outlinerContent)
-	}
-	if !strings.Contains(outlinerContent, wantAttachments) {
-		t.Fatalf("outliner content missing generic attachment count %q: %q", wantAttachments, outlinerContent)
-	}
-}
-
-func TestCrossProjectTaskLineShowsGitHubIssueIndicator(t *testing.T) {
-	task := &models.Task{
-		ID:            "t1",
-		Title:         "Fix sync",
-		WorkflowState: models.StateReady,
-		Attachments: []models.Attachment{{
-			Filename: "https://github.com/acme/roadmap/issues/123",
-			IsURL:    true,
-		}},
-	}
-	proj := &models.Project{ID: "p1", Name: "Roadmap"}
-
-	got := ansi.Strip(RenderCrossProjectTaskLine(task, proj, nil, false, 120, 40, CrossProjectTaskLineOpts{}))
-	if !strings.Contains(got, "GH acme/roadmap#123") {
-		t.Fatalf("expected cross-project task line to show GitHub issue indicator, got %q", got)
-	}
-}
-
 func TestGitHubIssueAttachmentLabels(t *testing.T) {
 	issueAttachment := models.Attachment{
 		Filename: "https://github.com/acme/roadmap/issues/123",

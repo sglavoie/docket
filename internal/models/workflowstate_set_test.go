@@ -91,7 +91,10 @@ func TestWorkflowStateSetAlgebra(t *testing.T) {
 }
 
 func TestAllWorkflowStateSet(t *testing.T) {
-	set := AllWorkflowStateSet()
+	set, err := NewWorkflowStateSet(AllWorkflowStates()...)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got, want := set.Values(), AllWorkflowStates(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("AllWorkflowStateSet().Values() = %v, want %v", got, want)
 	}

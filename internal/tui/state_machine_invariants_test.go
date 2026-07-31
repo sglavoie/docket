@@ -409,7 +409,7 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ Pres
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newScenarioRepo(commitSvc, project)
 	repo.seed(t)
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	cfg := newTestConfigAt(dataDir)
 	setTestProjects(cfg, []*models.Project{project})

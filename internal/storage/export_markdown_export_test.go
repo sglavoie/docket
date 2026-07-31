@@ -10,6 +10,24 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+func saveExportNoteFixture(t *testing.T, dir string, note *models.Note) {
+	t.Helper()
+	if err := os.MkdirAll(dir, DirPermissions); err != nil {
+		t.Fatal(err)
+	}
+	path, err := NoteFilePathIn(dir, note.Filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := RenderNoteContent(note)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), FilePermissions); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestExportProjectMarkdown_NoNotesDir(t *testing.T) {
 	tmp := t.TempDir()
 	p := &models.Project{Name: "Test", Slug: "test", Path: tmp}
@@ -86,9 +104,7 @@ func TestExportProjectMarkdown_NotesUseRetainedMinimalShape(t *testing.T) {
 		Filename: models.GenerateNoteFilename("Oldest Normal", base.Add(-2*time.Hour)),
 	}
 	for _, note := range []*models.Note{newer, older, oldest} {
-		if err := SaveNoteTo(notesDir, note); err != nil {
-			t.Fatalf("save note: %v", err)
-		}
+		saveExportNoteFixture(t, notesDir, note)
 	}
 
 	p := &models.Project{Name: "Test", Slug: "test", Path: tmp}
@@ -161,9 +177,7 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 		Filename: models.GenerateNoteFilename("My Note", now),
 		Body:     "note body",
 	}
-	if err := SaveNoteTo(notesDir, note); err != nil {
-		t.Fatalf("save note: %v", err)
-	}
+	saveExportNoteFixture(t, notesDir, note)
 
 	task := mustTask("t1", 1, "", "My Task")
 	task.Priority = 0

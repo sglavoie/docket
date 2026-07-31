@@ -15,26 +15,8 @@ import (
 
 // nextOrderContains reports whether the Next order index already lists the
 // project-qualified task.
-func nextOrderContains(planning *config.PlanningState, identity TaskIdentity) bool {
-	for _, item := range planning.GetNextOrder() {
-		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
-			return true
-		}
-	}
-	return false
-}
-
 // todayContains reports whether the Daily Plan (Today) already lists the
 // project-qualified task.
-func todayContains(planning *config.PlanningState, identity TaskIdentity) bool {
-	for _, item := range planning.GetToday() {
-		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
-			return true
-		}
-	}
-	return false
-}
-
 // applyTaskPlanningAction drives production mutations through Service.ApplyPlanning
 // and gives isolated in-memory UI tests the same app-owned state/invariant logic
 // without manufacturing a filesystem repository.

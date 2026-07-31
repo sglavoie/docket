@@ -41,9 +41,6 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	if m.operationTextPrompt != nil {
 		out = append(out, m.operationTextPrompt)
 	}
-	if m.projectAdminMenu != nil {
-		out = append(out, m.projectAdminMenu)
-	}
 	return out
 }
 

@@ -83,7 +83,7 @@ func TestRemoveNonexistentTag(t *testing.T) {
 	}
 }
 
-func Test_validateTag(t *testing.T) {
+func TestValidateTag(t *testing.T) {
 	tests := []struct {
 		name    string
 		tag     string
@@ -105,9 +105,9 @@ func Test_validateTag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateTag(tt.tag)
+			err := ValidateTag(tt.tag)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateTag(%q) error = %v, wantErr %v", tt.tag, err, tt.wantErr)
+				t.Errorf("ValidateTag(%q) error = %v, wantErr %v", tt.tag, err, tt.wantErr)
 			}
 		})
 	}

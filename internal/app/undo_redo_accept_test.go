@@ -98,7 +98,7 @@ func TestDeleteUndoRedoAcceptance(t *testing.T) {
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 
-	appSvc := app.NewService(repo, nil, nil)
+	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	res, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
@@ -147,7 +147,7 @@ func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 
-	appSvc := app.NewService(repo, nil, nil)
+	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	after := []byte(`{"focus_queue":[]}`)
 	art := storage.ArtifactChange{Path: configPath, Data: after}
 	if _, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, art); err != nil {
@@ -190,7 +190,7 @@ func TestDeleteRollsBackWhenArtifactEscapesRoot(t *testing.T) {
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 
-	appSvc := app.NewService(repo, nil, nil)
+	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	escape := storage.ArtifactChange{Path: filepath.Join(t.TempDir(), "outside.json"), Data: []byte("x")}
 	if _, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, escape); err == nil {
 		t.Fatal("expected delete to fail when an artifact escapes the approved root")
@@ -234,7 +234,10 @@ func realTestProject(t *testing.T, dataDir, slug, title string) *models.Project 
 // returning its path.
 func seedRealAttachment(t *testing.T, project *models.Project, task *models.Task, name string, data []byte) string {
 	t.Helper()
-	dir := storage.GetTaskAttachmentsDir(project, task)
+	dir, err := storage.ResolveTaskAttachmentsDir(project, task)
+	if err != nil {
+		t.Fatalf("ResolveTaskAttachmentsDir: %v", err)
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir attachments: %v", err)
 	}

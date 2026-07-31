@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -15,7 +14,14 @@ import (
 // SchemaVersionV5 is the strict live task Markdown schema.
 const SchemaVersionV5 = 5
 
-var v5TaskHeadingRegex = regexp.MustCompile(`^(#{2,6})\s+Task:\s*(.*)$`)
+const scannerInitBufSize = 64 * 1024
+
+var (
+	v5TaskHeadingRegex = regexp.MustCompile(`^(#{2,6})\s+Task:\s*(.*)$`)
+	headingRegex       = regexp.MustCompile(`^(#{2,6})\s+Task:\s*(.*)$`)
+	projectRegex       = regexp.MustCompile(`^#\s+Project:\s*(.+)$`)
+	schemaMarkerRegex  = regexp.MustCompile(`^<!--\s*tt-schema:\s*(\d+)\s*-->\s*$`)
+)
 
 // V5ProjectDocument is the target project task file. Tags are deliberately not
 // stored at project level; callers derive them from Tasks.
@@ -206,23 +212,6 @@ func ParseV5ProjectDocument(content string) (V5ProjectDocument, error) {
 		return V5ProjectDocument{}, err
 	}
 	return document, nil
-}
-
-// DerivedV5WorkspaceTags returns the normalized sorted tag vocabulary derived
-// from task usage across every supplied project document.
-func DerivedV5WorkspaceTags(documents []V5ProjectDocument) []string {
-	seen := make(map[string]bool)
-	for _, document := range documents {
-		for _, tag := range format.DerivedV5TaskTags(document.Tasks) {
-			seen[tag] = true
-		}
-	}
-	tags := make([]string, 0, len(seen))
-	for tag := range seen {
-		tags = append(tags, tag)
-	}
-	sort.Strings(tags)
-	return tags
 }
 
 // V5ProjectDocumentFromModel adapts the live lean task model to the strict v5

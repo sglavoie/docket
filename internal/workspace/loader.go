@@ -55,7 +55,7 @@ func NewLoader() *Loader {
 	return &Loader{
 		loadProject: storage.LoadProject,
 		revisionOf: func(p *models.Project) string {
-			return storage.ToProjectDocument(p, nil).Revision
+			return storage.ToProjectDocument(p).Revision
 		},
 		statSource: defaultStatSource,
 		cache:      make(map[string]cacheEntry),

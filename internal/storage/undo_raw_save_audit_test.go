@@ -15,15 +15,13 @@ import (
 )
 
 const (
-	rawSaveDoctorRepair  = "explicit tt doctor repair rewrites an already-loaded damaged project; it is not an ordinary user mutation"
-	rawSaveReviewFixture = "TUI scenario fixture seeds an isolated throwaway workspace before the app runs; it cannot target user data"
-	rawSaveAppTestRepo   = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
+	rawSaveDoctorRepair = "explicit tt doctor repair rewrites an already-loaded damaged project; it is not an ordinary user mutation"
+	rawSaveAppTestRepo  = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
 )
 
 var rawProjectSaveAllowlist = map[string]string{
 	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                 rawSaveDoctorRepair,
 	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
-	"internal/tui/uitest_fixtures.go:(*uitestWorkspace).addProject:storage.SaveProject(project)": rawSaveReviewFixture,
 }
 
 func TestRawProjectSaveCallsitesAreAllowlisted(t *testing.T) {

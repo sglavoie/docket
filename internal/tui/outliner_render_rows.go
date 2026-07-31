@@ -369,44 +369,6 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 	return priorityBadge + " "
 }
 
-func (m *OutlinerModel) renderTaskContentGroup(task *models.Task) string {
-	var contentParts []string
-	if m.columnConfig.IsVisible(ColTags) {
-		if tags := renderTruncatedTags(task.Tags, 2, 8); tags != "" {
-			contentParts = append(contentParts, tags)
-		}
-	}
-	if m.columnConfig.IsVisible(ColComments) {
-		if comments := renderCommentIndicator(task); comments != "" {
-			contentParts = append(contentParts, comments)
-		}
-	}
-	if m.columnConfig.IsVisible(ColDescription) {
-		if d := renderDescriptionIndicator(task); d != "" {
-			contentParts = append(contentParts, d)
-		}
-	}
-	if m.columnConfig.IsVisible(ColAttachments) {
-		if issue := renderGitHubIssueIndicator(task); issue != "" {
-			contentParts = append(contentParts, issue)
-		}
-		if attachments := renderAttachmentIndicator(task); attachments != "" {
-			contentParts = append(contentParts, attachments)
-		}
-	}
-	if m.columnConfig.IsVisible(ColChecklist) {
-		if checklist := renderChecklistIndicator(task); checklist != "" {
-			contentParts = append(contentParts, checklist)
-		}
-	}
-	if m.columnConfig.IsVisible(ColDecisions) {
-		if decisions := renderDecisionIndicator(task); decisions != "" {
-			contentParts = append(contentParts, decisions)
-		}
-	}
-	return JoinGroupParts(contentParts...)
-}
-
 func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow) string {
 	if !m.multiSelectMode {
 		return ""

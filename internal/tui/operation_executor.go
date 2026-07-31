@@ -22,7 +22,6 @@ const (
 	OperationSourceDirectKey   OperationInvocationSource = "direct-key"
 	OperationSourceActionSheet OperationInvocationSource = "action-sheet"
 	OperationSourceBulk        OperationInvocationSource = "bulk"
-	OperationSourceHarness     OperationInvocationSource = "harness"
 )
 
 // OperationExecutionRequest is the complete input to centralized execution.

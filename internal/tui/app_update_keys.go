@@ -85,18 +85,6 @@ func (m *AppModel) performGlobalTaskUndoRedoForProject(_ *models.Project, redo b
 	return nil
 }
 
-func (m *AppModel) currentViewSupportsGlobalTaskUndoRedo() bool {
-	if m.activeTaskDetail() {
-		return true
-	}
-	switch m.currentView() { //nolint:exhaustive
-	case ViewTaskDetail:
-		return true
-	default:
-		return false
-	}
-}
-
 func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 	if !m.projectArchiveConfirm.IsActive() {
 		return false, nil
@@ -137,13 +125,6 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		dismiss, cmd := dispatchOverlayKey(m.contextActionSheet, msg)
 		if dismiss {
 			m.contextActionSheet = nil
-		}
-		return true, cmd
-	}
-	if m.projectAdminMenu != nil {
-		dismiss, cmd := dispatchOverlayKey(m.projectAdminMenu, msg)
-		if dismiss {
-			m.projectAdminMenu = nil
 		}
 		return true, cmd
 	}

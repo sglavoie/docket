@@ -230,8 +230,7 @@ func wrapStyledHelp(styled string, firstWidth, width int) []string {
 type DividerOption func(*dividerConfig)
 
 type dividerConfig struct {
-	color          color.Color
-	rightIndicator string
+	color color.Color
 }
 
 // WithDividerColor overrides the default muted color.
@@ -241,16 +240,8 @@ func WithDividerColor(c color.Color) DividerOption {
 	}
 }
 
-// WithRightIndicator places text right-aligned within the divider line.
-func WithRightIndicator(indicator string) DividerOption {
-	return func(c *dividerConfig) {
-		c.rightIndicator = indicator
-	}
-}
-
-// renderHorizontalDivider renders a full-width ─── line with optional styling and
-// embedded content. Use WithDividerColor to change the color and WithRightIndicator
-// to embed right-aligned text (e.g., a scroll position indicator).
+// renderHorizontalDivider renders a full-width ─── line with optional styling.
+// Use WithDividerColor to change the color.
 func renderHorizontalDivider(width int, opts ...DividerOption) string {
 	if width <= 0 {
 		width = 80
@@ -265,12 +256,7 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 
 	style := lipgloss.NewStyle().Foreground(cfg.color)
 
-	dividerLine := strings.Repeat("─", width)
-	if indicatorWidth := lipgloss.Width(cfg.rightIndicator); cfg.rightIndicator != "" && indicatorWidth < width {
-		dividerLine = strings.Repeat("─", width-indicatorWidth) + cfg.rightIndicator
-	}
-
-	return style.Render(dividerLine)
+	return style.Render(strings.Repeat("─", width))
 }
 
 // Spacing rule: 1 blank line between sections, 0 blank lines between rows

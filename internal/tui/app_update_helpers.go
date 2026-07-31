@@ -43,16 +43,6 @@ func (m *AppModel) currentViewCapabilities() ViewCapabilities {
 // hasActiveTextInput returns true if the current view has an active text input
 // that should receive keyboard input (like search boxes, text fields).
 // This is used to determine whether global keyboard shortcuts should be intercepted.
-func (m *AppModel) hasActiveTextInput() bool {
-	if m.Overlays().HasActiveTextInput() {
-		return true
-	}
-	if caps := m.currentViewCapabilities(); caps != nil {
-		return caps.HasTextInput()
-	}
-	return false
-}
-
 // isCtrlEscKey reports whether the key event is Ctrl+Esc. The string check
 // covers Bubble Tea's normalized representation; the code/modifier check keeps
 // this stable for tests and terminal protocols that preserve the modifier.
@@ -82,18 +72,3 @@ func upgradeKittyKeyboard() tea.Cmd {
 
 // hasActiveConfirmDialog returns true if the current view has an active confirm dialog.
 // Used to prevent the global clipboard handler from intercepting y/Y during delete confirmations.
-func (m *AppModel) hasActiveConfirmDialog() bool {
-	if m.projectArchiveConfirm.IsActive() ||
-		m.taskDeleteConfirm.IsActive() ||
-		m.operationConfirm.IsActive() {
-		return true
-	}
-	view := m.activeView()
-	if view == nil {
-		return false
-	}
-	if c, ok := view.(interface{ IsConfirmActive() bool }); ok {
-		return c.IsConfirmActive()
-	}
-	return false
-}

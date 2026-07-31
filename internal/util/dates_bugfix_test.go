@@ -1,7 +1,6 @@
 package util
 
 import (
-	"strings"
 	"testing"
 	"time"
 )
@@ -56,33 +55,6 @@ func TestParseRelativeDate_IntegerOverflow(t *testing.T) {
 
 // TestParseFlexibleDate_IntegerOverflow covers the bare-shorthand path
 // "Nd/Nw/Nm" which uses its own strconv.Atoi call.
-func TestParseFlexibleDate_IntegerOverflow(t *testing.T) {
-	overflowInputs := []string{
-		"99999999999999999999d",
-		"99999999999999999999w",
-		"99999999999999999999m",
-	}
-	for _, in := range overflowInputs {
-		t.Run(in, func(t *testing.T) {
-			_, err := ParseFlexibleDate(in)
-			if err == nil {
-				t.Errorf("expected error for overflowing input %q, got nil", in)
-				return
-			}
-			// Either the bare-shorthand fallback rejects it, or the underlying
-			// ParseRelativeDate rejects it; both surface a non-nil error.
-			if !strings.Contains(strings.ToLower(err.Error()), "invalid") &&
-				!strings.Contains(strings.ToLower(err.Error()), "unrecognized") {
-				t.Errorf("error %q does not mention invalid/unrecognized", err.Error())
-			}
-		})
-	}
-}
-
-// TestParseMonthDay_LeapDayAdvancesToNextLeapYear is a deterministic regression
-// test for the silent-march-1 bug: parsing "feb 29" from a base date of
-// 2024-03-01 (after the leap day has passed) must resolve to 2028-02-29,
-// not 2025-03-01.
 func TestParseMonthDay_LeapDayAdvancesToNextLeapYear(t *testing.T) {
 	// Base date: one day after the 2024 leap day, so 2024 is in the past.
 	base := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -204,16 +176,3 @@ func TestParseRelativeDate_MultiplierOverflow(t *testing.T) {
 
 // TestParseFlexibleDate_MultiplierOverflow covers the bare-shorthand path
 // for values that overflow under multiplication.
-func TestParseFlexibleDate_MultiplierOverflow(t *testing.T) {
-	multiplierOverflowInputs := []string{
-		"1000000000000000000w",
-		"1000000000000000000m",
-	}
-	for _, in := range multiplierOverflowInputs {
-		t.Run(in, func(t *testing.T) {
-			if _, err := ParseFlexibleDate(in); err == nil {
-				t.Errorf("expected error for overflowing input %q, got nil", in)
-			}
-		})
-	}
-}

@@ -244,10 +244,6 @@ func RefusePreSimplificationV5SnapshotMutation(dataDir, path string) error {
 	return fmt.Errorf("%w: %s", ErrImmutablePreSimplificationV5Snapshot, filepath.Clean(path))
 }
 
-func createPreSimplificationV5Snapshot(dataDir string, hooks *preSimplificationV5SnapshotHooks) (*PreSimplificationV5Snapshot, error) {
-	return createPreSimplificationV5SnapshotWithAudit(dataDir, hooks, nil)
-}
-
 func createPreSimplificationV5SnapshotWithMigrationAudit(
 	dataDir string,
 	migrationAudit []byte,

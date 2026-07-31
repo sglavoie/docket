@@ -255,7 +255,7 @@ func TestSaveProjectLocked_CreatesLockFile(t *testing.T) {
 	}
 }
 
-func TestWriteTasksMarkdown_SkipsNilTasks(t *testing.T) {
+func TestWriteTasksMarkdownRejectsNilTasks(t *testing.T) {
 	tk1, err := models.NewGenericTask("task-1", 1, "First")
 	if err != nil {
 		t.Fatal(err)
@@ -265,22 +265,10 @@ func TestWriteTasksMarkdown_SkipsNilTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// A nil entry must not crash the writer. Real-world callers reach this
-	// path via undo_targeted and other code paths that bypass the audit and
-	// may carry transient nil entries during reconstruction.
 	tasks := []*models.Task{tk1, nil, tk2}
 
-	out := WriteTasksMarkdown("Nil Test", tasks)
-
-	parsed, err := ParseTasksMarkdownDocument(out)
-	if err != nil {
-		t.Fatalf("ParseTasksMarkdownDocument failed: %v", err)
-	}
-	if len(parsed.Tasks) != 2 {
-		t.Fatalf("expected 2 tasks after round-trip, got %d", len(parsed.Tasks))
-	}
-	if parsed.Tasks[0].Title != "First" || parsed.Tasks[1].Title != "Second" {
-		t.Errorf("unexpected titles after round-trip: %q, %q", parsed.Tasks[0].Title, parsed.Tasks[1].Title)
+	if _, err := WriteTasksMarkdown("Nil Test", tasks); err == nil || !strings.Contains(err.Error(), "nil task") {
+		t.Fatalf("WriteTasksMarkdown error = %v, want nil-task rejection", err)
 	}
 }
 

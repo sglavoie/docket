@@ -42,10 +42,6 @@ func ValidateTag(tag string) error {
 	return nil
 }
 
-func validateTag(tag string) error {
-	return ValidateTag(tag)
-}
-
 // AddTag adds a tag if not already present. The tag is normalized (trimmed)
 // before storing. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {

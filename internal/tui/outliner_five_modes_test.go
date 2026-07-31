@@ -22,9 +22,8 @@ func TestOutlinerModeCatalogIsExactFiveModeCycle(t *testing.T) {
 		if mode.ID != want[index] {
 			t.Errorf("catalog[%d] = %q, want %q", index, mode.ID, want[index])
 		}
-		if mode.TabIndex != index || !mode.InTabCycle() {
-			t.Errorf("mode %q Tab metadata = %d/%t, want %d/true",
-				mode.ID, mode.TabIndex, mode.InTabCycle(), index)
+		if mode.TabIndex != index || mode.TabIndex < 0 {
+			t.Errorf("mode %q Tab index = %d, want %d", mode.ID, mode.TabIndex, index)
 		}
 		if tabModes[index].ID != mode.ID {
 			t.Errorf("Tab cycle[%d] = %q, want catalog mode %q",

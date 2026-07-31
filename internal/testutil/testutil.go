@@ -118,14 +118,6 @@ func NewTestTask(title string) *models.Task {
 	return task
 }
 
-// AssertEqual fails the test if got != want.
-func AssertEqual[T comparable](t *testing.T, got, want T) {
-	t.Helper()
-	if got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-}
-
 // TestDeps holds mock external dependencies plus caller-owned test state. The
 // state is generic so this support package does not depend on the application
 // configuration facade; callers may supply domain fixtures, RuntimeState, or a

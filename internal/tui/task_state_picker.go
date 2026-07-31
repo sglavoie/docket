@@ -14,18 +14,6 @@ type TaskStatePickerModel = OperationValuePickerModel
 // NewTaskStatePickerModel builds the exact canonical ten-state picker. Invalid
 // transitions stay visible with a concise reason, which is more useful than
 // silently hiding terminal-state rules.
-func NewTaskStatePickerModel(
-	request OperationExecutionRequest,
-	current models.WorkflowState,
-	taskTitle string,
-) (*TaskStatePickerModel, error) {
-	return NewTaskStatePickerForTargets(
-		request,
-		[]models.WorkflowState{current},
-		taskTitle,
-	)
-}
-
 // NewTaskStatePickerForTargets builds one state picker whose enabled values are
 // valid for every frozen target. Mixed-state visual selections therefore never
 // offer a transition that would silently apply to only a subset.

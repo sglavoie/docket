@@ -42,7 +42,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			spec := captureFooterSpec(tc.confirmDiscard, tc.autocompleteActive, tc.helpExpanded)
+			spec := captureFooterSpecFull(tc.confirmDiscard, tc.autocompleteActive, tc.helpExpanded, false, 0)
 			for _, want := range tc.required {
 				if !strings.Contains(spec.Left, want) {
 					t.Fatalf("%s footer missing %q, got %q", tc.name, want, spec.Left)
@@ -56,13 +56,13 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 // multiple state flags are set simultaneously: discard confirmation wins over
 // autocomplete, which wins over expanded syntax.
 func TestCaptureFooterSpecStatePriority(t *testing.T) {
-	if got := captureFooterSpec(true, true, true); got.Left != captureFooterConfirm {
+	if got := captureFooterSpecFull(true, true, true, false, 0); got.Left != captureFooterConfirm {
 		t.Fatalf("discard confirmation must take precedence, got %q", got.Left)
 	}
-	if got := captureFooterSpec(false, true, true); got.Left != captureFooterAutocomplete {
+	if got := captureFooterSpecFull(false, true, true, false, 0); got.Left != captureFooterAutocomplete {
 		t.Fatalf("autocomplete must take precedence over help, got %q", got.Left)
 	}
-	if got := captureFooterSpec(false, false, true); got.Left != captureFooterHelp {
+	if got := captureFooterSpecFull(false, false, true, false, 0); got.Left != captureFooterHelp {
 		t.Fatalf("expanded syntax expected, got %q", got.Left)
 	}
 }

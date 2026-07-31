@@ -72,19 +72,6 @@ func (f *CommonFilterState) setStateFilter(states models.WorkflowStateSet, activ
 // dependency-blocked filter, which resolves unresolved dependencies within the
 // project. A nil project disables that project-scoped filter; the state filter is
 // project-independent because WorkflowState is derived from the task alone.
-func passesCommonFilters(task *models.Task, f *CommonFilterState, project *models.Project) bool {
-	return passesCommonFiltersAt(task, f, project, time.Now())
-}
-
-func passesCommonFiltersAt(
-	task *models.Task,
-	f *CommonFilterState,
-	project *models.Project,
-	now time.Time,
-) bool {
-	return passesCommonFiltersWithResolverAt(task, f, project, nil, now)
-}
-
 // passesCommonFiltersWithResolverAt evaluates the same shared facets while
 // resolving dependency blocking against one workspace snapshot. Callers that
 // do not have a workspace resolver retain the legacy project-local behavior;
@@ -241,17 +228,6 @@ func commonFilterParts(f *CommonFilterState) []string {
 	return parts
 }
 
-// renderCommonFilterIndicator returns a compact badge of all active common filters.
-// Returns empty string if no filters are active.
-func renderCommonFilterIndicator(f *CommonFilterState) string {
-	return renderFilterBadge(commonFilterParts(f))
-}
-
-// CollectTaskTagNames returns sorted unique tag names from task usage only.
-func CollectTaskTagNames(tasks []*models.Task) []string {
-	return tagNamesFromInfos(BuildTagList(tasks, false))
-}
-
 // CollectTagNamesForProject returns sorted unique tag names from the project's
 // catalog and task usage.
 func CollectTagNamesForProject(project *models.Project) []string {
@@ -264,21 +240,6 @@ func tagNamesFromInfos(infos []TagInfo) []string {
 		tags[i] = info.Name
 	}
 	return tags
-}
-
-// validateSavedStringSet returns the subset of saved that exist in valid.
-func validateSavedStringSet(saved []string, valid []string) map[string]bool {
-	validSet := make(map[string]bool, len(valid))
-	for _, v := range valid {
-		validSet[v] = true
-	}
-	result := make(map[string]bool)
-	for _, s := range saved {
-		if validSet[s] {
-			result[s] = true
-		}
-	}
-	return result
 }
 
 // FilterState contains all task filtering options including view-specific fields
@@ -303,24 +264,9 @@ func renderFilterBadge(parts []string) string {
 	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
 }
 
-// FilterMixin provides shared filter state. Views that embed this struct get
-// getFilter, HasActiveFilters, ClearAllFilters, and
-// renderActiveFilterIndicator for free.
-// Views with custom filter logic (extra filter fields) override the methods
-// they need; the embedded defaults still handle the common cases.
-type FilterMixin struct {
-	filter CommonFilterState
-}
-
 // newFilterState returns an initialized CommonFilterState with allocated maps.
 func newFilterState() CommonFilterState {
 	return CommonFilterState{
 		Tags: make(map[string]bool),
 	}
-}
-
-// ActiveFilterCount returns the number of active filters.
-// Implements ActiveFilterProvider. Views with extra filter fields override this.
-func (fm *FilterMixin) ActiveFilterCount() int {
-	return len(commonFilterParts(&fm.filter))
 }

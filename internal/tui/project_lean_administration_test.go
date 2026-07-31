@@ -31,11 +31,11 @@ func TestLeanProjectCreateAndRenameParticipateInWorkspaceUndo(t *testing.T) {
 		}
 
 		ledger := fixture.app.deps.historyLedger()
-		entry, ok, err := ledger.SelectNewestUndo(storage.ProjectScope(created.Project.ID))
+		entry, ok, err := ledger.SelectNewestUndo(storage.LedgerScope{ProjectID: created.Project.ID})
 		if err != nil || !ok || entry.Action != "Create Project" {
 			t.Fatalf("create undo entry = %#v/%v/%v", entry, ok, err)
 		}
-		if _, undoErr := ledger.Undo(storage.ProjectScope(created.Project.ID)); undoErr != nil {
+		if _, undoErr := ledger.Undo(storage.LedgerScope{ProjectID: created.Project.ID}); undoErr != nil {
 			t.Fatalf("undo create: %v", undoErr)
 		}
 		reloaded, err := config.LoadRuntimeState(fixture.dataDir)
@@ -76,11 +76,11 @@ func TestLeanProjectCreateAndRenameParticipateInWorkspaceUndo(t *testing.T) {
 		}
 
 		ledger := fixture.app.deps.historyLedger()
-		entry, ok, err := ledger.SelectNewestUndo(storage.ProjectScope(project.ID))
+		entry, ok, err := ledger.SelectNewestUndo(storage.LedgerScope{ProjectID: project.ID})
 		if err != nil || !ok || entry.Action != "Edit Project" {
 			t.Fatalf("edit undo entry = %#v/%v/%v", entry, ok, err)
 		}
-		if _, undoErr := ledger.Undo(storage.ProjectScope(project.ID)); undoErr != nil {
+		if _, undoErr := ledger.Undo(storage.LedgerScope{ProjectID: project.ID}); undoErr != nil {
 			t.Fatalf("undo edit: %v", undoErr)
 		}
 		reloaded, err := config.LoadRuntimeState(fixture.dataDir)
@@ -141,7 +141,7 @@ func TestLeanProjectPinArchiveAndRestoreUseNamedUndoBoundaries(t *testing.T) {
 			live := fixture.app.projectByID(project.ID)
 			testCase.run(fixture.app, live)
 
-			entry, ok, err := fixture.app.deps.historyLedger().SelectNewestUndo(storage.ProjectScope(project.ID))
+			entry, ok, err := fixture.app.deps.historyLedger().SelectNewestUndo(storage.LedgerScope{ProjectID: project.ID})
 			if err != nil || !ok || entry.Action != testCase.action {
 				t.Fatalf("%s undo entry = %#v/%v/%v", testCase.name, entry, ok, err)
 			}

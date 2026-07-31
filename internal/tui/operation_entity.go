@@ -68,69 +68,16 @@ func ProjectEntity(projectID string) EntityIdentity {
 }
 
 // GlobalNoteEntity returns the identity of one workspace scratch note.
-func GlobalNoteEntity(filename string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind:  EntityKindNote,
-		Scope: EntityScopeGlobal,
-		Name:  filename,
-	})
-}
-
 // ProjectNoteEntity returns the identity of one project note.
-func ProjectNoteEntity(projectID, filename string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind:      EntityKindNote,
-		Scope:     EntityScopeProject,
-		ProjectID: projectID,
-		Name:      filename,
-	})
-}
-
 // WorkspaceTagEntity returns the identity of one tag aggregated across the
 // workspace.
-func WorkspaceTagEntity(name string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind:  EntityKindTag,
-		Scope: EntityScopeGlobal,
-		Name:  name,
-	})
-}
-
 // ProjectTagEntity returns the identity of one tag inside one project.
-func ProjectTagEntity(projectID, name string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind:      EntityKindTag,
-		Scope:     EntityScopeProject,
-		ProjectID: projectID,
-		Name:      name,
-	})
-}
-
 // ScopeEntity returns the identity of one context scope, reusing the stable
 // scope catalog ID the Scope Hub already lists rows under.
-func ScopeEntity(scope ContextScope) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind: EntityKindScope,
-		Name: string(contextScopeListItemID(scope)),
-	})
-}
-
 // ModeEntity returns the identity of one Outliner catalog mode.
-func ModeEntity(id OutlinerModeID) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindMode, Name: string(id)})
-}
-
 // ToolEntity returns the identity of one promoted or secondary tool.
-func ToolEntity(id string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindTool, Name: id})
-}
-
 // OperationEntity returns the identity of one registered operation, letting an
 // operation target another operation.
-func OperationEntity(id OperationID) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindOperation, Name: string(id)})
-}
-
 // Entity converts a task identity into the typed operation identity.
 func (id TaskIdentity) Entity() EntityIdentity { return TaskEntity(id.ProjectID, id.TaskID) }
 

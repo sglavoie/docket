@@ -46,12 +46,6 @@ func (s *Service) defaultedPlanningArtifacts(builder PlanningArtifactBuilder) Pl
 	return s.planning
 }
 
-// NewService constructs a Service backed by the storage note port. A nil clock
-// or ID generator falls back to the system implementations.
-func NewService(repo Repository, clock Clock, ids IDGenerator) *Service {
-	return NewServiceWithArtifacts(repo, clock, ids, nil)
-}
-
 // NewServiceWithArtifacts constructs a Service with an explicit note port. A nil
 // port falls back to storage. Callers that need global notes inject
 // NewStorageWorkspaceNotePort with the active workspace data directory.

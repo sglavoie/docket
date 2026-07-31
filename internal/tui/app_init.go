@@ -17,12 +17,6 @@ import (
 
 // WithPersister sets a custom Persister for the AppModel.
 // This is primarily used for testing with mock implementations.
-func WithPersister(p Persister) AppOption {
-	return func(app *AppModel) {
-		app.persister = p
-	}
-}
-
 // NewAppModel creates a new TUI application model from the startup-loaded
 // configuration domains and the services rooted at the same workspace.
 func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOption) (*AppModel, error) {
@@ -159,7 +153,6 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"project hub", app.registerProjectHubOperations},
 		{"project", app.registerProjectOperations},
 		{"note", app.registerNoteOperations},
-		{"harness", app.registerHarnessOperations},
 	}
 	for _, registration := range registrations {
 		if err := registration.register(); err != nil {

@@ -28,15 +28,6 @@ func clonePlanningState(p *config.PlanningState) *config.PlanningState {
 // or non-writable runtime is a silent no-op so tests that never root a writable
 // workspace do not attempt (or fail) a disk commit; the caller's in-memory shell
 // state remains authoritative.
-func commitPlanningToRuntime(runtime *config.RuntimeState, mutate func(*config.PlanningState)) error {
-	if runtime == nil || runtime.DataDir() == "" {
-		return nil
-	}
-	planning := clonePlanningState(runtime.Planning())
-	mutate(planning)
-	return runtime.CommitPlanning(planning)
-}
-
 // commitMachineToRuntime commits a machine-local mutation through a runtime
 // snapshot without touching the legacy config.Config facade. It is the
 // view-level counterpart to AppModel.commitMachineMutation for views that hold
@@ -102,21 +93,6 @@ func (m *AppModel) commitCatalogProjectMutation(
 // catalog-owned writes off it. A nil or non-writable runtime applies the
 // mutation in memory so runtime.Catalog() observes it; the caller's in-memory
 // shell state remains authoritative.
-func commitCatalogToRuntime(runtime *config.RuntimeState, mutate func(*config.WorkspaceCatalog) error) error {
-	if runtime == nil {
-		return nil
-	}
-	catalog := cloneWorkspaceCatalog(runtime.Catalog())
-	if err := mutate(catalog); err != nil {
-		return err
-	}
-	if runtime.DataDir() == "" {
-		runtime.SetCatalogInMemory(catalog)
-		return nil
-	}
-	return runtime.CommitCatalog(catalog)
-}
-
 // cloneWorkspaceCatalog returns a defensive copy of a catalog snapshot whose
 // project slice is freshly allocated, so a mutation applied before a checked
 // commit can never alias and corrupt the cached RuntimeState snapshot.

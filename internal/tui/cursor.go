@@ -2,10 +2,6 @@ package tui
 
 // CursorInBounds returns true if cursor is valid for the given slice length.
 // Use this to guard operations that require a valid selection.
-func CursorInBounds(cursor, length int) bool {
-	return length > 0 && cursor >= 0 && cursor < length
-}
-
 // HalfPage returns a scroll jump size of half the given height, minimum 1.
 func HalfPage(height int) int {
 	return max(height/2, 1)

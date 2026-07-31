@@ -166,7 +166,6 @@ func (m *MockRepository) Load(project *models.Project) error {
 		loaded := cloneProject(stored)
 		project.NextShortID = loaded.NextShortID
 		project.Tasks = loaded.Tasks
-		project.Warnings = loaded.Warnings
 		assignProjectPointers(project)
 	}
 	return nil

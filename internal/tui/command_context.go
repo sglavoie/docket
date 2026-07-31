@@ -19,10 +19,7 @@ const (
 	CapabilityScopeHub Capability = "surface:scope-hub"
 	// CapabilityProjectHub limits global project creation to the routed project
 	// selection and administration surface.
-	CapabilityProjectHub Capability = "surface:project-hub"
-	// CapabilityHarness exposes setup-only operations to semantic scenario
-	// commands without advertising them in help or direct input.
-	CapabilityHarness      Capability = "surface:test-harness"
+	CapabilityProjectHub   Capability = "surface:project-hub"
 	CapabilityAppScope     Capability = "scope:app"
 	CapabilityProjectScope Capability = "scope:project"
 	CapabilityTaskScope    Capability = "scope:task"
@@ -42,12 +39,11 @@ var capabilityFamilies = []string{
 // validCapability reports whether a capability is a declared constant or a
 // member of a reserved dynamic family. It catches typos at registration.
 func validCapability(capability Capability) bool {
-	switch capability {
+	switch capability { //nolint:exhaustive // Test-only harness capabilities are registered separately.
 	case CapabilityCommandDiscovery,
 		CapabilitySimplifiedInput,
 		CapabilityScopeHub,
 		CapabilityProjectHub,
-		CapabilityHarness,
 		CapabilityAppScope,
 		CapabilityProjectScope,
 		CapabilityTaskScope:

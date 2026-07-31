@@ -174,13 +174,6 @@ func (m *AppModel) allLoadableProjects() []*models.Project {
 	return m.projectsInRuntimeOrder(m.runtime.AllLoadableProjects())
 }
 
-func (m *AppModel) allProjects() []*models.Project {
-	if m == nil || m.runtime == nil {
-		return nil
-	}
-	return m.projectsInRuntimeOrder(m.runtime.AllProjects())
-}
-
 // ensureSystemInboxProject installs (or upgrades) the workspace-owned Inbox.
 // It is a regular visible project for every read surface; SystemInboxProjectID
 // is the stable identity that distinguishes it from user-created projects.

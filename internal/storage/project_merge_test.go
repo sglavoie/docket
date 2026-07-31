@@ -32,6 +32,16 @@ func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	return doc
 }
 
+func mergeTaskIDs(tasks []*models.Task) []string {
+	ids := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		if task != nil {
+			ids = append(ids, task.ID)
+		}
+	}
+	return ids
+}
+
 // cloneDocTasks deep-copies the task slice (and each task value) so a test can
 // mutate one branch's tasks without disturbing the base fixture.
 func cloneDocTasks(tasks []*models.Task) []*models.Task {
@@ -440,7 +450,7 @@ func TestMerge_IndependentSiblingGroupReordersCoalesce(t *testing.T) {
 		}
 		for i, id := range want {
 			if siblings[i].ID != id {
-				t.Fatalf("siblings of %s = %v, want %v", task.ID, taskIDs(siblings), want)
+				t.Fatalf("siblings of %s = %v, want %v", task.ID, mergeTaskIDs(siblings), want)
 			}
 		}
 	}

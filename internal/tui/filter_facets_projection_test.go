@@ -203,8 +203,4 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 		t.Fatalf("legacy route restored session-only facets: %+v", outliner.filter.CommonFilterState)
 	}
 
-	captured := outliner.captureOutlinerRouteState()
-	if !captured.FilterStates.IsEmpty() || captured.FilterSnoozed || captured.FilterPinned {
-		t.Fatalf("captured route persisted session-only facets: %+v", captured)
-	}
 }

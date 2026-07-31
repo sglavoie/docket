@@ -21,7 +21,7 @@ func newUnsetPriorityService(t *testing.T, dataDir string, projects ...*models.P
 	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	repo := newStorageRepo(commitSvc, projects...)
 	repo.seed(t)
-	return app.NewService(repo, nil, nil)
+	return app.NewServiceWithArtifacts(repo, nil, nil, nil)
 }
 
 // prioritizedProject builds a project rooted under the canonical

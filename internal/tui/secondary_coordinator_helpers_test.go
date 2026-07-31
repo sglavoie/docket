@@ -61,5 +61,5 @@ func (r *testAppRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.Commit
 // over an application service seeded with the given projects, for isolated
 // view tests that exercise coordinator-backed mutations.
 func newTestSecondaryCoordinators(projects ...*models.Project) SecondaryCoordinators {
-	return newSecondaryCoordinators(app.NewService(newTestAppRepo(projects...), nil, nil))
+	return newSecondaryCoordinators(app.NewServiceWithArtifacts(newTestAppRepo(projects...), nil, nil, nil))
 }

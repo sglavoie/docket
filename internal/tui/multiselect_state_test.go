@@ -139,9 +139,6 @@ func TestMultiSelectStateHasTaskIDRejectsAmbiguousIdentity(t *testing.T) {
 	if multiSelectStateHasTaskID(state, selectedIDs) {
 		t.Fatal("ID-only lookup should reject duplicate selected task identities")
 	}
-	if clearMultiSelectStateForTaskIDs(state, selectedIDs) {
-		t.Fatal("ID-only cleanup should not clear an ambiguous duplicate selection")
-	}
 	if !state.multiSelectMode || state.SelectedCount() != 2 {
 		t.Fatalf("ambiguous selection changed: active=%v count=%d", state.multiSelectMode, state.SelectedCount())
 	}

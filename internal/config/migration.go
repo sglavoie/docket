@@ -2,10 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,11 +15,8 @@ import (
 // projects/ subtree are re-rooted during migration.
 const projectsDirName = "projects"
 
-// migrationRootExcludedNames are top-level entry names that must never be
-// copied out of the legacy ~/.tt root during migration. These hold
-// machine-local runtime state (logs and TUI PID locks) that must stay local and
-// never sync to iCloud Drive; matching names below projects/ and other durable
-// subtrees are copied normally.
+// migrationRootExcludedNames are machine-local entries that must not be copied
+// into durable workspace snapshots or moves.
 var migrationRootExcludedNames = map[string]bool{
 	"logs":               true,
 	"pid.lock":           true,
@@ -37,119 +31,6 @@ func isMigrationRootExcluded(rel string) bool {
 		return false
 	}
 	return migrationRootExcludedNames[clean]
-}
-
-// MigrateCopyTree recursively copies the durable contents of srcRoot into
-// dstRoot without overwriting any existing destination file. Runtime-only
-// entries (logs directories, TUI PID locks, runtime dirs) are skipped so they
-// stay machine-local. Conflicts are refused: if any regular file that would be
-// written already exists at the destination, no files are copied and an
-// actionable error is returned so the caller can abort before mutating state.
-//
-// This helper implements the copy half of the copy-then-switch migration. It
-// is intentionally not wired into the manager load path yet.
-func MigrateCopyTree(srcRoot, dstRoot string) error {
-	type entry struct {
-		src  string
-		dst  string
-		dir  bool
-		perm fs.FileMode
-	}
-
-	var entries []entry
-	walkErr := filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, relErr := filepath.Rel(srcRoot, path)
-		if relErr != nil {
-			return relErr
-		}
-		if rel == "." {
-			return nil
-		}
-		if isMigrationRootExcluded(rel) {
-			if d.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		info, infoErr := d.Info()
-		if infoErr != nil {
-			return infoErr
-		}
-		entries = append(entries, entry{
-			src:  path,
-			dst:  filepath.Join(dstRoot, rel),
-			dir:  d.IsDir(),
-			perm: info.Mode().Perm(),
-		})
-		return nil
-	})
-	if walkErr != nil {
-		return fmt.Errorf("failed to scan legacy data dir %s: %w", srcRoot, walkErr)
-	}
-
-	// Conflict pre-check: refuse to overwrite any existing destination file.
-	// Doing this before copying anything keeps the operation all-or-nothing.
-	for _, e := range entries {
-		if e.dir {
-			continue
-		}
-		if _, err := os.Lstat(e.dst); err == nil {
-			return fmt.Errorf("migration aborted: destination file already exists, refusing to overwrite: %s", e.dst)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("failed to check destination %s: %w", e.dst, err)
-		}
-	}
-
-	if err := os.MkdirAll(dstRoot, util.DirPermissions); err != nil {
-		return fmt.Errorf("failed to create destination data dir %s: %w", dstRoot, err)
-	}
-
-	// WalkDir yields parents before children in lexical order, so directories
-	// are created ahead of the files they contain.
-	for _, e := range entries {
-		if e.dir {
-			if err := os.MkdirAll(e.dst, e.perm); err != nil {
-				return fmt.Errorf("failed to create dir %s: %w", e.dst, err)
-			}
-			continue
-		}
-		if err := copyFileNoOverwrite(e.src, e.dst, e.perm); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// copyFileNoOverwrite copies src to dst, failing if dst already exists. O_EXCL
-// enforces the no-overwrite guarantee even against a concurrent writer, so the
-// pre-check in MigrateCopyTree and this call together never clobber data.
-func copyFileNoOverwrite(src, dst string, perm fs.FileMode) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("failed to open source file %s: %w", src, err)
-	}
-	defer func() { _ = in.Close() }()
-
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
-	if err != nil {
-		return fmt.Errorf("failed to create destination file %s: %w", dst, err)
-	}
-
-	if _, err := io.Copy(out, in); err != nil {
-		_ = out.Close()
-		return fmt.Errorf("failed to copy %s to %s: %w", src, dst, err)
-	}
-	if err := out.Sync(); err != nil {
-		_ = out.Close()
-		return fmt.Errorf("failed to sync destination file %s: %w", dst, err)
-	}
-	if err := out.Close(); err != nil {
-		return fmt.Errorf("failed to close destination file %s: %w", dst, err)
-	}
-	return nil
 }
 
 // RewriteMigratedConfig rewrites data_dir and legacy project paths in raw config

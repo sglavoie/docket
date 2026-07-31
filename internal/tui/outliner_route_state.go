@@ -12,17 +12,6 @@ func (m *OutlinerModel) persistActiveRouteState() error {
 // captureOutlinerRouteState persists only the active mode. Filter facets are
 // run-local view refinements and must never survive relaunch through legacy
 // machine-route storage.
-func (m *OutlinerModel) captureOutlinerRouteState() config.OutlinerRouteState {
-	if m == nil {
-		return config.NormalizeOutlinerRouteState(config.OutlinerRouteState{})
-	}
-	route := config.OutlinerRouteState{
-		Mode: string(m.activeOutlinerMode()),
-	}
-
-	return config.NormalizeOutlinerRouteState(route)
-}
-
 // applyOutlinerRouteState restores only the canonical mode through the
 // five-mode selection seam. Legacy route filter fields remain migration input,
 // but live filter facets belong to the current run and are deliberately ignored.

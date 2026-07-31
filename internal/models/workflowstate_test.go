@@ -36,16 +36,9 @@ func TestLegacyReviewCompatibilityIsExplicit(t *testing.T) {
 	if StateReview.IsValid() {
 		t.Fatal("retired Review state is valid for target operations")
 	}
-	legacy, ok := ParseLegacyWorkflowState("review")
-	if !ok || legacy != StateReview {
-		t.Fatalf("ParseLegacyWorkflowState(review) = (%q, %v)", legacy, ok)
-	}
-	target, ok := TargetStateForLegacy(legacy)
+	target, ok := TargetStateForLegacy(StateReview)
 	if !ok || target != StateReady {
 		t.Fatalf("TargetStateForLegacy(review) = (%q, %v), want ready", target, ok)
-	}
-	if got := len(AllLegacyWorkflowStates()); got != 10 {
-		t.Fatalf("legacy state count = %d, want 10", got)
 	}
 }
 

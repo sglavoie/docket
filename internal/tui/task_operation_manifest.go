@@ -131,18 +131,6 @@ func taskOperationDescriptorManifest() []taskOperationManifestEntry {
 // taskOperationManifestIDs returns the authoritative action list a task row
 // carries, in manifest order. Hosts attach it verbatim; the contextual sheet
 // drops whatever the frozen target cannot do.
-func taskOperationManifestIDs() []OperationID {
-	manifest := taskOperationManifest()
-	ids := make([]OperationID, 0, len(manifest))
-	for _, entry := range manifest {
-		if entry.DirectOnly {
-			continue
-		}
-		ids = append(ids, entry.ID)
-	}
-	return ids
-}
-
 func taskOperationManifestEntryFor(id OperationID) (taskOperationManifestEntry, bool) {
 	for _, entry := range taskOperationDescriptorManifest() {
 		if entry.ID == id {

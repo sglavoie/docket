@@ -27,7 +27,11 @@ func BenchmarkWriteTasksMarkdownLargeHierarchy(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if output := WriteTasksMarkdown("large-hierarchy", tasks); len(output) == 0 {
+		output, err := WriteTasksMarkdown("large-hierarchy", tasks)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(output) == 0 {
 			b.Fatal("serializer produced empty output")
 		}
 	}

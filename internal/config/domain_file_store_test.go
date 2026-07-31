@@ -18,13 +18,22 @@ const (
 	testWorkspaceIDB = "33333333-3333-4333-8333-333333333333"
 )
 
+func newBoundTestDomainFileStore(t *testing.T, dataDir, workspaceID string) *DomainFileStore {
+	t.Helper()
+	store := NewDomainFileStore(dataDir)
+	if err := store.BindWorkspaceID(workspaceID); err != nil {
+		t.Fatalf("BindWorkspaceID(%q): %v", workspaceID, err)
+	}
+	return store
+}
+
 // newIsolatedStore roots a DomainFileStore at a fresh temp data dir with HOME
 // pointed at another temp dir so machine-local runtime state is isolated too.
 func newIsolatedStore(t *testing.T) *DomainFileStore {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 	dataDir := filepath.Join(t.TempDir(), "workspace")
-	store := NewDomainFileStoreWithWorkspace(dataDir, testWorkspaceID)
+	store := newBoundTestDomainFileStore(t, dataDir, testWorkspaceID)
 	catalog := NewWorkspaceCatalog()
 	catalog.WorkspaceID = testWorkspaceID
 	if err := store.SaveCatalog(catalog); err != nil {
@@ -242,8 +251,8 @@ func TestDomainFileStore_CustomPathIsolation(t *testing.T) {
 	dirA := filepath.Join(t.TempDir(), "a")
 	dirB := filepath.Join(t.TempDir(), "b")
 
-	storeA := NewDomainFileStoreWithWorkspace(dirA, testWorkspaceIDA)
-	storeB := NewDomainFileStoreWithWorkspace(dirB, testWorkspaceIDB)
+	storeA := newBoundTestDomainFileStore(t, dirA, testWorkspaceIDA)
+	storeB := newBoundTestDomainFileStore(t, dirB, testWorkspaceIDB)
 	catalogA := NewWorkspaceCatalog()
 	catalogA.WorkspaceID = testWorkspaceIDA
 	if err := storeA.SaveCatalog(catalogA); err != nil {
@@ -337,9 +346,9 @@ func TestDomainFileStore_RejectsInvalidAndMismatchedWorkspaceIDs(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dataDir := filepath.Join(t.TempDir(), "workspace")
 
-	invalid := NewDomainFileStoreWithWorkspace(dataDir, "../not-a-workspace-uuid")
-	if err := invalid.SavePlanning(NewPlanningState()); !errors.Is(err, ErrInvalidWorkspaceID) {
-		t.Fatalf("SavePlanning invalid workspace ID error = %v, want ErrInvalidWorkspaceID", err)
+	invalid := NewDomainFileStore(dataDir)
+	if err := invalid.BindWorkspaceID("../not-a-workspace-uuid"); !errors.Is(err, ErrInvalidWorkspaceID) {
+		t.Fatalf("BindWorkspaceID invalid workspace ID error = %v, want ErrInvalidWorkspaceID", err)
 	}
 
 	seed := NewDomainFileStore(dataDir)
@@ -352,7 +361,7 @@ func TestDomainFileStore_RejectsInvalidAndMismatchedWorkspaceIDs(t *testing.T) {
 		t.Fatalf("seed SavePlanning: %v", err)
 	}
 
-	foreign := NewDomainFileStoreWithWorkspace(dataDir, testWorkspaceIDB)
+	foreign := newBoundTestDomainFileStore(t, dataDir, testWorkspaceIDB)
 	if err := foreign.SaveMachine(NewMachineState()); !errors.Is(err, ErrWorkspaceIDMismatch) {
 		t.Fatalf("SaveMachine mismatched bound ID error = %v, want ErrWorkspaceIDMismatch", err)
 	}
@@ -676,7 +685,7 @@ func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T
 				t.Fatalf("write backup: %v", err)
 			}
 
-			_, _, loadErr := NewDomainFileStoreWithWorkspace(dataDir, testWorkspaceIDA).LoadPlanningChecked()
+			_, _, loadErr := newBoundTestDomainFileStore(t, dataDir, testWorkspaceIDA).LoadPlanningChecked()
 			if loadErr == nil || !tc.check(loadErr) {
 				t.Fatalf("LoadPlanningChecked error = %v, want %s primary failure", loadErr, tc.name)
 			}

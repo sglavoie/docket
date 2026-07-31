@@ -103,29 +103,6 @@ func buildTreePrefix(ancestorIsLast []bool, isLast bool) string {
 // list of outlinerRows, respecting fold state. Collapsed nodes (not in
 // expandedNodes or explicitly false) stop recursion, showing only the parent.
 // When expandedNodes is empty (default), all nodes are expanded.
-func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlinerRow) {
-	for i, task := range tasks {
-		isLast := i == len(tasks)-1
-		prefix := ""
-		if len(ancestorIsLast) > 0 || len(tasks) > 0 {
-			prefix = buildTreePrefix(ancestorIsLast, isLast)
-		}
-		*rows = append(*rows, outlinerRow{task: task, prefix: prefix, hasVisibleChildren: len(task.Children) > 0})
-
-		identity := TaskIdentity{TaskID: task.ID}
-		if m.project != nil {
-			identity.ProjectID = m.project.ID
-		}
-		if len(task.Children) > 0 && m.isExpanded(identity) {
-			// Copy before appending to prevent slice aliasing.
-			child := make([]bool, len(ancestorIsLast)+1)
-			copy(child, ancestorIsLast)
-			child[len(ancestorIsLast)] = isLast
-			m.flattenTaskTreeWithFolds(task.Children, child, rows)
-		}
-	}
-}
-
 // isExpanded returns true if the node should show its children.
 // When the expandedNodes map is empty (default), all nodes are expanded.
 func (m *OutlinerModel) isExpanded(identity TaskIdentity) bool {

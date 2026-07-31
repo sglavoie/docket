@@ -319,13 +319,21 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		var tasksMarkdown []byte
 		var tasksExpectedRevision *string
 		if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
-			tasksMarkdown = []byte(storage.WriteTasksMarkdown(updated.Name, updated.Tasks))
+			content, renderErr := storage.WriteTasksMarkdown(updated.Name, updated.Tasks)
+			if renderErr != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
+			}
+			tasksMarkdown = []byte(content)
 			tasksExpectedRevision = expected
 		}
 
 		var crossRefWrites []storage.ArtifactChange
 		if oldSlug != newSlug {
-			crossRefWrites, _ = planTUICrossProjectRefRewrites(runtime.AllProjects(), oldSlug, newSlug, updated.ID)
+			var rewriteErr error
+			crossRefWrites, _, rewriteErr = planTUICrossProjectRefRewrites(runtime.AllProjects(), oldSlug, newSlug, updated.ID)
+			if rewriteErr != nil {
+				return ErrorMsg{Err: rewriteErr}
+			}
 		}
 
 		catalog := cloneWorkspaceCatalog(runtime.Catalog())
@@ -364,7 +372,7 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 // projects when a project's slug changes, returning the tasks.md artifact writes
 // (folded into the atomic rename transaction) and the count updated. Projects
 // that cannot be loaded are skipped, matching the best-effort CLI behavior.
-func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) ([]storage.ArtifactChange, int) {
+func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) ([]storage.ArtifactChange, int, error) {
 	var writes []storage.ArtifactChange
 	totalUpdated := 0
 	for _, p := range projects {
@@ -382,7 +390,10 @@ func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, ne
 			projectUpdated += n
 		}
 		if projectUpdated > 0 {
-			content := storage.WriteTasksMarkdown(p.Name, p.Tasks)
+			content, err := storage.WriteTasksMarkdown(p.Name, p.Tasks)
+			if err != nil {
+				return nil, 0, fmt.Errorf("failed to render rewritten project %q: %w", p.Name, err)
+			}
 			writes = append(writes, storage.ArtifactChange{
 				Path:             storage.TasksFilePath(p.Path),
 				Data:             []byte(content),
@@ -391,7 +402,7 @@ func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, ne
 			totalUpdated += projectUpdated
 		}
 	}
-	return writes, totalUpdated
+	return writes, totalUpdated, nil
 }
 
 // rewriteCrossRefs replaces cross-project references from originalSlug to newSlug.

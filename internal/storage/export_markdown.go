@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+const maxHeadingLevel = 6
+
 // ExportProjectMarkdown writes a clean markdown export of p to destPath.
 // destPath must be non-empty; callers resolve default export locations through
 // config.Manager.ExportPath. LoadProject is called first to ensure tasks are

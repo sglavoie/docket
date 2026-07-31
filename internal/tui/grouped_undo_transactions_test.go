@@ -250,7 +250,7 @@ func newMoveHandlerEnv(t *testing.T, sourceTaskID, sourceTaskTitle string) *move
 
 	repo := newScenarioRepo(commitSvc, source, dest)
 	repo.seed(t)
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	cfg := newTestConfigAt(dataDir)

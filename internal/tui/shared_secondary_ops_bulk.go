@@ -39,17 +39,6 @@ func groupTaskProjectRefsByProject(refs []TaskProjectRef) []TaskProjectGroup {
 }
 
 // taskIDsFromTaskRefs extracts task IDs in input order, skipping invalid refs.
-func taskIDsFromTaskRefs(refs []TaskProjectRef) []string {
-	ids := make([]string, 0, len(refs))
-	for _, ref := range refs {
-		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" {
-			continue
-		}
-		ids = append(ids, ref.Task.ID)
-	}
-	return ids
-}
-
 func taskLocatorsFromTaskRefs(refs []TaskProjectRef) []app.TaskLocator {
 	locators := make([]app.TaskLocator, 0, len(refs))
 	for _, ref := range refs {
@@ -65,15 +54,6 @@ func taskLocatorsFromTaskRefs(refs []TaskProjectRef) []app.TaskLocator {
 // taskIDsByProjectFromTaskRefs groups selected task IDs by owning project.
 // Project order is available from groupTaskProjectRefsByProject; map values
 // preserve first-seen task order within each project.
-func taskIDsByProjectFromTaskRefs(refs []TaskProjectRef) map[string][]string {
-	groups := groupTaskProjectRefsByProject(refs)
-	idsByProject := make(map[string][]string, len(groups))
-	for _, group := range groups {
-		idsByProject[group.Project.ID] = taskIDsFromTaskRefs(group.Items)
-	}
-	return idsByProject
-}
-
 // affectedProjectsFromTaskRefs returns each affected project once in first-seen order.
 func affectedProjectsFromTaskRefs(refs []TaskProjectRef) []*models.Project {
 	groups := groupTaskProjectRefsByProject(refs)
@@ -85,9 +65,3 @@ func affectedProjectsFromTaskRefs(refs []TaskProjectRef) []*models.Project {
 }
 
 // finishTaskBulkSelection clears task multi-select state after a successful bulk action.
-func finishTaskBulkSelection(state *MultiSelectState, statusMsg *string, msg string) {
-	if state == nil || statusMsg == nil {
-		return
-	}
-	state.FinishBulk(statusMsg, msg)
-}

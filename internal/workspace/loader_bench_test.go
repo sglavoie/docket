@@ -44,7 +44,10 @@ func newRepresentativeWorkspaceFixture(tb testing.TB) representativeWorkspaceFix
 			tasks = append(tasks, task)
 			fixture.taskIDs = append(fixture.taskIDs, id)
 		}
-		content := storage.WriteTasksMarkdown(slug, tasks)
+		content, err := storage.WriteTasksMarkdown(slug, tasks)
+		if err != nil {
+			tb.Fatalf("render project: %v", err)
+		}
 		if err := os.WriteFile(filepath.Join(path, "tasks.md"), []byte(content), 0o600); err != nil {
 			tb.Fatalf("write project: %v", err)
 		}

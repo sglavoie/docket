@@ -118,36 +118,24 @@ func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadRe
 	return loadProjectContentWithCrossRefValidation(project, content, true)
 }
 
-func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, validateCrossRefs bool) (*ProjectLoadResult, error) {
-	schemaVersion, _, err := scanDocumentHeader(string(content))
+func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, _ bool) (*ProjectLoadResult, error) {
+	document, err := ParseProjectDocument(string(content))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
+		return nil, fmt.Errorf("%w: schema-v5 task document required: %w", tterrors.ErrParseError, err)
 	}
-	if schemaVersion == SchemaVersionV5 {
-		document, err := ParseProjectDocument(string(content))
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
+	project.Tasks = document.Tasks
+	maxShortID := 0
+	for _, task := range project.Tasks {
+		if task.ShortID > maxShortID {
+			maxShortID = task.ShortID
 		}
-		project.Tasks = document.Tasks
-		maxShortID := 0
-		for _, task := range project.Tasks {
-			if task.ShortID > maxShortID {
-				maxShortID = task.ShortID
-			}
-		}
-		project.NextShortID = maxShortID + 1
-		project.BuildTaskTree()
-		if err := auditLoadedProject(project); err != nil {
-			return nil, err
-		}
-		return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
 	}
-	return nil, fmt.Errorf(
-		"%w: task schema version %d requires the snapshot-first workspace migration to schema %d",
-		tterrors.ErrParseError,
-		schemaVersion,
-		SchemaVersionV5,
-	)
+	project.NextShortID = maxShortID + 1
+	project.BuildTaskTree()
+	if err := auditLoadedProject(project); err != nil {
+		return nil, err
+	}
+	return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
 }
 
 func auditLoadedProject(project *models.Project) error {

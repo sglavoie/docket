@@ -240,7 +240,7 @@ func TestContextHubFooterHelpStaysOnOneLine(t *testing.T) {
 func TestContextHubPreviewCountsWrapInsteadOfClipping(t *testing.T) {
 	app := contextHubApp(t)
 	hub := openContextHub(t, app)
-	hub.SetLoadedProjects(app.allProjects())
+	hub.SetLoadedProjects(app.projectsInRuntimeOrder(app.runtime.AllProjects()))
 	hub.SetSize(100, 30)
 	focusContextHubScope(t, hub, CustomContextScope("focus"))
 

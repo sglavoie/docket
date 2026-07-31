@@ -21,27 +21,12 @@ type CLIWorkspace struct {
 // then builds the cached RuntimeState and RuntimeDependencies composition once
 // for the command.
 func LoadCLIWorkspace() (*CLIWorkspace, error) {
-	return loadCLIWorkspace(false)
+	return loadCLIWorkspace()
 }
 
-// LoadCLIWorkspaceStrict loads an existing workspace without creating a fresh
-// one. Commands whose legacy surface required an already-initialized config use
-// this variant while still receiving only domain-native runtime dependencies.
-func LoadCLIWorkspaceStrict() (*CLIWorkspace, error) {
-	return loadCLIWorkspace(true)
-}
-
-func loadCLIWorkspace(strict bool) (*CLIWorkspace, error) {
+func loadCLIWorkspace() (*CLIWorkspace, error) {
 	manager := config.NewManager(resolveConfigPath())
-	var err error
-	if strict {
-		if recoverErr := manager.RecoverWorkspace(); recoverErr != nil {
-			return nil, fmt.Errorf("failed to recover workspace before startup: %w", recoverErr)
-		}
-		_, err = manager.LoadDomains()
-	} else {
-		_, err = manager.LoadOrCreateDomains()
-	}
+	_, err := manager.LoadOrCreateDomains()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}

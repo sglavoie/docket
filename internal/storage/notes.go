@@ -12,7 +12,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 const notesDirName = "notes"
@@ -27,21 +26,11 @@ func GlobalNotesDir(dataDir string) string {
 	return filepath.Join(dataDir, ".tt", "global-notes")
 }
 
-// ensureDirPath creates a directory if it doesn't exist.
-func ensureDirPath(dir string) error {
-	return os.MkdirAll(dir, DirPermissions)
-}
-
 func validateNoteFilename(filename string) error {
 	if err := SafeChildName(filename); err != nil {
 		return fmt.Errorf("invalid note filename %q: %w", filename, err)
 	}
 	return nil
-}
-
-// LoadNote reads a single note from its file.
-func LoadNote(project *models.Project, filename string) (*models.Note, error) {
-	return LoadNoteFrom(NotesDir(project), filename)
 }
 
 // LoadNoteFrom reads a single note from a directory path.
@@ -64,69 +53,6 @@ func LoadNoteFrom(dir, filename string) (*models.Note, error) {
 	// or a re-rendered approximation.
 	note.RawRevision = RawArtifactRevision(data)
 	return note, nil
-}
-
-// SaveNote writes a note to disk as a markdown file with YAML frontmatter.
-// If the note is new (file doesn't exist yet) and a collision is detected,
-// it appends -2, -3 etc. to the base name to avoid overwriting.
-func SaveNote(project *models.Project, note *models.Note) error {
-	return SaveNoteTo(NotesDir(project), note)
-}
-
-// SaveNoteTo writes a note to a directory path.
-func SaveNoteTo(dir string, note *models.Note) error {
-	if err := ensureDirPath(dir); err != nil {
-		return err
-	}
-	path, data, err := PrepareNoteSaveTo(dir, note)
-	if err != nil {
-		return err
-	}
-	return util.AtomicWriteFile(path, data, FilePermissions)
-}
-
-// PrepareNoteSaveTo resolves collision-safe note filename semantics and renders
-// the bytes without writing them. Transactional adapters use it to stage a note
-// artifact through the journal while SaveNoteTo reuses the same preparation for
-// its maintenance/compatibility write path.
-func PrepareNoteSaveTo(dir string, note *models.Note) (string, []byte, error) {
-	path, err := NoteFilePathIn(dir, note.Filename)
-	if err != nil {
-		return "", nil, err
-	}
-
-	// Check for collision: if file exists but this is a new note (no prior content on disk)
-	// we need to deduplicate the filename. Treat unreadable existing files
-	// as a collision (refuse to overwrite) rather than silently clobbering
-	// them — losing the existing content would be unrecoverable.
-	if _, statErr := os.Stat(path); statErr == nil {
-		existing, loadErr := LoadNoteFrom(dir, note.Filename)
-		needsDedup := loadErr != nil || !existing.CreatedAt.Equal(note.CreatedAt)
-		if needsDedup {
-			base := strings.TrimSuffix(note.Filename, ".md")
-			const maxDedup = 1000
-			found := false
-			for i := 2; i <= maxDedup; i++ {
-				candidate := fmt.Sprintf("%s-%d.md", base, i)
-				candidatePath := filepath.Join(dir, candidate)
-				if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
-					note.Filename = candidate
-					path = candidatePath
-					found = true
-					break
-				}
-			}
-			if !found {
-				return "", nil, fmt.Errorf("too many notes with base name %q (tried %d variants)", base, maxDedup)
-			}
-		}
-	}
-
-	content, err := renderNote(note)
-	if err != nil {
-		return "", nil, err
-	}
-	return path, []byte(content), nil
 }
 
 // ListNotes returns all notes in a project sorted by modified date (newest first),
@@ -190,20 +116,6 @@ func listNotesFrom(dir string, failOnUnreadable bool) ([]*models.Note, error) {
 	return notes, nil
 }
 
-// DeleteNote removes a note file from disk.
-func DeleteNote(project *models.Project, filename string) error {
-	return DeleteNoteFrom(NotesDir(project), filename)
-}
-
-// DeleteNoteFrom removes a note file from a directory path.
-func DeleteNoteFrom(dir, filename string) error {
-	path, err := NoteFilePathIn(dir, filename)
-	if err != nil {
-		return err
-	}
-	return os.Remove(path)
-}
-
 // NotesExist returns true if the project has any notes.
 func NotesExist(project *models.Project) bool {
 	return notesExistIn(NotesDir(project))
@@ -221,62 +133,6 @@ func notesExistIn(dir string) bool {
 		}
 	}
 	return false
-}
-
-// RenameNoteIn changes a note's title and filename in a directory path.
-func RenameNoteIn(dir, oldFilename, newTitle string) (*models.Note, error) {
-	note, err := LoadNoteFrom(dir, oldFilename)
-	if err != nil {
-		return nil, fmt.Errorf("load note: %w", err)
-	}
-
-	note.Title = newTitle
-	note.ModifiedAt = time.Now()
-	newFilename := models.GenerateNoteFilename(newTitle, note.CreatedAt)
-
-	if newFilename != oldFilename {
-		base := strings.TrimSuffix(newFilename, ".md")
-		const maxDedup = 1000
-		candidate := newFilename
-		found := false
-		candidatePath := filepath.Join(dir, candidate)
-		if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
-			found = true
-		}
-		if !found {
-			for i := 2; i <= maxDedup; i++ {
-				candidate = fmt.Sprintf("%s-%d.md", base, i)
-				candidatePath = filepath.Join(dir, candidate)
-				if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
-					found = true
-					break
-				}
-			}
-		}
-		if !found {
-			return nil, fmt.Errorf("too many notes with base name %q (tried %d variants)", base, maxDedup)
-		}
-		newFilename = candidate
-	}
-	note.Filename = newFilename
-
-	if err := SaveNoteTo(dir, note); err != nil {
-		return nil, fmt.Errorf("save renamed note: %w", err)
-	}
-
-	if note.Filename != oldFilename {
-		oldPath := filepath.Join(dir, oldFilename)
-		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
-			logging.Warn("note rename: old file remains at %s: %v", oldPath, err)
-		}
-	}
-
-	return note, nil
-}
-
-// NoteFilePath returns the full path to a note file.
-func NoteFilePath(project *models.Project, filename string) (string, error) {
-	return NoteFilePathIn(NotesDir(project), filename)
 }
 
 // NoteFilePathIn returns the full path to a note file in a directory.

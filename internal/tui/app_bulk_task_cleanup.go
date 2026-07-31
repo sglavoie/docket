@@ -95,11 +95,3 @@ func multiSelectStateHasTaskID(state *MultiSelectState, selectedIDs map[string]b
 	}
 	return len(matchedProjects) > 0
 }
-
-func clearMultiSelectStateForTaskIDs(state *MultiSelectState, selectedIDs map[string]bool) bool {
-	if !multiSelectStateHasTaskID(state, selectedIDs) {
-		return false
-	}
-	state.ExitMultiSelect()
-	return true
-}

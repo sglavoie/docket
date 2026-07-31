@@ -115,12 +115,6 @@ func NewDomainFileStore(dataDir string) *DomainFileStore {
 	return &DomainFileStore{dataDir: filepath.Clean(dataDir)}
 }
 
-// NewDomainFileStoreWithWorkspace roots a store at a data directory with a known
-// workspace ID that is stamped into every artifact it writes.
-func NewDomainFileStoreWithWorkspace(dataDir, workspaceID string) *DomainFileStore {
-	return &DomainFileStore{dataDir: filepath.Clean(dataDir), workspaceID: workspaceID}
-}
-
 // DataDir returns the store's workspace data directory.
 func (s *DomainFileStore) DataDir() string { return s.dataDir }
 

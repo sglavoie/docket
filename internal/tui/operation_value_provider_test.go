@@ -17,9 +17,9 @@ func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *test
 		Context: taskActionTestContext(models.StateDone),
 		Source:  OperationSourceActionSheet,
 	}
-	picker, err := NewTaskStatePickerModel(request, models.StateDone, "Completed task")
+	picker, err := NewTaskStatePickerForTargets(request, []models.WorkflowState{models.StateDone}, "Completed task")
 	if err != nil {
-		t.Fatalf("NewTaskStatePickerModel: %v", err)
+		t.Fatalf("NewTaskStatePickerForTargets: %v", err)
 	}
 	items := picker.surface.Items()
 	if len(items) != len(models.AllWorkflowStates()) {

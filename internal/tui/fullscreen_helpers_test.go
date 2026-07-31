@@ -106,7 +106,7 @@ func TestRenderScrollbar_ViewportOne(t *testing.T) {
 
 func TestAttachScrollbar_EmptyScrollbar(t *testing.T) {
 	content := "line1\nline2\nline3"
-	result := AttachScrollbar(content, "")
+	result := attachScrollbarAtWidth(content, "", 0)
 	if result != content {
 		t.Errorf("expected content unchanged when scrollbar empty, got %q", result)
 	}
@@ -115,7 +115,7 @@ func TestAttachScrollbar_EmptyScrollbar(t *testing.T) {
 func TestAttachScrollbar_ZipsLines(t *testing.T) {
 	content := "aaa\nbbb\nccc"
 	scrollbar := "X\nY\nZ"
-	result := AttachScrollbar(content, scrollbar)
+	result := attachScrollbarAtWidth(content, scrollbar, 0)
 	lines := strings.Split(result, "\n")
 	if len(lines) != 3 {
 		t.Fatalf("expected 3 lines, got %d", len(lines))
@@ -215,30 +215,6 @@ func TestAttachScrollbarAtWidth_LineCountMismatch(t *testing.T) {
 				t.Fatalf("expected mismatch attachment %q, got %q", tt.want, result)
 			}
 		})
-	}
-}
-
-func TestApplyScrollNonPositiveContentHeight(t *testing.T) {
-	lines := []string{"one", "two"}
-
-	for _, contentHeight := range []int{0, -1} {
-		if got := applyScroll(lines, 1, contentHeight); got != nil {
-			t.Fatalf("contentHeight %d: expected nil visible lines, got %#v", contentHeight, got)
-		}
-	}
-}
-
-func TestApplyPersistentScrollNonPositiveContentHeight(t *testing.T) {
-	lines := []string{"one", "two"}
-
-	for _, contentHeight := range []int{0, -1} {
-		scrollOffset := 1
-		if got := applyPersistentScroll(lines, 1, contentHeight, &scrollOffset); got != nil {
-			t.Fatalf("contentHeight %d: expected nil visible lines, got %#v", contentHeight, got)
-		}
-		if scrollOffset != 1 {
-			t.Fatalf("contentHeight %d: expected scroll offset to remain unchanged, got %d", contentHeight, scrollOffset)
-		}
 	}
 }
 
@@ -349,39 +325,5 @@ func TestPersistentIndexWindowInvalidViewportLeavesOffset(t *testing.T) {
 		if scrollOffset != 2 {
 			t.Fatalf("viewportRows %d: scrollOffset = %d, want 2", viewportRows, scrollOffset)
 		}
-	}
-}
-
-func TestPersistentLineWindowUsesPersistentScroll(t *testing.T) {
-	lines := []string{"zero", "one", "two", "three", "four"}
-	scrollOffset := 0
-
-	visible, start, end := persistentLineWindow(lines, 3, 3, &scrollOffset)
-	if start != 1 || end != 4 || scrollOffset != 1 {
-		t.Fatalf("got start=%d end=%d offset=%d, want start=1 end=4 offset=1", start, end, scrollOffset)
-	}
-	if strings.Join(visible, ",") != "one,two,three" {
-		t.Fatalf("visible lines = %#v", visible)
-	}
-
-	visible, start, end = persistentLineWindow(lines, 2, 3, &scrollOffset)
-	if start != 1 || end != 4 || scrollOffset != 1 {
-		t.Fatalf("move within window got start=%d end=%d offset=%d, want start=1 end=4 offset=1", start, end, scrollOffset)
-	}
-	if strings.Join(visible, ",") != "one,two,three" {
-		t.Fatalf("visible lines after move within window = %#v", visible)
-	}
-}
-
-func TestApplyPersistentScrollClampsNegativeOffset(t *testing.T) {
-	lines := []string{"zero", "one", "two"}
-	scrollOffset := -5
-
-	visible := applyPersistentScroll(lines, 0, 2, &scrollOffset)
-	if scrollOffset != 0 {
-		t.Fatalf("scrollOffset = %d, want 0", scrollOffset)
-	}
-	if strings.Join(visible, ",") != "zero,one" {
-		t.Fatalf("visible lines = %#v", visible)
 	}
 }

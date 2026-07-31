@@ -101,53 +101,6 @@ func TestTaskRef_String(t *testing.T) {
 	}
 }
 
-func TestTaskRef_IsNumericShortID(t *testing.T) {
-	tests := []struct {
-		name string
-		ref  TaskRef
-		want bool
-	}{
-		{
-			name: "unqualified numeric short ID",
-			ref:  TaskRef{TaskID: "42"},
-			want: true,
-		},
-		{
-			name: "unqualified multi-digit short ID",
-			ref:  TaskRef{TaskID: "123"},
-			want: true,
-		},
-		{
-			name: "qualified numeric short ID is not ambiguous",
-			ref:  TaskRef{ProjectID: "proj", TaskID: "42"},
-			want: false,
-		},
-		{
-			name: "uuid task ID is not a numeric short ID",
-			ref:  TaskRef{TaskID: "550e8400-e29b-41d4-a716-446655440000"},
-			want: false,
-		},
-		{
-			name: "mixed alphanumeric is not a numeric short ID",
-			ref:  TaskRef{TaskID: "12ab"},
-			want: false,
-		},
-		{
-			name: "empty ref",
-			ref:  TaskRef{},
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.ref.IsNumericShortID(); got != tt.want {
-				t.Errorf("IsNumericShortID() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestTaskRef_IsEmpty(t *testing.T) {
 	tests := []struct {
 		name string

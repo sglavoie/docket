@@ -32,7 +32,7 @@ func TestArtifactsContract(t *testing.T) {
 		repo := newStorageRepo(commitSvc, project)
 		repo.seed(t)
 		seedNoteTestCatalog(t, dataDir, project)
-		svc := app.NewService(repo, nil, nil)
+		svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 		runArtifactContract(t, svc, project.ID)
 	})
 }

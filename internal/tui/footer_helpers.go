@@ -7,8 +7,7 @@ import (
 
 // Capture footer help strings. Each is a plain, unstyled " · "-separated help
 // cluster so the shared wrapping renderer can break it on item boundaries at
-// narrow widths without clipping required actions. captureFooterSpec selects
-// among them per interaction state.
+// narrow widths without clipping required actions.
 const (
 	captureFooterNormal       = "Enter create · Ctrl+O create & open · Ctrl+D create & edit · Ctrl+V paste · ? syntax · Esc cancel"
 	captureFooterHelp         = "Enter create · Ctrl+O create & open · Ctrl+D create & edit · Ctrl+V paste · ? close syntax · Esc close syntax"
@@ -17,22 +16,11 @@ const (
 	captureFooterConfirm      = "Y discard · N/Esc keep editing"
 )
 
-// captureFooterSpec selects the contextual footer for a capture view (Quick
-// Capture and the Linked Task Creator) from its current interaction state. The
-// priority mirrors the views' input precedence: discard confirmation →
-// autocomplete → expanded syntax → normal capture. This base variant assumes the
-// expanded syntax guide does not overflow; captureFooterSpecFull augments the
-// expanded-syntax state with scroll hints and a scroll percentage once overflow
-// is measurable against the footer-aware viewport budget.
-func captureFooterSpec(confirmDiscard, autocompleteActive, helpExpanded bool) StatusBarFooterSpec {
-	return captureFooterSpecFull(confirmDiscard, autocompleteActive, helpExpanded, false, 0)
-}
-
 // captureFooterSpecFull selects the capture footer including the expanded-syntax
 // scroll affordances. When the guide is expanded, not shadowed by autocomplete
 // or a discard confirmation, and its viewport overflows, the footer advertises
 // the scroll/page keys and right-aligns the scroll percentage. Otherwise it
-// matches captureFooterSpec.
+// uses the normal expanded-help footer.
 func captureFooterSpecFull(confirmDiscard, autocompleteActive, helpExpanded, syntaxOverflow bool, scrollPercent int) StatusBarFooterSpec {
 	switch {
 	case confirmDiscard:

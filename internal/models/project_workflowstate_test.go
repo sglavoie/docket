@@ -46,7 +46,7 @@ func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 		t.Fatalf("All group order = %v, want %v", got, want)
 	}
 
-	for _, group := range AllWorkflowStateGroups() {
+	for _, group := range append(AllModeWorkflowStateGroups(), StateGroupDone, StateGroupCanceled) {
 		if !group.IsValid() || group.Label() == "" || group.ThemeRole() == "" {
 			t.Errorf("group %q has incomplete presentation semantics", group)
 		}

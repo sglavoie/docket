@@ -306,12 +306,15 @@ func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 
-	appSvc := app.NewService(repo, nil, nil)
+	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	res, err := appSvc.AttachFile(task.ID, src)
 	if err != nil {
 		t.Fatalf("AttachFile: %v", err)
 	}
-	dest := storage.GetAttachmentPath(project, task, res.Filename)
+	dest, err := storage.ResolveAttachmentPath(project, task, res.Filename)
+	if err != nil {
+		t.Fatalf("ResolveAttachmentPath: %v", err)
+	}
 	if got := readFileContent(t, dest); got != "pdf bytes" {
 		t.Fatalf("ingested attachment = %q, want %q", got, "pdf bytes")
 	}
@@ -361,7 +364,7 @@ func TestRemoveAttachmentUndoRedoAcceptance(t *testing.T) {
 	}
 	repo.revisions[project.ID] = doc.Revision
 
-	appSvc := app.NewService(repo, nil, nil)
+	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	if _, err := appSvc.RemoveAttachment(task.ID, 0, true); err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
 	}

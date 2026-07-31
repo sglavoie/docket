@@ -180,7 +180,7 @@ func TestCreatePreSimplificationV5SnapshotCoversLegacyV4FixtureCorpus(t *testing
 	t.Setenv("HOME", home)
 	root := filepath.Join(t.TempDir(), "workspace")
 	fixtureWorkspace := filepath.Join(legacyV4FixtureRoot, "workspace")
-	if err := MigrateCopyTree(fixtureWorkspace, root); err != nil {
+	if err := os.CopyFS(root, os.DirFS(fixtureWorkspace)); err != nil {
 		t.Fatalf("copy legacy v4 fixture workspace: %v", err)
 	}
 	machineFixture, err := os.ReadFile(filepath.Join(

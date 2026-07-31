@@ -67,10 +67,6 @@ func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 
 // dueIsInlineHero reports whether a task's due date may be rendered as the
 // dense-row urgency anchor.
-func dueIsInlineHero(t *models.Task) bool {
-	return t != nil && !t.IsComplete() && (t.IsOverdue() || t.IsDueToday())
-}
-
 // demoteBadge re-renders a pre-styled badge with MutedStyle, preserving the
 // glyph and the visual width (trailing padding from PadBadge is untouched).
 // Returns the input unchanged when empty.
@@ -86,6 +82,3 @@ func statusIsHero(h HeroKind) bool { return h == HeroBlocked }
 
 // priorityIsHero reports whether the priority badge is the hero.
 func priorityIsHero(h HeroKind) bool { return h == HeroP1 }
-
-// dueIsHero reports whether the due-date string is the hero.
-func dueIsHero(h HeroKind) bool { return h == HeroOverdue || h == HeroDueToday }

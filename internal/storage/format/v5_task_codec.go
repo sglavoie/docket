@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -673,92 +672,4 @@ func parseV5Decisions(lines []string) ([]V5TaskDecision, error) {
 		})
 	}
 	return decisions, nil
-}
-
-// DerivedV5TaskTags returns the sorted vocabulary derived exclusively from
-// task usage. Project tag catalogs and pinned-tag metadata are intentionally
-// absent from this API.
-func DerivedV5TaskTags(tasks []V5TaskRecord) []string {
-	var tags []string
-	for _, task := range tasks {
-		tags = append(tags, task.Tags...)
-	}
-	tags = models.DedupeTags(tags)
-	sort.Strings(tags)
-	return tags
-}
-
-// EqualV5TaskRecord compares target records using instant equality for
-// timestamps, which avoids treating equivalent RFC3339 offsets as different
-// records in codec tests and migration validation.
-func EqualV5TaskRecord(left, right V5TaskRecord) bool {
-	if left.ID != right.ID || left.ShortID != right.ShortID || left.Title != right.Title ||
-		left.Description != right.Description || left.State != right.State ||
-		left.Priority != right.Priority || left.ParentID != right.ParentID ||
-		left.DueDate != right.DueDate || left.SnoozedUntil != right.SnoozedUntil ||
-		left.Pinned != right.Pinned || !left.CreatedAt.Equal(right.CreatedAt) ||
-		!left.UpdatedAt.Equal(right.UpdatedAt) || !equalV5TimePtr(left.CompletedAt, right.CompletedAt) ||
-		!equalV5TimePtr(left.PinnedAt, right.PinnedAt) ||
-		!slices.Equal(left.Tags, right.Tags) || !slices.Equal(left.DependsOn, right.DependsOn) ||
-		!equalV5Recurrence(left.Recurrence, right.Recurrence) ||
-		!equalV5Attachments(left.Attachments, right.Attachments) ||
-		!slices.Equal(left.Checklist, right.Checklist) ||
-		!equalV5Comments(left.Comments, right.Comments) ||
-		!equalV5Decisions(left.Decisions, right.Decisions) {
-		return false
-	}
-	return true
-}
-
-func equalV5TimePtr(left, right *time.Time) bool {
-	if left == nil || right == nil {
-		return left == nil && right == nil
-	}
-	return left.Equal(*right)
-}
-
-func equalV5Recurrence(left, right *V5TaskRecurrence) bool {
-	if left == nil || right == nil {
-		return left == nil && right == nil
-	}
-	return *left == *right
-}
-
-func equalV5Attachments(left, right []V5TaskAttachment) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for i := range left {
-		if left[i].Kind != right[i].Kind || left[i].Filename != right[i].Filename ||
-			left[i].OriginalPath != right[i].OriginalPath || left[i].LineNumber != right[i].LineNumber ||
-			!equalV5TimePtr(left[i].AddedAt, right[i].AddedAt) {
-			return false
-		}
-	}
-	return true
-}
-
-func equalV5Comments(left, right []V5TaskComment) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for i := range left {
-		if left[i].Text != right[i].Text || !left[i].CreatedAt.Equal(right[i].CreatedAt) {
-			return false
-		}
-	}
-	return true
-}
-
-func equalV5Decisions(left, right []V5TaskDecision) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for i := range left {
-		if left[i].Text != right[i].Text || left[i].Rationale != right[i].Rationale ||
-			!left[i].CreatedAt.Equal(right[i].CreatedAt) {
-			return false
-		}
-	}
-	return true
 }

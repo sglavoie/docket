@@ -52,7 +52,7 @@ func TestMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Match(tt.text, tt.pattern)
+			got := Score(tt.text, tt.pattern) > 0
 			if got != tt.want {
 				t.Errorf("Match(%q, %q) = %v, want %v", tt.text, tt.pattern, got, tt.want)
 			}
@@ -215,7 +215,7 @@ func TestMatchTerms(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MatchTerms(tt.text, tt.query)
+			got := ScoreTerms(tt.text, tt.query) > 0
 			if got != tt.want {
 				t.Errorf("MatchTerms(%q, %q) = %v, want %v", tt.text, tt.query, got, tt.want)
 			}
@@ -364,7 +364,7 @@ func TestMatchUnicodeCaseFolding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Match(tt.text, tt.pattern)
+			got := Score(tt.text, tt.pattern) > 0
 			if got != tt.want {
 				t.Errorf("Match(%q, %q) = %v, want %v", tt.text, tt.pattern, got, tt.want)
 			}
@@ -499,11 +499,11 @@ func TestNoPanicOnPathologicalInput(t *testing.T) {
 				}
 			}()
 			_ = Score(in.text, in.pattern)
-			_ = Match(in.text, in.pattern)
+			_ = Score(in.text, in.pattern)
 			_, _ = ScoreWithPositions(in.text, in.pattern)
 			_ = ScoreTerms(in.text, in.pattern)
 			_, _ = ScoreTermsWithPositions(in.text, in.pattern)
-			_ = MatchTerms(in.text, in.pattern)
+			_ = ScoreTerms(in.text, in.pattern)
 		}()
 	}
 }
@@ -551,7 +551,7 @@ func TestEmptyPatternBehavior(t *testing.T) {
 		if s := Score(text, ""); s != 1 {
 			t.Errorf("Score(%q, \"\") = %d, want 1", text, s)
 		}
-		if !Match(text, "") {
+		if Score(text, "") == 0 {
 			t.Errorf("Match(%q, \"\") = false, want true", text)
 		}
 		if s, p := ScoreWithPositions(text, ""); s != 1 || p != nil {
@@ -586,7 +586,7 @@ func BenchmarkMatch(b *testing.B) {
 	pattern := "long search"
 
 	for i := 0; i < b.N; i++ {
-		Match(text, pattern)
+		Score(text, pattern)
 	}
 }
 

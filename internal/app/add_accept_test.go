@@ -33,7 +33,7 @@ func TestAddTaskAtomicArtifactUndoRedoAcceptance(t *testing.T) {
 	repo := newStorageRepo(commitSvc, project)
 	repo.seed(t)
 
-	appSvc := app.NewService(repo, nil, nil)
+	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	res, err := appSvc.AddTask(app.AddTaskRequest{
 		ProjectID: project.ID,
 		Title:     "added via app",

@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -73,7 +72,9 @@ func TestV5ProjectDocumentRoundTripUsesGenericHeadingsAndNoCatalog(t *testing.T)
 		t.Fatalf("parsed document summary = %#v, want %#v", parsed, document)
 	}
 	for i := range document.Tasks {
-		if !format.EqualV5TaskRecord(parsed.Tasks[i], document.Tasks[i]) {
+		gotBody, gotErr := format.WriteV5TaskBody(parsed.Tasks[i])
+		wantBody, wantErr := format.WriteV5TaskBody(document.Tasks[i])
+		if gotErr != nil || wantErr != nil || gotBody != wantBody {
 			t.Errorf("task %d mismatch:\n got: %#v\nwant: %#v", i, parsed.Tasks[i], document.Tasks[i])
 		}
 	}
@@ -103,29 +104,6 @@ func TestParseV5ProjectDocumentRejectsLegacyAndCatalogSyntax(t *testing.T) {
 				t.Fatalf("ParseV5ProjectDocument accepted invalid content:\n%s", content)
 			}
 		})
-	}
-}
-
-func TestDerivedV5WorkspaceTagsIgnoresCatalogMetadata(t *testing.T) {
-	documents := []V5ProjectDocument{
-		{
-			ProjectName: "Alpha",
-			Tasks: []format.V5TaskRecord{
-				{Tags: []string{"type:bug", "backend"}},
-				{Tags: []string{"source:github"}},
-			},
-		},
-		{
-			ProjectName: "Beta",
-			Tasks: []format.V5TaskRecord{
-				{Tags: []string{"backend", "team:platform"}},
-			},
-		},
-	}
-	got := DerivedV5WorkspaceTags(documents)
-	want := []string{"backend", "bug", "source:github", "team:platform"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("DerivedV5WorkspaceTags() = %v, want %v", got, want)
 	}
 }
 

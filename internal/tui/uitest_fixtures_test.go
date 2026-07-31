@@ -202,7 +202,7 @@ func TestUITestFixtureRichLoadsTasksFromDisk(t *testing.T) {
 
 	// Tasks must have round-tripped through storage: the on-disk tasks.md
 	// exists inside the isolated workspace.
-	tasksPath := storage.GetTasksFilePath(current)
+	tasksPath := storage.TasksFilePath(current.Path)
 	if !strings.HasPrefix(tasksPath, ws.DataDir) {
 		t.Fatalf("project tasks path %q not inside workspace data dir %q", tasksPath, ws.DataDir)
 	}
@@ -243,7 +243,7 @@ func TestUITestFixtureRichLoadsGlobalAndProjectNotesFromDisk(t *testing.T) {
 func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	src := newSourceWorkspace(t)
 	srcProject := src.Runtime.ActiveProjects()[0]
-	srcTasksPath := storage.GetTasksFilePath(srcProject)
+	srcTasksPath := storage.TasksFilePath(srcProject.Path)
 	srcBefore := mustReadFile(t, srcTasksPath)
 	sourceCatalog, err := config.NewDomainFileStore(src.DataDir).LoadCatalog()
 	if err != nil {
@@ -252,7 +252,10 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	sourceWorkspaceID := sourceCatalog.WorkspaceID
 	sourceMachine := config.NewMachineState()
 	sourceMachine.Theme = "light"
-	sourceStore := config.NewDomainFileStoreWithWorkspace(src.DataDir, sourceWorkspaceID)
+	sourceStore := config.NewDomainFileStore(src.DataDir)
+	if bindErr := sourceStore.BindWorkspaceID(sourceWorkspaceID); bindErr != nil {
+		t.Fatalf("BindWorkspaceID(source): %v", bindErr)
+	}
 	if saveErr := sourceStore.SaveMachine(sourceMachine); saveErr != nil {
 		t.Fatalf("SaveMachine(source): %v", saveErr)
 	}
@@ -282,7 +285,7 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	if copied == nil {
 		t.Fatal("copied config is missing the source project")
 	}
-	copiedTasksPath := storage.GetTasksFilePath(copied)
+	copiedTasksPath := storage.TasksFilePath(copied.Path)
 	if !strings.HasPrefix(copiedTasksPath, ws.DataDir) {
 		t.Fatalf("copied project path %q not inside copy data dir %q", copiedTasksPath, ws.DataDir)
 	}
@@ -294,7 +297,7 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	src := newSourceWorkspace(t)
 	srcProject := src.Runtime.ActiveProjects()[0]
-	srcTasksPath := storage.GetTasksFilePath(srcProject)
+	srcTasksPath := storage.TasksFilePath(srcProject.Path)
 	// Persistence is the decomposed domain files, not the legacy monolithic
 	// .tt.json (which Manager.Save no longer writes), so the source "config" to
 	// guard against mutation is the workspace-catalog domain artifact.

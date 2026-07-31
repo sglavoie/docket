@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -82,40 +81,6 @@ func pickerItemListID(item PickerItem) ListItemID {
 		return ListItemID(id)
 	}
 	return "picker:none"
-}
-
-// ListSourceFromContextScopes adapts the canonical scope summaries.
-func ListSourceFromContextScopes(summaries []ContextScopeSummary) ListSource {
-	categories := []ListCategory{
-		{ID: "scope:all", Label: "Workspace"},
-		{ID: "scope:custom", Label: "Custom"},
-		{ID: "scope:regular", Label: "Contexts"},
-	}
-	items := make([]ListItem, 0, len(summaries))
-	for _, summary := range summaries {
-		scope := summary.Scope
-		label := scope.Name
-		if scope.IsAll() {
-			label = "All Projects"
-		}
-		items = append(items, ListItem{
-			ID:            contextScopeListItemID(scope),
-			CategoryID:    contextScopeListCategoryID(scope.Kind),
-			PrimaryText:   label,
-			SecondaryText: fmt.Sprintf("%d projects", summary.ActiveProjectCount),
-			Aliases:       []string{scope.Name, "scope", "projects"},
-			Preview: ListPreview{
-				Title: label,
-				Fields: []ListPreviewField{
-					{Label: "Active", Value: strconv.Itoa(summary.ActiveProjectCount)},
-					{Label: "Archived", Value: strconv.Itoa(summary.ArchivedProjectCount)},
-					{Label: "Missing", Value: strconv.Itoa(summary.StaleReferenceCount)},
-				},
-			},
-			Data: summary,
-		})
-	}
-	return ListSource{Items: items, Categories: categories}
 }
 
 // ListSourceFromWorkflowStates adapts canonical lifecycle states.
@@ -229,82 +194,12 @@ func ListSourceFromTags(tags []TagInfo) ListSource {
 	return ListSource{Items: items, Categories: categories}
 }
 
-// TaskListSourceData retains the project-qualified task target required by the
-// list surfaces and the operation executor.
-type TaskListSourceData struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// ListSourceFromTasks adapts project task catalogs with project-qualified stable
-// IDs so equal task IDs in different projects cannot collide.
-func ListSourceFromTasks(projects []*models.Project) ListSource {
-	categories := make([]ListCategory, 0, len(projects))
-	items := make([]ListItem, 0)
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		categoryID := ListCategoryID("tasks:" + project.ID)
-		categories = append(categories, ListCategory{ID: categoryID, Label: project.Name})
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			state := task.State()
-			aliases := []string{
-				task.Title,
-				fmt.Sprintf("#%d", task.ShortID),
-				state.String(),
-				project.Name,
-			}
-			aliases = append(aliases, task.Tags...)
-			items = append(items, ListItem{
-				ID:            QualifiedTaskListItemID(project.ID, task.ID),
-				CategoryID:    categoryID,
-				PrimaryText:   fmt.Sprintf("#%d %s", task.ShortID, task.Title),
-				SecondaryText: workflowStateListLabel(state),
-				Aliases:       aliases,
-				Preview: ListPreview{
-					Title:   task.Title,
-					Summary: task.Description,
-					Fields: []ListPreviewField{
-						{Label: "Project", Value: project.Name},
-						{Label: "State", Value: state.String()},
-						{Label: "Priority", Value: strconv.Itoa(task.Priority)},
-						{Label: "Tags", Value: strings.Join(task.Tags, ", ")},
-					},
-				},
-				Data: TaskListSourceData{Task: task, Project: project},
-			})
-		}
-	}
-	return ListSource{Items: items, Categories: categories}
-}
-
-// QualifiedTaskListItemID returns the stable project-qualified identity shared
-// by task adapters and retained list destinations.
-func QualifiedTaskListItemID(projectID, taskID string) ListItemID {
-	return ListItemID("task:" + projectID + ":" + taskID)
-}
-
 func contextScopeListItemID(scope ContextScope) ListItemID {
 	switch scope.Kind {
 	case ContextScopeCustom:
 		return ListItemID("scope:custom:" + scope.Name)
 	case ContextScopeRegular:
 		return ListItemID("scope:regular:" + scope.Name)
-	default:
-		return "scope:all"
-	}
-}
-
-func contextScopeListCategoryID(kind ContextScopeKind) ListCategoryID {
-	switch kind {
-	case ContextScopeCustom:
-		return "scope:custom"
-	case ContextScopeRegular:
-		return "scope:regular"
 	default:
 		return "scope:all"
 	}

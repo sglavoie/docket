@@ -43,17 +43,10 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 	return b.String()
 }
 
-// AttachScrollbar takes a content block and a scrollbar string (both newline-
-// delimited), pads each content line to the derived content width, and zips
-// them together.
-func AttachScrollbar(content, scrollbar string) string {
-	return attachScrollbarAtWidth(content, scrollbar, 0)
-}
-
 // attachScrollbarAtWidth attaches a newline-delimited scrollbar after fitting
 // each content line to contentWidth visual cells before the scrollbar. Callers
 // should pass the width already reserved for content inside their layout; non-
-// positive widths preserve AttachScrollbar's historical derived-width behavior.
+// positive widths derive the width from the widest content line.
 func attachScrollbarAtWidth(content, scrollbar string, contentWidth int) string {
 	if scrollbar == "" {
 		return content
@@ -152,55 +145,4 @@ func persistentIndexWindow(cursorIdx, totalItems, viewportHeight int, scrollOffs
 	startIdx := *scrollOffset
 	endIdx := min(startIdx+viewportHeight, totalItems)
 	return startIdx, endIdx
-}
-
-// applyScroll returns the visible slice of lines for a non-persistent scroll.
-// cursorIdx is the line index (in the lines slice) where the cursor sits;
-// contentHeight is the number of lines that fit on screen.
-func applyScroll(lines []string, cursorIdx, contentHeight int) []string {
-	if contentHeight <= 0 {
-		return nil
-	}
-
-	scrollOffset := calcScrollOffset(cursorIdx, contentHeight)
-
-	visible := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visible = lines[scrollOffset:]
-	}
-	if len(visible) > contentHeight {
-		visible = visible[:contentHeight]
-	}
-	return visible
-}
-
-// applyPersistentScroll adjusts *scrollOffset to keep cursorIdx visible, then
-// returns the visible slice of lines. Unlike applyScroll, the scroll position
-// is remembered across renders so that small cursor movements don't jump to
-// cursor-anchored scrolling.
-func applyPersistentScroll(lines []string, cursorIdx, contentHeight int, scrollOffset *int) []string {
-	if contentHeight <= 0 {
-		return nil
-	}
-
-	adjustPersistentScrollOffset(cursorIdx, len(lines), contentHeight, scrollOffset)
-
-	visible := lines
-	if *scrollOffset > 0 && *scrollOffset < len(lines) {
-		visible = lines[*scrollOffset:]
-	}
-	if len(visible) > contentHeight {
-		visible = visible[:contentHeight]
-	}
-	return visible
-}
-
-// persistentLineWindow adjusts *scrollOffset to keep cursorIdx visible, then
-// returns the visible lines and their [start,end) indexes.
-func persistentLineWindow(lines []string, cursorIdx, contentHeight int, scrollOffset *int) ([]string, int, int) {
-	visible := applyPersistentScroll(lines, cursorIdx, contentHeight, scrollOffset)
-	if contentHeight <= 0 {
-		return nil, 0, 0
-	}
-	return visible, *scrollOffset, *scrollOffset + len(visible)
 }

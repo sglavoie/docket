@@ -62,15 +62,6 @@ func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
 	}
 }
 
-// BuildTagList scans tasks and builds a sorted list of task-used tags with
-// counts. If excludeCompleted is true, completed tasks are skipped.
-func BuildTagList(tasks []*models.Task, excludeCompleted bool) []TagInfo {
-	tagCounts := make(map[string]int)
-	addTaskTagCounts(tagCounts, tasks, excludeCompleted)
-
-	return tagInfosFromCounts(tagCounts)
-}
-
 // BuildProjectTagList builds a sorted task-used tag list for a project.
 func BuildProjectTagList(project *models.Project, excludeCompleted bool) []TagInfo {
 	if project == nil {

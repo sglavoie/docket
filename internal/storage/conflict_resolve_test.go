@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -206,11 +207,9 @@ func TestResolveConflict_UseFileRejectsInvalid(t *testing.T) {
 	// invariant enforced by auditMergedDocument. ApplyWorkflowState sets the
 	// authoritative WorkflowState (which the v2 writer serializes and the audit
 	// reads) without touching CompletedAt.
-	badDoc := cloneEdit(base, func(tk *models.Task) {
-		tk.ApplyWorkflowState(models.StateDone)
-	})
+	badContent := strings.Replace(mustWriteCurrentDocument(t, base), "state: ready", "state: done", 1)
 	badPath := filepath.Join(t.TempDir(), "bad.md")
-	if err := os.WriteFile(badPath, []byte(badDoc.WriteV2()), 0o600); err != nil {
+	if err := os.WriteFile(badPath, []byte(badContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

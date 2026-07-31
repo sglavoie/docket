@@ -55,12 +55,6 @@ func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 	}
 }
 
-// AllWorkflowStateGroups returns every valid group, including terminal groups.
-func AllWorkflowStateGroups() []WorkflowStateGroup {
-	groups := AllModeWorkflowStateGroups()
-	return append(groups, StateGroupDone, StateGroupCanceled)
-}
-
 // IsValid reports whether g is a canonical workflow-state group.
 func (g WorkflowStateGroup) IsValid() bool {
 	switch g {

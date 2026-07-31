@@ -7,7 +7,8 @@ import (
 )
 
 func TestWorkflowStateGroupThemeSemanticsCoverEveryGroup(t *testing.T) {
-	for _, group := range models.AllWorkflowStateGroups() {
+	groups := append(models.AllModeWorkflowStateGroups(), models.StateGroupDone, models.StateGroupCanceled)
+	for _, group := range groups {
 		if accent := GetWorkflowStateGroupAccent(group); accent == nil {
 			t.Errorf("group %q has no theme accent", group)
 		}

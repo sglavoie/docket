@@ -220,25 +220,6 @@ func WriteActiveWorkspacePointer(dataDir, workspaceID string) error {
 	return nil
 }
 
-// ResolveWorkspaceDataDir resolves the workspace data directory following the
-// documented precedence: explicit flag, then the TT_DATA_DIR environment
-// variable, then the machine-local active-workspace pointer, and finally the
-// local default (~/.tt). The bool reports whether an explicit selection was
-// made (any of the first three tiers); callers that must preserve the legacy
-// iCloud default when nothing is selected can branch on it.
-func ResolveWorkspaceDataDir(flagValue string) (string, bool) {
-	if flagValue != "" {
-		return filepath.Clean(flagValue), true
-	}
-	if env := os.Getenv(DataDirEnvVar); env != "" {
-		return filepath.Clean(env), true
-	}
-	if ptr, ok := ReadActiveWorkspacePointer(); ok {
-		return ptr, true
-	}
-	return LocalDataRoot(), false
-}
-
 // resolveHomeDir returns the user's home directory and whether it could be
 // determined. It is the single wrapper over os.UserHomeDir so every path helper
 // shares one source of truth (and tests can drive it via $HOME).
@@ -321,13 +302,6 @@ func DefaultConfigPath() string {
 	return filepath.Join(ActiveDefaultDataDir(), configFileName)
 }
 
-// LegacyConfigPath returns the config file path inside the local ~/.tt data
-// directory. This is where pre-iCloud installs stored their config; it is used
-// to detect and migrate an existing local default install.
-func LegacyConfigPath() string {
-	return filepath.Join(LocalDataRoot(), configFileName)
-}
-
 // DisplayPath abbreviates the user's home-directory prefix to "~" for
 // human-facing output. Paths outside the home directory (or when the home
 // directory is unknown) are returned unchanged.
@@ -344,12 +318,6 @@ func DisplayPath(path string) string {
 		return "~" + string(os.PathSeparator) + path[len(prefix):]
 	}
 	return path
-}
-
-// DefaultDataDirDisplay returns the active default data directory with the home
-// prefix abbreviated to "~", suitable for help text and generated docs.
-func DefaultDataDirDisplay() string {
-	return DisplayPath(ActiveDefaultDataDir())
 }
 
 // LocalRuntimeDirForDataDir returns a machine-local directory for runtime state

@@ -13,9 +13,6 @@ type Binding struct {
 	Key         string
 	Description string
 	Category    string
-	// OperationID links this direct key to the same semantic operation used by
-	// commands and palettes. Empty retains the legacy action path.
-	OperationID string
 	Action      Action
 	Gate        Gate // nil = always active
 	Hidden      bool // excluded from help, included in HandledKeys
@@ -43,12 +40,6 @@ func WithGate(g Gate) BindOption {
 // AsHidden marks a binding as hidden from help output.
 func AsHidden() BindOption {
 	return func(b *Binding) { b.Hidden = true }
-}
-
-// WithOperationID routes a binding through the shell operation executor when
-// one is installed, preserving Action as the compatibility fallback.
-func WithOperationID(id string) BindOption {
-	return func(b *Binding) { b.OperationID = id }
 }
 
 // Bind constructs a Binding entry.

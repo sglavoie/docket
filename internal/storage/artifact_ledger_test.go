@@ -65,12 +65,12 @@ func TestCommitArtifactTransaction_MixedChangesUndoRedoByteExact(t *testing.T) {
 		t.Fatalf("ledger project ids = %v, want [project-a project-b]", entry.ProjectIDs)
 	}
 	for _, projectID := range []string{"project-a", "project-b"} {
-		if _, selectable, selectErr := ledger.SelectNewestUndo(ProjectScope(projectID)); selectErr != nil || !selectable {
+		if _, selectable, selectErr := ledger.SelectNewestUndo(LedgerScope{ProjectID: projectID}); selectErr != nil || !selectable {
 			t.Fatalf("SelectNewestUndo(%s) ok=%v err=%v", projectID, selectable, selectErr)
 		}
 	}
 
-	description, err := ledger.Undo(ProjectScope("project-b"))
+	description, err := ledger.Undo(LedgerScope{ProjectID: "project-b"})
 	if err != nil {
 		t.Fatalf("Undo(project-b): %v", err)
 	}
@@ -81,7 +81,7 @@ func TestCommitArtifactTransaction_MixedChangesUndoRedoByteExact(t *testing.T) {
 	requireAbsent(t, createdPath)
 	assertArtifactBytes(t, deletedPath, deletedBefore)
 
-	if _, err := ledger.Redo(ProjectScope("project-a")); err != nil {
+	if _, err := ledger.Redo(LedgerScope{ProjectID: "project-a"}); err != nil {
 		t.Fatalf("Redo(project-a): %v", err)
 	}
 	assertArtifactBytes(t, existingPath, existingAfter)
@@ -280,11 +280,11 @@ func TestCommitArtifactTransaction_PreparedJournalRecoversArtifactsAndLedger(t *
 		t.Fatalf("RolledForward = %v, want [%s]", report.RolledForward, txnID)
 	}
 	assertArtifactBytes(t, path, after)
-	entry, ok, err := ledger.SelectNewestUndo(ProjectScope("project-a"))
+	entry, ok, err := ledger.SelectNewestUndo(LedgerScope{ProjectID: "project-a"})
 	if err != nil || !ok || entry.TransactionID != txnID {
 		t.Fatalf("recovered ledger entry = %#v ok=%v err=%v", entry, ok, err)
 	}
-	if _, err := ledger.Undo(ProjectScope("project-a")); err != nil {
+	if _, err := ledger.Undo(LedgerScope{ProjectID: "project-a"}); err != nil {
 		t.Fatalf("Undo recovered transaction: %v", err)
 	}
 	assertArtifactBytes(t, path, before)
@@ -347,7 +347,7 @@ func TestCommitArtifactTransaction_RedoInvalidationAndScope(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("first CommitArtifactTransaction: %v", err)
 	}
-	if _, ok, err := ledger.SelectNewestUndo(ProjectScope("project-a")); err != nil || ok {
+	if _, ok, err := ledger.SelectNewestUndo(LedgerScope{ProjectID: "project-a"}); err != nil || ok {
 		t.Fatalf("global-only entry selected by project: ok=%v err=%v", ok, err)
 	}
 	if _, err := ledger.Undo(GlobalScope()); err != nil {
@@ -367,7 +367,7 @@ func TestCommitArtifactTransaction_RedoInvalidationAndScope(t *testing.T) {
 	if _, ok, err := ledger.SelectNewestRedo(GlobalScope()); err != nil || ok {
 		t.Fatalf("overlapping redo survived: ok=%v err=%v", ok, err)
 	}
-	if _, ok, err := ledger.SelectNewestUndo(ProjectScope("project-a")); err != nil || !ok {
+	if _, ok, err := ledger.SelectNewestUndo(LedgerScope{ProjectID: "project-a"}); err != nil || !ok {
 		t.Fatalf("project entry not selectable: ok=%v err=%v", ok, err)
 	}
 	assertArtifactBytes(t, path, []byte("v2"))

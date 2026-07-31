@@ -56,12 +56,7 @@ func LoadRuntimeState(dataDir string) (*RuntimeState, error) {
 // load real domain files but must still hold a usable state whose accessors never
 // return nil.
 func EmptyRuntimeState(dataDir string) *RuntimeState {
-	return &RuntimeState{
-		coord:   NewDomainCoordinator(dataDir),
-		domains: NewDomains(),
-		revs:    make(map[domainKind]string, len(syncedDomainKinds)),
-		dataDir: dataDir,
-	}
+	return NewRuntimeState(dataDir, nil)
 }
 
 // NewRuntimeState builds an in-memory runtime snapshot from explicit domains

@@ -571,15 +571,6 @@ type LedgerScope struct {
 // GlobalScope targets the newest entry across the whole workspace.
 func GlobalScope() LedgerScope { return LedgerScope{} }
 
-// ProjectScope targets the newest entry affecting a single project.
-func ProjectScope(projectID string) LedgerScope { return LedgerScope{ProjectID: projectID} }
-
-// ArtifactRootScope targets the newest entry touching root or one of its
-// descendants, using cleaned lexical paths and path-component containment.
-func ArtifactRootScope(root string) LedgerScope {
-	return LedgerScope{ArtifactRoot: filepath.Clean(root)}
-}
-
 // SelectNewestUndo returns the entry a subsequent Undo(scope) would reverse
 // without applying it, and whether one exists. It is the read-only counterpart
 // callers use to preview or gate the availability of undo.

@@ -136,8 +136,7 @@ func (o OverlayManager) Active() bool {
 	return m.navigation.Overlays.Active() ||
 		m.contextActionSheet != nil ||
 		m.operationValuePicker != nil ||
-		m.operationTextPrompt != nil ||
-		m.projectAdminMenu != nil
+		m.operationTextPrompt != nil
 }
 
 // ClearAll dismisses every transient overlay. Called when navigation collapses
@@ -150,5 +149,4 @@ func (o OverlayManager) ClearAll() {
 	m.operationTextPrompt = nil
 	m.operationConfirm.Cancel()
 	m.pendingOperationRequest = OperationExecutionRequest{}
-	m.projectAdminMenu = nil
 }

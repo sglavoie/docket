@@ -52,7 +52,7 @@ func newCrossProjectTestEnv(t *testing.T, taskGroups ...[]*models.Task) *crossPr
 
 	repo := newScenarioRepo(commitSvc, projects...)
 	repo.seed(t)
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	coords := newSecondaryCoordinators(svc)
 	return &crossProjectTestEnv{
 		dataDir: dataDir, ledger: ledger, svc: svc,

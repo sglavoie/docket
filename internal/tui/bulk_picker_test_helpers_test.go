@@ -85,7 +85,7 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 
 	repo := newScenarioRepo(commitSvc, projects...)
 	repo.seed(t)
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	cfg := newTestConfigAt(dataDir)

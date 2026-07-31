@@ -9,34 +9,6 @@ const StateReview WorkflowState = "review"
 // normalized into the target vocabulary.
 const LegacyReviewTag = "review"
 
-// AllLegacyWorkflowStates returns the complete v4 vocabulary in its historical
-// order. Migration and compatibility code may use this; target code should use
-// AllWorkflowStates.
-func AllLegacyWorkflowStates() []WorkflowState {
-	return []WorkflowState{
-		StateInbox,
-		StateReady,
-		StateNext,
-		StateInProgress,
-		StateWaiting,
-		StatePaused,
-		StateReview,
-		StateSomeday,
-		StateDone,
-		StateCanceled,
-	}
-}
-
-// ParseLegacyWorkflowState recognizes the v4 state vocabulary without making a
-// retired state valid for target operations.
-func ParseLegacyWorkflowState(value string) (WorkflowState, bool) {
-	state := WorkflowState(value)
-	if state.IsValid() || state == StateReview {
-		return state, true
-	}
-	return "", false
-}
-
 // TargetStateForLegacy converts a recognized legacy state into the target
 // vocabulary. Review becomes Ready; callers preserving a task record must also
 // add LegacyReviewTag.

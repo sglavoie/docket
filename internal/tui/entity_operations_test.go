@@ -32,7 +32,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 	for _, title := range titles {
 		note := models.NewNote(title)
 		note.Body = title + " body"
-		if err := storage.SaveNote(project, note); err != nil {
+		if err := saveTestNote(storage.NotesDir(project), note); err != nil {
 			t.Fatalf("seed note %q: %v", title, err)
 		}
 	}

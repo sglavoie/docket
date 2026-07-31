@@ -75,7 +75,9 @@ func TestV5TaskBodyRoundTripExact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseV5TaskBody: %v\nbody:\n%s", err, body)
 	}
-	if !EqualV5TaskRecord(parsed, task) {
+	parsedBody, parsedErr := WriteV5TaskBody(parsed)
+	wantBody, wantErr := WriteV5TaskBody(task)
+	if parsedErr != nil || wantErr != nil || parsedBody != wantBody {
 		t.Fatalf("v5 task mismatch after round trip:\n got: %#v\nwant: %#v", parsed, task)
 	}
 
@@ -138,18 +140,6 @@ func TestV5MetadataContainsOnlyTargetFields(t *testing.T) {
 	}
 	if !slices.Equal(legacy.Tags, []string{"bug", "backend"}) {
 		t.Fatalf("legacy marker tags = %v, want [bug backend]", legacy.Tags)
-	}
-}
-
-func TestDerivedV5TaskTagsUsesTaskRecordsOnly(t *testing.T) {
-	tasks := []V5TaskRecord{
-		{Tags: []string{"source:github", "backend", "type:bug"}},
-		{Tags: []string{"backend", "#team:platform", "bad,tag"}},
-	}
-	got := DerivedV5TaskTags(tasks)
-	want := []string{"backend", "bug", "source:github", "team:platform"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("DerivedV5TaskTags() = %v, want %v", got, want)
 	}
 }
 

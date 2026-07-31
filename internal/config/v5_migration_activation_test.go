@@ -17,7 +17,7 @@ func copyLegacyV4ActivationFixture(t *testing.T) string {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 	root := filepath.Join(t.TempDir(), "workspace")
-	if err := MigrateCopyTree(filepath.Join(legacyV4FixtureRoot, "workspace"), root); err != nil {
+	if err := os.CopyFS(root, os.DirFS(filepath.Join(legacyV4FixtureRoot, "workspace"))); err != nil {
 		t.Fatalf("copy legacy v4 workspace: %v", err)
 	}
 	machineData, err := os.ReadFile(filepath.Join(

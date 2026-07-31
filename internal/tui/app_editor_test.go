@@ -14,8 +14,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# New Title\n\n<!-- Edit the title above and description below. -->\n\nNew description."
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "New Title")
-		testutil.AssertEqual(t, desc, "New description.")
+		if title != "New Title" || desc != "New description." {
+			t.Errorf("got title=%q desc=%q", title, desc)
+		}
 	})
 
 	t.Run("empty title preserves original", func(t *testing.T) {
@@ -23,8 +24,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# \n\n<!-- Edit the title above and description below. -->\n\nSome text."
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "Original Title")
-		testutil.AssertEqual(t, desc, "Some text.")
+		if title != "Original Title" || desc != "Some text." {
+			t.Errorf("got title=%q desc=%q", title, desc)
+		}
 	})
 
 	t.Run("preserves HTML comments in description", func(t *testing.T) {
@@ -34,7 +36,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# Title\n\n<!-- Edit the title above and description below. -->\n\n<!-- user note -->\nSome text."
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "Title")
+		if title != "Title" {
+			t.Errorf("got title %q, want %q", title, "Title")
+		}
 		expected := "<!-- user note -->\nSome text."
 		if desc != expected {
 			t.Errorf("got desc:\n%q\nwant:\n%q", desc, expected)
@@ -47,7 +51,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# Title\n\n<!-- Edit the title above and description below. -->\n\nBefore.\n\n<!-- hidden note -->\n\nMiddle.\n\n<!-- another comment -->\n\nAfter."
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "Title")
+		if title != "Title" {
+			t.Errorf("got title %q, want %q", title, "Title")
+		}
 		expected := "Before.\n\n<!-- hidden note -->\n\nMiddle.\n\n<!-- another comment -->\n\nAfter."
 		if desc != expected {
 			t.Errorf("got desc:\n%q\nwant:\n%q", desc, expected)
@@ -60,7 +66,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# My Title\n\n<!-- Edit the title above and description below. -->\n\n# Description Heading\n\nSome text."
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "My Title")
+		if title != "My Title" {
+			t.Errorf("got title %q, want %q", title, "My Title")
+		}
 		expected := "# Description Heading\n\nSome text."
 		if desc != expected {
 			t.Errorf("got desc: %q, want: %q", desc, expected)
@@ -73,7 +81,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# Title\n\n<!-- Edit the title above and description below. -->\n\nContent here.\n\n\n"
 		_, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, desc, "Content here.")
+		if desc != "Content here." {
+			t.Errorf("got desc %q, want %q", desc, "Content here.")
+		}
 	})
 
 	t.Run("handles content with leading empty lines after comment", func(t *testing.T) {
@@ -82,7 +92,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# Title\n\n<!-- Edit the title above and description below. -->\n\n\n\nActual content."
 		_, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, desc, "Actual content.")
+		if desc != "Actual content." {
+			t.Errorf("got desc %q, want %q", desc, "Actual content.")
+		}
 	})
 
 	t.Run("missing comment marker preserves content as description", func(t *testing.T) {
@@ -91,8 +103,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# New Title\n\nNo comment here.\nSome text."
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "New Title")
-		testutil.AssertEqual(t, desc, "No comment here.\nSome text.")
+		if title != "New Title" || desc != "No comment here.\nSome text." {
+			t.Errorf("got title=%q desc=%q", title, desc)
+		}
 	})
 
 	t.Run("missing comment marker with empty description", func(t *testing.T) {
@@ -101,8 +114,9 @@ func TestParseTaskContent(t *testing.T) {
 		content := "# New Title"
 		title, desc := parseTaskContent(content, task)
 
-		testutil.AssertEqual(t, title, "New Title")
-		testutil.AssertEqual(t, desc, "")
+		if title != "New Title" || desc != "" {
+			t.Errorf("got title=%q desc=%q", title, desc)
+		}
 	})
 
 	t.Run("multiline description preserved", func(t *testing.T) {

@@ -151,70 +151,6 @@ func TestParseRelativeDateThisWeekday(t *testing.T) {
 	}
 }
 
-func TestParseDateWithTime(t *testing.T) {
-	today := StartOfDay(time.Now())
-
-	at := func(base time.Time, h, m int) time.Time {
-		return time.Date(base.Year(), base.Month(), base.Day(), h, m, 0, 0, base.Location())
-	}
-
-	tests := []struct {
-		name     string
-		input    string
-		wantTime bool
-		wantT    time.Time
-		wantErr  bool
-	}{
-		// Pure time tokens (date = today)
-		{"5pm", "5pm", true, at(today, 17, 0), false},
-		{"9am", "9am", true, at(today, 9, 0), false},
-		{"5:30pm", "5:30pm", true, at(today, 17, 30), false},
-		{"17:00", "17:00", true, at(today, 17, 0), false},
-		{"08:30", "08:30", true, at(today, 8, 30), false},
-		{"9:30", "9:30", true, at(today, 9, 30), false},
-		{"12am is midnight", "12am", true, at(today, 0, 0), false},
-		{"12pm is noon", "12pm", true, at(today, 12, 0), false},
-		// Combined date + time
-		{"today 5pm", "today 5pm", true, at(today, 17, 0), false},
-		{"tomorrow 9am", "tomorrow 9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
-		{"eod 23:59", "eod 23:59", true, at(today, 23, 59), false},
-		{"+2d 14:30", "+2d 14:30", true, at(today.AddDate(0, 0, 2), 14, 30), false},
-		// No time suffix → hasTime=false
-		{"today alone", "today", false, today, false},
-		{"tomorrow alone", "tomorrow", false, today.AddDate(0, 0, 1), false},
-		// Invalid time values
-		{"25:00 invalid hour", "25:00", false, time.Time{}, true},
-		{"13pm invalid", "13pm", false, time.Time{}, true},
-		{"0am invalid", "0am", false, time.Time{}, true},
-		// Natural "at" preposition between date and time
-		{"tomorrow at 9am", "tomorrow at 9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
-		{"tomorrow at 9am with extra whitespace", "tomorrow   at\t9am", true, at(today.AddDate(0, 0, 1), 9, 0), false},
-		{"today at 5pm", "today at 5pm", true, at(today, 17, 0), false},
-		{"today at 14:30", "today at 14:30", true, at(today, 14, 30), false},
-		{"tomorrow at 9:30", "tomorrow at 9:30", true, at(today.AddDate(0, 0, 1), 9, 30), false},
-		// Invalid date part with a valid time suffix
-		{"gibberish date with time", "gibberish 5pm", false, time.Time{}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, hasTime, err := ParseRelativeDateWithTime(tt.input, "sun")
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ParseRelativeDateWithTime(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
-			}
-			if tt.wantErr {
-				return
-			}
-			if hasTime != tt.wantTime {
-				t.Errorf("hasTime = %v, want %v", hasTime, tt.wantTime)
-			}
-			if !got.Equal(tt.wantT) {
-				t.Errorf("got %v, want %v", got, tt.wantT)
-			}
-		})
-	}
-}
-
 func TestParseNaturalLanguageDates(t *testing.T) {
 	today := StartOfDay(time.Now())
 
@@ -320,43 +256,5 @@ func TestDaysBetween(t *testing.T) {
 	}
 	if got := DaysBetween(a, a); got != 0 {
 		t.Errorf("DaysBetween(same day) = %d, want 0", got)
-	}
-}
-
-func TestParseFlexibleDate(t *testing.T) {
-	today := StartOfDay(time.Now())
-
-	tests := []struct {
-		name    string
-		input   string
-		want    time.Time
-		wantErr bool
-	}{
-		// Bare shorthand (new in ParseFlexibleDate)
-		{"3d = 3 days", "3d", today.AddDate(0, 0, 3), false},
-		{"7d = 7 days", "7d", today.AddDate(0, 0, 7), false},
-		{"2w = 2 weeks", "2w", today.AddDate(0, 0, 14), false},
-		{"1m = 1 month", "1m", AddMonthsClamped(today, 1), false},
-		// Standard inputs still work
-		{"tomorrow", "tomorrow", today.AddDate(0, 0, 1), false},
-		{"today", "today", today, false},
-		{"+3d", "+3d", today.AddDate(0, 0, 3), false},
-		{"+2w", "+2w", today.AddDate(0, 0, 14), false},
-		{"in 5 days", "in 5 days", today.AddDate(0, 0, 5), false},
-		// Invalid
-		{"gibberish", "gibberish", time.Time{}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseFlexibleDate(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseFlexibleDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && !got.Equal(tt.want) {
-				t.Errorf("ParseFlexibleDate(%q) = %v, want %v", tt.input, got, tt.want)
-			}
-		})
 	}
 }

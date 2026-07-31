@@ -36,13 +36,8 @@ func TestCommonFilterGitHubIssueBadgeCountAndClear(t *testing.T) {
 	if got := commonFilterParts(&filter); len(got) != 1 || got[0] != "issue" {
 		t.Fatalf("commonFilterParts() = %v, want [issue]", got)
 	}
-	if got := renderCommonFilterIndicator(&filter); !strings.Contains(got, "issue") {
-		t.Fatalf("renderCommonFilterIndicator() = %q, want to contain issue", got)
-	}
-
-	mixin := FilterMixin{filter: filter}
-	if got := mixin.ActiveFilterCount(); got != 1 {
-		t.Fatalf("FilterMixin.ActiveFilterCount() = %d, want 1", got)
+	if got := renderFilterBadge(commonFilterParts(&filter)); !strings.Contains(got, "issue") {
+		t.Fatalf("rendered filter badge = %q, want to contain issue", got)
 	}
 
 	copied := copyCommonFilterState(&filter)

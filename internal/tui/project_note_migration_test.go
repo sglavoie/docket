@@ -47,7 +47,7 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	for _, title := range titles {
 		note := models.NewNote(title)
 		note.Body = title + " body"
-		if err := storage.SaveNote(project, note); err != nil {
+		if err := saveTestNote(storage.NotesDir(project), note); err != nil {
 			t.Fatalf("seed note %q: %v", title, err)
 		}
 	}
@@ -87,7 +87,7 @@ func seedNoteMigrationCatalog(t *testing.T, dataDir string, projects ...*models.
 
 func (e *projectNoteTUIEnv) note(t *testing.T, filename string) *models.Note {
 	t.Helper()
-	note, err := storage.LoadNote(e.project, filename)
+	note, err := storage.LoadNoteFrom(storage.NotesDir(e.project), filename)
 	if err != nil {
 		t.Fatalf("LoadNote(%s): %v", filename, err)
 	}

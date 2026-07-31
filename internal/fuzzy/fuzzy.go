@@ -7,14 +7,6 @@ import (
 	"unicode"
 )
 
-// Match returns true if the pattern fuzzy-matches the text.
-// Matching is case-insensitive and uses subsequence matching,
-// where all pattern characters must appear in the text in order
-// but not necessarily contiguously.
-func Match(text, pattern string) bool {
-	return Score(text, pattern) > 0
-}
-
 // Score returns a match score for the pattern against the text.
 // Returns 0 if there is no match.
 // Higher scores indicate better matches based on:
@@ -66,12 +58,6 @@ func ScoreTerms(text, query string) int {
 	}
 
 	return totalScore
-}
-
-// MatchTerms returns true if all whitespace-separated terms in the query
-// fuzzy-match the text.
-func MatchTerms(text, query string) bool {
-	return ScoreTerms(text, query) > 0
 }
 
 // ScoreWithPositions returns both a match score and the indices in text where matches occurred.

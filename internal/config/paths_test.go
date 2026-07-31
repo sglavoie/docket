@@ -81,7 +81,7 @@ func TestActiveDefaultDataDir_ExistingICloudSplitWorkspacePreserved(t *testing.T
 			if err := os.MkdirAll(LocalDataRoot(), DirPermissions); err != nil {
 				t.Fatalf("mkdir local root: %v", err)
 			}
-			if err := os.WriteFile(LegacyConfigPath(), []byte(`{"version":1}`), FilePermissions); err != nil {
+			if err := os.WriteFile(ConfigPathForDataDir(LocalDataRoot()), []byte(`{"version":1}`), FilePermissions); err != nil {
 				t.Fatalf("write local legacy config: %v", err)
 			}
 
@@ -113,9 +113,6 @@ func TestActiveDefaultDataDir_ICloudAbsent(t *testing.T) {
 	want := filepath.Join(home, dataDirName)
 	if got := ActiveDefaultDataDir(); got != want {
 		t.Fatalf("ActiveDefaultDataDir() = %q, want local root %q", got, want)
-	}
-	if got := LegacyConfigPath(); got != filepath.Join(want, configFileName) {
-		t.Fatalf("LegacyConfigPath() = %q, want %q", got, filepath.Join(want, configFileName))
 	}
 }
 
@@ -232,15 +229,5 @@ func TestMachineStatePathRejectsInvalidWorkspaceID(t *testing.T) {
 		if path, err := MachineStatePath(workspaceID); !errors.Is(err, ErrInvalidWorkspaceID) || path != "" {
 			t.Errorf("MachineStatePath(%q) = (%q, %v), want empty path and ErrInvalidWorkspaceID", workspaceID, path, err)
 		}
-	}
-}
-
-func TestDefaultDataDirDisplay_AbbreviatesHome(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	// iCloud absent → local ~/.tt, abbreviated with ~.
-	want := "~" + string(os.PathSeparator) + dataDirName
-	if got := DefaultDataDirDisplay(); got != want {
-		t.Fatalf("DefaultDataDirDisplay() = %q, want %q", got, want)
 	}
 }

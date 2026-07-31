@@ -134,22 +134,8 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 	if !o.Active() || !o.HasActiveTextInput() {
 		t.Error("text prompt should make overlays active and text-input")
 	}
-	if !app.hasActiveTextInput() {
-		t.Error("AppModel.hasActiveTextInput should reflect the overlay")
-	}
-
-	// A non-text overlay is active but not text-input.
 	o.ClearAll()
-	app.projectAdminMenu = &ProjectAdminMenuModel{}
-	if !o.Active() {
-		t.Error("project admin menu should make overlays active")
-	}
-	if o.HasActiveTextInput() {
-		t.Error("project admin menu is not a text-input overlay")
-	}
-
-	o.ClearAll()
-	if o.Active() || app.operationTextPrompt != nil || app.projectAdminMenu != nil {
+	if o.Active() || app.operationTextPrompt != nil {
 		t.Error("ClearAll should dismiss every overlay")
 	}
 }

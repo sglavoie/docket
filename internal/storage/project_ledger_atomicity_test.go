@@ -62,13 +62,13 @@ func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 		t.Fatalf("ledger transaction id = %q, want %q", entry.TransactionID, results[0].TransactionID)
 	}
 	for _, projectID := range []string{ledgerProjectID(alpha), ledgerProjectID(beta)} {
-		selected, selectable, selectErr := ledger.SelectNewestUndo(ProjectScope(projectID))
+		selected, selectable, selectErr := ledger.SelectNewestUndo(LedgerScope{ProjectID: projectID})
 		if selectErr != nil || !selectable || selected.TransactionID != entry.TransactionID {
 			t.Fatalf("SelectNewestUndo(%s) = %#v ok=%v err=%v", projectID, selected, selectable, selectErr)
 		}
 	}
 
-	if _, err := ledger.Undo(ProjectScope(ledgerProjectID(beta))); err != nil {
+	if _, err := ledger.Undo(LedgerScope{ProjectID: ledgerProjectID(beta)}); err != nil {
 		t.Fatalf("Undo(beta): %v", err)
 	}
 	assertArtifactBytes(t, alphaPath, alphaBefore)
@@ -225,8 +225,8 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 	if err != nil {
 		t.Fatalf("render beta: %v", err)
 	}
-	alphaAfter := []byte(alphaDoc.WriteV2())
-	betaAfter := []byte(betaDoc.WriteV2())
+	alphaAfter := []byte(mustWriteCurrentDocument(t, alphaDoc))
+	betaAfter := []byte(mustWriteCurrentDocument(t, betaDoc))
 	alphaSet := ChangeSet{
 		Project: alpha,
 		Artifacts: []ArtifactChange{{

@@ -282,46 +282,19 @@ func TestPrepare_ManifestWriteFailureRollsBack(t *testing.T) {
 	assertNoManifests(t, j)
 }
 
-func TestList_ReturnsPreparedManifests(t *testing.T) {
-	root := t.TempDir()
-	j := newTestJournal(t, root)
-
-	for i := 0; i < 3; i++ {
-		if _, err := j.Prepare([]Op{
-			{Kind: OpWrite, Target: filepath.Join(root, fmt.Sprintf("f%d.md", i)), Data: []byte("x")},
-		}); err != nil {
-			t.Fatalf("Prepare %d: %v", i, err)
-		}
-	}
-
-	manifests, err := j.List()
-	if err != nil {
-		t.Fatalf("List: %v", err)
-	}
-	if len(manifests) != 3 {
-		t.Fatalf("List returned %d manifests, want 3", len(manifests))
-	}
-}
-
-func TestList_MissingDirIsEmpty(t *testing.T) {
-	j := newTestJournal(t, t.TempDir())
-	manifests, err := j.List()
-	if err != nil {
-		t.Fatalf("List on missing dir: %v", err)
-	}
-	if len(manifests) != 0 {
-		t.Fatalf("List = %d manifests, want 0", len(manifests))
-	}
-}
-
 func assertNoManifests(t *testing.T, j *Journal) {
 	t.Helper()
-	manifests, err := j.List()
-	if err != nil {
-		t.Fatalf("List: %v", err)
+	entries, err := os.ReadDir(j.dir)
+	if os.IsNotExist(err) {
+		return
 	}
-	if len(manifests) != 0 {
-		t.Fatalf("expected no manifests, found %d", len(manifests))
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), manifestSuffix) {
+			t.Fatalf("unexpected manifest %q", entry.Name())
+		}
 	}
 }
 

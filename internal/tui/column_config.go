@@ -21,8 +21,6 @@ const (
 	ColProgress     = "progress"
 	ColRecurrence   = "recurrence"
 	ColSnooze       = "snooze"
-	ColDecisions    = "decisions"
-	ColDescription  = "description"
 )
 
 // DefaultOutlinerColumns defines which columns are visible by default in the outliner view.
@@ -37,8 +35,6 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColProgress:     true,
 	ColRecurrence:   true,
 	ColSnooze:       true,
-	ColDecisions:    true,
-	ColDescription:  true,
 }
 
 // ColumnConfig controls which indicator columns are visible in a view.

@@ -314,11 +314,11 @@ func TestLedgerDirectoryImagesParticipateInArtifactScope(t *testing.T) {
 	directoryEntry := LedgerEntry{Artifacts: []ArtifactImage{{
 		Kind: ArtifactImageKindDirectory, Path: dir, AfterExists: true,
 	}}}
-	if !entryMatchesScope(directoryEntry, ArtifactRootScope(descendant)) {
+	if !entryMatchesScope(directoryEntry, LedgerScope{ArtifactRoot: descendant}) {
 		t.Fatal("directory image did not match a descendant artifact scope")
 	}
 	sibling := filepath.Join(filepath.Dir(dir), filepath.Base(dir)+"-other", "payload.txt")
-	if entryMatchesScope(directoryEntry, ArtifactRootScope(sibling)) {
+	if entryMatchesScope(directoryEntry, LedgerScope{ArtifactRoot: sibling}) {
 		t.Fatal("directory image matched a similarly prefixed sibling scope")
 	}
 }

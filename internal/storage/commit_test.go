@@ -126,7 +126,7 @@ func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
 }
 
 // TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision proves the
-// transactional user-mutation path writes the schema-v2 envelope from the exact
+// transactional user-mutation path writes the schema-v5 envelope from the exact
 // loaded base and reports the revision an immediate reload observes. It repeats
 // the mutation within one persisted timestamp minute to guard the historical
 // in-memory/reload revision divergence.
@@ -175,8 +175,8 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	if first.Revision != firstReload.Revision {
 		t.Fatalf("first result revision %s != reload %s", first.Revision, firstReload.Revision)
 	}
-	if strings.Contains(firstContent, "<!-- sections:") || len(firstReload.legacySectionColors) != 0 {
-		t.Fatalf("canonical commit retained legacy section metadata: colors=%v\n%s", firstReload.legacySectionColors, firstContent)
+	if strings.Contains(firstContent, "<!-- sections:") {
+		t.Fatalf("canonical commit retained legacy section metadata:\n%s", firstContent)
 	}
 	project.Tasks[0].Title = "second mutation"
 	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 55, 0, time.Local)
@@ -190,9 +190,6 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	}
 	if second.Revision != secondReload.Revision {
 		t.Fatalf("second result revision %s != reload %s", second.Revision, secondReload.Revision)
-	}
-	if len(secondReload.OpaqueBlocks) != 0 {
-		t.Fatalf("schema-v5 second commit restored opaque legacy blocks: %+v", secondReload.OpaqueBlocks)
 	}
 }
 

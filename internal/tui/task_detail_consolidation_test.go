@@ -225,14 +225,3 @@ func TestTaskDetailEveryTabFitsMinimumWidth(t *testing.T) {
 		}
 	}
 }
-
-func TestTaskDetailUndoRemainsAvailableOnEveryTab(t *testing.T) {
-	app := typedTestApp(t)
-	task := app.currentProject.Tasks[0]
-	for _, tab := range taskDetailTabOrder {
-		_ = app.activateTaskDetail(task, app.currentProject, tab)
-		if !app.currentViewSupportsGlobalTaskUndoRedo() {
-			t.Fatalf("undo unavailable on %s tab", tab)
-		}
-	}
-}

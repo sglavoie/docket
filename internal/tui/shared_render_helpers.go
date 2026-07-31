@@ -10,26 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// IndicatorGroupSep is the dim separator rendered between indicator groups.
-var IndicatorGroupSep = MutedStyle.Render(" │ ")
-
 func formatSnoozeDate(snoozedUntil time.Time) string {
 	if snoozedUntil.Year() != time.Now().Year() {
 		return snoozedUntil.Format("Jan 2 '06")
 	}
 	return snoozedUntil.Format("Jan 2")
-}
-
-// JoinIndicatorGroups joins non-empty group strings with the shared dim separator.
-// Empty groups are skipped so no orphan separators appear.
-func JoinIndicatorGroups(groups ...string) string {
-	var nonEmpty []string
-	for _, group := range groups {
-		if group != "" {
-			nonEmpty = append(nonEmpty, group)
-		}
-	}
-	return strings.Join(nonEmpty, IndicatorGroupSep)
 }
 
 // JoinGroupParts joins non-empty parts within one indicator group with a space.
@@ -121,13 +106,6 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 	return result
 }
 
-func renderDescriptionIndicator(task *models.Task) string {
-	if len(task.Description) == 0 {
-		return ""
-	}
-	return MutedStyle.Render(IconDescription())
-}
-
 // renderCommentIndicator renders a compact comment count indicator.
 func renderCommentIndicator(task *models.Task) string {
 	if len(task.Comments) == 0 {
@@ -136,39 +114,12 @@ func renderCommentIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("%s %d", IconComment(), len(task.Comments)))
 }
 
-// renderDecisionIndicator renders a compact decision count indicator.
-func renderDecisionIndicator(task *models.Task) string {
-	if len(task.Decisions) == 0 {
-		return ""
-	}
-	return MutedStyle.Render(fmt.Sprintf("%s %d", IconDecision(), len(task.Decisions)))
-}
-
 // renderAttachmentIndicator renders a compact attachment count indicator.
 func renderAttachmentIndicator(task *models.Task) string {
 	if !task.HasAttachments() {
 		return ""
 	}
 	return MutedStyle.Render(fmt.Sprintf("%s %d", IconAttachment(), task.AttachmentCount()))
-}
-
-func renderGitHubIssueIndicator(task *models.Task) string {
-	label := formatGitHubIssueRefs(task.GitHubIssueRefs())
-	if label == "" {
-		return ""
-	}
-	return MutedStyle.Render(fmt.Sprintf("%s %s", IconGitHubIssue(), label))
-}
-
-func formatGitHubIssueRefs(refs []models.GitHubIssueRef) string {
-	if len(refs) == 0 {
-		return ""
-	}
-	label := formatGitHubIssueRef(refs[0])
-	if len(refs) > 1 {
-		label += fmt.Sprintf(" +%d", len(refs)-1)
-	}
-	return label
 }
 
 func formatGitHubIssueRef(ref models.GitHubIssueRef) string {
@@ -207,37 +158,6 @@ func renderChecklistIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("%s%d/%d", IconChecklist(), completed, total))
 }
 
-// renderChecklistIndicatorCompact renders the smallest checklist progress form
-// (no icon, plain "X/Y") suitable for very narrow containers.
-func renderChecklistIndicatorCompact(task *models.Task) string {
-	if len(task.Checklist) == 0 {
-		return ""
-	}
-	completed, total := checklistCounts(task)
-	return MutedStyle.Render(fmt.Sprintf("%d/%d", completed, total))
-}
-
-// renderChecklistBar renders a checklist progress bar of the form "[▓▓▓░░] 3/5".
-// When the available width is too small to render a meaningful bar, falls back
-// to renderChecklistIndicator. Returns "" when the checklist is empty.
-func renderChecklistBar(task *models.Task, width int) string {
-	if len(task.Checklist) == 0 {
-		return ""
-	}
-	const minBarWidth = 12
-	if width < minBarWidth {
-		return renderChecklistIndicator(task)
-	}
-	completed, total := checklistCounts(task)
-	percent := float64(completed) / float64(total) * 100
-	bar := "[" + RenderProgressBar(percent, 5) + "]"
-	fraction := fmt.Sprintf("%d/%d", completed, total)
-	if completed == total {
-		return bar + " " + SuccessStyle.Render(fraction)
-	}
-	return bar + " " + MutedStyle.Render(fraction)
-}
-
 // checklistCounts returns (completed, total) for a task's checklist.
 func checklistCounts(task *models.Task) (int, int) {
 	completed := 0
@@ -247,28 +167,6 @@ func checklistCounts(task *models.Task) (int, int) {
 		}
 	}
 	return completed, len(task.Checklist)
-}
-
-// renderProgressFraction renders an inline progress bar + fraction for parent tasks.
-// Returns an empty string if the task has no children.
-func renderProgressFraction(task *models.Task) string {
-	if !task.HasProgressChildren() {
-		return ""
-	}
-	completed := 0
-	for _, child := range task.Children {
-		if child.IsComplete() {
-			completed++
-		}
-	}
-	total := len(task.Children)
-	percent := float64(completed) / float64(total) * 100
-	bar := "[" + RenderProgressBar(percent, 5) + "]"
-	fraction := fmt.Sprintf("%d/%d", completed, total)
-	if completed == total {
-		return bar + " " + SuccessStyle.Render(fraction)
-	}
-	return bar + " " + MutedStyle.Render(fraction)
 }
 
 func renderDependencyIndicatorCounts(needs, blocks int) string {

@@ -75,7 +75,7 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 
 	repo := newScenarioRepo(commitSvc, alpha, beta)
 	repo.seed(t)
-	svc := app.NewService(repo, nil, nil)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	mgr := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	cfg := newTestConfigAt(dataDir)
@@ -176,7 +176,7 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("arming the confirm must not dispatch a command")
 	}
-	if !m.taskDeleteConfirm.IsActive() || !m.hasActiveConfirmDialog() {
+	if !m.taskDeleteConfirm.IsActive() {
 		t.Fatal("confirm dialog should be active after request")
 	}
 	if m.pendingTaskDelete.origin != ViewCrossProjectOutliner {

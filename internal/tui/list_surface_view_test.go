@@ -158,51 +158,17 @@ func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T)
 	}
 }
 
-func TestListSurfaceDomainAdaptersProvideStableQualifiedTargets(t *testing.T) {
+func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 	t.Parallel()
 
-	taskA, err := models.NewGenericTask("same-task", 1, "Alpha task")
-	if err != nil {
-		t.Fatalf("NewTask(alpha) error = %v", err)
-	}
-	taskB, err := models.NewGenericTask("same-task", 1, "Bravo task")
-	if err != nil {
-		t.Fatalf("NewTask(bravo) error = %v", err)
-	}
 	alpha := &models.Project{
-		ID: "alpha", Name: "Alpha", Context: "work", Tasks: []*models.Task{taskA},
-	}
-	bravo := &models.Project{
-		ID: "bravo", Name: "Bravo", Context: "home", Tasks: []*models.Task{taskB},
-	}
-	taskSource := ListSourceFromTasks([]*models.Project{alpha, bravo})
-	if len(taskSource.Items) != 2 ||
-		taskSource.Items[0].ID == taskSource.Items[1].ID {
-		t.Fatalf("task adapter did not qualify duplicate IDs: %+v", taskSource.Items)
-	}
-	if taskSource.Items[0].ID != QualifiedTaskListItemID("alpha", "same-task") {
-		t.Fatalf("qualified task ID = %q", taskSource.Items[0].ID)
-	}
-	payload, ok := taskSource.Items[0].Data.(TaskListSourceData)
-	if !ok || payload.Task != taskA || payload.Project != alpha {
-		t.Fatalf("task payload = (%+v, %v)", payload, ok)
-	}
-	if _, err := taskSource.NewModel(ListSurfaceConfig{}); err != nil {
-		t.Fatalf("task source validation error = %v", err)
+		ID: "alpha", Name: "Alpha", Context: "work",
 	}
 
 	states := ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	if len(states.Items) != len(models.AllWorkflowStates()) ||
 		states.Items[3].ID != "state:in_progress" {
 		t.Fatalf("state adapter = %+v", states.Items)
-	}
-	scopes := ListSourceFromContextScopes([]ContextScopeSummary{
-		{Scope: AllContextScope(), ActiveProjectCount: 2},
-		{Scope: CustomContextScope("Focus"), ActiveProjectCount: 1},
-	})
-	if scopes.Items[0].PrimaryText != "All Projects" ||
-		scopes.Items[1].CategoryID != "scope:custom" {
-		t.Fatalf("scope adapter = %+v", scopes.Items)
 	}
 	priorities := ListSourceFromPriorities([]PriorityInfo{{Priority: 1, Description: "Critical"}})
 	projects := ListSourceFromProjects([]*models.Project{alpha})

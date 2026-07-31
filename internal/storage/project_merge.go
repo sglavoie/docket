@@ -34,9 +34,6 @@ const (
 	// MergeConflictProjectMetadata is a divergent edit to canonical project-level
 	// metadata (currently the project name).
 	MergeConflictProjectMetadata MergeConflictKind = "project_metadata"
-	// MergeConflictOpaqueBlock is a concurrent divergent edit to the opaque
-	// header region both sides changed differently.
-	MergeConflictOpaqueBlock MergeConflictKind = "opaque_block"
 	// MergeConflictInvariant is a merged result that is individually
 	// conflict-free but violates a project audit, dependency, or state invariant.
 	MergeConflictInvariant MergeConflictKind = "invariant"
@@ -46,7 +43,7 @@ const (
 // formatted message: Kind drives programmatic handling, the identity fields
 // locate the conflict, and Base/Local/Current carry the diverging values for a
 // later human-facing renderer to format. TaskID/TaskTitle are empty for
-// project-level, opaque-block, and ordering conflicts.
+// project-level and ordering conflicts.
 type MergeConflict struct {
 	Kind      MergeConflictKind
 	TaskID    string
@@ -120,7 +117,7 @@ type taskFieldDescriptor struct {
 //   - Identical concurrent changes coalesce.
 //   - Delete-versus-unchanged resolves as deletion.
 //   - Delete-versus-edit, divergent edits to the same field, incompatible
-//     hierarchy/order edits, and divergent opaque-region edits become conflicts.
+//     hierarchy/order edits become conflicts.
 //   - The merged result is re-audited (structure, dependencies, state invariants);
 //     any violation becomes a conflict.
 //   - Any conflict aborts the whole merge: Merged is nil and nothing is written.
@@ -145,29 +142,16 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 		result.Conflicts = append(result.Conflicts, *nameConflict)
 	}
 
-	opaque, opaqueConflict := mergeOpaqueBlocks(base, local, current)
-	if opaqueConflict != nil {
-		result.Conflicts = append(result.Conflicts, *opaqueConflict)
-	}
-
 	// Any structural conflict aborts before we materialize a document: the merge
 	// is all-or-nothing, so a partially resolved model must never escape.
 	if result.HasConflicts() {
 		return result, nil
 	}
 
-	schemaVersion := SchemaVersionV2
-	if base.SchemaVersion == SchemaVersionV5 ||
-		local.SchemaVersion == SchemaVersionV5 ||
-		current.SchemaVersion == SchemaVersionV5 {
-		schemaVersion = SchemaVersionV5
-		opaque = nil
-	}
 	merged := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
-		SchemaVersion: schemaVersion,
-		OpaqueBlocks:  opaque,
+		SchemaVersion: SchemaVersionV5,
 	}
 
 	// Re-run audits, dependency checks, and state invariants on the merged model.
@@ -485,34 +469,6 @@ func mergeScalarMetadata(field, base, local, current string) (string, *MergeConf
 	}
 }
 
-// mergeOpaqueBlocks three-way merges the opaque header region. Opaque blocks have
-// no stable identity beyond their content, so the whole region is treated as one
-// opaque unit: if only one side changed it, that side wins; identical changes
-// coalesce; divergent concurrent changes are a conflict.
-func mergeOpaqueBlocks(base, local, current *ProjectDocument) ([]OpaqueBlock, *MergeConflict) {
-	baseContent := opaqueContents(base.OpaqueBlocks)
-	localContent := opaqueContents(local.OpaqueBlocks)
-	currentContent := opaqueContents(current.OpaqueBlocks)
-
-	switch {
-	case stringSlicesEqual(localContent, baseContent):
-		return cloneOpaque(current.OpaqueBlocks), nil
-	case stringSlicesEqual(currentContent, baseContent):
-		return cloneOpaque(local.OpaqueBlocks), nil
-	case stringSlicesEqual(localContent, currentContent):
-		return cloneOpaque(local.OpaqueBlocks), nil
-	default:
-		return nil, &MergeConflict{
-			Kind:    MergeConflictOpaqueBlock,
-			Field:   "opaque_blocks",
-			Base:    strings.Join(baseContent, "\n"),
-			Local:   strings.Join(localContent, "\n"),
-			Current: strings.Join(currentContent, "\n"),
-			Detail:  "local and current edited the opaque header region differently",
-		}
-	}
-}
-
 // --- small helpers -------------------------------------------------------
 
 func indexTasks(tasks []*models.Task) map[string]*models.Task {
@@ -524,17 +480,6 @@ func indexTasks(tasks []*models.Task) map[string]*models.Task {
 		m[task.ID] = task
 	}
 	return m
-}
-
-func taskIDs(tasks []*models.Task) []string {
-	ids := make([]string, 0, len(tasks))
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		ids = append(ids, task.ID)
-	}
-	return ids
 }
 
 // unionTaskIDs returns every distinct task ID across the three documents in a
@@ -695,21 +640,4 @@ func toSet(values []string) map[string]bool {
 		set[v] = true
 	}
 	return set
-}
-
-func opaqueContents(blocks []OpaqueBlock) []string {
-	out := make([]string, len(blocks))
-	for i, b := range blocks {
-		out[i] = b.Content
-	}
-	return out
-}
-
-func cloneOpaque(blocks []OpaqueBlock) []OpaqueBlock {
-	if len(blocks) == 0 {
-		return nil
-	}
-	out := make([]OpaqueBlock, len(blocks))
-	copy(out, blocks)
-	return out
 }

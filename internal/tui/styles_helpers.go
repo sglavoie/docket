@@ -160,22 +160,6 @@ func completionFlashBg(frame int) color.Color {
 	}
 }
 
-// RenderProgressBar renders a simple progress bar.
-func RenderProgressBar(percent float64, width int) string {
-	filled := int(float64(width) * percent / 100)
-	empty := width - filled
-
-	var bar strings.Builder
-	for range filled {
-		bar.WriteString(ProgressFullStyle.Render("█"))
-	}
-	for range empty {
-		bar.WriteString(ProgressEmptyStyle.Render("░"))
-	}
-
-	return bar.String()
-}
-
 // GetWorkflowStateGroupStyle resolves the canonical static theme role for a
 // state group. Project section colors never participate.
 func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style {
@@ -275,9 +259,3 @@ func PadBadge(rendered string, width int) string {
 // EmptyBadge returns a whitespace placeholder sized to width. Used by row
 // renderers to keep badge columns aligned when a row has no badge for a
 // given column. Returns "" when width <= 0.
-func EmptyBadge(width int) string {
-	if width <= 0 {
-		return ""
-	}
-	return strings.Repeat(" ", width)
-}

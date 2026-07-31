@@ -3,21 +3,8 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
-
-func TestEmptyBadge(t *testing.T) {
-	if got := EmptyBadge(0); got != "" {
-		t.Errorf("EmptyBadge(0) = %q, want empty string", got)
-	}
-	if got := EmptyBadge(-3); got != "" {
-		t.Errorf("EmptyBadge(-3) = %q, want empty string", got)
-	}
-	if got := EmptyBadge(4); got != "    " {
-		t.Errorf("EmptyBadge(4) = %q, want 4 spaces", got)
-	}
-}
 
 func TestComputeBadgeWidthsEmpty(t *testing.T) {
 	if got := ComputeBadgeWidths(nil, BadgeWidthOpts{IncludeStatus: true}); got != nil {
@@ -101,23 +88,6 @@ func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	}
 	if cl.HasStatus || cl.HasProject {
 		t.Errorf("optional columns should remain unset when not requested, got %+v", cl)
-	}
-}
-
-func TestComputeBadgeWidthsPriorityEmojiWidth(t *testing.T) {
-	icons.SetUseEmoji(true)
-	t.Cleanup(func() { icons.SetUseEmoji(false) })
-
-	t1 := &models.Task{Priority: 1, WorkflowState: models.StateReady}
-	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{})
-	if cl == nil {
-		t.Fatal("expected non-nil layout")
-	}
-	if !cl.HasPriority {
-		t.Error("HasPriority should be true")
-	}
-	if cl.PriorityWidth != 2 {
-		t.Errorf("PriorityWidth = %d, want 2 (emoji priority icons are visual width 2)", cl.PriorityWidth)
 	}
 }
 

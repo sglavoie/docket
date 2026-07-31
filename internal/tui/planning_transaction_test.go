@@ -63,7 +63,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
-	svc := app.NewService(repo, nil, nil).
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil).
 		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 
 	appModel := &AppModel{

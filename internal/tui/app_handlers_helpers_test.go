@@ -111,6 +111,6 @@ func setTestAppProjects(app *AppModel, projects ...*models.Project) {
 }
 
 func addTestAppProject(app *AppModel, project *models.Project) {
-	projects := append(app.allProjects(), project)
+	projects := append(app.projectsInRuntimeOrder(app.runtime.AllProjects()), project)
 	setTestAppProjects(app, projects...)
 }
