@@ -184,3 +184,57 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		t.Fatalf("project-scoped Inbox rows = %v, want beta only", got)
 	}
 }
+
+func TestPrimaryAllFocusedProjectOmitsRedundantProjectHeaders(t *testing.T) {
+	alpha := primaryRowsProject(
+		"alpha",
+		primaryRowsTask("alpha-progress", models.StateInProgress),
+		primaryRowsTask("alpha-ready", models.StateReady),
+	)
+	outliner, _ := primaryRowsOutliner(alpha)
+	outliner.selectOutlinerMode(ModeAll)
+
+	baseProjectHeaders := 0
+	for _, row := range outliner.rows {
+		if row.IsProjectHeader {
+			baseProjectHeaders++
+		}
+	}
+	if baseProjectHeaders == 0 {
+		t.Fatal("single-project base scope omitted cross-project sub-headers")
+	}
+
+	outliner.pushProjectScope(alpha.ID)
+
+	sectionCount := 0
+	taskCount := 0
+	for _, row := range outliner.rows {
+		switch {
+		case row.IsProjectHeader:
+			t.Fatalf("focused project rendered redundant project header: %+v", row)
+		case row.IsSectionHeader:
+			sectionCount++
+		case row.isTaskRow():
+			taskCount++
+			if row.ProjectID != alpha.ID {
+				t.Errorf("focused task %q project ID = %q, want %q", row.task.ID, row.ProjectID, alpha.ID)
+			}
+		}
+	}
+	if sectionCount != 2 || taskCount != 2 {
+		t.Fatalf("focused rows contain %d sections and %d tasks, want 2 and 2", sectionCount, taskCount)
+	}
+
+	if !outliner.popProjectScope() {
+		t.Fatal("focused project scope did not pop")
+	}
+	projectHeaders := 0
+	for _, row := range outliner.rows {
+		if row.IsProjectHeader {
+			projectHeaders++
+		}
+	}
+	if projectHeaders == 0 {
+		t.Fatal("base scope did not restore cross-project sub-headers")
+	}
+}

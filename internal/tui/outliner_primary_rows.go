@@ -347,6 +347,8 @@ func (m *OutlinerModel) appendStateGroupForests(
 		projectID := ""
 		if m.project == nil {
 			projectID = item.project.ID
+		}
+		if m.project == nil && !m.isProjectScoped() {
 			projectHeader := outlinerRow{
 				IsProjectHeader: true,
 				ProjectID:       projectID,
