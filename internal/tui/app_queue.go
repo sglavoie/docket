@@ -15,18 +15,17 @@ type QueueToggleable interface {
 	getTaskRef() (*models.Task, *models.Project)
 }
 
-// taskIsNext reports Next (queue) membership. Membership is the StateNext
-// workflow state, not the persisted Focus Queue order index — that list is
-// consulted only to order StateNext tasks. An unindexed StateNext task is a
-// member; a stale indexed non-Next task is not.
-func taskIsNext(task *models.Task) bool {
-	return task != nil && task.State() == models.StateNext
+// taskIsNext reports explicit project-qualified Next membership.
+func (m *AppModel) taskIsNext(task *models.Task, project *models.Project) bool {
+	if task == nil || project == nil {
+		return false
+	}
+	return m.nextOrderIDs[taskIdentityFor(task, project)]
 }
 
-// queueToggleAction records a single q-key toggle for undo support. Queue
-// membership is now the StateNext workflow state, so the toggle also records the
-// task's pre-toggle state (PrevState) so the compensating undo can restore both
-// the workflow state and the Next order-list entry atomically.
+// queueToggleAction records a single q-key toggle for undo support. Next is an
+// explicit planning membership; PrevState remains for the compatibility undo
+// payload while the workspace ledger owns durable restoration.
 type queueToggleAction struct {
 	Task       *models.Task
 	Project    *models.Project
@@ -60,13 +59,10 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// toggleQueue adds or removes the focused task from the Next queue. Adding sets
-// the task's workflow state to StateNext, drops any Today (Daily Plan) entry, and
-// appends the Next order entry — all folded into ONE workspace-ledger transaction
-// via nextOrderAddArtifactBuilder. Removing transitions the task out of StateNext
-// (to StateReady), which drops the stale order entry through the service's
-// exclusivity reconciliation in the same transaction. Because the whole move is a
-// single durable ledger entry, undo/redo route through the ledger
+// toggleQueue adds or removes the focused task from explicit Next membership.
+// Adding drops Today and normalizes nonterminal lifecycle state to Backlog;
+// removing changes planning only. Because the whole move is a single durable
+// ledger entry, undo/redo route through the ledger
 // (undoQueueToggle/redoQueueToggle) rather than a bespoke in-memory compensation,
 // so they survive a restart and honor LIFO ordering. Returns a status timeout cmd
 // on success, or nil if no task is available.
@@ -85,11 +81,9 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 	}
 	taskID, projectID := task.ID, project.ID
 
-	if taskIsNext(task) {
-		// Remove from queue: leave StateNext for StateReady. The service's
-		// exclusivity reconciliation drops the stale order entry in the same
-		// ledger transaction.
-		fresh, _, err := m.queueLedgerTransition(taskID, projectID, models.StateReady, false)
+	if m.taskIsNext(task, project) {
+		// Removing from Next preserves lifecycle state.
+		fresh, _, err := m.queueLedgerTransition(taskID, projectID, false)
 		if err != nil {
 			m.err = err
 			return errorCmd("%s", err)
@@ -97,9 +91,8 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 		title := taskTitleOrFallback(fresh, task)
 		m.setInfoStatus(fmt.Sprintf("Removed from queue: %s", title))
 	} else {
-		// Add to queue: enter StateNext, drop Today, and append the order entry as
-		// one ledger transaction.
-		fresh, _, err := m.queueLedgerTransition(taskID, projectID, models.StateNext, true)
+		// Adding to Next drops Today and appends one ordered membership.
+		fresh, _, err := m.queueLedgerTransition(taskID, projectID, true)
 		if err != nil {
 			m.err = err
 			return errorCmd("%s", err)
@@ -115,7 +108,7 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 
 // queueLedgerTransition delegates the whole Next mutation to the application
 // service, then reloads the task and planning snapshots from the committed state.
-func (m *AppModel) queueLedgerTransition(taskID, projectID string, target models.WorkflowState, appendOrder bool) (*models.Task, *models.Project, error) {
+func (m *AppModel) queueLedgerTransition(taskID, projectID string, appendOrder bool) (*models.Task, *models.Project, error) {
 	action := app.PlanningRemoveNext
 	if appendOrder {
 		action = app.PlanningAddNext

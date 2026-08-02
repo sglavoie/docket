@@ -32,11 +32,10 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 
 	// Basics tab
 	entries = append(entries,
+		keymap.Bind("0", "Clear priority", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 		keymap.Bind("1", "Set priority 1", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 		keymap.Bind("2", "Set priority 2", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 		keymap.Bind("3", "Set priority 3", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("4", "Set priority 4", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("5", "Set priority 5", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
 	)
 
 	// Schedule tab
@@ -52,7 +51,6 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("ctrl+t", "Add subtask", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("ctrl+j", "Move item down", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("ctrl+k", "Move item up", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+o", "Toggle optional / save & open subtask", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
 		keymap.Bind("space", "Toggle checklist item done", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
 	)
 

@@ -18,10 +18,10 @@ func TestTUIProjectArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t 
 		{ProjectID: "beta", TaskID: "shared-id"},
 	}
 	alpha := &models.Project{ID: "alpha", Name: "Alpha", Slug: "alpha", Tasks: []*models.Task{{
-		ID: "shared-id", WorkflowState: models.StateReady,
+		ID: "shared-id", WorkflowState: models.StateBacklog,
 	}}}
 	beta := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Tasks: []*models.Task{{
-		ID: "shared-id", WorkflowState: models.StateReady,
+		ID: "shared-id", WorkflowState: models.StateBacklog,
 	}}}
 
 	m := newTestAppModel()

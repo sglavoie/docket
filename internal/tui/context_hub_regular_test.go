@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -193,61 +192,34 @@ func TestContextHubRenamesRegularContextAcrossCatalog(t *testing.T) {
 	}
 }
 
-// TestContextHubRegularRenameAndMembershipCommitTogether covers the half-applied
-// save: renaming a label onto the default context while dropping a member is
-// rejected for want of a destination, and the rename must not survive the
-// rejection. Committing the rename separately would leave the catalog relabeled,
-// the editor editing a name it never showed the user, and the shell's project
-// cache stale behind a save that reported failure.
-func TestContextHubRegularRenameAndMembershipCommitTogether(t *testing.T) {
+// TestContextHubPersonalNameCollisionLeavesMembershipUntouched locks the
+// protected personal identity at the editor boundary: another label cannot be
+// renamed onto it, and a rejected combined rename/membership save changes
+// nothing.
+func TestContextHubPersonalNameCollisionLeavesMembershipUntouched(t *testing.T) {
 	app := contextHubApp(t)
 	addContextHubProject(app, "gamma", "Gamma", "work", false)
 	hub := openRegularEditorOn(t, app, "work")
 
-	// No project carries "personal", so the rename passes the collision check and
-	// lands on the one label whose removals have no fallback of their own.
-	fallback := app.runtime.DefaultContext()
-	hub.editor.nameInput.SetValue(fallback)
+	hub.editor.nameInput.SetValue(app.runtime.DefaultContext())
 	checkEditorProject(t, hub, "gamma")
 
 	if _, cmd := hub.Update(contextHubSaveKey); cmd != nil {
-		t.Fatalf("the save committed without a destination: %#v", cmd())
+		t.Fatalf("the protected rename committed: %#v", cmd())
 	}
-	if !hub.editor.destPrompt {
-		t.Fatalf("no destination prompt (editor error: %q)", hub.editor.err)
+	if hub.editor.err == "" {
+		t.Fatal("the protected rename reported no editor error")
 	}
 	for _, id := range []string{"alpha", "gamma"} {
 		if got := catalogContextOf(t, app, id); got != "work" {
-			t.Fatalf("%s context = %q: the rename outlived a save that never committed", id, got)
+			t.Fatalf("%s context = %q after a rejected protected rename", id, got)
 		}
 	}
 	if hub.editor.originalName != "work" {
-		t.Fatalf("editor identity = %q, want work until the whole save commits", hub.editor.originalName)
-	}
-	if slices.Contains(hub.editor.destinations, "work") {
-		t.Fatalf("destinations %v offer the label the save is vacating", hub.editor.destinations)
+		t.Fatalf("editor identity = %q, want work", hub.editor.originalName)
 	}
 	if got := app.projectByID("alpha"); got == nil || got.Context != "work" {
 		t.Fatalf("the shell's cached project drifted from the catalog: %#v", got)
-	}
-
-	// Answering the prompt replays the whole save, so both halves land at once.
-	_, cmd := hub.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd == nil {
-		t.Fatalf("the answered prompt committed nothing (editor error: %q)", hub.editor.err)
-	}
-	saved, ok := cmd().(RegularContextSavedMsg)
-	if !ok {
-		t.Fatalf("the answered prompt emitted %#v, want RegularContextSavedMsg", cmd())
-	}
-	if !saved.Renamed || saved.RelabeledCount != 2 || saved.Removed != 1 || saved.Destination != "home" {
-		t.Fatalf("save reported %#v, want 2 relabeled with one removal into home", saved)
-	}
-	if got := catalogContextOf(t, app, "alpha"); got != fallback {
-		t.Fatalf("alpha context = %q, want the renamed label %q", got, fallback)
-	}
-	if got := catalogContextOf(t, app, "gamma"); got != "home" {
-		t.Fatalf("gamma context = %q, want the chosen destination home", got)
 	}
 }
 
@@ -479,7 +451,7 @@ func TestContextHubEmptyingUnrelatedRegularContextFallsBackToAll(t *testing.T) {
 }
 
 // TestContextHubReconcilesUnrelatedRegularScope covers the reconciliation the
-// custom-context path does not need: editing one label moves projects between
+// A regular-context save can move projects between
 // labels, so a scope the user was not editing can still gain or lose members.
 func TestContextHubReconcilesUnrelatedRegularScope(t *testing.T) {
 	app := contextHubApp(t)

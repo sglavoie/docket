@@ -301,11 +301,9 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.Tags = append([]string{}, task.Tags...)
 	taskCopy.CompletedAt = clonePointer(task.CompletedAt)
 	taskCopy.DueDate = clonePointer(task.DueDate)
-	taskCopy.DependsOn = append([]string{}, task.DependsOn...)
 	taskCopy.PinnedAt = clonePointer(task.PinnedAt)
 	taskCopy.Comments = clonePointerSlice(task.Comments)
 	taskCopy.Decisions = clonePointerSlice(task.Decisions)
-	taskCopy.Recurrence = cloneRecurrencePattern(task.Recurrence)
 	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
 	taskCopy.SnoozedUntil = clonePointer(task.SnoozedUntil)
 	taskCopy.Checklist = append([]models.ChecklistItem{}, task.Checklist...)
@@ -315,14 +313,6 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.Project = nil
 	taskCopy.Level = 0
 	return &taskCopy
-}
-
-func cloneRecurrencePattern(pattern *models.RecurrencePattern) *models.RecurrencePattern {
-	if pattern == nil {
-		return nil
-	}
-	patternCopy := *pattern
-	return &patternCopy
 }
 
 func clonePointer[T any](value *T) *T {

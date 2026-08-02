@@ -167,7 +167,7 @@ func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 
 	states := ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	if len(states.Items) != len(models.AllWorkflowStates()) ||
-		states.Items[3].ID != "state:in_progress" {
+		states.Items[2].ID != "state:doing" {
 		t.Fatalf("state adapter = %+v", states.Items)
 	}
 	priorities := ListSourceFromPriorities([]PriorityInfo{{Priority: 1, Description: "Critical"}})

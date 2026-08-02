@@ -25,7 +25,7 @@ func newQuickCaptureParser(input string, project *models.Project, allProjects []
 		allProjects: allProjects,
 		skipProject: skipProject,
 		strict:      strict,
-		result:      &quickCaptureResult{priority: 3},
+		result:      &quickCaptureResult{priority: models.PriorityUnset},
 	}
 }
 

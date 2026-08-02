@@ -11,10 +11,15 @@ import "fmt"
 // EffectivePriority, so an unset task neither outranks critical work nor sorts
 // below the scale.
 const (
-	PriorityUnset   = 0 // Unset — no priority assigned
-	PriorityMin     = 1 // Critical/Urgent
-	PriorityMax     = 5 // Minimal
-	PriorityDefault = 3 // Medium
+	PriorityUnset  = 0 // Unset — no priority assigned
+	PriorityHigh   = 1 // High
+	PriorityMedium = 2 // Medium
+	PriorityLow    = 3 // Low
+
+	// Compile-time aliases retained while older callers are migrated.
+	PriorityMin     = PriorityHigh
+	PriorityMax     = PriorityLow
+	PriorityDefault = PriorityUnset
 )
 
 // ValidatePriority checks that a priority value is in the valid range.
@@ -29,20 +34,17 @@ func ValidatePriority(value int, allowZero bool) error {
 	return nil
 }
 
-// EffectivePriority resolves a stored priority to the number that ordering,
-// filtering and ordering should use. PriorityUnset — and any value outside the
-// scale, which only legacy or hand-edited input can produce — reads as
-// PriorityDefault.
+// EffectivePriority returns the ascending sort rank for a stored priority.
+// Unset and invalid values sort after Low.
 func EffectivePriority(value int) int {
-	if ValidatePriority(value, false) != nil {
-		return PriorityDefault
+	if value == PriorityUnset || ValidatePriority(value, false) != nil {
+		return PriorityLow + 1
 	}
 	return value
 }
 
-// IsHighPriority reports whether a priority belongs to the two most urgent
-// buckets, which is what conditional display and high-priority grouping key off.
+// IsHighPriority reports whether a priority is the High bucket.
 // An unset priority is not high priority.
 func IsHighPriority(value int) bool {
-	return EffectivePriority(value) <= 2
+	return value == PriorityHigh
 }

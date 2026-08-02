@@ -58,7 +58,7 @@ func (m *OutlinerModel) relationshipProjects(owner *models.Project) []*models.Pr
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
 // contains only richer content plus tags: description, attachment names,
-// decision counts, checklist items, dependency names, and recurrence detail.
+// decision counts, checklist items, and dependency names.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
@@ -87,14 +87,6 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	needs, blocks := taskRelationships(opts.Task, opts.Project, opts.Projects)
 	if dependencies := inlinePeekDependencyLine(needs, blocks, opts.Project, available); dependencies != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(dependencies))
-	}
-
-	if opts.Task.Recurrence != nil {
-		if recurrence := strings.TrimSpace(opts.Task.Recurrence.String()); recurrence != "" {
-			lines = append(lines, opts.Indent+MutedStyle.Render(
-				truncateIntentional("Repeats: "+recurrence, available, "…"),
-			))
-		}
 	}
 
 	if len(lines) == 0 {
@@ -250,52 +242,7 @@ func taskRelationships(
 	owner *models.Project,
 	projects []*models.Project,
 ) (needs, blocks []taskRelationship) {
-	if task == nil || owner == nil {
-		return nil, nil
-	}
-
-	allProjects := uniqueRelationshipProjects(owner, projects)
-	seenNeeds := make(map[TaskIdentity]bool)
-	for _, stored := range task.DependsOn {
-		dependency, project := resolveRelationshipReference(stored, owner, allProjects)
-		if dependency == nil || project == nil {
-			continue
-		}
-		identity := TaskIdentity{ProjectID: project.ID, TaskID: dependency.ID}
-		if seenNeeds[identity] {
-			continue
-		}
-		seenNeeds[identity] = true
-		needs = append(needs, taskRelationship{Task: dependency, Project: project})
-	}
-
-	target := TaskIdentity{ProjectID: owner.ID, TaskID: task.ID}
-	seenBlocks := make(map[TaskIdentity]bool)
-	for _, project := range allProjects {
-		if project == nil {
-			continue
-		}
-		for _, candidate := range project.Tasks {
-			if candidate == nil {
-				continue
-			}
-			for _, stored := range candidate.DependsOn {
-				dependency, dependencyProject := resolveRelationshipReference(stored, project, allProjects)
-				if dependency == nil || dependencyProject == nil ||
-					(TaskIdentity{ProjectID: dependencyProject.ID, TaskID: dependency.ID}) != target {
-					continue
-				}
-				identity := TaskIdentity{ProjectID: project.ID, TaskID: candidate.ID}
-				if seenBlocks[identity] {
-					break
-				}
-				seenBlocks[identity] = true
-				blocks = append(blocks, taskRelationship{Task: candidate, Project: project})
-				break
-			}
-		}
-	}
-	return needs, blocks
+	return nil, nil
 }
 
 func uniqueRelationshipProjects(owner *models.Project, projects []*models.Project) []*models.Project {
@@ -309,33 +256,4 @@ func uniqueRelationshipProjects(owner *models.Project, projects []*models.Projec
 		all = append(all, project)
 	}
 	return all
-}
-
-func resolveRelationshipReference(
-	stored string,
-	owner *models.Project,
-	projects []*models.Project,
-) (*models.Task, *models.Project) {
-	ref := models.ParseTaskRef(stored)
-	if ref.TaskID == "" {
-		return nil, nil
-	}
-
-	project := owner
-	if ref.ProjectID != "" {
-		project = nil
-		for _, candidate := range projects {
-			if candidate == nil {
-				continue
-			}
-			if candidate.ID == ref.ProjectID || candidate.Slug == ref.ProjectID {
-				project = candidate
-				break
-			}
-		}
-	}
-	if project == nil {
-		return nil, nil
-	}
-	return project.GetTaskByID(ref.TaskID), project
 }

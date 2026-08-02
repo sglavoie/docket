@@ -9,16 +9,14 @@ import (
 )
 
 const (
-	scopeHubCategoryBase   ListCategoryID = "scope-hub:base"
-	scopeHubCategoryCustom ListCategoryID = "scope-hub:custom"
+	scopeHubCategoryScopes ListCategoryID = "scope-hub:scopes"
 
 	scopeHubActionCategoryContext ListCategoryID = "scope-hub-actions:context"
 	scopeHubActionCategoryDanger  ListCategoryID = "scope-hub-actions:danger"
 )
 
 var scopeHubCategories = []ListCategory{
-	{ID: scopeHubCategoryBase, Label: "Base Scopes"},
-	{ID: scopeHubCategoryCustom, Label: "Custom Contexts"},
+	{ID: scopeHubCategoryScopes, Label: "Scopes"},
 }
 
 var scopeHubActionCategories = []ListCategory{
@@ -79,7 +77,7 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 	}
 	return []OperationDescriptor{
 		descriptor(operationScopeActivateContext, "Activate scope", OperationCategoryScope, OperationRiskReadOnly, "apply scope", "switch scope"),
-		descriptor(operationScopeCreateContext, "New custom context", OperationCategoryScope, OperationRiskMutation, "create context"),
+		descriptor(operationScopeCreateContext, "New context", OperationCategoryScope, OperationRiskMutation, "create context"),
 		descriptor(operationScopeEditContext, "Edit membership", OperationCategoryScope, OperationRiskMutation, "edit context"),
 		descriptor(operationScopeRenameContext, "Rename context", OperationCategoryScope, OperationRiskMutation),
 		descriptor(operationScopeDeleteContext, "Delete context", OperationCategoryScope, OperationRiskDestructive),
@@ -119,7 +117,6 @@ func (m *AppModel) scopeHubOperationMessage(id OperationID, target scopeHubActio
 	case operationScopeActivateContext:
 		return ContextScopeSelectedMsg{
 			SelectedContext: target.Scope.Name,
-			IsCustomContext: target.Scope.IsCustom(),
 		}
 	case operationScopeCreateContext,
 		operationScopeEditContext,
@@ -159,8 +156,8 @@ func (m *ContextHubModel) currentScopeHubItemID() ListItemID {
 	return item.ID
 }
 
-// rebuildScopeSurface reloads base scopes and custom contexts while preserving
-// a stable cursor identity and the current fuzzy query.
+// rebuildScopeSurface reloads All Projects and regular contexts while
+// preserving a stable cursor identity and the current fuzzy query.
 func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 	if m.runtime == nil {
 		return
@@ -172,7 +169,7 @@ func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 			SelectionMode: ListSelectionSingle,
 			EmptyState: ListEmptyState{
 				Title:  "No scopes are available.",
-				Detail: "Create a custom context or add a project context.",
+				Detail: "Add a project context to make it available here.",
 			},
 			NoMatchState: ListEmptyState{
 				Title:  "No contexts match this search.",
@@ -213,21 +210,14 @@ func (m *ContextHubModel) scopeHubItems() []ListItem {
 		}
 		operations := []OperationID{operationScopeCreateContext}
 		if !scope.IsAll() {
-			operations = append(operations,
-				operationScopeEditContext,
-				operationScopeRenameContext,
-			)
-			if scope.IsCustom() || !strings.EqualFold(scope.Name, m.runtime.DefaultContext()) {
-				operations = append(operations, operationScopeDeleteContext)
+			operations = append(operations, operationScopeEditContext)
+			if !strings.EqualFold(scope.Name, m.runtime.DefaultContext()) {
+				operations = append(operations, operationScopeRenameContext, operationScopeDeleteContext)
 			}
-		}
-		category := scopeHubCategoryBase
-		if scope.IsCustom() {
-			category = scopeHubCategoryCustom
 		}
 		items = append(items, ListItem{
 			ID:            contextScopeListItemID(scope),
-			CategoryID:    category,
+			CategoryID:    scopeHubCategoryScopes,
 			PrimaryText:   label,
 			SecondaryText: contextHubRowDetail(summary),
 			Aliases:       aliases,
@@ -290,7 +280,6 @@ func (m *ContextHubModel) activateScopeHubCurrent() tea.Cmd {
 		return func() tea.Msg {
 			return ContextScopeSelectedMsg{
 				SelectedContext: scope.Name,
-				IsCustomContext: scope.IsCustom(),
 			}
 		}
 	}
@@ -390,13 +379,10 @@ func (m *ContextHubModel) updateScopeHubActions(key tea.KeyPressMsg) (tea.Model,
 }
 
 // executeScopeHubBrowseAction routes every documented browse key through the
-// centralized executor with a target captured before execution. Creating a
-// context is global and therefore works with an empty target when no row is
-// visible; the edit, rename, and delete actions remain gated by the selected
-// row.
+// centralized executor with a target captured before execution.
 func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 	entry, ok := m.selectedScopeHubEntry()
-	if id != operationScopeCreateContext && (!ok || m.surface == nil) {
+	if !ok || m.surface == nil {
 		m.notice = "No scope item is selected"
 		return nil
 	}
@@ -415,12 +401,7 @@ func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 		Value:    target,
 		HasValue: true,
 	}
-	var result OperationExecutionResult
-	if id == operationScopeCreateContext {
-		result = m.executor.Execute(request)
-	} else {
-		result = m.surface.ExecuteAction(m.executor, request)
-	}
+	result := m.surface.ExecuteAction(m.executor, request)
 	if errors.Is(result.Err, ErrListActionUnavailable) {
 		m.notice = scopeHubBrowseActionUnavailableNotice(id)
 		return nil
@@ -460,7 +441,7 @@ func (m *ContextHubModel) applyScopeHubExecutionResult(result OperationExecution
 func (m *ContextHubModel) applyScopeHubInlineAction(msg scopeHubInlineActionMsg) {
 	switch msg.OperationID {
 	case operationScopeCreateContext:
-		m.openEditor("")
+		m.openEditor()
 	case operationScopeEditContext:
 		m.focusScopeHubContext(msg.Target.Scope)
 		m.editSelected()

@@ -220,8 +220,6 @@ func taskActionDisabledReason(
 ) string {
 	if descriptor.ID == operationTaskSetSnooze {
 		switch context.Entity.State {
-		case "in_progress":
-			return "in-progress tasks stay visible"
 		case "done", "canceled":
 			return "terminal tasks cannot be snoozed"
 		}

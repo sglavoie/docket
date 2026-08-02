@@ -11,8 +11,8 @@ import (
 )
 
 // TestService_Capture_ExtendedFields exercises the capture-family surface the TUI
-// capture flows depend on: a parsed status sigil applied as a workflow state,
-// recurrence, tag add + remove, and prepend positioning. It asserts the committed
+// capture flows depend on: a parsed destination applied through workflow state,
+// tag add + remove and prepend positioning. It asserts the committed
 // task carries every field and lands at the FRONT of the project's tasks.
 func TestService_Capture_ExtendedFields(t *testing.T) {
 	existing := newTask("t-1", 1, "existing")
@@ -21,14 +21,13 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 	svc := newTestService(repo)
 
 	res, err := svc.Capture(app.CaptureRequest{
-		ProjectID:  project.ID,
-		Title:      "Captured task",
-		Priority:   2,
-		Tags:       []string{"keep", "drop"},
-		RemoveTags: []string{"drop"},
-		Recurrence: models.ParseRecurrence("daily"),
-		State:      models.StateInProgress,
-		Prepend:    true,
+		ProjectID:   project.ID,
+		Title:       "Captured task",
+		Priority:    2,
+		Tags:        []string{"keep", "drop"},
+		RemoveTags:  []string{"drop"},
+		Destination: app.CaptureDestinationDoing,
+		Prepend:     true,
 	})
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
@@ -49,10 +48,7 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 	if !task.HasTag("keep") || task.HasTag("drop") {
 		t.Errorf("tags = %v, want keep only (drop removed)", task.Tags)
 	}
-	if task.Recurrence == nil {
-		t.Error("recurrence not set")
-	}
-	if task.State() != models.StateInProgress {
+	if task.State() != models.StateDoing {
 		t.Errorf("state = %q, want in_progress", task.State())
 	}
 	// Prepend places the new task at the front.
@@ -84,7 +80,7 @@ func TestService_Capture_DefaultInboxState(t *testing.T) {
 	}
 }
 
-func TestService_Capture_ChildDefaultsReady(t *testing.T) {
+func TestService_Capture_ChildDefaultsBacklog(t *testing.T) {
 	parent := newTask("parent", 1, "Parent")
 	project := newProject("proj-1", "Proj", parent)
 	repo := newFakeRepo(project)
@@ -93,26 +89,26 @@ func TestService_Capture_ChildDefaultsReady(t *testing.T) {
 	parentID := parent.ID
 	res, err := svc.Capture(app.CaptureRequest{
 		ProjectID: project.ID,
-		Title:     "Ready child",
+		Title:     "Backlog child",
 		ParentID:  &parentID,
 	})
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
 	task := project.GetTaskByID(res.TaskID)
-	if task == nil || task.State() != models.StateReady {
-		t.Fatalf("child = %+v, want Ready", task)
+	if task == nil || task.State() != models.StateBacklog {
+		t.Fatalf("child = %+v, want Backlog", task)
 	}
 }
 
-// TestService_Capture_RejectsInvalidState verifies an invalid canonical state is
+// TestService_Capture_RejectsInvalidDestination verifies an invalid destination is
 // rejected before any commit.
-func TestService_Capture_RejectsInvalidState(t *testing.T) {
+func TestService_Capture_RejectsInvalidDestination(t *testing.T) {
 	project := newProject("proj-1", "Proj")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "x", State: models.WorkflowState("Custom")})
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "x", Destination: app.CaptureDestination("custom")})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("error = %v, want ErrInvalidInput", err)
 	}
@@ -121,15 +117,15 @@ func TestService_Capture_RejectsInvalidState(t *testing.T) {
 	}
 }
 
-func TestService_Capture_RejectsRetiredReviewState(t *testing.T) {
+func TestService_Capture_RejectsRetiredReviewDestination(t *testing.T) {
 	project := newProject("proj-1", "Proj")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
 	_, err := svc.Capture(app.CaptureRequest{
-		ProjectID: project.ID,
-		Title:     "review is legacy-only",
-		State:     models.StateReview,
+		ProjectID:   project.ID,
+		Title:       "review is legacy-only",
+		Destination: app.CaptureDestination("review"),
 	})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("error = %v, want ErrInvalidInput", err)
@@ -223,8 +219,8 @@ func TestService_CaptureMany_OneAtomicCommit(t *testing.T) {
 	svc := newTestService(repo)
 
 	reqs := []app.CaptureRequest{
-		{ProjectID: project.ID, Title: "First", State: models.StateInbox, Prepend: true},
-		{ProjectID: project.ID, Title: "Second", State: models.StateInbox, Prepend: true},
+		{ProjectID: project.ID, Title: "First", Destination: app.CaptureDestinationInbox, Prepend: true},
+		{ProjectID: project.ID, Title: "Second", Destination: app.CaptureDestinationInbox, Prepend: true},
 	}
 	results, err := svc.CaptureMany(reqs)
 	if err != nil {

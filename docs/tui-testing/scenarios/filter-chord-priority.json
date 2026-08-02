@@ -16,7 +16,7 @@
     { "type": "key", "label": "enter the priority threshold facet", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "0 all" },
     { "type": "assert", "assert": "contains", "value": "1 <=1" },
-    { "type": "assert", "assert": "contains", "value": "5 <=5" },
+    { "type": "assert", "assert": "contains", "value": "3 <=3" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "keep only tasks at priority <= 1", "key": "1" },

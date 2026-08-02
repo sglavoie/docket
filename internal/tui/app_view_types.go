@@ -14,7 +14,6 @@ var viewTypeNames = map[PresentationID]string{
 	ViewBulkTagSelector:      "BulkTagSelector",
 	ViewTaskComments:         "TaskComments",
 	ViewProjectSelector:      "ProjectSelector",
-	ViewRecurrenceEditor:     "RecurrenceEditor",
 	ViewTextEditor:           "TextEditor",
 	ViewTaskAttachments:      "TaskAttachments",
 	ViewCrossProjectLinker:   "CrossProjectLinker",

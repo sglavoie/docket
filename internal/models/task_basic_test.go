@@ -21,11 +21,11 @@ func TestNewTask(t *testing.T) {
 	if task.Title != "Test Task" {
 		t.Errorf("expected Title 'Test Task', got '%s'", task.Title)
 	}
-	if task.State() != StateReady {
-		t.Errorf("expected State StateReady, got %s", task.State())
+	if task.State() != StateBacklog {
+		t.Errorf("expected State StateBacklog, got %s", task.State())
 	}
-	if task.Priority != 3 {
-		t.Errorf("expected Priority 3, got %d", task.Priority)
+	if task.Priority != PriorityUnset {
+		t.Errorf("expected unset Priority, got %d", task.Priority)
 	}
 	if task.CreatedAt.IsZero() {
 		t.Error("expected CreatedAt to be set")
@@ -114,8 +114,8 @@ func TestWorkflowStateClassificationAndIcons(t *testing.T) {
 		isTerminal bool
 		icon       string
 	}{
-		{StateReady, false, "□"},
-		{StateInProgress, false, "▶"},
+		{StateBacklog, false, "□"},
+		{StateDoing, false, "▶"},
 		{StateDone, true, "✓"},
 		{StateWaiting, false, "⊘"},
 		{StateCanceled, true, "✕"},
@@ -141,7 +141,7 @@ func TestTaskStatusTransitions(t *testing.T) {
 
 	// Start
 	task.Start()
-	if task.State() != StateInProgress {
+	if task.State() != StateDoing {
 		t.Errorf("after Start(), State = %s, want in_progress", task.State())
 	}
 
@@ -230,11 +230,16 @@ func TestParseWorkflowStateFromCanonicalStrings(t *testing.T) {
 		want  WorkflowState
 		valid bool
 	}{
-		{"ready", StateReady, true},
-		{"in_progress", StateInProgress, true},
+		{"inbox", StateInbox, true},
+		{"backlog", StateBacklog, true},
+		{"doing", StateDoing, true},
+		{"paused", StatePaused, true},
+		{"someday", StateSomeday, true},
 		{"done", StateDone, true},
 		{"waiting", StateWaiting, true},
 		{"canceled", StateCanceled, true},
+		{"ready", WorkflowState("ready"), false},
+		{"in_progress", WorkflowState("in_progress"), false},
 		{"invalid", WorkflowState("invalid"), false},
 		{"", WorkflowState(""), false},
 	}

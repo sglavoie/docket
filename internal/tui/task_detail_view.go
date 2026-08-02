@@ -8,9 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // maxContentWidth aliases the layout constant for local use.
@@ -82,9 +79,6 @@ func (m *TaskDetailModel) overviewSections(contentWidth int) []string {
 	if m.task.DueDate != nil {
 		sections = append(sections, m.renderDueSection(contentWidth))
 	}
-	if m.task.IsRecurring() {
-		sections = append(sections, m.renderRecurrenceSection(contentWidth))
-	}
 	if m.task.Description != "" {
 		sections = append(sections, m.renderDescriptionSection(contentWidth))
 	}
@@ -122,7 +116,7 @@ func (m *TaskDetailModel) renderPlanningMembershipSection(width int) string {
 }
 
 func (m *TaskDetailModel) hasDetailDependencies() bool {
-	return len(m.task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(m.task)) > 0
+	return false
 }
 
 type taskDetailHistorySections struct {
@@ -384,7 +378,7 @@ func wrapTaskDetailFooterHelp(helpText string, firstLineWidth, width int) []stri
 
 // renderHeaderSection renders the task header card with section badge.
 func (m *TaskDetailModel) renderHeaderSection(width int) string {
-	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
+	content := renderTaskHeaderContent(m.task, false, true)
 
 	effectiveSection := taskStateGroupLabel(m.task)
 	stateGroup := taskStateGroup(m.task)
@@ -409,26 +403,8 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 }
 
 // renderDueSection renders the due date card.
-// Omits the recurrence line since the task detail view has a dedicated Recurrence card.
 func (m *TaskDetailModel) renderDueSection(width int) string {
-	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring()), width, DefaultCardConfig())
-}
-
-// renderRecurrenceSection renders the recurrence card with pattern and upcoming dates.
-func (m *TaskDetailModel) renderRecurrenceSection(width int) string {
-	var lines []string
-	lines = append(lines, MutedStyle.Render("Pattern: ")+m.task.Recurrence.String())
-
-	upcoming := m.task.NextNDueDates(3)
-	if len(upcoming) > 0 {
-		lines = append(lines, "")
-		lines = append(lines, MutedStyle.Render("Upcoming:"))
-		for _, d := range upcoming {
-			lines = append(lines, "  "+MutedStyle.Render(d.Format("Mon Jan 2, 2006")))
-		}
-	}
-
-	return renderCard("Recurrence", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return renderCard("Due", renderDueDateContentOpts(m.task), width, DefaultCardConfig())
 }
 
 // renderMetadataSection renders tags, source, URL, and type-specific attributes.
@@ -472,69 +448,12 @@ func (m *TaskDetailModel) renderChecklistSection(width int) string {
 
 // renderDependenciesSection renders blocked-by, blocking, and related tasks.
 func (m *TaskDetailModel) renderDependenciesSection(width int) string {
-	var lines []string
-
-	// Blocked by (tasks this depends on)
-	if len(m.task.DependsOn) > 0 {
-		lines = append(lines, MutedStyle.Render("Blocked by:"))
-		for _, depRef := range m.task.DependsOn {
-			lines = append(lines, m.formatLinkedTask(depRef, width-6))
-		}
-	}
-
-	// Blocking (tasks that depend on this)
-	blockedBy := m.project.GetBlockedByTasks(m.task)
-	if len(blockedBy) > 0 {
-		if len(lines) > 0 {
-			lines = append(lines, "")
-		}
-		lines = append(lines, MutedStyle.Render("Blocking:"))
-		for _, blocked := range blockedBy {
-			depStatus := GetStateStyle(blocked.State())
-			title := TaskTitleStyleFor(blocked, TaskTitleStyleOptions{}).Render(blocked.Title)
-			line := fmt.Sprintf("  #%-3d %s %s",
-				blocked.ShortID, depStatus.Render(blocked.State().Icon()), title)
-			lines = append(lines, line)
-		}
-	}
-
-	return renderCard("Dependencies", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	return ""
 }
 
 // formatLinkedTask formats a task reference for display.
 func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
-	taskRef := models.ParseTaskRef(ref)
-
-	if !taskRef.IsCrossProject() {
-		task := m.project.GetTaskByID(taskRef.TaskID)
-		if task != nil {
-			depStatus := GetStateStyle(task.State())
-			title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
-			return fmt.Sprintf("  #%-3d %s %s",
-				task.ShortID, depStatus.Render(task.State().Icon()), title)
-		}
-		return "  " + ValidationErrorStyle.Render("(missing)")
-	}
-
-	// Cross-project reference
-	targetProject := m.runtime.GetProject(taskRef.ProjectID)
-	if targetProject == nil {
-		return "  " + ValidationErrorStyle.Render(fmt.Sprintf("[%s] (missing)", taskRef.ProjectID))
-	}
-	if len(targetProject.Tasks) == 0 {
-		if err := storage.LoadProject(targetProject); err != nil {
-			logging.Warn("failed to load project %s: %v", targetProject.Name, err)
-		}
-	}
-	task := targetProject.GetTaskByID(taskRef.TaskID)
-	if task == nil {
-		return "  " + ValidationErrorStyle.Render(fmt.Sprintf("[%s] (missing)", targetProject.Name))
-	}
-	depStatus := GetStateStyle(task.State())
-	projectLabel := MutedStyle.Render(fmt.Sprintf("[%s] ", targetProject.Name))
-	title := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
-	return fmt.Sprintf("  %s#%-3d %s %s",
-		projectLabel, task.ShortID, depStatus.Render(task.State().Icon()), title)
+	return ""
 }
 
 // renderMarkdownDescription renders the task description as styled markdown.

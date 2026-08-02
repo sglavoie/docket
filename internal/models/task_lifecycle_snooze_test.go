@@ -88,14 +88,14 @@ func TestStartClearsSnooze(t *testing.T) {
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed after Start")
 	}
-	if task.State() != StateInProgress {
-		t.Errorf("expected StateInProgress after Start, got %s", task.State())
+	if task.State() != StateDoing {
+		t.Errorf("expected StateDoing after Start, got %s", task.State())
 	}
 }
 
 func TestBlockClearsSnooze(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.WorkflowState = StateInProgress
+	task.WorkflowState = StateDoing
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 
@@ -114,7 +114,7 @@ func TestBlockClearsSnooze(t *testing.T) {
 
 func TestStandbyClearsSnooze(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	task.WorkflowState = StateInProgress
+	task.WorkflowState = StateDoing
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 

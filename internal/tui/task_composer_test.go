@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 func TestTaskComposerPresetModes(t *testing.T) {
@@ -59,13 +59,13 @@ func TestTaskComposerMultilineValidationIsAtomicAndUsesSourceLines(t *testing.T)
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:    ComposerProject,
 		Project: env.project,
-		Shared:  TaskComposerSharedAttributes{State: models.StateInbox},
+		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
 	input := "First task\n\n!1\nThird task"
 	composer.input.SetValue(input)
 
-	if cmd := composer.createCompact(false, false); cmd != nil {
+	if cmd := composer.createCompact(false); cmd != nil {
 		t.Fatalf("invalid batch returned commit command %T", cmd())
 	}
 	if len(composer.errors) != 1 || composer.errors[0].line != 3 {
@@ -79,20 +79,113 @@ func TestTaskComposerMultilineValidationIsAtomicAndUsesSourceLines(t *testing.T)
 	}
 }
 
+func TestTaskComposerDoubleSubmitCreatesOneTaskAndOneCommit(t *testing.T) {
+	env := newScenarioEnv(t, "composer-double-submit")
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:    ComposerProject,
+		Project: env.project,
+		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+	}, nil)
+	composer.SetCaptureCoordinator(env.features.Capture)
+	composer.input.SetValue("Create once")
+
+	_, first := composer.Update(syntheticSpecialKey(tea.KeyEnter))
+	_, duplicate := composer.Update(syntheticCtrlKey('s'))
+	if first == nil || duplicate != nil || !composer.submissionInFlight {
+		t.Fatalf("commands first=%v duplicate=%v inFlight=%v", first != nil, duplicate != nil, composer.submissionInFlight)
+	}
+	msg, ok := first().(TaskCreatedMsg)
+	if !ok || msg.Result == nil {
+		t.Fatalf("first result = %#v", msg)
+	}
+	composer.Update(msg)
+	if composer.submissionInFlight {
+		t.Fatal("success did not release the composer submission guard")
+	}
+
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 || fresh.Tasks[0].ShortID != 1 || fresh.NextShortID != 2 {
+		t.Fatalf("created tasks=%+v nextShortID=%d", fresh.Tasks, fresh.NextShortID)
+	}
+	env.undo(t)
+	if got := len(env.reload(t).Tasks); got != 0 {
+		t.Fatalf("one undo left %d tasks; duplicate commit escaped the guard", got)
+	}
+}
+
+func TestTaskComposerMultilineDoubleSubmitMintsEachShortIDOnce(t *testing.T) {
+	env := newScenarioEnv(t, "composer-multiline-double-submit")
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:    ComposerProject,
+		Project: env.project,
+		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationBacklog},
+	}, nil)
+	composer.SetCaptureCoordinator(env.features.Capture)
+	composer.input.SetValue("First\nSecond")
+
+	_, first := composer.Update(syntheticSpecialKey(tea.KeyEnter))
+	_, duplicate := composer.Update(syntheticSpecialKey(tea.KeyEnter))
+	if first == nil || duplicate != nil {
+		t.Fatalf("commands first=%v duplicate=%v", first != nil, duplicate != nil)
+	}
+	msg, ok := first().(TaskCreatedMsg)
+	if !ok || msg.CreatedCount != 2 {
+		t.Fatalf("multiline result = %#v", msg)
+	}
+	composer.Update(msg)
+
+	fresh := env.reload(t)
+	firstTask := fresh.GetTaskByShortID(1)
+	secondTask := fresh.GetTaskByShortID(2)
+	if len(fresh.Tasks) != 2 || firstTask == nil || secondTask == nil || firstTask.ID == secondTask.ID || fresh.NextShortID != 3 {
+		t.Fatalf("multiline tasks=%+v nextShortID=%d", fresh.Tasks, fresh.NextShortID)
+	}
+	env.undo(t)
+	if got := len(env.reload(t).Tasks); got != 0 {
+		t.Fatalf("one undo left %d tasks; multiline capture committed twice", got)
+	}
+}
+
+func TestTaskComposerSubmissionGuardClearsAfterError(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	stub := &stubMutator{err: errors.New("capture failed")}
+	features := newFeatureCoordinators(stub, stubQuery{})
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetCaptureCoordinator(features.Capture)
+	composer.input.SetValue("Retry me")
+
+	_, first := composer.Update(syntheticSpecialKey(tea.KeyEnter))
+	_, duplicate := composer.Update(syntheticCtrlKey('s'))
+	if first == nil || duplicate != nil {
+		t.Fatalf("commands first=%v duplicate=%v", first != nil, duplicate != nil)
+	}
+	failure, ok := first().(ErrorMsg)
+	if !ok || failure.Err == nil || stub.calls != 1 {
+		t.Fatalf("failure=%#v calls=%d", failure, stub.calls)
+	}
+	composer.Update(failure)
+	if composer.submissionInFlight {
+		t.Fatal("error did not release the composer submission guard")
+	}
+	if _, retry := composer.Update(syntheticCtrlKey('s')); retry == nil {
+		t.Fatal("composer did not allow retry after failure")
+	}
+}
+
 func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 	env := newScenarioEnv(t, "composer-bulk")
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:    ComposerProject,
 		Project: env.project,
 		Shared: TaskComposerSharedAttributes{
-			State: models.StateNext,
-			Tags:  []string{"shared", "story"},
+			Destination: app.CaptureDestinationBacklog,
+			Tags:        []string{"shared", "story"},
 		},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("First #one ^bug\nSecond !1")
+	composer.input.SetValue("First #one #bug\nSecond !1")
 
-	cmd := composer.createCompact(false, false)
+	cmd := composer.createCompact(false)
 	if cmd == nil {
 		t.Fatal("valid batch returned nil command")
 	}
@@ -102,7 +195,7 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 	}
 	fresh := env.reload(t)
 	if len(fresh.Tasks) != 2 || !fresh.Tasks[0].HasTag("shared") || !fresh.Tasks[0].HasTag("one") ||
-		!fresh.Tasks[0].HasTag("bug") || fresh.Tasks[0].HasTag("story") ||
+		!fresh.Tasks[0].HasTag("bug") || !fresh.Tasks[0].HasTag("story") ||
 		!fresh.Tasks[1].HasTag("story") || fresh.Tasks[1].Priority != 1 {
 		t.Fatalf("shared/per-line attributes not committed: %+v", fresh.Tasks)
 	}
@@ -123,7 +216,7 @@ func TestTaskComposerEnterSubmitsCompleteNewTagDespiteFuzzySuggestion(t *testing
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:    ComposerProject,
 		Project: env.project,
-		Shared:  TaskComposerSharedAttributes{State: models.StateInbox},
+		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
 	composer.input.SetValue("Fresh task #back")
@@ -159,12 +252,12 @@ func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testin
 		Project:            env.projects[0],
 		AllProjects:        env.projects,
 		AllowProjectSwitch: true,
-		Shared:             TaskComposerSharedAttributes{State: models.StateInbox},
+		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(features.Capture)
 	composer.input.SetValue("Alpha task\nBeta child %out1 >1")
 
-	cmd := composer.createCompact(false, false)
+	cmd := composer.createCompact(false)
 	if cmd == nil {
 		t.Fatal("routed batch returned nil command")
 	}
@@ -179,7 +272,7 @@ func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testin
 	}
 	child := beta.GetTaskByShortID(2)
 	if len(beta.Tasks) != 2 || child == nil || child.Title != "Beta child" ||
-		child.ParentID == nil || *child.ParentID != parent.ID || child.State() != models.StateReady {
+		child.ParentID == nil || *child.ParentID != parent.ID || child.State() != models.StateBacklog {
 		t.Fatalf("beta routed child = %+v tasks=%+v", child, beta.Tasks)
 	}
 
@@ -207,7 +300,7 @@ func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
 		t.Fatalf("multiline expansion was not rejected: mode=%v errors=%+v", composer.mode, composer.errors)
 	}
 
-	composer.input.SetValue("Ship it ^bug !1 #release $next")
+	composer.input.SetValue("Ship it #bug !1 #release $backlog")
 	composer.expandSingle()
 	if composer.mode != ComposerExpanded || composer.expanded == nil {
 		t.Fatal("single line did not expand")
@@ -299,19 +392,16 @@ func TestDailyTaskEditsUseNarrowTypedOverlays(t *testing.T) {
 	}
 }
 
-func TestTaskComposerPlannerPresetCarriesStateAndAtomicArtifacts(t *testing.T) {
+func TestTaskComposerPlannerPresetCarriesTypedDestination(t *testing.T) {
 	project := &models.Project{ID: "p", Name: "P"}
-	builder := app.PlanningArtifactBuilder(func(app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) { return nil, nil })
 	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:              ComposerPlanner,
-		Project:           project,
-		PlannerTab:        boardTabNext,
-		Shared:            TaskComposerSharedAttributes{State: models.StateNext},
-		PlanningArtifacts: builder,
+		Kind:       ComposerPlanner,
+		Project:    project,
+		PlannerTab: boardTabNext,
 	}, nil)
 	composer.input.SetValue("Plan me")
 	reqs, ok := composer.parseCompactLines()
-	if !ok || len(reqs) != 1 || reqs[0].State != models.StateNext || reqs[0].PlanningArtifacts == nil {
+	if !ok || len(reqs) != 1 || reqs[0].Destination != app.CaptureDestinationNext {
 		t.Fatalf("planner preset request = %+v errors=%+v", reqs, composer.errors)
 	}
 }

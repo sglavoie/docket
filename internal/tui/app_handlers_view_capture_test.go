@@ -35,7 +35,7 @@ func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
 	}
 }
 
-func TestTaskComposerCaptureDefaultsToSystemInbox(t *testing.T) {
+func TestTaskComposerCaptureDefaultsToSystemUnfiled(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	inbox := installTestSystemInbox(app, project)
 
@@ -59,27 +59,13 @@ func TestTaskComposerCaptureDefaultsToSystemInbox(t *testing.T) {
 }
 
 func installTestSystemInbox(app *AppModel, projects ...*models.Project) *models.Project {
-	inbox := testutil.NewTestProjectWithTasks("Inbox")
+	inbox := testutil.NewTestProjectWithTasks("Unfiled")
 	setTestAppProjects(app, append(projects, inbox)...)
 	catalog := app.runtime.Catalog()
+	catalog.SystemUnfiledProjectID = inbox.ID
 	catalog.SystemInboxProjectID = inbox.ID
 	app.runtime.SetCatalogInMemory(catalog)
 	return inbox
-}
-
-func TestHandleViewMessagesRecurrenceEditorDone(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewRecurrenceEditor)
-
-	msg := RecurrenceEditorDoneMsg{Canceled: true}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("RecurrenceEditorDoneMsg should be handled")
-	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after recurrence editor done, got %v", app.currentView())
-	}
 }
 
 func TestHandleViewMessagesTextEditorDone(t *testing.T) {

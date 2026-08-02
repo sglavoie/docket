@@ -24,13 +24,13 @@ func simplifiedTreeOutliner(t *testing.T) (*OutlinerModel, *models.Project, *mod
 		ID:            "parent",
 		ShortID:       1,
 		Title:         "Parent",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	child := &models.Task{
 		ID:            "child",
 		ShortID:       2,
 		Title:         "Child",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 		ParentID:      &parent.ID,
 	}
 	project := &models.Project{
@@ -321,7 +321,7 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 	app := newUITestApp()
 	inbox := scopeTestProject("inbox", "Inbox", "one")
 	project := scopeTestProject("project", "Project", "one")
-	app.runtime.Catalog().SystemInboxProjectID = inbox.ID
+	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	app.projects[inbox.ID] = inbox
 	app.projects[project.ID] = project
 	app.crossOutliner.loadedProjects = []*models.Project{inbox, project}

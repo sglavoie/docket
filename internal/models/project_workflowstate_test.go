@@ -12,21 +12,21 @@ func TestProjectStateQueriesUseExactCanonicalState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ready, _ := NewGenericTask("ready", 1, "Ready")
-	started, _ := NewGenericTask("started", 2, "Started")
+	backlog, _ := NewGenericTask("backlog", 1, "Backlog")
+	doing, _ := NewGenericTask("doing", 2, "Doing")
 	next, _ := NewGenericTask("next", 3, "Next")
-	started.ApplyWorkflowState(StateInProgress)
-	next.ApplyWorkflowState(StateNext)
-	project.Tasks = []*Task{ready, started, next}
+	doing.ApplyWorkflowState(StateDoing)
+	next.ApplyWorkflowState(StateWaiting)
+	project.Tasks = []*Task{backlog, doing, next}
 
-	if got := project.GetTasksByState(StateReady); !reflect.DeepEqual(got, []*Task{ready}) {
-		t.Fatalf("ready tasks = %#v, want only ready task", got)
+	if got := project.GetTasksByState(StateBacklog); !reflect.DeepEqual(got, []*Task{backlog}) {
+		t.Fatalf("backlog tasks = %#v, want only backlog task", got)
 	}
-	if got := project.GetTasksByState(StateInProgress); !reflect.DeepEqual(got, []*Task{started}) {
-		t.Fatalf("in-progress tasks = %#v, want only started task", got)
+	if got := project.GetTasksByState(StateDoing); !reflect.DeepEqual(got, []*Task{doing}) {
+		t.Fatalf("doing tasks = %#v, want only doing task", got)
 	}
 	counts := project.CountTasksByState()
-	if counts[StateReady] != 1 || counts[StateInProgress] != 1 || counts[StateNext] != 1 {
+	if counts[StateBacklog] != 1 || counts[StateDoing] != 1 || counts[StateWaiting] != 1 {
 		t.Fatalf("state counts = %#v", counts)
 	}
 }
@@ -34,7 +34,7 @@ func TestProjectStateQueriesUseExactCanonicalState(t *testing.T) {
 func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 	want := []WorkflowStateGroup{
 		StateGroupToday,
-		StateGroupInProgress,
+		StateGroupDoing,
 		StateGroupInbox,
 		StateGroupNext,
 		StateGroupPaused,
@@ -51,21 +51,15 @@ func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 			t.Errorf("group %q has incomplete presentation semantics", group)
 		}
 		state, ok := group.WorkflowState()
-		if group == StateGroupToday {
+		if group == StateGroupToday || group == StateGroupNext {
 			if ok || !group.IsSynthetic() {
-				t.Errorf("Today must be synthetic, got state %q ok=%v", state, ok)
+				t.Errorf("%s must be synthetic, got state %q ok=%v", group, state, ok)
 			}
 			continue
 		}
 		if !ok || WorkflowStateGroupForState(state) != group {
 			t.Errorf("group/state round trip for %q = %q, %v", group, state, ok)
 		}
-	}
-}
-
-func TestLegacyReviewGroupIsNotCanonical(t *testing.T) {
-	if StateGroupReview.IsValid() {
-		t.Fatal("legacy Review group is valid in the target group vocabulary")
 	}
 }
 

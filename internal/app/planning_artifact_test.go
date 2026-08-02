@@ -12,15 +12,12 @@ import (
 
 func TestReconcilePlanningStateSanitizesAndIsIdempotent(t *testing.T) {
 	planning := config.NewPlanningState()
-	planning.NextOrder = []config.ProjectTaskLocator{
-		{TaskID: "ready", ProjectID: "p"},
+	planning.Next = []config.ProjectTaskLocator{
 		{TaskID: "next", ProjectID: "p"},
 		{TaskID: "next", ProjectID: "p"},
 		{TaskID: "missing", ProjectID: "p"},
 	}
 	planning.Today = []config.ProjectTaskLocator{
-		{TaskID: "inbox", ProjectID: "p"},
-		{TaskID: "next", ProjectID: "p"},
 		{TaskID: "done", ProjectID: "p"},
 		{TaskID: "ready", ProjectID: "p"},
 		{TaskID: "ready", ProjectID: "p"},
@@ -30,9 +27,9 @@ func TestReconcilePlanningStateSanitizesAndIsIdempotent(t *testing.T) {
 		Complete: true,
 		Targets: []app.PlanningReconcileTarget{
 			{TaskID: "inbox", ProjectID: "p", State: models.StateInbox},
-			{TaskID: "ready", ProjectID: "p", State: models.StateReady},
-			{TaskID: "next", ProjectID: "p", State: models.StateNext},
-			{TaskID: "next-unindexed", ProjectID: "p", State: models.StateNext},
+			{TaskID: "ready", ProjectID: "p", State: models.StateBacklog},
+			{TaskID: "next", ProjectID: "p", State: models.StateBacklog},
+			{TaskID: "next-unindexed", ProjectID: "p", State: models.StateBacklog},
 			{TaskID: "done", ProjectID: "p", State: models.StateDone},
 		},
 	}
@@ -40,9 +37,8 @@ func TestReconcilePlanningStateSanitizesAndIsIdempotent(t *testing.T) {
 	if !app.ReconcilePlanningState(planning, req) {
 		t.Fatal("reconciliation reported no change")
 	}
-	if got := planning.NextOrder; len(got) != 2 ||
-		got[0].TaskID != "next" || got[1].TaskID != "next-unindexed" {
-		t.Fatalf("NextOrder = %+v, want every StateNext task in deterministic order", got)
+	if got := planning.GetNext(); len(got) != 1 || got[0].TaskID != "next" {
+		t.Fatalf("Next = %+v, want only valid explicit membership", got)
 	}
 	if got := planning.Today; len(got) != 1 || got[0].TaskID != "ready" {
 		t.Fatalf("DailyPlan = %+v, want only eligible ready task", got)
@@ -68,7 +64,7 @@ func TestApplyPlanningPromotesInboxToTodayAndBacklogClearsToday(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if task.State() != models.StateReady {
+	if task.State() != models.StateBacklog {
 		t.Fatalf("state = %s, want ready after Inbox-to-Today promotion", task.State())
 	}
 	if len(planning.Today) != 1 || planning.Today[0].TaskID != task.ID {
@@ -105,7 +101,7 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if task.State() != models.StateNext || len(planning.NextOrder) != 1 || len(planning.Today) != 0 {
+	if task.State() != models.StateBacklog || len(planning.GetNext()) != 1 || len(planning.Today) != 0 {
 		t.Fatalf("Next result: state=%s focus=%+v daily=%+v", task.State(), planning.NextOrder, planning.Today)
 	}
 
@@ -120,14 +116,11 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 	}
 }
 
-func TestUnrelatedMutationPreservesWaitingTaskInTodayAfterDependenciesResolve(t *testing.T) {
-	blocker := newTask("blocker", 1, "resolved dependency")
-	blocker.Complete()
-	waiting := newTask("waiting", 2, "user-chosen waiting")
+func TestUnrelatedMutationPreservesWaitingTaskInToday(t *testing.T) {
+	waiting := newTask("waiting", 1, "user-chosen waiting")
 	waiting.WorkflowState = models.StateWaiting
-	waiting.DependsOn = []string{blocker.ID}
-	unrelated := newTask("unrelated", 3, "edit me")
-	project := newProject("project", "Project", blocker, waiting, unrelated)
+	unrelated := newTask("unrelated", 2, "edit me")
+	project := newProject("project", "Project", waiting, unrelated)
 	repo := newFakeRepo(project)
 	planning := config.NewPlanningState()
 	planning.Today = []config.ProjectTaskLocator{{
@@ -185,7 +178,7 @@ func TestApplyPlanningRollsBackTaskWhenPlanningBuildFails(t *testing.T) {
 	}); !errors.Is(err, wantErr) {
 		t.Fatalf("error = %v, want %v", err, wantErr)
 	}
-	if task.State() != models.StateReady {
+	if task.State() != models.StateBacklog {
 		t.Fatalf("state = %s, want ready after rollback", task.State())
 	}
 	if len(repo.commits) != 0 || len(repo.artifactCommits) != 0 {
@@ -215,7 +208,7 @@ func TestApplyPlanningBulkCommitsMixedProjectsAndPlanningAtomically(t *testing.T
 	if err != nil {
 		t.Fatalf("ApplyPlanningBulk: %v", err)
 	}
-	if first.State() != models.StateReady || second.State() != models.StateReady {
+	if first.State() != models.StateBacklog || second.State() != models.StateBacklog {
 		t.Fatalf("states = %s/%s, want ready/ready", first.State(), second.State())
 	}
 	if len(planning.Today) != 2 {
@@ -254,7 +247,7 @@ func TestApplyPlanningBulkRejectsInvalidMemberWithoutPartialMutation(t *testing.
 	if err == nil {
 		t.Fatal("terminal member did not reject bulk Today")
 	}
-	if ready.State() != models.StateReady || len(planning.Today) != 0 || len(repo.commits) != 0 {
+	if ready.State() != models.StateBacklog || len(planning.Today) != 0 || len(repo.commits) != 0 {
 		t.Fatalf("rejected bulk planning mutated data: state=%s Today=%+v commits=%d", ready.State(), planning.Today, len(repo.commits))
 	}
 }
@@ -266,7 +259,10 @@ func memoryPlanningBuilder(planning *config.PlanningState) app.PlanningArtifactB
 		if !app.ReconcilePlanningState(planning, req) {
 			return nil, nil
 		}
-		rev := storage.RawArtifactRevision(previous)
+		rev := ""
+		if previous != nil {
+			rev = storage.RawArtifactRevision(previous)
+		}
 		build++
 		data := []byte("planning-" + string(rune('0'+build)))
 		previous = data

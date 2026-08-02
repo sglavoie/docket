@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -12,14 +11,13 @@ import (
 
 func TestReleasePlanningMaintenanceOperations(t *testing.T) {
 	nextOne := newTask("next-1", 1, "First next task")
-	nextOne.ApplyWorkflowState(models.StateNext)
+	nextOne.ApplyWorkflowState(models.StateBacklog)
 	nextTwo := newTask("next-2", 2, "Second next task")
-	nextTwo.ApplyWorkflowState(models.StateNext)
+	nextTwo.ApplyWorkflowState(models.StateBacklog)
 	todayOne := newTask("today-1", 3, "First Today task")
 	todayTwo := newTask("today-2", 4, "Second Today task")
 	project := newProject("project", "Project", nextOne, nextTwo, todayOne, todayTwo)
 	repo := newFakeRepo(project)
-	repo.files[filepath.Clean("mem-workspace/.tt/planning.json")] = []byte{}
 	planning := config.NewPlanningState()
 	planning.NextOrder = []config.ProjectTaskLocator{
 		{ProjectID: project.ID, TaskID: nextTwo.ID},
@@ -56,7 +54,7 @@ func TestReleasePlanningMaintenanceOperations(t *testing.T) {
 		t.Fatalf("ClearToday left entries: %+v", planning.Today)
 	}
 
-	planning.NextOrder = append(planning.NextOrder, config.ProjectTaskLocator{
+	planning.Next = append(planning.Next, config.ProjectTaskLocator{
 		ProjectID: project.ID,
 		TaskID:    "missing",
 	})
@@ -67,7 +65,7 @@ func TestReleasePlanningMaintenanceOperations(t *testing.T) {
 	if !changed {
 		t.Fatal("ReconcilePlanning reported no change for a dangling Next-order entry")
 	}
-	if got, want := planningTaskIDs(planning.NextOrder), []string{nextOne.ID, nextTwo.ID}; !reflect.DeepEqual(got, want) {
+	if got, want := planningTaskIDs(planning.GetNext()), []string{nextOne.ID, nextTwo.ID}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("reconciled Next order = %v, want %v", got, want)
 	}
 	if changed, err = service.ReconcilePlanning(); err != nil || changed {

@@ -31,7 +31,7 @@ hand.
 `tt` is an Outliner-first local task manager. The Bubble Tea TUI is the product
 surface; Cobra contains only the TUI launcher and maintenance commands.
 
-- `internal/models` owns pure task, project, note, hierarchy, recurrence, and
+- `internal/models` owns pure task, project, note, hierarchy, and
   workflow invariants.
 - `internal/app` owns use cases, project-qualified target resolution, planning
   reconciliation, and atomic mutation policy.
@@ -65,20 +65,15 @@ generic `Task` headings, a project-local ShortID, and the retained v5 fields.
 
 Planning invariants:
 
-- Next membership is exactly `StateNext`; planning stores its order only.
-- Today is project-qualified and mutually exclusive with Inbox, Next, and
-  terminal states.
-- Backlog sets Ready and removes Today/Next references.
-- Starting sets In Progress; completing sets Done and clears planning.
+- Next membership is an explicit project-qualified planning collection, never a lifecycle state.
+- Today is project-qualified and mutually exclusive with Next.
+- Backlog removes Today/Next references.
+- Starting sets Doing; completing sets Done and clears planning.
 - Dependency blocking is derived.
 - Done and Canceled reject a direct nonterminal child.
 
 Parents are project-local with maximum depth six. Cross-project dependencies
 must remain project-qualified, resolvable, and acyclic.
-
-Recurrence is a positive day/week/month interval. Generated tasks are Inbox in
-the same project and parent and copy only title, description, priority, tags,
-unchecked checklist items, recurrence, and the generated due date.
 
 ## TUI grammar and operations
 
@@ -94,10 +89,10 @@ parallel key router, palette, or view-specific copy.
 The direct grammar is:
 
 ```text
-Tab / Shift+Tab                 five modes
+Tab / Shift+Tab                 six modes
 j/k, arrows, h/l, S, Home/End  navigation
 a/A, e/E                       capture/edit
-si sr sn sg sw sp sm sd sc st  state/planning overlay
+si sb sn st sg sw sp sm sd sc  state/planning chord
 !0-5 @ # z P                   metadata
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
@@ -105,10 +100,10 @@ v V Space                      selection/actions
 c N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
-Pressing `s` shows the state overlay. Its second keys are `i` Inbox, `r`
-Ready/Backlog, `n` Next, `g` In Progress, `w` Waiting, `p` Paused, `m`
-Someday, `d` Done, `c` Canceled, and `t` Today. Next and Today retain their
-toggle behavior, and Ready/Backlog still removes Today membership.
+Pressing `s` shows the state/planning chord. Its second keys are `i` Inbox, `b`
+Backlog, `n` Next, `t` Today, `g` Doing, `w` Waiting, `p` Paused, `m`
+Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
+behavior, and Backlog removes both planning memberships.
 
 Filter chords are `fp0-5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`. `fd` opens
 the due-date facet picker for overdue, today, this week, or no due date, and
@@ -118,28 +113,27 @@ comma state prefix must remain unbound, along with `m`, `:`, `R`, `p`, and
 
 The `Space` menu is exactly:
 
-1. Recurrence
-2. Move Project
-3. Set Parent
-4. Dependencies
-5. Checklist
-6. Comments
-7. Decisions
-8. Attachments
-9. Delete
+1. Move Project
+2. Set Parent
+3. Checklist
+4. Comments
+5. Attachments
+6. Delete
 
 An operation is direct-only or menu-only, never both. Delete has no direct key
 and confirms before mutation.
 
 The Outliner stays full-width at every supported size. `Enter` toggles a
 session-only, five-line Peek beneath the cursor for description, tags,
-checklist items, named dependencies, and recurrence detail. Rows carry
+checklist items, and named dependencies. Rows carry
 operational metadata directly and omit short IDs. Entering visual selection
 closes Peek; while selection exists, structural, edit, Peek, relation, and
 clipboard operations must reject it instead of falling back to the cursor.
 The bulk `Space` menu contains Delete only.
 
-Scope Hub owns All and regular/custom contexts. `C` opens the search-first
+Scope Hub owns All Projects and exclusive regular project-label contexts;
+`personal` is always present and protects its name while keeping membership
+editable. `C` opens the search-first
 project selector for project focus and lean project administration. `N` always
 opens All Notes across Global and every project returned by
 `Runtime.ActiveProjects()`. Inside Notes, `v` chooses All, Global, or one active
@@ -153,20 +147,20 @@ toggles only dark/light.
 
 ## Capture grammar
 
-Canonical capture/edit sigils are:
+Canonical capture sigils are:
 
 ```text
-^type  !1-5  #tag  @date  ~interval  $state  %project  >parent
+!1-3  #tag  @date  $destination  %project  >parent
 ```
 
-`^type` accepts `epic`, `story`, `bug`, or `idea` and stores the choice as that
-raw tag, never as a first-class task field. Those four semantic markers are
-mutually exclusive. `#tag` creates valid tags on the fly; the exact legacy
-spellings `type:epic`, `type:story`, `type:bug`, and `type:idea` canonicalize to
-their raw equivalents. Do not reintroduce aliases such as `priority:`, `due:`,
-`state:`, or `proj:`. Multiline capture validates every nonblank line before
-committing one transaction. Resolve the target project before the project-local
-parent.
+`$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
+Someday, Done, or Canceled. `#tag` creates valid tags on the fly. `^type`,
+`~recurrence`, priorities 4–5, `$ready`, and `$in_progress` must remain
+recognized errors with replacement guidance. Do not reintroduce aliases such as
+`priority:`, `due:`, `state:`, or `proj:`. Multiline capture validates every
+nonblank line before committing one transaction. Resolve the target project
+before the project-local parent; omitted destinations default roots to Inbox and
+children to Backlog.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.
@@ -205,7 +199,7 @@ records nothing.
 
 ## Documentation and scenarios
 
-User-facing docs must describe only the nine-state, five-mode, Outliner-only
+User-facing docs must describe only the eight-state, six-mode, Outliner-only
 product and maintenance-only CLI. Historical fields may appear only in clearly
 identified migration sections.
 

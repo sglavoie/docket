@@ -47,9 +47,9 @@ type FeatureMutator interface {
 	// Transition moves a task to a workflow state (Inbox triage, tree/outliner
 	// state changes).
 	Transition(req app.StateRequest) (app.TaskResult, error)
-	// Complete terminates a task as done, running the recurrence hooks.
+	// Complete terminates a task as done without creating a successor.
 	Complete(taskID string) (app.TaskResult, error)
-	// SetPriority sets a task's 1..5 priority.
+	// SetPriority sets a task's schema-6 0..3 priority.
 	SetPriority(taskID string, priority int) (app.TaskResult, error)
 }
 
@@ -165,7 +165,7 @@ func (c CaptureCoordinator) Capture(req app.CaptureRequest) tea.Cmd {
 // re-resolves the task for cursor navigation and open-after, and shows the
 // creation status. A rejected capture surfaces an
 // ErrorMsg, leaving the capture view open with the pre-mutation input.
-func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent, openDetail bool) tea.Cmd {
+func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent bool) tea.Cmd {
 	mutator := c.mutator
 	return func() tea.Msg {
 		res, err := mutator.Capture(req)
@@ -173,7 +173,7 @@ func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent, o
 			return ErrorMsg{Err: err}
 		}
 		result := res
-		return TaskCreatedMsg{Result: &result, OpenContent: openContent, OpenDetail: openDetail}
+		return TaskCreatedMsg{Result: &result, OpenContent: openContent}
 	}
 }
 
@@ -190,7 +190,7 @@ func (c CaptureCoordinator) CaptureBoard(req app.CaptureRequest) tea.Cmd {
 		}
 		return TransactionResultMsg{
 			Feature: name, Action: fmt.Sprintf("Added #%d", res.ShortID), Result: res,
-			PlanningChanged: req.PlanningArtifacts != nil,
+			PlanningChanged: req.Destination.IsPlanning(),
 		}
 	}
 }
@@ -286,7 +286,7 @@ type TaskFormCoordinator struct{ FeatureCoordinator }
 // selects which created subtask (index into the committed subtask results) to
 // navigate to after the reload; -1 targets the parent. A rejected create
 // surfaces an ErrorMsg, leaving the form open with the pre-mutation draft.
-func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx int, openContent, openDetail bool) tea.Cmd {
+func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx int, openContent bool) tea.Cmd {
 	mutator := c.mutator
 	return func() tea.Msg {
 		res, err := mutator.AddTaskWithChildren(req)
@@ -298,7 +298,7 @@ func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx i
 		if openSubtaskIdx >= 0 && openSubtaskIdx < len(res.Subtasks) {
 			openTaskID = res.Subtasks[openSubtaskIdx].TaskID
 		}
-		return TaskCreatedMsg{Result: &result, OpenTaskID: openTaskID, OpenContent: openContent, OpenDetail: openDetail}
+		return TaskCreatedMsg{Result: &result, OpenTaskID: openTaskID, OpenContent: openContent}
 	}
 }
 

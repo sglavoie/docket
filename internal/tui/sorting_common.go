@@ -37,54 +37,27 @@ func (s *SortState) Toggle(f SortField) {
 
 // StateOrder returns the sort order for a workflow state (workflow order).
 // This is the single source of truth used by all views that sort by
-// status/state. The three planning states lead (next, then inbox, then ready),
-// followed by active, deferred, and terminal work.
+// status/state. Active lifecycle states lead, followed by deferred and terminal work.
 func StateOrder(state models.WorkflowState) int {
 	switch state {
-	case models.StateNext:
-		return 0
 	case models.StateInbox:
-		return 1
-	case models.StateReady:
-		return 2
-	case models.StateInProgress:
-		return 3
-	case models.StatePaused:
-		return 4
-	case models.StateSomeday:
-		return 5
-	case models.StateWaiting:
-		return 6
-	case models.StateDone:
-		return 7
-	case models.StateCanceled:
-		return 8
-	default:
-		return 9
-	}
-}
-
-// TodayStateOrder ranks workflow states by activeness for the Today section.
-// In-progress comes first and terminal work comes last. The three planning
-// states share one rank so the daily-plan position keeps ordering them.
-func TodayStateOrder(state models.WorkflowState) int {
-	switch state {
-	case models.StateInProgress:
 		return 0
-	case models.StateInbox, models.StateReady, models.StateNext:
+	case models.StateBacklog:
 		return 1
-	case models.StateWaiting:
+	case models.StateDoing:
 		return 2
 	case models.StatePaused:
 		return 3
 	case models.StateSomeday:
 		return 4
-	case models.StateDone:
+	case models.StateWaiting:
 		return 5
-	case models.StateCanceled:
+	case models.StateDone:
 		return 6
-	default:
+	case models.StateCanceled:
 		return 7
+	default:
+		return 8
 	}
 }
 

@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "state_mappings": [
+    {"source": "inbox", "target_lifecycle": "inbox", "target_next": false},
+    {"source": "ready", "target_lifecycle": "backlog", "target_next": false},
+    {"source": "next", "target_lifecycle": "backlog", "target_next": true},
+    {"source": "in_progress", "target_lifecycle": "doing", "target_next": false},
+    {"source": "waiting", "target_lifecycle": "waiting", "target_next": false},
+    {"source": "paused", "target_lifecycle": "paused", "target_next": false},
+    {"source": "someday", "target_lifecycle": "someday", "target_next": false},
+    {"source": "done", "target_lifecycle": "done", "target_next": false},
+    {"source": "canceled", "target_lifecycle": "canceled", "target_next": false}
+  ],
+  "priority_mappings": [
+    {"source": 0, "target": 0, "target_label": "unset"},
+    {"source": 1, "target": 1, "target_label": "high"},
+    {"source": 2, "target": 1, "target_label": "high"},
+    {"source": 3, "target": 0, "target_label": "unset"},
+    {"source": 4, "target": 3, "target_label": "low"},
+    {"source": 5, "target": 3, "target_label": "low"}
+  ],
+  "task_fields": [
+    {"source": "id", "target": "id", "action": "retain"},
+    {"source": "short_id", "target": "short_id", "action": "retain"},
+    {"source": "title", "target": "title", "action": "retain"},
+    {"source": "description", "target": "description", "action": "retain"},
+    {"source": "state", "target": "workflow_state", "action": "map"},
+    {"source": "priority", "target": "priority", "action": "map"},
+    {"source": "parent_id", "target": "parent_id", "action": "retain"},
+    {"source": "tags", "target": "tags", "action": "retain"},
+    {"source": "created_at", "target": "created_at", "action": "retain"},
+    {"source": "updated_at", "target": "updated_at", "action": "retain"},
+    {"source": "completed_at", "target": "completed_at", "action": "retain"},
+    {"source": "due_date", "target": "due_date", "action": "retain"},
+    {"source": "snoozed_until", "target": "snoozed_until", "action": "retain"},
+    {"source": "depends_on", "target": "", "action": "drop-and-audit"},
+    {"source": "pinned", "target": "pinned", "action": "retain"},
+    {"source": "pinned_at", "target": "pinned_at", "action": "retain"},
+    {"source": "recurrence", "target": "", "action": "drop-and-audit"},
+    {"source": "attachments", "target": "attachments", "action": "retain"},
+    {"source": "checklist", "target": "checklist", "action": "retain"},
+    {"source": "comments", "target": "comments", "action": "retain-and-merge"},
+    {"source": "decisions", "target": "comments", "action": "convert-to-comments-and-audit"}
+  ],
+  "domain_mappings": [
+    {"source": "workspace.system_inbox_project_id", "target": "workspace.system_unfiled_project_id", "action": "rename-project-and-reference-preserving-id"},
+    {"source": "project.context", "target": "project.context", "action": "retain"},
+    {"source": "planning.today", "target": "planning.today", "action": "remove-dangling-terminal-and-next-conflicts"},
+    {"source": "planning.next_order + task.state=next", "target": "planning.next", "action": "rebuild-membership-and-order"},
+    {"source": "machine.custom_contexts", "target": "", "action": "drop-and-audit-name-and-member-count"},
+    {"source": "machine.theme", "target": "machine.theme", "action": "retain"}
+  ],
+  "artifact_mappings": [
+    {"source": "project/global notes", "target": "project/global notes", "action": "retain"},
+    {"source": "attachment binaries", "target": "attachment binaries", "action": "retain"},
+    {"source": "undo/redo ledger", "target": "pre-v6 snapshot", "action": "snapshot-then-clear-live-stacks"}
+  ],
+  "conversion_rules": [
+    {"id": "decision-comment-format", "expectation": "Decision: <text> followed by Rationale: <rationale> on a second line when rationale is present"},
+    {"id": "decision-comment-order", "expectation": "merge chronologically; equal timestamps keep existing comments first then decisions in source order"},
+    {"id": "recurrence-audit", "expectation": "record the task ID and discarded recurrence value"},
+    {"id": "dependency-audit", "expectation": "record the task ID and every discarded dependency reference"},
+    {"id": "next-membership", "expectation": "every schema-5 StateNext task becomes a schema-6 Next member"},
+    {"id": "next-order", "expectation": "keep valid legacy NextOrder members first then append missing members in catalog-project and document-task order"},
+    {"id": "today-normalization", "expectation": "Next wins Today conflicts; remove and audit terminal and dangling Today entries"},
+    {"id": "unfiled-identity", "expectation": "preserve the protected project ID while renaming Inbox/inbox and its catalog reference to Unfiled/unfiled"},
+    {"id": "custom-context-audit", "expectation": "drop custom contexts and audit each name and member count"},
+    {"id": "undo-boundary", "expectation": "snapshot schema-5 undo and redo history then clear both live stacks"}
+  ]
+}

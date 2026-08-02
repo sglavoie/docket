@@ -14,22 +14,22 @@ func TestPinnedModeProjectionIsNewestFirstAndProjectionOwned(t *testing.T) {
 	older := now.Add(-2 * time.Hour)
 	tomorrow := now.AddDate(0, 0, 1)
 
-	parent := primaryRowsTask("parent", models.StateReady)
-	child := primaryRowsTask("shared", models.StateReady)
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("shared", models.StateBacklog)
 	child.ParentID = &parent.ID
 	child.Pinned, child.PinnedAt = true, &newest
-	alphaTie := primaryRowsTask("alpha-tie", models.StateReady)
+	alphaTie := primaryRowsTask("alpha-tie", models.StateBacklog)
 	alphaTie.Pinned, alphaTie.PinnedAt = true, &older
-	alphaNoTimestamp := primaryRowsTask("alpha-no-time", models.StateReady)
+	alphaNoTimestamp := primaryRowsTask("alpha-no-time", models.StateBacklog)
 	alphaNoTimestamp.Pinned = true
 	alpha := primaryRowsProject("alpha", parent, child, alphaTie, alphaNoTimestamp)
 	alpha.Name = "Alpha"
 
-	betaTie := primaryRowsTask("beta-tie", models.StateReady)
+	betaTie := primaryRowsTask("beta-tie", models.StateBacklog)
 	betaTie.Pinned, betaTie.PinnedAt = true, &older
-	betaSameID := primaryRowsTask("shared", models.StateReady)
+	betaSameID := primaryRowsTask("shared", models.StateBacklog)
 	betaSameID.Pinned, betaSameID.PinnedAt = true, &older
-	betaSnoozed := primaryRowsTask("snoozed", models.StateReady)
+	betaSnoozed := primaryRowsTask("snoozed", models.StateBacklog)
 	betaSnoozed.Pinned, betaSnoozed.PinnedAt, betaSnoozed.SnoozedUntil = true, &newest, &tomorrow
 	betaDone := primaryRowsTask("done", models.StateDone)
 	betaDone.Pinned, betaDone.PinnedAt = true, &newest
@@ -78,11 +78,11 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 	sameDay := time.Date(2026, 3, 10, 0, 0, 0, 0, dateLocation)
 	nextDay := time.Date(2026, 3, 11, 0, 0, 0, 0, dateLocation)
 
-	sameDayTask := primaryRowsTask("same-day", models.StateReady)
+	sameDayTask := primaryRowsTask("same-day", models.StateBacklog)
 	sameDayTask.Pinned = true
 	sameDayTask.SnoozedUntil = &sameDay
 	sameDayTask.DueDate = &sameDay
-	snoozed := primaryRowsTask("snoozed", models.StateReady)
+	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
 	snoozed.Pinned = true
 	snoozed.SnoozedUntil = &nextDay
 	done := primaryRowsTask("done", models.StateDone)
@@ -125,23 +125,23 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 }
 
 func TestVisibleSearchComposesWithScopeModeFacetsPinsAndHierarchy(t *testing.T) {
-	parent := primaryRowsTask("parent-context", models.StateReady)
+	parent := primaryRowsTask("parent-context", models.StateBacklog)
 	parent.Priority = 2
-	child := primaryRowsTask("description-match", models.StateReady)
+	child := primaryRowsTask("description-match", models.StateBacklog)
 	child.Title = "Child title"
 	child.Description = "Contains the Needle in its description"
 	child.Priority = 2
 	child.ParentID = &parent.ID
-	pinnedMatch := primaryRowsTask("pinned-match", models.StateReady)
+	pinnedMatch := primaryRowsTask("pinned-match", models.StateBacklog)
 	pinnedMatch.Title = "Needle pinned"
 	pinnedMatch.Priority = 2
 	pinnedMatch.Pinned = true
-	pinnedHidden := primaryRowsTask("pinned-hidden", models.StateReady)
+	pinnedHidden := primaryRowsTask("pinned-hidden", models.StateBacklog)
 	pinnedHidden.Priority = 2
 	pinnedHidden.Pinned = true
-	wrongPriority := primaryRowsTask("wrong-priority", models.StateReady)
+	wrongPriority := primaryRowsTask("wrong-priority", models.StateBacklog)
 	wrongPriority.Title = "Needle but too low priority"
-	wrongPriority.Priority = 5
+	wrongPriority.Priority = models.PriorityLow
 	inboxMatch := primaryRowsTask("inbox-match", models.StateInbox)
 	inboxMatch.Title = "Needle inbox"
 	inboxMatch.Priority = 2
@@ -155,7 +155,7 @@ func TestVisibleSearchComposesWithScopeModeFacetsPinsAndHierarchy(t *testing.T) 
 		inboxMatch,
 	)
 
-	betaMatch := primaryRowsTask("other-scope", models.StateReady)
+	betaMatch := primaryRowsTask("other-scope", models.StateBacklog)
 	betaMatch.Title = "Needle in another project"
 	betaMatch.Priority = 2
 	beta := primaryRowsProject("beta", betaMatch)

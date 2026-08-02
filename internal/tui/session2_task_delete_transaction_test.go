@@ -64,11 +64,11 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 	if err != nil {
 		t.Fatalf("NewTask epic: %v", err)
 	}
-	parent.ApplyWorkflowState(models.StateReady)
-	child := seedTask(t, 2, "Child", models.StateReady)
+	parent.ApplyWorkflowState(models.StateBacklog)
+	child := seedTask(t, 2, "Child", models.StateBacklog)
 	child.ParentID = &parent.ID
-	sibling := seedTask(t, 3, "Sibling", models.StateReady)
-	lone := seedTask(t, 10, "Lone", models.StateReady)
+	sibling := seedTask(t, 3, "Sibling", models.StateBacklog)
+	lone := seedTask(t, 10, "Lone", models.StateBacklog)
 
 	alpha := newProject("alpha", "Alpha", []*models.Task{parent, child, sibling})
 	beta := newProject("beta", "Beta", []*models.Task{lone})
@@ -81,7 +81,7 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 	cfg := newTestConfigAt(dataDir)
 	setTestProjects(cfg, []*models.Project{alpha, beta})
 	// A durable planning ref inside the deleted subtree must be repaired on delete.
-	cfg.Planning().NextOrder = []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: child.ID}}
+	cfg.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: child.ID}})
 	if err := saveTestRuntime(mgr, cfg); err != nil {
 		t.Fatalf("seed config: %v", err)
 	}
@@ -393,10 +393,10 @@ func TestTUITaskDeletePreservesDuplicateIDReferencesInOtherProject(t *testing.T)
 	if err := storage.SaveProject(e.beta); err != nil {
 		t.Fatalf("save beta duplicate: %v", err)
 	}
-	e.cfg.Planning().NextOrder = []config.ProjectTaskLocator{
+	e.cfg.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
 		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
-	}
+	})
 	e.cfg.Planning().Today = []config.ProjectTaskLocator{
 		{ProjectID: e.alpha.ID, TaskID: e.parent.ID},
 		{ProjectID: e.beta.ID, TaskID: e.lone.ID},
@@ -435,7 +435,7 @@ func TestTaskDeleteFailurePreservesStateNoSuccess(t *testing.T) {
 
 	// A root whose task is not on disk: the application service rejects the batch
 	// with ErrTaskNotFound, so the transaction never commits.
-	ghost := seedTask(t, 99, "Ghost", models.StateReady)
+	ghost := seedTask(t, 99, "Ghost", models.StateBacklog)
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs: []TaskProjectRef{{Task: ghost, Project: e.alpha}},
 	})

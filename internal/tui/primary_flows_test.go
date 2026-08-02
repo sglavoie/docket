@@ -37,13 +37,13 @@ func TestMoveToNextUpdatesStatus(t *testing.T) {
 		t.Fatal("precondition: task should be in Inbox")
 	}
 
-	task.ApplyWorkflowState(models.StateNext)
+	task.ApplyWorkflowState(models.StateBacklog)
 
-	if !task.IsInState(models.StateNext) {
-		t.Errorf("section: got %q, want %q", task.State(), models.StateNext)
+	if !task.IsInState(models.StateBacklog) {
+		t.Errorf("section: got %q, want %q", task.State(), models.StateBacklog)
 	}
-	if got := task.State(); got != models.StateNext {
-		t.Errorf("state: got %q, want %q", got, models.StateNext)
+	if got := task.State(); got != models.StateBacklog {
+		t.Errorf("state: got %q, want %q", got, models.StateBacklog)
 	}
 }
 
@@ -55,7 +55,7 @@ func TestCompleteNextTaskUpdatesProgress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.ApplyWorkflowState(models.StateNext)
+	task.ApplyWorkflowState(models.StateBacklog)
 
 	task.Complete()
 
@@ -87,17 +87,16 @@ func newCompletedStoryWithDoneChild(t *testing.T) (project *models.Project, pare
 
 // reopenChildThroughWorkflow reopens the given child through the same
 // post-mutation pipeline the shared save path runs (reverse parent-completion
-// reconcile, recurring generation, root reorder), then persists and reloads the
+// reconcile and root reorder), then persists and reloads the
 // project from disk.
 func reopenChildThroughWorkflow(t *testing.T, project *models.Project, childID string) {
 	t.Helper()
 	project.MutateTask(childID, func(tk *models.Task) {
-		if err := tk.ApplyStateTransition(models.StateReady); err != nil {
+		if err := tk.ApplyStateTransition(models.StateBacklog); err != nil {
 			t.Fatalf("ApplyStateTransition(ready): %v", err)
 		}
 	})
 	project.ReconcileParentCompletion()
-	project.GenerateRecurringInstances()
 	project.ReorderRootTasksByCompletion()
 
 	if err := storage.SaveProject(project); err != nil {
@@ -123,7 +122,7 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	if story == nil {
 		t.Fatal("story missing after reopening child")
 	}
-	if story.State() != models.StateInProgress {
+	if story.State() != models.StateDoing {
 		t.Fatalf("story state = %q, want in_progress after reopening its child", story.State())
 	}
 
@@ -143,7 +142,7 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	if story == nil {
 		t.Fatal("story vanished from project after outdenting its last child")
 	}
-	if story.State() != models.StateInProgress {
+	if story.State() != models.StateDoing {
 		t.Errorf("story state = %q, want in_progress after outdent", story.State())
 	}
 }

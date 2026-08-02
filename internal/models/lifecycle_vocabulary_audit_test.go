@@ -33,11 +33,12 @@ func TestRuntimeLifecycleVocabularyIsCanonical(t *testing.T) {
 		"StatusTodo": true, "StatusInProgress": true, "StatusReview": true,
 		"StatusStandby": true, "StatusDone": true, "StatusBlocked": true,
 		"StatusCanceled": true, "StatusMaybe": true,
+		"StateReady": true, "StateInProgress": true, "StateNext": true,
+		"StateGroupInProgress": true, "StateGroupReview": true, "StateThemeReview": true,
 		"StateReview": true,
 	}
 	allowedRetiredIdentifierFiles := map[string]map[string]bool{
 		"StateReview": {
-			"internal/models/workflowstate.go":           true,
 			"internal/models/workflowstate_legacy.go":    true,
 			"internal/storage/format/metadata_parse.go":  true,
 			"internal/storage/format/metadata_state.go":  true,

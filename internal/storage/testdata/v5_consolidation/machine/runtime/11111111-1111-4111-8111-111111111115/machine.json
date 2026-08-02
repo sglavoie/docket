@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "workspace_id": "11111111-1111-4111-8111-111111111115",
+  "kind": "machine",
+  "data": {
+    "custom_contexts": {
+      "Deep Work": ["project-alpha", "project-beta"],
+      "Personal": ["project-inbox"]
+    },
+    "theme": "light"
+  }
+}

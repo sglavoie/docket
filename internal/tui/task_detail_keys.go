@@ -136,7 +136,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "o/Esc", Description: "Close detail view", Category: "Navigation"},
 		{Key: "H", Description: "Toggle History cluster (collapse/expand)", Category: "Navigation"},
 		{Key: ",s/d/b/x/o/r", Description: "State: start/done/waiting/cancel/reopen/review", Category: "Actions"},
-		{Key: "!1-5", Description: "Set priority", Category: "Actions"},
+		{Key: "!0-3", Description: "Set priority", Category: "Actions"},
 		{Key: "O", Description: "Open external URL", Category: "Actions"},
 		{Key: "e/E", Description: "Edit title/description", Category: "Actions"},
 		{Key: "d", Description: "Set due date", Category: "Actions"},

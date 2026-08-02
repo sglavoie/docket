@@ -10,15 +10,15 @@ func TestValidatePriority(t *testing.T) {
 		wantErr   bool
 	}{
 		{"min valid", 1, false, false},
-		{"max valid", 5, false, false},
+		{"max valid", 3, false, false},
 		{"mid valid", 3, false, false},
 		{"zero not allowed", 0, false, true},
 		{"zero allowed", 0, true, false},
 		{"negative", -1, false, true},
-		{"above max", 6, false, true},
+		{"above max", 4, false, true},
 		{"far above max", 100, false, true},
 		{"zero allowed but negative still invalid", -1, true, true},
-		{"zero allowed but above max still invalid", 6, true, true},
+		{"zero allowed but above max still invalid", 4, true, true},
 	}
 
 	for _, tt := range tests {
@@ -31,18 +31,18 @@ func TestValidatePriority(t *testing.T) {
 	}
 }
 
-func TestEffectivePriorityResolvesUnsetAndOffScaleToDefault(t *testing.T) {
+func TestEffectivePrioritySortsUnsetAndOffScaleAfterLow(t *testing.T) {
 	tests := []struct {
 		name  string
 		value int
 		want  int
 	}{
-		{"unset", PriorityUnset, PriorityDefault},
+		{"unset", PriorityUnset, 4},
 		{"critical", PriorityMin, PriorityMin},
-		{"default", PriorityDefault, PriorityDefault},
-		{"minimal", PriorityMax, PriorityMax},
-		{"negative", -3, PriorityDefault},
-		{"above max", PriorityMax + 1, PriorityDefault},
+		{"medium", PriorityMedium, PriorityMedium},
+		{"low", PriorityLow, PriorityLow},
+		{"negative", -3, 4},
+		{"above max", PriorityMax + 1, 4},
 	}
 
 	for _, tt := range tests {
@@ -61,7 +61,7 @@ func TestIsHighPriorityExcludesUnset(t *testing.T) {
 	}{
 		{PriorityUnset, false},
 		{1, true},
-		{2, true},
+		{2, false},
 		{PriorityDefault, false},
 		{PriorityMax, false},
 		{PriorityMax + 1, false},

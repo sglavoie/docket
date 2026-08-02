@@ -5,15 +5,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// LegacyNextOrderMemberLocators returns the project-qualified identities of
-// v4 ordering entries that predate the state-driven Next invariant and must be
-// backfilled to StateNext.
-// Next membership is now the StateNext workflow state, so a queued task that
-// exists and is non-terminal but is not yet StateNext is a legacy member whose
-// only evidence lives in the ordering-only index; it must be migrated so
-// first-use pruning cannot silently interpret it as stale and drop it. Missing
-// and terminal members are left alone — those are genuinely stale and handled by
-// the prune path.
+// LegacyNextOrderMemberLocators returns valid project-qualified identities from
+// a legacy ordering-only index. Schema-6 migration converts those identities to
+// explicit Next membership; missing and terminal entries are omitted.
 //
 // The returned locators preserve queue order and are de-duplicated. This
 // function is deliberately side-effect free: it names what to migrate but never
@@ -34,7 +28,7 @@ func LegacyNextOrderMemberLocators(order []config.ProjectTaskLocator, projects [
 			continue
 		}
 		task := project.GetTaskByID(locator.TaskID)
-		if task != nil && !task.IsTerminalState() && task.State() != models.StateNext && !seen[locator] {
+		if task != nil && !task.IsTerminalState() && !seen[locator] {
 			seen[locator] = true
 			locators = append(locators, locator)
 		}

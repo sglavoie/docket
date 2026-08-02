@@ -5,27 +5,24 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// workspaceFilterResolver is a temporary compile-only placeholder for the
+// dependency-filter plumbing removed in session 18.
+type workspaceFilterResolver struct{}
+
 // buildOutlinerModeInput assembles the common scoped input all canonical mode
 // strategies consume, resolving durable planning records once.
 func (m *OutlinerModel) buildOutlinerModeInput(projects []*models.Project) OutlinerModeInput {
-	foldOverrides := make(map[TaskIdentity]bool, len(m.expandedNodes))
-	for identity, expanded := range m.expandedNodes {
-		foldOverrides[identity] = !expanded
-	}
 	now := time.Now()
 	input := OutlinerModeInput{
-		Projects:        projects,
-		TodayIDs:        m.resolveTodayIDs(projects),
-		TodayOrder:      m.resolveTodayOrder(projects),
-		NextOrder:       planningNextOrder(m.runtime),
-		ChildDepthLimit: -1,
-		FoldOverrides:   foldOverrides,
-		Now:             now,
+		Projects:   projects,
+		TodayIDs:   m.resolveTodayIDs(projects),
+		TodayOrder: m.resolveTodayOrder(projects),
+		NextOrder:  planningNextOrder(m.runtime),
+		Now:        now,
 	}
 	// One resolver over one loaded workspace snapshot is shared by every mode
 	// section in this projection. In particular, a completed cross-project
@@ -37,7 +34,7 @@ func (m *OutlinerModel) buildOutlinerModeInput(projects []*models.Project) Outli
 
 func (m *OutlinerModel) newWorkspaceFilterResolver(
 	fallback []*models.Project,
-) *app.WorkspaceResolver {
+) *workspaceFilterResolver {
 	if m == nil {
 		return nil
 	}
@@ -55,7 +52,7 @@ func (m *OutlinerModel) newWorkspaceFilterResolver(
 	if len(projects) == 0 {
 		return nil
 	}
-	return app.NewWorkspaceResolver(app.NewSnapshot(projects, nil, nil))
+	return &workspaceFilterResolver{}
 }
 
 // projectsInCatalogOrder returns the supplied project subset in the workspace
@@ -88,7 +85,7 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 	return ordered
 }
 
-// buildCanonicalModeRows is the single row-pipeline entry point for all five
+// buildCanonicalModeRows is the single row-pipeline entry point for all six
 // canonical modes. Scope, zoom candidates, common filters, search, and fixed
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
@@ -112,7 +109,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() bool {
 	m.appendPinnedSection(pinned)
 
 	switch mode.RowStrategy {
-	case RowStrategyAll, RowStrategyInbox, RowStrategyNext, RowStrategyBacklog:
+	case RowStrategyAll, RowStrategyInbox, RowStrategyToday, RowStrategyNext, RowStrategyBacklog:
 		m.buildPrimaryModeRowsWithInput(projects, input, pinned.projected)
 	case RowStrategyDue:
 		m.appendFilteredModeSections(BuildDueModeSections(input), pinned.projected, input.TaskFilter)
@@ -216,7 +213,7 @@ func (m *OutlinerModel) workModeTaskFilterAt(now time.Time) func(*models.Task, *
 
 func (m *OutlinerModel) workModeTaskFilterWithResolverAt(
 	now time.Time,
-	resolver *app.WorkspaceResolver,
+	resolver *workspaceFilterResolver,
 ) func(*models.Task, *models.Project) bool {
 	cache := make(map[*models.Project]func(*models.Task) bool)
 	return func(t *models.Task, p *models.Project) bool {
@@ -235,9 +232,8 @@ func (m *OutlinerModel) workModeTaskFilterWithResolverAt(
 func (m *OutlinerModel) outlinerRowFromModeRow(mr OutlinerModeRow) outlinerRow {
 	row := outlinerRow{
 		task:               mr.Task,
-		prefix:             mr.TreePrefix,
 		Breadcrumb:         mr.Breadcrumb,
-		hasVisibleChildren: mr.Depth == 0 && len(mr.Task.Children) > 0,
+		hasVisibleChildren: false,
 	}
 	if m.project == nil && mr.Project != nil {
 		row.ProjectID = mr.Project.ID

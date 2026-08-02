@@ -20,6 +20,15 @@ const (
 	PlanningTodayRemove
 )
 
+// PlanningNextDirective describes the explicit Next-membership side effect.
+type PlanningNextDirective uint8
+
+const (
+	PlanningNextPreserve PlanningNextDirective = iota
+	PlanningNextAdd
+	PlanningNextRemove
+)
+
 // PlanningReconcileTarget names a task whose workflow state a transaction set,
 // paired with the final state the task holds after the mutation and cascade.
 // Today optionally requests an explicit add/remove on top of state-derived
@@ -29,6 +38,23 @@ type PlanningReconcileTarget struct {
 	ProjectID string
 	State     models.WorkflowState
 	Today     PlanningTodayDirective
+	Next      PlanningNextDirective
+	// StateChanged distinguishes an explicit lifecycle transition from a task
+	// merely observed during complete reconciliation.
+	StateChanged bool
+}
+
+// PlanningProjectMove requalifies one durable planning membership after a task
+// moves between projects. Task IDs remain stable across the move; only their
+// owning project changes.
+type PlanningProjectMove struct {
+	TaskID        string
+	FromProjectID string
+	ToProjectID   string
+}
+
+func (m PlanningProjectMove) valid() bool {
+	return m.TaskID != "" && m.FromProjectID != "" && m.ToProjectID != "" && m.FromProjectID != m.ToProjectID
 }
 
 // PlanningReconcileRequest is the complete application-owned mutation applied to
@@ -38,6 +64,8 @@ type PlanningReconcileTarget struct {
 // move command; any valid member omitted from an order is retained at the end.
 type PlanningReconcileRequest struct {
 	Targets       []PlanningReconcileTarget
+	Remove        []TaskLocator
+	Moves         []PlanningProjectMove
 	Complete      bool
 	NextOrder     []TaskLocator
 	SetNextOrder  bool
@@ -56,9 +84,9 @@ type PlanningArtifactBuilder func(PlanningReconcileRequest) ([]storage.ArtifactC
 // planning snapshot. It is deliberately application-owned so CLI, TUI,
 // action-plan, undo/redo, and startup paths cannot drift:
 //
-//   - StateNext owns Next membership and has one NextOrder entry, and excludes Today.
-//   - non-Next tasks have no NextOrder entry.
-//   - Inbox and terminal tasks cannot be in Today.
+//   - Today and Next are explicit mutually-exclusive ordered memberships.
+//   - terminal tasks cannot belong to either collection.
+//   - lifecycle transitions apply their contract-owned planning cleanup.
 //   - explicit Today adds are accepted only for eligible final states.
 //   - complete reconciliation removes dangling and duplicate entries.
 //
@@ -67,8 +95,14 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 	if planning == nil {
 		return false
 	}
-	beforeNext := append([]config.ProjectTaskLocator(nil), planning.NextOrder...)
+	beforeNext := append([]config.ProjectTaskLocator(nil), planning.GetNext()...)
 	beforeToday := append([]config.ProjectTaskLocator(nil), planning.Today...)
+	planning.NormalizePlanningReferences()
+
+	applyPlanningProjectMoves(planning, req.Moves)
+	removePlanningLocators(planning, req.Remove)
+	// A move may converge two malformed references on the same final identity.
+	// Re-canonicalize after all identity changes while keeping first-seen order.
 	planning.NormalizePlanningReferences()
 
 	known := make(map[TaskLocator]PlanningReconcileTarget, len(req.Targets))
@@ -81,8 +115,11 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 	}
 
 	if req.Complete {
-		planning.NextOrder = sanitizeNextOrder(planning.NextOrder, known)
+		planning.Next = sanitizeNext(planning.GetNext(), known)
 		planning.Today = sanitizeToday(planning.Today, known)
+		for _, item := range planning.Today {
+			planning.RemoveFromNextInProject(item.TaskID, item.ProjectID)
+		}
 	}
 
 	applied := make(map[TaskLocator]bool, len(known))
@@ -93,14 +130,17 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 			continue
 		}
 		applied[locator] = true
-		if target.State == models.StateNext {
-			planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
-			ensureNextOrderEntry(planning, locator)
-		} else {
-			planning.RemoveFromNextOrderInProject(locator.TaskID, locator.ProjectID)
+		if target.StateChanged {
+			if target.State == models.StateDoing {
+				planning.RemoveFromNextInProject(locator.TaskID, locator.ProjectID)
+			} else {
+				planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
+				planning.RemoveFromNextInProject(locator.TaskID, locator.ProjectID)
+			}
 		}
-		if target.State == models.StateInbox || target.State.IsTerminal() {
+		if target.State.IsTerminal() {
 			planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
+			planning.RemoveFromNextInProject(locator.TaskID, locator.ProjectID)
 		}
 		switch target.Today {
 		case PlanningTodayPreserve:
@@ -111,38 +151,97 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 		case PlanningTodayRemove:
 			planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
 		}
+		switch target.Next {
+		case PlanningNextPreserve:
+		case PlanningNextAdd:
+			if target.State.IsNonterminal() {
+				planning.RemoveFromTodayInProject(locator.TaskID, locator.ProjectID)
+				ensureNextEntry(planning, locator)
+			}
+		case PlanningNextRemove:
+			planning.RemoveFromNextInProject(locator.TaskID, locator.ProjectID)
+		}
 	}
 
 	if req.ClearToday {
 		planning.Today = nil
 	}
 	if req.SetNextOrder {
-		for _, locator := range req.NextOrder {
-			if target, ok := known[locator]; ok && target.State == models.StateNext {
-				ensureNextOrderEntry(planning, locator)
-			}
-		}
-		planning.NextOrder = reorderPlanningRefs(planning.NextOrder, req.NextOrder)
+		// Reordering never confers membership. Unknown or stale caller entries
+		// are ignored while existing members omitted by the caller stay at the
+		// end in their prior relative order.
+		planning.Next = reorderPlanningRefs(planning.GetNext(), req.NextOrder)
 	}
 	if req.SetTodayOrder {
 		planning.Today = reorderPlanningRefs(planning.Today, req.TodayOrder)
 	}
 
-	return !slices.Equal(beforeNext, planning.NextOrder) || !slices.Equal(beforeToday, planning.Today)
+	planning.SetNext(planning.Next)
+	return !slices.Equal(beforeNext, planning.GetNext()) || !slices.Equal(beforeToday, planning.Today)
+}
+
+func applyPlanningProjectMoves(planning *config.PlanningState, moves []PlanningProjectMove) {
+	if planning == nil || len(moves) == 0 {
+		return
+	}
+	replacements := make(map[TaskLocator]config.ProjectTaskLocator, len(moves))
+	for _, move := range moves {
+		if !move.valid() {
+			continue
+		}
+		from := TaskLocator{ProjectID: move.FromProjectID, TaskID: move.TaskID}
+		replacements[from] = config.ProjectTaskLocator{ProjectID: move.ToProjectID, TaskID: move.TaskID}
+	}
+	apply := func(items []config.ProjectTaskLocator) {
+		for i := range items {
+			locator := TaskLocator{ProjectID: items[i].ProjectID, TaskID: items[i].TaskID}
+			if replacement, ok := replacements[locator]; ok {
+				items[i] = replacement
+			}
+		}
+	}
+	apply(planning.Today)
+	next := planning.GetNext()
+	apply(next)
+	planning.SetNext(next)
+}
+
+func removePlanningLocators(planning *config.PlanningState, locators []TaskLocator) {
+	if planning == nil || len(locators) == 0 {
+		return
+	}
+	remove := make(map[TaskLocator]bool, len(locators))
+	for _, locator := range locators {
+		if locator.Valid() {
+			remove[locator] = true
+		}
+	}
+	filter := func(items []config.ProjectTaskLocator) []config.ProjectTaskLocator {
+		out := items[:0]
+		for _, item := range items {
+			locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
+			if !remove[locator] {
+				out = append(out, item)
+			}
+		}
+		return out
+	}
+	planning.Today = filter(planning.Today)
+	planning.SetNext(filter(planning.GetNext()))
 }
 
 // PlanningTodayEligible reports whether a task in state may belong to Today.
 func PlanningTodayEligible(state models.WorkflowState) bool {
-	return state.IsValid() && state != models.StateInbox && state != models.StateNext && !state.IsTerminal()
+	return state.IsNonterminal()
 }
 
-func sanitizeNextOrder(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget) []config.ProjectTaskLocator {
+func sanitizeNext(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget) []config.ProjectTaskLocator {
 	out := make([]config.ProjectTaskLocator, 0, len(items))
 	seen := make(map[TaskLocator]bool, len(items))
 	for _, item := range items {
 		locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
 		target, ok := known[locator]
-		if !ok || target.State != models.StateNext || seen[locator] {
+		if !ok || !target.State.IsNonterminal() || seen[locator] {
 			continue
 		}
 		seen[locator] = true
@@ -166,15 +265,13 @@ func sanitizeToday(items []config.ProjectTaskLocator, known map[TaskLocator]Plan
 	return out
 }
 
-func ensureNextOrderEntry(planning *config.PlanningState, locator TaskLocator) {
-	for _, item := range planning.NextOrder {
+func ensureNextEntry(planning *config.PlanningState, locator TaskLocator) {
+	for _, item := range planning.GetNext() {
 		if item.TaskID == locator.TaskID && item.ProjectID == locator.ProjectID {
 			return
 		}
 	}
-	planning.NextOrder = append(planning.NextOrder, config.ProjectTaskLocator{
-		TaskID: locator.TaskID, ProjectID: locator.ProjectID,
-	})
+	planning.AddToNext(locator.TaskID, locator.ProjectID)
 }
 
 func ensureTodayEntry(planning *config.PlanningState, locator TaskLocator) {
@@ -226,7 +323,7 @@ func collectPlanningReconcileTargets(commits []projectCommit, taskIDs []string, 
 		}
 		seen[locator] = true
 		targets = append(targets, PlanningReconcileTarget{
-			TaskID: locator.TaskID, ProjectID: locator.ProjectID, State: task.State(),
+			TaskID: locator.TaskID, ProjectID: locator.ProjectID, State: task.State(), StateChanged: true,
 		})
 	}
 	for _, locator := range locators {

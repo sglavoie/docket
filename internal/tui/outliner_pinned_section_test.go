@@ -13,27 +13,27 @@ func TestPinnedSectionAppearsAboveEveryModeAndDeduplicatesQualifiedTasks(t *test
 	older := now.Add(-time.Hour)
 	newer := now.Add(-time.Minute)
 
-	parent := primaryRowsTask("parent", models.StateReady)
-	child := primaryRowsTask("shared", models.StateReady)
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("shared", models.StateBacklog)
 	child.ParentID = &parent.ID
 	child.Pinned, child.PinnedAt = true, &newer
-	alphaOlder := primaryRowsTask("alpha-older", models.StateReady)
+	alphaOlder := primaryRowsTask("alpha-older", models.StateBacklog)
 	alphaOlder.Pinned, alphaOlder.PinnedAt = true, &older
-	due := primaryRowsTask("due", models.StateReady)
+	due := primaryRowsTask("due", models.StateBacklog)
 	due.DueDate = &now
 	alpha := primaryRowsProject("alpha", parent, child, alphaOlder, due)
 	alpha.Name, alpha.Slug = "Alpha", "alpha"
 
 	sameID := primaryRowsTask("shared", models.StateInbox)
 	sameID.Pinned, sameID.PinnedAt = true, &older
-	next := primaryRowsTask("next", models.StateNext)
+	next := primaryRowsTask("next", models.StateBacklog)
 	beta := primaryRowsProject("beta", sameID, next)
 	beta.Name, beta.Slug = "Beta", "beta"
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.loadedProjects = []*models.Project{beta, alpha} // catalog order resolves equal pin times.
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeNext, ModeBacklog, ModeDue} {
+	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if len(outliner.rows) < 3 || !outliner.rows[0].IsSectionHeader ||
@@ -86,9 +86,9 @@ func TestPinnedSectionAppearsAboveEveryModeAndDeduplicatesQualifiedTasks(t *test
 
 func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
-	alphaTask := primaryRowsTask("alpha-task", models.StateReady)
+	alphaTask := primaryRowsTask("alpha-task", models.StateBacklog)
 	alphaTask.Pinned, alphaTask.PinnedAt = true, &now
-	betaTask := primaryRowsTask("beta-task", models.StateReady)
+	betaTask := primaryRowsTask("beta-task", models.StateBacklog)
 	betaTask.Pinned, betaTask.PinnedAt = true, &now
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
@@ -133,9 +133,9 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 
 func TestPinnedSectionOmitsProjectHeaderInFocusedProjectScope(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
-	alphaTask := primaryRowsTask("alpha-task", models.StateReady)
+	alphaTask := primaryRowsTask("alpha-task", models.StateBacklog)
 	alphaTask.Pinned, alphaTask.PinnedAt = true, &now
-	betaTask := primaryRowsTask("beta-task", models.StateReady)
+	betaTask := primaryRowsTask("beta-task", models.StateBacklog)
 	betaTask.Pinned, betaTask.PinnedAt = true, &now
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
@@ -157,9 +157,9 @@ func TestPinnedSectionOmitsProjectHeaderInFocusedProjectScope(t *testing.T) {
 
 func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
-	alphaA := primaryRowsTask("alpha-a", models.StateReady)
-	alphaB := primaryRowsTask("alpha-b", models.StateReady)
-	betaA := primaryRowsTask("beta-a", models.StateReady)
+	alphaA := primaryRowsTask("alpha-a", models.StateBacklog)
+	alphaB := primaryRowsTask("alpha-b", models.StateBacklog)
+	betaA := primaryRowsTask("beta-a", models.StateBacklog)
 	for _, task := range []*models.Task{alphaA, alphaB, betaA} {
 		task.Pinned, task.PinnedAt, task.DueDate = true, &now, &now
 	}
@@ -193,8 +193,8 @@ func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 
 func TestPinnedPromotionRebuildKeepsCrossProjectCursorIdentity(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
-	alphaTask := primaryRowsTask("shared", models.StateReady)
-	betaTask := primaryRowsTask("shared", models.StateReady)
+	alphaTask := primaryRowsTask("shared", models.StateBacklog)
+	betaTask := primaryRowsTask("shared", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
 	outliner, _ := primaryRowsOutliner(alpha, beta)
@@ -216,9 +216,9 @@ func TestPinnedPromotionRebuildKeepsCrossProjectCursorIdentity(t *testing.T) {
 }
 
 func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
-	alphaTask := primaryRowsTask("shared", models.StateReady)
-	alphaTask.Priority = 5
-	betaTask := primaryRowsTask("shared", models.StateReady)
+	alphaTask := primaryRowsTask("shared", models.StateBacklog)
+	alphaTask.Priority = models.PriorityLow
+	betaTask := primaryRowsTask("shared", models.StateBacklog)
 	betaTask.Priority = 1
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)

@@ -419,7 +419,7 @@ func buildRichFixture(w *uitestWorkspace) error {
 
 		login := newFixtureTask(p, "Build login form")
 		login.ParentID = &story.ID
-		login.ApplyWorkflowState(models.StateInProgress)
+		login.ApplyWorkflowState(models.StateDoing)
 
 		validate := newFixtureTask(p, "Add password validation")
 		validate.ParentID = &story.ID
@@ -472,12 +472,12 @@ func buildBusyFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Busy Project", func(p *models.Project) {
 		overdue := newFixtureTask(p, "Overdue: submit quarterly report")
 		overdue.Priority = 1
-		overdue.ApplyWorkflowState(models.StateNext)
+		overdue.ApplyWorkflowState(models.StateBacklog)
 		setDue(overdue, -3*24*time.Hour)
 
 		dueSoon := newFixtureTask(p, "Due soon: renew certificate")
 		dueSoon.Priority = 2
-		dueSoon.ApplyWorkflowState(models.StateNext)
+		dueSoon.ApplyWorkflowState(models.StateBacklog)
 		setDue(dueSoon, 12*time.Hour)
 
 		blocked := newFixtureTask(p, "Blocked: production outage")
@@ -519,7 +519,7 @@ func buildWorkflowFixture(w *uitestWorkspace) error {
 		for i, title := range titles {
 			t := newFixtureTask(p, title)
 			t.Priority = (i % 3) + 1
-			t.ApplyWorkflowState(models.StateNext)
+			t.ApplyWorkflowState(models.StateBacklog)
 			if i == len(titles)-1 {
 				markDone(t)
 			}
@@ -541,12 +541,12 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 
 		long.Priority = 1
 		long.Tags = []string{"infrastructure", "reliability", "sync"}
-		long.ApplyWorkflowState(models.StateNext)
+		long.ApplyWorkflowState(models.StateBacklog)
 
 		another := newFixtureTask(p,
 			"Truncated column headers overlap when the terminal is resized below the minimum comfortable width")
 
-		another.ApplyWorkflowState(models.StateInProgress)
+		another.ApplyWorkflowState(models.StateDoing)
 	})
 	if err != nil {
 		return err
@@ -562,9 +562,9 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 func buildReleaseFixture(w *uitestWorkspace) error {
 	states := []models.WorkflowState{
 		models.StateInbox,
-		models.StateReady,
-		models.StateNext,
-		models.StateInProgress,
+		models.StateBacklog,
+		models.StateBacklog,
+		models.StateDoing,
 		models.StateWaiting,
 		models.StatePaused,
 		models.StateSomeday,
@@ -573,7 +573,7 @@ func buildReleaseFixture(w *uitestWorkspace) error {
 		unicodeTask := newFixtureTask(p, "国際化 🚀 café résumé release check")
 		unicodeTask.Description = "Unicode display-width and visible-search acceptance row."
 		unicodeTask.Tags = []string{"i18n", "release"}
-		unicodeTask.ApplyWorkflowState(models.StateInProgress)
+		unicodeTask.ApplyWorkflowState(models.StateDoing)
 
 		for i := 0; i < 240; i++ {
 			task := newFixtureTask(
@@ -581,7 +581,7 @@ func buildReleaseFixture(w *uitestWorkspace) error {
 
 				fmt.Sprintf("Release acceptance item %03d with bounded viewport content", i+1))
 
-			task.Priority = (i % 5) + 1
+			task.Priority = (i % 3) + 1
 			task.Tags = []string{"release", fmt.Sprintf("batch-%d", i%8)}
 			task.ApplyWorkflowState(states[i%len(states)])
 		}
@@ -613,7 +613,7 @@ func buildContextsFixture(w *uitestWorkspace) error {
 		project, err := w.addProject(spec.name, func(p *models.Project) {
 			p.Context = spec.context
 			task := newFixtureTask(p, spec.task)
-			task.ApplyWorkflowState(models.StateNext)
+			task.ApplyWorkflowState(models.StateBacklog)
 		})
 		if err != nil {
 			return err

@@ -40,8 +40,7 @@ func TestScopeHubUsesTheLeanCanonicalListSurfaceCategories(t *testing.T) {
 	hub := openContextHub(t, app)
 	got := hub.surface.Categories()
 	want := []ListCategory{
-		{ID: scopeHubCategoryBase, Label: "Base Scopes"},
-		{ID: scopeHubCategoryCustom, Label: "Custom Contexts"},
+		{ID: scopeHubCategoryScopes, Label: "Scopes"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("scope categories = %#v, want %#v", got, want)
@@ -54,9 +53,9 @@ func TestScopeHubUsesTheLeanCanonicalListSurfaceCategories(t *testing.T) {
 			scopes[entry.Scope] = item.CategoryID
 		}
 	}
-	if scopes[AllContextScope()] != scopeHubCategoryBase ||
-		scopes[RegularContextScope("work")] != scopeHubCategoryBase ||
-		scopes[CustomContextScope("focus")] != scopeHubCategoryCustom {
+	if scopes[AllContextScope()] != scopeHubCategoryScopes ||
+		scopes[RegularContextScope("work")] != scopeHubCategoryScopes ||
+		scopes[RegularContextScope("personal")] != scopeHubCategoryScopes {
 		t.Fatalf("scope categories by row = %#v", scopes)
 	}
 	for _, item := range hub.surface.Items() {
@@ -87,7 +86,7 @@ func TestScopeHubEnterActivatesBaseScopes(t *testing.T) {
 
 func TestScopeHubSpaceOpensRegistryBackedContextActions(t *testing.T) {
 	hub := openContextHub(t, contextHubApp(t))
-	focusScopeHubItem(t, hub, contextScopeListItemID(CustomContextScope("focus")))
+	focusScopeHubItem(t, hub, contextScopeListItemID(RegularContextScope("work")))
 
 	hub.Update(syntheticKey(' '))
 	if hub.actions == nil {
@@ -107,7 +106,6 @@ func TestScopeHubSpaceOpensRegistryBackedContextActions(t *testing.T) {
 			t.Fatalf("context actions %v omit %s", got, want)
 		}
 	}
-
 	if !hub.actions.surface.SetCursorToID(ListItemID("scope-hub-action:" + string(operationScopeRenameContext))) {
 		t.Fatal("rename action was not selectable")
 	}
@@ -115,198 +113,8 @@ func TestScopeHubSpaceOpensRegistryBackedContextActions(t *testing.T) {
 	if hub.actions != nil {
 		t.Fatal("executed action sheet remained open")
 	}
-	if hub.editor == nil || hub.editor.originalName != "focus" {
-		t.Fatalf("rename action opened editor %#v, want focus", hub.editor)
-	}
-}
-
-func TestScopeHubBrowseKeysExecuteRegistryOperationsWithFrozenTargets(t *testing.T) {
-	tests := []struct {
-		name      string
-		key       rune
-		operation OperationID
-		assert    func(*testing.T, *ContextHubModel)
-	}{
-		{
-			name:      "new",
-			key:       'n',
-			operation: operationScopeCreateContext,
-			assert: func(t *testing.T, hub *ContextHubModel) {
-				t.Helper()
-				if hub.editor == nil || !hub.editor.isNew() {
-					t.Fatalf("new operation opened editor %#v", hub.editor)
-				}
-			},
-		},
-		{
-			name:      "edit",
-			key:       'e',
-			operation: operationScopeEditContext,
-			assert: func(t *testing.T, hub *ContextHubModel) {
-				t.Helper()
-				if hub.editor == nil || hub.editor.originalName != "focus" {
-					t.Fatalf("edit operation opened editor %#v", hub.editor)
-				}
-			},
-		},
-		{
-			name:      "rename",
-			key:       'r',
-			operation: operationScopeRenameContext,
-			assert: func(t *testing.T, hub *ContextHubModel) {
-				t.Helper()
-				if hub.editor == nil || hub.editor.originalName != "focus" {
-					t.Fatalf("rename operation opened editor %#v", hub.editor)
-				}
-			},
-		},
-		{
-			name:      "delete",
-			key:       'd',
-			operation: operationScopeDeleteContext,
-			assert: func(t *testing.T, hub *ContextHubModel) {
-				t.Helper()
-				if !hub.confirm.IsActive() || hub.pendingDelete != CustomContextScope("focus") {
-					t.Fatalf("delete operation armed confirm=%v target=%#v", hub.confirm.IsActive(), hub.pendingDelete)
-				}
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			hub := openContextHub(t, contextHubApp(t))
-			focusScopeHubItem(t, hub, contextScopeListItemID(CustomContextScope("focus")))
-
-			registry := NewOperationRegistry()
-			descriptor := OperationDescriptor{}
-			for _, candidate := range scopeHubOperationDescriptors() {
-				if candidate.ID == tc.operation {
-					descriptor = candidate
-					break
-				}
-			}
-			if descriptor.ID == "" {
-				t.Fatalf("scope operation %s has no descriptor", tc.operation)
-			}
-			if err := registry.Register(descriptor); err != nil {
-				t.Fatalf("register scope operation: %v", err)
-			}
-
-			var invocation OperationInvocation
-			executor := NewOperationExecutor(registry)
-			if err := executor.Register(OperationBinding{
-				OperationID:          tc.operation,
-				RequiredCapabilities: NewCapabilitySet(CapabilityScopeHub),
-				Handler: func(got OperationInvocation) OperationHandlerResult {
-					invocation = got
-					focusScopeHubItem(t, hub, contextScopeListItemID(RegularContextScope("home")))
-					target, _ := got.Value.(scopeHubActionTarget)
-					return OperationHandlerResult{
-						Message: scopeHubInlineActionMsg{OperationID: tc.operation, Target: target},
-					}
-				},
-				DelegateTargetResolution: true,
-				DelegateValueProvider:    true,
-				DelegateConfirmation:     true,
-				DelegateTransaction:      true,
-			}); err != nil {
-				t.Fatalf("bind scope operation: %v", err)
-			}
-			hub.SetOperationSystem(registry, executor)
-
-			hub.Update(syntheticKey(tc.key))
-
-			if invocation.Descriptor.ID != tc.operation {
-				t.Fatalf("browse key invoked %s, want %s", invocation.Descriptor.ID, tc.operation)
-			}
-			if invocation.Source != OperationSourceDirectKey {
-				t.Fatalf("invocation source = %q, want %q", invocation.Source, OperationSourceDirectKey)
-			}
-			target, ok := invocation.Value.(scopeHubActionTarget)
-			if !ok || !invocation.HasValue || target.Scope != CustomContextScope("focus") {
-				t.Fatalf("frozen invocation target = %#v/%v, want custom context focus", invocation.Value, invocation.HasValue)
-			}
-			tc.assert(t, hub)
-			if tc.operation != operationScopeCreateContext {
-				entry, ok := hub.selectedScopeHubEntry()
-				if !ok || entry.Kind != scopeHubEntryBase || entry.Scope != CustomContextScope("focus") {
-					t.Fatalf("inline action followed the moved cursor to %#v/%v", entry, ok)
-				}
-			}
-		})
-	}
-}
-
-func TestScopeHubNewContextBrowseKeyOpensWithoutVisibleRows(t *testing.T) {
-	hub := openContextHub(t, contextHubApp(t))
-
-	registry := NewOperationRegistry()
-	var descriptor OperationDescriptor
-	for _, candidate := range scopeHubOperationDescriptors() {
-		if candidate.ID == operationScopeCreateContext {
-			descriptor = candidate
-			break
-		}
-	}
-	if descriptor.ID == "" {
-		t.Fatal("create-context operation has no descriptor")
-	}
-	if err := registry.Register(descriptor); err != nil {
-		t.Fatalf("register create-context operation: %v", err)
-	}
-
-	var invocation OperationInvocation
-	executor := NewOperationExecutor(registry)
-	if err := executor.Register(OperationBinding{
-		OperationID:          operationScopeCreateContext,
-		RequiredCapabilities: NewCapabilitySet(CapabilityScopeHub),
-		Handler: func(got OperationInvocation) OperationHandlerResult {
-			invocation = got
-			target, _ := got.Value.(scopeHubActionTarget)
-			return OperationHandlerResult{
-				Message: scopeHubInlineActionMsg{
-					OperationID: operationScopeCreateContext,
-					Target:      target,
-				},
-			}
-		},
-		DelegateTargetResolution: true,
-		DelegateValueProvider:    true,
-		DelegateConfirmation:     true,
-		DelegateTransaction:      true,
-	}); err != nil {
-		t.Fatalf("bind create-context operation: %v", err)
-	}
-	hub.SetOperationSystem(registry, executor)
-
-	hub.Update(syntheticKey('/'))
-	typeIntoContextHub(hub, "nothing-matches")
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if hub.HasTextInput() || hub.SearchQuery() != "nothing-matches" {
-		t.Fatalf("search was not confirmed with its query retained: input=%v query=%q", hub.HasTextInput(), hub.SearchQuery())
-	}
-	if matches := hub.surface.Matches(); len(matches) != 0 {
-		t.Fatalf("confirmed no-match search kept %d visible rows", len(matches))
-	}
-
-	hub.Update(syntheticKey('n'))
-
-	if invocation.Descriptor.ID != operationScopeCreateContext {
-		t.Fatalf("n invoked %s, want %s", invocation.Descriptor.ID, operationScopeCreateContext)
-	}
-	if invocation.Source != OperationSourceDirectKey {
-		t.Fatalf("invocation source = %q, want %q", invocation.Source, OperationSourceDirectKey)
-	}
-	target, ok := invocation.Value.(scopeHubActionTarget)
-	if !ok || !invocation.HasValue || target != (scopeHubActionTarget{}) {
-		t.Fatalf("no-row invocation target = %#v/%v, want empty scope target", invocation.Value, invocation.HasValue)
-	}
-	if hub.editor == nil || !hub.editor.isNew() {
-		t.Fatalf("n with no visible rows opened editor %#v", hub.editor)
-	}
-	if hub.notice != "" {
-		t.Fatalf("n with no visible rows produced notice %q", hub.notice)
+	if hub.editor == nil || hub.editor.originalName != "work" {
+		t.Fatalf("rename action opened editor %#v, want work", hub.editor)
 	}
 }
 
@@ -320,6 +128,55 @@ func TestScopeHubHelpDocumentsEveryBrowseKey(t *testing.T) {
 		if !keys[key] {
 			t.Fatalf("Scope Hub help omits browse key %q: %#v", key, hub.GetHelpItems())
 		}
+	}
+}
+
+func TestScopeHubCreatesRegularContextWithSharedEditor(t *testing.T) {
+	hub := openContextHub(t, contextHubApp(t))
+
+	hub.Update(syntheticKey('n'))
+	if hub.editor == nil || !hub.editor.isNew() {
+		t.Fatalf("n opened editor %#v, want a new regular context", hub.editor)
+	}
+	typeIntoContextHub(hub, "focus")
+	checkEditorProject(t, hub, "alpha")
+
+	_, cmd := hub.Update(contextHubSaveKey)
+	if cmd == nil {
+		t.Fatalf("new context save emitted no message (editor error: %q)", hub.editor.err)
+	}
+	saved, ok := cmd().(RegularContextSavedMsg)
+	if !ok || !saved.IsNew || saved.Name != "focus" || saved.Assigned != 1 {
+		t.Fatalf("new context save = %#v, want one-project focus creation", saved)
+	}
+}
+
+func TestScopeHubPersonalContextProtectsNameAndDeleteButAllowsMembership(t *testing.T) {
+	hub := openContextHub(t, contextHubApp(t))
+	focusScopeHubItem(t, hub, contextScopeListItemID(RegularContextScope("personal")))
+
+	hub.Update(syntheticKey(' '))
+	got := scopeHubActionIDs(hub)
+	if !containsOperationID(got, operationScopeCreateContext) || !containsOperationID(got, operationScopeEditContext) {
+		t.Fatalf("personal actions %v omit creation or membership editing", got)
+	}
+	if containsOperationID(got, operationScopeRenameContext) || containsOperationID(got, operationScopeDeleteContext) {
+		t.Fatalf("personal actions %v expose rename or delete", got)
+	}
+	hub.actions = nil
+	for _, key := range []rune{'r', 'd'} {
+		hub.Update(syntheticKey(key))
+		if hub.editor != nil || hub.confirm.IsActive() {
+			t.Fatalf("%q opened a protected personal-context mutation", string(key))
+		}
+	}
+	hub.Update(syntheticKey('e'))
+	if hub.editor == nil || !hub.editor.nameLocked {
+		t.Fatalf("personal membership edit = %#v, want a name-locked editor", hub.editor)
+	}
+	hub.Update(syntheticSpecialKey(tea.KeyEscape))
+	if hub.editor != nil {
+		t.Fatal("Esc could not close the unchanged name-locked personal editor")
 	}
 }
 

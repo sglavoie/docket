@@ -10,7 +10,7 @@ import (
 )
 
 // AddTaskRequest is the full representation of a task-add request: metadata,
-// hierarchy placement, recurrence, checklist content, and
+// hierarchy placement, checklist content, and
 // any auxiliary durable artifacts that must commit atomically with the new task.
 // The adapter resolves presentation concerns and hands this request fully-resolved
 // primitives; the use case owns the snapshot, validation,
@@ -21,18 +21,20 @@ type AddTaskRequest struct {
 	ProjectID string
 	// Title is the task title. Required; validated with models.ValidateTaskTitle.
 	Title string
-	// Priority is 1..5; zero (or unset) defaults to the medium priority.
+	// Priority is schema-6 0..3 (Unset, High, Medium, Low).
 	Priority int
 	// Tags are normalized and validated; a malformed tag aborts the add.
 	Tags []string
 	// Description is optional free-form body text.
 	Description string
 	// State is the task's initial canonical workflow state. Empty defaults to
-	// Inbox.
+	// Inbox. Capture-originated form requests use Destination instead; supplying
+	// both is rejected.
 	State models.WorkflowState
-	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
-	// task.SetRecurrence.
-	Recurrence *models.RecurrencePattern
+	// Destination carries the unified capture destination through expanded form
+	// creation. Today and Next include their planning membership in the same
+	// transaction as the project document.
+	Destination CaptureDestination
 	// ParentID, when non-nil, nests the new task under an existing task in the
 	// same project; the parent must exist and preserve the depth limit.
 	ParentID *string
@@ -83,26 +85,42 @@ type FormCreateResult struct {
 // AddTask creates a fully-specified task in the target project and commits it —
 // together with any auxiliary durable artifacts the request carries — as ONE
 // ChangeSet. It validates the title, priority, tags, state, parent placement,
-// and recurrence before mutating, so a rejected
+// before mutating, so a rejected
 // request never persists a partial task or a dangling config write.
 func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
-	ref, revision, err := s.buildAddTask(req)
+	built, err := s.buildAddTask(req)
 	if err != nil {
 		return TaskResult{}, err
 	}
-	planning, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(built.snap, built.before)
+		}
+	}()
+	ref := built.ref
+	planning, err := planningArtifactsForTargets(
+		[]PlanningReconcileTarget{addTaskPlanningTarget(ref, built.destination)},
+		s.defaultedPlanningArtifacts(req.PlanningArtifacts),
+	)
 	if err != nil {
 		return TaskResult{}, err
 	}
 	artifacts := append(append([]storage.ArtifactChange(nil), req.Artifacts...), planning...)
-	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	result, err := s.commitProjectWithArtifacts(ref, built.revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	if err != nil {
+		return TaskResult{}, err
+	}
+	committed = true
+	return result, nil
 }
 
 type normalizedAddTaskRequest struct {
-	title    string
-	priority int
-	tags     []string
-	state    models.WorkflowState
+	title       string
+	priority    int
+	tags        []string
+	state       models.WorkflowState
+	destination CaptureDestination
 }
 
 func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, error) {
@@ -112,39 +130,70 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 	}
 
 	priority := req.Priority
-	if priority == 0 {
-		priority = models.PriorityDefault
-	}
-	if err := models.ValidatePriority(priority, false); err != nil {
+	if err := models.ValidatePriority(priority, true); err != nil {
 		return normalizedAddTaskRequest{}, invalidInput("priority", err.Error())
 	}
 
-	state, err := normalizeCreationState(req.State)
-	if err != nil {
-		return normalizedAddTaskRequest{}, err
+	state := req.State
+	destination := req.Destination
+	if destination != "" {
+		if state != "" {
+			return normalizedAddTaskRequest{}, invalidInput("destination", "provide destination or state, not both")
+		}
+		effect, err := normalizeCaptureDestination(destination, req.ParentID != nil)
+		if err != nil {
+			return normalizedAddTaskRequest{}, err
+		}
+		destination = effect.destination
+		state = effect.state
+	} else {
+		var err error
+		state, err = normalizeCreationState(state)
+		if err != nil {
+			return normalizedAddTaskRequest{}, err
+		}
 	}
 
 	tags, err := normalizeTags(req.Tags)
 	if err != nil {
 		return normalizedAddTaskRequest{}, err
 	}
-	return normalizedAddTaskRequest{title: title, priority: priority, tags: tags, state: state}, nil
+	return normalizedAddTaskRequest{title: title, priority: priority, tags: tags, state: state, destination: destination}, nil
+}
+
+type addTaskBuild struct {
+	ref         TaskRef
+	revision    string
+	destination CaptureDestination
+	snap        Snapshot
+	before      Snapshot
 }
 
 // buildAddTask validates an AddTaskRequest against a fresh snapshot and appends
-// the fully-constructed task to its project WITHOUT committing, returning the
-// task reference and the revision the project was loaded at.
-func (s *Service) buildAddTask(req AddTaskRequest) (TaskRef, string, error) {
+// the fully-constructed task to its project WITHOUT committing. The returned
+// snapshots let callers restore every in-memory mutation if artifact creation or
+// the atomic commit fails.
+func (s *Service) buildAddTask(req AddTaskRequest) (addTaskBuild, error) {
 	normalized, err := normalizeAddTaskRequest(req)
 	if err != nil {
-		return TaskRef{}, "", err
+		return addTaskBuild{}, err
 	}
 
 	snap, err := s.repo.Snapshot()
 	if err != nil {
-		return TaskRef{}, "", err
+		return addTaskBuild{}, err
 	}
-	return s.buildNormalizedAddTask(snap, req, normalized)
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return addTaskBuild{}, fmt.Errorf("add task rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	ref, revision, err := s.buildNormalizedAddTask(snap, req, normalized)
+	if err != nil {
+		restoreSnapshotProjects(snap, before)
+		return addTaskBuild{}, err
+	}
+	return addTaskBuild{ref: ref, revision: revision, destination: normalized.destination, snap: snap, before: before}, nil
 }
 
 // buildNormalizedAddTask constructs a validated task inside a caller-owned
@@ -178,11 +227,6 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	task.Description = req.Description
 	for _, tag := range normalized.tags {
 		task.AddTag(tag)
-	}
-	if req.Recurrence != nil {
-		if err := task.SetRecurrence(req.Recurrence); err != nil {
-			return TaskRef{}, "", invalidInput("recurrence", err.Error())
-		}
 	}
 	if err := s.initializeCreatedTask(task, normalized.state); err != nil {
 		return TaskRef{}, "", err
@@ -224,10 +268,17 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 // tags; a blank-title subtask is skipped. It returns the parent result plus a result per created
 // subtask in creation order.
 func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, error) {
-	ref, revision, err := s.buildAddTask(req)
+	built, err := s.buildAddTask(req)
 	if err != nil {
 		return FormCreateResult{}, err
 	}
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(built.snap, built.before)
+		}
+	}()
+	ref := built.ref
 
 	childRefs := make([]TaskRef, 0, len(req.Subtasks))
 	for _, sub := range req.Subtasks {
@@ -252,19 +303,32 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		childRefs = append(childRefs, TaskRef{Task: child, Project: ref.Project})
 	}
 
-	planning, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	planning, err := planningArtifactsForTargets(
+		[]PlanningReconcileTarget{addTaskPlanningTarget(ref, built.destination)},
+		s.defaultedPlanningArtifacts(req.PlanningArtifacts),
+	)
 	if err != nil {
 		return FormCreateResult{}, err
 	}
 	artifacts := append(append([]storage.ArtifactChange(nil), req.Artifacts...), planning...)
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	result, err := s.commitProjectWithArtifacts(ref, built.revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 	if err != nil {
 		return FormCreateResult{}, err
 	}
+	committed = true
 
 	out := FormCreateResult{Task: result}
 	for _, cref := range childRefs {
 		out.Subtasks = append(out.Subtasks, newTaskResult(cref, result.Revision))
 	}
 	return out, nil
+}
+
+func addTaskPlanningTarget(ref TaskRef, destination CaptureDestination) PlanningReconcileTarget {
+	if destination != "" {
+		if effect, err := normalizeCaptureDestination(destination, ref.Task.ParentID != nil); err == nil {
+			return effect.planningTarget(ref.Task.ID, ref.Project.ID)
+		}
+	}
+	return PlanningReconcileTarget{TaskID: ref.Task.ID, ProjectID: ref.Project.ID, State: ref.Task.State()}
 }

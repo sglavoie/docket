@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -383,12 +382,9 @@ func TestMoveToProjectCarriesAttachmentOpsAndArtifact(t *testing.T) {
 
 func TestMoveToProjectAbortsOnCommitError(t *testing.T) {
 	task := typedTask("t1", 1, "", "task")
-	dependent := typedTask("dependent", 1, "", "dependent")
-	dependent.DependsOn = []string{"proj-a:t1", "proj-z:keep"}
 	projA := newProject("proj-a", "Alpha", task)
 	projB := newProject("proj-b", "Beta")
-	projC := newProject("proj-c", "Gamma", dependent)
-	repo := newFakeRepo(projA, projB, projC)
+	repo := newFakeRepo(projA, projB)
 	repo.commitErr = errors.New("commit boom")
 	svc := newTestService(repo)
 
@@ -406,49 +402,6 @@ func TestMoveToProjectAbortsOnCommitError(t *testing.T) {
 	}
 	if task.ShortID != 1 || task.ParentID != nil {
 		t.Fatalf("failed move left task mutated: shortID=%d parent=%v", task.ShortID, task.ParentID)
-	}
-	if !reflect.DeepEqual(dependent.DependsOn, []string{"proj-a:t1", "proj-z:keep"}) {
-		t.Fatalf("failed move did not restore cross-project dependency: %v", dependent.DependsOn)
-	}
-}
-
-func TestMoveToProjectClearsStaleQualifiedReferencesWorkspaceWide(t *testing.T) {
-	moved := typedTask("moved", 1, "", "moved")
-	sourceDependent := typedTask("source-dependent", 2, "", "source dependent")
-	sourceDependent.DependsOn = []string{"moved", "alpha:moved"}
-	destDependent := typedTask("dest-dependent", 1, "", "destination dependent")
-	destDependent.DependsOn = []string{"proj-a:moved"}
-	otherDependent := typedTask("other-dependent", 1, "", "other dependent")
-	otherDependent.DependsOn = []string{"alpha:moved"}
-
-	projA := newProject("proj-a", "Alpha", moved, sourceDependent)
-	projB := newProject("proj-b", "Beta", destDependent)
-	projC := newProject("proj-c", "Gamma", otherDependent)
-	repo := newFakeRepo(projA, projB, projC)
-	svc := newTestService(repo)
-
-	result, err := svc.MoveToProject("moved", "proj-b")
-	if err != nil {
-		t.Fatalf("MoveToProject: %v", err)
-	}
-	if len(sourceDependent.DependsOn) != 0 {
-		t.Fatalf("source dependencies = %v, want stale bare and qualified refs cleared", sourceDependent.DependsOn)
-	}
-	if len(destDependent.DependsOn) != 0 {
-		t.Fatalf("destination dependencies = %v, want stale source-qualified ref cleared", destDependent.DependsOn)
-	}
-	if len(otherDependent.DependsOn) != 0 {
-		t.Fatalf("other-project dependencies = %v, want cleared", otherDependent.DependsOn)
-	}
-	if result.CrossProjectRefsCleared != 3 {
-		t.Fatalf("CrossProjectRefsCleared = %d, want 3", result.CrossProjectRefsCleared)
-	}
-	wantTouched := []string{"proj-a", "proj-b", "proj-c"}
-	if !reflect.DeepEqual(result.TouchedProjectIDs, wantTouched) {
-		t.Fatalf("TouchedProjectIDs = %v, want %v", result.TouchedProjectIDs, wantTouched)
-	}
-	if len(repo.commits) != 1 || len(repo.commits[0]) != 3 {
-		t.Fatalf("commit shape = %d transactions / %d changesets, want 1 / 3", len(repo.commits), len(repo.commits[0]))
 	}
 }
 

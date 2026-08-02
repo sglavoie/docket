@@ -18,11 +18,10 @@ var formPriorityEntries = []struct {
 	key      string
 	label    string
 }{
-	{1, "1", "critical"},
-	{2, "2", "high"},
-	{3, "3", "normal"},
-	{4, "4", "low"},
-	{5, "5", "someday"},
+	{0, "0", "unset"},
+	{1, "1", "high"},
+	{2, "2", "medium"},
+	{3, "3", "low"},
 }
 
 type formPriorityPicker struct {
@@ -30,7 +29,7 @@ type formPriorityPicker struct {
 }
 
 func newFormPriorityPicker(current int) *formPriorityPicker {
-	cursor := 2 // default: normal
+	cursor := 0 // default: unset
 	for i, e := range formPriorityEntries {
 		if e.priority == current {
 			cursor = i
@@ -71,7 +70,7 @@ func (p *formPriorityPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.
 func (p *formPriorityPicker) render(width, current int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set Priority")
-	footerText := HelpStyle.Render("j/k · 1-5: pick · Enter: select · Esc: cancel")
+	footerText := HelpStyle.Render("j/k · 0-3: pick · Enter: select · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2

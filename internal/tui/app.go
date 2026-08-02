@@ -28,7 +28,6 @@ const (
 	ViewBulkTagSelector
 	ViewTaskComments
 	ViewProjectSelector
-	ViewRecurrenceEditor
 	ViewTextEditor
 	ViewTaskAttachments
 	ViewCrossProjectLinker
@@ -49,11 +48,11 @@ const (
 // sessionStats tracks task changes during a single TUI session for the
 // end-of-session summary.
 type sessionStats struct {
-	sessionStart    time.Time
-	tasksCompleted  int
-	tasksCreated    int
-	tasksInProgress int
-	tasksSnoozed    int
+	sessionStart   time.Time
+	tasksCompleted int
+	tasksCreated   int
+	tasksDoing     int
+	tasksSnoozed   int
 }
 
 // AppModel is the main TUI model.
@@ -225,11 +224,6 @@ type AppModel struct {
 		Operation app.TaskOperation
 		Original  string
 	}
-
-	// Pending recurrence editing suspends (rather than discards) the task action
-	// sheet so Esc can return to the same frozen target and query.
-	pendingTaskRecurrenceRequest *OperationExecutionRequest
-	suspendedTaskActionSheet     *ContextActionSheetModel
 
 	// Pending project archive/unarchive confirmation
 	pendingProjectArchive        *models.Project

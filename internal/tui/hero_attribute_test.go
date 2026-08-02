@@ -12,10 +12,6 @@ func TestPickHeroAttribute(t *testing.T) {
 	futureDue := time.Now().Add(48 * time.Hour)
 	today := time.Now()
 
-	// A dependency task that is not complete; used to make HasIncompleteDependencies true.
-	depPending := &models.Task{ID: "dep-1", WorkflowState: models.StateReady}
-	depDone := &models.Task{ID: "dep-2", WorkflowState: models.StateDone}
-
 	tests := []struct {
 		name    string
 		task    *models.Task
@@ -28,27 +24,15 @@ func TestPickHeroAttribute(t *testing.T) {
 			want: HeroNone,
 		},
 		{
-			name: "overdue + P1 + blocked + due-today → HeroOverdue (precedence top)",
+			name: "overdue + P1 + due-today → HeroOverdue (precedence top)",
 			task: &models.Task{
 				ID:            "t-overdue-p1-blocked",
-				WorkflowState: models.StateReady,
+				WorkflowState: models.StateBacklog,
 				Priority:      1,
 				DueDate:       &pastDue,
-				DependsOn:     []string{"dep-1"},
 			},
-			project: &models.Project{Tasks: []*models.Task{depPending}},
+			project: &models.Project{},
 			want:    HeroOverdue,
-		},
-		{
-			name: "blocked + P1 (no overdue) → HeroBlocked",
-			task: &models.Task{
-				ID:            "t-blocked-p1",
-				WorkflowState: models.StateReady,
-				Priority:      1,
-				DependsOn:     []string{"dep-1"},
-			},
-			project: &models.Project{Tasks: []*models.Task{depPending}},
-			want:    HeroBlocked,
 		},
 		{
 			name: "explicit StateWaiting + P1 → HeroBlocked",
@@ -72,42 +56,31 @@ func TestPickHeroAttribute(t *testing.T) {
 		},
 		{
 			name:    "due today + P1 → HeroDueToday (beats P1)",
-			task:    &models.Task{ID: "t-due-today-p1", WorkflowState: models.StateReady, Priority: 1, DueDate: &today},
+			task:    &models.Task{ID: "t-due-today-p1", WorkflowState: models.StateBacklog, Priority: 1, DueDate: &today},
 			project: &models.Project{},
 			want:    HeroDueToday,
 		},
 		{
 			name:    "due today + P3 → HeroDueToday",
-			task:    &models.Task{ID: "t-due-today", WorkflowState: models.StateReady, Priority: 3, DueDate: &today},
+			task:    &models.Task{ID: "t-due-today", WorkflowState: models.StateBacklog, Priority: 3, DueDate: &today},
 			project: &models.Project{},
 			want:    HeroDueToday,
 		},
 		{
 			name:    "P1 only → HeroP1",
-			task:    &models.Task{ID: "t-p1", WorkflowState: models.StateReady, Priority: 1, DueDate: &futureDue},
+			task:    &models.Task{ID: "t-p1", WorkflowState: models.StateBacklog, Priority: 1, DueDate: &futureDue},
 			project: &models.Project{},
 			want:    HeroP1,
 		},
 		{
 			name:    "todo P3 no due → HeroNone",
-			task:    &models.Task{ID: "t-mundane", WorkflowState: models.StateReady, Priority: 3},
+			task:    &models.Task{ID: "t-mundane", WorkflowState: models.StateBacklog, Priority: 3},
 			project: &models.Project{},
 			want:    HeroNone,
 		},
 		{
-			name: "deps all complete → not HeroBlocked",
-			task: &models.Task{
-				ID:            "t-deps-done",
-				WorkflowState: models.StateReady,
-				Priority:      2,
-				DependsOn:     []string{"dep-2"},
-			},
-			project: &models.Project{Tasks: []*models.Task{depDone}},
-			want:    HeroNone,
-		},
-		{
 			name:    "P1 without project still returns HeroP1",
-			task:    &models.Task{ID: "t-p1-noproj", WorkflowState: models.StateReady, Priority: 1},
+			task:    &models.Task{ID: "t-p1-noproj", WorkflowState: models.StateBacklog, Priority: 1},
 			project: nil,
 			want:    HeroP1,
 		},

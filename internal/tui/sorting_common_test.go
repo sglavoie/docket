@@ -38,8 +38,8 @@ func TestApplySortDirection_StrictWeakOrdering(t *testing.T) {
 // TestCompareTasks_DeterministicTieBreak verifies that two tasks identical
 // on the primary sort key are ordered deterministically by ID.
 func TestCompareTasks_DeterministicTieBreak(t *testing.T) {
-	a := &models.Task{ID: "a", Priority: 3, WorkflowState: models.StateReady}
-	b := &models.Task{ID: "b", Priority: 3, WorkflowState: models.StateReady}
+	a := &models.Task{ID: "a", Priority: 3, WorkflowState: models.StateBacklog}
+	b := &models.Task{ID: "b", Priority: 3, WorkflowState: models.StateBacklog}
 
 	if c := CompareTasks(a, b, SortByPriority); c >= 0 {
 		t.Errorf("expected CompareTasks(a,b) < 0 (tie broken by ID), got %d", c)
@@ -56,11 +56,11 @@ func TestCompareTasks_DeterministicTieBreak(t *testing.T) {
 // loop indefinitely depending on the implementation.
 func TestSortDescending_DoesNotPanicOnTies(t *testing.T) {
 	tasks := []*models.Task{
-		{ID: "a", Priority: 2, WorkflowState: models.StateReady},
-		{ID: "b", Priority: 2, WorkflowState: models.StateReady},
-		{ID: "c", Priority: 2, WorkflowState: models.StateReady},
-		{ID: "d", Priority: 2, WorkflowState: models.StateReady},
-		{ID: "e", Priority: 2, WorkflowState: models.StateReady},
+		{ID: "a", Priority: 2, WorkflowState: models.StateBacklog},
+		{ID: "b", Priority: 2, WorkflowState: models.StateBacklog},
+		{ID: "c", Priority: 2, WorkflowState: models.StateBacklog},
+		{ID: "d", Priority: 2, WorkflowState: models.StateBacklog},
+		{ID: "e", Priority: 2, WorkflowState: models.StateBacklog},
 	}
 
 	sort.Slice(tasks, func(i, j int) bool {

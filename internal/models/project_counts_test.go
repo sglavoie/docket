@@ -75,12 +75,12 @@ func TestProjectGetTasksByState(t *testing.T) {
 
 	project.Tasks = []*Task{task1, task2, task3}
 
-	readyTasks := project.GetTasksByState(StateReady)
+	readyTasks := project.GetTasksByState(StateBacklog)
 	if len(readyTasks) != 2 {
 		t.Errorf("expected 2 ready tasks, got %d", len(readyTasks))
 	}
 
-	inProgressTasks := project.GetTasksByState(StateInProgress)
+	inProgressTasks := project.GetTasksByState(StateDoing)
 	if len(inProgressTasks) != 1 {
 		t.Errorf("expected 1 in_progress task, got %d", len(inProgressTasks))
 	}

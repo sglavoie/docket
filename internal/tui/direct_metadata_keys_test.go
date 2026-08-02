@@ -49,9 +49,9 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	}{
 		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
 		{path: []string{"!", "1"}, want: operationTaskSetPriority, value: 1},
-		{path: []string{"!", "5"}, want: operationTaskSetPriority, value: 5},
+		{path: []string{"!", "3"}, want: operationTaskSetPriority, value: 3},
 		{path: []string{"s", "i"}, want: operationTaskSetState, value: models.StateInbox},
-		{path: []string{"s", "g"}, want: operationTaskSetState, value: models.StateInProgress},
+		{path: []string{"s", "g"}, want: operationTaskSetState, value: models.StateDoing},
 		{path: []string{"s", "w"}, want: operationTaskSetState, value: models.StateWaiting},
 		{path: []string{"s", "p"}, want: operationTaskSetState, value: models.StatePaused},
 		{path: []string{"s", "m"}, want: operationTaskSetState, value: models.StateSomeday},
@@ -96,7 +96,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		path []string
 		want OperationID
 	}{
-		{path: []string{"s", "r"}, want: operationCoreBacklog},
+		{path: []string{"s", "b"}, want: operationCoreBacklog},
 		{path: []string{"s", "n"}, want: operationCoreNext},
 		{path: []string{"s", "t"}, want: operationCoreToday},
 	} {
@@ -148,7 +148,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 	newApp := func(t *testing.T) (*AppModel, *models.Task) {
 		t.Helper()
 		app := newUITestApp()
-		task := &models.Task{ID: "task", ShortID: 1, Title: "Task", WorkflowState: models.StateReady}
+		task := &models.Task{ID: "task", ShortID: 1, Title: "Task", WorkflowState: models.StateBacklog}
 		project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 		project.BuildTaskTree()
 		setTestAppProjects(app, project)
@@ -164,7 +164,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 			t.Fatalf("! = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
 		row := app.pendingChordHintRow()
-		for _, want := range []string{"0 clear", "1 critical", "5 lowest"} {
+		for _, want := range []string{"0 unset", "1 high", "3 low"} {
 			if !strings.Contains(row, want) {
 				t.Errorf("which-key row %q omits %q", row, want)
 			}
@@ -192,15 +192,15 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		row := app.pendingChordHintRow()
 		for _, want := range []string{
 			"i inbox",
-			"r ready / backlog",
+			"b backlog",
 			"n next",
-			"g in progress",
+			"t today",
+			"g doing",
 			"w waiting",
 			"p paused",
 			"m someday",
 			"d done",
 			"c canceled",
-			"t today",
 		} {
 			if !strings.Contains(row, want) {
 				t.Errorf("which-key row %q omits %q", row, want)

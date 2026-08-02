@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -120,7 +119,7 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	return m, nil
 }
 
-// cycleWorkMode advances the active mode by delta within the exact five-item
+// cycleWorkMode advances the active mode by delta within the exact six-item
 // cycle.
 func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 	current := m.activeOutlinerMode()
@@ -151,7 +150,7 @@ func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 
 func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
 	switch mode {
-	case ModeAll, ModeInbox, ModeNext, ModeBacklog:
+	case ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog:
 		return true
 	default:
 		return false
@@ -172,7 +171,7 @@ func (m *OutlinerModel) orderingUnavailableStatus() {
 	))
 }
 
-// workModeScopeProjects returns the projects the five modes and Today section
+// workModeScopeProjects returns the projects the six modes range over: the
 // range over: the single project when scoped, otherwise the loaded projects
 // admitted by the active Context.
 func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
@@ -184,7 +183,7 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 
 func (m *OutlinerModel) workModeFilterPredicateWithResolverAt(
 	proj *models.Project,
-	resolver *app.WorkspaceResolver,
+	resolver *workspaceFilterResolver,
 	now time.Time,
 ) func(*models.Task) bool {
 	pinnedTag := m.activePinnedTagFilter()

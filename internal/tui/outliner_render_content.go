@@ -324,10 +324,13 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return "No projects in this scope. Press c to choose another scope."
 	}
 	if m.primaryMode == ModeNext {
-		return "Next is empty — press n on a task to add it or Tab for Backlog."
+		return "Next is empty — press sn on a task to add it or Tab for Backlog."
+	}
+	if m.primaryMode == ModeToday {
+		return "Today is empty — press st on a task to add it or Tab for Next."
 	}
 	if m.primaryMode == ModeBacklog {
-		return "Backlog is empty — no Ready tasks remain outside Today. Tab cycles modes."
+		return "Backlog is empty — no Backlog tasks remain outside Today. Tab cycles modes."
 	}
 	if m.primaryMode == ModeInbox {
 		return "Inbox is empty — press a to capture or Tab to continue."

@@ -32,7 +32,7 @@ func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.WorkflowState = models.StateReady
+	task.WorkflowState = models.StateBacklog
 	project, err := models.NewProject(name+"-project", name, filepath.Join(dataDir, "projects", models.Slugify(name)))
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)

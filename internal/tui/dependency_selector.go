@@ -40,12 +40,8 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 		ShowCounts:     false,
 	})
 
-	// Track original dependencies and pre-select them
+	// The backend relation has been retired; session 18 removes this dormant view.
 	originalDepsOn := make(map[string]bool)
-	for _, depID := range task.DependsOn {
-		originalDepsOn[depID] = true
-		picker.PreSelectByID(depID)
-	}
 
 	return &DependencySelectorModel{
 		ListSurfaceAdapter: picker,
@@ -57,37 +53,7 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 
 // buildDependencyCandidates builds a list of tasks that can be dependencies.
 func buildDependencyCandidates(task *models.Task, project *models.Project) []TaskPickerItem {
-	// Build set of descendants to exclude
-	descendants := make(map[string]bool)
-	var markDescendants func(t *models.Task)
-	markDescendants = func(t *models.Task) {
-		descendants[t.ID] = true
-		for _, child := range t.Children {
-			markDescendants(child)
-		}
-	}
-	markDescendants(task)
-
-	var candidates []TaskPickerItem
-	for _, t := range project.Tasks {
-		if t.ID == task.ID {
-			continue
-		}
-		if descendants[t.ID] {
-			continue
-		}
-		// Skip tasks that would create circular dependencies
-		if project.HasCircularDependency(task.ID, t.ID) {
-			continue
-		}
-		// Skip completed tasks unless they're already a dependency
-		if t.IsComplete() && !task.HasDependency(t.ID) {
-			continue
-		}
-		candidates = append(candidates, TaskPickerItem{Task: t})
-	}
-
-	return candidates
+	return nil
 }
 
 // Init initializes the model.

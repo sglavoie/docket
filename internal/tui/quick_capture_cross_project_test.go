@@ -14,9 +14,10 @@ func TestCrossProjectCapture(t *testing.T) {
 		Name: "Current Project",
 	}
 	targetProject := &models.Project{
-		ID:   "other-project",
-		Slug: "other-project",
-		Name: "Other Project",
+		ID:    "other-project",
+		Slug:  "other-project",
+		Name:  "Other Project",
+		Tasks: []*models.Task{{ID: "other-parent", ShortID: 1, Title: "Other Parent"}},
 	}
 	allProjects := []*models.Project{currentProject, targetProject}
 
@@ -26,6 +27,7 @@ func TestCrossProjectCapture(t *testing.T) {
 		wantTitle      string
 		wantTargetID   *string
 		wantTargetName string
+		wantParentID   *string
 		wantErr        bool
 		errContains    string
 	}{
@@ -49,6 +51,14 @@ func TestCrossProjectCapture(t *testing.T) {
 			wantTitle:      "Task in other project",
 			wantTargetID:   strPtr("other-project"),
 			wantTargetName: "Other Project",
+		},
+		{
+			name:           "project resolves before earlier parent token",
+			input:          "Routed child >1 %other-project",
+			wantTitle:      "Routed child",
+			wantTargetID:   strPtr("other-project"),
+			wantTargetName: "Other Project",
+			wantParentID:   strPtr("other-parent"),
 		},
 		{
 			name:        "nonexistent project",
@@ -96,6 +106,9 @@ func TestCrossProjectCapture(t *testing.T) {
 
 			if result.targetProjectName != tt.wantTargetName {
 				t.Errorf("targetProjectName = %q, want %q", result.targetProjectName, tt.wantTargetName)
+			}
+			if tt.wantParentID != nil && (result.parentID == nil || *result.parentID != *tt.wantParentID) {
+				t.Errorf("parentID = %v, want %q", result.parentID, *tt.wantParentID)
 			}
 		})
 	}

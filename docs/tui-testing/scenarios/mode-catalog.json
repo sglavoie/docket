@@ -1,11 +1,13 @@
 {
-  "name": "five-mode-cycle",
+  "name": "six-mode-cycle",
   "fixture": "rich",
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "◆ All" },
     { "type": "key", "label": "cycle to Inbox", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "◆ Inbox" },
+    { "type": "key", "label": "cycle to Today", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "◆ Today" },
     { "type": "key", "label": "cycle to Next", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "◆ Next" },
     { "type": "key", "label": "cycle to Backlog", "key": "tab" },

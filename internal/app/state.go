@@ -26,12 +26,9 @@ type StateRequest struct {
 
 // Transition moves a task to a target workflow state, enforcing the canonical
 // transition rules (nonterminal states are freely interchangeable and may
-// complete or cancel; terminal states may only reopen to inbox). Completing a
-// task that still has unresolved dependencies is refused with
-// ErrDependencyBlocked; the check resolves cross-project dependencies against the
-// whole workspace, so a task blocked only by an already-completed task in another
-// project can complete. On success one ChangeSet is committed and recurring
-// instances are generated for a freshly completed recurring task.
+// complete or cancel; terminal states may only reopen to inbox). On success one
+// ChangeSet is committed. Completion is a
+// terminal transition of the selected task and never creates another task.
 func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	target := req.Target
 	if !target.IsValid() {
@@ -51,10 +48,10 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 			restoreSnapshotProjects(snap, before)
 		}
 	}()
-	if transitionErr := s.applyLifecycleTransition(ref, NewWorkspaceResolver(snap), target); transitionErr != nil {
+	if transitionErr := s.applyLifecycleTransition(ref, target); transitionErr != nil {
 		return TaskResult{}, transitionErr
 	}
-	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts), true)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -70,14 +67,15 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 // transition implies through the caller-supplied builder, returning the checked
 // artifacts to fold into the transition's changeset. A nil builder or an empty
 // build yields no artifacts, leaving the commit a bare task write.
-func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {
+func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtifactBuilder, stateChanged bool) ([]storage.ArtifactChange, error) {
 	if builder == nil {
 		return nil, nil
 	}
 	targets := []PlanningReconcileTarget{{
-		TaskID:    ref.Task.ID,
-		ProjectID: ref.Project.ID,
-		State:     ref.Task.State(),
+		TaskID:       ref.Task.ID,
+		ProjectID:    ref.Project.ID,
+		State:        ref.Task.State(),
+		StateChanged: stateChanged,
 	}}
 	artifacts, err := builder(PlanningReconcileRequest{Targets: targets})
 	if err != nil {
@@ -92,8 +90,7 @@ func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtif
 }
 
 // Complete is the completion convenience over Transition: it moves a task to the
-// terminal done state. It is refused when the task still has unresolved
-// dependencies or is already terminal.
+// terminal done state. It is refused when the task is already terminal.
 func (s *Service) Complete(taskID string) (TaskResult, error) {
 	return s.Transition(StateRequest{TaskID: taskID, Target: models.StateDone})
 }
@@ -105,21 +102,18 @@ func (s *Service) CompleteByLocator(locator TaskLocator) (TaskResult, error) {
 
 // validateLifecycleTransition is the one application-layer lifecycle policy.
 // Every single-task, bulk, edit, action-plan, and planning entry
-// point uses it before mutating state, so forbidden graph edges, dependency
-// blocks, and direct-child blocks return the same typed errors everywhere.
-func validateLifecycleTransition(ref TaskRef, resolver *WorkspaceResolver, target models.WorkflowState) error {
-	return validateLifecycleTransitionFrom(ref.Task.State(), ref, resolver, target)
+// point uses it before mutating state, so forbidden graph edges and direct-child
+// blocks return the same typed errors everywhere.
+func validateLifecycleTransition(ref TaskRef, target models.WorkflowState) error {
+	return validateLifecycleTransitionFrom(ref.Task.State(), ref, target)
 }
 
 // validateLifecycleTransitionFrom validates a transition whose source state was
 // captured before the task was mutated. Project-scoped UI commits use this form
 // because they submit an already-edited project together with its immutable base.
-func validateLifecycleTransitionFrom(from models.WorkflowState, ref TaskRef, resolver *WorkspaceResolver, target models.WorkflowState) error {
+func validateLifecycleTransitionFrom(from models.WorkflowState, ref TaskRef, target models.WorkflowState) error {
 	if reason := models.CanTransitionState(from, target); reason != "" {
 		return &TransitionError{From: string(from), To: string(target), Reason: reason}
-	}
-	if target == models.StateDone && resolver != nil && resolver.HasIncompleteDependencies(ref.Task, ref.Project) {
-		return fmt.Errorf("%w: task #%d", ErrDependencyBlocked, ref.Task.ShortID)
 	}
 	return childrenCompletionGuard(ref.Task, ref.Project, target)
 }
@@ -127,8 +121,8 @@ func validateLifecycleTransitionFrom(from models.WorkflowState, ref TaskRef, res
 // applyLifecycleTransition validates and applies one transition with the service
 // clock. Model state, terminal/reopen timestamps, snooze cleanup, and UpdatedAt
 // therefore change through the same primitive for every application entry point.
-func (s *Service) applyLifecycleTransition(ref TaskRef, resolver *WorkspaceResolver, target models.WorkflowState) error {
-	if err := validateLifecycleTransition(ref, resolver, target); err != nil {
+func (s *Service) applyLifecycleTransition(ref TaskRef, target models.WorkflowState) error {
+	if err := validateLifecycleTransition(ref, target); err != nil {
 		return err
 	}
 	if err := applyState(ref.Task, target, s.clock.Now()); err != nil {

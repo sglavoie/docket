@@ -53,12 +53,7 @@ func (m *TaskFormModel) helpPaneHeader() string {
 			return names[m.focusIndex]
 		}
 	case formTabSchedule:
-		switch m.focusIndex {
-		case 0:
-			return "Due Date"
-		case 1:
-			return "Recurrence"
-		}
+		return "Due Date"
 	case formTabChildren:
 		return "Children"
 	}
@@ -90,7 +85,7 @@ func (m *TaskFormModel) basicsHelpEntries() []helpEntry {
 		}
 	case 2: // Priority
 		return []helpEntry{
-			{key: "1-5", desc: "set priority"},
+			{key: "0-3", desc: "set priority"},
 			{key: "j/k ↑/↓", desc: "cycle"},
 			{key: "Enter", desc: "picker"},
 		}
@@ -121,10 +116,6 @@ func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
 			{key: "Ctrl+D", desc: "presets"},
 			{key: "Enter", desc: "confirm"},
 		}
-	case 1: // Recurrence
-		return []helpEntry{
-			{key: "Enter", desc: "edit pattern"},
-		}
 	}
 	return nil
 }
@@ -136,7 +127,6 @@ func (m *TaskFormModel) childrenHelpEntries() []helpEntry {
 		{key: "Space", desc: "toggle done"},
 		{key: "Ctrl+D", desc: "delete"},
 		{key: "Ctrl+J/K", desc: "reorder"},
-		{key: "Ctrl+O", desc: "toggle optional"},
 		{key: "Ctrl+S", desc: "save task"},
 	}
 	if m.mode == FormModeCreate {

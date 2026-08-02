@@ -8,7 +8,7 @@ services and revision-checked storage boundaries.
 
 The repository is divided by responsibility:
 
-- `internal/models` owns task, project, note, recurrence, hierarchy, and
+- `internal/models` owns task, project, note, hierarchy, and
   workflow invariants.
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
@@ -35,10 +35,10 @@ Schema 5 stores generic tasks with these supported fields:
 | --- | --- |
 | Identity | stable ID and project-local ShortID |
 | Content | title and description |
-| Workflow | Inbox, Ready, Next, In Progress, Waiting, Paused, Someday, Done, Canceled |
+| Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
 | Planning metadata | priority, due date, dated snooze, pin, pin timestamp |
 | Organization | project-local parent, tags, cross-project dependencies |
-| Rich records | checklist, comments, decisions, attachments, recurrence |
+| Rich records | checklist, comments, decisions, attachments |
 | Lifecycle | created, updated, completed timestamps |
 
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
@@ -46,13 +46,13 @@ records, not a catalog. Due and snooze values are calendar dates.
 
 ### Workflow and planning
 
-Next membership is exactly the `next` workflow state. `planning.json` retains a
-project-qualified ordering list for Next but cannot confer membership on a
-non-Next task.
+Next membership is an explicit project-qualified ordered collection in
+`planning.json`; it is not a workflow state.
 
 Today is a separate project-qualified collection. Today and Next are mutually
-exclusive. Adding an Inbox or Next task to Today first moves it to Ready.
-Entering Next removes Today. Done and Canceled remove both planning references.
+exclusive. Adding a nonterminal task to Today normalizes it to Backlog unless it
+is Doing. Adding a nonterminal task to Next normalizes it to Backlog. Done and
+Canceled remove both planning references.
 The planning reconciler deduplicates entries and removes stale or terminal
 references inside the same transaction as the task change.
 
@@ -76,17 +76,7 @@ ordered. `J`/`K` therefore dispatches by row context: sibling reorder for a
 hierarchical row, planning reorder for Today or Next, and no mutation for
 Pinned or Due.
 
-### Recurrence and rich records
-
-Recurrence is a positive integer interval with unit `day`, `week`, or `month`.
-Completion advances repeatedly from the prior due date until the next due date
-falls after completion. Without a prior due date, it uses completion plus the
-interval. End-of-month cadence remains stable.
-
-The generated task is Inbox in the same project and parent. It copies title,
-description, priority, tags, unchecked checklist items, and recurrence. It does
-not copy children, dependencies, comments, decisions, attachments, pin,
-planning placement, or snooze.
+### Rich records
 
 Comments store timestamped text. Decisions store timestamped text and rationale.
 Checklist items store text and completion and may be reordered. Attachments are
@@ -101,11 +91,11 @@ not restored. Typed navigation permits that one root, at most one subordinate
 tool, and typed overlays. Covered Outliner state receives no key or reload
 dispatch.
 
-The five modes are All, Inbox, Next, Backlog, and Due.
+The six modes are All, Inbox, Today, Next, Backlog, and Due.
 `Tab`/`Shift+Tab` cycle only that ordered catalog. A project focus is a scope
 frame in the same Outliner, never a second root.
 
-All mode projects open, unsnoozed work as Pinned, Today, In Progress, Inbox,
+All mode projects open, unsnoozed work as Pinned, Today, Doing, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 grouped by project: groups sort by their newest pin and tasks within each group
 remain newest-first. It retains parent breadcrumbs and an identity suppression
@@ -121,17 +111,14 @@ confirmation, and invokes the bound handler.
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
 handled-key metadata, chord hints, footer hints, `?` help, and harness discovery
 all project from that strategy. The task operation manifest separately orders
-the exact nine `Space` actions:
+the exact six `Space` actions:
 
-1. Recurrence
-2. Move Project
-3. Set Parent
-4. Dependencies
-5. Checklist
-6. Comments
-7. Decisions
-8. Attachments
-9. Delete
+1. Move Project
+2. Set Parent
+3. Checklist
+4. Comments
+5. Attachments
+6. Delete
 
 Startup validation rejects an operation that appears in both the direct grammar
 and the task menu. Destructive descriptors require confirmation before any
@@ -148,13 +135,13 @@ serialized.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
 operational scan signals directly: workflow/blocking, conditional high
-priority, due, snooze, dependency counts, recurrence, and checklist progress.
+priority, due, snooze, dependency counts, and checklist progress.
 Outliner rows omit short task IDs.
 
 `Enter` toggles a session-only, project-qualified Peek below the cursor task.
 Peek follows cursor, mode, and scope navigation and is capped at five additive
 lines: up to two description lines plus tags, compact checklist items, named
-dependencies, and recurrence detail. `Esc` dismisses Peek before other
+dependencies. `Esc` dismisses Peek before other
 Outliner navigation. Entering visual selection disables Peek.
 
 ### Selection and subordinate tools
@@ -225,7 +212,7 @@ Portable configuration has only two synced domains:
   automatic color slots, and the protected Inbox ID.
 - `planning.json`: project-qualified Today and Next ordering.
 
-Machine state has only custom contexts and the dark/light theme:
+Machine state contains only the dark/light theme selection:
 
 ```text
 ~/.tt/runtime/<workspace-id>/machine.json

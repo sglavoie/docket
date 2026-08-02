@@ -9,9 +9,112 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// CaptureDestination is the unified creation destination accepted by every
+// capture adapter. Today and Next are planning memberships; the remaining
+// values are canonical lifecycle states.
+type CaptureDestination string
+
+const (
+	CaptureDestinationInbox    CaptureDestination = "inbox"
+	CaptureDestinationBacklog  CaptureDestination = "backlog"
+	CaptureDestinationToday    CaptureDestination = "today"
+	CaptureDestinationNext     CaptureDestination = "next"
+	CaptureDestinationDoing    CaptureDestination = "doing"
+	CaptureDestinationWaiting  CaptureDestination = "waiting"
+	CaptureDestinationPaused   CaptureDestination = "paused"
+	CaptureDestinationSomeday  CaptureDestination = "someday"
+	CaptureDestinationDone     CaptureDestination = "done"
+	CaptureDestinationCanceled CaptureDestination = "canceled"
+)
+
+var captureDestinations = []CaptureDestination{
+	CaptureDestinationInbox,
+	CaptureDestinationBacklog,
+	CaptureDestinationToday,
+	CaptureDestinationNext,
+	CaptureDestinationDoing,
+	CaptureDestinationWaiting,
+	CaptureDestinationPaused,
+	CaptureDestinationSomeday,
+	CaptureDestinationDone,
+	CaptureDestinationCanceled,
+}
+
+// AllCaptureDestinations returns the canonical destination vocabulary in UI
+// order.
+func AllCaptureDestinations() []CaptureDestination {
+	return append([]CaptureDestination(nil), captureDestinations...)
+}
+
+// ParseCaptureDestination resolves one exact case-insensitive destination.
+func ParseCaptureDestination(raw string) (CaptureDestination, bool) {
+	destination := CaptureDestination(strings.ToLower(strings.TrimSpace(raw)))
+	for _, candidate := range captureDestinations {
+		if destination == candidate {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
+// InvalidCaptureDestinationError gives capture adapters one actionable error
+// vocabulary, including explicit replacements for retired state names users
+// are most likely to enter.
+func InvalidCaptureDestinationError(raw string) error {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	switch value {
+	case "ready":
+		return fmt.Errorf("destination $ready was removed (use $backlog)")
+	case "in_progress":
+		return fmt.Errorf("destination $in_progress was removed (use $doing)")
+	case "todo":
+		return fmt.Errorf("destination $todo was removed (use $inbox or $backlog)")
+	case "active":
+		return fmt.Errorf("destination $active was removed (use $backlog)")
+	case "start", "started", "progress":
+		return fmt.Errorf("destination $%s was removed (use $doing)", value)
+	case "blocked":
+		return fmt.Errorf("destination $blocked was removed (use $waiting)")
+	case "standby", "hold":
+		return fmt.Errorf("destination $%s was removed (use $paused)", value)
+	case "review":
+		return fmt.Errorf("destination $review was removed (use $backlog)")
+	case "maybe":
+		return fmt.Errorf("destination $maybe was removed (use $someday)")
+	case "complete", "completed":
+		return fmt.Errorf("destination $%s was removed (use $done)", value)
+	case "cancel", "cancelled":
+		return fmt.Errorf("destination $%s was removed (use $canceled)", value)
+	default:
+		values := make([]string, len(captureDestinations))
+		for i, destination := range captureDestinations {
+			values[i] = "$" + string(destination)
+		}
+		return fmt.Errorf("invalid destination: $%s (use %s)", raw, strings.Join(values, ", "))
+	}
+}
+
+// WorkflowState returns the lifecycle state created for the destination. Today
+// and Next both create Backlog tasks and add their explicit planning directive.
+func (d CaptureDestination) WorkflowState() models.WorkflowState {
+	switch d {
+	case CaptureDestinationToday, CaptureDestinationNext:
+		return models.StateBacklog
+	default:
+		state, _ := models.ParseWorkflowState(string(d))
+		return state
+	}
+}
+
+// IsPlanning reports whether creation must also persist an ordered planning
+// membership.
+func (d CaptureDestination) IsPlanning() bool {
+	return d == CaptureDestinationToday || d == CaptureDestinationNext
+}
+
 // CaptureRequest describes a new task to create in a project. Only ProjectID and
 // Title are required; every other field is optional and defaults to the domain
-// default (medium priority, Inbox/child Ready state, no due date).
+// default (unset priority, root Inbox/child Backlog destination, no due date).
 type CaptureRequest struct {
 	// SourceLine is the one-based composer line that produced this request.
 	// Zero means the request did not originate from a multiline composer.
@@ -20,7 +123,7 @@ type CaptureRequest struct {
 	ProjectID string
 	// Title is the task title. Required; validated with models.ValidateTaskTitle.
 	Title string
-	// Priority is 1..5; zero (or unset) defaults to the medium priority.
+	// Priority is 0..3, where zero is the durable Unset value.
 	Priority int
 	// Tags are normalized and validated; a malformed tag aborts the capture.
 	Tags []string
@@ -34,19 +137,12 @@ type CaptureRequest struct {
 	// ParentID, when non-nil, nests the new task under an existing task in the
 	// same project. The parent must exist and leave the child within the nesting cap.
 	ParentID *string
-	// State is the task's initial canonical workflow state. Empty defaults to
-	// Ready when ParentID is set and Inbox otherwise.
-	State models.WorkflowState
-	// Recurrence, when non-nil, is the parsed recurrence pattern applied via
-	// task.SetRecurrence.
-	Recurrence *models.RecurrencePattern
+	// Destination is the typed lifecycle/planning destination. Empty defaults to
+	// Backlog when ParentID is set and Inbox otherwise.
+	Destination CaptureDestination
 	// Prepend inserts the new task at the front of the project's task slice so it
 	// is prominently visible (Quick/Bulk Capture), rather than appended at the end.
 	Prepend bool
-	// PlanningArtifacts, when set, builds a checked planning-domain artifact for
-	// the freshly created task and commits it in the same ChangeSet. Planner uses
-	// this to make Today/Next creation and horizon membership one undoable write.
-	PlanningArtifacts PlanningArtifactBuilder
 }
 
 // Capture creates a new task in the target project and commits it as one
@@ -62,19 +158,42 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 		return TaskResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, req.ProjectID)
 	}
 	revision := snap.Revision(project.ID)
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("capture rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
 
-	task, err := s.buildCapturedTask(project, req)
+	prepared, err := s.prepareCapturedTask(project, req)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	task, err := s.buildPreparedCapturedTask(project, prepared)
 	if err != nil {
 		return TaskResult{}, err
 	}
 	insertCapturedTask(project, task, req.Prepend)
 
 	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
-	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	artifacts, err := planningArtifactsForTargets(
+		[]PlanningReconcileTarget{prepared.destination.planningTarget(task.ID, project.ID)},
+		s.defaultedPlanningArtifacts(nil),
+	)
 	if err != nil {
 		return TaskResult{}, err
 	}
-	return s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	if err != nil {
+		return TaskResult{}, err
+	}
+	committed = true
+	return result, nil
 }
 
 // CaptureMany creates every requested task across one or more projects and
@@ -99,7 +218,6 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	items := make([]batchItem, len(reqs))
 	projectOrder := make([]*models.Project, 0)
 	seenProjects := make(map[string]bool)
-	var planningBuilder PlanningArtifactBuilder
 	for i, req := range reqs {
 		project := snap.ProjectByID(req.ProjectID)
 		if project == nil {
@@ -113,9 +231,6 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		if !seenProjects[project.ID] {
 			seenProjects[project.ID] = true
 			projectOrder = append(projectOrder, project)
-		}
-		if planningBuilder == nil && req.PlanningArtifacts != nil {
-			planningBuilder = req.PlanningArtifacts
 		}
 	}
 
@@ -153,7 +268,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		}
 	}
 
-	planningBuilder = s.defaultedPlanningArtifacts(planningBuilder)
+	planningBuilder := s.defaultedPlanningArtifacts(nil)
 
 	ctxTitle := fmt.Sprintf("%d tasks across %d projects", len(items), len(projectOrder))
 	if len(items) == 1 {
@@ -161,7 +276,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	}
 	targets := make([]PlanningReconcileTarget, len(items))
 	for i, item := range items {
-		targets[i] = PlanningReconcileTarget{TaskID: item.task.ID, ProjectID: item.project.ID, State: item.task.State()}
+		targets[i] = item.prepared.destination.planningTarget(item.task.ID, item.project.ID)
 	}
 	artifacts, err := planningArtifactsForTargets(targets, planningBuilder)
 	if err != nil {
@@ -209,7 +324,15 @@ func captureRequestError(req CaptureRequest, index int, err error) error {
 // capture batch. Calling the builder once is important: every created task must
 // be added to Today/Next in the same planning snapshot and the same ChangeSet.
 func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {
-	if builder == nil || len(targets) == 0 {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	if builder == nil {
+		for _, target := range targets {
+			if target.Today == PlanningTodayAdd || target.Next == PlanningNextAdd {
+				return nil, invalidInput("destination", "planning persistence is unavailable")
+			}
+		}
 		return nil, nil
 	}
 	artifacts, err := builder(PlanningReconcileRequest{Targets: targets})
@@ -227,12 +350,12 @@ func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder Plan
 // preparedCapture contains every normalized value needed to construct a task.
 // Preparing a request never consumes an ID or mutates the target project.
 type preparedCapture struct {
-	req        CaptureRequest
-	title      string
-	priority   int
-	tags       []string
-	removeTags []string
-	state      models.WorkflowState
+	req         CaptureRequest
+	title       string
+	priority    int
+	tags        []string
+	removeTags  []string
+	destination captureDestinationEffect
 }
 
 func (s *Service) prepareCapturedTask(project *models.Project, req CaptureRequest) (preparedCapture, error) {
@@ -242,10 +365,7 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 	}
 
 	priority := req.Priority
-	if priority == 0 {
-		priority = models.PriorityDefault
-	}
-	if err := models.ValidatePriority(priority, false); err != nil {
+	if err := models.ValidatePriority(priority, true); err != nil {
 		return preparedCapture{}, invalidInput("priority", err.Error())
 	}
 
@@ -264,28 +384,18 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		}
 	}
 
-	state := req.State
-	if state == "" && req.ParentID != nil {
-		state = models.StateReady
-	}
-	state, err = normalizeCreationState(state)
+	destination, err := normalizeCaptureDestination(req.Destination, req.ParentID != nil)
 	if err != nil {
 		return preparedCapture{}, err
 	}
 
-	if req.Recurrence != nil {
-		if err := req.Recurrence.Validate(); err != nil {
-			return preparedCapture{}, invalidInput("recurrence", err.Error())
-		}
-	}
-
 	return preparedCapture{
-		req:        req,
-		title:      title,
-		priority:   priority,
-		tags:       normalizedTags,
-		removeTags: removeTags,
-		state:      state,
+		req:         req,
+		title:       title,
+		priority:    priority,
+		tags:        normalizedTags,
+		removeTags:  removeTags,
+		destination: destination,
 	}, nil
 }
 
@@ -303,11 +413,6 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	for _, tag := range prepared.removeTags {
 		task.RemoveTag(tag)
 	}
-	if req.Recurrence != nil {
-		if err := task.SetRecurrence(req.Recurrence); err != nil {
-			return nil, invalidInput("recurrence", err.Error())
-		}
-	}
 	if req.Due != nil {
 		task.DueDate = cloneCalendarDatePtr(req.Due)
 	}
@@ -315,18 +420,48 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 		parentID := *req.ParentID
 		task.ParentID = &parentID
 	}
-	if err := s.initializeCreatedTask(task, prepared.state); err != nil {
+	if err := s.initializeCreatedTask(task, prepared.destination.state); err != nil {
 		return nil, err
 	}
 	return task, nil
 }
 
-func (s *Service) buildCapturedTask(project *models.Project, req CaptureRequest) (*models.Task, error) {
-	prepared, err := s.prepareCapturedTask(project, req)
-	if err != nil {
-		return nil, err
+type captureDestinationEffect struct {
+	destination CaptureDestination
+	state       models.WorkflowState
+	today       PlanningTodayDirective
+	next        PlanningNextDirective
+}
+
+func normalizeCaptureDestination(destination CaptureDestination, child bool) (captureDestinationEffect, error) {
+	if destination == "" {
+		if child {
+			destination = CaptureDestinationBacklog
+		} else {
+			destination = CaptureDestinationInbox
+		}
 	}
-	return s.buildPreparedCapturedTask(project, prepared)
+	normalized, ok := ParseCaptureDestination(string(destination))
+	if !ok {
+		return captureDestinationEffect{}, invalidInput("destination", InvalidCaptureDestinationError(string(destination)).Error())
+	}
+	effect := captureDestinationEffect{destination: normalized, state: normalized.WorkflowState()}
+	switch normalized {
+	case CaptureDestinationToday:
+		effect.today = PlanningTodayAdd
+		effect.next = PlanningNextRemove
+	case CaptureDestinationNext:
+		effect.today = PlanningTodayRemove
+		effect.next = PlanningNextAdd
+	}
+	return effect, nil
+}
+
+func (e captureDestinationEffect) planningTarget(taskID, projectID string) PlanningReconcileTarget {
+	return PlanningReconcileTarget{
+		TaskID: taskID, ProjectID: projectID, State: e.state,
+		Today: e.today, Next: e.next,
+	}
 }
 
 // insertCapturedTask positions a freshly built task in its project: prepended for
@@ -351,9 +486,7 @@ func normalizeTags(tags []string) ([]string, error) {
 	return out, nil
 }
 
-// normalizeTagList validates and canonicalizes a tag operation list without
-// treating multiple marker names as a conflict. Removal lists may legitimately
-// clear different markers from different tasks in one bulk operation.
+// normalizeTagList validates and de-duplicates a tag operation list.
 func normalizeTagList(tags []string) ([]string, error) {
 	out := make([]string, 0, len(tags))
 	seen := make(map[string]bool, len(tags))

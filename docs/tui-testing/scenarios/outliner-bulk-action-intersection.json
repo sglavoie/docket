@@ -4,8 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "move the cursor onto an In Progress task", "key": "j" },
-    { "type": "key", "label": "select the In Progress task and enter multi-select", "key": "v" },
+    { "type": "key", "label": "move the cursor onto an Doing task", "key": "j" },
+    { "type": "key", "label": "select the Doing task and enter multi-select", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move to an Inbox task in the same project", "key": "j" },

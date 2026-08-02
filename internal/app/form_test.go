@@ -22,7 +22,7 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 		Title:     "Parent Epic",
 		Priority:  2,
 		Tags:      []string{"backend"},
-		State:     models.StateNext,
+		State:     models.StateBacklog,
 		Subtasks: []app.AddSubtaskRequest{
 			{Title: "child one"},
 			{Title: "  "},
@@ -57,8 +57,8 @@ func TestAddTaskWithChildrenCreatesParentAndSubtasks(t *testing.T) {
 		if !child.HasTag("backend") {
 			t.Errorf("subtask tags = %v, want inherited backend", child.Tags)
 		}
-		if got := child.State(); got != models.StateNext {
-			t.Errorf("subtask section = %q, want Next", got)
+		if got := child.State(); got != models.StateBacklog {
+			t.Errorf("subtask state = %q, want Backlog", got)
 		}
 	}
 }
@@ -75,7 +75,7 @@ func TestAddTaskWithChildrenAppliesFormFields(t *testing.T) {
 		ProjectID: project.ID,
 		Title:     "Full task",
 		Priority:  3,
-		State:     models.StateNext,
+		State:     models.StateBacklog,
 		DueDate:   &due,
 		Pinned:    true,
 		ChecklistItems: []models.ChecklistItem{
@@ -112,7 +112,7 @@ func TestEditFormReplacesFullFieldSet(t *testing.T) {
 	project := newProject("proj-1", "Proj", task)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
-	state := models.StateNext
+	state := models.StateBacklog
 
 	res, err := svc.Edit(app.EditRequest{
 		TaskID: task.ID,
@@ -158,10 +158,10 @@ func TestEditFormRejectsInvalidTitle(t *testing.T) {
 func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
 	t.Run("preserves in progress through empty active section", func(t *testing.T) {
 		task := newTask("t-1", 1, "Before")
-		task.ApplyWorkflowState(models.StateInProgress)
+		task.ApplyWorkflowState(models.StateDoing)
 		project := newProject("proj-1", "Proj", task)
 		svc := newTestService(newFakeRepo(project))
-		state := models.StateInProgress
+		state := models.StateDoing
 
 		_, err := svc.Edit(app.EditRequest{
 			TaskID: task.ID,
@@ -173,7 +173,7 @@ func TestEditFormCanonicalWorkflowStateOverride(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Edit: %v", err)
 		}
-		if got := task.State(); got != models.StateInProgress {
+		if got := task.State(); got != models.StateDoing {
 			t.Fatalf("state = %s, want in_progress", got)
 		}
 	})

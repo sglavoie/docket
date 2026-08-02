@@ -40,7 +40,7 @@ func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
 
 // WriteProjectMarkdownClean generates a human-readable markdown export of a
 // project. Unlike canonical task storage, it omits HTML metadata comments while
-// retaining the user-facing v5 task fields and rich records. Each task heading
+// retaining the user-facing schema-6 task fields. Each task heading
 // includes an inline badge and is prefixed with its short ID for traceability.
 func WriteProjectMarkdownClean(p *models.Project) string {
 	var builder strings.Builder
@@ -119,19 +119,6 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 		builder.WriteString("\n")
 	}
 
-	if task.Recurrence != nil {
-		if recurrence := task.Recurrence.String(); recurrence != "" {
-			fmt.Fprintf(builder, "\n**Recurrence:** %s\n", recurrence)
-		}
-	}
-
-	if len(task.DependsOn) > 0 {
-		builder.WriteString("\n**Dependencies:**\n")
-		for _, dependency := range task.DependsOn {
-			fmt.Fprintf(builder, "- %s\n", dependency)
-		}
-	}
-
 	if len(task.Checklist) > 0 {
 		builder.WriteString("\n**Checklist:**\n")
 		for _, item := range task.Checklist {
@@ -150,19 +137,6 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 				continue
 			}
 			fmt.Fprintf(builder, "- %s\n", comment.Text)
-		}
-	}
-
-	if len(task.Decisions) > 0 {
-		builder.WriteString("\n**Decisions:**\n")
-		for _, d := range task.Decisions {
-			if d == nil {
-				continue
-			}
-			fmt.Fprintf(builder, "- %s\n", d.Text)
-			if d.Rationale != "" {
-				fmt.Fprintf(builder, "  *Rationale:* %s\n", d.Rationale)
-			}
 		}
 	}
 
@@ -199,8 +173,8 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 func buildExportBadge(task *models.Task) string {
 	var parts []string
 
-	// Show the workflow state unless it is the unremarkable default (ready).
-	if st := task.State(); st != models.StateReady {
+	// Show the workflow state unless it is the unremarkable default (backlog).
+	if st := task.State(); st != models.StateBacklog {
 		parts = append(parts, string(st))
 	}
 	if task.Priority != 0 {

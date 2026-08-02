@@ -117,7 +117,7 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 	)
 
 	values := map[OperationID]any{
-		operationTaskSetState:    models.StateNext,
+		operationTaskSetState:    models.StateBacklog,
 		operationTaskSetPriority: 2,
 		operationTaskSetDueDate:  OperationDateValue{},
 		operationTaskSetSnooze:   OperationDateValue{},

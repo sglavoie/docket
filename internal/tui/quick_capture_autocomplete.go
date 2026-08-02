@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -42,33 +43,12 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
-// getTypeSuggestions returns the four semantic marker tags. The canonical
-// grammar and the model share the same ordered vocabulary.
-func (q *quickCaptureInput) getTypeSuggestions(partial string) []ACSuggestion {
-	partial = strings.ToLower(partial)
-	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTaskType)
-	suggestions := make([]ACSuggestion, 0, len(def.Values))
-	for _, value := range def.Values {
-		if partial != "" && !strings.Contains(value, partial) {
-			continue
-		}
-		marker, _ := models.ParseTaskMarker(value)
-		suggestions = append(suggestions, ACSuggestion{
-			Display: "^" + value + " " + renderTaskMarker(marker),
-			Value:   value,
-		})
-	}
-	return suggestions
-}
-
 // getPrioritySuggestions returns matching priority options for the partial query.
 func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
 	descriptions := map[string]string{
-		"1": "Urgent",
-		"2": "High",
-		"3": "Normal",
-		"4": "Low",
-		"5": "Lowest",
+		"1": "High",
+		"2": "Medium",
+		"3": "Low",
 	}
 	var suggestions []ACSuggestion
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
@@ -103,39 +83,25 @@ func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
-// getRecurrenceSuggestions returns recurrence pattern options for the partial query.
-func (q *quickCaptureInput) getRecurrenceSuggestions(partial string) []ACSuggestion {
-	var suggestions []ACSuggestion
+// getDestinationSuggestions returns lifecycle and planning destinations from
+// the shared capture grammar.
+func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSuggestion {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
+	suggestions := make([]ACSuggestion, 0, len(def.Values))
 	partialLower := strings.ToLower(partial)
-	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldRecurrence)
-	for _, value := range def.Values {
-		if partial == "" || strings.Contains(value, partialLower) {
-			suggestions = append(suggestions, ACSuggestion{
-				Display: "~" + value,
-				Value:   value,
-			})
-		}
-	}
-	return suggestions
-}
-
-// getStatusSuggestions is the retained component hook for canonical states.
-func (q *quickCaptureInput) getStatusSuggestions(partial string) []ACSuggestion {
-	return canonicalStateSuggestions(partial, true)
-}
-
-func canonicalStateSuggestions(partial string, withDescription bool) []ACSuggestion {
-	suggestions := make([]ACSuggestion, 0, len(textgrammar.StateNames()))
-	partialLower := strings.ToLower(partial)
-	for _, name := range textgrammar.StateNames() {
+	for _, name := range def.Values {
 		if partial != "" && !strings.Contains(name, partialLower) {
 			continue
 		}
-		state, _ := models.ParseWorkflowState(name)
-		display := fmt.Sprintf("$%s %s", name, state.Icon())
-		if withDescription {
-			display += " (" + textgrammar.StateDescription(state) + ")"
+		destination, _ := app.ParseCaptureDestination(name)
+		description := textgrammar.StateDescription(destination.WorkflowState())
+		switch destination {
+		case app.CaptureDestinationToday:
+			description = "add to Today"
+		case app.CaptureDestinationNext:
+			description = "add to Next"
 		}
+		display := fmt.Sprintf("$%s %s (%s)", name, destination.WorkflowState().Icon(), description)
 		suggestions = append(suggestions, ACSuggestion{Display: display, Value: name})
 	}
 	return suggestions

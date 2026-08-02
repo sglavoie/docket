@@ -13,6 +13,9 @@ import (
 // handleSave is the Ctrl+S entry point. It commits pending text inputs,
 // validates, and dispatches to saveCreate or saveEdit.
 func (m *TaskFormModel) handleSave() tea.Cmd {
+	if m.submissionInFlight {
+		return nil
+	}
 	m.commitAllTextInputs()
 	m.err = nil
 
@@ -34,10 +37,16 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 		return nil
 	}
 
+	var cmd tea.Cmd
 	if m.mode == FormModeCreate {
-		return m.saveCreate()
+		cmd = m.saveCreate()
+	} else {
+		cmd = m.saveEdit()
 	}
-	return m.saveEdit()
+	if cmd != nil {
+		m.submissionInFlight = true
+	}
+	return cmd
 }
 
 // commitAllTextInputs flushes every live textinput/textarea value into the
@@ -70,14 +79,17 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 // TaskCreatedMsg carrying the committed result; the shell reloads and re-resolves
 // the task pointers for navigation, status, and open-after.
 func (m *TaskFormModel) saveCreate() tea.Cmd {
-	state := creationStateFromPreset(m.draft.state)
+	destination := app.CaptureDestination(m.draft.state)
+	if m.presetDestination.IsPlanning() && m.draft.state == models.StateBacklog {
+		destination = m.presetDestination
+	}
 
 	// Build the subtask request list (blank titles skipped) and map the draft
 	// open-after index onto the created (non-blank) subtask index.
 	var subReqs []app.AddSubtaskRequest
 	openCreatedIdx := -1
 	if m.mode == FormModeCreate {
-		wantOpen := m.subtaskOpenDetail || m.subtaskOpenContent
+		wantOpen := m.subtaskOpenContent
 		created := 0
 		for i, st := range m.draft.subtasks {
 			title := strings.TrimSpace(st.title)
@@ -93,30 +105,26 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	}
 
 	req := app.AddTaskRequest{
-		ProjectID:         m.project.ID,
-		Title:             m.draft.title,
-		Priority:          m.draft.priority,
-		Tags:              append([]string{}, m.draft.tags...),
-		Description:       strings.TrimSpace(m.draft.desc),
-		State:             state,
-		Recurrence:        m.draft.recurrence,
-		ParentID:          m.draft.parentID,
-		ChecklistItems:    append([]models.ChecklistItem(nil), m.draft.checklist...),
-		DueDate:           m.draft.dueDate,
-		Pinned:            m.draft.pinned,
-		Subtasks:          subReqs,
-		PlanningArtifacts: m.presetPlan,
+		ProjectID:      m.project.ID,
+		Title:          m.draft.title,
+		Priority:       m.draft.priority,
+		Tags:           append([]string{}, m.draft.tags...),
+		Description:    strings.TrimSpace(m.draft.desc),
+		Destination:    destination,
+		ParentID:       m.draft.parentID,
+		ChecklistItems: append([]models.ChecklistItem(nil), m.draft.checklist...),
+		DueDate:        m.draft.dueDate,
+		Pinned:         m.draft.pinned,
+		Subtasks:       subReqs,
 	}
 
-	openContent, openDetail := false, false
+	openContent := false
 	if openCreatedIdx >= 0 {
 		openContent = m.subtaskOpenContent
-		openDetail = m.subtaskOpenDetail
 		m.subtaskOpenContent = false
-		m.subtaskOpenDetail = false
 	}
 
-	return m.taskForm.CreateForm(req, openCreatedIdx, openContent, openDetail)
+	return m.taskForm.CreateForm(req, openCreatedIdx, openContent)
 }
 
 // saveEdit builds a full-field EditRequest from the draft and routes the edit
@@ -132,7 +140,6 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 		Tags:        append([]string{}, m.draft.tags...),
 		DueDate:     m.draft.dueDate,
 		Pinned:      m.draft.pinned,
-		Recurrence:  m.draft.recurrence,
 		Checklist:   append([]models.ChecklistItem(nil), m.draft.checklist...),
 	}
 

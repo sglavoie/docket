@@ -53,12 +53,12 @@ func (m *AppModel) registerFilterOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	// Priority is the only preset-only facet: each fp0-5 binding carries its
+	// Priority is the only preset-only facet: each fp0-3 binding carries its
 	// threshold, so reaching the provider means a caller bypassed the grammar.
 	if err := m.operationExecutor.RegisterValueProvider(ValueProviderFilterPriority,
 		func(OperationInvocation) OperationValueProviderResult {
 			return OperationValueProviderResult{
-				Err: fmt.Errorf("this filter takes its value from the fp0-5 chord"),
+				Err: fmt.Errorf("this filter takes its value from the fp0-3 chord"),
 			}
 		}); err != nil {
 		return err

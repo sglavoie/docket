@@ -360,7 +360,7 @@ func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		registry,
 		NewOperationExecutor(registry),
-		taskActionTestContext(models.StateReady),
+		taskActionTestContext(models.StateBacklog),
 		"Selected task",
 	)
 	if err != nil {

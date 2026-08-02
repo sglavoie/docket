@@ -9,9 +9,9 @@ import (
 // cluster so the shared wrapping renderer can break it on item boundaries at
 // narrow widths without clipping required actions.
 const (
-	captureFooterNormal       = "Enter create · Ctrl+O create & open · Ctrl+D create & edit · Ctrl+V paste · ? syntax · Esc cancel"
-	captureFooterHelp         = "Enter create · Ctrl+O create & open · Ctrl+D create & edit · Ctrl+V paste · ? close syntax · Esc close syntax"
-	captureFooterHelpScroll   = "Enter create · Ctrl+O create & open · Ctrl+D create & edit · Ctrl+V paste · Ctrl+J/K scroll · PgUp/PgDn page · ? close syntax · Esc close syntax"
+	captureFooterNormal       = "Enter create · Ctrl+D create & edit · Ctrl+V paste · ? syntax · Esc cancel"
+	captureFooterHelp         = "Enter create · Ctrl+D create & edit · Ctrl+V paste · ? close syntax · Esc close syntax"
+	captureFooterHelpScroll   = "Enter create · Ctrl+D create & edit · Ctrl+V paste · Ctrl+J/K scroll · PgUp/PgDn page · ? close syntax · Esc close syntax"
 	captureFooterAutocomplete = "Tab/Enter accept · Ctrl+J/K navigate · Esc dismiss"
 	captureFooterConfirm      = "Y discard · N/Esc keep editing"
 )

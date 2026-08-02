@@ -4,12 +4,22 @@ import (
 	"strconv"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 //nolint:gocyclo // main Update dispatch
 func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// ── External overlay results ───────────────────────────────────────────────
+	case TaskCreatedMsg, TaskUpdatedMsg:
+		m.submissionInFlight = false
+		return m, nil
+
+	case ErrorMsg:
+		m.submissionInFlight = false
+		m.err = msg.Err
+		return m, nil
 
 	case ParentSelectedMsg:
 		if msg.Source == ViewTaskForm {
@@ -23,15 +33,6 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Routed here from handler_tag.go via delegateToCurrentView when task is nil.
 		if !msg.Canceled {
 			m.draft.tags = msg.SelectedTags
-			m.hasChanges = true
-			m.err = nil
-		}
-		return m, nil
-
-	case RecurrenceEditorDoneMsg:
-		// Routed here from handler_view_editors.go after the recurrence editor pops.
-		if !msg.Canceled {
-			m.draft.recurrence = msg.Pattern
 			m.hasChanges = true
 			m.err = nil
 		}
@@ -148,21 +149,21 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ── Priority inline editing (Basics tab, field 2) ─────────────────────
 		if m.activeTab == formTabBasics && !m.collapsedBasics && m.focusIndex == 2 {
 			switch msg.String() {
-			case "1", "2", "3", "4", "5":
+			case "0", "1", "2", "3":
 				p, _ := strconv.Atoi(msg.String())
 				m.draft.priority = p
 				m.hasChanges = true
 				m.err = nil
 				return m, nil
 			case "up", "k":
-				if m.draft.priority > 1 {
+				if m.draft.priority > 0 {
 					m.draft.priority--
 					m.hasChanges = true
 					m.err = nil
 				}
 				return m, nil
 			case "down", "j":
-				if m.draft.priority < 5 {
+				if m.draft.priority < models.PriorityLow {
 					m.draft.priority++
 					m.hasChanges = true
 					m.err = nil

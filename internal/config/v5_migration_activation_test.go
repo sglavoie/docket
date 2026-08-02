@@ -109,21 +109,25 @@ func TestManagerActivatesSnapshotFirstV5MigrationAndIsIdempotent(t *testing.T) {
 	}
 	manager := NewManager(ConfigPathForDataDir(root))
 
-	if err := manager.RecoverWorkspace(); err != nil {
+	if err := manager.migrateWorkspaceToV5(nil); err != nil {
 		t.Fatalf("activate v5 migration: %v", err)
 	}
-	domains, err := manager.LoadDomains()
+	catalog, workspaceID, err := readV5CatalogCandidate(WorkspaceCatalogPath(root))
 	if err != nil {
-		t.Fatalf("load migrated domains: %v", err)
+		t.Fatalf("load migrated v5 catalog: %v", err)
 	}
-	if domains.Catalog.SchemaVersion != V5ConfigSchemaVersion {
-		t.Fatalf("catalog schema = %d, want %d", domains.Catalog.SchemaVersion, V5ConfigSchemaVersion)
+	machine, _, _, err := readV5MachineCandidate(V6WorkspaceDryRunOptions{DataDir: root}, workspaceID)
+	if err != nil {
+		t.Fatalf("load migrated v5 machine state: %v", err)
 	}
-	if len(domains.Catalog.Projects) != 4 {
-		t.Fatalf("retained catalog projects = %d, want 4", len(domains.Catalog.Projects))
+	if catalog.SchemaVersion != V5ConfigSchemaVersion {
+		t.Fatalf("catalog schema = %d, want %d", catalog.SchemaVersion, V5ConfigSchemaVersion)
 	}
-	if domains.Machine.Theme != "dark" {
-		t.Fatalf("migrated theme = %q, want dark", domains.Machine.Theme)
+	if len(catalog.Projects) != 4 {
+		t.Fatalf("retained catalog projects = %d, want 4", len(catalog.Projects))
+	}
+	if machine.Theme != "dark" {
+		t.Fatalf("migrated theme = %q, want dark", machine.Theme)
 	}
 
 	for _, path := range []string{
@@ -368,24 +372,28 @@ func TestManagerV5MigrationAcceptsOptionalDomainArtifacts(t *testing.T) {
 			legacyMachinePath := tt.prepare(t, root)
 			manager := NewManager(ConfigPathForDataDir(root))
 
-			if err := manager.RecoverWorkspace(); err != nil {
+			if err := manager.migrateWorkspaceToV5(nil); err != nil {
 				t.Fatalf("activate migration with optional artifact unavailable: %v", err)
 			}
-			domains, err := manager.LoadDomains()
+			catalog, workspaceID, err := readV5CatalogCandidate(WorkspaceCatalogPath(root))
 			if err != nil {
-				t.Fatalf("load migrated domains: %v", err)
+				t.Fatalf("load migrated v5 catalog: %v", err)
 			}
-			if domains.Catalog.SchemaVersion != V5ConfigSchemaVersion {
-				t.Fatalf("catalog schema = %d, want %d", domains.Catalog.SchemaVersion, V5ConfigSchemaVersion)
+			machine, _, _, err := readV5MachineCandidate(V6WorkspaceDryRunOptions{DataDir: root}, workspaceID)
+			if err != nil {
+				t.Fatalf("load migrated v5 machine state: %v", err)
+			}
+			if catalog.SchemaVersion != V5ConfigSchemaVersion {
+				t.Fatalf("catalog schema = %d, want %d", catalog.SchemaVersion, V5ConfigSchemaVersion)
 			}
 			if tt.wantDefaultMachine {
-				if len(domains.Machine.CustomContexts) != 0 || domains.Machine.Theme != "dark" {
-					t.Fatalf("default machine state = %+v, want no custom contexts and dark theme", domains.Machine)
+				if len(machine.CustomContexts) != 0 || machine.Theme != "dark" {
+					t.Fatalf("default machine state = %+v, want no custom contexts and dark theme", machine)
 				}
 			}
 			if tt.wantLegacyMachine {
 				want := []string{"project-alpha", "project-beta"}
-				if got := domains.Machine.CustomContexts["synthetic-focus"]; !reflect.DeepEqual(got, want) {
+				if got := machine.CustomContexts["synthetic-focus"]; !reflect.DeepEqual(got, want) {
 					t.Fatalf("legacy machine context = %v, want %v", got, want)
 				}
 			}
@@ -520,7 +528,7 @@ func TestManagerV5MigrationRecoversPreparedActivationBeforeInspection(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !exists || schema != V5ConfigSchemaVersion {
+	if !exists || schema != V6ConfigSchemaVersion {
 		t.Fatalf("recovered catalog schema = %d, exists=%v", schema, exists)
 	}
 	if _, statErr := os.Stat(journal.ManifestPath(manifest.ID)); !errors.Is(statErr, os.ErrNotExist) {

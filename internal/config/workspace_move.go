@@ -61,8 +61,7 @@ type workspaceMoveTestHooks struct {
 //     before the data-directory path changes.
 //  5. Copy each missing file through a temp file with fsync and a sha256 read-
 //     back verification, publishing without replacement.
-//  6. Revalidate source hashes and destination occupancy, then rewrite the
-//     destination config's data_dir and legacy project paths.
+//  6. Revalidate source hashes and destination occupancy.
 //  7. Switch the machine-local active-workspace pointer to the destination
 //     (the atomic "the workspace now lives here" commit).
 //
@@ -143,16 +142,6 @@ func moveWorkspace(srcDataDir, dstDataDir string, hooks *workspaceMoveTestHooks)
 			}
 			if err := precheckDestination(entries, dst); err != nil {
 				return err
-			}
-
-			// Rewrite the destination config so data_dir and legacy project paths
-			// point at the new root. Only legacy default paths are rewritten; custom
-			// paths are preserved. Absent config (fresh workspace) is a no-op.
-			dstConfig := ConfigPathForDataDir(dst)
-			if _, cfgStatErr := os.Stat(dstConfig); cfgStatErr == nil {
-				if err := WriteMigratedConfig(dstConfig, src, dst); err != nil {
-					return fmt.Errorf("workspace move: failed to rewrite destination config: %w", err)
-				}
 			}
 
 			// Atomic pointer switch: from here on this machine opens the destination.

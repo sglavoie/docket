@@ -71,7 +71,6 @@ const (
 	ValueProviderProject      ValueProviderID = "project"
 	ValueProviderDependencies ValueProviderID = "dependencies"
 	ValueProviderParent       ValueProviderID = "parent"
-	ValueProviderRecurrence   ValueProviderID = "recurrence"
 	ValueProviderNoteTitle    ValueProviderID = "note-title"
 	ValueProviderTagName      ValueProviderID = "tag-name"
 

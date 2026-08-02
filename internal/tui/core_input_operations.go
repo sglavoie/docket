@@ -60,7 +60,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
 		withTaskTarget(core(operationCoreExternalEditor, "Open in External Editor", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task externally", "external editor")),
-		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "ready"),
+		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "backlog"),
 		core(operationCoreToday, "Toggle Today", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "daily plan"),
 		core(operationCoreNext, "Toggle Next", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "on deck"),
 		core(operationCoreActions, "Task Actions", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskReadOnly, "action sheet"),
@@ -270,21 +270,21 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 		project = out.scopedProject()
 	}
 	if project == nil {
-		// Resolve through RuntimeState's canonical workspace-owned Inbox
+		// Resolve through RuntimeState's canonical workspace-owned Unfiled
 		// reference, then prefer the shell's loaded project pointer when it is
 		// available so capture never borrows the base cursor's project.
-		var inbox *models.Project
+		var unfiled *models.Project
 		if m.runtime != nil {
-			inbox = m.runtime.SystemInboxProject()
-			if inbox != nil {
-				if loaded := m.projectByID(inbox.ID); loaded != nil {
-					inbox = loaded
+			unfiled = m.runtime.SystemUnfiledProject()
+			if unfiled != nil {
+				if loaded := m.projectByID(unfiled.ID); loaded != nil {
+					unfiled = loaded
 				}
-			} else if id := m.runtime.Catalog().SystemInboxProjectID; id != "" {
-				inbox = m.projectByID(id)
+			} else if id := m.runtime.Catalog().SystemUnfiledProjectID; id != "" {
+				unfiled = m.projectByID(id)
 			}
 		}
-		return m.captureComposerMessage(inbox, m.activeProjects())
+		return m.captureComposerMessage(unfiled, m.activeProjects())
 	}
 	return m.captureComposerMessage(project, m.activeProjects())
 }
@@ -294,6 +294,16 @@ func operationTargetLocators(targets ResolvedOperationTargets) []app.TaskLocator
 	for _, target := range targets.Targets {
 		if target.Task.Valid() {
 			locators = append(locators, target.Task.Locator())
+		}
+	}
+	return locators
+}
+
+func planningMemberLocators(members map[TaskIdentity]bool) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(members))
+	for identity, member := range members {
+		if member {
+			locators = append(locators, identity.Locator())
 		}
 	}
 	return locators
@@ -342,16 +352,13 @@ func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets) tea.Cmd {
 	if len(locators) == 0 {
 		return nil
 	}
-	allToday := true
-	for _, locator := range locators {
-		if !m.todayIDs[taskIdentityFromLocator(locator)] {
-			allToday = false
-			break
-		}
-	}
-	action := app.PlanningAddToday
-	if allToday {
-		action = app.PlanningRemoveToday
+	action, err := app.ResolvePlanningToggleAction(
+		app.PlanningHorizonToday,
+		locators,
+		planningMemberLocators(m.todayIDs),
+	)
+	if err != nil {
+		return errorCmd("%s", err)
 	}
 	return m.corePlanningOperation(targets, action)
 }
@@ -361,17 +368,13 @@ func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets) tea.Cmd {
 	if len(locators) == 0 {
 		return nil
 	}
-	allNext := true
-	for _, locator := range locators {
-		task, _ := m.taskAndProjectForIdentity(taskIdentityFromLocator(locator))
-		if !taskIsNext(task) {
-			allNext = false
-			break
-		}
-	}
-	action := app.PlanningAddNext
-	if allNext {
-		action = app.PlanningRemoveNext
+	action, err := app.ResolvePlanningToggleAction(
+		app.PlanningHorizonNext,
+		locators,
+		planningMemberLocators(m.nextOrderIDs),
+	)
+	if err != nil {
+		return errorCmd("%s", err)
 	}
 	return m.corePlanningOperation(targets, action)
 }

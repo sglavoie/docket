@@ -127,117 +127,70 @@ func TestTUIStateMachine_QueueAndTodayStayExclusive(t *testing.T) {
 	})
 }
 
-// TestNextMembershipDerivesFromWorkflowState locks the FR-007-003 invariant:
-// Next (queue) membership is Task.State() == StateNext, not the persisted Focus
-// Queue order index. An unindexed StateNext task behaves as a member (q leaves
-// Next, adding it to Today removes it from Next), a stale indexed non-Next task
-// does not, and the ranking signal follows the state rather than the list.
-func TestNextMembershipDerivesFromWorkflowState(t *testing.T) {
-	t.Run("q on unindexed StateNext leaves Next", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewCrossProjectOutliner)
+// TestNextMembershipIsExplicitPlanningState locks the schema-6 invariant that
+// queue membership is independent from the Backlog lifecycle state.
+func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
+	t.Run("q toggles explicit membership without inventing a lifecycle state", func(t *testing.T) {
+		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 		identity := taskIdentityFor(task, app.currentProject)
-		if app.nextOrderIDs[identity] {
-			t.Fatal("precondition: StateNext task must start unindexed in the order list")
+
+		_ = app.toggleQueue()
+		if !app.nextOrderIDs[identity] {
+			t.Fatal("q did not add explicit Next membership")
+		}
+		if fresh := app.currentProject.GetTaskByID(task.ID); fresh == nil || fresh.State() != models.StateBacklog {
+			t.Fatalf("Next add changed Backlog lifecycle: %v", fresh)
 		}
 
 		_ = app.toggleQueue()
-
-		fresh := app.currentProject.GetTaskByID(task.ID)
-		if fresh == nil {
-			t.Fatal("task missing after toggle")
-		}
-		if fresh.State() == models.StateNext {
-			t.Fatalf("q on an unindexed StateNext task must leave Next, still %v", fresh.State())
-		}
 		if app.nextOrderIDs[identity] {
-			t.Fatal("removed task must not retain an order-index entry")
+			t.Fatal("second q did not remove explicit Next membership")
 		}
 	})
 
-	t.Run("adding unindexed StateNext task to Today removes it from Next", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateNext, ViewCrossProjectOutliner)
+	t.Run("Today and Next memberships remain exclusive", func(t *testing.T) {
+		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 		identity := taskIdentityFor(task, app.currentProject)
-		if app.nextOrderIDs[identity] {
-			t.Fatal("precondition: StateNext task must start unindexed in the order list")
-		}
-
+		_ = app.toggleQueue()
 		_ = app.toggleToday()
-
-		if !app.todayIDs[identity] {
-			t.Fatal("task should be planned for Today")
-		}
-		fresh := app.currentProject.GetTaskByID(task.ID)
-		if fresh == nil {
-			t.Fatal("task missing after toggle")
-		}
-		if fresh.State() == models.StateNext {
-			t.Fatalf("Today and Next are exclusive: task must leave Next, still %v", fresh.State())
-		}
-		if app.nextOrderIDs[identity] {
-			t.Fatal("task must not retain an order-index entry after moving to Today")
+		if !app.todayIDs[identity] || app.nextOrderIDs[identity] {
+			t.Fatalf("planning memberships after Today add: today=%v next=%v", app.todayIDs[identity], app.nextOrderIDs[identity])
 		}
 	})
-
 }
 
-// TestNextMembershipConsumersUseWorkflowState locks FR-008-002 for the live TUI
-// readers: Project Focus membership, the Pipeline "Plan" count, and the Priority
-// urgency signal all derive Next membership from Task.State()==StateNext rather
-// than the Focus Queue order index. An unindexed StateNext task counts as a
-// member; a stale indexed non-Next task does not.
-func TestNextMembershipConsumersUseWorkflowState(t *testing.T) {
+// TestNextMembershipConsumersUseExplicitPlanning verifies that live readers use
+// the ordered planning collection, exclude unindexed Backlog tasks, and ignore
+// stale terminal entries.
+func TestNextMembershipConsumersUseExplicitPlanning(t *testing.T) {
 	project, err := models.NewProject("next-consumers", "next", "")
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
-	indexedNext := seedTask(t, 1, "Indexed on deck", models.StateNext)
-	unindexedNext := seedTask(t, 2, "Unindexed on deck", models.StateNext)
-	stale := seedTask(t, 3, "Left Next", models.StateReady)
+	indexedNext := seedTask(t, 1, "Indexed on deck", models.StateBacklog)
+	unindexedNext := seedTask(t, 2, "Unindexed Backlog", models.StateBacklog)
+	stale := seedTask(t, 3, "Completed stale entry", models.StateDone)
 	project.Tasks = []*models.Task{indexedNext, unindexedNext, stale}
 	project.BuildTaskTree()
 
-	// The persisted order index lists the indexed StateNext task and the stale
-	// non-Next task. Membership must ignore the stale entry and include the
-	// unindexed StateNext task absent from the list.
+	// The persisted list names one eligible member and one stale terminal task.
 	domains := config.NewDomains()
 	domains.Planning.AddToNextOrder(indexedNext.ID, project.ID)
 	domains.Planning.AddToNextOrder(stale.ID, project.ID)
 	runtime := config.NewRuntimeState("", domains)
 	setTestProjects(runtime, []*models.Project{project})
 
-	t.Run("outliner Next includes unindexed StateNext and excludes stale index", func(t *testing.T) {
+	t.Run("outliner Next follows explicit eligible membership", func(t *testing.T) {
 		outliner := NewOutlinerModel(project, nil, runtime)
 		outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeNext, SetMode: true})
 		visible := visibleOutlinerTaskIDs(outliner)
-		if !visible[indexedNext.ID] || !visible[unindexedNext.ID] {
-			t.Fatal("Outliner Next must include every StateNext task")
+		if !visible[indexedNext.ID] {
+			t.Fatal("Outliner Next omitted an explicit eligible member")
 		}
-		if visible[stale.ID] {
-			t.Fatal("stale indexed non-Next task must not appear in Outliner Next")
-		}
-	})
-
-	t.Run("pipeline plan count is the StateNext count", func(t *testing.T) {
-		var countNext func(task *models.Task) int
-		countNext = func(task *models.Task) int {
-			n := 0
-			if task.State() == models.StateNext {
-				n++
-			}
-			for _, child := range task.Children {
-				n += countNext(child)
-			}
-			return n
-		}
-		total := 0
-		for _, task := range project.GetRootTasks() {
-			total += countNext(task)
-		}
-		if total != 2 {
-			t.Fatalf("countNext total = %d, want 2 (both StateNext tasks, stale index ignored)", total)
+		if visible[unindexedNext.ID] || visible[stale.ID] {
+			t.Fatalf("Outliner Next included nonmember/stale task: %v", visible)
 		}
 	})
-
 }
 
 func TestTUIStateMachine_LatestUndoToastWins(t *testing.T) {
@@ -329,7 +282,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		ID:   "selection-project",
 		Name: "Selection Project",
 		Tasks: []*models.Task{
-			makeTask("next-task", "Next task", models.StateNext),
+			makeTask("next-task", "Next task", models.StateBacklog),
 			makeTask("waiting-task", "Waiting task", models.StateWaiting),
 		},
 	}
@@ -346,7 +299,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateNext), true)
+		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateBacklog), true)
 		outliner.rebuildRows()
 
 		if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
@@ -367,7 +320,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateNext), true)
+		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateBacklog), true)
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()
 
@@ -384,7 +337,7 @@ func sendAppKey(app *AppModel, key tea.KeyPressMsg) *AppModel {
 
 func newFocusToggleTestApp(t *testing.T) (*AppModel, *models.Task) {
 	t.Helper()
-	return newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
+	return newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 }
 
 // newFocusToggleTestAppState builds a ledger-backed AppModel whose single task

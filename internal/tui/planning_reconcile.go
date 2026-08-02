@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,6 +13,44 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+// shellPlanningReconcileArtifactBuilder binds application-owned invariant
+// mutations to the shell's revision-bound planning snapshot. A mismatched
+// manager/runtime pair is rejected before mutation instead of writing planning
+// through an unrelated workspace root.
+func shellPlanningReconcileArtifactBuilder(runtime *config.RuntimeState, mgr *config.Manager) app.PlanningArtifactBuilder {
+	if runtime != nil {
+		if planningWorkspaceMismatch(runtime, mgr) {
+			return func(app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
+				return nil, fmt.Errorf("planning manager and runtime refer to different workspaces")
+			}
+		}
+		return runtimePlanningReconcileArtifactBuilder(runtime)
+	}
+	return planningReconcileArtifactBuilder(mgr)
+}
+
+// shellStructuralPlanningArtifactBuilder is used for delete and project move.
+// Their request contains the complete qualified remove/reassign delta, so it can
+// reconcile the newest on-disk planning state without adopting stale shell
+// intent. The resulting expected revision still detects a writer racing the
+// combined project-plus-planning commit.
+func shellStructuralPlanningArtifactBuilder(runtime *config.RuntimeState, mgr *config.Manager) app.PlanningArtifactBuilder {
+	if planningWorkspaceMismatch(runtime, mgr) {
+		return func(app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
+			return nil, fmt.Errorf("planning manager and runtime refer to different workspaces")
+		}
+	}
+	if mgr != nil {
+		return planningReconcileArtifactBuilder(mgr)
+	}
+	return runtimePlanningReconcileArtifactBuilder(runtime)
+}
+
+func planningWorkspaceMismatch(runtime *config.RuntimeState, mgr *config.Manager) bool {
+	return runtime != nil && mgr != nil && runtime.DataDir() != "" &&
+		filepath.Clean(config.WorkspaceRootFromConfigPath(mgr.GetConfigPath())) != filepath.Clean(runtime.DataDir())
+}
 
 // nextOrderContains reports whether the Next order index already lists the
 // project-qualified task.
@@ -27,21 +66,17 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 			if task := project.GetTaskByID(taskID); task != nil {
 				switch action {
 				case app.PlanningAddToday:
-					stateChanged = task.State() == models.StateInbox || task.State() == models.StateNext
+					stateChanged = (task.State() != models.StateDoing && task.State() != models.StateBacklog) || task.SnoozedUntil != nil
 				case app.PlanningAddNext:
-					stateChanged = task.State() != models.StateNext
+					stateChanged = task.State() != models.StateBacklog || task.SnoozedUntil != nil
 				case app.PlanningRemoveToday:
 				case app.PlanningRemoveNext:
-					stateChanged = task.State() == models.StateNext
 				case app.PlanningBacklog:
-					stateChanged = task.State() != models.StateReady
+					stateChanged = task.State() != models.StateBacklog
 				}
 			}
 		}
-		builder := runtimePlanningReconcileArtifactBuilder(m.runtime)
-		if builder == nil {
-			builder = planningReconcileArtifactBuilder(m.configManager)
-		}
+		builder := shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
 		m.appService.WithPlanningArtifacts(builder)
 		res, err := m.appService.ApplyPlanning(app.PlanningRequest{
 			Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID},
@@ -192,7 +227,11 @@ func planningReconcileArtifactBuilder(mgr *config.Manager) app.PlanningArtifactB
 		if !app.ReconcilePlanningState(planning, req) {
 			return nil, nil
 		}
-		return planningDomainArtifact(mgr, planning)
+		artifact, err := coord.CheckedPlanningArtifact(planning)
+		if err != nil {
+			return nil, err
+		}
+		return []storage.ArtifactChange{artifact.StorageChange()}, nil
 	}
 }
 

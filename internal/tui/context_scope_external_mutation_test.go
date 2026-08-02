@@ -78,23 +78,3 @@ func TestProjectArchiveOutsideHubFallsBackToAllContextScope(t *testing.T) {
 
 	assertContextScopeFellBackToAll(t, fixture.cross, beta.ID)
 }
-
-// TestEmptyCustomContextScopeSurvivesExternalProjectArchive is the asymmetry
-// guard: custom contexts are stored by name, so one that resolves to nothing is
-// still listed, still selectable, and must stay active. Only derived regular
-// labels degrade.
-func TestEmptyCustomContextScopeSurvivesExternalProjectArchive(t *testing.T) {
-	fixture, alpha, _ := externalContextMutationFixture(t)
-	fixture.app.runtime.Machine().SetCustomContext("focus", []string{alpha.ID})
-	fixture.cross.applyContextScope(CustomContextScope("focus"))
-
-	_, cmd := fixture.app.handleProjectMessages(ProjectArchivedMsg{Project: fixture.app.projectByID(alpha.ID)})
-	runSession2AppCommand(t, fixture.app, cmd)
-
-	if got := fixture.cross.activeContext; got != CustomContextScope("focus") {
-		t.Fatalf("Outliner scope = %#v, want the empty custom context", got)
-	}
-	if ids := taskRowProjectIDs(fixture.cross); len(ids) != 0 {
-		t.Fatalf("an empty custom context must render no rows, got %v", ids)
-	}
-}

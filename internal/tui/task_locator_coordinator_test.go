@@ -16,7 +16,7 @@ func locatorTestTask(t *testing.T, id string, shortID int, typ string, title str
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", title, err)
 	}
-	task.WorkflowState = models.StateReady
+	task.WorkflowState = models.StateBacklog
 	return task
 }
 
@@ -33,14 +33,14 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 		env, _, beta := newDuplicateLocatorEnv(t)
 		identity := taskIdentityFor(beta, env.projects[1])
 
-		res := runResult(t, env.taskItem.Transition(identity, models.StateInProgress))
+		res := runResult(t, env.taskItem.Transition(identity, models.StateDoing))
 		if res.ProjectID != env.projects[1].ID {
 			t.Fatalf("result project = %q, want beta %q", res.ProjectID, env.projects[1].ID)
 		}
-		if got := env.reload(t, 0).GetTaskByID(duplicateLocatorTaskID).State(); got != models.StateReady {
+		if got := env.reload(t, 0).GetTaskByID(duplicateLocatorTaskID).State(); got != models.StateBacklog {
 			t.Fatalf("alpha state = %s, want ready", got)
 		}
-		if got := env.reload(t, 1).GetTaskByID(duplicateLocatorTaskID).State(); got != models.StateInProgress {
+		if got := env.reload(t, 1).GetTaskByID(duplicateLocatorTaskID).State(); got != models.StateDoing {
 			t.Fatalf("beta state = %s, want in_progress", got)
 		}
 	})

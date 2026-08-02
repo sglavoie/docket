@@ -111,7 +111,7 @@ func newSession4Project(t *testing.T, name string) *models.Project {
 	if err != nil {
 		t.Fatalf("NewTask(%q): %v", name, err)
 	}
-	task.WorkflowState = models.StateReady
+	task.WorkflowState = models.StateBacklog
 	task.Project = project
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2

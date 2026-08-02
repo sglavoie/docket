@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -13,15 +12,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// contextEditor is the Context Hub's inline create/edit surface. It collects a
-// name and a selection over the *active* projects only; members the list never
-// shows stay hidden and ride along with the save, so an edit never silently
-// drops them. Custom contexts hand that merge to
-// ContextMutator.SaveCustomContext; regular labels carry hiddenMembers here
-// because SaveRegularContext takes the full membership from its caller.
+// contextEditor is the Scope Hub's single create, rename, and membership-edit
+// surface. It collects a name and a selection over the active projects only;
+// members the list never shows stay hidden and ride along with the save, so an
+// edit never silently drops them.
 type contextEditor struct {
-	kind         ContextScopeKind
 	originalName string
+	nameLocked   bool
 	nameInput    textinput.Model
 	searchInput  textinput.Model
 	searching    bool
@@ -32,12 +29,9 @@ type contextEditor struct {
 	selected map[string]bool
 	initial  map[string]bool
 
-	// hiddenMembers are stored members the project list omits: archived,
-	// sandbox, internal, and (for custom contexts) no-longer-cataloged
-	// projects. A regular label folds them back into memberIDs because
-	// SaveRegularContext takes the request as the complete membership; a custom
-	// context carries them for display only, since SaveCustomContext merges
-	// them itself and would double-add a pre-merged selection.
+	// hiddenMembers are stored members the project list omits. They are folded
+	// back into memberIDs because SaveRegularContext takes the request as the
+	// complete membership.
 	hiddenMembers []string
 
 	// destination state drives the prompt shown when projects leave the default
@@ -54,13 +48,8 @@ type contextEditor struct {
 }
 
 // newContextEditor builds the shared editor over the runtime's active projects.
-// Each context kind then fills in the selection it implies.
-func newContextEditor(runtime *config.RuntimeState, kind ContextScopeKind, editName string) *contextEditor {
-	placeholder := "Custom context name"
-	if kind == ContextScopeRegular {
-		placeholder = "Context label"
-	}
-	nameInput := formFactory.NewTextInput(placeholder)
+func newContextEditor(runtime *config.RuntimeState, editName string) *contextEditor {
+	nameInput := formFactory.NewTextInput("Context label")
 	nameInput.CharLimit = 50
 	nameInput.Focus()
 	if editName != "" {
@@ -73,7 +62,6 @@ func newContextEditor(runtime *config.RuntimeState, kind ContextScopeKind, editN
 
 	projects := runtime.ActiveProjects()
 	return &contextEditor{
-		kind:         kind,
 		originalName: editName,
 		nameInput:    nameInput,
 		searchInput:  searchInput,
@@ -83,40 +71,11 @@ func newContextEditor(runtime *config.RuntimeState, kind ContextScopeKind, editN
 		initial:      make(map[string]bool),
 	}
 }
-
-// newCustomContextEditor builds an editor over a custom context. An empty
-// editName creates a new context; otherwise the stored membership is split
-// against the project list: listed members are pre-checked and the rest are
-// recorded as hidden, so "N selected" counts what the user can actually see and
-// toggle while the members it never showed stay accounted for.
-func newCustomContextEditor(runtime *config.RuntimeState, editName string) *contextEditor {
-	editor := newContextEditor(runtime, ContextScopeCustom, editName)
-	if editName != "" {
-		listed := make(map[string]bool, len(editor.projects))
-		for _, project := range editor.projects {
-			if project != nil {
-				listed[project.ID] = true
-			}
-		}
-		for _, id := range runtime.Machine().GetCustomContext(editName) {
-			if listed[id] {
-				editor.selected[id] = true
-				continue
-			}
-			editor.hiddenMembers = append(editor.hiddenMembers, id)
-		}
-	}
-	maps.Copy(editor.initial, editor.selected)
-	return editor
-}
-
 func (e *contextEditor) isNew() bool { return e.originalName == "" }
 
 // savedName is the name a save asserts, which differs from originalName exactly
 // when the edit renames the context.
 func (e *contextEditor) savedName() string { return strings.TrimSpace(e.nameInput.Value()) }
-
-func (e *contextEditor) isRegular() bool { return e.kind == ContextScopeRegular }
 
 // hasChanges reports whether the editor holds unsaved edits, which is what
 // arms the discard confirmation on Esc.
@@ -185,6 +144,9 @@ func (e *contextEditor) toggleCursor() {
 }
 
 func (e *contextEditor) setFocus(list bool) {
+	if e.nameLocked {
+		list = true
+	}
 	e.listFocus = list
 	if list {
 		e.nameInput.Blur()
@@ -198,10 +160,9 @@ func (e *contextEditor) resize(width int) {
 	formFactory.ResizeTextInput(&e.searchInput, width)
 }
 
-// openEditor arms the inline editor on a custom context. editName is empty for
-// a create.
-func (m *ContextHubModel) openEditor(editName string) {
-	m.armEditor(newCustomContextEditor(m.runtime, editName))
+// openEditor starts a regular-context creation in the shared editor.
+func (m *ContextHubModel) openEditor() {
+	m.armEditor(newRegularContextEditor(m.runtime, ""))
 }
 
 func (m *ContextHubModel) armEditor(editor *contextEditor) {
@@ -238,7 +199,7 @@ func (m *ContextHubModel) updateEditor(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 			editor.applyFilter()
 			return m, nil
 		}
-		if editor.listFocus {
+		if editor.listFocus && !editor.nameLocked {
 			editor.setFocus(false)
 			return m, nil
 		}
@@ -318,82 +279,25 @@ func (m *ContextHubModel) updateEditorSearch(msg tea.KeyPressMsg) tea.Cmd {
 	return cmd
 }
 
-// saveEditor commits through ContextMutator, which owns the validation rules
-// for both context kinds. Failures stay in the editor so the user can correct
-// them.
+// saveEditor commits through ContextMutator, which owns creation, rename,
+// membership, and personal-context validation. Failures stay in the editor so
+// the user can correct them.
 func (m *ContextHubModel) saveEditor() tea.Cmd {
-	if m.editor.isRegular() {
-		return m.saveRegularEditor()
-	}
-	return m.saveCustomEditor()
+	return m.saveRegularEditor()
 }
 
-func (m *ContextHubModel) saveCustomEditor() tea.Cmd {
-	editor := m.editor
-	previous := editor.originalName
-	result, err := m.mutator.SaveCustomContext(CustomContextSaveRequest{
-		OriginalName:     previous,
-		Name:             strings.TrimSpace(editor.nameInput.Value()),
-		ActiveProjectIDs: editor.selectedIDs(),
-	})
-	if err != nil {
-		editor.err = err.Error()
-		return nil
-	}
-
-	saved := CustomContextScope(result.Name)
-	if !result.IsNew && m.active == CustomContextScope(previous) {
-		m.active = saved
-	}
-	m.closeEditor()
-	m.refreshScopes(saved)
-	return func() tea.Msg {
-		return CustomContextSavedMsg{
-			Name:         result.Name,
-			PreviousName: previous,
-			IsNew:        result.IsNew,
-			Renamed:      result.Renamed,
-			ProjectCount: result.ProjectCount,
-			WasActive:    m.active == saved,
-		}
-	}
-}
-
-// deleteConfirmedContext routes the confirmed delete to the mutation its kind
-// needs: a custom context is dropped outright, a regular label is reassigned.
+// deleteConfirmedContext reassigns the deleted label's members to personal.
 func (m *ContextHubModel) deleteConfirmedContext() tea.Cmd {
 	scope := m.pendingDelete
 	m.pendingDelete = ContextScope{}
 	if scope.Name == "" {
 		return nil
 	}
-	if scope.IsCustom() {
-		return m.deleteCustomContext(scope.Name)
-	}
 	return m.deleteRegularContext(scope.Name)
 }
 
-// deleteCustomContext commits the delete first and only then reads the active
-// scope, so a failed commit never leaves the hub pointing at All.
-func (m *ContextHubModel) deleteCustomContext(name string) tea.Cmd {
-	if err := m.mutator.DeleteCustomContext(name); err != nil {
-		m.notice = err.Error()
-		return nil
-	}
-
-	wasActive := m.active == CustomContextScope(name)
-	if wasActive {
-		m.active = AllContextScope()
-	}
-	m.refreshScopes(m.active)
-	return func() tea.Msg {
-		return CustomContextDeletedMsg{Name: name, WasActive: wasActive}
-	}
-}
-
-// refreshScopes re-derives the browse list from the mutated machine domain and
-// parks the cursor on prefer when it survives, so a save or delete leaves the
-// user where they were working.
+// refreshScopes re-derives the browse list from the mutated catalog and parks
+// the cursor on prefer when it survives.
 func (m *ContextHubModel) refreshScopes(prefer ContextScope) {
 	m.rebuildScopeSurface(contextScopeListItemID(prefer))
 }
@@ -406,17 +310,15 @@ func (m *ContextHubModel) selectedScope() (ContextScope, bool) {
 	return entry.Scope, true
 }
 
-// editSelected opens the membership editor for either context kind. All is the
-// only scope with nothing to edit: it is derived from the whole catalog.
+// editSelected opens the shared membership editor. All is the only scope with
+// nothing to edit because it is derived from the whole catalog.
 func (m *ContextHubModel) editSelected() {
 	scope, ok := m.selectedScope()
 	if !ok {
 		return
 	}
-	switch {
-	case scope.IsCustom():
-		m.openEditor(scope.Name)
-	case scope.Kind == ContextScopeRegular:
+	switch scope.Kind {
+	case ContextScopeRegular:
 		m.openRegularEditor(scope.Name)
 	default:
 		m.notice = "All spans every project and has no membership to edit"
@@ -432,14 +334,11 @@ func (m *ContextHubModel) requestDeleteSelected() {
 		m.notice = "All spans every project and cannot be deleted"
 		return
 	}
-	prompt := fmt.Sprintf("Delete custom context %q?", scope.Name)
-	if !scope.IsCustom() {
-		if strings.EqualFold(scope.Name, m.runtime.DefaultContext()) {
-			m.notice = "The default context cannot be deleted"
-			return
-		}
-		prompt = fmt.Sprintf("Delete context %q? Its projects move to %q.", scope.Name, m.runtime.DefaultContext())
+	if strings.EqualFold(scope.Name, m.runtime.DefaultContext()) {
+		m.notice = "The personal context cannot be deleted"
+		return
 	}
+	prompt := fmt.Sprintf("Delete context %q? Its projects move to %q.", scope.Name, m.runtime.DefaultContext())
 	m.pendingDelete = scope
 	m.notice = ""
 	m.confirm.Show("delete", prompt)
@@ -470,9 +369,9 @@ func (m *ContextHubModel) editorView(width, height int) string {
 		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
 	}
 	b.WriteString(nameLabel + editor.nameInput.View())
-	if editor.isRegular() && strings.EqualFold(editor.originalName, m.runtime.DefaultContext()) {
+	if editor.nameLocked {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("  This is the default context; renaming it moves the default too."))
+		b.WriteString(MutedStyle.Render("  The personal context name is protected; its membership remains editable."))
 	}
 	b.WriteString("\n\n")
 
@@ -515,7 +414,7 @@ func (m *ContextHubModel) editorProjectList(width, height int) string {
 		if editor.query != "" {
 			return renderEmptyState("No projects match the filter.", "Esc clears it.")
 		}
-		return renderEmptyState("No active projects.", "Create a project before saving a custom context.")
+		return renderEmptyState("No active projects.", "Create a project before saving a context.")
 	}
 
 	lines := make([]string, 0, len(editor.filtered))
@@ -548,18 +447,12 @@ func (m *ContextHubModel) editorProjectList(width, height int) string {
 	return strings.Join(visible, "\n")
 }
 
-// editorTitle names the surface by context kind so a regular-label edit is never
-// mistaken for a custom-context one, which has different membership semantics.
 func (m *ContextHubModel) editorTitle() string {
 	editor := m.editor
-	switch {
-	case editor.isRegular():
-		return "Edit Context: " + editor.originalName
-	case editor.isNew():
-		return "New Custom Context"
-	default:
-		return "Edit Custom Context: " + editor.originalName
+	if editor.isNew() {
+		return "New Context"
 	}
+	return "Edit Context: " + editor.originalName
 }
 
 func (m *ContextHubModel) editorFooterHelpVariants() []string {
@@ -584,10 +477,6 @@ func (m *ContextHubModel) editorFooterHelpVariants() []string {
 }
 
 func (m *ContextHubModel) editorHelpItems() []HelpItem {
-	save := "Save the custom context"
-	if m.editor.isRegular() {
-		save = "Save the context label and its membership"
-	}
 	return []HelpItem{
 		{Key: "tab", Description: "Switch between name and project list", Category: "Navigation"},
 		{Key: "j/k", Description: "Move through projects", Category: "Navigation"},
@@ -595,7 +484,7 @@ func (m *ContextHubModel) editorHelpItems() []HelpItem {
 		{Key: "space", Description: "Toggle the highlighted project", Category: "Selection"},
 		{Key: "a/A", Description: "Select or deselect every filtered project", Category: "Selection"},
 		{Key: "/", Description: "Search the project list by name or context", Category: "Filters"},
-		{Key: "ctrl+s", Description: save, Category: "Actions"},
+		{Key: "ctrl+s", Description: "Save the context label and its membership", Category: "Actions"},
 		{Key: "esc", Description: "Leave the project list, then discard the edit", Category: "Navigation"},
 	}
 }

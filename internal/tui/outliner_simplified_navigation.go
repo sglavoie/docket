@@ -176,6 +176,9 @@ func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (ou
 			if header.IsTodaySection && !selected.IsTodaySection {
 				return outlinerRow{}, false
 			}
+			if header.IsNextSection && !selected.IsNextSection {
+				return outlinerRow{}, false
+			}
 		}
 		return header, true
 	}
@@ -275,7 +278,7 @@ func (m *OutlinerModel) simplifiedReorderEligible() bool {
 		return false
 	}
 	mode, ok := OutlinerModeByID(m.activeOutlinerMode())
-	if !ok || mode.ID == ModeDue {
+	if !ok || mode.ReorderPolicy == ReorderPolicyNone {
 		return false
 	}
 	if m.isPlanningReorderMode() {

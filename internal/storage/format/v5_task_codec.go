@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	v5DateFormat = "2006-01-02"
+	v5DateFormat            = "2006-01-02"
+	v5MaxRecurrenceInterval = 3650
 )
 
 var v5MetadataKeys = map[string]bool{
@@ -54,8 +55,8 @@ func validateV5TaskRecord(task V5TaskRecord, requireTitle bool) error {
 	if !isV5State(task.State) {
 		return fmt.Errorf("v5 task %q has invalid state %q", task.ID, task.State)
 	}
-	if err := models.ValidatePriority(task.Priority, true); err != nil {
-		return fmt.Errorf("v5 task %q priority: %w", task.ID, err)
+	if task.Priority < 0 || task.Priority > 5 {
+		return fmt.Errorf("v5 task %q priority must be between 0 and 5", task.ID)
 	}
 	if task.CreatedAt.IsZero() || task.UpdatedAt.IsZero() {
 		return fmt.Errorf("v5 task %q requires created and updated timestamps", task.ID)
@@ -87,8 +88,8 @@ func validateV5TaskRecord(task V5TaskRecord, requireTitle bool) error {
 		return fmt.Errorf("v5 task %q has a zero pin timestamp", task.ID)
 	}
 	if task.Recurrence != nil {
-		if task.Recurrence.Interval <= 0 || task.Recurrence.Interval > models.MaxRecurrenceInterval {
-			return fmt.Errorf("v5 task %q recurrence interval must be between 1 and %d", task.ID, models.MaxRecurrenceInterval)
+		if task.Recurrence.Interval <= 0 || task.Recurrence.Interval > v5MaxRecurrenceInterval {
+			return fmt.Errorf("v5 task %q recurrence interval must be between 1 and %d", task.ID, v5MaxRecurrenceInterval)
 		}
 		switch task.Recurrence.Unit {
 		case "day", "week", "month":
@@ -173,7 +174,7 @@ func validateV5StringSet(field, taskID string, values []string) error {
 }
 
 func validateCanonicalV5Tags(taskID string, tags []string) error {
-	normalized, err := models.NormalizeTaskTags(tags)
+	normalized, err := normalizeMigrationV5Tags(tags)
 	if err != nil {
 		return fmt.Errorf("v5 task %q tags: %w", taskID, err)
 	}
@@ -181,6 +182,35 @@ func validateCanonicalV5Tags(taskID string, tags []string) error {
 		return fmt.Errorf("v5 task %q tags are not canonical: got %v, want %v", taskID, tags, normalized)
 	}
 	return nil
+}
+
+// normalizeMigrationV5Tags preserves the historical schema-5 marker rules at
+// the migration boundary. Live schema-6 tags use ordinary independent tag
+// normalization; only legacy v5 decoding canonicalizes type:<marker> spellings
+// and rejects the marker combinations that schema version could not represent.
+func normalizeMigrationV5Tags(tags []string) ([]string, error) {
+	normalized := make([]string, 0, len(tags))
+	seen := make(map[string]bool, len(tags))
+	var selected models.TaskMarker
+	for _, raw := range tags {
+		tag, err := models.NormalizeTaskTag(raw)
+		if err != nil {
+			return nil, err
+		}
+		if marker, ok := models.ParseTaskMarkerTag(tag); ok {
+			if selected != "" && selected != marker {
+				return nil, fmt.Errorf("task can have only one type marker (%s and %s conflict)", selected, marker)
+			}
+			selected = marker
+			tag = marker.String()
+		}
+		if seen[tag] {
+			continue
+		}
+		seen[tag] = true
+		normalized = append(normalized, tag)
+	}
+	return normalized, nil
 }
 
 func validateV5Attachment(attachment V5TaskAttachment) error {
@@ -316,7 +346,7 @@ func ParseV5TaskMetadata(comment string) (V5TaskRecord, error) {
 		SnoozedUntil: values["snoozed"],
 		DependsOn:    splitV5Set(values["depends"]),
 	}
-	task.Tags, err = models.NormalizeTaskTags(task.Tags)
+	task.Tags, err = normalizeMigrationV5Tags(task.Tags)
 	if err != nil {
 		return V5TaskRecord{}, fmt.Errorf("parse v5 tags: %w", err)
 	}

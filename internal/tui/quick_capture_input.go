@@ -10,21 +10,20 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // Autocomplete mode constants
 const (
-	acModeNone     = iota // No autocomplete active
-	acModeTag             // Completing a #tag
-	acModeParent          // Completing a >parent
-	acModeType            // Completing a ^type
-	acModePriority        // Completing a !priority
-	acModeDate            // Completing a @date
-	acModeRecur           // Completing a ~recurrence
-	acModeStatus          // Completing a $state
-	acModeProject         // Completing a %project
+	acModeNone        = iota // No autocomplete active
+	acModeTag                // Completing a #tag
+	acModeParent             // Completing a >parent
+	acModePriority           // Completing a !priority
+	acModeDate               // Completing a @date
+	acModeDestination        // Completing a $destination
+	acModeProject            // Completing a %project
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -38,9 +37,8 @@ type quickCaptureResult struct {
 	tags              []string
 	dueDate           *time.Time
 	parentID          *string
-	recurrence        *models.RecurrencePattern
-	state             models.WorkflowState
-	stateSet          bool
+	destination       app.CaptureDestination
+	destinationSet    bool
 	targetProjectID   *string // Target project ID for cross-project capture
 	targetProjectName string  // Target project name (for preview display)
 }
@@ -49,11 +47,9 @@ type quickCaptureResult struct {
 var quickCaptureTriggers = []ACTrigger{
 	{'#', acModeTag},
 	{'>', acModeParent},
-	{'^', acModeType},
 	{'!', acModePriority},
 	{'@', acModeDate},
-	{'~', acModeRecur},
-	{'$', acModeStatus},
+	{'$', acModeDestination},
 	{'%', acModeProject},
 }
 
@@ -268,9 +264,6 @@ func (q *quickCaptureInput) autocompleteLiteralComplete() bool {
 		return false
 	}
 	switch mode {
-	case acModeType:
-		_, ok := models.ParseTaskMarker(partial)
-		return ok
 	case acModeTag:
 		parsed := textgrammar.Parse("#"+partial, textgrammar.SurfaceCapture)
 		return parsed.Text == "" && len(parsed.TokensFor(textgrammar.FieldTag)) == 1
@@ -304,16 +297,12 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getTagSuggestions(partial)
 	case acModeParent:
 		items = q.getParentSuggestions(partial)
-	case acModeType:
-		items = q.getTypeSuggestions(partial)
 	case acModePriority:
 		items = q.getPrioritySuggestions(partial)
 	case acModeDate:
 		items = q.getDateSuggestions(partial)
-	case acModeRecur:
-		items = q.getRecurrenceSuggestions(partial)
-	case acModeStatus:
-		items = q.getStatusSuggestions(partial)
+	case acModeDestination:
+		items = q.getDestinationSuggestions(partial)
 	case acModeProject:
 		items = q.getProjectSuggestions(partial)
 	}
@@ -362,13 +351,17 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	taskChunks := []string{taskTitle}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 
-	state := models.StateInbox
-	stateLabel := "$" + state.String() + " (default)"
-	if q.preview.stateSet {
-		state = q.preview.state
-		stateLabel = "$" + state.String()
+	destination := app.CaptureDestinationInbox
+	destinationLabel := "$" + string(destination) + " (default)"
+	if q.preview.parentID != nil {
+		destination = app.CaptureDestinationBacklog
+		destinationLabel = "$" + string(destination) + " (default)"
 	}
-	routeChunks := []string{state.Icon() + " " + stateLabel}
+	if q.preview.destinationSet {
+		destination = q.preview.destination
+		destinationLabel = "$" + string(destination)
+	}
+	routeChunks := []string{destination.WorkflowState().Icon() + " " + destinationLabel}
 	if q.preview.targetProjectName != "" {
 		routeChunks = append(routeChunks, "→ "+q.preview.targetProjectName)
 	}
@@ -378,14 +371,11 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if q.preview.dueDate != nil {
 		scheduleChunks = append(scheduleChunks, "@"+q.preview.dueDate.Format("Jan 2"))
 	}
-	if q.preview.recurrence != nil {
-		scheduleChunks = append(scheduleChunks, "~"+q.preview.recurrence.String())
-	}
 	if len(scheduleChunks) > 0 {
 		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})
 	}
 
-	if q.preview.priority != 3 {
+	if q.preview.priority != models.PriorityUnset {
 		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("!%d", q.preview.priority)}})
 	}
 	if len(q.preview.tags) > 0 {
@@ -561,7 +551,7 @@ type syntaxGuideGroup struct {
 // only included when %project capture is enabled, so the Linked Task Creator
 // (which skips project syntax) never advertises it.
 func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
-	groupOrder := []string{"Basics", "Priority & Tags", "Schedule", "Placement", "State", "Project Routing"}
+	groupOrder := []string{"Priority & Tags", "Schedule", "Destination", "Project Routing", "Placement"}
 	byGroup := make(map[string][]syntaxGuideEntry)
 	for _, def := range textgrammar.Definitions(textgrammar.SurfaceCapture) {
 		if def.Legacy || (q.skipProjectSyntax && def.Field == textgrammar.FieldProject) {
@@ -573,10 +563,6 @@ func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 			examples: strings.Join(def.Examples, "  "),
 		}
 		switch def.Field {
-		case textgrammar.FieldTaskType:
-			for _, value := range def.Values {
-				entry.validation = append(entry.validation, "Task ^"+value)
-			}
 		case textgrammar.FieldPriority:
 			for _, value := range def.Values {
 				entry.validation = append(entry.validation, "Task !"+value)
@@ -588,14 +574,9 @@ func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 				"Task @tomorrow", "Task @friday", "Task @+3d", "Task @next monday",
 				"Task @in 2 weeks", "Task @2025-12-31",
 			}
-		case textgrammar.FieldRecurrence:
-			entry.validation = []string{
-				"Task ~daily", "Task ~weekly", "Task ~biweekly", "Task ~monthly",
-				"Task ~2d",
-			}
 		case textgrammar.FieldParent:
 			entry.validation = []string{"Subtask >1", "Subtask >Login"}
-		case textgrammar.FieldState:
+		case textgrammar.FieldDestination:
 			for _, value := range def.Values {
 				entry.validation = append(entry.validation, "Task $"+value)
 			}

@@ -13,34 +13,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleEditorMessages handles text editor, recurrence editor, glow, and external editor messages.
+// handleEditorMessages handles text editor, glow, and external editor messages.
 // Returns true if the message was handled.
 func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowRecurrenceEditorMsg:
-		editor := NewRecurrenceEditorModel(msg.CurrentPattern, msg.DueDate)
-		m.showView(ViewRecurrenceEditor, editor)
-		return true, nil
-
-	case RecurrenceEditorDoneMsg:
-		m.popView()
-		if m.pendingTaskRecurrenceRequest != nil {
-			request := *m.pendingTaskRecurrenceRequest
-			m.pendingTaskRecurrenceRequest = nil
-			m.contextActionSheet = m.suspendedTaskActionSheet
-			m.suspendedTaskActionSheet = nil
-			if msg.Canceled {
-				return true, nil
-			}
-			request.Value = OperationRecurrenceValue{Pattern: cloneRecurrence(msg.Pattern)}
-			request.HasValue = true
-			return true, m.resumeContextActionRequest(request)
-		}
-		// Forward the message to the parent view (task editor or task creator)
-		// so it can update the recurrence pattern
-		cmd := m.views.Update(m.currentView(), msg)
-		return true, cmd
-
 	case ShowTextEditorMsg:
 		return m.showViewInit(ViewTextEditor, NewTextEditorModel(msg.FieldName, msg.CurrentValue))
 

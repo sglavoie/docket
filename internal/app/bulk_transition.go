@@ -45,9 +45,8 @@ func (s *Service) bulkTransition(taskIDs []string, locators []TaskLocator, targe
 		}
 	}()
 
-	resolver := NewWorkspaceResolver(snap)
 	for _, ref := range refs {
-		if transitionErr := validateLifecycleTransition(ref, resolver, target); transitionErr != nil {
+		if transitionErr := validateLifecycleTransition(ref, target); transitionErr != nil {
 			return BulkResult{}, transitionErr
 		}
 	}

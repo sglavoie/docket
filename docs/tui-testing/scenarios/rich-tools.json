@@ -22,14 +22,6 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "return to Outliner", "key": "esc" },
 
-    { "type": "key", "label": "open task actions for decisions", "key": "space" },
-    { "type": "text", "text": "decisions" },
-    { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "view", "value": "TaskDecisions" },
-    { "type": "assert", "assert": "contains", "value": "Decisions" },
-    { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "return to Outliner", "key": "esc" },
-
     { "type": "key", "label": "open task actions for attachments", "key": "space" },
     { "type": "text", "text": "attachments" },
     { "type": "key", "key": "enter" },

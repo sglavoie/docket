@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -16,7 +15,6 @@ func filterFacetTask(
 	tags []string,
 	dueDate *time.Time,
 	snoozedUntil *time.Time,
-	dependencies ...string,
 ) *models.Task {
 	return &models.Task{
 		ID:            id,
@@ -26,7 +24,6 @@ func filterFacetTask(
 		Tags:          tags,
 		DueDate:       dueDate,
 		SnoozedUntil:  snoozedUntil,
-		DependsOn:     dependencies,
 	}
 }
 
@@ -35,25 +32,20 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 	today := now
 	tomorrow := now.AddDate(0, 0, 1)
 
-	dependency := filterFacetTask("dependency", models.StateReady, 0, nil, nil, nil)
-	blockers := primaryRowsProject("blockers", dependency)
-
 	commonTags := []string{"alpha", "beta"}
-	commonDependency := []string{"blockers:dependency"}
 	work := primaryRowsProject(
 		"work",
-		filterFacetTask("ready-match", models.StateReady, 2, commonTags, &today, &tomorrow, commonDependency...),
-		filterFacetTask("waiting-match", models.StateWaiting, 3, commonTags, &today, &tomorrow, commonDependency...),
-		filterFacetTask("wrong-state", models.StateInProgress, 2, commonTags, &today, &tomorrow, commonDependency...),
-		filterFacetTask("wrong-priority", models.StateReady, 5, commonTags, &today, &tomorrow, commonDependency...),
-		filterFacetTask("missing-tag", models.StateReady, 2, []string{"alpha"}, &today, &tomorrow, commonDependency...),
-		filterFacetTask("wrong-due", models.StateReady, 2, commonTags, &tomorrow, &tomorrow, commonDependency...),
-		filterFacetTask("not-snoozed", models.StateReady, 2, commonTags, &today, nil, commonDependency...),
-		filterFacetTask("not-blocked", models.StateReady, 2, commonTags, &today, &tomorrow),
+		filterFacetTask("ready-match", models.StateBacklog, 2, commonTags, &today, &tomorrow),
+		filterFacetTask("waiting-match", models.StateWaiting, 3, commonTags, &today, &tomorrow),
+		filterFacetTask("wrong-state", models.StateDoing, 2, commonTags, &today, &tomorrow),
+		filterFacetTask("wrong-priority", models.StateBacklog, 5, commonTags, &today, &tomorrow),
+		filterFacetTask("missing-tag", models.StateBacklog, 2, []string{"alpha"}, &today, &tomorrow),
+		filterFacetTask("wrong-due", models.StateBacklog, 2, commonTags, &tomorrow, &tomorrow),
+		filterFacetTask("not-snoozed", models.StateBacklog, 2, commonTags, &today, nil),
 	)
 
-	outliner := scopeTestOutliner(blockers, work)
-	states, err := models.NewWorkflowStateSet(models.StateReady, models.StateWaiting)
+	outliner := scopeTestOutliner(work)
+	states, err := models.NewWorkflowStateSet(models.StateBacklog, models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +53,6 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 	outliner.filter.Priority = 3
 	outliner.filter.Tags = map[string]bool{"alpha": true, "beta": true}
 	outliner.filter.DueDate = DueDateToday
-	outliner.filter.Blocked = true
 	outliner.filter.Snoozed = true
 	outliner.rebuildRows()
 
@@ -72,37 +63,22 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 		}
 	}
 	for _, id := range []string{
-		"dependency",
 		"wrong-state",
 		"wrong-priority",
 		"missing-tag",
 		"wrong-due",
 		"not-snoozed",
-		"not-blocked",
 	} {
 		if visible[id] {
 			t.Errorf("composed facets retained %q; visible = %v", id, visible)
 		}
-	}
-
-	// The blocked facet must resolve through the same complete workspace
-	// snapshot as the projection. The legacy project-local predicate treats a
-	// qualified dependency as unresolved even after its task is complete.
-	dependency.WorkflowState = models.StateDone
-	outliner.loadedProjects = []*models.Project{work}
-	outliner.workspaceResolver = app.NewWorkspaceResolver(
-		app.NewSnapshot([]*models.Project{blockers, work}, nil, nil),
-	)
-	outliner.rebuildRows()
-	if visible := visibleOutlinerTaskIDs(outliner); len(visible) != 0 {
-		t.Fatalf("completed cross-project dependency left blocked rows visible: %v", visible)
 	}
 }
 
 func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 	project := primaryRowsProject(
 		"project",
-		filterFacetTask("ready", models.StateReady, 0, nil, nil, nil),
+		filterFacetTask("ready", models.StateBacklog, 0, nil, nil, nil),
 		filterFacetTask("done", models.StateDone, 0, nil, nil, nil),
 		filterFacetTask("canceled", models.StateCanceled, 0, nil, nil, nil),
 	)
@@ -121,11 +97,11 @@ func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 }
 
 func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
-	alpha := primaryRowsProject("alpha", filterFacetTask("alpha-task", models.StateReady, 1, []string{"alpha"}, nil, nil))
+	alpha := primaryRowsProject("alpha", filterFacetTask("alpha-task", models.StateBacklog, 1, []string{"alpha"}, nil, nil))
 	beta := primaryRowsProject("beta", filterFacetTask("beta-task", models.StateWaiting, 2, []string{"beta"}, nil, nil))
 	outliner := scopeTestOutliner(alpha, beta)
 
-	states, err := models.NewWorkflowStateSet(models.StateReady, models.StateWaiting)
+	states, err := models.NewWorkflowStateSet(models.StateBacklog, models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,25 +130,25 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	// Facet edits made inside one project scope belong to the session-wide
 	// Outliner and must survive both focus replacement and the Esc-equivalent
 	// pop back to the base scope.
-	outliner.filter.Priority = 4
+	outliner.filter.Priority = models.PriorityMedium
 	outliner.filter.Tags = map[string]bool{"beta": true}
 	outliner.filter.Blocked = false
 	outliner.pushProjectScope(beta.ID)
-	if outliner.filter.Priority != 4 || !outliner.filter.Tags["beta"] || outliner.filter.Blocked {
+	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] || outliner.filter.Blocked {
 		t.Fatalf("project focus replacement reset facets: %+v", outliner.filter.CommonFilterState)
 	}
 	if !outliner.popProjectScope() {
 		t.Fatal("project scope did not pop")
 	}
-	if outliner.filter.Priority != 4 || !outliner.filter.Tags["beta"] || outliner.filter.Blocked {
+	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] || outliner.filter.Blocked {
 		t.Fatalf("project scope pop restored stale facets: %+v", outliner.filter.CommonFilterState)
 	}
 }
 
 func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
-	project := primaryRowsProject("project", filterFacetTask("task", models.StateReady, 1, nil, nil, nil))
+	project := primaryRowsProject("project", filterFacetTask("task", models.StateBacklog, 1, nil, nil, nil))
 	outliner := scopeTestOutliner(project)
-	liveStates, err := models.NewWorkflowStateSet(models.StateReady)
+	liveStates, err := models.NewWorkflowStateSet(models.StateBacklog)
 	if err != nil {
 		t.Fatal(err)
 	}

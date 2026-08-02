@@ -96,15 +96,10 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	project := NewTestProject("Test Project")
 	task := NewTestTask("Original")
 	task.Tags = []string{"original"}
-	task.DependsOn = []string{"dep-1"}
 	task.Comments = []*models.Comment{{Text: "comment"}}
 	task.Decisions = []*models.Decision{{Text: "decision"}}
 	task.Checklist = []models.ChecklistItem{{Text: "step"}}
 	task.Attachments = []models.Attachment{{Filename: "notes.md"}}
-	task.Recurrence = &models.RecurrencePattern{
-		Interval: 2,
-		Unit:     models.RecurrenceWeekly,
-	}
 	project.Tasks = []*models.Task{task}
 
 	if err := repo.Save(project); err != nil {
@@ -112,21 +107,17 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	}
 
 	task.Tags[0] = "mutated"
-	task.DependsOn[0] = "dep-2"
 	task.Comments[0].Text = "mutated"
 	task.Decisions[0].Text = "mutated"
 	task.Checklist[0].Text = "mutated"
 	task.Attachments[0].Filename = "mutated.md"
-	task.Recurrence.Interval = 1
 
 	saved := repo.Projects[project.ID].Tasks[0]
 	if saved.Tags[0] != "original" ||
-		saved.DependsOn[0] != "dep-1" ||
 		saved.Comments[0].Text != "comment" ||
 		saved.Decisions[0].Text != "decision" ||
 		saved.Checklist[0].Text != "step" ||
-		saved.Attachments[0].Filename != "notes.md" ||
-		saved.Recurrence.Interval != 2 {
+		saved.Attachments[0].Filename != "notes.md" {
 		t.Fatalf("saved task shared mutable data with original: %#v", saved)
 	}
 }

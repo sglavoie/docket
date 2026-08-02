@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -38,7 +39,7 @@ func runEdit(t *testing.T, m *TaskFormModel) TaskUpdatedMsg {
 // ── Edit happy path ─────────────────────────────────────────────────────────
 
 func TestTaskForm_Save_EditHappyPath_CommitsThroughCoordinator(t *testing.T) {
-	task := seedTask(t, 1, "Original", models.StateReady)
+	task := seedTask(t, 1, "Original", models.StateBacklog)
 	env := newScenarioEnv(t, "edit", task)
 	m := scenarioEditForm(t, env, task)
 
@@ -67,20 +68,75 @@ func TestTaskForm_Save_EditHappyPath_CommitsThroughCoordinator(t *testing.T) {
 	}
 }
 
+func TestTaskFormEditDoubleSubmitCommitsOnce(t *testing.T) {
+	task := seedTask(t, 1, "Before", models.StateBacklog)
+	env := newScenarioEnv(t, "edit-double-submit", task)
+	m := scenarioEditForm(t, env, task)
+	m.titleInput.SetValue("After")
+
+	first := m.handleSave()
+	duplicate := m.handleSave()
+	if first == nil || duplicate != nil || !m.submissionInFlight {
+		t.Fatalf("commands first=%v duplicate=%v inFlight=%v", first != nil, duplicate != nil, m.submissionInFlight)
+	}
+	msg, ok := first().(TaskUpdatedMsg)
+	if !ok || msg.Result == nil {
+		t.Fatalf("first result = %#v", msg)
+	}
+	m.Update(msg)
+	if m.submissionInFlight {
+		t.Fatal("success did not release the edit-form submission guard")
+	}
+	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Title != "After" {
+		t.Fatalf("edited task = %+v", got)
+	}
+	env.undo(t)
+	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Title != "Before" {
+		t.Fatalf("one undo did not restore the task; duplicate commit escaped the guard: %+v", got)
+	}
+}
+
+func TestTaskFormEditSubmissionGuardClearsAfterError(t *testing.T) {
+	task := seedTask(t, 1, "Before", models.StateBacklog)
+	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
+	stub := &stubMutator{err: errors.New("edit failed")}
+	features := newFeatureCoordinators(stub, stubQuery{})
+	m := NewTaskFormModelEdit(project, task, nil)
+	m.SetTaskFormCoordinator(features.TaskForm)
+	m.titleInput.SetValue("Retry edit")
+
+	first := m.handleSave()
+	duplicate := m.handleSave()
+	if first == nil || duplicate != nil {
+		t.Fatalf("commands first=%v duplicate=%v", first != nil, duplicate != nil)
+	}
+	failure, ok := first().(ErrorMsg)
+	if !ok || failure.Err == nil || stub.calls != 1 {
+		t.Fatalf("failure=%#v calls=%d", failure, stub.calls)
+	}
+	m.Update(failure)
+	if m.submissionInFlight || m.err == nil {
+		t.Fatalf("error lifecycle inFlight=%v err=%v", m.submissionInFlight, m.err)
+	}
+	if retry := m.handleSave(); retry == nil {
+		t.Fatal("edit form did not allow retry after failure")
+	}
+}
+
 func TestTaskForm_Save_EditMutatesTaskAndUndoRestores(t *testing.T) {
-	task := seedTask(t, 1, "Before", models.StateReady)
+	task := seedTask(t, 1, "Before", models.StateBacklog)
 	task.Priority = 3
 	env := newScenarioEnv(t, "edit-undo", task)
 	m := scenarioEditForm(t, env, task)
 
 	m.draft.title = "Mutated Title"
 	m.titleInput.SetValue("Mutated Title")
-	m.draft.priority = 5
+	m.draft.priority = 1
 	m.draft.tags = []string{"mutated"}
 
 	runEdit(t, m)
 	got := env.reload(t).GetTaskByID(task.ID)
-	if got == nil || got.Title != "Mutated Title" || got.Priority != 5 {
+	if got == nil || got.Title != "Mutated Title" || got.Priority != 1 {
 		t.Fatalf("edit not persisted: %v", got)
 	}
 	if !got.HasTag("mutated") {
@@ -95,7 +151,7 @@ func TestTaskForm_Save_EditMutatesTaskAndUndoRestores(t *testing.T) {
 }
 
 func TestTaskForm_Save_EditFiltersBlankChecklistItems(t *testing.T) {
-	task := seedTask(t, 1, "Task", models.StateReady)
+	task := seedTask(t, 1, "Task", models.StateBacklog)
 	env := newScenarioEnv(t, "edit-checklist", task)
 	m := scenarioEditForm(t, env, task)
 

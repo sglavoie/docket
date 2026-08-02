@@ -55,7 +55,7 @@ func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 	ol := NewOutlinerModel(project, app.configManager, app.runtime)
 	ol.filter.setStateFilter(testWorkflowStateSet(
 		models.StateCanceled,
-		models.StateNext,
+		models.StateBacklog,
 		models.StateInbox,
 		models.StateWaiting,
 	), true)
@@ -64,7 +64,7 @@ func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 	if first == "" {
 		t.Fatalf("expected a state part in activeFilterParts output, got none")
 	}
-	wantStatePart := "state:inbox,next,waiting,canceled"
+	wantStatePart := "state:inbox,backlog,waiting,canceled"
 	if first != wantStatePart {
 		t.Errorf("state part not in canonical order: got %q, want %q", first, wantStatePart)
 	}

@@ -10,7 +10,7 @@ func TestNewGenericTaskUsesTargetIdentity(t *testing.T) {
 	if task.ID != "generic" || task.Title != "Generic" {
 		t.Fatalf("task identity = %q/%q, want generic/Generic", task.ID, task.Title)
 	}
-	if task.State() != StateReady {
-		t.Fatalf("State() = %q, want %q", task.State(), StateReady)
+	if task.State() != StateBacklog {
+		t.Fatalf("State() = %q, want %q", task.State(), StateBacklog)
 	}
 }

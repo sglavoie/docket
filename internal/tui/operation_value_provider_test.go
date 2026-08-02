@@ -11,6 +11,19 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+func TestStateValueProviderAcceptsOnlyCanonicalPresets(t *testing.T) {
+	for _, state := range models.AllWorkflowStates() {
+		if !ValueProviderState.acceptsPresetValue(state) {
+			t.Errorf("canonical state preset %q was rejected", state)
+		}
+	}
+	for _, retired := range []models.WorkflowState{"ready", "next", "in_progress", "review"} {
+		if ValueProviderState.acceptsPresetValue(retired) {
+			t.Errorf("retired state preset %q was accepted", retired)
+		}
+	}
+}
+
 func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *testing.T) {
 	request := OperationExecutionRequest{
 		ID:      operationTaskSetState,
@@ -178,7 +191,7 @@ func TestBulkOperationTagPickerCreatesAndPromotesTagsAsAddPatch(t *testing.T) {
 	}
 }
 
-func TestBulkOperationTagPickerReplacesOtherTaskMarkers(t *testing.T) {
+func TestBulkOperationTagPickerKeepsSemanticTagsIndependent(t *testing.T) {
 	picker := newOperationTagPickerForTest(t, "bug", "idea", "keep")
 	if err := picker.configureTagMembership(map[ListItemID]operationTagMembership{
 		"tag:bug":  operationTagSome,
@@ -202,11 +215,11 @@ func TestBulkOperationTagPickerReplacesOtherTaskMarkers(t *testing.T) {
 	if !ok {
 		t.Fatalf("tag value = %T, want OperationTagsValue", value)
 	}
-	if !reflect.DeepEqual(patch.Add, []string{"idea"}) || !reflect.DeepEqual(patch.Remove, []string{"bug"}) {
-		t.Fatalf("tag patch = %+v, want add idea and remove bug", patch)
+	if !reflect.DeepEqual(patch.Add, []string{"idea"}) || len(patch.Remove) != 0 {
+		t.Fatalf("tag patch = %+v, want add idea without implicit removals", patch)
 	}
 	if picker.tagCurrent["tag:keep"] != operationTagAll {
-		t.Fatal("ordinary tag selection changed while replacing a marker")
+		t.Fatal("ordinary tag selection changed while adding a semantic tag")
 	}
 }
 
@@ -363,7 +376,7 @@ func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
-	context := taskActionTestContext(models.StateReady)
+	context := taskActionTestContext(models.StateBacklog)
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationTaskSetState,
 		Context: context,
@@ -385,7 +398,7 @@ func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
 	task := &models.Task{
 		ID:            "task",
 		Title:         "Task",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	other := &models.Project{ID: "other", Name: "Other", Slug: "other"}
@@ -493,78 +506,13 @@ func TestMovedTaskMenuOperationRetargetsAsyncReloadAnchor(t *testing.T) {
 	}
 }
 
-func TestDependencyValueSourcePreservesExternalExistingEdges(t *testing.T) {
-	task := &models.Task{
-		ID:            "task",
-		Title:         "Task",
-		WorkflowState: models.StateReady,
-		DependsOn:     []string{"other-project:blocker"},
-	}
-	local := &models.Task{
-		ID:            "local",
-		Title:         "Local",
-		WorkflowState: models.StateReady,
-	}
-	project := &models.Project{ID: "project", Tasks: []*models.Task{task, local}}
-	project.BuildTaskTree()
-	model := newUITestApp()
-	setTestAppProjects(model, project)
-
-	source, selected := model.dependencyOperationListSource(task, project)
-	if !slicesContainsListItemID(selected, "dependency:other-project:blocker") {
-		t.Fatalf("selected dependencies = %v, missing external edge", selected)
-	}
-	found := false
-	for _, item := range source.Items {
-		if item.ID == "dependency:other-project:blocker" && item.Data == "other-project:blocker" {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatal("external existing dependency is not represented by the value source")
-	}
-}
-
-func TestDependencyValueSourceIncludesSafeCrossProjectCandidates(t *testing.T) {
-	task := &models.Task{ID: "task", Title: "Task", WorkflowState: models.StateReady}
-	local := &models.Task{ID: "local", ShortID: 2, Title: "Local", WorkflowState: models.StateReady}
-	blocker := &models.Task{ID: "blocker", ShortID: 1, Title: "Cross blocker", WorkflowState: models.StateReady}
-	cycle := &models.Task{
-		ID: "cycle", ShortID: 2, Title: "Would cycle", WorkflowState: models.StateReady,
-		DependsOn: []string{"alpha:task"},
-	}
-	owner := &models.Project{ID: "alpha", Name: "Alpha", Slug: "alpha", Tasks: []*models.Task{task, local}}
-	other := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Tasks: []*models.Task{blocker, cycle}}
-	owner.BuildTaskTree()
-	other.BuildTaskTree()
-	model := newUITestApp()
-	setTestAppProjects(model, owner, other)
-
-	source, _ := model.dependencyOperationListSource(task, owner)
-	byData := make(map[string]ListItem)
-	for _, item := range source.Items {
-		if value, ok := item.Data.(string); ok {
-			byData[value] = item
-		}
-	}
-	if _, ok := byData["beta:blocker"]; !ok {
-		t.Fatal("cross-project dependency candidate is missing")
-	}
-	if _, ok := byData["beta:cycle"]; ok {
-		t.Fatal("workspace-cyclic dependency candidate was offered")
-	}
-	if got := byData["beta:blocker"].SecondaryText; !strings.Contains(got, "Beta") {
-		t.Fatalf("cross-project candidate lacks project context: %q", got)
-	}
-}
-
 func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha")
 	taskB := newBulkPickerTestTask(t, 1, "beta")
 	taskA.ID = "shared-task-id"
 	taskB.ID = "shared-task-id"
-	taskA.Priority = 5
-	taskB.Priority = 5
+	taskA.Priority = models.PriorityLow
+	taskB.Priority = models.PriorityLow
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	model := env.appModel()
 	model.operationRegistry = NewOperationRegistry()
@@ -617,8 +565,8 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 
 	env.undo(t)
 	for index, task := range []*models.Task{taskA, taskB} {
-		if got := env.reload(t, index).GetTaskByID(task.ID); got == nil || got.Priority != 5 {
-			t.Fatalf("undo project %d priority = %v, want 5", index, got)
+		if got := env.reload(t, index).GetTaskByID(task.ID); got == nil || got.Priority != models.PriorityLow {
+			t.Fatalf("undo project %d priority = %v, want %d", index, got, models.PriorityLow)
 		}
 	}
 }
@@ -662,15 +610,15 @@ func TestNarrowTaskEditorsCommitThroughCommonApplicationOperation(t *testing.T) 
 func newTaskStructureTestProject() *models.Project {
 	epic := &models.Task{
 		ID: "epic", ShortID: 1, Title: "Epic",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	story := &models.Task{
 		ID: "story", ShortID: 2, Title: "Story", ParentID: strPtr("epic"),
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	loose := &models.Task{
 		ID: "loose", ShortID: 3, Title: "Loose",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	project := &models.Project{
 		ID: "alpha", Name: "Alpha", Slug: "alpha",
@@ -771,15 +719,12 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 		}
 	}
 	// Every direct and retired operation is absent. The remaining projection is
-	// the exact nine-item task menu in its canonical order.
+	// the exact six-item task menu in its canonical order.
 	want := []OperationID{
-		operationTaskRecurrence,
 		operationTaskMoveProject,
 		operationTaskSetParent,
-		operationTaskSetDependencies,
 		operationTaskChecklist,
 		operationTaskComments,
-		operationTaskDecisions,
 		operationTaskAttachments,
 		operationTaskDelete,
 	}

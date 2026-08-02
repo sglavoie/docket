@@ -8,7 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -110,7 +109,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
 	m.crossSnapshotReady = true
-	m.workspaceResolver = app.NewWorkspaceResolver(app.NewSnapshot(msg.projects, nil, nil))
+	m.workspaceResolver = &workspaceFilterResolver{}
 	m.refreshContextScopeProjects()
 	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
@@ -198,10 +197,14 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
-	fmt.Fprintf(&b, "today-fold=%t|", m.collapsedSections[todaySectionCollapseKey])
+	fmt.Fprintf(&b, "today-fold=%t|next-fold=%t|", m.collapsedSections[todaySectionCollapseKey], m.collapsedSections[nextSectionCollapseKey])
 	b.WriteString("today-plan=")
 	if m.runtime != nil {
 		for _, item := range m.runtime.Planning().GetToday() {
+			fmt.Fprintf(&b, "%s:%s,", item.ProjectID, item.TaskID)
+		}
+		b.WriteString("|next-plan=")
+		for _, item := range m.runtime.Planning().GetNextOrder() {
 			fmt.Fprintf(&b, "%s:%s,", item.ProjectID, item.TaskID)
 		}
 	}

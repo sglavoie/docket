@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -72,20 +73,57 @@ func TestTaskForm_Save_CreateHappyPath_CommitsThroughCoordinator(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Save_CreateInitializesCollectionFields(t *testing.T) {
-	env := newScenarioEnv(t, "create-collections")
+func TestTaskFormCreateDoubleSubmitCreatesOneShortIDAndOneCommit(t *testing.T) {
+	env := newScenarioEnv(t, "create-double-submit")
 	m := scenarioCreateForm(t, env)
+	m.titleInput.SetValue("Create once")
 
-	m.draft.title = "Field init test"
-	m.titleInput.SetValue("Field init test")
-
-	msg := runCreate(t, m)
-	task := env.reload(t).GetTaskByID(msg.Result.TaskID)
-	if task == nil {
-		t.Fatal("created task absent from reloaded project")
+	first := m.handleSave()
+	duplicate := m.handleSave()
+	if first == nil || duplicate != nil || !m.submissionInFlight {
+		t.Fatalf("commands first=%v duplicate=%v inFlight=%v", first != nil, duplicate != nil, m.submissionInFlight)
 	}
-	if task.DependsOn == nil {
-		t.Error("DependsOn should be initialized to empty slice, got nil")
+	msg, ok := first().(TaskCreatedMsg)
+	if !ok || msg.Result == nil {
+		t.Fatalf("first result = %#v", msg)
+	}
+	m.Update(msg)
+	if m.submissionInFlight {
+		t.Fatal("success did not release the create-form submission guard")
+	}
+
+	fresh := env.reload(t)
+	if len(fresh.Tasks) != 1 || fresh.Tasks[0].ShortID != 1 || fresh.NextShortID != 2 {
+		t.Fatalf("created tasks=%+v nextShortID=%d", fresh.Tasks, fresh.NextShortID)
+	}
+	env.undo(t)
+	if got := len(env.reload(t).Tasks); got != 0 {
+		t.Fatalf("one undo left %d tasks; create form committed twice", got)
+	}
+}
+
+func TestTaskFormCreateSubmissionGuardClearsAfterError(t *testing.T) {
+	stub := &stubMutator{err: errors.New("create failed")}
+	features := newFeatureCoordinators(stub, stubQuery{})
+	m := newTestTaskForm()
+	m.SetTaskFormCoordinator(features.TaskForm)
+	m.titleInput.SetValue("Retry create")
+
+	first := m.handleSave()
+	duplicate := m.handleSave()
+	if first == nil || duplicate != nil {
+		t.Fatalf("commands first=%v duplicate=%v", first != nil, duplicate != nil)
+	}
+	failure, ok := first().(ErrorMsg)
+	if !ok || failure.Err == nil || stub.calls != 1 {
+		t.Fatalf("failure=%#v calls=%d", failure, stub.calls)
+	}
+	m.Update(failure)
+	if m.submissionInFlight || m.err == nil {
+		t.Fatalf("error lifecycle inFlight=%v err=%v", m.submissionInFlight, m.err)
+	}
+	if retry := m.handleSave(); retry == nil {
+		t.Fatal("create form did not allow retry after failure")
 	}
 }
 
@@ -164,27 +202,23 @@ func TestTaskForm_Save_CreateHappyPath_AddsSubtasks(t *testing.T) {
 	if childOne.ParentID == nil || *childOne.ParentID != parent.ID {
 		t.Errorf("child one not parented to the parent task")
 	}
-	// The blank-title subtask was skipped.
-	if childOne.DependsOn == nil {
-		t.Error("subtask collection fields should be initialized")
-	}
 }
 
-func TestTaskForm_Save_CreateOpenAfterSubtaskTargetsChild(t *testing.T) {
-	env := newScenarioEnv(t, "create-openafter")
+func TestTaskForm_Save_CreateEditAfterSubtaskTargetsChild(t *testing.T) {
+	env := newScenarioEnv(t, "create-editafter")
 	m := scenarioCreateForm(t, env)
 
 	m.draft.title = "Parent Task"
 	m.titleInput.SetValue("Parent Task")
 	m.draft.subtasks = []formSubtaskDraft{
-		{title: "open-after subtask"},
+		{title: "edit-after subtask"},
 	}
-	m.subtaskOpenDetail = true
+	m.subtaskOpenContent = true
 	m.subtaskOpenIdx = 0
 
 	msg := runCreate(t, m)
-	if !msg.OpenDetail {
-		t.Error("OpenDetail should be true on the open-after-subtask path")
+	if !msg.OpenContent || msg.OpenDetail {
+		t.Fatalf("edit-after flags = content:%v detail:%v", msg.OpenContent, msg.OpenDetail)
 	}
 	if msg.OpenTaskID == "" {
 		t.Fatal("OpenTaskID should target the created subtask")
@@ -193,8 +227,8 @@ func TestTaskForm_Save_CreateOpenAfterSubtaskTargetsChild(t *testing.T) {
 		t.Error("OpenTaskID should target the subtask, not the parent task")
 	}
 	child := env.reload(t).GetTaskByID(msg.OpenTaskID)
-	if child == nil || child.Title != "open-after subtask" {
-		t.Fatalf("open-after target is not the subtask: %v", child)
+	if child == nil || child.Title != "edit-after subtask" {
+		t.Fatalf("edit-after target is not the subtask: %v", child)
 	}
 }
 

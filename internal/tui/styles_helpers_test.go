@@ -23,8 +23,6 @@ func TestGetTitlePriorityStyle(t *testing.T) {
 		{1, true, true, false, lipgloss.Color(defaultColorPriority1Title)},
 		{2, true, false, false, lipgloss.Color(defaultColorPriority2Title)},
 		{3, false, false, false, lipgloss.Color(defaultColorPriority3Title)},
-		{4, false, false, false, lipgloss.Color(defaultColorPriority4Title)},
-		{5, false, false, false, lipgloss.Color(defaultColorPriority5Title)},
 	}
 
 	for _, tc := range tests {
@@ -47,12 +45,20 @@ func TestGetTitlePriorityStyle(t *testing.T) {
 func TestGetTitlePriorityStyleOutOfRange(t *testing.T) {
 	ApplyTheme(ThemeConfig{})
 
-	p3 := GetTitlePriorityStyle(3)
-	for _, priority := range []int{0, 6, -1, 99} {
+	normal := NormalStyle
+	for _, priority := range []int{0, 4, 5, 6, -1, 99} {
 		s := GetTitlePriorityStyle(priority)
-		if s.GetBold() != p3.GetBold() || s.GetItalic() != p3.GetItalic() ||
-			s.GetFaint() != p3.GetFaint() || s.GetForeground() != p3.GetForeground() {
-			t.Errorf("priority %d: expected P3 style, got different style", priority)
+		if s.GetBold() != normal.GetBold() || s.GetItalic() != normal.GetItalic() ||
+			s.GetFaint() != normal.GetFaint() || s.GetForeground() != normal.GetForeground() {
+			t.Errorf("priority %d: expected normal style, got different style", priority)
+		}
+	}
+}
+
+func TestPriorityIconUnsetAndInvalidAreBlank(t *testing.T) {
+	for _, priority := range []int{0, 4, 5, -1, 99} {
+		if got := PriorityIcon(priority); got != "" {
+			t.Errorf("PriorityIcon(%d) = %q, want blank", priority, got)
 		}
 	}
 }
@@ -69,7 +75,7 @@ func TestTaskTitleStyleFor(t *testing.T) {
 	taskWith := func(priority int) *models.Task {
 		return &models.Task{
 			Title:         "Task",
-			WorkflowState: models.StateReady,
+			WorkflowState: models.StateBacklog,
 			Priority:      priority,
 		}
 	}
@@ -83,8 +89,7 @@ func TestTaskTitleStyleFor(t *testing.T) {
 		{"priority 1", taskWith(1), TaskTitleStyleOptions{}, GetTitlePriorityStyle(1)},
 		{"priority 2", taskWith(2), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
 		{"priority 3", taskWith(3), TaskTitleStyleOptions{}, GetTitlePriorityStyle(3)},
-		{"priority 4", taskWith(4), TaskTitleStyleOptions{}, GetTitlePriorityStyle(4)},
-		{"priority 5", taskWith(5), TaskTitleStyleOptions{}, GetTitlePriorityStyle(5)},
+		{"priority unset", taskWith(0), TaskTitleStyleOptions{}, NormalStyle},
 		{"plain task keeps priority title style", func() *models.Task {
 			task := taskWith(1)
 			return task
@@ -95,7 +100,7 @@ func TestTaskTitleStyleFor(t *testing.T) {
 			return task
 		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
 		{"bulk selected keeps priority title style", taskWith(1), TaskTitleStyleOptions{BulkSelected: true}, GetTitlePriorityStyle(1)},
-		{"cursor selected uses selected title style", taskWith(4), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
+		{"cursor selected uses selected title style", taskWith(0), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
 		{"canceled uses canceled style", func() *models.Task {
 			task := taskWith(1)
 			task.WorkflowState = models.StateCanceled

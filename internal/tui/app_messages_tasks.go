@@ -363,7 +363,6 @@ type TaskMovedToProjectMsg struct {
 	SourceProject *models.Project
 	DestProject   *models.Project
 	MovedCount    int  // Number of tasks moved (including descendants)
-	ClearedDeps   int  // Number of dependencies that were cleared
 	OldShortID    int  // Original short ID before move
 	FromGlobal    bool // true when triggered from a global move workflow (skip popView)
 }

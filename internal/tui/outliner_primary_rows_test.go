@@ -33,17 +33,17 @@ func primaryRowsOutliner(projects ...*models.Project) (*OutlinerModel, *config.R
 
 func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	tasks := []*models.Task{
-		primaryRowsTask("in-progress", models.StateInProgress),
+		primaryRowsTask("in-progress", models.StateDoing),
 		primaryRowsTask("inbox", models.StateInbox),
-		primaryRowsTask("next", models.StateNext),
-		primaryRowsTask("today", models.StateReady),
-		primaryRowsTask("backlog", models.StateReady),
+		primaryRowsTask("next", models.StateBacklog),
+		primaryRowsTask("today", models.StateBacklog),
+		primaryRowsTask("backlog", models.StateBacklog),
 		primaryRowsTask("waiting", models.StateWaiting),
 		primaryRowsTask("paused", models.StatePaused),
 		primaryRowsTask("someday", models.StateSomeday),
 		primaryRowsTask("done", models.StateDone),
 		primaryRowsTask("canceled", models.StateCanceled),
-		primaryRowsTask("snoozed", models.StateReady),
+		primaryRowsTask("snoozed", models.StateBacklog),
 	}
 	future := time.Now().AddDate(0, 0, 2)
 	tasks[len(tasks)-1].SnoozedUntil = &future
@@ -52,6 +52,10 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
 		ProjectID: project.ID,
 		TaskID:    "today",
+	}})
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{
+		ProjectID: project.ID,
+		TaskID:    "next",
 	}})
 
 	outliner.selectOutlinerMode(ModeAll)
@@ -72,6 +76,9 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	if row, ok := findPlanningTaskRow(outliner, "today"); !ok || !row.IsTodaySection {
 		t.Fatalf("Today task row = %+v found=%t, want synthetic Today membership", row, ok)
 	}
+	if row, ok := findPlanningTaskRow(outliner, "next"); !ok || !row.IsNextSection {
+		t.Fatalf("Next task row = %+v found=%t, want synthetic Next membership", row, ok)
+	}
 	for _, hidden := range []string{"done", "canceled", "snoozed"} {
 		if got := countTaskRows(outliner, hidden); got != 0 {
 			t.Errorf("default All rendered %q %d time(s), want hidden", hidden, got)
@@ -87,11 +94,16 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 func TestPrimaryAllExplicitFiltersOverrideTerminalAndSnoozedDefaults(t *testing.T) {
 	done := primaryRowsTask("done", models.StateDone)
 	canceled := primaryRowsTask("canceled", models.StateCanceled)
-	snoozed := primaryRowsTask("snoozed", models.StateReady)
+	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
 	future := time.Now().AddDate(0, 0, 2)
 	snoozed.SnoozedUntil = &future
 	project := primaryRowsProject("alpha", done, canceled, snoozed)
-	outliner, _ := primaryRowsOutliner(project)
+	outliner, runtime := primaryRowsOutliner(project)
+	// Stale planning references must not make explicit terminal/snoozed facets
+	// lose rows. The application invariant will normally clean these references,
+	// but the projection remains defensive while a refresh is in flight.
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: done.ID}})
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: snoozed.ID}})
 	outliner.selectOutlinerMode(ModeAll)
 
 	outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled), true)
@@ -113,18 +125,21 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndSnoozedDefaults(t *testing.
 	outliner.filter.Snoozed = true
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"snoozed"}) {
-		t.Fatalf("snoozed-filter rows = %v, want snoozed Ready task", got)
+		t.Fatalf("snoozed-filter rows = %v, want explicit snoozed Today task", got)
+	}
+	if row, ok := findPlanningTaskRow(outliner, snoozed.ID); !ok || !row.IsTodaySection {
+		t.Fatalf("snoozed Today row = %+v found=%t, want explicit planning projection", row, ok)
 	}
 }
 
 func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
-	alphaNext := primaryRowsTask("alpha-next", models.StateNext)
-	alphaNextChild := primaryRowsTask("alpha-next-child", models.StateNext)
+	alphaNext := primaryRowsTask("alpha-next", models.StateBacklog)
+	alphaNextChild := primaryRowsTask("alpha-next-child", models.StateBacklog)
 	alphaNextChild.ParentID = &alphaNext.ID
 	alphaInbox := primaryRowsTask("alpha-inbox", models.StateInbox)
-	alphaReady := primaryRowsTask("alpha-ready", models.StateReady)
-	alphaToday := primaryRowsTask("alpha-today", models.StateReady)
-	alphaProgress := primaryRowsTask("alpha-progress", models.StateInProgress)
+	alphaReady := primaryRowsTask("alpha-ready", models.StateBacklog)
+	alphaToday := primaryRowsTask("alpha-today", models.StateBacklog)
+	alphaProgress := primaryRowsTask("alpha-progress", models.StateDoing)
 	alpha := primaryRowsProject(
 		"alpha",
 		alphaNext,
@@ -134,7 +149,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		alphaToday,
 		alphaProgress,
 	)
-	betaNext := primaryRowsTask("beta-next", models.StateNext)
+	betaNext := primaryRowsTask("beta-next", models.StateBacklog)
 	betaInbox := primaryRowsTask("beta-inbox", models.StateInbox)
 	beta := primaryRowsProject("beta", betaNext, betaInbox)
 	outliner, runtime := primaryRowsOutliner(alpha, beta)
@@ -164,8 +179,16 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 
 	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
 	outliner.rebuildRows()
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaNext.ID, alphaNext.ID}) {
-		t.Fatalf("collapsed Next rows = %v, want child hidden by shared fold state", got)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaNext.ID, alphaNext.ID, alphaNextChild.ID}) {
+		t.Fatalf("collapsed Next rows = %v, want explicit members unaffected by hierarchy folds", got)
+	}
+	if row, ok := findPlanningTaskRow(outliner, alphaNextChild.ID); !ok || row.Breadcrumb != alphaNext.Title+" ›" {
+		t.Fatalf("promoted Next child = %+v found=%t, want ancestor breadcrumb", row, ok)
+	}
+
+	outliner.selectOutlinerMode(ModeToday)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaToday.ID}) {
+		t.Fatalf("Today rows = %v, want explicit durable membership only", got)
 	}
 
 	outliner.selectOutlinerMode(ModeInbox)
@@ -174,8 +197,12 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 	}
 
 	outliner.selectOutlinerMode(ModeBacklog)
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaReady.ID}) {
-		t.Fatalf("Backlog rows = %v, want Ready excluding Today only", got)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+		alphaNext.ID,
+		alphaReady.ID,
+		betaNext.ID,
+	}) {
+		t.Fatalf("Backlog rows = %v, want Backlog lifecycle tasks excluding Today with folded descendants hidden", got)
 	}
 
 	outliner.scopedProjectID = beta.ID
@@ -188,8 +215,8 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 func TestPrimaryAllFocusedProjectOmitsRedundantProjectHeaders(t *testing.T) {
 	alpha := primaryRowsProject(
 		"alpha",
-		primaryRowsTask("alpha-progress", models.StateInProgress),
-		primaryRowsTask("alpha-ready", models.StateReady),
+		primaryRowsTask("alpha-progress", models.StateDoing),
+		primaryRowsTask("alpha-ready", models.StateBacklog),
 	)
 	outliner, _ := primaryRowsOutliner(alpha)
 	outliner.selectOutlinerMode(ModeAll)

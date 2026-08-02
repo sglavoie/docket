@@ -15,7 +15,7 @@ import (
 
 // TestTaskItemTransitionScenario covers the canonical state-transition seam.
 func TestTaskItemTransitionScenario(t *testing.T) {
-	task := seedTask(t, 1, "Park me", models.StateReady)
+	task := seedTask(t, 1, "Park me", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "state", task)
 
 	runResult(t, features.TaskItem.Transition(taskIdentityFor(task, env.project), models.StateSomeday))
@@ -46,9 +46,9 @@ func reloadedRootOrder(p *models.Project) []string {
 // TestTaskItemMoveToTopScenario covers the reorder seam: moving a task to the top
 // commits a project-scoped batch transaction and the reloaded order reflects it.
 func TestTaskItemMoveToTopScenario(t *testing.T) {
-	a := seedTask(t, 1, "A", models.StateReady)
-	b := seedTask(t, 2, "B", models.StateReady)
-	c := seedTask(t, 3, "C", models.StateReady)
+	a := seedTask(t, 1, "A", models.StateBacklog)
+	b := seedTask(t, 2, "B", models.StateBacklog)
+	c := seedTask(t, 3, "C", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "reorder", a, b, c)
 
 	msg := runBatchResult(t, features.TaskItem.MoveToTop(taskIdentityFor(c, env.project)))
@@ -65,9 +65,9 @@ func TestTaskItemMoveToTopScenario(t *testing.T) {
 
 // TestTaskItemMoveToBottomScenario is the mirror of the move-to-top scenario.
 func TestTaskItemMoveToBottomScenario(t *testing.T) {
-	a := seedTask(t, 1, "A", models.StateReady)
-	b := seedTask(t, 2, "B", models.StateReady)
-	c := seedTask(t, 3, "C", models.StateReady)
+	a := seedTask(t, 1, "A", models.StateBacklog)
+	b := seedTask(t, 2, "B", models.StateBacklog)
+	c := seedTask(t, 3, "C", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "reorder", a, b, c)
 
 	msg := runBatchResult(t, features.TaskItem.MoveToBottom(taskIdentityFor(a, env.project)))

@@ -10,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// planningOrderProject seeds one on-disk project with the given StateNext tasks
+// planningOrderProject seeds one on-disk project with the given StateBacklog tasks
 // (in slice order) so a cross-project reorder test can interleave several
 // projects' Next horizons.
 func planningOrderProject(t *testing.T, dataDir, id, slug string, titles ...string) (*models.Project, []*models.Task) {
@@ -23,7 +23,7 @@ func planningOrderProject(t *testing.T, dataDir, id, slug string, titles ...stri
 	project.Path = filepath.Join(dataDir, "projects", slug)
 	tasks := make([]*models.Task, len(titles))
 	for i, title := range titles {
-		tasks[i] = seedTask(t, i+1, title, models.StateNext)
+		tasks[i] = seedTask(t, i+1, title, models.StateBacklog)
 	}
 	project.Tasks = tasks
 	project.NextShortID = len(titles) + 1
@@ -203,11 +203,8 @@ func pressReorderKey(t *testing.T, m *AppModel, cross *OutlinerModel, key rune) 
 	return true
 }
 
-// TestOutlinerPlanningOrderJK locks FR-002: from a project-scoped Outliner, J/K in Next
-// reorders the durable focus queue and J/K on explicit rows in All's Today section
-// reorders the durable daily plan — both without touching task hierarchy — while
-// J/K stays unavailable in the other computed-order horizons and at the
-// all-project root.
+// TestOutlinerPlanningOrderJK verifies that dedicated planning modes and their
+// All-mode synthetic groups reorder only the durable planning lists.
 func TestOutlinerPlanningOrderJK(t *testing.T) {
 	t.Run("Next J reorders the durable focus queue and persists after reload", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-next", "next", "Alpha", "Bravo", "Charlie")
@@ -283,13 +280,13 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 	t.Run("Today J reorders the durable daily plan without changing hierarchy", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-today", "today", "Alpha", "Bravo", "Charlie")
 		for _, task := range tasks {
-			task.ApplyWorkflowState(models.StateReady)
+			task.ApplyWorkflowState(models.StateBacklog)
 		}
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedTodayOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeAll)
+		enterCrossMode(cross, ModeToday)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
@@ -303,99 +300,49 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
 	})
 
+	t.Run("All-mode Next group reorders the durable focus queue", func(t *testing.T) {
+		project, tasks := planningOrderProject(t, t.TempDir(), "p-all-next", "all-next", "Alpha", "Bravo")
+		m, cross, dataDir := newPlanningOrderApp(t, project)
+		seedNextOrderOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
+		enterCrossMode(cross, ModeAll)
+		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+			t.Fatal("cursor did not land on Alpha")
+		}
+		if !cross.rows[cross.cursor].IsNextSection {
+			t.Fatal("All-mode Next row lost its planning-section identity")
+		}
+		if !pressReorderKey(t, m, cross, 'J') {
+			t.Fatal("J in All-mode Next produced no reorder command")
+		}
+		assertOrder(t, "All-mode Next after J", diskNextOrderIDs(t, dataDir),
+			[]string{tasks[1].ID, tasks[0].ID})
+	})
 }
 
-func TestTodayPlanningReorderStateBuckets(t *testing.T) {
-	const existingStatus = "keep this status"
-
-	for _, tc := range []struct {
-		name       string
-		key        rune
-		cursorTask int
-	}{
-		{name: "J from ready into waiting", key: 'J', cursorTask: 0},
-		{name: "K from waiting into ready", key: 'K', cursorTask: 1},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			project, tasks := planningOrderProject(t, t.TempDir(), "p-boundary", "boundary", "Ready", "Waiting")
-			tasks[0].ApplyWorkflowState(models.StateReady)
-			tasks[1].ApplyWorkflowState(models.StateWaiting)
-			m, cross, dataDir := newPlanningOrderApp(t, project)
-
-			// Deliberately persist the opposite order. Today must still render the
-			// Ready bucket before the Waiting bucket, and a boundary key must not
-			// rewrite this durable order merely to leave the display unchanged.
-			seedTodayOrder(t, m,
-				locatorOf(project, tasks[1]), locatorOf(project, tasks[0]),
-			)
-			enterCrossMode(cross, ModeAll)
-
-			visibleBefore := visibleTaskIDs(cross)
-			durableBefore := diskTodayIDs(t, dataDir)
-			assertOrder(t, "visible Today rows before boundary move", visibleBefore,
-				[]string{tasks[0].ID, tasks[1].ID})
-			assertOrder(t, "durable daily plan before boundary move", durableBefore,
-				[]string{tasks[1].ID, tasks[0].ID})
-			if !cross.moveCursorToProjectTask(tasks[tc.cursorTask].ID, project.ID) {
-				t.Fatalf("cursor did not land on %s", tasks[tc.cursorTask].Title)
-			}
-
-			m.statusMessage = existingStatus
-			if pressReorderKey(t, m, cross, tc.key) {
-				t.Fatalf("%c across a Today state boundary emitted a reorder command", tc.key)
-			}
-
-			// Rebuild from the unchanged durable plan and prove the cursor task
-			// did not move in the requested direction.
-			enterCrossMode(cross, ModeAll)
-			visibleAfter := visibleTaskIDs(cross)
-			assertOrder(t, "visible Today rows after boundary move", visibleAfter, visibleBefore)
-			if before, after := taskIDPosition(visibleBefore, tasks[tc.cursorTask].ID), taskIDPosition(visibleAfter, tasks[tc.cursorTask].ID); before != after {
-				t.Fatalf("cursor task position changed across state boundary: before=%d after=%d", before, after)
-			}
-			assertOrder(t, "durable daily plan after boundary move",
-				diskTodayIDs(t, dataDir), durableBefore)
-			if m.statusMessage != existingStatus {
-				t.Fatalf("status = %q, want unchanged %q", m.statusMessage, existingStatus)
-			}
-		})
+func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) {
+	project, tasks := planningOrderProject(t, t.TempDir(), "p-state-order", "state-order", "Waiting", "Backlog")
+	tasks[0].ApplyWorkflowState(models.StateWaiting)
+	tasks[1].ApplyWorkflowState(models.StateBacklog)
+	m, cross, dataDir := newPlanningOrderApp(t, project)
+	seedTodayOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
+	enterCrossMode(cross, ModeToday)
+	assertOrder(t, "Today before cross-state reorder", visibleTaskIDs(cross),
+		[]string{tasks[0].ID, tasks[1].ID})
+	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		t.Fatal("cursor did not land on Waiting")
 	}
-
-	t.Run("eligible tasks sharing a rank swap visibly and durably", func(t *testing.T) {
-		project, tasks := planningOrderProject(t, t.TempDir(), "p-same-rank", "same-rank", "Ready one", "Ready two")
-		tasks[0].ApplyWorkflowState(models.StateReady)
-		tasks[1].ApplyWorkflowState(models.StateReady)
-		if TodayStateOrder(tasks[0].State()) != TodayStateOrder(tasks[1].State()) {
-			t.Fatal("test requires workflow states in the same Today bucket")
-		}
-
-		m, cross, dataDir := newPlanningOrderApp(t, project)
-		seedTodayOrder(t, m,
-			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]),
-		)
-		enterCrossMode(cross, ModeAll)
-		assertOrder(t, "same-rank Today rows before J", visibleTaskIDs(cross),
-			[]string{tasks[0].ID, tasks[1].ID})
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
-			t.Fatal("cursor did not land on Ready")
-		}
-
-		if !pressReorderKey(t, m, cross, 'J') {
-			t.Fatal("J within a shared Today state rank produced no reorder command")
-		}
-		want := []string{tasks[1].ID, tasks[0].ID}
-		assertOrder(t, "same-rank durable daily plan after J", diskTodayIDs(t, dataDir), want)
-		if m.statusMessage != "Reordered planning list" {
-			t.Fatalf("status = %q, want reorder success", m.statusMessage)
-		}
-
-		// The successful shell reorder schedules an async cross-project reload;
-		// re-seat the fixture projects before rebuilding from committed state.
-		cross.loadedProjects = []*models.Project{project}
-		enterCrossMode(cross, ModeAll)
-		assertOrder(t, "same-rank Today rows after rebuild", visibleTaskIDs(cross), want)
-		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID})
-	})
+	if !pressReorderKey(t, m, cross, 'J') {
+		t.Fatal("J across lifecycle states produced no planning reorder")
+	}
+	want := []string{tasks[1].ID, tasks[0].ID}
+	assertOrder(t, "Today after cross-state reorder", diskTodayIDs(t, dataDir), want)
+	if m.statusMessage != "Reordered planning list" {
+		t.Fatalf("status = %q, want reorder success", m.statusMessage)
+	}
+	cross.loadedProjects = []*models.Project{project}
+	enterCrossMode(cross, ModeToday)
+	assertOrder(t, "Today after rebuild", visibleTaskIDs(cross), want)
+	assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID})
 }
 
 // TestOutlinerPlanningOrderJKFilteredAndScoped locks FR17-002: when the visible
@@ -436,14 +383,14 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 	t.Run("filtered Today swaps visible neighbors, not the hidden middle task", func(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-ftoday", "ftoday", "keep-one", "hide-me", "keep-two")
 		for _, task := range tasks {
-			task.ApplyWorkflowState(models.StateReady)
+			task.ApplyWorkflowState(models.StateBacklog)
 		}
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedTodayOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		cross.SetSearchQuery("keep")
-		enterCrossMode(cross, ModeAll)
+		enterCrossMode(cross, ModeToday)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("filtered Today visible rows = %v, want 2 (hidden middle pruned)", got)
@@ -522,7 +469,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	project, tasks := planningOrderProject(t, t.TempDir(), "hierarchy", "hierarchy", "keep-one", "hide-me", "keep-two")
 	firstID, hiddenID, lastID := tasks[0].ID, tasks[1].ID, tasks[2].ID
 	for _, task := range tasks {
-		task.ApplyWorkflowState(models.StateReady)
+		task.ApplyWorkflowState(models.StateBacklog)
 	}
 	m, cross, dataDir := newPlanningOrderApp(t, project)
 	cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
@@ -569,15 +516,6 @@ func visibleTaskIDs(m *OutlinerModel) []string {
 		}
 	}
 	return ids
-}
-
-func taskIDPosition(ids []string, id string) int {
-	for i, candidate := range ids {
-		if candidate == id {
-			return i
-		}
-	}
-	return -1
 }
 
 // locatorOf builds a project-qualified locator for a seeded task.

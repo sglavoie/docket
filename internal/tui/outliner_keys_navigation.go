@@ -139,7 +139,6 @@ func formEditFromTask(t *models.Task) *app.FormEdit {
 		Tags:        append([]string{}, t.Tags...),
 		DueDate:     t.DueDate,
 		Pinned:      t.Pinned,
-		Recurrence:  t.Recurrence,
 		Checklist:   append([]models.ChecklistItem(nil), t.Checklist...),
 	}
 }

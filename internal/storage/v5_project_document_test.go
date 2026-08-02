@@ -88,6 +88,62 @@ func TestV5ProjectDocumentRoundTripUsesGenericHeadingsAndNoCatalog(t *testing.T)
 	}
 }
 
+func TestV5ProjectDocumentRoundTripRetainsSchema6RetiredValues(t *testing.T) {
+	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	document := V5ProjectDocument{
+		ProjectName: "Retained Legacy Values",
+		Tasks: []format.V5TaskRecord{
+			{
+				ID:        "task-one",
+				ShortID:   1,
+				Title:     "Legacy-rich task",
+				State:     "ready",
+				Priority:  3,
+				CreatedAt: now,
+				UpdatedAt: now,
+				DependsOn: []string{"task-two", "project-beta:task-three"},
+				Recurrence: &format.V5TaskRecurrence{
+					Interval: 2,
+					Unit:     "week",
+				},
+				Decisions: []format.V5TaskDecision{
+					{Text: "Keep the adapter explicit", Rationale: "avoid startup ambiguity", CreatedAt: now},
+				},
+			},
+			{ID: "task-two", ShortID: 2, Title: "Local blocker", State: "done", Priority: 3, CreatedAt: now, UpdatedAt: now, CompletedAt: &now},
+		},
+	}
+
+	encoded, err := WriteV5ProjectDocument(document)
+	if err != nil {
+		t.Fatalf("WriteV5ProjectDocument: %v", err)
+	}
+	decoded, err := ParseV5ProjectDocument(encoded)
+	if err != nil {
+		t.Fatalf("ParseV5ProjectDocument: %v", err)
+	}
+	if len(decoded.Tasks) != 2 {
+		t.Fatalf("decoded task count = %d, want 2", len(decoded.Tasks))
+	}
+	retained := decoded.Tasks[0]
+	if strings.Join(retained.DependsOn, "|") != "task-two|project-beta:task-three" {
+		t.Fatalf("dependencies = %v, want both retained", retained.DependsOn)
+	}
+	if retained.Recurrence == nil || retained.Recurrence.Interval != 2 || retained.Recurrence.Unit != "week" {
+		t.Fatalf("recurrence = %+v, want retained", retained.Recurrence)
+	}
+	if len(retained.Decisions) != 1 || retained.Decisions[0].Text != "Keep the adapter explicit" || retained.Decisions[0].Rationale != "avoid startup ambiguity" {
+		t.Fatalf("decisions = %+v, want retained", retained.Decisions)
+	}
+	second, err := WriteV5ProjectDocument(decoded)
+	if err != nil {
+		t.Fatalf("second WriteV5ProjectDocument: %v", err)
+	}
+	if second != encoded {
+		t.Fatalf("retired schema-5 values are not a fixed point:\nfirst:\n%s\nsecond:\n%s", encoded, second)
+	}
+}
+
 func TestParseV5ProjectDocumentRejectsLegacyAndCatalogSyntax(t *testing.T) {
 	now := "2026-07-28T12:00:00Z"
 	tests := map[string]string{

@@ -12,18 +12,18 @@ func TestCanTransitionTo(t *testing.T) {
 		to        WorkflowState
 		wantAllow bool
 	}{
-		{"ready→in_progress", StateReady, StateInProgress, true},
-		{"ready→done", StateReady, StateDone, true},
-		{"ready→waiting", StateReady, StateWaiting, true},
-		{"ready→ready", StateReady, StateReady, false},
+		{"ready→in_progress", StateBacklog, StateDoing, true},
+		{"ready→done", StateBacklog, StateDone, true},
+		{"ready→waiting", StateBacklog, StateWaiting, true},
+		{"ready→ready", StateBacklog, StateBacklog, false},
 		{"waiting→paused", StateWaiting, StatePaused, true},
 		{"waiting→canceled", StateWaiting, StateCanceled, true},
 		{"done→inbox", StateDone, StateInbox, true},
-		{"done→ready", StateDone, StateReady, false},
+		{"done→ready", StateDone, StateBacklog, false},
 		{"canceled→inbox", StateCanceled, StateInbox, true},
 		{"canceled→done", StateCanceled, StateDone, false},
-		{"ready→invalid", StateReady, WorkflowState("invalid"), false},
-		{"invalid→ready", WorkflowState("invalid"), StateReady, false},
+		{"ready→invalid", StateBacklog, WorkflowState("invalid"), false},
+		{"invalid→ready", WorkflowState("invalid"), StateBacklog, false},
 	}
 
 	for _, tt := range tests {
@@ -45,11 +45,11 @@ func TestApplyTransition(t *testing.T) {
 		target     WorkflowState
 		wantStatus WorkflowState
 	}{
-		{"to in_progress", StateInProgress, StateInProgress},
+		{"to in_progress", StateDoing, StateDoing},
 		{"to done", StateDone, StateDone},
 		{"to blocked", StateWaiting, StateWaiting},
 		{"to canceled", StateCanceled, StateCanceled},
-		{"to todo (reopen)", StateReady, StateReady},
+		{"to todo (reopen)", StateBacklog, StateBacklog},
 		{"to standby", StatePaused, StatePaused},
 	}
 
@@ -142,7 +142,7 @@ func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
 	now := time.Date(2026, 7, 25, 9, 30, 0, 0, time.UTC)
 	completedAt := now.Add(-time.Hour)
 	snoozedUntil := now.Add(time.Hour)
-	task.WorkflowState = StateNext
+	task.WorkflowState = StateBacklog
 	task.CompletedAt = &completedAt
 	task.SnoozedUntil = &snoozedUntil
 	task.UpdatedAt = completedAt
@@ -150,7 +150,7 @@ func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
 	if err := task.ApplyStateTransitionAt(WorkflowState("todo"), now); err == nil {
 		t.Fatal("ApplyStateTransitionAt accepted invalid state")
 	}
-	if task.State() != StateNext {
+	if task.State() != StateBacklog {
 		t.Errorf("State() = %q, want unchanged next", task.State())
 	}
 	if task.CompletedAt != &completedAt || task.SnoozedUntil != &snoozedUntil {
@@ -183,10 +183,10 @@ func TestApplyStateTransitionReopenClearsTerminal(t *testing.T) {
 func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.WorkflowState = StateWaiting
-	if err := task.ApplyStateTransition(StateInProgress); err != nil {
+	if err := task.ApplyStateTransition(StateDoing); err != nil {
 		t.Fatalf("ApplyStateTransition(in_progress): %v", err)
 	}
-	if task.State() != StateInProgress {
+	if task.State() != StateDoing {
 		t.Errorf("expected in-progress state, got %q", task.State())
 	}
 
@@ -203,10 +203,10 @@ func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 
 	task3 := newLifecycleTestTask(t, "t3", 3)
 	task3.Complete()
-	if err := task3.ApplyStateTransition(StateReady); err != nil {
+	if err := task3.ApplyStateTransition(StateBacklog); err != nil {
 		t.Fatalf("ApplyStateTransition(ready): %v", err)
 	}
-	if task3.State() != StateReady {
+	if task3.State() != StateBacklog {
 		t.Errorf("expected ready state, got %q", task3.State())
 	}
 	if task3.CompletedAt != nil {

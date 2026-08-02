@@ -91,7 +91,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 		simplifiedOperationContext(),
 		0,
 	)
-	for _, want := range []string{"a capture", "s state", "/ search", "T theme", "? help"} {
+	for _, want := range []string{"a capture", "s state/plan", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
 		}
@@ -146,11 +146,11 @@ func TestSimplifiedCtrlEOpensCursorTaskInExternalEditor(t *testing.T) {
 	app := newUITestApp()
 	first := &models.Task{
 		ID: "first", ShortID: 1, Title: "First",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	selected := &models.Task{
 		ID: "selected", ShortID: 2, Title: "Selected",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	project := &models.Project{
 		ID: "alpha", Name: "Alpha", Slug: "alpha",

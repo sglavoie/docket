@@ -24,9 +24,6 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, m.popView()
 		}
 		scope := RegularContextScope(msg.SelectedContext)
-		if msg.IsCustomContext {
-			scope = CustomContextScope(msg.SelectedContext)
-		}
 		if m.crossOutliner != nil {
 			m.crossOutliner.applyContextScope(scope)
 		}
@@ -35,23 +32,6 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// can open the hub above Task Detail; one pop would reveal that detail
 		// again and could leave the user looking at a task outside the new scope.
 		return true, tea.Batch(m.returnToOutlinerAfterContextSelection(), m.requestCrossProjectOutlinerReload())
-
-	case CustomContextSavedMsg:
-		// The hub committed the save through ContextMutator; the shell only
-		// reconciles the Outliner scope and reports the outcome.
-		verb := "Updated"
-		switch {
-		case msg.IsNew:
-			verb = "Created"
-		case msg.Renamed:
-			verb = "Renamed"
-		}
-		m.setSuccessStatus(fmt.Sprintf("%s custom context '%s' with %d projects", verb, msg.Name, msg.ProjectCount))
-		return true, tea.Batch(defaultStatusTimeout(), m.reapplyContextScope(msg.WasActive, CustomContextScope(msg.Name)))
-
-	case CustomContextDeletedMsg:
-		m.setSuccessStatus("Deleted custom context: " + msg.Name)
-		return true, tea.Batch(defaultStatusTimeout(), m.reapplyContextScope(msg.WasActive, AllContextScope()))
 
 	case RegularContextSavedMsg:
 		// Regular labels live on the catalog projects, so the cached projects the
@@ -100,11 +80,10 @@ func (m *AppModel) returnToOutlinerAfterContextSelection() tea.Cmd {
 }
 
 func regularContextSavedStatus(msg RegularContextSavedMsg) string {
+	if msg.IsNew {
+		return fmt.Sprintf("Created context '%s' with %d project(s)", msg.Name, msg.Assigned)
+	}
 	if msg.Renamed {
-		if msg.DefaultContextMoved {
-			return fmt.Sprintf("Renamed default context '%s' to '%s' (%d project(s) relabeled)",
-				msg.PreviousName, msg.Name, msg.RelabeledCount)
-		}
 		return fmt.Sprintf("Renamed '%s' to '%s' (%d project(s) relabeled)",
 			msg.PreviousName, msg.Name, msg.RelabeledCount)
 	}
@@ -118,24 +97,12 @@ func regularContextSavedStatus(msg RegularContextSavedMsg) string {
 	return fmt.Sprintf("Context '%s': %d project(s) added", msg.Name, msg.Assigned)
 }
 
-// reapplyContextScope re-derives the Outliner scope after a mutation that
-// touched the context it is scoped to: a rename follows the new name, a delete
-// falls back to All, and a membership edit re-resolves the same scope against
-// the new member list.
-func (m *AppModel) reapplyContextScope(wasActive bool, scope ContextScope) tea.Cmd {
-	if !wasActive || m.crossOutliner == nil {
-		return nil
-	}
-	m.crossOutliner.applyContextScope(scope)
-	return m.requestCrossProjectOutlinerReload()
-}
-
 // reconcileRegularContextScope is wider than reapplyContextScope because editing
 // one label moves projects between labels: a project removed from the edited
 // label lands in another one, so any regular scope may have gained or lost
-// members even when it was not the scope being edited. All and custom scopes
-// resolve independently of labels and are left alone. Applying the scope also
-// degrades it to All when the label has no members left, since applyContextScope
+// members even when it was not the scope being edited. All resolves
+// independently of labels and is left alone. Applying the scope also degrades
+// it to All when the label has no members left, since applyContextScope
 // re-resolves through the shared selectability boundary.
 func (m *AppModel) reconcileRegularContextScope(wasActive bool, scope ContextScope) tea.Cmd {
 	if m.crossOutliner == nil {

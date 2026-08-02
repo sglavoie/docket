@@ -21,7 +21,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 	}{
 		{
 			name:     "normal",
-			required: []string{"Enter create", "Ctrl+O create & open", "Ctrl+D create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"},
+			required: []string{"Enter create", "Ctrl+D create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"},
 		},
 		{
 			name:               "autocomplete",
@@ -31,7 +31,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 		{
 			name:         "help",
 			helpExpanded: true,
-			required:     []string{"Enter create", "Ctrl+O create & open", "Ctrl+D create & edit", "Ctrl+V paste", "? close syntax", "Esc close syntax"},
+			required:     []string{"Enter create", "Ctrl+D create & edit", "Ctrl+V paste", "? close syntax", "Esc close syntax"},
 		},
 		{
 			name:           "confirmation",
@@ -70,7 +70,7 @@ func TestCaptureFooterSpecStatePriority(t *testing.T) {
 // TestCaptureFooterWrapsAt60ColumnsWithoutTruncation verifies that the full
 // normal-state capture footer survives the 60-column minimum width: every
 // action wraps onto additional footer rows rather than being clipped. A render
-// audit confirms no required text was truncated, and all six actions remain
+// audit confirms no required text was truncated, and all five actions remain
 // present in the composed output.
 func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
@@ -88,7 +88,7 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	}
 
 	plain := ansi.Strip(content)
-	for _, action := range []string{"Enter create", "Ctrl+O create & open", "Ctrl+D create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"} {
+	for _, action := range []string{"Enter create", "Ctrl+D create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"} {
 		if !strings.Contains(plain, action) {
 			t.Fatalf("expected capture action %q at 60 columns, got:\n%s", action, plain)
 		}

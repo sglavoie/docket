@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -9,7 +8,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -75,8 +73,8 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// Assemble the domain-native dependency bundle shared by the shell and views.
 	app.deps = newShellDeps(runtime, appService, manager, ledger)
 
-	if ensureErr := app.ensureSystemInboxProject(); ensureErr != nil {
-		logging.Warn("failed to ensure system inbox project: %v", ensureErr)
+	if ensureErr := app.ensureSystemUnfiledProject(); ensureErr != nil {
+		logging.Warn("failed to ensure system Unfiled project: %v", ensureErr)
 	}
 	app.syncProjectCache()
 	if ensureErr := app.ensureProjectColorSlots(); ensureErr != nil {
@@ -98,22 +96,13 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// begins in the same All Projects / All Outliner regardless of stale v4
 	// StartupRoute, CurrentRoute, project-route, search, or selection data.
 	app.startupMessage = launchOutlinerMsg{}
-	// Migrate legacy (pre-state-driven) Focus Queue members to StateNext BEFORE
-	// hydration prunes non-StateNext entries, so first launch converts every
-	// eligible legacy member instead of silently discarding the owner's shortlist.
-	// The migration commits through a bare application service (no default planning
-	// builder) rooted at the same ledger, so the backfill is one journaled, undoable
-	// workspace transaction rather than raw per-project saves.
-	migrationErr := app.migrateLegacyNextOrder(newTUIAppService(dataDir, runtimeDeps, ledger), activeProjects, startupLoads)
-	if migrationErr != nil {
-		logging.Warn("failed to migrate legacy focus queue: %v", migrationErr)
-	} else if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
+	if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
 		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)
 	} else if changed {
 		app.refreshRuntime()
 	}
-	app.hydrateNextOrder(activeProjects, startupLoads, migrationErr == nil)
-	app.hydrateToday(activeProjects, startupLoads, migrationErr == nil)
+	app.hydrateNextOrder(activeProjects, startupLoads, true)
+	app.hydrateToday(activeProjects, startupLoads, true)
 
 	app.ensureManageHub()
 
@@ -216,75 +205,7 @@ func (app *AppModel) loadStartupProject(project *models.Project, loaded map[stri
 	return err
 }
 
-// migrateLegacyNextOrder backfills StateNext onto Focus Queue members that
-// predate the state-driven Next invariant, running before hydrateNextOrder's
-// prune interprets them as stale. It loads each referenced project's task tree,
-// then commits the StateNext backfill for every non-terminal, not-yet-StateNext
-// member through the application service's BulkTransition — so every changed
-// project lands in ONE revision-checked workspace transaction with a durable
-// ledger entry, the same journaled and undoable boundary as any startup mutation,
-// instead of raw per-project saves. The batch is all-or-nothing: on a commit
-// failure nothing is written, so every project state and the NextOrder index stay
-// at their pre-migration values. The service is bare (no default planning-artifact
-// builder), keeping the migration a pure state backfill that matches `tt doctor`'s
-// repair semantics. Every referenced project must load before the transaction and
-// every touched project must reload afterward; any failure is returned so startup
-// can preserve the durable legacy order index for a later retry.
-func (m *AppModel) migrateLegacyNextOrder(svc *app.Service, activeProjects []*models.Project, startupLoads map[string]error) error {
-	queue := m.runtime.Planning().GetNextOrder()
-	if len(queue) == 0 {
-		return nil
-	}
-	projectsByID := make(map[string]*models.Project, len(activeProjects))
-	for _, p := range activeProjects {
-		if p != nil {
-			projectsByID[p.ID] = p
-		}
-	}
-	loadedProjects := make(map[string]bool, len(queue))
-	var loadErrs []error
-	for _, item := range queue {
-		p := projectsByID[item.ProjectID]
-		if p == nil || loadedProjects[p.ID] {
-			continue
-		}
-		loadedProjects[p.ID] = true
-		if err := m.loadStartupProject(p, startupLoads); err != nil {
-			loadErrs = append(loadErrs, fmt.Errorf("load queue project %s: %w", p.Name, err))
-		}
-	}
-	if err := errors.Join(loadErrs...); err != nil {
-		return err
-	}
-	locators := focus.LegacyNextOrderMemberLocators(queue, activeProjects)
-	if len(locators) == 0 {
-		return nil
-	}
-	res, err := svc.BulkTransitionByLocators(appTaskLocatorsFromConfig(locators), models.StateNext)
-	if err != nil {
-		return err
-	}
-	touched := make(map[string]bool, len(res.TouchedProjectIDs))
-	for _, id := range res.TouchedProjectIDs {
-		touched[id] = true
-	}
-	var reloadErrs []error
-	for _, p := range activeProjects {
-		if p == nil || !touched[p.ID] {
-			continue
-		}
-		if err := m.persister.Load(p); err != nil {
-			reloadErrs = append(reloadErrs, fmt.Errorf("reload migrated project %s: %w", p.Name, err))
-		}
-	}
-	return errors.Join(reloadErrs...)
-}
-
-// hydrateNextOrder rebuilds the in-memory Next order index from an app-owned
-// reconciliation of the planning snapshot. Legacy members that predate the
-// state-driven queue are backfilled before this runs. When that migration could
-// not be confirmed, hydration exposes only cached StateNext tasks but preserves
-// the durable index for a later retry.
+// hydrateNextOrder rebuilds the in-memory Next membership/order from planning.
 func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoads map[string]error, allowReconcile bool) {
 	planning := m.runtime.Planning()
 	if allowReconcile {
@@ -344,7 +265,7 @@ func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoa
 			if err := m.loadStartupProject(p, startupLoads); err != nil {
 				break
 			}
-			if task := p.GetTaskByID(item.TaskID); task != nil && task.IsInState(models.StateNext) {
+			if task := p.GetTaskByID(item.TaskID); task != nil && task.State().IsNonterminal() {
 				m.nextOrder = append(m.nextOrder, FocusTask{Task: task, Project: p})
 				m.nextOrderIDs[taskIdentityFor(task, p)] = true
 			}

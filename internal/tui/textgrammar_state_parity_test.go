@@ -4,11 +4,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-func TestCanonicalStateTokensHaveCaptureEditParity(t *testing.T) {
+func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 	project := &models.Project{Name: "Grammar", ID: "grammar"}
 	for _, state := range models.AllWorkflowStates() {
 		t.Run(state.String(), func(t *testing.T) {
@@ -18,8 +19,8 @@ func TestCanonicalStateTokensHaveCaptureEditParity(t *testing.T) {
 			if err != nil {
 				t.Fatalf("capture parse: %v", err)
 			}
-			if !captured.stateSet || captured.state != state {
-				t.Fatalf("capture state = %q (set=%v), want %q", captured.state, captured.stateSet, state)
+			if !captured.destinationSet || captured.destination.WorkflowState() != state {
+				t.Fatalf("capture destination = %q (set=%v), want state %q", captured.destination, captured.destinationSet, state)
 			}
 
 			edited, err := parseQuickEdit(input, &models.Task{Title: "Old"}, project)
@@ -33,19 +34,22 @@ func TestCanonicalStateTokensHaveCaptureEditParity(t *testing.T) {
 	}
 }
 
-func TestCanonicalStateGrammarDrivesCompletionPreviewAndErrors(t *testing.T) {
+func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 	q := &quickCaptureInput{width: 120}
-	suggestions := q.getStatusSuggestions("")
-	if len(suggestions) != len(textgrammar.StateNames()) {
-		t.Fatalf("state suggestions = %d, want %d", len(suggestions), len(textgrammar.StateNames()))
+	suggestions := q.getDestinationSuggestions("")
+	if len(suggestions) != len(textgrammar.DestinationNames()) {
+		t.Fatalf("destination suggestions = %d, want %d", len(suggestions), len(textgrammar.DestinationNames()))
 	}
 
 	guide := q.renderSyntaxGuide()
-	for _, name := range textgrammar.StateNames() {
+	for _, name := range textgrammar.DestinationNames() {
 		token := "$" + name
 		if !strings.Contains(guide, token) {
 			t.Errorf("capture help does not contain %q", token)
 		}
+	}
+	for _, name := range textgrammar.StateNames() {
+		token := "$" + name
 		preview := renderQuickEditPreview(
 			&quickEditResult{title: "Task", titleSet: true, state: models.WorkflowState(name), stateSet: true},
 			&quickEditResult{title: "Task", state: differentState(models.WorkflowState(name))},
@@ -56,16 +60,20 @@ func TestCanonicalStateGrammarDrivesCompletionPreviewAndErrors(t *testing.T) {
 	}
 
 	project := &models.Project{Name: "Grammar"}
-	_, captureErr := parseQuickCapture("Task $unknown", project, nil, true)
-	_, editErr := parseQuickEdit("Task $unknown", &models.Task{Title: "Old"}, project)
-	if captureErr == nil || editErr == nil || captureErr.Error() != editErr.Error() {
-		t.Fatalf("shared state errors differ: capture=%v edit=%v", captureErr, editErr)
+	for raw, replacement := range map[string]string{"ready": "$backlog", "in_progress": "$doing"} {
+		_, captureErr := parseQuickCapture("Task $"+raw, project, nil, true)
+		if captureErr == nil || !strings.Contains(captureErr.Error(), replacement) {
+			t.Errorf("capture error for %q = %v, want replacement %s", raw, captureErr, replacement)
+		}
+	}
+	if parsed, err := parseQuickCapture("Task $today", project, nil, true); err != nil || parsed.destination != app.CaptureDestinationToday {
+		t.Fatalf("Today destination = %+v, %v", parsed, err)
 	}
 }
 
 func differentState(state models.WorkflowState) models.WorkflowState {
-	if state != models.StateReady {
-		return models.StateReady
+	if state != models.StateBacklog {
+		return models.StateBacklog
 	}
 	return models.StateInbox
 }

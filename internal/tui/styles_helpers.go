@@ -11,13 +11,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// PriorityIcon returns the icon for a priority level (1-5).
+// PriorityIcon returns the icon for an assigned priority level (1-3). Unset and
+// invalid values intentionally render no badge.
 func PriorityIcon(priority int) string {
-	key := fmt.Sprintf("priority.%d", priority)
-	if v := icons.Get(key); v != "" {
-		return v
+	if models.ValidatePriority(priority, false) != nil {
+		return ""
 	}
-	return icons.Get("priority.3")
+	key := fmt.Sprintf("priority.%d", priority)
+	return icons.Get(key)
 }
 
 // GetStateStyle returns the appropriate foreground style for a workflow state.
@@ -25,9 +26,9 @@ func PriorityIcon(priority int) string {
 // GetStateBadge.
 func GetStateStyle(state models.WorkflowState) lipgloss.Style {
 	switch state {
-	case models.StateInbox, models.StateReady, models.StateNext:
+	case models.StateInbox, models.StateBacklog:
 		return TodoStyle
-	case models.StateInProgress:
+	case models.StateDoing:
 		return InProgressStyle
 	case models.StateWaiting:
 		return BlockedStyle
@@ -50,9 +51,8 @@ func GetPriorityStyle(priority int) lipgloss.Style {
 	return GetTitlePriorityStyle(priority)
 }
 
-// GetTitlePriorityStyle returns the title style for a priority level (1–5).
-// Bold+Italic for P1, Bold for P2, plain for P3/P4, Faint for P5.
-// Out-of-range values fall back to P3.
+// GetTitlePriorityStyle returns the title style for priority 1-3. Unset and
+// invalid values use the normal task-title style.
 func GetTitlePriorityStyle(priority int) lipgloss.Style {
 	switch priority {
 	case 1:
@@ -61,12 +61,8 @@ func GetTitlePriorityStyle(priority int) lipgloss.Style {
 		return TitlePriority2Style
 	case 3:
 		return TitlePriority3Style
-	case 4:
-		return TitlePriority4Style
-	case 5:
-		return TitlePriority5Style
 	default:
-		return TitlePriority3Style
+		return NormalStyle
 	}
 }
 
@@ -110,9 +106,9 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 // badge, and someday the maybe badge.
 func GetStateBadge(state models.WorkflowState) string {
 	switch state {
-	case models.StateInbox, models.StateReady, models.StateNext:
+	case models.StateInbox, models.StateBacklog:
 		return TodoBadgeStyle.Render(state.Icon())
-	case models.StateInProgress:
+	case models.StateDoing:
 		return InProgressBadgeStyle.Render(state.Icon())
 	case models.StateWaiting:
 		return BlockedBadgeStyle.Render(state.Icon())
@@ -212,7 +208,7 @@ func GetWorkflowStateGroupAccent(group models.WorkflowStateGroup) color.Color {
 	}
 }
 
-// GetOutlinerModeStyle resolves one of the final five mode identities to its
+// GetOutlinerModeStyle resolves one of the final six mode identities to its
 // static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
 func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 	switch mode {
@@ -220,6 +216,8 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 		return ViewModeAllStyle
 	case ModeInbox:
 		return GetWorkflowStateGroupStyle(models.StateGroupInbox)
+	case ModeToday:
+		return GetWorkflowStateGroupStyle(models.StateGroupToday)
 	case ModeNext, ModeDue:
 		return GetWorkflowStateGroupStyle(models.StateGroupNext)
 	case ModeBacklog:

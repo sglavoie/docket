@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "next_seq": 3,
+  "entries": [
+    {
+      "seq": 1,
+      "transaction_id": "synthetic-transaction-undo",
+      "action": "edit task",
+      "context": "fixture undo history",
+      "timestamp": "2026-07-02T14:00:00Z",
+      "project_ids": ["project-alpha"],
+      "artifacts": [
+        {
+          "kind": "file",
+          "path": "/synthetic/workspace/projects/alpha/tasks.md",
+          "before_exists": true,
+          "before_hash": "1c4a7c2596da66445c768b1d39083d3d92efd007883e81414ef6bd2c9329a477",
+          "after_exists": true,
+          "after_hash": "75e2abf580d0fc6ed03df90e7a8451800c1f3316a0522c5ac5f6d747f3e59f08"
+        }
+      ]
+    }
+  ],
+  "redo_entries": [
+    {
+      "seq": 2,
+      "transaction_id": "synthetic-transaction-redo",
+      "action": "create note",
+      "context": "fixture redo history",
+      "timestamp": "2026-07-02T14:10:00Z",
+      "project_ids": ["project-alpha"],
+      "artifacts": [
+        {
+          "kind": "file",
+          "path": "/synthetic/workspace/projects/alpha/notes/new-note.md",
+          "before_exists": false,
+          "after_exists": true,
+          "after_hash": "d98964ade8345b7eb8fc4dbc2512ffebceb744e250fe3763cfe6d8cc04791a43"
+        }
+      ]
+    }
+  ]
+}

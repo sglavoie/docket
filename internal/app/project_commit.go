@@ -40,7 +40,6 @@ func (s *Service) CommitProject(project *models.Project, opts ProjectCommitOptio
 			baseTasks[task.ID] = task
 		}
 	}
-	resolver := NewWorkspaceResolver(snap)
 	now := s.clock.Now()
 	for _, task := range project.Tasks {
 		if task == nil {
@@ -51,7 +50,7 @@ func (s *Service) CommitProject(project *models.Project, opts ProjectCommitOptio
 			continue
 		}
 		ref := TaskRef{Task: task, Project: project, Base: baseDocument}
-		if transitionErr := validateLifecycleTransitionFrom(previous.State(), ref, resolver, task.State()); transitionErr != nil {
+		if transitionErr := validateLifecycleTransitionFrom(previous.State(), ref, task.State()); transitionErr != nil {
 			return BulkResult{}, transitionErr
 		}
 		if stateErr := applyState(task, task.State(), now); stateErr != nil {

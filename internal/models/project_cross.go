@@ -7,14 +7,12 @@ import (
 
 // MoveTaskToProjectResult contains the result of a cross-project task move.
 type MoveTaskToProjectResult struct {
-	MovedTasks  []*Task  // Tasks that were moved (root + descendants)
-	ClearedDeps []string // Dependency IDs that were cleared (pointed to tasks not moved)
-	OldShortIDs []int    // Original short IDs of moved tasks (parallel with MovedTasks)
+	MovedTasks  []*Task // Tasks that were moved (root + descendants)
+	OldShortIDs []int   // Original short IDs of moved tasks (parallel with MovedTasks)
 }
 
 // MoveTaskToProject moves a task and all its descendants to another project.
-// Dependencies pointing to tasks not in the moved set are cleared. Workflow
-// states are preserved and short IDs are regenerated in the destination.
+// Workflow states are preserved and short IDs are regenerated in the destination.
 func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProjectResult, error) {
 	if task == nil {
 		return nil, fmt.Errorf("cannot move nil task")
@@ -61,15 +59,13 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		movedIDs[t.ID] = true
 	}
 
-	// Track cleared dependencies and old short IDs
-	var clearedDeps []string
+	// Track old short IDs.
 	oldShortIDs := make([]int, len(movedTasks))
 
 	now := time.Now()
 	// Process each task being moved
 	for i, t := range movedTasks {
 		oldShortIDs[i] = t.ShortID
-		clearedDeps = append(clearedDeps, rewriteMovedTaskRefs(t, movedIDs)...)
 		reassignTaskToDest(t, dest, now)
 	}
 
@@ -87,22 +83,6 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	p.Tasks = newTasks
 	p.UpdatedAt = now
 
-	// Clear same-project dependencies in the source project that pointed to moved tasks.
-	// Cross-project qualified references are never affected here since movedIDs only contains
-	// plain task UUIDs.
-	for _, t := range p.Tasks {
-		newDeps := make([]string, 0, len(t.DependsOn))
-		for _, depID := range t.DependsOn {
-			if !movedIDs[depID] {
-				newDeps = append(newDeps, depID)
-			}
-		}
-		if len(newDeps) != len(t.DependsOn) {
-			t.DependsOn = newDeps
-			t.UpdatedAt = now
-		}
-	}
-
 	// Add tasks to destination project
 	dest.Tasks = append(dest.Tasks, movedTasks...)
 	dest.UpdatedAt = now
@@ -113,26 +93,8 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 
 	return &MoveTaskToProjectResult{
 		MovedTasks:  movedTasks,
-		ClearedDeps: clearedDeps,
 		OldShortIDs: oldShortIDs,
 	}, nil
-}
-
-// rewriteMovedTaskRefs strips same-project DependsOn entries that point outside
-// the moved set. Cross-project qualified refs are preserved.
-// Returns the dropped dependency IDs so the caller can report them.
-func rewriteMovedTaskRefs(t *Task, movedIDs map[string]bool) []string {
-	var dropped []string
-	newDeps := make([]string, 0, len(t.DependsOn))
-	for _, depID := range t.DependsOn {
-		if ParseTaskRef(depID).IsCrossProject() || movedIDs[depID] {
-			newDeps = append(newDeps, depID)
-		} else {
-			dropped = append(dropped, depID)
-		}
-	}
-	t.DependsOn = newDeps
-	return dropped
 }
 
 // reassignTaskToDest refreshes the short ID and clears the project pointer so

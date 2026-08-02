@@ -26,9 +26,9 @@ func TestOutlinerCompletedTaskCountUsesGlobalAndFocusedProjectScopes(t *testing.
 		"alpha",
 		models.StateDone,
 		models.StateCanceled,
-		models.StateInProgress,
+		models.StateDoing,
 	)
-	beta := completedCounterProject("beta", models.StateDone, models.StateReady)
+	beta := completedCounterProject("beta", models.StateDone, models.StateBacklog)
 	outliner := &OutlinerModel{
 		loadedProjects: []*models.Project{alpha, beta},
 		activeContext:  RegularContextScope("work"),

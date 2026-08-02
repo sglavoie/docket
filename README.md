@@ -28,21 +28,21 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `Tab` moves to Inbox for triage.
-3. `s` opens the shared state and planning overlay.
-4. `sr`, `sn`, and `st` plan work; `sg` starts it and `sd` completes it.
+3. `s` opens the shared state/planning chord.
+4. `sb`, `sn`, and `st` organize work; `sg` starts it and `sd` completes it.
 5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
 6. `Space` opens the nine occasional task tools.
 
 Together, these operations form one capture, triage, plan, execute, and
 complete loop.
 
-`Tab` cycles exactly All → Inbox → Next → Backlog → Due, and `Shift+Tab`
+`Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due, and `Shift+Tab`
 reverses that cycle.
 
 All mode shows open, unsnoozed work in this order:
 
 ```text
-Pinned, Today, In Progress, Inbox, Next, Paused, Backlog, Waiting, Someday
+Pinned, Today, Doing, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 Pinned tasks appear once in project groups. Groups sort by their newest pin and
@@ -55,10 +55,10 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 
 | Area | Keys |
 | --- | --- |
-| Modes | `Tab` / `Shift+Tab` cycle the five modes |
+| Modes | `Tab` / `Shift+Tab` cycle the six modes |
 | Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
-| State and planning | `s` opens the state overlay: `si` Inbox, `sr` Ready/Backlog, `sn` toggle Next, `sg` In Progress, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled, `st` toggle Today |
+| State and planning | `s` opens the state/planning chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
 | Metadata | `!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
@@ -78,15 +78,12 @@ applies the pending changes.
 
 `Space` contains exactly:
 
-1. Recurrence
-2. Move Project
-3. Set Parent
-4. Dependencies
-5. Checklist
-6. Comments
-7. Decisions
-8. Attachments
-9. Delete
+1. Move Project
+2. Set Parent
+3. Checklist
+4. Comments
+5. Attachments
+6. Delete
 
 The list filters as soon as printable text is typed. Frequent direct operations
 do not repeat in this menu. Delete always asks for confirmation.
@@ -114,12 +111,12 @@ cancels that unfinished chord.
 
 The Outliner uses the full terminal width at every supported size. Task rows
 show workflow/blocking, conditional high priority, due and snooze dates,
-dependency counts, recurrence, and checklist progress; short task IDs are
+dependency counts, and checklist progress; short task IDs are
 hidden.
 
 `Enter` toggles a session-only Peek directly beneath the cursor task. Peek
 follows navigation and shows at most five lines of additive detail:
-description, tags, checklist items, dependency names, and recurrence. `Esc`
+description, tags, checklist items, and dependency names. `Esc`
 closes Peek before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, snooze, and pin actions apply atomically
@@ -135,29 +132,26 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-^type  !1-5  #tag  @date  ~interval  $state  %project  >parent
+!1-3  #tag  @date  $destination  %project  >parent
 ```
 
-- `^epic`, `^story`, `^bug`, and `^idea` set the task's visual type marker.
-  These are mutually exclusive raw tags; a task without one is a normal task.
-- `!1` through `!5` set priority.
+- `!1` through `!3` set High, Medium, or Low priority.
 - `#tag` creates and sets any valid tag on the fly, including semantic tags such
   as `#bug` and namespaced tags such as `#source:github`.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
-- `~interval` accepts daily, weekly, monthly, or an integer day/week/month
-  interval such as `~2w`.
-- `$state` uses one of the nine workflow states below.
+- `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,
+  `waiting`, `paused`, `someday`, `done`, or `canceled`. Today and Next create
+  Backlog tasks with an explicit planning membership.
 - `%project` overrides scope routing.
 - `>parent` resolves inside the selected project after project routing.
 
-The exact legacy tags `type:epic`, `type:story`, `type:bug`, and `type:idea` are
-read as their raw equivalents for compatibility. Other aliases such as
-`priority:`, `due:`, `state:`, and `proj:` are literal title text, not task
-attributes. Root capture defaults to Inbox. A new child defaults to Ready under
-its selected parent.
+`^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress` are
+rejected with replacement guidance. Other aliases such as `priority:`, `due:`,
+`state:`, and `proj:` are literal title text, not task attributes. Root capture
+defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
-## Workflow, hierarchy, and recurrence
+## Workflow and hierarchy
 
 The nine persisted workflow states are:
 
@@ -175,16 +169,12 @@ direct child remains nonterminal.
 Parents are project-local and hierarchy depth is capped at six. Dependencies
 may cross projects, use stable project-qualified identity, and reject cycles.
 
-Recurrence supports day, week, and month intervals. Completion advances from
-the prior due date until the next occurrence is after the completion date, or
-uses completion plus the interval when no prior due date exists. The generated
-task is Inbox in the same project and parent and copies only the retained
-recurrence fields.
-
 ## Scope, projects, and Notes
 
-`c` opens Scope Hub for All Projects, regular contexts, and custom contexts.
-Scope is session-only. `C` opens Select Project with search focused immediately
+`c` opens Scope Hub for All Projects and exclusive regular project-label
+contexts. `personal` remains available when empty and protects its name and
+deletion while allowing membership edits. Scope is session-only. `C` opens
+Select Project with search focused immediately
 and includes active and archived projects. `Enter` focuses the matching active
 project in the same Outliner; `Esc` clears search and leaves the project surface
 open. Project administration supports create, edit, pin, archive, restore, and

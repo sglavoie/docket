@@ -86,16 +86,16 @@ func TestPlanningQualifiedCleanupAndMovePreserveOtherProject(t *testing.T) {
 	}
 }
 
-func TestCanonicalV5PlanningJSONContainsOnlyLeanFields(t *testing.T) {
+func TestCanonicalV6PlanningJSONContainsOnlyExplicitMemberships(t *testing.T) {
 	planning := PlanningState{
-		Today:     []ProjectTaskLocator{{TaskID: "today", ProjectID: "p"}},
-		NextOrder: []ProjectTaskLocator{{TaskID: "next", ProjectID: "p"}},
+		Today: []ProjectTaskLocator{{TaskID: "today", ProjectID: "p"}},
+		Next:  []ProjectTaskLocator{{TaskID: "next", ProjectID: "p"}},
 	}
 	output, err := json.Marshal(planning)
 	if err != nil {
 		t.Fatalf("MarshalJSON: %v", err)
 	}
-	if got, want := string(output), `{"today":[{"task_id":"today","project_id":"p"}],"next_order":[{"task_id":"next","project_id":"p"}]}`; got != want {
+	if got, want := string(output), `{"today":[{"task_id":"today","project_id":"p"}],"next":[{"task_id":"next","project_id":"p"}]}`; got != want {
 		t.Fatalf("canonical planning JSON = %s, want %s", got, want)
 	}
 }

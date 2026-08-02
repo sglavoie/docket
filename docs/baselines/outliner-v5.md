@@ -20,10 +20,10 @@ actions have one direct binding, occasional task actions live only under
 
 | Inventory | Exact v5 contents |
 | --- | --- |
-| Modes and Tab cycle | All → Inbox → Next → Backlog → Due |
-| States | Inbox, Ready, Next, In Progress, Waiting, Paused, Someday, Done, Canceled |
-| Task `Space` menu | Recurrence, Move Project, Set Parent, Dependencies, Checklist, Comments, Decisions, Attachments, Delete |
-| Configuration domains | `workspace` (lean catalog and protected System Inbox ID), `planning` (Today and Next order), `machine` (custom contexts and dark/light theme) |
+| Modes and Tab cycle | All → Inbox → Today → Next → Backlog → Due |
+| States | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
+| Task `Space` menu | Move Project, Set Parent, Checklist, Comments, Attachments, Delete |
+| Configuration domains | `workspace` (lean catalog, exclusive regular contexts, and protected System Inbox ID), `planning` (Today and Next order), `machine` (dark/light theme) |
 | Public CLI | `tt`, `doctor`, `conflict`, `workspace`, `completion`, `project export`, help, `--version` |
 | Global flags | `--data-dir`, `--no-color` |
 
@@ -34,7 +34,7 @@ The direct interaction grammar is:
 | Modes | `Tab`, `Shift+Tab` |
 | Navigation | `j`/Down, `k`/Up, `h`/Left, `l`/Right, Home, End, PageUp, PageDown, `Enter` |
 | Capture and edit | `a`, `A`, `e`, `E`, `Ctrl+E` |
-| State and planning chord | `si`, `sr`, `sn`, `sg`, `sw`, `sp`, `sm`, `sd`, `sc`, `st` |
+| State and planning chord | `si`, `sb`, `sn`, `st`, `sg`, `sw`, `sp`, `sm`, `sd`, `sc` |
 | Metadata | `!0`, `!1`–`!5`, `@`, `#`, `z`, `P` |
 | Structure | `<`, `>`, `J`, `K` |
 | Clipboard | `y`, `Y`, `Ctrl+Y` |
@@ -42,11 +42,11 @@ The direct interaction grammar is:
 | Global | `c`, `C`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
 
 Filters use `fp0`, `fp1`–`fp5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`.
-Quick capture accepts `^type`, `!1-5`, `#tag`, `@date`, `~interval`, `$state`,
-`%project`, and `>parent`. `^type` maps epic, story, bug, or idea to a mutually
-exclusive raw tag; it does not restore a persisted type field. `#tag` creates
-valid tags on the fly. The four exact legacy `type:` marker tags canonicalize
-to raw tags, while other colon aliases are not part of v5.
+Quick capture accepts `!1-3`, `#tag`, `@date`, `$destination`, `%project`, and
+`>parent`. Destinations are Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
+Someday, Done, and Canceled. `#tag` creates valid tags on the fly. Retired type
+and recurrence sigils, priorities 4–5, `$ready`, and `$in_progress` are
+recognized errors with concise replacement guidance.
 
 The removal contract covers alternate primary views and duplicate commands;
 mode picker, command palette, Finder, and recent destinations; AI and Ask;

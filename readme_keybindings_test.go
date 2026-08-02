@@ -68,12 +68,12 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"The Outliner is the only primary task presentation",
-		"`Tab` cycles exactly All → Inbox → Next → Backlog → Due",
+		"`Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due",
 		"capture, triage, plan, execute, and complete",
 	})
 	// The final section catalog is intentionally checked as one ordered string.
 	requireDocumentationText(t, content, []string{
-		"Pinned, Today, In Progress, Inbox, Next, Paused, Backlog, Waiting, Someday",
+		"Pinned, Today, Doing, Inbox, Next, Paused, Backlog, Waiting, Someday",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Next → Backlog → Active → All",
@@ -89,9 +89,9 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"`a` capture, `A` child, `e` title, `E` description",
-		"`s` opens the state overlay",
-		"`si` Inbox, `sr` Ready/Backlog, `sn` toggle Next, `sg` In Progress",
-		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled, `st` toggle Today",
+		"`s` opens the state/planning chord",
+		"`si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing",
+		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled",
 		"`!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
@@ -103,7 +103,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"1. Recurrence 2. Move Project 3. Set Parent 4. Dependencies 5. Checklist 6. Comments 7. Decisions 8. Attachments 9. Delete",
+		"1. Move Project 2. Set Parent 3. Checklist 4. Comments 5. Attachments 6. Delete",
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
 	})
@@ -129,15 +129,17 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"^type !1-5 #tag @date ~interval $state %project >parent",
-		"`^epic`, `^story`, `^bug`, and `^idea` set the task's visual type marker",
+		"!1-3 #tag @date $destination %project >parent",
+		"`^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress`",
 		"`#tag` creates and sets any valid tag on the fly",
-		"inbox ready next in_progress waiting paused someday done canceled",
+		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
+		"A new child defaults to Backlog",
 		"Today and Next are mutually exclusive",
 		"Unresolved dependencies block Done",
 		"hierarchy depth is capped at six",
 	})
 	rejectDocumentationText(t, content, []string{
+		"^type !1-5 #tag @date ~interval $state",
 		"paused review someday",
 		"completed.md",
 		".completed.index.json",

@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -10,7 +12,7 @@ import (
 func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	p.input = parsed.Text
 
-	p.parseTaskTypeTokens(parsed.TokensFor(textgrammar.FieldTaskType))
+	p.parseRetiredTaskTypeTokens(parsed.TokensFor(textgrammar.FieldTaskType))
 	if p.err != nil {
 		return
 	}
@@ -27,7 +29,7 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
-	p.parseRecurrenceTokens(parsed.TokensFor(textgrammar.FieldRecurrence))
+	p.parseRetiredRecurrenceTokens(parsed.TokensFor(textgrammar.FieldRecurrence))
 	if p.err != nil {
 		return
 	}
@@ -39,19 +41,18 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
-	p.parseStateTokens(parsed.TokensFor(textgrammar.FieldState))
+	p.parseDestinationTokens(parsed.TokensFor(textgrammar.FieldDestination))
 }
 
-func (p *quickCaptureParser) parseTaskTypeTokens(tokens []textgrammar.Token) {
+func (p *quickCaptureParser) parseRetiredTaskTypeTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		marker, ok := models.ParseTaskMarker(token.Value)
-		if !ok {
-			if p.failf("invalid task type: %s (use ^epic, ^story, ^bug, or ^idea)", token.Value) {
-				return
-			}
-			continue
+		replacement := "use #tag instead"
+		switch strings.ToLower(token.Value) {
+		case "bug", "feature", "idea":
+			replacement = "use #" + strings.ToLower(token.Value)
 		}
-		p.result.tags = append(p.result.tags, marker.String())
+		p.failf("task type ^%s was removed (%s)", token.Value, replacement)
+		return
 	}
 }
 
@@ -59,7 +60,7 @@ func (p *quickCaptureParser) parsePriorityTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		values, ok := textgrammar.ParsePriority(token.Value, false)
 		if !ok {
-			if p.failf("invalid priority: %s (use 1-5)", token.Value) {
+			if p.failf("priority !%s was removed (use !1, !2, or !3)", token.Value) {
 				return
 			}
 			continue
@@ -99,16 +100,10 @@ func (p *quickCaptureParser) parseDueToken(token textgrammar.Token, parse func(s
 	p.result.dueDate = &date
 }
 
-func (p *quickCaptureParser) parseRecurrenceTokens(tokens []textgrammar.Token) {
+func (p *quickCaptureParser) parseRetiredRecurrenceTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		pattern := models.ParseRecurrence(token.Value)
-		if pattern == nil {
-			if p.failf("invalid recurrence: %s", token.Value) {
-				return
-			}
-			continue
-		}
-		p.result.recurrence = pattern
+		p.failf("recurrence ~%s was removed (use @date for a due date)", token.Value)
+		return
 	}
 }
 
@@ -144,16 +139,16 @@ func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 	}
 }
 
-func (p *quickCaptureParser) parseStateTokens(tokens []textgrammar.Token) {
+func (p *quickCaptureParser) parseDestinationTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		match, ok := textgrammar.ParseState(textgrammar.SurfaceCapture, token.Value)
+		destination, ok := app.ParseCaptureDestination(token.Value)
 		if !ok {
-			err := textgrammar.InvalidStateError(token.Value)
+			err := app.InvalidCaptureDestinationError(token.Value)
 			p.failf("%s", err)
 			return
 		}
-		p.result.state = match.States[0]
-		p.result.stateSet = true
+		p.result.destination = destination
+		p.result.destinationSet = true
 	}
 }
 

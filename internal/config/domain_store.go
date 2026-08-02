@@ -43,7 +43,7 @@ func NewDomains() *Domains {
 
 // RemoveProject fans a project deletion out to every domain after the catalog
 // accepts it. The catalog check happens first so a protected system Inbox
-// rejection cannot partially strip planning or machine references.
+// rejection cannot partially strip planning references.
 func (d *Domains) RemoveProject(id, slug string) (bool, error) {
 	if d == nil {
 		return false, nil
@@ -58,9 +58,6 @@ func (d *Domains) RemoveProject(id, slug string) (bool, error) {
 	}
 	if d.Planning != nil {
 		changed = d.Planning.RemoveProjectReferences(id, slug) || changed
-	}
-	if d.Machine != nil {
-		changed = d.Machine.RemoveProjectReferences(id, slug) || changed
 	}
 	return changed, nil
 }

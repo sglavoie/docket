@@ -11,15 +11,15 @@ import (
 
 func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T) {
 	now := time.Now()
-	pinned := primaryRowsTask("pinned", models.StateReady)
+	pinned := primaryRowsTask("pinned", models.StateBacklog)
 	pinned.Pinned = true
 	pinned.PinnedAt = &now
-	today := primaryRowsTask("today", models.StateReady)
-	inProgress := primaryRowsTask("in-progress", models.StateInProgress)
-	parent := primaryRowsTask("parent", models.StateReady)
-	child := primaryRowsTask("child", models.StateReady)
+	today := primaryRowsTask("today", models.StateBacklog)
+	doing := primaryRowsTask("doing", models.StateDoing)
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateBacklog)
 	child.ParentID = &parent.ID
-	project := primaryRowsProject("alpha", pinned, today, inProgress, parent, child)
+	project := primaryRowsProject("alpha", pinned, today, doing, parent, child)
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
 		ProjectID: project.ID,
@@ -27,9 +27,9 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	}})
 	outliner.selectOutlinerMode(ModeAll)
 
-	focus := TaskIdentity{ProjectID: project.ID, TaskID: inProgress.ID}
+	focus := TaskIdentity{ProjectID: project.ID, TaskID: doing.ID}
 	if !outliner.moveCursorToIdentity(focus) {
-		t.Fatal("In Progress task is missing before the bulk toggle")
+		t.Fatal("Doing task is missing before the bulk toggle")
 	}
 	outliner.multiSelectMode = true
 	outliner.SelectTaskIdentity(focus)
@@ -74,8 +74,8 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	if outliner.SelectedCount() != 1 || !outliner.IsTaskIdentitySelected(focus) {
 		t.Fatal("bulk section toggle changed the visual task selection")
 	}
-	if row := outliner.rows[outliner.cursor]; !row.IsSectionHeader || row.StateGroup != models.StateGroupInProgress {
-		t.Fatalf("collapsed cursor row = %+v, want In Progress section header", row)
+	if row := outliner.rows[outliner.cursor]; !row.IsSectionHeader || row.StateGroup != models.StateGroupDoing {
+		t.Fatalf("collapsed cursor row = %+v, want Doing section header", row)
 	}
 
 	if !outliner.toggleVisibleSections() {
@@ -86,8 +86,8 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 			t.Errorf("section %q remained collapsed", header.SectionName)
 		}
 	}
-	if task, _ := outliner.getTaskRef(); task == nil || task.ID != inProgress.ID {
-		t.Fatalf("expanded cursor task = %v, want %s", task, inProgress.ID)
+	if task, _ := outliner.getTaskRef(); task == nil || task.ID != doing.ID {
+		t.Fatalf("expanded cursor task = %v, want %s", task, doing.ID)
 	}
 	if !maps.Equal(outliner.expandedNodes, expandedBefore) {
 		t.Fatalf("expansion changed task folds: got %v, want %v", outliner.expandedNodes, expandedBefore)
@@ -96,9 +96,9 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 
 func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 	now := time.Now()
-	today := primaryRowsTask("today", models.StateReady)
+	today := primaryRowsTask("today", models.StateBacklog)
 	today.DueDate = &now
-	later := primaryRowsTask("later", models.StateReady)
+	later := primaryRowsTask("later", models.StateBacklog)
 	laterDue := now.AddDate(0, 0, 2)
 	later.DueDate = &laterDue
 	project := primaryRowsProject("alpha", today, later)

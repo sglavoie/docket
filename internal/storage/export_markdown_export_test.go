@@ -209,18 +209,13 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 	}
 }
 
-func TestWriteProjectMarkdownCleanIncludesRetainedTaskRecordsAndAttachmentReferences(t *testing.T) {
+func TestWriteProjectMarkdownCleanIncludesSchema6TaskRecordsAndAttachmentReferences(t *testing.T) {
 	now := time.Date(2026, 7, 29, 15, 30, 0, 0, time.UTC)
 	active := mustTask("active", 1, "", "Active task")
 	active.Priority = 0
 	active.DueDate = &now
-	active.DependsOn = []string{"other-project:dependency"}
-	active.Recurrence = &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly}
 	active.Checklist = []models.ChecklistItem{{Text: "First", Done: true}, {Text: "Second"}}
 	active.Comments = []*models.Comment{{Text: "A retained comment", CreatedAt: now}}
-	active.Decisions = []*models.Decision{{
-		Text: "A retained decision", Rationale: "Because", CreatedAt: now,
-	}}
 	active.Attachments = []models.Attachment{
 		{Filename: "spec.pdf", OriginalPath: "/source/spec.pdf", AddedAt: now},
 		{Filename: "https://example.test/item", OriginalPath: "https://example.test/item", IsURL: true, AddedAt: now},
@@ -236,13 +231,9 @@ func TestWriteProjectMarkdownCleanIncludesRetainedTaskRecordsAndAttachmentRefere
 	got := WriteProjectMarkdownClean(project)
 	for _, want := range []string{
 		"## Task: (#1) Active task [due 2026-07-29]",
-		"**Recurrence:** every 2 weeks",
-		"**Dependencies:**",
-		"- other-project:dependency",
 		"- [x] First",
 		"- [ ] Second",
 		"- A retained comment",
-		"- A retained decision",
 		"- File: spec.pdf",
 		"- URL: https://example.test/item",
 		"- Code: internal/app/service.go:42",

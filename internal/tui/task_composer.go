@@ -36,12 +36,11 @@ const (
 // TaskComposerSharedAttributes are defaults shared by every nonblank compact
 // line. Explicit capture syntax on a line wins over these defaults.
 type TaskComposerSharedAttributes struct {
-	Priority   int
-	Tags       []string
-	Due        *time.Time
-	ParentID   *string
-	Recurrence *models.RecurrencePattern
-	State      models.WorkflowState
+	Priority    int
+	Tags        []string
+	Due         *time.Time
+	ParentID    *string
+	Destination app.CaptureDestination
 }
 
 // TaskComposerPreset is the complete typed launch contract for compact create,
@@ -57,7 +56,6 @@ type TaskComposerPreset struct {
 	AllowProjectSwitch bool
 	PreferMultiline    bool
 	PlannerTab         int
-	PlanningArtifacts  app.PlanningArtifactBuilder
 }
 
 func (p TaskComposerPreset) label() string {
@@ -84,26 +82,26 @@ func (p TaskComposerPreset) label() string {
 	}
 }
 
-func creationStateFromPreset(preset models.WorkflowState) models.WorkflowState {
-	if preset != "" {
-		return preset
-	}
-	return models.StateInbox
-}
-
-func creationStateFromParsedInput(
-	state models.WorkflowState,
-	stateSet bool,
-	preset models.WorkflowState,
+func (p TaskComposerPreset) defaultDestination(
 	parentID *string,
-) models.WorkflowState {
-	if stateSet {
-		return state
-	}
+) app.CaptureDestination {
 	if parentID != nil {
-		return models.StateReady
+		return app.CaptureDestinationBacklog
 	}
-	return creationStateFromPreset(preset)
+	if p.Shared.Destination != "" {
+		return p.Shared.Destination
+	}
+	if p.Kind == ComposerPlanner {
+		switch p.PlannerTab {
+		case boardTabToday:
+			return app.CaptureDestinationToday
+		case boardTabNext:
+			return app.CaptureDestinationNext
+		default:
+			return app.CaptureDestinationBacklog
+		}
+	}
+	return app.CaptureDestinationInbox
 }
 
 // TaskComposerModel is the sole live task creation/editing overlay. Compact
@@ -116,15 +114,16 @@ type lineError struct {
 
 type TaskComposerModel struct {
 	quickCaptureInput
-	preset   TaskComposerPreset
-	runtime  *config.RuntimeState
-	mode     TaskComposerMode
-	expanded *TaskFormModel
-	capture  CaptureCoordinator
-	taskForm TaskFormCoordinator
-	errors   []lineError
-	width    int
-	height   int
+	preset             TaskComposerPreset
+	runtime            *config.RuntimeState
+	mode               TaskComposerMode
+	expanded           *TaskFormModel
+	capture            CaptureCoordinator
+	taskForm           TaskFormCoordinator
+	errors             []lineError
+	width              int
+	height             int
+	submissionInFlight bool
 	discardConfirmState
 }
 
@@ -205,6 +204,11 @@ func (m *TaskComposerModel) Init() tea.Cmd {
 }
 
 func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case TaskCreatedMsg, ErrorMsg:
+		m.submissionInFlight = false
+	}
+
 	if m.mode == ComposerExpanded {
 		if m.expanded == nil {
 			return m, nil
@@ -271,15 +275,11 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter", "ctrl+s":
 			if m.ac.Mode == acModeNone {
-				return m, m.createCompact(false, false)
+				return m, m.createCompact(false)
 			}
 		case "ctrl+d":
 			if m.ac.Mode == acModeNone {
-				return m, m.createCompact(true, false)
-			}
-		case "ctrl+o":
-			if m.ac.Mode == acModeNone {
-				return m, m.createCompact(false, true)
+				return m, m.createCompact(true)
 			}
 		case "ctrl+f":
 			return m, m.expandSingle()
@@ -294,7 +294,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, tea.Cmd) {
 	if name == "enter" && m.autocompleteLiteralComplete() {
-		return true, m.createCompact(false, false)
+		return true, m.createCompact(false)
 	}
 	if m.handleAutocompleteKey(name) {
 		return true, nil
@@ -302,15 +302,24 @@ func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, te
 	return false, nil
 }
 
-func (m *TaskComposerModel) createCompact(openContent, openDetail bool) tea.Cmd {
+func (m *TaskComposerModel) createCompact(openContent bool) tea.Cmd {
+	if m.submissionInFlight {
+		return nil
+	}
 	reqs, ok := m.parseCompactLines()
 	if !ok {
 		return nil
 	}
+	var cmd tea.Cmd
 	if len(reqs) == 1 {
-		return m.capture.CaptureCreate(reqs[0], openContent, openDetail)
+		cmd = m.capture.CaptureCreate(reqs[0], openContent)
+	} else {
+		cmd = m.capture.CaptureBulk(reqs, true)
 	}
-	return m.capture.CaptureBulk(reqs, true)
+	if cmd != nil {
+		m.submissionInFlight = true
+	}
+	return cmd
 }
 
 func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
@@ -358,23 +367,20 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 		if due == nil {
 			due = cloneTime(m.preset.Shared.Due)
 		}
-		recurrence := parsed.recurrence
-		if recurrence == nil {
-			recurrence = cloneRecurrence(m.preset.Shared.Recurrence)
+		destination := parsed.destination
+		if !parsed.destinationSet {
+			destination = m.preset.defaultDestination(parentID)
 		}
-		state := creationStateFromParsedInput(parsed.state, parsed.stateSet, m.preset.Shared.State, parentID)
 		req := app.CaptureRequest{
-			SourceLine:        idx + 1,
-			ProjectID:         target.ID,
-			Title:             parsed.title,
-			Priority:          priority,
-			Tags:              mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
-			Due:               due,
-			ParentID:          parentID,
-			Recurrence:        recurrence,
-			State:             state,
-			Prepend:           true,
-			PlanningArtifacts: m.preset.PlanningArtifacts,
+			SourceLine:  idx + 1,
+			ProjectID:   target.ID,
+			Title:       parsed.title,
+			Priority:    priority,
+			Tags:        mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
+			Due:         due,
+			ParentID:    parentID,
+			Destination: destination,
+			Prepend:     true,
 		}
 		if parentID != nil {
 			if err := validateComposerParent(target, *parentID); err != nil {
@@ -417,16 +423,6 @@ func cloneStringPtr(value *string) *string {
 }
 
 func mergeComposerTags(shared, line []string) []string {
-	if _, hasExplicitMarker := models.TaskMarkerFromTags(line); hasExplicitMarker {
-		withoutSharedMarker := make([]string, 0, len(shared))
-		for _, tag := range shared {
-			if _, isMarker := models.ParseTaskMarkerTag(tag); isMarker {
-				continue
-			}
-			withoutSharedMarker = append(withoutSharedMarker, tag)
-		}
-		shared = withoutSharedMarker
-	}
 	result := make([]string, 0, len(shared)+len(line))
 	seen := make(map[string]bool, len(shared)+len(line))
 	for _, tag := range append(append([]string(nil), shared...), line...) {
@@ -458,19 +454,13 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 		return nil
 	}
 	if m.nonblankLineCount() == 0 {
-		priority := m.preset.Shared.Priority
-		if priority == 0 {
-			priority = models.PriorityDefault
-		}
 		return m.expandRequest(app.CaptureRequest{
-			ProjectID:         m.preset.Project.ID,
-			Priority:          priority,
-			Tags:              append([]string(nil), m.preset.Shared.Tags...),
-			Due:               cloneTime(m.preset.Shared.Due),
-			ParentID:          cloneStringPtr(m.preset.Shared.ParentID),
-			Recurrence:        cloneRecurrence(m.preset.Shared.Recurrence),
-			State:             creationStateFromPreset(m.preset.Shared.State),
-			PlanningArtifacts: m.preset.PlanningArtifacts,
+			ProjectID:   m.preset.Project.ID,
+			Priority:    m.preset.Shared.Priority,
+			Tags:        append([]string(nil), m.preset.Shared.Tags...),
+			Due:         cloneTime(m.preset.Shared.Due),
+			ParentID:    cloneStringPtr(m.preset.Shared.ParentID),
+			Destination: m.preset.defaultDestination(m.preset.Shared.ParentID),
 		})
 	}
 	reqs, ok := m.parseCompactLines()
@@ -494,18 +484,17 @@ func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.title = req.Title
 	form.draft.priority = req.Priority
 	form.draft.tags = append([]string(nil), req.Tags...)
-	state := req.State
-	if state == "" {
-		state = models.StateInbox
+	destination := req.Destination
+	if destination == "" {
+		destination = m.preset.defaultDestination(req.ParentID)
 	}
-	form.draft.state = state
+	form.draft.state = destination.WorkflowState()
 	form.draft.parentID = cloneStringPtr(req.ParentID)
 	form.draft.dueDate = cloneTime(req.Due)
 	form.draft.dueInput = formatDateInput(req.Due)
-	form.draft.recurrence = cloneRecurrence(req.Recurrence)
 	form.titleInput.SetValue(req.Title)
 	form.dueTextInput.SetValue(form.draft.dueInput)
-	form.presetPlan = req.PlanningArtifacts
+	form.presetDestination = destination
 	form.hostTitle = "Task Composer · Expanded"
 	form.SetTaskFormCoordinator(m.taskForm)
 	form.SetSize(m.width, m.height)
@@ -593,8 +582,8 @@ func (m *TaskComposerModel) View() tea.View {
 
 func (m *TaskComposerModel) renderSharedAttributes() string {
 	parts := make([]string, 0, 6)
-	if state := m.preset.Shared.State; state != "" {
-		parts = append(parts, string(state))
+	if destination := m.preset.Shared.Destination; destination != "" {
+		parts = append(parts, "$"+string(destination))
 	}
 	if parent := m.preset.Shared.ParentID; parent != nil {
 		parts = append(parts, "parent "+*parent)
@@ -602,11 +591,8 @@ func (m *TaskComposerModel) renderSharedAttributes() string {
 	if len(m.preset.Shared.Tags) > 0 {
 		parts = append(parts, "#"+strings.Join(m.preset.Shared.Tags, " #"))
 	}
-	if m.preset.PlanningArtifacts != nil {
-		parts = append(parts, "planning membership")
-	}
 	if len(parts) == 0 {
-		return "task · priority 3"
+		return "task · priority unset"
 	}
 	return strings.Join(parts, " · ")
 }
@@ -663,5 +649,5 @@ func (m *TaskComposerModel) HandledKeys() []string {
 	if m.mode == ComposerExpanded && m.expanded != nil {
 		return m.expanded.HandledKeys()
 	}
-	return []string{"enter", "ctrl+s", "shift+enter", "ctrl+f", "ctrl+p", "ctrl+d", "ctrl+o", "?", "esc"}
+	return []string{"enter", "ctrl+s", "shift+enter", "ctrl+f", "ctrl+p", "ctrl+d", "?", "esc"}
 }

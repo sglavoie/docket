@@ -142,7 +142,7 @@ func TestTaskForm_TypingTitle_SetsHasChanges(t *testing.T) {
 }
 
 func TestPriorityDirectSet(t *testing.T) {
-	for _, want := range []int{1, 2, 3, 4, 5} {
+	for _, want := range []int{0, 1, 2, 3} {
 		m := newTestTaskForm()
 		m = navigateToField(m, 2)
 		m = sendFormKey(m, syntheticKey(rune('0'+want)))
@@ -171,24 +171,24 @@ func TestPriorityCycleUpDown(t *testing.T) {
 		t.Errorf("up from 2: expected 1, got %d", m.draft.priority)
 	}
 	m = sendFormKey(m, syntheticKey('k'))
-	if m.draft.priority != 1 {
-		t.Errorf("k from 1 (clamp): expected 1, got %d", m.draft.priority)
+	if m.draft.priority != 0 {
+		t.Errorf("k from 1: expected unset (0), got %d", m.draft.priority)
 	}
 
 	m2 := newTestTaskForm()
 	m2 = navigateToField(m2, 2)
-	m2.draft.priority = 3
+	m2.draft.priority = 2
 	m2 = sendFormKey(m2, syntheticKey('j'))
-	if m2.draft.priority != 4 {
-		t.Errorf("j from 3: expected 4, got %d", m2.draft.priority)
+	if m2.draft.priority != 3 {
+		t.Errorf("j from 2: expected 3, got %d", m2.draft.priority)
 	}
 	m2 = sendFormKey(m2, syntheticSpecialKey(tea.KeyDown))
-	if m2.draft.priority != 5 {
-		t.Errorf("down from 4: expected 5, got %d", m2.draft.priority)
+	if m2.draft.priority != 3 {
+		t.Errorf("down from 3 (clamp): expected 3, got %d", m2.draft.priority)
 	}
 	m2 = sendFormKey(m2, syntheticKey('j'))
-	if m2.draft.priority != 5 {
-		t.Errorf("j from 5 (clamp): expected 5, got %d", m2.draft.priority)
+	if m2.draft.priority != 3 {
+		t.Errorf("j from 3 (clamp): expected 3, got %d", m2.draft.priority)
 	}
 	if !m2.hasChanges {
 		t.Error("expected hasChanges=true after cycling")

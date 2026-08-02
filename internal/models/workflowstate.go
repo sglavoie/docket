@@ -12,12 +12,10 @@ type WorkflowState string
 const (
 	// StateInbox is unprocessed, freshly captured work awaiting triage.
 	StateInbox WorkflowState = "inbox"
-	// StateReady is triaged work with no scheduling commitment yet.
-	StateReady WorkflowState = "ready"
-	// StateNext is work explicitly queued as the next thing to do.
-	StateNext WorkflowState = "next"
-	// StateInProgress is work actively being executed.
-	StateInProgress WorkflowState = "in_progress"
+	// StateBacklog is triaged work with no scheduling commitment yet.
+	StateBacklog WorkflowState = "backlog"
+	// StateDoing is work actively being executed.
+	StateDoing WorkflowState = "doing"
 	// StateWaiting is work suspended on an external dependency ("waiting for").
 	StateWaiting WorkflowState = "waiting"
 	// StatePaused is work voluntarily suspended by the user.
@@ -30,14 +28,13 @@ const (
 	StateCanceled WorkflowState = "canceled"
 )
 
-// AllWorkflowStates returns all nine target workflow states in canonical order
+// AllWorkflowStates returns all eight target workflow states in canonical order
 // (nonterminal states first, then the two terminal states).
 func AllWorkflowStates() []WorkflowState {
 	return []WorkflowState{
 		StateInbox,
-		StateReady,
-		StateNext,
-		StateInProgress,
+		StateBacklog,
+		StateDoing,
 		StateWaiting,
 		StatePaused,
 		StateSomeday,
@@ -46,15 +43,13 @@ func AllWorkflowStates() []WorkflowState {
 	}
 }
 
-// IsValid reports whether the state is one of the nine target states.
+// IsValid reports whether the state is one of the eight target states.
 // Retired values accepted by migration readers are deliberately excluded.
 func (s WorkflowState) IsValid() bool {
 	switch s {
-	case StateInbox, StateReady, StateNext, StateInProgress, StateWaiting,
+	case StateInbox, StateBacklog, StateDoing, StateWaiting,
 		StatePaused, StateSomeday, StateDone, StateCanceled:
 		return true
-	case StateReview:
-		return false
 	}
 	return false
 }
@@ -78,16 +73,18 @@ func (s WorkflowState) String() string {
 // Icon returns a one-character indicator for the state.
 func (s WorkflowState) Icon() string {
 	switch s {
-	case StateInbox, StateReady, StateNext:
-		return icons.Get("status.todo")
-	case StateInProgress:
-		return icons.Get("status.in_progress")
+	case StateInbox:
+		return icons.Get("status.inbox")
+	case StateBacklog:
+		return icons.Get("status.backlog")
+	case StateDoing:
+		return icons.Get("status.doing")
 	case StateWaiting:
-		return icons.Get("status.blocked")
+		return icons.Get("status.waiting")
 	case StatePaused:
-		return icons.Get("status.standby")
+		return icons.Get("status.paused")
 	case StateSomeday:
-		return icons.Get("status.maybe")
+		return icons.Get("status.someday")
 	case StateDone:
 		return icons.Get("status.done")
 	case StateCanceled:

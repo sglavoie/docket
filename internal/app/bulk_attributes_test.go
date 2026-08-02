@@ -257,15 +257,18 @@ func TestBulkSetTagsRejectsInvalidTag(t *testing.T) {
 	}
 }
 
-func TestBulkSetTagsRejectsConflictingTaskMarkers(t *testing.T) {
+func TestBulkSetTagsAllowsIndependentSemanticTags(t *testing.T) {
 	task := newTask("t1", 1, "first")
 	project := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
 	_, err := svc.BulkSetTags([]string{task.ID}, []string{"bug", "idea"})
-	if !errors.Is(err, app.ErrInvalidInput) || len(repo.commits) != 0 {
-		t.Fatalf("conflicting markers error=%v commits=%d", err, len(repo.commits))
+	if err != nil {
+		t.Fatalf("BulkSetTags: %v", err)
+	}
+	if !slices.Equal(task.Tags, []string{"bug", "idea"}) || len(repo.commits) != 1 {
+		t.Fatalf("semantic tags=%v commits=%d", task.Tags, len(repo.commits))
 	}
 }
 
@@ -321,7 +324,7 @@ func TestBulkPatchTagsRejectsConflictingPatchBeforeMutation(t *testing.T) {
 	}
 }
 
-func TestBulkPatchTagsRejectsMarkerConflictWithExistingTask(t *testing.T) {
+func TestBulkPatchTagsAddsSemanticTagAlongsideExisting(t *testing.T) {
 	task := newTask("task", 1, "task")
 	task.Tags = []string{"idea", "keep"}
 	project := newProject("project", "Project", task)
@@ -333,15 +336,15 @@ func TestBulkPatchTagsRejectsMarkerConflictWithExistingTask(t *testing.T) {
 		[]string{"bug"},
 		nil,
 	)
-	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	if err != nil {
+		t.Fatalf("BulkPatchTagsByLocators: %v", err)
 	}
-	if !slices.Equal(task.Tags, []string{"idea", "keep"}) || len(repo.commits) != 0 {
-		t.Fatalf("marker conflict mutated task: tags=%v commits=%d", task.Tags, len(repo.commits))
+	if !slices.Equal(task.Tags, []string{"idea", "keep", "bug"}) || len(repo.commits) != 1 {
+		t.Fatalf("patched tags=%v commits=%d", task.Tags, len(repo.commits))
 	}
 }
 
-func TestBulkPatchTagsReplacesDifferentExistingTaskMarkers(t *testing.T) {
+func TestBulkPatchTagsExplicitlyRemovesAndAddsIndependentSemanticTags(t *testing.T) {
 	bug := newTask("bug", 1, "bug")
 	bug.Tags = []string{"bug", "keep"}
 	idea := newTask("idea", 2, "idea")

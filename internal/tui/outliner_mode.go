@@ -1,6 +1,6 @@
 package tui
 
-// This file establishes the final five-mode Outliner catalog.
+// This file establishes the final six-mode Outliner catalog.
 
 // OutlinerModeID is the stable identifier for a catalog mode.
 type OutlinerModeID string
@@ -10,6 +10,7 @@ type OutlinerModeID string
 const (
 	ModeAll     OutlinerModeID = "all"
 	ModeInbox   OutlinerModeID = "inbox"
+	ModeToday   OutlinerModeID = "today"
 	ModeNext    OutlinerModeID = "next"
 	ModeBacklog OutlinerModeID = "backlog"
 	ModeDue     OutlinerModeID = "due"
@@ -21,9 +22,10 @@ const (
 type OutlinerOrderPolicy uint8
 
 const (
-	OrderPolicyTree      OutlinerOrderPolicy = iota // hierarchical; manual sort allowed
-	OrderPolicyNextOrder                            // Next: focus-queue order
-	OrderPolicyDueDate                              // Due: calendar-date order
+	OrderPolicyTree       OutlinerOrderPolicy = iota // hierarchical; manual sort allowed
+	OrderPolicyTodayOrder                            // Today: durable planning order
+	OrderPolicyNextOrder                             // Next: focus-queue order
+	OrderPolicyDueDate                               // Due: calendar-date order
 )
 
 // OutlinerReorderPolicy declares whether J/K may mutate the active sequence.
@@ -42,6 +44,7 @@ type OutlinerRowStrategy uint8
 const (
 	RowStrategyAll OutlinerRowStrategy = iota
 	RowStrategyInbox
+	RowStrategyToday
 	RowStrategyNext
 	RowStrategyBacklog
 	RowStrategyDue
@@ -75,9 +78,10 @@ func (mode OutlinerMode) FixedOrder() bool {
 var outlinerModes = []OutlinerMode{
 	{ID: ModeAll, Label: "All", Aliases: []string{"all", "all tasks", "cross-project tasks", "every task"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, TabIndex: 0},
 	{ID: ModeInbox, Label: "Inbox", Aliases: []string{"inbox"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox, TabIndex: 1},
-	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext, TabIndex: 2},
-	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog, TabIndex: 3},
-	{ID: ModeDue, Label: "Due", Aliases: []string{"due", "due date", "schedule", "due dates", "by due date"}, OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue, TabIndex: 4},
+	{ID: ModeToday, Label: "Today", Aliases: []string{"today", "t", "daily plan"}, OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday, TabIndex: 2},
+	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext, TabIndex: 3},
+	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog, TabIndex: 4},
+	{ID: ModeDue, Label: "Due", Aliases: []string{"due", "due date", "schedule", "due dates", "by due date"}, OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue, TabIndex: 5},
 }
 
 // outlinerModeIndex maps each mode ID to its catalog entry for O(1) lookup.
@@ -103,7 +107,7 @@ func OutlinerModeByID(id OutlinerModeID) (OutlinerMode, bool) {
 	return mode, ok
 }
 
-// OutlinerTabModes returns the five descriptors in exact Tab order.
+// OutlinerTabModes returns the six descriptors in exact Tab order.
 func OutlinerTabModes() []OutlinerMode {
 	return OutlinerModeCatalog()
 }

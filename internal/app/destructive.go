@@ -25,8 +25,7 @@ type DeleteRequest struct {
 
 // DeleteResult reports the outcome of a delete: which tasks were removed, the
 // deleted root's canonical reference, and every project the single atomic
-// transaction touched (the source plus any project whose cross-project references
-// were repaired).
+// transaction touched.
 type DeleteResult struct {
 	// RemovedTaskIDs are the UUIDs removed (root plus descendants), sorted.
 	RemovedTaskIDs []string
@@ -39,25 +38,17 @@ type DeleteResult struct {
 	SourceProjectID string
 	// SourceRevision is the source project's new revision after the commit.
 	SourceRevision string
-	// CrossProjectRefsCleared counts dependency/related references dropped from
-	// OTHER projects that pointed at a deleted task.
-	CrossProjectRefsCleared int
-	// TouchedProjectIDs lists every project committed in the transaction, source
-	// first, then any cross-project-reference repairs in snapshot order.
+	// TouchedProjectIDs lists every project committed in the transaction.
 	TouchedProjectIDs []string
 }
 
 // Delete permanently removes a task and its whole subtree, committing the removal
 // as ONE transaction. The removed tasks' attachment bytes ride the same
-// transaction (AttachmentDelete side effects), and dependency/related references
-// to the removed tasks are cleaned both within the source project and across every
-// other project in the workspace — each repaired project joins the same commit, so
-// a delete plus its reference cleanup is atomic. Any artifacts the caller supplies
-// — the durable project-qualified planning refs (Focus Queue and Daily Plan) cleaned of the
-// removed tasks — ride the same transaction so a partial delete can never leave
-// stale planning refs behind; machine-local recent visits are deliberately excluded
-// and repaired separately by the adapter after a successful commit. The request must
-// carry explicit destructive intent; an unconfirmed request never mutates anything.
+// transaction (AttachmentDelete side effects). The service derives durable
+// Today/Next cleanup for the complete subtree and folds its revision-checked
+// artifact into that same transaction. Additional caller artifacts ride beside
+// it; machine-local recent visits remain adapter-owned. The request must carry
+// explicit destructive intent; an unconfirmed request never mutates anything.
 func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange) (DeleteResult, error) {
 	ref, snap, _, err := s.loadTaskSelection(req.TaskID, req.Locator)
 	if err != nil {
@@ -68,26 +59,32 @@ func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange)
 	}
 
 	removed := collectSubtreeIDs(ref.Task)
-	qualifiedRef := fmt.Sprintf("%s:#%d", ref.Project.Slug, ref.Task.ShortID)
-	undoContext := fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
-
-	revs, touched, crossCleared, err := s.deleteTasks(snap, []TaskRef{ref}, undoContext, artifacts)
-	if err != nil {
-		return DeleteResult{}, err
-	}
 	removedIDs := sortedKeys(removed)
 	removedLocators := make([]TaskLocator, 0, len(removedIDs))
 	for _, taskID := range removedIDs {
 		removedLocators = append(removedLocators, TaskLocator{ProjectID: ref.Project.ID, TaskID: taskID})
 	}
+	planningArtifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
+		Remove: removedLocators,
+	}, s.defaultedPlanningArtifacts(nil))
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
+	qualifiedRef := fmt.Sprintf("%s:#%d", ref.Project.Slug, ref.Task.ShortID)
+	undoContext := fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
+
+	revs, touched, err := s.deleteTasks(snap, []TaskRef{ref}, undoContext, artifacts)
+	if err != nil {
+		return DeleteResult{}, err
+	}
 	return DeleteResult{
-		RemovedTaskIDs:          removedIDs,
-		RemovedTaskLocators:     removedLocators,
-		QualifiedRef:            qualifiedRef,
-		SourceProjectID:         ref.Project.ID,
-		SourceRevision:          revs[ref.Project.ID],
-		CrossProjectRefsCleared: crossCleared,
-		TouchedProjectIDs:       touched,
+		RemovedTaskIDs:      removedIDs,
+		RemovedTaskLocators: removedLocators,
+		QualifiedRef:        qualifiedRef,
+		SourceProjectID:     ref.Project.ID,
+		SourceRevision:      revs[ref.Project.ID],
+		TouchedProjectIDs:   touched,
 	}, nil
 }
 
@@ -114,19 +111,16 @@ type BulkDeleteResult struct {
 	RemovedTaskIDs []string
 	// RemovedTaskLocators names every removed task within its owning project.
 	RemovedTaskLocators []TaskLocator
-	// CrossProjectRefsCleared counts references dropped from projects outside the
-	// deleted subtrees.
-	CrossProjectRefsCleared int
 	// TouchedProjectIDs lists every project committed together.
 	TouchedProjectIDs []string
 }
 
 // BulkDelete removes several task subtrees — which may live in different projects —
-// as ONE atomic transaction. Every affected project (a source of removals or a
-// carrier of cross-project references to a removed task) commits together, so the
-// whole batch lands or nothing does. Any artifacts the caller supplies — the durable
-// planning refs cleaned of every removed task — ride the same transaction. The
-// request must carry explicit destructive intent.
+// as ONE atomic transaction. Every affected source project commits together, so
+// the whole batch lands or nothing does. The service removes every deleted subtree
+// member from Today and Next in the same transaction; additional caller
+// artifacts ride beside that canonical planning change. The request must carry
+// explicit destructive intent.
 func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.ArtifactChange) (BulkDeleteResult, error) {
 	if len(req.TaskIDs) == 0 && len(req.TaskLocators) == 0 {
 		return BulkDeleteResult{}, invalidInput("tasks", "at least one task id is required")
@@ -153,17 +147,24 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 			allRemovedLocators[TaskLocator{ProjectID: r.Project.ID, TaskID: id}] = true
 		}
 	}
+	removedLocators := sortedTaskLocators(allRemovedLocators)
+	planningArtifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
+		Remove: removedLocators,
+	}, s.defaultedPlanningArtifacts(nil))
+	if err != nil {
+		return BulkDeleteResult{}, err
+	}
+	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
 
-	_, touched, crossCleared, err := s.deleteTasks(snap, roots, fmt.Sprintf("%d tasks", len(roots)), artifacts)
+	_, touched, err := s.deleteTasks(snap, roots, fmt.Sprintf("%d tasks", len(roots)), artifacts)
 	if err != nil {
 		return BulkDeleteResult{}, err
 	}
 	return BulkDeleteResult{
-		RemovedRootRefs:         rootRefs,
-		RemovedTaskIDs:          sortedKeys(allRemoved),
-		RemovedTaskLocators:     sortedTaskLocators(allRemovedLocators),
-		CrossProjectRefsCleared: crossCleared,
-		TouchedProjectIDs:       touched,
+		RemovedRootRefs:     rootRefs,
+		RemovedTaskIDs:      sortedKeys(allRemoved),
+		RemovedTaskLocators: removedLocators,
+		TouchedProjectIDs:   touched,
 	}, nil
 }
 
@@ -178,14 +179,24 @@ type BulkResult struct {
 }
 
 // deleteTasks removes every root's subtree from its source project, carries the
-// removed tasks' attachment bytes as AttachmentDelete side effects, repairs
-// cross-project references pointing at any removed task, folds any caller-supplied
+// removed tasks' attachment bytes as AttachmentDelete side effects, folds any caller-supplied
 // durable artifacts (e.g. a config store with the removed tasks' planning refs
 // cleaned) onto the first source project's changeset, and commits every touched
 // project as ONE transaction. It returns the new revision per project, the
-// committed project order (source projects first, then cross-reference repairs in
-// snapshot order), and the count of cross-project references cleared.
-func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string, artifacts []storage.ArtifactChange) (map[string]string, []string, int, error) {
+// committed project order.
+func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string, artifacts []storage.ArtifactChange) (map[string]string, []string, error) {
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return nil, nil, fmt.Errorf("capture delete rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+
 	removalByProject := make(map[string]map[string]bool)
 	srcProjects := make(map[string]*models.Project)
 	var srcOrder []string
@@ -202,7 +213,7 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 	}
 
 	// Capture attachment-delete ops from the live task pointers before filtering,
-	// then remove the subtree and clean same-project dangling references.
+	// then remove the subtree and repair dangling parent references.
 	attachByProject := make(map[string][]storage.AttachmentOp)
 	for pid, removed := range removalByProject {
 		p := srcProjects[pid]
@@ -216,30 +227,12 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 		p.Tasks = filterOutTasks(p.Tasks, removed)
 	}
 
-	// Repair cross-project references from every other project to any removed task.
-	crossCleared := 0
-	touchedByCross := make(map[string]bool)
-	for _, p := range snap.Projects() {
-		for pid, removed := range removalByProject {
-			deleted := srcProjects[pid]
-			if p.ID == deleted.ID {
-				continue
-			}
-			if n := clearCrossProjectRefs(p, deleted, removed); n > 0 {
-				crossCleared += n
-				touchedByCross[p.ID] = true
-			}
-		}
-	}
-
-	// Build one changeset per touched project: source projects first (carrying
-	// their attachment ops), then cross-reference-only repairs in snapshot order.
+	// Build one changeset per source project, carrying its attachment operations.
 	// The caller's durable artifacts (e.g. a config store with the removed tasks'
 	// planning refs cleaned) ride the first source project's changeset so they
 	// commit atomically with the removal.
 	var changesets []storage.ChangeSet
 	var touchedOrder []string
-	added := make(map[string]bool)
 	appendCS := func(p *models.Project, ops []storage.AttachmentOp, arts []storage.ArtifactChange) {
 		applyPostMutationHooks(p)
 		changesets = append(changesets, storage.ChangeSet{
@@ -252,7 +245,6 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 			UndoContext:      undoContext,
 		})
 		touchedOrder = append(touchedOrder, p.ID)
-		added[p.ID] = true
 	}
 	for i, pid := range srcOrder {
 		var arts []storage.ArtifactChange
@@ -261,22 +253,16 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 		}
 		appendCS(srcProjects[pid], attachByProject[pid], arts)
 	}
-	for _, p := range snap.Projects() {
-		if added[p.ID] || !touchedByCross[p.ID] {
-			continue
-		}
-		appendCS(p, nil, nil)
-	}
-
 	results, err := s.repo.Commit(changesets...)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
+	committed = true
 	revs := make(map[string]string, len(touchedOrder))
 	for i, pid := range touchedOrder {
 		revs[pid] = revisionAt(results, i)
 	}
-	return revs, touchedOrder, crossCleared, nil
+	return revs, touchedOrder, nil
 }
 
 // resolveDistinct resolves each task id against the snapshot, preserving request
@@ -391,8 +377,8 @@ func tasksMatching(tasks []*models.Task, ids map[string]bool) []*models.Task {
 	return out
 }
 
-// filterOutTasks removes tasks whose UUID is in removed and clears same-project
-// dangling ParentID and DependsOn references in the survivors. The
+// filterOutTasks removes tasks whose UUID is in removed and clears dangling
+// ParentID references in the survivors. The
 // post-mutation hooks reconcile parent completion and rebuild the tree after.
 func filterOutTasks(tasks []*models.Task, removed map[string]bool) []*models.Task {
 	remaining := tasks[:0]
@@ -403,55 +389,9 @@ func filterOutTasks(tasks []*models.Task, removed map[string]bool) []*models.Tas
 		if t.ParentID != nil && removed[*t.ParentID] {
 			t.ParentID = nil
 		}
-		if len(t.DependsOn) > 0 {
-			t.DependsOn = filterOutRefs(t.DependsOn, removed)
-		}
 		remaining = append(remaining, t)
 	}
 	return remaining
-}
-
-// filterOutRefs drops bare same-project references whose UUID is in removed,
-// preserving cross-project references (those are repaired separately).
-func filterOutRefs(refs []string, removed map[string]bool) []string {
-	out := refs[:0]
-	for _, ref := range refs {
-		if parsed := models.ParseTaskRef(ref); !parsed.IsCrossProject() && removed[parsed.TaskID] {
-			continue
-		}
-		out = append(out, ref)
-	}
-	return out
-}
-
-// clearCrossProjectRefs drops dependency references in project p that point
-// at a removed task in the deleted project, matching the cross-project reference by
-// the deleted project's ID or slug. It returns how many references were cleared.
-func clearCrossProjectRefs(p *models.Project, deleted *models.Project, removed map[string]bool) int {
-	cleared := 0
-	for _, t := range p.Tasks {
-		before := len(t.DependsOn)
-		t.DependsOn = filterCrossRefs(t.DependsOn, deleted, removed)
-		cleared += before - len(t.DependsOn)
-	}
-	return cleared
-}
-
-// filterCrossRefs removes cross-project references pointing at a removed task in the
-// deleted project.
-func filterCrossRefs(refs []string, deleted *models.Project, removed map[string]bool) []string {
-	if len(refs) == 0 {
-		return refs
-	}
-	out := refs[:0]
-	for _, ref := range refs {
-		parsed := models.ParseTaskRef(ref)
-		if parsed.IsCrossProject() && (parsed.ProjectID == deleted.ID || parsed.ProjectID == deleted.Slug) && removed[parsed.TaskID] {
-			continue
-		}
-		out = append(out, ref)
-	}
-	return out
 }
 
 // sortedKeys returns the keys of a set in sorted order for stable results.

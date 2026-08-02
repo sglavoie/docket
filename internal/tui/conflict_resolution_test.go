@@ -36,7 +36,7 @@ func tuiTestDoc(t *testing.T, title string) *storage.ProjectDocument {
 	doc := &storage.ProjectDocument{
 		ProjectName:   "Alpha",
 		Tasks:         []*models.Task{task},
-		SchemaVersion: storage.SchemaVersionV5,
+		SchemaVersion: storage.SchemaVersionV6,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc

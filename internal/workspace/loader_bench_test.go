@@ -39,7 +39,6 @@ func newRepresentativeWorkspaceFixture(tb testing.TB) representativeWorkspaceFix
 			if taskIndex%10 != 0 {
 				parentID := fmt.Sprintf("%s-task-%03d", slug, taskIndex-taskIndex%10)
 				task.ParentID = &parentID
-				task.DependsOn = []string{parentID}
 			}
 			tasks = append(tasks, task)
 			fixture.taskIDs = append(fixture.taskIDs, id)
@@ -123,7 +122,6 @@ func BenchmarkWorkspaceGlobalQueries36Projects(b *testing.B) {
 				found++
 			}
 			_ = snapshot.QualifiedRef(taskID)
-			_ = snapshot.ReverseDependencies(taskID)
 		}
 		if found != len(fixture.taskIDs) {
 			b.Fatalf("global lookup found %d tasks, want %d", found, len(fixture.taskIDs))

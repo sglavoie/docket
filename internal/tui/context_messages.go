@@ -16,28 +16,7 @@ type ShowProjectHubMsg struct{}
 // cancel. The scope is session-only and is never persisted.
 type ContextScopeSelectedMsg struct {
 	SelectedContext string
-	IsCustomContext bool // True if a custom context was selected
 	Canceled        bool
-}
-
-// CustomContextSavedMsg reports a committed custom-context create, membership
-// edit, or rename. PreviousName is empty on create. WasActive reports whether
-// the saved context is the one the Outliner is currently scoped to, so the
-// shell knows to re-derive the scope.
-type CustomContextSavedMsg struct {
-	Name         string
-	PreviousName string
-	IsNew        bool
-	Renamed      bool
-	ProjectCount int
-	WasActive    bool
-}
-
-// CustomContextDeletedMsg reports a committed custom-context delete. WasActive
-// means the Outliner scope pointed at it and must fall back to All.
-type CustomContextDeletedMsg struct {
-	Name      string
-	WasActive bool
 }
 
 // RegularContextSavedMsg reports a committed regular-label save: an optional
@@ -47,6 +26,7 @@ type CustomContextDeletedMsg struct {
 type RegularContextSavedMsg struct {
 	Name           string
 	PreviousName   string
+	IsNew          bool
 	Renamed        bool
 	RelabeledCount int
 	Assigned       int
@@ -54,9 +34,6 @@ type RegularContextSavedMsg struct {
 	// Destination is where projects leaving the label went.
 	Destination string
 	WasActive   bool
-	// DefaultContextMoved reports that the rename carried the workspace
-	// default-context setting with it, in the same checked transaction.
-	DefaultContextMoved bool
 }
 
 // RegularContextDeletedMsg reports a committed regular-label delete. The label's

@@ -35,9 +35,9 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 			i+1,
 			"",
 			fmt.Sprintf("Fill row %02d with a fairly long title", i),
-			models.StateReady,
+			models.StateBacklog,
 			3,
-			models.StateNext))
+			models.StateBacklog))
 	}
 	project := renderFixtureProject(t, "proj-ms", "ms", "Multi Select", tasks)
 

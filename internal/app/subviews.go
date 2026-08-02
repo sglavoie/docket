@@ -35,6 +35,9 @@ func (s *Service) AddDecisionByLocator(locator TaskLocator, text, rationale stri
 }
 
 func (s *Service) addDecisionSelection(taskID string, locator TaskLocator, text, rationale string) (DecisionResult, error) {
+	if err := RejectRetiredCapability(RetiredCapabilityDecision); err != nil {
+		return DecisionResult{}, err
+	}
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return DecisionResult{}, invalidInput("decision", "text is required")
@@ -66,6 +69,9 @@ func (s *Service) EditDecisionByLocator(locator TaskLocator, index int, text, ra
 }
 
 func (s *Service) editDecisionSelection(taskID string, locator TaskLocator, index int, text, rationale string) (DecisionResult, error) {
+	if err := RejectRetiredCapability(RetiredCapabilityDecision); err != nil {
+		return DecisionResult{}, err
+	}
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return DecisionResult{}, invalidInput("decision", "text is required")
@@ -99,6 +105,9 @@ func (s *Service) RemoveDecisionByLocator(locator TaskLocator, index int) (Decis
 }
 
 func (s *Service) removeDecisionSelection(taskID string, locator TaskLocator, index int) (DecisionResult, error) {
+	if err := RejectRetiredCapability(RetiredCapabilityDecision); err != nil {
+		return DecisionResult{}, err
+	}
 	var out DecisionResult
 	res, err := s.mutateRichRecordSelection(taskID, locator, "Remove Decision", "", func(ref TaskRef) error {
 		if err := validSubviewIndex("decision", index, len(ref.Task.Decisions)); err != nil {

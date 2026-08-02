@@ -10,26 +10,25 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func TestCreationRequestsExposeOnlyCanonicalState(t *testing.T) {
-	for name, requestType := range map[string]reflect.Type{
-		"add":     reflect.TypeOf(app.AddTaskRequest{}),
-		"capture": reflect.TypeOf(app.CaptureRequest{}),
-	} {
-		t.Run(name, func(t *testing.T) {
-			if field, ok := requestType.FieldByName("State"); !ok || field.Type != reflect.TypeOf(models.WorkflowState("")) {
-				t.Fatalf("%s request State field = %#v, want models.WorkflowState", name, field)
-			}
-			for _, legacy := range []string{"Section", "InitialState", "Status", "Type", "Attrs"} {
-				if _, ok := requestType.FieldByName(legacy); ok {
-					t.Fatalf("%s request still exposes legacy creation field %s", name, legacy)
-				}
-			}
-		})
+func TestCreationRequestsExposeTypedCaptureDestination(t *testing.T) {
+	addType := reflect.TypeOf(app.AddTaskRequest{})
+	if field, ok := addType.FieldByName("State"); !ok || field.Type != reflect.TypeOf(models.WorkflowState("")) {
+		t.Fatalf("add request State field = %#v, want models.WorkflowState", field)
+	}
+
+	captureType := reflect.TypeOf(app.CaptureRequest{})
+	if field, ok := captureType.FieldByName("Destination"); !ok || field.Type != reflect.TypeOf(app.CaptureDestination("")) {
+		t.Fatalf("capture request Destination field = %#v, want app.CaptureDestination", field)
+	}
+	for _, removed := range []string{"State", "Recurrence", "PlanningArtifacts", "Section", "InitialState", "Status", "Type", "Attrs"} {
+		if _, ok := captureType.FieldByName(removed); ok {
+			t.Fatalf("capture request still exposes removed field %s", removed)
+		}
 	}
 }
 
 // TestService_AddTask_Parity exercises the full capture surface:
-// priority, tags, description, state, recurrence, parent placement,
+// priority, tags, description, state, parent placement,
 // checklist, plus an auxiliary durable artifact
 // (standing in for the config store with an incremented template use-count). It
 // asserts the created task carries every field AND that the task write and the
@@ -51,8 +50,7 @@ func TestService_AddTask_Parity(t *testing.T) {
 		Priority:    1,
 		Tags:        []string{"backend", "api"},
 		Description: "body text",
-		State:       models.StateNext,
-		Recurrence:  models.ParseRecurrence("weekly"),
+		State:       models.StateBacklog,
 		ParentID:    &parentID,
 		Checklist:   []string{"step 1", "step 2"},
 		Artifacts:   []storage.ArtifactChange{configArtifact},
@@ -83,11 +81,8 @@ func TestService_AddTask_Parity(t *testing.T) {
 	if task.Description != "body text" {
 		t.Errorf("description = %q", task.Description)
 	}
-	if got := task.State(); got != models.StateNext {
-		t.Errorf("section = %q, want %q", got, models.StateNext)
-	}
-	if task.Recurrence == nil {
-		t.Error("recurrence not set")
+	if got := task.State(); got != models.StateBacklog {
+		t.Errorf("state = %q, want %q", got, models.StateBacklog)
 	}
 	if task.ParentID == nil || *task.ParentID != epic.ID {
 		t.Errorf("parent = %v, want %s", task.ParentID, epic.ID)
@@ -136,12 +131,12 @@ func TestService_AddTask_StateContract(t *testing.T) {
 		res, err := svc.AddTask(app.AddTaskRequest{
 			ProjectID: project.ID,
 			Title:     "legacy active task",
-			State:     models.StateReady,
+			State:     models.StateBacklog,
 		})
 		if err != nil {
 			t.Fatalf("AddTask: %v", err)
 		}
-		if got := project.GetTaskByID(res.TaskID).State(); got != models.StateReady {
+		if got := project.GetTaskByID(res.TaskID).State(); got != models.StateBacklog {
 			t.Fatalf("state = %q, want ready", got)
 		}
 	})

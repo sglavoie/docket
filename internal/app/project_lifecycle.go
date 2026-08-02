@@ -76,19 +76,18 @@ func (s *Service) CommitProjectArtifacts(request storage.ArtifactCommitRequest) 
 // tasks.md (heading reflecting the new name), and TasksExpectedRevision is the
 // raw revision captured from the exact old-path bytes used to render it. Leave
 // TasksMarkdown nil to skip the tasks write. Config is the encoded catalog after
-// the rename, and CrossRefWrites carry every other project's revision-checked
-// tasks.md rewrite to point its cross-project references at the new slug.
+// the rename.
 type RenameProjectRequest struct {
-	Project               *models.Project
-	SystemInboxProjectID  string
-	DataDir               string
-	OldName               string
-	OldSlug               string
-	NewSlug               string
-	TasksMarkdown         []byte
-	TasksExpectedRevision *string
-	Config                []storage.ArtifactChange
-	CrossRefWrites        []storage.ArtifactChange
+	Project                *models.Project
+	SystemUnfiledProjectID string
+	SystemInboxProjectID   string // compile-time compatibility alias
+	DataDir                string
+	OldName                string
+	OldSlug                string
+	NewSlug                string
+	TasksMarkdown          []byte
+	TasksExpectedRevision  *string
+	Config                 []storage.ArtifactChange
 }
 
 // RenameProjectResult reports a rename: the project's new on-disk path and whether
@@ -99,9 +98,8 @@ type RenameProjectResult struct {
 }
 
 // RenameProject renames a project's data directory, rewrites its tasks.md heading,
-// updates the catalog, and repairs cross-project references — all as ONE atomic
-// journaled transaction. Either the whole rename lands (directory at the new slug,
-// heading and catalog updated, references repointed) or none of it does; a crash
+// updates the catalog as ONE atomic journaled transaction. Either the whole rename
+// lands (directory at the new slug, heading and catalog updated) or none of it does; a crash
 // mid-commit is rolled forward by recovery. This replaces the pre-migration path
 // that renamed the directory eagerly during validation and then saved the config,
 // tasks.md, and each referencing project as independent effects, any of which
@@ -110,20 +108,21 @@ func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, 
 	if req.Project == nil {
 		return RenameProjectResult{}, invalidInput("project", "project is required")
 	}
-	if req.SystemInboxProjectID != "" &&
-		req.Project.ID == req.SystemInboxProjectID &&
+	protectedID := req.SystemUnfiledProjectID
+	if protectedID == "" {
+		protectedID = req.SystemInboxProjectID
+	}
+	if protectedID != "" &&
+		req.Project.ID == protectedID &&
 		(req.OldName == "" || req.OldName != req.Project.Name || req.OldSlug != req.NewSlug) {
 		return RenameProjectResult{}, fmt.Errorf(
 			"%w: project %q name and slug are immutable",
-			ErrProtectedSystemInbox,
+			ErrProtectedSystemUnfiled,
 			req.Project.ID,
 		)
 	}
 	if req.TasksMarkdown != nil && req.TasksExpectedRevision == nil {
 		return RenameProjectResult{}, invalidInput("tasks revision", "renamed tasks.md requires an expected revision")
-	}
-	if err := validateLifecycleTaskWrites(req.CrossRefWrites); err != nil {
-		return RenameProjectResult{}, err
 	}
 	plan, err := storage.PlanProjectRename(req.DataDir, req.OldSlug, req.NewSlug)
 	if err != nil {
@@ -132,7 +131,7 @@ func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, 
 
 	ops := make([]transaction.Op, 0, len(plan.Ops))
 	ops = append(ops, plan.Ops...)
-	artifacts := make([]storage.ArtifactChange, 0, 1+len(req.CrossRefWrites)+len(req.Config))
+	artifacts := make([]storage.ArtifactChange, 0, 1+len(req.Config))
 	if req.TasksMarkdown != nil {
 		tasksWrite := storage.ArtifactChange{
 			Path:             storage.TasksFilePath(plan.NewPath),
@@ -149,7 +148,6 @@ func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, 
 		}
 		artifacts = append(artifacts, tasksWrite)
 	}
-	artifacts = append(artifacts, req.CrossRefWrites...)
 	artifacts = append(artifacts, req.Config...)
 	if err := s.CommitProjectMutation(storage.OpsCommitRequest{
 		Ops:         ops,

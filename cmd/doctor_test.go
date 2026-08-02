@@ -173,92 +173,15 @@ func TestCheckBrokenParentRefs(t *testing.T) {
 	}
 }
 
-func TestCheckDeadDependencies(t *testing.T) {
-	project := testutil.NewTestProject("P1")
-	task1 := testutil.NewTestTask("Task A")
-	task2 := testutil.NewTestTask("Task B")
-	task2.DependsOn = []string{task1.ID}        // valid
-	task1.DependsOn = []string{"nonexistent-x"} // dead
-
-	project.Tasks = []*models.Task{task1, task2}
-
-	results := &doctorResults{}
-	checkDeadDependencies([]*models.Project{project}, results)
-
-	if len(results.deadDependencies) != 1 {
-		t.Fatalf("expected 1 dead dependency, got %d", len(results.deadDependencies))
-	}
-	if results.deadDependencies[0].task != task1.ID {
-		t.Errorf("expected task %q, got %q", task1.ID, results.deadDependencies[0].task)
-	}
-}
-
-func TestCheckOrphanedCrossRefs(t *testing.T) {
-	p1 := testutil.NewTestProject("P1")
-	p2 := testutil.NewTestProject("P2")
-	task1 := testutil.NewTestTask("Task A")
-	task2 := testutil.NewTestTask("Task B")
-
-	// Valid cross-project ref
-	task1.DependsOn = []string{
-		p2.Slug + ":" + task2.ID,
-		"nonexistent-project:some-task-id",
-	}
-
-	p1.Tasks = []*models.Task{task1}
-	p2.Tasks = []*models.Task{task2}
-
-	cfg := newTestConfig()
-	setTestProjects(cfg, []*models.Project{p1, p2})
-
-	results := &doctorResults{}
-	checkOrphanedCrossRefs([]*models.Project{p1, p2}, cfg, results)
-
-	if len(results.orphanedCrossRefs) != 1 {
-		t.Fatalf("expected 1 orphaned cross ref, got %d", len(results.orphanedCrossRefs))
-	}
-}
-
-func TestCheckOrphanedCrossRefs_ArchivedProjectNotOrphaned(t *testing.T) {
-	// Cross-project references to tasks in archived projects should NOT be
-	// reported as orphaned. The doctor command must load archived projects
-	// for cross-ref validation.
-	activeProject := testutil.NewTestProject("Active")
-	archivedProject := testutil.NewTestProject("Archived")
-	archivedProject.Archived = true
-
-	activeTask := testutil.NewTestTask("Active Task")
-	archivedTask := testutil.NewTestTask("Archived Task")
-
-	// Active project references a task in the archived project
-	activeTask.DependsOn = []string{archivedProject.Slug + ":" + archivedTask.ID}
-
-	activeProject.Tasks = []*models.Task{activeTask}
-	archivedProject.Tasks = []*models.Task{archivedTask}
-
-	cfg := newTestConfig()
-	setTestProjects(cfg, []*models.Project{activeProject, archivedProject})
-
-	results := &doctorResults{}
-	// Pass BOTH projects (including archived) to simulate the fix
-	checkOrphanedCrossRefs([]*models.Project{activeProject, archivedProject}, cfg, results)
-
-	if len(results.orphanedCrossRefs) != 0 {
-		t.Errorf("expected 0 orphaned cross refs (archived project ref is valid), got %d: %v",
-			len(results.orphanedCrossRefs), results.orphanedCrossRefs)
-	}
-}
-
 func TestTotalIssues(t *testing.T) {
 	results := &doctorResults{
-		orphanedCrossRefs: []doctorIssue{{project: "p"}},
-		duplicateIDs:      []doctorIssue{{project: "p"}, {project: "p"}},
-		emptyProjects:     []doctorIssue{{project: "p"}, {project: "p"}, {project: "p"}},
+		duplicateIDs:  []doctorIssue{{project: "p"}, {project: "p"}},
+		emptyProjects: []doctorIssue{{project: "p"}, {project: "p"}, {project: "p"}},
 	}
 
-	// emptyProjects should NOT be counted
-	if got := results.totalIssues(); got != 3 {
-		t.Errorf("totalIssues() = %d, want 3 (emptyProjects excluded)", got)
+	// Empty projects are informational and not live schema-6 issues.
+	if got := results.totalIssues(); got != 2 {
+		t.Errorf("totalIssues() = %d, want 2", got)
 	}
 }
 
@@ -270,26 +193,19 @@ func TestFixIssues(t *testing.T) {
 	task2 := testutil.NewTestTask("Broken Task")
 	badParent := "nonexistent-parent"
 	task2.ParentID = &badParent
-	task2.DependsOn = []string{"nonexistent-dep"}
 
 	project.Tasks = []*models.Task{task1, task2}
 
 	// Save initial state so fixIssues can persist
 	deps.Repository.Projects[project.ID] = project
 
-	cfg := newTestConfig()
-
-	fixIssues([]*models.Project{project}, cfg)
+	fixIssues([]*models.Project{project})
 
 	// Verify broken parent ref was cleared
 	if task2.ParentID != nil {
 		t.Errorf("expected ParentID to be cleared, got %v", task2.ParentID)
 	}
 
-	// Verify dead dependency was removed
-	if len(task2.DependsOn) != 0 {
-		t.Errorf("expected DependsOn to be empty, got %v", task2.DependsOn)
-	}
 }
 
 func captureDoctorOutput(t *testing.T, fn func() error) (stdout string, stderr string, runErr error) {
@@ -323,7 +239,7 @@ func captureDoctorOutput(t *testing.T, fn func() error) (stdout string, stderr s
 }
 
 //nolint:govet // The test-local data directory is intentionally independent of the command flag.
-func TestRunDoctorFreshWorkspaceBootstrapsProtectedInboxIdempotently(t *testing.T) {
+func TestRunDoctorFreshWorkspaceBootstrapsProtectedUnfiledIdempotently(t *testing.T) {
 	dataDir := t.TempDir()
 	setCommandDataDir(t, dataDir)
 
@@ -335,41 +251,41 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedInboxIdempotently(t *testing.
 	if err != nil {
 		t.Fatalf("first LoadCLIWorkspace: %v", err)
 	}
-	inbox := first.Runtime.SystemInboxProject()
-	if inbox == nil {
-		t.Fatal("fresh workspace has no protected system Inbox")
+	unfiled := first.Runtime.SystemUnfiledProject()
+	if unfiled == nil {
+		t.Fatal("fresh workspace has no protected system Unfiled")
 	}
-	if inbox.ID != first.Runtime.Catalog().SystemInboxProjectID ||
-		inbox.Name != config.SystemInboxName ||
-		inbox.Slug != config.SystemInboxSlug {
-		t.Fatalf("fresh protected Inbox = %+v, catalog id = %q", inbox, first.Runtime.Catalog().SystemInboxProjectID)
+	if unfiled.ID != first.Runtime.Catalog().SystemUnfiledProjectID ||
+		unfiled.Name != config.SystemUnfiledName ||
+		unfiled.Slug != config.SystemUnfiledSlug {
+		t.Fatalf("fresh protected Unfiled = %+v, catalog id = %q", unfiled, first.Runtime.Catalog().SystemUnfiledProjectID)
 	}
-	taskPath := storage.TasksFilePath(inbox.Path)
+	taskPath := storage.TasksFilePath(unfiled.Path)
 	before, err := os.ReadFile(taskPath)
 	if err != nil {
-		t.Fatalf("read fresh Inbox task document: %v", err)
+		t.Fatalf("read fresh Unfiled task document: %v", err)
 	}
 	document, err := storage.ParseProjectDocument(string(before))
 	if err != nil {
-		t.Fatalf("parse fresh Inbox task document: %v", err)
+		t.Fatalf("parse fresh Unfiled task document: %v", err)
 	}
 	if len(document.Tasks) != 0 {
-		t.Fatalf("fresh Inbox has %d tasks, want 0", len(document.Tasks))
+		t.Fatalf("fresh Unfiled has %d tasks, want 0", len(document.Tasks))
 	}
 
 	second, err := LoadCLIWorkspace()
 	if err != nil {
 		t.Fatalf("second LoadCLIWorkspace: %v", err)
 	}
-	if got := second.Runtime.Catalog().SystemInboxProjectID; got != inbox.ID {
-		t.Fatalf("repeat bootstrap changed Inbox id from %q to %q", inbox.ID, got)
+	if got := second.Runtime.Catalog().SystemUnfiledProjectID; got != unfiled.ID {
+		t.Fatalf("repeat bootstrap changed Unfiled id from %q to %q", unfiled.ID, got)
 	}
 	after, err := os.ReadFile(taskPath)
 	if err != nil {
-		t.Fatalf("read Inbox task document after repeat load: %v", err)
+		t.Fatalf("read Unfiled task document after repeat load: %v", err)
 	}
 	if !bytes.Equal(after, before) {
-		t.Fatal("repeat workspace load rewrote the canonical Inbox task document")
+		t.Fatal("repeat workspace load rewrote the canonical Unfiled task document")
 	}
 
 	command := &cobra.Command{}
@@ -384,9 +300,9 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedInboxIdempotently(t *testing.
 		t.Fatalf("doctor stderr = %q, want empty", stderr)
 	}
 	if !strings.Contains(stdout, "Workspace integrity issues: 0") ||
-		!strings.Contains(stdout, "[Migration] workspace schema 5 is current") ||
+		!strings.Contains(stdout, "[Migration] workspace schema 6 is current") ||
 		!strings.Contains(stdout, "[Undo] workspace ledger is valid (0 undo entries, 0 redo entries)") ||
-		!strings.Contains(stdout, "[Migration] clean workspace; no recorded pre-v5 migration") ||
+		!strings.Contains(stdout, "[Migration] clean schema-6 workspace; no pre-v6 snapshot recorded") ||
 		!strings.Contains(stdout, "All checks passed") {
 		t.Fatalf("doctor did not report a healthy fresh workspace:\n%s", stdout)
 	}
@@ -395,11 +311,11 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedInboxIdempotently(t *testing.
 	}
 }
 
-func TestCheckProtectedInboxReportsMissingAndInvalidIdentity(t *testing.T) {
+func TestCheckProtectedUnfiledReportsMissingAndInvalidIdentity(t *testing.T) {
 	results := &doctorResults{}
-	checkProtectedInbox(config.NewWorkspaceCatalog(), results)
+	checkProtectedUnfiled(config.NewWorkspaceCatalog(), results)
 	if len(results.workspaceIssues) != 1 || !strings.Contains(results.workspaceIssues[0].detail, "ID is missing") {
-		t.Fatalf("missing Inbox issues = %+v", results.workspaceIssues)
+		t.Fatalf("missing Unfiled issues = %+v", results.workspaceIssues)
 	}
 
 	catalog := config.NewWorkspaceCatalog()
@@ -408,11 +324,11 @@ func TestCheckProtectedInboxReportsMissingAndInvalidIdentity(t *testing.T) {
 	if err := catalog.UpsertProject(project); err != nil {
 		t.Fatalf("seed project: %v", err)
 	}
-	catalog.SystemInboxProjectID = project.ID
+	catalog.SystemUnfiledProjectID = project.ID
 	results = &doctorResults{}
-	checkProtectedInbox(catalog, results)
-	if len(results.workspaceIssues) != 1 || !strings.Contains(results.workspaceIssues[0].detail, "want \"Inbox\"/\"inbox\"") {
-		t.Fatalf("invalid Inbox identity issues = %+v", results.workspaceIssues)
+	checkProtectedUnfiled(catalog, results)
+	if len(results.workspaceIssues) != 1 || !strings.Contains(results.workspaceIssues[0].detail, "want \"Unfiled\"/\"unfiled\"") {
+		t.Fatalf("invalid Unfiled identity issues = %+v", results.workspaceIssues)
 	}
 }
 

@@ -47,7 +47,8 @@ var tokenPatterns = []tokenPattern{
 	{regexp.MustCompile(`(?:^|\s)#([\w][\w.:-]*)`), FieldTag, "#", false, SurfaceCapture | SurfaceEdit},
 	{regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "@", false, SurfaceCapture | SurfaceEdit},
 	{regexp.MustCompile(`(?:^|\s)~(\S+)`), FieldRecurrence, "~", false, SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", false, SurfaceCapture | SurfaceEdit},
+	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldDestination, "$", false, SurfaceCapture},
+	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", false, SurfaceEdit},
 	{regexp.MustCompile(`(?:^|\s)%(\S+)`), FieldProject, "%", false, SurfaceCapture},
 	{regexp.MustCompile(`(?:^|\s)>(\S+)`), FieldParent, ">", false, SurfaceCapture},
 }

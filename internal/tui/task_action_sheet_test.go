@@ -71,22 +71,18 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		ids = append(ids, descriptor.ID)
 	}
 	wantIDs := []OperationID{
-		operationTaskRecurrence,
 		operationTaskMoveProject,
 		operationTaskSetParent,
-		operationTaskSetDependencies,
 		operationTaskChecklist,
 		operationTaskComments,
-		operationTaskDecisions,
 		operationTaskAttachments,
 		operationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("action sheet IDs = %v, want exact nine %v", ids, wantIDs)
+		t.Fatalf("action sheet IDs = %v, want exact six %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Recurrence", "Move Project", "Set Parent", "Dependencies", "Checklist",
-		"Comments", "Decisions", "Attachments", "Delete",
+		"Move Project", "Set Parent", "Checklist", "Comments", "Attachments", "Delete",
 	}
 	for index, descriptor := range descriptors {
 		if descriptor.Label != wantLabels[index] {
@@ -97,6 +93,8 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	// task actions; the metadata operations the input strategy binds directly
 	// leave the sheet rather than repeating their key as a row.
 	for _, excluded := range []OperationID{
+		operationTaskSetDependencies,
+		operationTaskDecisions,
 		operationCoreActions,
 		operationCoreCapture,
 		operationCoreMultiSelect,
@@ -140,7 +138,6 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		}
 	}
 	for _, category := range []ListCategoryID{
-		taskActionCategoryPlan,
 		taskActionCategoryOrganize,
 		taskActionCategoryRelationships,
 		taskActionCategoryContent,
@@ -186,7 +183,7 @@ func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		registry,
 		NewOperationExecutor(registry),
-		taskActionTestContext(models.StateReady),
+		taskActionTestContext(models.StateBacklog),
 		"Selected task",
 	)
 	if err != nil {
@@ -223,7 +220,7 @@ func TestTaskActionSheetOmitsDirectSnoozeOperation(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		registry,
 		NewOperationExecutor(registry),
-		taskActionTestContext(models.StateInProgress),
+		taskActionTestContext(models.StateDoing),
 		"Active task",
 	)
 	if err != nil {
@@ -236,97 +233,6 @@ func TestTaskActionSheetOmitsDirectSnoozeOperation(t *testing.T) {
 	}
 }
 
-func TestTaskRecurrenceCancelRestoresFrozenActionSheet(t *testing.T) {
-	model := newUITestApp()
-	target := &models.Task{
-		ID: "target", ShortID: 1, Title: "Target",
-		WorkflowState: models.StateReady,
-		Recurrence:    &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly},
-	}
-	other := &models.Task{
-		ID: "other", ShortID: 2, Title: "Other",
-		WorkflowState: models.StateReady,
-	}
-	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{target, other}}
-	project.BuildTaskTree()
-	setTestAppProjects(model, project)
-	model.crossOutliner.loadedProjects = []*models.Project{project}
-	model.crossOutliner.rows = []outlinerRow{
-		{task: target, ProjectID: project.ID},
-		{task: other, ProjectID: project.ID},
-	}
-
-	sheet, err := NewTaskActionSheetModel(
-		model.operationRegistry,
-		model.operationExecutor,
-		taskOperationTestContext(target, project),
-		target.Title,
-	)
-	if err != nil {
-		t.Fatalf("NewTaskActionSheetModel: %v", err)
-	}
-	model.contextActionSheet = sheet
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskRecurrence))) {
-		t.Fatal("task sheet is missing Recurrence")
-	}
-	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if dismissed {
-		t.Fatal("Recurrence dismissed the sheet before its value step")
-	}
-	handled, cmd := model.handleOperationOverlayMessage(raw)
-	if !handled || cmd != nil {
-		t.Fatalf("Recurrence selection = handled %v cmd %T; want synchronous editor open", handled, cmd)
-	}
-	if model.currentView() != ViewRecurrenceEditor || model.pendingTaskRecurrenceRequest == nil {
-		t.Fatal("Recurrence did not open the canonical editor with a pending frozen request")
-	}
-	if model.contextActionSheet != nil || model.suspendedTaskActionSheet != sheet {
-		t.Fatal("Recurrence did not suspend the original action sheet")
-	}
-
-	// Moving the underlying cursor cannot retarget the suspended request.
-	model.crossOutliner.cursor = 1
-	handled, cmd = model.handleEditorMessages(RecurrenceEditorDoneMsg{Canceled: true})
-	if !handled || cmd != nil {
-		t.Fatalf("Recurrence cancel = handled %v cmd %T; want unwind without mutation", handled, cmd)
-	}
-	if model.contextActionSheet != sheet || model.suspendedTaskActionSheet != nil {
-		t.Fatal("Recurrence cancel did not restore the same action sheet")
-	}
-	if got := model.contextActionSheet.context.Entity.TaskID; got != target.ID {
-		t.Fatalf("restored frozen target = %q, want %q", got, target.ID)
-	}
-}
-
-func TestRecurrenceEditorUsesCanonicalIntervalModelAndExplicitClear(t *testing.T) {
-	editor := NewRecurrenceEditorModel(&models.RecurrencePattern{
-		Interval: 3,
-		Unit:     models.RecurrenceWeekly,
-	}, nil)
-	if got := editor.units; !slices.Equal(got, []models.RecurrenceUnit{
-		models.RecurrenceDaily,
-		models.RecurrenceWeekly,
-		models.RecurrenceMonthly,
-	}) {
-		t.Fatalf("recurrence units = %v, want day/week/month", got)
-	}
-	rendered := editor.View().Content
-	for _, retired := range []string{"Weekdays:", "Mode:", "Streak:", "year"} {
-		if strings.Contains(rendered, retired) {
-			t.Errorf("canonical recurrence editor still renders %q", retired)
-		}
-	}
-	_, cmd := editor.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
-	if cmd == nil {
-		t.Fatal("c did not emit an explicit recurrence clear")
-	}
-	raw := cmd()
-	cleared, ok := raw.(RecurrenceEditorDoneMsg)
-	if !ok || cleared.Canceled || cleared.Pattern != nil {
-		t.Fatalf("clear result = %#v, want non-canceled nil pattern", raw)
-	}
-}
-
 func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *testing.T) {
 	model := newUITestApp()
 	project := newTaskStructureTestProject()
@@ -336,7 +242,7 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	// The in-progress member is what removes snooze from the intersection.
 	story := project.GetTaskByID("story")
 	loose := project.GetTaskByID("loose")
-	loose.WorkflowState = models.StateInProgress
+	loose.WorkflowState = models.StateDoing
 	context := bulkTaskActionTestContext(project, story, loose)
 
 	descriptors := TaskActionSheetDescriptors(registry, context)
@@ -402,7 +308,7 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	task := &models.Task{
 		ID:            "task",
 		Title:         "Selected task",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	project := &models.Project{
 		ID:    "project",
@@ -431,8 +337,8 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 
 func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) {
 	app := newUITestApp()
-	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateReady}
-	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateReady}
+	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateBacklog}
+	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
@@ -486,8 +392,8 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 
 func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	app := newUITestApp()
-	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateReady}
-	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateReady}
+	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateBacklog}
+	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)

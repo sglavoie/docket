@@ -9,8 +9,7 @@ import (
 )
 
 // mutationFixture builds an in-memory workspace: two "work" projects, one
-// "home" project, one archived "work" project, and a "Work" custom context
-// holding an active, an archived, and a deleted project reference.
+// personal project, and one archived "work" project.
 func mutationFixture(t *testing.T) (*ContextMutator, *config.RuntimeState) {
 	t.Helper()
 	runtime := newTestConfig()
@@ -20,7 +19,6 @@ func mutationFixture(t *testing.T) (*ContextMutator, *config.RuntimeState) {
 		{ID: "p3", Slug: "charlie", Name: "Charlie", Context: "personal"},
 		{ID: "p4", Slug: "delta", Name: "Delta", Context: "work", Archived: true},
 	})
-	runtime.Machine().SetCustomContext("Work", []string{"p1", "p4", "missing"})
 	return NewContextMutator(runtime, nil, nil), runtime
 }
 
@@ -33,99 +31,31 @@ func contextOf(t *testing.T, runtime *config.RuntimeState, projectID string) str
 	return project.Context
 }
 
-func TestSaveCustomContextCreatesThroughMachineCommit(t *testing.T) {
+func TestCreateRegularContextRequiresActiveMembership(t *testing.T) {
 	mutator, runtime := mutationFixture(t)
 
-	result, err := mutator.SaveCustomContext(CustomContextSaveRequest{
-		Name:             "  Focus  ",
-		ActiveProjectIDs: []string{"p2", "p3"},
-	})
-	if err != nil {
-		t.Fatalf("SaveCustomContext: %v", err)
+	if _, err := mutator.SaveRegularContext(RegularContextSaveRequest{Name: "focus"}); err == nil {
+		t.Fatal("creating a context without an active project should fail")
 	}
-	if result.Name != "Focus" || !result.IsNew || result.Renamed || result.ProjectCount != 2 {
-		t.Fatalf("result = %+v, want {Focus true false 2}", result)
-	}
-	assertIDs(t, runtime.Machine().GetCustomContext("Focus"), "p2", "p3")
-}
-
-func TestSaveCustomContextRenamePreservesArchivedAndStaleReferences(t *testing.T) {
-	mutator, runtime := mutationFixture(t)
-
-	result, err := mutator.SaveCustomContext(CustomContextSaveRequest{
-		OriginalName:     "Work",
-		Name:             "Deep Work",
-		ActiveProjectIDs: []string{"p1", "p2"},
-	})
-	if err != nil {
-		t.Fatalf("SaveCustomContext: %v", err)
-	}
-	if !result.Renamed || result.IsNew {
-		t.Fatalf("result = %+v, want a rename", result)
-	}
-	if runtime.Machine().CustomContextExists("Work") {
-		t.Fatal("the renamed custom context still exists under its old name")
-	}
-	// p4 (archived) and "missing" (deleted) are invisible to a membership
-	// editor, so an absent selection must not drop them.
-	assertIDs(t, runtime.Machine().GetCustomContext("Deep Work"), "p1", "p4", "missing", "p2")
-}
-
-// TestSaveCustomContextPreservesArchivedAndStaleMembers is the merge half of
-// the eligibility rule: an archived or stale member is not listable, so an
-// editor selection that cannot mention it must not delete it.
-func TestSaveCustomContextPreservesArchivedAndStaleMembers(t *testing.T) {
-	runtime := hiddenMemberFixture(t)
-	mutator := NewContextMutator(runtime, nil, nil)
-
-	// Saving with the membership unchanged from the editor's point of view.
-	if _, err := mutator.SaveCustomContext(CustomContextSaveRequest{
-		OriginalName:     "Work",
-		Name:             "Work",
-		ActiveProjectIDs: []string{"p1"},
-	}); err != nil {
-		t.Fatalf("SaveCustomContext: %v", err)
-	}
-	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p1", "p4", "missing")
-
-	// Swapping the one listed member keeps every hidden one and drops only the
-	// project the user could actually see unchecked.
-	if _, err := mutator.SaveCustomContext(CustomContextSaveRequest{
-		OriginalName:     "Work",
-		Name:             "Work",
-		ActiveProjectIDs: []string{"p2"},
-	}); err != nil {
-		t.Fatalf("SaveCustomContext: %v", err)
-	}
-	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p4", "missing", "p2")
-}
-
-func TestSaveCustomContextRejectsDuplicateNameWithoutMutatingLiveState(t *testing.T) {
-	mutator, runtime := mutationFixture(t)
-	runtime.Machine().SetCustomContext("Admin", []string{"p2"})
-
-	if _, err := mutator.SaveCustomContext(CustomContextSaveRequest{
-		OriginalName:     "Work",
-		Name:             "admin",
-		ActiveProjectIDs: []string{"p1"},
+	if _, err := mutator.SaveRegularContext(RegularContextSaveRequest{
+		Name:       "focus",
+		ProjectIDs: []string{"p4"},
 	}); err == nil {
-		t.Fatal("renaming onto an existing custom context should fail case-insensitively")
+		t.Fatal("creating a context with only an archived project should fail")
 	}
-	assertIDs(t, runtime.Machine().GetCustomContext("Work"), "p1", "p4", "missing")
-	assertIDs(t, runtime.Machine().GetCustomContext("Admin"), "p2")
-}
 
-func TestDeleteCustomContextDiscardsStoredReferences(t *testing.T) {
-	mutator, runtime := mutationFixture(t)
-
-	if err := mutator.DeleteCustomContext("work"); err != nil {
-		t.Fatalf("DeleteCustomContext: %v", err)
+	result, err := mutator.SaveRegularContext(RegularContextSaveRequest{
+		Name:       "focus",
+		ProjectIDs: []string{"p1"},
+	})
+	if err != nil {
+		t.Fatalf("create regular context: %v", err)
 	}
-	if runtime.Machine().CustomContextExists("Work") {
-		t.Fatal("custom context survived deletion")
+	if !result.IsNew || result.Assigned != 1 {
+		t.Fatalf("result = %+v, want a one-project creation", result)
 	}
-	if err := mutator.DeleteCustomContext("Work"); err == nil {
-		t.Fatal("deleting an unknown custom context should fail")
+	if got := contextOf(t, runtime, "p1"); got != "focus" {
+		t.Fatalf("p1 context = %q, want focus", got)
 	}
 }
 
@@ -211,6 +141,22 @@ func TestDeleteRegularContextBlocksTheDefaultContext(t *testing.T) {
 	}
 }
 
+func TestSaveRegularContextBlocksPersonalRename(t *testing.T) {
+	mutator, runtime := mutationFixture(t)
+
+	_, err := mutator.SaveRegularContext(RegularContextSaveRequest{
+		OriginalName: "personal",
+		Name:         "private",
+		ProjectIDs:   []string{"p3"},
+	})
+	if !errors.Is(err, ErrDefaultContextProtected) {
+		t.Fatalf("err = %v, want ErrDefaultContextProtected", err)
+	}
+	if got := contextOf(t, runtime, "p3"); got != "personal" {
+		t.Fatalf("blocked rename mutated p3 context to %q", got)
+	}
+}
+
 func TestSaveRegularContextAssignsAndFallsBackToDefault(t *testing.T) {
 	mutator, runtime := mutationFixture(t)
 
@@ -251,6 +197,14 @@ func TestSaveRegularContextFromDefaultNeedsADestination(t *testing.T) {
 	}
 	if got := contextOf(t, runtime, "p3"); got != "personal" {
 		t.Fatalf("rejected removal mutated live state: p3 context = %q", got)
+	}
+	_, err = mutator.SaveRegularContext(RegularContextSaveRequest{
+		OriginalName: "personal",
+		Name:         "personal",
+		Destination:  "missing",
+	})
+	if err == nil {
+		t.Fatal("a destination that is not an existing context should fail")
 	}
 
 	result, err := mutator.SaveRegularContext(RegularContextSaveRequest{

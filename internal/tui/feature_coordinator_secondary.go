@@ -83,10 +83,6 @@ type TaskItemMutator interface {
 	OutdentTaskByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// Transition moves one task to a target workflow state.
 	Transition(req app.StateRequest) (app.TaskResult, error)
-	// ClearRecurrence removes one task's recurrence pattern.
-	ClearRecurrenceByLocator(locator app.TaskLocator) (app.RecurrenceResult, error)
-	// SetRecurrence sets or replaces one task's canonical recurrence pattern.
-	SetRecurrenceByLocator(locator app.TaskLocator, pattern *models.RecurrencePattern) (app.RecurrenceResult, error)
 	// Edit applies content changes to one task.
 	Edit(req app.EditRequest) (app.TaskResult, error)
 	// Capture creates a new task in a project and commits it as one ChangeSet.
@@ -102,15 +98,8 @@ type TaskItemMutator interface {
 	// ReorderPinnedTasks swaps two pinned tasks' PinnedAt ordering as one
 	// (possibly cross-project) transaction.
 	ReorderPinnedTasksByLocator(taskA, taskB app.TaskLocator) (app.PinnedReorderResult, error)
-	// SkipRecurrence advances one recurring task to its next occurrence.
-	SkipRecurrenceByLocator(locator app.TaskLocator) (app.RecurrenceResult, error)
-	// DeferRecurrence pushes one recurring task's due date forward by days.
-	DeferRecurrenceByLocator(locator app.TaskLocator, days int) (app.RecurrenceResult, error)
 	// Reparent changes one task's parent within its owning project.
 	ReparentByLocator(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
-	// SetDependencies replaces one task's complete dependency set.
-	SetDependenciesByLocator(locator app.TaskLocator, dependencies []string) (app.TaskResult, error)
-
 	// Delete permanently removes one task's subtree, folding any caller-supplied
 	// durable planning-ref artifacts into the same transaction.
 	Delete(req app.DeleteRequest, artifacts ...storage.ArtifactChange) (app.DeleteResult, error)
@@ -154,12 +143,6 @@ type SubviewMutator interface {
 	ReorderChecklistItemByLocator(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
 }
 
-// LinkMutator is the narrow port the dependency surfaces depend on.
-type LinkMutator interface {
-	AddDependencyByLocator(locator app.TaskLocator, blockerRef string) (app.TaskResult, error)
-	RemoveDependencyByLocator(locator app.TaskLocator, blockerRef string) (app.TaskResult, error)
-}
-
 // Compile-time assurance that the production services satisfy every secondary
 // port, so the coordinators can be built from one *app.Service.
 var (
@@ -168,7 +151,6 @@ var (
 	_ AttachmentMutator = (*app.Service)(nil)
 	_ TagMutator        = (*app.Service)(nil)
 	_ SubviewMutator    = (*app.Service)(nil)
-	_ LinkMutator       = (*app.Service)(nil)
 )
 
 // BatchTransactionResultMsg is emitted when a project-scoped or multi-task
@@ -629,22 +611,6 @@ func (c TaskItemCoordinator) Transition(task TaskIdentity, target models.Workflo
 	}
 }
 
-// ClearRecurrence removes one recurring task's pattern as one transaction.
-func (c TaskItemCoordinator) ClearRecurrence(task TaskIdentity) tea.Cmd {
-	return runTask(c.name, "Clear Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.ClearRecurrenceByLocator(task.Locator())
-		return res.Task, err
-	})
-}
-
-// SetRecurrence sets or replaces one task's pattern as one transaction.
-func (c TaskItemCoordinator) SetRecurrence(task TaskIdentity, pattern *models.RecurrencePattern) tea.Cmd {
-	return runTask(c.name, "Set Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.SetRecurrenceByLocator(task.Locator(), pattern)
-		return res.Task, err
-	})
-}
-
 // Edit applies content/form changes to one task as one transaction.
 func (c TaskItemCoordinator) Edit(task TaskIdentity, req app.EditRequest) tea.Cmd {
 	req.TaskID = ""
@@ -690,24 +656,6 @@ func (c TaskItemCoordinator) SetPinned(task TaskIdentity, pinned bool) tea.Cmd {
 	})
 }
 
-// SkipRecurrence advances one recurring task to its next occurrence as one
-// transaction.
-func (c TaskItemCoordinator) SkipRecurrence(task TaskIdentity) tea.Cmd {
-	return runTask(c.name, "Skip Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.SkipRecurrenceByLocator(task.Locator())
-		return res.Task, err
-	})
-}
-
-// DeferRecurrence pushes one recurring task's due date forward by days as one
-// transaction.
-func (c TaskItemCoordinator) DeferRecurrence(task TaskIdentity, days int) tea.Cmd {
-	return runTask(c.name, "Defer Recurrence", func() (app.TaskResult, error) {
-		res, err := c.task.DeferRecurrenceByLocator(task.Locator(), days)
-		return res.Task, err
-	})
-}
-
 // Reparent changes one task's parent within its owning project as one transaction.
 func (c TaskItemCoordinator) Reparent(task TaskIdentity, newParentID *string) tea.Cmd {
 	return runTask(c.name, "Reparent Task", func() (app.TaskResult, error) {
@@ -717,9 +665,9 @@ func (c TaskItemCoordinator) Reparent(task TaskIdentity, newParentID *string) te
 
 // SetDependencies replaces one task's dependency set as one transaction.
 func (c TaskItemCoordinator) SetDependencies(task TaskIdentity, dependencies []string) tea.Cmd {
-	return runTask(c.name, "Set Dependencies", func() (app.TaskResult, error) {
-		return c.task.SetDependenciesByLocator(task.Locator(), dependencies)
-	})
+	return func() tea.Msg {
+		return TransactionErrorMsg{Feature: c.name, Action: "Set Dependencies", Err: app.RejectRetiredCapability(app.RetiredCapabilityDependency)}
+	}
 }
 
 // DeleteTask permanently removes one task's subtree as one transaction, folding
@@ -934,22 +882,21 @@ func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int
 // LinkCoordinator backs dependency selection.
 type LinkCoordinator struct {
 	name string
-	link LinkMutator
 }
 
 // AddDependency adds a dependency edge onto blockerRef (validated for
 // existence and cycles across the workspace).
 func (c LinkCoordinator) AddDependency(task TaskIdentity, blockerRef string) tea.Cmd {
-	return runTask(c.name, "Add Dependency", func() (app.TaskResult, error) {
-		return c.link.AddDependencyByLocator(task.Locator(), blockerRef)
-	})
+	return func() tea.Msg {
+		return TransactionErrorMsg{Feature: c.name, Action: "Add Dependency", Err: app.RejectRetiredCapability(app.RetiredCapabilityDependency)}
+	}
 }
 
 // RemoveDependency drops a dependency edge.
 func (c LinkCoordinator) RemoveDependency(task TaskIdentity, blockerRef string) tea.Cmd {
-	return runTask(c.name, "Remove Dependency", func() (app.TaskResult, error) {
-		return c.link.RemoveDependencyByLocator(task.Locator(), blockerRef)
-	})
+	return func() tea.Msg {
+		return TransactionErrorMsg{Feature: c.name, Action: "Remove Dependency", Err: app.RejectRetiredCapability(app.RetiredCapabilityDependency)}
+	}
 }
 
 // adaptSubviewCommit runs a coordinator command inline and adapts its outcome
@@ -991,6 +938,6 @@ func newSecondaryCoordinators(svc *app.Service) SecondaryCoordinators {
 		Attachment: AttachmentCoordinator{name: "attachment", attach: svc},
 		Tag:        TagCoordinator{name: "tag", tag: svc},
 		Subview:    SubviewCoordinator{name: "subview", sub: svc},
-		Link:       LinkCoordinator{name: "link", link: svc},
+		Link:       LinkCoordinator{name: "link"},
 	}
 }

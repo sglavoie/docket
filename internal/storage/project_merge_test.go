@@ -12,13 +12,16 @@ import (
 // --- test fixtures -------------------------------------------------------
 
 func mergeTestTask(id, title string) *models.Task {
+	stamp := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 	return &models.Task{
 		ID:            id,
 		ShortID:       1,
 		Title:         title,
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 		Priority:      models.PriorityDefault,
 		Tags:          []string{},
+		CreatedAt:     stamp,
+		UpdatedAt:     stamp,
 	}
 }
 
@@ -26,7 +29,7 @@ func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         tasks,
-		SchemaVersion: SchemaVersionV5,
+		SchemaVersion: SchemaVersionV6,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
@@ -487,26 +490,6 @@ func TestMerge_ProjectNameOneSideAdopts(t *testing.T) {
 }
 
 // --- invariant re-check after merge --------------------------------------
-
-func TestMerge_InvariantDependencyOntoDeletedTask(t *testing.T) {
-	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"), mergeTestTask("b", "Beta"))
-	// local adds a dependency a -> b; current deletes... no, delete-vs-edit on b
-	// would trip first. Instead: current deletes b while a is untouched, and
-	// local makes a depend on b. b is deleted on current but edited (dependency
-	// target) only via a. So b is delete-vs-unchanged (deleted), and a now points
-	// at a missing dependency -> audit invariant.
-	local := mergeTestDoc("p", cloneDocTasks(base.Tasks)...)
-	local.Tasks[0].DependsOn = []string{"b"}                  // a depends on b
-	current := mergeTestDoc("p", mergeTestTask("a", "Alpha")) // b deleted, a untouched
-
-	res := mustMerge(t, base, local, current)
-	if res.Merged != nil {
-		t.Fatalf("merged doc with dangling dependency must be rejected, conflicts: %+v", res.Conflicts)
-	}
-	if !hasConflictKind(res, MergeConflictInvariant) {
-		t.Fatalf("expected invariant conflict, got %v", conflictKinds(res))
-	}
-}
 
 func TestMerge_InvariantTerminalWithoutCompletedAt(t *testing.T) {
 	base := mergeTestDoc("p", mergeTestTask("a", "Alpha"))

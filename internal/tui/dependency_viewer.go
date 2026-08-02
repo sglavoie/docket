@@ -27,16 +27,11 @@ type DependencyViewerModel struct {
 
 // NewDependencyViewerModel creates a new dependency viewer.
 func NewDependencyViewerModel(task *models.Task, project *models.Project) *DependencyViewerModel {
-	dependsOn := project.GetBlockingTasks(task)
-	blockedBy := project.GetBlockedByTasks(task)
-
 	return &DependencyViewerModel{
-		task:      task,
-		project:   project,
-		dependsOn: dependsOn,
-		blockedBy: blockedBy,
-		section:   0,
-		cursor:    0,
+		task:    task,
+		project: project,
+		section: 0,
+		cursor:  0,
 	}
 }
 

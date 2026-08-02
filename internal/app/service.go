@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -169,7 +168,7 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 // none do. It is the single-project analog of the note/blocker commitArtifact
 // path, generalized to carry an already-encoded artifact set the caller assembled.
 func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
-	generated := applyPostMutationHooksAtWithID(ref.Project, s.clock.Now(), s.ids.NewID)
+	applyPostMutationHooks(ref.Project)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
@@ -185,9 +184,7 @@ func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision strin
 	if len(results) > 0 && results[0] != nil {
 		revision = results[0].Revision
 	}
-	result := newTaskResult(ref, revision)
-	result.RecurringGenerated = generated
-	return result, nil
+	return newTaskResult(ref, revision), nil
 }
 
 // projectCommit pairs a mutated project with the revision it was loaded at, so a
@@ -208,27 +205,20 @@ type projectCommit struct {
 	attachmentOps []storage.AttachmentOp
 }
 
-// groupedCommitOutcome retains both the storage result for each changeset and
-// application-level effects produced while preparing that project for commit.
-// Keeping recurring counts keyed by project prevents a grouped state commit
-// from losing which project generated each new instance.
+// groupedCommitOutcome retains the storage result for each changeset.
 type groupedCommitOutcome struct {
-	results              []*storage.CommitResult
-	recurringByProjectID map[string]int
+	results []*storage.CommitResult
 }
 
 // commitProjects runs the post-mutation hooks on every project and commits their
 // ChangeSets as ONE transaction, so a cascade that spans projects (a cross-project
 // move) applies atomically or not at all. Any per-commit
 // artifacts and attachment ops ride the same transaction. The storage results are
-// retained in commit order, while recurring-instance counts remain associated with
-// their projects. A stale revision on any project aborts the whole commit.
+// retained in commit order. A stale revision on any project aborts the whole commit.
 func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) (groupedCommitOutcome, error) {
 	changesets := make([]storage.ChangeSet, len(commits))
-	recurring := make(map[string]int, len(commits))
-	now := s.clock.Now()
 	for i, c := range commits {
-		recurring[c.project.ID] += applyPostMutationHooksAtWithID(c.project, now, s.ids.NewID)
+		applyPostMutationHooks(c.project)
 		changesets[i] = storage.ChangeSet{
 			Project:          c.project,
 			ExpectedRevision: c.expectedRevision,
@@ -243,7 +233,7 @@ func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContex
 	if err != nil {
 		return groupedCommitOutcome{}, err
 	}
-	return groupedCommitOutcome{results: results, recurringByProjectID: recurring}, nil
+	return groupedCommitOutcome{results: results}, nil
 }
 
 // revisionAt returns the new revision reported for the changeset at index i, or
@@ -255,30 +245,11 @@ func revisionAt(results []*storage.CommitResult, i int) string {
 	return results[i].Revision
 }
 
-// applyPostMutationHooks runs the same post-mutation reconciliation the legacy
-// SaveProject path runs, so a mutation committed through the application layer
-// leaves the project in the identical reconciled shape: illegal
-// completed-parent-with-incomplete-child states are reconciled, recurring instances
-// are generated for freshly completed recurring tasks, the task tree is rebuilt,
-// and root tasks are reordered by completion. Dependency blocking remains derived
-// and never changes a user-selected workflow state. It returns the number of
-// recurring instances generated so single-task callers can surface that count.
-func applyPostMutationHooks(project *models.Project) int {
-	return applyPostMutationHooksAt(project, time.Now())
-}
-
-// applyPostMutationHooksAt is the deterministic variant used by Service commit
-// paths. In particular, recurrence generation shares the service mutation
-// timestamp instead of overwriting a just-transitioned task with wall-clock
-// time.
-func applyPostMutationHooksAt(project *models.Project, now time.Time) int {
-	return applyPostMutationHooksAtWithID(project, now, nil)
-}
-
-func applyPostMutationHooksAtWithID(project *models.Project, now time.Time, newID func() string) int {
+// applyPostMutationHooks runs post-mutation reconciliation:
+// illegal completed-parent-with-incomplete-child states are reconciled, the
+// task tree is rebuilt, and root tasks are reordered by completion.
+func applyPostMutationHooks(project *models.Project) {
 	project.ReconcileParentCompletion()
-	generated := project.GenerateRecurringInstancesAtWithID(now, newID)
 	project.BuildTaskTree()
 	project.ReorderRootTasksByCompletion()
-	return generated
 }

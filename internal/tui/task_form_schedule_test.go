@@ -15,10 +15,11 @@ func TestTaskForm_ScheduleTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m, 0)
 	view := m.View().Content
-	for _, label := range []string{"Due:", "Recurrence:"} {
-		if !strings.Contains(view, label) {
-			t.Errorf("Schedule tab should contain label %q; got:\n%s", label, view)
-		}
+	if !strings.Contains(view, "Due:") {
+		t.Errorf("Schedule tab should contain Due; got:\n%s", view)
+	}
+	if strings.Contains(view, "Recurrence:") {
+		t.Errorf("Schedule tab still exposes recurrence; got:\n%s", view)
 	}
 }
 
@@ -98,43 +99,6 @@ func TestTaskForm_ScheduleTab_DuePicker_EscCancels(t *testing.T) {
 	}
 	if m.draft.dueDate != nil {
 		t.Error("cancel should not set dueDate")
-	}
-}
-
-func TestTaskForm_ScheduleTab_EnterOnRecurrence_EmitsShowRecurrenceEditorMsg(t *testing.T) {
-	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 1)
-	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd == nil {
-		t.Fatal("expected Cmd from Enter on Recurrence, got nil")
-	}
-	msg := cmd()
-	if _, ok := msg.(ShowRecurrenceEditorMsg); !ok {
-		t.Errorf("expected ShowRecurrenceEditorMsg, got %T", msg)
-	}
-}
-
-func TestTaskForm_ScheduleTab_RecurrenceEditorDoneMsg_UpdatesDraft(t *testing.T) {
-	m := newTestTaskForm()
-	pattern := &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
-	m = sendFormMsg(m, RecurrenceEditorDoneMsg{Pattern: pattern, Canceled: false})
-	if m.draft.recurrence == nil {
-		t.Fatal("expected draft.recurrence to be set")
-	}
-	if m.draft.recurrence.Interval != 1 {
-		t.Errorf("expected recurrence interval=1, got %d", m.draft.recurrence.Interval)
-	}
-	if !m.hasChanges {
-		t.Error("expected hasChanges=true after recurrence updated")
-	}
-}
-
-func TestTaskForm_ScheduleTab_RecurrenceEditorDoneMsg_Canceled_NoChange(t *testing.T) {
-	m := newTestTaskForm()
-	m.draft.recurrence = nil
-	m = sendFormMsg(m, RecurrenceEditorDoneMsg{Pattern: &models.RecurrencePattern{Interval: 7}, Canceled: true})
-	if m.draft.recurrence != nil {
-		t.Error("canceled RecurrenceEditorDoneMsg should not update draft")
 	}
 }
 

@@ -23,7 +23,7 @@ func duplicatePlanningProjects(t *testing.T) (*models.Project, *models.Project, 
 		if err != nil {
 			t.Fatalf("NewTask(%s): %v", title, err)
 		}
-		task.WorkflowState = models.StateNext
+		task.WorkflowState = models.StateBacklog
 		project.Tasks = []*models.Task{task}
 		project.NextShortID = 2
 		project.BuildTaskTree()
@@ -45,8 +45,8 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask(beta Today): %v", err)
 	}
-	alphaToday.WorkflowState = models.StateReady
-	betaToday.WorkflowState = models.StateReady
+	alphaToday.WorkflowState = models.StateBacklog
+	betaToday.WorkflowState = models.StateBacklog
 	alpha.Tasks = append(alpha.Tasks, alphaToday)
 	beta.Tasks = append(beta.Tasks, betaToday)
 	alpha.BuildTaskTree()
@@ -92,8 +92,8 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 
 func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
-	alphaTask.WorkflowState = models.StateReady
-	betaTask.WorkflowState = models.StateReady
+	alphaTask.WorkflowState = models.StateBacklog
+	betaTask.WorkflowState = models.StateBacklog
 	alphaID := taskIdentityFor(alphaTask, alpha)
 	betaID := taskIdentityFor(betaTask, beta)
 	shell := &AppModel{
@@ -117,8 +117,8 @@ func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
 
 func TestPlanningOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
-	alphaTask.WorkflowState = models.StateReady
-	betaTask.WorkflowState = models.StateReady
+	alphaTask.WorkflowState = models.StateBacklog
+	betaTask.WorkflowState = models.StateBacklog
 	alphaID := taskIdentityFor(alphaTask, alpha)
 
 	repo := testutil.NewMockRepository()

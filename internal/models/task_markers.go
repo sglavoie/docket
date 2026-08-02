@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 )
@@ -50,35 +49,24 @@ func ParseTaskMarkerTag(tag string) (TaskMarker, bool) {
 	return ParseTaskMarker(legacy)
 }
 
-// NormalizeTaskTag applies ordinary tag normalization plus compatibility
-// canonicalization for legacy semantic task-marker tags.
+// NormalizeTaskTag applies ordinary tag normalization and validation. Marker
+// spellings are not canonicalized in the live model: every tag is independent.
 func NormalizeTaskTag(raw string) (string, error) {
 	tag := NormalizeTag(raw)
 	if err := ValidateTag(tag); err != nil {
 		return "", err
 	}
-	if marker, ok := ParseTaskMarkerTag(tag); ok {
-		return marker.String(), nil
-	}
 	return tag, nil
 }
 
-// NormalizeTaskTags validates, canonicalizes, and de-duplicates a complete tag
-// set. Distinct task markers are mutually exclusive.
+// NormalizeTaskTags validates and de-duplicates a complete ordinary tag set.
 func NormalizeTaskTags(tags []string) ([]string, error) {
 	normalized := make([]string, 0, len(tags))
 	seen := make(map[string]bool, len(tags))
-	var selected TaskMarker
 	for _, raw := range tags {
 		tag, err := NormalizeTaskTag(raw)
 		if err != nil {
 			return nil, err
-		}
-		if marker, ok := ParseTaskMarker(tag); ok {
-			if selected != "" && selected != marker {
-				return nil, fmt.Errorf("task can have only one type marker (%s and %s conflict)", selected, marker)
-			}
-			selected = marker
 		}
 		if seen[tag] {
 			continue
@@ -89,9 +77,9 @@ func NormalizeTaskTags(tags []string) ([]string, error) {
 	return normalized, nil
 }
 
-// TaskMarkerFromTags returns the task's semantic marker, if present. Valid
-// persisted tasks have at most one; the first match keeps rendering defensive
-// for caller-constructed tasks that have not passed validation.
+// TaskMarkerFromTags returns the first recognized legacy visual marker. Tags
+// are independent, so callers that still render this compatibility affordance
+// must not infer exclusivity from the result.
 func TaskMarkerFromTags(tags []string) (TaskMarker, bool) {
 	for _, tag := range tags {
 		if marker, ok := ParseTaskMarkerTag(tag); ok {

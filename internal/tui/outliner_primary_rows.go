@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -106,12 +105,14 @@ func (m *OutlinerModel) buildPrimaryModeRowsWithInput(
 		m.buildAllPrimaryRows(projects, input, pinned)
 		return
 	}
+	if mode == ModeToday || mode == ModeNext {
+		m.appendPlanningModeRows(mode, input, pinned)
+		return
+	}
 
 	trees := m.buildPrimaryProjectTrees(projects, mode, input, pinned)
 	roots := flattenPrimaryProjectRoots(trees)
 	switch mode {
-	case ModeNext:
-		roots = sortPrimaryRootsByRank(roots, nextOrderIdentityRanks(input.NextOrder))
 	case ModeInbox, ModeBacklog:
 	default:
 		return
@@ -124,14 +125,8 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 	input OutlinerModeInput,
 	pinned map[TaskIdentity]bool,
 ) {
-	candidates := make(map[string][]*models.Task, len(projects))
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		candidates[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
-	}
-	today := m.buildTodaySection(projects, candidates, input, pinned)
+	today := m.buildTodaySection(input, pinned)
+	next := m.buildNextSection(input, pinned, today.suppressed)
 
 	grouped := make(map[models.WorkflowStateGroup][]stateGroupProjectForest)
 	for _, project := range projects {
@@ -143,7 +138,8 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		roots = filterTaskTree(roots, func(task *models.Task) bool {
 			return input.TaskFilter == nil || input.TaskFilter(task, project)
 		})
-		roots = removeTodayRowsFromTree(roots, project.ID, today.suppressed)
+		roots = removePlanningRowsFromTree(roots, project.ID, today.suppressed)
+		roots = removePlanningRowsFromTree(roots, project.ID, next.suppressed)
 		roots = removeProjectedRowsFromTree(roots, project.ID, pinned)
 		roots = m.sortPrimaryTaskTree(roots)
 		for group, forest := range buildStateGroupTaskForests(roots) {
@@ -157,10 +153,47 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		}
 	}
 
-	m.appendTodaySection(today)
 	for _, group := range m.allPrimaryGroupOrder() {
-		m.appendStateGroupForests(group, grouped[group])
+		switch group {
+		case models.StateGroupToday:
+			m.appendPlanningSection(today)
+		case models.StateGroupNext:
+			m.appendPlanningSection(next)
+		default:
+			m.appendStateGroupForests(group, grouped[group])
+		}
 	}
+}
+
+func (m *OutlinerModel) appendPlanningModeRows(
+	mode OutlinerModeID,
+	input OutlinerModeInput,
+	pinned map[TaskIdentity]bool,
+) {
+	var modeRows []OutlinerModeRow
+	switch mode {
+	case ModeToday:
+		modeRows = BuildTodayModeRows(input)
+	case ModeNext:
+		modeRows = BuildNextModeRows(input)
+	default:
+		return
+	}
+
+	rows := make([]outlinerRow, 0, len(modeRows))
+	for _, modeRow := range modeRows {
+		if modeRow.Task == nil || modeRow.Project == nil ||
+			pinned[taskIdentityFor(modeRow.Task, modeRow.Project)] {
+			continue
+		}
+		row := m.outlinerRowFromModeRow(modeRow)
+		row.IsTodaySection = mode == ModeToday
+		row.IsNextSection = mode == ModeNext
+		row.IsTodayMember = mode == ModeToday
+		rows = append(rows, row)
+	}
+	assignPlanningRowPrefixes(rows)
+	m.rows = append(m.rows, rows...)
 }
 
 func (m *OutlinerModel) buildPrimaryProjectTrees(
@@ -188,10 +221,8 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 			switch mode {
 			case ModeInbox:
 				return task.IsInState(models.StateInbox)
-			case ModeNext:
-				return task.IsInState(models.StateNext)
 			case ModeBacklog:
-				return task.IsInState(models.StateReady) &&
+				return task.IsInState(models.StateBacklog) &&
 					!input.TodayIDs[taskIdentityFor(task, project)]
 			default:
 				return false
@@ -418,70 +449,6 @@ func flattenPrimaryProjectRoots(trees []primaryProjectTree) []primaryTaskRoot {
 		}
 	}
 	return roots
-}
-
-func nextOrderIdentityRanks(items []config.ProjectTaskLocator) map[TaskIdentity]int {
-	ranks := make(map[TaskIdentity]int, len(items))
-	for i, item := range items {
-		ranks[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = i
-	}
-	return ranks
-}
-
-func sortPrimaryRootsByRank(
-	roots []primaryTaskRoot,
-	ranks map[TaskIdentity]int,
-) []primaryTaskRoot {
-	sorted := slices.Clone(roots)
-	for i := range sorted {
-		sorted[i].task = sortPrimaryTaskTreeByRank(sorted[i].task, sorted[i].project, ranks)
-	}
-	sort.SliceStable(sorted, func(i, j int) bool {
-		return minimumPrimaryTaskRank(sorted[i].task, sorted[i].project, ranks) <
-			minimumPrimaryTaskRank(sorted[j].task, sorted[j].project, ranks)
-	})
-	return sorted
-}
-
-func sortPrimaryTaskTreeByRank(
-	task *models.Task,
-	project *models.Project,
-	ranks map[TaskIdentity]int,
-) *models.Task {
-	if task == nil {
-		return nil
-	}
-	clone := *task
-	clone.Children = slices.Clone(task.Children)
-	for i, child := range clone.Children {
-		clone.Children[i] = sortPrimaryTaskTreeByRank(child, project, ranks)
-	}
-	sort.SliceStable(clone.Children, func(i, j int) bool {
-		return minimumPrimaryTaskRank(clone.Children[i], project, ranks) <
-			minimumPrimaryTaskRank(clone.Children[j], project, ranks)
-	})
-	return &clone
-}
-
-func minimumPrimaryTaskRank(
-	task *models.Task,
-	project *models.Project,
-	ranks map[TaskIdentity]int,
-) int {
-	const unranked = int(^uint(0) >> 1)
-	if task == nil || project == nil {
-		return unranked
-	}
-	rank, ok := ranks[taskIdentityFor(task, project)]
-	if !ok {
-		rank = unranked
-	}
-	for _, child := range task.Children {
-		if childRank := minimumPrimaryTaskRank(child, project, ranks); childRank < rank {
-			rank = childRank
-		}
-	}
-	return rank
 }
 
 func (m *OutlinerModel) flattenPrimaryRoots(roots []primaryTaskRoot) {

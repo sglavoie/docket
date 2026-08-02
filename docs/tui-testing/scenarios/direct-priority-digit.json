@@ -4,12 +4,12 @@
   "size": "99x35",
   "actions": [
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "move the cursor onto the In Progress task", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "hold the priority prefix", "key": "!" },
-    { "type": "assert", "assert": "contains", "value": "0 clear" },
-    { "type": "assert", "assert": "contains", "value": "1 critical" },
-    { "type": "assert", "assert": "contains", "value": "5 lowest" },
+    { "type": "assert", "assert": "contains", "value": "0 unset" },
+    { "type": "assert", "assert": "contains", "value": "1 high" },
+    { "type": "assert", "assert": "contains", "value": "3 low" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "make the cursored task critical", "key": "1" },
@@ -35,7 +35,7 @@
 
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
-    { "type": "key", "label": "select the In Progress task and enter multi-select", "key": "v" },
+    { "type": "key", "label": "select the Doing task and enter multi-select", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move to an Inbox task", "key": "j" },

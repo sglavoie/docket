@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -80,20 +79,14 @@ func passesCommonFiltersWithResolverAt(
 	task *models.Task,
 	f *CommonFilterState,
 	project *models.Project,
-	resolver *app.WorkspaceResolver,
+	resolver *workspaceFilterResolver,
 	now time.Time,
 ) bool {
 	if f.hasStateFilter() && !f.States.Contains(task.State()) {
 		return false
 	}
 	if f.Blocked {
-		blocked := task.IsDependencyBlocked(project)
-		if resolver != nil {
-			blocked = resolver.IsDependencyBlocked(task, project)
-		}
-		if !blocked {
-			return false
-		}
+		return false
 	}
 	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
 		return false
@@ -210,7 +203,7 @@ func commonFilterParts(f *CommonFilterState) []string {
 	default:
 	}
 	if f.Actionable {
-		parts = append(parts, "ready")
+		parts = append(parts, "actionable")
 	}
 	if f.GitHubIssue {
 		parts = append(parts, "issue")

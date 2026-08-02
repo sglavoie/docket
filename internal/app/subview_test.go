@@ -71,7 +71,8 @@ func TestEditCommentPreservesTimestamp(t *testing.T) {
 
 func TestRemoveAndClearComments(t *testing.T) {
 	task := newTask("t1", 1, "Commented")
-	task.Comments = []*models.Comment{{Text: "first"}, {Text: "second"}, {Text: "third"}}
+	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	task.Comments = []*models.Comment{{Text: "first", CreatedAt: created}, {Text: "second", CreatedAt: created}, {Text: "third", CreatedAt: created}}
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
@@ -98,7 +99,7 @@ func TestRemoveAndClearComments(t *testing.T) {
 
 func TestCommentCommitFailureRestoresTask(t *testing.T) {
 	task := newTask("t1", 1, "Commented")
-	task.Comments = []*models.Comment{{Text: "original"}}
+	task.Comments = []*models.Comment{{Text: "original", CreatedAt: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}}
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	repo.commitErr = errors.New("commit failed")
 	svc := newTestService(repo)

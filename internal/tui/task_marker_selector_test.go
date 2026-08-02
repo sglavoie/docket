@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestTagSelectorMakesTaskMarkersMutuallyExclusive(t *testing.T) {
+func TestTagSelectorKeepsSemanticTagsIndependent(t *testing.T) {
 	task, err := models.NewGenericTask("task", 1, "Task")
 	if err != nil {
 		t.Fatal(err)
@@ -27,7 +27,7 @@ func TestTagSelectorMakesTaskMarkersMutuallyExclusive(t *testing.T) {
 	updated, _ := selector.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	selector = updated.(*TagSelectorModel)
 	selected := selector.SelectedIDs()
-	if !slices.Contains(selected, "idea") || !slices.Contains(selected, "keep") || slices.Contains(selected, "bug") {
-		t.Fatalf("selected tags = %v, want idea+keep without bug", selected)
+	if !slices.Contains(selected, "idea") || !slices.Contains(selected, "keep") || !slices.Contains(selected, "bug") {
+		t.Fatalf("selected tags = %v, want bug+idea+keep", selected)
 	}
 }

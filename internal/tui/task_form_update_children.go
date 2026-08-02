@@ -28,8 +28,6 @@ func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, te
 		m.handleChildrenReorder(1)
 	case "ctrl+k":
 		m.handleChildrenReorder(-1)
-	case "ctrl+o":
-		m.handleSubtaskToggleOptional()
 	case "space":
 		m.handleChecklistToggleDone()
 	default:
@@ -145,15 +143,6 @@ func (m *TaskFormModel) handleChildrenReorder(delta int) {
 	m.focusIndex += delta
 	m.hasChanges = true
 	m.err = nil
-}
-
-// handleSubtaskToggleOptional toggles the optional flag on the focused subtask.
-func (m *TaskFormModel) handleSubtaskToggleOptional() {
-	if kind, idx := m.focusedChildItem(); kind == childFocusSubtaskItem {
-		m.draft.subtasks[idx].optional = !m.draft.subtasks[idx].optional
-		m.hasChanges = true
-		m.err = nil
-	}
 }
 
 // handleChecklistToggleDone toggles the Done state of the focused checklist item.

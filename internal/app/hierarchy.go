@@ -302,12 +302,7 @@ func captureHierarchyProject(project *models.Project) hierarchyProjectBackup {
 	backup.values = make([]models.Task, len(backup.tasks))
 	for i, task := range backup.tasks {
 		if task != nil {
-			value := *task
-			// Dependency cleanup filters slices in place. Preserve its
-			// backing values so a failed multi-project move can restore refs even
-			// when a removed entry preceded a retained entry.
-			value.DependsOn = append([]string(nil), task.DependsOn...)
-			backup.values[i] = value
+			backup.values[i] = *task
 		}
 	}
 	return backup
@@ -353,15 +348,8 @@ type MoveResult struct {
 	Task TaskResult
 	// MovedCount is the number of tasks relocated (the root plus its descendants).
 	MovedCount int
-	// ClearedDeps lists same-project dependency IDs dropped because they pointed
-	// outside the moved subtree.
-	ClearedDeps []string
-	// CrossProjectRefsCleared counts dependency references dropped
-	// because they still qualified a moved task through its former project.
-	CrossProjectRefsCleared int
 	// TouchedProjectIDs lists every project committed in the transaction: source
-	// and destination first, followed by cross-project-reference repairs in
-	// snapshot order.
+	// and destination.
 	TouchedProjectIDs []string
 	// SourceProjectID and DestProjectID identify the move endpoints.
 	SourceProjectID string
@@ -374,18 +362,13 @@ type MoveResult struct {
 
 // MoveToProject moves a task and its whole subtree to another project, committing
 // the source removal and the destination insertion as ONE transaction (two
-// ChangeSets). Same-project dependencies that point outside the moved subtree are
-// cleared; cross-project qualified references are preserved. Short IDs are
-// regenerated in the destination while the stable UUID is kept, so each moved
-// task's attachment directory is relocated (via an AttachmentMove op) in the same
-// transaction as the metadata that references it. Any artifacts the caller supplies
-// — the durable planning refs (Focus Queue, Daily Plan) reassigned to the
-// destination project — ride the same transaction so a partial move can never leave
-// planning refs pointing at the old project. Qualified dependency references
-// from any loaded project that still point at the moved tasks through the source
-// project are cleared in the same transaction. Machine-local UI state (recent visits)
-// is deliberately NOT part of this transaction; the adapter updates it separately
-// after a successful commit.
+// ChangeSets). Short IDs are regenerated in the destination while the stable UUID is kept, so each moved
+// task's attachment directory is relocated (via an AttachmentMove op) in the
+// same transaction as the metadata that references it. The service requalifies
+// every moved subtree member's Today/Next identity in a revision-checked planning
+// artifact; additional caller artifacts ride beside it. Machine-local UI state
+// (recent visits) is deliberately NOT part of this transaction; the adapter
+// updates it separately after a successful commit.
 func (s *Service) MoveToProject(taskID, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
 	return s.moveToProject(taskID, TaskLocator{}, destProjectID, artifacts)
 }
@@ -425,12 +408,22 @@ func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectI
 		restore()
 		return MoveResult{}, invalidInput("move", err.Error())
 	}
-	movedIDs := make(map[string]bool, len(moveRes.MovedTasks))
+	planningMoves := make([]PlanningProjectMove, 0, len(moveRes.MovedTasks))
 	for _, moved := range moveRes.MovedTasks {
 		if moved != nil {
-			movedIDs[moved.ID] = true
+			planningMoves = append(planningMoves, PlanningProjectMove{
+				TaskID: moved.ID, FromProjectID: src.ID, ToProjectID: dest.ID,
+			})
 		}
 	}
+	planningArtifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
+		Moves: planningMoves,
+	}, s.defaultedPlanningArtifacts(nil))
+	if err != nil {
+		restore()
+		return MoveResult{}, err
+	}
+	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
 
 	// Relocate every moved task's attachment directory in the same transaction. The
 	// stable UUID is preserved across the move, so the destination metadata keeps
@@ -452,29 +445,6 @@ func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectI
 		{project: dest, expectedRevision: destRev, base: snap.Document(dest.ID)},
 	}
 	touched := []string{src.ID, dest.ID}
-	crossCleared := 0
-	for _, project := range snap.Projects() {
-		if project == nil {
-			continue
-		}
-		if project.ID == src.ID || project.ID == dest.ID {
-			crossCleared += clearCrossProjectRefs(project, src, movedIDs)
-			continue
-		}
-		backup := captureHierarchyProject(project)
-		cleared := clearCrossProjectRefs(project, src, movedIDs)
-		if cleared == 0 {
-			continue
-		}
-		backups = append(backups, backup)
-		crossCleared += cleared
-		commits = append(commits, projectCommit{
-			project:          project,
-			expectedRevision: snap.Revision(project.ID),
-			base:             snap.Document(project.ID),
-		})
-		touched = append(touched, project.ID)
-	}
 
 	results, err := s.commitProjects(commits, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
 	if err != nil {
@@ -484,14 +454,12 @@ func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectI
 
 	srcNewRev, destNewRev := revisionAt(results.results, 0), revisionAt(results.results, 1)
 	return MoveResult{
-		Task:                    newTaskResult(TaskRef{Task: ref.Task, Project: dest}, destNewRev),
-		MovedCount:              len(moveRes.MovedTasks),
-		ClearedDeps:             moveRes.ClearedDeps,
-		CrossProjectRefsCleared: crossCleared,
-		TouchedProjectIDs:       touched,
-		SourceProjectID:         src.ID,
-		DestProjectID:           dest.ID,
-		SourceRevision:          srcNewRev,
-		DestRevision:            destNewRev,
+		Task:              newTaskResult(TaskRef{Task: ref.Task, Project: dest}, destNewRev),
+		MovedCount:        len(moveRes.MovedTasks),
+		TouchedProjectIDs: touched,
+		SourceProjectID:   src.ID,
+		DestProjectID:     dest.ID,
+		SourceRevision:    srcNewRev,
+		DestRevision:      destNewRev,
 	}, nil
 }

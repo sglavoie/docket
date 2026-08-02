@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "move the cursor onto the In Progress task", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "open the due-date picker with its direct key", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due Date: Build login form" },

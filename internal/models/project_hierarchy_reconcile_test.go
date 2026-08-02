@@ -2,11 +2,29 @@ package models
 
 import "testing"
 
-func TestReconcileParentCompletionSingleReopen(t *testing.T) {
-	project := newDependencyTestProject(t, "test")
+func newHierarchyReconcileProject(t *testing.T, id string) *Project {
+	t.Helper()
+	project, err := NewProject(id, "Test", ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return project
+}
 
-	parent := newDependencyTestTask(t, "parent", 1, "Parent")
-	child := newDependencyTestTask(t, "child", 2, "Child")
+func newHierarchyReconcileTask(t *testing.T, id string, shortID int, title string) *Task {
+	t.Helper()
+	task, err := NewGenericTask(id, shortID, title)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return task
+}
+
+func TestReconcileParentCompletionSingleReopen(t *testing.T) {
+	project := newHierarchyReconcileProject(t, "test")
+
+	parent := newHierarchyReconcileTask(t, "parent", 1, "Parent")
+	child := newHierarchyReconcileTask(t, "child", 2, "Child")
 	if err := parent.AddChild(child); err != nil {
 		t.Fatal(err)
 	}
@@ -18,7 +36,7 @@ func TestReconcileParentCompletionSingleReopen(t *testing.T) {
 	if len(reopened) != 1 {
 		t.Errorf("expected 1 reopened, got %d", len(reopened))
 	}
-	if parent.State() != StateInProgress {
+	if parent.State() != StateDoing {
 		t.Errorf("expected parent reopened to in_progress, got %s", parent.State())
 	}
 	if parent.CompletedAt != nil {
@@ -27,11 +45,11 @@ func TestReconcileParentCompletionSingleReopen(t *testing.T) {
 }
 
 func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
-	project := newDependencyTestProject(t, "test")
+	project := newHierarchyReconcileProject(t, "test")
 
-	epic := newDependencyTestTask(t, "epic", 1, "Epic")
-	story := newDependencyTestTask(t, "story", 2, "Story")
-	task := newDependencyTestTask(t, "task", 3, "Task")
+	epic := newHierarchyReconcileTask(t, "epic", 1, "Epic")
+	story := newHierarchyReconcileTask(t, "story", 2, "Story")
+	task := newHierarchyReconcileTask(t, "task", 3, "Task")
 
 	if err := story.AddChild(task); err != nil {
 		t.Fatal(err)
@@ -48,19 +66,19 @@ func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
 	if len(reopened) != 2 {
 		t.Errorf("expected 2 reopened (story then epic), got %d", len(reopened))
 	}
-	if story.State() != StateInProgress {
+	if story.State() != StateDoing {
 		t.Errorf("expected story reopened, got %s", story.State())
 	}
-	if epic.State() != StateInProgress {
+	if epic.State() != StateDoing {
 		t.Errorf("expected epic reopened via fixpoint, got %s", epic.State())
 	}
 }
 
 func TestReconcileParentCompletionCanceledParent(t *testing.T) {
-	project := newDependencyTestProject(t, "test")
+	project := newHierarchyReconcileProject(t, "test")
 
-	parent := newDependencyTestTask(t, "parent", 1, "Parent")
-	child := newDependencyTestTask(t, "child", 2, "Child")
+	parent := newHierarchyReconcileTask(t, "parent", 1, "Parent")
+	child := newHierarchyReconcileTask(t, "child", 2, "Child")
 	if err := parent.AddChild(child); err != nil {
 		t.Fatal(err)
 	}
@@ -71,16 +89,16 @@ func TestReconcileParentCompletionCanceledParent(t *testing.T) {
 	if len(reopened) != 1 {
 		t.Errorf("expected 1 reopened, got %d", len(reopened))
 	}
-	if parent.State() != StateInProgress {
+	if parent.State() != StateDoing {
 		t.Errorf("expected canceled parent reopened to in_progress, got %s", parent.State())
 	}
 }
 
 func TestReconcileParentCompletionNoOpWhenConsistent(t *testing.T) {
-	project := newDependencyTestProject(t, "test")
+	project := newHierarchyReconcileProject(t, "test")
 
-	parent := newDependencyTestTask(t, "parent", 1, "Parent")
-	child := newDependencyTestTask(t, "child", 2, "Child")
+	parent := newHierarchyReconcileTask(t, "parent", 1, "Parent")
+	child := newHierarchyReconcileTask(t, "child", 2, "Child")
 	if err := parent.AddChild(child); err != nil {
 		t.Fatal(err)
 	}

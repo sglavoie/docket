@@ -464,25 +464,10 @@ func TestMachineStateOmitsRetiredStartupAndLayoutFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	for _, field := range []string{"start_view", "start_route", "home_projects_height_pct", "sidebar_enabled"} {
+	for _, field := range []string{"start_view", "start_route", "home_projects_height_pct", "sidebar_enabled", "custom_contexts"} {
 		if strings.Contains(string(data), field) {
 			t.Fatalf("machine state should omit retired field %q, got %s", field, data)
 		}
-	}
-}
-
-func TestMachineStateRemoveProjectReferences(t *testing.T) {
-	m := &MachineState{
-		CustomContexts: map[string][]string{"work": {"drop"}, "home": {"keep"}},
-	}
-	if !m.RemoveProjectReferences("drop", "drop-slug") {
-		t.Fatal("expected change")
-	}
-	if got := m.CustomContexts["work"]; len(got) != 0 {
-		t.Errorf("custom context not cleaned: %+v", got)
-	}
-	if got := m.CustomContexts["home"]; len(got) != 1 || got[0] != "keep" {
-		t.Errorf("unrelated custom context changed: %+v", got)
 	}
 }
 
@@ -497,7 +482,7 @@ func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 	d := &Domains{
 		Catalog:  &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop"}}, SystemInboxProjectID: "keep"},
 		Planning: &PlanningState{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "drop"}}},
-		Machine:  &MachineState{CustomContexts: map[string][]string{"work": {"drop"}}},
+		Machine:  NewMachineState(),
 	}
 	changed, err := d.RemoveProject("drop", "drop")
 	if err != nil {
@@ -512,9 +497,6 @@ func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 	if len(d.Planning.NextOrder) != 0 {
 		t.Error("planning focus queue not cleaned")
 	}
-	if len(d.Machine.CustomContexts["work"]) != 0 {
-		t.Error("machine custom context not cleaned")
-	}
 }
 
 func TestDomainsProtectedInboxRemovalIsAtomic(t *testing.T) {
@@ -525,13 +507,12 @@ func TestDomainsProtectedInboxRemovalIsAtomic(t *testing.T) {
 			SystemInboxProjectID: "inbox",
 		},
 		Planning: &PlanningState{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "inbox"}}},
-		Machine:  &MachineState{CustomContexts: map[string][]string{"work": {"inbox"}}},
+		Machine:  NewMachineState(),
 	}
 	if changed, err := d.RemoveProject("inbox", "inbox"); changed || !errors.Is(err, ErrProtectedSystemInbox) {
 		t.Fatalf("RemoveProject(system Inbox) = (%v, %v), want false and ErrProtectedSystemInbox", changed, err)
 	}
-	if len(d.Catalog.Projects) != 1 || len(d.Planning.NextOrder) != 1 ||
-		len(d.Machine.CustomContexts["work"]) != 1 {
+	if len(d.Catalog.Projects) != 1 || len(d.Planning.NextOrder) != 1 {
 		t.Fatalf("protected removal partially mutated domains: %+v", d)
 	}
 }

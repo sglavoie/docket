@@ -78,45 +78,6 @@ func TestDeleteRemovesSubtreeInOneChangeSet(t *testing.T) {
 	}
 }
 
-func TestDeleteCleansCrossProjectRefsInOneTransaction(t *testing.T) {
-	target := newTask("target", 1, "delete me")
-	source := newProject("proj-1", "Alpha", target)
-
-	// A task in another project depends on the deleted task via a cross-project
-	// reference keyed by the source slug.
-	dependent := newTask("dep", 1, "dependent")
-	dependent.DependsOn = []string{"alpha:target"}
-	other := newProject("proj-2", "Beta", dependent)
-
-	repo := newFakeRepo(source, other)
-	svc := newTestService(repo)
-
-	res, err := svc.Delete(app.DeleteRequest{TaskID: "target", Confirm: true})
-	if err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
-	if res.CrossProjectRefsCleared != 1 {
-		t.Errorf("CrossProjectRefsCleared = %d, want 1", res.CrossProjectRefsCleared)
-	}
-	if len(res.TouchedProjectIDs) != 2 {
-		t.Errorf("TouchedProjectIDs = %v, want source + other", res.TouchedProjectIDs)
-	}
-	if res.TouchedProjectIDs[0] != "proj-1" {
-		t.Errorf("first touched project = %q, want source proj-1", res.TouchedProjectIDs[0])
-	}
-	if len(dependent.DependsOn) != 0 {
-		t.Errorf("cross-project dependencies survived: %v", dependent.DependsOn)
-	}
-
-	// The whole delete must be exactly one Commit call carrying two changesets.
-	if len(repo.commits) != 1 {
-		t.Fatalf("want one atomic commit, got %d commits", len(repo.commits))
-	}
-	if len(repo.commits[0]) != 2 {
-		t.Fatalf("want two changesets in the single transaction, got %d", len(repo.commits[0]))
-	}
-}
-
 func TestDeleteFoldsDurableArtifactIntoTransaction(t *testing.T) {
 	task := newTask("t1", 1, "delete me")
 	project := newProject("proj-1", "Alpha", task)
@@ -250,14 +211,14 @@ func TestBulkTransitionAcrossProjectsIsOneTransaction(t *testing.T) {
 	repo := newFakeRepo(pa, pb)
 	svc := newTestService(repo)
 
-	res, err := svc.BulkTransition([]string{"a", "b"}, models.StateInProgress)
+	res, err := svc.BulkTransition([]string{"a", "b"}, models.StateDoing)
 	if err != nil {
 		t.Fatalf("BulkTransition: %v", err)
 	}
 	if len(res.Tasks) != 2 {
 		t.Fatalf("Tasks = %d, want 2", len(res.Tasks))
 	}
-	if a.State() != models.StateInProgress || b.State() != models.StateInProgress {
+	if a.State() != models.StateDoing || b.State() != models.StateDoing {
 		t.Errorf("states = %q/%q, want both in_progress", a.State(), b.State())
 	}
 	if len(repo.commits) != 1 || len(repo.commits[0]) != 2 {
@@ -276,14 +237,14 @@ func TestBulkTransitionAbortsWholeBatchOnInvalidTransition(t *testing.T) {
 
 	// Completing a task is fine, but transitioning a terminal task to in_progress
 	// is forbidden — the whole batch must abort before any commit.
-	_, err := svc.BulkTransition([]string{"a", "done"}, models.StateInProgress)
+	_, err := svc.BulkTransition([]string{"a", "done"}, models.StateDoing)
 	if !errors.Is(err, app.ErrInvalidTransition) {
 		t.Fatalf("err = %v, want ErrInvalidTransition", err)
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("aborted batch committed %d times, want 0", len(repo.commits))
 	}
-	if a.State() == models.StateInProgress {
+	if a.State() == models.StateDoing {
 		t.Errorf("task a mutated despite aborted batch: state = %q", a.State())
 	}
 }
@@ -293,7 +254,7 @@ func TestBulkTransitionRejectsUnknownTask(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", a))
 	svc := newTestService(repo)
 
-	_, err := svc.BulkTransition([]string{"a", "ghost"}, models.StateReady)
+	_, err := svc.BulkTransition([]string{"a", "ghost"}, models.StateBacklog)
 	if !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
 	}

@@ -35,7 +35,7 @@ const (
 	// metadata (currently the project name).
 	MergeConflictProjectMetadata MergeConflictKind = "project_metadata"
 	// MergeConflictInvariant is a merged result that is individually
-	// conflict-free but violates a project audit, dependency, or state invariant.
+	// conflict-free but violates a project audit or state invariant.
 	MergeConflictInvariant MergeConflictKind = "invariant"
 )
 
@@ -118,7 +118,7 @@ type taskFieldDescriptor struct {
 //   - Delete-versus-unchanged resolves as deletion.
 //   - Delete-versus-edit, divergent edits to the same field, incompatible
 //     hierarchy/order edits become conflicts.
-//   - The merged result is re-audited (structure, dependencies, state invariants);
+//   - The merged result is re-audited (structure and state invariants);
 //     any violation becomes a conflict.
 //   - Any conflict aborts the whole merge: Merged is nil and nothing is written.
 //
@@ -151,13 +151,12 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 	merged := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
-		SchemaVersion: SchemaVersionV5,
+		SchemaVersion: SchemaVersionV6,
 	}
 
-	// Re-run audits, dependency checks, and state invariants on the merged model.
-	// A merge that is field-wise clean can still compose an invalid whole (e.g. a
-	// dependency edge one side added onto a task the concurrent side deleted, or a
-	// terminal state without its completion timestamp).
+	// Re-run audits and state invariants on the merged model. A merge that is
+	// field-wise clean can still compose an invalid whole such as a terminal state
+	// without its completion timestamp.
 	if conflicts := auditMergedDocument(merged); len(conflicts) > 0 {
 		result.Conflicts = append(result.Conflicts, conflicts...)
 		return result, nil
@@ -406,7 +405,7 @@ func taskSiblingGroup(task *models.Task) string {
 	return *task.ParentID
 }
 
-// auditMergedDocument re-runs the structural audit, dependency checks, and state
+// auditMergedDocument re-runs the structural audit and state
 // invariants on a merged document, returning conflicts for any violation. It
 // never mutates the merged tasks (unlike BuildTaskTree, which silently repairs),
 // so a genuine invariant break surfaces instead of being papered over.

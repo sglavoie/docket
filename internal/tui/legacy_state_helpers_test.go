@@ -13,8 +13,8 @@ func legacyStateForStatusSection(status models.WorkflowState, section string) mo
 		return models.StateCanceled
 	case status == models.StateDone || section == string(models.StateDone):
 		return models.StateDone
-	case status == models.StateInProgress:
-		return models.StateInProgress
+	case status == models.StateDoing:
+		return models.StateDoing
 	case status == models.StateWaiting || section == string(models.StateWaiting):
 		return models.StateWaiting
 	case status == models.StatePaused || section == string(models.StatePaused):
@@ -23,9 +23,9 @@ func legacyStateForStatusSection(status models.WorkflowState, section string) mo
 		return models.StateSomeday
 	case section == string(models.StateInbox):
 		return models.StateInbox
-	case section == string(models.StateNext):
-		return models.StateNext
+	case section == string(models.StateBacklog):
+		return models.StateBacklog
 	default:
-		return models.StateReady
+		return models.StateBacklog
 	}
 }

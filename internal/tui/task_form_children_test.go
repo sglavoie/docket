@@ -242,18 +242,20 @@ func TestTaskForm_Children_SubtaskEdit_Cancel_RemovesNewSubtask(t *testing.T) {
 	}
 }
 
-func TestTaskForm_Children_CtrlO_TogglesSubtaskOptional(t *testing.T) {
+func TestTaskForm_Children_CtrlOIsUnbound(t *testing.T) {
 	m := newTestTaskForm()
-	m.draft.subtasks = []formSubtaskDraft{{title: "s1", optional: false}}
+	m.draft.subtasks = []formSubtaskDraft{{title: "s1"}}
 	m.subtasksExpanded = true
 	m = navigateToChildrenTab(m)
 	m.focusIndex = m.childrenSubtasksHeaderIdx() + 1
 	m = sendFormKey(m, syntheticCtrlKey('o'))
-	if !m.draft.subtasks[0].optional {
-		t.Error("Ctrl+O should set subtask optional=true")
+	if m.hasChanges || m.draft.subtasks[0].title != "s1" {
+		t.Fatal("Ctrl+O changed a subtask after optional/create-and-open removal")
 	}
-	if !m.hasChanges {
-		t.Error("expected hasChanges=true after toggle optional")
+	for _, key := range m.HandledKeys() {
+		if key == "ctrl+o" {
+			t.Fatal("task form still advertises Ctrl+O")
+		}
 	}
 }
 

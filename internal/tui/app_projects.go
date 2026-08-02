@@ -174,17 +174,17 @@ func (m *AppModel) allLoadableProjects() []*models.Project {
 	return m.projectsInRuntimeOrder(m.runtime.AllLoadableProjects())
 }
 
-// ensureSystemInboxProject installs (or upgrades) the workspace-owned Inbox.
-// It is a regular visible project for every read surface; SystemInboxProjectID
+// ensureSystemUnfiledProject installs the workspace-owned Unfiled project.
+// It is a regular visible project for every read surface; SystemUnfiledProjectID
 // is the stable identity that distinguishes it from user-created projects.
 //
 //nolint:gocyclo // Bootstrap keeps catalog and filesystem recovery decisions in one transaction flow.
-func (m *AppModel) ensureSystemInboxProject() error {
+func (m *AppModel) ensureSystemUnfiledProject() error {
 	if m == nil || m.runtime == nil || m.runtime.DataDir() == "" {
 		return nil
 	}
 
-	project := m.runtime.SystemInboxProject()
+	project := m.runtime.SystemUnfiledProject()
 	catalogChanged := project == nil
 	if project == nil {
 		for _, candidate := range m.runtime.AllProjects() {
@@ -197,11 +197,11 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	if project == nil {
 		now := time.Now()
 		project = &models.Project{
-			ID:          "system-inbox-" + uuid.New().String(),
-			Slug:        config.SystemInboxSlug,
-			Name:        config.SystemInboxName,
+			ID:          "system-unfiled-" + uuid.New().String(),
+			Slug:        config.SystemUnfiledSlug,
+			Name:        config.SystemUnfiledName,
 			Context:     m.runtime.DefaultContext(),
-			Path:        m.runtime.ProjectPath(config.SystemInboxSlug),
+			Path:        m.runtime.ProjectPath(config.SystemUnfiledSlug),
 			CreatedAt:   now,
 			UpdatedAt:   now,
 			Tasks:       []*models.Task{},
@@ -212,10 +212,13 @@ func (m *AppModel) ensureSystemInboxProject() error {
 		}
 	}
 
-	if project.Name != config.SystemInboxName || project.Archived || project.ArchivedAt != nil ||
-		m.runtime.Catalog().SystemInboxProjectID != project.ID {
+	if project.Name != config.SystemUnfiledName || project.Slug != config.SystemUnfiledSlug ||
+		project.Archived || project.ArchivedAt != nil ||
+		m.runtime.Catalog().SystemUnfiledProjectID != project.ID {
 		catalogChanged = true
-		project.Name = config.SystemInboxName
+		project.Name = config.SystemUnfiledName
+		project.Slug = config.SystemUnfiledSlug
+		project.Path = m.runtime.ProjectPath(config.SystemUnfiledSlug)
 		project.Archived = false
 		project.ArchivedAt = nil
 		project.UpdatedAt = time.Now()
@@ -225,7 +228,7 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	if _, err := os.Stat(storage.TasksFilePath(project.Path)); os.IsNotExist(err) {
 		tasksMissing = true
 	} else if err != nil {
-		return fmt.Errorf("inspect system Inbox tasks: %w", err)
+		return fmt.Errorf("inspect system Unfiled tasks: %w", err)
 	}
 	var ops []transaction.Op
 	legacyPath := filepath.Join(config.InternalDir(m.runtime.DataDir()), config.LegacyActionInboxSlug)
@@ -249,7 +252,7 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	artifacts := make([]storage.ArtifactChange, 0, 2)
 	if catalogChanged {
 		catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
-		if err := catalog.RepairSystemInboxProject(project); err != nil {
+		if err := catalog.RepairSystemUnfiledProject(project); err != nil {
 			return err
 		}
 		artifact, err := m.runtime.CheckedCatalogArtifact(catalog)
@@ -282,3 +285,6 @@ func (m *AppModel) ensureSystemInboxProject() error {
 	m.syncProjectCache()
 	return nil
 }
+
+// ensureSystemInboxProject is the compile-time compatibility name.
+func (m *AppModel) ensureSystemInboxProject() error { return m.ensureSystemUnfiledProject() }

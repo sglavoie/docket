@@ -22,7 +22,7 @@ const contextHubFooterLabel = "Scope Hub"
 // editing the active project context. It renders the shared
 // ContextScopeSummaries list and reports a selection through
 // ContextScopeSelectedMsg so the shell applies scope through the single existing
-// path. Create/edit/rename/delete for both context kinds run inline here and
+// path. Create/edit/rename/delete for regular contexts run inline here and
 // commit through ContextMutator.
 type ContextHubModel struct {
 	BaseSearchableView
@@ -135,10 +135,10 @@ func (m *ContextHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.moveScopeHubHalfPage(1)
 	case "ctrl+u":
 		m.moveScopeHubHalfPage(-1)
-	case "n":
-		return m, m.executeScopeHubBrowseAction(operationScopeCreateContext)
 	case "e":
 		return m, m.executeScopeHubBrowseAction(operationScopeEditContext)
+	case "n":
+		return m, m.executeScopeHubBrowseAction(operationScopeCreateContext)
 	case "r":
 		return m, m.executeScopeHubBrowseAction(operationScopeRenameContext)
 	case "d":
@@ -302,10 +302,6 @@ func clampWindowScroll(scroll, cursorLine, window, total int) int {
 
 func (m *ContextHubModel) previewCounts(summary ContextScopeSummary) string {
 	parts := []string{fmt.Sprintf("%d active project(s)", summary.ActiveProjectCount)}
-	if summary.Scope.IsCustom() {
-		parts = append(parts, fmt.Sprintf("%d archived", summary.ArchivedProjectCount))
-		parts = append(parts, fmt.Sprintf("%d missing", summary.StaleReferenceCount))
-	}
 	if m.taskCounts != nil {
 		total := 0
 		for _, project := range summary.Scope.Projects(m.runtime) {
@@ -336,26 +332,17 @@ func (m *ContextHubModel) renderSearchBar() string {
 func (m *ContextHubModel) subtitle() string {
 	if m.editor != nil {
 		if m.editor.isNew() {
-			return "new custom context"
+			return "new context"
 		}
 		return "editing " + m.editor.originalName
 	}
-	custom, regular := 0, 0
+	regular := 0
 	for _, summary := range m.summaries {
-		if summary.Scope.IsCustom() {
-			custom++
-		} else if !summary.Scope.IsAll() {
+		if !summary.Scope.IsAll() {
 			regular++
 		}
 	}
-	base := 1 + regular
-	return fmt.Sprintf(
-		"%d base scope%s · %d custom context%s",
-		base,
-		pluralize(base, "", "s"),
-		custom,
-		pluralize(custom, "", "s"),
-	)
+	return fmt.Sprintf("All Projects · %d context%s", regular, pluralize(regular, "", "s"))
 }
 
 // footerHelp returns the widest help variant that still fits beside the footer
@@ -393,9 +380,9 @@ func (m *ContextHubModel) footerHelpVariants() []string {
 		}
 	}
 	return []string{
-		"j/k choose · Ctrl+d/u half page · Enter activate · Space actions · / search",
-		"j/k · Ctrl+d/u half page · Enter · Space · /",
-		"Ctrl+d/u · Enter · Space · /",
+		"j/k choose · Ctrl+d/u half page · Enter activate · n new · Space actions · / search",
+		"j/k · Ctrl+d/u half page · Enter · n new · Space · /",
+		"Ctrl+d/u · Enter · n · Space · /",
 	}
 }
 
@@ -408,27 +395,15 @@ func contextScopeDisplayName(scope ContextScope) string {
 
 func contextHubScopeKindLabel(scope ContextScope) string {
 	switch scope.Kind {
-	case ContextScopeCustom:
-		return "Custom context · saved project group"
 	case ContextScopeRegular:
-		return "Regular context · project label"
+		return "Project-label context"
 	default:
 		return "Every active project"
 	}
 }
 
 func contextHubRowDetail(summary ContextScopeSummary) string {
-	detail := fmt.Sprintf("%d project(s)", summary.ActiveProjectCount)
-	if summary.Scope.IsCustom() {
-		detail = "custom · " + detail
-		if summary.ArchivedProjectCount > 0 {
-			detail += fmt.Sprintf(" · %d archived", summary.ArchivedProjectCount)
-		}
-		if summary.StaleReferenceCount > 0 {
-			detail += fmt.Sprintf(" · %d missing", summary.StaleReferenceCount)
-		}
-	}
-	return detail
+	return fmt.Sprintf("%d project(s)", summary.ActiveProjectCount)
 }
 
 func (m *ContextHubModel) IsFullHeight() bool { return true }
@@ -470,7 +445,7 @@ func (m *ContextHubModel) GetHelpItems() []HelpItem {
 		{Key: "/", Description: "Search scopes and contexts", Category: "Filters"},
 		{Key: "enter", Description: "Activate the selected scope", Category: "Actions"},
 		{Key: "space", Description: "Open context administration actions", Category: "Actions"},
-		{Key: "n", Description: "Create a custom context", Category: "Actions"},
+		{Key: "n", Description: "Create a context", Category: "Actions"},
 		{Key: "e", Description: "Edit context membership", Category: "Actions"},
 		{Key: "r", Description: "Rename a context", Category: "Actions"},
 		{Key: "d", Description: "Delete a context", Category: "Actions"},

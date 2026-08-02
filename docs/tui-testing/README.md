@@ -90,10 +90,10 @@ ctrl+e ctrl+r ctrl+u ctrl+d ctrl+y ctrl+c
 The final public grammar is:
 
 ```text
-Tab/Shift+Tab                    All, Inbox, Next, Backlog, Due
+Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 a/A e/E Ctrl+E                   capture and edit
-si sr sn sg sw sp sm sd sc st    state and planning overlay
+si sb sn st sg sw sp sm sd sc    state/planning chord
 !0-5 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
@@ -127,7 +127,7 @@ The committed suite exercises the product contracts directly:
 | --- | --- |
 | Capture grammar and protected-Inbox routing | `capture-grammar.json`, `fresh-install-capture.json` |
 | Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
-| Five modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
+| Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Priority, workflow, blocked, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |

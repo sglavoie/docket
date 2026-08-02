@@ -200,10 +200,6 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		tagSegment = ""
 	}
 	if availableTitleWidth() < titleTarget {
-		indicatorSegments.recurrence = ""
-		indicators = indicatorSegments.render()
-	}
-	if availableTitleWidth() < titleTarget {
 		indicatorSegments.checklist = ""
 		indicators = indicatorSegments.render()
 	}
@@ -268,11 +264,7 @@ func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task, proj *models.Project) string {
-	statusIcon := GetStateBadge(task.State())
-	if proj != nil && proj.HasIncompleteDependencies(task) {
-		return BlockedByDepsStyle.Render(task.State().Icon())
-	}
-	return statusIcon
+	return GetStateBadge(task.State())
 }
 
 func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) lipgloss.Style {
@@ -285,7 +277,6 @@ type taskIndicatorSegments struct {
 	due          string
 	snooze       string
 	dependencies string
-	recurrence   string
 	checklist    string
 	comments     string
 	attachments  string
@@ -296,7 +287,6 @@ func (segments taskIndicatorSegments) render() string {
 		segments.due,
 		segments.snooze,
 		segments.dependencies,
-		segments.recurrence,
 		segments.checklist,
 		segments.comments,
 		segments.attachments,
@@ -309,7 +299,7 @@ func (segments taskIndicatorSegments) render() string {
 
 // renderTaskIndicatorSegments promotes operational task state and concise
 // activity counts into the row. Rich content stays in Peek. The caller
-// progressively drops recurrence, checklist, then dependency counts only when
+// progressively drops checklist then dependency counts only when
 // preserving all signals would leave an unreadably small title.
 func (m *OutlinerModel) renderTaskIndicatorSegments(
 	task *models.Task,
@@ -329,9 +319,6 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(
 		needs, blocks := m.taskDependencyCounts(task, project)
 		segments.dependencies = renderDependencyIndicatorCounts(needs, blocks)
 	}
-	if task.IsRecurring() && m.columnConfig.IsVisible(ColRecurrence) {
-		segments.recurrence = MutedStyle.Render("↻")
-	}
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)
 	}
@@ -345,14 +332,7 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(
 }
 
 func (m *OutlinerModel) taskDependencyCounts(task *models.Task, project *models.Project) (int, int) {
-	if task == nil || project == nil {
-		return 0, 0
-	}
-	needs := len(task.DependsOn)
-	if m.workspaceResolver != nil {
-		return needs, len(m.workspaceResolver.GetBlockedByTasks(task, project))
-	}
-	return needs, len(project.GetBlockedByTasks(task))
+	return 0, 0
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
@@ -469,7 +449,7 @@ func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, pr
 		}
 		return SelectedLine(line, rowWidth)
 	}
-	if task.IsInState(models.StateWaiting) || (proj != nil && proj.HasIncompleteDependencies(task)) {
+	if task.IsInState(models.StateWaiting) {
 		return BlockedRowStyle.Width(rowWidth).Render(line)
 	}
 	if task.IsOverdue() {

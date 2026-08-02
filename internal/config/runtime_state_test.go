@@ -106,11 +106,11 @@ func TestRuntimeState_CloneDomainsIsIndependent(t *testing.T) {
 		t.Fatalf("CloneDomains: %v", err)
 	}
 	cloned.Planning.AddToToday("cloned", "project")
-	cloned.Machine.CustomContexts = map[string][]string{"work": {"project"}}
+	cloned.Machine.Theme = "light"
 	if len(runtimeState.Planning().Today) != 0 {
 		t.Fatal("planning mutation leaked into runtime snapshot")
 	}
-	if len(runtimeState.Machine().CustomContexts) != 0 {
+	if runtimeState.Machine().Theme != "dark" {
 		t.Fatal("machine mutation leaked into runtime snapshot")
 	}
 }

@@ -159,14 +159,14 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 		t.Fatalf("read first commit: %v", err)
 	}
 	firstContent := string(firstBytes)
-	if !strings.Contains(firstContent, "<!-- tt-schema: 5 -->") {
+	if !strings.Contains(firstContent, "<!-- tt-schema: 6 -->") {
 		t.Fatalf("committed content missing schema marker:\n%s", firstContent)
 	}
 	if strings.Contains(firstContent, "<!-- future-feature: keep-exactly -->") {
-		t.Fatalf("committed v5 content retained opaque legacy block:\n%s", firstContent)
+		t.Fatalf("committed schema-6 content retained opaque legacy block:\n%s", firstContent)
 	}
 	if !strings.Contains(firstContent, "updated:") {
-		t.Fatalf("schema-v5 commit omitted required updated timestamp:\n%s", firstContent)
+		t.Fatalf("schema-6 commit omitted required updated timestamp:\n%s", firstContent)
 	}
 	firstReload, err := LoadProjectDocument(project)
 	if err != nil {

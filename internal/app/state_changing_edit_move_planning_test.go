@@ -30,20 +30,20 @@ func formEditReplacing(task *models.Task, state models.WorkflowState) app.EditRe
 // move into a section applies that destination state so its caller reconciles the
 // task's true final state rather than its pre-move state.
 func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
-	t.Run("form Edit into Next drops Today", func(t *testing.T) {
+	t.Run("form Edit into Waiting drops Today", func(t *testing.T) {
 		task := newTask("task-1", 1, "Today task")
-		task.ApplyWorkflowState(models.StateReady)
+		task.ApplyWorkflowState(models.StateBacklog)
 		project := newProject("proj", "Proj", task)
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
 		planning.SetToday([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: project.ID}})
 		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
-		if _, err := svc.Edit(formEditReplacing(task, models.StateNext)); err != nil {
+		if _, err := svc.Edit(formEditReplacing(task, models.StateWaiting)); err != nil {
 			t.Fatalf("Edit: %v", err)
 		}
-		if got := project.GetTaskByID(task.ID).State(); got != models.StateNext {
-			t.Fatalf("state = %s, want next", got)
+		if got := project.GetTaskByID(task.ID).State(); got != models.StateWaiting {
+			t.Fatalf("state = %s, want waiting", got)
 		}
 		if got := planning.GetToday(); len(got) != 0 {
 			t.Fatalf("daily plan after form edit into Next = %+v, want empty", got)
@@ -52,7 +52,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 
 	t.Run("form Edit out of Next drops the stale order entry", func(t *testing.T) {
 		task := newTask("task-1", 1, "On deck")
-		task.ApplyWorkflowState(models.StateNext)
+		task.ApplyWorkflowState(models.StateBacklog)
 		project := newProject("proj", "Proj", task)
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
@@ -72,7 +72,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 
 	t.Run("MoveToProject preserves the canonical state", func(t *testing.T) {
 		task := newTask("task-1", 1, "Mover")
-		task.ApplyWorkflowState(models.StateReady)
+		task.ApplyWorkflowState(models.StateBacklog)
 		src := newProject("src", "Source", task)
 		dest := newProject("dest", "Dest")
 		repo := newFakeRepo(src, dest)
@@ -89,7 +89,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		if moved == nil {
 			t.Fatal("moved task not found in destination project")
 		}
-		if got := moved.State(); got != models.StateReady {
+		if got := moved.State(); got != models.StateBacklog {
 			t.Fatalf("moved task state = %s, want ready", got)
 		}
 	})
@@ -98,7 +98,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 func TestEditStateChangeUsesCanonicalTransitionGuards(t *testing.T) {
 	target := newTask("target", 1, "Target")
 	blocker := newTask("blocker", 2, "Blocker")
-	target.DependsOn = []string{blocker.ID}
+	blocker.ParentID = &target.ID
 	project := newProject("proj", "Proj", target, blocker)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -108,10 +108,10 @@ func TestEditStateChangeUsesCanonicalTransitionGuards(t *testing.T) {
 		TaskID:        target.ID,
 		WorkflowState: &done,
 	})
-	if !errors.Is(err, app.ErrDependencyBlocked) {
-		t.Fatalf("Edit error = %v, want ErrDependencyBlocked", err)
+	if !errors.Is(err, app.ErrParentHasIncompleteChildren) {
+		t.Fatalf("Edit error = %v, want ErrParentHasIncompleteChildren", err)
 	}
-	if got := project.GetTaskByID(target.ID).State(); got != models.StateReady {
+	if got := project.GetTaskByID(target.ID).State(); got != models.StateBacklog {
 		t.Fatalf("target state = %q, want unchanged ready", got)
 	}
 	if len(repo.commits) != 0 {

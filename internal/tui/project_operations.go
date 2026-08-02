@@ -150,15 +150,15 @@ func (m *AppModel) executeProjectOperation(
 
 // projectOperationRequirement declares the project state one operation needs.
 type projectOperationRequirement struct {
-	requireArchived   bool
-	requireActive     bool
-	rejectSystemInbox bool
+	requireArchived     bool
+	requireActive       bool
+	rejectSystemUnfiled bool
 }
 
 var projectOperationRequirements = map[OperationID]projectOperationRequirement{
 	operationProjectOpen:          {requireActive: true},
 	operationScopePinProject:      {requireActive: true},
-	operationScopeArchiveProject:  {requireActive: true, rejectSystemInbox: true},
+	operationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},
 	operationScopeRestoreProject:  {requireArchived: true},
 	operationScopeOpenProjectNote: {requireActive: true},
 }
@@ -190,8 +190,8 @@ func (m *AppModel) projectRequirementUnmet(
 		return fmt.Errorf("%s applies only to archived projects", label)
 	case requirement.requireActive && project.Archived:
 		return fmt.Errorf("%s is unavailable while %s is archived", label, project.Name)
-	case requirement.rejectSystemInbox && m.runtime.IsSystemInboxProject(project.ID):
-		return fmt.Errorf("%s is unavailable for the system Inbox project", label)
+	case requirement.rejectSystemUnfiled && m.runtime.IsSystemUnfiledProject(project.ID):
+		return fmt.Errorf("%s is unavailable for the system Unfiled project", label)
 	}
 	return nil
 }

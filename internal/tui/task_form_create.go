@@ -14,8 +14,8 @@ func NewTaskFormModelCreate(
 	suggestedParent *models.Task,
 ) *TaskFormModel {
 	draft := taskFormDraft{
-		priority: 3,
-		state:    models.StateNext,
+		priority: models.PriorityUnset,
+		state:    models.StateBacklog,
 	}
 	draft.parentID = formNearestValidParentID(suggestedParent)
 
@@ -55,17 +55,16 @@ func NewTaskFormModelEdit(
 	runtime *config.RuntimeState,
 ) *TaskFormModel {
 	draft := taskFormDraft{
-		priority:   task.Priority,
-		parentID:   task.ParentID,
-		state:      task.State(),
-		pinned:     task.Pinned,
-		tags:       append([]string{}, task.Tags...),
-		dueDate:    cloneTime(task.DueDate),
-		dueInput:   formatDateInput(task.DueDate),
-		recurrence: cloneRecurrence(task.Recurrence),
-		desc:       task.Description,
-		title:      task.Title,
-		checklist:  append([]models.ChecklistItem(nil), task.Checklist...),
+		priority:  task.Priority,
+		parentID:  task.ParentID,
+		state:     task.State(),
+		pinned:    task.Pinned,
+		tags:      append([]string{}, task.Tags...),
+		dueDate:   cloneTime(task.DueDate),
+		dueInput:  formatDateInput(task.DueDate),
+		desc:      task.Description,
+		title:     task.Title,
+		checklist: append([]models.ChecklistItem(nil), task.Checklist...),
 	}
 
 	m := &TaskFormModel{
@@ -92,14 +91,5 @@ func cloneTime(t *time.Time) *time.Time {
 		return nil
 	}
 	cp := *t
-	return &cp
-}
-
-// cloneRecurrence returns a deep copy of a *models.RecurrencePattern, or nil.
-func cloneRecurrence(value *models.RecurrencePattern) *models.RecurrencePattern {
-	if value == nil {
-		return nil
-	}
-	cp := *value
 	return &cp
 }

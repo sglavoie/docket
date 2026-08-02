@@ -6,7 +6,7 @@ import (
 )
 
 // parseQuickCapture extracts metadata from the input string.
-// Syntax: "Task title !1 #backend #urgent @tomorrow ~weekly $inbox >3 %projectname"
+// Syntax: "Task title !1 #backend @tomorrow $inbox %projectname >3"
 // When skipProject is true, %project syntax is ignored (treated as literal text).
 func parseQuickCapture(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, error) {
 	parser := newQuickCaptureParser(input, project, allProjects, skipProject, true)

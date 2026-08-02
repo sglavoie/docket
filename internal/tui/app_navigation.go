@@ -203,8 +203,6 @@ func (m *AppModel) clearTransientNavigationState() {
 	m.pendingBulkSectionProject = nil
 	m.pendingDescEdit = nil
 	m.pendingTaskTextEdit = nil
-	m.pendingTaskRecurrenceRequest = nil
-	m.suspendedTaskActionSheet = nil
 
 }
 

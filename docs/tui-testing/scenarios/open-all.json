@@ -7,7 +7,7 @@
     { "type": "command", "label": "reset to All over All Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "◆ All" },
-    { "type": "assert", "assert": "contains", "value": "In Progress" },
+    { "type": "assert", "assert": "contains", "value": "Doing" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

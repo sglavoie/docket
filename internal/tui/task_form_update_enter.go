@@ -4,40 +4,11 @@ import tea "charm.land/bubbletea/v2"
 
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
 func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
-	if m.collapsedSchedule {
-		switch m.focusIndex {
-		case 0:
-			m.commitDueInput()
-			m.focusNext()
-			m.syncInputFocus()
-			return nil
-		case 1:
-			m.collapsedSchedule = false
-			m.focusIndex = 0
-			m.syncInputFocus()
-			return nil
-		}
-		return nil
-	}
-
-	switch m.focusIndex {
-	case 0:
-		// Due: textinput is already focused; Enter commits and moves to Recurrence.
+	if m.focusIndex == 0 {
+		// Due is the sole retained schedule field.
 		m.commitDueInput()
 		m.focusNext()
 		m.syncInputFocus()
-		return nil
-
-	case 1:
-		// Recurrence: open the recurrence editor as a full-screen overlay.
-		pattern := m.draft.recurrence
-		dueDate := m.draft.dueDate
-		return func() tea.Msg {
-			return ShowRecurrenceEditorMsg{
-				CurrentPattern: pattern,
-				DueDate:        dueDate,
-			}
-		}
 	}
 	return nil
 }

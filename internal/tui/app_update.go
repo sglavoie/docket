@@ -20,8 +20,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			}
 			m.navigation.ResetRoot()
 			m.contextActionSheet = nil
-			m.pendingTaskRecurrenceRequest = nil
-			m.suspendedTaskActionSheet = nil
 			m.clearOperationValueStep()
 			m.operationConfirm.Cancel()
 			m.pendingOperationRequest = OperationExecutionRequest{}

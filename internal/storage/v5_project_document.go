@@ -285,7 +285,6 @@ func v5TaskRecordFromModel(task *models.Task) (format.V5TaskRecord, error) {
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
 		CompletedAt: cloneV5Time(task.CompletedAt),
-		DependsOn:   append([]string(nil), task.DependsOn...),
 		Pinned:      task.Pinned,
 		PinnedAt:    cloneV5Time(task.PinnedAt),
 	}
@@ -297,12 +296,6 @@ func v5TaskRecordFromModel(task *models.Task) (format.V5TaskRecord, error) {
 	}
 	if task.SnoozedUntil != nil {
 		record.SnoozedUntil = task.SnoozedUntil.Format("2006-01-02")
-	}
-	if task.Recurrence != nil {
-		record.Recurrence = &format.V5TaskRecurrence{
-			Interval: task.Recurrence.Interval,
-			Unit:     string(task.Recurrence.Unit),
-		}
 	}
 	for _, attachment := range task.Attachments {
 		kind := "file"
@@ -379,7 +372,6 @@ func modelTaskFromV5Record(record format.V5TaskRecord, location *time.Location) 
 		CreatedAt:     record.CreatedAt,
 		UpdatedAt:     record.UpdatedAt,
 		CompletedAt:   cloneV5Time(record.CompletedAt),
-		DependsOn:     append([]string{}, record.DependsOn...),
 		Pinned:        record.Pinned,
 		PinnedAt:      cloneV5Time(record.PinnedAt),
 		Comments:      []*models.Comment{},
@@ -405,12 +397,6 @@ func modelTaskFromV5Record(record format.V5TaskRecord, location *time.Location) 
 			return nil, fmt.Errorf("parse v5 task %q snooze date: %w", record.ID, err)
 		}
 		task.SnoozedUntil = &snoozed
-	}
-	if record.Recurrence != nil {
-		task.Recurrence = &models.RecurrencePattern{
-			Interval: record.Recurrence.Interval,
-			Unit:     models.RecurrenceUnit(record.Recurrence.Unit),
-		}
 	}
 	for _, attachment := range record.Attachments {
 		modelAttachment := models.Attachment{

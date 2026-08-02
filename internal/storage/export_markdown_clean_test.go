@@ -163,19 +163,19 @@ func TestWriteProjectMarkdownClean_SnoozedUntil(t *testing.T) {
 
 func TestWriteProjectMarkdownClean_NonTodoStatus(t *testing.T) {
 	task := mustTask("t1", 1, "", "In Progress")
-	task.ApplyWorkflowState(models.StateInProgress)
+	task.ApplyWorkflowState(models.StateDoing)
 	task.Priority = 0
 	p := newProject("Status", task)
 	out := WriteProjectMarkdownClean(p)
 
-	if !strings.Contains(out, "in_progress") {
+	if !strings.Contains(out, "doing") {
 		t.Errorf("expected non-todo status in badge: %q", out)
 	}
 }
 
 func TestWriteProjectMarkdownClean_TodoStatusNoBadge(t *testing.T) {
 	task := mustTask("t1", 1, "", "Todo")
-	task.ApplyWorkflowState(models.StateReady)
+	task.ApplyWorkflowState(models.StateBacklog)
 	task.Priority = 0
 	p := newProject("TodoStatus", task)
 	out := WriteProjectMarkdownClean(p)
@@ -211,7 +211,7 @@ func TestWriteProjectMarkdownClean_EmptyDescription(t *testing.T) {
 
 func TestWriteProjectMarkdownClean_NoHTMLComments(t *testing.T) {
 	task := mustTask("t1", 1, "", "Clean")
-	task.ApplyWorkflowState(models.StateInProgress)
+	task.ApplyWorkflowState(models.StateDoing)
 	task.Priority = 2
 	task.Tags = []string{"x"}
 	p := newProject("Clean", task)

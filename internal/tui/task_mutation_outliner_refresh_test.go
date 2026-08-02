@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 
 	domainapp "github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -57,7 +59,7 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create task: %v", err)
 	}
-	task.WorkflowState = models.StateReady
+	task.WorkflowState = models.StateBacklog
 	task.Project = committed
 	committed.Tasks = append(committed.Tasks, task)
 	committed.BuildTaskTree()
@@ -78,5 +80,44 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	}
 	if got := outliner.activeOutlinerMode(); got != ModeAll {
 		t.Fatalf("Outliner mode changed to %q, want %q", got, ModeAll)
+	}
+}
+
+func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing.T) {
+	alphaTask := primaryRowsTask("shared", models.StateBacklog)
+	betaTask := primaryRowsTask("shared", models.StateBacklog)
+	alpha := primaryRowsProject("alpha", alphaTask)
+	beta := primaryRowsProject("beta", betaTask)
+	outliner, runtime := primaryRowsOutliner(alpha, beta)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{
+		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
+		{ProjectID: beta.ID, TaskID: betaTask.ID},
+	})
+	outliner.selectOutlinerMode(ModeToday)
+	if !outliner.moveCursorToProjectTask(betaTask.ID, beta.ID) {
+		t.Fatal("cursor did not land on beta/shared")
+	}
+
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{
+		{ProjectID: beta.ID, TaskID: betaTask.ID},
+		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
+	})
+	outliner.crossForceRebuild = true
+	rebuildOutlinerPreservingCursor(outliner)
+
+	var got []string
+	for _, row := range outliner.rows {
+		if row.isTaskRow() && row.task != nil {
+			got = append(got, row.ProjectID+"/"+row.task.ID)
+		}
+	}
+	want := []string{"beta/shared", "alpha/shared"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("refreshed Today rows = %v, want %v", got, want)
+	}
+	selectedTask, selectedProject := outliner.getTaskRef()
+	if selectedTask == nil || selectedProject == nil ||
+		selectedTask.ID != betaTask.ID || selectedProject.ID != beta.ID {
+		t.Fatalf("cursor after refresh = %v/%v, want beta/shared", selectedProject, selectedTask)
 	}
 }

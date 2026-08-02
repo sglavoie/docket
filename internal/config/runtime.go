@@ -1,10 +1,6 @@
 package config
 
-import (
-	"slices"
-
-	"github.com/sglavoie/tt/internal/models"
-)
+import "github.com/sglavoie/tt/internal/models"
 
 // DomainStore is the composite of the three narrow domain-store interfaces. It is
 // the single backing capability a RuntimeDependencies is built from. The
@@ -55,7 +51,7 @@ func (m *Manager) RuntimeDependencies() *RuntimeDependencies {
 	return NewRuntimeDependencies(m.domainStore())
 }
 
-// NextOrder returns the persisted workspace-wide order of StateNext tasks via
+// NextOrder returns the persisted workspace-wide Next membership/order via
 // the Planning dependency. Presence does not confer Next membership.
 func (r *RuntimeDependencies) NextOrder() ([]ProjectTaskLocator, error) {
 	if r == nil || r.Planning == nil {
@@ -65,7 +61,7 @@ func (r *RuntimeDependencies) NextOrder() ([]ProjectTaskLocator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return planning.NextOrder, nil
+	return planning.GetNext(), nil
 }
 
 // TaskInNextOrder reports whether the exact project-qualified task has a
@@ -163,29 +159,4 @@ func (r *RuntimeDependencies) Project(dataDir, idOrSlug string) (*models.Project
 // AllProjects returns every cataloged project in catalog order.
 func (r *RuntimeDependencies) AllProjects(dataDir string) ([]*models.Project, error) {
 	return r.projectsFromCatalog(dataDir)
-}
-
-// CustomContextNames returns the sorted custom-context names via the Machine
-// dependency. It is the domain-backed replacement for
-// config.Config.GetCustomContextNames: custom contexts are machine-local
-// navigation state, so the names are read from the owning machine domain rather
-// than the config.Config facade. A nil map yields an empty (non-nil) slice,
-// matching the facade contract.
-func (r *RuntimeDependencies) CustomContextNames() ([]string, error) {
-	if r == nil || r.Machine == nil {
-		return []string{}, nil
-	}
-	machine, err := r.Machine.LoadMachine()
-	if err != nil {
-		return nil, err
-	}
-	if machine.CustomContexts == nil {
-		return []string{}, nil
-	}
-	names := make([]string, 0, len(machine.CustomContexts))
-	for name := range machine.CustomContexts {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	return names, nil
 }

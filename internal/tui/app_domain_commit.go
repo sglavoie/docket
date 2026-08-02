@@ -16,7 +16,8 @@ import (
 // commit can never alias and corrupt the cached RuntimeState snapshot.
 func clonePlanningState(p *config.PlanningState) *config.PlanningState {
 	cp := *p
-	cp.NextOrder = append([]config.ProjectTaskLocator(nil), p.NextOrder...)
+	cp.Next = append([]config.ProjectTaskLocator(nil), p.GetNext()...)
+	cp.NextOrder = append([]config.ProjectTaskLocator(nil), cp.Next...)
 	cp.Today = append([]config.ProjectTaskLocator(nil), p.Today...)
 	return &cp
 }
@@ -28,25 +29,6 @@ func clonePlanningState(p *config.PlanningState) *config.PlanningState {
 // or non-writable runtime is a silent no-op so tests that never root a writable
 // workspace do not attempt (or fail) a disk commit; the caller's in-memory shell
 // state remains authoritative.
-// commitMachineToRuntime commits a machine-local mutation through a runtime
-// snapshot without touching the legacy config.Config facade. It is the
-// view-level counterpart to AppModel.commitMachineMutation for views that hold
-// their own runtime reference. A nil or
-// non-writable runtime is a silent no-op so isolated tests do not attempt a disk
-// commit; the caller's in-memory state remains authoritative.
-func commitMachineToRuntime(runtime *config.RuntimeState, mutate func(*config.MachineState)) error {
-	if runtime == nil {
-		return nil
-	}
-	machine := cloneMachineState(runtime.Machine())
-	mutate(machine)
-	if runtime.DataDir() == "" {
-		runtime.SetMachineInMemory(machine)
-		return nil
-	}
-	return runtime.CommitMachine(machine)
-}
-
 // commitCatalogProjectMutation is the ledger-aware catalog boundary for
 // user-facing project pin and restore changes. The catalog rewrite and its undo
 // record are one application transaction.
@@ -183,19 +165,5 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 // cloneMachineState returns a defensive copy of the lean machine snapshot.
 func cloneMachineState(m *config.MachineState) *config.MachineState {
 	cp := *m
-	cp.CustomContexts = cloneStringSliceMap(m.CustomContexts)
 	return &cp
-}
-
-// cloneStringSliceMap deep-copies a map whose values are slices, so neither the
-// map nor any value slice aliases the cached snapshot.
-func cloneStringSliceMap(src map[string][]string) map[string][]string {
-	if src == nil {
-		return nil
-	}
-	dst := make(map[string][]string, len(src))
-	for k, v := range src {
-		dst[k] = slices.Clone(v)
-	}
-	return dst
 }

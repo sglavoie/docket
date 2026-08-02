@@ -30,14 +30,6 @@ type taskOperationManifestEntry struct {
 func taskOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{
 		{
-			ID:       operationTaskRecurrence,
-			Label:    "Recurrence",
-			Aliases:  []string{"repeat", "schedule"},
-			Provider: ValueProviderRecurrence,
-			Category: taskActionCategoryPlan,
-			Risk:     OperationRiskMutation,
-		},
-		{
 			ID:       operationTaskMoveProject,
 			Label:    "Move Project",
 			Aliases:  []string{"transfer task"},
@@ -54,14 +46,6 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskSetDependencies,
-			Label:    "Dependencies",
-			Aliases:  []string{"blocked by"},
-			Provider: ValueProviderDependencies,
-			Category: taskActionCategoryRelationships,
-			Risk:     OperationRiskMutation,
-		},
-		{
 			ID:       operationTaskChecklist,
 			Label:    "Checklist",
 			Aliases:  []string{"checklist", "checklist items"},
@@ -72,13 +56,6 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			ID:       operationTaskComments,
 			Label:    "Comments",
 			Aliases:  []string{"add comment"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskDecisions,
-			Label:    "Decisions",
-			Aliases:  []string{"design decisions", "architecture decisions"},
 			Category: taskActionCategoryContent,
 			Risk:     OperationRiskMutation,
 		},
@@ -101,7 +78,7 @@ func taskOperationManifest() []taskOperationManifestEntry {
 }
 
 // taskDirectOperationManifest keeps the direct grammar descriptors registered
-// without making them task-menu rows. The task menu itself is exactly the nine
+// without making them task-menu rows. The task menu itself is exactly the six
 // entries returned by taskOperationManifest.
 func taskDirectOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{

@@ -163,8 +163,8 @@ func (m *Manager) RecoverWorkspace() error {
 	// complete split-domain workspace is eligible; partial state remains the
 	// load path's explicit corruption error.
 	if state, _ := m.classifyDomainState(store); state == domainStateComplete {
-		if err := m.MigrateWorkspaceToV5(); err != nil {
-			return fmt.Errorf("failed to activate workspace schema v5: %w", err)
+		if err := m.MigrateWorkspaceToV6(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v6: %w", err)
 		}
 	}
 	return nil
@@ -212,11 +212,11 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 	}
 
 	domains := NewDomains()
-	inboxArtifact, err := prepareFreshSystemInbox(dataDir, domains.Catalog)
+	unfiledArtifact, err := prepareFreshSystemUnfiled(dataDir, domains.Catalog)
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare protected system Inbox: %w", err)
+		return nil, fmt.Errorf("failed to prepare protected system Unfiled: %w", err)
 	}
-	if err := createDomainBundle(commit, store, domains, inboxArtifact); err != nil {
+	if err := createDomainBundle(commit, store, domains, unfiledArtifact); err != nil {
 		if errors.Is(err, storage.ErrStaleArtifact) {
 			return m.loadAfterBootstrapRace(err)
 		}
@@ -279,30 +279,30 @@ func createDomainBundle(commit *storage.CommitService, store *DomainFileStore, d
 	return nil
 }
 
-// prepareFreshSystemInbox installs the protected Inbox into a brand-new
+// prepareFreshSystemUnfiled installs the protected Unfiled into a brand-new
 // catalog and renders its empty task document. The caller commits this artifact
 // together with every synced domain, so a clean workspace can never expose a
 // catalog entry without its project file (or vice versa).
 //
 // This helper is intentionally limited to the absent-workspace bootstrap path.
 // Established workspaces are loaded strictly and must surface a missing or
-// inconsistent Inbox to diagnostics instead of silently repairing it.
-func prepareFreshSystemInbox(dataDir string, catalog *WorkspaceCatalog) (storage.ArtifactChange, error) {
+// inconsistent Unfiled to diagnostics instead of silently repairing it.
+func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (storage.ArtifactChange, error) {
 	if catalog == nil {
 		return storage.ArtifactChange{}, fmt.Errorf("workspace catalog is required")
 	}
 	project, err := models.NewProject(
-		"system-inbox-"+uuid.NewString(),
-		SystemInboxName,
-		filepath.Join(dataDir, "projects", SystemInboxSlug),
+		"system-unfiled-"+uuid.NewString(),
+		SystemUnfiledName,
+		filepath.Join(dataDir, "projects", SystemUnfiledSlug),
 	)
 	if err != nil {
 		return storage.ArtifactChange{}, err
 	}
-	if repairErr := catalog.RepairSystemInboxProject(project); repairErr != nil {
+	if repairErr := catalog.RepairSystemUnfiledProject(project); repairErr != nil {
 		return storage.ArtifactChange{}, repairErr
 	}
-	document, err := storage.WriteV5ProjectDocument(storage.V5ProjectDocument{
+	document, err := storage.WriteV6ProjectDocument(storage.V6ProjectDocument{
 		ProjectName: project.Name,
 	})
 	if err != nil {
@@ -315,6 +315,11 @@ func prepareFreshSystemInbox(dataDir string, catalog *WorkspaceCatalog) (storage
 		Mode:             storage.FilePermissions,
 		ExpectedRevision: &absentRevision,
 	}, nil
+}
+
+// prepareFreshSystemInbox is retained as a compile-time compatibility helper.
+func prepareFreshSystemInbox(dataDir string, catalog *WorkspaceCatalog) (storage.ArtifactChange, error) {
+	return prepareFreshSystemUnfiled(dataDir, catalog)
 }
 
 func validateDomainBundle(domains *Domains) error {

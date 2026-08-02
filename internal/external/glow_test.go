@@ -233,7 +233,7 @@ func TestFormatTaskAsMarkdown(t *testing.T) { //nolint:gocyclo
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.WorkflowState = models.StateReady
+		task.WorkflowState = models.StateBacklog
 		task.Priority = 2
 		task.CreatedAt = now
 

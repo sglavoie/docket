@@ -56,7 +56,7 @@ func parseQuickEditShared(input string, _ *models.Project, strict bool) (*quickE
 	if tokens := parsed.TokensFor(textgrammar.FieldPriority); len(tokens) > 0 {
 		values, ok := textgrammar.ParsePriority(tokens[0].Value, false)
 		if !ok {
-			if setError(fmt.Sprintf("invalid priority: %s (use 1-5)", tokens[0].Value)) {
+			if setError(fmt.Sprintf("invalid priority: %s (use 1-3)", tokens[0].Value)) {
 				return result, errMsg
 			}
 		} else {

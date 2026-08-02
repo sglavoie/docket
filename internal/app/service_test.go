@@ -3,7 +3,6 @@ package app_test
 import (
 	"errors"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,11 +18,11 @@ func TestCaptureCreatesTaskAndEmitsOneChangeSet(t *testing.T) {
 	svc := newTestService(repo)
 
 	res, err := svc.Capture(app.CaptureRequest{
-		ProjectID: "proj-1",
-		Title:     "Write the report",
-		Priority:  1,
-		Tags:      []string{"#work", "urgent"},
-		State:     models.StateNext,
+		ProjectID:   "proj-1",
+		Title:       "Write the report",
+		Priority:    1,
+		Tags:        []string{"#work", "urgent"},
+		Destination: app.CaptureDestinationBacklog,
 	})
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
@@ -38,8 +37,8 @@ func TestCaptureCreatesTaskAndEmitsOneChangeSet(t *testing.T) {
 	if res.QualifiedRef != "alpha:#1" {
 		t.Errorf("QualifiedRef = %q, want alpha:#1", res.QualifiedRef)
 	}
-	if res.State != models.StateNext {
-		t.Errorf("State = %q, want next", res.State)
+	if res.State != models.StateBacklog {
+		t.Errorf("State = %q, want backlog", res.State)
 	}
 	if res.Revision == "" || res.Revision == expectedRev {
 		t.Errorf("Revision = %q, want a new non-empty revision (was %q)", res.Revision, expectedRev)
@@ -97,7 +96,7 @@ func TestCaptureRejectsInvalidTag(t *testing.T) {
 	}
 }
 
-func TestCaptureCanonicalizesLegacyTaskMarkerTag(t *testing.T) {
+func TestCapturePreservesLegacyMarkerSpellingAsOrdinaryTag(t *testing.T) {
 	project := newProject("proj-1", "Alpha")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -106,30 +105,30 @@ func TestCaptureCanonicalizesLegacyTaskMarkerTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
-	if got := project.GetTaskByID(res.TaskID).Tags; !slices.Equal(got, []string{"bug", "backend"}) {
-		t.Fatalf("tags = %v, want [bug backend]", got)
+	if got := project.GetTaskByID(res.TaskID).Tags; !slices.Equal(got, []string{"type:BUG", "backend"}) {
+		t.Fatalf("tags = %v, want [type:BUG backend]", got)
 	}
 }
 
-func TestCaptureRejectsConflictingTaskMarkers(t *testing.T) {
+func TestCaptureAllowsIndependentSemanticTags(t *testing.T) {
 	project := newProject("proj-1", "Alpha")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Ambiguous", Tags: []string{"bug", "idea"}})
-	if !errors.Is(err, app.ErrInvalidInput) || !strings.Contains(err.Error(), "only one type marker") {
-		t.Fatalf("err = %v, want task marker conflict", err)
+	res, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Both", Tags: []string{"bug", "idea"}})
+	if err != nil {
+		t.Fatalf("Capture: %v", err)
 	}
-	if len(project.Tasks) != 0 || len(repo.commits) != 0 {
-		t.Fatalf("conflicting capture mutated state: tasks=%d commits=%d", len(project.Tasks), len(repo.commits))
+	if got := project.GetTaskByID(res.TaskID).Tags; !slices.Equal(got, []string{"bug", "idea"}) || len(repo.commits) != 1 {
+		t.Fatalf("semantic tags = %v commits=%d", got, len(repo.commits))
 	}
 }
 
-func TestCaptureRejectsInvalidState(t *testing.T) {
+func TestCaptureRejectsInvalidDestination(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha"))
 	svc := newTestService(repo)
 
-	_, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-1", Title: "ok", State: models.WorkflowState("backlog")})
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-1", Title: "ok", Destination: app.CaptureDestination("invalid")})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -198,14 +197,14 @@ func TestTransitionMovesThroughNonterminalStates(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	res, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateInProgress})
+	res, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateDoing})
 	if err != nil {
 		t.Fatalf("Transition: %v", err)
 	}
-	if res.State != models.StateInProgress {
+	if res.State != models.StateDoing {
 		t.Errorf("State = %q, want in_progress", res.State)
 	}
-	if task.State() != models.StateInProgress {
+	if task.State() != models.StateDoing {
 		t.Errorf("task state = %q, want in_progress", task.State())
 	}
 }
@@ -219,8 +218,8 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 		target := target
 		t.Run(target.String(), func(t *testing.T) {
 			task := newTask("t1", 1, "task")
-			task.WorkflowState = models.StateReady
-			if target == models.StateReady {
+			task.WorkflowState = models.StateBacklog
+			if target == models.StateBacklog {
 				task.WorkflowState = models.StateInbox
 			}
 			task.CompletedAt = &staleCompletion
@@ -277,7 +276,7 @@ func TestTransitionRejectedFromTerminalState(t *testing.T) {
 	if _, err := svc.Complete("t1"); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
-	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateInProgress})
+	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateDoing})
 	if !errors.Is(err, app.ErrInvalidTransition) {
 		t.Fatalf("err = %v, want ErrInvalidTransition", err)
 	}
@@ -304,98 +303,6 @@ func TestReopenFromTerminalReturnsToInbox(t *testing.T) {
 	}
 	if task.CompletedAt != nil {
 		t.Errorf("CompletedAt = %v, want nil after reopen", task.CompletedAt)
-	}
-}
-
-func TestCompleteBlockedByUnresolvedDependency(t *testing.T) {
-	blocker := newTask("dep", 1, "blocker")
-	blocker.ApplyWorkflowState(models.StateInbox)
-	dependent := newTask("t2", 2, "dependent")
-	dependent.DependsOn = []string{"dep"}
-	project := newProject("proj-1", "Alpha", blocker, dependent)
-	repo := newFakeRepo(project)
-	svc := newTestService(repo)
-
-	_, err := svc.Complete("t2")
-	if !errors.Is(err, app.ErrDependencyBlocked) {
-		t.Fatalf("err = %v, want ErrDependencyBlocked", err)
-	}
-	if len(repo.commits) != 0 {
-		t.Errorf("blocked completion committed %d times, want 0", len(repo.commits))
-	}
-}
-
-func TestCompleteGeneratesRecurringInstance(t *testing.T) {
-	task := newTask("t1", 1, "daily standup")
-	due := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
-	task.DueDate = &due
-	if err := task.SetRecurrence(models.ParseRecurrence("daily")); err != nil {
-		t.Fatalf("SetRecurrence: %v", err)
-	}
-	project := newProject("proj-1", "Alpha", task)
-	repo := newFakeRepo(project)
-	svc := newTestService(repo)
-
-	res, err := svc.Complete("t1")
-	if err != nil {
-		t.Fatalf("Complete: %v", err)
-	}
-	if task.State() != models.StateDone {
-		t.Errorf("completed task state = %q, want done", task.State())
-	}
-	fixedNow := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
-	if task.CompletedAt == nil || !task.CompletedAt.Equal(fixedNow) || !task.UpdatedAt.Equal(fixedNow) {
-		t.Errorf("completed timestamps = %v/%v, want injected time %v", task.CompletedAt, task.UpdatedAt, fixedNow)
-	}
-	if res.RecurringGenerated != 1 {
-		t.Errorf("RecurringGenerated = %d, want 1", res.RecurringGenerated)
-	}
-	if len(project.Tasks) != 2 {
-		t.Fatalf("project has %d tasks, want 2 (original + generated instance)", len(project.Tasks))
-	}
-	generated := project.Tasks[0]
-	if generated.State() != models.StateInbox {
-		t.Errorf("generated state = %q, want inbox", generated.State())
-	}
-	if generated.ID != "gen-task-1" {
-		t.Errorf("generated ID = %q, want injected gen-task-1", generated.ID)
-	}
-	wantDue := time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC)
-	if generated.DueDate == nil || !generated.DueDate.Equal(wantDue) {
-		t.Errorf("generated due = %v, want %v", generated.DueDate, wantDue)
-	}
-	if !generated.CreatedAt.Equal(fixedNow) || !generated.UpdatedAt.Equal(fixedNow) {
-		t.Errorf("generated timestamps = %v/%v, want injected time %v", generated.CreatedAt, generated.UpdatedAt, fixedNow)
-	}
-}
-
-func TestCompleteRecurringTaskRollsBackWhenCommitFails(t *testing.T) {
-	task := newTask("t1", 1, "daily standup")
-	due := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	task.DueDate = &due
-	if err := task.SetRecurrence(models.ParseRecurrence("daily")); err != nil {
-		t.Fatalf("SetRecurrence: %v", err)
-	}
-	project := newProject("proj-1", "Alpha", task)
-	repo := newFakeRepo(project)
-	sentinel := errors.New("commit failed")
-	repo.commitErr = sentinel
-	svc := newTestService(repo)
-
-	if _, err := svc.Complete(task.ID); !errors.Is(err, sentinel) {
-		t.Fatalf("Complete error = %v, want %v", err, sentinel)
-	}
-	if task.State() != models.StateReady || task.CompletedAt != nil {
-		t.Fatalf("failed completion left lifecycle state %s/%v", task.State(), task.CompletedAt)
-	}
-	if task.Recurrence == nil || task.Recurrence.Unit != models.RecurrenceDaily {
-		t.Fatalf("failed completion lost recurrence: %+v", task.Recurrence)
-	}
-	if len(project.Tasks) != 1 || project.Tasks[0] != task {
-		t.Fatalf("failed completion left generated tasks or replaced source pointer: %+v", project.Tasks)
-	}
-	if len(repo.commits) != 0 {
-		t.Fatalf("failed completion recorded %d commits", len(repo.commits))
 	}
 }
 
@@ -464,18 +371,17 @@ func TestAddAndRemoveTag(t *testing.T) {
 	}
 }
 
-func TestAddTagRejectsConflictingTaskMarker(t *testing.T) {
+func TestAddTagAllowsIndependentSemanticTags(t *testing.T) {
 	task := newTask("t1", 1, "task")
 	task.Tags = []string{"idea", "keep"}
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	_, err := svc.AddTag("t1", "bug")
-	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("err = %v, want ErrInvalidInput", err)
+	if _, err := svc.AddTag("t1", "bug"); err != nil {
+		t.Fatalf("AddTag: %v", err)
 	}
-	if !slices.Equal(task.Tags, []string{"idea", "keep"}) || len(repo.commits) != 0 {
-		t.Fatalf("conflicting add mutated task: tags=%v commits=%d", task.Tags, len(repo.commits))
+	if !slices.Equal(task.Tags, []string{"idea", "keep", "bug"}) || len(repo.commits) != 1 {
+		t.Fatalf("independent add tags=%v commits=%d", task.Tags, len(repo.commits))
 	}
 }
 
@@ -518,10 +424,9 @@ func TestSnoozeAndClear(t *testing.T) {
 	}
 }
 
-// TestSnoozeRejectsCompletedAndInProgress proves the snooze-set guards moved into
-// the application service: snoozing a done or an in-progress task is rejected,
-// while clearing a snooze remains allowed on any task.
-func TestSnoozeRejectsCompletedAndInProgress(t *testing.T) {
+// TestSnoozeRejectsCompletedAndBacklogsDoing proves terminal work is rejected
+// while active work is normalized to Backlog before being hidden.
+func TestSnoozeRejectsCompletedAndBacklogsDoing(t *testing.T) {
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 
 	done := newTask("t1", 1, "task")
@@ -537,11 +442,11 @@ func TestSnoozeRejectsCompletedAndInProgress(t *testing.T) {
 	if done.SnoozedUntil != nil {
 		t.Error("completed task should not be snoozed")
 	}
-	if _, err := svc.Snooze("t2", &until); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("snooze in-progress: err = %v, want ErrInvalidInput", err)
+	if _, err := svc.Snooze("t2", &until); err != nil {
+		t.Fatalf("snooze Doing: %v", err)
 	}
-	if inProgress.SnoozedUntil != nil {
-		t.Error("in-progress task should not be snoozed")
+	if inProgress.State() != models.StateBacklog || inProgress.SnoozedUntil == nil {
+		t.Fatalf("snoozed Doing task = state %s date %v, want Backlog with date", inProgress.State(), inProgress.SnoozedUntil)
 	}
 }
 

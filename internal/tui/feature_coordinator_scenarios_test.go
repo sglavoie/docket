@@ -236,11 +236,11 @@ func TestInboxTriageScenario(t *testing.T) {
 	task := seedTask(t, 1, "Triage me", models.StateInbox)
 	env := newScenarioEnv(t, "inbox", task)
 
-	res := runResult(t, env.features.Inbox.Triage(task.ID, models.StateNext))
-	if res.State != models.StateNext {
+	res := runResult(t, env.features.Inbox.Triage(task.ID, models.StateBacklog))
+	if res.State != models.StateBacklog {
 		t.Fatalf("triaged state = %q, want next", res.State)
 	}
-	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.State() != models.StateNext {
+	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.State() != models.StateBacklog {
 		t.Fatalf("reloaded state = %v, want next", got)
 	}
 
@@ -253,7 +253,7 @@ func TestInboxTriageScenario(t *testing.T) {
 // TestCompleteScenario covers the project-tree/outliner/inbox completion
 // workflow: completing a ready task terminates it, and undo reopens it.
 func TestCompleteScenario(t *testing.T) {
-	task := seedTask(t, 1, "Finish me", models.StateReady)
+	task := seedTask(t, 1, "Finish me", models.StateBacklog)
 	env := newScenarioEnv(t, "complete", task)
 
 	res := runResult(t, env.features.ProjectTree.Complete(task.ID))
@@ -273,7 +273,7 @@ func TestCompleteScenario(t *testing.T) {
 // TestSetPriorityScenario covers the project-tree/outliner priority workflow:
 // the outliner coordinator sets a priority that persists, and undo restores it.
 func TestSetPriorityScenario(t *testing.T) {
-	task := seedTask(t, 1, "Prioritize me", models.StateReady)
+	task := seedTask(t, 1, "Prioritize me", models.StateBacklog)
 	original := task.Priority
 	env := newScenarioEnv(t, "priority", task)
 
@@ -291,7 +291,7 @@ func TestSetPriorityScenario(t *testing.T) {
 // TestProjectSelectionQueryScenario covers the query-only project-selection
 // surface: it lists and resolves projects through the read model.
 func TestProjectSelectionQueryScenario(t *testing.T) {
-	task := seedTask(t, 1, "Only task", models.StateReady)
+	task := seedTask(t, 1, "Only task", models.StateBacklog)
 	env := newScenarioEnv(t, "selection", task)
 
 	summaries, err := env.features.ProjectSelection.Projects()
@@ -316,7 +316,7 @@ func TestCoordinatorRejectionScenario(t *testing.T) {
 	env := newScenarioEnv(t, "reject")
 
 	// Triaging a task that does not exist is rejected before any commit.
-	if err := runError(t, env.features.Inbox.Triage("no-such-task", models.StateNext)); err == nil {
+	if err := runError(t, env.features.Inbox.Triage("no-such-task", models.StateBacklog)); err == nil {
 		t.Fatal("expected an error for an unknown task")
 	}
 }

@@ -7,8 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleMoveTaskToProject moves a task and its subtree to another project as ONE
@@ -29,6 +27,7 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 		return true, errorCmd("destination project not found")
 	}
 	oldShortID := sourceTask.ShortID
+	m.appService.WithPlanningArtifacts(shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager))
 
 	// Build the moved set (root + descendants) from the loaded source project so the
 	// durable planning reassignment can be computed before the application layer
@@ -38,20 +37,8 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	movedSet := collectDescendantIDs(msg.SourceProject.Tasks, map[string]bool{sourceTask.ID: true})
 	sourceProjectID := msg.SourceProject.ID
 
-	// Fold the durable planning refs (Focus Queue, Daily Plan) reassigned to the
-	// destination into the move transaction as a config artifact, so a partial move
-	// can never leave planning refs pointing at the old project. When a destination
-	// section was chosen, the same artifact reconciles Today/Next exclusivity for the
-	// moved root against its destination final state, so a move that lands the root in
-	// Next drops any stale Today entry and a move out of Next drops any stale order
-	// entry.
-	artifacts, err := m.moveConfigArtifacts(movedSet, sourceProjectID, destProject.ID, sourceTask.ID, nil)
-	if err != nil {
-		return true, errorCmd("failed to prepare move: %w", err)
-	}
-
 	locator := app.TaskLocator{ProjectID: sourceProjectID, TaskID: sourceTask.ID}
-	res, err := m.appService.MoveToProjectByLocator(locator, destProject.ID, artifacts...)
+	res, err := m.appService.MoveToProjectByLocator(locator, destProject.ID)
 	if err != nil {
 		return true, errorCmd("failed to move task: %w", err)
 	}
@@ -80,37 +67,10 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 			SourceProject: msg.SourceProject,
 			DestProject:   destProject,
 			MovedCount:    res.MovedCount,
-			ClearedDeps:   len(res.ClearedDeps),
 			OldShortID:    oldShortID,
 			FromGlobal:    msg.FromGlobal,
 		}
 	}
-}
-
-// moveConfigArtifacts reassigns the durable planning refs (Focus Queue, Daily
-// Plan) for the moved subtree to the destination project AND reconciles Today/Next
-// exclusivity for the moved root against its destination final state, encoding the
-// updated config as a single ArtifactChange folded into the move transaction,
-// mirroring the CLI cross-project move. Reconciling in the same artifact as the
-// reassignment keeps both planning deltas atomic with the task write. Returns nil
-// when neither the reassignment nor the reconciliation changed anything.
-func (m *AppModel) moveConfigArtifacts(movedSet map[string]bool, sourceProjectID, destProjectID, rootID string, finalState *models.WorkflowState) ([]storage.ArtifactChange, error) {
-	if m.runtime == nil || m.configManager == nil {
-		return nil, nil
-	}
-	planning := clonePlanningState(m.runtime.Planning())
-	changed := planning.ReassignDurablePlanningProjectFrom(movedSet, sourceProjectID, destProjectID) > 0
-	if finalState != nil && app.ReconcilePlanningState(planning, app.PlanningReconcileRequest{
-		Targets: []app.PlanningReconcileTarget{{
-			TaskID: rootID, ProjectID: destProjectID, State: *finalState,
-		}},
-	}) {
-		changed = true
-	}
-	if !changed {
-		return nil, nil
-	}
-	return planningDomainArtifact(m.configManager, planning)
 }
 
 // handleTaskMovedToProject handles the result of a cross-project task move.
@@ -131,9 +91,6 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 		statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, msg.DestProject.Name)
 	} else {
 		statusMsg = fmt.Sprintf("Moved #%d to %s", msg.OldShortID, msg.DestProject.Name)
-	}
-	if msg.ClearedDeps > 0 {
-		statusMsg += fmt.Sprintf(" (%d deps cleared)", msg.ClearedDeps)
 	}
 	m.setSuccessStatus(statusMsg)
 	reloadCmd := m.requestCrossProjectOutlinerReload()

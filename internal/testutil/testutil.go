@@ -59,12 +59,12 @@ func NewTestProjectWithTasks(name string) *models.Project {
 	// Add tasks under the story
 	task1 := mustNewTask(uuid.New().String(), project.NextShortID, "Create login form")
 	task1.ParentID = &story.ID
-	task1.WorkflowState = models.StateInProgress
+	task1.WorkflowState = models.StateDoing
 	addTask(project, task1)
 
 	task2 := mustNewTask(uuid.New().String(), project.NextShortID, "Add password validation")
 	task2.ParentID = &story.ID
-	task2.WorkflowState = models.StateReady
+	task2.WorkflowState = models.StateBacklog
 	addTask(project, task2)
 
 	// Add a completed task

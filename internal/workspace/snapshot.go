@@ -1,7 +1,7 @@
 // Package workspace provides an immutable read model over the loaded projects
 // of a tt workspace. A Snapshot loads every requested project exactly once and
-// exposes derived indexes (task lookup, reverse dependencies, qualified
-// references, per-project revisions) plus diagnostics for projects that could
+// exposes derived indexes (task lookup, qualified references, per-project
+// revisions) plus diagnostics for projects that could
 // not be loaded. Read-only consumers — open loops, cross-scope task views,
 // global search, task resolution — build a snapshot instead of independently
 // re-reading and re-parsing tasks.md, so a single revision-consistent view
@@ -64,7 +64,6 @@ type Snapshot struct {
 	projects      []*models.Project
 	tasks         []*models.Task
 	byID          map[string][]TaskLocation
-	reverseDeps   map[string][]string
 	qualifiedRefs map[string]string
 	revisions     map[string]string
 	diagnostics   []Diagnostic
@@ -73,7 +72,6 @@ type Snapshot struct {
 func newSnapshot() *Snapshot {
 	return &Snapshot{
 		byID:          make(map[string][]TaskLocation),
-		reverseDeps:   make(map[string][]string),
 		qualifiedRefs: make(map[string]string),
 		revisions:     make(map[string]string),
 	}
@@ -96,12 +94,6 @@ func (s *Snapshot) addProject(project *models.Project, revision string) {
 			s.byID[task.ID] = append(s.byID[task.ID], TaskLocation{Task: task, Project: project})
 		}
 		s.qualifiedRefs[task.ID] = fmt.Sprintf("%s:#%d", project.Slug, task.ShortID)
-		for _, depID := range task.DependsOn {
-			if depID == "" {
-				continue
-			}
-			s.reverseDeps[depID] = append(s.reverseDeps[depID], task.ID)
-		}
 	}
 }
 
@@ -155,19 +147,6 @@ func (s *Snapshot) QualifiedRef(taskID string) string {
 		return ""
 	}
 	return s.qualifiedRefs[taskID]
-}
-
-// ReverseDependencies returns the IDs of tasks that declare a dependency on the
-// given task (the "blocked by" edges). The result is a defensive copy so
-// callers cannot mutate the snapshot's index.
-func (s *Snapshot) ReverseDependencies(taskID string) []string {
-	deps := s.reverseDeps[taskID]
-	if len(deps) == 0 {
-		return nil
-	}
-	out := make([]string, len(deps))
-	copy(out, deps)
-	return out
 }
 
 // Diagnostics returns the projects that were skipped or failed to parse while

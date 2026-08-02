@@ -22,8 +22,8 @@ func TestApplyWorkflowStateRoundTrip(t *testing.T) {
 // the intended state on reload.
 func TestApplyWorkflowStateOverridesPriorState(t *testing.T) {
 	task := &Task{WorkflowState: StateWaiting}
-	task.ApplyWorkflowState(StateNext)
-	if got := task.State(); got != StateNext {
-		t.Fatalf("State() = %q, want %q", got, StateNext)
+	task.ApplyWorkflowState(StateBacklog)
+	if got := task.State(); got != StateBacklog {
+		t.Fatalf("State() = %q, want %q", got, StateBacklog)
 	}
 }

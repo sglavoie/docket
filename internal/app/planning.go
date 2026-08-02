@@ -20,6 +20,15 @@ const (
 	PlanningBacklog     PlanningAction = "backlog"
 )
 
+// PlanningHorizon identifies one explicit planning membership for toggle
+// policy. Lifecycle state remains independent from both values.
+type PlanningHorizon string
+
+const (
+	PlanningHorizonToday PlanningHorizon = "today"
+	PlanningHorizonNext  PlanningHorizon = "next"
+)
+
 // PlanningRequest applies one planning action to a project-qualified task.
 type PlanningRequest struct {
 	TaskID  string
@@ -32,6 +41,45 @@ type PlanningRequest struct {
 type PlanningBulkRequest struct {
 	Targets []TaskLocator
 	Action  PlanningAction
+}
+
+// ResolvePlanningToggleAction implements the shared single/mixed-selection
+// toggle rule. If every selected task is already a member the operation removes
+// every target; otherwise it adds every target. Callers supply a revision-bound
+// membership snapshot, and the resulting artifact commit detects stale input.
+func ResolvePlanningToggleAction(horizon PlanningHorizon, targets, members []TaskLocator) (PlanningAction, error) {
+	if len(targets) == 0 {
+		return "", invalidInput("tasks", "at least one task is required")
+	}
+	memberSet := make(map[TaskLocator]bool, len(members))
+	for _, member := range members {
+		if member.Valid() {
+			memberSet[member] = true
+		}
+	}
+	allMembers := true
+	for _, target := range targets {
+		if !target.Valid() {
+			return "", invalidInput("task", "project id and task id are required")
+		}
+		if !memberSet[target] {
+			allMembers = false
+		}
+	}
+	switch horizon {
+	case PlanningHorizonToday:
+		if allMembers {
+			return PlanningRemoveToday, nil
+		}
+		return PlanningAddToday, nil
+	case PlanningHorizonNext:
+		if allMembers {
+			return PlanningRemoveNext, nil
+		}
+		return PlanningAddNext, nil
+	default:
+		return "", invalidInput("planning", fmt.Sprintf("unknown horizon %q", horizon))
+	}
 }
 
 // ApplyPlanning is the single task/planning mutation boundary. State changes and
@@ -178,42 +226,56 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 	}
 	targetState := task.State()
 	today := PlanningTodayPreserve
+	next := PlanningNextPreserve
+	clearSnooze := false
 	switch action {
 	case PlanningAddToday:
 		if targetState.IsTerminal() {
 			return PlanningReconcileTarget{}, false, invalidInput("planning", "terminal tasks cannot be added to Today")
 		}
-		if targetState == models.StateInbox || targetState == models.StateNext {
-			targetState = models.StateReady
+		if targetState != models.StateDoing {
+			targetState = models.StateBacklog
 		}
 		today = PlanningTodayAdd
+		next = PlanningNextRemove
+		clearSnooze = true
 	case PlanningRemoveToday:
 		today = PlanningTodayRemove
 	case PlanningAddNext:
-		targetState = models.StateNext
-	case PlanningRemoveNext:
-		if targetState == models.StateNext {
-			targetState = models.StateReady
+		if targetState.IsTerminal() {
+			return PlanningReconcileTarget{}, false, invalidInput("planning", "terminal tasks cannot be added to Next")
 		}
-	case PlanningBacklog:
-		targetState = models.StateReady
+		targetState = models.StateBacklog
 		today = PlanningTodayRemove
+		next = PlanningNextAdd
+		clearSnooze = true
+	case PlanningRemoveNext:
+		next = PlanningNextRemove
+	case PlanningBacklog:
+		targetState = models.StateBacklog
+		today = PlanningTodayRemove
+		next = PlanningNextRemove
 	default:
 		return PlanningReconcileTarget{}, false, invalidInput("planning", fmt.Sprintf("unknown action %q", action))
 	}
 
 	stateChanged := targetState != task.State()
 	if stateChanged {
-		if err := validateLifecycleTransition(TaskRef{Task: task}, nil, targetState); err != nil {
+		if err := validateLifecycleTransition(TaskRef{Task: task}, targetState); err != nil {
 			return PlanningReconcileTarget{}, false, err
 		}
 		if err := task.ApplyStateTransitionAt(targetState, now); err != nil {
 			return PlanningReconcileTarget{}, false, invalidInput("state", err.Error())
 		}
 	}
+	if clearSnooze && task.SnoozedUntil != nil {
+		task.SnoozedUntil = nil
+		task.UpdatedAt = now
+		stateChanged = true
+	}
 	return PlanningReconcileTarget{
 		TaskID: task.ID, ProjectID: projectID, State: task.State(),
-		Today: today,
+		Today: today, Next: next, StateChanged: stateChanged,
 	}, stateChanged, nil
 }
 
@@ -234,10 +296,9 @@ func planningUndoAction(action PlanningAction) string {
 	}
 }
 
-// ReconcilePlanning sanitizes all persisted Today and Next-order entries against
+// ReconcilePlanning sanitizes all persisted Today and Next entries against
 // one fresh workspace snapshot. It removes dangling/duplicate/illegal entries;
-// StateNext itself remains authoritative membership while NextOrder is only an
-// optional explicit order index.
+// both collections remain explicit ordered membership.
 func (s *Service) ReconcilePlanning() (bool, error) {
 	builder := s.defaultedPlanningArtifacts(nil)
 	if builder == nil {
@@ -270,7 +331,7 @@ func (s *Service) ClearToday() error {
 }
 
 // ReorderNext replaces the explicit Next order while preserving any valid
-// StateNext member omitted by a stale caller at the end.
+// member omitted by a stale caller at the end.
 func (s *Service) ReorderNext(order []TaskLocator) error {
 	return s.applyPlanningOrder(PlanningReconcileRequest{
 		NextOrder: append([]TaskLocator(nil), order...), SetNextOrder: true,

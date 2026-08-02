@@ -46,11 +46,15 @@ const (
 	// colors. Slot zero represents a legacy or otherwise unassigned project.
 	ProjectColorSlotCount = 48
 
-	// SystemInboxName and SystemInboxSlug are the user-facing identity of the
+	// SystemUnfiledName and SystemUnfiledSlug are the user-facing identity of the
 	// workspace-owned capture project. The catalog reference, rather than the
 	// display name or slug, is the durable identity used by callers.
-	SystemInboxName = "Inbox"
-	SystemInboxSlug = "inbox"
+	SystemUnfiledName = "Unfiled"
+	SystemUnfiledSlug = "unfiled"
+
+	// Compile-time aliases retained while older callers are migrated.
+	SystemInboxName = SystemUnfiledName
+	SystemInboxSlug = SystemUnfiledSlug
 
 	// LegacyActionInboxSlug identifies the hidden predecessor migrated by the
 	// TUI when it first opens a workspace created by an older release.
@@ -58,11 +62,12 @@ const (
 )
 
 var (
-	// ErrProtectedSystemInbox marks a project-catalog mutation that would
+	// ErrProtectedSystemUnfiled marks a project-catalog mutation that would
 	// rename, archive, remove, or otherwise invalidate the project identified
-	// by WorkspaceCatalog.SystemInboxProjectID. The ID is the protection
+	// by WorkspaceCatalog.SystemUnfiledProjectID. The ID is the protection
 	// boundary; display names and slugs never grant protected status.
-	ErrProtectedSystemInbox = errors.New("config: protected system Inbox")
+	ErrProtectedSystemUnfiled = errors.New("config: protected system Unfiled")
+	ErrProtectedSystemInbox   = ErrProtectedSystemUnfiled
 )
 
 // CatalogPath derives a project's data directory from the workspace data
@@ -118,18 +123,45 @@ func (p CatalogProject) ToModel(dataDir string) *models.Project {
 // WorkspaceCatalog owns the workspace identity and the project catalog. It maps
 // to <data>/.tt/workspace.json.
 type WorkspaceCatalog struct {
-	SchemaVersion        int              `json:"schema_version"`
-	WorkspaceID          string           `json:"workspace_id,omitempty"`
-	Projects             []CatalogProject `json:"projects"`
-	SystemInboxProjectID string           `json:"system_inbox_project_id,omitempty"`
+	SchemaVersion          int              `json:"schema_version"`
+	WorkspaceID            string           `json:"workspace_id,omitempty"`
+	Projects               []CatalogProject `json:"projects"`
+	SystemUnfiledProjectID string           `json:"system_unfiled_project_id"`
+
+	// Compile-only compatibility mirror. Live JSON never reads or writes the
+	// retired schema-5 field name.
+	SystemInboxProjectID string `json:"-"`
 }
 
-// IsSystemInboxProject reports whether id is the catalog-owned Inbox. Names and
+func (w *WorkspaceCatalog) protectedProjectID() string {
+	if w == nil {
+		return ""
+	}
+	if w.SystemUnfiledProjectID != "" {
+		return w.SystemUnfiledProjectID
+	}
+	return w.SystemInboxProjectID
+}
+
+func (w *WorkspaceCatalog) syncLegacyAliases() {
+	if w == nil {
+		return
+	}
+	if w.SystemUnfiledProjectID == "" {
+		w.SystemUnfiledProjectID = w.SystemInboxProjectID
+	}
+	w.SystemInboxProjectID = w.SystemUnfiledProjectID
+}
+
+// IsSystemUnfiledProject reports whether id is the catalog-owned Unfiled. Names and
 // slugs are deliberately ignored so identity stays stable across presentation
 // changes and legacy migrations.
-func (w *WorkspaceCatalog) IsSystemInboxProject(id string) bool {
-	return w != nil && id != "" && w.SystemInboxProjectID == id
+func (w *WorkspaceCatalog) IsSystemUnfiledProject(id string) bool {
+	return w != nil && id != "" && w.protectedProjectID() == id
 }
+
+// IsSystemInboxProject is the compile-time compatibility name.
+func (w *WorkspaceCatalog) IsSystemInboxProject(id string) bool { return w.IsSystemUnfiledProject(id) }
 
 // NewWorkspaceCatalog returns a catalog seeded with defaults.
 func NewWorkspaceCatalog() *WorkspaceCatalog {
@@ -141,7 +173,7 @@ func NewWorkspaceCatalog() *WorkspaceCatalog {
 
 // Validate reports structural problems with the catalog: a project must have a
 // non-empty ID and canonical safe slug, IDs and slugs must be unique, and the
-// system inbox reference must point at a cataloged project when set.
+// protected Unfiled reference must point at a cataloged project when set.
 func (w *WorkspaceCatalog) Validate() error {
 	return w.validate(false)
 }
@@ -154,6 +186,11 @@ func (w *WorkspaceCatalog) validateForLoad() error {
 }
 
 func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
+	if w.SystemUnfiledProjectID != "" && w.SystemInboxProjectID != "" &&
+		w.SystemUnfiledProjectID != w.SystemInboxProjectID {
+		return fmt.Errorf("workspace catalog: conflicting protected Unfiled project IDs")
+	}
+	w.syncLegacyAliases()
 	if w.SchemaVersion <= 0 {
 		return fmt.Errorf("workspace catalog: schema version must be positive, got %d", w.SchemaVersion)
 	}
@@ -185,16 +222,17 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 		seenID[p.ID] = true
 		seenSlug[p.Slug] = true
 	}
-	if w.SystemInboxProjectID != "" {
-		if !seenID[w.SystemInboxProjectID] {
-			return fmt.Errorf("workspace catalog: system inbox references unknown project %q", w.SystemInboxProjectID)
+	protectedID := w.protectedProjectID()
+	if protectedID != "" {
+		if !seenID[protectedID] {
+			return fmt.Errorf("workspace catalog: system Unfiled references unknown project %q", protectedID)
 		}
 		for _, project := range w.Projects {
-			if project.ID == w.SystemInboxProjectID && (project.Archived || project.ArchivedAt != nil) {
+			if project.ID == protectedID && (project.Archived || project.ArchivedAt != nil) {
 				return fmt.Errorf(
 					"%w: project %q cannot be archived",
-					ErrProtectedSystemInbox,
-					w.SystemInboxProjectID,
+					ErrProtectedSystemUnfiled,
+					protectedID,
 				)
 			}
 		}
@@ -284,26 +322,26 @@ func allProjectColorSlotsUsed(usage [ProjectColorSlotCount + 1]int) bool {
 }
 
 // RemoveProject drops a cataloged project while preserving the protected
-// system Inbox invariant. Matching remains compatible with legacy slug
+// system Unfiled invariant. Matching remains compatible with slug
 // references, but protection is decided from the matched project's durable ID.
 // A rejected removal leaves the catalog unchanged.
 func (w *WorkspaceCatalog) RemoveProject(id, slug string) (bool, error) {
 	if w == nil {
 		return false, nil
 	}
-	if w.IsSystemInboxProject(id) {
+	if w.IsSystemUnfiledProject(id) {
 		return false, fmt.Errorf(
 			"%w: project %q cannot be removed",
-			ErrProtectedSystemInbox,
+			ErrProtectedSystemUnfiled,
 			id,
 		)
 	}
 	if id == "" && slug != "" {
 		for _, project := range w.Projects {
-			if project.Slug == slug && w.IsSystemInboxProject(project.ID) {
+			if project.Slug == slug && w.IsSystemUnfiledProject(project.ID) {
 				return false, fmt.Errorf(
 					"%w: project %q cannot be removed",
-					ErrProtectedSystemInbox,
+					ErrProtectedSystemUnfiled,
 					project.ID,
 				)
 			}
@@ -324,7 +362,7 @@ func (w *WorkspaceCatalog) RemoveProject(id, slug string) (bool, error) {
 }
 
 // RemoveProjectReferences is the compatibility form used by reference-cleanup
-// callers. It deliberately fails closed for the protected system Inbox. New
+// callers. It deliberately fails closed for the protected system Unfiled. New
 // lifecycle adapters should call RemoveProject so they can surface the typed
 // rejection.
 func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
@@ -340,39 +378,44 @@ func (w *WorkspaceCatalog) RemoveProjectReferences(id, slug string) bool {
 //
 // The mutation is prepared on a defensive copy. Invalid updates therefore
 // cannot partially repair color slots or alter the caller's catalog. Existing
-// system Inbox identity and active lifecycle state are immutable here; startup
-// compatibility code must use RepairSystemInboxProject for its one explicit
-// legacy normalization.
+// system Unfiled identity and active lifecycle state are immutable here;
+// bootstrap code must use RepairSystemUnfiledProject for its explicit repair.
 func (w *WorkspaceCatalog) UpsertProject(p *models.Project) error {
 	return w.upsertProject(p, false)
 }
 
-// RepairSystemInboxProject installs or normalizes the catalog-owned Inbox
+// RepairSystemUnfiledProject installs or normalizes the catalog-owned Unfiled
 // during workspace bootstrap. It is intentionally separate from ordinary
 // project updates so user-facing edit/archive operations cannot use legacy
 // repair authority. The repaired project must remain active.
-func (w *WorkspaceCatalog) RepairSystemInboxProject(p *models.Project) error {
+func (w *WorkspaceCatalog) RepairSystemUnfiledProject(p *models.Project) error {
 	if w == nil {
 		return fmt.Errorf("workspace catalog is required")
 	}
 	if p == nil {
-		return fmt.Errorf("system Inbox project is required")
+		return fmt.Errorf("system Unfiled project is required")
 	}
-	if w.SystemInboxProjectID != "" && w.SystemInboxProjectID != p.ID {
+	protectedID := w.protectedProjectID()
+	if protectedID != "" && protectedID != p.ID {
 		return fmt.Errorf(
 			"%w: cannot replace project %q with %q",
-			ErrProtectedSystemInbox,
-			w.SystemInboxProjectID,
+			ErrProtectedSystemUnfiled,
+			protectedID,
 			p.ID,
 		)
 	}
 	if p.Archived || p.ArchivedAt != nil {
-		return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemInbox, p.ID)
+		return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemUnfiled, p.ID)
 	}
 	return w.upsertProject(p, true)
 }
 
-func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemInbox bool) error {
+// RepairSystemInboxProject is the compile-time compatibility name.
+func (w *WorkspaceCatalog) RepairSystemInboxProject(p *models.Project) error {
+	return w.RepairSystemUnfiledProject(p)
+}
+
+func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemUnfiled bool) error {
 	if w == nil {
 		return fmt.Errorf("workspace catalog is required")
 	}
@@ -400,14 +443,14 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemInbox bo
 		}
 	}
 
-	if next.IsSystemInboxProject(cp.ID) {
+	if next.IsSystemUnfiledProject(cp.ID) {
 		if cp.Archived || cp.ArchivedAt != nil {
-			return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemInbox, cp.ID)
+			return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemUnfiled, cp.ID)
 		}
-		if existingIndex >= 0 && !repairSystemInbox {
+		if existingIndex >= 0 && !repairSystemUnfiled {
 			existing := next.Projects[existingIndex]
 			if existing.Name != cp.Name || existing.Slug != cp.Slug {
-				return fmt.Errorf("%w: project %q cannot be renamed", ErrProtectedSystemInbox, cp.ID)
+				return fmt.Errorf("%w: project %q cannot be renamed", ErrProtectedSystemUnfiled, cp.ID)
 			}
 		}
 	}
@@ -435,7 +478,8 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemInbox bo
 		next.Projects = append(next.Projects, cp)
 	}
 
-	if repairSystemInbox {
+	if repairSystemUnfiled {
+		next.SystemUnfiledProjectID = cp.ID
 		next.SystemInboxProjectID = cp.ID
 	}
 
@@ -444,12 +488,30 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemInbox bo
 	return nil
 }
 
-// PlanningState owns the two durable planning collections retained by v5:
-// project-qualified Today membership/order and the preferred order of StateNext
-// tasks. StateNext remains authoritative for Next membership.
+// PlanningState owns the two schema-6 durable ordered memberships.
 type PlanningState struct {
-	Today     []ProjectTaskLocator `json:"today,omitempty"`
-	NextOrder []ProjectTaskLocator `json:"next_order,omitempty"`
+	Today []ProjectTaskLocator `json:"today,omitempty"`
+	Next  []ProjectTaskLocator `json:"next,omitempty"`
+
+	// Compile-only compatibility mirror for the retired schema-5 field name.
+	NextOrder []ProjectTaskLocator `json:"-"`
+}
+
+func (p *PlanningState) syncLegacyAliases() {
+	if p == nil {
+		return
+	}
+	if len(p.Next) == 0 && len(p.NextOrder) > 0 {
+		p.Next = append([]ProjectTaskLocator(nil), p.NextOrder...)
+	}
+	p.mirrorLegacyAliases()
+}
+
+func (p *PlanningState) mirrorLegacyAliases() {
+	if p == nil {
+		return
+	}
+	p.NextOrder = append([]ProjectTaskLocator(nil), p.Next...)
 }
 
 // NewPlanningState returns an empty planning state.
@@ -459,6 +521,7 @@ func NewPlanningState() *PlanningState {
 
 // Validate reports problems with the project-qualified planning collections.
 func (p *PlanningState) Validate() error {
+	p.syncLegacyAliases()
 	seenToday := make(map[ProjectTaskLocator]bool, len(p.Today))
 	for i, item := range p.Today {
 		if !item.Valid() {
@@ -469,8 +532,8 @@ func (p *PlanningState) Validate() error {
 		}
 		seenToday[item] = true
 	}
-	seenNext := make(map[ProjectTaskLocator]bool, len(p.NextOrder))
-	for i, item := range p.NextOrder {
+	seenNext := make(map[ProjectTaskLocator]bool, len(p.Next))
+	for i, item := range p.Next {
 		if !item.Valid() {
 			return fmt.Errorf("planning: Next order item %d has incomplete identity", i)
 		}
@@ -485,24 +548,25 @@ func (p *PlanningState) Validate() error {
 // RemoveProjectReferences drops Today and Next-order entries that point at the
 // removed project. It returns true when anything changed.
 func (p *PlanningState) RemoveProjectReferences(id, slug string) bool {
+	p.syncLegacyAliases()
 	var todayChanged, nextChanged bool
 	p.Today, todayChanged = filterProjectRefSlice(p.Today, func(item ProjectTaskLocator) string {
 		return item.ProjectID
 	}, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	})
-	p.NextOrder, nextChanged = filterProjectRefSlice(p.NextOrder, func(item ProjectTaskLocator) string {
+	p.Next, nextChanged = filterProjectRefSlice(p.Next, func(item ProjectTaskLocator) string {
 		return item.ProjectID
 	}, func(pid string) bool {
 		return !refMatches(pid, id, slug)
 	})
+	p.mirrorLegacyAliases()
 	return todayChanged || nextChanged
 }
 
-// MachineState contains only the machine-local values retained by v5.
+// MachineState contains the only machine-local value retained by schema 6.
 type MachineState struct {
-	CustomContexts map[string][]string `json:"custom_contexts,omitempty"`
-	Theme          string              `json:"theme"`
+	Theme string `json:"theme"`
 }
 
 // NewMachineState returns the default built-in theme selection.
@@ -516,13 +580,6 @@ func (m *MachineState) Validate() error {
 		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
 	}
 	return nil
-}
-
-// RemoveProjectReferences removes a project from saved custom contexts.
-func (m *MachineState) RemoveProjectReferences(id, slug string) bool {
-	return filterProjectIDMap(m.CustomContexts, func(pid string) bool {
-		return !refMatches(pid, id, slug)
-	})
 }
 
 // refMatches reports whether a stored project reference targets the identified

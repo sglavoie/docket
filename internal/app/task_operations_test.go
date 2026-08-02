@@ -97,7 +97,7 @@ func TestTaskOperationCreateChildUsesReadyStateAndParentIdentity(t *testing.T) {
 	if child == nil || child.ParentID == nil || *child.ParentID != parent.ID {
 		t.Fatalf("created child = %+v", child)
 	}
-	if child.State() != models.StateReady {
+	if child.State() != models.StateBacklog {
 		t.Fatalf("child state = %s, want ready", child.State())
 	}
 }
@@ -229,7 +229,7 @@ func TestTaskOperationStateUsesOneAtomicTransition(t *testing.T) {
 
 func TestTaskOperationsRejectInvalidCardinalityAndRollBackFailedMutations(t *testing.T) {
 	task := newTask("task", 1, "Before")
-	task.Priority = 4
+	task.Priority = models.PriorityLow
 	project := newProject("project", "Project", task)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -253,8 +253,8 @@ func TestTaskOperationsRejectInvalidCardinalityAndRollBackFailedMutations(t *tes
 	if err == nil {
 		t.Fatal("failed metadata commit returned nil error")
 	}
-	if task.Priority != 4 {
-		t.Fatalf("failed metadata commit left priority %d, want 4", task.Priority)
+	if task.Priority != models.PriorityLow {
+		t.Fatalf("failed metadata commit left priority %d, want %d", task.Priority, models.PriorityLow)
 	}
 
 	_, err = svc.ExecuteTaskOperation(app.TaskOperationRequest{

@@ -20,9 +20,9 @@ func newFilterChordTestApp(t *testing.T) *AppModel {
 		Name: "Project",
 		Slug: "project",
 		Tasks: []*models.Task{
-			{ID: "critical", ShortID: 1, Title: "Critical", WorkflowState: models.StateReady, Priority: 1},
-			{ID: "normal", ShortID: 2, Title: "Normal", WorkflowState: models.StateNext, Priority: 3},
-			{ID: "lowest", ShortID: 3, Title: "Lowest", WorkflowState: models.StateWaiting, Priority: 5, Tags: []string{"deep"}},
+			{ID: "critical", ShortID: 1, Title: "Critical", WorkflowState: models.StateBacklog, Priority: 1},
+			{ID: "medium", ShortID: 2, Title: "Medium", WorkflowState: models.StateBacklog, Priority: 2},
+			{ID: "low", ShortID: 3, Title: "Low", WorkflowState: models.StateWaiting, Priority: 3, Tags: []string{"deep"}},
 		},
 	}
 	project.BuildTaskTree()
@@ -74,7 +74,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		t.Fatalf("fp = handled %v cmd %T; want a pending prefix", handled, cmd)
 	}
 	row = app.pendingChordHintRow()
-	for _, want := range []string{"0 all", "1 <=1", "3 <=3", "5 <=5"} {
+	for _, want := range []string{"0 all", "1 <=1", "3 <=3"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("fp which-key row %q omits %q", row, want)
 		}
@@ -101,11 +101,11 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 			},
 		},
 		{
-			path:   []string{"f", "p", "5"},
-			status: "Filtering priority <= 5",
+			path:   []string{"f", "p", "2"},
+			status: "Filtering priority <= 2",
 			verify: func(t *testing.T) {
-				if filter.Priority != 5 {
-					t.Errorf("Priority = %d, want 5", filter.Priority)
+				if filter.Priority != 2 {
+					t.Errorf("Priority = %d, want 2", filter.Priority)
 				}
 			},
 		},
@@ -190,39 +190,39 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	out := app.crossOutliner
 
 	before := visibleOutlinerTaskIDs(out)
-	for _, id := range []string{"critical", "normal", "lowest"} {
+	for _, id := range []string{"critical", "medium", "low"} {
 		if !before[id] {
 			t.Fatalf("task %q missing before filtering; visible = %v", id, before)
 		}
 	}
 
-	if cmd := pressFilterChord(t, app, "fp3"); cmd == nil {
-		t.Fatal("fp3 produced no status command")
+	if cmd := pressFilterChord(t, app, "fp2"); cmd == nil {
+		t.Fatal("fp2 produced no status command")
 	}
+	if out.filter.Priority != 2 {
+		t.Fatalf("Priority = %d, want 2", out.filter.Priority)
+	}
+	visible := visibleOutlinerTaskIDs(out)
+	if !visible["critical"] || !visible["medium"] {
+		t.Errorf("fp2 should keep priority <= 2 tasks; visible = %v", visible)
+	}
+	if visible["low"] {
+		t.Errorf("fp2 should hide the low-priority task; visible = %v", visible)
+	}
+
+	pressFilterChord(t, app, "fp3")
 	if out.filter.Priority != 3 {
 		t.Fatalf("Priority = %d, want 3", out.filter.Priority)
 	}
-	visible := visibleOutlinerTaskIDs(out)
-	if !visible["critical"] || !visible["normal"] {
-		t.Errorf("fp3 should keep priority <= 3 tasks; visible = %v", visible)
-	}
-	if visible["lowest"] {
-		t.Errorf("fp3 should hide the priority-5 task; visible = %v", visible)
-	}
-
-	pressFilterChord(t, app, "fp5")
-	if out.filter.Priority != 5 {
-		t.Fatalf("Priority = %d, want 5", out.filter.Priority)
-	}
-	if visible := visibleOutlinerTaskIDs(out); !visible["lowest"] {
-		t.Errorf("fp5 should keep the priority-5 task; visible = %v", visible)
+	if visible := visibleOutlinerTaskIDs(out); !visible["low"] {
+		t.Errorf("fp3 should keep the low-priority task; visible = %v", visible)
 	}
 
 	pressFilterChord(t, app, "fx")
 	if out.filter.Priority != 0 {
 		t.Fatalf("Priority = %d after fx, want 0", out.filter.Priority)
 	}
-	if visible := visibleOutlinerTaskIDs(out); !visible["lowest"] {
+	if visible := visibleOutlinerTaskIDs(out); !visible["low"] {
 		t.Errorf("fx should restore all tasks; visible = %v", visible)
 	}
 }
@@ -335,8 +335,8 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 			{ID: "inbox-1", Title: "Inbox one", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"focus"}},
 			{ID: "inbox-2", Title: "Inbox two", WorkflowState: models.StateInbox, Priority: 2, Tags: []string{"focus"}},
 			{ID: "inbox-other-tag", Title: "Other tag", WorkflowState: models.StateInbox, Priority: 1, Tags: []string{"other"}},
-			{ID: "ready", Title: "Ready", WorkflowState: models.StateReady, Priority: 1, Tags: []string{"focus"}},
-			{ID: "waiting-too-low", Title: "Waiting", WorkflowState: models.StateWaiting, Priority: 5, Tags: []string{"focus"}},
+			{ID: "ready", Title: "Ready", WorkflowState: models.StateBacklog, Priority: 1, Tags: []string{"focus"}},
+			{ID: "waiting-too-low", Title: "Waiting", WorkflowState: models.StateWaiting, Priority: 3, Tags: []string{"focus"}},
 			{ID: "done", Title: "Done", WorkflowState: models.StateDone, Priority: 1, Tags: []string{"focus"}},
 		},
 	}
@@ -365,7 +365,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 
 	for id, want := range map[ListItemID]string{
 		"state:inbox":   "inbox ⋅ 2",
-		"state:ready":   "ready ⋅ 1",
+		"state:backlog": "backlog ⋅ 1",
 		"state:waiting": "waiting ⋅ 0",
 		"state:done":    "done ⋅ 1",
 	} {
@@ -538,7 +538,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	if !filter.Tags["deep"] {
 		t.Errorf("tag filter = %v, want deep", filter.Tags)
 	}
-	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !visible["lowest"] || visible["critical"] {
+	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !visible["low"] || visible["critical"] {
 		t.Errorf("tag filter should keep only the tagged task; visible = %v", visible)
 	}
 }
@@ -563,14 +563,14 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 
 func TestPriorityThresholdSemantics(t *testing.T) {
 	tasks := map[int]*models.Task{
-		1: {ID: "p1", Title: "P1", WorkflowState: models.StateReady, Priority: 1},
-		3: {ID: "p3", Title: "P3", WorkflowState: models.StateReady, Priority: 3},
-		5: {ID: "p5", Title: "P5", WorkflowState: models.StateReady, Priority: 5},
+		1: {ID: "p1", Title: "P1", WorkflowState: models.StateBacklog, Priority: 1},
+		2: {ID: "p2", Title: "P2", WorkflowState: models.StateBacklog, Priority: 2},
+		3: {ID: "p3", Title: "P3", WorkflowState: models.StateBacklog, Priority: 3},
 	}
 	for threshold, want := range map[int]map[int]bool{
-		0: {1: true, 3: true, 5: true},
-		3: {1: true, 3: true, 5: false},
-		5: {1: true, 3: true, 5: true},
+		0: {1: true, 2: true, 3: true},
+		2: {1: true, 2: true, 3: false},
+		3: {1: true, 2: true, 3: true},
 	} {
 		filter := newFilterState()
 		filter.Priority = threshold

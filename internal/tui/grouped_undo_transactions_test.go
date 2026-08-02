@@ -23,7 +23,7 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 	source, dest := env.source, env.dest
 	moved := source.GetTaskByID("move-task-1")
 
-	env.cfg.Planning().NextOrder = []config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().SetNext([]config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}})
 	env.cfg.Planning().Today = []config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}}
 	if err := saveTestRuntime(env.mgr, env.cfg); err != nil {
 		t.Fatalf("save config: %v", err)
@@ -85,10 +85,10 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	moved := source.GetTaskByID("shared-id")
 	other := &models.Project{ID: "alpha", Name: "Alpha"}
 
-	env.cfg.Planning().NextOrder = []config.ProjectTaskLocator{
+	env.cfg.Planning().SetNext([]config.ProjectTaskLocator{
 		{TaskID: moved.ID, ProjectID: source.ID},
 		{TaskID: moved.ID, ProjectID: other.ID},
-	}
+	})
 	env.cfg.Planning().Today = []config.ProjectTaskLocator{
 		{TaskID: moved.ID, ProjectID: source.ID},
 		{TaskID: moved.ID, ProjectID: other.ID},
@@ -146,7 +146,7 @@ func TestTUITaskMoveUsesCanonicalTask(t *testing.T) {
 	if movedMsg.OldShortID != oldCanonicalShortID {
 		t.Fatalf("OldShortID = %d, want canonical short ID %d", movedMsg.OldShortID, oldCanonicalShortID)
 	}
-	if staleTask.State() != models.StateReady {
+	if staleTask.State() != models.StateBacklog {
 		t.Fatalf("stale message task must not be mutated, got state %q", staleTask.State())
 	}
 
@@ -160,7 +160,7 @@ func TestTUITaskMoveUsesCanonicalTask(t *testing.T) {
 	if destTask.Title != "Move me" {
 		t.Fatalf("destination task title = %q, want canonical %q", destTask.Title, "Move me")
 	}
-	if destTask.State() != models.StateReady {
+	if destTask.State() != models.StateBacklog {
 		t.Fatalf("destination task state = %q, want ready", destTask.State())
 	}
 }
@@ -179,7 +179,7 @@ func TestTUITaskMoveRollsBackOnCommitFailure(t *testing.T) {
 	// target the journal rejects, aborting the whole transaction.
 	outsideDir := t.TempDir()
 	env.mgr = config.NewManager(filepath.Join(outsideDir, ".tt.json"))
-	env.cfg.Planning().NextOrder = []config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}}
+	env.cfg.Planning().SetNext([]config.ProjectTaskLocator{{TaskID: moved.ID, ProjectID: source.ID}})
 
 	app := env.appModel()
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{

@@ -48,9 +48,8 @@ func TestAuditProjectValidProject(t *testing.T) {
 
 	story.ParentID = &epic.ID
 	bug.ParentID = &story.ID
-	story.ApplyWorkflowState(StateNext)
+	story.ApplyWorkflowState(StateBacklog)
 	bug.ApplyWorkflowState(StateWaiting)
-	bug.DependsOn = []string{epic.ID, "other-project:external-blocker"}
 
 	project.Tasks = []*Task{epic, story, bug}
 	project.BuildTaskTree()
@@ -86,37 +85,6 @@ func TestAuditProjectRejectsCyclicParentGraph(t *testing.T) {
 	project.Tasks = []*Task{parent, child}
 
 	requireAuditErrorContains(t, project, "cyclic parent chain")
-}
-
-func TestAuditProjectRejectsSelfDependency(t *testing.T) {
-	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, "", "Self Dep")
-	task.DependsOn = []string{task.ID}
-	project.Tasks = []*Task{task}
-
-	requireAuditErrorContains(t, project, "depends on itself")
-}
-
-func TestAuditProjectRejectsDanglingLocalDependency(t *testing.T) {
-	project := newAuditTestProject(t)
-	task := newAuditTestTask(t, "task-1", 1, "", "Dangling Dep")
-	task.DependsOn = []string{"missing-task"}
-	project.Tasks = []*Task{task}
-
-	requireAuditErrorContains(t, project, "depends on missing local task")
-}
-
-func TestAuditProjectRejectsDependencyCycle(t *testing.T) {
-	project := newAuditTestProject(t)
-	taskA := newAuditTestTask(t, "a", 1, "", "A")
-	taskB := newAuditTestTask(t, "b", 2, "", "B")
-	taskC := newAuditTestTask(t, "c", 3, "", "C")
-	taskA.DependsOn = []string{taskB.ID}
-	taskB.DependsOn = []string{taskC.ID}
-	taskC.DependsOn = []string{taskA.ID}
-	project.Tasks = []*Task{taskA, taskB, taskC}
-
-	requireAuditErrorContains(t, project, "cyclic dependency")
 }
 
 func TestAuditProjectRejectsInvalidWorkflowState(t *testing.T) {

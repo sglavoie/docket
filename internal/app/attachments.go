@@ -275,7 +275,7 @@ func (s *Service) mutateAttachmentSelection(taskID string, locator TaskLocator, 
 // them are staged, committed, and crash-recovered together. It is the attachment
 // analog of commitProjectWithArtifacts.
 func (s *Service) commitTaskWithSideEffects(ref TaskRef, expectedRevision string, ops []storage.AttachmentOp, undoAction, undoContext string) (TaskResult, error) {
-	generated := applyPostMutationHooksAtWithID(ref.Project, s.clock.Now(), s.ids.NewID)
+	applyPostMutationHooks(ref.Project)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
@@ -291,7 +291,5 @@ func (s *Service) commitTaskWithSideEffects(ref TaskRef, expectedRevision string
 	if len(results) > 0 && results[0] != nil {
 		revision = results[0].Revision
 	}
-	res := newTaskResult(ref, revision)
-	res.RecurringGenerated = generated
-	return res, nil
+	return newTaskResult(ref, revision), nil
 }

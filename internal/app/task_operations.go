@@ -109,10 +109,10 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		}
 		parentID := locator.TaskID
 		result, err := s.Capture(CaptureRequest{
-			ProjectID: locator.ProjectID,
-			Title:     req.Text,
-			ParentID:  &parentID,
-			State:     models.StateReady,
+			ProjectID:   locator.ProjectID,
+			Title:       req.Text,
+			ParentID:    &parentID,
+			Destination: CaptureDestinationBacklog,
 		})
 		return singleTaskOperationResult(result, err)
 

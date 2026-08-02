@@ -28,7 +28,7 @@ type OutlinerRouteState struct {
 
 // UnmarshalJSON keeps legacy route persistence readable without making retired
 // states valid in the target WorkflowStateSet API. Review filters normalize to
-// Ready, matching task-state conversion; unknown values remain hard errors.
+// Backlog, matching task-state conversion; unknown values remain hard errors.
 func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		Mode          string                 `json:"mode,omitempty"`
@@ -62,18 +62,17 @@ func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 }
 
 const (
-	OutlinerModeAll      = "all"
-	OutlinerModeInbox    = "inbox"
-	OutlinerModeNext     = "next"
-	OutlinerModeBacklog  = "backlog"
-	OutlinerModeDue      = "due"
-	OutlinerModePriority = "priority"
-	OutlinerModeBlocked  = "blocked"
+	OutlinerModeAll     = "all"
+	OutlinerModeInbox   = "inbox"
+	OutlinerModeToday   = "today"
+	OutlinerModeNext    = "next"
+	OutlinerModeBacklog = "backlog"
+	OutlinerModeDue     = "due"
 )
 
 // NormalizeOutlinerRouteState returns a defensive, canonical copy of state.
 // Missing and unknown modes fall back to All. Retired mode names are translated
-// to one of the ten modes plus the smallest canonical predicate that preserves
+// to one of the six modes plus the smallest canonical predicate that preserves
 // their meaning.
 func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	state.FilterStates = cloneWorkflowStateSet(state.FilterStates)
@@ -81,7 +80,7 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	switch mode {
 	case "active":
 		state.Mode = OutlinerModeAll
-		state.FilterStates = mustWorkflowStateSet(models.StateReady, models.StateInProgress)
+		state.FilterStates = mustWorkflowStateSet(models.StateBacklog, models.StateDoing)
 	case "waiting":
 		state.Mode = OutlinerModeAll
 		state.FilterStates = mustWorkflowStateSet(models.StateWaiting)
@@ -93,10 +92,10 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.FilterStates = mustWorkflowStateSet(models.StateSomeday)
 	case "review":
 		state.Mode = OutlinerModeAll
-		// Review tasks are converted to Ready plus the review tag by the task
-		// compatibility reader. The retired route has no tag facet, so Ready is
+		// Review tasks are converted to Backlog plus the review tag by the task
+		// compatibility reader. The retired route has no tag facet, so Backlog is
 		// the closest target-state predicate it can retain.
-		state.FilterStates = mustWorkflowStateSet(models.StateReady)
+		state.FilterStates = mustWorkflowStateSet(models.StateBacklog)
 	case "snoozed":
 		state.Mode = OutlinerModeAll
 		state.FilterSnoozed = true
@@ -106,7 +105,7 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	case "due-soon", "due-date", "due-dates":
 		state.Mode = OutlinerModeDue
 	case "high-priority":
-		state.Mode = OutlinerModePriority
+		state.Mode = OutlinerModeAll
 	case "pinned":
 		state.Mode = OutlinerModeAll
 		state.FilterPinned = true
@@ -116,13 +115,14 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.Mode = OutlinerModeAll
 	case "parked":
 		state.Mode = OutlinerModeAll
+	case "priority", "blocked":
+		state.Mode = OutlinerModeAll
 	case OutlinerModeAll,
 		OutlinerModeInbox,
+		OutlinerModeToday,
 		OutlinerModeNext,
 		OutlinerModeBacklog,
-		OutlinerModeDue,
-		OutlinerModePriority,
-		OutlinerModeBlocked:
+		OutlinerModeDue:
 		state.Mode = mode
 	default:
 		state.Mode = OutlinerModeAll

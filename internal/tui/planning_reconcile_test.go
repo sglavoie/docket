@@ -54,6 +54,12 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 	seedNoteMigrationCatalog(t, dataDir, project)
 
 	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
+	if err := manager.CommitPlanning(config.NewPlanningState()); err != nil {
+		t.Fatalf("seed planning: %v", err)
+	}
+	if err := manager.CommitMachine(config.NewMachineState()); err != nil {
+		t.Fatalf("seed machine: %v", err)
+	}
 	runtime, err := manager.LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("load runtime: %v", err)
@@ -90,7 +96,7 @@ func (e *planningReconcileEnv) seedToday(t *testing.T) {
 func (e *planningReconcileEnv) seedNextOrder(t *testing.T) {
 	t.Helper()
 	planning := clonePlanningState(e.runtime.Planning())
-	planning.NextOrder = []config.ProjectTaskLocator{{TaskID: e.taskID, ProjectID: e.project.ID}}
+	planning.SetNext([]config.ProjectTaskLocator{{TaskID: e.taskID, ProjectID: e.project.ID}})
 	if err := e.runtime.CommitPlanning(planning); err != nil {
 		t.Fatalf("seed focus queue: %v", err)
 	}
@@ -107,19 +113,18 @@ func (e *planningReconcileEnv) reloadPlanning(t *testing.T) *config.PlanningStat
 }
 
 // TestTUIStateTransitionsPreservePlanningExclusivity locks FR-009-002 for the TUI
-// state-change surfaces: a Today task transitioned to Next through the view-local
-// coordinator picker, the global (plain Transition) state picker, or the bulk
-// pipeline is dropped from the Daily Plan as part of the same transaction — no
-// surface leaves a task in both horizons.
+// state-change surfaces: a Today task moved to another lifecycle state through
+// the view-local coordinator picker, the global state picker, or the bulk
+// pipeline is dropped from Today as part of the same transaction.
 func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	t.Run("view-local coordinator picker drops Today", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateReady)
+		env := newPlanningReconcileEnv(t, models.StateBacklog)
 		env.seedToday(t)
 
 		coords := newSecondaryCoordinators(env.service)
 		cmd := coords.TaskItem.Transition(
 			TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID},
-			models.StateNext,
+			models.StateWaiting,
 		)
 		assertNotTransactionError(t, cmd())
 
@@ -130,10 +135,10 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	})
 
 	t.Run("global plain-Transition picker drops Today", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateReady)
+		env := newPlanningReconcileEnv(t, models.StateBacklog)
 		env.seedToday(t)
 
-		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateNext}); err != nil {
+		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 
@@ -144,11 +149,11 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	})
 
 	t.Run("bulk transition drops Today", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateReady)
+		env := newPlanningReconcileEnv(t, models.StateBacklog)
 		env.seedToday(t)
 
 		coords := newSecondaryCoordinators(env.service)
-		cmd := coords.Bulk.Transition([]string{env.taskID}, models.StateNext)
+		cmd := coords.Bulk.Transition([]string{env.taskID}, models.StateWaiting)
 		assertNotTransactionError(t, cmd())
 
 		planning := env.reloadPlanning(t)
@@ -158,10 +163,10 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	})
 
 	t.Run("transition out of Next drops stale order entry", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateNext)
+		env := newPlanningReconcileEnv(t, models.StateBacklog)
 		env.seedNextOrder(t)
 
-		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateInProgress}); err != nil {
+		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateDoing}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 
@@ -181,7 +186,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 // mutation is undone first — the planning undo never jumps ahead of it.
 func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 	t.Run("Next toggle commits state and planning as one durable undoable ledger entry", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 		// Precondition: the task is planned for Today, so the promotion must also
 		// prove the Today drop rides the same transaction.
 		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
@@ -215,13 +220,13 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		if got := diskTodayLen(t, dataDir); got != 1 {
 			t.Fatalf("Daily Plan after durable undo = %d, want 1 (Today restored)", got)
 		}
-		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateReady {
+		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateBacklog {
 			t.Fatalf("task state after durable undo = %s, want ready", st)
 		}
 	})
 
 	t.Run("newer ledger mutation is undone before the planning toggle", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 
 		origPriority := diskTaskPriority(t, app.currentProject, task.ID)
 		newPriority := origPriority + 1
@@ -239,7 +244,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 
 		// u undoes the NEWEST transaction first: the priority change, not the toggle.
 		app = sendAppKey(app, syntheticKey('u'))
-		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateNext {
+		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateBacklog {
 			t.Fatalf("state after first undo = %s, want still next (priority undone first)", st)
 		}
 		if got := diskNextOrderLen(t, app.runtime.DataDir()); got != 1 {
@@ -251,7 +256,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 
 		// A second u then undoes the planning toggle, restoring the pre-toggle state.
 		app = sendAppKey(app, syntheticKey('u'))
-		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateReady {
+		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateBacklog {
 			t.Fatalf("state after second undo = %s, want ready (toggle undone)", st)
 		}
 		if got := diskNextOrderLen(t, app.runtime.DataDir()); got != 0 {

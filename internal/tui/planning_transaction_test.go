@@ -113,7 +113,7 @@ func (m *AppModel) seedDiskToday(t *testing.T, taskID, projectID string) {
 // failure.
 func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 	t.Run("w move folds state, Next removal, and Today insertion into one durable transaction", func(t *testing.T) {
-		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateWaiting)
 		// Precondition: the task holds a Next order entry, so the move must prove the
 		// order drop rides the same transaction as the state change and Today add.
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
@@ -125,8 +125,8 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 			t.Fatal("toggleToday returned nil")
 		}
 
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateReady {
-			t.Fatalf("state after move = %s, want ready", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateBacklog {
+			t.Fatalf("state after move = %s, want backlog", st)
 		}
 		if got := diskNextOrderLen(t, dataDir); got != 0 {
 			t.Fatalf("Next order after move = %d, want 0 (dropped in same txn)", got)
@@ -141,8 +141,8 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 		if _, _, err := fresh.UndoWithEntry(storage.GlobalScope()); err != nil {
 			t.Fatalf("durable undo from fresh ledger: %v", err)
 		}
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
-			t.Fatalf("state after durable undo = %s, want next", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {
+			t.Fatalf("state after durable undo = %s, want waiting", st)
 		}
 		if got := diskNextOrderLen(t, dataDir); got != 1 {
 			t.Fatalf("Next order after durable undo = %d, want 1 (restored)", got)
@@ -154,8 +154,8 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 		if _, _, err := fresh.RedoWithEntry(storage.GlobalScope()); err != nil {
 			t.Fatalf("durable redo from fresh ledger: %v", err)
 		}
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateReady {
-			t.Fatalf("state after durable redo = %s, want ready", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateBacklog {
+			t.Fatalf("state after durable redo = %s, want backlog", st)
 		}
 		if got := diskNextOrderLen(t, dataDir); got != 0 {
 			t.Fatalf("Next order after durable redo = %d, want 0", got)
@@ -166,7 +166,7 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 	})
 
 	t.Run("in-session undo and redo restore the exact horizons without an artifact conflict", func(t *testing.T) {
-		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateWaiting)
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
 		_ = m.toggleToday()
@@ -196,7 +196,7 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 	})
 
 	t.Run("an injected commit failure leaves project and planning at pre-mutation values", func(t *testing.T) {
-		m, repo, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m, repo, task, dataDir := newPlanningLedgerApp(t, models.StateWaiting)
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
 		repo.fail = true
@@ -218,8 +218,8 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 		}
 
 		// Disk is untouched: state, Next ordering, and Today all at pre-mutation.
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
-			t.Fatalf("state after failed move = %s, want next (unchanged)", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {
+			t.Fatalf("state after failed move = %s, want waiting (unchanged)", st)
 		}
 		if got := diskNextOrderLen(t, dataDir); got != 1 {
 			t.Fatalf("Next order after failed move = %d, want 1 (unchanged)", got)
@@ -230,29 +230,33 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 	})
 }
 
-// TestStateMovesPreservePlanningExclusivity locks FR-010-002 for the TUI seams:
-// a state move that enters StateNext drops Today, and a state move that leaves
-// StateNext drops the stale Next order entry, within the same durable transaction,
-// across the generic (SetSection), workflow-aware (SetSectionWorkflow), and bulk
-// (CommitProjectWorkflow) coordinator paths.
+// TestStateMovesPreservePlanningExclusivity locks the schema-6 TUI seams:
+// explicit Next planning drops Today, and lifecycle moves clear stale planning
+// membership in the same durable transaction.
 func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
-	t.Run("generic transition into Next drops Today", func(t *testing.T) {
-		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
+	t.Run("explicit AddNext drops Today", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskToday(t, task.ID, m.currentProject.ID)
 
-		if _, err := m.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateNext}); err != nil {
-			t.Fatalf("Transition: %v", err)
+		if _, err := m.appService.ApplyPlanning(app.PlanningRequest{
+			Locator: app.TaskLocator{ProjectID: m.currentProject.ID, TaskID: task.ID},
+			Action:  app.PlanningAddNext,
+		}); err != nil {
+			t.Fatalf("ApplyPlanning(AddNext): %v", err)
 		}
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
-			t.Fatalf("state = %s, want next", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateBacklog {
+			t.Fatalf("state = %s, want backlog", st)
 		}
 		if got := diskTodayLen(t, dataDir); got != 0 {
-			t.Fatalf("Daily Plan after entering Next = %d, want 0", got)
+			t.Fatalf("Today after AddNext = %d, want 0", got)
+		}
+		if got := diskNextOrderLen(t, dataDir); got != 1 {
+			t.Fatalf("Next after AddNext = %d, want 1", got)
 		}
 	})
 
 	t.Run("generic transition out of Next drops the stale order entry", func(t *testing.T) {
-		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateNext)
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
 		if _, err := m.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateWaiting}); err != nil {
@@ -266,32 +270,32 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		}
 	})
 
-	t.Run("coordinated transition into Next drops Today", func(t *testing.T) {
-		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
+	t.Run("coordinated lifecycle transition drops Today", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskToday(t, task.ID, m.currentProject.ID)
 
 		cmd := m.secondaryFeatures.TaskItem.Transition(
 			taskIdentityFor(task, m.currentProject),
-			models.StateNext,
+			models.StateWaiting,
 		)
 		assertNotTransactionError(t, cmd())
 
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
-			t.Fatalf("state = %s, want next", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {
+			t.Fatalf("state = %s, want waiting", st)
 		}
 		if got := diskTodayLen(t, dataDir); got != 0 {
 			t.Fatalf("Daily Plan after section move = %d, want 0", got)
 		}
 	})
 
-	t.Run("project commit section move into Next drops Today", func(t *testing.T) {
-		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateReady)
+	t.Run("project commit lifecycle move drops Today", func(t *testing.T) {
+		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskToday(t, task.ID, m.currentProject.ID)
 
 		// Mirror the shell bulk-state handler: mutate the project in memory, then
 		// commit through the project coordinator naming the changed tasks.
 		m.currentProject.MutateTask(task.ID, func(tk *models.Task) {
-			tk.ApplyWorkflowState(models.StateNext)
+			tk.ApplyWorkflowState(models.StateWaiting)
 		})
 		cmd := m.secondaryFeatures.TaskItem.CommitProject(
 			m.currentProject,
@@ -300,8 +304,8 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		)
 		assertNotTransactionError(t, cmd())
 
-		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateNext {
-			t.Fatalf("state = %s, want next", st)
+		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {
+			t.Fatalf("state = %s, want waiting", st)
 		}
 		if got := diskTodayLen(t, dataDir); got != 0 {
 			t.Fatalf("Daily Plan after bulk section move = %d, want 0", got)

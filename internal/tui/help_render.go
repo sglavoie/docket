@@ -33,7 +33,6 @@ var helpIntentOrder = []string{
 var helpCategoryIntent = map[string]string{
 	"Status":          "Resolve",
 	"Priority":        "Resolve",
-	"Recurrence":      "Resolve",
 	"Due Date":        "Route & Schedule",
 	"Snooze":          "Route & Schedule",
 	"Linked Tasks":    "Refine",

@@ -8,7 +8,6 @@ import (
 
 const (
 	operationTaskChecklist            OperationID = "tui.task.checklist"
-	operationTaskRecurrence           OperationID = "tui.task.recurrence"
 	operationTaskComments             OperationID = "tui.task.comments"
 	operationTaskDecisions            OperationID = "tui.task.decisions"
 	operationTaskAttachments          OperationID = "tui.task.attachments"

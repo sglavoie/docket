@@ -17,10 +17,11 @@ var (
 	// ErrProjectNotFound marks a request targeting a project absent from the
 	// loaded snapshot.
 	ErrProjectNotFound = errors.New("app: project not found")
-	// ErrProtectedSystemInbox marks a project lifecycle request that targets
-	// the catalog-owned system Inbox. Adapters supply its durable catalog ID;
-	// the application layer never infers protection from a display name or slug.
-	ErrProtectedSystemInbox = errors.New("app: protected system Inbox")
+	// ErrProtectedSystemUnfiled marks a project lifecycle request that targets
+	// the catalog-owned system Unfiled project.
+	ErrProtectedSystemUnfiled = errors.New("app: protected system Unfiled")
+	// ErrProtectedSystemInbox is the compile-time compatibility name.
+	ErrProtectedSystemInbox = ErrProtectedSystemUnfiled
 	// ErrTaskNotFound marks a request targeting a task absent from the loaded
 	// snapshot.
 	ErrTaskNotFound = errors.New("app: task not found")
@@ -31,10 +32,6 @@ var (
 	// ErrInvalidTransition marks a state transition the workflow model forbids
 	// (e.g. leaving a terminal state without reopening first).
 	ErrInvalidTransition = errors.New("app: invalid state transition")
-	// ErrDependencyBlocked marks a completion refused because the task still has
-	// unresolved dependencies. Dependency blocking is derived, not a workflow
-	// state, so it gates completion rather than replacing the target state.
-	ErrDependencyBlocked = errors.New("app: task has unresolved dependencies")
 	// ErrDestructiveConfirmationRequired marks a destructive use case (delete, bulk
 	// delete) invoked without explicit intent. Destructive requests must set their
 	// Confirm flag; the check runs before any mutation, so an unconfirmed request
@@ -57,7 +54,7 @@ type IncompleteChild struct {
 	ShortID int
 	// Title is the child's title.
 	Title string
-	// Status is the child's workflow-state label (e.g. "ready", "in_progress").
+	// Status is the child's workflow-state label (e.g. "backlog", "doing").
 	Status string
 }
 

@@ -20,7 +20,7 @@ const (
 )
 
 // OutlinerPlanningReorderMsg carries a durable planning-order reorder produced by
-// the global Outliner's J/K movement in the Today section or Next mode. The
+// J/K in a dedicated planning mode or an All-mode planning section. The
 // Outliner owns the row ordering, so it computes the full new workspace order;
 // the shell persists it through the planning transaction path and reloads the
 // cross outliner with the cursor kept on the moved task. Because the whole
@@ -34,10 +34,8 @@ type OutlinerPlanningReorderMsg struct {
 }
 
 // isPlanningReorderMode reports whether J/K reorders a durable planning list
-// rather than task hierarchy: an explicit member under the global Outliner's
-// synthetic Today section reorders the Daily Plan, while Next reorders the Focus
-// Queue. Context descendants beneath Today also return true so J/K is a quiet
-// no-op instead of accidentally mutating the underlying hierarchy.
+// rather than task hierarchy. Dedicated Today/Next modes and their synthetic
+// All-mode groups share the same reorder path.
 func (m *OutlinerModel) isPlanningReorderMode() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
@@ -46,20 +44,16 @@ func (m *OutlinerModel) isPlanningReorderMode() bool {
 	if row.IsPinnedSection {
 		return false
 	}
-	if m.primaryMode == ModeNext && row.isTaskRow() {
+	if (m.primaryMode == ModeToday || m.primaryMode == ModeNext) && row.isTaskRow() {
 		return true
 	}
-	return row.IsTodaySection
+	return row.IsTodaySection || row.IsNextSection
 }
 
-// planningReorderMove builds the durable planning-order reorder for a J/K move in
-// the synthetic Today section or Next horizon. The target is the adjacent visible reorderable
-// planning row (in the move direction), and the two visible identities are swapped
-// in place within the complete workspace-wide planning order — so a scope or filter
-// can never swap the cursor with a hidden neighbor and hidden planning members stay
-// put relative to the requested pair. It returns a persist command, or a silent
-// no-op at a visible boundary or when the cursor is not a reorderable planning
-// member.
+// planningReorderMove builds the durable planning-order reorder for a J/K move
+// in a planning projection. The target is the adjacent visible reorderable row,
+// and the two visible identities are swapped in place within the complete
+// workspace-wide order. Hidden planning members stay put relative to the pair.
 func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	if !m.isPlanningReorderMode() {
 		return m, nil
@@ -71,7 +65,8 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 
 	kind := reorderToday
 	order := m.globalTodayOrder()
-	if m.primaryMode == ModeNext {
+	row := m.rows[m.cursor]
+	if m.primaryMode == ModeNext || row.IsNextSection {
 		kind = reorderNextOrder
 		order = m.globalNextOrder()
 	}
@@ -79,23 +74,16 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	moved := config.ProjectTaskLocator{ProjectID: project.ID, TaskID: task.ID}
 	movedPos := locatorIndex(order, moved)
 	if movedPos < 0 {
-		// The cursor task is not a member of the planning list (e.g. a Today
-		// descendant expanded under a planned root); it cannot be reordered.
+		// The cursor task is no longer a member of the planning list.
 		return m, nil
 	}
 
 	// Resolve the target from the adjacent *visible* reorderable planning row, not
 	// from the neighbor in the unfiltered durable order — otherwise a scope or
 	// filter could swap the cursor with an invisible task.
-	target, targetTask, ok := m.adjacentVisiblePlanningMember(order, delta)
+	target, _, ok := m.adjacentVisiblePlanningMember(order, delta)
 	if !ok {
 		return m, nil // visible boundary: nothing to swap with.
-	}
-	if kind == reorderToday && TodayStateOrder(task.State()) != TodayStateOrder(targetTask.State()) {
-		// Today renders state buckets before durable Daily Plan position. Swapping
-		// across buckets would change persisted order without moving either task
-		// visibly, so treat the bucket edge as a silent boundary.
-		return m, nil
 	}
 	targetPos := locatorIndex(order, target)
 	if targetPos < 0 {
@@ -114,10 +102,9 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 
 // adjacentVisiblePlanningMember returns the locator and task of the nearest
 // visible row — scanning m.rows from the cursor in the direction of delta — whose
-// task is a durable planning member (present in order). Separators, headers, and
-// non-reorderable Today descendants (visible task rows that are not plan members)
-// are skipped so J/K targets the true visible planning neighbor. It reports false
-// at a visible boundary when no such row exists.
+// task is a durable planning member (present in order). Separators and headers
+// bound the active planning section so J/K targets the true visible planning
+// neighbor. It reports false at a visible boundary when no such row exists.
 func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTaskLocator, delta int) (config.ProjectTaskLocator, *models.Task, bool) {
 	members := make(map[config.ProjectTaskLocator]bool, len(order))
 	for _, loc := range order {
@@ -145,12 +132,17 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 }
 
 // globalNextOrder returns the workspace-wide Next sequence as project-qualified
-// locators, ordered exactly as BuildNextModeRows renders it: focus-queue order
-// with unindexed StateNext members stable at the end. Reordering over this full
-// sequence (rather than only the visible scope) keeps the global order coherent.
+// locators, ordered exactly as BuildNextModeRows renders it. Reordering over
+// this full sequence (rather than only the visible scope) keeps the global order
+// coherent.
 func (m *OutlinerModel) globalNextOrder() []config.ProjectTaskLocator {
 	projects := m.projectsInCatalogOrder(m.planningProjects())
-	rows := BuildNextModeRows(m.buildOutlinerModeInput(projects))
+	input := m.buildOutlinerModeInput(projects)
+	input.CandidateTasks = nil
+	input.TaskFilter = nil
+	input.TaskExclude = nil
+	input.IncludeSnoozed = true
+	rows := BuildNextModeRows(input)
 	order := make([]config.ProjectTaskLocator, 0, len(rows))
 	for _, r := range rows {
 		if r.Task == nil || r.Project == nil {
@@ -161,9 +153,8 @@ func (m *OutlinerModel) globalNextOrder() []config.ProjectTaskLocator {
 	return order
 }
 
-// globalTodayOrder returns the workspace-wide Daily Plan as project-qualified
-// locators in their durable plan order (not the state-sorted Today display order),
-// so J/K moves a task within the persisted plan.
+// globalTodayOrder returns the workspace-wide Today list in the same durable
+// project-qualified order used by the display.
 func (m *OutlinerModel) globalTodayOrder() []config.ProjectTaskLocator {
 	plan := m.resolveTodayOrder(m.projectsInCatalogOrder(m.planningProjects()))
 	order := make([]config.ProjectTaskLocator, 0, len(plan))

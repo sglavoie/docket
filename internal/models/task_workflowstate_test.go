@@ -14,8 +14,8 @@ func TestTaskIsTerminalState(t *testing.T) {
 	}
 
 	nonterminalCases := []*Task{
-		{WorkflowState: StateReady},
-		{WorkflowState: StateInProgress},
+		{WorkflowState: StateBacklog},
+		{WorkflowState: StateDoing},
 		{WorkflowState: StateWaiting},
 		{WorkflowState: StateInbox},
 	}
@@ -27,41 +27,11 @@ func TestTaskIsTerminalState(t *testing.T) {
 }
 
 func TestTaskIsInState(t *testing.T) {
-	task := &Task{WorkflowState: StateInProgress}
-	if !task.IsInState(StateInProgress) {
-		t.Errorf("in_progress task should report IsInState(StateInProgress)")
+	task := &Task{WorkflowState: StateDoing}
+	if !task.IsInState(StateDoing) {
+		t.Errorf("in_progress task should report IsInState(StateDoing)")
 	}
-	if task.IsInState(StateReady) {
-		t.Errorf("in_progress task should not report IsInState(StateReady)")
-	}
-}
-
-func TestTaskIsDependencyBlocked(t *testing.T) {
-	project, err := NewProject("p1", "Proj", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	blocker, _ := NewGenericTask("b", 1, "Blocker")
-	blocked, _ := NewGenericTask("k", 2, "Blocked")
-	blocked.DependsOn = []string{"b"}
-	project.Tasks = []*Task{blocker, blocked}
-
-	if !blocked.IsDependencyBlocked(project) {
-		t.Errorf("task with an incomplete dependency should be dependency-blocked")
-	}
-	// Dependency blocking is derived, not a state: the blocked task is still in
-	// a nonterminal workflow state.
-	if blocked.IsTerminalState() {
-		t.Errorf("dependency-blocked task must not be terminal")
-	}
-
-	blocker.Complete()
-	if blocked.IsDependencyBlocked(project) {
-		t.Errorf("task should be unblocked once its dependency completes")
-	}
-
-	// Nil project is tolerated and reports not blocked.
-	if blocked.IsDependencyBlocked(nil) {
-		t.Errorf("nil project should yield not blocked")
+	if task.IsInState(StateBacklog) {
+		t.Errorf("in_progress task should not report IsInState(StateBacklog)")
 	}
 }

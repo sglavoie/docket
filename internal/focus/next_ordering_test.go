@@ -24,8 +24,8 @@ func TestNextOrderRankKeepsDuplicateTaskIDsIndependent(t *testing.T) {
 }
 
 func TestLegacyNextQueueMigrationUsesPersistedProjectOwnership(t *testing.T) {
-	alphaTask := &models.Task{ID: "shared", WorkflowState: models.StateReady}
-	betaTask := &models.Task{ID: "shared", WorkflowState: models.StateReady}
+	alphaTask := &models.Task{ID: "shared", WorkflowState: models.StateBacklog}
+	betaTask := &models.Task{ID: "shared", WorkflowState: models.StateBacklog}
 	alpha := &models.Project{ID: "alpha", Tasks: []*models.Task{alphaTask}}
 	beta := &models.Project{ID: "beta", Tasks: []*models.Task{betaTask}}
 	queue := []config.ProjectTaskLocator{{ProjectID: beta.ID, TaskID: betaTask.ID}}

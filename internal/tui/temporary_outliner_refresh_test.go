@@ -94,7 +94,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if target == nil || survivor == nil {
 		t.Fatal("fixture needs a non-terminal leaf and another visible task")
 	}
-	target.ApplyWorkflowState(models.StateInProgress)
+	target.ApplyWorkflowState(models.StateDoing)
 	target.Pin()
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("persist pinned completion fixture: %v", err)

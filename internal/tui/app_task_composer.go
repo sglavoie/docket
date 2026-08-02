@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -46,7 +47,7 @@ func (m *AppModel) captureComposerPreset(
 	}
 
 	if project == nil {
-		project = m.projectByID(m.runtime.Catalog().SystemInboxProjectID)
+		project = m.projectByID(m.runtime.Catalog().SystemUnfiledProjectID)
 	}
 	if project == nil {
 		return TaskComposerPreset{}, false
@@ -65,7 +66,7 @@ func (m *AppModel) captureComposerPreset(
 		AllProjects:        projects,
 		InitialText:        strings.Join(parts, " "),
 		AllowProjectSwitch: true,
-		Shared:             TaskComposerSharedAttributes{State: models.StateInbox},
+		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, true
 }
 
@@ -82,14 +83,14 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 		Kind:        ComposerProject,
 		Project:     project,
 		AllProjects: m.activeProjects(),
-		Shared:      TaskComposerSharedAttributes{State: models.StateInbox},
+		Shared:      TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}
 	if parent != nil {
 		parentID := parent.ID
 		preset.Kind = ComposerChild
 		preset.Parent = parent
 		preset.Shared.ParentID = &parentID
-		preset.Shared.State = models.StateReady
+		preset.Shared.Destination = app.CaptureDestinationBacklog
 	}
 	return preset
 }

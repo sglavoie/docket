@@ -75,15 +75,15 @@ func TestParseQuickEdit_ClearDueDate(t *testing.T) {
 
 func TestParseQuickEdit_State(t *testing.T) {
 	project := &models.Project{Name: "test"}
-	task := &models.Task{Title: "Original", WorkflowState: models.StateReady}
+	task := &models.Task{Title: "Original", WorkflowState: models.StateBacklog}
 
-	result, err := parseQuickEdit("Task $in_progress", task, project)
+	result, err := parseQuickEdit("Task $doing", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !result.stateSet || result.state != models.StateInProgress {
-		t.Errorf("expected state in_progress, got %s (set=%v)", result.state, result.stateSet)
+	if !result.stateSet || result.state != models.StateDoing {
+		t.Errorf("expected state doing, got %s (set=%v)", result.state, result.stateSet)
 	}
 }
 
@@ -119,7 +119,7 @@ func TestParseQuickEdit_Combined(t *testing.T) {
 	}
 	task := &models.Task{Title: "Original", Priority: 3}
 
-	result, err := parseQuickEdit("New title !2 #urgent @tomorrow $in_progress", task, project)
+	result, err := parseQuickEdit("New title !2 #urgent @tomorrow $doing", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -136,8 +136,8 @@ func TestParseQuickEdit_Combined(t *testing.T) {
 	if result.dueDate == nil {
 		t.Error("expected due date to be set")
 	}
-	if result.state != models.StateInProgress {
-		t.Errorf("expected state in_progress, got %s", result.state)
+	if result.state != models.StateDoing {
+		t.Errorf("expected state doing, got %s", result.state)
 	}
 }
 
@@ -180,7 +180,7 @@ func TestParseQuickEdit_DottedTags(t *testing.T) {
 
 func TestParseQuickEdit_PausedStateAndRetiredAliases(t *testing.T) {
 	project := &models.Project{Name: "test"}
-	task := &models.Task{Title: "Original", WorkflowState: models.StateInProgress}
+	task := &models.Task{Title: "Original", WorkflowState: models.StateDoing}
 
 	result, err := parseQuickEdit("Task $paused", task, project)
 	if err != nil {
@@ -203,7 +203,7 @@ func TestApplyQuickEdit(t *testing.T) {
 		Title:         "Original",
 		Priority:      3,
 		Tags:          []string{"old"},
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	project := &models.Project{
 		Tasks: []*models.Task{task},
@@ -219,7 +219,7 @@ func TestApplyQuickEdit(t *testing.T) {
 		tagsToRemove: []string{"old"},
 		dueDate:      &tomorrow,
 		dueDateSet:   true,
-		state:        models.StateInProgress,
+		state:        models.StateDoing,
 		stateSet:     true,
 	}
 
@@ -239,7 +239,7 @@ func TestApplyQuickEdit(t *testing.T) {
 	if task.DueDate == nil {
 		t.Error("expected due date to be set")
 	}
-	if task.State() != models.StateInProgress {
+	if task.State() != models.StateDoing {
 		t.Errorf("expected status in_progress, got %s", task.State())
 	}
 }
@@ -263,7 +263,7 @@ func TestApplyQuickEdit_InvalidStatusDoesNotMutate(t *testing.T) {
 		priority:    1,
 		prioritySet: true,
 		tagsToAdd:   []string{"new"},
-		state:       models.StateInProgress,
+		state:       models.StateDoing,
 		stateSet:    true,
 	}
 

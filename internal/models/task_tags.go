@@ -49,11 +49,6 @@ func (t *Task) AddTag(tag string) {
 	if err != nil {
 		return
 	}
-	if marker, semantic := ParseTaskMarker(tag); semantic {
-		if current, exists := t.Marker(); exists && current != marker {
-			return
-		}
-	}
 	var added bool
 	t.Tags, added = util.SliceAdd(t.Tags, tag)
 	if added {

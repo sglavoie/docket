@@ -11,6 +11,7 @@
     { "type": "command", "label": "reset to All over All Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "cycle to Inbox", "key": "tab" },
+    { "type": "key", "label": "cycle to Today", "key": "tab" },
     { "type": "key", "label": "cycle to Next", "key": "tab" },
     { "type": "key", "label": "cycle to Backlog", "key": "tab" },
     { "type": "key", "label": "cycle to Due", "key": "tab" },

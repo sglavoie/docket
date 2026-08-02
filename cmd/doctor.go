@@ -15,8 +15,8 @@ import (
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Check workspace data for integrity issues",
-	Long: `Validate the retained workspace domains, protected Inbox, undo ledger,
-migration snapshots, project files, task identities, hierarchy, and dependency
+	Long: `Validate the retained workspace domains, protected Unfiled project,
+migration snapshots, project files, task identities, and hierarchy
 references. Diagnostics are read-only unless --fix is explicitly supplied;
 immutable migration snapshots are never changed.`,
 	Args: cobra.NoArgs,
@@ -38,57 +38,21 @@ type doctorResults struct {
 	workspaceIssues   []doctorIssue
 	workspaceNotes    []doctorIssue
 	loadFailures      []doctorIssue
-	orphanedCrossRefs []doctorIssue
 	duplicateIDs      []doctorIssue
 	duplicateShortIDs []doctorIssue
-	deadDependencies  []doctorIssue
 	missingTaskFiles  []doctorIssue
 	brokenParentRefs  []doctorIssue
 	emptyProjects     []doctorIssue
 }
 
-// projectResolver resolves a project by ID or slug for doctor's cross-project
-// reference audit. It mirrors config.Config.GetProject over the full
-// (archived-inclusive) project set but is built from the catalog-domain project
-// slice, so the audit no longer depends on the config.Config facade.
-type projectResolver map[string]*models.Project
-
-// newProjectResolver indexes projects by both ID and slug, matching the lookup
-// keys config.Config.GetProject accepts.
-func newProjectResolver(projects []*models.Project) projectResolver {
-	r := make(projectResolver, len(projects)*2)
-	for _, p := range projects {
-		if p == nil {
-			continue
-		}
-		if p.ID != "" {
-			r[p.ID] = p
-		}
-		if p.Slug != "" {
-			r[p.Slug] = p
-		}
-	}
-	return r
-}
-
-// GetProject returns the project matching idOrSlug, or nil when none matches
-// (mirroring config.Config.GetProject's nil-not-found and empty-input contract).
-func (r projectResolver) GetProject(idOrSlug string) *models.Project {
-	if idOrSlug == "" {
-		return nil
-	}
-	return r[idOrSlug]
-}
-
 func (r *doctorResults) totalIssues() int {
-	return len(r.workspaceIssues) + len(r.loadFailures) + len(r.orphanedCrossRefs) +
-		len(r.duplicateIDs) + len(r.duplicateShortIDs) + len(r.deadDependencies) +
+	return len(r.workspaceIssues) + len(r.loadFailures) +
+		len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.missingTaskFiles) + len(r.brokenParentRefs)
 }
 
 func (r *doctorResults) fixableIssues() int {
-	return len(r.orphanedCrossRefs) + len(r.duplicateShortIDs) +
-		len(r.deadDependencies) + len(r.brokenParentRefs)
+	return len(r.duplicateShortIDs) + len(r.brokenParentRefs)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -100,13 +64,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	everyProject := workspace.Runtime.AllProjects()
-	resolver := newProjectResolver(everyProject)
 	var loadedProjects []*models.Project
 	results := &doctorResults{}
 	checkWorkspaceHealth(workspace, results)
 
-	// Load every retained project, including archived projects, so dependency
-	// validation uses the complete catalog and terminal work remains visible.
+	// Load every retained project, including archived projects, so terminal work
+	// and hierarchy integrity remain visible.
 	for _, project := range everyProject {
 		_, loadErr := storage.LoadProjectWithWarnings(project)
 		if loadErr != nil {
@@ -125,11 +88,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkDuplicateIDs(loadedProjects, results)
 	checkDuplicateShortIDs(loadedProjects, results)
 	checkBrokenParentRefs(loadedProjects, results)
-	checkDeadDependencies(loadedProjects, results)
-	checkOrphanedCrossRefs(loadedProjects, resolver, results)
 
 	if fix {
-		fixIssues(loadedProjects, resolver)
+		fixIssues(loadedProjects)
 	}
 
 	printResults(results)
@@ -175,25 +136,25 @@ func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {
 
 	schema := catalog.SchemaVersion
 	switch {
-	case schema == config.V5ConfigSchemaVersion:
+	case schema == config.V6ConfigSchemaVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
 			detail:  fmt.Sprintf("workspace schema %d is current", schema),
 		})
-	case schema < config.V5ConfigSchemaVersion:
+	case schema < config.V6ConfigSchemaVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is pre-v5; migration remains pending", schema),
+			detail:  fmt.Sprintf("workspace schema %d is pre-v6; startup migration remains pending", schema),
 		})
 	default:
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is newer than supported schema %d", schema, config.V5ConfigSchemaVersion),
+			detail:  fmt.Sprintf("workspace schema %d is newer than supported schema %d", schema, config.V6ConfigSchemaVersion),
 		})
 	}
 
 	checkRetainedDomainArtifacts(runtime.DataDir(), schema, results)
-	checkProtectedInbox(catalog, results)
+	checkProtectedUnfiled(catalog, results)
 	checkWorkspaceUndoLedger(runtime.DataDir(), results)
 	checkMigrationSnapshots(runtime.DataDir(), schema, results)
 }
@@ -206,7 +167,7 @@ func checkRetainedDomainArtifacts(dataDir string, schema int, results *doctorRes
 		{name: "workspace", path: config.WorkspaceCatalogPath(dataDir)},
 		{name: "planning", path: config.PlanningStatePath(dataDir)},
 	}
-	if schema < config.V5ConfigSchemaVersion {
+	if schema < config.V6ConfigSchemaVersion {
 		// A legacy v4 workspace owns both retired domains. During the staged
 		// runtime cutover, newly bootstrapped workspaces own neither even though
 		// activation has not yet raised their catalog schema. Treat one surviving
@@ -249,7 +210,7 @@ func checkRetainedDomainArtifacts(dataDir string, schema int, results *doctorRes
 		}
 	}
 
-	if schema >= config.V5ConfigSchemaVersion {
+	if schema >= config.V6ConfigSchemaVersion {
 		for _, retired := range []struct {
 			name string
 			path string
@@ -272,44 +233,49 @@ func checkRetainedDomainArtifacts(dataDir string, schema int, results *doctorRes
 	}
 }
 
-func checkProtectedInbox(catalog *config.WorkspaceCatalog, results *doctorResults) {
-	inboxID := catalog.SystemInboxProjectID
-	if inboxID == "" {
+func checkProtectedUnfiled(catalog *config.WorkspaceCatalog, results *doctorResults) {
+	unfiledID := catalog.SystemUnfiledProjectID
+	if unfiledID == "" {
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
-			project: "Inbox",
-			detail:  "protected system Inbox ID is missing",
+			project: "Unfiled",
+			detail:  "protected system Unfiled ID is missing",
 		})
 		return
 	}
 	for _, project := range catalog.Projects {
-		if project.ID != inboxID {
+		if project.ID != unfiledID {
 			continue
 		}
-		if project.Name != config.SystemInboxName || project.Slug != config.SystemInboxSlug {
+		if project.Name != config.SystemUnfiledName || project.Slug != config.SystemUnfiledSlug {
 			results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
-				project: "Inbox",
+				project: "Unfiled",
 				detail: fmt.Sprintf(
 					"protected project %q has identity %q/%q; want %q/%q",
-					inboxID,
+					unfiledID,
 					project.Name,
 					project.Slug,
-					config.SystemInboxName,
-					config.SystemInboxSlug,
+					config.SystemUnfiledName,
+					config.SystemUnfiledSlug,
 				),
 			})
 		}
 		if project.Archived || project.ArchivedAt != nil {
 			results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
-				project: "Inbox",
-				detail:  fmt.Sprintf("protected project %q is archived", inboxID),
+				project: "Unfiled",
+				detail:  fmt.Sprintf("protected project %q is archived", unfiledID),
 			})
 		}
 		return
 	}
 	results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
-		project: "Inbox",
-		detail:  fmt.Sprintf("protected system Inbox references unknown project %q", inboxID),
+		project: "Unfiled",
+		detail:  fmt.Sprintf("protected system Unfiled references unknown project %q", unfiledID),
 	})
+}
+
+// checkProtectedInbox is the compile-time compatibility name.
+func checkProtectedInbox(catalog *config.WorkspaceCatalog, results *doctorResults) {
+	checkProtectedUnfiled(catalog, results)
 }
 
 func checkWorkspaceUndoLedger(dataDir string, results *doctorResults) {
@@ -333,7 +299,7 @@ func checkWorkspaceUndoLedger(dataDir string, results *doctorResults) {
 }
 
 func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults) {
-	inspection, err := config.InspectPreSimplificationV5Snapshots(dataDir)
+	v5Inspection, err := config.InspectPreSimplificationV5Snapshots(dataDir)
 	if err != nil {
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
 			project: "Migration",
@@ -341,28 +307,33 @@ func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults)
 		})
 		return
 	}
-	for _, issue := range inspection.Issues {
+	for _, issue := range v5Inspection.Issues {
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
 			project: "Migration",
 			detail:  issue,
 		})
 	}
-	switch {
-	case inspection.HasArtifacts:
+	if v5Inspection.HasArtifacts {
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("%s recorded", Pluralize(len(inspection.Pairs), "pre-simplification snapshot pair", "pre-simplification snapshot pairs")),
+			detail:  fmt.Sprintf("%s recorded", Pluralize(len(v5Inspection.Pairs), "pre-v5 snapshot pair", "pre-v5 snapshot pairs")),
 		})
-	case schema >= config.V5ConfigSchemaVersion:
+	}
+	v6Inspection, err := config.InspectPreConsolidationV6Snapshots(dataDir)
+	if err != nil {
+		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{project: "Migration", detail: err.Error()})
+		return
+	}
+	for _, issue := range v6Inspection.Issues {
+		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{project: "Migration", detail: issue})
+	}
+	if v6Inspection.HasArtifacts {
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
-			detail:  "clean workspace; no recorded pre-v5 migration",
+			detail:  fmt.Sprintf("%s recorded", Pluralize(len(v6Inspection.Pairs), "pre-v6 snapshot pair", "pre-v6 snapshot pairs")),
 		})
-	default:
-		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
-			project: "Migration",
-			detail:  "no pre-simplification snapshot expected before v5 migration",
-		})
+	} else if schema >= config.V6ConfigSchemaVersion {
+		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{project: "Migration", detail: "clean schema-6 workspace; no pre-v6 snapshot recorded"})
 	}
 }
 
@@ -452,84 +423,7 @@ func checkBrokenParentRefs(projects []*models.Project, results *doctorResults) {
 	}
 }
 
-func checkDeadDependencies(projects []*models.Project, results *doctorResults) {
-	for _, project := range projects {
-		taskMap := buildTaskMap(project)
-		for _, task := range project.Tasks {
-			for _, dep := range task.DependsOn {
-				ref := models.ParseTaskRef(dep)
-				if ref.IsCrossProject() {
-					continue // handled by checkOrphanedCrossRefs
-				}
-				if _, exists := taskMap[ref.TaskID]; !exists {
-					results.deadDependencies = append(results.deadDependencies, doctorIssue{
-						project: project.Name,
-						task:    task.ID,
-						detail:  fmt.Sprintf("depends on nonexistent task %s (task: %s)", ref.TaskID, task.Title),
-					})
-				}
-			}
-		}
-	}
-}
-
-func checkOrphanedCrossRefs(projects []*models.Project, resolver interface{ GetProject(string) *models.Project }, results *doctorResults) {
-	// Build a map of all loaded projects for task lookup
-	projectTaskMaps := make(map[string]map[string]bool)
-	for _, project := range projects {
-		projectTaskMaps[project.ID] = buildTaskIDSet(project)
-	}
-
-	for _, project := range projects {
-		for _, task := range project.Tasks {
-			checkCrossRefs(project.Name, task, task.DependsOn, "DependsOn", resolver, projectTaskMaps, results)
-		}
-	}
-}
-
-func checkCrossRefs(projectName string, task *models.Task, refs []string, refType string, resolver interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, results *doctorResults) {
-	for _, ref := range refs {
-		parsed := models.ParseTaskRef(ref)
-		if !parsed.IsCrossProject() {
-			continue
-		}
-
-		targetProject := resolver.GetProject(parsed.ProjectID)
-		if targetProject == nil {
-			results.orphanedCrossRefs = append(results.orphanedCrossRefs, doctorIssue{
-				project: projectName,
-				task:    task.ID,
-				detail:  fmt.Sprintf("%s ref %s: project %s not found (task: %s)", refType, ref, parsed.ProjectID, task.Title),
-			})
-			continue
-		}
-
-		taskIDs, loaded := projectTaskMaps[targetProject.ID]
-		if !loaded {
-			results.orphanedCrossRefs = append(results.orphanedCrossRefs, doctorIssue{
-				project: projectName,
-				task:    task.ID,
-				detail:  fmt.Sprintf("%s ref %s: project %s could not be loaded (task: %s)", refType, ref, parsed.ProjectID, task.Title),
-			})
-			continue
-		}
-
-		if !taskIDs[parsed.TaskID] {
-			results.orphanedCrossRefs = append(results.orphanedCrossRefs, doctorIssue{
-				project: projectName,
-				task:    task.ID,
-				detail:  fmt.Sprintf("%s ref %s: task not found in project %s (task: %s)", refType, ref, targetProject.Name, task.Title),
-			})
-		}
-	}
-}
-
-func fixIssues(projects []*models.Project, resolver interface{ GetProject(string) *models.Project }) {
-	projectTaskMaps := make(map[string]map[string]bool)
-	for _, project := range projects {
-		projectTaskMaps[project.ID] = buildTaskIDSet(project)
-	}
-
+func fixIssues(projects []*models.Project) {
 	dirtyProjects := make(map[string]bool)
 
 	for _, project := range projects {
@@ -547,14 +441,6 @@ func fixIssues(projects []*models.Project, resolver interface{ GetProject(string
 
 		taskMap := buildTaskMap(project)
 		for _, task := range project.Tasks {
-			// Fix orphaned cross-project refs and dead dependencies in DependsOn
-			if cleaned := cleanRefs(task.DependsOn, resolver, projectTaskMaps, taskMap); len(cleaned) != len(task.DependsOn) {
-				removed := len(task.DependsOn) - len(cleaned)
-				fmt.Printf("  Fixed: removed %d broken DependsOn ref(s) from task %s in %s\n", removed, task.Title, project.Name)
-				task.DependsOn = cleaned
-				dirtyProjects[project.ID] = true
-			}
-
 			// Fix broken parent refs
 			if task.ParentID != nil && *task.ParentID != "" {
 				if _, exists := taskMap[*task.ParentID]; !exists {
@@ -573,48 +459,10 @@ func fixIssues(projects []*models.Project, resolver interface{ GetProject(string
 	}
 }
 
-// cleanRefs filters DependsOn refs, removing broken same-project and cross-project refs.
-func cleanRefs(refs []string, resolver interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool, taskMap map[string]*models.Task) []string {
-	var valid []string
-	for _, ref := range refs {
-		parsed := models.ParseTaskRef(ref)
-		if parsed.IsCrossProject() {
-			if isValidCrossRef(parsed, resolver, projectTaskMaps) {
-				valid = append(valid, ref)
-			}
-		} else {
-			if _, exists := taskMap[parsed.TaskID]; exists {
-				valid = append(valid, ref)
-			}
-		}
-	}
-	return valid
-}
-
-func isValidCrossRef(ref models.TaskRef, resolver interface{ GetProject(string) *models.Project }, projectTaskMaps map[string]map[string]bool) bool {
-	targetProject := resolver.GetProject(ref.ProjectID)
-	if targetProject == nil {
-		return false
-	}
-	taskIDs, loaded := projectTaskMaps[targetProject.ID]
-	if !loaded {
-		return false
-	}
-	return taskIDs[ref.TaskID]
-}
-
 func buildTaskMap(project *models.Project) map[string]*models.Task {
 	m := make(map[string]*models.Task, len(project.Tasks))
 	for _, task := range project.Tasks {
 		m[task.ID] = task
-	}
-	return m
-}
-
-func buildTaskIDSet(project *models.Project) map[string]bool {
-	m := make(map[string]bool, len(project.Tasks))
-	for _, task := range project.Tasks {
-		m[task.ID] = true
 	}
 	return m
 }
@@ -627,8 +475,6 @@ func printResults(results *doctorResults) {
 	printSection("Duplicate task IDs", results.duplicateIDs)
 	printSection("Duplicate short IDs", results.duplicateShortIDs)
 	printSection("Broken parent refs", results.brokenParentRefs)
-	printSection("Dead dependency links", results.deadDependencies)
-	printSection("Orphaned cross-project refs", results.orphanedCrossRefs)
 	printInfoSection("Empty projects", results.emptyProjects)
 }
 

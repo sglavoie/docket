@@ -17,7 +17,6 @@ func BenchmarkBuildTaskTreeLargeProject(b *testing.B) {
 		if i%50 != 0 {
 			parentID := fmt.Sprintf("task-%05d", i-i%50)
 			task.ParentID = &parentID
-			task.DependsOn = []string{parentID}
 		}
 		project.Tasks = append(project.Tasks, task)
 	}

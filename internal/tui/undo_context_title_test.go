@@ -45,7 +45,7 @@ func TestQuickEditRename_UndoContextUsesOldTitle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task.WorkflowState = models.StateInProgress
+	task.WorkflowState = models.StateDoing
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 

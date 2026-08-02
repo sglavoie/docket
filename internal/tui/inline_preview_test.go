@@ -27,25 +27,18 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 
 func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 	project := &models.Project{ID: "project", Slug: "project", Name: "Project"}
-	needed := &models.Task{ID: "needed", ShortID: 41, Title: "Prepare 日本語 API"}
-	blocked := &models.Task{
-		ID: "blocked", ShortID: 42, Title: "Release client",
-		DependsOn: []string{"task"},
-	}
 	task := &models.Task{
 		ID:          "task",
 		ShortID:     99,
 		Title:       "Selected",
 		Description: strings.Repeat("Unicode café 界 content ", 12),
-		DependsOn:   []string{needed.ID},
 		Checklist: []models.ChecklistItem{
 			{Text: "First item", Done: true},
 			{Text: "Second item"},
 			{Text: "Third item"},
 		},
-		Recurrence: &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly},
 	}
-	project.Tasks = []*models.Task{needed, task, blocked}
+	project.Tasks = []*models.Task{task}
 	project.BuildTaskTree()
 
 	const width = 64
@@ -54,11 +47,11 @@ func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 		Indent: "    ", Width: width,
 	})
 	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if len(rendered) != inlinePeekMaxLines {
-		t.Fatalf("Peek line count = %d, want %d:\n%s", len(rendered), inlinePeekMaxLines, plain)
+	if len(rendered) != 3 || len(rendered) > inlinePeekMaxLines {
+		t.Fatalf("Peek line count = %d, want 3 within cap %d:\n%s", len(rendered), inlinePeekMaxLines, plain)
 	}
 	for _, want := range []string{
-		"Description:", "Checklist:", "Needs: Prepare", "Blocks: Release", "Repeats: every 2 weeks",
+		"Description:", "Checklist:",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Peek missing %q:\n%s", want, plain)
@@ -124,25 +117,6 @@ func TestInlinePeekShowsAttachmentNamesAndDecisionCount(t *testing.T) {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Peek missing %q:\n%s", want, plain)
 		}
-	}
-}
-
-func TestInlinePeekQualifiesCrossProjectDependencyWithoutTaskID(t *testing.T) {
-	owner := &models.Project{ID: "owner", Slug: "own", Name: "Owner"}
-	other := &models.Project{ID: "other", Slug: "api", Name: "API"}
-	task := &models.Task{ID: "task", Title: "Ship", DependsOn: []string{"other:dependency"}}
-	dependency := &models.Task{ID: "dependency", ShortID: 7, Title: "Publish schema"}
-	owner.Tasks = []*models.Task{task}
-	other.Tasks = []*models.Task{dependency}
-
-	plain := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{
-		Task: task, Project: owner, Projects: []*models.Project{owner, other}, Width: 80,
-	}), "\n"))
-	if !strings.Contains(plain, "Needs: [api] Publish schema") {
-		t.Fatalf("cross-project Peek = %q", plain)
-	}
-	if strings.Contains(plain, "#7") {
-		t.Fatalf("cross-project Peek leaked short ID: %q", plain)
 	}
 }
 

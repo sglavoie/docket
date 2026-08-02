@@ -10,8 +10,8 @@ import (
 )
 
 func TestCrossProjectTaskRowsOmitProjectBadge(t *testing.T) {
-	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateReady))
-	beta := primaryRowsProject("beta", primaryRowsTask("beta-task", models.StateReady))
+	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateBacklog))
+	beta := primaryRowsProject("beta", primaryRowsTask("beta-task", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.selectOutlinerMode(ModeAll)
 
@@ -45,7 +45,7 @@ func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
 	task := &models.Task{
 		ID:            "task",
 		Title:         "Review compact metadata",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 		Comments:      []*models.Comment{{Text: "One"}, {Text: "Two"}},
 		Attachments:   []models.Attachment{{Filename: "design.pdf"}},
 	}
@@ -65,7 +65,7 @@ func TestOutlinerTaskRowShowsSemanticMarkerAndRawTag(t *testing.T) {
 	task := &models.Task{
 		ID:            "bug-task",
 		Title:         "Fix capture grammar",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 		Tags:          []string{"bug", "composer"},
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})

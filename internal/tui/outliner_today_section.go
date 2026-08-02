@@ -3,120 +3,129 @@ package tui
 import "github.com/sglavoie/tt/internal/models"
 
 const (
-	todaySectionName        = "Today"
 	todaySectionCollapseKey = "_planning:today"
+	nextSectionCollapseKey  = "_planning:next"
 )
 
-type todaySectionBuild struct {
-	rows             []outlinerRow
-	suppressed       map[TaskIdentity]bool
-	visiblePlanCount int
+type planningSectionBuild struct {
+	rows       []outlinerRow
+	suppressed map[TaskIdentity]bool
+	group      models.WorkflowStateGroup
 }
 
-// buildTodaySection realizes the Daily Plan as a synthetic section inside the
-// All mode. Membership is constrained by the canonical application planning
-// invariant; snoozed entries stay hidden by default but an explicit snoozed
-// filter may reveal them without mutating the durable plan.
+// buildTodaySection realizes explicit Today membership in durable order. Every
+// visible task is a flat promoted row with an ancestor breadcrumb; descendants
+// appear only when they have their own Today membership.
 func (m *OutlinerModel) buildTodaySection(
-	projects []*models.Project,
-	candidates map[string][]*models.Task,
 	input OutlinerModeInput,
 	pinned map[TaskIdentity]bool,
-) todaySectionBuild {
-	result := todaySectionBuild{suppressed: make(map[TaskIdentity]bool)}
-	if len(projects) == 0 {
-		return result
+) planningSectionBuild {
+	result := planningSectionBuild{
+		suppressed: make(map[TaskIdentity]bool, len(input.TodayIDs)),
+		group:      models.StateGroupToday,
 	}
-
-	input.CandidateTasks = candidates
-	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
-		return !planningTodayEligible(task) ||
-			(task.IsSnoozedAt(input.Now) && !m.hasExplicitSnoozedFilter()) ||
-			pinned[taskIdentityFor(task, project)]
-	}
-	if input.TaskFilter == nil {
-		input.TaskFilter = m.workModeTaskFilterAt(input.Now)
-	}
-
-	// Suppress every explicit plan member from the normal workflow forest even
-	// when it is snoozed (and therefore intentionally absent from Today). This
-	// prevents a context-preserving tree filter from reintroducing a snoozed
-	// planned parent above an otherwise visible child.
-	for _, project := range projects {
+	projects := modeProjectIndex(input.Projects)
+	for _, item := range input.TodayOrder {
+		if item.Task == nil || item.Project == nil {
+			continue
+		}
+		project := projects[item.Project.ID]
 		if project == nil {
 			continue
 		}
-		for _, task := range candidates[project.ID] {
-			if task == nil {
-				continue
-			}
-			identity := taskIdentityFor(task, project)
-			if input.TodayIDs[identity] && planningTodayEligible(task) {
-				result.suppressed[identity] = true
-			}
+		if task := project.GetTaskByID(item.Task.ID); planningTodayEligible(task) {
+			result.suppressed[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] = true
 		}
 	}
 
-	modeRows := BuildTodayModeRows(input)
-	if len(modeRows) == 0 {
-		return result
+	previousExclude := input.TaskExclude
+	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
+		identity := taskIdentityFor(task, project)
+		return pinned[identity] || (previousExclude != nil && previousExclude(task, project))
 	}
-
-	rootRowIndexes := make([]int, 0, len(modeRows))
-	for _, modeRow := range modeRows {
-		if modeRow.Task == nil || modeRow.Project == nil {
-			continue
-		}
-		identity := taskIdentityFor(modeRow.Task, modeRow.Project)
+	for _, modeRow := range BuildTodayModeRows(input) {
 		row := m.outlinerRowFromModeRow(modeRow)
 		row.IsTodaySection = true
-		row.IsTodayMember = input.TodayIDs[identity]
-		if row.IsTodayMember {
-			result.visiblePlanCount++
-		}
-		if modeRow.Depth == 0 {
-			rootRowIndexes = append(rootRowIndexes, len(result.rows))
-		}
-		result.suppressed[identity] = true
+		row.IsTodayMember = true
 		result.rows = append(result.rows, row)
 	}
-
-	// The shared Today row builder emits roots without a section-level tree
-	// connector. Inside All, give those roots the same connector language
-	// as every other built-in section while retaining the existing descendant
-	// prefixes and open-before-terminal ordering.
-	for i, rowIndex := range rootRowIndexes {
-		result.rows[rowIndex].prefix = buildTreePrefix(nil, i == len(rootRowIndexes)-1)
-		nextIndex := rowIndex + 1
-		result.rows[rowIndex].hasVisibleChildren =
-			nextIndex < len(result.rows) && !result.rows[nextIndex].IsTodayMember
-	}
-
+	assignPlanningRowPrefixes(result.rows)
 	return result
 }
 
-func (m *OutlinerModel) appendTodaySection(section todaySectionBuild) {
-	if section.visiblePlanCount == 0 || len(section.rows) == 0 {
+// buildNextSection realizes explicit Next membership in durable order. Today
+// wins defensively if an inconsistent planning snapshot contains an identity in
+// both lists, matching the locked All-mode group precedence.
+func (m *OutlinerModel) buildNextSection(
+	input OutlinerModeInput,
+	pinned map[TaskIdentity]bool,
+	today map[TaskIdentity]bool,
+) planningSectionBuild {
+	result := planningSectionBuild{
+		suppressed: make(map[TaskIdentity]bool, len(input.NextOrder)),
+		group:      models.StateGroupNext,
+	}
+	projects := modeProjectIndex(input.Projects)
+	for _, locator := range input.NextOrder {
+		project := projects[locator.ProjectID]
+		if project == nil {
+			continue
+		}
+		if task := project.GetTaskByID(locator.TaskID); task != nil && task.State().IsValid() && !task.IsTerminalState() {
+			result.suppressed[TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}] = true
+		}
+	}
+
+	previousExclude := input.TaskExclude
+	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
+		identity := taskIdentityFor(task, project)
+		return pinned[identity] || today[identity] ||
+			(previousExclude != nil && previousExclude(task, project))
+	}
+	for _, modeRow := range BuildNextModeRows(input) {
+		row := m.outlinerRowFromModeRow(modeRow)
+		row.IsNextSection = true
+		result.rows = append(result.rows, row)
+	}
+	assignPlanningRowPrefixes(result.rows)
+	return result
+}
+
+func assignPlanningRowPrefixes(rows []outlinerRow) {
+	for i := range rows {
+		rows[i].prefix = buildTreePrefix(nil, i == len(rows)-1)
+		rows[i].hasVisibleChildren = false
+	}
+}
+
+func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
+	if len(section.rows) == 0 {
 		return
+	}
+	isToday := section.group == models.StateGroupToday
+	isNext := section.group == models.StateGroupNext
+	collapseKey := nextSectionCollapseKey
+	if isToday {
+		collapseKey = todaySectionCollapseKey
 	}
 	m.rows = append(m.rows, outlinerRow{
 		IsSectionHeader: true,
-		IsTodaySection:  true,
-		SectionName:     todaySectionName,
-		SectionCount:    section.visiblePlanCount,
-		StateGroup:      models.StateGroupToday,
-		CollapseKey:     todaySectionCollapseKey,
+		IsTodaySection:  isToday,
+		IsNextSection:   isNext,
+		SectionName:     section.group.Label(),
+		SectionCount:    len(section.rows),
+		StateGroup:      section.group,
+		CollapseKey:     collapseKey,
 	})
-	if !m.collapsedSections[todaySectionCollapseKey] {
+	if !m.collapsedSections[collapseKey] {
 		m.rows = append(m.rows, section.rows...)
 	}
 }
 
-// removeTodayRowsFromTree removes every identity represented by Today or
-// explicitly suppressed from the normal workflow forest (such as a snoozed
-// plan member). Children not represented by Today are promoted so filtering
-// never strands a visible task behind a removed parent.
-func removeTodayRowsFromTree(
+// removePlanningRowsFromTree removes every explicit planning identity from a
+// lifecycle forest while promoting non-planned descendants. This keeps All
+// deduplicated without treating descendants as planned.
+func removePlanningRowsFromTree(
 	tasks []*models.Task,
 	projectID string,
 	suppressed map[TaskIdentity]bool,
@@ -129,7 +138,7 @@ func removeTodayRowsFromTree(
 		if task == nil {
 			continue
 		}
-		children := removeTodayRowsFromTree(task.Children, projectID, suppressed)
+		children := removePlanningRowsFromTree(task.Children, projectID, suppressed)
 		if suppressed[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
 			result = append(result, children...)
 			continue

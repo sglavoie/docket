@@ -137,13 +137,9 @@ func renderSubtaskItemRow(i int, st formSubtaskDraft, focused bool) string {
 	if title == "" {
 		title = MutedStyle.Render("(empty)")
 	}
-	optional := ""
-	if st.optional {
-		optional = MutedStyle.Render(" (optional)")
-	}
-	line := fmt.Sprintf("%s%s", title, optional)
+	line := title
 	if focused {
-		hint := MutedStyle.Render("  Enter: edit · Ctrl+O: optional · Ctrl+D: del · Ctrl+J/K: move")
+		hint := MutedStyle.Render("  Enter: edit · Ctrl+D: del · Ctrl+J/K: move")
 		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"

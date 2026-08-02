@@ -98,7 +98,7 @@ func TestFinalPriorityChordUsesBangPrefix(t *testing.T) {
 		}
 		got[binding.Sequence[1]] = binding.PresetValue
 	}
-	want := map[string]any{"0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+	want := map[string]any{"0": 0, "1": 1, "2": 2, "3": 3}
 	if len(got) != len(want) {
 		t.Fatalf("priority chord terminals = %v, want %v", got, want)
 	}
@@ -124,11 +124,16 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 		hasValue  bool
 	}
 	got := make(map[string]terminal)
+	gotDisplay := make(map[string]string)
+	gotOrder := make([]string, 0, 10)
 	for _, binding := range strategy.Bindings {
 		if len(binding.Sequence) != 2 || binding.Sequence[0] != "s" {
 			continue
 		}
-		got[binding.Sequence[1]] = terminal{
+		key := binding.Sequence[1]
+		gotOrder = append(gotOrder, key)
+		gotDisplay[key] = binding.DisplayKey
+		got[key] = terminal{
 			operation: binding.OperationID,
 			value:     binding.PresetValue,
 			hasValue:  binding.HasPresetValue,
@@ -136,27 +141,36 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	}
 	want := map[string]terminal{
 		"i": {operation: operationTaskSetState, value: models.StateInbox, hasValue: true},
-		"r": {operation: operationCoreBacklog},
+		"b": {operation: operationCoreBacklog},
 		"n": {operation: operationCoreNext},
-		"g": {operation: operationTaskSetState, value: models.StateInProgress, hasValue: true},
+		"t": {operation: operationCoreToday},
+		"g": {operation: operationTaskSetState, value: models.StateDoing, hasValue: true},
 		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true},
 		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true},
 		"m": {operation: operationTaskSetState, value: models.StateSomeday, hasValue: true},
 		"d": {operation: operationTaskSetState, value: models.StateDone, hasValue: true},
 		"c": {operation: operationTaskSetState, value: models.StateCanceled, hasValue: true},
-		"t": {operation: operationCoreToday},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
+	}
+	if wantOrder := []string{"i", "b", "n", "t", "g", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
+		t.Fatalf("state chord terminal order = %v, want %v", gotOrder, wantOrder)
 	}
 	for key, terminal := range want {
 		if !reflect.DeepEqual(got[key], terminal) {
 			t.Errorf("s%s = %+v, want %+v", key, got[key], terminal)
 		}
+		if gotDisplay[key] != "s"+key {
+			t.Errorf("s%s display key = %q, want %q", key, gotDisplay[key], "s"+key)
+		}
 	}
 	for _, binding := range strategy.Bindings {
 		if len(binding.Sequence) > 0 && binding.Sequence[0] == "," {
 			t.Errorf("retired comma state prefix remains registered: %v", binding.Sequence)
+		}
+		if reflect.DeepEqual(binding.Sequence, []string{"s", "r"}) {
+			t.Errorf("retired sr state alias remains registered")
 		}
 	}
 }

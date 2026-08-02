@@ -9,16 +9,16 @@ import (
 func TestWorkflowStateSetCanonicalOrderingAndMembership(t *testing.T) {
 	set, err := NewWorkflowStateSet(
 		StateCanceled,
-		StateNext,
+		StateBacklog,
 		StateInbox,
-		StateNext,
-		StateInProgress,
+		StateBacklog,
+		StateDoing,
 	)
 	if err != nil {
 		t.Fatalf("NewWorkflowStateSet: %v", err)
 	}
 
-	want := []WorkflowState{StateInbox, StateNext, StateInProgress, StateCanceled}
+	want := []WorkflowState{StateInbox, StateBacklog, StateDoing, StateCanceled}
 	if got := set.Values(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Values() = %v, want %v", got, want)
 	}
@@ -55,20 +55,20 @@ func TestWorkflowStateSetZeroValue(t *testing.T) {
 }
 
 func TestWorkflowStateSetAlgebra(t *testing.T) {
-	left, err := NewWorkflowStateSet(StateDone, StateInbox, StateNext)
+	left, err := NewWorkflowStateSet(StateDone, StateInbox, StateBacklog)
 	if err != nil {
 		t.Fatalf("left set: %v", err)
 	}
-	right, err := NewWorkflowStateSet(StateWaiting, StateNext, StateDone)
+	right, err := NewWorkflowStateSet(StateWaiting, StateBacklog, StateDone)
 	if err != nil {
 		t.Fatalf("right set: %v", err)
 	}
 
-	intersection, err := NewWorkflowStateSet(StateNext, StateDone)
+	intersection, err := NewWorkflowStateSet(StateBacklog, StateDone)
 	if err != nil {
 		t.Fatalf("intersection set: %v", err)
 	}
-	union, err := NewWorkflowStateSet(StateInbox, StateNext, StateWaiting, StateDone)
+	union, err := NewWorkflowStateSet(StateInbox, StateBacklog, StateWaiting, StateDone)
 	if err != nil {
 		t.Fatalf("union set: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestWorkflowStateSetJSONRoundTripIsCanonical(t *testing.T) {
 }
 
 func TestWorkflowStateSetJSONRejectsInvalidWithoutMutation(t *testing.T) {
-	set, err := NewWorkflowStateSet(StateNext)
+	set, err := NewWorkflowStateSet(StateBacklog)
 	if err != nil {
 		t.Fatalf("NewWorkflowStateSet: %v", err)
 	}

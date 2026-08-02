@@ -55,7 +55,7 @@ func TestProjectGetTasksByState_MultipleMatches(t *testing.T) {
 
 	project.Tasks = []*Task{task1, task2, task3}
 
-	readyTasks := project.GetTasksByState(StateReady)
+	readyTasks := project.GetTasksByState(StateBacklog)
 	if len(readyTasks) != 2 {
 		t.Errorf("expected 2 ready tasks, got %d", len(readyTasks))
 	}

@@ -143,13 +143,10 @@ func (s *Service) bulkClearDueDate(taskIDs []string, locators []TaskLocator) (Bu
 	})
 }
 
-// BulkSnooze hides every selected task until the given date, or clears the snooze
-// on every task when until is nil, committing every touched project as ONE
-// transaction. When snoozing (until non-nil) the same guards single-task Snooze
-// enforces apply to every task first: snoozing a terminal or in-progress task is
-// rejected, and because the batch is all-or-nothing one invalid task aborts the
-// whole batch before any commit. Clearing a snooze carries no guards. Tasks may
-// span projects.
+// BulkSnooze hides every selected task until the given date, or clears the
+// snooze when until is nil. Snoozing moves each nonterminal task to Backlog and
+// removes it from Today and Next atomically with the task writes. A terminal
+// task rejects the complete batch. Clearing preserves lifecycle and planning.
 func (s *Service) BulkSnooze(taskIDs []string, until *time.Time) (BulkResult, error) {
 	return s.bulkSnooze(taskIDs, nil, until)
 }
@@ -161,23 +158,72 @@ func (s *Service) BulkSnoozeByLocators(locators []TaskLocator, until *time.Time)
 func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *time.Time) (BulkResult, error) {
 	if until == nil {
 		return s.bulkAttribute(taskIDs, locators, "Snooze Tasks", "clear", nil, func(t *models.Task) {
-			t.ClearSnooze()
+			t.SnoozedUntil = nil
+			t.UpdatedAt = s.clock.Now()
 		})
 	}
-	validate := func(r TaskRef) error {
-		if r.Task.IsTerminalState() {
-			return invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", r.Task.State()))
-		}
-		if r.Task.IsInState(models.StateInProgress) {
-			return invalidInput("snooze", "cannot snooze an in-progress task (change state first)")
-		}
-		return nil
+	if len(taskIDs) == 0 && len(locators) == 0 {
+		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
-	return s.bulkAttribute(taskIDs, locators, "Snooze Tasks", "snooze", validate, func(t *models.Task) {
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return BulkResult{}, err
+	}
+	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return BulkResult{}, fmt.Errorf("capture bulk snooze rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+	for _, ref := range refs {
+		if ref.Task.IsTerminalState() {
+			return BulkResult{}, invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", ref.Task.State()))
+		}
+	}
+	now := s.clock.Now()
+	for _, ref := range refs {
+		if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
+			return BulkResult{}, invalidInput("snooze", stateErr.Error())
+		}
 		u := *until
-		t.SnoozedUntil = &u
-		t.UpdatedAt = s.clock.Now()
-	})
+		ref.Task.SnoozedUntil = &u
+	}
+
+	commits, indexes := distinctProjectCommits(refs, snap)
+	targetLocators := make([]TaskLocator, 0, len(refs))
+	for _, ref := range refs {
+		targetLocators = append(targetLocators, TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID})
+	}
+	if planningErr := attachPlanningArtifacts(
+		commits,
+		collectPlanningReconcileTargets(commits, nil, targetLocators),
+		s.defaultedPlanningArtifacts(nil),
+	); planningErr != nil {
+		return BulkResult{}, planningErr
+	}
+	outcome, err := s.commitProjects(commits, "Snooze Tasks", "snooze")
+	if err != nil {
+		return BulkResult{}, err
+	}
+	committed = true
+
+	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	for _, ref := range refs {
+		result.Tasks = append(result.Tasks, newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])))
+	}
+	for _, commit := range commits {
+		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)
+	}
+	return result, nil
 }
 
 // BulkSetTags replaces the tag set on every selected task with tags, committing

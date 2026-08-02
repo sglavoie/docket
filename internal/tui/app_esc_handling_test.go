@@ -25,11 +25,6 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 		view    View
 	}{
 		{
-			name:    "RecurrenceEditor",
-			viewTyp: ViewRecurrenceEditor,
-			view:    NewRecurrenceEditorModel(nil, nil),
-		},
-		{
 			name:    "TextEditor",
 			viewTyp: ViewTextEditor,
 			view:    NewTextEditorModel("title", "some value"),

@@ -30,9 +30,6 @@ func AuditProject(p *Project) error {
 		if err := auditTaskHierarchy(task, taskMap); err != nil {
 			return err
 		}
-		if err := auditTaskDependencies(p, task, taskMap); err != nil {
-			return err
-		}
 		if err := auditTaskSectionState(task); err != nil {
 			return err
 		}
@@ -66,36 +63,6 @@ func auditTaskHierarchy(task *Task, taskMap map[string]*Task) error {
 	}
 	if depth > MaxNestingDepth {
 		return fmt.Errorf("%s is nested at depth %d, exceeding maximum depth %d", auditTaskLabel(task), depth, MaxNestingDepth)
-	}
-
-	return nil
-}
-
-func auditTaskDependencies(p *Project, task *Task, taskMap map[string]*Task) error {
-	for _, depValue := range task.DependsOn {
-		if strings.TrimSpace(depValue) == "" {
-			return fmt.Errorf("%s has empty dependency reference", auditTaskLabel(task))
-		}
-
-		depRef := ParseTaskRef(depValue)
-		if depRef.IsEmpty() {
-			return fmt.Errorf("%s has malformed dependency reference %q", auditTaskLabel(task), depValue)
-		}
-		if depRef.IsCrossProject() {
-			continue
-		}
-		if depRef.TaskID == task.ID {
-			return fmt.Errorf("%s depends on itself", auditTaskLabel(task))
-		}
-
-		dependency, ok := taskMap[depRef.TaskID]
-		if !ok {
-			return fmt.Errorf("%s depends on missing local task %q", auditTaskLabel(task), depRef.TaskID)
-		}
-
-		if p.HasCircularDependency(task.ID, depRef.TaskID) {
-			return fmt.Errorf("%s has cyclic dependency on %s", auditTaskLabel(task), auditTaskLabel(dependency))
-		}
 	}
 
 	return nil

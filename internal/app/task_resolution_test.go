@@ -151,17 +151,17 @@ func TestTaskRequestTargetValidationFailsBeforeMutation(t *testing.T) {
 	}{
 		{
 			name: "conflicting fields",
-			req:  app.StateRequest{TaskID: "task", Locator: app.TaskLocator{ProjectID: "alpha", TaskID: "task"}, Target: models.StateNext},
+			req:  app.StateRequest{TaskID: "task", Locator: app.TaskLocator{ProjectID: "alpha", TaskID: "task"}, Target: models.StateBacklog},
 			want: app.ErrInvalidInput,
 		},
 		{
 			name: "partial locator",
-			req:  app.StateRequest{Locator: app.TaskLocator{ProjectID: "alpha"}, Target: models.StateNext},
+			req:  app.StateRequest{Locator: app.TaskLocator{ProjectID: "alpha"}, Target: models.StateBacklog},
 			want: app.ErrInvalidInput,
 		},
 		{
 			name: "missing task",
-			req:  app.StateRequest{TaskID: "missing", Target: models.StateNext},
+			req:  app.StateRequest{TaskID: "missing", Target: models.StateBacklog},
 			want: app.ErrTaskNotFound,
 		},
 	}

@@ -18,12 +18,13 @@ import (
 // destination a project needs when it leaves the default context, and reconciles
 // the hub's own list afterwards.
 
-// newRegularContextEditor pre-checks the projects carrying the label and records
-// the ones the list cannot show. SaveRegularContext treats its request as the
-// full membership, so an archived or sandbox member absent from it would be
-// relabeled by an edit the user never saw.
+// newRegularContextEditor builds both new and existing regular contexts. An
+// existing label pre-checks its active projects and records hidden members so a
+// save cannot relabel a project the user never saw. The personal editor locks
+// only its name; membership remains intentionally editable.
 func newRegularContextEditor(runtime *config.RuntimeState, label string) *contextEditor {
-	editor := newContextEditor(runtime, ContextScopeRegular, label)
+	editor := newContextEditor(runtime, label)
+	editor.nameLocked = strings.EqualFold(label, runtime.DefaultContext())
 
 	listed := make(map[string]bool, len(editor.projects))
 	for _, project := range editor.projects {
@@ -31,12 +32,12 @@ func newRegularContextEditor(runtime *config.RuntimeState, label string) *contex
 			continue
 		}
 		listed[project.ID] = true
-		if project.Context == label {
+		if label != "" && project.Context == label {
 			editor.selected[project.ID] = true
 		}
 	}
 	for _, entry := range runtime.Catalog().Projects {
-		if entry.Context == label && !listed[entry.ID] {
+		if label != "" && entry.Context == label && !listed[entry.ID] {
 			editor.hiddenMembers = append(editor.hiddenMembers, entry.ID)
 		}
 	}
@@ -48,7 +49,7 @@ func newRegularContextEditor(runtime *config.RuntimeState, label string) *contex
 // membership is what an edit is usually after.
 func (m *ContextHubModel) openRegularEditor(label string) {
 	editor := newRegularContextEditor(m.runtime, label)
-	editor.setFocus(true)
+	editor.setFocus(label != "")
 	m.armEditor(editor)
 }
 
@@ -71,7 +72,7 @@ func (m *ContextHubModel) saveRegularEditor() tea.Cmd {
 		return nil
 	}
 
-	wasActive := m.active == RegularContextScope(label)
+	wasActive := label != "" && m.active == RegularContextScope(label)
 	result, err := m.mutator.SaveRegularContext(RegularContextSaveRequest{
 		OriginalName: label,
 		Name:         newName,
@@ -101,15 +102,15 @@ func (m *ContextHubModel) saveRegularEditor() tea.Cmd {
 	m.refreshScopes(saved)
 	return func() tea.Msg {
 		return RegularContextSavedMsg{
-			Name:                newName,
-			PreviousName:        label,
-			Renamed:             result.Renamed,
-			RelabeledCount:      result.RelabeledCount,
-			Assigned:            result.Assigned,
-			Removed:             result.Removed,
-			Destination:         result.Destination,
-			WasActive:           wasActive,
-			DefaultContextMoved: result.DefaultContextMoved,
+			Name:           newName,
+			PreviousName:   label,
+			IsNew:          result.IsNew,
+			Renamed:        result.Renamed,
+			RelabeledCount: result.RelabeledCount,
+			Assigned:       result.Assigned,
+			Removed:        result.Removed,
+			Destination:    result.Destination,
+			WasActive:      wasActive,
 		}
 	}
 }
@@ -197,8 +198,7 @@ func (m *ContextHubModel) updateDestinationPrompt(msg tea.KeyPressMsg) tea.Cmd {
 
 func (m *ContextHubModel) destinationPromptView(width int) string {
 	editor := m.editor
-	// The prompt names the label the removals are leaving, which is the name being
-	// saved: a rename into the default label reaches here too.
+	// The prompt names the protected personal label the removals are leaving.
 	label := editor.savedName()
 
 	var b strings.Builder

@@ -61,7 +61,7 @@ func scopeTestProject(id, name string, taskIDs ...string) *models.Project {
 			ID:            taskID,
 			ShortID:       i + 1,
 			Title:         taskID,
-			WorkflowState: models.StateReady,
+			WorkflowState: models.StateBacklog,
 		})
 	}
 	project := &models.Project{

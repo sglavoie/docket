@@ -3,7 +3,6 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -89,7 +88,7 @@ type OutlinerModel struct {
 
 	// Cross-project mode fields (used when m.project == nil)
 	loadedProjects        []*models.Project // Successfully loaded projects
-	workspaceResolver     *app.WorkspaceResolver
+	workspaceResolver     *workspaceFilterResolver
 	crossSnapshotReady    bool            // True after the first cross-project snapshot has been accepted
 	crossLoading          bool            // True while cross-project load is in progress
 	crossSpinnerVisible   bool            // True once the 200ms delay has elapsed during an initial load

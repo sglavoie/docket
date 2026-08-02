@@ -30,8 +30,8 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	}})
 	// Next and Today are mutually exclusive, so use separate valid members while
 	// proving all planning references share one startup project load.
-	nextTask := &models.Task{ID: "task-next", ShortID: 1, Title: "Next task", WorkflowState: models.StateNext}
-	todayTask := &models.Task{ID: "task-today", ShortID: 2, Title: "Today task", WorkflowState: models.StateReady}
+	nextTask := &models.Task{ID: "task-next", ShortID: 1, Title: "Next task", WorkflowState: models.StateBacklog}
+	todayTask := &models.Task{ID: "task-today", ShortID: 2, Title: "Today task", WorkflowState: models.StateBacklog}
 	stored := *project
 	stored.Tasks = []*models.Task{nextTask, todayTask}
 	mock := NewMockPersister()

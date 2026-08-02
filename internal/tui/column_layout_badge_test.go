@@ -26,13 +26,13 @@ func TestComputeBadgeWidthsAllNil(t *testing.T) {
 func TestComputeBadgeWidthsMixed(t *testing.T) {
 	t1 := &models.Task{
 		Title:         "alpha",
-		WorkflowState: models.StateInProgress,
+		WorkflowState: models.StateDoing,
 		Priority:      2,
 	}
 	t2 := &models.Task{
 		Title:         "beta",
-		WorkflowState: models.StateReady,
-		Priority:      5,
+		WorkflowState: models.StateBacklog,
+		Priority:      models.PriorityLow,
 	}
 	t3 := &models.Task{
 		Title:         "gamma",
@@ -61,7 +61,7 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 }
 
 func TestComputeBadgeWidthsHideLowPriority(t *testing.T) {
-	t1 := &models.Task{Priority: 5, WorkflowState: models.StateReady}
+	t1 := &models.Task{Priority: models.PriorityLow, WorkflowState: models.StateBacklog}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
 		HideLowPriority: true,
 	})
@@ -78,7 +78,7 @@ func TestComputeBadgeWidthsHideLowPriority(t *testing.T) {
 
 func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	// No options enabled → only priority is measured.
-	t1 := &models.Task{Priority: 1, WorkflowState: models.StateReady}
+	t1 := &models.Task{Priority: 1, WorkflowState: models.StateBacklog}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{})
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
@@ -92,8 +92,8 @@ func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 }
 
 func TestComputeBadgeWidthsProject(t *testing.T) {
-	t1 := &models.Task{ID: "1", Title: "one", WorkflowState: models.StateReady}
-	t2 := &models.Task{ID: "2", Title: "two", WorkflowState: models.StateReady}
+	t1 := &models.Task{ID: "1", Title: "one", WorkflowState: models.StateBacklog}
+	t2 := &models.Task{ID: "2", Title: "two", WorkflowState: models.StateBacklog}
 
 	names := map[string]string{
 		"1": "short",
@@ -117,7 +117,7 @@ func TestComputeBadgeWidthsProject(t *testing.T) {
 }
 
 func TestComputeBadgeWidthsProjectEmptyName(t *testing.T) {
-	t1 := &models.Task{ID: "1", WorkflowState: models.StateReady}
+	t1 := &models.Task{ID: "1", WorkflowState: models.StateBacklog}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
 		ProjectNameFor: func(*models.Task) string { return "" },
 	})

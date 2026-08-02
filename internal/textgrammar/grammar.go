@@ -23,15 +23,16 @@ const (
 type Field string
 
 const (
-	FieldPriority   Field = "priority"
-	FieldTag        Field = "tag"
-	FieldRemoveTag  Field = "remove_tag"
-	FieldDue        Field = "due"
-	FieldRecurrence Field = "recurrence"
-	FieldTaskType   Field = "type"
-	FieldParent     Field = "parent"
-	FieldProject    Field = "project"
-	FieldState      Field = "state"
+	FieldPriority    Field = "priority"
+	FieldTag         Field = "tag"
+	FieldRemoveTag   Field = "remove_tag"
+	FieldDue         Field = "due"
+	FieldRecurrence  Field = "recurrence"
+	FieldTaskType    Field = "type"
+	FieldParent      Field = "parent"
+	FieldProject     Field = "project"
+	FieldDestination Field = "destination"
+	FieldState       Field = "state"
 )
 
 // Definition supplies parser-adjacent UI metadata. Help, completion, and
@@ -50,33 +51,27 @@ type Definition struct {
 	Surfaces    Surface
 }
 
-var priorityNames = []string{"1", "2", "3", "4", "5"}
+var priorityNames = []string{"1", "2", "3"}
 
 var captureDueValues = []string{
 	"today", "tomorrow", "+1d", "+3d", "+1w", "+2w", "+1m",
 	"monday", "friday", "next monday", "next friday", "in 3 days", "in 1 week", "in 2 weeks",
 }
 
-var recurrenceValues = []string{
-	"daily", "weekly", "biweekly", "monthly", "2d", "3d", "2w", "3w", "2m",
+var captureDestinationNames = []string{
+	"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "someday", "done", "canceled",
 }
 
 // Definitions returns defensive copies of the canonical definitions available
 // on a surface.
 func Definitions(surface Surface) []Definition {
 	stateNames := StateNames()
-	typeNames := TaskMarkerNames()
 
 	defs := []Definition{
 		{
-			Field: FieldTaskType, Group: "Basics", Forms: []string{"^type"},
-			Label: "Type", Description: "Visual task type", Values: typeNames,
-			Examples: prefixed(typeNames, "^"), Surfaces: SurfaceCapture,
-		},
-		{
-			Field: FieldPriority, Group: "Priority & Tags", Forms: []string{"!1-5"},
-			Label: "Priority", Description: "Priority (1-5)", Values: slices.Clone(priorityNames),
-			Examples: []string{"!1", "!3", "!5"},
+			Field: FieldPriority, Group: "Priority & Tags", Forms: []string{"!1-3"},
+			Label: "Priority", Description: "Priority (1-3)", Values: slices.Clone(priorityNames),
+			Examples: []string{"!1", "!2", "!3"},
 			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
@@ -91,9 +86,13 @@ func Definitions(surface Surface) []Definition {
 			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
-			Field: FieldRecurrence, Group: "Schedule", Forms: []string{"~interval"},
-			Label: "Recurrence", Description: "Recurrence", Values: slices.Clone(recurrenceValues),
-			Examples: []string{"~daily", "~weekly", "~monthly", "~2w"},
+			Field: FieldDestination, Group: "Destination", Forms: []string{"$destination"},
+			Label: "Destination", Description: "Lifecycle or planning destination", Values: slices.Clone(captureDestinationNames),
+			Examples: prefixed(captureDestinationNames, "$"), Surfaces: SurfaceCapture,
+		},
+		{
+			Field: FieldProject, Group: "Project Routing", Forms: []string{"%project"},
+			Label: "Project", Description: "Target project", Examples: []string{"%project-slug"},
 			Surfaces: SurfaceCapture,
 		},
 		{
@@ -102,14 +101,9 @@ func Definitions(surface Surface) []Definition {
 			Surfaces: SurfaceCapture,
 		},
 		{
-			Field: FieldProject, Group: "Project Routing", Forms: []string{"%project"},
-			Label: "Project", Description: "Target project", Examples: []string{"%project-slug"},
-			Surfaces: SurfaceCapture,
-		},
-		{
 			Field: FieldState, Group: "State", Forms: []string{"$state"},
 			Label: "State", Description: "Canonical workflow state", Values: stateNames,
-			Examples: prefixed(stateNames, "$"), Surfaces: SurfaceCapture | SurfaceEdit,
+			Examples: prefixed(stateNames, "$"), Surfaces: SurfaceEdit,
 		},
 	}
 
@@ -124,6 +118,11 @@ func Definitions(surface Surface) []Definition {
 		result = append(result, def)
 	}
 	return result
+}
+
+// DestinationNames returns the exact ordered capture destination vocabulary.
+func DestinationNames() []string {
+	return slices.Clone(captureDestinationNames)
 }
 
 // TaskMarkerNames returns the four semantic task-marker tags in model order.
@@ -146,7 +145,7 @@ func DefinitionFor(surface Surface, field Field) (Definition, bool) {
 	return Definition{}, false
 }
 
-// StateNames returns all nine canonical state names in model order.
+// StateNames returns all eight canonical state names in model order.
 func StateNames() []string {
 	states := models.AllWorkflowStates()
 	result := make([]string, len(states))
@@ -161,12 +160,10 @@ func StateDescription(state models.WorkflowState) string {
 	switch state {
 	case models.StateInbox:
 		return "unprocessed inbox"
-	case models.StateReady:
-		return "ready for planning"
-	case models.StateNext:
-		return "next up"
-	case models.StateInProgress:
-		return "in progress"
+	case models.StateBacklog:
+		return "backlog"
+	case models.StateDoing:
+		return "doing"
 	case models.StateWaiting:
 		return "waiting externally"
 	case models.StatePaused:
@@ -189,7 +186,10 @@ type StateMatch struct {
 }
 
 // ParseState resolves exact canonical state names on every text surface.
-func ParseState(_ Surface, value string) (StateMatch, bool) {
+func ParseState(surface Surface, value string) (StateMatch, bool) {
+	if surface&SurfaceEdit == 0 {
+		return StateMatch{}, false
+	}
 	value = strings.ToLower(strings.TrimSpace(value))
 	if state, ok := models.ParseWorkflowState(value); ok {
 		return StateMatch{States: []models.WorkflowState{state}}, true
@@ -211,15 +211,15 @@ func InvalidStateError(raw string) error {
 
 func retiredStateReplacement(raw string) (string, bool) {
 	replacements := map[string]string{
-		"todo":      "$inbox, $ready, or $next",
-		"active":    "$ready",
-		"start":     "$in_progress",
-		"started":   "$in_progress",
-		"progress":  "$in_progress",
+		"todo":      "$inbox or $backlog",
+		"active":    "$backlog",
+		"start":     "$doing",
+		"started":   "$doing",
+		"progress":  "$doing",
 		"blocked":   "$waiting",
 		"standby":   "$paused",
 		"hold":      "$paused",
-		"review":    "$ready",
+		"review":    "$backlog",
 		"maybe":     "$someday",
 		"complete":  "$done",
 		"completed": "$done",
@@ -238,7 +238,7 @@ func ParsePriority(value string, allowRange bool) ([]int, bool) {
 		if parts := strings.Split(value, "-"); len(parts) == 2 {
 			start, startErr := strconv.Atoi(parts[0])
 			end, endErr := strconv.Atoi(parts[1])
-			if startErr == nil && endErr == nil && start >= 1 && start <= 5 && end >= 1 && end <= 5 {
+			if startErr == nil && endErr == nil && start >= 1 && start <= 3 && end >= 1 && end <= 3 {
 				if start > end {
 					start, end = end, start
 				}
@@ -252,7 +252,7 @@ func ParsePriority(value string, allowRange bool) ([]int, bool) {
 	}
 
 	priority, err := strconv.Atoi(value)
-	if err != nil || priority < 1 || priority > 5 {
+	if err != nil || priority < 1 || priority > 3 {
 		return nil, false
 	}
 	return []int{priority}, true

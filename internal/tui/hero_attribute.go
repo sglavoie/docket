@@ -41,8 +41,7 @@ const (
 // pickHeroAttribute returns the highest-precedence hero attribute for a task.
 // Returns HeroNone when no attribute qualifies (the row keeps current badge
 // styling; nothing is demoted) and for quiet states — completed, canceled,
-// tasks never claim the hero slot. The project is required to
-// evaluate blocked-by-dependencies; pass nil to skip that branch.
+// tasks never claim the hero slot.
 func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 	if t == nil {
 		return HeroNone
@@ -53,7 +52,7 @@ func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 	if t.IsOverdue() {
 		return HeroOverdue
 	}
-	if t.IsInState(models.StateWaiting) || (p != nil && p.HasIncompleteDependencies(t)) {
+	if t.IsInState(models.StateWaiting) {
 		return HeroBlocked
 	}
 	if t.IsDueToday() {

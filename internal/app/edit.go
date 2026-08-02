@@ -49,7 +49,6 @@ type FormEdit struct {
 	Tags        []string
 	DueDate     *time.Time
 	Pinned      bool
-	Recurrence  *models.RecurrencePattern
 	Checklist   []models.ChecklistItem
 }
 
@@ -74,7 +73,7 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 			restoreSnapshotProjects(snap, before)
 		}
 	}()
-	if guardErr := validateEditStateTransition(ref, NewWorkspaceResolver(snap), req.WorkflowState); guardErr != nil {
+	if guardErr := validateEditStateTransition(ref, req.WorkflowState); guardErr != nil {
 		return TaskResult{}, guardErr
 	}
 	if applyErr := s.applyEdit(ref.Task, req); applyErr != nil {
@@ -82,7 +81,8 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	}
 	// Fold Today/Next reconciliation into the same transaction. A content-only
 	// edit reconciles to no planning change.
-	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	stateChanged := req.WorkflowState != nil && *req.WorkflowState != before.ProjectByID(ref.Project.ID).GetTaskByID(ref.Task.ID).State()
+	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts), stateChanged)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -96,10 +96,9 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 
 // validateEditStateTransition makes a state-changing edit obey the same guards
 // as the canonical Transition use case. Content-only edits and explicit
-// same-state writes remain valid; a real transition checks the state graph,
-// workspace-qualified dependencies, and incomplete children before any edit
-// fields are applied.
-func validateEditStateTransition(ref TaskRef, resolver *WorkspaceResolver, target *models.WorkflowState) error {
+// same-state writes remain valid; a real transition checks the state graph and
+// incomplete children before any edit fields are applied.
+func validateEditStateTransition(ref TaskRef, target *models.WorkflowState) error {
 	if target == nil {
 		return nil
 	}
@@ -110,7 +109,7 @@ func validateEditStateTransition(ref TaskRef, resolver *WorkspaceResolver, targe
 	if *target == from {
 		return nil
 	}
-	return validateLifecycleTransition(ref, resolver, *target)
+	return validateLifecycleTransition(ref, *target)
 }
 
 // applyEdit is the shared validation and mutation seam for task edits.
@@ -154,7 +153,7 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 // validating title, priority, and tags before mutating so a
 // rejected edit never persists. It mirrors the field-application order the form
 // used before the migration (title/type/priority/parent, then dates,
-// tags, flags, recurrence, links, description, checklist, type attrs, pinned).
+// tags, flags, links, description, checklist, type attrs, pinned).
 func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	title := strings.TrimSpace(f.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
@@ -173,7 +172,6 @@ func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
 	task.ParentID = f.ParentID
 	task.DueDate = cloneCalendarDatePtr(f.DueDate)
 	task.Tags = append([]string{}, normalizedTags...)
-	task.Recurrence = f.Recurrence
 	task.Description = strings.TrimSpace(f.Description)
 	task.Checklist = filterChecklist(f.Checklist)
 	// Update PinnedAt only when the pinned flag actually changes, matching the

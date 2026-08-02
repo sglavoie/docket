@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -164,6 +165,7 @@ func (s *DomainFileStore) bindCatalogPayload(catalog *WorkspaceCatalog) (string,
 	if catalog == nil {
 		return "", fmt.Errorf("config: nil workspace catalog")
 	}
+	catalog.syncLegacyAliases()
 	if catalog.WorkspaceID == "" {
 		catalog.WorkspaceID = s.EnsureWorkspaceID()
 	}
@@ -225,8 +227,11 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 		env = recovered
 		rev = revisionOf(recoveredData)
 	}
-	if env.SchemaVersion > CurrentDomainSchemaVersion {
-		return rev, fmt.Errorf("%s schema version %d not supported, please upgrade tt", filepath.Base(path), env.SchemaVersion)
+	if env.SchemaVersion != CurrentDomainSchemaVersion {
+		return rev, fmt.Errorf("%s envelope schema version %d is not supported; want %d", filepath.Base(path), env.SchemaVersion, CurrentDomainSchemaVersion)
+	}
+	if env.Kind != kind.name() {
+		return rev, fmt.Errorf("%s contains %q domain data; want %q", filepath.Base(path), env.Kind, kind.name())
 	}
 	if err := s.BindWorkspaceID(env.WorkspaceID); err != nil {
 		return rev, fmt.Errorf("invalid workspace identity in %s: %w", filepath.Base(path), err)
@@ -234,16 +239,25 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 	if len(env.Data) == 0 {
 		return rev, nil
 	}
-	if err := json.Unmarshal(env.Data, out); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(env.Data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(out); err != nil {
+		return rev, fmt.Errorf("failed to parse %s payload: %w", filepath.Base(path), err)
+	}
+	if err := requireJSONEOF(decoder); err != nil {
 		return rev, fmt.Errorf("failed to parse %s payload: %w", filepath.Base(path), err)
 	}
 	if catalog, ok := out.(*WorkspaceCatalog); ok {
+		catalog.syncLegacyAliases()
 		if catalog.WorkspaceID == "" {
 			return rev, fmt.Errorf("invalid workspace identity in %s payload: %w", filepath.Base(path), ErrWorkspaceIDRequired)
 		}
 		if err := s.BindWorkspaceID(catalog.WorkspaceID); err != nil {
 			return rev, fmt.Errorf("invalid workspace identity in %s payload: %w", filepath.Base(path), err)
 		}
+	}
+	if planning, ok := out.(*PlanningState); ok {
+		planning.syncLegacyAliases()
 	}
 	return rev, nil
 }
@@ -258,13 +272,20 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 		return nil, err
 	}
 	if catalog, ok := payload.(*WorkspaceCatalog); ok {
+		catalog.syncLegacyAliases()
 		if err := catalog.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid workspace catalog: %w", err)
 		}
 	}
 	if planning, ok := payload.(*PlanningState); ok {
+		planning.syncLegacyAliases()
 		if err := planning.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid planning state: %w", err)
+		}
+	}
+	if machine, ok := payload.(*MachineState); ok {
+		if err := machine.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid machine state: %w", err)
 		}
 	}
 	rawPayload, err := json.Marshal(payload)

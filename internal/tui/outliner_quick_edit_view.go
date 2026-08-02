@@ -11,7 +11,7 @@ func (m *OutlinerModel) ActiveFilterCount() int {
 
 // activeFilterParts returns the list of active filter description strings
 // (type, state, priority, tags, due date, attrs, actionable,
-// hide-dimmed). commonFilterParts already emits "ready" for Actionable, so it
+// hide-dimmed). commonFilterParts already emits "actionable" for Actionable, so it
 // must not be re-appended here.
 func (m *OutlinerModel) activeFilterParts() []string {
 	return commonFilterParts(&m.filter.CommonFilterState)
@@ -48,7 +48,7 @@ func (m *OutlinerModel) renderQuickEditBar() string {
 
 	helpHint := MutedStyle.Render("Enter=save  Esc=cancel")
 	if !m.quickEdit.IsRenameOnly() {
-		helpHint = MutedStyle.Render("!1-5=priority #tag @date $state · Enter=save Esc=cancel")
+		helpHint = MutedStyle.Render("!0-3=priority #tag @date $state · Enter=save Esc=cancel")
 	}
 	lines = append(lines, helpHint)
 

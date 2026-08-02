@@ -1,23 +1,22 @@
 package models
 
 // WorkflowStateGroup is a presentation bucket derived from canonical task
-// state. Today is the one synthetic group: its membership comes from the Daily
-// Plan rather than from a WorkflowState. The remaining groups map one-to-one to
-// workflow states so list surfaces never need project sections to classify
-// work.
+// state. Today and Next are synthetic groups whose membership comes from the
+// planning domain rather than from WorkflowState. The remaining groups map
+// one-to-one to workflow states.
 type WorkflowStateGroup string
 
 const (
-	StateGroupToday      WorkflowStateGroup = "today"
-	StateGroupInProgress WorkflowStateGroup = "in_progress"
-	StateGroupInbox      WorkflowStateGroup = "inbox"
-	StateGroupNext       WorkflowStateGroup = "next"
-	StateGroupBacklog    WorkflowStateGroup = "backlog"
-	StateGroupWaiting    WorkflowStateGroup = "waiting"
-	StateGroupPaused     WorkflowStateGroup = "paused"
-	StateGroupSomeday    WorkflowStateGroup = "someday"
-	StateGroupDone       WorkflowStateGroup = "done"
-	StateGroupCanceled   WorkflowStateGroup = "canceled"
+	StateGroupToday    WorkflowStateGroup = "today"
+	StateGroupDoing    WorkflowStateGroup = "doing"
+	StateGroupInbox    WorkflowStateGroup = "inbox"
+	StateGroupNext     WorkflowStateGroup = "next"
+	StateGroupBacklog  WorkflowStateGroup = "backlog"
+	StateGroupWaiting  WorkflowStateGroup = "waiting"
+	StateGroupPaused   WorkflowStateGroup = "paused"
+	StateGroupSomeday  WorkflowStateGroup = "someday"
+	StateGroupDone     WorkflowStateGroup = "done"
+	StateGroupCanceled WorkflowStateGroup = "canceled"
 )
 
 // WorkflowStateThemeRole is the stable semantic color role assigned to a
@@ -45,7 +44,7 @@ const (
 func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 	return []WorkflowStateGroup{
 		StateGroupToday,
-		StateGroupInProgress,
+		StateGroupDoing,
 		StateGroupInbox,
 		StateGroupNext,
 		StateGroupPaused,
@@ -58,12 +57,10 @@ func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 // IsValid reports whether g is a canonical workflow-state group.
 func (g WorkflowStateGroup) IsValid() bool {
 	switch g {
-	case StateGroupToday, StateGroupInProgress, StateGroupInbox, StateGroupNext,
+	case StateGroupToday, StateGroupDoing, StateGroupInbox, StateGroupNext,
 		StateGroupBacklog, StateGroupWaiting, StateGroupPaused,
 		StateGroupSomeday, StateGroupDone, StateGroupCanceled:
 		return true
-	case StateGroupReview:
-		return false
 	}
 	return false
 }
@@ -71,7 +68,7 @@ func (g WorkflowStateGroup) IsValid() bool {
 // IsSynthetic reports whether group membership is supplied by a planning
 // artifact rather than by task state.
 func (g WorkflowStateGroup) IsSynthetic() bool {
-	return g == StateGroupToday
+	return g == StateGroupToday || g == StateGroupNext
 }
 
 // Label returns the user-facing canonical group name.
@@ -79,16 +76,14 @@ func (g WorkflowStateGroup) Label() string {
 	switch g {
 	case StateGroupToday:
 		return "Today"
-	case StateGroupInProgress:
-		return "In Progress"
+	case StateGroupDoing:
+		return "Doing"
 	case StateGroupInbox:
 		return "Inbox"
 	case StateGroupNext:
 		return "Next"
 	case StateGroupBacklog:
 		return "Backlog"
-	case StateGroupReview:
-		return "Review"
 	case StateGroupWaiting:
 		return "Waiting"
 	case StateGroupPaused:
@@ -109,7 +104,7 @@ func (g WorkflowStateGroup) ThemeRole() WorkflowStateThemeRole {
 	switch g {
 	case StateGroupToday:
 		return StateThemePlan
-	case StateGroupInProgress:
+	case StateGroupDoing:
 		return StateThemeWork
 	case StateGroupInbox:
 		return StateThemeInbox
@@ -117,8 +112,6 @@ func (g WorkflowStateGroup) ThemeRole() WorkflowStateThemeRole {
 		return StateThemeNext
 	case StateGroupBacklog:
 		return StateThemeBacklog
-	case StateGroupReview:
-		return StateThemeReview
 	case StateGroupWaiting:
 		return StateThemeWaiting
 	case StateGroupPaused:
@@ -140,12 +133,10 @@ func WorkflowStateGroupForState(state WorkflowState) WorkflowStateGroup {
 	switch state {
 	case StateInbox:
 		return StateGroupInbox
-	case StateReady:
+	case StateBacklog:
 		return StateGroupBacklog
-	case StateNext:
-		return StateGroupNext
-	case StateInProgress:
-		return StateGroupInProgress
+	case StateDoing:
+		return StateGroupDoing
 	case StateWaiting:
 		return StateGroupWaiting
 	case StatePaused:
@@ -161,25 +152,22 @@ func WorkflowStateGroupForState(state WorkflowState) WorkflowStateGroup {
 	}
 }
 
-// WorkflowState returns the state represented by g. Synthetic Today membership
-// has no state and returns false.
+// WorkflowState returns the state represented by g. Synthetic Today and Next
+// membership has no state and returns false.
 func (g WorkflowStateGroup) WorkflowState() (WorkflowState, bool) {
 	switch g {
 	case StateGroupInbox:
 		return StateInbox, true
 	case StateGroupBacklog:
-		return StateReady, true
+		return StateBacklog, true
 	case StateGroupNext:
-		return StateNext, true
-	case StateGroupInProgress:
-		return StateInProgress, true
+		return "", false
+	case StateGroupDoing:
+		return StateDoing, true
 	case StateGroupWaiting:
 		return StateWaiting, true
 	case StateGroupPaused:
 		return StatePaused, true
-	case StateGroupReview:
-		// StateGroupReview is retained for legacy presentation callers only.
-		return StateReady, true
 	case StateGroupSomeday:
 		return StateSomeday, true
 	case StateGroupDone:

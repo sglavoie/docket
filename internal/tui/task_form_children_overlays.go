@@ -50,19 +50,17 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 type TaskFormSubtaskEditedMsg struct {
 	Idx         int
 	Title       string
-	OpenDetail  bool
 	OpenContent bool
 }
 
 // handleSubtaskEditKey handles key events for the subtask edit overlay.
 func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	switch msg.String() {
-	case "enter", "ctrl+o", "ctrl+d":
+	case "enter", "ctrl+d":
 		title := strings.TrimSpace(m.subtaskItemInput.Value())
 		return nil, true, TaskFormSubtaskEditedMsg{
 			Idx:         m.childrenEditIdx,
 			Title:       title,
-			OpenDetail:  msg.String() == "ctrl+o",
 			OpenContent: msg.String() == "ctrl+d",
 		}
 	case "esc":
@@ -78,7 +76,7 @@ func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Subtask")
-	footerText := HelpStyle.Render("Enter: save · Ctrl+O: save & open · Ctrl+D: save & edit desc · Esc: cancel")
+	footerText := HelpStyle.Render("Enter: save · Ctrl+D: save & edit desc · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	footerMinInner := lipgloss.Width(footerText) + 6 - 2

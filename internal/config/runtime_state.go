@@ -77,6 +77,9 @@ func NewRuntimeState(dataDir string, domains *Domains) *RuntimeState {
 // LoadRuntimeState builds the runtime snapshot for this manager's workspace
 // from the canonical split-domain layout.
 func (m *Manager) LoadRuntimeState() (*RuntimeState, error) {
+	if _, err := m.LoadOrCreateDomains(); err != nil {
+		return nil, err
+	}
 	return LoadRuntimeState(m.workspaceDataDir())
 }
 
@@ -311,7 +314,7 @@ func (rs *RuntimeState) ActiveProjects() []*models.Project {
 		}
 	}
 	sortProjectsWithPinnedFirst(active)
-	moveProjectIDLast(active, rs.Catalog().SystemInboxProjectID)
+	moveProjectIDLast(active, rs.Catalog().protectedProjectID())
 	return active
 }
 
@@ -326,7 +329,7 @@ func (rs *RuntimeState) AllLoadableProjects() []*models.Project {
 		}
 	}
 	sortProjectsWithPinnedFirst(projects)
-	moveProjectIDLast(projects, rs.Catalog().SystemInboxProjectID)
+	moveProjectIDLast(projects, rs.Catalog().protectedProjectID())
 	return projects
 }
 
@@ -362,24 +365,29 @@ func (rs *RuntimeState) catalogProjects() []*models.Project {
 	return projects
 }
 
-// NextOrder returns the persisted workspace-wide order of StateNext tasks.
+// NextOrder returns the persisted workspace-wide Next membership and order.
 func (rs *RuntimeState) NextOrder() []ProjectTaskLocator {
-	return rs.Planning().NextOrder
+	return rs.Planning().GetNext()
 }
 
-// SystemInboxProject returns the catalog-owned visible Inbox project, or nil
-// when an older workspace has not been upgraded yet.
-func (rs *RuntimeState) SystemInboxProject() *models.Project {
+// SystemUnfiledProject returns the catalog-owned visible Unfiled project.
+func (rs *RuntimeState) SystemUnfiledProject() *models.Project {
 	if rs == nil {
 		return nil
 	}
-	return rs.GetProject(rs.Catalog().SystemInboxProjectID)
+	return rs.GetProject(rs.Catalog().protectedProjectID())
 }
 
-// IsSystemInboxProject reports whether id belongs to the catalog-owned Inbox.
-func (rs *RuntimeState) IsSystemInboxProject(id string) bool {
-	return rs != nil && rs.Catalog().IsSystemInboxProject(id)
+// SystemInboxProject is the compile-time compatibility name.
+func (rs *RuntimeState) SystemInboxProject() *models.Project { return rs.SystemUnfiledProject() }
+
+// IsSystemUnfiledProject reports whether id belongs to the catalog-owned Unfiled.
+func (rs *RuntimeState) IsSystemUnfiledProject(id string) bool {
+	return rs != nil && rs.Catalog().IsSystemUnfiledProject(id)
 }
+
+// IsSystemInboxProject is the compile-time compatibility name.
+func (rs *RuntimeState) IsSystemInboxProject(id string) bool { return rs.IsSystemUnfiledProject(id) }
 
 // ArchivedProjects returns archived cataloged projects sorted by name.
 func (rs *RuntimeState) ArchivedProjects() []*models.Project {

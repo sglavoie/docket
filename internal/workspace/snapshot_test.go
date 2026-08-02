@@ -6,12 +6,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func makeTask(id string, shortID int, dependsOn ...string) *models.Task {
+func makeTask(id string, shortID int) *models.Task {
 	return &models.Task{
-		ID:        id,
-		ShortID:   shortID,
-		Title:     "task-" + id,
-		DependsOn: dependsOn,
+		ID:      id,
+		ShortID: shortID,
+		Title:   "task-" + id,
 	}
 }
 
@@ -72,32 +71,6 @@ func TestSnapshotIndexesTasksAndRevisions(t *testing.T) {
 
 	if got := snap.QualifiedRef("b1"); got != "beta:#1" {
 		t.Fatalf("QualifiedRef(b1) = %q, want beta:#1", got)
-	}
-}
-
-func TestSnapshotReverseDependencies(t *testing.T) {
-	// c depends on a; b depends on a.
-	a := makeTask("a", 1)
-	b := makeTask("b", 2, "a")
-	c := makeTask("c", 3, "a")
-	snap := buildFromProjects(t, makeProject("p", "p", a, b, c))
-
-	got := snap.ReverseDependencies("a")
-	if len(got) != 2 {
-		t.Fatalf("ReverseDependencies(a) = %v, want 2 dependents", got)
-	}
-	set := map[string]bool{got[0]: true, got[1]: true}
-	if !set["b"] || !set["c"] {
-		t.Fatalf("ReverseDependencies(a) = %v, want b and c", got)
-	}
-	if none := snap.ReverseDependencies("b"); none != nil {
-		t.Fatalf("ReverseDependencies(b) = %v, want nil", none)
-	}
-
-	// Mutating the returned slice must not corrupt the snapshot index.
-	got[0] = "mutated"
-	if again := snap.ReverseDependencies("a"); again[0] == "mutated" || again[1] == "mutated" {
-		t.Fatal("ReverseDependencies must return a defensive copy")
 	}
 }
 

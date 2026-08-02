@@ -61,9 +61,9 @@ func TestFoundationInvariants(t *testing.T) {
 				"tag:project-a/api",
 			},
 			{
-				"scope", ScopeEntity(CustomContextScope("Focus")),
-				EntityIdentity{Kind: EntityKindScope, Name: "scope:custom:Focus"},
-				"scope:scope:custom:Focus",
+				"scope", ScopeEntity(RegularContextScope("focus")),
+				EntityIdentity{Kind: EntityKindScope, Name: "scope:regular:focus"},
+				"scope:scope:regular:focus",
 			},
 			{
 				"mode", ModeEntity(ModeInbox),

@@ -31,12 +31,13 @@ func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) func([]*mod
 		}
 		planning := clonePlanningState(runtime.Planning())
 		planningChanged := false
-		for i := range planning.NextOrder {
-			if id, ok := restoredTaskProject(taskProjects, planning.NextOrder[i].TaskID, planning.NextOrder[i].ProjectID); ok && planning.NextOrder[i].ProjectID != id {
-				planning.NextOrder[i].ProjectID = id
+		for i := range planning.Next {
+			if id, ok := restoredTaskProject(taskProjects, planning.Next[i].TaskID, planning.Next[i].ProjectID); ok && planning.Next[i].ProjectID != id {
+				planning.Next[i].ProjectID = id
 				planningChanged = true
 			}
 		}
+		planning.SetNext(planning.Next)
 		for i := range planning.Today {
 			if id, ok := restoredTaskProject(taskProjects, planning.Today[i].TaskID, planning.Today[i].ProjectID); ok && planning.Today[i].ProjectID != id {
 				planning.Today[i].ProjectID = id

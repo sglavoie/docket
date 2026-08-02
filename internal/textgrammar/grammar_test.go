@@ -19,28 +19,26 @@ func TestCanonicalStatesComeFromModelOrder(t *testing.T) {
 }
 
 func TestParseStateCanonicalParity(t *testing.T) {
-	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit} {
-		for _, state := range models.AllWorkflowStates() {
-			got, ok := ParseState(surface, state.String())
-			if !ok || got.Legacy || !reflect.DeepEqual(got.States, []models.WorkflowState{state}) {
-				t.Errorf("ParseState(%v, %q) = %+v, %v", surface, state, got, ok)
-			}
+	for _, state := range models.AllWorkflowStates() {
+		got, ok := ParseState(SurfaceEdit, state.String())
+		if !ok || got.Legacy || !reflect.DeepEqual(got.States, []models.WorkflowState{state}) {
+			t.Errorf("ParseState(%q) = %+v, %v", state, got, ok)
 		}
 	}
 }
 
 func TestParseStateRejectsLegacyAliases(t *testing.T) {
-	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit} {
-		for _, legacy := range []string{"todo", "start", "blocked", "standby", "hold", "review", "maybe", "reopen"} {
-			if got, ok := ParseState(surface, legacy); ok {
-				t.Errorf("ParseState(%v, %q) = %+v, true; want rejection", surface, legacy, got)
-			}
+	for _, legacy := range []string{
+		"ready", "next", "in_progress", "todo", "start", "blocked", "standby", "hold", "review", "maybe", "reopen",
+	} {
+		if got, ok := ParseState(SurfaceEdit, legacy); ok {
+			t.Errorf("ParseState(%q) = %+v, true; want rejection", legacy, got)
 		}
 	}
 }
 
 func TestInvalidStateErrorExplainsRetiredReviewReplacement(t *testing.T) {
-	const want = "state $review was removed (use $ready)"
+	const want = "state $review was removed (use $backlog)"
 	if got := InvalidStateError("review").Error(); got != want {
 		t.Fatalf("InvalidStateError(Review) = %q, want %q", got, want)
 	}
@@ -48,7 +46,7 @@ func TestInvalidStateErrorExplainsRetiredReviewReplacement(t *testing.T) {
 
 func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	parsed := Parse(
-		"Build API ^bug !1 #backend @tomorrow ~weekly >1 %core $ready",
+		"Build API ^bug !1 #backend @tomorrow ~weekly >1 %core $backlog",
 		SurfaceCapture,
 	)
 	if parsed.Text != "Build API" {
@@ -56,7 +54,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 	for _, field := range []Field{
 		FieldTaskType, FieldPriority, FieldTag, FieldDue, FieldRecurrence, FieldParent,
-		FieldProject, FieldState,
+		FieldProject, FieldDestination,
 	} {
 		if len(parsed.TokensFor(field)) == 0 {
 			t.Errorf("missing %s token in %+v", field, parsed.Tokens)
@@ -64,7 +62,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserRecognizesExactlyEightCanonicalSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlySixCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 state:ready -#old has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -77,10 +75,10 @@ func TestSharedParserRecognizesExactlyEightCanonicalSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 8 {
-		t.Fatalf("capture definitions = %d, want 8: %+v", len(defs), defs)
+	if len(defs) != 6 {
+		t.Fatalf("capture definitions = %d, want 6: %+v", len(defs), defs)
 	}
-	wantForms := []string{"^type", "!1-5", "#tag", "@date", "~interval", ">parent", "%project", "$state"}
+	wantForms := []string{"!1-3", "#tag", "@date", "$destination", "%project", ">parent"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -175,5 +173,17 @@ func TestParsePriority(t *testing.T) {
 	}
 	if got, ok := ParsePriority("3-1", true); !ok || !reflect.DeepEqual(got, []int{1, 2, 3}) {
 		t.Fatalf("ParsePriority(3-1) = %v, %v", got, ok)
+	}
+	for _, retired := range []string{"4", "5", "1-4"} {
+		if got, ok := ParsePriority(retired, true); ok || got != nil {
+			t.Errorf("ParsePriority(%q) = %v, %v; want rejection", retired, got, ok)
+		}
+	}
+}
+
+func TestCaptureDestinationNamesAreExactAndOrdered(t *testing.T) {
+	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "someday", "done", "canceled"}
+	if got := DestinationNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("DestinationNames() = %v, want %v", got, want)
 	}
 }

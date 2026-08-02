@@ -13,7 +13,7 @@ func (m *OutlinerModel) persistActiveRouteState() error {
 // run-local view refinements and must never survive relaunch through legacy
 // machine-route storage.
 // applyOutlinerRouteState restores only the canonical mode through the
-// five-mode selection seam. Legacy route filter fields remain migration input,
+// six-mode selection seam. Legacy route filter fields remain migration input,
 // but live filter facets belong to the current run and are deliberately ignored.
 func (m *OutlinerModel) applyOutlinerRouteState(route config.OutlinerRouteState) {
 	if m == nil {

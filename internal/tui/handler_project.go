@@ -49,8 +49,8 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, tea.Batch(popCmd, reloadCmd, notesCmd)
 
 	case ProjectArchiveRequestMsg:
-		if msg.Project != nil && m.runtime.IsSystemInboxProject(msg.Project.ID) {
-			return true, errorCmd("cannot archive the system Inbox project")
+		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
+			return true, errorCmd("cannot archive the system Unfiled project")
 		}
 		return true, m.showProjectArchiveConfirm(msg.Project, msg.Archive)
 
@@ -103,7 +103,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 				m.configManager,
 				m.runtime,
 				m.appService,
-				m.runtime.IsSystemInboxProject(msg.Project.ID),
+				m.runtime.IsSystemUnfiledProject(msg.Project.ID),
 			))
 		}
 		return true, nil
@@ -134,9 +134,9 @@ func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bo
 		m.clearPendingProjectArchive()
 		return nil
 	}
-	if m.runtime.IsSystemInboxProject(project.ID) {
+	if m.runtime.IsSystemUnfiledProject(project.ID) {
 		m.clearPendingProjectArchive()
-		return errorCmd("cannot archive the system Inbox project")
+		return errorCmd("cannot archive the system Unfiled project")
 	}
 
 	m.pendingProjectArchive = project
@@ -164,8 +164,8 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	if m.runtime.IsSystemInboxProject(project.ID) {
-		return errorCmd("cannot archive the system Inbox project")
+	if m.runtime.IsSystemUnfiledProject(project.ID) {
+		return errorCmd("cannot archive the system Unfiled project")
 	}
 
 	if archive {

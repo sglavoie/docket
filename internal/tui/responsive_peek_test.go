@@ -140,7 +140,7 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 }
 
 func TestEnteringMultiSelectDisablesPeek(t *testing.T) {
-	task := &models.Task{ID: "task", Title: "Task", WorkflowState: models.StateReady}
+	task := &models.Task{ID: "task", Title: "Task", WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "project", Tasks: []*models.Task{task}}
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.rows = []outlinerRow{{task: task}}
@@ -178,24 +178,21 @@ func TestPeekModeSurvivesModeAndScopeChanges(t *testing.T) {
 func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 	task := &models.Task{
 		ID: "task", ShortID: 73, Title: "Operational task",
-		WorkflowState: models.StateReady,
-		DependsOn:     []string{"dependency"},
+		WorkflowState: models.StateBacklog,
 		Checklist:     []models.ChecklistItem{{Text: "done", Done: true}, {Text: "open"}},
-		Recurrence:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly},
 	}
-	dependency := &models.Task{ID: "dependency", Title: "Dependency"}
 	due := time.Now().AddDate(0, 0, 5)
 	snooze := time.Now().AddDate(0, 0, -2)
 	task.DueDate = &due
 	task.SnoozedUntil = &snooze
-	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task, dependency})
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.SetSize(100, 22)
 	outliner.rebuildRows()
 	outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	plain := ansi.Strip(outliner.View().Content)
-	for _, want := range []string{"Operational task", due.Format("Jan 2"), "zzz", "→1", "↻", "1/2"} {
+	for _, want := range []string{"Operational task", due.Format("Jan 2"), "zzz", "1/2"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("row missing %q:\n%s", want, plain)
 		}
@@ -208,13 +205,10 @@ func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) {
 	task := &models.Task{
 		ID: "task", ShortID: 9, Title: "Readable title",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 		Priority:      1,
-		DependsOn:     []string{"dependency"},
 		Checklist:     []models.ChecklistItem{{Text: "one"}, {Text: "two"}},
-		Recurrence:    &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily},
 	}
-	dependency := &models.Task{ID: "dependency", Title: "Dependency"}
 	due := time.Now()
 	snooze := time.Now().AddDate(0, 0, -1)
 	task.DueDate = &due
@@ -224,7 +218,7 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 		"project",
 		"a-very-long-project-slug",
 		"Project",
-		[]*models.Task{task, dependency},
+		[]*models.Task{task},
 	)
 	outliner := NewOutlinerModel(nil, nil, newTestConfig())
 	outliner.loadedProjects = []*models.Project{project}

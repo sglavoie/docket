@@ -26,10 +26,6 @@ type TaskResult struct {
 	State models.WorkflowState
 	// Revision is the project's new canonical revision after the commit.
 	Revision string
-	// RecurringGenerated is the number of recurring task instances the
-	// post-mutation hooks created as a side effect of this mutation (non-zero
-	// only when completing a recurring task). Adapters surface it to the user.
-	RecurringGenerated int
 }
 
 // newTaskResult builds a TaskResult from a resolved task/project pair and the

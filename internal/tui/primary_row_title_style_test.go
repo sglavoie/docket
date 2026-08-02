@@ -59,9 +59,9 @@ func newPrimaryRowStyleTask(t *testing.T, id string, shortID int, title string, 
 		t.Fatalf("NewTask(%q): %v", id, err)
 	}
 	task.Priority = priority
-	// StateNext retains its workflow semantics without needing a separate
+	// StateBacklog retains its workflow semantics without needing a separate
 	// single-letter planning-marker column in the task row.
-	task.WorkflowState = models.StateNext
+	task.WorkflowState = models.StateBacklog
 	return task
 }
 

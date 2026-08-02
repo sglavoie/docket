@@ -196,35 +196,62 @@ func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID 
 }
 
 // Snooze hides a task until the given date, or clears the snooze when until is
-// nil. Snoozing a terminal or in-progress task is rejected: hiding a completed
-// task is meaningless and hiding an actively worked-on one is contradictory.
-// These guards live here so every adapter (CLI and TUI) enforces them uniformly
-// rather than replicating the check at each command edge.
+// nil. Snoozing a nonterminal task moves it to Backlog and removes it from both
+// planning horizons in the same transaction. Terminal tasks cannot be snoozed.
 func (s *Service) Snooze(taskID string, until *time.Time) (TaskResult, error) {
-	return s.mutateTask(taskID, "Snooze Task", "", func(ref TaskRef) error {
-		return s.applySnooze(ref.Task, until, true)
-	})
+	return s.snooze(taskID, TaskLocator{}, until)
 }
 
 func (s *Service) SnoozeByLocator(locator TaskLocator, until *time.Time) (TaskResult, error) {
-	return s.mutateTaskByLocator(locator, "Snooze Task", "", func(ref TaskRef) error {
-		return s.applySnooze(ref.Task, until, true)
-	})
+	return s.snooze("", locator, until)
 }
 
-func (s *Service) applySnooze(task *models.Task, until *time.Time, guarded bool) error {
+func (s *Service) snooze(taskID string, locator TaskLocator, until *time.Time) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return TaskResult{}, fmt.Errorf("capture snooze rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+
+	now := s.clock.Now()
 	if until == nil {
-		task.ClearSnooze()
-		return nil
+		ref.Task.SnoozedUntil = nil
+		ref.Task.UpdatedAt = now
+		result, commitErr := s.commitProject(ref, revision, "Snooze Task", "clear")
+		if commitErr != nil {
+			return TaskResult{}, commitErr
+		}
+		committed = true
+		return result, nil
 	}
-	if guarded && task.IsTerminalState() {
-		return invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", task.State()))
+	if ref.Task.IsTerminalState() {
+		return TaskResult{}, invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", ref.Task.State()))
 	}
-	if guarded && task.IsInState(models.StateInProgress) {
-		return invalidInput("snooze", "cannot snooze an in-progress task (change state first)")
+	if err := applyState(ref.Task, models.StateBacklog, now); err != nil {
+		return TaskResult{}, invalidInput("snooze", err.Error())
 	}
 	u := *until
-	task.SnoozedUntil = &u
-	task.UpdatedAt = s.clock.Now()
-	return nil
+	ref.Task.SnoozedUntil = &u
+	artifacts, err := s.transitionPlanningArtifacts(
+		ref, s.defaultedPlanningArtifacts(nil), true,
+	)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Snooze Task", "snooze")
+	if err != nil {
+		return TaskResult{}, err
+	}
+	committed = true
+	return result, nil
 }

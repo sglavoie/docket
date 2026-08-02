@@ -53,9 +53,6 @@ func (m *TaskFormModel) fieldCountForActiveTab() int {
 		}
 		return formBasicsFieldCount
 	}
-	if m.activeTab == formTabSchedule && m.collapsedSchedule {
-		return 2 // Due, "+ more fields"
-	}
 	if m.activeTab == formTabChildren {
 		return m.fieldCountForChildren()
 	}

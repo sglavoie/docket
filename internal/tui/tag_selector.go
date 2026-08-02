@@ -163,10 +163,8 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.EnterAddMode()
 
 		case "space":
-			selected := m.SelectedItem()
 			handled, cmd := m.HandleKeyMsg(msg)
 			if handled {
-				enforceExclusiveTaskMarkerSelection(m.ListSurfaceAdapter, selected.Name)
 				return m, cmd
 			}
 
@@ -270,10 +268,8 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.EnterAddMode()
 
 		case "space":
-			selected := m.SelectedItem()
 			handled, cmd := m.HandleKeyMsg(msg)
 			if handled {
-				enforceExclusiveTaskMarkerSelection(m.ListSurfaceAdapter, selected.Name)
 				return m, cmd
 			}
 

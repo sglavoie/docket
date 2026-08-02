@@ -5,6 +5,7 @@ func (p *PlanningState) RemoveDurableTaskLocators(locators []ProjectTaskLocator)
 	if p == nil || len(locators) == 0 {
 		return 0
 	}
+	p.syncLegacyAliases()
 	remove := make(map[ProjectTaskLocator]bool, len(locators))
 	for _, locator := range locators {
 		if locator.Valid() {
@@ -24,7 +25,8 @@ func (p *PlanningState) RemoveDurableTaskLocators(locators []ProjectTaskLocator)
 		return kept
 	}
 	p.Today = filter(p.Today)
-	p.NextOrder = filter(p.NextOrder)
+	p.Next = filter(p.Next)
+	p.mirrorLegacyAliases()
 	return removed
 }
 
@@ -34,6 +36,7 @@ func (p *PlanningState) ReassignDurablePlanningProjectFrom(taskIDs map[string]bo
 	if p == nil || fromProjectID == "" || toProjectID == "" || fromProjectID == toProjectID {
 		return 0
 	}
+	p.syncLegacyAliases()
 	changed := 0
 	update := func(items []ProjectTaskLocator) {
 		for i := range items {
@@ -44,7 +47,8 @@ func (p *PlanningState) ReassignDurablePlanningProjectFrom(taskIDs map[string]bo
 		}
 	}
 	update(p.Today)
-	update(p.NextOrder)
+	update(p.Next)
+	p.mirrorLegacyAliases()
 	return changed
 }
 
@@ -88,35 +92,51 @@ func (p *PlanningState) RemoveFromTodayInProject(taskID, projectID string) bool 
 	return removePlanningRef(&p.Today, ProjectTaskLocator{TaskID: taskID, ProjectID: projectID})
 }
 
-// GetNextOrder returns the preferred workspace-wide order for StateNext tasks.
-// Presence in this list never confers Next membership.
-func (p *PlanningState) GetNextOrder() []ProjectTaskLocator {
+// GetNext returns the durable project-qualified Next membership in order.
+func (p *PlanningState) GetNext() []ProjectTaskLocator {
 	if p == nil {
 		return nil
 	}
-	return p.NextOrder
+	p.syncLegacyAliases()
+	return p.Next
 }
 
-// SetNextOrder replaces the preferred Next order and keeps the first
+// GetNextOrder is the compile-time compatibility name for GetNext.
+func (p *PlanningState) GetNextOrder() []ProjectTaskLocator {
+	return p.GetNext()
+}
+
+// SetNext replaces Next membership/order and keeps the first
 // occurrence of each valid project-qualified identity.
-func (p *PlanningState) SetNextOrder(items []ProjectTaskLocator) {
+func (p *PlanningState) SetNext(items []ProjectTaskLocator) {
 	if p == nil {
 		return
 	}
-	p.NextOrder = canonicalPlanningRefs(items)
+	p.Next = canonicalPlanningRefs(items)
+	p.mirrorLegacyAliases()
 }
+
+// SetNextOrder is the compile-time compatibility name for SetNext.
+func (p *PlanningState) SetNextOrder(items []ProjectTaskLocator) { p.SetNext(items) }
 
 // AddToNextOrder appends one project-qualified ordering entry if absent.
 func (p *PlanningState) AddToNextOrder(taskID, projectID string) bool {
 	if p == nil {
 		return false
 	}
+	p.syncLegacyAliases()
 	locator := ProjectTaskLocator{TaskID: taskID, ProjectID: projectID}
-	if !locator.Valid() || containsPlanningRef(p.NextOrder, locator) {
+	if !locator.Valid() || containsPlanningRef(p.Next, locator) {
 		return false
 	}
-	p.NextOrder = append(p.NextOrder, locator)
+	p.Next = append(p.Next, locator)
+	p.mirrorLegacyAliases()
 	return true
+}
+
+// AddToNext appends one project-qualified Next membership if absent.
+func (p *PlanningState) AddToNext(taskID, projectID string) bool {
+	return p.AddToNextOrder(taskID, projectID)
 }
 
 // RemoveFromNextOrder removes exactly one project-qualified ordering entry.
@@ -124,7 +144,15 @@ func (p *PlanningState) RemoveFromNextOrderInProject(taskID, projectID string) b
 	if p == nil {
 		return false
 	}
-	return removePlanningRef(&p.NextOrder, ProjectTaskLocator{TaskID: taskID, ProjectID: projectID})
+	p.syncLegacyAliases()
+	removed := removePlanningRef(&p.Next, ProjectTaskLocator{TaskID: taskID, ProjectID: projectID})
+	p.mirrorLegacyAliases()
+	return removed
+}
+
+// RemoveFromNextInProject removes exactly one project-qualified Next membership.
+func (p *PlanningState) RemoveFromNextInProject(taskID, projectID string) bool {
+	return p.RemoveFromNextOrderInProject(taskID, projectID)
 }
 
 // NormalizePlanningReferences removes incomplete and duplicate identities while
@@ -135,10 +163,12 @@ func (p *PlanningState) NormalizePlanningReferences() bool {
 		return false
 	}
 	today := canonicalPlanningRefs(p.Today)
-	next := canonicalPlanningRefs(p.NextOrder)
-	changed := len(today) != len(p.Today) || len(next) != len(p.NextOrder)
+	p.syncLegacyAliases()
+	next := canonicalPlanningRefs(p.Next)
+	changed := len(today) != len(p.Today) || len(next) != len(p.Next)
 	p.Today = today
-	p.NextOrder = next
+	p.Next = next
+	p.mirrorLegacyAliases()
 	return changed
 }
 

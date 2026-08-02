@@ -37,13 +37,13 @@ func requireBaselineFields(t *testing.T, fields map[string]json.RawMessage, pres
 func TestDailyLoopCurrentPlanningJSONShape(t *testing.T) {
 	t.Run("planning memberships", func(t *testing.T) {
 		fields := baselineJSONFields(t, PlanningState{
-			NextOrder: []ProjectTaskLocator{{TaskID: "next-task", ProjectID: "project"}},
-			Today:     []ProjectTaskLocator{{TaskID: "today-task", ProjectID: "project"}},
+			Next:  []ProjectTaskLocator{{TaskID: "next-task", ProjectID: "project"}},
+			Today: []ProjectTaskLocator{{TaskID: "today-task", ProjectID: "project"}},
 		})
 		requireBaselineFields(
 			t,
 			fields,
-			[]string{"today", "next_order"},
+			[]string{"today", "next"},
 			[]string{"focus_queue", "daily_plan", "streak_count", "alert_dismissals", "saved_views", "smart_lists"},
 		)
 	})

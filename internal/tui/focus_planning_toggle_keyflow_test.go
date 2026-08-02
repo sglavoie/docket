@@ -18,7 +18,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	ctrlR := syntheticCtrlKey('r')
 
 	t.Run("outliner queue toggle restores state and order index", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 
 		app = sendAppKey(app, syntheticKey('s'))
 		app = sendAppKey(app, syntheticKey('n'))
@@ -32,7 +32,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	})
 
 	t.Run("global outliner daily-plan toggle restores plan entry", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateReady, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
 
 		app = sendAppKey(app, syntheticKey('s'))
 		app = sendAppKey(app, syntheticKey('t'))
@@ -46,8 +46,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	})
 }
 
-// assertQueueKeyFlow checks that the queue toggle moved both the workflow state
-// (StateNext membership) and the Next order index together.
+// assertQueueKeyFlow checks explicit Next membership in both hydrated indexes.
 func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool) {
 	t.Helper()
 
@@ -55,8 +54,8 @@ func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool
 	if fresh == nil {
 		t.Fatal("task missing after toggle key flow")
 	}
-	if got := fresh.State() == models.StateNext; got != inQueue {
-		t.Fatalf("StateNext membership = %v, want %v", got, inQueue)
+	if fresh.State() != models.StateBacklog {
+		t.Fatalf("queue toggle changed lifecycle to %s, want backlog", fresh.State())
 	}
 	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
 	if app.nextOrderIDs[identity] != inQueue {

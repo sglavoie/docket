@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 )
 
@@ -18,7 +17,6 @@ type machineProjectReference struct {
 	Slug string
 }
 
-// machineDomainRepair removes deleted projects from retained custom contexts.
 type machineDomainRepair struct {
 	removeProjects []machineProjectReference
 }
@@ -28,22 +26,6 @@ func machineRepairForArchivedProject(string, string) machineDomainRepair {
 }
 
 func (r machineDomainRepair) empty() bool { return len(r.removeProjects) == 0 }
-
-func (m *AppModel) applyMachineDomainRepair(repair machineDomainRepair, machine *config.MachineState) (bool, error) {
-	if machine == nil || m == nil || m.runtime == nil {
-		return false, nil
-	}
-	changed := false
-	for _, project := range repair.removeProjects {
-		for _, ref := range []string{project.ID, project.Slug} {
-			if ref == "" || m.runtime.GetProject(ref) != nil {
-				continue
-			}
-			changed = machine.RemoveProjectReferences(ref, "") || changed
-		}
-	}
-	return changed, nil
-}
 
 func (r *machineDomainRepair) merge(next machineDomainRepair) {
 	if r == nil {
@@ -114,17 +96,6 @@ func (m *AppModel) commitMachineDomainRepair(repair machineDomainRepair) error {
 	if m == nil || m.runtime == nil || repair.empty() {
 		return nil
 	}
-	machine := cloneMachineState(m.runtime.Machine())
-	changed, err := m.applyMachineDomainRepair(repair, machine)
-	if err != nil || !changed {
-		return err
-	}
-	if m.runtime.DataDir() == "" {
-		m.runtime.SetMachineInMemory(machine)
-	} else if err := m.runtime.CommitMachine(machine); err != nil {
-		return err
-	}
-	m.syncProjectCache()
 	return nil
 }
 

@@ -6,12 +6,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TaskStatePickerModel is the advanced ten-state ListSurface picker used by the
+// TaskStatePickerModel is the advanced eight-state ListSurface picker used by the
 // set-state operation. It is an alias over the generic operation value picker
 // so every field uses the same viewport, search, and selection behavior.
 type TaskStatePickerModel = OperationValuePickerModel
 
-// NewTaskStatePickerModel builds the exact canonical ten-state picker. Invalid
+// NewTaskStatePickerModel builds the exact canonical eight-state picker. Invalid
 // transitions stay visible with a concise reason, which is more useful than
 // silently hiding terminal-state rules.
 // NewTaskStatePickerForTargets builds one state picker whose enabled values are

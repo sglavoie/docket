@@ -20,20 +20,20 @@ func TestWorkflowStateGroupThemeSemanticsCoverEveryGroup(t *testing.T) {
 }
 
 func TestCanonicalAllGroupingUsesExactStateGroups(t *testing.T) {
-	ready, _ := models.NewGenericTask("ready", 1, "Ready")
-	started, _ := models.NewGenericTask("started", 2, "Started")
+	backlog, _ := models.NewGenericTask("backlog", 1, "Backlog")
+	doing, _ := models.NewGenericTask("doing", 2, "Doing")
 	inbox, _ := models.NewGenericTask("inbox", 3, "Inbox")
-	started.ApplyWorkflowState(models.StateInProgress)
+	doing.ApplyWorkflowState(models.StateDoing)
 	inbox.ApplyWorkflowState(models.StateInbox)
 
-	forests := buildStateGroupTaskForests([]*models.Task{ready, started, inbox})
+	forests := buildStateGroupTaskForests([]*models.Task{backlog, doing, inbox})
 	if got := forests[models.StateGroupBacklog]; got == nil || got.count != 1 {
 		t.Fatalf("Backlog state group = %#v, want one task", got)
 	}
 	if got := forests[models.StateGroupInbox]; got == nil || got.count != 1 {
 		t.Fatalf("Inbox state group = %#v, want one task", got)
 	}
-	if got := forests[models.StateGroupInProgress]; got == nil || got.count != 1 {
-		t.Fatalf("In Progress state group = %#v, want one task", got)
+	if got := forests[models.StateGroupDoing]; got == nil || got.count != 1 {
+		t.Fatalf("Doing state group = %#v, want one task", got)
 	}
 }

@@ -25,7 +25,7 @@ func parentWithChild(childStatus models.WorkflowState) (*models.Project, *models
 }
 
 func TestTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
-	project, _, _ := parentWithChild(models.StateReady)
+	project, _, _ := parentWithChild(models.StateBacklog)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -46,7 +46,7 @@ func TestTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
 }
 
 func TestTransitionCancelBlockedByIncompleteChild(t *testing.T) {
-	project, _, _ := parentWithChild(models.StateReady)
+	project, _, _ := parentWithChild(models.StateBacklog)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
@@ -74,19 +74,19 @@ func TestTransitionCompleteAllowedWhenChildrenComplete(t *testing.T) {
 }
 
 func TestTransitionNonterminalNotGatedByChildren(t *testing.T) {
-	project, _, _ := parentWithChild(models.StateReady)
+	project, _, _ := parentWithChild(models.StateBacklog)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
 	// Moving a parent with incomplete children to a nonterminal state is allowed;
 	// only completion and cancellation are gated.
-	if _, err := svc.Transition(app.StateRequest{TaskID: "p", Target: models.StateInProgress}); err != nil {
+	if _, err := svc.Transition(app.StateRequest{TaskID: "p", Target: models.StateDoing}); err != nil {
 		t.Fatalf("nonterminal transition should not be gated: %v", err)
 	}
 }
 
 func TestBulkTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
-	project, _, _ := parentWithChild(models.StateReady)
+	project, _, _ := parentWithChild(models.StateBacklog)
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 

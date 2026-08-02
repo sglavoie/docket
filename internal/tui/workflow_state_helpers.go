@@ -4,11 +4,8 @@ import "github.com/sglavoie/tt/internal/models"
 
 // taskIsActionableState reports whether a task is immediately workable.
 func taskIsActionableState(t *models.Task, p *models.Project) bool {
-	if t.IsDependencyBlocked(p) {
-		return false
-	}
 	state := t.State()
-	return state == models.StateReady || state == models.StateInProgress
+	return state == models.StateBacklog || state == models.StateDoing
 }
 
 // taskStateGroupLabel returns the canonical presentation group for a task.

@@ -283,7 +283,7 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
 		}
 		if identityProtected && name != originalName {
-			return ErrorMsg{Err: fmt.Errorf("the system Inbox name and slug are immutable")}
+			return ErrorMsg{Err: fmt.Errorf("the system Unfiled name and slug are immutable")}
 		}
 		if configManager == nil || svc == nil {
 			return ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
@@ -327,15 +327,6 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 			tasksExpectedRevision = expected
 		}
 
-		var crossRefWrites []storage.ArtifactChange
-		if oldSlug != newSlug {
-			var rewriteErr error
-			crossRefWrites, _, rewriteErr = planTUICrossProjectRefRewrites(runtime.AllProjects(), oldSlug, newSlug, updated.ID)
-			if rewriteErr != nil {
-				return ErrorMsg{Err: rewriteErr}
-			}
-		}
-
 		catalog := cloneWorkspaceCatalog(runtime.Catalog())
 		if err := catalog.UpsertProject(&updated); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
@@ -346,16 +337,15 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		}
 
 		if _, err := svc.RenameProject(app.RenameProjectRequest{
-			Project:               &updated,
-			SystemInboxProjectID:  runtime.Catalog().SystemInboxProjectID,
-			DataDir:               runtime.DataDir(),
-			OldName:               originalName,
-			OldSlug:               oldSlug,
-			NewSlug:               newSlug,
-			TasksMarkdown:         tasksMarkdown,
-			TasksExpectedRevision: tasksExpectedRevision,
-			Config:                configArts,
-			CrossRefWrites:        crossRefWrites,
+			Project:                &updated,
+			SystemUnfiledProjectID: runtime.Catalog().SystemUnfiledProjectID,
+			DataDir:                runtime.DataDir(),
+			OldName:                originalName,
+			OldSlug:                oldSlug,
+			NewSlug:                newSlug,
+			TasksMarkdown:          tasksMarkdown,
+			TasksExpectedRevision:  tasksExpectedRevision,
+			Config:                 configArts,
 		}); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
@@ -366,62 +356,6 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		copyCatalogMetadata(project, &updated)
 		return ProjectUpdatedMsg{Project: project}
 	}
-}
-
-// planTUICrossProjectRefRewrites rewrites cross-project references in other
-// projects when a project's slug changes, returning the tasks.md artifact writes
-// (folded into the atomic rename transaction) and the count updated. Projects
-// that cannot be loaded are skipped, matching the best-effort CLI behavior.
-func planTUICrossProjectRefRewrites(projects []*models.Project, originalSlug, newSlug, renamedProjectID string) ([]storage.ArtifactChange, int, error) {
-	var writes []storage.ArtifactChange
-	totalUpdated := 0
-	for _, p := range projects {
-		if p.ID == renamedProjectID {
-			continue
-		}
-		expectedRevision, err := storage.LoadProjectForRewrite(p)
-		if err != nil {
-			continue
-		}
-		projectUpdated := 0
-		for _, task := range p.Tasks {
-			var n int
-			task.DependsOn, n = rewriteCrossRefs(task.DependsOn, originalSlug, newSlug)
-			projectUpdated += n
-		}
-		if projectUpdated > 0 {
-			content, err := storage.WriteTasksMarkdown(p.Name, p.Tasks)
-			if err != nil {
-				return nil, 0, fmt.Errorf("failed to render rewritten project %q: %w", p.Name, err)
-			}
-			writes = append(writes, storage.ArtifactChange{
-				Path:             storage.TasksFilePath(p.Path),
-				Data:             []byte(content),
-				ExpectedRevision: expectedRevision,
-			})
-			totalUpdated += projectUpdated
-		}
-	}
-	return writes, totalUpdated, nil
-}
-
-// rewriteCrossRefs replaces cross-project references from originalSlug to newSlug.
-func rewriteCrossRefs(refs []string, originalSlug, newSlug string) ([]string, int) {
-	if len(refs) == 0 {
-		return refs, 0
-	}
-	updated := 0
-	result := make([]string, len(refs))
-	for i, ref := range refs {
-		parsed := models.ParseTaskRef(ref)
-		if parsed.IsCrossProject() && parsed.ProjectID == originalSlug {
-			result[i] = newSlug + ":" + parsed.TaskID
-			updated++
-		} else {
-			result[i] = ref
-		}
-	}
-	return result, updated
 }
 
 func (m *ProjectEditorModel) View() tea.View {

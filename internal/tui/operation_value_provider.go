@@ -34,12 +34,6 @@ type OperationDateValue struct {
 	Date *time.Time
 }
 
-// OperationRecurrenceValue distinguishes an explicit clear (nil Pattern) from
-// canceling the editor, which never resumes the frozen operation request.
-type OperationRecurrenceValue struct {
-	Pattern *models.RecurrencePattern
-}
-
 // OperationParentValue distinguishes "no parent" from an invalid/missing value.
 type OperationParentValue struct {
 	ParentID *string
@@ -211,7 +205,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			Value:    value,
 		}
 	default:
-		if model.provider == ValueProviderPriority && len(key) == 1 && key[0] >= '1' && key[0] <= '5' {
+		if model.provider == ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
 			if model.surface.SetCursorToID(ListItemID("priority:" + key)) {
 				value, err := model.selectedValue()
 				if err == nil {
@@ -268,9 +262,6 @@ func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
 			return err
 		}
 	}
-	if err := model.enforceExclusiveTaskMarker(id); err != nil {
-		return err
-	}
 	if model.tagCurrent != nil {
 		if err := model.syncTagMembershipRows(); err != nil {
 			return err
@@ -304,56 +295,8 @@ func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
 			}
 		}
 		model.tagCurrent[item.ID] = operationTagAll
-		if err := model.enforceExclusiveTaskMarker(item.ID); err != nil {
-			return err
-		}
 	}
 	return model.syncTagMembershipRows()
-}
-
-// enforceExclusiveTaskMarker clears every other semantic marker when target is
-// selected for all tasks. In the tri-state bulk picker, changing Some/All to
-// None also emits the removals needed to keep each resulting task valid.
-func (model *OperationValuePickerModel) enforceExclusiveTaskMarker(target ListItemID) error {
-	items := model.surface.Items()
-	var targetIsMarker bool
-	markerIDs := make(map[ListItemID]bool)
-	for _, item := range items {
-		tag, ok := item.Data.(string)
-		if !ok {
-			continue
-		}
-		if _, semantic := models.ParseTaskMarkerTag(tag); semantic {
-			markerIDs[item.ID] = true
-			if item.ID == target {
-				targetIsMarker = true
-			}
-		}
-	}
-	if !targetIsMarker {
-		return nil
-	}
-	if model.tagCurrent != nil {
-		for id := range markerIDs {
-			if id != target {
-				model.tagCurrent[id] = operationTagNone
-			}
-		}
-	}
-
-	selected := model.surface.SelectedIDs()
-	next := make([]ListItemID, 0, len(selected))
-	for _, id := range selected {
-		if id == target {
-			next = append(next, id)
-			continue
-		}
-		if markerIDs[id] {
-			continue
-		}
-		next = append(next, id)
-	}
-	return model.surface.SetSelectedIDs(next)
 }
 
 func (model *OperationValuePickerModel) configureTagMembership(
@@ -568,7 +511,7 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 
 func taskStateAllowsSnooze(state string) bool {
 	switch models.WorkflowState(state) {
-	case models.StateInbox, models.StateReady, models.StateNext,
+	case models.StateInbox, models.StateBacklog, models.StateDoing,
 		models.StateWaiting, models.StatePaused, models.StateSomeday:
 		return true
 	default:
@@ -642,9 +585,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		ValueProviderSnooze,
 		ValueProviderTags,
 		ValueProviderProject,
-		ValueProviderDependencies,
 		ValueProviderParent,
-		ValueProviderRecurrence,
 	} {
 		if err := executor.RegisterValueProvider(provider, func(OperationInvocation) OperationValueProviderResult {
 			// Returning no immediate value asks the shell to construct the
@@ -680,8 +621,8 @@ func (m *AppModel) registerTaskActionOperations() error {
 func (id ValueProviderID) acceptsPresetValue(value any) bool {
 	switch id {
 	case ValueProviderState:
-		_, ok := value.(models.WorkflowState)
-		return ok
+		state, ok := value.(models.WorkflowState)
+		return ok && state.IsValid()
 	case ValueProviderPriority, ValueProviderFilterPriority:
 		_, ok := value.(int)
 		return ok
@@ -938,18 +879,6 @@ func (m *AppModel) executeSingleTaskOperation(
 			[]app.TaskLocator{identity.Locator()},
 			tags,
 		))
-	case operationTaskRecurrence:
-		value, ok := invocation.Value.(OperationRecurrenceValue)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid recurrence value")}
-		}
-		if value.Pattern == nil {
-			return cmdResult(m.secondaryFeatures.TaskItem.ClearRecurrence(identity))
-		}
-		if err := value.Pattern.Validate(); err != nil {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid recurrence value: %w", err)}
-		}
-		return cmdResult(m.secondaryFeatures.TaskItem.SetRecurrence(identity, value.Pattern))
 	case operationTaskMoveProject:
 		destination, ok := invocation.Value.(string)
 		if !ok || strings.TrimSpace(destination) == "" {
@@ -1105,11 +1034,10 @@ func (m *AppModel) newOperationValuePicker(
 		return NewTaskStatePickerForTargets(request, states, subtitle)
 	case ValueProviderPriority:
 		priorities := []PriorityInfo{
-			{Priority: 1, Description: "Critical"},
-			{Priority: 2, Description: "High"},
-			{Priority: 3, Description: "Normal"},
-			{Priority: 4, Description: "Low"},
-			{Priority: 5, Description: "Someday"},
+			{Priority: 0, Description: "Unset"},
+			{Priority: 1, Description: "High"},
+			{Priority: 2, Description: "Medium"},
+			{Priority: 3, Description: "Low"},
 		}
 		selected := []ListItemID(nil)
 		if priority, ok := commonTaskPriority(refs); ok {
@@ -1389,109 +1317,7 @@ func (m *AppModel) dependencyOperationListSource(
 	task *models.Task,
 	owner *models.Project,
 ) (ListSource, []ListItemID) {
-	if task == nil || owner == nil {
-		return ListSource{}, nil
-	}
-	projects := m.activeProjects()
-	resolver := app.NewWorkspaceResolver(app.NewSnapshot(projects, nil, nil))
-	selectedIdentities, unresolved := dependencySelectionIdentities(task.DependsOn, owner, projects)
-	descendants := taskDescendantIDs(task)
-	items := make([]ListItem, 0)
-	selected := make([]ListItemID, 0, len(task.DependsOn))
-	available := make(map[string]bool)
-
-	for _, project := range projects {
-		if project == nil || project.Archived {
-			continue
-		}
-		for _, candidate := range project.Tasks {
-			if candidate == nil || (project.ID == owner.ID && candidate.ID == task.ID) {
-				continue
-			}
-			if project.ID == owner.ID && descendants[candidate.ID] {
-				continue
-			}
-			ref := dependencyReference(owner, project, candidate.ID)
-			identity := TaskIdentity{ProjectID: project.ID, TaskID: candidate.ID}
-			isSelected := selectedIdentities[identity]
-			if !isSelected && (candidate.IsComplete() ||
-				resolver.WouldCreateDependencyCycle(owner, task.ID, ref)) {
-				continue
-			}
-			id := ListItemID("dependency:" + ref)
-			available[ref] = true
-			secondary := project.Name + " · " + workflowStateListLabel(candidate.State())
-			items = append(items, ListItem{
-				ID:            id,
-				PrimaryText:   fmt.Sprintf("#%d %s", candidate.ShortID, candidate.Title),
-				SecondaryText: secondary,
-				Aliases: append(
-					[]string{candidate.Title, candidate.State().String(), project.Name, project.Slug},
-					candidate.Tags...,
-				),
-				Preview: ListPreview{
-					Title:   project.Name + " › " + candidate.Title,
-					Summary: candidate.Description,
-				},
-				Data: ref,
-			})
-			if isSelected {
-				selected = append(selected, id)
-			}
-		}
-	}
-
-	// Surface unresolved pre-existing references so the user can explicitly
-	// remove them. The application boundary rejects them if they remain selected.
-	for _, dependency := range unresolved {
-		if available[dependency] {
-			continue
-		}
-		items = append(items, ListItem{
-			ID:            ListItemID("dependency:" + dependency),
-			PrimaryText:   dependency,
-			SecondaryText: "unresolved existing dependency",
-			Aliases:       []string{dependency},
-			Data:          dependency,
-		})
-		selected = append(selected, ListItemID("dependency:"+dependency))
-	}
-	return ListSource{Items: items}, selected
-}
-
-func dependencyReference(owner, target *models.Project, taskID string) string {
-	if owner != nil && target != nil && owner.ID == target.ID {
-		return taskID
-	}
-	return models.TaskRef{ProjectID: target.ID, TaskID: taskID}.String()
-}
-
-func dependencySelectionIdentities(
-	dependencies []string,
-	owner *models.Project,
-	projects []*models.Project,
-) (map[TaskIdentity]bool, []string) {
-	selected := make(map[TaskIdentity]bool, len(dependencies))
-	var unresolved []string
-	for _, dependency := range dependencies {
-		parsed := models.ParseTaskRef(dependency)
-		project := owner
-		if parsed.IsCrossProject() {
-			project = nil
-			for _, candidate := range projects {
-				if candidate != nil && (candidate.ID == parsed.ProjectID || candidate.Slug == parsed.ProjectID) {
-					project = candidate
-					break
-				}
-			}
-		}
-		if project == nil || project.GetTaskByID(parsed.TaskID) == nil {
-			unresolved = append(unresolved, dependency)
-			continue
-		}
-		selected[TaskIdentity{ProjectID: project.ID, TaskID: parsed.TaskID}] = true
-	}
-	return selected, unresolved
+	return ListSource{}, nil
 }
 
 func parentOperationListSource(
@@ -1542,23 +1368,6 @@ func (m *AppModel) executeOperationOverlayRequest(
 // openOperationValueStep opens the value overlay one provider needs: a typed
 // prompt for text values, the ListSurface picker for everything else.
 func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.Cmd {
-	if request.Provider == ValueProviderRecurrence {
-		refs, err := m.operationTaskRefs(request.Request.Context)
-		if err != nil || len(refs) != 1 {
-			if err == nil {
-				err = fmt.Errorf("recurrence is available for one task at a time")
-			}
-			m.err = err
-			return statusTimeout(5 * time.Second)
-		}
-		frozenRequest := request.Request
-		m.pendingTaskRecurrenceRequest = &frozenRequest
-		m.suspendedTaskActionSheet = m.contextActionSheet
-		m.contextActionSheet = nil
-		task := refs[0].Task
-		m.showView(ViewRecurrenceEditor, NewRecurrenceEditorModel(task.Recurrence, task.DueDate))
-		return nil
-	}
 	if request.Provider.textEntry() {
 		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {

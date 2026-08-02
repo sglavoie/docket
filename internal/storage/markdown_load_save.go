@@ -121,7 +121,7 @@ func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadRe
 func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, _ bool) (*ProjectLoadResult, error) {
 	document, err := ParseProjectDocument(string(content))
 	if err != nil {
-		return nil, fmt.Errorf("%w: schema-v5 task document required: %w", tterrors.ErrParseError, err)
+		return nil, fmt.Errorf("%w: schema-v6 task document required: %w", tterrors.ErrParseError, err)
 	}
 	project.Tasks = document.Tasks
 	maxShortID := 0
@@ -173,11 +173,11 @@ func SaveProject(project *models.Project) error {
 	tasksPath := tasksFilePath(project.Path)
 	document, err := CanonicalProjectDocument(project, nil)
 	if err != nil {
-		return fmt.Errorf("failed to render schema-v5 tasks file: %w", err)
+		return fmt.Errorf("failed to render schema-v6 tasks file: %w", err)
 	}
 	content, err := document.WriteCurrent()
 	if err != nil {
-		return fmt.Errorf("failed to render schema-v5 tasks file: %w", err)
+		return fmt.Errorf("failed to render schema-v6 tasks file: %w", err)
 	}
 	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)

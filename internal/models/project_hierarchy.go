@@ -57,8 +57,6 @@ func (p *Project) BuildTaskTree() {
 
 	breakParentCycles(p.Tasks, taskMap)
 	linkParentChild(p.Tasks, taskMap)
-	pruneAllOrphanedRefs(p.Tasks, taskMap)
-	breakDependencyCycles(p.Tasks, taskMap)
 
 	// Set levels via DFS (with a visited set to guard against any remaining
 	// cycles). Detach the first node that exceeds the supported depth while it is
@@ -165,83 +163,6 @@ func linkParentChild(tasks []*Task, taskMap map[string]*Task) {
 		} else {
 			logging.Warn("task %q (#%d) references non-existent parent %s, treating as root", task.Title, task.ShortID, *task.ParentID)
 			task.ParentID = nil
-		}
-	}
-}
-
-// pruneAllOrphanedRefs removes orphaned dependency IDs. Cross-project qualified
-// references (format "projectID:taskID") are preserved.
-func pruneAllOrphanedRefs(tasks []*Task, taskMap map[string]*Task) {
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		task.DependsOn = pruneOrphanedRefs(task, taskMap, task.DependsOn, "depends on")
-	}
-}
-
-// pruneOrphanedRefs filters a ref slice, keeping only IDs that exist in
-// taskMap or are cross-project qualified. Logs a warning for each removal.
-func pruneOrphanedRefs(task *Task, taskMap map[string]*Task, refs []string, label string) []string {
-	if len(refs) == 0 {
-		return refs
-	}
-	valid := refs[:0]
-	for _, refID := range refs {
-		if ParseTaskRef(refID).IsCrossProject() {
-			valid = append(valid, refID)
-		} else if _, ok := taskMap[refID]; ok {
-			valid = append(valid, refID)
-		} else {
-			logging.Warn("task %q (#%d) %s non-existent task %s, removing orphaned reference", task.Title, task.ShortID, label, refID)
-		}
-	}
-	return valid
-}
-
-// breakDependencyCycles removes DFS back edges in O(V+E). The previous
-// implementation launched a fresh reachability walk for every dependency edge
-// and repeated whole passes after each removal, which became quadratic on large
-// dependency graphs.
-func breakDependencyCycles(tasks []*Task, taskMap map[string]*Task) {
-	const (
-		unvisited uint8 = iota
-		visiting
-		visited
-	)
-	state := make(map[string]uint8, len(taskMap))
-	var visit func(*Task)
-	visit = func(task *Task) {
-		if task == nil || state[task.ID] == visited {
-			return
-		}
-		state[task.ID] = visiting
-		kept := task.DependsOn[:0]
-		for _, depID := range task.DependsOn {
-			ref := ParseTaskRef(depID)
-			if ref.IsCrossProject() {
-				kept = append(kept, depID)
-				continue
-			}
-			dependency := taskMap[depID]
-			if dependency == nil {
-				continue
-			}
-			if state[dependency.ID] == visiting {
-				logging.Warn("task %q (#%d) has circular dependency on %s, removing edge", task.Title, task.ShortID, depID)
-				continue
-			}
-			if state[dependency.ID] == unvisited {
-				visit(dependency)
-			}
-			kept = append(kept, depID)
-		}
-		task.DependsOn = kept
-		state[task.ID] = visited
-	}
-	for _, task := range tasks {
-		if task != nil && state[task.ID] == unvisited {
-			visit(task)
 		}
 	}
 }

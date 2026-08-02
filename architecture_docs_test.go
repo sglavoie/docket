@@ -25,10 +25,10 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Today and Next are mutually exclusive",
 		"resulting subtree depth above six",
 		"## TUI architecture",
-		"The five modes are All, Inbox, Next, Backlog, and Due",
+		"The six modes are All, Inbox, Today, Next, Backlog, and Due",
 		"### One operation grammar",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
-		"the exact nine `Space` actions",
+		"the exact six `Space` actions",
 		"The Outliner remains full-width at every supported terminal size",
 		"`Enter` toggles a session-only, project-qualified Peek below the cursor task",
 		"Entering visual selection disables Peek",
@@ -84,10 +84,10 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
-		"nine-state, five-mode, Outliner-only product",
+		"eight-state, six-mode, Outliner-only product",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix must remain unbound",
 		"The `Space` menu is exactly",
-		"^type !1-5 #tag @date ~interval $state %project >parent",
+		"!1-3 #tag @date $destination %project >parent",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
 		"`N` always opens All Notes across Global and every project returned by `Runtime.ActiveProjects()`",

@@ -15,7 +15,7 @@ import (
 // gap.
 func TestHandleTaskPropertyChangedNeedsSaveCommitsAsync(t *testing.T) {
 	task := newBulkPickerTestTask(t, 1, "priority task")
-	task.Priority = 5
+	task.Priority = models.PriorityLow
 	env := newAppBulkPickerEnv(t, []*models.Task{task})
 	app := env.appModel()
 	app.currentProject = env.projects[0]
@@ -40,8 +40,8 @@ func TestHandleTaskPropertyChangedNeedsSaveCommitsAsync(t *testing.T) {
 	}
 
 	env.undo(t)
-	if got := env.reload(t, 0).GetTaskByID(task.ID); got == nil || got.Priority != 5 {
-		t.Fatalf("undo priority = %v, want 5", got)
+	if got := env.reload(t, 0).GetTaskByID(task.ID); got == nil || got.Priority != models.PriorityLow {
+		t.Fatalf("undo priority = %v, want %d", got, models.PriorityLow)
 	}
 }
 

@@ -29,8 +29,10 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 
 	src := filepath.Join(t.TempDir(), "src")
 	dst := filepath.Join(t.TempDir(), "dst")
+	if _, err := NewManager(ConfigPathForDataDir(src)).LoadOrCreateDomains(); err != nil {
+		t.Fatalf("bootstrap schema-6 source: %v", err)
+	}
 	writeFileTree(t, src, map[string]string{
-		configFileName:            `{"version":1,"data_dir":"` + jsonEscape(src) + `"}`,
 		"projects/alpha/tasks.md": "# Alpha",
 		"themes/custom.json":      `{"name":"custom"}`,
 		// Runtime-only entries must not be moved.
@@ -72,7 +74,7 @@ func TestMoveWorkspace_CopiesVerifiesAndSwitchesPointer(t *testing.T) {
 	if got := readActivePointerDir(t); got != filepath.Clean(dst) {
 		t.Errorf("active pointer = %q, want %q", got, filepath.Clean(dst))
 	}
-	// Destination config data_dir rewritten to the new root.
+	// Split domains are path-portable; runtime binds them to the destination root.
 	runtime, err := NewManager(ConfigPathForDataDir(dst)).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("load moved config: %v", err)

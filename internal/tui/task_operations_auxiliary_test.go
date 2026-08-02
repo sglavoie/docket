@@ -15,11 +15,11 @@ func auxiliaryTaskTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 	model := newUITestApp()
 	target := &models.Task{
 		ID: "target", ShortID: 1, Title: "Target",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	other := &models.Task{
 		ID: "other", ShortID: 2, Title: "Other",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	project := &models.Project{
 		ID: "alpha", Name: "Alpha", Slug: "alpha",
@@ -58,9 +58,6 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 		},
 		operationTaskComments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskCommentsMsg).Task, task)
-		},
-		operationTaskDecisions: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowTaskDecisionsMsg).Task, task)
 		},
 		operationTaskAttachments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskAttachmentsMsg).Task, task)
@@ -150,7 +147,6 @@ func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 	model, _, _ := auxiliaryTaskTestApp(t)
 	wanted := map[OperationID]string{
 		operationTaskComments:             "add comment",
-		operationTaskDecisions:            "design decisions",
 		operationTaskAttachments:          "add attachment",
 		operationTaskCopyTitle:            "yank title",
 		operationTaskCopyDetails:          "yank description",
@@ -213,11 +209,11 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 func newChildHierarchyTestProject() *models.Project {
 	leaf := &models.Task{
 		ID: "leaf", ShortID: 1, Title: "Leaf",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	epic := &models.Task{
 		ID: "epic", ShortID: 2, Title: "Epic",
-		WorkflowState: models.StateReady,
+		WorkflowState: models.StateBacklog,
 	}
 	tasks := []*models.Task{leaf, epic}
 	parentID := epic.ID
@@ -226,7 +222,7 @@ func newChildHierarchyTestProject() *models.Project {
 		owner := parentID
 		tasks = append(tasks, &models.Task{
 			ID: id, ShortID: level + 2, Title: id, ParentID: &owner,
-			WorkflowState: models.StateReady,
+			WorkflowState: models.StateBacklog,
 		})
 		parentID = id
 	}

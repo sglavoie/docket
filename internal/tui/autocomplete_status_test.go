@@ -6,11 +6,11 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-func TestQuickCaptureStatusSuggestionsIncludeAllStatuses(t *testing.T) {
+func TestQuickCaptureDestinationSuggestionsIncludeAllDestinations(t *testing.T) {
 	q := &quickCaptureInput{}
-	suggestions := q.getStatusSuggestions("")
+	suggestions := q.getDestinationSuggestions("")
 
-	want := textgrammar.StateNames()
+	want := textgrammar.DestinationNames()
 	if len(suggestions) != len(want) {
 		t.Fatalf("got %d suggestions, want %d", len(suggestions), len(want))
 	}
@@ -21,21 +21,21 @@ func TestQuickCaptureStatusSuggestionsIncludeAllStatuses(t *testing.T) {
 	}
 }
 
-func TestQuickCaptureStatusSuggestionsFilterByPartial(t *testing.T) {
+func TestQuickCaptureDestinationSuggestionsFilterByPartial(t *testing.T) {
 	q := &quickCaptureInput{}
 
 	tests := []struct {
 		partial string
 		want    []string
 	}{
-		{"read", []string{"ready"}},
+		{"back", []string{"backlog"}},
 		{"wait", []string{"waiting"}},
 		{"pause", []string{"paused"}},
 		{"some", []string{"someday"}},
 	}
 
 	for _, tt := range tests {
-		suggestions := q.getStatusSuggestions(tt.partial)
+		suggestions := q.getDestinationSuggestions(tt.partial)
 		if len(suggestions) != len(tt.want) {
 			t.Errorf("partial=%q: got %d suggestions, want %d", tt.partial, len(suggestions), len(tt.want))
 			continue

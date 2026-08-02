@@ -44,7 +44,7 @@ func runBatchResult(t *testing.T, cmd tea.Cmd) BatchTransactionResultMsg {
 // TestAttachmentScenario covers the transactional attachment overlay: attaching a
 // URL commits the metadata, the reloaded task shows it, and undo removes it.
 func TestAttachmentScenario(t *testing.T) {
-	task := seedTask(t, 1, "Attach here", models.StateReady)
+	task := seedTask(t, 1, "Attach here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "attach", task)
 
 	res := runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/spec"))
@@ -66,11 +66,11 @@ func TestAttachmentScenario(t *testing.T) {
 // two tasks commits one batch, the reloaded project shows both moved, the summary
 // counts them, and undo restores their prior states.
 func TestBulkTransitionScenario(t *testing.T) {
-	a := seedTask(t, 1, "First", models.StateReady)
-	b := seedTask(t, 2, "Second", models.StateReady)
+	a := seedTask(t, 1, "First", models.StateBacklog)
+	b := seedTask(t, 2, "Second", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulk", a, b)
 
-	msg := runBatchResult(t, features.Bulk.Transition([]string{a.ID, b.ID}, models.StateInProgress))
+	msg := runBatchResult(t, features.Bulk.Transition([]string{a.ID, b.ID}, models.StateDoing))
 	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
 		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
 	}
@@ -80,7 +80,7 @@ func TestBulkTransitionScenario(t *testing.T) {
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.State() != models.StateInProgress {
+		if got := reloaded.GetTaskByID(id); got == nil || got.State() != models.StateDoing {
 			t.Fatalf("task %s state = %v, want in_progress", id, got)
 		}
 	}
@@ -88,7 +88,7 @@ func TestBulkTransitionScenario(t *testing.T) {
 	env.undo(t)
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.State() != models.StateReady {
+		if got := reloaded.GetTaskByID(id); got == nil || got.State() != models.StateBacklog {
 			t.Fatalf("undo state for %s = %v, want ready", id, got)
 		}
 	}
@@ -98,8 +98,8 @@ func TestBulkTransitionScenario(t *testing.T) {
 // subtrees commits one batch, the reloaded project loses both, and undo restores
 // them.
 func TestBulkDeleteScenario(t *testing.T) {
-	a := seedTask(t, 1, "Doomed A", models.StateReady)
-	b := seedTask(t, 2, "Doomed B", models.StateReady)
+	a := seedTask(t, 1, "Doomed A", models.StateBacklog)
+	b := seedTask(t, 2, "Doomed B", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulkdel", a, b)
 
 	msg := runBatchResult(t, features.Bulk.Delete([]string{a.ID, b.ID}))
@@ -123,8 +123,8 @@ func TestBulkDeleteScenario(t *testing.T) {
 // setting the priority on two tasks commits one batch, the reloaded project shows
 // both changed, and undo restores their prior priorities.
 func TestBulkSetPriorityScenario(t *testing.T) {
-	a := seedTask(t, 1, "First", models.StateReady)
-	b := seedTask(t, 2, "Second", models.StateReady)
+	a := seedTask(t, 1, "First", models.StateBacklog)
+	b := seedTask(t, 2, "Second", models.StateBacklog)
 	a.Priority = 3
 	b.Priority = 3
 	env, features := newSecondaryEnv(t, "bulk-priority", a, b)
@@ -154,8 +154,8 @@ func TestBulkSetPriorityScenario(t *testing.T) {
 // a due date on two tasks commits one batch, clearing it commits another, and undo
 // restores the set date.
 func TestBulkDueDateScenario(t *testing.T) {
-	a := seedTask(t, 1, "First", models.StateReady)
-	b := seedTask(t, 2, "Second", models.StateReady)
+	a := seedTask(t, 1, "First", models.StateBacklog)
+	b := seedTask(t, 2, "Second", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulk-due", a, b)
 
 	due := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
@@ -190,8 +190,8 @@ func TestBulkDueDateScenario(t *testing.T) {
 // two tasks commits one batch, clearing the snooze commits another, and undo
 // restores the snooze.
 func TestBulkSnoozeScenario(t *testing.T) {
-	a := seedTask(t, 1, "First", models.StateReady)
-	b := seedTask(t, 2, "Second", models.StateReady)
+	a := seedTask(t, 1, "First", models.StateBacklog)
+	b := seedTask(t, 2, "Second", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulk-snooze", a, b)
 
 	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.Local)
@@ -225,8 +225,8 @@ func TestBulkSnoozeScenario(t *testing.T) {
 // the tag set on two tasks commits one batch, the reloaded project shows the new
 // tags, and undo restores the originals.
 func TestBulkSetTagsScenario(t *testing.T) {
-	a := seedTask(t, 1, "First", models.StateReady)
-	b := seedTask(t, 2, "Second", models.StateReady)
+	a := seedTask(t, 1, "First", models.StateBacklog)
+	b := seedTask(t, 2, "Second", models.StateBacklog)
 	a.AddTag("old")
 	env, features := newSecondaryEnv(t, "bulk-tags", a, b)
 
@@ -253,7 +253,7 @@ func TestBulkSetTagsScenario(t *testing.T) {
 // TestSubviewCommentScenario covers the transactional comments panel: adding a
 // comment commits it, the reloaded task shows it, and undo removes it.
 func TestSubviewCommentScenario(t *testing.T) {
-	task := seedTask(t, 1, "Comment here", models.StateReady)
+	task := seedTask(t, 1, "Comment here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "subview-comment", task)
 
 	res := runResult(t, features.Subview.AddComment(taskIdentityFor(task, env.project), "found the root cause"))
@@ -275,7 +275,7 @@ func TestSubviewCommentScenario(t *testing.T) {
 // and toggling an item commit separately, the reloaded task shows the toggled
 // item, and undo reverts the toggle while keeping the item.
 func TestSubviewChecklistScenario(t *testing.T) {
-	task := seedTask(t, 1, "Check here", models.StateReady)
+	task := seedTask(t, 1, "Check here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "subview-checklist", task)
 
 	runResult(t, features.Subview.AddChecklistItem(taskIdentityFor(task, env.project), "write the test"))
@@ -294,7 +294,7 @@ func TestSubviewChecklistScenario(t *testing.T) {
 // TestAttachmentReorderScenario covers the transactional attachment reorder: the
 // swap commits, the reloaded task shows the new order, and undo restores it.
 func TestAttachmentReorderScenario(t *testing.T) {
-	task := seedTask(t, 1, "Reorder here", models.StateReady)
+	task := seedTask(t, 1, "Reorder here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "attach-reorder", task)
 
 	runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/a"))

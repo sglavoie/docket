@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -95,7 +94,6 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapt
 		for _, item := range picker.SourceItems() {
 			if item.Name == tagName {
 				picker.PreSelectByID(tagName)
-				enforceExclusiveTaskMarkerSelection(picker, tagName)
 				picker.SetCursorToID(tagName)
 				return nil
 			}
@@ -111,38 +109,9 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapt
 		}
 		picker.Filter(picker.SearchQuery())
 		picker.PreSelectByID(tagName)
-		enforceExclusiveTaskMarkerSelection(picker, tagName)
 		picker.SetCursorToID(tagName)
 		return nil
 	})
-}
-
-// enforceExclusiveTaskMarkerSelection keeps the four semantic type tags
-// mutually exclusive while leaving every ordinary multi-tag selection intact.
-// It only acts when target is currently selected, so toggling a marker off does
-// not select anything else.
-func enforceExclusiveTaskMarkerSelection(picker *ListSurfaceAdapter[TagInfo], target string) {
-	if picker == nil {
-		return
-	}
-	if _, semantic := models.ParseTaskMarkerTag(target); !semantic {
-		return
-	}
-	selected := picker.surface.SelectedIDs()
-	targetID := ListItemID(target)
-	if !slices.Contains(selected, targetID) {
-		return
-	}
-	next := make([]ListItemID, 0, len(selected))
-	for _, id := range selected {
-		if id != targetID {
-			if _, semantic := models.ParseTaskMarkerTag(string(id)); semantic {
-				continue
-			}
-		}
-		next = append(next, id)
-	}
-	_ = picker.surface.SetSelectedIDs(next)
 }
 
 // RenderAddTagMode renders the add tag input UI as a fullscreen view.

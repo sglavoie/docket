@@ -1,10 +1,69 @@
 package app_test
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
+
+// TestRecurrenceIsAbsentFromLiveTypes locks the removal at every application
+// boundary that could otherwise reintroduce recurrence into a write or result.
+func TestRecurrenceIsAbsentFromLiveTypes(t *testing.T) {
+	types := []struct {
+		name  string
+		value any
+	}{
+		{"task", models.Task{}},
+		{"add request", app.AddTaskRequest{}},
+		{"form edit", app.FormEdit{}},
+		{"task result", app.TaskResult{}},
+	}
+	for _, item := range types {
+		typ := reflect.TypeOf(item.value)
+		if _, ok := typ.FieldByName("Recurrence"); ok {
+			t.Errorf("%s exposes Recurrence", item.name)
+		}
+		if _, ok := typ.FieldByName("RecurringGenerated"); ok {
+			t.Errorf("%s exposes RecurringGenerated", item.name)
+		}
+	}
+
+	for _, method := range []string{
+		"SetRecurrence", "ClearRecurrence", "SkipRecurrence", "DeferRecurrence",
+		"NextDueDate", "NextDueDateAfter", "NextNDueDates", "IsRecurring",
+	} {
+		if _, ok := reflect.TypeOf(&models.Task{}).MethodByName(method); ok {
+			t.Errorf("live task still exposes %s", method)
+		}
+		if _, ok := reflect.TypeOf(&app.Service{}).MethodByName(method); ok {
+			t.Errorf("application service still exposes %s", method)
+		}
+	}
+	for _, method := range []string{"GenerateRecurringInstances", "GenerateRecurringInstancesAt", "GenerateRecurringInstancesAtWithID"} {
+		if _, ok := reflect.TypeOf(&models.Project{}).MethodByName(method); ok {
+			t.Errorf("live project still exposes %s", method)
+		}
+	}
+}
+
+func TestCompleteFinishesOnlySelectedTask(t *testing.T) {
+	task := newTask("task", 1, "Finish once")
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	if _, err := svc.Complete(task.ID); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if task.State() != models.StateDone {
+		t.Fatalf("state = %q, want done", task.State())
+	}
+	if len(project.Tasks) != 1 || project.Tasks[0] != task {
+		t.Fatalf("completion changed task identity set: %+v", project.Tasks)
+	}
+}
 
 // rootOrder reads the root-task IDs in slice order.
 func rootOrder(p *models.Project) []string {

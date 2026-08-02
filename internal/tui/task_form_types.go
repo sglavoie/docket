@@ -14,8 +14,7 @@ import (
 // formSubtaskDraft is a draft subtask entry on the Children tab.
 // Only used in FormModeCreate.
 type formSubtaskDraft struct {
-	title    string
-	optional bool
+	title string
 }
 
 // FormMode controls whether TaskFormModel is creating or editing a task (D1).
@@ -29,16 +28,15 @@ const (
 // taskFormDraft holds all editable state for the form, independent of mode.
 // Populated from a new task (create) or an existing task (edit).
 type taskFormDraft struct {
-	title      string
-	priority   int
-	parentID   *string
-	state      models.WorkflowState
-	pinned     bool
-	tags       []string
-	dueDate    *time.Time
-	dueInput   string
-	recurrence *models.RecurrencePattern
-	desc       string
+	title    string
+	priority int
+	parentID *string
+	state    models.WorkflowState
+	pinned   bool
+	tags     []string
+	dueDate  *time.Time
+	dueInput string
+	desc     string
 
 	// Children tab data.
 	checklist []models.ChecklistItem
@@ -47,14 +45,14 @@ type taskFormDraft struct {
 
 // TaskFormModel drives both Create and Edit flows (D1, D11).
 type TaskFormModel struct {
-	mode       FormMode
-	project    *models.Project
-	task       *models.Task // non-nil in FormModeEdit
-	draft      taskFormDraft
-	runtime    *config.RuntimeState
-	taskForm   TaskFormCoordinator
-	presetPlan app.PlanningArtifactBuilder
-	hostTitle  string
+	mode              FormMode
+	project           *models.Project
+	task              *models.Task // non-nil in FormModeEdit
+	draft             taskFormDraft
+	runtime           *config.RuntimeState
+	taskForm          TaskFormCoordinator
+	presetDestination app.CaptureDestination
+	hostTitle         string
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model
@@ -80,24 +78,23 @@ type TaskFormModel struct {
 	subtaskItemInput   textinput.Model
 
 	// Navigation state
-	activeTab         int
-	focusIndex        int
-	collapsedBasics   bool // true = show only Title/Priority + expand row
-	collapsedSchedule bool // true = show only Due + expand row
+	activeTab       int
+	focusIndex      int
+	collapsedBasics bool // true = show only Title/Priority + expand row
 
 	// Dimensions
 	width  int
 	height int
 
-	// Open-after state: set when a subtask overlay confirms with Ctrl+O/Ctrl+D,
-	// triggering auto-save and subsequent navigation to the created subtask.
+	// Edit-after state: set when a subtask overlay confirms with Ctrl+D,
+	// triggering auto-save and subsequent description editing for the child.
 	subtaskOpenIdx     int
-	subtaskOpenDetail  bool
 	subtaskOpenContent bool
 
 	// UI state
-	err        error
-	hasChanges bool
+	err                error
+	hasChanges         bool
+	submissionInFlight bool
 	discardConfirmState
 }
 

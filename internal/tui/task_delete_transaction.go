@@ -4,10 +4,6 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 const operationTaskDelete OperationID = "tui.task.delete"
@@ -131,9 +127,9 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 // confirmTaskDelete executes the canonical deletion transaction for the pending
-// roots. It clones the planning state, removes the durable references for the
-// entire descendant set, builds the revision-checked planning artifact, and runs
-// ONE BulkCoordinator.Delete for both single- and multi-root deletion. The
+// roots. It runs ONE BulkCoordinator.Delete for both single- and multi-root
+// deletion; the application service expands each subtree and folds canonical
+// Today/Next cleanup into the checked project transaction. The
 // returned command is decorated so the committed batch clears the requested
 // selection IDs after the commit (finalizeBatchResult passes a TransactionError
 // through untouched, leaving state intact on failure). An artifact-build error
@@ -144,45 +140,11 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	if len(roots) == 0 {
 		return nil
 	}
-
-	// Expand every root to its whole subtree so the durable planning cleanup keys
-	// on each removed task, not just the roots.
-	locatorsToDelete := make(map[app.TaskLocator]bool)
-	for _, group := range groupTaskProjectRefsByProject(roots) {
-		rootIDs := make(map[string]bool, len(group.Items))
-		for _, item := range group.Items {
-			rootIDs[item.Task.ID] = true
-		}
-		for id := range collectDescendantIDs(group.Project.Tasks, rootIDs) {
-			locatorsToDelete[app.TaskLocator{ProjectID: group.Project.ID, TaskID: id}] = true
-		}
-	}
-
-	// Fold the durable planning-ref cleanup into the delete transaction as the
-	// revision-checked planning-domain artifact.
-	var artifacts []storage.ArtifactChange
-	if m.runtime != nil && m.configManager != nil {
-		planning := clonePlanningState(m.runtime.Planning())
-		if planning.RemoveDurableTaskLocators(configLocators(locatorsToDelete)) > 0 {
-			arts, err := planningDomainArtifact(m.configManager, planning)
-			if err != nil {
-				return errorCmd("%v", err)
-			}
-			artifacts = arts
-		}
-	}
+	m.appService.WithPlanningArtifacts(shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager))
 
 	locators := taskLocatorsFromTaskRefs(roots)
-	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators, artifacts...)
+	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators)
 	return finalizeLocatedBatchResult(cmd, locators, "")
-}
-
-func configLocators(locators map[app.TaskLocator]bool) []config.ProjectTaskLocator {
-	result := make([]config.ProjectTaskLocator, 0, len(locators))
-	for locator := range locators {
-		result = append(result, config.ProjectTaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
-	}
-	return result
 }
 
 // clearPendingTaskDelete discards the pending roots and dismisses the confirm

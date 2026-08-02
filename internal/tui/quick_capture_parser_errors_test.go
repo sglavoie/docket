@@ -28,16 +28,21 @@ func TestParseQuickCaptureErrors(t *testing.T) {
 			errContains: "parent not found",
 		},
 		{
-			name:        "invalid recurrence pattern",
-			input:       "Task ~notapattern",
+			name:        "retired recurrence",
+			input:       "Task ~weekly",
 			wantErr:     true,
-			errContains: "invalid recurrence",
+			errContains: "recurrence ~weekly was removed",
 		},
 		{
-			name:        "invalid status",
+			name:        "invalid destination",
 			input:       "Fix bug $invalid",
 			wantErr:     true,
-			errContains: "invalid state",
+			errContains: "invalid destination",
 		},
+		{name: "retired type", input: "Fix bug ^bug", wantErr: true, errContains: "use #bug"},
+		{name: "retired priority four", input: "Fix bug !4", wantErr: true, errContains: "use !1, !2, or !3"},
+		{name: "retired priority five", input: "Fix bug !5", wantErr: true, errContains: "use !1, !2, or !3"},
+		{name: "retired ready destination", input: "Fix bug $ready", wantErr: true, errContains: "use $backlog"},
+		{name: "retired in progress destination", input: "Fix bug $in_progress", wantErr: true, errContains: "use $doing"},
 	})
 }

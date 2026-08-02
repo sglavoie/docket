@@ -196,8 +196,6 @@ func ListSourceFromTags(tags []TagInfo) ListSource {
 
 func contextScopeListItemID(scope ContextScope) ListItemID {
 	switch scope.Kind {
-	case ContextScopeCustom:
-		return ListItemID("scope:custom:" + scope.Name)
 	case ContextScopeRegular:
 		return ListItemID("scope:regular:" + scope.Name)
 	default:
@@ -209,12 +207,10 @@ func workflowStateListLabel(state models.WorkflowState) string {
 	switch state {
 	case models.StateInbox:
 		return "Inbox"
-	case models.StateReady:
-		return "Ready"
-	case models.StateNext:
-		return "Next"
-	case models.StateInProgress:
-		return "In Progress"
+	case models.StateBacklog:
+		return "Backlog"
+	case models.StateDoing:
+		return "Doing"
 	case models.StateWaiting:
 		return "Waiting"
 	case models.StatePaused:

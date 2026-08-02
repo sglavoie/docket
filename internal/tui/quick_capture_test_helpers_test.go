@@ -5,23 +5,25 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 type quickCaptureParseTestCase struct {
-	name           string
-	input          string
-	wantTitle      string
-	wantPriority   int
-	wantTags       []string
-	wantHasDueDate bool
-	wantParentID   *string
-	wantSection    string
-	wantHasRecur   bool
-	wantState      models.WorkflowState
-	wantStatus     models.WorkflowState
-	wantErr        bool
-	errContains    string
+	name            string
+	input           string
+	wantTitle       string
+	wantPriority    int
+	wantTags        []string
+	wantHasDueDate  bool
+	wantParentID    *string
+	wantSection     string
+	wantHasRecur    bool
+	wantDestination app.CaptureDestination
+	wantState       models.WorkflowState
+	wantStatus      models.WorkflowState
+	wantErr         bool
+	errContains     string
 }
 
 func strPtr(s string) *string {
@@ -93,15 +95,13 @@ func runQuickCaptureParseTests(t *testing.T, tests []quickCaptureParseTestCase) 
 				t.Errorf("parentID = %q, want nil", *result.parentID)
 			}
 
-			hasRecur := result.recurrence != nil
-			if hasRecur != tt.wantHasRecur {
-				t.Errorf("hasRecurrence = %v, want %v", hasRecur, tt.wantHasRecur)
-			}
-
 			if tt.wantState != "" {
-				if !result.stateSet || result.state != tt.wantState {
-					t.Errorf("state = %q (set=%v), want %q", result.state, result.stateSet, tt.wantState)
+				if !result.destinationSet || result.destination.WorkflowState() != tt.wantState {
+					t.Errorf("destination = %q (set=%v), want state %q", result.destination, result.destinationSet, tt.wantState)
 				}
+			}
+			if tt.wantDestination != "" && (!result.destinationSet || result.destination != tt.wantDestination) {
+				t.Errorf("destination = %q (set=%v), want %q", result.destination, result.destinationSet, tt.wantDestination)
 			}
 
 		})

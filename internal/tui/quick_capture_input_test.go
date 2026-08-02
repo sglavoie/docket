@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/app"
 )
 
 // makePreviewInput builds a quickCaptureInput pre-populated with the given
@@ -48,7 +48,7 @@ func TestRenderPreview_PreviewErrorShortCircuits(t *testing.T) {
 func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:    "Fix login bug",
-		priority: 3, // default - hidden
+		priority: 0, // default - hidden
 	}, "", 0)
 
 	plain := ansi.Strip(q.renderPreview())
@@ -78,7 +78,7 @@ func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:             "Capture for other team",
-		priority:          3,
+		priority:          0,
 		targetProjectName: "Web App",
 	}, "", 0)
 
@@ -100,10 +100,25 @@ func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 	}
 }
 
+func TestRenderPreviewShowsPlanningDestinationAndChildDefault(t *testing.T) {
+	today := makePreviewInput(t, &quickCaptureResult{
+		title: "Plan it", destination: app.CaptureDestinationToday, destinationSet: true,
+	}, "", 0)
+	if got := ansi.Strip(today.renderPreview()); !strings.Contains(got, "$today") || strings.Contains(got, "(default)") {
+		t.Fatalf("Today preview = %q", got)
+	}
+
+	parentID := "parent"
+	child := makePreviewInput(t, &quickCaptureResult{title: "Child", parentID: &parentID}, "", 0)
+	if got := ansi.Strip(child.renderPreview()); !strings.Contains(got, "$backlog (default)") {
+		t.Fatalf("child preview = %q", got)
+	}
+}
+
 func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:             "Capture for the offsite tomorrow morning",
-		priority:          3,
+		priority:          0,
 		targetProjectName: "Q1 Planning Roadmap Initiative",
 	}, "", 32)
 
@@ -134,9 +149,8 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		priority:          1,
 		tags:              []string{"backend", "urgent"},
 		dueDate:           &due,
-		recurrence:        &models.RecurrencePattern{Unit: models.RecurrenceWeekly, Interval: 1},
-		state:             models.StateInProgress,
-		stateSet:          true,
+		destination:       app.CaptureDestinationDoing,
+		destinationSet:    true,
 		targetProjectName: "Web App",
 	}, "", 0)
 
@@ -152,8 +166,8 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		substr []string
 	}{
 		{"Task", []string{"Ship release"}},
-		{"Route", []string{"$in_progress", "Web App"}},
-		{"Schedule", []string{"@Feb 15", "~"}},
+		{"Route", []string{"$doing", "Web App"}},
+		{"Schedule", []string{"@Feb 15"}},
 		{"Priority", []string{"!1"}},
 		{"Tags", []string{"#backend", "#urgent"}},
 	}
@@ -194,9 +208,8 @@ func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 		priority:          1,
 		tags:              []string{"backend", "urgent", "production", "hotfix"},
 		dueDate:           &due,
-		recurrence:        &models.RecurrencePattern{Unit: models.RecurrenceDaily, Interval: 1},
-		state:             models.StateNext,
-		stateSet:          true,
+		destination:       app.CaptureDestinationBacklog,
+		destinationSet:    true,
 		targetProjectName: "Reliability And Observability Platform",
 	}, "", 32)
 
@@ -211,11 +224,11 @@ func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 
 func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
-		title:    "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
-		priority: 3,
-		tags:     []string{"界面修复", "次要标签"},
-		state:    models.StateNext,
-		stateSet: true,
+		title:          "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
+		priority:       3,
+		tags:           []string{"界面修复", "次要标签"},
+		destination:    app.CaptureDestinationBacklog,
+		destinationSet: true,
 	}, "", 28)
 
 	rendered := q.renderPreview()

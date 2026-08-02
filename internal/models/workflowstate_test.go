@@ -4,8 +4,8 @@ import "testing"
 
 func TestAllWorkflowStatesAreValidAndComplete(t *testing.T) {
 	all := AllWorkflowStates()
-	if len(all) != 9 {
-		t.Fatalf("AllWorkflowStates() len = %d, want 9", len(all))
+	if len(all) != 8 {
+		t.Fatalf("AllWorkflowStates() len = %d, want 8", len(all))
 	}
 	seen := make(map[WorkflowState]bool, len(all))
 	for _, s := range all {
@@ -25,7 +25,9 @@ func TestWorkflowStateIsValid(t *testing.T) {
 			t.Errorf("%q should be valid", s)
 		}
 	}
-	for _, bad := range []WorkflowState{"", StateReview, "todo", "in-progress", "Done", "blocked", "unknown"} {
+	for _, bad := range []WorkflowState{
+		"", StateReview, "ready", "next", "in_progress", "todo", "in-progress", "Done", "blocked", "unknown",
+	} {
 		if bad.IsValid() {
 			t.Errorf("%q should not be valid", bad)
 		}
@@ -37,8 +39,8 @@ func TestLegacyReviewCompatibilityIsExplicit(t *testing.T) {
 		t.Fatal("retired Review state is valid for target operations")
 	}
 	target, ok := TargetStateForLegacy(StateReview)
-	if !ok || target != StateReady {
-		t.Fatalf("TargetStateForLegacy(review) = (%q, %v), want ready", target, ok)
+	if !ok || target != StateBacklog {
+		t.Fatalf("TargetStateForLegacy(review) = (%q, %v), want backlog", target, ok)
 	}
 }
 
@@ -103,10 +105,10 @@ func TestCanTransitionStateMatrix(t *testing.T) {
 }
 
 func TestCanTransitionStateRejectsInvalid(t *testing.T) {
-	if CanTransitionState("bogus", StateReady) == "" {
+	if CanTransitionState("bogus", StateBacklog) == "" {
 		t.Errorf("transition from invalid state should be rejected")
 	}
-	if CanTransitionState(StateReady, "bogus") == "" {
+	if CanTransitionState(StateBacklog, "bogus") == "" {
 		t.Errorf("transition to invalid state should be rejected")
 	}
 }

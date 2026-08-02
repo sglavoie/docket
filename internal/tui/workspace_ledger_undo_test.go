@@ -53,7 +53,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 	for _, tc := range attributeCases {
 		t.Run(tc.name, func(t *testing.T) {
 			dataDir := t.TempDir()
-			task := seedTask(t, 1, "Ledger undo target", models.StateReady)
+			task := seedTask(t, 1, "Ledger undo target", models.StateBacklog)
 			project := newLedgerUndoProject(t, dataDir, "ledger-undo", task)
 
 			mutator := newLedgerUndoApp(t, dataDir, project, ViewCrossProjectOutliner, task.ID, true)
@@ -86,20 +86,20 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 
 	t.Run("planning-aware transition", func(t *testing.T) {
 		dataDir := t.TempDir()
-		task := seedTask(t, 1, "Planning transition target", models.StateReady)
+		task := seedTask(t, 1, "Planning transition target", models.StateBacklog)
 		project := newLedgerUndoProject(t, dataDir, "planning-undo", task)
 
 		mutator := newLedgerUndoApp(t, dataDir, project, ViewCrossProjectOutliner, task.ID, true)
 
-		// Seed the task into Today (Daily Plan) on disk so a transition into Next
-		// must drop the Today entry through the folded planning artifact.
+		// Seed the task into Today so a lifecycle transition to Waiting must drop
+		// the Today entry through the folded planning artifact.
 		seedTodayMembership(t, mutator.configManager, project.ID, task.ID)
 		if !planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {
 			t.Fatal("failed to seed Today membership")
 		}
 		before := readTasksFile(t, project)
 
-		if _, err := mutator.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateNext}); err != nil {
+		if _, err := mutator.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("planning-aware transition: %v", err)
 		}
 		if planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {
@@ -116,7 +116,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		if !planningTaskInToday(t, restarted.configManager, project.ID, task.ID) {
 			t.Fatal("undo did not restore the Today (Daily Plan) entry on disk")
 		}
-		if fresh := restarted.currentProject.GetTaskByID(task.ID); fresh == nil || fresh.State() == models.StateNext {
+		if fresh := restarted.currentProject.GetTaskByID(task.ID); fresh == nil || fresh.State() != models.StateBacklog {
 			t.Fatalf("undo did not restore pre-transition workflow state: %v", fresh)
 		}
 

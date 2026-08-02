@@ -69,7 +69,7 @@ func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTask target: %v", err)
 	}
-	targetTask.WorkflowState = models.StateInProgress
+	targetTask.WorkflowState = models.StateDoing
 
 	m := &CrossProjectLinkerModel{
 		sourceTask:    sourceTask,

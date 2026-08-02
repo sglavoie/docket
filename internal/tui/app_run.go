@@ -65,8 +65,8 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 		if app.currentProject != nil {
 			now := time.Now()
 			for _, t := range app.currentProject.Tasks {
-				if t.State() == models.StateInProgress {
-					app.sessionStats.tasksInProgress++
+				if t.State() == models.StateDoing {
+					app.sessionStats.tasksDoing++
 				}
 				if t.SnoozedUntil != nil && t.SnoozedUntil.After(now) {
 					app.sessionStats.tasksSnoozed++
@@ -80,7 +80,7 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOp
 
 // printSessionSummary writes a brief session summary to stderr after the TUI exits.
 func printSessionSummary(stats sessionStats) {
-	if stats.tasksCompleted == 0 && stats.tasksCreated == 0 && stats.tasksInProgress == 0 && stats.tasksSnoozed == 0 {
+	if stats.tasksCompleted == 0 && stats.tasksCreated == 0 && stats.tasksDoing == 0 && stats.tasksSnoozed == 0 {
 		return
 	}
 
@@ -109,8 +109,8 @@ func printSessionSummary(stats sessionStats) {
 	} else {
 		msg = header + ":"
 	}
-	if stats.tasksInProgress > 0 {
-		msg += " · " + yellowStyle.Render(fmt.Sprintf("%d", stats.tasksInProgress)) + " still in progress"
+	if stats.tasksDoing > 0 {
+		msg += " · " + yellowStyle.Render(fmt.Sprintf("%d", stats.tasksDoing)) + " doing"
 	}
 	fmt.Fprintln(os.Stderr, msg)
 }

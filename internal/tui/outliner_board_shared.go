@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -21,35 +19,8 @@ const (
 	boardTabBacklog = 2
 )
 
-// boardRow is a unified display item for an active/due task, retained as the
-// row shape shared by the Outliner mode row builders and cross-project filters.
+// boardRow is the minimal compatibility shape still used by grouped title undo.
 type boardRow struct {
-	Task        *models.Task
-	Project     *models.Project
-	Priority    int
-	Source      string
-	TreePrefix  string // non-empty for auto-expanded children of planned items in Today
-	GroupHeader string // non-empty for non-selectable group separator rows (Task will be nil)
-	ParentID    string // immediate parent task ID for child rows in Today; empty for roots/non-tree rows
-	Depth       int    // 0 for root tasks; n for n-th level descendant in Today
-}
-
-// buildBoardTreePrefix builds a tree prefix with shorter horizontal lines
-// (one fewer ─) to fit the compact daily-driver layout.
-func buildBoardTreePrefix(ancestorIsLast []bool, isLast bool) string {
-	var b strings.Builder
-	b.WriteByte(' ')
-	for _, last := range ancestorIsLast {
-		if last {
-			b.WriteString("     ")
-		} else {
-			b.WriteString("│    ")
-		}
-	}
-	if isLast {
-		b.WriteString("└─── ")
-	} else {
-		b.WriteString("├─── ")
-	}
-	return b.String()
+	Task    *models.Task
+	Project *models.Project
 }
