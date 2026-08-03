@@ -140,6 +140,12 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	key := msg.String()
 	if model.searching {
 		switch key {
+		case "up":
+			model.surface.MoveCursor(-1)
+			return nil, false, nil
+		case "down":
+			model.surface.MoveCursor(1)
+			return nil, false, nil
 		case "esc":
 			if model.surface.Query().Raw != "" {
 				model.surface.SetQuery("")

@@ -1,0 +1,26 @@
+{
+  "name": "move-project-search-navigation",
+  "fixture": "contexts",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move onto the Client Alpha task", "key": "j" },
+    { "type": "key", "label": "open the task action sheet", "key": "space" },
+    { "type": "key", "label": "search task actions", "key": "/" },
+    { "type": "text", "label": "find Move Project", "text": "move project" },
+    { "type": "key", "label": "open the destination picker", "key": "enter" },
+    { "type": "key", "label": "search destinations", "key": "/" },
+    { "type": "text", "label": "retain several destination matches", "text": "e" },
+    { "type": "key", "label": "navigate within filtered destinations", "key": "down" },
+    { "type": "assert", "assert": "contains", "value": "› Reading List" },
+    { "type": "key", "label": "finish destination search", "key": "enter" },
+    { "type": "key", "label": "move to the selected project", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "[reading-list] (2)" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "[client-alpha]" },
+    { "type": "assert", "assert": "status_contains", "value": "Moved" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

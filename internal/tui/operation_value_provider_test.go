@@ -487,6 +487,45 @@ func TestRelationValuePickerEscUnwindsSearchBeforeCancel(t *testing.T) {
 	}
 }
 
+func TestOperationValuePickerArrowNavigationRemainsActiveDuringSearch(t *testing.T) {
+	source := ListSource{Items: []ListItem{
+		{ID: "project:alpha", PrimaryText: "Alpha Project", Data: "alpha"},
+		{ID: "project:beta", PrimaryText: "Beta Project", Data: "beta"},
+		{ID: "project:gamma", PrimaryText: "Gamma Project", Data: "gamma"},
+	}}
+	picker, err := newOperationValuePickerModel(
+		OperationExecutionRequest{ID: operationTaskMoveProject},
+		ValueProviderProject,
+		"Move Project",
+		"Task",
+		source,
+		false,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("newOperationValuePickerModel: %v", err)
+	}
+
+	picker.handleKey(tea.KeyPressMsg{Code: '/'})
+	picker.handleKey(tea.KeyPressMsg{Code: 'p', Text: "p"})
+	if !picker.searching || picker.surface.Query().Raw != "p" {
+		t.Fatalf("search state = active %v query %q, want active query p", picker.searching, picker.surface.Query().Raw)
+	}
+
+	picker.handleKey(tea.KeyPressMsg{Code: tea.KeyDown})
+	if current, ok := picker.surface.CurrentItem(); !ok || current.ID != "project:beta" {
+		t.Fatalf("current item after Down = %+v, %v; want project:beta", current, ok)
+	}
+	if !picker.searching || picker.surface.Query().Raw != "p" {
+		t.Fatalf("Down changed search state = active %v query %q", picker.searching, picker.surface.Query().Raw)
+	}
+
+	picker.handleKey(tea.KeyPressMsg{Code: tea.KeyUp})
+	if current, ok := picker.surface.CurrentItem(); !ok || current.ID != "project:alpha" {
+		t.Fatalf("current item after Up = %+v, %v; want project:alpha", current, ok)
+	}
+}
+
 func TestMovedTaskMenuOperationRetargetsAsyncReloadAnchor(t *testing.T) {
 	outliner := &OutlinerModel{crossReloadProjectID: "source", crossReloadTaskID: "task"}
 	model := &AppModel{crossOutliner: outliner}
