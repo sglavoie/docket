@@ -23,19 +23,7 @@ const (
 )
 
 // ProjectLoadResult contains the result of loading a project, including any warnings.
-type ProjectLoadResult struct {
-	// RawRevision is the optimistic-concurrency revision of the exact tasks.md
-	// bytes parsed by this load. A non-nil pointer to "" means the file was
-	// absent; nil means the active test repository cannot provide a filesystem
-	// revision. Callers that persist load-time normalization must carry this
-	// revision into the checked maintenance commit rather than re-reading later.
-	RawRevision *string
-	// MigrationAudit records the retained retired schema-v1 lifecycle values the
-	// loaded tasks carried for migration reporting.
-	// Nil when the project was not loaded through the markdown parser (e.g. an
-	// in-memory test repository) or the tasks file did not exist.
-	MigrationAudit *MigrationAudit
-}
+type ProjectLoadResult struct{}
 
 func tasksFilePath(projectPath string) string {
 	return filepath.Join(projectPath, tasksFileName)

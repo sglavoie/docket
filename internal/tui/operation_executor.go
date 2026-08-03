@@ -13,22 +13,10 @@ var (
 	ErrOperationHandler       = errors.New("operation has no compatible handler")
 )
 
-// OperationInvocationSource identifies the adapter that requested execution.
-// Handlers do not branch on palette-specific message types.
-type OperationInvocationSource string
-
-const (
-	OperationSourceCommand     OperationInvocationSource = "command"
-	OperationSourceDirectKey   OperationInvocationSource = "direct-key"
-	OperationSourceActionSheet OperationInvocationSource = "action-sheet"
-	OperationSourceBulk        OperationInvocationSource = "bulk"
-)
-
 // OperationExecutionRequest is the complete input to centralized execution.
 type OperationExecutionRequest struct {
 	ID        OperationID
 	Context   CommandContext
-	Source    OperationInvocationSource
 	Value     any
 	HasValue  bool
 	Confirmed bool
@@ -39,7 +27,6 @@ type OperationInvocation struct {
 	Descriptor OperationDescriptor
 	Context    CommandContext
 	Targets    ResolvedOperationTargets
-	Source     OperationInvocationSource
 	Value      any
 	HasValue   bool
 }
@@ -98,26 +85,7 @@ type OperationTransaction interface {
 
 type OperationTransactionFactory func(OperationInvocation) (OperationTransaction, error)
 
-// OperationStatusPhase drives status/toast adapters without coupling handlers
-// to any particular renderer.
-type OperationStatusPhase string
-
-const (
-	OperationStatusStarted              OperationStatusPhase = "started"
-	OperationStatusConfirmationRequired OperationStatusPhase = "confirmation-required"
-	OperationStatusValueRequired        OperationStatusPhase = "value-required"
-	OperationStatusCompleted            OperationStatusPhase = "completed"
-	OperationStatusFailed               OperationStatusPhase = "failed"
-	OperationStatusUndone               OperationStatusPhase = "undone"
-	OperationStatusRedone               OperationStatusPhase = "redone"
-)
-
 type OperationStatusEvent struct {
-	OperationID OperationID
-	Label       string
-	Phase       OperationStatusPhase
-	Status      string
-	Err         error
 	// OwnsUserFeedback reports that this event's Status is the outcome's only
 	// user-visible feedback. A reporter that shows anything else duplicates a
 	// status the message seam already delivers.
@@ -186,8 +154,6 @@ func (result OperationExecutionResult) AsMessage() tea.Msg {
 }
 
 type operationUndoEntry struct {
-	id     OperationID
-	label  string
 	status string
 	undo   func() tea.Msg
 	redo   func() tea.Msg
@@ -340,27 +306,23 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 func (executor *OperationExecutor) Execute(request OperationExecutionRequest) OperationExecutionResult {
 	descriptor, ok := executor.registry.Descriptor(request.ID)
 	if !ok {
-		return executor.failure(request.ID, "", fmt.Errorf("%w: %s", ErrOperationNotRegistered, request.ID))
+		return executor.failure(fmt.Errorf("%w: %s", ErrOperationNotRegistered, request.ID))
 	}
 	binding, ok := executor.bindingFor(request.ID, request.Context)
 	if !ok {
 		return executor.failure(
-			request.ID,
-			descriptor.Label,
 			fmt.Errorf("%w: %s", ErrOperationUnavailable, request.ID),
 		)
 	}
 	if !descriptor.Applicable(request.Context) {
 		return executor.failure(
-			request.ID,
-			descriptor.Label,
 			fmt.Errorf("%w: %s", ErrOperationUnavailable, request.ID),
 		)
 	}
 
 	targets, err := executor.resolver.Resolve(descriptor, request.Context)
 	if err != nil && !binding.DelegateTargetResolution {
-		return executor.failure(request.ID, descriptor.Label, err)
+		return executor.failure(err)
 	}
 	if err != nil {
 		targets = ResolvedOperationTargets{Source: descriptor.TargetSource}
@@ -369,28 +331,21 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 		Descriptor: descriptor,
 		Context:    request.Context,
 		Targets:    targets,
-		Source:     request.Source,
 		Value:      request.Value,
 		HasValue:   request.HasValue,
 	}
-	executor.report(OperationStatusEvent{
-		OperationID: request.ID,
-		Label:       descriptor.Label,
-		Phase:       OperationStatusStarted,
-	})
+	executor.report(OperationStatusEvent{})
 
 	if descriptor.ValueProviderID != "" && !invocation.HasValue && !binding.DelegateValueProvider {
 		provider := executor.valueProviders[descriptor.ValueProviderID]
 		if provider == nil {
 			return executor.failure(
-				request.ID,
-				descriptor.Label,
 				fmt.Errorf("operation %s has no registered value provider %s", request.ID, descriptor.ValueProviderID),
 			)
 		}
 		provided := provider(invocation)
 		if provided.Err != nil {
-			return executor.failure(request.ID, descriptor.Label, provided.Err)
+			return executor.failure(provided.Err)
 		}
 		if provided.HasValue {
 			invocation.Value = provided.Value
@@ -400,11 +355,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 				Request:  request,
 				Provider: descriptor.ValueProviderID,
 			}
-			executor.report(OperationStatusEvent{
-				OperationID: request.ID,
-				Label:       descriptor.Label,
-				Phase:       OperationStatusValueRequired,
-			})
+			executor.report(OperationStatusEvent{})
 			return OperationExecutionResult{
 				Message:       provided.Pending,
 				ValueRequired: valueRequest,
@@ -421,11 +372,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 			Targets: targets,
 		}
 		confirmation.Request.Confirmed = true
-		executor.report(OperationStatusEvent{
-			OperationID: request.ID,
-			Label:       descriptor.Label,
-			Phase:       OperationStatusConfirmationRequired,
-		})
+		executor.report(OperationStatusEvent{})
 		return OperationExecutionResult{ConfirmationRequired: confirmation}
 	}
 
@@ -435,7 +382,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 		executor.transactionFactory != nil {
 		transaction, err = executor.transactionFactory(invocation)
 		if err != nil {
-			return executor.failure(request.ID, descriptor.Label, err)
+			return executor.failure(err)
 		}
 	}
 
@@ -444,12 +391,12 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 		if transaction != nil {
 			_ = transaction.Rollback()
 		}
-		return executor.failure(request.ID, descriptor.Label, handlerResult.Err)
+		return executor.failure(handlerResult.Err)
 	}
 	if transaction != nil {
 		if err := transaction.Commit(); err != nil {
 			_ = transaction.Rollback()
-			return executor.failure(request.ID, descriptor.Label, err)
+			return executor.failure(err)
 		}
 	}
 
@@ -461,20 +408,13 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	}
 	if descriptor.Risk != OperationRiskReadOnly {
 		executor.history.record(operationUndoEntry{
-			id:     descriptor.ID,
-			label:  descriptor.Label,
 			status: recorded,
 			undo:   handlerResult.Undo,
 			redo:   handlerResult.Redo,
 		})
 	}
 	return executor.deliver(
-		OperationStatusEvent{
-			OperationID: descriptor.ID,
-			Label:       descriptor.Label,
-			Phase:       OperationStatusCompleted,
-			Status:      recorded,
-		},
+		OperationStatusEvent{},
 		handlerResult.Message,
 		handlerResult.Status,
 	)
@@ -484,16 +424,11 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 func (executor *OperationExecutor) Undo() OperationExecutionResult {
 	entry, ok := executor.history.popUndo()
 	if !ok {
-		return executor.failure("", "Undo", errors.New("nothing to undo"))
+		return executor.failure(errors.New("nothing to undo"))
 	}
 	message := entry.undo()
 	return executor.deliver(
-		OperationStatusEvent{
-			OperationID: entry.id,
-			Label:       entry.label,
-			Phase:       OperationStatusUndone,
-			Status:      entry.status,
-		},
+		OperationStatusEvent{},
 		message,
 		entry.status,
 	)
@@ -503,16 +438,11 @@ func (executor *OperationExecutor) Undo() OperationExecutionResult {
 func (executor *OperationExecutor) Redo() OperationExecutionResult {
 	entry, ok := executor.history.popRedo()
 	if !ok {
-		return executor.failure("", "Redo", errors.New("nothing to redo"))
+		return executor.failure(errors.New("nothing to redo"))
 	}
 	message := entry.redo()
 	return executor.deliver(
-		OperationStatusEvent{
-			OperationID: entry.id,
-			Label:       entry.label,
-			Phase:       OperationStatusRedone,
-			Status:      entry.status,
-		},
+		OperationStatusEvent{},
 		message,
 		entry.status,
 	)
@@ -570,17 +500,8 @@ func executeOperationBinding(
 	}
 }
 
-func (executor *OperationExecutor) failure(
-	id OperationID,
-	label string,
-	err error,
-) OperationExecutionResult {
-	executor.report(OperationStatusEvent{
-		OperationID: id,
-		Label:       label,
-		Phase:       OperationStatusFailed,
-		Err:         err,
-	})
+func (executor *OperationExecutor) failure(err error) OperationExecutionResult {
+	executor.report(OperationStatusEvent{})
 	return OperationExecutionResult{Err: err}
 }
 

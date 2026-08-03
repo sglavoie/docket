@@ -1,10 +1,6 @@
 package tui
 
-import (
-	"image/color"
-
-	"github.com/charmbracelet/x/ansi"
-)
+import "github.com/charmbracelet/x/ansi"
 
 // ZebraLine applies a subtle background tint to odd-indexed rows when zebra
 // striping is enabled.
@@ -27,10 +23,4 @@ func SelectedLine(line string, width int) string {
 func SelectedFlashLine(line string, width int) string {
 	stripped := ansi.Strip(line)
 	return SelectedStyle.Background(ColorFlashBg).Width(width).Render(stripped)
-}
-
-// MutationFlashLine renders the line with a status-specific flash background.
-func MutationFlashLine(line string, width int, bg color.Color) string {
-	stripped := ansi.Strip(line)
-	return SelectedStyle.Background(bg).Width(width).Render(stripped)
 }

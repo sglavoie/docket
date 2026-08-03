@@ -35,7 +35,7 @@ func TestConflictStore_SaveLoadRoundTrip(t *testing.T) {
 	base := mergeTestDoc("Alpha", mergeTestTask("t1", "base title"))
 	local := mergeTestDoc("Alpha", mergeTestTask("t1", "local title"))
 	remote := mergeTestDoc("Alpha", mergeTestTask("t1", "remote title"))
-	conflicts := []MergeConflict{{Kind: MergeConflictFieldEdit, TaskID: "t1", Field: "title", Base: "base title", Local: "local title", Current: "remote title"}}
+	conflicts := []MergeConflict{{Kind: MergeConflictFieldEdit, Field: "title", Base: "base title", Local: "local title", Current: "remote title"}}
 
 	project := &models.Project{ID: "p1", Name: "Alpha", Slug: "alpha", Path: "/tmp/projects/alpha"}
 	id, err := RecordMergeConflict(store, project, base, local, remote, conflicts, "task edit", "editing t1")
@@ -62,14 +62,14 @@ func TestConflictStore_SaveLoadRoundTrip(t *testing.T) {
 	if len(bundle.Record.Conflicts) != 1 || bundle.Record.Conflicts[0].Field != "title" {
 		t.Fatalf("record conflicts = %+v", bundle.Record.Conflicts)
 	}
-	if bundle.Base == nil || bundle.Local == nil || bundle.Remote == nil {
-		t.Fatal("expected all three documents to load")
+	if bundle.Base == nil || bundle.Local == nil {
+		t.Fatal("expected retained documents to load")
 	}
 	if bundle.Base.Tasks[0].Title != "base title" {
 		t.Fatalf("base doc did not round-trip: title = %q", bundle.Base.Tasks[0].Title)
 	}
-	if bundle.Local.Tasks[0].Title != "local title" || bundle.Remote.Tasks[0].Title != "remote title" {
-		t.Fatalf("documents did not round-trip: local=%q remote=%q", bundle.Local.Tasks[0].Title, bundle.Remote.Tasks[0].Title)
+	if bundle.Local.Tasks[0].Title != "local title" {
+		t.Fatalf("local document did not round-trip: %q", bundle.Local.Tasks[0].Title)
 	}
 	if bundle.Record.CreatedAt.IsZero() {
 		t.Fatal("expected CreatedAt to be stamped on save")

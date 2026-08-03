@@ -63,7 +63,7 @@ func newFormDueDatePicker(current *time.Time) *formDueDatePicker {
 
 // handleKey processes a key press.
 // Returns (cmd, dismiss, resultMsg). dismiss=true closes the overlay.
-func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 	toMsg := func(e formDueDatePreset) tea.Msg {
 		if e.isClear {
 			return TaskFormDueDatePickedMsg{Date: nil}
@@ -73,27 +73,27 @@ func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.M
 	}
 	switch msg.String() {
 	case "esc":
-		return nil, true, nil
+		return true, nil
 	case "enter":
-		return nil, true, toMsg(formDueDatePresets[p.cursor])
+		return true, toMsg(formDueDatePresets[p.cursor])
 	case "up", "k":
 		if p.cursor > 0 {
 			p.cursor--
 		}
-		return nil, false, nil
+		return false, nil
 	case "down", "j":
 		if p.cursor < len(formDueDatePresets)-1 {
 			p.cursor++
 		}
-		return nil, false, nil
+		return false, nil
 	default:
 		key := msg.String()
 		for _, e := range formDueDatePresets {
 			if key == e.key {
-				return nil, true, toMsg(e)
+				return true, toMsg(e)
 			}
 		}
-		return nil, false, nil
+		return false, nil
 	}
 }
 

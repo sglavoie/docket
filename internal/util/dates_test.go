@@ -54,7 +54,7 @@ func TestParseRelativeDate(t *testing.T) {
 func TestParseRelativeDateEow(t *testing.T) {
 	today := StartOfDay(time.Now())
 
-	eowFor := func(weekEndDay string, wd time.Weekday) time.Time {
+	eowFor := func(wd time.Weekday) time.Time {
 		daysUntil := int(wd) - int(today.Weekday())
 		if daysUntil < 0 {
 			daysUntil += 7
@@ -67,10 +67,10 @@ func TestParseRelativeDateEow(t *testing.T) {
 		weekEndDay string
 		want       time.Time
 	}{
-		{"eow sun (default)", "sun", eowFor("sun", time.Sunday)},
-		{"eow sat", "sat", eowFor("sat", time.Saturday)},
-		{"eow fri", "fri", eowFor("fri", time.Friday)},
-		{"eow empty defaults to sun", "", eowFor("", time.Sunday)},
+		{"eow sun (default)", "sun", eowFor(time.Sunday)},
+		{"eow sat", "sat", eowFor(time.Saturday)},
+		{"eow fri", "fri", eowFor(time.Friday)},
+		{"eow empty defaults to sun", "", eowFor(time.Sunday)},
 	}
 
 	for _, tt := range tests {

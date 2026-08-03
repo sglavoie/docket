@@ -18,7 +18,7 @@ func mergeTestTask(id, title string) *models.Task {
 		ShortID:       1,
 		Title:         title,
 		WorkflowState: models.StateBacklog,
-		Priority:      models.PriorityDefault,
+		Priority:      models.PriorityUnset,
 		Tags:          []string{},
 		CreatedAt:     stamp,
 		UpdatedAt:     stamp,
@@ -258,9 +258,6 @@ func TestMerge_DeleteVersusEditConflicts(t *testing.T) {
 	}
 	if !hasConflictKind(res, MergeConflictDeleteEdit) {
 		t.Fatalf("expected delete_edit conflict, got %v", conflictKinds(res))
-	}
-	if res.Conflicts[0].TaskID != "b" {
-		t.Errorf("conflict task = %q, want b", res.Conflicts[0].TaskID)
 	}
 }
 

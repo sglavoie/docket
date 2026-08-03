@@ -99,7 +99,6 @@ func TestTaskTitleStyleFor(t *testing.T) {
 			task.Pinned = true
 			return task
 		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
-		{"bulk selected keeps priority title style", taskWith(1), TaskTitleStyleOptions{BulkSelected: true}, GetTitlePriorityStyle(1)},
 		{"cursor selected uses selected title style", taskWith(0), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
 		{"canceled uses canceled style", func() *models.Task {
 			task := taskWith(1)

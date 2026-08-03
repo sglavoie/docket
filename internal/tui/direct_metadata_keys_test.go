@@ -30,7 +30,6 @@ func executeDirectPath(
 	return model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       descriptor.ID,
 		Context:  ctx,
-		Source:   OperationSourceDirectKey,
 		Value:    binding.PresetValue,
 		HasValue: binding.HasPresetValue,
 	})
@@ -145,7 +144,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 }
 
 func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
-	newApp := func(t *testing.T) (*AppModel, *models.Task) {
+	newApp := func(t *testing.T) *AppModel {
 		t.Helper()
 		app := newUITestApp()
 		task := &models.Task{ID: "task", ShortID: 1, Title: "Task", WorkflowState: models.StateBacklog}
@@ -154,11 +153,11 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		setTestAppProjects(app, project)
 		app.crossOutliner.loadedProjects = []*models.Project{project}
 		app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
-		return app, task
+		return app
 	}
 
 	t.Run("chord prefix waits and names its family", func(t *testing.T) {
-		app, _ := newApp(t)
+		app := newApp(t)
 		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '!', Text: "!"})
 		if !handled || cmd != nil {
 			t.Fatalf("! = handled %v cmd %T; want a pending prefix", handled, cmd)
@@ -172,7 +171,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 	})
 
 	t.Run("terminal chord dispatches a mutation", func(t *testing.T) {
-		app, _ := newApp(t)
+		app := newApp(t)
 		app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '!', Text: "!"})
 		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '0', Text: "0"})
 		if !handled || cmd == nil {
@@ -184,7 +183,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 	})
 
 	t.Run("state prefix shows every action and dispatches a transition", func(t *testing.T) {
-		app, _ := newApp(t)
+		app := newApp(t)
 		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 's', Text: "s"})
 		if !handled || cmd != nil {
 			t.Fatalf("s = handled %v cmd %T; want a pending prefix", handled, cmd)
@@ -221,7 +220,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		{key: '#', provider: ValueProviderTags},
 	} {
 		t.Run(string(picker.key)+" opens its picker", func(t *testing.T) {
-			app, _ := newApp(t)
+			app := newApp(t)
 			handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: picker.key, Text: string(picker.key)})
 			if !handled {
 				t.Fatalf("%q was not handled", picker.key)

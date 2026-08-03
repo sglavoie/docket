@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // stubMutator is a hand-rolled FeatureMutator recording the last call and
@@ -49,22 +48,17 @@ func (s *stubMutator) SetPriority(string, int) (app.TaskResult, error) {
 	return s.result, s.err
 }
 
-type stubQuery struct{}
-
-func (stubQuery) ListProjects() ([]app.ProjectSummary, error) { return nil, nil }
-func (stubQuery) Project(string) (app.ProjectSummary, error)  { return app.ProjectSummary{}, nil }
-
 func TestFeatureCoordinatorRunEmitsResult(t *testing.T) {
-	stub := &stubMutator{result: app.TaskResult{Title: "Done thing", State: models.StateDone, Revision: "rev-1"}}
-	features := newFeatureCoordinators(stub, stubQuery{})
+	stub := &stubMutator{result: app.TaskResult{Title: "Done thing", Revision: "rev-1"}}
+	features := newFeatureCoordinators(stub)
 
-	msg := features.Inbox.Complete("task-1")()
+	msg := features.Capture.Capture(app.CaptureRequest{ProjectID: "project", Title: "Done thing"})()
 	result, ok := msg.(TransactionResultMsg)
 	if !ok {
 		t.Fatalf("expected TransactionResultMsg, got %T", msg)
 	}
-	if result.Feature != "inbox" || result.Action != "Complete" {
-		t.Fatalf("unexpected envelope: feature=%q action=%q", result.Feature, result.Action)
+	if result.Action != "Capture" {
+		t.Fatalf("unexpected action: %q", result.Action)
 	}
 	if result.Result.Revision != "rev-1" {
 		t.Fatalf("result revision = %q", result.Result.Revision)
@@ -77,18 +71,15 @@ func TestFeatureCoordinatorRunEmitsResult(t *testing.T) {
 func TestFeatureCoordinatorRunEmitsError(t *testing.T) {
 	sentinel := errors.New("boom")
 	stub := &stubMutator{err: sentinel}
-	features := newFeatureCoordinators(stub, stubQuery{})
+	features := newFeatureCoordinators(stub)
 
-	msg := features.ProjectTree.SetPriority("task-1", 2)()
+	msg := features.Capture.Capture(app.CaptureRequest{ProjectID: "project", Title: "Rejected"})()
 	failure, ok := msg.(TransactionErrorMsg)
 	if !ok {
 		t.Fatalf("expected TransactionErrorMsg, got %T", msg)
 	}
 	if !errors.Is(failure.Err, sentinel) {
 		t.Fatalf("error = %v, want sentinel", failure.Err)
-	}
-	if failure.Feature != "project-tree" || failure.Action != "Set Priority" {
-		t.Fatalf("unexpected envelope: feature=%q action=%q", failure.Feature, failure.Action)
 	}
 }
 

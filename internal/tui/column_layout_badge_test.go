@@ -55,8 +55,8 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 	if !cl.HasStatus || cl.StatusWidth <= 0 {
 		t.Errorf("status column should be populated, got Has=%v width=%d", cl.HasStatus, cl.StatusWidth)
 	}
-	if cl.HasProject {
-		t.Error("HasProject should remain false when ProjectNameFor is nil")
+	if cl.ProjectWidth != 0 {
+		t.Error("ProjectWidth should remain zero when ProjectNameFor is nil")
 	}
 }
 
@@ -86,7 +86,7 @@ func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	if !cl.HasPriority {
 		t.Error("HasPriority should be true regardless of opts when priority is shown")
 	}
-	if cl.HasStatus || cl.HasProject {
+	if cl.HasStatus || cl.ProjectWidth != 0 {
 		t.Errorf("optional columns should remain unset when not requested, got %+v", cl)
 	}
 }
@@ -107,9 +107,6 @@ func TestComputeBadgeWidthsProject(t *testing.T) {
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
 	}
-	if !cl.HasProject {
-		t.Error("HasProject should be true when ProjectNameFor returns non-empty names")
-	}
 	// Truncated to 12, wrapped in "[]" → visible width 14.
 	if cl.ProjectWidth != 14 {
 		t.Errorf("ProjectWidth = %d, want 14 ('[' + 12 + ']')", cl.ProjectWidth)
@@ -123,9 +120,6 @@ func TestComputeBadgeWidthsProjectEmptyName(t *testing.T) {
 	})
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
-	}
-	if cl.HasProject {
-		t.Error("HasProject should remain false when project name lookup returns empty")
 	}
 	if cl.ProjectWidth != 0 {
 		t.Errorf("ProjectWidth = %d, want 0", cl.ProjectWidth)

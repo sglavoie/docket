@@ -135,7 +135,7 @@ func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
 	app.today = []PlanningTask{{Task: deletedTask, Project: project}}
 	app.todayIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
 
-	msg := TaskDeletedMsg{Task: deletedTask}
+	msg := TaskDeletedMsg{}
 	handled, _ := app.handleTaskMessages(msg)
 
 	if !handled {

@@ -63,7 +63,7 @@ func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 
 	var planning LegacyV4PlanningState
 	decodeLegacyV4Payload(t, "workspace/.tt/planning.json", "planning", &planning)
-	if planning.TUIStateVersion != CurrentTUIStateVersion ||
+	if planning.TUIStateVersion != 4 ||
 		len(planning.FocusQueue) != 2 ||
 		len(planning.DailyPlan) != 2 {
 		t.Fatalf("planning fixture does not cover legacy planning collections: %+v", planning)
@@ -77,7 +77,7 @@ func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 
 	var settings LegacyV4Settings
 	decodeLegacyV4Payload(t, "workspace/.tt/settings.json", "settings", &settings)
-	if settings.TUIStateVersion != CurrentTUIStateVersion ||
+	if settings.TUIStateVersion != 4 ||
 		settings.ActiveTheme != "synthetic-custom" {
 		t.Fatalf("settings fixture does not cover v4 appearance/behavior fields: %+v", settings)
 	}
@@ -99,7 +99,7 @@ func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 
 	var machine LegacyV4MachineState
 	decodeLegacyV4Payload(t, "machine/runtime/"+legacyV4WorkspaceID+"/machine.json", "machine", &machine)
-	if machine.TUIStateVersion != CurrentTUIStateVersion ||
+	if machine.TUIStateVersion != 4 ||
 		len(machine.CustomContexts) == 0 {
 		t.Fatalf("machine fixture does not cover retained and retired fields: %+v", machine)
 	}

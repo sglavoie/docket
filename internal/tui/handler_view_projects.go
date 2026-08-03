@@ -15,7 +15,6 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.taskComposer = nil
 		m.currentProject = nil
 		m.projectStack = nil
-		m.outlinerToggleStates = make(map[string]*OutlinerToggleState)
 		m.navigation.ResetRoot()
 		m.crossOutliner.resetToGlobalAll()
 		m.setAccentOnView(m.crossOutliner)
@@ -95,7 +94,6 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 	if m.crossOutliner == nil {
 		m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
-		m.crossOutliner.todayIDs = m.todayIDs
 		m.crossOutliner.SetSize(m.width, m.height-2)
 		m.wireSecondaryCoordinators(m.crossOutliner)
 		m.views.Register(ViewCrossProjectOutliner, m.crossOutliner)

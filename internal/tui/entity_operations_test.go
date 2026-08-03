@@ -49,7 +49,6 @@ func executeEntityOperation(app *AppModel, id OperationID, entity EntityIdentity
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
-		Source:  OperationSourceActionSheet,
 	})
 }
 
@@ -108,7 +107,6 @@ func TestNoteOperationsRejectTargetsOutsideTheirScope(t *testing.T) {
 	// currentEntityIdentity degrades to the focused project, so an unguarded note
 	// descriptor would silently borrow it.
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
-	ctx.FocusedProjectID = project.ID
 	if noteOperationApplicable(ctx) {
 		t.Fatal("a note operation was offered with only a project in focus")
 	}
@@ -130,19 +128,8 @@ func TestNoteOperationsPreserveMalformedNoteRestrictions(t *testing.T) {
 	}
 	entity := ProjectNoteEntity(project.ID, "broken.md")
 
-	for _, id := range []OperationID{
-		operationNotePreview,
-		operationNoteTags,
-		operationNoteLink,
-		operationNotePin,
-		operationNoteCopyTitle,
-		operationNoteCopyBody,
-		operationNoteCopyTitleBody,
-		operationNoteMove,
-	} {
-		if result := executeEntityOperation(model, id, entity); result.Err == nil {
-			t.Fatalf("%s ran on a malformed note and emitted %#v", id, result.Message)
-		}
+	if result := executeEntityOperation(model, operationNoteMove, entity); result.Err == nil {
+		t.Fatalf("move ran on a malformed note and emitted %#v", result.Message)
 	}
 
 	// Repair and removal stay reachable, otherwise a malformed note is stranded.

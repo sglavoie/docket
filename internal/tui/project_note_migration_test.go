@@ -150,7 +150,7 @@ func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
 	cmd := noteMutationCmd(env.svc, location, app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
 		UndoAction: "Edit Note",
-	}, "Edited", false)
+	}, "Edited")
 	msg := runProjectNoteMutation(t, func() any { return cmd() })
 	if env.view.visibleRows[0].Note != before || env.view.visibleRows[0].Note.Body != "Edit me body" {
 		t.Fatal("command goroutine mutated the live notes view cache")
@@ -296,7 +296,7 @@ func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T)
 	cmd := noteMutationCmd(env.svc, location, app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
 		UndoAction: "Edit Note",
-	}, "Edited", false)
+	}, "Edited")
 	mutation := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(mutation)
 	if env.note(t, filename).Body != "undoable edit" {

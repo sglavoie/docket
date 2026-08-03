@@ -17,14 +17,6 @@ import (
 type ChecklistResult struct {
 	// Task is the standard single-task mutation result.
 	Task TaskResult
-	// Index is the affected item's index after the mutation (for add, the new
-	// item's index; for reorder, the destination index).
-	Index int
-	// Count is the number of checklist items on the task after the mutation.
-	Count int
-	// Done is the item's done state after the mutation (meaningful for
-	// ToggleChecklistItem only).
-	Done bool
 }
 
 // AddChecklistItem appends an item to a task's checklist. Empty or
@@ -43,11 +35,9 @@ func (s *Service) addChecklistItemSelection(taskID string, locator TaskLocator, 
 		return ChecklistResult{}, invalidInput("checklist", "text is required")
 	}
 	var out ChecklistResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Add Checklist Item", "", func(ref TaskRef) error {
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Add Checklist Item", func(ref TaskRef) error {
 		ref.Task.Checklist = append(ref.Task.Checklist, models.ChecklistItem{Text: trimmed})
 		ref.Task.UpdatedAt = s.clock.Now()
-		out.Index = len(ref.Task.Checklist) - 1
-		out.Count = len(ref.Task.Checklist)
 		return nil
 	})
 	if err != nil {
@@ -73,14 +63,12 @@ func (s *Service) editChecklistItemSelection(taskID string, locator TaskLocator,
 		return ChecklistResult{}, invalidInput("checklist", "text is required")
 	}
 	var out ChecklistResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Edit Checklist Item", "", func(ref TaskRef) error {
-		if err := validSubviewIndex("checklist", index, len(ref.Task.Checklist)); err != nil {
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Edit Checklist Item", func(ref TaskRef) error {
+		if err := validChecklistIndex(index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
 		ref.Task.Checklist[index].Text = trimmed
 		ref.Task.UpdatedAt = s.clock.Now()
-		out.Index = index
-		out.Count = len(ref.Task.Checklist)
 		return nil
 	})
 	if err != nil {
@@ -101,14 +89,12 @@ func (s *Service) RemoveChecklistItemByLocator(locator TaskLocator, index int) (
 
 func (s *Service) removeChecklistItemSelection(taskID string, locator TaskLocator, index int) (ChecklistResult, error) {
 	var out ChecklistResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Remove Checklist Item", "", func(ref TaskRef) error {
-		if err := validSubviewIndex("checklist", index, len(ref.Task.Checklist)); err != nil {
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Remove Checklist Item", func(ref TaskRef) error {
+		if err := validChecklistIndex(index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
 		ref.Task.Checklist = append(ref.Task.Checklist[:index], ref.Task.Checklist[index+1:]...)
 		ref.Task.UpdatedAt = s.clock.Now()
-		out.Index = index
-		out.Count = len(ref.Task.Checklist)
 		return nil
 	})
 	if err != nil {
@@ -130,15 +116,12 @@ func (s *Service) ToggleChecklistItemByLocator(locator TaskLocator, index int) (
 
 func (s *Service) toggleChecklistItemSelection(taskID string, locator TaskLocator, index int) (ChecklistResult, error) {
 	var out ChecklistResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Toggle Checklist Item", "", func(ref TaskRef) error {
-		if err := validSubviewIndex("checklist", index, len(ref.Task.Checklist)); err != nil {
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Toggle Checklist Item", func(ref TaskRef) error {
+		if err := validChecklistIndex(index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
 		ref.Task.Checklist[index].Done = !ref.Task.Checklist[index].Done
 		ref.Task.UpdatedAt = s.clock.Now()
-		out.Index = index
-		out.Count = len(ref.Task.Checklist)
-		out.Done = ref.Task.Checklist[index].Done
 		return nil
 	})
 	if err != nil {
@@ -160,17 +143,15 @@ func (s *Service) ReorderChecklistItemByLocator(locator TaskLocator, from, to in
 
 func (s *Service) reorderChecklistItemSelection(taskID string, locator TaskLocator, from, to int) (ChecklistResult, error) {
 	var out ChecklistResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Reorder Checklist", "", func(ref TaskRef) error {
-		if err := validSubviewIndex("checklist", from, len(ref.Task.Checklist)); err != nil {
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Reorder Checklist", func(ref TaskRef) error {
+		if err := validChecklistIndex(from, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
-		if err := validSubviewIndex("checklist", to, len(ref.Task.Checklist)); err != nil {
+		if err := validChecklistIndex(to, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
 		ref.Task.Checklist[from], ref.Task.Checklist[to] = ref.Task.Checklist[to], ref.Task.Checklist[from]
 		ref.Task.UpdatedAt = s.clock.Now()
-		out.Index = to
-		out.Count = len(ref.Task.Checklist)
 		return nil
 	})
 	if err != nil {
@@ -180,11 +161,11 @@ func (s *Service) reorderChecklistItemSelection(taskID string, locator TaskLocat
 	return out, nil
 }
 
-// validSubviewIndex rejects an out-of-range item index against the current item
+// validChecklistIndex rejects an out-of-range item index against the current item
 // count, mirroring validCommentIndex for the other subview collections.
-func validSubviewIndex(kind string, index, count int) error {
+func validChecklistIndex(index, count int) error {
 	if index < 0 || index >= count {
-		return invalidInput(kind, fmt.Sprintf("%s index %d out of range (task has %d)", kind, index, count))
+		return invalidInput("checklist", fmt.Sprintf("checklist index %d out of range (task has %d)", index, count))
 	}
 	return nil
 }

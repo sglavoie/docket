@@ -7,7 +7,6 @@ import (
 	"charm.land/bubbles/v2/textinput"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -49,7 +48,6 @@ type TaskFormModel struct {
 	project           *models.Project
 	task              *models.Task // non-nil in FormModeEdit
 	draft             taskFormDraft
-	runtime           *config.RuntimeState
 	taskForm          TaskFormCoordinator
 	presetDestination app.CaptureDestination
 	hostTitle         string

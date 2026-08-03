@@ -36,7 +36,6 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.multiSelectMode = true
 	outliner.selectedTaskIdentities[TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	app.currentProject = projects[0]
-	app.outlinerToggleStates[projects[0].ID] = &OutlinerToggleState{CursorTaskID: "stale"}
 	pushTestPresentationOverlay(app, ViewHelp)
 
 	machine := app.runtime.Machine()
@@ -72,8 +71,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if app.currentView() != ViewCrossProjectOutliner || app.navigation.Primary.Depth() != 1 || app.navigation.Overlays.Active() {
 		t.Fatalf("launch navigation = view %s depth %d overlay %v", app.currentView(), app.navigation.Primary.Depth(), app.navigation.Overlays.Active())
 	}
-	if app.currentProject != nil || len(app.projectStack) != 0 || len(app.outlinerToggleStates) != 0 {
-		t.Fatalf("launch retained project state: current=%v stack=%v toggles=%v", app.currentProject, app.projectStack, app.outlinerToggleStates)
+	if app.currentProject != nil || len(app.projectStack) != 0 {
+		t.Fatalf("launch retained project state: current=%v stack=%v", app.currentProject, app.projectStack)
 	}
 	outliner := app.crossOutliner
 	if outliner == nil {

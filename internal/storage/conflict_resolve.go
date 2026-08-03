@@ -44,25 +44,16 @@ var (
 
 // ConflictResolveResult reports the outcome of resolving a persisted conflict.
 type ConflictResolveResult struct {
-	// ConflictID is the id that was resolved (and, on success, deleted).
-	ConflictID string
-	// Resolution is the chosen strategy.
-	Resolution ConflictResolution
 	// Committed is true when a new project revision was written to disk. Adopting
 	// remote writes nothing, so it resolves with Committed false.
 	Committed bool
 	// Revision is the resulting canonical project revision on disk.
 	Revision string
-	// RemoteAdvanced is true when the on-disk remote had moved past the revision
-	// captured when the conflict was recorded.
-	RemoteAdvanced bool
 	// Remerged is true when a re-merge was performed to fold in the newer remote.
 	Remerged bool
 	// NewConflictID is set when the re-merge produced fresh conflicts: the chosen
 	// resolution was not committed and a new bundle was recorded under this id.
 	NewConflictID string
-	// Conflicts holds the fresh conflicts when NewConflictID is set.
-	Conflicts []MergeConflict
 	// RetryRequired is true when the original commit was aborted without retaining
 	// enough transaction intent to replay it safely. In that case no local or file
 	// resolution is applied; adopting remote only clears the conflict record and
@@ -170,10 +161,8 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 	remoteAdvanced := currentDoc.Revision != record.RemoteRevision
 
 	result := &ConflictResolveResult{
-		ConflictID:     id,
-		Resolution:     resolution,
-		RemoteAdvanced: remoteAdvanced,
-		RetryRequired:  record.OperationRetryRequired(),
+
+		RetryRequired: record.OperationRetryRequired(),
 	}
 
 	// The persisted documents cannot reconstruct the complete aborted ChangeSet.
@@ -219,7 +208,6 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 				return nil, delErr
 			}
 			result.NewConflictID = newID
-			result.Conflicts = remerge.Conflicts
 			return result, fmt.Errorf("%w: recorded new conflict %s", ErrRemoteReconflict, newID)
 		}
 		resolved = remerge.Merged

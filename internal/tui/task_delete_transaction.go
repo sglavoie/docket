@@ -33,7 +33,6 @@ func (m *AppModel) executeTaskDeleteOperation(
 	}
 	return OperationHandlerResult{Message: TaskDeleteRequestedMsg{
 		Refs:      refs,
-		Origin:    invocation.Context.View,
 		Selection: deleteSelectionCounts(invocation.Context, len(refs)),
 	}}
 }
@@ -54,11 +53,9 @@ func deleteSelectionCounts(context CommandContext, targetCount int) SelectionCou
 // confirms — executes ONE atomic BulkCoordinator.Delete transaction that folds
 // the durable planning-ref cleanup into the same commit. Refs carry each root
 // task with its owning project so heterogeneous cross-project selections delete
-// together; Origin records the presentation that asked so post-commit behavior
-// (such as cursor repair) can stay origin-aware.
+// together.
 type TaskDeleteRequestedMsg struct {
 	Refs      []TaskProjectRef
-	Origin    PresentationID
 	Selection SelectionCounts
 }
 
@@ -67,8 +64,6 @@ type TaskDeleteRequestedMsg struct {
 type taskDeletePending struct {
 	roots    []TaskProjectRef
 	selected []TaskProjectRef
-	origin   PresentationID
-	impact   taskDeleteImpact
 }
 
 type taskDeleteImpact struct {
@@ -86,10 +81,10 @@ const taskDeleteConfirmAction = "task-delete"
 // confirmation prompt, and arms the shell-owned confirm dialog. It never mutates
 // task data — the delete transaction runs only after the user confirms in
 // confirmTaskDelete. An empty or fully-invalid request is a no-op.
-func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) tea.Cmd {
+func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) {
 	requested := canonicalizeTaskDeleteRoots(msg.Refs)
 	if len(requested) == 0 {
-		return nil
+		return
 	}
 	roots := collapseNestedTaskDeleteRoots(requested)
 	selection := msg.Selection
@@ -98,14 +93,13 @@ func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) tea.Cmd
 	}
 	impact := calculateTaskDeleteImpact(roots, selection)
 	m.pendingTaskDelete = taskDeletePending{
-		roots: roots, selected: requested, origin: msg.Origin, impact: impact,
+		roots: roots, selected: requested,
 	}
 	m.taskDeleteConfirm.ShowWithDetail(
 		taskDeleteConfirmAction,
 		taskDeletePrompt(roots),
 		taskDeleteConfirmDetail(roots, impact),
 	)
-	return nil
 }
 
 // canonicalizeTaskDeleteRoots drops refs with a nil task/project or blank ID and

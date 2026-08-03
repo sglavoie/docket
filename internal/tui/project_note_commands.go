@@ -62,7 +62,7 @@ func cloneNoteBatchRequest(req app.NoteBatchRequest) app.NoteBatchRequest {
 
 // noteMutationCmd freezes the complete request before starting an asynchronous
 // project or global note commit.
-func noteMutationCmd(service projectNoteService, location app.NoteLocation, req app.NoteBatchRequest, success string, clearSelection bool) tea.Cmd {
+func noteMutationCmd(service projectNoteService, location app.NoteLocation, req app.NoteBatchRequest, success string) tea.Cmd {
 	request := cloneNoteBatchRequest(req)
 	return func() tea.Msg {
 		if service == nil {
@@ -77,7 +77,6 @@ func noteMutationCmd(service projectNoteService, location app.NoteLocation, req 
 			ProjectID:      location.ProjectID,
 			Result:         result,
 			SuccessMessage: success,
-			ClearSelection: clearSelection,
 		}
 	}
 }
@@ -85,7 +84,7 @@ func noteMutationCmd(service projectNoteService, location app.NoteLocation, req 
 func noteLedgerRestoreCmd(ledger *storage.WorkspaceLedger, location app.NoteLocation, scope storage.LedgerScope, redo bool) tea.Cmd {
 	return func() tea.Msg {
 		if ledger == nil {
-			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Redo: redo, Err: fmt.Errorf("workspace undo ledger is unavailable")}
+			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Err: fmt.Errorf("workspace undo ledger is unavailable")}
 		}
 		restore := ledger.UndoWithEntry
 		if redo {
@@ -93,7 +92,7 @@ func noteLedgerRestoreCmd(ledger *storage.WorkspaceLedger, location app.NoteLoca
 		}
 		entry, action, err := restore(scope)
 		if err != nil {
-			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Redo: redo, Err: err}
+			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Err: err}
 		}
 		return ProjectNoteLedgerResultMsg{Location: location, ProjectID: location.ProjectID, Entry: entry, Action: action, Redo: redo}
 	}

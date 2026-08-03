@@ -30,13 +30,13 @@ func newFormStatePicker(current models.WorkflowState) *formStatePicker {
 	return &formStatePicker{cursor: cursor}
 }
 
-func (p *formStatePicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (p *formStatePicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 	states := models.AllWorkflowStates()
 	switch msg.String() {
 	case "esc":
-		return nil, true, nil
+		return true, nil
 	case "enter":
-		return nil, true, TaskFormStatePickedMsg{State: states[p.cursor]}
+		return true, TaskFormStatePickedMsg{State: states[p.cursor]}
 	case "up", "k":
 		if p.cursor > 0 {
 			p.cursor--
@@ -46,7 +46,7 @@ func (p *formStatePicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg
 			p.cursor++
 		}
 	}
-	return nil, false, nil
+	return false, nil
 }
 
 func (p *formStatePicker) render(width int, current models.WorkflowState) string {

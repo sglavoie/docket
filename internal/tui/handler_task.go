@@ -72,7 +72,7 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 	switch msg := msg.(type) {
 	case TaskStatusChangedMsg:
 		if msg.Task != nil && msg.Task.State() == models.StateDone {
-			m.handleWithRefresh(false, false, "")
+			m.handleWithRefresh(false, false)
 			m.setSuccessStatus("Done!")
 			cmd := defaultStatusTimeout()
 			if bannerCmd := m.maybeFireTodayCleared(); bannerCmd != nil {
@@ -80,10 +80,10 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 			}
 			return true, cmd
 		}
-		return true, m.handleWithRefresh(false, false, "")
+		return true, m.handleWithRefresh(false, false)
 
 	case TaskPropertyChangedMsg:
-		m.handleWithRefresh(false, false, "")
+		m.handleWithRefresh(false, false)
 		cmd := m.views.Update(m.currentView(), msg)
 		if msg.NeedsSave && m.currentProject != nil {
 			// The palette/command handlers already applied the property change to the

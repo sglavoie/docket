@@ -3,14 +3,13 @@ package tui
 import tea "charm.land/bubbletea/v2"
 
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
-func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
+func (m *TaskFormModel) handleScheduleEnter() {
 	if m.focusIndex == 0 {
 		// Due is the sole retained schedule field.
 		m.commitDueInput()
 		m.focusNext()
 		m.syncInputFocus()
 	}
-	return nil
 }
 
 // handleBasicsEnter dispatches Enter key events for focused Basics-tab rows.

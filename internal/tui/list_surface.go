@@ -30,8 +30,7 @@ const (
 type ListEmptyKind uint8
 
 const (
-	ListEmptyNone ListEmptyKind = iota
-	ListEmptySource
+	ListEmptySource ListEmptyKind = iota + 1
 	ListEmptyNoMatches
 )
 
@@ -142,9 +141,7 @@ func NewListQuery(raw string) ListQuery {
 
 // ListMatch exposes the fuzzy score while retaining stable source identity.
 type ListMatch struct {
-	Item        ListItem
-	Score       int
-	SourceIndex int
+	Item ListItem
 }
 
 // ListSurfaceRow is one headless row. Category rows are never cursor targets.
@@ -169,7 +166,6 @@ type ListViewport struct {
 // ListEmptyContext pairs the configured copy with the reason it is displayed.
 type ListEmptyContext struct {
 	Kind  ListEmptyKind
-	Query ListQuery
 	State ListEmptyState
 }
 
@@ -215,13 +211,9 @@ func (state ListActionState) Descriptors(
 
 // ListTextLayout is a visual-width-safe primary/secondary row layout.
 type ListTextLayout struct {
-	Primary        string
-	Secondary      string
-	Gap            string
-	Width          int
-	PrimaryWidth   int
-	SecondaryWidth int
-	Truncated      bool
+	Primary   string
+	Secondary string
+	Gap       string
 }
 
 // Text returns the fitted inline text.
@@ -526,13 +518,11 @@ func (model *ListSurfaceModel) EmptyContext() (ListEmptyContext, bool) {
 	if len(model.items) == 0 {
 		return ListEmptyContext{
 			Kind:  ListEmptySource,
-			Query: cloneListQuery(model.query),
 			State: model.config.EmptyState,
 		}, true
 	}
 	return ListEmptyContext{
 		Kind:  ListEmptyNoMatches,
-		Query: cloneListQuery(model.query),
 		State: model.config.NoMatchState,
 	}, true
 }
@@ -720,9 +710,8 @@ func (model *ListSurfaceModel) ExecuteAction(
 // Primary text gets preference; secondary text uses at most one third of a
 // constrained row unless the primary leaves spare capacity.
 func LayoutListText(primary, secondary string, width int) ListTextLayout {
-	layout := ListTextLayout{Width: max(width, 0)}
+	layout := ListTextLayout{}
 	if width <= 0 {
-		layout.Truncated = primary != "" || secondary != ""
 		return layout
 	}
 
@@ -730,8 +719,6 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 	secondaryWidth := lipgloss.Width(secondary)
 	if secondary == "" {
 		layout.Primary = truncateToVisualWidth(primary, width)
-		layout.PrimaryWidth = lipgloss.Width(layout.Primary)
-		layout.Truncated = layout.Primary != primary
 		return layout
 	}
 
@@ -741,14 +728,10 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 		layout.Primary = primary
 		layout.Secondary = secondary
 		layout.Gap = gap
-		layout.PrimaryWidth = primaryWidth
-		layout.SecondaryWidth = secondaryWidth
 		return layout
 	}
 	if width <= gapWidth+1 {
 		layout.Primary = truncateToVisualWidth(primary, width)
-		layout.PrimaryWidth = lipgloss.Width(layout.Primary)
-		layout.Truncated = true
 		return layout
 	}
 
@@ -767,9 +750,6 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 	layout.Primary = truncateToVisualWidth(primary, primaryBudget)
 	layout.Secondary = truncateToVisualWidth(secondary, secondaryBudget)
 	layout.Gap = gap
-	layout.PrimaryWidth = lipgloss.Width(layout.Primary)
-	layout.SecondaryWidth = lipgloss.Width(layout.Secondary)
-	layout.Truncated = layout.Primary != primary || layout.Secondary != secondary
 	return layout
 }
 
@@ -906,9 +886,7 @@ func sortListMatches(matches []listSurfaceMatch) {
 
 func exportListMatch(match listSurfaceMatch) ListMatch {
 	return ListMatch{
-		Item:        cloneListItem(match.item),
-		Score:       match.score,
-		SourceIndex: match.sourceIndex,
+		Item: cloneListItem(match.item),
 	}
 }
 

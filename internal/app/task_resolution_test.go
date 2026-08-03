@@ -93,15 +93,15 @@ func TestDeleteRejectsAmbiguousIDAndLocatorDeletesOneProject(t *testing.T) {
 		t.Fatal("ambiguous delete mutated a project or committed")
 	}
 
-	result, err := service.Delete(app.DeleteRequest{
+	_, err = service.Delete(app.DeleteRequest{
 		Locator: app.TaskLocator{ProjectID: "beta", TaskID: "shared"},
 		Confirm: true,
 	})
 	if err != nil {
 		t.Fatalf("Delete by locator: %v", err)
 	}
-	if result.SourceProjectID != "beta" || repo.projects[0].GetTaskByID("shared") == nil || repo.projects[1].GetTaskByID("shared") != nil {
-		t.Fatalf("locator delete result=%+v alpha=%v beta=%v", result, repo.projects[0].GetTaskByID("shared"), repo.projects[1].GetTaskByID("shared"))
+	if repo.projects[0].GetTaskByID("shared") == nil || repo.projects[1].GetTaskByID("shared") != nil {
+		t.Fatalf("locator delete targeted wrong project: alpha=%v beta=%v", repo.projects[0].GetTaskByID("shared"), repo.projects[1].GetTaskByID("shared"))
 	}
 }
 

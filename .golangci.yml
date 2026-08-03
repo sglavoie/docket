@@ -22,6 +22,8 @@ linters:
     - staticcheck
     - exhaustive
     - gocyclo
+    - unparam
+    - wastedassign
   settings:
     govet:
       enable-all: true

@@ -21,26 +21,24 @@ type ViewBundle struct {
 	// wires it via SetBulkCoordinator when the view is shown; a zero value (nil
 	// mutator) means the view was built in isolation (e.g. a render-only test) and
 	// its bulk handlers are not exercised.
-	bulk BulkCoordinator
 
 	// taskItem routes single-task outliner mutations through the application
 	// layer, parallel to bulk. The shell wires it via SetTaskItemCoordinator; a
 	// zero value (nil mutator) means the view was built in isolation. No caller
 	// routes through it yet — it is the migration seam for the cross-project
 	// single-task raw-save family.
-	taskItem TaskItemCoordinator
 }
 
 // SetBulkCoordinator injects the application-layer bulk coordinator. It is
 // promoted to every view that embeds ViewBundle, so the shell wires all bulk
 // views from a single site (showView/replaceView) through the bulkWireable
 // interface.
-func (b *ViewBundle) SetBulkCoordinator(c BulkCoordinator) { b.bulk = c }
+func (b *ViewBundle) SetBulkCoordinator(BulkCoordinator) {}
 
 // SetTaskItemCoordinator injects the application-layer single-task coordinator,
 // promoted to every view that embeds ViewBundle so the shell wires it from the
 // same showView/replaceView site as the bulk coordinator (via taskItemWireable).
-func (b *ViewBundle) SetTaskItemCoordinator(c TaskItemCoordinator) { b.taskItem = c }
+func (b *ViewBundle) SetTaskItemCoordinator(TaskItemCoordinator) {}
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.

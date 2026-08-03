@@ -281,23 +281,18 @@ type NoteBatchRequest struct {
 
 // NoteResult is the path-free presentation-neutral outcome of one note mutation.
 type NoteResult struct {
-	Kind             NoteMutationKind
-	Location         NoteLocation
-	SourceLocation   NoteLocation
-	ProjectID        string // compatibility convenience; mirrors Location.ProjectID
-	Filename         string
-	PreviousFilename string
-	Title            string
-	Revision         string // raw revision of the committed destination bytes
-	TransactionID    string
-	Note             *models.Note
+	Kind      NoteMutationKind
+	Location  NoteLocation
+	ProjectID string // compatibility convenience; mirrors Location.ProjectID
+	Filename  string
+	Title     string
+	Note      *models.Note
 }
 
 // NoteBatchResult reports every operation in request order and the shared
 // transaction ID proving the batch committed atomically.
 type NoteBatchResult struct {
-	TransactionID string
-	Results       []NoteResult
+	Results []NoteResult
 }
 
 // CreateNote commits one project or global note create.
@@ -432,7 +427,7 @@ func (s *Service) ApplyNoteBatch(req NoteBatchRequest) (NoteBatchResult, error) 
 			}
 		}
 		action, context := noteUndoMetadata(req, results)
-		txnID, commitErr := committer.CommitArtifactTransaction(storage.ArtifactCommitRequest{
+		_, commitErr := committer.CommitArtifactTransaction(storage.ArtifactCommitRequest{
 			Artifacts:     artifactChanges(artifacts),
 			Preconditions: preconditions,
 			ProjectIDs:    projectIDs,
@@ -440,10 +435,7 @@ func (s *Service) ApplyNoteBatch(req NoteBatchRequest) (NoteBatchResult, error) 
 			UndoContext:   context,
 		})
 		if commitErr == nil {
-			for i := range results {
-				results[i].TransactionID = txnID
-			}
-			return NoteBatchResult{TransactionID: txnID, Results: results}, nil
+			return NoteBatchResult{Results: results}, nil
 		}
 		var conflict *storage.ArtifactConflictError
 		if !errors.As(commitErr, &conflict) || conflict.Expected != "" || !advanceCollision(prepared, artifacts, conflict.Path) {
@@ -575,13 +567,11 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 		note.Filename = collisionFilename(op.baseFilename, op.collisionIndex)
 
 		result := NoteResult{
-			Kind:             op.kind,
-			Location:         op.destination,
-			SourceLocation:   op.source,
-			ProjectID:        op.destination.ProjectID,
-			Filename:         note.Filename,
-			PreviousFilename: op.previousFilename,
-			Title:            note.Title,
+			Kind:      op.kind,
+			Location:  op.destination,
+			ProjectID: op.destination.ProjectID,
+			Filename:  note.Filename,
+			Title:     note.Title,
 		}
 		switch op.kind {
 		case NoteCreate:
@@ -591,7 +581,7 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			}
 			change.ExpectedRevision = stringPointer("")
 			note.RawRevision = storage.RawArtifactRevision(change.Data)
-			result.Revision, result.Note = note.RawRevision, note
+			result.Note = note
 			artifacts = append(artifacts, preparedNoteArtifact{change: change, operation: i, destination: true})
 		case NoteUpdate:
 			change, encErr := s.notes.EncodeNoteSave(op.source, sourceProject, note)
@@ -600,7 +590,7 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			}
 			change.ExpectedRevision = stringPointer(op.note.RawRevision)
 			note.RawRevision = storage.RawArtifactRevision(change.Data)
-			result.Revision, result.Note = note.RawRevision, note
+			result.Note = note
 			artifacts = append(artifacts, preparedNoteArtifact{change: change, operation: i})
 		case NoteRename, NoteMove:
 			write, encErr := s.notes.EncodeNoteSave(op.destination, destinationProject, note)
@@ -614,7 +604,7 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			}
 			remove.ExpectedRevision = stringPointer(op.note.RawRevision)
 			note.RawRevision = storage.RawArtifactRevision(write.Data)
-			result.Revision, result.Note = note.RawRevision, note
+			result.Note = note
 			artifacts = append(artifacts,
 				preparedNoteArtifact{change: write, operation: i, destination: true},
 				preparedNoteArtifact{change: remove, operation: i},

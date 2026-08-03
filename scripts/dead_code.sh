@@ -6,7 +6,8 @@ production_output=$(mktemp)
 actionable_output=$(mktemp)
 test_output=$(mktemp)
 import_output=$(mktemp)
-trap 'rm -f "$production_output" "$actionable_output" "$test_output" "$import_output"' EXIT HUP INT TERM
+declaration_output=$(mktemp)
+trap 'rm -f "$production_output" "$actionable_output" "$test_output" "$import_output" "$declaration_output"' EXIT HUP INT TERM
 
 if ! deadcode ./... >"$production_output" 2>&1; then
 	echo "production deadcode analysis failed:" >&2
@@ -36,6 +37,12 @@ fi
 if [ -s "$test_output" ]; then
 	echo "dead code detected in the test-inclusive graph:" >&2
 	cat "$test_output" >&2
+	exit 1
+fi
+
+if ! go run ./scripts/deadcodeaudit ./... >"$declaration_output" 2>&1; then
+	echo "production declaration/field dead code detected:" >&2
+	cat "$declaration_output" >&2
 	exit 1
 fi
 

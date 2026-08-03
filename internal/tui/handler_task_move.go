@@ -63,12 +63,11 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	movedTask := destProject.GetTaskByID(sourceTask.ID)
 	return true, func() tea.Msg {
 		return TaskMovedToProjectMsg{
-			Task:          movedTask,
-			SourceProject: msg.SourceProject,
-			DestProject:   destProject,
-			MovedCount:    res.MovedCount,
-			OldShortID:    oldShortID,
-			FromGlobal:    msg.FromGlobal,
+			Task:        movedTask,
+			DestProject: destProject,
+			MovedCount:  res.MovedCount,
+			OldShortID:  oldShortID,
+			FromGlobal:  msg.FromGlobal,
 		}
 	}
 }

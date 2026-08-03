@@ -108,7 +108,6 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 				truncated := truncateToVisualWidth(name, maxProjLen)
 				badge := MutedStyle.Render(fmt.Sprintf("[%s]", truncated))
 				if w := lipgloss.Width(badge); w > 0 {
-					cl.HasProject = true
 					if w > cl.ProjectWidth {
 						cl.ProjectWidth = w
 					}

@@ -25,7 +25,6 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	view := m.currentView()
 	ctx := PresentationCommandContext(view)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
-	ctx.FocusedProjectID = m.operationFocusedProjectID()
 	if manage, ok := m.activeView().(*ManageHubModel); ok {
 		ctx = manage.CommandContext()
 	}
@@ -36,13 +35,11 @@ func (m *AppModel) operationCommandContext() CommandContext {
 			ProjectID: project.ID,
 			TaskID:    task.ID,
 			State:     string(task.State()),
-			Mutable:   !task.IsTerminalState(),
 			Archived:  project.Archived,
 		}
 	} else if m.activeOutliner() == nil && m.currentProject != nil {
 		ctx.Entity.ProjectID = m.currentProject.ID
 		ctx.Entity.Archived = m.currentProject.Archived
-		ctx.Entity.Mutable = !m.currentProject.Archived
 	}
 
 	if selected, ok := m.activeView().(operationSelectionProvider); ok {
@@ -61,22 +58,6 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	ctx.CurrentEntity = commandContextCurrentEntity(ctx.Entity)
 	ctx.ScopeProjectIDs = m.operationScopeProjectIDs(project)
 	return ctx
-}
-
-// operationFocusedProjectID reports the project the session is focused on. It
-// never falls back to the cursor: base and multi-project scopes stay app-scoped
-// even when the cursor happens to sit on a project's task.
-func (m *AppModel) operationFocusedProjectID() string {
-	if out := m.activeOutliner(); out != nil {
-		if out.project != nil {
-			return out.project.ID
-		}
-		return out.scopedProjectID
-	}
-	if m.currentProject != nil {
-		return m.currentProject.ID
-	}
-	return ""
 }
 
 func (m *AppModel) operationSelectionEntities(identities []TaskIdentity) []EntityContext {
@@ -131,13 +112,11 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 			ProjectID: project.ID,
 			TaskID:    task.ID,
 			State:     string(task.State()),
-			Mutable:   !task.IsTerminalState(),
 			Archived:  project.Archived,
 		}
 	} else if m.project != nil {
 		ctx.Entity.ProjectID = m.project.ID
 		ctx.Entity.Archived = m.project.Archived
-		ctx.Entity.Mutable = !m.project.Archived
 	}
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
@@ -155,11 +134,6 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 		}
 	}
 	ctx.ScopeProjectIDs = normalizedProjectIDs(ctx.ScopeProjectIDs)
-	if m.project != nil {
-		ctx.FocusedProjectID = m.project.ID
-	} else {
-		ctx.FocusedProjectID = m.scopedProjectID
-	}
 	return ctx
 }
 
@@ -201,7 +175,6 @@ func taskOperationEntity(task *models.Task, project *models.Project) EntityConte
 		ProjectID: project.ID,
 		TaskID:    task.ID,
 		State:     string(task.State()),
-		Mutable:   !task.IsTerminalState(),
 		Archived:  project.Archived,
 	}
 }

@@ -21,7 +21,6 @@ import (
 // The PID and start identity written into the file are diagnostics only,
 // surfaced in the "already running" error to help a human identify the holder.
 type PIDLock struct {
-	path string
 	file *os.File
 }
 
@@ -60,7 +59,7 @@ func AcquirePIDLock(path string) (*PIDLock, error) {
 		return nil, err
 	}
 
-	return &PIDLock{path: path, file: f}, nil
+	return &PIDLock{file: f}, nil
 }
 
 // Release drops the OS lock and closes the lock file. The lock file itself is

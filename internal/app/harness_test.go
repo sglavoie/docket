@@ -172,7 +172,7 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 				break
 			}
 		}
-		results[i] = &storage.CommitResult{Revision: newDoc.Revision, TransactionID: "txn-test"}
+		results[i] = &storage.CommitResult{Revision: newDoc.Revision}
 		// Apply artifact writes/deletes to the in-memory file store so an in-memory
 		// reader observes exactly what the real commit service would persist.
 		for _, art := range cs.Artifacts {

@@ -27,9 +27,6 @@ type ProjectCreatorModel struct {
 
 	focusIndex int // 0 = name input, 1 = context selection
 	width      int
-	height     int
-
-	canceled bool
 
 	discardConfirmState
 }
@@ -65,14 +62,12 @@ func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manage
 		contexts:      contexts,
 		focusIndex:    0,
 		width:         80,
-		height:        24,
 	}
 }
 
 // SetSize sets the view dimensions.
 func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
-	m.height = height
 	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
 	formFactory.ResizeTextInputWithReserve(&m.contextInput, width, FormLabelWidth)
 }
@@ -92,7 +87,6 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch keyMsg.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
-				m.canceled = true
 				return m, func() tea.Msg {
 					return BackMsg{}
 				}
@@ -112,7 +106,6 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmDiscard = true
 				return m, nil
 			}
-			m.canceled = true
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}

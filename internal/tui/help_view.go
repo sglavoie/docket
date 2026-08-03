@@ -65,7 +65,6 @@ func (m *HelpViewModel) innerWidth() int {
 
 func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width
-	m.height = height
 
 	viewportWidth := m.innerWidth()
 	if viewportWidth < 1 {

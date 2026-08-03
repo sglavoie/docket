@@ -43,7 +43,7 @@ func outlinerHasTask(outliner *OutlinerModel, projectID, taskID string) bool {
 func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "created refresh")
-	model, outliner := newSession2OutlinerApp(t, dataDir, true, project)
+	model, outliner := newSession2OutlinerApp(t, dataDir, project)
 	installDistinctOutlinerSnapshot(t, model, outliner)
 
 	committed := &models.Project{

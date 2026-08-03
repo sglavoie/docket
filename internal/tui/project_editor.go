@@ -39,7 +39,6 @@ type ProjectEditorModel struct {
 	// Form state
 	focusIndex int // 0=name, 1=context, 2=description
 	width      int
-	height     int
 	err        error
 	hasChanges bool
 
@@ -96,7 +95,6 @@ func NewProjectEditorModel(
 		contextCursor:       contextCursor,
 		focusIndex:          0,
 		width:               80,
-		height:              24,
 	}
 }
 
@@ -119,7 +117,6 @@ func (m *ProjectEditorModel) SetSize(width, height int) {
 	const descriptionLabelReserve = 12
 
 	m.width = width
-	m.height = height
 	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
 	formFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
 	formFactory.ResizeTextInputWithReserve(&m.contextInput, width, FormLabelWidth)
@@ -336,7 +333,7 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
 		}
 
-		if _, err := svc.RenameProject(app.RenameProjectRequest{
+		if err := svc.RenameProject(app.RenameProjectRequest{
 			Project:                &updated,
 			SystemUnfiledProjectID: runtime.Catalog().SystemUnfiledProjectID,
 			DataDir:                runtime.DataDir(),
@@ -354,7 +351,7 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		}
 
 		copyCatalogMetadata(project, &updated)
-		return ProjectUpdatedMsg{Project: project}
+		return ProjectUpdatedMsg{}
 	}
 }
 

@@ -65,13 +65,12 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	persister.Projects[alpha.ID] = alpha
 	persister.Projects[beta.ID] = beta
 	shell := &AppModel{
-		runtime:              runtime,
-		persister:            persister,
-		nextOrderIDs:         make(map[TaskIdentity]bool),
-		todayIDs:             make(map[TaskIdentity]bool),
-		nextOrder:            []PlanningTask{},
-		today:                []PlanningTask{},
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		runtime:      runtime,
+		persister:    persister,
+		nextOrderIDs: make(map[TaskIdentity]bool),
+		todayIDs:     make(map[TaskIdentity]bool),
+		nextOrder:    []PlanningTask{},
+		today:        []PlanningTask{},
 	}
 
 	loads := make(map[string]error)
@@ -87,31 +86,6 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	}
 	if len(shell.today) != 2 || !shell.todayIDs[alphaTodayID] || !shell.todayIDs[betaTodayID] {
 		t.Fatalf("qualified Today hydration = slice:%d map:%v", len(shell.today), shell.todayIDs)
-	}
-}
-
-func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
-	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
-	alphaTask.WorkflowState = models.StateBacklog
-	betaTask.WorkflowState = models.StateBacklog
-	alphaID := taskIdentityFor(alphaTask, alpha)
-	betaID := taskIdentityFor(betaTask, beta)
-	shell := &AppModel{
-		runtime:  config.EmptyRuntimeState(""),
-		today:    []PlanningTask{{Task: alphaTask, Project: alpha}, {Task: betaTask, Project: beta}},
-		todayIDs: map[TaskIdentity]bool{alphaID: true, betaID: true},
-	}
-
-	shell.lastTodayToggle = &todayToggleAction{Task: betaTask, Project: beta, WasAdd: true}
-	shell.lastToggleUndoKind = toggleUndoToday
-	_ = shell.undoTodayToggle()
-	if !shell.todayIDs[alphaID] || shell.todayIDs[betaID] || len(shell.today) != 1 {
-		t.Fatalf("undo crossed project boundary: slice:%v map:%v", shell.today, shell.todayIDs)
-	}
-
-	_ = shell.redoTodayToggle()
-	if !shell.todayIDs[alphaID] || !shell.todayIDs[betaID] || len(shell.today) != 2 {
-		t.Fatalf("redo failed to restore qualified task: slice:%v map:%v", shell.today, shell.todayIDs)
 	}
 }
 

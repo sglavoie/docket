@@ -64,19 +64,19 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	switch m.activeOverlay {
 	case formOverlayPriority:
 		if m.priorityPicker != nil {
-			cmd, dismiss, result = m.priorityPicker.handleKey(msg)
+			dismiss, result = m.priorityPicker.handleKey(msg)
 		}
 	case formOverlayState:
 		if m.statePicker != nil {
-			cmd, dismiss, result = m.statePicker.handleKey(msg)
+			dismiss, result = m.statePicker.handleKey(msg)
 		}
 	case formOverlayFlags:
 		if m.flagsPicker != nil {
-			cmd, dismiss, result = m.flagsPicker.handleKey(msg)
+			dismiss, result = m.flagsPicker.handleKey(msg)
 		}
 	case formOverlayDue:
 		if m.duePicker != nil {
-			cmd, dismiss, result = m.duePicker.handleKey(msg)
+			dismiss, result = m.duePicker.handleKey(msg)
 		}
 	case formOverlayChecklistEdit:
 		cmd, dismiss, result = m.handleChecklistEditKey(msg)

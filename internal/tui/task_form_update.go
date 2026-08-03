@@ -141,9 +141,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.activeOverlay = formOverlayDue
 				return m, nil
 			}
-			if cmd, ok := m.handleTextInputKey(msg, m.commitDueInput, &m.dueTextInput); ok {
-				return m, cmd
-			}
+			return m, m.handleTextInputKey(msg, m.commitDueInput, &m.dueTextInput)
 		}
 
 		// ── Priority inline editing (Basics tab, field 2) ─────────────────────
@@ -174,8 +172,8 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// ── Children-tab keys ─────────────────────────────────────────────────
 		if m.activeTab == formTabChildren {
-			if ret, cmd, handled := m.handleChildrenTabKey(msg); handled {
-				return ret, cmd
+			if ret, handled := m.handleChildrenTabKey(msg); handled {
+				return ret, nil
 			}
 		}
 
@@ -200,10 +198,12 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.handleBasicsEnter()
 			}
 			if m.activeTab == formTabSchedule {
-				return m, m.handleScheduleEnter()
+				m.handleScheduleEnter()
+				return m, nil
 			}
 			if m.activeTab == formTabChildren {
-				return m, m.handleChildrenEnter()
+				m.handleChildrenEnter()
+				return m, nil
 			}
 		case "ctrl+e":
 			if m.activeTab == formTabBasics && m.focusIndex == 1 {

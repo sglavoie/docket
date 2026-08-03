@@ -61,20 +61,6 @@ type UndoToastTimeoutMsg struct{}
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
-// MutationFlashClearMsg clears the mutation flash highlight after a timeout.
-type MutationFlashClearMsg struct{}
-
-// CompletionFlashFrameMsg advances the green-ramp pulse used for task
-// completion. Frame is 1..N — the initial frame (0) is set synchronously
-// when the flash starts.
-type CompletionFlashFrameMsg struct{ Frame int }
-
-// TodayClearedMsg signals that the Today plan transitioned from
-// non-empty-incomplete → fully complete for the first time today.
-type TodayClearedMsg struct {
-	Streak int
-}
-
 // TodayClearedBannerClearMsg dismisses the Today-cleared banner once its TTL
 // elapses. Distinct from StatusClearMsg so a normal status message coming in
 // later does not get wiped by the banner timer.
@@ -157,17 +143,6 @@ func cursorFlashTimeout() tea.Cmd {
 		return CursorFlashClearMsg{}
 	})
 }
-
-// MutationFlashDuration is how long the mutation flash highlight stays visible.
-// Held under the Doherty Threshold (400 ms) so mutations feel instantaneous.
-const MutationFlashDuration = 250 * time.Millisecond
-
-// CompletionFlashFrameDuration is how long each frame of the completion ramp lasts.
-const CompletionFlashFrameDuration = 100 * time.Millisecond
-
-// CompletionFlashFrameCount is the number of frames in the completion ramp,
-// counting frame 0 (set synchronously) plus the scheduled frames.
-const CompletionFlashFrameCount = 3
 
 // TodayClearedBannerTimeout is how long the Today-cleared banner stays visible.
 const TodayClearedBannerTimeout = 5 * time.Second

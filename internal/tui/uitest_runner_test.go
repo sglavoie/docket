@@ -176,7 +176,6 @@ func (d *UITestDriver) runCommand(name string) error {
 	result := d.app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      match.ID,
 		Context: ctx,
-		Source:  OperationSourceHarness,
 	})
 	if result.Err != nil {
 		return fmt.Errorf("command %q failed: %w", name, result.Err)

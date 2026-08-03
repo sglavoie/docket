@@ -38,9 +38,6 @@ type OutlinerModel struct {
 	projectService *ProjectService
 	quickEdit      *QuickEditComponent
 
-	// Daily-plan membership support for building Today rows.
-	todayIDs map[TaskIdentity]bool
-
 	project *models.Project
 
 	zoomStack      []ZoomEntry             // Zoom stack for single-project mode
@@ -66,8 +63,6 @@ type OutlinerModel struct {
 	// search temporarily replaces it with every matching nonterminal task in
 	// the active project/context scope.
 	searchProjection *outlinerSearchSnapshot
-
-	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 
 	undo UndoContext // Action label and context for next undo snapshot
 
@@ -162,7 +157,6 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		quickEdit:         NewQuickEditComponent(),
 		project:           project,
 		primaryMode:       ModeAll,
-		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
 		filter:            NewFilterState(),
@@ -193,16 +187,6 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case CursorFlashClearMsg:
 		m.cursorFlash = false
-		return m, nil
-
-	case MutationFlashClearMsg:
-		m.mutationFlash = false
-		m.rebuildRows()
-		return m, nil
-
-	case CompletionFlashFrameMsg:
-		m.advanceCompletionFlashFrame(msg.Frame)
-		m.rebuildRows()
 		return m, nil
 
 	case CommentAddedMsg:

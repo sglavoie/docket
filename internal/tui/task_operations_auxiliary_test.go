@@ -40,7 +40,6 @@ func executeTaskOperationForTest(
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: context,
-		Source:  OperationSourceActionSheet,
 	})
 	if result.Err != nil {
 		t.Fatalf("execute %s: %v", id, result.Err)
@@ -280,7 +279,6 @@ func TestTaskChildActionOnDeletedParentLeavesHierarchyUnchanged(t *testing.T) {
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationTaskNewChild,
 		Context: context,
-		Source:  OperationSourceActionSheet,
 	})
 	if result.Err == nil {
 		t.Fatal("a child action ran against a deleted parent")
@@ -302,7 +300,6 @@ func TestTaskOperationStaleFrozenTargetReportsUnavailable(t *testing.T) {
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationTaskComments,
 		Context: context,
-		Source:  OperationSourceActionSheet,
 	})
 	if result.Err == nil {
 		t.Fatal("a deleted frozen target executed anyway")

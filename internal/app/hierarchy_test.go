@@ -10,7 +10,7 @@ import (
 )
 
 // typedTask builds a task of a specific type for hierarchy tests.
-func typedTask(id string, shortID int, taskType string, title string) *models.Task {
+func typedTask(id string, shortID int, title string) *models.Task {
 	tk, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		panic(err)
@@ -31,8 +31,8 @@ func assertTaskIDs(t *testing.T, tasks []*models.Task, want ...string) {
 }
 
 func TestReparentUnderValidParent(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	task := typedTask("t1", 2, "", "child task")
+	epic := typedTask("epic1", 1, "Epic")
+	task := typedTask("t1", 2, "child task")
 	projA := newProject("proj-a", "Alpha", epic, task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -50,8 +50,8 @@ func TestReparentUnderValidParent(t *testing.T) {
 }
 
 func TestReparentToRootClearsParent(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	task := typedTask("t1", 2, "", "child task")
+	epic := typedTask("epic1", 1, "Epic")
+	task := typedTask("t1", 2, "child task")
 	parentID := "epic1"
 	task.ParentID = &parentID
 	projA := newProject("proj-a", "Alpha", epic, task)
@@ -67,8 +67,8 @@ func TestReparentToRootClearsParent(t *testing.T) {
 }
 
 func TestReparentUsesLeanHierarchyWithoutTypeRestrictions(t *testing.T) {
-	leaf := typedTask("leaf1", 1, "", "leaf")
-	task := typedTask("t1", 2, "", "another leaf")
+	leaf := typedTask("leaf1", 1, "leaf")
+	task := typedTask("t1", 2, "another leaf")
 	projA := newProject("proj-a", "Alpha", leaf, task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -86,8 +86,8 @@ func TestReparentUsesLeanHierarchyWithoutTypeRestrictions(t *testing.T) {
 }
 
 func TestReparentRejectsCycle(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	story := typedTask("story1", 2, "", "Story")
+	epic := typedTask("epic1", 1, "Epic")
+	story := typedTask("story1", 2, "Story")
 	epicID := "epic1"
 	story.ParentID = &epicID // story is a child of epic
 	projA := newProject("proj-a", "Alpha", epic, story)
@@ -101,7 +101,7 @@ func TestReparentRejectsCycle(t *testing.T) {
 }
 
 func TestReparentUnknownParent(t *testing.T) {
-	task := typedTask("t1", 1, "", "task")
+	task := typedTask("t1", 1, "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newTestService(repo)
 
@@ -114,15 +114,15 @@ func TestReparentUnknownParent(t *testing.T) {
 func TestReparentRejectsSubtreeThatWouldExceedDepth(t *testing.T) {
 	var chain []*models.Task
 	for i := 0; i < models.MaxNestingDepth; i++ {
-		task := typedTask(string(rune('a'+i)), i+1, "", "Ancestor")
+		task := typedTask(string(rune('a'+i)), i+1, "Ancestor")
 		if i > 0 {
 			parentID := chain[i-1].ID
 			task.ParentID = &parentID
 		}
 		chain = append(chain, task)
 	}
-	moved := typedTask("moved", 20, "", "Moved")
-	child := typedTask("child", 21, "", "Child")
+	moved := typedTask("moved", 20, "Moved")
+	child := typedTask("child", 21, "Child")
 	child.ParentID = &moved.ID
 	project := newProject("proj-a", "Alpha", append(chain, moved, child)...)
 	repo := newFakeRepo(project)
@@ -204,8 +204,8 @@ func TestMoveTaskDownAtBottomRejected(t *testing.T) {
 }
 
 func TestReorderSiblingTasksUsesExplicitVisibleTarget(t *testing.T) {
-	parentA := typedTask("parent-a", 1, "", "Parent A")
-	parentB := typedTask("parent-b", 2, "", "Parent B")
+	parentA := typedTask("parent-a", 1, "Parent A")
+	parentB := typedTask("parent-b", 2, "Parent B")
 	a1 := newTask("a1", 3, "A1")
 	a2 := newTask("a2", 4, "A2")
 	b1 := newTask("b1", 5, "B1")
@@ -229,8 +229,8 @@ func TestReorderSiblingTasksUsesExplicitVisibleTarget(t *testing.T) {
 }
 
 func TestReorderSiblingTasksRejectsDifferentParents(t *testing.T) {
-	parentA := typedTask("parent-a", 1, "", "Parent A")
-	parentB := typedTask("parent-b", 2, "", "Parent B")
+	parentA := typedTask("parent-a", 1, "Parent A")
+	parentB := typedTask("parent-b", 2, "Parent B")
 	a1 := newTask("a1", 3, "A1")
 	b1 := newTask("b1", 4, "B1")
 	a1.ParentID = &parentA.ID
@@ -267,8 +267,8 @@ func TestHierarchyReorderRollsBackSharedSnapshotOnCommitFailure(t *testing.T) {
 }
 
 func TestIndentNestsUnderTaskAbove(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	task := typedTask("t1", 2, "", "leaf")
+	epic := typedTask("epic1", 1, "Epic")
+	task := typedTask("t1", 2, "leaf")
 	projA := newProject("proj-a", "Alpha", epic, task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -282,7 +282,7 @@ func TestIndentNestsUnderTaskAbove(t *testing.T) {
 }
 
 func TestIndentRejectedWhenNoTaskAbove(t *testing.T) {
-	task := typedTask("t1", 1, "", "only task")
+	task := typedTask("t1", 1, "only task")
 	projA := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -296,8 +296,8 @@ func TestIndentRejectedWhenNoTaskAbove(t *testing.T) {
 }
 
 func TestOutdentMovesToParentLevel(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	story := typedTask("story1", 2, "", "Story")
+	epic := typedTask("epic1", 1, "Epic")
+	story := typedTask("story1", 2, "Story")
 	epicID := "epic1"
 	story.ParentID = &epicID
 	projA := newProject("proj-a", "Alpha", epic, story)
@@ -313,7 +313,7 @@ func TestOutdentMovesToParentLevel(t *testing.T) {
 }
 
 func TestOutdentRejectedAtRoot(t *testing.T) {
-	task := typedTask("t1", 1, "", "root task")
+	task := typedTask("t1", 1, "root task")
 	projA := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
@@ -324,8 +324,8 @@ func TestOutdentRejectedAtRoot(t *testing.T) {
 }
 
 func TestMoveToProjectCarriesAttachmentOpsAndArtifact(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	child := typedTask("t1", 2, "", "child")
+	epic := typedTask("epic1", 1, "Epic")
+	child := typedTask("t1", 2, "child")
 	epicID := "epic1"
 	child.ParentID = &epicID
 	projA := newProject("proj-a", "Alpha", epic, child)
@@ -381,7 +381,7 @@ func TestMoveToProjectCarriesAttachmentOpsAndArtifact(t *testing.T) {
 }
 
 func TestMoveToProjectAbortsOnCommitError(t *testing.T) {
-	task := typedTask("t1", 1, "", "task")
+	task := typedTask("t1", 1, "task")
 	projA := newProject("proj-a", "Alpha", task)
 	projB := newProject("proj-b", "Beta")
 	repo := newFakeRepo(projA, projB)
@@ -406,8 +406,8 @@ func TestMoveToProjectAbortsOnCommitError(t *testing.T) {
 }
 
 func TestMoveToProjectMovesSubtreeInOneTransaction(t *testing.T) {
-	epic := typedTask("epic1", 1, "", "Epic")
-	child := typedTask("t1", 2, "", "child")
+	epic := typedTask("epic1", 1, "Epic")
+	child := typedTask("t1", 2, "child")
 	epicID := "epic1"
 	child.ParentID = &epicID
 	projA := newProject("proj-a", "Alpha", epic, child)
@@ -422,17 +422,11 @@ func TestMoveToProjectMovesSubtreeInOneTransaction(t *testing.T) {
 	if res.MovedCount != 2 {
 		t.Errorf("MovedCount = %d, want 2 (epic + child)", res.MovedCount)
 	}
-	if res.DestProjectID != "proj-b" {
-		t.Errorf("DestProjectID = %q, want proj-b", res.DestProjectID)
-	}
 	if len(projA.Tasks) != 0 {
 		t.Errorf("source still has %d tasks, want 0", len(projA.Tasks))
 	}
 	if len(projB.Tasks) != 2 {
 		t.Errorf("dest has %d tasks, want 2", len(projB.Tasks))
-	}
-	if res.Task.ProjectSlug != "beta" {
-		t.Errorf("moved task project slug = %q, want beta", res.Task.ProjectSlug)
 	}
 
 	// The whole move must be a single transaction: exactly one Commit call
@@ -446,7 +440,7 @@ func TestMoveToProjectMovesSubtreeInOneTransaction(t *testing.T) {
 }
 
 func TestMoveToProjectRejectsSameProject(t *testing.T) {
-	task := typedTask("t1", 1, "", "task")
+	task := typedTask("t1", 1, "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newTestService(repo)
 
@@ -456,7 +450,7 @@ func TestMoveToProjectRejectsSameProject(t *testing.T) {
 }
 
 func TestMoveToProjectUnknownDestination(t *testing.T) {
-	task := typedTask("t1", 1, "", "task")
+	task := typedTask("t1", 1, "task")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newTestService(repo)
 
@@ -466,11 +460,11 @@ func TestMoveToProjectUnknownDestination(t *testing.T) {
 }
 
 func TestBulkMoveToProjectMovesSelectedSubtreesInOneTransaction(t *testing.T) {
-	parent := typedTask("parent", 1, "", "Parent")
-	child := typedTask("child", 2, "", "Child")
+	parent := typedTask("parent", 1, "Parent")
+	child := typedTask("child", 2, "Child")
 	parentID := parent.ID
 	child.ParentID = &parentID
-	other := typedTask("other", 1, "", "Other")
+	other := typedTask("other", 1, "Other")
 	alpha := newProject("alpha", "Alpha", parent, child)
 	beta := newProject("beta", "Beta", other)
 	destination := newProject("destination", "Destination")
@@ -489,8 +483,8 @@ func TestBulkMoveToProjectMovesSelectedSubtreesInOneTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BulkMoveToProject: %v", err)
 	}
-	if len(result.Tasks) != 2 || result.MovedCount != 3 {
-		t.Fatalf("result roots=%d moved=%d, want 2 roots and 3 tasks", len(result.Tasks), result.MovedCount)
+	if result.MovedCount != 3 {
+		t.Fatalf("moved=%d, want 3 tasks", result.MovedCount)
 	}
 	if len(alpha.Tasks) != 0 || len(beta.Tasks) != 0 || len(destination.Tasks) != 3 {
 		t.Fatalf("post-move task counts alpha=%d beta=%d destination=%d", len(alpha.Tasks), len(beta.Tasks), len(destination.Tasks))
@@ -508,8 +502,8 @@ func TestBulkMoveToProjectMovesSelectedSubtreesInOneTransaction(t *testing.T) {
 }
 
 func TestBulkMoveToProjectValidatesEverySourceBeforeMutation(t *testing.T) {
-	alphaTask := typedTask("alpha-task", 1, "", "Alpha task")
-	destinationTask := typedTask("destination-task", 1, "", "Destination task")
+	alphaTask := typedTask("alpha-task", 1, "Alpha task")
+	destinationTask := typedTask("destination-task", 1, "Destination task")
 	alpha := newProject("alpha", "Alpha", alphaTask)
 	destination := newProject("destination", "Destination", destinationTask)
 	repo := newFakeRepo(alpha, destination)

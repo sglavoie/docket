@@ -83,7 +83,7 @@ func TestHandleTaskMessagesTaskDeleted(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
 
-	msg := TaskDeletedMsg{Task: project.Tasks[0]}
+	msg := TaskDeletedMsg{}
 	handled, _ := app.handleTaskMessages(msg)
 
 	if !handled {

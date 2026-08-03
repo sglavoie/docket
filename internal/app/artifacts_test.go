@@ -73,14 +73,6 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 		t.Fatalf("Notes after delete len = %d, want 0", len(notes))
 	}
 
-	// Snapshot-backed project queries.
-	summaries, err := svc.ListProjects()
-	if err != nil {
-		t.Fatalf("ListProjects: %v", err)
-	}
-	if len(summaries) != 1 || summaries[0].Name != "alpha" {
-		t.Fatalf("ListProjects = %+v, want one project named alpha", summaries)
-	}
 	if _, err := svc.ProjectTags(projectID); err != nil {
 		t.Fatalf("ProjectTags: %v", err)
 	}

@@ -12,7 +12,7 @@ import (
 
 func TestLeanProjectCreateAndRenameParticipateInWorkspaceUndo(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
-		fixture := newSession4LifecycleFixture(t, true)
+		fixture := newSession4LifecycleFixture(t)
 		creator := NewProjectCreatorModel(fixture.app.runtime, fixture.app.configManager, fixture.app.appService)
 		creator.nameInput.SetValue("Created Project")
 		creator.contextInput.SetValue("work")
@@ -52,7 +52,7 @@ func TestLeanProjectCreateAndRenameParticipateInWorkspaceUndo(t *testing.T) {
 
 	t.Run("rename", func(t *testing.T) {
 		project := newSession4Project(t, "Original")
-		fixture := newSession4LifecycleFixture(t, true, project)
+		fixture := newSession4LifecycleFixture(t, project)
 		live := fixture.app.projectByID(project.ID)
 		oldPath := live.Path
 		editor := NewProjectEditorModel(
@@ -66,8 +66,7 @@ func TestLeanProjectCreateAndRenameParticipateInWorkspaceUndo(t *testing.T) {
 		editor.descriptionInput.SetValue("lean metadata")
 
 		raw := editor.saveProject()()
-		updated, ok := raw.(ProjectUpdatedMsg)
-		if !ok || updated.Project == nil {
+		if _, ok := raw.(ProjectUpdatedMsg); !ok {
 			t.Fatalf("edit result = %#v, want ProjectUpdatedMsg", raw)
 		}
 		newPath := filepath.Join(fixture.dataDir, "projects", "renamed-project")
@@ -137,7 +136,7 @@ func TestLeanProjectPinArchiveAndRestoreUseNamedUndoBoundaries(t *testing.T) {
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
 			project := newSession4Project(t, testCase.projectName)
-			fixture := newSession4LifecycleFixture(t, true, project)
+			fixture := newSession4LifecycleFixture(t, project)
 			live := fixture.app.projectByID(project.ID)
 			testCase.run(fixture.app, live)
 
@@ -151,7 +150,7 @@ func TestLeanProjectPinArchiveAndRestoreUseNamedUndoBoundaries(t *testing.T) {
 
 func TestSystemInboxEditKeepsIdentityImmutable(t *testing.T) {
 	inbox := newSession4Project(t, "Inbox")
-	fixture := newSession4LifecycleFixture(t, true, inbox)
+	fixture := newSession4LifecycleFixture(t, inbox)
 	catalog := cloneWorkspaceCatalog(fixture.app.runtime.Catalog())
 	catalog.SystemUnfiledProjectID = inbox.ID
 	if err := fixture.app.runtime.CommitCatalog(catalog); err != nil {

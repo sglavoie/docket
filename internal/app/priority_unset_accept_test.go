@@ -47,7 +47,7 @@ func prioritizedProject(t *testing.T, dataDir, slug string, priority int, titles
 	return project
 }
 
-func assertReloadedPriority(t *testing.T, project *models.Project, taskID string, want int) {
+func assertReloadedPriority(t *testing.T, project *models.Project, taskID string) {
 	t.Helper()
 	reloaded := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
 	if err := storage.LoadProject(reloaded); err != nil {
@@ -57,8 +57,8 @@ func assertReloadedPriority(t *testing.T, project *models.Project, taskID string
 	if task == nil {
 		t.Fatalf("reloaded task %q is missing from %q", taskID, project.Slug)
 	}
-	if task.Priority != want {
-		t.Fatalf("reloaded task %q priority = %d, want %d", taskID, task.Priority, want)
+	if task.Priority != models.PriorityUnset {
+		t.Fatalf("reloaded task %q priority = %d, want %d", taskID, task.Priority, models.PriorityUnset)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestSetPriorityZeroSurvivesReloadFromDisk(t *testing.T) {
 	if _, err := svc.SetPriority(task.ID, models.PriorityUnset); err != nil {
 		t.Fatalf("SetPriority(unset): %v", err)
 	}
-	assertReloadedPriority(t, project, task.ID, models.PriorityUnset)
+	assertReloadedPriority(t, project, task.ID)
 }
 
 func TestBulkSetPriorityZeroSurvivesReloadFromDisk(t *testing.T) {
@@ -88,9 +88,9 @@ func TestBulkSetPriorityZeroSurvivesReloadFromDisk(t *testing.T) {
 	if len(res.TouchedProjectIDs) != 2 {
 		t.Fatalf("touched projects = %v, want both", res.TouchedProjectIDs)
 	}
-	assertReloadedPriority(t, alpha, alpha.Tasks[0].ID, models.PriorityUnset)
-	assertReloadedPriority(t, alpha, alpha.Tasks[1].ID, models.PriorityUnset)
-	assertReloadedPriority(t, beta, beta.Tasks[0].ID, models.PriorityUnset)
+	assertReloadedPriority(t, alpha, alpha.Tasks[0].ID)
+	assertReloadedPriority(t, alpha, alpha.Tasks[1].ID)
+	assertReloadedPriority(t, beta, beta.Tasks[0].ID)
 }
 
 // TestFormEditKeepsAnUnsetPriority proves the full edit form can open and save a
@@ -112,5 +112,5 @@ func TestFormEditKeepsAnUnsetPriority(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Edit with an unset priority: %v", err)
 	}
-	assertReloadedPriority(t, project, task.ID, models.PriorityUnset)
+	assertReloadedPriority(t, project, task.ID)
 }

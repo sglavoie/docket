@@ -78,12 +78,9 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		repo := newFakeRepo(src, dest)
 		svc := newTestService(repo)
 
-		res, err := svc.MoveToProject(task.ID, dest.ID)
+		_, err := svc.MoveToProject(task.ID, dest.ID)
 		if err != nil {
 			t.Fatalf("MoveToProject: %v", err)
-		}
-		if res.DestProjectID != dest.ID {
-			t.Fatalf("dest project = %s, want %s", res.DestProjectID, dest.ID)
 		}
 		moved := dest.GetTaskByID(task.ID)
 		if moved == nil {

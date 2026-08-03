@@ -35,7 +35,6 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.handleGlobalKeyPress(msg)
 	case tea.KeyboardEnhancementsMsg:
-		m.keyboardEnhancements = msg
 		return true, upgradeKittyKeyboard()
 	case tea.KeyReleaseMsg:
 		return true, nil
@@ -75,8 +74,6 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.adoptCrossProjectSnapshot(msg.projects)
 		}
 		return true, m.crossOutliner.handleCrossProjectsLoaded(msg)
-	case retryMachineDomainRepairMsg:
-		return true, m.retryMachineDomainRepair()
 	default:
 		return false, nil
 	}

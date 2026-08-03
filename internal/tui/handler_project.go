@@ -228,9 +228,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	}
 	m.pruneDeletedTaskRefs()
 	action := fmt.Sprintf("Archived %s", updated.Name)
-	var repairCmd tea.Cmd
 	if result.MachineErr != nil {
-		repairCmd = m.queueMachineDomainRepair(machineRepairForArchivedProject(updated.ID, updated.Slug))
 		m.setWarningStatus(machineRepairWarning(action, result.MachineErr))
 	} else {
 		m.setSuccessStatus(action)
@@ -239,7 +237,6 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),
-		repairCmd,
 		defaultStatusTimeout(),
 	)
 }

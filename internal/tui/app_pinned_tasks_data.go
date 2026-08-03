@@ -16,7 +16,6 @@ type pinnedTaskInfo struct {
 	ProjectName string
 	PinnedAt    time.Time
 	Task        *models.Task
-	Project     *models.Project
 }
 
 func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
@@ -40,7 +39,6 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 					ShortID:     task.ShortID,
 					ProjectName: project.Name,
 					Task:        task,
-					Project:     project,
 				}
 				if task.PinnedAt != nil {
 					info.PinnedAt = *task.PinnedAt

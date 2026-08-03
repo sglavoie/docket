@@ -7,8 +7,7 @@ import (
 
 // MoveTaskToProjectResult contains the result of a cross-project task move.
 type MoveTaskToProjectResult struct {
-	MovedTasks  []*Task // Tasks that were moved (root + descendants)
-	OldShortIDs []int   // Original short IDs of moved tasks (parallel with MovedTasks)
+	MovedTasks []*Task // Tasks that were moved (root + descendants)
 }
 
 // MoveTaskToProject moves a task and all its descendants to another project.
@@ -59,13 +58,9 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		movedIDs[t.ID] = true
 	}
 
-	// Track old short IDs.
-	oldShortIDs := make([]int, len(movedTasks))
-
 	now := time.Now()
 	// Process each task being moved
-	for i, t := range movedTasks {
-		oldShortIDs[i] = t.ShortID
+	for _, t := range movedTasks {
 		reassignTaskToDest(t, dest, now)
 	}
 
@@ -92,8 +87,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	dest.BuildTaskTree()
 
 	return &MoveTaskToProjectResult{
-		MovedTasks:  movedTasks,
-		OldShortIDs: oldShortIDs,
+		MovedTasks: movedTasks,
 	}, nil
 }
 

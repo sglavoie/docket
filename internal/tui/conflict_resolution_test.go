@@ -110,7 +110,7 @@ func TestConflictResolutionAdoptRemote(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected ConflictResolvedMsg, got %T", msg)
 	}
-	if !resolved.Adopted || resolved.ConflictID != id {
+	if !resolved.Adopted {
 		t.Fatalf("unexpected resolution message: %+v", resolved)
 	}
 	if records, _ := store.List(); len(records) != 0 {
@@ -132,7 +132,7 @@ func TestConflictResolvedMsgPopsAndStatuses(t *testing.T) {
 		t.Fatalf("setup: current view = %v, want ConflictResolution", app.currentView())
 	}
 
-	handled, _ := app.handleConflictMessages(ConflictResolvedMsg{ConflictID: "x", Committed: true})
+	handled, _ := app.handleConflictMessages(ConflictResolvedMsg{})
 	if !handled {
 		t.Fatal("ConflictResolvedMsg should be handled")
 	}

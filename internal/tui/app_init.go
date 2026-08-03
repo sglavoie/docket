@@ -26,22 +26,20 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	dataDir := runtime.DataDir()
 
 	app := &AppModel{
-		configManager:        manager,
-		runtime:              runtime,
-		projects:             make(map[string]*models.Project),
-		persister:            NewProjectService(),
-		navigation:           NewNavigationState(),
-		width:                80,
-		height:               24,
-		views:                NewViewRegistry(),
-		operationRegistry:    NewOperationRegistry(),
-		spinner:              NewSpinner(),
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		nextOrder:            []PlanningTask{},
-		nextOrderIDs:         make(map[TaskIdentity]bool),
-		focusDismissedIDs:    make(map[string]bool),
-		today:                []PlanningTask{},
-		todayIDs:             make(map[TaskIdentity]bool),
+		configManager:     manager,
+		runtime:           runtime,
+		projects:          make(map[string]*models.Project),
+		persister:         NewProjectService(),
+		navigation:        NewNavigationState(),
+		width:             80,
+		height:            24,
+		views:             NewViewRegistry(),
+		operationRegistry: NewOperationRegistry(),
+		spinner:           NewSpinner(),
+		nextOrder:         []PlanningTask{},
+		nextOrderIDs:      make(map[TaskIdentity]bool),
+		today:             []PlanningTask{},
+		todayIDs:          make(map[TaskIdentity]bool),
 	}
 
 	// Apply functional options
@@ -66,11 +64,11 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// adapter, matching the coordinator-driven view-local pickers.
 	appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 	app.appService = appService
-	app.features = newFeatureCoordinators(appService, appService)
+	app.features = newFeatureCoordinators(appService)
 	app.secondaryFeatures = newSecondaryCoordinators(appService)
 
 	// Assemble the domain-native dependency bundle shared by the shell and views.
-	app.deps = newShellDeps(runtime, appService, manager, ledger)
+	app.deps = newShellDeps(ledger)
 
 	if ensureErr := app.ensureSystemUnfiledProject(); ensureErr != nil {
 		logging.Warn("failed to ensure system Unfiled project: %v", ensureErr)
@@ -80,9 +78,6 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		logging.Warn("failed to persist project color slots: %v", ensureErr)
 	}
 	app.syncProjectCache()
-	if repairErr := app.reconcileStartupMachineReferences(); repairErr != nil {
-		logging.Warn("failed to reconcile startup machine-state references; cleanup will retry: %v", repairErr)
-	}
 	activeProjects := app.activeProjects()
 	startupLoads := make(map[string]error, len(activeProjects))
 	// The catalog owns project metadata only. Rehydrate active projects' task
@@ -318,9 +313,6 @@ func (m *AppModel) Init() tea.Cmd {
 		tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		}),
-	}
-	if repairCmd := m.rescheduleMachineDomainRepair(); repairCmd != nil {
-		cmds = append(cmds, repairCmd)
 	}
 	if m.startupMessage != nil {
 		msg := m.startupMessage

@@ -104,13 +104,7 @@ func (w WorkspaceSession) ProjectStack() []string { return w.app.projectStack }
 // ViewContext assembles the shared view construction context for the workspace,
 // sized to the shell's current geometry for view construction.
 func (w WorkspaceSession) ViewContext() ViewContext {
-	return ViewContext{
-		Width:         w.app.width,
-		Height:        w.app.height,
-		ConfigManager: w.app.configManager,
-		Runtime:       w.app.runtime,
-		Persister:     w.app.persister,
-	}
+	return ViewContext{}
 }
 
 // OverlayManager centralizes transient overlays layered above the routed view

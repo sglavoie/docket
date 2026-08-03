@@ -20,7 +20,6 @@ type DateInputModel struct {
 	err          error
 	width        int
 	height       int
-	canceled     bool
 	initialValue string
 	weekEndDay   string
 	discardConfirmState
@@ -88,7 +87,6 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmDiscard = true
 				return m, nil
 			}
-			m.canceled = true
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":

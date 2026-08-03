@@ -50,7 +50,7 @@ func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 	return project
 }
 
-func newSession2OutlinerApp(t *testing.T, dataDir string, typed bool, projects ...*models.Project) (*AppModel, *OutlinerModel) {
+func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Project) (*AppModel, *OutlinerModel) {
 	t.Helper()
 	app := newTestAppModel()
 	seed := newTestConfigAt(dataDir)
@@ -59,7 +59,7 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, typed bool, projects .
 	app.configManager = config.NewManager(config.ConfigPathForDataDir(dataDir))
 	ledger := workspaceLedgerFromConfig(app.runtime)
 	app.appService = newTUIAppService(dataDir, app.configManager.RuntimeDependencies(), ledger)
-	app.deps = newShellDeps(app.runtime, app.appService, app.configManager, ledger)
+	app.deps = newShellDeps(ledger)
 	setTestAppProjects(app, projects...)
 
 	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
@@ -114,10 +114,10 @@ func session2TaskRow(t *testing.T, cross *OutlinerModel, projectID, taskID strin
 func TestHandleWithRefreshDefersCrossReloadWhileCovered(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "covered")
-	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+	app, cross := newSession2OutlinerApp(t, dataDir, project)
 	pushTestPresentationOverlay(app, ViewTaskComments)
 
-	cmd := app.handleWithRefresh(false, true, "")
+	cmd := app.handleWithRefresh(false, true)
 
 	if cmd != nil {
 		t.Fatal("covered Outliner reload should defer until it is revealed")
@@ -134,7 +134,7 @@ func TestValidateCurrentProjectReturnsReloadCommand(t *testing.T) {
 	dataDir := t.TempDir()
 	stale := newSession2Project(t, dataDir, "stale")
 	survivor := newSession2Project(t, dataDir, "survivor")
-	app, cross := newSession2OutlinerApp(t, dataDir, true, stale, survivor)
+	app, cross := newSession2OutlinerApp(t, dataDir, stale, survivor)
 	app.currentProject = stale
 
 	// Simulate a CLI deleting the current project behind the running TUI.
@@ -167,7 +167,7 @@ func TestValidateCurrentProjectReturnsReloadCommand(t *testing.T) {
 func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "back")
-	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+	app, cross := newSession2OutlinerApp(t, dataDir, project)
 	pushTestPresentationOverlay(app, ViewTaskComments)
 	generation := cross.crossLoadGen
 
@@ -192,7 +192,7 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "cursor")
-	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+	app, cross := newSession2OutlinerApp(t, dataDir, project)
 	task := project.Tasks[0]
 	cross.cursor = session2TaskRow(t, cross, project.ID, task.ID)
 
@@ -225,7 +225,7 @@ func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing
 func TestCrossProjectRefreshKeepsAcceptedSnapshotVisible(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "visible refresh")
-	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+	app, cross := newSession2OutlinerApp(t, dataDir, project)
 	cross.crossSnapshotReady = true
 	cross.SetSize(100, 30)
 	cross.cursor = session2TaskRow(t, cross, project.ID, project.Tasks[0].ID)
@@ -304,7 +304,7 @@ func TestCrossProjectReloadMissingCursorTaskPrefersFollowingTask(t *testing.T) {
 func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "covered completion")
-	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
+	app, cross := newSession2OutlinerApp(t, dataDir, project)
 
 	_ = cross.reloadCrossProjects()
 	generation := cross.crossLoadGen

@@ -21,7 +21,7 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		m.pendingChord = nil
 		return false, nil
 	}
-	out, _, ok := m.outlinerPrimary()
+	out, ok := m.outlinerPrimary()
 	if !ok || out == nil || !m.activeOutlinerRoute() {
 		m.pendingChord = nil
 		return false, nil
@@ -57,7 +57,6 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	result := m.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       binding.OperationID,
 		Context:  ctx,
-		Source:   OperationSourceDirectKey,
 		Value:    binding.PresetValue,
 		HasValue: binding.HasPresetValue,
 	})
@@ -89,7 +88,6 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 	result := m.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      binding.OperationID,
 		Context: ctx,
-		Source:  OperationSourceDirectKey,
 	})
 	switch message := result.AsMessage().(type) {
 	case nil:

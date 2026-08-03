@@ -131,7 +131,6 @@ func newNotesLocationPicker(
 	model.alwaysSearch = newAlwaysSearchSinglePicker(
 		model.ListSurfaceAdapter,
 		alwaysSearchSinglePickerConfig[notesLocationPickerItem]{
-			AllItems: items,
 			CancelMsg: func() tea.Msg {
 				return notesLocationPickerResultMsg{Purpose: purpose}
 			},
@@ -219,7 +218,7 @@ func (picker *notesLocationPicker) View() tea.View {
 		Height:   contentHeight,
 		Layout:   ListSurfaceLayoutCompact,
 		HideHelp: true,
-	}).Render(picker.surface).Content
+	}).Render(picker.surface)
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,

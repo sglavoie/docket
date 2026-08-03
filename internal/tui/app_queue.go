@@ -23,29 +23,6 @@ func (m *AppModel) taskIsNext(task *models.Task, project *models.Project) bool {
 	return m.nextOrderIDs[taskIdentityFor(task, project)]
 }
 
-// queueToggleAction records a single q-key toggle for undo support. Next is an
-// explicit planning membership; PrevState remains for the compatibility undo
-// payload while the workspace ledger owns durable restoration.
-type queueToggleAction struct {
-	Task       *models.Task
-	Project    *models.Project
-	WasAdd     bool                 // true = task was added to queue
-	WasInToday bool                 // true = task was in daily plan before (restore on undo)
-	PrevState  models.WorkflowState // task's workflow state before the toggle
-}
-
-// removeFromToday drops exactly one project-qualified task from the
-// in-memory daily plan.
-func (m *AppModel) removeFromToday(identity TaskIdentity) {
-	for i, ft := range m.today {
-		if taskIdentityFor(ft.Task, ft.Project) == identity {
-			m.today = append(m.today[:i], m.today[i+1:]...)
-			break
-		}
-	}
-	delete(m.todayIDs, identity)
-}
-
 // queueToggleResultCmd fans the state change out to every task view (mirroring a
 // committed save) and schedules the status-line timeout, without clearing the
 // toggle-undo history the toggle just recorded.
@@ -122,7 +99,6 @@ func (m *AppModel) queueLedgerTransition(taskID, projectID string, appendOrder b
 // the durable ledger, so it works after a restart and always undoes the newest
 // transaction first.
 func (m *AppModel) undoQueueToggle() tea.Cmd {
-	m.lastQueueToggle = nil
 	m.lastQueueToggleAt = time.Time{}
 	// The workspace ledger is the durable LIFO history: keep routing u/ctrl+r
 	// through it so consecutive presses walk the stack (newest first) and a
@@ -136,7 +112,6 @@ func (m *AppModel) undoQueueToggle() tea.Cmd {
 // redoQueueToggle replays the last undone Next-queue toggle through the workspace
 // ledger's redo stack.
 func (m *AppModel) redoQueueToggle() tea.Cmd {
-	m.lastQueueToggleRedo = nil
 	m.lastQueueRedoAt = time.Now()
 	m.lastToggleRedoKind = toggleUndoQueue
 	m.lastToggleUndoKind = toggleUndoQueue

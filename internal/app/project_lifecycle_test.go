@@ -118,7 +118,7 @@ func TestProtectedSystemInboxRenameRejectedBeforeCommit(t *testing.T) {
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
-	_, renameErr := svc.RenameProject(app.RenameProjectRequest{
+	renameErr := svc.RenameProject(app.RenameProjectRequest{
 		Project:                project,
 		SystemUnfiledProjectID: project.ID,
 		DataDir:                dataDir,
@@ -151,7 +151,7 @@ func TestRenameProjectCommitsAtomically(t *testing.T) {
 	project.Slug = "beta"
 	newTasks := []byte("# Beta\n<!-- renamed -->\n")
 	expected := tasksExpectedRevision(t, project)
-	res, err := svc.RenameProject(app.RenameProjectRequest{
+	err := svc.RenameProject(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -163,12 +163,9 @@ func TestRenameProjectCommitsAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenameProject: %v", err)
 	}
-	if !res.SlugChanged {
-		t.Errorf("expected SlugChanged=true")
-	}
 	newPath := filepath.Join(dataDir, "projects", "beta")
-	if res.NewPath != newPath || project.Path != newPath {
-		t.Errorf("new path = (%q, project.Path %q), want %q", res.NewPath, project.Path, newPath)
+	if project.Path != newPath {
+		t.Errorf("project.Path = %q, want %q", project.Path, newPath)
 	}
 	if len(repo.committed) != 1 {
 		t.Fatalf("expected exactly one atomic commit, got %d", len(repo.committed))
@@ -200,7 +197,7 @@ func TestRenameProjectRejectsUncheckedTasksRewrite(t *testing.T) {
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
-	_, err := svc.RenameProject(app.RenameProjectRequest{
+	err := svc.RenameProject(app.RenameProjectRequest{
 		Project:       project,
 		DataDir:       dataDir,
 		OldSlug:       "alpha",
@@ -235,7 +232,7 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 	project.Slug = "beta"
 	newTasks := []byte("# Beta\n<!-- real journal -->\n")
 	expected := tasksExpectedRevision(t, project)
-	res, err := svc.RenameProject(app.RenameProjectRequest{
+	err := svc.RenameProject(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -249,8 +246,8 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 	}
 
 	newPath := filepath.Join(dataDir, "projects", "beta")
-	if !res.SlugChanged || res.NewPath != newPath || project.Path != newPath {
-		t.Fatalf("rename result = %+v, project path %q, want %q", res, project.Path, newPath)
+	if project.Path != newPath {
+		t.Fatalf("project path = %q, want %q", project.Path, newPath)
 	}
 	if _, statErr := os.Stat(filepath.Join(dataDir, "projects", "alpha")); !os.IsNotExist(statErr) {
 		t.Fatalf("old project directory remains, stat err = %v", statErr)
@@ -296,7 +293,7 @@ func TestRenameProjectRealCommitRejectsConcurrentTaskEdit(t *testing.T) {
 		t.Fatalf("write concurrent tasks: %v", err)
 	}
 
-	_, err := svc.RenameProject(app.RenameProjectRequest{
+	err := svc.RenameProject(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -329,7 +326,7 @@ func TestRenameProjectSlugUnchangedRewritesInPlace(t *testing.T) {
 
 	newTasks := []byte("# Alpha Renamed\n")
 	expected := tasksExpectedRevision(t, project)
-	res, err := svc.RenameProject(app.RenameProjectRequest{
+	err := svc.RenameProject(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -339,9 +336,6 @@ func TestRenameProjectSlugUnchangedRewritesInPlace(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("RenameProject: %v", err)
-	}
-	if res.SlugChanged {
-		t.Errorf("expected SlugChanged=false for same slug")
 	}
 	// The single commit carries no raw move and one revision-checked tasks artifact.
 	if len(repo.committed) != 1 || len(repo.committed[0]) != 0 {
@@ -360,7 +354,7 @@ func TestRenameProjectSlugUnchangedRewritesInPlace(t *testing.T) {
 // run when the repository cannot commit raw ops.
 func TestRenameProjectFailsClosedWithoutOpsCommitter(t *testing.T) {
 	svc := newTestService(newFakeRepo())
-	_, err := svc.RenameProject(app.RenameProjectRequest{
+	err := svc.RenameProject(app.RenameProjectRequest{
 		Project: &models.Project{ID: uuid.New().String(), Slug: "beta"},
 		DataDir: t.TempDir(),
 		OldSlug: "alpha",

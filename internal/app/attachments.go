@@ -71,8 +71,6 @@ func (s *Service) AttachCodeReferenceByLocator(locator TaskLocator, path string,
 type AttachFileResult struct {
 	// Task is the standard task mutation result.
 	Task TaskResult
-	// Filename is the destination name the copied file was stored under.
-	Filename string
 }
 
 // AttachFile ingests an external file into a task's attachments directory as ONE
@@ -130,7 +128,7 @@ func (s *Service) attachFile(taskID string, locator TaskLocator, sourcePath stri
 		return AttachFileResult{}, err
 	}
 	keepMutation = true
-	return AttachFileResult{Task: res, Filename: filename}, nil
+	return AttachFileResult{Task: res}, nil
 }
 
 // RemoveAttachmentResult reports an attachment removal: the standard task outcome,
@@ -139,15 +137,6 @@ func (s *Service) attachFile(taskID string, locator TaskLocator, sourcePath stri
 type RemoveAttachmentResult struct {
 	// Task is the standard task mutation result.
 	Task TaskResult
-	// Filename is the removed attachment's filename (or URL / code reference).
-	Filename string
-	// IsURL reports whether the removed attachment was a URL reference.
-	IsURL bool
-	// IsCodeRef reports whether the removed attachment was a code reference.
-	IsCodeRef bool
-	// FileDeleted reports whether the attachment's local bytes were deleted in the
-	// same transaction as the metadata removal.
-	FileDeleted bool
 }
 
 // RemoveAttachment removes the attachment at index from a task's metadata and,
@@ -203,13 +192,7 @@ func (s *Service) removeAttachment(taskID string, locator TaskLocator, index int
 		return RemoveAttachmentResult{}, err
 	}
 	keepMutation = true
-	return RemoveAttachmentResult{
-		Task:        res,
-		Filename:    removed.Filename,
-		IsURL:       removed.IsURL,
-		IsCodeRef:   removed.IsCodeRef,
-		FileDeleted: deleteBytes,
-	}, nil
+	return RemoveAttachmentResult{Task: res}, nil
 }
 
 // ReorderAttachment swaps the attachments at from and to, matching the

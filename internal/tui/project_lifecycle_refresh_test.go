@@ -19,7 +19,6 @@ type session4LifecycleFixture struct {
 
 func newSession4LifecycleFixture(
 	t *testing.T,
-	typed bool,
 	projects ...*models.Project,
 ) *session4LifecycleFixture {
 	t.Helper()
@@ -61,7 +60,7 @@ func newSession4LifecycleFixture(
 	app := newTestAppModel()
 	app.configManager = manager
 	app.runtime = runtime
-	app.deps = newShellDeps(runtime, service, manager, ledger)
+	app.deps = newShellDeps(ledger)
 	app.appService = service
 	app.projects = make(map[string]*models.Project, len(projects))
 	app.syncProjectCache()
@@ -190,7 +189,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 		{
 			name: "create",
 			run: func(t *testing.T) {
-				fixture := newSession4LifecycleFixture(t, true)
+				fixture := newSession4LifecycleFixture(t)
 				created := newSession4EmptyProject(t, fixture.dataDir, "Created")
 				session4CommitCatalogProject(t, fixture.app, created)
 				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(
@@ -221,7 +220,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			name: "create with task move",
 			run: func(t *testing.T) {
 				source := newSession4Project(t, "Inbox")
-				fixture := newSession4LifecycleFixture(t, true, source)
+				fixture := newSession4LifecycleFixture(t, source)
 				liveSource := fixture.app.projectByID(source.ID)
 				moved := liveSource.Tasks[0]
 				created := newSession4EmptyProject(t, fixture.dataDir, "Moved")
@@ -258,7 +257,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			name: "rename and context edit",
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Original")
-				fixture := newSession4LifecycleFixture(t, true, project)
+				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.cross.pushProjectScope(project.ID)
 				fixture.cross.cursor = session2TaskRow(t, fixture.cross, project.ID, project.Tasks[0].ID)
@@ -274,7 +273,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 					false,
 				))
 
-				_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{Project: live})
+				_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{})
 				runSession2AppCommand(t, fixture.app, cmd)
 
 				loaded := session4LoadedProject(t, fixture.cross, project.ID)
@@ -305,7 +304,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			name: "archive and scope reconcile",
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Archive Target")
-				fixture := newSession4LifecycleFixture(t, true, project)
+				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.cross.pushProjectScope(live.ID)
 
@@ -331,7 +330,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Unarchive")
 				project.Archive()
-				fixture := newSession4LifecycleFixture(t, true, project)
+				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
@@ -348,7 +347,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Covered Restore")
 				project.Archive()
-				fixture := newSession4LifecycleFixture(t, false, project)
+				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewCrossProjectOutliner, "Help"))
 				setTestPresentationPath(fixture.app, ViewUnknown, ViewCrossProjectOutliner, ViewHelp)

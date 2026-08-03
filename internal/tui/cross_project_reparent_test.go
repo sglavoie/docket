@@ -8,7 +8,7 @@ import (
 
 // newReparentTask builds a task with an explicit ID so the reparent tests can
 // resolve tasks across the wired snapshot by a stable identity.
-func newReparentTask(t *testing.T, id string, shortID int, typ string, title string) *models.Task {
+func newReparentTask(t *testing.T, id string, shortID int, title string) *models.Task {
 	t.Helper()
 	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
@@ -24,11 +24,11 @@ func newReparentTask(t *testing.T, id string, shortID int, typ string, title str
 func TestCrossProjectReparent(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
-	alphaEpicA := newReparentTask(t, "alpha-epic-a", 1, "", "Epic A")
-	alphaEpicB := newReparentTask(t, "alpha-epic-b", 2, "", "Epic B")
-	alphaLeaf := newReparentTask(t, "alpha-leaf", 3, "", "Leaf under A")
+	alphaEpicA := newReparentTask(t, "alpha-epic-a", 1, "Epic A")
+	alphaEpicB := newReparentTask(t, "alpha-epic-b", 2, "Epic B")
+	alphaLeaf := newReparentTask(t, "alpha-leaf", 3, "Leaf under A")
 	alphaLeaf.ParentID = strPtr("alpha-epic-a")
-	betaEpic := newReparentTask(t, "beta-epic", 1, "", "Beta Epic")
+	betaEpic := newReparentTask(t, "beta-epic", 1, "Beta Epic")
 
 	env := newCrossProjectTestEnv(t, []*models.Task{alphaEpicA, alphaEpicB, alphaLeaf}, []*models.Task{betaEpic})
 	m := newCrossOutlinerFromEnv(env)
@@ -68,8 +68,8 @@ func TestCrossProjectReparent(t *testing.T) {
 // TestCrossProjectReparent_GenericTaskParent verifies that generic tasks can be
 // nested without the retired type restrictions.
 func TestCrossProjectReparent_GenericTaskParent(t *testing.T) {
-	leafA := newReparentTask(t, "leaf-a", 1, "", "Leaf A")
-	leafB := newReparentTask(t, "leaf-b", 2, "", "Leaf B")
+	leafA := newReparentTask(t, "leaf-a", 1, "Leaf A")
+	leafB := newReparentTask(t, "leaf-b", 2, "Leaf B")
 
 	env := newCrossProjectTestEnv(t, []*models.Task{leafA, leafB})
 	m := newCrossOutlinerFromEnv(env)
@@ -96,8 +96,8 @@ func TestCrossProjectReparent_GenericTaskParent(t *testing.T) {
 func TestCrossProjectReparentToRoot(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
-	epic := newReparentTask(t, "epic", 1, "", "Epic")
-	leaf := newReparentTask(t, "leaf", 2, "", "Leaf")
+	epic := newReparentTask(t, "epic", 1, "Epic")
+	leaf := newReparentTask(t, "leaf", 2, "Leaf")
 	leaf.ParentID = strPtr("epic")
 
 	env := newCrossProjectTestEnv(t, []*models.Task{epic, leaf})

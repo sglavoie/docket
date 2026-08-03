@@ -300,7 +300,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 
 	t.Run("fc completion age", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
-		app.crossOutliner.filter.setCompletionAgeFilter(CompletionAge30Days, true)
+		app.crossOutliner.filter.setCompletionAgeFilter(CompletionAge30Days)
 
 		cmd := pressFilterChord(t, app, "fc")
 		if cmd == nil {
@@ -545,7 +545,6 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	states := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationFilterStates,
 		Context:  ctx,
-		Source:   OperationSourceDirectKey,
 		Value:    []string{"done", "waiting"},
 		HasValue: true,
 	})
@@ -562,7 +561,6 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	cleared := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationFilterStates,
 		Context:  ctx,
-		Source:   OperationSourceDirectKey,
 		Value:    []string{},
 		HasValue: true,
 	})
@@ -579,7 +577,6 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	invalid := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationFilterStates,
 		Context:  ctx,
-		Source:   OperationSourceDirectKey,
 		Value:    []string{"not-a-state"},
 		HasValue: true,
 	})
@@ -590,7 +587,6 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	tags := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationFilterTags,
 		Context:  ctx,
-		Source:   OperationSourceDirectKey,
 		Value:    []string{"deep"},
 		HasValue: true,
 	})
@@ -642,7 +638,7 @@ func TestPriorityThresholdSemantics(t *testing.T) {
 		filter := newFilterState()
 		filter.Priority = threshold
 		for priority, pass := range want {
-			if got := passesCommonFilters(tasks[priority], &filter, nil); got != pass {
+			if got := passesCommonFilters(tasks[priority], &filter); got != pass {
 				t.Errorf("threshold %d priority %d = %v, want %v", threshold, priority, got, pass)
 			}
 		}

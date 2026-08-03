@@ -26,7 +26,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 // applyTagsToTaskRefs sibling. Setting tags is an attribute mutation (no workflow
 // rules run); the shell owns reload and toast via the batch result, and the
 // durable write records through the workspace undo ledger.
-func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, selectedTags []string) tea.Cmd {
+func (m *AppModel) applyTagsToTask(task *models.Task, selectedTags []string) tea.Cmd {
 	if task == nil {
 		return nil
 	}

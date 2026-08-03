@@ -111,7 +111,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "m":
 			return m, m.beginMovePicker()
 		case "x":
-			return m, m.deleteCurrentNote()
+			m.deleteCurrentNote()
+			return m, nil
 		case "u":
 			return m, m.undoDelete()
 		case "ctrl+r":
@@ -205,7 +206,7 @@ func (m *NotesViewModel) handleLocationPickerResult(
 			moveSource.Note.Title,
 			sourceLabel,
 			destinationLabel,
-		), false)
+		))
 	default:
 		return m, nil
 	}
@@ -242,7 +243,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			}},
 			UndoAction:  "Rename Note",
 			UndoContext: oldTitle,
-		}, fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle), false)
+		}, fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle))
 	case "esc":
 		if row != nil && strings.TrimSpace(m.renameInput.Value()) != row.Note.Title {
 			m.confirmDiscard = true

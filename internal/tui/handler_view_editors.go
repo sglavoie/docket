@@ -24,8 +24,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Task == nil || msg.Project == nil {
 			return true, nil
 		}
-		fieldName := ""
-		currentValue := ""
+		var fieldName, currentValue string
 		switch msg.Operation {
 		case app.TaskOperationEditTitle:
 			fieldName = "title"

@@ -12,25 +12,9 @@ type ColumnLayout struct {
 	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
 	HasPriority   bool
 	HasStatus     bool
-	HasProject    bool
 }
 
 const (
-	// TabbedViewChrome is the vertical chrome for views with a title, tab
-	// bar (with border), blank line, footer, and padding.
-	TabbedViewChrome = 6
-
-	// OverlayListChrome is the vertical chrome for overlay/picker views
-	// that have a title, search bar, borders, help line, and footer.
-	OverlayListChrome = 8
-
-	// MaxContentWidth is the maximum width for centered content areas
-	// (e.g., task-focused tools).
-	MaxContentWidth = 100
-
-	// SeparatorWidth is the width of a vertical separator between panes.
-	SeparatorWidth = 3
-
 	// CreatorTabBarPadding is the horizontal padding subtracted from width
 	// when rendering tab bars in creator/editor views.
 	CreatorTabBarPadding = 4

@@ -37,7 +37,6 @@ type LocatedNoteRow struct {
 	Note       *models.Note
 	Location   app.NoteLocation
 	OwnerLabel string
-	Project    *models.Project
 }
 
 func (r LocatedNoteRow) Identity() NoteRowIdentity {
@@ -55,7 +54,6 @@ type noteManagerOwner struct {
 }
 
 type noteCollectionFailure struct {
-	Location   app.NoteLocation
 	OwnerLabel string
 	Err        error
 }
@@ -269,7 +267,6 @@ func (m *NotesViewModel) loadNotes() {
 		owner := m.ownerForLocation(result.Location)
 		if result.Err != nil {
 			m.collectionErrors = append(m.collectionErrors, noteCollectionFailure{
-				Location:   result.Location,
 				OwnerLabel: owner.Label,
 				Err:        result.Err,
 			})
@@ -283,7 +280,6 @@ func (m *NotesViewModel) loadNotes() {
 				Note:       note,
 				Location:   result.Location,
 				OwnerLabel: owner.Label,
-				Project:    owner.Project,
 			})
 		}
 	}

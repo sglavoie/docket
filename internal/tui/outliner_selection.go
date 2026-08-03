@@ -63,21 +63,20 @@ func (m *OutlinerModel) toggleCursorSelection() {
 	m.updateVisualSelectionStatus()
 }
 
-func (m *OutlinerModel) togglePeek() bool {
+func (m *OutlinerModel) togglePeek() {
 	if m == nil || m.multiSelectMode {
-		return false
+		return
 	}
 	if m.peekMode {
 		m.peekMode = false
 		m.resetViewScrollOffset()
-		return true
+		return
 	}
 	if task, _ := m.getTaskRef(); task == nil {
-		return false
+		return
 	}
 	m.peekMode = true
 	m.resetViewScrollOffset()
-	return true
 }
 
 // toggleMultiSelectMode enters or exits multi-select mode.

@@ -39,8 +39,6 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	if err != nil {
 		return nil, err
 	}
-	rawRevision := RawArtifactRevision(content)
-	result.RawRevision = &rawRevision
 	return result, nil
 }
 
@@ -108,10 +106,8 @@ func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
 	// non-nil (empty) migration audit so callers can rely on it being present
 	// whenever the load succeeds.
 	absentRevision := ""
-	return &ProjectLoadResult{
-		RawRevision:    &absentRevision,
-		MigrationAudit: NewMigrationAudit(project.ID, nil),
-	}, nil
+	_ = absentRevision
+	return &ProjectLoadResult{}, nil
 }
 
 func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadResult, error) {
@@ -135,7 +131,7 @@ func loadProjectContentWithCrossRefValidation(project *models.Project, content [
 	if err := auditLoadedProject(project); err != nil {
 		return nil, err
 	}
-	return &ProjectLoadResult{MigrationAudit: NewMigrationAudit(project.ID, nil)}, nil
+	return &ProjectLoadResult{}, nil
 }
 
 func auditLoadedProject(project *models.Project) error {

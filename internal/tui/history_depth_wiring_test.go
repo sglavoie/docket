@@ -42,7 +42,7 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 	shell := driver.App()
 	service := newTUIAppService(workspace.DataDir, workspace.Manager.RuntimeDependencies(), nil)
 	shell.appService = service
-	shell.deps = newShellDeps(shell.runtime, service, workspace.Manager, nil)
+	shell.deps = newShellDeps(nil)
 
 	if handled, _ := shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()}); !handled {
 		t.Fatal("ShowNotesManagerMsg was not handled")

@@ -15,26 +15,26 @@ func handleQuickEditKey(
 	project *models.Project,
 	onSave func() tea.Cmd,
 	onUndo func(action, detail string),
-) (tea.Model, tea.Cmd) {
+) tea.Cmd {
 	switch msg.String() {
 	case "esc":
 		qe.Exit()
-		return nil, nil
+		return nil
 	case "enter":
 		input := strings.TrimSpace(qe.GetInput().Value())
 		if input == "" {
 			qe.Exit()
-			return nil, nil
+			return nil
 		}
 		task := project.GetTaskByID(qe.GetTask().ID)
 		if task == nil {
 			qe.Exit()
-			return nil, nil
+			return nil
 		}
 		if qe.IsRenameOnly() {
 			if models.ValidateTaskTitle(input) != nil {
 				qe.Exit()
-				return nil, nil
+				return nil
 			}
 			oldTitle := task.Title
 			project.MutateTask(task.ID, func(task *models.Task) { task.Title = input })
@@ -44,18 +44,18 @@ func handleQuickEditKey(
 		} else {
 			result, err := parseQuickEdit(input, task, project)
 			if err != nil {
-				return nil, nil
+				return nil
 			}
 			if applyQuickEdit(task, project, result) != "" {
 				qe.Exit()
-				return nil, nil
+				return nil
 			}
 			if onUndo != nil {
 				onUndo("Quick Edit", task.Title)
 			}
 		}
 		qe.Exit()
-		return nil, onSave()
+		return onSave()
 	default:
 		input := qe.GetInput()
 		input, cmd := input.Update(msg)
@@ -64,7 +64,7 @@ func handleQuickEditKey(
 			preview, _ := parseQuickEditForPreview(qe.GetInput().Value(), qe.GetTask(), project)
 			qe.SetPreview(preview)
 		}
-		return nil, cmd
+		return cmd
 	}
 }
 
@@ -121,7 +121,7 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea
 		}
 	}
 
-	_, cmd := handleQuickEditKey(msg, m.quickEdit, proj, saveFn, undoFn)
+	cmd := handleQuickEditKey(msg, m.quickEdit, proj, saveFn, undoFn)
 	return m, cmd
 }
 

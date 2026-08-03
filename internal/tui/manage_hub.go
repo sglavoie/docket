@@ -46,7 +46,6 @@ type ManageHubDependencies struct {
 	AppService         *app.Service
 	NoteService        projectNoteService
 	HistoryLedger      *storage.WorkspaceLedger
-	Tags               TagCoordinator
 	Wire               func(View)
 	ResolveProject     func(string) *models.Project
 	ActiveContext      func() ContextScope
@@ -342,22 +341,17 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 	if view, ok := m.PresentationView(); ok {
 		ctx := PresentationCommandContext(view)
 		if m.params.Module == ManageNotes && m.params.NotesScope.commandScope().Kind == ScopeProject {
-			ctx.Scope = ScopeProject
 			delete(ctx.Capabilities, CapabilityAppScope)
 			ctx.Capabilities.Add(CapabilityProjectScope)
-			ctx.FocusedProjectID = m.params.NotesScope.ProjectID
 		} else {
-			ctx.Scope = ScopeApp
 			delete(ctx.Capabilities, CapabilityProjectScope)
 			ctx.Capabilities.Add(CapabilityAppScope)
-			ctx.FocusedProjectID = ""
 		}
 		ctx.ScopeProjectIDs = m.ScopeProjectIDs()
 		return ctx
 	}
 	return CommandContext{
-		View:  ViewContextHub,
-		Scope: ScopeApp,
+		View: ViewContextHub,
 		Capabilities: NewCapabilitySet(
 			CapabilityCommandDiscovery,
 			CapabilityAppScope,

@@ -27,7 +27,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 		}
 		// Check if we came from project tree, outliner, or cross-project outliner - apply tags directly
 		if m.currentView() == ViewCrossProjectOutliner && msg.Task != nil {
-			return true, m.applyTagsToTask(msg.Task, msg.Project, msg.SelectedTags)
+			return true, m.applyTagsToTask(msg.Task, msg.SelectedTags)
 		}
 		// Otherwise forward to the current view.
 		cmd := m.views.Update(m.currentView(), msg)

@@ -77,7 +77,7 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 		task.Checklist[editIndex].Text = newText
 
 		return commitTaskItemMutation(project, task, coordinator.EditChecklistItem(taskIdentityFor(task, project), editIndex, newText), func(fresh *models.Task) tea.Msg {
-			return ChecklistItemEditedMsg{Task: fresh}
+			return ChecklistItemEditedMsg{}
 		})()
 	})
 }
@@ -144,7 +144,7 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 		})
 
 		return commitTaskItemMutation(project, task, coordinator.AddChecklistItem(taskIdentityFor(task, project), newText), func(fresh *models.Task) tea.Msg {
-			return ChecklistItemAddedMsg{Task: fresh}
+			return ChecklistItemAddedMsg{}
 		})()
 	})
 }
@@ -226,7 +226,7 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 		task.Checklist[editIndex].Text = newText
 
 		return commitTaskItemMutation(project, task, coordinator.EditChecklistItem(taskIdentityFor(task, project), editIndex, newText), func(fresh *models.Task) tea.Msg {
-			return ChecklistItemEditedMsg{Task: fresh}
+			return ChecklistItemEditedMsg{}
 		})()
 	})
 }

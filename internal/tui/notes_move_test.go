@@ -94,11 +94,10 @@ func TestNotesMoveEnterCommitsFrozenLocatedRequestWithoutConfirmation(t *testing
 			byLocation: map[app.NoteLocation][]*models.Note{source: {note}},
 		},
 		result: app.NoteBatchResult{Results: []app.NoteResult{{
-			Kind:           app.NoteMove,
-			Location:       destination,
-			SourceLocation: source,
-			ProjectID:      destination.ProjectID,
-			Filename:       note.Filename,
+			Kind:      app.NoteMove,
+			Location:  destination,
+			ProjectID: destination.ProjectID,
+			Filename:  note.Filename,
 		}}},
 	}
 	view := NewNotesViewModelWithService(
@@ -228,11 +227,10 @@ func TestNotesMoveResultSelectsCommittedDestinationIdentity(t *testing.T) {
 	shell.reconcileNoteResult(ProjectNoteMutationResultMsg{
 		Location: source,
 		Result: app.NoteBatchResult{Results: []app.NoteResult{{
-			Kind:           app.NoteMove,
-			Location:       destination,
-			SourceLocation: source,
-			ProjectID:      destination.ProjectID,
-			Filename:       filename,
+			Kind:      app.NoteMove,
+			Location:  destination,
+			ProjectID: destination.ProjectID,
+			Filename:  filename,
 		}}},
 		SuccessMessage: "Moved",
 	})
@@ -280,11 +278,10 @@ func TestNotesMoveSourceScopeReappliesSearchAndClampsAfterRowDisappears(t *testi
 	shell.reconcileNoteResult(ProjectNoteMutationResultMsg{
 		Location: source,
 		Result: app.NoteBatchResult{Results: []app.NoteResult{{
-			Kind:           app.NoteMove,
-			Location:       destination,
-			SourceLocation: source,
-			ProjectID:      destination.ProjectID,
-			Filename:       filename,
+			Kind:      app.NoteMove,
+			Location:  destination,
+			ProjectID: destination.ProjectID,
+			Filename:  filename,
 		}}},
 		SuccessMessage: "Moved",
 	})

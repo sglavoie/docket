@@ -6,10 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-const (
-	CapabilityHarness      Capability                = "surface:test-harness"
-	OperationSourceHarness OperationInvocationSource = "harness"
-)
+const CapabilityHarness Capability = "surface:test-harness"
 
 const (
 	operationHarnessExportProject   OperationID = "tui.harness.export-project"

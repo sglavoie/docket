@@ -116,14 +116,9 @@ type AppModel struct {
 	helpView      *HelpViewModel
 	crossOutliner *OutlinerModel
 
-	// Per-project outliner toggle state (section collapse + node fold),
-	// keyed by project ID. Survives outliner recreation within a session.
-	outlinerToggleStates map[string]*OutlinerToggleState
-
 	// Focus view session state (persists across view navigation within a session)
-	nextOrder         []PlanningTask
-	nextOrderIDs      map[TaskIdentity]bool
-	focusDismissedIDs map[string]bool
+	nextOrder    []PlanningTask
+	nextOrderIDs map[TaskIdentity]bool
 
 	// Today session state (persists across view navigation within a session)
 	today    []PlanningTask
@@ -137,14 +132,10 @@ type AppModel struct {
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind
 
-	lastTodayToggle     *todayToggleAction // last w-key action for undo
-	lastQueueToggle     *queueToggleAction // last q-key action for undo
-	lastTodayToggleRedo *todayToggleAction // last undone w-key action for redo
-	lastQueueToggleRedo *queueToggleAction // last undone q-key action for redo
-	lastTodayToggleAt   time.Time
-	lastQueueToggleAt   time.Time
-	lastTodayRedoAt     time.Time
-	lastQueueRedoAt     time.Time
+	lastTodayToggleAt time.Time
+	lastQueueToggleAt time.Time
+	lastTodayRedoAt   time.Time
+	lastQueueRedoAt   time.Time
 
 	// Current project context
 	currentProject *models.Project
@@ -180,10 +171,6 @@ type AppModel struct {
 	// Pending bulk tasks for date and attribute overlays.
 	pendingBulkTasks []TaskProjectRef
 
-	// Pending bulk section assignment from multi-select
-	pendingBulkSectionTasks   []*models.Task
-	pendingBulkSectionProject *models.Project
-
 	// Pending create-project continuation from system Inbox triage.
 	pendingProjectMoveTask   *models.Task
 	pendingProjectMoveSource *models.Project
@@ -213,18 +200,6 @@ type AppModel struct {
 	// executes the atomic BulkCoordinator.Delete transaction on confirmation.
 	pendingTaskDelete taskDeletePending
 	taskDeleteConfirm ConfirmDialog
-
-	// Synced workspace lifecycle commits are authoritative before their
-	// machine-local cleanup runs. Retain an idempotent patch when machine.json
-	// fails so the update loop can retry against fresh state without rolling
-	// back or clobbering the already-committed workspace result.
-	pendingMachineDomainRepair        machineDomainRepair
-	machineDomainRepairRetryScheduled bool
-
-	lastNavigatedTaskID string
-
-	// Keyboard enhancements reported by the terminal (Kitty protocol).
-	keyboardEnhancements tea.KeyboardEnhancementsMsg
 
 	// The contextual action flow is the only generic two-level overlay:
 	// action sheet -> value step. The sheet is host-agnostic; the host it was

@@ -42,11 +42,9 @@ type Definition struct {
 	Field       Field
 	Group       string
 	Forms       []string
-	Label       string
 	Description string
 	Values      []string
 	Examples    []string
-	Repeatable  bool
 	Legacy      bool
 	Surfaces    Surface
 }
@@ -70,39 +68,39 @@ func Definitions(surface Surface) []Definition {
 	defs := []Definition{
 		{
 			Field: FieldPriority, Group: "Priority & Tags", Forms: []string{"!1-3"},
-			Label: "Priority", Description: "Priority (1-3)", Values: slices.Clone(priorityNames),
+			Description: "Priority (1-3)", Values: slices.Clone(priorityNames),
 			Examples: []string{"!1", "!2", "!3"},
 			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
 			Field: FieldTag, Group: "Priority & Tags", Forms: []string{"#tag"},
-			Label: "Tag", Description: "Add tag", Examples: []string{"#backend", "#bug", "#source:github"},
-			Repeatable: true, Surfaces: SurfaceCapture | SurfaceEdit,
+			Description: "Add tag", Examples: []string{"#backend", "#bug", "#source:github"},
+			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
 			Field: FieldDue, Group: "Schedule", Forms: []string{"@date"},
-			Label: "Due", Description: "Due date", Values: slices.Clone(captureDueValues),
+			Description: "Due date", Values: slices.Clone(captureDueValues),
 			Examples: []string{"@tomorrow", "@friday", "@+3d", "@next monday"},
 			Surfaces: SurfaceCapture | SurfaceEdit,
 		},
 		{
 			Field: FieldDestination, Group: "Destination", Forms: []string{"$destination"},
-			Label: "Destination", Description: "Lifecycle or planning destination", Values: slices.Clone(captureDestinationNames),
+			Description: "Lifecycle or planning destination", Values: slices.Clone(captureDestinationNames),
 			Examples: prefixed(captureDestinationNames, "$"), Surfaces: SurfaceCapture,
 		},
 		{
 			Field: FieldProject, Group: "Project Routing", Forms: []string{"%project"},
-			Label: "Project", Description: "Target project", Examples: []string{"%project-slug"},
+			Description: "Target project", Examples: []string{"%project-slug"},
 			Surfaces: SurfaceCapture,
 		},
 		{
 			Field: FieldParent, Group: "Placement", Forms: []string{">parent"},
-			Label: "Parent", Description: "Parent task", Examples: []string{">1", ">Login"},
+			Description: "Parent task", Examples: []string{">1", ">Login"},
 			Surfaces: SurfaceCapture,
 		},
 		{
 			Field: FieldState, Group: "State", Forms: []string{"$state"},
-			Label: "State", Description: "Canonical workflow state", Values: stateNames,
+			Description: "Canonical workflow state", Values: stateNames,
 			Examples: prefixed(stateNames, "$"), Surfaces: SurfaceEdit,
 		},
 	}
@@ -167,7 +165,6 @@ func StateDescription(state models.WorkflowState) string {
 // StateMatch is the canonical interpretation of a state token.
 type StateMatch struct {
 	States []models.WorkflowState
-	Legacy bool
 }
 
 // ParseState resolves exact canonical state names on every text surface.

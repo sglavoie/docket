@@ -23,21 +23,8 @@ type DeleteRequest struct {
 	Confirm bool
 }
 
-// DeleteResult reports the outcome of a delete: which tasks were removed, the
-// deleted root's canonical reference, and every project the single atomic
-// transaction touched.
+// DeleteResult reports every project the single atomic transaction touched.
 type DeleteResult struct {
-	// RemovedTaskIDs are the UUIDs removed (root plus descendants), sorted.
-	RemovedTaskIDs []string
-	// RemovedTaskLocators names every removed task within its owning project.
-	RemovedTaskLocators []TaskLocator
-	// QualifiedRef is the deleted root task's "slug:#short-id" reference, captured
-	// before removal.
-	QualifiedRef string
-	// SourceProjectID owns the deleted subtree.
-	SourceProjectID string
-	// SourceRevision is the source project's new revision after the commit.
-	SourceRevision string
 	// TouchedProjectIDs lists every project committed in the transaction.
 	TouchedProjectIDs []string
 }
@@ -71,20 +58,14 @@ func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange)
 		return DeleteResult{}, err
 	}
 	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
-	qualifiedRef := fmt.Sprintf("%s:#%d", ref.Project.Slug, ref.Task.ShortID)
 	undoContext := fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
 
-	revs, touched, err := s.deleteTasks(snap, []TaskRef{ref}, undoContext, artifacts)
+	touched, err := s.deleteTasks(snap, []TaskRef{ref}, undoContext, artifacts)
 	if err != nil {
 		return DeleteResult{}, err
 	}
 	return DeleteResult{
-		RemovedTaskIDs:      removedIDs,
-		RemovedTaskLocators: removedLocators,
-		QualifiedRef:        qualifiedRef,
-		SourceProjectID:     ref.Project.ID,
-		SourceRevision:      revs[ref.Project.ID],
-		TouchedProjectIDs:   touched,
+		TouchedProjectIDs: touched,
 	}, nil
 }
 
@@ -105,8 +86,6 @@ type BulkDeleteRequest struct {
 // BulkDeleteResult reports a bulk delete: the removed root references, the total
 // removed count, and every project the single transaction touched.
 type BulkDeleteResult struct {
-	// RemovedRootRefs are the canonical references of the requested roots.
-	RemovedRootRefs []string
 	// RemovedTaskIDs are all UUIDs removed across every subtree, sorted.
 	RemovedTaskIDs []string
 	// RemovedTaskLocators names every removed task within its owning project.
@@ -138,11 +117,9 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 		return BulkDeleteResult{}, fmt.Errorf("%w: deleting %d task subtrees", ErrDestructiveConfirmationRequired, len(roots))
 	}
 
-	rootRefs := make([]string, 0, len(roots))
 	allRemoved := make(map[string]bool)
 	allRemovedLocators := make(map[TaskLocator]bool)
 	for _, r := range roots {
-		rootRefs = append(rootRefs, fmt.Sprintf("%s:#%d", r.Project.Slug, r.Task.ShortID))
 		for id := range collectSubtreeIDs(r.Task) {
 			allRemoved[id] = true
 			allRemovedLocators[TaskLocator{ProjectID: r.Project.ID, TaskID: id}] = true
@@ -157,12 +134,11 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 	}
 	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
 
-	_, touched, err := s.deleteTasks(snap, roots, fmt.Sprintf("%d tasks", len(roots)), artifacts)
+	touched, err := s.deleteTasks(snap, roots, fmt.Sprintf("%d tasks", len(roots)), artifacts)
 	if err != nil {
 		return BulkDeleteResult{}, err
 	}
 	return BulkDeleteResult{
-		RemovedRootRefs:     rootRefs,
 		RemovedTaskIDs:      sortedKeys(allRemoved),
 		RemovedTaskLocators: removedLocators,
 		TouchedProjectIDs:   touched,
@@ -218,10 +194,10 @@ type BulkResult struct {
 // cleaned) onto the first source project's changeset, and commits every touched
 // project as ONE transaction. It returns the new revision per project, the
 // committed project order.
-func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string, artifacts []storage.ArtifactChange) (map[string]string, []string, error) {
+func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string, artifacts []storage.ArtifactChange) ([]string, error) {
 	before, err := cloneSnapshot(snap)
 	if err != nil {
-		return nil, nil, fmt.Errorf("capture delete rollback state: %w", err)
+		return nil, fmt.Errorf("capture delete rollback state: %w", err)
 	}
 	useRollbackDocuments(before)
 	committed := false
@@ -287,16 +263,12 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 		}
 		appendCS(srcProjects[pid], attachByProject[pid], arts)
 	}
-	results, err := s.repo.Commit(changesets...)
+	_, err = s.repo.Commit(changesets...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	committed = true
-	revs := make(map[string]string, len(touchedOrder))
-	for i, pid := range touchedOrder {
-		revs[pid] = revisionAt(results, i)
-	}
-	return revs, touchedOrder, nil
+	return touchedOrder, nil
 }
 
 // resolveDistinct resolves each task id against the snapshot, preserving request

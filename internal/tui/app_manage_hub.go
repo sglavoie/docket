@@ -27,7 +27,6 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 		AppService:     m.appService,
 		NoteService:    noteService,
 		HistoryLedger:  historyLedger,
-		Tags:           m.secondaryFeatures.Tag,
 		Wire:           m.wireSecondaryCoordinators,
 		ResolveProject: m.activeProjectByID,
 		ActiveContext: func() ContextScope {
@@ -107,7 +106,7 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		m.navigation.Overlays.CancelAll()
 		err = m.navigation.Primary.ReplaceCurrentMode(route)
 	} else {
-		err = m.navigation.PushChild(route, m.currentFocusTarget())
+		err = m.navigation.PushChild(route)
 	}
 	if err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }

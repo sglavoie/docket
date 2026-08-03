@@ -1,10 +1,5 @@
 package keymap
 
-import tea "charm.land/bubbletea/v2"
-
-// Action is executed when a binding fires.
-type Action func() (tea.Model, tea.Cmd)
-
 // Gate controls whether a binding is currently active.
 type Gate func() bool
 
@@ -13,7 +8,6 @@ type Binding struct {
 	Key         string
 	Description string
 	Category    string
-	Action      Action
 	Gate        Gate // nil = always active
 	Hidden      bool // excluded from help, included in HandledKeys
 }
@@ -25,8 +19,7 @@ type Entry struct {
 
 // KeyMap is the complete set of keybindings for a view.
 type KeyMap struct {
-	ViewName string
-	Entries  []Entry
+	Entries []Entry
 }
 
 // BindOption is a functional option for Bind.
@@ -43,12 +36,11 @@ func AsHidden() BindOption {
 }
 
 // Bind constructs a Binding entry.
-func Bind(key, desc, cat string, action Action, opts ...BindOption) Entry {
+func Bind(key, desc, cat string, opts ...BindOption) Entry {
 	b := &Binding{
 		Key:         key,
 		Description: desc,
 		Category:    cat,
-		Action:      action,
 	}
 	for _, o := range opts {
 		o(b)

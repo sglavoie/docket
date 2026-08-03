@@ -14,7 +14,6 @@ type TaskAttachmentsModel struct {
 	InteractiveViewState
 	task    *models.Task
 	project *models.Project
-	runtime *config.RuntimeState
 	// coordinator routes attachment mutations through the application layer
 	// (one atomic ChangeSet each) instead of a direct project save. See
 	// feature_coordinator_secondary.go.
@@ -36,7 +35,6 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, runtime
 	return &TaskAttachmentsModel{
 		task:        task,
 		project:     project,
-		runtime:     runtime,
 		coordinator: coordinator,
 		textInput:   ti,
 	}

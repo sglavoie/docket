@@ -88,7 +88,6 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 	if parent != nil {
 		parentID := parent.ID
 		preset.Kind = ComposerChild
-		preset.Parent = parent
 		preset.Shared.ParentID = &parentID
 		preset.Shared.Destination = app.CaptureDestinationBacklog
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport, width int) string {
+func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	var colLayout *ColumnLayout
 	if viewport.rowWidth >= MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx], m.columnConfig)
@@ -94,9 +94,6 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	if selected {
-		if m.mutationFlash {
-			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)
-		}
 		if m.cursorFlash {
 			return SelectedFlashLine(line, rowWidth)
 		}
@@ -136,9 +133,6 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	line = truncateToVisualWidth(line, rowWidth)
 
 	if selected {
-		if m.mutationFlash {
-			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)
-		}
 		if m.cursorFlash {
 			return SelectedFlashLine(line, rowWidth)
 		}
@@ -367,7 +361,7 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, ti
 		remainingWidth = 0
 	}
 	query := strings.TrimSpace(m.SearchQuery())
-	titleRendered := ""
+	var titleRendered string
 	if query == "" {
 		titleRendered = titleStyle.Render(title)
 	} else {
@@ -418,9 +412,6 @@ func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, sta
 
 func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, selected bool, rowWidth, rowIndex int) string {
 	if selected {
-		if m.mutationFlash {
-			return MutationFlashLine(line, rowWidth, m.mutationFlashBg)
-		}
 		if m.cursorFlash {
 			return SelectedFlashLine(line, rowWidth)
 		}

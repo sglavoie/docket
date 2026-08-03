@@ -42,17 +42,6 @@ type ListSurfaceRenderConfig struct {
 	PreviewMinWidth int
 }
 
-// ListSurfaceRenderResult exposes the selected fallback and pane dimensions so
-// embedding views can allocate surrounding chrome without reimplementing the
-// renderer's layout decision.
-type ListSurfaceRenderResult struct {
-	Content        string
-	Layout         ListSurfaceLayout
-	PreviewVisible bool
-	ListWidth      int
-	PreviewWidth   int
-}
-
 // ListSurfaceRenderer renders a headless ListSurfaceModel into a Bubble Tea
 // view. The renderer is intentionally stateless and cheap to construct.
 type ListSurfaceRenderer struct {
@@ -67,7 +56,7 @@ func NewListSurfaceRenderer(config ListSurfaceRenderConfig) ListSurfaceRenderer 
 
 // Render selects compact or wide presentation, applying the minimum-width
 // fallback before mutating the model's viewport.
-func (renderer ListSurfaceRenderer) Render(model *ListSurfaceModel) ListSurfaceRenderResult {
+func (renderer ListSurfaceRenderer) Render(model *ListSurfaceModel) string {
 	config := normalizeListSurfaceRenderConfig(renderer.Config, model)
 	layout, preview := listSurfaceRenderLayout(model, config)
 	if layout == ListSurfaceLayoutWide {
@@ -84,7 +73,7 @@ func RenderCompactListSurface(model *ListSurfaceModel, width, height int) string
 		Height:   height,
 		Layout:   ListSurfaceLayoutCompact,
 		HideHelp: true,
-	}).Render(model).Content
+	}).Render(model)
 }
 
 func normalizeListSurfaceRenderConfig(
@@ -148,31 +137,23 @@ func listSurfaceRenderLayout(
 func renderCompactListSurface(
 	model *ListSurfaceModel,
 	config ListSurfaceRenderConfig,
-) ListSurfaceRenderResult {
+) string {
 	if model == nil {
-		return ListSurfaceRenderResult{
-			Content:   MutedStyle.Render("List unavailable."),
-			Layout:    ListSurfaceLayoutCompact,
-			ListWidth: config.Width,
-		}
+		return MutedStyle.Render("List unavailable.")
 	}
 	showContinuations := sizeListSurfaceViewport(model, config.Width, config.Height)
 	content := renderListSurfacePane(model, config.Width, showContinuations)
 	if !config.HideHelp {
 		content = appendListSurfaceHelp(content, listSurfaceHelp(model, config.HelpText), config.Width)
 	}
-	return ListSurfaceRenderResult{
-		Content:   content,
-		Layout:    ListSurfaceLayoutCompact,
-		ListWidth: config.Width,
-	}
+	return content
 }
 
 func renderWideListSurface(
 	model *ListSurfaceModel,
 	config ListSurfaceRenderConfig,
 	preview ListPreview,
-) ListSurfaceRenderResult {
+) string {
 	listWidth := max(config.Width*55/100, config.ListMinWidth)
 	previewWidth := config.Width - listWidth - listSurfacePaneGapWidth
 	if previewWidth < config.PreviewMinWidth {
@@ -187,13 +168,7 @@ func renderWideListSurface(
 	if !config.HideHelp {
 		content = appendListSurfaceHelp(content, listSurfaceHelp(model, config.HelpText), config.Width)
 	}
-	return ListSurfaceRenderResult{
-		Content:        content,
-		Layout:         ListSurfaceLayoutWide,
-		PreviewVisible: true,
-		ListWidth:      listWidth,
-		PreviewWidth:   previewWidth,
-	}
+	return content
 }
 
 // sizeListSurfaceViewport reserves room inside the renderer's height for the

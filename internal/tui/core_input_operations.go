@@ -187,15 +187,15 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreCursorPageDown:
 		message = commandMessage(m.coreMoveCursor("ctrl+d"))
 	case operationCoreCollapseParent:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			out.collapseOrMoveToParent()
 		}
 	case operationCoreExpand:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			out.expandAtCursor()
 		}
 	case operationCoreToggleSections:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			out.toggleVisibleSections()
 		}
 	case operationCoreReorderDown:
@@ -203,11 +203,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreReorderUp:
 		message = commandMessage(m.coreReorder(-1))
 	case operationCorePeek:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			out.togglePeek()
 		}
 	case operationCoreScopeSearch:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.ActivateSearch())
 		}
 	case operationCoreScope:
@@ -215,11 +215,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreSelectProject:
 		message = ShowProjectHubMsg{}
 	case operationCoreMultiSelect:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			out.toggleCursorSelection()
 		}
 	case operationCoreSelectAll:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			out.selectAllVisible()
 			out.updateVisualSelectionStatus()
 		}
@@ -235,7 +235,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreRedo:
 		message = commandMessage(m.coreRedo())
 	case operationCoreBack:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			RunEscCascade(out.escSteps())
 		}
 	case operationCoreHelp:
@@ -247,11 +247,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreQuit:
 		message = QuitMsg{}
 	case operationCoreNextWorkMode:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			_, _ = out.cycleWorkMode(1)
 		}
 	case operationCorePreviousWorkMode:
-		if out, _, ok := m.outlinerPrimary(); ok {
+		if out, ok := m.outlinerPrimary(); ok {
 			_, _ = out.cycleWorkMode(-1)
 		}
 	default:
@@ -270,7 +270,7 @@ func commandMessage(cmd tea.Cmd) tea.Msg {
 // and project-focus capture to that focused project. Cursor project identity is
 // deliberately ignored at base scope.
 func (m *AppModel) coreCaptureMessage() tea.Msg {
-	out, _, ok := m.outlinerPrimary()
+	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return m.captureComposerMessage(nil, nil)
 	}
@@ -394,7 +394,7 @@ func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets) tea.Cmd {
 // edge jumps, and half-page jumps all inherit the same viewport sizing, boundary
 // flashing, and non-navigable row skipping.
 func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
-	out, _, ok := m.outlinerPrimary()
+	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return nil
 	}
@@ -415,7 +415,7 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 }
 
 func (m *AppModel) coreReorder(delta int) tea.Cmd {
-	out, _, ok := m.outlinerPrimary()
+	out, ok := m.outlinerPrimary()
 	if !ok || out == nil || !out.simplifiedReorderEligible() {
 		if out != nil {
 			out.orderingUnavailableStatus()

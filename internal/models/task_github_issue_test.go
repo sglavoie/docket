@@ -15,19 +15,19 @@ func TestParseGitHubIssueURL(t *testing.T) {
 		{
 			name: "https issue URL",
 			raw:  "https://github.com/acme/roadmap/issues/123",
-			want: GitHubIssueRef{Owner: "acme", Repo: "roadmap", Number: 123, URL: "https://github.com/acme/roadmap/issues/123"},
+			want: GitHubIssueRef{Owner: "acme", Repo: "roadmap", Number: 123},
 			ok:   true,
 		},
 		{
 			name: "www host with trailing slash",
 			raw:  "https://www.github.com/acme/roadmap/issues/123/",
-			want: GitHubIssueRef{Owner: "acme", Repo: "roadmap", Number: 123, URL: "https://github.com/acme/roadmap/issues/123"},
+			want: GitHubIssueRef{Owner: "acme", Repo: "roadmap", Number: 123},
 			ok:   true,
 		},
 		{
 			name: "http URL with query and fragment",
 			raw:  "http://github.com/Acme/Roadmap/issues/456?notification_referrer_id=abc#issuecomment-1",
-			want: GitHubIssueRef{Owner: "Acme", Repo: "Roadmap", Number: 456, URL: "https://github.com/Acme/Roadmap/issues/456"},
+			want: GitHubIssueRef{Owner: "Acme", Repo: "Roadmap", Number: 456},
 			ok:   true,
 		},
 		{name: "pull request URL", raw: "https://github.com/acme/roadmap/pull/123"},

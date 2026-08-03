@@ -24,7 +24,7 @@ func TestNewRuntimeDependenciesWiresEveryDomainToStore(t *testing.T) {
 	if deps == nil {
 		t.Fatal("NewRuntimeDependencies returned nil for a non-nil store")
 	}
-	if deps.Catalog == nil || deps.Planning == nil || deps.Machine == nil {
+	if deps.Catalog == nil || deps.Planning == nil {
 		t.Fatalf("every domain must be wired: %+v", deps)
 	}
 	if NewRuntimeDependencies(nil) != nil {

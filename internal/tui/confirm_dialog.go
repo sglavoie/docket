@@ -198,9 +198,3 @@ func (s *discardConfirmState) GetConfirmDialog() *ConfirmDialog {
 	}
 	return &s.confirmOverlay
 }
-
-// ConfirmResult is returned when a confirmation is resolved.
-type ConfirmResult struct {
-	Action    string
-	Confirmed bool
-}

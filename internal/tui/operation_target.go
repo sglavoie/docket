@@ -29,15 +29,13 @@ const (
 // Task and ProjectID stay populated so existing task and project handlers keep
 // reading the fields they already use.
 type OperationTarget struct {
-	Source    OperationTargetSource
 	Entity    EntityIdentity
 	Task      TaskIdentity
 	ProjectID string
 }
 
-func operationTargetFor(source OperationTargetSource, entity EntityIdentity) OperationTarget {
+func operationTargetFor(entity EntityIdentity) OperationTarget {
 	return OperationTarget{
-		Source:    source,
 		Entity:    entity,
 		Task:      entity.Task(),
 		ProjectID: entity.ProjectID,
@@ -113,7 +111,7 @@ func (OperationTargetResolver) Resolve(
 		targets = nil
 	case OperationTargetCurrentTask:
 		if current := currentTaskIdentity(ctx); current.Valid() {
-			targets = []OperationTarget{operationTargetFor(source, current.Entity())}
+			targets = []OperationTarget{operationTargetFor(current.Entity())}
 		}
 	case OperationTargetSelectedTasks:
 		selected := normalizedTaskIdentities(ctx.Selection.Tasks)
@@ -124,11 +122,11 @@ func (OperationTargetResolver) Resolve(
 		}
 		targets = make([]OperationTarget, 0, len(selected))
 		for _, task := range selected {
-			targets = append(targets, operationTargetFor(source, task.Entity()))
+			targets = append(targets, operationTargetFor(task.Entity()))
 		}
 	case OperationTargetCurrentProject:
 		if projectID := currentProjectID(ctx); projectID != "" {
-			targets = []OperationTarget{operationTargetFor(source, ProjectEntity(projectID))}
+			targets = []OperationTarget{operationTargetFor(ProjectEntity(projectID))}
 		}
 	case OperationTargetScopedProjects:
 		projects := normalizedProjectIDs(ctx.ScopeProjectIDs)
@@ -137,17 +135,17 @@ func (OperationTargetResolver) Resolve(
 		}
 		targets = make([]OperationTarget, 0, len(projects))
 		for _, projectID := range projects {
-			targets = append(targets, operationTargetFor(source, ProjectEntity(projectID)))
+			targets = append(targets, operationTargetFor(ProjectEntity(projectID)))
 		}
 	case OperationTargetCurrentEntity:
 		if current := currentEntityIdentity(ctx); current.Valid() {
-			targets = []OperationTarget{operationTargetFor(source, current)}
+			targets = []OperationTarget{operationTargetFor(current)}
 		}
 	case OperationTargetSelectedEntities:
 		selected := selectedEntityIdentities(ctx)
 		targets = make([]OperationTarget, 0, len(selected))
 		for _, entity := range selected {
-			targets = append(targets, operationTargetFor(source, entity))
+			targets = append(targets, operationTargetFor(entity))
 		}
 	default:
 		return ResolvedOperationTargets{}, fmt.Errorf(

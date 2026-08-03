@@ -30,7 +30,7 @@ type planningReconcileEnv struct {
 }
 
 //nolint:govet // Independent seed operations use scoped errors before the final runtime load.
-func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planningReconcileEnv {
+func newPlanningReconcileEnv(t *testing.T) *planningReconcileEnv {
 	t.Helper()
 	dataDir := t.TempDir()
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
@@ -45,7 +45,7 @@ func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planning
 	if err != nil {
 		t.Fatalf("NewTask: %v", err)
 	}
-	task.WorkflowState = state
+	task.WorkflowState = models.StateBacklog
 	project.Tasks = []*models.Task{task}
 	project.NextShortID = 2
 	project.BuildTaskTree()
@@ -119,7 +119,7 @@ func (e *planningReconcileEnv) reloadPlanning(t *testing.T) *config.PlanningStat
 // pipeline is dropped from Today as part of the same transaction.
 func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	t.Run("view-local coordinator picker drops Today", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateBacklog)
+		env := newPlanningReconcileEnv(t)
 		env.seedToday(t)
 
 		coords := newSecondaryCoordinators(env.service)
@@ -136,7 +136,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	})
 
 	t.Run("global plain-Transition picker drops Today", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateBacklog)
+		env := newPlanningReconcileEnv(t)
 		env.seedToday(t)
 
 		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateWaiting}); err != nil {
@@ -150,7 +150,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	})
 
 	t.Run("bulk transition drops Today", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateBacklog)
+		env := newPlanningReconcileEnv(t)
 		env.seedToday(t)
 
 		coords := newSecondaryCoordinators(env.service)
@@ -164,7 +164,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 	})
 
 	t.Run("transition out of Next drops stale order entry", func(t *testing.T) {
-		env := newPlanningReconcileEnv(t, models.StateBacklog)
+		env := newPlanningReconcileEnv(t)
 		env.seedNextOrder(t)
 
 		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateDoing}); err != nil {
@@ -187,7 +187,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 // mutation is undone first — the planning undo never jumps ahead of it.
 func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 	t.Run("Next toggle commits state and planning as one durable undoable ledger entry", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t)
 		// Precondition: the task is planned for Today, so the promotion must also
 		// prove the Today drop rides the same transaction.
 		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
@@ -227,7 +227,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 	})
 
 	t.Run("newer ledger mutation is undone before the planning toggle", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t)
 
 		origPriority := diskTaskPriority(t, app.currentProject, task.ID)
 		newPriority := origPriority + 1

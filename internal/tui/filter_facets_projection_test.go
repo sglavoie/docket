@@ -104,7 +104,7 @@ func TestCompletionAgeFacetUsesLocalCalendarDaysAndRejectsInvalidTimestamps(t *t
 	zero := time.Time{}
 
 	filter := newFilterState()
-	filter.setCompletionAgeFilter(CompletionAge7Days, true)
+	filter.setCompletionAgeFilter(CompletionAge7Days)
 	oldEnough := &models.Task{ID: "old", WorkflowState: models.StateDone, CompletedAt: &sevenLocalDaysAgo}
 	tooRecent := &models.Task{ID: "recent", WorkflowState: models.StateDone, CompletedAt: &justSixLocalDaysAgoUTC}
 	missing := &models.Task{ID: "missing", WorkflowState: models.StateDone}
@@ -120,7 +120,7 @@ func TestCompletionAgeFacetUsesLocalCalendarDaysAndRejectsInvalidTimestamps(t *t
 		t.Fatal("cleanup facet matched a task without a valid CompletedAt")
 	}
 
-	filter.setCompletionAgeFilter(CompletionAgeAll, true)
+	filter.setCompletionAgeFilter(CompletionAgeAll)
 	if !passesCommonFiltersAt(tooRecent, &filter, now) {
 		t.Fatal("all ages should remove the cutoff for a valid CompletedAt")
 	}
@@ -146,7 +146,7 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 	ready := filterFacetTask("ready", models.StateBacklog, 0, nil, nil, nil)
 	project := primaryRowsProject("cleanup", doneOld, doneRecent, canceledOld, invalidDone, ready)
 	outliner := scopeTestOutliner(project)
-	outliner.filter.setCompletionAgeFilter(CompletionAge30Days, true)
+	outliner.filter.setCompletionAgeFilter(CompletionAge30Days)
 	outliner.rebuildRows()
 
 	if visible := visibleOutlinerTaskIDs(outliner); len(visible) != 0 {
@@ -186,7 +186,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"alpha": true}
 	outliner.filter.DueDate = DueDateNone
-	outliner.filter.setCompletionAgeFilter(CompletionAge30Days, true)
+	outliner.filter.setCompletionAgeFilter(CompletionAge30Days)
 	outliner.filter.Snoozed = true
 
 	outliner.selectOutlinerMode(ModeDue)
@@ -232,7 +232,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	outliner.filter.setStateFilter(liveStates, true)
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"live": true}
-	outliner.filter.setCompletionAgeFilter(CompletionAge7Days, true)
+	outliner.filter.setCompletionAgeFilter(CompletionAge7Days)
 
 	legacyStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {

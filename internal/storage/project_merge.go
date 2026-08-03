@@ -46,7 +46,6 @@ const (
 // project-level and ordering conflicts.
 type MergeConflict struct {
 	Kind      MergeConflictKind
-	TaskID    string
 	TaskTitle string
 	Field     string
 	Base      string
@@ -185,7 +184,7 @@ func mergeTasks(base, local, current *ProjectDocument) (map[string]*models.Task,
 
 		switch {
 		case inB && inL && inC:
-			task, fieldConflicts := mergeTaskFields(id, b, l, c)
+			task, fieldConflicts := mergeTaskFields(b, l, c)
 			if len(fieldConflicts) > 0 {
 				conflicts = append(conflicts, fieldConflicts...)
 				continue
@@ -196,12 +195,12 @@ func mergeTasks(base, local, current *ProjectDocument) (map[string]*models.Task,
 			if tasksEqual(b, l) {
 				continue
 			}
-			conflicts = append(conflicts, deleteEditConflict(id, l, "local edited a task deleted on current"))
+			conflicts = append(conflicts, deleteEditConflict(l, "local edited a task deleted on current"))
 		case inB && !inL && inC:
 			if tasksEqual(b, c) {
 				continue
 			}
-			conflicts = append(conflicts, deleteEditConflict(id, c, "current edited a task deleted on local"))
+			conflicts = append(conflicts, deleteEditConflict(c, "current edited a task deleted on local"))
 		case inB && !inL && !inC:
 			// Deleted on both sides: drop it.
 			continue
@@ -209,7 +208,7 @@ func mergeTasks(base, local, current *ProjectDocument) (map[string]*models.Task,
 			// Added independently on both sides under the same ID: merge field by
 			// field against a zero base so identical additions coalesce and
 			// divergent ones surface as field conflicts.
-			task, fieldConflicts := mergeTaskFields(id, &models.Task{ID: id}, l, c)
+			task, fieldConflicts := mergeTaskFields(&models.Task{ID: id}, l, c)
 			if len(fieldConflicts) > 0 {
 				conflicts = append(conflicts, fieldConflicts...)
 				continue
@@ -230,7 +229,7 @@ func mergeTasks(base, local, current *ProjectDocument) (map[string]*models.Task,
 // fields both sides changed identically coalesce, and fields both sides changed
 // differently become conflicts. A change to parent_id is classified as a
 // hierarchy conflict rather than a plain field conflict.
-func mergeTaskFields(id string, base, local, current *models.Task) (*models.Task, []MergeConflict) {
+func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeConflict) {
 	merged := cloneTask(base)
 	mv := reflect.ValueOf(merged).Elem()
 	bv := reflect.ValueOf(base).Elem()
@@ -252,7 +251,7 @@ func mergeTaskFields(id string, base, local, current *models.Task) (*models.Task
 				mv.Field(f.index).Set(lv.Field(f.index)) // coalesce identical concurrent edits
 				continue
 			}
-			conflicts = append(conflicts, fieldEditConflict(id, mergedTitle(local, current), f.jsonName, bField, lField, cField))
+			conflicts = append(conflicts, fieldEditConflict(mergedTitle(local, current), f.jsonName, bField, lField, cField))
 		case localChanged:
 			mv.Field(f.index).Set(lv.Field(f.index))
 		case currentChanged:
@@ -432,7 +431,6 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 		if terminal && task.CompletedAt == nil {
 			conflicts = append(conflicts, MergeConflict{
 				Kind:      MergeConflictInvariant,
-				TaskID:    task.ID,
 				TaskTitle: task.Title,
 				Field:     "completed_at",
 				Detail:    fmt.Sprintf("terminal state %q has no completion timestamp", task.State()),
@@ -441,7 +439,6 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 		if !terminal && task.CompletedAt != nil {
 			conflicts = append(conflicts, MergeConflict{
 				Kind:      MergeConflictInvariant,
-				TaskID:    task.ID,
 				TaskTitle: task.Title,
 				Field:     "completed_at",
 				Detail:    fmt.Sprintf("non-terminal state %q carries a completion timestamp", task.State()),
@@ -544,28 +541,26 @@ func mergedTitle(local, current *models.Task) string {
 	return ""
 }
 
-func deleteEditConflict(id string, edited *models.Task, detail string) MergeConflict {
+func deleteEditConflict(edited *models.Task, detail string) MergeConflict {
 	title := ""
 	if edited != nil {
 		title = edited.Title
 	}
 	return MergeConflict{
 		Kind:      MergeConflictDeleteEdit,
-		TaskID:    id,
 		TaskTitle: title,
 		Field:     "task",
 		Detail:    detail,
 	}
 }
 
-func fieldEditConflict(id, title, field string, base, local, current any) MergeConflict {
+func fieldEditConflict(title, field string, base, local, current any) MergeConflict {
 	kind := MergeConflictFieldEdit
 	if field == "parent_id" {
 		kind = MergeConflictHierarchy
 	}
 	return MergeConflict{
 		Kind:      kind,
-		TaskID:    id,
 		TaskTitle: title,
 		Field:     field,
 		Base:      fmt.Sprintf("%v", base),

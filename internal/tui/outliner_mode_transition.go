@@ -10,16 +10,8 @@ package tui
 // Entering a fixed-order mode deactivates manual sort without destroying
 // TreeSort, so returning to a tree-order mode restores it.
 type OutlinerModeSwitch struct {
-	Mode         OutlinerModeID
-	ProjectScope string
-	Search       string
-	CursorTaskID string
-	// Columns is the compatible column state, preserved verbatim across switches.
-	Columns []string
-
-	TreeSort         SortState
-	ActiveSort       SortState
-	ManualSortActive bool
+	TreeSort   SortState
+	ActiveSort SortState
 }
 
 // ApplyOutlinerModeTransition returns the state after switching from prev to
@@ -36,15 +28,12 @@ func ApplyOutlinerModeTransition(state OutlinerModeSwitch, prev, target Outliner
 		next.TreeSort = state.ActiveSort
 	}
 
-	next.Mode = target.ID
 	if target.SupportsManualSort() {
 		next.ActiveSort = next.TreeSort
-		next.ManualSortActive = next.TreeSort.Field != SortByDefault
 	} else {
 		// Fixed-order modes own their ordering: manual sort is inactive, but the
 		// stored tree-mode sort is left intact.
 		next.ActiveSort = NewSortState()
-		next.ManualSortActive = false
 	}
 	return next
 }
@@ -56,10 +45,8 @@ func ApplyOutlinerModeTransition(state OutlinerModeSwitch, prev, target Outliner
 func (m *OutlinerModel) applyOutlinerModeTransition(target OutlinerMode) {
 	prev := m.activeOutlinerModeEntry()
 	next := ApplyOutlinerModeTransition(OutlinerModeSwitch{
-		Mode:             prev.ID,
-		TreeSort:         m.treeSort,
-		ActiveSort:       m.sort,
-		ManualSortActive: prev.SupportsManualSort() && m.sort.Field != SortByDefault,
+		TreeSort:   m.treeSort,
+		ActiveSort: m.sort,
 	}, prev, target)
 	m.sort = next.ActiveSort
 	m.treeSort = next.TreeSort

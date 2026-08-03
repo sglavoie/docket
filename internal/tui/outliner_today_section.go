@@ -47,7 +47,6 @@ func (m *OutlinerModel) buildTodaySection(
 	for _, modeRow := range BuildTodayModeRows(input) {
 		row := m.outlinerRowFromModeRow(modeRow)
 		row.IsTodaySection = true
-		row.IsTodayMember = true
 		result.rows = append(result.rows, row)
 	}
 	return result

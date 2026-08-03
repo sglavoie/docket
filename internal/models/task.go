@@ -29,9 +29,6 @@ type ChecklistItem struct {
 	Done bool   `json:"done"`
 }
 
-// GenericTaskHeading is the only heading label emitted by task codecs.
-const GenericTaskHeading = "Task"
-
 // Task is the target generic work record.
 type Task struct {
 	ID          string `json:"id"`

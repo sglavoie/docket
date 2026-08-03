@@ -54,12 +54,9 @@ const (
 type OutlinerMode struct {
 	ID            OutlinerModeID
 	Label         string
-	Aliases       []string
 	OrderPolicy   OutlinerOrderPolicy
 	ReorderPolicy OutlinerReorderPolicy
 	RowStrategy   OutlinerRowStrategy
-	// TabIndex is the stable Tab/Shift+Tab position.
-	TabIndex int
 }
 
 // SupportsManualSort reports whether the user's manual sort applies. Only
@@ -76,12 +73,12 @@ func (mode OutlinerMode) FixedOrder() bool {
 
 // outlinerModes is the ordered catalog and the exact Tab/Shift+Tab cycle.
 var outlinerModes = []OutlinerMode{
-	{ID: ModeAll, Label: "All", Aliases: []string{"all", "all tasks", "cross-project tasks", "every task"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, TabIndex: 0},
-	{ID: ModeInbox, Label: "Inbox", Aliases: []string{"inbox"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox, TabIndex: 1},
-	{ID: ModeToday, Label: "Today", Aliases: []string{"today", "t", "daily plan"}, OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday, TabIndex: 2},
-	{ID: ModeNext, Label: "Next", Aliases: []string{"next", "n"}, OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext, TabIndex: 3},
-	{ID: ModeBacklog, Label: "Backlog", Aliases: []string{"backlog", "b"}, OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog, TabIndex: 4},
-	{ID: ModeDue, Label: "Due", Aliases: []string{"due", "due date", "schedule", "due dates", "by due date"}, OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue, TabIndex: 5},
+	{ID: ModeAll, Label: "All", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll},
+	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox},
+	{ID: ModeToday, Label: "Today", OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday},
+	{ID: ModeNext, Label: "Next", OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext},
+	{ID: ModeBacklog, Label: "Backlog", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog},
+	{ID: ModeDue, Label: "Due", OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue},
 }
 
 // outlinerModeIndex maps each mode ID to its catalog entry for O(1) lookup.

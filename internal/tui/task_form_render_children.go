@@ -57,7 +57,7 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 	if m.checklistExpanded {
 		for i, item := range m.draft.checklist {
 			itemFocused := m.activeTab == formTabChildren && m.focusIndex == 1+i
-			b.WriteString(m.renderChecklistItemRow(i, item, itemFocused))
+			b.WriteString(m.renderChecklistItemRow(item, itemFocused))
 		}
 		if count == 0 {
 			b.WriteString(MutedStyle.Render("    No checklist items. Press Ctrl+A to add one."))
@@ -69,7 +69,7 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 }
 
 // renderChecklistItemRow renders a single checklist item row.
-func (m *TaskFormModel) renderChecklistItemRow(i int, item models.ChecklistItem, focused bool) string {
+func (m *TaskFormModel) renderChecklistItemRow(item models.ChecklistItem, focused bool) string {
 	checkIcon := icons.Get("checkbox.unchecked")
 	if item.Done {
 		checkIcon = icons.Get("checkbox.checked")
@@ -120,7 +120,7 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 		for i, st := range m.draft.subtasks {
 			itemIdx := headerIdx + 1 + i
 			itemFocused := m.activeTab == formTabChildren && m.focusIndex == itemIdx
-			b.WriteString(renderSubtaskItemRow(i, st, itemFocused))
+			b.WriteString(renderSubtaskItemRow(st, itemFocused))
 		}
 		if count == 0 {
 			b.WriteString(MutedStyle.Render("    No subtasks. Press Ctrl+T to add one."))
@@ -132,7 +132,7 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 }
 
 // renderSubtaskItemRow renders a single subtask draft row.
-func renderSubtaskItemRow(i int, st formSubtaskDraft, focused bool) string {
+func renderSubtaskItemRow(st formSubtaskDraft, focused bool) string {
 	title := st.title
 	if title == "" {
 		title = MutedStyle.Render("(empty)")

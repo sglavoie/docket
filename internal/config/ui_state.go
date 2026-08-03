@@ -8,12 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-type RecentPaletteItem struct {
-	Category string `json:"category"`
-	ID       string `json:"id"`
-	Count    int    `json:"count,omitempty"`
-}
-
 // OutlinerRouteState is the machine-local persisted view state for one
 // Outliner scope. It is deliberately a presentation DTO rather than a
 // navigation Route: typed NavigationState remains the sole route authority,
@@ -153,13 +147,3 @@ func mustWorkflowStateSet(states ...models.WorkflowState) models.WorkflowStateSe
 func cloneWorkflowStateSet(states models.WorkflowStateSet) models.WorkflowStateSet {
 	return mustWorkflowStateSet(states.Values()...)
 }
-
-const (
-	// CurrentTUIStateVersion is the last v4 route/presentation version understood
-	// by the legacy-domain migration converter.
-	//
-	// Version 4 introduces the ten-mode OutlinerRouteState and migrates retired
-	// perspectives, smart focuses, lenses, startup destinations, project view
-	// states, and cross-Outliner lifecycle filters into canonical route DTOs.
-	CurrentTUIStateVersion = 4
-)

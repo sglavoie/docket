@@ -18,8 +18,8 @@ type OutlinerModeSection struct {
 
 const canonicalModeCollapseKeyPrefix = "_mode:"
 
-func canonicalModeCollapseKey(mode OutlinerModeID, bucket string) string {
-	return canonicalModeCollapseKeyPrefix + string(mode) + ":" + bucket
+func canonicalModeCollapseKey(bucket string) string {
+	return canonicalModeCollapseKeyPrefix + string(ModeDue) + ":" + bucket
 }
 
 type orderedModeTask struct {
@@ -90,10 +90,10 @@ func isComputedOpenWork(task *models.Task, in OutlinerModeInput) bool {
 func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 	in.Now = in.now()
 	sections := []OutlinerModeSection{
-		{Name: "Overdue", CollapseKey: canonicalModeCollapseKey(ModeDue, "overdue")},
-		{Name: "Today", CollapseKey: canonicalModeCollapseKey(ModeDue, "today")},
-		{Name: "Next Seven Days", CollapseKey: canonicalModeCollapseKey(ModeDue, "next-seven-days")},
-		{Name: "Later", CollapseKey: canonicalModeCollapseKey(ModeDue, "later")},
+		{Name: "Overdue", CollapseKey: canonicalModeCollapseKey("overdue")},
+		{Name: "Today", CollapseKey: canonicalModeCollapseKey("today")},
+		{Name: "Next Seven Days", CollapseKey: canonicalModeCollapseKey("next-seven-days")},
+		{Name: "Later", CollapseKey: canonicalModeCollapseKey("later")},
 	}
 	now := in.now()
 

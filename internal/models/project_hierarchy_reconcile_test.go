@@ -2,9 +2,9 @@ package models
 
 import "testing"
 
-func newHierarchyReconcileProject(t *testing.T, id string) *Project {
+func newHierarchyReconcileProject(t *testing.T) *Project {
 	t.Helper()
-	project, err := NewProject(id, "Test", ".")
+	project, err := NewProject("test", "Test", ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func newHierarchyReconcileTask(t *testing.T, id string, shortID int, title strin
 }
 
 func TestReconcileParentCompletionSingleReopen(t *testing.T) {
-	project := newHierarchyReconcileProject(t, "test")
+	project := newHierarchyReconcileProject(t)
 
 	parent := newHierarchyReconcileTask(t, "parent", 1, "Parent")
 	child := newHierarchyReconcileTask(t, "child", 2, "Child")
@@ -45,7 +45,7 @@ func TestReconcileParentCompletionSingleReopen(t *testing.T) {
 }
 
 func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
-	project := newHierarchyReconcileProject(t, "test")
+	project := newHierarchyReconcileProject(t)
 
 	epic := newHierarchyReconcileTask(t, "epic", 1, "Epic")
 	story := newHierarchyReconcileTask(t, "story", 2, "Story")
@@ -75,7 +75,7 @@ func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
 }
 
 func TestReconcileParentCompletionCanceledParent(t *testing.T) {
-	project := newHierarchyReconcileProject(t, "test")
+	project := newHierarchyReconcileProject(t)
 
 	parent := newHierarchyReconcileTask(t, "parent", 1, "Parent")
 	child := newHierarchyReconcileTask(t, "child", 2, "Child")
@@ -95,7 +95,7 @@ func TestReconcileParentCompletionCanceledParent(t *testing.T) {
 }
 
 func TestReconcileParentCompletionNoOpWhenConsistent(t *testing.T) {
-	project := newHierarchyReconcileProject(t, "test")
+	project := newHierarchyReconcileProject(t)
 
 	parent := newHierarchyReconcileTask(t, "parent", 1, "Parent")
 	child := newHierarchyReconcileTask(t, "child", 2, "Child")

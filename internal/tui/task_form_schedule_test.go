@@ -13,7 +13,7 @@ import (
 
 func TestTaskForm_ScheduleTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	view := m.View().Content
 	if !strings.Contains(view, "Due:") {
 		t.Errorf("Schedule tab should contain Due; got:\n%s", view)
@@ -28,7 +28,7 @@ func TestTaskForm_ScheduleTab_Due_ShowsPlaceholder_WhenEmpty(t *testing.T) {
 	// The contextual help pane is only shown two-column when the body, a gap,
 	// and the pane all fit within the terminal width; widen so it renders.
 	m.SetSize(100, 24)
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	view := m.View().Content
 	if !strings.Contains(view, "Ctrl+D") || !strings.Contains(view, "presets") {
 		t.Errorf("Due field help pane should show 'Ctrl+D' and 'presets' when focused; got:\n%s", view)
@@ -37,7 +37,7 @@ func TestTaskForm_ScheduleTab_Due_ShowsPlaceholder_WhenEmpty(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_Due_TypedValue_SetsHasChanges(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m = sendFormKey(m, syntheticKey('t'))
 	if !m.hasChanges {
 		t.Error("typing in Due field should set hasChanges=true")
@@ -46,7 +46,7 @@ func TestTaskForm_ScheduleTab_Due_TypedValue_SetsHasChanges(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_Due_DKey_OpensDuePicker(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m = sendFormKey(m, syntheticCtrlKey('d'))
 	if m.activeOverlay != formOverlayDue {
 		t.Errorf("expected formOverlayDue, got %v", m.activeOverlay)
@@ -58,7 +58,7 @@ func TestTaskForm_ScheduleTab_Due_DKey_OpensDuePicker(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_DuePicker_TodayKey_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m = sendFormKey(m, syntheticCtrlKey('d'))
 	m = sendFormKey(m, syntheticKey('t'))
 	if m.draft.dueDate == nil {
@@ -77,7 +77,7 @@ func TestTaskForm_ScheduleTab_DuePicker_TodayKey_UpdatesDraft(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_DuePicker_ClearKey_ClearsDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m.draft.dueInput = "2026-01-15"
 	m = sendFormKey(m, syntheticCtrlKey('d'))
 	m = sendFormKey(m, syntheticKey('0'))
@@ -91,7 +91,7 @@ func TestTaskForm_ScheduleTab_DuePicker_ClearKey_ClearsDraft(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_DuePicker_EscCancels(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m = sendFormKey(m, syntheticCtrlKey('d'))
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
 	if m.activeOverlay != formOverlayNone {
@@ -104,7 +104,7 @@ func TestTaskForm_ScheduleTab_DuePicker_EscCancels(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_DuePicker_Render_ContainsTitleText(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m = sendFormKey(m, syntheticCtrlKey('d'))
 	view := m.View().Content
 	if !strings.Contains(view, "Set Due Date") {
@@ -114,7 +114,7 @@ func TestTaskForm_ScheduleTab_DuePicker_Render_ContainsTitleText(t *testing.T) {
 
 func TestTaskForm_ScheduleTab_NLDateRoundTrip(t *testing.T) {
 	m := newTestTaskForm()
-	m = navigateToScheduleField(m, 0)
+	m = navigateToScheduleField(m)
 	m = sendFormKey(m, syntheticCtrlKey('d'))
 	m = sendFormKey(m, syntheticKey('m'))
 	if m.draft.dueDate == nil {

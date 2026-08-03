@@ -27,17 +27,17 @@ func newFormFlagsPicker(pinned bool) *formFlagsPicker {
 
 // handleKey processes a key press.
 // Returns (cmd, dismiss, resultMsg). dismiss=true closes the overlay.
-func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 	switch msg.String() {
 	case "esc":
-		return nil, true, nil
+		return true, nil
 	case "enter":
-		return nil, true, TaskFormFlagsPickedMsg{Pinned: p.pinned}
+		return true, TaskFormFlagsPickedMsg{Pinned: p.pinned}
 	case "space", "x":
 		p.pinned = !p.pinned
-		return nil, false, nil
+		return false, nil
 	}
-	return nil, false, nil
+	return false, nil
 }
 
 func (p *formFlagsPicker) render(width int) string {

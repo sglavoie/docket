@@ -230,7 +230,7 @@ func (registry *OperationRegistry) ChordHintsForPrefix(
 		if !registry.chordSubtreeIsApplicable(strategy, child, ctx) {
 			continue
 		}
-		label := ""
+		var label string
 		if child.terminal() {
 			binding := strategy.Bindings[child.bindingIndex]
 			label = binding.HintLabel

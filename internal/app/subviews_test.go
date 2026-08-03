@@ -31,22 +31,22 @@ func TestChecklistLifecycle(t *testing.T) {
 	if _, err := svc.AddChecklistItem("t1", "  first  "); err != nil {
 		t.Fatalf("AddChecklistItem: %v", err)
 	}
-	res, err := svc.AddChecklistItem("t1", "second")
+	_, err := svc.AddChecklistItem("t1", "second")
 	if err != nil {
 		t.Fatalf("AddChecklistItem: %v", err)
 	}
-	if res.Count != 2 || res.Index != 1 {
-		t.Fatalf("res = %+v, want count 2 index 1", res)
+	if len(task.Checklist) != 2 {
+		t.Fatalf("checklist = %+v, want two items", task.Checklist)
 	}
 	if task.Checklist[0].Text != "first" {
 		t.Fatalf("checklist = %+v, want trimmed first item", task.Checklist)
 	}
 
-	toggled, err := svc.ToggleChecklistItem("t1", 0)
+	_, err = svc.ToggleChecklistItem("t1", 0)
 	if err != nil {
 		t.Fatalf("ToggleChecklistItem: %v", err)
 	}
-	if !toggled.Done || !task.Checklist[0].Done {
+	if !task.Checklist[0].Done {
 		t.Fatal("item 0 should be done after toggle")
 	}
 
@@ -64,11 +64,11 @@ func TestChecklistLifecycle(t *testing.T) {
 		t.Fatalf("checklist after reorder = %+v, want swapped", task.Checklist)
 	}
 
-	removed, err := svc.RemoveChecklistItem("t1", 0)
+	_, err = svc.RemoveChecklistItem("t1", 0)
 	if err != nil {
 		t.Fatalf("RemoveChecklistItem: %v", err)
 	}
-	if removed.Count != 1 || len(task.Checklist) != 1 || task.Checklist[0].Text != "first edited" {
+	if len(task.Checklist) != 1 || task.Checklist[0].Text != "first edited" {
 		t.Fatalf("checklist after remove = %+v, want only first edited", task.Checklist)
 	}
 }

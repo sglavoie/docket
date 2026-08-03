@@ -25,7 +25,6 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.pendingOperationRequest = OperationExecutionRequest{}
 			m.isLoading = false
 			m.pendingBulkTasks = nil
-			m.pendingBulkSectionTasks = nil
 			m.statusMessage = ""
 			m.loadingMessage = ""
 			outModel = m

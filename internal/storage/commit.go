@@ -55,9 +55,6 @@ type RecordedConflict struct {
 	// ConflictID is the id of the durably recorded conflict bundle; resolve it
 	// through the shared resolution service (tt conflict resolve / the TUI).
 	ConflictID string
-	// Conflicts carries the structured conflicts the merge produced, for callers
-	// that want to summarize what diverged without reloading the bundle.
-	Conflicts []MergeConflict
 }
 
 // CommitConflictError is the concrete unresolved-merge conflict returned when one
@@ -331,8 +328,7 @@ type AttachmentOp struct {
 // revision of the committed project and the id of the transaction that applied
 // it.
 type CommitResult struct {
-	Revision      string
-	TransactionID string
+	Revision string
 }
 
 // CommitService is the mutation commit boundary. It drives one or more
@@ -1488,7 +1484,6 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 					ProjectID:   project.ID,
 					ProjectName: project.Name,
 					ConflictID:  conflictID,
-					Conflicts:   merge.Conflicts,
 				})
 				continue
 			}
@@ -1680,8 +1675,7 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 	results := make([]*CommitResult, len(changesets))
 	for i := range changesets {
 		results[i] = &CommitResult{
-			Revision:      committedDocs[i].Revision,
-			TransactionID: manifest.ID,
+			Revision: committedDocs[i].Revision,
 		}
 	}
 	return results, nil

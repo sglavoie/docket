@@ -112,14 +112,13 @@ func (m *NotesViewModel) createNoteAt(location app.NoteLocation) tea.Cmd {
 	return startNoteEditor(editor, location, models.NewNote("Untitled Note"), true)
 }
 
-func (m *NotesViewModel) deleteCurrentNote() tea.Cmd {
+func (m *NotesViewModel) deleteCurrentNote() {
 	row := m.currentRow()
 	if row == nil {
-		return nil
+		return
 	}
 	m.confirm.Show("delete", fmt.Sprintf("Delete '%s'?", row.Note.Title))
 	m.pendingDelete = row.Identity()
-	return nil
 }
 
 func (m *NotesViewModel) performDelete() tea.Cmd {
@@ -133,7 +132,7 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 		Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: location, Note: note}},
 		UndoAction:  "Delete Note",
 		UndoContext: note.Title,
-	}, "Deleted: "+note.Title, false)
+	}, "Deleted: "+note.Title)
 }
 
 func (m *NotesViewModel) undoDelete() tea.Cmd {

@@ -22,7 +22,7 @@ func externalContextMutationFixture(t *testing.T) (*session4LifecycleFixture, *m
 	beta := newSession4Project(t, "Beta")
 	beta.Context = "home"
 
-	fixture := newSession4LifecycleFixture(t, true, alpha, beta)
+	fixture := newSession4LifecycleFixture(t, alpha, beta)
 	fixture.cross.applyContextScope(RegularContextScope("work"))
 	if ids := taskRowProjectIDs(fixture.cross); !containsProject(ids, alpha.ID) || containsProject(ids, beta.ID) {
 		t.Fatalf("the work context did not narrow the Outliner first: %v", ids)
@@ -61,7 +61,7 @@ func TestProjectRelabelOutsideHubFallsBackToAllContextScope(t *testing.T) {
 		false,
 	))
 
-	_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{Project: live})
+	_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{})
 	runSession2AppCommand(t, fixture.app, cmd)
 
 	assertContextScopeFellBackToAll(t, fixture.cross, beta.ID)

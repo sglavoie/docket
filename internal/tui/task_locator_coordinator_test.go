@@ -10,7 +10,7 @@ import (
 
 const duplicateLocatorTaskID = "duplicate-task-id"
 
-func locatorTestTask(t *testing.T, id string, shortID int, typ string, title string) *models.Task {
+func locatorTestTask(t *testing.T, id string, shortID int, title string) *models.Task {
 	t.Helper()
 	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
@@ -20,17 +20,17 @@ func locatorTestTask(t *testing.T, id string, shortID int, typ string, title str
 	return task
 }
 
-func newDuplicateLocatorEnv(t *testing.T, betaExtras ...*models.Task) (*crossProjectTestEnv, *models.Task, *models.Task) {
+func newDuplicateLocatorEnv(t *testing.T, betaExtras ...*models.Task) (*crossProjectTestEnv, *models.Task) {
 	t.Helper()
-	alpha := locatorTestTask(t, duplicateLocatorTaskID, 1, "", "Alpha duplicate")
-	beta := locatorTestTask(t, duplicateLocatorTaskID, 1, "", "Beta duplicate")
+	alpha := locatorTestTask(t, duplicateLocatorTaskID, 1, "Alpha duplicate")
+	beta := locatorTestTask(t, duplicateLocatorTaskID, 1, "Beta duplicate")
 	betaTasks := append([]*models.Task{beta}, betaExtras...)
-	return newCrossProjectTestEnv(t, []*models.Task{alpha}, betaTasks), alpha, beta
+	return newCrossProjectTestEnv(t, []*models.Task{alpha}, betaTasks), beta
 }
 
 func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	t.Run("state", func(t *testing.T) {
-		env, _, beta := newDuplicateLocatorEnv(t)
+		env, beta := newDuplicateLocatorEnv(t)
 		identity := taskIdentityFor(beta, env.projects[1])
 
 		res := runResult(t, env.taskItem.Transition(identity, models.StateDoing))
@@ -46,7 +46,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	})
 
 	t.Run("priority and due date", func(t *testing.T) {
-		env, _, beta := newDuplicateLocatorEnv(t)
+		env, beta := newDuplicateLocatorEnv(t)
 		identity := taskIdentityFor(beta, env.projects[1])
 		due := time.Date(2026, time.July, 30, 0, 0, 0, 0, time.UTC)
 
@@ -67,8 +67,8 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	})
 
 	t.Run("delayed reparent", func(t *testing.T) {
-		parent := locatorTestTask(t, "beta-parent", 2, "", "Beta parent")
-		env, _, beta := newDuplicateLocatorEnv(t, parent)
+		parent := locatorTestTask(t, "beta-parent", 2, "Beta parent")
+		env, beta := newDuplicateLocatorEnv(t, parent)
 		outliner := newCrossOutlinerFromEnv(env)
 		newParentID := parent.ID
 
@@ -91,7 +91,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	})
 
 	t.Run("edit", func(t *testing.T) {
-		env, _, beta := newDuplicateLocatorEnv(t)
+		env, beta := newDuplicateLocatorEnv(t)
 		title := "Edited beta only"
 		res := runResult(t, env.taskItem.Edit(taskIdentityFor(beta, env.projects[1]), app.EditRequest{Title: &title}))
 		if res.ProjectID != env.projects[1].ID {
@@ -106,7 +106,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	})
 
 	t.Run("attachment and subview", func(t *testing.T) {
-		env, _, beta := newDuplicateLocatorEnv(t)
+		env, beta := newDuplicateLocatorEnv(t)
 		features := newSecondaryCoordinators(env.svc)
 		identity := taskIdentityFor(beta, env.projects[1])
 

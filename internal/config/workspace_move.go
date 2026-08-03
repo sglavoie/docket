@@ -25,7 +25,6 @@ type MoveReport struct {
 	FilesCopied    int
 	FilesSkipped   int // already present at the destination and byte-identical
 	DirsCreated    int
-	BytesCopied    int64
 	SourceRetained bool
 }
 
@@ -289,13 +288,12 @@ func copyDestinationFiles(entries []workspaceEntry, dst string, report *MoveRepo
 		} else if !errors.Is(statErr, os.ErrNotExist) {
 			return fmt.Errorf("workspace move: cannot inspect destination %s: %w", target, statErr)
 		}
-		n, copied, err := copyFileVerified(e.src, target, e.perm, e.hash)
+		copied, err := copyFileVerified(e.src, target, e.perm, e.hash)
 		if err != nil {
 			return err
 		}
 		if copied {
 			report.FilesCopied++
-			report.BytesCopied += n
 		} else {
 			report.FilesSkipped++
 		}
@@ -429,56 +427,56 @@ func hashFile(path string) (string, error) {
 // matches the inventoried source hash, atomically links it into place without
 // replacement, and fsyncs the destination directory. The bool reports whether
 // this call published the file; an identical destination race is reusable.
-func copyFileVerified(src, dst string, perm fs.FileMode, expectedHash string) (int64, bool, error) {
+func copyFileVerified(src, dst string, perm fs.FileMode, expectedHash string) (bool, error) {
 	in, openErr := os.Open(src)
 	if openErr != nil {
-		return 0, false, fmt.Errorf("workspace move: failed to open source %s: %w", src, openErr)
+		return false, fmt.Errorf("workspace move: failed to open source %s: %w", src, openErr)
 	}
 	defer func() { _ = in.Close() }()
 
 	dir := filepath.Dir(dst)
 	tmp, tmpErr := os.CreateTemp(dir, ".tt-move-*")
 	if tmpErr != nil {
-		return 0, false, fmt.Errorf("workspace move: failed to create temp file in %s: %w", dir, tmpErr)
+		return false, fmt.Errorf("workspace move: failed to create temp file in %s: %w", dir, tmpErr)
 	}
 	tmpName := tmp.Name()
 
 	srcHash := sha256.New()
-	written, copyErr := io.Copy(io.MultiWriter(tmp, srcHash), in)
+	_, copyErr := io.Copy(io.MultiWriter(tmp, srcHash), in)
 	if copyErr != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: failed to copy %s: %w", src, copyErr)
+		return false, fmt.Errorf("workspace move: failed to copy %s: %w", src, copyErr)
 	}
 	if err := os.Chmod(tmpName, perm); err != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: failed to set permissions on %s: %w", tmpName, err)
+		return false, fmt.Errorf("workspace move: failed to set permissions on %s: %w", tmpName, err)
 	}
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: failed to fsync %s: %w", tmpName, err)
+		return false, fmt.Errorf("workspace move: failed to fsync %s: %w", tmpName, err)
 	}
 	if err := tmp.Close(); err != nil {
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: failed to close %s: %w", tmpName, err)
+		return false, fmt.Errorf("workspace move: failed to close %s: %w", tmpName, err)
 	}
 
 	// Read-back verification: the published file must match the source exactly.
 	dstHash, hashErr := hashFile(tmpName)
 	if hashErr != nil {
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: failed to verify copy of %s: %w", src, hashErr)
+		return false, fmt.Errorf("workspace move: failed to verify copy of %s: %w", src, hashErr)
 	}
 	copiedSourceHash := hex.EncodeToString(srcHash.Sum(nil))
 	if copiedSourceHash != expectedHash {
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move aborted: source changed while copying, refusing to publish mixed bytes: %s", src)
+		return false, fmt.Errorf("workspace move aborted: source changed while copying, refusing to publish mixed bytes: %s", src)
 	}
 	if dstHash != copiedSourceHash {
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: hash mismatch after copying %s (corruption detected)", src)
+		return false, fmt.Errorf("workspace move: hash mismatch after copying %s (corruption detected)", src)
 	}
 
 	// Publish without replacement. A destination writer racing the move must
@@ -488,21 +486,21 @@ func copyFileVerified(src, dst string, perm fs.FileMode, expectedHash string) (i
 			existingHash, hashErr := hashFile(dst)
 			_ = os.Remove(tmpName)
 			if hashErr != nil {
-				return 0, false, fmt.Errorf("workspace move: failed to inspect destination race at %s: %w", dst, hashErr)
+				return false, fmt.Errorf("workspace move: failed to inspect destination race at %s: %w", dst, hashErr)
 			}
 			if existingHash == expectedHash {
-				return 0, false, nil
+				return false, nil
 			}
-			return 0, false, fmt.Errorf("workspace move aborted: destination file appeared while copying, refusing to overwrite: %s", dst)
+			return false, fmt.Errorf("workspace move aborted: destination file appeared while copying, refusing to overwrite: %s", dst)
 		}
 		_ = os.Remove(tmpName)
-		return 0, false, fmt.Errorf("workspace move: failed to publish %s without overwrite: %w", dst, err)
+		return false, fmt.Errorf("workspace move: failed to publish %s without overwrite: %w", dst, err)
 	}
 	if err := os.Remove(tmpName); err != nil {
-		return 0, false, fmt.Errorf("workspace move: failed to remove linked temp file %s: %w", tmpName, err)
+		return false, fmt.Errorf("workspace move: failed to remove linked temp file %s: %w", tmpName, err)
 	}
 	fsyncDir(dir)
-	return written, true, nil
+	return true, nil
 }
 
 // fsyncDir best-effort fsyncs a directory so a rename into it is durable.

@@ -15,22 +15,18 @@ func (p *ListSurfaceAdapter[T]) PrimeAlwaysSearch() {
 }
 
 type alwaysSearchSinglePickerConfig[T PickerItem] struct {
-	AllItems  []T
 	UpKeys    []string
 	DownKeys  []string
 	PageSize  int
-	MaxCursor func(filtered []T) int
 	CancelMsg func() tea.Msg
 	SelectMsg func(cursor int, filtered []T) tea.Msg
 }
 
 type alwaysSearchSinglePicker[T PickerItem] struct {
 	picker    *ListSurfaceAdapter[T]
-	allItems  []T
 	upKeys    []string
 	downKeys  []string
 	pageSize  int
-	maxCursor func(filtered []T) int
 	cancelMsg func() tea.Msg
 	selectMsg func(cursor int, filtered []T) tea.Msg
 }
@@ -47,19 +43,11 @@ func newAlwaysSearchSinglePicker[T PickerItem](
 	if cfg.PageSize <= 0 {
 		cfg.PageSize = 10
 	}
-	if cfg.MaxCursor == nil {
-		cfg.MaxCursor = func(filtered []T) int {
-			return max(len(filtered)-1, 0)
-		}
-	}
-
 	return &alwaysSearchSinglePicker[T]{
 		picker:    picker,
-		allItems:  cfg.AllItems,
 		upKeys:    cfg.UpKeys,
 		downKeys:  cfg.DownKeys,
 		pageSize:  cfg.PageSize,
-		maxCursor: cfg.MaxCursor,
 		cancelMsg: cfg.CancelMsg,
 		selectMsg: cfg.SelectMsg,
 	}

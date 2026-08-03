@@ -82,10 +82,12 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 }
 
 func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
+	var invocation OperationInvocation
 	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
 	}, map[OperationID]OperationHandler{
-		"test.act": func(OperationInvocation) OperationHandlerResult {
+		"test.act": func(got OperationInvocation) OperationHandlerResult {
+			invocation = got
 			return OperationHandlerResult{Status: "acted"}
 		},
 	})
@@ -99,7 +101,6 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 		[]OperationID{"test.act"},
 		ContextActionSheetConfig{
 			Host:     ContextActionHostScopeHub,
-			Source:   OperationSourceActionSheet,
 			Value:    "frozen-row",
 			HasValue: true,
 		},
@@ -118,14 +119,11 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 	if !ok {
 		t.Fatalf("Enter returned %T, want ContextActionSheetResultMsg", raw)
 	}
-	if got := emitted.Request.Context.ScopeProjectIDs; !slices.Equal(got, []string{"project-a"}) {
+	if got := invocation.Context.ScopeProjectIDs; !slices.Equal(got, []string{"project-a"}) {
 		t.Fatalf("frozen scope = %v, want the context captured at open time", got)
 	}
-	if emitted.Request.Value != "frozen-row" || !emitted.Request.HasValue {
-		t.Fatalf("frozen host value = %#v (has %v)", emitted.Request.Value, emitted.Request.HasValue)
-	}
-	if emitted.Request.Source != OperationSourceActionSheet {
-		t.Fatalf("request source = %q", emitted.Request.Source)
+	if invocation.Value != "frozen-row" || !invocation.HasValue {
+		t.Fatalf("frozen host value = %#v (has %v)", invocation.Value, invocation.HasValue)
 	}
 	if emitted.Result.Status != "acted" {
 		t.Fatalf("result status = %q, want the handler status", emitted.Result.Status)
@@ -206,12 +204,8 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 	if !dismissed {
 		t.Fatal("Esc did not close the sheet")
 	}
-	closed, ok := raw.(ContextActionSheetClosedMsg)
-	if !ok {
+	if _, ok := raw.(ContextActionSheetClosedMsg); !ok {
 		t.Fatalf("Esc returned %T, want ContextActionSheetClosedMsg", raw)
-	}
-	if closed.Host != ContextActionHostScopeHub {
-		t.Fatalf("closed host = %q, want the opening host", closed.Host)
 	}
 	if executed {
 		t.Fatal("Esc executed the cursor action")
@@ -220,10 +214,7 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 
 func TestContextActionSheetSheetOnlyCompletionLeavesHostOpen(t *testing.T) {
 	app := newUITestApp()
-	if cmd := app.applyContextActionSheetResult(ContextActionSheetResultMsg{
-		Host:       ContextActionHostOutliner,
-		Completion: ContextActionCompleteCloseSheet,
-	}); cmd != nil {
+	if cmd := app.applyContextActionSheetResult(ContextActionSheetResultMsg{}); cmd != nil {
 		t.Fatalf("close-sheet completion asked the host to close: %T", cmd())
 	}
 }

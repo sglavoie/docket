@@ -116,7 +116,6 @@ func executePromotedTool(
 	result := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: context,
-		Source:  OperationSourceDirectKey,
 	})
 	if result.Err != nil {
 		t.Fatalf("execute %s: %v", id, result.Err)

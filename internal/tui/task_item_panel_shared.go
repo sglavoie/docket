@@ -119,7 +119,6 @@ func updateTaskItemPanelNormalMode(
 }
 
 type taskItemPanelActions struct {
-	model                    tea.Model
 	itemName                 string
 	inInputMode              func() bool
 	moveCursorDown           func()
@@ -130,7 +129,6 @@ type taskItemPanelActions struct {
 	hasSelection             func() bool
 	startEdit                func() tea.Cmd
 	editExternal             func() tea.Cmd
-	showDeleteConfirm        func()
 	showIndexedDeleteConfirm func()
 	copyText                 func() tea.Cmd
 	copyAllText              func() tea.Cmd
@@ -138,7 +136,7 @@ type taskItemPanelActions struct {
 	close                    func() tea.Msg
 }
 
-func (a taskItemPanelActions) handleNormalKey(state *InteractiveViewState, key string) tea.Cmd {
+func (a taskItemPanelActions) handleNormalKey(key string) tea.Cmd {
 	switch key {
 	case "esc":
 		return func() tea.Msg { return a.close() }
@@ -179,90 +177,92 @@ func (a taskItemPanelActions) handleNormalKey(state *InteractiveViewState, key s
 	return nil
 }
 
-func buildTaskItemPanelKeyMap(viewName string, actions taskItemPanelActions, extraEntries ...keymap.Entry) *keymap.KeyMap {
+func buildTaskItemPanelKeyMap(actions taskItemPanelActions, extraEntries ...keymap.Entry) *keymap.KeyMap {
 	inInputMode := actions.inInputMode
 
 	entries := []keymap.Entry{
-		keymap.Bind("j", "Move cursor down", "Navigation", func() (tea.Model, tea.Cmd) {
-			actions.moveCursorDown()
-			return actions.model, nil
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("down", "Move cursor down", "Navigation", func() (tea.Model, tea.Cmd) {
-			actions.moveCursorDown()
-			return actions.model, nil
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("k", "Move cursor up", "Navigation", func() (tea.Model, tea.Cmd) {
-			actions.moveCursorUp()
-			return actions.model, nil
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("up", "Move cursor up", "Navigation", func() (tea.Model, tea.Cmd) {
-			actions.moveCursorUp()
-			return actions.model, nil
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("G", fmt.Sprintf("Jump to last %s", actions.itemName), "Navigation", func() (tea.Model, tea.Cmd) {
-			actions.moveCursorBottom()
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
+		keymap.Bind("j", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("G", fmt.Sprintf("Jump to last %s", actions.itemName), "Navigation", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
 	}
 
-	entries = append(entries, keymap.Bind("home", "Jump to first", "Navigation", func() (tea.Model, tea.Cmd) {
-		actions.jumpToTop()
-		return actions.model, nil
-	}, keymap.WithGate(func() bool { return !inInputMode() })))
+	entries = append(entries, keymap.Bind("home", "Jump to first", "Navigation", keymap.WithGate(func() bool {
+		return !inInputMode()
+	}),
+	))
 
 	entries = append(entries,
-		keymap.Bind("a", fmt.Sprintf("Add %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			return actions.model, actions.beginAdd()
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("n", fmt.Sprintf("Add %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			return actions.model, actions.beginAdd()
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("e", fmt.Sprintf("Edit %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				return actions.model, actions.startEdit()
-			}
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("E", "Edit in external editor", "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				return actions.model, actions.editExternal()
-			}
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("d", fmt.Sprintf("Delete %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				actions.showDeleteConfirm()
-			}
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("x", fmt.Sprintf("Delete %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				actions.showDeleteConfirm()
-			}
-			return actions.model, nil
-		}, keymap.AsHidden(), keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("y", fmt.Sprintf("Copy %s text", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				return actions.model, actions.copyText()
-			}
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("Y", "Copy all as Markdown", "Actions", func() (tea.Model, tea.Cmd) {
-			return actions.model, actions.copyAllText()
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
-		keymap.Bind("enter", fmt.Sprintf("Expand %s", actions.itemName), "Actions", func() (tea.Model, tea.Cmd) {
-			if actions.hasSelection() {
-				actions.expandSelection()
-			}
-			return actions.model, nil
-		}, keymap.WithGate(func() bool { return !inInputMode() })),
+		keymap.Bind("a", fmt.Sprintf("Add %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("n", fmt.Sprintf("Add %s", actions.itemName), "Actions", keymap.AsHidden(), keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("e", fmt.Sprintf("Edit %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("d", fmt.Sprintf("Delete %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("x", fmt.Sprintf("Delete %s", actions.itemName), "Actions", keymap.AsHidden(), keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("y", fmt.Sprintf("Copy %s text", actions.itemName), "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
+
+		keymap.Bind("enter", fmt.Sprintf("Expand %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
+			return !inInputMode()
+		}),
+		),
 	)
 
 	entries = append(entries, extraEntries...)
 
 	return &keymap.KeyMap{
-		ViewName: viewName,
-		Entries:  entries,
+		Entries: entries,
 	}
 }
 

@@ -134,7 +134,7 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		if !ok || age < CompletionAgeAll || age > CompletionAge90Days {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid completion-age filter value")}
 		}
-		filter.setCompletionAgeFilter(age, true)
+		filter.setCompletionAgeFilter(age)
 		status = "Filtering completed: " + completionAgeFilterLabel(age)
 	case operationFilterStates:
 		names, ok := invocation.Value.([]string)

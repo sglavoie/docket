@@ -56,7 +56,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 			task := seedTask(t, 1, "Ledger undo target", models.StateBacklog)
 			project := newLedgerUndoProject(t, dataDir, "ledger-undo", task)
 
-			mutator := newLedgerUndoApp(t, dataDir, project, ViewCrossProjectOutliner, task.ID, true)
+			mutator := newLedgerUndoApp(t, dataDir, project, task.ID, true)
 			before := readTasksFile(t, project)
 
 			if err := tc.mutate(mutator.appService, task.ID); err != nil {
@@ -69,7 +69,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 
 			// Simulate a restart: a brand-new AppModel with no in-memory undo state,
 			// reading the durable ledger the previous session wrote.
-			restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewCrossProjectOutliner, task.ID, false)
+			restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), task.ID, false)
 
 			restarted = sendAppKey(restarted, syntheticKey('u'))
 			if got := readTasksFile(t, project); !bytes.Equal(got, before) {
@@ -89,7 +89,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		task := seedTask(t, 1, "Planning transition target", models.StateBacklog)
 		project := newLedgerUndoProject(t, dataDir, "planning-undo", task)
 
-		mutator := newLedgerUndoApp(t, dataDir, project, ViewCrossProjectOutliner, task.ID, true)
+		mutator := newLedgerUndoApp(t, dataDir, project, task.ID, true)
 
 		// Seed the task into Today so a lifecycle transition to Waiting must drop
 		// the Today entry through the folded planning artifact.
@@ -107,7 +107,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		}
 		after := readTasksFile(t, project)
 
-		restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), ViewCrossProjectOutliner, task.ID, false)
+		restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), task.ID, false)
 
 		restarted = sendAppKey(restarted, syntheticKey('u'))
 		if got := readTasksFile(t, project); !bytes.Equal(got, before) {
@@ -157,7 +157,7 @@ func restartLedgerProject(src *models.Project) *models.Project {
 // wired to the same ledger-backed application service and planning reconciliation
 // as production. With seed=true it writes the project's initial tasks.md; with
 // seed=false it reloads an already-persisted project, modeling a restart.
-func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hostView PresentationID, taskID string, seed bool) *AppModel {
+func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, taskID string, seed bool) *AppModel {
 	t.Helper()
 
 	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
@@ -181,30 +181,28 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, hos
 	svc.WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 
 	appModel := &AppModel{
-		configManager:        manager,
-		runtime:              runtime,
-		deps:                 newShellDeps(runtime, svc, manager, ledger),
-		projects:             map[string]*models.Project{project.ID: project},
-		persister:            NewProjectService(),
-		appService:           svc,
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		width:                80,
-		height:               24,
-		views:                NewViewRegistry(),
-		currentProject:       project,
-		nextOrder:            []PlanningTask{},
-		nextOrderIDs:         make(map[TaskIdentity]bool),
-		today:                []PlanningTask{},
-		todayIDs:             make(map[TaskIdentity]bool),
-		operationRegistry:    NewOperationRegistry(),
-		navigation:           NewNavigationState(),
+		configManager:     manager,
+		runtime:           runtime,
+		deps:              newShellDeps(ledger),
+		projects:          map[string]*models.Project{project.ID: project},
+		persister:         NewProjectService(),
+		appService:        svc,
+		width:             80,
+		height:            24,
+		views:             NewViewRegistry(),
+		currentProject:    project,
+		nextOrder:         []PlanningTask{},
+		nextOrderIDs:      make(map[TaskIdentity]bool),
+		today:             []PlanningTask{},
+		todayIDs:          make(map[TaskIdentity]bool),
+		operationRegistry: NewOperationRegistry(),
+		navigation:        NewNavigationState(),
 	}
 	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)
-	appModel.lastNavigatedTaskID = taskID
 	outliner := NewOutlinerModel(project, manager, runtime)
 	outliner.rebuildRows()
 	outliner.moveCursorToTask(taskID)
-	appModel.showView(hostView, outliner)
+	appModel.showView(ViewCrossProjectOutliner, outliner)
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}

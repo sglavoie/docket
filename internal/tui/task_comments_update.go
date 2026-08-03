@@ -92,7 +92,7 @@ func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
-	return m.panelActions().handleNormalKey(&m.InteractiveViewState, key)
+	return m.panelActions().handleNormalKey(key)
 }
 
 func (m *TaskCommentsModel) HandledKeys() []string {

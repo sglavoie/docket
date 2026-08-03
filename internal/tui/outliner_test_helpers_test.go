@@ -14,9 +14,9 @@ func typedTestApp(t *testing.T) *AppModel {
 	model, project := newTestAppModelWithProject()
 	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
 	model.appService = service
-	model.features = newFeatureCoordinators(service, service)
+	model.features = newFeatureCoordinators(service)
 	model.secondaryFeatures = newSecondaryCoordinators(service)
-	model.deps = newShellDeps(model.runtime, service, model.configManager, nil)
+	model.deps = newShellDeps(nil)
 	model.operationRegistry = NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 
@@ -152,7 +152,6 @@ func renderFixtureTask(
 	t *testing.T,
 	id string,
 	shortID int,
-	taskType string,
 	title string,
 	status models.WorkflowState,
 	priority int,

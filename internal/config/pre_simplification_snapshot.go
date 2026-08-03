@@ -113,7 +113,7 @@ func IsPreSimplificationV5SnapshotPath(dataDir, path string) bool {
 		return false
 	}
 	stampAndSuffix := strings.TrimPrefix(name, preSimplificationV5SnapshotPrefix)
-	stamp := ""
+	var stamp string
 	switch {
 	case strings.HasSuffix(stampAndSuffix, preSimplificationV5ArchiveSuffix):
 		stamp = strings.TrimSuffix(stampAndSuffix, preSimplificationV5ArchiveSuffix)
@@ -185,7 +185,7 @@ func InspectPreSimplificationV5Snapshots(dataDir string) (PreSimplificationV5Sna
 			result.Issues = append(result.Issues, fmt.Sprintf("pre-simplification snapshot artifact %q is empty", name))
 		}
 
-		stem := ""
+		var stem string
 		isArchive := strings.HasSuffix(name, preSimplificationV5ArchiveSuffix)
 		if isArchive {
 			stem = strings.TrimSuffix(name, preSimplificationV5ArchiveSuffix)

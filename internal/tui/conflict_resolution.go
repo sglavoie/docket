@@ -39,9 +39,7 @@ type ShowConflictResolutionMsg struct {
 // pop the view and surface a status. NewConflictID is set when a re-merge against
 // a newer remote produced a fresh conflict instead of committing.
 type ConflictResolvedMsg struct {
-	ConflictID    string
 	NewConflictID string
-	Committed     bool
 	Adopted       bool // adopted remote (nothing written)
 	RetryRequired bool // aborted transaction was not applied; rerun the operation
 }
@@ -129,17 +127,16 @@ func (m *ConflictResolutionModel) resolve(resolution storage.ConflictResolution,
 		if errors.Is(err, storage.ErrRemoteReconflict) {
 			newID := res.NewConflictID
 			return func() tea.Msg {
-				return ConflictResolvedMsg{ConflictID: id, NewConflictID: newID}
+				return ConflictResolvedMsg{NewConflictID: newID}
 			}
 		}
 		m.setError(err.Error())
 		return nil
 	}
-	committed := res.Committed
 	adopted := resolution == storage.ResolveUseRemote
 	retryRequired := res.RetryRequired
 	return func() tea.Msg {
-		return ConflictResolvedMsg{ConflictID: id, Committed: committed, Adopted: adopted, RetryRequired: retryRequired}
+		return ConflictResolvedMsg{Adopted: adopted, RetryRequired: retryRequired}
 	}
 }
 
@@ -203,29 +200,17 @@ func (m *ConflictResolutionModel) GetHelpItems() []HelpItem {
 
 func (m *ConflictResolutionModel) buildKeyMap() *keymap.KeyMap {
 	entries := []keymap.Entry{
-		keymap.Bind("j", "Next conflict", "Navigation", func() (tea.Model, tea.Cmd) {
-			if m.cursor < len(m.conflicts())-1 {
-				m.cursor++
-			}
-			return m, nil
-		}, keymap.AsHidden()),
-		keymap.Bind("k", "Previous conflict", "Navigation", func() (tea.Model, tea.Cmd) {
-			if m.cursor > 0 {
-				m.cursor--
-			}
-			return m, nil
-		}, keymap.AsHidden()),
-		keymap.Bind("l", "Keep local", "Resolution", func() (tea.Model, tea.Cmd) {
-			return m, m.resolve(storage.ResolveUseLocal, "")
-		}),
-		keymap.Bind("r", "Adopt remote", "Resolution", func() (tea.Model, tea.Cmd) {
-			return m, m.resolve(storage.ResolveUseRemote, "")
-		}),
-		keymap.Bind("e", "Hand-merge in editor", "Resolution", func() (tea.Model, tea.Cmd) {
-			return m, m.editExternally()
-		}),
+		keymap.Bind("j", "Next conflict", "Navigation", keymap.AsHidden()),
+
+		keymap.Bind("k", "Previous conflict", "Navigation", keymap.AsHidden()),
+
+		keymap.Bind("l", "Keep local", "Resolution"),
+
+		keymap.Bind("r", "Adopt remote", "Resolution"),
+
+		keymap.Bind("e", "Hand-merge in editor", "Resolution"),
 	}
-	return &keymap.KeyMap{ViewName: "Conflict Resolution", Entries: entries}
+	return &keymap.KeyMap{Entries: entries}
 }
 
 func (m *ConflictResolutionModel) View() tea.View {

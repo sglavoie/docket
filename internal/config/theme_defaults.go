@@ -1,16 +1,5 @@
 package config
 
-// LightThemeDefaultsRev is the revision of the curated DefaultLightTheme values.
-// Increment this when palette defaults change so MigratePaletteToThemes can
-// force-refresh stale configs. Rev 1 = shipped d5d987c; Rev 2 = this refresh.
-const LightThemeDefaultsRev = 4
-
-// DarkThemeDefaultsRev is the revision of the curated DefaultDarkTheme values.
-// Increment this when dark palette defaults change so MigratePaletteToThemes
-// can force-refresh stale configs. Rev 1 = Tokyo Night controlled-saturation
-// palette; Rev 2 = dark contrast refresh.
-const DarkThemeDefaultsRev = 3
-
 // DefaultLightTheme returns a Theme with curated light-mode color values for
 // all maintained palette roles, including priority and semantic-title variants.
 // These values are optimized for light terminal backgrounds.

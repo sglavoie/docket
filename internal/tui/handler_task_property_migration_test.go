@@ -24,7 +24,6 @@ func TestHandleTaskPropertyChangedNeedsSaveCommitsAsync(t *testing.T) {
 	env.projects[0].MutateTask(task.ID, func(tk *models.Task) { tk.Priority = 2 })
 
 	handled, cmd := app.handleTaskStatusPropertyMessages(TaskPropertyChangedMsg{
-		Task:        task,
 		NeedsSave:   true,
 		UndoAction:  "Set Priority",
 		UndoContext: "#1 priority task",
@@ -55,7 +54,7 @@ func TestHandleTaskPropertyChangedNoSaveSkipsCommit(t *testing.T) {
 	app := env.appModel()
 	app.currentProject = env.projects[0]
 
-	handled, cmd := app.handleTaskStatusPropertyMessages(TaskPropertyChangedMsg{Task: task})
+	handled, cmd := app.handleTaskStatusPropertyMessages(TaskPropertyChangedMsg{})
 	if !handled {
 		t.Fatal("TaskPropertyChangedMsg should be handled")
 	}

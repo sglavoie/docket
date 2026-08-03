@@ -40,15 +40,12 @@ func NewTaskActionSheetModel(
 		ids = append(ids, descriptor.ID)
 	}
 	title := "Task Actions"
-	source := OperationSourceActionSheet
 	if context.Selection.Visual {
 		title = "Bulk Actions"
-		source = OperationSourceBulk
 	}
 	return NewContextActionSheetModel(registry, executor, context, ids, ContextActionSheetConfig{
 		Host:         ContextActionHostOutliner,
 		Completion:   ContextActionCompleteCloseSheet,
-		Source:       source,
 		Title:        title,
 		Subtitle:     strings.TrimSpace(taskTitle),
 		ItemIDPrefix: "task-action:",

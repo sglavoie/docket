@@ -18,9 +18,6 @@ func TestAddCommentAppendsAndCommits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddComment: %v", err)
 	}
-	if res.Count != 1 || res.Index != 0 {
-		t.Fatalf("res = %+v, want count 1 index 0", res)
-	}
 	if len(task.Comments) != 1 || task.Comments[0].Text != "root cause found" {
 		t.Fatalf("comments = %+v, want one trimmed comment", task.Comments)
 	}
@@ -53,15 +50,12 @@ func TestEditCommentPreservesTimestamp(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	res, err := svc.EditComment("t1", 0, "new text")
+	_, err := svc.EditComment("t1", 0, "new text")
 	if err != nil {
 		t.Fatalf("EditComment: %v", err)
 	}
 	if task.Comments[0].Text != "new text" || !task.Comments[0].CreatedAt.Equal(created) {
 		t.Fatalf("comment = %+v, want new text with preserved timestamp", task.Comments[0])
-	}
-	if res.Index != 0 || res.Count != 1 {
-		t.Fatalf("res = %+v, want index 0 count 1", res)
 	}
 
 	if _, err := svc.EditComment("t1", 5, "text"); !errors.Is(err, app.ErrInvalidInput) {
@@ -76,24 +70,24 @@ func TestRemoveAndClearComments(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	res, err := svc.RemoveComment("t1", 0)
+	_, err := svc.RemoveComment("t1", 0)
 	if err != nil {
 		t.Fatalf("RemoveComment: %v", err)
 	}
-	if res.Count != 2 || task.Comments[0].Text != "second" {
-		t.Fatalf("after remove: res=%+v comments=%+v", res, task.Comments)
+	if len(task.Comments) != 2 || task.Comments[0].Text != "second" {
+		t.Fatalf("after remove: comments=%+v", task.Comments)
 	}
 
 	if _, rangeErr := svc.RemoveComment("t1", 9); !errors.Is(rangeErr, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range err = %v, want ErrInvalidInput", rangeErr)
 	}
 
-	cleared, err := svc.ClearComments("t1")
+	_, err = svc.ClearComments("t1")
 	if err != nil {
 		t.Fatalf("ClearComments: %v", err)
 	}
-	if cleared.Count != 2 || len(task.Comments) != 0 {
-		t.Fatalf("after clear: res=%+v comments=%+v", cleared, task.Comments)
+	if len(task.Comments) != 0 {
+		t.Fatalf("after clear: comments=%+v", task.Comments)
 	}
 }
 

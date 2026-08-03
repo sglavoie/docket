@@ -261,11 +261,10 @@ func TestNotesMutationRefreshPreservesProjectScopeAndAcceptedSearch(t *testing.T
 			shell.reconcileNoteResult(ProjectNoteMutationResultMsg{
 				Location: location,
 				Result: app.NoteBatchResult{Results: []app.NoteResult{{
-					Kind:             kind,
-					Location:         location,
-					ProjectID:        project.ID,
-					Filename:         "after.md",
-					PreviousFilename: "before.md",
+					Kind:      kind,
+					Location:  location,
+					ProjectID: project.ID,
+					Filename:  "after.md",
 				}}},
 				SuccessMessage: "Changed",
 			})
@@ -342,7 +341,7 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	view.SetSize(width, height)
 	view.setErrorStatus(strings.Repeat("actionable visible error summary ", 8))
 
-	assertNotesLayoutFits(t, "flat list", view, width, height)
+	assertNotesLayoutFits(t, "flat list", view)
 	if len(view.visibleRows) != 3 {
 		t.Fatalf("duplicate located rows = %d, want three", len(view.visibleRows))
 	}
@@ -354,7 +353,7 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	if view.locationPicker != nil || view.renaming || view.confirm.IsActive() {
 		t.Fatal("search input leaked typed operation keys into the manager")
 	}
-	assertNotesLayoutFits(t, "persistent search", view, width, height)
+	assertNotesLayoutFits(t, "persistent search", view)
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
 
 	_, _ = view.Update(syntheticKey('v'))
@@ -365,7 +364,7 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 		view.searchEditing || view.renaming || view.confirm.IsActive() {
 		t.Fatal("scope picker leaked typed operation keys into the manager")
 	}
-	assertNotesLayoutFits(t, "scope picker", view, width, height)
+	assertNotesLayoutFits(t, "scope picker", view)
 	cancelNotesPicker(t, view)
 
 	_, _ = view.Update(syntheticKey('n'))
@@ -376,7 +375,7 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 		view.searchEditing || view.renaming || view.confirm.IsActive() {
 		t.Fatal("creation picker leaked typed operation keys into the manager")
 	}
-	assertNotesLayoutFits(t, "creation picker", view, width, height)
+	assertNotesLayoutFits(t, "creation picker", view)
 	cancelNotesPicker(t, view)
 
 	_, _ = view.Update(syntheticKey('m'))
@@ -387,16 +386,16 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 		view.searchEditing || view.renaming || view.confirm.IsActive() {
 		t.Fatal("move picker leaked typed operation keys into the manager")
 	}
-	assertNotesLayoutFits(t, "move picker", view, width, height)
+	assertNotesLayoutFits(t, "move picker", view)
 	cancelNotesPicker(t, view)
 }
 
-func assertNotesLayoutFits(t *testing.T, state string, view *NotesViewModel, width, height int) {
+func assertNotesLayoutFits(t *testing.T, state string, view *NotesViewModel) {
 	t.Helper()
 	content, auditIssues := withRenderAudit(func() string {
 		return view.View().Content
 	})
-	_, issues := normalizeScreen(content, width, height)
+	_, issues := normalizeScreen(content, 60, 20)
 	issues = append(issues, auditIssues...)
 	if len(issues) != 0 {
 		t.Fatalf("%s layout issues = %#v\n%s", state, issues, content)

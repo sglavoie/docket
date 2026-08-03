@@ -4,7 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // This file introduces the feature-coordinator seam for the primary TUI views.
@@ -17,9 +16,8 @@ import (
 // outcome flowed back through.
 //
 // A feature coordinator collapses that into one seam per feature. A coordinator
-// holds a narrow application-mutation surface (FeatureMutator) and a narrow
-// read-model surface (FeatureQuery) — both satisfied by *app.Service — and
-// exposes exactly the operations its view performs. A mutation is dispatched as
+// holds a narrow application-mutation surface (FeatureMutator), satisfied by
+// *app.Service, and exposes exactly the operations its view performs. A mutation is dispatched as
 // a tea.Cmd that runs the application use case (committing one atomic ChangeSet)
 // and resolves to a TransactionResultMsg carrying the presentation-neutral
 // outcome. The view re-renders from that message instead of persisting a model
@@ -42,31 +40,12 @@ type FeatureMutator interface {
 	AddTaskWithChildren(req app.AddTaskRequest) (app.FormCreateResult, error)
 	// Edit applies a full or partial edit to a task (the edit task form).
 	Edit(req app.EditRequest) (app.TaskResult, error)
-	// Transition moves a task to a workflow state (Inbox triage, tree/outliner
-	// state changes).
-	Transition(req app.StateRequest) (app.TaskResult, error)
-	// Complete terminates a task as done without creating a successor.
-	Complete(taskID string) (app.TaskResult, error)
-	// SetPriority sets a task's schema-6 0..3 priority.
-	SetPriority(taskID string, priority int) (app.TaskResult, error)
 }
 
-// FeatureQuery is the narrow read-model surface the query-only project-selection
-// coordinator depends on. *app.Service satisfies
-// it. It never commits: every method loads a revision-consistent snapshot and
-// returns presentation-neutral summaries.
-type FeatureQuery interface {
-	// ListProjects returns a summary of every project in the workspace.
-	ListProjects() ([]app.ProjectSummary, error)
-	// Project returns the summary for a single project.
-	Project(projectID string) (app.ProjectSummary, error)
-}
-
-// Compile-time assurance that the application service satisfies both feature
-// surfaces, so a production coordinator can be built from one *app.Service.
+// Compile-time assurance that the application service satisfies the mutation
+// surface, so a production coordinator can be built from one *app.Service.
 var (
 	_ FeatureMutator = (*app.Service)(nil)
-	_ FeatureQuery   = (*app.Service)(nil)
 )
 
 // TransactionResultMsg is emitted when a coordinator mutation commits. It
@@ -78,7 +57,6 @@ var (
 type TransactionResultMsg struct {
 	// Feature names the coordinator that produced the mutation (capture, inbox,
 	// project-tree, outliner, task-form).
-	Feature string
 	// Action is the human-facing label for the mutation (e.g. "Capture",
 	// "Complete", "Set Priority").
 	Action string
@@ -103,24 +81,20 @@ func (m TransactionResultMsg) SuccessMessage() string {
 // persisting anything, the view keeps its pre-mutation model — the mutation left
 // no partial write to reconcile.
 type TransactionErrorMsg struct {
-	Feature string
-	Action  string
-	Err     error
+	Err error
 }
 
 // FeatureCoordinator is the shared base for the primary feature coordinators. It
-// binds a feature name to the application-mutation and read-model surfaces and
+// binds a feature name to the application-mutation surface and
 // provides the single command runner every mutation flows through.
 type FeatureCoordinator struct {
 	name    string
 	mutator FeatureMutator
-	query   FeatureQuery
 }
 
-// newFeatureCoordinator binds a named coordinator to the shared application
-// surfaces.
-func newFeatureCoordinator(name string, mutator FeatureMutator, query FeatureQuery) FeatureCoordinator {
-	return FeatureCoordinator{name: name, mutator: mutator, query: query}
+// newFeatureCoordinator binds a named coordinator to the application surface.
+func newFeatureCoordinator(name string, mutator FeatureMutator) FeatureCoordinator {
+	return FeatureCoordinator{name: name, mutator: mutator}
 }
 
 // Name returns the coordinator's feature name.
@@ -133,14 +107,13 @@ func (c FeatureCoordinator) Name() string { return c.name }
 // model copy itself. A use-case error resolves to a TransactionErrorMsg, which
 // leaves the pre-mutation model untouched.
 func (c FeatureCoordinator) run(action string, mutate func(FeatureMutator) (app.TaskResult, error)) tea.Cmd {
-	name := c.name
 	mutator := c.mutator
 	return func() tea.Msg {
 		res, err := mutate(mutator)
 		if err != nil {
-			return TransactionErrorMsg{Feature: name, Action: action, Err: err}
+			return TransactionErrorMsg{Err: err}
 		}
-		return TransactionResultMsg{Feature: name, Action: action, Result: res}
+		return TransactionResultMsg{Action: action, Result: res}
 	}
 }
 
@@ -199,64 +172,6 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 	}
 }
 
-// InboxCoordinator backs the system Inbox and the inbox-processor triage flow.
-type InboxCoordinator struct{ FeatureCoordinator }
-
-// Triage moves an inbox task to the chosen workflow state.
-func (c InboxCoordinator) Triage(taskID string, target models.WorkflowState) tea.Cmd {
-	return c.run("Triage", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.Transition(app.StateRequest{TaskID: taskID, Target: target})
-	})
-}
-
-// Complete terminates an inbox task as done.
-func (c InboxCoordinator) Complete(taskID string) tea.Cmd {
-	return c.run("Complete", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.Complete(taskID)
-	})
-}
-
-// ProjectTreeCoordinator backs the project tree hierarchy editor.
-type ProjectTreeCoordinator struct{ FeatureCoordinator }
-
-// SetPriority sets a tree task's priority.
-func (c ProjectTreeCoordinator) SetPriority(taskID string, priority int) tea.Cmd {
-	return c.run("Set Priority", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.SetPriority(taskID, priority)
-	})
-}
-
-// Transition moves a tree task to a workflow state.
-func (c ProjectTreeCoordinator) Transition(taskID string, target models.WorkflowState) tea.Cmd {
-	return c.run("Change State", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.Transition(app.StateRequest{TaskID: taskID, Target: target})
-	})
-}
-
-// Complete terminates a tree task as done.
-func (c ProjectTreeCoordinator) Complete(taskID string) tea.Cmd {
-	return c.run("Complete", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.Complete(taskID)
-	})
-}
-
-// OutlinerCoordinator backs the outliner hierarchy editor.
-type OutlinerCoordinator struct{ FeatureCoordinator }
-
-// SetPriority sets an outliner task's priority.
-func (c OutlinerCoordinator) SetPriority(taskID string, priority int) tea.Cmd {
-	return c.run("Set Priority", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.SetPriority(taskID, priority)
-	})
-}
-
-// Complete terminates an outliner task as done.
-func (c OutlinerCoordinator) Complete(taskID string) tea.Cmd {
-	return c.run("Complete", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.Complete(taskID)
-	})
-}
-
 // TaskFormCoordinator backs the create/edit task forms.
 type TaskFormCoordinator struct{ FeatureCoordinator }
 
@@ -300,40 +215,18 @@ func (c TaskFormCoordinator) EditForm(task TaskIdentity, req app.EditRequest) te
 	}
 }
 
-// ProjectSelectionCoordinator backs project selection surfaces. Query-only.
-type ProjectSelectionCoordinator struct{ FeatureCoordinator }
-
-// Projects returns every project summary for selection.
-func (c ProjectSelectionCoordinator) Projects() ([]app.ProjectSummary, error) {
-	return c.query.ListProjects()
-}
-
-// Project returns a single project summary for selection.
-func (c ProjectSelectionCoordinator) Project(projectID string) (app.ProjectSummary, error) {
-	return c.query.Project(projectID)
-}
-
 // FeatureCoordinators aggregates the primary-view coordinators the AppModel
 // hands to feature views as they migrate onto the application layer.
 type FeatureCoordinators struct {
-	ProjectSelection ProjectSelectionCoordinator
-	ProjectTree      ProjectTreeCoordinator
-	Outliner         OutlinerCoordinator
-	Capture          CaptureCoordinator
-	Inbox            InboxCoordinator
-	TaskForm         TaskFormCoordinator
+	Capture  CaptureCoordinator
+	TaskForm TaskFormCoordinator
 }
 
-// newFeatureCoordinators builds the primary coordinators over shared application
-// surfaces. In production both arguments are the same *app.Service; a scenario
-// test may inject distinct in-memory implementations to isolate behavior.
-func newFeatureCoordinators(mutator FeatureMutator, query FeatureQuery) FeatureCoordinators {
+// newFeatureCoordinators builds the primary coordinators over a shared
+// application mutation surface.
+func newFeatureCoordinators(mutator FeatureMutator) FeatureCoordinators {
 	return FeatureCoordinators{
-		ProjectSelection: ProjectSelectionCoordinator{newFeatureCoordinator("project-selection", mutator, query)},
-		ProjectTree:      ProjectTreeCoordinator{newFeatureCoordinator("project-tree", mutator, query)},
-		Outliner:         OutlinerCoordinator{newFeatureCoordinator("outliner", mutator, query)},
-		Capture:          CaptureCoordinator{newFeatureCoordinator("capture", mutator, query)},
-		Inbox:            InboxCoordinator{newFeatureCoordinator("inbox", mutator, query)},
-		TaskForm:         TaskFormCoordinator{newFeatureCoordinator("task-form", mutator, query)},
+		Capture:  CaptureCoordinator{newFeatureCoordinator("capture", mutator)},
+		TaskForm: TaskFormCoordinator{newFeatureCoordinator("task-form", mutator)},
 	}
 }

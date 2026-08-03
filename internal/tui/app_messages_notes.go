@@ -33,7 +33,6 @@ type ProjectNoteMutationResultMsg struct {
 	ProjectID      string
 	Result         app.NoteBatchResult
 	SuccessMessage string
-	ClearSelection bool
 }
 
 // ProjectNoteMutationErrorMsg preserves the typed application/storage error
@@ -60,7 +59,6 @@ type ProjectNoteLedgerErrorMsg struct {
 	Location  app.NoteLocation
 	ProjectID string
 	Err       error
-	Redo      bool
 }
 
 // ProjectNoteEditorDoneMsg carries only copied note/editor data back from a

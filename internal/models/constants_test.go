@@ -62,7 +62,6 @@ func TestIsHighPriorityExcludesUnset(t *testing.T) {
 		{PriorityUnset, false},
 		{1, true},
 		{2, false},
-		{PriorityDefault, false},
 		{PriorityMax, false},
 		{PriorityMax + 1, false},
 	}

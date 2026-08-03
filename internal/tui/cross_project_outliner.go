@@ -308,10 +308,10 @@ func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload(fallbackCursor, fa
 	m.moveCursorToNearestTask(fallbackCursor)
 }
 
-func (m *OutlinerModel) moveCursorToNearestTask(origin int) bool {
+func (m *OutlinerModel) moveCursorToNearestTask(origin int) {
 	if len(m.rows) == 0 {
 		m.cursor = 0
-		return false
+		return
 	}
 	if origin < 0 {
 		origin = 0
@@ -323,17 +323,16 @@ func (m *OutlinerModel) moveCursorToNearestTask(origin int) bool {
 		next := origin + distance
 		if next < len(m.rows) && m.rows[next].isTaskRow() && m.rows[next].task != nil {
 			m.cursor = next
-			return true
+			return
 		}
 		previous := origin - distance
 		if distance > 0 && previous >= 0 && m.rows[previous].isTaskRow() && m.rows[previous].task != nil {
 			m.cursor = previous
-			return true
+			return
 		}
 	}
 	m.cursor = origin
 	m.clampCursor()
-	return false
 }
 
 // cancelCrossProjectLoad settles an abandoned refresh and invalidates any

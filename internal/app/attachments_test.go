@@ -96,12 +96,9 @@ func TestAttachFileEmitsCopyOp(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	res, err := svc.AttachFile(task.ID, "/external/dir/report.pdf")
+	_, err := svc.AttachFile(task.ID, "/external/dir/report.pdf")
 	if err != nil {
 		t.Fatalf("AttachFile: %v", err)
-	}
-	if res.Filename != "report.pdf" {
-		t.Errorf("Filename = %q, want report.pdf", res.Filename)
 	}
 	if len(task.Attachments) != 1 || task.Attachments[0].Filename != "report.pdf" {
 		t.Fatalf("expected metadata for report.pdf, got %+v", task.Attachments)
@@ -181,12 +178,9 @@ func TestRemoveAttachmentFileEmitsDeleteOp(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	res, err := svc.RemoveAttachment(task.ID, 1, true)
+	_, err := svc.RemoveAttachment(task.ID, 1, true)
 	if err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
-	}
-	if !res.FileDeleted || res.Filename != "gone.txt" {
-		t.Errorf("unexpected result: %+v", res)
 	}
 	if len(task.Attachments) != 1 || task.Attachments[0].Filename != "keep.txt" {
 		t.Fatalf("expected only keep.txt to remain, got %+v", task.Attachments)
@@ -209,12 +203,9 @@ func TestRemoveURLAttachmentCarriesNoFileOp(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	res, err := svc.RemoveAttachment(task.ID, 0, true)
+	_, err := svc.RemoveAttachment(task.ID, 0, true)
 	if err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
-	}
-	if res.FileDeleted {
-		t.Error("URL removal must not delete a file")
 	}
 	if cs, _ := repo.lastCommit(); len(cs.AttachmentOps) != 0 {
 		t.Errorf("expected no file op for URL removal, got %d", len(cs.AttachmentOps))
@@ -229,12 +220,9 @@ func TestRemoveAttachmentKeepFileCarriesNoFileOp(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	res, err := svc.RemoveAttachment(task.ID, 0, false)
+	_, err := svc.RemoveAttachment(task.ID, 0, false)
 	if err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
-	}
-	if res.FileDeleted {
-		t.Error("keep-file removal must not delete the file")
 	}
 	if cs, _ := repo.lastCommit(); len(cs.AttachmentOps) != 0 {
 		t.Errorf("expected no file op for keep-file removal, got %d", len(cs.AttachmentOps))
@@ -307,11 +295,11 @@ func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 	repo.seed(t)
 
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
-	res, err := appSvc.AttachFile(task.ID, src)
+	_, err := appSvc.AttachFile(task.ID, src)
 	if err != nil {
 		t.Fatalf("AttachFile: %v", err)
 	}
-	dest, err := storage.ResolveAttachmentPath(project, task, res.Filename)
+	dest, err := storage.ResolveAttachmentPath(project, task, filepath.Base(src))
 	if err != nil {
 		t.Fatalf("ResolveAttachmentPath: %v", err)
 	}

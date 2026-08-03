@@ -56,9 +56,8 @@ const (
 
 // OperationValueSelectedMsg resumes a pending operation with the chosen value.
 type OperationValueSelectedMsg struct {
-	Request  OperationExecutionRequest
-	Provider ValueProviderID
-	Value    any
+	Request OperationExecutionRequest
+	Value   any
 }
 
 // OperationValueCanceledMsg closes the value picker and returns to its action
@@ -199,9 +198,8 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			return nil, false, StatusMsg(err.Error())
 		}
 		return nil, true, OperationValueSelectedMsg{
-			Request:  model.request,
-			Provider: model.provider,
-			Value:    value,
+			Request: model.request,
+			Value:   value,
 		}
 	default:
 		if model.provider == ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
@@ -209,7 +207,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 				value, err := model.selectedValue()
 				if err == nil {
 					return nil, true, OperationValueSelectedMsg{
-						Request: model.request, Provider: model.provider, Value: value,
+						Request: model.request, Value: value,
 					}
 				}
 			}
@@ -1478,10 +1476,7 @@ func (m *AppModel) resumeContextActionRequest(request OperationExecutionRequest)
 		m.contextActionSheet = nil
 	}
 	return m.applyContextActionSheetResult(ContextActionSheetResultMsg{
-		Host:       sheet.config.Host,
-		Completion: sheet.config.Completion,
-		Request:    request,
-		Result:     result,
+		Result: result,
 	})
 }
 

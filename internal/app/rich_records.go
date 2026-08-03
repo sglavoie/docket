@@ -6,7 +6,7 @@ import "fmt"
 // atomicity as their storage commit. Repository snapshots can
 // retain caller-visible pointers, so a failed commit restores the complete
 // pre-mutation graph.
-func (s *Service) mutateRichRecordSelection(taskID string, locator TaskLocator, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
+func (s *Service) mutateRichRecordSelection(taskID string, locator TaskLocator, undoAction string, mutate func(TaskRef) error) (TaskResult, error) {
 	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
@@ -24,7 +24,7 @@ func (s *Service) mutateRichRecordSelection(taskID string, locator TaskLocator, 
 	if mutateErr := mutate(ref); mutateErr != nil {
 		return TaskResult{}, mutateErr
 	}
-	result, err := s.commitProject(ref, revision, undoAction, undoContext)
+	result, err := s.commitProject(ref, revision, undoAction, "")
 	if err != nil {
 		return TaskResult{}, err
 	}

@@ -14,7 +14,7 @@ type DomainStore interface {
 
 // RuntimeDependencies is the narrow, domain-backed composition seam constructed
 // at startup. It lets callers obtain each configuration domain's capability
-// (catalog, planning, machine) without loading the whole
+// (catalog and planning) without loading the whole
 // config.Config facade. Every field is one of the narrow domain-store
 // interfaces, so a caller depends only on the domain it actually needs and tests
 // can inject per-domain fakes.
@@ -25,7 +25,6 @@ type DomainStore interface {
 type RuntimeDependencies struct {
 	Catalog  WorkspaceCatalogStore
 	Planning PlanningStore
-	Machine  MachineStore
 }
 
 // NewRuntimeDependencies builds the runtime composition from a single backing
@@ -39,14 +38,13 @@ func NewRuntimeDependencies(store DomainStore) *RuntimeDependencies {
 	return &RuntimeDependencies{
 		Catalog:  store,
 		Planning: store,
-		Machine:  store,
 	}
 }
 
 // RuntimeDependencies constructs the domain-backed runtime composition for this
 // manager's workspace, backed by the canonical per-domain-file store. It is the
-// centralized startup construction point: callers obtain catalog, planning, and
-// machine capabilities from the returned seam without loading config.Config.
+// centralized startup construction point: callers obtain catalog and planning
+// capabilities from the returned seam without loading config.Config.
 func (m *Manager) RuntimeDependencies() *RuntimeDependencies {
 	return NewRuntimeDependencies(m.domainStore())
 }

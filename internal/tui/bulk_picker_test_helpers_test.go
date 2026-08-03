@@ -107,11 +107,10 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 	}
 	return &AppModel{
 		configManager: e.mgr, runtime: testRuntimeAt(e.cfg.DataDir(), e.cfg),
-		deps:     newShellDeps(testRuntimeAt(e.cfg.DataDir(), e.cfg), nil, e.mgr, nil),
+		deps:     newShellDeps(nil),
 		projects: projects, persister: NewProjectService(), appService: e.svc,
 		secondaryFeatures: e.features, views: NewViewRegistry(),
 		navigation: NewNavigationState(), width: 80, height: 24,
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 	}
 }
 

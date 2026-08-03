@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -12,7 +11,6 @@ type GitHubIssueRef struct {
 	Owner  string
 	Repo   string
 	Number int
-	URL    string
 }
 
 // ParseGitHubIssueURL extracts a GitHub issue reference from a GitHub issue URL.
@@ -47,6 +45,5 @@ func ParseGitHubIssueURL(raw string) (GitHubIssueRef, bool) {
 		Owner:  parts[0],
 		Repo:   parts[1],
 		Number: number,
-		URL:    fmt.Sprintf("https://github.com/%s/%s/issues/%d", parts[0], parts[1], number),
 	}, true
 }

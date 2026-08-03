@@ -103,9 +103,7 @@ func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 // WorkspaceCommitted is true even if MachineErr is non-nil, then queue the
 // idempotent machine repair for retry.
 type runtimeDomainsCommitResult struct {
-	WorkspaceCommitted bool
-	MachineCommitted   bool
-	MachineErr         error
+	MachineErr error
 }
 
 func runtimeDomainsMachineFailure(result runtimeDomainsCommitResult, machineErr error) (runtimeDomainsCommitResult, error) {
@@ -124,7 +122,7 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 	if m.runtime.DataDir() == "" || m.appService == nil || m.configManager == nil {
 		m.runtime.SetDomainsInMemory(domains)
 		m.syncProjectCache()
-		return runtimeDomainsCommitResult{WorkspaceCommitted: true, MachineCommitted: true}, nil
+		return runtimeDomainsCommitResult{}, nil
 	}
 	arts, err := syncedDomainArtifacts(
 		m.configManager,
@@ -148,7 +146,7 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 			return runtimeDomainsCommitResult{}, err
 		}
 	}
-	result := runtimeDomainsCommitResult{WorkspaceCommitted: true}
+	result := runtimeDomainsCommitResult{}
 	if err := m.runtime.CommitMachine(domains.Machine); err != nil {
 		// CommitMachine may have failed before writing or only while refreshing
 		// after a successful write. Either way, advance to the authoritative
@@ -157,7 +155,6 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 		m.syncProjectCache()
 		return runtimeDomainsMachineFailure(result, err)
 	}
-	result.MachineCommitted = true
 	m.syncProjectCache()
 	return result, nil
 }

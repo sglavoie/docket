@@ -59,7 +59,7 @@ func (f *fakeAttachmentMutator) ReorderAttachmentByLocator(locator app.TaskLocat
 
 func newFakeAttachmentCoordinator() (AttachmentCoordinator, *fakeAttachmentMutator) {
 	fake := &fakeAttachmentMutator{}
-	return AttachmentCoordinator{name: "attachment", attach: fake}, fake
+	return AttachmentCoordinator{attach: fake}, fake
 }
 
 func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {

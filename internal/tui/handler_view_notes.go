@@ -96,7 +96,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			Operations:  []app.NoteMutationRequest{operation},
 			UndoAction:  undoAction,
 			UndoContext: updated.Title,
-		}, undoAction+": "+updated.Title, false)
+		}, undoAction+": "+updated.Title)
 
 	case ShowNotesManagerMsg:
 		hadNotesManager := false

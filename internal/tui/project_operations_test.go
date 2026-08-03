@@ -11,7 +11,6 @@ import (
 func projectOperationContext(projectID string) CommandContext {
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.CurrentEntity = ProjectEntity(projectID)
-	ctx.FocusedProjectID = projectID
 	return ctx
 }
 
@@ -19,7 +18,6 @@ func executeProjectOperation(app *AppModel, id OperationID, ctx CommandContext) 
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
-		Source:  OperationSourceActionSheet,
 	})
 }
 
@@ -136,7 +134,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	}
 	handlerResult := app.executeProjectOperation(
 		OperationInvocation{Descriptor: descriptor},
-		operationTargetFor(OperationTargetCurrentEntity, ProjectEntity("archived")),
+		operationTargetFor(ProjectEntity("archived")),
 	)
 	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open project notes is unavailable while Archived is archived" {
 		t.Fatalf("archived handler error = %v, want the shared lifecycle refusal", handlerResult.Err)

@@ -22,9 +22,9 @@ func TestCommitService_AttachmentMoveUndoSupportsRepeatedMoves(t *testing.T) {
 				if _, err := ledger.Undo(GlobalScope()); err != nil {
 					t.Fatalf("Undo: %v", err)
 				}
-				assertTaskAttachmentLocation(t, src, dst, task, "payload.txt", "payload")
+				assertTaskAttachmentLocation(t, src, dst, task)
 				commitAttachmentMove(t, service, src, dst, task)
-				assertTaskAttachmentLocation(t, dst, src, task, "payload.txt", "payload")
+				assertTaskAttachmentLocation(t, dst, src, task)
 			},
 		},
 		{
@@ -36,9 +36,9 @@ func TestCommitService_AttachmentMoveUndoSupportsRepeatedMoves(t *testing.T) {
 				if _, err := ledger.Redo(GlobalScope()); err != nil {
 					t.Fatalf("Redo: %v", err)
 				}
-				assertTaskAttachmentLocation(t, dst, src, task, "payload.txt", "payload")
+				assertTaskAttachmentLocation(t, dst, src, task)
 				commitAttachmentMove(t, service, dst, src, task)
-				assertTaskAttachmentLocation(t, src, dst, task, "payload.txt", "payload")
+				assertTaskAttachmentLocation(t, src, dst, task)
 			},
 		},
 	}
@@ -52,7 +52,7 @@ func TestCommitService_AttachmentMoveUndoSupportsRepeatedMoves(t *testing.T) {
 			seedTaskAttachment(t, src, task, "payload.txt", []byte("payload"))
 
 			commitAttachmentMove(t, service, src, dst, task)
-			assertTaskAttachmentLocation(t, dst, src, task, "payload.txt", "payload")
+			assertTaskAttachmentLocation(t, dst, src, task)
 			tt.after(t, service, ledger, src, dst, task)
 		})
 	}
@@ -341,10 +341,10 @@ func commitAttachmentMove(t *testing.T, service *CommitService, src, dst *models
 	}
 }
 
-func assertTaskAttachmentLocation(t *testing.T, present, absent *models.Project, task *models.Task, name, content string) {
+func assertTaskAttachmentLocation(t *testing.T, present, absent *models.Project, task *models.Task) {
 	t.Helper()
-	if got := readFile(t, GetAttachmentPath(present, task, name)); got != content {
-		t.Fatalf("attachment at %s = %q, want %q", present.Slug, got, content)
+	if got := readFile(t, GetAttachmentPath(present, task, "payload.txt")); got != "payload" {
+		t.Fatalf("attachment at %s = %q, want %q", present.Slug, got, "payload")
 	}
 	requireAbsent(t, GetTaskAttachmentsDir(absent, task))
 }

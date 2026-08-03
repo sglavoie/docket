@@ -30,17 +30,12 @@ const (
 )
 
 // ContextActionSheetClosedMsg dismisses a sheet without executing anything.
-type ContextActionSheetClosedMsg struct {
-	Host ContextActionSheetHost
-}
+type ContextActionSheetClosedMsg struct{}
 
 // ContextActionSheetResultMsg reports one centralized execution attempt and the
 // lifecycle its host must apply.
 type ContextActionSheetResultMsg struct {
-	Host       ContextActionSheetHost
-	Completion ContextActionSheetCompletion
-	Request    OperationExecutionRequest
-	Result     OperationExecutionResult
+	Result OperationExecutionResult
 }
 
 // ContextActionSheetConfig is the complete host-supplied description of one
@@ -50,7 +45,6 @@ type ContextActionSheetResultMsg struct {
 type ContextActionSheetConfig struct {
 	Host       ContextActionSheetHost
 	Completion ContextActionSheetCompletion
-	Source     OperationInvocationSource
 	Title      string
 	Subtitle   string
 	// ItemIDPrefix namespaces row IDs so two hosts never collide.
@@ -78,7 +72,6 @@ type ContextActionSheetConfig struct {
 // Scope Hub or the Outliner: hosts supply identity, ordering, and decoration.
 type ContextActionSheetModel struct {
 	surface   *ListSurfaceModel
-	registry  *OperationRegistry
 	executor  *OperationExecutor
 	context   CommandContext
 	config    ContextActionSheetConfig
@@ -127,7 +120,6 @@ func NewContextActionSheetModel(
 	}
 	return &ContextActionSheetModel{
 		surface:  surface,
-		registry: registry,
 		executor: executor,
 		context:  frozen,
 		config:   config,
@@ -137,9 +129,6 @@ func NewContextActionSheetModel(
 func normalizeContextActionSheetConfig(config ContextActionSheetConfig) ContextActionSheetConfig {
 	if config.Completion == "" {
 		config.Completion = ContextActionCompleteCloseSheet
-	}
-	if config.Source == "" {
-		config.Source = OperationSourceActionSheet
 	}
 	if config.ItemIDPrefix == "" {
 		config.ItemIDPrefix = string(config.Host) + "-action:"
@@ -206,7 +195,6 @@ func (model *ContextActionSheetModel) request(id OperationID) OperationExecution
 	return OperationExecutionRequest{
 		ID:       id,
 		Context:  cloneCommandContext(model.context),
-		Source:   model.config.Source,
 		Value:    model.config.Value,
 		HasValue: model.config.HasValue,
 	}
@@ -257,7 +245,7 @@ func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 				model.searching = false
 				return nil, false, nil
 			}
-			return nil, true, ContextActionSheetClosedMsg{Host: model.config.Host}
+			return nil, true, ContextActionSheetClosedMsg{}
 		case "backspace":
 			query := model.surface.Query().Raw
 			if query != "" {
@@ -326,7 +314,7 @@ func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 
 	switch key {
 	case "esc":
-		return nil, true, ContextActionSheetClosedMsg{Host: model.config.Host}
+		return nil, true, ContextActionSheetClosedMsg{}
 	case "/":
 		model.searching = true
 	case "up", "k", "ctrl+p":
@@ -364,10 +352,7 @@ func (model *ContextActionSheetModel) activateCursor() (tea.Cmd, bool, tea.Msg) 
 	request := model.request(descriptor.ID)
 	result, dismissed := model.Execute(request)
 	return nil, dismissed, ContextActionSheetResultMsg{
-		Host:       model.config.Host,
-		Completion: model.config.Completion,
-		Request:    request,
-		Result:     result,
+		Result: result,
 	}
 }
 

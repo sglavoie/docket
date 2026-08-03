@@ -28,7 +28,6 @@ func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *test
 	request := OperationExecutionRequest{
 		ID:      operationTaskSetState,
 		Context: taskActionTestContext(models.StateDone),
-		Source:  OperationSourceActionSheet,
 	}
 	picker, err := NewTaskStatePickerForTargets(request, []models.WorkflowState{models.StateDone}, "Completed task")
 	if err != nil {
@@ -270,7 +269,6 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	request := OperationExecutionRequest{
 		ID:      operationTaskSetTags,
 		Context: context,
-		Source:  OperationSourceBulk,
 	}
 	picker, err := model.newOperationValuePicker(request, ValueProviderTags)
 	if err != nil {
@@ -344,7 +342,6 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationTaskSetTags,
 		Context:  context,
-		Source:   OperationSourceBulk,
 		Value:    OperationTagsValue{Add: []string{"first-only"}, Remove: []string{"common"}},
 		HasValue: true,
 	})
@@ -380,7 +377,6 @@ func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationTaskSetState,
 		Context: context,
-		Source:  OperationSourceActionSheet,
 	})
 	if result.Err != nil {
 		t.Fatalf("Execute: %v", result.Err)
@@ -539,7 +535,6 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationTaskSetPriority,
 		Context:  context,
-		Source:   OperationSourceBulk,
 		Value:    1,
 		HasValue: true,
 	})

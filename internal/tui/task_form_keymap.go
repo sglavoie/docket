@@ -1,8 +1,6 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -12,50 +10,49 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 
 	// Navigation
 	entries = append(entries,
-		keymap.Bind("shift+left", "Switch tab left", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("shift+right", "Switch tab right", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("tab", "Navigate to next field", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("shift+tab", "Navigate to previous field", "Navigation", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("j", "Cycle priority down", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("k", "Cycle priority up", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("up", "Cycle priority up", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("down", "Cycle priority down", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
+		keymap.Bind("shift+left", "Switch tab left", "Navigation", keymap.AsHidden()),
+		keymap.Bind("shift+right", "Switch tab right", "Navigation", keymap.AsHidden()),
+		keymap.Bind("tab", "Navigate to next field", "Navigation", keymap.AsHidden()),
+		keymap.Bind("shift+tab", "Navigate to previous field", "Navigation", keymap.AsHidden()),
+		keymap.Bind("j", "Cycle priority down", "Basics", keymap.AsHidden()),
+		keymap.Bind("k", "Cycle priority up", "Basics", keymap.AsHidden()),
+		keymap.Bind("up", "Cycle priority up", "Basics", keymap.AsHidden()),
+		keymap.Bind("down", "Cycle priority down", "Basics", keymap.AsHidden()),
 	)
 
 	// Actions
 	entries = append(entries,
-		keymap.Bind("enter", "Open picker / confirm text field", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+s", "Save task", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+v", "Paste clipboard text into focused field", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+e", "Open description in external editor", "Actions", func() (tea.Model, tea.Cmd) { return m, nil }),
+		keymap.Bind("enter", "Open picker / confirm text field", "Actions"),
+		keymap.Bind("ctrl+s", "Save task", "Actions"),
+		keymap.Bind("ctrl+v", "Paste clipboard text into focused field", "Actions"),
+		keymap.Bind("ctrl+e", "Open description in external editor", "Actions"),
 	)
 
 	// Basics tab
 	entries = append(entries,
-		keymap.Bind("0", "Clear priority", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("1", "Set High priority", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("2", "Set Medium priority", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
-		keymap.Bind("3", "Set Low priority", "Basics", func() (tea.Model, tea.Cmd) { return m, nil }, keymap.AsHidden()),
+		keymap.Bind("0", "Clear priority", "Basics", keymap.AsHidden()),
+		keymap.Bind("1", "Set High priority", "Basics", keymap.AsHidden()),
+		keymap.Bind("2", "Set Medium priority", "Basics", keymap.AsHidden()),
+		keymap.Bind("3", "Set Low priority", "Basics", keymap.AsHidden()),
 	)
 
 	// Schedule tab
 	entries = append(entries,
-		keymap.Bind("ctrl+d", "Open due date preset picker", "Schedule", func() (tea.Model, tea.Cmd) { return m, nil }),
+		keymap.Bind("ctrl+d", "Open due date preset picker", "Schedule"),
 	)
 
 	// Children tab
 	entries = append(entries,
-		keymap.Bind("c", "Toggle checklist section", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("S", "Toggle subtasks section", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+a", "Add checklist item", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+t", "Add subtask", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+j", "Move item down", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("ctrl+k", "Move item up", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
-		keymap.Bind("space", "Toggle checklist item done", "Children", func() (tea.Model, tea.Cmd) { return m, nil }),
+		keymap.Bind("c", "Toggle checklist section", "Children"),
+		keymap.Bind("S", "Toggle subtasks section", "Children"),
+		keymap.Bind("ctrl+a", "Add checklist item", "Children"),
+		keymap.Bind("ctrl+t", "Add subtask", "Children"),
+		keymap.Bind("ctrl+j", "Move item down", "Children"),
+		keymap.Bind("ctrl+k", "Move item up", "Children"),
+		keymap.Bind("space", "Toggle checklist item done", "Children"),
 	)
 
 	return &keymap.KeyMap{
-		ViewName: "TaskForm",
-		Entries:  entries,
+		Entries: entries,
 	}
 }

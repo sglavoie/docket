@@ -134,27 +134,25 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 	tests := []struct {
 		name              string
 		scope             NotesScope
-		wantCommandScope  RouteScope
-		wantFocused       string
 		wantProjectIDs    []string
 		wantStatus        string
 		wantPresentation  PresentationID
 		wantAppCapability bool
 	}{
 		{
-			name: "all", scope: AllNotesScope(), wantCommandScope: ScopeApp,
+			name: "all", scope: AllNotesScope(),
 			wantProjectIDs: normalizedProjectIDs([]string{other.ID, project.ID}),
 			wantStatus:     "Notes · All", wantPresentation: ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
-			name: "global", scope: GlobalNotesScope(), wantCommandScope: ScopeApp,
+			name: "global", scope: GlobalNotesScope(),
 			wantProjectIDs: normalizedProjectIDs([]string{other.ID, project.ID}),
 			wantStatus:     "Notes · Global", wantPresentation: ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
-			name: "project", scope: ProjectNotesScope(project.ID), wantCommandScope: ScopeProject,
-			wantFocused: project.ID, wantProjectIDs: []string{project.ID},
-			wantStatus: "Notes · Project", wantPresentation: ViewNotes,
+			name: "project", scope: ProjectNotesScope(project.ID),
+			wantProjectIDs: []string{project.ID},
+			wantStatus:     "Notes · Project", wantPresentation: ViewNotes,
 		},
 	}
 
@@ -163,8 +161,7 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 			app.handleNotesMessages(ShowNotesManagerMsg{Scope: test.scope})
 			ctx := app.manageHub.CommandContext()
 			presentation, ok := app.manageHub.PresentationView()
-			if ctx.Scope != test.wantCommandScope || ctx.FocusedProjectID != test.wantFocused ||
-				!slices.Equal(ctx.ScopeProjectIDs, test.wantProjectIDs) ||
+			if !slices.Equal(ctx.ScopeProjectIDs, test.wantProjectIDs) ||
 				app.manageHub.StatusBarLabel() != test.wantStatus ||
 				!ok || presentation != test.wantPresentation {
 				t.Fatalf(
@@ -204,7 +201,7 @@ func TestNotesManagerMessageFocusIsLocationQualified(t *testing.T) {
 		},
 	)
 	app.appService = service
-	app.deps = newShellDeps(app.runtime, service, app.configManager, nil)
+	app.deps = newShellDeps(nil)
 
 	focus := NoteRowIdentity{
 		Location: apppkg.ProjectNoteLocation(project.ID),
@@ -311,7 +308,6 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 				Note:       note,
 				Location:   location,
 				OwnerLabel: notes.locationLabel(location),
-				Project:    notes.projectByID(location.ProjectID),
 			}}
 
 			_, cmd := app.manageHub.Update(syntheticKey('x'))

@@ -104,7 +104,7 @@ func TestTaskFormCreateDoubleSubmitCreatesOneShortIDAndOneCommit(t *testing.T) {
 
 func TestTaskFormCreateSubmissionGuardClearsAfterError(t *testing.T) {
 	stub := &stubMutator{err: errors.New("create failed")}
-	features := newFeatureCoordinators(stub, stubQuery{})
+	features := newFeatureCoordinators(stub)
 	m := newTestTaskForm()
 	m.SetTaskFormCoordinator(features.TaskForm)
 	m.titleInput.SetValue("Retry create")

@@ -34,18 +34,6 @@ const EmptyStateFiltered = "No tasks match filters. Press fx to clear filters."
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
 const EmptyStateNoTasks = "No tasks yet. Press a to capture one."
 
-// EmptyStateClosed is the standard message shown when the closed/done tab has no tasks.
-const EmptyStateClosed = "No closed tasks."
-
-// EmptyStateNoMatch is the standard message shown when a tab filter produces no results.
-const EmptyStateNoMatch = "No tasks match this tab."
-
-// EmptyStateSearchPrompt is shown in a search view when no query has been entered.
-const EmptyStateSearchPrompt = "Type to search across all tasks…"
-
-// EmptyStateCrossProject is shown when a cross-project search finds no tasks.
-const EmptyStateCrossProject = "No tasks found across projects."
-
 // SectionHeaderOpts configures the unified section header renderer.
 type SectionHeaderOpts struct {
 	Name        string

@@ -90,9 +90,6 @@ func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
 	if result.Revision == "" {
 		t.Fatal("expected a non-empty revision")
 	}
-	if result.TransactionID == "" {
-		t.Fatal("expected a transaction id")
-	}
 
 	// The project markdown was written and parses back to the committed task.
 	loaded, err := models.NewProject(project.ID, project.Slug, "")
@@ -341,9 +338,6 @@ func TestCommitService_CommitMulti_WritesAllProjectsAndArtifacts(t *testing.T) {
 	}
 	if results[0].Revision == "" || results[1].Revision == "" {
 		t.Fatalf("expected non-empty revisions, got %+v", results)
-	}
-	if results[0].TransactionID == "" || results[0].TransactionID != results[1].TransactionID {
-		t.Fatalf("expected both results to share one transaction id, got %q and %q", results[0].TransactionID, results[1].TransactionID)
 	}
 
 	// Both projects' markdown parses back to the committed task.

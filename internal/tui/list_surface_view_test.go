@@ -33,15 +33,12 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 		Width:  40,
 		Height: 3,
 	}).Render(model)
-	if rendered.Layout != ListSurfaceLayoutCompact || rendered.PreviewVisible {
-		t.Fatalf("compact result = %+v", rendered)
-	}
 	for _, want := range []string{"[x]", "disabled: read only", "↓ 2 more", "space toggle"} {
-		if !strings.Contains(rendered.Content, want) {
-			t.Fatalf("compact rendering omitted %q:\n%s", want, rendered.Content)
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("compact rendering omitted %q:\n%s", want, rendered)
 		}
 	}
-	assertListSurfaceWidth(t, rendered.Content, 40)
+	assertListSurfaceWidth(t, rendered, 40)
 
 	if !model.MoveCursorToEnd() {
 		t.Fatal("failed to move cursor to final item")
@@ -51,8 +48,8 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 		Height:   3,
 		HideHelp: true,
 	}).Render(model)
-	if !strings.Contains(rendered.Content, "↑ 2 more") {
-		t.Fatalf("scrolled rendering omitted upper continuation:\n%s", rendered.Content)
+	if !strings.Contains(rendered, "↑ 2 more") {
+		t.Fatalf("scrolled rendering omitted upper continuation:\n%s", rendered)
 	}
 }
 
@@ -78,19 +75,12 @@ func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testin
 		ShowPreview: true,
 		HideHelp:    true,
 	}).Render(model)
-	if wide.Layout != ListSurfaceLayoutWide || !wide.PreviewVisible {
-		t.Fatalf("wide result = %+v", wide)
-	}
 	for _, want := range []string{"Alpha preview", "Project: Example", " │ "} {
-		if !strings.Contains(wide.Content, want) {
-			t.Fatalf("wide rendering omitted %q:\n%s", want, wide.Content)
+		if !strings.Contains(wide, want) {
+			t.Fatalf("wide rendering omitted %q:\n%s", want, wide)
 		}
 	}
-	if wide.ListWidth < ListSurfaceDefaultListMinWidth ||
-		wide.PreviewWidth < ListSurfaceDefaultPreviewMinWidth {
-		t.Fatalf("wide pane widths violate minimums: %+v", wide)
-	}
-	assertListSurfaceWidth(t, wide.Content, 90)
+	assertListSurfaceWidth(t, wide, 90)
 
 	compact := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:       48,
@@ -99,13 +89,10 @@ func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testin
 		ShowPreview: true,
 		HideHelp:    true,
 	}).Render(model)
-	if compact.Layout != ListSurfaceLayoutCompact || compact.PreviewVisible {
-		t.Fatalf("narrow fallback result = %+v", compact)
+	if strings.Contains(compact, "Alpha preview") {
+		t.Fatalf("narrow fallback leaked preview pane:\n%s", compact)
 	}
-	if strings.Contains(compact.Content, "Alpha preview") {
-		t.Fatalf("narrow fallback leaked preview pane:\n%s", compact.Content)
-	}
-	assertListSurfaceWidth(t, compact.Content, 48)
+	assertListSurfaceWidth(t, compact, 48)
 }
 
 func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T) {
@@ -140,21 +127,21 @@ func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T)
 			t.Fatalf("cursor did not move to item %d", index)
 		}
 		rendered := renderer.Render(model)
-		if got := lipgloss.Height(rendered.Content); got > 4 {
-			t.Fatalf("item %d rendered height = %d, want <= 4:\n%s", index, got, rendered.Content)
+		if got := lipgloss.Height(rendered); got > 4 {
+			t.Fatalf("item %d rendered height = %d, want <= 4:\n%s", index, got, rendered)
 		}
 		current, ok := model.CurrentItem()
 		if !ok {
 			t.Fatalf("item %d has no current item", index)
 		}
-		if want := "› " + current.PrimaryText; !strings.Contains(ansi.Strip(rendered.Content), want) {
-			t.Fatalf("cursor row %q is outside the rendered viewport:\n%s", want, ansi.Strip(rendered.Content))
+		if want := "› " + current.PrimaryText; !strings.Contains(ansi.Strip(rendered), want) {
+			t.Fatalf("cursor row %q is outside the rendered viewport:\n%s", want, ansi.Strip(rendered))
 		}
 	}
 
 	rendered := renderer.Render(model)
-	if !strings.Contains(rendered.Content, "↑") || strings.Contains(rendered.Content, "↓") {
-		t.Fatalf("bottom viewport has incorrect continuations:\n%s", rendered.Content)
+	if !strings.Contains(rendered, "↑") || strings.Contains(rendered, "↓") {
+		t.Fatalf("bottom viewport has incorrect continuations:\n%s", rendered)
 	}
 }
 

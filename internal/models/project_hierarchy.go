@@ -426,7 +426,6 @@ func (p *Project) ReorderRootTasksByCompletion() {
 
 	// Collect root tasks with their subtrees (all descendants).
 	type rootSubtree struct {
-		root  *Task
 		tasks []*Task // root + all descendants in original slice order
 	}
 
@@ -468,7 +467,7 @@ func (p *Project) ReorderRootTasksByCompletion() {
 	var uncompletedSubtrees []rootSubtree
 	var completedSubtrees []rootSubtree
 	for _, root := range roots {
-		subtree := rootSubtree{root: root, tasks: subtrees[root.ID]}
+		subtree := rootSubtree{tasks: subtrees[root.ID]}
 		if root.IsComplete() {
 			completedSubtrees = append(completedSubtrees, subtree)
 		} else {

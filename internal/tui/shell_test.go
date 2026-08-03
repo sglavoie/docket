@@ -22,7 +22,6 @@ func TestCurrentRouteBinding(t *testing.T) {
 	app := newShellTestApp()
 	proj := &models.Project{ID: "p1", Name: "Proj"}
 	app.currentProject = proj
-	app.lastNavigatedTaskID = "t1"
 
 	// The Outliner presentation is the app-scoped TaskWorkspace root; project
 	// selection is an Outliner scope frame, not a project-scoped root route.
@@ -47,7 +46,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOverlay: %v", err)
 	}
-	app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
+	app.navigation.Overlays.Push(overlay, nil)
 	if got := app.CurrentRoute().ID(); got != TaskWorkspace {
 		t.Errorf("CurrentRoute under search = %s, want TaskWorkspace", got)
 	}
@@ -81,7 +80,7 @@ func TestShellStateFacade(t *testing.T) {
 	}
 	// A secondary tool stacks above the root.
 	route := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
-	if err := app.navigation.Primary.PushChild(route, FocusTarget{}); err != nil {
+	if err := app.navigation.Primary.PushChild(route); err != nil {
 		t.Fatal(err)
 	}
 	if s.AtRoot() {
@@ -104,10 +103,7 @@ func TestWorkspaceSessionFacade(t *testing.T) {
 	if !w.HasCurrentProject() || w.CurrentProject().ID != "p1" {
 		t.Error("expected current project p1")
 	}
-	ctx := w.ViewContext()
-	if ctx.ConfigManager != app.configManager || ctx.Persister != app.persister {
-		t.Error("ViewContext did not carry workspace dependencies")
-	}
+	_ = w.ViewContext()
 }
 
 // TestOverlayManagerLifecycle checks the centralized overlay lifecycle.

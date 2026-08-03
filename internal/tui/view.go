@@ -4,8 +4,6 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 // View is the base interface that all TUI views must implement.
@@ -54,44 +52,6 @@ type StatusBarLabeler interface {
 	StatusBarLabel() string
 }
 
-// HelpShortcutSupporter is implemented by views that suppress the help shortcut
-// hint from the status bar. Views without this interface show help text by default.
-type HelpShortcutSupporter interface {
-	SupportsHelpShortcut() bool
-}
-
-// SizableView extends View with dimension accessors.
-// Use this when a view needs to report its dimensions to parent views.
-type SizableView interface {
-	View
-	Width() int
-	Height() int
-}
-
-// SearchableView is implemented by views that support text search.
-type SearchableView interface {
-	View
-	HasActiveSearch() bool
-	ClearSearch()
-}
-
-// ErrorView is implemented by views that can display errors.
-type ErrorView interface {
-	View
-	SetError(err error)
-	ClearError()
-	HasError() bool
-	Error() error
-}
-
-// FocusableView is implemented by views that manage input focus.
-type FocusableView interface {
-	View
-	Focus()
-	Blur()
-	IsFocused() bool
-}
-
 // ViewExitResetter is implemented by views that need to reset interactive state
 // (e.g. text inputs, edit modes) when popped from the view stack.
 type ViewExitResetter interface {
@@ -133,10 +93,4 @@ type AccentColorSetter interface {
 }
 
 // ViewContext provides shared state and dependencies to views.
-type ViewContext struct {
-	Width         int
-	Height        int
-	ConfigManager *config.Manager
-	Runtime       *config.RuntimeState
-	Persister     Persister
-}
+type ViewContext struct{}

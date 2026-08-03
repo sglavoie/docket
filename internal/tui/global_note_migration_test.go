@@ -83,7 +83,7 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 	cmd := noteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: app.GlobalNoteLocation(), Note: updated}},
 		UndoAction: "Edit Note",
-	}, "Edited", false)
+	}, "Edited")
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	if result.Location != app.GlobalNoteLocation() {
 		t.Fatalf("result location = %#v", result.Location)
@@ -116,7 +116,7 @@ func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 	cmd := noteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: app.GlobalNoteLocation(), Note: updated}},
 		UndoAction: "Edit Note",
-	}, "Edited", false)
+	}, "Edited")
 	noteMutation := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(noteMutation)
 	if env.note(t, note.Filename).Body != "updated scoped body" {

@@ -9,10 +9,9 @@ import (
 
 // HelpItem represents a single help entry.
 type HelpItem struct {
-	Key         string           // e.g., "j/k", "ctrl+O"
-	Description string           // e.g., "Move cursor"
-	Category    string           // e.g., "Navigation", "Actions"
-	Views       []PresentationID // nil = global; populated by GetAllDeduplicated for explorer scope display
+	Key         string // e.g., "j/k", "ctrl+O"
+	Description string // e.g., "Move cursor"
+	Category    string // e.g., "Navigation", "Actions"
 }
 
 // filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.
@@ -50,7 +49,6 @@ type HelpViewModel struct {
 	searchMode     bool
 	searchQuery    string
 	width          int
-	height         int
 	sourceView     PresentationID
 	viewName       string
 	ready          bool

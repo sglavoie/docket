@@ -18,16 +18,15 @@ func newTestAppModel() *AppModel {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	return &AppModel{
-		configManager:        manager,
-		runtime:              runtime,
-		deps:                 newShellDeps(runtime, nil, manager, nil),
-		projects:             make(map[string]*models.Project),
-		persister:            NewProjectService(),
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		navigation:           NewNavigationState(),
-		width:                80,
-		height:               24,
-		views:                NewViewRegistry(),
+		configManager: manager,
+		runtime:       runtime,
+		deps:          newShellDeps(nil),
+		projects:      make(map[string]*models.Project),
+		persister:     NewProjectService(),
+		navigation:    NewNavigationState(),
+		width:         80,
+		height:        24,
+		views:         NewViewRegistry(),
 	}
 }
 
@@ -43,17 +42,16 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	app := &AppModel{
-		configManager:        manager,
-		runtime:              runtime,
-		deps:                 newShellDeps(runtime, nil, manager, nil),
-		projects:             map[string]*models.Project{project.ID: project},
-		persister:            NewProjectService(),
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		navigation:           NewNavigationState(),
-		width:                80,
-		height:               24,
-		views:                NewViewRegistry(),
-		currentProject:       project,
+		configManager:  manager,
+		runtime:        runtime,
+		deps:           newShellDeps(nil),
+		projects:       map[string]*models.Project{project.ID: project},
+		persister:      NewProjectService(),
+		navigation:     NewNavigationState(),
+		width:          80,
+		height:         24,
+		views:          NewViewRegistry(),
+		currentProject: project,
 	}
 
 	return app, project
@@ -81,7 +79,7 @@ func setTestPresentationPath(app *AppModel, views ...PresentationID) {
 		}
 		overlay.presentation = view
 		overlay.hasPresentation = true
-		app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
+		app.navigation.Overlays.Push(overlay, nil)
 	}
 }
 
@@ -92,7 +90,7 @@ func pushTestPresentationOverlay(app *AppModel, view PresentationID) {
 	}
 	overlay.presentation = view
 	overlay.hasPresentation = true
-	app.navigation.Overlays.Push(overlay, FocusTarget{}, nil)
+	app.navigation.Overlays.Push(overlay, nil)
 }
 
 func setTestAppProjects(app *AppModel, projects ...*models.Project) {

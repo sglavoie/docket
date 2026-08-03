@@ -84,7 +84,6 @@ func NewProjectSelectorModel(projects []*models.Project, task *models.Task, sour
 		sourceProject:      sourceProject,
 	}
 	m.alwaysSearch = newAlwaysSearchSinglePicker(m.ListSurfaceAdapter, alwaysSearchSinglePickerConfig[ProjectPickerItem]{
-		AllItems: items,
 		CancelMsg: func() tea.Msg {
 			return CloseProjectSelectorMsg{}
 		},

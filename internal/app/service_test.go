@@ -34,12 +34,6 @@ func TestCaptureCreatesTaskAndEmitsOneChangeSet(t *testing.T) {
 	if res.ShortID != 1 {
 		t.Errorf("ShortID = %d, want 1", res.ShortID)
 	}
-	if res.QualifiedRef != "alpha:#1" {
-		t.Errorf("QualifiedRef = %q, want alpha:#1", res.QualifiedRef)
-	}
-	if res.State != models.StateBacklog {
-		t.Errorf("State = %q, want backlog", res.State)
-	}
 	if res.Revision == "" || res.Revision == expectedRev {
 		t.Errorf("Revision = %q, want a new non-empty revision (was %q)", res.Revision, expectedRev)
 	}
@@ -197,12 +191,9 @@ func TestTransitionMovesThroughNonterminalStates(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	res, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateDoing})
+	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateDoing})
 	if err != nil {
 		t.Fatalf("Transition: %v", err)
-	}
-	if res.State != models.StateDoing {
-		t.Errorf("State = %q, want in_progress", res.State)
 	}
 	if task.State() != models.StateDoing {
 		t.Errorf("task state = %q, want in_progress", task.State())
@@ -228,12 +219,12 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 			repo := newFakeRepo(project)
 			svc := newTestService(repo)
 
-			res, err := svc.Transition(app.StateRequest{TaskID: task.ID, Target: target})
+			_, err := svc.Transition(app.StateRequest{TaskID: task.ID, Target: target})
 			if err != nil {
 				t.Fatalf("Transition(%q): %v", target, err)
 			}
-			if res.State != target || task.State() != target {
-				t.Errorf("result/task state = %q/%q, want %q", res.State, task.State(), target)
+			if task.State() != target {
+				t.Errorf("task state = %q, want %q", task.State(), target)
 			}
 			if !task.UpdatedAt.Equal(now) {
 				t.Errorf("UpdatedAt = %v, want injected time %v", task.UpdatedAt, now)
@@ -294,12 +285,12 @@ func TestReopenFromTerminalReturnsToInbox(t *testing.T) {
 	if _, err := svc.Complete("t1"); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
-	res, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateInbox})
+	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateInbox})
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}
-	if res.State != models.StateInbox {
-		t.Errorf("State = %q, want inbox", res.State)
+	if task.State() != models.StateInbox {
+		t.Errorf("task state = %q, want inbox", task.State())
 	}
 	if task.CompletedAt != nil {
 		t.Errorf("CompletedAt = %v, want nil after reopen", task.CompletedAt)

@@ -29,7 +29,7 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	m.cursor = len(m.task.Comments) - 1
 
 	return commitTaskItemMutation(m.project, task, m.coordinator.AddComment(taskIdentityFor(task, m.project), text), func(fresh *models.Task) tea.Msg {
-		return CommentAddedMsg{Task: fresh}
+		return CommentAddedMsg{}
 	})
 }
 
@@ -47,7 +47,7 @@ func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 		errorMessage: "failed to remove comment",
 		commit:       m.coordinator.RemoveComment,
 		success: func(task *models.Task) tea.Msg {
-			return CommentDeletedMsg{Task: task}
+			return CommentDeletedMsg{}
 		},
 	})
 }
@@ -81,7 +81,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	m.err = nil
 
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditComment(taskIdentityFor(m.task, m.project), editIndex, text), func(fresh *models.Task) tea.Msg {
-		return CommentEditedMsg{Task: fresh}
+		return CommentEditedMsg{}
 	})
 }
 
@@ -106,7 +106,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 		task.Comments[editIndex].Text = newText
 		return commitTaskItemMutation(project, task, coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText), func(fresh *models.Task) tea.Msg {
-			return CommentEditedMsg{Task: fresh}
+			return CommentEditedMsg{}
 		})()
 	})
 }
@@ -130,7 +130,7 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 		task.AddComment(newText)
 		return commitTaskItemMutation(project, task, coordinator.AddComment(taskIdentityFor(task, project), newText), func(fresh *models.Task) tea.Msg {
-			return CommentAddedMsg{Task: fresh}
+			return CommentAddedMsg{}
 		})()
 	})
 }
@@ -164,7 +164,7 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 
 		task.Comments[editIndex].Text = newText
 		return commitTaskItemMutation(project, task, coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText), func(fresh *models.Task) tea.Msg {
-			return CommentEditedMsg{Task: fresh}
+			return CommentEditedMsg{}
 		})()
 	})
 }

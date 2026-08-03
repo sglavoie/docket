@@ -125,7 +125,6 @@ type EntityContext struct {
 	ProjectID string
 	TaskID    string
 	State     string
-	Mutable   bool
 	Archived  bool
 }
 
@@ -135,7 +134,6 @@ type EntityContext struct {
 // ContextAvailable.
 type CommandContext struct {
 	View         PresentationID
-	Scope        RouteScope
 	Capabilities CapabilitySet
 	Selection    SelectionContext
 	Entity       EntityContext
@@ -147,10 +145,6 @@ type CommandContext struct {
 	// It lets operation execution resolve scoped-project targets without
 	// depending on renderer models or palette-specific messages.
 	ScopeProjectIDs []string
-	// FocusedProjectID is the project the active scope is focused on, empty at
-	// base or multi-project scope. It is deliberately independent of the cursor
-	// so a frozen tool invocation cannot borrow an unrelated row's project.
-	FocusedProjectID string
 }
 
 // presentationCapability scopes mature renderer commands without affecting
@@ -173,7 +167,6 @@ func PresentationCommandContext(view PresentationID) CommandContext {
 	}
 	return CommandContext{
 		View:         view,
-		Scope:        scope,
 		Capabilities: capabilities,
 	}
 }

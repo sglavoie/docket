@@ -165,9 +165,8 @@ func (m *ContextHubModel) updateScopeHubOverlays(key tea.KeyPressMsg) (tea.Model
 		}
 		return m, nil, true
 	}
-	confirmAction := m.confirm.Action()
 	if confirmed, handled := m.confirm.HandleKey(key.String()); handled {
-		return m, m.resolveScopeHubConfirm(confirmAction, confirmed), true
+		return m, m.resolveScopeHubConfirm(confirmed), true
 	}
 	if m.editor != nil {
 		model, cmd := m.updateEditor(key)
@@ -182,7 +181,7 @@ func (m *ContextHubModel) updateScopeHubOverlays(key tea.KeyPressMsg) (tea.Model
 
 // resolveScopeHubConfirm clears the pending targets a prompt was guarding and
 // returns the mutation the user approved, if any.
-func (m *ContextHubModel) resolveScopeHubConfirm(action string, confirmed bool) tea.Cmd {
+func (m *ContextHubModel) resolveScopeHubConfirm(confirmed bool) tea.Cmd {
 	if !confirmed {
 		m.pendingDelete = ContextScope{}
 		return nil
@@ -254,7 +253,7 @@ func (m *ContextHubModel) renderContent(width, height int) string {
 		ShowPreview: true,
 		HideHelp:    true,
 	}).Render(m.surface)
-	return rendered.Content
+	return rendered
 }
 
 // contextHubWindow returns the rows of lines visible in a height-row viewport

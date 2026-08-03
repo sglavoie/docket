@@ -56,7 +56,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	viewport := m.computeOutlinerViewport(width, extraFooter)
-	b.WriteString(m.renderOutlinerRows(viewport, width))
+	b.WriteString(m.renderOutlinerRows(viewport))
 
 	if notice != "" {
 		b.WriteString("\n")
@@ -155,7 +155,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 		SortAscending: m.sort.Ascending,
 		Width:         width,
 	}
-	return renderProjectTitle(m.project, m.runtime, titleParams)
+	return renderProjectTitle(m.project, titleParams)
 }
 
 // appendOpenLoopsCounter right-aligns the Outliner's passive open-loop counter

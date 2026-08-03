@@ -7,17 +7,8 @@ import (
 
 var ErrInvalidRouteTransition = errors.New("invalid primary route transition")
 
-// FocusTarget is an implementation-independent bookmark restored after a
-// child route or overlay closes. EntityID keeps selection stable across data
-// refreshes; ControlID identifies the control that should regain keyboard focus.
-type FocusTarget struct {
-	ControlID string
-	EntityID  string
-}
-
 type primaryRouteFrame struct {
-	route        Route
-	restoreFocus FocusTarget
+	route Route
 }
 
 // outlinerRootRoute is the sole primary root: the global (All Projects)
@@ -81,7 +72,7 @@ func (s *PrimaryRouteStack) ReplaceDestination(route Route) error {
 // parent focus bookmark to restore on pop. Secondary tools never nest; switching
 // modules replaces the existing child so the
 // primary stack remains bounded to root + one child.
-func (s *PrimaryRouteStack) PushChild(route Route, restore FocusTarget) error {
+func (s *PrimaryRouteStack) PushChild(route Route) error {
 	s.ensureRoot()
 	switch route.ID() {
 	case SecondaryTool:
@@ -92,7 +83,7 @@ func (s *PrimaryRouteStack) PushChild(route Route, restore FocusTarget) error {
 		s.frames[len(s.frames)-1].route = route
 		return nil
 	}
-	s.frames = append(s.frames, primaryRouteFrame{route: route, restoreFocus: restore})
+	s.frames = append(s.frames, primaryRouteFrame{route: route})
 	return nil
 }
 
@@ -108,15 +99,15 @@ func (s *PrimaryRouteStack) ReplaceCurrentMode(route Route) error {
 	return nil
 }
 
-// Pop removes a child route and returns the focus bookmark of its parent.
-func (s *PrimaryRouteStack) Pop() (popped Route, restore FocusTarget, ok bool) {
+// Pop removes a child route.
+func (s *PrimaryRouteStack) Pop() (popped Route, ok bool) {
 	s.ensureRoot()
 	if len(s.frames) == 1 {
-		return Route{}, FocusTarget{}, false
+		return Route{}, false
 	}
 	frame := s.frames[len(s.frames)-1]
 	s.frames = s.frames[:len(s.frames)-1]
-	return frame.route, frame.restoreFocus, true
+	return frame.route, true
 }
 
 // ResetRoot collapses the stack back to the sole Outliner root, dropping every
@@ -124,17 +115,16 @@ func (s *PrimaryRouteStack) Pop() (popped Route, restore FocusTarget, ok bool) {
 func (s *PrimaryRouteStack) ResetRoot() { s.ensureRoot(); s.frames = s.frames[:1] }
 
 type overlayFrame struct {
-	overlay      Overlay
-	restoreFocus FocusTarget
-	cancel       func()
+	overlay Overlay
+	cancel  func()
 }
 
 // OverlayStack owns nested transient presentations. Close is a successful
 // dismissal; Cancel invokes the overlay's cancellation callback exactly once.
 type OverlayStack struct{ frames []overlayFrame }
 
-func (s *OverlayStack) Push(overlay Overlay, restore FocusTarget, cancel func()) {
-	s.frames = append(s.frames, overlayFrame{overlay: overlay, restoreFocus: restore, cancel: cancel})
+func (s *OverlayStack) Push(overlay Overlay, cancel func()) {
+	s.frames = append(s.frames, overlayFrame{overlay: overlay, cancel: cancel})
 }
 
 func (s *OverlayStack) Active() bool { return len(s.frames) > 0 }
@@ -156,17 +146,17 @@ func (s *OverlayStack) Overlays() []Overlay {
 	return overlays
 }
 
-func (s *OverlayStack) CloseTop() (Overlay, FocusTarget, bool) {
+func (s *OverlayStack) CloseTop() (Overlay, bool) {
 	return s.removeTop(false)
 }
 
-func (s *OverlayStack) CancelTop() (Overlay, FocusTarget, bool) {
+func (s *OverlayStack) CancelTop() (Overlay, bool) {
 	return s.removeTop(true)
 }
 
-func (s *OverlayStack) removeTop(cancel bool) (Overlay, FocusTarget, bool) {
+func (s *OverlayStack) removeTop(cancel bool) (Overlay, bool) {
 	if len(s.frames) == 0 {
-		return Overlay{}, FocusTarget{}, false
+		return Overlay{}, false
 	}
 	index := len(s.frames) - 1
 	frame := s.frames[index]
@@ -174,7 +164,7 @@ func (s *OverlayStack) removeTop(cancel bool) (Overlay, FocusTarget, bool) {
 	if cancel && frame.cancel != nil {
 		frame.cancel()
 	}
-	return frame.overlay, frame.restoreFocus, true
+	return frame.overlay, true
 }
 
 // CancelAll cancels overlays from top to bottom, matching visible nesting.
@@ -211,7 +201,7 @@ func (s *NavigationState) ResetRoot() {
 // PushChild launches a hierarchical child route (a secondary tool or Task
 // Detail), abandoning any transient overlay that triggered it so the child is
 // the live primary and dismisses back to its launching destination.
-func (s *NavigationState) PushChild(route Route, restore FocusTarget) error {
+func (s *NavigationState) PushChild(route Route) error {
 	s.Overlays.CancelAll()
-	return s.Primary.PushChild(route, restore)
+	return s.Primary.PushChild(route)
 }

@@ -99,12 +99,9 @@ func TestDeleteUndoRedoAcceptance(t *testing.T) {
 	repo.seed(t)
 
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
-	res, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true})
+	_, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
-	}
-	if len(res.RemovedTaskIDs) != 1 {
-		t.Fatalf("RemovedTaskIDs = %v, want 1", res.RemovedTaskIDs)
 	}
 	requireAbsentFile(t, attachPath)
 

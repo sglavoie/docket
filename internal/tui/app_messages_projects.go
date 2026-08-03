@@ -26,7 +26,7 @@ type EditProjectMsg struct{ Project *models.Project }
 type ProjectCreatedMsg struct{ Project *models.Project }
 
 // ProjectUpdatedMsg signals a project's metadata was updated.
-type ProjectUpdatedMsg struct{ Project *models.Project }
+type ProjectUpdatedMsg struct{}
 
 // ProjectArchivedMsg requests the checked commit of a confirmed archive.
 type ProjectArchivedMsg struct{ Project *models.Project }
@@ -49,10 +49,3 @@ type ProjectPinRequestMsg struct {
 	Project *models.Project
 	Pinned  bool
 }
-
-// =============================================================================
-// Status Input Messages
-// =============================================================================
-
-// StatusUpdatedMsg signals the project status was updated.
-type StatusUpdatedMsg struct{}

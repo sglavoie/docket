@@ -49,7 +49,6 @@ type TaskComposerPreset struct {
 	Project            *models.Project
 	AllProjects        []*models.Project
 	Task               *models.Task
-	Parent             *models.Task
 	Shared             TaskComposerSharedAttributes
 	InitialText        string
 	AllowProjectSwitch bool

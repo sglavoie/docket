@@ -1,10 +1,6 @@
 package tui
 
-import (
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
-)
+import "github.com/sglavoie/tt/internal/storage"
 
 // shellDeps is the domain-native dependency bundle held by the long-lived TUI
 // shell. It carries the four composition-root capabilities shared with views:
@@ -22,17 +18,14 @@ import (
 //     and already-open history-aware views. Isolated tests may leave it nil to
 //     model unavailable history.
 type shellDeps struct {
-	Runtime *config.RuntimeState
-	Service *app.Service
-	Manager *config.Manager
-	Ledger  *storage.WorkspaceLedger
+	Ledger *storage.WorkspaceLedger
 }
 
 // newShellDeps assembles the shell dependency bundle from the runtime snapshot,
 // application service, config manager, and shared ledger built at composition
 // time.
-func newShellDeps(runtime *config.RuntimeState, service *app.Service, manager *config.Manager, ledger *storage.WorkspaceLedger) *shellDeps {
-	return &shellDeps{Runtime: runtime, Service: service, Manager: manager, Ledger: ledger}
+func newShellDeps(ledger *storage.WorkspaceLedger) *shellDeps {
+	return &shellDeps{Ledger: ledger}
 }
 
 // historyLedger returns the shared history handle when this composition makes

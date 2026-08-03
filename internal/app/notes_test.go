@@ -118,7 +118,7 @@ func TestWorkspaceNoteProjectAndGlobalCRUD(t *testing.T) {
 			if createErr != nil {
 				t.Fatalf("CreateNote: %v", createErr)
 			}
-			if created.Note == note || created.Revision == "" || created.Note.RawRevision != created.Revision {
+			if created.Note == note || created.Note.RawRevision == "" {
 				t.Fatalf("CreateNote result did not return an isolated revision-bearing note: %+v", created)
 			}
 
@@ -128,7 +128,7 @@ func TestWorkspaceNoteProjectAndGlobalCRUD(t *testing.T) {
 			if updateErr != nil {
 				t.Fatalf("UpdateNote: %v", updateErr)
 			}
-			if updated.Revision == loaded.RawRevision || updated.Note.Body != "v2" {
+			if updated.Note.RawRevision == loaded.RawRevision || updated.Note.Body != "v2" {
 				t.Fatalf("UpdateNote result = %+v", updated)
 			}
 
@@ -136,7 +136,7 @@ func TestWorkspaceNoteProjectAndGlobalCRUD(t *testing.T) {
 			if renameErr != nil {
 				t.Fatalf("RenameNote: %v", renameErr)
 			}
-			if renamed.Filename == created.Filename || renamed.PreviousFilename != created.Filename {
+			if renamed.Filename == created.Filename {
 				t.Fatalf("RenameNote result = %+v", renamed)
 			}
 			if _, statErr := os.Stat(notePathForTest(dataDir, project, tc.location, created.Filename)); !os.IsNotExist(statErr) {
@@ -377,10 +377,10 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 			if err != nil {
 				t.Fatalf("MoveNote: %v", err)
 			}
-			if moved.Kind != app.NoteMove || moved.Location != destination || moved.SourceLocation != source || moved.ProjectID != destination.ProjectID {
+			if moved.Kind != app.NoteMove || moved.Location != destination || moved.ProjectID != destination.ProjectID {
 				t.Fatalf("MoveNote identity = %+v", moved)
 			}
-			if moved.Filename != created.Filename || moved.PreviousFilename != created.Filename || moved.Title != created.Title {
+			if moved.Filename != created.Filename || moved.Title != created.Title {
 				t.Fatalf("MoveNote filename/title result = %+v", moved)
 			}
 			if moved.Note == nil || moved.Note.Body != created.Note.Body || !moved.Note.CreatedAt.Equal(createdAt) || !moved.Note.ModifiedAt.Equal(modifiedAt) {
@@ -389,7 +389,7 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 			if _, statErr := os.Stat(notePath(source, created.Filename)); !os.IsNotExist(statErr) {
 				t.Fatalf("move source still exists: %v", statErr)
 			}
-			if got := noteByFilename(t, svc, destination, moved.Filename); got.Body != created.Note.Body || got.RawRevision != moved.Revision {
+			if got := noteByFilename(t, svc, destination, moved.Filename); got.Body != created.Note.Body || got.RawRevision != moved.Note.RawRevision {
 				t.Fatalf("moved destination = %+v, result = %+v", got, moved)
 			}
 			if got := noteUndoCount(t, dataDir); got != baselineUndo+1 {
@@ -459,7 +459,7 @@ func TestWorkspaceNoteMoveRetriesDestinationCollision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MoveNote: %v", err)
 	}
-	if moved.Filename != "collision-2.md" || moved.PreviousFilename != "collision.md" {
+	if moved.Filename != "collision-2.md" {
 		t.Fatalf("MoveNote collision result = %+v", moved)
 	}
 	if got := noteByFilename(t, svc, destination, existing.Filename); got.Body != "destination body" {
@@ -550,7 +550,7 @@ func TestWorkspaceNoteMoveIsAtomicOnConcurrentSourceEdit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fresh MoveNote: %v", err)
 	}
-	if moved.Location != destination || moved.SourceLocation != global || moved.ProjectID != project.ID {
+	if moved.Location != destination || moved.ProjectID != project.ID {
 		t.Fatalf("MoveNote result = %+v", moved)
 	}
 	if _, statErr := os.Stat(sourcePath); !os.IsNotExist(statErr) {
@@ -682,7 +682,7 @@ func TestWorkspaceNoteBatchIsAllOrNoneOnStaleSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fresh ApplyNoteBatch: %v", err)
 	}
-	if result.TransactionID == "" || len(result.Results) != 2 || result.Results[0].TransactionID != result.TransactionID || result.Results[1].TransactionID != result.TransactionID {
+	if len(result.Results) != 2 {
 		t.Fatalf("batch result = %+v", result)
 	}
 }

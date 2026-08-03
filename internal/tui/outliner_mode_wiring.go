@@ -58,17 +58,17 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 // canonical modes. Scope, zoom candidates, common filters, search, and fixed
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
-func (m *OutlinerModel) buildCanonicalModeRows() bool {
+func (m *OutlinerModel) buildCanonicalModeRows() {
 	if m.hasSearchProjection() {
 		m.buildSearchProjectionRows()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
-		return true
+		return
 	}
 
 	mode, ok := OutlinerModeByID(m.primaryMode)
 	if !ok {
-		return false
+		return
 	}
 
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
@@ -90,11 +90,10 @@ func (m *OutlinerModel) buildCanonicalModeRows() bool {
 	case RowStrategyDue:
 		m.appendFilteredModeSections(BuildDueModeSections(input), pinned.projected, input.TaskFilter)
 	default:
-		return false
+		return
 	}
 	m.pruneInvisibleSelections()
 	m.clampCursor()
-	return true
 }
 
 // appendFilteredModeSections composes the shared per-task filter predicate over

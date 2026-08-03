@@ -13,7 +13,6 @@ var formFactory = DefaultFormFieldFactory()
 type FormFieldFactory struct {
 	// Default dimensions
 	DefaultWidth     int
-	DefaultHeight    int
 	DefaultCharLimit int
 
 	// Title field settings
@@ -22,19 +21,16 @@ type FormFieldFactory struct {
 	TitleCharLimit int
 
 	// Description field settings
-	DescriptionHeight int
 }
 
 // DefaultFormFieldFactory returns a factory with standard settings.
 func DefaultFormFieldFactory() *FormFieldFactory {
 	return &FormFieldFactory{
-		DefaultWidth:      50,
-		DefaultHeight:     1,
-		DefaultCharLimit:  500,
-		TitleWidth:        68, // fits within 80-char card (80 - 4 border/padding - 6 content margin - 2 field margin)
-		TitleHeight:       3,
-		TitleCharLimit:    200,
-		DescriptionHeight: 8,
+		DefaultWidth:     50,
+		DefaultCharLimit: 500,
+		TitleWidth:       68, // fits within 80-char card (80 - 4 border/padding - 6 content margin - 2 field margin)
+		TitleHeight:      3,
+		TitleCharLimit:   200,
 	}
 }
 

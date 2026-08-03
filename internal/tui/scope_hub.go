@@ -60,7 +60,6 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 	descriptor := func(
 		id OperationID,
 		label string,
-		category OperationCategory,
 		risk OperationRisk,
 		aliases ...string,
 	) OperationDescriptor {
@@ -68,7 +67,7 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 			ID:                   id,
 			Label:                label,
 			Aliases:              aliases,
-			Category:             category,
+			Category:             OperationCategoryScope,
 			TargetSource:         OperationTargetGlobal,
 			TargetCardinality:    TargetCardinalityNone,
 			RequiredCapabilities: NewCapabilitySet(CapabilityScopeHub),
@@ -76,11 +75,11 @@ func scopeHubOperationDescriptors() []OperationDescriptor {
 		}
 	}
 	return []OperationDescriptor{
-		descriptor(operationScopeActivateContext, "Activate scope", OperationCategoryScope, OperationRiskReadOnly, "apply scope", "switch scope"),
-		descriptor(operationScopeCreateContext, "New context", OperationCategoryScope, OperationRiskMutation, "create context"),
-		descriptor(operationScopeEditContext, "Edit membership", OperationCategoryScope, OperationRiskMutation, "edit context"),
-		descriptor(operationScopeRenameContext, "Rename context", OperationCategoryScope, OperationRiskMutation),
-		descriptor(operationScopeDeleteContext, "Delete context", OperationCategoryScope, OperationRiskDestructive),
+		descriptor(operationScopeActivateContext, "Activate scope", OperationRiskReadOnly, "apply scope", "switch scope"),
+		descriptor(operationScopeCreateContext, "New context", OperationRiskMutation, "create context"),
+		descriptor(operationScopeEditContext, "Edit membership", OperationRiskMutation, "edit context"),
+		descriptor(operationScopeRenameContext, "Rename context", OperationRiskMutation),
+		descriptor(operationScopeDeleteContext, "Delete context", OperationRiskDestructive),
 	}
 }
 
@@ -397,7 +396,6 @@ func (m *ContextHubModel) executeScopeHubBrowseAction(id OperationID) tea.Cmd {
 	request := OperationExecutionRequest{
 		ID:       id,
 		Context:  m.scopeHubActionContext(target),
-		Source:   OperationSourceDirectKey,
 		Value:    target,
 		HasValue: true,
 	}

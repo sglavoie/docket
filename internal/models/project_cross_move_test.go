@@ -50,9 +50,6 @@ func TestMoveTaskToProjectBasic(t *testing.T) {
 		t.Errorf("expected task1 in dest, got %s", destProj.Tasks[0].ID)
 	}
 
-	if result.OldShortIDs[0] != 1 {
-		t.Errorf("expected old short ID 1, got %d", result.OldShortIDs[0])
-	}
 	if task1.ShortID != 1 {
 		t.Errorf("expected new short ID 1 (first in dest), got %d", task1.ShortID)
 	}
@@ -146,13 +143,9 @@ func TestMoveTaskToProjectRegeneratesShortIDs(t *testing.T) {
 	sourceProj.Tasks = []*Task{task1, task2}
 	sourceProj.BuildTaskTree()
 
-	result, err := sourceProj.MoveTaskToProject(task1, destProj)
+	_, err = sourceProj.MoveTaskToProject(task1, destProj)
 	if err != nil {
 		t.Fatalf("MoveTaskToProject failed: %v", err)
-	}
-
-	if result.OldShortIDs[0] != 5 {
-		t.Errorf("expected old short ID 5, got %d", result.OldShortIDs[0])
 	}
 
 	if task1.ShortID != 1 {

@@ -17,7 +17,6 @@ type OpenLoops struct {
 	TodayDone  int
 	TodayTotal int
 	Overdue    int
-	HasTasks   bool // true when at least one task exists across all projects
 }
 
 // IsZero reports whether all counter components are zero, in which case the
@@ -53,7 +52,6 @@ func ComputeOpenLoops(rs *config.RuntimeState, todayIDs map[TaskIdentity]bool) O
 	}
 	for _, project := range projects {
 		for _, task := range project.Tasks {
-			out.HasTasks = true
 			// Today scope: include planned tasks regardless of completion (matches Today).
 			if todayIDs != nil && todayIDs[taskIdentityFor(task, project)] {
 				out.TodayTotal++

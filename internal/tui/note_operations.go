@@ -15,19 +15,10 @@ import (
 // Note operation IDs. Every one of them targets a single note identity, which
 // names the collection (project or global) and the filename inside it.
 const (
-	operationNoteOpen          OperationID = "tui.note.open"
-	operationNotePreview       OperationID = "tui.note.preview"
-	operationNoteEdit          OperationID = "tui.note.edit"
-	operationNoteReference     OperationID = "tui.note.open-reference"
-	operationNoteRename        OperationID = "tui.note.rename"
-	operationNoteTags          OperationID = "tui.note.tags"
-	operationNoteLink          OperationID = "tui.note.link-tasks"
-	operationNotePin           OperationID = "tui.note.pin"
-	operationNoteCopyTitle     OperationID = "tui.note.copy-title"
-	operationNoteCopyBody      OperationID = "tui.note.copy-body"
-	operationNoteCopyTitleBody OperationID = "tui.note.copy-title-body"
-	operationNoteMove          OperationID = "tui.note.move-to-project"
-	operationNoteDelete        OperationID = "tui.note.delete"
+	operationNoteOpen   OperationID = "tui.note.open"
+	operationNoteRename OperationID = "tui.note.rename"
+	operationNoteMove   OperationID = "tui.note.move-to-project"
+	operationNoteDelete OperationID = "tui.note.delete"
 )
 
 // noteOperationDescriptors is the authoritative catalog of note-targeted
@@ -41,13 +32,11 @@ func noteOperationDescriptors() []OperationDescriptor {
 		description string,
 		risk OperationRisk,
 		applicability OperationApplicability,
-		aliases ...string,
 	) OperationDescriptor {
 		return OperationDescriptor{
 			ID:                id,
 			Label:             label,
 			Description:       description,
-			Aliases:           aliases,
 			Category:          OperationCategoryNote,
 			TargetSource:      OperationTargetCurrentEntity,
 			TargetCardinality: TargetCardinalityOne,
@@ -60,9 +49,8 @@ func noteOperationDescriptors() []OperationDescriptor {
 		label string,
 		description string,
 		risk OperationRisk,
-		aliases ...string,
 	) OperationDescriptor {
-		return descriptor(id, label, description, risk, noteOperationApplicable, aliases...)
+		return descriptor(id, label, description, risk, noteOperationApplicable)
 	}
 	return []OperationDescriptor{
 		note(operationNoteOpen, "Open note", "Open this note in the external editor", OperationRiskMutation),
@@ -116,7 +104,6 @@ type resolvedNote struct {
 	Location app.NoteLocation
 	Project  *models.Project
 	Note     *models.Note
-	Siblings []*models.Note
 }
 
 // resolveNoteTarget reloads the note the identity names. A note whose file or
@@ -144,7 +131,6 @@ func (m *AppModel) resolveNoteTarget(identity EntityIdentity) (resolvedNote, err
 	if err != nil {
 		return resolvedNote{}, err
 	}
-	resolved.Siblings = notes
 	for _, note := range notes {
 		if note != nil && note.Filename == identity.Name {
 			resolved.Note = note
@@ -222,7 +208,7 @@ func (m *AppModel) noteOperationResult(
 			Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: resolved.Location, Note: note}},
 			UndoAction:  "Delete Note",
 			UndoContext: note.Title,
-		}, "Deleted: "+note.Title, false))
+		}, "Deleted: "+note.Title))
 
 	default:
 		return OperationHandlerResult{Err: fmt.Errorf("%w: %s", ErrOperationHandler, invocation.Descriptor.ID)}
@@ -253,7 +239,7 @@ func (m *AppModel) renameNoteOperation(
 			}},
 			UndoAction:  "Rename Note",
 			UndoContext: resolved.Note.Title,
-		}, fmt.Sprintf("Renamed: %s → %s", resolved.Note.Title, title), false),
+		}, fmt.Sprintf("Renamed: %s → %s", resolved.Note.Title, title)),
 	}}
 }
 

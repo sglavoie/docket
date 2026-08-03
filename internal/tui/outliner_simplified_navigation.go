@@ -185,15 +185,14 @@ func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (ou
 	return outlinerRow{}, false
 }
 
-func (m *OutlinerModel) moveCursorToSectionHeader(key string) bool {
+func (m *OutlinerModel) moveCursorToSectionHeader(key string) {
 	for i, row := range m.rows {
 		if row.IsSectionHeader && row.effectiveCollapseKey() == key {
 			m.cursor = i
-			return true
+			return
 		}
 	}
 	m.clampCursor()
-	return false
 }
 
 func (m *OutlinerModel) restoreSectionToggleFocus() bool {

@@ -189,7 +189,6 @@ func (m *OutlinerModel) appendPlanningModeRows(
 		row := m.outlinerRowFromModeRow(modeRow)
 		row.IsTodaySection = mode == ModeToday
 		row.IsNextSection = mode == ModeNext
-		row.IsTodayMember = mode == ModeToday
 		rows = append(rows, row)
 	}
 	group := models.StateGroupToday

@@ -27,43 +27,40 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 	}
 
 	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
-	focus := FocusTarget{ControlID: "task-list", EntityID: "t1"}
-	if err := stack.PushChild(secondary, focus); err != nil {
+	if err := stack.PushChild(secondary); err != nil {
 		t.Fatal(err)
 	}
-	popped, restored, ok := stack.Pop()
-	if !ok || popped.ID() != SecondaryTool || restored != focus || stack.Current().ID() != TaskWorkspace {
-		t.Fatalf("pop = %s restore=%+v ok=%v current=%s", popped.ID(), restored, ok, stack.Current().ID())
+	popped, ok := stack.Pop()
+	if !ok || popped.ID() != SecondaryTool || stack.Current().ID() != TaskWorkspace {
+		t.Fatalf("pop = %s ok=%v current=%s", popped.ID(), ok, stack.Current().ID())
 	}
 	stack.ResetRoot()
 	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
 		t.Fatalf("reset stack = %+v", stack.Routes())
 	}
-	if _, _, ok := stack.Pop(); ok {
+	if _, ok := stack.Pop(); ok {
 		t.Fatal("Outliner root must not be popped")
 	}
 }
 
-func TestPrimaryRouteStackBoundsChildrenAndPreservesRootFocus(t *testing.T) {
+func TestPrimaryRouteStackBoundsChildren(t *testing.T) {
 	stack := NewPrimaryRouteStack()
-	rootFocus := FocusTarget{ControlID: "outliner", EntityID: "task-1"}
 	first := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
-	if err := stack.PushChild(first, rootFocus); err != nil {
+	if err := stack.PushChild(first); err != nil {
 		t.Fatal(err)
 	}
 
 	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
-	if err := stack.PushChild(secondary, FocusTarget{ControlID: "detail-tab"}); err != nil {
+	if err := stack.PushChild(secondary); err != nil {
 		t.Fatal(err)
 	}
 	if stack.Depth() != 2 || stack.Current().ID() != SecondaryTool {
 		t.Fatalf("replaced child stack = %+v, want root + SecondaryTool", stack.Routes())
 	}
 
-	popped, restored, ok := stack.Pop()
-	if !ok || popped.ID() != SecondaryTool || restored != rootFocus {
-		t.Fatalf("pop = %s restore=%+v ok=%v, want SecondaryTool and original root focus %+v",
-			popped.ID(), restored, ok, rootFocus)
+	popped, ok := stack.Pop()
+	if !ok || popped.ID() != SecondaryTool {
+		t.Fatalf("pop = %s ok=%v, want SecondaryTool", popped.ID(), ok)
 	}
 	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
 		t.Fatalf("stack after child pop = %+v, want sole Outliner root", stack.Routes())
@@ -103,26 +100,26 @@ func TestTaskWorkspaceRejectsProjectRouteScope(t *testing.T) {
 	}
 }
 
-func TestOverlayStackNestingFocusAndCancellation(t *testing.T) {
+func TestOverlayStackNestingAndCancellation(t *testing.T) {
 	var canceled []string
 	first, _ := NewOverlay(OverlaySearch, "search")
 	second, _ := NewOverlay(OverlayPicker, "status")
 	stack := OverlayStack{}
-	stack.Push(first, FocusTarget{ControlID: "workspace", EntityID: "t1"}, func() {
+	stack.Push(first, func() {
 		canceled = append(canceled, "search")
 	})
-	stack.Push(second, FocusTarget{ControlID: "search-query"}, func() {
+	stack.Push(second, func() {
 		canceled = append(canceled, "status")
 	})
 
-	closed, restored, ok := stack.CloseTop()
-	if !ok || closed.Kind() != OverlayPicker || restored.ControlID != "search-query" {
-		t.Fatalf("close top = %s restore=%+v ok=%v", closed.Kind(), restored, ok)
+	closed, ok := stack.CloseTop()
+	if !ok || closed.Kind() != OverlayPicker {
+		t.Fatalf("close top = %s ok=%v", closed.Kind(), ok)
 	}
 	if len(canceled) != 0 {
 		t.Errorf("successful close invoked cancellation: %v", canceled)
 	}
-	stack.Push(second, FocusTarget{}, func() { canceled = append(canceled, "status") })
+	stack.Push(second, func() { canceled = append(canceled, "status") })
 	stack.CancelAll()
 	if stack.Active() || !reflect.DeepEqual(canceled, []string{"status", "search"}) {
 		t.Errorf("cancel order = %v active=%v", canceled, stack.Active())
@@ -133,7 +130,7 @@ func TestNavigationDestinationChangeCancelsOverlays(t *testing.T) {
 	state := NewNavigationState()
 	overlay, _ := NewOverlay(OverlayComposer, "new-task")
 	canceled := false
-	state.Overlays.Push(overlay, FocusTarget{}, func() { canceled = true })
+	state.Overlays.Push(overlay, func() { canceled = true })
 	workspace := mustRoute(t, TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
 	if err := state.ReplaceDestination(workspace); err != nil {
 		t.Fatal(err)

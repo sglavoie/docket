@@ -90,7 +90,6 @@ type V5TaskReintegrationPlan struct {
 }
 
 type v5TaskCandidate struct {
-	projectIndex int
 	projectID    string
 	sourceID     string
 	sourcePath   string
@@ -147,7 +146,6 @@ func PlanV5ArchiveReintegration(input V5TaskReintegrationInput) (V5TaskReintegra
 		}
 		for ordinal, record := range projectInput.Active.Tasks {
 			candidate, candidateErr := newV5TaskCandidate(
-				projectIndex,
 				projectID,
 				"active",
 				"",
@@ -232,7 +230,6 @@ func PlanV5ArchiveReintegration(input V5TaskReintegrationInput) (V5TaskReintegra
 					record.State = "done"
 				}
 				candidate, candidateErr := newV5TaskCandidate(
-					projectIndex,
 					projectID,
 					sourceID,
 					cleanPath,
@@ -463,7 +460,6 @@ func PlanV5ArchiveReintegration(input V5TaskReintegrationInput) (V5TaskReintegra
 }
 
 func newV5TaskCandidate(
-	projectIndex int,
 	projectID string,
 	sourceID string,
 	sourcePath string,
@@ -478,13 +474,12 @@ func newV5TaskCandidate(
 	}
 	task.ID = taskID
 	candidate := &v5TaskCandidate{
-		projectIndex: projectIndex,
-		projectID:    projectID,
-		sourceID:     sourceID,
-		sourcePath:   sourcePath,
-		ordinal:      ordinal,
-		oldShortID:   ordinal + 1,
-		task:         task,
+		projectID:  projectID,
+		sourceID:   sourceID,
+		sourcePath: sourcePath,
+		ordinal:    ordinal,
+		oldShortID: ordinal + 1,
+		task:       task,
 	}
 
 	if remapped := resolveV5StableID(task.ID, idRemap); remapped != task.ID {

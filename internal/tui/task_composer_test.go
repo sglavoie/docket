@@ -26,7 +26,7 @@ func TestTaskComposerPresetModes(t *testing.T) {
 	}{
 		{"global", TaskComposerPreset{Kind: ComposerGlobal, Project: project}, ComposerCompact, ComposerGlobal, false},
 		{"project", TaskComposerPreset{Kind: ComposerProject, Project: project}, ComposerCompact, ComposerProject, false},
-		{"child", TaskComposerPreset{Kind: ComposerChild, Project: project, Parent: task, Shared: TaskComposerSharedAttributes{ParentID: &parentID}}, ComposerCompact, ComposerChild, true},
+		{"child", TaskComposerPreset{Kind: ComposerChild, Project: project, Shared: TaskComposerSharedAttributes{ParentID: &parentID}}, ComposerCompact, ComposerChild, true},
 		{"edit", TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: task}, ComposerExpanded, ComposerEdit, false},
 	}
 
@@ -148,7 +148,7 @@ func TestTaskComposerMultilineDoubleSubmitMintsEachShortIDOnce(t *testing.T) {
 func TestTaskComposerSubmissionGuardClearsAfterError(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	stub := &stubMutator{err: errors.New("capture failed")}
-	features := newFeatureCoordinators(stub, stubQuery{})
+	features := newFeatureCoordinators(stub)
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 	composer.SetCaptureCoordinator(features.Capture)
 	composer.input.SetValue("Retry me")
@@ -245,7 +245,7 @@ func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testin
 		t.Fatal(err)
 	}
 	env := newCrossProjectTestEnv(t, nil, []*models.Task{parent})
-	features := newFeatureCoordinators(env.svc, env.svc)
+	features := newFeatureCoordinators(env.svc)
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:               ComposerGlobal,
 		Project:            env.projects[0],

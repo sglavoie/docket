@@ -68,46 +68,46 @@ func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
 // handleTextInputKey consolidates the common key handling for textinput fields
 // (due date). It calls commit before navigation/save/esc, and forwards
 // unrecognized keys to the textinput. Returns (cmd, true) if the key was consumed.
-func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), input *textinput.Model) (tea.Cmd, bool) {
+func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), input *textinput.Model) tea.Cmd {
 	switch msg.String() {
 	case "tab":
 		commit()
 		m.focusNext()
 		m.syncInputFocus()
-		return nil, true
+		return nil
 	case "shift+tab":
 		commit()
 		m.focusPrev()
 		m.syncInputFocus()
-		return nil, true
+		return nil
 	case "shift+left":
 		commit()
 		m.prevTab()
 		m.syncInputFocus()
 		m.err = nil
-		return nil, true
+		return nil
 	case "shift+right":
 		commit()
 		m.nextTab()
 		m.syncInputFocus()
 		m.err = nil
-		return nil, true
+		return nil
 	case "enter":
 		commit()
 		m.focusNext()
 		m.syncInputFocus()
-		return nil, true
+		return nil
 	case "ctrl+s":
 		commit()
-		return m.handleSave(), true
+		return m.handleSave()
 	case "esc":
 		commit()
 		if m.hasChanges {
 			m.confirmDiscard = true
 		} else {
-			return func() tea.Msg { return BackMsg{} }, true
+			return func() tea.Msg { return BackMsg{} }
 		}
-		return nil, true
+		return nil
 	default:
 		before := input.Value()
 		var cmd tea.Cmd
@@ -117,6 +117,6 @@ func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), i
 			m.hasChanges = true
 			m.err = nil
 		}
-		return cmd, true
+		return cmd
 	}
 }

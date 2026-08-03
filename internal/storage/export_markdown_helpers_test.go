@@ -2,7 +2,7 @@ package storage
 
 import "github.com/sglavoie/tt/internal/models"
 
-func mustTask(id string, shortID int, taskType string, title string) *models.Task {
+func mustTask(id string, shortID int, title string) *models.Task {
 	task, err := models.NewGenericTask(id, shortID, title)
 	if err != nil {
 		panic(err)

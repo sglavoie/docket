@@ -52,7 +52,6 @@ type ParentSelectorModel struct {
 	*ListSurfaceAdapter[ParentPickerItem]
 	allItems     []ParentPickerItem // All valid parent candidates
 	allowNone    bool               // Whether "None" is a valid option
-	currentID    *string            // Currently selected parent ID (for pre-selection)
 	source       PresentationID     // Which view opened this selector
 	reparentTask TaskIdentity       // When valid, forwarded back in ParentSelectedMsg
 	alwaysSearch *alwaysSearchSinglePicker[ParentPickerItem]
@@ -80,7 +79,6 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 		ListSurfaceAdapter: picker,
 		allItems:           items,
 		allowNone:          allowNone,
-		currentID:          currentID,
 		source:             source,
 	}
 
@@ -90,7 +88,6 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 	}
 
 	m.alwaysSearch = newAlwaysSearchSinglePicker(m.ListSurfaceAdapter, alwaysSearchSinglePickerConfig[ParentPickerItem]{
-		AllItems: items,
 		CancelMsg: func() tea.Msg {
 			return CloseParentSelectorMsg{}
 		},

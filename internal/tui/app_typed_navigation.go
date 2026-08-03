@@ -4,14 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func (m *AppModel) currentFocusTarget() FocusTarget {
-	target := FocusTarget{ControlID: m.currentPresentationView().String()}
-	if task, _ := m.getCurrentCursorTaskAndProject(); task != nil {
-		target.EntityID = task.ID
-	}
-	return target
-}
-
 // currentPresentationView resolves the renderer selected by the authoritative
 // route and overlay stacks. Overlays without a registered renderer intentionally
 // leave primary dispatch active.
@@ -94,22 +86,22 @@ func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
 
 // outlinerPrimary resolves the canonical Task Workspace model beneath shell
 // overlays.
-func (m *AppModel) outlinerPrimary() (*OutlinerModel, TaskWorkspaceParams, bool) {
+func (m *AppModel) outlinerPrimary() (*OutlinerModel, bool) {
 	route := m.navigation.Primary.Current()
 	if route.ID() != TaskWorkspace {
-		return nil, TaskWorkspaceParams{}, false
+		return nil, false
 	}
-	params, ok := route.Params().(TaskWorkspaceParams)
+	_, ok := route.Params().(TaskWorkspaceParams)
 	if !ok {
-		return nil, TaskWorkspaceParams{}, false
+		return nil, false
 	}
 	// The canonical renderer owns both global and project-scoped work. Project
 	// selection is a scope frame, so the root route remains app-scoped.
-	return m.crossOutliner, params, m.crossOutliner != nil
+	return m.crossOutliner, m.crossOutliner != nil
 }
 
 func (m *AppModel) activeOutlinerRoute() bool {
-	if _, _, ok := m.outlinerPrimary(); !ok {
+	if _, ok := m.outlinerPrimary(); !ok {
 		return false
 	}
 	return !m.navigation.Overlays.Active()
@@ -180,7 +172,7 @@ func (m *AppModel) installTypedPresentation(view PresentationID) bool {
 		return false
 	}
 	if overlay, ok, err := overlayForPresentation(view); err == nil && ok {
-		m.navigation.Overlays.Push(overlay, m.currentFocusTarget(), nil)
+		m.navigation.Overlays.Push(overlay, nil)
 		return true
 	}
 
@@ -201,7 +193,7 @@ func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
 }
 
 func (m *AppModel) popTypedPresentation() bool {
-	if overlay, _, ok := m.navigation.Overlays.CloseTop(); ok {
+	if overlay, ok := m.navigation.Overlays.CloseTop(); ok {
 		if overlay.Kind() == OverlayComposer && overlay.Key() == taskComposerOverlayKey {
 			m.taskComposer = nil
 		}
@@ -227,7 +219,7 @@ func (m *AppModel) pushTypedOverlay(kind OverlayKind, key string) {
 	}
 	overlay, err := NewOverlay(kind, key)
 	if err == nil {
-		m.navigation.Overlays.Push(overlay, m.currentFocusTarget(), func() {
+		m.navigation.Overlays.Push(overlay, func() {
 			m.cancelTypedOverlayPresentation(kind, key)
 		})
 	}

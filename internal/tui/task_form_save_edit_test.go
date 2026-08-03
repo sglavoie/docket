@@ -100,7 +100,7 @@ func TestTaskFormEditSubmissionGuardClearsAfterError(t *testing.T) {
 	task := seedTask(t, 1, "Before", models.StateBacklog)
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	stub := &stubMutator{err: errors.New("edit failed")}
-	features := newFeatureCoordinators(stub, stubQuery{})
+	features := newFeatureCoordinators(stub)
 	m := NewTaskFormModelEdit(project, task, nil)
 	m.SetTaskFormCoordinator(features.TaskForm)
 	m.titleInput.SetValue("Retry edit")

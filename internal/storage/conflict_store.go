@@ -66,7 +66,6 @@ type ConflictBundle struct {
 	Record ConflictRecord
 	Base   *ProjectDocument
 	Local  *ProjectDocument
-	Remote *ProjectDocument
 }
 
 // ConflictStore persists and enumerates conflict bundles under a single durable
@@ -186,8 +185,9 @@ func (s *ConflictStore) Load(id string) (*ConflictBundle, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading remote document: %w", err)
 	}
+	_ = remote
 
-	return &ConflictBundle{Record: *record, Base: base, Local: local, Remote: remote}, nil
+	return &ConflictBundle{Record: *record, Base: base, Local: local}, nil
 }
 
 // Delete removes a conflict's whole directory. It is a no-op when the conflict is

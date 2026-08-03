@@ -27,10 +27,8 @@ const (
 // reorder is a single planning commit it survives a restart and never mutates
 // the task tree.
 type OutlinerPlanningReorderMsg struct {
-	Kind         planningReorderKind
-	Order        []config.ProjectTaskLocator
-	MovedTaskID  string
-	MovedProject string
+	Kind  planningReorderKind
+	Order []config.ProjectTaskLocator
 }
 
 // isPlanningReorderMode reports whether J/K reorders a durable planning list
@@ -92,10 +90,8 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	order[movedPos], order[targetPos] = order[targetPos], order[movedPos]
 
 	msg := OutlinerPlanningReorderMsg{
-		Kind:         kind,
-		Order:        order,
-		MovedTaskID:  task.ID,
-		MovedProject: project.ID,
+		Kind:  kind,
+		Order: order,
 	}
 	return m, func() tea.Msg { return msg }
 }

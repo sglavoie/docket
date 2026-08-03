@@ -35,7 +35,7 @@ func TestRecurrenceCannotEnterLivePersistenceMergeExportOrHistory(t *testing.T) 
 	store := NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts"))
 	conflictID, err := store.Save(ConflictRecord{
 		ProjectID: project.ID,
-		Conflicts: []MergeConflict{{Kind: MergeConflictFieldEdit, TaskID: project.Tasks[0].ID, Field: "title"}},
+		Conflicts: []MergeConflict{{Kind: MergeConflictFieldEdit, Field: "title"}},
 	}, document, document, document)
 	if err != nil {
 		t.Fatalf("save conflict: %v", err)

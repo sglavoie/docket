@@ -17,9 +17,8 @@ const (
 	PriorityLow    = 3 // Low
 
 	// Compile-time aliases retained while older callers are migrated.
-	PriorityMin     = PriorityHigh
-	PriorityMax     = PriorityLow
-	PriorityDefault = PriorityUnset
+	PriorityMin = PriorityHigh
+	PriorityMax = PriorityLow
 )
 
 // ValidatePriority checks that a priority value is in the valid range.

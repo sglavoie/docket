@@ -17,7 +17,6 @@ type TextEditorModel struct {
 	fieldName    string // "title" or "description"
 	initialValue string // for cancel restoration
 	width        int
-	height       int
 
 	discardConfirmState
 }
@@ -37,14 +36,12 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 		fieldName:    fieldName,
 		initialValue: currentValue,
 		width:        80,
-		height:       24,
 	}
 }
 
 // SetSize sets the view dimensions.
 func (m *TextEditorModel) SetSize(width, height int) {
 	m.width = width
-	m.height = height
 	// Use same resize logic as other forms for consistent width
 	formFactory.ResizeTextarea(&m.textarea, width)
 	// Expand textarea to fill available vertical space.

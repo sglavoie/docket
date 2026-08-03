@@ -7,10 +7,6 @@ const (
 	IconExpanded    = "▾"
 	IconCollapsed   = "▸"
 	IconCursorRight = "▸"
-	IconScrollLeft  = "◀"
-	IconScrollRight = "▶"
-	IconInProgress  = "▶"
-	IconTodayMarker = "▼"
 )
 
 func IconComment() string    { return icons.Get("comment") }

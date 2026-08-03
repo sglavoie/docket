@@ -13,10 +13,6 @@ import (
 type CommentResult struct {
 	// Task is the standard single-task mutation result.
 	Task TaskResult
-	// Index is the affected comment's index (for add, the new comment's index).
-	Index int
-	// Count is the number of comments on the task after the mutation.
-	Count int
 }
 
 // AddComment appends a timestamped comment to a task and commits it as one
@@ -35,10 +31,9 @@ func (s *Service) addCommentSelection(taskID string, locator TaskLocator, text s
 		return CommentResult{}, err
 	}
 	var out CommentResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Add Comment", "", func(ref TaskRef) error {
-		var mutationErr error
-		out, mutationErr = s.addComment(ref.Task, trimmed)
-		return mutationErr
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Add Comment", func(ref TaskRef) error {
+		s.addComment(ref.Task, trimmed)
+		return nil
 	})
 	if err != nil {
 		return CommentResult{}, err
@@ -55,11 +50,10 @@ func normalizeCommentText(text string) (string, error) {
 	return trimmed, nil
 }
 
-func (s *Service) addComment(task *models.Task, text string) (CommentResult, error) {
+func (s *Service) addComment(task *models.Task, text string) {
 	now := s.clock.Now()
 	task.AddCommentAt(text, now)
 	task.UpdatedAt = now
-	return CommentResult{Index: len(task.Comments) - 1, Count: len(task.Comments)}, nil
 }
 
 // EditComment replaces the text of the comment at the given index, preserving
@@ -79,14 +73,12 @@ func (s *Service) editCommentSelection(taskID string, locator TaskLocator, index
 		return CommentResult{}, invalidInput("comment", "text is required")
 	}
 	var out CommentResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Edit Comment", "", func(ref TaskRef) error {
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Edit Comment", func(ref TaskRef) error {
 		if err := validCommentIndex(index, len(ref.Task.Comments)); err != nil {
 			return err
 		}
 		ref.Task.Comments[index].Text = text
 		ref.Task.UpdatedAt = s.clock.Now()
-		out.Index = index
-		out.Count = len(ref.Task.Comments)
 		return nil
 	})
 	if err != nil {
@@ -107,10 +99,8 @@ func (s *Service) RemoveCommentByLocator(locator TaskLocator, index int) (Commen
 
 func (s *Service) removeCommentSelection(taskID string, locator TaskLocator, index int) (CommentResult, error) {
 	var out CommentResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Remove Comment", "", func(ref TaskRef) error {
-		var mutationErr error
-		out, mutationErr = s.removeComment(ref.Task, index)
-		return mutationErr
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Remove Comment", func(ref TaskRef) error {
+		return s.removeComment(ref.Task, index)
 	})
 	if err != nil {
 		return CommentResult{}, err
@@ -119,15 +109,15 @@ func (s *Service) removeCommentSelection(taskID string, locator TaskLocator, ind
 	return out, nil
 }
 
-func (s *Service) removeComment(task *models.Task, index int) (CommentResult, error) {
+func (s *Service) removeComment(task *models.Task, index int) error {
 	if err := validCommentIndex(index, len(task.Comments)); err != nil {
-		return CommentResult{}, err
+		return err
 	}
 	if !task.RemoveComment(index) {
-		return CommentResult{}, invalidInput("comment", fmt.Sprintf("failed to remove comment at index %d", index))
+		return invalidInput("comment", fmt.Sprintf("failed to remove comment at index %d", index))
 	}
 	task.UpdatedAt = s.clock.Now()
-	return CommentResult{Index: index, Count: len(task.Comments)}, nil
+	return nil
 }
 
 // ClearComments removes every comment from a task. Clearing a task with no
@@ -143,8 +133,8 @@ func (s *Service) ClearCommentsByLocator(locator TaskLocator) (CommentResult, er
 
 func (s *Service) clearCommentsSelection(taskID string, locator TaskLocator) (CommentResult, error) {
 	var out CommentResult
-	res, err := s.mutateRichRecordSelection(taskID, locator, "Clear Comments", "", func(ref TaskRef) error {
-		out = s.clearComments(ref.Task)
+	res, err := s.mutateRichRecordSelection(taskID, locator, "Clear Comments", func(ref TaskRef) error {
+		s.clearComments(ref.Task)
 		return nil
 	})
 	if err != nil {
@@ -154,11 +144,9 @@ func (s *Service) clearCommentsSelection(taskID string, locator TaskLocator) (Co
 	return out, nil
 }
 
-func (s *Service) clearComments(task *models.Task) CommentResult {
-	out := CommentResult{Index: -1, Count: len(task.Comments)}
+func (s *Service) clearComments(task *models.Task) {
 	task.ClearComments()
 	task.UpdatedAt = s.clock.Now()
-	return out
 }
 
 // validCommentIndex rejects an out-of-range comment index against the current

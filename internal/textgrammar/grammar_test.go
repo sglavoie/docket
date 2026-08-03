@@ -21,7 +21,7 @@ func TestCanonicalStatesComeFromModelOrder(t *testing.T) {
 func TestParseStateCanonicalParity(t *testing.T) {
 	for _, state := range models.AllWorkflowStates() {
 		got, ok := ParseState(SurfaceEdit, state.String())
-		if !ok || got.Legacy || !reflect.DeepEqual(got.States, []models.WorkflowState{state}) {
+		if !ok || !reflect.DeepEqual(got.States, []models.WorkflowState{state}) {
 			t.Errorf("ParseState(%q) = %+v, %v", state, got, ok)
 		}
 	}

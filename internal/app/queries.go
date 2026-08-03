@@ -13,47 +13,6 @@ type NoteCollectionResult struct {
 	Err      error
 }
 
-// ProjectSummary is the presentation-neutral view of a project's durable metadata,
-// derived from the WorkspaceSnapshot. It carries the stable identity, the synced
-// catalog fields, and the derived per-project tag vocabulary so an
-// adapter can render a project list without reaching into the domain model.
-type ProjectSummary struct {
-	ID          string
-	Slug        string
-	Name        string
-	Description string
-	Context     string
-	Archived    bool
-	Pinned      bool
-	TaskCount   int
-	Tags        []string
-	Revision    string
-}
-
-// ListProjects returns a summary of every project in the workspace snapshot, in
-// snapshot order. It is a read-only query: it loads a snapshot and never commits.
-func (s *Service) ListProjects() ([]ProjectSummary, error) {
-	snap, err := s.repo.Snapshot()
-	if err != nil {
-		return nil, err
-	}
-	projects := snap.Projects()
-	out := make([]ProjectSummary, 0, len(projects))
-	for _, p := range projects {
-		out = append(out, projectSummary(p, snap.Revision(p.ID)))
-	}
-	return out, nil
-}
-
-// Project returns the summary for a single project resolved from the snapshot.
-func (s *Service) Project(projectID string) (ProjectSummary, error) {
-	_, project, revision, err := s.resolveProject(projectID)
-	if err != nil {
-		return ProjectSummary{}, err
-	}
-	return projectSummary(project, revision), nil
-}
-
 // ProjectTags returns a project's derived tag vocabulary from the snapshot.
 func (s *Service) ProjectTags(projectID string) ([]string, error) {
 	_, project, _, err := s.resolveProject(projectID)
@@ -102,21 +61,4 @@ func (s *Service) NotesAtLocations(locations []NoteLocation) ([]NoteCollectionRe
 		results[i].Notes, results[i].Err = s.notes.Notes(location, project)
 	}
 	return results, nil
-}
-
-// projectSummary builds a ProjectSummary from a project and its revision, copying
-// the derived slices so a caller cannot mutate the snapshot's backing arrays.
-func projectSummary(p *models.Project, revision string) ProjectSummary {
-	return ProjectSummary{
-		ID:          p.ID,
-		Slug:        p.Slug,
-		Name:        p.Name,
-		Description: p.Description,
-		Context:     p.Context,
-		Archived:    p.Archived,
-		Pinned:      p.Pinned,
-		TaskCount:   len(p.Tasks),
-		Tags:        p.AllTags(),
-		Revision:    revision,
-	}
 }

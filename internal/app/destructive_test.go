@@ -37,23 +37,9 @@ func TestDeleteRemovesSubtreeInOneChangeSet(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	res, err := svc.Delete(app.DeleteRequest{TaskID: "p", Confirm: true})
+	_, err := svc.Delete(app.DeleteRequest{TaskID: "p", Confirm: true})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
-	}
-	if len(res.RemovedTaskIDs) != 2 {
-		t.Fatalf("RemovedTaskIDs = %v, want 2 (parent + child)", res.RemovedTaskIDs)
-	}
-	if len(res.RemovedTaskLocators) != 2 {
-		t.Fatalf("RemovedTaskLocators = %+v, want 2", res.RemovedTaskLocators)
-	}
-	for _, locator := range res.RemovedTaskLocators {
-		if locator.ProjectID != project.ID || (locator.TaskID != parent.ID && locator.TaskID != child.ID) {
-			t.Fatalf("unexpected removed locator: %+v", locator)
-		}
-	}
-	if res.QualifiedRef != "alpha:#1" {
-		t.Errorf("QualifiedRef = %q, want alpha:#1", res.QualifiedRef)
 	}
 	if len(project.Tasks) != 0 {
 		t.Errorf("project has %d tasks, want 0 after subtree delete", len(project.Tasks))
@@ -192,9 +178,6 @@ func TestBulkDeleteCanonicalizesNestedRoots(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("BulkDelete: %v", err)
-	}
-	if len(res.RemovedRootRefs) != 1 || res.RemovedRootRefs[0] != "alpha:#1" {
-		t.Fatalf("RemovedRootRefs = %v, want only canonical parent root", res.RemovedRootRefs)
 	}
 	if len(res.RemovedTaskIDs) != 2 || len(res.RemovedTaskLocators) != 2 {
 		t.Fatalf("removed tasks = %v locators=%v, want parent and child once", res.RemovedTaskIDs, res.RemovedTaskLocators)

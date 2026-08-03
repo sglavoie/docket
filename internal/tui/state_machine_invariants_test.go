@@ -131,7 +131,7 @@ func TestTUIStateMachine_QueueAndTodayStayExclusive(t *testing.T) {
 // queue membership is independent from the Backlog lifecycle state.
 func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 	t.Run("q toggles explicit membership without inventing a lifecycle state", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t)
 		identity := taskIdentityFor(task, app.currentProject)
 
 		_ = app.toggleQueue()
@@ -149,7 +149,7 @@ func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 	})
 
 	t.Run("Today and Next memberships remain exclusive", func(t *testing.T) {
-		app, task := newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
+		app, task := newFocusToggleTestAppState(t)
 		identity := taskIdentityFor(task, app.currentProject)
 		_ = app.toggleQueue()
 		_ = app.toggleToday()
@@ -337,16 +337,16 @@ func sendAppKey(app *AppModel, key tea.KeyPressMsg) *AppModel {
 
 func newFocusToggleTestApp(t *testing.T) (*AppModel, *models.Task) {
 	t.Helper()
-	return newFocusToggleTestAppState(t, models.StateBacklog, ViewCrossProjectOutliner)
+	return newFocusToggleTestAppState(t)
 }
 
 // newFocusToggleTestAppState builds a ledger-backed AppModel whose single task
 // starts in the given workflow state under the canonical Outliner root.
-func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ PresentationID) (*AppModel, *models.Task) {
+func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	t.Helper()
 
 	dataDir := t.TempDir()
-	task := seedTask(t, 1, "Toggle target", state)
+	task := seedTask(t, 1, "Toggle target", models.StateBacklog)
 
 	project, err := models.NewProject("focus-toggle-proj", "focus-toggle", "")
 	if err != nil {
@@ -370,23 +370,22 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ Pres
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	appModel := &AppModel{
-		configManager:        manager,
-		runtime:              runtime,
-		deps:                 newShellDeps(runtime, svc, manager, ledger),
-		projects:             map[string]*models.Project{project.ID: project},
-		persister:            NewProjectService(),
-		appService:           svc,
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		width:                80,
-		height:               24,
-		views:                NewViewRegistry(),
-		currentProject:       project,
-		nextOrder:            []PlanningTask{},
-		nextOrderIDs:         make(map[TaskIdentity]bool),
-		today:                []PlanningTask{},
-		todayIDs:             make(map[TaskIdentity]bool),
-		operationRegistry:    NewOperationRegistry(),
-		navigation:           NewNavigationState(),
+		configManager:     manager,
+		runtime:           runtime,
+		deps:              newShellDeps(ledger),
+		projects:          map[string]*models.Project{project.ID: project},
+		persister:         NewProjectService(),
+		appService:        svc,
+		width:             80,
+		height:            24,
+		views:             NewViewRegistry(),
+		currentProject:    project,
+		nextOrder:         []PlanningTask{},
+		nextOrderIDs:      make(map[TaskIdentity]bool),
+		today:             []PlanningTask{},
+		todayIDs:          make(map[TaskIdentity]bool),
+		operationRegistry: NewOperationRegistry(),
+		navigation:        NewNavigationState(),
 	}
 	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)
 	outliner := NewOutlinerModel(project, manager, runtime)

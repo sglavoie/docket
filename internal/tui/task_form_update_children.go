@@ -8,7 +8,7 @@ import (
 
 // handleChildrenTabKey handles keys specific to the Children tab.
 // It returns handled=true when the key was consumed.
-func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, bool) {
 	switch msg.String() {
 	case "c":
 		m.checklistExpanded = !m.checklistExpanded
@@ -19,9 +19,11 @@ func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, te
 			m.clampChildrenFocusIndex()
 		}
 	case "ctrl+a":
-		return m, m.handleChildrenCtrlA(), true
+		m.handleChildrenCtrlA()
+		return m, true
 	case "ctrl+t":
-		return m, m.handleChildrenCtrlT(), true
+		m.handleChildrenCtrlT()
+		return m, true
 	case "ctrl+d":
 		m.handleChildrenDelete()
 	case "ctrl+j":
@@ -31,32 +33,32 @@ func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, te
 	case "space":
 		m.handleChecklistToggleDone()
 	default:
-		return m, nil, false
+		return m, false
 	}
-	return m, nil, true
+	return m, true
 }
 
 // handleChildrenEnter handles Enter on the Children tab:
 // - on a section header: toggles expand/collapse
 // - on a checklist item: opens checklist edit overlay
 // - on a subtask item: opens subtask edit overlay
-func (m *TaskFormModel) handleChildrenEnter() tea.Cmd {
+func (m *TaskFormModel) handleChildrenEnter() {
 	// Section headers: toggle expand/collapse.
 	if m.focusIndex == 0 {
 		m.checklistExpanded = !m.checklistExpanded
 		m.clampChildrenFocusIndex()
-		return nil
+		return
 	}
 	if stHeaderIdx := m.childrenSubtasksHeaderIdx(); m.focusIndex == stHeaderIdx {
 		m.subtasksExpanded = !m.subtasksExpanded
 		m.clampChildrenFocusIndex()
-		return nil
+		return
 	}
 
 	kind, idx := m.focusedChildItem()
 	switch kind {
 	case childFocusNone:
-		return nil
+		return
 	case childFocusChecklistItem:
 		m.childrenEditIdx = idx
 		m.childrenAddingNew = false
@@ -70,11 +72,10 @@ func (m *TaskFormModel) handleChildrenEnter() tea.Cmd {
 		m.subtaskItemInput.Focus()
 		m.activeOverlay = formOverlaySubtaskEdit
 	}
-	return nil
 }
 
 // handleChildrenCtrlA adds a new checklist item and opens the edit overlay for it.
-func (m *TaskFormModel) handleChildrenCtrlA() tea.Cmd {
+func (m *TaskFormModel) handleChildrenCtrlA() {
 	m.draft.checklist = append(m.draft.checklist, models.ChecklistItem{})
 	m.checklistExpanded = true
 	m.childrenEditIdx = len(m.draft.checklist) - 1
@@ -84,13 +85,12 @@ func (m *TaskFormModel) handleChildrenCtrlA() tea.Cmd {
 	m.activeOverlay = formOverlayChecklistEdit
 	m.hasChanges = true
 	m.err = nil
-	return nil
 }
 
 // handleChildrenCtrlT adds a new subtask draft and opens the edit overlay for it.
-func (m *TaskFormModel) handleChildrenCtrlT() tea.Cmd {
+func (m *TaskFormModel) handleChildrenCtrlT() {
 	if m.mode != FormModeCreate {
-		return nil
+		return
 	}
 	m.draft.subtasks = append(m.draft.subtasks, formSubtaskDraft{})
 	m.subtasksExpanded = true
@@ -101,7 +101,6 @@ func (m *TaskFormModel) handleChildrenCtrlT() tea.Cmd {
 	m.activeOverlay = formOverlaySubtaskEdit
 	m.hasChanges = true
 	m.err = nil
-	return nil
 }
 
 // handleChildrenDelete deletes the currently focused checklist item or subtask.

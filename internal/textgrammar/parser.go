@@ -7,11 +7,9 @@ import (
 
 // Token is one recognized inline metadata token.
 type Token struct {
-	Field  Field
-	Raw    string
-	Value  string
-	Form   string
-	Legacy bool
+	Field Field
+	Value string
+	Form  string
 }
 
 // Result contains recognized tokens and the normalized free-text remainder.
@@ -37,20 +35,19 @@ type tokenPattern struct {
 	re      *regexp.Regexp
 	field   Field
 	form    string
-	legacy  bool
 	surface Surface
 }
 
 var tokenPatterns = []tokenPattern{
-	{regexp.MustCompile(`(?:^|\s)\^(\S+)`), FieldTaskType, "^", false, SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)!([^\s]+)`), FieldPriority, "!", false, SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)#([\w][\w.:-]*)`), FieldTag, "#", false, SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "@", false, SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)~(\S+)`), FieldRecurrence, "~", false, SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldDestination, "$", false, SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", false, SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)%(\S+)`), FieldProject, "%", false, SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)>(\S+)`), FieldParent, ">", false, SurfaceCapture},
+	{regexp.MustCompile(`(?:^|\s)\^(\S+)`), FieldTaskType, "^", SurfaceCapture},
+	{regexp.MustCompile(`(?:^|\s)!([^\s]+)`), FieldPriority, "!", SurfaceCapture | SurfaceEdit},
+	{regexp.MustCompile(`(?:^|\s)#([\w][\w.:-]*)`), FieldTag, "#", SurfaceCapture | SurfaceEdit},
+	{regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "@", SurfaceCapture | SurfaceEdit},
+	{regexp.MustCompile(`(?:^|\s)~(\S+)`), FieldRecurrence, "~", SurfaceCapture},
+	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldDestination, "$", SurfaceCapture},
+	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", SurfaceEdit},
+	{regexp.MustCompile(`(?:^|\s)%(\S+)`), FieldProject, "%", SurfaceCapture},
+	{regexp.MustCompile(`(?:^|\s)>(\S+)`), FieldParent, ">", SurfaceCapture},
 }
 
 // Parse extracts every token enabled for surface using the one shared grammar.
@@ -94,13 +91,10 @@ func extractTokens(input string, pattern tokenPattern, surface Surface) (string,
 			continue
 		}
 		rebuilt.WriteByte(' ')
-		raw := strings.TrimSpace(input[match[0]:match[1]])
 		tokens = append(tokens, Token{
-			Field:  pattern.field,
-			Raw:    raw,
-			Value:  value,
-			Form:   pattern.form,
-			Legacy: pattern.legacy,
+			Field: pattern.field,
+			Value: value,
+			Form:  pattern.form,
 		})
 		last = match[1]
 	}

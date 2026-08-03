@@ -61,7 +61,7 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 			filter.setStateFilter(testWorkflowStateSet(state), true)
 			for _, task := range project.Tasks {
 				want := task.State() == state
-				got := passesCommonFilters(task, &filter, project)
+				got := passesCommonFilters(task, &filter)
 				if got != want {
 					t.Errorf("task %q (state %s): passesCommonFilters(State=%s)=%v, want %v",
 						task.ID, task.State(), state, got, want)
@@ -78,7 +78,7 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 
 	for _, task := range project.Tasks {
 		want := filter.States.Contains(task.State())
-		if got := passesCommonFilters(task, &filter, project); got != want {
+		if got := passesCommonFilters(task, &filter); got != want {
 			t.Errorf("task %q state=%s: multi-state filter got %v, want %v", task.ID, task.State(), got, want)
 		}
 	}
@@ -88,7 +88,7 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 		t.Fatal("explicit empty state set must remain an active match-nothing filter")
 	}
 	for _, task := range project.Tasks {
-		if passesCommonFilters(task, &filter, project) {
+		if passesCommonFilters(task, &filter) {
 			t.Errorf("explicit empty state set unexpectedly matched task %q", task.ID)
 		}
 	}

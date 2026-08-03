@@ -41,29 +41,29 @@ func newFormPriorityPicker(current int) *formPriorityPicker {
 
 // handleKey processes a key press.
 // Returns (cmd, dismiss, resultMsg). dismiss=true closes the overlay.
-func (p *formPriorityPicker) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (p *formPriorityPicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 	switch msg.String() {
 	case "esc":
-		return nil, true, nil
+		return true, nil
 	case "enter":
-		return nil, true, TaskFormPriorityPickedMsg{Priority: formPriorityEntries[p.cursor].priority}
+		return true, TaskFormPriorityPickedMsg{Priority: formPriorityEntries[p.cursor].priority}
 	case "up", "k":
 		if p.cursor > 0 {
 			p.cursor--
 		}
-		return nil, false, nil
+		return false, nil
 	case "down", "j":
 		if p.cursor < len(formPriorityEntries)-1 {
 			p.cursor++
 		}
-		return nil, false, nil
+		return false, nil
 	default:
 		for _, e := range formPriorityEntries {
 			if msg.String() == e.key {
-				return nil, true, TaskFormPriorityPickedMsg{Priority: e.priority}
+				return true, TaskFormPriorityPickedMsg{Priority: e.priority}
 			}
 		}
-		return nil, false, nil
+		return false, nil
 	}
 }
 

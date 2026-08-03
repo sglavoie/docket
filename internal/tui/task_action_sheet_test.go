@@ -18,7 +18,6 @@ func taskActionTestContext(state models.WorkflowState) CommandContext {
 		ProjectID: "project",
 		TaskID:    "task",
 		State:     state.String(),
-		Mutable:   !state.IsTerminal(),
 	}
 	return context
 }
@@ -296,15 +295,9 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		t.Fatal("delete action is missing from the bulk sheet")
 	}
 	_, _, result := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	emitted, ok := result.(ContextActionSheetResultMsg)
+	_, ok := result.(ContextActionSheetResultMsg)
 	if !ok {
 		t.Fatalf("bulk Enter returned %T, want ContextActionSheetResultMsg", result)
-	}
-	if emitted.Host != ContextActionHostOutliner {
-		t.Fatalf("bulk result host = %q, want %q", emitted.Host, ContextActionHostOutliner)
-	}
-	if emitted.Request.Source != OperationSourceBulk {
-		t.Fatalf("bulk request source = %q, want %q", emitted.Request.Source, OperationSourceBulk)
 	}
 }
 
@@ -415,7 +408,6 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	result := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationCorePeek,
 		Context: app.operationCommandContext(),
-		Source:  OperationSourceDirectKey,
 	})
 	if !errors.Is(result.Err, ErrOperationUnavailable) {
 		t.Fatalf("visual-selection Peek error = %v, want unavailable", result.Err)

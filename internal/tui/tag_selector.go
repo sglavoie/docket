@@ -13,9 +13,7 @@ import (
 type TagSelectorModel struct {
 	*ListSurfaceAdapter[TagInfo]
 	TagAdder
-	task         *models.Task
-	project      *models.Project
-	originalTags []string
+	task *models.Task
 }
 
 // ShowTagSelectorMsg is sent to open the tag selector.
@@ -28,7 +26,6 @@ type ShowTagSelectorMsg struct {
 // TagSelectorDoneMsg is sent when the tag selector is done.
 type TagSelectorDoneMsg struct {
 	Task         *models.Task
-	Project      *models.Project
 	SelectedTags []string
 	Canceled     bool
 }
@@ -49,8 +46,7 @@ type BulkTagSelectorDoneMsg struct {
 type BulkTagSelectorModel struct {
 	*ListSurfaceAdapter[TagInfo]
 	TagAdder
-	taskRefs     []TaskProjectRef
-	originalTags map[TaskIdentity][]string
+	taskRefs []TaskProjectRef
 }
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
@@ -75,16 +71,10 @@ func NewBulkTagSelectorModel(taskRefs []TaskProjectRef) *BulkTagSelectorModel {
 		picker.SetCursorToID(commonTags[0])
 	}
 
-	originalTags := make(map[TaskIdentity][]string)
-	for _, ref := range taskRefs {
-		originalTags[ref.Identity()] = append([]string{}, ref.Task.Tags...)
-	}
-
 	return &BulkTagSelectorModel{
 		ListSurfaceAdapter: picker,
 		TagAdder:           NewTagAdder(),
 		taskRefs:           taskRefs,
-		originalTags:       originalTags,
 	}
 }
 
@@ -212,8 +202,6 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 		ListSurfaceAdapter: picker,
 		TagAdder:           NewTagAdder(),
 		task:               task,
-		project:            project,
-		originalTags:       append([]string{}, currentTags...),
 	}
 }
 
@@ -247,7 +235,6 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return TagSelectorDoneMsg{
 					Task:     m.task,
-					Project:  m.project,
 					Canceled: true,
 				}
 			}
@@ -258,7 +245,6 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return TagSelectorDoneMsg{
 					Task:         m.task,
-					Project:      m.project,
 					SelectedTags: selectedTags,
 					Canceled:     false,
 				}

@@ -27,7 +27,8 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleTaskUpdated(msg)
 
 	case TaskDeleteRequestedMsg:
-		return true, m.handleTaskDeleteRequested(msg)
+		m.handleTaskDeleteRequested(msg)
+		return true, nil
 
 	case TaskDeletedMsg:
 		return m.handleTaskDeleted(msg)
@@ -84,7 +85,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		}
 	}
 
-	refreshCmd := m.handleWithRefresh(true, true, "")
+	refreshCmd := m.handleWithRefresh(true, true)
 
 	if msg.Task != nil {
 		project := msg.Project
@@ -138,20 +139,7 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 	}
 
 	// Common pattern: pop view, reload, refresh
-	refreshCmd := m.handleWithRefresh(true, true, "")
-
-	// Re-resolve the live task pointer AFTER handleWithRefresh, which reloads the
-	// current project and replaces every task pointer. Resolving earlier would
-	// hand delegated views an orphaned pointer.
-	if msg.Result != nil {
-		project := m.currentProject
-		if project == nil || project.ID != msg.Result.ProjectID {
-			project = m.projectByID(msg.Result.ProjectID)
-		}
-		if project != nil {
-			msg.Task = project.GetTaskByID(msg.Result.TaskID)
-		}
-	}
+	refreshCmd := m.handleWithRefresh(true, true)
 
 	// Delegate to the current view so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
@@ -161,7 +149,7 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 // handleTaskDeleted handles the TaskDeletedMsg.
 func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
 	m.pruneDeletedTaskRefs()
-	refreshCmd := m.handleWithRefresh(false, false, "")
+	refreshCmd := m.handleWithRefresh(false, false)
 
 	project := msg.Project
 	if project == nil {

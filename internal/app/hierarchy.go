@@ -37,7 +37,7 @@ func (s *Service) ReparentByLocator(locator TaskLocator, newParentID *string) (T
 }
 
 func (s *Service) reparent(taskID string, locator TaskLocator, newParentID *string) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Reparent Task", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Reparent Task", func(ref TaskRef) error {
 		if newParentID == nil {
 			if err := ref.Project.ReparentTask(ref.Task, nil); err != nil {
 				return invalidInput("parent", err.Error())
@@ -77,7 +77,7 @@ func (s *Service) MoveTaskUpByLocator(locator TaskLocator) (TaskResult, error) {
 }
 
 func (s *Service) moveTaskUp(taskID string, locator TaskLocator) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Move Task Up", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Move Task Up", func(ref TaskRef) error {
 		t := ref.Task
 		siblings := ref.Project.GetSiblings(t)
 		idx := ref.Project.FindSiblingIndex(t)
@@ -104,7 +104,7 @@ func (s *Service) MoveTaskDownByLocator(locator TaskLocator) (TaskResult, error)
 }
 
 func (s *Service) moveTaskDown(taskID string, locator TaskLocator) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Move Task Down", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Move Task Down", func(ref TaskRef) error {
 		t := ref.Task
 		siblings := ref.Project.GetSiblings(t)
 		idx := ref.Project.FindSiblingIndex(t)
@@ -135,7 +135,7 @@ func (s *Service) MoveTaskToTopByLocator(locator TaskLocator) (TaskResult, error
 }
 
 func (s *Service) moveTaskToTop(taskID string, locator TaskLocator) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Move to Top", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Move to Top", func(ref TaskRef) error {
 		moveTaskToSiblingEdge(ref.Project, ref.Task, true)
 		return nil
 	})
@@ -153,7 +153,7 @@ func (s *Service) MoveTaskToBottomByLocator(locator TaskLocator) (TaskResult, er
 }
 
 func (s *Service) moveTaskToBottom(taskID string, locator TaskLocator) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Move to Bottom", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Move to Bottom", func(ref TaskRef) error {
 		moveTaskToSiblingEdge(ref.Project, ref.Task, false)
 		return nil
 	})
@@ -202,7 +202,7 @@ func (s *Service) IndentTaskByLocator(locator TaskLocator) (TaskResult, error) {
 }
 
 func (s *Service) indentTask(taskID string, locator TaskLocator) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Indent Task", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Indent Task", func(ref TaskRef) error {
 		t := ref.Task
 		targetParent := ref.Project.GetTaskAbove(t)
 		if targetParent == nil {
@@ -230,7 +230,7 @@ func (s *Service) OutdentTaskByLocator(locator TaskLocator) (TaskResult, error) 
 }
 
 func (s *Service) outdentTask(taskID string, locator TaskLocator) (TaskResult, error) {
-	return s.mutateHierarchyTaskSelection(taskID, locator, "Outdent Task", "", func(ref TaskRef) error {
+	return s.mutateHierarchyTaskSelection(taskID, locator, "Outdent Task", func(ref TaskRef) error {
 		t := ref.Task
 		if ok, reason := t.CanOutdent(); !ok {
 			return invalidInput("outdent", reason)
@@ -323,7 +323,7 @@ func (backup hierarchyProjectBackup) restore() {
 	backup.project.BuildTaskTree()
 }
 
-func (s *Service) mutateHierarchyTaskSelection(taskID string, locator TaskLocator, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
+func (s *Service) mutateHierarchyTaskSelection(taskID string, locator TaskLocator, undoAction string, mutate func(TaskRef) error) (TaskResult, error) {
 	ref, _, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
@@ -333,7 +333,7 @@ func (s *Service) mutateHierarchyTaskSelection(taskID string, locator TaskLocato
 		backup.restore()
 		return TaskResult{}, mutateErr
 	}
-	result, err := s.commitProject(ref, revision, undoAction, undoContext)
+	result, err := s.commitProject(ref, revision, undoAction, "")
 	if err != nil {
 		backup.restore()
 		return TaskResult{}, err
@@ -343,21 +343,8 @@ func (s *Service) mutateHierarchyTaskSelection(taskID string, locator TaskLocato
 
 // MoveResult reports the outcome of a cross-project subtree move.
 type MoveResult struct {
-	// Task is the presentation-neutral result for the moved root task in its new
-	// project, carrying the destination-qualified reference and new short ID.
-	Task TaskResult
 	// MovedCount is the number of tasks relocated (the root plus its descendants).
 	MovedCount int
-	// TouchedProjectIDs lists every project committed in the transaction: source
-	// and destination.
-	TouchedProjectIDs []string
-	// SourceProjectID and DestProjectID identify the move endpoints.
-	SourceProjectID string
-	DestProjectID   string
-	// SourceRevision and DestRevision are the new canonical revisions of the two
-	// committed projects.
-	SourceRevision string
-	DestRevision   string
 }
 
 // BulkMoveRequest asks to move several task subtrees into one destination
@@ -372,7 +359,6 @@ type BulkMoveRequest struct {
 // relocated tasks, including descendants. Every touched source project and the
 // destination are committed together.
 type BulkMoveResult struct {
-	Tasks             []TaskResult
 	MovedCount        int
 	TouchedProjectIDs []string
 }
@@ -462,7 +448,6 @@ func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.Ar
 
 	planningMoves := make([]PlanningProjectMove, 0, len(seenMoved))
 	attachmentOps := make([]storage.AttachmentOp, 0, len(seenMoved))
-	movedRoots := make([]*models.Task, 0, len(roots))
 	movedCount := 0
 	for _, ref := range roots {
 		moveRes, moveErr := ref.Project.MoveTaskToProject(ref.Task, destination)
@@ -470,7 +455,6 @@ func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.Ar
 			restore()
 			return BulkMoveResult{}, invalidInput("move", moveErr.Error())
 		}
-		movedRoots = append(movedRoots, ref.Task)
 		movedCount += len(moveRes.MovedTasks)
 		for _, moved := range moveRes.MovedTasks {
 			if moved == nil {
@@ -508,7 +492,7 @@ func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.Ar
 	commits[0].artifacts = artifacts
 	commits[0].attachmentOps = attachmentOps
 
-	outcome, err := s.commitProjects(
+	_, err = s.commitProjects(
 		commits,
 		"Move Tasks to Project",
 		fmt.Sprintf("%d tasks → %s", len(roots), destination.Slug),
@@ -517,13 +501,7 @@ func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.Ar
 		restore()
 		return BulkMoveResult{}, err
 	}
-	destinationRevision := revisionAt(outcome.results, len(outcome.results)-1)
-	results := make([]TaskResult, 0, len(movedRoots))
-	for _, root := range movedRoots {
-		results = append(results, newTaskResult(TaskRef{Task: root, Project: destination}, destinationRevision))
-	}
 	return BulkMoveResult{
-		Tasks:             results,
 		MovedCount:        movedCount,
 		TouchedProjectIDs: touchedIDs,
 	}, nil
@@ -629,22 +607,13 @@ func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectI
 		{project: src, expectedRevision: srcRev, base: ref.Base, artifacts: artifacts, attachmentOps: attachmentOps},
 		{project: dest, expectedRevision: destRev, base: snap.Document(dest.ID)},
 	}
-	touched := []string{src.ID, dest.ID}
-
-	results, err := s.commitProjects(commits, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
+	_, err = s.commitProjects(commits, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
 	if err != nil {
 		restore()
 		return MoveResult{}, err
 	}
 
-	srcNewRev, destNewRev := revisionAt(results.results, 0), revisionAt(results.results, 1)
 	return MoveResult{
-		Task:              newTaskResult(TaskRef{Task: ref.Task, Project: dest}, destNewRev),
-		MovedCount:        len(moveRes.MovedTasks),
-		TouchedProjectIDs: touched,
-		SourceProjectID:   src.ID,
-		DestProjectID:     dest.ID,
-		SourceRevision:    srcNewRev,
-		DestRevision:      destNewRev,
+		MovedCount: len(moveRes.MovedTasks),
 	}, nil
 }

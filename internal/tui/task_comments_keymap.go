@@ -10,7 +10,6 @@ import (
 
 func (m *TaskCommentsModel) panelActions() taskItemPanelActions {
 	return taskItemPanelActions{
-		model:       m,
 		itemName:    "comment",
 		inInputMode: func() bool { return m.addMode || m.editMode || m.expandedView },
 		moveCursorDown: func() {
@@ -29,9 +28,6 @@ func (m *TaskCommentsModel) panelActions() taskItemPanelActions {
 		hasSelection: m.hasSelection,
 		startEdit:    m.startEditComment,
 		editExternal: m.editInExternalEditor,
-		showDeleteConfirm: func() {
-			m.confirm.Show("delete", "Delete comment?")
-		},
 		showIndexedDeleteConfirm: func() {
 			m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.cursor))
 		},
@@ -46,24 +42,9 @@ func (m *TaskCommentsModel) panelActions() taskItemPanelActions {
 
 // buildKeyMap constructs the declarative KeyMap for TaskCommentsModel.
 func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
-	return buildTaskItemPanelKeyMap("Comments", m.panelActions(),
-		keymap.Bind("ctrl+s", "Save (add/edit mode)", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.editMode {
-				return m, m.saveEditedComment()
-			}
-			if m.addMode {
-				return m, m.saveComment()
-			}
-			return m, nil
-		}),
-		keymap.Bind("ctrl+e", "Open in external editor (add/edit mode)", "Actions", func() (tea.Model, tea.Cmd) {
-			if m.editMode {
-				return m, m.editCommentInExternalEditorFromEditMode()
-			}
-			if m.addMode {
-				return m, m.addCommentInExternalEditor()
-			}
-			return m, nil
-		}),
+	return buildTaskItemPanelKeyMap(m.panelActions(),
+		keymap.Bind("ctrl+s", "Save (add/edit mode)", "Actions"),
+
+		keymap.Bind("ctrl+e", "Open in external editor (add/edit mode)", "Actions"),
 	)
 }

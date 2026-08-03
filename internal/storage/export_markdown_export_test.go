@@ -179,7 +179,7 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 	}
 	saveExportNoteFixture(t, notesDir, note)
 
-	task := mustTask("t1", 1, "", "My Task")
+	task := mustTask("t1", 1, "My Task")
 	task.Priority = 0
 	p := newProject("Combined", task)
 	p.Path = tmp
@@ -211,7 +211,7 @@ func TestExportProjectMarkdown_TasksAndNotesCombined(t *testing.T) {
 
 func TestWriteProjectMarkdownCleanIncludesSchema6TaskRecordsAndAttachmentReferences(t *testing.T) {
 	now := time.Date(2026, 7, 29, 15, 30, 0, 0, time.UTC)
-	active := mustTask("active", 1, "", "Active task")
+	active := mustTask("active", 1, "Active task")
 	active.Priority = 0
 	active.DueDate = &now
 	active.Checklist = []models.ChecklistItem{{Text: "First", Done: true}, {Text: "Second"}}
@@ -222,7 +222,7 @@ func TestWriteProjectMarkdownCleanIncludesSchema6TaskRecordsAndAttachmentReferen
 		{Filename: "internal/app/service.go", OriginalPath: "internal/app/service.go", IsCodeRef: true, LineNumber: 42, AddedAt: now},
 	}
 
-	terminal := mustTask("terminal", 2, "", "Terminal task")
+	terminal := mustTask("terminal", 2, "Terminal task")
 	terminal.Priority = 0
 	terminal.WorkflowState = models.StateDone
 	terminal.CompletedAt = &now

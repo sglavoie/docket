@@ -21,8 +21,7 @@ type CrossScopeOpts struct {
 }
 
 type projectLoadFailure struct {
-	Project string
-	Detail  string
+	Detail string
 }
 
 // diagnosticToLoadFailure adapts a workspace snapshot diagnostic into the
@@ -38,8 +37,7 @@ func diagnosticToLoadFailure(diag workspace.Diagnostic) projectLoadFailure {
 		detail = "unknown error"
 	}
 	return projectLoadFailure{
-		Project: name,
-		Detail:  fmt.Sprintf("failed to load project %s: %s", name, detail),
+		Detail: fmt.Sprintf("failed to load project %s: %s", name, detail),
 	}
 }
 

@@ -89,13 +89,6 @@ type RenameProjectRequest struct {
 	Config                 []storage.ArtifactChange
 }
 
-// RenameProjectResult reports a rename: the project's new on-disk path and whether
-// the slug actually changed (a name change can leave the slug unchanged).
-type RenameProjectResult struct {
-	NewPath     string
-	SlugChanged bool
-}
-
 // RenameProject renames a project's data directory, rewrites its tasks.md heading,
 // updates the catalog as ONE atomic journaled transaction. Either the whole rename
 // lands (directory at the new slug, heading and catalog updated) or none of it does; a crash
@@ -103,26 +96,26 @@ type RenameProjectResult struct {
 // that renamed the directory eagerly during validation and then saved the config,
 // tasks.md, and each referencing project as independent effects, any of which
 // could fail after the directory had already moved.
-func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, error) {
+func (s *Service) RenameProject(req RenameProjectRequest) error {
 	if req.Project == nil {
-		return RenameProjectResult{}, invalidInput("project", "project is required")
+		return invalidInput("project", "project is required")
 	}
 	protectedID := req.SystemUnfiledProjectID
 	if protectedID != "" &&
 		req.Project.ID == protectedID &&
 		(req.OldName == "" || req.OldName != req.Project.Name || req.OldSlug != req.NewSlug) {
-		return RenameProjectResult{}, fmt.Errorf(
+		return fmt.Errorf(
 			"%w: project %q name and slug are immutable",
 			ErrProtectedSystemUnfiled,
 			req.Project.ID,
 		)
 	}
 	if req.TasksMarkdown != nil && req.TasksExpectedRevision == nil {
-		return RenameProjectResult{}, invalidInput("tasks revision", "renamed tasks.md requires an expected revision")
+		return invalidInput("tasks revision", "renamed tasks.md requires an expected revision")
 	}
 	plan, err := storage.PlanProjectRename(req.DataDir, req.OldSlug, req.NewSlug)
 	if err != nil {
-		return RenameProjectResult{}, err
+		return err
 	}
 
 	ops := make([]transaction.Op, 0, len(plan.Ops))
@@ -152,8 +145,8 @@ func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, 
 		UndoAction:  "Edit Project",
 		UndoContext: req.Project.Name,
 	}); err != nil {
-		return RenameProjectResult{}, err
+		return err
 	}
 	req.Project.Path = plan.NewPath
-	return RenameProjectResult{NewPath: plan.NewPath, SlugChanged: req.OldSlug != req.NewSlug}, nil
+	return nil
 }

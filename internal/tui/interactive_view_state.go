@@ -1,36 +1,17 @@
 package tui
 
-import (
-	"image/color"
-
-	tea "charm.land/bubbletea/v2"
-)
-
-// FlashKind classifies a mutation flash so renderers and frame schedulers can
-// distinguish a normal status/priority change (single solid background) from
-// a task-completion peak moment (multi-frame green ramp).
-type FlashKind int
-
-const (
-	// FlashMutation is the default single-frame flash for status/priority/type/etc.
-	FlashMutation FlashKind = iota
-	// FlashCompletion is a 3-frame green-ramp pulse for task completion.
-	FlashCompletion
-)
+import tea "charm.land/bubbletea/v2"
 
 // InteractiveViewState provides common interactive state for views that
 // support cursor navigation, status messages, and
 // confirmation dialogs. Embed this in view models to eliminate duplicate
 // field declarations.
 type InteractiveViewState struct {
-	cursor            int
-	viewScrollOffset  int
-	cursorFlash       bool
-	mutationFlash     bool
-	mutationFlashBg   color.Color
-	mutationFlashKind FlashKind
-	statusMessage     string
-	confirm           ConfirmDialog
+	cursor           int
+	viewScrollOffset int
+	cursorFlash      bool
+	statusMessage    string
+	confirm          ConfirmDialog
 }
 
 // setStatus sets the status message.
@@ -108,13 +89,4 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 	}
 	c, h := s.confirm.HandleKey(key)
 	return c, h
-}
-
-// advanceCompletionFlashFrame updates the background to the given frame's color.
-// No-op when the current flash is not a completion ramp.
-func (s *InteractiveViewState) advanceCompletionFlashFrame(frame int) {
-	if !s.mutationFlash || s.mutationFlashKind != FlashCompletion {
-		return
-	}
-	s.mutationFlashBg = completionFlashBg(frame)
 }

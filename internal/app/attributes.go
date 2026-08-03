@@ -135,11 +135,7 @@ func (s *Service) SetPinnedByLocator(locator TaskLocator, pinned bool) (TaskResu
 
 // PinnedReorderResult reports the projects a pinned-task reorder committed, so
 // an adapter can reload exactly those projects and rebuild its pinned view.
-type PinnedReorderResult struct {
-	// TouchedProjectIDs lists the committed projects (one entry when both tasks
-	// share a project, two otherwise).
-	TouchedProjectIDs []string
-}
+type PinnedReorderResult struct{}
 
 // ReorderPinnedTasks swaps the PinnedAt timestamps of two pinned tasks so their
 // relative order in a PinnedAt-sorted list flips, committing every touched
@@ -183,16 +179,14 @@ func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID 
 	refB.Task.PinnedAt = &newB
 
 	commits := []projectCommit{{project: refA.Project, expectedRevision: revA, base: refA.Base}}
-	touched := []string{refA.Project.ID}
 	if refB.Project.ID != refA.Project.ID {
 		commits = append(commits, projectCommit{project: refB.Project, expectedRevision: snap.Revision(refB.Project.ID), base: snap.Document(refB.Project.ID)})
-		touched = append(touched, refB.Project.ID)
 	}
 	undoContext := fmt.Sprintf("#%d <-> #%d", refA.Task.ShortID, refB.Task.ShortID)
 	if _, err := s.commitProjects(commits, "Reorder Pinned", undoContext); err != nil {
 		return PinnedReorderResult{}, err
 	}
-	return PinnedReorderResult{TouchedProjectIDs: touched}, nil
+	return PinnedReorderResult{}, nil
 }
 
 // Snooze hides a task until the given date, or clears the snooze when until is

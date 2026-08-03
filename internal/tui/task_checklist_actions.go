@@ -30,7 +30,7 @@ func (m *TaskChecklistModel) saveItem() tea.Cmd {
 	m.cursor = len(m.task.Checklist) - 1
 
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.AddChecklistItem(taskIdentityFor(m.task, m.project), text), func(fresh *models.Task) tea.Msg {
-		return ChecklistItemAddedMsg{Task: fresh}
+		return ChecklistItemAddedMsg{}
 	})
 }
 
@@ -47,7 +47,7 @@ func (m *TaskChecklistModel) executeDelete() tea.Cmd {
 	}
 
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.RemoveChecklistItem(taskIdentityFor(m.task, m.project), index), func(fresh *models.Task) tea.Msg {
-		return ChecklistItemDeletedMsg{Task: fresh}
+		return ChecklistItemDeletedMsg{}
 	})
 }
 
@@ -81,7 +81,7 @@ func (m *TaskChecklistModel) saveEditedItem() tea.Cmd {
 	m.err = nil
 
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditChecklistItem(taskIdentityFor(m.task, m.project), index, text), func(fresh *models.Task) tea.Msg {
-		return ChecklistItemEditedMsg{Task: fresh}
+		return ChecklistItemEditedMsg{}
 	})
 }
 
@@ -95,7 +95,7 @@ func (m *TaskChecklistModel) toggleItem() tea.Cmd {
 	m.task.Checklist[index].Done = !m.task.Checklist[index].Done
 
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.ToggleChecklistItem(taskIdentityFor(m.task, m.project), index), func(fresh *models.Task) tea.Msg {
-		return ChecklistItemToggledMsg{Task: fresh}
+		return ChecklistItemToggledMsg{}
 	})
 }
 
@@ -151,6 +151,6 @@ func (m *TaskChecklistModel) reorderItem(from, to int) tea.Cmd {
 	m.cursor = to
 
 	return commitTaskItemMutation(m.project, m.task, m.coordinator.ReorderChecklistItem(taskIdentityFor(m.task, m.project), from, to), func(fresh *models.Task) tea.Msg {
-		return ChecklistItemEditedMsg{Task: fresh}
+		return ChecklistItemEditedMsg{}
 	})
 }

@@ -113,10 +113,10 @@ func TestMergeOrRecordConflict_ConflictRecordsBundle(t *testing.T) {
 // recordTitleConflict sets up a project on disk holding `remote` content and
 // records a title conflict between local and remote against a common base. It
 // returns the conflict id and the three canonical documents.
-func recordTitleConflict(t *testing.T, env conflictTestEnv) (id string, base, local, remote *ProjectDocument) {
+func recordTitleConflict(t *testing.T, env conflictTestEnv) (id string, base, remote *ProjectDocument) {
 	t.Helper()
 	base = env.setDisk(t, mergeTestDoc("Alpha", mergeTestTask("t1", "base title")))
-	local = cloneEdit(base, func(tk *models.Task) { tk.Title = "local title" })
+	local := cloneEdit(base, func(tk *models.Task) { tk.Title = "local title" })
 	remoteEdit := cloneEdit(base, func(tk *models.Task) { tk.Title = "remote title" })
 	remote = env.setDisk(t, remoteEdit) // the workspace now holds the remote content
 
@@ -125,20 +125,20 @@ func recordTitleConflict(t *testing.T, env conflictTestEnv) (id string, base, lo
 	if err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	return id, base, local, remote
+	return id, base, remote
 }
 
 // TestResolveConflict_UseLocalCommits verifies resolving with local commits the
 // local document and clears the conflict when the remote has not advanced.
 func TestResolveConflict_UseLocalCommits(t *testing.T) {
 	env := newConflictTestEnv(t)
-	id, _, _, _ := recordTitleConflict(t, env)
+	id, _, _ := recordTitleConflict(t, env)
 
 	res, err := ResolveConflict(env.store, env.svc, id, ResolveUseLocal, "")
 	if err != nil {
 		t.Fatalf("ResolveConflict: %v", err)
 	}
-	if !res.Committed || res.RemoteAdvanced || res.Remerged {
+	if !res.Committed || res.Remerged {
 		t.Fatalf("unexpected resolve result: %+v", res)
 	}
 	if got := env.onDiskDoc(t); got.Tasks[0].Title != "local title" {
@@ -153,7 +153,7 @@ func TestResolveConflict_UseLocalCommits(t *testing.T) {
 // conflict without writing over the on-disk content.
 func TestResolveConflict_UseRemoteWritesNothing(t *testing.T) {
 	env := newConflictTestEnv(t)
-	id, _, _, remote := recordTitleConflict(t, env)
+	id, _, remote := recordTitleConflict(t, env)
 
 	res, err := ResolveConflict(env.store, env.svc, id, ResolveUseRemote, "")
 	if err != nil {
@@ -174,7 +174,7 @@ func TestResolveConflict_UseRemoteWritesNothing(t *testing.T) {
 // file is committed.
 func TestResolveConflict_UseFileValidatesAndCommits(t *testing.T) {
 	env := newConflictTestEnv(t)
-	id, base, _, _ := recordTitleConflict(t, env)
+	id, base, _ := recordTitleConflict(t, env)
 
 	mergedDoc := cloneEdit(base, func(tk *models.Task) {
 		tk.Title = "hand merged"
@@ -201,7 +201,7 @@ func TestResolveConflict_UseFileValidatesAndCommits(t *testing.T) {
 // state invariant is rejected and the conflict is left intact.
 func TestResolveConflict_UseFileRejectsInvalid(t *testing.T) {
 	env := newConflictTestEnv(t)
-	id, base, _, _ := recordTitleConflict(t, env)
+	id, base, _ := recordTitleConflict(t, env)
 
 	// A terminal (done) task with no completion timestamp violates the state
 	// invariant enforced by auditMergedDocument. ApplyWorkflowState sets the
@@ -226,7 +226,7 @@ func TestResolveConflict_UseFileRejectsInvalid(t *testing.T) {
 // against the newer remote and commits when the re-merge is clean.
 func TestResolveConflict_RemoteAdvancedRemergeClean(t *testing.T) {
 	env := newConflictTestEnv(t)
-	id, base, _, _ := recordTitleConflict(t, env)
+	id, base, _ := recordTitleConflict(t, env)
 
 	// A second remote edit during resolution touches a DIFFERENT field
 	// (priority) than local (title), so re-merging is clean.
@@ -236,7 +236,7 @@ func TestResolveConflict_RemoteAdvancedRemergeClean(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveConflict: %v", err)
 	}
-	if !res.Committed || !res.RemoteAdvanced || !res.Remerged {
+	if !res.Committed || !res.Remerged {
 		t.Fatalf("expected a clean re-merge commit, got %+v", res)
 	}
 	got := env.onDiskDoc(t)
@@ -254,7 +254,7 @@ func TestResolveConflict_RemoteAdvancedRemergeClean(t *testing.T) {
 // the newer remote replaces the stale one.
 func TestResolveConflict_RemoteAdvancedRemergeConflicts(t *testing.T) {
 	env := newConflictTestEnv(t)
-	id, base, _, remote := recordTitleConflict(t, env)
+	id, base, remote := recordTitleConflict(t, env)
 
 	// A second remote edit re-touches the SAME field (title) differently, so
 	// re-merging local's title against it cannot auto-resolve.
@@ -264,7 +264,7 @@ func TestResolveConflict_RemoteAdvancedRemergeConflicts(t *testing.T) {
 	if !errors.Is(err, ErrRemoteReconflict) {
 		t.Fatalf("err = %v, want ErrRemoteReconflict", err)
 	}
-	if res.Committed || res.NewConflictID == "" || len(res.Conflicts) == 0 {
+	if res.Committed || res.NewConflictID == "" {
 		t.Fatalf("expected an unresolved re-conflict result, got %+v", res)
 	}
 	if got := env.onDiskDoc(t); got.Tasks[0].Title != "newer remote title" {

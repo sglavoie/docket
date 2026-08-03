@@ -167,7 +167,6 @@ func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 		result := app.operationExecutor.Execute(OperationExecutionRequest{
 			ID:      operationCorePeek,
 			Context: app.operationCommandContext(),
-			Source:  OperationSourceDirectKey,
 		})
 		if result.Err != nil || result.Message != nil {
 			t.Fatalf("width %d Enter result = message %T err %v", width, result.Message, result.Err)

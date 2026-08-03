@@ -22,7 +22,7 @@ func TestWriteProjectMarkdownClean_EmptyProject(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_SingleTask(t *testing.T) {
-	task := mustTask("t1", 1, "", "Do the thing")
+	task := mustTask("t1", 1, "Do the thing")
 	task.Priority = 0
 	p := newProject("My Project", task)
 	out := WriteProjectMarkdownClean(p)
@@ -36,10 +36,10 @@ func TestWriteProjectMarkdownClean_SingleTask(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_NestedHierarchy(t *testing.T) {
-	epic := mustTask("e1", 1, "", "Big Epic")
-	story := mustTask("s1", 2, "", "A Story")
+	epic := mustTask("e1", 1, "Big Epic")
+	story := mustTask("s1", 2, "A Story")
 	story.ParentID = &epic.ID
-	task := mustTask("t1", 3, "", "Leaf Task")
+	task := mustTask("t1", 3, "Leaf Task")
 	task.ParentID = &story.ID
 
 	p := newProject("Nested", epic, story, task)
@@ -58,7 +58,7 @@ func TestWriteProjectMarkdownClean_NestedHierarchy(t *testing.T) {
 
 func TestWriteProjectMarkdownClean_Orphan(t *testing.T) {
 	parentID := "missing-parent"
-	orphan := mustTask("o1", 5, "", "Orphan Task")
+	orphan := mustTask("o1", 5, "Orphan Task")
 	orphan.ParentID = &parentID
 
 	p := newProject("WithOrphan", orphan)
@@ -73,7 +73,7 @@ func TestWriteProjectMarkdownClean_DeepNestingClamped(t *testing.T) {
 	ids := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
 	tasks := make([]*models.Task, len(ids))
 	for i, id := range ids {
-		tasks[i] = mustTask(id, i+1, "", "Level "+id)
+		tasks[i] = mustTask(id, i+1, "Level "+id)
 		if i > 0 {
 			parentID := ids[i-1]
 			tasks[i].ParentID = &parentID
@@ -92,7 +92,7 @@ func TestWriteProjectMarkdownClean_DeepNestingClamped(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_Tags(t *testing.T) {
-	task := mustTask("t1", 1, "", "Tagged")
+	task := mustTask("t1", 1, "Tagged")
 	task.Tags = []string{"backend", "auth"}
 	p := newProject("Tags", task)
 	out := WriteProjectMarkdownClean(p)
@@ -103,7 +103,7 @@ func TestWriteProjectMarkdownClean_Tags(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_NoTagsWhenEmpty(t *testing.T) {
-	task := mustTask("t1", 1, "", "No Tags")
+	task := mustTask("t1", 1, "No Tags")
 	task.Tags = []string{}
 	p := newProject("NoTags", task)
 	out := WriteProjectMarkdownClean(p)
@@ -114,7 +114,7 @@ func TestWriteProjectMarkdownClean_NoTagsWhenEmpty(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_Priority(t *testing.T) {
-	task := mustTask("t1", 1, "", "High Priority")
+	task := mustTask("t1", 1, "High Priority")
 	task.Priority = 1
 	p := newProject("Prio", task)
 	out := WriteProjectMarkdownClean(p)
@@ -125,7 +125,7 @@ func TestWriteProjectMarkdownClean_Priority(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_ZeroPriorityNoBadge(t *testing.T) {
-	task := mustTask("t1", 1, "", "Zero Prio")
+	task := mustTask("t1", 1, "Zero Prio")
 	task.Priority = 0
 	p := newProject("ZeroPrio", task)
 	out := WriteProjectMarkdownClean(p)
@@ -136,7 +136,7 @@ func TestWriteProjectMarkdownClean_ZeroPriorityNoBadge(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_DueDate(t *testing.T) {
-	task := mustTask("t1", 1, "", "Has Due")
+	task := mustTask("t1", 1, "Has Due")
 	due := time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC)
 	task.DueDate = &due
 	task.Priority = 0
@@ -149,7 +149,7 @@ func TestWriteProjectMarkdownClean_DueDate(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_SnoozedUntil(t *testing.T) {
-	task := mustTask("t1", 1, "", "Snoozed")
+	task := mustTask("t1", 1, "Snoozed")
 	snooze := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	task.SnoozedUntil = &snooze
 	task.Priority = 0
@@ -162,7 +162,7 @@ func TestWriteProjectMarkdownClean_SnoozedUntil(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_NonTodoStatus(t *testing.T) {
-	task := mustTask("t1", 1, "", "In Progress")
+	task := mustTask("t1", 1, "In Progress")
 	task.ApplyWorkflowState(models.StateDoing)
 	task.Priority = 0
 	p := newProject("Status", task)
@@ -174,7 +174,7 @@ func TestWriteProjectMarkdownClean_NonTodoStatus(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_TodoStatusNoBadge(t *testing.T) {
-	task := mustTask("t1", 1, "", "Todo")
+	task := mustTask("t1", 1, "Todo")
 	task.ApplyWorkflowState(models.StateBacklog)
 	task.Priority = 0
 	p := newProject("TodoStatus", task)
@@ -186,7 +186,7 @@ func TestWriteProjectMarkdownClean_TodoStatusNoBadge(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_EmptyDescription(t *testing.T) {
-	task := mustTask("t1", 1, "", "No Desc")
+	task := mustTask("t1", 1, "No Desc")
 	task.Description = ""
 	p := newProject("NoDesc", task)
 	out := WriteProjectMarkdownClean(p)
@@ -210,7 +210,7 @@ func TestWriteProjectMarkdownClean_EmptyDescription(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_NoHTMLComments(t *testing.T) {
-	task := mustTask("t1", 1, "", "Clean")
+	task := mustTask("t1", 1, "Clean")
 	task.ApplyWorkflowState(models.StateDoing)
 	task.Priority = 2
 	task.Tags = []string{"x"}
@@ -223,7 +223,7 @@ func TestWriteProjectMarkdownClean_NoHTMLComments(t *testing.T) {
 }
 
 func TestWriteProjectMarkdownClean_Description(t *testing.T) {
-	task := mustTask("t1", 1, "", "With Desc")
+	task := mustTask("t1", 1, "With Desc")
 	task.Description = "This is the description.\nWith multiple lines."
 	task.Priority = 0
 	p := newProject("Desc", task)

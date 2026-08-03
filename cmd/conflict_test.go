@@ -16,7 +16,7 @@ import (
 // store, the project on disk, and its data dir.
 //
 //nolint:govet // The test-local data directory is intentionally independent of the command flag.
-func setupConflictTest(t *testing.T) (*storage.ConflictStore, *storage.CommitService, *models.Project) {
+func setupConflictTest(t *testing.T) (*storage.ConflictStore, *models.Project) {
 	t.Helper()
 	deps := setupTestDeps(t)
 	manager := config.NewManager(deps.ConfigPath)
@@ -40,7 +40,7 @@ func setupConflictTest(t *testing.T) (*storage.ConflictStore, *storage.CommitSer
 	if _, err := svc.Commit(storage.ChangeSet{Project: project}); err != nil {
 		t.Fatalf("commit remote: %v", err)
 	}
-	return store, svc, project
+	return store, project
 }
 
 // editDocTitle copies a document with its first task's title changed and its
@@ -78,7 +78,7 @@ func recordCLIConflict(t *testing.T, store *storage.ConflictStore, project *mode
 // TestConflictListAndShow verifies the list and show commands run against a
 // recorded conflict without error and that a short id selects it.
 func TestConflictListAndShow(t *testing.T) {
-	store, _, project := setupConflictTest(t)
+	store, project := setupConflictTest(t)
 	id := recordCLIConflict(t, store, project)
 
 	if err := runConflictList(conflictListCmd, nil); err != nil {
@@ -92,7 +92,7 @@ func TestConflictListAndShow(t *testing.T) {
 // TestConflictResolveUseLocal verifies the resolve command commits the local
 // edits and clears the conflict.
 func TestConflictResolveUseLocal(t *testing.T) {
-	store, _, project := setupConflictTest(t)
+	store, project := setupConflictTest(t)
 	id := recordCLIConflict(t, store, project)
 
 	conflictResolveUse = "local"
@@ -117,7 +117,7 @@ func TestConflictResolveUseLocal(t *testing.T) {
 
 // TestConflictResolveRequiresUse verifies an unset or invalid --use is rejected.
 func TestConflictResolveRequiresUse(t *testing.T) {
-	store, _, project := setupConflictTest(t)
+	store, project := setupConflictTest(t)
 	id := recordCLIConflict(t, store, project)
 
 	conflictResolveUse = ""

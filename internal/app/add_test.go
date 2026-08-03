@@ -59,7 +59,7 @@ func TestService_AddTask_Parity(t *testing.T) {
 		t.Fatalf("AddTask: %v", err)
 	}
 
-	if res.Title != "Child task" || res.ProjectSlug == "" || res.QualifiedRef == "" || res.Revision == "" {
+	if res.Title != "Child task" || res.ProjectID == "" || res.ShortID == 0 || res.Revision == "" {
 		t.Fatalf("unexpected result envelope: %+v", res)
 	}
 

@@ -50,7 +50,6 @@ type TaskCreatedMsg struct {
 // Result.ProjectID and re-resolves the live Task pointer before delegating, so
 // the coordinator path and the legacy in-place path share one handler.
 type TaskUpdatedMsg struct {
-	Task   *models.Task
 	Result *app.TaskResult
 }
 
@@ -58,7 +57,6 @@ type TaskUpdatedMsg struct {
 // the task was deleted from so the post-delete handler can wire an undo
 // toast that targets the correct project's snapshot history.
 type TaskDeletedMsg struct {
-	Task    *models.Task
 	Project *models.Project
 }
 
@@ -71,13 +69,9 @@ type TaskStatusChangedMsg struct{ Task *models.Task }
 // This is used by adapters that mutate tasks in memory without going through
 // the coordinator pipeline.
 type TaskPropertyChangedMsg struct {
-	Task                *models.Task
-	NeedsSave           bool
-	UndoAction          string
-	UndoContext         string
-	UndoTaskIDs         []string
-	UndoGroupID         string
-	UndoGroupProjectIDs []string
+	NeedsSave   bool
+	UndoAction  string
+	UndoContext string
 }
 
 // =============================================================================
@@ -215,13 +209,13 @@ type ShowTaskCommentsMsg struct {
 type CloseTaskCommentsMsg struct{ PopViewMsg }
 
 // CommentAddedMsg signals a comment was added.
-type CommentAddedMsg struct{ Task *models.Task }
+type CommentAddedMsg struct{}
 
 // CommentDeletedMsg signals a comment was deleted.
-type CommentDeletedMsg struct{ Task *models.Task }
+type CommentDeletedMsg struct{}
 
 // CommentEditedMsg signals a comment was edited.
-type CommentEditedMsg struct{ Task *models.Task }
+type CommentEditedMsg struct{}
 
 // =============================================================================
 // Task Checklist Messages (Show/Close Pattern)
@@ -237,16 +231,16 @@ type ShowTaskChecklistMsg struct {
 type CloseTaskChecklistMsg struct{ PopViewMsg }
 
 // ChecklistItemAddedMsg signals a checklist item was added.
-type ChecklistItemAddedMsg struct{ Task *models.Task }
+type ChecklistItemAddedMsg struct{}
 
 // ChecklistItemEditedMsg signals a checklist item was edited.
-type ChecklistItemEditedMsg struct{ Task *models.Task }
+type ChecklistItemEditedMsg struct{}
 
 // ChecklistItemDeletedMsg signals a checklist item was deleted.
-type ChecklistItemDeletedMsg struct{ Task *models.Task }
+type ChecklistItemDeletedMsg struct{}
 
 // ChecklistItemToggledMsg signals a checklist item was toggled.
-type ChecklistItemToggledMsg struct{ Task *models.Task }
+type ChecklistItemToggledMsg struct{}
 
 // =============================================================================
 // Task Attachments Messages (Show/Close Pattern)
@@ -262,10 +256,10 @@ type ShowTaskAttachmentsMsg struct {
 type CloseTaskAttachmentsMsg struct{ PopViewMsg }
 
 // AttachmentAddedMsg signals an attachment was added.
-type AttachmentAddedMsg struct{ Task *models.Task }
+type AttachmentAddedMsg struct{}
 
 // AttachmentDeletedMsg signals an attachment was deleted.
-type AttachmentDeletedMsg struct{ Task *models.Task }
+type AttachmentDeletedMsg struct{}
 
 // =============================================================================
 // Cross-Project Move Messages (Show/Close/Done Pattern)
@@ -290,10 +284,9 @@ type MoveTaskToProjectMsg struct {
 
 // TaskMovedToProjectMsg signals a task was moved to another project.
 type TaskMovedToProjectMsg struct {
-	Task          *models.Task
-	SourceProject *models.Project
-	DestProject   *models.Project
-	MovedCount    int  // Number of tasks moved (including descendants)
-	OldShortID    int  // Original short ID before move
-	FromGlobal    bool // true when triggered from a global move workflow (skip popView)
+	Task        *models.Task
+	DestProject *models.Project
+	MovedCount  int  // Number of tasks moved (including descendants)
+	OldShortID  int  // Original short ID before move
+	FromGlobal  bool // true when triggered from a global move workflow (skip popView)
 }

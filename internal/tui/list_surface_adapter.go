@@ -26,12 +26,10 @@ type PinnablePickerItem interface {
 // PickerConfig contains presentation choices for a specialized list adapter.
 type PickerConfig struct {
 	Title          string
-	Subtitle       string
 	EmptyMessage   string
 	NoMatchMessage string
 	MultiSelect    bool
 	ShowCounts     bool
-	BoxWidth       int
 }
 
 // ListSurfaceAdapter supplies Bubble Tea search and rendering around the
@@ -218,7 +216,7 @@ func (adapter *ListSurfaceAdapter[T]) RenderList(maxVisible int) string {
 		Layout:   ListSurfaceLayoutCompact,
 		HideHelp: true,
 	}).Render(adapter.surface)
-	return rendered.Content + "\n"
+	return rendered + "\n"
 }
 
 func (adapter *ListSurfaceAdapter[T]) RenderSearchBar() string {

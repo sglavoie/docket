@@ -61,24 +61,23 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	}
 
 	m := &AppModel{
-		configManager:        manager,
-		runtime:              runtime,
-		deps:                 newShellDeps(runtime, svc, manager, ledger),
-		projects:             projectMap,
-		persister:            NewProjectService(),
-		appService:           svc,
-		secondaryFeatures:    newSecondaryCoordinators(svc),
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		width:                120,
-		height:               40,
-		views:                NewViewRegistry(),
-		currentProject:       projects[0],
-		nextOrder:            []PlanningTask{},
-		nextOrderIDs:         make(map[TaskIdentity]bool),
-		today:                []PlanningTask{},
-		todayIDs:             make(map[TaskIdentity]bool),
-		operationRegistry:    NewOperationRegistry(),
-		navigation:           NewNavigationState(),
+		configManager:     manager,
+		runtime:           runtime,
+		deps:              newShellDeps(ledger),
+		projects:          projectMap,
+		persister:         NewProjectService(),
+		appService:        svc,
+		secondaryFeatures: newSecondaryCoordinators(svc),
+		width:             120,
+		height:            40,
+		views:             NewViewRegistry(),
+		currentProject:    projects[0],
+		nextOrder:         []PlanningTask{},
+		nextOrderIDs:      make(map[TaskIdentity]bool),
+		today:             []PlanningTask{},
+		todayIDs:          make(map[TaskIdentity]bool),
+		operationRegistry: NewOperationRegistry(),
+		navigation:        NewNavigationState(),
 	}
 	m.operationExecutor = NewOperationExecutor(m.operationRegistry)
 	m.rebuildPlanningFromRuntime()
@@ -189,7 +188,7 @@ func assertOrder(t *testing.T, label string, got, want []string) {
 // pressReorderKey drives one J/K key through the OperationRegistry grammar and
 // routes the emitted planning-reorder command back through the shell, mirroring
 // production dispatch end to end. It returns whether a reorder command fired.
-func pressReorderKey(t *testing.T, m *AppModel, cross *OutlinerModel, key rune) bool {
+func pressReorderKey(t *testing.T, m *AppModel, key rune) bool {
 	t.Helper()
 	handled, cmd := m.handleGlobalKeyPress(syntheticKey(key))
 	if !handled || cmd == nil {
@@ -220,7 +219,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J in Next produced no reorder command")
 		}
 
@@ -228,7 +227,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		// task tree is untouched (still three roots in their original model order).
 		assertOrder(t, "focus queue after J", diskNextOrderIDs(t, dataDir),
 			[]string{tasks[1].ID, tasks[0].ID, tasks[2].ID})
-		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
+		assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
 
 		// A rebuild from the committed runtime keeps the reordered sequence.
 		enterCrossMode(cross, ModeNext)
@@ -247,7 +246,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			t.Fatal("cursor did not land on Charlie")
 		}
 
-		if !pressReorderKey(t, m, cross, 'K') {
+		if !pressReorderKey(t, m, 'K') {
 			t.Fatal("K in Next produced no reorder command")
 		}
 
@@ -269,7 +268,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			t.Fatal("cursor did not land on B")
 		}
 
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J at the all-project root produced no workspace reorder")
 		}
 
@@ -291,13 +290,13 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J in Today produced no reorder command")
 		}
 
 		assertOrder(t, "daily plan after J", diskTodayIDs(t, dataDir),
 			[]string{tasks[1].ID, tasks[0].ID, tasks[2].ID})
-		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
+		assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
 	})
 
 	t.Run("All-mode Next group reorders the durable focus queue", func(t *testing.T) {
@@ -311,7 +310,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		if !cross.rows[cross.cursor].IsNextSection {
 			t.Fatal("All-mode Next row lost its planning-section identity")
 		}
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J in All-mode Next produced no reorder command")
 		}
 		assertOrder(t, "All-mode Next after J", diskNextOrderIDs(t, dataDir),
@@ -331,7 +330,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 		t.Fatal("cursor did not land on Waiting")
 	}
-	if !pressReorderKey(t, m, cross, 'J') {
+	if !pressReorderKey(t, m, 'J') {
 		t.Fatal("J across lifecycle states produced no planning reorder")
 	}
 	want := []string{tasks[1].ID, tasks[0].ID}
@@ -342,7 +341,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	cross.loadedProjects = []*models.Project{project}
 	enterCrossMode(cross, ModeToday)
 	assertOrder(t, "Today after rebuild", visibleTaskIDs(cross), want)
-	assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID})
+	assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID})
 }
 
 // TestOutlinerPlanningOrderJKFilteredAndScoped locks FR17-002: when the visible
@@ -371,7 +370,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J in filtered Next produced no reorder command")
 		}
 
@@ -403,13 +402,13 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J in filtered Today produced no reorder command")
 		}
 
 		assertOrder(t, "filtered daily plan after J", diskTodayIDs(t, dataDir),
 			[]string{tasks[2].ID, tasks[1].ID, tasks[0].ID})
-		assertTreeUnchanged(t, dataDir, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
+		assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
 	})
 
 	t.Run("single-project scope swaps within scope, leaving other projects unmoved", func(t *testing.T) {
@@ -434,7 +433,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 
 		// J on A: its visible neighbor is C (B is out of scope). Swap A and C in
 		// the durable order; the other project's B and D never move.
-		if !pressReorderKey(t, m, cross, 'J') {
+		if !pressReorderKey(t, m, 'J') {
 			t.Fatal("J in scoped Next produced no reorder command")
 		}
 
@@ -461,7 +460,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
-		if pressReorderKey(t, m, cross, 'J') {
+		if pressReorderKey(t, m, 'J') {
 			t.Fatal("J at the visible boundary emitted a reorder command; it must be a no-op")
 		}
 		// Durable order untouched: no swap with the hidden tasks below.
@@ -476,7 +475,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	for _, task := range tasks {
 		task.ApplyWorkflowState(models.StateBacklog)
 	}
-	m, cross, dataDir := newPlanningOrderApp(t, project)
+	m, cross, _ := newPlanningOrderApp(t, project)
 	cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	tasks[0].Tags = []string{"keep"}
 	tasks[2].Tags = []string{"keep"}
@@ -488,7 +487,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	if !cross.simplifiedReorderEligible() {
 		t.Fatal("hierarchical row was not reorder eligible")
 	}
-	if !pressReorderKey(t, m, cross, 'J') {
+	if !pressReorderKey(t, m, 'J') {
 		t.Fatal("J on a hierarchical row produced no reorder command")
 	}
 	if m.err != nil {
@@ -510,7 +509,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	// The two adjacent visible siblings swap explicitly around the hidden
 	// sibling. A model-adjacent MoveDown would incorrectly produce
 	// hide-me, keep-one, keep-two.
-	assertTreeUnchanged(t, dataDir, project, []string{lastID, hiddenID, firstID})
+	assertTreeUnchanged(t, project, []string{lastID, hiddenID, firstID})
 }
 
 // visibleTaskIDs returns the task IDs of the outliner's current task rows in
@@ -533,7 +532,7 @@ func locatorOf(project *models.Project, task *models.Task) config.ProjectTaskLoc
 // assertTreeUnchanged reloads the project from disk and asserts its root task IDs
 // still match wantRootIDs in order, proving a planning reorder never rewrote the
 // task hierarchy.
-func assertTreeUnchanged(t *testing.T, dataDir string, project *models.Project, wantRootIDs []string) {
+func assertTreeUnchanged(t *testing.T, project *models.Project, wantRootIDs []string) {
 	t.Helper()
 	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
 	if err := storage.LoadProject(fresh); err != nil {

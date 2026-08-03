@@ -33,7 +33,6 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 		tasks = append(tasks, renderFixtureTask(t,
 			fmt.Sprintf("row-%02d", i),
 			i+1,
-			"",
 			fmt.Sprintf("Fill row %02d with a fairly long title", i),
 			models.StateBacklog,
 			3,

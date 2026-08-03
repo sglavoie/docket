@@ -90,7 +90,6 @@ func TestProductionTaskOperationManifestIsRegisteredApplicableAndExecutable(t *t
 			result := model.operationExecutor.Execute(OperationExecutionRequest{
 				ID:      entry.ID,
 				Context: context,
-				Source:  OperationSourceActionSheet,
 			})
 			for _, sentinel := range []error{
 				ErrOperationNotRegistered,
@@ -145,7 +144,6 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 		request := OperationExecutionRequest{
 			ID:      entry.ID,
 			Context: context,
-			Source:  OperationSourceBulk,
 		}
 		if value, ok := values[entry.ID]; ok {
 			request.Value, request.HasValue = value, true
@@ -184,7 +182,6 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	result := m.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationTaskDelete,
 		Context: context,
-		Source:  OperationSourceActionSheet,
 	})
 	if result.Err != nil {
 		t.Fatalf("execute delete: %v", result.Err)
@@ -198,9 +195,6 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	}
 	if len(request.Refs) != 1 || request.Refs[0].Task != e.parent {
 		t.Fatalf("delete refs = %v, want only the frozen parent", request.Refs)
-	}
-	if request.Origin != ViewCrossProjectOutliner {
-		t.Errorf("origin = %v, want the Outliner", request.Origin)
 	}
 	if reloaded := e.reload(t, e.alpha); reloaded.GetTaskByID(e.parent.ID) == nil {
 		t.Fatal("the registry mutated task data before confirmation")

@@ -97,16 +97,15 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 
 func (e *taskDeleteEnv) appModel() *AppModel {
 	return &AppModel{
-		configManager:        e.mgr,
-		runtime:              testRuntimeAt(e.cfg.DataDir(), e.cfg),
-		projects:             map[string]*models.Project{e.alpha.ID: e.alpha, e.beta.ID: e.beta},
-		persister:            NewProjectService(),
-		appService:           e.svc,
-		secondaryFeatures:    newSecondaryCoordinators(e.svc),
-		views:                NewViewRegistry(),
-		width:                80,
-		height:               24,
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		configManager:     e.mgr,
+		runtime:           testRuntimeAt(e.cfg.DataDir(), e.cfg),
+		projects:          map[string]*models.Project{e.alpha.ID: e.alpha, e.beta.ID: e.beta},
+		persister:         NewProjectService(),
+		appService:        e.svc,
+		secondaryFeatures: newSecondaryCoordinators(e.svc),
+		views:             NewViewRegistry(),
+		width:             80,
+		height:            24,
 	}
 }
 
@@ -171,18 +170,11 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 	e := newTaskDeleteEnv(t)
 	m := e.appModel()
 
-	cmd := m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
-		Refs:   []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
-		Origin: ViewCrossProjectOutliner,
+	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
+		Refs: []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
 	})
-	if cmd != nil {
-		t.Fatal("arming the confirm must not dispatch a command")
-	}
 	if !m.taskDeleteConfirm.IsActive() {
 		t.Fatal("confirm dialog should be active after request")
-	}
-	if m.pendingTaskDelete.origin != ViewCrossProjectOutliner {
-		t.Errorf("origin = %v, want Outliner", m.pendingTaskDelete.origin)
 	}
 	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
 		t.Errorf("prompt = %q, want %q", got, "Delete task #1?")
@@ -197,9 +189,7 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 
 	// An empty/invalid request is a no-op that leaves nothing armed.
 	m2 := e.appModel()
-	if cmd := m2.handleTaskDeleteRequested(TaskDeleteRequestedMsg{Refs: []TaskProjectRef{{Task: nil, Project: nil}}}); cmd != nil {
-		t.Error("empty request should return nil")
-	}
+	m2.handleTaskDeleteRequested(TaskDeleteRequestedMsg{Refs: []TaskProjectRef{{Task: nil, Project: nil}}})
 	if m2.taskDeleteConfirm.IsActive() {
 		t.Error("empty request must not arm the confirm")
 	}
@@ -258,8 +248,7 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	runtime := m.runtime
 
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
-		Refs:   []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
-		Origin: ViewCrossProjectOutliner,
+		Refs: []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
 	})
 
 	handled, cmd := m.handleGlobalKeyPress(keyPress("y"))
@@ -276,10 +265,7 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	}
 
 	msg := runBatchResult(t, cmd)
-	// Root + descendant removed; the requested root is the selection to clear.
-	if len(msg.RemovedTaskIDs) != 2 {
-		t.Errorf("removed ids = %v, want parent+child", msg.RemovedTaskIDs)
-	}
+	// The requested root is the selection to clear.
 	if len(msg.ClearSelectionTaskIDs) != 1 || msg.ClearSelectionTaskIDs[0] != e.parent.ID {
 		t.Errorf("clear-selection ids = %v, want [parent]", msg.ClearSelectionTaskIDs)
 	}
@@ -333,16 +319,9 @@ func TestTaskDeleteNestedRootsPromptAndRemoval(t *testing.T) {
 	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
 		t.Errorf("nested-root prompt = %q, want canonical root prompt %q", got, "Delete task #1?")
 	}
-	if impact := m.pendingTaskDelete.impact; impact.selectedRoots != 1 || impact.descendants != 1 || impact.totalTasks != 2 {
-		t.Fatalf("nested-root impact = %+v, want one root plus one deduplicated descendant", impact)
-	}
 
 	_, cmd := m.handleGlobalKeyPress(keyPress("y"))
 	msg := runBatchResult(t, cmd)
-	// The application service collapses the nested root; the subtree removes once.
-	if len(msg.RemovedTaskIDs) != 2 {
-		t.Errorf("removed ids = %v, want parent+child once", msg.RemovedTaskIDs)
-	}
 	m.handleBatchTransactionResult(msg)
 
 	reloaded := e.reload(t, e.alpha)
@@ -416,9 +395,6 @@ func TestTaskDeleteCrossProjectSelection(t *testing.T) {
 	msg := runBatchResult(t, cmd)
 	if len(msg.TouchedProjectIDs) != 2 {
 		t.Errorf("touched projects = %v, want alpha+beta", msg.TouchedProjectIDs)
-	}
-	if len(msg.RemovedTaskIDs) != 2 {
-		t.Errorf("removed ids = %v, want sibling+lone", msg.RemovedTaskIDs)
 	}
 	m.handleBatchTransactionResult(msg)
 

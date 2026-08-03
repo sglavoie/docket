@@ -3,13 +3,11 @@ package tui
 import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 )
 
 // SpinnerModel wraps the bubbles spinner for loading states.
 type SpinnerModel struct {
 	spinner spinner.Model
-	style   lipgloss.Style
 }
 
 // NewSpinner creates a new spinner with the app's loading style.
@@ -19,7 +17,6 @@ func NewSpinner() SpinnerModel {
 	s.Style = WarningIconStyle
 	return SpinnerModel{
 		spinner: s,
-		style:   WarningIconStyle,
 	}
 }
 

@@ -16,10 +16,7 @@ const (
 
 // Common time durations for date arithmetic and comparisons.
 const (
-	Day   = 24 * time.Hour
-	Week  = 7 * Day
-	Month = 30 * Day
-	Year  = 365 * Day
+	Day = 24 * time.Hour
 )
 
 // maxRelativeOffset bounds user-supplied numeric offsets in relative-date

@@ -69,9 +69,9 @@ func (f *CommonFilterState) hasCompletionAgeFilter() bool {
 	return f.completionAgeSet
 }
 
-func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter, active bool) {
+func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter) {
 	f.CompletionAge = filter
-	f.completionAgeSet = active
+	f.completionAgeSet = true
 }
 
 // passesCommonFiltersAt checks whether a task passes the shared filter facets

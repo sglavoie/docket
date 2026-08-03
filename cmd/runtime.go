@@ -12,9 +12,8 @@ import (
 // command constructs it once, reads the cached domain snapshot, and uses the
 // manager only to build revision-checked artifacts or domain commits.
 type CLIWorkspace struct {
-	Manager      *config.Manager
-	Dependencies *config.RuntimeDependencies
-	Runtime      *config.RuntimeState
+	Manager *config.Manager
+	Runtime *config.RuntimeState
 }
 
 // LoadCLIWorkspace ensures fresh workspaces have a complete split-domain set,
@@ -35,9 +34,8 @@ func loadCLIWorkspace() (*CLIWorkspace, error) {
 		return nil, fmt.Errorf("failed to load runtime state: %w", err)
 	}
 	return &CLIWorkspace{
-		Manager:      manager,
-		Dependencies: manager.RuntimeDependencies(),
-		Runtime:      runtime,
+		Manager: manager,
+		Runtime: runtime,
 	}, nil
 }
 

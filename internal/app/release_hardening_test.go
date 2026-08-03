@@ -73,26 +73,6 @@ func TestReleasePlanningMaintenanceOperations(t *testing.T) {
 	}
 }
 
-func TestReleaseQualifiedProjectQuery(t *testing.T) {
-	task := newTask("task", 1, "Qualified task")
-	task.Tags = []string{"release", "quality"}
-	project := newProject("project", "Project", task)
-	repo := newFakeRepo(project)
-	service := newTestService(repo)
-
-	summary, err := service.Project(project.ID)
-	if err != nil {
-		t.Fatalf("Project: %v", err)
-	}
-	if summary.ID != project.ID || summary.TaskCount != 1 || len(summary.Tags) != 2 {
-		t.Fatalf("Project summary = %+v", summary)
-	}
-	summary.Tags[0] = "mutated-copy"
-	if task.Tags[0] != "release" {
-		t.Fatal("Project summary tags alias the project snapshot")
-	}
-}
-
 func planningTaskIDs(items []config.ProjectTaskLocator) []string {
 	ids := make([]string, 0, len(items))
 	for _, item := range items {

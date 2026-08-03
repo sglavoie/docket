@@ -347,7 +347,6 @@ func (m *ProjectHubModel) projectHubCommandContext(projectID string) CommandCont
 	ctx.Capabilities.Add(CapabilityProjectHub)
 	if projectID != "" {
 		ctx.CurrentEntity = ProjectEntity(projectID)
-		ctx.FocusedProjectID = projectID
 	}
 	return ctx
 }
@@ -360,7 +359,6 @@ func (m *ProjectHubModel) executeProjectOperation(id OperationID, projectID stri
 	result := m.executor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: m.projectHubCommandContext(projectID),
-		Source:  OperationSourceDirectKey,
 	})
 	return m.applyProjectHubExecutionResult(result)
 }
@@ -374,7 +372,6 @@ func (m *ProjectHubModel) executeProjectHubCreate() tea.Cmd {
 	result := m.executor.Execute(OperationExecutionRequest{
 		ID:       operationScopeCreateProject,
 		Context:  m.projectHubCommandContext(""),
-		Source:   OperationSourceDirectKey,
 		Value:    target,
 		HasValue: true,
 	})
@@ -484,7 +481,7 @@ func (m *ProjectHubModel) View() tea.View {
 			Layout:      ListSurfaceLayoutAuto,
 			ShowPreview: true,
 			HideHelp:    true,
-		}).Render(m.surface).Content
+		}).Render(m.surface)
 	}
 	if m.notice != "" {
 		content = lipgloss.JoinVertical(

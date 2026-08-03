@@ -80,10 +80,7 @@ func (m *AppModel) refreshAllViews() {
 // Parameters:
 //   - popView: whether to pop the current view from the stack
 //   - reload: whether to reload the current project from storage
-//   - statusMsg: optional status message to display (empty string skips)
-//
-// Returns a tea.Cmd for status timeout if statusMsg is provided, nil otherwise.
-func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea.Cmd {
+func (m *AppModel) handleWithRefresh(popView, reload bool) tea.Cmd {
 	var popCmd tea.Cmd
 	if popView {
 		popCmd = m.popView()
@@ -114,10 +111,6 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	m.refreshLoadedTaskWorkspace()
 	if crossReloadCmd != nil {
 		crossInstance.cursor = crossSavedCursor
-	}
-	if statusMsg != "" {
-		m.setSuccessStatus(statusMsg)
-		return tea.Batch(popCmd, crossReloadCmd, defaultStatusTimeout())
 	}
 	if crossReloadCmd != nil {
 		return tea.Batch(popCmd, crossReloadCmd)

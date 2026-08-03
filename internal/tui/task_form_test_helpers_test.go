@@ -32,9 +32,9 @@ func sendFormMsg(m *TaskFormModel, msg tea.Msg) *TaskFormModel {
 	return next.(*TaskFormModel)
 }
 
-func navigateToScheduleField(m *TaskFormModel, idx int) *TaskFormModel {
+func navigateToScheduleField(m *TaskFormModel) *TaskFormModel {
 	m.activeTab = formTabSchedule
-	m.focusIndex = idx
+	m.focusIndex = 0
 	m.syncInputFocus()
 	return m
 }

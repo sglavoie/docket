@@ -14,7 +14,6 @@ import (
 // picker and returns the same selection and cancellation messages.
 type OperationTextPromptModel struct {
 	request  OperationExecutionRequest
-	provider ValueProviderID
 	input    textinput.Model
 	title    string
 	subtitle string
@@ -23,7 +22,6 @@ type OperationTextPromptModel struct {
 
 func newOperationTextPromptModel(
 	request OperationExecutionRequest,
-	provider ValueProviderID,
 	title string,
 	subtitle string,
 	current string,
@@ -37,7 +35,6 @@ func newOperationTextPromptModel(
 	applyThemedTextInput(&input)
 	return &OperationTextPromptModel{
 		request:  request,
-		provider: provider,
 		input:    input,
 		title:    title,
 		subtitle: subtitle,
@@ -62,9 +59,8 @@ func (model *OperationTextPromptModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, 
 			return nil, false, nil
 		}
 		return nil, true, OperationValueSelectedMsg{
-			Request:  model.request,
-			Provider: model.provider,
-			Value:    value,
+			Request: model.request,
+			Value:   value,
 		}
 	default:
 		model.notice = ""
@@ -121,7 +117,7 @@ func (m *AppModel) newOperationTextPrompt(
 			return nil, err
 		}
 		return newOperationTextPromptModel(
-			request, provider, label, note.Note.Title, note.Note.Title, "new note title",
+			request, label, note.Note.Title, note.Note.Title, "new note title",
 		), nil
 	default:
 		return nil, fmt.Errorf("unknown operation text value provider %q", provider)

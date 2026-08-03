@@ -48,7 +48,7 @@ const (
 // when the builder runs; the builder only adds projects and sets config state.
 var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureEmpty:    buildEmptyFixture,
-	FixtureFresh:    buildFreshFixture,
+	FixtureFresh:    nil,
 	FixtureRich:     buildRichFixture,
 	FixtureBusy:     buildBusyFixture,
 	FixtureWorkflow: buildWorkflowFixture,
@@ -282,7 +282,9 @@ func NewFixtureDriver(name string, width, height int) (*UITestDriver, *uitestWor
 	if err != nil {
 		return nil, nil, err
 	}
-	if err = build(ws); err != nil {
+	if build == nil {
+		buildFreshFixture(ws)
+	} else if err = build(ws); err != nil {
 		_ = ws.Cleanup()
 		return nil, nil, err
 	}
@@ -399,10 +401,9 @@ func buildEmptyFixture(_ *uitestWorkspace) error {
 
 // buildFreshFixture removes even the harness-seeded sandbox so NewAppModel must
 // bootstrap a genuine blank install, then starts on the configured default view.
-func buildFreshFixture(w *uitestWorkspace) error {
+func buildFreshFixture(w *uitestWorkspace) {
 	w.Runtime.SetCatalogInMemory(config.NewWorkspaceCatalog())
 	w.startAtDefault = true
-	return nil
 }
 
 // buildRichFixture creates a project with a full task hierarchy spanning every

@@ -9,13 +9,13 @@ type OverlayKind uint8
 const (
 	OverlayComposer OverlayKind = iota
 	OverlayProjectPicker
-	OverlayViewMenu
+	_
 	OverlaySearch
-	OverlayTaskJump
+	_
 	OverlayForm
 	OverlayPicker
 	OverlayConfirmation
-	OverlayProjectDrilldown
+	_
 	OverlayTaskTool
 	OverlayReference
 )

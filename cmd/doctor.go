@@ -30,7 +30,6 @@ func init() {
 
 type doctorIssue struct {
 	project string
-	task    string
 	detail  string
 }
 
@@ -367,7 +366,6 @@ func checkDuplicateIDs(projects []*models.Project, results *doctorResults) {
 			if localIDs[task.ID] {
 				results.duplicateIDs = append(results.duplicateIDs, doctorIssue{
 					project: project.Name,
-					task:    task.ID,
 					detail:  fmt.Sprintf("duplicate within project: %s", task.Title),
 				})
 			}
@@ -377,7 +375,6 @@ func checkDuplicateIDs(projects []*models.Project, results *doctorResults) {
 			if otherProject, exists := globalIDs[task.ID]; exists {
 				results.duplicateIDs = append(results.duplicateIDs, doctorIssue{
 					project: project.Name,
-					task:    task.ID,
 					detail:  fmt.Sprintf("also exists in project %s", otherProject),
 				})
 			} else {
@@ -394,7 +391,6 @@ func checkDuplicateShortIDs(projects []*models.Project, results *doctorResults) 
 			if first, exists := seen[task.ShortID]; exists {
 				results.duplicateShortIDs = append(results.duplicateShortIDs, doctorIssue{
 					project: project.Name,
-					task:    task.ID,
 					detail:  fmt.Sprintf("short ID #%d used by %q and %q", task.ShortID, first, task.Title),
 				})
 			} else {
@@ -412,7 +408,6 @@ func checkBrokenParentRefs(projects []*models.Project, results *doctorResults) {
 				if _, exists := taskMap[*task.ParentID]; !exists {
 					results.brokenParentRefs = append(results.brokenParentRefs, doctorIssue{
 						project: project.Name,
-						task:    task.ID,
 						detail:  fmt.Sprintf("parent %s not found (task: %s)", *task.ParentID, task.Title),
 					})
 				}
@@ -433,13 +428,11 @@ func checkCompletionTimestamps(projects []*models.Project, results *doctorResult
 			case terminal && (task.CompletedAt == nil || task.CompletedAt.IsZero()):
 				results.invalidCompletionTimestamps = append(results.invalidCompletionTimestamps, doctorIssue{
 					project: project.Name,
-					task:    task.ID,
 					detail:  fmt.Sprintf("terminal task #%d %q has no valid completed_at", task.ShortID, task.Title),
 				})
 			case !terminal && task.CompletedAt != nil:
 				results.invalidCompletionTimestamps = append(results.invalidCompletionTimestamps, doctorIssue{
 					project: project.Name,
-					task:    task.ID,
 					detail:  fmt.Sprintf("nonterminal task #%d %q retains completed_at", task.ShortID, task.Title),
 				})
 			}
