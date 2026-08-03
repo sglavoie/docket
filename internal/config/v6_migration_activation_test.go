@@ -20,8 +20,8 @@ type v6MigrationActivationTestHooks struct {
 	afterSnapshotPublished func(*PreConsolidationV6Snapshot)
 }
 
-func (h *v6MigrationActivationTestHooks) snapshotCreationHooks() *preConsolidationV6SnapshotHooks {
-	if h == nil {
+func (h *v6MigrationActivationTestHooks) snapshotCreationCallbacks() preConsolidationV6SnapshotCallbacks {
+	if h == nil || h.snapshot == nil {
 		return nil
 	}
 	return h.snapshot

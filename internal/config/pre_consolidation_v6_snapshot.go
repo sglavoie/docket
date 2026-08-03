@@ -78,10 +78,10 @@ type PreConsolidationV6SnapshotOptions struct {
 	MachineStatePath string
 }
 
-type preConsolidationV6SnapshotHooks struct {
-	now            time.Time
-	afterInventory func()
-	beforePublish  func(archivePath, auditPath string) error
+type preConsolidationV6SnapshotCallbacks interface {
+	snapshotCreatedAt() time.Time
+	didInventorySnapshot()
+	willPublishSnapshot(archivePath, auditPath string) error
 }
 
 type preConsolidationV6Source struct {
@@ -244,7 +244,7 @@ func RefusePreConsolidationV6SnapshotMutation(dataDir, path string) error {
 //nolint:govet // Scoped errors keep each snapshot validation and transaction stage local.
 func createPreConsolidationV6Snapshot(
 	options PreConsolidationV6SnapshotOptions,
-	hooks *preConsolidationV6SnapshotHooks,
+	callbacks preConsolidationV6SnapshotCallbacks,
 ) (*PreConsolidationV6Snapshot, error) {
 	root, err := validateV5DryRunRoot(options.DataDir)
 	if err != nil {
@@ -266,8 +266,10 @@ func createPreConsolidationV6Snapshot(
 	}
 
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	if hooks != nil && !hooks.now.IsZero() {
-		createdAt = hooks.now.UTC().Truncate(time.Second)
+	if callbacks != nil {
+		if override := callbacks.snapshotCreatedAt(); !override.IsZero() {
+			createdAt = override.UTC().Truncate(time.Second)
+		}
 	}
 	stem := preConsolidationV6SnapshotPrefix + createdAt.Format(preConsolidationV6Timestamp)
 	archivePath := filepath.Join(PreConsolidationV6BackupsDir(root), stem+preConsolidationV6ArchiveSuffix)
@@ -308,8 +310,8 @@ func createPreConsolidationV6Snapshot(
 		if err != nil {
 			return nil, err
 		}
-		if hooks != nil && hooks.afterInventory != nil {
-			hooks.afterInventory()
+		if callbacks != nil {
+			callbacks.didInventorySnapshot()
 		}
 		confirmedPlan, err := DryRunV6WorkspaceConversion(dryRunOptions)
 		if err != nil {
@@ -334,8 +336,8 @@ func createPreConsolidationV6Snapshot(
 		if err != nil {
 			return nil, err
 		}
-		if hooks != nil && hooks.beforePublish != nil {
-			if err := hooks.beforePublish(archivePath, auditPath); err != nil {
+		if callbacks != nil {
+			if err := callbacks.willPublishSnapshot(archivePath, auditPath); err != nil {
 				return nil, err
 			}
 		}

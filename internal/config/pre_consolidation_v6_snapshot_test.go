@@ -16,6 +16,32 @@ import (
 
 var preConsolidationV6TestTime = time.Date(2026, 8, 1, 18, 19, 20, 0, time.UTC)
 
+type preConsolidationV6SnapshotHooks struct {
+	now            time.Time
+	afterInventory func()
+	beforePublish  func(archivePath, auditPath string) error
+}
+
+func (h *preConsolidationV6SnapshotHooks) snapshotCreatedAt() time.Time {
+	if h == nil {
+		return time.Time{}
+	}
+	return h.now
+}
+
+func (h *preConsolidationV6SnapshotHooks) didInventorySnapshot() {
+	if h != nil && h.afterInventory != nil {
+		h.afterInventory()
+	}
+}
+
+func (h *preConsolidationV6SnapshotHooks) willPublishSnapshot(archivePath, auditPath string) error {
+	if h == nil || h.beforePublish == nil {
+		return nil
+	}
+	return h.beforePublish(archivePath, auditPath)
+}
+
 func TestCreatePreConsolidationV6SnapshotCapturesCompleteWorkspaceAndAudit(t *testing.T) {
 	options := copyPreConsolidationV6Fixture(t)
 	report, err := createPreConsolidationV6Snapshot(options, &preConsolidationV6SnapshotHooks{

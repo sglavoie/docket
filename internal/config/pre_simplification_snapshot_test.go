@@ -18,6 +18,31 @@ import (
 
 var preSimplificationV5TestTime = time.Date(2026, 7, 29, 1, 2, 3, 0, time.UTC)
 
+type preSimplificationV5SnapshotHooks struct {
+	now            time.Time
+	afterInventory func()
+	beforePublish  func(archivePath, auditPath string)
+}
+
+func (h *preSimplificationV5SnapshotHooks) snapshotCreatedAt() time.Time {
+	if h == nil {
+		return time.Time{}
+	}
+	return h.now
+}
+
+func (h *preSimplificationV5SnapshotHooks) didInventorySnapshot() {
+	if h != nil && h.afterInventory != nil {
+		h.afterInventory()
+	}
+}
+
+func (h *preSimplificationV5SnapshotHooks) willPublishSnapshot(archivePath, auditPath string) {
+	if h != nil && h.beforePublish != nil {
+		h.beforePublish(archivePath, auditPath)
+	}
+}
+
 func TestInspectPreSimplificationV5SnapshotsValidatesCanonicalPairs(t *testing.T) {
 	t.Run("complete pair", func(t *testing.T) {
 		root := t.TempDir()

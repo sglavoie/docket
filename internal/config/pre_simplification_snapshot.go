@@ -76,10 +76,10 @@ type PreSimplificationV5SnapshotInspection struct {
 	Issues       []string
 }
 
-type preSimplificationV5SnapshotHooks struct {
-	now            time.Time
-	afterInventory func()
-	beforePublish  func(archivePath, auditPath string)
+type preSimplificationV5SnapshotCallbacks interface {
+	snapshotCreatedAt() time.Time
+	didInventorySnapshot()
+	willPublishSnapshot(archivePath, auditPath string)
 }
 
 type preSimplificationV5Source struct {
@@ -253,7 +253,7 @@ func createPreSimplificationV5SnapshotWithMigrationAudit(
 
 func createPreSimplificationV5SnapshotWithAudit(
 	dataDir string,
-	hooks *preSimplificationV5SnapshotHooks,
+	callbacks preSimplificationV5SnapshotCallbacks,
 	migrationAudit []byte,
 ) (*PreSimplificationV5Snapshot, error) {
 	root, err := validatePreSimplificationV5Root(dataDir)
@@ -262,8 +262,10 @@ func createPreSimplificationV5SnapshotWithAudit(
 	}
 
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	if hooks != nil && !hooks.now.IsZero() {
-		createdAt = hooks.now.UTC().Truncate(time.Second)
+	if callbacks != nil {
+		if override := callbacks.snapshotCreatedAt(); !override.IsZero() {
+			createdAt = override.UTC().Truncate(time.Second)
+		}
 	}
 	stem := preSimplificationV5SnapshotPrefix + createdAt.Format(preSimplificationV5Timestamp)
 	archivePath := filepath.Join(PreSimplificationV5BackupsDir(root), stem+preSimplificationV5ArchiveSuffix)
@@ -290,8 +292,8 @@ func createPreSimplificationV5SnapshotWithAudit(
 		if inventoryErr != nil {
 			return nil, inventoryErr
 		}
-		if hooks != nil && hooks.afterInventory != nil {
-			hooks.afterInventory()
+		if callbacks != nil {
+			callbacks.didInventorySnapshot()
 		}
 		current, inventoryErr := inventoryPreSimplificationV5(root, false)
 		if inventoryErr != nil {
@@ -317,8 +319,8 @@ func createPreSimplificationV5SnapshotWithAudit(
 			ArchivedFiles: publicPreSimplificationV5Files(inventory.archived),
 			Attachments:   publicPreSimplificationV5Files(inventory.attachments),
 		}
-		if hooks != nil && hooks.beforePublish != nil {
-			hooks.beforePublish(archivePath, auditPath)
+		if callbacks != nil {
+			callbacks.willPublishSnapshot(archivePath, auditPath)
 		}
 		return []storage.ArtifactChange{
 			{

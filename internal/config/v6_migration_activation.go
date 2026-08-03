@@ -20,7 +20,7 @@ type v6MigrationActivationPlan struct {
 }
 
 type v6MigrationActivationHooks interface {
-	snapshotCreationHooks() *preConsolidationV6SnapshotHooks
+	snapshotCreationCallbacks() preConsolidationV6SnapshotCallbacks
 	didPublishSnapshot(*PreConsolidationV6Snapshot)
 }
 
@@ -95,13 +95,13 @@ func (m *Manager) migrateWorkspaceToV6(hooks v6MigrationActivationHooks) error {
 		return fmt.Errorf("v6 migration validation failed; workspace was not changed: %w", err)
 	}
 
-	var snapshotHooks *preConsolidationV6SnapshotHooks
+	var snapshotCallbacks preConsolidationV6SnapshotCallbacks
 	if hooks != nil {
-		snapshotHooks = hooks.snapshotCreationHooks()
+		snapshotCallbacks = hooks.snapshotCreationCallbacks()
 	}
 	snapshot, err := createPreConsolidationV6Snapshot(
 		PreConsolidationV6SnapshotOptions{DataDir: dataDir},
-		snapshotHooks,
+		snapshotCallbacks,
 	)
 	if err != nil {
 		return err
