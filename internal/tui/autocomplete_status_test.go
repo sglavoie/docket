@@ -1,7 +1,12 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestQuickCaptureDestinationSuggestionsIncludeAllDestinations(t *testing.T) {
@@ -43,5 +48,47 @@ func TestQuickCaptureDestinationSuggestionsFilterByPartial(t *testing.T) {
 				t.Errorf("partial=%q: suggestions[%d].Value = %q, want %q", tt.partial, i, suggestions[i].Value, w)
 			}
 		}
+	}
+}
+
+func TestBoundedAutocompleteUsesEveryAvailableRow(t *testing.T) {
+	items := make([]ACSuggestion, 10)
+	for i := range items {
+		items[i] = ACSuggestion{Display: fmt.Sprintf("item %d", i), Value: fmt.Sprintf("%d", i)}
+	}
+
+	t.Run("all items fit", func(t *testing.T) {
+		ac := AutocompleteState{Mode: acModeDestination, Items: items}
+		rendered := ansi.Strip(ac.RenderDropdownWithLimit("", 10))
+		if lipgloss.Height(rendered) != 10 || strings.Contains(rendered, "more") {
+			t.Fatalf("fitting dropdown should show all ten rows without hints:\n%s", rendered)
+		}
+		if ac.VisibleCount != 10 || ac.ViewportTop != 0 {
+			t.Fatalf("window = top %d count %d, want top 0 count 10", ac.ViewportTop, ac.VisibleCount)
+		}
+	})
+
+	tests := []struct {
+		name   string
+		cursor int
+		want   []string
+	}{
+		{name: "top", cursor: 0, want: []string{"item 0", "item 3", "↓ 6 more"}},
+		{name: "middle", cursor: 5, want: []string{"↑", "item 5", "↓"}},
+		{name: "bottom", cursor: 9, want: []string{"↑ 6 more", "item 6", "item 9"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ac := AutocompleteState{Mode: acModeDestination, Items: items, Cursor: tt.cursor}
+			rendered := ansi.Strip(ac.RenderDropdownWithLimit("", 5))
+			if got := lipgloss.Height(rendered); got != 5 {
+				t.Fatalf("dropdown height = %d, want 5:\n%s", got, rendered)
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(rendered, want) {
+					t.Fatalf("dropdown missing %q:\n%s", want, rendered)
+				}
+			}
+		})
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -50,9 +51,8 @@ func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 }
 
 // countFullWidthDividers returns the number of rendered lines that are a solid
-// run of horizontal-rule glyphs (the app-shell status-bar / footer separator).
-// A footer separator is the only place a line is composed entirely of "─"; the
-// textarea box border interleaves corner glyphs, so it never matches.
+// run of horizontal-rule glyphs. The composer uses one to separate input from
+// derived information, and the app shell uses another above its status footer.
 func countFullWidthDividers(content string) int {
 	count := 0
 	for _, line := range strings.Split(content, "\n") {
@@ -76,8 +76,8 @@ func countFullWidthDividers(content string) int {
 	return count
 }
 
-// TestAppViewQuickCaptureUsesAppShellFooter guards the single-footer contract
-// for the unified Task Composer overlay.
+// TestAppViewQuickCaptureUsesAppShellFooter guards the composer-section divider
+// plus the single app-shell footer contract for the unified Task Composer.
 func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.width = 80
@@ -97,7 +97,35 @@ func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 		t.Fatal("composed output should keep the Task Composer title/body")
 	}
 
-	if got := countFullWidthDividers(content); got != 1 {
-		t.Fatalf("expected exactly one app-shell footer separator, got %d\n%s", got, ansi.Strip(content))
+	if got := countFullWidthDividers(content); got != 2 {
+		t.Fatalf("expected composer and app-shell separators, got %d\n%s", got, ansi.Strip(content))
+	}
+}
+
+func TestAppViewTaskComposerBudgetsForWrappedFooter(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.handleWindowSize(tea.WindowSizeMsg{Width: 60, Height: 24})
+
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
+	if !handled {
+		t.Fatal("ShowTaskComposerMsg should be handled")
+	}
+	composer := app.taskComposer
+	composer.input.SetValue("Task $")
+	composer.updatePreview()
+	composer.refreshAutocomplete()
+
+	if got := lipgloss.Height(app.renderStatusBar()); got <= 2 {
+		t.Fatalf("test requires a wrapped contextual footer, got %d rows", got)
+	}
+	content := ansi.Strip(app.View().Content)
+	if strings.Contains(content, "resize terminal to view all") {
+		t.Fatalf("shell clipped the height-budgeted autocomplete pane:\n%s", content)
+	}
+	if !strings.Contains(content, "more") {
+		t.Fatalf("constrained autocomplete should expose its own overflow hint:\n%s", content)
+	}
+	if got := lipgloss.Height(content); got != 24 {
+		t.Fatalf("composed frame height = %d, want 24", got)
 	}
 }

@@ -285,8 +285,16 @@ func (q *quickCaptureInput) updateInput(msg tea.Msg) tea.Cmd {
 
 // refreshAutocomplete detects triggers and updates suggestion list.
 func (q *quickCaptureInput) refreshAutocomplete() {
-	mode, pos, partial := DetectTrigger(q.input.Value(), q.triggers)
+	value := q.input.Value()
+	mode, pos, partial := DetectTrigger(value, q.triggers)
 	if mode == acModeNone {
+		q.ac.Clear()
+		return
+	}
+
+	lineStart := strings.LastIndex(value[:pos], "\n") + 1
+	parsedLine := textgrammar.Parse(value[lineStart:pos], textgrammar.SurfaceCapture)
+	if field, singleton := autocompleteSingletonField(mode); singleton && len(parsedLine.TokensFor(field)) > 0 {
 		q.ac.Clear()
 		return
 	}
@@ -295,6 +303,7 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 	switch mode {
 	case acModeTag:
 		items = q.getTagSuggestions(partial)
+		items = filterUsedTagSuggestions(items, parsedLine.TokensFor(textgrammar.FieldTag))
 	case acModeParent:
 		items = q.getParentSuggestions(partial)
 	case acModePriority:
@@ -307,6 +316,40 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getProjectSuggestions(partial)
 	}
 	q.ac.UpdateSuggestions(mode, pos, items)
+}
+
+func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
+	switch mode {
+	case acModeParent:
+		return textgrammar.FieldParent, true
+	case acModePriority:
+		return textgrammar.FieldPriority, true
+	case acModeDate:
+		return textgrammar.FieldDue, true
+	case acModeDestination:
+		return textgrammar.FieldDestination, true
+	case acModeProject:
+		return textgrammar.FieldProject, true
+	default:
+		return "", false
+	}
+}
+
+func filterUsedTagSuggestions(items []ACSuggestion, tokens []textgrammar.Token) []ACSuggestion {
+	if len(tokens) == 0 {
+		return items
+	}
+	used := make(map[string]bool, len(tokens))
+	for _, token := range tokens {
+		used[strings.ToLower(strings.TrimSpace(token.Value))] = true
+	}
+	filtered := make([]ACSuggestion, 0, len(items))
+	for _, item := range items {
+		if !used[strings.ToLower(strings.TrimSpace(item.Value))] {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
 }
 
 // updatePreview updates the live preview state.

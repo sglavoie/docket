@@ -55,6 +55,7 @@ func (ac *AutocompleteState) Clear() {
 	ac.Cursor = 0
 	ac.ViewportTop = 0
 	ac.TriggerPos = 0
+	ac.VisibleCount = 0
 }
 
 // HandleKey handles navigation keys when autocomplete is active.
@@ -185,19 +186,59 @@ func TriggerCharForMode(mode int, triggers []ACTrigger) byte {
 }
 
 // RenderDropdownWithLimit renders the dropdown constrained to at most rowBudget
-// total rows, including the "N more" indicators. The item window is derived by
-// reserving two rows for the possible top/bottom indicators, so the selected
-// item and both scroll hints always remain visible in a small pane. The derived
-// window size is persisted on the state so navigation keeps the selection inside
-// the same window; consumers that never call this keep the acVisibleCount
-// default.
+// total rows, including the "N more" indicators. It spends rows on indicators
+// only when the list actually overflows in that direction, allowing every item
+// to render whenever the full list fits. The derived item-window size is
+// persisted so keyboard navigation keeps the selection visible.
 func (ac *AutocompleteState) RenderDropdownWithLimit(indent string, rowBudget int) string {
-	window := max(rowBudget-2, 1)
-	if ac.VisibleCount != window {
-		ac.VisibleCount = window
-		ac.ClampCursor()
+	if !ac.IsActive() {
+		return ""
 	}
-	return ac.RenderDropdown(indent)
+
+	budget := max(rowBudget, 1)
+	itemCount := len(ac.Items)
+	if itemCount <= budget {
+		ac.ViewportTop = 0
+		ac.VisibleCount = itemCount
+		return strings.TrimRight(ac.renderDropdownWindow(indent, false, false), "\n")
+	}
+
+	// A one-row pane cannot show both an item and an overflow hint. Keep the
+	// selected item visible; larger panes use their spare row(s) for the hints.
+	if budget == 1 {
+		ac.ViewportTop = ac.Cursor
+		ac.VisibleCount = 1
+		return strings.TrimRight(ac.renderDropdownWindow(indent, false, false), "\n")
+	}
+
+	edgeWindow := budget - 1
+	switch {
+	case ac.Cursor < edgeWindow:
+		ac.ViewportTop = 0
+		ac.VisibleCount = edgeWindow
+		return strings.TrimRight(ac.renderDropdownWindow(indent, false, true), "\n")
+	case ac.Cursor >= itemCount-edgeWindow:
+		ac.VisibleCount = edgeWindow
+		ac.ViewportTop = itemCount - edgeWindow
+		return strings.TrimRight(ac.renderDropdownWindow(indent, true, false), "\n")
+	case budget == 2:
+		// There is room for one item and one hint. Prefer the top hint in the
+		// middle of the list; navigation still reaches every item.
+		ac.ViewportTop = ac.Cursor
+		ac.VisibleCount = 1
+		return strings.TrimRight(ac.renderDropdownWindow(indent, true, false), "\n")
+	default:
+		ac.VisibleCount = budget - 2
+		ac.ViewportTop = max(1, min(ac.ViewportTop, itemCount-ac.VisibleCount-1))
+		if ac.Cursor < ac.ViewportTop {
+			ac.ViewportTop = ac.Cursor
+		}
+		if ac.Cursor >= ac.ViewportTop+ac.VisibleCount {
+			ac.ViewportTop = ac.Cursor - ac.VisibleCount + 1
+		}
+		ac.ViewportTop = max(1, min(ac.ViewportTop, itemCount-ac.VisibleCount-1))
+		return strings.TrimRight(ac.renderDropdownWindow(indent, true, true), "\n")
+	}
 }
 
 // RenderDropdown renders the autocomplete suggestion dropdown as a string.
@@ -206,9 +247,13 @@ func (ac *AutocompleteState) RenderDropdown(indent string) string {
 	if !ac.IsActive() {
 		return ""
 	}
+	visibleEnd := min(ac.ViewportTop+ac.visibleCount(), len(ac.Items))
+	return ac.renderDropdownWindow(indent, ac.ViewportTop > 0, visibleEnd < len(ac.Items))
+}
 
+func (ac *AutocompleteState) renderDropdownWindow(indent string, showTop, showBottom bool) string {
 	var b strings.Builder
-	if ac.ViewportTop > 0 {
+	if showTop {
 		b.WriteString(MutedStyle.Render(indent + "↑ " + fmt.Sprintf("%d more", ac.ViewportTop)))
 		b.WriteString("\n")
 	}
@@ -226,7 +271,7 @@ func (ac *AutocompleteState) RenderDropdown(indent string) string {
 	}
 
 	remaining := len(ac.Items) - visibleEnd
-	if remaining > 0 {
+	if showBottom && remaining > 0 {
 		b.WriteString(MutedStyle.Render(indent + "↓ " + fmt.Sprintf("%d more", remaining)))
 		b.WriteString("\n")
 	}
