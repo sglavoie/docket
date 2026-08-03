@@ -102,9 +102,10 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 
 // adjacentVisiblePlanningMember returns the locator and task of the nearest
 // visible row — scanning m.rows from the cursor in the direction of delta — whose
-// task is a durable planning member (present in order). Separators and headers
-// bound the active planning section so J/K targets the true visible planning
-// neighbor. It reports false at a visible boundary when no such row exists.
+// task is a durable planning member (present in order). Separators and top-level
+// section headers bound the active planning section; planning project headers
+// are transparent because they do not partition the durable order. It reports
+// false at a visible boundary when no such row exists.
 func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTaskLocator, delta int) (config.ProjectTaskLocator, *models.Task, bool) {
 	members := make(map[config.ProjectTaskLocator]bool, len(order))
 	for _, loc := range order {
@@ -116,7 +117,17 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 	}
 	for i := m.cursor + step; i >= 0 && i < len(m.rows); i += step {
 		row := m.rows[i]
-		if row.IsSectionHeader || row.IsProjectHeader || row.IsSeparator || row.IsPinnedSection {
+		if row.IsSectionHeader || row.IsSeparator || row.IsPinnedSection {
+			break
+		}
+		// Planning project headers provide context without partitioning the
+		// workspace-wide order. Skip them so J/K can still swap adjacent visible
+		// Today/Next members across a project boundary. Other project headers
+		// continue to delimit hierarchy reorder buckets.
+		if row.IsProjectHeader {
+			if row.IsTodaySection || row.IsNextSection {
+				continue
+			}
 			break
 		}
 		if !row.isTaskRow() || row.task == nil {

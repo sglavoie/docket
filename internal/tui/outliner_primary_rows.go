@@ -192,8 +192,11 @@ func (m *OutlinerModel) appendPlanningModeRows(
 		row.IsTodayMember = mode == ModeToday
 		rows = append(rows, row)
 	}
-	assignPlanningRowPrefixes(rows)
-	m.rows = append(m.rows, rows...)
+	group := models.StateGroupToday
+	if mode == ModeNext {
+		group = models.StateGroupNext
+	}
+	m.appendPlanningRows(rows, group)
 }
 
 func (m *OutlinerModel) buildPrimaryProjectTrees(

@@ -3,8 +3,9 @@ package tui
 import "github.com/sglavoie/tt/internal/models"
 
 const (
-	todaySectionCollapseKey = "_planning:today"
-	nextSectionCollapseKey  = "_planning:next"
+	todaySectionCollapseKey       = "_planning:today"
+	nextSectionCollapseKey        = "_planning:next"
+	planningProjectCollapsePrefix = "_planning_project:"
 )
 
 type planningSectionBuild struct {
@@ -49,7 +50,6 @@ func (m *OutlinerModel) buildTodaySection(
 		row.IsTodayMember = true
 		result.rows = append(result.rows, row)
 	}
-	assignPlanningRowPrefixes(result.rows)
 	return result
 }
 
@@ -87,7 +87,6 @@ func (m *OutlinerModel) buildNextSection(
 		row.IsNextSection = true
 		result.rows = append(result.rows, row)
 	}
-	assignPlanningRowPrefixes(result.rows)
 	return result
 }
 
@@ -95,6 +94,50 @@ func assignPlanningRowPrefixes(rows []outlinerRow) {
 	for i := range rows {
 		rows[i].prefix = buildTreePrefix(nil, i == len(rows)-1)
 		rows[i].hasVisibleChildren = false
+	}
+}
+
+func planningProjectCollapseKey(projectID string, group models.WorkflowStateGroup) string {
+	return planningProjectCollapsePrefix + string(group) + ":" + projectID
+}
+
+// appendPlanningRows preserves the workspace-wide durable planning order while
+// restoring project context in the unscoped cross-project Outliner. A project
+// header starts each contiguous run, so an interleaved order such as A/B/A is
+// rendered as A, B, A rather than being regrouped and silently reordered.
+func (m *OutlinerModel) appendPlanningRows(rows []outlinerRow, group models.WorkflowStateGroup) {
+	if len(rows) == 0 {
+		return
+	}
+	if m.project != nil || m.isProjectScoped() {
+		assignPlanningRowPrefixes(rows)
+		m.rows = append(m.rows, rows...)
+		return
+	}
+
+	isToday := group == models.StateGroupToday
+	isNext := group == models.StateGroupNext
+	for start := 0; start < len(rows); {
+		end := start + 1
+		for end < len(rows) && rows[end].ProjectID == rows[start].ProjectID {
+			end++
+		}
+		run := rows[start:end]
+		assignPlanningRowPrefixes(run)
+		header := outlinerRow{
+			IsProjectHeader: true,
+			IsTodaySection:  isToday,
+			IsNextSection:   isNext,
+			StateGroup:      group,
+			ProjectID:       rows[start].ProjectID,
+			SectionCount:    len(run),
+			CollapseKey:     planningProjectCollapseKey(rows[start].ProjectID, group),
+		}
+		m.rows = append(m.rows, header)
+		if !m.isSectionRowCollapsed(header) {
+			m.rows = append(m.rows, run...)
+		}
+		start = end
 	}
 }
 
@@ -118,7 +161,7 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 		CollapseKey:     collapseKey,
 	})
 	if !m.collapsedSections[collapseKey] {
-		m.rows = append(m.rows, section.rows...)
+		m.appendPlanningRows(section.rows, section.group)
 	}
 }
 
