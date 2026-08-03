@@ -63,7 +63,7 @@ func installTestSystemInbox(app *AppModel, projects ...*models.Project) *models.
 	setTestAppProjects(app, append(projects, inbox)...)
 	catalog := app.runtime.Catalog()
 	catalog.SystemUnfiledProjectID = inbox.ID
-	catalog.SystemInboxProjectID = inbox.ID
+	catalog.SystemUnfiledProjectID = inbox.ID
 	app.runtime.SetCatalogInMemory(catalog)
 	return inbox
 }

@@ -21,30 +21,6 @@ func PriorityIcon(priority int) string {
 	return icons.Get(key)
 }
 
-// GetStateStyle returns the appropriate foreground style for a workflow state.
-// Each state reuses the style of the legacy status it collapses into, matching
-// GetStateBadge.
-func GetStateStyle(state models.WorkflowState) lipgloss.Style {
-	switch state {
-	case models.StateInbox, models.StateBacklog:
-		return TodoStyle
-	case models.StateDoing:
-		return InProgressStyle
-	case models.StateWaiting:
-		return BlockedStyle
-	case models.StatePaused:
-		return StandbyStyle
-	case models.StateSomeday:
-		return MaybeStyle
-	case models.StateDone:
-		return DoneStyle
-	case models.StateCanceled:
-		return CanceledStyle
-	default:
-		return NormalStyle
-	}
-}
-
 // GetPriorityStyle returns the appropriate style for a priority level.
 // Delegates to GetTitlePriorityStyle for unified palette-driven color sourcing.
 func GetPriorityStyle(priority int) lipgloss.Style {
@@ -79,6 +55,86 @@ type TaskTitleStyleOptions struct {
 	BulkSelected bool
 }
 
+type semanticTitleRole uint8
+
+const (
+	semanticTitleNone semanticTitleRole = iota
+	semanticTitleBug
+	semanticTitleFeature
+	semanticTitleIdea
+)
+
+// semanticTitleRoleForTags recognizes only exact case-insensitive tag values.
+// Slice order never affects the locked bug > feature > idea precedence.
+func semanticTitleRoleForTags(tags []string) semanticTitleRole {
+	var feature, idea bool
+	for _, tag := range tags {
+		switch {
+		case strings.EqualFold(tag, "bug"):
+			return semanticTitleBug
+		case strings.EqualFold(tag, "feature"):
+			feature = true
+		case strings.EqualFold(tag, "idea"):
+			idea = true
+		}
+	}
+	if feature {
+		return semanticTitleFeature
+	}
+	if idea {
+		return semanticTitleIdea
+	}
+	return semanticTitleNone
+}
+
+func semanticTaskTitleStyle(
+	role semanticTitleRole,
+	priority int,
+	selected bool,
+	snoozed bool,
+) lipgloss.Style {
+	style := GetTitlePriorityStyle(priority)
+	var foreground color.Color
+	switch {
+	case selected:
+		style = style.Bold(true)
+		switch role {
+		case semanticTitleNone:
+			return style
+		case semanticTitleBug:
+			foreground = ColorSemanticBugSelectedTitle
+		case semanticTitleFeature:
+			foreground = ColorSemanticFeatureSelectedTitle
+		case semanticTitleIdea:
+			foreground = ColorSemanticIdeaSelectedTitle
+		}
+	case snoozed:
+		style = style.Faint(true)
+		switch role {
+		case semanticTitleNone:
+			return style
+		case semanticTitleBug:
+			foreground = ColorSemanticBugSnoozedTitle
+		case semanticTitleFeature:
+			foreground = ColorSemanticFeatureSnoozedTitle
+		case semanticTitleIdea:
+			foreground = ColorSemanticIdeaSnoozedTitle
+		}
+	default:
+		switch role {
+		case semanticTitleNone:
+			return style
+		case semanticTitleBug:
+			foreground = ColorSemanticBugTitle
+		case semanticTitleFeature:
+			foreground = ColorSemanticFeatureTitle
+		case semanticTitleIdea:
+			foreground = ColorSemanticIdeaTitle
+		}
+	}
+	return style.Foreground(foreground)
+}
+
 // TaskTitleStyleFor returns the canonical style for a rendered task title.
 func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.Style {
 	if task == nil {
@@ -87,14 +143,17 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 
 	isMuted := opts.Muted || opts.Disabled
 	isCanceled := task.IsInState(models.StateCanceled)
-	if opts.CursorSelected && !isMuted && !isCanceled {
-		return SelectedTaskTitleStyle
-	}
 	if isMuted {
 		return MutedStyle
 	}
 	if isCanceled {
 		return CanceledStyle
+	}
+	if role := semanticTitleRoleForTags(task.Tags); role != semanticTitleNone {
+		return semanticTaskTitleStyle(role, task.Priority, opts.CursorSelected, task.IsSnoozed())
+	}
+	if opts.CursorSelected {
+		return SelectedTaskTitleStyle
 	}
 	return GetTitlePriorityStyle(task.Priority)
 }
@@ -102,7 +161,7 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 // GetStateBadge returns the workflow-state icon rendered as a styled badge
 // with background. Each state reuses the badge style of the legacy status it
 // collapses into (see WorkflowState.Icon): the three todo-ish planning states
-// share the todo badge, waiting shows the blocked badge, paused the standby
+// share the todo badge, waiting uses its own badge, paused the standby
 // badge, and someday the maybe badge.
 func GetStateBadge(state models.WorkflowState) string {
 	switch state {
@@ -111,7 +170,7 @@ func GetStateBadge(state models.WorkflowState) string {
 	case models.StateDoing:
 		return InProgressBadgeStyle.Render(state.Icon())
 	case models.StateWaiting:
-		return BlockedBadgeStyle.Render(state.Icon())
+		return WaitingBadgeStyle.Render(state.Icon())
 	case models.StatePaused:
 		return StandbyBadgeStyle.Render(state.Icon())
 	case models.StateSomeday:
@@ -183,31 +242,6 @@ func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style 
 	}
 }
 
-// GetWorkflowStateGroupAccent resolves the foreground/card accent for a
-// canonical state group through the active theme.
-func GetWorkflowStateGroupAccent(group models.WorkflowStateGroup) color.Color {
-	switch group.ThemeRole() {
-	case models.StateThemePlan, models.StateThemeNext:
-		return AccentPlan
-	case models.StateThemeWork:
-		return AccentWork
-	case models.StateThemeInbox:
-		return AccentTriage
-	case models.StateThemeBacklog:
-		return AccentSupport
-	case models.StateThemeWaiting:
-		return ColorWarning
-	case models.StateThemePaused, models.StateThemeSomeday:
-		return ColorPurple
-	case models.StateThemeComplete:
-		return ColorSuccess
-	case models.StateThemeCanceled:
-		return ColorError
-	default:
-		return ColorMuted
-	}
-}
-
 // GetOutlinerModeStyle resolves one of the final six mode identities to its
 // static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
 func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
@@ -232,11 +266,6 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 // needed.
 func RenderCursorPrefix() string {
 	return " "
-}
-
-// Hyperlink creates a clickable OSC 8 hyperlink in supported terminals.
-func Hyperlink(url, displayText string) string {
-	return "\033]8;;" + url + "\033\\" + displayText + "\033]8;;\033\\"
 }
 
 // PadBadge right-pads a pre-rendered badge string to a fixed visual width.

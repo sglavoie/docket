@@ -139,7 +139,7 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 }
 
 // handleBatchTransactionResult routes a committed project-scoped or multi-task
-// coordinator mutation (bulk transition/delete, blocker update) back into the
+// coordinator mutation (bulk transition/delete or metadata update) back into the
 // shell. The application layer committed one atomic ChangeSet across every touched
 // project, so each affected project's in-memory copy is reloaded from disk before
 // the shared post-save refresh runs, keeping every open view consistent.
@@ -271,20 +271,18 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 		}
 	}
 	if m.views != nil {
-		if v := m.views.Get(ViewTaskAttachments); v != nil {
-			if av, ok := v.(*TaskAttachmentsModel); ok {
-				av.refreshAfterReload()
+		for _, viewType := range []PresentationID{
+			ViewTaskChecklist,
+			ViewTaskComments,
+			ViewTaskAttachments,
+		} {
+			view := m.views.Get(viewType)
+			refresher, ok := view.(interface{ refreshAfterReload() bool })
+			if !ok {
+				continue
 			}
-		}
-		if v := m.views.Get(ViewTaskDetail); v != nil {
-			if td, ok := v.(*TaskDetailModel); ok {
-				if td.task != nil && td.project != nil {
-					identity := taskIdentityFor(td.task, td.project)
-					td.SetPlanningMembership(m.todayIDs[identity], m.nextOrderIDs[identity])
-				}
-				if !td.refreshAfterReload() && m.taskDetail == td && m.activeTaskDetail() {
-					saveCmds = append(saveCmds, func() tea.Msg { return BackMsg{} })
-				}
+			if !refresher.refreshAfterReload() && m.currentView() == viewType {
+				saveCmds = append(saveCmds, func() tea.Msg { return BackMsg{} })
 			}
 		}
 	}

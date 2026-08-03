@@ -52,7 +52,7 @@ package tui
 //   - XxxSelectMsg: Navigate to or highlight the specified entity
 //
 // Examples:
-//   - SelectProjectMsg: Switch to project in dashboard
+//   - SelectProjectMsg: Switch to a project scope
 //   - GlobalSearchSelectMsg: Navigate to search result
 //
 // # Action Pattern (Command Execution)

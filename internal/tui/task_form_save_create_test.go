@@ -217,8 +217,8 @@ func TestTaskForm_Save_CreateEditAfterSubtaskTargetsChild(t *testing.T) {
 	m.subtaskOpenIdx = 0
 
 	msg := runCreate(t, m)
-	if !msg.OpenContent || msg.OpenDetail {
-		t.Fatalf("edit-after flags = content:%v detail:%v", msg.OpenContent, msg.OpenDetail)
+	if !msg.OpenContent {
+		t.Fatal("edit-after result did not request description editing")
 	}
 	if msg.OpenTaskID == "" {
 		t.Fatal("OpenTaskID should target the created subtask")

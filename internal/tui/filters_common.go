@@ -13,33 +13,33 @@ import (
 
 // CommonFilterState contains filter fields shared across views.
 type CommonFilterState struct {
-	States      models.WorkflowStateSet // filter by one or more canonical workflow states
-	Priority    int                     // 0=all, N>0 keeps tasks whose effective priority is <= N
-	Tags        map[string]bool         // filter by tag names (AND logic)
-	DueDate     DueDateFilter           // filter by due date
-	Actionable  bool                    // only show tasks ready to work on
-	GitHubIssue bool                    // only show tasks linked to a GitHub issue
-	Blocked     bool                    // only show tasks blocked by an unresolved dependency
-	Snoozed     bool                    // only show currently snoozed tasks
-	Pinned      bool                    // only show pinned tasks
+	States        models.WorkflowStateSet // filter by one or more canonical workflow states
+	Priority      int                     // 0=all, N>0 keeps tasks whose effective priority is <= N
+	Tags          map[string]bool         // filter by tag names (AND logic)
+	DueDate       DueDateFilter           // filter by due date
+	CompletionAge CompletionAgeFilter     // local-calendar age threshold for completed tasks
+	Snoozed       bool                    // only show currently snoozed tasks
+	Pinned        bool                    // only show pinned tasks
 
 	// statesSet distinguishes no state predicate from an explicit empty
 	// match-nothing set produced by intersecting contradictory legacy filters.
 	statesSet bool
+	// completionAgeSet distinguishes an inactive cleanup facet from the active
+	// "all ages" preset, which still excludes invalid CompletedAt values.
+	completionAgeSet bool
 }
 
 // copyCommonFilterState returns a deep copy of a CommonFilterState.
 func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 	dst := &CommonFilterState{
-		States:      cloneCommonWorkflowStateSet(src.States),
-		Priority:    src.Priority,
-		DueDate:     src.DueDate,
-		Actionable:  src.Actionable,
-		GitHubIssue: src.GitHubIssue,
-		Blocked:     src.Blocked,
-		Snoozed:     src.Snoozed,
-		Pinned:      src.Pinned,
-		statesSet:   src.statesSet,
+		States:           cloneCommonWorkflowStateSet(src.States),
+		Priority:         src.Priority,
+		DueDate:          src.DueDate,
+		CompletionAge:    src.CompletionAge,
+		Snoozed:          src.Snoozed,
+		Pinned:           src.Pinned,
+		statesSet:        src.statesSet,
+		completionAgeSet: src.completionAgeSet,
 	}
 	if len(src.Tags) > 0 {
 		dst.Tags = make(map[string]bool, len(src.Tags))
@@ -65,33 +65,30 @@ func (f *CommonFilterState) setStateFilter(states models.WorkflowStateSet, activ
 	f.statesSet = active || !states.IsEmpty()
 }
 
-// passesCommonFilters checks if a task passes the shared filter criteria.
-// Views call this from their own passesFilters method before applying
-// view-specific logic. The project is needed for the derived
-// dependency-blocked filter, which resolves unresolved dependencies within the
-// project. A nil project disables that project-scoped filter; the state filter is
-// project-independent because WorkflowState is derived from the task alone.
-// passesCommonFiltersWithResolverAt evaluates the same shared facets while
-// resolving dependency blocking against one workspace snapshot. Callers that
-// do not have a workspace resolver retain the legacy project-local behavior;
-// the canonical Outliner always supplies one for its complete projection.
-func passesCommonFiltersWithResolverAt(
+func (f *CommonFilterState) hasCompletionAgeFilter() bool {
+	return f.completionAgeSet
+}
+
+func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter, active bool) {
+	f.CompletionAge = filter
+	f.completionAgeSet = active
+}
+
+// passesCommonFiltersAt checks whether a task passes the shared filter facets
+// at one fixed instant. Workflow-state filtering is explicit and derives only
+// from the task's canonical lifecycle state.
+func passesCommonFiltersAt(
 	task *models.Task,
 	f *CommonFilterState,
-	project *models.Project,
-	resolver *workspaceFilterResolver,
 	now time.Time,
 ) bool {
 	if f.hasStateFilter() && !f.States.Contains(task.State()) {
 		return false
 	}
-	if f.Blocked {
+	if f.hasCompletionAgeFilter() && !passesCompletionAgeFilterAt(task, f.CompletionAge, now) {
 		return false
 	}
 	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
-		return false
-	}
-	if f.GitHubIssue && !task.HasGitHubIssue() {
 		return false
 	}
 	if f.Snoozed && !task.IsSnoozedAt(now) {
@@ -111,6 +108,18 @@ func passesCommonFiltersWithResolverAt(
 		return false
 	}
 	return true
+}
+
+func passesCompletionAgeFilterAt(task *models.Task, filter CompletionAgeFilter, now time.Time) bool {
+	if task.CompletedAt == nil || task.CompletedAt.IsZero() {
+		return false
+	}
+	threshold := filter.days()
+	if threshold == 0 {
+		return true
+	}
+	completedLocal := task.CompletedAt.In(now.Location())
+	return util.DaysBetween(completedLocal, now) >= threshold
 }
 
 func passesDueDateFilterAt(task *models.Task, filter DueDateFilter, now time.Time) bool {
@@ -137,12 +146,10 @@ func passesDueDateFilterAt(task *models.Task, filter DueDateFilter, now time.Tim
 // hasActiveCommonFilters returns true if any common filter is non-default.
 func hasActiveCommonFilters(f *CommonFilterState) bool {
 	return f.hasStateFilter() ||
+		f.hasCompletionAgeFilter() ||
 		f.Priority != 0 ||
 		len(f.Tags) > 0 ||
 		f.DueDate != DueDateAll ||
-		f.Actionable ||
-		f.GitHubIssue ||
-		f.Blocked ||
 		f.Snoozed ||
 		f.Pinned
 }
@@ -154,9 +161,8 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.Priority = 0
 	f.Tags = make(map[string]bool)
 	f.DueDate = DueDateAll
-	f.Actionable = false
-	f.GitHubIssue = false
-	f.Blocked = false
+	f.CompletionAge = CompletionAgeAll
+	f.completionAgeSet = false
 	f.Snoozed = false
 	f.Pinned = false
 }
@@ -166,7 +172,7 @@ func commonFilterParts(f *CommonFilterState) []string {
 	var parts []string
 
 	if f.Priority > 0 {
-		parts = append(parts, fmt.Sprintf("!<=%d", f.Priority))
+		parts = append(parts, "priority:"+models.PriorityName(f.Priority)+"+")
 	}
 	if f.hasStateFilter() {
 		states := f.States.Values()
@@ -179,6 +185,13 @@ func commonFilterParts(f *CommonFilterState) []string {
 			value = strings.Join(stateNames, ",")
 		}
 		parts = append(parts, "state:"+value)
+	}
+	if f.hasCompletionAgeFilter() {
+		if days := f.CompletionAge.days(); days > 0 {
+			parts = append(parts, fmt.Sprintf("completed:%dd+", days))
+		} else {
+			parts = append(parts, "completed:all")
+		}
 	}
 	if len(f.Tags) > 0 {
 		tagNames := make([]string, 0, len(f.Tags))
@@ -202,22 +215,12 @@ func commonFilterParts(f *CommonFilterState) []string {
 		parts = append(parts, "due:none")
 	default:
 	}
-	if f.Actionable {
-		parts = append(parts, "actionable")
-	}
-	if f.GitHubIssue {
-		parts = append(parts, "issue")
-	}
 	if f.Snoozed {
 		parts = append(parts, "snoozed")
 	}
 	if f.Pinned {
 		parts = append(parts, "pinned")
 	}
-	if f.Blocked {
-		parts = append(parts, "blocked")
-	}
-
 	return parts
 }
 

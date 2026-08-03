@@ -25,7 +25,7 @@ func TestCaptureDestinationsApplyLifecyclePlanningAndTerminalTimestamps(t *testi
 	}
 	wantNow := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 
-	for _, destination := range app.AllCaptureDestinations() {
+	for destination := range wantState {
 		destination := destination
 		t.Run(string(destination), func(t *testing.T) {
 			project := newProject("p1", "Alpha")

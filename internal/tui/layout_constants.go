@@ -16,37 +16,6 @@ type ColumnLayout struct {
 }
 
 const (
-	// CardBorderOverhead is the horizontal space consumed by card borders
-	// and padding (left border + left padding + right padding + right border).
-	CardBorderOverhead = 4
-
-	// CardVerticalBorderOverhead is the vertical space consumed by card
-	// top and bottom borders.
-	CardVerticalBorderOverhead = 2
-
-	// MinCardWidth is the minimum width for a content card to remain legible.
-	MinCardWidth = 20
-
-	// MinTitleTruncWidth is the minimum width for truncated task titles.
-	MinTitleTruncWidth = 15
-
-	// DashboardInfoSectionWideMinWidth is the minimum terminal width to
-	// render info section cards side-by-side instead of stacked.
-	DashboardInfoSectionWideMinWidth = 100
-
-	// DashboardNarrowModeWidth is the minimum width at which Home's Projects
-	// pane can retain the dense tabular row without hiding project names.
-	DashboardNarrowModeWidth = 70
-
-	// TreeHeaderOffset is the number of lines consumed by the tree view
-	// header chrome (title, view mode tabs, status stats, etc.).
-	// Filter/sort info is now inline on the title line, so no extra line needed.
-	TreeHeaderOffset = 7
-
-	// CompactCardHeight is the height reserved for an inert one-line
-	// summary row in compact dashboard card mode.
-	CompactCardHeight = 1
-
 	// TabbedViewChrome is the vertical chrome for views with a title, tab
 	// bar (with border), blank line, footer, and padding.
 	TabbedViewChrome = 6
@@ -56,7 +25,7 @@ const (
 	OverlayListChrome = 8
 
 	// MaxContentWidth is the maximum width for centered content areas
-	// (e.g., task detail view).
+	// (e.g., task-focused tools).
 	MaxContentWidth = 100
 
 	// SeparatorWidth is the width of a vertical separator between panes.

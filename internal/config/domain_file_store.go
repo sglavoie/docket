@@ -165,7 +165,6 @@ func (s *DomainFileStore) bindCatalogPayload(catalog *WorkspaceCatalog) (string,
 	if catalog == nil {
 		return "", fmt.Errorf("config: nil workspace catalog")
 	}
-	catalog.syncLegacyAliases()
 	if catalog.WorkspaceID == "" {
 		catalog.WorkspaceID = s.EnsureWorkspaceID()
 	}
@@ -248,16 +247,12 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 		return rev, fmt.Errorf("failed to parse %s payload: %w", filepath.Base(path), err)
 	}
 	if catalog, ok := out.(*WorkspaceCatalog); ok {
-		catalog.syncLegacyAliases()
 		if catalog.WorkspaceID == "" {
 			return rev, fmt.Errorf("invalid workspace identity in %s payload: %w", filepath.Base(path), ErrWorkspaceIDRequired)
 		}
 		if err := s.BindWorkspaceID(catalog.WorkspaceID); err != nil {
 			return rev, fmt.Errorf("invalid workspace identity in %s payload: %w", filepath.Base(path), err)
 		}
-	}
-	if planning, ok := out.(*PlanningState); ok {
-		planning.syncLegacyAliases()
 	}
 	return rev, nil
 }
@@ -272,13 +267,11 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 		return nil, err
 	}
 	if catalog, ok := payload.(*WorkspaceCatalog); ok {
-		catalog.syncLegacyAliases()
 		if err := catalog.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid workspace catalog: %w", err)
 		}
 	}
 	if planning, ok := payload.(*PlanningState); ok {
-		planning.syncLegacyAliases()
 		if err := planning.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid planning state: %w", err)
 		}

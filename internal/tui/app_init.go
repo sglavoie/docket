@@ -31,17 +31,16 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		projects:             make(map[string]*models.Project),
 		persister:            NewProjectService(),
 		navigation:           NewNavigationState(),
-		sessionStats:         sessionStats{sessionStart: time.Now()},
 		width:                80,
 		height:               24,
 		views:                NewViewRegistry(),
 		operationRegistry:    NewOperationRegistry(),
 		spinner:              NewSpinner(),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		nextOrder:            []FocusTask{},
+		nextOrder:            []PlanningTask{},
 		nextOrderIDs:         make(map[TaskIdentity]bool),
 		focusDismissedIDs:    make(map[string]bool),
-		today:                []FocusTask{},
+		today:                []PlanningTask{},
 		todayIDs:             make(map[TaskIdentity]bool),
 	}
 
@@ -216,7 +215,7 @@ func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoa
 			}
 		}
 		referencedProjects := make(map[string]bool)
-		for _, item := range planning.GetNextOrder() {
+		for _, item := range planning.GetNext() {
 			referencedProjects[item.ProjectID] = true
 		}
 		for _, item := range planning.GetToday() {
@@ -257,7 +256,7 @@ func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoa
 		}
 	}
 
-	for _, item := range planning.GetNextOrder() {
+	for _, item := range planning.GetNext() {
 		for _, p := range activeProjects {
 			if p.ID != item.ProjectID {
 				continue
@@ -266,7 +265,7 @@ func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoa
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil && task.State().IsNonterminal() {
-				m.nextOrder = append(m.nextOrder, FocusTask{Task: task, Project: p})
+				m.nextOrder = append(m.nextOrder, PlanningTask{Task: task, Project: p})
 				m.nextOrderIDs[taskIdentityFor(task, p)] = true
 			}
 			break
@@ -300,7 +299,7 @@ func (m *AppModel) hydrateToday(activeProjects []*models.Project, startupLoads m
 			planChanged = true
 			continue
 		}
-		m.today = append(m.today, FocusTask{Task: foundTask, Project: foundProject})
+		m.today = append(m.today, PlanningTask{Task: foundTask, Project: foundProject})
 		m.todayIDs[taskIdentityFor(foundTask, foundProject)] = true
 	}
 	if planChanged && allowReconcile && m.appService != nil {

@@ -13,6 +13,16 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
+type v5MigrationActivationTestHooks struct {
+	afterSnapshotPublished func(*PreSimplificationV5Snapshot)
+}
+
+func (h *v5MigrationActivationTestHooks) didPublishSnapshot(snapshot *PreSimplificationV5Snapshot) {
+	if h != nil && h.afterSnapshotPublished != nil {
+		h.afterSnapshotPublished(snapshot)
+	}
+}
+
 func copyLegacyV4ActivationFixture(t *testing.T) string {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir())

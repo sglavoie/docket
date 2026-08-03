@@ -2,12 +2,11 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // TaskIdentity is a stable task selection key. ProjectID remains part of the
-// identity because Planner and cross-project Outliner selections span projects.
+// identity because planning and cross-project Outliner selections span projects.
 type TaskIdentity struct {
 	ProjectID string
 	TaskID    string
@@ -23,16 +22,6 @@ func (id TaskIdentity) Locator() app.TaskLocator {
 
 func taskIdentityFromLocator(locator app.TaskLocator) TaskIdentity {
 	return TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
-}
-
-func appTaskLocatorsFromConfig(locators []config.ProjectTaskLocator) []app.TaskLocator {
-	result := make([]app.TaskLocator, 0, len(locators))
-	for _, locator := range locators {
-		if locator.ProjectID != "" && locator.TaskID != "" {
-			result = append(result, app.TaskLocator{ProjectID: locator.ProjectID, TaskID: locator.TaskID})
-		}
-	}
-	return result
 }
 
 // taskIdentityFor builds the canonical TUI identity from a task and its owning

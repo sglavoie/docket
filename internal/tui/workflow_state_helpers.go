@@ -2,12 +2,6 @@ package tui
 
 import "github.com/sglavoie/tt/internal/models"
 
-// taskIsActionableState reports whether a task is immediately workable.
-func taskIsActionableState(t *models.Task, p *models.Project) bool {
-	state := t.State()
-	return state == models.StateBacklog || state == models.StateDoing
-}
-
 // taskStateGroupLabel returns the canonical presentation group for a task.
 func taskStateGroupLabel(t *models.Task) string {
 	if t == nil {

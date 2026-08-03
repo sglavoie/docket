@@ -12,9 +12,10 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case launchOutlinerMsg:
 		presentationCmd := m.prepareCrossProjectOutliner()
 		m.clearTransientNavigationState()
-		m.taskDetail = nil
 		m.taskComposer = nil
+		m.currentProject = nil
 		m.projectStack = nil
+		m.outlinerToggleStates = make(map[string]*OutlinerToggleState)
 		m.navigation.ResetRoot()
 		m.crossOutliner.resetToGlobalAll()
 		m.setAccentOnView(m.crossOutliner)
@@ -70,7 +71,6 @@ func (m *AppModel) enterProjectScopeOutliner(project *models.Project, openAt *mo
 
 	// A project-navigation request abandons any transient overlay and child route
 	// and lands on the sole app-scoped Outliner root.
-	m.taskDetail = nil
 	m.taskComposer = nil
 	if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
 		return cmd

@@ -50,7 +50,6 @@ type Task struct {
 	Pinned        bool            `json:"pinned,omitempty"`    // Whether the task is pinned
 	PinnedAt      *time.Time      `json:"pinned_at,omitempty"` // When the task was pinned
 	Comments      []*Comment      `json:"comments,omitempty"`  // Timestamped comments/notes
-	Decisions     []*Decision     `json:"decisions,omitempty"` // Design/architecture decisions
 	Attachments   []Attachment    `json:"attachments,omitempty"`
 	SnoozedUntil  *time.Time      `json:"snoozed_until,omitempty"` // Task hidden until this date
 	Checklist     []ChecklistItem `json:"checklist,omitempty"`     // Checklist items for subtasks

@@ -94,29 +94,23 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 	}
 }
 
-// TestStateFilter_ActiveClearAndBadge confirms the State and Blocked filters are
-// recognized as active common filters, are reset by clearCommonFilters, and are
-// surfaced in the filter badge parts.
+// TestStateFilter_ActiveClearAndBadge confirms the State filter is recognized
+// as active, is reset by clearCommonFilters, and appears in filter badge parts.
 func TestStateFilter_ActiveClearAndBadge(t *testing.T) {
 	filter := newFilterState()
 	filter.setStateFilter(testWorkflowStateSet(models.StateBacklog, models.StateDoing), true)
-	filter.Blocked = true
 
 	if !hasActiveCommonFilters(&filter) {
-		t.Fatal("State/Blocked filters should count as active common filters")
+		t.Fatal("State filter should count as an active common filter")
 	}
 
 	parts := commonFilterParts(&filter)
 	if !containsString(parts, "state:backlog,doing") {
 		t.Errorf("commonFilterParts()=%v, want canonical multi-state chip", parts)
 	}
-	if !containsString(parts, "blocked") {
-		t.Errorf("commonFilterParts()=%v, want to contain blocked", parts)
-	}
-
 	clearCommonFilters(&filter)
-	if filter.hasStateFilter() || filter.Blocked {
-		t.Errorf("clearCommonFilters left States=%v Blocked=%v", filter.States.Values(), filter.Blocked)
+	if filter.hasStateFilter() {
+		t.Errorf("clearCommonFilters left States=%v", filter.States.Values())
 	}
 	if hasActiveCommonFilters(&filter) {
 		t.Error("cleared filter should not be active")

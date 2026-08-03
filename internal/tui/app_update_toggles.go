@@ -68,8 +68,8 @@ func (m *AppModel) handleRedoToggle() tea.Cmd {
 
 // currentViewOwnsPlanningToggle reports whether the current view is one where a
 // q/w planning toggle is reachable (a QueueToggleable task view, including the
-// Planner cockpit). The bespoke atomic toggle undo/redo only fires from such a
-// view so pressing u/ctrl+r elsewhere (e.g. the dashboard) does not silently
+// planning surface). The bespoke atomic toggle undo/redo only fires from such a
+// view so pressing u/ctrl+r elsewhere does not silently
 // reverse a planning action taken in another view.
 func (m *AppModel) currentViewOwnsPlanningToggle() bool {
 	_, ok := m.currentViewAsModel().(QueueToggleable)

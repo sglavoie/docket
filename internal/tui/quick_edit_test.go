@@ -24,6 +24,25 @@ func TestParseQuickEdit_Priority(t *testing.T) {
 	}
 }
 
+func TestParseQuickEditClearPriorityWithBangZero(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Original", Priority: models.PriorityHigh}
+	project := &models.Project{Name: "test", Tasks: []*models.Task{task}}
+
+	result, err := parseQuickEdit("Updated title !0", task, project)
+	if err != nil {
+		t.Fatalf("parseQuickEdit: %v", err)
+	}
+	if !result.prioritySet || result.priority != models.PriorityUnset {
+		t.Fatalf("priority = %d set=%v, want Unset", result.priority, result.prioritySet)
+	}
+	if msg := applyQuickEdit(task, project, result); msg != "" {
+		t.Fatalf("applyQuickEdit: %s", msg)
+	}
+	if task.Priority != models.PriorityUnset {
+		t.Fatalf("stored priority = %d, want Unset", task.Priority)
+	}
+}
+
 func TestParseQuickEdit_Tags(t *testing.T) {
 	project := &models.Project{Name: "test"}
 	task := &models.Task{Title: "Original", Tags: []string{"old"}}

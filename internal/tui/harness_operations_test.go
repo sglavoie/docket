@@ -14,17 +14,15 @@ const (
 const (
 	operationHarnessExportProject   OperationID = "tui.harness.export-project"
 	operationHarnessNewProject      OperationID = "tui.harness.new-project"
-	operationHarnessReset           OperationID = "tui.harness.reset"
 	operationHarnessOutliner        OperationID = "tui.harness.outliner"
+	operationHarnessOutlinerRoot    OperationID = "tui.harness.outliner-root"
 	operationHarnessReference       OperationID = "tui.harness.reference"
 	operationHarnessScope           OperationID = "tui.harness.scope"
 	operationHarnessInbox           OperationID = "tui.harness.inbox"
 	operationHarnessProjectInbox    OperationID = "tui.harness.project-inbox"
 	operationHarnessRenameProject   OperationID = "tui.harness.rename-project"
-	operationHarnessTaskDetail      OperationID = "tui.harness.task-detail"
 	operationHarnessTaskAttachments OperationID = "tui.harness.task-attachments"
 	operationHarnessTaskComments    OperationID = "tui.harness.task-comments"
-	operationHarnessTaskDecisions   OperationID = "tui.harness.task-decisions"
 	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
 )
 
@@ -43,8 +41,8 @@ func (m *AppModel) registerHarnessOperations() error {
 	specs := []harnessOperationSpec{
 		{operationHarnessExportProject, "export project", OperationCategoryProject, func() tea.Msg { return ExportProjectMsg{} }},
 		{operationHarnessNewProject, "new project", OperationCategoryProject, func() tea.Msg { return CreateProjectMsg{} }},
-		{operationHarnessReset, "outliner root", OperationCategoryNavigation, func() tea.Msg { return JumpDashboardMsg{} }},
 		{operationHarnessOutliner, "outliner", OperationCategoryNavigation, func() tea.Msg { return ShowGlobalOutlinerMsg{} }},
+		{operationHarnessOutlinerRoot, "outliner root", OperationCategoryNavigation, func() tea.Msg { return ShowGlobalOutlinerMsg{} }},
 		{operationHarnessReference, "reference", OperationCategorySystem, func() tea.Msg {
 			return ShowHelpMsg{
 				SourceView: m.currentView(),
@@ -66,13 +64,6 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return EditProjectMsg{Project: project}
 		}},
-		{operationHarnessTaskDetail, "view task details", OperationCategoryTask, func() tea.Msg {
-			task, project := m.outlinerTarget()
-			if task == nil || project == nil {
-				return nil
-			}
-			return ShowTaskDetailMsg{Task: task, Project: project}
-		}},
 		{operationHarnessTaskAttachments, "task attachments", OperationCategoryTask, func() tea.Msg {
 			task, project := m.outlinerTarget()
 			if task == nil || project == nil {
@@ -86,13 +77,6 @@ func (m *AppModel) registerHarnessOperations() error {
 				return nil
 			}
 			return ShowTaskCommentsMsg{Task: task, Project: project}
-		}},
-		{operationHarnessTaskDecisions, "manage decisions", OperationCategoryTask, func() tea.Msg {
-			task, project := m.outlinerTarget()
-			if task == nil || project == nil {
-				return nil
-			}
-			return ShowTaskDecisionsMsg{Task: task, Project: project}
 		}},
 		{operationHarnessProjectNotes, "show notes", OperationCategoryNote, func() tea.Msg {
 			_, project := m.outlinerTarget()

@@ -16,9 +16,6 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		}
 		return true, m.popView()
 
-	case JumpDashboardMsg:
-		return true, m.jumpToOutlinerRoot()
-
 	case RefreshMsg:
 		m.refreshLoadedTaskWorkspace()
 		return true, nil
@@ -63,10 +60,6 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 
 	case InfoStatusMsg:
 		m.setInfoStatus(string(msg))
-		return true, defaultStatusTimeout()
-
-	case MoveBlockedMsg:
-		m.setInfoStatus(msg.Reason)
 		return true, defaultStatusTimeout()
 
 	case OutlinerPlanningReorderMsg:

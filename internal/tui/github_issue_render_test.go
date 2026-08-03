@@ -1,10 +1,7 @@
 package tui
 
 import (
-	"strings"
 	"testing"
-
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -31,19 +28,5 @@ func TestGitHubIssueAttachmentLabels(t *testing.T) {
 	}
 	if got := model.attachmentDisplayName(plainURL); got != plainURL.Filename {
 		t.Fatalf("plain URL display name = %q, want original URL", got)
-	}
-}
-
-func TestGitHubIssueAttachmentDetailUsesCompactLabel(t *testing.T) {
-	task := &models.Task{
-		Attachments: []models.Attachment{
-			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
-			{Filename: "https://example.com/design.pdf", IsURL: true},
-		},
-	}
-
-	detail := ansi.Strip((&TaskDetailModel{task: task}).renderAttachmentsSection(80))
-	if !strings.Contains(detail, "GH acme/roadmap#123") {
-		t.Fatalf("task detail attachments should label GitHub issue compactly, got:\n%s", detail)
 	}
 }

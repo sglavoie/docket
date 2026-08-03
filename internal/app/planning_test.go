@@ -131,11 +131,11 @@ func TestPlanningReorderCannotConferMembership(t *testing.T) {
 			{ProjectID: "project", TaskID: "b", State: models.StateBacklog},
 			{ProjectID: "project", TaskID: "c", State: models.StateBacklog},
 		},
-		NextOrder: []app.TaskLocator{
+		Next: []app.TaskLocator{
 			{ProjectID: c.ProjectID, TaskID: c.TaskID},
 			{ProjectID: b.ProjectID, TaskID: b.TaskID},
 		},
-		SetNextOrder: true,
+		SetNext: true,
 	}) {
 		t.Fatal("reorder reported no change")
 	}

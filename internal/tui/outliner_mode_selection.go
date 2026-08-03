@@ -105,6 +105,10 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 // before rebuilding and restores it afterward (see restoreModeCursor) so an
 // eligible task keeps focus and scroll position across the reshape.
 func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cmd) {
+	if m.hasSearchProjection() {
+		m.setStatus("Exit search before changing modes")
+		return m, nil
+	}
 	mode, ok := OutlinerModeByID(id)
 	if !ok {
 		return m, nil
@@ -181,36 +185,18 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 	return m.scopeProjects()
 }
 
-func (m *OutlinerModel) workModeFilterPredicateWithResolverAt(
-	proj *models.Project,
-	resolver *workspaceFilterResolver,
-	now time.Time,
-) func(*models.Task) bool {
-	pinnedTag := m.activePinnedTagFilter()
+func (m *OutlinerModel) workModeFilterPredicateAt(now time.Time) func(*models.Task) bool {
 	query := m.SearchQuery()
 	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
-	actionable := m.filter.Actionable
 
 	return func(t *models.Task) bool {
 		if t == nil {
 			return false
 		}
-		if pinnedTag != "" && !t.HasTag(pinnedTag) {
-			return false
-		}
 		if query != "" && !TaskMatchesSearch(t, query) {
 			return false
 		}
-		if hasCommon && !passesCommonFiltersWithResolverAt(
-			t,
-			&m.filter.CommonFilterState,
-			proj,
-			resolver,
-			now,
-		) {
-			return false
-		}
-		if actionable && !taskIsActionableState(t, proj) {
+		if hasCommon && !passesCommonFiltersAt(t, &m.filter.CommonFilterState, now) {
 			return false
 		}
 		return true

@@ -9,10 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// workspaceFilterResolver is a temporary compile-only placeholder for the
-// dependency-filter plumbing removed in session 18.
-type workspaceFilterResolver struct{}
-
 // buildOutlinerModeInput assembles the common scoped input all canonical mode
 // strategies consume, resolving durable planning records once.
 func (m *OutlinerModel) buildOutlinerModeInput(projects []*models.Project) OutlinerModeInput {
@@ -24,35 +20,8 @@ func (m *OutlinerModel) buildOutlinerModeInput(projects []*models.Project) Outli
 		NextOrder:  planningNextOrder(m.runtime),
 		Now:        now,
 	}
-	// One resolver over one loaded workspace snapshot is shared by every mode
-	// section in this projection. In particular, a completed cross-project
-	// dependency must not leave its dependent visible under fb.
-	resolver := m.newWorkspaceFilterResolver(projects)
-	input.TaskFilter = m.workModeTaskFilterWithResolverAt(now, resolver)
+	input.TaskFilter = m.workModeTaskFilterAt(now)
 	return input
-}
-
-func (m *OutlinerModel) newWorkspaceFilterResolver(
-	fallback []*models.Project,
-) *workspaceFilterResolver {
-	if m == nil {
-		return nil
-	}
-	if m.workspaceResolver != nil {
-		return m.workspaceResolver
-	}
-	projects := m.loadedProjects
-	if len(projects) == 0 {
-		if m.project != nil {
-			projects = []*models.Project{m.project}
-		} else {
-			projects = fallback
-		}
-	}
-	if len(projects) == 0 {
-		return nil
-	}
-	return &workspaceFilterResolver{}
 }
 
 // projectsInCatalogOrder returns the supplied project subset in the workspace
@@ -90,6 +59,13 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
 func (m *OutlinerModel) buildCanonicalModeRows() bool {
+	if m.hasSearchProjection() {
+		m.buildSearchProjectionRows()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true
+	}
+
 	mode, ok := OutlinerModeByID(m.primaryMode)
 	if !ok {
 		return false
@@ -160,7 +136,7 @@ func planningNextOrder(runtime *config.RuntimeState) []config.ProjectTaskLocator
 	if runtime == nil {
 		return nil
 	}
-	return runtime.Planning().GetNextOrder()
+	return runtime.Planning().GetNext()
 }
 
 // resolveTodayIDs returns the identity set of daily-planned tasks that
@@ -187,19 +163,19 @@ func (m *OutlinerModel) resolveTodayIDs(projects []*models.Project) map[TaskIden
 
 // resolveTodayOrder returns the daily-plan tasks in their durable order,
 // scoped to loaded projects.
-func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []FocusTask {
+func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []PlanningTask {
 	if m.runtime == nil {
 		return nil
 	}
 	plan := m.runtime.Planning().GetToday()
-	order := make([]FocusTask, 0, len(plan))
+	order := make([]PlanningTask, 0, len(plan))
 	for _, item := range plan {
 		for _, p := range projects {
 			if p == nil || p.ID != item.ProjectID {
 				continue
 			}
 			if t := p.GetTaskByID(item.TaskID); t != nil {
-				order = append(order, FocusTask{Task: t, Project: p})
+				order = append(order, PlanningTask{Task: t, Project: p})
 			}
 			break
 		}
@@ -208,20 +184,8 @@ func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []FocusTas
 }
 
 func (m *OutlinerModel) workModeTaskFilterAt(now time.Time) func(*models.Task, *models.Project) bool {
-	return m.workModeTaskFilterWithResolverAt(now, m.newWorkspaceFilterResolver(nil))
-}
-
-func (m *OutlinerModel) workModeTaskFilterWithResolverAt(
-	now time.Time,
-	resolver *workspaceFilterResolver,
-) func(*models.Task, *models.Project) bool {
-	cache := make(map[*models.Project]func(*models.Task) bool)
-	return func(t *models.Task, p *models.Project) bool {
-		predicate, ok := cache[p]
-		if !ok {
-			predicate = m.workModeFilterPredicateWithResolverAt(p, resolver, now)
-			cache[p] = predicate
-		}
+	predicate := m.workModeFilterPredicateAt(now)
+	return func(t *models.Task, _ *models.Project) bool {
 		return predicate(t)
 	}
 }

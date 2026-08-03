@@ -41,8 +41,8 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	outliner.rebuildRows()
 	outliner.multiSelectMode = true
 	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
-	outliner.SetSearchQuery(project.Tasks[0].Title)
 	outliner.zoomStack = []ZoomEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
+	outliner.SetSearchQuery(project.Tasks[0].Title)
 	app.showView(ViewCrossProjectOutliner, outliner)
 	wireInvariantSimplifiedOutliner(t, app, outliner)
 
@@ -175,8 +175,8 @@ func TestNextMembershipConsumersUseExplicitPlanning(t *testing.T) {
 
 	// The persisted list names one eligible member and one stale terminal task.
 	domains := config.NewDomains()
-	domains.Planning.AddToNextOrder(indexedNext.ID, project.ID)
-	domains.Planning.AddToNextOrder(stale.ID, project.ID)
+	domains.Planning.AddToNext(indexedNext.ID, project.ID)
+	domains.Planning.AddToNext(stale.ID, project.ID)
 	runtime := config.NewRuntimeState("", domains)
 	setTestProjects(runtime, []*models.Project{project})
 
@@ -381,9 +381,9 @@ func newFocusToggleTestAppState(t *testing.T, state models.WorkflowState, _ Pres
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		nextOrder:            []FocusTask{},
+		nextOrder:            []PlanningTask{},
 		nextOrderIDs:         make(map[TaskIdentity]bool),
-		today:                []FocusTask{},
+		today:                []PlanningTask{},
 		todayIDs:             make(map[TaskIdentity]bool),
 		operationRegistry:    NewOperationRegistry(),
 		navigation:           NewNavigationState(),
@@ -431,7 +431,7 @@ func assertExclusiveMembership(t *testing.T, app *AppModel, taskID string, inQue
 	}
 }
 
-func taskMembershipCount(tasks []FocusTask, taskID string) int {
+func taskMembershipCount(tasks []PlanningTask, taskID string) int {
 	count := 0
 	for _, ft := range tasks {
 		if ft.Task != nil && ft.Task.ID == taskID {

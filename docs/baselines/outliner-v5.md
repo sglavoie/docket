@@ -1,7 +1,8 @@
-# Outliner-only v5 contract and baseline
+# Outliner-only schema-6 contract and historical baseline
 
-This is the Session 1 acceptance record for the outliner-only v5
-simplification. The destination inventories are machine-readable through
+This file began as the Session 1 acceptance record for the outliner-only
+simplification and now records the final schema-6 surface alongside that
+historical starting point. The destination inventories are machine-readable through
 `testutil.OutlinerV5TargetContract`; the current-state inventory is preserved by
 `testutil.OutlinerV5CurrentBaseline`. Neither fixture configures production, so
 recording the destination does not change current behavior.
@@ -18,12 +19,12 @@ actions have one direct binding, occasional task actions live only under
 
 ### Retained inventories
 
-| Inventory | Exact v5 contents |
+| Inventory | Exact schema-6 contents |
 | --- | --- |
 | Modes and Tab cycle | All → Inbox → Today → Next → Backlog → Due |
 | States | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
 | Task `Space` menu | Move Project, Set Parent, Checklist, Comments, Attachments, Delete |
-| Configuration domains | `workspace` (lean catalog, exclusive regular contexts, and protected System Inbox ID), `planning` (Today and Next order), `machine` (dark/light theme) |
+| Configuration domains | `workspace` (lean catalog, exclusive regular contexts, and protected Unfiled ID), `planning` (Today and Next order), `machine` (dark/light theme only) |
 | Public CLI | `tt`, `doctor`, `conflict`, `workspace`, `completion`, `project export`, help, `--version` |
 | Global flags | `--data-dir`, `--no-color` |
 
@@ -35,13 +36,13 @@ The direct interaction grammar is:
 | Navigation | `j`/Down, `k`/Up, `h`/Left, `l`/Right, Home, End, PageUp, PageDown, `Enter` |
 | Capture and edit | `a`, `A`, `e`, `E`, `Ctrl+E` |
 | State and planning chord | `si`, `sb`, `sn`, `st`, `sg`, `sw`, `sp`, `sm`, `sd`, `sc` |
-| Metadata | `!0`, `!1`–`!5`, `@`, `#`, `z`, `P` |
+| Metadata | `!0`, `!1`–`!3`, `@`, `#`, `z`, `P` |
 | Structure | `<`, `>`, `J`, `K` |
 | Clipboard | `y`, `Y`, `Ctrl+Y` |
-| Selection and task menu | `v`, `V`, `Space` |
+| Selection and task menu | `v`, `Ctrl+A`, `Space`; `V` is unbound |
 | Global | `c`, `C`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
 
-Filters use `fp0`, `fp1`–`fp5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`.
+Filters use `fp0`, `fp1`–`fp3`, `fs`, `fc`, `ft`, `fd`, `fz`, and `fx`.
 Quick capture accepts `!1-3`, `#tag`, `@date`, `$destination`, `%project`, and
 `>parent`. Destinations are Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
 Someday, Done, and Canceled. `#tag` creates valid tags on the fly. Retired type
@@ -70,6 +71,6 @@ not gates that later sessions must preserve.
 | Storage | Five configuration domains are `workspace`, `planning`, `settings`, `automation`, and `machine`. Active project Markdown coexists with completed archives and indexes, notes, attachments, transaction manifests, undo ledgers, and conflict bundles. |
 | CLI | The top-level command tree still exposes `add`, `ask`, `attach`, `attachment`, `attachments`, `blocker`, `completion`, `conflict`, `context`, `dash`, `doctor`, `epic`, `focus`, `help`, `note`, `project`, `redo`, `roadmap`, `sandbox`, `score`, `search`, `select`, `tag`, `task`, `template`, `theme`, `undo`, `workflow`, and `workspace`. |
 
-The prior daily-loop fixture remains a record of the pre-v5 acceptance surface.
-The v5 fixture is separate so later sessions can remove behavior deliberately
-without rewriting this baseline into a fictional starting state.
+The historical table remains a record of the pre-simplification acceptance
+surface. The schema-6 target above is the live contract; the old observations
+below remain labeled history rather than compatibility guidance.

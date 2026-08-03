@@ -15,7 +15,7 @@ func mustRoute(t *testing.T, id RouteID, params RouteParams) Route {
 }
 
 func TestRouteIDSetAndDestinations(t *testing.T) {
-	want := []string{"TaskWorkspace", "SecondaryTool", "TaskDetail", "Reference"}
+	want := []string{"TaskWorkspace", "SecondaryTool", "Reference"}
 	for id, name := range want {
 		routeID := RouteID(id)
 		if routeID.String() != name {
@@ -25,8 +25,8 @@ func TestRouteIDSetAndDestinations(t *testing.T) {
 	if RouteID(len(want)).String() == "" {
 		t.Error("invalid RouteID should have a diagnostic string")
 	}
-	if SecondaryTool.IsDestination() || TaskDetail.IsDestination() || Reference.IsDestination() {
-		t.Error("SecondaryTool, TaskDetail, and Reference must not be destinations")
+	if SecondaryTool.IsDestination() || Reference.IsDestination() {
+		t.Error("SecondaryTool and Reference must not be destinations")
 	}
 	// The Outliner (TaskWorkspace) is the sole destination; Home and Planner
 	// were deleted.
@@ -106,10 +106,4 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 		t.Fatalf("secondary tool with foreign params error = %v", err)
 	}
 
-	if _, err := NewRoute(TaskDetail, TaskDetailParams{ProjectID: "p1"}); !errors.Is(err, ErrTaskRequired) {
-		t.Fatalf("detail without task error = %v", err)
-	}
-	if _, err := NewRoute(TaskDetail, TaskDetailParams{TaskID: "t1"}); !errors.Is(err, ErrProjectRequired) {
-		t.Fatalf("detail without project error = %v", err)
-	}
 }

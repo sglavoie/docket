@@ -41,10 +41,13 @@ func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 	}
 
 	states := make([]models.WorkflowState, 0, len(raw.FilterStates))
-	for _, legacy := range raw.FilterStates {
-		target, ok := models.TargetStateForLegacy(legacy)
-		if !ok {
-			return fmt.Errorf("invalid workflow state %q", legacy)
+	for _, persisted := range raw.FilterStates {
+		target := persisted
+		if persisted == models.WorkflowState("review") {
+			target = models.StateBacklog
+		}
+		if !target.IsValid() {
+			return fmt.Errorf("invalid workflow state %q", persisted)
 		}
 		states = append(states, target)
 	}
@@ -115,7 +118,7 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.Mode = OutlinerModeAll
 	case "parked":
 		state.Mode = OutlinerModeAll
-	case "priority", "blocked":
+	case "priority":
 		state.Mode = OutlinerModeAll
 	case OutlinerModeAll,
 		OutlinerModeInbox,

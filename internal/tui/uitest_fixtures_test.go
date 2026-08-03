@@ -94,11 +94,11 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	inbox := driver.App().runtime.SystemInboxProject()
+	inbox := driver.App().runtime.SystemUnfiledProject()
 	if inbox == nil {
 		t.Fatal("fresh install has no system Inbox")
 	}
-	if inbox.Name != config.SystemInboxName || inbox.Archived {
+	if inbox.Name != config.SystemUnfiledName || inbox.Archived {
 		t.Fatalf("system Inbox metadata = %+v", inbox)
 	}
 	active := driver.App().runtime.ActiveProjects()
@@ -117,7 +117,7 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	if got := relaunched.runtime.SystemInboxProject(); got == nil || got.ID != inbox.ID {
+	if got := relaunched.runtime.SystemUnfiledProject(); got == nil || got.ID != inbox.ID {
 		t.Fatalf("system Inbox identity changed across launch: before=%q after=%v", inbox.ID, got)
 	}
 }
@@ -130,7 +130,7 @@ func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	target := driver.App().currentProject
-	inbox := driver.App().runtime.SystemInboxProject()
+	inbox := driver.App().runtime.SystemUnfiledProject()
 	if target == nil || inbox == nil || target.ID == inbox.ID {
 		t.Fatalf("fixture projects: target=%v inbox=%v", target, inbox)
 	}

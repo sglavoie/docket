@@ -31,7 +31,7 @@ func taskWorkspacePresentation(_ TaskWorkspaceParams) PresentationID {
 }
 
 // presentationPath derives renderer-local identities from the live navigation
-// stacks. It deliberately has no dashboard or synthetic root sentinel.
+// stacks. It deliberately has no synthetic root sentinel.
 func (m *AppModel) presentationPath() []PresentationID {
 	routes := m.navigation.Primary.Routes()
 	path := make([]PresentationID, 0, len(routes)+m.navigation.Overlays.Depth())
@@ -79,12 +79,6 @@ func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
 			}
 			return manageModulePresentation(params)
 		}
-	case TaskDetail:
-		params, ok := route.Params().(TaskDetailParams)
-		if !ok {
-			return 0, false
-		}
-		return taskDetailPresentation(params.Tab), true
 	case Reference:
 		params, ok := route.Params().(ReferenceParams)
 		if !ok {
@@ -153,19 +147,6 @@ func (m *AppModel) manageHubPrimary() (*ManageHubModel, ManageParams, bool) {
 	return m.manageHub, params, true
 }
 
-// activeTaskDetail reports whether the unified Task Detail is the live primary
-// child and is not covered by a legacy-rendered overlay.
-func (m *AppModel) activeTaskDetail() bool {
-	if m.taskDetail == nil {
-		return false
-	}
-	if overlay, ok := m.navigation.Overlays.Current(); ok && overlayCoversPrimary(overlay) {
-		return false
-	}
-	_, _, ok := m.taskDetailPrimary()
-	return ok
-}
-
 // overlayCoversPrimary distinguishes a real presentation layer from shell
 // state markers such as a hub's embedded view menu. Reference overlays select
 // their presentation through a typed Reference route instead of the legacy
@@ -179,35 +160,12 @@ func overlayCoversPrimary(overlay Overlay) bool {
 	return hasReference
 }
 
-// taskDetailPrimary returns Task Detail beneath shell overlays so global task
-// actions resolve the same task as tab-local controls.
-func (m *AppModel) taskDetailPrimary() (*TaskDetailModel, TaskDetailParams, bool) {
-	if m.taskDetail == nil {
-		return nil, TaskDetailParams{}, false
-	}
-	route := m.navigation.Primary.Current()
-	if route.ID() != TaskDetail {
-		return nil, TaskDetailParams{}, false
-	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return nil, TaskDetailParams{}, false
-	}
-	params, ok := route.Params().(TaskDetailParams)
-	if !ok || !m.taskDetail.Matches(params) {
-		return nil, TaskDetailParams{}, false
-	}
-	return m.taskDetail, params, true
-}
-
 func (m *AppModel) activeView() View {
 	if m.activeTaskComposer() {
 		return m.taskComposer
 	}
 	if m.activeManageHub() {
 		return m.manageHub
-	}
-	if m.activeTaskDetail() {
-		return m.taskDetail
 	}
 	if m.views == nil {
 		return nil
@@ -251,8 +209,8 @@ func (m *AppModel) popTypedPresentation() bool {
 	}
 
 	current := m.navigation.Primary.Current()
-	if current.ID() == TaskDetail || current.ID() == SecondaryTool {
-		// Task Detail and secondary tools are hierarchical children: a single Esc
+	if current.ID() == SecondaryTool {
+		// Secondary tools are hierarchical children: a single Esc
 		// dismisses the child directly back to the launching destination without an
 		// intermediate landing retreat.
 		m.navigation.Primary.Pop()

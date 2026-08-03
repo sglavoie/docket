@@ -153,7 +153,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 	betaInbox := primaryRowsTask("beta-inbox", models.StateInbox)
 	beta := primaryRowsProject("beta", betaNext, betaInbox)
 	outliner, runtime := primaryRowsOutliner(alpha, beta)
-	runtime.Planning().SetNextOrder([]config.ProjectTaskLocator{
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: beta.ID, TaskID: betaNext.ID},
 		{ProjectID: alpha.ID, TaskID: alphaNext.ID},
 		{ProjectID: alpha.ID, TaskID: alphaNextChild.ID},

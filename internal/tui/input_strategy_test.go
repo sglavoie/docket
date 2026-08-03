@@ -110,7 +110,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		key  string
 		want OperationID
 	}{
-		{key: "/", want: operationCoreVisibleSearch},
+		{key: "/", want: operationCoreScopeSearch},
 		{key: "h", want: operationCoreCollapseParent},
 		{key: "left", want: operationCoreCollapseParent},
 		{key: "l", want: operationCoreExpand},
@@ -581,7 +581,7 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 		if !slices.Equal(app.pendingChord, []string{","}) {
 			t.Fatalf("pending chord = %v, want [,]", app.pendingChord)
 		}
-		row := app.pendingChordHintRow()
+		row := pendingChordHintRowForTest(app)
 		if !strings.Contains(row, "h help") {
 			t.Errorf("which-key row %q omits the chord's hint", row)
 		}
@@ -606,7 +606,7 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 		for name, abandon := range map[string]func(app *AppModel){
 			"esc":     func(app *AppModel) { app.handleSimplifiedInputKey(tea.KeyPressMsg{Code: tea.KeyEscape}) },
 			"unknown": func(app *AppModel) { app.handleSimplifiedInputKey(tea.KeyPressMsg{Code: 'z', Text: "z"}) },
-			"reset":   func(app *AppModel) { app.jumpToOutlinerRoot() },
+			"reset":   func(app *AppModel) { jumpToOutlinerRootForTest(app) },
 			"inline control": func(app *AppModel) {
 				app.crossOutliner.ActivateSearch()
 				app.handleSimplifiedInputKey(tea.KeyPressMsg{Code: 'h', Text: "h"})

@@ -35,10 +35,10 @@ surface; Cobra contains only the TUI launcher and maintenance commands.
   workflow invariants.
 - `internal/app` owns use cases, project-qualified target resolution, planning
   reconciliation, and atomic mutation policy.
-- `internal/storage` owns strict schema-5 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
   conflicts, recovery, and the workspace undo ledger.
-- `internal/config` owns the lean catalog/planning domains, machine-local
-  contexts/theme, workspace selection, and v4-to-v5 migration.
+- `internal/config` owns the lean catalog/planning domains, portable regular
+  contexts, machine-local theme, workspace selection, and v4→v5→v6 migration.
 - `internal/tui` owns the sole Outliner root, typed subordinate tools and
   overlays, the operation registry/executor, and deterministic scenarios.
 - `internal/textgrammar` owns canonical capture/edit sigils.
@@ -50,18 +50,17 @@ behavior with independent `SaveProject` calls. Direct storage writes are limited
 to narrowly audited maintenance, migration, restore, and transaction
 infrastructure.
 
-## Canonical v5 task contract
+## Canonical schema-6 task contract
 
 The live states are:
 
 ```text
-inbox, ready, next, in_progress, waiting,
-paused, someday, done, canceled
+inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
-Review and every other v4-only state or field may appear only in explicitly
-named migration DTOs and audit code. Ordinary task Markdown uses schema 5,
-generic `Task` headings, a project-local ShortID, and the retained v5 fields.
+Review and every other retired state or field may appear only in explicitly
+named migration DTOs and audit code. Ordinary task Markdown uses schema 6,
+generic `Task` headings, a project-local ShortID, and the retained fields.
 
 Planning invariants:
 
@@ -69,11 +68,10 @@ Planning invariants:
 - Today is project-qualified and mutually exclusive with Next.
 - Backlog removes Today/Next references.
 - Starting sets Doing; completing sets Done and clears planning.
-- Dependency blocking is derived.
+- Waiting is an explicit lifecycle state.
 - Done and Canceled reject a direct nonterminal child.
 
-Parents are project-local with maximum depth six. Cross-project dependencies
-must remain project-qualified, resolvable, and acyclic.
+Parents are project-local with maximum depth six.
 
 ## TUI grammar and operations
 
@@ -93,10 +91,10 @@ Tab / Shift+Tab                 six modes
 j/k, arrows, h/l, S, Home/End  navigation
 a/A, e/E                       capture/edit
 si sb sn st sg sw sp sm sd sc  state/planning chord
-!0-5 @ # z P                   metadata
+!0-3 @ # z P                   metadata
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
-v V Space                      selection/actions
+v Ctrl+A Space                 selection/actions (`V` unbound)
 c N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
@@ -105,9 +103,11 @@ Backlog, `n` Next, `t` Today, `g` Doing, `w` Waiting, `p` Paused, `m`
 Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
 behavior, and Backlog removes both planning memberships.
 
-Filter chords are `fp0-5`, `fs`, `ft`, `fd`, `fb`, `fz`, and `fx`. `fd` opens
-the due-date facet picker for overdue, today, this week, or no due date, and
-`fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
+Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fd`, `fz`, and `fx`. `fp1`–`fp3`
+are cumulative High/Medium/Low thresholds and exclude Unset. `fd` opens
+the due-date facet picker for overdue, today, this week, or no due date. `fc`
+opens the completion-age picker without choosing Done/Canceled states; cleanup
+uses `fs` → `fc` → `Ctrl+A` → `Space` Delete. `fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
 comma state prefix must remain unbound, along with `m`, `:`, `R`, `p`, and
 `Ctrl+Esc`.
 
@@ -125,7 +125,7 @@ and confirms before mutation.
 
 The Outliner stays full-width at every supported size. `Enter` toggles a
 session-only, five-line Peek beneath the cursor for description, tags,
-checklist items, and named dependencies. Rows carry
+attachment names, comment counts, and checklist items. Rows carry
 operational metadata directly and omit short IDs. Entering visual selection
 closes Peek; while selection exists, structural, edit, Peek, relation, and
 clipboard operations must reject it instead of falling back to the cursor.
@@ -182,16 +182,17 @@ projects/<slug>/notes/
 projects/<slug>/.attachments/
 ```
 
-Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only custom
-contexts and the dark/light theme. Workspace paths are derived below approved
+Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
+dark/light theme; exclusive regular contexts live in the portable catalog.
+Workspace paths are derived below approved
 roots; preserve symlink-aware containment, checked revisions, deterministic
 locks, and recovery manifests.
 
-The supported v4 migration validates the complete candidate first, publishes an
-immutable pre-simplification archive/audit pair, then atomically activates
-schema 5 and removes retired storage. v4 decoders are migration-only. Do not let
-ordinary runtime code import them or publish partial v5 output before the
-snapshot boundary.
+The supported v4→v5→v6 migration validates each complete candidate first,
+publishes immutable pre-simplification-v5 and pre-consolidation-v6 archive/audit
+pairs, then atomically activates the next schema and removes retired storage.
+v4/v5 decoders are migration-only. Do not let ordinary runtime code import them
+or publish partial output before either snapshot boundary.
 
 Undo/redo is one 50-entry workspace ledger covering task, project, note, and
 attachment transactions. A successful forward mutation clears redo; failure

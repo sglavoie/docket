@@ -31,9 +31,6 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	if m.manageHub != nil {
 		m.manageHub.SetSize(msg.Width, msg.Height-2)
 	}
-	if m.taskDetail != nil {
-		m.taskDetail.SetSize(msg.Width, msg.Height-2)
-	}
 	if m.taskComposer != nil {
 		m.taskComposer.SetSize(msg.Width, msg.Height-2)
 	}
@@ -55,13 +52,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 			m.manageHub = hub
 		}
 		return cmd
-	}
-	if m.activeTaskDetail() {
-		updated, cmd := m.taskDetail.Update(msg)
-		if detail, ok := updated.(*TaskDetailModel); ok {
-			m.taskDetail = detail
-		}
-		return tea.Batch(cmd, m.syncTaskDetailTab(m.taskDetail.Tab()))
 	}
 	currentView := m.currentView()
 	cmd := m.views.Update(currentView, msg)
@@ -88,9 +78,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Project) {
 	if hub, _, ok := m.manageHubPrimary(); ok && m.activeManageHub() {
 		return hub.getTaskRef()
-	}
-	if detail, _, ok := m.taskDetailPrimary(); ok && m.activeTaskDetail() {
-		return detail.getTaskRef()
 	}
 	type taskRefProvider interface {
 		getTaskRef() (*models.Task, *models.Project)

@@ -64,6 +64,15 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	story := project.GetTaskByID("story")
 	context := taskOperationTestContext(story, project)
 	registry := model.operationRegistry
+	registerTaskActionTestDescriptor(t, registry, OperationDescriptor{
+		ID:                   OperationID("test.task.unlisted"),
+		Label:                "Unlisted Task Tool",
+		Category:             OperationCategoryTask,
+		TargetSource:         OperationTargetCurrentTask,
+		TargetCardinality:    TargetCardinalityOne,
+		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Risk:                 OperationRiskReadOnly,
+	})
 
 	descriptors := TaskActionSheetDescriptors(registry, context)
 	ids := make([]OperationID, 0, len(descriptors))
@@ -93,8 +102,6 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	// task actions; the metadata operations the input strategy binds directly
 	// leave the sheet rather than repeating their key as a row.
 	for _, excluded := range []OperationID{
-		operationTaskSetDependencies,
-		operationTaskDecisions,
 		operationCoreActions,
 		operationCoreCapture,
 		operationCoreMultiSelect,
@@ -110,7 +117,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationCoreEdit,
 		operationCoreEditDescription,
 		operationCoreExternalEditor,
-		operationCoreDetail,
+		operationCorePeek,
 		operationTaskCopyTitle,
 		operationTaskCopyDetails,
 		operationTaskCopyTitleDescription,
@@ -250,8 +257,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	if !slices.Equal(ids, []OperationID{operationTaskDelete}) {
-		t.Fatalf("bulk action sheet IDs = %v, want Delete only", ids)
+	if !slices.Equal(ids, []OperationID{operationTaskMoveProject, operationTaskDelete}) {
+		t.Fatalf("bulk action sheet IDs = %v, want Move Project and Delete", ids)
 	}
 	for _, excluded := range []OperationID{
 		// Snooze is bulk-capable but the in-progress member removes it.
@@ -261,13 +268,11 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
-		operationTaskMoveProject,
-		operationTaskSetDependencies,
 		operationTaskSetParent,
 		operationTaskIndent,
 		operationTaskOutdent,
 		operationCoreEdit,
-		operationCoreDetail,
+		operationCorePeek,
 		operationTaskCopyTitle,
 		operationTaskNewChild,
 	} {
@@ -335,7 +340,7 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	}
 }
 
-func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) {
+func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T) {
 	app := newUITestApp()
 	first := &models.Task{ID: "first", Title: "First", WorkflowState: models.StateBacklog}
 	second := &models.Task{ID: "second", Title: "Second", WorkflowState: models.StateBacklog}
@@ -357,16 +362,18 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscClears(t *testing.T) 
 	}
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	if !app.crossOutliner.IsTaskIdentitySelected(taskIdentityFor(first, project)) {
-		t.Fatal("v did not toggle the cursor row into visual selection")
+		t.Fatal("v did not anchor a fresh visual range at the cursor row")
 	}
 	send(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
-		t.Fatal("Esc did not clear visual selection")
+	if !app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 1 ||
+		app.crossOutliner.IsRangeSelectionActive() {
+		t.Fatal("Esc did not freeze the visual range while preserving selection")
 	}
 
+	app.crossOutliner.cursor = 0
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
-	app.crossOutliner.cursor = 1
-	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
+	send(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	send(tea.KeyPressMsg{Code: 'v', Text: "v"}) // freeze the two-row range
 	send(tea.KeyPressMsg{Code: tea.KeySpace})
 	sheet := app.contextActionSheet
 	if sheet == nil || !sheet.config.Bulk || sheet.config.Targets != 2 {
@@ -406,7 +413,7 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	app.crossOutliner.cursor = 1
 
 	result := app.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreDetail,
+		ID:      operationCorePeek,
 		Context: app.operationCommandContext(),
 		Source:  OperationSourceDirectKey,
 	})

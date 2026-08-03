@@ -80,7 +80,6 @@ func (s *Service) CommitProjectArtifacts(request storage.ArtifactCommitRequest) 
 type RenameProjectRequest struct {
 	Project                *models.Project
 	SystemUnfiledProjectID string
-	SystemInboxProjectID   string // compile-time compatibility alias
 	DataDir                string
 	OldName                string
 	OldSlug                string
@@ -109,9 +108,6 @@ func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, 
 		return RenameProjectResult{}, invalidInput("project", "project is required")
 	}
 	protectedID := req.SystemUnfiledProjectID
-	if protectedID == "" {
-		protectedID = req.SystemInboxProjectID
-	}
 	if protectedID != "" &&
 		req.Project.ID == protectedID &&
 		(req.OldName == "" || req.OldName != req.Project.Name || req.OldSlug != req.NewSlug) {
@@ -160,17 +156,4 @@ func (s *Service) RenameProject(req RenameProjectRequest) (RenameProjectResult, 
 	}
 	req.Project.Path = plan.NewPath
 	return RenameProjectResult{NewPath: plan.NewPath, SlugChanged: req.OldSlug != req.NewSlug}, nil
-}
-
-// validateLifecycleTaskWrites fails closed when an adapter tries to submit a
-// lifecycle-generated full-file tasks.md rewrite without the revision captured
-// during planning. The commit boundary can only prevent stale-byte clobbers when
-// every rewrite participates in the same optimistic-concurrency preflight.
-func validateLifecycleTaskWrites(writes []storage.ArtifactChange) error {
-	for i := range writes {
-		if writes[i].ExpectedRevision == nil {
-			return invalidInput("tasks revision", fmt.Sprintf("cross-project rewrite %d requires an expected revision", i))
-		}
-	}
-	return nil
 }

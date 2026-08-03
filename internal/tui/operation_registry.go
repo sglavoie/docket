@@ -63,24 +63,24 @@ const (
 type ValueProviderID string
 
 const (
-	ValueProviderState        ValueProviderID = "state"
-	ValueProviderPriority     ValueProviderID = "priority"
-	ValueProviderDueDate      ValueProviderID = "due-date"
-	ValueProviderSnooze       ValueProviderID = "snooze"
-	ValueProviderTags         ValueProviderID = "tags"
-	ValueProviderProject      ValueProviderID = "project"
-	ValueProviderDependencies ValueProviderID = "dependencies"
-	ValueProviderParent       ValueProviderID = "parent"
-	ValueProviderNoteTitle    ValueProviderID = "note-title"
-	ValueProviderTagName      ValueProviderID = "tag-name"
+	ValueProviderState     ValueProviderID = "state"
+	ValueProviderPriority  ValueProviderID = "priority"
+	ValueProviderDueDate   ValueProviderID = "due-date"
+	ValueProviderSnooze    ValueProviderID = "snooze"
+	ValueProviderTags      ValueProviderID = "tags"
+	ValueProviderProject   ValueProviderID = "project"
+	ValueProviderParent    ValueProviderID = "parent"
+	ValueProviderNoteTitle ValueProviderID = "note-title"
+	ValueProviderTagName   ValueProviderID = "tag-name"
 
 	// Filter providers feed the Outliner's view-state filter facets rather than
-	// a task mutation; priority is preset-only while states, tags, and due use
-	// pickers.
-	ValueProviderFilterPriority ValueProviderID = "filter-priority"
-	ValueProviderFilterStates   ValueProviderID = "filter-states"
-	ValueProviderFilterTags     ValueProviderID = "filter-tags"
-	ValueProviderFilterDue      ValueProviderID = "filter-due"
+	// a task mutation; priority is preset-only while states, tags, due, and
+	// completion age use pickers.
+	ValueProviderFilterPriority      ValueProviderID = "filter-priority"
+	ValueProviderFilterStates        ValueProviderID = "filter-states"
+	ValueProviderFilterTags          ValueProviderID = "filter-tags"
+	ValueProviderFilterDue           ValueProviderID = "filter-due"
+	ValueProviderFilterCompletionAge ValueProviderID = "filter-completion-age"
 )
 
 // textEntry reports whether the provider's value is typed rather than picked

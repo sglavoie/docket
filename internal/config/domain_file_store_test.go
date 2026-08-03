@@ -48,7 +48,7 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	catalog := NewWorkspaceCatalog()
 	catalog.WorkspaceID = testWorkspaceID
 	catalog.Projects = append(catalog.Projects, CatalogProject{ID: "p1", Slug: "proj", Name: "Proj", ColorSlot: 31})
-	catalog.SystemInboxProjectID = "p1"
+	catalog.SystemUnfiledProjectID = "p1"
 	if err := s.SaveCatalog(catalog); err != nil {
 		t.Fatalf("SaveCatalog: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog: %v", err)
 	}
-	if gotCatalog.WorkspaceID != testWorkspaceID || len(gotCatalog.Projects) != 1 || gotCatalog.SystemInboxProjectID != "p1" {
+	if gotCatalog.WorkspaceID != testWorkspaceID || len(gotCatalog.Projects) != 1 || gotCatalog.SystemUnfiledProjectID != "p1" {
 		t.Fatalf("catalog round-trip mismatch: %+v", gotCatalog)
 	}
 	if gotCatalog.Projects[0].ColorSlot != 31 {
@@ -241,7 +241,7 @@ func TestDomainFileStore_LoadDefaultsWhenAbsent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPlanning on empty store: %v", err)
 	}
-	if planning == nil || len(planning.Today) != 0 || len(planning.NextOrder) != 0 {
+	if planning == nil || len(planning.Today) != 0 || len(planning.Next) != 0 {
 		t.Fatalf("absent planning should fall back to defaults, got %+v", planning)
 	}
 }

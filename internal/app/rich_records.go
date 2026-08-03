@@ -2,8 +2,8 @@ package app
 
 import "fmt"
 
-// mutateRichRecordSelection gives checklist, comment, and decision CRUD the
-// same in-memory atomicity as their storage commit. Repository snapshots can
+// mutateRichRecordSelection gives checklist and comment CRUD the same in-memory
+// atomicity as their storage commit. Repository snapshots can
 // retain caller-visible pointers, so a failed commit restores the complete
 // pre-mutation graph.
 func (s *Service) mutateRichRecordSelection(taskID string, locator TaskLocator, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {

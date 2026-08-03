@@ -13,10 +13,11 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-5 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
-- `internal/config` owns the lean catalog and planning domains, machine-local
-  contexts/theme, workspace selection, and the v4-to-v5 migration.
+- `internal/config` owns the lean catalog and planning domains, portable regular
+  contexts, machine-local theme, workspace selection, and the v4→v5→v6
+  migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
 - `cmd` owns only the TUI launcher and maintenance CLI adapters.
@@ -29,7 +30,7 @@ not reproduce these checks with independent saves.
 
 ## Task model
 
-Schema 5 stores generic tasks with these supported fields:
+Schema 6 stores generic tasks with these supported fields:
 
 | Group | Fields |
 | --- | --- |
@@ -37,8 +38,8 @@ Schema 5 stores generic tasks with these supported fields:
 | Content | title and description |
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
 | Planning metadata | priority, due date, dated snooze, pin, pin timestamp |
-| Organization | project-local parent, tags, cross-project dependencies |
-| Rich records | checklist, comments, decisions, attachments |
+| Organization | project-local parent and tags |
+| Rich records | checklist, comments, attachments |
 | Lifecycle | created, updated, completed timestamps |
 
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
@@ -56,19 +57,13 @@ Canceled remove both planning references.
 The planning reconciler deduplicates entries and removes stale or terminal
 references inside the same transaction as the task change.
 
-Blocked is derived from unresolved dependencies; it is not a state. A task
-cannot move to Done while a dependency is unresolved. Done and Canceled are
-also rejected when a direct child remains nonterminal.
+Waiting is an explicit lifecycle state with no derived relationship semantics.
+Done and Canceled are rejected when a direct child remains nonterminal.
 
-### Hierarchy, dependencies, and ordering
+### Hierarchy and ordering
 
 Parents are project-local. Reparenting rejects missing parents, self-parenting,
 cycles, cross-project parents, and a resulting subtree depth above six.
-
-Dependencies use stable task identity and carry a project qualifier when they
-cross projects. The workspace resolver validates existence, self-reference,
-and cycles. Moving a task between projects repairs or clears affected
-references atomically across every participating project.
 
 All, Inbox, and Backlog retain project hierarchy and manual sibling order.
 Today and Next have workspace-wide durable order. Due is automatically date
@@ -78,7 +73,8 @@ Pinned or Due.
 
 ### Rich records
 
-Comments store timestamped text. Decisions store timestamped text and rationale.
+Comments are the sole timestamped narrative records. Legacy decision text is
+converted into ordinary editable comments during schema migration.
 Checklist items store text and completion and may be reordered. Attachments are
 files, HTTP(S) URLs, or code references and participate in the same transaction
 and undo ledger as task Markdown.
@@ -126,39 +122,45 @@ transaction begins.
 
 ### Search, filters, and Peek
 
-Visible search performs a case-insensitive substring match against title and
-description only. Filter facets compose as priority threshold, OR states, AND
-tags, due bucket, blocked-only, and snoozed-only. One predicate and reference
-time are shared across Pinned, Today, primary mode rows, and Due. Search and
-facets persist across mode and scope changes within the run and are never
-serialized.
+Slash search temporarily replaces mode rows with every scoped nonterminal task,
+including snoozed work. It ranks title matches before description, tag, and
+project metadata matches, then by fuzzy score and stable project/task order;
+`project#shortID` is an exact qualifier. Mode and facet changes are unavailable
+during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
+Ordinary filter facets compose as priority threshold, OR states, AND tags, due
+bucket, completion age, and snoozed-only and remain session-only. Completion
+age uses local calendar days, requires a valid `CompletedAt`, and never chooses
+Done or Canceled implicitly; `doctor` reports malformed lifecycle timestamps.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
-operational scan signals directly: workflow/blocking, conditional high
-priority, due, snooze, dependency counts, and checklist progress.
+operational scan signals directly: workflow state, conditional high priority,
+due, snooze, and checklist progress.
 Outliner rows omit short task IDs.
 
 `Enter` toggles a session-only, project-qualified Peek below the cursor task.
 Peek follows cursor, mode, and scope navigation and is capped at five additive
-lines: up to two description lines plus tags, compact checklist items, named
-dependencies. `Esc` dismisses Peek before other
+lines: up to two description lines plus tags, attachment names, comment counts,
+and compact checklist items. `Esc` dismisses Peek before other
 Outliner navigation. Entering visual selection disables Peek.
 
 ### Selection and subordinate tools
 
 Visual selection stores project-qualified task identities independently of
-current visibility. Bulk lifecycle, planning, priority, due, tags, snooze, and
-pin requests validate the complete selection before one transaction. Structural
-and relation operations, edits, inspection, and clipboard actions reject visual
-selection rather than falling back to the cursor. The bulk `Space` menu contains
-Delete only.
+current visibility and classifies them as total, visible, and hidden. `v`
+starts a fresh inclusive task-row range and movement recalculates it while
+skipping headers; `v` or `Esc` freezes the result. `Ctrl+A` replaces the
+selection with every visible task row. Bulk lifecycle, planning, priority, due,
+tags, snooze, and pin requests validate the complete selection before one
+transaction. Structural and relation operations, edits, inspection, and
+clipboard actions reject visual selection rather than falling back to the
+cursor. Only a committed Delete clears selection.
 
-Scope Hub resolves only All Projects, regular context labels, and custom
-machine-local contexts. Applying scope clears navigation and selection but
+Scope Hub resolves only All Projects and exclusive regular context labels from
+the portable catalog. Applying scope clears navigation and selection but
 preserves the active mode, search, and filters. Select Project opens separately
 with search focused and includes active and archived projects. Project
 administration supports create, edit, pin, archive, restore, and project Notes.
-The catalog-owned Inbox ID is the protection authority.
+The catalog-owned Unfiled ID is the protection authority.
 
 The workspace-wide Notes manager carries an explicit `NoteLocation` plus
 filename identity with every row and always opens in All Notes. One workspace
@@ -187,16 +189,16 @@ The portable workspace rooted at `<data>` is:
 ```text
 <data>/
 ├── .tt/
-│   ├── workspace.json       # lean project catalog and protected Inbox ID
+│   ├── workspace.json       # lean catalog, contexts, protected Unfiled ID
 │   ├── planning.json        # Today and Next order only
 │   ├── global-notes/        # minimal Markdown notes
 │   ├── transactions/        # prepared/recovering commit journals
 │   ├── undo/                # workspace ledger and retained artifact images
 │   ├── conflicts/           # merge bundles
-│   └── backups/             # immutable pre-v5 rollback pairs
+│   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-5 generic Task Markdown
+        ├── tasks.md         # strict schema-6 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -209,7 +211,8 @@ staging files, or destination directories are created.
 Portable configuration has only two synced domains:
 
 - `workspace.json`: workspace identity, lean active/archived project catalog,
-  automatic color slots, and the protected Inbox ID.
+  automatic color slots, exclusive regular contexts, and the protected Unfiled
+  ID.
 - `planning.json`: project-qualified Today and Next ordering.
 
 Machine state contains only the dark/light theme selection:
@@ -248,7 +251,7 @@ workspace, not an independent backup.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-5 content. A stale writer is compared
+Project revisions hash canonical schema-6 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -259,11 +262,12 @@ rechecks the current remote revision. A conflict from an aborted multi-artifact
 transaction may require adopting remote and retrying the original operation so
 all side effects are rebuilt together.
 
-## Snapshot-first v5 migration
+## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 5 proceeds directly. A supported schema-4 split-domain workspace enters
-the migration path:
+Schema 6 proceeds directly. A supported schema-4 split-domain workspace first
+crosses the schema-5 boundary; a supported schema-5 workspace then enters the
+schema-6 consolidation path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -283,11 +287,22 @@ the migration path:
    per-project undo, and task backup artifacts.
 5. Recover or roll forward the prepared activation journal before any later
    migration inspection.
+6. Validate the complete schema-6 graph before changing bytes. This conversion
+   canonicalizes the protected project as Unfiled, maps priorities to High,
+   Medium, and Low, removes custom contexts and retired relationships, converts
+   decision text to comments, repairs Today/Next references, preserves notes and
+   attachment bytes, and plans the incompatible undo ledger for removal.
+7. Publish a second immutable `pre-consolidation-v6-<UTC>.tar.gz` plus matching
+   audit, revalidate the exact locked inventory, and atomically activate schema
+   6 across portable and machine-state roots.
 
-The migration is idempotent: a repeated schema-5 startup neither reconverts data
-nor creates another rollback pair. Snapshot artifacts are application-owned and
-immutable to `tt`. Older builds do not support schema 5; downgrade requires
-restoring the snapshot.
+Each boundary is idempotent: repeated schema-6 startup neither reconverts data
+nor creates another rollback pair. Corrupt or future input and an existing
+`unfiled` project/directory fail before mutation with concrete rename/move guidance.
+Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a
+clean migration retry requires restoring the complete matching snapshot into a
+separate workspace with a compatible build; the schema-6 activation tests also
+exercise this restore-and-reactivate path.
 
 An older aggregate `.tt.json` without the supported split-domain workspace is
 not implicitly imported. Startup reports that unsupported legacy source before

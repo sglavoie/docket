@@ -19,8 +19,6 @@ const (
 	ViewProjectEditor
 	ViewHelp
 	ViewDateInput
-	ViewDependencySelector
-	ViewDependencyViewer
 	ViewTagFilterSelector
 	ViewPriorityPicker
 	ViewParentSelector
@@ -30,30 +28,17 @@ const (
 	ViewProjectSelector
 	ViewTextEditor
 	ViewTaskAttachments
-	ViewCrossProjectLinker
 	ViewNotes
 	ViewGlobalNotes
 	ViewSnoozeInput
 	ViewTaskChecklist
-	ViewTaskDetail
 	ViewCrossProjectOutliner
 	ViewTaskForm
 	ViewTaskComposer
-	ViewTaskDecisions
 	ViewConflictResolution
 	ViewContextHub
 	ViewProjectHub
 )
-
-// sessionStats tracks task changes during a single TUI session for the
-// end-of-session summary.
-type sessionStats struct {
-	sessionStart   time.Time
-	tasksCompleted int
-	tasksCreated   int
-	tasksDoing     int
-	tasksSnoozed   int
-}
 
 // AppModel is the main TUI model.
 type AppModel struct {
@@ -90,7 +75,7 @@ type AppModel struct {
 	features FeatureCoordinators
 
 	// secondaryFeatures are the application-backed coordinators the secondary
-	// views and overlays (bulk operations, attachments, tags, and blockers)
+	// views and overlays (bulk operations, attachments, and tags)
 	// dispatch their mutations through. Each depends on
 	// a narrow host port satisfied by the same application service, so an overlay
 	// routes persistence through one atomic ChangeSet (or config write) instead of
@@ -101,11 +86,6 @@ type AppModel struct {
 	// manageHub is the sole live Manage destination for scoped collections and
 	// contexts.
 	manageHub *ManageHubModel
-
-	// taskDetail is the sole live task-scoped primary child. Checklist, comments,
-	// decisions, and attachments are embedded tabs rather than sibling routes;
-	// PresentationID identifies the active tab renderer.
-	taskDetail *TaskDetailModel
 
 	// taskComposer is the sole live compact/expanded task mutation overlay.
 	// Capture/form presentation IDs remain observations for embedded modes.
@@ -141,12 +121,12 @@ type AppModel struct {
 	outlinerToggleStates map[string]*OutlinerToggleState
 
 	// Focus view session state (persists across view navigation within a session)
-	nextOrder         []FocusTask
+	nextOrder         []PlanningTask
 	nextOrderIDs      map[TaskIdentity]bool
 	focusDismissedIDs map[string]bool
 
 	// Today session state (persists across view navigation within a session)
-	today    []FocusTask
+	today    []PlanningTask
 	todayIDs map[TaskIdentity]bool
 
 	// openLoops caches the cross-project counts surfaced in the title row
@@ -177,9 +157,6 @@ type AppModel struct {
 	// Terminal too narrow or short to render properly
 	tooNarrow bool
 	tooShort  bool
-
-	// Session stats tracked across the lifetime of the TUI session.
-	sessionStats sessionStats
 
 	// State
 	err             error

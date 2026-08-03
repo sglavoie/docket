@@ -87,7 +87,7 @@ func (catalog *V5WorkspaceCatalogCandidate) UpsertProject(project V5ProjectCandi
 		return fmt.Errorf("v5 catalog is required")
 	}
 	if catalog.IsSystemInboxProject(project.ID) && (project.Archived || project.ArchivedAt != nil) {
-		return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemInbox, project.ID)
+		return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemUnfiled, project.ID)
 	}
 	if err := validateV5ProjectCandidate(project, true); err != nil {
 		return err
@@ -115,7 +115,7 @@ func (catalog *V5WorkspaceCatalogCandidate) UpsertProject(project V5ProjectCandi
 		if existingIndex >= 0 {
 			existing := next.Projects[existingIndex]
 			if existing.Name != project.Name || existing.Slug != project.Slug {
-				return fmt.Errorf("%w: project %q cannot be renamed", ErrProtectedSystemInbox, project.ID)
+				return fmt.Errorf("%w: project %q cannot be renamed", ErrProtectedSystemUnfiled, project.ID)
 			}
 		}
 	}
@@ -148,7 +148,7 @@ func (catalog *V5WorkspaceCatalogCandidate) RemoveProject(projectID string) erro
 		return fmt.Errorf("v5 catalog is required")
 	}
 	if catalog.IsSystemInboxProject(projectID) {
-		return fmt.Errorf("%w: project %q cannot be removed", ErrProtectedSystemInbox, projectID)
+		return fmt.Errorf("%w: project %q cannot be removed", ErrProtectedSystemUnfiled, projectID)
 	}
 	kept := make([]V5ProjectCandidate, 0, len(catalog.Projects))
 	for _, project := range catalog.Projects {
@@ -494,7 +494,7 @@ func (catalog V5WorkspaceCatalogCandidate) Validate() error {
 		if project.ID == catalog.SystemInboxProjectID && project.Archived {
 			return fmt.Errorf(
 				"%w: project %q cannot be archived",
-				ErrProtectedSystemInbox,
+				ErrProtectedSystemUnfiled,
 				project.ID,
 			)
 		}

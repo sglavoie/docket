@@ -119,14 +119,14 @@ func TestProtectedSystemInboxRenameRejectedBeforeCommit(t *testing.T) {
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
 	_, renameErr := svc.RenameProject(app.RenameProjectRequest{
-		Project:              project,
-		SystemInboxProjectID: project.ID,
-		DataDir:              dataDir,
-		OldSlug:              "inbox",
-		NewSlug:              "renamed",
+		Project:                project,
+		SystemUnfiledProjectID: project.ID,
+		DataDir:                dataDir,
+		OldSlug:                "inbox",
+		NewSlug:                "renamed",
 	})
-	if !errors.Is(renameErr, app.ErrProtectedSystemInbox) {
-		t.Fatalf("RenameProject(system Inbox) error = %v, want ErrProtectedSystemInbox", renameErr)
+	if !errors.Is(renameErr, app.ErrProtectedSystemUnfiled) {
+		t.Fatalf("RenameProject(system Inbox) error = %v, want ErrProtectedSystemUnfiled", renameErr)
 	}
 	if len(repo.committed) != 0 {
 		t.Fatalf("protected lifecycle request reached persistence: %#v", repo.committed)

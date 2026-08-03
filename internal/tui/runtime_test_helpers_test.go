@@ -33,7 +33,7 @@ func commitCatalogToRuntime(runtime *config.RuntimeState, mutate func(*config.Wo
 }
 
 func nextOrderContains(planning *config.PlanningState, identity TaskIdentity) bool {
-	for _, item := range planning.GetNextOrder() {
+	for _, item := range planning.GetNext() {
 		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true
 		}

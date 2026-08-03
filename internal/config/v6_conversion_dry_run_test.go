@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage/format"
 )
 
+//nolint:gocyclo // One end-to-end fixture keeps the full candidate contract comparable.
 func TestDryRunV6WorkspaceConversionBuildsCompleteDeterministicCandidate(t *testing.T) {
 	options := v6ConsolidationFixtureOptions(t)
 	before := inventoryV5DryRunSources(t, options.DataDir, options.MachineStatePath)

@@ -17,7 +17,7 @@ import (
 func clonePlanningState(p *config.PlanningState) *config.PlanningState {
 	cp := *p
 	cp.Next = append([]config.ProjectTaskLocator(nil), p.GetNext()...)
-	cp.NextOrder = append([]config.ProjectTaskLocator(nil), cp.Next...)
+	cp.Next = append([]config.ProjectTaskLocator(nil), cp.Next...)
 	cp.Today = append([]config.ProjectTaskLocator(nil), p.Today...)
 	return &cp
 }

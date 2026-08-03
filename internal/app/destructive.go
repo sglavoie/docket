@@ -133,6 +133,7 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 	if err != nil {
 		return BulkDeleteResult{}, err
 	}
+	roots = canonicalSubtreeRoots(roots)
 	if !req.Confirm {
 		return BulkDeleteResult{}, fmt.Errorf("%w: deleting %d task subtrees", ErrDestructiveConfirmationRequired, len(roots))
 	}
@@ -166,6 +167,39 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 		RemovedTaskLocators: removedLocators,
 		TouchedProjectIDs:   touched,
 	}, nil
+}
+
+// canonicalSubtreeRoots removes any requested task whose ancestor is already a
+// requested root in the same project. Deleting the ancestor carries that task
+// exactly once, so result root references, undo context, and removal planning
+// all describe the same canonical batch.
+func canonicalSubtreeRoots(refs []TaskRef) []TaskRef {
+	selected := make(map[TaskLocator]bool, len(refs))
+	for _, ref := range refs {
+		selected[TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID}] = true
+	}
+	roots := make([]TaskRef, 0, len(refs))
+	for _, ref := range refs {
+		ancestorSelected := false
+		seen := make(map[string]bool)
+		parentID := ref.Task.ParentID
+		for parentID != nil && *parentID != "" && !seen[*parentID] {
+			seen[*parentID] = true
+			if selected[TaskLocator{ProjectID: ref.Project.ID, TaskID: *parentID}] {
+				ancestorSelected = true
+				break
+			}
+			parent := ref.Project.GetTaskByID(*parentID)
+			if parent == nil {
+				break
+			}
+			parentID = parent.ParentID
+		}
+		if !ancestorSelected {
+			roots = append(roots, ref)
+		}
+	}
+	return roots
 }
 
 // BulkResult reports a non-destructive bulk mutation: one presentation-neutral

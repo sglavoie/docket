@@ -11,7 +11,7 @@ func (rs *RuntimeState) ExtractProjectReferences(id, slug string) ProjectReferen
 	}
 	for _, item := range planning.GetNext() {
 		if matches(item.ProjectID) {
-			refs.NextOrder = append(refs.NextOrder, item)
+			refs.Next = append(refs.Next, item)
 		}
 	}
 	for _, item := range planning.Today {
@@ -39,14 +39,13 @@ func (d *Domains) ApplySyncedProjectReferences(projectID string, refs ProjectRef
 	}
 	if refs.WasActionInbox && d.Catalog != nil {
 		d.Catalog.SystemUnfiledProjectID = projectID
-		d.Catalog.SystemInboxProjectID = projectID
 	}
 	if d.Planning != nil {
 		existingNext := make(map[ProjectTaskLocator]bool, len(d.Planning.GetNext()))
 		for _, item := range d.Planning.GetNext() {
 			existingNext[item] = true
 		}
-		for _, item := range refs.NextOrder {
+		for _, item := range refs.Next {
 			item.ProjectID = projectID
 			if existingNext[item] {
 				continue

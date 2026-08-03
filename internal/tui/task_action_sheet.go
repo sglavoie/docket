@@ -137,35 +137,11 @@ func taskActionDescriptorApplicableToEveryTarget(
 }
 
 func taskActionSheetEligible(descriptor OperationDescriptor) bool {
-	// The manifest decides first so the sheet can reuse the core Edit and Detail
-	// operations instead of registering task-only copies of them.
-	if entry, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
-		return !entry.DirectOnly
-	}
-	id := string(descriptor.ID)
-	label := strings.ToLower(descriptor.Label)
-	if strings.HasPrefix(id, "tui.core.") || descriptor.ID == operationCoreActions {
-		return false
-	}
-	if strings.HasPrefix(label, "global ") ||
-		label == "edit last task" ||
-		strings.HasPrefix(label, "archive completed") ||
-		strings.HasPrefix(label, "archive all completed") ||
-		label == "multi-select mode" {
-		return false
-	}
-	// The canonical state picker replaces obsolete one-state action labels.
-	switch label {
-	case "start task", "complete task", "block task", "standby task",
-		"cancel task", "reopen task", "review task", "maybe task",
-		"move to project", "manage dependencies", "move/reparent task":
-		return false
-	}
-	if descriptor.Category != OperationCategoryTask {
-		return false
-	}
-	return descriptor.TargetSource == OperationTargetCurrentTask ||
-		descriptor.TargetSource == OperationTargetSelectedTasks
+	// The task manifest is an allowlist, not merely an ordering hint. Keeping
+	// eligibility closed over its six menu entries prevents newly registered
+	// task operations from silently expanding the Space menu.
+	entry, manifested := taskOperationManifestEntryFor(descriptor.ID)
+	return manifested && !entry.DirectOnly
 }
 
 func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
@@ -177,8 +153,7 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 	}
 	label := strings.ToLower(descriptor.Label)
 	switch {
-	case strings.Contains(label, "dependenc"),
-		strings.Contains(label, "linked"),
+	case strings.Contains(label, "linked"),
 		strings.Contains(label, "subtask"),
 		strings.Contains(label, "parent"):
 		return taskActionCategoryRelationships
@@ -187,7 +162,6 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 		strings.Contains(label, "copy"),
 		strings.Contains(label, "comment"),
 		strings.Contains(label, "attachment"),
-		strings.Contains(label, "decision"),
 		strings.Contains(label, "detail"),
 		strings.Contains(label, "note"):
 		return taskActionCategoryContent
@@ -299,11 +273,20 @@ func (m *AppModel) openTaskActionSheet(context CommandContext) error {
 		// sheet would act on a wider set than it lists.
 		context.Selection.EntityIdentities = taskEntityIdentities(context.Selection.Tasks)
 		context.Entity = context.Selection.Entities[0]
+		subtitle := fmt.Sprintf("%d tasks", len(refs))
+		if context.Selection.VisibleCount+context.Selection.HiddenCount == len(refs) {
+			subtitle = fmt.Sprintf(
+				"%d tasks · %d visible · %d hidden",
+				len(refs),
+				context.Selection.VisibleCount,
+				context.Selection.HiddenCount,
+			)
+		}
 		sheet, err := NewTaskActionSheetModel(
 			m.GetOperationRegistry(),
 			m.operationExecutor,
 			context,
-			fmt.Sprintf("%d task(s)", len(refs)),
+			subtitle,
 		)
 		if err != nil {
 			return err

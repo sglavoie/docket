@@ -53,8 +53,8 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(ViewCrossProjectOutliner, cross)
-	app.views.Register(ViewTaskDetail, &panicOnCustomView{})
-	pushTestPresentationOverlay(app, ViewTaskDetail)
+	app.views.Register(ViewTaskComments, &panicOnCustomView{})
+	pushTestPresentationOverlay(app, ViewTaskComments)
 
 	_ = cross.reloadCrossProjects()
 	abandonedGeneration := cross.crossLoadGen

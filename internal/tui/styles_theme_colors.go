@@ -15,8 +15,16 @@ const (
 	defaultColorPriority1Title = "#f7768e"
 	defaultColorPriority2Title = "#e0af68"
 	defaultColorPriority3Title = "#7aa2f7"
-	defaultColorPriority4Title = "#9aa5ce"
-	defaultColorPriority5Title = "#7a82ad"
+
+	defaultColorSemanticBugTitle             = "#ff9e9e"
+	defaultColorSemanticFeatureTitle         = "#b9f27c"
+	defaultColorSemanticIdeaTitle            = "#c0caf5"
+	defaultColorSemanticBugSelectedTitle     = "#ffd1d1"
+	defaultColorSemanticFeatureSelectedTitle = "#d7f7b5"
+	defaultColorSemanticIdeaSelectedTitle    = "#e5e7eb"
+	defaultColorSemanticBugSnoozedTitle      = "#c97b7b"
+	defaultColorSemanticFeatureSnoozedTitle  = "#8bb65f"
+	defaultColorSemanticIdeaSnoozedTitle     = "#8f98c7"
 )
 
 // Priority title foreground colors, user-overridable via PaletteColors.
@@ -24,8 +32,16 @@ var (
 	ColorPriority1Title = lipgloss.Color(defaultColorPriority1Title)
 	ColorPriority2Title = lipgloss.Color(defaultColorPriority2Title)
 	ColorPriority3Title = lipgloss.Color(defaultColorPriority3Title)
-	ColorPriority4Title = lipgloss.Color(defaultColorPriority4Title)
-	ColorPriority5Title = lipgloss.Color(defaultColorPriority5Title)
+
+	ColorSemanticBugTitle             = lipgloss.Color(defaultColorSemanticBugTitle)
+	ColorSemanticFeatureTitle         = lipgloss.Color(defaultColorSemanticFeatureTitle)
+	ColorSemanticIdeaTitle            = lipgloss.Color(defaultColorSemanticIdeaTitle)
+	ColorSemanticBugSelectedTitle     = lipgloss.Color(defaultColorSemanticBugSelectedTitle)
+	ColorSemanticFeatureSelectedTitle = lipgloss.Color(defaultColorSemanticFeatureSelectedTitle)
+	ColorSemanticIdeaSelectedTitle    = lipgloss.Color(defaultColorSemanticIdeaSelectedTitle)
+	ColorSemanticBugSnoozedTitle      = lipgloss.Color(defaultColorSemanticBugSnoozedTitle)
+	ColorSemanticFeatureSnoozedTitle  = lipgloss.Color(defaultColorSemanticFeatureSnoozedTitle)
+	ColorSemanticIdeaSnoozedTitle     = lipgloss.Color(defaultColorSemanticIdeaSnoozedTitle)
 )
 
 // darkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
@@ -67,7 +83,6 @@ func lightenHex(hex string, factor float64) string {
 // rebuildAccentColors sets pipeline accent colors appropriate for the active theme.
 func rebuildAccentColors() {
 	if activeThemeName == "light" {
-		AccentDashboard = lipgloss.Color("#1e40af")
 		AccentCapture = lipgloss.Color("#b91c1c")
 		AccentTriage = lipgloss.Color("#0e7490")
 		AccentPlan = lipgloss.Color("#15803d")
@@ -76,7 +91,6 @@ func rebuildAccentColors() {
 		AccentSupport = lipgloss.Color("#4b5563")
 		AccentSearch = lipgloss.Color("#7c3aed")
 	} else {
-		AccentDashboard = lipgloss.Color("#7aa2f7")
 		AccentCapture = lipgloss.Color("#f7768e")
 		AccentTriage = lipgloss.Color("#7dcfff")
 		AccentPlan = lipgloss.Color("#9ece6a")
@@ -122,8 +136,16 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorPriority1Title = fallback(p.Priority1Title, d.Priority1Title)
 	ColorPriority2Title = fallback(p.Priority2Title, d.Priority2Title)
 	ColorPriority3Title = fallback(p.Priority3Title, d.Priority3Title)
-	ColorPriority4Title = fallback(p.Priority4Title, d.Priority4Title)
-	ColorPriority5Title = fallback(p.Priority5Title, d.Priority5Title)
+
+	ColorSemanticBugTitle = fallback(p.SemanticBugTitle, d.SemanticBugTitle)
+	ColorSemanticFeatureTitle = fallback(p.SemanticFeatureTitle, d.SemanticFeatureTitle)
+	ColorSemanticIdeaTitle = fallback(p.SemanticIdeaTitle, d.SemanticIdeaTitle)
+	ColorSemanticBugSelectedTitle = fallback(p.SemanticBugSelectedTitle, d.SemanticBugSelectedTitle)
+	ColorSemanticFeatureSelectedTitle = fallback(p.SemanticFeatureSelectedTitle, d.SemanticFeatureSelectedTitle)
+	ColorSemanticIdeaSelectedTitle = fallback(p.SemanticIdeaSelectedTitle, d.SemanticIdeaSelectedTitle)
+	ColorSemanticBugSnoozedTitle = fallback(p.SemanticBugSnoozedTitle, d.SemanticBugSnoozedTitle)
+	ColorSemanticFeatureSnoozedTitle = fallback(p.SemanticFeatureSnoozedTitle, d.SemanticFeatureSnoozedTitle)
+	ColorSemanticIdeaSnoozedTitle = fallback(p.SemanticIdeaSnoozedTitle, d.SemanticIdeaSnoozedTitle)
 
 	if p.NormalText != "" {
 		colorNormalText = p.NormalText

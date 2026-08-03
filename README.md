@@ -19,8 +19,8 @@ explicit choice; an existing selected iCloud workspace is preserved.
 
 Every run starts in All Projects, All mode, with no restored search, filters,
 selection, or navigation. Press `a` to capture the first task. At All Projects
-scope, capture routes to the protected workspace Inbox; in a single-project
-scope, it routes to that project.
+scope, capture routes to the protected Unfiled project with Inbox lifecycle;
+in a single-project scope, it routes to that project.
 
 ## Daily loop
 
@@ -31,7 +31,7 @@ The Outliner is the only primary task presentation:
 3. `s` opens the shared state/planning chord.
 4. `sb`, `sn`, and `st` organize work; `sg` starts it and `sd` completes it.
 5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
-6. `Space` opens the nine occasional task tools.
+6. `Space` opens the six occasional task tools.
 
 Together, these operations form one capture, triage, plan, execute, and
 complete loop.
@@ -59,10 +59,10 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
 | State and planning | `s` opens the state/planning chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
-| Metadata | `!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
-| Selection | `v` toggles one row; `V` selects every visible task |
+| Selection | `v` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 The operation descriptors are the single source for dispatch, the compact
@@ -90,41 +90,49 @@ do not repeat in this menu. Delete always asks for confirmation.
 
 ### Filters and search
 
-Filters and visible search are session-only and persist while modes and scopes
-change:
+Filters are session-only refinements of ordinary mode rows. Slash search is a
+temporary projection over every nonterminal task in the active project/context
+scope, including snoozed work; Esc restores the prior mode, facets, cursor,
+scroll, and folds exactly.
 
 | Keys | Effect |
 | --- | --- |
-| `fp0`, `fp1`–`fp5` | Clear priority filtering or keep numeric priorities at or above the selected importance (`<=` the number) |
+| `fp0`, `fp1`–`fp3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
 | `fs` | Pick workflow states with OR semantics, including terminal states |
+| `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; does not choose states |
 | `ft` | Pick tags with AND semantics |
 | `fd` | Open the due-date facet picker: overdue, today, this week, or no due date |
-| `fb` | Blocked-only |
 | `fz` | Snoozed-only |
 | `fx` | Clear every facet |
-| `/` | Case-insensitive title/description substring search over visible tasks |
+| `/` | Ranked title, description, tag, and project search over every scoped nonterminal task |
 
 Pressing a chord prefix shows its valid continuations above the footer. `Esc`
 cancels that unfinished chord.
 
+For intentional cleanup, use `fs` to choose Done, Canceled, or both, then `fc`
+to choose an age, `Ctrl+A` to select the visible matches, and `Space` → Delete.
+The confirmation freezes root, descendant, visible/hidden, and attachment counts;
+the entire deletion is one undoable transaction.
+
 ### Peek and multi-select
 
 The Outliner uses the full terminal width at every supported size. Task rows
-show workflow/blocking, conditional high priority, due and snooze dates,
-dependency counts, and checklist progress; short task IDs are
-hidden.
+show workflow state, conditional high priority, due and snooze dates, and
+checklist progress; short task IDs are hidden.
 
 `Enter` toggles a session-only Peek directly beneath the cursor task. Peek
 follows navigation and shows at most five lines of additive detail:
-description, tags, checklist items, and dependency names. `Esc`
+description, tags, attachment names, comment counts, and checklist items. `Esc`
 closes Peek before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, snooze, and pin actions apply atomically
-to a selection. Entering multi-select closes Peek. Structural, edit, Peek,
+to the complete project-qualified selection, including hidden members. `v`
+starts a fresh inclusive range at the cursor; movement recalculates it over task
+rows only, and `v` or `Esc` freezes it. `Ctrl+A` replaces the selection with all
+visible task rows. Entering multi-select closes Peek. Structural, edit, Peek,
 relation, and clipboard operations do not fall back silently to the cursor
-while a selection exists. In multi-select, `Space` offers Delete only;
-successful delete clears selection, while other successful bulk actions
-preserve it.
+while a selection exists. Successful Delete clears selection; other successes,
+cancellations, and failures preserve it.
 
 ## Capture grammar
 
@@ -151,23 +159,24 @@ rejected with replacement guidance. Other aliases such as `priority:`, `due:`,
 `state:`, and `proj:` are literal title text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
+Exact case-insensitive `bug`, `feature`, and `idea` tags color task titles in
+that precedence order. `epic`, `story`, namespaced values such as `type:bug`,
+and partial matches remain ordinary tags and add no prefix or marker icon.
+
 ## Workflow and hierarchy
 
-The nine persisted workflow states are:
+The eight persisted workflow states are:
 
 ```text
-inbox  ready  next  in_progress  waiting
-paused  someday  done  canceled
+inbox  backlog  doing  waiting  paused  someday  done  canceled
 ```
 
-Next membership derives from `next`; the planning domain stores only its
-workspace-wide order. Today is a separate planning collection. Today and Next
-are mutually exclusive, and terminal transitions remove both references.
-Unresolved dependencies block Done. Done and Canceled are also blocked while a
-direct child remains nonterminal.
+Today and Next are separate project-qualified planning collections, not
+lifecycle states. Today and Next are mutually exclusive, and terminal
+transitions remove both references. Waiting is an explicit lifecycle state.
+Done and Canceled are rejected while a direct child remains nonterminal.
 
-Parents are project-local and hierarchy depth is capped at six. Dependencies
-may cross projects, use stable project-qualified identity, and reject cycles.
+Parents are project-local and hierarchy depth is capped at six.
 
 ## Scope, projects, and Notes
 
@@ -178,11 +187,12 @@ Select Project with search focused immediately
 and includes active and archived projects. `Enter` focuses the matching active
 project in the same Outliner; `Esc` clears search and leaves the project surface
 open. Project administration supports create, edit, pin, archive, restore, and
-project Notes. The catalog ID, not a display name, protects the system Inbox.
+project Notes. The catalog ID, not a display name, protects the system Unfiled
+project.
 
 `N` opens All Notes, a workspace-wide manager that scans Global plus every
-project returned by the active-project catalog, including the visible System
-Inbox and excluding archived projects. Rows are ordered by most recent
+project returned by the active-project catalog, including the protected
+Unfiled project and excluding archived projects. Rows are ordered by most recent
 modification and carry an owner label. `v` opens a searchable All, Global, or
 active-project scope picker, while `s` applies a persistent title/body search
 inside the selected scope.
@@ -217,7 +227,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## v5 storage and migration
+## Schema 6 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -237,19 +247,27 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-5 Markdown and generic `Task` headings.
-`workspace.json` contains the lean project catalog and protected Inbox ID.
-`planning.json` contains Today and Next ordering only. Custom contexts and the
-dark/light choice live in machine-local
-`~/.tt/runtime/<workspace-id>/machine.json`.
+Project task files use strict schema-6 Markdown and generic `Task` headings.
+`workspace.json` contains the lean project catalog, exclusive regular contexts,
+and protected Unfiled ID. `planning.json` contains Today and Next ordering only.
+Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
+dark/light theme choice.
 
-On the first v5 startup of a supported v4 workspace, `tt` validates the complete
-conversion before writing. It then publishes an immutable
-`.tt/backups/pre-simplification-v5-<UTC>.tar.gz` archive and matching
-`.audit.md` report before atomically activating schema 5. Attachment binaries
-remain in place and are checksum-inventoried. Invalid or future-schema input
-aborts without changing workspace data, and repeated startup is idempotent.
-Downgrade requires restoring the snapshot with an older build.
+Startup migrates supported schema-5 workspaces to schema 6, and supported
+schema-4 workspaces through schema 5 and then schema 6. Each boundary validates
+the complete candidate before mutation and publishes its own immutable rollback
+archive and audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5 and
+`pre-consolidation-v6-<UTC>.tar.gz` for v5→v6. The schema-6 conversion preserves notes
+and attachment bytes, converts retained decision text into comments, repairs
+planning references, renames the protected project to Unfiled, and deliberately
+resets the incompatible pre-v6 undo ledger.
+
+Invalid or future-schema input aborts without changing workspace data. An
+existing `unfiled` project or directory also aborts before snapshot publication
+with rename/move guidance. Interrupted activation is recovered before ordinary
+loading, and repeated startup is idempotent. To downgrade or retry from the old
+format, restore the complete matching archive into a separate workspace and use
+a compatible build; migration snapshots themselves are never modified.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
 explicitly supported repairs. Migration snapshots are never modified.

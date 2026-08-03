@@ -12,14 +12,14 @@
     { "type": "assert", "assert": "contains", "value": "3 low" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "make the cursored task critical", "key": "1" },
+    { "type": "key", "label": "make the cursored task High priority", "key": "1" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Set Priority" },
     { "type": "assert", "assert": "contains", "value": "▶ ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "drop it to the default priority", "key": "!" },
+    { "type": "key", "label": "drop it to Low priority", "key": "!" },
     { "type": "key", "key": "3" },
     { "type": "wait" },
     { "type": "assert", "label": "an explicit P3 reloads without a high-priority badge", "assert": "not_contains", "value": "▶ ◉ Build login form" },

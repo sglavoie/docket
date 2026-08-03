@@ -163,11 +163,6 @@ func ApplyTheme(tc ThemeConfig) {
 	ChildrenBadgeStyle = withOptionalBg(lipgloss.NewStyle().
 		Foreground(ColorPrimary), alwaysBg)
 
-	DashboardCardStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
-		Padding(0, 1)
-
 	PanelCardStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).

@@ -9,7 +9,7 @@ import (
 
 func TestTUIProjectArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	domains := config.NewDomains()
-	domains.Planning.NextOrder = []config.ProjectTaskLocator{
+	domains.Planning.Next = []config.ProjectTaskLocator{
 		{ProjectID: "alpha", TaskID: "shared-id"},
 		{ProjectID: "beta", TaskID: "shared-id"},
 	}
@@ -33,8 +33,8 @@ func TestTUIProjectArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t 
 	}
 
 	planning := m.runtime.Planning()
-	if len(planning.NextOrder) != 1 || planning.NextOrder[0].ProjectID != alpha.ID ||
+	if len(planning.Next) != 1 || planning.Next[0].ProjectID != alpha.ID ||
 		len(planning.Today) != 1 || planning.Today[0].ProjectID != alpha.ID {
-		t.Fatalf("project archive cleanup removed wrong planning refs: focus=%+v daily=%+v", planning.NextOrder, planning.Today)
+		t.Fatalf("project archive cleanup removed wrong planning refs: focus=%+v daily=%+v", planning.Next, planning.Today)
 	}
 }

@@ -21,8 +21,9 @@ var v6MetadataKeys = map[string]bool{
 
 // V6TaskRecord is the complete schema-6 storage shape. It is deliberately
 // independent of both the live runtime model and the migration-only v5 record:
-// retired relationship and decision data has no representation. Recurrence is
-// absent from the live model entirely and remains schema-4/5 migration input.
+// retired relationship and legacy narrative-record data has no representation.
+// Recurrence is absent from the live model entirely and remains schema-4/5
+// migration input.
 type V6TaskRecord struct {
 	ID           string             `json:"id"`
 	ShortID      int                `json:"short_id"`

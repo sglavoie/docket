@@ -142,9 +142,9 @@ func (rs *RuntimeState) Planning() *PlanningState {
 	return rs.domainsOrDefault().Planning
 }
 
-// GetNextOrder lets domain-native consumers read durable Next ordering without
+// GetNext lets domain-native consumers read durable Next ordering without
 // accepting a Config facade.
-func (rs *RuntimeState) GetNextOrder() []ProjectTaskLocator { return rs.Planning().GetNextOrder() }
+func (rs *RuntimeState) GetNext() []ProjectTaskLocator { return rs.Planning().GetNext() }
 
 // Machine returns the loaded machine-local domain.
 func (rs *RuntimeState) Machine() *MachineState {
@@ -378,16 +378,10 @@ func (rs *RuntimeState) SystemUnfiledProject() *models.Project {
 	return rs.GetProject(rs.Catalog().protectedProjectID())
 }
 
-// SystemInboxProject is the compile-time compatibility name.
-func (rs *RuntimeState) SystemInboxProject() *models.Project { return rs.SystemUnfiledProject() }
-
 // IsSystemUnfiledProject reports whether id belongs to the catalog-owned Unfiled.
 func (rs *RuntimeState) IsSystemUnfiledProject(id string) bool {
 	return rs != nil && rs.Catalog().IsSystemUnfiledProject(id)
 }
-
-// IsSystemInboxProject is the compile-time compatibility name.
-func (rs *RuntimeState) IsSystemInboxProject(id string) bool { return rs.IsSystemUnfiledProject(id) }
 
 // ArchivedProjects returns archived cataloged projects sorted by name.
 func (rs *RuntimeState) ArchivedProjects() []*models.Project {

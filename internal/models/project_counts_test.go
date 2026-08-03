@@ -29,7 +29,7 @@ func TestProjectTaskCounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task4.Block() // blocked
+	task4.Wait()
 	task5, err := NewGenericTask("5", 5, "Task 5")
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestProjectTaskCounts(t *testing.T) {
 		t.Errorf("expected 5 total tasks, got %d", project.CountTasks())
 	}
 
-	// Active: todo, in_progress, blocked = 3
+	// Active: todo, doing, waiting = 3
 	if project.CountActiveTasks() != 3 {
 		t.Errorf("expected 3 active tasks, got %d", project.CountActiveTasks())
 	}
@@ -166,13 +166,13 @@ func TestCountOverdueTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Overdue and blocked (should count - still incomplete)
-	task5, err := NewGenericTask("5", 5, "Overdue Blocked")
+	// Overdue and waiting (should count - still incomplete)
+	task5, err := NewGenericTask("5", 5, "Overdue Waiting")
 	if err != nil {
 		t.Fatal(err)
 	}
 	task5.DueDate = &yesterday
-	task5.Block()
+	task5.Wait()
 
 	project.Tasks = []*Task{task1, task2, task3, task4, task5}
 
@@ -235,23 +235,23 @@ func TestCountDueSoonTasks(t *testing.T) {
 	}
 }
 
-func TestCountBlockedTasks(t *testing.T) {
+func TestCountWaitingTasks(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	task1, err := NewGenericTask("1", 1, "Blocked 1")
+	task1, err := NewGenericTask("1", 1, "Waiting 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task1.Block()
+	task1.Wait()
 
-	task2, err := NewGenericTask("2", 2, "Blocked 2")
+	task2, err := NewGenericTask("2", 2, "Waiting 2")
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Block()
+	task2.Wait()
 
 	task3, err := NewGenericTask("3", 3, "Todo")
 	if err != nil {
@@ -266,9 +266,9 @@ func TestCountBlockedTasks(t *testing.T) {
 
 	project.Tasks = []*Task{task1, task2, task3, task4}
 
-	got := project.CountBlockedTasks()
+	got := project.CountWaitingTasks()
 	if got != 2 {
-		t.Errorf("expected 2 blocked tasks, got %d", got)
+		t.Errorf("expected 2 waiting tasks, got %d", got)
 	}
 }
 
@@ -284,8 +284,8 @@ func TestEmptyProjectCounts(t *testing.T) {
 	if project.CountDueSoonTasks(3) != 0 {
 		t.Errorf("expected 0 due-soon tasks, got %d", project.CountDueSoonTasks(3))
 	}
-	if project.CountBlockedTasks() != 0 {
-		t.Errorf("expected 0 blocked tasks, got %d", project.CountBlockedTasks())
+	if project.CountWaitingTasks() != 0 {
+		t.Errorf("expected 0 waiting tasks, got %d", project.CountWaitingTasks())
 	}
 	if project.CountTasks() != 0 {
 		t.Errorf("expected 0 total tasks, got %d", project.CountTasks())

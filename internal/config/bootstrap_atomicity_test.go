@@ -130,7 +130,7 @@ func TestManagerLoadOrCreateDomains_EmptyWorkspaceStillBootstraps(t *testing.T) 
 	if domains == nil || domains.Catalog == nil {
 		t.Fatal("bootstrap empty workspace returned incomplete domains")
 	}
-	inboxID := domains.Catalog.SystemInboxProjectID
+	inboxID := domains.Catalog.SystemUnfiledProjectID
 	var inbox *CatalogProject
 	for i := range domains.Catalog.Projects {
 		if domains.Catalog.Projects[i].ID == inboxID {
@@ -138,7 +138,7 @@ func TestManagerLoadOrCreateDomains_EmptyWorkspaceStillBootstraps(t *testing.T) 
 			break
 		}
 	}
-	if inboxID == "" || inbox == nil || inbox.Name != SystemInboxName || inbox.Slug != SystemInboxSlug {
+	if inboxID == "" || inbox == nil || inbox.Name != SystemUnfiledName || inbox.Slug != SystemUnfiledSlug {
 		t.Fatalf("fresh protected Inbox = %+v, id = %q", inbox, inboxID)
 	}
 	taskPath := storage.TasksFilePath(inbox.CatalogPath(dataDir))
@@ -159,8 +159,8 @@ func TestManagerLoadOrCreateDomains_EmptyWorkspaceStillBootstraps(t *testing.T) 
 	if err != nil {
 		t.Fatalf("repeat bootstrap load: %v", err)
 	}
-	if reloaded.Catalog.SystemInboxProjectID != inboxID {
-		t.Fatalf("repeat bootstrap changed protected Inbox from %q to %q", inboxID, reloaded.Catalog.SystemInboxProjectID)
+	if reloaded.Catalog.SystemUnfiledProjectID != inboxID {
+		t.Fatalf("repeat bootstrap changed protected Inbox from %q to %q", inboxID, reloaded.Catalog.SystemUnfiledProjectID)
 	}
 	after, err := os.ReadFile(taskPath)
 	if err != nil {

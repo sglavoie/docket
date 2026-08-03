@@ -16,7 +16,7 @@ const (
 	StateBacklog WorkflowState = "backlog"
 	// StateDoing is work actively being executed.
 	StateDoing WorkflowState = "doing"
-	// StateWaiting is work suspended on an external dependency ("waiting for").
+	// StateWaiting is work explicitly waiting for external input or timing.
 	StateWaiting WorkflowState = "waiting"
 	// StatePaused is work voluntarily suspended by the user.
 	StatePaused WorkflowState = "paused"

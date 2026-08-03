@@ -41,35 +41,6 @@ func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
 	return items
 }
 
-// getGlobalHelpItems projects the descriptor-backed portion of the accepted
-// root grammar for legacy secondary views that still append global shortcuts.
-// The Outliner itself reads the registered strategy directly.
-func getGlobalHelpItems() []HelpItem {
-	descriptors := make(map[OperationID]OperationDescriptor)
-	for _, descriptor := range coreInputOperationDescriptors() {
-		descriptors[descriptor.ID] = descriptor
-	}
-	strategy := SimplifiedInputStrategy()
-	items := make([]HelpItem, 0, len(descriptors))
-	seen := make(map[OperationID]bool, len(descriptors))
-	for _, binding := range strategy.Bindings {
-		if seen[binding.OperationID] {
-			continue
-		}
-		descriptor, ok := descriptors[binding.OperationID]
-		if !ok {
-			continue
-		}
-		seen[binding.OperationID] = true
-		items = append(items, HelpItem{
-			Key:         displayKeysForOperation(strategy, binding.OperationID),
-			Description: descriptor.Label,
-			Category:    operationCategoryLabel(descriptor.Category),
-		})
-	}
-	return items
-}
-
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
 	items          []HelpItem

@@ -12,6 +12,37 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+type workspaceMoveTestHooks struct {
+	beforeWorkspaceLocks     func()
+	afterInventory           func()
+	afterDestinationPrecheck func()
+	afterCopy                func()
+}
+
+func (h *workspaceMoveTestHooks) beforeWorkspaceLocksAcquired() {
+	if h != nil && h.beforeWorkspaceLocks != nil {
+		h.beforeWorkspaceLocks()
+	}
+}
+
+func (h *workspaceMoveTestHooks) didInventoryWorkspace() {
+	if h != nil && h.afterInventory != nil {
+		h.afterInventory()
+	}
+}
+
+func (h *workspaceMoveTestHooks) didPrecheckDestination() {
+	if h != nil && h.afterDestinationPrecheck != nil {
+		h.afterDestinationPrecheck()
+	}
+}
+
+func (h *workspaceMoveTestHooks) didCopyWorkspace() {
+	if h != nil && h.afterCopy != nil {
+		h.afterCopy()
+	}
+}
+
 // readActivePointerDir returns the data dir recorded in the machine-local
 // active-workspace pointer, failing the test if none is present.
 func readActivePointerDir(t *testing.T) string {
@@ -448,18 +479,4 @@ func TestStorageLocationLabel(t *testing.T) {
 	if got := StorageLocationLabel(icloudRoot); got == "local" {
 		t.Errorf("StorageLocationLabel(iCloud) = %q, want a synced label", got)
 	}
-}
-
-// jsonEscape escapes backslashes so a filesystem path can be embedded in a JSON
-// string literal in test fixtures (Windows paths contain backslashes).
-func jsonEscape(s string) string {
-	out := make([]rune, 0, len(s))
-	for _, r := range s {
-		if r == '\\' {
-			out = append(out, '\\', '\\')
-			continue
-		}
-		out = append(out, r)
-	}
-	return string(out)
 }

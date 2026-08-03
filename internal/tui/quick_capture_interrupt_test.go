@@ -2,7 +2,6 @@ package tui
 
 import (
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -47,44 +46,6 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	}
 	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after capture dismiss = %d, want %d", got, beforeCursor)
-	}
-}
-
-func TestRetiredQuickCaptureShortcutDoesNotInterruptTaskDetail(t *testing.T) {
-	driver, _, project := newQuickCaptureInterruptFixture(t)
-	openFixtureOutliner(t, driver, project)
-
-	_ = driver.Observe(ObserveOptions{})
-	outliner := driver.App().crossOutliner
-	task := outliner.rows[nthTaskRowIndex(t, outliner, 1)].task
-	task.Description = strings.Repeat("Interrupt verification detail line.\n", 40)
-
-	driver.dispatch(ShowTaskDetailMsg{Task: task, Project: project})
-	driver.drain()
-
-	driveUITestKeys(t, driver, "j", "j")
-	detail := currentTaskDetail(t, driver)
-	if detail.scrollOffset == 0 {
-		t.Fatal("task detail scroll offset should be non-zero before opening capture")
-	}
-	beforeScroll := detail.scrollOffset
-	beforeTaskID := detail.task.ID
-	beforeStack := slices.Clone(driver.Observe(ObserveOptions{}).ViewStack)
-
-	driveUITestKeys(t, driver, "ctrl+n")
-	afterRetiredKey := driver.Observe(ObserveOptions{})
-	if afterRetiredKey.CurrentView != ViewTaskDetail.String() {
-		t.Fatalf("retired Ctrl+N changed current view to %q", afterRetiredKey.CurrentView)
-	}
-	if !slices.Equal(afterRetiredKey.ViewStack, beforeStack) {
-		t.Fatalf("retired Ctrl+N changed view stack to %v, want %v", afterRetiredKey.ViewStack, beforeStack)
-	}
-	detail = currentTaskDetail(t, driver)
-	if detail.scrollOffset != beforeScroll {
-		t.Fatalf("task detail scroll offset after retired Ctrl+N = %d, want %d", detail.scrollOffset, beforeScroll)
-	}
-	if detail.task == nil || detail.task.ID != beforeTaskID {
-		t.Fatalf("task detail task after retired Ctrl+N = %v, want task ID %q", detail.task, beforeTaskID)
 	}
 }
 
@@ -169,14 +130,4 @@ func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view Present
 	if len(priorStack) == 0 || priorStack[len(priorStack)-1] != view.String() {
 		t.Fatalf("capture should sit over %q; prior stack = %v", view.String(), priorStack)
 	}
-}
-
-func currentTaskDetail(t *testing.T, driver *UITestDriver) *TaskDetailModel {
-	t.Helper()
-	view := driver.App().views.Get(ViewTaskDetail)
-	detail, ok := view.(*TaskDetailModel)
-	if !ok || detail == nil {
-		t.Fatalf("task detail view = %T, want *TaskDetailModel", view)
-	}
-	return detail
 }

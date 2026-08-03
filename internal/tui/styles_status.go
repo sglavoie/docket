@@ -13,7 +13,7 @@ var (
 	DoneStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)
 
-	BlockedStyle = lipgloss.NewStyle().
+	WaitingStyle = lipgloss.NewStyle().
 			Foreground(ColorError)
 
 	StandbyStyle = lipgloss.NewStyle().

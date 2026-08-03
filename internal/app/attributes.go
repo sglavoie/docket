@@ -237,8 +237,8 @@ func (s *Service) snooze(taskID string, locator TaskLocator, until *time.Time) (
 	if ref.Task.IsTerminalState() {
 		return TaskResult{}, invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", ref.Task.State()))
 	}
-	if err := applyState(ref.Task, models.StateBacklog, now); err != nil {
-		return TaskResult{}, invalidInput("snooze", err.Error())
+	if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
+		return TaskResult{}, invalidInput("snooze", stateErr.Error())
 	}
 	u := *until
 	ref.Task.SnoozedUntil = &u

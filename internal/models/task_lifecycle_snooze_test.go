@@ -93,22 +93,22 @@ func TestStartClearsSnooze(t *testing.T) {
 	}
 }
 
-func TestBlockClearsSnooze(t *testing.T) {
+func TestWaitClearsSnooze(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	task.WorkflowState = StateDoing
 	future := time.Now().AddDate(0, 0, 7)
 	task.SnoozedUntil = &future
 
-	task.Block()
+	task.Wait()
 
 	if task.SnoozedUntil != nil {
-		t.Error("expected SnoozedUntil to be nil after Block")
+		t.Error("expected SnoozedUntil to be nil after Wait")
 	}
 	if task.IsSnoozed() {
-		t.Error("expected not snoozed after Block")
+		t.Error("expected not snoozed after Wait")
 	}
 	if task.State() != StateWaiting {
-		t.Errorf("expected StateWaiting after Block, got %s", task.State())
+		t.Errorf("expected StateWaiting after Wait, got %s", task.State())
 	}
 }
 

@@ -13,7 +13,7 @@ func (p PriorityInfo) FilterText() string {
 }
 
 func (p PriorityInfo) DisplayText() string {
-	return fmt.Sprintf("Priority %d - %s", p.Priority, p.Description)
+	return fmt.Sprintf("%s (!%d)", p.Description, p.Priority)
 }
 
 func (p PriorityInfo) CountValue() int {

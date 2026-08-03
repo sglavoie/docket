@@ -100,6 +100,8 @@ func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSugges
 			description = "add to Today"
 		case app.CaptureDestinationNext:
 			description = "add to Next"
+		default:
+			// Lifecycle destinations use the shared state description above.
 		}
 		display := fmt.Sprintf("$%s %s (%s)", name, destination.WorkflowState().Icon(), description)
 		suggestions = append(suggestions, ACSuggestion{Display: display, Value: name})

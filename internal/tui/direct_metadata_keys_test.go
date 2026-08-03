@@ -163,7 +163,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		if !handled || cmd != nil {
 			t.Fatalf("! = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
-		row := app.pendingChordHintRow()
+		row := pendingChordHintRowForTest(app)
 		for _, want := range []string{"0 unset", "1 high", "3 low"} {
 			if !strings.Contains(row, want) {
 				t.Errorf("which-key row %q omits %q", row, want)
@@ -189,7 +189,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		if !handled || cmd != nil {
 			t.Fatalf("s = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
-		row := app.pendingChordHintRow()
+		row := pendingChordHintRowForTest(app)
 		for _, want := range []string{
 			"i inbox",
 			"b backlog",

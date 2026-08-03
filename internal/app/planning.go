@@ -334,7 +334,7 @@ func (s *Service) ClearToday() error {
 // member omitted by a stale caller at the end.
 func (s *Service) ReorderNext(order []TaskLocator) error {
 	return s.applyPlanningOrder(PlanningReconcileRequest{
-		NextOrder: append([]TaskLocator(nil), order...), SetNextOrder: true,
+		Next: append([]TaskLocator(nil), order...), SetNext: true,
 	}, "Reorder Next")
 }
 

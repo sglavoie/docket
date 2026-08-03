@@ -33,7 +33,7 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 	}{
 		{
 			name:    "valid",
-			catalog: WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount}}, SystemInboxProjectID: "a"},
+			catalog: WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount}}, SystemUnfiledProjectID: "a"},
 		},
 		{
 			name:    "non-positive schema version",
@@ -58,12 +58,12 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 		},
 		{
 			name:    "dangling system inbox",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a"}}, SystemInboxProjectID: "missing"},
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "a", Slug: "a"}}, SystemUnfiledProjectID: "missing"},
 			wantErr: true,
 		},
 		{
 			name:    "archived system inbox",
-			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "inbox", Slug: "inbox", Archived: true}}, SystemInboxProjectID: "inbox"},
+			catalog: WorkspaceCatalog{SchemaVersion: 1, Projects: []CatalogProject{{ID: "inbox", Slug: "inbox", Archived: true}}, SystemUnfiledProjectID: "inbox"},
 			wantErr: true,
 		},
 		{
@@ -221,7 +221,11 @@ func TestWorkspaceCatalogProjectColorSlotLifecyclePreservationAndRelease(t *test
 	if second.ColorSlot != 2 {
 		t.Fatalf("archived projects consumed allocation capacity: second slot=%d, want 2", second.ColorSlot)
 	}
-	if !catalog.RemoveProjectReferences(project.ID, project.Slug) {
+	changed, err := catalog.RemoveProject(project.ID, project.Slug)
+	if err != nil {
+		t.Fatalf("RemoveProject: %v", err)
+	}
+	if !changed {
 		t.Fatal("expected project deletion to change catalog")
 	}
 	replacement := &models.Project{ID: "replacement", Slug: "replacement", Name: "Replacement"}
@@ -286,9 +290,9 @@ func TestWorkspaceCatalogProjectColorSlotRestoreCollisions(t *testing.T) {
 
 func TestWorkspaceCatalogRemoveProjectReferences(t *testing.T) {
 	c := WorkspaceCatalog{
-		SchemaVersion:        3,
-		Projects:             []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop-slug"}},
-		SystemInboxProjectID: "keep",
+		SchemaVersion:          3,
+		Projects:               []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop-slug"}},
+		SystemUnfiledProjectID: "keep",
 	}
 	changed, err := c.RemoveProject("drop", "drop-slug")
 	if err != nil {
@@ -300,16 +304,20 @@ func TestWorkspaceCatalogRemoveProjectReferences(t *testing.T) {
 	if len(c.Projects) != 1 || c.Projects[0].ID != "keep" {
 		t.Errorf("expected only 'keep' to remain, got %+v", c.Projects)
 	}
-	if c.SystemInboxProjectID != "keep" {
-		t.Errorf("system inbox reference changed, got %q", c.SystemInboxProjectID)
+	if c.SystemUnfiledProjectID != "keep" {
+		t.Errorf("system inbox reference changed, got %q", c.SystemUnfiledProjectID)
 	}
-	if _, err := c.RemoveProject("keep", "keep"); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("RemoveProject(system Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if _, removeErr := c.RemoveProject("keep", "keep"); !errors.Is(removeErr, ErrProtectedSystemUnfiled) {
+		t.Fatalf("RemoveProject(system Inbox) error = %v, want ErrProtectedSystemUnfiled", removeErr)
 	}
 	if len(c.Projects) != 1 || c.Projects[0].ID != "keep" {
 		t.Fatalf("protected removal mutated catalog: %+v", c.Projects)
 	}
-	if c.RemoveProjectReferences("nonexistent", "") {
+	changed, err = c.RemoveProject("nonexistent", "")
+	if err != nil {
+		t.Fatalf("RemoveProject(missing): %v", err)
+	}
+	if changed {
 		t.Error("removing a missing project should report no change")
 	}
 }
@@ -322,14 +330,14 @@ func TestWorkspaceCatalogProtectedInboxUpdatesFailClosed(t *testing.T) {
 			ID: "inbox", Slug: "inbox", Name: "Inbox", Context: "personal",
 			CreatedAt: created, UpdatedAt: created, ColorSlot: 9,
 		}},
-		SystemInboxProjectID: "inbox",
+		SystemUnfiledProjectID: "inbox",
 	}
 
 	rename := catalog.Projects[0].ToModel("/workspace")
 	rename.Name = "Renamed"
 	rename.Slug = "renamed"
-	if err := catalog.UpsertProject(rename); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("UpsertProject(rename system Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if err := catalog.UpsertProject(rename); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("UpsertProject(rename system Inbox) error = %v, want ErrProtectedSystemUnfiled", err)
 	}
 	if got := catalog.Projects[0]; got.Name != "Inbox" || got.Slug != "inbox" || got.ColorSlot != 9 {
 		t.Fatalf("rejected rename mutated catalog: %+v", got)
@@ -337,8 +345,8 @@ func TestWorkspaceCatalogProtectedInboxUpdatesFailClosed(t *testing.T) {
 
 	archive := catalog.Projects[0].ToModel("/workspace")
 	archive.Archive()
-	if err := catalog.UpsertProject(archive); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("UpsertProject(archive system Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if err := catalog.UpsertProject(archive); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("UpsertProject(archive system Inbox) error = %v, want ErrProtectedSystemUnfiled", err)
 	}
 	if catalog.Projects[0].Archived || catalog.Projects[0].ArchivedAt != nil {
 		t.Fatalf("rejected archive mutated catalog: %+v", catalog.Projects[0])
@@ -379,18 +387,18 @@ func TestWorkspaceCatalogSystemInboxRepairIsExplicit(t *testing.T) {
 		Projects: []CatalogProject{{
 			ID: "legacy", Slug: LegacyActionInboxSlug, Name: "Action Inbox", Context: "personal",
 		}},
-		SystemInboxProjectID: "legacy",
+		SystemUnfiledProjectID: "legacy",
 	}
 	project := catalog.Projects[0].ToModel("/workspace")
-	project.Name = SystemInboxName
-	if err := catalog.UpsertProject(project); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("ordinary Inbox rename error = %v, want ErrProtectedSystemInbox", err)
+	project.Name = SystemUnfiledName
+	if err := catalog.UpsertProject(project); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("ordinary Inbox rename error = %v, want ErrProtectedSystemUnfiled", err)
 	}
-	if err := catalog.RepairSystemInboxProject(project); err != nil {
-		t.Fatalf("RepairSystemInboxProject: %v", err)
+	if err := catalog.RepairSystemUnfiledProject(project); err != nil {
+		t.Fatalf("RepairSystemUnfiledProject: %v", err)
 	}
-	if got := catalog.Projects[0]; got.Name != SystemInboxName || got.ID != catalog.SystemInboxProjectID {
-		t.Fatalf("system Inbox repair = %+v, id = %q", got, catalog.SystemInboxProjectID)
+	if got := catalog.Projects[0]; got.Name != SystemUnfiledName || got.ID != catalog.SystemUnfiledProjectID {
+		t.Fatalf("system Inbox repair = %+v, id = %q", got, catalog.SystemUnfiledProjectID)
 	}
 	if !validProjectColorSlot(catalog.Projects[0].ColorSlot) {
 		t.Fatalf("system Inbox repair did not allocate a color: %+v", catalog.Projects[0])
@@ -406,17 +414,17 @@ func TestNewPlanningStateDefaults(t *testing.T) {
 
 func TestPlanningStateValidate(t *testing.T) {
 	valid := &PlanningState{
-		NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}},
-		Today:     []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}},
+		Next:  []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}},
+		Today: []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Errorf("valid planning should pass: %v", err)
 	}
 
 	cases := []*PlanningState{
-		{NextOrder: []ProjectTaskLocator{{ProjectID: "p"}}},
+		{Next: []ProjectTaskLocator{{ProjectID: "p"}}},
 		{Today: []ProjectTaskLocator{{ProjectID: "p"}}},
-		{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}, {TaskID: "t", ProjectID: "p"}}},
+		{Next: []ProjectTaskLocator{{TaskID: "t", ProjectID: "p"}, {TaskID: "t", ProjectID: "p"}}},
 	}
 	for i, c := range cases {
 		if err := c.Validate(); err == nil {
@@ -427,14 +435,14 @@ func TestPlanningStateValidate(t *testing.T) {
 
 func TestPlanningStateRemoveProjectReferences(t *testing.T) {
 	p := &PlanningState{
-		NextOrder: []ProjectTaskLocator{{TaskID: "t1", ProjectID: "keep"}, {TaskID: "t2", ProjectID: "drop"}},
-		Today:     []ProjectTaskLocator{{TaskID: "t3", ProjectID: "drop-slug"}},
+		Next:  []ProjectTaskLocator{{TaskID: "t1", ProjectID: "keep"}, {TaskID: "t2", ProjectID: "drop"}},
+		Today: []ProjectTaskLocator{{TaskID: "t3", ProjectID: "drop-slug"}},
 	}
 	if !p.RemoveProjectReferences("drop", "drop-slug") {
 		t.Fatal("expected change")
 	}
-	if len(p.NextOrder) != 1 || p.NextOrder[0].ProjectID != "keep" {
-		t.Errorf("focus queue not cleaned: %+v", p.NextOrder)
+	if len(p.Next) != 1 || p.Next[0].ProjectID != "keep" {
+		t.Errorf("focus queue not cleaned: %+v", p.Next)
 	}
 	if len(p.Today) != 0 {
 		t.Errorf("daily plan not cleaned: %+v", p.Today)
@@ -480,8 +488,8 @@ func TestNewDomainsYieldsDefaults(t *testing.T) {
 
 func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 	d := &Domains{
-		Catalog:  &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop"}}, SystemInboxProjectID: "keep"},
-		Planning: &PlanningState{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "drop"}}},
+		Catalog:  &WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "keep", Slug: "keep"}, {ID: "drop", Slug: "drop"}}, SystemUnfiledProjectID: "keep"},
+		Planning: &PlanningState{Next: []ProjectTaskLocator{{TaskID: "t", ProjectID: "drop"}}},
 		Machine:  NewMachineState(),
 	}
 	changed, err := d.RemoveProject("drop", "drop")
@@ -494,7 +502,7 @@ func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 	if len(d.Catalog.Projects) != 1 || d.Catalog.Projects[0].ID != "keep" {
 		t.Error("catalog project not removed")
 	}
-	if len(d.Planning.NextOrder) != 0 {
+	if len(d.Planning.Next) != 0 {
 		t.Error("planning focus queue not cleaned")
 	}
 }
@@ -502,17 +510,17 @@ func TestDomainsRemoveProjectReferencesFansOut(t *testing.T) {
 func TestDomainsProtectedInboxRemovalIsAtomic(t *testing.T) {
 	d := &Domains{
 		Catalog: &WorkspaceCatalog{
-			SchemaVersion:        CurrentConfigVersion,
-			Projects:             []CatalogProject{{ID: "inbox", Slug: "inbox", Name: "Inbox"}},
-			SystemInboxProjectID: "inbox",
+			SchemaVersion:          CurrentConfigVersion,
+			Projects:               []CatalogProject{{ID: "inbox", Slug: "inbox", Name: "Inbox"}},
+			SystemUnfiledProjectID: "inbox",
 		},
-		Planning: &PlanningState{NextOrder: []ProjectTaskLocator{{TaskID: "t", ProjectID: "inbox"}}},
+		Planning: &PlanningState{Next: []ProjectTaskLocator{{TaskID: "t", ProjectID: "inbox"}}},
 		Machine:  NewMachineState(),
 	}
-	if changed, err := d.RemoveProject("inbox", "inbox"); changed || !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("RemoveProject(system Inbox) = (%v, %v), want false and ErrProtectedSystemInbox", changed, err)
+	if changed, err := d.RemoveProject("inbox", "inbox"); changed || !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("RemoveProject(system Inbox) = (%v, %v), want false and ErrProtectedSystemUnfiled", changed, err)
 	}
-	if len(d.Catalog.Projects) != 1 || len(d.Planning.NextOrder) != 1 {
+	if len(d.Catalog.Projects) != 1 || len(d.Planning.Next) != 1 {
 		t.Fatalf("protected removal partially mutated domains: %+v", d)
 	}
 }

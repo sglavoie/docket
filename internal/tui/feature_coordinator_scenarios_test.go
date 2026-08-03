@@ -215,9 +215,9 @@ func TestCaptureScenario(t *testing.T) {
 	if got := env.reload(t); got.GetTaskByID(res.TaskID) == nil {
 		t.Fatal("captured task absent from reloaded project")
 	}
-	summaries, err := env.features.Dashboard.Projects()
+	summaries, err := env.features.ProjectSelection.Projects()
 	if err != nil {
-		t.Fatalf("dashboard projects query: %v", err)
+		t.Fatalf("project selection query: %v", err)
 	}
 	if got := projectTaskCount(t, summaries, env.project.ID); got != 1 {
 		t.Fatalf("rendered task count = %d, want 1", got)

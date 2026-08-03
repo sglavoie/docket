@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 	"testing"
 
@@ -46,6 +47,21 @@ func TestCompareTasks_DeterministicTieBreak(t *testing.T) {
 	}
 	if c := CompareTasks(b, a, SortByPriority); c <= 0 {
 		t.Errorf("expected CompareTasks(b,a) > 0 (tie broken by ID), got %d", c)
+	}
+}
+
+func TestCompareTasksPriorityOrdersUnsetAfterLow(t *testing.T) {
+	tasks := []*models.Task{
+		{ID: "unset", Priority: models.PriorityUnset},
+		{ID: "low", Priority: models.PriorityLow},
+		{ID: "high", Priority: models.PriorityHigh},
+		{ID: "medium", Priority: models.PriorityMedium},
+	}
+	sort.Slice(tasks, func(i, j int) bool {
+		return CompareTasks(tasks[i], tasks[j], SortByPriority) < 0
+	})
+	if got, want := idsOf(tasks), []string{"high", "medium", "low", "unset"}; !slices.Equal(got, want) {
+		t.Fatalf("priority order = %v, want %v", got, want)
 	}
 }
 

@@ -67,8 +67,8 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 	if len(refs) > 0 && msg.HasExplicitValue {
 		// Multiselect snooze picker (explicit value): commit every selected task's
 		// snooze as one asynchronous cross-project transaction through the
-		// BulkCoordinator. Snooze is an attribute mutation;
-		// the shell owns reload and selection-clear via the batch result.
+		// BulkCoordinator. Snooze is an attribute mutation; the shell owns reload
+		// while preserving visual selection.
 		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		var summary string
@@ -78,7 +78,7 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(locators))
 		}
 		cmd := m.secondaryFeatures.Bulk.SnoozeLocators(locators, msg.SnoozedUntil)
-		return true, finalizeLocatedBatchResult(cmd, locators, summary)
+		return true, finalizeBatchResult(cmd, summary)
 	}
 
 	// Single-task snooze overlay (explicit value, no pending bulk selection):
@@ -95,15 +95,15 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 		} else {
 			summary = fmt.Sprintf("Cleared snooze for #%d", msg.Task.ShortID)
 		}
-		return true, finalizeLocatedBatchResult(cmd, locators, summary)
+		return true, finalizeBatchResult(cmd, summary)
 	}
 
 	if len(refs) > 1 && msg.Task != nil {
 		// Non-explicit multiselect fallback: the snooze value already lives on the
 		// first task (updated by SnoozeInputModel); apply it to every selected task
 		// through the BulkCoordinator as one asynchronous cross-project transaction,
-		// mirroring the explicit-value picker path above. The shell owns reload and
-		// selection-clear via the batch result.
+		// mirroring the explicit-value picker path above. The shell owns reload
+		// while preserving visual selection.
 		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		newSnooze := msg.Task.SnoozedUntil
@@ -114,7 +114,7 @@ func (m *AppModel) handleSnoozeDateChanged(msg SnoozeDateChangedMsg) (bool, tea.
 		} else {
 			summary = fmt.Sprintf("Cleared snooze for %d tasks", len(locators))
 		}
-		return true, finalizeLocatedBatchResult(cmd, locators, summary)
+		return true, finalizeBatchResult(cmd, summary)
 	}
 
 	m.pendingBulkTasks = nil
@@ -131,8 +131,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 	if len(refs) > 0 && msg.HasExplicitValue {
 		// Multiselect due-date picker (explicit value): commit every selected task's
 		// due date as one asynchronous cross-project transaction through the
-		// BulkCoordinator. The shell owns reload and selection-clear via the
-		// batch result.
+		// BulkCoordinator. The shell owns reload while preserving visual selection.
 		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		var cmd tea.Cmd
@@ -144,7 +143,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 			cmd = m.secondaryFeatures.Bulk.ClearDueDateLocators(locators)
 			summary = fmt.Sprintf("Cleared due date for %d tasks", len(locators))
 		}
-		return true, finalizeLocatedBatchResult(cmd, locators, summary)
+		return true, finalizeBatchResult(cmd, summary)
 	}
 
 	// Single-task due-date overlay (explicit value, no pending bulk selection):
@@ -164,15 +163,15 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 			cmd = m.secondaryFeatures.Bulk.ClearDueDateLocators(locators)
 			summary = fmt.Sprintf("Cleared due date for #%d", msg.Task.ShortID)
 		}
-		return true, finalizeLocatedBatchResult(cmd, locators, summary)
+		return true, finalizeBatchResult(cmd, summary)
 	}
 
 	if len(refs) > 1 && msg.Task != nil {
 		// Non-explicit multiselect fallback: the due date already lives on the first
 		// task (updated by DateInputModel); apply it to every selected task through
 		// the BulkCoordinator as one asynchronous cross-project transaction, mirroring
-		// the explicit-value picker path above. The shell owns reload and selection-clear via the
-		// batch result.
+		// the explicit-value picker path above. The shell owns reload while
+		// preserving visual selection.
 		locators := taskLocatorsFromTaskRefs(refs)
 		m.pendingBulkTasks = nil
 		newDate := msg.Task.DueDate
@@ -185,7 +184,7 @@ func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
 			cmd = m.secondaryFeatures.Bulk.ClearDueDateLocators(locators)
 			summary = fmt.Sprintf("Cleared due date for %d tasks", len(locators))
 		}
-		return true, finalizeLocatedBatchResult(cmd, locators, summary)
+		return true, finalizeBatchResult(cmd, summary)
 	}
 
 	m.pendingBulkTasks = nil

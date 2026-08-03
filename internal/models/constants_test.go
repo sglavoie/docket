@@ -73,3 +73,18 @@ func TestIsHighPriorityExcludesUnset(t *testing.T) {
 		}
 	}
 }
+
+func TestPriorityNameUsesCanonicalVocabulary(t *testing.T) {
+	want := map[int]string{
+		PriorityUnset:  "Unset",
+		PriorityHigh:   "High",
+		PriorityMedium: "Medium",
+		PriorityLow:    "Low",
+		99:             "",
+	}
+	for priority, name := range want {
+		if got := PriorityName(priority); got != name {
+			t.Errorf("PriorityName(%d) = %q, want %q", priority, got, name)
+		}
+	}
+}

@@ -12,7 +12,7 @@ import (
 )
 
 // This file extends the feature-coordinator seam (feature_coordinator.go) to the
-// secondary TUI views and overlays: bulk operations, attachments, tags, and blockers.
+// secondary TUI views and overlays: bulk operations, attachments, and tags.
 // Historically
 // each of these mutated its own model or config copy and called a direct
 // saveProjectSync / persister.Save / configManager.Save helper. That left every
@@ -37,6 +37,9 @@ type BulkMutator interface {
 	// BulkDelete permanently removes every requested subtree, folding any durable
 	// artifact and cross-project reference cleanup into the same transaction.
 	BulkDelete(req app.BulkDeleteRequest, artifacts ...storage.ArtifactChange) (app.BulkDeleteResult, error)
+	// BulkMoveToProject moves every selected subtree into one destination as a
+	// single cross-project transaction.
+	BulkMoveToProject(req app.BulkMoveRequest, artifacts ...storage.ArtifactChange) (app.BulkMoveResult, error)
 	// BulkSetPriority sets one priority on every selected task.
 	BulkSetPriority(taskIDs []string, priority int) (app.BulkResult, error)
 	BulkSetPriorityByLocators(locators []app.TaskLocator, priority int) (app.BulkResult, error)
@@ -87,7 +90,7 @@ type TaskItemMutator interface {
 	Edit(req app.EditRequest) (app.TaskResult, error)
 	// Capture creates a new task in a project and commits it as one ChangeSet.
 	Capture(req app.CaptureRequest) (app.TaskResult, error)
-	// SetPriority sets one task's 1..PriorityMax priority.
+	// SetPriority sets one task's Unset/High/Medium/Low priority.
 	SetPriorityByLocator(locator app.TaskLocator, priority int) (app.TaskResult, error)
 	// SetDueDate sets or clears (nil due) one task's due date.
 	SetDueDateByLocator(locator app.TaskLocator, due *time.Time) (app.TaskResult, error)
@@ -125,17 +128,14 @@ type TagMutator interface {
 	RemoveTagByLocator(locator app.TaskLocator, tag string) (app.TaskResult, error)
 }
 
-// SubviewMutator is the narrow port the task subview panels (comments,
-// decisions, checklist) depend on. Every method commits one ChangeSet and
+// SubviewMutator is the narrow port the task subview panels (comments and
+// checklist) depend on. Every method commits one ChangeSet and
 // re-validates the item index against a fresh snapshot, so a stale panel index
 // surfaces as an error instead of silently targeting the wrong item.
 type SubviewMutator interface {
 	AddCommentByLocator(locator app.TaskLocator, text string) (app.CommentResult, error)
 	EditCommentByLocator(locator app.TaskLocator, index int, text string) (app.CommentResult, error)
 	RemoveCommentByLocator(locator app.TaskLocator, index int) (app.CommentResult, error)
-	AddDecisionByLocator(locator app.TaskLocator, text, rationale string) (app.DecisionResult, error)
-	EditDecisionByLocator(locator app.TaskLocator, index int, text, rationale string) (app.DecisionResult, error)
-	RemoveDecisionByLocator(locator app.TaskLocator, index int) (app.DecisionResult, error)
 	AddChecklistItemByLocator(locator app.TaskLocator, text string) (app.ChecklistResult, error)
 	EditChecklistItemByLocator(locator app.TaskLocator, index int, text string) (app.ChecklistResult, error)
 	RemoveChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
@@ -154,7 +154,7 @@ var (
 )
 
 // BatchTransactionResultMsg is emitted when a project-scoped or multi-task
-// mutation commits (bulk transition/delete, blocker updates). It carries the
+// mutation commits (bulk transition/delete and metadata updates). It carries the
 // affected project IDs so the shell reloads exactly those projects, and a
 // presentation-neutral summary for the status line.
 type BatchTransactionResultMsg struct {
@@ -162,28 +162,20 @@ type BatchTransactionResultMsg struct {
 	Action            string
 	TouchedProjectIDs []string
 	Summary           string
-	// ClearSelectionTaskIDs are the task IDs whose multiselect state the shell
-	// clears once the batch commits. Clearing happens only on this success path, so
-	// a TransactionErrorMsg (which never reaches handleBatchTransactionResult)
-	// leaves the selection intact for the user to retry. Nil when the caller owns
-	// its own selection lifecycle.
+	// ClearSelectionTaskIDs are delete-only compatibility identifiers whose
+	// multiselect state the shell clears once deletion commits.
 	ClearSelectionTaskIDs []string
-	// ClearSelectionTaskLocators is the project-qualified equivalent used by
-	// cross-project selections where task IDs may collide.
+	// ClearSelectionTaskLocators is the authoritative delete-only selection clear
+	// set for cross-project identities where task IDs may collide.
 	ClearSelectionTaskLocators []app.TaskLocator
 	// RemovedTaskIDs lists every task UUID a bulk delete removed (roots plus
 	// descendants). Nil for non-delete mutations.
 	RemovedTaskIDs []string
 }
 
-// finalizeBatchResult decorates a coordinator batch command with the shell-side
-// bookkeeping the async result path needs: the selected task IDs to clear from
-// multiselect after a successful commit and an optional per-view summary
-// override. A committed BatchTransactionResultMsg is enriched in place; a
-// TransactionErrorMsg (or any other message) passes through untouched, so the
-// selection survives a rejected batch. summaryOverride == "" keeps the
-// coordinator's own summary.
-func finalizeBatchResult(cmd tea.Cmd, clearIDs []string, summaryOverride string) tea.Cmd {
+// finalizeBatchResult applies an optional summary override. Selection clearing
+// is reserved for the explicit delete-only located helper below.
+func finalizeBatchResult(cmd tea.Cmd, summaryOverride string) tea.Cmd {
 	if cmd == nil {
 		return nil
 	}
@@ -193,7 +185,6 @@ func finalizeBatchResult(cmd tea.Cmd, clearIDs []string, summaryOverride string)
 		if !ok {
 			return msg
 		}
-		batch.ClearSelectionTaskIDs = clearIDs
 		if summaryOverride != "" {
 			batch.Summary = summaryOverride
 		}
@@ -201,7 +192,10 @@ func finalizeBatchResult(cmd tea.Cmd, clearIDs []string, summaryOverride string)
 	}
 }
 
-func finalizeLocatedBatchResult(cmd tea.Cmd, locators []app.TaskLocator, summaryOverride string) tea.Cmd {
+// finalizeLocatedDeleteBatchResult clears exactly the project-qualified delete
+// roots after a committed delete. Canceled and failed deletes never produce a
+// successful batch and therefore leave selection intact.
+func finalizeLocatedDeleteBatchResult(cmd tea.Cmd, locators []app.TaskLocator) tea.Cmd {
 	if cmd == nil {
 		return nil
 	}
@@ -211,13 +205,10 @@ func finalizeLocatedBatchResult(cmd tea.Cmd, locators []app.TaskLocator, summary
 		if !ok {
 			return msg
 		}
-		batch.ClearSelectionTaskLocators = locators
+		batch.ClearSelectionTaskLocators = append([]app.TaskLocator(nil), locators...)
 		batch.ClearSelectionTaskIDs = make([]string, 0, len(locators))
 		for _, locator := range locators {
 			batch.ClearSelectionTaskIDs = append(batch.ClearSelectionTaskIDs, locator.TaskID)
-		}
-		if summaryOverride != "" {
-			batch.Summary = summaryOverride
 		}
 		return batch
 	}
@@ -442,6 +433,22 @@ func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []stri
 	})
 }
 
+// MoveToProjectLocators moves every selected subtree into one destination in a
+// single transaction. Selection is intentionally preserved after success, like
+// every non-delete bulk operation.
+func (c BulkCoordinator) MoveToProjectLocators(locators []app.TaskLocator, destinationProjectID string) tea.Cmd {
+	return runBatch(c.name, "Bulk Move Project", func() ([]string, string, error) {
+		res, err := c.bulk.BulkMoveToProject(app.BulkMoveRequest{
+			TaskLocators:         locators,
+			DestinationProjectID: destinationProjectID,
+		})
+		if err != nil {
+			return nil, "", err
+		}
+		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s)", res.MovedCount), nil
+	})
+}
+
 // ApplyPlanningLocators applies one planning intent to every selected task as a
 // single transaction.
 func (c BulkCoordinator) ApplyPlanningLocators(
@@ -663,13 +670,6 @@ func (c TaskItemCoordinator) Reparent(task TaskIdentity, newParentID *string) te
 	})
 }
 
-// SetDependencies replaces one task's dependency set as one transaction.
-func (c TaskItemCoordinator) SetDependencies(task TaskIdentity, dependencies []string) tea.Cmd {
-	return func() tea.Msg {
-		return TransactionErrorMsg{Feature: c.name, Action: "Set Dependencies", Err: app.RejectRetiredCapability(app.RetiredCapabilityDependency)}
-	}
-}
-
 // DeleteTask permanently removes one task's subtree as one transaction, folding
 // the caller-supplied durable planning-ref artifacts into it. The result carries
 // every removed task UUID (mirroring BulkCoordinator.Delete).
@@ -781,8 +781,8 @@ func (c TagCoordinator) Remove(task TaskIdentity, tag string) tea.Cmd {
 	})
 }
 
-// SubviewCoordinator backs the task subview panels (comments, decisions,
-// checklist). Every method resolves to the shared transaction messages; the
+// SubviewCoordinator backs the task subview panels (comments and checklist).
+// Every method resolves to the shared transaction messages; the
 // panels adapt them back to their own message vocabulary with
 // adaptSubviewCommit so their existing toasts and refresh behavior survive the
 // move onto the application layer.
@@ -811,30 +811,6 @@ func (c SubviewCoordinator) EditComment(task TaskIdentity, index int, text strin
 func (c SubviewCoordinator) RemoveComment(task TaskIdentity, index int) tea.Cmd {
 	return runTask(c.name, "Remove Comment", func() (app.TaskResult, error) {
 		res, err := c.sub.RemoveCommentByLocator(task.Locator(), index)
-		return res.Task, err
-	})
-}
-
-// AddDecision appends a lean decision with optional rationale to a task.
-func (c SubviewCoordinator) AddDecision(task TaskIdentity, text, rationale string) tea.Cmd {
-	return runTask(c.name, "Add Decision", func() (app.TaskResult, error) {
-		result, err := c.sub.AddDecisionByLocator(task.Locator(), text, rationale)
-		return result.Task, err
-	})
-}
-
-// EditDecision replaces a decision's text and rationale while preserving its timestamp.
-func (c SubviewCoordinator) EditDecision(task TaskIdentity, index int, text, rationale string) tea.Cmd {
-	return runTask(c.name, "Edit Decision", func() (app.TaskResult, error) {
-		result, err := c.sub.EditDecisionByLocator(task.Locator(), index, text, rationale)
-		return result.Task, err
-	})
-}
-
-// RemoveDecision removes the decision at index.
-func (c SubviewCoordinator) RemoveDecision(task TaskIdentity, index int) tea.Cmd {
-	return runTask(c.name, "Remove Decision", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveDecisionByLocator(task.Locator(), index)
 		return res.Task, err
 	})
 }
@@ -879,31 +855,11 @@ func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int
 	})
 }
 
-// LinkCoordinator backs dependency selection.
-type LinkCoordinator struct {
-	name string
-}
-
-// AddDependency adds a dependency edge onto blockerRef (validated for
-// existence and cycles across the workspace).
-func (c LinkCoordinator) AddDependency(task TaskIdentity, blockerRef string) tea.Cmd {
-	return func() tea.Msg {
-		return TransactionErrorMsg{Feature: c.name, Action: "Add Dependency", Err: app.RejectRetiredCapability(app.RetiredCapabilityDependency)}
-	}
-}
-
-// RemoveDependency drops a dependency edge.
-func (c LinkCoordinator) RemoveDependency(task TaskIdentity, blockerRef string) tea.Cmd {
-	return func() tea.Msg {
-		return TransactionErrorMsg{Feature: c.name, Action: "Remove Dependency", Err: app.RejectRetiredCapability(app.RetiredCapabilityDependency)}
-	}
-}
-
 // adaptSubviewCommit runs a coordinator command inline and adapts its outcome
 // back to a view-specific message contract: a TransactionErrorMsg surfaces as
 // the shared ErrorMsg, and a committed transaction resolves to success(), which
 // runs after the commit so it can re-resolve fresh task pointers. This is the
-// single-task analog of commitBlockersThroughCoordinator — the migrated
+// single-task analog of the batch transaction adapter — the migrated
 // panels keep their existing message vocabulary (and therefore their toasts and
 // refresh behavior) while the durable write flows through the application layer.
 func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
@@ -923,7 +879,6 @@ type SecondaryCoordinators struct {
 	Attachment AttachmentCoordinator
 	Tag        TagCoordinator
 	Subview    SubviewCoordinator
-	Link       LinkCoordinator
 }
 
 // newSecondaryCoordinators builds the secondary coordinators over the shared
@@ -938,6 +893,5 @@ func newSecondaryCoordinators(svc *app.Service) SecondaryCoordinators {
 		Attachment: AttachmentCoordinator{name: "attachment", attach: svc},
 		Tag:        TagCoordinator{name: "tag", tag: svc},
 		Subview:    SubviewCoordinator{name: "subview", sub: svc},
-		Link:       LinkCoordinator{name: "link"},
 	}
 }

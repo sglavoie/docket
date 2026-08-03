@@ -741,12 +741,3 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 		}
 	}
 }
-
-func slicesContainsListItemID(values []ListItemID, want ListItemID) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
-}

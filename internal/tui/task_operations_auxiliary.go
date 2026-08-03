@@ -9,7 +9,6 @@ import (
 const (
 	operationTaskChecklist            OperationID = "tui.task.checklist"
 	operationTaskComments             OperationID = "tui.task.comments"
-	operationTaskDecisions            OperationID = "tui.task.decisions"
 	operationTaskAttachments          OperationID = "tui.task.attachments"
 	operationTaskCopyTitle            OperationID = "tui.task.copy-title"
 	operationTaskCopyDetails          OperationID = "tui.task.copy-details"
@@ -83,8 +82,6 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 		return message(ShowTaskChecklistMsg{Task: task, Project: project})
 	case operationTaskComments:
 		return message(ShowTaskCommentsMsg{Task: task, Project: project})
-	case operationTaskDecisions:
-		return message(ShowTaskDecisionsMsg{Task: task, Project: project})
 	case operationTaskAttachments:
 		return message(ShowTaskAttachmentsMsg{Task: task, Project: project})
 	case operationTaskCopyTitle:

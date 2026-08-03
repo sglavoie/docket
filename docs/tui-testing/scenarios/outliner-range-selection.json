@@ -1,0 +1,18 @@
+{
+  "name": "outliner-range-selection",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "step onto the project header", "key": "j" },
+    { "type": "key", "label": "move onto the first visible task", "key": "j" },
+    { "type": "key", "label": "anchor a fresh range", "key": "v" },
+    { "type": "key", "label": "move through a header", "key": "j" },
+    { "type": "key", "label": "move through the project header", "key": "j" },
+    { "type": "key", "label": "extend to the next task", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "key", "label": "freeze the range", "key": "esc" },
+    { "type": "key", "label": "move without reshaping the frozen selection", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -92,7 +92,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`s` opens the state/planning chord",
 		"`si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing",
 		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled",
-		"`!0` clears priority; `!1`–`!5` set it; `@` due date; `#` tags; `z` snooze; `P` pin",
+		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix have no compatibility action",
@@ -112,17 +112,19 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"`fp0`, `fp1`–`fp5`",
+		"`fp0`, `fp1`–`fp3`",
+		"Unset never matches",
 		"`fs` | Pick workflow states with OR semantics",
 		"`ft` | Pick tags with AND semantics",
 		"`fd` | Open the due-date facet picker: overdue, today, this week, or no due date",
-		"`fb` | Blocked-only",
 		"`fz` | Snoozed-only",
 		"`fx` | Clear every facet",
 		"The Outliner uses the full terminal width at every supported size",
 		"`Enter` toggles a session-only Peek directly beneath the cursor task",
 		"Entering multi-select closes Peek",
-		"In multi-select, `Space` offers Delete only",
+		"`v` starts a fresh inclusive range at the cursor",
+		"`Ctrl+A` replaces the selection with all visible task rows",
+		"Successful Delete clears selection; other successes, cancellations, and failures preserve it",
 	})
 }
 
@@ -134,8 +136,10 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 		"`#tag` creates and sets any valid tag on the fly",
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
+		"Exact case-insensitive `bug`, `feature`, and `idea` tags color task titles",
+		"add no prefix or marker icon",
 		"Today and Next are mutually exclusive",
-		"Unresolved dependencies block Done",
+		"Waiting is an explicit lifecycle state",
 		"hierarchy depth is capped at six",
 	})
 	rejectDocumentationText(t, content, []string{
@@ -169,9 +173,12 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-5 Markdown and generic `Task` headings",
-		"machine-local `~/.tt/runtime/<workspace-id>/machine.json`",
+		"schema-6 Markdown and generic `Task` headings",
+		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme choice",
 		"pre-simplification-v5-<UTC>.tar.gz",
+		"pre-consolidation-v6-<UTC>",
+		"schema-4 workspaces through schema 5 and then schema 6",
+		"existing `unfiled` project or directory also aborts before snapshot publication",
 		"Invalid or future-schema input aborts without changing workspace data",
 		"`u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed transactions",
 		"./scripts/run_tui_scenarios.sh",
@@ -213,6 +220,8 @@ func TestCLIReferenceContractStaysCurrent(t *testing.T) {
 	})
 
 	requireDocumentationText(t, content, []string{
+		"Startup validates schema-6 data before loading",
+		"immutable snapshot-first boundaries",
 		"workspace data directory (env TT_DATA_DIR; default: ~/.tt",
 		"## tt completion",
 		"## tt conflict",

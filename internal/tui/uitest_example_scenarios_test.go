@@ -15,11 +15,16 @@ const exampleScenariosDir = "../../docs/tui-testing/scenarios"
 func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	required := []string{
 		"capture-grammar.json",
+		"cleanup-undo-redo.json",
 		"daily-loop.json",
+		"fresh-install-capture.json",
+		"fresh-install-default.json",
 		"filter-chord-priority.json",
 		"filter-chord-states.json",
 		"filter-chord-clear.json",
 		"context-hub-open.json",
+		"context-hub-regular-search-apply.json",
+		"mode-catalog.json",
 		"notes-tool.json",
 		"notes-scope-picker.json",
 		"notes-search.json",
@@ -29,6 +34,10 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"outliner-peek-wide-layout.json",
 		"outliner-peek-narrow-layout.json",
 		"outliner-bulk-action-intersection.json",
+		"outliner-range-selection.json",
+		"outliner-space-action-catalog.json",
+		"search-restoration.json",
+		"state-chord.json",
 		"theme-toggle.json",
 		"in-app-help.json",
 	}

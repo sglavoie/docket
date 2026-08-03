@@ -70,8 +70,8 @@ func TestApplyPlanningPromotesInboxToTodayAndBacklogClearsToday(t *testing.T) {
 	if len(planning.Today) != 1 || planning.Today[0].TaskID != task.ID {
 		t.Fatalf("DailyPlan = %+v, want promoted task", planning.Today)
 	}
-	if len(planning.NextOrder) != 0 {
-		t.Fatalf("FocusQueue = %+v, want empty", planning.NextOrder)
+	if len(planning.Next) != 0 {
+		t.Fatalf("FocusQueue = %+v, want empty", planning.Next)
 	}
 
 	if _, err := svc.ApplyPlanning(app.PlanningRequest{
@@ -102,7 +102,7 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 		t.Fatal(err)
 	}
 	if task.State() != models.StateBacklog || len(planning.GetNext()) != 1 || len(planning.Today) != 0 {
-		t.Fatalf("Next result: state=%s focus=%+v daily=%+v", task.State(), planning.NextOrder, planning.Today)
+		t.Fatalf("Next result: state=%s focus=%+v daily=%+v", task.State(), planning.Next, planning.Today)
 	}
 
 	if _, err := svc.Transition(app.StateRequest{
@@ -111,8 +111,8 @@ func TestApplyPlanningNextAndTerminalCleanupShareReconciler(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(planning.NextOrder) != 0 || len(planning.Today) != 0 {
-		t.Fatalf("terminal cleanup left planning refs: focus=%+v daily=%+v", planning.NextOrder, planning.Today)
+	if len(planning.Next) != 0 || len(planning.Today) != 0 {
+		t.Fatalf("terminal cleanup left planning refs: focus=%+v daily=%+v", planning.Next, planning.Today)
 	}
 }
 

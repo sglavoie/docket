@@ -165,7 +165,7 @@ func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 		app.width = width
 		app.crossOutliner.SetSize(width, 22)
 		result := app.operationExecutor.Execute(OperationExecutionRequest{
-			ID:      operationCoreDetail,
+			ID:      operationCorePeek,
 			Context: app.operationCommandContext(),
 			Source:  OperationSourceDirectKey,
 		})
@@ -381,7 +381,7 @@ func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 	}
 	app.taskDeleteConfirm.Show(taskDeleteConfirmAction, "Delete?")
 
-	app.jumpToOutlinerRoot()
+	jumpToOutlinerRootForTest(app)
 
 	if app.projectArchiveConfirm.IsActive() ||
 		app.pendingProjectArchive != nil ||

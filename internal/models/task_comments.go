@@ -7,9 +7,8 @@ import (
 
 // AddComment adds a new timestamped comment to the task. Comments with
 // empty/whitespace-only text are silently dropped because they cannot be
-// round-tripped through the markdown comments block (the parser treats
-// empty text as a flush sentinel and discards the entry, mirroring
-// AddDecision).
+// round-tripped through the markdown comments block (the parser treats empty
+// text as a flush sentinel and discards the entry).
 func (t *Task) AddComment(text string) {
 	t.AddCommentAt(text, time.Now())
 }

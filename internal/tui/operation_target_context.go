@@ -14,6 +14,10 @@ type operationVisualSelectionProvider interface {
 	IsMultiSelectActive() bool
 }
 
+type operationSelectionCountsProvider interface {
+	selectionCounts() SelectionCounts
+}
+
 // operationCommandContext captures the active cursor, multi-selection, project
 // scope, and entity state before an overlay (such as the palette) shadows the
 // primary view.
@@ -46,6 +50,11 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	}
 	if visual, ok := m.activeView().(operationVisualSelectionProvider); ok {
 		ctx.Selection.Visual = visual.IsMultiSelectActive()
+	}
+	if classified, ok := m.activeView().(operationSelectionCountsProvider); ok {
+		counts := classified.selectionCounts()
+		ctx.Selection.VisibleCount = counts.Visible
+		ctx.Selection.HiddenCount = counts.Hidden
 	}
 	ctx.Selection.Entities = m.operationSelectionEntities(ctx.Selection.Tasks)
 	ctx.Selection.EntityIdentities = taskEntityIdentities(ctx.Selection.Tasks)
@@ -132,6 +141,9 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	}
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
+	counts := m.selectionCounts()
+	ctx.Selection.VisibleCount = counts.Visible
+	ctx.Selection.HiddenCount = counts.Hidden
 	ctx.Selection.Entities = m.operationSelectionEntities(ctx.Selection.Tasks)
 	ctx.Selection.EntityIdentities = taskEntityIdentities(ctx.Selection.Tasks)
 	ctx.CurrentEntity = commandContextCurrentEntity(ctx.Entity)

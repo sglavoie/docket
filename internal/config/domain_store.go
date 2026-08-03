@@ -61,11 +61,3 @@ func (d *Domains) RemoveProject(id, slug string) (bool, error) {
 	}
 	return changed, nil
 }
-
-// RemoveProjectReferences is the compatibility form for callers that only
-// need best-effort cleanup. It fails closed when RemoveProject rejects the
-// protected system Inbox. Lifecycle adapters should call RemoveProject.
-func (d *Domains) RemoveProjectReferences(id, slug string) bool {
-	changed, _ := d.RemoveProject(id, slug)
-	return changed
-}

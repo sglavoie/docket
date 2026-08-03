@@ -382,7 +382,7 @@ func (m *ManageHubModel) ScopeProjectIDs() []string {
 	return normalizedProjectIDs(ids)
 }
 
-// PresentationView exposes the temporary legacy name for command discovery.
+// PresentationView exposes the active renderer identity for command discovery.
 // It never becomes a route identity.
 func (m *ManageHubModel) PresentationView() (PresentationID, bool) {
 	return manageModulePresentation(m.params)

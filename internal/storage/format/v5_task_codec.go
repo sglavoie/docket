@@ -191,18 +191,18 @@ func validateCanonicalV5Tags(taskID string, tags []string) error {
 func normalizeMigrationV5Tags(tags []string) ([]string, error) {
 	normalized := make([]string, 0, len(tags))
 	seen := make(map[string]bool, len(tags))
-	var selected models.TaskMarker
+	var selected string
 	for _, raw := range tags {
 		tag, err := models.NormalizeTaskTag(raw)
 		if err != nil {
 			return nil, err
 		}
-		if marker, ok := models.ParseTaskMarkerTag(tag); ok {
+		if marker, ok := parseMigrationV5TaskMarkerTag(tag); ok {
 			if selected != "" && selected != marker {
 				return nil, fmt.Errorf("task can have only one type marker (%s and %s conflict)", selected, marker)
 			}
 			selected = marker
-			tag = marker.String()
+			tag = marker
 		}
 		if seen[tag] {
 			continue
@@ -211,6 +211,19 @@ func normalizeMigrationV5Tags(tags []string) ([]string, error) {
 		normalized = append(normalized, tag)
 	}
 	return normalized, nil
+}
+
+// parseMigrationV5TaskMarkerTag owns the retired schema-5 marker vocabulary at
+// its read boundary. Live task tags deliberately have no marker parser.
+func parseMigrationV5TaskMarkerTag(tag string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(tag, "#")))
+	normalized = strings.TrimPrefix(normalized, "type:")
+	switch normalized {
+	case "epic", "story", "bug", "idea":
+		return normalized, true
+	default:
+		return "", false
+	}
 }
 
 func validateV5Attachment(attachment V5TaskAttachment) error {

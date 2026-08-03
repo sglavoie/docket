@@ -46,13 +46,20 @@ func (m *OutlinerModel) isRowSelected(row outlinerRow) bool {
 	return m.IsTaskIdentitySelected(m.taskIdentityForRow(row))
 }
 
+// toggleCursorSelection starts a fresh inclusive Vim-style range at the
+// current task row. Invoking v while a range is active freezes the current
+// result; invoking it again starts a new range and replaces the old selection.
 func (m *OutlinerModel) toggleCursorSelection() {
+	if m.IsRangeSelectionActive() {
+		m.FreezeRangeSelection()
+		m.updateVisualSelectionStatus()
+		return
+	}
 	if m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isTaskRow() {
 		return
 	}
 	m.peekMode = false
-	m.multiSelectMode = true
-	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.cursor]))
+	m.StartRangeSelection(m.taskIdentityForRow(m.rows[m.cursor]))
 	m.updateVisualSelectionStatus()
 }
 
@@ -90,22 +97,84 @@ func (m *OutlinerModel) updateVisualSelectionStatus() {
 	if !m.multiSelectMode {
 		return
 	}
-	if count := m.SelectedCount(); count > 0 {
-		m.setStatus(fmt.Sprintf("Visual selection: %d selected · v toggle · Space delete menu · Esc clear", count))
+	counts := m.selectionCounts()
+	if counts.Total > 0 {
+		action := "v freeze · Esc freeze"
+		if !m.IsRangeSelectionActive() {
+			action = "v new range · Esc clear"
+		}
+		m.setStatus(fmt.Sprintf(
+			"Visual selection: %d total · %d visible · %d hidden · %s · Space actions",
+			counts.Total,
+			counts.Visible,
+			counts.Hidden,
+			action,
+		))
 		return
 	}
-	m.setStatus("Visual selection: v toggle · V all visible · Esc clear")
+	m.setStatus("Visual selection: v new range · Ctrl+A all visible · Esc clear")
 }
 
-// selectAllVisible adds all currently visible rows to the selection.
-func (m *OutlinerModel) selectAllVisible() {
-	m.peekMode = false
+func (m *OutlinerModel) visibleTaskIdentities() []TaskIdentity {
+	visible := make([]TaskIdentity, 0, len(m.rows))
+	seen := make(map[TaskIdentity]bool, len(m.rows))
 	for _, row := range m.rows {
 		if !row.isTaskRow() || row.task == nil {
 			continue
 		}
-		m.SelectTaskIdentity(m.taskIdentityForRow(row))
+		identity := m.taskIdentityForRow(row)
+		if !identity.Valid() || seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		visible = append(visible, identity)
 	}
+	return visible
+}
+
+func (m *OutlinerModel) selectionCounts() SelectionCounts {
+	return m.ClassifySelection(m.visibleTaskIdentities())
+}
+
+// selectAllVisible replaces the selection with all currently visible task rows.
+func (m *OutlinerModel) selectAllVisible() {
+	m.peekMode = false
+	m.ReplaceSelection(m.visibleTaskIdentities())
+}
+
+// updateRangeSelection recalculates the inclusive anchor-to-cursor range using
+// visible task rows only. Headers and separators may lie inside the row span
+// but never become selected targets.
+func (m *OutlinerModel) updateRangeSelection() {
+	if !m.IsRangeSelectionActive() || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return
+	}
+	anchorIndex := -1
+	for index, row := range m.rows {
+		if row.isTaskRow() && m.taskIdentityForRow(row) == m.rangeAnchor {
+			anchorIndex = index
+			break
+		}
+	}
+	if anchorIndex < 0 {
+		// A projection change can hide the anchor. Preserve the durable selection
+		// and stop reshaping it against a different visible task set.
+		m.FreezeRangeSelection()
+		m.updateVisualSelectionStatus()
+		return
+	}
+	start, end := anchorIndex, m.cursor
+	if start > end {
+		start, end = end, start
+	}
+	identities := make([]TaskIdentity, 0, end-start+1)
+	for _, row := range m.rows[start : end+1] {
+		if row.isTaskRow() && row.task != nil {
+			identities = append(identities, m.taskIdentityForRow(row))
+		}
+	}
+	m.replaceSelection(identities)
+	m.updateVisualSelectionStatus()
 }
 
 // pruneInvisibleSelections intentionally retains valid project-qualified

@@ -250,7 +250,6 @@ func TestContextScopeChangePreservesRunViewAndClearsNavigationState(t *testing.T
 	out.filter.Priority = 3
 	out.filter.Tags = map[string]bool{"focus": true}
 	out.filter.DueDate = DueDateThisWeek
-	out.filter.Blocked = true
 	out.filter.Snoozed = true
 	out.pushProjectScope("alpha")
 	out.crossZoomStack = []CrossProjectZoomEntry{{
@@ -259,6 +258,7 @@ func TestContextScopeChangePreservesRunViewAndClearsNavigationState(t *testing.T
 		CursorIndex: 2,
 	}}
 	out.cursor = 2
+	out.multiSelectMode = true
 	out.SelectTaskIdentity(TaskIdentity{ProjectID: "alpha", TaskID: "1"})
 	// A mutation reload may already have frozen a cursor identity before the
 	// Scope Hub selection arrives. It must not survive the new project set.
@@ -273,7 +273,6 @@ func TestContextScopeChangePreservesRunViewAndClearsNavigationState(t *testing.T
 	if out.filter.Priority != 3 ||
 		!out.filter.Tags["focus"] ||
 		out.filter.DueDate != DueDateThisWeek ||
-		!out.filter.Blocked ||
 		!out.filter.Snoozed {
 		t.Fatalf("scope switch changed facets: %+v", out.filter.CommonFilterState)
 	}
@@ -285,13 +284,17 @@ func TestContextScopeChangePreservesRunViewAndClearsNavigationState(t *testing.T
 			len(out.crossZoomStack),
 		)
 	}
-	if out.cursor != 0 || out.multiSelectMode || out.SelectedCount() != 0 {
+	if out.cursor != 0 || !out.multiSelectMode || out.SelectedCount() != 1 {
 		t.Fatalf(
-			"scope switch retained cursor/selection: cursor=%d active=%v selected=%d",
+			"scope switch selection persistence mismatch: cursor=%d active=%v selected=%d",
 			out.cursor,
 			out.multiSelectMode,
 			out.SelectedCount(),
 		)
+	}
+	counts := out.selectionCounts()
+	if counts.Total != 1 || counts.Visible != 0 || counts.Hidden != 1 {
+		t.Fatalf("scope selection counts = %+v, want total=1 visible=0 hidden=1", counts)
 	}
 	if out.crossReloadProjectID != "" || out.crossReloadTaskID != "" || !out.crossReloadFromTop {
 		t.Fatalf(

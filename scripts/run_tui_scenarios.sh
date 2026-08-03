@@ -16,4 +16,7 @@ go test -count=1 ./internal/tui \
 	-run '^Test(CommittedScenarioInventoryCoversFinalProduct|ExampleScenariosPass)$'
 
 go test -count=1 ./internal/config \
-	-run '^TestManager(ActivatesSnapshotFirstV5MigrationAndIsIdempotent|V5MigrationCorruptInputRefusesBeforeSnapshot|V5MigrationRejectsFutureTaskSchemaBeforeSnapshot|V5MigrationRecoversPreparedActivationBeforeInspection)$'
+	-run '^(TestManager.*(SnapshotFirstV5Migration|V5Migration|SnapshotFirstV6Migration|V6Migration).*|TestCreatePre(SimplificationV5|ConsolidationV6)Snapshot.*|TestPre(SimplificationV5|ConsolidationV6)Snapshot.*)$'
+
+go test -count=1 ./cmd \
+	-run '^TestLoadCLIWorkspace(RecoversTransactionsBeforeLoadingDomains|BlocksOnRecoveryQuarantine)$'

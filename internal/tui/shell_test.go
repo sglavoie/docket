@@ -33,19 +33,8 @@ func TestCurrentRouteBinding(t *testing.T) {
 		t.Errorf("Outliner route = %s %+v, want app-scoped root", r.ID(), r.Params())
 	}
 
-	// Task-scoped view carries both.
-	task := &models.Task{ID: "t1", Title: "Task"}
-	proj.Tasks = []*models.Task{task}
-	proj.BuildTaskTree()
-	_ = app.activateTaskDetail(task, proj, TaskOverview)
-	r = app.CurrentRoute()
-	detail, ok := r.Params().(TaskDetailParams)
-	if r.ID() != TaskDetail || !ok || detail.ProjectID != "p1" || detail.TaskID != "t1" {
-		t.Errorf("TaskDetail route params = %+v, want p1/t1", r.Params())
-	}
-
 	// Global-nav view drops the project.
-	app.jumpToOutlinerRoot()
+	jumpToOutlinerRootForTest(app)
 	app.pushView(ViewCrossProjectOutliner)
 	r = app.CurrentRoute()
 	workspace, ok = r.Params().(TaskWorkspaceParams)
@@ -90,16 +79,16 @@ func TestShellStateFacade(t *testing.T) {
 	if !ok || sp.Scope != AppEntityScope() {
 		t.Errorf("root scope = %+v, want app-scoped root", s.CurrentRoute().Params())
 	}
-	// A child (Task Detail) stacks above the root.
-	task := &models.Task{ID: "t1", Title: "Task"}
-	app.currentProject.Tasks = []*models.Task{task}
-	app.currentProject.BuildTaskTree()
-	_ = app.activateTaskDetail(task, app.currentProject, TaskOverview)
+	// A secondary tool stacks above the root.
+	route := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
+	if err := app.navigation.Primary.PushChild(route, FocusTarget{}); err != nil {
+		t.Fatal(err)
+	}
 	if s.AtRoot() {
 		t.Error("expected not AtRoot after pushing a child")
 	}
-	if s.CurrentRoute().ID() != TaskDetail {
-		t.Errorf("child route = %s, want TaskDetail", s.CurrentRoute().ID())
+	if s.CurrentRoute().ID() != SecondaryTool {
+		t.Errorf("child route = %s, want SecondaryTool", s.CurrentRoute().ID())
 	}
 }
 

@@ -1,7 +1,7 @@
 package tui
 
 // OutlinerModeSwitch carries the cross-mode state that must survive a mode
-// change. Project scope, pinned tag, search, common filters, cursor identity,
+// change. Project scope, search, common filters, cursor identity,
 // and compatible column state are preserved verbatim; only the sort is
 // reconciled against the target mode's ordering policy.
 //
@@ -12,7 +12,6 @@ package tui
 type OutlinerModeSwitch struct {
 	Mode         OutlinerModeID
 	ProjectScope string
-	PinnedTag    string
 	Search       string
 	CursorTaskID string
 	// Columns is the compatible column state, preserved verbatim across switches.
@@ -24,12 +23,12 @@ type OutlinerModeSwitch struct {
 }
 
 // ApplyOutlinerModeTransition returns the state after switching from prev to
-// target. Scope, pinned tag, search, cursor identity, and column state are
+// target. Scope, search, cursor identity, and column state are
 // carried over unchanged. The sort is reconciled: the current manual sort is
 // stashed into TreeSort when leaving a tree-order mode, and restored (or
 // deactivated) according to the target mode's ordering policy.
 func ApplyOutlinerModeTransition(state OutlinerModeSwitch, prev, target OutlinerMode) OutlinerModeSwitch {
-	next := state // preserves ProjectScope, PinnedTag, Search, CursorTaskID, Columns
+	next := state // preserves ProjectScope, Search, CursorTaskID, Columns
 
 	// Persist the durable tree-mode sort before leaving a tree-order mode so a
 	// later tree-order mode can restore it.

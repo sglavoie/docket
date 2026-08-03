@@ -48,3 +48,19 @@ func EffectivePriority(value int) int {
 func IsHighPriority(value int) bool {
 	return value == PriorityHigh
 }
+
+// PriorityName returns the canonical display vocabulary for a stored priority.
+func PriorityName(value int) string {
+	switch value {
+	case PriorityUnset:
+		return "Unset"
+	case PriorityHigh:
+		return "High"
+	case PriorityMedium:
+		return "Medium"
+	case PriorityLow:
+		return "Low"
+	default:
+		return ""
+	}
+}

@@ -154,7 +154,7 @@ func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 		operationTaskTogglePin:            "keep on top",
 		operationTaskNewChild:             "new subtask",
 		operationCoreEdit:                 "rename task",
-		operationCoreDetail:               "task preview",
+		operationCorePeek:                 "task preview",
 	}
 	for id, alias := range wanted {
 		descriptor, ok := model.operationRegistry.Descriptor(id)

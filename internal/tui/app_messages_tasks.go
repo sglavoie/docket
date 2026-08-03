@@ -35,7 +35,6 @@ type TaskCreatedMsg struct {
 	CreatedCount int             // bulk composer count; zero means infer one from Task/Result
 	OpenTaskID   string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
 	OpenContent  bool            // open description editor after creation
-	OpenDetail   bool            // open task detail view after creation
 }
 
 // TaskUpdatedMsg signals a task was modified.
@@ -123,34 +122,6 @@ type SetSnoozeDateMsg struct {
 	Task     *models.Task
 	Project  *models.Project
 	TaskRefs []TaskProjectRef
-}
-
-// =============================================================================
-// Dependency Messages (Show/Close Pattern)
-// =============================================================================
-
-// ManageDependenciesMsg opens the dependency selector for a task.
-type ManageDependenciesMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// ShowDependencyViewerMsg opens read-only dependency visualization.
-type ShowDependencyViewerMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// CloseDependencyViewerMsg closes the dependency viewer.
-type CloseDependencyViewerMsg struct{ PopViewMsg }
-
-// DependencyViewerSelectMsg navigates to a task from dependency viewer.
-type DependencyViewerSelectMsg struct{ Task *models.Task }
-
-// DependencyViewerViewDepsMsg opens dependency viewer for a different task.
-type DependencyViewerViewDepsMsg struct {
-	Task    *models.Task
-	Project *models.Project
 }
 
 // =============================================================================
@@ -253,28 +224,6 @@ type CommentDeletedMsg struct{ Task *models.Task }
 type CommentEditedMsg struct{ Task *models.Task }
 
 // =============================================================================
-// Task Decisions Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowTaskDecisionsMsg opens the decisions view for a task.
-type ShowTaskDecisionsMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// CloseTaskDecisionsMsg closes the decisions view.
-type CloseTaskDecisionsMsg struct{ PopViewMsg }
-
-// DecisionAddedMsg signals a decision was added.
-type DecisionAddedMsg struct{ Task *models.Task }
-
-// DecisionDeletedMsg signals a decision was deleted.
-type DecisionDeletedMsg struct{ Task *models.Task }
-
-// DecisionEditedMsg signals a decision was edited.
-type DecisionEditedMsg struct{ Task *models.Task }
-
-// =============================================================================
 // Task Checklist Messages (Show/Close Pattern)
 // =============================================================================
 
@@ -298,24 +247,6 @@ type ChecklistItemDeletedMsg struct{ Task *models.Task }
 
 // ChecklistItemToggledMsg signals a checklist item was toggled.
 type ChecklistItemToggledMsg struct{ Task *models.Task }
-
-// =============================================================================
-// Task Detail Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowTaskDetailMsg opens the full-screen task detail view.
-type ShowTaskDetailMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// TaskDetailTabChangedMsg synchronizes the live typed route after the unified
-// detail model changes tabs. The model owns tab-local UI state; the route owns
-// the canonical tab identity.
-type TaskDetailTabChangedMsg struct{ Tab TaskDetailTab }
-
-// CloseTaskDetailMsg closes the task detail view.
-type CloseTaskDetailMsg struct{ PopViewMsg }
 
 // =============================================================================
 // Task Attachments Messages (Show/Close Pattern)
@@ -365,38 +296,4 @@ type TaskMovedToProjectMsg struct {
 	MovedCount    int  // Number of tasks moved (including descendants)
 	OldShortID    int  // Original short ID before move
 	FromGlobal    bool // true when triggered from a global move workflow (skip popView)
-}
-
-// =============================================================================
-// Linked Task Creation Messages
-// =============================================================================
-
-// LinkType represents the type of link between tasks.
-type LinkType int
-
-const (
-	LinkTypeBlocker   LinkType = iota // Source depends on target
-	LinkTypeDependent                 // Target depends on source
-)
-
-// =============================================================================
-// Cross-Project Linking Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowCrossProjectLinkerMsg opens the cross-project linker for a task.
-type ShowCrossProjectLinkerMsg struct {
-	SourceTask    *models.Task
-	SourceProject *models.Project
-}
-
-// CloseCrossProjectLinkerMsg closes the cross-project linker.
-type CloseCrossProjectLinkerMsg struct{ PopViewMsg }
-
-// CrossProjectLinkCreatedMsg signals a cross-project link was created.
-type CrossProjectLinkCreatedMsg struct {
-	SourceTask    *models.Task
-	SourceProject *models.Project
-	TargetTask    *models.Task
-	TargetProject *models.Project
-	LinkType      LinkType
 }

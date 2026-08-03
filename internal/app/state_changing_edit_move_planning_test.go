@@ -56,7 +56,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		project := newProject("proj", "Proj", task)
 		repo := newFakeRepo(project)
 		planning := config.NewDomains().Planning
-		planning.SetNextOrder([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: project.ID}})
+		planning.SetNext([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: project.ID}})
 		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
 		if _, err := svc.Edit(formEditReplacing(task, models.StateWaiting)); err != nil {
@@ -65,7 +65,7 @@ func TestStateChangingEditAndMovePreservePlanningExclusivity(t *testing.T) {
 		if got := project.GetTaskByID(task.ID).State(); got != models.StateWaiting {
 			t.Fatalf("state = %s, want waiting", got)
 		}
-		if got := planning.GetNextOrder(); len(got) != 0 {
+		if got := planning.GetNext(); len(got) != 0 {
 			t.Fatalf("focus queue after form edit out of Next = %+v, want empty", got)
 		}
 	})

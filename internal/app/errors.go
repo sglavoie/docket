@@ -20,8 +20,6 @@ var (
 	// ErrProtectedSystemUnfiled marks a project lifecycle request that targets
 	// the catalog-owned system Unfiled project.
 	ErrProtectedSystemUnfiled = errors.New("app: protected system Unfiled")
-	// ErrProtectedSystemInbox is the compile-time compatibility name.
-	ErrProtectedSystemInbox = ErrProtectedSystemUnfiled
 	// ErrTaskNotFound marks a request targeting a task absent from the loaded
 	// snapshot.
 	ErrTaskNotFound = errors.New("app: task not found")

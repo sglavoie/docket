@@ -63,6 +63,32 @@ const (
 	DueDateNone                          // tasks with no due date
 )
 
+// CompletionAgeFilter represents the local-calendar age threshold selected by
+// the completion-cleanup facet. CompletionAgeAll removes the age bound while
+// the facet remains active, so malformed records without a valid CompletedAt
+// are still excluded from cleanup.
+type CompletionAgeFilter int
+
+const (
+	CompletionAgeAll CompletionAgeFilter = iota
+	CompletionAge7Days
+	CompletionAge30Days
+	CompletionAge90Days
+)
+
+func (f CompletionAgeFilter) days() int {
+	switch f {
+	case CompletionAge7Days:
+		return 7
+	case CompletionAge30Days:
+		return 30
+	case CompletionAge90Days:
+		return 90
+	default:
+		return 0
+	}
+}
+
 // formatDueDate returns a styled due date string for inline display.
 func formatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.IsComplete() {

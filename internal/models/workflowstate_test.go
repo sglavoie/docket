@@ -26,21 +26,11 @@ func TestWorkflowStateIsValid(t *testing.T) {
 		}
 	}
 	for _, bad := range []WorkflowState{
-		"", StateReview, "ready", "next", "in_progress", "todo", "in-progress", "Done", "blocked", "unknown",
+		"", "review", "ready", "next", "in_progress", "todo", "in-progress", "Done", "blocked", "unknown",
 	} {
 		if bad.IsValid() {
 			t.Errorf("%q should not be valid", bad)
 		}
-	}
-}
-
-func TestLegacyReviewCompatibilityIsExplicit(t *testing.T) {
-	if StateReview.IsValid() {
-		t.Fatal("retired Review state is valid for target operations")
-	}
-	target, ok := TargetStateForLegacy(StateReview)
-	if !ok || target != StateBacklog {
-		t.Fatalf("TargetStateForLegacy(review) = (%q, %v), want backlog", target, ok)
 	}
 }
 

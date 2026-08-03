@@ -2,48 +2,6 @@ package tui
 
 import "testing"
 
-func TestHandleTaskMessagesDependencySelectorDone(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	task := project.Tasks[0]
-	app.pushView(ViewDependencySelector)
-
-	msg := DependencySelectorDoneMsg{HasChanges: false, Task: task, Project: project}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("DependencySelectorDoneMsg should be handled")
-	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after closing selector, got %v", app.currentView())
-	}
-}
-
-func TestHandleTaskMessagesShowDependencyViewer(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	task := project.Tasks[0]
-
-	msg := ShowDependencyViewerMsg{Task: task, Project: project}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("ShowDependencyViewerMsg should be handled")
-	}
-	if app.currentView() != ViewDependencyViewer {
-		t.Errorf("currentView should be DependencyViewer, got %v", app.currentView())
-	}
-}
-
-func TestHandleTaskMessagesCloseDependencyViewer(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewDependencyViewer)
-
-	app.Update(CloseDependencyViewerMsg{})
-
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after closing viewer, got %v", app.currentView())
-	}
-}
-
 func TestHandleTaskMessagesUndoPerformed(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
@@ -79,32 +37,6 @@ func TestHandleTaskMessagesRedoPerformed(t *testing.T) {
 	}
 	if app.statusMessage != "Redo: Task restored" {
 		t.Errorf("statusMessage should contain redo action, got %q", app.statusMessage)
-	}
-}
-
-func TestHandleTaskMessagesShowTaskDetail(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	task := project.Tasks[0]
-
-	msg := ShowTaskDetailMsg{Task: task, Project: project}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("ShowTaskDetailMsg should be handled")
-	}
-	if app.currentView() != ViewTaskDetail {
-		t.Errorf("currentView should be TaskDetail, got %v", app.currentView())
-	}
-}
-
-func TestHandleTaskMessagesCloseTaskDetail(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewTaskDetail)
-
-	app.Update(CloseTaskDetailMsg{})
-
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Errorf("currentView should be Outliner after closing detail, got %v", app.currentView())
 	}
 }
 

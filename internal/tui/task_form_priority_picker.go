@@ -18,10 +18,10 @@ var formPriorityEntries = []struct {
 	key      string
 	label    string
 }{
-	{0, "0", "unset"},
-	{1, "1", "high"},
-	{2, "2", "medium"},
-	{3, "3", "low"},
+	{0, "0", "Unset"},
+	{1, "1", "High"},
+	{2, "2", "Medium"},
+	{3, "3", "Low"},
 }
 
 type formPriorityPicker struct {

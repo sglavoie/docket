@@ -1,9 +1,31 @@
 package models
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestNormalizeTaskTagsTreatsFormerMarkerSpellingsAsIndependentTags(t *testing.T) {
+	got, err := NormalizeTaskTags([]string{"backend", "#type:BUG", "bug", "idea", "bug"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"backend", "type:BUG", "bug", "idea"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("tags = %v, want %v", got, want)
+	}
+
+	task, err := NewGenericTask("t", 1, "Ordinary tags")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tag := range []string{"epic", "story", "bug", "feature", "idea", "type:bug"} {
+		task.AddTag(tag)
+	}
+	if !reflect.DeepEqual(task.Tags, []string{"epic", "story", "bug", "feature", "idea", "type:bug"}) {
+		t.Fatalf("ordinary tags = %v", task.Tags)
+	}
+}
 
 func TestAddTag(t *testing.T) {
 	task, err := NewGenericTask("t1", 1, "Test")

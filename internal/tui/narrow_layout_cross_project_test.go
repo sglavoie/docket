@@ -51,39 +51,3 @@ func TestProjectSelectorViewRespectsVisualWidth(t *testing.T) {
 		t.Fatalf("expected task header in selector view, got:\n%s", ansi.Strip(rendered))
 	}
 }
-
-func TestCrossProjectLinkerTaskSelectionRespectsVisualWidth(t *testing.T) {
-	sourceProject, err := models.NewProject("source", "source-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject source: %v", err)
-	}
-	sourceTask, err := models.NewGenericTask("source-task", 7, "修复跨项目链接器在窄宽度下的布局")
-	if err != nil {
-		t.Fatalf("NewTask source: %v", err)
-	}
-	targetProject, err := models.NewProject("target", "target-proj", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject target: %v", err)
-	}
-	targetTask, err := models.NewGenericTask("target-task", 21, "修复目标任务列表在窄视图中的宽字符截断问题")
-	if err != nil {
-		t.Fatalf("NewTask target: %v", err)
-	}
-	targetTask.WorkflowState = models.StateDoing
-
-	m := &CrossProjectLinkerModel{
-		sourceTask:    sourceTask,
-		sourceProject: sourceProject,
-		step:          StepSelectTask,
-		targetProject: targetProject,
-		filteredTasks: []*models.Task{targetTask},
-	}
-	m.SetSize(32, 14)
-
-	rendered := m.viewTaskSelection()
-	for line := range strings.SplitSeq(strings.TrimRight(rendered, "\n"), "\n") {
-		if lipgloss.Width(ansi.Strip(line)) > 32 {
-			t.Fatalf("cross-project linker line exceeds width 32: %q (width=%d)\n\n%s", ansi.Strip(line), lipgloss.Width(ansi.Strip(line)), ansi.Strip(rendered))
-		}
-	}
-}

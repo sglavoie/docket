@@ -63,7 +63,7 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 				}}
 			}
 			m := &OutlinerModel{
-				project: tt.project, rows: rows, pinnedTagTab: make(map[string]int),
+				project: tt.project, rows: rows,
 				collapsedSections: make(map[string]bool),
 			}
 			m.SetSize(100, 6)

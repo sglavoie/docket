@@ -8,7 +8,7 @@ import (
 )
 
 // renderPinnedTasksBar renders the compact, non-interactive pinned summary.
-// Navigation and visible search live in the Outliner; the retired pinned popup is gone.
+// Navigation and scope-wide search live in the Outliner; the retired pinned popup is gone.
 func (m *AppModel) renderPinnedTasksBar(width int) string {
 	pinned := m.collectPinnedTasks()
 	if len(pinned) == 0 {

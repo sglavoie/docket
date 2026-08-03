@@ -3,11 +3,11 @@ package tui
 import "github.com/sglavoie/tt/internal/models"
 
 // applyContextScope makes a Context the global Outliner's active project scope.
-// It clears the axes that name individual projects or rows (drill-in scope,
-// zoom, multi-select, cursor, scroll) because those cannot survive a project-set
-// change, and deliberately preserves task filters, mode, search, sort, columns,
-// and the pinned-tag tab so a Context switch re-runs the user's current view
-// against a different project set.
+// It clears the navigation axes that name individual projects or rows (drill-in
+// scope, zoom, cursor, scroll) and deliberately preserves project-qualified
+// selection identities along with task filters, mode, search, sort, and columns.
+// Targets outside the new project set become hidden
+// selection members rather than being silently discarded.
 func (m *OutlinerModel) applyContextScope(scope ContextScope) {
 	m.activeContext = scope
 	m.refreshContextScopeProjects()
@@ -15,7 +15,7 @@ func (m *OutlinerModel) applyContextScope(scope ContextScope) {
 	m.scopedProjectID = ""
 	m.zoomStack = nil
 	m.crossZoomStack = nil
-	m.clearMultiSelect()
+	m.FreezeRangeSelection()
 	// A scope switch owns a fresh navigation origin. Suppress any task identity
 	// captured by an earlier mutation reload, and prevent the next reload from
 	// capturing the rebuilt top row as though it were a user cursor choice.

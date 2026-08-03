@@ -2,10 +2,24 @@ package tui
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+func TestOperationDiscoveryExcludesRetiredProductConcepts(t *testing.T) {
+	model := newUITestApp()
+	retired := []string{"dashboard", "planner", "roadmap", "analytics", "actionable", "pinned-tag", "pinned tag"}
+	for _, descriptor := range model.operationRegistry.All() {
+		text := strings.ToLower(string(descriptor.ID) + " " + descriptor.Label + " " + strings.Join(descriptor.Aliases, " "))
+		for _, term := range retired {
+			if strings.Contains(text, term) {
+				t.Errorf("operation %s exposes retired concept %q through discovery metadata", descriptor.ID, term)
+			}
+		}
+	}
+}
 
 // productionTaskShape is one live task arrangement the manifest is exercised
 // against. setup runs before every probe so paired operations get a context
@@ -117,6 +131,7 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 	)
 
 	values := map[OperationID]any{
+		operationTaskMoveProject: "beta",
 		operationTaskSetState:    models.StateBacklog,
 		operationTaskSetPriority: 2,
 		operationTaskSetDueDate:  OperationDateValue{},

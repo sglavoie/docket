@@ -11,10 +11,11 @@
     { "type": "key", "label": "move to an Inbox task in the same project", "key": "j" },
     { "type": "key", "label": "select the Inbox task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
-    { "type": "key", "label": "open the Delete-only menu for the frozen selection", "key": "space" },
+    { "type": "key", "label": "open the common-action menu for the frozen selection", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Bulk Actions · 2 selected" },
 
     { "type": "assert", "assert": "contains", "value": "Delete" },
+    { "type": "assert", "assert": "contains", "value": "Move Project" },
 
     { "type": "assert", "label": "metadata reaches a selection through its direct key, not a bulk row", "assert": "not_contains", "value": "Set State" },
     { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
@@ -23,7 +24,6 @@
 
     { "type": "assert", "assert": "not_contains", "value": "Inspect Task" },
     { "type": "assert", "assert": "not_contains", "value": "Edit Title" },
-    { "type": "assert", "assert": "not_contains", "value": "Move Project" },
     { "type": "assert", "assert": "not_contains", "value": "Copy Title" },
     { "type": "assert", "assert": "not_contains", "value": "Set Parent" },
     { "type": "assert", "assert": "no_layout_issues" },

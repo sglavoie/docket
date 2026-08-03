@@ -146,7 +146,7 @@ func convertV5Checklist(source []V5ChecklistItem) []V6ChecklistItem {
 	}
 	converted := make([]V6ChecklistItem, len(source))
 	for index, item := range source {
-		converted[index] = V6ChecklistItem{Text: item.Text, Done: item.Done}
+		converted[index] = V6ChecklistItem(item)
 	}
 	return converted
 }
@@ -157,10 +157,7 @@ func mergeV5TaskComments(comments []V5TaskComment, decisions []V5TaskDecision) [
 	}
 	merged := make([]V6TaskComment, 0, len(comments)+len(decisions))
 	for _, comment := range comments {
-		merged = append(merged, V6TaskComment{
-			Text:      comment.Text,
-			CreatedAt: comment.CreatedAt,
-		})
+		merged = append(merged, V6TaskComment(comment))
 	}
 	for _, decision := range decisions {
 		text := "Decision: " + decision.Text

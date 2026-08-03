@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -100,14 +101,17 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 	}
 }
 
-// pendingChordHintRow is the which-key footer row for an unfinished chord.
-func (m *AppModel) pendingChordHintRow() string {
+func (m *AppModel) pendingChordHintLines(width int) []string {
 	if m == nil || m.operationRegistry == nil || len(m.pendingChord) == 0 {
-		return ""
+		return nil
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	return m.operationRegistry.ChordHintRowForPrefix(InputStrategySimplified, m.pendingChord, ctx)
+	hints := m.operationRegistry.ChordHintsForPrefix(InputStrategySimplified, m.pendingChord, ctx)
+	if len(hints) == 0 {
+		return nil
+	}
+	return fitPendingChordLines(strings.Join(m.pendingChord, ""), hints, width)
 }
 
 func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {

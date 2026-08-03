@@ -15,6 +15,25 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
+type v6MigrationActivationTestHooks struct {
+	snapshot               *preConsolidationV6SnapshotHooks
+	afterSnapshotPublished func(*PreConsolidationV6Snapshot)
+}
+
+func (h *v6MigrationActivationTestHooks) snapshotCreationHooks() *preConsolidationV6SnapshotHooks {
+	if h == nil {
+		return nil
+	}
+	return h.snapshot
+}
+
+func (h *v6MigrationActivationTestHooks) didPublishSnapshot(snapshot *PreConsolidationV6Snapshot) {
+	if h != nil && h.afterSnapshotPublished != nil {
+		h.afterSnapshotPublished(snapshot)
+	}
+}
+
+//nolint:gocyclo,govet // One end-to-end rehearsal keeps all migration invariants and scoped setup errors together.
 func TestManagerActivatesSnapshotFirstV6MigrationAndIsIdempotent(t *testing.T) {
 	options := copyPreConsolidationV6Fixture(t)
 	root := options.DataDir
@@ -202,6 +221,7 @@ func TestManagerV6MigrationDetectsStaleSourceAfterSnapshot(t *testing.T) {
 	}
 }
 
+//nolint:govet // Scoped setup and recovery errors keep the interrupted transaction stages readable.
 func TestManagerV6MigrationRecoversPreparedActivationBeforeInspection(t *testing.T) {
 	options := copyPreConsolidationV6Fixture(t)
 	plan, err := buildV6MigrationActivationPlan(V6WorkspaceDryRunOptions{DataDir: options.DataDir})
@@ -255,6 +275,7 @@ func TestManagerV6MigrationRecoversPreparedActivationBeforeInspection(t *testing
 	}
 }
 
+//nolint:govet // Subtests intentionally reuse scoped errors for independent refusal paths.
 func TestManagerV6MigrationRejectsCollisionsAndFutureSchemasBeforeSnapshot(t *testing.T) {
 	t.Run("Unfiled collision", func(t *testing.T) {
 		options := copyPreConsolidationV6Fixture(t)
@@ -332,6 +353,73 @@ func TestManagerV6MigrationPreservesSupportedV4ToV5ToV6Chain(t *testing.T) {
 	)
 	if _, statErr := os.Lstat(obsoleteAttachment); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("chained migration retained obsolete attachment directory: %v", statErr)
+	}
+}
+
+//nolint:govet // Restore-loop errors are scoped independently of snapshot creation.
+func TestManagerV6MigrationRestoredSnapshotCanBeReactivated(t *testing.T) {
+	options := copyPreConsolidationV6Fixture(t)
+	report, err := createPreConsolidationV6Snapshot(options, &preConsolidationV6SnapshotHooks{
+		now: preConsolidationV6TestTime,
+	})
+	if err != nil {
+		t.Fatalf("create rollback snapshot: %v", err)
+	}
+	entries := readPreSimplificationV5Archive(t, report.ArchivePath)
+	restoredRoot := filepath.Join(t.TempDir(), "restored-workspace")
+	for archivePath, data := range entries {
+		if !strings.HasPrefix(archivePath, "workspace/") {
+			continue
+		}
+		rel := strings.TrimPrefix(archivePath, "workspace/")
+		if rel == "" || rel == preConsolidationV6AuditEntry {
+			continue
+		}
+		target := filepath.Join(restoredRoot, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(target), DirPermissions); err != nil {
+			t.Fatalf("create restored parent for %s: %v", rel, err)
+		}
+		if err := os.WriteFile(target, data, FilePermissions); err != nil {
+			t.Fatalf("restore %s: %v", rel, err)
+		}
+	}
+
+	for _, rel := range []string{
+		".tt/workspace.json",
+		".tt/planning.json",
+		".tt/global-notes/global-brief.md",
+		".tt/undo/ledger.json",
+		"projects/alpha/tasks.md",
+		"projects/alpha/notes/project-brief.md",
+		"projects/alpha/.attachments/task-rich/specification.txt",
+	} {
+		if _, statErr := os.Stat(filepath.Join(restoredRoot, filepath.FromSlash(rel))); statErr != nil {
+			t.Fatalf("restored rollback artifact %s: %v", rel, statErr)
+		}
+	}
+
+	manager := NewManager(ConfigPathForDataDir(restoredRoot))
+	if err := manager.MigrateWorkspaceToV6(); err != nil {
+		t.Fatalf("reactivate restored schema-5 snapshot: %v", err)
+	}
+	schema, exists, err := workspaceCatalogPayloadSchema(restoredRoot)
+	if err != nil || !exists || schema != V6ConfigSchemaVersion {
+		t.Fatalf("restored migration schema = %d exists=%v err=%v", schema, exists, err)
+	}
+	if pairs := preConsolidationV6Pairs(t, restoredRoot); len(pairs) != 1 {
+		t.Fatalf("restored migration snapshot pairs = %v, want one fresh pair", pairs)
+	}
+	if _, statErr := os.Lstat(UndoLedgerDir(restoredRoot)); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("restored pre-v6 undo ledger survived activation: %v", statErr)
+	}
+	for _, rel := range []string{
+		".tt/global-notes/global-brief.md",
+		"projects/alpha/notes/project-brief.md",
+		"projects/alpha/.attachments/" + v6AttachmentTaskDirName("task-rich") + "/specification.txt",
+	} {
+		if _, statErr := os.Stat(filepath.Join(restoredRoot, filepath.FromSlash(rel))); statErr != nil {
+			t.Fatalf("reactivated restored artifact %s: %v", rel, statErr)
+		}
 	}
 }
 

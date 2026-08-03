@@ -44,21 +44,34 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, runtime
 
 // refreshAfterReload re-resolves the task pointer and clamps the cursor after
 // the shell reloaded the project from a committed transaction.
-func (m *TaskAttachmentsModel) refreshAfterReload() {
-	m.resolveTask()
+func (m *TaskAttachmentsModel) refreshAfterReload() bool {
+	if !m.resolveTask() {
+		return false
+	}
 	if m.cursor >= len(m.task.Attachments) {
 		m.cursor = len(m.task.Attachments) - 1
 	}
 	if m.cursor < 0 {
 		m.cursor = 0
 	}
+	return true
 }
 
 // resolveTask ensures m.task points to the task currently in m.project.Tasks.
-func (m *TaskAttachmentsModel) resolveTask() {
-	if t := m.project.GetTaskByID(m.task.ID); t != nil {
-		m.task = t
+func (m *TaskAttachmentsModel) resolveTask() bool {
+	if m.project == nil || m.task == nil {
+		return false
 	}
+	task := m.project.GetTaskByID(m.task.ID)
+	if task == nil {
+		return false
+	}
+	m.task = task
+	return true
+}
+
+func (m *TaskAttachmentsModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.task, m.project
 }
 
 func (m *TaskAttachmentsModel) Init() tea.Cmd {

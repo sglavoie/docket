@@ -44,7 +44,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		return descriptor
 	}
 	peek := core(
-		operationCoreDetail,
+		operationCorePeek,
 		"Toggle Task Peek",
 		OperationCategoryNavigation,
 		TargetCardinalityNone,
@@ -76,7 +76,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		peek,
-		core(operationCoreVisibleSearch, "Search Visible Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "filter visible list"),
+		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
 		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "contexts"),
 		core(operationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
 		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
@@ -100,6 +100,19 @@ func (m *AppModel) registerCoreInputOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range coreInputOperationDescriptors() {
+		switch descriptor.ID { //nolint:exhaustive // Only outliner navigation operations override applicability.
+		case operationCoreNextWorkMode,
+			operationCorePreviousWorkMode,
+			operationCoreCollapseParent,
+			operationCoreExpand,
+			operationCoreToggleSections,
+			operationCoreReorderDown,
+			operationCoreReorderUp:
+			descriptor.Applicability = func(ctx CommandContext) bool {
+				return coreOutlinerApplicability(ctx) &&
+					(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
+			}
+		}
 		if err := m.registerOperation(descriptor, OperationBinding{
 			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
 			Applicability:            descriptor.Applicability,
@@ -189,11 +202,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreReorder(1))
 	case operationCoreReorderUp:
 		message = commandMessage(m.coreReorder(-1))
-	case operationCoreDetail:
+	case operationCorePeek:
 		if out, _, ok := m.outlinerPrimary(); ok {
 			out.togglePeek()
 		}
-	case operationCoreVisibleSearch:
+	case operationCoreScopeSearch:
 		if out, _, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.ActivateSearch())
 		}
@@ -207,8 +220,6 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreSelectAll:
 		if out, _, ok := m.outlinerPrimary(); ok {
-			out.peekMode = false
-			out.multiSelectMode = true
 			out.selectAllVisible()
 			out.updateVisualSelectionStatus()
 		}
@@ -399,6 +410,7 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 		return nil
 	}
 	_, cmd = out.crossSkipNonNavigableRows(previous, cmd)
+	out.updateRangeSelection()
 	return cmd
 }
 

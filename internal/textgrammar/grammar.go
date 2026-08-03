@@ -120,21 +120,6 @@ func Definitions(surface Surface) []Definition {
 	return result
 }
 
-// DestinationNames returns the exact ordered capture destination vocabulary.
-func DestinationNames() []string {
-	return slices.Clone(captureDestinationNames)
-}
-
-// TaskMarkerNames returns the four semantic task-marker tags in model order.
-func TaskMarkerNames() []string {
-	markers := models.AllTaskMarkers()
-	result := make([]string, len(markers))
-	for i, marker := range markers {
-		result[i] = marker.String()
-	}
-	return result
-}
-
 // DefinitionFor returns the definition for a field on a surface.
 func DefinitionFor(surface Surface, field Field) (Definition, bool) {
 	for _, def := range Definitions(surface) {

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -13,11 +11,6 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	// Delegate to specialized handlers by category
-
-	// Dependency messages (already delegated)
-	if handled, cmd := m.handleDependencyMessages(msg); handled {
-		return handled, cmd
-	}
 
 	// CRUD operations
 	if handled, cmd := m.handleTaskCRUDMessages(msg); handled {
@@ -54,16 +47,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// Decision messages
-	if handled, cmd := m.handleTaskDecisionMessages(msg); handled {
-		return handled, cmd
-	}
-
-	// Link-related messages (linked tasks, cross-project links)
-	if handled, cmd := m.handleTaskLinkMessages(msg); handled {
-		return handled, cmd
-	}
-
 	// Status and property change messages
 	if handled, cmd := m.handleTaskStatusPropertyMessages(msg); handled {
 		return handled, cmd
@@ -89,9 +72,8 @@ func (m *AppModel) handleTaskStatusPropertyMessages(msg tea.Msg) (bool, tea.Cmd)
 	switch msg := msg.(type) {
 	case TaskStatusChangedMsg:
 		if msg.Task != nil && msg.Task.State() == models.StateDone {
-			m.sessionStats.tasksCompleted++
 			m.handleWithRefresh(false, false, "")
-			m.setSuccessStatus(fmt.Sprintf("Done! (%d today)", m.sessionStats.tasksCompleted))
+			m.setSuccessStatus("Done!")
 			cmd := defaultStatusTimeout()
 			if bannerCmd := m.maybeFireTodayCleared(); bannerCmd != nil {
 				cmd = tea.Batch(cmd, bannerCmd)

@@ -36,12 +36,12 @@ The full script is the acceptance gate.
 | Fixture | Purpose |
 | --- | --- |
 | `empty` | A workspace with no user projects. |
-| `fresh` | A genuine blank install that exercises protected-Inbox bootstrap. |
+| `fresh` | A genuine blank install that exercises protected-Unfiled bootstrap. |
 | `rich` | Hierarchy, workflow states, metadata, and relationships. |
-| `busy` | Overdue, due-soon, blocked, waiting, and five Inbox tasks. |
+| `busy` | Overdue, due-soon, waiting, and five Inbox tasks. |
 | `workflow` | A compact lifecycle spread for state and planning operations. |
 | `narrow` | Long titles and tags for minimum-width rendering. |
-| `contexts` | Several projects across regular and custom scope labels. |
+| `contexts` | Several projects across exclusive regular scope labels. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
 
 ## Scenario format
@@ -94,12 +94,12 @@ Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 a/A e/E Ctrl+E                   capture and edit
 si sb sn st sg sw sp sm sd sc    state/planning chord
-!0-5 @ # z P                    metadata
+!0-3 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
-v V Space Enter                 selection, actions, Peek
+v Ctrl+A Space Enter            selection, actions, Peek
 c N T / ? u Ctrl+R Esc Ctrl+C   global
-fp0-5 fs ft fd fb fz fx         filters
+fp0-3 fs fc ft fd fz fx         filters
 ```
 
 The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix are
@@ -125,25 +125,29 @@ The committed suite exercises the product contracts directly:
 
 | Contract | Representative scenarios |
 | --- | --- |
-| Capture grammar and protected-Inbox routing | `capture-grammar.json`, `fresh-install-capture.json` |
+| Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
 | Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
-| Priority, workflow, blocked, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
+| Priority, workflow, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
-| Checklist, comments, decisions, and attachments | `rich-tools.json` |
-| Exact nine-item `Space` menu | `outliner-space-action-catalog.json` |
+| Checklist, comments, and attachments | `rich-tools.json` |
+| Exact six-item `Space` menu | `outliner-space-action-catalog.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
-| Visual selection and bulk intersection | `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
-| Dark/light machine-local theme | `theme-toggle.json` |
+| Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
+| Range selection and bulk intersection | `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
+| Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
+| Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
+| Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
 | Responsive and large-catalog rendering | `baseline-layout.json`, `resize-stress.json` |
 
-The full shell gate also runs the config-package migration tests for valid v4
-activation, corrupt/future input refusal, idempotence, and prepared activation
-recovery. JSON fixtures begin after workspace construction, so migration and
-startup recovery belong at that lower boundary rather than being simulated
-inside the TUI driver.
+The full shell gate also runs snapshot, failure-injection, collision,
+idempotence, prepared-activation recovery, restore-and-reactivate, and
+v4→v5→v6 config tests plus CLI startup recovery. Those tests are the migrated
+install scenarios: JSON fixtures begin after workspace construction, so schema
+migration and startup recovery stay at the real storage/startup boundary rather
+than being simulated inside the TUI driver.
 
 ## Observation contract
 

@@ -108,113 +108,19 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 	}
 
 	if TaskMatchesSearch(sameDayTask, "@today") {
-		t.Fatal("visible search interpreted due syntax instead of matching literal text")
+		t.Fatal("scope search interpreted due syntax instead of matching literal text")
 	}
 	sameDayTask.Description = "Discuss @today syntax"
 	if !TaskMatchesSearch(sameDayTask, "@TODAY") {
-		t.Fatal("visible search did not match case-insensitive description text")
+		t.Fatal("scope search did not match case-insensitive description text")
 	}
 
 	common := CommonFilterState{DueDate: DueDateToday, Snoozed: true}
-	if passesCommonFiltersAt(sameDayTask, &common, project, now) {
+	if passesCommonFiltersAt(sameDayTask, &common, now) {
 		t.Fatal("same-day task incorrectly matched the snoozed facet")
 	}
-	if !passesCommonFiltersAt(snoozed, &CommonFilterState{Snoozed: true}, project, now) {
+	if !passesCommonFiltersAt(snoozed, &CommonFilterState{Snoozed: true}, now) {
 		t.Fatal("future-date task did not match the snoozed facet at the shared reference time")
-	}
-}
-
-func TestVisibleSearchComposesWithScopeModeFacetsPinsAndHierarchy(t *testing.T) {
-	parent := primaryRowsTask("parent-context", models.StateBacklog)
-	parent.Priority = 2
-	child := primaryRowsTask("description-match", models.StateBacklog)
-	child.Title = "Child title"
-	child.Description = "Contains the Needle in its description"
-	child.Priority = 2
-	child.ParentID = &parent.ID
-	pinnedMatch := primaryRowsTask("pinned-match", models.StateBacklog)
-	pinnedMatch.Title = "Needle pinned"
-	pinnedMatch.Priority = 2
-	pinnedMatch.Pinned = true
-	pinnedHidden := primaryRowsTask("pinned-hidden", models.StateBacklog)
-	pinnedHidden.Priority = 2
-	pinnedHidden.Pinned = true
-	wrongPriority := primaryRowsTask("wrong-priority", models.StateBacklog)
-	wrongPriority.Title = "Needle but too low priority"
-	wrongPriority.Priority = models.PriorityLow
-	inboxMatch := primaryRowsTask("inbox-match", models.StateInbox)
-	inboxMatch.Title = "Needle inbox"
-	inboxMatch.Priority = 2
-	alpha := primaryRowsProject(
-		"alpha",
-		parent,
-		child,
-		pinnedMatch,
-		pinnedHidden,
-		wrongPriority,
-		inboxMatch,
-	)
-
-	betaMatch := primaryRowsTask("other-scope", models.StateBacklog)
-	betaMatch.Title = "Needle in another project"
-	betaMatch.Priority = 2
-	beta := primaryRowsProject("beta", betaMatch)
-
-	outliner := scopeTestOutliner(alpha, beta)
-	outliner.SetSearchQuery("NEEDLE")
-	outliner.filter.Priority = 2
-	outliner.pushProjectScope(alpha.ID)
-	outliner.selectOutlinerMode(ModeBacklog)
-
-	visible := visibleOutlinerTaskIDs(outliner)
-	for _, id := range []string{parent.ID, child.ID, pinnedMatch.ID} {
-		if !visible[id] {
-			t.Errorf("composed search hid %q; visible = %v", id, visible)
-		}
-	}
-	for _, id := range []string{
-		pinnedHidden.ID,
-		wrongPriority.ID,
-		inboxMatch.ID,
-		betaMatch.ID,
-	} {
-		if visible[id] {
-			t.Errorf("composed search retained %q; visible = %v", id, visible)
-		}
-	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: alpha.ID, TaskID: pinnedMatch.ID}) != 1 {
-		t.Fatal("matching pinned task was not deduplicated from the hierarchical section")
-	}
-
-	outliner.selectOutlinerMode(ModeInbox)
-	visible = visibleOutlinerTaskIDs(outliner)
-	if !visible[inboxMatch.ID] || !visible[pinnedMatch.ID] {
-		t.Fatalf("Inbox search = %v, want matching Inbox and universal Pinned rows", visible)
-	}
-	for _, id := range []string{parent.ID, child.ID, betaMatch.ID} {
-		if visible[id] {
-			t.Errorf("Inbox search retained %q; visible = %v", id, visible)
-		}
-	}
-	if outliner.SearchQuery() != "NEEDLE" {
-		t.Fatalf("mode/scope changes reset in-session search to %q", outliner.SearchQuery())
-	}
-
-	outliner.SetSearchQuery("scope-edited query")
-	outliner.SetSearchInputValue("scope-edited query")
-	outliner.SetSearchActive(true)
-	if !outliner.popProjectScope() {
-		t.Fatal("project scope did not pop")
-	}
-	if outliner.SearchQuery() != "scope-edited query" ||
-		outliner.SearchInputValue() != "scope-edited query" ||
-		!outliner.HasActiveSearch() {
-		t.Fatalf(
-			"scope pop restored stale search: query=%q input=%q active=%v",
-			outliner.SearchQuery(),
-			outliner.SearchInputValue(),
-			outliner.HasActiveSearch(),
-		)
 	}
 }
 

@@ -303,7 +303,6 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.DueDate = clonePointer(task.DueDate)
 	taskCopy.PinnedAt = clonePointer(task.PinnedAt)
 	taskCopy.Comments = clonePointerSlice(task.Comments)
-	taskCopy.Decisions = clonePointerSlice(task.Decisions)
 	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
 	taskCopy.SnoozedUntil = clonePointer(task.SnoozedUntil)
 	taskCopy.Checklist = append([]models.ChecklistItem{}, task.Checklist...)

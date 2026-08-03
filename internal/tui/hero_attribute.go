@@ -22,7 +22,7 @@ import (
 //
 // Hero precedence is urgency-only (first match wins):
 //  1. HeroOverdue   — task is past due
-//  2. HeroBlocked   — explicit waiting state OR incomplete dependencies
+//  2. HeroWaiting   — explicit Waiting lifecycle state
 //  3. HeroDueToday  — task is due today (and not yet overdue)
 //  4. HeroP1        — Priority == 1
 //
@@ -33,7 +33,7 @@ type HeroKind int
 const (
 	HeroNone HeroKind = iota
 	HeroOverdue
-	HeroBlocked
+	HeroWaiting
 	HeroDueToday
 	HeroP1
 )
@@ -42,7 +42,7 @@ const (
 // Returns HeroNone when no attribute qualifies (the row keeps current badge
 // styling; nothing is demoted) and for quiet states — completed, canceled,
 // tasks never claim the hero slot.
-func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
+func pickHeroAttribute(t *models.Task) HeroKind {
 	if t == nil {
 		return HeroNone
 	}
@@ -53,7 +53,7 @@ func pickHeroAttribute(t *models.Task, p *models.Project) HeroKind {
 		return HeroOverdue
 	}
 	if t.IsInState(models.StateWaiting) {
-		return HeroBlocked
+		return HeroWaiting
 	}
 	if t.IsDueToday() {
 		return HeroDueToday
@@ -77,7 +77,7 @@ func demoteBadge(badge string) string {
 }
 
 // statusIsHero reports whether the status badge is the hero for a given kind.
-func statusIsHero(h HeroKind) bool { return h == HeroBlocked }
+func statusIsHero(h HeroKind) bool { return h == HeroWaiting }
 
 // priorityIsHero reports whether the priority badge is the hero.
 func priorityIsHero(h HeroKind) bool { return h == HeroP1 }

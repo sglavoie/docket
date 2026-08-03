@@ -114,7 +114,7 @@ func modelsFromV6ProjectDocument(document V6ProjectDocument, location *time.Loca
 			Tags: append([]string(nil), record.Tags...), CreatedAt: record.CreatedAt,
 			UpdatedAt: record.UpdatedAt, CompletedAt: cloneProjectDocumentTime(record.CompletedAt),
 			Pinned: record.Pinned, PinnedAt: cloneProjectDocumentTime(record.PinnedAt),
-			Decisions: []*models.Decision{}, Children: []*models.Task{},
+			Children: []*models.Task{},
 		}
 		if record.ParentID != "" {
 			parentID := record.ParentID
@@ -179,12 +179,6 @@ func v6ProjectDocumentFromModel(project *models.Project) (V6ProjectDocument, err
 func v6TaskRecordFromModel(task *models.Task) (format.V6TaskRecord, error) {
 	if task == nil {
 		return format.V6TaskRecord{}, fmt.Errorf("schema-6 writer cannot persist a nil task")
-	}
-	if len(task.Decisions) > 0 {
-		return format.V6TaskRecord{}, fmt.Errorf(
-			"schema-6 writer refuses retired decision data on task %q (decisions=%d)",
-			task.ID, len(task.Decisions),
-		)
 	}
 	if !task.State().IsValid() {
 		return format.V6TaskRecord{}, fmt.Errorf("schema-6 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)

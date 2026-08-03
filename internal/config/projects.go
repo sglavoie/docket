@@ -34,17 +34,3 @@ func filterProjectRefSlice[T any](values []T, projectID func(T) string, keep fun
 	}
 	return filtered, changed
 }
-
-func filterProjectIDs(ids []string, keep func(string) bool) ([]string, bool) {
-	return filterProjectRefSlice(ids, func(id string) string { return id }, keep)
-}
-
-func filterProjectIDMap(projectIDs map[string][]string, keep func(string) bool) bool {
-	changed := false
-	for key, ids := range projectIDs {
-		var filtered bool
-		projectIDs[key], filtered = filterProjectIDs(ids, keep)
-		changed = filtered || changed
-	}
-	return changed
-}

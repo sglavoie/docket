@@ -21,7 +21,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		deletedProject := &models.Project{ID: "proj-deleted"}
 
 		// Populate in-memory lists with both valid and stale entries
-		app.nextOrder = []FocusTask{
+		app.nextOrder = []PlanningTask{
 			{Task: task1, Project: project},
 			{Task: deletedTask, Project: deletedProject},
 			{Task: task2, Project: project},
@@ -31,7 +31,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			taskIdentityFor(deletedTask, deletedProject): true,
 			taskIdentityFor(task2, project):              true,
 		}
-		app.today = []FocusTask{
+		app.today = []PlanningTask{
 			{Task: deletedTask, Project: deletedProject},
 		}
 		app.todayIDs = map[TaskIdentity]bool{
@@ -81,7 +81,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		addTestAppProject(app, otherProject)
 
 		// Put tasks from both projects in the focus queue
-		app.nextOrder = []FocusTask{
+		app.nextOrder = []PlanningTask{
 			{Task: task1, Project: project},
 			{Task: otherTask, Project: otherProject},
 		}
@@ -89,7 +89,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			taskIdentityFor(task1, project):          true,
 			taskIdentityFor(otherTask, otherProject): true,
 		}
-		app.today = []FocusTask{}
+		app.today = []PlanningTask{}
 		app.todayIDs = map[TaskIdentity]bool{}
 		app.pruneDeletedTaskRefs()
 
@@ -112,9 +112,9 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		app, project := newTestAppModelWithProject()
 		task1 := project.Tasks[0]
 
-		app.nextOrder = []FocusTask{{Task: task1, Project: project}}
+		app.nextOrder = []PlanningTask{{Task: task1, Project: project}}
 		app.nextOrderIDs = map[TaskIdentity]bool{taskIdentityFor(task1, project): true}
-		app.today = []FocusTask{}
+		app.today = []PlanningTask{}
 		app.todayIDs = map[TaskIdentity]bool{}
 		app.pruneDeletedTaskRefs()
 
@@ -130,9 +130,9 @@ func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
 
 	// Set up a task that will be "deleted"
 	deletedTask := &models.Task{ID: "will-be-deleted", Title: "Ghost"}
-	app.nextOrder = []FocusTask{{Task: deletedTask, Project: project}}
+	app.nextOrder = []PlanningTask{{Task: deletedTask, Project: project}}
 	app.nextOrderIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
-	app.today = []FocusTask{{Task: deletedTask, Project: project}}
+	app.today = []PlanningTask{{Task: deletedTask, Project: project}}
 	app.todayIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
 
 	msg := TaskDeletedMsg{Task: deletedTask}

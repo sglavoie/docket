@@ -52,8 +52,6 @@ var (
 	TitlePriority1Style = lipgloss.NewStyle().Foreground(ColorPriority1Title).Bold(true).Italic(true)
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
-	TitlePriority4Style = lipgloss.NewStyle().Foreground(ColorPriority4Title)
-	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title)
 
 	RuleKeywordStyle   = makeColorStyle(ColorRuleKeyword)
 	RuleOperatorStyle  = makeColorStyle(ColorRuleOperator)

@@ -82,10 +82,10 @@ func noteOperationApplicable(ctx CommandContext) bool {
 	return currentEntityIdentity(ctx).Kind == EntityKindNote
 }
 
-// noteOperationsBlockedByParseError lists the restored actions that need parsed
+// noteOperationsUnavailableWithParseError lists the restored actions that need parsed
 // note content. Open and delete stay available so a malformed note can still be
 // repaired or removed.
-var noteOperationsBlockedByParseError = map[OperationID]bool{
+var noteOperationsUnavailableWithParseError = map[OperationID]bool{
 	operationNoteMove: true,
 }
 
@@ -174,7 +174,7 @@ func (m *AppModel) executeNoteOperation(
 	if err != nil {
 		return OperationHandlerResult{Err: err}
 	}
-	if resolved.Note.ParseError != "" && noteOperationsBlockedByParseError[invocation.Descriptor.ID] {
+	if resolved.Note.ParseError != "" && noteOperationsUnavailableWithParseError[invocation.Descriptor.ID] {
 		return OperationHandlerResult{
 			Err: fmt.Errorf(
 				"%s is unavailable while %s has a parse error; edit the note to repair it",

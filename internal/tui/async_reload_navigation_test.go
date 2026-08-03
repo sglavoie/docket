@@ -115,7 +115,7 @@ func TestHandleWithRefreshDefersCrossReloadWhileCovered(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "covered")
 	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
-	pushTestPresentationOverlay(app, ViewTaskDetail)
+	pushTestPresentationOverlay(app, ViewTaskComments)
 
 	cmd := app.handleWithRefresh(false, true, "")
 
@@ -168,7 +168,7 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "back")
 	app, cross := newSession2OutlinerApp(t, dataDir, false, project)
-	pushTestPresentationOverlay(app, ViewTaskDetail)
+	pushTestPresentationOverlay(app, ViewTaskComments)
 	generation := cross.crossLoadGen
 
 	_, cmd := app.Update(BackMsg{})
@@ -308,7 +308,7 @@ func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testin
 
 	_ = cross.reloadCrossProjects()
 	generation := cross.crossLoadGen
-	pushTestPresentationOverlay(app, ViewTaskDetail)
+	pushTestPresentationOverlay(app, ViewTaskComments)
 
 	raw := cross.loadCrossProjectsCmd()()
 	loaded, ok := raw.(crossProjectsLoadedMsg)

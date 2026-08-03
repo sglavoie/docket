@@ -179,6 +179,31 @@ func TestBulkDeleteAcrossProjectsIsOneTransaction(t *testing.T) {
 	}
 }
 
+func TestBulkDeleteCanonicalizesNestedRoots(t *testing.T) {
+	parent := newTask("parent", 1, "parent")
+	child := newTask("child", 2, "child")
+	child.ParentID = &parent.ID
+	project := newProject("proj-1", "Alpha", parent, child)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	res, err := svc.BulkDelete(app.BulkDeleteRequest{
+		TaskIDs: []string{parent.ID, child.ID}, Confirm: true,
+	})
+	if err != nil {
+		t.Fatalf("BulkDelete: %v", err)
+	}
+	if len(res.RemovedRootRefs) != 1 || res.RemovedRootRefs[0] != "alpha:#1" {
+		t.Fatalf("RemovedRootRefs = %v, want only canonical parent root", res.RemovedRootRefs)
+	}
+	if len(res.RemovedTaskIDs) != 2 || len(res.RemovedTaskLocators) != 2 {
+		t.Fatalf("removed tasks = %v locators=%v, want parent and child once", res.RemovedTaskIDs, res.RemovedTaskLocators)
+	}
+	if len(repo.commits) != 1 || len(repo.commits[0]) != 1 {
+		t.Fatalf("nested delete commits = %v, want one atomic project changeset", repo.commits)
+	}
+}
+
 func TestBulkDeleteLocatorsDisambiguateDuplicateTaskIDs(t *testing.T) {
 	alphaTask := newTask("shared", 1, "alpha")
 	betaTask := newTask("shared", 1, "beta")

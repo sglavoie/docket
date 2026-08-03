@@ -46,7 +46,7 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 
 	rows := BuildTodayModeRows(OutlinerModeInput{
 		Projects: []*models.Project{alpha, beta},
-		TodayOrder: []FocusTask{
+		TodayOrder: []PlanningTask{
 			{Task: child, Project: alpha},
 			{Task: sameID, Project: beta},
 			{Task: parent, Project: alpha},
@@ -70,7 +70,7 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 
 	rows = BuildTodayModeRows(OutlinerModeInput{
 		Projects:       []*models.Project{alpha, beta},
-		TodayOrder:     []FocusTask{{Task: snoozed, Project: beta}},
+		TodayOrder:     []PlanningTask{{Task: snoozed, Project: beta}},
 		IncludeSnoozed: true,
 	})
 	if got := modeRowQualifiedIDs(rows); !slices.Equal(got, []string{"beta/snoozed"}) {
@@ -120,7 +120,7 @@ func TestPlanningModesHonorZoomCandidatesWithoutAddingAncestors(t *testing.T) {
 	input := OutlinerModeInput{
 		Projects:       []*models.Project{project},
 		CandidateTasks: map[string][]*models.Task{project.ID: {child}},
-		TodayOrder: []FocusTask{
+		TodayOrder: []PlanningTask{
 			{Task: parent, Project: project},
 			{Task: child, Project: project},
 		},

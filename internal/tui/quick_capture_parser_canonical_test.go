@@ -22,7 +22,7 @@ func TestParseQuickCaptureLegacyFormsRemainTitleText(t *testing.T) {
 	})
 }
 
-func TestParseQuickCaptureSemanticTaskMarkers(t *testing.T) {
+func TestParseQuickCaptureRetiredTaskTypeAndOrdinaryTags(t *testing.T) {
 	runQuickCaptureParseTests(t, []quickCaptureParseTestCase{
 		{name: "bug sigil retired", input: "^bug Fix crash", wantErr: true, errContains: "use #bug"},
 		{name: "case insensitive retired", input: "Plan launch ^EPIC", wantErr: true, errContains: "task type"},

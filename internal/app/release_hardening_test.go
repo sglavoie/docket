@@ -19,7 +19,7 @@ func TestReleasePlanningMaintenanceOperations(t *testing.T) {
 	project := newProject("project", "Project", nextOne, nextTwo, todayOne, todayTwo)
 	repo := newFakeRepo(project)
 	planning := config.NewPlanningState()
-	planning.NextOrder = []config.ProjectTaskLocator{
+	planning.Next = []config.ProjectTaskLocator{
 		{ProjectID: project.ID, TaskID: nextTwo.ID},
 		{ProjectID: project.ID, TaskID: nextOne.ID},
 	}
@@ -34,7 +34,7 @@ func TestReleasePlanningMaintenanceOperations(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("ReorderNext: %v", err)
 	}
-	if got, want := planningTaskIDs(planning.NextOrder), []string{nextOne.ID, nextTwo.ID}; !reflect.DeepEqual(got, want) {
+	if got, want := planningTaskIDs(planning.Next), []string{nextOne.ID, nextTwo.ID}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("Next order = %v, want %v", got, want)
 	}
 

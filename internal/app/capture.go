@@ -40,12 +40,6 @@ var captureDestinations = []CaptureDestination{
 	CaptureDestinationCanceled,
 }
 
-// AllCaptureDestinations returns the canonical destination vocabulary in UI
-// order.
-func AllCaptureDestinations() []CaptureDestination {
-	return append([]CaptureDestination(nil), captureDestinations...)
-}
-
 // ParseCaptureDestination resolves one exact case-insensitive destination.
 func ParseCaptureDestination(raw string) (CaptureDestination, bool) {
 	destination := CaptureDestination(strings.ToLower(strings.TrimSpace(raw)))
@@ -83,7 +77,7 @@ func InvalidCaptureDestinationError(raw string) error {
 		return fmt.Errorf("destination $maybe was removed (use $someday)")
 	case "complete", "completed":
 		return fmt.Errorf("destination $%s was removed (use $done)", value)
-	case "cancel", "cancelled":
+	case "cancel", "cancelled": //nolint:misspell // Intentional rejected-input alias.
 		return fmt.Errorf("destination $%s was removed (use $canceled)", value)
 	default:
 		values := make([]string, len(captureDestinations))
@@ -453,6 +447,8 @@ func normalizeCaptureDestination(destination CaptureDestination, child bool) (ca
 	case CaptureDestinationNext:
 		effect.today = PlanningTodayRemove
 		effect.next = PlanningNextAdd
+	default:
+		// Lifecycle-only destinations require no independent planning effect.
 	}
 	return effect, nil
 }

@@ -8,40 +8,40 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowTaskDetailMsg:
-		return m.handleShowTaskDetail(msg)
-
 	case ShowTaskCommentsMsg:
 		return m.handleShowTaskComments(msg)
 
 	case ShowTaskChecklistMsg:
 		return m.handleShowTaskChecklist(msg)
 
-	case ShowTaskDecisionsMsg:
-		return m.handleShowTaskDecisions(msg)
-
-	case TaskDetailTabChangedMsg:
-		return true, m.syncTaskDetailTab(msg.Tab)
 	}
 	return false, nil
 }
 
-// handleShowTaskDetail handles the ShowTaskDetailMsg.
-func (m *AppModel) handleShowTaskDetail(msg ShowTaskDetailMsg) (bool, tea.Cmd) {
-	return true, m.activateTaskDetail(msg.Task, msg.Project, TaskOverview)
-}
-
 // handleShowTaskComments handles the ShowTaskCommentsMsg.
 func (m *AppModel) handleShowTaskComments(msg ShowTaskCommentsMsg) (bool, tea.Cmd) {
-	return true, m.activateTaskDetail(msg.Task, msg.Project, TaskComments)
+	if msg.Task == nil || msg.Project == nil {
+		return true, nil
+	}
+	view := NewTaskCommentsModelWithEditor(
+		msg.Task,
+		msg.Project,
+		"",
+		m.secondaryFeatures.Subview,
+	)
+	return m.showViewInit(ViewTaskComments, view)
 }
 
 // handleShowTaskChecklist handles the ShowTaskChecklistMsg.
 func (m *AppModel) handleShowTaskChecklist(msg ShowTaskChecklistMsg) (bool, tea.Cmd) {
-	return true, m.activateTaskDetail(msg.Task, msg.Project, TaskChecklist)
-}
-
-// handleShowTaskDecisions handles the ShowTaskDecisionsMsg.
-func (m *AppModel) handleShowTaskDecisions(msg ShowTaskDecisionsMsg) (bool, tea.Cmd) {
-	return true, m.activateTaskDetail(msg.Task, msg.Project, TaskDecisions)
+	if msg.Task == nil || msg.Project == nil {
+		return true, nil
+	}
+	view := NewTaskChecklistModelWithEditor(
+		msg.Task,
+		msg.Project,
+		"",
+		m.secondaryFeatures.Subview,
+	)
+	return m.showViewInit(ViewTaskChecklist, view)
 }

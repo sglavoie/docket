@@ -15,29 +15,19 @@ const (
 )
 
 type inlinePeekOptions struct {
-	Task     *models.Task
-	Project  *models.Project
-	Projects []*models.Project
-	Indent   string
-	Width    int
-}
-
-type taskRelationship struct {
-	Task    *models.Task
-	Project *models.Project
+	Task   *models.Task
+	Indent string
+	Width  int
 }
 
 func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, width int) []string {
 	if m == nil || !row.isTaskRow() {
 		return nil
 	}
-	project := m.resolveProjectForRow(row)
 	return inlinePeekLines(inlinePeekOptions{
-		Task:     row.task,
-		Project:  project,
-		Projects: m.relationshipProjects(project),
-		Indent:   indent,
-		Width:    width,
+		Task:   row.task,
+		Indent: indent,
+		Width:  width,
 	})
 }
 
@@ -45,20 +35,10 @@ func (m *OutlinerModel) inlinePeekLineCount(row outlinerRow, width int) int {
 	return len(m.inlinePeekLinesForRow(row, "", max(width, 1)))
 }
 
-func (m *OutlinerModel) relationshipProjects(owner *models.Project) []*models.Project {
-	if m == nil {
-		return nil
-	}
-	if m.project != nil {
-		return []*models.Project{m.project}
-	}
-	return uniqueRelationshipProjects(owner, m.loadedProjects)
-}
-
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
 // contains only richer content plus tags: description, attachment names,
-// decision counts, checklist items, and dependency names.
+// comments, and checklist items.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
@@ -72,8 +52,8 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 		lines = append(lines, opts.Indent+MutedStyle.Render(attachments))
 	}
 
-	if decisions := inlinePeekDecisionCountLine(opts.Task, available); decisions != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(decisions))
+	if comments := inlinePeekCommentsLine(opts.Task, available); comments != "" {
+		lines = append(lines, opts.Indent+MutedStyle.Render(comments))
 	}
 
 	if tags := inlinePeekTagsLine(opts.Task, available); tags != "" {
@@ -82,11 +62,6 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 
 	if checklist := inlinePeekChecklistLine(opts.Task, available); checklist != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(checklist))
-	}
-
-	needs, blocks := taskRelationships(opts.Task, opts.Project, opts.Projects)
-	if dependencies := inlinePeekDependencyLine(needs, blocks, opts.Project, available); dependencies != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(dependencies))
 	}
 
 	if len(lines) == 0 {
@@ -120,11 +95,11 @@ func inlinePeekAttachmentsLine(task *models.Task, width int) string {
 	return truncateIntentional("Attachments: "+strings.Join(parts, " · "), width, "…")
 }
 
-func inlinePeekDecisionCountLine(task *models.Task, width int) string {
-	if task == nil || len(task.Decisions) == 0 || width <= 0 {
+func inlinePeekCommentsLine(task *models.Task, width int) string {
+	if task == nil || len(task.Comments) == 0 || width <= 0 {
 		return ""
 	}
-	return truncateIntentional(fmt.Sprintf("Decisions: %d", len(task.Decisions)), width, "…")
+	return truncateIntentional(fmt.Sprintf("Comments: %d", len(task.Comments)), width, "…")
 }
 
 func inlinePeekTagsLine(task *models.Task, width int) string {
@@ -195,65 +170,4 @@ func inlinePeekChecklistLine(task *models.Task, width int) string {
 		parts = append(parts, marker+" "+strings.TrimSpace(item.Text))
 	}
 	return truncateIntentional("Checklist: "+strings.Join(parts, " · "), width, "…")
-}
-
-func inlinePeekDependencyLine(
-	needs, blocks []taskRelationship,
-	owner *models.Project,
-	width int,
-) string {
-	if width <= 0 || (len(needs) == 0 && len(blocks) == 0) {
-		return ""
-	}
-
-	parts := make([]string, 0, 2)
-	if len(needs) > 0 {
-		parts = append(parts, "Needs: "+relationshipLabels(needs, owner))
-	}
-	if len(blocks) > 0 {
-		parts = append(parts, "Blocks: "+relationshipLabels(blocks, owner))
-	}
-	return truncateIntentional(strings.Join(parts, " · "), width, "…")
-}
-
-func relationshipLabels(relationships []taskRelationship, owner *models.Project) string {
-	labels := make([]string, 0, len(relationships))
-	for _, relationship := range relationships {
-		if relationship.Task == nil {
-			continue
-		}
-		label := relationship.Task.Title
-		if relationship.Project != nil && owner != nil && relationship.Project.ID != owner.ID {
-			projectLabel := strings.TrimSpace(relationship.Project.Slug)
-			if projectLabel == "" {
-				projectLabel = strings.TrimSpace(relationship.Project.Name)
-			}
-			if projectLabel != "" {
-				label = "[" + projectLabel + "] " + label
-			}
-		}
-		labels = append(labels, label)
-	}
-	return strings.Join(labels, ", ")
-}
-
-func taskRelationships(
-	task *models.Task,
-	owner *models.Project,
-	projects []*models.Project,
-) (needs, blocks []taskRelationship) {
-	return nil, nil
-}
-
-func uniqueRelationshipProjects(owner *models.Project, projects []*models.Project) []*models.Project {
-	all := make([]*models.Project, 0, len(projects)+1)
-	seen := make(map[string]bool, len(projects)+1)
-	for _, project := range append([]*models.Project{owner}, projects...) {
-		if project == nil || project.ID == "" || seen[project.ID] {
-			continue
-		}
-		seen[project.ID] = true
-		all = append(all, project)
-	}
-	return all
 }

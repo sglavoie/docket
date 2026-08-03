@@ -73,9 +73,9 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		height:               40,
 		views:                NewViewRegistry(),
 		currentProject:       projects[0],
-		nextOrder:            []FocusTask{},
+		nextOrder:            []PlanningTask{},
 		nextOrderIDs:         make(map[TaskIdentity]bool),
-		today:                []FocusTask{},
+		today:                []PlanningTask{},
 		todayIDs:             make(map[TaskIdentity]bool),
 		operationRegistry:    NewOperationRegistry(),
 		navigation:           NewNavigationState(),
@@ -124,7 +124,7 @@ func seedNextOrderOrder(t *testing.T, m *AppModel, locators ...config.ProjectTas
 		items[i] = config.ProjectTaskLocator{TaskID: loc.TaskID, ProjectID: loc.ProjectID}
 	}
 	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
-		p.SetNextOrder(items)
+		p.SetNext(items)
 	}); err != nil {
 		t.Fatalf("seed focus queue order: %v", err)
 	}
@@ -154,8 +154,8 @@ func diskNextOrderIDs(t *testing.T, dataDir string) []string {
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	ids := make([]string, 0, len(planning.GetNextOrder()))
-	for _, item := range planning.GetNextOrder() {
+	ids := make([]string, 0, len(planning.GetNext()))
+	for _, item := range planning.GetNext() {
 		ids = append(ids, item.TaskID)
 	}
 	return ids
@@ -352,14 +352,16 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 // relative to the requested pair.
 func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 	t.Run("filtered Next swaps visible neighbors, not the hidden middle task", func(t *testing.T) {
-		// Durable focus queue: keep-one, hide-me, keep-two. A search filter hides
+		// Durable focus queue: keep-one, hide-me, keep-two. A tag facet hides
 		// the middle task, so keep-one's visible neighbor is keep-two.
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-fnext", "fnext", "keep-one", "hide-me", "keep-two")
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedNextOrderOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		cross.SetSearchQuery("keep")
+		tasks[0].Tags = []string{"keep"}
+		tasks[2].Tags = []string{"keep"}
+		cross.filter.Tags = map[string]bool{"keep": true}
 		enterCrossMode(cross, ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
@@ -389,7 +391,9 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		seedTodayOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		cross.SetSearchQuery("keep")
+		tasks[0].Tags = []string{"keep"}
+		tasks[2].Tags = []string{"keep"}
+		cross.filter.Tags = map[string]bool{"keep": true}
 		enterCrossMode(cross, ModeToday)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
@@ -446,7 +450,8 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		seedNextOrderOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		cross.SetSearchQuery("keep")
+		tasks[0].Tags = []string{"keep"}
+		cross.filter.Tags = map[string]bool{"keep": true}
 		enterCrossMode(cross, ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 1 {
@@ -473,7 +478,9 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	}
 	m, cross, dataDir := newPlanningOrderApp(t, project)
 	cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
-	cross.SetSearchQuery("keep")
+	tasks[0].Tags = []string{"keep"}
+	tasks[2].Tags = []string{"keep"}
+	cross.filter.Tags = map[string]bool{"keep": true}
 	enterCrossMode(cross, ModeBacklog)
 	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 		t.Fatal("cursor did not land on keep-one")

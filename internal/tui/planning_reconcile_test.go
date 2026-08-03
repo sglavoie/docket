@@ -29,6 +29,7 @@ type planningReconcileEnv struct {
 	taskID        string
 }
 
+//nolint:govet // Independent seed operations use scoped errors before the final runtime load.
 func newPlanningReconcileEnv(t *testing.T, state models.WorkflowState) *planningReconcileEnv {
 	t.Helper()
 	dataDir := t.TempDir()
@@ -171,8 +172,8 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		}
 
 		planning := env.reloadPlanning(t)
-		if len(planning.GetNextOrder()) != 0 {
-			t.Fatalf("focus queue after leaving Next = %+v, want empty (stale order dropped)", planning.GetNextOrder())
+		if len(planning.GetNext()) != 0 {
+			t.Fatalf("focus queue after leaving Next = %+v, want empty (stale order dropped)", planning.GetNext())
 		}
 	})
 }
@@ -273,7 +274,7 @@ func diskNextOrderLen(t *testing.T, dataDir string) int {
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	return len(planning.GetNextOrder())
+	return len(planning.GetNext())
 }
 
 func diskTodayLen(t *testing.T, dataDir string) int {

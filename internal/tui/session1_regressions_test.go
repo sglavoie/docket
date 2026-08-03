@@ -205,7 +205,7 @@ func TestChecklistCopyAllClipboardError(t *testing.T) {
 	}
 }
 
-func TestCommentsAndDecisionsCopyAllIncludeEveryRecord(t *testing.T) {
+func TestCommentsCopyAllIncludesEveryRecord(t *testing.T) {
 	project, err := models.NewProject("cd-project", "CD", t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -216,8 +216,6 @@ func TestCommentsAndDecisionsCopyAllIncludeEveryRecord(t *testing.T) {
 	}
 	task.AddComment("first comment")
 	task.AddComment("second comment")
-	task.AddDecision("first decision", "why")
-	task.AddDecision("second decision", "why2")
 	project.Tasks = []*models.Task{task}
 
 	coords := newTestSecondaryCoordinators(project)
@@ -230,17 +228,6 @@ func TestCommentsAndDecisionsCopyAllIncludeEveryRecord(t *testing.T) {
 		want := strings.Join([]string{"1. first comment", "2. second comment"}, "\n")
 		if captured != want {
 			t.Fatalf("comments copy-all mismatch:\n got: %q\nwant: %q", captured, want)
-		}
-	})
-
-	t.Run("decisions", func(t *testing.T) {
-		var captured string
-		withFakeClipboard(t, nil, &captured)
-		dm := NewTaskDecisionsModelWithEditor(task, project, "", coords.Subview)
-		dm.copyAllDecisionsText()
-		want := strings.Join([]string{"1. first decision", "2. second decision"}, "\n")
-		if captured != want {
-			t.Fatalf("decisions copy-all mismatch:\n got: %q\nwant: %q", captured, want)
 		}
 	})
 }
@@ -263,41 +250,5 @@ func TestCommentsCopyAllEmptyNothingToCopy(t *testing.T) {
 	}
 	if cm.statusMessage != "Nothing to copy" {
 		t.Fatalf("expected 'Nothing to copy', got %q", cm.statusMessage)
-	}
-}
-
-// TestTaskDetailDelegatesChildConfirmDialog verifies that a child tab's active
-// confirmation is surfaced through the TaskDetail wrapper so the App shell
-// renders it, and that IsConfirmActive reports the child's active dialog.
-func TestTaskDetailDelegatesChildConfirmDialog(t *testing.T) {
-	model, _, _ := newConsolidatedTaskDetailFixture(t)
-	model.SetSize(80, 28)
-	model.SetTab(TaskChecklist)
-
-	if model.IsConfirmActive() {
-		t.Fatal("no confirmation should be active initially")
-	}
-	if cd := model.GetConfirmDialog(); cd != nil && cd.IsActive() {
-		t.Fatal("no confirmation dialog should be active initially")
-	}
-
-	// Trigger the checklist delete confirmation through the detail wrapper.
-	model.Update(syntheticKey('d'))
-
-	if !model.IsConfirmActive() {
-		t.Fatal("expected child checklist delete confirmation to be active")
-	}
-	cd := model.GetConfirmDialog()
-	if cd == nil || !cd.IsActive() {
-		t.Fatal("expected GetConfirmDialog to surface the active child dialog")
-	}
-	if cd.Action() != "delete" {
-		t.Fatalf("expected delete action, got %q", cd.Action())
-	}
-
-	// Esc dismisses the child confirmation without popping the detail view.
-	model.Update(syntheticSpecialKey(tea.KeyEscape))
-	if model.IsConfirmActive() {
-		t.Fatal("expected Esc to cancel the child confirmation")
 	}
 }

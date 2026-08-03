@@ -29,8 +29,7 @@ func presentationScope(view PresentationID) RouteScope {
 	switch view {
 	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewContextHub, ViewProjectHub:
 		return ScopeApp
-	case ViewTaskComments, ViewTaskDecisions, ViewTaskChecklist, ViewTaskDetail,
-		ViewTaskAttachments:
+	case ViewTaskComments, ViewTaskChecklist, ViewTaskAttachments:
 		return ScopeTask
 	default:
 		return ScopeProject

@@ -67,8 +67,8 @@ type PlanningReconcileRequest struct {
 	Remove        []TaskLocator
 	Moves         []PlanningProjectMove
 	Complete      bool
-	NextOrder     []TaskLocator
-	SetNextOrder  bool
+	Next          []TaskLocator
+	SetNext       bool
 	TodayOrder    []TaskLocator
 	SetTodayOrder bool
 	ClearToday    bool
@@ -166,11 +166,11 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 	if req.ClearToday {
 		planning.Today = nil
 	}
-	if req.SetNextOrder {
+	if req.SetNext {
 		// Reordering never confers membership. Unknown or stale caller entries
 		// are ignored while existing members omitted by the caller stay at the
 		// end in their prior relative order.
-		planning.Next = reorderPlanningRefs(planning.GetNext(), req.NextOrder)
+		planning.Next = reorderPlanningRefs(planning.GetNext(), req.Next)
 	}
 	if req.SetTodayOrder {
 		planning.Today = reorderPlanningRefs(planning.Today, req.TodayOrder)

@@ -2,15 +2,13 @@ package tui
 
 import (
 	"testing"
-
-	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func TestQuickCaptureDestinationSuggestionsIncludeAllDestinations(t *testing.T) {
 	q := &quickCaptureInput{}
 	suggestions := q.getDestinationSuggestions("")
 
-	want := textgrammar.DestinationNames()
+	want := captureDestinationNamesForTest()
 	if len(suggestions) != len(want) {
 		t.Fatalf("got %d suggestions, want %d", len(suggestions), len(want))
 	}

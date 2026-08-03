@@ -19,9 +19,9 @@ type v6MigrationActivationPlan struct {
 	machinePath string
 }
 
-type v6MigrationActivationTestHooks struct {
-	snapshot               *preConsolidationV6SnapshotHooks
-	afterSnapshotPublished func(*PreConsolidationV6Snapshot)
+type v6MigrationActivationHooks interface {
+	snapshotCreationHooks() *preConsolidationV6SnapshotHooks
+	didPublishSnapshot(*PreConsolidationV6Snapshot)
 }
 
 // MigrateWorkspaceToV6 activates schema 6 at the guarded startup boundary.
@@ -29,7 +29,8 @@ func (m *Manager) MigrateWorkspaceToV6() error {
 	return m.migrateWorkspaceToV6(nil)
 }
 
-func (m *Manager) migrateWorkspaceToV6(hooks *v6MigrationActivationTestHooks) error {
+//nolint:govet // Each guarded migration stage keeps its error scope local.
+func (m *Manager) migrateWorkspaceToV6(hooks v6MigrationActivationHooks) error {
 	if m == nil {
 		return fmt.Errorf("configuration manager is required")
 	}
@@ -96,7 +97,7 @@ func (m *Manager) migrateWorkspaceToV6(hooks *v6MigrationActivationTestHooks) er
 
 	var snapshotHooks *preConsolidationV6SnapshotHooks
 	if hooks != nil {
-		snapshotHooks = hooks.snapshot
+		snapshotHooks = hooks.snapshotCreationHooks()
 	}
 	snapshot, err := createPreConsolidationV6Snapshot(
 		PreConsolidationV6SnapshotOptions{DataDir: dataDir},
@@ -113,8 +114,8 @@ func (m *Manager) migrateWorkspaceToV6(hooks *v6MigrationActivationTestHooks) er
 	if err := compareV6SnapshotResultInventory(snapshot, expectedInventory); err != nil {
 		return v6MigrationAfterSnapshotError(snapshot, err)
 	}
-	if hooks != nil && hooks.afterSnapshotPublished != nil {
-		hooks.afterSnapshotPublished(snapshot)
+	if hooks != nil {
+		hooks.didPublishSnapshot(snapshot)
 	}
 	currentInventory, err := inventoryPreConsolidationV6(dataDir, preflightPlan.machinePath, false)
 	if err != nil {
@@ -186,6 +187,7 @@ func compareV6SnapshotResultInventory(
 	return nil
 }
 
+//nolint:govet // Builder operations use scoped errors while the source-plan error remains available.
 func buildV6MigrationActivationPlan(options V6WorkspaceDryRunOptions) (v6MigrationActivationPlan, error) {
 	plan, err := DryRunV6WorkspaceConversion(options)
 	if err != nil {

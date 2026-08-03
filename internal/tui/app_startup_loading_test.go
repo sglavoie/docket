@@ -23,7 +23,7 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 		Tasks: []*models.Task{},
 	}
 	setTestProjects(runtime, []*models.Project{project})
-	runtime.Planning().SetNextOrder([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: "task-next"}})
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: "task-next"}})
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
 		ProjectID: project.ID,
 		TaskID:    "task-today",
@@ -110,11 +110,11 @@ func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
 			CreatedAt: now, UpdatedAt: now,
 		},
 		{
-			ID: "system-inbox", Slug: config.SystemInboxSlug, Name: config.SystemInboxName, Context: "personal",
+			ID: "system-inbox", Slug: config.SystemUnfiledSlug, Name: config.SystemUnfiledName, Context: "personal",
 			CreatedAt: now, UpdatedAt: now, ColorSlot: 1,
 		},
 	}
-	catalog.SystemInboxProjectID = "system-inbox"
+	catalog.SystemUnfiledProjectID = "system-inbox"
 	if err := store.SaveCatalog(catalog); err != nil {
 		t.Fatalf("SaveCatalog: %v", err)
 	}

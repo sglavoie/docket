@@ -91,13 +91,6 @@ func TestSharedParserAdvertisesExactlySixCaptureSigils(t *testing.T) {
 	}
 }
 
-func TestTaskMarkerNamesComeFromModelOrder(t *testing.T) {
-	want := []string{"epic", "story", "bug", "idea"}
-	if got := TaskMarkerNames(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("TaskMarkerNames() = %v, want %v", got, want)
-	}
-}
-
 func TestRetiredLifecycleFormsRemainLiteralText(t *testing.T) {
 	parsed := Parse("Build API /next status:todo", SurfaceCapture)
 	if parsed.Text != "Build API /next status:todo" || len(parsed.Tokens) != 0 {
@@ -181,9 +174,31 @@ func TestParsePriority(t *testing.T) {
 	}
 }
 
+func TestPriorityTokenSurfaceBoundary(t *testing.T) {
+	capture := Parse("Task !0 !1 !4", SurfaceCapture)
+	if got := capture.TokensFor(FieldPriority); len(got) != 2 || got[0].Value != "1" || got[1].Value != "4" {
+		t.Fatalf("capture priority tokens = %+v, want !1 plus retired !4 for error guidance", got)
+	}
+	if capture.Text != "Task !0" {
+		t.Fatalf("capture text = %q, want mutation-only !0 preserved", capture.Text)
+	}
+
+	edit := Parse("Task !0 !3 !4", SurfaceEdit)
+	if got := edit.TokensFor(FieldPriority); len(got) != 3 || got[0].Value != "0" || got[1].Value != "3" || got[2].Value != "4" {
+		t.Fatalf("edit priority tokens = %+v, want !0 and !3 plus retired !4", got)
+	}
+	if edit.Text != "Task" {
+		t.Fatalf("edit text = %q, want priority tokens extracted", edit.Text)
+	}
+}
+
 func TestCaptureDestinationNamesAreExactAndOrdered(t *testing.T) {
 	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "someday", "done", "canceled"}
-	if got := DestinationNames(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("DestinationNames() = %v, want %v", got, want)
+	definition, ok := DefinitionFor(SurfaceCapture, FieldDestination)
+	if !ok {
+		t.Fatal("capture destination definition is missing")
+	}
+	if got := definition.Values; !reflect.DeepEqual(got, want) {
+		t.Fatalf("capture destination values = %v, want %v", got, want)
 	}
 }

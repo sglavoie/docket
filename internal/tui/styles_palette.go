@@ -8,7 +8,7 @@ import (
 
 // Semantic color contract:
 // Green (ColorSuccess) = completion, positive state (done tasks, diffs added)
-// Red   (ColorError)   = danger, critical, overdue, blocked
+// Red   (ColorError)   = danger, critical, overdue, waiting
 // Yellow(ColorWarning) = caution, due soon, attention needed
 // Blue  (ColorPrimary) = information, navigation, neutral emphasis
 // Gray  (ColorMuted)   = disabled, inactive, secondary
@@ -50,14 +50,13 @@ var (
 	ColorProgressEmpty   = lipgloss.Color("#565f89") // dark-theme default; set by rebuildPalette
 
 	// View accent colors — one per pipeline stage for spatial orientation.
-	AccentDashboard = lipgloss.Color("#7aa2f7") // blue (dashboard)
-	AccentCapture   = lipgloss.Color("#f7768e") // coral (Capture stage)
-	AccentTriage    = lipgloss.Color("#7dcfff") // sky blue (Triage stage)
-	AccentPlan      = lipgloss.Color("#9ece6a") // green (Plan stage)
-	AccentWork      = lipgloss.Color("#ff9e64") // orange (Work stage)
-	AccentExecute   = lipgloss.Color("#73daca") // teal (legacy Execute accent retained for project work views)
-	AccentSupport   = lipgloss.Color("#565f89") // muted gray (Support stage)
-	AccentSearch    = lipgloss.Color("#bb9af7") // purple (search/command)
+	AccentCapture = lipgloss.Color("#f7768e") // coral (Capture stage)
+	AccentTriage  = lipgloss.Color("#7dcfff") // sky blue (Triage stage)
+	AccentPlan    = lipgloss.Color("#9ece6a") // green (Plan stage)
+	AccentWork    = lipgloss.Color("#ff9e64") // orange (Work stage)
+	AccentExecute = lipgloss.Color("#73daca") // teal (legacy Execute accent retained for project work views)
+	AccentSupport = lipgloss.Color("#565f89") // muted gray (Support stage)
+	AccentSearch  = lipgloss.Color("#bb9af7") // purple (search/command)
 
 )
 

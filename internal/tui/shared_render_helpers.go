@@ -168,14 +168,3 @@ func checklistCounts(task *models.Task) (int, int) {
 	}
 	return completed, len(task.Checklist)
 }
-
-func renderDependencyIndicatorCounts(needs, blocks int) string {
-	var parts []string
-	if needs > 0 {
-		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("→%d", needs)))
-	}
-	if blocks > 0 {
-		parts = append(parts, DependencyStyle.Render(fmt.Sprintf("←%d", blocks)))
-	}
-	return strings.Join(parts, " ")
-}

@@ -96,6 +96,83 @@ func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 	}
 }
 
+func TestCompletionAgeFacetUsesLocalCalendarDaysAndRejectsInvalidTimestamps(t *testing.T) {
+	location := time.FixedZone("cleanup-local", -6*60*60)
+	now := time.Date(2026, time.August, 3, 0, 15, 0, 0, location)
+	sevenLocalDaysAgo := time.Date(2026, time.July, 27, 23, 59, 0, 0, location)
+	justSixLocalDaysAgoUTC := time.Date(2026, time.July, 28, 12, 30, 0, 0, time.UTC)
+	zero := time.Time{}
+
+	filter := newFilterState()
+	filter.setCompletionAgeFilter(CompletionAge7Days, true)
+	oldEnough := &models.Task{ID: "old", WorkflowState: models.StateDone, CompletedAt: &sevenLocalDaysAgo}
+	tooRecent := &models.Task{ID: "recent", WorkflowState: models.StateDone, CompletedAt: &justSixLocalDaysAgoUTC}
+	missing := &models.Task{ID: "missing", WorkflowState: models.StateDone}
+	zeroTimestamp := &models.Task{ID: "zero", WorkflowState: models.StateCanceled, CompletedAt: &zero}
+
+	if !passesCommonFiltersAt(oldEnough, &filter, now) {
+		t.Fatal("completion on the seventh local calendar day should match")
+	}
+	if passesCommonFiltersAt(tooRecent, &filter, now) {
+		t.Fatal("UTC timestamp on the sixth local calendar day should not match")
+	}
+	if passesCommonFiltersAt(missing, &filter, now) || passesCommonFiltersAt(zeroTimestamp, &filter, now) {
+		t.Fatal("cleanup facet matched a task without a valid CompletedAt")
+	}
+
+	filter.setCompletionAgeFilter(CompletionAgeAll, true)
+	if !passesCommonFiltersAt(tooRecent, &filter, now) {
+		t.Fatal("all ages should remove the cutoff for a valid CompletedAt")
+	}
+	if passesCommonFiltersAt(missing, &filter, now) {
+		t.Fatal("all ages should still exclude a missing CompletedAt")
+	}
+	if got := commonFilterParts(&filter); len(got) != 1 || got[0] != "completed:all" {
+		t.Fatalf("completion-age badge = %v, want completed:all", got)
+	}
+}
+
+func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testing.T) {
+	now := time.Now()
+	old := now.AddDate(0, 0, -45)
+	recent := now.AddDate(0, 0, -5)
+	doneOld := filterFacetTask("done-old", models.StateDone, 0, nil, nil, nil)
+	doneOld.CompletedAt = &old
+	doneRecent := filterFacetTask("done-recent", models.StateDone, 0, nil, nil, nil)
+	doneRecent.CompletedAt = &recent
+	canceledOld := filterFacetTask("canceled-old", models.StateCanceled, 0, nil, nil, nil)
+	canceledOld.CompletedAt = &old
+	invalidDone := filterFacetTask("done-invalid", models.StateDone, 0, nil, nil, nil)
+	ready := filterFacetTask("ready", models.StateBacklog, 0, nil, nil, nil)
+	project := primaryRowsProject("cleanup", doneOld, doneRecent, canceledOld, invalidDone, ready)
+	outliner := scopeTestOutliner(project)
+	outliner.filter.setCompletionAgeFilter(CompletionAge30Days, true)
+	outliner.rebuildRows()
+
+	if visible := visibleOutlinerTaskIDs(outliner); len(visible) != 0 {
+		t.Fatalf("fc without fs exposed cleanup records: %v", visible)
+	}
+	doneOnly, err := models.NewWorkflowStateSet(models.StateDone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outliner.filter.setStateFilter(doneOnly, true)
+	outliner.rebuildRows()
+	if visible := visibleOutlinerTaskIDs(outliner); !visible[doneOld.ID] || len(visible) != 1 {
+		t.Fatalf("Done + 30-day cleanup projection = %v, want only old Done", visible)
+	}
+	both, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outliner.filter.setStateFilter(both, true)
+	outliner.rebuildRows()
+	visible := visibleOutlinerTaskIDs(outliner)
+	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
+		t.Fatalf("Done+Canceled + 30-day cleanup projection = %v, want both old terminal tasks", visible)
+	}
+}
+
 func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	alpha := primaryRowsProject("alpha", filterFacetTask("alpha-task", models.StateBacklog, 1, []string{"alpha"}, nil, nil))
 	beta := primaryRowsProject("beta", filterFacetTask("beta-task", models.StateWaiting, 2, []string{"beta"}, nil, nil))
@@ -109,11 +186,11 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"alpha": true}
 	outliner.filter.DueDate = DueDateNone
-	outliner.filter.Blocked = true
+	outliner.filter.setCompletionAgeFilter(CompletionAge30Days, true)
 	outliner.filter.Snoozed = true
 
 	outliner.selectOutlinerMode(ModeDue)
-	if outliner.filter.Priority != 2 || !outliner.filter.Blocked || !outliner.filter.Snoozed {
+	if outliner.filter.Priority != 2 || !outliner.filter.Snoozed {
 		t.Fatalf("mode change reset facets: %+v", outliner.filter.CommonFilterState)
 	}
 
@@ -122,7 +199,8 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 		!outliner.filter.Tags["alpha"] ||
 		!outliner.filter.States.Equal(states) ||
 		outliner.filter.DueDate != DueDateNone ||
-		!outliner.filter.Blocked ||
+		!outliner.filter.hasCompletionAgeFilter() ||
+		outliner.filter.CompletionAge != CompletionAge30Days ||
 		!outliner.filter.Snoozed {
 		t.Fatalf("project scope entry reset facets: %+v", outliner.filter.CommonFilterState)
 	}
@@ -132,15 +210,14 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	// pop back to the base scope.
 	outliner.filter.Priority = models.PriorityMedium
 	outliner.filter.Tags = map[string]bool{"beta": true}
-	outliner.filter.Blocked = false
 	outliner.pushProjectScope(beta.ID)
-	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] || outliner.filter.Blocked {
+	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] {
 		t.Fatalf("project focus replacement reset facets: %+v", outliner.filter.CommonFilterState)
 	}
 	if !outliner.popProjectScope() {
 		t.Fatal("project scope did not pop")
 	}
-	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] || outliner.filter.Blocked {
+	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] {
 		t.Fatalf("project scope pop restored stale facets: %+v", outliner.filter.CommonFilterState)
 	}
 }
@@ -155,7 +232,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	outliner.filter.setStateFilter(liveStates, true)
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"live": true}
-	outliner.filter.Blocked = true
+	outliner.filter.setCompletionAgeFilter(CompletionAge7Days, true)
 
 	legacyStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
@@ -173,7 +250,8 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	if !outliner.filter.States.Equal(liveStates) ||
 		outliner.filter.Priority != 2 ||
 		!outliner.filter.Tags["live"] ||
-		!outliner.filter.Blocked ||
+		!outliner.filter.hasCompletionAgeFilter() ||
+		outliner.filter.CompletionAge != CompletionAge7Days ||
 		outliner.filter.Snoozed ||
 		outliner.filter.Pinned {
 		t.Fatalf("legacy route restored session-only facets: %+v", outliner.filter.CommonFilterState)

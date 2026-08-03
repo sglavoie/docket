@@ -42,6 +42,35 @@ func ValidateTag(tag string) error {
 	return nil
 }
 
+// NormalizeTaskTag applies ordinary tag normalization and validation. Every
+// valid tag is independent; semantic presentation tags receive no storage-time
+// canonicalization or exclusivity treatment.
+func NormalizeTaskTag(raw string) (string, error) {
+	tag := NormalizeTag(raw)
+	if err := ValidateTag(tag); err != nil {
+		return "", err
+	}
+	return tag, nil
+}
+
+// NormalizeTaskTags validates and de-duplicates a complete ordinary tag set.
+func NormalizeTaskTags(tags []string) ([]string, error) {
+	normalized := make([]string, 0, len(tags))
+	seen := make(map[string]bool, len(tags))
+	for _, raw := range tags {
+		tag, err := NormalizeTaskTag(raw)
+		if err != nil {
+			return nil, err
+		}
+		if seen[tag] {
+			continue
+		}
+		seen[tag] = true
+		normalized = append(normalized, tag)
+	}
+	return normalized, nil
+}
+
 // AddTag adds a tag if not already present. The tag is normalized (trimmed)
 // before storing. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {

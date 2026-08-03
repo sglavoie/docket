@@ -10,9 +10,7 @@ func (m *OutlinerModel) ActiveFilterCount() int {
 }
 
 // activeFilterParts returns the list of active filter description strings
-// (type, state, priority, tags, due date, attrs, actionable,
-// hide-dimmed). commonFilterParts already emits "actionable" for Actionable, so it
-// must not be re-appended here.
+// (state, priority, tags, due date, completion age, snoozed, and pinned).
 func (m *OutlinerModel) activeFilterParts() []string {
 	return commonFilterParts(&m.filter.CommonFilterState)
 }

@@ -79,9 +79,9 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		height:               24,
 		views:                NewViewRegistry(),
 		currentProject:       project,
-		nextOrder:            []FocusTask{},
+		nextOrder:            []PlanningTask{},
 		nextOrderIDs:         make(map[TaskIdentity]bool),
-		today:                []FocusTask{},
+		today:                []PlanningTask{},
 		todayIDs:             make(map[TaskIdentity]bool),
 	}
 	appModel.showView(ViewCrossProjectOutliner, &invariantQueueView{taskID: task.ID, project: project})
@@ -91,7 +91,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 func (m *AppModel) seedDiskNextOrder(t *testing.T, taskID, projectID string) {
 	t.Helper()
 	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
-		p.SetNextOrder([]config.ProjectTaskLocator{{TaskID: taskID, ProjectID: projectID}})
+		p.SetNext([]config.ProjectTaskLocator{{TaskID: taskID, ProjectID: projectID}})
 	}); err != nil {
 		t.Fatalf("seed focus queue: %v", err)
 	}

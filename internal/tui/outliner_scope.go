@@ -25,10 +25,6 @@ type outlinerScopeFrame struct {
 
 	primaryMode OutlinerModeID
 
-	// Pinned-tag narrowing remains scope-owned. Visible search is deliberately
-	// absent: it is one run-wide refinement and survives scope changes.
-	pinnedTagTabIndex int
-
 	// Active render ordering plus the durable tree-mode sort.
 	sort     SortState
 	treeSort SortState
@@ -43,15 +39,14 @@ type outlinerScopeFrame struct {
 // live model.
 func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 	return outlinerScopeFrame{
-		scopedProjectID:   m.scopedProjectID,
-		cursor:            m.cursor,
-		viewScrollOffset:  m.viewScrollOffset,
-		primaryMode:       m.primaryMode,
-		pinnedTagTabIndex: m.pinnedTagTabIndex(),
-		sort:              m.sort,
-		treeSort:          m.treeSort,
-		zoomStack:         slices.Clone(m.zoomStack),
-		crossZoomStack:    slices.Clone(m.crossZoomStack),
+		scopedProjectID:  m.scopedProjectID,
+		cursor:           m.cursor,
+		viewScrollOffset: m.viewScrollOffset,
+		primaryMode:      m.primaryMode,
+		sort:             m.sort,
+		treeSort:         m.treeSort,
+		zoomStack:        slices.Clone(m.zoomStack),
+		crossZoomStack:   slices.Clone(m.crossZoomStack),
 	}
 }
 
@@ -63,7 +58,6 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.cursor = f.cursor
 	m.viewScrollOffset = f.viewScrollOffset
 	m.primaryMode = f.primaryMode
-	m.setPinnedTagTabIndex(f.pinnedTagTabIndex)
 	m.sort = f.sort
 	m.treeSort = f.treeSort
 	m.zoomStack = slices.Clone(f.zoomStack)
@@ -191,7 +185,7 @@ func (m *OutlinerModel) clearProjectScope() bool {
 // resetToGlobalAll returns the cross-project Outliner to a clean, unscoped
 // global All root: it drops any project scope, clears every narrowing and ordering
 // axis (active Context, search, saved criteria, common filters,
-// section/actionable filters, pinned-tag tab, and manual sort), clears
+// common filters and manual sort), clears
 // zoom/selection, activates All, and parks the cursor at the top. It is the state
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
 // leave the root silently narrowed by a stale context, filter, tag, or sort.
@@ -204,16 +198,17 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.clearContextScope()
 	m.zoomStack = nil
 	m.crossZoomStack = nil
+	m.collapsedSections = make(map[string]bool)
+	m.expandedNodes = make(map[TaskIdentity]bool)
+	m.sectionToggleRestore = nil
 	clearCommonFilters(&m.filter.CommonFilterState)
-	m.filter.Actionable = false
-	m.setPinnedTagTabIndex(0)
 	m.sort.Reset()
 	m.treeSort.Reset()
 	if m.multiSelectMode {
 		m.clearMultiSelect()
 		m.multiSelectMode = false
 	}
-	m.ClearSearch()
+	m.clearSearchProjectionWithoutRestore()
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.selectOutlinerMode(ModeAll)

@@ -52,7 +52,7 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	alpha.BuildTaskTree()
 	beta.BuildTaskTree()
 	runtime := testConfigWithProjects(alpha, beta)
-	runtime.Planning().SetNextOrder([]config.ProjectTaskLocator{
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
@@ -69,8 +69,8 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 		persister:            persister,
 		nextOrderIDs:         make(map[TaskIdentity]bool),
 		todayIDs:             make(map[TaskIdentity]bool),
-		nextOrder:            []FocusTask{},
-		today:                []FocusTask{},
+		nextOrder:            []PlanningTask{},
+		today:                []PlanningTask{},
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 	}
 
@@ -98,7 +98,7 @@ func TestPlanningToggleUndoRedoOnlyTouchesQualifiedTask(t *testing.T) {
 	betaID := taskIdentityFor(betaTask, beta)
 	shell := &AppModel{
 		runtime:  config.EmptyRuntimeState(""),
-		today:    []FocusTask{{Task: alphaTask, Project: alpha}, {Task: betaTask, Project: beta}},
+		today:    []PlanningTask{{Task: alphaTask, Project: alpha}, {Task: betaTask, Project: beta}},
 		todayIDs: map[TaskIdentity]bool{alphaID: true, betaID: true},
 	}
 
@@ -138,8 +138,8 @@ func TestPlanningOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
 func TestPlanningArtifactMembershipIsProjectQualified(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
 	planning := &config.PlanningState{
-		NextOrder: []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
-		Today:     []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
+		Next:  []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
+		Today: []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
 	}
 	if !nextOrderContains(planning, taskIdentityFor(alphaTask, alpha)) ||
 		!todayContains(planning, taskIdentityFor(alphaTask, alpha)) {

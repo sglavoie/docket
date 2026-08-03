@@ -143,13 +143,13 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 	} else {
 		clear(m.nextOrderIDs)
 	}
-	for _, item := range planning.GetNextOrder() {
+	for _, item := range planning.GetNext() {
 		p := m.projectByID(item.ProjectID)
 		if p == nil {
 			continue
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
-			m.nextOrder = append(m.nextOrder, FocusTask{Task: t, Project: p})
+			m.nextOrder = append(m.nextOrder, PlanningTask{Task: t, Project: p})
 			m.nextOrderIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
@@ -165,7 +165,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 			continue
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
-			m.today = append(m.today, FocusTask{Task: t, Project: p})
+			m.today = append(m.today, PlanningTask{Task: t, Project: p})
 			m.todayIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}

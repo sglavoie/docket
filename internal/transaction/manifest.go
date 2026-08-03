@@ -61,7 +61,7 @@ const (
 
 // State is the lifecycle state of a transaction manifest. Preparation writes a
 // manifest in StatePrepared; the commit and recovery layers advance it through
-// StateCommitting to StateCommitted (or clean it up) in later sessions.
+// StateCommitting to StateCommitted or clean it up.
 type State string
 
 const (

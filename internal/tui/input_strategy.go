@@ -8,10 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// InputStrategyID identifies a complete top-level key grammar. Simplified is
-// the production daily-loop grammar built from OperationRegistry identities;
-// Legacy remains only as a temporary internal discriminator for the follow-up
-// compatibility cleanup.
+// InputStrategyID identifies a complete top-level key grammar.
+// InputStrategySimplified is the sole production daily-loop grammar and is
+// built from OperationRegistry identities.
 type InputStrategyID string
 
 const (
@@ -206,8 +205,8 @@ const (
 	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
 	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
-	operationCoreDetail           OperationID = "tui.core.detail"
-	operationCoreVisibleSearch    OperationID = "tui.core.visible-search"
+	operationCorePeek             OperationID = "tui.core.peek"
+	operationCoreScopeSearch      OperationID = "tui.core.scope-search"
 	operationCoreScope            OperationID = "tui.core.scope"
 	operationCoreSelectProject    OperationID = "tui.core.select-project"
 	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
@@ -248,12 +247,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K"},
 			{OperationID: operationTaskOutdent, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: operationTaskIndent, Keys: []string{">"}, DisplayKey: ">"},
-			{OperationID: operationCoreDetail, Keys: []string{"enter"}, DisplayKey: "Enter"},
-			{OperationID: operationCoreVisibleSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
+			{OperationID: operationCorePeek, Keys: []string{"enter"}, DisplayKey: "Enter"},
+			{OperationID: operationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
 			{OperationID: operationCoreScope, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 7, FooterLabel: "scope"},
 			{OperationID: operationCoreSelectProject, Keys: []string{"C"}, DisplayKey: "C", FooterRank: 8, FooterLabel: "project"},
 			{OperationID: operationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v"},
-			{OperationID: operationCoreSelectAll, Keys: []string{"V"}, DisplayKey: "V"},
+			{OperationID: operationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
 			{OperationID: operationCoreNotes, Keys: []string{"N"}, DisplayKey: "N"},
 			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
@@ -284,14 +283,14 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskSetState, Sequence: []string{"s", "m"}, DisplayKey: "sm", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
 			{OperationID: operationTaskSetState, Sequence: []string{"s", "d"}, DisplayKey: "sd", HintLabel: "done", PresetValue: models.StateDone, HasPresetValue: true},
 			{OperationID: operationTaskSetState, Sequence: []string{"s", "c"}, DisplayKey: "sc", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
-			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "0"}, DisplayKey: "fp0-3", HintLabel: "all", PresetValue: 0, HasPresetValue: true},
-			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "1"}, DisplayKey: "fp0-3", HintLabel: "<=1", PresetValue: 1, HasPresetValue: true},
-			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "2"}, DisplayKey: "fp0-3", HintLabel: "<=2", PresetValue: 2, HasPresetValue: true},
-			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "3"}, DisplayKey: "fp0-3", HintLabel: "<=3", PresetValue: 3, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "0"}, DisplayKey: "fp0-3", HintLabel: "clear", PresetValue: 0, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "1"}, DisplayKey: "fp0-3", HintLabel: "high", PresetValue: 1, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "2"}, DisplayKey: "fp0-3", HintLabel: "medium+", PresetValue: 2, HasPresetValue: true},
+			{OperationID: operationFilterPriority, Sequence: []string{"f", "p", "3"}, DisplayKey: "fp0-3", HintLabel: "low+", PresetValue: 3, HasPresetValue: true},
 			{OperationID: operationFilterDue, Sequence: []string{"f", "d"}, DisplayKey: "fd", HintLabel: "due date"},
+			{OperationID: operationFilterCompletionAge, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "completion age"},
 			{OperationID: operationFilterStates, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "states"},
 			{OperationID: operationFilterTags, Sequence: []string{"f", "t"}, DisplayKey: "ft", HintLabel: "tags"},
-			{OperationID: operationFilterBlocked, Sequence: []string{"f", "b"}, DisplayKey: "fb", HintLabel: "blocked"},
 			{OperationID: operationFilterSnoozed, Sequence: []string{"f", "z"}, DisplayKey: "fz", HintLabel: "snoozed"},
 			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
 		},

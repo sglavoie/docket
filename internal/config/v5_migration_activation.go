@@ -32,8 +32,8 @@ type v5MigrationActivationPlan struct {
 	audit      []byte
 }
 
-type v5MigrationActivationTestHooks struct {
-	afterSnapshotPublished func(*PreSimplificationV5Snapshot)
+type v5MigrationActivationHooks interface {
+	didPublishSnapshot(*PreSimplificationV5Snapshot)
 }
 
 type v5MigrationTaskAuditRow struct {
@@ -49,7 +49,7 @@ func (m *Manager) MigrateWorkspaceToV5() error {
 	return m.migrateWorkspaceToV5(nil)
 }
 
-func (m *Manager) migrateWorkspaceToV5(hooks *v5MigrationActivationTestHooks) error {
+func (m *Manager) migrateWorkspaceToV5(hooks v5MigrationActivationHooks) error {
 	if m == nil {
 		return fmt.Errorf("configuration manager is required")
 	}
@@ -96,8 +96,8 @@ func (m *Manager) migrateWorkspaceToV5(hooks *v5MigrationActivationTestHooks) er
 	if err != nil {
 		return err
 	}
-	if hooks != nil && hooks.afterSnapshotPublished != nil {
-		hooks.afterSnapshotPublished(snapshot)
+	if hooks != nil {
+		hooks.didPublishSnapshot(snapshot)
 	}
 	expectedInventory, err := inventoryPreSimplificationV5(dataDir, false)
 	if err != nil {

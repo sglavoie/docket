@@ -120,7 +120,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	}
 	// The Outliner is the sole root: a clean root Esc has no child or overlay to
 	// unwind and must fall through to the view. There is something to close only
-	// when a primary child (Task Detail, secondary tool) is stacked above the
+	// when a primary secondary-tool child is stacked above the
 	// root or a transient overlay is open.
 	primaryCanClose := m.navigation.Primary.Depth() > 1 || m.navigation.Overlays.Active()
 	if primaryCanClose {
@@ -143,52 +143,6 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		return true, cmd
 	}
 	return false, nil
-}
-
-// jumpToOutlinerRoot is the preemptive Ctrl+Esc reset. It bypasses view-local
-// Esc ownership so it remains a reliable global escape hatch: it closes every
-// overlay, editor, child, and preview, clears project scope, search, filters,
-// task zoom, selections, and transient modes, then activates
-// the clean global All Outliner with the cursor safely reset.
-func (m *AppModel) jumpToOutlinerRoot() tea.Cmd {
-	path := m.presentationPath()
-	for i := len(path) - 1; i >= 0; i-- {
-		viewType := path[i]
-		if view := m.views.Get(viewType); view != nil {
-			if resetter, ok := view.(ViewExitResetter); ok {
-				resetter.OnExit()
-			}
-		}
-		m.saveStateForClosingView(viewType)
-	}
-
-	m.clearTransientNavigationState()
-	// Dismiss the primary children (Task Detail, secondary tools) that live
-	// outside the view registry so the reset lands on a bare Outliner root.
-	m.taskDetail = nil
-	m.taskComposer = nil
-
-	presentationCmd := m.prepareCrossProjectOutliner()
-	m.navigation.ResetRoot()
-	if cmd := m.activateTaskWorkspaceRoute(outlinerRootRoute()); cmd != nil {
-		// A reset never produces an invalid root route; surface any error.
-		return cmd
-	}
-	m.projectStack = nil
-	if m.crossOutliner != nil {
-		m.crossOutliner.resetToGlobalAll()
-		m.setAccentOnView(m.crossOutliner)
-	}
-	return presentationCmd
-}
-
-func (m *AppModel) saveStateForClosingView(viewType PresentationID) {
-	switch viewType {
-	case ViewCrossProjectOutliner:
-		m.saveOutlinerFilterState()
-	default:
-		// Other views do not keep close-time navigation state.
-	}
 }
 
 func (m *AppModel) clearTransientNavigationState() {
@@ -255,14 +209,6 @@ type taskItemWireable interface {
 	SetTaskItemCoordinator(TaskItemCoordinator)
 }
 
-// linkWireable is implemented by every view that routes its task-link mutations
-// through the application-layer LinkCoordinator, parallel to bulkWireable. The
-// shell wires them all from the single showView/replaceView site so no
-// construction path forgets to inject the coordinator.
-type linkWireable interface {
-	SetLinkCoordinator(LinkCoordinator)
-}
-
 // captureWireable is implemented by every capture-creation view that routes its
 // task creation through the application-layer CaptureCoordinator. The shell wires
 // them from the single showView/replaceView site so no construction path can
@@ -287,9 +233,6 @@ func (m *AppModel) wireSecondaryCoordinators(view View) {
 	}
 	if w, ok := view.(taskItemWireable); ok {
 		w.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
-	}
-	if w, ok := view.(linkWireable); ok {
-		w.SetLinkCoordinator(m.secondaryFeatures.Link)
 	}
 	if w, ok := view.(captureWireable); ok {
 		w.SetCaptureCoordinator(m.features.Capture)

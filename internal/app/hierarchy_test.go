@@ -464,3 +464,68 @@ func TestMoveToProjectUnknownDestination(t *testing.T) {
 		t.Fatalf("err = %v, want ErrProjectNotFound", err)
 	}
 }
+
+func TestBulkMoveToProjectMovesSelectedSubtreesInOneTransaction(t *testing.T) {
+	parent := typedTask("parent", 1, "", "Parent")
+	child := typedTask("child", 2, "", "Child")
+	parentID := parent.ID
+	child.ParentID = &parentID
+	other := typedTask("other", 1, "", "Other")
+	alpha := newProject("alpha", "Alpha", parent, child)
+	beta := newProject("beta", "Beta", other)
+	destination := newProject("destination", "Destination")
+	repo := newFakeRepo(alpha, beta, destination)
+	svc := newTestService(repo)
+
+	result, err := svc.BulkMoveToProject(app.BulkMoveRequest{
+		TaskLocators: []app.TaskLocator{
+			{ProjectID: alpha.ID, TaskID: parent.ID},
+			// A selected descendant is carried by its selected ancestor exactly once.
+			{ProjectID: alpha.ID, TaskID: child.ID},
+			{ProjectID: beta.ID, TaskID: other.ID},
+		},
+		DestinationProjectID: destination.ID,
+	})
+	if err != nil {
+		t.Fatalf("BulkMoveToProject: %v", err)
+	}
+	if len(result.Tasks) != 2 || result.MovedCount != 3 {
+		t.Fatalf("result roots=%d moved=%d, want 2 roots and 3 tasks", len(result.Tasks), result.MovedCount)
+	}
+	if len(alpha.Tasks) != 0 || len(beta.Tasks) != 0 || len(destination.Tasks) != 3 {
+		t.Fatalf("post-move task counts alpha=%d beta=%d destination=%d", len(alpha.Tasks), len(beta.Tasks), len(destination.Tasks))
+	}
+	if len(repo.commits) != 1 || len(repo.commits[0]) != 3 {
+		t.Fatalf("commits = %#v, want one atomic transaction with three projects", repo.commits)
+	}
+	attachmentMoves := 0
+	for _, change := range repo.commits[0] {
+		attachmentMoves += len(change.AttachmentOps)
+	}
+	if attachmentMoves != 3 {
+		t.Fatalf("attachment moves = %d, want one per relocated task", attachmentMoves)
+	}
+}
+
+func TestBulkMoveToProjectValidatesEverySourceBeforeMutation(t *testing.T) {
+	alphaTask := typedTask("alpha-task", 1, "", "Alpha task")
+	destinationTask := typedTask("destination-task", 1, "", "Destination task")
+	alpha := newProject("alpha", "Alpha", alphaTask)
+	destination := newProject("destination", "Destination", destinationTask)
+	repo := newFakeRepo(alpha, destination)
+	svc := newTestService(repo)
+
+	_, err := svc.BulkMoveToProject(app.BulkMoveRequest{
+		TaskLocators: []app.TaskLocator{
+			{ProjectID: alpha.ID, TaskID: alphaTask.ID},
+			{ProjectID: destination.ID, TaskID: destinationTask.ID},
+		},
+		DestinationProjectID: destination.ID,
+	})
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+	if len(alpha.Tasks) != 1 || len(destination.Tasks) != 1 || len(repo.commits) != 0 {
+		t.Fatalf("failed validation mutated state: alpha=%d destination=%d commits=%d", len(alpha.Tasks), len(destination.Tasks), len(repo.commits))
+	}
+}

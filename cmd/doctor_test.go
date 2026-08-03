@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -170,6 +171,37 @@ func TestCheckBrokenParentRefs(t *testing.T) {
 	}
 	if results.brokenParentRefs[0].task != orphan.ID {
 		t.Errorf("expected task %q, got %q", orphan.ID, results.brokenParentRefs[0].task)
+	}
+}
+
+func TestCheckCompletionTimestamps(t *testing.T) {
+	validCompleted := time.Now().AddDate(0, 0, -30)
+	zero := time.Time{}
+	project := testutil.NewTestProject("History")
+	valid := testutil.NewTestTask("Valid terminal")
+	valid.WorkflowState = models.StateDone
+	valid.CompletedAt = &validCompleted
+	missing := testutil.NewTestTask("Missing terminal timestamp")
+	missing.WorkflowState = models.StateCanceled
+	missing.CompletedAt = nil
+	zeroTerminal := testutil.NewTestTask("Zero terminal timestamp")
+	zeroTerminal.WorkflowState = models.StateDone
+	zeroTerminal.CompletedAt = &zero
+	stale := testutil.NewTestTask("Stale nonterminal timestamp")
+	stale.WorkflowState = models.StateBacklog
+	stale.CompletedAt = &validCompleted
+	project.Tasks = []*models.Task{valid, missing, zeroTerminal, stale}
+
+	results := &doctorResults{}
+	checkCompletionTimestamps([]*models.Project{project}, results)
+
+	if got := len(results.invalidCompletionTimestamps); got != 3 {
+		t.Fatalf("invalid completion timestamps = %d, want 3: %+v", got, results.invalidCompletionTimestamps)
+	}
+	for _, issue := range results.invalidCompletionTimestamps {
+		if issue.task == valid.ID {
+			t.Fatal("valid terminal timestamp was reported")
+		}
 	}
 }
 

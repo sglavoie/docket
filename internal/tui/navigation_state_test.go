@@ -26,13 +26,13 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 		t.Fatal("Reference unexpectedly accepted as a destination")
 	}
 
-	detail := mustRoute(t, TaskDetail, TaskDetailParams{ProjectID: "p1", TaskID: "t1"})
+	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
 	focus := FocusTarget{ControlID: "task-list", EntityID: "t1"}
-	if err := stack.PushTaskDetail(detail, focus); err != nil {
+	if err := stack.PushChild(secondary, focus); err != nil {
 		t.Fatal(err)
 	}
 	popped, restored, ok := stack.Pop()
-	if !ok || popped.ID() != TaskDetail || restored != focus || stack.Current().ID() != TaskWorkspace {
+	if !ok || popped.ID() != SecondaryTool || restored != focus || stack.Current().ID() != TaskWorkspace {
 		t.Fatalf("pop = %s restore=%+v ok=%v current=%s", popped.ID(), restored, ok, stack.Current().ID())
 	}
 	stack.ResetRoot()
@@ -47,12 +47,12 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 func TestPrimaryRouteStackBoundsChildrenAndPreservesRootFocus(t *testing.T) {
 	stack := NewPrimaryRouteStack()
 	rootFocus := FocusTarget{ControlID: "outliner", EntityID: "task-1"}
-	detail := mustRoute(t, TaskDetail, TaskDetailParams{ProjectID: "p1", TaskID: "task-1"})
-	if err := stack.PushTaskDetail(detail, rootFocus); err != nil {
+	first := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
+	if err := stack.PushChild(first, rootFocus); err != nil {
 		t.Fatal(err)
 	}
 
-	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
+	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
 	if err := stack.PushChild(secondary, FocusTarget{ControlID: "detail-tab"}); err != nil {
 		t.Fatal(err)
 	}

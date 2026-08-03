@@ -55,23 +55,6 @@ func TestHandleViewMessagesStatusClear(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesMoveBlocked(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := MoveBlockedMsg{Reason: "cannot move completed task"}
-	handled, cmd := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("MoveBlockedMsg should be handled")
-	}
-	if app.statusMessage != "cannot move completed task" {
-		t.Errorf("statusMessage should be set to reason, got %q", app.statusMessage)
-	}
-	if cmd == nil {
-		t.Error("MoveBlockedMsg should return a status timeout command")
-	}
-}
-
 func TestHandleViewMessagesRefresh(t *testing.T) {
 	app := newTestAppModel()
 

@@ -48,7 +48,7 @@ type AddTaskRequest struct {
 	// Artifacts are auxiliary durable artifact writes committed in the SAME
 	// ChangeSet as the new task, so the add and its side effects are atomic.
 	Artifacts []storage.ArtifactChange
-	// PlanningArtifacts carries route-local composer presets (notably Planner
+	// PlanningArtifacts carries route-local composer presets (notably planning
 	// Today/Next) through the full expanded form path.
 	PlanningArtifacts PlanningArtifactBuilder
 

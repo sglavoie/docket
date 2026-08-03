@@ -2,9 +2,11 @@ package tui
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -269,8 +271,8 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	}
 
 	// Building the checked artifact must not mutate the cached snapshot before commit.
-	if len(runtime.Planning().GetNextOrder()) != 1 {
-		t.Errorf("cached focus queue changed before commit: %v", runtime.Planning().GetNextOrder())
+	if len(runtime.Planning().GetNext()) != 1 {
+		t.Errorf("cached focus queue changed before commit: %v", runtime.Planning().GetNext())
 	}
 
 	msg := runBatchResult(t, cmd)
@@ -294,15 +296,15 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	}
 
 	// Durable planning cleanup committed with the delete.
-	if len(runtime.Planning().GetNextOrder()) != 0 {
-		t.Errorf("runtime focus queue should be cleaned, got %v", runtime.Planning().GetNextOrder())
+	if len(runtime.Planning().GetNext()) != 0 {
+		t.Errorf("runtime focus queue should be cleaned, got %v", runtime.Planning().GetNext())
 	}
 	reloadedCfg, err := config.NewManager(filepath.Join(e.dataDir, ".tt.json")).LoadRuntimeState()
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	if len(reloadedCfg.Planning().NextOrder) != 0 {
-		t.Errorf("durable focus queue should be cleaned on disk, got %v", reloadedCfg.Planning().NextOrder)
+	if len(reloadedCfg.Planning().Next) != 0 {
+		t.Errorf("durable focus queue should be cleaned on disk, got %v", reloadedCfg.Planning().Next)
 	}
 
 	// Undo restores the deleted subtree from the workspace ledger.
@@ -328,8 +330,11 @@ func TestTaskDeleteNestedRootsPromptAndRemoval(t *testing.T) {
 			{Task: e.child, Project: e.alpha},
 		},
 	})
-	if got := m.taskDeleteConfirm.Prompt(); got != "Delete 2 tasks?" {
-		t.Errorf("nested-root prompt = %q, want %q", got, "Delete 2 tasks?")
+	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
+		t.Errorf("nested-root prompt = %q, want canonical root prompt %q", got, "Delete task #1?")
+	}
+	if impact := m.pendingTaskDelete.impact; impact.selectedRoots != 1 || impact.descendants != 1 || impact.totalTasks != 2 {
+		t.Fatalf("nested-root impact = %+v, want one root plus one deduplicated descendant", impact)
 	}
 
 	_, cmd := m.handleGlobalKeyPress(keyPress("y"))
@@ -346,6 +351,48 @@ func TestTaskDeleteNestedRootsPromptAndRemoval(t *testing.T) {
 	}
 	if reloaded.GetTaskByID(e.sibling.ID) == nil {
 		t.Error("sibling should survive nested-root delete")
+	}
+}
+
+func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *testing.T) {
+	e := newTaskDeleteEnv(t)
+	m := e.appModel()
+	e.parent.Attachments = []models.Attachment{
+		{Filename: "report.pdf"},
+		{Filename: "https://example.test", IsURL: true},
+	}
+	e.child.Attachments = []models.Attachment{
+		{Filename: "internal/app/destructive.go", IsCodeRef: true},
+	}
+
+	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
+		Refs: []TaskProjectRef{
+			{Task: e.parent, Project: e.alpha},
+			{Task: e.child, Project: e.alpha},
+		},
+		Selection: SelectionCounts{Total: 2, Visible: 1, Hidden: 1},
+	})
+	detail := m.taskDeleteConfirm.detail
+	if detail == nil {
+		t.Fatal("delete confirmation omitted rich impact detail")
+	}
+	for _, want := range []string{
+		"1 selected root(s)",
+		"1 deduplicated descendant(s)",
+		"2 task(s) total",
+		"2 selected (1 visible · 1 hidden)",
+		"1 stored file(s) deleted",
+		"2 URL/code reference(s) removed",
+	} {
+		if !strings.Contains(detail.CascadeNote, want) {
+			t.Errorf("delete impact %q omits %q", detail.CascadeNote, want)
+		}
+	}
+	if !detail.UndoHint {
+		t.Error("delete confirmation omitted undo availability")
+	}
+	if rendered := ansi.Strip(m.taskDeleteConfirm.RenderOverlay(180)); !strings.Contains(rendered, "Undo available (u)") {
+		t.Errorf("rendered delete confirmation omitted undo hint:\n%s", rendered)
 	}
 }
 
@@ -419,7 +466,7 @@ func TestTUITaskDeletePreservesDuplicateIDReferencesInOtherProject(t *testing.T)
 	if e.reload(t, e.beta).GetTaskByID(e.lone.ID) != nil {
 		t.Fatal("beta/shared survived delete")
 	}
-	if got := m.runtime.Planning().NextOrder; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+	if got := m.runtime.Planning().Next; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
 		t.Fatalf("delete cleaned wrong focus refs: %+v", got)
 	}
 	if got := m.runtime.Planning().Today; len(got) != 1 || got[0].ProjectID != e.alpha.ID {

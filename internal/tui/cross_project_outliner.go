@@ -101,17 +101,11 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	}
 	fallbackCursor := m.cursor
 	fallbackScrollOffset := m.viewScrollOffset
-	pinnedTagTabName, hasPinnedTagTab := m.consumeCrossOutlinerReloadPinnedTagTab()
-	if !hasPinnedTagTab {
-		pinnedTagTabName, _ = m.crossProjectPinnedTagTabBeforeLoad()
-	}
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
 	m.crossSnapshotReady = true
-	m.workspaceResolver = &workspaceFilterResolver{}
 	m.refreshContextScopeProjects()
-	m.restoreCrossOutlinerPinnedTagTab(pinnedTagTabName)
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
@@ -184,13 +178,11 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 }
 
 func (m *OutlinerModel) crossProjectRowsFingerprint() string {
-	tabs := m.pinnedTagTabs()
 	commonParts := commonFilterParts(&m.filter.CommonFilterState)
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "search=%q|", m.SearchQuery())
-	fmt.Fprintf(&b, "tab=%d:%q|", m.pinnedTagTabIndex(), m.activePinnedTagFilter())
-	fmt.Fprintf(&b, "tabs=%q|", strings.Join(tabs, "\x1f"))
+	fmt.Fprintf(&b, "search-projection=%t|", m.hasSearchProjection())
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "context=%d:%q|", m.activeContext.Kind, m.activeContext.Name)
@@ -204,7 +196,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 			fmt.Fprintf(&b, "%s:%s,", item.ProjectID, item.TaskID)
 		}
 		b.WriteString("|next-plan=")
-		for _, item := range m.runtime.Planning().GetNextOrder() {
+		for _, item := range m.runtime.Planning().GetNext() {
 			fmt.Fprintf(&b, "%s:%s,", item.ProjectID, item.TaskID)
 		}
 	}
@@ -268,7 +260,6 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 // reloadCrossProjects triggers a new load, incrementing the generation counter
 // so any in-flight stale result is discarded on arrival.
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
-	m.preserveCrossOutlinerPinnedTagTabForReload()
 	if m.crossReloadFromTop {
 		m.crossReloadProjectID = ""
 		m.crossReloadTaskID = ""
@@ -356,8 +347,6 @@ func (m *OutlinerModel) cancelCrossProjectLoad() {
 	}
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
-	m.crossReloadTabName = ""
-	m.crossReloadTabSet = false
 	m.crossReloadProjectID = ""
 	m.crossReloadTaskID = ""
 	m.crossReloadFromTop = false

@@ -103,7 +103,7 @@ func TestUpdateStatus(t *testing.T) {
 	})
 }
 
-func TestFinishBulk(t *testing.T) {
+func TestFinishBulkPreservesSelection(t *testing.T) {
 	s := &MultiSelectState{
 		multiSelectMode: true,
 		selectedTaskIdentities: map[TaskIdentity]bool{
@@ -114,11 +114,11 @@ func TestFinishBulk(t *testing.T) {
 	var status string
 	s.FinishBulk(&status, "Changed 2 tasks")
 
-	if s.multiSelectMode {
-		t.Fatal("expected multiSelectMode to be false after FinishBulk")
+	if !s.multiSelectMode {
+		t.Fatal("expected multiSelectMode to remain active after FinishBulk")
 	}
-	if s.SelectedCount() != 0 {
-		t.Fatal("expected selections to be cleared after FinishBulk")
+	if s.SelectedCount() != 2 {
+		t.Fatal("expected selections to be preserved after FinishBulk")
 	}
 	if status != "Changed 2 tasks" {
 		t.Fatalf("expected result message, got %q", status)

@@ -39,9 +39,6 @@ func (PopViewMsg) closePopStyle() popStyle { return popOne }
 // BackMsg requests navigation back to the previous view.
 type BackMsg struct{}
 
-// JumpDashboardMsg requests returning directly to the dashboard root.
-type JumpDashboardMsg struct{}
-
 // RefreshMsg requests a refresh of the current view's data.
 type RefreshMsg struct{}
 
@@ -99,9 +96,6 @@ type InfoStatusMsg string
 // =============================================================================
 // Misc Messages
 // =============================================================================
-
-// MoveBlockedMsg signals a task move was blocked (e.g., completion boundary).
-type MoveBlockedMsg struct{ Reason string }
 
 // OpenDataFolderMsg opens the data folder in the configured editor.
 // If Project is nil, opens root data directory. Otherwise opens project directory.

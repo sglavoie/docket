@@ -31,7 +31,7 @@ func TestRunProjectExportRefusesMigrationSnapshotDestination(t *testing.T) {
 	projectExportFile = archivePath
 	t.Cleanup(func() { projectExportFile = previous })
 
-	err := runProjectExport(nil, []string{config.SystemInboxSlug})
+	err := runProjectExport(nil, []string{config.SystemUnfiledSlug})
 	if !errors.Is(err, config.ErrImmutablePreSimplificationV5Snapshot) {
 		t.Fatalf("project export error = %v, want immutable snapshot error", err)
 	}

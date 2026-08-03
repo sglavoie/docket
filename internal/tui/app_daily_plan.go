@@ -124,6 +124,6 @@ func (m *AppModel) applyTodayToggleInMemory(action *todayToggleAction, add bool)
 	if m.todayIDs[identity] {
 		return
 	}
-	m.today = append(m.today, FocusTask{Task: action.Task, Project: action.Project})
+	m.today = append(m.today, PlanningTask{Task: action.Task, Project: action.Project})
 	m.todayIDs[identity] = true
 }

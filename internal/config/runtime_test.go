@@ -34,16 +34,16 @@ func TestNewRuntimeDependenciesWiresEveryDomainToStore(t *testing.T) {
 
 func TestRuntimeDependenciesNextOrderReadsPlanningDependency(t *testing.T) {
 	fake := &fakeDomainStore{planning: &PlanningState{
-		NextOrder: []ProjectTaskLocator{
+		Next: []ProjectTaskLocator{
 			{TaskID: "t1", ProjectID: "p1"},
 			{TaskID: "t2", ProjectID: "p1"},
 		},
 	}}
 	deps := NewRuntimeDependencies(fake)
 
-	order, err := deps.NextOrder()
+	order, err := deps.Next()
 	if err != nil {
-		t.Fatalf("NextOrder: %v", err)
+		t.Fatalf("Next: %v", err)
 	}
 	if len(order) != 2 {
 		t.Fatalf("expected 2 Next-order items, got %d", len(order))
@@ -53,16 +53,16 @@ func TestRuntimeDependenciesNextOrderReadsPlanningDependency(t *testing.T) {
 	}
 
 	locator := ProjectTaskLocator{TaskID: "t2", ProjectID: "p1"}
-	if in, err := deps.TaskInNextOrder(locator); err != nil || !in {
-		t.Fatalf("TaskInNextOrder(%+v) = %v, %v", locator, in, err)
+	if in, err := deps.TaskInNext(locator); err != nil || !in {
+		t.Fatalf("TaskInNext(%+v) = %v, %v", locator, in, err)
 	}
 	for _, absent := range []ProjectTaskLocator{
 		{TaskID: "missing", ProjectID: "p1"},
 		{TaskID: "t2", ProjectID: "p2"},
 		{},
 	} {
-		if in, err := deps.TaskInNextOrder(absent); err != nil || in {
-			t.Fatalf("TaskInNextOrder(%+v) = %v, %v; want false, nil", absent, in, err)
+		if in, err := deps.TaskInNext(absent); err != nil || in {
+			t.Fatalf("TaskInNext(%+v) = %v, %v; want false, nil", absent, in, err)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func TestRuntimeDependenciesNextOrderReadsPlanningDependency(t *testing.T) {
 func TestManagerRuntimeDependenciesRoundTripsNextOrder(t *testing.T) {
 	store := newIsolatedStore(t)
 	planning := NewPlanningState()
-	planning.AddToNextOrder("next-1", "proj-1")
+	planning.AddToNext("next-1", "proj-1")
 	if err := store.SavePlanning(planning); err != nil {
 		t.Fatalf("SavePlanning: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestManagerRuntimeDependenciesRoundTripsNextOrder(t *testing.T) {
 		t.Fatal("Manager.RuntimeDependencies returned nil")
 	}
 	locator := ProjectTaskLocator{TaskID: "next-1", ProjectID: "proj-1"}
-	if in, err := deps.TaskInNextOrder(locator); err != nil || !in {
-		t.Fatalf("TaskInNextOrder(%+v) = %v, %v", locator, in, err)
+	if in, err := deps.TaskInNext(locator); err != nil || !in {
+		t.Fatalf("TaskInNext(%+v) = %v, %v", locator, in, err)
 	}
 }

@@ -344,10 +344,13 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		return nil, false
 	}
 
-	taskTitle := q.preview.title
-	if marker, exists := models.TaskMarkerFromTags(q.preview.tags); exists {
-		taskTitle = renderTaskMarker(marker) + " " + taskTitle
+	previewTask := &models.Task{
+		Title:         q.preview.title,
+		WorkflowState: models.StateInbox,
+		Priority:      q.preview.priority,
+		Tags:          q.preview.tags,
 	}
+	taskTitle := TaskTitleStyleFor(previewTask, TaskTitleStyleOptions{}).Render(q.preview.title)
 	taskChunks := []string{taskTitle}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 

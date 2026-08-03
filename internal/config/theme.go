@@ -27,6 +27,14 @@ type PaletteColors struct {
 	Priority1Title string `json:"priority1_title,omitempty"`
 	Priority2Title string `json:"priority2_title,omitempty"`
 	Priority3Title string `json:"priority3_title,omitempty"`
-	Priority4Title string `json:"priority4_title,omitempty"`
-	Priority5Title string `json:"priority5_title,omitempty"`
+
+	SemanticBugTitle             string `json:"semantic_bug_title,omitempty"`
+	SemanticFeatureTitle         string `json:"semantic_feature_title,omitempty"`
+	SemanticIdeaTitle            string `json:"semantic_idea_title,omitempty"`
+	SemanticBugSelectedTitle     string `json:"semantic_bug_selected_title,omitempty"`
+	SemanticFeatureSelectedTitle string `json:"semantic_feature_selected_title,omitempty"`
+	SemanticIdeaSelectedTitle    string `json:"semantic_idea_selected_title,omitempty"`
+	SemanticBugSnoozedTitle      string `json:"semantic_bug_snoozed_title,omitempty"`
+	SemanticFeatureSnoozedTitle  string `json:"semantic_feature_snoozed_title,omitempty"`
+	SemanticIdeaSnoozedTitle     string `json:"semantic_idea_snoozed_title,omitempty"`
 }

@@ -183,7 +183,7 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 	}
 }
 
-func TestRenderPreview_ShowsSemanticMarkerAndDedicatedTags(t *testing.T) {
+func TestRenderPreview_ShowsSemanticTagWithoutMarkerPrefix(t *testing.T) {
 	q := makePreviewInput(t, &quickCaptureResult{
 		title:    "Fix composer",
 		priority: 3,
@@ -191,10 +191,13 @@ func TestRenderPreview_ShowsSemanticMarkerAndDedicatedTags(t *testing.T) {
 	}, "", 80)
 
 	plain := ansi.Strip(q.renderPreview())
-	for _, want := range []string{"Task", "B Fix composer", "Tags", "#bug", "#capture"} {
+	for _, want := range []string{"Task", "Fix composer", "Tags", "#bug", "#capture"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("preview missing %q:\n%s", want, plain)
 		}
+	}
+	if strings.Contains(plain, "B Fix composer") {
+		t.Fatalf("preview retained the retired bug marker prefix:\n%s", plain)
 	}
 	if strings.Contains(plain, "Metadata") {
 		t.Fatalf("preview retained misleading Metadata group:\n%s", plain)

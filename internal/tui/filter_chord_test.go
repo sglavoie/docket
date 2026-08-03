@@ -55,13 +55,13 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 	if handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'f', Text: "f"}); !handled || cmd != nil {
 		t.Fatalf("f = handled %v cmd %T; want a pending prefix", handled, cmd)
 	}
-	row := app.pendingChordHintRow()
+	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"p priority threshold",
+		"c completion age",
 		"d due",
 		"s states",
 		"t tags",
-		"b blocked",
 		"z snoozed",
 		"x clear all",
 	} {
@@ -73,8 +73,8 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 	if handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'p', Text: "p"}); !handled || cmd != nil {
 		t.Fatalf("fp = handled %v cmd %T; want a pending prefix", handled, cmd)
 	}
-	row = app.pendingChordHintRow()
-	for _, want := range []string{"0 all", "1 <=1", "3 <=3"} {
+	row = pendingChordHintRowForTest(app)
+	for _, want := range []string{"0 clear", "1 high", "2 medium+", "3 low+"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("fp which-key row %q omits %q", row, want)
 		}
@@ -93,7 +93,7 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 	}{
 		{
 			path:   []string{"f", "p", "3"},
-			status: "Filtering priority <= 3",
+			status: "Filtering Low priority or higher",
 			verify: func(t *testing.T) {
 				if filter.Priority != 3 {
 					t.Errorf("Priority = %d, want 3", filter.Priority)
@@ -102,7 +102,7 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 		},
 		{
 			path:   []string{"f", "p", "2"},
-			status: "Filtering priority <= 2",
+			status: "Filtering Medium priority or higher",
 			verify: func(t *testing.T) {
 				if filter.Priority != 2 {
 					t.Errorf("Priority = %d, want 2", filter.Priority)
@@ -144,7 +144,6 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	filter.Priority = 2
 	filter.DueDate = DueDateToday
 	filter.Tags = map[string]bool{"deep": true}
-	filter.Blocked = true
 	filter.Snoozed = true
 	set, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
@@ -204,7 +203,7 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	}
 	visible := visibleOutlinerTaskIDs(out)
 	if !visible["critical"] || !visible["medium"] {
-		t.Errorf("fp2 should keep priority <= 2 tasks; visible = %v", visible)
+		t.Errorf("fp2 should keep High and Medium tasks; visible = %v", visible)
 	}
 	if visible["low"] {
 		t.Errorf("fp2 should hide the low-priority task; visible = %v", visible)
@@ -227,16 +226,9 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	}
 }
 
-func TestFilterChordBlockedAndSnoozedFacets(t *testing.T) {
+func TestFilterChordSnoozedFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
-
-	if cmd := pressFilterChord(t, app, "fb"); cmd == nil {
-		t.Fatal("fb produced no status command")
-	}
-	if !filter.Blocked {
-		t.Fatal("fb did not enable the blocked-only facet")
-	}
 
 	if cmd := pressFilterChord(t, app, "fz"); cmd == nil {
 		t.Fatal("fz produced no status command")
@@ -246,8 +238,8 @@ func TestFilterChordBlockedAndSnoozedFacets(t *testing.T) {
 	}
 
 	pressFilterChord(t, app, "fx")
-	if filter.Blocked || filter.Snoozed {
-		t.Fatalf("fx left blocked/snoozed enabled: %+v", filter)
+	if filter.Snoozed {
+		t.Fatalf("fx left snoozed enabled: %+v", filter)
 	}
 }
 
@@ -303,6 +295,38 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		selected := app.operationValuePicker.surface.SelectedIDs()
 		if len(selected) != 1 || selected[0] != "state:waiting" {
 			t.Errorf("seeded selection = %v, want [state:waiting]", selected)
+		}
+	})
+
+	t.Run("fc completion age", func(t *testing.T) {
+		app := newFilterChordTestApp(t)
+		app.crossOutliner.filter.setCompletionAgeFilter(CompletionAge30Days, true)
+
+		cmd := pressFilterChord(t, app, "fc")
+		if cmd == nil {
+			t.Fatal("fc produced no value-request command")
+		}
+		app.handleOperationOverlayMessage(cmd())
+		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterCompletionAge {
+			t.Fatalf("fc did not open the completion-age picker: %#v", app.operationValuePicker)
+		}
+		items := app.operationValuePicker.surface.Items()
+		wantIDs := []ListItemID{
+			"filter-completion-age:all",
+			"filter-completion-age:7",
+			"filter-completion-age:30",
+			"filter-completion-age:90",
+		}
+		if len(items) != len(wantIDs) {
+			t.Fatalf("completion-age picker items = %v, want %v", items, wantIDs)
+		}
+		for index, wantID := range wantIDs {
+			if items[index].ID != wantID {
+				t.Errorf("completion-age picker item %d = %s, want %s", index, items[index].ID, wantID)
+			}
+		}
+		if current, ok := app.operationValuePicker.surface.CurrentItem(); !ok || current.ID != "filter-completion-age:30" {
+			t.Errorf("seeded cursor = %v (%v), want filter-completion-age:30", current.ID, ok)
 		}
 	})
 
@@ -472,6 +496,47 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 	}
 }
 
+func TestFilterCompletionAgeChordAppliesWithoutChoosingLifecycleState(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	filter := &app.crossOutliner.filter.CommonFilterState
+	states, err := models.NewWorkflowStateSet(models.StateDone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filter.setStateFilter(states, true)
+
+	cmd := pressFilterChord(t, app, "fc")
+	if cmd == nil {
+		t.Fatal("fc produced no value-request command")
+	}
+	if handled, overlayCmd := app.handleOperationOverlayMessage(cmd()); !handled || overlayCmd != nil {
+		t.Fatalf("fc request = handled %v cmd %T; want picker opened synchronously", handled, overlayCmd)
+	}
+	picker := app.operationValuePicker
+	if picker == nil || !picker.surface.SetCursorToID("filter-completion-age:90") {
+		t.Fatal("completion-age picker cannot select 90 days")
+	}
+	_, dismissed, selected := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !dismissed {
+		t.Fatal("Enter did not finish the completion-age picker")
+	}
+	handled, statusCmd := app.handleOperationOverlayMessage(selected)
+	if !handled || statusCmd == nil {
+		t.Fatalf("completion-age selection = handled %v cmd %T; want applied status", handled, statusCmd)
+	}
+	if !filter.hasCompletionAgeFilter() || filter.CompletionAge != CompletionAge90Days {
+		t.Errorf("completion-age filter = active %v value %v, want active 90 days", filter.hasCompletionAgeFilter(), filter.CompletionAge)
+	}
+	if !filter.States.Equal(states) {
+		t.Errorf("fc changed explicit lifecycle states to %v, want Done", filter.States.Values())
+	}
+
+	pressFilterChord(t, app, "fx")
+	if filter.hasCompletionAgeFilter() || filter.hasStateFilter() {
+		t.Fatalf("fx left cleanup facets active: %+v", filter)
+	}
+}
+
 func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	ctx := simplifiedOperationContext()
@@ -563,14 +628,16 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 
 func TestPriorityThresholdSemantics(t *testing.T) {
 	tasks := map[int]*models.Task{
+		0: {ID: "p0", Title: "Unset", WorkflowState: models.StateBacklog, Priority: 0},
 		1: {ID: "p1", Title: "P1", WorkflowState: models.StateBacklog, Priority: 1},
 		2: {ID: "p2", Title: "P2", WorkflowState: models.StateBacklog, Priority: 2},
 		3: {ID: "p3", Title: "P3", WorkflowState: models.StateBacklog, Priority: 3},
 	}
 	for threshold, want := range map[int]map[int]bool{
-		0: {1: true, 2: true, 3: true},
-		2: {1: true, 2: true, 3: false},
-		3: {1: true, 2: true, 3: true},
+		0: {0: true, 1: true, 2: true, 3: true},
+		1: {0: false, 1: true, 2: false, 3: false},
+		2: {0: false, 1: true, 2: true, 3: false},
+		3: {0: false, 1: true, 2: true, 3: true},
 	} {
 		filter := newFilterState()
 		filter.Priority = threshold
@@ -584,10 +651,10 @@ func TestPriorityThresholdSemantics(t *testing.T) {
 	filter := newFilterState()
 	filter.Priority = 3
 	badge := commonFilterParts(&filter)
-	if len(badge) != 1 || badge[0] != "!<=3" {
-		t.Errorf("badge parts = %v, want [!<=3]", badge)
+	if len(badge) != 1 || badge[0] != "priority:Low+" {
+		t.Errorf("badge parts = %v, want [priority:Low+]", badge)
 	}
-	if described := fmt.Sprint(badge); !strings.Contains(described, "!<=3") {
+	if described := fmt.Sprint(badge); !strings.Contains(described, "priority:Low+") {
 		t.Errorf("badge %q should describe the threshold", described)
 	}
 }

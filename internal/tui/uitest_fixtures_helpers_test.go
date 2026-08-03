@@ -466,7 +466,7 @@ func buildRichFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildBusyFixture creates a dense mix of urgent, scheduled, blocked, waiting,
+// buildBusyFixture creates a dense mix of urgent, scheduled, waiting,
 // and inbox work for dashboard stress tests.
 func buildBusyFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Busy Project", func(p *models.Project) {
@@ -480,12 +480,24 @@ func buildBusyFixture(w *uitestWorkspace) error {
 		dueSoon.ApplyWorkflowState(models.StateBacklog)
 		setDue(dueSoon, 12*time.Hour)
 
-		blocked := newFixtureTask(p, "Blocked: production outage")
-		blocked.Priority = 1
-		blocked.ApplyWorkflowState(models.StateWaiting)
+		urgentWaiting := newFixtureTask(p, "Waiting: production outage")
+		urgentWaiting.Priority = 1
+		urgentWaiting.ApplyWorkflowState(models.StateWaiting)
 
 		waiting := newFixtureTask(p, "Waiting on vendor response")
 		waiting.ApplyWorkflowState(models.StateWaiting)
+
+		completed := newFixtureTask(p, "Completed: archive quarterly paperwork")
+		markDone(completed)
+		completedAt := time.Now().AddDate(0, 0, -45)
+		completed.CompletedAt = &completedAt
+		completed.UpdatedAt = completedAt
+
+		canceled := newFixtureTask(p, "Canceled: retire obsolete certificate")
+		canceled.ApplyWorkflowState(models.StateCanceled)
+		canceledAt := time.Now().AddDate(0, 0, -120)
+		canceled.CompletedAt = &canceledAt
+		canceled.UpdatedAt = canceledAt
 	})
 	if err != nil {
 		return err

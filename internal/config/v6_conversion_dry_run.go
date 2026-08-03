@@ -166,6 +166,8 @@ type v6CandidateTask struct {
 // DryRunV6WorkspaceConversion reads a complete schema-5 workspace and builds a
 // deterministic, fully validated schema-6 candidate without publishing any
 // write, rename, or cleanup operation.
+//
+//nolint:govet // Each validation stage keeps its error scope local.
 func DryRunV6WorkspaceConversion(options V6WorkspaceDryRunOptions) (V6WorkspaceConversionPlan, error) {
 	root, err := validateV5DryRunRoot(options.DataDir)
 	if err != nil {
@@ -465,6 +467,7 @@ func convertV6CatalogCandidate(
 	return target, audit, nil
 }
 
+//nolint:govet // Per-task conversion errors are intentionally scoped inside the conversion loop.
 func convertV6ProjectCandidate(
 	root string,
 	sourceProject V5ProjectCandidate,
@@ -812,6 +815,7 @@ func collectV6AttachmentCandidates(
 	return candidates, obsolete, nil
 }
 
+//nolint:gocyclo // Attachment migration keeps identity collision and filesystem validation in one auditable pass.
 func collectV6ProjectAttachments(
 	sourceProjectDir string,
 	targetProjectDir string,

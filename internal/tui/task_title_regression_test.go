@@ -14,17 +14,12 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 		"outliner_render_rows.go",
 		"app_pinned_tasks_render.go",
 		"parent_selector.go",
-		"dependency_selector.go",
-		"dependency_viewer.go",
-		"cross_project_linker_view.go",
 		"quick_capture_autocomplete.go",
 		"task_attachments_view.go",
 		"task_comments_view.go",
-		"task_decisions_view.go",
 		"task_checklist_view.go",
 		"fullscreen_task_helpers.go",
 		"picker_items.go",
-		"task_detail_view.go",
 		"notes_view_render.go",
 	}
 

@@ -22,8 +22,8 @@ var (
 	// sides so every overlay has a complete visual boundary.
 	OverlayHaloStyle = lipgloss.NewStyle().Background(ColorDimmedBg)
 
-	// BlockedRowStyle applies a subtle red background tint to blocked rows.
-	BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
+	// WaitingRowStyle applies a subtle red background tint to waiting rows.
+	WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
 
 	// OverdueRowStyle applies a subtle amber background tint to overdue rows.
 	OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))

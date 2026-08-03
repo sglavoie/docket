@@ -30,30 +30,23 @@ func rebuildTaskStyles() {
 	TodoStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DoneStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	BlockedStyle = lipgloss.NewStyle().Foreground(ColorError)
+	WaitingStyle = lipgloss.NewStyle().Foreground(ColorError)
 	StandbyStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
 	MaybeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	CanceledStyle = lipgloss.NewStyle().Foreground(ColorMuted).Strikethrough(true)
 	OverdueStyle = lipgloss.NewStyle().Foreground(ColorError)
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	DependencyStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 
 	if activeThemeName == "light" {
-		BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fde8e8"))
+		WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fde8e8"))
 		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fef3e2"))
 	} else {
-		BlockedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
+		WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
 		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))
 	}
 
 	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	blockedDepsFg := lipgloss.Color("#c0caf5")
-	if activeThemeName == "light" {
-		blockedDepsFg = lipgloss.Color("#ffffff")
-	}
-	BlockedByDepsStyle = lipgloss.NewStyle().Foreground(blockedDepsFg).Background(ColorError)
-
 	PinnedProjectStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
 	PinnedNumberStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	ActiveStyle = lipgloss.NewStyle().Foreground(ColorAccent)
@@ -67,7 +60,7 @@ func rebuildBadgeStyles() {
 	TodoBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DoneBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	BlockedBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
+	WaitingBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
 	if activeThemeName == "light" {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
 	} else {
@@ -187,8 +180,6 @@ func rebuildSelectionStyles() {
 func rebuildPanelStyles() {
 	PanelCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
 	PanelCardTitleStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	DashboardCardStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Padding(0, 1)
-	DashboardCardTitleStyle = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
 	OverlaySplitStyle = lipgloss.NewStyle().Foreground(ColorBorder)
 	OverlayTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorPurple)
 	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
@@ -210,8 +201,6 @@ func rebuildPriorityTitleStyles() {
 	TitlePriority1Style = lipgloss.NewStyle().Foreground(ColorPriority1Title).Bold(true).Italic(true)
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
-	TitlePriority4Style = lipgloss.NewStyle().Foreground(ColorPriority4Title)
-	TitlePriority5Style = lipgloss.NewStyle().Foreground(ColorPriority5Title)
 }
 
 func rebuildMiscStyles() {

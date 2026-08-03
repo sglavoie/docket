@@ -10,7 +10,7 @@ import (
 
 // CrossScopeOpts controls which projects are selected and loaded by
 // LoadCrossScopeTasks for cross-project surfaces such as the Outliner and
-// Planner.
+// ordered planning views.
 type CrossScopeOpts struct {
 	// ActiveOnly restricts selection to RuntimeState.ActiveProjects, which
 	// admits exactly config.IsActiveContextMember — the same rule a context

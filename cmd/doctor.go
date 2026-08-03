@@ -35,20 +35,22 @@ type doctorIssue struct {
 }
 
 type doctorResults struct {
-	workspaceIssues   []doctorIssue
-	workspaceNotes    []doctorIssue
-	loadFailures      []doctorIssue
-	duplicateIDs      []doctorIssue
-	duplicateShortIDs []doctorIssue
-	missingTaskFiles  []doctorIssue
-	brokenParentRefs  []doctorIssue
-	emptyProjects     []doctorIssue
+	workspaceIssues             []doctorIssue
+	workspaceNotes              []doctorIssue
+	loadFailures                []doctorIssue
+	duplicateIDs                []doctorIssue
+	duplicateShortIDs           []doctorIssue
+	missingTaskFiles            []doctorIssue
+	brokenParentRefs            []doctorIssue
+	invalidCompletionTimestamps []doctorIssue
+	emptyProjects               []doctorIssue
 }
 
 func (r *doctorResults) totalIssues() int {
 	return len(r.workspaceIssues) + len(r.loadFailures) +
 		len(r.duplicateIDs) + len(r.duplicateShortIDs) +
-		len(r.missingTaskFiles) + len(r.brokenParentRefs)
+		len(r.missingTaskFiles) + len(r.brokenParentRefs) +
+		len(r.invalidCompletionTimestamps)
 }
 
 func (r *doctorResults) fixableIssues() int {
@@ -88,6 +90,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkDuplicateIDs(loadedProjects, results)
 	checkDuplicateShortIDs(loadedProjects, results)
 	checkBrokenParentRefs(loadedProjects, results)
+	checkCompletionTimestamps(loadedProjects, results)
 
 	if fix {
 		fixIssues(loadedProjects)
@@ -273,11 +276,6 @@ func checkProtectedUnfiled(catalog *config.WorkspaceCatalog, results *doctorResu
 	})
 }
 
-// checkProtectedInbox is the compile-time compatibility name.
-func checkProtectedInbox(catalog *config.WorkspaceCatalog, results *doctorResults) {
-	checkProtectedUnfiled(catalog, results)
-}
-
 func checkWorkspaceUndoLedger(dataDir string, results *doctorResults) {
 	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir})
 	status, err := ledger.Validate()
@@ -423,6 +421,32 @@ func checkBrokenParentRefs(projects []*models.Project, results *doctorResults) {
 	}
 }
 
+// checkCompletionTimestamps surfaces records that completion-age cleanup must
+// exclude. Terminal tasks require a non-zero CompletedAt, while nonterminal
+// tasks must not retain one; doctor reports both cases rather than inventing an
+// age or silently repairing lifecycle history.
+func checkCompletionTimestamps(projects []*models.Project, results *doctorResults) {
+	for _, project := range projects {
+		for _, task := range project.Tasks {
+			terminal := task.IsTerminalState()
+			switch {
+			case terminal && (task.CompletedAt == nil || task.CompletedAt.IsZero()):
+				results.invalidCompletionTimestamps = append(results.invalidCompletionTimestamps, doctorIssue{
+					project: project.Name,
+					task:    task.ID,
+					detail:  fmt.Sprintf("terminal task #%d %q has no valid completed_at", task.ShortID, task.Title),
+				})
+			case !terminal && task.CompletedAt != nil:
+				results.invalidCompletionTimestamps = append(results.invalidCompletionTimestamps, doctorIssue{
+					project: project.Name,
+					task:    task.ID,
+					detail:  fmt.Sprintf("nonterminal task #%d %q retains completed_at", task.ShortID, task.Title),
+				})
+			}
+		}
+	}
+}
+
 func fixIssues(projects []*models.Project) {
 	dirtyProjects := make(map[string]bool)
 
@@ -475,6 +499,7 @@ func printResults(results *doctorResults) {
 	printSection("Duplicate task IDs", results.duplicateIDs)
 	printSection("Duplicate short IDs", results.duplicateShortIDs)
 	printSection("Broken parent refs", results.brokenParentRefs)
+	printSection("Invalid completion timestamps", results.invalidCompletionTimestamps)
 	printInfoSection("Empty projects", results.emptyProjects)
 }
 

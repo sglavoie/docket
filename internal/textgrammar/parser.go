@@ -62,14 +62,14 @@ func Parse(input string, surface Surface) Result {
 			continue
 		}
 		var tokens []Token
-		remaining, tokens = extractTokens(remaining, pattern)
+		remaining, tokens = extractTokens(remaining, pattern, surface)
 		result.Tokens = append(result.Tokens, tokens...)
 	}
 	result.Text = NormalizeText(remaining)
 	return result
 }
 
-func extractTokens(input string, pattern tokenPattern) (string, []Token) {
+func extractTokens(input string, pattern tokenPattern, surface Surface) (string, []Token) {
 	matches := pattern.re.FindAllStringSubmatchIndex(input, -1)
 	if len(matches) == 0 {
 		return input, nil
@@ -83,7 +83,7 @@ func extractTokens(input string, pattern tokenPattern) (string, []Token) {
 		}
 		rebuilt.WriteString(input[last:match[0]])
 		value := input[match[2]:match[3]]
-		if pattern.field == FieldPriority && !validPriorityTokenValue(value) {
+		if pattern.field == FieldPriority && !validPriorityTokenValue(value, surface) {
 			rebuilt.WriteString(input[match[0]:match[1]])
 			last = match[1]
 			continue
@@ -108,8 +108,18 @@ func extractTokens(input string, pattern tokenPattern) (string, []Token) {
 	return rebuilt.String(), tokens
 }
 
-func validPriorityTokenValue(value string) bool {
-	return len(value) == 1 && value[0] >= '1' && value[0] <= '5'
+func validPriorityTokenValue(value string, surface Surface) bool {
+	minimum := byte('1')
+	// !0 is mutation-only. A combined surface retains the stricter capture
+	// grammar so capture can never silently turn an omitted priority into an
+	// explicit clear operation.
+	if surface == SurfaceEdit {
+		minimum = '0'
+	}
+	// Retired 4-5 values are still tokenized so surface parsers can return
+	// actionable replacement guidance. Canonical definitions and ParsePriority
+	// continue to advertise and accept only 1-3.
+	return len(value) == 1 && value[0] >= minimum && value[0] <= '5'
 }
 
 func validTagTokenValue(value string) bool {

@@ -32,6 +32,9 @@ func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 		ShortID:     99,
 		Title:       "Selected",
 		Description: strings.Repeat("Unicode café 界 content ", 12),
+		Comments: []*models.Comment{
+			{Text: "Decision: retained as a comment"},
+		},
 		Checklist: []models.ChecklistItem{
 			{Text: "First item", Done: true},
 			{Text: "Second item"},
@@ -43,15 +46,14 @@ func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 
 	const width = 64
 	rendered := inlinePeekLines(inlinePeekOptions{
-		Task: task, Project: project, Projects: []*models.Project{project},
-		Indent: "    ", Width: width,
+		Task: task, Indent: "    ", Width: width,
 	})
 	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if len(rendered) != 3 || len(rendered) > inlinePeekMaxLines {
-		t.Fatalf("Peek line count = %d, want 3 within cap %d:\n%s", len(rendered), inlinePeekMaxLines, plain)
+	if len(rendered) != 4 || len(rendered) > inlinePeekMaxLines {
+		t.Fatalf("Peek line count = %d, want 4 within cap %d:\n%s", len(rendered), inlinePeekMaxLines, plain)
 	}
 	for _, want := range []string{
-		"Description:", "Checklist:",
+		"Description:", "Comments: 1", "Checklist:",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Peek missing %q:\n%s", want, plain)
@@ -99,21 +101,17 @@ func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
 	}
 }
 
-func TestInlinePeekShowsAttachmentNamesAndDecisionCount(t *testing.T) {
+func TestInlinePeekShowsAttachmentNames(t *testing.T) {
 	task := &models.Task{
 		Attachments: []models.Attachment{
 			{Filename: "design-spec.pdf"},
 			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
 			{Filename: "notes.md"},
 		},
-		Decisions: []*models.Decision{{Text: "Use the compact layout"}, {Text: "Keep Peek concise"}},
 	}
 
 	plain := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{Task: task, Width: 80}), "\n"))
-	for _, want := range []string{
-		"Attachments: design-spec.pdf · acme/roadmap#123 · +1 more",
-		"Decisions: 2",
-	} {
+	for _, want := range []string{"Attachments: design-spec.pdf · acme/roadmap#123 · +1 more"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Peek missing %q:\n%s", want, plain)
 		}

@@ -81,9 +81,15 @@ func renderStatusBarFooter(left, right string, width int, accent ...color.Color)
 	leftWidth := lipgloss.Width(left)
 	rightWidth := lipgloss.Width(right)
 
-	// Fast path: everything fits on one line — behavior unchanged.
-	if leftWidth+rightWidth+1 <= width {
-		gap := max(width-leftWidth-rightWidth, 1)
+	// Fast path: everything fits on one line. A gap is required only when both
+	// sides are present; a width-fitted metadata line may legitimately consume
+	// the entire row.
+	minGap := 0
+	if left != "" && right != "" {
+		minGap = 1
+	}
+	if leftWidth+rightWidth+minGap <= width {
+		gap := max(width-leftWidth-rightWidth, minGap)
 		spacer := ThemeSpacer(gap)
 		return fmt.Sprintf("%s\n%s", separator, lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
 	}

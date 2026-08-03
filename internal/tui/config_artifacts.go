@@ -28,22 +28,6 @@ func syncedDomainArtifacts(
 	return arts, nil
 }
 
-// planningDomainArtifact renders only planning.json for a task mutation that
-// also removes durable planning references. Keeping this domain-native avoids
-// rebuilding the legacy Config facade and prevents unrelated catalog artifacts
-// from joining the task transaction.
-func planningDomainArtifact(mgr *config.Manager, planning *config.PlanningState) ([]storage.ArtifactChange, error) {
-	coord := mgr.DomainCoordinator()
-	if _, err := coord.LoadPlanning(); err != nil {
-		return nil, err
-	}
-	artifact, err := coord.CheckedPlanningArtifact(planning)
-	if err != nil {
-		return nil, err
-	}
-	return []storage.ArtifactChange{artifact.StorageChange()}, nil
-}
-
 // catalogDomainArtifact renders only workspace.json for a project metadata
 // mutation that must commit atomically with project-directory and tasks.md
 // changes. It never reconstructs the Config facade or rewrites unrelated

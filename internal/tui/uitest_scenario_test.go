@@ -213,34 +213,6 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioTaskDetailFromGlobalInboxModeNoOverflow(t *testing.T) {
-	raw := `{
-		"name": "task detail from global inbox layout",
-		"fixture": "rich",
-		"size": "100x35",
-		"actions": [
-			{"type": "command", "command": "global inbox mode"},
-			{"type": "command", "command": "view task details"},
-			{"type": "assert", "assert": "view", "value": "TaskDetail"},
-			{"type": "assert", "assert": "no_layout_issues"}
-		]
-	}`
-	sc, err := ParseScenario([]byte(raw))
-	if err != nil {
-		t.Fatalf("ParseScenario error: %v", err)
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("task detail layout should pass, got error: %+v", result.Error)
-	}
-}
-
 func TestUITestScenarioHelpMinimumHeightNoOverflow(t *testing.T) {
 	sc := UITestScenario{
 		Name:    "help minimum height",
@@ -379,7 +351,7 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
+func TestUITestScenarioOutlinerCommandRoutes(t *testing.T) {
 	tests := []struct {
 		name    string
 		command string
@@ -392,7 +364,7 @@ func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sc := UITestScenario{
-				Name:    tt.name + " dashboard command route",
+				Name:    tt.name + " command route",
 				Fixture: "rich",
 				Size:    "60x20",
 				Actions: []UITestAction{
@@ -409,7 +381,7 @@ func TestUITestScenarioDashboardCommandRoutes(t *testing.T) {
 			t.Cleanup(func() { _ = ws.Cleanup() })
 
 			if !result.OK {
-				t.Fatalf("%s dashboard command route should pass, got error: %+v", tt.name, result.Error)
+				t.Fatalf("%s command route should pass, got error: %+v", tt.name, result.Error)
 			}
 		})
 	}
@@ -481,7 +453,6 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 	}{
 		{"attachments", "task attachments", "TaskAttachments"},
 		{"comments", "task comments", "TaskComments"},
-		{"decisions", "manage decisions", "TaskDecisions"},
 	}
 
 	for _, size := range []string{"100x35", "72x20", "60x20"} {

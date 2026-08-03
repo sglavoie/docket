@@ -16,6 +16,7 @@ const (
 	OverlayPicker
 	OverlayConfirmation
 	OverlayProjectDrilldown
+	OverlayTaskTool
 	OverlayReference
 )
 
@@ -29,6 +30,7 @@ var overlayKindNames = [...]string{
 	"Picker",
 	"Confirmation",
 	"ProjectDrilldown",
+	"TaskTool",
 	"Reference",
 }
 

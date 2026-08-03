@@ -54,14 +54,18 @@ type OutlinerModel struct {
 	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
 	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
 
-	filter FilterState // Unified filter state (common + sections + actionable)
+	filter FilterState // Unified common facet state.
 
-	pinnedTagTab      map[string]int        // Active pinned tag tab index per projectID (0 = All)
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool       // Section collapse state for All mode
 	// sectionToggleRestore preserves a task focus across one S-driven
 	// collapse/expand cycle. It is deliberately session-only.
 	sectionToggleRestore *sectionToggleRestoreAnchor
+
+	// searchProjection preserves the ordinary Outliner projection while slash
+	// search temporarily replaces it with every matching nonterminal task in
+	// the active project/context scope.
+	searchProjection *outlinerSearchSnapshot
 
 	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 
@@ -88,18 +92,15 @@ type OutlinerModel struct {
 
 	// Cross-project mode fields (used when m.project == nil)
 	loadedProjects        []*models.Project // Successfully loaded projects
-	workspaceResolver     *workspaceFilterResolver
-	crossSnapshotReady    bool            // True after the first cross-project snapshot has been accepted
-	crossLoading          bool            // True while cross-project load is in progress
-	crossSpinnerVisible   bool            // True once the 200ms delay has elapsed during an initial load
-	crossLoadGen          int             // Generation counter; discards stale load results
-	crossSpinner          SpinnerModel    // View-local spinner, independent of global save spinner
-	crossQuickEditProject *models.Project // Resolved project for quick edit in cross-project mode
-	crossReloadTabName    string          // Pinned tag tab name preserved across an async snapshot replacement
-	crossReloadTabSet     bool            // True when crossReloadTabName is an intentional live selection, including All
-	crossReloadProjectID  string          // Project owning the cursor task captured before an async reload
-	crossReloadTaskID     string          // Cursor task captured before an async reload; restored after rows rebuild
-	crossReloadFromTop    bool            // One-shot scope-change guard that suppresses stale cursor restoration
+	crossSnapshotReady    bool              // True after the first cross-project snapshot has been accepted
+	crossLoading          bool              // True while cross-project load is in progress
+	crossSpinnerVisible   bool              // True once the 200ms delay has elapsed during an initial load
+	crossLoadGen          int               // Generation counter; discards stale load results
+	crossSpinner          SpinnerModel      // View-local spinner, independent of global save spinner
+	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
+	crossReloadProjectID  string            // Project owning the cursor task captured before an async reload
+	crossReloadTaskID     string            // Cursor task captured before an async reload; restored after rows rebuild
+	crossReloadFromTop    bool              // One-shot scope-change guard that suppresses stale cursor restoration
 
 	// Memoization guard for crossProjectRebuildRows
 	crossLastRowsFingerprint string
@@ -164,7 +165,6 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
-		pinnedTagTab:      make(map[string]int),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		treeSort:          NewSortState(),

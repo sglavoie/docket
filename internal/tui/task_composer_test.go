@@ -26,7 +26,6 @@ func TestTaskComposerPresetModes(t *testing.T) {
 	}{
 		{"global", TaskComposerPreset{Kind: ComposerGlobal, Project: project}, ComposerCompact, ComposerGlobal, false},
 		{"project", TaskComposerPreset{Kind: ComposerProject, Project: project}, ComposerCompact, ComposerProject, false},
-		{"planner", TaskComposerPreset{Kind: ComposerPlanner, Project: project, PlannerTab: boardTabToday}, ComposerCompact, ComposerPlanner, false},
 		{"child", TaskComposerPreset{Kind: ComposerChild, Project: project, Parent: task, Shared: TaskComposerSharedAttributes{ParentID: &parentID}}, ComposerCompact, ComposerChild, true},
 		{"edit", TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: task}, ComposerExpanded, ComposerEdit, false},
 	}
@@ -46,7 +45,7 @@ func TestTaskComposerPresetModes(t *testing.T) {
 		})
 	}
 
-	editComposer := NewTaskComposerModel(tests[4].preset, appModel.runtime)
+	editComposer := NewTaskComposerModel(tests[3].preset, appModel.runtime)
 	editComposer.expanded.titleInput.SetValue("one\ntwo")
 	editComposer.expanded.commitAllTextInputs()
 	if editComposer.expanded.draft.title != "one two" {
@@ -389,19 +388,5 @@ func TestDailyTaskEditsUseNarrowTypedOverlays(t *testing.T) {
 	if appModel.pendingTaskTextEdit == nil ||
 		appModel.pendingTaskTextEdit.Operation != app.TaskOperationEditDescription {
 		t.Fatalf("description edit pending operation = %+v", appModel.pendingTaskTextEdit)
-	}
-}
-
-func TestTaskComposerPlannerPresetCarriesTypedDestination(t *testing.T) {
-	project := &models.Project{ID: "p", Name: "P"}
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:       ComposerPlanner,
-		Project:    project,
-		PlannerTab: boardTabNext,
-	}, nil)
-	composer.input.SetValue("Plan me")
-	reqs, ok := composer.parseCompactLines()
-	if !ok || len(reqs) != 1 || reqs[0].Destination != app.CaptureDestinationNext {
-		t.Fatalf("planner preset request = %+v errors=%+v", reqs, composer.errors)
 	}
 }

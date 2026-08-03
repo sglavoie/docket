@@ -112,16 +112,16 @@ func ListSourceFromPriorities(priorities []PriorityInfo) ListSource {
 	for _, priority := range priorities {
 		items = append(items, ListItem{
 			ID:            ListItemID("priority:" + strconv.Itoa(priority.Priority)),
-			PrimaryText:   fmt.Sprintf("Priority %d", priority.Priority),
-			SecondaryText: priority.Description,
+			PrimaryText:   priority.Description,
+			SecondaryText: fmt.Sprintf("!%d", priority.Priority),
 			Aliases: []string{
 				strconv.Itoa(priority.Priority),
 				priority.Description,
 				priority.FilterText(),
 			},
 			Preview: ListPreview{
-				Title: fmt.Sprintf("Priority %d", priority.Priority),
-				Body:  priority.Description,
+				Title: priority.Description,
+				Body:  fmt.Sprintf("Priority !%d", priority.Priority),
 			},
 			Data: priority,
 		})

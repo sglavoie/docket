@@ -183,7 +183,7 @@ func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 	if len(commands) != len(byID) {
 		t.Errorf("available operations = %d, distinct IDs = %d", len(commands), len(byID))
 	}
-	if got := byID[string(operationCoreVisibleSearch)].Shortcut; got != "/" {
-		t.Errorf("visible search shortcut = %q, want /", got)
+	if got := byID[string(operationCoreScopeSearch)].Shortcut; got != "/" {
+		t.Errorf("scope search shortcut = %q, want /", got)
 	}
 }

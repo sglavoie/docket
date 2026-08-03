@@ -14,14 +14,14 @@ func TestPlanningSettersCanonicalizeProjectQualifiedIdentities(t *testing.T) {
 		{TaskID: "same", ProjectID: "p"},
 		{TaskID: "same", ProjectID: "other"},
 	}
-	planning.SetNextOrder(input)
+	planning.SetNext(input)
 	planning.SetToday(input)
 
 	want := []ProjectTaskLocator{
 		{TaskID: "same", ProjectID: "p"},
 		{TaskID: "same", ProjectID: "other"},
 	}
-	if got := planning.GetNextOrder(); !planningRefsEqual(got, want) {
+	if got := planning.GetNext(); !planningRefsEqual(got, want) {
 		t.Fatalf("NextOrder = %+v, want %+v", got, want)
 	}
 	if got := planning.GetToday(); !planningRefsEqual(got, want) {
@@ -31,10 +31,10 @@ func TestPlanningSettersCanonicalizeProjectQualifiedIdentities(t *testing.T) {
 
 func TestPlanningMutationsRequireExactProjectQualifiedIdentity(t *testing.T) {
 	planning := NewPlanningState()
-	if !planning.AddToNextOrder("shared", "alpha") ||
-		!planning.AddToNextOrder("shared", "beta") ||
-		planning.AddToNextOrder("shared", "alpha") {
-		t.Fatalf("Next-order additions were not project-qualified: %+v", planning.NextOrder)
+	if !planning.AddToNext("shared", "alpha") ||
+		!planning.AddToNext("shared", "beta") ||
+		planning.AddToNext("shared", "alpha") {
+		t.Fatalf("Next-order additions were not project-qualified: %+v", planning.Next)
 	}
 	if !planning.AddToToday("shared", "alpha") ||
 		!planning.AddToToday("shared", "beta") ||
@@ -42,11 +42,11 @@ func TestPlanningMutationsRequireExactProjectQualifiedIdentity(t *testing.T) {
 		t.Fatalf("Today additions were not project-qualified: %+v", planning.Today)
 	}
 
-	if !planning.RemoveFromNextOrderInProject("shared", "beta") ||
+	if !planning.RemoveFromNextInProject("shared", "beta") ||
 		!planning.RemoveFromTodayInProject("shared", "beta") {
 		t.Fatal("qualified removals reported no change")
 	}
-	if got := planning.NextOrder; len(got) != 1 || got[0].ProjectID != "alpha" {
+	if got := planning.Next; len(got) != 1 || got[0].ProjectID != "alpha" {
 		t.Fatalf("NextOrder = %+v, want alpha entry preserved", got)
 	}
 	if got := planning.Today; len(got) != 1 || got[0].ProjectID != "alpha" {
@@ -56,7 +56,7 @@ func TestPlanningMutationsRequireExactProjectQualifiedIdentity(t *testing.T) {
 
 func TestPlanningQualifiedCleanupAndMovePreserveOtherProject(t *testing.T) {
 	planning := NewPlanningState()
-	planning.SetNextOrder([]ProjectTaskLocator{
+	planning.SetNext([]ProjectTaskLocator{
 		{ProjectID: "alpha", TaskID: "shared"},
 		{ProjectID: "beta", TaskID: "shared"},
 	})
@@ -71,15 +71,15 @@ func TestPlanningQualifiedCleanupAndMovePreserveOtherProject(t *testing.T) {
 	if removed != 2 {
 		t.Fatalf("removed = %d, want beta Today + Next-order entries", removed)
 	}
-	planning.AddToNextOrder("shared", "beta")
+	planning.AddToNext("shared", "beta")
 	planning.AddToToday("shared", "beta")
 	if updated := planning.ReassignDurablePlanningProjectFrom(
 		map[string]bool{"shared": true}, "beta", "gamma",
 	); updated != 2 {
 		t.Fatalf("updated = %d, want two planning entries", updated)
 	}
-	if planning.NextOrder[0].ProjectID != "alpha" || planning.NextOrder[1].ProjectID != "gamma" {
-		t.Fatalf("NextOrder = %+v", planning.NextOrder)
+	if planning.Next[0].ProjectID != "alpha" || planning.Next[1].ProjectID != "gamma" {
+		t.Fatalf("NextOrder = %+v", planning.Next)
 	}
 	if planning.Today[0].ProjectID != "alpha" || planning.Today[1].ProjectID != "gamma" {
 		t.Fatalf("Today = %+v", planning.Today)

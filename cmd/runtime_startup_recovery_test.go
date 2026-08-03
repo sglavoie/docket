@@ -42,7 +42,7 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 	if upsertErr := domains.Catalog.UpsertProject(project); upsertErr != nil {
 		t.Fatalf("UpsertProject: %v", upsertErr)
 	}
-	domains.Planning.SetNextOrder([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: task.ID}})
+	domains.Planning.SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: task.ID}})
 	artifacts, err := runtime.CheckedSyncedArtifacts(domains)
 	if err != nil {
 		t.Fatalf("CheckedSyncedArtifacts: %v", err)
@@ -140,7 +140,7 @@ func TestLoadCLIWorkspaceRecoversTransactionsBeforeLoadingDomains(t *testing.T) 
 			if project := workspace.Runtime.GetProject(projectID); project == nil {
 				t.Fatalf("recovered catalog missing project %q", projectID)
 			}
-			queue := workspace.Runtime.Planning().GetNextOrder()
+			queue := workspace.Runtime.Planning().GetNext()
 			if len(queue) != 1 || queue[0].ProjectID != projectID || queue[0].TaskID != taskID {
 				t.Fatalf("recovered focus queue = %+v", queue)
 			}

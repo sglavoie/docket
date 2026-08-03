@@ -61,7 +61,7 @@ func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
 	}
 }
 
-func TestOutlinerTaskRowShowsSemanticMarkerAndRawTag(t *testing.T) {
+func TestOutlinerTaskRowShowsSemanticTitleWithoutMarkerPrefix(t *testing.T) {
 	task := &models.Task{
 		ID:            "bug-task",
 		Title:         "Fix capture grammar",
@@ -73,9 +73,12 @@ func TestOutlinerTaskRowShowsSemanticMarkerAndRawTag(t *testing.T) {
 	row := outlinerRow{task: task, ProjectID: project.ID}
 
 	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 120, 120, 0, nil))
-	for _, want := range []string{"B", "Fix capture grammar", "#bug", "#composer"} {
+	for _, want := range []string{"Fix capture grammar", "#bug", "#composer"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("task row missing %q: %q", want, plain)
 		}
+	}
+	if strings.Contains(plain, " B Fix capture grammar") {
+		t.Fatalf("task row retained retired bug marker prefix: %q", plain)
 	}
 }

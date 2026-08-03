@@ -3,16 +3,16 @@ package config
 // LightThemeDefaultsRev is the revision of the curated DefaultLightTheme values.
 // Increment this when palette defaults change so MigratePaletteToThemes can
 // force-refresh stale configs. Rev 1 = shipped d5d987c; Rev 2 = this refresh.
-const LightThemeDefaultsRev = 3
+const LightThemeDefaultsRev = 4
 
 // DarkThemeDefaultsRev is the revision of the curated DefaultDarkTheme values.
 // Increment this when dark palette defaults change so MigratePaletteToThemes
 // can force-refresh stale configs. Rev 1 = Tokyo Night controlled-saturation
 // palette; Rev 2 = dark contrast refresh.
-const DarkThemeDefaultsRev = 2
+const DarkThemeDefaultsRev = 3
 
 // DefaultLightTheme returns a Theme with curated light-mode color values for
-// all 17 palette-tab fields (9 palette colors, 3 bg/cursor, 5 priorities).
+// all maintained palette roles, including priority and semantic-title variants.
 // These values are optimized for light terminal backgrounds.
 func DefaultLightTheme() Theme {
 	return Theme{
@@ -35,14 +35,22 @@ func DefaultLightTheme() Theme {
 			Priority1Title: "#b91c1c",
 			Priority2Title: "#92400e",
 			Priority3Title: "#1e40af",
-			Priority4Title: "#475569",
-			Priority5Title: "#64748b",
+
+			SemanticBugTitle:             "#b42318",
+			SemanticFeatureTitle:         "#237a3b",
+			SemanticIdeaTitle:            "#5f6b7a",
+			SemanticBugSelectedTitle:     "#7f1d1d",
+			SemanticFeatureSelectedTitle: "#14532d",
+			SemanticIdeaSelectedTitle:    "#374151",
+			SemanticBugSnoozedTitle:      "#9f5656",
+			SemanticFeatureSnoozedTitle:  "#5f8f6c",
+			SemanticIdeaSnoozedTitle:     "#7b8491",
 		},
 	}
 }
 
 // DefaultDarkTheme returns a Theme with curated dark-mode hex values for all
-// 17 palette-tab fields. Inspired by Tokyo Night with controlled saturation
+// maintained palette roles. Inspired by Tokyo Night with controlled saturation
 // (≤65%) and a contrast lift for primary readable text against #1a1b26.
 func DefaultDarkTheme() Theme {
 	return Theme{
@@ -65,8 +73,16 @@ func DefaultDarkTheme() Theme {
 			Priority1Title: "#f7768e",
 			Priority2Title: "#e0af68",
 			Priority3Title: "#7aa2f7",
-			Priority4Title: "#9aa5ce",
-			Priority5Title: "#7a82ad",
+
+			SemanticBugTitle:             "#ff9e9e",
+			SemanticFeatureTitle:         "#b9f27c",
+			SemanticIdeaTitle:            "#c0caf5",
+			SemanticBugSelectedTitle:     "#ffd1d1",
+			SemanticFeatureSelectedTitle: "#d7f7b5",
+			SemanticIdeaSelectedTitle:    "#e5e7eb",
+			SemanticBugSnoozedTitle:      "#c97b7b",
+			SemanticFeatureSnoozedTitle:  "#8bb65f",
+			SemanticIdeaSnoozedTitle:     "#8f98c7",
 		},
 	}
 }

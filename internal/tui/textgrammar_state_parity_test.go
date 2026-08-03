@@ -37,12 +37,12 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 	q := &quickCaptureInput{width: 120}
 	suggestions := q.getDestinationSuggestions("")
-	if len(suggestions) != len(textgrammar.DestinationNames()) {
-		t.Fatalf("destination suggestions = %d, want %d", len(suggestions), len(textgrammar.DestinationNames()))
+	if len(suggestions) != len(captureDestinationNamesForTest()) {
+		t.Fatalf("destination suggestions = %d, want %d", len(suggestions), len(captureDestinationNamesForTest()))
 	}
 
 	guide := q.renderSyntaxGuide()
-	for _, name := range textgrammar.DestinationNames() {
+	for _, name := range captureDestinationNamesForTest() {
 		token := "$" + name
 		if !strings.Contains(guide, token) {
 			t.Errorf("capture help does not contain %q", token)

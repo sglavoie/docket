@@ -153,6 +153,49 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 	}
 }
 
+func TestConvertedDecisionCommentIsFullyEditableThroughComments(t *testing.T) {
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	task, err := models.NewGenericTask("task-1", 1, "Migrated narrative")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	created := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	task.Comments = []*models.Comment{{
+		Text:      "Decision: Use SQLite\nRationale: Local-first durability",
+		CreatedAt: created,
+	}}
+	project.Tasks = []*models.Task{task}
+
+	model := NewTaskCommentsModel(task, project)
+	model.coordinator = newTestSecondaryCoordinators(project).Subview
+	if cmd := model.startEditComment(); cmd == nil {
+		t.Fatal("converted comment did not enter edit mode")
+	}
+	if got := model.editTextInput.Value(); got != task.Comments[0].Text {
+		t.Fatalf("edit input = %q, want complete converted text %q", got, task.Comments[0].Text)
+	}
+
+	want := "Decision: Use SQLite\nRationale: Embedded deployment"
+	model.editTextInput.SetValue(want)
+	cmd := model.saveEditedComment()
+	if cmd == nil {
+		t.Fatal("editing converted comment returned no commit command")
+	}
+	if _, ok := cmd().(CommentEditedMsg); !ok {
+		t.Fatalf("editing converted comment returned an unexpected result")
+	}
+	comment := project.Tasks[0].Comments[0]
+	if comment.Text != want {
+		t.Fatalf("edited comment text = %q, want %q", comment.Text, want)
+	}
+	if !comment.CreatedAt.Equal(created) {
+		t.Fatalf("edited comment timestamp = %v, want %v", comment.CreatedAt, created)
+	}
+}
+
 func TestTaskCommentsRenderEditModeOOB(t *testing.T) {
 	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
 	if err != nil {

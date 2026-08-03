@@ -50,8 +50,8 @@ func (p *Project) CountDueSoonTasks(days int) int {
 	return count
 }
 
-// CountBlockedTasks returns the number of tasks in the waiting workflow state.
-func (p *Project) CountBlockedTasks() int {
+// CountWaitingTasks returns the number of tasks in the waiting workflow state.
+func (p *Project) CountWaitingTasks() int {
 	count := 0
 	for _, task := range p.Tasks {
 		if task.IsInState(StateWaiting) {

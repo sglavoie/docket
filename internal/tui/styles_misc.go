@@ -23,6 +23,6 @@ var (
 	FocusIndicator      = FocusIndicatorStyle.Render("▐")
 
 	// TodayClearedBannerStyle styles the Peak-End "Today cleared" banner with
-	// a warm accent that matches the dashboard streak badge.
+	// a warm accent that matches the Today streak badge.
 	TodayClearedBannerStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorOrange)
 )

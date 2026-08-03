@@ -29,8 +29,8 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		// Applying a scope is navigation to the scoped Outliner, not merely a
 		// dismissal of the Context Hub. In particular, the global palette command
-		// can open the hub above Task Detail; one pop would reveal that detail
-		// again and could leave the user looking at a task outside the new scope.
+		// can open the hub above another child; one pop would reveal that child
+		// again and could leave the user outside the new scope.
 		return true, tea.Batch(m.returnToOutlinerAfterContextSelection(), m.requestCrossProjectOutlinerReload())
 
 	case RegularContextSavedMsg:
@@ -70,7 +70,7 @@ func (m *AppModel) openScopeHubForInlineAction(msg scopeHubInlineActionMsg) tea.
 
 // returnToOutlinerAfterContextSelection dismisses every primary child above the
 // sole Outliner root without resetting its freshly applied context scope.
-// Cancel uses the ordinary one-pop path instead so it can restore Task Detail.
+// Cancel uses the ordinary one-pop path instead so it can restore the prior view.
 func (m *AppModel) returnToOutlinerAfterContextSelection() tea.Cmd {
 	m.navigation.ResetRoot()
 	if view := m.views.Get(m.currentView()); view != nil {

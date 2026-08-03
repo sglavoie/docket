@@ -153,7 +153,7 @@ func TestSystemInboxEditKeepsIdentityImmutable(t *testing.T) {
 	inbox := newSession4Project(t, "Inbox")
 	fixture := newSession4LifecycleFixture(t, true, inbox)
 	catalog := cloneWorkspaceCatalog(fixture.app.runtime.Catalog())
-	catalog.SystemInboxProjectID = inbox.ID
+	catalog.SystemUnfiledProjectID = inbox.ID
 	if err := fixture.app.runtime.CommitCatalog(catalog); err != nil {
 		t.Fatalf("protect Inbox: %v", err)
 	}

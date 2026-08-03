@@ -97,7 +97,6 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	task := NewTestTask("Original")
 	task.Tags = []string{"original"}
 	task.Comments = []*models.Comment{{Text: "comment"}}
-	task.Decisions = []*models.Decision{{Text: "decision"}}
 	task.Checklist = []models.ChecklistItem{{Text: "step"}}
 	task.Attachments = []models.Attachment{{Filename: "notes.md"}}
 	project.Tasks = []*models.Task{task}
@@ -108,14 +107,12 @@ func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 
 	task.Tags[0] = "mutated"
 	task.Comments[0].Text = "mutated"
-	task.Decisions[0].Text = "mutated"
 	task.Checklist[0].Text = "mutated"
 	task.Attachments[0].Filename = "mutated.md"
 
 	saved := repo.Projects[project.ID].Tasks[0]
 	if saved.Tags[0] != "original" ||
 		saved.Comments[0].Text != "comment" ||
-		saved.Decisions[0].Text != "decision" ||
 		saved.Checklist[0].Text != "step" ||
 		saved.Attachments[0].Filename != "notes.md" {
 		t.Fatalf("saved task shared mutable data with original: %#v", saved)

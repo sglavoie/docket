@@ -44,7 +44,7 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 	if upsertErr := domains.Catalog.UpsertProject(project); upsertErr != nil {
 		t.Fatalf("UpsertProject: %v", upsertErr)
 	}
-	domains.Planning.SetNextOrder([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: task.ID}})
+	domains.Planning.SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: task.ID}})
 	artifacts, err := staleRuntime.CheckedSyncedArtifacts(domains)
 	if err != nil {
 		t.Fatalf("CheckedSyncedArtifacts: %v", err)

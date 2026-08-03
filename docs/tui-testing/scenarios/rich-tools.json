@@ -19,6 +19,7 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "assert": "contains", "value": "Comments" },
+    { "type": "assert", "assert": "not_contains", "value": "Decisions" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "return to Outliner", "key": "esc" },
 

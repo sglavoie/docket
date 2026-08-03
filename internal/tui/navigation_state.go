@@ -31,8 +31,8 @@ func outlinerRootRoute() Route {
 }
 
 // PrimaryRouteStack always contains the Outliner root at index zero. A
-// destination switch replaces that root frame; Task Detail and secondary tools
-// are pushed as child routes above it.
+// destination switch replaces that root frame; secondary tools are pushed as
+// child routes above it.
 type PrimaryRouteStack struct{ frames []primaryRouteFrame }
 
 func NewPrimaryRouteStack() PrimaryRouteStack {
@@ -77,23 +77,14 @@ func (s *PrimaryRouteStack) ReplaceDestination(route Route) error {
 	return nil
 }
 
-// PushTaskDetail installs Task Detail as the one primary child and records the
-// exact stable focus bookmark to restore when it is popped.
-func (s *PrimaryRouteStack) PushTaskDetail(route Route, restore FocusTarget) error {
-	if route.ID() != TaskDetail {
-		return fmt.Errorf("%w: only TaskDetail can be pushed", ErrInvalidRouteTransition)
-	}
-	return s.PushChild(route, restore)
-}
-
 // PushChild installs the one child route above the Outliner root and records the
-// parent focus bookmark to restore on pop. Task Detail and secondary tools never
-// nest; switching child kinds or modules replaces the existing child so the
+// parent focus bookmark to restore on pop. Secondary tools never nest; switching
+// modules replaces the existing child so the
 // primary stack remains bounded to root + one child.
 func (s *PrimaryRouteStack) PushChild(route Route, restore FocusTarget) error {
 	s.ensureRoot()
 	switch route.ID() {
-	case TaskDetail, SecondaryTool:
+	case SecondaryTool:
 	default:
 		return fmt.Errorf("%w: %s is not a child route", ErrInvalidRouteTransition, route.ID())
 	}
@@ -105,9 +96,8 @@ func (s *PrimaryRouteStack) PushChild(route Route, restore FocusTarget) error {
 	return nil
 }
 
-// ReplaceCurrentMode changes the mode/parameters of the active destination or
-// Task Detail without changing its parentage. Consolidated hub modules and
-// Task Detail tabs are modes, not child routes.
+// ReplaceCurrentMode changes the parameters of the active route without
+// changing its parentage. Consolidated hub modules are modes, not child routes.
 func (s *PrimaryRouteStack) ReplaceCurrentMode(route Route) error {
 	s.ensureRoot()
 	current := s.Current()

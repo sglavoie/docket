@@ -31,13 +31,13 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 		return nil
 	}
 	cmd := m.secondaryFeatures.Bulk.SetTags([]string{task.ID}, selectedTags)
-	return finalizeBatchResult(cmd, nil, fmt.Sprintf("Tagged #%d", task.ShortID))
+	return finalizeBatchResult(cmd, fmt.Sprintf("Tagged #%d", task.ShortID))
 }
 
 // applyTagsToTaskRefs applies selected tags to multiple task refs as one
 // asynchronous cross-project transaction through the BulkCoordinator. Setting
-// tags is an attribute mutation; the shell owns reload
-// and selection-clear via the batch result.
+// tags is an attribute mutation; the shell owns reload while preserving visual
+// selection.
 func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
 	refs = validTaskProjectRefs(refs)
 	locators := taskLocatorsFromTaskRefs(refs)
@@ -45,5 +45,5 @@ func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []str
 		return nil
 	}
 	cmd := m.secondaryFeatures.Bulk.SetTagsLocators(locators, selectedTags)
-	return finalizeLocatedBatchResult(cmd, locators, fmt.Sprintf("Tagged %d tasks", len(locators)))
+	return finalizeBatchResult(cmd, fmt.Sprintf("Tagged %d tasks", len(locators)))
 }

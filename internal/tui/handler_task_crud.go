@@ -84,11 +84,6 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		}
 	}
 
-	if msg.CreatedCount > 0 {
-		m.sessionStats.tasksCreated += msg.CreatedCount
-	} else if msg.Task != nil {
-		m.sessionStats.tasksCreated++
-	}
 	refreshCmd := m.handleWithRefresh(true, true, "")
 
 	if msg.Task != nil {
@@ -115,19 +110,14 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	cmd := m.views.Update(m.currentView(), msg)
 
 	// If open-after requested, re-lookup the task (stale after reload) and open
-	if msg.Task != nil && (msg.OpenContent || msg.OpenDetail) {
+	if msg.Task != nil && msg.OpenContent {
 		project := msg.Project
 		if project == nil {
 			project = m.currentProject
 		}
 		if project != nil {
 			if freshTask := project.GetTaskByID(msg.Task.ID); freshTask != nil {
-				var openMsg tea.Msg
-				if msg.OpenDetail {
-					openMsg = ShowTaskDetailMsg{Task: freshTask, Project: project}
-				} else {
-					openMsg = EditTaskContentMsg{Task: freshTask, Project: project}
-				}
+				openMsg := EditTaskContentMsg{Task: freshTask, Project: project}
 				return true, tea.Batch(refreshCmd, cmd, statusTimeout(2*time.Second), func() tea.Msg {
 					return openMsg
 				})

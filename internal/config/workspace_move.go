@@ -38,13 +38,11 @@ type workspaceEntry struct {
 	hash string
 }
 
-// workspaceMoveTestHooks provides deterministic pause points for concurrency
-// tests. Production callers always pass nil.
-type workspaceMoveTestHooks struct {
-	beforeWorkspaceLocks     func()
-	afterInventory           func()
-	afterDestinationPrecheck func()
-	afterCopy                func()
+type workspaceMoveHooks interface {
+	beforeWorkspaceLocksAcquired()
+	didInventoryWorkspace()
+	didPrecheckDestination()
+	didCopyWorkspace()
 }
 
 // MoveWorkspace relocates a workspace's durable data directory from srcDataDir
@@ -72,7 +70,7 @@ func MoveWorkspace(srcDataDir, dstDataDir string) (*MoveReport, error) {
 	return moveWorkspace(srcDataDir, dstDataDir, nil)
 }
 
-func moveWorkspace(srcDataDir, dstDataDir string, hooks *workspaceMoveTestHooks) (*MoveReport, error) {
+func moveWorkspace(srcDataDir, dstDataDir string, hooks workspaceMoveHooks) (*MoveReport, error) {
 	src := filepath.Clean(srcDataDir)
 	dst := filepath.Clean(dstDataDir)
 	if src == "" || src == "." || dst == "" || dst == "." {
@@ -95,8 +93,8 @@ func moveWorkspace(srcDataDir, dstDataDir string, hooks *workspaceMoveTestHooks)
 
 	var report *MoveReport
 	err := withWorkspaceTUILocks(src, dst, func() error {
-		if hooks != nil && hooks.beforeWorkspaceLocks != nil {
-			hooks.beforeWorkspaceLocks()
+		if hooks != nil {
+			hooks.beforeWorkspaceLocksAcquired()
 		}
 
 		sourceCommits := storage.NewCommitService(TransactionsDir(src), []string{src})
@@ -106,14 +104,14 @@ func moveWorkspace(srcDataDir, dstDataDir string, hooks *workspaceMoveTestHooks)
 			if invErr != nil {
 				return invErr
 			}
-			if hooks != nil && hooks.afterInventory != nil {
-				hooks.afterInventory()
+			if hooks != nil {
+				hooks.didInventoryWorkspace()
 			}
 			if err := precheckDestination(entries, dst); err != nil {
 				return err
 			}
-			if hooks != nil && hooks.afterDestinationPrecheck != nil {
-				hooks.afterDestinationPrecheck()
+			if hooks != nil {
+				hooks.didPrecheckDestination()
 			}
 			if err := prepareWorkspaceMachineStateForMove(src); err != nil {
 				return err
@@ -130,8 +128,8 @@ func moveWorkspace(srcDataDir, dstDataDir string, hooks *workspaceMoveTestHooks)
 			if err := copyDestinationFiles(entries, dst, report); err != nil {
 				return err
 			}
-			if hooks != nil && hooks.afterCopy != nil {
-				hooks.afterCopy()
+			if hooks != nil {
+				hooks.didCopyWorkspace()
 			}
 
 			// A non-cooperating writer may bypass the workspace commit lock. Detect

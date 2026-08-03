@@ -139,9 +139,9 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 // runCommand resolves a registered operation by stable ID or case-insensitive
 // label and routes its result through the full app. Discovery remains restricted
 // to the production input strategy, but an explicit scenario command may invoke
-// any applicable registered operation so lower-level layout tests can cover
-// dormant compatibility surfaces until their deletion. These setup-only
-// operations are never returned in AvailableCommands.
+// any applicable registered operation so lower-level layout tests can reach
+// stable setup routes. These setup-only operations are never returned in
+// AvailableCommands.
 func (d *UITestDriver) runCommand(name string) error {
 	registry := d.app.operationRegistry
 	if registry == nil || d.app.operationExecutor == nil {

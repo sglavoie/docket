@@ -17,16 +17,15 @@ import (
 )
 
 const (
-	operationTaskSetState        OperationID = "tui.task.set-state"
-	operationTaskSetPriority     OperationID = "tui.task.set-priority"
-	operationTaskSetDueDate      OperationID = "tui.task.set-due-date"
-	operationTaskSetSnooze       OperationID = "tui.task.set-snooze"
-	operationTaskSetTags         OperationID = "tui.task.set-tags"
-	operationTaskMoveProject     OperationID = "tui.task.move-project"
-	operationTaskSetDependencies OperationID = "tui.task.set-dependencies"
-	operationTaskSetParent       OperationID = "tui.task.set-parent"
-	operationTaskIndent          OperationID = "tui.task.indent"
-	operationTaskOutdent         OperationID = "tui.task.outdent"
+	operationTaskSetState    OperationID = "tui.task.set-state"
+	operationTaskSetPriority OperationID = "tui.task.set-priority"
+	operationTaskSetDueDate  OperationID = "tui.task.set-due-date"
+	operationTaskSetSnooze   OperationID = "tui.task.set-snooze"
+	operationTaskSetTags     OperationID = "tui.task.set-tags"
+	operationTaskMoveProject OperationID = "tui.task.move-project"
+	operationTaskSetParent   OperationID = "tui.task.set-parent"
+	operationTaskIndent      OperationID = "tui.task.indent"
+	operationTaskOutdent     OperationID = "tui.task.outdent"
 )
 
 // OperationDateValue is the picker-neutral due/snooze payload. Nil clears the field.
@@ -489,6 +488,13 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		}
 		entities = context.Selection.Entities
 	}
+	if id == operationTaskMoveProject && len(m.moveProjectCandidatesForEntities(
+		context.Selection.Visual,
+		context.Entity,
+		context.Selection.Entities,
+	)) == 0 {
+		return false
+	}
 	for _, entity := range entities {
 		if entity.TaskID == "" || entity.ProjectID == "" {
 			return false
@@ -560,12 +566,33 @@ func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityCon
 // moveProjectCandidates is the single destination set shared by move-project
 // applicability and its value picker.
 func (m *AppModel) moveProjectCandidates(source *models.Project) []*models.Project {
+	if source == nil {
+		return m.moveProjectCandidatesForSourceIDs(nil)
+	}
+	return m.moveProjectCandidatesForSourceIDs(map[string]bool{source.ID: true})
+}
+
+func (m *AppModel) moveProjectCandidatesForEntities(visual bool, entity EntityContext, selected []EntityContext) []*models.Project {
+	sourceIDs := make(map[string]bool)
+	if visual {
+		for _, selectedEntity := range selected {
+			if selectedEntity.ProjectID != "" {
+				sourceIDs[selectedEntity.ProjectID] = true
+			}
+		}
+	} else if entity.ProjectID != "" {
+		sourceIDs[entity.ProjectID] = true
+	}
+	return m.moveProjectCandidatesForSourceIDs(sourceIDs)
+}
+
+func (m *AppModel) moveProjectCandidatesForSourceIDs(sourceIDs map[string]bool) []*models.Project {
 	candidates := make([]*models.Project, 0)
 	for _, candidate := range m.activeProjects() {
 		if candidate == nil || candidate.Archived {
 			continue
 		}
-		if source != nil && candidate.ID == source.ID {
+		if sourceIDs[candidate.ID] {
 			continue
 		}
 		candidates = append(candidates, candidate)
@@ -629,18 +656,21 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 	case ValueProviderFilterDue:
 		_, ok := value.(DueDateFilter)
 		return ok
+	case ValueProviderFilterCompletionAge:
+		_, ok := value.(CompletionAgeFilter)
+		return ok
 	case ValueProviderFilterStates, ValueProviderFilterTags:
 		_, ok := value.([]string)
 		return ok
 	case ValueProviderDueDate, ValueProviderSnooze:
 		_, ok := value.(OperationDateValue)
 		return ok
-	case ValueProviderTags, ValueProviderDependencies:
+	case ValueProviderTags:
 		if _, ok := value.([]string); ok {
 			return true
 		}
 		_, ok := value.(OperationTagsValue)
-		return id == ValueProviderTags && ok
+		return ok
 	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName:
 		_, ok := value.(string)
 		return ok
@@ -894,12 +924,6 @@ func (m *AppModel) executeSingleTaskOperation(
 			DestProjectID: destination,
 			FromGlobal:    true,
 		}}
-	case operationTaskSetDependencies:
-		dependencies, ok := invocation.Value.([]string)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid dependencies value")}
-		}
-		return cmdResult(m.secondaryFeatures.TaskItem.SetDependencies(identity, dependencies))
 	case operationTaskSetParent:
 		parent, ok := invocation.Value.(OperationParentValue)
 		if !ok {
@@ -973,6 +997,12 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			return OperationHandlerResult{Err: fmt.Errorf("invalid tag value")}
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.SetTagsLocators(locators, tags))
+	case operationTaskMoveProject:
+		destination, ok := invocation.Value.(string)
+		if !ok || strings.TrimSpace(destination) == "" {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid destination project")}
+		}
+		return cmdResult(m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, destination))
 	default:
 		return OperationHandlerResult{
 			Err: fmt.Errorf("operation %s is not available for %d selected tasks", invocation.Descriptor.ID, count),
@@ -1013,6 +1043,8 @@ func (m *AppModel) newOperationValuePicker(
 		return m.newFilterTagsPicker(request)
 	case ValueProviderFilterDue:
 		return m.newFilterDuePicker(request)
+	case ValueProviderFilterCompletionAge:
+		return m.newFilterCompletionAgePicker(request)
 	default:
 	}
 	refs, err := m.operationTaskRefs(request.Context)
@@ -1120,10 +1152,11 @@ func (m *AppModel) newOperationValuePicker(
 		}
 		return picker, nil
 	case ValueProviderProject:
-		if len(refs) != 1 {
-			return nil, fmt.Errorf("move project is available for one task at a time")
+		sourceIDs := make(map[string]bool, len(refs))
+		for _, ref := range refs {
+			sourceIDs[ref.Project.ID] = true
 		}
-		source := ListSourceFromProjects(m.moveProjectCandidates(project))
+		source := ListSourceFromProjects(m.moveProjectCandidatesForSourceIDs(sourceIDs))
 		for index := range source.Items {
 			candidate, _ := source.Items[index].Data.(*models.Project)
 			if candidate != nil {
@@ -1132,14 +1165,6 @@ func (m *AppModel) newOperationValuePicker(
 		}
 		return newOperationValuePickerModel(
 			request, provider, "Move Project", subtitle, source, false, nil,
-		)
-	case ValueProviderDependencies:
-		if len(refs) != 1 {
-			return nil, fmt.Errorf("dependencies are available for one task at a time")
-		}
-		source, selected := m.dependencyOperationListSource(task, project)
-		return newOperationValuePickerModel(
-			request, provider, "Set Dependencies", subtitle, source, true, selected,
 		)
 	case ValueProviderParent:
 		if len(refs) != 1 {
@@ -1311,13 +1336,6 @@ func relativeDateSelectedID(date *time.Time, snooze bool) []ListItemID {
 		return []ListItemID{"date:month"}
 	}
 	return nil
-}
-
-func (m *AppModel) dependencyOperationListSource(
-	task *models.Task,
-	owner *models.Project,
-) (ListSource, []ListItemID) {
-	return ListSource{}, nil
 }
 
 func parentOperationListSource(

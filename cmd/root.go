@@ -34,6 +34,10 @@ Run tt without a command to open the interactive Outliner. The command-line
 surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
+Startup validates schema-6 data before loading and migrates supported schema-4
+or schema-5 workspaces through immutable snapshot-first boundaries. Run
+'tt doctor' for read-only integrity and migration-snapshot diagnostics.
+
 Examples:
   tt
   tt doctor

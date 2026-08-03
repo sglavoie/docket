@@ -16,14 +16,12 @@ type RouteID uint8
 const (
 	TaskWorkspace RouteID = iota
 	SecondaryTool
-	TaskDetail
 	Reference
 )
 
 var routeIDNames = [...]string{
 	"TaskWorkspace",
 	"SecondaryTool",
-	"TaskDetail",
 	"Reference",
 }
 
@@ -36,7 +34,7 @@ func (id RouteID) String() string {
 
 // IsDestination reports whether this identity may occupy the single primary
 // slot. The Outliner (TaskWorkspace) is the sole canonical root and the only
-// destination type; the retired Home and Planner routes have been deleted.
+// destination type; retired primary routes have been deleted.
 // Secondary tools are hierarchical children launched from the root, and
 // Reference is intentionally presentation-only.
 func (id RouteID) IsDestination() bool {
@@ -109,24 +107,6 @@ type ManageParams struct {
 
 func (ManageParams) routeParams() {}
 
-type TaskDetailTab uint8
-
-const (
-	TaskOverview TaskDetailTab = iota
-	TaskChecklist
-	TaskComments
-	TaskDecisions
-	TaskAttachments
-)
-
-type TaskDetailParams struct {
-	ProjectID string
-	TaskID    string
-	Tab       TaskDetailTab
-}
-
-func (TaskDetailParams) routeParams() {}
-
 type ReferenceKind uint8
 
 const (
@@ -142,7 +122,6 @@ var (
 	ErrRouteParamsType    = errors.New("route parameter type does not match route ID")
 	ErrInvalidRouteParams = errors.New("invalid route parameters")
 	ErrProjectRequired    = errors.New("project-scoped route requires a project ID")
-	ErrTaskRequired       = errors.New("task detail requires a task ID")
 	// ErrTaskWorkspaceProjectScope rejects a project-scoped TaskWorkspace: the
 	// Outliner root is app-scoped only, and project selection is an Outliner
 	// scope frame rather than a second root identity.
@@ -223,21 +202,6 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		default:
 			return nil, paramsTypeError(id, params)
 		}
-	case TaskDetail:
-		p, ok := params.(TaskDetailParams)
-		if !ok {
-			return nil, paramsTypeError(id, params)
-		}
-		if p.ProjectID == "" {
-			return nil, ErrProjectRequired
-		}
-		if p.TaskID == "" {
-			return nil, ErrTaskRequired
-		}
-		if p.Tab > TaskAttachments {
-			return nil, invalidParams(id, "unknown task detail tab")
-		}
-		return p, nil
 	case Reference:
 		p, ok := params.(ReferenceParams)
 		if !ok {
@@ -323,7 +287,7 @@ func (r Route) Accent() color.Color {
 		return accentColorForCategory(presentationAccentCategory(r.presentation))
 	}
 	switch r.id {
-	case TaskWorkspace, TaskDetail:
+	case TaskWorkspace:
 		return accentColorForCategory(AccentCatExecute)
 	case SecondaryTool:
 		return accentColorForCategory(AccentCatSupport)

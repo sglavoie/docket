@@ -47,7 +47,7 @@ func TestApplyTransition(t *testing.T) {
 	}{
 		{"to in_progress", StateDoing, StateDoing},
 		{"to done", StateDone, StateDone},
-		{"to blocked", StateWaiting, StateWaiting},
+		{"to waiting", StateWaiting, StateWaiting},
 		{"to canceled", StateCanceled, StateCanceled},
 		{"to todo (reopen)", StateBacklog, StateBacklog},
 		{"to standby", StatePaused, StatePaused},

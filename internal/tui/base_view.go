@@ -11,7 +11,7 @@ import (
 type ViewBundle struct {
 	// runtime is the startup-loaded snapshot of the owned configuration domains.
 	// Machine-local layout consumers (project-view state, outliner/tree columns,
-	// dashboard split/info-panel, cross-outliner state, tab order) read it via
+	// split/info-panel state, cross-outliner state, and tab order read it via
 	// runtime.Machine() and persist through the machine-local committer instead of
 	// the config.Config facade. A nil runtime (isolated render tests) is tolerated
 	// by the config accessors, which default to an empty machine snapshot.
@@ -29,12 +29,6 @@ type ViewBundle struct {
 	// routes through it yet — it is the migration seam for the cross-project
 	// single-task raw-save family.
 	taskItem TaskItemCoordinator
-
-	// link routes task-link mutations (dependency/related edge removal) through
-	// the application layer. The shell wires it via SetLinkCoordinator; a zero
-	// value (nil mutator) means the view was built in isolation. The linked-task
-	// selector unlink flow routes through it.
-	link LinkCoordinator
 }
 
 // SetBulkCoordinator injects the application-layer bulk coordinator. It is
@@ -47,11 +41,6 @@ func (b *ViewBundle) SetBulkCoordinator(c BulkCoordinator) { b.bulk = c }
 // promoted to every view that embeds ViewBundle so the shell wires it from the
 // same showView/replaceView site as the bulk coordinator (via taskItemWireable).
 func (b *ViewBundle) SetTaskItemCoordinator(c TaskItemCoordinator) { b.taskItem = c }
-
-// SetLinkCoordinator injects the application-layer link coordinator, promoted to
-// every view that embeds ViewBundle so the shell wires it from the same
-// showView/replaceView site as the other coordinators (via linkWireable).
-func (b *ViewBundle) SetLinkCoordinator(c LinkCoordinator) { b.link = c }
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.

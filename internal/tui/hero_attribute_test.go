@@ -26,7 +26,7 @@ func TestPickHeroAttribute(t *testing.T) {
 		{
 			name: "overdue + P1 + due-today → HeroOverdue (precedence top)",
 			task: &models.Task{
-				ID:            "t-overdue-p1-blocked",
+				ID:            "t-overdue-p1-waiting",
 				WorkflowState: models.StateBacklog,
 				Priority:      1,
 				DueDate:       &pastDue,
@@ -35,24 +35,24 @@ func TestPickHeroAttribute(t *testing.T) {
 			want:    HeroOverdue,
 		},
 		{
-			name: "explicit StateWaiting + P1 → HeroBlocked",
+			name: "explicit StateWaiting + P1 → HeroWaiting",
 			task: &models.Task{
-				ID:            "t-status-blocked",
+				ID:            "t-status-waiting",
 				WorkflowState: models.StateWaiting,
 				Priority:      1,
 			},
 			project: &models.Project{},
-			want:    HeroBlocked,
+			want:    HeroWaiting,
 		},
 		{
-			name: "explicit StateWaiting without deps still → HeroBlocked",
+			name: "explicit StateWaiting alone → HeroWaiting",
 			task: &models.Task{
-				ID:            "t-status-blocked-only",
+				ID:            "t-status-waiting-only",
 				WorkflowState: models.StateWaiting,
 				Priority:      3,
 			},
 			project: &models.Project{},
-			want:    HeroBlocked,
+			want:    HeroWaiting,
 		},
 		{
 			name:    "due today + P1 → HeroDueToday (beats P1)",
@@ -100,7 +100,7 @@ func TestPickHeroAttribute(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := pickHeroAttribute(tc.task, tc.project)
+			got := pickHeroAttribute(tc.task)
 			if got != tc.want {
 				t.Errorf("pickHeroAttribute() = %v, want %v", got, tc.want)
 			}

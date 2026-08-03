@@ -30,9 +30,9 @@ func (t *Task) Maybe() {
 	_ = t.ApplyStateTransition(StateSomeday)
 }
 
-// Block marks the task as waiting (blocked on external input).
-// Snooze is cleared since a waiting task needs visibility for tracking blockers.
-func (t *Task) Block() {
+// Wait marks the task as explicitly waiting.
+// Snooze is cleared since waiting work should remain visible.
+func (t *Task) Wait() {
 	_ = t.ApplyStateTransition(StateWaiting)
 }
 

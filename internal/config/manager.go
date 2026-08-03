@@ -317,11 +317,6 @@ func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (stora
 	}, nil
 }
 
-// prepareFreshSystemInbox is retained as a compile-time compatibility helper.
-func prepareFreshSystemInbox(dataDir string, catalog *WorkspaceCatalog) (storage.ArtifactChange, error) {
-	return prepareFreshSystemUnfiled(dataDir, catalog)
-}
-
 func validateDomainBundle(domains *Domains) error {
 	return validateDomainBundleWithCatalogPolicy(domains, (*WorkspaceCatalog).Validate)
 }

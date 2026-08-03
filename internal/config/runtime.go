@@ -51,9 +51,9 @@ func (m *Manager) RuntimeDependencies() *RuntimeDependencies {
 	return NewRuntimeDependencies(m.domainStore())
 }
 
-// NextOrder returns the persisted workspace-wide Next membership/order via
+// Next returns the persisted workspace-wide Next membership/order via
 // the Planning dependency. Presence does not confer Next membership.
-func (r *RuntimeDependencies) NextOrder() ([]ProjectTaskLocator, error) {
+func (r *RuntimeDependencies) Next() ([]ProjectTaskLocator, error) {
 	if r == nil || r.Planning == nil {
 		return nil, nil
 	}
@@ -64,13 +64,13 @@ func (r *RuntimeDependencies) NextOrder() ([]ProjectTaskLocator, error) {
 	return planning.GetNext(), nil
 }
 
-// TaskInNextOrder reports whether the exact project-qualified task has a
+// TaskInNext reports whether the exact project-qualified task has a
 // persisted order entry. It deliberately does not report workflow membership.
-func (r *RuntimeDependencies) TaskInNextOrder(locator ProjectTaskLocator) (bool, error) {
+func (r *RuntimeDependencies) TaskInNext(locator ProjectTaskLocator) (bool, error) {
 	if !locator.Valid() {
 		return false, nil
 	}
-	order, err := r.NextOrder()
+	order, err := r.Next()
 	if err != nil {
 		return false, err
 	}

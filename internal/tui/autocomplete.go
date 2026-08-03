@@ -6,7 +6,7 @@ import (
 )
 
 // AutocompleteState manages the shared state for trigger-based autocomplete
-// dropdowns used across quick capture, focus board add,
+// dropdowns used across quick capture and task editing,
 // and global search inputs.
 type AutocompleteState struct {
 	Mode        int

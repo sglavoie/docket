@@ -27,7 +27,7 @@ type OutlinerModeInput struct {
 	// project. A missing project entry falls back to Project.Tasks.
 	CandidateTasks map[string][]*models.Task
 	// TodayOrder and NextOrder are the durable project-qualified planning orders.
-	TodayOrder      []FocusTask
+	TodayOrder      []PlanningTask
 	NextOrder       []config.ProjectTaskLocator
 	TaskFilter      func(task *models.Task, project *models.Project) bool
 	TaskExclude     func(task *models.Task, project *models.Project) bool

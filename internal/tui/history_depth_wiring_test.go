@@ -13,7 +13,7 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 
 	shell := driver.App()
 	ledger := shell.deps.historyLedger()
-	project := shell.projectByID(shell.runtime.SystemInboxProject().ID)
+	project := shell.projectByID(shell.runtime.SystemUnfiledProject().ID)
 	assertLedger := func(name string, view PresentationID) {
 		t.Helper()
 		notes, ok := shell.views.Get(view).(*NotesViewModel)

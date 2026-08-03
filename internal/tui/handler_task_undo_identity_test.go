@@ -17,11 +17,11 @@ func TestUndoReferenceRepairUsesProjectQualifiedTaskIdentity(t *testing.T) {
 	newBeta := &models.Project{ID: "beta", Tasks: []*models.Task{newBetaTask}}
 
 	m := &AppModel{
-		nextOrder: []FocusTask{
+		nextOrder: []PlanningTask{
 			{Task: oldAlphaTask, Project: oldAlpha},
 			{Task: oldBetaTask, Project: oldBeta},
 		},
-		today: []FocusTask{{Task: oldBetaTask, Project: oldBeta}},
+		today: []PlanningTask{{Task: oldBetaTask, Project: oldBeta}},
 	}
 	m.rewireTaskProjectRefsAfterRestore([]*models.Project{newAlpha, newBeta})
 

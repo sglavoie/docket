@@ -61,11 +61,27 @@ func NewTaskChecklistModelWithEditor(task *models.Task, project *models.Project,
 	return m
 }
 
-// resolveTask ensures m.task points to the task currently in m.project.Tasks.
-func (m *TaskChecklistModel) resolveTask() {
-	if t := m.project.GetTaskByID(m.task.ID); t != nil {
-		m.task = t
+// refreshAfterReload re-resolves the task pointer and clamps item selection
+// after the application layer swaps in a freshly committed project snapshot.
+func (m *TaskChecklistModel) refreshAfterReload() bool {
+	if m.project == nil || m.task == nil {
+		return false
 	}
+	task := m.project.GetTaskByID(m.task.ID)
+	if task == nil {
+		return false
+	}
+	m.task = task
+	if m.cursor >= len(m.task.Checklist) {
+		m.cursor = max(len(m.task.Checklist)-1, 0)
+	}
+	return true
+}
+
+func (m *TaskChecklistModel) resolveTask() { _ = m.refreshAfterReload() }
+
+func (m *TaskChecklistModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.task, m.project
 }
 
 func (m *TaskChecklistModel) Init() tea.Cmd {

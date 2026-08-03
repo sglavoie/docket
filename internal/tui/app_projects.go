@@ -285,6 +285,3 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 	m.syncProjectCache()
 	return nil
 }
-
-// ensureSystemInboxProject is the compile-time compatibility name.
-func (m *AppModel) ensureSystemInboxProject() error { return m.ensureSystemUnfiledProject() }

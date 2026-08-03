@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 const operationTaskDelete OperationID = "tui.task.delete"
@@ -30,30 +32,52 @@ func (m *AppModel) executeTaskDeleteOperation(
 		}
 	}
 	return OperationHandlerResult{Message: TaskDeleteRequestedMsg{
-		Refs:   refs,
-		Origin: invocation.Context.View,
+		Refs:      refs,
+		Origin:    invocation.Context.View,
+		Selection: deleteSelectionCounts(invocation.Context, len(refs)),
 	}}
 }
 
+func deleteSelectionCounts(context CommandContext, targetCount int) SelectionCounts {
+	counts := SelectionCounts{Total: targetCount, Visible: targetCount}
+	if context.Selection.VisibleCount+context.Selection.HiddenCount == targetCount {
+		counts.Visible = context.Selection.VisibleCount
+		counts.Hidden = context.Selection.HiddenCount
+	}
+	return counts
+}
+
 // TaskDeleteRequestedMsg is the canonical, shell-owned request to permanently
-// delete one or more task subtrees. Any surface (Outliner, Planner, Task
-// Detail, review, …) emits it instead of running its own delete flow: the shell
+// delete one or more task subtrees. Any task surface emits it instead of
+// running its own delete flow: the shell
 // canonicalizes the roots, prompts for confirmation, and — only after the user
 // confirms — executes ONE atomic BulkCoordinator.Delete transaction that folds
 // the durable planning-ref cleanup into the same commit. Refs carry each root
 // task with its owning project so heterogeneous cross-project selections delete
 // together; Origin records the presentation that asked so post-commit behavior
-// (cursor repair, closing Task Detail) can stay origin-aware.
+// (such as cursor repair) can stay origin-aware.
 type TaskDeleteRequestedMsg struct {
-	Refs   []TaskProjectRef
-	Origin PresentationID
+	Refs      []TaskProjectRef
+	Origin    PresentationID
+	Selection SelectionCounts
 }
 
 // taskDeletePending holds the canonicalized roots and origin for an in-flight
 // shell-owned task deletion awaiting confirmation.
 type taskDeletePending struct {
-	roots  []TaskProjectRef
-	origin PresentationID
+	roots    []TaskProjectRef
+	selected []TaskProjectRef
+	origin   PresentationID
+	impact   taskDeleteImpact
+}
+
+type taskDeleteImpact struct {
+	selectedRoots     int
+	descendants       int
+	totalTasks        int
+	selection         SelectionCounts
+	storedAttachments int
+	linkedAttachments int
 }
 
 const taskDeleteConfirmAction = "task-delete"
@@ -63,12 +87,24 @@ const taskDeleteConfirmAction = "task-delete"
 // task data — the delete transaction runs only after the user confirms in
 // confirmTaskDelete. An empty or fully-invalid request is a no-op.
 func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) tea.Cmd {
-	roots := canonicalizeTaskDeleteRoots(msg.Refs)
-	if len(roots) == 0 {
+	requested := canonicalizeTaskDeleteRoots(msg.Refs)
+	if len(requested) == 0 {
 		return nil
 	}
-	m.pendingTaskDelete = taskDeletePending{roots: roots, origin: msg.Origin}
-	m.taskDeleteConfirm.Show(taskDeleteConfirmAction, taskDeletePrompt(roots))
+	roots := collapseNestedTaskDeleteRoots(requested)
+	selection := msg.Selection
+	if selection.Total != len(requested) || selection.Visible+selection.Hidden != selection.Total {
+		selection = SelectionCounts{Total: len(requested), Visible: len(requested)}
+	}
+	impact := calculateTaskDeleteImpact(roots, selection)
+	m.pendingTaskDelete = taskDeletePending{
+		roots: roots, selected: requested, origin: msg.Origin, impact: impact,
+	}
+	m.taskDeleteConfirm.ShowWithDetail(
+		taskDeleteConfirmAction,
+		taskDeletePrompt(roots),
+		taskDeleteConfirmDetail(roots, impact),
+	)
 	return nil
 }
 
@@ -92,6 +128,124 @@ func canonicalizeTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 		roots = append(roots, ref)
 	}
 	return roots
+}
+
+// collapseNestedTaskDeleteRoots removes a selected task when an ancestor in the
+// same project is already selected. The ancestor carries that entire subtree,
+// so these are the exact effective roots used by both impact accounting and the
+// application transaction.
+func collapseNestedTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
+	selected := make(map[TaskIdentity]bool, len(refs))
+	for _, ref := range refs {
+		selected[ref.Identity()] = true
+	}
+	roots := make([]TaskProjectRef, 0, len(refs))
+	for _, ref := range refs {
+		ancestorSelected := false
+		seen := make(map[string]bool)
+		parentID := ref.Task.ParentID
+		for parentID != nil && *parentID != "" && !seen[*parentID] {
+			seen[*parentID] = true
+			if selected[TaskIdentity{ProjectID: ref.Project.ID, TaskID: *parentID}] {
+				ancestorSelected = true
+				break
+			}
+			parent := ref.Project.GetTaskByID(*parentID)
+			if parent == nil {
+				break
+			}
+			parentID = parent.ParentID
+		}
+		if !ancestorSelected {
+			roots = append(roots, ref)
+		}
+	}
+	return roots
+}
+
+func calculateTaskDeleteImpact(roots []TaskProjectRef, selection SelectionCounts) taskDeleteImpact {
+	rootSet := make(map[TaskIdentity]bool, len(roots))
+	projects := make(map[string]*models.Project)
+	for _, root := range roots {
+		rootSet[root.Identity()] = true
+		projects[root.Project.ID] = root.Project
+	}
+	removed := make(map[TaskIdentity]*models.Task)
+	for projectID, project := range projects {
+		for _, task := range project.Tasks {
+			identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+			if taskDeleteRootAncestor(identity, task, project, rootSet) {
+				removed[identity] = task
+			}
+		}
+	}
+	impact := taskDeleteImpact{
+		selectedRoots: len(roots),
+		totalTasks:    len(removed),
+		selection:     selection,
+	}
+	impact.descendants = max(impact.totalTasks-impact.selectedRoots, 0)
+	for _, task := range removed {
+		for _, attachment := range task.Attachments {
+			if attachment.IsURL || attachment.IsCodeRef {
+				impact.linkedAttachments++
+			} else {
+				impact.storedAttachments++
+			}
+		}
+	}
+	return impact
+}
+
+func taskDeleteRootAncestor(
+	identity TaskIdentity,
+	task *models.Task,
+	project *models.Project,
+	roots map[TaskIdentity]bool,
+) bool {
+	seen := make(map[string]bool)
+	for task != nil && !seen[task.ID] {
+		seen[task.ID] = true
+		identity.TaskID = task.ID
+		if roots[identity] {
+			return true
+		}
+		if task.ParentID == nil || *task.ParentID == "" {
+			return false
+		}
+		task = project.GetTaskByID(*task.ParentID)
+	}
+	return false
+}
+
+func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *ConfirmDetail {
+	items := make([]string, 0, min(len(roots), 5))
+	for _, root := range roots {
+		if len(items) == 5 {
+			break
+		}
+		items = append(items, fmt.Sprintf("%s:#%d %s", root.Project.Slug, root.Task.ShortID, root.Task.Title))
+	}
+	attachmentImpact := fmt.Sprintf(
+		"attachments: %d stored file(s) deleted · %d URL/code reference(s) removed",
+		impact.storedAttachments,
+		impact.linkedAttachments,
+	)
+	return &ConfirmDetail{
+		Items:      items,
+		TotalCount: len(roots),
+		CascadeNote: fmt.Sprintf(
+			"%d selected root(s) · %d deduplicated descendant(s) · %d task(s) total · %d selected (%d visible · %d hidden) · %s",
+			impact.selectedRoots,
+			impact.descendants,
+			impact.totalTasks,
+			impact.selection.Total,
+			impact.selection.Visible,
+			impact.selection.Hidden,
+			attachmentImpact,
+		),
+		UndoHint: true,
+	}
 }
 
 // taskDeletePrompt renders "Delete task #N?" for a single root or
@@ -136,6 +290,7 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 // aborts before any mutation and preserves the pending selection's task data.
 func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	roots := m.pendingTaskDelete.roots
+	selected := m.pendingTaskDelete.selected
 	m.clearPendingTaskDelete()
 	if len(roots) == 0 {
 		return nil
@@ -144,7 +299,10 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 
 	locators := taskLocatorsFromTaskRefs(roots)
 	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators)
-	return finalizeLocatedBatchResult(cmd, locators, "")
+	if len(selected) == 0 {
+		selected = roots
+	}
+	return finalizeLocatedDeleteBatchResult(cmd, taskLocatorsFromTaskRefs(selected))
 }
 
 // clearPendingTaskDelete discards the pending roots and dismisses the confirm

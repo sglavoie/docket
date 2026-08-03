@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	operationFilterPriority OperationID = "tui.filter.priority"
-	operationFilterStates   OperationID = "tui.filter.states"
-	operationFilterTags     OperationID = "tui.filter.tags"
-	operationFilterDue      OperationID = "tui.filter.due"
-	operationFilterBlocked  OperationID = "tui.filter.blocked"
-	operationFilterSnoozed  OperationID = "tui.filter.snoozed"
-	operationFilterClear    OperationID = "tui.filter.clear"
+	operationFilterPriority      OperationID = "tui.filter.priority"
+	operationFilterStates        OperationID = "tui.filter.states"
+	operationFilterTags          OperationID = "tui.filter.tags"
+	operationFilterDue           OperationID = "tui.filter.due"
+	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
+	operationFilterSnoozed       OperationID = "tui.filter.snoozed"
+	operationFilterClear         OperationID = "tui.filter.clear"
 )
 
 func filterOperationDescriptors() []OperationDescriptor {
@@ -43,7 +43,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
 		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
-		descriptor(operationFilterBlocked, "Filter Blocked Tasks", "", "blocked only"),
+		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterSnoozed, "Filter Snoozed Tasks", "", "snoozed only"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
@@ -67,6 +67,7 @@ func (m *AppModel) registerFilterOperations() error {
 		ValueProviderFilterStates,
 		ValueProviderFilterTags,
 		ValueProviderFilterDue,
+		ValueProviderFilterCompletionAge,
 	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
 			func(OperationInvocation) OperationValueProviderResult {
@@ -78,9 +79,13 @@ func (m *AppModel) registerFilterOperations() error {
 		}
 	}
 	for _, descriptor := range filterOperationDescriptors() {
+		descriptor.Applicability = func(ctx CommandContext) bool {
+			return coreOutlinerApplicability(ctx) &&
+				(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
+		}
 		if err := m.registerOperation(descriptor, OperationBinding{
 			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
-			Applicability:            coreOutlinerApplicability,
+			Applicability:            descriptor.Applicability,
 			Handler:                  m.executeFilterOperation,
 			DelegateTargetResolution: true,
 			DelegateConfirmation:     true,
@@ -99,6 +104,9 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
+	if out.hasSearchProjection() {
+		return OperationHandlerResult{Status: "Exit search before changing filters"}
+	}
 	filter := &out.filter.CommonFilterState
 
 	var status string
@@ -109,9 +117,10 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 			return OperationHandlerResult{Err: fmt.Errorf("invalid priority threshold")}
 		}
 		filter.Priority = threshold
-		status = fmt.Sprintf("Filtering priority <= %d", threshold)
 		if threshold == 0 {
 			status = "Priority filter cleared"
+		} else {
+			status = "Filtering " + priorityThresholdLabel(threshold)
 		}
 	case operationFilterDue:
 		due, ok := invocation.Value.(DueDateFilter)
@@ -120,6 +129,13 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		}
 		filter.DueDate = due
 		status = "Filtering due: " + dueDateFilterLabel(due)
+	case operationFilterCompletionAge:
+		age, ok := invocation.Value.(CompletionAgeFilter)
+		if !ok || age < CompletionAgeAll || age > CompletionAge90Days {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid completion-age filter value")}
+		}
+		filter.setCompletionAgeFilter(age, true)
+		status = "Filtering completed: " + completionAgeFilterLabel(age)
 	case operationFilterStates:
 		names, ok := invocation.Value.([]string)
 		if !ok {
@@ -156,9 +172,6 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		if len(names) == 0 {
 			status = "Tag filter cleared"
 		}
-	case operationFilterBlocked:
-		filter.Blocked = true
-		status = "Filtering blocked tasks"
 	case operationFilterSnoozed:
 		filter.Snoozed = true
 		status = "Filtering snoozed tasks"
@@ -174,6 +187,19 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 	return OperationHandlerResult{Status: status}
 }
 
+func priorityThresholdLabel(threshold int) string {
+	switch threshold {
+	case models.PriorityHigh:
+		return "High priority"
+	case models.PriorityMedium:
+		return "Medium priority or higher"
+	case models.PriorityLow:
+		return "Low priority or higher"
+	default:
+		return "priority"
+	}
+}
+
 func dueDateFilterLabel(filter DueDateFilter) string {
 	switch filter {
 	case DueDateOverdue:
@@ -187,6 +213,13 @@ func dueDateFilterLabel(filter DueDateFilter) string {
 	default:
 		return "all"
 	}
+}
+
+func completionAgeFilterLabel(filter CompletionAgeFilter) string {
+	if days := filter.days(); days > 0 {
+		return fmt.Sprintf("at least %d days ago", days)
+	}
+	return "all ages"
 }
 
 // newFilterDuePicker is the fd single-select picker over the four public
@@ -235,6 +268,58 @@ func (m *AppModel) newFilterDuePicker(
 		ValueProviderFilterDue,
 		"Filter by Due Date",
 		"keep matching tasks",
+		ListSource{Items: items},
+		false,
+		selected,
+	)
+}
+
+// newFilterCompletionAgePicker is the fc single-select picker. It changes only
+// the completion-age facet: users must choose Done, Canceled, or both through
+// fs before cleanup records become visible.
+func (m *AppModel) newFilterCompletionAgePicker(
+	request OperationExecutionRequest,
+) (*OperationValuePickerModel, error) {
+	options := []struct {
+		id        string
+		label     string
+		secondary string
+		value     CompletionAgeFilter
+	}{
+		{id: "all", label: "All ages", secondary: "any valid completion date", value: CompletionAgeAll},
+		{id: "7", label: "7+ days", secondary: "completed at least 7 local days ago", value: CompletionAge7Days},
+		{id: "30", label: "30+ days", secondary: "completed at least 30 local days ago", value: CompletionAge30Days},
+		{id: "90", label: "90+ days", secondary: "completed at least 90 local days ago", value: CompletionAge90Days},
+	}
+	items := make([]ListItem, 0, len(options))
+	for _, option := range options {
+		items = append(items, ListItem{
+			ID:            ListItemID("filter-completion-age:" + option.id),
+			PrimaryText:   option.label,
+			SecondaryText: option.secondary,
+			Aliases:       []string{option.id, option.label, option.secondary},
+			Data:          option.value,
+		})
+	}
+	selected := []ListItemID(nil)
+	if m.crossOutliner != nil && m.crossOutliner.filter.hasCompletionAgeFilter() {
+		suffix := "all"
+		switch m.crossOutliner.filter.CompletionAge {
+		case CompletionAge7Days:
+			suffix = "7"
+		case CompletionAge30Days:
+			suffix = "30"
+		case CompletionAge90Days:
+			suffix = "90"
+		default:
+		}
+		selected = []ListItemID{ListItemID("filter-completion-age:" + suffix)}
+	}
+	return newOperationValuePickerModel(
+		request,
+		ValueProviderFilterCompletionAge,
+		"Filter by Completion Age",
+		"combine with fs before cleanup",
 		ListSource{Items: items},
 		false,
 		selected,
@@ -314,18 +399,13 @@ func prospectiveOutlinerStateCounts(
 		[]CrossProjectZoomEntry(nil),
 		outliner.crossZoomStack...,
 	)
-	projection.pinnedTagTab = make(map[string]int, len(outliner.pinnedTagTab))
-	for key, value := range outliner.pinnedTagTab {
-		projection.pinnedTagTab[key] = value
-	}
 	projection.crossForceRebuild = true
 	projection.rebuildRows()
 
 	// A matching descendant can retain a non-matching ancestor as hierarchy
 	// context. Count only rows that satisfy the prospective predicate themselves.
 	now := time.Now()
-	resolver := projection.newWorkspaceFilterResolver(projection.workModeScopeProjects())
-	matches := projection.workModeTaskFilterWithResolverAt(now, resolver)
+	matches := projection.workModeTaskFilterAt(now)
 	seen := make(map[TaskIdentity]struct{})
 	for _, row := range projection.rows {
 		if !row.isTaskRow() || row.task == nil {

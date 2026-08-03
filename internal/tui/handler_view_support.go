@@ -6,7 +6,16 @@ import tea "charm.land/bubbletea/v2"
 func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowTaskAttachmentsMsg:
-		return true, m.activateTaskDetail(msg.Task, msg.Project, TaskAttachments)
+		if msg.Task == nil || msg.Project == nil {
+			return true, nil
+		}
+		view := NewTaskAttachmentsModel(
+			msg.Task,
+			msg.Project,
+			m.runtime,
+			m.secondaryFeatures.Attachment,
+		)
+		return m.showViewInit(ViewTaskAttachments, view)
 
 	case AttachmentAddedMsg, AttachmentDeletedMsg:
 		return true, nil

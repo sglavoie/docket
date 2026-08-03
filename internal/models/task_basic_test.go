@@ -145,10 +145,10 @@ func TestTaskStatusTransitions(t *testing.T) {
 		t.Errorf("after Start(), State = %s, want in_progress", task.State())
 	}
 
-	// Block
-	task.Block()
+	// Wait
+	task.Wait()
 	if task.State() != StateWaiting {
-		t.Errorf("after Block(), State = %s, want waiting", task.State())
+		t.Errorf("after Wait(), State = %s, want waiting", task.State())
 	}
 
 	// Complete

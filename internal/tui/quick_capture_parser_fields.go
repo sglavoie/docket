@@ -45,15 +45,16 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 }
 
 func (p *quickCaptureParser) parseRetiredTaskTypeTokens(tokens []textgrammar.Token) {
-	for _, token := range tokens {
-		replacement := "use #tag instead"
-		switch strings.ToLower(token.Value) {
-		case "bug", "feature", "idea":
-			replacement = "use #" + strings.ToLower(token.Value)
-		}
-		p.failf("task type ^%s was removed (%s)", token.Value, replacement)
+	if len(tokens) == 0 {
 		return
 	}
+	token := tokens[0]
+	replacement := "use #tag instead"
+	switch strings.ToLower(token.Value) {
+	case "bug", "feature", "idea":
+		replacement = "use #" + strings.ToLower(token.Value)
+	}
+	p.failf("task type ^%s was removed (%s)", token.Value, replacement)
 }
 
 func (p *quickCaptureParser) parsePriorityTokens(tokens []textgrammar.Token) {

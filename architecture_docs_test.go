@@ -19,9 +19,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	content := normalizedDocumentation(t, "docs/architecture.md")
 	required := []string{
 		"## Runtime layers",
-		"strict schema-5 Markdown",
+		"strict schema-6 Markdown",
 		"## Task model",
-		"Blocked is derived from unresolved dependencies",
+		"Waiting is an explicit lifecycle state with no derived relationship semantics",
 		"Today and Next are mutually exclusive",
 		"resulting subtree depth above six",
 		"## TUI architecture",
@@ -32,7 +32,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"The Outliner remains full-width at every supported terminal size",
 		"`Enter` toggles a session-only, project-qualified Peek below the cursor task",
 		"Entering visual selection disables Peek",
-		"The bulk `Space` menu contains Delete only",
+		"`v` starts a fresh inclusive task-row range",
+		"`Ctrl+A` replaces the selection with every visible task row",
+		"Only a committed Delete clears selection",
 		"The workspace-wide Notes manager carries an explicit `NoteLocation` plus filename identity with every row",
 		"always opens in All Notes",
 		"`Runtime.ActiveProjects()`",
@@ -47,8 +49,10 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"## Transactions and recovery",
 		"at most 50 transactions",
 		"## Concurrent edits and conflicts",
-		"## Snapshot-first v5 migration",
+		"## Snapshot-first schema migration",
 		"pre-simplification-v5-<UTC>.tar.gz",
+		"pre-consolidation-v6-<UTC>.tar.gz",
+		"restore-and-reactivate path",
 		"prepared activation journal",
 		"## Workspace location and cloud consent",
 		"## Maintenance CLI and platform support",
@@ -74,6 +78,8 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 		"Ctrl+Esc reset",
 		"focused project's notes",
 		"Global notes plus the focused project",
+		"strict schema-5 Markdown",
+		"protected Inbox ID",
 	} {
 		if strings.Contains(content, stale) {
 			t.Errorf("architecture documentation contains retired runtime guidance %q", stale)

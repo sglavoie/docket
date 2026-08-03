@@ -3,8 +3,6 @@ package tui
 import (
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -17,18 +15,16 @@ func TestRenameEditTitle_UndoContextUsesOldTitle(t *testing.T) {
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
-	row := boardRow{Task: task, Project: project}
-
 	// Verify the mutation ordering directly: after MutateTask, the task pointer
 	// holds the new title, while the previously captured old title is unchanged.
-	oldTitle := row.Task.Title
-	row.Project.MutateTask(row.Task.ID, func(t *models.Task) {
+	oldTitle := task.Title
+	project.MutateTask(task.ID, func(t *models.Task) {
 		t.Title = "New Title"
 	})
 
-	// row.Task.Title is now "New Title" because MutateTask mutates in-place.
-	if row.Task.Title != "New Title" {
-		t.Fatalf("expected task title to be mutated to 'New Title', got %q", row.Task.Title)
+	// task.Title is now "New Title" because MutateTask mutates in-place.
+	if task.Title != "New Title" {
+		t.Fatalf("expected task title to be mutated to 'New Title', got %q", task.Title)
 	}
 	// The captured oldTitle must still be "Old Title".
 	if oldTitle != "Old Title" {
@@ -94,6 +90,3 @@ func TestMutateTask_TitlePointerSharing(t *testing.T) {
 		t.Errorf("ref.Title should be 'After', got %q — pointer sharing not working as expected", ref.Title)
 	}
 }
-
-// Ensure tea import is used (required by test file convention in this package).
-var _ tea.Msg = BackMsg{}

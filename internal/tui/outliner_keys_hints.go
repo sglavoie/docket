@@ -21,11 +21,10 @@ func (m *OutlinerModel) ContextualFooter() (StatusBarFooterSpec, bool) {
 	if m.operationRegistry == nil {
 		return StatusBarFooterSpec{}, false
 	}
-	hints := m.operationRegistry.FooterHintsForInputStrategy(
+	hints := fitFooterHintLine(m.operationRegistry.FooterHintPairsForInputStrategy(
 		InputStrategySimplified,
 		m.operationCommandContext(),
-		8,
-	)
+	), m.Width())
 	if hints == "" {
 		return StatusBarFooterSpec{}, false
 	}

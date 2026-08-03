@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -11,7 +9,7 @@ import (
 
 // This file introduces the feature-coordinator seam for the primary TUI views.
 //
-// Historically each primary view (Dashboard, project selection, project tree,
+// Historically each primary view (project selection, project tree,
 // outliner, quick capture, the system Inbox, and the task forms) mutated its own
 // copy of the domain model and then called a Persister.Save* helper directly.
 // That coupled presentation to persistence: every view re-implemented the
@@ -53,8 +51,8 @@ type FeatureMutator interface {
 	SetPriority(taskID string, priority int) (app.TaskResult, error)
 }
 
-// FeatureQuery is the narrow read-model surface the query-only primary
-// coordinators (Dashboard, project selection) depend on. *app.Service satisfies
+// FeatureQuery is the narrow read-model surface the query-only project-selection
+// coordinator depends on. *app.Service satisfies
 // it. It never commits: every method loads a revision-consistent snapshot and
 // returns presentation-neutral summaries.
 type FeatureQuery interface {
@@ -78,8 +76,8 @@ var (
 // save completion through this message is what removes the load/mutate/save
 // duplication from the migrated views.
 type TransactionResultMsg struct {
-	// Feature names the coordinator that produced the mutation (dashboard,
-	// capture, inbox, project-tree, outliner, task-form).
+	// Feature names the coordinator that produced the mutation (capture, inbox,
+	// project-tree, outliner, task-form).
 	Feature string
 	// Action is the human-facing label for the mutation (e.g. "Capture",
 	// "Complete", "Set Priority").
@@ -87,7 +85,7 @@ type TransactionResultMsg struct {
 	// Result is the application layer's outcome for the affected task.
 	Result app.TaskResult
 	// PlanningChanged reports that the same ChangeSet carried a checked planning
-	// artifact. The shell advances its planning snapshot before refreshing Planner.
+	// artifact. The shell advances its planning snapshot before refreshing the Outliner.
 	PlanningChanged bool
 }
 
@@ -174,24 +172,6 @@ func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent bo
 		}
 		result := res
 		return TaskCreatedMsg{Result: &result, OpenContent: openContent}
-	}
-}
-
-// CaptureBoard runs the capture use case for the Focus Board quick-add and emits
-// a transaction-result message whose status renders "Added #N: <title>", so the
-// shell reloads the committed project and refreshes the board without popping it.
-func (c CaptureCoordinator) CaptureBoard(req app.CaptureRequest) tea.Cmd {
-	name := c.name
-	mutator := c.mutator
-	return func() tea.Msg {
-		res, err := mutator.Capture(req)
-		if err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return TransactionResultMsg{
-			Feature: name, Action: fmt.Sprintf("Added #%d", res.ShortID), Result: res,
-			PlanningChanged: req.Destination.IsPlanning(),
-		}
 	}
 }
 
@@ -320,15 +300,6 @@ func (c TaskFormCoordinator) EditForm(task TaskIdentity, req app.EditRequest) te
 	}
 }
 
-// DashboardCoordinator backs the Dashboard's project overview. It is query-only:
-// the Dashboard reads project summaries and never mutates through this seam.
-type DashboardCoordinator struct{ FeatureCoordinator }
-
-// Projects returns every project summary for the dashboard overview.
-func (c DashboardCoordinator) Projects() ([]app.ProjectSummary, error) {
-	return c.query.ListProjects()
-}
-
 // ProjectSelectionCoordinator backs project selection surfaces. Query-only.
 type ProjectSelectionCoordinator struct{ FeatureCoordinator }
 
@@ -345,7 +316,6 @@ func (c ProjectSelectionCoordinator) Project(projectID string) (app.ProjectSumma
 // FeatureCoordinators aggregates the primary-view coordinators the AppModel
 // hands to feature views as they migrate onto the application layer.
 type FeatureCoordinators struct {
-	Dashboard        DashboardCoordinator
 	ProjectSelection ProjectSelectionCoordinator
 	ProjectTree      ProjectTreeCoordinator
 	Outliner         OutlinerCoordinator
@@ -359,7 +329,6 @@ type FeatureCoordinators struct {
 // test may inject distinct in-memory implementations to isolate behavior.
 func newFeatureCoordinators(mutator FeatureMutator, query FeatureQuery) FeatureCoordinators {
 	return FeatureCoordinators{
-		Dashboard:        DashboardCoordinator{newFeatureCoordinator("dashboard", mutator, query)},
 		ProjectSelection: ProjectSelectionCoordinator{newFeatureCoordinator("project-selection", mutator, query)},
 		ProjectTree:      ProjectTreeCoordinator{newFeatureCoordinator("project-tree", mutator, query)},
 		Outliner:         OutlinerCoordinator{newFeatureCoordinator("outliner", mutator, query)},

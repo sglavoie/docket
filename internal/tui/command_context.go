@@ -97,6 +97,10 @@ func (s CapabilitySet) Add(capabilities ...Capability) {
 // cursor or row position.
 type SelectionContext struct {
 	Tasks []TaskIdentity
+	// VisibleCount and HiddenCount classify Tasks against the originating
+	// projection at the moment the command context is frozen.
+	VisibleCount int
+	HiddenCount  int
 	// Entities mirrors Tasks with the lifecycle and project mutability facts
 	// needed to decide whether an operation applies to every selected target.
 	// It stays pointer-free so a frozen action sheet cannot be retargeted by a

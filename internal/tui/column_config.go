@@ -11,28 +11,26 @@ const (
 
 // Column name constants for configurable column visibility.
 const (
-	ColPriority     = "priority"
-	ColDueDate      = "due_date"
-	ColTags         = "tags"
-	ColDependencies = "dependencies"
-	ColComments     = "comments"
-	ColAttachments  = "attachments"
-	ColChecklist    = "checklist"
-	ColProgress     = "progress"
-	ColSnooze       = "snooze"
+	ColPriority    = "priority"
+	ColDueDate     = "due_date"
+	ColTags        = "tags"
+	ColComments    = "comments"
+	ColAttachments = "attachments"
+	ColChecklist   = "checklist"
+	ColProgress    = "progress"
+	ColSnooze      = "snooze"
 )
 
 // DefaultOutlinerColumns defines which columns are visible by default in the outliner view.
 var DefaultOutlinerColumns = map[string]bool{
-	ColPriority:     true,
-	ColDueDate:      true,
-	ColTags:         true,
-	ColDependencies: true,
-	ColComments:     true,
-	ColAttachments:  true,
-	ColChecklist:    true,
-	ColProgress:     true,
-	ColSnooze:       true,
+	ColPriority:    true,
+	ColDueDate:     true,
+	ColTags:        true,
+	ColComments:    true,
+	ColAttachments: true,
+	ColChecklist:   true,
+	ColProgress:    true,
+	ColSnooze:      true,
 }
 
 // ColumnConfig controls which indicator columns are visible in a view.

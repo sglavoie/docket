@@ -10,6 +10,15 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle search mode input first
+	if m.IsSearchMode() && key == "esc" {
+		if m.IsRangeSelectionActive() {
+			m.FreezeRangeSelection()
+			m.updateVisualSelectionStatus()
+			return m, nil
+		}
+		m.ClearSearch()
+		return m, nil
+	}
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		rebuildOutlinerPreservingCursor(m)
 	}); handled {

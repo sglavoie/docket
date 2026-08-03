@@ -7,7 +7,7 @@ import (
 )
 
 // SortState bundles a sort field and direction. Embedded by views that support
-// the 1-5/0 sort key system.
+// the High/Medium/Low/Unset sort system.
 type SortState struct {
 	Field     SortField
 	Ascending bool
@@ -77,7 +77,7 @@ func CompareTasks(a, b *models.Task, field SortField) int {
 func compareTasksPrimary(a, b *models.Task, field SortField) int {
 	switch field {
 	case SortByPriority:
-		return cmp.Compare(a.Priority, b.Priority)
+		return cmp.Compare(models.EffectivePriority(a.Priority), models.EffectivePriority(b.Priority))
 
 	case SortByDueDate:
 		if a.DueDate == nil && b.DueDate == nil {

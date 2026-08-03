@@ -21,7 +21,6 @@ type TaskComposerPresetKind uint8
 const (
 	ComposerGlobal TaskComposerPresetKind = iota
 	ComposerProject
-	ComposerPlanner
 	ComposerChild
 	ComposerEdit
 )
@@ -44,7 +43,7 @@ type TaskComposerSharedAttributes struct {
 }
 
 // TaskComposerPreset is the complete typed launch contract for compact create,
-// expanded create/edit, Planner membership, children, and links.
+// expanded create/edit, children, and links.
 type TaskComposerPreset struct {
 	Kind               TaskComposerPresetKind
 	Project            *models.Project
@@ -55,7 +54,6 @@ type TaskComposerPreset struct {
 	InitialText        string
 	AllowProjectSwitch bool
 	PreferMultiline    bool
-	PlannerTab         int
 }
 
 func (p TaskComposerPreset) label() string {
@@ -64,15 +62,6 @@ func (p TaskComposerPreset) label() string {
 		return "Global capture"
 	case ComposerProject:
 		return "Project task"
-	case ComposerPlanner:
-		switch p.PlannerTab {
-		case boardTabToday:
-			return "Today"
-		case boardTabNext:
-			return "Next"
-		default:
-			return "Backlog"
-		}
 	case ComposerChild:
 		return "Child task"
 	case ComposerEdit:
@@ -90,16 +79,6 @@ func (p TaskComposerPreset) defaultDestination(
 	}
 	if p.Shared.Destination != "" {
 		return p.Shared.Destination
-	}
-	if p.Kind == ComposerPlanner {
-		switch p.PlannerTab {
-		case boardTabToday:
-			return app.CaptureDestinationToday
-		case boardTabNext:
-			return app.CaptureDestinationNext
-		default:
-			return app.CaptureDestinationBacklog
-		}
 	}
 	return app.CaptureDestinationInbox
 }

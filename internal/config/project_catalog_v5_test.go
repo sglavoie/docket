@@ -104,8 +104,8 @@ func TestV5CatalogProtectedInboxLifecycle(t *testing.T) {
 	rename := inbox
 	rename.Name = "Renamed"
 	rename.Slug = "renamed"
-	if err := catalog.UpsertProject(rename); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("UpsertProject(rename Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if err := catalog.UpsertProject(rename); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("UpsertProject(rename Inbox) error = %v, want ErrProtectedSystemUnfiled", err)
 	}
 	if got := catalog.Projects[0]; got.Name != "Inbox" || got.Slug != "inbox" {
 		t.Fatalf("rejected rename mutated Inbox: %+v", got)
@@ -115,11 +115,11 @@ func TestV5CatalogProtectedInboxLifecycle(t *testing.T) {
 	archive.Archived = true
 	archivedAt := createdAt.Add(time.Hour)
 	archive.ArchivedAt = &archivedAt
-	if err := catalog.UpsertProject(archive); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("UpsertProject(archive Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if err := catalog.UpsertProject(archive); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("UpsertProject(archive Inbox) error = %v, want ErrProtectedSystemUnfiled", err)
 	}
-	if err := catalog.RemoveProject(inbox.ID); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("RemoveProject(Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if err := catalog.RemoveProject(inbox.ID); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("RemoveProject(Inbox) error = %v, want ErrProtectedSystemUnfiled", err)
 	}
 
 	edit := inbox
@@ -151,7 +151,7 @@ func TestV5CatalogProtectedInboxLifecycle(t *testing.T) {
 
 	catalog.Projects[0].Archived = true
 	catalog.Projects[0].ArchivedAt = &archivedAt
-	if err := catalog.Validate(); !errors.Is(err, ErrProtectedSystemInbox) {
-		t.Fatalf("Validate(archived Inbox) error = %v, want ErrProtectedSystemInbox", err)
+	if err := catalog.Validate(); !errors.Is(err, ErrProtectedSystemUnfiled) {
+		t.Fatalf("Validate(archived Inbox) error = %v, want ErrProtectedSystemUnfiled", err)
 	}
 }

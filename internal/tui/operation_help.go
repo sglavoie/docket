@@ -101,17 +101,18 @@ func (registry *OperationRegistry) HandledKeysForInputStrategy(id InputStrategyI
 	return keys
 }
 
-// FooterHintsForInputStrategy generates compact "key action" hints for ranked
-// bindings and ranked chord groups. A positive limit keeps the first N ranked
-// hints; zero includes every ranked hint.
-func (registry *OperationRegistry) FooterHintsForInputStrategy(
+// FooterHintPairsForInputStrategy returns complete "key action" pairs for
+// ranked bindings and chord groups. Entries are ordered by the established
+// footer rank and filtered through the same applicability checks as dispatch
+// and help. Renderers can therefore fit whole pairs without parsing or clipping
+// the operation metadata string.
+func (registry *OperationRegistry) FooterHintPairsForInputStrategy(
 	id InputStrategyID,
 	ctx CommandContext,
-	limit int,
-) string {
+) []string {
 	strategy, ok := registry.InputStrategy(id)
 	if !ok {
-		return ""
+		return nil
 	}
 	type rankedHint struct {
 		rank int
@@ -152,14 +153,26 @@ func (registry *OperationRegistry) FooterHintsForInputStrategy(
 		})
 	}
 	sort.SliceStable(hints, func(i, j int) bool { return hints[i].rank < hints[j].rank })
-	if limit > 0 && len(hints) > limit {
-		hints = hints[:limit]
-	}
 	parts := make([]string, len(hints))
 	for i := range hints {
 		parts[i] = hints[i].text
 	}
-	return strings.Join(parts, " · ")
+	return parts
+}
+
+// FooterHintsForInputStrategy generates compact "key action" hints for ranked
+// bindings and ranked chord groups. A positive limit keeps the first N ranked
+// hints; zero includes every ranked hint.
+func (registry *OperationRegistry) FooterHintsForInputStrategy(
+	id InputStrategyID,
+	ctx CommandContext,
+	limit int,
+) string {
+	parts := registry.FooterHintPairsForInputStrategy(id, ctx)
+	if limit > 0 && len(parts) > limit {
+		parts = parts[:limit]
+	}
+	return strings.Join(parts, footerHelpSeparator)
 }
 
 // InputShortcutForOperation returns a strategy's display key for one operation.

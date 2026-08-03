@@ -30,9 +30,9 @@ func TestTUITaskMoveCommitsAtomicTransactionAndLedgerUndo(t *testing.T) {
 	}
 
 	app := env.appModel()
-	app.nextOrder = []FocusTask{{Task: moved, Project: source}}
+	app.nextOrder = []PlanningTask{{Task: moved, Project: source}}
 	app.nextOrderIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
-	app.today = []FocusTask{{Task: moved, Project: source}}
+	app.today = []PlanningTask{{Task: moved, Project: source}}
 	app.todayIDs = map[TaskIdentity]bool{taskIdentityFor(moved, source): true}
 	handled, cmd := app.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task:          moved,
@@ -98,8 +98,8 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	}
 
 	m := env.appModel()
-	m.nextOrder = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
-	m.today = []FocusTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	m.nextOrder = []PlanningTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
+	m.today = []PlanningTask{{Task: moved, Project: source}, {Task: moved, Project: other}}
 	_, cmd := m.handleMoveTaskToProject(MoveTaskToProjectMsg{
 		Task: moved, SourceProject: source, DestProjectID: dest.ID,
 	})
@@ -109,10 +109,10 @@ func TestTUITaskMovePreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload config: %v", err)
 	}
-	if reloaded.Planning().NextOrder[0].ProjectID != dest.ID || reloaded.Planning().NextOrder[1].ProjectID != other.ID ||
+	if reloaded.Planning().Next[0].ProjectID != dest.ID || reloaded.Planning().Next[1].ProjectID != other.ID ||
 		reloaded.Planning().Today[0].ProjectID != dest.ID || reloaded.Planning().Today[1].ProjectID != other.ID {
 		t.Fatalf("qualified move reassigned another project's refs: focus=%+v daily=%+v",
-			reloaded.Planning().NextOrder, reloaded.Planning().Today)
+			reloaded.Planning().Next, reloaded.Planning().Today)
 	}
 	if m.nextOrder[0].Project.ID != dest.ID || m.nextOrder[1].Project.ID != other.ID ||
 		m.today[0].Project.ID != dest.ID || m.today[1].Project.ID != other.ID {
@@ -317,8 +317,8 @@ func assertDiskConfigRef(t *testing.T, mgr *config.Manager, taskID, projectID st
 	if err != nil {
 		t.Fatalf("load config from disk: %v", err)
 	}
-	if len(cfg.Planning().NextOrder) != 1 || cfg.Planning().NextOrder[0].TaskID != taskID || cfg.Planning().NextOrder[0].ProjectID != projectID {
-		t.Fatalf("NextOrder = %+v, want task %s in project %s", cfg.Planning().NextOrder, taskID, projectID)
+	if len(cfg.Planning().Next) != 1 || cfg.Planning().Next[0].TaskID != taskID || cfg.Planning().Next[0].ProjectID != projectID {
+		t.Fatalf("NextOrder = %+v, want task %s in project %s", cfg.Planning().Next, taskID, projectID)
 	}
 	if len(cfg.Planning().Today) > 0 && (cfg.Planning().Today[0].TaskID != taskID || cfg.Planning().Today[0].ProjectID != projectID) {
 		t.Fatalf("Today = %+v, want task %s in project %s", cfg.Planning().Today, taskID, projectID)

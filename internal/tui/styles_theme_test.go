@@ -195,8 +195,15 @@ func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
 		{"ColorPriority1Title", ColorPriority1Title, "#f7768e"},
 		{"ColorPriority2Title", ColorPriority2Title, "#e0af68"},
 		{"ColorPriority3Title", ColorPriority3Title, "#7aa2f7"},
-		{"ColorPriority4Title", ColorPriority4Title, "#9aa5ce"},
-		{"ColorPriority5Title", ColorPriority5Title, "#7a82ad"},
+		{"ColorSemanticBugTitle", ColorSemanticBugTitle, "#ff9e9e"},
+		{"ColorSemanticFeatureTitle", ColorSemanticFeatureTitle, "#b9f27c"},
+		{"ColorSemanticIdeaTitle", ColorSemanticIdeaTitle, "#c0caf5"},
+		{"ColorSemanticBugSelectedTitle", ColorSemanticBugSelectedTitle, "#ffd1d1"},
+		{"ColorSemanticFeatureSelectedTitle", ColorSemanticFeatureSelectedTitle, "#d7f7b5"},
+		{"ColorSemanticIdeaSelectedTitle", ColorSemanticIdeaSelectedTitle, "#e5e7eb"},
+		{"ColorSemanticBugSnoozedTitle", ColorSemanticBugSnoozedTitle, "#c97b7b"},
+		{"ColorSemanticFeatureSnoozedTitle", ColorSemanticFeatureSnoozedTitle, "#8bb65f"},
+		{"ColorSemanticIdeaSnoozedTitle", ColorSemanticIdeaSnoozedTitle, "#8f98c7"},
 	}
 	for _, c := range checks {
 		if c.got != lipgloss.Color(c.want) {

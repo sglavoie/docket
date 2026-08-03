@@ -20,10 +20,6 @@ func setCommandDataDir(t *testing.T, dir string) {
 	})
 }
 
-func newTestConfig() *config.RuntimeState {
-	return config.NewRuntimeState("", config.NewDomains())
-}
-
 func setupTestDeps(t *testing.T) *testDeps {
 	t.Helper()
 	return testutil.SetupTestDeps(t, func(dataDir string) *config.RuntimeState {
@@ -40,16 +36,6 @@ func setupTestDepsWithProject(t *testing.T, projectName string) (*testDeps, *mod
 		}
 		return config.NewRuntimeState(dataDir, domains)
 	})
-}
-
-func setTestProjects(runtime *config.RuntimeState, projects []*models.Project) {
-	catalog := config.NewWorkspaceCatalog()
-	for _, project := range projects {
-		if err := catalog.UpsertProject(project); err != nil {
-			panic(err)
-		}
-	}
-	runtime.SetCatalogInMemory(catalog)
 }
 
 func saveTestRuntime(manager *config.Manager, runtime *config.RuntimeState) error {

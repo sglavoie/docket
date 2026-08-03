@@ -64,6 +64,27 @@ func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, 
 	return m
 }
 
+// refreshAfterReload re-resolves the task pointer and clamps the selected
+// comment after a coordinator commit replaces the project task objects.
+func (m *TaskCommentsModel) refreshAfterReload() bool {
+	if m.project == nil || m.task == nil {
+		return false
+	}
+	task := m.project.GetTaskByID(m.task.ID)
+	if task == nil {
+		return false
+	}
+	m.task = task
+	if m.cursor >= len(m.task.Comments) {
+		m.cursor = max(len(m.task.Comments)-1, 0)
+	}
+	return true
+}
+
+func (m *TaskCommentsModel) getTaskRef() (*models.Task, *models.Project) {
+	return m.task, m.project
+}
+
 func (m *TaskCommentsModel) Init() tea.Cmd {
 	return nil
 }

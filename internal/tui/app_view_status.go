@@ -40,8 +40,8 @@ func (m *AppModel) renderStatusBar() string {
 
 	// An unfinished chord owns the footer: the which-key row is live input
 	// feedback, so it outranks banners and transient status text.
-	if row := m.pendingChordHintRow(); row != "" {
-		return renderContextualFooter(StatusBarFooterSpec{Left: row}, m.width, m.currentAccentColor())
+	if lines := m.pendingChordHintLines(m.width); len(lines) > 0 {
+		return renderPendingChordFooter(lines, m.width, m.currentAccentColor())
 	}
 
 	// Today-cleared banner takes precedence over the regular status message

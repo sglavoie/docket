@@ -241,13 +241,7 @@ func RefusePreConsolidationV6SnapshotMutation(dataDir, path string) error {
 	return fmt.Errorf("%w: %s", ErrImmutablePreConsolidationV6Snapshot, filepath.Clean(path))
 }
 
-// CreatePreConsolidationV6Snapshot first constructs and validates the complete
-// schema-6 candidate, then publishes a byte-exact immutable archive and audit.
-// It does not activate schema 6 or change any live source artifact.
-func CreatePreConsolidationV6Snapshot(options PreConsolidationV6SnapshotOptions) (*PreConsolidationV6Snapshot, error) {
-	return createPreConsolidationV6Snapshot(options, nil)
-}
-
+//nolint:govet // Scoped errors keep each snapshot validation and transaction stage local.
 func createPreConsolidationV6Snapshot(
 	options PreConsolidationV6SnapshotOptions,
 	hooks *preConsolidationV6SnapshotHooks,
@@ -389,6 +383,7 @@ func preConsolidationV6MachineSource(plan V6WorkspaceConversionPlan) (string, er
 	return "", fmt.Errorf("validated schema-6 candidate has no machine-state artifact")
 }
 
+//nolint:govet // Walk callbacks use scoped errors independently of the outer traversal result.
 func inventoryPreConsolidationV6(
 	root string,
 	machinePath string,

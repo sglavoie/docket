@@ -23,7 +23,7 @@ func TestGetUsesStableUnicodeRegistry(t *testing.T) {
 func TestColumnAlignedGroupsHaveConsistentWidth(t *testing.T) {
 	for group, keys := range map[string][]string{
 		"status":   {"status.inbox", "status.backlog", "status.doing", "status.waiting", "status.paused", "status.someday", "status.done", "status.canceled"},
-		"priority": {"priority.1", "priority.2", "priority.3", "priority.4", "priority.5"},
+		"priority": {"priority.1", "priority.2", "priority.3"},
 		"checkbox": {"checkbox.checked", "checkbox.unchecked"},
 	} {
 		width := lipgloss.Width(Get(keys[0]))

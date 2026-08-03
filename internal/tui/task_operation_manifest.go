@@ -36,6 +36,7 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			Provider: ValueProviderProject,
 			Category: taskActionCategoryOrganize,
 			Risk:     OperationRiskMutation,
+			Bulk:     true,
 		},
 		{
 			ID:       operationTaskSetParent,
@@ -90,7 +91,7 @@ func taskDirectOperationManifest() []taskOperationManifestEntry {
 		{ID: operationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
-		{ID: operationCoreDetail, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
+		{ID: operationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},

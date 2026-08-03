@@ -8,11 +8,8 @@ import (
 )
 
 // TestHandleBulkTagSelectorDoneAppliesAcrossProjects verifies the shared tag
-// palette now commits one asynchronous cross-project transaction through the
-// BulkCoordinator: the batch result carries the selection to clear and the
-// per-view summary, both projects' tags are committed on disk, the shell clears
-// the cross-project Outliner multi-select on commit, and the workspace ledger undoes
-// the whole batch.
+// palette commits one asynchronous cross-project transaction while preserving
+// the persistent selection after this non-delete success.
 func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha task", "old")
 	taskB := newBulkPickerTestTask(t, 1, "beta task", "other")
@@ -39,8 +36,8 @@ func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	if msg.Summary != "Tagged 2 tasks" {
 		t.Errorf("summary = %q, want %q", msg.Summary, "Tagged 2 tasks")
 	}
-	if len(msg.ClearSelectionTaskIDs) != 2 {
-		t.Errorf("clear selection ids = %v, want 2", msg.ClearSelectionTaskIDs)
+	if len(msg.ClearSelectionTaskIDs) != 0 || len(msg.ClearSelectionTaskLocators) != 0 {
+		t.Errorf("non-delete batch requested selection clear: ids=%v locators=%v", msg.ClearSelectionTaskIDs, msg.ClearSelectionTaskLocators)
 	}
 	if len(msg.TouchedProjectIDs) != 2 {
 		t.Errorf("touched projects = %v, want 2 (cross-project)", msg.TouchedProjectIDs)
@@ -54,8 +51,8 @@ func TestHandleBulkTagSelectorDoneAppliesAcrossProjects(t *testing.T) {
 	}
 
 	app.handleBatchTransactionResult(msg)
-	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
-		t.Fatal("committed batch should clear cross-project Outliner multi-select")
+	if !app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 2 {
+		t.Fatal("committed non-delete batch should preserve cross-project Outliner selection")
 	}
 
 	env.undo(t)
