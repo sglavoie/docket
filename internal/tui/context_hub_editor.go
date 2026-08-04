@@ -47,7 +47,9 @@ type contextEditor struct {
 	err       string
 }
 
-// newContextEditor builds the shared editor over the runtime's active projects.
+// newContextEditor builds the shared editor over the base task workspace. A
+// parked member keeps its label without being listed: newRegularContextEditor
+// records it in hiddenMembers and folds it back in on save.
 func newContextEditor(runtime *config.RuntimeState, editName string) *contextEditor {
 	nameInput := formFactory.NewTextInput("Context label")
 	nameInput.CharLimit = 50
@@ -60,7 +62,7 @@ func newContextEditor(runtime *config.RuntimeState, editName string) *contextEdi
 	searchInput := formFactory.NewTextInput("Search projects")
 	searchInput.CharLimit = 64
 
-	projects := runtime.ActiveProjects()
+	projects := runtime.TaskWorkspaceProjects()
 	return &contextEditor{
 		originalName: editName,
 		nameInput:    nameInput,

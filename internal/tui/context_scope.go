@@ -39,22 +39,23 @@ func RegularContextScope(name string) ContextScope {
 // IsAll reports whether the scope spans every active project.
 func (s ContextScope) IsAll() bool { return s.Kind == ContextScopeAll }
 
-// Projects resolves the scope to the active projects it selects. Both scope
-// kinds keep the catalog's pinned-first order and admit exactly the projects
-// satisfying config.IsActiveContextMember, so a scope resolves to the same set
-// the active-only cross-project loader will load.
+// Projects resolves the scope to the task-workspace projects it selects. Both
+// scope kinds keep the catalog's pinned-first order and admit exactly the
+// non-archived projects in the Active boundary, so a scope resolves to the same
+// set the active-only cross-project loader will load and a parked project can
+// never re-enter through a context label it still carries.
 func (s ContextScope) Projects(runtime *config.RuntimeState) []*models.Project {
 	switch s.Kind {
 	case ContextScopeRegular:
 		var matched []*models.Project
-		for _, p := range runtime.ActiveProjects() {
+		for _, p := range runtime.TaskWorkspaceProjects() {
 			if p.Context == s.Name {
 				matched = append(matched, p)
 			}
 		}
 		return matched
 	default:
-		return runtime.ActiveProjects()
+		return runtime.TaskWorkspaceProjects()
 	}
 }
 
@@ -68,9 +69,10 @@ func (s ContextScope) ProjectIDs(runtime *config.RuntimeState) []string {
 	return ids
 }
 
-// selectableContextScope degrades a regular scope with no active members to All.
-// The protected personal context stays listed while empty, but an active empty
-// scope still falls back so the Outliner never remains stranded on no projects.
+// selectableContextScope degrades a regular scope with no task-workspace members
+// to All. The protected personal context stays listed while empty, but an active
+// empty scope still falls back so the Outliner never remains stranded on no
+// projects — including when parking the scope's last Active member emptied it.
 func selectableContextScope(runtime *config.RuntimeState, scope ContextScope) ContextScope {
 	if scope.Kind != ContextScopeRegular || len(scope.Projects(runtime)) > 0 {
 		return scope
@@ -98,7 +100,7 @@ func SummarizeContextScope(runtime *config.RuntimeState, scope ContextScope) Con
 // always present even when no active project currently carries it.
 func ContextScopeSummaries(runtime *config.RuntimeState) []ContextScopeSummary {
 	labels := map[string]struct{}{runtime.DefaultContext(): {}}
-	for _, p := range runtime.ActiveProjects() {
+	for _, p := range runtime.TaskWorkspaceProjects() {
 		if p.Context != "" {
 			labels[p.Context] = struct{}{}
 		}

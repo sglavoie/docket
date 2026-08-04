@@ -85,11 +85,17 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	// reassignment) into its transaction; advance the shared domain snapshot now
 	// that it is committed so views reading it stay consistent.
 	m.refreshRuntime()
+	// A parked destination is named with its boundary: the move committed, but the
+	// task leaves every base projection, so the status has to say where it went.
+	destination := m.parkedOwnerLabel(msg.DestProject)
+	if destination == "" {
+		destination = msg.DestProject.Name
+	}
 	var statusMsg string
 	if msg.MovedCount > 1 {
-		statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, msg.DestProject.Name)
+		statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, destination)
 	} else {
-		statusMsg = fmt.Sprintf("Moved #%d to %s", msg.OldShortID, msg.DestProject.Name)
+		statusMsg = fmt.Sprintf("Moved #%d to %s", msg.OldShortID, destination)
 	}
 	m.setSuccessStatus(statusMsg)
 	reloadCmd := m.requestCrossProjectOutlinerReload()

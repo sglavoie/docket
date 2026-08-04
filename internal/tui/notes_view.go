@@ -69,7 +69,7 @@ type NotesViewModel struct {
 	noteLedger  *storage.WorkspaceLedger
 
 	owners           map[app.NoteLocation]noteManagerOwner
-	activeProjects   []*models.Project
+	ownerProjects    []*models.Project
 	loadedRows       []LocatedNoteRow
 	visibleRows      []LocatedNoteRow
 	collectionErrors []noteCollectionFailure
@@ -102,7 +102,7 @@ type NotesViewModel struct {
 }
 
 // NewNotesViewModelWithService constructs the workspace-wide Notes manager.
-// projects must be the active projects returned by Runtime.ActiveProjects().
+// projects must be the note owners returned by Runtime.AvailableProjects().
 func NewNotesViewModelWithService(
 	notesDir string,
 	scope NotesScope,
@@ -117,7 +117,7 @@ func NewNotesViewModelWithService(
 		noteLedger:  ledger,
 	}
 	m.initSearchInput()
-	m.setActiveProjects(projects)
+	m.setOwnerProjects(projects)
 	m.loadNotes()
 	return m
 }
@@ -130,9 +130,12 @@ func (m *NotesViewModel) initSearchInput() {
 	applyThemedTextInput(&m.searchInput)
 }
 
-func (m *NotesViewModel) setActiveProjects(projects []*models.Project) {
+// setOwnerProjects rebuilds the owner catalog. Archival is the only reason a
+// supplied project is refused: a parked owner keeps its notes reachable, so the
+// boundary a project sits in is deliberately not consulted here.
+func (m *NotesViewModel) setOwnerProjects(projects []*models.Project) {
 	seen := make(map[string]bool, len(projects))
-	m.activeProjects = make([]*models.Project, 0, len(projects))
+	m.ownerProjects = make([]*models.Project, 0, len(projects))
 	m.owners = make(map[app.NoteLocation]noteManagerOwner, len(projects)+1)
 	global := app.GlobalNoteLocation()
 	m.owners[global] = noteManagerOwner{
@@ -145,7 +148,7 @@ func (m *NotesViewModel) setActiveProjects(projects []*models.Project) {
 			continue
 		}
 		seen[project.ID] = true
-		m.activeProjects = append(m.activeProjects, project)
+		m.ownerProjects = append(m.ownerProjects, project)
 		location := app.ProjectNoteLocation(project.ID)
 		label := strings.TrimSpace(project.Name)
 		if label == "" {
@@ -159,12 +162,12 @@ func (m *NotesViewModel) setActiveProjects(projects []*models.Project) {
 	}
 }
 
-// RefreshWorkspace replaces the owner catalog from the latest active-project
+// RefreshWorkspace replaces the owner catalog from the latest availability
 // snapshot, removes stale owners from any open picker, and reloads the canonical
 // note rows. It reports whether a project scope became unavailable and was
 // normalized to All Notes so the shell can replace its typed route immediately.
 func (m *NotesViewModel) RefreshWorkspace(projects ...*models.Project) bool {
-	m.setActiveProjects(projects)
+	m.setOwnerProjects(projects)
 	scopeInvalid := m.scope.Kind == NotesScopeProject &&
 		!m.locationAvailable(app.ProjectNoteLocation(m.scope.ProjectID))
 	if scopeInvalid {
@@ -204,7 +207,7 @@ func (m *NotesViewModel) refreshLocationPicker() {
 		purpose,
 		m.scope,
 		excluded,
-		m.activeProjects,
+		m.ownerProjects,
 	)
 	if purpose == notesLocationPickerMove && len(picker.SourceItems()) == 0 {
 		m.locationPicker = nil
@@ -226,9 +229,9 @@ func (m *NotesViewModel) refreshLocationPicker() {
 }
 
 func (m *NotesViewModel) requestedLocations() []app.NoteLocation {
-	locations := make([]app.NoteLocation, 0, len(m.activeProjects)+1)
+	locations := make([]app.NoteLocation, 0, len(m.ownerProjects)+1)
 	locations = append(locations, app.GlobalNoteLocation())
-	for _, project := range m.activeProjects {
+	for _, project := range m.ownerProjects {
 		locations = append(locations, app.ProjectNoteLocation(project.ID))
 	}
 	return locations

@@ -18,7 +18,8 @@ const (
 	operationScopeRestoreProject  OperationID = "tui.scope.restore-project"
 	operationScopeOpenProjectNote OperationID = "tui.scope.open-project-notes"
 
-	operationProjectOpen OperationID = "tui.project.open"
+	operationProjectOpen        OperationID = "tui.project.open"
+	operationProjectSetBoundary OperationID = "tui.project.set-boundary"
 )
 
 // projectOperationDescriptors is the authoritative catalog of project-targeted
@@ -53,6 +54,10 @@ func projectOperationDescriptors() []OperationDescriptor {
 		descriptor(operationScopeArchiveProject, "Archive project", "Archive the project", OperationCategoryProject, OperationRiskDestructive),
 		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", OperationCategoryProject, OperationRiskMutation, "restore archived project"),
 		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", OperationCategoryNote, OperationRiskReadOnly),
+		withValueProvider(
+			descriptor(operationProjectSetBoundary, "Set boundary", "Move the project to another boundary", OperationCategoryProject, OperationRiskMutation, "move project boundary", "park project"),
+			ValueProviderProjectBoundary,
+		),
 	}
 }
 
@@ -139,6 +144,9 @@ func (m *AppModel) executeProjectOperation(
 	if err := m.projectOperationUnavailable(invocation.Descriptor, project); err != nil {
 		return OperationHandlerResult{Err: err}
 	}
+	if invocation.Descriptor.ID == operationProjectSetBoundary {
+		return projectBoundaryOperationResult(invocation, project)
+	}
 	message := m.projectOperationMessage(invocation.Descriptor.ID, project)
 	if message == nil {
 		return OperationHandlerResult{
@@ -161,6 +169,10 @@ var projectOperationRequirements = map[OperationID]projectOperationRequirement{
 	operationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},
 	operationScopeRestoreProject:  {requireArchived: true},
 	operationScopeOpenProjectNote: {requireActive: true},
+
+	// An archived project keeps the boundary it will return to on restore, so
+	// reassignment is deliberately available on both sides of the lifecycle.
+	operationProjectSetBoundary: {rejectSystemUnfiled: true},
 }
 
 // projectOperationUnavailable checks the freshly reloaded project rather than

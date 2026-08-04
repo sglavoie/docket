@@ -33,28 +33,39 @@ import (
 // Built-in fixture names accepted by NewFixtureDriver and the committed
 // test-only scenario harness.
 const (
-	FixtureEmpty    = "empty"
-	FixtureFresh    = "fresh"
-	FixtureRich     = "rich"
-	FixtureBusy     = "busy"
-	FixtureWorkflow = "workflow"
-	FixtureNarrow   = "narrow"
-	FixtureContexts = "contexts"
-	FixtureRelease  = "release"
+	FixtureEmpty      = "empty"
+	FixtureFresh      = "fresh"
+	FixtureRich       = "rich"
+	FixtureBusy       = "busy"
+	FixtureWorkflow   = "workflow"
+	FixtureNarrow     = "narrow"
+	FixtureContexts   = "contexts"
+	FixtureRelease    = "release"
+	FixtureBoundaries = "boundaries"
+)
+
+// Boundary fixture identities. Scenarios assert on these strings, and
+// models.NewProject stores a name verbatim, so the constants are the single
+// source both the builder and the committed JSON agree on.
+const (
+	boundariesFixtureBoundaryName = "On Hold"
+	boundariesFixtureActiveName   = "Active Delivery"
+	boundariesFixtureParkedName   = "Parked Work"
 )
 
 // builtinFixtures maps each fixture name to the builder that populates its
 // workspace. The workspace is already created (empty temp data dir + config)
 // when the builder runs; the builder only adds projects and sets config state.
 var builtinFixtures = map[string]func(*uitestWorkspace) error{
-	FixtureEmpty:    buildEmptyFixture,
-	FixtureFresh:    nil,
-	FixtureRich:     buildRichFixture,
-	FixtureBusy:     buildBusyFixture,
-	FixtureWorkflow: buildWorkflowFixture,
-	FixtureNarrow:   buildNarrowFixture,
-	FixtureContexts: buildContextsFixture,
-	FixtureRelease:  buildReleaseFixture,
+	FixtureEmpty:      buildEmptyFixture,
+	FixtureFresh:      nil,
+	FixtureRich:       buildRichFixture,
+	FixtureBusy:       buildBusyFixture,
+	FixtureWorkflow:   buildWorkflowFixture,
+	FixtureNarrow:     buildNarrowFixture,
+	FixtureContexts:   buildContextsFixture,
+	FixtureRelease:    buildReleaseFixture,
+	FixtureBoundaries: buildBoundariesFixture,
 }
 
 // BuiltinFixtureNames returns the sorted list of built-in fixture names.
@@ -636,6 +647,50 @@ func buildContextsFixture(w *uitestWorkspace) error {
 		}
 	}
 	w.setCurrentProject(first.ID)
+	return nil
+}
+
+// buildBoundariesFixture puts one project in the protected Active boundary and
+// one in a custom boundary, which is the only fixture shape where the base task
+// workspace is a strict subset of the workspace's projects. Every other fixture
+// leaves all of its projects in Active, so parked behavior would be
+// indistinguishable from an empty catalog there.
+func buildBoundariesFixture(w *uitestWorkspace) error {
+	active, err := w.addProject(boundariesFixtureActiveName, func(p *models.Project) {
+		checklist := newFixtureTask(p, "Ship the delivery checklist")
+		checklist.Priority = 1
+		checklist.ApplyWorkflowState(models.StateBacklog)
+
+		window := newFixtureTask(p, "Confirm the release window")
+		window.ApplyWorkflowState(models.StateBacklog)
+	})
+	if err != nil {
+		return err
+	}
+	parked, err := w.addProject(boundariesFixtureParkedName, func(p *models.Project) {
+		migration := newFixtureTask(p, "Revisit the paused migration")
+		migration.ApplyWorkflowState(models.StateBacklog)
+
+		vendor := newFixtureTask(p, "Reopen the vendor conversation")
+		vendor.ApplyWorkflowState(models.StateInbox)
+	})
+	if err != nil {
+		return err
+	}
+
+	// Both projects are cataloged first: addProject rebuilds the catalog from the
+	// runtime on every call, so a boundary created before the last project would
+	// survive but its membership would be overwritten by the upsert's default.
+	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
+	boundary, err := catalog.CreateBoundary(boundariesFixtureBoundaryName)
+	if err != nil {
+		return fmt.Errorf("failed to create fixture boundary: %w", err)
+	}
+	if _, err = catalog.AssignProjectBoundary(parked.ID, boundary.ID); err != nil {
+		return fmt.Errorf("failed to park fixture project %q: %w", parked.Name, err)
+	}
+	w.Runtime.SetCatalogInMemory(catalog)
+	w.setCurrentProject(active.ID)
 	return nil
 }
 

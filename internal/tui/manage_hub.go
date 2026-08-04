@@ -153,7 +153,7 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			params.NotesScope,
 			m.deps.NoteService,
 			m.deps.HistoryLedger,
-			m.deps.Runtime.ActiveProjects()...,
+			m.deps.Runtime.AvailableProjects()...,
 		)
 	case ManageContexts:
 		active := AllContextScope()
@@ -361,12 +361,13 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 
 // ScopeProjectIDs returns the project set represented by the active typed
 // Manage route. All and Global Notes have app command scope and therefore
-// expose all active projects; project Notes exposes only its selected owner.
+// expose every available note owner; project Notes exposes only its selected
+// owner.
 func (m *ManageHubModel) ScopeProjectIDs() []string {
 	if m.params.Module == ManageNotes && m.params.NotesScope.Kind == NotesScopeProject {
 		return []string{m.params.NotesScope.ProjectID}
 	}
-	projects := m.deps.Runtime.ActiveProjects()
+	projects := m.deps.Runtime.AvailableProjects()
 	ids := make([]string, 0, len(projects))
 	for _, project := range projects {
 		if project != nil {

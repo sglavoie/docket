@@ -12,16 +12,24 @@ import (
 // LoadCrossScopeTasks for cross-project surfaces such as the Outliner and
 // ordered planning views.
 type CrossScopeOpts struct {
-	// ActiveOnly restricts selection to RuntimeState.ActiveProjects, which
-	// admits exactly config.IsActiveContextMember — the same rule a context
-	// scope resolves by, so a scoped Outliner load can never be asked for a
-	// project this selection drops. When false, the selection falls back to
-	// AllLoadableProjects (archived excluded only).
+	// ActiveOnly restricts selection to RuntimeState.TaskWorkspaceProjects,
+	// which admits exactly the non-archived projects in the Active boundary —
+	// the same rule a context scope resolves by, so a scoped Outliner load can
+	// never be asked for a project this selection drops. When false, the
+	// selection falls back to AvailableProjects (archived excluded only).
 	ActiveOnly bool
+
+	// FocusProjectID names one explicitly focused project to admit on top of the
+	// selection above. It is the sole way a parked project enters a task
+	// projection: the user asked for it by name, so it joins the base population
+	// as an exception rather than widening the rule. Ignored when empty, already
+	// selected, or archived.
+	FocusProjectID string
 }
 
 type projectLoadFailure struct {
-	Detail string
+	ProjectID string
+	Detail    string
 }
 
 // diagnosticToLoadFailure adapts a workspace snapshot diagnostic into the
@@ -37,7 +45,8 @@ func diagnosticToLoadFailure(diag workspace.Diagnostic) projectLoadFailure {
 		detail = "unknown error"
 	}
 	return projectLoadFailure{
-		Detail: fmt.Sprintf("failed to load project %s: %s", name, detail),
+		ProjectID: diag.ProjectID,
+		Detail:    fmt.Sprintf("failed to load project %s: %s", name, detail),
 	}
 }
 
@@ -84,9 +93,36 @@ func loadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 	return snap.Tasks(), projects, failed
 }
 
+// selectCrossScopeProjects is the one place task projections choose a project
+// population. The active-only selection is the base task workspace: a parked
+// project is absent from the loaded snapshot, so no mode, filter, pinned
+// section, or planning projection downstream can reach its tasks.
 func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts) []*models.Project {
+	var selected []*models.Project
 	if opts.ActiveOnly {
-		return runtime.ActiveProjects()
+		selected = runtime.TaskWorkspaceProjects()
+	} else {
+		selected = runtime.AvailableProjects()
 	}
-	return runtime.AllLoadableProjects()
+	return appendFocusedProject(runtime, selected, opts.FocusProjectID)
+}
+
+// appendFocusedProject admits one explicitly focused project the base selection
+// dropped. Resolving through AvailableProject keeps archival authoritative: a
+// project archived between the focus request and the load simply never joins,
+// and the caller sees it missing from the snapshot.
+func appendFocusedProject(runtime *config.RuntimeState, selected []*models.Project, focusProjectID string) []*models.Project {
+	if focusProjectID == "" {
+		return selected
+	}
+	for _, project := range selected {
+		if project != nil && project.ID == focusProjectID {
+			return selected
+		}
+	}
+	focused := runtime.AvailableProject(focusProjectID)
+	if focused == nil {
+		return selected
+	}
+	return append(selected, focused)
 }

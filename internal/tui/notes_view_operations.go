@@ -50,7 +50,7 @@ func (m *NotesViewModel) beginLocationPicker(
 		purpose,
 		m.scope,
 		excludedLocation,
-		m.activeProjects,
+		m.ownerProjects,
 	)
 	m.locationPicker.SetSize(m.Width(), m.Height())
 	m.locationPicker.SetAccentColor(m.AccentColor())
@@ -87,7 +87,7 @@ func (m *NotesViewModel) beginMovePickerForSource(source noteMutationRef) tea.Cm
 		notesLocationPickerMove,
 		m.scope,
 		source.Location,
-		m.activeProjects,
+		m.ownerProjects,
 	)
 	if len(picker.SourceItems()) == 0 {
 		m.moveSource = nil

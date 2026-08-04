@@ -278,7 +278,7 @@ func (c *ContextMutator) commitCatalog(catalog *config.WorkspaceCatalog) error {
 	if c.manager == nil || c.service == nil {
 		return c.runtime.CommitCatalog(catalog)
 	}
-	artifacts, err := catalogDomainArtifact(c.manager, catalog)
+	artifacts, err := catalogDomainArtifact(c.runtime, catalog)
 	if err != nil {
 		return fmt.Errorf("failed to encode workspace catalog: %w", err)
 	}

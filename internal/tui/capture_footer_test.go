@@ -77,7 +77,7 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	app.width = 60
 	app.height = 20
 
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
@@ -108,7 +108,7 @@ func TestCaptureFooterSurvivesPinnedTasks(t *testing.T) {
 	project.Tasks[0].Title = sentinel
 	project.Tasks[0].Pinned = true
 
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
@@ -136,7 +136,7 @@ func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
 	app.width = 80
 	app.height = 24
 
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}

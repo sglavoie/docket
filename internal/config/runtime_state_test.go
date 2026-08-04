@@ -90,8 +90,8 @@ func TestEmptyRuntimeState_AccessorsSafe(t *testing.T) {
 	if runtimeState.Catalog() == nil || runtimeState.Planning() == nil || runtimeState.Machine() == nil {
 		t.Fatal("empty runtime state must default every lean domain")
 	}
-	if runtimeState.ActiveProjects() != nil {
-		t.Fatal("empty catalog should yield no active projects")
+	if runtimeState.AvailableProjects() != nil || runtimeState.TaskWorkspaceProjects() != nil {
+		t.Fatal("empty catalog should yield no projects in either population")
 	}
 }
 

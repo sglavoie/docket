@@ -1,0 +1,57 @@
+{
+  "name": "project-boundary-minimum-layout",
+  "fixture": "boundaries",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "key", "label": "leave the initial search", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "the narrow project list still groups by boundary", "assert": "contains", "value": "ON HOLD" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open Boundary Manager", "key": "B" },
+    { "type": "assert", "assert": "contains", "value": "Active (protected)" },
+    { "type": "assert", "label": "the narrow footer collapses to bare keys", "assert": "contains", "value": "n · r · d · Space · Esc" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open the boundary editor", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "New Boundary" },
+    { "type": "assert", "assert": "contains", "value": "Boundary name" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "cancel the editor", "key": "esc" },
+    { "type": "key", "label": "leave Boundary Manager", "key": "esc" },
+
+    { "type": "key", "label": "open the boundary filter", "key": "f" },
+    { "type": "assert", "assert": "contains", "value": "All (current)" },
+    { "type": "assert", "assert": "contains", "value": "On Hold" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the filter", "key": "esc" },
+
+    { "type": "key", "label": "open the project action sheet", "key": "space" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "boundary" },
+    { "type": "key", "label": "leave the action search", "key": "enter" },
+    { "type": "key", "label": "open the boundary picker", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Set Boundary: Active Delivery" },
+    { "type": "assert", "assert": "contains", "value": "outside the task workspace" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the picker", "key": "esc" },
+
+    { "type": "key", "label": "open the project action sheet", "key": "space" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "edit" },
+    { "type": "key", "label": "leave the action search", "key": "enter" },
+    { "type": "key", "label": "open the Project Editor", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "ProjectEditor" },
+    { "type": "assert", "label": "the editor exposes boundary beside context and lifecycle", "assert": "contains", "value": "Boundary:" },
+    { "type": "assert", "assert": "contains", "value": "[Active]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "widen to a common terminal size", "width": 120, "height": 40 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "cancel the editor", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

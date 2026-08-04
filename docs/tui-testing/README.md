@@ -43,6 +43,11 @@ The full script is the acceptance gate.
 | `narrow` | Long titles and tags for minimum-width rendering. |
 | `contexts` | Several projects across exclusive regular scope labels. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
+| `boundaries` | One project inside the Active boundary and one parked in `On Hold`. |
+
+Only `boundaries` splits the base task workspace from the catalog. Every other
+fixture leaves all of its projects in the protected `Active` boundary, so parked
+behavior is indistinguishable from an empty catalog there.
 
 ## Scenario format
 
@@ -106,6 +111,10 @@ fp0-3 fs fc ft fd fz fx         filters
 The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix are
 intentionally unbound, as are `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
 
+Inside the `C` project selector, `f` filters the list by boundary and `B` opens
+Boundary Manager, where `n`, `r`, and `d` create, rename, and delete a
+boundary. A project's boundary is set from the project `Space` action sheet.
+
 ### Assertions
 
 | Assertion | Value | Meaning |
@@ -131,6 +140,7 @@ The committed suite exercises the product contracts directly:
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Priority, workflow, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-hub-*.json`, `project-*.json` |
+| Project boundaries and parked projects | `project-boundary-create-and-park.json`, `project-boundary-parked-focus.json`, `project-boundary-delete-reassigns.json`, `project-boundary-minimum-layout.json`, `project-hub-boundary-filter.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Checklist, comments, and attachments | `rich-tools.json` |
 | Exact six-item `Space` menu | `outliner-space-action-catalog.json` |

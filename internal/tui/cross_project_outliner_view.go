@@ -10,6 +10,11 @@ import (
 // anchor (e.g. "[Alpha › Beta]").
 const scopeChainSeparator = " › "
 
+// scopeBoundarySeparator joins a focused project's name to its boundary inside
+// the scope anchor (e.g. "[Client Migration · On Hold]"), so a focus reaching
+// outside the base task workspace says so wherever the scope is named.
+const scopeBoundarySeparator = " · "
+
 // crossProjectBreadcrumb returns the rendered scope/zoom breadcrumb for the
 // cross-project outliner. It renders whenever a project scope is active or the
 // view is zoomed, and returns "" only at the base all-projects, unzoomed scope.

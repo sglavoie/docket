@@ -107,9 +107,86 @@ func (m *OutlinerModel) isProjectScoped() bool {
 // never render a nested project chain.
 func (m *OutlinerModel) scopeChainNames() []string {
 	if m.scopedProjectID != "" {
-		return []string{m.projectDisplayNameByID(m.scopedProjectID)}
+		return []string{m.scopedProjectChromeLabel(m.scopedProjectID)}
 	}
 	return nil
+}
+
+// scopedProjectChromeLabel names a focused project for every piece of scope
+// chrome. A project outside the base task workspace carries its boundary, so the
+// anchor states plainly why tasks the user is looking at are absent from the
+// unscoped Outliner. Base-workspace projects keep the bare name.
+func (m *OutlinerModel) scopedProjectChromeLabel(projectID string) string {
+	name := m.projectDisplayNameByID(projectID)
+	if m.runtime == nil {
+		return name
+	}
+	boundaryID := m.runtime.Catalog().ProjectBoundaryID(projectID)
+	if boundaryID == "" || boundaryID == models.ActiveBoundaryID {
+		return name
+	}
+	boundary, ok := m.runtime.Catalog().Boundary(boundaryID)
+	if !ok || boundary.Name == "" {
+		return name
+	}
+	return name + scopeBoundarySeparator + boundary.Name
+}
+
+// baseWorkspaceAdmitsProject reports whether the unscoped Outliner would show
+// the project on its own, which is what decides if a focus still needs the
+// parked exception to keep it in the snapshot.
+func (m *OutlinerModel) baseWorkspaceAdmitsProject(projectID string) bool {
+	if m == nil || m.runtime == nil || projectID == "" {
+		return false
+	}
+	for _, project := range m.runtime.TaskWorkspaceProjects() {
+		if project != nil && project.ID == projectID {
+			return true
+		}
+	}
+	return false
+}
+
+// settleParkedFocusException records or clears the exception that keeps a
+// focused project in a snapshot the base workspace would not admit. Every load
+// carrying the focus re-decides it, so a project readmitted to Active mid-focus
+// stops being an exception and is handed to the base workspace on the way out
+// instead of being shed with its selections.
+func (m *OutlinerModel) settleParkedFocusException(projectID string) {
+	m.parkedFocusProjectID = ""
+	if !m.baseWorkspaceAdmitsProject(projectID) {
+		m.parkedFocusProjectID = projectID
+	}
+}
+
+// dropParkedProjectFocus sheds an explicitly focused parked project from the
+// live snapshot. Removing it here rather than waiting for the reload is what
+// keeps the return to base free of a visible parked task tree, and it lets the
+// existing loaded-project prune drop selections the restored base cannot admit.
+func (m *OutlinerModel) dropParkedProjectFocus() {
+	if m == nil {
+		return
+	}
+	focused := m.parkedFocusProjectID
+	m.pendingParkedFocusID = ""
+	if focused == "" {
+		return
+	}
+	m.parkedFocusProjectID = ""
+	m.parkedFocusReloadPending = true
+	retained := make([]*models.Project, 0, len(m.loadedProjects))
+	for _, project := range m.loadedProjects {
+		if project != nil && project.ID == focused {
+			continue
+		}
+		retained = append(retained, project)
+	}
+	m.loadedProjects = retained
+	m.pruneSelectionsOutsideLoadedProjects()
+	m.refreshContextScopeProjects()
+	m.crossForceRebuild = true
+	m.crossProjectRebuildRows()
+	m.clampCursor()
 }
 
 // pushProjectScope enters or replaces the one project focus. The first focus
@@ -121,6 +198,10 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	}
 	if projectID == m.scopedProjectID {
 		return
+	}
+	if projectID != m.parkedFocusProjectID {
+		// Focusing elsewhere ends the exception that admitted the parked project.
+		m.dropParkedProjectFocus()
 	}
 	_ = m.persistActiveRouteState()
 	if m.scopedProjectID == "" {
@@ -156,6 +237,7 @@ func (m *OutlinerModel) popProjectScope() bool {
 	_ = m.persistActiveRouteState()
 	frame := m.scopeStack[0]
 	m.scopeStack = nil
+	m.dropParkedProjectFocus()
 	m.restoreScopeFrame(frame)
 	return true
 }
@@ -171,10 +253,12 @@ func (m *OutlinerModel) clearProjectScope() bool {
 	if len(m.scopeStack) > 0 {
 		base := m.scopeStack[0]
 		m.scopeStack = nil
+		m.dropParkedProjectFocus()
 		m.restoreScopeFrame(base)
 		return true
 	}
 	// Defensive: scoped without a frame (should not happen); reset in place.
+	m.dropParkedProjectFocus()
 	m.scopedProjectID = ""
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
@@ -195,6 +279,7 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.crossQuickEditProject = nil
 	m.scopeStack = nil
 	m.scopedProjectID = ""
+	m.dropParkedProjectFocus()
 	m.clearContextScope()
 	m.zoomStack = nil
 	m.crossZoomStack = nil
@@ -227,6 +312,10 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	if m.scopedProject() != nil {
 		return "", false
 	}
+	// The focus target is gone — removed, archived, or unreadable — so stop
+	// re-requesting it on every later reload.
+	m.parkedFocusProjectID = ""
+	m.pendingParkedFocusID = ""
 	if len(m.scopeStack) > 0 {
 		frame := m.scopeStack[0]
 		m.scopeStack = nil

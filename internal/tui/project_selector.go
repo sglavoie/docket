@@ -39,6 +39,12 @@ func (p ProjectPickerItem) CountValue() int {
 	return p.Project.CountTasks()
 }
 
+// CountDisplayText marks an unloaded destination's task count as unknown so a
+// metadata-only project does not read as an empty one.
+func (p ProjectPickerItem) CountDisplayText() string {
+	return "(" + projectTaskCountLabel(p.Project) + ")"
+}
+
 // ItemID returns the project ID as its unique identifier.
 func (p ProjectPickerItem) ItemID() string {
 	if p.Project == nil {
@@ -191,7 +197,7 @@ func (m *ProjectSelectorModel) renderList() string {
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", item.Project.Context))
 
 		// Task count
-		taskCount := fmt.Sprintf("%d tasks", item.Project.CountTasks())
+		taskCount := projectTaskCountLabel(item.Project) + " tasks"
 
 		// Project name (truncated)
 		maxNameLen := max(m.Width()-30, 10)

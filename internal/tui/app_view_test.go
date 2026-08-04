@@ -83,7 +83,7 @@ func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	app.width = 80
 	app.height = 24
 
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
@@ -106,7 +106,7 @@ func TestAppViewTaskComposerBudgetsForWrappedFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.handleWindowSize(tea.WindowSizeMsg{Width: 60, Height: 24})
 
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.activeProjects()))
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}

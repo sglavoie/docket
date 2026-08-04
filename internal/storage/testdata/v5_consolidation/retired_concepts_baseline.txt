@@ -41,7 +41,7 @@ decision	internal/storage/v5_archive_reintegration.go	Decisions	2
 decision	internal/storage/v5_archive_reintegration.go	V5TaskDecision	1
 dependency	internal/config/pre_consolidation_v6_snapshot.go	dependencyCount	3
 dependency	internal/config/runtime.go	NewRuntimeDependencies	2
-dependency	internal/config/runtime.go	RuntimeDependencies	12
+dependency	internal/config/runtime.go	RuntimeDependencies	11
 dependency	internal/storage/format/legacy_v4_task_convert.go	DependsOn	2
 dependency	internal/storage/format/v5_task_codec.go	DependsOn	4
 dependency	internal/storage/format/v6_task_convert.go	DependsOn	1

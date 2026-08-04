@@ -93,7 +93,7 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 	if m.currentProject != nil {
 		return []string{m.currentProject.ID}
 	}
-	projects := m.activeProjects()
+	projects := m.taskWorkspaceProjects()
 	ids := make([]string, 0, len(projects))
 	for _, project := range projects {
 		if project != nil && project.ID != "" {

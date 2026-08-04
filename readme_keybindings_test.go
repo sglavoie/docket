@@ -154,8 +154,8 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"`N` opens All Notes",
-		"Global plus every project returned by the active-project catalog",
-		"`v` opens a searchable All, Global, or active-project scope picker",
+		"Global plus every unarchived project, including the protected Unfiled project and every parked project",
+		"`v` opens a searchable All, Global, or single-project scope picker",
 		"`s` applies a persistent title/body search",
 		"`m` moves the selected note to another such owner as one atomic workspace transaction",
 		"Notes support open/edit, create, rename, move, delete, undo, and redo",
@@ -165,6 +165,22 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 		"Global notes and, when a project is focused",
 		"focused-project Notes",
 		"search and moving are removed",
+	})
+}
+
+func TestREADMEDocumentsProjectBoundaries(t *testing.T) {
+	content := readFileForContractTest(t, "README.md")
+	requireDocumentationText(t, content, []string{
+		"### Project boundaries",
+		"Every project sits in exactly one boundary",
+		"`Active` is the built-in one, it cannot be renamed or deleted",
+		"nothing is rewritten on disk until you change something",
+		"its tasks leave the base Outliner entirely, and its Today and Next entries are cleared",
+		"still accepts `%project` during capture, and is still a valid Move Project destination",
+		"`f` filters the list by boundary and `B` opens Boundary Manager",
+		"Deleting a boundary that still has projects asks where they should go first",
+		"The protected Unfiled project cannot leave `Active`",
+		"It preserves the boundary a project was in, restoring returns it there",
 	})
 }
 

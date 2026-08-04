@@ -52,7 +52,7 @@ func snapInt(t *testing.T, snap map[string]any, key string) int {
 
 func TestUITestSnapshotOutliner(t *testing.T) {
 	ws := newSnapshotWorkspace(t)
-	project := ws.Runtime.ActiveProjects()[0]
+	project := ws.Runtime.TaskWorkspaceProjects()[0]
 	if err := storage.LoadProject(project); err != nil {
 		t.Fatalf("load project: %v", err)
 	}

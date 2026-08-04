@@ -225,7 +225,7 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		if upsertErr := catalog.UpsertProject(project); upsertErr != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", upsertErr)}
 		}
-		catalogArtifacts, err := catalogDomainArtifact(manager, catalog)
+		catalogArtifacts, err := catalogDomainArtifact(runtime, catalog)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to encode project catalog: %w", err)}
 		}

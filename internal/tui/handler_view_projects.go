@@ -18,7 +18,13 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.navigation.ResetRoot()
 		m.crossOutliner.resetToGlobalAll()
 		m.setAccentOnView(m.crossOutliner)
-		return true, tea.Batch(m.activateTaskWorkspaceRoute(outlinerRootRoute()), presentationCmd)
+		// The reset drops any parked focus after presentationCmd captured it, so
+		// supersede that load with one that requests the base workspace alone.
+		return true, tea.Batch(
+			m.activateTaskWorkspaceRoute(outlinerRootRoute()),
+			presentationCmd,
+			m.crossOutliner.takeParkedFocusReload(),
+		)
 
 	case ShowOutlinerMsg:
 		if msg.Project != nil {

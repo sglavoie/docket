@@ -56,7 +56,7 @@ func newQuickCaptureInterruptFixture(t *testing.T) (*UITestDriver, *uitestWorksp
 		t.Fatalf("NewFixtureDriver: %v", err)
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
-	projects := driver.App().activeProjects()
+	projects := driver.App().taskWorkspaceProjects()
 	if len(projects) == 0 {
 		t.Fatal("rich fixture should include a project")
 	}

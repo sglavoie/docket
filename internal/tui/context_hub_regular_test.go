@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // Regular contexts are labels on cataloged projects, so every assertion here
@@ -232,9 +233,9 @@ func TestContextHubRegularSaveFailureLeavesNothingBehind(t *testing.T) {
 	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 	catalog := config.NewWorkspaceCatalog()
 	catalog.Projects = []config.CatalogProject{
-		{ID: "alpha", Slug: "alpha", Name: "Alpha", Context: "work", CreatedAt: now, UpdatedAt: now},
-		{ID: "gamma", Slug: "gamma", Name: "Gamma", Context: "work", CreatedAt: now, UpdatedAt: now},
-		{ID: "beta", Slug: "beta", Name: "Beta", Context: "home", CreatedAt: now, UpdatedAt: now},
+		{ID: "alpha", Slug: "alpha", Name: "Alpha", Context: "work", CreatedAt: now, UpdatedAt: now, BoundaryID: models.ActiveBoundaryID},
+		{ID: "gamma", Slug: "gamma", Name: "Gamma", Context: "work", CreatedAt: now, UpdatedAt: now, BoundaryID: models.ActiveBoundaryID},
+		{ID: "beta", Slug: "beta", Name: "Beta", Context: "home", CreatedAt: now, UpdatedAt: now, BoundaryID: models.ActiveBoundaryID},
 	}
 	if err := config.NewDomainFileStore(dataDir).SaveCatalog(catalog); err != nil {
 		t.Fatalf("SaveCatalog: %v", err)

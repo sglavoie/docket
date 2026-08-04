@@ -69,6 +69,11 @@ func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScop
 // the change out to the open task views — the same refresh the legacy restore
 // completion performs. Because it reads the durable ledger rather than in-memory
 // state, the restore survives a restart.
+//
+// The ledger is one workspace history, so an entry can carry catalog effects a
+// task view never shows: a boundary assignment, an archive, a rename. The
+// catalog-reading surfaces are therefore rebuilt from the restored snapshot on
+// the same terms every forward catalog mutation rebuilds them.
 func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	ledger := workspaceLedgerFromConfig(m.runtime)
 	restore := ledger.UndoWithEntry
@@ -101,8 +106,9 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	m.refreshLoadedTaskWorkspace()
 	m.clearToggleHistory()
 	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
+	m.refreshScopeHubIfActive()
 	cmds := m.refreshTaskViewsAfterSave()
-	cmds = append(cmds, defaultStatusTimeout())
+	cmds = append(cmds, m.refreshActiveNotesManager(), defaultStatusTimeout())
 	return tea.Batch(cmds...)
 }
 

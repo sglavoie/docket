@@ -476,7 +476,7 @@ func TestTaskComposerUsesTypedOverlayWithoutLegacyRoute(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	installTestSystemInbox(appModel, project)
 
-	handled, _ := appModel.handleViewMessages(appModel.captureComposerMessage(project, appModel.activeProjects()))
+	handled, _ := appModel.handleViewMessages(appModel.captureComposerMessage(project, appModel.taskWorkspaceProjects()))
 	if !handled || !appModel.activeTaskComposer() {
 		t.Fatal("Task Composer message did not activate Task Composer")
 	}

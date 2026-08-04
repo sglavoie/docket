@@ -32,8 +32,13 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid",
-			catalog: WorkspaceCatalog{SchemaVersion: 3, Projects: []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount}}, SystemUnfiledProjectID: "a"},
+			name: "valid",
+			catalog: WorkspaceCatalog{
+				SchemaVersion:          3,
+				Projects:               []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount, BoundaryID: models.ActiveBoundaryID}},
+				SystemUnfiledProjectID: "a",
+				Boundaries:             []ProjectBoundary{{ID: models.ActiveBoundaryID, Name: ActiveBoundaryName}},
+			},
 		},
 		{
 			name:    "non-positive schema version",

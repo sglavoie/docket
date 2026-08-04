@@ -130,7 +130,7 @@ func (m *AppModel) handleTaskMoveMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowProjectSelectorForMoveMsg:
 		if msg.Task != nil && msg.SourceProject != nil {
-			projects := m.activeProjects()
+			projects := m.availableProjects()
 			m.showView(ViewProjectSelector, NewProjectSelectorModel(projects, msg.Task, msg.SourceProject))
 		}
 		return true, nil

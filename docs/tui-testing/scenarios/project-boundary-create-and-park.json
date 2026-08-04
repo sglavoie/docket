@@ -1,0 +1,60 @@
+{
+  "name": "project-boundary-create-and-park",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the base task workspace starts with every project inside Active", "assert": "contains", "value": "Outliner (2 projects)" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+
+    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "key", "label": "leave the initial search", "key": "esc" },
+    { "type": "assert", "label": "a backfilled catalog puts every project in Active", "assert": "contains", "value": "Boundary: Active" },
+
+    { "type": "key", "label": "open Boundary Manager", "key": "B" },
+    { "type": "assert", "assert": "contains", "value": "Boundaries" },
+    { "type": "assert", "label": "Active is present and protected before anything is created", "assert": "contains", "value": "Active (protected)" },
+    { "type": "assert", "assert": "contains", "value": "Active · 0 custom boundaries" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "start a new boundary", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "New Boundary" },
+    { "type": "assert", "assert": "contains", "value": "Boundary name" },
+    { "type": "text", "text": "On Hold" },
+    { "type": "key", "label": "save the boundary", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "Created boundary 'On Hold'" },
+    { "type": "assert", "assert": "contains", "value": "Active · 1 custom boundary" },
+    { "type": "assert", "label": "a fresh boundary starts empty", "assert": "contains", "value": "0 projects · 0 unarchived · 0 archived" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "return to the project list", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "ACTIVE PROJECTS" },
+    { "type": "key", "label": "open the project action sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Actions: Rich Project" },
+    { "type": "key", "label": "search the action sheet", "key": "/" },
+    { "type": "text", "text": "boundary" },
+    { "type": "assert", "assert": "contains", "value": "Set boundary" },
+    { "type": "key", "label": "leave the action search", "key": "enter" },
+    { "type": "key", "label": "open the boundary picker", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Set Boundary: Rich Project" },
+    { "type": "assert", "label": "the picker says what each choice means for the task workspace", "assert": "contains", "value": "in the task workspace" },
+    { "type": "assert", "assert": "contains", "value": "outside the task workspace" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "choose On Hold", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "Moved Rich Project to 'On Hold'" },
+    { "type": "assert", "label": "administration keeps listing the parked project under its boundary", "assert": "contains", "value": "ON HOLD" },
+    { "type": "assert", "assert": "contains", "value": "Boundary: On Hold" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "parking removes the project from the base task workspace", "assert": "contains", "value": "Outliner (1 project)" },
+    { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

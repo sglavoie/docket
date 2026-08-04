@@ -341,7 +341,7 @@ func (m *ContextHubModel) subtitle() string {
 			regular++
 		}
 	}
-	return fmt.Sprintf("All Projects · %d context%s", regular, pluralize(regular, "", "s"))
+	return fmt.Sprintf("Active Projects · %d context%s", regular, pluralize(regular, "", "s"))
 }
 
 // footerHelp returns the widest help variant that still fits beside the footer

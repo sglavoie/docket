@@ -78,16 +78,16 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		logging.Warn("failed to persist project color slots: %v", ensureErr)
 	}
 	app.syncProjectCache()
-	activeProjects := app.activeProjects()
-	startupLoads := make(map[string]error, len(activeProjects))
-	// The catalog owns project metadata only. Rehydrate active projects' task
-	// trees into the session cache before constructing views.
+	workspaceProjects := app.taskWorkspaceProjects()
+	startupLoads := make(map[string]error, len(workspaceProjects))
+	// The catalog owns project metadata only. Rehydrate the base task workspace's
+	// task trees into the session cache before constructing views.
 	if app.currentProject != nil && app.currentProject.Archived {
 		app.currentProject = nil
 	}
 	// Launch is deliberately not reconstructed from machine-local navigation
 	// state. The first message performs an explicit clean-root reset so every run
-	// begins in the same All Projects / All Outliner regardless of stale v4
+	// begins in the same Active Projects / All Outliner regardless of stale v4
 	// StartupRoute, CurrentRoute, project-route, search, or selection data.
 	app.startupMessage = launchOutlinerMsg{}
 	if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
@@ -95,8 +95,8 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	} else if changed {
 		app.refreshRuntime()
 	}
-	app.hydrateNextOrder(activeProjects, startupLoads, true)
-	app.hydrateToday(activeProjects, startupLoads, true)
+	app.hydrateNextOrder(workspaceProjects, startupLoads, true)
+	app.hydrateToday(workspaceProjects, startupLoads, true)
 
 	app.ensureManageHub()
 
@@ -109,7 +109,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	app.openLoops = ComputeOpenLoops(app.runtime, app.todayIDs)
 
 	// The Outliner is the sole root: construct and register the global
-	// (All Projects) Outliner in All so the first frame renders the root even
+	// (Active Projects) Outliner in All so the first frame renders the root even
 	// before Init's startup reload lands. NewNavigationState already roots the
 	// primary stack at the Outliner. The returned constructor command is
 	// deliberately startup-owned: AppModel.Init
@@ -200,11 +200,11 @@ func (app *AppModel) loadStartupProject(project *models.Project, loaded map[stri
 }
 
 // hydrateNextOrder rebuilds the in-memory Next membership/order from planning.
-func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoads map[string]error, allowReconcile bool) {
+func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startupLoads map[string]error, allowReconcile bool) {
 	planning := m.runtime.Planning()
 	if allowReconcile {
-		projectsByID := make(map[string]*models.Project, len(activeProjects))
-		for _, project := range activeProjects {
+		projectsByID := make(map[string]*models.Project, len(workspaceProjects))
+		for _, project := range workspaceProjects {
 			if project != nil {
 				projectsByID[project.ID] = project
 			}
@@ -252,7 +252,7 @@ func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoa
 	}
 
 	for _, item := range planning.GetNext() {
-		for _, p := range activeProjects {
+		for _, p := range workspaceProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}
@@ -271,13 +271,13 @@ func (m *AppModel) hydrateNextOrder(activeProjects []*models.Project, startupLoa
 // hydrateToday restores the project-qualified Today membership/order. Legacy
 // planned dates are intentionally ignored: they cannot confer membership or
 // trigger carry-over behavior in the lean runtime model.
-func (m *AppModel) hydrateToday(activeProjects []*models.Project, startupLoads map[string]error, reconcile ...bool) {
+func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoads map[string]error, reconcile ...bool) {
 	allowReconcile := len(reconcile) == 0 || reconcile[0]
 	planChanged := false
 	for _, item := range m.runtime.Planning().GetToday() {
 		var foundTask *models.Task
 		var foundProject *models.Project
-		for _, p := range activeProjects {
+		for _, p := range workspaceProjects {
 			if p.ID != item.ProjectID {
 				continue
 			}

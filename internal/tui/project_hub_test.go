@@ -63,8 +63,8 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 		t.Fatalf("project categories = %#v, want %#v", got, wantCategories)
 	}
 	for _, id := range []ListItemID{
-		"project-hub:active:alpha",
-		"project-hub:active:beta",
+		"project-hub:project:alpha",
+		"project-hub:project:beta",
 		"project-hub:archived:archived",
 	} {
 		if !hub.surface.SetCursorToID(id) {
@@ -156,15 +156,15 @@ func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
 		}
 	}
 
-	assertCurrent("project-hub:active:alpha")
+	assertCurrent("project-hub:project:alpha")
 	hub.Update(syntheticCtrlKey('j'))
-	assertCurrent("project-hub:active:beta")
+	assertCurrent("project-hub:project:beta")
 	hub.Update(syntheticCtrlKey('k'))
-	assertCurrent("project-hub:active:alpha")
+	assertCurrent("project-hub:project:alpha")
 	hub.Update(syntheticSpecialKey(tea.KeyDown))
-	assertCurrent("project-hub:active:beta")
+	assertCurrent("project-hub:project:beta")
 	hub.Update(syntheticSpecialKey(tea.KeyUp))
-	assertCurrent("project-hub:active:alpha")
+	assertCurrent("project-hub:project:alpha")
 	hub.Update(syntheticSpecialKey(tea.KeyDown))
 
 	_, cmd := hub.Update(syntheticSpecialKey(tea.KeyEnter))
@@ -248,7 +248,7 @@ func TestProjectHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
 		t.Fatal("Project Hub did not receive the production operation system")
 	}
 
-	focusProjectHubItem(t, hub, "project-hub:active:beta")
+	focusProjectHubItem(t, hub, "project-hub:project:beta")
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	hub.Update(syntheticKey(' '))
 	if hub.actions == nil {

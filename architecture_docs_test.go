@@ -37,7 +37,11 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Only a committed Delete clears selection",
 		"The workspace-wide Notes manager carries an explicit `NoteLocation` plus filename identity with every row",
 		"always opens in All Notes",
-		"`Runtime.ActiveProjects()`",
+		"`Runtime.AvailableProjects()`; archived projects are not owners, but a parked project remains one",
+		"### Project boundaries",
+		"Every cataloged project holds exactly one `BoundaryID`",
+		"`Runtime.TaskWorkspaceProjects()` returns non-archived projects inside Active",
+		"without bumping the schema version and without writing",
 		"`v` opens the searchable scope picker",
 		"`s` edits the accepted search",
 		"`m` moves one parsed note",
@@ -96,10 +100,12 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"!1-3 #tag @date $destination %project >parent",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
-		"`N` always opens All Notes across Global and every project returned by `Runtime.ActiveProjects()`",
+		"`N` always opens All Notes across Global and every project returned by `Runtime.AvailableProjects()`",
 		"`v` chooses All, Global, or one active project",
 		"`s` persistently searches titles and bodies",
 		"`m` atomically moves one note between active owners",
+		"Task workflow state, project context, project boundary, and project archive lifecycle are four independent axes",
+		"`Runtime.TaskWorkspaceProjects()` is non-archived plus `active` and is the only population the base Outliner reads",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)

@@ -46,7 +46,7 @@ func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	app := contextHubApp(t)
 	hub := openProjectHub(t, app)
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	focusProjectHubItem(t, hub, "project-hub:active:beta")
+	focusProjectHubItem(t, hub, "project-hub:project:beta")
 	hub.Update(syntheticKey(' '))
 	if hub.actions == nil {
 		t.Fatal("Space did not freeze the project action target")
@@ -179,13 +179,14 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
 	hub := openProjectHub(t, contextHubApp(t))
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	focusProjectHubItem(t, hub, "project-hub:active:beta")
+	focusProjectHubItem(t, hub, "project-hub:project:beta")
 	hub.Update(syntheticKey(' '))
 
 	got := projectHubActionIDs(hub)
 	for _, want := range []OperationID{
 		operationProjectOpen,
 		operationScopeRenameProject,
+		operationProjectSetBoundary,
 		operationScopePinProject,
 		operationScopeArchiveProject,
 		operationScopeOpenProjectNote,
@@ -197,8 +198,8 @@ func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
 	if containsOperationID(got, operationScopeRestoreProject) {
 		t.Fatalf("active project offered unarchive: %v", got)
 	}
-	if len(got) != 6 {
-		t.Fatalf("active project actions = %v, want exactly six lean actions", got)
+	if len(got) != 7 {
+		t.Fatalf("active project actions = %v, want exactly seven lean actions", got)
 	}
 }
 
@@ -206,7 +207,7 @@ func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	app := contextHubApp(t)
 	hub := openProjectHub(t, app)
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	focusProjectHubItem(t, hub, "project-hub:active:beta")
+	focusProjectHubItem(t, hub, "project-hub:project:beta")
 
 	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {

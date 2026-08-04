@@ -41,7 +41,7 @@ func (m *AppModel) captureComposerPreset(
 	suggestedTag string,
 ) (TaskComposerPreset, bool) {
 	contextual := project != nil
-	projects := m.activeProjects()
+	projects := m.availableProjects()
 	if len(projects) == 0 {
 		projects = append([]*models.Project(nil), allProjects...)
 	}
@@ -82,7 +82,7 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 	preset := TaskComposerPreset{
 		Kind:        ComposerProject,
 		Project:     project,
-		AllProjects: m.activeProjects(),
+		AllProjects: m.availableProjects(),
 		Shared:      TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}
 	if parent != nil {

@@ -64,6 +64,7 @@ var delegatedDestructiveConfirmations = map[OperationID]string{
 	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
 	operationScopeDeleteContext:  "requestDeleteSelected shows the Scope Hub confirm",
+	operationBoundaryDelete:      "requestBoundaryDelete shows the Boundary Manager confirm",
 }
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {

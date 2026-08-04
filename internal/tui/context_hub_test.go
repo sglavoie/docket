@@ -250,7 +250,7 @@ func TestManageHubContextsRendersEveryScopeWithCounts(t *testing.T) {
 	}
 
 	rendered := strings.Join(strings.Fields(ansi.Strip(hub.View().Content)), " ")
-	for _, want := range []string{"All Projects", "work (active)", "home", "personal"} {
+	for _, want := range []string{"Active Projects", "work (active)", "home", "personal"} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("context hub render missing %q:\n%s", want, rendered)
 		}

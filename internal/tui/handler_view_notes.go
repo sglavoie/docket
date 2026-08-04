@@ -106,7 +106,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		cmd := m.activateManageHub(ManageParams{Module: ManageNotes, NotesScope: msg.Scope})
 		if hadNotesManager {
 			if nv := m.getActiveNotesView(); nv != nil {
-				nv.RefreshWorkspace(m.activeProjects()...)
+				nv.RefreshWorkspace(m.availableProjects()...)
 			}
 		}
 		m.selectActiveNote(msg.Focus)

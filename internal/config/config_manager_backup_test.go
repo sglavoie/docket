@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func newDomainManager(t *testing.T) *Manager {
@@ -19,7 +21,7 @@ func TestManagerBackupConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p1", Slug: "one", Name: "One"})
+	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p1", Slug: "one", Name: "One", BoundaryID: models.ActiveBoundaryID})
 	if commitErr := manager.CommitCatalog(domains.Catalog); commitErr != nil {
 		t.Fatal(commitErr)
 	}
@@ -40,14 +42,14 @@ func TestManagerRestoreConfigFromBackupIsReversible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p1", Slug: "one", Name: "One"})
+	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p1", Slug: "one", Name: "One", BoundaryID: models.ActiveBoundaryID})
 	if commitErr := manager.CommitCatalog(domains.Catalog); commitErr != nil {
 		t.Fatal(commitErr)
 	}
 	if backupErr := manager.BackupConfig(); backupErr != nil {
 		t.Fatal(backupErr)
 	}
-	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p2", Slug: "two", Name: "Two"})
+	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{ID: "p2", Slug: "two", Name: "Two", BoundaryID: models.ActiveBoundaryID})
 	if commitErr := manager.CommitCatalog(domains.Catalog); commitErr != nil {
 		t.Fatal(commitErr)
 	}

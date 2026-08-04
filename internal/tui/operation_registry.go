@@ -73,6 +73,11 @@ const (
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
 
+	// ValueProviderProjectBoundary picks a boundary for one project. It is the
+	// only provider whose subject is a project, so it resolves its own target and
+	// never reaches the task-reference resolution the task providers share.
+	ValueProviderProjectBoundary ValueProviderID = "project-boundary"
+
 	// Filter providers feed the Outliner's view-state filter facets rather than
 	// a task mutation; priority is preset-only while states, tags, due, and
 	// completion age use pickers.

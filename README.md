@@ -17,10 +17,12 @@ Move the binary into your `PATH` if desired. A new workspace starts locally in
 different location. Moving into iCloud Drive or another synced directory is an
 explicit choice; an existing selected iCloud workspace is preserved.
 
-Every run starts in All Projects, All mode, with no restored search, filters,
-selection, or navigation. Press `a` to capture the first task. At All Projects
-scope, capture routes to the protected Unfiled project with Inbox lifecycle;
-in a single-project scope, it routes to that project.
+Every run starts in Active Projects, All mode, with no restored search, filters,
+selection, or navigation. Active Projects is the base task workspace: every
+project you have not parked behind another boundary. Press `a` to capture the
+first task. At Active Projects scope, capture routes to the protected Unfiled
+project with Inbox lifecycle; in a single-project scope, it routes to that
+project.
 
 ## Daily loop
 
@@ -188,26 +190,60 @@ Parents are project-local and hierarchy depth is capped at six.
 
 ## Scope, projects, and Notes
 
-`c` opens Scope Hub for All Projects and exclusive regular project-label
+`c` opens Scope Hub for Active Projects and exclusive regular project-label
 contexts. `personal` remains available when empty and protects its name and
 deletion while allowing membership edits. Scope is session-only. `C` opens
 Select Project with search focused immediately
-and includes active and archived projects. `Enter` focuses the matching active
-project in the same Outliner; `Esc` clears search and leaves the project surface
-open. Project administration supports create, edit, pin, archive, restore, and
-project Notes. The catalog ID, not a display name, protects the system Unfiled
-project.
+and includes active and archived projects, grouped by boundary. `Enter` focuses
+the matching project in the same Outliner; `Esc` clears search and leaves the
+project surface open. Project administration supports create, edit, pin, set
+boundary, archive, restore, and project Notes. The catalog ID, not a display
+name, protects the system Unfiled project.
+
+### Project boundaries
+
+Four different things decide where work shows up, and each answers its own
+question:
+
+| Concept | Applies to | Question it answers |
+| --- | --- | --- |
+| Workflow state | a task | What is happening with this task? |
+| Context | a project | Which slice of your life is this project part of? |
+| Boundary | a project | Is this project part of your working set at all? |
+| Archive | a project | Is this project retired? |
+
+Every project sits in exactly one boundary. `Active` is the built-in one, it
+cannot be renamed or deleted, and every existing project joins it automatically
+the first time a workspace with no boundary data is opened — nothing is
+rewritten on disk until you change something. Move a project to any other
+boundary and it is *parked*: its tasks leave the base Outliner entirely, and
+its Today and Next entries are cleared in the same undoable transaction.
+
+A parked project is not hidden away. It still appears in Select Project, still
+owns its Notes, still accepts `%project` during capture, and is still a valid
+Move Project destination. `Enter` on it in Select Project opens it as an
+explicit one-project focus, anchored with its boundary name, and `Esc` returns
+to the Active base with nothing left behind.
+
+Inside Select Project, `f` filters the list by boundary and `B` opens Boundary
+Manager, where `n` creates, `r` renames, and `d` deletes a boundary. Deleting a
+boundary that still has projects asks where they should go first. The protected
+Unfiled project cannot leave `Active`.
+
+Archiving is separate. It preserves the boundary a project was in, restoring
+returns it there, and Boundary Manager counts archived and unarchived members
+apart.
 
 `N` opens All Notes, a workspace-wide manager that scans Global plus every
-project returned by the active-project catalog, including the protected
-Unfiled project and excluding archived projects. Rows are ordered by most recent
+unarchived project, including the protected Unfiled project and every parked
+project. Rows are ordered by most recent
 modification and carry an owner label. `v` opens a searchable All, Global, or
-active-project scope picker, while `s` applies a persistent title/body search
+single-project scope picker, while `s` applies a persistent title/body search
 inside the selected scope.
 
-`n` (or its `a` alias) always asks for a Global or active-project destination
-before starting the editor, and `m` moves the selected note to another such
-owner as one atomic workspace transaction. `Enter` opens and edits the selected
+`n` (or its `a` alias) always asks for a Global or unarchived-project
+destination before starting the editor, and `m` moves the selected note to
+another such owner as one atomic workspace transaction. `Enter` opens and edits the selected
 note in
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
 configure one. Notes support open/edit, create, rename, move, delete, undo, and
@@ -257,7 +293,8 @@ The live portable layout is deliberately small:
 
 Project task files use strict schema-6 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, exclusive regular contexts,
-and protected Unfiled ID. `planning.json` contains Today and Next ordering only.
+project boundaries, and protected Unfiled ID. `planning.json` contains Today and
+Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 

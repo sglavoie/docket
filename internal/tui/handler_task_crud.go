@@ -108,7 +108,11 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	// Set status message showing section
 	if msg.Task != nil {
 		if bucket := m.createdTaskSectionLabel(msg.Task, msg.Project); bucket != "" {
-			m.setSuccessStatus(fmt.Sprintf("Created in %s", bucket))
+			if parked := m.parkedOwnerLabel(msg.Project); parked != "" {
+				m.setSuccessStatus(fmt.Sprintf("Created in %s — %s", bucket, parked))
+			} else {
+				m.setSuccessStatus(fmt.Sprintf("Created in %s", bucket))
+			}
 		}
 	}
 	if msg.CreatedCount > 1 {

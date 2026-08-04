@@ -73,7 +73,12 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.generation == m.crossOutliner.crossLoadGen {
 			m.adoptCrossProjectSnapshot(msg.projects)
 		}
-		return true, m.crossOutliner.handleCrossProjectsLoaded(msg)
+		wantedFocus := msg.focusProjectID
+		cmd := m.crossOutliner.handleCrossProjectsLoaded(msg)
+		if returnCmd := m.finishParkedProjectFocus(wantedFocus); returnCmd != nil {
+			return true, tea.Batch(cmd, returnCmd)
+		}
+		return true, cmd
 	default:
 		return false, nil
 	}

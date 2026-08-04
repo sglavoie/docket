@@ -19,7 +19,7 @@ type pinnedTaskInfo struct {
 }
 
 func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
-	projects := m.activeProjects()
+	projects := m.taskWorkspaceProjects()
 	var pinned []pinnedTaskInfo
 	now := time.Now()
 

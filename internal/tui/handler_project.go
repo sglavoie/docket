@@ -111,6 +111,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case ProjectUpdatedMsg:
 		popCmd := m.popView()
 		m.syncProjectCache()
+		// An edit that parked the project cleared its planning memberships in the
+		// same transaction, so the shell caches are rederived before any surface
+		// reads them again.
+		m.rebuildPlanningFromRuntime()
 		m.refreshProjectView()
 		m.refreshScopeHubIfActive()
 		return true, tea.Batch(

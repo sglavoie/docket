@@ -250,6 +250,9 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreBack:
 		if out, ok := m.outlinerPrimary(); ok {
 			RunEscCascade(out.escSteps())
+			// Leaving a parked focus drops the project from the snapshot in place;
+			// the cascade cannot return a Cmd, so the reload is claimed here.
+			message = commandMessage(out.takeParkedFocusReload())
 		}
 	case operationCoreHelp:
 		message = ShowHelpMsg{
@@ -308,9 +311,9 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 				unfiled = m.projectByID(id)
 			}
 		}
-		return m.captureComposerMessage(unfiled, m.activeProjects())
+		return m.captureComposerMessage(unfiled, m.availableProjects())
 	}
-	return m.captureComposerMessage(project, m.activeProjects())
+	return m.captureComposerMessage(project, m.availableProjects())
 }
 
 func operationTargetLocators(targets ResolvedOperationTargets) []app.TaskLocator {

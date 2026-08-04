@@ -56,6 +56,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	if handled, cmd := m.handleProjectMessages(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleBoundaryMessages(msg); handled {
+		return m, cmd
+	}
 	if handled, cmd := m.handleTaskMessages(msg); handled {
 		return m, cmd
 	}

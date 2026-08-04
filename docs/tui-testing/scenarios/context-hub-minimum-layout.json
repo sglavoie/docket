@@ -9,7 +9,7 @@
     { "type": "assert", "assert": "contains", "value": "Ctrl+d/u · Enter · n · Space · /" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "widen to a common terminal size", "width": 120, "height": 40 },
-    { "type": "assert", "assert": "contains", "value": "All Projects (active)" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects (active)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

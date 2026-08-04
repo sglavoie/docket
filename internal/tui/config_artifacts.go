@@ -5,19 +5,21 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// Both helpers render candidates that were derived from a runtime snapshot, so
+// both stamp them with the revisions that snapshot observed. Reloading the
+// domains here to obtain a fresher baseline would silently re-parent stale
+// in-memory intent onto a concurrent writer's state and overwrite it; the
+// snapshot's own revision is what makes an intervening write fail closed.
+
 // syncedDomainArtifacts renders the two explicit synced configuration domains
 // into revision-checked artifacts for a transaction that intentionally spans
 // catalog and planning state.
 func syncedDomainArtifacts(
-	mgr *config.Manager,
+	runtime *config.RuntimeState,
 	catalog *config.WorkspaceCatalog,
 	planning *config.PlanningState,
 ) ([]storage.ArtifactChange, error) {
-	coord := mgr.DomainCoordinator()
-	if _, err := coord.LoadDomains(); err != nil {
-		return nil, err
-	}
-	domainArts, err := coord.CheckedDomainArtifacts(catalog, planning)
+	domainArts, err := runtime.CheckedSyncedArtifacts(&config.Domains{Catalog: catalog, Planning: planning})
 	if err != nil {
 		return nil, err
 	}
@@ -32,12 +34,8 @@ func syncedDomainArtifacts(
 // mutation that must commit atomically with project-directory and tasks.md
 // changes. It never reconstructs the Config facade or rewrites unrelated
 // configuration domains.
-func catalogDomainArtifact(mgr *config.Manager, catalog *config.WorkspaceCatalog) ([]storage.ArtifactChange, error) {
-	coord := mgr.DomainCoordinator()
-	if _, err := coord.LoadCatalog(); err != nil {
-		return nil, err
-	}
-	artifact, err := coord.CheckedCatalogArtifact(catalog)
+func catalogDomainArtifact(runtime *config.RuntimeState, catalog *config.WorkspaceCatalog) ([]storage.ArtifactChange, error) {
+	artifact, err := runtime.CheckedCatalogArtifact(catalog)
 	if err != nil {
 		return nil, err
 	}

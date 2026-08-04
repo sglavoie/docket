@@ -208,7 +208,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Projects not yet loaded from disk have nil Tasks; load them
 	// temporarily so their task IDs are not incorrectly pruned.
 	validTasks := make(map[TaskIdentity]bool)
-	for _, p := range m.allLoadableProjects() {
+	for _, p := range m.availableProjects() {
 		wasUnloaded := p.Tasks == nil
 		if wasUnloaded {
 			if err := m.persister.Load(p); err != nil {

@@ -83,6 +83,28 @@ func (m *AppModel) adoptCrossProjectSnapshot(projects []*models.Project) {
 	}
 }
 
+// parkedOwnerLabel names a project and the boundary it sits in when that
+// boundary is not Active, and returns "" otherwise. A task written to a parked
+// project is committed and durable but will not appear in any base projection,
+// so a status that named only its section would send the user looking for it in
+// a place it can never render. The label matches the Outliner's focus chrome, so
+// the same words identify the project when the user goes there to find it.
+func (m *AppModel) parkedOwnerLabel(project *models.Project) string {
+	if m == nil || m.runtime == nil || project == nil {
+		return ""
+	}
+	catalog := m.runtime.Catalog()
+	boundaryID := catalog.ProjectBoundaryID(project.ID)
+	if boundaryID == "" || boundaryID == models.ActiveBoundaryID {
+		return ""
+	}
+	boundary, ok := catalog.Boundary(boundaryID)
+	if !ok || boundary.Name == "" {
+		return ""
+	}
+	return project.Name + scopeBoundarySeparator + boundary.Name
+}
+
 func copyCatalogMetadata(dst, src *models.Project) {
 	if dst == nil || src == nil {
 		return
@@ -99,6 +121,7 @@ func copyCatalogMetadata(dst, src *models.Project) {
 	dst.Pinned = src.Pinned
 	dst.PinnedAt = src.PinnedAt
 	dst.ColorSlot = src.ColorSlot
+	dst.BoundaryID = src.BoundaryID
 }
 
 // ensureProjectColorSlots persists legacy catalog backfill once during startup.
@@ -160,18 +183,23 @@ func (m *AppModel) projectsInRuntimeOrder(projects []*models.Project) []*models.
 	return result
 }
 
-func (m *AppModel) activeProjects() []*models.Project {
+// taskWorkspaceProjects is the base task workspace: the non-archived projects in
+// the Active boundary, in runtime order. Every task projection and context scope
+// reads it. A surface that must keep admitting a parked project — Notes owners,
+// capture destinations, move targets, project administration — reads
+// availableProjects instead.
+func (m *AppModel) taskWorkspaceProjects() []*models.Project {
 	if m == nil || m.runtime == nil {
 		return nil
 	}
-	return m.projectsInRuntimeOrder(m.runtime.ActiveProjects())
+	return m.projectsInRuntimeOrder(m.runtime.TaskWorkspaceProjects())
 }
 
-func (m *AppModel) allLoadableProjects() []*models.Project {
+func (m *AppModel) availableProjects() []*models.Project {
 	if m == nil || m.runtime == nil {
 		return nil
 	}
-	return m.projectsInRuntimeOrder(m.runtime.AllLoadableProjects())
+	return m.projectsInRuntimeOrder(m.runtime.AvailableProjects())
 }
 
 // ensureSystemUnfiledProject installs the workspace-owned Unfiled project.

@@ -152,7 +152,7 @@ func (m *AppModel) handleInvalidManageProjectScope() (bool, tea.Cmd) {
 		m.currentProject = nil
 	}
 	if notes := m.getActiveNotesView(); notes != nil {
-		notes.RefreshWorkspace(m.activeProjects()...)
+		notes.RefreshWorkspace(m.availableProjects()...)
 	}
 	params.NotesScope = AllNotesScope()
 	m.setInfoStatus("Project was removed — showing All Notes")
@@ -168,7 +168,7 @@ func (m *AppModel) refreshActiveNotesManager() tea.Cmd {
 	if notes == nil {
 		return nil
 	}
-	if !notes.RefreshWorkspace(m.activeProjects()...) {
+	if !notes.RefreshWorkspace(m.availableProjects()...) {
 		return nil
 	}
 	if m.manageHub == nil {

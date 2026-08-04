@@ -101,26 +101,12 @@ func (r *RuntimeDependencies) projectsFromCatalog(dataDir string) ([]*models.Pro
 	return projects, nil
 }
 
-// ActiveProjects returns non-archived projects sorted with pinned first.
-func (r *RuntimeDependencies) ActiveProjects(dataDir string) ([]*models.Project, error) {
-	all, err := r.projectsFromCatalog(dataDir)
-	if err != nil {
-		return nil, err
-	}
-	var active []*models.Project
-	for _, p := range all {
-		if !p.Archived {
-			active = append(active, p)
-		}
-	}
-	sortProjectsWithPinnedFirst(active)
-	return active, nil
-}
-
-// AllLoadableProjects returns all non-archived projects (including internal
-// ones) sorted with pinned first, mirroring
-// config.Config.GetAllLoadableProjects but sourced from the catalog domain.
-func (r *RuntimeDependencies) AllLoadableProjects(dataDir string) ([]*models.Project, error) {
+// AvailableProjects returns every non-archived project regardless of boundary,
+// sorted with pinned first. It is the store-backed counterpart of
+// RuntimeState.AvailableProjects. The narrower TaskWorkspaceProjects population
+// is deliberately not mirrored here: this facade has no task-projection
+// consumer that would read it.
+func (r *RuntimeDependencies) AvailableProjects(dataDir string) ([]*models.Project, error) {
 	all, err := r.projectsFromCatalog(dataDir)
 	if err != nil {
 		return nil, err

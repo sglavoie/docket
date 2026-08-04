@@ -59,7 +59,7 @@ func (r *tuiAppRepository) useCommitService() bool {
 // Projects that fail to load are skipped with a warning rather than failing the
 // whole mutation.
 func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
-	projects, listErr := r.deps.AllLoadableProjects(r.dataDir)
+	projects, listErr := r.deps.AvailableProjects(r.dataDir)
 	if listErr != nil {
 		return nil, listErr
 	}

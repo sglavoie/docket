@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -16,6 +17,17 @@ type crossProjectsLoadedMsg struct {
 	projects    []*models.Project
 	failedLoads []projectLoadFailure
 	generation  int
+
+	// focusProjectID is set only when this load was started to enter a parked
+	// project focus. Only that load pushes a scope, and only it cancels outright
+	// when the project cannot be read.
+	focusProjectID string
+
+	// retainedFocusProjectID names the already-adopted focus a steady-state
+	// reload carried on top of the base workspace. It leaves the focus exactly
+	// where it is and exists so the handler can re-decide whether the exception
+	// that admits the project is still required.
+	retainedFocusProjectID string
 }
 
 // crossSpinnerDelayMsg fires after 200ms to animate the initial-load spinner.
@@ -64,16 +76,68 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	gen := m.crossLoadGen
 	runtime := m.runtime
 	svc := m.projectService
+	adopting := m.pendingParkedFocusID != ""
+	focus := m.focusRequestForLoad()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
-			ActiveOnly: true,
+			ActiveOnly:     true,
+			FocusProjectID: focus,
 		})
-		return crossProjectsLoadedMsg{
+		msg := crossProjectsLoadedMsg{
 			projects:    loaded,
 			failedLoads: failed,
 			generation:  gen,
 		}
+		if adopting {
+			msg.focusProjectID = focus
+		} else {
+			msg.retainedFocusProjectID = focus
+		}
+		return msg
 	}
+}
+
+// focusRequestForLoad names the parked project the next load must admit. An
+// in-flight request wins over the adopted one so a changed focus is not fought
+// by the project it replaces; an adopted focus is re-requested by every later
+// reload so an ordinary mutation refresh cannot drop the focused tree.
+func (m *OutlinerModel) focusRequestForLoad() string {
+	if m.pendingParkedFocusID != "" {
+		return m.pendingParkedFocusID
+	}
+	return m.parkedFocusProjectID
+}
+
+// beginParkedProjectFocus starts the load that admits one parked project on top
+// of the base workspace. The generation bump inside startCrossProjectLoad is
+// what makes a repeated, changed, or abandoned request safe: only the newest
+// request's result is ever accepted.
+func (m *OutlinerModel) beginParkedProjectFocus(projectID string) tea.Cmd {
+	if m == nil || m.project != nil || projectID == "" {
+		return nil
+	}
+	m.pendingParkedFocusID = projectID
+	return m.reloadCrossProjects()
+}
+
+// cancelParkedProjectFocus abandons an in-flight focus request. The base
+// snapshot is untouched, so there is nothing to restore.
+func (m *OutlinerModel) cancelParkedProjectFocus() {
+	if m == nil || m.pendingParkedFocusID == "" {
+		return
+	}
+	m.pendingParkedFocusID = ""
+	m.cancelCrossProjectLoad()
+}
+
+// takeParkedFocusReload claims the reload owed after a parked focus was dropped
+// synchronously. The Esc cascade drops the project from the live snapshot so no
+// empty frame is rendered; this reload then re-reads the base workspace alone.
+func (m *OutlinerModel) takeParkedFocusReload() tea.Cmd {
+	if m == nil || !m.parkedFocusReloadPending {
+		return nil
+	}
+	return m.reloadCrossProjects()
 }
 
 // handleViewDidAppear is called when the cross-project outliner becomes the
@@ -81,8 +145,14 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 // eager reload from disk while preserving the current cursor position; the
 // cursor is clamped to the new row count once the load completes.
 func (m *OutlinerModel) handleViewDidAppear() tea.Cmd {
-	if m.project != nil || m.crossLoading {
+	if m.project != nil {
 		// Only applies in cross-project mode.
+		return nil
+	}
+	// Becoming visible again means the surface that asked for a parked focus was
+	// dismissed before its load landed. Abandon it and reload the base workspace.
+	m.cancelParkedProjectFocus()
+	if m.crossLoading {
 		return nil
 	}
 	savedCursor := m.cursor
@@ -99,6 +169,18 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	if msg.generation != m.crossLoadGen {
 		return nil // Stale result from a superseded load; discard.
 	}
+	if msg.focusProjectID != "" {
+		m.pendingParkedFocusID = ""
+		if detail, failed := parkedFocusFailureDetail(msg, msg.focusProjectID); failed {
+			// The base snapshot stays exactly as it was: a focus that could not be
+			// read must not disturb the workspace the user is still looking at.
+			m.crossLoading = false
+			m.crossSpinnerVisible = false
+			m.crossReloadProjectID = ""
+			m.crossReloadTaskID = ""
+			return func() tea.Msg { return ErrorMsg{Err: errors.New(detail)} }
+		}
+	}
 	fallbackCursor := m.cursor
 	fallbackScrollOffset := m.viewScrollOffset
 	// A user may keep navigating while the committed mutation's disk refresh is
@@ -111,10 +193,22 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
 	m.crossSnapshotReady = true
+	m.pruneSelectionsOutsideLoadedProjects()
 	m.refreshContextScopeProjects()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
+	switch {
+	case msg.focusProjectID != "":
+		// Push after the cursor is restored so the captured base frame holds the
+		// position the user actually left, not a transient reload artifact.
+		m.settleParkedFocusException(msg.focusProjectID)
+		m.pushProjectScope(msg.focusProjectID)
+	case msg.retainedFocusProjectID != "" && msg.retainedFocusProjectID == m.parkedFocusProjectID:
+		// A reload that merely carried the adopted focus leaves it in place and
+		// only re-decides the exception.
+		m.settleParkedFocusException(msg.retainedFocusProjectID)
+	}
 
 	var cmds []tea.Cmd
 	if jumpCmd := m.finishPendingOutlinerRelocation(); jumpCmd != nil {
@@ -140,6 +234,25 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	warning := fmt.Sprintf("%d %s failed to load: %s", count, noun, msg.failedLoads[0].Detail)
 	cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(warning) })
 	return tea.Batch(cmds...)
+}
+
+// parkedFocusFailureDetail reports why an explicit focus request cannot be
+// honored. Ordinary cross-project loads treat a per-project failure as a
+// non-fatal diagnostic, but the focused project is the whole point of this
+// load: if it did not parse, or was archived or removed before the load ran,
+// the request is canceled rather than silently opening an empty scope.
+func parkedFocusFailureDetail(msg crossProjectsLoadedMsg, projectID string) (string, bool) {
+	for _, failure := range msg.failedLoads {
+		if failure.ProjectID == projectID {
+			return failure.Detail, true
+		}
+	}
+	for _, project := range msg.projects {
+		if project != nil && project.ID == projectID {
+			return "", false
+		}
+	}
+	return "Could not open that project — it is no longer available", true
 }
 
 // crossProjectRebuildRows aggregates tasks from loadedProjects through the
@@ -270,6 +383,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 // reloadCrossProjects triggers a new load, incrementing the generation counter
 // so any in-flight stale result is discarded on arrival.
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
+	m.parkedFocusReloadPending = false
 	if m.crossReloadFromTop {
 		m.crossReloadProjectID = ""
 		m.crossReloadTaskID = ""

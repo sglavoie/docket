@@ -106,7 +106,7 @@ func TestRenderStatusBarFooterRecordsAuditIssue(t *testing.T) {
 func TestFullscreenContentHeightForBlocksBudgetsWrappedFooter(t *testing.T) {
 	const width, height = 40, 20
 
-	title := renderFullscreenTitle("Example", "All Projects", nil)
+	title := renderFullscreenTitle("Example", "Active Projects", nil)
 	tabBar := RenderTabBar([]string{"First", "Second", "Third"}, 0, width, 1, nil)
 	helpText := HelpStyle.Render("Tab tabs · j/k cursor · H/L scroll · space expand · ↵ open · r refresh · ? help")
 	footer := renderStatusBarFooter("", helpText, width, nil)

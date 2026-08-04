@@ -81,11 +81,12 @@ and undo ledger as task Markdown.
 
 ## TUI architecture
 
-Every run creates one AppModel-owned Outliner and starts in All Projects, All.
-Search, filters, selection, folds, cursor, and scope are session state and are
-not restored. Typed navigation permits that one root, at most one subordinate
-tool, and typed overlays. Covered Outliner state receives no key or reload
-dispatch.
+Every run creates one AppModel-owned Outliner and starts in Active Projects, All.
+Active Projects is the base task workspace: the projects the catalog places in
+the protected Active boundary. Search, filters, selection, folds, cursor, and
+scope are session state and are not restored. Typed navigation permits that one
+root, at most one subordinate tool, and typed overlays. Covered Outliner state
+receives no key or reload dispatch.
 
 The six modes are All, Inbox, Today, Next, Backlog, and Due.
 `Tab`/`Shift+Tab` cycle only that ordered catalog. A project focus is a scope
@@ -155,17 +156,65 @@ transaction. Structural and relation operations, edits, inspection, and
 clipboard actions reject visual selection rather than falling back to the
 cursor. Only a committed Delete clears selection.
 
-Scope Hub resolves only All Projects and exclusive regular context labels from
+Scope Hub resolves only Active Projects and exclusive regular context labels from
 the portable catalog. Applying scope clears navigation and selection but
 preserves the active mode, search, and filters. Select Project opens separately
-with search focused and includes active and archived projects. Project
-administration supports create, edit, pin, archive, restore, and project Notes.
-The catalog-owned Unfiled ID is the protection authority.
+with search focused and includes active and archived projects grouped by
+boundary. Project administration supports create, edit, pin, set boundary,
+archive, restore, and project Notes, plus `f` to filter the list by boundary and
+`B` to open Boundary Manager. The catalog-owned Unfiled ID is the protection
+authority.
+
+### Project boundaries
+
+Four orthogonal axes describe where work sits, and none of them substitutes for
+another:
+
+| Axis | Belongs to | Meaning |
+| --- | --- | --- |
+| Workflow state | a task | One of the eight lifecycle states. |
+| Regular context | a project | An exclusive project-label scope used by Scope Hub. |
+| Boundary | a project | Whether the project is in the base task workspace. |
+| Archive lifecycle | a project | Whether the project is retired from administration. |
+
+Every cataloged project holds exactly one `BoundaryID`. The reserved `active`
+boundary cannot be renamed or deleted and is the only boundary the protected
+Unfiled project may occupy. Custom boundary names are trimmed, one to fifty
+runes, and case-insensitively unique, and every custom boundary ID is a
+canonical UUID. Load validation applies the same identity and case-folding rules
+the create and rename APIs enforce, so a persisted boundary those APIs could not
+have minted fails closed instead of loading. A non-archived project outside
+`active` is *parked*.
+
+Boundary data is additive. `WorkspaceCatalog.NormalizeBoundaries` restores a
+missing Active definition and gives every project with no boundary the Active
+ID at load-validation time, without bumping the schema version and without
+writing; a legacy workspace stays byte-identical on disk until some later
+mutation commits. A boundary ID that is present but unknown is left alone so
+validation fails closed instead of silently reassigning to Active.
+
+The two project populations stay separate by name.
+`Runtime.TaskWorkspaceProjects()` returns non-archived projects inside Active
+and is the only population the base Outliner reads.
+`Runtime.AvailableProjects()` returns every non-archived project, so a parked
+project remains reachable for Notes, capture `%project`, Move Project
+destinations, Select Project, and one explicit project focus. Focusing a parked
+project anchors the Outliner with the boundary appended to the project name, and
+leaving that focus returns to the base workspace with no parked rows behind.
+
+Moving a project out of Active is the only transition that can strand planning
+memberships, so it clears that project's Today and Next references in the same
+transaction; every other assignment is a catalog-only change. Archiving
+preserves boundary membership, restoring returns the project to the boundary it
+was archived from, and Boundary Manager counts archived and unarchived members
+separately. Deleting a populated boundary asks for a destination first and moves
+its members there as one undoable transaction.
 
 The workspace-wide Notes manager carries an explicit `NoteLocation` plus
 filename identity with every row and always opens in All Notes. One workspace
 snapshot loads Global plus every project returned by
-`Runtime.ActiveProjects()`; archived projects are not owners. Successfully
+`Runtime.AvailableProjects()`; archived projects are not owners, but a parked
+project remains one. Successfully
 loaded rows form one canonical collection, then the selected All, Global, or
 project scope and persistent title/body search derive the visible list. Rows
 sort by modified time unless a search is active, when relevance leads and
@@ -189,7 +238,7 @@ The portable workspace rooted at `<data>` is:
 ```text
 <data>/
 ├── .tt/
-│   ├── workspace.json       # lean catalog, contexts, protected Unfiled ID
+│   ├── workspace.json       # lean catalog, contexts, boundaries, Unfiled ID
 │   ├── planning.json        # Today and Next order only
 │   ├── global-notes/        # minimal Markdown notes
 │   ├── transactions/        # prepared/recovering commit journals
@@ -211,8 +260,8 @@ staging files, or destination directories are created.
 Portable configuration has only two synced domains:
 
 - `workspace.json`: workspace identity, lean active/archived project catalog,
-  automatic color slots, exclusive regular contexts, and the protected Unfiled
-  ID.
+  automatic color slots, exclusive regular contexts, project boundaries with
+  each project's boundary ID, and the protected Unfiled ID.
 - `planning.json`: project-qualified Today and Next ordering.
 
 Machine state contains only the dark/light theme selection:

@@ -445,7 +445,7 @@ func renderProspectiveFilterCount(count int) string {
 func (m *AppModel) newFilterTagsPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	projects := m.activeProjects()
+	projects := m.taskWorkspaceProjects()
 	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
 		projects = m.crossOutliner.workModeScopeProjects()
 	}

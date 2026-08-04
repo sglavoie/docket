@@ -49,7 +49,7 @@ func (m *AppModel) commitCatalogProjectMutation(
 		m.syncProjectCache()
 		return nil
 	}
-	artifacts, err := catalogDomainArtifact(m.configManager, catalog)
+	artifacts, err := catalogDomainArtifact(m.runtime, catalog)
 	if err != nil {
 		return err
 	}
@@ -76,13 +76,14 @@ func (m *AppModel) commitCatalogProjectMutation(
 // mutation in memory so runtime.Catalog() observes it; the caller's in-memory
 // shell state remains authoritative.
 // cloneWorkspaceCatalog returns a defensive copy of a catalog snapshot whose
-// project slice is freshly allocated, so a mutation applied before a checked
-// commit can never alias and corrupt the cached RuntimeState snapshot.
-// CatalogProject entries are value types, so a shallow slice clone fully
-// isolates the copy.
+// project and boundary slices are freshly allocated, so a mutation applied
+// before a checked commit can never alias and corrupt the cached RuntimeState
+// snapshot. CatalogProject and ProjectBoundary entries are value types, so a
+// shallow slice clone fully isolates the copy.
 func cloneWorkspaceCatalog(c *config.WorkspaceCatalog) *config.WorkspaceCatalog {
 	cp := *c
 	cp.Projects = slices.Clone(c.Projects)
+	cp.Boundaries = slices.Clone(c.Boundaries)
 	return &cp
 }
 
@@ -125,7 +126,7 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 		return runtimeDomainsCommitResult{}, nil
 	}
 	arts, err := syncedDomainArtifacts(
-		m.configManager,
+		m.runtime,
 		domains.Catalog,
 		domains.Planning,
 	)

@@ -56,6 +56,27 @@ func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
 	return domains, nil
 }
 
+// SyncRevisionBaseline records the current on-disk revision of each synced
+// domain as the optimistic-concurrency baseline while leaving the caller's own
+// in-memory snapshot in place. A caller that assembled its domains elsewhere
+// uses it once, when that snapshot is established, so a later checked artifact
+// is stamped with the revision the snapshot actually describes. An unreadable
+// domain leaves its baseline empty, which fails a later commit closed rather
+// than adopting a revision nothing observed.
+func (c *DomainCoordinator) SyncRevisionBaseline() error {
+	_, catalogRev, err := c.store.LoadCatalogChecked()
+	if err != nil {
+		return err
+	}
+	_, planningRev, err := c.store.LoadPlanningChecked()
+	if err != nil {
+		return err
+	}
+	c.revs[domainCatalog] = catalogRev
+	c.revs[domainPlanning] = planningRev
+	return nil
+}
+
 // CheckedDomainArtifacts renders the two explicit synced domains without
 // rebuilding the legacy Config aggregate. It is the composition-root seam used
 // by domain-native adapters when one transaction intentionally spans several

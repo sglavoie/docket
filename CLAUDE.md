@@ -38,7 +38,8 @@ surface; Cobra contains only the TUI launcher and maintenance commands.
 - `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
   conflicts, recovery, and the workspace undo ledger.
 - `internal/config` owns the lean catalog/planning domains, portable regular
-  contexts, machine-local theme, workspace selection, and v4→v5→v6 migration.
+  contexts, project boundaries, machine-local theme, workspace selection, and
+  v4→v5→v6 migration.
 - `internal/tui` owns the sole Outliner root, typed subordinate tools and
   overlays, the operation registry/executor, and deterministic scenarios.
 - `internal/textgrammar` owns canonical capture/edit sigils.
@@ -75,7 +76,7 @@ Parents are project-local with maximum depth six.
 
 ## TUI grammar and operations
 
-The AppModel owns exactly one scope-aware Outliner. Every launch starts All
+The AppModel owns exactly one scope-aware Outliner. Every launch starts Active
 Projects, All, with no restored navigation, search, filters, or selection.
 
 `OperationRegistry` is the descriptor authority and `OperationExecutor` is the
@@ -137,12 +138,13 @@ closes Peek; while selection exists, structural, edit, Peek, relation, and
 clipboard operations must reject it instead of falling back to the cursor.
 The bulk `Space` menu contains Delete only.
 
-Scope Hub owns All Projects and exclusive regular project-label contexts;
+Scope Hub owns Active Projects and exclusive regular project-label contexts;
 `personal` is always present and protects its name while keeping membership
 editable. `C` opens the search-first
-project selector for project focus and lean project administration. `N` always
+project selector for project focus and lean project administration, with `f`
+filtering by boundary and `B` opening Boundary Manager. `N` always
 opens All Notes across Global and every project returned by
-`Runtime.ActiveProjects()`. Inside Notes, `v` chooses All, Global, or one active
+`Runtime.AvailableProjects()`. Inside Notes, `v` chooses All, Global, or one active
 project, `s` persistently searches titles and bodies, and `m` atomically moves
 one note between active owners. Creation with `n` or its `a` alias always asks
 for a destination; the remaining mutation grammar is open/edit, rename,
@@ -150,6 +152,38 @@ delete, undo, and redo. Keep
 note identity location-qualified, keep archived projects and `Ctrl+N` excluded,
 and do not restore note tags, task links, pins, bulk actions, or previews. `T`
 toggles only dark/light.
+
+## Project boundaries
+
+Task workflow state, project context, project boundary, and project archive
+lifecycle are four independent axes. Never express one with another.
+
+Every cataloged project holds exactly one boundary. The reserved `active`
+boundary is the base task workspace, cannot be renamed or deleted, and is the
+only boundary the protected Unfiled project may occupy. Custom names are
+trimmed, one to fifty runes, and case-insensitively unique, and custom IDs are
+canonical UUIDs. Load validation applies those same identity and name rules, so
+a persisted boundary the create and rename APIs could not have minted fails
+closed instead of loading. A non-archived project outside `active` is parked.
+
+Boundary data is additive: `NormalizeBoundaries` backfills a missing Active
+definition and empty project boundaries at load-validation time without bumping
+the schema version and without writing, and leaves an unknown boundary ID alone
+so validation fails closed. Do not add a migration step for it.
+
+Keep the two populations named apart. `Runtime.TaskWorkspaceProjects()` is
+non-archived plus `active` and is the only population the base Outliner reads;
+`Runtime.AvailableProjects()` is every non-archived project and keeps parked
+projects reachable for Notes, capture `%project`, Move Project destinations,
+Select Project, and one explicit project focus. A parked focus anchors on the
+project name plus its boundary, and leaving it must leave no parked rows or
+scope chrome behind.
+
+Leaving `active` is the only assignment that clears Today and Next references,
+and it does so in the same transaction. Archiving preserves boundary
+membership, restoring returns the project to the boundary it was archived from,
+and Boundary Manager counts archived and unarchived members separately.
+Deleting a populated boundary resolves a destination before confirming.
 
 ## Capture grammar
 

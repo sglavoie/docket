@@ -11,7 +11,7 @@ func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	inbox := installTestSystemInbox(app, project)
 
-	msg := app.captureComposerMessage(project, app.activeProjects())
+	msg := app.captureComposerMessage(project, app.taskWorkspaceProjects())
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {

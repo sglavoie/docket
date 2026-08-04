@@ -13,7 +13,7 @@ import (
 
 func TestUITestFixtureNames(t *testing.T) {
 	got := BuiltinFixtureNames()
-	want := []string{"busy", "contexts", "empty", "fresh", "narrow", "release", "rich", "workflow"}
+	want := []string{"boundaries", "busy", "contexts", "empty", "fresh", "narrow", "release", "rich", "workflow"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuiltinFixtureNames() = %v, want %v", got, want)
 	}
@@ -80,11 +80,70 @@ func TestUITestFixtureEmptyHasNoUserTasks(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	for _, p := range driver.App().activeProjects() {
+	for _, p := range driver.App().taskWorkspaceProjects() {
 		if len(p.Tasks) != 0 {
 			t.Fatalf("empty fixture project %q unexpectedly has %d tasks", p.Name, len(p.Tasks))
 		}
 	}
+}
+
+func TestUITestFixtureBoundariesSplitsTaskWorkspaceFromCatalog(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureBoundaries, 100, 35)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver(boundaries) error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	runtime := driver.App().runtime
+	boundary, ok := boundaryByName(runtime.Catalog(), boundariesFixtureBoundaryName)
+	if !ok {
+		t.Fatalf("fixture catalog has no %q boundary: %+v", boundariesFixtureBoundaryName, runtime.Catalog().Boundaries)
+	}
+
+	parked := projectByFixtureName(runtime.AvailableProjects(), boundariesFixtureParkedName)
+	if parked == nil {
+		t.Fatalf("%q is not an available project", boundariesFixtureParkedName)
+	}
+	if got := runtime.Catalog().ProjectBoundaryID(parked.ID); got != boundary.ID {
+		t.Fatalf("parked project boundary = %q, want %q", got, boundary.ID)
+	}
+	if runtime.TaskWorkspaceProject(parked.ID) != nil {
+		t.Fatalf("%q is in the base task workspace despite being parked", parked.Name)
+	}
+
+	active := projectByFixtureName(runtime.TaskWorkspaceProjects(), boundariesFixtureActiveName)
+	if active == nil {
+		t.Fatalf("%q is missing from the base task workspace", boundariesFixtureActiveName)
+	}
+	if got := runtime.Catalog().ProjectBoundaryID(active.ID); got != models.ActiveBoundaryID {
+		t.Fatalf("active project boundary = %q, want the protected Active boundary", got)
+	}
+
+	screen := driver.Observe(ObserveOptions{}).PlainScreen
+	if !strings.Contains(screen, "Ship the delivery checklist") {
+		t.Fatalf("Active Projects is missing the unparked project's work:\n%s", screen)
+	}
+	if strings.Contains(screen, "Revisit the paused migration") {
+		t.Fatalf("Active Projects leaked a parked project's work:\n%s", screen)
+	}
+}
+
+func boundaryByName(catalog *config.WorkspaceCatalog, name string) (config.ProjectBoundary, bool) {
+	for _, boundary := range catalog.Boundaries {
+		if boundary.Name == name {
+			return boundary, true
+		}
+	}
+	return config.ProjectBoundary{}, false
+}
+
+func projectByFixtureName(projects []*models.Project, name string) *models.Project {
+	for _, project := range projects {
+		if project != nil && project.Name == name {
+			return project
+		}
+	}
+	return nil
 }
 
 func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
@@ -101,7 +160,7 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	if inbox.Name != config.SystemUnfiledName || inbox.Archived {
 		t.Fatalf("system Inbox metadata = %+v", inbox)
 	}
-	active := driver.App().runtime.ActiveProjects()
+	active := driver.App().runtime.TaskWorkspaceProjects()
 	if len(active) != 1 || active[0].ID != inbox.ID {
 		t.Fatalf("fresh active projects = %+v, want visible system Inbox", active)
 	}
@@ -137,7 +196,7 @@ func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	targetCount := len(target.Tasks)
 	inboxCount := len(inbox.Tasks)
 
-	driver.dispatch(driver.App().captureComposerMessage(target, driver.App().activeProjects()))
+	driver.dispatch(driver.App().captureComposerMessage(target, driver.App().taskWorkspaceProjects()))
 	if driver.App().currentView() != ViewTaskComposer {
 		t.Fatalf("current view = %s, want QuickCapture", driver.App().currentView())
 	}
@@ -242,7 +301,7 @@ func TestUITestFixtureRichLoadsGlobalAndProjectNotesFromDisk(t *testing.T) {
 
 func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	src := newSourceWorkspace(t)
-	srcProject := src.Runtime.ActiveProjects()[0]
+	srcProject := src.Runtime.TaskWorkspaceProjects()[0]
 	srcTasksPath := storage.TasksFilePath(srcProject.Path)
 	srcBefore := mustReadFile(t, srcTasksPath)
 	sourceCatalog, err := config.NewDomainFileStore(src.DataDir).LoadCatalog()
@@ -296,7 +355,7 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 
 func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
 	src := newSourceWorkspace(t)
-	srcProject := src.Runtime.ActiveProjects()[0]
+	srcProject := src.Runtime.TaskWorkspaceProjects()[0]
 	srcTasksPath := storage.TasksFilePath(srcProject.Path)
 	// Persistence is the decomposed domain files, not the legacy monolithic
 	// .tt.json (which Manager.Save no longer writes), so the source "config" to

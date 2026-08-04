@@ -114,6 +114,21 @@ type OutlinerModel struct {
 	// single-project OutlinerModel.
 	scopedProjectID string
 
+	// pendingParkedFocusID names a parked project whose focus load is in flight.
+	// The scope is pushed only once that load lands, so a failed or superseded
+	// request leaves the base snapshot exactly as it was.
+	pendingParkedFocusID string
+
+	// parkedFocusProjectID names the parked project the current snapshot admits
+	// as an explicit exception. Every later reload re-requests it, so an ordinary
+	// mutation refresh cannot silently drop the focused tree.
+	parkedFocusProjectID string
+
+	// parkedFocusReloadPending records that a parked focus was just dropped and
+	// the shell still owes a reload to shed the parked project from the snapshot.
+	// The Esc cascade cannot return a Cmd, so the shell claims it afterwards.
+	parkedFocusReloadPending bool
+
 	// scopeStack records the state to restore when a project scope is popped.
 	// Each push saves the previous scope's cursor, scroll, mode, multi-project
 	// filter, and zoom so Esc returns exactly where the user left off. The

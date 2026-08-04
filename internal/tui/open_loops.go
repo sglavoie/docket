@@ -36,17 +36,19 @@ type openLoopsAware interface {
 	setOpenLoops(OpenLoops)
 }
 
-// ComputeOpenLoops counts the open loops across all loadable projects using the
-// same cross-scope loader Today uses, selecting the project set from the
+// ComputeOpenLoops counts the open loops across the base task workspace using
+// the same cross-scope loader Today uses, selecting the project set from the
 // startup-loaded catalog domain rather than the config.Config facade.
 // todayIDs supplies the Today scope (which tasks are planned for today) so
-// the counter agrees with Today regardless of completion status.
+// the counter agrees with Today regardless of completion status. A parked
+// project contributes nothing, so the counter can never report a loop the
+// Outliner has no route to show.
 func ComputeOpenLoops(rs *config.RuntimeState, todayIDs map[TaskIdentity]bool) OpenLoops {
 	if rs == nil {
 		return OpenLoops{}
 	}
 	var out OpenLoops
-	_, projects, failed := loadCrossScopeSelection(rs.AllLoadableProjects(), nil)
+	_, projects, failed := loadCrossScopeSelection(rs.TaskWorkspaceProjects(), nil)
 	for _, f := range failed {
 		logging.Warn("open loops: %s", f.Detail)
 	}

@@ -249,3 +249,34 @@ func TestNewProject_ValidInputSucceeds(t *testing.T) {
 		t.Errorf("Name = %q, want %q", p.Name, "Valid Name")
 	}
 }
+
+func TestNewProjectDefaultsToActiveBoundary(t *testing.T) {
+	p, err := NewProject("id", "Valid Name", "/tmp/p")
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	if p.BoundaryID != ActiveBoundaryID {
+		t.Errorf("BoundaryID = %q, want %q", p.BoundaryID, ActiveBoundaryID)
+	}
+}
+
+// A catalog project is rehydrated with a nil Tasks slice, so counting its tasks
+// yields a zero that means "not loaded" rather than "no tasks".
+func TestProjectIsLoadedSeparatesUnloadedFromEmpty(t *testing.T) {
+	unloaded := &Project{ID: "a"}
+	if unloaded.IsLoaded() {
+		t.Error("a project with a nil task slice must report unloaded")
+	}
+	if unloaded.CountTasks() != 0 {
+		t.Error("unloaded CountTasks must still be zero; IsLoaded is what disambiguates it")
+	}
+
+	loaded := &Project{ID: "b", Tasks: []*Task{}}
+	if !loaded.IsLoaded() {
+		t.Error("a project with an allocated empty task slice must report loaded")
+	}
+
+	if (*Project)(nil).IsLoaded() {
+		t.Error("a nil project must report unloaded")
+	}
+}

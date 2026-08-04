@@ -1,0 +1,53 @@
+{
+  "name": "project-boundary-parked-focus",
+  "fixture": "boundaries",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "Active Projects carries the unparked project's work", "assert": "contains", "value": "Ship the delivery checklist" },
+    { "type": "assert", "label": "a parked project contributes nothing to the base task workspace", "assert": "not_contains", "value": "Revisit the paused migration" },
+
+    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "key", "label": "leave the initial search", "key": "esc" },
+    { "type": "assert", "label": "administration lists a parked project beside the active ones", "assert": "contains", "value": "ON HOLD" },
+    { "type": "assert", "assert": "contains", "value": "Parked Work" },
+
+    { "type": "key", "label": "open the boundary filter", "key": "f" },
+    { "type": "assert", "assert": "contains", "value": "Boundary" },
+    { "type": "assert", "assert": "contains", "value": "On Hold" },
+    { "type": "text", "label": "find the On Hold group", "text": "hold" },
+    { "type": "key", "label": "apply the boundary filter", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "showing On Hold" },
+    { "type": "assert", "assert": "contains", "value": "Parked Work" },
+    { "type": "assert", "assert": "not_contains", "value": "Active Delivery" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open the parked project as an explicit focus", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the anchor names the boundary the focus reached outside", "assert": "contains", "value": "[Parked Work · On Hold]" },
+    { "type": "assert", "assert": "contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "move onto a parked task", "key": "j" },
+    { "type": "key", "label": "hold the priority prefix", "key": "!" },
+    { "type": "key", "label": "make it High priority", "key": "1" },
+    { "type": "wait" },
+    { "type": "assert", "label": "ordinary task operations work inside a parked focus", "assert": "status_contains", "value": "Set Priority" },
+    { "type": "assert", "assert": "contains", "value": "◉ Reopen the vendor conversation" },
+
+    { "type": "resize", "label": "narrow the focused parked view", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "leave the parked focus", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the base returns to Active Projects", "assert": "contains", "value": "Ship the delivery checklist" },
+    { "type": "assert", "label": "the parked project leaves no rows behind", "assert": "not_contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "assert": "not_contains", "value": "Reopen the vendor conversation" },
+    { "type": "assert", "label": "and no scope chrome behind either", "assert": "not_contains", "value": "Parked Work · On Hold" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

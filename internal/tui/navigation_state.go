@@ -11,7 +11,7 @@ type primaryRouteFrame struct {
 	route Route
 }
 
-// outlinerRootRoute is the sole primary root: the global (All Projects)
+// outlinerRootRoute is the sole primary root: the global (Active Projects)
 // Outliner. Every navigation stack bottoms out here; there is no Home root.
 func outlinerRootRoute() Route {
 	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
@@ -57,7 +57,7 @@ func (s *PrimaryRouteStack) Depth() int {
 
 // ReplaceDestination swaps the primary root. Only the Outliner (TaskWorkspace)
 // is a destination, so this replaces the single root frame and drops any child
-// routes above it; scope variations (All Projects vs. a single project) all
+// routes above it; scope variations (Active Projects vs. a single project) all
 // resolve to the same Outliner root.
 func (s *PrimaryRouteStack) ReplaceDestination(route Route) error {
 	s.ensureRoot()

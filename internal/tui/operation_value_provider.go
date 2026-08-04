@@ -592,7 +592,7 @@ func (m *AppModel) moveProjectCandidatesForEntities(visual bool, entity EntityCo
 
 func (m *AppModel) moveProjectCandidatesForSourceIDs(sourceIDs map[string]bool) []*models.Project {
 	candidates := make([]*models.Project, 0)
-	for _, candidate := range m.activeProjects() {
+	for _, candidate := range m.availableProjects() {
 		if candidate == nil || candidate.Archived {
 			continue
 		}
@@ -675,7 +675,7 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		}
 		_, ok := value.(OperationTagsValue)
 		return ok
-	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName:
+	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName, ValueProviderProjectBoundary:
 		_, ok := value.(string)
 		return ok
 	case ValueProviderParent:
@@ -1043,9 +1043,12 @@ func (m *AppModel) newOperationValuePicker(
 	request OperationExecutionRequest,
 	provider ValueProviderID,
 ) (*OperationValuePickerModel, error) {
-	// Filter pickers refine the whole view, so they must open without any task
-	// under the cursor and never resolve targets.
+	// Filter pickers refine the whole view and the boundary picker names a
+	// project, so both must open without any task under the cursor and never
+	// resolve task targets.
 	switch provider {
+	case ValueProviderProjectBoundary:
+		return m.newProjectBoundaryPicker(request)
 	case ValueProviderFilterStates:
 		return m.newFilterStatesPicker(request)
 	case ValueProviderFilterTags:

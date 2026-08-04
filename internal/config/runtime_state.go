@@ -60,18 +60,28 @@ func EmptyRuntimeState(dataDir string) *RuntimeState {
 }
 
 // NewRuntimeState builds an in-memory runtime snapshot from explicit domains
-// without reading disk. It is primarily useful for tests and composition paths
-// that already own a domain bundle.
+// the caller already owns. It is primarily useful for tests and composition
+// paths that assembled a domain bundle elsewhere.
+//
+// The caller asserts that its bundle describes the workspace as it stands, so a
+// rooted snapshot adopts the revisions on disk right now as its
+// optimistic-concurrency baseline. Without that, every checked artifact this
+// snapshot renders would carry a require-absent contract and a later commit
+// against an existing file could only fail.
 func NewRuntimeState(dataDir string, domains *Domains) *RuntimeState {
 	if domains == nil {
 		domains = NewDomains()
 	}
-	return &RuntimeState{
+	rs := &RuntimeState{
 		coord:   NewDomainCoordinator(dataDir),
 		domains: domains,
 		revs:    make(map[domainKind]string, len(syncedDomainKinds)),
 		dataDir: dataDir,
 	}
+	if dataDir != "" {
+		_ = rs.coord.SyncRevisionBaseline()
+	}
+	return rs
 }
 
 // LoadRuntimeState builds the runtime snapshot for this manager's workspace
@@ -290,44 +300,68 @@ func (rs *RuntimeState) commitThenRefresh(commit func() error) error {
 	return rs.RefreshAfterCommit()
 }
 
-// IsActiveContextMember is the single eligibility rule for the projects a
-// context scope may resolve to. It is deliberately the same rule ActiveProjects
-// applies, because the cross-project surfaces that consume a scope load
-// active-only: a scope admitting a project outside this set would count and
-// preview a project no surface ever shows. Everything it rejects — archived,
-// sandbox, internal, or absent — is a hidden context member, preserved on save
-// rather than resolved.
-func IsActiveContextMember(p *models.Project) bool {
-	return p != nil && !p.Archived
-}
-
-// ActiveProjects returns the non-archived, non-sandbox, non-internal cataloged
-// projects sorted with pinned first, rehydrated from the loaded catalog snapshot
-// with paths derived from the data directory. It mirrors
-// config.Config.GetActiveProjects but reads the in-memory catalog domain instead
-// of the facade.
-func (rs *RuntimeState) ActiveProjects() []*models.Project {
-	var active []*models.Project
-	for _, p := range rs.catalogProjects() {
-		if IsActiveContextMember(p) {
-			active = append(active, p)
-		}
-	}
-	sortProjectsWithPinnedFirst(active)
-	moveProjectIDLast(active, rs.Catalog().protectedProjectID())
-	return active
-}
-
-// AllLoadableProjects returns all non-archived cataloged projects (internal
-// included) sorted with pinned first, mirroring
-// config.Config.GetAllLoadableProjects from the in-memory catalog snapshot.
-func (rs *RuntimeState) AllLoadableProjects() []*models.Project {
+// AvailableProjects returns every non-archived cataloged project regardless of
+// boundary, sorted with pinned first. It is the population every surface that
+// stays reachable for a parked project reads: Notes owners, capture and
+// %project resolution, task-move destinations, and project administration.
+//
+// Archival is the only thing it tests, and that is deliberate: a parked project
+// keeps every one of those affordances, so narrowing here would be the
+// pre-boundary ActiveProjects population under a new name.
+func (rs *RuntimeState) AvailableProjects() []*models.Project {
 	var projects []*models.Project
 	for _, p := range rs.catalogProjects() {
 		if !p.Archived {
 			projects = append(projects, p)
 		}
 	}
+	return rs.orderedProjects(projects)
+}
+
+// TaskWorkspaceProjects returns the base task workspace: the non-archived
+// projects that belong to the reserved Active boundary. It is strictly narrower
+// than AvailableProjects, because a parked project keeps its tasks on disk and
+// its Notes/capture/move availability while contributing nothing to ordinary
+// task projections.
+func (rs *RuntimeState) TaskWorkspaceProjects() []*models.Project {
+	catalog := rs.Catalog()
+	var projects []*models.Project
+	for _, p := range rs.catalogProjects() {
+		if p.Archived {
+			continue
+		}
+		if catalog.ProjectBoundaryID(p.ID) != models.ActiveBoundaryID {
+			continue
+		}
+		projects = append(projects, p)
+	}
+	return rs.orderedProjects(projects)
+}
+
+// AvailableProject returns the non-archived project matching idOrSlug, or nil.
+// It is the single-project counterpart of AvailableProjects, so a destination
+// that admits parked projects resolves one the same way it lists them.
+func (rs *RuntimeState) AvailableProject(idOrSlug string) *models.Project {
+	project := rs.GetProject(idOrSlug)
+	if project == nil || project.Archived {
+		return nil
+	}
+	return project
+}
+
+// TaskWorkspaceProject returns the base-workspace project matching idOrSlug, or
+// nil when it is archived, parked, or absent.
+func (rs *RuntimeState) TaskWorkspaceProject(idOrSlug string) *models.Project {
+	project := rs.AvailableProject(idOrSlug)
+	if project == nil || rs.Catalog().ProjectBoundaryID(project.ID) != models.ActiveBoundaryID {
+		return nil
+	}
+	return project
+}
+
+// orderedProjects applies the shared presentation order every population owes
+// its callers: pinned first, then the protected Unfiled project last.
+func (rs *RuntimeState) orderedProjects(projects []*models.Project) []*models.Project {
 	sortProjectsWithPinnedFirst(projects)
 	moveProjectIDLast(projects, rs.Catalog().protectedProjectID())
 	return projects

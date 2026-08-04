@@ -183,6 +183,33 @@ func (m *OutlinerModel) updateRangeSelection() {
 func (m *OutlinerModel) pruneInvisibleSelections() {
 }
 
+// pruneSelectionsOutsideLoadedProjects drops selected identities whose project
+// the reload no longer admits. A project leaves the admitted set when it is
+// parked while some other scope is in view, or when a scope that had admitted it
+// is left; either way the Outliner has no route back to those tasks, so keeping
+// them selected would let a bulk action reach outside the visible workspace.
+// This is narrower than hiding: a filter or mode change still preserves the
+// frozen selection, because those keep the owning project admitted.
+func (m *OutlinerModel) pruneSelectionsOutsideLoadedProjects() {
+	if m.SelectedCount() == 0 {
+		return
+	}
+	admitted := make(map[string]bool, len(m.loadedProjects))
+	for _, project := range m.loadedProjects {
+		if project != nil {
+			admitted[project.ID] = true
+		}
+	}
+	for _, identity := range m.SelectedTaskIdentities() {
+		if !admitted[identity.ProjectID] {
+			m.DeselectTaskIdentity(identity)
+		}
+	}
+	if m.IsRangeSelectionActive() && !admitted[m.rangeAnchor.ProjectID] {
+		m.FreezeRangeSelection()
+	}
+}
+
 // clearMultiSelect exits multi-select mode and clears all selections.
 func (m *OutlinerModel) clearMultiSelect() {
 	m.ExitMultiSelect()

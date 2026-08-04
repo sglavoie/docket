@@ -121,7 +121,7 @@ func (m *OutlinerModel) renderOutlinerTitle(width int) string {
 		if m.isProjectScoped() {
 			// Scoped: identify the project instead of reporting the full loaded
 			// count (which would mislabel a single-project scope as "N projects").
-			title = prefix + " — " + m.projectDisplayNameByID(m.scopedProjectID)
+			title = prefix + " — " + m.scopedProjectChromeLabel(m.scopedProjectID)
 		} else {
 			if !m.activeContext.IsAll() {
 				// The context is scope chrome, so it names the title and supplies the

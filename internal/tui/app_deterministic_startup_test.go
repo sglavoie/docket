@@ -16,7 +16,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 
 	app := driver.App()
 	outliner := app.crossOutliner
-	projects := app.activeProjects()
+	projects := app.taskWorkspaceProjects()
 	if len(projects) == 0 {
 		t.Fatal("rich fixture has no active project")
 	}

@@ -129,6 +129,20 @@ func ListSourceFromPriorities(priorities []PriorityInfo) ListSource {
 	return ListSource{Items: items}
 }
 
+// projectTaskCountUnknown is the count reported for a project whose task tree
+// has not been loaded.
+const projectTaskCountUnknown = "unknown"
+
+// projectTaskCountLabel renders a destination project's task count. A catalog
+// project whose task tree has not been loaded counts zero, which reads as
+// "empty" rather than "not counted", so it is reported as unknown instead.
+func projectTaskCountLabel(project *models.Project) string {
+	if !project.IsLoaded() {
+		return projectTaskCountUnknown
+	}
+	return strconv.Itoa(project.CountTasks())
+}
+
 // ListSourceFromProjects adapts project catalogs while retaining archived and
 // pinned presentation groups.
 func ListSourceFromProjects(projects []*models.Project) ListSource {
@@ -152,14 +166,14 @@ func ListSourceFromProjects(projects []*models.Project) ListSource {
 			ID:            ListItemID("project:" + project.ID),
 			CategoryID:    category,
 			PrimaryText:   projectPickerDisplayText(project),
-			SecondaryText: fmt.Sprintf("%s · %d tasks", project.Context, project.CountTasks()),
+			SecondaryText: fmt.Sprintf("%s · %s tasks", project.Context, projectTaskCountLabel(project)),
 			Aliases:       []string{project.Name, project.Context, project.Slug},
 			Preview: ListPreview{
 				Title:   project.Name,
 				Summary: project.Description,
 				Fields: []ListPreviewField{
 					{Label: "Context", Value: project.Context},
-					{Label: "Tasks", Value: strconv.Itoa(project.CountTasks())},
+					{Label: "Tasks", Value: projectTaskCountLabel(project)},
 				},
 			},
 			Data: project,

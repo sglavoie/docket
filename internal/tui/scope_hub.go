@@ -155,7 +155,7 @@ func (m *ContextHubModel) currentScopeHubItemID() ListItemID {
 	return item.ID
 }
 
-// rebuildScopeSurface reloads All Projects and regular contexts while
+// rebuildScopeSurface reloads Active Projects and regular contexts while
 // preserving a stable cursor identity and the current fuzzy query.
 func (m *ContextHubModel) rebuildScopeSurface(prefer ListItemID) {
 	if m.runtime == nil {
@@ -196,7 +196,7 @@ func (m *ContextHubModel) scopeHubItems() []ListItem {
 		scope := summary.Scope
 		label := contextScopeDisplayName(scope)
 		if scope.IsAll() {
-			label = "All Projects"
+			label = "Active Projects"
 		}
 		if scope == m.active {
 			label += " (active)"
@@ -231,7 +231,7 @@ func (m *ContextHubModel) scopeHubItems() []ListItem {
 func (m *ContextHubModel) scopeHubContextPreview(summary ContextScopeSummary) ListPreview {
 	label := contextScopeDisplayName(summary.Scope)
 	if summary.Scope.IsAll() {
-		label = "All Projects"
+		label = "Active Projects"
 	}
 	body := m.previewCounts(summary)
 	projects := summary.Scope.Projects(m.runtime)

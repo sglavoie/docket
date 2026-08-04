@@ -1,0 +1,43 @@
+{
+  "name": "project-boundary-delete-reassigns",
+  "fixture": "boundaries",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the parked project is outside the base task workspace", "assert": "not_contains", "value": "Revisit the paused migration" },
+
+    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "key", "label": "leave the initial search", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "ON HOLD" },
+
+    { "type": "key", "label": "open Boundary Manager", "key": "B" },
+    { "type": "assert", "assert": "contains", "value": "Active · 1 custom boundary" },
+    { "type": "key", "label": "move onto the custom boundary", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "Custom boundary" },
+    { "type": "assert", "label": "the manager names the members that a delete would move", "assert": "contains", "value": "Parked Work" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "delete the boundary", "key": "d" },
+    { "type": "assert", "label": "a populated boundary asks where its projects go", "assert": "contains", "value": "Move projects to" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "reassign the members to Active", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Delete boundary \"On Hold\"?" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "confirm", "key": "y" },
+    { "type": "assert", "assert": "status_contains", "value": "Deleted boundary 'On Hold': 1 project(s) moved to 'Active'" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Active · 0 custom boundaries" },
+    { "type": "assert", "label": "the deleted boundary leaves the catalog entirely", "assert": "not_contains", "value": "On Hold" },
+    { "type": "assert", "assert": "contains", "value": "Parked Work" },
+
+    { "type": "key", "label": "return to the project list", "key": "esc" },
+    { "type": "assert", "label": "every project is back under Active", "assert": "contains", "value": "3 active · 0 archived" },
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Outliner (3 projects)" },
+    { "type": "assert", "label": "the reassigned project's work rejoins the base task workspace", "assert": "contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "assert": "contains", "value": "Ship the delivery checklist" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
