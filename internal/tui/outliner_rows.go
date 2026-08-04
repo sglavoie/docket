@@ -111,13 +111,16 @@ func effectiveDisplaySection(t *models.Task) string {
 	return taskStateGroupLabel(t)
 }
 
-// filterTaskTree returns a copy of the task tree containing only tasks that
-// match the predicate or have descendants that match. Parent tasks are kept
-// visible when any child matches, preserving hierarchy context.
-func filterTaskTree(tasks []*models.Task, predicate func(*models.Task) bool) []*models.Task {
+// filterTaskTreeKeepingAncestors returns a copy of the task tree containing
+// matching tasks plus their ancestors. It is reserved for mode membership
+// projections, where a qualifying descendant may keep hierarchy context.
+func filterTaskTreeKeepingAncestors(tasks []*models.Task, predicate func(*models.Task) bool) []*models.Task {
 	var result []*models.Task
 	for _, task := range tasks {
-		filteredChildren := filterTaskTree(task.Children, predicate)
+		if task == nil {
+			continue
+		}
+		filteredChildren := filterTaskTreeKeepingAncestors(task.Children, predicate)
 		if predicate(task) || len(filteredChildren) > 0 {
 			clone := *task
 			clone.Children = filteredChildren
@@ -125,6 +128,15 @@ func filterTaskTree(tasks []*models.Task, predicate func(*models.Task) bool) []*
 		}
 	}
 	return result
+}
+
+// filterTaskTreePromotingChildren returns a copy containing only tasks that
+// satisfy predicate. Matching descendants of a rejected task are promoted so
+// facet filtering never hides valid work merely because an ancestor failed.
+func filterTaskTreePromotingChildren(tasks []*models.Task, predicate func(*models.Task) bool) []*models.Task {
+	return excludeTaskTreePromotingChildren(tasks, func(task *models.Task) bool {
+		return !predicate(task)
+	})
 }
 
 // clampCursor ensures the cursor stays within [0, len(rows)-1] and never

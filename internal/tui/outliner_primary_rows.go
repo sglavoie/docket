@@ -135,7 +135,7 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		}
 		roots := m.primaryModeRoots(project)
 		roots = excludeTaskTreePromotingChildren(roots, m.primaryDefaultExclusion(ModeAll, input.Now))
-		roots = filterTaskTree(roots, func(task *models.Task) bool {
+		roots = filterTaskTreePromotingChildren(roots, func(task *models.Task) bool {
 			return input.TaskFilter == nil || input.TaskFilter(task, project)
 		})
 		roots = removePlanningRowsFromTree(roots, project.ID, today.suppressed)
@@ -230,6 +230,13 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 				return false
 			}
 		}
+		visible := func(task *models.Task) bool {
+			return input.TaskFilter == nil || input.TaskFilter(task, project)
+		}
+		// Facets are task predicates, not ancestry requests. Apply them before
+		// mode membership so every row that survives the later hierarchy
+		// projection satisfies every active facet.
+		roots = filterTaskTreePromotingChildren(roots, visible)
 		// Inbox is a triage list, not a context-preserving search result. Once a
 		// task leaves Inbox its row must disappear even when an Inbox descendant
 		// survives. Promote that descendant to the nearest visible level while
@@ -238,13 +245,11 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 			roots = excludeTaskTreePromotingChildren(roots, func(task *models.Task) bool {
 				return !membership(task)
 			})
+		} else {
+			// Backlog retains mode context for qualifying descendants, but the
+			// strict facet projection above prevents nonmatching context rows.
+			roots = filterTaskTreeKeepingAncestors(roots, membership)
 		}
-		visible := func(task *models.Task) bool {
-			return input.TaskFilter == nil || input.TaskFilter(task, project)
-		}
-		roots = filterTaskTree(roots, func(task *models.Task) bool {
-			return (mode == ModeInbox || membership(task)) && visible(task)
-		})
 		roots = removeProjectedRowsFromTree(roots, project.ID, pinned)
 		if len(roots) == 0 {
 			continue
@@ -459,6 +464,29 @@ func (m *OutlinerModel) flattenPrimaryRoots(roots []primaryTaskRoot) {
 	}
 }
 
+// primaryModeZoomBoundary returns the task whose children form the current
+// hierarchical mode root. Breadcrumbs for promoted descendants stop at this
+// boundary because the Outliner header already renders the zoom path.
+func (m *OutlinerModel) primaryModeZoomBoundary(project *models.Project) string {
+	if m == nil || project == nil {
+		return ""
+	}
+	if m.project != nil {
+		if len(m.zoomStack) > 0 && m.project.ID == project.ID {
+			return m.zoomStack[len(m.zoomStack)-1].TaskID
+		}
+		return ""
+	}
+	if len(m.crossZoomStack) == 0 {
+		return ""
+	}
+	top := m.crossZoomStack[len(m.crossZoomStack)-1]
+	if top.ProjectID == project.ID {
+		return top.TaskID
+	}
+	return ""
+}
+
 func (m *OutlinerModel) flattenPrimaryTask(
 	task *models.Task,
 	project *models.Project,
@@ -472,9 +500,14 @@ func (m *OutlinerModel) flattenPrimaryTask(
 	if m.project == nil && project != nil {
 		projectID = project.ID
 	}
+	breadcrumb := ""
+	if len(ancestorIsLast) == 0 && task.ParentID != nil {
+		breadcrumb = taskAncestorBreadcrumbAfter(task, m.primaryModeZoomBoundary(project))
+	}
 	m.rows = append(m.rows, outlinerRow{
 		task:               task,
 		prefix:             buildTreePrefix(ancestorIsLast, isLast),
+		Breadcrumb:         breadcrumb,
 		hasVisibleChildren: len(task.Children) > 0,
 		ProjectID:          projectID,
 	})

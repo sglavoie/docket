@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -72,6 +73,141 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 		if visible[id] {
 			t.Errorf("composed facets retained %q; visible = %v", id, visible)
 		}
+	}
+}
+
+func TestTagFacetDropsNonmatchingAncestorAcrossWorkflowSections(t *testing.T) {
+	parent := filterFacetTask(
+		"curator-app",
+		models.StateBacklog,
+		0,
+		[]string{"stale", "wip-old", "epic"},
+		nil,
+		nil,
+	)
+	parent.Title = "Curator app"
+	child := filterFacetTask(
+		"curator-crop-bug",
+		models.StatePaused,
+		0,
+		[]string{"aging", "bug"},
+		nil,
+		nil,
+	)
+	child.ParentID = &parent.ID
+	project := primaryRowsProject("life-trail", parent, child)
+	outliner := scopeTestOutliner(project)
+	outliner.filter.Tags = map[string]bool{"bug": true}
+	outliner.rebuildRows()
+
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
+		t.Fatalf("#bug rows = %v, want only the tagged child", got)
+	}
+	row, ok := findPlanningTaskRow(outliner, child.ID)
+	if !ok || row.Breadcrumb != parent.Title+" ›" {
+		t.Fatalf("promoted child row = %+v found=%t, want parent breadcrumb", row, ok)
+	}
+	for _, row := range outliner.rows {
+		if row.IsSectionHeader && row.StateGroup == models.StateGroupBacklog {
+			t.Fatalf("untagged parent left a Backlog section behind: %+v", row)
+		}
+		if row.IsSectionHeader && row.StateGroup == models.StateGroupPaused && row.SectionCount != 1 {
+			t.Fatalf("Paused section count = %d, want 1", row.SectionCount)
+		}
+	}
+}
+
+func TestHierarchicalModesPromoteMatchingChildPastFacetMismatch(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		mode  OutlinerModeID
+		state models.WorkflowState
+	}{
+		{name: "inbox", mode: ModeInbox, state: models.StateInbox},
+		{name: "backlog", mode: ModeBacklog, state: models.StateBacklog},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parent := filterFacetTask("parent", tc.state, 0, []string{"other"}, nil, nil)
+			parent.Title = "Parent"
+			child := filterFacetTask("child", tc.state, 0, []string{"bug"}, nil, nil)
+			child.ParentID = &parent.ID
+			project := primaryRowsProject("project", parent, child)
+			outliner := scopeTestOutliner(project)
+			outliner.selectOutlinerMode(tc.mode)
+			outliner.filter.Tags = map[string]bool{"bug": true}
+			outliner.rebuildRows()
+
+			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
+				t.Fatalf("%s #bug rows = %v, want only the tagged child", tc.mode, got)
+			}
+			row, ok := findPlanningTaskRow(outliner, child.ID)
+			if !ok || row.Breadcrumb != parent.Title+" ›" {
+				t.Fatalf("%s promoted child row = %+v found=%t, want parent breadcrumb", tc.mode, row, ok)
+			}
+		})
+	}
+}
+
+func TestPromotedFacetBreadcrumbStopsAtZoomBoundary(t *testing.T) {
+	zoomRoot := filterFacetTask("zoom-root", models.StateBacklog, 0, []string{"other"}, nil, nil)
+	zoomRoot.Title = "Zoom root"
+	hiddenParent := filterFacetTask("hidden-parent", models.StateBacklog, 0, []string{"other"}, nil, nil)
+	hiddenParent.Title = "Hidden parent"
+	hiddenParent.ParentID = &zoomRoot.ID
+	match := filterFacetTask("match", models.StateBacklog, 0, []string{"bug"}, nil, nil)
+	match.ParentID = &hiddenParent.ID
+	project := primaryRowsProject("project", zoomRoot, hiddenParent, match)
+	outliner := scopeTestOutliner(project)
+	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.crossZoomStack = []CrossProjectZoomEntry{{ProjectID: project.ID, TaskID: zoomRoot.ID}}
+	outliner.filter.Tags = map[string]bool{"bug": true}
+	outliner.rebuildRows()
+
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{match.ID}) {
+		t.Fatalf("zoomed #bug rows = %v, want only the tagged descendant", got)
+	}
+	row, ok := findPlanningTaskRow(outliner, match.ID)
+	if !ok || row.Breadcrumb != hiddenParent.Title+" ›" {
+		t.Fatalf("zoomed promoted row = %+v found=%t, want breadcrumb below zoom boundary", row, ok)
+	}
+}
+
+func TestBacklogContextRowsMustSatisfyEveryActiveFacet(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		parentPriority int
+		want           []string
+	}{
+		{name: "matching context remains", parentPriority: 1, want: []string{"parent", "child"}},
+		{name: "nonmatching context is removed", parentPriority: 2, want: []string{"child"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parent := filterFacetTask("parent", models.StateDoing, tc.parentPriority, []string{"bug"}, nil, nil)
+			parent.Title = "Parent"
+			child := filterFacetTask("child", models.StateBacklog, 1, []string{"bug"}, nil, nil)
+			child.ParentID = &parent.ID
+			project := primaryRowsProject("project", parent, child)
+			outliner := scopeTestOutliner(project)
+			outliner.selectOutlinerMode(ModeBacklog)
+			outliner.filter.Tags = map[string]bool{"bug": true}
+			outliner.filter.Priority = 1
+			outliner.rebuildRows()
+
+			if got := visibleTaskIDs(outliner); !slices.Equal(got, tc.want) {
+				t.Fatalf("Backlog filtered rows = %v, want %v", got, tc.want)
+			}
+			for _, row := range outliner.rows {
+				if row.isTaskRow() && !passesCommonFilters(row.task, &outliner.filter.CommonFilterState) {
+					t.Fatalf("visible context row %q does not satisfy active facets", row.task.ID)
+				}
+			}
+			if tc.parentPriority > 1 {
+				row, ok := findPlanningTaskRow(outliner, child.ID)
+				if !ok || row.Breadcrumb != parent.Title+" ›" {
+					t.Fatalf("promoted Backlog child row = %+v found=%t, want parent breadcrumb", row, ok)
+				}
+			}
+		})
 	}
 }
 

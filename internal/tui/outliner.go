@@ -190,7 +190,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case CommentAddedMsg:
-		// Rebuild rows so cloned tasks from filterTaskTree() pick up the
+		// Rebuild rows so cloned tasks from tree projections pick up the
 		// in-place comment mutation on the original task.
 		m.rebuildRows()
 		return m, nil

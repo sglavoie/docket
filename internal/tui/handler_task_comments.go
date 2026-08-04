@@ -35,7 +35,7 @@ func (m *AppModel) refreshAfterSubviewCommit() tea.Cmd {
 func (m *AppModel) handleCommentAdded(msg CommentAddedMsg) (bool, tea.Cmd) {
 	m.setSuccessStatus("Comment added")
 	// Delegate to current view so it can refresh stale task data
-	// (outliner rows contain clones from filterTaskTree)
+	// (outliner rows contain clones from tree projections)
 	viewCmd := m.delegateToCurrentView(msg)
 	return true, tea.Batch(defaultStatusTimeout(), viewCmd, m.refreshAfterSubviewCommit())
 }

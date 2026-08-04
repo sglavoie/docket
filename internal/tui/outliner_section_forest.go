@@ -73,12 +73,21 @@ func flattenTaskPointers(tasks []*models.Task) []*models.Task {
 }
 
 func taskAncestorBreadcrumb(task *models.Task) string {
+	return taskAncestorBreadcrumbAfter(task, "")
+}
+
+// taskAncestorBreadcrumbAfter returns the task's ancestor path below an
+// optional boundary. The boundary itself and ancestors above it are omitted.
+func taskAncestorBreadcrumbAfter(task *models.Task, boundaryID string) string {
 	if task == nil || task.Parent == nil {
 		return ""
 	}
 	var reversed []string
 	seen := make(map[string]bool)
 	for parent := task.Parent; parent != nil && !seen[parent.ID]; parent = parent.Parent {
+		if boundaryID != "" && parent.ID == boundaryID {
+			break
+		}
 		seen[parent.ID] = true
 		reversed = append(reversed, parent.Title)
 	}
