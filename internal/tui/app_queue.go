@@ -43,7 +43,7 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 // (undoQueueToggle/redoQueueToggle) rather than a bespoke in-memory compensation,
 // so they survive a restart and honor LIFO ordering. Returns a status timeout cmd
 // on success, or nil if no task is available.
-func (m *AppModel) toggleQueue() tea.Cmd {
+func (m *AppModel) toggleQueue(capture *outlinerRelocationCapture) tea.Cmd {
 	view := m.activeView()
 	if view == nil {
 		return nil
@@ -80,7 +80,7 @@ func (m *AppModel) toggleQueue() tea.Cmd {
 	m.lastToggleUndoKind = toggleUndoQueue
 	m.lastQueueToggleAt = time.Now()
 	m.clearToggleRedoHistory()
-	return m.queueToggleResultCmd()
+	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture)
 }
 
 // queueLedgerTransition delegates the whole Next mutation to the application

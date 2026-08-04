@@ -707,8 +707,12 @@ func (m *AppModel) executeTaskOperation(
 		if err != nil {
 			return OperationHandlerResult{Err: err}
 		}
+		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		return OperationHandlerResult{Message: OperationCommandResultMsg{
-			Cmd: m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary),
+			Cmd: withOutlinerRelocationCapture(
+				m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary),
+				capture,
+			),
 		}}
 	}
 	if len(invocation.Targets.Targets) > 1 {
@@ -729,6 +733,7 @@ func (m *AppModel) executeTaskOperation(
 func (m *AppModel) executeTaskTogglePinOperation(
 	invocation OperationInvocation,
 ) OperationHandlerResult {
+	capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
 	allPinned := true
 	for _, target := range invocation.Targets.Targets {
@@ -751,7 +756,7 @@ func (m *AppModel) executeTaskTogglePinOperation(
 		action, verb = "Unpin Task", "Unpinned"
 	}
 	return OperationHandlerResult{Message: OperationCommandResultMsg{
-		Cmd: m.secondaryFeatures.TaskItem.ExecuteOperation(
+		Cmd: withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(
 			app.TaskOperationRequest{
 				Operation: app.TaskOperationSetPinned,
 				Targets:   locators,
@@ -759,7 +764,7 @@ func (m *AppModel) executeTaskTogglePinOperation(
 			},
 			action,
 			fmt.Sprintf("%s %d task(s)", verb, len(locators)),
-		),
+		), capture),
 	}}
 }
 

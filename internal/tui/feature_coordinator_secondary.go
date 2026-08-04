@@ -154,6 +154,9 @@ type BatchTransactionResultMsg struct {
 	Action            string
 	TouchedProjectIDs []string
 	Summary           string
+	// outlinerRelocation is an internal navigation capture attached only to a
+	// successful state/planning/metadata mutation.
+	outlinerRelocation *outlinerRelocationCapture
 	// ClearSelectionTaskIDs are delete-only compatibility identifiers whose
 	// multiselect state the shell clears once deletion commits.
 	ClearSelectionTaskIDs []string

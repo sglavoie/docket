@@ -120,7 +120,7 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 			t.Fatalf("precondition Next order entries = %d, want 1", got)
 		}
 
-		if cmd := m.toggleToday(); cmd == nil {
+		if cmd := m.toggleToday(nil); cmd == nil {
 			t.Fatal("toggleToday returned nil")
 		}
 
@@ -168,7 +168,7 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateWaiting)
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
-		_ = m.toggleToday()
+		_ = m.toggleToday(nil)
 		assertExclusiveMembership(t, m, task.ID, false, true)
 
 		if cmd := m.handleUndoToggle(); cmd == nil {
@@ -199,7 +199,7 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
 		repo.fail = true
-		if cmd := m.toggleToday(); cmd == nil {
+		if cmd := m.toggleToday(nil); cmd == nil {
 			t.Fatal("expected an error command from the failed move")
 		}
 

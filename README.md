@@ -56,7 +56,7 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the six modes |
-| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Enter` inspects |
+| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
 | State and planning | `s` opens the state/planning chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
@@ -69,6 +69,14 @@ The operation descriptors are the single source for dispatch, the compact
 footer, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
 actions and comma state prefix have no compatibility action; neither do removed
 keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
+
+Task updates that move the focused task—such as `sg` moving it into In
+Progress—add a session-only jump entry. `Ctrl+O` returns to the task that
+followed its old position (or the preceding/nearest surviving row), and
+`Ctrl+I` returns to the relocated task. Changing mode, scope, search, filters,
+sorting, folds, or zoom clears this history. Terminals that do not report
+enhanced keyboard events encode `Ctrl+I` as `Tab`, so mode cycling remains the
+fallback there.
 
 `#` opens Set Tags for the current task or visual selection. Inside the
 overlay, `Space` toggles tags, `a` creates and selects a new tag, and `Enter`

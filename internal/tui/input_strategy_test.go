@@ -116,6 +116,8 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		{key: "l", want: operationCoreExpand},
 		{key: "right", want: operationCoreExpand},
 		{key: "S", want: operationCoreToggleSections},
+		{key: "ctrl+o", want: operationCoreJumpBackward},
+		{key: "ctrl+i", want: operationCoreJumpForward},
 		{key: "ctrl+e", want: operationCoreExternalEditor},
 	}
 	for _, test := range tests {
@@ -128,14 +130,24 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		}
 	}
 	helpHasToggleSections := false
+	helpHasJumpBackward := false
+	helpHasJumpForward := false
 	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
 		if item.Key == "S" && item.Description == "Toggle All Sections" {
 			helpHasToggleSections = true
-			break
+		}
+		if item.Key == "Ctrl+O" && item.Description == "Jump to Older Task Position" {
+			helpHasJumpBackward = true
+		}
+		if item.Key == "Ctrl+I" && item.Description == "Jump to Newer Task Position" {
+			helpHasJumpForward = true
 		}
 	}
 	if !helpHasToggleSections {
 		t.Error("generated help omits S Toggle All Sections")
+	}
+	if !helpHasJumpBackward || !helpHasJumpForward {
+		t.Errorf("generated help jump rows = backward %t forward %t, want both", helpHasJumpBackward, helpHasJumpForward)
 	}
 	if _, _, ok := registry.InputBindingForKey(InputStrategySimplified, ":", ctx); ok {
 		t.Error("removed Finder key still resolves")

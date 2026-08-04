@@ -80,6 +80,7 @@ func (m *OutlinerModel) validateZoomStack() {
 // rebuildRows flattens the current task tree into the rows slice, applying the
 // active mode and filters, and clamps the cursor to stay within bounds.
 func (m *OutlinerModel) rebuildRows() {
+	m.syncJumpProjection()
 	if m.project == nil {
 		// Mark as a mutation-driven rebuild so the memoization guard in
 		// crossProjectRebuildRows is bypassed. The render path calls

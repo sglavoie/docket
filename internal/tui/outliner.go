@@ -59,6 +59,10 @@ type OutlinerModel struct {
 	// collapse/expand cycle. It is deliberately session-only.
 	sectionToggleRestore *sectionToggleRestoreAnchor
 
+	// relocationHistory is a session-only Vim-style jump list for task updates
+	// that automatically move the followed task to another visible row.
+	relocationHistory outlinerRelocationHistory
+
 	// searchProjection preserves the ordinary Outliner projection while slash
 	// search temporarily replaces it with every matching nonterminal task in
 	// the active project/context scope.

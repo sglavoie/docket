@@ -101,6 +101,12 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	}
 	fallbackCursor := m.cursor
 	fallbackScrollOffset := m.viewScrollOffset
+	// A user may keep navigating while the committed mutation's disk refresh is
+	// in flight. Do not turn that later snapshot into a relocation jump unless
+	// they are still following the task that caused it.
+	if pending := m.relocationHistory.pending; pending != nil && m.currentTaskIdentity() != pending.Task {
+		m.relocationHistory.pending = nil
+	}
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
@@ -111,6 +117,9 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
 
 	var cmds []tea.Cmd
+	if jumpCmd := m.finishPendingOutlinerRelocation(); jumpCmd != nil {
+		cmds = append(cmds, jumpCmd)
+	}
 	// A scoped project may have been archived or removed externally
 	// while the reload was in flight; unwind to the nearest valid scope.
 	if scopeMsg, repaired := m.reconcileProjectScope(); repaired {
@@ -141,6 +150,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 // the previous call. The guard is bypassed when crossForceRebuild is true (set
 // after mutations) or when a fresh load completes.
 func (m *OutlinerModel) crossProjectRebuildRows() {
+	m.syncJumpProjection()
 	// Compute current guard inputs.
 	taskCount := 0
 	for _, proj := range m.loadedProjects {

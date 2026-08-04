@@ -12,7 +12,7 @@ import (
 
 // toggleToday adds or removes the focused task from the daily plan.
 // Returns a status timeout cmd on success, or nil if no task is available.
-func (m *AppModel) toggleToday() tea.Cmd {
+func (m *AppModel) toggleToday(capture *outlinerRelocationCapture) tea.Cmd {
 	view := m.activeView()
 	if view == nil {
 		return nil
@@ -41,7 +41,7 @@ func (m *AppModel) toggleToday() tea.Cmd {
 	m.lastToggleUndoKind = toggleUndoToday
 	m.lastTodayToggleAt = time.Now()
 	m.clearToggleRedoHistory()
-	return m.queueToggleResultCmd()
+	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture)
 }
 
 // todayLedgerTransition delegates both membership and any Inbox/Next

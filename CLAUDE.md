@@ -89,6 +89,7 @@ The direct grammar is:
 ```text
 Tab / Shift+Tab                 six modes
 j/k, arrows, h/l, S, Home/End  navigation
+Ctrl+O / Ctrl+I                older/newer relocated-task positions
 a/A, e/E                       capture/edit
 si sb sn st sg sw sp sm sd sc  state/planning chord
 !0-3 @ # z P                   metadata
@@ -110,6 +111,11 @@ opens the completion-age picker without choosing Done/Canceled states; cleanup
 uses `fs` → `fc` → `Ctrl+A` → `Space` Delete. `fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
 comma state prefix must remain unbound, along with `m`, `:`, `R`, `p`, and
 `Ctrl+Esc`.
+
+Relocation jump history is session-only and scoped to the current projection;
+changing mode, scope, search, filters, sorting, folds, or zoom clears it. A
+legacy terminal may encode `Ctrl+I` as `Tab`; enhanced keyboard reporting is
+required to distinguish forward-jump from next-mode cycling.
 
 The `Space` menu is exactly:
 

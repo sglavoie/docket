@@ -84,7 +84,7 @@ Accepted key names include printable public keys plus:
 ```text
 tab shift+tab enter space esc
 up down left right home end pgup pgdown
-ctrl+e ctrl+r ctrl+u ctrl+d ctrl+y ctrl+c
+ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+y ctrl+c
 ```
 
 The final public grammar is:
@@ -92,6 +92,7 @@ The final public grammar is:
 ```text
 Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
+Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 a/A e/E Ctrl+E                   capture and edit
 si sb sn st sg sw sp sm sd sc    state/planning chord
 !0-3 @ # z P                    metadata

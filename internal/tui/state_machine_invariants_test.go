@@ -97,10 +97,10 @@ func TestTUIStateMachine_QueueAndTodayStayExclusive(t *testing.T) {
 	t.Run("queue to daily plan", func(t *testing.T) {
 		app, task := newFocusToggleTestApp(t)
 
-		_ = app.toggleQueue()
+		_ = app.toggleQueue(nil)
 		assertExclusiveMembership(t, app, task.ID, true, false)
 
-		_ = app.toggleToday()
+		_ = app.toggleToday(nil)
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
 		_ = app.handleUndoToggle()
@@ -113,10 +113,10 @@ func TestTUIStateMachine_QueueAndTodayStayExclusive(t *testing.T) {
 	t.Run("daily plan to queue", func(t *testing.T) {
 		app, task := newFocusToggleTestApp(t)
 
-		_ = app.toggleToday()
+		_ = app.toggleToday(nil)
 		assertExclusiveMembership(t, app, task.ID, false, true)
 
-		_ = app.toggleQueue()
+		_ = app.toggleQueue(nil)
 		assertExclusiveMembership(t, app, task.ID, true, false)
 
 		_ = app.handleUndoToggle()
@@ -134,7 +134,7 @@ func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
 		identity := taskIdentityFor(task, app.currentProject)
 
-		_ = app.toggleQueue()
+		_ = app.toggleQueue(nil)
 		if !app.nextOrderIDs[identity] {
 			t.Fatal("q did not add explicit Next membership")
 		}
@@ -142,7 +142,7 @@ func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 			t.Fatalf("Next add changed Backlog lifecycle: %v", fresh)
 		}
 
-		_ = app.toggleQueue()
+		_ = app.toggleQueue(nil)
 		if app.nextOrderIDs[identity] {
 			t.Fatal("second q did not remove explicit Next membership")
 		}
@@ -151,8 +151,8 @@ func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 	t.Run("Today and Next memberships remain exclusive", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
 		identity := taskIdentityFor(task, app.currentProject)
-		_ = app.toggleQueue()
-		_ = app.toggleToday()
+		_ = app.toggleQueue(nil)
+		_ = app.toggleToday(nil)
 		if !app.todayIDs[identity] || app.nextOrderIDs[identity] {
 			t.Fatalf("planning memberships after Today add: today=%v next=%v", app.todayIDs[identity], app.nextOrderIDs[identity])
 		}

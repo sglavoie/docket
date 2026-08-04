@@ -70,6 +70,8 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorBottom, "Go to Last Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageUp, "Half Page Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreJumpBackward, "Jump to Older Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreJumpForward, "Jump to Newer Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCollapseParent, "Collapse or Go to Parent", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -153,22 +155,25 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			message = EditTaskContentMsg{Task: task, Project: project}
 		}
 	case operationCoreBacklog:
+		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		if invocation.Context.Selection.Visual {
-			message = commandMessage(m.corePlanningOperation(invocation.Targets, app.PlanningBacklog))
+			message = commandMessage(m.corePlanningOperation(invocation.Targets, app.PlanningBacklog, capture))
 		} else {
-			message = commandMessage(m.coreMoveToBacklogSingle())
+			message = commandMessage(m.coreMoveToBacklogSingle(capture))
 		}
 	case operationCoreToday:
+		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		if invocation.Context.Selection.Visual {
-			message = commandMessage(m.coreToggleToday(invocation.Targets))
+			message = commandMessage(m.coreToggleToday(invocation.Targets, capture))
 		} else {
-			message = commandMessage(m.toggleToday())
+			message = commandMessage(m.toggleToday(capture))
 		}
 	case operationCoreNext:
+		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		if invocation.Context.Selection.Visual {
-			message = commandMessage(m.coreToggleNext(invocation.Targets))
+			message = commandMessage(m.coreToggleNext(invocation.Targets, capture))
 		} else {
-			message = commandMessage(m.toggleQueue())
+			message = commandMessage(m.toggleQueue(capture))
 		}
 	case operationCoreActions:
 		if actionErr := m.openTaskActionSheet(invocation.Context); actionErr != nil {
@@ -186,6 +191,14 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreMoveCursor("ctrl+u"))
 	case operationCoreCursorPageDown:
 		message = commandMessage(m.coreMoveCursor("ctrl+d"))
+	case operationCoreJumpBackward:
+		if out, ok := m.outlinerPrimary(); ok {
+			message = commandMessage(out.jumpBackward())
+		}
+	case operationCoreJumpForward:
+		if out, ok := m.outlinerPrimary(); ok {
+			message = commandMessage(out.jumpForward())
+		}
 	case operationCoreCollapseParent:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.collapseOrMoveToParent()
@@ -323,6 +336,7 @@ func planningMemberLocators(members map[TaskIdentity]bool) []app.TaskLocator {
 func (m *AppModel) corePlanningOperation(
 	targets ResolvedOperationTargets,
 	action app.PlanningAction,
+	capture *outlinerRelocationCapture,
 ) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
@@ -341,10 +355,13 @@ func (m *AppModel) corePlanningOperation(
 	case app.PlanningBacklog:
 		summary = fmt.Sprintf("Moved %d task(s) to Backlog", len(locators))
 	}
-	return m.secondaryFeatures.Bulk.ApplyPlanningLocators(locators, action, summary)
+	return withOutlinerRelocationCapture(
+		m.secondaryFeatures.Bulk.ApplyPlanningLocators(locators, action, summary),
+		capture,
+	)
 }
 
-func (m *AppModel) coreMoveToBacklogSingle() tea.Cmd {
+func (m *AppModel) coreMoveToBacklogSingle(capture *outlinerRelocationCapture) tea.Cmd {
 	task, project := m.outlinerTarget()
 	if task == nil || project == nil {
 		return nil
@@ -355,10 +372,10 @@ func (m *AppModel) coreMoveToBacklogSingle() tea.Cmd {
 		return errorCmd("%s", err)
 	}
 	m.setInfoStatus(fmt.Sprintf("Moved to Backlog: %s", taskTitleOrFallback(fresh, task)))
-	return m.queueToggleResultCmd()
+	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture)
 }
 
-func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets) tea.Cmd {
+func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
 		return nil
@@ -371,10 +388,10 @@ func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets) tea.Cmd {
 	if err != nil {
 		return errorCmd("%s", err)
 	}
-	return m.corePlanningOperation(targets, action)
+	return m.corePlanningOperation(targets, action, capture)
 }
 
-func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets) tea.Cmd {
+func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
 		return nil
@@ -387,7 +404,7 @@ func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets) tea.Cmd {
 	if err != nil {
 		return errorCmd("%s", err)
 	}
-	return m.corePlanningOperation(targets, action)
+	return m.corePlanningOperation(targets, action, capture)
 }
 
 // coreMoveCursor takes a shared list-navigation key rather than a delta so steps,

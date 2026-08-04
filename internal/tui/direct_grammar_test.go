@@ -26,6 +26,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"G": operationCoreCursorBottom, "end": operationCoreCursorBottom,
 		"ctrl+u": operationCoreCursorPageUp, "pgup": operationCoreCursorPageUp,
 		"ctrl+d": operationCoreCursorPageDown, "pgdown": operationCoreCursorPageDown,
+		"ctrl+o": operationCoreJumpBackward, "ctrl+i": operationCoreJumpForward,
 		"h": operationCoreCollapseParent, "left": operationCoreCollapseParent,
 		"l": operationCoreExpand, "right": operationCoreExpand,
 		"S": operationCoreToggleSections,
@@ -64,7 +65,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	}
 
 	for _, removed := range []string{
-		"b", "d", "n", "t", ",", "m", ":", "R", "V", "p", "ctrl+esc", "ctrl+n", "ctrl+o",
+		"b", "d", "n", "t", ",", "m", ":", "R", "V", "p", "ctrl+esc", "ctrl+n",
 	} {
 		if owner := owners[removed]; owner != "" {
 			t.Errorf("removed key %q still resolves to %s", removed, owner)

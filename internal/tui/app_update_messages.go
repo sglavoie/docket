@@ -144,6 +144,9 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	for _, projectID := range msg.TouchedProjectIDs {
 		m.reloadProjectByID(projectID)
 	}
+	if m.crossOutliner != nil {
+		m.crossOutliner.armOutlinerRelocation(msg.outlinerRelocation)
+	}
 	m.refreshLoadedTaskWorkspace()
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
