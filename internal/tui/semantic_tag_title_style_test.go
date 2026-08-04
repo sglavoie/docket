@@ -20,9 +20,13 @@ func TestSemanticTagTitleStylesUseExactCaseInsensitivePrecedence(t *testing.T) {
 		want color.Color
 	}{
 		{name: "bug", tags: []string{"BUG"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "epic", tags: []string{"EPIC"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
+		{name: "story", tags: []string{"Story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
 		{name: "feature", tags: []string{"Feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
 		{name: "idea", tags: []string{"iDeA"}, want: lipgloss.Color(defaultColorSemanticIdeaTitle)},
-		{name: "bug precedence", tags: []string{"idea", "feature", "bug"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "bug precedence", tags: []string{"idea", "feature", "story", "epic", "bug"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "epic precedence", tags: []string{"idea", "feature", "story", "epic"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
+		{name: "story precedence", tags: []string{"idea", "feature", "story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
 		{name: "feature precedence", tags: []string{"idea", "feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
 	}
 	for _, tt := range tests {
@@ -40,7 +44,7 @@ func TestSemanticTagTitleStylesIgnoreFormerMarkersAndPartialMatches(t *testing.T
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 	for _, tags := range [][]string{
-		{"epic"}, {"story"}, {"type:bug"}, {"bugfix"}, {"feature:ui"}, {" idea "},
+		{"type:bug"}, {"type:epic"}, {"storytelling"}, {"bugfix"}, {"feature:ui"}, {" idea "}, {" epic "},
 	} {
 		task := &models.Task{WorkflowState: models.StateBacklog, Priority: models.PriorityHigh, Tags: tags}
 		got := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
@@ -66,6 +70,8 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 			snoozed  string
 		}{
 			{tag: "bug", base: "#ff9e9e", selected: "#ffd1d1", snoozed: "#c97b7b"},
+			{tag: "epic", base: "#bb9af7", selected: "#dccbff", snoozed: "#8d73bd"},
+			{tag: "story", base: "#7dcfff", selected: "#b6e5ff", snoozed: "#5f9bbf"},
 			{tag: "feature", base: "#b9f27c", selected: "#d7f7b5", snoozed: "#8bb65f"},
 			{tag: "idea", base: "#c0caf5", selected: "#e5e7eb", snoozed: "#8f98c7"},
 		}},
@@ -76,6 +82,8 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 			snoozed  string
 		}{
 			{tag: "bug", base: "#b42318", selected: "#7f1d1d", snoozed: "#9f5656"},
+			{tag: "epic", base: "#6d28d9", selected: "#4c1d95", snoozed: "#8b6bb7"},
+			{tag: "story", base: "#0e7490", selected: "#155e75", snoozed: "#5f8793"},
 			{tag: "feature", base: "#237a3b", selected: "#14532d", snoozed: "#5f8f6c"},
 			{tag: "idea", base: "#5f6b7a", selected: "#374151", snoozed: "#7b8491"},
 		}},

@@ -58,23 +58,35 @@ type semanticTitleRole uint8
 const (
 	semanticTitleNone semanticTitleRole = iota
 	semanticTitleBug
+	semanticTitleEpic
+	semanticTitleStory
 	semanticTitleFeature
 	semanticTitleIdea
 )
 
 // semanticTitleRoleForTags recognizes only exact case-insensitive tag values.
-// Slice order never affects the locked bug > feature > idea precedence.
+// Slice order never affects the locked bug > epic > story > feature > idea precedence.
 func semanticTitleRoleForTags(tags []string) semanticTitleRole {
-	var feature, idea bool
+	var epic, story, feature, idea bool
 	for _, tag := range tags {
 		switch {
 		case strings.EqualFold(tag, "bug"):
 			return semanticTitleBug
+		case strings.EqualFold(tag, "epic"):
+			epic = true
+		case strings.EqualFold(tag, "story"):
+			story = true
 		case strings.EqualFold(tag, "feature"):
 			feature = true
 		case strings.EqualFold(tag, "idea"):
 			idea = true
 		}
+	}
+	if epic {
+		return semanticTitleEpic
+	}
+	if story {
+		return semanticTitleStory
 	}
 	if feature {
 		return semanticTitleFeature
@@ -101,6 +113,10 @@ func semanticTaskTitleStyle(
 			return style
 		case semanticTitleBug:
 			foreground = ColorSemanticBugSelectedTitle
+		case semanticTitleEpic:
+			foreground = ColorSemanticEpicSelectedTitle
+		case semanticTitleStory:
+			foreground = ColorSemanticStorySelectedTitle
 		case semanticTitleFeature:
 			foreground = ColorSemanticFeatureSelectedTitle
 		case semanticTitleIdea:
@@ -113,6 +129,10 @@ func semanticTaskTitleStyle(
 			return style
 		case semanticTitleBug:
 			foreground = ColorSemanticBugSnoozedTitle
+		case semanticTitleEpic:
+			foreground = ColorSemanticEpicSnoozedTitle
+		case semanticTitleStory:
+			foreground = ColorSemanticStorySnoozedTitle
 		case semanticTitleFeature:
 			foreground = ColorSemanticFeatureSnoozedTitle
 		case semanticTitleIdea:
@@ -124,6 +144,10 @@ func semanticTaskTitleStyle(
 			return style
 		case semanticTitleBug:
 			foreground = ColorSemanticBugTitle
+		case semanticTitleEpic:
+			foreground = ColorSemanticEpicTitle
+		case semanticTitleStory:
+			foreground = ColorSemanticStoryTitle
 		case semanticTitleFeature:
 			foreground = ColorSemanticFeatureTitle
 		case semanticTitleIdea:

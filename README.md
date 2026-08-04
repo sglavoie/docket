@@ -159,9 +159,9 @@ rejected with replacement guidance. Other aliases such as `priority:`, `due:`,
 `state:`, and `proj:` are literal title text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
-Exact case-insensitive `bug`, `feature`, and `idea` tags color task titles in
-that precedence order. `epic`, `story`, namespaced values such as `type:bug`,
-and partial matches remain ordinary tags and add no prefix or marker icon.
+Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags color
+task titles in that precedence order. Namespaced values such as `type:bug` and
+partial matches remain ordinary tags and add no prefix or marker icon.
 
 ## Workflow and hierarchy
 

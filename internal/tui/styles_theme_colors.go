@@ -17,12 +17,18 @@ const (
 	defaultColorPriority3Title = "#7aa2f7"
 
 	defaultColorSemanticBugTitle             = "#ff9e9e"
+	defaultColorSemanticEpicTitle            = "#bb9af7"
+	defaultColorSemanticStoryTitle           = "#7dcfff"
 	defaultColorSemanticFeatureTitle         = "#b9f27c"
 	defaultColorSemanticIdeaTitle            = "#c0caf5"
 	defaultColorSemanticBugSelectedTitle     = "#ffd1d1"
+	defaultColorSemanticEpicSelectedTitle    = "#dccbff"
+	defaultColorSemanticStorySelectedTitle   = "#b6e5ff"
 	defaultColorSemanticFeatureSelectedTitle = "#d7f7b5"
 	defaultColorSemanticIdeaSelectedTitle    = "#e5e7eb"
 	defaultColorSemanticBugSnoozedTitle      = "#c97b7b"
+	defaultColorSemanticEpicSnoozedTitle     = "#8d73bd"
+	defaultColorSemanticStorySnoozedTitle    = "#5f9bbf"
 	defaultColorSemanticFeatureSnoozedTitle  = "#8bb65f"
 	defaultColorSemanticIdeaSnoozedTitle     = "#8f98c7"
 )
@@ -34,12 +40,18 @@ var (
 	ColorPriority3Title = lipgloss.Color(defaultColorPriority3Title)
 
 	ColorSemanticBugTitle             = lipgloss.Color(defaultColorSemanticBugTitle)
+	ColorSemanticEpicTitle            = lipgloss.Color(defaultColorSemanticEpicTitle)
+	ColorSemanticStoryTitle           = lipgloss.Color(defaultColorSemanticStoryTitle)
 	ColorSemanticFeatureTitle         = lipgloss.Color(defaultColorSemanticFeatureTitle)
 	ColorSemanticIdeaTitle            = lipgloss.Color(defaultColorSemanticIdeaTitle)
 	ColorSemanticBugSelectedTitle     = lipgloss.Color(defaultColorSemanticBugSelectedTitle)
+	ColorSemanticEpicSelectedTitle    = lipgloss.Color(defaultColorSemanticEpicSelectedTitle)
+	ColorSemanticStorySelectedTitle   = lipgloss.Color(defaultColorSemanticStorySelectedTitle)
 	ColorSemanticFeatureSelectedTitle = lipgloss.Color(defaultColorSemanticFeatureSelectedTitle)
 	ColorSemanticIdeaSelectedTitle    = lipgloss.Color(defaultColorSemanticIdeaSelectedTitle)
 	ColorSemanticBugSnoozedTitle      = lipgloss.Color(defaultColorSemanticBugSnoozedTitle)
+	ColorSemanticEpicSnoozedTitle     = lipgloss.Color(defaultColorSemanticEpicSnoozedTitle)
+	ColorSemanticStorySnoozedTitle    = lipgloss.Color(defaultColorSemanticStorySnoozedTitle)
 	ColorSemanticFeatureSnoozedTitle  = lipgloss.Color(defaultColorSemanticFeatureSnoozedTitle)
 	ColorSemanticIdeaSnoozedTitle     = lipgloss.Color(defaultColorSemanticIdeaSnoozedTitle)
 )
@@ -138,12 +150,18 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorPriority3Title = fallback(p.Priority3Title, d.Priority3Title)
 
 	ColorSemanticBugTitle = fallback(p.SemanticBugTitle, d.SemanticBugTitle)
+	ColorSemanticEpicTitle = fallback(p.SemanticEpicTitle, d.SemanticEpicTitle)
+	ColorSemanticStoryTitle = fallback(p.SemanticStoryTitle, d.SemanticStoryTitle)
 	ColorSemanticFeatureTitle = fallback(p.SemanticFeatureTitle, d.SemanticFeatureTitle)
 	ColorSemanticIdeaTitle = fallback(p.SemanticIdeaTitle, d.SemanticIdeaTitle)
 	ColorSemanticBugSelectedTitle = fallback(p.SemanticBugSelectedTitle, d.SemanticBugSelectedTitle)
+	ColorSemanticEpicSelectedTitle = fallback(p.SemanticEpicSelectedTitle, d.SemanticEpicSelectedTitle)
+	ColorSemanticStorySelectedTitle = fallback(p.SemanticStorySelectedTitle, d.SemanticStorySelectedTitle)
 	ColorSemanticFeatureSelectedTitle = fallback(p.SemanticFeatureSelectedTitle, d.SemanticFeatureSelectedTitle)
 	ColorSemanticIdeaSelectedTitle = fallback(p.SemanticIdeaSelectedTitle, d.SemanticIdeaSelectedTitle)
 	ColorSemanticBugSnoozedTitle = fallback(p.SemanticBugSnoozedTitle, d.SemanticBugSnoozedTitle)
+	ColorSemanticEpicSnoozedTitle = fallback(p.SemanticEpicSnoozedTitle, d.SemanticEpicSnoozedTitle)
+	ColorSemanticStorySnoozedTitle = fallback(p.SemanticStorySnoozedTitle, d.SemanticStorySnoozedTitle)
 	ColorSemanticFeatureSnoozedTitle = fallback(p.SemanticFeatureSnoozedTitle, d.SemanticFeatureSnoozedTitle)
 	ColorSemanticIdeaSnoozedTitle = fallback(p.SemanticIdeaSnoozedTitle, d.SemanticIdeaSnoozedTitle)
 
