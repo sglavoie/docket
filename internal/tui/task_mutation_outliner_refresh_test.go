@@ -83,6 +83,93 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	}
 }
 
+func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
+	for _, tc := range []struct {
+		destination domainapp.CaptureDestination
+		group       models.WorkflowStateGroup
+	}{
+		{destination: domainapp.CaptureDestinationNext, group: models.StateGroupNext},
+		{destination: domainapp.CaptureDestinationToday, group: models.StateGroupToday},
+	} {
+		t.Run(string(tc.destination), func(t *testing.T) {
+			dataDir := t.TempDir()
+			project := newSession2Project(t, dataDir, "planning capture "+string(tc.destination))
+			model, outliner := newSession2OutlinerApp(t, dataDir, project)
+			if err := model.configManager.CommitPlanning(config.NewPlanningState()); err != nil {
+				t.Fatalf("seed planning: %v", err)
+			}
+			if !model.refreshRuntime() {
+				t.Fatal("seeded planning snapshot did not refresh")
+			}
+			model.appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(model.configManager))
+			model.features = newFeatureCoordinators(model.appService)
+			installDistinctOutlinerSnapshot(t, model, outliner)
+
+			composer := NewTaskComposerModel(TaskComposerPreset{
+				Kind:        ComposerProject,
+				Project:     project,
+				AllProjects: []*models.Project{project},
+				Shared: TaskComposerSharedAttributes{
+					Destination: domainapp.CaptureDestinationInbox,
+				},
+			}, model.runtime)
+			composer.SetCaptureCoordinator(model.features.Capture)
+			composer.input.SetValue("Planned task $" + string(tc.destination))
+
+			cmd := composer.createCompact(false)
+			if cmd == nil {
+				t.Fatalf("$%s capture returned nil command: %+v", tc.destination, composer.errors)
+			}
+			created, ok := cmd().(TaskCreatedMsg)
+			if !ok || created.Result == nil || !created.PlanningChanged {
+				t.Fatalf("capture result = %#v, want planning-aware TaskCreatedMsg", created)
+			}
+
+			_, refreshCmd := model.handleTaskCreated(created)
+			if want := "Created in " + tc.group.Label(); model.statusMessage != want {
+				t.Fatalf("status = %q, want %q", model.statusMessage, want)
+			}
+			runSession2AppCommand(t, model, refreshCmd)
+
+			identity := TaskIdentity{ProjectID: project.ID, TaskID: created.Result.TaskID}
+			planning, err := model.configManager.DomainCoordinator().LoadPlanning()
+			if err != nil {
+				t.Fatalf("load durable planning: %v", err)
+			}
+			switch tc.destination {
+			case domainapp.CaptureDestinationNext:
+				if !nextOrderContains(planning, identity) || !model.nextOrderIDs[identity] {
+					t.Fatalf("Next membership disk/runtime = %+v / %+v", planning.GetNext(), model.nextOrderIDs)
+				}
+			case domainapp.CaptureDestinationToday:
+				if !todayContains(planning, identity) || !model.todayIDs[identity] {
+					t.Fatalf("Today membership disk/runtime = %+v / %+v", planning.GetToday(), model.todayIDs)
+				}
+			}
+
+			matches := 0
+			for _, row := range outliner.rows {
+				if !row.isTaskRow() || row.ProjectID != identity.ProjectID || row.task == nil || row.task.ID != identity.TaskID {
+					continue
+				}
+				matches++
+				if tc.group == models.StateGroupNext && !row.IsNextSection {
+					t.Fatalf("created row is not in Next: %+v", row)
+				}
+				if tc.group == models.StateGroupToday && !row.IsTodaySection {
+					t.Fatalf("created row is not in Today: %+v", row)
+				}
+				if row.task.State() != models.StateBacklog {
+					t.Fatalf("planning task state = %s, want backlog lifecycle", row.task.State())
+				}
+			}
+			if matches != 1 {
+				t.Fatalf("created task rendered %d times, want one planning-section row", matches)
+			}
+		})
+	}
+}
+
 func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing.T) {
 	alphaTask := primaryRowsTask("shared", models.StateBacklog)
 	betaTask := primaryRowsTask("shared", models.StateBacklog)

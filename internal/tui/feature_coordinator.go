@@ -125,9 +125,17 @@ type CaptureCoordinator struct{ FeatureCoordinator }
 // Capture creates a task in the target project and routes the outcome through a
 // transaction-result message.
 func (c CaptureCoordinator) Capture(req app.CaptureRequest) tea.Cmd {
-	return c.run("Capture", func(m FeatureMutator) (app.TaskResult, error) {
-		return m.Capture(req)
-	})
+	mutator := c.mutator
+	return func() tea.Msg {
+		res, err := mutator.Capture(req)
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		return TransactionResultMsg{
+			Action: "Capture", Result: res,
+			PlanningChanged: req.Destination.IsPlanning(),
+		}
+	}
 }
 
 // CaptureCreate runs the capture use case for a stack capture view (Quick
@@ -144,7 +152,10 @@ func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent bo
 			return ErrorMsg{Err: err}
 		}
 		result := res
-		return TaskCreatedMsg{Result: &result, OpenContent: openContent}
+		return TaskCreatedMsg{
+			Result: &result, OpenContent: openContent,
+			PlanningChanged: req.Destination.IsPlanning(),
+		}
 	}
 }
 
@@ -161,7 +172,10 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 			return ErrorMsg{Err: err}
 		}
 		if closeOnSuccess {
-			msg := TaskCreatedMsg{CreatedCount: len(results)}
+			msg := TaskCreatedMsg{
+				CreatedCount:    len(results),
+				PlanningChanged: captureRequestsChangePlanning(reqs),
+			}
 			if len(results) > 0 {
 				result := results[0]
 				msg.Result = &result
@@ -193,8 +207,20 @@ func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx i
 		if openSubtaskIdx >= 0 && openSubtaskIdx < len(res.Subtasks) {
 			openTaskID = res.Subtasks[openSubtaskIdx].TaskID
 		}
-		return TaskCreatedMsg{Result: &result, OpenTaskID: openTaskID, OpenContent: openContent}
+		return TaskCreatedMsg{
+			Result: &result, OpenTaskID: openTaskID, OpenContent: openContent,
+			PlanningChanged: req.Destination.IsPlanning(),
+		}
 	}
+}
+
+func captureRequestsChangePlanning(reqs []app.CaptureRequest) bool {
+	for _, req := range reqs {
+		if req.Destination.IsPlanning() {
+			return true
+		}
+	}
+	return false
 }
 
 // EditForm runs the task-form edit use case for a qualified task (full field

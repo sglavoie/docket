@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -71,6 +72,10 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	// application layer, so reload the committed project from disk and re-resolve
 	// the task by ID. The shared navigation/status/open-after logic below then runs
 	// off the reloaded pointers exactly as it did for the legacy in-place save.
+	planningRefreshed := false
+	if msg.PlanningChanged {
+		planningRefreshed = m.refreshRuntime()
+	}
 	if msg.Result != nil {
 		m.reloadProjectByID(msg.Result.ProjectID)
 		if project := m.projectByID(msg.Result.ProjectID); project != nil {
@@ -83,6 +88,9 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 			}
 			msg.Task = project.GetTaskByID(targetID)
 		}
+	}
+	if planningRefreshed {
+		m.rebuildPlanningFromRuntime()
 	}
 
 	refreshCmd := m.handleWithRefresh(true, true)
@@ -99,7 +107,7 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 
 	// Set status message showing section
 	if msg.Task != nil {
-		if bucket := taskStateGroupLabel(msg.Task); bucket != "" {
+		if bucket := m.createdTaskSectionLabel(msg.Task, msg.Project); bucket != "" {
 			m.setSuccessStatus(fmt.Sprintf("Created in %s", bucket))
 		}
 	}
@@ -127,6 +135,22 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	}
 
 	return true, tea.Batch(refreshCmd, cmd, statusTimeout(2*time.Second))
+}
+
+func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Project) string {
+	if task == nil {
+		return ""
+	}
+	if project != nil {
+		identity := taskIdentityFor(task, project)
+		if m.todayIDs[identity] {
+			return models.StateGroupToday.Label()
+		}
+		if m.nextOrderIDs[identity] {
+			return models.StateGroupNext.Label()
+		}
+	}
+	return taskStateGroupLabel(task)
 }
 
 // handleTaskUpdated handles the TaskUpdatedMsg.

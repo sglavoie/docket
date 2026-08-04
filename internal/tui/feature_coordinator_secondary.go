@@ -613,9 +613,16 @@ func (c TaskItemCoordinator) Edit(task TaskIdentity, req app.EditRequest) tea.Cm
 
 // Capture creates a new task in a project as one transaction.
 func (c TaskItemCoordinator) Capture(req app.CaptureRequest) tea.Cmd {
-	return runTask("Add Task", func() (app.TaskResult, error) {
-		return c.task.Capture(req)
-	})
+	return func() tea.Msg {
+		res, err := c.task.Capture(req)
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		return TransactionResultMsg{
+			Action: "Add Task", Result: res,
+			PlanningChanged: req.Destination.IsPlanning(),
+		}
+	}
 }
 
 // SetPriority sets one task's priority as one transaction.

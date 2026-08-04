@@ -68,6 +68,52 @@ func TestFeatureCoordinatorRunEmitsResult(t *testing.T) {
 	}
 }
 
+func TestCaptureCoordinatorsReportPlanningChanges(t *testing.T) {
+	for _, destination := range []app.CaptureDestination{
+		app.CaptureDestinationBacklog,
+		app.CaptureDestinationToday,
+		app.CaptureDestinationNext,
+	} {
+		destination := destination
+		t.Run(string(destination), func(t *testing.T) {
+			stub := &stubMutator{result: app.TaskResult{ProjectID: "project", TaskID: "task"}}
+			features := newFeatureCoordinators(stub)
+			want := destination.IsPlanning()
+
+			transaction, ok := features.Capture.Capture(app.CaptureRequest{
+				ProjectID: "project", Title: "Task", Destination: destination,
+			})().(TransactionResultMsg)
+			if !ok || transaction.PlanningChanged != want {
+				t.Fatalf("Capture message = %#v, want PlanningChanged=%v", transaction, want)
+			}
+
+			created, ok := features.Capture.CaptureCreate(app.CaptureRequest{
+				ProjectID: "project", Title: "Task", Destination: destination,
+			}, false)().(TaskCreatedMsg)
+			if !ok || created.PlanningChanged != want {
+				t.Fatalf("CaptureCreate message = %#v, want PlanningChanged=%v", created, want)
+			}
+
+			formCreated, ok := features.TaskForm.CreateForm(app.AddTaskRequest{
+				ProjectID: "project", Title: "Task", Destination: destination,
+			}, -1, false)().(TaskCreatedMsg)
+			if !ok || formCreated.PlanningChanged != want {
+				t.Fatalf("CreateForm message = %#v, want PlanningChanged=%v", formCreated, want)
+			}
+		})
+	}
+
+	stub := &stubMutator{result: app.TaskResult{ProjectID: "project", TaskID: "task"}}
+	features := newFeatureCoordinators(stub)
+	bulk, ok := features.Capture.CaptureBulk([]app.CaptureRequest{
+		{ProjectID: "project", Title: "Backlog", Destination: app.CaptureDestinationBacklog},
+		{ProjectID: "project", Title: "Next", Destination: app.CaptureDestinationNext},
+	}, true)().(TaskCreatedMsg)
+	if !ok || !bulk.PlanningChanged {
+		t.Fatalf("mixed CaptureBulk message = %#v, want planning refresh", bulk)
+	}
+}
+
 func TestFeatureCoordinatorRunEmitsError(t *testing.T) {
 	sentinel := errors.New("boom")
 	stub := &stubMutator{err: sentinel}
