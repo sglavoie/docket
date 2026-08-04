@@ -85,8 +85,8 @@ type TransactionErrorMsg struct {
 }
 
 // FeatureCoordinator is the shared base for the primary feature coordinators. It
-// binds a feature name to the application-mutation surface and
-// provides the single command runner every mutation flows through.
+// binds a feature name to the application-mutation surface each coordinator's
+// commands dispatch through.
 type FeatureCoordinator struct {
 	name    string
 	mutator FeatureMutator
@@ -99,23 +99,6 @@ func newFeatureCoordinator(name string, mutator FeatureMutator) FeatureCoordinat
 
 // Name returns the coordinator's feature name.
 func (c FeatureCoordinator) Name() string { return c.name }
-
-// run wraps an application mutation as an async tea.Cmd that resolves to a
-// transaction-result message. It is the single seam through which a primary
-// view's mutation reaches persistence: the view dispatches the command and
-// re-renders from the returned TransactionResultMsg, never mutating and saving a
-// model copy itself. A use-case error resolves to a TransactionErrorMsg, which
-// leaves the pre-mutation model untouched.
-func (c FeatureCoordinator) run(action string, mutate func(FeatureMutator) (app.TaskResult, error)) tea.Cmd {
-	mutator := c.mutator
-	return func() tea.Msg {
-		res, err := mutate(mutator)
-		if err != nil {
-			return TransactionErrorMsg{Err: err}
-		}
-		return TransactionResultMsg{Action: action, Result: res}
-	}
-}
 
 // --- Primary feature coordinators ------------------------------------------
 

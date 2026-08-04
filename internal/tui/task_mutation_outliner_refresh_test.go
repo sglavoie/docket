@@ -145,6 +145,8 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 				if !todayContains(planning, identity) || !model.todayIDs[identity] {
 					t.Fatalf("Today membership disk/runtime = %+v / %+v", planning.GetToday(), model.todayIDs)
 				}
+			default:
+				t.Fatalf("destination %q has no planning membership assertion", tc.destination)
 			}
 
 			matches := 0
