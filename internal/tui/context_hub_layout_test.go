@@ -207,6 +207,9 @@ func TestContextHubFooterHelpStaysOnOneLine(t *testing.T) {
 		{name: "editor project list", setup: func() {
 			hub.Update(syntheticSpecialKey(tea.KeyTab))
 		}},
+		{name: "editor scope filter", setup: func() {
+			hub.Update(syntheticKey('f'))
+		}},
 	}
 	for _, mode := range modes {
 		mode.setup()
@@ -230,6 +233,33 @@ func TestContextHubFooterHelpStaysOnOneLine(t *testing.T) {
 			if strings.TrimSpace(ansi.Strip(help)) == "" {
 				t.Errorf("%s at width %d: help collapsed to nothing", mode.name, width)
 			}
+		}
+	}
+}
+
+// TestContextHubEditorFooterAdvertisesScopeFilterWhereItFits locks the rung the
+// scope filter bought: `f/F scope` costs 12 columns, so it can only be advertised
+// once the terminal is wide enough to keep the narrower rungs unchanged.
+func TestContextHubEditorFooterAdvertisesScopeFilterWhereItFits(t *testing.T) {
+	hub := openContextHub(t, contextHubApp(t))
+	hub.Update(syntheticKey('n'))
+	hub.Update(syntheticSpecialKey(tea.KeyTab))
+	if hub.editor == nil || !hub.editor.listFocus {
+		t.Fatal("the editor project list did not take focus")
+	}
+
+	for _, tc := range []struct {
+		width int
+		want  string
+	}{
+		{width: 60, want: "j/k · Space toggle · a/A all/none · Ctrl+S save"},
+		{width: 70, want: "j/k · Space toggle · a/A all/none · Ctrl+S save"},
+		{width: 80, want: "j/k · Space toggle · a/A all/none · / search · Ctrl+S save · Esc back"},
+		{width: 100, want: "j/k · Space toggle · a/A all/none · f/F scope · / search · Ctrl+S save · Esc back"},
+		{width: 120, want: "j/k move · Enter/Space toggle · a/A all/none · f/F scope · / search · Tab name · Ctrl+S save · Esc back"},
+	} {
+		if got := hub.footerHelp(tc.width); got != tc.want {
+			t.Errorf("footer at width %d = %q, want %q", tc.width, got, tc.want)
 		}
 	}
 }

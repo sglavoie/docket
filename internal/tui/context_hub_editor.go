@@ -29,6 +29,12 @@ type contextEditor struct {
 	selected map[string]bool
 	initial  map[string]bool
 
+	// scopeFilters is the Scope Hub's own cycle order — All first, then each
+	// regular context — frozen at open because the catalog cannot change while
+	// the editor holds the surface.
+	scopeFilters []ContextScope
+	scopeFilter  int
+
 	// hiddenMembers are stored members the project list omits. They are folded
 	// back into memberIDs because SaveRegularContext takes the request as the
 	// complete membership.
@@ -62,16 +68,23 @@ func newContextEditor(runtime *config.RuntimeState, editName string) *contextEdi
 	searchInput := formFactory.NewTextInput("Search projects")
 	searchInput.CharLimit = 64
 
-	projects := runtime.TaskWorkspaceProjects()
-	return &contextEditor{
+	summaries := ContextScopeSummaries(runtime)
+	scopeFilters := make([]ContextScope, 0, len(summaries))
+	for _, summary := range summaries {
+		scopeFilters = append(scopeFilters, summary.Scope)
+	}
+
+	editor := &contextEditor{
 		originalName: editName,
 		nameInput:    nameInput,
 		searchInput:  searchInput,
-		projects:     projects,
-		filtered:     projects,
+		projects:     runtime.TaskWorkspaceProjects(),
 		selected:     make(map[string]bool),
 		initial:      make(map[string]bool),
+		scopeFilters: scopeFilters,
 	}
+	editor.applyFilter()
+	return editor
 }
 func (e *contextEditor) isNew() bool { return e.originalName == "" }
 
@@ -108,23 +121,51 @@ func (e *contextEditor) selectedIDs() []string {
 	return ids
 }
 
+func (e *contextEditor) activeScopeFilter() ContextScope {
+	if e.scopeFilter <= 0 || e.scopeFilter >= len(e.scopeFilters) {
+		return AllContextScope()
+	}
+	return e.scopeFilters[e.scopeFilter]
+}
+
+func (e *contextEditor) cycleScopeFilter(delta int) {
+	if len(e.scopeFilters) <= 1 {
+		return
+	}
+	CycleTab(&e.scopeFilter, len(e.scopeFilters), delta)
+	e.applyFilter()
+}
+
+// clearScopeFilter reports whether it consumed the key, which is what lets the
+// Esc ladder skip this rung when no filter is set.
+func (e *contextEditor) clearScopeFilter() bool {
+	if e.scopeFilter == 0 {
+		return false
+	}
+	e.scopeFilter = 0
+	e.applyFilter()
+	return true
+}
+
 func (e *contextEditor) applyFilter() {
 	query := strings.ToLower(strings.TrimSpace(e.query))
-	if query == "" {
-		e.filtered = e.projects
-	} else {
-		filtered := make([]*models.Project, 0, len(e.projects))
-		for _, project := range e.projects {
-			if project == nil {
-				continue
-			}
-			if strings.Contains(strings.ToLower(project.Name), query) ||
-				strings.Contains(strings.ToLower(project.Context), query) {
-				filtered = append(filtered, project)
-			}
+	scope := e.activeScopeFilter()
+	filtered := make([]*models.Project, 0, len(e.projects))
+	for _, project := range e.projects {
+		if project == nil {
+			continue
 		}
-		e.filtered = filtered
+		if !scope.IsAll() && project.Context != scope.Name {
+			continue
+		}
+		if query != "" &&
+			!strings.Contains(strings.ToLower(project.Name), query) &&
+			!strings.Contains(strings.ToLower(project.Context), query) {
+			continue
+		}
+		filtered = append(filtered, project)
 	}
+	e.filtered = filtered
 	e.cursor = 0
 	e.scroll = 0
 }
@@ -201,6 +242,9 @@ func (m *ContextHubModel) updateEditor(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 			editor.applyFilter()
 			return m, nil
 		}
+		if editor.clearScopeFilter() {
+			return m, nil
+		}
 		if editor.listFocus && !editor.nameLocked {
 			editor.setFocus(false)
 			return m, nil
@@ -247,6 +291,10 @@ func (m *ContextHubModel) updateEditor(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		for _, project := range editor.filtered {
 			delete(editor.selected, project.ID)
 		}
+	case "f":
+		editor.cycleScopeFilter(1)
+	case "F":
+		editor.cycleScopeFilter(-1)
 	case "/":
 		editor.searching = true
 		editor.searchInput.SetValue(editor.query)
@@ -378,6 +426,10 @@ func (m *ContextHubModel) editorView(width, height int) string {
 	b.WriteString("\n\n")
 
 	projectsLabel := fmt.Sprintf("Projects (%d selected)", len(editor.selected))
+	if scope := editor.activeScopeFilter(); !scope.IsAll() {
+		projectsLabel += " · showing " + scope.Name
+	}
+	projectsLabel = truncateToVisualWidth(projectsLabel, width)
 	if editor.listFocus {
 		b.WriteString(FieldLabelFocusedStyle.Render(projectsLabel))
 	} else {
@@ -415,6 +467,9 @@ func (m *ContextHubModel) editorProjectList(width, height int) string {
 	if len(editor.filtered) == 0 {
 		if editor.query != "" {
 			return renderEmptyState("No projects match the filter.", "Esc clears it.")
+		}
+		if scope := editor.activeScopeFilter(); !scope.IsAll() {
+			return renderEmptyState("No projects in "+scope.Name+".", "f cycles to another scope.")
 		}
 		return renderEmptyState("No active projects.", "Create a project before saving a context.")
 	}
@@ -466,7 +521,8 @@ func (m *ContextHubModel) editorFooterHelpVariants() []string {
 		return []string{"Type to filter · Enter keep · Esc clear"}
 	case editor.listFocus:
 		return []string{
-			"j/k move · Enter/Space toggle · a/A all/none · / search · Tab name · Ctrl+S save · Esc back",
+			"j/k move · Enter/Space toggle · a/A all/none · f/F scope · / search · Tab name · Ctrl+S save · Esc back",
+			"j/k · Space toggle · a/A all/none · f/F scope · / search · Ctrl+S save · Esc back",
 			"j/k · Space toggle · a/A all/none · / search · Ctrl+S save · Esc back",
 			"j/k · Space toggle · a/A all/none · Ctrl+S save",
 		}
@@ -486,7 +542,8 @@ func (m *ContextHubModel) editorHelpItems() []HelpItem {
 		{Key: "space", Description: "Toggle the highlighted project", Category: "Selection"},
 		{Key: "a/A", Description: "Select or deselect every filtered project", Category: "Selection"},
 		{Key: "/", Description: "Search the project list by name or context", Category: "Filters"},
+		{Key: "f/F", Description: "Cycle the project list through All and each context", Category: "Filters"},
 		{Key: "ctrl+s", Description: "Save the context label and its membership", Category: "Actions"},
-		{Key: "esc", Description: "Leave the project list, then discard the edit", Category: "Navigation"},
+		{Key: "esc", Description: "Clear the scope filter, leave the project list, then discard the edit", Category: "Navigation"},
 	}
 }

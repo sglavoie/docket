@@ -24,6 +24,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"filter-chord-clear.json",
 		"context-hub-open.json",
 		"context-hub-regular-search-apply.json",
+		"context-hub-editor-scope-filter.json",
 		"project-hub-boundary-filter.json",
 		"project-boundary-create-and-park.json",
 		"project-boundary-parked-focus.json",

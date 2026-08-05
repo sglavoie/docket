@@ -140,7 +140,10 @@ The bulk `Space` menu contains Delete only.
 
 Scope Hub owns Active Projects and exclusive regular project-label contexts;
 `personal` is always present and protects its name while keeping membership
-editable. `C` opens the search-first
+editable. Inside the context editor's project list, `f`/`F` cycle the visible
+projects forward and backward through All and each regular context, and Esc
+clears that scope filter after the search query and before leaving the list.
+`C` opens the search-first
 project selector for project focus and lean project administration, with `f`
 filtering by boundary and `B` opening Boundary Manager. `N` always
 opens All Notes across Global and every project returned by
