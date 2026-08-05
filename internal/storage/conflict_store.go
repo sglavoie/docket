@@ -30,11 +30,14 @@ const (
 // themselves are stored alongside it as separate markdown files (see
 // ConflictStore) so the metadata stays small and the documents stay canonical.
 type ConflictRecord struct {
-	ID             string `json:"id"`
-	ProjectID      string `json:"project_id"`
-	ProjectName    string `json:"project_name"`
-	ProjectSlug    string `json:"project_slug"`
-	ProjectPath    string `json:"project_path"`
+	ID          string `json:"id"`
+	ProjectID   string `json:"project_id"`
+	ProjectName string `json:"project_name"`
+	ProjectSlug string `json:"project_slug"`
+	ProjectPath string `json:"project_path"`
+	// Action and Context describe the triggering mutation for user-facing
+	// conflict output, mirroring the undo ledger. Context is prose about that
+	// mutation; it is neither a project attribute nor a Go context.Context.
 	Action         string `json:"action,omitempty"`
 	Context        string `json:"context,omitempty"`
 	BaseRevision   string `json:"base_revision"`

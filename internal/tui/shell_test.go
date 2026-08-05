@@ -79,7 +79,7 @@ func TestShellStateFacade(t *testing.T) {
 		t.Errorf("root scope = %+v, want app-scoped root", s.CurrentRoute().Params())
 	}
 	// A secondary tool stacks above the root.
-	route := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
+	route := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
 	if err := app.navigation.Primary.PushChild(route); err != nil {
 		t.Fatal(err)
 	}

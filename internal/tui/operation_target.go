@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -157,15 +159,72 @@ func (OperationTargetResolver) Resolve(
 
 	resolved := ResolvedOperationTargets{Source: source, Targets: targets}
 	if !descriptor.TargetCardinality.Accepts(resolved.Count()) {
-		return ResolvedOperationTargets{}, fmt.Errorf(
-			"operation %s requires target cardinality %s; resolved %d from %s",
-			descriptor.ID,
-			descriptor.TargetCardinality,
-			resolved.Count(),
-			source,
-		)
+		return ResolvedOperationTargets{}, operationTargetRejection(descriptor)
+	}
+	// The entity sources degrade to the focused project when the cursor names no
+	// task, so a task operation reaching one of them would act on whichever
+	// project the header row belongs to. Rejecting here keeps that impossible for
+	// every source, present and future, instead of at each call site.
+	if descriptor.Category == OperationCategoryTask {
+		for _, target := range resolved.Targets {
+			if target.Entity.Kind != EntityKindTask {
+				return ResolvedOperationTargets{}, operationTargetRejection(descriptor)
+			}
+		}
 	}
 	return resolved, nil
+}
+
+// operationTargetRejection is the one sentence every surface shows when a bound
+// operation resolves no target it can act on. Registry-resolved and delegated
+// operations both return it, so a task key pressed on a project header row reads
+// the same however it entered the grammar.
+func operationTargetRejection(descriptor OperationDescriptor) error {
+	return errors.New(operationTargetRejectionMessage(descriptor.Category))
+}
+
+// archivedTaskTargetRejection refuses any operation that would change a task an
+// archived project owns. The Fa project filter deliberately loads archived
+// projects into the ordinary Outliner, so the read-only lifecycle rule has to
+// hold where every operation passes rather than where the population is built.
+// A visual selection is judged whole: one archived member refuses the whole
+// operation so a mixed selection can never mutate its active subset.
+func archivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandContext) error {
+	if descriptor.Risk == OperationRiskReadOnly {
+		return nil
+	}
+	// Target-free operations act on the workspace rather than the cursor row, so
+	// capture, theme, undo, and redo stay usable while archived rows are shown.
+	if descriptor.TargetCardinality == TargetCardinalityNone {
+		return nil
+	}
+	if ctx.Selection.Visual && len(ctx.Selection.Entities) > 0 {
+		if slices.ContainsFunc(ctx.Selection.Entities, entityContextNamesArchivedTask) {
+			return errors.New("selection includes an archived project; restore it to change these tasks")
+		}
+		return nil
+	}
+	if entityContextNamesArchivedTask(ctx.Entity) {
+		return errors.New("project is archived; restore it to change this task")
+	}
+	return nil
+}
+
+// entityContextNamesArchivedTask keys on the task identity so project lifecycle
+// operations, which legitimately act on archived projects, stay untouched.
+func entityContextNamesArchivedTask(entity EntityContext) bool {
+	return entity.TaskID != "" && entity.Archived
+}
+
+func operationTargetRejectionMessage(category OperationCategory) string {
+	switch category {
+	case OperationCategoryTask, OperationCategoryTag:
+		return "move the cursor to a task to use this action"
+	case OperationCategoryProject:
+		return "move the cursor to a project to use this action"
+	default:
+		return "this action has no target here"
+	}
 }
 
 func currentTaskIdentity(ctx CommandContext) TaskIdentity {

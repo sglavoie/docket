@@ -13,8 +13,8 @@ import (
 // ordered planning views.
 type CrossScopeOpts struct {
 	// ActiveOnly restricts selection to RuntimeState.TaskWorkspaceProjects,
-	// which admits exactly the non-archived projects in the Active boundary —
-	// the same rule a context scope resolves by, so a scoped Outliner load can
+	// which admits exactly the non-archived projects that are not parked — the
+	// same rule a context scope resolves by, so a scoped Outliner load can
 	// never be asked for a project this selection drops. When false, the
 	// selection falls back to AvailableProjects (archived excluded only).
 	ActiveOnly bool
@@ -25,6 +25,12 @@ type CrossScopeOpts struct {
 	// as an exception rather than widening the rule. Ignored when empty, already
 	// selected, or archived.
 	FocusProjectID string
+
+	// ProjectFilter is the user-chosen population override. While any facet is
+	// active it replaces the ActiveOnly base rather than narrowing it, because
+	// the facets both widen (parked, archived) and restrict (tags, untagged);
+	// composing them with a fixed base could never widen.
+	ProjectFilter ProjectFilterState
 }
 
 type projectLoadFailure struct {
@@ -99,12 +105,33 @@ func loadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 // section, or planning projection downstream can reach its tasks.
 func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts) []*models.Project {
 	var selected []*models.Project
-	if opts.ActiveOnly {
+	switch {
+	case hasActiveProjectFilters(&opts.ProjectFilter):
+		selected = filteredProjectPopulation(runtime, opts.ProjectFilter)
+	case opts.ActiveOnly:
 		selected = runtime.TaskWorkspaceProjects()
-	} else {
+	default:
 		selected = runtime.AvailableProjects()
 	}
 	return appendFocusedProject(runtime, selected, opts.FocusProjectID)
+}
+
+// filteredProjectPopulation applies the F facets to the candidate populations.
+// The archived candidates are appended as their own population rather than
+// filtered out of a combined list, so archival stays a population choice and the
+// active projects keep their pinned-first presentation order ahead of them.
+func filteredProjectPopulation(runtime *config.RuntimeState, filter ProjectFilterState) []*models.Project {
+	candidates := runtime.AvailableProjects()
+	if filter.IncludeArchived {
+		candidates = append(candidates, runtime.ArchivedProjects()...)
+	}
+	selected := make([]*models.Project, 0, len(candidates))
+	for _, project := range candidates {
+		if projectFilterAdmits(project, filter) {
+			selected = append(selected, project)
+		}
+	}
+	return selected
 }
 
 // appendFocusedProject admits one explicitly focused project the base selection

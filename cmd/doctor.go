@@ -138,20 +138,20 @@ func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {
 
 	schema := catalog.SchemaVersion
 	switch {
-	case schema == config.V6ConfigSchemaVersion:
+	case schema == config.V7ConfigSchemaVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
 			detail:  fmt.Sprintf("workspace schema %d is current", schema),
 		})
-	case schema < config.V6ConfigSchemaVersion:
+	case schema < config.V7ConfigSchemaVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is pre-v6; startup migration remains pending", schema),
+			detail:  fmt.Sprintf("workspace schema %d is pre-v7; startup migration remains pending", schema),
 		})
 	default:
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is newer than supported schema %d", schema, config.V6ConfigSchemaVersion),
+			detail:  fmt.Sprintf("workspace schema %d is newer than supported schema %d", schema, config.V7ConfigSchemaVersion),
 		})
 	}
 
@@ -331,6 +331,22 @@ func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults)
 		})
 	} else if schema >= config.V6ConfigSchemaVersion {
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{project: "Migration", detail: "clean schema-6 workspace; no pre-v6 snapshot recorded"})
+	}
+	v7Inspection, err := config.InspectPreScopeV7Snapshots(dataDir)
+	if err != nil {
+		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{project: "Migration", detail: err.Error()})
+		return
+	}
+	for _, issue := range v7Inspection.Issues {
+		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{project: "Migration", detail: issue})
+	}
+	if v7Inspection.HasArtifacts {
+		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
+			project: "Migration",
+			detail:  fmt.Sprintf("%s recorded", Pluralize(len(v7Inspection.Pairs), "pre-v7 snapshot pair", "pre-v7 snapshot pairs")),
+		})
+	} else if schema >= config.V7ConfigSchemaVersion {
+		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{project: "Migration", detail: "clean schema-7 workspace; no pre-v7 snapshot recorded"})
 	}
 }
 

@@ -232,16 +232,7 @@ func (registry *OperationRegistry) ChordHintsForPrefix(
 		}
 		var label string
 		if child.terminal() {
-			binding := strategy.Bindings[child.bindingIndex]
-			label = binding.HintLabel
-			if label == "" {
-				label = binding.FooterLabel
-			}
-			if label == "" {
-				if descriptor, exists := registry.Descriptor(binding.OperationID); exists {
-					label = strings.ToLower(descriptor.Label)
-				}
-			}
+			label = registry.chordTerminalHintLabel(strategy, child, ctx)
 		} else {
 			label = chordGroupHintLabel(strategy, append(append([]string(nil), prefix...), key))
 		}
@@ -266,6 +257,32 @@ func (registry *OperationRegistry) ChordHintRowForPrefix(
 		parts = append(parts, hint.Key+" "+hint.Label)
 	}
 	return strings.Join(parts, " · ")
+}
+
+// chordTerminalHintLabel names a terminal child by the binding the current
+// cursor would actually dispatch, so a shared key hints the operation it means
+// here rather than the first one declared.
+func (registry *OperationRegistry) chordTerminalHintLabel(
+	strategy InputStrategy,
+	node *inputChordNode,
+	ctx CommandContext,
+) string {
+	for _, index := range node.bindings {
+		binding := strategy.Bindings[index]
+		descriptor, exists := registry.Descriptor(binding.OperationID)
+		if !exists || !descriptor.Applicable(ctx) {
+			continue
+		}
+		switch {
+		case binding.HintLabel != "":
+			return binding.HintLabel
+		case binding.FooterLabel != "":
+			return binding.FooterLabel
+		default:
+			return strings.ToLower(descriptor.Label)
+		}
+	}
+	return ""
 }
 
 func (registry *OperationRegistry) chordNodeForPrefix(id InputStrategyID, prefix []string) *inputChordNode {

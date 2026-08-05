@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -33,7 +32,6 @@ type CatalogProject struct {
 	Slug        string     `json:"slug"`
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
-	Context     string     `json:"context"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Archived    bool       `json:"archived"`
@@ -41,30 +39,13 @@ type CatalogProject struct {
 	Pinned      bool       `json:"pinned"`
 	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
 	ColorSlot   int        `json:"color_slot,omitempty"`
-	BoundaryID  string     `json:"boundary_id"`
-}
-
-// ProjectBoundary is a persisted, user-managed availability grouping. Exactly
-// one boundary applies to each project. The reserved models.ActiveBoundaryID
-// boundary is protected and always present; every other boundary carries a UUID
-// so a rename never invalidates a project's membership.
-type ProjectBoundary struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	Tags        []string   `json:"tags,omitempty"`
 }
 
 const (
 	// ProjectColorSlotCount is the fixed number of durable project identity
 	// colors. Slot zero represents a legacy or otherwise unassigned project.
 	ProjectColorSlotCount = 48
-
-	// ActiveBoundaryName is the display name of the reserved boundary
-	// models.ActiveBoundaryID identifies. It is protected: the definition cannot
-	// be removed or renamed.
-	ActiveBoundaryName = "Active"
-
-	// MaxBoundaryNameLength bounds a boundary's display name in runes.
-	MaxBoundaryNameLength = 50
 
 	// SystemUnfiledName and SystemUnfiledSlug are the user-facing identity of the
 	// workspace-owned capture project. The catalog reference, rather than the
@@ -83,10 +64,6 @@ var (
 	// by WorkspaceCatalog.SystemUnfiledProjectID. The ID is the protection
 	// boundary; display names and slugs never grant protected status.
 	ErrProtectedSystemUnfiled = errors.New("config: protected system Unfiled")
-
-	// ErrProtectedActiveBoundary marks a mutation that would remove, rename, or
-	// duplicate the reserved Active boundary.
-	ErrProtectedActiveBoundary = errors.New("config: protected Active boundary")
 )
 
 // CatalogPath derives a project's data directory from the workspace data
@@ -107,7 +84,6 @@ func catalogProjectFromModel(p *models.Project) CatalogProject {
 		Slug:        p.Slug,
 		Name:        p.Name,
 		Description: p.Description,
-		Context:     p.Context,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
 		Archived:    p.Archived,
@@ -115,7 +91,7 @@ func catalogProjectFromModel(p *models.Project) CatalogProject {
 		Pinned:      p.Pinned,
 		PinnedAt:    p.PinnedAt,
 		ColorSlot:   p.ColorSlot,
-		BoundaryID:  p.BoundaryID,
+		Tags:        append([]string(nil), p.Tags...),
 	}
 }
 
@@ -128,7 +104,6 @@ func (p CatalogProject) ToModel(dataDir string) *models.Project {
 		Slug:        p.Slug,
 		Name:        p.Name,
 		Description: p.Description,
-		Context:     p.Context,
 		Path:        p.CatalogPath(dataDir),
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
@@ -137,18 +112,17 @@ func (p CatalogProject) ToModel(dataDir string) *models.Project {
 		Pinned:      p.Pinned,
 		PinnedAt:    p.PinnedAt,
 		ColorSlot:   p.ColorSlot,
-		BoundaryID:  p.BoundaryID,
+		Tags:        append([]string(nil), p.Tags...),
 	}
 }
 
 // WorkspaceCatalog owns the workspace identity and the project catalog. It maps
 // to <data>/.tt/workspace.json.
 type WorkspaceCatalog struct {
-	SchemaVersion          int               `json:"schema_version"`
-	WorkspaceID            string            `json:"workspace_id,omitempty"`
-	Projects               []CatalogProject  `json:"projects"`
-	SystemUnfiledProjectID string            `json:"system_unfiled_project_id"`
-	Boundaries             []ProjectBoundary `json:"boundaries,omitempty"`
+	SchemaVersion          int              `json:"schema_version"`
+	WorkspaceID            string           `json:"workspace_id,omitempty"`
+	Projects               []CatalogProject `json:"projects"`
+	SystemUnfiledProjectID string           `json:"system_unfiled_project_id"`
 }
 
 func (w *WorkspaceCatalog) protectedProjectID() string {
@@ -165,81 +139,12 @@ func (w *WorkspaceCatalog) IsSystemUnfiledProject(id string) bool {
 	return w != nil && id != "" && w.protectedProjectID() == id
 }
 
-// NewWorkspaceCatalog returns a catalog seeded with defaults, including the
-// protected Active boundary every project starts in.
+// NewWorkspaceCatalog returns a catalog seeded with defaults.
 func NewWorkspaceCatalog() *WorkspaceCatalog {
 	return &WorkspaceCatalog{
 		SchemaVersion: CurrentConfigVersion,
 		Projects:      []CatalogProject{},
-		Boundaries:    []ProjectBoundary{{ID: models.ActiveBoundaryID, Name: ActiveBoundaryName}},
 	}
-}
-
-// ActiveBoundary reports the reserved Active definition and whether it exists.
-func (w *WorkspaceCatalog) ActiveBoundary() (ProjectBoundary, bool) {
-	return w.Boundary(models.ActiveBoundaryID)
-}
-
-// Boundary looks a boundary definition up by its durable ID.
-func (w *WorkspaceCatalog) Boundary(id string) (ProjectBoundary, bool) {
-	if w == nil || id == "" {
-		return ProjectBoundary{}, false
-	}
-	for _, boundary := range w.Boundaries {
-		if boundary.ID == id {
-			return boundary, true
-		}
-	}
-	return ProjectBoundary{}, false
-}
-
-// ProjectBoundaryID reports the boundary a cataloged project belongs to,
-// resolving an unnormalized empty value to Active.
-func (w *WorkspaceCatalog) ProjectBoundaryID(projectID string) string {
-	if w == nil || projectID == "" {
-		return ""
-	}
-	for _, project := range w.Projects {
-		if project.ID != projectID {
-			continue
-		}
-		if project.BoundaryID == "" {
-			return models.ActiveBoundaryID
-		}
-		return project.BoundaryID
-	}
-	return ""
-}
-
-// NormalizeBoundaries backfills additive boundary data in memory so a catalog
-// written before boundaries existed loads unchanged in meaning: the reserved
-// Active definition is restored when absent, and a project with no boundary
-// joins Active. It reports whether anything changed but never persists — a
-// normalized catalog is written only when some later mutation commits, so
-// merely opening a legacy workspace leaves it byte-identical on disk.
-//
-// Only missing data is filled in. A boundary ID that is present but unknown is
-// left alone for validation to reject, so corrupt data fails closed instead of
-// being silently reassigned to Active.
-func (w *WorkspaceCatalog) NormalizeBoundaries() bool {
-	if w == nil {
-		return false
-	}
-	changed := false
-	if _, ok := w.ActiveBoundary(); !ok {
-		w.Boundaries = append(
-			[]ProjectBoundary{{ID: models.ActiveBoundaryID, Name: ActiveBoundaryName}},
-			w.Boundaries...,
-		)
-		changed = true
-	}
-	for i := range w.Projects {
-		if w.Projects[i].BoundaryID == "" {
-			w.Projects[i].BoundaryID = models.ActiveBoundaryID
-			changed = true
-		}
-	}
-	return changed
 }
 
 // Validate reports structural problems with the catalog: a project must have a
@@ -250,13 +155,10 @@ func (w *WorkspaceCatalog) Validate() error {
 }
 
 // validateForLoad is the single seam every catalog-loading path validates
-// through. It first backfills additive boundary data in memory, so a catalog
-// written before boundaries existed is judged in its normalized form, then
-// permits invalid project color slots so callers can repair them with
-// EnsureProjectColorSlots. Save paths continue to use Validate, which rejects
-// both invalid slots and unnormalized boundary data.
+// through. It permits invalid project color slots so callers can repair them
+// with EnsureProjectColorSlots; save paths continue to use Validate, which
+// rejects them.
 func (w *WorkspaceCatalog) validateForLoad() error {
-	w.NormalizeBoundaries()
 	return w.validate(true)
 }
 
@@ -270,10 +172,6 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 			w.SchemaVersion,
 			CurrentConfigVersion,
 		)
-	}
-	knownBoundary, err := w.validateBoundaries()
-	if err != nil {
-		return err
 	}
 	seenID := make(map[string]bool, len(w.Projects))
 	seenSlug := make(map[string]bool, len(w.Projects))
@@ -293,11 +191,15 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 		if !allowRepairableColorSlots && (p.ColorSlot < 0 || p.ColorSlot > ProjectColorSlotCount) {
 			return fmt.Errorf("workspace catalog: project %q has invalid color slot %d", p.ID, p.ColorSlot)
 		}
-		if p.BoundaryID == "" {
-			return fmt.Errorf("workspace catalog: project %q has no boundary", p.ID)
+		normalizedTags, err := models.NormalizeProjectTags(p.Tags)
+		if err != nil {
+			return fmt.Errorf("workspace catalog: project %q has invalid tags: %w", p.ID, err)
 		}
-		if !knownBoundary[p.BoundaryID] {
-			return fmt.Errorf("workspace catalog: project %q references unknown boundary %q", p.ID, p.BoundaryID)
+		if !slices.Equal(normalizedTags, p.Tags) {
+			return fmt.Errorf(
+				"workspace catalog: project %q tags %v are not canonical (canonical form %v)",
+				p.ID, p.Tags, normalizedTags,
+			)
 		}
 		seenID[p.ID] = true
 		seenSlug[p.Slug] = true
@@ -318,75 +220,17 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
 					protectedID,
 				)
 			}
-			if project.BoundaryID != models.ActiveBoundaryID {
+			if models.ProjectTagsParked(project.Tags) {
 				return fmt.Errorf(
-					"%w: project %q must stay in the %s boundary",
+					"%w: project %q cannot be tagged %q",
 					ErrProtectedSystemUnfiled,
 					protectedID,
-					ActiveBoundaryName,
+					models.ParkedProjectTag,
 				)
 			}
 		}
 	}
 	return nil
-}
-
-// validateBoundaries checks the boundary definitions and returns the set of
-// known IDs so project references can be resolved against it. It judges
-// persisted data by exactly the rules the create and rename APIs enforce: every
-// custom identity must be a canonical UUID, and names are compared with the
-// same case-insensitive predicate, so a catalog can never load a boundary the
-// supported APIs would have refused to mint.
-func (w *WorkspaceCatalog) validateBoundaries() (map[string]bool, error) {
-	known := make(map[string]bool, len(w.Boundaries))
-	seenNames := make([]string, 0, len(w.Boundaries))
-	activeFound := false
-	for i, boundary := range w.Boundaries {
-		if boundary.ID == "" {
-			return nil, fmt.Errorf("workspace catalog: boundary %d has empty id", i)
-		}
-		if boundary.ID != models.ActiveBoundaryID {
-			if err := validateCustomBoundaryID(boundary.ID); err != nil {
-				return nil, fmt.Errorf("workspace catalog: %w", err)
-			}
-		}
-		if known[boundary.ID] {
-			return nil, fmt.Errorf("workspace catalog: duplicate boundary id %q", boundary.ID)
-		}
-		name := strings.TrimSpace(boundary.Name)
-		if name != boundary.Name {
-			return nil, fmt.Errorf("workspace catalog: boundary %q name %q is not trimmed", boundary.ID, boundary.Name)
-		}
-		if name == "" {
-			return nil, fmt.Errorf("workspace catalog: boundary %q has empty name", boundary.ID)
-		}
-		if n := utf8.RuneCountInString(name); n > MaxBoundaryNameLength {
-			return nil, fmt.Errorf(
-				"workspace catalog: boundary %q name too long (%d chars, max %d)",
-				boundary.ID, n, MaxBoundaryNameLength,
-			)
-		}
-		for _, seen := range seenNames {
-			if boundaryNamesEqual(seen, name) {
-				return nil, fmt.Errorf("workspace catalog: duplicate boundary name %q", name)
-			}
-		}
-		if boundary.ID == models.ActiveBoundaryID {
-			if name != ActiveBoundaryName {
-				return nil, fmt.Errorf(
-					"%w: boundary %q must be named %q, got %q",
-					ErrProtectedActiveBoundary, models.ActiveBoundaryID, ActiveBoundaryName, name,
-				)
-			}
-			activeFound = true
-		}
-		known[boundary.ID] = true
-		seenNames = append(seenNames, name)
-	}
-	if !activeFound {
-		return nil, fmt.Errorf("%w: boundary %q is missing", ErrProtectedActiveBoundary, models.ActiveBoundaryID)
-	}
-	return known, nil
 }
 
 // EnsureProjectColorSlots assigns durable color slots to every eligible
@@ -561,18 +405,16 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemUnfiled 
 	next := *w
 	next.Projects = append([]CatalogProject(nil), w.Projects...)
 	next.EnsureProjectColorSlots()
-	next.NormalizeBoundaries()
 	cp := catalogProjectFromModel(p)
+	tags, err := models.NormalizeProjectTags(cp.Tags)
+	if err != nil {
+		return fmt.Errorf("workspace catalog: project %q has invalid tags: %w", cp.ID, err)
+	}
+	cp.Tags = tags
 	if repairSystemUnfiled {
 		// Bootstrap repair runs before SystemUnfiledProjectID is bound, so the
 		// protected-project branch below cannot yet recognize this project.
-		cp.BoundaryID = models.ActiveBoundaryID
-	}
-	if cp.BoundaryID == "" {
-		cp.BoundaryID = models.ActiveBoundaryID
-	}
-	if _, known := next.Boundary(cp.BoundaryID); !known {
-		return fmt.Errorf("workspace catalog: project %q references unknown boundary %q", cp.ID, cp.BoundaryID)
+		cp.Tags = slices.DeleteFunc(cp.Tags, func(tag string) bool { return tag == models.ParkedProjectTag })
 	}
 
 	existingIndex := -1
@@ -594,12 +436,12 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemUnfiled 
 		if cp.Archived || cp.ArchivedAt != nil {
 			return fmt.Errorf("%w: project %q cannot be archived", ErrProtectedSystemUnfiled, cp.ID)
 		}
-		if cp.BoundaryID != models.ActiveBoundaryID {
+		if models.ProjectTagsParked(cp.Tags) {
 			return fmt.Errorf(
-				"%w: project %q cannot leave the %s boundary",
+				"%w: project %q cannot be tagged %q",
 				ErrProtectedSystemUnfiled,
 				cp.ID,
-				ActiveBoundaryName,
+				models.ParkedProjectTag,
 			)
 		}
 		if existingIndex >= 0 && !repairSystemUnfiled {
@@ -639,7 +481,7 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemUnfiled 
 
 	*w = next
 	p.ColorSlot = cp.ColorSlot
-	p.BoundaryID = cp.BoundaryID
+	p.Tags = append([]string(nil), cp.Tags...)
 	return nil
 }
 

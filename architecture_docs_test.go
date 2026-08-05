@@ -38,10 +38,12 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"The workspace-wide Notes manager carries an explicit `NoteLocation` plus filename identity with every row",
 		"always opens in All Notes",
 		"`Runtime.AvailableProjects()`; archived projects are not owners, but a parked project remains one",
-		"### Project boundaries",
-		"Every cataloged project holds exactly one `BoundaryID`",
-		"`Runtime.TaskWorkspaceProjects()` returns non-archived projects inside Active",
-		"without bumping the schema version and without writing",
+		"### Project tags",
+		"`models.ParkedProjectTag` (`parked`) is the sole behavioral project tag",
+		"`Runtime.TaskWorkspaceProjects()` returns non-archived projects that are not parked",
+		"the uppercase `F` facets — `Ft` project tags, `Fp` parked, `Fa` archived, `Fx` clear — decide which projects the snapshot contains at all",
+		"`Space` on a tag row opens a sheet closed over Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
+		"filtered at read time instead of being cleared",
 		"`v` opens the searchable scope picker",
 		"`s` edits the accepted search",
 		"`m` moves one parsed note",
@@ -56,6 +58,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"## Snapshot-first schema migration",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>.tar.gz",
+		"pre-scope-v7-<UTC>.tar.gz",
+		"folds the two retired per-project grouping fields",
 		"restore-and-reactivate path",
 		"prepared activation journal",
 		"## Workspace location and cloud consent",
@@ -84,6 +88,9 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 		"Global notes plus the focused project",
 		"strict schema-5 Markdown",
 		"protected Inbox ID",
+		"### Project boundaries",
+		"Boundary Manager",
+		"BoundaryID",
 	} {
 		if strings.Contains(content, stale) {
 			t.Errorf("architecture documentation contains retired runtime guidance %q", stale)
@@ -104,8 +111,10 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`v` chooses All, Global, or one active project",
 		"`s` persistently searches titles and bodies",
 		"`m` atomically moves one note between active owners",
-		"Task workflow state, project context, project boundary, and project archive lifecycle are four independent axes",
-		"`Runtime.TaskWorkspaceProjects()` is non-archived plus `active` and is the only population the base Outliner reads",
+		"Task workflow state, project tags, and project archive lifecycle are three independent axes",
+		"`Runtime.TaskWorkspaceProjects()` is non-archived and not parked, and is the only population the base Outliner reads",
+		"Project filter chords are `Ft`, `Fp`, `Fa`, and `Fx`",
+		"`Fp` and the `parked` row inside `Ft` write the same `ProjectFilterState` entry",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)

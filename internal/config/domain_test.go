@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -35,10 +36,34 @@ func TestWorkspaceCatalogValidate(t *testing.T) {
 			name: "valid",
 			catalog: WorkspaceCatalog{
 				SchemaVersion:          3,
-				Projects:               []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount, BoundaryID: models.ActiveBoundaryID}},
+				Projects:               []CatalogProject{{ID: "a", Slug: "a", ColorSlot: ProjectColorSlotCount}},
 				SystemUnfiledProjectID: "a",
-				Boundaries:             []ProjectBoundary{{ID: models.ActiveBoundaryID, Name: ActiveBoundaryName}},
 			},
+		},
+		{
+			name: "parked system Unfiled",
+			catalog: WorkspaceCatalog{
+				SchemaVersion:          1,
+				Projects:               []CatalogProject{{ID: "unfiled", Slug: "unfiled", Tags: []string{models.ParkedProjectTag}}},
+				SystemUnfiledProjectID: "unfiled",
+			},
+			wantErr: true,
+		},
+		{
+			name: "unnormalized project tags",
+			catalog: WorkspaceCatalog{
+				SchemaVersion: 1,
+				Projects:      []CatalogProject{{ID: "a", Slug: "a", Tags: []string{"Work"}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "tags invalid as tags",
+			catalog: WorkspaceCatalog{
+				SchemaVersion: 1,
+				Projects:      []CatalogProject{{ID: "a", Slug: "a", Tags: []string{"comma,tag"}}},
+			},
+			wantErr: true,
 		},
 		{
 			name:    "non-positive schema version",
@@ -332,7 +357,7 @@ func TestWorkspaceCatalogProtectedInboxUpdatesFailClosed(t *testing.T) {
 	catalog := WorkspaceCatalog{
 		SchemaVersion: CurrentConfigVersion,
 		Projects: []CatalogProject{{
-			ID: "inbox", Slug: "inbox", Name: "Inbox", Context: "personal",
+			ID: "inbox", Slug: "inbox", Name: "Inbox",
 			CreatedAt: created, UpdatedAt: created, ColorSlot: 9,
 		}},
 		SystemUnfiledProjectID: "inbox",
@@ -359,18 +384,19 @@ func TestWorkspaceCatalogProtectedInboxUpdatesFailClosed(t *testing.T) {
 
 	edit := catalog.Projects[0].ToModel("/workspace")
 	edit.Description = "Visible capture project"
-	edit.Context = "work"
+	edit.Tags = []string{"work"}
 	edit.Pin()
 	edit.ColorSlot = 48
 	if err := catalog.UpsertProject(edit); err != nil {
 		t.Fatalf("UpsertProject(allowed system Inbox metadata): %v", err)
 	}
-	if got := catalog.Projects[0]; got.Description != edit.Description || got.Context != "work" || !got.Pinned || got.ColorSlot != 9 {
+	if got := catalog.Projects[0]; got.Description != edit.Description ||
+		!slices.Equal(got.Tags, []string{"work"}) || !got.Pinned || got.ColorSlot != 9 {
 		t.Fatalf("allowed metadata update lost fields or durable color: %+v", got)
 	}
 
 	ordinary := &models.Project{
-		ID: "ordinary", Slug: "ordinary", Name: "Inbox", Context: "personal",
+		ID: "ordinary", Slug: "ordinary", Name: "Inbox",
 		CreatedAt: created, UpdatedAt: created,
 	}
 	if err := catalog.UpsertProject(ordinary); err != nil {
@@ -390,7 +416,7 @@ func TestWorkspaceCatalogSystemInboxRepairIsExplicit(t *testing.T) {
 	catalog := WorkspaceCatalog{
 		SchemaVersion: CurrentConfigVersion,
 		Projects: []CatalogProject{{
-			ID: "legacy", Slug: LegacyActionInboxSlug, Name: "Action Inbox", Context: "personal",
+			ID: "legacy", Slug: LegacyActionInboxSlug, Name: "Action Inbox",
 		}},
 		SystemUnfiledProjectID: "legacy",
 	}

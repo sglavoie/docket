@@ -155,9 +155,7 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 
 	var scored []scoredProject
 	for _, project := range q.projectCache {
-		// Build searchable text: "Name [context]"
-		searchText := fmt.Sprintf("%s %s", project.Name, project.Context)
-		score := fuzzy.Score(searchText, partial)
+		score := fuzzy.Score(project.Name, partial)
 		if score > 0 {
 			scored = append(scored, scoredProject{project: project, score: score})
 		}
@@ -172,11 +170,10 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		project := s.project
-		// Truncate name if too long (width-aware: ~20 chars overhead for context+brackets+spaces)
 		nameLimit := max(q.width-20, 10)
 		name := truncateToVisualWidth(project.Name, nameLimit)
 		suggestions = append(suggestions, ACSuggestion{
-			Display: fmt.Sprintf("%%%s [%s]", name, project.Context),
+			Display: "%" + name,
 			Value:   project.Slug,
 		})
 	}

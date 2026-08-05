@@ -47,7 +47,7 @@ func (m *AppModel) registerHarnessOperations() error {
 				Items:      m.coreInputHelpItems(),
 			}
 		}},
-		{operationHarnessScope, "choose scope", OperationCategoryScope, func() tea.Msg { return ShowContextHubMsg{} }},
+		{operationHarnessScope, "choose scope", OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},
 		{operationHarnessInbox, "global inbox mode", OperationCategoryMode, func() tea.Msg {
 			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeInbox}}
 		}},

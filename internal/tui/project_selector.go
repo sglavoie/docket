@@ -21,9 +21,9 @@ func (p ProjectPickerItem) FilterText() string {
 		return ""
 	}
 	if p.Project.Archived {
-		return fmt.Sprintf("%s %s %s", p.Project.Name, p.Project.Context, archivedProjectMarker)
+		return fmt.Sprintf("%s %s", p.Project.Name, archivedProjectMarker)
 	}
-	return fmt.Sprintf("%s %s", p.Project.Name, p.Project.Context)
+	return p.Project.Name
 }
 
 // DisplayText returns the project name for display.
@@ -193,9 +193,6 @@ func (m *ProjectSelectorModel) renderList() string {
 			cursor = "  "
 		}
 
-		// Context badge
-		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", item.Project.Context))
-
 		// Task count
 		taskCount := projectTaskCountLabel(item.Project) + " tasks"
 
@@ -204,7 +201,7 @@ func (m *ProjectSelectorModel) renderList() string {
 		name := truncateToVisualWidth(item.Project.Name, maxNameLen)
 
 		// Build line
-		line := fmt.Sprintf("%s%s %s %s", cursor, truncateAndPad(name, maxNameLen), contextBadge, MutedStyle.Render(taskCount))
+		line := fmt.Sprintf("%s%s %s", cursor, truncateAndPad(name, maxNameLen), MutedStyle.Render(taskCount))
 
 		if m.CursorIndex() == i {
 			line = SelectedItemTextStyle.Render(line)

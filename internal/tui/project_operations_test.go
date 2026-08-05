@@ -14,6 +14,15 @@ func projectOperationContext(projectID string) CommandContext {
 	return ctx
 }
 
+func containsOperationID(ids []OperationID, want OperationID) bool {
+	for _, id := range ids {
+		if id == want {
+			return true
+		}
+	}
+	return false
+}
+
 func executeProjectOperation(app *AppModel, id OperationID, ctx CommandContext) OperationExecutionResult {
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
@@ -22,7 +31,7 @@ func executeProjectOperation(app *AppModel, id OperationID, ctx CommandContext) 
 }
 
 func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 
 	fromHub := executeProjectOperation(
@@ -43,7 +52,7 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 }
 
 func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:project:beta")
@@ -74,7 +83,7 @@ func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 }
 
 func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Archived = true
 	addTestAppProject(app, archived)
@@ -107,7 +116,7 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 }
 
 func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Archived = true
 	addTestAppProject(app, archived)
@@ -157,7 +166,7 @@ func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
 }
 
 func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	result := executeProjectOperation(app, operationScopeArchiveProject, projectOperationContext("beta"))
 	if result.ConfirmationRequired != nil {
 		t.Fatal("project archive raised a second confirmation over the shell prompt")
@@ -177,7 +186,7 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 }
 
 func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
-	hub := openProjectHub(t, contextHubApp(t))
+	hub := openProjectHub(t, projectHubApp(t))
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:project:beta")
 	hub.Update(syntheticKey(' '))
@@ -186,7 +195,6 @@ func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
 	for _, want := range []OperationID{
 		operationProjectOpen,
 		operationScopeRenameProject,
-		operationProjectSetBoundary,
 		operationScopePinProject,
 		operationScopeArchiveProject,
 		operationScopeOpenProjectNote,
@@ -198,13 +206,13 @@ func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
 	if containsOperationID(got, operationScopeRestoreProject) {
 		t.Fatalf("active project offered unarchive: %v", got)
 	}
-	if len(got) != 7 {
-		t.Fatalf("active project actions = %v, want exactly seven lean actions", got)
+	if len(got) != 6 {
+		t.Fatalf("active project actions = %v, want exactly six lean actions", got)
 	}
 }
 
 func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:project:beta")

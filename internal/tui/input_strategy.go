@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -26,6 +27,12 @@ const (
 // chord prefix is pending. A preset value supplies the operation's value without
 // opening a picker and is the only reason one operation may own several
 // bindings.
+//
+// SharedKey admits the binding onto a key path another operation already owns.
+// Every binding on that path must declare it, and resolution picks the first
+// applicable one in declaration order, so the operations sharing a key must be
+// applicable over disjoint cursors. Without the flag a repeated path stays a
+// grammar defect.
 type OperationKeyBinding struct {
 	OperationID    OperationID
 	Keys           []string
@@ -36,6 +43,7 @@ type OperationKeyBinding struct {
 	HintLabel      string
 	PresetValue    any
 	HasPresetValue bool
+	SharedKey      bool
 }
 
 // OperationChordGroup labels one non-terminal chord prefix. Every prefix in a
@@ -82,17 +90,20 @@ func (binding OperationKeyBinding) paths() [][]string {
 	return paths
 }
 
-// inputChordNode is one node of a strategy's key trie. bindingIndex is negative
-// on prefix nodes; childOrder keeps which-key hints in declaration order.
+// inputChordNode is one node of a strategy's key trie. bindings is empty on
+// prefix nodes; childOrder keeps which-key hints in declaration order. A
+// terminal normally holds exactly one binding, and holds several only when every
+// one of them opted into SharedKey.
 type inputChordNode struct {
-	children     map[string]*inputChordNode
-	childOrder   []string
-	bindingIndex int
-	owner        OperationID
+	children   map[string]*inputChordNode
+	childOrder []string
+	bindings   []int
+	owners     []OperationID
+	shared     bool
 }
 
 func newInputChordNode() *inputChordNode {
-	return &inputChordNode{children: make(map[string]*inputChordNode), bindingIndex: -1}
+	return &inputChordNode{children: make(map[string]*inputChordNode)}
 }
 
 func (node *inputChordNode) child(key string) *inputChordNode {
@@ -103,7 +114,15 @@ func (node *inputChordNode) child(key string) *inputChordNode {
 }
 
 func (node *inputChordNode) terminal() bool {
-	return node != nil && node.bindingIndex >= 0
+	return node != nil && len(node.bindings) > 0
+}
+
+func (node *inputChordNode) ownerList() string {
+	names := make([]string, 0, len(node.owners))
+	for _, owner := range node.owners {
+		names = append(names, string(owner))
+	}
+	return strings.Join(names, ", ")
 }
 
 // insert adds one prefix-free path. A path that passes through or stops on an
@@ -114,6 +133,7 @@ func (node *inputChordNode) insert(
 	operationID OperationID,
 	path []string,
 	bindingIndex int,
+	shared bool,
 ) error {
 	current := node
 	for _, key := range path {
@@ -123,7 +143,7 @@ func (node *inputChordNode) insert(
 				strategyID,
 				chordPathString(path[:len(path)-1]),
 				chordPathString(path),
-				current.owner,
+				current.ownerList(),
 				operationID,
 			)
 		}
@@ -136,25 +156,28 @@ func (node *inputChordNode) insert(
 		current = next
 	}
 	if current.terminal() {
-		return fmt.Errorf(
-			"input strategy %s key collision: %s (%s vs %s)",
-			strategyID,
-			chordPathString(path),
-			current.owner,
-			operationID,
-		)
+		if !shared || !current.shared || slices.Contains(current.owners, operationID) {
+			return fmt.Errorf(
+				"input strategy %s key collision: %s (%s vs %s)",
+				strategyID,
+				chordPathString(path),
+				current.ownerList(),
+				operationID,
+			)
+		}
 	}
 	if len(current.children) > 0 {
 		return fmt.Errorf(
 			"input strategy %s chord prefix collision: %s is a prefix of a longer chord (%s vs %s)",
 			strategyID,
 			chordPathString(path),
-			current.owner,
+			current.ownerList(),
 			operationID,
 		)
 	}
-	current.bindingIndex = bindingIndex
-	current.owner = operationID
+	current.bindings = append(current.bindings, bindingIndex)
+	current.owners = append(current.owners, operationID)
+	current.shared = shared
 	return nil
 }
 
@@ -209,7 +232,6 @@ const (
 	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
 	operationCorePeek             OperationID = "tui.core.peek"
 	operationCoreScopeSearch      OperationID = "tui.core.scope-search"
-	operationCoreScope            OperationID = "tui.core.scope"
 	operationCoreSelectProject    OperationID = "tui.core.select-project"
 	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
 	operationCoreSelectAll        OperationID = "tui.core.select-all"
@@ -253,10 +275,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskIndent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationCorePeek, Keys: []string{"enter"}, DisplayKey: "Enter"},
 			{OperationID: operationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
-			{OperationID: operationCoreScope, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 7, FooterLabel: "scope"},
-			{OperationID: operationCoreSelectProject, Keys: []string{"C"}, DisplayKey: "C", FooterRank: 8, FooterLabel: "project"},
 			{OperationID: operationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v"},
 			{OperationID: operationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
+			{OperationID: operationCoreSelectProject, Keys: []string{"p"}, DisplayKey: "p", FooterRank: 5, FooterLabel: "projects"},
 			{OperationID: operationCoreNotes, Keys: []string{"N"}, DisplayKey: "N"},
 			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
@@ -267,7 +288,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreNextWorkMode, Keys: []string{"tab"}, DisplayKey: "Tab"},
 			{OperationID: operationCorePreviousWorkMode, Keys: []string{"shift+tab"}, DisplayKey: "Shift+Tab"},
 			{OperationID: operationTaskSetDueDate, Keys: []string{"@"}, DisplayKey: "@", FooterRank: 15, FooterLabel: "due"},
-			{OperationID: operationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 16, FooterLabel: "tags"},
+			// # tags whatever the cursor names. The two operations carry different
+			// targets and different vocabularies, so they stay two descriptors with
+			// two honest labels rather than one that branches on runtime context.
+			{OperationID: operationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 16, FooterLabel: "tags", SharedKey: true},
+			{OperationID: operationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 16, FooterLabel: "project tags", SharedKey: true},
 			{OperationID: operationTaskSetSnooze, Keys: []string{"z"}, DisplayKey: "z", FooterRank: 23, FooterLabel: "snooze"},
 			{OperationID: operationTaskTogglePin, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 24, FooterLabel: "pin"},
 			{OperationID: operationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
@@ -297,12 +322,17 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterTags, Sequence: []string{"f", "t"}, DisplayKey: "ft", HintLabel: "tags"},
 			{OperationID: operationFilterSnoozed, Sequence: []string{"f", "z"}, DisplayKey: "fz", HintLabel: "snoozed"},
 			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
+			{OperationID: operationFilterProjectTags, Sequence: []string{"F", "t"}, DisplayKey: "Ft", HintLabel: "project tags"},
+			{OperationID: operationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "show parked"},
+			{OperationID: operationFilterIncludeArchived, Sequence: []string{"F", "a"}, DisplayKey: "Fa", HintLabel: "include archived"},
+			{OperationID: operationFilterProjectClear, Sequence: []string{"F", "x"}, DisplayKey: "Fx", HintLabel: "clear project filters"},
 		},
 		ChordGroups: []OperationChordGroup{
 			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 17, FooterLabel: "priority"},
 			{Sequence: []string{"s"}, HintLabel: "state / planning", FooterRank: 11, FooterLabel: "state/plan"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "p"}, HintLabel: "priority threshold"},
+			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},
 		},
 	}
 }
@@ -407,7 +437,7 @@ func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy)
 
 		index := len(normalized.Bindings)
 		for _, path := range binding.paths() {
-			if err := trie.insert(strategy.ID, binding.OperationID, path, index); err != nil {
+			if err := trie.insert(strategy.ID, binding.OperationID, path, index, binding.SharedKey); err != nil {
 				return err
 			}
 		}
@@ -530,12 +560,16 @@ func (registry *OperationRegistry) InputBindingForSequence(
 		}
 	}
 	if node.terminal() {
-		binding := strategy.Bindings[node.bindingIndex]
-		descriptor, exists := registry.Descriptor(binding.OperationID)
-		if !exists || !descriptor.Applicable(ctx) {
-			return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
+		// A shared key holds several bindings; the first applicable one in
+		// declaration order wins, so the cursor decides which operation a key means.
+		for _, index := range node.bindings {
+			binding := strategy.Bindings[index]
+			descriptor, exists := registry.Descriptor(binding.OperationID)
+			if exists && descriptor.Applicable(ctx) {
+				return cloneOperationKeyBinding(binding), descriptor, ChordTerminal
+			}
 		}
-		return cloneOperationKeyBinding(binding), descriptor, ChordTerminal
+		return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
 	}
 	// A prefix whose whole subtree is inapplicable would trap input in a chord
 	// that can never complete, so it fails closed like an unbound key.
@@ -543,6 +577,71 @@ func (registry *OperationRegistry) InputBindingForSequence(
 		return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
 	}
 	return OperationKeyBinding{}, OperationDescriptor{}, ChordPending
+}
+
+// InputCategoryForPrefix returns the category every operation still reachable
+// from a key path shares, whether or not any of them is currently applicable. It
+// is how a refused key still names what it needed, including a chord prefix
+// abandoned because its whole subtree turned off. A path that ends nowhere, or
+// whose reachable operations disagree, reports false and stays silent rather
+// than guessing at a sentence.
+func (registry *OperationRegistry) InputCategoryForPrefix(
+	id InputStrategyID,
+	sequence []string,
+) (OperationCategory, bool) {
+	strategy, ok := registry.InputStrategy(id)
+	if !ok {
+		return "", false
+	}
+	category, resolved := OperationCategory(""), false
+	var walk func(node *inputChordNode) bool
+	walk = func(node *inputChordNode) bool {
+		for _, index := range node.bindings {
+			descriptor, exists := registry.Descriptor(strategy.Bindings[index].OperationID)
+			if !exists {
+				return false
+			}
+			if resolved && descriptor.Category != category {
+				return false
+			}
+			category, resolved = descriptor.Category, true
+		}
+		for _, key := range node.childOrder {
+			if !walk(node.children[key]) {
+				return false
+			}
+		}
+		return true
+	}
+	node := registry.chordNodeForPrefix(id, sequence)
+	if node == nil || !walk(node) {
+		return "", false
+	}
+	return category, resolved
+}
+
+// ChordGroupLabelForPrefix returns the declared label of the longest chord
+// prefix a key path passes through. It is how an abandoned chord names the path
+// it was on, which a resolution failure alone cannot say.
+func (registry *OperationRegistry) ChordGroupLabelForPrefix(
+	id InputStrategyID,
+	sequence []string,
+) (string, bool) {
+	strategy, ok := registry.InputStrategy(id)
+	if !ok || len(sequence) < 2 {
+		return "", false
+	}
+	keys := make([]string, 0, len(sequence)-1)
+	for _, key := range sequence[:len(sequence)-1] {
+		keys = append(keys, normalizeOperationKey(key))
+	}
+	prefix := chordPathString(keys)
+	for _, group := range strategy.ChordGroups {
+		if chordPathString(group.Sequence) == prefix {
+			return group.HintLabel, true
+		}
+	}
+	return "", false
 }
 
 // InputBindingForKey resolves one direct key through the selected strategy and
@@ -565,8 +664,13 @@ func (registry *OperationRegistry) chordSubtreeIsApplicable(
 		return false
 	}
 	if node.terminal() {
-		descriptor, exists := registry.Descriptor(strategy.Bindings[node.bindingIndex].OperationID)
-		return exists && descriptor.Applicable(ctx)
+		for _, index := range node.bindings {
+			descriptor, exists := registry.Descriptor(strategy.Bindings[index].OperationID)
+			if exists && descriptor.Applicable(ctx) {
+				return true
+			}
+		}
+		return false
 	}
 	for _, key := range node.childOrder {
 		if registry.chordSubtreeIsApplicable(strategy, node.children[key], ctx) {

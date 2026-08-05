@@ -254,7 +254,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			},
 		},
 		{
-			name: "rename and context edit",
+			name: "rename and description edit",
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Original")
 				fixture := newSession4LifecycleFixture(t, project)
@@ -263,7 +263,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture.cross.cursor = session2TaskRow(t, fixture.cross, project.ID, project.Tasks[0].ID)
 				modeBefore := fixture.cross.activeOutlinerMode()
 				live.Name = "Renamed Project"
-				live.Context = "office"
+				live.Description = "office"
 				session4CommitCatalogProject(t, fixture.app, live)
 				fixture.app.showView(ViewProjectEditor, NewProjectEditorModel(
 					live,
@@ -277,8 +277,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				runSession2AppCommand(t, fixture.app, cmd)
 
 				loaded := session4LoadedProject(t, fixture.cross, project.ID)
-				if loaded.Name != "Renamed Project" || loaded.Context != "office" {
-					t.Fatalf("visible metadata = name %q context %q", loaded.Name, loaded.Context)
+				if loaded.Name != "Renamed Project" || loaded.Description != "office" {
+					t.Fatalf("visible metadata = name %q description %q", loaded.Name, loaded.Description)
 				}
 				if !session4HasTaskRow(fixture.cross, project.ID, project.Tasks[0].ID) {
 					t.Fatal("renamed project task row disappeared")
@@ -295,8 +295,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 					t.Fatalf("metadata reload changed cursor identity: %#v", cursorRow)
 				}
 				disk := session4DiskProject(t, fixture.dataDir, project.ID)
-				if disk.Name != loaded.Name || disk.Context != loaded.Context {
-					t.Fatalf("durable metadata = name %q context %q", disk.Name, disk.Context)
+				if disk.Name != loaded.Name || disk.Description != loaded.Description {
+					t.Fatalf("durable metadata = name %q description %q", disk.Name, disk.Description)
 				}
 			},
 		},

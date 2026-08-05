@@ -26,13 +26,11 @@ func TestProjectSelectorViewRespectsVisualWidth(t *testing.T) {
 		t.Fatalf("NewProject A: %v", err)
 	}
 	projectA.Name = "界面修复冲刺计划项目"
-	projectA.Context = "work"
 
 	projectB, err := models.NewProject("proj-b", "Release coordination", t.TempDir())
 	if err != nil {
 		t.Fatalf("NewProject B: %v", err)
 	}
-	projectB.Context = "ops"
 
 	m := NewProjectSelectorModel([]*models.Project{sourceProject, projectA, projectB}, task, sourceProject)
 	m.SetSize(32, 14)

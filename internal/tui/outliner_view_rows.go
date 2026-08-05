@@ -22,7 +22,7 @@ type outlinerRow struct {
 	hasVisibleChildren bool                      // Children rendered in this row's section-local tree.
 	IsSectionHeader    bool                      // True if this row is a section header (not a task)
 	IsComputedHeader   bool                      // True for a computed-mode grouping header such as a due-date bucket
-	IsProjectHeader    bool                      // True if this row is a synthetic, render-only project sub-header (not a task)
+	IsProjectHeader    bool                      // True if this row is a synthetic, cursorable project sub-header (not a task)
 	IsPinnedSection    bool                      // True for the synthetic Pinned header and every promoted task row beneath it
 	IsTodaySection     bool                      // True for the synthetic Today header and every explicit Today task row beneath it
 	IsNextSection      bool                      // True for the synthetic Next header and every explicit Next task row beneath it
@@ -44,10 +44,11 @@ func (r outlinerRow) isTaskRow() bool {
 }
 
 // isNavigable reports whether the cursor is allowed to rest on this row.
-// Section headers remain navigable (Enter toggles section fold); task rows
-// are navigable; project sub-headers are navigable so Enter can scope to the
-// project and Shift+Enter can open its administration menu. Only separators
-// (purely decorative) are skipped by cursor movement and rebuild/clamp paths.
+// Section headers, project sub-headers, and task rows are all navigable, and
+// h/l fold the group a header names. Only separators (purely decorative) are
+// skipped by cursor movement and rebuild/clamp paths. A header cursor names no
+// task, so every task operation refuses it rather than falling back to a row
+// the user is not pointing at.
 func (r outlinerRow) isNavigable() bool {
 	return !r.IsSeparator
 }

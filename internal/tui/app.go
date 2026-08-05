@@ -36,7 +36,6 @@ const (
 	ViewTaskForm
 	ViewTaskComposer
 	ViewConflictResolution
-	ViewContextHub
 	ViewProjectHub
 )
 
@@ -193,6 +192,19 @@ type AppModel struct {
 	pendingProjectArchive        *models.Project
 	pendingProjectArchiveArchive bool
 	projectArchiveConfirm        ConfirmDialog
+
+	// Pending project park confirmation. Only a tag edit that newly adds the
+	// reserved parked tag prompts; every other project tag applies straight away.
+	pendingProjectTags       *models.Project
+	pendingProjectTagsSet    []string
+	pendingProjectBulkTags   *projectBulkTagEdit
+	pendingProjectEditorSave *projectEditorSave
+	projectParkConfirm       ConfirmDialog
+
+	// projectTagActionSubject is the tag the vocabulary sheet edits. It lives
+	// here rather than in the sheet's frozen value because a nested value step
+	// overwrites that value on its way back to the executor.
+	projectTagActionSubject string
 
 	// Pending shell-owned task deletion confirmation. The canonical
 	// TaskDeleteRequestedMsg path stores the de-duplicated root refs plus the

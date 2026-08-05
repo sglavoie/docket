@@ -18,8 +18,8 @@ const (
 	operationScopeRestoreProject  OperationID = "tui.scope.restore-project"
 	operationScopeOpenProjectNote OperationID = "tui.scope.open-project-notes"
 
-	operationProjectOpen        OperationID = "tui.project.open"
-	operationProjectSetBoundary OperationID = "tui.project.set-boundary"
+	operationProjectOpen    OperationID = "tui.project.open"
+	operationProjectSetTags OperationID = "tui.project.set-tags"
 )
 
 // projectOperationDescriptors is the authoritative catalog of project-targeted
@@ -55,8 +55,8 @@ func projectOperationDescriptors() []OperationDescriptor {
 		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", OperationCategoryProject, OperationRiskMutation, "restore archived project"),
 		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", OperationCategoryNote, OperationRiskReadOnly),
 		withValueProvider(
-			descriptor(operationProjectSetBoundary, "Set boundary", "Move the project to another boundary", OperationCategoryProject, OperationRiskMutation, "move project boundary", "park project"),
-			ValueProviderProjectBoundary,
+			descriptor(operationProjectSetTags, "Set project tags", "Edit the tags carried by this project", OperationCategoryProject, OperationRiskMutation, "project tags", "park project", "unpark project"),
+			ValueProviderProjectTags,
 		),
 	}
 }
@@ -144,8 +144,8 @@ func (m *AppModel) executeProjectOperation(
 	if err := m.projectOperationUnavailable(invocation.Descriptor, project); err != nil {
 		return OperationHandlerResult{Err: err}
 	}
-	if invocation.Descriptor.ID == operationProjectSetBoundary {
-		return projectBoundaryOperationResult(invocation, project)
+	if invocation.Descriptor.ID == operationProjectSetTags {
+		return projectTagsOperationResult(invocation, project)
 	}
 	message := m.projectOperationMessage(invocation.Descriptor.ID, project)
 	if message == nil {
@@ -154,6 +154,27 @@ func (m *AppModel) executeProjectOperation(
 		}
 	}
 	return OperationHandlerResult{Message: message}
+}
+
+// projectTagsOperationResult round-trips the project's own tag set through the
+// value picker: the first invocation asks for a set, the resumed one carries it.
+// The chosen set replaces the stored set wholesale, so an empty slice is a
+// legitimate value and only a missing one reopens the picker.
+func projectTagsOperationResult(
+	invocation OperationInvocation,
+	project *models.Project,
+) OperationHandlerResult {
+	tags, ok := invocation.Value.([]string)
+	if !invocation.HasValue || !ok {
+		return OperationHandlerResult{Message: OperationValueRequestMsg{
+			Request: OperationExecutionRequest{
+				ID:      invocation.Descriptor.ID,
+				Context: cloneCommandContext(invocation.Context),
+			},
+			Provider: ValueProviderProjectTags,
+		}}
+	}
+	return OperationHandlerResult{Message: SetProjectTagsMsg{Project: project, Tags: tags}}
 }
 
 // projectOperationRequirement declares the project state one operation needs.
@@ -169,10 +190,7 @@ var projectOperationRequirements = map[OperationID]projectOperationRequirement{
 	operationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},
 	operationScopeRestoreProject:  {requireArchived: true},
 	operationScopeOpenProjectNote: {requireActive: true},
-
-	// An archived project keeps the boundary it will return to on restore, so
-	// reassignment is deliberately available on both sides of the lifecycle.
-	operationProjectSetBoundary: {rejectSystemUnfiled: true},
+	operationProjectSetTags:       {requireActive: true},
 }
 
 // projectOperationUnavailable checks the freshly reloaded project rather than

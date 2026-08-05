@@ -130,33 +130,33 @@ func TestFzfSelectTask_UsesCachedAbsolutePath(t *testing.T) {
 
 func TestBuildProjectFzfInput(t *testing.T) {
 	projects := []*models.Project{
-		{Name: "project-a", Slug: "project-a", Context: "work"},
-		{Name: "project-b", Slug: "project-b", Context: "personal"},
+		{Name: "project-a", Slug: "project-a"},
+		{Name: "project-b", Slug: "project-b"},
 	}
 
 	// Simulate the input building logic from FzfSelectProject.
-	// Format: slug<TAB>display-name (slug)<TAB>context<TAB>N tasks
+	// Format: slug<TAB>display-name (slug)<TAB>N tasks
 	var lines []string
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks", p.Slug, p.Name, p.Slug, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s (%s)\t%d tasks", p.Slug, p.Name, p.Slug, p.CountTasks())
 		lines = append(lines, line)
 	}
 	input := strings.Join(lines, "\n")
 
 	t.Run("formats project lines correctly", func(t *testing.T) {
-		if !strings.Contains(input, "project-a\tproject-a (project-a)\twork\t0 tasks") {
-			t.Error("expected first project line with slug, display name, context, and task count")
+		if !strings.Contains(input, "project-a\tproject-a (project-a)\t0 tasks") {
+			t.Error("expected first project line with slug, display name, and task count")
 		}
-		if !strings.Contains(input, "project-b\tproject-b (project-b)\tpersonal\t0 tasks") {
-			t.Error("expected second project line with slug, display name, context, and task count")
+		if !strings.Contains(input, "project-b\tproject-b (project-b)\t0 tasks") {
+			t.Error("expected second project line with slug, display name, and task count")
 		}
 	})
 
-	t.Run("uses tab as delimiter with 4 parts", func(t *testing.T) {
+	t.Run("uses tab as delimiter with 3 parts", func(t *testing.T) {
 		firstLine := strings.Split(input, "\n")[0]
 		parts := strings.Split(firstLine, "\t")
-		if len(parts) != 4 {
-			t.Errorf("expected 4 tab-separated parts, got %d", len(parts))
+		if len(parts) != 3 {
+			t.Errorf("expected 3 tab-separated parts, got %d", len(parts))
 		}
 	})
 
@@ -300,9 +300,9 @@ func TestParseTaskFzfOutput(t *testing.T) {
 
 func TestBuildMultiSelectProjectFzfInput_PreselectedMarker(t *testing.T) {
 	projects := []*models.Project{
-		{ID: "id-a", Name: "project-a", Slug: "project-a", Context: "work"},
-		{ID: "id-b", Name: "project-b", Slug: "project-b", Context: "personal"},
-		{ID: "id-c", Name: "project-c", Slug: "project-c", Context: "work"},
+		{ID: "id-a", Name: "project-a", Slug: "project-a"},
+		{ID: "id-b", Name: "project-b", Slug: "project-b"},
+		{ID: "id-c", Name: "project-c", Slug: "project-c"},
 	}
 
 	preselectedIDs := map[string]bool{
@@ -317,7 +317,7 @@ func TestBuildMultiSelectProjectFzfInput_PreselectedMarker(t *testing.T) {
 		if preselectedIDs[p.ID] {
 			marker = "*"
 		}
-		line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s\t%s %s (%s)\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.CountTasks())
 		lines = append(lines, line)
 	}
 	input := strings.Join(lines, "\n")
@@ -346,7 +346,7 @@ func TestBuildMultiSelectProjectFzfInput_PreselectedMarker(t *testing.T) {
 			if noPreselect[p.ID] {
 				marker = "*"
 			}
-			line := fmt.Sprintf("%s\t%s %s (%s)\t%s\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.Context, p.CountTasks())
+			line := fmt.Sprintf("%s\t%s %s (%s)\t%d tasks", p.Slug, marker, p.Name, p.Slug, p.CountTasks())
 			lines2 = append(lines2, line)
 		}
 		for _, line := range lines2 {
@@ -405,16 +405,15 @@ func TestProjectFieldsWithNewlinesDoNotBreakFzfInput(t *testing.T) {
 	// Newlines in a project Name would split a single project across multiple
 	// fzf lines and break selection.
 	projects := []*models.Project{
-		{Slug: "p1", Name: "name\nwith\nnewlines", Context: "ctx\twith\ttab"},
+		{Slug: "p1", Name: "name\nwith\nnewlines"},
 	}
 
 	var lines []string
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks",
+		line := fmt.Sprintf("%s\t%s (%s)\t%d tasks",
 			sanitizeFzfField(p.Slug),
 			sanitizeFzfField(p.Name),
 			sanitizeFzfField(p.Slug),
-			sanitizeFzfField(p.Context),
 			p.CountTasks())
 		lines = append(lines, line)
 	}
@@ -422,8 +421,8 @@ func TestProjectFieldsWithNewlinesDoNotBreakFzfInput(t *testing.T) {
 		t.Errorf("expected no newlines in sanitized line, got %q", lines[0])
 	}
 	parts := strings.Split(lines[0], "\t")
-	if len(parts) != 4 {
-		t.Errorf("expected 4 tab-separated parts after sanitization, got %d (line=%q)", len(parts), lines[0])
+	if len(parts) != 3 {
+		t.Errorf("expected 3 tab-separated parts after sanitization, got %d (line=%q)", len(parts), lines[0])
 	}
 }
 

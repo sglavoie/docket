@@ -15,7 +15,6 @@ type ContextActionSheetHost string
 
 const (
 	ContextActionHostOutliner   ContextActionSheetHost = "outliner"
-	ContextActionHostScopeHub   ContextActionSheetHost = "scope-hub"
 	ContextActionHostProjectHub ContextActionSheetHost = "project-hub"
 )
 

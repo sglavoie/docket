@@ -1,0 +1,19 @@
+{
+  "name": "outliner-project-header-fold",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "key", "label": "step onto the Doing project header", "key": "j" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "fold the project group the header names", "key": "h" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "label": "the header the cursor rests on stays visible and reads as folded", "assert": "contains", "value": "▸ [rich-project] (1)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "unfold the same group", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

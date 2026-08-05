@@ -50,7 +50,10 @@ func (m *Manager) RuntimeDependencies() *RuntimeDependencies {
 }
 
 // Next returns the persisted workspace-wide Next membership/order via
-// the Planning dependency. Presence does not confer Next membership.
+// the Planning dependency. Presence does not confer Next membership. Unlike
+// RuntimeState.NextOrder it does not hide parked owners: this facade reads
+// planning.json alone and has no catalog to test tags against, so it reports the
+// persisted set whole. Projection consumers must read RuntimeState.
 func (r *RuntimeDependencies) Next() ([]ProjectTaskLocator, error) {
 	if r == nil || r.Planning == nil {
 		return nil, nil
@@ -101,7 +104,7 @@ func (r *RuntimeDependencies) projectsFromCatalog(dataDir string) ([]*models.Pro
 	return projects, nil
 }
 
-// AvailableProjects returns every non-archived project regardless of boundary,
+// AvailableProjects returns every non-archived project regardless of its tags,
 // sorted with pinned first. It is the store-backed counterpart of
 // RuntimeState.AvailableProjects. The narrower TaskWorkspaceProjects population
 // is deliberately not mirrored here: this facade has no task-projection

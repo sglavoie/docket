@@ -120,7 +120,7 @@ func newOperationValuePickerModel(
 		subtitle: subtitle,
 		multi:    multi,
 	}
-	if provider == ValueProviderTags {
+	if provider.tagEntry() {
 		model.tagAdder = NewTagAdder()
 	}
 	return model, nil
@@ -131,7 +131,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	if model == nil || model.surface == nil {
 		return nil, true, OperationValueCanceledMsg{}
 	}
-	if model.provider == ValueProviderTags && model.tagAdder.AddTagMode {
+	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
 		handled, cmd := model.tagAdder.handleAddTagInputKey(msg, model.addOrSelectTag)
 		if handled {
 			return cmd, false, nil
@@ -177,7 +177,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	case "/":
 		model.searching = true
 	case "a":
-		if model.provider == ValueProviderTags {
+		if model.provider.tagEntry() {
 			return model.tagAdder.EnterAddMode(), false, nil
 		}
 	case "up", "k", "ctrl+p":
@@ -192,7 +192,26 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		model.surface.PageCursor(-1)
 	case "pgdown":
 		model.surface.PageCursor(1)
+	case "v":
+		// The project tag facet picker hands Space to the vocabulary sheet, so
+		// selection moves to the key the project picker already uses for it.
+		if model.provider == ValueProviderFilterProjectTags {
+			if err := model.toggleCurrentMultiValue(); err != nil {
+				return nil, false, StatusMsg(err.Error())
+			}
+		}
 	case "space":
+		if model.provider == ValueProviderFilterProjectTags {
+			item, ok := model.surface.CurrentItem()
+			if !ok {
+				return nil, false, nil
+			}
+			tag, ok := projectTagVocabularySelectableTag(item)
+			if !ok {
+				return nil, false, StatusMsg("Untagged is a facet, not a tag")
+			}
+			return nil, true, ProjectTagVocabularyActionsMsg{Tag: tag}
+		}
 		if model.multi {
 			if err := model.toggleCurrentMultiValue(); err != nil {
 				return nil, false, StatusMsg(err.Error())
@@ -223,6 +242,11 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 }
 
 func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
+	if model.provider == ValueProviderProjectTags {
+		// The project tag namespace is folded at rest, so the row a typed tag
+		// creates must already carry the spelling the catalog will store.
+		tag = strings.ToLower(tag)
+	}
 	id := ListItemID("tag:" + tag)
 	items := model.surface.Items()
 	for _, item := range items {
@@ -238,6 +262,9 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	}
 	item := source.Items[0]
 	item.Data = tag
+	if model.provider == ValueProviderProjectTags {
+		item.SecondaryText = ""
+	}
 	items = append(items, item)
 	sort.SliceStable(items, func(i, j int) bool {
 		return items[i].PrimaryText < items[j].PrimaryText
@@ -385,7 +412,7 @@ func (model *OperationValuePickerModel) render(width int) string {
 		return ""
 	}
 	innerWidth := min(max(width*3/5, 46), max(width-6, 24))
-	if model.provider == ValueProviderTags && model.tagAdder.AddTagMode {
+	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
 		content := MutedStyle.Render(fmt.Sprintf(
 			"Enter a tag name (max %d characters)",
 			model.tagAdder.AddTagInput.CharLimit,
@@ -414,6 +441,9 @@ func (model *OperationValuePickerModel) render(width int) string {
 	}
 	content := MutedStyle.Render(search) + "\n\n" +
 		RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	if explainer := behavioralProjectTagExplainer(model.provider, innerWidth-4); explainer != "" {
+		content += "\n\n" + explainer
+	}
 	titleText := model.title
 	if model.subtitle != "" {
 		titleText += ": " + truncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
@@ -423,8 +453,11 @@ func (model *OperationValuePickerModel) render(width int) string {
 	if model.multi {
 		help = "Space toggle · Enter apply · Esc back"
 	}
-	if model.provider == ValueProviderTags {
+	if model.provider.tagEntry() {
 		help = "Space toggle · a add tag · Enter apply · Esc back"
+	}
+	if model.provider == ValueProviderFilterProjectTags {
+		help = "v toggle · Space tag actions · Enter apply · Esc back"
 	}
 	return renderOverlayBox(
 		content,
@@ -471,15 +504,16 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 	}
 	entry, _ := taskOperationManifestEntryFor(id)
 	// Direct operations describe a stable grammar, not a menu projection. They
-	// stay resolvable over headers and otherwise invalid cursor positions so the
-	// executor can report the canonical missing-target error. A visual
-	// selection still suppresses single-target operations instead of silently
-	// falling back to the cursor.
+	// stay resolvable over a cursor that names nothing so the executor can report
+	// the canonical missing-target error, but a cursor that positively names a
+	// non-task entity belongs to that entity's grammar and must not bind a task
+	// key. A visual selection still suppresses single-target operations instead
+	// of silently falling back to the cursor.
 	if entry.DirectOnly {
 		if context.Selection.Visual {
 			return entry.Bulk
 		}
-		return true
+		return !commandContextNamesNonTaskEntity(context)
 	}
 	entities := []EntityContext{context.Entity}
 	if context.Selection.Visual {
@@ -663,8 +697,11 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 	case ValueProviderFilterCompletionAge:
 		_, ok := value.(CompletionAgeFilter)
 		return ok
-	case ValueProviderFilterStates, ValueProviderFilterTags:
+	case ValueProviderFilterStates, ValueProviderFilterTags, ValueProviderFilterProjectTags:
 		_, ok := value.([]string)
+		return ok
+	case ValueProviderProjectTagDestination:
+		_, ok := value.(string)
 		return ok
 	case ValueProviderDueDate, ValueProviderSnooze:
 		_, ok := value.(OperationDateValue)
@@ -675,7 +712,7 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		}
 		_, ok := value.(OperationTagsValue)
 		return ok
-	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName, ValueProviderProjectBoundary:
+	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName:
 		_, ok := value.(string)
 		return ok
 	case ValueProviderParent:
@@ -1043,12 +1080,9 @@ func (m *AppModel) newOperationValuePicker(
 	request OperationExecutionRequest,
 	provider ValueProviderID,
 ) (*OperationValuePickerModel, error) {
-	// Filter pickers refine the whole view and the boundary picker names a
-	// project, so both must open without any task under the cursor and never
-	// resolve task targets.
+	// Filter pickers refine the whole view, so they must open without any task
+	// under the cursor and never resolve task targets.
 	switch provider {
-	case ValueProviderProjectBoundary:
-		return m.newProjectBoundaryPicker(request)
 	case ValueProviderFilterStates:
 		return m.newFilterStatesPicker(request)
 	case ValueProviderFilterTags:
@@ -1057,6 +1091,14 @@ func (m *AppModel) newOperationValuePicker(
 		return m.newFilterDuePicker(request)
 	case ValueProviderFilterCompletionAge:
 		return m.newFilterCompletionAgePicker(request)
+	case ValueProviderFilterProjectTags:
+		return m.newFilterProjectTagsPicker(request)
+	case ValueProviderProjectTagDestination:
+		return m.newProjectTagDestinationPicker(request)
+	case ValueProviderProjectTags:
+		// A project tag edit resolves a project, not a task, so it must open from
+		// a project header where no task ref exists.
+		return m.newProjectTagsPicker(request)
 	default:
 	}
 	refs, err := m.operationTaskRefs(request.Context)
@@ -1455,6 +1497,9 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case OperationValueCanceledMsg:
 		m.clearOperationValueStep()
 		return true, nil
+	case ProjectTagVocabularyActionsMsg:
+		m.clearOperationValueStep()
+		return true, m.openProjectTagVocabularyActions(typed.Tag)
 	default:
 		return false, nil
 	}

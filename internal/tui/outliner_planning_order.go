@@ -118,7 +118,7 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 		}
 		// Planning project headers provide context without partitioning the
 		// workspace-wide order. Skip them so J/K can still swap adjacent visible
-		// Today/Next members across a project boundary. Other project headers
+		// Today/Next members from different projects. Other project headers
 		// continue to delimit hierarchy reorder buckets.
 		if row.IsProjectHeader {
 			if row.IsTodaySection || row.IsNextSection {

@@ -13,7 +13,7 @@ import (
 
 func TestUITestFixtureNames(t *testing.T) {
 	got := BuiltinFixtureNames()
-	want := []string{"boundaries", "busy", "contexts", "empty", "fresh", "narrow", "release", "rich", "workflow"}
+	want := []string{"busy", "empty", "fresh", "multi-project", "narrow", "parked", "release", "rich", "workflow"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuiltinFixtureNames() = %v, want %v", got, want)
 	}
@@ -87,36 +87,31 @@ func TestUITestFixtureEmptyHasNoUserTasks(t *testing.T) {
 	}
 }
 
-func TestUITestFixtureBoundariesSplitsTaskWorkspaceFromCatalog(t *testing.T) {
-	driver, ws, err := NewFixtureDriver(FixtureBoundaries, 100, 35)
+func TestUITestFixtureParkedSplitsTaskWorkspaceFromCatalog(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureParked, 100, 35)
 	if err != nil {
-		t.Fatalf("NewFixtureDriver(boundaries) error: %v", err)
+		t.Fatalf("NewFixtureDriver(parked) error: %v", err)
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	runtime := driver.App().runtime
-	boundary, ok := boundaryByName(runtime.Catalog(), boundariesFixtureBoundaryName)
-	if !ok {
-		t.Fatalf("fixture catalog has no %q boundary: %+v", boundariesFixtureBoundaryName, runtime.Catalog().Boundaries)
-	}
-
-	parked := projectByFixtureName(runtime.AvailableProjects(), boundariesFixtureParkedName)
+	parked := projectByFixtureName(runtime.AvailableProjects(), parkedFixtureParkedName)
 	if parked == nil {
-		t.Fatalf("%q is not an available project", boundariesFixtureParkedName)
+		t.Fatalf("%q is not an available project", parkedFixtureParkedName)
 	}
-	if got := runtime.Catalog().ProjectBoundaryID(parked.ID); got != boundary.ID {
-		t.Fatalf("parked project boundary = %q, want %q", got, boundary.ID)
+	if !models.ProjectTagsParked(parked.Tags) {
+		t.Fatalf("parked project tags = %v, want the reserved parked tag", parked.Tags)
 	}
 	if runtime.TaskWorkspaceProject(parked.ID) != nil {
 		t.Fatalf("%q is in the base task workspace despite being parked", parked.Name)
 	}
 
-	active := projectByFixtureName(runtime.TaskWorkspaceProjects(), boundariesFixtureActiveName)
+	active := projectByFixtureName(runtime.TaskWorkspaceProjects(), parkedFixtureWorkspaceName)
 	if active == nil {
-		t.Fatalf("%q is missing from the base task workspace", boundariesFixtureActiveName)
+		t.Fatalf("%q is missing from the base task workspace", parkedFixtureWorkspaceName)
 	}
-	if got := runtime.Catalog().ProjectBoundaryID(active.ID); got != models.ActiveBoundaryID {
-		t.Fatalf("active project boundary = %q, want the protected Active boundary", got)
+	if models.ProjectTagsParked(active.Tags) {
+		t.Fatalf("base workspace project tags = %v, want no parked tag", active.Tags)
 	}
 
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
@@ -126,15 +121,6 @@ func TestUITestFixtureBoundariesSplitsTaskWorkspaceFromCatalog(t *testing.T) {
 	if strings.Contains(screen, "Revisit the paused migration") {
 		t.Fatalf("Active Projects leaked a parked project's work:\n%s", screen)
 	}
-}
-
-func boundaryByName(catalog *config.WorkspaceCatalog, name string) (config.ProjectBoundary, bool) {
-	for _, boundary := range catalog.Boundaries {
-		if boundary.Name == name {
-			return boundary, true
-		}
-	}
-	return config.ProjectBoundary{}, false
 }
 
 func projectByFixtureName(projects []*models.Project, name string) *models.Project {

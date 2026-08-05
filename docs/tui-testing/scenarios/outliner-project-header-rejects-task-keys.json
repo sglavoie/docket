@@ -1,0 +1,50 @@
+{
+  "name": "outliner-project-header-rejects-task-keys",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "step onto the Doing project header", "key": "j" },
+    { "type": "assert", "assert": "not_contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "state/planning chord", "key": "s" },
+    { "type": "key", "label": "Toggle Today has no task here", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "key": "!" },
+    { "type": "key", "label": "Set Priority has no task here", "key": "1" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Set Due Date has no task here", "key": "@" },
+    { "type": "assert", "label": "the due picker never opens", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Set Snooze has no task here", "key": "z" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Toggle Pin has no task here", "key": "P" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Copy Title has no task here", "key": "y" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Edit Title has no task here", "key": "e" },
+    { "type": "assert", "label": "the title editor never opens", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Indent has no task here", "key": ">" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "assert", "label": "no picker or editor ever took the screen", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
+    { "type": "assert", "label": "every row survived the refusals", "assert": "contains", "value": "▾ [rich-project] (1)" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

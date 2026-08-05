@@ -16,7 +16,7 @@ import (
 // classified below by the question it actually answers:
 //
 //   - "availability" — the check admits a parked project on purpose. Archival is
-//     the whole rule, and adding a boundary condition here would be a bug.
+//     the whole rule, and adding a parked-tag condition here would be a bug.
 //   - "lifecycle" — the check is about the archived lifecycle itself: rendering
 //     the archived badge, gating archive/restore, protecting Unfiled.
 //
@@ -30,23 +30,19 @@ var archivePredicateAudit = map[string]string{
 	"internal/config/runtime.go:AvailableProjects":                               "availability: store-backed population admits every non-archived project",
 	"internal/config/runtime_state.go:AvailableProjects":                         "availability: parked projects stay reachable",
 	"internal/config/runtime_state.go:AvailableProject":                          "availability: single-project counterpart of AvailableProjects",
-	"internal/config/runtime_state.go:TaskWorkspaceProjects":                     "availability: archival is checked first, then the Active boundary narrows it",
+	"internal/config/runtime_state.go:TaskWorkspaceProjects":                     "availability: archival is checked first, then the parked tag narrows it",
 	"internal/config/runtime_state.go:ArchivedProjects":                          "lifecycle: the archived population itself",
 	"internal/tui/app_init.go:NewAppModel":                                       "lifecycle: a restored current project that was archived is dropped",
 	"internal/tui/app_projects.go:activeProjectByID":                             "availability: shell cache lookup admits parked projects",
 	"internal/tui/app_projects.go:ensureSystemUnfiledProject":                    "lifecycle: bootstrap repair un-archives protected Unfiled",
-	"internal/tui/context_mutations.go:activeSelectedProjectCount":               "availability: a new context may be founded on a parked member",
-	"internal/tui/handler_boundary.go:commitProjectBoundaryAssignment":           "lifecycle: an archived project's planning was already cleared when it was archived",
 	"internal/tui/handler_project.go:handleProjectMessages":                      "lifecycle: selecting an archived project asks to restore it",
+	"internal/tui/handler_project_bulk_tags.go:planProjectBulkTags":              "lifecycle: an archived project refuses a tag edit",
 	"internal/tui/list_surface_adapters.go:ListSourceFromProjects":               "lifecycle: archived rows are bucketed into their own category",
 	"internal/tui/notes_view.go:setOwnerProjects":                                "availability: parked owners keep their notes",
+	"internal/tui/operation_target.go:entityContextNamesArchivedTask":            "lifecycle: an archived owner refuses every task-changing operation",
 	"internal/tui/operation_value_provider.go:taskActionOperationApplicable":     "lifecycle: an archived owner admits read-only operations only",
 	"internal/tui/operation_value_provider.go:moveProjectCandidatesForSourceIDs": "availability: parked projects stay move destinations",
-	"internal/tui/project_boundary_manager.go:boundaryMemberIndex":               "lifecycle: member counts split archived from unarchived",
-	"internal/tui/project_boundary_manager.go:boundaryMemberSummary":             "lifecycle: renders the archived member count",
-	"internal/tui/project_boundary_manager.go:boundaryManagerPreview":            "lifecycle: renders the archived member count",
 	"internal/tui/project_discovery.go:projectPickerDisplayText":                 "lifecycle: archived rows render their lifecycle badge",
-	"internal/tui/project_editor.go:saveProject":                                 "lifecycle: only a live project can strand planning by being parked",
 	"internal/tui/project_operations.go:projectRequirementUnmet":                 "lifecycle: descriptors require an archived or a live project",
 	"internal/tui/project_selector.go:FilterText":                                "lifecycle: archived rows match the archived search term",
 	"internal/tui/project_selector.go:NewProjectSelectorModel":                   "availability: parked projects stay move destinations",
@@ -64,7 +60,7 @@ var archiveAuditPackages = []string{"internal/app", "internal/config", "internal
 // archiveAuditMigrationPrefixes name the migration-only decoders and dry runs.
 // They reason about retired schemas rather than about live availability, so
 // their archive checks are outside this classification by design.
-var archiveAuditMigrationPrefixes = []string{"legacy_v4", "v5_", "v6_", "pre_consolidation", "pre_simplification"}
+var archiveAuditMigrationPrefixes = []string{"legacy_v4", "v5_", "v6_", "v7_", "pre_consolidation", "pre_scope", "pre_simplification"}
 
 func TestRawArchivePredicatesAreClassified(t *testing.T) {
 	root := repositoryRootForInventory(t)

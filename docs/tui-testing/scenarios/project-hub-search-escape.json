@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "resize", "width": 100, "height": 35 },
-    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "key", "label": "open Select Project", "key": "p" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "contains", "value": "Select Project" },
     { "type": "assert", "assert": "contains", "value": "ACTIVE PROJECTS" },

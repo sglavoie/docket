@@ -79,7 +79,6 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		peek,
 		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
-		core(operationCoreScope, "Choose Scope", OperationCategoryScope, TargetCardinalityNone, OperationRiskReadOnly, "contexts"),
 		core(operationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
 		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
 		core(operationCoreSelectAll, "Select All Visible Tasks", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "select visible"),
@@ -130,8 +129,32 @@ func (m *AppModel) registerCoreInputOperations() error {
 	return nil
 }
 
+// coreInputOperationRequiresTask names the delegated core operations whose
+// handler branch does nothing at all without a task. Delegated bindings bypass
+// registry target resolution, so an unmet requirement reaches the user as a
+// silent no-op unless it is refused here.
+func coreInputOperationRequiresTask(id OperationID) bool {
+	switch id { //nolint:exhaustive // Only the task-consuming core operations are listed.
+	case operationCoreEdit,
+		operationCoreEditDescription,
+		operationCoreExternalEditor,
+		operationCoreBacklog,
+		operationCoreToday,
+		operationCoreNext:
+		return true
+	default:
+		return false
+	}
+}
+
 //nolint:gocyclo // The direct-key dispatcher keeps the final key grammar in one auditable switch.
 func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) OperationHandlerResult {
+	if coreInputOperationRequiresTask(invocation.Descriptor.ID) &&
+		!invocation.Context.Selection.Visual &&
+		!currentTaskIdentity(invocation.Context).Valid() {
+		return OperationHandlerResult{Err: operationTargetRejection(invocation.Descriptor)}
+	}
+
 	var message tea.Msg
 	var err error
 	//nolint:exhaustive // Only core input operations are registered with this handler.
@@ -223,8 +246,6 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.ActivateSearch())
 		}
-	case operationCoreScope:
-		message = ShowContextHubMsg{}
 	case operationCoreSelectProject:
 		message = ShowProjectHubMsg{}
 	case operationCoreMultiSelect:

@@ -91,16 +91,6 @@ func (f *FormFieldFactory) ResizeTextarea(ta *textarea.Model, availableWidth int
 	ta.SetWidth(width)
 }
 
-// ResizeTextInput adjusts a text input to fit available width.
-// Uses same calculation as ResizeTextarea for consistency.
-func (f *FormFieldFactory) ResizeTextInput(ti *textinput.Model, availableWidth int) {
-	cardWidth := min(availableWidth-4, 80)
-	lipglossWidth := cardWidth - 2
-	textWidth := lipglossWidth - 4
-	width := max(textWidth, 30)
-	ti.SetWidth(width)
-}
-
 // ResizeTextInputWithReserve adjusts a single-line input that shares a row with
 // fixed labels or indentation. Bubbles textinput renders prompt/cursor chrome
 // outside the configured width, so reserve a small extra margin before clamping.

@@ -27,7 +27,7 @@ const (
 // Navigation identity is owned exclusively by RouteID and its typed params.
 func presentationScope(view PresentationID) RouteScope {
 	switch view {
-	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewContextHub, ViewProjectHub:
+	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewProjectHub:
 		return ScopeApp
 	case ViewTaskComments, ViewTaskChecklist, ViewTaskAttachments:
 		return ScopeTask
@@ -44,7 +44,7 @@ func presentationAccentCategory(view PresentationID) AccentCategory {
 		return AccentCatCapture
 	case ViewCrossProjectOutliner:
 		return AccentCatTriage
-	case ViewGlobalNotes, ViewNotes, ViewContextHub, ViewProjectHub:
+	case ViewGlobalNotes, ViewNotes, ViewProjectHub:
 		return AccentCatSupport
 	default:
 		return AccentCatNone

@@ -23,18 +23,10 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 	}
 	deps := ManageHubDependencies{
 		Runtime:        runtime,
-		ConfigManager:  m.configManager,
-		AppService:     m.appService,
 		NoteService:    noteService,
 		HistoryLedger:  historyLedger,
 		Wire:           m.wireSecondaryCoordinators,
 		ResolveProject: m.activeProjectByID,
-		ActiveContext: func() ContextScope {
-			if m.crossOutliner == nil {
-				return AllContextScope()
-			}
-			return m.crossOutliner.activeContext
-		},
 		ActiveProjectFocus: func() string {
 			if m.crossOutliner == nil {
 				return ""

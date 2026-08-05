@@ -163,8 +163,8 @@ func (m *Manager) RecoverWorkspace() error {
 	// complete split-domain workspace is eligible; partial state remains the
 	// load path's explicit corruption error.
 	if state, _ := m.classifyDomainState(store); state == domainStateComplete {
-		if err := m.MigrateWorkspaceToV6(); err != nil {
-			return fmt.Errorf("failed to activate workspace schema v6: %w", err)
+		if err := m.MigrateWorkspaceToV7(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v7: %w", err)
 		}
 	}
 	return nil

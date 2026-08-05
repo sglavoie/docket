@@ -132,7 +132,7 @@ func (m *NotesViewModel) initSearchInput() {
 
 // setOwnerProjects rebuilds the owner catalog. Archival is the only reason a
 // supplied project is refused: a parked owner keeps its notes reachable, so the
-// boundary a project sits in is deliberately not consulted here.
+// parked tag is deliberately not consulted here.
 func (m *NotesViewModel) setOwnerProjects(projects []*models.Project) {
 	seen := make(map[string]bool, len(projects))
 	m.ownerProjects = make([]*models.Project, 0, len(projects))

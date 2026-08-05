@@ -15,9 +15,6 @@ import (
 //   - collapsedSections / expandedNodes are keyed by project and section, so a
 //     scope change cannot corrupt another project's folds.
 //   - computed section fold maps are not per-scope state.
-//
-// The active Context is likewise not snapshotted: applying a Context empties the
-// scope stack, so no frame can outlive the Context it was pushed under.
 type outlinerScopeFrame struct {
 	scopedProjectID  string
 	cursor           int
@@ -69,12 +66,11 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 
 // scopeProjects returns the projects the outliner should currently range over.
 // When scoped to a single project it returns just that project (if still
-// loaded); otherwise it returns the loaded projects admitted by the active
-// Context. Callers that build rows, counts, and work horizons route through this
-// so scope is honored in one place.
+// loaded); otherwise it returns every loaded project. Callers that build rows,
+// counts, and work horizons route through this so scope is honored in one place.
 func (m *OutlinerModel) scopeProjects() []*models.Project {
 	if m.scopedProjectID == "" {
-		return m.contextScopeProjects()
+		return m.loadedProjects
 	}
 	if p := m.scopedProject(); p != nil {
 		return []*models.Project{p}
@@ -113,23 +109,19 @@ func (m *OutlinerModel) scopeChainNames() []string {
 }
 
 // scopedProjectChromeLabel names a focused project for every piece of scope
-// chrome. A project outside the base task workspace carries its boundary, so the
-// anchor states plainly why tasks the user is looking at are absent from the
-// unscoped Outliner. Base-workspace projects keep the bare name.
+// chrome. A parked project says so, because the anchor is what states plainly
+// why tasks the user is looking at are absent from the unscoped Outliner.
+// Base-workspace projects keep the bare name.
 func (m *OutlinerModel) scopedProjectChromeLabel(projectID string) string {
 	name := m.projectDisplayNameByID(projectID)
 	if m.runtime == nil {
 		return name
 	}
-	boundaryID := m.runtime.Catalog().ProjectBoundaryID(projectID)
-	if boundaryID == "" || boundaryID == models.ActiveBoundaryID {
+	project := m.runtime.GetProject(projectID)
+	if project == nil || !models.ProjectTagsParked(project.Tags) {
 		return name
 	}
-	boundary, ok := m.runtime.Catalog().Boundary(boundaryID)
-	if !ok || boundary.Name == "" {
-		return name
-	}
-	return name + scopeBoundarySeparator + boundary.Name
+	return name + scopeChromeSeparator + models.ParkedProjectTag
 }
 
 // baseWorkspaceAdmitsProject reports whether the unscoped Outliner would show
@@ -183,7 +175,6 @@ func (m *OutlinerModel) dropParkedProjectFocus() {
 	}
 	m.loadedProjects = retained
 	m.pruneSelectionsOutsideLoadedProjects()
-	m.refreshContextScopeProjects()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.clampCursor()
@@ -268,11 +259,10 @@ func (m *OutlinerModel) clearProjectScope() bool {
 
 // resetToGlobalAll returns the cross-project Outliner to a clean, unscoped
 // global All root: it drops any project scope, clears every narrowing and ordering
-// axis (active Context, search, saved criteria, common filters,
-// common filters and manual sort), clears
+// axis (search, saved criteria, common filters and manual sort), clears
 // zoom/selection, activates All, and parks the cursor at the top. It is the state
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
-// leave the root silently narrowed by a stale context, filter, tag, or sort.
+// leave the root silently narrowed by a stale filter, tag, or sort.
 func (m *OutlinerModel) resetToGlobalAll() {
 	m.confirm.Cancel()
 	m.quickEdit.Exit()
@@ -280,7 +270,6 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.dropParkedProjectFocus()
-	m.clearContextScope()
 	m.zoomStack = nil
 	m.crossZoomStack = nil
 	m.collapsedSections = make(map[string]bool)

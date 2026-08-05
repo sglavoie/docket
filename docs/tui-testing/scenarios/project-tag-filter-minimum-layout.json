@@ -1,0 +1,42 @@
+{
+  "name": "project-tag-filter-minimum-layout",
+  "fixture": "parked",
+  "size": "80x24",
+  "actions": [
+    { "type": "assert", "label": "the base scope says how much the population is hiding", "assert": "contains", "value": "Active Projects · 1 parked" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the population chord announces itself above the footer", "key": "F" },
+    { "type": "assert", "assert": "contains", "value": "project filter" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open the project tag facet", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Filter Projects by Tag" },
+    { "type": "assert", "assert": "contains", "value": "parked" },
+    { "type": "assert", "assert": "contains", "value": "Untagged" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the tag actions sheet fits the same terminal", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Tag Actions" },
+    { "type": "assert", "assert": "contains", "value": "Park all members" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "show the parked population from the same chord", "key": "F" },
+    { "type": "key", "key": "p" },
+    { "type": "assert", "assert": "status_contains", "value": "Showing parked projects" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear every project filter", "key": "F" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Project filters cleared" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

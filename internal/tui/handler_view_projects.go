@@ -9,6 +9,9 @@ import (
 // handleProjectViewMessages handles project tree and outliner view transitions.
 func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ShowProjectHubMsg:
+		return true, m.activateManageHub(ManageParams{Module: ManageProjects})
+
 	case launchOutlinerMsg:
 		presentationCmd := m.prepareCrossProjectOutliner()
 		m.clearTransientNavigationState()

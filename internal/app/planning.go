@@ -364,6 +364,12 @@ func (s *Service) applyPlanningOrder(req PlanningReconcileRequest, undoAction st
 	return s.commitPlanningOnly(artifacts, nil, undoAction, "")
 }
 
+// planningTargetsForSnapshot enumerates every task the snapshot can see, which
+// is what makes a Complete reconcile request authoritative: any locator without
+// a target here is pruned. The snapshot population deliberately includes parked
+// projects, so a parked project's Today and Next entries survive reconciliation
+// and unparking restores its plan untouched. Parking is a read-time predicate
+// applied by RuntimeState.NextOrder, never a planning edit.
 func planningTargetsForSnapshot(snap Snapshot) []PlanningReconcileTarget {
 	if snap == nil {
 		return nil

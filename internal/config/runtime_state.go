@@ -153,8 +153,9 @@ func (rs *RuntimeState) Planning() *PlanningState {
 }
 
 // GetNext lets domain-native consumers read durable Next ordering without
-// accepting a Config facade.
-func (rs *RuntimeState) GetNext() []ProjectTaskLocator { return rs.Planning().GetNext() }
+// accepting a Config facade. It is an alias for NextOrder so no consumer can
+// reach an unfiltered read.
+func (rs *RuntimeState) GetNext() []ProjectTaskLocator { return rs.NextOrder() }
 
 // Machine returns the loaded machine-local domain.
 func (rs *RuntimeState) Machine() *MachineState {
@@ -301,13 +302,13 @@ func (rs *RuntimeState) commitThenRefresh(commit func() error) error {
 }
 
 // AvailableProjects returns every non-archived cataloged project regardless of
-// boundary, sorted with pinned first. It is the population every surface that
+// its tags, sorted with pinned first. It is the population every surface that
 // stays reachable for a parked project reads: Notes owners, capture and
 // %project resolution, task-move destinations, and project administration.
 //
 // Archival is the only thing it tests, and that is deliberate: a parked project
-// keeps every one of those affordances, so narrowing here would be the
-// pre-boundary ActiveProjects population under a new name.
+// keeps every one of those affordances, so narrowing here would collapse it back
+// into TaskWorkspaceProjects.
 func (rs *RuntimeState) AvailableProjects() []*models.Project {
 	var projects []*models.Project
 	for _, p := range rs.catalogProjects() {
@@ -319,18 +320,14 @@ func (rs *RuntimeState) AvailableProjects() []*models.Project {
 }
 
 // TaskWorkspaceProjects returns the base task workspace: the non-archived
-// projects that belong to the reserved Active boundary. It is strictly narrower
+// projects that do not carry the reserved parked tag. It is strictly narrower
 // than AvailableProjects, because a parked project keeps its tasks on disk and
 // its Notes/capture/move availability while contributing nothing to ordinary
 // task projections.
 func (rs *RuntimeState) TaskWorkspaceProjects() []*models.Project {
-	catalog := rs.Catalog()
 	var projects []*models.Project
 	for _, p := range rs.catalogProjects() {
-		if p.Archived {
-			continue
-		}
-		if catalog.ProjectBoundaryID(p.ID) != models.ActiveBoundaryID {
+		if p.Archived || models.ProjectTagsParked(p.Tags) {
 			continue
 		}
 		projects = append(projects, p)
@@ -353,7 +350,7 @@ func (rs *RuntimeState) AvailableProject(idOrSlug string) *models.Project {
 // nil when it is archived, parked, or absent.
 func (rs *RuntimeState) TaskWorkspaceProject(idOrSlug string) *models.Project {
 	project := rs.AvailableProject(idOrSlug)
-	if project == nil || rs.Catalog().ProjectBoundaryID(project.ID) != models.ActiveBoundaryID {
+	if project == nil || models.ProjectTagsParked(project.Tags) {
 		return nil
 	}
 	return project
@@ -399,9 +396,31 @@ func (rs *RuntimeState) catalogProjects() []*models.Project {
 	return projects
 }
 
-// NextOrder returns the persisted workspace-wide Next membership and order.
+// NextOrder returns the persisted workspace-wide Next membership and order
+// with every entry owned by a parked project excluded. It is the single
+// filtered planning accessor: parking is a read-time predicate rather than a
+// destructive edit, so planning.json keeps a parked project's locators and
+// unparking restores its plan untouched. Storage-facing callers that must see
+// the persisted set whole (archive/restore capture, reconciliation) read
+// Planning() directly.
 func (rs *RuntimeState) NextOrder() []ProjectTaskLocator {
-	return rs.Planning().GetNext()
+	next := rs.Planning().GetNext()
+	parked := make(map[string]bool)
+	for _, project := range rs.Catalog().Projects {
+		if models.ProjectTagsParked(project.Tags) {
+			parked[project.ID] = true
+		}
+	}
+	if len(parked) == 0 {
+		return next
+	}
+	visible := make([]ProjectTaskLocator, 0, len(next))
+	for _, item := range next {
+		if !parked[item.ProjectID] {
+			visible = append(visible, item)
+		}
+	}
+	return visible
 }
 
 // SystemUnfiledProject returns the catalog-owned visible Unfiled project.
@@ -437,11 +456,6 @@ func (rs *RuntimeState) ProjectPath(slug string) string {
 	return filepath.Join(rs.dataDir, "projects", slug)
 }
 
-// DefaultContext is the built-in context for newly created projects.
-func (rs *RuntimeState) DefaultContext() string {
-	return "personal"
-}
-
 // EnsureDataDir creates the workspace data directory, its internal directory,
 // and the projects directory, mirroring (*Config).EnsureDataDir but rooted at
 // the snapshot's data directory.
@@ -455,20 +469,22 @@ func (rs *RuntimeState) EnsureDataDir() error {
 	return os.MkdirAll(filepath.Join(rs.dataDir, "projects"), DirPermissions)
 }
 
-// AllContexts returns the sorted, unique context values across every cataloged
-// project. It reads the in-memory catalog domain without rebuilding the legacy
-// Config facade.
-func (rs *RuntimeState) AllContexts() []string {
-	contextSet := make(map[string]bool)
+// AllProjectTags returns the sorted, unique project-tag vocabulary across every
+// cataloged project. Tags are emergent: a tag exists only because a project
+// carries it, so this derived set is the whole namespace and an empty result
+// means no project is tagged. It reads the in-memory catalog domain without
+// rebuilding the legacy Config facade.
+func (rs *RuntimeState) AllProjectTags() []string {
+	tagSet := make(map[string]bool)
 	for _, p := range rs.Catalog().Projects {
-		if p.Context != "" {
-			contextSet[p.Context] = true
+		for _, tag := range p.Tags {
+			tagSet[tag] = true
 		}
 	}
-	contexts := make([]string, 0, len(contextSet))
-	for ctx := range contextSet {
-		contexts = append(contexts, ctx)
+	tags := make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		tags = append(tags, tag)
 	}
-	sort.Strings(contexts)
-	return contexts
+	sort.Strings(tags)
+	return tags
 }

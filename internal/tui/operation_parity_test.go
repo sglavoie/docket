@@ -63,8 +63,6 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 var delegatedDestructiveConfirmations = map[OperationID]string{
 	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
-	operationScopeDeleteContext:  "requestDeleteSelected shows the Scope Hub confirm",
-	operationBoundaryDelete:      "requestBoundaryDelete shows the Boundary Manager confirm",
 }
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
@@ -192,7 +190,15 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 				t.Errorf("key path %v does not resolve to an operation in the Outliner context", path)
 				continue
 			}
-			if resolved.OperationID != binding.OperationID || descriptor.ID != binding.OperationID {
+			if resolved.OperationID != descriptor.ID {
+				t.Errorf("key path %v resolved binding %s but descriptor %s", path, resolved.OperationID, descriptor.ID)
+				continue
+			}
+			// A shared key resolves to whichever sibling the cursor makes
+			// applicable, so landing on a co-owner of the same path is the
+			// grammar working rather than a collision.
+			sharedSibling := binding.SharedKey && sharesInputPath(strategy, path, descriptor.ID)
+			if descriptor.ID != binding.OperationID && !sharedSibling {
 				t.Errorf("key path %v resolved to %s, want %s", path, descriptor.ID, binding.OperationID)
 			}
 			// A chord's own prefixes must wait for the next key rather than run.
@@ -223,6 +229,22 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 			t.Errorf("help row %d shows key %q, want the strategy display key %q", index, item.Key, shortcut)
 		}
 	}
+}
+
+// sharesInputPath reports whether the operation co-owns the key path as a
+// declared shared binding rather than having stolen it.
+func sharesInputPath(strategy InputStrategy, path []string, id OperationID) bool {
+	for _, binding := range strategy.Bindings {
+		if binding.OperationID != id || !binding.SharedKey {
+			continue
+		}
+		for _, candidate := range binding.paths() {
+			if slices.Equal(candidate, path) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {

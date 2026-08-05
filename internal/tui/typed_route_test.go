@@ -63,10 +63,10 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 	}
 
 	manage := mustRoute(t, SecondaryTool, ManageParams{
-		Module:     ManageContexts,
+		Module:     ManageProjects,
 		NotesScope: ProjectNotesScope("p1"),
 	}).Params().(ManageParams)
-	if manage != (ManageParams{Module: ManageContexts}) {
+	if manage != (ManageParams{Module: ManageProjects}) {
 		t.Errorf("irrelevant manage params not canonical: %+v", manage)
 	}
 	allNotes := mustRoute(t, SecondaryTool, ManageParams{

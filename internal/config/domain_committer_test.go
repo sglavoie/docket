@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // seedWorkspace writes the complete lean domain set so later domain-scoped
@@ -25,7 +23,7 @@ func TestManager_CommitCatalog(t *testing.T) {
 	domains := NewDomains()
 	manager, configPath := seedWorkspace(t, domains)
 	domains.Catalog.Projects = append(domains.Catalog.Projects, CatalogProject{
-		ID: "proj-1", Slug: "proj", Name: "Proj", BoundaryID: models.ActiveBoundaryID,
+		ID: "proj-1", Slug: "proj", Name: "Proj",
 	})
 	if err := manager.CommitCatalog(domains.Catalog); err != nil {
 		t.Fatalf("CommitCatalog: %v", err)

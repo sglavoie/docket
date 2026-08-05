@@ -29,6 +29,24 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 	return nil, nil
 }
 
+// cursorProjectHeaderProject returns the project a project sub-header cursor
+// names. Naming it is what lets a project operation resolve from a header row;
+// task operations still find no task there and refuse with the shared sentence.
+// A section header names no project, however it groups its rows.
+func (m *OutlinerModel) cursorProjectHeaderProject() *models.Project {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return nil
+	}
+	row := m.rows[m.cursor]
+	if !row.IsProjectHeader || row.ProjectID == "" {
+		return nil
+	}
+	if m.project != nil && m.project.ID == row.ProjectID {
+		return m.project
+	}
+	return m.crossResolveProject(row.ProjectID)
+}
+
 func (m *OutlinerModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }
 
 func (m *OutlinerModel) taskIdentityForRow(row outlinerRow) TaskIdentity {

@@ -21,7 +21,7 @@ type TitleParams struct {
 	Width int
 }
 
-// renderProjectTitle renders the project title line with context, notes indicator,
+// renderProjectTitle renders the project title line with the notes indicator,
 // filter badges, and archived status. Shared across all project-level views.
 // When params is non-nil, filter/sort info is appended inline, truncated to fit
 // within params.Width.
@@ -29,9 +29,6 @@ func renderProjectTitle(project *models.Project, params *TitleParams) string {
 	var b strings.Builder
 	title := fmt.Sprintf("%s - Tasks", project.Name)
 	b.WriteString(TitleStyle.Render(title))
-	if project.Context != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", project.Context)))
-	}
 	if storage.NotesExist(project) {
 		b.WriteString(" ✎ Notes")
 	}

@@ -15,9 +15,8 @@ The repository is divided by responsibility:
   commit fails.
 - `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
-- `internal/config` owns the lean catalog and planning domains, portable regular
-  contexts, machine-local theme, workspace selection, and the v4→v5→v6
-  migration chain.
+- `internal/config` owns the lean catalog and planning domains, project tags,
+  machine-local theme, workspace selection, and the v4→v5→v6→v7 migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
 - `cmd` owns only the TUI launcher and maintenance CLI adapters.
@@ -82,8 +81,8 @@ and undo ledger as task Markdown.
 ## TUI architecture
 
 Every run creates one AppModel-owned Outliner and starts in Active Projects, All.
-Active Projects is the base task workspace: the projects the catalog places in
-the protected Active boundary. Search, filters, selection, folds, cursor, and
+Active Projects is the base task workspace: the non-archived projects the
+catalog does not tag parked. Search, filters, selection, folds, cursor, and
 scope are session state and are not restored. Typed navigation permits that one
 root, at most one subordinate tool, and typed overlays. Covered Outliner state
 receives no key or reload dispatch.
@@ -121,6 +120,13 @@ Startup validation rejects an operation that appears in both the direct grammar
 and the task menu. Destructive descriptors require confirmation before any
 transaction begins.
 
+A chord prefix that its second key abandons is explained rather than swallowed.
+`ChordGroupLabelForPrefix` names the longest declared group the path passed
+through, and the miss sets a warning status such as `sq is not a state /
+planning action`. An unbound root key stays silent because it never showed a
+which-key row, and a key the cursor's entity turned off keeps its own target
+rejection sentence instead.
+
 ### Search, filters, and Peek
 
 Slash search temporarily replaces mode rows with every scoped nonterminal task,
@@ -132,6 +138,18 @@ Ordinary filter facets compose as priority threshold, OR states, AND tags, due
 bucket, completion age, and snoozed-only and remain session-only. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and never chooses
 Done or Canceled implicitly; `doctor` reports malformed lifecycle timestamps.
+
+Population facets are a separate chord because they answer a different question.
+The lowercase `f` facets refine the rows a projection already holds and rebuild
+in place; the uppercase `F` facets — `Ft` project tags, `Fp` parked, `Fa`
+archived, `Fx` clear — decide which projects the snapshot contains at all, so
+each one reloads. `ProjectFilterState` carries the tag restriction, an
+`Untagged` entry for the legal empty tag set, and the archived switch, and
+`filteredProjectPopulation` applies it between the runtime population and the
+scope. `Fp` and the `parked` row inside the `Ft` picker toggle the same map
+entry, so the two routes cannot disagree about which population is loaded. The
+`Ft` picker sources the whole cataloged vocabulary rather than the loaded
+projects, otherwise a facet could never be widened back out from inside it.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
 operational scan signals directly: workflow state, conditional high priority,
@@ -156,59 +174,105 @@ transaction. Structural and relation operations, edits, inspection, and
 clipboard actions reject visual selection rather than falling back to the
 cursor. Only a committed Delete clears selection.
 
-Scope Hub resolves only Active Projects and exclusive regular context labels from
-the portable catalog. Applying scope clears navigation and selection but
-preserves the active mode, search, and filters. Select Project opens separately
-with search focused and includes active and archived projects grouped by
-boundary. Project administration supports create, edit, pin, set boundary,
-archive, restore, and project Notes, plus `f` to filter the list by boundary and
-`B` to open Boundary Manager. The catalog-owned Unfiled ID is the protection
-authority.
+The Outliner opens on Active Projects. Applying scope clears navigation and
+selection but preserves the active mode, search, and filters. `p` opens Select
+Project with search focused, over active and archived projects, each row
+carrying its task count and its tag chips. Project
+administration supports create, edit, pin, archive, restore, and project Notes.
+The catalog-owned Unfiled ID is the protection authority.
 
-### Project boundaries
+Select Project is a `ListSelectionMulti` surface: `v` toggles the row under the
+cursor, `a`/`A` select or clear every match, and `Space` over a non-empty
+selection opens a bulk sheet closed over Add tag, Remove tag, Park, and Unpark.
+The four descriptors resolve `OperationTargetSelectedEntities`, so the sheet
+freezes the project identities into the command context rather than into a host
+value, leaving the executor's central value-provider step free to open the tag
+prompt. `ListSurfaceModel.ActionState()` intersects operation IDs across the
+selection, so an archived row in it offers no bulk action at all.
 
-Four orthogonal axes describe where work sits, and none of them substitutes for
+### Project tags
+
+Three orthogonal axes describe where work sits, and none of them substitutes for
 another:
 
 | Axis | Belongs to | Meaning |
 | --- | --- | --- |
 | Workflow state | a task | One of the eight lifecycle states. |
-| Regular context | a project | An exclusive project-label scope used by Scope Hub. |
-| Boundary | a project | Whether the project is in the base task workspace. |
+| Tags | a project | Free-form labels, one of which decides base task workspace membership. |
 | Archive lifecycle | a project | Whether the project is retired from administration. |
 
-Every cataloged project holds exactly one `BoundaryID`. The reserved `active`
-boundary cannot be renamed or deleted and is the only boundary the protected
-Unfiled project may occupy. Custom boundary names are trimmed, one to fifty
-runes, and case-insensitively unique, and every custom boundary ID is a
-canonical UUID. Load validation applies the same identity and case-folding rules
-the create and rename APIs enforce, so a persisted boundary those APIs could not
-have minted fails closed instead of loading. A non-archived project outside
-`active` is *parked*.
+A cataloged project carries a set of tags. `models.NormalizeProjectTags`
+validates each entry with the ordinary tag rules, then lowercases, dedupes, and
+sorts the whole set, which keeps the persisted catalog bytes deterministic and
+makes the namespace case-insensitive. Load validation applies the same
+normalization, so a persisted tag set the write APIs could not have minted fails
+closed instead of loading. The protected Unfiled project may never carry the
+reserved `parked` tag.
 
-Boundary data is additive. `WorkspaceCatalog.NormalizeBoundaries` restores a
-missing Active definition and gives every project with no boundary the Active
-ID at load-validation time, without bumping the schema version and without
-writing; a legacy workspace stays byte-identical on disk until some later
-mutation commits. A boundary ID that is present but unknown is left alone so
-validation fails closed instead of silently reassigning to Active.
+`models.ParkedProjectTag` (`parked`) is the sole behavioral project tag: a
+non-archived project carrying it is *parked*. It is reserved in the project-tag
+namespace only, so an ordinary task may still carry a `parked` tag with no
+behavioral meaning. Every other project tag is descriptive.
+
+`models.BehavioralProjectTags` maps each behavioral tag to its name, its
+one-sentence summary, and the semantic badge role it renders with. It is the
+single source every explaining surface reads — the picker explainer, the badge,
+and the project editor's Tags field — and it is metadata only: adding an entry
+explains a tag, it does not make one decide anything.
+
+`#` is bound to two descriptors, `tui.task.set-tags` and
+`tui.project.set-tags`, marked `SharedKey` on the input strategy. A descriptor
+carries exactly one `TargetSource` and one `OperationCategory`, so a single
+polymorphic operation would have to branch on runtime context inside
+`defaultOperationTargetSource`. Instead the trie node holds both bindings and
+resolves the first *applicable* one in declaration order, which lets the cursor
+decide the meaning while `?` help and the footer keep two honest labels. A key
+declared twice without `SharedKey` is still a hard registration error.
+
+Setting the reserved tag is the one project tag edit that confirms first. The
+prompt names the task count leaving the base workspace, the committed status
+names both recovery routes, `OutlinerModel.crossReloadHeaderProjectID` lands the
+cursor on a surviving project header instead of letting `clampCursor` choose,
+and the base scope anchor reads `Active Projects · N parked` for as long as
+anything is parked. Descriptive tags apply with no prompt.
+
+A bulk tag edit is resolved before anything commits: every named project is
+looked up, its replacement tag set computed, and no-op projects dropped, so the
+prompt can name the real impact and a request that would write nothing says so
+instead. The resolved effect decides the prompt rather than the chosen action,
+which makes typing `parked` into Add tag confirm exactly like Park does, and the
+whole edit lands as one catalog transaction and therefore one undo entry. A bulk
+park reuses the same cursor anchor as the single-project path, passing every
+departing project so the anchor skips them all; `anchorOutlinerCursorAfterProjectPark`
+self-guards on the active Outliner, which is what leaves Project Hub parking
+alone. With no surviving header the anchor deliberately names a departing
+project, which stops resolving after the reload and settles the cursor at the
+top of the projection.
+
+The `Ft` picker doubles as the tag vocabulary editor: `v` toggles a facet and
+`Space` on a tag row opens a sheet closed over Rename everywhere, Remove
+everywhere, Park all members, and Unpark all members. The sheet freezes the
+tag's member projects into the command context and emits an ordinary
+`ProjectBulkTagsMsg`, so it inherits the park confirmation, the single catalog
+transaction, and the undo entry. The edited tag lives on the AppModel rather
+than in the sheet's frozen value because a nested value step overwrites that
+value on its way back to the executor. Remove everywhere routes through a value
+provider that returns an immediate empty value when no member would be left
+without any tag, and opens a destination picker only when one would.
 
 The two project populations stay separate by name.
-`Runtime.TaskWorkspaceProjects()` returns non-archived projects inside Active
-and is the only population the base Outliner reads.
+`Runtime.TaskWorkspaceProjects()` returns non-archived projects that are not
+parked and is the only population the base Outliner reads.
 `Runtime.AvailableProjects()` returns every non-archived project, so a parked
 project remains reachable for Notes, capture `%project`, Move Project
 destinations, Select Project, and one explicit project focus. Focusing a parked
-project anchors the Outliner with the boundary appended to the project name, and
-leaving that focus returns to the base workspace with no parked rows behind.
+project anchors the Outliner with the `parked` tag appended to the project name,
+and leaving that focus returns to the base workspace with no parked rows behind.
 
-Moving a project out of Active is the only transition that can strand planning
-memberships, so it clears that project's Today and Next references in the same
-transaction; every other assignment is a catalog-only change. Archiving
-preserves boundary membership, restoring returns the project to the boundary it
-was archived from, and Boundary Manager counts archived and unarchived members
-separately. Deleting a populated boundary asks for a destination first and moves
-its members there as one undoable transaction.
+Parking a project is a catalog-only change. Its Today and Next references stay
+durable and are filtered at read time instead of being cleared, so unparking
+restores the plan untouched. Archiving preserves a project's tags and restoring
+returns them unchanged.
 
 The workspace-wide Notes manager carries an explicit `NoteLocation` plus
 filename identity with every row and always opens in All Notes. One workspace
@@ -238,7 +302,7 @@ The portable workspace rooted at `<data>` is:
 ```text
 <data>/
 ├── .tt/
-│   ├── workspace.json       # lean catalog, contexts, boundaries, Unfiled ID
+│   ├── workspace.json       # lean catalog, project tags, Unfiled ID
 │   ├── planning.json        # Today and Next order only
 │   ├── global-notes/        # minimal Markdown notes
 │   ├── transactions/        # prepared/recovering commit journals
@@ -260,8 +324,8 @@ staging files, or destination directories are created.
 Portable configuration has only two synced domains:
 
 - `workspace.json`: workspace identity, lean active/archived project catalog,
-  automatic color slots, exclusive regular contexts, project boundaries with
-  each project's boundary ID, and the protected Unfiled ID.
+  automatic color slots, each project's normalized tag set, and the protected
+  Unfiled ID.
 - `planning.json`: project-qualified Today and Next ordering.
 
 Machine state contains only the dark/light theme selection:
@@ -314,9 +378,10 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 6 proceeds directly. A supported schema-4 split-domain workspace first
-crosses the schema-5 boundary; a supported schema-5 workspace then enters the
-schema-6 consolidation path:
+Schema 7 proceeds directly. A supported schema-4 split-domain workspace first
+crosses the schema-5 boundary, a supported schema-5 workspace then enters the
+schema-6 consolidation path, and a schema-6 workspace finishes on the schema-7
+scope-folding path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -338,20 +403,32 @@ schema-6 consolidation path:
    migration inspection.
 6. Validate the complete schema-6 graph before changing bytes. This conversion
    canonicalizes the protected project as Unfiled, maps priorities to High,
-   Medium, and Low, removes custom contexts and retired relationships, converts
+   Medium, and Low, removes retired settings and relationships, converts
    decision text to comments, repairs Today/Next references, preserves notes and
    attachment bytes, and plans the incompatible undo ledger for removal.
 7. Publish a second immutable `pre-consolidation-v6-<UTC>.tar.gz` plus matching
    audit, revalidate the exact locked inventory, and atomically activate schema
    6 across portable and machine-state roots.
+8. Validate the complete schema-7 catalog before changing bytes. This conversion
+   folds the two retired per-project grouping fields and the retired workspace
+   scope table into ordinary project tags, discards the scope definitions, and
+   assigns the reserved `parked` tag only where a retired name resolved to it.
+   Names a tag cannot carry are sanitized or dropped, collisions gain a
+   deterministic numeric suffix, and an unparked project whose retired name reads
+   `parked` is renamed rather than silently parked. An undefined scope reference
+   stops the conversion.
+9. Publish a third immutable `pre-scope-v7-<UTC>.tar.gz` plus matching audit,
+   revalidate the exact locked inventory, atomically activate schema 7 in the
+   portable catalog, and delete the stale schema-6 catalog sidecar the loader
+   would otherwise recover from.
 
-Each boundary is idempotent: repeated schema-6 startup neither reconverts data
+Each boundary is idempotent: repeated schema-7 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a
 clean migration retry requires restoring the complete matching snapshot into a
-separate workspace with a compatible build; the schema-6 activation tests also
-exercise this restore-and-reactivate path.
+separate workspace with a compatible build; the schema-6 and schema-7 activation
+tests also exercise this restore-and-reactivate path.
 
 An older aggregate `.tt.json` without the supported split-domain workspace is
 not implicitly imported. Startup reports that unsupported legacy source before

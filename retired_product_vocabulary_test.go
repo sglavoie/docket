@@ -28,12 +28,31 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 		"StateReview":              true,
 		"TargetStateForLegacy":     true,
 		"RepairSystemInboxProject": true,
+		"ProjectBoundary":          true,
+		"BoundaryID":               true,
+		"ActiveBoundaryID":         true,
+		"ActiveBoundaryName":       true,
+		"NormalizeBoundaries":      true,
+		"AssignProjectBoundary":    true,
+		"ProjectBoundaryID":        true,
+		"AllContexts":              true,
+		"DefaultContext":           true,
+		"RegularContext":           true,
+		"RegularContextScope":      true,
+		"AllContextScope":          true,
+		"ContextScope":             true,
+		"ContextScopeSummaries":    true,
+		"ContextHubModel":          true,
+		"ShowContextHubMsg":        true,
 	}
 	migrationIdentifierAllowlist := map[string]map[string]bool{
 		"SystemInboxProjectID": {
 			"internal/config/legacy_v4_domains.go":         true,
 			"internal/config/legacy_v4_domains_convert.go": true,
 			"internal/config/v6_conversion_dry_run.go":     true,
+		},
+		"BoundaryID": {
+			"internal/config/v7_conversion_dry_run.go": true,
 		},
 	}
 	rejectedInputAllowlist := map[string]bool{

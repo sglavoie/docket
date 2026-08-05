@@ -41,6 +41,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 	tests := []struct {
 		name         string
 		source       OperationTargetSource
+		category     OperationCategory
 		cardinality  TargetCardinality
 		wantTasks    []TaskIdentity
 		wantProjects []string
@@ -48,6 +49,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 	}{
 		{
 			name: "current task", source: OperationTargetCurrentTask,
+			category:     OperationCategoryTask,
 			cardinality:  TargetCardinalityOne,
 			wantTasks:    []TaskIdentity{{ProjectID: "project-b", TaskID: "task-current"}},
 			wantProjects: []string{"project-b"},
@@ -55,6 +57,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 		},
 		{
 			name: "selected tasks", source: OperationTargetSelectedTasks,
+			category:    OperationCategoryTask,
 			cardinality: TargetCardinalityOneOrMore,
 			wantTasks: []TaskIdentity{
 				{ProjectID: "project-a", TaskID: "task-1"},
@@ -65,18 +68,21 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 		},
 		{
 			name: "current project", source: OperationTargetCurrentProject,
+			category:     OperationCategoryProject,
 			cardinality:  TargetCardinalityOne,
 			wantProjects: []string{"project-b"},
 			wantCount:    1,
 		},
 		{
 			name: "scoped project set", source: OperationTargetScopedProjects,
+			category:     OperationCategoryProject,
 			cardinality:  TargetCardinalityOneOrMore,
 			wantProjects: []string{"project-a", "project-b"},
 			wantCount:    2,
 		},
 		{
 			name: "global", source: OperationTargetGlobal,
+			category:    OperationCategorySystem,
 			cardinality: TargetCardinalityNone,
 			wantCount:   0,
 		},
@@ -87,7 +93,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 			descriptor := OperationDescriptor{
 				ID:                OperationID("test." + test.name),
 				Label:             test.name,
-				Category:          OperationCategoryTask,
+				Category:          test.category,
 				TargetSource:      test.source,
 				TargetCardinality: test.cardinality,
 				Risk:              OperationRiskReadOnly,

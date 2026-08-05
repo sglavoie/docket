@@ -1,0 +1,54 @@
+{
+  "name": "project-park-confirm-and-recover",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "assert", "label": "nothing is parked yet, so the base scope needs no anchor", "assert": "not_contains", "value": "parked" },
+    { "type": "key", "label": "step onto the Client Alpha project header", "key": "j" },
+
+    { "type": "key", "label": "open the project tag picker", "key": "#" },
+    { "type": "key", "label": "select the reserved parked tag", "key": "space" },
+    { "type": "key", "label": "apply the set", "key": "enter" },
+
+    { "type": "assert", "label": "parking names its impact before it happens", "assert": "contains", "value": "Park Client Alpha? Its 1 task leaves Active" },
+    { "type": "assert", "assert": "contains", "value": "y confirm · n/Esc cancel" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel leaves the project untouched", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "not_contains", "value": "Park Client Alpha?" },
+
+    { "type": "key", "key": "#" },
+    { "type": "key", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "confirm the park", "key": "y" },
+
+    { "type": "assert", "label": "the rows leave the task workspace", "assert": "not_contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "the status carries both recovery routes", "assert": "status_contains", "value": "Parked Client Alpha · 1 task hidden · Fp to show · u to undo" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the filtered population says how much it is hiding", "assert": "contains", "value": "[Active Projects · 1 parked]" },
+    { "type": "assert", "label": "the surviving projects are untouched", "assert": "contains", "value": "[client-beta] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the cursor landed deliberately on the successor header, not an arbitrary row", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Project Tags: Client Beta" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "label": "the parked scope anchor survives a narrow terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · 1 parked" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "recover with the undo route the status named", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Park Project" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the project and its task come back", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "the scope anchor retires with the last parked project", "assert": "not_contains", "value": "Active Projects · 1 parked" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

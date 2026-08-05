@@ -53,6 +53,12 @@ type OutlinerModel struct {
 
 	filter FilterState // Unified common facet state.
 
+	// projectFilter is the population facet the F chord owns. It decides which
+	// projects load at all, so it lives beside the row filter rather than inside
+	// it: clearing one must not clear the other, and a change here needs a reload
+	// rather than a rebuild.
+	projectFilter ProjectFilterState
+
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool       // Section collapse state for All mode
 	// sectionToggleRestore preserves a task focus across one S-driven
@@ -65,7 +71,7 @@ type OutlinerModel struct {
 
 	// searchProjection preserves the ordinary Outliner projection while slash
 	// search temporarily replaces it with every matching nonterminal task in
-	// the active project/context scope.
+	// the active project scope.
 	searchProjection *outlinerSearchSnapshot
 
 	undo UndoContext // Action label and context for next undo snapshot
@@ -80,15 +86,6 @@ type OutlinerModel struct {
 	// time rebuildRows produces a non-empty row list. Cleared after first use.
 	OpenAtTask *models.Task
 
-	// activeContext is the session-only Context scope narrowing the global
-	// Outliner's project set. It is scope, not a filter: F x leaves it alone and
-	// only the global reset returns it to All. Never persisted.
-	activeContext ContextScope
-
-	// contextScopeProjectIDs caches activeContext resolved against the catalog.
-	// Nil under the All scope, which admits every project.
-	contextScopeProjectIDs map[string]bool
-
 	// Cross-project mode fields (used when m.project == nil)
 	loadedProjects        []*models.Project // Successfully loaded projects
 	crossSnapshotReady    bool              // True after the first cross-project snapshot has been accepted
@@ -100,6 +97,11 @@ type OutlinerModel struct {
 	crossReloadProjectID  string            // Project owning the cursor task captured before an async reload
 	crossReloadTaskID     string            // Cursor task captured before an async reload; restored after rows rebuild
 	crossReloadFromTop    bool              // One-shot scope-change guard that suppresses stale cursor restoration
+
+	// crossReloadHeaderProjectID lands the cursor on one project sub-header after
+	// the next reload. Parking a project deletes every row the cursor was on, and
+	// an arbitrary clamp there reads as a crash rather than as a hidden project.
+	crossReloadHeaderProjectID string
 
 	// Memoization guard for crossProjectRebuildRows
 	crossLastRowsFingerprint string
@@ -179,6 +181,7 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		expandedNodes:     make(map[TaskIdentity]bool),
 		collapsedSections: make(map[string]bool),
 		filter:            NewFilterState(),
+		projectFilter:     newProjectFilterState(),
 		sort:              NewSortState(),
 		treeSort:          NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},

@@ -30,14 +30,19 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	}
 
 	task, project := m.getCurrentCursorTaskAndProject()
-	if task != nil && project != nil {
+	header := m.cursorProjectHeaderProject()
+	switch {
+	case task != nil && project != nil:
 		ctx.Entity = EntityContext{
 			ProjectID: project.ID,
 			TaskID:    task.ID,
 			State:     string(task.State()),
 			Archived:  project.Archived,
 		}
-	} else if m.activeOutliner() == nil && m.currentProject != nil {
+	case header != nil:
+		ctx.Entity.ProjectID = header.ID
+		ctx.Entity.Archived = header.Archived
+	case m.activeOutliner() == nil && m.currentProject != nil:
 		ctx.Entity.ProjectID = m.currentProject.ID
 		ctx.Entity.Archived = m.currentProject.Archived
 	}
@@ -114,6 +119,9 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 			State:     string(task.State()),
 			Archived:  project.Archived,
 		}
+	} else if header := m.cursorProjectHeaderProject(); header != nil {
+		ctx.Entity.ProjectID = header.ID
+		ctx.Entity.Archived = header.Archived
 	} else if m.project != nil {
 		ctx.Entity.ProjectID = m.project.ID
 		ctx.Entity.Archived = m.project.Archived

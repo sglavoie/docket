@@ -29,7 +29,9 @@ func registeredSimplifiedOperationRegistry(t *testing.T) *OperationRegistry {
 // descriptors the simplified strategy binds directly, for tests that assemble a
 // registry without a fully initialized AppModel.
 func simplifiedTaskActionDescriptors() []OperationDescriptor {
-	return append((&AppModel{}).taskActionOperationDescriptors(), filterOperationDescriptors()...)
+	descriptors := append((&AppModel{}).taskActionOperationDescriptors(), filterOperationDescriptors()...)
+	descriptors = append(descriptors, projectFilterOperationDescriptors()...)
+	return append(descriptors, projectOperationDescriptors()...)
 }
 
 func simplifiedOperationContext() CommandContext {
@@ -47,6 +49,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 
 	ctx := simplifiedOperationContext()
 	seen := make(map[string]OperationID)
+	sharable := make(map[string]bool)
 	pathKeys := make(map[string]bool)
 	documented := make(map[OperationID]bool)
 	for _, binding := range strategy.Bindings {
@@ -64,10 +67,14 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 			if !isDirectInputKey(key) {
 				t.Errorf("%s key %q is not one direct event", binding.OperationID, key)
 			}
-			if owner, exists := seen[key]; exists {
+			// A repeated key is a grammar defect unless every binding on it opted
+			// into sharing, which is what keeps an accidental duplicate loud.
+			shared := binding.SharedKey && sharable[key]
+			if owner, exists := seen[key]; exists && !shared {
 				t.Errorf("key %q is shared by %s and %s", key, owner, binding.OperationID)
 			}
 			seen[key] = binding.OperationID
+			sharable[key] = binding.SharedKey
 		}
 		for _, path := range binding.paths() {
 			for _, key := range path {
@@ -380,7 +387,7 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	if _, _, resolution := registry.InputBindingForSequence(
 		"chords",
 		[]string{"p"},
-		PresentationCommandContext(ViewContextHub),
+		PresentationCommandContext(ViewProjectHub),
 	); resolution != ChordNoMatch {
 		t.Error("an inapplicable chord subtree still accepted its prefix")
 	}
@@ -647,14 +654,17 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	if err := app.registerFilterOperations(); err != nil {
 		t.Fatalf("registerFilterOperations: %v", err)
 	}
+	if err := app.registerProjectOperations(); err != nil {
+		t.Fatalf("registerProjectOperations: %v", err)
+	}
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("RegisterInputStrategy: %v", err)
 	}
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
 	for _, retired := range []string{
-		"F", "q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
-		":", "R", "p", "ctrl+esc", "m", "b", "d", "n", "t", ",",
+		"q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
+		":", "R", "ctrl+esc", "m", "b", "d", "n", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
@@ -681,8 +691,8 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 		keys[item.Key] = true
 	}
 	for _, retired := range []string{
-		"F", "q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
-		":", "R", "p", "Ctrl+Esc", "m",
+		"q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
+		":", "R", "Ctrl+Esc", "m",
 	} {
 		if keys[retired] {
 			t.Errorf("simplified help retains retired shortcut alias %q", retired)
@@ -729,7 +739,7 @@ func TestRemovedFinderKeyDoesNotEscapeChildRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	app.pushView(ViewContextHub)
+	app.pushView(ViewProjectHub)
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: ':', Text: ":"})
 	if !handled || cmd != nil {

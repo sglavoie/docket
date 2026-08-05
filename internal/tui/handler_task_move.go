@@ -85,7 +85,7 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	// reassignment) into its transaction; advance the shared domain snapshot now
 	// that it is committed so views reading it stay consistent.
 	m.refreshRuntime()
-	// A parked destination is named with its boundary: the move committed, but the
+	// A parked destination is named with its tag: the move committed, but the
 	// task leaves every base projection, so the status has to say where it went.
 	destination := m.parkedOwnerLabel(msg.DestProject)
 	if destination == "" {

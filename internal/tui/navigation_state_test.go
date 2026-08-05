@@ -26,7 +26,7 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 		t.Fatal("Reference unexpectedly accepted as a destination")
 	}
 
-	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
+	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
 	if err := stack.PushChild(secondary); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 
 func TestPrimaryRouteStackBoundsChildren(t *testing.T) {
 	stack := NewPrimaryRouteStack()
-	first := mustRoute(t, SecondaryTool, ManageParams{Module: ManageContexts})
+	first := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
 	if err := stack.PushChild(first); err != nil {
 		t.Fatal(err)
 	}

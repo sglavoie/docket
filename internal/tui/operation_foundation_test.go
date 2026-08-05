@@ -61,9 +61,9 @@ func TestFoundationInvariants(t *testing.T) {
 				"tag:project-a/api",
 			},
 			{
-				"scope", ScopeEntity(RegularContextScope("focus")),
-				EntityIdentity{Kind: EntityKindScope, Name: "scope:regular:focus"},
-				"scope:scope:regular:focus",
+				"scope", ScopeEntity("project-a"),
+				EntityIdentity{Kind: EntityKindScope, Name: "project-a"},
+				"scope:project-a",
 			},
 			{
 				"mode", ModeEntity(ModeInbox),
@@ -160,18 +160,21 @@ func TestFoundationInvariants(t *testing.T) {
 	})
 
 	t.Run("every target source resolves", func(t *testing.T) {
+		// A task-category descriptor may only name a task source; the project
+		// sources are exercised under the category that owns them.
 		sources := []struct {
 			source      OperationTargetSource
+			category    OperationCategory
 			cardinality TargetCardinality
 			wantCount   int
 		}{
-			{OperationTargetGlobal, TargetCardinalityNone, 0},
-			{OperationTargetCurrentTask, TargetCardinalityOne, 1},
-			{OperationTargetSelectedTasks, TargetCardinalityOneOrMore, 1},
-			{OperationTargetCurrentProject, TargetCardinalityOne, 1},
-			{OperationTargetScopedProjects, TargetCardinalityOneOrMore, 2},
-			{OperationTargetCurrentEntity, TargetCardinalityOne, 1},
-			{OperationTargetSelectedEntities, TargetCardinalityOneOrMore, 1},
+			{OperationTargetGlobal, OperationCategorySystem, TargetCardinalityNone, 0},
+			{OperationTargetCurrentTask, OperationCategoryTask, TargetCardinalityOne, 1},
+			{OperationTargetSelectedTasks, OperationCategoryTask, TargetCardinalityOneOrMore, 1},
+			{OperationTargetCurrentProject, OperationCategoryProject, TargetCardinalityOne, 1},
+			{OperationTargetScopedProjects, OperationCategoryProject, TargetCardinalityOneOrMore, 2},
+			{OperationTargetCurrentEntity, OperationCategoryTask, TargetCardinalityOne, 1},
+			{OperationTargetSelectedEntities, OperationCategoryTask, TargetCardinalityOneOrMore, 1},
 		}
 		ctx := foundationTestContext()
 		for _, test := range sources {
@@ -181,7 +184,7 @@ func TestFoundationInvariants(t *testing.T) {
 			descriptor := OperationDescriptor{
 				ID:                OperationID("test." + string(test.source)),
 				Label:             string(test.source),
-				Category:          OperationCategoryTask,
+				Category:          test.category,
 				TargetSource:      test.source,
 				TargetCardinality: test.cardinality,
 				Risk:              OperationRiskReadOnly,
@@ -313,8 +316,8 @@ func TestOperationTargetResolverRejectsStaleAndEmptyTargets(t *testing.T) {
 			TargetCardinality: TargetCardinalityOne, Risk: OperationRiskMutation,
 		}
 		if _, err := (OperationTargetResolver{}).Resolve(descriptor, stale); err == nil ||
-			!strings.Contains(err.Error(), "cardinality") {
-			t.Fatalf("Resolve(%s) error = %v, want a cardinality failure", source, err)
+			err.Error() != operationTargetRejectionMessage(OperationCategoryTask) {
+			t.Fatalf("Resolve(%s) error = %v, want the target rejection sentence", source, err)
 		}
 	}
 

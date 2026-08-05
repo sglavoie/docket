@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -48,7 +47,7 @@ func TestDomainFileStore_RoundTripAllDomains(t *testing.T) {
 
 	catalog := NewWorkspaceCatalog()
 	catalog.WorkspaceID = testWorkspaceID
-	catalog.Projects = append(catalog.Projects, CatalogProject{ID: "p1", Slug: "proj", Name: "Proj", ColorSlot: 31, BoundaryID: models.ActiveBoundaryID})
+	catalog.Projects = append(catalog.Projects, CatalogProject{ID: "p1", Slug: "proj", Name: "Proj", ColorSlot: 31})
 	catalog.SystemUnfiledProjectID = "p1"
 	if err := s.SaveCatalog(catalog); err != nil {
 		t.Fatalf("SaveCatalog: %v", err)
@@ -488,13 +487,13 @@ func TestDomainFileStore_ConcurrentStaleObjectDetection(t *testing.T) {
 
 	// Writer B advances the on-disk artifact behind A's back.
 	catB := NewWorkspaceCatalog()
-	catB.Projects = append(catB.Projects, CatalogProject{ID: "pB", Slug: "b", Name: "B", BoundaryID: models.ActiveBoundaryID})
+	catB.Projects = append(catB.Projects, CatalogProject{ID: "pB", Slug: "b", Name: "B"})
 	if saveErr := s.SaveCatalog(catB); saveErr != nil {
 		t.Fatalf("writer B SaveCatalog: %v", saveErr)
 	}
 
 	// A's checked save must now fail as stale rather than clobbering B.
-	catA.Projects = append(catA.Projects, CatalogProject{ID: "pA", Slug: "a", Name: "A", BoundaryID: models.ActiveBoundaryID})
+	catA.Projects = append(catA.Projects, CatalogProject{ID: "pA", Slug: "a", Name: "A"})
 	err = s.SaveCatalogChecked(catA, revA)
 	if !errors.Is(err, ErrStaleObject) {
 		t.Fatalf("stale checked save = %v, want ErrStaleObject", err)
@@ -514,7 +513,7 @@ func TestDomainFileStore_ConcurrentStaleObjectDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalogChecked fresh: %v", err)
 	}
-	fresh.Projects = append(fresh.Projects, CatalogProject{ID: "pA", Slug: "a", Name: "A", BoundaryID: models.ActiveBoundaryID})
+	fresh.Projects = append(fresh.Projects, CatalogProject{ID: "pA", Slug: "a", Name: "A"})
 	if err := s.SaveCatalogChecked(fresh, revFresh); err != nil {
 		t.Fatalf("checked save with fresh revision: %v", err)
 	}

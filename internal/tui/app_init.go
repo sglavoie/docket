@@ -132,9 +132,10 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"core input", app.registerCoreInputOperations},
 		{"task action", app.registerTaskActionOperations},
 		{"filter", app.registerFilterOperations},
-		{"scope hub", app.registerScopeHubOperations},
 		{"project hub", app.registerProjectHubOperations},
 		{"project", app.registerProjectOperations},
+		{"project bulk", app.registerProjectBulkOperations},
+		{"project tag vocabulary", app.registerProjectTagVocabularyOperations},
 		{"note", app.registerNoteOperations},
 	}
 	for _, registration := range registrations {

@@ -22,7 +22,6 @@ type Project struct {
 	Slug        string     `json:"slug"`
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
-	Context     string     `json:"context"`
 	Path        string     `json:"path"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
@@ -31,7 +30,7 @@ type Project struct {
 	Pinned      bool       `json:"pinned"`
 	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
 	ColorSlot   int        `json:"color_slot,omitempty"`
-	BoundaryID  string     `json:"boundary_id"`
+	Tags        []string   `json:"tags,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks       []*Task  `json:"-"`
@@ -44,13 +43,6 @@ const (
 	// the workspace catalog. Slugify can emit at most one ASCII byte per rune in
 	// a valid project name, so this matches MaxProjectNameLength.
 	MaxProjectSlugLength = MaxProjectNameLength
-
-	// ActiveBoundaryID is the reserved, protected boundary that every project
-	// belongs to unless a user moves it. It is a durable identity rather than a
-	// display value: the boundary's name lives in the workspace catalog, so the
-	// two can never drift apart across a rename. A project whose BoundaryID is
-	// empty predates boundaries and normalizes to this value on load.
-	ActiveBoundaryID = "active"
 )
 
 // IsLoaded reports whether the project's task slice has been populated from
@@ -118,12 +110,10 @@ func NewProject(id, name, path string) (*Project, error) {
 		ID:          id,
 		Slug:        slug,
 		Name:        name,
-		Context:     "personal",
 		Path:        path,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		Archived:    false,
-		BoundaryID:  ActiveBoundaryID,
 		Tasks:       []*Task{},
 		NextShortID: 1,
 	}, nil

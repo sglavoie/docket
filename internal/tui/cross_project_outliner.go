@@ -78,10 +78,12 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	svc := m.projectService
 	adopting := m.pendingParkedFocusID != ""
 	focus := m.focusRequestForLoad()
+	projectFilter := m.projectFilter.clone()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
 			ActiveOnly:     true,
 			FocusProjectID: focus,
+			ProjectFilter:  projectFilter,
 		})
 		msg := crossProjectsLoadedMsg{
 			projects:    loaded,
@@ -194,7 +196,6 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.loadedProjects = msg.projects
 	m.crossSnapshotReady = true
 	m.pruneSelectionsOutsideLoadedProjects()
-	m.refreshContextScopeProjects()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
@@ -308,7 +309,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "search-projection=%t|", m.hasSearchProjection())
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
-	fmt.Fprintf(&b, "context=%d:%q|", m.activeContext.Kind, m.activeContext.Name)
+	fmt.Fprintf(&b, "project-filter=%q|", projectFilterFingerprint(&m.projectFilter))
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
@@ -418,9 +419,20 @@ func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
 // row clamp still permits an empty section or project header to receive focus.
 func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset int) {
 	projectID, taskID := m.crossReloadProjectID, m.crossReloadTaskID
+	headerProjectID := m.crossReloadHeaderProjectID
 	m.crossReloadProjectID = ""
 	m.crossReloadTaskID = ""
+	m.crossReloadHeaderProjectID = ""
 	m.viewScrollOffset = fallbackScrollOffset
+	if headerProjectID != "" {
+		if !m.moveCursorToProjectHeader(headerProjectID) {
+			// The successor went away too, so the top of the projection — a section
+			// header — is the only landing spot left that still means something.
+			m.cursor = 0
+			m.clampCursor()
+		}
+		return
+	}
 	if projectID == "" || taskID == "" {
 		m.cursor = fallbackCursor
 		m.clampCursor()
@@ -430,6 +442,55 @@ func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload(fallbackCursor, fa
 		return
 	}
 	m.moveCursorToNearestTask(fallbackCursor)
+}
+
+// projectHeaderAnchorAfterRemoval names the project sub-header the cursor should
+// hold once the named projects' rows leave: the first surviving header below the
+// topmost departing one, else the closest surviving header above it. With no
+// survivor it returns a departing project's own ID, which stops resolving after
+// the reload and therefore lands the cursor on the owning section header rather
+// than an arbitrary row. The second result is false when none of the named
+// projects has a header on screen at all.
+func (m *OutlinerModel) projectHeaderAnchorAfterRemoval(projectIDs ...string) (string, bool) {
+	leaving := make(map[string]bool, len(projectIDs))
+	for _, projectID := range projectIDs {
+		if projectID != "" {
+			leaving[projectID] = true
+		}
+	}
+	index := -1
+	for candidate, row := range m.rows {
+		if row.IsProjectHeader && leaving[row.ProjectID] {
+			index = candidate
+			break
+		}
+	}
+	if index < 0 {
+		return "", false
+	}
+	for _, row := range m.rows[index+1:] {
+		if row.IsProjectHeader && row.ProjectID != "" && !leaving[row.ProjectID] {
+			return row.ProjectID, true
+		}
+	}
+	for candidate := index - 1; candidate >= 0; candidate-- {
+		row := m.rows[candidate]
+		if row.IsProjectHeader && row.ProjectID != "" && !leaving[row.ProjectID] {
+			return row.ProjectID, true
+		}
+	}
+	return m.rows[index].ProjectID, true
+}
+
+func (m *OutlinerModel) moveCursorToProjectHeader(projectID string) bool {
+	for index, row := range m.rows {
+		if row.IsProjectHeader && row.ProjectID == projectID {
+			m.cursor = index
+			m.clampCursor()
+			return true
+		}
+	}
+	return false
 }
 
 func (m *OutlinerModel) moveCursorToNearestTask(origin int) {
@@ -472,19 +533,51 @@ func (m *OutlinerModel) cancelCrossProjectLoad() {
 	m.crossSpinnerVisible = false
 	m.crossReloadProjectID = ""
 	m.crossReloadTaskID = ""
+	m.crossReloadHeaderProjectID = ""
 	m.crossReloadFromTop = false
 }
 
+// parkedProjectCount counts the non-archived projects the parked tag keeps out
+// of the task workspace.
+func (m *OutlinerModel) parkedProjectCount() int {
+	if m.runtime == nil {
+		return 0
+	}
+	parked := 0
+	for _, project := range m.runtime.AvailableProjects() {
+		if project != nil && models.ProjectTagsParked(project.Tags) {
+			parked++
+		}
+	}
+	return parked
+}
+
+// baseScopeChromeLabel names the unscoped population the Outliner is actually
+// reading: the base label, the active F facets, and the count of parked projects
+// still hidden. The count is dropped once the facets admit parked projects,
+// because nothing is being hidden to report.
+func (m *OutlinerModel) baseScopeChromeLabel() string {
+	parts := projectFilterParts(&m.projectFilter)
+	if !m.projectFilter.showsParked() {
+		if parked := m.parkedProjectCount(); parked > 0 {
+			parts = append(parts, fmt.Sprintf("%d parked", parked))
+		}
+	}
+	if len(parts) == 0 {
+		return activeProjectsScopeLabel
+	}
+	return activeProjectsScopeLabel + scopeChromeSeparator + strings.Join(parts, scopeChromeSeparator)
+}
+
 // crossStatusBarLabel returns the status bar label for the global Outliner,
-// formatted as 'Outliner · [context-name] · N tasks'.
+// formatted as 'Outliner · [scope-name] · N tasks'.
 // N counts only task rows, excluding section headers, project sub-headers,
 // and separators.
 func (m *OutlinerModel) crossStatusBarLabel() string {
-	ctxName := m.contextScopeLabel()
+	scopeName := m.baseScopeChromeLabel()
 	if m.isProjectScoped() {
-		// Under a project scope the label names the scoped project (chain) rather
-		// than the active context.
-		ctxName = strings.Join(m.scopeChainNames(), scopeChainSeparator)
+		// Under a project scope the label names the scoped project chain.
+		scopeName = strings.Join(m.scopeChainNames(), scopeChainSeparator)
 	}
 	taskCount := 0
 	for _, row := range m.rows {
@@ -496,5 +589,5 @@ func (m *OutlinerModel) crossStatusBarLabel() string {
 	if m.primaryMode != ModeAll {
 		label += ": " + m.activeOutlinerModeEntry().Label
 	}
-	return fmt.Sprintf("%s · %s · %d tasks", label, ctxName, taskCount)
+	return fmt.Sprintf("%s · %s · %d tasks", label, scopeName, taskCount)
 }

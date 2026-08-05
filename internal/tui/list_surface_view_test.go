@@ -148,9 +148,7 @@ func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T)
 func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 	t.Parallel()
 
-	alpha := &models.Project{
-		ID: "alpha", Name: "Alpha", Context: "work",
-	}
+	alpha := &models.Project{ID: "alpha", Name: "Alpha"}
 
 	states := ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	if len(states.Items) != len(models.AllWorkflowStates()) ||

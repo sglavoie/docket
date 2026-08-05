@@ -41,13 +41,13 @@ The full script is the acceptance gate.
 | `busy` | Overdue, due-soon, waiting, and five Inbox tasks. |
 | `workflow` | A compact lifecycle spread for state and planning operations. |
 | `narrow` | Long titles and tags for minimum-width rendering. |
-| `contexts` | Several projects across exclusive regular scope labels. |
+| `multi-project` | Several distinctly named projects, each holding one backlog task. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
-| `boundaries` | One project inside the Active boundary and one parked in `On Hold`. |
+| `parked` | One project in the base task workspace and one tagged `parked`. |
 
-Only `boundaries` splits the base task workspace from the catalog. Every other
-fixture leaves all of its projects in the protected `Active` boundary, so parked
-behavior is indistinguishable from an empty catalog there.
+Only `parked` splits the base task workspace from the catalog. Every other
+fixture leaves all of its projects untagged, so parked behavior is
+indistinguishable from an empty catalog there.
 
 ## Scenario format
 
@@ -104,16 +104,12 @@ si sb sn st sg sw sp sm sd sc    state/planning chord
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
 v Ctrl+A Space Enter            selection, actions, Peek
-c N T / ? u Ctrl+R Esc Ctrl+C   global
+p N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-3 fs fc ft fd fz fx         filters
 ```
 
 The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix are
-intentionally unbound, as are `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
-
-Inside the `C` project selector, `f` filters the list by boundary and `B` opens
-Boundary Manager, where `n`, `r`, and `d` create, rename, and delete a
-boundary. A project's boundary is set from the project `Space` action sheet.
+intentionally unbound, as are `c`, `m`, `:`, `R`, and `Ctrl+Esc`.
 
 ### Assertions
 
@@ -139,14 +135,16 @@ The committed suite exercises the product contracts directly:
 | Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Priority, workflow, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
-| Scope and project administration | `context-hub-open.json`, `context-hub-*.json`, `project-hub-*.json`, `project-*.json` |
-| Project boundaries and parked projects | `project-boundary-create-and-park.json`, `project-boundary-parked-focus.json`, `project-boundary-delete-reassigns.json`, `project-boundary-minimum-layout.json`, `project-hub-boundary-filter.json` |
+| Scope and project administration | `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Checklist, comments, and attachments | `rich-tools.json` |
 | Exact six-item `Space` menu | `outliner-space-action-catalog.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | Range selection and bulk intersection | `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
+| Project header cursor, folding, and task-key refusal | `outliner-project-header-fold.json`, `outliner-project-header-rejects-task-keys.json` |
+| Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
+| Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |

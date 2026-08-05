@@ -16,16 +16,16 @@ import (
 // project population by the file that reads it.
 //
 //   - AvailableProjects (and the AppModel availableProjects wrapper) is every
-//     non-archived project regardless of boundary. A surface that must keep
+//     non-archived project regardless of its tags. A surface that must keep
 //     admitting a parked project — Notes owners, capture and %project
 //     resolution, task-move destinations, project administration — reads it.
 //   - TaskWorkspaceProjects (and the AppModel taskWorkspaceProjects wrapper) is
-//     the base task workspace: non-archived and in the Active boundary. Every
-//     task projection and context scope reads it, which is what leaves a parked
+//     the base task workspace: non-archived and not parked. Every task
+//     projection and context scope reads it, which is what leaves a parked
 //     project no route into the Outliner.
-//   - ActiveProjects was the pre-boundary population that predates the split. It
-//     is retired: no caller may resolve project availability by a name that does
-//     not say which of the two populations it means.
+//   - ActiveProjects was the undifferentiated population that predates the
+//     split. It is retired: no caller may resolve project availability by a name
+//     that does not say which of the two populations it means.
 //
 // A caller added, moved, or retired must be classified here deliberately.
 var projectPopulationInventory = map[string]string{
@@ -35,13 +35,14 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/app_projects.go:AvailableProjects":                 "availableProjects wrapper over the parked-inclusive population",
 	"internal/tui/app_projects.go:TaskWorkspaceProjects":             "taskWorkspaceProjects wrapper over the base task workspace",
 	"internal/tui/app_task_composer.go:availableProjects":            "composer project completion and %project resolution",
-	"internal/tui/context_hub_editor.go:TaskWorkspaceProjects":       "regular context membership is a context scope",
-	"internal/tui/context_scope.go:TaskWorkspaceProjects":            "context scope resolution",
 	"internal/tui/core_input_operations.go:availableProjects":        "quick capture destinations",
+	"internal/tui/cross_project_outliner.go:AvailableProjects":       "scope chrome counts the parked projects the task projection is hiding",
 	"internal/tui/cross_scope.go:AvailableProjects":                  "unscoped Outliner selection is a task projection",
 	"internal/tui/cross_scope.go:TaskWorkspaceProjects":              "scoped Outliner selection is a task projection",
 	"internal/tui/feature_runtime.go:AvailableProjects":              "mutation snapshots must resolve every non-archived project",
 	"internal/tui/filter_operations.go:taskWorkspaceProjects":        "tag filter facet is derived from a task projection",
+	"internal/tui/filter_project_operations.go:availableProjects":    "the project tag vocabulary must name parked projects so a facet can widen back out",
+	"internal/tui/project_tag_vocabulary.go:availableProjects":       "a tag's editable membership includes its parked projects",
 	"internal/tui/handler_helpers.go:availableProjects":              "planning prune must not drop references owned by a parked project",
 	"internal/tui/handler_task.go:availableProjects":                 "single task-move destinations",
 	"internal/tui/handler_view_notes.go:availableProjects":           "Notes owner refresh when reopening the manager",

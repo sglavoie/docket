@@ -25,8 +25,8 @@ func TestNewProject(t *testing.T) {
 	if project.Path != "/tmp/my-project" {
 		t.Errorf("expected Path '/tmp/my-project', got '%s'", project.Path)
 	}
-	if project.Context != "personal" {
-		t.Errorf("expected Context 'personal', got '%s'", project.Context)
+	if len(project.Tags) != 0 {
+		t.Errorf("expected a new project to carry no tags, got %v", project.Tags)
 	}
 	if project.Archived {
 		t.Error("expected Archived to be false")
@@ -250,13 +250,18 @@ func TestNewProject_ValidInputSucceeds(t *testing.T) {
 	}
 }
 
-func TestNewProjectDefaultsToActiveBoundary(t *testing.T) {
+// A new project carries no tags at all: the empty set is legal, and in
+// particular a project is never born parked.
+func TestNewProjectStartsUntaggedAndUnparked(t *testing.T) {
 	p, err := NewProject("id", "Valid Name", "/tmp/p")
 	if err != nil {
 		t.Fatalf("NewProject: %v", err)
 	}
-	if p.BoundaryID != ActiveBoundaryID {
-		t.Errorf("BoundaryID = %q, want %q", p.BoundaryID, ActiveBoundaryID)
+	if len(p.Tags) != 0 {
+		t.Errorf("Tags = %v, want empty", p.Tags)
+	}
+	if ProjectTagsParked(p.Tags) {
+		t.Error("a new project must not be parked")
 	}
 }
 

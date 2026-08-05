@@ -83,26 +83,17 @@ func (m *AppModel) adoptCrossProjectSnapshot(projects []*models.Project) {
 	}
 }
 
-// parkedOwnerLabel names a project and the boundary it sits in when that
-// boundary is not Active, and returns "" otherwise. A task written to a parked
-// project is committed and durable but will not appear in any base projection,
-// so a status that named only its section would send the user looking for it in
-// a place it can never render. The label matches the Outliner's focus chrome, so
-// the same words identify the project when the user goes there to find it.
+// parkedOwnerLabel names a project as parked when it carries the reserved tag,
+// and returns "" otherwise. A task written to a parked project is committed and
+// durable but will not appear in any base projection, so a status that named
+// only its section would send the user looking for it in a place it can never
+// render. The label matches the Outliner's focus chrome, so the same words
+// identify the project when the user goes there to find it.
 func (m *AppModel) parkedOwnerLabel(project *models.Project) string {
-	if m == nil || m.runtime == nil || project == nil {
+	if m == nil || project == nil || !models.ProjectTagsParked(project.Tags) {
 		return ""
 	}
-	catalog := m.runtime.Catalog()
-	boundaryID := catalog.ProjectBoundaryID(project.ID)
-	if boundaryID == "" || boundaryID == models.ActiveBoundaryID {
-		return ""
-	}
-	boundary, ok := catalog.Boundary(boundaryID)
-	if !ok || boundary.Name == "" {
-		return ""
-	}
-	return project.Name + scopeBoundarySeparator + boundary.Name
+	return project.Name + scopeChromeSeparator + models.ParkedProjectTag
 }
 
 func copyCatalogMetadata(dst, src *models.Project) {
@@ -112,7 +103,6 @@ func copyCatalogMetadata(dst, src *models.Project) {
 	dst.Slug = src.Slug
 	dst.Name = src.Name
 	dst.Description = src.Description
-	dst.Context = src.Context
 	dst.Path = src.Path
 	dst.CreatedAt = src.CreatedAt
 	dst.UpdatedAt = src.UpdatedAt
@@ -121,7 +111,7 @@ func copyCatalogMetadata(dst, src *models.Project) {
 	dst.Pinned = src.Pinned
 	dst.PinnedAt = src.PinnedAt
 	dst.ColorSlot = src.ColorSlot
-	dst.BoundaryID = src.BoundaryID
+	dst.Tags = src.Tags
 }
 
 // ensureProjectColorSlots persists legacy catalog backfill once during startup.
@@ -183,8 +173,9 @@ func (m *AppModel) projectsInRuntimeOrder(projects []*models.Project) []*models.
 	return result
 }
 
-// taskWorkspaceProjects is the base task workspace: the non-archived projects in
-// the Active boundary, in runtime order. Every task projection and context scope
+// taskWorkspaceProjects is the base task workspace: the non-archived projects
+// that do not carry the reserved parked tag, in runtime order. Every task
+// projection and context scope
 // reads it. A surface that must keep admitting a parked project — Notes owners,
 // capture destinations, move targets, project administration — reads
 // availableProjects instead.
@@ -228,15 +219,11 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 			ID:          "system-unfiled-" + uuid.New().String(),
 			Slug:        config.SystemUnfiledSlug,
 			Name:        config.SystemUnfiledName,
-			Context:     m.runtime.DefaultContext(),
 			Path:        m.runtime.ProjectPath(config.SystemUnfiledSlug),
 			CreatedAt:   now,
 			UpdatedAt:   now,
 			Tasks:       []*models.Task{},
 			NextShortID: 1,
-		}
-		if project.Context == "" {
-			project.Context = "personal"
 		}
 	}
 

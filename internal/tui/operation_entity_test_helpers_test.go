@@ -20,8 +20,8 @@ func ProjectTagEntity(projectID, name string) EntityIdentity {
 	})
 }
 
-func ScopeEntity(scope ContextScope) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindScope, Name: string(contextScopeListItemID(scope))})
+func ScopeEntity(name string) EntityIdentity {
+	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindScope, Name: name})
 }
 
 func ModeEntity(id OutlinerModeID) EntityIdentity {

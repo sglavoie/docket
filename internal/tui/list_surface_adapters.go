@@ -166,13 +166,12 @@ func ListSourceFromProjects(projects []*models.Project) ListSource {
 			ID:            ListItemID("project:" + project.ID),
 			CategoryID:    category,
 			PrimaryText:   projectPickerDisplayText(project),
-			SecondaryText: fmt.Sprintf("%s · %s tasks", project.Context, projectTaskCountLabel(project)),
-			Aliases:       []string{project.Name, project.Context, project.Slug},
+			SecondaryText: fmt.Sprintf("%s tasks", projectTaskCountLabel(project)),
+			Aliases:       []string{project.Name, project.Slug},
 			Preview: ListPreview{
 				Title:   project.Name,
 				Summary: project.Description,
 				Fields: []ListPreviewField{
-					{Label: "Context", Value: project.Context},
 					{Label: "Tasks", Value: projectTaskCountLabel(project)},
 				},
 			},
@@ -206,15 +205,6 @@ func ListSourceFromTags(tags []TagInfo) ListSource {
 		})
 	}
 	return ListSource{Items: items, Categories: categories}
-}
-
-func contextScopeListItemID(scope ContextScope) ListItemID {
-	switch scope.Kind {
-	case ContextScopeRegular:
-		return ListItemID("scope:regular:" + scope.Name)
-	default:
-		return "scope:all"
-	}
 }
 
 func workflowStateListLabel(state models.WorkflowState) string {

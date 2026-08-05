@@ -1,0 +1,42 @@
+{
+  "name": "project-tags-picker",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "step onto the Client Alpha project header", "key": "j" },
+    { "type": "assert", "label": "the same key names the project on a header row", "assert": "contains", "value": "# project tags" },
+
+    { "type": "key", "label": "open the project tag picker with its direct key", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Project Tags: Client Alpha" },
+    { "type": "assert", "label": "behavioral tags are pinned above the vocabulary", "assert": "contains", "value": "BEHAVIORAL" },
+    { "type": "assert", "assert": "contains", "value": "parked" },
+    { "type": "assert", "label": "the effect is on screen the whole time the choice is open", "assert": "contains", "value": "Parks this project" },
+    { "type": "assert", "assert": "contains", "value": "Space toggle · a add tag · Enter apply · Esc back" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Project Tags: Client Alpha" },
+
+    { "type": "key", "label": "reopen the picker", "key": "#" },
+    { "type": "key", "label": "mint a descriptive tag on the fly", "key": "a" },
+    { "type": "text", "text": "Client" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the project tag namespace is folded at rest", "assert": "contains", "value": "[x] client" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "apply the set", "key": "enter" },
+    { "type": "assert", "label": "a descriptive tag never prompts", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Confirm" },
+    { "type": "assert", "assert": "status_contains", "value": "Updated Client Alpha tags · u to undo" },
+    { "type": "wait" },
+    { "type": "assert", "label": "a descriptive tag decides nothing about which projections a project reaches", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "not_contains", "value": "parked" },
+
+    { "type": "key", "label": "reopen to see the stored set", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "[x] client" },
+    { "type": "assert", "assert": "contains", "value": "[ ] parked" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

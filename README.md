@@ -19,7 +19,7 @@ explicit choice; an existing selected iCloud workspace is preserved.
 
 Every run starts in Active Projects, All mode, with no restored search, filters,
 selection, or navigation. Active Projects is the base task workspace: every
-project you have not parked behind another boundary. Press `a` to capture the
+project you have not tagged `parked`. Press `a` to capture the
 first task. At Active Projects scope, capture routes to the protected Unfiled
 project with Inbox lifecycle; in a single-project scope, it routes to that
 project.
@@ -65,7 +65,7 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `p` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 The operation descriptors are the single source for dispatch, the compact
 footer, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
@@ -101,8 +101,8 @@ do not repeat in this menu. Delete always asks for confirmation.
 ### Filters and search
 
 Filters are session-only refinements of ordinary mode rows. Slash search is a
-temporary projection over every nonterminal task in the active project/context
-scope, including snoozed work; Esc restores the prior mode, facets, cursor,
+temporary projection over every nonterminal task in the active project scope,
+including snoozed work; Esc restores the prior mode, facets, cursor,
 scroll, and folds exactly.
 
 | Keys | Effect |
@@ -116,8 +116,26 @@ scroll, and folds exactly.
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task |
 
+The lowercase `f` chord refines the rows a projection already holds. Uppercase
+`F` decides which projects load at all, so each of its facets reloads:
+
+| Keys | Effect |
+| --- | --- |
+| `Ft` | Pick project tags with AND semantics, plus an `Untagged` entry for projects carrying none |
+| `Fp` | Show or hide parked projects |
+| `Fa` | Show or hide archived projects |
+| `Fx` | Clear every project filter |
+
+`Fp` and selecting `parked` inside `Ft` are the same switch, so the two can
+never disagree about which population is loaded. Inside `Ft`, `v` toggles a tag
+and `Space` over a tag row offers Rename everywhere, Remove everywhere, Park all
+members, and Unpark all members across every project carrying it, as one undo
+entry. Removing a tag that is a project's only tag asks where those projects
+should land first.
+
 Pressing a chord prefix shows its valid continuations above the footer. `Esc`
-cancels that unfinished chord.
+cancels that unfinished chord, and a second key the chord does not offer says so
+instead of doing nothing.
 
 For intentional cleanup, use `fs` to choose Done, Canceled, or both, then `fc`
 to choose an age, `Ctrl+A` to select the visible matches, and `Space` → Delete.
@@ -190,49 +208,59 @@ Parents are project-local and hierarchy depth is capped at six.
 
 ## Scope, projects, and Notes
 
-`c` opens Scope Hub for Active Projects and exclusive regular project-label
-contexts. `personal` remains available when empty and protects its name and
-deletion while allowing membership edits. Scope is session-only. `C` opens
+The Outliner opens on Active Projects, and scope is session-only. `p` opens
 Select Project with search focused immediately
-and includes active and archived projects, grouped by boundary. `Enter` focuses
+and includes active and archived projects. Each row carries its task count and
+its tag chips. `Enter` focuses
 the matching project in the same Outliner; `Esc` clears search and leaves the
-project surface open. Project administration supports create, edit, pin, set
-boundary, archive, restore, and project Notes. The catalog ID, not a display
+project surface open. Project administration supports create, edit, pin,
+archive, restore, and project Notes. The catalog ID, not a display
 name, protects the system Unfiled project.
 
-### Project boundaries
+`v` selects the project under the cursor and `a`/`A` select or clear every
+project matching the current search. With a selection, `Space` offers Add tag,
+Remove tag, Park and Unpark across all of it, and the whole edit commits as one
+undo entry.
 
-Four different things decide where work shows up, and each answers its own
+### Project tags
+
+Three different things decide where work shows up, and each answers its own
 question:
 
 | Concept | Applies to | Question it answers |
 | --- | --- | --- |
 | Workflow state | a task | What is happening with this task? |
-| Context | a project | Which slice of your life is this project part of? |
-| Boundary | a project | Is this project part of your working set at all? |
+| Tags | a project | How would you label this project, and is it in your working set? |
 | Archive | a project | Is this project retired? |
 
-Every project sits in exactly one boundary. `Active` is the built-in one, it
-cannot be renamed or deleted, and every existing project joins it automatically
-the first time a workspace with no boundary data is opened — nothing is
-rewritten on disk until you change something. Move a project to any other
-boundary and it is *parked*: its tasks leave the base Outliner entirely, and
-its Today and Next entries are cleared in the same undoable transaction.
+A project carries any number of tags. Most are simply labels you choose. One is
+special: tag a project `parked` and it leaves the base Outliner entirely. Its
+Today and Next entries are kept exactly as they were, hidden while the project
+is parked and restored the moment you untag it. The protected Unfiled project
+cannot be parked.
+
+Press `#` on a project header row to edit that project's tags; the same key on a
+task row still edits task tags. The picker lists `parked` first with a sentence
+explaining what it does, and `a` mints any other tag on the fly. The project
+editor also has a comma-separated Tags field, and Select Project tags a whole
+selection at once.
+
+Applying `parked` asks first and names what you are about to lose sight of —
+"Park Client Alpha? Its 1 task leaves Active Projects." Parking several at once
+asks the same way and counts them all. Every other tag applies
+straight away. Once parked, the status names both ways back
+("Fp to show · u to undo"), the cursor moves to the next project rather than
+wherever the vanished rows left it, and the Outliner scope reads
+`Active Projects · 1 parked` so the hidden work is never silent.
 
 A parked project is not hidden away. It still appears in Select Project, still
 owns its Notes, still accepts `%project` during capture, and is still a valid
 Move Project destination. `Enter` on it in Select Project opens it as an
-explicit one-project focus, anchored with its boundary name, and `Esc` returns
+explicit one-project focus, anchored with the `parked` tag, and `Esc` returns
 to the Active base with nothing left behind.
 
-Inside Select Project, `f` filters the list by boundary and `B` opens Boundary
-Manager, where `n` creates, `r` renames, and `d` deletes a boundary. Deleting a
-boundary that still has projects asks where they should go first. The protected
-Unfiled project cannot leave `Active`.
-
-Archiving is separate. It preserves the boundary a project was in, restoring
-returns it there, and Boundary Manager counts archived and unarchived members
-apart.
+Archiving is separate. It preserves a project's tags and restoring returns
+them unchanged.
 
 `N` opens All Notes, a workspace-wide manager that scans Global plus every
 unarchived project, including the protected Unfiled project and every parked
@@ -292,20 +320,24 @@ The live portable layout is deliberately small:
 ```
 
 Project task files use strict schema-6 Markdown and generic `Task` headings.
-`workspace.json` contains the lean project catalog, exclusive regular contexts,
-project boundaries, and protected Unfiled ID. `planning.json` contains Today and
+`workspace.json` contains the lean project catalog, project tags, and the
+protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-5 workspaces to schema 6, and supported
-schema-4 workspaces through schema 5 and then schema 6. Each boundary validates
-the complete candidate before mutation and publishes its own immutable rollback
-archive and audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5 and
-`pre-consolidation-v6-<UTC>.tar.gz` for v5→v6. The schema-6 conversion preserves notes
-and attachment bytes, converts retained decision text into comments, repairs
-planning references, renames the protected project to Unfiled, and deliberately
-resets the incompatible pre-v6 undo ledger.
+Startup migrates supported schema-6 workspaces to schema 7, supported schema-5
+workspaces through schema 6 and then schema 7, and supported schema-4
+workspaces through the whole chain. Each step validates the complete candidate
+before mutation and publishes its own immutable rollback archive and audit
+first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
+`pre-consolidation-v6-<UTC>.tar.gz` for v5→v6, and `pre-scope-v7-<UTC>.tar.gz`
+for v6→v7. The schema-6 conversion preserves notes and attachment bytes,
+converts retained decision text into comments, repairs planning references,
+renames the protected project to Unfiled, and deliberately resets the
+incompatible pre-v6 undo ledger. The schema-7 conversion folds the retired
+per-project grouping fields and the retired workspace scope table into ordinary
+project tags, keeping `parked` as the sole behavioral tag.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication

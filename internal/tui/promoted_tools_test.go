@@ -8,9 +8,9 @@ import (
 )
 
 func TestPromotedToolNotesAlwaysOpenAllNotes(t *testing.T) {
-	workA := &models.Project{ID: "work-a", Name: "Work A", Slug: "work-a", Context: "work"}
-	workB := &models.Project{ID: "work-b", Name: "Work B", Slug: "work-b", Context: "work"}
-	home := &models.Project{ID: "home", Name: "Home", Slug: "home", Context: "home"}
+	workA := &models.Project{ID: "work-a", Name: "Work A", Slug: "work-a"}
+	workB := &models.Project{ID: "work-b", Name: "Work B", Slug: "work-b"}
+	home := &models.Project{ID: "home", Name: "Home", Slug: "home"}
 
 	tests := []struct {
 		name           string
@@ -21,14 +21,6 @@ func TestPromotedToolNotesAlwaysOpenAllNotes(t *testing.T) {
 			name:           "all",
 			configure:      func(*OutlinerModel) {},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
-		},
-		{
-			name: "context",
-			configure: func(out *OutlinerModel) {
-				out.activeContext = RegularContextScope("work")
-				out.refreshContextScopeProjects()
-			},
-			wantProjectIDs: []string{workA.ID, workB.ID},
 		},
 		{
 			name: "project focus",

@@ -6,11 +6,34 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
 )
+
+// projectHubApp builds a two-project shell whose cross-project Outliner is
+// already populated, so hub rows carry real task counts.
+func projectHubApp(t *testing.T) *AppModel {
+	t.Helper()
+	app := typedTestApp(t)
+	alpha := scopeTestProject("alpha", "Alpha", "1", "2")
+	alpha.Slug = "alpha"
+	alpha.Path = t.TempDir()
+	beta := scopeTestProject("beta", "Beta", "1")
+	beta.Slug = "beta"
+	beta.Path = t.TempDir()
+	setTestAppProjects(app, alpha, beta)
+	app.currentProject = nil
+	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner.SetSize(120, 40)
+	app.crossOutliner.loadedProjects = []*models.Project{alpha, beta}
+	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.rebuildRows()
+	return app
+}
 
 func openProjectHub(t *testing.T, app *AppModel) *ProjectHubModel {
 	t.Helper()
-	handled, cmd := app.handleContextMessages(ShowProjectHubMsg{})
+	handled, cmd := app.handleProjectViewMessages(ShowProjectHubMsg{})
 	if !handled {
 		t.Fatal("ShowProjectHubMsg was not handled")
 	}
@@ -46,10 +69,9 @@ func projectHubActionIDs(hub *ProjectHubModel) []OperationID {
 }
 
 func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Slug = "archived"
-	archived.Context = "work"
 	archived.Archived = true
 	archived.Path = t.TempDir()
 	addTestAppProject(app, archived)
@@ -72,14 +94,14 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 		}
 	}
 	for _, item := range hub.surface.Items() {
-		if _, ok := item.Data.(scopeHubEntry); ok {
-			t.Fatalf("Project Hub retained a Scope Hub row: %#v", item.Data)
+		if _, ok := item.Data.(projectHubEntry); !ok {
+			t.Fatalf("Project Hub row carries %#v, want a project entry", item.Data)
 		}
 	}
 }
 
 func TestProjectHubStartsInSearchAndEscReturnsToBrowse(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	if !hub.HasActiveSearch() || !hub.HasTextInput() || !hub.ShouldCaptureEsc() {
 		t.Fatalf(
@@ -114,7 +136,7 @@ func TestProjectHubStartsInSearchAndEscReturnsToBrowse(t *testing.T) {
 }
 
 func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	for _, r := range "bet" {
 		hub.Update(syntheticKey(r))
@@ -138,7 +160,7 @@ func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
 }
 
 func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	hub.Update(syntheticKey('a'))
 
@@ -181,7 +203,7 @@ func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
 }
 
 func TestProjectHubSearchPlainJAndKRemainQueryInput(t *testing.T) {
-	hub := openProjectHub(t, contextHubApp(t))
+	hub := openProjectHub(t, projectHubApp(t))
 	hub.Update(syntheticKey('j'))
 	hub.Update(syntheticKey('k'))
 
@@ -194,7 +216,7 @@ func TestProjectHubSearchPlainJAndKRemainQueryInput(t *testing.T) {
 }
 
 func TestProjectHubArchivedEnterKeepsHubOpenWithNotice(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Archived = true
 	addTestAppProject(app, archived)
@@ -211,7 +233,7 @@ func TestProjectHubArchivedEnterKeepsHubOpenWithNotice(t *testing.T) {
 }
 
 func TestProjectHubBrowseNCreatesProject(t *testing.T) {
-	hub := openProjectHub(t, contextHubApp(t))
+	hub := openProjectHub(t, projectHubApp(t))
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	_, cmd := hub.Update(syntheticKey('n'))
@@ -224,7 +246,7 @@ func TestProjectHubBrowseNCreatesProject(t *testing.T) {
 }
 
 func TestProjectHubReopensWithFreshSearch(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if hub.HasActiveSearch() {
@@ -242,7 +264,7 @@ func TestProjectHubReopensWithFreshSearch(t *testing.T) {
 }
 
 func TestProjectHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
-	app := contextHubApp(t)
+	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	if hub.registry != app.operationRegistry || hub.executor != app.operationExecutor {
 		t.Fatal("Project Hub did not receive the production operation system")
@@ -269,43 +291,20 @@ func TestProjectHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
 	}
 }
 
-func TestSimplifiedUppercaseCOpensSearchFirstProjectHub(t *testing.T) {
-	app := contextHubApp(t)
-	app.operationRegistry = NewOperationRegistry()
-	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
-	for name, register := range map[string]func() error{
-		"core":        app.registerCoreInputOperations,
-		"scope hub":   app.registerScopeHubOperations,
-		"project hub": app.registerProjectHubOperations,
-		"project":     app.registerProjectOperations,
-		"task":        app.registerTaskActionOperations,
-		"filter":      app.registerFilterOperations,
-	} {
-		if err := register(); err != nil {
-			t.Fatalf("register %s operations: %v", name, err)
-		}
-	}
-	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
-		t.Fatalf("register simplified input strategy: %v", err)
-	}
-
-	handled, cmd := app.handleSimplifiedInputKey(syntheticKey('C'))
-	if !handled || cmd == nil {
-		t.Fatal("simplified C did not dispatch Select Project")
-	}
-	msg := cmd()
-	handled, activate := app.handleContextMessages(msg)
+func TestShowProjectHubMsgOpensTheSearchFirstProjectHub(t *testing.T) {
+	app := projectHubApp(t)
+	handled, cmd := app.handleProjectViewMessages(ShowProjectHubMsg{})
 	if !handled {
-		t.Fatalf("project operation emitted unhandled %T", msg)
+		t.Fatal("ShowProjectHubMsg was not handled")
 	}
-	if activate != nil {
-		activate()
+	if cmd != nil {
+		cmd()
 	}
 	hub, ok := app.manageHub.ActiveModuleView().(*ProjectHubModel)
 	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != ViewProjectHub || !ok {
-		t.Fatalf("C landed on %s/%s (%T)", app.CurrentRoute().ID(), app.currentView(), app.manageHub.ActiveModuleView())
+		t.Fatalf("Project Hub landed on %s/%s (%T)", app.CurrentRoute().ID(), app.currentView(), app.manageHub.ActiveModuleView())
 	}
 	if !hub.HasActiveSearch() {
-		t.Fatal("C did not prime project search")
+		t.Fatal("the Project Hub did not prime project search")
 	}
 }

@@ -16,11 +16,11 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 		m.setInfoStatus("Project scope is available from the global Outliner")
 		return true, nil
 	}
-	returnToOutliner := m.currentView() == ViewContextHub || m.currentView() == ViewProjectHub
+	returnToOutliner := m.currentView() == ViewProjectHub
 	if msg.Clear {
 		m.crossOutliner.clearProjectScope()
 		if returnToOutliner {
-			return true, m.returnToOutlinerAfterContextSelection()
+			return true, m.returnToOutlinerAfterProjectScope()
 		}
 		return true, nil
 	}
@@ -36,7 +36,7 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 	}
 	m.crossOutliner.pushProjectScope(msg.ProjectID)
 	if returnToOutliner {
-		return true, m.returnToOutlinerAfterContextSelection()
+		return true, m.returnToOutlinerAfterProjectScope()
 	}
 	return true, nil
 }
@@ -71,10 +71,19 @@ func (m *AppModel) finishParkedProjectFocus(focusProjectID string) tea.Cmd {
 	if m.crossOutliner.scopedProjectID != focusProjectID {
 		return nil
 	}
-	switch m.currentView() {
-	case ViewProjectHub, ViewContextHub:
-		return m.returnToOutlinerAfterContextSelection()
-	default:
+	if m.currentView() != ViewProjectHub {
 		return nil
 	}
+	return m.returnToOutlinerAfterProjectScope()
+}
+
+// returnToOutlinerAfterProjectScope dismisses every primary child above the sole
+// Outliner root without resetting the freshly applied project scope. Cancel uses
+// the ordinary one-pop path instead so it can restore the prior view.
+func (m *AppModel) returnToOutlinerAfterProjectScope() tea.Cmd {
+	m.navigation.ResetRoot()
+	if view := m.views.Get(m.currentView()); view != nil {
+		m.setAccentOnView(view)
+	}
+	return func() tea.Msg { return ViewDidAppearMsg{} }
 }

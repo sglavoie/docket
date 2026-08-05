@@ -209,3 +209,11 @@ func commandContextCurrentEntity(entity EntityContext) EntityIdentity {
 		return EntityIdentity{}
 	}
 }
+
+// commandContextNamesNonTaskEntity reports whether the focused row positively
+// identifies something other than a task. An empty identity is not a non-task
+// cursor: it means the host has not named the row at all.
+func commandContextNamesNonTaskEntity(ctx CommandContext) bool {
+	current := normalizeEntityIdentity(ctx.CurrentEntity)
+	return current.Valid() && current.Kind != EntityKindTask
+}

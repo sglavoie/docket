@@ -21,9 +21,8 @@ type projectEditorField int
 
 const (
 	projectEditorFieldName projectEditorField = iota
-	projectEditorFieldContext
-	projectEditorFieldBoundary
 	projectEditorFieldDescription
+	projectEditorFieldTags
 	projectEditorFieldCount
 )
 
@@ -37,23 +36,13 @@ type ProjectEditorModel struct {
 
 	// Original values for change detection
 	originalName        string
-	originalContext     string
 	originalDescription string
-	originalBoundaryID  string
+	originalTags        string
 
 	// Form fields
 	nameInput        textinput.Model
 	descriptionInput textinput.Model
-
-	// Context selection (hybrid: selector + custom input)
-	contextInput  textinput.Model
-	contexts      []string // Available contexts from existing projects
-	contextCursor int      // -1 means custom input mode, 0+ means selecting from list
-
-	// Boundary selection. Custom boundaries are created only in the Boundary
-	// Manager, so this row picks from what the catalog already defines.
-	boundaries     []config.ProjectBoundary
-	boundaryCursor int
+	tagsInput        textinput.Model
 
 	// Form state
 	focusIndex projectEditorField
@@ -83,30 +72,9 @@ func NewProjectEditorModel(
 	descriptionInput := factory.NewTextInputWithValue(project.Description, "Project description (optional)")
 	descriptionInput.CharLimit = 500
 
-	contextInput := factory.NewTextInputWithValue(project.Context, "e.g., personal, work")
-	contextInput.CharLimit = 50
-
-	// Get all existing contexts
-	contexts := runtime.AllContexts()
-
-	// Find current context in list (or -1 for custom)
-	contextCursor := -1
-	for i, ctx := range contexts {
-		if ctx == project.Context {
-			contextCursor = i
-			break
-		}
-	}
-
-	boundaries := orderedProjectBoundaries(runtime.Catalog())
-	boundaryID := resolvedProjectBoundaryID(runtime.Catalog(), project.ID)
-	boundaryCursor := 0
-	for i, boundary := range boundaries {
-		if boundary.ID == boundaryID {
-			boundaryCursor = i
-			break
-		}
-	}
+	tags := strings.Join(project.Tags, ", ")
+	tagsInput := factory.NewTextInputWithValue(tags, "Comma-separated tags (optional)")
+	tagsInput.CharLimit = 200
 
 	return &ProjectEditorModel{
 		project:             project,
@@ -115,36 +83,28 @@ func NewProjectEditorModel(
 		appService:          svc,
 		identityProtected:   identityProtected,
 		originalName:        project.Name,
-		originalContext:     project.Context,
 		originalDescription: project.Description,
-		originalBoundaryID:  boundaryID,
+		originalTags:        tags,
 		nameInput:           nameInput,
 		descriptionInput:    descriptionInput,
-		contextInput:        contextInput,
-		contexts:            contexts,
-		contextCursor:       contextCursor,
-		boundaries:          boundaries,
-		boundaryCursor:      boundaryCursor,
+		tagsInput:           tagsInput,
 		focusIndex:          projectEditorFieldName,
 		width:               80,
 	}
 }
 
-// selectedBoundaryID reports the boundary the form currently names. An editor
-// opened without a catalog keeps the project where it was.
-func (m *ProjectEditorModel) selectedBoundaryID() string {
-	if m.boundaryCursor < 0 || m.boundaryCursor >= len(m.boundaries) {
-		return m.originalBoundaryID
+// parseProjectEditorTags reads the comma-separated tag field into a canonical
+// project tag set. Validation runs here so a rejected tag is reported on the
+// form instead of surfacing later as a catalog load failure.
+func parseProjectEditorTags(raw string) ([]string, error) {
+	fields := strings.Split(raw, ",")
+	tags := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if trimmed := strings.TrimSpace(field); trimmed != "" {
+			tags = append(tags, trimmed)
+		}
 	}
-	return m.boundaries[m.boundaryCursor].ID
-}
-
-func (m *ProjectEditorModel) boundaryNames() []string {
-	names := make([]string, 0, len(m.boundaries))
-	for _, boundary := range m.boundaries {
-		names = append(names, boundary.Name)
-	}
-	return names
+	return models.NormalizeProjectTags(tags)
 }
 
 // checkChanges detects if any field has been modified.
@@ -152,13 +112,10 @@ func (m *ProjectEditorModel) checkChanges() bool {
 	if strings.TrimSpace(m.nameInput.Value()) != m.originalName {
 		return true
 	}
-	if strings.TrimSpace(m.contextInput.Value()) != m.originalContext {
-		return true
-	}
 	if strings.TrimSpace(m.descriptionInput.Value()) != m.originalDescription {
 		return true
 	}
-	return m.selectedBoundaryID() != m.originalBoundaryID
+	return strings.TrimSpace(m.tagsInput.Value()) != m.originalTags
 }
 
 // SetSize sets the view dimensions.
@@ -168,7 +125,7 @@ func (m *ProjectEditorModel) SetSize(width, height int) {
 	m.width = width
 	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
 	formFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
-	formFactory.ResizeTextInputWithReserve(&m.contextInput, width, FormLabelWidth)
+	formFactory.ResizeTextInputWithReserve(&m.tagsInput, width, descriptionLabelReserve)
 }
 
 func (m *ProjectEditorModel) SupportsHelpShortcut() bool { return false }
@@ -225,7 +182,7 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			// Move to next field or save if on last field
-			if m.focusIndex < projectEditorFieldDescription {
+			if m.focusIndex < projectEditorFieldTags {
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -235,33 +192,6 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			// Save changes
 			return m, m.saveProject()
-
-		case "left", "h":
-			// Cycle through contexts when on context field
-			if m.focusIndex == projectEditorFieldContext && len(m.contexts) > 0 {
-				if m.contextCursor > 0 {
-					m.contextCursor--
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				} else if m.contextCursor == 0 {
-					// Stay at first context
-				} else {
-					// From custom mode, go to last context
-					m.contextCursor = len(m.contexts) - 1
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				}
-			}
-			m.moveBoundaryCursor(-1)
-
-		case "right", "l":
-			// Cycle through contexts when on context field
-			if m.focusIndex == projectEditorFieldContext && len(m.contexts) > 0 {
-				if m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
-					m.contextCursor++
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				}
-				// Stay at last context when at the end
-			}
-			m.moveBoundaryCursor(1)
 		}
 	}
 
@@ -269,24 +199,11 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
 	case projectEditorFieldName:
 		m.nameInput, cmd = m.nameInput.Update(msg)
-	case projectEditorFieldContext:
-		oldValue := m.contextInput.Value()
-		m.contextInput, cmd = m.contextInput.Update(msg)
-		// If user typed something, switch to custom mode
-		if m.contextInput.Value() != oldValue {
-			m.contextCursor = -1
-			// Check if typed value matches an existing context
-			for i, ctx := range m.contexts {
-				if ctx == m.contextInput.Value() {
-					m.contextCursor = i
-					break
-				}
-			}
-		}
 	case projectEditorFieldDescription:
 		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
-	case projectEditorFieldBoundary, projectEditorFieldCount:
-		// The boundary row is a selector with no text input of its own.
+	case projectEditorFieldTags:
+		m.tagsInput, cmd = m.tagsInput.Update(msg)
+	case projectEditorFieldCount:
 	}
 
 	// Check for changes
@@ -295,24 +212,15 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// moveBoundaryCursor steps the boundary selection. The system Unfiled project is
-// pinned to Active, so its row renders as fixed and refuses to move.
-func (m *ProjectEditorModel) moveBoundaryCursor(delta int) {
-	if m.focusIndex != projectEditorFieldBoundary || m.identityProtected {
-		return
-	}
-	m.boundaryCursor = min(max(m.boundaryCursor+delta, 0), max(len(m.boundaries)-1, 0))
-}
-
 func (m *ProjectEditorModel) blurCurrentField() {
 	switch m.focusIndex {
 	case projectEditorFieldName:
 		m.nameInput.Blur()
-	case projectEditorFieldContext:
-		m.contextInput.Blur()
 	case projectEditorFieldDescription:
 		m.descriptionInput.Blur()
-	case projectEditorFieldBoundary, projectEditorFieldCount:
+	case projectEditorFieldTags:
+		m.tagsInput.Blur()
+	case projectEditorFieldCount:
 	}
 }
 
@@ -320,143 +228,144 @@ func (m *ProjectEditorModel) focusCurrentField() {
 	switch m.focusIndex {
 	case projectEditorFieldName:
 		m.nameInput.Focus()
-	case projectEditorFieldContext:
-		m.contextInput.Focus()
 	case projectEditorFieldDescription:
 		m.descriptionInput.Focus()
-	case projectEditorFieldBoundary, projectEditorFieldCount:
+	case projectEditorFieldTags:
+		m.tagsInput.Focus()
+	case projectEditorFieldCount:
 	}
+}
+
+// projectEditorSave is one editor save resolved down to the values it will
+// write. Resolving before anything commits is what lets the shell hold a parking
+// edit behind the shared confirmation and then commit the identical metadata.
+type projectEditorSave struct {
+	project      *models.Project
+	runtime      *config.RuntimeState
+	appService   *app.Service
+	originalName string
+	name         string
+	newSlug      string
+	description  string
+	tags         []string
+	parks        bool
 }
 
 func (m *ProjectEditorModel) saveProject() tea.Cmd {
-	name := strings.TrimSpace(m.nameInput.Value())
-	contextValue := strings.TrimSpace(m.contextInput.Value())
-	description := strings.TrimSpace(m.descriptionInput.Value())
-	boundaryID := m.selectedBoundaryID()
-	originalName := m.originalName
-	project := m.project
-	configManager := m.configManager
-	runtime := m.runtime
-	svc := m.appService
-	identityProtected := m.identityProtected
-	return func() tea.Msg {
-		if name == "" {
-			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
-		}
-		if identityProtected && name != originalName {
-			return ErrorMsg{Err: fmt.Errorf("the system Unfiled name and slug are immutable")}
-		}
-		if configManager == nil || svc == nil {
-			return ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
-		}
-
-		updated := *project
-		newSlug := models.Slugify(name)
-		if newSlug == "" {
-			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
-		}
-		oldSlug := project.Slug
-		if name != originalName {
-			// Check for duplicate slug (excluding self)
-			if p := runtime.GetProject(newSlug); p != nil && p.ID != project.ID {
-				return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", newSlug)}
-			}
-		}
-
-		// Get context value
-		ctx := contextValue
-		if ctx == "" {
-			ctx = runtime.DefaultContext()
-		}
-
-		// Prepare on an isolated copy. Publication to the live project pointer
-		// happens only after the journal and workspace ledger both commit.
-		updated.Name = name
-		updated.Slug = newSlug
-		updated.Context = ctx
-		updated.Description = description
-		updated.BoundaryID = boundaryID
-		updated.UpdatedAt = time.Now()
-
-		var tasksMarkdown []byte
-		var tasksExpectedRevision *string
-		if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
-			content, renderErr := storage.WriteTasksMarkdown(updated.Name, updated.Tasks)
-			if renderErr != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
-			}
-			tasksMarkdown = []byte(content)
-			tasksExpectedRevision = expected
-		}
-
-		// Leaving Active is the only edit that can strand a planning membership,
-		// and an archived project's were already cleared when it was archived.
-		// The previous boundary is read from the live catalog, so an editor left
-		// open across another assignment parks from where the project really is.
-		previousBoundaryID := resolvedProjectBoundaryID(runtime.Catalog(), project.ID)
-		parking := previousBoundaryID == models.ActiveBoundaryID &&
-			boundaryID != models.ActiveBoundaryID &&
-			!updated.Archived
-
-		catalog := cloneWorkspaceCatalog(runtime.Catalog())
-		if err := catalog.UpsertProject(&updated); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
-		}
-
-		// One artifact set, one transaction: the directory move, the tasks.md
-		// rewrite, the catalog record, and any planning cleanup either all commit
-		// or none of them do.
-		var configArts []storage.ArtifactChange
-		var err error
-		if parking {
-			planning := clonePlanningState(runtime.Planning())
-			planning.RemoveProjectReferences(project.ID, oldSlug)
-			configArts, err = syncedDomainArtifacts(runtime, catalog, planning)
-		} else {
-			configArts, err = catalogDomainArtifact(runtime, catalog)
-		}
-		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
-		}
-
-		if err := svc.RenameProject(app.RenameProjectRequest{
-			Project:                &updated,
-			SystemUnfiledProjectID: runtime.Catalog().SystemUnfiledProjectID,
-			DataDir:                runtime.DataDir(),
-			OldName:                originalName,
-			OldSlug:                oldSlug,
-			NewSlug:                newSlug,
-			TasksMarkdown:          tasksMarkdown,
-			TasksExpectedRevision:  tasksExpectedRevision,
-			Config:                 configArts,
-		}); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		if err := runtime.RefreshAfterCommit(); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
-		}
-
-		copyCatalogMetadata(project, &updated)
-		return ProjectUpdatedMsg{}
+	save, err := m.resolveSave()
+	if err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
+	if save.parks {
+		// The park confirmation, its cursor anchor, and its recovery status are
+		// shell-owned, so a parking save is handed over whole instead of writing
+		// here and leaving the user to discover the disappearance.
+		return func() tea.Msg { return projectEditorParkRequestMsg{save: save} }
+	}
+	return save.commit
 }
 
-// renderBoundarySelector shows the catalog's boundaries. The system Unfiled
-// project always reads as Active with no selector at all, because the row it
-// would offer has exactly one legal answer.
-func (m *ProjectEditorModel) renderBoundarySelector() string {
+// resolveSave validates every field the save depends on before anything is
+// written, so a parking edit raises the confirmation only once it is certain to
+// commit and a rejected edit never prompts at all.
+func (m *ProjectEditorModel) resolveSave() (*projectEditorSave, error) {
+	name := strings.TrimSpace(m.nameInput.Value())
+	if name == "" {
+		return nil, fmt.Errorf("project name cannot be empty")
+	}
+	tags, err := parseProjectEditorTags(m.tagsInput.Value())
+	if err != nil {
+		return nil, fmt.Errorf("project tags: %w", err)
+	}
 	if m.identityProtected {
-		return BoldStyle.Render(config.ActiveBoundaryName) + "  " +
-			HelpStyle.Render("the system Unfiled project always stays here")
+		if name != m.originalName {
+			return nil, fmt.Errorf("the system Unfiled name and slug are immutable")
+		}
+		if models.ProjectTagsParked(tags) {
+			return nil, fmt.Errorf("cannot park the system Unfiled project")
+		}
 	}
-	if len(m.boundaries) == 0 {
-		return MutedStyle.Render("No boundaries are defined")
+	if m.configManager == nil || m.appService == nil {
+		return nil, fmt.Errorf("project transaction service is unavailable")
 	}
-	return renderContextSelectorShared(
-		m.boundaryNames(),
-		m.boundaryCursor,
-		m.focusIndex == projectEditorFieldBoundary,
-	)
+	newSlug := models.Slugify(name)
+	if newSlug == "" {
+		return nil, fmt.Errorf("project name must contain at least one ASCII letter or digit")
+	}
+	if name != m.originalName {
+		// Check for duplicate slug (excluding self)
+		if p := m.runtime.GetProject(newSlug); p != nil && p.ID != m.project.ID {
+			return nil, fmt.Errorf("project with slug '%s' already exists", newSlug)
+		}
+	}
+	return &projectEditorSave{
+		project:      m.project,
+		runtime:      m.runtime,
+		appService:   m.appService,
+		originalName: m.originalName,
+		name:         name,
+		newSlug:      newSlug,
+		description:  strings.TrimSpace(m.descriptionInput.Value()),
+		tags:         tags,
+		parks:        models.ProjectTagsParked(tags) && !models.ProjectTagsParked(m.project.Tags),
+	}, nil
+}
+
+func (s *projectEditorSave) commit() tea.Msg {
+	project := s.project
+	oldSlug := project.Slug
+
+	// Prepare on an isolated copy. Publication to the live project pointer
+	// happens only after the journal and workspace ledger both commit.
+	updated := *project
+	updated.Name = s.name
+	updated.Slug = s.newSlug
+	updated.Description = s.description
+	updated.Tags = s.tags
+	updated.UpdatedAt = time.Now()
+
+	var tasksMarkdown []byte
+	var tasksExpectedRevision *string
+	if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
+		content, renderErr := storage.WriteTasksMarkdown(updated.Name, updated.Tasks)
+		if renderErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
+		}
+		tasksMarkdown = []byte(content)
+		tasksExpectedRevision = expected
+	}
+
+	catalog := cloneWorkspaceCatalog(s.runtime.Catalog())
+	if err := catalog.UpsertProject(&updated); err != nil {
+		return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
+	}
+
+	// One artifact set, one transaction: the directory move, the tasks.md
+	// rewrite, and the catalog record either all commit or none of them do.
+	configArts, err := catalogDomainArtifact(s.runtime, catalog)
+	if err != nil {
+		return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
+	}
+
+	if err := s.appService.RenameProject(app.RenameProjectRequest{
+		Project:                &updated,
+		SystemUnfiledProjectID: s.runtime.Catalog().SystemUnfiledProjectID,
+		DataDir:                s.runtime.DataDir(),
+		OldName:                s.originalName,
+		OldSlug:                oldSlug,
+		NewSlug:                s.newSlug,
+		TasksMarkdown:          tasksMarkdown,
+		TasksExpectedRevision:  tasksExpectedRevision,
+		Config:                 configArts,
+	}); err != nil {
+		return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+	}
+	if err := s.runtime.RefreshAfterCommit(); err != nil {
+		return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
+	}
+
+	copyCatalogMetadata(project, &updated)
+	return ProjectUpdatedMsg{Project: project, Parked: s.parks}
 }
 
 func (m *ProjectEditorModel) View() tea.View {
@@ -481,27 +390,23 @@ func (m *ProjectEditorModel) View() tea.View {
 	}
 	b.WriteString("\n\n")
 
-	// Context input with available contexts hint
-	b.WriteString(renderFormLabelShared("Context:", int(projectEditorFieldContext), int(m.focusIndex)))
-	b.WriteString(m.contextInput.View())
-	b.WriteString("\n")
-
-	// Show available contexts using shared selector
-	if len(m.contexts) > 0 {
-		b.WriteString(padding)
-		b.WriteString(renderContextSelectorShared(m.contexts, m.contextCursor, m.focusIndex == projectEditorFieldContext))
-	}
-	b.WriteString("\n\n")
-
-	// Boundary selector
-	b.WriteString(renderFormLabelShared("Boundary:", int(projectEditorFieldBoundary), int(m.focusIndex)))
-	b.WriteString(m.renderBoundarySelector())
-	b.WriteString("\n\n")
-
 	// Description input
 	b.WriteString(renderFormLabelShared("Description:", int(projectEditorFieldDescription), int(m.focusIndex)))
 	b.WriteString(m.descriptionInput.View())
 	b.WriteString("\n\n")
+
+	// Tags input. The behavioral explainer sits under the field because typing
+	// one of these words changes what the project does, and the form is the one
+	// place that offers them without a picker to say so.
+	b.WriteString(renderFormLabelShared("Tags:", int(projectEditorFieldTags), int(m.focusIndex)))
+	b.WriteString(m.tagsInput.View())
+	b.WriteString("\n")
+	if explainer := behavioralProjectTagExplainer(ValueProviderProjectTags, m.width-FormLabelWidth); explainer != "" {
+		for _, line := range strings.Split(explainer, "\n") {
+			b.WriteString(padding + line + "\n")
+		}
+	}
+	b.WriteString("\n")
 
 	// Error display
 	if m.err != nil {
@@ -516,7 +421,7 @@ func (m *ProjectEditorModel) View() tea.View {
 	}
 
 	// Footer
-	left := HelpStyle.Render("Tab/Shift+Tab switch · ←/→ select · Ctrl+S save · Esc cancel")
+	left := HelpStyle.Render("Tab/Shift+Tab switch · Ctrl+S save · Esc cancel")
 	right := MutedStyle.Render(title)
 
 	var out strings.Builder

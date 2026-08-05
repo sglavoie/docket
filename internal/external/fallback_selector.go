@@ -47,7 +47,7 @@ func FallbackSelectProject(projects []*models.Project, prompt string) (*models.P
 
 	items := make([]string, len(projects))
 	for i, p := range projects {
-		items[i] = fmt.Sprintf("%s (%s, %d tasks)", p.Name, p.Context, p.CountTasks())
+		items[i] = fmt.Sprintf("%s (%d tasks)", p.Name, p.CountTasks())
 	}
 
 	idx, err := fallbackSelectOne(items, prompt)

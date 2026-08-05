@@ -10,11 +10,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// Delegate context messages to dedicated handler
-	if handled, cmd := m.handleContextMessages(msg); handled {
-		return handled, cmd
-	}
-
 	// Delegate editor messages to dedicated handler
 	if handled, cmd := m.handleEditorMessages(msg); handled {
 		return handled, cmd

@@ -271,6 +271,9 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *Outl
 	if err := app.registerFilterOperations(); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
+	if err := app.registerProjectOperations(); err != nil {
+		t.Fatalf("register project operations: %v", err)
+	}
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
@@ -401,6 +404,9 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	}
 	if err := appModel.registerFilterOperations(); err != nil {
 		t.Fatalf("register filter operations: %v", err)
+	}
+	if err := appModel.registerProjectOperations(); err != nil {
+		t.Fatalf("register project operations: %v", err)
 	}
 	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input: %v", err)

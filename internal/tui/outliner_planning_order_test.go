@@ -99,6 +99,9 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	if err := m.registerFilterOperations(); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
+	if err := m.registerProjectOperations(); err != nil {
+		t.Fatalf("register project operations: %v", err)
+	}
 	if err := m.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input: %v", err)
 	}

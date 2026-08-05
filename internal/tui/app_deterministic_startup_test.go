@@ -25,7 +25,6 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.selectOutlinerMode(ModeDue)
 	outliner.SetSearchActive(true)
 	outliner.SetSearchQuery("stale search")
-	outliner.activeContext = RegularContextScope(projects[0].Context)
 	outliner.scopedProjectID = projects[0].ID
 	outliner.scopeStack = []outlinerScopeFrame{{}}
 	outliner.filter.Priority = 3
@@ -81,8 +80,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if got := outliner.activeOutlinerMode(); got != ModeAll {
 		t.Fatalf("launch mode = %q, want %q", got, ModeAll)
 	}
-	if outliner.scopedProjectID != "" || len(outliner.scopeStack) != 0 || !outliner.activeContext.IsAll() {
-		t.Fatalf("launch retained scope: project=%q stack=%d context=%+v", outliner.scopedProjectID, len(outliner.scopeStack), outliner.activeContext)
+	if outliner.scopedProjectID != "" || len(outliner.scopeStack) != 0 {
+		t.Fatalf("launch retained scope: project=%q stack=%d", outliner.scopedProjectID, len(outliner.scopeStack))
 	}
 	if outliner.HasActiveSearch() || outliner.SearchQuery() != "" || outliner.ActiveFilterCount() != 0 {
 		t.Fatalf("launch retained search/filter: active=%v query=%q filters=%d", outliner.HasActiveSearch(), outliner.SearchQuery(), outliner.ActiveFilterCount())

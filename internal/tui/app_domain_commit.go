@@ -76,14 +76,13 @@ func (m *AppModel) commitCatalogProjectMutation(
 // mutation in memory so runtime.Catalog() observes it; the caller's in-memory
 // shell state remains authoritative.
 // cloneWorkspaceCatalog returns a defensive copy of a catalog snapshot whose
-// project and boundary slices are freshly allocated, so a mutation applied
-// before a checked commit can never alias and corrupt the cached RuntimeState
-// snapshot. CatalogProject and ProjectBoundary entries are value types, so a
-// shallow slice clone fully isolates the copy.
+// project slice is freshly allocated, so a mutation applied before a checked
+// commit can never alias and corrupt the cached RuntimeState snapshot. A
+// CatalogProject's Tags slice is still shared, so a tag edit must replace the
+// whole slice rather than write through it.
 func cloneWorkspaceCatalog(c *config.WorkspaceCatalog) *config.WorkspaceCatalog {
 	cp := *c
 	cp.Projects = slices.Clone(c.Projects)
-	cp.Boundaries = slices.Clone(c.Boundaries)
 	return &cp
 }
 

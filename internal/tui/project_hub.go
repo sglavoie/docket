@@ -15,6 +15,10 @@ import (
 
 const projectHubFooterLabel = "Projects"
 
+// ShowProjectHubMsg opens the searchable project selection and administration
+// surface.
+type ShowProjectHubMsg struct{}
+
 // The operation ID predates the dedicated Project Hub and remains stable for
 // operation-catalog compatibility.
 const operationScopeCreateProject OperationID = "tui.scope.create-project"
@@ -23,18 +27,11 @@ const (
 	projectHubCategoryActive   ListCategoryID = "project-hub:active"
 	projectHubCategoryArchived ListCategoryID = "project-hub:archived"
 
-	// projectHubCategoryBoundaryPrefix namespaces one list category per custom
-	// boundary. The durable boundary ID is the suffix, so a rename relabels a
-	// group without moving any row out of it.
-	projectHubCategoryBoundaryPrefix = "project-hub:boundary:"
-
 	projectHubActionCategoryProject  ListCategoryID = "project-hub-actions:project"
 	projectHubActionCategoryRecovery ListCategoryID = "project-hub-actions:recovery"
 	projectHubActionCategoryDanger   ListCategoryID = "project-hub-actions:danger"
 )
 
-// Row IDs are keyed by lifecycle rather than boundary so a project keeps the
-// same identity — and therefore the same cursor anchor — when it is parked.
 const (
 	projectHubItemPrefix         = "project-hub:project:"
 	projectHubArchivedItemPrefix = "project-hub:archived:"
@@ -72,18 +69,10 @@ type ProjectHubModel struct {
 	taskCounts       map[string]int
 	surface          *ListSurfaceModel
 	actions          *ContextActionSheetModel
-	filterPicker     *projectHubFilterPicker
-	boundaries       *projectBoundaryManager
 	registry         *OperationRegistry
 	executor         *OperationExecutor
 	focusedProjectID string
-	// boundaryFilter narrows the listing to one group for as long as this Hub
-	// instance lives. It is keyed by durable boundary ID (plus the two sentinels
-	// for All and Archived) so a rename cannot invalidate it, and it is never
-	// persisted: the Manage host rebuilds the Hub on every open, which is what
-	// makes each visit start at All.
-	boundaryFilter string
-	notice         string
+	notice           string
 }
 
 func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
@@ -136,12 +125,6 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
-	if m.boundaries != nil {
-		return m.updateBoundaryManager(key)
-	}
-	if m.filterPicker != nil {
-		return m.updateProjectHubFilterPicker(key)
-	}
 	if m.actions != nil {
 		return m.updateProjectHubActions(key)
 	}
@@ -188,12 +171,14 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.moveProjectHubHalfPage(1)
 	case "ctrl+u":
 		m.moveProjectHubHalfPage(-1)
-	case "f":
-		m.openProjectHubFilterPicker()
-	case "B":
-		m.openBoundaryManager()
 	case "n":
 		return m, m.executeProjectHubCreate()
+	case "v":
+		m.toggleProjectHubSelection()
+	case "a":
+		m.selectEveryMatchingProject(true)
+	case "A":
+		m.selectEveryMatchingProject(false)
 	case " ", "space":
 		m.openProjectHubActions()
 	case "enter":
@@ -202,11 +187,41 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *ProjectHubModel) SetSize(width, height int) {
-	m.BaseSearchableView.SetSize(width, height)
-	if m.boundaries != nil {
-		m.boundaries.resize(width)
+// toggleProjectHubSelection mirrors the Outliner's v: Enter already focuses a
+// project and Space already opens actions, so selection needs its own key
+// rather than the Enter/Space toggle the standalone bulk editor used.
+func (m *ProjectHubModel) toggleProjectHubSelection() {
+	if m.surface == nil {
+		return
 	}
+	if _, err := m.surface.ToggleCurrentSelection(); err != nil {
+		m.notice = err.Error()
+	}
+}
+
+func (m *ProjectHubModel) selectEveryMatchingProject(selected bool) {
+	if m.surface == nil {
+		return
+	}
+	if !selected {
+		m.surface.ClearSelection()
+		return
+	}
+	matches := m.surface.Matches()
+	ids := make([]ListItemID, 0, len(matches))
+	for _, match := range matches {
+		ids = append(ids, match.Item.ID)
+	}
+	if err := m.surface.SetSelectedIDs(ids); err != nil {
+		m.notice = err.Error()
+	}
+}
+
+func (m *ProjectHubModel) selectionCount() int {
+	if m.surface == nil {
+		return 0
+	}
+	return len(m.surface.SelectedIDs())
 }
 
 func (m *ProjectHubModel) applyProjectFilter() {
@@ -234,12 +249,11 @@ func (m *ProjectHubModel) currentProjectHubItemID() ListItemID {
 }
 
 func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
-	m.reconcileBoundaryFilter()
 	categories := m.projectHubCategories()
 	items := m.projectHubItems()
 	if m.surface == nil {
 		surface, err := NewListSurfaceModel(items, categories, ListSurfaceConfig{
-			SelectionMode: ListSelectionSingle,
+			SelectionMode: ListSelectionMulti,
 			EmptyState:    m.projectHubEmptyState(),
 			NoMatchState:  m.projectHubNoMatchState(),
 		})
@@ -259,65 +273,12 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
 }
 
 // projectHubCategories orders the listing groups: the base task workspace
-// first, then every custom boundary by name, then the archived tail. Building
-// them from the catalog on each rebuild is what lets a created, renamed, or
-// deleted boundary reach the Hub without any separate invalidation.
+// first, then the archived tail.
 func (m *ProjectHubModel) projectHubCategories() []ListCategory {
-	boundaries := m.customBoundaries()
-	categories := make([]ListCategory, 0, len(boundaries)+2)
-	categories = append(categories, ListCategory{ID: projectHubCategoryActive, Label: "Active Projects"})
-	for _, boundary := range boundaries {
-		categories = append(categories, ListCategory{
-			ID:    projectHubBoundaryCategory(boundary.ID),
-			Label: boundary.Name,
-		})
+	return []ListCategory{
+		{ID: projectHubCategoryActive, Label: "Active Projects"},
+		{ID: projectHubCategoryArchived, Label: "Archived Projects"},
 	}
-	return append(categories, ListCategory{ID: projectHubCategoryArchived, Label: "Archived Projects"})
-}
-
-// customBoundaries returns every boundary except the reserved Active one,
-// ordered case-insensitively by name with the durable ID breaking ties so two
-// boundaries that differ only by case still order deterministically.
-func (m *ProjectHubModel) customBoundaries() []config.ProjectBoundary {
-	catalog := m.runtime.Catalog()
-	boundaries := make([]config.ProjectBoundary, 0, len(catalog.Boundaries))
-	for _, boundary := range catalog.Boundaries {
-		if boundary.ID == models.ActiveBoundaryID {
-			continue
-		}
-		boundaries = append(boundaries, boundary)
-	}
-	slices.SortFunc(boundaries, func(a, b config.ProjectBoundary) int {
-		if order := strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)); order != 0 {
-			return order
-		}
-		return strings.Compare(a.ID, b.ID)
-	})
-	return boundaries
-}
-
-func projectHubBoundaryCategory(boundaryID string) ListCategoryID {
-	if boundaryID == "" || boundaryID == models.ActiveBoundaryID {
-		return projectHubCategoryActive
-	}
-	return ListCategoryID(projectHubCategoryBoundaryPrefix + boundaryID)
-}
-
-// projectBoundary resolves the group one project is listed under. An unassigned
-// project and one naming a boundary the catalog no longer defines both resolve
-// to Active, so a row can never reference a category the surface lacks.
-func (m *ProjectHubModel) projectBoundary(projectID string) config.ProjectBoundary {
-	active := config.ProjectBoundary{ID: models.ActiveBoundaryID, Name: config.ActiveBoundaryName}
-	catalog := m.runtime.Catalog()
-	boundaryID := catalog.ProjectBoundaryID(projectID)
-	if boundaryID == "" || boundaryID == models.ActiveBoundaryID {
-		return active
-	}
-	boundary, ok := catalog.Boundary(boundaryID)
-	if !ok || boundary.Name == "" {
-		return active
-	}
-	return boundary
 }
 
 func (m *ProjectHubModel) projectHubItems() []ListItem {
@@ -326,30 +287,25 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 		if project == nil {
 			continue
 		}
-		boundary := m.projectBoundary(project.ID)
-		if !m.boundaryFilterAdmits(boundary.ID, false) {
-			continue
-		}
 		label := project.Name
 		if project.ID == m.focusedProjectID {
 			label += " (focused)"
 		}
 		items = append(items, ListItem{
 			ID:            ListItemID(projectHubItemPrefix + project.ID),
-			CategoryID:    projectHubBoundaryCategory(boundary.ID),
+			CategoryID:    projectHubCategoryActive,
 			PrimaryText:   label,
 			SecondaryText: m.projectSecondary(project),
-			Aliases:       []string{project.Name, project.Slug, project.Context, boundary.Name, "active project"},
-			Preview:       m.projectPreview(project, boundary, false),
-			OperationIDs: []OperationID{
+			Aliases:       []string{project.Name, project.Slug, "active project"},
+			Preview:       m.projectPreview(project, false),
+			OperationIDs: append([]OperationID{
 				operationProjectOpen,
 				operationScopeCreateProject,
 				operationScopeRenameProject,
-				operationProjectSetBoundary,
 				operationScopePinProject,
 				operationScopeArchiveProject,
 				operationScopeOpenProjectNote,
-			},
+			}, projectBulkOperations...),
 			Data: projectHubEntry{Kind: projectHubEntryActive, Project: project},
 		})
 	}
@@ -357,22 +313,16 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 		if project == nil {
 			continue
 		}
-		boundary := m.projectBoundary(project.ID)
-		if !m.boundaryFilterAdmits(boundary.ID, true) {
-			continue
-		}
 		items = append(items, ListItem{
-			ID:          ListItemID(projectHubArchivedItemPrefix + project.ID),
-			CategoryID:  projectHubCategoryArchived,
-			PrimaryText: project.Name,
-			SecondaryText: "archived" + scopeBoundarySeparator +
-				projectHubContextLabel(project) + scopeBoundarySeparator + boundary.Name,
-			Aliases: []string{project.Name, project.Slug, project.Context, boundary.Name, "archived project"},
-			Preview: m.projectPreview(project, boundary, true),
+			ID:            ListItemID(projectHubArchivedItemPrefix + project.ID),
+			CategoryID:    projectHubCategoryArchived,
+			PrimaryText:   project.Name,
+			SecondaryText: strings.TrimSuffix("archived · "+projectTagChips(project.Tags), " · "),
+			Aliases:       []string{project.Name, project.Slug, "archived project"},
+			Preview:       m.projectPreview(project, true),
 			OperationIDs: []OperationID{
 				operationScopeCreateProject,
 				operationScopeRenameProject,
-				operationProjectSetBoundary,
 				operationScopeRestoreProject,
 			},
 			Data: projectHubEntry{Kind: projectHubEntryArchived, Project: project},
@@ -381,11 +331,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 	return items
 }
 
-func (m *ProjectHubModel) projectPreview(
-	project *models.Project,
-	boundary config.ProjectBoundary,
-	archived bool,
-) ListPreview {
+func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) ListPreview {
 	lifecycle := "Active"
 	if archived {
 		lifecycle = "Archived"
@@ -395,8 +341,6 @@ func (m *ProjectHubModel) projectPreview(
 		Summary: project.Description,
 		Fields: []ListPreviewField{
 			{Label: "Lifecycle", Value: lifecycle},
-			{Label: "Boundary", Value: boundary.Name},
-			{Label: "Context", Value: project.Context},
 			{Label: "Tasks", Value: m.projectTaskCount(project)},
 			{Label: "Pinned", Value: strconv.FormatBool(project.Pinned)},
 			{Label: "Slug", Value: project.Slug},
@@ -418,174 +362,45 @@ func (m *ProjectHubModel) projectTaskCount(project *models.Project) string {
 	return projectTaskCountLabel(project)
 }
 
+// projectSecondary carries the task count and the project's own tag chips. The
+// chips are plain text rather than styled badges because the row layout measures
+// this string, and they are what makes a parked project legible here: the Hub
+// lists parked projects alongside every other active one.
 func (m *ProjectHubModel) projectSecondary(project *models.Project) string {
-	context := projectHubContextLabel(project)
 	count := m.projectTaskCount(project)
+	secondary := fmt.Sprintf("%s tasks", count)
 	if count == projectTaskCountUnknown {
-		return context + scopeBoundarySeparator + "tasks not loaded"
+		secondary = "tasks not loaded"
 	}
-	return fmt.Sprintf("%s%s%s tasks", context, scopeBoundarySeparator, count)
+	if chips := projectTagChips(project.Tags); chips != "" {
+		secondary += " · " + chips
+	}
+	return secondary
 }
 
-func projectHubContextLabel(project *models.Project) string {
-	if project.Context == "" {
-		return "no context"
+func projectTagChips(tags []string) string {
+	if len(tags) == 0 {
+		return ""
 	}
-	return project.Context
-}
-
-// boundaryFilterAdmits reports whether one row survives the active filter.
-// Archived is a lifecycle group beside the boundary groups rather than inside
-// one: an archived project keeps its retained boundary on the row, but a
-// boundary filter lists only the projects that boundary currently holds.
-func (m *ProjectHubModel) boundaryFilterAdmits(boundaryID string, archived bool) bool {
-	if m.boundaryFilter == projectHubFilterAll {
-		return true
+	chips := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		chips = append(chips, "#"+tag)
 	}
-	if m.boundaryFilter == projectHubFilterArchived {
-		return archived
-	}
-	return !archived && boundaryID == m.boundaryFilter
-}
-
-// reconcileBoundaryFilter drops a filter whose boundary is gone. Deleting a
-// boundary moves its members elsewhere, so keeping the filter would leave the
-// Hub permanently empty with no visible cause.
-func (m *ProjectHubModel) reconcileBoundaryFilter() {
-	switch m.boundaryFilter {
-	case projectHubFilterAll, projectHubFilterArchived, models.ActiveBoundaryID:
-		return
-	}
-	if _, ok := m.runtime.Catalog().Boundary(m.boundaryFilter); ok {
-		return
-	}
-	m.boundaryFilter = projectHubFilterAll
-	m.notice = "Boundary filter cleared: that boundary no longer exists"
-}
-
-// boundaryFilterLabel names the active filter for Hub chrome.
-func (m *ProjectHubModel) boundaryFilterLabel() string {
-	if m.boundaryFilter == projectHubFilterAll {
-		return "All"
-	}
-	if m.boundaryFilter == projectHubFilterArchived {
-		return "Archived"
-	}
-	if m.boundaryFilter == models.ActiveBoundaryID {
-		return config.ActiveBoundaryName
-	}
-	if boundary, ok := m.runtime.Catalog().Boundary(m.boundaryFilter); ok {
-		return boundary.Name
-	}
-	return "All"
+	return strings.Join(chips, " ")
 }
 
 func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
-	if m.boundaryFilter == projectHubFilterAll {
-		return ListEmptyState{
-			Title:  "No projects are available.",
-			Detail: "Press n to create a project.",
-		}
-	}
 	return ListEmptyState{
-		Title:  fmt.Sprintf("No projects are in %s.", m.boundaryFilterLabel()),
-		Detail: "Press f to choose another boundary.",
+		Title:  "No projects are available.",
+		Detail: "Press n to create a project.",
 	}
 }
 
 func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
-	if m.boundaryFilter == projectHubFilterAll {
-		return ListEmptyState{
-			Title:  "No projects match this search.",
-			Detail: "Press Esc to clear the query and browse every project.",
-		}
-	}
 	return ListEmptyState{
-		Title:  fmt.Sprintf("No projects in %s match this search.", m.boundaryFilterLabel()),
-		Detail: "Press Esc to clear the query or f to widen the boundary filter.",
+		Title:  "No projects match this search.",
+		Detail: "Press Esc to clear the query and browse every project.",
 	}
-}
-
-// boundaryFilterOptions builds the picker rows: All, the base task workspace,
-// every custom boundary in listing order, then Archived.
-func (m *ProjectHubModel) boundaryFilterOptions() []projectHubFilterOption {
-	boundaries := m.customBoundaries()
-	counts := make(map[string]int, len(boundaries)+1)
-	available := m.runtime.AvailableProjects()
-	for _, project := range available {
-		if project != nil {
-			counts[m.projectBoundary(project.ID).ID]++
-		}
-	}
-	archived := len(m.runtime.ArchivedProjects())
-
-	options := make([]projectHubFilterOption, 0, len(boundaries)+3)
-	options = append(options,
-		projectHubFilterOption{
-			ID:    projectHubFilterAll,
-			Label: "All",
-			Count: len(available) + archived,
-		},
-		projectHubFilterOption{
-			ID:    models.ActiveBoundaryID,
-			Label: config.ActiveBoundaryName,
-			Count: counts[models.ActiveBoundaryID],
-		},
-	)
-	for _, boundary := range boundaries {
-		options = append(options, projectHubFilterOption{
-			ID:    boundary.ID,
-			Label: boundary.Name,
-			Count: counts[boundary.ID],
-		})
-	}
-	return append(options, projectHubFilterOption{
-		ID:    projectHubFilterArchived,
-		Label: "Archived",
-		Count: archived,
-	})
-}
-
-func (m *ProjectHubModel) openProjectHubFilterPicker() {
-	picker, err := newProjectHubFilterPicker(
-		"Boundary",
-		"Type filter · ↑↓/Ctrl+j/k move · Enter apply · Esc close",
-		m.boundaryFilterOptions(),
-		m.boundaryFilter,
-	)
-	if err != nil {
-		m.notice = err.Error()
-		return
-	}
-	m.filterPicker = picker
-}
-
-func (m *ProjectHubModel) updateProjectHubFilterPicker(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	option, chosen, dismissed := m.filterPicker.handleKey(key)
-	if chosen {
-		m.filterPicker = nil
-		m.applyBoundaryFilter(option.ID)
-		return m, nil
-	}
-	if dismissed {
-		m.filterPicker = nil
-	}
-	return m, nil
-}
-
-// applyBoundaryFilter narrows the listing without touching any stored state:
-// the surface is rebuilt from the same catalog, only with fewer rows admitted.
-// The surface is discarded rather than reloaded so its empty-state copy is
-// rebuilt for the new filter.
-func (m *ProjectHubModel) applyBoundaryFilter(boundaryID string) {
-	if m.boundaryFilter == boundaryID {
-		return
-	}
-	prefer := m.currentProjectHubItemID()
-	m.boundaryFilter = boundaryID
-	m.notice = ""
-	m.surface = nil
-	m.rebuildProjectSurface(prefer)
 }
 
 func (m *ProjectHubModel) selectedProjectHubEntry() (projectHubEntry, bool) {
@@ -648,7 +463,15 @@ func (m *ProjectHubModel) executeProjectHubCreate() tea.Cmd {
 	return m.applyProjectHubExecutionResult(result)
 }
 
+// openProjectHubActions offers the cursor's project, or the whole selection
+// when one exists. The selection wins because it is the deliberate, visible
+// state: acting on the cursor while checkboxes are set would silently ignore
+// them.
 func (m *ProjectHubModel) openProjectHubActions() {
+	if m.selectionCount() > 0 {
+		m.openProjectHubBulkActions()
+		return
+	}
 	entry, ok := m.selectedProjectHubEntry()
 	if !ok || entry.Project == nil || m.surface == nil {
 		return
@@ -682,6 +505,68 @@ func (m *ProjectHubModel) openProjectHubActions() {
 		return
 	}
 	m.actions = sheet
+}
+
+// openProjectHubBulkActions freezes the selected project identities into the
+// command context instead of a single host value, so the executor resolves the
+// same target set when the tag prompt resumes the request.
+func (m *ProjectHubModel) openProjectHubBulkActions() {
+	selected := m.surface.SelectedItems()
+	identities := make([]EntityIdentity, 0, len(selected))
+	for _, item := range selected {
+		entry, ok := item.Data.(projectHubEntry)
+		if !ok || entry.Project == nil {
+			continue
+		}
+		identities = append(identities, ProjectEntity(entry.Project.ID))
+	}
+	if len(identities) == 0 {
+		return
+	}
+	ctx := m.projectHubCommandContext("")
+	ctx.Selection.EntityIdentities = identities
+
+	sheet, err := NewContextActionSheetModel(
+		m.registry,
+		m.executor,
+		ctx,
+		projectHubBulkOperationIDs(m.surface.ActionState().OperationIDs),
+		ContextActionSheetConfig{
+			Host:         ContextActionHostProjectHub,
+			Completion:   ContextActionCompleteCloseSheet,
+			Title:        "Bulk Actions",
+			Categories:   projectHubActionCategories,
+			CategoryFor:  projectHubActionCategory,
+			SecondaryFor: func(descriptor OperationDescriptor) string { return string(descriptor.Risk) },
+			Bulk:         true,
+			Targets:      len(identities),
+			EmptyState:   ListEmptyState{Title: "No bulk actions available."},
+			NoMatchState: ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
+		},
+	)
+	if err != nil {
+		m.notice = err.Error()
+		return
+	}
+	if len(sheet.operationIDs()) == 0 {
+		m.notice = "Bulk tag actions apply only to active projects"
+		return
+	}
+	m.actions = sheet
+}
+
+// projectHubBulkOperationIDs keeps the bulk sheet closed over the four tag
+// actions, in their declared order, and drops any the selection does not share.
+// An archived row in the selection carries none of them, so a mixed selection
+// offers nothing rather than an action half of it would refuse.
+func projectHubBulkOperationIDs(available []OperationID) []OperationID {
+	ids := make([]OperationID, 0, len(projectBulkOperations))
+	for _, id := range projectBulkOperations {
+		if slices.Contains(available, id) {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func projectHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
@@ -719,6 +604,12 @@ func (m *ProjectHubModel) applyProjectHubExecutionResult(result OperationExecuti
 		m.notice = result.Err.Error()
 		return nil
 	}
+	// A value step is owned by the shell overlay above the Hub and resumes from
+	// the frozen request, so the sheet has nothing left to do and closing it keeps
+	// one modal on screen instead of two.
+	if result.ValueRequired != nil {
+		m.actions = nil
+	}
 	message := result.AsMessage()
 	if message == nil {
 		return nil
@@ -736,17 +627,13 @@ func (m *ProjectHubModel) View() tea.View {
 	}
 	footer := renderStatusBarFooter(
 		HelpStyle.Render(m.footerHelp(width)),
-		MutedStyle.Render(m.footerLabel()),
+		MutedStyle.Render(projectHubFooterLabel),
 		width,
 		m.AccentColor(),
 	)
 	contentHeight := fullscreenContentHeightForBlocks(height, header, footer)
 	var content string
-	if m.boundaries != nil {
-		content = m.boundaries.view(width, contentHeight)
-	} else if m.filterPicker != nil {
-		content = m.filterPicker.render(width)
-	} else if m.actions != nil {
+	if m.actions != nil {
 		content = m.actions.render(width)
 	} else {
 		content = NewListSurfaceRenderer(ListSurfaceRenderConfig{
@@ -757,7 +644,7 @@ func (m *ProjectHubModel) View() tea.View {
 			HideHelp:    true,
 		}).Render(m.surface)
 	}
-	if notice := m.noticeText(); notice != "" {
+	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,
 			MutedStyle.Render(truncateToVisualWidth(notice, width)),
@@ -772,56 +659,23 @@ func (m *ProjectHubModel) View() tea.View {
 	))
 }
 
-// footerLabel names the surface currently holding the key stream, so the status
-// bar says Boundaries while the manager owns it.
-func (m *ProjectHubModel) footerLabel() string {
-	if m.boundaries != nil {
-		return boundaryManagerFooterLabel
-	}
-	return projectHubFooterLabel
-}
-
-// noticeText prefers the manager's own notice while it is open, because the Hub
-// underneath is not the surface that produced or can act on it.
-func (m *ProjectHubModel) noticeText() string {
-	if m.boundaries != nil {
-		return m.boundaries.notice
-	}
-	return m.notice
-}
-
 func (m *ProjectHubModel) subtitle() string {
-	counts := fmt.Sprintf(
+	subtitle := fmt.Sprintf(
 		"%d active · %d archived",
 		len(m.runtime.AvailableProjects()),
 		len(m.runtime.ArchivedProjects()),
 	)
-	if m.boundaryFilter == projectHubFilterAll {
-		return counts
+	if count := m.selectionCount(); count > 0 {
+		subtitle += fmt.Sprintf(" · %d selected", count)
 	}
-	return counts + scopeBoundarySeparator + m.boundaryFilterChrome()
+	return subtitle
 }
 
-// boundaryFilterChrome is the shortest statement of the active filter, so a
-// narrow Hub can still say which boundary it is showing after the workspace
-// counts have been dropped.
-func (m *ProjectHubModel) boundaryFilterChrome() string {
-	return "showing " + m.boundaryFilterLabel()
-}
-
-// renderProjectHubTitle degrades the title from the full subtitle to the filter
-// alone to nothing, so a narrow Hub loses workspace counts before it loses the
-// only chrome that explains why rows are missing.
+// renderProjectHubTitle degrades the title from the full subtitle to nothing, so
+// a narrow Hub loses workspace counts rather than overflowing.
 func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
 	heading := "Select Project"
-	subtitles := []string{m.subtitle()}
-	if m.boundaries != nil {
-		heading = "Boundaries"
-		subtitles = []string{m.boundaries.subtitle()}
-	} else if m.boundaryFilter != projectHubFilterAll {
-		subtitles = append(subtitles, m.boundaryFilterChrome())
-	}
-	subtitles = append(subtitles, "")
+	subtitles := []string{m.subtitle(), ""}
 	for _, subtitle := range subtitles {
 		title := renderFullscreenTitle(heading, subtitle, m.AccentColor())
 		if lipgloss.Width(title) <= width {
@@ -836,9 +690,6 @@ func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
 }
 
 func (m *ProjectHubModel) renderSearchBar() string {
-	if m.boundaries != nil {
-		return m.boundaries.searchBar()
-	}
 	if m.HasActiveSearch() {
 		return "/" + m.SearchInputView()
 	}
@@ -851,14 +702,6 @@ func (m *ProjectHubModel) renderSearchBar() string {
 func (m *ProjectHubModel) footerHelp(width int) string {
 	var variants []string
 	switch {
-	case m.boundaries != nil:
-		variants = m.boundaries.footerHelpVariants()
-	case m.filterPicker != nil:
-		variants = []string{
-			"Type to filter · ↑↓/Ctrl+j/k move · Enter apply · Esc close",
-			"↑↓ move · Enter apply · Esc close",
-			"Enter · Esc",
-		}
 	case m.actions != nil && m.actions.searching:
 		variants = []string{"Type to filter · Enter keep · Esc clear"}
 	case m.actions != nil:
@@ -869,16 +712,22 @@ func (m *ProjectHubModel) footerHelp(width int) string {
 			"↑↓/Ctrl+j/k move · Enter select · Esc browse",
 			"Enter select · Esc browse",
 		}
+	case m.selectionCount() > 0:
+		variants = []string{
+			fmt.Sprintf("%d selected · v toggle · a/A all/none · Space bulk tag actions", m.selectionCount()),
+			fmt.Sprintf("%d selected · v · a/A · Space bulk", m.selectionCount()),
+			"v · a/A · Space bulk",
+		}
 	case m.SearchQuery() != "":
-		variants = []string{"j/k choose · Enter select · Space actions · Esc clear", "Enter · Space · Esc clear"}
+		variants = []string{"j/k choose · Enter select · v select · Space actions · Esc clear", "Enter · v · Space · Esc clear"}
 	default:
 		variants = []string{
-			"j/k choose · Enter select · Space actions · f boundary · n new · / search",
-			"j/k · Enter · Space · f · n · /",
-			"Enter · Space · f · /",
+			"j/k choose · Enter select · v select · a/A all/none · Space actions · n new · / search",
+			"j/k · Enter · v · a/A · Space · n · /",
+			"Enter · v · Space · /",
 		}
 	}
-	budget := width - lipgloss.Width(m.footerLabel()) - 1
+	budget := width - lipgloss.Width(projectHubFooterLabel) - 1
 	for _, variant := range variants {
 		if lipgloss.Width(variant) <= budget {
 			return variant
@@ -887,26 +736,15 @@ func (m *ProjectHubModel) footerHelp(width int) string {
 	return variants[len(variants)-1]
 }
 
-// HasTextInput reports the whole Boundary Manager as text input because it owns
-// the Hub's entire key stream while open, so no shell interceptor may claim a
-// key the manager is waiting for.
+// HasTextInput reports the action sheet as text input because it owns the Hub's
+// entire key stream while open, so no shell interceptor may claim a key the
+// sheet is waiting for.
 func (m *ProjectHubModel) HasTextInput() bool {
-	return m.boundaries != nil || m.actions != nil || m.filterPicker != nil || m.DefaultHasTextInput()
+	return m.actions != nil || m.DefaultHasTextInput()
 }
 
 func (m *ProjectHubModel) ShouldCaptureEsc() bool {
-	return m.boundaries != nil || m.actions != nil || m.filterPicker != nil ||
-		m.SearchShouldCaptureEsc() || m.SearchQuery() != ""
-}
-
-// GetConfirmDialog surfaces the manager's confirmation through the Manage host,
-// so a boundary deletion is answered by the same overlay every other destructive
-// operation uses.
-func (m *ProjectHubModel) GetConfirmDialog() *ConfirmDialog {
-	if m.boundaries == nil {
-		return nil
-	}
-	return m.boundaries.confirmDialog()
+	return m.actions != nil || m.SearchShouldCaptureEsc() || m.SearchQuery() != ""
 }
 
 func (m *ProjectHubModel) IsFullHeight() bool { return true }
@@ -914,17 +752,14 @@ func (m *ProjectHubModel) IsFullHeight() bool { return true }
 func (m *ProjectHubModel) StatusBarLabel() string { return "Projects" }
 
 func (m *ProjectHubModel) GetHelpItems() []HelpItem {
-	if m.boundaries != nil {
-		return m.boundaries.helpItems()
-	}
 	return []HelpItem{
 		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
 		{Key: "Ctrl+d/u", Description: "Move half a page down/up", Category: "Navigation"},
 		{Key: "Enter", Description: "Focus the selected active project", Category: "Actions"},
-		{Key: "Space", Description: "Open project administration actions", Category: "Actions"},
+		{Key: "Space", Description: "Open actions for the selection, or the cursor when nothing is selected", Category: "Actions"},
 		{Key: "n", Description: "Create a project", Category: "Actions"},
-		{Key: "B", Description: "Manage boundaries", Category: "Actions"},
-		{Key: "f", Description: "Filter the list by boundary", Category: "Filters"},
+		{Key: "v", Description: "Select or deselect the project under the cursor", Category: "Selection"},
+		{Key: "a/A", Description: "Select or deselect every matching project", Category: "Selection"},
 		{Key: "/", Description: "Search projects", Category: "Filters"},
 		{Key: "Esc", Description: "Clear search, then close", Category: "Navigation"},
 	}
@@ -932,9 +767,6 @@ func (m *ProjectHubModel) GetHelpItems() []HelpItem {
 
 func (m *ProjectHubModel) RefreshProjectHub() {
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
-	if m.boundaries != nil {
-		m.boundaries.refresh()
-	}
 }
 
 func projectHubOperationDescriptors() []OperationDescriptor {
@@ -968,7 +800,7 @@ func (m *AppModel) registerProjectHubOperations() error {
 			return err
 		}
 	}
-	return m.registerProjectBoundaryOperations()
+	return nil
 }
 
 func (m *AppModel) refreshProjectHubIfActive() {

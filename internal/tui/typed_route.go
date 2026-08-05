@@ -70,7 +70,6 @@ type ManageModule uint8
 
 const (
 	ManageNotes ManageModule = iota
-	ManageContexts
 	ManageProjects
 )
 

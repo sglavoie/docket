@@ -1,0 +1,27 @@
+{
+  "name": "project-hub-bulk-tag-selection",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "key", "label": "leave search for the browse grammar", "key": "esc" },
+    { "type": "key", "label": "select the project under the cursor", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "1 selected" },
+    { "type": "key", "label": "move to the next project", "key": "j" },
+    { "type": "key", "label": "select it too", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "2 selected" },
+    { "type": "key", "label": "open the bulk action sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Add tag" },
+    { "type": "assert", "assert": "contains", "value": "Park projects" },
+    { "type": "assert", "assert": "contains", "value": "Unpark projects" },
+    { "type": "key", "label": "run Add tag", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "tag name" },
+    { "type": "text", "label": "name the tag", "text": "focus" },
+    { "type": "key", "label": "apply it across the selection", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "Tagged 2 projects #focus" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "#focus" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

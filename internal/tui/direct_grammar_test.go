@@ -33,42 +33,54 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"J": operationCoreReorderDown, "K": operationCoreReorderUp,
 		"<": operationTaskOutdent, ">": operationTaskIndent,
 		"enter": operationCorePeek,
-		"/":     operationCoreScopeSearch, "c": operationCoreScope,
-		"C": operationCoreSelectProject,
-		"v": operationCoreMultiSelect, "ctrl+a": operationCoreSelectAll,
+		"/":     operationCoreScopeSearch,
+		"v":     operationCoreMultiSelect, "ctrl+a": operationCoreSelectAll,
+		"p": operationCoreSelectProject,
 		"N": operationCoreNotes, "T": operationCoreToggleTheme,
 		"u": operationCoreUndo, "ctrl+r": operationCoreRedo,
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
 		"tab": operationCoreNextWorkMode, "shift+tab": operationCorePreviousWorkMode,
-		"@": operationTaskSetDueDate, "#": operationTaskSetTags,
+		"@": operationTaskSetDueDate,
 		"z": operationTaskSetSnooze, "P": operationTaskTogglePin,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 	}
 
-	owners := make(map[string]OperationID)
+	// # is the one deliberately shared key: the cursor decides whether it tags the
+	// task or the project, and each meaning keeps its own descriptor so help and
+	// the footer can name both honestly.
+	shared := map[string][]OperationID{
+		"#": {operationTaskSetTags, operationProjectSetTags},
+	}
+
+	owners := make(map[string][]OperationID)
 	for _, binding := range strategy.Bindings {
 		for _, key := range binding.Keys {
-			if owner, duplicate := owners[key]; duplicate {
-				t.Errorf("direct key %q is owned by both %s and %s", key, owner, binding.OperationID)
+			if len(owners[key]) > 0 && !binding.SharedKey {
+				t.Errorf("direct key %q is owned by both %s and %s", key, owners[key][0], binding.OperationID)
 			}
-			owners[key] = binding.OperationID
+			owners[key] = append(owners[key], binding.OperationID)
 		}
 	}
-	if len(owners) != len(direct) {
-		t.Fatalf("direct key count = %d, want %d; got %v", len(owners), len(direct), owners)
+	if len(owners) != len(direct)+len(shared) {
+		t.Fatalf("direct key count = %d, want %d; got %v", len(owners), len(direct)+len(shared), owners)
 	}
 	for key, operationID := range direct {
-		if got := owners[key]; got != operationID {
-			t.Errorf("direct key %q = %s, want %s", key, got, operationID)
+		if got := owners[key]; !slices.Equal(got, []OperationID{operationID}) {
+			t.Errorf("direct key %q = %v, want %s", key, got, operationID)
+		}
+	}
+	for key, want := range shared {
+		if got := owners[key]; !slices.Equal(got, want) {
+			t.Errorf("shared key %q = %v, want %v", key, got, want)
 		}
 	}
 
 	for _, removed := range []string{
-		"b", "d", "n", "t", ",", "m", ":", "R", "V", "p", "ctrl+esc", "ctrl+n",
+		"b", "c", "d", "n", "t", ",", "m", ":", "C", "R", "V", "ctrl+esc", "ctrl+n",
 	} {
-		if owner := owners[removed]; owner != "" {
-			t.Errorf("removed key %q still resolves to %s", removed, owner)
+		if owners := owners[removed]; len(owners) > 0 {
+			t.Errorf("removed key %q still resolves to %s", removed, owners[0])
 		}
 	}
 }
@@ -299,7 +311,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if reloaded.Machine().Theme != afterTheme {
 		t.Fatalf("persisted machine theme = %q, want %q", reloaded.Machine().Theme, afterTheme)
 	}
-	app.pushView(ViewContextHub)
+	app.pushView(ViewProjectHub)
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{
 		Code: 'c',
 		Mod:  tea.ModCtrl,

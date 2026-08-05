@@ -60,7 +60,7 @@ func TestEnsureProjectColorSlotsCommitsStartupBackfillOnce(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "workspace")
 	store := config.NewDomainFileStore(dataDir)
 	catalog := config.NewWorkspaceCatalog()
-	catalog.Projects = []config.CatalogProject{{ID: "legacy", Slug: "legacy", Name: "Legacy", BoundaryID: models.ActiveBoundaryID}}
+	catalog.Projects = []config.CatalogProject{{ID: "legacy", Slug: "legacy", Name: "Legacy"}}
 	if err := store.SaveCatalog(catalog); err != nil {
 		t.Fatalf("SaveCatalog: %v", err)
 	}
@@ -106,12 +106,12 @@ func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
 	catalog := config.NewWorkspaceCatalog()
 	catalog.Projects = []config.CatalogProject{
 		{
-			ID: "legacy", Slug: "legacy", Name: "Legacy", Context: "personal",
-			CreatedAt: now, UpdatedAt: now, BoundaryID: models.ActiveBoundaryID,
+			ID: "legacy", Slug: "legacy", Name: "Legacy",
+			CreatedAt: now, UpdatedAt: now,
 		},
 		{
-			ID: "system-inbox", Slug: config.SystemUnfiledSlug, Name: config.SystemUnfiledName, Context: "personal",
-			CreatedAt: now, UpdatedAt: now, ColorSlot: 1, BoundaryID: models.ActiveBoundaryID,
+			ID: "system-inbox", Slug: config.SystemUnfiledSlug, Name: config.SystemUnfiledName,
+			CreatedAt: now, UpdatedAt: now, ColorSlot: 1,
 		},
 	}
 	catalog.SystemUnfiledProjectID = "system-inbox"

@@ -20,48 +20,25 @@ type ProjectCreatorModel struct {
 	manager *config.Manager
 	service *app.Service
 
-	nameInput     textinput.Model
-	contextInput  textinput.Model
-	contextCursor int      // -1 means custom input mode, 0+ means selecting from list
-	contexts      []string // Available contexts from existing projects
-
-	focusIndex int // 0 = name input, 1 = context selection
-	width      int
+	nameInput textinput.Model
+	width     int
 
 	discardConfirmState
 }
 
-// NewProjectCreatorModel creates a project creator reading its default and
-// available contexts from the domain-native catalog snapshot.
+// NewProjectCreatorModel creates a project creator over the domain-native
+// catalog snapshot. A new project starts with no tags.
 func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manager, service *app.Service) *ProjectCreatorModel {
 	factory := DefaultFormFieldFactory()
 	nameInput := factory.NewTextInputFocused("Project name")
 	nameInput.CharLimit = 100
 
-	defaultContext := runtime.DefaultContext()
-
-	// Context input with default value
-	contextInput := factory.NewTextInputWithValue(defaultContext, "e.g., personal, work")
-	contextInput.CharLimit = 50
-
-	// Build contexts list: start with default context, then add others
-	contexts := []string{defaultContext}
-	for _, ctx := range runtime.AllContexts() {
-		if ctx != defaultContext {
-			contexts = append(contexts, ctx)
-		}
-	}
-
 	return &ProjectCreatorModel{
-		runtime:       runtime,
-		manager:       manager,
-		service:       service,
-		nameInput:     nameInput,
-		contextInput:  contextInput,
-		contextCursor: 0, // Default context is at index 0
-		contexts:      contexts,
-		focusIndex:    0,
-		width:         80,
+		runtime:   runtime,
+		manager:   manager,
+		service:   service,
+		nameInput: nameInput,
+		width:     80,
 	}
 }
 
@@ -69,7 +46,6 @@ func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manage
 func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
 	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
-	formFactory.ResizeTextInputWithReserve(&m.contextInput, width, FormLabelWidth)
 }
 
 func (m *ProjectCreatorModel) SupportsHelpShortcut() bool { return false }
@@ -110,78 +86,17 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return BackMsg{}
 			}
 
-		case "tab", "shift+tab":
-			m.focusIndex = (m.focusIndex + 1) % 2
-			if m.focusIndex == 0 {
-				m.nameInput.Focus()
-				m.contextInput.Blur()
-			} else {
-				m.nameInput.Blur()
-				m.contextInput.Focus()
-			}
-			return m, nil
-
 		case "enter":
-			if m.focusIndex == 0 {
-				// Move to context selection
-				m.focusIndex = 1
-				m.nameInput.Blur()
-				m.contextInput.Focus()
-				return m, nil
-			}
-			// Submit
 			return m, m.createProject()
-
-		case "left", "h":
-			// Cycle through contexts when on context field
-			if m.focusIndex == 1 && len(m.contexts) > 0 {
-				if m.contextCursor > 0 {
-					m.contextCursor--
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				} else if m.contextCursor == -1 {
-					// From custom mode, go to last context
-					m.contextCursor = len(m.contexts) - 1
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				}
-			}
-
-		case "right", "l":
-			// Cycle through contexts when on context field
-			if m.focusIndex == 1 && len(m.contexts) > 0 {
-				if m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
-					m.contextCursor++
-					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				}
-			}
 		}
 	}
 
-	// Update the focused input
-	switch m.focusIndex {
-	case 0:
-		m.nameInput, cmd = m.nameInput.Update(msg)
-	case 1:
-		oldValue := m.contextInput.Value()
-		m.contextInput, cmd = m.contextInput.Update(msg)
-		// If user typed something, switch to custom mode
-		if m.contextInput.Value() != oldValue {
-			m.contextCursor = -1
-			// Check if typed value matches an existing context
-			for i, ctx := range m.contexts {
-				if ctx == m.contextInput.Value() {
-					m.contextCursor = i
-					break
-				}
-			}
-		}
-	}
-
+	m.nameInput, cmd = m.nameInput.Update(msg)
 	return m, cmd
 }
 
 func (m *ProjectCreatorModel) createProject() tea.Cmd {
 	name := strings.TrimSpace(m.nameInput.Value())
-	contextValue := strings.TrimSpace(m.contextInput.Value())
 	runtime := m.runtime
 	manager := m.manager
 	service := m.service
@@ -206,12 +121,6 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
-
-		// Get context value
-		if contextValue == "" {
-			contextValue = runtime.DefaultContext()
-		}
-		project.Context = contextValue
 
 		if manager == nil || service == nil {
 			return ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
@@ -264,21 +173,8 @@ func (m *ProjectCreatorModel) View() tea.View {
 	var b strings.Builder
 
 	// Name input
-	b.WriteString(renderFormLabelShared("Name:", 0, m.focusIndex))
+	b.WriteString(renderFormLabelShared("Name:", 0, 0))
 	b.WriteString(m.nameInput.View())
-	b.WriteString("\n\n")
-
-	// Context input with available contexts hint
-	b.WriteString(renderFormLabelShared("Context:", 1, m.focusIndex))
-	b.WriteString(m.contextInput.View())
-	b.WriteString("\n")
-
-	// Show available contexts using shared selector
-	if len(m.contexts) > 0 {
-		padding := strings.Repeat(" ", FormLabelWidth)
-		b.WriteString(padding)
-		b.WriteString(renderContextSelectorShared(m.contexts, m.contextCursor, m.focusIndex == 1))
-	}
 	b.WriteString("\n\n")
 
 	// Show slug preview
@@ -289,7 +185,7 @@ func (m *ProjectCreatorModel) View() tea.View {
 	}
 
 	// Footer
-	left := HelpStyle.Render("Tab switch · ←/→ context · Enter submit · Esc cancel")
+	left := HelpStyle.Render("Enter submit · Esc cancel")
 	right := MutedStyle.Render("Create Project")
 
 	var out strings.Builder

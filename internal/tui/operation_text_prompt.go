@@ -119,6 +119,10 @@ func (m *AppModel) newOperationTextPrompt(
 		return newOperationTextPromptModel(
 			request, label, note.Note.Title, note.Note.Title, "new note title",
 		), nil
+	case ValueProviderTagName:
+		// A tag name applies across a whole selection, so there is no single
+		// current value to prefill or show.
+		return newOperationTextPromptModel(request, label, "", "", "tag name"), nil
 	default:
 		return nil, fmt.Errorf("unknown operation text value provider %q", provider)
 	}

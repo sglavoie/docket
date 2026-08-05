@@ -203,7 +203,6 @@ func scoreSearchProjectionTask(task *models.Task, project *models.Project, query
 		project.Name,
 		project.Slug,
 		project.Description,
-		project.Context,
 		fmt.Sprintf("%s#%d", project.Slug, task.ShortID),
 	}, " ")
 	if score := fuzzy.ScoreTerms(secondary, query); score > 0 {

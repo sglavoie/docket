@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "72x20",
   "actions": [
-    { "type": "key", "label": "open Select Project", "key": "C" },
+    { "type": "key", "label": "open Select Project", "key": "p" },
     { "type": "text", "label": "find Rich Project", "text": "rprj" },
     { "type": "key", "label": "focus the selected project", "key": "enter" },
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },

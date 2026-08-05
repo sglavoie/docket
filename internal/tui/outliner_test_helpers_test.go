@@ -34,14 +34,14 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerFilterOperations(); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
-	if err := model.registerScopeHubOperations(); err != nil {
-		t.Fatalf("register scope hub operations: %v", err)
-	}
 	if err := model.registerProjectHubOperations(); err != nil {
 		t.Fatalf("register project hub operations: %v", err)
 	}
 	if err := model.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
+	}
+	if err := model.registerProjectBulkOperations(); err != nil {
+		t.Fatalf("register project bulk operations: %v", err)
 	}
 	if err := model.registerNoteOperations(); err != nil {
 		t.Fatalf("register note operations: %v", err)
@@ -107,16 +107,6 @@ func scopeTestOutliner(projects ...*models.Project) *OutlinerModel {
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	return outliner
-}
-
-func scopeVisibleProjectIDs(outliner *OutlinerModel) map[string]bool {
-	ids := make(map[string]bool)
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil {
-			ids[row.ProjectID] = true
-		}
-	}
-	return ids
 }
 
 func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {

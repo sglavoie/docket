@@ -81,17 +81,16 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	}
 
 	// Build input for fzf.
-	// Format: slug<TAB>display-name (slug)<TAB>context<TAB>N tasks
+	// Format: slug<TAB>display-name (slug)<TAB>N tasks
 	// The slug column is hidden via --with-nth=2.. and used only for parsing.
 	var lines []string
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s (%s)\t%s\t%d tasks",
+		line := fmt.Sprintf("%s\t%s (%s)\t%d tasks",
 			sanitizeFzfField(p.Slug),
 			sanitizeFzfField(p.Name),
 			sanitizeFzfField(p.Slug),
-			sanitizeFzfField(p.Context),
 			p.CountTasks())
 		lines = append(lines, line)
 		projectMap[p.Slug] = p

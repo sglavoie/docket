@@ -37,9 +37,8 @@ surface; Cobra contains only the TUI launcher and maintenance commands.
   reconciliation, and atomic mutation policy.
 - `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
   conflicts, recovery, and the workspace undo ledger.
-- `internal/config` owns the lean catalog/planning domains, portable regular
-  contexts, project boundaries, machine-local theme, workspace selection, and
-  v4→v5→v6 migration.
+- `internal/config` owns the lean catalog/planning domains, project tags,
+  machine-local theme, workspace selection, and v4→v5→v6→v7 migration.
 - `internal/tui` owns the sole Outliner root, typed subordinate tools and
   overlays, the operation registry/executor, and deterministic scenarios.
 - `internal/textgrammar` owns canonical capture/edit sigils.
@@ -97,7 +96,7 @@ si sb sn st sg sw sp sm sd sc  state/planning chord
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
 v Ctrl+A Space                 selection/actions (`V` unbound)
-c N T / ? u Ctrl+R Esc Ctrl+C  global
+p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
 Pressing `s` shows the state/planning chord. Its second keys are `i` Inbox, `b`
@@ -110,8 +109,28 @@ are cumulative High/Medium/Low thresholds and exclude Unset. `fd` opens
 the due-date facet picker for overdue, today, this week, or no due date. `fc`
 opens the completion-age picker without choosing Done/Canceled states; cleanup
 uses `fs` → `fc` → `Ctrl+A` → `Space` Delete. `fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
-comma state prefix must remain unbound, along with `m`, `:`, `R`, `p`, and
+comma state prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and
 `Ctrl+Esc`.
+
+Project filter chords are `Ft`, `Fp`, `Fa`, and `Fx`. Lowercase `f` refines the
+rows a projection holds; uppercase `F` decides which projects load, so every `F`
+facet reloads the population. `Ft` is a multi-select picker over the whole
+cataloged project tag vocabulary plus an Untagged pseudo-entry, so a facet can
+always be widened back out from inside the picker. `Space` on one of its tag
+rows offers Rename everywhere, Remove everywhere, Park all members, and
+Unpark all members through the ordinary project bulk-tag transaction; a removal
+that would strand a project asks for a destination tag first. `Fp` and the
+`parked` row inside `Ft` write the same `ProjectFilterState` entry, so the two
+routes can never claim different populations.
+
+A chord prefix that a second key abandons sets a brief warning status naming the
+path it left, such as `sq is not a state / planning action`. An unbound root key
+stays silent because it never promised anything.
+
+`#` is the one shared key: two descriptors declare it, `tui.task.set-tags` and
+`tui.project.set-tags`, and the cursor decides which applies. Keep them two
+operations so the footer and `?` help carry two honest labels; never branch one
+descriptor's target source on runtime context.
 
 Relocation jump history is session-only and scoped to the current projection;
 changing mode, scope, search, filters, sorting, folds, or zoom clears it. A
@@ -138,14 +157,11 @@ closes Peek; while selection exists, structural, edit, Peek, relation, and
 clipboard operations must reject it instead of falling back to the cursor.
 The bulk `Space` menu contains Delete only.
 
-Scope Hub owns Active Projects and exclusive regular project-label contexts;
-`personal` is always present and protects its name while keeping membership
-editable. Inside the context editor's project list, `f`/`F` cycle the visible
-projects forward and backward through All and each regular context, and Esc
-clears that scope filter after the search query and before leaving the list.
-`C` opens the search-first
-project selector for project focus and lean project administration, with `f`
-filtering by boundary and `B` opening Boundary Manager. `N` always
+`p` opens the search-first project picker, which owns project focus and lean
+project administration. It lists `Runtime.AvailableProjects()` with each
+project's tag chips, `v` selects a row, `a`/`A` select or clear every matching
+row, and `Space` over a selection offers Add tag, Remove tag, Park and Unpark
+across the whole selection in one transaction. `N` always
 opens All Notes across Global and every project returned by
 `Runtime.AvailableProjects()`. Inside Notes, `v` chooses All, Global, or one active
 project, `s` persistently searches titles and bodies, and `m` atomically moves
@@ -156,37 +172,48 @@ note identity location-qualified, keep archived projects and `Ctrl+N` excluded,
 and do not restore note tags, task links, pins, bulk actions, or previews. `T`
 toggles only dark/light.
 
-## Project boundaries
+## Project tags
 
-Task workflow state, project context, project boundary, and project archive
-lifecycle are four independent axes. Never express one with another.
+Task workflow state, project tags, and project archive lifecycle are three
+independent axes. Never express one with another.
 
-Every cataloged project holds exactly one boundary. The reserved `active`
-boundary is the base task workspace, cannot be renamed or deleted, and is the
-only boundary the protected Unfiled project may occupy. Custom names are
-trimmed, one to fifty runes, and case-insensitively unique, and custom IDs are
-canonical UUIDs. Load validation applies those same identity and name rules, so
-a persisted boundary the create and rename APIs could not have minted fails
-closed instead of loading. A non-archived project outside `active` is parked.
+A cataloged project carries a set of tags validated by the ordinary tag rules,
+then lowercased, deduped, and sorted by `NormalizeProjectTags`. Load validation
+applies the same normalization, so a persisted tag set the write APIs could not
+have minted fails closed instead of loading. The protected Unfiled project may
+never carry the reserved `parked` tag.
 
-Boundary data is additive: `NormalizeBoundaries` backfills a missing Active
-definition and empty project boundaries at load-validation time without bumping
-the schema version and without writing, and leaves an unknown boundary ID alone
-so validation fails closed. Do not add a migration step for it.
+`parked` is the one behavioral tag: a non-archived project carrying it is
+parked. It is reserved in the project-tag namespace only, so a task may still
+carry an ordinary `parked` tag. Every other project tag is descriptive and
+decides nothing about which projections a project reaches.
+
+`models.BehavioralProjectTags` is the metadata registry every surface that
+explains a behavioral tag reads: the picker explainer, the badge, the project
+editor Tags field. It carries no effect — the parking effect stays one
+hardcoded predicate behind `TaskWorkspaceProjects()`.
+
+Parking is the one project tag edit that confirms, because it is the one whose
+effect the user cannot see coming. The prompt names the impact ("Park Sonar? Its
+14 tasks leave Active Projects."), the success status names both recovery routes
+("Fp to show · u to undo"), the cursor moves deliberately to the surviving
+project header instead of clamping into whatever survived, and the base scope
+chrome reads `Active Projects · N parked` while anything is parked. Every park
+committed over the Outliner captures that anchor, single or bulk; a park
+committed from the Project Hub captures none, because parked rows stay visible
+there.
 
 Keep the two populations named apart. `Runtime.TaskWorkspaceProjects()` is
-non-archived plus `active` and is the only population the base Outliner reads;
+non-archived and not parked, and is the only population the base Outliner reads;
 `Runtime.AvailableProjects()` is every non-archived project and keeps parked
 projects reachable for Notes, capture `%project`, Move Project destinations,
 Select Project, and one explicit project focus. A parked focus anchors on the
-project name plus its boundary, and leaving it must leave no parked rows or
+project name plus the `parked` tag, and leaving it must leave no parked rows or
 scope chrome behind.
 
-Leaving `active` is the only assignment that clears Today and Next references,
-and it does so in the same transaction. Archiving preserves boundary
-membership, restoring returns the project to the boundary it was archived from,
-and Boundary Manager counts archived and unarchived members separately.
-Deleting a populated boundary resolves a destination before confirming.
+Tagging a project `parked` keeps its Today and Next references. They stay
+durable and are filtered at read time, so unparking restores the plan untouched.
+Archiving preserves the project's tags and restoring returns them unchanged.
 
 ## Capture grammar
 
@@ -226,16 +253,18 @@ projects/<slug>/.attachments/
 ```
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme; exclusive regular contexts live in the portable catalog.
-Workspace paths are derived below approved
+dark/light theme. Workspace paths are derived below approved
 roots; preserve symlink-aware containment, checked revisions, deterministic
 locks, and recovery manifests.
 
-The supported v4→v5→v6 migration validates each complete candidate first,
-publishes immutable pre-simplification-v5 and pre-consolidation-v6 archive/audit
-pairs, then atomically activates the next schema and removes retired storage.
-v4/v5 decoders are migration-only. Do not let ordinary runtime code import them
-or publish partial output before either snapshot boundary.
+The supported v4→v5→v6→v7 migration validates each complete candidate first,
+publishes immutable pre-simplification-v5, pre-consolidation-v6, and
+pre-scope-v7 archive/audit pairs, then atomically activates the next schema and
+removes retired storage. The v7 boundary folds the retired per-project grouping
+fields and the retired workspace scope table into ordinary project tags, and
+deletes the stale schema-6 catalog sidecar. v4/v5/v6 decoders are
+migration-only. Do not let ordinary runtime code import them or publish partial
+output before any snapshot boundary.
 
 Undo/redo is one 50-entry workspace ledger covering task, project, note, and
 attachment transactions. A successful forward mutation clears redo; failure

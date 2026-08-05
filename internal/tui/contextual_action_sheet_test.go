@@ -67,7 +67,7 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 		executor,
 		contextActionTestContext(),
 		[]OperationID{"test.zeta", "test.alpha", "test.zeta", "test.blocked", "test.missing"},
-		ContextActionSheetConfig{Host: ContextActionHostScopeHub},
+		ContextActionSheetConfig{Host: ContextActionHostProjectHub},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
@@ -76,7 +76,7 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 	if got := sheet.operationIDs(); !slices.Equal(got, want) {
 		t.Fatalf("sheet operations = %v, want host order %v", got, want)
 	}
-	if got := sheet.surface.Items()[0].ID; got != "scope-hub-action:test.zeta" {
+	if got := sheet.surface.Items()[0].ID; got != "project-hub-action:test.zeta" {
 		t.Fatalf("item ID = %q, want the host-namespaced default prefix", got)
 	}
 }
@@ -100,7 +100,7 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 		context,
 		[]OperationID{"test.act"},
 		ContextActionSheetConfig{
-			Host:     ContextActionHostScopeHub,
+			Host:     ContextActionHostProjectHub,
 			Value:    "frozen-row",
 			HasValue: true,
 		},
@@ -195,7 +195,7 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 		executor,
 		contextActionTestContext(),
 		[]OperationID{"test.act"},
-		ContextActionSheetConfig{Host: ContextActionHostScopeHub},
+		ContextActionSheetConfig{Host: ContextActionHostProjectHub},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
@@ -328,7 +328,7 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 		contextActionTestContext(),
 		state.OperationIDs,
 		ContextActionSheetConfig{
-			Host:     ContextActionHostScopeHub,
+			Host:     ContextActionHostProjectHub,
 			Targets:  len(state.ItemIDs),
 			Bulk:     true,
 			Value:    state.ItemIDs,

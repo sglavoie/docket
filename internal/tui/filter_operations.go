@@ -19,25 +19,29 @@ const (
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
 
-func filterOperationDescriptors() []OperationDescriptor {
-	descriptor := func(
-		id OperationID,
-		label string,
-		provider ValueProviderID,
-		aliases ...string,
-	) OperationDescriptor {
-		return OperationDescriptor{
-			ID:                   id,
-			Label:                label,
-			Aliases:              aliases,
-			Category:             OperationCategoryFilter,
-			TargetCardinality:    TargetCardinalityNone,
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
-			Applicability:        coreOutlinerApplicability,
-			Risk:                 OperationRiskReadOnly,
-			ValueProviderID:      provider,
-		}
+// filterOperationDescriptor is the shape every facet shares: no target, no
+// transaction, and applicability decided by the Outliner alone.
+func filterOperationDescriptor(
+	id OperationID,
+	label string,
+	provider ValueProviderID,
+	aliases ...string,
+) OperationDescriptor {
+	return OperationDescriptor{
+		ID:                   id,
+		Label:                label,
+		Aliases:              aliases,
+		Category:             OperationCategoryFilter,
+		TargetCardinality:    TargetCardinalityNone,
+		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Applicability:        coreOutlinerApplicability,
+		Risk:                 OperationRiskReadOnly,
+		ValueProviderID:      provider,
 	}
+}
+
+func filterOperationDescriptors() []OperationDescriptor {
+	descriptor := filterOperationDescriptor
 	return []OperationDescriptor{
 		descriptor(operationFilterPriority, "Filter by Priority", ValueProviderFilterPriority, "priority threshold"),
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
@@ -68,6 +72,7 @@ func (m *AppModel) registerFilterOperations() error {
 		ValueProviderFilterTags,
 		ValueProviderFilterDue,
 		ValueProviderFilterCompletionAge,
+		ValueProviderFilterProjectTags,
 	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
 			func(OperationInvocation) OperationValueProviderResult {
@@ -78,25 +83,31 @@ func (m *AppModel) registerFilterOperations() error {
 			return err
 		}
 	}
-	for _, descriptor := range filterOperationDescriptors() {
-		descriptor.Applicability = func(ctx CommandContext) bool {
-			return coreOutlinerApplicability(ctx) &&
-				(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
+	register := func(descriptors []OperationDescriptor, handler OperationHandler) error {
+		for _, descriptor := range descriptors {
+			descriptor.Applicability = func(ctx CommandContext) bool {
+				return coreOutlinerApplicability(ctx) &&
+					(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
+			}
+			if err := m.registerOperation(descriptor, OperationBinding{
+				RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
+				Applicability:            descriptor.Applicability,
+				Handler:                  handler,
+				DelegateTargetResolution: true,
+				DelegateConfirmation:     true,
+				// Filters mutate session view state only, so no workspace transaction
+				// is opened.
+				DelegateTransaction: true,
+			}); err != nil {
+				return err
+			}
 		}
-		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
-			Applicability:            descriptor.Applicability,
-			Handler:                  m.executeFilterOperation,
-			DelegateTargetResolution: true,
-			DelegateConfirmation:     true,
-			// Filters mutate session view state only, so no workspace transaction
-			// is opened.
-			DelegateTransaction: true,
-		}); err != nil {
-			return err
-		}
+		return nil
 	}
-	return nil
+	if err := register(filterOperationDescriptors(), m.executeFilterOperation); err != nil {
+		return err
+	}
+	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation)
 }
 
 func (m *AppModel) executeFilterOperation(invocation OperationInvocation) OperationHandlerResult {

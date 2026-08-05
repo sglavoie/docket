@@ -73,10 +73,10 @@ const (
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
 
-	// ValueProviderProjectBoundary picks a boundary for one project. It is the
-	// only provider whose subject is a project, so it resolves its own target and
-	// never reaches the task-reference resolution the task providers share.
-	ValueProviderProjectBoundary ValueProviderID = "project-boundary"
+	// ValueProviderProjectTags edits a project's own tag set, which is a
+	// different vocabulary and a different target from the task tags on
+	// ValueProviderTags.
+	ValueProviderProjectTags ValueProviderID = "project-tags"
 
 	// Filter providers feed the Outliner's view-state filter facets rather than
 	// a task mutation; priority is preset-only while states, tags, due, and
@@ -86,12 +86,28 @@ const (
 	ValueProviderFilterTags          ValueProviderID = "filter-tags"
 	ValueProviderFilterDue           ValueProviderID = "filter-due"
 	ValueProviderFilterCompletionAge ValueProviderID = "filter-completion-age"
+
+	// ValueProviderFilterProjectTags feeds the population facet: a different
+	// vocabulary from ValueProviderFilterTags, and a different question. It picks
+	// which projects load rather than which of a loaded project's rows show.
+	ValueProviderFilterProjectTags ValueProviderID = "filter-project-tags"
+
+	// ValueProviderProjectTagDestination names the tag that inherits the members a
+	// vocabulary-wide tag removal would otherwise strand.
+	ValueProviderProjectTagDestination ValueProviderID = "project-tag-destination"
 )
 
 // textEntry reports whether the provider's value is typed rather than picked
 // from a list, so the value step opens the text prompt instead of the picker.
 func (id ValueProviderID) textEntry() bool {
 	return id == ValueProviderNoteTitle || id == ValueProviderTagName
+}
+
+// tagEntry reports whether the picker offers "a" to mint a tag the vocabulary
+// does not contain yet. Both tag namespaces need it because neither is a closed
+// enumeration the way states and priorities are.
+func (id ValueProviderID) tagEntry() bool {
+	return id == ValueProviderTags || id == ValueProviderProjectTags
 }
 
 func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {

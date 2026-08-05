@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -49,7 +50,10 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		// A complete strategy consumes unknown root keys instead of allowing a
 		// retired legacy key or an abandoned chord to run in the view beneath it.
 		m.pendingChord = nil
-		return true, nil
+		if cmd := m.entityScopedKeyRejection(sequence, ctx); cmd != nil {
+			return true, cmd
+		}
+		return true, m.chordMissStatus(sequence)
 	case ChordTerminal:
 	}
 	m.pendingChord = nil
@@ -69,6 +73,34 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	default:
 		return true, func() tea.Msg { return typed }
 	}
+}
+
+// entityScopedKeyRejection explains a bound key that a non-task cursor turned
+// off. Naming the project on a header row makes every task operation
+// inapplicable there, and an inapplicable terminal resolves to ChordNoMatch, so
+// without this the key would silently do nothing instead of saying why.
+func (m *AppModel) entityScopedKeyRejection(sequence []string, ctx CommandContext) tea.Cmd {
+	if !commandContextNamesNonTaskEntity(ctx) {
+		return nil
+	}
+	category, ok := m.operationRegistry.InputCategoryForPrefix(InputStrategySimplified, sequence)
+	if !ok {
+		return nil
+	}
+	rejection := errors.New(operationTargetRejectionMessage(category))
+	return func() tea.Msg { return ErrorMsg{Err: rejection} }
+}
+
+// chordMissStatus names the path a second key abandoned. An unbound root key is
+// left silent because it never promised anything, but a chord that showed a
+// which-key row and then resolved to nothing has to say so.
+func (m *AppModel) chordMissStatus(sequence []string) tea.Cmd {
+	label, ok := m.operationRegistry.ChordGroupLabelForPrefix(InputStrategySimplified, sequence)
+	if !ok {
+		return nil
+	}
+	m.setWarningStatus(strings.Join(sequence, "") + " is not a " + label + " action")
+	return defaultStatusTimeout()
 }
 
 // executeSimplifiedGlobalKey routes a grammar-owned global key through the same

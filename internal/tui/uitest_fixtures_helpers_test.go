@@ -33,39 +33,38 @@ import (
 // Built-in fixture names accepted by NewFixtureDriver and the committed
 // test-only scenario harness.
 const (
-	FixtureEmpty      = "empty"
-	FixtureFresh      = "fresh"
-	FixtureRich       = "rich"
-	FixtureBusy       = "busy"
-	FixtureWorkflow   = "workflow"
-	FixtureNarrow     = "narrow"
-	FixtureContexts   = "contexts"
-	FixtureRelease    = "release"
-	FixtureBoundaries = "boundaries"
+	FixtureEmpty        = "empty"
+	FixtureFresh        = "fresh"
+	FixtureRich         = "rich"
+	FixtureBusy         = "busy"
+	FixtureWorkflow     = "workflow"
+	FixtureNarrow       = "narrow"
+	FixtureMultiProject = "multi-project"
+	FixtureRelease      = "release"
+	FixtureParked       = "parked"
 )
 
-// Boundary fixture identities. Scenarios assert on these strings, and
+// Parked fixture identities. Scenarios assert on these strings, and
 // models.NewProject stores a name verbatim, so the constants are the single
 // source both the builder and the committed JSON agree on.
 const (
-	boundariesFixtureBoundaryName = "On Hold"
-	boundariesFixtureActiveName   = "Active Delivery"
-	boundariesFixtureParkedName   = "Parked Work"
+	parkedFixtureWorkspaceName = "Active Delivery"
+	parkedFixtureParkedName    = "Parked Work"
 )
 
 // builtinFixtures maps each fixture name to the builder that populates its
 // workspace. The workspace is already created (empty temp data dir + config)
 // when the builder runs; the builder only adds projects and sets config state.
 var builtinFixtures = map[string]func(*uitestWorkspace) error{
-	FixtureEmpty:      buildEmptyFixture,
-	FixtureFresh:      nil,
-	FixtureRich:       buildRichFixture,
-	FixtureBusy:       buildBusyFixture,
-	FixtureWorkflow:   buildWorkflowFixture,
-	FixtureNarrow:     buildNarrowFixture,
-	FixtureContexts:   buildContextsFixture,
-	FixtureRelease:    buildReleaseFixture,
-	FixtureBoundaries: buildBoundariesFixture,
+	FixtureEmpty:        buildEmptyFixture,
+	FixtureFresh:        nil,
+	FixtureRich:         buildRichFixture,
+	FixtureBusy:         buildBusyFixture,
+	FixtureWorkflow:     buildWorkflowFixture,
+	FixtureNarrow:       buildNarrowFixture,
+	FixtureMultiProject: buildMultiProjectFixture,
+	FixtureRelease:      buildReleaseFixture,
+	FixtureParked:       buildParkedFixture,
 }
 
 // BuiltinFixtureNames returns the sorted list of built-in fixture names.
@@ -617,25 +616,22 @@ func buildReleaseFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildContextsFixture spreads projects across several context labels so Context
-// Hub scenarios can prove a scope actually narrows. Every other fixture takes
-// the default "personal" label for all of its projects, which leaves a single
-// selectable regular context and nothing to narrow away.
-func buildContextsFixture(w *uitestWorkspace) error {
+// buildMultiProjectFixture spreads one backlog task across four distinctly named
+// projects so a scenario that searches or moves between projects has more than
+// one plausible destination to choose from.
+func buildMultiProjectFixture(w *uitestWorkspace) error {
 	projects := []struct {
-		name    string
-		context string
-		task    string
+		name string
+		task string
 	}{
-		{"Client Alpha", "work", "Alpha migration kickoff"},
-		{"Client Beta", "work", "Beta rollout checklist"},
-		{"Home Errands", "personal", "Renew passport"},
-		{"Reading List", "research", "Finish the distributed systems book"},
+		{"Client Alpha", "Alpha migration kickoff"},
+		{"Client Beta", "Beta rollout checklist"},
+		{"Home Errands", "Renew passport"},
+		{"Reading List", "Finish the distributed systems book"},
 	}
 	var first *models.Project
 	for _, spec := range projects {
 		project, err := w.addProject(spec.name, func(p *models.Project) {
-			p.Context = spec.context
 			task := newFixtureTask(p, spec.task)
 			task.ApplyWorkflowState(models.StateBacklog)
 		})
@@ -650,13 +646,13 @@ func buildContextsFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildBoundariesFixture puts one project in the protected Active boundary and
-// one in a custom boundary, which is the only fixture shape where the base task
-// workspace is a strict subset of the workspace's projects. Every other fixture
-// leaves all of its projects in Active, so parked behavior would be
-// indistinguishable from an empty catalog there.
-func buildBoundariesFixture(w *uitestWorkspace) error {
-	active, err := w.addProject(boundariesFixtureActiveName, func(p *models.Project) {
+// buildParkedFixture tags one project parked and leaves the other in the base
+// task workspace, which is the only fixture shape where the base task workspace
+// is a strict subset of the workspace's projects. Every other fixture leaves all
+// of its projects untagged, so parked behavior would be indistinguishable from
+// an empty catalog there.
+func buildParkedFixture(w *uitestWorkspace) error {
+	active, err := w.addProject(parkedFixtureWorkspaceName, func(p *models.Project) {
 		checklist := newFixtureTask(p, "Ship the delivery checklist")
 		checklist.Priority = 1
 		checklist.ApplyWorkflowState(models.StateBacklog)
@@ -667,29 +663,17 @@ func buildBoundariesFixture(w *uitestWorkspace) error {
 	if err != nil {
 		return err
 	}
-	parked, err := w.addProject(boundariesFixtureParkedName, func(p *models.Project) {
+	if _, err = w.addProject(parkedFixtureParkedName, func(p *models.Project) {
+		p.Tags = []string{models.ParkedProjectTag}
+
 		migration := newFixtureTask(p, "Revisit the paused migration")
 		migration.ApplyWorkflowState(models.StateBacklog)
 
 		vendor := newFixtureTask(p, "Reopen the vendor conversation")
 		vendor.ApplyWorkflowState(models.StateInbox)
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
-
-	// Both projects are cataloged first: addProject rebuilds the catalog from the
-	// runtime on every call, so a boundary created before the last project would
-	// survive but its membership would be overwritten by the upsert's default.
-	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
-	boundary, err := catalog.CreateBoundary(boundariesFixtureBoundaryName)
-	if err != nil {
-		return fmt.Errorf("failed to create fixture boundary: %w", err)
-	}
-	if _, err = catalog.AssignProjectBoundary(parked.ID, boundary.ID); err != nil {
-		return fmt.Errorf("failed to park fixture project %q: %w", parked.Name, err)
-	}
-	w.Runtime.SetCatalogInMemory(catalog)
 	w.setCurrentProject(active.ID)
 	return nil
 }

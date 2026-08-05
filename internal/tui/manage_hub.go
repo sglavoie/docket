@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -26,7 +25,6 @@ type ShowManageHubMsg struct {
 
 var manageModuleNames = [...]string{
 	"Notes",
-	"Contexts",
 	"Projects",
 }
 
@@ -42,13 +40,10 @@ func (module ManageModule) String() string {
 // application service and feature coordinators used by the embedded models.
 type ManageHubDependencies struct {
 	Runtime            *config.RuntimeState
-	ConfigManager      *config.Manager
-	AppService         *app.Service
 	NoteService        projectNoteService
 	HistoryLedger      *storage.WorkspaceLedger
 	Wire               func(View)
 	ResolveProject     func(string) *models.Project
-	ActiveContext      func() ContextScope
 	ActiveProjectFocus func() string
 	LoadedProjects     func() []*models.Project
 	OperationRegistry  *OperationRegistry
@@ -138,10 +133,9 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			return nil
 		}
 	}
-	// Contexts and Projects read live state at construction time, so cached
-	// instances would show stale rows and Projects would not reopen in search.
-	if key == m.activeKey && m.active != nil &&
-		params.Module != ManageContexts && params.Module != ManageProjects {
+	// Projects reads live state at construction time, so a cached instance would
+	// show stale rows and would not reopen in search.
+	if key == m.activeKey && m.active != nil && params.Module != ManageProjects {
 		return nil
 	}
 
@@ -155,17 +149,6 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 			m.deps.HistoryLedger,
 			m.deps.Runtime.AvailableProjects()...,
 		)
-	case ManageContexts:
-		active := AllContextScope()
-		if m.deps.ActiveContext != nil {
-			active = m.deps.ActiveContext()
-		}
-		hub := NewContextHubModel(m.deps.Runtime, m.deps.ConfigManager, m.deps.AppService, active)
-		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor)
-		if m.deps.LoadedProjects != nil {
-			hub.SetLoadedProjects(m.deps.LoadedProjects())
-		}
-		view = hub
 	case ManageProjects:
 		hub := NewProjectHubModel(m.deps.Runtime)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor)
@@ -324,7 +307,7 @@ func (m *ManageHubModel) GetHelpItems() []HelpItem {
 }
 
 func (m *ManageHubModel) StatusBarLabel() string {
-	if m.params.Module == ManageContexts || m.params.Module == ManageProjects {
+	if m.params.Module == ManageProjects {
 		return m.params.Module.String()
 	}
 	switch m.params.NotesScope.Kind {
@@ -351,7 +334,7 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 		return ctx
 	}
 	return CommandContext{
-		View: ViewContextHub,
+		View: ViewProjectHub,
 		Capabilities: NewCapabilitySet(
 			CapabilityCommandDiscovery,
 			CapabilityAppScope,
@@ -390,8 +373,6 @@ func manageModulePresentation(params ManageParams) (PresentationID, bool) {
 			return ViewNotes, true
 		}
 		return ViewGlobalNotes, true
-	case ManageContexts:
-		return ViewContextHub, true
 	case ManageProjects:
 		return ViewProjectHub, true
 	default:

@@ -94,7 +94,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
-		"`c` Scope Hub, `C` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
+		"`N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix have no compatibility action",
 		"`a` creates and selects a new tag",
 	})
@@ -119,6 +119,13 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`fd` | Open the due-date facet picker: overdue, today, this week, or no due date",
 		"`fz` | Snoozed-only",
 		"`fx` | Clear every facet",
+		"`Ft` | Pick project tags with AND semantics",
+		"`Fp` | Show or hide parked projects",
+		"`Fa` | Show or hide archived projects",
+		"`Fx` | Clear every project filter",
+		"`Fp` and selecting `parked` inside `Ft` are the same switch",
+		"`Space` over a tag row offers Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
+		"a second key the chord does not offer says so instead of doing nothing",
 		"The Outliner uses the full terminal width at every supported size",
 		"`Enter` toggles a session-only Peek directly beneath the cursor task",
 		"Entering multi-select closes Peek",
@@ -168,19 +175,21 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 	})
 }
 
-func TestREADMEDocumentsProjectBoundaries(t *testing.T) {
+func TestREADMEDocumentsProjectTags(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"### Project boundaries",
-		"Every project sits in exactly one boundary",
-		"`Active` is the built-in one, it cannot be renamed or deleted",
-		"nothing is rewritten on disk until you change something",
-		"its tasks leave the base Outliner entirely, and its Today and Next entries are cleared",
+		"### Project tags",
+		"A project carries any number of tags",
+		"tag a project `parked` and it leaves the base Outliner entirely",
+		"Today and Next entries are kept exactly as they were",
 		"still accepts `%project` during capture, and is still a valid Move Project destination",
-		"`f` filters the list by boundary and `B` opens Boundary Manager",
-		"Deleting a boundary that still has projects asks where they should go first",
-		"The protected Unfiled project cannot leave `Active`",
-		"It preserves the boundary a project was in, restoring returns it there",
+		"anchored with the `parked` tag",
+		"The protected Unfiled project cannot be parked",
+		"It preserves a project's tags and restoring returns them unchanged",
+	})
+	rejectDocumentationText(t, content, []string{
+		"### Project boundaries",
+		"Boundary Manager",
 	})
 }
 
@@ -193,7 +202,9 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme choice",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>",
-		"schema-4 workspaces through schema 5 and then schema 6",
+		"pre-scope-v7-<UTC>.tar.gz",
+		"schema-4 workspaces through the whole chain",
+		"folds the retired per-project grouping fields",
 		"existing `unfiled` project or directory also aborts before snapshot publication",
 		"Invalid or future-schema input aborts without changing workspace data",
 		"`u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed transactions",

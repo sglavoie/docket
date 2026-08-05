@@ -28,7 +28,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case ProjectCreatedMsg:
 		popCmd := m.popView()
 		m.syncProjectCache()
-		m.refreshScopeHubIfActive()
+		m.refreshProjectHubIfActive()
 		notesCmd := m.refreshActiveNotesManager()
 		moveTask := m.pendingProjectMoveTask
 		moveSource := m.pendingProjectMoveSource
@@ -86,12 +86,34 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			statusMsg = "Unpinned"
 		}
 		m.setSuccessStatus(statusMsg)
-		m.refreshScopeHubIfActive()
+		m.refreshProjectHubIfActive()
 		return true, tea.Batch(
 			m.requestCrossProjectOutlinerReload(),
 			m.refreshActiveNotesManager(),
 			defaultStatusTimeout(),
 		)
+
+	case SetProjectTagsMsg:
+		return true, m.requestProjectTags(msg.Project, msg.Tags)
+
+	case ProjectBulkTagsMsg:
+		return true, m.requestProjectBulkTags(msg)
+
+	case projectEditorParkRequestMsg:
+		return true, m.requestProjectEditorPark(msg.save)
+
+	case projectParkConfirmedMsg:
+		if save := m.pendingProjectEditorSave; save != nil {
+			m.clearPendingProjectTags()
+			return true, save.commit
+		}
+		if edit := m.pendingProjectBulkTags; edit != nil {
+			m.clearPendingProjectTags()
+			return true, m.commitProjectBulkTags(*edit)
+		}
+		project, tags := m.pendingProjectTags, m.pendingProjectTagsSet
+		m.clearPendingProjectTags()
+		return true, m.commitProjectTags(project, tags)
 
 	case ProjectRestoredMsg:
 		return true, m.commitProjectUnarchive(msg.Project)
@@ -109,19 +131,29 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, nil
 
 	case ProjectUpdatedMsg:
+		if msg.Parked && msg.Project != nil {
+			// The anchor reads the rows the park is about to remove, so it runs
+			// before any cache the reload rebuilds from.
+			m.anchorOutlinerCursorAfterProjectPark(msg.Project.ID)
+		}
 		popCmd := m.popView()
 		m.syncProjectCache()
-		// An edit that parked the project cleared its planning memberships in the
-		// same transaction, so the shell caches are rederived before any surface
-		// reads them again.
+		// A parked project keeps its Today and Next references and they are
+		// filtered at read time, so the shell caches are rederived before any
+		// surface reads them again.
 		m.rebuildPlanningFromRuntime()
 		m.refreshProjectView()
-		m.refreshScopeHubIfActive()
-		return true, tea.Batch(
+		m.refreshProjectHubIfActive()
+		cmds := []tea.Cmd{
 			popCmd,
 			m.requestCrossProjectOutlinerReload(),
 			m.refreshActiveNotesManager(),
-		)
+		}
+		if msg.Parked && msg.Project != nil {
+			m.setSuccessStatus(projectTagStatus(msg.Project, true, false))
+			cmds = append(cmds, defaultStatusTimeout())
+		}
+		return true, tea.Batch(cmds...)
 
 	}
 	return false, nil
@@ -237,7 +269,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	} else {
 		m.setSuccessStatus(action)
 	}
-	m.refreshScopeHubIfActive()
+	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),
@@ -261,7 +293,7 @@ func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
 	}
 	copyCatalogMetadata(project, &updated)
 	m.setSuccessStatus(fmt.Sprintf("Unarchived %s", updated.Name))
-	m.refreshScopeHubIfActive()
+	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),

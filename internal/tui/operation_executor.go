@@ -319,6 +319,11 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 			fmt.Errorf("%w: %s", ErrOperationUnavailable, request.ID),
 		)
 	}
+	// Refused before resolution so delegated bindings, which swallow resolver
+	// errors, cannot reach a handler with an archived task.
+	if err := archivedTaskTargetRejection(descriptor, request.Context); err != nil {
+		return executor.failure(err)
+	}
 
 	targets, err := executor.resolver.Resolve(descriptor, request.Context)
 	if err != nil && !binding.DelegateTargetResolution {

@@ -22,7 +22,6 @@ var viewTypeNames = map[PresentationID]string{
 	ViewTaskForm:             "TaskForm",
 	ViewTaskComposer:         "TaskComposer",
 	ViewConflictResolution:   "ConflictResolution",
-	ViewContextHub:           "ContextHub",
 	ViewProjectHub:           "ProjectHub",
 }
 
