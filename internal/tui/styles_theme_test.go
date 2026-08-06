@@ -199,17 +199,17 @@ func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
 		{"ColorSemanticEpicTitle", ColorSemanticEpicTitle, "#bb9af7"},
 		{"ColorSemanticStoryTitle", ColorSemanticStoryTitle, "#7dcfff"},
 		{"ColorSemanticFeatureTitle", ColorSemanticFeatureTitle, "#b9f27c"},
-		{"ColorSemanticIdeaTitle", ColorSemanticIdeaTitle, "#c0caf5"},
+		{"ColorSemanticIdeaTitle", ColorSemanticIdeaTitle, "#ff9e64"},
 		{"ColorSemanticBugSelectedTitle", ColorSemanticBugSelectedTitle, "#ffd1d1"},
 		{"ColorSemanticEpicSelectedTitle", ColorSemanticEpicSelectedTitle, "#dccbff"},
 		{"ColorSemanticStorySelectedTitle", ColorSemanticStorySelectedTitle, "#b6e5ff"},
 		{"ColorSemanticFeatureSelectedTitle", ColorSemanticFeatureSelectedTitle, "#d7f7b5"},
-		{"ColorSemanticIdeaSelectedTitle", ColorSemanticIdeaSelectedTitle, "#e5e7eb"},
+		{"ColorSemanticIdeaSelectedTitle", ColorSemanticIdeaSelectedTitle, "#ffd0b5"},
 		{"ColorSemanticBugSnoozedTitle", ColorSemanticBugSnoozedTitle, "#c97b7b"},
 		{"ColorSemanticEpicSnoozedTitle", ColorSemanticEpicSnoozedTitle, "#8d73bd"},
 		{"ColorSemanticStorySnoozedTitle", ColorSemanticStorySnoozedTitle, "#5f9bbf"},
 		{"ColorSemanticFeatureSnoozedTitle", ColorSemanticFeatureSnoozedTitle, "#8bb65f"},
-		{"ColorSemanticIdeaSnoozedTitle", ColorSemanticIdeaSnoozedTitle, "#8f98c7"},
+		{"ColorSemanticIdeaSnoozedTitle", ColorSemanticIdeaSnoozedTitle, "#b97852"},
 	}
 	for _, c := range checks {
 		if c.got != lipgloss.Color(c.want) {

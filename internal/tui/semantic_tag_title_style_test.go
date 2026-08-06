@@ -39,6 +39,23 @@ func TestSemanticTagTitleStylesUseExactCaseInsensitivePrecedence(t *testing.T) {
 	}
 }
 
+func TestIdeaTagColorsOtherwiseUncoloredTaskTitles(t *testing.T) {
+	for _, theme := range []string{"dark", "light"} {
+		t.Run(theme, func(t *testing.T) {
+			ApplyTheme(ThemeConfig{Name: theme})
+			t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
+
+			plain := &models.Task{WorkflowState: models.StateBacklog}
+			idea := &models.Task{WorkflowState: models.StateBacklog, Tags: []string{"idea"}}
+			plainForeground := TaskTitleStyleFor(plain, TaskTitleStyleOptions{}).GetForeground()
+			ideaForeground := TaskTitleStyleFor(idea, TaskTitleStyleOptions{}).GetForeground()
+			if ideaForeground == plainForeground {
+				t.Fatalf("idea foreground = ordinary task foreground %v", plainForeground)
+			}
+		})
+	}
+}
+
 func TestSemanticTagTitleStylesIgnoreFormerMarkersAndPartialMatches(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: "dark"})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
@@ -73,7 +90,7 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 			{tag: "epic", base: "#bb9af7", selected: "#dccbff", snoozed: "#8d73bd"},
 			{tag: "story", base: "#7dcfff", selected: "#b6e5ff", snoozed: "#5f9bbf"},
 			{tag: "feature", base: "#b9f27c", selected: "#d7f7b5", snoozed: "#8bb65f"},
-			{tag: "idea", base: "#c0caf5", selected: "#e5e7eb", snoozed: "#8f98c7"},
+			{tag: "idea", base: "#ff9e64", selected: "#ffd0b5", snoozed: "#b97852"},
 		}},
 		{name: "light", roles: []struct {
 			tag      string
@@ -85,7 +102,7 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 			{tag: "epic", base: "#6d28d9", selected: "#4c1d95", snoozed: "#8b6bb7"},
 			{tag: "story", base: "#0e7490", selected: "#155e75", snoozed: "#5f8793"},
 			{tag: "feature", base: "#237a3b", selected: "#14532d", snoozed: "#5f8f6c"},
-			{tag: "idea", base: "#5f6b7a", selected: "#374151", snoozed: "#7b8491"},
+			{tag: "idea", base: "#c2410c", selected: "#9a3412", snoozed: "#9a6a55"},
 		}},
 	}
 	for _, theme := range themes {

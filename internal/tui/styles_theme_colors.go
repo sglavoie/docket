@@ -20,17 +20,17 @@ const (
 	defaultColorSemanticEpicTitle            = "#bb9af7"
 	defaultColorSemanticStoryTitle           = "#7dcfff"
 	defaultColorSemanticFeatureTitle         = "#b9f27c"
-	defaultColorSemanticIdeaTitle            = "#c0caf5"
+	defaultColorSemanticIdeaTitle            = "#ff9e64"
 	defaultColorSemanticBugSelectedTitle     = "#ffd1d1"
 	defaultColorSemanticEpicSelectedTitle    = "#dccbff"
 	defaultColorSemanticStorySelectedTitle   = "#b6e5ff"
 	defaultColorSemanticFeatureSelectedTitle = "#d7f7b5"
-	defaultColorSemanticIdeaSelectedTitle    = "#e5e7eb"
+	defaultColorSemanticIdeaSelectedTitle    = "#ffd0b5"
 	defaultColorSemanticBugSnoozedTitle      = "#c97b7b"
 	defaultColorSemanticEpicSnoozedTitle     = "#8d73bd"
 	defaultColorSemanticStorySnoozedTitle    = "#5f9bbf"
 	defaultColorSemanticFeatureSnoozedTitle  = "#8bb65f"
-	defaultColorSemanticIdeaSnoozedTitle     = "#8f98c7"
+	defaultColorSemanticIdeaSnoozedTitle     = "#b97852"
 )
 
 // Priority title foreground colors, user-overridable via PaletteColors.
