@@ -129,3 +129,26 @@ func TestAppViewTaskComposerBudgetsForWrappedFooter(t *testing.T) {
 		t.Fatalf("composed frame height = %d, want 24", got)
 	}
 }
+
+func TestFullHeightAndHubViewsDoNotPublishFooterContinuations(t *testing.T) {
+	views := []struct {
+		name string
+		view ViewCapabilities
+	}{
+		{name: "help", view: &HelpViewModel{}},
+		{name: "notes", view: &NotesViewModel{}},
+		{name: "project hub", view: &ProjectHubModel{}},
+		{name: "manage hub", view: &ManageHubModel{}},
+	}
+
+	for _, tt := range views {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.view.IsFullHeight() {
+				t.Fatal("test fixture must use a full-height surface")
+			}
+			if _, ok := tt.view.(FooterContinuationProvider); ok {
+				t.Fatal("full-height surfaces skip the shell status-bar path and must not publish footer continuations")
+			}
+		})
+	}
+}

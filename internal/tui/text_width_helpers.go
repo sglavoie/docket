@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -16,6 +18,39 @@ func truncateToVisualWidth(text string, width int) string {
 		return ansi.Truncate(text, width, "")
 	}
 	return ansi.Truncate(text, width-1, "") + "…"
+}
+
+// splitAtWordBoundary fits text into width by breaking between words, so the
+// part that does not fit stays a phrase another surface can finish. head
+// carries a trailing ellipsis whenever anything was dropped; rest is the
+// remainder, empty when the whole text fit. A first word wider than width
+// falls back to a mid-word clip and hands back the whole text, because a
+// caller with no room to start the sentence has none to continue it either.
+func splitAtWordBoundary(text string, width int) (head, rest string) {
+	if width <= 0 {
+		return "", text
+	}
+	if lipgloss.Width(text) <= width {
+		return text, ""
+	}
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return "", ""
+	}
+	budget := width - 1
+	if lipgloss.Width(words[0]) > budget {
+		return truncateToVisualWidth(text, width), text
+	}
+	head = words[0]
+	next := 1
+	for ; next < len(words); next++ {
+		candidate := head + " " + words[next]
+		if lipgloss.Width(candidate) > budget {
+			break
+		}
+		head = candidate
+	}
+	return head + "…", strings.Join(words[next:], " ")
 }
 
 func fitStyledLineToWidth(line string, width int) string {

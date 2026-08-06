@@ -46,6 +46,21 @@ type ContextualFooterProvider interface {
 	ContextualFooter() (spec StatusBarFooterSpec, ok bool)
 }
 
+// FooterContinuationProvider is implemented by a surface whose own explainer
+// had to clip: the status bar finishes the sentence, because the surface has no
+// width left to finish it itself. The app-shell status bar renders this above
+// the today-cleared banner and every footer below it, so the sentence stays
+// readable for as long as the surface that clipped it is open. Width is a
+// parameter rather than read off the implementer so the status bar and the
+// surface cannot disagree about the terminal size. The shell reads this
+// capability only on its external status-bar render path; a full-height surface
+// skips that path and must not implement this interface. An empty string means
+// the surface clipped nothing, so the shell falls through to the lower-priority
+// footers.
+type FooterContinuationProvider interface {
+	FooterContinuation(width int) string
+}
+
 // StatusBarLabeler is implemented by views that provide their own status bar label.
 // Views without this interface show an empty label in the status bar.
 type StatusBarLabeler interface {

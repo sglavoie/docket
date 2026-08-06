@@ -105,9 +105,9 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 // behavioralProjectTagExplainer restates every behavioral tag beneath the list.
 // The picker cannot show the effect by example the way a state change can, so
 // the sentence has to be on screen the whole time the choice is open.
-func behavioralProjectTagExplainer(provider ValueProviderID, width int) string {
+func behavioralProjectTagExplainer(provider ValueProviderID, width int) tagExplainer {
 	if provider != ValueProviderProjectTags {
-		return ""
+		return tagExplainer{}
 	}
 	names := make([]string, 0, len(models.BehavioralProjectTags))
 	for name := range models.BehavioralProjectTags {
@@ -115,12 +115,23 @@ func behavioralProjectTagExplainer(provider ValueProviderID, width int) string {
 	}
 	sort.Strings(names)
 	lines := make([]string, 0, len(names))
+	continuations := make([]string, 0, len(names))
 	for _, name := range names {
 		info := models.BehavioralProjectTags[name]
+		summary, rest := splitAtWordBoundary(info.Summary, max(width-len(info.Name)-1, 12))
 		lines = append(lines, behavioralProjectTagBadgeStyle(info.BadgeRole).Render(info.Name)+
-			" "+MutedStyle.Render(truncateToVisualWidth(info.Summary, max(width-len(info.Name)-1, 12))))
+			" "+MutedStyle.Render(summary))
+		// A remainder equal to the whole sentence means the line clipped
+		// mid-word without starting it, so restating it would only repeat
+		// what the block already shows.
+		if rest != "" && rest != info.Summary {
+			continuations = append(continuations, rest)
+		}
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+	return tagExplainer{
+		Body:          lipgloss.JoinVertical(lipgloss.Left, lines...),
+		Continuations: continuations,
+	}
 }
 
 // behavioralProjectTagBadgeStyle turns the metadata badge role into a palette

@@ -14,6 +14,33 @@
     { "type": "assert", "label": "each offered semantic tag states what it means", "assert": "contains", "value": "A defect to fix" },
     { "type": "assert", "assert": "contains", "value": "Space toggle" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
+    { "type": "assert", "label": "the overlay clips on a word boundary and the status bar finishes the sentence", "assert": "contains", "value": "highest one a task carries colors its title." },
+    { "type": "assert", "label": "the footer stops addressing the Outliner the picker floats over", "assert": "not_contains", "value": "a capture · Space actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "enter add-tag mode, which replaces the explainer entirely", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Add New Tag" },
+    { "type": "assert", "label": "no explainer on screen, so there is no sentence to finish", "assert": "not_contains", "value": "highest one a task carries colors its title." },
+    { "type": "assert", "assert": "contains", "value": "a capture · Space actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "back to the tag list", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "SEMANTIC" },
+    { "type": "assert", "label": "the tail returns with the explainer", "assert": "contains", "value": "highest one a task carries colors its title." },
+
+    { "type": "resize", "label": "a wider terminal still clips the sentence, so the tail follows the width", "width": 140, "height": 40 },
+    { "type": "assert", "assert": "contains", "value": "the highest one a task carries" },
+    { "type": "assert", "assert": "contains", "value": "colors its title." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "below the explainer's width floor there is no explainer and therefore no tail", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "not_contains", "value": "bug › epic" },
+    { "type": "assert", "assert": "not_contains", "value": "colors its title." },
+    { "type": "assert", "label": "the Outliner hints return once nothing is being finished", "assert": "contains", "value": "a capture · Space actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "contains", "value": "highest one a task carries colors its title." },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
@@ -27,6 +54,13 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Set Tags: Build login form" },
     { "type": "assert", "assert": "status_contains", "value": "Tagged 1 task(s)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open a picker with no explainer at all", "key": "f" },
+    { "type": "key", "key": "d" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Due Date" },
+    { "type": "assert", "label": "a non-tag picker never claims the footer", "assert": "not_contains", "value": "colors its title." },
+    { "type": "assert", "label": "the row still belongs to the previous action's status message", "assert": "contains", "value": "Tagged 1 task(s)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

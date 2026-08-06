@@ -10,6 +10,10 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "command", "label": "open Project Editor", "command": "rename project" },
     { "type": "assert", "assert": "view", "value": "ProjectEditor" },
+    { "type": "assert", "label": "the Tags field explains the one behavioral tag", "assert": "contains", "value": "Parks this project" },
+    { "type": "assert", "label": "the form clips on a word boundary and the app status bar finishes the sentence", "assert": "contains", "value": "attachments, hides them from Active Projects." },
+    { "type": "assert", "label": "the sentence takes the bottom row the breadcrumb held", "assert": "not_contains", "value": "Triage: Outliner" },
+    { "type": "assert", "label": "the form's own control row is left intact", "assert": "contains", "value": "Tab/Shift+Tab switch · Ctrl+S save · Esc cancel" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

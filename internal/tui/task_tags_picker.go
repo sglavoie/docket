@@ -107,9 +107,9 @@ func semanticTaskTagItem(name string, summary string, taskCount int) ListItem {
 // and every name renders in the title color it produces so the line
 // demonstrates what it describes. The color lookup is the row one, which is
 // what keeps a future registry entry from rendering uncolored.
-func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
+func semanticTaskTagExplainer(provider ValueProviderID, width int) tagExplainer {
 	if !semanticTaskTagProvider(provider) {
-		return ""
+		return tagExplainer{}
 	}
 	names := make([]string, 0, len(models.SemanticTaskTags))
 	headWidth := lipgloss.Width(semanticTaskTagExplainerLabel) + 2
@@ -121,15 +121,22 @@ func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 		names = append(names, semanticTaskTitleStyle(entry.Role, 0, false, false).Render(entry.Name))
 	}
 	if width < headWidth {
-		return ""
+		return tagExplainer{}
 	}
 	head := MutedStyle.Render(semanticTaskTagExplainerLabel) + "  " +
 		strings.Join(names, MutedStyle.Render(semanticTaskTagExplainerSeparator))
-	summary := truncateToVisualWidth(semanticTaskTagExplainerSummary, width-headWidth-1)
-	if summary == "" {
-		return head
+	summary, rest := splitAtWordBoundary(semanticTaskTagExplainerSummary, width-headWidth-1)
+	// A remainder equal to the whole sentence means the line could not even
+	// start it on a word boundary, so the chain stands alone and there is
+	// nothing for another surface to finish.
+	if summary == "" || rest == semanticTaskTagExplainerSummary {
+		return tagExplainer{Body: head}
 	}
-	return head + " " + MutedStyle.Render(summary)
+	explainer := tagExplainer{Body: head + " " + MutedStyle.Render(summary)}
+	if rest != "" {
+		explainer.Continuations = []string{rest}
+	}
+	return explainer
 }
 
 // semanticTaskTagPrecedence ranks one semantic row by the registry order the

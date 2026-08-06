@@ -401,8 +401,11 @@ func (m *ProjectEditorModel) View() tea.View {
 	b.WriteString(renderFormLabelShared("Tags:", int(projectEditorFieldTags), int(m.focusIndex)))
 	b.WriteString(m.tagsInput.View())
 	b.WriteString("\n")
-	if explainer := behavioralProjectTagExplainer(ValueProviderProjectTags, m.width-FormLabelWidth); explainer != "" {
-		for _, line := range strings.Split(explainer, "\n") {
+	if explainer := behavioralProjectTagExplainer(
+		ValueProviderProjectTags,
+		projectEditorExplainerWidth(m.width),
+	); explainer.Body != "" {
+		for _, line := range strings.Split(explainer.Body, "\n") {
 			b.WriteString(padding + line + "\n")
 		}
 	}
@@ -432,6 +435,25 @@ func (m *ProjectEditorModel) View() tea.View {
 	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return tea.NewView(out.String())
+}
+
+// projectEditorExplainerWidth is the width the Tags explainer is fitted to: the
+// form width left of the label gutter. The block and the continuation share it
+// so the two halves of the sentence cannot be computed against different
+// budgets.
+func projectEditorExplainerWidth(width int) int {
+	return width - FormLabelWidth
+}
+
+// FooterContinuation finishes the Tags explainer on the app status bar. The
+// form's own footer row is a fixed control hint that never grows, and the
+// explainer sits under a field the user is typing into, so the sentence lands
+// on the bottom row of the screen instead of a second line under the field.
+func (m *ProjectEditorModel) FooterContinuation(width int) string {
+	return behavioralProjectTagExplainer(
+		ValueProviderProjectTags,
+		projectEditorExplainerWidth(width),
+	).Continuation()
 }
 
 func (m *ProjectEditorModel) HasTextInput() bool     { return true }

@@ -424,11 +424,44 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 	return item.Data, nil
 }
 
+// operationValuePickerInnerWidth is the overlay box width the picker claims out
+// of the terminal. The status bar shares it so a continuation is computed
+// against the same budget the block was fitted to.
+func operationValuePickerInnerWidth(width int) int {
+	return min(max(width*3/5, 46), max(width-6, 24))
+}
+
+// operationValuePickerExplainerWidth is the width the explainers are rendered
+// at: the box content, inset from the border.
+func operationValuePickerExplainerWidth(width int) int {
+	return operationValuePickerInnerWidth(width) - 4
+}
+
+// FooterContinuation hands the status bar whatever the explainer beneath the
+// list could not fit. Add-tag mode replaces the whole box with the input, so it
+// prints no explainer and has nothing to continue.
+func (model *OperationValuePickerModel) FooterContinuation(width int) string {
+	if model == nil || model.surface == nil {
+		return ""
+	}
+	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
+		return ""
+	}
+	explainerWidth := operationValuePickerExplainerWidth(width)
+	// The registries are mutually exclusive today, but the rendered explainers
+	// are additive. Gather both so a future provider cannot silently lose the
+	// second publisher's remainder.
+	return joinTagExplainerContinuations(
+		behavioralProjectTagExplainer(model.provider, explainerWidth),
+		semanticTaskTagExplainer(model.provider, explainerWidth),
+	)
+}
+
 func (model *OperationValuePickerModel) render(width int) string {
 	if model == nil || model.surface == nil {
 		return ""
 	}
-	innerWidth := min(max(width*3/5, 46), max(width-6, 24))
+	innerWidth := operationValuePickerInnerWidth(width)
 	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
 		content := MutedStyle.Render(fmt.Sprintf(
 			"Enter a tag name (max %d characters)",
@@ -458,11 +491,12 @@ func (model *OperationValuePickerModel) render(width int) string {
 	}
 	content := MutedStyle.Render(search) + "\n\n" +
 		RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
-	if explainer := behavioralProjectTagExplainer(model.provider, innerWidth-4); explainer != "" {
-		content += "\n\n" + explainer
+	explainerWidth := operationValuePickerExplainerWidth(width)
+	if explainer := behavioralProjectTagExplainer(model.provider, explainerWidth); explainer.Body != "" {
+		content += "\n\n" + explainer.Body
 	}
-	if explainer := semanticTaskTagExplainer(model.provider, innerWidth-4); explainer != "" {
-		content += "\n\n" + explainer
+	if explainer := semanticTaskTagExplainer(model.provider, explainerWidth); explainer.Body != "" {
+		content += "\n\n" + explainer.Body
 	}
 	titleText := model.title
 	if model.subtitle != "" {
