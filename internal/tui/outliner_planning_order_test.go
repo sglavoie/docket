@@ -257,7 +257,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			[]string{tasks[0].ID, tasks[2].ID, tasks[1].ID})
 	})
 
-	t.Run("all-project interleaved Next order reorders across projects", func(t *testing.T) {
+	t.Run("all-project grouped Next order follows visible project groups", func(t *testing.T) {
 		dir := t.TempDir()
 		p1, t1 := planningOrderProject(t, dir, "proj-1", "one", "A", "C")
 		p2, t2 := planningOrderProject(t, dir, "proj-2", "two", "B", "D")
@@ -275,8 +275,10 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			t.Fatal("J at the all-project root produced no workspace reorder")
 		}
 
-		want := []string{t1[0].ID, t1[1].ID, t2[0].ID, t2[1].ID}
-		assertOrder(t, "interleaved focus queue", diskNextOrderIDs(t, dataDir), want)
+		// The visible order is A, C under project one, then B, D under project two.
+		// Moving B down therefore swaps it with D in the durable interleaved list.
+		want := []string{t1[0].ID, t2[1].ID, t1[1].ID, t2[0].ID}
+		assertOrder(t, "grouped focus queue", diskNextOrderIDs(t, dataDir), want)
 	})
 
 	t.Run("Today J reorders the durable daily plan without changing hierarchy", func(t *testing.T) {

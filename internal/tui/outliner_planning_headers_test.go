@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestPlanningRowsShowProjectHeadersWithoutChangingDurableOrder(t *testing.T) {
+func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 	alphaOne := primaryRowsTask("alpha-one", models.StateBacklog)
 	alphaTwo := primaryRowsTask("alpha-two", models.StateBacklog)
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
@@ -25,19 +25,24 @@ func TestPlanningRowsShowProjectHeadersWithoutChangingDurableOrder(t *testing.T)
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
-				alphaOne.ID, betaOne.ID, alphaTwo.ID,
+				alphaOne.ID, alphaTwo.ID, betaOne.ID,
 			}) {
-				t.Fatalf("Next task order = %v, want durable interleaved order", got)
+				t.Fatalf("Next task order = %v, want stable order within first-seen project groups", got)
 			}
 
 			var headers []string
+			counts := make(map[string]int)
 			for _, row := range outliner.rows {
 				if row.IsProjectHeader && row.IsNextSection {
 					headers = append(headers, row.ProjectID)
+					counts[row.ProjectID] = row.SectionCount
 				}
 			}
-			if !slices.Equal(headers, []string{alpha.ID, beta.ID, alpha.ID}) {
-				t.Fatalf("Next project headers = %v, want one per durable-order project run", headers)
+			if !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
+				t.Fatalf("Next project headers = %v, want one per project in first-seen order", headers)
+			}
+			if counts[alpha.ID] != 2 || counts[beta.ID] != 1 {
+				t.Fatalf("Next project counts = %v, want alpha=2 and beta=1", counts)
 			}
 		})
 	}
@@ -64,7 +69,7 @@ func TestPlanningProjectHeadersCollapseAndDisappearInProjectScope(t *testing.T) 
 		}
 	}
 	if !outliner.collapseOrMoveToParent() {
-		t.Fatal("left on a Next project header did not collapse its project runs")
+		t.Fatal("left on a Next project header did not collapse its project group")
 	}
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaOne.ID}) {
 		t.Fatalf("collapsed Next tasks = %v, want only beta", got)
@@ -97,6 +102,6 @@ func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 		}
 	}
 	if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Today project headers = %v, want durable-order project runs", headers)
+		t.Fatalf("Today project headers = %v, want one per project in first-seen order", headers)
 	}
 }

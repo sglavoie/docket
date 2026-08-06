@@ -95,8 +95,9 @@ func planningProjectCollapseKey(projectID string, group models.WorkflowStateGrou
 
 // appendPlanningRows derives subtree rank from the workspace-wide durable order
 // while restoring project context in the unscoped cross-project Outliner. A
-// subtree occupies its earliest member's rank, and a project header starts each
-// contiguous root run, so unrelated interleaved roots retain their order.
+// subtree occupies its earliest member's rank. Projects are ordered by their
+// first appearance, and all of a project's roots are rendered under one header
+// while retaining their relative durable order.
 func (m *OutlinerModel) appendPlanningRows(rows []outlinerRow, group models.WorkflowStateGroup) {
 	if len(rows) == 0 {
 		return
@@ -109,27 +110,30 @@ func (m *OutlinerModel) appendPlanningRows(rows []outlinerRow, group models.Work
 
 	isToday := group == models.StateGroupToday
 	isNext := group == models.StateGroupNext
-	for start := 0; start < len(forest.roots); {
-		end := start + 1
-		for end < len(forest.roots) &&
-			forest.roots[end].row.ProjectID == forest.roots[start].row.ProjectID {
-			end++
+	projectOrder := make([]string, 0, len(forest.roots))
+	projectRoots := make(map[string][]*sectionRowNode, len(forest.roots))
+	for _, root := range forest.roots {
+		projectID := root.row.ProjectID
+		if _, exists := projectRoots[projectID]; !exists {
+			projectOrder = append(projectOrder, projectID)
 		}
-		run := forest.roots[start:end]
+		projectRoots[projectID] = append(projectRoots[projectID], root)
+	}
+	for _, projectID := range projectOrder {
+		roots := projectRoots[projectID]
 		header := outlinerRow{
 			IsProjectHeader: true,
 			IsTodaySection:  isToday,
 			IsNextSection:   isNext,
 			StateGroup:      group,
-			ProjectID:       run[0].row.ProjectID,
-			SectionCount:    sectionRowNodesCount(run),
-			CollapseKey:     planningProjectCollapseKey(run[0].row.ProjectID, group),
+			ProjectID:       projectID,
+			SectionCount:    sectionRowNodesCount(roots),
+			CollapseKey:     planningProjectCollapseKey(projectID, group),
 		}
 		m.rows = append(m.rows, header)
 		if !m.isSectionRowCollapsed(header) {
-			m.flattenSectionRowRoots(run, &m.rows)
+			m.flattenSectionRowRoots(roots, &m.rows)
 		}
-		start = end
 	}
 }
 
