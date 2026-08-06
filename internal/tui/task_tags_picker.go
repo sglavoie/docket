@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	taskTagWorkflowCategory ListCategoryID = "task-tag:workflow"
 	taskTagSemanticCategory ListCategoryID = "task-tag:semantic"
 
 	semanticTaskTagExplainerLabel     = "semantic"
@@ -29,8 +30,32 @@ func semanticTaskTagProvider(provider ValueProviderID) bool {
 // editor wants for discovery and the filter must not do, because a filter row
 // nothing matches can only empty the projection.
 func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
-	items := make([]ListItem, 0, len(tags)+len(models.SemanticTaskTags))
+	items := make([]ListItem, 0, len(tags)+len(models.SemanticTaskTags)+len(promotedTaskTags))
 	promoted := make(map[string]bool, len(tags))
+	for _, entry := range promotedTaskTags {
+		count, inUse := 0, false
+		for _, tag := range tags {
+			if tag.Name == entry.Tag {
+				count, inUse = tag.TaskCount, true
+				promoted[tag.Name] = true
+				break
+			}
+		}
+		if seedUnused || inUse {
+			items = append(items, ListItem{
+				ID:            ListItemID("tag:" + entry.Tag),
+				CategoryID:    taskTagWorkflowCategory,
+				PrimaryText:   entry.Tag,
+				SecondaryText: "workflow lane",
+				Aliases:       []string{entry.Tag, "#" + entry.Tag, entry.Label},
+				Preview: ListPreview{Title: entry.Label, Fields: []ListPreviewField{
+					{Label: "Tag", Value: "#" + entry.Tag},
+					{Label: "Tasks", Value: strconv.Itoa(count)},
+				}},
+				Data: entry.Tag,
+			})
+		}
+	}
 	for _, entry := range models.SemanticTaskTags {
 		canonicalInUse := false
 		for _, tag := range tags {
@@ -75,6 +100,7 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 	return ListSource{
 		Items: items,
 		Categories: []ListCategory{
+			{ID: taskTagWorkflowCategory, Label: "Workflow"},
 			{ID: taskTagSemanticCategory, Label: "Semantic"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},

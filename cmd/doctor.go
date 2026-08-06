@@ -138,20 +138,20 @@ func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {
 
 	schema := catalog.SchemaVersion
 	switch {
-	case schema == config.V7ConfigSchemaVersion:
+	case schema == config.CurrentConfigVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
 			detail:  fmt.Sprintf("workspace schema %d is current", schema),
 		})
-	case schema < config.V7ConfigSchemaVersion:
+	case schema < config.CurrentConfigVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is pre-v7; startup migration remains pending", schema),
+			detail:  fmt.Sprintf("workspace schema %d is pre-v8; startup migration remains pending", schema),
 		})
 	default:
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is newer than supported schema %d", schema, config.V7ConfigSchemaVersion),
+			detail:  fmt.Sprintf("workspace schema %d is newer than supported schema %d", schema, config.CurrentConfigVersion),
 		})
 	}
 

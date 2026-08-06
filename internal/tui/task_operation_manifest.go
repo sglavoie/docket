@@ -89,6 +89,7 @@ func taskDirectOperationManifest() []taskOperationManifestEntry {
 		{ID: operationTaskSetSnooze, Label: "Set Snooze", Aliases: []string{"hide until"}, Provider: ValueProviderSnooze, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetTags, Label: "Set Tags", Aliases: []string{"labels"}, Provider: ValueProviderTags, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskToggleReview, Label: "Toggle Review", Aliases: []string{"mark for review", "review task"}, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},

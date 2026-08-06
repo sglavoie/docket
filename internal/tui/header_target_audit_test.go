@@ -62,6 +62,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.filter.due":                  "target-free",
 	"tui.filter.include-archived":     "target-free",
 	"tui.filter.priority":             "target-free",
+	"tui.filter.review":               "target-free",
 	"tui.filter.project-clear":        "target-free",
 	"tui.filter.project-tags":         "target-free",
 	"tui.filter.show-parked":          "target-free",
@@ -81,6 +82,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.task.set-state":              "reject",
 	"tui.task.set-tags":               "reject",
 	"tui.task.toggle-pin":             "reject",
+	"tui.task.toggle-review":          "reject",
 }
 
 func TestHeaderTargetResolutionIsClassified(t *testing.T) {

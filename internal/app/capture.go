@@ -72,7 +72,7 @@ func InvalidCaptureDestinationError(raw string) error {
 	case "standby", "hold":
 		return fmt.Errorf("destination $%s was removed (use $paused)", value)
 	case "review":
-		return fmt.Errorf("destination $review was removed (use $backlog)")
+		return fmt.Errorf("destination $review is not a state (use #review)")
 	case "maybe":
 		return fmt.Errorf("destination $maybe was removed (use $someday)")
 	case "complete", "completed":

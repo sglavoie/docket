@@ -126,7 +126,7 @@ func TestOperationTagPickerValidatesInputAndEscapesBackToPicker(t *testing.T) {
 	}
 
 	picker.handleKey(tea.KeyPressMsg{Code: 'a'})
-	for _, input := range []string{" ", "invalid,tag"} {
+	for _, input := range []string{" ", "!!!"} {
 		picker.tagAdder.AddTagInput.SetValue(input)
 		_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 		if dismissed || result != nil || !picker.tagAdder.AddTagMode || picker.tagAdder.AddTagError == "" {

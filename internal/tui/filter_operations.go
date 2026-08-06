@@ -13,6 +13,7 @@ const (
 	operationFilterPriority      OperationID = "tui.filter.priority"
 	operationFilterStates        OperationID = "tui.filter.states"
 	operationFilterTags          OperationID = "tui.filter.tags"
+	operationFilterReview        OperationID = "tui.filter.review"
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
 	operationFilterSnoozed       OperationID = "tui.filter.snoozed"
@@ -46,6 +47,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterPriority, "Filter by Priority", ValueProviderFilterPriority, "priority threshold"),
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
 		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
+		descriptor(operationFilterReview, "Filter Review", "", "review tag filter"),
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterSnoozed, "Filter Snoozed Tasks", "", "snoozed only"),
@@ -182,6 +184,17 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		status = fmt.Sprintf("Filtering %d tag(s)", len(names))
 		if len(names) == 0 {
 			status = "Tag filter cleared"
+		}
+	case operationFilterReview:
+		if filter.Tags == nil {
+			filter.Tags = make(map[string]bool)
+		}
+		if filter.Tags[reviewTaskTag] {
+			delete(filter.Tags, reviewTaskTag)
+			status = "Review filter cleared"
+		} else {
+			filter.Tags[reviewTaskTag] = true
+			status = "Filtering Review"
 		}
 	case operationFilterSnoozed:
 		filter.Snoozed = true

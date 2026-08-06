@@ -30,8 +30,8 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `Tab` moves to Inbox for triage.
-3. `s` opens the shared state/planning chord.
-4. `sb`, `sn`, and `st` organize work; `sg` starts it and `sd` completes it.
+3. `s` opens the shared workflow chord.
+4. `sb`, `sn`, `st`, and `sr` organize work; `sg` starts it and `sd` completes it.
 5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
 6. `Space` opens the six occasional task tools.
 
@@ -44,13 +44,14 @@ reverses that cycle.
 All mode shows open, unsnoozed work in this order:
 
 ```text
-Pinned, Today, Doing, Inbox, Next, Paused, Backlog, Waiting, Someday
+Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 Pinned tasks appear once in project groups. Groups sort by their newest pin and
 tasks within each group remain newest-first, with parent breadcrumbs. All,
 Inbox, and Backlog preserve hierarchy and manual sibling order. Today and Next
-preserve workspace-wide planning order. Due is date ordered. Done, Canceled,
+preserve workspace-wide planning order. Review is the sparse set of open tasks
+tagged `review`; pinned tasks still appear only in Pinned. Due is date ordered. Done, Canceled,
 and snoozed work stay hidden unless a filter explicitly asks for them.
 
 ## Outliner grammar
@@ -60,7 +61,7 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Modes | `Tab` / `Shift+Tab` cycle the six modes |
 | Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
-| State and planning | `s` opens the state/planning chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
+| Workflow | `s` opens the workflow chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sr` toggle Review, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
@@ -111,6 +112,7 @@ scroll, and folds exactly.
 | `fs` | Pick workflow states with OR semantics, including terminal states |
 | `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; does not choose states |
 | `ft` | Pick tags with AND semantics |
+| `fr` | Toggle the `review` tag facet |
 | `fd` | Open the due-date facet picker: overdue, today, this week, or no due date |
 | `fz` | Snoozed-only |
 | `fx` | Clear every facet |
@@ -153,7 +155,7 @@ follows navigation and shows at most five lines of additive detail:
 description, tags, attachment names, comment counts, and checklist items. `Esc`
 closes Peek before unwinding Outliner navigation.
 
-State, Today/Next, priority, due, tags, snooze, and pin actions apply atomically
+State, Today/Next/Review, priority, due, tags, snooze, and pin actions apply atomically
 to the complete project-qualified selection, including hidden members. `v`
 starts a fresh inclusive range at the cursor; movement recalculates it over task
 rows only, and `v` or `Esc` freezes it. `Ctrl+A` replaces the selection with all
@@ -172,8 +174,9 @@ validated before one atomic transaction is committed.
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
-- `#tag` creates and sets any valid tag on the fly, including semantic tags such
-  as `#bug` and namespaced tags such as `#source:github`.
+- `#tag` creates and sets a lowercase ASCII kebab tag on the fly. Input is
+  canonicalized (`#Needs / Review` becomes `needs-review`); `#review` feeds the
+  Review lane.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
 - `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,
@@ -323,25 +326,28 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-6 Markdown and generic `Task` headings.
+Project task files use strict schema-7 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-6 workspaces to schema 7, supported schema-5
-workspaces through schema 6 and then schema 7, and supported schema-4
+Startup migrates supported schema-7 workspaces to schema 8, supported schema-6
+workspaces through schema 7 and then schema 8, and supported schema-4/5
 workspaces through the whole chain. Each step validates the complete candidate
 before mutation and publishes its own immutable rollback archive and audit
 first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
-`pre-consolidation-v6-<UTC>.tar.gz` for v5→v6, and `pre-scope-v7-<UTC>.tar.gz`
-for v6→v7. The schema-6 conversion preserves notes and attachment bytes,
+`pre-consolidation-v6-<UTC>.tar.gz` for v5→v6, `pre-scope-v7-<UTC>.tar.gz`
+for v6→v7, and `pre-tag-v8-<UTC>.tar.gz` for v7→v8. The schema-6 conversion preserves notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
 incompatible pre-v6 undo ledger. The schema-7 conversion folds the retired
 per-project grouping fields and the retired workspace scope table into ordinary
 project tags, keeping `parked` as the sole behavioral project tag.
+Schema 8 canonicalizes all task and project tags to lowercase ASCII kebab form,
+audits renames and collisions, upgrades task Markdown to schema 7, and clears
+undo/redo history whose retained bytes predate that canonicalization.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication

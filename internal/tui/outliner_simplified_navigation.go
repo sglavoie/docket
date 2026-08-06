@@ -179,6 +179,9 @@ func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (ou
 			if header.IsNextSection && !selected.IsNextSection {
 				return outlinerRow{}, false
 			}
+			if header.PromotedTag != "" && selected.PromotedTag != header.PromotedTag {
+				return outlinerRow{}, false
+			}
 		}
 		return header, true
 	}

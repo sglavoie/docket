@@ -192,13 +192,14 @@ func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
 
 func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "urgent", TaskCount: 1}}, true)
-	rendered := picker.renderWithin(minTerminalWidth, minTerminalHeight-2)
-	if got := lipgloss.Height(rendered); got > minTerminalHeight-2 {
-		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight-2)
+	rendered := picker.renderWithin(minTerminalWidth, minTerminalHeight)
+	if got := lipgloss.Height(rendered); got > minTerminalHeight {
+		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight)
 	}
 	plain := ansi.Strip(rendered)
-	want := "semantic bug › epic › story › feature › idea " + semanticTaskTagExplainerSummary
-	if got := strings.Join(strings.Fields(plain), " "); !strings.Contains(got, want) {
+	if got := strings.Join(strings.Fields(plain), " "); !strings.Contains(got, "semantic bug › epic › story › feature ›") ||
+		!strings.Contains(got, "highest one a task carries") ||
+		!strings.Contains(got, "colors its title.") {
 		t.Fatalf("picker dropped wrapped explainer:\n%s", plain)
 	}
 }

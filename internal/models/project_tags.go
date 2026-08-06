@@ -3,7 +3,6 @@ package models
 import (
 	"slices"
 	"sort"
-	"strings"
 )
 
 // ParkedProjectTag is the reserved project tag that parks a project: the
@@ -59,11 +58,8 @@ func DedupeTags(tags []string) []string {
 	return deduped
 }
 
-// NormalizeProjectTags validates a complete project tag set with the ordinary
-// tag rules, then folds it to lowercase, dedupes, and sorts. Folding makes the
-// namespace case-insensitive, which both predecessors of project tags already
-// were, and sorting keeps the persisted catalog bytes deterministic. An empty
-// tag set is legal. Any tag invalid as an ordinary tag fails the whole set.
+// NormalizeProjectTags applies the shared lowercase-kebab tag contract, then
+// sorts so persisted catalog bytes remain deterministic.
 func NormalizeProjectTags(tags []string) ([]string, error) {
 	validated, err := NormalizeTaskTags(tags)
 	if err != nil {
@@ -72,12 +68,11 @@ func NormalizeProjectTags(tags []string) ([]string, error) {
 	normalized := make([]string, 0, len(validated))
 	seen := make(map[string]bool, len(validated))
 	for _, tag := range validated {
-		folded := strings.ToLower(tag)
-		if seen[folded] {
+		if seen[tag] {
 			continue
 		}
-		seen[folded] = true
-		normalized = append(normalized, folded)
+		seen[tag] = true
+		normalized = append(normalized, tag)
 	}
 	sort.Strings(normalized)
 	return normalized, nil

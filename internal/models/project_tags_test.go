@@ -38,9 +38,7 @@ func TestNormalizeProjectTagsRejectsInvalidNames(t *testing.T) {
 		{"empty string", ""},
 		{"whitespace only", "   "},
 		{"hash only", "#"},
-		{"contains comma", "a,b"},
-		{"contains semicolon", "a;b"},
-		{"contains newline", "a\nb"},
+		{"no ascii alphanumeric", "!!!"},
 		{"too long", strings.Repeat("a", MaxTagLength+1)},
 	}
 
@@ -82,14 +80,13 @@ func TestNormalizeProjectTagsCanonicalizesReservedParkedTag(t *testing.T) {
 	}
 }
 
-// Project tags fold and sort; task tags must keep their case and insertion
-// order, since the two namespaces are separate.
-func TestNormalizeProjectTagsLeavesTaskTagRulesUnchanged(t *testing.T) {
+// Project tags sort while task tags preserve first-seen order.
+func TestNormalizeProjectTagsLeavesTaskTagOrderUnchanged(t *testing.T) {
 	got, err := NormalizeTaskTags([]string{"Zeta", "Client-ACME", "client-acme", "Parked"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"Zeta", "Client-ACME", "client-acme", "Parked"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"zeta", "client-acme", "parked"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("task tags = %v, want %v", got, want)
 	}
 }

@@ -222,7 +222,7 @@ func TestService_AddTask_RejectsBadInputBeforeCommit(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.AddTask(app.AddTaskRequest{ProjectID: project.ID, Title: "ok", Tags: []string{"bad,tag"}})
+	_, err := svc.AddTask(app.AddTaskRequest{ProjectID: project.ID, Title: "ok", Tags: []string{"!!!"}})
 	if err == nil {
 		t.Fatal("expected a malformed tag to be rejected")
 	}

@@ -12,32 +12,43 @@ import (
 // MaxTagLength is the maximum allowed length for a tag.
 const MaxTagLength = 100
 
-// NormalizeTag trims leading/trailing whitespace and strips a single leading
-// '#' from a tag. Tag rendering always prepends '#', so an input like
-// "#backend" must collapse to "backend" to avoid "##backend" on screen and to
-// stay consistent with the TUI tag adder (commit 086f1321) and quick-capture
-// inline `#tag` syntax. All tag operations should normalize before storing or
-// comparing.
+// NormalizeTag returns the one canonical spelling accepted by both task and
+// project tags: lowercase ASCII kebab case. A leading # is presentation syntax,
+// and every run outside [a-z0-9] becomes one dash. Tags that contain no ASCII
+// letter or digit normalize to the empty string and are rejected by ValidateTag.
 func NormalizeTag(tag string) string {
 	tag = strings.TrimSpace(tag)
 	tag = strings.TrimPrefix(tag, "#")
-	return strings.TrimSpace(tag)
+	tag = strings.ToLower(strings.TrimSpace(tag))
+	var normalized strings.Builder
+	dashPending := false
+	for _, r := range tag {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			if dashPending && normalized.Len() > 0 {
+				normalized.WriteByte('-')
+			}
+			normalized.WriteRune(r)
+			dashPending = false
+			continue
+		}
+		// Treat every punctuation, separator, and non-ASCII rune as one kebab
+		// boundary.
+		dashPending = true
+	}
+	return normalized.String()
 }
 
-// ValidateTag checks that a normalized tag is non-empty, not too long, and
-// contains no invalid characters.
+// ValidateTag checks that a stored tag is already canonical lowercase ASCII
+// kebab case and within the durable length bound.
 func ValidateTag(tag string) error {
-	if strings.TrimSpace(tag) == "" {
+	if tag == "" {
 		return fmt.Errorf("tag cannot be empty")
-	}
-	if tag != NormalizeTag(tag) {
-		return fmt.Errorf("tag %q has leading or trailing whitespace", tag)
 	}
 	if len(tag) > MaxTagLength {
 		return fmt.Errorf("tag %q exceeds maximum length of %d characters", tag, MaxTagLength)
 	}
-	if strings.ContainsAny(tag, ",;\n\r") {
-		return fmt.Errorf("tag %q contains invalid characters (cannot contain commas, semicolons, or newlines)", tag)
+	if tag != NormalizeTag(tag) {
+		return fmt.Errorf("tag %q is not canonical lowercase kebab case", tag)
 	}
 	return nil
 }

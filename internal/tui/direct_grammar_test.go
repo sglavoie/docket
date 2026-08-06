@@ -160,6 +160,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 		"n": {operation: operationCoreNext},
 		"t": {operation: operationCoreToday},
 		"g": {operation: operationTaskSetState, value: models.StateDoing, hasValue: true},
+		"r": {operation: operationTaskToggleReview},
 		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true},
 		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true},
 		"m": {operation: operationTaskSetState, value: models.StateSomeday, hasValue: true},
@@ -169,7 +170,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
 	}
-	if wantOrder := []string{"i", "b", "n", "t", "g", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
+	if wantOrder := []string{"i", "b", "n", "t", "g", "r", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
 		t.Fatalf("state chord terminal order = %v, want %v", gotOrder, wantOrder)
 	}
 	for key, terminal := range want {
@@ -183,9 +184,6 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	for _, binding := range strategy.Bindings {
 		if len(binding.Sequence) > 0 && binding.Sequence[0] == "," {
 			t.Errorf("retired comma state prefix remains registered: %v", binding.Sequence)
-		}
-		if reflect.DeepEqual(binding.Sequence, []string{"s", "r"}) {
-			t.Errorf("retired sr state alias remains registered")
 		}
 	}
 }

@@ -248,9 +248,9 @@ func TestBulkSetTagsRejectsInvalidTag(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkSetTags([]string{"t1"}, []string{"ok", "bad,tag"})
+	_, err := svc.BulkSetTags([]string{"t1"}, []string{"ok", "!!!"})
 	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("err = %v, want ErrInvalidInput (comma is invalid in a tag)", err)
+		t.Fatalf("err = %v, want ErrInvalidInput (tag has no ASCII alphanumeric)", err)
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("Commit called %d times, want 0 (invalid tag aborts before commit)", len(repo.commits))
@@ -368,6 +368,32 @@ func TestBulkPatchTagsExplicitlyRemovesAndAddsIndependentSemanticTags(t *testing
 		if !slices.Equal(task.Tags, []string{"keep", "story"}) {
 			t.Fatalf("task %s tags = %v, want [keep story]", task.ID, task.Tags)
 		}
+	}
+}
+
+func TestBulkToggleTagUsesAllOrNoneMembershipAndOneCommit(t *testing.T) {
+	first := newTask("t1", 1, "first")
+	second := newTask("t2", 2, "second")
+	first.AddTag("review")
+	project := newProject("proj-a", "Alpha", first, second)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+	locators := []app.TaskLocator{
+		{ProjectID: project.ID, TaskID: first.ID},
+		{ProjectID: project.ID, TaskID: second.ID},
+	}
+
+	if _, err := svc.BulkToggleTagByLocators(locators, "Review"); err != nil {
+		t.Fatalf("add review: %v", err)
+	}
+	if !first.HasTag("review") || !second.HasTag("review") || len(repo.commits) != 1 {
+		t.Fatalf("first=%v second=%v commits=%d, want both reviewed in one commit", first.Tags, second.Tags, len(repo.commits))
+	}
+	if _, err := svc.BulkToggleTagByLocators(locators, "#review"); err != nil {
+		t.Fatalf("remove review: %v", err)
+	}
+	if first.HasTag("review") || second.HasTag("review") || len(repo.commits) != 2 {
+		t.Fatalf("first=%v second=%v commits=%d, want review removed in second commit", first.Tags, second.Tags, len(repo.commits))
 	}
 }
 

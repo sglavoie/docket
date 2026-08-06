@@ -73,7 +73,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	})
 	// The final section catalog is intentionally checked as one ordered string.
 	requireDocumentationText(t, content, []string{
-		"Pinned, Today, Doing, Inbox, Next, Paused, Backlog, Waiting, Someday",
+		"Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Next → Backlog → Active → All",
@@ -89,8 +89,9 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"`a` capture, `A` child, `e` title, `E` description",
-		"`s` opens the state/planning chord",
+		"`s` opens the workflow chord",
 		"`si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing",
+		"`sr` toggle Review",
 		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
@@ -116,6 +117,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"Unset never matches",
 		"`fs` | Pick workflow states with OR semantics",
 		"`ft` | Pick tags with AND semantics",
+		"`fr` | Toggle the `review` tag facet",
 		"`fd` | Open the due-date facet picker: overdue, today, this week, or no due date",
 		"`fz` | Snoozed-only",
 		"`fx` | Clear every facet",
@@ -140,7 +142,7 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"!1-3 #tag @date $destination %project >parent",
 		"`^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress`",
-		"`#tag` creates and sets any valid tag on the fly",
+		"`#tag` creates and sets a lowercase ASCII kebab tag on the fly",
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
 		"Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags",
@@ -198,12 +200,13 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-6 Markdown and generic `Task` headings",
+		"schema-7 Markdown and generic `Task` headings",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme choice",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>",
 		"pre-scope-v7-<UTC>.tar.gz",
-		"schema-4 workspaces through the whole chain",
+		"pre-tag-v8-<UTC>.tar.gz",
+		"schema-4/5 workspaces through the whole chain",
 		"folds the retired per-project grouping fields",
 		"existing `unfiled` project or directory also aborts before snapshot publication",
 		"Invalid or future-schema input aborts without changing workspace data",

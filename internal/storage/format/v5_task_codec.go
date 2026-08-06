@@ -193,9 +193,16 @@ func normalizeMigrationV5Tags(tags []string) ([]string, error) {
 	seen := make(map[string]bool, len(tags))
 	var selected string
 	for _, raw := range tags {
-		tag, err := models.NormalizeTaskTag(raw)
-		if err != nil {
-			return nil, err
+		tag := strings.TrimSpace(raw)
+		tag = strings.TrimSpace(strings.TrimPrefix(tag, "#"))
+		if tag == "" {
+			return nil, fmt.Errorf("tag cannot be empty")
+		}
+		if len(tag) > models.MaxTagLength {
+			return nil, fmt.Errorf("tag exceeds %d characters", models.MaxTagLength)
+		}
+		if strings.ContainsAny(tag, ",;\n\r") {
+			return nil, fmt.Errorf("tag contains a metadata delimiter")
 		}
 		if marker, ok := parseMigrationV5TaskMarkerTag(tag); ok {
 			if selected != "" && selected != marker {

@@ -11,7 +11,7 @@ func TestNormalizeTaskTagsTreatsFormerMarkerSpellingsAsIndependentTags(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"backend", "type:BUG", "bug", "idea"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"backend", "type-bug", "bug", "idea"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("tags = %v, want %v", got, want)
 	}
 
@@ -22,7 +22,7 @@ func TestNormalizeTaskTagsTreatsFormerMarkerSpellingsAsIndependentTags(t *testin
 	for _, tag := range []string{"epic", "story", "bug", "feature", "idea", "type:bug"} {
 		task.AddTag(tag)
 	}
-	if !reflect.DeepEqual(task.Tags, []string{"epic", "story", "bug", "feature", "idea", "type:bug"}) {
+	if !reflect.DeepEqual(task.Tags, []string{"epic", "story", "bug", "feature", "idea", "type-bug"}) {
 		t.Fatalf("ordinary tags = %v", task.Tags)
 	}
 }
@@ -148,7 +148,7 @@ func TestAddTagRejectsInvalid(t *testing.T) {
 		{"empty string", ""},
 		{"whitespace only", "   "},
 		{"too long", strings.Repeat("a", MaxTagLength+1)},
-		{"contains comma", "has,comma"},
+		{"no ascii alphanumeric", "!!!"},
 	}
 
 	for _, tt := range tests {

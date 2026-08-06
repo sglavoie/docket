@@ -62,7 +62,7 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 
 	var groups []models.WorkflowStateGroup
 	for _, row := range outliner.rows {
-		if row.IsSectionHeader {
+		if row.IsSectionHeader && row.StateGroup.IsValid() {
 			groups = append(groups, row.StateGroup)
 		}
 	}
@@ -85,9 +85,55 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 		}
 	}
 	for _, row := range outliner.rows {
-		if row.IsSectionHeader && row.SectionName != row.StateGroup.Label() {
+		if row.IsSectionHeader && row.StateGroup.IsValid() && row.SectionName != row.StateGroup.Label() {
 			t.Errorf("group %q label = %q, want canonical %q", row.StateGroup, row.SectionName, row.StateGroup.Label())
 		}
+	}
+}
+
+func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.T) {
+	reviewed := primaryRowsTask("reviewed", models.StateBacklog)
+	reviewed.AddTag(reviewTaskTag)
+	reviewedToday := primaryRowsTask("reviewed-today", models.StateBacklog)
+	reviewedToday.AddTag(reviewTaskTag)
+	doing := primaryRowsTask("doing", models.StateDoing)
+	pinned := primaryRowsTask("pinned-review", models.StateDoing)
+	pinned.AddTag(reviewTaskTag)
+	pinned.Pinned = true
+	now := time.Now()
+	pinned.PinnedAt = &now
+	project := primaryRowsProject("alpha", reviewed, reviewedToday, doing, pinned)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedToday.ID}})
+	outliner.selectOutlinerMode(ModeAll)
+
+	if countTaskRows(outliner, reviewed.ID) != 1 || countTaskRows(outliner, reviewedToday.ID) != 1 || countTaskRows(outliner, pinned.ID) != 1 {
+		t.Fatalf("Review/Today/Pinned projections were not deduplicated: %v", visibleTaskIDs(outliner))
+	}
+	for _, id := range []string{reviewed.ID, reviewedToday.ID} {
+		row, ok := findPlanningTaskRow(outliner, id)
+		if !ok || row.PromotedTag != reviewTaskTag {
+			t.Fatalf("task %q row = %+v found=%t, want Review lane", id, row, ok)
+		}
+	}
+	pinnedRow, ok := findPlanningTaskRow(outliner, pinned.ID)
+	if !ok || !pinnedRow.IsPinnedSection || pinnedRow.PromotedTag != "" {
+		t.Fatalf("pinned Review task = %+v found=%t, want Pinned precedence", pinnedRow, ok)
+	}
+	doingIndex, reviewIndex := -1, -1
+	for index, row := range outliner.rows {
+		if row.IsSectionHeader && row.StateGroup == models.StateGroupDoing {
+			doingIndex = index
+		}
+		if row.IsSectionHeader && row.PromotedTag == reviewTaskTag {
+			reviewIndex = index
+		}
+	}
+	if doingIndex < 0 || reviewIndex <= doingIndex {
+		t.Fatalf("Doing index=%d Review index=%d, want Review after Doing", doingIndex, reviewIndex)
+	}
+	if reviewed.State() != models.StateBacklog || !reviewed.HasTag(reviewTaskTag) {
+		t.Fatalf("Review projection mutated durable task: state=%s tags=%v", reviewed.State(), reviewed.Tags)
 	}
 }
 

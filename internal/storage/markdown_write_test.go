@@ -83,8 +83,8 @@ func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read saved project: %v", err)
 	}
-	if !strings.Contains(string(content), "<!-- tt-schema: 6 -->") {
-		t.Fatalf("saved project is missing schema-6 marker:\n%s", content)
+	if !strings.Contains(string(content), "<!-- tt-schema: 7 -->") {
+		t.Fatalf("saved project is missing schema-7 marker:\n%s", content)
 	}
 	if strings.Contains(string(content), "<!-- sections:") {
 		t.Fatalf("saved project retained legacy section metadata:\n%s", content)

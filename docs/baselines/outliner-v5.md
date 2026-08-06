@@ -35,7 +35,7 @@ The direct interaction grammar is:
 | Modes | `Tab`, `Shift+Tab` |
 | Navigation | `j`/Down, `k`/Up, `h`/Left, `l`/Right, Home, End, PageUp, PageDown, `Enter` |
 | Capture and edit | `a`, `A`, `e`, `E`, `Ctrl+E` |
-| State and planning chord | `si`, `sb`, `sn`, `st`, `sg`, `sw`, `sp`, `sm`, `sd`, `sc` |
+| Workflow chord | `si`, `sb`, `sn`, `st`, `sg`, `sr`, `sw`, `sp`, `sm`, `sd`, `sc` |
 | Metadata | `!0`, `!1`–`!3`, `@`, `#`, `z`, `P` |
 | Structure | `<`, `>`, `J`, `K` |
 | Clipboard | `y`, `Y`, `Ctrl+Y` |

@@ -125,7 +125,8 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 	input OutlinerModeInput,
 	pinned map[TaskIdentity]bool,
 ) {
-	today := m.buildTodaySection(input, pinned)
+	review := m.buildReviewSection(input, pinned)
+	today := m.buildTodaySection(input, pinned, review.projected)
 	next := m.buildNextSection(input, pinned, today.suppressed)
 
 	grouped := make(map[models.WorkflowStateGroup][]stateGroupProjectForest)
@@ -141,6 +142,7 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		roots = removePlanningRowsFromTree(roots, project.ID, today.suppressed)
 		roots = removePlanningRowsFromTree(roots, project.ID, next.suppressed)
 		roots = removeProjectedRowsFromTree(roots, project.ID, pinned)
+		roots = removeProjectedRowsFromTree(roots, project.ID, review.projected)
 		roots = m.sortPrimaryTaskTree(roots)
 		for group, forest := range buildStateGroupTaskForests(roots) {
 			if forest == nil || forest.count == 0 {
@@ -161,6 +163,9 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 			m.appendPlanningSection(next)
 		default:
 			m.appendStateGroupForests(group, grouped[group])
+		}
+		if group == models.StateGroupDoing {
+			m.appendReviewSection(review)
 		}
 	}
 }

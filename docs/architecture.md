@@ -13,7 +13,7 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-7 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
   machine-local theme, workspace selection, and the v4→v5→v6→v7 migration chain.
@@ -91,11 +91,13 @@ The six modes are All, Inbox, Today, Next, Backlog, and Due.
 `Tab`/`Shift+Tab` cycle only that ordered catalog. A project focus is a scope
 frame in the same Outliner, never a second root.
 
-All mode projects open, unsnoozed work as Pinned, Today, Doing, Inbox,
+All mode projects open, unsnoozed work as Pinned, Today, Doing, Review, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 grouped by project: groups sort by their newest pin and tasks within each group
 remain newest-first. It retains parent breadcrumbs and an identity suppression
 set, so promoted tasks appear only once.
+Review similarly promotes open tasks carrying the ordinary `review` tag, after
+Doing. Pinned wins, and the projection does not change lifecycle or planning.
 
 ### One operation grammar
 
@@ -331,7 +333,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-6 generic Task Markdown
+        ├── tasks.md         # strict schema-7 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -398,7 +400,7 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 7 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 8 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, and a schema-6 workspace finishes on the schema-7
 scope-folding path:
@@ -441,8 +443,13 @@ scope-folding path:
    revalidate the exact locked inventory, atomically activate schema 7 in the
    portable catalog, and delete the stale schema-6 catalog sidecar the loader
    would otherwise recover from.
+10. Validate every schema-7 project document and catalog tag, canonicalize task
+   and project tags to lowercase ASCII kebab form, and audit renames/collisions.
+11. Publish `pre-tag-v8-<UTC>.tar.gz` plus its audit, atomically activate catalog
+   schema 8 and task Markdown schema 7 across active and archived projects, and
+   clear undo/redo history that retains pre-canonical bytes.
 
-Each boundary is idempotent: repeated schema-7 startup neither reconverts data
+Each boundary is idempotent: repeated schema-8 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

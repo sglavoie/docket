@@ -98,7 +98,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 		simplifiedOperationContext(),
 		0,
 	)
-	for _, want := range []string{"a capture", "s state/plan", "/ search", "T theme", "? help"} {
+	for _, want := range []string{"a capture", "s workflow", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
 		}

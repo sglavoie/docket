@@ -552,6 +552,10 @@ func renderPreScopeV7Audit(
 }
 
 func buildPreScopeV7Archive(sources []preScopeV7Source, audit []byte) ([]byte, error) {
+	return buildWorkspaceSnapshotArchive(sources, audit, preScopeV7AuditEntry)
+}
+
+func buildWorkspaceSnapshotArchive(sources []preScopeV7Source, audit []byte, auditEntry string) ([]byte, error) {
 	var buffer bytes.Buffer
 	gzipWriter, err := gzip.NewWriterLevel(&buffer, gzip.BestCompression)
 	if err != nil {
@@ -578,7 +582,7 @@ func buildPreScopeV7Archive(sources []preScopeV7Source, audit []byte) ([]byte, e
 			return nil, fmt.Errorf("write pre-scope v7 archive entry %s: %w", source.Path, err)
 		}
 	}
-	if err := writeEntry(preScopeV7AuditEntry, audit); err != nil {
+	if err := writeEntry(auditEntry, audit); err != nil {
 		_ = tarWriter.Close()
 		_ = gzipWriter.Close()
 		return nil, fmt.Errorf("write pre-scope v7 audit entry: %w", err)

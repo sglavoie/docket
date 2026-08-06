@@ -35,10 +35,10 @@ surface; Cobra contains only the TUI launcher and maintenance commands.
   workflow invariants.
 - `internal/app` owns use cases, project-qualified target resolution, planning
   reconciliation, and atomic mutation policy.
-- `internal/storage` owns strict schema-6 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-7 Markdown, attachments, transactions,
   conflicts, recovery, and the workspace undo ledger.
 - `internal/config` owns the lean catalog/planning domains, project tags,
-  machine-local theme, workspace selection, and v4→v5→v6→v7 migration.
+  machine-local theme, workspace selection, and v4→v5→v6→v7→v8 migration.
 - `internal/tui` owns the sole Outliner root, typed subordinate tools and
   overlays, the operation registry/executor, and deterministic scenarios.
 - `internal/textgrammar` owns canonical capture/edit sigils.
@@ -50,7 +50,7 @@ behavior with independent `SaveProject` calls. Direct storage writes are limited
 to narrowly audited maintenance, migration, restore, and transaction
 infrastructure.
 
-## Canonical schema-6 task contract
+## Canonical schema-7 task contract
 
 The live states are:
 
@@ -58,9 +58,10 @@ The live states are:
 inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
-Review and every other retired state or field may appear only in explicitly
-named migration DTOs and audit code. Ordinary task Markdown uses schema 6,
-generic `Task` headings, a project-local ShortID, and the retained fields.
+Review is not a lifecycle state: it is the ordinary canonical `review` tag with
+a promoted All-mode lane. Other retired states or fields may appear only in
+explicitly named migration DTOs and audit code. Ordinary task Markdown uses
+schema 7, generic `Task` headings, a project-local ShortID, and the retained fields.
 
 Planning invariants:
 
@@ -91,7 +92,7 @@ Tab / Shift+Tab                 six modes
 j/k, arrows, h/l, S, Home/End  navigation
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
 a/A, e/E                       capture/edit
-si sb sn st sg sw sp sm sd sc  state/planning chord
+si sb sn st sg sr sw sp sm sd sc  workflow chord
 !0-3 @ # z P                   metadata
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
@@ -99,12 +100,12 @@ v Ctrl+A Space                 selection/actions (`V` unbound)
 p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
-Pressing `s` shows the state/planning chord. Its second keys are `i` Inbox, `b`
-Backlog, `n` Next, `t` Today, `g` Doing, `w` Waiting, `p` Paused, `m`
+Pressing `s` shows the workflow chord. Its second keys are `i` Inbox, `b`
+Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m`
 Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
 behavior, and Backlog removes both planning memberships.
 
-Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fd`, `fz`, and `fx`. `fp1`–`fp3`
+Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fr`, `fd`, `fz`, and `fx`. `fp1`–`fp3`
 are cumulative High/Medium/Low thresholds and exclude Unset. `fd` opens
 the due-date facet picker for overdue, today, this week, or no due date. `fc`
 opens the completion-age picker without choosing Done/Canceled states; cleanup

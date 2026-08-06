@@ -72,7 +72,7 @@ func TestParseQuickCaptureBasicMetadata(t *testing.T) {
 			input:        "Update #v2.0 release",
 			wantTitle:    "Update release",
 			wantPriority: 0,
-			wantTags:     []string{"v2.0"},
+			wantTags:     []string{"v2-0"},
 		},
 		{
 			name:         "tag with multiple hyphens",

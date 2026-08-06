@@ -21,7 +21,7 @@ func newFilterChordTestApp(t *testing.T) *AppModel {
 		Slug: "project",
 		Tasks: []*models.Task{
 			{ID: "critical", ShortID: 1, Title: "Critical", WorkflowState: models.StateBacklog, Priority: 1},
-			{ID: "medium", ShortID: 2, Title: "Medium", WorkflowState: models.StateBacklog, Priority: 2},
+			{ID: "medium", ShortID: 2, Title: "Medium", WorkflowState: models.StateBacklog, Priority: 2, Tags: []string{reviewTaskTag}},
 			{ID: "low", ShortID: 3, Title: "Low", WorkflowState: models.StateWaiting, Priority: 3, Tags: []string{"deep"}},
 		},
 	}
@@ -62,6 +62,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		"d due",
 		"s states",
 		"t tags",
+		"r review",
 		"z snoozed",
 		"x clear all",
 	} {
@@ -78,6 +79,22 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		if !strings.Contains(row, want) {
 			t.Errorf("fp which-key row %q omits %q", row, want)
 		}
+	}
+}
+
+func TestReviewFilterChordTogglesCanonicalTagFacet(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	filter := &app.crossOutliner.filter.CommonFilterState
+	pressFilterChord(t, app, "fr")
+	if !filter.Tags[reviewTaskTag] {
+		t.Fatalf("fr filter = %v", filter.Tags)
+	}
+	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !visible["medium"] || visible["critical"] || visible["low"] {
+		t.Fatalf("Review filter visible = %v", visible)
+	}
+	pressFilterChord(t, app, "fr")
+	if filter.Tags[reviewTaskTag] {
+		t.Fatalf("second fr filter = %v", filter.Tags)
 	}
 }
 
@@ -611,8 +628,8 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 7 {
-		t.Fatalf("filter family declares %d operations, want 7", len(descriptors))
+	if len(descriptors) != 8 {
+		t.Fatalf("filter family declares %d operations, want 8", len(descriptors))
 	}
 	for _, declared := range descriptors {
 		_, ok := registry.Descriptor(declared.ID)

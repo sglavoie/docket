@@ -201,7 +201,7 @@ func retiredStateReplacement(raw string) (string, bool) {
 		"blocked":   "$waiting",
 		"standby":   "$paused",
 		"hold":      "$paused",
-		"review":    "$backlog",
+		"review":    "#review",
 		"maybe":     "$someday",
 		"complete":  "$done",
 		"completed": "$done",

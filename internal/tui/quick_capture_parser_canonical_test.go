@@ -26,7 +26,7 @@ func TestParseQuickCaptureRetiredTaskTypeAndOrdinaryTags(t *testing.T) {
 	runQuickCaptureParseTests(t, []quickCaptureParseTestCase{
 		{name: "bug sigil retired", input: "^bug Fix crash", wantErr: true, errContains: "use #bug"},
 		{name: "case insensitive retired", input: "Plan launch ^EPIC", wantErr: true, errContains: "task type"},
-		{name: "legacy tag remains ordinary", input: "Fix crash #type:bug", wantTitle: "Fix crash", wantPriority: 0, wantTags: []string{"type:bug"}},
+		{name: "legacy tag remains ordinary", input: "Fix crash #type:bug", wantTitle: "Fix crash", wantPriority: 0, wantTags: []string{"type-bug"}},
 		{name: "unknown type", input: "Fix crash ^task", wantErr: true, errContains: "use #tag"},
 	})
 }

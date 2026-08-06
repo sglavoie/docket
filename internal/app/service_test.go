@@ -81,7 +81,7 @@ func TestCaptureRejectsInvalidTag(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha"))
 	svc := newTestService(repo)
 
-	_, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-1", Title: "ok", Tags: []string{"bad,tag"}})
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-1", Title: "ok", Tags: []string{"!!!"}})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -90,7 +90,7 @@ func TestCaptureRejectsInvalidTag(t *testing.T) {
 	}
 }
 
-func TestCapturePreservesLegacyMarkerSpellingAsOrdinaryTag(t *testing.T) {
+func TestCaptureCanonicalizesLegacyMarkerSpellingAsOrdinaryTag(t *testing.T) {
 	project := newProject("proj-1", "Alpha")
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
@@ -99,8 +99,8 @@ func TestCapturePreservesLegacyMarkerSpellingAsOrdinaryTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
-	if got := project.GetTaskByID(res.TaskID).Tags; !slices.Equal(got, []string{"type:BUG", "backend"}) {
-		t.Fatalf("tags = %v, want [type:BUG backend]", got)
+	if got := project.GetTaskByID(res.TaskID).Tags; !slices.Equal(got, []string{"type-bug", "backend"}) {
+		t.Fatalf("tags = %v, want [type-bug backend]", got)
 	}
 }
 

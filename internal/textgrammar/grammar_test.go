@@ -38,7 +38,7 @@ func TestParseStateRejectsLegacyAliases(t *testing.T) {
 }
 
 func TestInvalidStateErrorExplainsRetiredReviewReplacement(t *testing.T) {
-	const want = "state $review was removed (use $backlog)"
+	const want = "state $review was removed (use #review)"
 	if got := InvalidStateError("review").Error(); got != want {
 		t.Fatalf("InvalidStateError(Review) = %q, want %q", got, want)
 	}

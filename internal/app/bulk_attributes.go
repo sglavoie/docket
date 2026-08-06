@@ -387,6 +387,73 @@ func (s *Service) BulkPatchTagsByLocators(
 	})
 }
 
+// BulkToggleTagByLocators applies one all-or-none toggle to a frozen target
+// set. If every task already carries tag, it is removed everywhere; otherwise
+// it is added everywhere. The membership decision and mutation share the same
+// repository snapshot, so concurrent presentation state cannot split a bulk
+// toggle into mixed results.
+func (s *Service) BulkToggleTagByLocators(locators []TaskLocator, tag string) (BulkResult, error) {
+	normalized := models.NormalizeTag(tag)
+	if err := models.ValidateTag(normalized); err != nil {
+		return BulkResult{}, invalidInput("tag", err.Error())
+	}
+	if len(locators) == 0 {
+		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
+	}
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return BulkResult{}, err
+	}
+	refs, err := resolveRequestedTasks(snap, nil, locators)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return BulkResult{}, fmt.Errorf("capture bulk tag toggle rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+
+	remove := true
+	for _, ref := range refs {
+		remove = remove && ref.Task.HasTag(normalized)
+	}
+	now := s.clock.Now()
+	for _, ref := range refs {
+		if remove {
+			ref.Task.RemoveTag(normalized)
+		} else {
+			ref.Task.AddTag(normalized)
+		}
+		ref.Task.UpdatedAt = now
+	}
+
+	action := "Add Tag"
+	if remove {
+		action = "Remove Tag"
+	}
+	commits, index := distinctProjectCommits(refs, snap)
+	results, err := s.commitProjects(commits, action, normalized)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	committed = true
+	out := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	for _, ref := range refs {
+		out.Tasks = append(out.Tasks, newTaskResult(ref, revisionAt(results.results, index[ref.Project.ID])))
+	}
+	for _, commit := range commits {
+		out.TouchedProjectIDs = append(out.TouchedProjectIDs, commit.project.ID)
+	}
+	return out, nil
+}
+
 func normalizeBulkTags(tags []string) ([]string, error) {
 	normalized, err := models.NormalizeTaskTags(tags)
 	if err != nil {

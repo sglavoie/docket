@@ -16,6 +16,7 @@ const (
 	operationTaskPin                  OperationID = "tui.task.pin"
 	operationTaskUnpin                OperationID = "tui.task.unpin"
 	operationTaskTogglePin            OperationID = "tui.task.toggle-pin"
+	operationTaskToggleReview         OperationID = "tui.task.toggle-review"
 	operationTaskNewChild             OperationID = "tui.task.new-child"
 )
 

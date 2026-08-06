@@ -99,7 +99,7 @@ Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 a/A e/E Ctrl+E                   capture and edit
-si sb sn st sg sw sp sm sd sc    state/planning chord
+si sb sn st sg sr sw sp sm sd sc    workflow chord
 !0-3 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard

@@ -26,6 +26,7 @@ type outlinerRow struct {
 	IsPinnedSection    bool                      // True for the synthetic Pinned header and every promoted task row beneath it
 	IsTodaySection     bool                      // True for the synthetic Today header and every explicit Today task row beneath it
 	IsNextSection      bool                      // True for the synthetic Next header and every explicit Next task row beneath it
+	PromotedTag        string                    // Canonical promoted workflow tag for synthetic header/project/task rows
 	SectionName        string                    // Section name for header rows
 	SectionCount       int                       // Number of tasks in this section
 	StateGroup         models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers

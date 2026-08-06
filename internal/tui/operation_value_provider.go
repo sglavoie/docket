@@ -477,9 +477,9 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 
 	listHeight := min(max(len(model.surface.Rows()), 6), 15)
 	if height > 0 {
-		// Halo, frame, title, search, search/list gap, and footer consume eight
+		// Halo, frame, title, search, search/list gap, and footer consume nine
 		// rows. A present explainer adds its own rows plus one separating row.
-		reservedRows := 8
+		reservedRows := 9
 		if explainerBlock != "" {
 			reservedRows += 1 + lipgloss.Height(explainerBlock)
 		}
@@ -795,6 +795,9 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operationTaskTogglePin {
 		return m.executeTaskTogglePinOperation(invocation)
 	}
+	if invocation.Descriptor.ID == operationTaskToggleReview {
+		return m.executeTaskToggleReviewOperation(invocation)
+	}
 	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
 		if err != nil {
 			return OperationHandlerResult{Err: err}
@@ -816,6 +819,32 @@ func (m *AppModel) executeTaskOperation(
 		return OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 	}
 	return m.executeSingleTaskOperation(invocation, identity)
+}
+
+func (m *AppModel) executeTaskToggleReviewOperation(
+	invocation OperationInvocation,
+) OperationHandlerResult {
+	capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
+	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
+	for _, target := range invocation.Targets.Targets {
+		if !target.Task.Valid() {
+			return OperationHandlerResult{Err: fmt.Errorf(
+				"operation %s resolved an invalid task", invocation.Descriptor.ID,
+			)}
+		}
+		locators = append(locators, target.Task.Locator())
+	}
+	return OperationHandlerResult{Message: OperationCommandResultMsg{
+		Cmd: withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(
+			app.TaskOperationRequest{
+				Operation: app.TaskOperationToggleTag,
+				Targets:   locators,
+				Tag:       reviewTaskTag,
+			},
+			"Toggle Review",
+			fmt.Sprintf("Toggled Review for %d task(s)", len(locators)),
+		), capture),
+	}}
 }
 
 // executeTaskTogglePinOperation applies one deterministic toggle to the whole

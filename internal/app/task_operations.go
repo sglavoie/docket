@@ -26,6 +26,7 @@ const (
 	TaskOperationSetDueDate           TaskOperation = "set_due_date"
 	TaskOperationSetSnooze            TaskOperation = "set_snooze"
 	TaskOperationSetTags              TaskOperation = "set_tags"
+	TaskOperationToggleTag            TaskOperation = "toggle_tag"
 	TaskOperationSetPinned            TaskOperation = "set_pinned"
 )
 
@@ -51,6 +52,7 @@ type TaskOperationRequest struct {
 	TagPatch     bool
 	TagsToAdd    []string
 	TagsToRemove []string
+	Tag          string
 	Pinned       bool
 }
 
@@ -159,6 +161,10 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		} else {
 			result, err = s.BulkSetTagsByLocators(req.Targets, req.Tags)
 		}
+		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationToggleTag:
+		result, err := s.BulkToggleTagByLocators(req.Targets, req.Tag)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetPinned:

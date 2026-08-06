@@ -176,13 +176,30 @@ func validateV6Reference(field, value string) error {
 func validateCanonicalV6Tags(taskID string, tags []string) error {
 	seen := make(map[string]bool, len(tags))
 	for _, tag := range tags {
-		if err := models.ValidateTag(tag); err != nil {
-			return fmt.Errorf("v6 task %q tags: %w", taskID, err)
+		// Schema 6 predates the lowercase-kebab contract. Keep this reader
+		// frozen so schema-8 activation can ingest and audit legacy spellings.
+		if tag == "" || strings.HasPrefix(tag, "#") || tag != strings.TrimSpace(tag) || len(tag) > models.MaxTagLength ||
+			strings.ContainsAny(tag, ",;\n\r") {
+			return fmt.Errorf("v6 task %q has invalid legacy tag %q", taskID, tag)
 		}
 		if seen[tag] {
 			return fmt.Errorf("v6 task %q has duplicate tag %q", taskID, tag)
 		}
 		seen[tag] = true
+	}
+	return nil
+}
+
+// ValidateV7TaskRecord applies the schema-7 lowercase-kebab tag contract to
+// the otherwise unchanged schema-6 task record shape.
+func ValidateV7TaskRecord(task V6TaskRecord) error {
+	if err := validateV6TaskRecord(task, true); err != nil {
+		return err
+	}
+	for _, tag := range task.Tags {
+		if err := models.ValidateTag(tag); err != nil {
+			return fmt.Errorf("v7 task %q tags: %w", task.ID, err)
+		}
 	}
 	return nil
 }
