@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	projectTagBehavioralCategory  ListCategoryID = "project-tag:behavioral"
-	projectTagDescriptiveCategory ListCategoryID = "tag:other"
+	projectTagBehavioralCategory ListCategoryID = "project-tag:behavioral"
+	tagDescriptiveCategory       ListCategoryID = "tag:other"
 )
 
 // newProjectTagsPicker offers the project's own tag set. Behavioral tags are
@@ -85,7 +85,7 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 	for _, tag := range names {
 		items = append(items, ListItem{
 			ID:          ListItemID("tag:" + tag),
-			CategoryID:  projectTagDescriptiveCategory,
+			CategoryID:  tagDescriptiveCategory,
 			PrimaryText: tag,
 			Aliases:     []string{tag, "#" + tag},
 			Preview:     ListPreview{Title: tag},
@@ -97,7 +97,7 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 		Items: items,
 		Categories: []ListCategory{
 			{ID: projectTagBehavioralCategory, Label: "Behavioral"},
-			{ID: projectTagDescriptiveCategory, Label: "Tags"},
+			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},
 	}
 }

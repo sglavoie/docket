@@ -53,52 +53,8 @@ type TaskTitleStyleOptions struct {
 	Disabled bool
 }
 
-type semanticTitleRole uint8
-
-const (
-	semanticTitleNone semanticTitleRole = iota
-	semanticTitleBug
-	semanticTitleEpic
-	semanticTitleStory
-	semanticTitleFeature
-	semanticTitleIdea
-)
-
-// semanticTitleRoleForTags recognizes only exact case-insensitive tag values.
-// Slice order never affects the locked bug > epic > story > feature > idea precedence.
-func semanticTitleRoleForTags(tags []string) semanticTitleRole {
-	var epic, story, feature, idea bool
-	for _, tag := range tags {
-		switch {
-		case strings.EqualFold(tag, "bug"):
-			return semanticTitleBug
-		case strings.EqualFold(tag, "epic"):
-			epic = true
-		case strings.EqualFold(tag, "story"):
-			story = true
-		case strings.EqualFold(tag, "feature"):
-			feature = true
-		case strings.EqualFold(tag, "idea"):
-			idea = true
-		}
-	}
-	if epic {
-		return semanticTitleEpic
-	}
-	if story {
-		return semanticTitleStory
-	}
-	if feature {
-		return semanticTitleFeature
-	}
-	if idea {
-		return semanticTitleIdea
-	}
-	return semanticTitleNone
-}
-
 func semanticTaskTitleStyle(
-	role semanticTitleRole,
+	role models.SemanticTaskTagRole,
 	priority int,
 	selected bool,
 	snoozed bool,
@@ -109,48 +65,48 @@ func semanticTaskTitleStyle(
 	case selected:
 		style = style.Bold(true)
 		switch role {
-		case semanticTitleNone:
+		case models.SemanticTaskTagNone:
 			return style
-		case semanticTitleBug:
+		case models.SemanticTaskTagBug:
 			foreground = ColorSemanticBugSelectedTitle
-		case semanticTitleEpic:
+		case models.SemanticTaskTagEpic:
 			foreground = ColorSemanticEpicSelectedTitle
-		case semanticTitleStory:
+		case models.SemanticTaskTagStory:
 			foreground = ColorSemanticStorySelectedTitle
-		case semanticTitleFeature:
+		case models.SemanticTaskTagFeature:
 			foreground = ColorSemanticFeatureSelectedTitle
-		case semanticTitleIdea:
+		case models.SemanticTaskTagIdea:
 			foreground = ColorSemanticIdeaSelectedTitle
 		}
 	case snoozed:
 		style = style.Faint(true)
 		switch role {
-		case semanticTitleNone:
+		case models.SemanticTaskTagNone:
 			return style
-		case semanticTitleBug:
+		case models.SemanticTaskTagBug:
 			foreground = ColorSemanticBugSnoozedTitle
-		case semanticTitleEpic:
+		case models.SemanticTaskTagEpic:
 			foreground = ColorSemanticEpicSnoozedTitle
-		case semanticTitleStory:
+		case models.SemanticTaskTagStory:
 			foreground = ColorSemanticStorySnoozedTitle
-		case semanticTitleFeature:
+		case models.SemanticTaskTagFeature:
 			foreground = ColorSemanticFeatureSnoozedTitle
-		case semanticTitleIdea:
+		case models.SemanticTaskTagIdea:
 			foreground = ColorSemanticIdeaSnoozedTitle
 		}
 	default:
 		switch role {
-		case semanticTitleNone:
+		case models.SemanticTaskTagNone:
 			return style
-		case semanticTitleBug:
+		case models.SemanticTaskTagBug:
 			foreground = ColorSemanticBugTitle
-		case semanticTitleEpic:
+		case models.SemanticTaskTagEpic:
 			foreground = ColorSemanticEpicTitle
-		case semanticTitleStory:
+		case models.SemanticTaskTagStory:
 			foreground = ColorSemanticStoryTitle
-		case semanticTitleFeature:
+		case models.SemanticTaskTagFeature:
 			foreground = ColorSemanticFeatureTitle
-		case semanticTitleIdea:
+		case models.SemanticTaskTagIdea:
 			foreground = ColorSemanticIdeaTitle
 		}
 	}
@@ -171,8 +127,8 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 	if isCanceled {
 		return CanceledStyle
 	}
-	if role := semanticTitleRoleForTags(task.Tags); role != semanticTitleNone {
-		return semanticTaskTitleStyle(role, task.Priority, opts.CursorSelected, task.IsSnoozed())
+	if entry, ok := models.SemanticTaskTagForTags(task.Tags); ok {
+		return semanticTaskTitleStyle(entry.Role, task.Priority, opts.CursorSelected, task.IsSnoozed())
 	}
 	if opts.CursorSelected {
 		return SelectedTaskTitleStyle

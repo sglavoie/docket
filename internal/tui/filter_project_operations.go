@@ -114,7 +114,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	for _, name := range names {
 		item := ListItem{
 			ID:            ListItemID("tag:" + name),
-			CategoryID:    projectTagDescriptiveCategory,
+			CategoryID:    tagDescriptiveCategory,
 			PrimaryText:   name,
 			SecondaryText: projectCountPhrase(counts[name]),
 			Aliases:       []string{name, "#" + name},
@@ -130,7 +130,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	// name the projects the vocabulary does not cover.
 	items = append(items, ListItem{
 		ID:            ListItemID("tag:" + untaggedProjectFilterKey),
-		CategoryID:    projectTagDescriptiveCategory,
+		CategoryID:    tagDescriptiveCategory,
 		PrimaryText:   "Untagged",
 		SecondaryText: projectCountPhrase(untagged),
 		Aliases:       []string{"untagged", "no tags"},
@@ -141,7 +141,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 		Items: items,
 		Categories: []ListCategory{
 			{ID: projectTagBehavioralCategory, Label: "Behavioral"},
-			{ID: projectTagDescriptiveCategory, Label: "Tags"},
+			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},
 	}
 	selected := []ListItemID(nil)

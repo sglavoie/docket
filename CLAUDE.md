@@ -215,6 +215,28 @@ Tagging a project `parked` keeps its Today and Next references. They stay
 durable and are filtered at read time, so unparking restores the plan untouched.
 Archiving preserves the project's tags and restoring returns them unchanged.
 
+## Task tags
+
+`bug`, `epic`, `story`, `feature`, and `idea` are presentation metadata with a
+locked precedence, `bug` > `epic` > `story` > `feature` > `idea`, matched
+exactly and case-insensitively so `type:bug` and `bugfix` stay ordinary. They
+color the task title and decide nothing else: a semantic tag is an ordinary tag
+in storage, in capture, in filtering, and in every workflow rule.
+`models.SemanticTaskTags` is the registry every explaining surface reads. Like
+`BehavioralProjectTags` it carries no effect, and it is an ordered slice rather
+than a map because the precedence is part of what it publishes.
+
+Both tag pickers group the five under `SEMANTIC` above the descriptive `TAGS`
+section, and the seeding is asymmetric on purpose. `#` offers all five whether
+or not any task carries them, because offering an unused tag is how it gets
+discovered; `ft` stays usage-derived, because a filter row nothing carries can
+only empty the projection. The explainer states the precedence instead of
+leaving it silently applied.
+
+The legacy `internal/tui/tag_selector.go` path reached from `handler_tag.go`
+(`ShowTagSelectorMsg`, `ShowBulkTagSelectorMsg`) was deliberately left alone and
+carries no semantic tier, as were the task row and Peek tag chips.
+
 ## Capture grammar
 
 Canonical capture sigils are:

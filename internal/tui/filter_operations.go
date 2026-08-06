@@ -460,12 +460,8 @@ func (m *AppModel) newFilterTagsPicker(
 	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
 		projects = m.crossOutliner.workModeScopeProjects()
 	}
-	source := ListSourceFromTags(BuildProjectsTagList(projects, false))
-	for index := range source.Items {
-		if tag, ok := source.Items[index].Data.(TagInfo); ok {
-			source.Items[index].Data = tag.Name
-		}
-	}
+	tagList := BuildProjectsTagList(projects, false)
+	source := taskTagListSource(tagList, false)
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
 		for tag := range m.crossOutliner.filter.Tags {

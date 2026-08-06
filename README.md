@@ -189,7 +189,11 @@ defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
 Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags color
 task titles in that precedence order. Namespaced values such as `type:bug` and
-partial matches remain ordinary tags and add no prefix or marker icon.
+partial matches remain ordinary tags and add no prefix or marker icon. Both tag
+pickers group those five under a `SEMANTIC` section above the rest: `#` Set Tags
+always offers all five with a one-line summary each, whether or not any task
+carries them, while `ft` Filter by Tags stays usage-derived and lists only the
+ones in use.
 
 ## Workflow and hierarchy
 
@@ -337,7 +341,7 @@ converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
 incompatible pre-v6 undo ledger. The schema-7 conversion folds the retired
 per-project grouping fields and the retired workspace scope table into ordinary
-project tags, keeping `parked` as the sole behavioral tag.
+project tags, keeping `parked` as the sole behavioral project tag.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication

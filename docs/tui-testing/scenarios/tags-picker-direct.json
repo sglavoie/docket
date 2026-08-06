@@ -9,6 +9,9 @@
     { "type": "key", "label": "open the tag picker with its direct key", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Set Tags: Build login form" },
     { "type": "assert", "assert": "contains", "value": "TAGS" },
+    { "type": "assert", "label": "the semantic vocabulary is pinned above the tags in use", "assert": "contains", "value": "SEMANTIC" },
+    { "type": "assert", "assert": "contains", "value": "bug" },
+    { "type": "assert", "label": "each offered semantic tag states what it means", "assert": "contains", "value": "A defect to fix" },
     { "type": "assert", "assert": "contains", "value": "Space toggle" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -18,7 +21,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Set Tags" },
 
     { "type": "key", "label": "reopen the picker", "key": "#" },
-    { "type": "key", "label": "select the first tag", "key": "space" },
+    { "type": "key", "label": "select the first tag, which the seeding makes bug", "key": "space" },
     { "type": "key", "label": "apply the selection", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

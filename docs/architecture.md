@@ -220,6 +220,18 @@ single source every explaining surface reads — the picker explainer, the badge
 and the project editor's Tags field — and it is metadata only: adding an entry
 explains a tag, it does not make one decide anything.
 
+`models.SemanticTaskTags` is the matching registry on the task side, and the
+parallel structure is deliberate: both publish the name and one-sentence summary
+every explaining surface reads, and neither carries an effect. The labels differ
+on purpose. A *behavioral* project tag decides something — `parked` removes a
+project from the base task workspace — while a *semantic* task tag only renders,
+coloring the title and touching no filter, sort, or workflow rule. The shapes
+differ for the same reason: `BehavioralProjectTags` is a map keyed by tag name
+because its entries are independent, and `SemanticTaskTags` is an ordered slice
+because the `bug` > `epic` > `story` > `feature` > `idea` precedence is part of
+what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
+the `#` and `ft` pickers read the slice order to build their `SEMANTIC` section.
+
 `#` is bound to two descriptors, `tui.task.set-tags` and
 `tui.project.set-tags`, marked `SharedKey` on the input strategy. A descriptor
 carries exactly one `TargetSource` and one `OperationCategory`, so a single

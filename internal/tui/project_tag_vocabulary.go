@@ -242,7 +242,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 
 	items := []ListItem{{
 		ID:            "tag-destination:",
-		CategoryID:    projectTagDescriptiveCategory,
+		CategoryID:    tagDescriptiveCategory,
 		PrimaryText:   "Leave untagged",
 		SecondaryText: "members keep no tags",
 		Aliases:       []string{"none", "untagged"},
@@ -251,7 +251,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 	for _, name := range names {
 		items = append(items, ListItem{
 			ID:            ListItemID("tag-destination:" + name),
-			CategoryID:    projectTagDescriptiveCategory,
+			CategoryID:    tagDescriptiveCategory,
 			PrimaryText:   name,
 			SecondaryText: projectCountPhrase(counts[name]),
 			Aliases:       []string{name, "#" + name},
@@ -271,7 +271,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 		subtitle,
 		ListSource{
 			Items:      items,
-			Categories: []ListCategory{{ID: projectTagDescriptiveCategory, Label: "Destination"}},
+			Categories: []ListCategory{{ID: tagDescriptiveCategory, Label: "Destination"}},
 		},
 		false,
 		nil,

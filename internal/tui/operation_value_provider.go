@@ -265,9 +265,26 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	if model.provider == ValueProviderProjectTags {
 		item.SecondaryText = ""
 	}
+	// A minted tag the registry knows belongs in the semantic section, or it
+	// would sit under TAGS while it colors the title.
+	if entry, ok := models.SemanticTaskTagByName(tag); ok && semanticTaskTagProvider(model.provider) {
+		item = semanticTaskTagItem(tag, entry.Summary, 0)
+	}
 	items = append(items, item)
+	// A global alphabetical sort would reorder the semantic section into bug,
+	// epic, feature, idea, story and contradict the precedence line under it.
 	sort.SliceStable(items, func(i, j int) bool {
-		return items[i].PrimaryText < items[j].PrimaryText
+		left, right := items[i], items[j]
+		leftSemantic := left.CategoryID == taskTagSemanticCategory
+		rightSemantic := right.CategoryID == taskTagSemanticCategory
+		switch {
+		case leftSemantic != rightSemantic:
+			return leftSemantic
+		case leftSemantic:
+			return semanticTaskTagPrecedence(left.PrimaryText) < semanticTaskTagPrecedence(right.PrimaryText)
+		default:
+			return left.PrimaryText < right.PrimaryText
+		}
 	})
 
 	model.surface.SetQuery("")
@@ -442,6 +459,9 @@ func (model *OperationValuePickerModel) render(width int) string {
 	content := MutedStyle.Render(search) + "\n\n" +
 		RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
 	if explainer := behavioralProjectTagExplainer(model.provider, innerWidth-4); explainer != "" {
+		content += "\n\n" + explainer
+	}
+	if explainer := semanticTaskTagExplainer(model.provider, innerWidth-4); explainer != "" {
 		content += "\n\n" + explainer
 	}
 	titleText := model.title
@@ -1171,12 +1191,8 @@ func (m *AppModel) newOperationValuePicker(
 		for _, ref := range refs {
 			projects = append(projects, ref.Project)
 		}
-		source := ListSourceFromTags(BuildProjectsTagList(projects, false))
-		for index := range source.Items {
-			if tag, ok := source.Items[index].Data.(TagInfo); ok {
-				source.Items[index].Data = tag.Name
-			}
-		}
+		tagList := BuildProjectsTagList(projects, false)
+		source := taskTagListSource(tagList, true)
 		membership := taskTagMembership(refs)
 		selected := make([]ListItemID, 0, len(membership))
 		for tag, state := range membership {

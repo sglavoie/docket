@@ -1,0 +1,62 @@
+{
+  "name": "semantic-task-tags-split",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
+
+    { "type": "key", "label": "open the tag filter facet", "key": "f" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Tags" },
+    { "type": "assert", "label": "no fixture task carries a semantic tag, so the filter offers no section", "assert": "not_contains", "value": "SEMANTIC" },
+    { "type": "assert", "label": "the locked precedence is stated even with no semantic row", "assert": "contains", "value": "bug › epic" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Filter by Tags" },
+
+    { "type": "key", "label": "open the tag editor with its direct key", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Set Tags: Build login form" },
+    { "type": "assert", "label": "the editor offers all five whether or not anything carries them", "assert": "contains", "value": "SEMANTIC" },
+    { "type": "assert", "assert": "contains", "value": "[ ] bug" },
+    { "type": "assert", "assert": "contains", "value": "[ ] epic" },
+    { "type": "assert", "assert": "contains", "value": "[ ] story" },
+    { "type": "assert", "assert": "contains", "value": "[ ] feature" },
+    { "type": "assert", "assert": "contains", "value": "[ ] idea" },
+    { "type": "assert", "label": "the tags in use keep their own section below", "assert": "contains", "value": "TAGS" },
+    { "type": "assert", "assert": "contains", "value": "bug › epic" },
+    { "type": "assert", "label": "the summary truncates to the overlay width instead of overflowing it", "assert": "not_contains", "value": "colors its title." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the explainer drops out below its width floor instead of wrapping", "width": 80, "height": 24 },
+    { "type": "assert", "assert": "not_contains", "value": "bug › epic" },
+    { "type": "assert", "label": "the section itself survives the narrow terminal", "assert": "contains", "value": "SEMANTIC" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "toggle the highest-precedence semantic tag", "key": "space" },
+    { "type": "key", "label": "apply the selection", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Tagged 1 task(s)" },
+
+    { "type": "key", "label": "reopen the tag filter facet", "key": "f" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Tags" },
+    { "type": "assert", "label": "the filter groups a semantic tag only once something carries it", "assert": "contains", "value": "SEMANTIC" },
+    { "type": "assert", "assert": "contains", "value": "[ ] bug" },
+    { "type": "assert", "label": "the filter stays usage-derived: the other four are never seeded as rows", "assert": "not_contains", "value": "[ ] epic" },
+    { "type": "assert", "assert": "not_contains", "value": "[ ] story" },
+    { "type": "assert", "assert": "not_contains", "value": "[ ] feature" },
+    { "type": "assert", "assert": "not_contains", "value": "[ ] idea" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

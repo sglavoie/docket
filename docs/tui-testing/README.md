@@ -146,6 +146,7 @@ The committed suite exercises the product contracts directly:
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
+| Semantic task tag split, seeded in `#` and usage-derived in `ft` | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
