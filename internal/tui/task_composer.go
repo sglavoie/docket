@@ -346,6 +346,9 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 		if !parsed.destinationSet {
 			destination = m.preset.defaultDestination(parentID)
 		}
+		if dueDateIsToday(due) {
+			destination = app.CaptureDestinationToday
+		}
 		req := app.CaptureRequest{
 			SourceLine:  idx + 1,
 			ProjectID:   target.ID,
@@ -532,6 +535,16 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	destination := m.preset.defaultDestination(parentID)
 	if parsed != nil && parsed.destinationSet {
 		destination = parsed.destination
+	}
+	var due *time.Time
+	if parsed != nil {
+		due = parsed.dueDate
+	}
+	if due == nil {
+		due = m.preset.Shared.Due
+	}
+	if dueDateIsToday(due) {
+		destination = app.CaptureDestinationToday
 	}
 
 	route := composerEffectiveRoute{destination: destination}

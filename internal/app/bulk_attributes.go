@@ -116,6 +116,90 @@ func (s *Service) BulkSetDueDateByLocators(locators []TaskLocator, due time.Time
 	return s.bulkSetDueDate(nil, locators, due)
 }
 
+// BulkSetDueDateAndPlanTodayByLocators sets one due date and adds every target
+// to Today in the same transaction. It is the application boundary used by
+// interactive adapters whose "due today" gesture also carries explicit planning
+// intent; the ordinary due-date methods remain attribute-only.
+func (s *Service) BulkSetDueDateAndPlanTodayByLocators(locators []TaskLocator, due time.Time) (BulkResult, error) {
+	return s.bulkSetDueDateAndPlanToday(nil, locators, due)
+}
+
+// BulkSetDueDateAndPlanToday is the workspace-unique-ID form of
+// BulkSetDueDateAndPlanTodayByLocators.
+func (s *Service) BulkSetDueDateAndPlanToday(taskIDs []string, due time.Time) (BulkResult, error) {
+	return s.bulkSetDueDateAndPlanToday(taskIDs, nil, due)
+}
+
+func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLocator, due time.Time) (BulkResult, error) {
+	if len(taskIDs) == 0 && len(locators) == 0 {
+		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
+	}
+	builder := s.defaultedPlanningArtifacts(nil)
+	if builder == nil {
+		return BulkResult{}, fmt.Errorf("app: planning mutations require a planning artifact builder")
+	}
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return BulkResult{}, err
+	}
+	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	before, err := cloneSnapshot(snap)
+	if err != nil {
+		return BulkResult{}, fmt.Errorf("capture due-today rollback state: %w", err)
+	}
+	useRollbackDocuments(before)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+
+	now := s.clock.Now()
+	for _, ref := range refs {
+		clone := *ref.Task
+		if _, _, validationErr := ApplyPlanningActionToTask(
+			&clone, ref.Project.ID, PlanningAddToday, now,
+		); validationErr != nil {
+			return BulkResult{}, validationErr
+		}
+	}
+	targets := make([]PlanningReconcileTarget, 0, len(refs))
+	for _, ref := range refs {
+		ref.Task.DueDate = cloneCalendarDatePtr(&due)
+		ref.Task.UpdatedAt = now
+		target, _, mutationErr := ApplyPlanningActionToTask(
+			ref.Task, ref.Project.ID, PlanningAddToday, now,
+		)
+		if mutationErr != nil {
+			return BulkResult{}, mutationErr
+		}
+		targets = append(targets, target)
+	}
+
+	commits, indexes := distinctProjectCommits(refs, snap)
+	if planningErr := attachPlanningArtifacts(commits, targets, builder); planningErr != nil {
+		return BulkResult{}, planningErr
+	}
+	outcome, err := s.commitProjects(commits, "Set Due Date", "due today")
+	if err != nil {
+		return BulkResult{}, err
+	}
+	committed = true
+
+	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	for _, ref := range refs {
+		result.Tasks = append(result.Tasks, newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])))
+	}
+	for _, commit := range commits {
+		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)
+	}
+	return result, nil
+}
+
 func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due time.Time) (BulkResult, error) {
 	return s.bulkAttribute(taskIDs, locators, "Set Due Date", "due date", nil, func(t *models.Task) {
 		t.DueDate = cloneCalendarDatePtr(&due)

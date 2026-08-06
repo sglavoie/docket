@@ -50,8 +50,11 @@ type TaskCreatedMsg struct {
 // task-form edit coordinator. handleTaskUpdated reloads the committed project by
 // Result.ProjectID and re-resolves the live Task pointer before delegating, so
 // the coordinator path and the legacy in-place path share one handler.
+// PlanningChanged asks the shell to advance its planning snapshot before views
+// rebuild (for example after a task-form due-today edit).
 type TaskUpdatedMsg struct {
-	Result *app.TaskResult
+	Result          *app.TaskResult
+	PlanningChanged bool
 }
 
 // TaskDeletedMsg signals a task was deleted. Project carries the project

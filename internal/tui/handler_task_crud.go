@@ -165,6 +165,9 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 	if msg.Result != nil {
 		m.reloadProjectByID(msg.Result.ProjectID)
 	}
+	if msg.PlanningChanged && m.refreshRuntime() {
+		m.rebuildPlanningFromRuntime()
+	}
 
 	// Common pattern: pop view, reload, refresh
 	refreshCmd := m.handleWithRefresh(true, true)

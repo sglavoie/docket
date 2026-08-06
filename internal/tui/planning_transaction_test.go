@@ -4,12 +4,55 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+func TestTUISetDueDateTodayMovesTaskToTodayAtomically(t *testing.T) {
+	m, repo, task, dataDir := newPlanningLedgerApp(t, models.StateWaiting)
+	m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
+	due := time.Now()
+
+	cmd := m.secondaryFeatures.Bulk.SetDueDateLocators([]app.TaskLocator{{
+		ProjectID: m.currentProject.ID,
+		TaskID:    task.ID,
+	}}, due)
+	if cmd == nil {
+		t.Fatal("SetDueDateLocators returned nil")
+	}
+	raw := cmd()
+	msg, ok := raw.(BatchTransactionResultMsg)
+	if !ok {
+		t.Fatalf("due-date result = %T, want BatchTransactionResultMsg", raw)
+	}
+
+	if got := diskTodayLen(t, dataDir); got != 1 {
+		t.Fatalf("Today entries = %d, want 1", got)
+	}
+	if got := diskNextOrderLen(t, dataDir); got != 0 {
+		t.Fatalf("Next entries = %d, want 0", got)
+	}
+	if got := diskTaskState(t, m.currentProject, task.ID); got != models.StateBacklog {
+		t.Fatalf("state = %s, want backlog", got)
+	}
+	artifactCount := 0
+	if len(repo.lastAttempt) == 1 {
+		artifactCount = len(repo.lastAttempt[0].Artifacts)
+	}
+	if len(repo.lastAttempt) != 1 || artifactCount != 1 {
+		t.Fatalf("changesets/artifacts = %d/%d, want one atomic task+planning commit", len(repo.lastAttempt), artifactCount)
+	}
+
+	m.handleBatchTransactionResult(msg)
+	identity := TaskIdentity{ProjectID: m.currentProject.ID, TaskID: task.ID}
+	if !m.todayIDs[identity] {
+		t.Fatalf("runtime Today index = %+v, want %v", m.todayIDs, identity)
+	}
+}
 
 // failableScenarioRepo wraps the storage-backed scenarioRepo so a test can make
 // the next Commit fail atomically (no partial write) and inspect the exact

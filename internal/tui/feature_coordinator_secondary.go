@@ -46,6 +46,8 @@ type BulkMutator interface {
 	// BulkSetDueDate sets one due date on every selected task.
 	BulkSetDueDate(taskIDs []string, due time.Time) (app.BulkResult, error)
 	BulkSetDueDateByLocators(locators []app.TaskLocator, due time.Time) (app.BulkResult, error)
+	BulkSetDueDateAndPlanToday(taskIDs []string, due time.Time) (app.BulkResult, error)
+	BulkSetDueDateAndPlanTodayByLocators(locators []app.TaskLocator, due time.Time) (app.BulkResult, error)
 	// BulkClearDueDate removes the due date from every selected task.
 	BulkClearDueDate(taskIDs []string) (app.BulkResult, error)
 	BulkClearDueDateByLocators(locators []app.TaskLocator) (app.BulkResult, error)
@@ -94,6 +96,7 @@ type TaskItemMutator interface {
 	SetPriorityByLocator(locator app.TaskLocator, priority int) (app.TaskResult, error)
 	// SetDueDate sets or clears (nil due) one task's due date.
 	SetDueDateByLocator(locator app.TaskLocator, due *time.Time) (app.TaskResult, error)
+	SetDueDateAndPlanTodayByLocator(locator app.TaskLocator, due time.Time) (app.TaskResult, error)
 	// Snooze hides one task until the given date, or clears the snooze when nil.
 	SnoozeByLocator(locator app.TaskLocator, until *time.Time) (app.TaskResult, error)
 	// SetPinned pins or unpins one task.
@@ -333,7 +336,15 @@ func (c BulkCoordinator) SetPriority(taskIDs []string, priority int) tea.Cmd {
 // SetDueDate sets one due date on every selected task as one transaction.
 func (c BulkCoordinator) SetDueDate(taskIDs []string, due time.Time) tea.Cmd {
 	return runBatch("Bulk Set Due Date", func() ([]string, string, error) {
-		res, err := c.bulk.BulkSetDueDate(taskIDs, due)
+		var (
+			res app.BulkResult
+			err error
+		)
+		if dueDateIsToday(&due) {
+			res, err = c.bulk.BulkSetDueDateAndPlanToday(taskIDs, due)
+		} else {
+			res, err = c.bulk.BulkSetDueDate(taskIDs, due)
+		}
 		if err != nil {
 			return nil, "", err
 		}
@@ -343,7 +354,15 @@ func (c BulkCoordinator) SetDueDate(taskIDs []string, due time.Time) tea.Cmd {
 
 func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time.Time) tea.Cmd {
 	return runBatch("Bulk Set Due Date", func() ([]string, string, error) {
-		res, err := c.bulk.BulkSetDueDateByLocators(locators, due)
+		var (
+			res app.BulkResult
+			err error
+		)
+		if dueDateIsToday(&due) {
+			res, err = c.bulk.BulkSetDueDateAndPlanTodayByLocators(locators, due)
+		} else {
+			res, err = c.bulk.BulkSetDueDateByLocators(locators, due)
+		}
 		if err != nil {
 			return nil, "", err
 		}
@@ -637,9 +656,24 @@ func (c TaskItemCoordinator) SetPriority(task TaskIdentity, priority int) tea.Cm
 
 // SetDueDate sets or clears (nil due) one task's due date as one transaction.
 func (c TaskItemCoordinator) SetDueDate(task TaskIdentity, due *time.Time) tea.Cmd {
-	return runTask("Set Due Date", func() (app.TaskResult, error) {
-		return c.task.SetDueDateByLocator(task.Locator(), due)
-	})
+	return func() tea.Msg {
+		var (
+			res app.TaskResult
+			err error
+		)
+		planningChanged := dueDateIsToday(due)
+		if planningChanged {
+			res, err = c.task.SetDueDateAndPlanTodayByLocator(task.Locator(), *due)
+		} else {
+			res, err = c.task.SetDueDateByLocator(task.Locator(), due)
+		}
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		return TransactionResultMsg{
+			Action: "Set Due Date", Result: res, PlanningChanged: planningChanged,
+		}
+	}
 }
 
 // Snooze hides one task until until, or clears the snooze when until is nil, as

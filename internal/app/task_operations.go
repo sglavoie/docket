@@ -40,7 +40,11 @@ type TaskOperationRequest struct {
 	State     models.WorkflowState
 	Priority  int
 	Date      *time.Time
-	Tags      []string
+	// PlanForToday makes a non-nil due-date mutation carry explicit Today
+	// planning intent in the same transaction. Interactive TUI due-date gestures
+	// set it only when Date is today's calendar date.
+	PlanForToday bool
+	Tags         []string
 	// TagPatch switches SetTags from replacement semantics to the tri-state
 	// bulk editor's add/remove patch. Membership for tags in neither set is
 	// retained independently on every target.
@@ -134,6 +138,8 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		)
 		if req.Date == nil {
 			result, err = s.BulkClearDueDateByLocators(req.Targets)
+		} else if req.PlanForToday {
+			result, err = s.BulkSetDueDateAndPlanTodayByLocators(req.Targets, *req.Date)
 		} else {
 			result, err = s.BulkSetDueDateByLocators(req.Targets, *req.Date)
 		}

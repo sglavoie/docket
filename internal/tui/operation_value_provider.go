@@ -904,6 +904,7 @@ func applicationTaskOperationRequest(
 		}
 		request.Operation = app.TaskOperationSetDueDate
 		request.Date = cloneOperationDate(value.Date)
+		request.PlanForToday = dueDateIsToday(value.Date)
 		verb := "Set due date on"
 		if value.Date == nil {
 			verb = "Cleared due date on"

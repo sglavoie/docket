@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // EditRequest describes an in-place edit of a task's core content. Each pointer
@@ -36,6 +37,10 @@ type EditRequest struct {
 	// the service default planning builder (installed by the TUI); when neither is
 	// set the edit is a bare task write.
 	PlanningArtifacts PlanningArtifactBuilder
+	// PlanForToday adds the edited task to Today in the same transaction. TUI
+	// task forms set this when their due-date field resolves to today's calendar
+	// date; other edit adapters retain attribute-only due-date semantics.
+	PlanForToday bool
 }
 
 // FormEdit is the task form's full editable field set. Every field is applied
@@ -80,9 +85,27 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 		return TaskResult{}, applyErr
 	}
 	// Fold Today/Next reconciliation into the same transaction. A content-only
-	// edit reconciles to no planning change.
+	// edit reconciles to no planning change, while a due-today edit carries an
+	// explicit Today add and its canonical lifecycle/snooze side effects.
 	stateChanged := req.WorkflowState != nil && *req.WorkflowState != before.ProjectByID(ref.Project.ID).GetTaskByID(ref.Task.ID).State()
-	artifacts, err := s.transitionPlanningArtifacts(ref, s.defaultedPlanningArtifacts(req.PlanningArtifacts), stateChanged)
+	planningBuilder := s.defaultedPlanningArtifacts(req.PlanningArtifacts)
+	var artifacts []storage.ArtifactChange
+	if req.PlanForToday {
+		if planningBuilder == nil {
+			return TaskResult{}, fmt.Errorf("app: planning mutations require a planning artifact builder")
+		}
+		target, _, planningErr := ApplyPlanningActionToTask(
+			ref.Task, ref.Project.ID, PlanningAddToday, s.clock.Now(),
+		)
+		if planningErr != nil {
+			return TaskResult{}, planningErr
+		}
+		artifacts, err = planningArtifactsForRequest(PlanningReconcileRequest{
+			Targets: []PlanningReconcileTarget{target},
+		}, planningBuilder)
+	} else {
+		artifacts, err = s.transitionPlanningArtifacts(ref, planningBuilder, stateChanged)
+	}
 	if err != nil {
 		return TaskResult{}, err
 	}

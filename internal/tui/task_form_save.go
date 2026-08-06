@@ -83,6 +83,9 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	if m.presetDestination.IsPlanning() && m.draft.state == models.StateBacklog {
 		destination = m.presetDestination
 	}
+	if dueDateIsToday(m.draft.dueDate) {
+		destination = app.CaptureDestinationToday
+	}
 
 	// Build the subtask request list (blank titles skipped) and map the draft
 	// open-after index onto the created (non-blank) subtask index.
@@ -146,7 +149,10 @@ func (m *TaskFormModel) saveEdit() tea.Cmd {
 	state := m.draft.state
 	return m.taskForm.EditForm(
 		taskIdentityFor(m.task, m.project),
-		app.EditRequest{Form: form, WorkflowState: &state},
+		app.EditRequest{
+			Form: form, WorkflowState: &state,
+			PlanForToday: dueDateIsToday(m.draft.dueDate),
+		},
 	)
 }
 

@@ -24,6 +24,19 @@ func (s *Service) SetDueDateByLocator(locator TaskLocator, due *time.Time) (Task
 	})
 }
 
+// SetDueDateAndPlanTodayByLocator is the single-task form of the atomic
+// due-today planning mutation.
+func (s *Service) SetDueDateAndPlanTodayByLocator(locator TaskLocator, due time.Time) (TaskResult, error) {
+	result, err := s.BulkSetDueDateAndPlanTodayByLocators([]TaskLocator{locator}, due)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	if len(result.Tasks) != 1 {
+		return TaskResult{}, fmt.Errorf("app: due-today mutation returned %d tasks, want 1", len(result.Tasks))
+	}
+	return result.Tasks[0], nil
+}
+
 // SetPriority sets a task's priority. The value must be within the valid
 // 1..PriorityMax range, or zero to clear it.
 func (s *Service) SetPriority(taskID string, priority int) (TaskResult, error) {

@@ -38,6 +38,31 @@ func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
 	}
 }
 
+func TestTaskComposerDueTodayRoutesCaptureToToday(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:        ComposerProject,
+		Project:     project,
+		AllProjects: []*models.Project{project},
+		Shared: TaskComposerSharedAttributes{
+			Destination: app.CaptureDestinationBacklog,
+		},
+	}, nil)
+	composer.input.SetValue("Due today @today")
+
+	requests, ok := composer.parseCompactLines()
+	if !ok || len(requests) != 1 {
+		t.Fatalf("parseCompactLines = %+v, %v", requests, ok)
+	}
+	if requests[0].Destination != app.CaptureDestinationToday {
+		t.Fatalf("destination = %q, want Today", requests[0].Destination)
+	}
+	_, destination := composer.effectiveRouteHeader()
+	if destination != renderComposerDestination(app.CaptureDestinationToday) {
+		t.Fatalf("displayed destination = %q, want Today", destination)
+	}
+}
+
 func TestTaskComposerHeaderAggregatesMultilineRoutes(t *testing.T) {
 	inbox := &models.Project{ID: "inbox", Name: "Inbox", Slug: "inbox"}
 	target := &models.Project{ID: "tt", Name: "tt", Slug: "tt"}

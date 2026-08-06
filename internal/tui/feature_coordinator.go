@@ -220,7 +220,7 @@ func (c TaskFormCoordinator) EditForm(task TaskIdentity, req app.EditRequest) te
 			return ErrorMsg{Err: err}
 		}
 		result := res
-		return TaskUpdatedMsg{Result: &result}
+		return TaskUpdatedMsg{Result: &result, PlanningChanged: req.PlanForToday}
 	}
 }
 
