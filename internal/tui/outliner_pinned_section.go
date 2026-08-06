@@ -6,12 +6,13 @@ const (
 	pinnedProjectSectionCollapsePrefix = "_pinned_project:"
 )
 
-// pinnedProjectGroup holds one project's contiguous portion of the transient
-// Pinned projection. Its rows retain their promoted-task breadcrumbs while the
-// group header supplies the project context for the cross-project Outliner.
+// pinnedProjectGroup holds one project's section-local portion of the transient
+// Pinned projection. The forest retains hierarchy among projected relatives;
+// the group header supplies project context in the cross-project Outliner.
 type pinnedProjectGroup struct {
 	projectID string
 	rows      []outlinerRow
+	forest    sectionRowForest
 }
 
 // pinnedSectionBuild carries the transient Pinned project groups and the
@@ -24,9 +25,9 @@ type pinnedSectionBuild struct {
 }
 
 // buildPinnedSection realizes Pinned from the same scoped candidates, reference
-// time, and session filters as the active mode. Promoted tasks remain flat and
-// carry ancestor breadcrumbs, but adjacent project groups get a synthetic
-// project header in the unscoped cross-project Outliner.
+// time, and session filters as the active mode. Projected relatives form a
+// section-local tree; roots whose parent is outside Pinned keep their ancestor
+// breadcrumb. Project groups get a synthetic header in the unscoped Outliner.
 func (m *OutlinerModel) buildPinnedSection(input OutlinerModeInput) pinnedSectionBuild {
 	if input.TaskFilter == nil {
 		input.TaskFilter = m.workModeTaskFilterAt(input.Now)
@@ -56,11 +57,9 @@ func (m *OutlinerModel) buildPinnedSection(input OutlinerModeInput) pinnedSectio
 		result.groups[groupIndex].rows = append(result.groups[groupIndex].rows, row)
 	}
 	for groupIndex := range result.groups {
-		rows := result.groups[groupIndex].rows
-		for rowIndex := range rows {
-			rows[rowIndex].prefix = buildTreePrefix(nil, rowIndex == len(rows)-1)
-		}
-		result.groups[groupIndex].rows = rows
+		group := &result.groups[groupIndex]
+		group.forest = m.buildSectionRowForest(group.rows)
+		group.rows = nil
 	}
 	return result
 }
@@ -87,7 +86,7 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 	showProjectHeaders := m.project == nil && !m.isProjectScoped()
 	for _, group := range section.groups {
 		if !showProjectHeaders {
-			m.rows = append(m.rows, group.rows...)
+			m.flattenSectionRowForest(group.forest, &m.rows)
 			continue
 		}
 
@@ -95,12 +94,12 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 			IsProjectHeader: true,
 			IsPinnedSection: true,
 			ProjectID:       group.projectID,
-			SectionCount:    len(group.rows),
+			SectionCount:    group.forest.count,
 			CollapseKey:     pinnedProjectSectionCollapseKey(group.projectID),
 		}
 		m.rows = append(m.rows, header)
 		if !m.isSectionRowCollapsed(header) {
-			m.rows = append(m.rows, group.rows...)
+			m.flattenSectionRowForest(group.forest, &m.rows)
 		}
 	}
 }

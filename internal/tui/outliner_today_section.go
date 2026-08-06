@@ -14,9 +14,9 @@ type planningSectionBuild struct {
 	group      models.WorkflowStateGroup
 }
 
-// buildTodaySection realizes explicit Today membership in durable order. Every
-// visible task is a flat promoted row with an ancestor breadcrumb; descendants
-// appear only when they have their own Today membership.
+// buildTodaySection realizes explicit Today membership in durable order.
+// Descendants appear only when they have their own Today membership; the row
+// appender restores hierarchy among relatives that share the section.
 func (m *OutlinerModel) buildTodaySection(
 	input OutlinerModeInput,
 	pinned map[TaskIdentity]bool,
@@ -89,52 +89,45 @@ func (m *OutlinerModel) buildNextSection(
 	return result
 }
 
-func assignPlanningRowPrefixes(rows []outlinerRow) {
-	for i := range rows {
-		rows[i].prefix = buildTreePrefix(nil, i == len(rows)-1)
-		rows[i].hasVisibleChildren = false
-	}
-}
-
 func planningProjectCollapseKey(projectID string, group models.WorkflowStateGroup) string {
 	return planningProjectCollapsePrefix + string(group) + ":" + projectID
 }
 
-// appendPlanningRows preserves the workspace-wide durable planning order while
-// restoring project context in the unscoped cross-project Outliner. A project
-// header starts each contiguous run, so an interleaved order such as A/B/A is
-// rendered as A, B, A rather than being regrouped and silently reordered.
+// appendPlanningRows derives subtree rank from the workspace-wide durable order
+// while restoring project context in the unscoped cross-project Outliner. A
+// subtree occupies its earliest member's rank, and a project header starts each
+// contiguous root run, so unrelated interleaved roots retain their order.
 func (m *OutlinerModel) appendPlanningRows(rows []outlinerRow, group models.WorkflowStateGroup) {
 	if len(rows) == 0 {
 		return
 	}
+	forest := m.buildSectionRowForest(rows)
 	if m.project != nil || m.isProjectScoped() {
-		assignPlanningRowPrefixes(rows)
-		m.rows = append(m.rows, rows...)
+		m.flattenSectionRowForest(forest, &m.rows)
 		return
 	}
 
 	isToday := group == models.StateGroupToday
 	isNext := group == models.StateGroupNext
-	for start := 0; start < len(rows); {
+	for start := 0; start < len(forest.roots); {
 		end := start + 1
-		for end < len(rows) && rows[end].ProjectID == rows[start].ProjectID {
+		for end < len(forest.roots) &&
+			forest.roots[end].row.ProjectID == forest.roots[start].row.ProjectID {
 			end++
 		}
-		run := rows[start:end]
-		assignPlanningRowPrefixes(run)
+		run := forest.roots[start:end]
 		header := outlinerRow{
 			IsProjectHeader: true,
 			IsTodaySection:  isToday,
 			IsNextSection:   isNext,
 			StateGroup:      group,
-			ProjectID:       rows[start].ProjectID,
-			SectionCount:    len(run),
-			CollapseKey:     planningProjectCollapseKey(rows[start].ProjectID, group),
+			ProjectID:       run[0].row.ProjectID,
+			SectionCount:    sectionRowNodesCount(run),
+			CollapseKey:     planningProjectCollapseKey(run[0].row.ProjectID, group),
 		}
 		m.rows = append(m.rows, header)
 		if !m.isSectionRowCollapsed(header) {
-			m.rows = append(m.rows, run...)
+			m.flattenSectionRowRoots(run, &m.rows)
 		}
 		start = end
 	}

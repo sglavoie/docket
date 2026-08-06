@@ -82,3 +82,23 @@ func TestOutlinerTaskRowShowsSemanticTitleWithoutMarkerPrefix(t *testing.T) {
 		t.Fatalf("task row retained retired bug marker prefix: %q", plain)
 	}
 }
+
+func TestOutlinerTaskRowShowsAncestorMarkerOnlyForPromotedRoot(t *testing.T) {
+	task := &models.Task{ID: "child", Title: "Child", WorkflowState: models.StateBacklog}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+
+	promoted := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: task, Breadcrumb: "Parent ›",
+	}, false, 120, 120, 0, nil))
+	if !strings.Contains(promoted, "Child  ‹ Parent") {
+		t.Fatalf("promoted task row omitted ancestor marker: %q", promoted)
+	}
+
+	nested := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: task, prefix: connectorSpace + connectorLastItem,
+	}, false, 120, 120, 0, nil))
+	if strings.Contains(nested, "‹") {
+		t.Fatalf("nested task row retained ancestor marker: %q", nested)
+	}
+}

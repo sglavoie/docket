@@ -131,6 +131,43 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	}
 }
 
+func TestPinnedSectionNestsRelativesAtEarliestPinRank(t *testing.T) {
+	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
+	parentTime := now.Add(-time.Hour)
+	otherTime := now.Add(-30 * time.Minute)
+	childTime := now.Add(-time.Minute)
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateInbox)
+	child.ParentID = &parent.ID
+	other := primaryRowsTask("other", models.StateBacklog)
+	parent.Pinned, parent.PinnedAt = true, &parentTime
+	child.Pinned, child.PinnedAt = true, &childTime
+	other.Pinned, other.PinnedAt = true, &otherTime
+	project := primaryRowsProject("alpha", parent, child, other)
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.selectOutlinerMode(ModeAll)
+
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, other.ID}) {
+		t.Fatalf("Pinned rows = %v, want child-ranked subtree before other task", got)
+	}
+	parentRow, parentFound := findPlanningTaskRow(outliner, parent.ID)
+	childRow, childFound := findPlanningTaskRow(outliner, child.ID)
+	if !parentFound || !childFound || !parentRow.IsPinnedSection || !childRow.IsPinnedSection ||
+		!parentRow.hasVisibleChildren || childRow.Breadcrumb != "" || len(childRow.prefix) <= len(parentRow.prefix) {
+		t.Fatalf("Pinned hierarchy = parent %+v found=%t child %+v found=%t",
+			parentRow, parentFound, childRow, childFound)
+	}
+
+	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
+	outliner.rebuildRows()
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, other.ID}) {
+		t.Fatalf("collapsed Pinned rows = %v, want nested child hidden", got)
+	}
+	if outliner.rows[0].SectionCount != 3 {
+		t.Fatalf("collapsed Pinned section count = %d, want all 3 members", outliner.rows[0].SectionCount)
+	}
+}
+
 func TestPinnedSectionOmitsProjectHeaderInFocusedProjectScope(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	alphaTask := primaryRowsTask("alpha-task", models.StateBacklog)

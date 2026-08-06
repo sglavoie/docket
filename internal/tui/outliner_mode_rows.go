@@ -8,9 +8,10 @@ import (
 )
 
 // OutlinerModeRow is the representation-neutral output of a purpose-built row
-// strategy. Planning and computed projections are flat: a promoted child keeps
-// its ancestor breadcrumb, but its descendants never become visible merely
-// because the child or one of its ancestors is planned.
+// strategy. Membership and ordering remain flat here; the presentation layer
+// later nests relatives that are both explicit members of the same section. A
+// promoted child keeps its ancestor breadcrumb, and unselected descendants are
+// never added implicitly.
 type OutlinerModeRow struct {
 	Task       *models.Task
 	Project    *models.Project
@@ -44,7 +45,7 @@ func (in OutlinerModeInput) now() time.Time {
 }
 
 // BuildTodayModeRows realizes the explicit ordered Today projection. Every row
-// is a durable member; hierarchy is represented only by a breadcrumb.
+// is a durable member; section-local hierarchy is added by the row appender.
 func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	projects := modeProjectIndex(in.Projects)
 	now := in.now()
@@ -79,7 +80,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 }
 
 // BuildNextModeRows realizes the explicit ordered Next projection. Every row is
-// a durable member; hierarchy is represented only by a breadcrumb.
+// a durable member; section-local hierarchy is added by the row appender.
 func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	projects := modeProjectIndex(in.Projects)
 	now := in.now()

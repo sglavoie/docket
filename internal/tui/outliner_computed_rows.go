@@ -125,6 +125,7 @@ func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 			return compareOrderedModeTasks(l, r) < 0
 		})
 		for _, candidate := range buckets[i] {
+			candidate.row.Breadcrumb = taskAncestorBreadcrumb(candidate.row.Task)
 			sections[i].Rows = append(sections[i].Rows, candidate.row)
 		}
 		if len(sections[i].Rows) > 0 {

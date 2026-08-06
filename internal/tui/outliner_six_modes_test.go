@@ -108,6 +108,37 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 	}
 }
 
+func TestDueModeNestsRelativesOnlyWithinSameDateBucket(t *testing.T) {
+	now := time.Now()
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.ParentID = &parent.ID
+	other := primaryRowsTask("other", models.StateBacklog)
+	parent.DueDate, child.DueDate, other.DueDate = &now, &now, &now
+	project := primaryRowsProject("alpha", parent, child, other)
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.selectOutlinerMode(ModeDue)
+
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, other.ID}) {
+		t.Fatalf("same-bucket Due rows = %v, want nested hierarchy", got)
+	}
+	parentRow, parentFound := findPlanningTaskRow(outliner, parent.ID)
+	childRow, childFound := findPlanningTaskRow(outliner, child.ID)
+	if !parentFound || !childFound || !parentRow.hasVisibleChildren || childRow.Breadcrumb != "" ||
+		len(childRow.prefix) <= len(parentRow.prefix) {
+		t.Fatalf("same-bucket Due hierarchy = parent %+v found=%t child %+v found=%t",
+			parentRow, parentFound, childRow, childFound)
+	}
+
+	tomorrow := now.AddDate(0, 0, 1)
+	child.DueDate = &tomorrow
+	outliner.rebuildRows()
+	childRow, childFound = findPlanningTaskRow(outliner, child.ID)
+	if !childFound || childRow.Breadcrumb != parent.Title+" ›" {
+		t.Fatalf("cross-bucket Due child = %+v found=%t, want ancestor breadcrumb", childRow, childFound)
+	}
+}
+
 func TestBacklogRetainsProjectHierarchyAndManualSiblingOrder(t *testing.T) {
 	parent := primaryRowsTask("parent", models.StateBacklog)
 	child := primaryRowsTask("child", models.StateBacklog)

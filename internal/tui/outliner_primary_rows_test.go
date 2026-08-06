@@ -176,14 +176,20 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 			t.Fatalf("cross-project Next row %q lost qualified project identity", row.task.ID)
 		}
 	}
+	parentRow, parentFound := findPlanningTaskRow(outliner, alphaNext.ID)
+	childRow, childFound := findPlanningTaskRow(outliner, alphaNextChild.ID)
+	if !parentFound || !childFound || !parentRow.hasVisibleChildren || childRow.Breadcrumb != "" ||
+		len(childRow.prefix) <= len(parentRow.prefix) {
+		t.Fatalf("nested Next rows = parent %+v found=%t child %+v found=%t", parentRow, parentFound, childRow, childFound)
+	}
 
 	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
 	outliner.rebuildRows()
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaNext.ID, alphaNext.ID, alphaNextChild.ID}) {
-		t.Fatalf("collapsed Next rows = %v, want explicit members unaffected by hierarchy folds", got)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaNext.ID, alphaNext.ID}) {
+		t.Fatalf("collapsed Next rows = %v, want nested child hidden", got)
 	}
-	if row, ok := findPlanningTaskRow(outliner, alphaNextChild.ID); !ok || row.Breadcrumb != alphaNext.Title+" ›" {
-		t.Fatalf("promoted Next child = %+v found=%t, want ancestor breadcrumb", row, ok)
+	if row, ok := findPlanningTaskRow(outliner, alphaNextChild.ID); ok {
+		t.Fatalf("collapsed Next child remained visible: %+v", row)
 	}
 
 	outliner.selectOutlinerMode(ModeToday)
@@ -209,6 +215,53 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 	outliner.selectOutlinerMode(ModeInbox)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaInbox.ID}) {
 		t.Fatalf("project-scoped Inbox rows = %v, want beta only", got)
+	}
+}
+
+func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *testing.T) {
+	for _, mode := range []OutlinerModeID{ModeToday, ModeNext} {
+		t.Run(string(mode), func(t *testing.T) {
+			parent := primaryRowsTask("parent", models.StateBacklog)
+			child := primaryRowsTask("child", models.StateBacklog)
+			child.ParentID = &parent.ID
+			alpha := primaryRowsProject("alpha", parent, child)
+			betaTask := primaryRowsTask("beta-task", models.StateBacklog)
+			beta := primaryRowsProject("beta", betaTask)
+			outliner, runtime := primaryRowsOutliner(alpha, beta)
+			order := []config.ProjectTaskLocator{
+				{ProjectID: alpha.ID, TaskID: child.ID},
+				{ProjectID: beta.ID, TaskID: betaTask.ID},
+				{ProjectID: alpha.ID, TaskID: parent.ID},
+			}
+			if mode == ModeToday {
+				runtime.Planning().SetToday(order)
+			} else {
+				runtime.Planning().SetNext(order)
+			}
+
+			for _, renderedMode := range []OutlinerModeID{mode, ModeAll} {
+				outliner.selectOutlinerMode(renderedMode)
+				if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, betaTask.ID}) {
+					t.Fatalf("%s rows = %v, want earliest-ranked Alpha subtree before Beta", renderedMode, got)
+				}
+				parentRow, parentFound := findPlanningTaskRow(outliner, parent.ID)
+				childRow, childFound := findPlanningTaskRow(outliner, child.ID)
+				if !parentFound || !childFound || !parentRow.hasVisibleChildren || childRow.Breadcrumb != "" {
+					t.Fatalf("%s nested rows = parent %+v found=%t child %+v found=%t",
+						renderedMode, parentRow, parentFound, childRow, childFound)
+				}
+			}
+
+			var gotOrder []config.ProjectTaskLocator
+			if mode == ModeToday {
+				gotOrder = runtime.Planning().GetToday()
+			} else {
+				gotOrder = runtime.Planning().GetNext()
+			}
+			if !slices.Equal(gotOrder, order) {
+				t.Fatalf("durable %s order = %v, want unchanged %v", mode, gotOrder, order)
+			}
+		})
 	}
 }
 
