@@ -219,8 +219,10 @@ one-sentence summary, and the semantic badge role it renders with. It is the
 single source every explaining surface reads — the picker explainer, the badge,
 and the project editor's Tags field — and it is metadata only: adding an entry
 explains a tag, it does not make one decide anything.
-Those explaining surfaces publish any remainder that cannot fit through
-`FooterContinuationProvider`, and the status bar finishes the sentence.
+Those explaining surfaces wrap complete summaries inline; focusable picker
+lists give up viewport rows and scroll when the explainer needs more height.
+Focusable rows use the registry's compact `RowSummary`; previews and the inline
+explainer use the complete `Summary`.
 
 `models.SemanticTaskTags` is the matching registry on the task side, and the
 parallel structure is deliberate: both publish the name and one-sentence summary
@@ -233,8 +235,10 @@ because its entries are independent, and `SemanticTaskTags` is an ordered slice
 because the `bug` > `epic` > `story` > `feature` > `idea` precedence is part of
 what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
 the `#` and `ft` pickers read the slice order to build their `SEMANTIC` section.
-Those explaining surfaces publish any remainder that cannot fit through
-`FooterContinuationProvider`, and the status bar finishes the sentence.
+Those explaining surfaces wrap complete summaries inline; focusable picker
+lists give up viewport rows and scroll when the explainer needs more height.
+Focusable rows use the registry's compact `RowSummary`; previews and the inline
+explainer use the complete `Summary`.
 
 `#` is bound to two descriptors, `tui.task.set-tags` and
 `tui.project.set-tags`, marked `SharedKey` on the input strategy. A descriptor

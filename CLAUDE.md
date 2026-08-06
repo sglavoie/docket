@@ -192,11 +192,11 @@ decides nothing about which projections a project reaches.
 explains a behavioral tag reads: the picker explainer, the badge, the project
 editor Tags field. It carries no effect — the parking effect stays one
 hardcoded predicate behind `TaskWorkspaceProjects()`.
-When an explainer cannot fit, it breaks on a word boundary and finishes in the
-status bar.
-While that continuation is visible, it outranks the today-cleared banner and
-transient status messages; loading, error, and live chord-feedback states still
-outrank the continuation.
+Explainers are non-focusable reading content, so they wrap inline at word
+boundaries instead of clipping or moving fragments into the status bar. Picker
+lists yield viewport rows and scroll when the wrapped block needs more height.
+Focusable semantic and behavioral tag rows use their compact `RowSummary`;
+previews and the wrapped explainer retain the complete `Summary`.
 
 Parking is the one project tag edit that confirms, because it is the one whose
 effect the user cannot see coming. The prompt names the impact ("Park Sonar? Its
@@ -230,11 +230,11 @@ in storage, in capture, in filtering, and in every workflow rule.
 `models.SemanticTaskTags` is the registry every explaining surface reads. Like
 `BehavioralProjectTags` it carries no effect, and it is an ordered slice rather
 than a map because the precedence is part of what it publishes.
-When an explainer cannot fit, it breaks on a word boundary and finishes in the
-status bar.
-While that continuation is visible, it outranks the today-cleared banner and
-transient status messages; loading, error, and live chord-feedback states still
-outrank the continuation.
+Explainers are non-focusable reading content, so they wrap inline at word
+boundaries instead of clipping or moving fragments into the status bar. Picker
+lists yield viewport rows and scroll when the wrapped block needs more height.
+Focusable semantic and behavioral tag rows use their compact `RowSummary`;
+previews and the wrapped explainer retain the complete `Summary`.
 
 Both tag pickers group the five under `SEMANTIC` above the descriptive `TAGS`
 section, and the seeding is asymmetric on purpose. `#` offers all five whether

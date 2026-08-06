@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"charm.land/lipgloss/v2"
-
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -43,10 +41,10 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 			// round-trip as Bug when the row is toggled off.
 			promoted[tag.Name] = true
 			canonicalInUse = canonicalInUse || tag.Name == entry.Name
-			items = append(items, semanticTaskTagItem(tag.Name, entry.Summary, tag.TaskCount))
+			items = append(items, semanticTaskTagItem(tag.Name, entry, tag.TaskCount))
 		}
 		if seedUnused && !canonicalInUse {
-			items = append(items, semanticTaskTagItem(entry.Name, entry.Summary, 0))
+			items = append(items, semanticTaskTagItem(entry.Name, entry, 0))
 		}
 	}
 
@@ -86,8 +84,8 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 // semanticTaskTagItem trades the usage count for the meaning, because a tag the
 // picker offers before anything carries it has no count worth showing and the
 // meaning is the reason it is offered at all.
-func semanticTaskTagItem(name string, summary string, taskCount int) ListItem {
-	fields := []ListPreviewField{{Label: "Meaning", Value: summary}}
+func semanticTaskTagItem(name string, entry models.SemanticTaskTag, taskCount int) ListItem {
+	fields := []ListPreviewField{{Label: "Meaning", Value: entry.Summary}}
 	if taskCount > 0 {
 		fields = append(fields, ListPreviewField{Label: "Tasks", Value: strconv.Itoa(taskCount)})
 	}
@@ -95,7 +93,7 @@ func semanticTaskTagItem(name string, summary string, taskCount int) ListItem {
 		ID:            ListItemID("tag:" + name),
 		CategoryID:    taskTagSemanticCategory,
 		PrimaryText:   name,
-		SecondaryText: summary,
+		SecondaryText: entry.RowSummary,
 		Aliases:       []string{name, "#" + name},
 		Preview:       ListPreview{Title: name, Fields: fields},
 		Data:          name,
@@ -105,38 +103,23 @@ func semanticTaskTagItem(name string, summary string, taskCount int) ListItem {
 // semanticTaskTagExplainer states the precedence the section order applies
 // silently. Five restated summaries would swamp the overlay, so it is one line,
 // and every name renders in the title color it produces so the line
-// demonstrates what it describes. The color lookup is the row one, which is
-// what keeps a future registry entry from rendering uncolored.
-func semanticTaskTagExplainer(provider ValueProviderID, width int) tagExplainer {
+// demonstrates what it describes. The complete block wraps inline when needed;
+// the color lookup is the row one, which keeps a future registry entry from
+// rendering uncolored.
+func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 	if !semanticTaskTagProvider(provider) {
-		return tagExplainer{}
+		return ""
 	}
 	names := make([]string, 0, len(models.SemanticTaskTags))
-	headWidth := lipgloss.Width(semanticTaskTagExplainerLabel) + 2
-	for index, entry := range models.SemanticTaskTags {
-		if index > 0 {
-			headWidth += lipgloss.Width(semanticTaskTagExplainerSeparator)
-		}
-		headWidth += lipgloss.Width(entry.Name)
+	for _, entry := range models.SemanticTaskTags {
 		names = append(names, semanticTaskTitleStyle(entry.Role, 0, false, false).Render(entry.Name))
-	}
-	if width < headWidth {
-		return tagExplainer{}
 	}
 	head := MutedStyle.Render(semanticTaskTagExplainerLabel) + "  " +
 		strings.Join(names, MutedStyle.Render(semanticTaskTagExplainerSeparator))
-	summary, rest := splitAtWordBoundary(semanticTaskTagExplainerSummary, width-headWidth-1)
-	// A remainder equal to the whole sentence means the line could not even
-	// start it on a word boundary, so the chain stands alone and there is
-	// nothing for another surface to finish.
-	if summary == "" || rest == semanticTaskTagExplainerSummary {
-		return tagExplainer{Body: head}
-	}
-	explainer := tagExplainer{Body: head + " " + MutedStyle.Render(summary)}
-	if rest != "" {
-		explainer.Continuations = []string{rest}
-	}
-	return explainer
+	return strings.Join(wrapStyled(
+		head+" "+MutedStyle.Render(semanticTaskTagExplainerSummary),
+		width,
+	), "\n")
 }
 
 // semanticTaskTagPrecedence ranks one semantic row by the registry order the

@@ -268,7 +268,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	// A minted tag the registry knows belongs in the semantic section, or it
 	// would sit under TAGS while it colors the title.
 	if entry, ok := models.SemanticTaskTagByName(tag); ok && semanticTaskTagProvider(model.provider) {
-		item = semanticTaskTagItem(tag, entry.Summary, 0)
+		item = semanticTaskTagItem(tag, entry, 0)
 	}
 	items = append(items, item)
 	// A global alphabetical sort would reorder the semantic section into bug,
@@ -425,8 +425,7 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 }
 
 // operationValuePickerInnerWidth is the overlay box width the picker claims out
-// of the terminal. The status bar shares it so a continuation is computed
-// against the same budget the block was fitted to.
+// of the terminal.
 func operationValuePickerInnerWidth(width int) int {
 	return min(max(width*3/5, 46), max(width-6, 24))
 }
@@ -437,27 +436,14 @@ func operationValuePickerExplainerWidth(width int) int {
 	return operationValuePickerInnerWidth(width) - 4
 }
 
-// FooterContinuation hands the status bar whatever the explainer beneath the
-// list could not fit. Add-tag mode replaces the whole box with the input, so it
-// prints no explainer and has nothing to continue.
-func (model *OperationValuePickerModel) FooterContinuation(width int) string {
-	if model == nil || model.surface == nil {
-		return ""
-	}
-	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
-		return ""
-	}
-	explainerWidth := operationValuePickerExplainerWidth(width)
-	// The registries are mutually exclusive today, but the rendered explainers
-	// are additive. Gather both so a future provider cannot silently lose the
-	// second publisher's remainder.
-	return joinTagExplainerContinuations(
-		behavioralProjectTagExplainer(model.provider, explainerWidth),
-		semanticTaskTagExplainer(model.provider, explainerWidth),
-	)
+func (model *OperationValuePickerModel) render(width int) string {
+	return model.renderWithin(width, 0)
 }
 
-func (model *OperationValuePickerModel) render(width int) string {
+// renderWithin budgets the focusable list after reserving viewport rows for
+// non-focusable explainers and modal chrome. A zero height keeps the natural
+// list height for isolated render callers.
+func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	if model == nil || model.surface == nil {
 		return ""
 	}
@@ -479,7 +465,26 @@ func (model *OperationValuePickerModel) render(width int) string {
 			lipgloss.NewStyle().Foreground(ColorPrimary),
 		)
 	}
+	explainerWidth := operationValuePickerExplainerWidth(width)
+	explainers := make([]string, 0, 2)
+	if explainer := behavioralProjectTagExplainer(model.provider, explainerWidth); explainer != "" {
+		explainers = append(explainers, explainer)
+	}
+	if explainer := semanticTaskTagExplainer(model.provider, explainerWidth); explainer != "" {
+		explainers = append(explainers, explainer)
+	}
+	explainerBlock := strings.Join(explainers, "\n\n")
+
 	listHeight := min(max(len(model.surface.Rows()), 6), 15)
+	if height > 0 {
+		// Halo, frame, title, search, search/list gap, and footer consume eight
+		// rows. A present explainer adds its own rows plus one separating row.
+		reservedRows := 8
+		if explainerBlock != "" {
+			reservedRows += 1 + lipgloss.Height(explainerBlock)
+		}
+		listHeight = min(listHeight, max(height-reservedRows, 1))
+	}
 	query := model.surface.Query().Raw
 	search := "Press / to search"
 	if model.searching || query != "" {
@@ -491,12 +496,8 @@ func (model *OperationValuePickerModel) render(width int) string {
 	}
 	content := MutedStyle.Render(search) + "\n\n" +
 		RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
-	explainerWidth := operationValuePickerExplainerWidth(width)
-	if explainer := behavioralProjectTagExplainer(model.provider, explainerWidth); explainer.Body != "" {
-		content += "\n\n" + explainer.Body
-	}
-	if explainer := semanticTaskTagExplainer(model.provider, explainerWidth); explainer.Body != "" {
-		content += "\n\n" + explainer.Body
+	if explainerBlock != "" {
+		content += "\n\n" + explainerBlock
 	}
 	titleText := model.title
 	if model.subtitle != "" {

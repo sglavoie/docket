@@ -48,8 +48,11 @@ func TestTaskTagListSourceSeedsEverySemanticTagInPrecedenceOrder(t *testing.T) {
 		if !ok {
 			t.Fatalf("semantic row %q is not in the registry", item.PrimaryText)
 		}
-		if item.SecondaryText != entry.Summary {
-			t.Fatalf("row %q secondary text = %q, want %q", item.PrimaryText, item.SecondaryText, entry.Summary)
+		if item.SecondaryText != entry.RowSummary {
+			t.Fatalf("row %q secondary text = %q, want %q", item.PrimaryText, item.SecondaryText, entry.RowSummary)
+		}
+		if len(item.Preview.Fields) == 0 || item.Preview.Fields[0].Value != entry.Summary {
+			t.Fatalf("row %q preview does not retain full summary %q", item.PrimaryText, entry.Summary)
 		}
 		if name, ok := item.Data.(string); !ok || name != item.PrimaryText {
 			t.Fatalf("row %q data = %#v, want the tag name", item.PrimaryText, item.Data)
@@ -152,15 +155,12 @@ func TestTaskTagListSourceKeepsDescriptiveRowsAlphabeticalWithCounts(t *testing.
 func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *testing.T) {
 	for _, provider := range []ValueProviderID{ValueProviderTags, ValueProviderFilterTags} {
 		explainer := semanticTaskTagExplainer(provider, 120)
-		plain := ansi.Strip(explainer.Body)
+		plain := ansi.Strip(explainer)
 		if !strings.Contains(plain, "semantic  bug › epic › story › feature › idea —") {
 			t.Fatalf("provider %q explainer = %q, want the precedence chain", provider, plain)
 		}
 		if !strings.HasSuffix(plain, "colors its title.") {
 			t.Fatalf("provider %q explainer = %q, want the full summary", provider, plain)
-		}
-		if got := explainer.Continuation(); got != "" {
-			t.Fatalf("provider %q continuation = %q, want none for a summary that fits", provider, got)
 		}
 	}
 	for _, provider := range []ValueProviderID{
@@ -169,44 +169,37 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 		ValueProviderPriority,
 		ValueProviderState,
 	} {
-		if got := semanticTaskTagExplainer(provider, 120); got.Body != "" || got.Continuation() != "" {
-			t.Fatalf("provider %q explainer = %+v, want none", provider, got)
+		if got := semanticTaskTagExplainer(provider, 120); got != "" {
+			t.Fatalf("provider %q explainer = %q, want none", provider, got)
 		}
 	}
 }
 
-func TestSemanticTaskTagExplainerSurvivesNarrowWidths(t *testing.T) {
-	for _, width := range []int{0, 1, 12, 30, 44} {
-		if got := semanticTaskTagExplainer(ValueProviderTags, width); got.Body != "" || got.Continuation() != "" {
-			t.Fatalf("width %d explainer = %+v, want none", width, got)
+func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
+	want := "semantic bug › epic › story › feature › idea " + semanticTaskTagExplainerSummary
+	for _, width := range []int{12, 30, 42, 44, 60} {
+		plain := ansi.Strip(semanticTaskTagExplainer(ValueProviderTags, width))
+		for _, line := range strings.Split(plain, "\n") {
+			if got := lipgloss.Width(line); got > width {
+				t.Fatalf("width %d line %q is %d columns wide", width, line, got)
+			}
+		}
+		if got := strings.Join(strings.Fields(plain), " "); got != want {
+			t.Fatalf("width %d wrapped explainer = %q, want %q", width, got, want)
 		}
 	}
-	// Between the chain fitting and the summary having a column to start in,
-	// the block is the chain alone and no other surface is asked to finish a
-	// sentence the overlay never began.
-	for _, width := range []int{45, 46, 47} {
-		explainer := semanticTaskTagExplainer(ValueProviderTags, width)
-		if got := ansi.Strip(explainer.Body); got != "semantic  bug › epic › story › feature › idea" {
-			t.Fatalf("width %d explainer = %q, want the chain without a summary", width, got)
-		}
-		if got := explainer.Continuation(); got != "" {
-			t.Fatalf("width %d continuation = %q, want none without a summary", width, got)
-		}
+}
+
+func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
+	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	rendered := picker.renderWithin(minTerminalWidth, minTerminalHeight-2)
+	if got := lipgloss.Height(rendered); got > minTerminalHeight-2 {
+		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight-2)
 	}
-	explainer := semanticTaskTagExplainer(ValueProviderTags, 60)
-	truncated := ansi.Strip(explainer.Body)
-	if !strings.HasSuffix(truncated, "…") || lipgloss.Width(truncated) > 60 {
-		t.Fatalf("width 60 explainer = %q (width %d), want a truncated summary", truncated, lipgloss.Width(truncated))
-	}
-	continuation := explainer.Continuation()
-	if !strings.HasSuffix(continuation, "colors its title.") {
-		t.Fatalf("width 60 continuation = %q, want the rest of the summary", continuation)
-	}
-	// The break is on a word boundary, so the block and the continuation
-	// partition the sentence: nothing is repeated and nothing is lost.
-	shown := strings.TrimSuffix(strings.TrimPrefix(truncated, "semantic  bug › epic › story › feature › idea "), "…")
-	if shown+" "+continuation != semanticTaskTagExplainerSummary {
-		t.Fatalf("width 60 block %q plus continuation %q is not the summary", shown, continuation)
+	plain := ansi.Strip(rendered)
+	want := "semantic bug › epic › story › feature › idea " + semanticTaskTagExplainerSummary
+	if got := strings.Join(strings.Fields(plain), " "); !strings.Contains(got, want) {
+		t.Fatalf("picker dropped wrapped explainer:\n%s", plain)
 	}
 }
 
@@ -244,8 +237,8 @@ func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *tes
 		if item.ID != "tag:Bug" {
 			continue
 		}
-		if item.SecondaryText != entry.Summary {
-			t.Fatalf("minted row secondary text = %q, want %q", item.SecondaryText, entry.Summary)
+		if item.SecondaryText != entry.RowSummary {
+			t.Fatalf("minted row secondary text = %q, want %q", item.SecondaryText, entry.RowSummary)
 		}
 		if name, ok := item.Data.(string); !ok || name != "Bug" {
 			t.Fatalf("minted row data = %#v, want the typed spelling", item.Data)

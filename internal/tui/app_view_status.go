@@ -44,14 +44,6 @@ func (m *AppModel) renderStatusBar() string {
 		return renderPendingChordFooter(lines, m.width, m.currentAccentColor())
 	}
 
-	// A surface that had to clip its own explainer owns the footer next: the
-	// row is finishing a sentence the user is reading right now, so it outranks
-	// the banner, a transient status message left over from the previous
-	// action, and the hints of the view the surface floats over.
-	if continuation := m.footerContinuation(); continuation != "" {
-		return separator + "\n" + renderLeftAlignedMsg(MutedStyle.Render(continuation))
-	}
-
 	// Today-cleared banner takes precedence over the regular status message
 	// for the duration of its TTL — Peak-End Rule punctuation for daily completion.
 	if m.todayClearedBanner != "" {
@@ -151,34 +143,6 @@ func (m *AppModel) renderStatusBar() string {
 	spacer := ThemeSpacer(gap)
 
 	return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
-}
-
-// footerContinuation asks whichever surface is on screen to finish the
-// explainer it clipped. The value picker is an AppModel field rather than a
-// view-stack entry and is what the user is reading whenever it is open, so it
-// is the sole continuation source while open, even when it publishes nothing.
-// The covered view stack is intentionally not a fallback; every other surface
-// answers through the view stack only when no value picker is open.
-func (m *AppModel) footerContinuation() string {
-	width := m.width
-	if width <= 0 {
-		width = 80
-	}
-	continuation := ""
-	if m.operationValuePicker != nil {
-		continuation = m.operationValuePicker.FooterContinuation(width)
-	} else if view := m.activeView(); view != nil {
-		if provider, ok := view.(FooterContinuationProvider); ok {
-			continuation = provider.FooterContinuation(width)
-		}
-	}
-	// renderLeftAlignedMsg truncates without regard for word boundaries. If the
-	// whole remainder cannot fit, suppress it instead of reintroducing the
-	// mid-word clip the continuation exists to avoid.
-	if lipgloss.Width(continuation) > width {
-		return ""
-	}
-	return continuation
 }
 
 func fitStatusBarSegments(left, right string, width int) (string, string) {

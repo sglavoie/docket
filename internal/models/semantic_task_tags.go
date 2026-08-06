@@ -25,7 +25,10 @@ type SemanticTaskTag struct {
 	Role SemanticTaskTagRole
 	// Name is the canonical lowercase tag spelling.
 	Name string
-	// Summary is the one-sentence explainer shown wherever the tag is offered.
+	// RowSummary is the compact description shown beside a focusable picker row.
+	RowSummary string
+	// Summary is the complete explainer shown in the non-focusable block below
+	// the picker.
 	Summary string
 }
 
@@ -35,29 +38,34 @@ type SemanticTaskTag struct {
 // bug > epic > story > feature > idea precedence is part of what it publishes.
 var SemanticTaskTags = []SemanticTaskTag{
 	{
-		Role:    SemanticTaskTagBug,
-		Name:    "bug",
-		Summary: "A defect to fix. Highest precedence: it colors the title over any other semantic tag.",
+		Role:       SemanticTaskTagBug,
+		Name:       "bug",
+		RowSummary: "A defect to fix. Highest precedence.",
+		Summary:    "A defect to fix. Highest precedence: it colors the title over any other semantic tag.",
 	},
 	{
-		Role:    SemanticTaskTagEpic,
-		Name:    "epic",
-		Summary: "A large body of work that groups related tasks.",
+		Role:       SemanticTaskTagEpic,
+		Name:       "epic",
+		RowSummary: "A large body of related work.",
+		Summary:    "A large body of work that groups related tasks.",
 	},
 	{
-		Role:    SemanticTaskTagStory,
-		Name:    "story",
-		Summary: "A user-facing slice of work.",
+		Role:       SemanticTaskTagStory,
+		Name:       "story",
+		RowSummary: "A user-facing slice of work.",
+		Summary:    "A user-facing slice of work.",
 	},
 	{
-		Role:    SemanticTaskTagFeature,
-		Name:    "feature",
-		Summary: "New capability to build.",
+		Role:       SemanticTaskTagFeature,
+		Name:       "feature",
+		RowSummary: "New capability to build.",
+		Summary:    "New capability to build.",
 	},
 	{
-		Role:    SemanticTaskTagIdea,
-		Name:    "idea",
-		Summary: "An unrefined thought to develop later. Lowest precedence.",
+		Role:       SemanticTaskTagIdea,
+		Name:       "idea",
+		RowSummary: "An unrefined thought. Lowest precedence.",
+		Summary:    "An unrefined thought to develop later. Lowest precedence.",
 	},
 }
 

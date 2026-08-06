@@ -20,7 +20,9 @@ const ParkedProjectTag = "parked"
 type BehavioralProjectTag struct {
 	// Name is the canonical lowercase tag spelling.
 	Name string
-	// Summary is the one-sentence explainer shown wherever the tag is offered.
+	// RowSummary is the compact description shown beside a focusable picker row.
+	RowSummary string
+	// Summary is the complete explainer shown in non-focusable help content.
 	Summary string
 	// BadgeRole names the semantic style role the badge renders with.
 	BadgeRole string
@@ -31,9 +33,10 @@ type BehavioralProjectTag struct {
 // the status text.
 var BehavioralProjectTags = map[string]BehavioralProjectTag{
 	ParkedProjectTag: {
-		Name:      ParkedProjectTag,
-		Summary:   "Parks this project — keeps its tasks, notes and attachments, hides them from Active Projects.",
-		BadgeRole: "warning",
+		Name:       ParkedProjectTag,
+		RowSummary: "Parks this project",
+		Summary:    "Parks this project — keeps its tasks, notes and attachments, hides them from Active Projects.",
+		BadgeRole:  "warning",
 	},
 }
 

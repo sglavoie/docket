@@ -4,43 +4,40 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// The parked summary is 93 columns and the form fits it to
-// width-FormLabelWidth-len("parked")-1, so 72 (the committed minimum layout)
-// clips it while 140 shows the whole sentence under the field.
 const (
-	projectEditorClippedWidth = 72
-	projectEditorWholeWidth   = 140
+	projectEditorMinimumWidth = 72
+	projectEditorWideWidth    = 140
 )
 
-func TestProjectEditorFinishesTheClippedTagsExplainer(t *testing.T) {
-	editor := &ProjectEditorModel{}
-	continuation := editor.FooterContinuation(projectEditorClippedWidth)
-	if continuation == "" {
-		t.Fatalf("expected a continuation at width %d, where the explainer clips", projectEditorClippedWidth)
-	}
-
-	summary := models.BehavioralProjectTags[models.ParkedProjectTag].Summary
-	if !strings.HasSuffix(summary, continuation) {
-		t.Fatalf("continuation %q does not finish %q", continuation, summary)
-	}
-
+func TestProjectEditorWrapsCompleteTagsExplainerAtMinimumWidth(t *testing.T) {
+	width := projectEditorExplainerWidth(projectEditorMinimumWidth)
 	body := ansi.Strip(behavioralProjectTagExplainer(
 		ValueProviderProjectTags,
-		projectEditorExplainerWidth(projectEditorClippedWidth),
-	).Body)
-	if strings.Contains(body, continuation) {
-		t.Fatalf("the form already shows %q, so the status bar row would only repeat it:\n%s", continuation, body)
+		width,
+	))
+	for _, line := range strings.Split(body, "\n") {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("line %q is %d columns wide, want <= %d", line, got, width)
+		}
+	}
+	info := models.BehavioralProjectTags[models.ParkedProjectTag]
+	if got, want := strings.Join(strings.Fields(body), " "), info.Name+" "+info.Summary; got != want {
+		t.Fatalf("wrapped explainer = %q, want %q", got, want)
 	}
 }
 
-func TestProjectEditorHasNothingToContinueWhenTheExplainerFits(t *testing.T) {
-	editor := &ProjectEditorModel{}
-	if continuation := editor.FooterContinuation(projectEditorWholeWidth); continuation != "" {
-		t.Fatalf("expected no continuation at width %d, got %q", projectEditorWholeWidth, continuation)
+func TestProjectEditorKeepsWideTagsExplainerOnOneLine(t *testing.T) {
+	body := ansi.Strip(behavioralProjectTagExplainer(
+		ValueProviderProjectTags,
+		projectEditorExplainerWidth(projectEditorWideWidth),
+	))
+	if strings.Contains(body, "\n") {
+		t.Fatalf("wide explainer wrapped unexpectedly: %q", body)
 	}
 }

@@ -10,7 +10,7 @@ package tui
 func (m *AppModel) applyOverlays(content string, h int) string {
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
 	for _, renderer := range m.dimmedOverlayRenderers() {
-		if popup := renderer.render(m.width); popup != "" {
+		if popup := renderOverlayWithin(renderer, m.width, h); popup != "" {
 			content = OverlayPopupDimmed(content, popup, m.width, h)
 		}
 	}
@@ -26,6 +26,19 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 // widthRenderer is satisfied by all overlay pickers/popups that render given a width.
 type widthRenderer interface {
 	render(width int) string
+}
+
+// viewportRenderer lets an overlay trade scrollable rows for required inline
+// content before generic popup fitting would need to remove interior rows.
+type viewportRenderer interface {
+	renderWithin(width, height int) string
+}
+
+func renderOverlayWithin(renderer widthRenderer, width, height int) string {
+	if renderer, ok := renderer.(viewportRenderer); ok {
+		return renderer.renderWithin(width, height)
+	}
+	return renderer.render(width)
 }
 
 // dimmedOverlayRenderers returns the non-nil overlay renderers that are composited

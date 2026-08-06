@@ -26,6 +26,21 @@ func TestSemanticTaskTagsStayInPrecedenceOrder(t *testing.T) {
 		if strings.TrimSpace(entry.Summary) == "" {
 			t.Fatalf("entry %d (%q) has no summary", i, entry.Name)
 		}
+		if strings.TrimSpace(entry.RowSummary) == "" {
+			t.Fatalf("entry %d (%q) has no row summary", i, entry.Name)
+		}
+	}
+	wantRows := map[string]string{
+		"bug":     "A defect to fix. Highest precedence.",
+		"epic":    "A large body of related work.",
+		"story":   "A user-facing slice of work.",
+		"feature": "New capability to build.",
+		"idea":    "An unrefined thought. Lowest precedence.",
+	}
+	for _, entry := range SemanticTaskTags {
+		if got := entry.RowSummary; got != wantRows[entry.Name] {
+			t.Fatalf("%s row summary = %q, want %q", entry.Name, got, wantRows[entry.Name])
+		}
 	}
 }
 
