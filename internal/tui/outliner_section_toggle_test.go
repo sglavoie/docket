@@ -61,7 +61,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 		}
 	}
 	for _, row := range outliner.rows {
-		if !row.IsSectionHeader {
+		if !row.IsSectionHeader && !row.IsSeparator {
 			t.Errorf("collapsed view retained non-section row %+v", row)
 		}
 	}

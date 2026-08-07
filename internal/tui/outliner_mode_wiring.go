@@ -83,6 +83,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	}
 	pinned := m.buildPinnedSection(input)
 	m.appendPinnedSection(pinned)
+	pinnedBoundary := len(m.rows)
 
 	switch mode.RowStrategy {
 	case RowStrategyAll, RowStrategyInbox, RowStrategyToday, RowStrategyNext, RowStrategyBacklog:
@@ -92,8 +93,18 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	default:
 		return
 	}
+	m.separatePinnedSection(pinnedBoundary)
 	m.pruneInvisibleSelections()
 	m.clampCursor()
+}
+
+// separatePinnedSection closes Pinned with a rule so the promoted rows never
+// read as the first group of the mode below them.
+func (m *OutlinerModel) separatePinnedSection(boundary int) {
+	if boundary == 0 || boundary >= len(m.rows) {
+		return
+	}
+	m.rows = slices.Insert(m.rows, boundary, outlinerRow{IsSeparator: true})
 }
 
 // appendFilteredModeSections composes the shared per-task filter predicate over

@@ -32,7 +32,7 @@ type outlinerRow struct {
 	StateGroup         models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers
 	CollapseKey        string                    // Stable identity for shared or project-owned grouping headers
 	ProjectID          string                    // Project that owns task/project-header rows; empty for shared section headers
-	IsSeparator        bool                      // True if this row is a visual separator between projects
+	IsSeparator        bool                      // True if this row is a non-navigable horizontal rule between blocks
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a

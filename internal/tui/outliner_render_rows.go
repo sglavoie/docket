@@ -40,10 +40,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 
 		switch {
 		case row.IsSeparator:
-			if i < viewport.endIdx-1 {
-				rowBuilder.WriteString("\n")
-			}
-			continue
+			rowBuilder.WriteString(renderHorizontalDivider(viewport.rowWidth))
 		case row.IsSectionHeader:
 			rowBuilder.WriteString(m.renderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsProjectHeader:

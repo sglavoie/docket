@@ -282,6 +282,30 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 	}
 }
 
+func TestPinnedSectionEndsWithSeparatorInEveryMode(t *testing.T) {
+	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
+	pinned := primaryRowsTask("pinned", models.StateBacklog)
+	pinned.Pinned, pinned.PinnedAt = true, &now
+	plain := primaryRowsTask("plain", models.StateBacklog)
+	outliner, _ := primaryRowsOutliner(primaryRowsProject("alpha", pinned, plain))
+
+	for _, mode := range []OutlinerModeID{ModeAll, ModeBacklog} {
+		t.Run(string(mode), func(t *testing.T) {
+			outliner.selectOutlinerMode(mode)
+			boundary := slices.IndexFunc(outliner.rows, func(row outlinerRow) bool { return row.IsSeparator })
+			if boundary <= 0 || boundary >= len(outliner.rows)-1 {
+				t.Fatalf("rows = %+v, want a separator between Pinned and the mode rows", outliner.rows)
+			}
+			if !outliner.rows[boundary-1].IsPinnedSection || outliner.rows[boundary+1].IsPinnedSection {
+				t.Fatalf("separator at %d does not close Pinned: %+v", boundary, outliner.rows)
+			}
+			if outliner.rows[outliner.cursor].IsSeparator {
+				t.Fatal("cursor settled on the separator")
+			}
+		})
+	}
+}
+
 func countTaskRowsForIdentity(outliner *OutlinerModel, identity TaskIdentity) int {
 	count := 0
 	for _, row := range outliner.rows {
