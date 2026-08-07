@@ -33,11 +33,6 @@ func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 		t.Fatalf("external-editor supplemental = %q", got)
 	}
 
-	dateInput := &DateInputModel{err: errors.New("invalid date")}
-	assertRequiredGuidance(t, "invalid date input", dateInput.guidanceSpec(), true, "Enter retry", "Esc cancel")
-	snoozeInput := &SnoozeInputModel{err: errors.New("invalid snooze")}
-	assertRequiredGuidance(t, "invalid snooze input", snoozeInput.guidanceSpec(), true, "Enter retry", "Esc cancel")
-
 	composer := &TaskComposerModel{errors: []lineError{{line: 1, message: "invalid capture"}}}
 	spec, ok := composer.ContextualGuidance()
 	assertRequiredGuidance(t, "invalid capture", spec, ok, "Enter retry", "Esc cancel")
@@ -53,8 +48,6 @@ func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
 		(&ProjectCreatorModel{}).guidanceSpec(),
 		(&ProjectEditorModel{hasChanges: true}).guidanceSpec(),
 		NewTextEditorModel("description", "").guidanceSpec(),
-		(&DateInputModel{err: errors.New("invalid date")}).guidanceSpec(),
-		(&SnoozeInputModel{err: errors.New("invalid snooze")}).guidanceSpec(),
 	}
 	for index, spec := range specs {
 		if spec.Rows != 2 {
@@ -65,9 +58,6 @@ func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
 }
 
 func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
-	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
-	task := &models.Task{ID: "task", ShortID: 1, Title: "Task"}
-
 	form := newTestTaskForm()
 	form.err = errors.New("title is required")
 	form.SetSize(formMinWidth, formMinHeight)
@@ -80,16 +70,6 @@ func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
 	if !strings.Contains(ansi.Strip(textView), "Ctrl+S save") || !strings.Contains(ansi.Strip(textView), "Esc cancel") {
 		t.Fatalf("text editor minimum layout lost required guidance:\n%s", ansi.Strip(textView))
 	}
-
-	dateInput := NewDateInputModel(task, project, "sun")
-	dateInput.err = errors.New("invalid date")
-	dateInput.SetSize(formMinWidth, formMinHeight)
-	assertFitsWithin(t, dateInput.View().Content, formMinWidth, formMinHeight)
-
-	snoozeInput := NewSnoozeInputModel(task, project)
-	snoozeInput.err = errors.New("invalid snooze")
-	snoozeInput.SetSize(formMinWidth, formMinHeight)
-	assertFitsWithin(t, snoozeInput.View().Content, formMinWidth, formMinHeight)
 }
 
 func TestTaskFormInlinePickersRenderStructuredRequiredGuidance(t *testing.T) {

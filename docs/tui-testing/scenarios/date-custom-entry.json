@@ -1,0 +1,43 @@
+{
+  "name": "date-custom-entry",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
+
+    { "type": "key", "label": "open the due-date picker", "key": "@" },
+    { "type": "key", "label": "the relative presets cannot express every date, so type one", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
+    { "type": "assert", "assert": "contains", "value": "Exact date (YYYY-MM-DD)" },
+    { "type": "assert", "assert": "contains", "value": "Enter set date" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "label": "an expression the presets cannot reach", "text": "nonsense" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "a parse failure keeps the input open instead of committing", "assert": "contains", "value": "Set a Specific Date" },
+
+    { "type": "key", "label": "leave typed entry for the preset list", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Set a Specific Date" },
+    { "type": "assert", "assert": "contains", "value": "Set Due Date: Build login form" },
+
+    { "type": "key", "label": "re-enter typed entry", "key": "a" },
+    { "type": "text", "text": "2027-03-15" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
+    { "type": "assert", "label": "the typed date reaches the row through the ordinary payload", "assert": "contains", "value": "Mar 15 '27" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the same shared predicate gates the snooze picker", "key": "z" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
+    { "type": "text", "label": "a relative offset the presets do not carry", "text": "+3d" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Snooze" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

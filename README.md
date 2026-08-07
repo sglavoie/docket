@@ -91,6 +91,10 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `p` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
+Inside the `@` and `z` pickers, `a` opens a typed-date input for any date the
+relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
+`next mon`, or `dec 15`. Inside the `#` picker the same key adds a new tag.
+
 The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
 actions and comma state prefix have no compatibility action; neither do removed

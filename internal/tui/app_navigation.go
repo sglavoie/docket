@@ -152,7 +152,6 @@ func (m *AppModel) clearTransientNavigationState() {
 
 	m.Overlays().ClearAll()
 
-	m.pendingBulkTasks = nil
 	m.pendingDescEdit = nil
 	m.pendingTaskTextEdit = nil
 

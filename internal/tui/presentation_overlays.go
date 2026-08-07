@@ -41,9 +41,8 @@ func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 		return OverlayConfirmation, true
 	case ViewTaskChecklist, ViewTaskComments, ViewTaskAttachments:
 		return OverlayTaskTool, true
-	case ViewDateInput, ViewPriorityPicker, ViewParentSelector, ViewTagSelector,
-		ViewBulkTagSelector,
-		ViewSnoozeInput:
+	case ViewPriorityPicker, ViewParentSelector, ViewTagSelector,
+		ViewBulkTagSelector:
 		return OverlayPicker, true
 	default:
 		return 0, false

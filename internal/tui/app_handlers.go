@@ -47,3 +47,14 @@ func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []str
 	cmd := m.secondaryFeatures.Bulk.SetTagsLocators(locators, selectedTags)
 	return finalizeBatchResult(cmd, fmt.Sprintf("Tagged %d tasks", len(locators)))
 }
+
+func validTaskProjectRefs(refs []TaskProjectRef) []TaskProjectRef {
+	valid := make([]TaskProjectRef, 0, len(refs))
+	for _, ref := range refs {
+		if ref.Task == nil || ref.Project == nil {
+			continue
+		}
+		valid = append(valid, ref)
+	}
+	return valid
+}

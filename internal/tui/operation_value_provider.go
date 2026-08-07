@@ -77,6 +77,7 @@ type OperationValuePickerModel struct {
 	tagInitial map[ListItemID]operationTagMembership
 	tagCurrent map[ListItemID]operationTagMembership
 	tagAdder   TagAdder
+	dateAdder  DateAdder
 }
 
 func newOperationValuePickerModel(
@@ -124,6 +125,9 @@ func newOperationValuePickerModel(
 	if provider.tagEntry() {
 		model.tagAdder = NewTagAdder()
 	}
+	if provider.dateEntry() {
+		model.dateAdder = NewDateAdder()
+	}
 	return model, nil
 }
 
@@ -137,6 +141,22 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if handled {
 			return cmd, false, nil
 		}
+	}
+	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
+		var chosen *time.Time
+		cmd := model.dateAdder.handleAddDateInputKey(msg, func(date time.Time) error {
+			chosen = &date
+			return nil
+		})
+		// A typed date carries the same payload the preset rows carry, so the
+		// executor, the single handler, and the bulk handler stay untouched.
+		if chosen != nil {
+			return nil, true, OperationValueSelectedMsg{
+				Request: model.request,
+				Value:   OperationDateValue{Date: chosen},
+			}
+		}
+		return cmd, false, nil
 	}
 	key := msg.String()
 	if model.searching {
@@ -180,6 +200,9 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	case "a":
 		if model.provider.tagEntry() {
 			return model.tagAdder.EnterAddMode(), false, nil
+		}
+		if model.provider.dateEntry() {
+			return model.dateAdder.EnterAddMode(), false, nil
 		}
 	case "up", "k", "ctrl+p":
 		model.surface.MoveCursor(-1)
@@ -447,6 +470,12 @@ func (model *OperationValuePickerModel) guidanceSpec() (GuidanceSpec, bool) {
 			Rows:  2,
 		}, true
 	}
+	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
+		return GuidanceSpec{
+			Hints: requiredGuidanceHints("Enter set date", "Esc cancel"),
+			Rows:  2,
+		}, true
+	}
 	count := len(model.surface.Matches())
 	searching := model.searching
 	enterLabel := "choose"
@@ -493,6 +522,9 @@ func (model *OperationValuePickerModel) guidanceSpec() (GuidanceSpec, bool) {
 	if model.provider.tagEntry() {
 		add("a", "Add a tag", "add tag", 4, func() bool { return !searching })
 	}
+	if model.provider.dateEntry() {
+		add("a", "Type a specific date", "set date", 4, func() bool { return !searching })
+	}
 	return listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
 }
 
@@ -517,6 +549,22 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.tagAdder.AddTagError)
 		}
 		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Add New Tag")
+		guidance, _ := model.guidanceSpec()
+		return renderOverlayBox(
+			content,
+			innerWidth,
+			title,
+			renderGuidanceText(guidance, max(innerWidth-4, 1)),
+			lipgloss.NewStyle().Foreground(ColorPrimary),
+		)
+	}
+	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
+		content := model.dateAdder.AddDateInput.View() + "\n\n" +
+			MutedStyle.Render(strings.Join(dateAdderFormats(), "\n"))
+		if model.dateAdder.AddDateError != "" {
+			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.dateAdder.AddDateError)
+		}
+		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set a Specific Date")
 		guidance, _ := model.guidanceSpec()
 		return renderOverlayBox(
 			content,

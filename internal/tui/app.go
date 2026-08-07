@@ -18,7 +18,6 @@ const (
 	ViewProjectCreator
 	ViewProjectEditor
 	ViewHelp
-	ViewDateInput
 	ViewTagFilterSelector
 	ViewPriorityPicker
 	ViewParentSelector
@@ -30,7 +29,6 @@ const (
 	ViewTaskAttachments
 	ViewNotes
 	ViewGlobalNotes
-	ViewSnoozeInput
 	ViewTaskChecklist
 	ViewCrossProjectOutliner
 	ViewTaskForm
@@ -171,9 +169,6 @@ type AppModel struct {
 	isLoading      bool
 	loadingMessage string
 	spinner        SpinnerModel
-
-	// Pending bulk tasks for date and attribute overlays.
-	pendingBulkTasks []TaskProjectRef
 
 	// Pending create-project continuation from system Inbox triage.
 	pendingProjectMoveTask   *models.Task

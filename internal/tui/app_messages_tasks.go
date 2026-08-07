@@ -102,28 +102,6 @@ type TaskContentEditedMsg struct {
 type GlowViewMsg struct{ Task *models.Task }
 
 // =============================================================================
-// Due Date Messages
-// =============================================================================
-
-// SetDueDateMsg opens the date input view for a task.
-type SetDueDateMsg struct {
-	Task     *models.Task
-	Project  *models.Project
-	TaskRefs []TaskProjectRef
-}
-
-// =============================================================================
-// Snooze Messages
-// =============================================================================
-
-// SetSnoozeDateMsg opens the date input view for snoozing a task.
-type SetSnoozeDateMsg struct {
-	Task     *models.Task
-	Project  *models.Project
-	TaskRefs []TaskProjectRef
-}
-
-// =============================================================================
 // Undo Messages
 // =============================================================================
 

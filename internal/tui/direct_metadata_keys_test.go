@@ -113,7 +113,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		}
 	}
 
-	// The two unpresetable operations keep the existing pickers.
+	// The three unpresetable operations keep the existing pickers.
 	for _, picker := range []struct {
 		key      string
 		want     OperationID
@@ -121,6 +121,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	}{
 		{key: "@", want: operationTaskSetDueDate, provider: ValueProviderDueDate},
 		{key: "#", want: operationTaskSetTags, provider: ValueProviderTags},
+		{key: "z", want: operationTaskSetSnooze, provider: ValueProviderSnooze},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		result := executeDirectPath(t, model, ctx, []string{picker.key})
@@ -218,6 +219,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 	}{
 		{key: '@', provider: ValueProviderDueDate},
 		{key: '#', provider: ValueProviderTags},
+		{key: 'z', provider: ValueProviderSnooze},
 	} {
 		t.Run(string(picker.key)+" opens its picker", func(t *testing.T) {
 			app := newApp(t)

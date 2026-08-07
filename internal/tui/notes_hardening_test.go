@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -415,5 +416,25 @@ func cancelNotesPicker(t *testing.T, view *NotesViewModel) {
 	_, _ = view.Update(result)
 	if view.locationPicker != nil {
 		t.Fatal("picker remained open after cancellation")
+	}
+}
+
+func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
+	got := (&NotesViewModel{}).GetHelpItems()
+	want := []HelpItem{
+		{Key: "j/k", Description: "Navigate"},
+		{Key: "Enter", Description: "Open in external editor"},
+		{Key: "n/a", Description: "Create in Global or an active project"},
+		{Key: "v", Description: "Choose All, Global, or active-project scope"},
+		{Key: "s", Description: "Search note titles and bodies"},
+		{Key: "r", Description: "Rename note"},
+		{Key: "m", Description: "Move to Global or an active project"},
+		{Key: "x", Description: "Delete note"},
+		{Key: "u", Description: "Undo workspace change"},
+		{Key: "Ctrl+R", Description: "Redo workspace change"},
+		{Key: "Esc", Description: "Cancel search, clear it, or close Notes"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Notes help = %#v, want %#v", got, want)
 	}
 }

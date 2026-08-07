@@ -135,18 +135,6 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			m.setWorkspacePulse(pulse)
 			return m.View().Content
 		}},
-		{name: "date editor", view: func(pulse WorkspacePulse) string {
-			m := NewDateInputModel(task, project, "sun")
-			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
-			return m.View().Content
-		}},
-		{name: "snooze editor", view: func(pulse WorkspacePulse) string {
-			m := NewSnoozeInputModel(task, project)
-			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
-			return m.View().Content
-		}},
 		{name: "text editor", view: func(pulse WorkspacePulse) string {
 			m := NewTextEditorModel("description", "body")
 			m.SetSize(140, 30)

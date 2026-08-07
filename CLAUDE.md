@@ -156,6 +156,13 @@ The `Space` menu is exactly:
 An operation is direct-only or menu-only, never both. Delete has no direct key
 and confirms before mutation.
 
+A value provider is exactly one of `textEntry()` (a separate overlay),
+`tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain
+list. Inline modes bind `a` inside `OperationValuePickerModel` and must emit the
+same value type the provider's preset rows carry, so the executor and the
+single and bulk handlers stay untouched. A value the presets cannot express
+belongs in an inline mode on the one picker, never in a standalone form.
+
 The Outliner stays full-width at every supported size. `Enter` toggles a
 session-only, five-line Peek beneath the cursor for description, tags,
 attachment names, comment counts, and checklist items. Rows carry

@@ -110,6 +110,13 @@ func (id ValueProviderID) tagEntry() bool {
 	return id == ValueProviderTags || id == ValueProviderProjectTags
 }
 
+// dateEntry reports whether the picker offers "a" to type a date its relative
+// presets cannot express. The calendar is not a closed enumeration either, so
+// both date providers need the same escape hatch.
+func (id ValueProviderID) dateEntry() bool {
+	return id == ValueProviderDueDate || id == ValueProviderSnooze
+}
+
 func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {
 	descriptor.ValueProviderID = provider
 	return descriptor

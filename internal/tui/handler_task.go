@@ -17,11 +17,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// Date-related messages (due dates, snooze)
-	if handled, cmd := m.handleTaskDateMessages(msg); handled {
-		return handled, cmd
-	}
-
 	// Undo/redo operations
 	if handled, cmd := m.handleTaskUndoMessages(msg); handled {
 		return handled, cmd

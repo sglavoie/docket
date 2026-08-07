@@ -3,12 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestTaskForm_ScheduleTab_RendersLabels(t *testing.T) {
@@ -122,24 +118,5 @@ func TestTaskForm_ScheduleTab_NLDateRoundTrip(t *testing.T) {
 	}
 	if m.draft.dueInput == "" {
 		t.Error("expected dueInput non-empty after picking tomorrow")
-	}
-}
-
-func TestDateInput_PrefillDateOnly(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	due := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
-
-	task := &models.Task{
-		ID:      "test-due-date",
-		ShortID: 98,
-		Title:   "Test task",
-		DueDate: &due,
-	}
-
-	m := NewDateInputModel(task, project, "")
-	got := m.input.Value()
-	want := "2026-06-15"
-	if got != want {
-		t.Errorf("DateInputModel date-only prefill: got %q, want %q", got, want)
 	}
 }
