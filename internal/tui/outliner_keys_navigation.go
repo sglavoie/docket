@@ -149,7 +149,6 @@ func (m *OutlinerModel) escSteps() []EscStep {
 	return []EscStep{
 		{Active: func() bool { return m.peekMode }, Clear: func() {
 			m.peekMode = false
-			m.resetViewScrollOffset()
 		}},
 		{Active: func() bool { return m.IsRangeSelectionActive() }, Clear: func() {
 			m.FreezeRangeSelection()

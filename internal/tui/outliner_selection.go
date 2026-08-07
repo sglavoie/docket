@@ -87,14 +87,14 @@ func (m *OutlinerModel) togglePeek() {
 	}
 	if m.peekMode {
 		m.peekMode = false
-		m.resetViewScrollOffset()
 		return
 	}
 	if task, _ := m.getTaskRef(); task == nil {
 		return
 	}
+	// Keep the scroll offset: the viewport clamp then scrolls the minimum needed
+	// to fit Peek, instead of snapping the cursor to the last visible row.
 	m.peekMode = true
-	m.resetViewScrollOffset()
 }
 
 // toggleMultiSelectMode enters or exits multi-select mode.
