@@ -372,9 +372,9 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 			t.Fatalf("%q = handled %v cmd %T; want synchronous handling", msg.String(), handled, cmd)
 		}
 	}
-	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
+	send(tea.KeyPressMsg{Code: 'V', Text: "V"})
 	if !app.crossOutliner.IsTaskIdentitySelected(taskIdentityFor(first, project)) {
-		t.Fatal("v did not anchor a fresh visual range at the cursor row")
+		t.Fatal("V did not anchor a fresh visual range at the cursor row")
 	}
 	send(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if !app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 1 ||
@@ -382,10 +382,11 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 		t.Fatal("Esc did not freeze the visual range while preserving selection")
 	}
 
+	send(tea.KeyPressMsg{Code: tea.KeyEscape}) // drop the frozen selection
 	app.crossOutliner.cursor = 0
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	send(tea.KeyPressMsg{Code: 'j', Text: "j"})
-	send(tea.KeyPressMsg{Code: 'v', Text: "v"}) // freeze the two-row range
+	send(tea.KeyPressMsg{Code: 'v', Text: "v"}) // toggle the second row into the selection
 	send(tea.KeyPressMsg{Code: tea.KeySpace})
 	sheet := app.contextActionSheet
 	if sheet == nil || !sheet.config.Bulk || sheet.config.Targets != 2 {

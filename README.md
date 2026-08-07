@@ -88,7 +88,7 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
-| Selection | `v` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
+| Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `p` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 The operation descriptors are the single source for dispatch, contextual
@@ -181,9 +181,13 @@ closes Peek before unwinding Outliner navigation.
 
 State, Today/Next/Review, priority, due, tags, snooze, and pin actions apply atomically
 to the complete project-qualified selection, including hidden members. `v`
-starts a fresh inclusive range at the cursor; movement recalculates it over task
-rows only, and `v` or `Esc` freezes it. `Ctrl+A` replaces the selection with all
-visible task rows. Entering multi-select closes Peek. Structural, edit, Peek,
+toggles the cursor task in or out of the selection, so a selection can name rows
+that are not adjacent; movement never changes what `v` picked. `V` starts a
+fresh inclusive range at the cursor; movement recalculates it over task rows
+only, and `V` or `Esc` freezes it. `v` during a live range freezes it and drops
+the cursor row. `Ctrl+A` replaces the selection with all visible task rows. The
+selection survives at zero members until `Esc` leaves the mode. Entering
+multi-select closes Peek. Structural, edit, Peek,
 relation, and clipboard operations do not fall back silently to the cursor
 while a selection exists. Successful Delete clears selection; other successes,
 cancellations, and failures preserve it.

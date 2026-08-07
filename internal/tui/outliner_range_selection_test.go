@@ -46,7 +46,7 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 	app, project, tasks := rangeSelectionTestApp(t)
 	out := app.crossOutliner
 
-	sendRangeSelectionKey(t, app, "v")
+	sendRangeSelectionKey(t, app, "V")
 	if !out.IsRangeSelectionActive() || out.SelectedCount() != 1 {
 		t.Fatalf("fresh range = active %v count %d, want active/1", out.IsRangeSelectionActive(), out.SelectedCount())
 	}
@@ -65,18 +65,18 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 		t.Fatalf("inclusive range count = %d, want 2", out.SelectedCount())
 	}
 
-	sendRangeSelectionKey(t, app, "v")
+	sendRangeSelectionKey(t, app, "V")
 	if out.IsRangeSelectionActive() || out.SelectedCount() != 2 {
-		t.Fatalf("v freeze = active %v count %d, want frozen/2", out.IsRangeSelectionActive(), out.SelectedCount())
+		t.Fatalf("V freeze = active %v count %d, want frozen/2", out.IsRangeSelectionActive(), out.SelectedCount())
 	}
 	sendRangeSelectionKey(t, app, "j")
 	if out.SelectedCount() != 2 {
 		t.Fatalf("movement reshaped frozen range to %d tasks", out.SelectedCount())
 	}
 
-	// A new v starts a fresh range and replaces the prior selection.
+	// A new V starts a fresh range and replaces the prior selection.
 	out.cursor = 2
-	sendRangeSelectionKey(t, app, "v")
+	sendRangeSelectionKey(t, app, "V")
 	if !out.IsRangeSelectionActive() || out.SelectedCount() != 1 ||
 		!out.IsTaskIdentitySelected(taskIdentityFor(tasks[1], project)) {
 		t.Fatalf("new range did not replace selection at second task: active=%v selected=%v", out.IsRangeSelectionActive(), out.SelectedTaskIdentities())
@@ -141,10 +141,65 @@ func TestOperationContextClassifiesHiddenSelectionAndBulkSheetNamesIt(t *testing
 
 func TestEscAfterFrozenSelectionClearsOnSecondPress(t *testing.T) {
 	app, _, _ := rangeSelectionTestApp(t)
-	sendRangeSelectionKey(t, app, "v")
+	sendRangeSelectionKey(t, app, "V")
 	sendRangeSelectionKey(t, app, "esc")
 	sendRangeSelectionKey(t, app, "esc")
 	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
 		t.Fatal("second Esc did not clear the frozen selection")
+	}
+}
+
+func TestToggleSelectionBuildsNonContiguousSetWithoutARange(t *testing.T) {
+	app, project, tasks := rangeSelectionTestApp(t)
+	out := app.crossOutliner
+
+	sendRangeSelectionKey(t, app, "v")
+	for range 4 {
+		sendRangeSelectionKey(t, app, "j")
+	}
+	sendRangeSelectionKey(t, app, "v")
+	if out.IsRangeSelectionActive() {
+		t.Fatal("v activated a range instead of toggling one row")
+	}
+	if out.SelectedCount() != 2 ||
+		!out.IsTaskIdentitySelected(taskIdentityFor(tasks[0], project)) ||
+		!out.IsTaskIdentitySelected(taskIdentityFor(tasks[2], project)) {
+		t.Fatalf("toggled selection = %v, want the first and third tasks only", out.SelectedTaskIdentities())
+	}
+	if out.IsTaskIdentitySelected(taskIdentityFor(tasks[1], project)) {
+		t.Fatal("cursor movement between two toggles selected the task it passed over")
+	}
+
+	sendRangeSelectionKey(t, app, "v")
+	if out.SelectedCount() != 1 || out.IsTaskIdentitySelected(taskIdentityFor(tasks[2], project)) {
+		t.Fatalf("second v on the same row = %v, want it deselected", out.SelectedTaskIdentities())
+	}
+	if !out.multiSelectMode {
+		t.Fatal("deselecting a row left multi-select mode; only Esc may leave it")
+	}
+}
+
+func TestToggleDuringActiveRangeFreezesThenDropsTheCursorRow(t *testing.T) {
+	app, project, tasks := rangeSelectionTestApp(t)
+	out := app.crossOutliner
+
+	sendRangeSelectionKey(t, app, "V")
+	sendRangeSelectionKey(t, app, "j")
+	sendRangeSelectionKey(t, app, "j")
+	if !out.IsRangeSelectionActive() || out.SelectedCount() != 2 {
+		t.Fatalf("range before toggle = active %v count %d, want active/2", out.IsRangeSelectionActive(), out.SelectedCount())
+	}
+
+	sendRangeSelectionKey(t, app, "v")
+	if out.IsRangeSelectionActive() {
+		t.Fatal("v did not freeze the live range")
+	}
+	if out.SelectedCount() != 1 || !out.IsTaskIdentitySelected(taskIdentityFor(tasks[0], project)) {
+		t.Fatalf("v over the range end = %v, want only the anchor task", out.SelectedTaskIdentities())
+	}
+
+	sendRangeSelectionKey(t, app, "j")
+	if out.SelectedCount() != 1 {
+		t.Fatalf("movement reshaped the frozen selection to %d tasks", out.SelectedCount())
 	}
 }

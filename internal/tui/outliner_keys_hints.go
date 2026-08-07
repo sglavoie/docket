@@ -90,14 +90,15 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 }
 
 func (m *OutlinerModel) multiSelectGuidance() GuidanceSpec {
-	selectionAction := "v new range"
+	rangeAction := "V range"
 	if m.IsRangeSelectionActive() {
-		selectionAction = "v freeze range"
+		rangeAction = "V freeze range"
 	}
 	hints := []GuidanceHint{
 		newGuidanceHint("Space actions", 1, m.SelectedCount() > 0),
-		newGuidanceHint(selectionAction, 2, false),
-		newGuidanceHint("Ctrl+A select visible", 3, false),
+		newGuidanceHint("v toggle", 2, false),
+		newGuidanceHint(rangeAction, 3, false),
+		newGuidanceHint("Ctrl+A select visible", 4, false),
 		newGuidanceHint("Esc clear selection", 0, true),
 		newGuidanceHint("? help", 10, false),
 	}

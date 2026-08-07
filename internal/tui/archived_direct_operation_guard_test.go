@@ -229,7 +229,7 @@ func TestArchivedMixedSelectionRefusesBulkDirectKeys(t *testing.T) {
 	archivedTaskID := env.taskID(t, env.archived, archivedGuardArchivedTaskTitle)
 
 	env.focusTask(t, activeTaskID)
-	env.press(t, "v")
+	env.press(t, "V")
 	env.focusSelectionThrough(t, archivedTaskID)
 
 	out := env.outliner(t)

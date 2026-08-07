@@ -64,10 +64,24 @@ func (m *OutlinerModel) isRowSelected(row outlinerRow) bool {
 	return m.IsTaskIdentitySelected(m.taskIdentityForRow(row))
 }
 
-// toggleCursorSelection starts a fresh inclusive Vim-style range at the
-// current task row. Invoking v while a range is active freezes the current
-// result; invoking it again starts a new range and replaces the old selection.
+// toggleCursorSelection flips the cursor task's membership, so a selection can
+// name rows that are not adjacent. A live range is frozen first: otherwise the
+// next cursor move would recompute the range and discard the toggle.
 func (m *OutlinerModel) toggleCursorSelection() {
+	if m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isTaskRow() {
+		return
+	}
+	m.FreezeRangeSelection()
+	m.peekMode = false
+	m.multiSelectMode = true
+	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.cursor]))
+	m.updateVisualSelectionStatus()
+}
+
+// startCursorRangeSelection starts a fresh inclusive Vim-style range at the
+// current task row. Invoking V while a range is active freezes the current
+// result; invoking it again starts a new range and replaces the old selection.
+func (m *OutlinerModel) startCursorRangeSelection() {
 	if m.IsRangeSelectionActive() {
 		m.FreezeRangeSelection()
 		m.updateVisualSelectionStatus()
@@ -116,9 +130,9 @@ func (m *OutlinerModel) updateVisualSelectionStatus() {
 	}
 	counts := m.selectionCounts()
 	if counts.Total > 0 {
-		action := "v freeze · Esc freeze"
+		action := "V freeze · Esc freeze"
 		if !m.IsRangeSelectionActive() {
-			action = "v new range · Esc clear"
+			action = "v toggle · V range · Esc clear"
 		}
 		m.setStatus(fmt.Sprintf(
 			"Visual selection: %d total · %d visible · %d hidden · %s · Space actions",
@@ -129,7 +143,7 @@ func (m *OutlinerModel) updateVisualSelectionStatus() {
 		))
 		return
 	}
-	m.setStatus("Visual selection: v new range · Ctrl+A all visible · Esc clear")
+	m.setStatus("Visual selection: v toggle · V range · Ctrl+A all visible · Esc clear")
 }
 
 func (m *OutlinerModel) visibleTaskIdentities() []TaskIdentity {

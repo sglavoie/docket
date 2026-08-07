@@ -131,7 +131,8 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"The Outliner uses the full terminal width at every supported size",
 		"`Enter` toggles a session-only Peek directly beneath the cursor task",
 		"Entering multi-select closes Peek",
-		"`v` starts a fresh inclusive range at the cursor",
+		"`v` toggles the cursor task in or out of the selection",
+		"`V` starts a fresh inclusive range at the cursor",
 		"`Ctrl+A` replaces the selection with all visible task rows",
 		"Successful Delete clears selection; other successes, cancellations, and failures preserve it",
 	})

@@ -202,8 +202,10 @@ Outliner navigation. Entering visual selection disables Peek.
 
 Visual selection stores project-qualified task identities independently of
 current visibility and classifies them as total, visible, and hidden. `v`
-starts a fresh inclusive task-row range and movement recalculates it while
-skipping headers; `v` or `Esc` freezes the result. `Ctrl+A` replaces the
+toggles the cursor task, so a selection can name rows that are not adjacent and
+movement never reshapes it. `V` starts a fresh inclusive task-row range and
+movement recalculates it while skipping headers; `V` or `Esc` freezes the
+result, and `v` freezes it while dropping the cursor row. `Ctrl+A` replaces the
 selection with every visible task row. Bulk lifecycle, planning, priority, due,
 tags, snooze, and pin requests validate the complete selection before one
 transaction. Structural and relation operations, edits, inspection, and

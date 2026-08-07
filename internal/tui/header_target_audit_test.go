@@ -47,6 +47,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.core.peek":                   "target-free",
 	"tui.core.previous-work-mode":     "target-free",
 	"tui.core.quit":                   "target-free",
+	"tui.core.range-select":           "target-free",
 	"tui.core.redo":                   "target-free",
 	"tui.core.reorder-down":           "project",
 	"tui.core.reorder-up":             "project",

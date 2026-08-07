@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "step onto the project header", "key": "j" },
     { "type": "key", "label": "move onto the first visible task", "key": "j" },
-    { "type": "key", "label": "anchor a fresh range", "key": "v" },
+    { "type": "key", "label": "anchor a fresh range", "key": "V" },
     { "type": "key", "label": "move through a header", "key": "j" },
     { "type": "key", "label": "move through the project header", "key": "j" },
     { "type": "key", "label": "extend to the next task", "key": "j" },

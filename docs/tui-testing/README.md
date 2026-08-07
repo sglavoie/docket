@@ -103,7 +103,7 @@ si sb sn st sg sr sw sp sm sd sc    workflow chord
 !0-3 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
-v Ctrl+A Space Enter            selection, actions, Peek
+v V Ctrl+A Space Enter          selection, actions, Peek
 p N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-3 fs fc ft fd fz fx         filters
 ```
@@ -155,7 +155,7 @@ The committed suite exercises the product contracts directly:
 | Exact six-item `Space` menu | `outliner-space-action-catalog.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
-| Range selection and bulk intersection | `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
+| Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
 | Project header cursor, folding, and task-key refusal | `outliner-project-header-fold.json`, `outliner-project-header-rejects-task-keys.json` |
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |

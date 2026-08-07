@@ -96,7 +96,7 @@ si sb sn st sg sr sw sp sm sd sc  workflow chord
 !0-3 @ # z P                   metadata
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
-v Ctrl+A Space                 selection/actions (`V` unbound)
+v V Ctrl+A Space               selection/actions
 p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
@@ -163,6 +163,13 @@ operational metadata directly and omit short IDs. Entering visual selection
 closes Peek; while selection exists, structural, edit, Peek, relation, and
 clipboard operations must reject it instead of falling back to the cursor.
 The bulk `Space` menu contains Delete only.
+
+Visual selection has two keys. `v` toggles the cursor task, so a selection can
+name rows that are not adjacent and cursor movement never reshapes it. `V`
+anchors an inclusive range that movement recalculates over task rows only, and a
+second `V` freezes it; a fresh `V` replaces the whole selection. `v` over a live
+range freezes it first, then toggles, so the cursor row leaves the range. The
+mode survives at zero selected members and only `Esc` leaves it.
 
 `p` opens the search-first project picker, which owns project focus and lean
 project administration. It lists `Runtime.AvailableProjects()` with each
