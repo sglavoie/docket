@@ -77,11 +77,6 @@ func wrappedLineCount(s string, width int) int {
 	return lipgloss.Height(lipgloss.NewStyle().Width(width).Render(s))
 }
 
-func (m *OutlinerModel) buildModeLabel() string {
-	activeMode := m.activeOutlinerModeEntry()
-	return GetOutlinerModeStyle(activeMode.ID).PaddingLeft(0).Render(activeMode.Label)
-}
-
 func (m *OutlinerModel) outlinerZoomContext() string {
 	if m.project == nil {
 		return m.crossProjectZoomContext()
@@ -146,7 +141,7 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 	return renderOperationalTitle(operationalTitleSpec{
 		Surface: TitleStyle.Render("Outliner"),
 		Scope:   TitleStyle.Render(m.outlinerScopeLabel()),
-		Mode:    m.buildModeLabel(),
+		Mode:    operationalTitleModeSegment(m.activeOutlinerModeEntry()),
 		Context: m.buildOutlinerInteractionContext(),
 		Pulse:   &m.workspacePulse,
 	}, max(width, 1))

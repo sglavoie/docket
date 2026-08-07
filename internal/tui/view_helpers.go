@@ -49,7 +49,7 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 	// Build compact filter badge
 	compactFilterBadge := ""
 	if len(params.FilterParts) > 0 {
-		compactFilterBadge = FilterBadgeStyle.Render(fmt.Sprintf("[%d filters]", len(params.FilterParts)))
+		compactFilterBadge = operationalTitleBadge(FilterBadgeStyle, fmt.Sprintf("[%d filters]", len(params.FilterParts)))
 	}
 
 	// Try progressively degraded versions

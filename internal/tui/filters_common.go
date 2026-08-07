@@ -297,7 +297,7 @@ func renderFilterBadge(parts []string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
+	return operationalTitleBadge(FilterBadgeStyle, "Filters: "+strings.Join(parts, " "))
 }
 
 // newFilterState returns an initialized CommonFilterState with allocated maps.

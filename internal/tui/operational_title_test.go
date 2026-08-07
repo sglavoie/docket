@@ -13,10 +13,11 @@ import (
 
 func TestOperationalTitlePulseFittingOrder(t *testing.T) {
 	pulse := WorkspacePulse{Inbox: 12, Today: 0, Overdue: 4}
+	allMode, _ := OutlinerModeByID(ModeAll)
 	spec := operationalTitleSpec{
 		Surface: TitleStyle.Render("Outliner"),
 		Scope:   TitleStyle.Render(activeProjectsScopeLabel),
-		Mode:    GetOutlinerModeStyle(ModeAll).Render("All"),
+		Mode:    operationalTitleModeSegment(allMode),
 		Pulse:   &pulse,
 	}
 	tests := []struct {
@@ -156,8 +157,13 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 				if strings.Count(plain, m.activeOutlinerModeEntry().Label) != 1 {
 					t.Fatalf("width %d mode identity count != 1: %q", width, plain)
 				}
-				if strings.Contains(plain, operationalTitleSeparator+" "+m.activeOutlinerModeEntry().Label) {
+				modeLabel := m.activeOutlinerModeEntry().Label
+				if strings.Contains(plain, operationalTitleSeparator+" "+modeLabel) {
 					t.Fatalf("width %d mode identity has incidental leading chip padding: %q", width, plain)
+				}
+				if len(m.buildOutlinerInteractionContext()) > 0 &&
+					strings.Contains(plain, modeLabel+operationalTitleContextGap+" ") {
+					t.Fatalf("width %d mode identity has incidental trailing chip padding: %q", width, plain)
 				}
 				if width == 40 {
 					for _, want := range tt.wantNarrow {
@@ -173,6 +179,27 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 						}
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestOperationalTitleModeSegmentSpelling(t *testing.T) {
+	const context = "Search: \"needle\""
+	for _, mode := range OutlinerModeCatalog() {
+		t.Run(mode.Label, func(t *testing.T) {
+			if chip := ansi.Strip(operationalTitleModeSegment(mode)); chip != mode.Label {
+				t.Fatalf("mode chip = %q, want %q", chip, mode.Label)
+			}
+			plain := ansi.Strip(renderOperationalTitle(operationalTitleSpec{
+				Surface: TitleStyle.Render("Outliner"),
+				Scope:   TitleStyle.Render(activeProjectsScopeLabel),
+				Mode:    operationalTitleModeSegment(mode),
+				Context: []string{MutedStyle.Render(context)},
+			}, 160))
+			want := operationalTitleSeparator + mode.Label + operationalTitleContextGap + context
+			if !strings.Contains(plain, want) {
+				t.Fatalf("title = %q, want mode boundary %q", plain, want)
 			}
 		})
 	}

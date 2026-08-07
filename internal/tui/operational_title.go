@@ -96,6 +96,18 @@ func renderOperationalIdentity(spec operationalTitleSpec, width int) string {
 	return truncateToVisualWidth(identity, width)
 }
 
+// operationalTitleBadge renders a background-styled title chip without the
+// theme's padding cells. The row's separator and context gap own every
+// inter-region space, so a padded edge widens one of those gaps by a cell.
+func operationalTitleBadge(style lipgloss.Style, text string) string {
+	return style.Padding(0, 0).Render(text)
+}
+
+// operationalTitleModeSegment renders the mode identity segment.
+func operationalTitleModeSegment(mode OutlinerMode) string {
+	return operationalTitleBadge(GetOutlinerModeStyle(mode.ID), mode.Label)
+}
+
 func joinOperationalTitleSegments(parts []string) string {
 	nonEmpty := make([]string, 0, len(parts))
 	for _, part := range parts {

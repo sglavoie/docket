@@ -35,6 +35,10 @@ func (r *journalOpsRepo) CommitOps(ops []transaction.Op, artifacts []storage.Art
 	return r.commit.CommitOpsWithArtifacts(ops, artifacts)
 }
 
+func (r *journalOpsRepo) CommitOpsTransaction(request storage.OpsCommitRequest) (string, error) {
+	return r.commit.CommitOpsTransaction(request)
+}
+
 func (r *opsRepo) CommitOps(ops []transaction.Op, artifacts []storage.ArtifactChange) error {
 	if r.commitErr != nil {
 		return r.commitErr
@@ -266,6 +270,61 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 		if strings.HasSuffix(entry.Name(), ".json") {
 			t.Fatalf("completed rename left transaction manifest %q", entry.Name())
 		}
+	}
+}
+
+// TestRenameProjectResultCorrelatesLedgerTransactionID proves the identity a
+// rename returns is the durable workspace-ledger transaction, not an empty
+// fallback: recovery feedback advertises undo only on exact equality with the
+// newest global entry, so an empty or mismatched ID silently drops that control.
+func TestRenameProjectResultCorrelatesLedgerTransactionID(t *testing.T) {
+	dataDir := t.TempDir()
+	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	repo := &journalOpsRepo{
+		fakeRepo: newFakeRepo(),
+		commit: storage.NewCommitServiceWithLedger(
+			filepath.Join(dataDir, ".tt", "transactions"),
+			[]string{dataDir},
+			ledger,
+		),
+	}
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
+
+	project.Name = "Beta"
+	project.Slug = "beta"
+	expected := tasksExpectedRevision(t, project)
+	transactionID, err := svc.RenameProjectResult(app.RenameProjectRequest{
+		Project:               project,
+		DataDir:               dataDir,
+		OldSlug:               "alpha",
+		NewSlug:               "beta",
+		TasksMarkdown:         []byte("# Beta\n"),
+		TasksExpectedRevision: expected,
+		Config:                []storage.ArtifactChange{configArtifact(dataDir, `{"slug":"beta"}`)},
+	})
+	if err != nil {
+		t.Fatalf("RenameProjectResult: %v", err)
+	}
+	if transactionID == "" {
+		t.Fatal("RenameProjectResult returned an empty transaction ID through a ledger-aware repository")
+	}
+
+	entry, ok, selectErr := ledger.SelectNewestUndo(storage.GlobalScope())
+	if selectErr != nil {
+		t.Fatalf("SelectNewestUndo: %v", selectErr)
+	}
+	if !ok {
+		t.Fatal("rename recorded no workspace ledger entry")
+	}
+	if entry.TransactionID != transactionID {
+		t.Fatalf("newest ledger transaction = %q, want returned %q", entry.TransactionID, transactionID)
+	}
+	if entry.Action != "Edit Project" || entry.Context != "Beta" {
+		t.Fatalf("ledger entry = %q / %q, want %q / %q", entry.Action, entry.Context, "Edit Project", "Beta")
+	}
+	if len(entry.ProjectIDs) != 1 || entry.ProjectIDs[0] != project.ID {
+		t.Fatalf("ledger project ids = %v, want [%s]", entry.ProjectIDs, project.ID)
 	}
 }
 
