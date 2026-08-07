@@ -96,8 +96,8 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		wantNarrow []string
 		wantWide   []string
 	}{
-		{name: "Active Projects", configure: func(*OutlinerModel) {}, wantNarrow: []string{activeProjectsScopeLabel}, wantWide: []string{"Outliner", activeProjectsScopeLabel, "All"}},
-		{name: "focused project", configure: func(m *OutlinerModel) { m.scopedProjectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{"Outliner", project.Name, "All"}},
+		{name: "Active Projects", configure: func(*OutlinerModel) {}, wantNarrow: []string{activeProjectsScopeLabel}, wantWide: []string{activeProjectsScopeLabel, "All"}},
+		{name: "focused project", configure: func(m *OutlinerModel) { m.scopedProjectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{project.Name, "All"}},
 		{name: "zoom", configure: func(m *OutlinerModel) {
 			m.crossZoomStack = []CrossProjectZoomEntry{{ProjectID: project.ID, TaskID: task.ID}}
 		}, wantNarrow: []string{"Zoom:"}, wantWide: []string{"Zoom: " + task.Title}},
@@ -151,8 +151,8 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 				if got := lipgloss.Width(rendered); got > width {
 					t.Fatalf("width %d rendered %d cells: %q", width, got, plain)
 				}
-				if strings.Count(plain, "Outliner") != 1 {
-					t.Fatalf("width %d surface identity count != 1: %q", width, plain)
+				if strings.Contains(plain, "Outliner") {
+					t.Fatalf("width %d kept the retired surface label: %q", width, plain)
 				}
 				if strings.Count(plain, m.activeOutlinerModeEntry().Label) != 1 {
 					t.Fatalf("width %d mode identity count != 1: %q", width, plain)

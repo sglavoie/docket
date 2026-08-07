@@ -8,10 +8,10 @@
     { "type": "key", "label": "focus the selected project", "key": "enter" },
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "Outliner · Rich Project · Inbox" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project · Inbox" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "shrink to a tight height", "width": 80, "height": 21 },
-    { "type": "assert", "assert": "contains", "value": "Outliner · Rich Project · Inbox" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project · Inbox" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

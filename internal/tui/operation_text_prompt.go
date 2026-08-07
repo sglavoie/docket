@@ -94,10 +94,10 @@ func (model *OperationTextPromptModel) render(width int) string {
 		content.String(),
 		innerWidth,
 		lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(model.title),
-		HelpStyle.Render(strings.Join(guidanceLines(GuidanceSpec{
+		renderGuidanceText(GuidanceSpec{
 			Hints: requiredGuidanceHints("Enter apply", "Esc back"),
 			Rows:  2,
-		}, max(innerWidth-4, 1)), "\n")),
+		}, max(innerWidth-4, 1)),
 		lipgloss.NewStyle().Foreground(ColorPrimary),
 	)
 }

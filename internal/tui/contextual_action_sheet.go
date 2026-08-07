@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
@@ -402,7 +401,7 @@ func (model *ContextActionSheetModel) render(width int) string {
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()
-	footer := HelpStyle.Render(strings.Join(guidanceLines(guidance, max(innerWidth-4, 1)), "\n"))
+	footer := renderGuidanceText(guidance, max(innerWidth-4, 1))
 	return renderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
 }
 

@@ -154,10 +154,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// Title and footer text (computed early so we can size the box to fit)
 	titleStyle := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	title := titleStyle.Render("Confirm")
-	footerText := MutedStyle.Render(strings.Join(
-		guidanceLines(confirmationGuidanceSpec(), max(width-8, 1)),
-		"\n",
-	))
+	footerText := renderGuidanceText(confirmationGuidanceSpec(), max(width-8, 1))
 
 	// Minimum Width() value so titled borders fit (╭─ text ─…─╮ needs
 	// textWidth + 5 decoration chars + at least 1 dash = textWidth + 6).

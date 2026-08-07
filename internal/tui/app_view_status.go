@@ -95,9 +95,12 @@ func (m *AppModel) renderStatusBar() string {
 	help := ""
 	if showHelp {
 		if hint := pipelineNextHint(currentView); hint != "" {
-			help = hint
+			help = HelpStyle.Render(hint)
 		} else {
-			help = strings.Join(guidanceLines(escapeGuidanceSpec(), m.width), footerHelpSeparator)
+			help = strings.Join(
+				renderGuidanceLines(escapeGuidanceSpec(), m.width),
+				HelpStyle.Render(footerHelpSeparator),
+			)
 		}
 	}
 
@@ -137,7 +140,7 @@ func (m *AppModel) renderStatusBar() string {
 		}
 	}
 
-	right := HelpStyle.Render(help)
+	right := help
 	left, right = fitStatusBarSegments(left, right, m.width)
 	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
 	spacer := ThemeSpacer(gap)

@@ -152,12 +152,67 @@ func guidanceHintText(hint GuidanceHint) string {
 	return strings.TrimSpace(strings.TrimSpace(hint.Key) + " " + strings.TrimSpace(hint.Label))
 }
 
-// guidanceLines selects and packs complete entries within the spec's row
+// guidanceSegment is one packed footer entry. Key and Label carry a keystroke
+// entry whose two halves are colored apart at render time; Verbatim carries
+// supplemental state text that names no keystroke and stays fully muted.
+type guidanceSegment struct {
+	Key      string
+	Label    string
+	Verbatim string
+}
+
+func (segment guidanceSegment) text() string {
+	if segment.Verbatim != "" {
+		return segment.Verbatim
+	}
+	return guidanceHintText(GuidanceHint{Key: segment.Key, Label: segment.Label})
+}
+
+// fitToWidth clips one segment for the narrow fallback path, keeping the
+// keystroke intact so the entry stays actionable and only its label loses
+// characters. A key too wide to pair with any label degrades to verbatim text.
+func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
+	text := segment.text()
+	width = max(width, 1)
+	if lipgloss.Width(text) <= width {
+		return segment
+	}
+	key := strings.TrimSpace(segment.Key)
+	if segment.Verbatim == "" && key != "" && lipgloss.Width(key)+1 < width {
+		label := truncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
+		return guidanceSegment{Key: key, Label: label}
+	}
+	return guidanceSegment{Verbatim: truncateToVisualWidth(text, width)}
+}
+
+func guidanceLineText(segments []guidanceSegment) string {
+	texts := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		texts = append(texts, segment.text())
+	}
+	return strings.Join(texts, footerHelpSeparator)
+}
+
+// guidanceLines is the plain-text projection of the packed guidance. Packing
+// stays plain so every width decision is made before any styling exists.
+func guidanceLines(spec GuidanceSpec, width int) []string {
+	segmentLines := guidanceSegmentLines(spec, width)
+	if len(segmentLines) == 0 {
+		return nil
+	}
+	lines := make([]string, 0, len(segmentLines))
+	for _, segments := range segmentLines {
+		lines = append(lines, guidanceLineText(segments))
+	}
+	return lines
+}
+
+// guidanceSegmentLines selects and packs complete entries within the spec's row
 // budget. Required entries are reserved first. Optional entries are considered
 // by priority while successful entries retain declaration order; after one
 // optional entry cannot fit, lower-priority entries are not promoted. The
 // supplemental value is attempted last and therefore drops first under pressure.
-func guidanceLines(spec GuidanceSpec, width int) []string {
+func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	if width <= 0 {
 		width = 80
 	}
@@ -167,40 +222,40 @@ func guidanceLines(spec GuidanceSpec, width int) []string {
 	}
 
 	type candidate struct {
-		index int
-		hint  GuidanceHint
-		text  string
+		index   int
+		hint    GuidanceHint
+		segment guidanceSegment
 	}
 	candidates := make([]candidate, 0, len(spec.Hints))
 	selected := make(map[int]bool, len(spec.Hints))
 	for index, hint := range spec.Hints {
-		text := guidanceHintText(hint)
-		if text == "" {
+		segment := guidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label)}
+		if segment.text() == "" {
 			continue
 		}
-		entryCandidate := candidate{index: index, hint: hint, text: text}
+		entryCandidate := candidate{index: index, hint: hint, segment: segment}
 		candidates = append(candidates, entryCandidate)
 		if hint.Required {
 			selected[index] = true
 		}
 	}
 
-	selectedEntries := func(extra string) []string {
-		entries := make([]string, 0, len(selected)+1)
+	selectedSegments := func(extra string) []guidanceSegment {
+		segments := make([]guidanceSegment, 0, len(selected)+1)
 		for _, candidate := range candidates {
 			if selected[candidate.index] {
-				entries = append(entries, candidate.text)
+				segments = append(segments, candidate.segment)
 			}
 		}
 		if extra = strings.TrimSpace(extra); extra != "" {
-			entries = append(entries, extra)
+			segments = append(segments, guidanceSegment{Verbatim: extra})
 		}
-		return entries
+		return segments
 	}
 
-	lines, requiredFit := packGuidanceEntries(selectedEntries(""), width, rows)
+	lines, requiredFit := packGuidanceSegments(selectedSegments(""), width, rows)
 	if !requiredFit {
-		return fitRequiredGuidanceEntries(selectedEntries(""), width, rows)
+		return fitRequiredGuidanceSegments(selectedSegments(""), width, rows)
 	}
 
 	optional := make([]candidate, 0, len(candidates))
@@ -214,7 +269,7 @@ func guidanceLines(spec GuidanceSpec, width int) []string {
 	})
 	for _, candidate := range optional {
 		selected[candidate.index] = true
-		packed, ok := packGuidanceEntries(selectedEntries(""), width, rows)
+		packed, ok := packGuidanceSegments(selectedSegments(""), width, rows)
 		if !ok {
 			delete(selected, candidate.index)
 			break
@@ -223,70 +278,103 @@ func guidanceLines(spec GuidanceSpec, width int) []string {
 	}
 
 	if supplemental := strings.TrimSpace(spec.Supplemental); supplemental != "" {
-		if packed, ok := packGuidanceEntries(selectedEntries(supplemental), width, rows); ok {
+		if packed, ok := packGuidanceSegments(selectedSegments(supplemental), width, rows); ok {
 			lines = packed
 		}
 	}
 	return lines
 }
 
-func packGuidanceEntries(entries []string, width, maxLines int) ([]string, bool) {
-	if len(entries) == 0 || width <= 0 || maxLines <= 0 {
-		return nil, len(entries) == 0
+func packGuidanceSegments(segments []guidanceSegment, width, maxLines int) ([][]guidanceSegment, bool) {
+	if len(segments) == 0 || width <= 0 || maxLines <= 0 {
+		return nil, len(segments) == 0
 	}
-	lines := make([]string, 0, maxLines)
-	for _, entry := range entries {
-		entry = strings.TrimSpace(entry)
-		if entry == "" || lipgloss.Width(entry) > width {
+	lines := make([][]guidanceSegment, 0, maxLines)
+	for _, segment := range segments {
+		text := segment.text()
+		if text == "" || lipgloss.Width(text) > width {
 			return nil, false
 		}
 		if len(lines) == 0 {
-			lines = append(lines, entry)
+			lines = append(lines, []guidanceSegment{segment})
 			continue
 		}
-		candidate := lines[len(lines)-1] + footerHelpSeparator + entry
+		last := len(lines) - 1
+		candidate := guidanceLineText(lines[last]) + footerHelpSeparator + text
 		if lipgloss.Width(candidate) <= width {
-			lines[len(lines)-1] = candidate
+			lines[last] = append(lines[last], segment)
 			continue
 		}
 		if len(lines) == maxLines {
 			return nil, false
 		}
-		lines = append(lines, entry)
+		lines = append(lines, []guidanceSegment{segment})
 	}
 	return lines, true
 }
 
-func fitRequiredGuidanceEntries(entries []string, width, rows int) []string {
-	lines := make([]string, 0, rows)
-	for _, entry := range entries {
-		entry = strings.TrimSpace(entry)
-		if entry == "" {
+func fitRequiredGuidanceSegments(segments []guidanceSegment, width, rows int) [][]guidanceSegment {
+	lines := make([][]guidanceSegment, 0, rows)
+	for _, segment := range segments {
+		segment = segment.fitToWidth(width)
+		if segment.text() == "" {
 			continue
 		}
-		entry = fitPlainLineToWidth(entry, width)
 		if len(lines) == 0 {
-			lines = append(lines, entry)
+			lines = append(lines, []guidanceSegment{segment})
 			continue
 		}
-		candidate := lines[len(lines)-1] + footerHelpSeparator + entry
+		last := len(lines) - 1
+		candidate := guidanceLineText(lines[last]) + footerHelpSeparator + segment.text()
 		if lipgloss.Width(candidate) <= width {
-			lines[len(lines)-1] = candidate
+			lines[last] = append(lines[last], segment)
 			continue
 		}
 		if len(lines) == rows {
 			break
 		}
-		lines = append(lines, entry)
+		lines = append(lines, []guidanceSegment{segment})
 	}
 	return lines
 }
 
-func fitPlainLineToWidth(line string, width int) string {
-	if lipgloss.Width(line) <= width {
-		return line
+// renderGuidanceSegment colors the keystroke apart from its action so the key
+// carries the scan weight. Supplemental state text names no key and stays muted.
+func renderGuidanceSegment(segment guidanceSegment) string {
+	if segment.Verbatim != "" {
+		return HelpStyle.Render(segment.Verbatim)
 	}
-	return truncateToVisualWidth(line, max(width, 1))
+	key := strings.TrimSpace(segment.Key)
+	label := strings.TrimSpace(segment.Label)
+	switch {
+	case key == "":
+		return HelpStyle.Render(label)
+	case label == "":
+		return HelpKeyStyle.Render(key)
+	}
+	return HelpKeyStyle.Render(key) + HelpStyle.Render(" "+label)
+}
+
+// renderGuidanceLines styles the packed guidance one segment at a time. Styling
+// happens after packing, so the visible width matches the plain projection.
+func renderGuidanceLines(spec GuidanceSpec, width int) []string {
+	if width <= 0 {
+		width = 80
+	}
+	segmentLines := guidanceSegmentLines(spec, width)
+	if len(segmentLines) == 0 {
+		return nil
+	}
+	separator := HelpStyle.Render(footerHelpSeparator)
+	lines := make([]string, 0, len(segmentLines))
+	for _, segments := range segmentLines {
+		styled := make([]string, 0, len(segments))
+		for _, segment := range segments {
+			styled = append(styled, renderGuidanceSegment(segment))
+		}
+		lines = append(lines, truncateToVisualWidth(strings.Join(styled, separator), width))
+	}
+	return lines
 }
 
 // renderGuidance is the sole structured guidance renderer used by shell-owned
@@ -296,7 +384,7 @@ func renderGuidance(spec GuidanceSpec, width int, accent ...color.Color) string 
 	if width <= 0 {
 		width = 80
 	}
-	lines := guidanceLines(spec, width)
+	lines := renderGuidanceLines(spec, width)
 	if len(lines) == 0 {
 		return ""
 	}
@@ -306,22 +394,14 @@ func renderGuidance(spec GuidanceSpec, width int, accent ...color.Color) string 
 	} else {
 		separatorStyle = MutedStyle
 	}
-	styled := make([]string, 0, len(lines))
-	for _, line := range lines {
-		styled = append(styled, HelpStyle.Render(fitPlainLineToWidth(line, width)))
-	}
-	return separatorStyle.Render(strings.Repeat("─", width)) + "\n" + strings.Join(styled, "\n")
+	return separatorStyle.Render(strings.Repeat("─", width)) + "\n" + strings.Join(lines, "\n")
 }
 
 // renderGuidanceText renders structured guidance without a divider. Inline
 // overlays use it inside their own bordered frame, where a second separator
 // would duplicate the frame's visual boundary.
 func renderGuidanceText(spec GuidanceSpec, width int) string {
-	lines := guidanceLines(spec, width)
-	if len(lines) == 0 {
-		return ""
-	}
-	return HelpStyle.Render(strings.Join(lines, "\n"))
+	return strings.Join(renderGuidanceLines(spec, width), "\n")
 }
 
 // requiredActionGuidanceSpec builds the common two-row contract for active

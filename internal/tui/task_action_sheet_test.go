@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -231,7 +232,7 @@ func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 	if query := sheet.surface.Query().Raw; query != "" {
 		t.Fatalf("Ctrl+J/Ctrl+K changed the immediate-filter query to %q", query)
 	}
-	if view := sheet.render(100); !strings.Contains(view, "↑↓/Ctrl+j/k move") {
+	if view := sheet.render(100); !strings.Contains(ansi.Strip(view), "↑↓/Ctrl+j/k move") {
 		t.Fatalf("task action sheet footer does not advertise Ctrl+j/k navigation:\n%s", view)
 	}
 }

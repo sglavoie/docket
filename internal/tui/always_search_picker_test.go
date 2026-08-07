@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -97,7 +98,7 @@ func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
 	if !strings.Contains(view, parentSelectorNoParentLabel) {
 		t.Fatalf("expected no-parent label %q in view, got:\n%s", parentSelectorNoParentLabel, view)
 	}
-	if !strings.Contains(view, "Ctrl+X no parent") {
+	if !strings.Contains(ansi.Strip(view), "Ctrl+X no parent") {
 		t.Fatalf("expected Ctrl+X no-parent hint in view, got:\n%s", view)
 	}
 }

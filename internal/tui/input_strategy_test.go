@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -610,7 +611,7 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 		if !strings.Contains(row, "h help") {
 			t.Errorf("which-key row %q omits the chord's hint", row)
 		}
-		if !strings.Contains(app.renderStatusBar(), "h help") {
+		if !strings.Contains(ansi.Strip(app.renderStatusBar()), "h help") {
 			t.Error("the status bar footer does not show the pending chord")
 		}
 	})

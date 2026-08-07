@@ -6,7 +6,7 @@
     { "type": "resize", "width": 100, "height": 35 },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "Outliner · Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "contains", "value": "Doing" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

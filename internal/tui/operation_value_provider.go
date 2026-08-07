@@ -522,7 +522,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 			content,
 			innerWidth,
 			title,
-			HelpStyle.Render(strings.Join(guidanceLines(guidance, max(innerWidth-4, 1)), "\n")),
+			renderGuidanceText(guidance, max(innerWidth-4, 1)),
 			lipgloss.NewStyle().Foreground(ColorPrimary),
 		)
 	}
@@ -572,7 +572,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		content,
 		innerWidth,
 		title,
-		HelpStyle.Render(strings.Join(guidanceLines(guidance, max(innerWidth-4, 1)), "\n")),
+		renderGuidanceText(guidance, max(innerWidth-4, 1)),
 		lipgloss.NewStyle().Foreground(ColorPrimary),
 	)
 }

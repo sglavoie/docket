@@ -3,11 +3,11 @@
   "fixture": "busy",
   "size": "99x35",
   "actions": [
-    { "type": "assert", "assert": "contains", "value": "Outliner · Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "label": "the full-screen title carries the nonzero workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · today 0 · overdue 1" },
     { "type": "assert", "label": "Today remains visible at zero", "assert": "contains", "value": "today 0" },
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
-    { "type": "assert", "assert": "contains", "value": "Outliner · Active Projects · Inbox" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 1" },
     { "type": "key", "label": "open state and planning actions", "key": "s" },
     { "type": "key", "label": "triage the first Inbox task to Next", "key": "n" },

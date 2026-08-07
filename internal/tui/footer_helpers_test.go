@@ -112,6 +112,71 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 	}
 }
 
+func TestGuidanceSegmentsKeepKeysApartFromLabelsAndSupplemental(t *testing.T) {
+	spec := pendingChordGuidanceSpec("s", []ChordHint{{Key: "i", Label: "inbox"}})
+	spec.Supplemental = "search: alpha · location: Global"
+
+	lines := guidanceSegmentLines(spec, 80)
+	if len(lines) != 1 {
+		t.Fatalf("segment lines = %d, want 1: %v", len(lines), lines)
+	}
+	want := []guidanceSegment{
+		{Key: "s…"},
+		{Key: "i", Label: "inbox"},
+		{Key: "Esc", Label: "cancel"},
+		{Verbatim: "search: alpha · location: Global"},
+	}
+	if !slices.Equal(lines[0], want) {
+		t.Fatalf("segments = %v, want %v", lines[0], want)
+	}
+	plain := "s… · i inbox · Esc cancel · search: alpha · location: Global"
+	if got := strings.Join(guidanceLines(spec, 80), "\n"); got != plain {
+		t.Fatalf("plain guidance = %q, want %q", got, plain)
+	}
+}
+
+func TestRenderedGuidanceColorsKeysAndPreservesPlainText(t *testing.T) {
+	spec := GuidanceSpec{
+		Hints:        requiredGuidanceHints("Enter create", "Esc cancel"),
+		Supplemental: "50%",
+		Rows:         1,
+	}
+	rendered := renderGuidanceText(spec, 60)
+	for _, want := range []string{
+		HelpKeyStyle.Render("Enter"),
+		HelpStyle.Render(" create"),
+		HelpKeyStyle.Render("Esc"),
+		HelpStyle.Render(" cancel"),
+		HelpStyle.Render("50%"),
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("rendered guidance %q omits styled fragment %q", rendered, want)
+		}
+	}
+	plain := strings.Join(guidanceLines(spec, 60), "\n")
+	if got := ansi.Strip(rendered); got != plain {
+		t.Fatalf("styled guidance text = %q, want plain %q", got, plain)
+	}
+	if got := lipgloss.Width(rendered); got != lipgloss.Width(plain) {
+		t.Fatalf("styled guidance width = %d, want %d", got, lipgloss.Width(plain))
+	}
+}
+
+func TestGuidanceSegmentFitToWidthKeepsKeyAndClipsLabel(t *testing.T) {
+	segment := guidanceSegment{Key: "Ctrl+D", Label: "create & edit"}
+	fitted := segment.fitToWidth(10)
+	if fitted.Key != "Ctrl+D" {
+		t.Fatalf("fitted key = %q, want the keystroke intact", fitted.Key)
+	}
+	if got := lipgloss.Width(fitted.text()); got > 10 {
+		t.Fatalf("fitted width = %d, want <= 10: %q", got, fitted.text())
+	}
+	degraded := segment.fitToWidth(4)
+	if degraded.Key != "" || degraded.Verbatim == "" {
+		t.Fatalf("segment narrower than its key = %+v, want verbatim clip", degraded)
+	}
+}
+
 func TestGuidanceFromGatedKeyMapMatchesHelpAndHandledKeys(t *testing.T) {
 	live := true
 	km := &keymap.KeyMap{Entries: []keymap.Entry{

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -78,7 +79,7 @@ func newOperationTagPickerForTest(t *testing.T, tags ...string) *OperationValueP
 func TestOperationTagPickerCreatesSelectsAndAppliesNewTag(t *testing.T) {
 	picker := newOperationTagPickerForTest(t, "zeta")
 	picker.surface.SetQuery("stale")
-	if rendered := picker.render(90); !strings.Contains(rendered, "a add tag") {
+	if rendered := picker.render(90); !strings.Contains(ansi.Strip(rendered), "a add tag") {
 		t.Fatalf("Set Tags help does not advertise tag creation:\n%s", rendered)
 	}
 
@@ -121,7 +122,7 @@ func TestOperationTagPickerCreatesSelectsAndAppliesNewTag(t *testing.T) {
 
 func TestOperationTagPickerValidatesInputAndEscapesBackToPicker(t *testing.T) {
 	picker := newOperationTagPickerForTest(t)
-	if rendered := picker.render(90); !strings.Contains(rendered, "a add tag") {
+	if rendered := picker.render(90); !strings.Contains(ansi.Strip(rendered), "a add tag") {
 		t.Fatalf("empty Set Tags help does not advertise tag creation:\n%s", rendered)
 	}
 

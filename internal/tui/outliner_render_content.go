@@ -139,7 +139,6 @@ func (m *OutlinerModel) buildOutlinerInteractionContext() []string {
 // buildOutlinerTitleLine assembles the Outliner's one-row operational title.
 func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 	return renderOperationalTitle(operationalTitleSpec{
-		Surface: TitleStyle.Render("Outliner"),
 		Scope:   TitleStyle.Render(m.outlinerScopeLabel()),
 		Mode:    operationalTitleModeSegment(m.activeOutlinerModeEntry()),
 		Context: m.buildOutlinerInteractionContext(),
