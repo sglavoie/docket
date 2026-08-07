@@ -141,12 +141,13 @@ type OutlinerModel struct {
 	// same operation metadata used by shell dispatch.
 	operationRegistry *OperationRegistry
 
-	// openLoops mirrors AppModel.openLoops for the title-row Zeigarnik counter.
-	openLoops OpenLoops
+	// workspacePulse mirrors AppModel.workspacePulse for the title-row
+	// operational counter.
+	workspacePulse WorkspacePulse
 }
 
-// setOpenLoops injects the latest cross-project open-loop counts into the view.
-func (m *OutlinerModel) setOpenLoops(o OpenLoops) { m.openLoops = o }
+// setWorkspacePulse injects the latest cross-project operational counts.
+func (m *OutlinerModel) setWorkspacePulse(pulse WorkspacePulse) { m.workspacePulse = pulse }
 
 func (m *OutlinerModel) resetViewScrollOffset() {
 	m.viewScrollOffset = 0

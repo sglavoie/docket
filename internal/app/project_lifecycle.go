@@ -43,31 +43,33 @@ func (s *Service) CommitWorkspaceBootstrap(ops []transaction.Op, artifacts ...st
 	return oc.CommitOps(ops, artifacts)
 }
 
-// CommitProjectMutation commits one user-visible project lifecycle mutation
-// through the shared journal and workspace undo ledger. Repositories predating
-// the ledger-aware capability still preserve atomicity through OpsCommitter.
-func (s *Service) CommitProjectMutation(request storage.OpsCommitRequest) error {
+// CommitProjectMutationResult commits one user-visible project lifecycle
+// mutation through the shared journal and workspace undo ledger. The returned
+// ID is the durable transaction identity recorded in the workspace ledger.
+// Legacy repositories that only implement OpsCommitter still commit atomically
+// but return an empty identity, so presentation layers fail closed and omit
+// recovery controls.
+func (s *Service) CommitProjectMutationResult(request storage.OpsCommitRequest) (string, error) {
 	oc, err := s.opsCommitter()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if undoable, ok := oc.(UndoableOpsCommitter); ok {
-		_, err := undoable.CommitOpsTransaction(request)
-		return err
+		return undoable.CommitOpsTransaction(request)
 	}
-	return oc.CommitOps(request.Ops, request.Artifacts)
+	return "", oc.CommitOps(request.Ops, request.Artifacts)
 }
 
-// CommitProjectArtifacts is the artifact-only form used by project pin,
-// archive, and restore metadata changes. It shares the same ledger-aware
-// application boundary without manufacturing a tasks.md rewrite.
-func (s *Service) CommitProjectArtifacts(request storage.ArtifactCommitRequest) error {
+// CommitProjectArtifactsResult commits artifact-only project pin, archive, and
+// restore metadata changes through the ledger-aware application boundary
+// without manufacturing a tasks.md rewrite. It returns the durable transaction
+// identity recorded in the workspace ledger.
+func (s *Service) CommitProjectArtifactsResult(request storage.ArtifactCommitRequest) (string, error) {
 	committer, ok := s.repo.(ArtifactCommitter)
 	if !ok {
-		return fmt.Errorf("app: repository does not support project artifact commits")
+		return "", fmt.Errorf("app: repository does not support project artifact commits")
 	}
-	_, err := committer.CommitArtifactTransaction(request)
-	return err
+	return committer.CommitArtifactTransaction(request)
 }
 
 // RenameProjectRequest asks to rename a project as one atomic transaction. Project
@@ -89,33 +91,32 @@ type RenameProjectRequest struct {
 	Config                 []storage.ArtifactChange
 }
 
-// RenameProject renames a project's data directory, rewrites its tasks.md heading,
-// updates the catalog as ONE atomic journaled transaction. Either the whole rename
-// lands (directory at the new slug, heading and catalog updated) or none of it does; a crash
-// mid-commit is rolled forward by recovery. This replaces the pre-migration path
-// that renamed the directory eagerly during validation and then saved the config,
-// tasks.md, and each referencing project as independent effects, any of which
-// could fail after the directory had already moved.
-func (s *Service) RenameProject(req RenameProjectRequest) error {
+// RenameProjectResult renames a project's data directory, rewrites its tasks.md
+// heading, and updates the catalog as ONE atomic journaled transaction. Either
+// the whole rename lands (directory at the new slug, heading and catalog
+// updated) or none of it does; a crash mid-commit is rolled forward by recovery.
+// It returns the transaction ID that correlates the resulting user feedback
+// with the newest workspace-ledger entry.
+func (s *Service) RenameProjectResult(req RenameProjectRequest) (string, error) {
 	if req.Project == nil {
-		return invalidInput("project", "project is required")
+		return "", invalidInput("project", "project is required")
 	}
 	protectedID := req.SystemUnfiledProjectID
 	if protectedID != "" &&
 		req.Project.ID == protectedID &&
 		(req.OldName == "" || req.OldName != req.Project.Name || req.OldSlug != req.NewSlug) {
-		return fmt.Errorf(
+		return "", fmt.Errorf(
 			"%w: project %q name and slug are immutable",
 			ErrProtectedSystemUnfiled,
 			req.Project.ID,
 		)
 	}
 	if req.TasksMarkdown != nil && req.TasksExpectedRevision == nil {
-		return invalidInput("tasks revision", "renamed tasks.md requires an expected revision")
+		return "", invalidInput("tasks revision", "renamed tasks.md requires an expected revision")
 	}
 	plan, err := storage.PlanProjectRename(req.DataDir, req.OldSlug, req.NewSlug)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	ops := make([]transaction.Op, 0, len(plan.Ops))
@@ -138,15 +139,16 @@ func (s *Service) RenameProject(req RenameProjectRequest) error {
 		artifacts = append(artifacts, tasksWrite)
 	}
 	artifacts = append(artifacts, req.Config...)
-	if err := s.CommitProjectMutation(storage.OpsCommitRequest{
+	transactionID, err := s.CommitProjectMutationResult(storage.OpsCommitRequest{
 		Ops:         ops,
 		Artifacts:   artifacts,
 		ProjectIDs:  []string{req.Project.ID},
 		UndoAction:  "Edit Project",
 		UndoContext: req.Project.Name,
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		return "", err
 	}
 	req.Project.Path = plan.NewPath
-	return nil
+	return transactionID, nil
 }

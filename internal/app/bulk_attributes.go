@@ -73,9 +73,16 @@ func (s *Service) bulkAttribute(taskIDs []string, locators []TaskLocator, undoAc
 	}
 	committed = true
 
-	out := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	out := BulkResult{
+		Tasks:         make([]TaskResult, 0, len(refs)),
+		TransactionID: transactionIDAt(results.results, 0),
+	}
 	for _, r := range refs {
-		out.Tasks = append(out.Tasks, newTaskResult(r, revisionAt(results.results, idx[r.Project.ID])))
+		out.Tasks = append(out.Tasks, newTaskResult(
+			r,
+			revisionAt(results.results, idx[r.Project.ID]),
+			transactionIDAt(results.results, idx[r.Project.ID]),
+		))
 	}
 	for _, c := range commits {
 		out.TouchedProjectIDs = append(out.TouchedProjectIDs, c.project.ID)
@@ -190,9 +197,16 @@ func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLo
 	}
 	committed = true
 
-	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	result := BulkResult{
+		Tasks:         make([]TaskResult, 0, len(refs)),
+		TransactionID: transactionIDAt(outcome.results, 0),
+	}
 	for _, ref := range refs {
-		result.Tasks = append(result.Tasks, newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])))
+		result.Tasks = append(result.Tasks, newTaskResult(
+			ref,
+			revisionAt(outcome.results, indexes[ref.Project.ID]),
+			transactionIDAt(outcome.results, indexes[ref.Project.ID]),
+		))
 	}
 	for _, commit := range commits {
 		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)
@@ -300,9 +314,16 @@ func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *ti
 	}
 	committed = true
 
-	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	result := BulkResult{
+		Tasks:         make([]TaskResult, 0, len(refs)),
+		TransactionID: transactionIDAt(outcome.results, 0),
+	}
 	for _, ref := range refs {
-		result.Tasks = append(result.Tasks, newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])))
+		result.Tasks = append(result.Tasks, newTaskResult(
+			ref,
+			revisionAt(outcome.results, indexes[ref.Project.ID]),
+			transactionIDAt(outcome.results, indexes[ref.Project.ID]),
+		))
 	}
 	for _, commit := range commits {
 		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)
@@ -444,9 +465,16 @@ func (s *Service) BulkToggleTagByLocators(locators []TaskLocator, tag string) (B
 		return BulkResult{}, err
 	}
 	committed = true
-	out := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	out := BulkResult{
+		Tasks:         make([]TaskResult, 0, len(refs)),
+		TransactionID: transactionIDAt(results.results, 0),
+	}
 	for _, ref := range refs {
-		out.Tasks = append(out.Tasks, newTaskResult(ref, revisionAt(results.results, index[ref.Project.ID])))
+		out.Tasks = append(out.Tasks, newTaskResult(
+			ref,
+			revisionAt(results.results, index[ref.Project.ID]),
+			transactionIDAt(results.results, index[ref.Project.ID]),
+		))
 	}
 	for _, commit := range commits {
 		out.TouchedProjectIDs = append(out.TouchedProjectIDs, commit.project.ID)

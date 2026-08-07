@@ -57,7 +57,10 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after", "tail")
 	outliner.cursor = 0 // The mutation refresh follows the relocated task.
-	outliner.finishOutlinerRelocation(capture, true)
+	_, recorded := outliner.finishOutlinerRelocation(capture, true)
+	if !recorded {
+		t.Fatal("relocation moved rows but did not report recorded origin history")
+	}
 	if len(outliner.relocationHistory.back) != 1 || len(outliner.relocationHistory.forward) != 0 {
 		t.Fatalf("history after relocation = back %d forward %d, want 1/0",
 			len(outliner.relocationHistory.back), len(outliner.relocationHistory.forward))
@@ -72,6 +75,16 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 
 	outliner.jumpForward()
 	requireCurrentJumpTask(t, outliner, target)
+}
+
+func TestOutlinerRelocationReportsNoOriginWhenRowDoesNotMove(t *testing.T) {
+	outliner, _ := jumpHistoryFixture("target", "after")
+	target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+	outliner.cursor = 0
+	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	if _, recorded := outliner.finishOutlinerRelocation(capture, true); recorded {
+		t.Fatal("unchanged row advertised recorded origin history")
+	}
 }
 
 func TestOutlinerRelocationOriginFallsBackToPrecedingThenNearestRow(t *testing.T) {
@@ -331,19 +344,17 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 		t.Fatalf("Doing update left target at row %d; fixture did not exercise relocation", originRow)
 	}
 
-	batchMsg, ok := saveCmd().(tea.BatchMsg)
-	if !ok || len(batchMsg) == 0 {
-		t.Fatalf("save refresh = %T, want batch containing cross-project reload", saveCmd())
+	loadedMsg := saveCmd()
+	for depth := 0; depth < 4; depth++ {
+		batch, batched := loadedMsg.(tea.BatchMsg)
+		if !batched || len(batch) == 0 {
+			break
+		}
+		loadedMsg = batch[0]()
 	}
-	reloadMsg := batchMsg[0]()
-	reloadBatch, ok := reloadMsg.(tea.BatchMsg)
-	if !ok || len(reloadBatch) == 0 {
-		t.Fatalf("first save refresh command = %T, want reload batch", reloadMsg)
-	}
-	loadedMsg := reloadBatch[0]()
 	loaded, ok := loadedMsg.(crossProjectsLoadedMsg)
 	if !ok {
-		t.Fatalf("reload command = %T, want crossProjectsLoadedMsg", loadedMsg)
+		t.Fatalf("nested reload command = %T, want crossProjectsLoadedMsg", loadedMsg)
 	}
 	outliner.handleCrossProjectsLoaded(loaded)
 	if len(outliner.relocationHistory.back) != 1 {

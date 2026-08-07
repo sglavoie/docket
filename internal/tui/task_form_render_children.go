@@ -45,7 +45,7 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 		b.WriteString(sep)
 		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
 		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(MutedStyle.Render("  c: toggle · Ctrl+A: add"))
+		b.WriteString(MutedStyle.Render("  c toggle · Ctrl+A add"))
 	} else {
 		b.WriteString(FieldLabelStyle.Render("  "))
 		b.WriteString(sep)
@@ -80,7 +80,7 @@ func (m *TaskFormModel) renderChecklistItemRow(item models.ChecklistItem, focuse
 	}
 	line := fmt.Sprintf("%s %s", checkIcon, text)
 	if focused {
-		hint := MutedStyle.Render("  Enter: edit · Space: check · Ctrl+D: del · Ctrl+J/K: move")
+		hint := MutedStyle.Render("  Enter edit · Space check · Ctrl+D delete · Ctrl+J/K move")
 		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
@@ -107,7 +107,7 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 		b.WriteString(sep)
 		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
 		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(MutedStyle.Render("  S: toggle · Ctrl+T: add"))
+		b.WriteString(MutedStyle.Render("  S toggle · Ctrl+T add"))
 	} else {
 		b.WriteString(FieldLabelStyle.Render("  "))
 		b.WriteString(sep)
@@ -139,7 +139,7 @@ func renderSubtaskItemRow(st formSubtaskDraft, focused bool) string {
 	}
 	line := title
 	if focused {
-		hint := MutedStyle.Render("  Enter: edit · Ctrl+D: del · Ctrl+J/K: move")
+		hint := MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
 		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"

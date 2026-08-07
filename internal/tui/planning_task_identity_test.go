@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -89,7 +90,7 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	}
 }
 
-func TestPlanningOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
+func TestPlanningWorkspacePulseDoesNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
 	alphaTask.WorkflowState = models.StateBacklog
 	betaTask.WorkflowState = models.StateBacklog
@@ -103,9 +104,9 @@ func TestPlanningOpenLoopsDoNotBleedAcrossDuplicateTaskIDs(t *testing.T) {
 	defer func() { storage.DefaultRepository = oldRepo }()
 
 	runtime := testConfigWithProjects(alpha, beta)
-	loops := ComputeOpenLoops(runtime, map[TaskIdentity]bool{alphaID: true})
-	if loops.TodayTotal != 1 {
-		t.Fatalf("Today open-loop total = %d, want only alpha's qualified task", loops.TodayTotal)
+	pulse := ComputeWorkspacePulse(runtime, map[TaskIdentity]bool{alphaID: true}, time.Now())
+	if pulse.Today != 1 {
+		t.Fatalf("Today workspace pulse = %d, want only alpha's qualified task", pulse.Today)
 	}
 }
 

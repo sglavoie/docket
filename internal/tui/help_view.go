@@ -79,9 +79,13 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	if m.tabSearchMode {
 		tabSearchHeight = 2
 	}
-	statusBarHeight := 3 // blank line + separator + bar
+	titleHeight := 1
+	statusBarHeight := 3 // blank line + divider + one browse-guidance row
+	if m.searchMode || m.tabSearchMode {
+		statusBarHeight++ // active input may use the two-row guidance budget
+	}
 	tabBarHeight := m.tabBarLines()
-	viewportHeight := height - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
+	viewportHeight := height - titleHeight - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
 	if viewportHeight < 5 {
 		viewportHeight = 5
 	}

@@ -32,6 +32,7 @@ const (
 var uitestAssertKinds = map[string]bool{
 	"contains":         true,
 	"not_contains":     true,
+	"count_contains":   true,
 	"view":             true,
 	"no_layout_issues": true,
 	"status_contains":  true,
@@ -162,6 +163,14 @@ func (a UITestAction) validate() error {
 	case UITestActionAssert:
 		if !uitestAssertKinds[a.Assert] {
 			return fmt.Errorf("unknown or missing assertion kind %q", a.Assert)
+		}
+		if a.Assert == "count_contains" {
+			if a.Value == "" {
+				return errors.New("count_contains assertion has empty value")
+			}
+			if a.Count <= 0 {
+				return fmt.Errorf("count_contains assertion needs a positive count, got %d", a.Count)
+			}
 		}
 	default:
 		return fmt.Errorf("unknown action type %q", a.Type)

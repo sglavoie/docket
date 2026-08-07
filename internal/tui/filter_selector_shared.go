@@ -18,6 +18,10 @@ func filterSelectorUpdate[T PickerItem](picker *ListSurfaceAdapter[T], msg tea.M
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
+			if picker.IsSearchMode() {
+				_, cmd := picker.HandleKeyMsg(msg)
+				return cmd
+			}
 			return cancelMsg
 		case "enter":
 			if picker.IsSearchMode() {

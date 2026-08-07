@@ -44,6 +44,7 @@ type taskFormDraft struct {
 
 // TaskFormModel drives both Create and Edit flows (D1, D11).
 type TaskFormModel struct {
+	workspacePulseState
 	mode              FormMode
 	project           *models.Project
 	task              *models.Task // non-nil in FormModeEdit

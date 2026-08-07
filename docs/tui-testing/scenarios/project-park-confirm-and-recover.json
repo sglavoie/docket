@@ -26,9 +26,9 @@
 
     { "type": "assert", "label": "the rows leave the task workspace", "assert": "not_contains", "value": "[client-alpha] (1)" },
     { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
-    { "type": "assert", "label": "the status carries both recovery routes", "assert": "status_contains", "value": "Parked Client Alpha · 1 task hidden · Fp to show · u to undo" },
+    { "type": "assert", "label": "the status carries both recovery routes", "assert": "status_contains", "value": "Park Project: Client Alpha · 1 task hidden · Fp to show · u undo" },
     { "type": "wait" },
-    { "type": "assert", "label": "the filtered population says how much it is hiding", "assert": "contains", "value": "[Active Projects · 1 parked]" },
+    { "type": "assert", "label": "the filtered population says how much it is hiding", "assert": "contains", "value": "Active Projects · 1 parked" },
     { "type": "assert", "label": "the surviving projects are untouched", "assert": "contains", "value": "[client-beta] (1)" },
     { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
     { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },

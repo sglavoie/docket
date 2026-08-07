@@ -168,18 +168,11 @@ func (m *OutlinerModel) clampCursor() {
 	}
 }
 
-// contentHeight returns the number of task rows visible on screen,
-// accounting for the title header and optional breadcrumb line.
+// contentHeight returns the number of task rows visible on screen after the
+// one-row operational title. Zoom and scope context are part of that title and
+// never consume a second breadcrumb row.
 func (m *OutlinerModel) contentHeight() int {
-	headerLines := 1
-	// The cross-project breadcrumb renders on one line whenever the view is
-	// zoomed OR a project scope is active (the scope chrome), so budget a single
-	// line for either/both — crossProjectBreadcrumb combines them onto one line.
-	if (m.project != nil && len(m.zoomStack) > 0) ||
-		(m.project == nil && (len(m.crossZoomStack) > 0 || m.isProjectScoped())) {
-		headerLines++
-	}
-	height := m.height - headerLines
+	height := m.height - 1
 	if height < 1 {
 		return 1
 	}

@@ -1,0 +1,53 @@
+{
+  "name": "presentation-surfaces",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open Projects", "key": "p" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leave the Project search interaction", "key": "esc" },
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+
+    { "type": "key", "label": "open Notes", "key": "N" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move onto a task", "key": "j" },
+    { "type": "key", "label": "open child capture form", "key": "A" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "expand into the full task form", "key": "ctrl+f" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "Task Composer · Expanded" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "command", "label": "open project form", "command": "rename project" },
+    { "type": "assert", "assert": "view", "value": "ProjectEditor" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "command", "label": "open a task tool", "command": "task comments" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "open a transient action overlay", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "open Help", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "?" },
+
+    { "type": "command", "label": "open conflict resolution", "command": "resolve conflict" },
+    { "type": "assert", "assert": "view", "value": "ConflictResolution" },
+    { "type": "assert", "assert": "contains", "value": "clear and retry operation" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

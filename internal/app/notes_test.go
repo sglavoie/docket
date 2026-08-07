@@ -73,6 +73,9 @@ func TestWorkspaceNoteEmptyDataDirDerivesCanonicalWorkspaceRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateNote with derived workspace root: %v", err)
 	}
+	if created.TransactionID == "" {
+		t.Fatal("CreateNote omitted transaction correlation")
+	}
 	if _, err := os.Stat(filepath.Join(storage.NotesDir(project), created.Filename)); err != nil {
 		t.Fatalf("created note missing: %v", err)
 	}
@@ -684,6 +687,9 @@ func TestWorkspaceNoteBatchIsAllOrNoneOnStaleSource(t *testing.T) {
 	}
 	if len(result.Results) != 2 {
 		t.Fatalf("batch result = %+v", result)
+	}
+	if result.TransactionID == "" || result.Results[0].TransactionID != result.TransactionID || result.Results[1].TransactionID != result.TransactionID {
+		t.Fatalf("batch transaction correlation = %+v", result)
 	}
 }
 

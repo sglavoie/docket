@@ -5,11 +5,15 @@ type Gate func() bool
 
 // Binding maps a single key to an action.
 type Binding struct {
-	Key         string
-	Description string
-	Category    string
-	Gate        Gate // nil = always active
-	Hidden      bool // excluded from help, included in HandledKeys
+	Key            string
+	Description    string
+	Category       string
+	Gate           Gate // nil = always active
+	Hidden         bool // excluded from help and guidance, included in HandledKeys
+	FooterRank     int  // zero excludes the binding from compact guidance
+	FooterKey      string
+	FooterLabel    string
+	FooterRequired bool
 }
 
 // Entry holds one direct binding.
@@ -33,6 +37,24 @@ func WithGate(g Gate) BindOption {
 // AsHidden marks a binding as hidden from help output.
 func AsHidden() BindOption {
 	return func(b *Binding) { b.Hidden = true }
+}
+
+// WithFooter exposes a binding as one compact guidance entry. Lower positive
+// ranks are retained first; required entries are reserved before optional
+// entries by the shared TUI guidance renderer.
+func WithFooter(rank int, label string, required bool) BindOption {
+	return func(b *Binding) {
+		b.FooterRank = rank
+		b.FooterLabel = label
+		b.FooterRequired = required
+	}
+}
+
+// WithFooterKey overrides only the compact guidance spelling. The physical
+// key retained by Binding remains authoritative for dispatch and HandledKeys,
+// while aliases such as j/k or Ctrl+J/K can be presented as one concise hint.
+func WithFooterKey(key string) BindOption {
+	return func(b *Binding) { b.FooterKey = key }
 }
 
 // Bind constructs a Binding entry.

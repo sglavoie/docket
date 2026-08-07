@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/logging"
 )
@@ -40,8 +41,9 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	}
 
 	if current := m.activeView(); current != nil {
-		if injector, ok := current.(openLoopsAware); ok {
-			injector.setOpenLoops(m.openLoops)
+		policy, classified := chromePolicyForPresentation(m.currentPresentationView())
+		if injector, ok := current.(workspacePulseAware); classified && policy.workspacePulseEligible() && ok {
+			injector.setWorkspacePulse(m.workspacePulse)
 		}
 	}
 	resultView := tea.NewView("")
@@ -112,13 +114,35 @@ func clipContentHeight(content string, maxRows int) string {
 	return strings.Join(lines[:maxRows], "\n")
 }
 
-// replaceFooter swaps the last 2 lines of content (a full-height view's own
-// footer: separator + help text) with newFooter (the AppModel status bar).
+// replaceFooter swaps a full-height view's own footer with the AppModel status
+// bar. Structured guidance may occupy one or two rows, so locate its divider
+// instead of assuming the legacy fixed two-line shape.
 func replaceFooter(content, newFooter string) string {
 	lines := strings.Split(content, "\n")
 	if len(lines) < 2 {
 		return content
 	}
-	lines = lines[:len(lines)-2]
+	footerStart := -1
+	for index := len(lines) - 2; index >= 0; index-- {
+		plain := strings.TrimSpace(ansi.Strip(lines[index]))
+		if plain == "" {
+			continue
+		}
+		divider := true
+		for _, cell := range plain {
+			if cell != '─' {
+				divider = false
+				break
+			}
+		}
+		if divider {
+			footerStart = index
+			break
+		}
+	}
+	if footerStart < 0 {
+		footerStart = len(lines) - 2
+	}
+	lines = lines[:footerStart]
 	return strings.Join(lines, "\n") + "\n" + newFooter
 }

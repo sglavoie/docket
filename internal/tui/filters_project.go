@@ -82,6 +82,27 @@ func hasActiveProjectFilters(f *ProjectFilterState) bool {
 	return len(f.Tags) > 0 || f.Untagged || f.IncludeArchived
 }
 
+// projectFilterFacetCount reports independently clearable population facets.
+// Descriptive tags and Untagged share one picker and therefore count once;
+// parked and archived are separate toggles even though parked is stored in the
+// tag map so the picker and Fp cannot disagree.
+func projectFilterFacetCount(f *ProjectFilterState) int {
+	if f == nil {
+		return 0
+	}
+	count := 0
+	if len(f.restrictionTags()) > 0 || f.Untagged {
+		count++
+	}
+	if f.showsParked() {
+		count++
+	}
+	if f.IncludeArchived {
+		count++
+	}
+	return count
+}
+
 func clearProjectFilters(f *ProjectFilterState) {
 	f.Tags = make(map[string]bool)
 	f.Untagged = false

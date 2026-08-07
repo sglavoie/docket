@@ -111,12 +111,26 @@ fp0-3 fs fc ft fd fz fx         filters
 The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix are
 intentionally unbound, as are `c`, `m`, `:`, `R`, and `Ctrl+Esc`.
 
+The presentation grammar is also part of the scenario contract. Full-screen
+titles stay on one row and carry the workspace pulse; browse guidance uses one
+row while active interactions may use two; transient overlays preserve the host
+title; and every important state must report no structured layout-audit issue.
+The committed size matrix is exactly 60×20, 72×20, 100×35, and 160×55.
+
+| Terminal size | Presentations and states |
+| --- | --- |
+| 60×20 | Outliner, Help, Global Notes, Project Hub, and task comments |
+| 72×20 | Outliner pending-filter chord |
+| 100×35 | Outliner Peek and visual selection |
+| 160×55 | Help |
+
 ### Assertions
 
 | Assertion | Value | Meaning |
 | --- | --- | --- |
 | `contains` | substring | The plain screen contains the value. |
 | `not_contains` | substring | The plain screen does not contain the value. |
+| `count_contains` | substring plus `count` | The plain screen contains the value exactly `count` times. |
 | `view` | view name | `current_view` equals the value. |
 | `status_contains` | substring | The informational/status line contains the value. |
 | `no_layout_issues` | none | Rendering has no overflow, UTF-8, or height audit issue. |
@@ -151,6 +165,10 @@ The committed suite exercises the product contracts directly:
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
 | Responsive and large-catalog rendering | `baseline-layout.json`, `resize-stress.json` |
+| Integrated title, guidance, and terminal-size matrix | `presentation-size-matrix.json` |
+| Workspace-pulse composition and transient-overlay ownership | `workspace-pulse-presentation-grammar.json` |
+| Projects, Notes, forms, task tools, Help, conflicts, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
+| Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
 
 The full shell gate also runs snapshot, failure-injection, collision,
 idempotence, prepared-activation recovery, restore-and-reactivate, and

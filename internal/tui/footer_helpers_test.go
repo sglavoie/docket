@@ -7,24 +7,60 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-func TestFitFooterHintLineKeepsRankedPairsWhole(t *testing.T) {
-	pairs := []string{"a capture", "Space actions", "/ search", "c scope"}
-	firstTwo := strings.Join(pairs[:2], footerHelpSeparator)
-
-	if got := fitFooterHintLine(pairs, lipgloss.Width(firstTwo)); got != firstTwo {
-		t.Fatalf("exact-fit footer = %q, want %q", got, firstTwo)
+func TestGuidanceRequiredHintsEvictOptionalAndSupplemental(t *testing.T) {
+	spec := GuidanceSpec{
+		Hints: []GuidanceHint{
+			{Key: "a", Label: "alpha", Priority: 1},
+			{Key: "b", Label: "beta", Priority: 2},
+			{Key: "Esc", Label: "cancel", Required: true},
+		},
+		Supplemental: "50%",
+		Rows:         1,
 	}
-	if got := fitFooterHintLine(pairs, lipgloss.Width(firstTwo)-1); got != pairs[0] {
-		t.Fatalf("narrow footer = %q, want only the first complete pair %q", got, pairs[0])
+	line := strings.Join(guidanceLines(spec, 20), "\n")
+	if line != "a alpha · Esc cancel" {
+		t.Fatalf("packed guidance = %q, want highest-priority optional plus required control", line)
 	}
-	if got := fitFooterHintLine(pairs, lipgloss.Width(pairs[0])-1); got != "" {
-		t.Fatalf("footer with no complete pair = %q, want empty", got)
+	if strings.Contains(line, "b beta") || strings.Contains(line, "50%") {
+		t.Fatalf("lower-priority content displaced a required control: %q", line)
+	}
+	wide := strings.Join(guidanceLines(spec, 40), "\n")
+	for _, want := range []string{"a alpha", "b beta", "Esc cancel", "50%"} {
+		if !strings.Contains(wide, want) {
+			t.Fatalf("wide guidance omitted %q: %q", want, wide)
+		}
 	}
 }
 
-func TestPendingChordFooterUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
+func TestGuidanceUsesUnicodeCellWidthAndRowBudget(t *testing.T) {
+	first := "界 open"
+	second := "Enter choose"
+	spec := GuidanceSpec{Hints: []GuidanceHint{
+		{Key: "界", Label: "open", Priority: 1},
+		{Key: "Enter", Label: "choose", Priority: 2},
+	}}
+	exact := lipgloss.Width(first + footerHelpSeparator + second)
+	if got := guidanceLines(spec, exact); !slices.Equal(got, []string{first + footerHelpSeparator + second}) {
+		t.Fatalf("Unicode exact-fit guidance = %q", got)
+	}
+
+	spec.Rows = 1
+	oneRow := guidanceLines(spec, lipgloss.Width(first))
+	if !slices.Equal(oneRow, []string{first}) {
+		t.Fatalf("one-row guidance = %q, want only first complete hint", oneRow)
+	}
+	spec.Rows = 2
+	twoRows := guidanceLines(spec, lipgloss.Width(second))
+	if !slices.Equal(twoRows, []string{first, second}) {
+		t.Fatalf("two-row guidance = %q, want both complete hints", twoRows)
+	}
+}
+
+func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 	hints := []ChordHint{
 		{Key: "i", Label: "inbox"},
 		{Key: "b", Label: "backlog"},
@@ -38,7 +74,8 @@ func TestPendingChordFooterUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		{Key: "c", Label: "canceled"},
 	}
 
-	lines := fitPendingChordLines("s", hints, minTerminalWidth)
+	spec := pendingChordGuidanceSpec("s", hints)
+	lines := guidanceLines(spec, minTerminalWidth)
 	if len(lines) == 0 || len(lines) > 2 {
 		t.Fatalf("pending chord lines = %d, want 1..2: %q", len(lines), lines)
 	}
@@ -64,7 +101,7 @@ func TestPendingChordFooterUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		last = index
 	}
 
-	rendered := renderPendingChordFooter(lines, minTerminalWidth)
+	rendered := renderGuidance(spec, minTerminalWidth)
 	if got := lipgloss.Height(rendered); got > 3 {
 		t.Fatalf("pending chord footer height = %d, want divider plus at most two rows", got)
 	}
@@ -75,27 +112,96 @@ func TestPendingChordFooterUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 	}
 }
 
+func TestGuidanceFromGatedKeyMapMatchesHelpAndHandledKeys(t *testing.T) {
+	live := true
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind("enter", "Choose current item", "Actions", keymap.WithFooter(2, "choose", true)),
+		keymap.Bind("/", "Search items", "Filters", keymap.WithFooter(1, "search", false), keymap.WithGate(func() bool {
+			return live
+		})),
+		keymap.Bind("x", "Hidden alias", "Actions", keymap.AsHidden(), keymap.WithFooter(3, "delete", false)),
+		keymap.Bind("z", "Unavailable action", "Actions", keymap.WithFooter(4, "unavailable", false), keymap.WithGate(func() bool {
+			return false
+		})),
+	}}
+
+	spec, ok := guidanceSpecFromKeyMap(km, 1)
+	if !ok || len(spec.Hints) != 2 {
+		t.Fatalf("live keymap guidance = (%+v, %v), want two visible active hints", spec, ok)
+	}
+	if got := []string{guidanceHintText(spec.Hints[0]), guidanceHintText(spec.Hints[1])}; !slices.Equal(got, []string{"/ search", "enter choose"}) {
+		t.Fatalf("ranked keymap guidance = %v", got)
+	}
+	if !spec.Hints[1].Required {
+		t.Fatal("required binding metadata was not preserved")
+	}
+
+	helpKeys := make(map[string]bool)
+	for _, item := range km.HelpItems() {
+		helpKeys[item.Key] = true
+	}
+	handled := km.HandledKeys()
+	for _, hint := range spec.Hints {
+		if !helpKeys[hint.Key] {
+			t.Errorf("guidance key %q is absent from live Help", hint.Key)
+		}
+		if !slices.Contains(handled, hint.Key) {
+			t.Errorf("guidance key %q is absent from HandledKeys", hint.Key)
+		}
+	}
+	for _, unavailable := range []string{"x delete", "z unavailable"} {
+		if strings.Contains(strings.Join(guidanceLines(spec, 80), "\n"), unavailable) {
+			t.Errorf("guidance exposed hidden or gated binding %q", unavailable)
+		}
+	}
+
+	live = false
+	spec, ok = guidanceSpecFromKeyMap(km, 1)
+	if !ok || len(spec.Hints) != 1 || spec.Hints[0].Key != "enter" {
+		t.Fatalf("closed gate guidance = (%+v, %v), want required Enter only", spec, ok)
+	}
+}
+
 func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
-	app := newUITestApp()
+	app := newFilterChordTestApp(t)
 	outliner := app.crossOutliner
+	for index, row := range outliner.rows {
+		if row.isTaskRow() {
+			outliner.cursor = index
+			break
+		}
+	}
 	outliner.SetSize(minTerminalWidth, minTerminalHeight-2)
 
-	pairs := app.operationRegistry.FooterHintPairsForInputStrategy(
-		InputStrategySimplified,
-		outliner.operationCommandContext(),
+	hints := app.operationRegistry.GuidanceHintsForInputStrategy(
+		InputStrategySimplified, outliner.operationCommandContext(),
 	)
-	if len(pairs) < 3 || !slices.Equal(pairs[:3], []string{"a capture", "Space actions", "/ search"}) {
-		t.Fatalf("ranked footer prefix = %v, want capture actions search", pairs)
+	pairs := make([]string, 0, len(hints))
+	for _, hint := range hints {
+		pairs = append(pairs, guidanceHintText(hint))
 	}
-	spec, ok := outliner.ContextualFooter()
+	wantWorkflow := []string{
+		"s workflow", "! priority", "@ date", "# tags", "Space actions",
+		"v select", "a capture", "Enter peek", "/ search", "? help",
+	}
+	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {
+		t.Fatalf("ranked footer prefix = %v, want workflow-first task guidance %v", pairs, wantWorkflow)
+	}
+	spec, ok := outliner.ContextualGuidance()
 	if !ok {
 		t.Fatal("Outliner did not provide its operation footer")
 	}
-	if got, want := spec.Left, fitFooterHintLine(pairs, minTerminalWidth); got != want {
-		t.Fatalf("Outliner footer = %q, want fitted metadata %q", got, want)
+	lines := guidanceLines(spec, minTerminalWidth)
+	if len(lines) != 1 {
+		t.Fatalf("Outliner browse guidance rows = %d, want one: %q", len(lines), lines)
 	}
-	if strings.Contains(spec.Left, "\n") || lipgloss.Width(spec.Left) > minTerminalWidth {
-		t.Fatalf("normal footer must be one fitted line: %q", spec.Left)
+	for _, want := range pairs[:4] {
+		if !strings.Contains(lines[0], want) {
+			t.Fatalf("Outliner guidance omits ranked hint %q: %q", want, lines[0])
+		}
+	}
+	if lipgloss.Width(lines[0]) > minTerminalWidth {
+		t.Fatalf("normal guidance exceeds one row: %q", lines[0])
 	}
 
 	// A visual selection makes cursor-only edit operations inapplicable. At a
@@ -103,13 +209,18 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	// footer uses live descriptor applicability rather than a static key list.
 	outliner.multiSelectMode = true
 	outliner.SetSize(240, minTerminalHeight-2)
-	spec, ok = outliner.ContextualFooter()
+	spec, ok = outliner.ContextualGuidance()
 	if !ok {
 		t.Fatal("selected Outliner did not provide its operation footer")
 	}
+	allHints := make([]string, 0, len(spec.Hints))
+	for _, hint := range spec.Hints {
+		allHints = append(allHints, guidanceHintText(hint))
+	}
+	joined := strings.Join(allHints, "\n")
 	for _, unavailable := range []string{"e title", "E description", "Ctrl+E editor"} {
-		if strings.Contains(spec.Left, unavailable) {
-			t.Errorf("selected footer exposes unavailable operation %q: %q", unavailable, spec.Left)
+		if strings.Contains(joined, unavailable) {
+			t.Errorf("selected guidance exposes unavailable operation %q: %q", unavailable, joined)
 		}
 	}
 }

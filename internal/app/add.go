@@ -319,7 +319,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 
 	out := FormCreateResult{Task: result}
 	for _, cref := range childRefs {
-		out.Subtasks = append(out.Subtasks, newTaskResult(cref, result.Revision))
+		out.Subtasks = append(out.Subtasks, newTaskResult(cref, result.Revision, result.TransactionID))
 	}
 	return out, nil
 }

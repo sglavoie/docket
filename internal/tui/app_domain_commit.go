@@ -34,38 +34,40 @@ func clonePlanningState(p *config.PlanningState) *config.PlanningState {
 // record are one application transaction.
 func (m *AppModel) commitCatalogProjectMutation(
 	action string,
+	context string,
 	projectIDs []string,
 	mutate func(*config.WorkspaceCatalog) error,
-) error {
+) (string, error) {
 	if m.runtime == nil {
-		return nil
+		return "", nil
 	}
 	catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
 	if err := mutate(catalog); err != nil {
-		return err
+		return "", err
 	}
 	if m.runtime.DataDir() == "" || m.appService == nil || m.configManager == nil {
 		m.runtime.SetCatalogInMemory(catalog)
 		m.syncProjectCache()
-		return nil
+		return "", nil
 	}
 	artifacts, err := catalogDomainArtifact(m.runtime, catalog)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if err := m.appService.CommitProjectArtifacts(storage.ArtifactCommitRequest{
+	transactionID, err := m.appService.CommitProjectArtifactsResult(storage.ArtifactCommitRequest{
 		Artifacts:   artifacts,
 		ProjectIDs:  projectIDs,
 		UndoAction:  action,
-		UndoContext: action,
-	}); err != nil {
-		return err
+		UndoContext: context,
+	})
+	if err != nil {
+		return "", err
 	}
 	if err := m.runtime.RefreshAfterCommit(); err != nil {
-		return err
+		return "", err
 	}
 	m.syncProjectCache()
-	return nil
+	return transactionID, nil
 }
 
 // commitCatalogToRuntime commits a catalog mutation through a runtime snapshot
@@ -103,7 +105,8 @@ func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 // WorkspaceCommitted is true even if MachineErr is non-nil, then queue the
 // idempotent machine repair for retry.
 type runtimeDomainsCommitResult struct {
-	MachineErr error
+	MachineErr    error
+	TransactionID string
 }
 
 func runtimeDomainsMachineFailure(result runtimeDomainsCommitResult, machineErr error) (runtimeDomainsCommitResult, error) {
@@ -114,6 +117,7 @@ func runtimeDomainsMachineFailure(result runtimeDomainsCommitResult, machineErr 
 func (m *AppModel) commitRuntimeDomainsWithUndo(
 	domains *config.Domains,
 	action string,
+	context string,
 	projectIDs []string,
 ) (runtimeDomainsCommitResult, error) {
 	if m == nil || m.runtime == nil || domains == nil {
@@ -132,21 +136,23 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 	if err != nil {
 		return runtimeDomainsCommitResult{}, err
 	}
+	result := runtimeDomainsCommitResult{}
 	if action == "" {
 		if err := m.appService.CommitConfig(arts...); err != nil {
 			return runtimeDomainsCommitResult{}, err
 		}
 	} else {
-		if err := m.appService.CommitProjectArtifacts(storage.ArtifactCommitRequest{
+		transactionID, err := m.appService.CommitProjectArtifactsResult(storage.ArtifactCommitRequest{
 			Artifacts:   arts,
 			ProjectIDs:  projectIDs,
 			UndoAction:  action,
-			UndoContext: action,
-		}); err != nil {
+			UndoContext: context,
+		})
+		if err != nil {
 			return runtimeDomainsCommitResult{}, err
 		}
+		result.TransactionID = transactionID
 	}
-	result := runtimeDomainsCommitResult{}
 	if err := m.runtime.CommitMachine(domains.Machine); err != nil {
 		// CommitMachine may have failed before writing or only while refreshing
 		// after a successful write. Either way, advance to the authoritative

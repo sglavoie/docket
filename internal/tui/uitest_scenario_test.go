@@ -118,6 +118,27 @@ func TestUITestScenarioValidateUnknownAssertKind(t *testing.T) {
 	}
 }
 
+func TestUITestScenarioValidateCountContains(t *testing.T) {
+	valid := UITestScenario{Actions: []UITestAction{{
+		Type:   UITestActionAssert,
+		Assert: "count_contains",
+		Value:  "workspace:",
+		Count:  1,
+	}}}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid count_contains assertion: %v", err)
+	}
+
+	for _, action := range []UITestAction{
+		{Type: UITestActionAssert, Assert: "count_contains", Count: 1},
+		{Type: UITestActionAssert, Assert: "count_contains", Value: "workspace:"},
+	} {
+		if err := (UITestScenario{Actions: []UITestAction{action}}).Validate(); err == nil {
+			t.Fatalf("invalid count_contains action passed validation: %+v", action)
+		}
+	}
+}
+
 func TestUITestScenarioValidateEmptyText(t *testing.T) {
 	sc := UITestScenario{Actions: []UITestAction{{Type: UITestActionText, Text: ""}}}
 	if err := sc.Validate(); err == nil {

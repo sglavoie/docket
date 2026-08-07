@@ -28,25 +28,24 @@ func (m *AppModel) toggleToday(capture *outlinerRelocationCapture) tea.Cmd {
 	taskID, projectID := task.ID, project.ID
 	identity := taskIdentityFor(task, project)
 	add := !m.todayIDs[identity]
-	fresh, _, err := m.todayLedgerTransition(taskID, projectID, add)
+	fresh, _, transactionID, err := m.todayLedgerTransition(taskID, projectID, add)
 	if err != nil {
 		m.err = err
 		return errorCmd("%s", err)
 	}
-	if add {
-		m.setInfoStatus(fmt.Sprintf("Added to today's plan: %s", taskTitleOrFallback(fresh, task)))
-	} else {
-		m.setInfoStatus(fmt.Sprintf("Removed from today's plan: %s", taskTitleOrFallback(fresh, task)))
+	successMessage := fmt.Sprintf("Added to today's plan: %s", taskTitleOrFallback(fresh, task))
+	if !add {
+		successMessage = fmt.Sprintf("Removed from today's plan: %s", taskTitleOrFallback(fresh, task))
 	}
 	m.lastToggleUndoKind = toggleUndoToday
 	m.lastTodayToggleAt = time.Now()
 	m.clearToggleRedoHistory()
-	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture)
+	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
 }
 
 // todayLedgerTransition delegates both membership and any Inbox/Next
 // promotion to the application service.
-func (m *AppModel) todayLedgerTransition(taskID, projectID string, add bool) (*models.Task, *models.Project, error) {
+func (m *AppModel) todayLedgerTransition(taskID, projectID string, add bool) (*models.Task, *models.Project, string, error) {
 	action := app.PlanningRemoveToday
 	if add {
 		action = app.PlanningAddToday

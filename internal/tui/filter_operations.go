@@ -147,6 +147,11 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		if !ok || age < CompletionAgeAll || age > CompletionAge90Days {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid completion-age filter value")}
 		}
+		completedStates, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
+		if err != nil {
+			return OperationHandlerResult{Err: fmt.Errorf("build completed state filter: %w", err)}
+		}
+		filter.setStateFilter(completedStates, true)
 		filter.setCompletionAgeFilter(age)
 		status = "Filtering completed: " + completionAgeFilterLabel(age)
 	case operationFilterStates:
@@ -298,9 +303,8 @@ func (m *AppModel) newFilterDuePicker(
 	)
 }
 
-// newFilterCompletionAgePicker is the fc single-select picker. It changes only
-// the completion-age facet: users must choose Done, Canceled, or both through
-// fs before cleanup records become visible.
+// newFilterCompletionAgePicker is the fc single-select picker. Applying a
+// completion-age filter also selects both terminal workflow states.
 func (m *AppModel) newFilterCompletionAgePicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
@@ -343,7 +347,7 @@ func (m *AppModel) newFilterCompletionAgePicker(
 		request,
 		ValueProviderFilterCompletionAge,
 		"Filter by Completion Age",
-		"combine with fs before cleanup",
+		"includes done and canceled tasks",
 		ListSource{Items: items},
 		false,
 		selected,

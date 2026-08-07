@@ -15,10 +15,11 @@ func (m *TaskCommentsModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderTaskScopedFullscreenTitle(
+	b.WriteString(renderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Comments · #%d: ", m.task.ShortID),
 		m.task,
 		"",
+		m.currentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
@@ -35,9 +36,13 @@ func (m *TaskCommentsModel) View() tea.View {
 
 	m.renderCommentsSummary(&b)
 	m.renderMessages(&b)
-	m.renderCommentsList(&b)
-	m.renderStatusMessage(&b)
-	m.renderFooter(&b)
+	spec, ok := m.guidanceSpec()
+	footer := renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
+	var tail strings.Builder
+	m.renderStatusMessage(&tail)
+	tail.WriteString(footer)
+	m.renderCommentsList(&b, taskToolAvailableRows(b.String(), tail.String(), m.Height()))
+	b.WriteString(tail.String())
 
 	return tea.NewView(b.String())
 }
@@ -53,13 +58,17 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	b.WriteString(renderMarkdown(comment.Text, max(m.Width()-4, 1)))
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close expanded view"), "", m.Width(), m.AccentColor()))
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
 func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	if m.editIndex >= len(m.task.Comments) {
-		b.WriteString(ValidationErrorStyle.Render("Comment was deleted externally. Press Esc to cancel."))
+		b.WriteString(ValidationErrorStyle.Render("Comment was deleted externally."))
+		b.WriteString("\n\n")
+		spec, ok := m.guidanceSpec()
+		b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 	comment := m.task.Comments[m.editIndex]
@@ -70,7 +79,8 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	applyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -80,7 +90,8 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 	applyThemedTextarea(&m.textInput)
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -92,16 +103,17 @@ func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
 	renderTaskItemMessages(b, m.err)
 }
 
-func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder) {
+func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows int) {
 	if len(m.task.Comments) == 0 {
-		b.WriteString(MutedStyle.Render("No comments yet. Press 'a' to add one."))
+		b.WriteString(MutedStyle.Render("No comments yet."))
 		b.WriteString("\n")
 		return
 	}
 
-	headerLines := 6
-	availableHeight := m.Height() - headerLines
-	maxVisible := max(availableHeight/4, 3)
+	maxVisible := taskToolMaxVisible(len(m.task.Comments), availableRows, 4)
+	if maxVisible == 0 {
+		return
+	}
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 	maxLen := max(m.Width()-12, 1)
 
@@ -141,9 +153,4 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	renderTaskItemPreview(&entry, comment.Text, maxLen, false)
 
 	return entry.String()
-}
-
-func (m *TaskCommentsModel) renderFooter(b *strings.Builder) {
-	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine("a/n: add · e: edit · E: external editor · d/x: delete · y: copy · Y: copy all · Enter: expand · Esc: close", m.Width())))
 }

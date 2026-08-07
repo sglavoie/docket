@@ -60,32 +60,36 @@ func (m *AppModel) toggleQueue(capture *outlinerRelocationCapture) tea.Cmd {
 
 	if m.taskIsNext(task, project) {
 		// Removing from Next preserves lifecycle state.
-		fresh, _, err := m.queueLedgerTransition(taskID, projectID, false)
+		fresh, _, transactionID, err := m.queueLedgerTransition(taskID, projectID, false)
 		if err != nil {
 			m.err = err
 			return errorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
-		m.setInfoStatus(fmt.Sprintf("Removed from queue: %s", title))
+		successMessage := fmt.Sprintf("Removed from Next: %s", title)
+		m.lastToggleUndoKind = toggleUndoQueue
+		m.lastQueueToggleAt = time.Now()
+		m.clearToggleRedoHistory()
+		return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
 	} else {
 		// Adding to Next drops Today and appends one ordered membership.
-		fresh, _, err := m.queueLedgerTransition(taskID, projectID, true)
+		fresh, _, transactionID, err := m.queueLedgerTransition(taskID, projectID, true)
 		if err != nil {
 			m.err = err
 			return errorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
-		m.setInfoStatus(fmt.Sprintf("Added to queue: %s", title))
+		successMessage := fmt.Sprintf("Added to Next: %s", title)
+		m.lastToggleUndoKind = toggleUndoQueue
+		m.lastQueueToggleAt = time.Now()
+		m.clearToggleRedoHistory()
+		return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
 	}
-	m.lastToggleUndoKind = toggleUndoQueue
-	m.lastQueueToggleAt = time.Now()
-	m.clearToggleRedoHistory()
-	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture)
 }
 
 // queueLedgerTransition delegates the whole Next mutation to the application
 // service, then reloads the task and planning snapshots from the committed state.
-func (m *AppModel) queueLedgerTransition(taskID, projectID string, appendOrder bool) (*models.Task, *models.Project, error) {
+func (m *AppModel) queueLedgerTransition(taskID, projectID string, appendOrder bool) (*models.Task, *models.Project, string, error) {
 	action := app.PlanningRemoveNext
 	if appendOrder {
 		action = app.PlanningAddNext

@@ -19,8 +19,7 @@ import (
 func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ProjectNoteMutationResultMsg:
-		m.reconcileNoteResult(msg)
-		return true, nil
+		return true, m.reconcileNoteResult(msg)
 
 	case ProjectNoteMutationErrorMsg:
 		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
@@ -144,12 +143,12 @@ func ledgerRestoreLabel(redo bool) string {
 	return "undo"
 }
 
-func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
+func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) tea.Cmd {
 	location := normalizedNoteLocation(msg.Location, msg.ProjectID)
+	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage, msg.Result.TransactionID, false)
 	nv := m.getActiveNotesView()
 	if !noteViewMatchesLocation(nv, location) {
-		m.setSuccessStatus(msg.SuccessMessage)
-		return
+		return feedbackCmd
 	}
 	target := NoteRowIdentity{}
 	if len(msg.Result.Results) > 0 {
@@ -169,6 +168,7 @@ func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) {
 		}
 	}
 	nv.setStatus(msg.SuccessMessage)
+	return feedbackCmd
 }
 
 func normalizedNoteLocation(location app.NoteLocation, projectID string) app.NoteLocation {

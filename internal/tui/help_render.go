@@ -191,6 +191,8 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 	pad := " "
 	var b strings.Builder
 
+	b.WriteString(renderFullscreenTitleWithPulse("Help", m.viewName, m.currentWorkspacePulse(), m.width))
+	b.WriteString("\n")
 	b.WriteString(pad)
 	b.WriteString(tabBar)
 	b.WriteString("\n")
@@ -208,28 +210,56 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 		b.WriteString(m.searchInput.View())
 		b.WriteString("\n\n")
 	} else if m.searchQuery != "" {
-		filterInfo := fmt.Sprintf("Filter: \"%s\" ", m.searchQuery)
+		filterInfo := fmt.Sprintf("Filter: \"%s\"", m.searchQuery)
 		b.WriteString(pad)
 		b.WriteString(HelpFilterActiveStyle.Render(filterInfo))
-		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
 		b.WriteString("\n\n")
 	}
 
 	return b.String()
 }
 
-func (m *HelpViewModel) renderHelpFooter() string {
-	title := fmt.Sprintf("Help - %s", m.viewName)
-	closeKey := "? close"
-	left := StatusBarStyle.Render(title)
-
-	scrollPercent := ""
-	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height() {
-		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
+func (m *HelpViewModel) ContextualGuidance() (GuidanceSpec, bool) {
+	if m.searchMode {
+		return GuidanceSpec{
+			Hints: append(requiredGuidanceHints("Enter apply filter", "Esc cancel edit"),
+				optionalGuidanceHints(10, "Shift+←/→ tabs", "\\ find tab")...),
+			Supplemental: m.helpScrollSupplemental(),
+			Rows:         2,
+		}, true
 	}
-	right := HelpStyle.Render(fmt.Sprintf("shift+←/→: tabs · \\ find tab · / filter · bksp clear · j/k scroll · %s%s", closeKey, scrollPercent))
+	if m.tabSearchMode {
+		return GuidanceSpec{
+			Hints: append(requiredGuidanceHints("Enter apply tab", "Esc cancel find"),
+				optionalGuidanceHints(10, "/ edit filter")...),
+			Supplemental: m.helpScrollSupplemental(),
+			Rows:         2,
+		}, true
+	}
+	spec, ok := guidanceSpecFromKeyMap(m.buildKeyMap(), 1)
+	if !ok {
+		return GuidanceSpec{}, false
+	}
+	spec.Supplemental = m.helpScrollSupplemental()
+	if len(m.filteredItems) == 0 {
+		spec.Supplemental = joinGuidanceContext("no matching help items", spec.Supplemental)
+	}
+	return spec, true
+}
 
-	return renderStatusBarFooter(left, right, m.width)
+func (m *HelpViewModel) helpScrollSupplemental() string {
+	if !m.ready || m.viewport.TotalLineCount() <= m.viewport.Height() {
+		return ""
+	}
+	return fmt.Sprintf("%.0f%%", m.viewport.ScrollPercent()*100)
+}
+
+func (m *HelpViewModel) renderHelpFooter() string {
+	spec, ok := m.ContextualGuidance()
+	if !ok {
+		return ""
+	}
+	return renderGuidance(spec, m.width)
 }
 
 func (m *HelpViewModel) View() tea.View {

@@ -1,0 +1,21 @@
+{
+  "name": "recovery-origin-guidance",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move onto the Client Alpha task", "key": "j" },
+    { "type": "key", "label": "open the task action sheet", "key": "space" },
+    { "type": "text", "label": "find Move Project", "text": "move project" },
+    { "type": "key", "label": "open the destination picker", "key": "enter" },
+    { "type": "key", "label": "move to Unfiled", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the correlated transaction advertises undo", "assert": "status_contains", "value": "u undo" },
+    { "type": "assert", "label": "the recorded relocation advertises its origin", "assert": "status_contains", "value": "Ctrl+O origin" },
+    { "type": "key", "label": "jump to the recorded origin", "key": "ctrl+o" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "undo the correlated transaction", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

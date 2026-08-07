@@ -42,9 +42,27 @@ func (m *TaskCommentsModel) panelActions() taskItemPanelActions {
 
 // buildKeyMap constructs the declarative KeyMap for TaskCommentsModel.
 func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
+	addMode := func() bool { return m.addMode && !m.confirm.IsActive() }
+	editMode := func() bool { return m.editMode && !m.confirm.IsActive() }
+	expandedMode := func() bool { return m.expandedView && !m.confirm.IsActive() }
+	saveLabel := "save"
+	if m.err != nil {
+		saveLabel = "retry"
+	}
 	return buildTaskItemPanelKeyMap(m.panelActions(),
-		keymap.Bind("ctrl+s", "Save (add/edit mode)", "Actions"),
-
-		keymap.Bind("ctrl+e", "Open in external editor (add/edit mode)", "Actions"),
+		keymap.Bind("ctrl+s", "Save comment", "Actions", keymap.WithFooter(1, saveLabel, true), keymap.WithFooterKey("Ctrl+S"), keymap.WithGate(func() bool {
+			return addMode() || editMode()
+		})),
+		keymap.Bind("ctrl+e", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithFooterKey("Ctrl+E"), keymap.WithGate(func() bool {
+			return addMode() || editMode()
+		})),
+		keymap.Bind("shift+enter", "Insert newline", "Actions", keymap.WithFooter(4, "newline", false), keymap.WithFooterKey("Shift+Enter"), keymap.WithGate(func() bool {
+			return addMode() || editMode()
+		})),
+		keymap.Bind("esc", "Cancel comment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(func() bool {
+			return addMode() || editMode()
+		})),
+		keymap.Bind("enter", "Close expanded comment", "Navigation", keymap.WithFooter(1, "close", true), keymap.WithFooterKey("Enter"), keymap.WithGate(expandedMode)),
+		keymap.Bind("esc", "Close expanded comment", "Navigation", keymap.WithFooter(2, "close", true), keymap.WithFooterKey("Esc"), keymap.WithGate(expandedMode)),
 	)
 }

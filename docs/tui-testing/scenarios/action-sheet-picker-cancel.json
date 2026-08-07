@@ -35,7 +35,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Move Project: Build login form" },
     { "type": "assert", "assert": "contains", "value": "[unfiled] (1)" },
     { "type": "assert", "assert": "contains", "value": "▶   Build login form" },
-    { "type": "assert", "assert": "status_contains", "value": "Moved" },
+    { "type": "assert", "assert": "status_contains", "value": "Move Task to Project" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

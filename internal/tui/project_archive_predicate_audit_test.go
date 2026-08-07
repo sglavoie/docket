@@ -50,7 +50,6 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/quick_capture_parser_resolution.go:resolveProject":             "availability: %project resolves parked projects",
 	"internal/tui/task_action_sheet.go:taskActionDisabledReason":                 "lifecycle: an archived owner disables writing task actions",
 	"internal/tui/task_composer.go:cycleProject":                                 "availability: the composer cycles onto a parked destination",
-	"internal/tui/view_helpers.go:renderProjectTitle":                            "lifecycle: archived projects render their lifecycle badge",
 }
 
 // archiveAuditPackages are the layers whose availability decisions this audit

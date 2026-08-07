@@ -6,110 +6,43 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for TaskChecklistModel.
 func (m *TaskChecklistModel) buildKeyMap() *keymap.KeyMap {
-	inInputMode := func() bool { return m.addMode || m.editMode }
-
-	var entries []keymap.Entry
-
-	// Normal mode navigation
-	entries = append(entries,
-		keymap.Bind("j", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("G", "Jump to last item", "Navigation", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-	)
-
-	entries = append(entries, keymap.Bind("home", "Jump to first item", "Navigation", keymap.WithGate(func() bool {
-		return !inInputMode()
-	}),
-	))
-
-	// Normal mode actions
-	entries = append(entries,
-		keymap.Bind("a", "Add item", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("n", "Add item", "Actions", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("e", "Edit item", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("d", "Delete item", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("x", "Delete item", "Actions", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("space", "Toggle done/undone", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("y", "Copy item text", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("J", "Reorder item down", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("K", "Reorder item up", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-	)
-
-	// Enter toggles the selected item in normal mode and saves in add/edit mode.
-	// Always included in HandledKeys so esc/save handling stays documented.
-	entries = append(entries,
-		keymap.Bind("enter", "Toggle done/undone / save (add/edit mode)", "Actions"),
-
-		keymap.Bind("ctrl+e", "Open in external editor (add mode)", "Actions"),
-	)
-
-	return &keymap.KeyMap{
-		Entries: entries,
+	inInputMode := func() bool { return (m.addMode || m.editMode) && !m.confirm.IsActive() }
+	inBrowseMode := func() bool { return !m.addMode && !m.editMode && !m.confirm.IsActive() }
+	hasBrowseSelection := func() bool { return inBrowseMode() && m.hasSelection() }
+	hasMultipleItems := func() bool {
+		return hasBrowseSelection() && m.task != nil && len(m.task.Checklist) > 1
 	}
+	saveLabel := "save"
+	if m.err != nil {
+		saveLabel = "retry"
+	}
+
+	entries := []keymap.Entry{
+		keymap.Bind("j", "Move cursor down", "Navigation", keymap.WithFooter(8, "navigate", false), keymap.WithFooterKey("j/k"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("G", "Jump to last item", "Navigation", keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("home", "Jump to first item", "Navigation", keymap.WithGate(hasBrowseSelection)),
+
+		keymap.Bind("a", "Add item", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("n", "Add item", "Actions", keymap.AsHidden(), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("e", "Edit item", "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithFooter(7, "editor", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("d", "Delete item", "Actions", keymap.WithFooter(4, "delete", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("x", "Delete item", "Actions", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("space", "Toggle done/undone", "Actions", keymap.WithFooter(1, "toggle", false), keymap.WithFooterKey("Space/Enter"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("enter", "Toggle done/undone", "Actions", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("y", "Copy item text", "Actions", keymap.WithFooter(5, "copy", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithFooter(6, "copy all", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("J", "Reorder item down", "Actions", keymap.WithFooter(7, "reorder", false), keymap.WithFooterKey("J/K"), keymap.WithGate(hasMultipleItems)),
+		keymap.Bind("K", "Reorder item up", "Actions", keymap.AsHidden(), keymap.WithGate(hasMultipleItems)),
+
+		keymap.Bind("enter", "Save item", "Actions", keymap.WithFooter(1, saveLabel, true), keymap.WithFooterKey("Enter"), keymap.WithGate(inInputMode)),
+		keymap.Bind("ctrl+e", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithFooterKey("Ctrl+E"), keymap.WithGate(inInputMode)),
+		keymap.Bind("esc", "Cancel item input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inInputMode)),
+		keymap.Bind("esc", "Close checklist", "Navigation", keymap.WithFooter(9, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
+	}
+
+	return &keymap.KeyMap{Entries: entries}
 }

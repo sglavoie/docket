@@ -81,9 +81,10 @@ func (m *AppModel) commitProjectTags(project *models.Project, tags []string) tea
 	updated := *project
 	updated.Tags = tags
 	action := projectTagUndoAction(parking, unparking)
-	if err := m.commitCatalogProjectMutation(action, []string{updated.ID}, func(catalog *config.WorkspaceCatalog) error {
+	transactionID, err := m.commitCatalogProjectMutation(action, updated.Name, []string{updated.ID}, func(catalog *config.WorkspaceCatalog) error {
 		return catalog.UpsertProject(&updated)
-	}); err != nil {
+	})
+	if err != nil {
 		m.err = err
 		return nil
 	}
@@ -91,13 +92,16 @@ func (m *AppModel) commitProjectTags(project *models.Project, tags []string) tea
 		m.anchorOutlinerCursorAfterProjectPark(updated.ID)
 	}
 	copyCatalogMetadata(project, &updated)
-	m.setSuccessStatus(projectTagStatus(&updated, parking, unparking))
 	m.rebuildPlanningFromRuntime()
+	feedbackCmd := m.setRecoveryFeedback(projectTagStatus(&updated, parking, unparking), transactionID, false)
+	if parking {
+		m.appendRecoveryFeedbackDetail(projectTaskCountPhrase(&updated) + " hidden · Fp to show")
+	}
 	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),
-		defaultStatusTimeout(),
+		feedbackCmd,
 	)
 }
 
@@ -119,18 +123,18 @@ func projectTagStatus(project *models.Project, parking, unparking bool) string {
 	switch {
 	case parking:
 		return fmt.Sprintf(
-			"Parked %s · %s hidden · Fp to show · u to undo",
+			"Parked %s · %s hidden · Fp to show",
 			project.Name,
 			projectTaskCountPhrase(project),
 		)
 	case unparking:
 		return fmt.Sprintf(
-			"Unparked %s · %s back in Active Projects · u to undo",
+			"Unparked %s · %s back in Active Projects",
 			project.Name,
 			projectTaskCountPhrase(project),
 		)
 	default:
-		return fmt.Sprintf("Updated %s tags · u to undo", project.Name)
+		return fmt.Sprintf("Updated %s tags", project.Name)
 	}
 }
 

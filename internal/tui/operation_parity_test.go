@@ -231,6 +231,60 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	}
 }
 
+func TestOperationParityGuidanceResolvesThroughApplicableInputMetadata(t *testing.T) {
+	app := parityAuditApp(t)
+	registry := app.GetOperationRegistry()
+	ctx := taskActionParityContext(t, app)
+	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	if !ok {
+		t.Fatal("simplified input strategy is not registered")
+	}
+
+	hints := registry.GuidanceHintsForInputStrategy(InputStrategySimplified, ctx)
+	if len(hints) == 0 {
+		t.Fatal("applicable input strategy produced no guidance")
+	}
+	for _, hint := range hints {
+		resolved := false
+		for _, binding := range strategy.Bindings {
+			if binding.FooterRank <= 0 || binding.DisplayKey != hint.Key {
+				continue
+			}
+			descriptor, exists := registry.Descriptor(binding.OperationID)
+			if !exists || !descriptor.Applicable(ctx) {
+				continue
+			}
+			label := binding.FooterLabel
+			if label == "" {
+				label = strings.ToLower(descriptor.Label)
+			}
+			if label == hint.Label {
+				resolved = true
+				break
+			}
+		}
+		if !resolved {
+			for _, group := range strategy.ChordGroups {
+				if group.FooterRank <= 0 || strings.Join(group.Sequence, "") != hint.Key {
+					continue
+				}
+				label := group.FooterLabel
+				if label == "" {
+					label = group.HintLabel
+				}
+				if label == hint.Label && len(registry.ChordHintsForPrefix(InputStrategySimplified, group.Sequence, ctx)) > 0 {
+					resolved = true
+					break
+				}
+			}
+		}
+		if !resolved {
+			t.Errorf("guidance hint %q resolves to no applicable operation or chord", guidanceHintText(hint))
+		}
+	}
+
+}
+
 // sharesInputPath reports whether the operation co-owns the key path as a
 // declared shared binding rather than having stolen it.
 func sharesInputPath(strategy InputStrategy, path []string, id OperationID) bool {

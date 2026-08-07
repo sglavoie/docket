@@ -45,13 +45,16 @@ type UITestAction struct {
 	Command string `json:"command,omitempty"`
 
 	// Assert names the invariant to check for UITestActionAssert. Supported
-	// kinds: "contains", "not_contains", "view", "no_layout_issues",
-	// "status_contains".
+	// kinds: "contains", "not_contains", "count_contains", "view",
+	// "no_layout_issues", "status_contains".
 	Assert string `json:"assert,omitempty"`
 	// Value is the argument for the assertion (a substring for contains/
-	// not_contains/status_contains, a view name for "view"). It is ignored by
-	// "no_layout_issues".
+	// not_contains/count_contains/status_contains, a view name for "view"). It
+	// is ignored by "no_layout_issues".
 	Value string `json:"value,omitempty"`
+	// Count is the exact number of substring occurrences expected by
+	// "count_contains". It is ignored by every other assertion kind.
+	Count int `json:"count,omitempty"`
 }
 
 // UITestScenario is an ordered list of actions to drive against the app. The

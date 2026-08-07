@@ -24,8 +24,10 @@ func (m *TaskChecklistModel) View() tea.View {
 	}
 
 	m.renderChecklistMessages(&b)
-	m.renderChecklistItems(&b)
-	m.renderChecklistHelp(&b)
+	spec, ok := m.guidanceSpec()
+	footer := renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
+	m.renderChecklistItems(&b, taskToolAvailableRows(b.String(), footer, m.Height()))
+	b.WriteString(footer)
 
 	return tea.NewView(b.String())
 }
@@ -39,15 +41,19 @@ func (m *TaskChecklistModel) renderChecklistHeader() string {
 	}
 	total := len(m.task.Checklist)
 
-	checklistTitle := fmt.Sprintf("Checklist for: #%d: %s",
-		m.task.ShortID,
-		TaskTitleStyleFor(m.task, TaskTitleStyleOptions{}).Render(m.task.Title))
 	progressStr := ""
 	if total > 0 {
 		progressStr = fmt.Sprintf("%d/%d completed", completed, total)
 	}
 
-	return renderStatusBarFooter(TitleStyle.Render(checklistTitle), MutedStyle.Render(progressStr), m.Width(), m.AccentColor())
+	return renderTaskScopedFullscreenTitleWithPulse(
+		fmt.Sprintf("Checklist · #%d: ", m.task.ShortID),
+		m.task,
+		progressStr,
+		m.currentWorkspacePulse(),
+		m.Width(),
+		m.AccentColor(),
+	)
 }
 
 func (m *TaskChecklistModel) renderEditMode(b *strings.Builder) tea.View {
@@ -56,7 +62,8 @@ func (m *TaskChecklistModel) renderEditMode(b *strings.Builder) tea.View {
 	applyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -66,7 +73,8 @@ func (m *TaskChecklistModel) renderAddMode(b *strings.Builder) tea.View {
 	applyThemedTextarea(&m.textInput)
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width(), m.AccentColor()))
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -77,17 +85,18 @@ func (m *TaskChecklistModel) renderChecklistMessages(b *strings.Builder) {
 	}
 }
 
-func (m *TaskChecklistModel) renderChecklistItems(b *strings.Builder) {
+func (m *TaskChecklistModel) renderChecklistItems(b *strings.Builder, availableRows int) {
 	if len(m.task.Checklist) == 0 {
-		b.WriteString(MutedStyle.Render("No checklist items yet. Press 'a' to add one."))
+		b.WriteString(MutedStyle.Render("No checklist items yet."))
 		b.WriteString("\n")
 		return
 	}
 
 	contentWidth := m.Width() - 4
-	headerLines := 6
-	availableHeight := m.Height() - headerLines
-	maxVisible := max(availableHeight/2, 5)
+	maxVisible := taskToolMaxVisible(len(m.task.Checklist), availableRows, 1)
+	if maxVisible == 0 {
+		return
+	}
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 	maxLen := max(contentWidth-8, 1)
 
@@ -135,10 +144,4 @@ func (m *TaskChecklistModel) renderChecklistItemEntry(index, maxLen int) string 
 
 	entry.WriteString("\n")
 	return entry.String()
-}
-
-func (m *TaskChecklistModel) renderChecklistHelp(b *strings.Builder) {
-	b.WriteString("\n")
-	helpText := "j/k: nav · J/K: reorder · Space/Enter: toggle · e: edit · a: add · E: external editor · d: delete · y: copy · Y: copy all · Esc: close"
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 }

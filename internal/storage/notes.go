@@ -116,25 +116,6 @@ func listNotesFrom(dir string, failOnUnreadable bool) ([]*models.Note, error) {
 	return notes, nil
 }
 
-// NotesExist returns true if the project has any notes.
-func NotesExist(project *models.Project) bool {
-	return notesExistIn(NotesDir(project))
-}
-
-// notesExistIn returns true if the given directory has any notes.
-func notesExistIn(dir string) bool {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return false
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
-			return true
-		}
-	}
-	return false
-}
-
 // NoteFilePathIn returns the full path to a note file in a directory.
 func NoteFilePathIn(dir, filename string) (string, error) {
 	if err := validateNoteFilename(filename); err != nil {

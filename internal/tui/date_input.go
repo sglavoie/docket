@@ -14,6 +14,7 @@ import (
 
 // DateInputModel handles setting a due date for a task.
 type DateInputModel struct {
+	workspacePulseState
 	task         *models.Task
 	project      *models.Project
 	input        textinput.Model
@@ -131,10 +132,11 @@ func dueDateChangedCmd(task *models.Task, project *models.Project, dueDate *time
 func (m *DateInputModel) View() tea.View {
 	var b strings.Builder
 
-	b.WriteString(renderTaskScopedFullscreenTitle(
+	b.WriteString(renderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Set Due Date for #%d  ", m.task.ShortID),
 		m.task,
 		"",
+		m.currentWorkspacePulse(),
 		m.width))
 	b.WriteString("\n\n")
 
@@ -157,6 +159,8 @@ func (m *DateInputModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
+	guidance := renderGuidance(m.guidanceSpec(), m.width)
+
 	// Help text. The box is clamped against the remaining terminal height so it
 	// degrades gracefully (collapsing to "… N more") instead of overflowing on
 	// short screens; the fixed-size render otherwise pushes past the terminal.
@@ -174,18 +178,29 @@ func (m *DateInputModel) View() tea.View {
 		"  next year      1 year from today",
 		"  in 3 years     3 years from today",
 		"  none           Clear due date",
-		"",
-		BoldStyle.Render("Controls"),
-		"  Enter          Save",
-		"  Esc            Cancel",
 	}
-	if help := clampHelpBoxToHeight(bodyLines, m.height, b.String()); help != "" {
+	if help := clampHelpBoxToHeight(bodyLines, m.height, b.String(), guidance); help != "" {
 		b.WriteString(help)
 	} else {
-		return tea.NewView(strings.TrimRight(b.String(), "\n"))
+		trimmed := strings.TrimRight(b.String(), "\n")
+		b.Reset()
+		b.WriteString(trimmed)
 	}
+	b.WriteString("\n")
+	b.WriteString(guidance)
 
 	return tea.NewView(b.String())
+}
+
+func (m *DateInputModel) guidanceSpec() GuidanceSpec {
+	if m.confirmDiscard {
+		return confirmationGuidanceSpec()
+	}
+	commit := "Enter save"
+	if m.err != nil {
+		commit = "Enter retry"
+	}
+	return requiredActionGuidanceSpec(commit)
 }
 
 // HasTextInput returns true because the date input is always active.

@@ -160,8 +160,8 @@ func (m *ProjectSelectorModel) View() tea.View {
 	b.WriteString(m.renderList())
 	b.WriteString("\n")
 
-	// Footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"), "", m.Width()))
+	guidance, _ := m.alwaysSearchGuidanceSpec("select")
+	b.WriteString(renderGuidance(guidance, m.Width()))
 
 	return tea.NewView(b.String())
 }

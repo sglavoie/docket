@@ -188,14 +188,15 @@ func (m *AppModel) commitProjectBulkTags(edit projectBulkTagEdit) tea.Cmd {
 		projectIDs = append(projectIDs, update.updated.ID)
 	}
 	action := projectBulkTagUndoAction(edit)
-	if err := m.commitCatalogProjectMutation(action, projectIDs, func(catalog *config.WorkspaceCatalog) error {
+	transactionID, err := m.commitCatalogProjectMutation(action, projectCountPhrase(len(edit.updates)), projectIDs, func(catalog *config.WorkspaceCatalog) error {
 		for _, update := range edit.updates {
 			if err := catalog.UpsertProject(update.updated); err != nil {
 				return err
 			}
 		}
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		m.err = err
 		return nil
 	}
@@ -209,13 +210,23 @@ func (m *AppModel) commitProjectBulkTags(edit projectBulkTagEdit) tea.Cmd {
 	for _, update := range edit.updates {
 		copyCatalogMetadata(update.project, update.updated)
 	}
-	m.setSuccessStatus(projectBulkTagStatus(edit))
 	m.rebuildPlanningFromRuntime()
+	feedbackCmd := m.setRecoveryFeedback(projectBulkTagStatus(edit), transactionID, false)
+	switch {
+	case len(edit.parking) > 0:
+		m.appendRecoveryFeedbackDetail(projectBulkTaskCountPhrase(edit.parking) + " hidden · Fp to show")
+	case edit.action == ProjectBulkTagRename:
+		m.appendRecoveryFeedbackDetail("#" + edit.tag + " → #" + edit.replacement)
+	case edit.action == ProjectBulkTagRemove:
+		m.appendRecoveryFeedbackDetail("#" + edit.tag)
+	default:
+		m.appendRecoveryFeedbackDetail("#" + edit.tag)
+	}
 	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),
-		defaultStatusTimeout(),
+		feedbackCmd,
 	)
 }
 
@@ -242,26 +253,26 @@ func projectBulkTagStatus(edit projectBulkTagEdit) string {
 	switch {
 	case len(edit.parking) > 0:
 		return fmt.Sprintf(
-			"Parked %s · %s hidden · Fp to show · u to undo",
+			"Parked %s · %s hidden · Fp to show",
 			projectCountPhrase(len(edit.parking)),
 			projectBulkTaskCountPhrase(edit.parking),
 		)
 	case len(edit.unparking) > 0:
 		return fmt.Sprintf(
-			"Unparked %s · back in Active Projects · u to undo",
+			"Unparked %s · back in Active Projects",
 			projectCountPhrase(len(edit.unparking)),
 		)
 	case edit.action == ProjectBulkTagRename:
 		return fmt.Sprintf(
-			"Renamed #%s to #%s on %s · u to undo",
+			"Renamed #%s to #%s on %s",
 			edit.tag,
 			edit.replacement,
 			changed,
 		)
 	case edit.action == ProjectBulkTagRemove:
-		return fmt.Sprintf("Removed #%s from %s · u to undo", edit.tag, changed)
+		return fmt.Sprintf("Removed #%s from %s", edit.tag, changed)
 	default:
-		return fmt.Sprintf("Tagged %s #%s · u to undo", changed, edit.tag)
+		return fmt.Sprintf("Tagged %s #%s", changed, edit.tag)
 	}
 }
 

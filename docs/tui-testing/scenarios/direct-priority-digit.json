@@ -45,7 +45,7 @@
     { "type": "key", "label": "prioritize the whole selection", "key": "!" },
     { "type": "key", "key": "1" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Set priority on 2 task(s)" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Priority: priority 1 · u undo" },
     { "type": "assert", "assert": "contains", "value": "▶ ◉ Build login form" },
     { "type": "assert", "assert": "contains", "value": "□ ◉ Triage support inbox" },
     { "type": "assert", "assert": "no_layout_issues" }

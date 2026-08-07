@@ -42,10 +42,15 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			spec := captureFooterSpecFull(tc.confirmDiscard, tc.autocompleteActive, tc.helpExpanded, false, 0)
+			spec := captureGuidanceSpec(tc.confirmDiscard, tc.autocompleteActive, tc.helpExpanded, false, 0)
+			var entries []string
+			for _, hint := range spec.Hints {
+				entries = append(entries, guidanceHintText(hint))
+			}
+			guidance := strings.Join(entries, footerHelpSeparator)
 			for _, want := range tc.required {
-				if !strings.Contains(spec.Left, want) {
-					t.Fatalf("%s footer missing %q, got %q", tc.name, want, spec.Left)
+				if !strings.Contains(guidance, want) {
+					t.Fatalf("%s guidance missing %q, got %q", tc.name, want, guidance)
 				}
 			}
 		})
@@ -56,14 +61,27 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 // multiple state flags are set simultaneously: discard confirmation wins over
 // autocomplete, which wins over expanded syntax.
 func TestCaptureFooterSpecStatePriority(t *testing.T) {
-	if got := captureFooterSpecFull(true, true, true, false, 0); got.Left != captureFooterConfirm {
-		t.Fatalf("discard confirmation must take precedence, got %q", got.Left)
+	if got := captureGuidanceSpec(true, true, true, false, 0); guidanceHintText(got.Hints[0]) != "Y discard" {
+		t.Fatalf("discard confirmation must take precedence, got %+v", got.Hints)
 	}
-	if got := captureFooterSpecFull(false, true, true, false, 0); got.Left != captureFooterAutocomplete {
-		t.Fatalf("autocomplete must take precedence over help, got %q", got.Left)
+	if got := captureGuidanceSpec(false, true, true, false, 0); guidanceHintText(got.Hints[0]) != "Tab/Enter accept" {
+		t.Fatalf("autocomplete must take precedence over help, got %+v", got.Hints)
 	}
-	if got := captureFooterSpecFull(false, false, true, false, 0); got.Left != captureFooterHelp {
-		t.Fatalf("expanded syntax expected, got %q", got.Left)
+	if got := captureGuidanceSpec(false, false, true, false, 0); guidanceHintText(got.Hints[len(got.Hints)-1]) != "Esc close syntax" {
+		t.Fatalf("expanded syntax expected, got %+v", got.Hints)
+	}
+}
+
+func TestCaptureFooterSyntaxOverflowAdvertisesScrolling(t *testing.T) {
+	spec := captureGuidanceSpec(false, false, true, true, 73)
+	guidance := guidanceEntryText(spec)
+	for _, want := range []string{"Ctrl+J/K scroll", "PgUp/PgDn page", "? close syntax", "Esc close syntax"} {
+		if !strings.Contains(guidance, want) {
+			t.Errorf("overflow syntax guidance = %q, want %q", guidance, want)
+		}
+	}
+	if spec.Supplemental != "73%" {
+		t.Fatalf("overflow syntax supplemental = %q, want 73%%", spec.Supplemental)
 	}
 }
 

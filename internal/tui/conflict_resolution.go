@@ -199,34 +199,69 @@ func (m *ConflictResolutionModel) GetHelpItems() []HelpItem {
 }
 
 func (m *ConflictResolutionModel) buildKeyMap() *keymap.KeyMap {
+	hasMany := func() bool { return len(m.conflicts()) > 1 }
+	projectOnly := func() bool { return !m.requiresOperationRetry() }
+	remoteLabel := "adopt remote"
+	if m.requiresOperationRetry() {
+		remoteLabel = "clear and retry operation"
+	}
 	entries := []keymap.Entry{
-		keymap.Bind("j", "Next conflict", "Navigation", keymap.AsHidden()),
+		keymap.Bind("j", "Next conflict", "Navigation",
+			keymap.WithGate(hasMany), keymap.WithFooter(10, "navigate", false),
+			keymap.WithFooterKey("j/k")),
 
 		keymap.Bind("k", "Previous conflict", "Navigation", keymap.AsHidden()),
 
-		keymap.Bind("l", "Keep local", "Resolution"),
+		keymap.Bind("l", "Keep local", "Resolution", keymap.WithGate(projectOnly),
+			keymap.WithFooter(2, "keep local", false)),
 
-		keymap.Bind("r", "Adopt remote", "Resolution"),
+		keymap.Bind("r", "Adopt remote", "Resolution",
+			keymap.WithFooter(1, remoteLabel, true)),
 
-		keymap.Bind("e", "Hand-merge in editor", "Resolution"),
+		keymap.Bind("e", "Hand-merge in editor", "Resolution", keymap.WithGate(projectOnly),
+			keymap.WithFooter(3, "hand-merge", false)),
+
+		keymap.Bind("esc", "Close conflict resolution", "Navigation",
+			keymap.WithFooter(1, "close", true), keymap.WithFooterKey("Esc")),
 	}
 	return &keymap.KeyMap{Entries: entries}
+}
+
+func (m *ConflictResolutionModel) ContextualGuidance() (GuidanceSpec, bool) {
+	if m.bundle == nil {
+		return GuidanceSpec{Hints: requiredGuidanceHints("Esc close"), Rows: 1}, true
+	}
+	return guidanceSpecFromKeyMap(m.buildKeyMap(), 1)
 }
 
 func (m *ConflictResolutionModel) View() tea.View {
 	var b strings.Builder
 
 	if m.bundle == nil {
+		b.WriteString(renderFullscreenTitleWithPulse(
+			"Resolve Conflict", "Unavailable", m.currentWorkspacePulse(), m.Width(), m.AccentColor(),
+		))
+		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render("No conflict to resolve."))
+		b.WriteString("\n\n")
+		guidance, _ := m.ContextualGuidance()
+		b.WriteString(renderGuidance(guidance, m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 	rec := m.bundle.Record
 
 	subtitle := fmt.Sprintf("%s · %d conflict(s)", rec.ProjectName, len(rec.Conflicts))
-	b.WriteString(renderFullscreenTitle("Resolve Conflict", subtitle, m.AccentColor()))
+	b.WriteString(renderFullscreenTitleWithPulse(
+		"Resolve Conflict",
+		subtitle,
+		m.currentWorkspacePulse(),
+		m.Width(),
+		m.AccentColor(),
+	))
 	b.WriteString("\n\n")
 	if rec.OperationRetryRequired() {
-		b.WriteString(PreviewWarningStyle.Render("This transaction was aborted. Adopt remote to clear it, then retry the original operation; local or hand-merged project-only resolution is disabled."))
+		warning := "This transaction was aborted. Adopt remote to clear it, then retry the original operation; local or hand-merged project-only resolution is disabled."
+		b.WriteString(PreviewWarningStyle.Render(strings.Join(wrapText(warning, max(m.Width(), 1)), "\n")))
 		b.WriteString("\n\n")
 	}
 
@@ -278,11 +313,7 @@ func (m *ConflictResolutionModel) View() tea.View {
 	}
 
 	b.WriteString("\n")
-	helpText := "l: keep local · r: adopt remote · e: hand-merge · j/k: nav · Esc: close"
-	if rec.OperationRetryRequired() {
-		helpText = "r: clear and retry operation · j/k: nav · Esc: close"
-	}
-	help := HelpStyle.Render(helpText)
-	b.WriteString(renderStatusBarFooter(help, "", m.Width(), m.AccentColor()))
+	guidance, _ := m.ContextualGuidance()
+	b.WriteString(renderGuidance(guidance, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }

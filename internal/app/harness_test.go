@@ -161,6 +161,7 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 		}
 	}
 	results := make([]*storage.CommitResult, len(changesets))
+	transactionID := fmt.Sprintf("txn-project-%d", len(r.commits)+1)
 	for i := range changesets {
 		cs := changesets[i]
 		newDoc := documentOf(cs.Project, cs.Base)
@@ -172,7 +173,7 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 				break
 			}
 		}
-		results[i] = &storage.CommitResult{Revision: newDoc.Revision}
+		results[i] = &storage.CommitResult{Revision: newDoc.Revision, TransactionID: transactionID}
 		// Apply artifact writes/deletes to the in-memory file store so an in-memory
 		// reader observes exactly what the real commit service would persist.
 		for _, art := range cs.Artifacts {

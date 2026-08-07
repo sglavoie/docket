@@ -2,7 +2,7 @@
 // of a tt workspace. A Snapshot loads every requested project exactly once and
 // exposes derived indexes (task lookup, qualified references, per-project
 // revisions) plus diagnostics for projects that could
-// not be loaded. Read-only consumers — open loops, cross-scope task views,
+// not be loaded. Read-only consumers — workspace pulse, cross-scope task views,
 // global search, task resolution — build a snapshot instead of independently
 // re-reading and re-parsing tasks.md, so a single revision-consistent view
 // backs the whole render pass.

@@ -59,7 +59,7 @@ func planningWorkspaceMismatch(runtime *config.RuntimeState, mgr *config.Manager
 // applyTaskPlanningAction drives production mutations through Service.ApplyPlanning
 // and gives isolated in-memory UI tests the same app-owned state/invariant logic
 // without manufacturing a filesystem repository.
-func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.PlanningAction) (*models.Task, *models.Project, error) {
+func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.PlanningAction) (*models.Task, *models.Project, string, error) {
 	if m.appService != nil && m.configManager != nil {
 		stateChanged := false
 		if project := m.projectByID(projectID); project != nil {
@@ -83,7 +83,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 			Action:  action,
 		})
 		if err != nil {
-			return nil, m.projectByID(projectID), err
+			return nil, m.projectByID(projectID), "", err
 		}
 		if stateChanged {
 			m.reloadProjectByID(res.ProjectID)
@@ -96,10 +96,10 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		}
 		project := m.projectByID(res.ProjectID)
 		if project == nil {
-			return nil, nil, nil
+			return nil, nil, res.TransactionID, nil
 		}
 		task := project.GetTaskByID(taskID)
-		return task, project, nil
+		return task, project, res.TransactionID, nil
 	}
 
 	project := m.projectByID(projectID)
@@ -107,17 +107,17 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		project = m.currentProject
 	}
 	if project == nil {
-		return nil, nil, fmt.Errorf("planning project %s is unavailable", projectID)
+		return nil, nil, "", fmt.Errorf("planning project %s is unavailable", projectID)
 	}
 	task := project.GetTaskByID(taskID)
 	if task == nil {
-		return nil, project, fmt.Errorf("planning task %s is unavailable", taskID)
+		return nil, project, "", fmt.Errorf("planning task %s is unavailable", taskID)
 	}
 	target, _, err := app.ApplyPlanningActionToTask(
 		task, project.ID, action, time.Now(),
 	)
 	if err != nil {
-		return nil, project, err
+		return nil, project, "", err
 	}
 	if m.runtime != nil {
 		app.ReconcilePlanningState(m.runtime.Planning(), app.PlanningReconcileRequest{
@@ -125,7 +125,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		})
 		m.rebuildPlanningFromRuntime()
 	}
-	return task, project, nil
+	return task, project, "", nil
 }
 
 // rebuildPlanningFromRuntime rebuilds the in-memory Next order index and Daily

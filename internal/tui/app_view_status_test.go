@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -50,5 +51,53 @@ func TestTransientStatusMessageStillOwnsStatusBarWhilePickerIsOpen(t *testing.T)
 	}
 	if !strings.Contains(statusBar, "Tagged 1 task(s)") {
 		t.Fatalf("expected transient status message, got:\n%s", statusBar)
+	}
+}
+
+func TestGuidancePreservesShellPrecedenceAndRestores(t *testing.T) {
+	app := pickerStatusBarApp(t)
+	baseline := ansi.Strip(app.renderStatusBar())
+	if !strings.Contains(baseline, "a capture") {
+		t.Fatalf("test requires persistent Outliner guidance, got:\n%s", baseline)
+	}
+
+	assertOwnsStatus := func(name, want string) {
+		t.Helper()
+		status := ansi.Strip(app.renderStatusBar())
+		if !strings.Contains(status, want) {
+			t.Fatalf("%s did not own status bar; wanted %q in:\n%s", name, want, status)
+		}
+		if strings.Contains(status, "a capture") {
+			t.Fatalf("%s leaked persistent guidance:\n%s", name, status)
+		}
+	}
+
+	app.isLoading = true
+	app.loadingMessage = "loading workspace"
+	assertOwnsStatus("loading", "loading workspace")
+	app.isLoading = false
+
+	app.err = errors.New("storage failed")
+	assertOwnsStatus("error", "storage failed")
+	app.err = nil
+
+	app.todayClearedBanner = "Today complete"
+	assertOwnsStatus("Today banner", "Today complete")
+	app.todayClearedBanner = ""
+
+	app.statusMessage = "task saved"
+	assertOwnsStatus("transient status", "task saved")
+	app.statusMessage = ""
+
+	app.pendingChord = []string{"s"}
+	app.todayClearedBanner = "hidden banner"
+	app.statusMessage = "hidden status"
+	assertOwnsStatus("pending chord", "Esc cancel")
+	app.pendingChord = nil
+	app.todayClearedBanner = ""
+	app.statusMessage = ""
+
+	if restored := ansi.Strip(app.renderStatusBar()); restored != baseline {
+		t.Fatalf("persistent guidance did not restore after shell overlays cleared:\n%s", restored)
 	}
 }

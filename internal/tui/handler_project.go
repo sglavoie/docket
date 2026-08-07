@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -35,6 +36,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.pendingProjectMoveTask = nil
 		m.pendingProjectMoveSource = nil
 		reloadCmd := m.requestCrossProjectOutlinerReload()
+		projectName := "project"
+		if msg.Project != nil {
+			projectName = msg.Project.Name
+		}
+		feedbackCmd := m.setRecoveryFeedback("Created "+projectName, msg.TransactionID, false)
 		if moveTask != nil && moveSource != nil && msg.Project != nil {
 			moveCmd := func() tea.Msg {
 				return MoveTaskToProjectMsg{
@@ -44,9 +50,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 					FromGlobal:    true,
 				}
 			}
-			return true, tea.Batch(popCmd, moveCmd, reloadCmd, notesCmd)
+			return true, tea.Batch(popCmd, moveCmd, reloadCmd, notesCmd, feedbackCmd)
 		}
-		return true, tea.Batch(popCmd, reloadCmd, notesCmd)
+		return true, tea.Batch(popCmd, reloadCmd, notesCmd, feedbackCmd)
 
 	case ProjectArchiveRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
@@ -74,9 +80,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if !msg.Pinned {
 			action = "Unpin Project"
 		}
-		if err := m.commitCatalogProjectMutation(action, []string{updated.ID}, func(catalog *config.WorkspaceCatalog) error {
+		transactionID, err := m.commitCatalogProjectMutation(action, updated.Name, []string{updated.ID}, func(catalog *config.WorkspaceCatalog) error {
 			return catalog.UpsertProject(&updated)
-		}); err != nil {
+		})
+		if err != nil {
 			m.err = err
 			return true, nil
 		}
@@ -85,12 +92,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if !msg.Pinned {
 			statusMsg = "Unpinned"
 		}
-		m.setSuccessStatus(statusMsg)
+		feedbackCmd := m.setRecoveryFeedback(statusMsg+" "+updated.Name, transactionID, false)
 		m.refreshProjectHubIfActive()
 		return true, tea.Batch(
 			m.requestCrossProjectOutlinerReload(),
 			m.refreshActiveNotesManager(),
-			defaultStatusTimeout(),
+			feedbackCmd,
 		)
 
 	case SetProjectTagsMsg:
@@ -142,6 +149,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		// filtered at read time, so the shell caches are rederived before any
 		// surface reads them again.
 		m.rebuildPlanningFromRuntime()
+		m.refreshWorkspacePulseAt(time.Now())
 		m.refreshProjectView()
 		m.refreshProjectHubIfActive()
 		cmds := []tea.Cmd{
@@ -149,10 +157,18 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.requestCrossProjectOutlinerReload(),
 			m.refreshActiveNotesManager(),
 		}
-		if msg.Parked && msg.Project != nil {
-			m.setSuccessStatus(projectTagStatus(msg.Project, true, false))
-			cmds = append(cmds, defaultStatusTimeout())
+		status := "Updated project"
+		if msg.Project != nil {
+			status = "Updated " + msg.Project.Name
 		}
+		if msg.Parked && msg.Project != nil {
+			status = projectTagStatus(msg.Project, true, false)
+		}
+		feedbackCmd := m.setRecoveryFeedback(status, msg.TransactionID, false)
+		if msg.Parked && msg.Project != nil {
+			m.appendRecoveryFeedbackDetail(projectTaskCountPhrase(msg.Project) + " hidden · Fp to show")
+		}
+		cmds = append(cmds, feedbackCmd)
 		return true, tea.Batch(cmds...)
 
 	}
@@ -252,7 +268,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	if len(archivedLocators) > 0 {
 		domains.Planning.RemoveDurableTaskLocators(archivedLocators)
 	}
-	result, err := m.commitRuntimeDomainsWithUndo(domains, "Archive Project", []string{updated.ID})
+	result, err := m.commitRuntimeDomainsWithUndo(domains, "Archive Project", updated.Name, []string{updated.ID})
 	if err != nil {
 		m.err = err
 		return nil
@@ -263,17 +279,22 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		m.currentProject = nil
 	}
 	m.pruneDeletedTaskRefs()
+	m.refreshWorkspacePulseAt(time.Now())
 	action := fmt.Sprintf("Archived %s", updated.Name)
+	feedbackMessage := action
 	if result.MachineErr != nil {
-		m.setWarningStatus(machineRepairWarning(action, result.MachineErr))
-	} else {
-		m.setSuccessStatus(action)
+		feedbackMessage = machineRepairWarning(action, result.MachineErr)
+	}
+	feedbackCmd := m.setRecoveryFeedback(feedbackMessage, result.TransactionID, false)
+	if result.MachineErr != nil {
+		m.statusIsInfo = true
+		m.appendRecoveryFeedbackDetail("machine-state cleanup incomplete; retrying")
 	}
 	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),
-		defaultStatusTimeout(),
+		feedbackCmd,
 	)
 }
 
@@ -285,18 +306,19 @@ func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
 	}
 	updated := *project
 	updated.Unarchive()
-	if err := m.commitCatalogProjectMutation("Restore Project", []string{updated.ID}, func(catalog *config.WorkspaceCatalog) error {
+	transactionID, err := m.commitCatalogProjectMutation("Restore Project", updated.Name, []string{updated.ID}, func(catalog *config.WorkspaceCatalog) error {
 		return catalog.UpsertProject(&updated)
-	}); err != nil {
+	})
+	if err != nil {
 		m.err = err
 		return nil
 	}
 	copyCatalogMetadata(project, &updated)
-	m.setSuccessStatus(fmt.Sprintf("Unarchived %s", updated.Name))
+	feedbackCmd := m.setRecoveryFeedback(fmt.Sprintf("Unarchived %s", updated.Name), transactionID, false)
 	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),
 		m.refreshActiveNotesManager(),
-		defaultStatusTimeout(),
+		feedbackCmd,
 	)
 }

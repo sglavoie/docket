@@ -70,6 +70,7 @@ type TaskClipboardProjection struct {
 type TaskOperationResult struct {
 	Tasks             []TaskResult
 	TouchedProjectIDs []string
+	TransactionID     string
 	Clipboard         *TaskClipboardProjection
 }
 
@@ -205,6 +206,7 @@ func singleTaskOperationResult(result TaskResult, err error) (TaskOperationResul
 	return TaskOperationResult{
 		Tasks:             []TaskResult{result},
 		TouchedProjectIDs: []string{result.ProjectID},
+		TransactionID:     result.TransactionID,
 	}, nil
 }
 
@@ -215,6 +217,7 @@ func bulkTaskOperationResult(result BulkResult, err error) (TaskOperationResult,
 	return TaskOperationResult{
 		Tasks:             result.Tasks,
 		TouchedProjectIDs: result.TouchedProjectIDs,
+		TransactionID:     result.TransactionID,
 	}, nil
 }
 

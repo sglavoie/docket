@@ -33,21 +33,18 @@ func (m *AppModel) refreshAfterSubviewCommit() tea.Cmd {
 
 // handleCommentAdded handles the CommentAddedMsg.
 func (m *AppModel) handleCommentAdded(msg CommentAddedMsg) (bool, tea.Cmd) {
-	m.setSuccessStatus("Comment added")
 	// Delegate to current view so it can refresh stale task data
 	// (outliner rows contain clones from tree projections)
 	viewCmd := m.delegateToCurrentView(msg)
-	return true, tea.Batch(defaultStatusTimeout(), viewCmd, m.refreshAfterSubviewCommit())
+	return true, tea.Batch(m.setRecoveryFeedback("Comment added", msg.TransactionID, false), viewCmd, m.refreshAfterSubviewCommit())
 }
 
 // handleCommentDeleted handles the CommentDeletedMsg.
 func (m *AppModel) handleCommentDeleted(msg CommentDeletedMsg) (bool, tea.Cmd) {
-	m.setSuccessStatus("Comment deleted")
-	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
+	return true, tea.Batch(m.setRecoveryFeedback("Comment deleted", msg.TransactionID, false), m.refreshAfterSubviewCommit())
 }
 
 // handleCommentEdited handles the CommentEditedMsg.
 func (m *AppModel) handleCommentEdited(msg CommentEditedMsg) (bool, tea.Cmd) {
-	m.setSuccessStatus("Comment updated")
-	return true, tea.Batch(defaultStatusTimeout(), m.refreshAfterSubviewCommit())
+	return true, tea.Batch(m.setRecoveryFeedback("Comment updated", msg.TransactionID, false), m.refreshAfterSubviewCommit())
 }

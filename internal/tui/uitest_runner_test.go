@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -209,6 +210,10 @@ func (d *UITestDriver) runAssert(a UITestAction) error {
 		if strings.Contains(obs.PlainScreen, a.Value) {
 			return fmt.Errorf("screen unexpectedly contains %q", a.Value)
 		}
+	case "count_contains":
+		if got := strings.Count(obs.PlainScreen, a.Value); got != a.Count {
+			return fmt.Errorf("screen contains %q %d time(s), want %d", a.Value, got, a.Count)
+		}
 	case "view":
 		if obs.CurrentView != a.Value {
 			return fmt.Errorf("current view is %q, want %q", obs.CurrentView, a.Value)
@@ -306,22 +311,25 @@ func (d *UITestDriver) Wait(timeout time.Duration) {
 		return
 	}
 
-	end := time.Now().Add(timeout)
 	var followups []tea.Cmd
-	for _, ch := range futures {
-		remaining := time.Until(end)
-		if remaining <= 0 {
-			// Out of budget: this future stays pending.
-			d.pendingFutures = append(d.pendingFutures, ch)
-			continue
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	for len(futures) > 0 {
+		cases := make([]reflect.SelectCase, 0, len(futures)+1)
+		for _, ch := range futures {
+			cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)})
 		}
-		select {
-		case msg := <-ch:
-			followups = append(followups, d.handleMsg(msg)...)
-		case <-time.After(remaining):
-			d.pendingFutures = append(d.pendingFutures, ch)
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(timer.C)})
+		chosen, value, ok := reflect.Select(cases)
+		if chosen == len(futures) {
+			break
 		}
+		if ok {
+			followups = append(followups, d.handleMsg(value.Interface())...)
+		}
+		futures = append(futures[:chosen], futures[chosen+1:]...)
 	}
+	d.pendingFutures = append(d.pendingFutures, futures...)
 	if len(followups) > 0 {
 		d.processCmds(followups, d.drainOpts())
 	}

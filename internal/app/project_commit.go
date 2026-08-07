@@ -86,9 +86,11 @@ func (s *Service) CommitProject(project *models.Project, opts ProjectCommitOptio
 	}
 	return BulkResult{
 		TouchedProjectIDs: []string{project.ID},
+		TransactionID:     transactionIDAt(outcome.results, 0),
 		Tasks: []TaskResult{{
-			ProjectID: project.ID,
-			Revision:  revisionAt(outcome.results, 0),
+			ProjectID:     project.ID,
+			Revision:      revisionAt(outcome.results, 0),
+			TransactionID: transactionIDAt(outcome.results, 0),
 		}},
 	}, nil
 }

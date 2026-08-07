@@ -107,12 +107,13 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 		titleText = "Set Due Date"
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
-	footerText := HelpStyle.Render("j/k · key: pick · Enter: select · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
-	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(width-4, 1))
+	innerWidth := min(max(maxWidth, titleMinInner), max(width-4, 1))
+	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+		"Enter select", "j/k navigate", "preset key pick",
+	), max(innerWidth-4, 1))
 
 	today := util.StartOfDay(time.Now())
 	currentEntryIdx := -1

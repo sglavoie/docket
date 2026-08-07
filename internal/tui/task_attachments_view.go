@@ -16,10 +16,11 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	}
 
 	var b strings.Builder
-	b.WriteString(renderTaskScopedFullscreenTitle(
+	b.WriteString(renderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Attachments for #%d: ", m.task.ShortID),
 		m.task,
 		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
+		m.currentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
@@ -29,8 +30,10 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	}
 
 	m.renderMessages(&b)
-	m.renderAttachmentsList(&b)
-	m.renderHelp(&b)
+	spec, ok := m.guidanceSpec()
+	footer := renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
+	m.renderAttachmentsList(&b, taskToolAvailableRows(b.String(), footer, m.Height()))
+	b.WriteString(footer)
 
 	return tea.NewView(b.String())
 }
@@ -42,8 +45,8 @@ func (m *TaskAttachmentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("Enter: add · Esc: cancel"))
-	b.WriteString("\n")
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
 }
 
@@ -58,16 +61,17 @@ func (m *TaskAttachmentsModel) renderMessages(b *strings.Builder) {
 	}
 }
 
-func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder) {
+func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availableRows int) {
 	if len(m.task.Attachments) == 0 {
-		b.WriteString(MutedStyle.Render("No attachments yet. Press 'a' to add one."))
+		b.WriteString(MutedStyle.Render("No attachments yet."))
 		b.WriteString("\n")
 		return
 	}
 
-	headerLines := 5
-	availableHeight := m.Height() - headerLines
-	maxVisible := max(availableHeight/3, 3)
+	maxVisible := taskToolMaxVisible(len(m.task.Attachments), availableRows, 4)
+	if maxVisible == 0 {
+		return
+	}
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
 	for i := scrollOffset; i < len(m.task.Attachments) && i < scrollOffset+maxVisible; i++ {
@@ -153,27 +157,4 @@ func (m *TaskAttachmentsModel) attachmentMeta(att models.Attachment) string {
 		sizeStr = storage.FormatFileSize(size)
 	}
 	return fmt.Sprintf("%s | %s", sizeStr, storage.FormatRelativeTime(att.AddedAt))
-}
-
-func (m *TaskAttachmentsModel) renderHelp(b *strings.Builder) {
-	isCodeRef := m.hasSelection() && m.task.Attachments[m.cursor].IsCodeRef
-	helpParts := []string{"a: add", "o: open", "e: edit", "O: open dir"}
-	if !isCodeRef {
-		helpParts = append(helpParts, "Ctrl+O: original")
-	}
-	helpParts = append(helpParts, "J/K: reorder", "d: del", "u: unlink", "y: copy")
-	if isCodeRef {
-		helpParts = append(helpParts, "Y: copy w/line")
-	}
-	helpParts = append(helpParts, "?: help", "Esc: close")
-
-	helpLines := strings.Split(renderWrappingHelpLine(strings.Join(helpParts, " · "), m.Width()), "\n")
-	if len(helpLines) == 0 {
-		return
-	}
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpLines[0]), "", m.Width(), m.AccentColor()))
-	for _, line := range helpLines[1:] {
-		b.WriteString("\n")
-		b.WriteString(fitStyledLineToWidth(HelpStyle.Render(line), m.Width()))
-	}
 }

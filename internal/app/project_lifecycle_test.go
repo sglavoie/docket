@@ -118,7 +118,7 @@ func TestProtectedSystemInboxRenameRejectedBeforeCommit(t *testing.T) {
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
-	renameErr := svc.RenameProject(app.RenameProjectRequest{
+	_, renameErr := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project:                project,
 		SystemUnfiledProjectID: project.ID,
 		DataDir:                dataDir,
@@ -151,7 +151,7 @@ func TestRenameProjectCommitsAtomically(t *testing.T) {
 	project.Slug = "beta"
 	newTasks := []byte("# Beta\n<!-- renamed -->\n")
 	expected := tasksExpectedRevision(t, project)
-	err := svc.RenameProject(app.RenameProjectRequest{
+	_, err := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -197,7 +197,7 @@ func TestRenameProjectRejectsUncheckedTasksRewrite(t *testing.T) {
 	repo := &opsRepo{fakeRepo: newFakeRepo()}
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
-	err := svc.RenameProject(app.RenameProjectRequest{
+	_, err := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project:       project,
 		DataDir:       dataDir,
 		OldSlug:       "alpha",
@@ -232,7 +232,7 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 	project.Slug = "beta"
 	newTasks := []byte("# Beta\n<!-- real journal -->\n")
 	expected := tasksExpectedRevision(t, project)
-	err := svc.RenameProject(app.RenameProjectRequest{
+	_, err := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -293,7 +293,7 @@ func TestRenameProjectRealCommitRejectsConcurrentTaskEdit(t *testing.T) {
 		t.Fatalf("write concurrent tasks: %v", err)
 	}
 
-	err := svc.RenameProject(app.RenameProjectRequest{
+	_, err := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -326,7 +326,7 @@ func TestRenameProjectSlugUnchangedRewritesInPlace(t *testing.T) {
 
 	newTasks := []byte("# Alpha Renamed\n")
 	expected := tasksExpectedRevision(t, project)
-	err := svc.RenameProject(app.RenameProjectRequest{
+	_, err := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project:               project,
 		DataDir:               dataDir,
 		OldSlug:               "alpha",
@@ -354,7 +354,7 @@ func TestRenameProjectSlugUnchangedRewritesInPlace(t *testing.T) {
 // run when the repository cannot commit raw ops.
 func TestRenameProjectFailsClosedWithoutOpsCommitter(t *testing.T) {
 	svc := newTestService(newFakeRepo())
-	err := svc.RenameProject(app.RenameProjectRequest{
+	_, err := svc.RenameProjectResult(app.RenameProjectRequest{
 		Project: &models.Project{ID: uuid.New().String(), Slug: "beta"},
 		DataDir: t.TempDir(),
 		OldSlug: "alpha",

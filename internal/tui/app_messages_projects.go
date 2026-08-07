@@ -23,14 +23,18 @@ type CreateProjectMsg struct {
 type EditProjectMsg struct{ Project *models.Project }
 
 // ProjectCreatedMsg signals a new project was created.
-type ProjectCreatedMsg struct{ Project *models.Project }
+type ProjectCreatedMsg struct {
+	Project       *models.Project
+	TransactionID string
+}
 
 // ProjectUpdatedMsg signals a project's metadata was updated. Parked reports an
 // edit that newly parked the project, which the shell anchors and explains the
 // same way the project-tag picker path does.
 type ProjectUpdatedMsg struct {
-	Project *models.Project
-	Parked  bool
+	Project       *models.Project
+	Parked        bool
+	TransactionID string
 }
 
 // projectEditorParkRequestMsg hands a resolved project-editor save to the shell

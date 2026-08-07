@@ -2,10 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // ContextActionSheetHost names the surface that opened one contextual sheet.
@@ -362,9 +365,9 @@ func (model *ContextActionSheetModel) render(width int) string {
 	innerWidth := min(max(width*3/5, 48), max(width-6, 24))
 	listHeight := min(max(len(model.surface.Rows()), 7), 16)
 	query := model.surface.Query().Raw
-	search := "Press / to search"
+	search := ""
 	if model.config.ImmediateFilter {
-		search = "Type to filter"
+		search = "Search: "
 	}
 	if model.searching || query != "" {
 		cursor := ""
@@ -373,12 +376,22 @@ func (model *ContextActionSheetModel) render(width int) string {
 		}
 		search = "Search: " + query + cursor
 	}
-	header := MutedStyle.Render(search)
-	if model.notice != "" {
-		header = ErrorStatusStyle.Render(truncateToVisualWidth(model.notice, max(innerWidth-4, 12))) +
-			"\n" + header
+	header := ""
+	if search != "" {
+		header = MutedStyle.Render(search)
 	}
-	content := header + "\n\n" + RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	if model.notice != "" {
+		notice := ErrorStatusStyle.Render(truncateToVisualWidth(model.notice, max(innerWidth-4, 12)))
+		if header == "" {
+			header = notice
+		} else {
+			header = notice + "\n" + header
+		}
+	}
+	content := RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	if header != "" {
+		content = header + "\n\n" + content
+	}
 
 	titleText := model.config.Title
 	if model.config.Bulk {
@@ -388,10 +401,59 @@ func (model *ContextActionSheetModel) render(width int) string {
 		titleText += ": " + truncateToVisualWidth(model.config.Subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
-	footerText := "Enter choose · / search · Esc close"
-	if model.config.ImmediateFilter {
-		footerText = "Type filter · ↑↓/Ctrl+j/k move · Enter · Esc"
-	}
-	footer := HelpStyle.Render(footerText)
+	guidance, _ := model.guidanceSpec()
+	footer := HelpStyle.Render(strings.Join(guidanceLines(guidance, max(innerWidth-4, 1)), "\n"))
 	return renderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
+}
+
+func (model *ContextActionSheetModel) guidanceSpec() (GuidanceSpec, bool) {
+	if model == nil || model.surface == nil {
+		return GuidanceSpec{}, false
+	}
+	query := model.surface.Query().Raw
+	searching := model.searching
+	immediate := model.config.ImmediateFilter
+	hasSelection := func() bool {
+		_, ok := model.surface.CurrentItem()
+		return ok
+	}
+	browsing := func() bool { return !searching || immediate }
+	navigationKey := "j"
+	navigationLabel := "navigate"
+	navigationFooterKey := "j/k"
+	if immediate {
+		navigationKey = "down"
+		navigationLabel = "move"
+		navigationFooterKey = "↑↓/Ctrl+j/k"
+	}
+	enterLabel := "run"
+	if searching && !immediate {
+		enterLabel = "apply search"
+	}
+	escapeLabel := "close"
+	if query != "" {
+		escapeLabel = "clear search"
+	} else if searching && !immediate {
+		escapeLabel = "cancel search"
+	}
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind(navigationKey, "Move selection", "Navigation",
+			keymap.WithGate(func() bool { return browsing() && hasSelection() }),
+			keymap.WithFooter(10, navigationLabel, false),
+			keymap.WithFooterKey(navigationFooterKey)),
+		keymap.Bind("enter", "Apply current action", "Actions",
+			keymap.WithGate(func() bool { return hasSelection() || (searching && !immediate) }),
+			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
+		keymap.Bind("/", "Search actions", "Filters",
+			keymap.WithGate(func() bool { return !searching && !immediate }),
+			keymap.WithFooter(20, "search", false)),
+		keymap.Bind("esc", "Unwind action sheet", "Navigation",
+			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
+	}}
+	state := model.surface.GuidanceState(searching && !immediate)
+	spec, ok := listSurfaceGuidanceSpec(state, km, nil)
+	if immediate && searching {
+		spec.Rows = 2
+	}
+	return spec, ok
 }

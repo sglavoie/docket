@@ -16,6 +16,7 @@ import (
 
 // ProjectCreatorModel handles creating a new project via TUI.
 type ProjectCreatorModel struct {
+	workspacePulseState
 	runtime *config.RuntimeState
 	manager *config.Manager
 	service *app.Service
@@ -153,19 +154,20 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 			Mode:             storage.FilePermissions,
 			ExpectedRevision: &requireAbsent,
 		})
-		if err := service.CommitProjectMutation(storage.OpsCommitRequest{
+		transactionID, err := service.CommitProjectMutationResult(storage.OpsCommitRequest{
 			Artifacts:   artifacts,
 			ProjectIDs:  []string{project.ID},
 			UndoAction:  "Create Project",
 			UndoContext: project.Name,
-		}); err != nil {
+		})
+		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
 		if err := runtime.RefreshAfterCommit(); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 		}
 
-		return ProjectCreatedMsg{Project: project}
+		return ProjectCreatedMsg{Project: project, TransactionID: transactionID}
 	}
 }
 
@@ -184,18 +186,25 @@ func (m *ProjectCreatorModel) View() tea.View {
 		b.WriteString(renderProjectSlugPreview(slug, m.width, "", ""))
 	}
 
-	// Footer
-	left := HelpStyle.Render("Enter submit · Esc cancel")
-	right := MutedStyle.Render("Create Project")
+	guidance := renderGuidance(m.guidanceSpec(), m.width)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle("Create Project", ""))
+	out.WriteString(renderFullscreenTitleWithPulse("Create Project", "", m.currentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
 	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(left, right, m.width))
+	out.WriteString(guidance)
 
 	return tea.NewView(out.String())
+}
+
+func (m *ProjectCreatorModel) guidanceSpec() GuidanceSpec {
+	if m.confirmDiscard {
+		return confirmationGuidanceSpec()
+	}
+	spec := requiredActionGuidanceSpec("Enter create")
+	spec.Supplemental = "Create Project"
+	return spec
 }
 
 func (m *ProjectCreatorModel) HasTextInput() bool     { return true }

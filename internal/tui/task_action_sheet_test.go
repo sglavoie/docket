@@ -56,6 +56,24 @@ func registerTaskActionTestDescriptor(
 	}
 }
 
+func TestTaskActionSheetMissingSelectionSchedulesStatusClear(t *testing.T) {
+	model := newUITestApp()
+	result := model.executeCoreInputOperation(OperationInvocation{
+		Descriptor: OperationDescriptor{ID: operationCoreActions},
+	})
+
+	if result.Err != nil {
+		t.Fatalf("open task actions: %v", result.Err)
+	}
+	if model.statusMessage != "select a task to open actions" {
+		t.Fatalf("status = %q, want missing-selection guidance", model.statusMessage)
+	}
+	timeout, ok := result.Message.(OperationCommandResultMsg)
+	if !ok || timeout.Cmd == nil {
+		t.Fatalf("result message = %T, want a status timeout command", result.Message)
+	}
+}
+
 func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	model := newUITestApp()
 	project := newTaskStructureTestProject()

@@ -233,6 +233,13 @@ func (m *ManageHubModel) SetAccentColor(accent color.Color) {
 	}
 }
 
+func (m *ManageHubModel) setWorkspacePulse(pulse WorkspacePulse) {
+	m.BaseView.setWorkspacePulse(pulse)
+	if injector, ok := m.active.(workspacePulseAware); ok {
+		injector.setWorkspacePulse(pulse)
+	}
+}
+
 func (m *ManageHubModel) ShouldCaptureEsc() bool {
 	if caps, ok := m.active.(ViewCapabilities); ok {
 		return caps.ShouldCaptureEsc()

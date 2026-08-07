@@ -14,7 +14,7 @@ import (
 // the reserved parked tag. These tests walk every route a parked project's tasks
 // could otherwise take back into the Outliner — a mode, the Pinned section, a
 // planning reference, a context label, slash search, a filter facet, an
-// operation scope, the open-loop counter, or a surviving selection — and assert
+// operation scope, the workspace pulse, or a surviving selection — and assert
 // each one is closed.
 
 // parkProject tags cataloged projects parked through the catalog's own upsert,
@@ -203,7 +203,7 @@ func TestParkedProjectLeavesTagFilterFacet(t *testing.T) {
 	}
 }
 
-func TestParkedProjectLeavesOperationScopeAndOpenLoops(t *testing.T) {
+func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	shell := &AppModel{
 		runtime:  runtime,
@@ -219,14 +219,14 @@ func TestParkedProjectLeavesOperationScopeAndOpenLoops(t *testing.T) {
 	storage.DefaultRepository = repo
 	defer func() { storage.DefaultRepository = previous }()
 
-	loops := ComputeOpenLoops(runtime, map[TaskIdentity]bool{
+	pulse := ComputeWorkspacePulse(runtime, map[TaskIdentity]bool{
 		taskIdentityFor(parked.Tasks[0], parked): true,
-	})
-	if loops.Inbox != 1 {
-		t.Fatalf("open-loop inbox = %d, want only the base workspace inbox task", loops.Inbox)
+	}, time.Now())
+	if pulse.Inbox != 1 {
+		t.Fatalf("workspace pulse inbox = %d, want only the base workspace inbox task", pulse.Inbox)
 	}
-	if loops.TodayTotal != 0 {
-		t.Fatalf("open-loop Today total = %d, want a parked Today reference to count nothing", loops.TodayTotal)
+	if pulse.Today != 0 {
+		t.Fatalf("workspace pulse Today = %d, want a parked Today reference to count nothing", pulse.Today)
 	}
 }
 

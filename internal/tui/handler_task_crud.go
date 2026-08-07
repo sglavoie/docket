@@ -2,13 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleTaskCRUDMessages handles task CRUD messages (create, edit, delete).
@@ -118,6 +116,15 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 	if msg.CreatedCount > 1 {
 		m.setSuccessStatus(fmt.Sprintf("Created %d tasks", msg.CreatedCount))
 	}
+	successMessage := m.statusMessage
+	if successMessage == "" {
+		successMessage = "Created task"
+	}
+	transactionID := ""
+	if msg.Result != nil {
+		transactionID = msg.Result.TransactionID
+	}
+	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, false)
 
 	// Delegate to the current view so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
@@ -131,14 +138,14 @@ func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
 		if project != nil {
 			if freshTask := project.GetTaskByID(msg.Task.ID); freshTask != nil {
 				openMsg := EditTaskContentMsg{Task: freshTask, Project: project}
-				return true, tea.Batch(refreshCmd, cmd, statusTimeout(2*time.Second), func() tea.Msg {
+				return true, tea.Batch(refreshCmd, cmd, feedbackCmd, func() tea.Msg {
 					return openMsg
 				})
 			}
 		}
 	}
 
-	return true, tea.Batch(refreshCmd, cmd, statusTimeout(2*time.Second))
+	return true, tea.Batch(refreshCmd, cmd, feedbackCmd)
 }
 
 func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Project) string {
@@ -174,7 +181,12 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 
 	// Delegate to the current view so it can reload its state
 	cmd := m.views.Update(m.currentView(), msg)
-	return true, tea.Batch(refreshCmd, cmd)
+	transactionID := ""
+	if msg.Result != nil {
+		transactionID = msg.Result.TransactionID
+	}
+	feedbackCmd := m.setRecoveryFeedback("Updated task", transactionID, false)
+	return true, tea.Batch(refreshCmd, cmd, feedbackCmd)
 }
 
 // handleTaskDeleted handles the TaskDeletedMsg.
@@ -190,18 +202,5 @@ func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
 		return true, refreshCmd
 	}
 
-	// Pull the latest workspace entry so the toast labels exactly what `u` will
-	// undo. Falling back to the in-message task title would drift if no durable
-	// transaction was recorded.
-	ledger := workspaceLedgerFromConfig(m.runtime)
-	latest, ok, err := ledger.SelectNewestUndo(storage.GlobalScope())
-	if err != nil || !ok {
-		return true, refreshCmd
-	}
-
-	toast := formatUndoToast(latest.Action, latest.Context)
-	undoCb := func() tea.Cmd {
-		return m.handleLedgerTaskUndoRedo(false)
-	}
-	return true, tea.Batch(refreshCmd, m.setUndoableStatus(toast, undoCb))
+	return true, tea.Batch(refreshCmd, m.setRecoveryFeedback("Deleted task", msg.TransactionID, false))
 }

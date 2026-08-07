@@ -179,91 +179,31 @@ func (a taskItemPanelActions) handleNormalKey(key string) tea.Cmd {
 
 func buildTaskItemPanelKeyMap(actions taskItemPanelActions, extraEntries ...keymap.Entry) *keymap.KeyMap {
 	inInputMode := actions.inInputMode
+	inBrowseMode := func() bool { return !inInputMode() }
+	hasBrowseSelection := func() bool { return inBrowseMode() && actions.hasSelection() }
 
 	entries := []keymap.Entry{
-		keymap.Bind("j", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("G", fmt.Sprintf("Jump to last %s", actions.itemName), "Navigation", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
+		keymap.Bind("j", "Move cursor down", "Navigation", keymap.WithFooter(8, "navigate", false), keymap.WithFooterKey("j/k"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("G", fmt.Sprintf("Jump to last %s", actions.itemName), "Navigation", keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("home", "Jump to first", "Navigation", keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("a", fmt.Sprintf("Add %s", actions.itemName), "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("n", fmt.Sprintf("Add %s", actions.itemName), "Actions", keymap.AsHidden(), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("e", fmt.Sprintf("Edit %s", actions.itemName), "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithFooter(7, "editor", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("d", fmt.Sprintf("Delete %s", actions.itemName), "Actions", keymap.WithFooter(4, "delete", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("x", fmt.Sprintf("Delete %s", actions.itemName), "Actions", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("y", fmt.Sprintf("Copy %s text", actions.itemName), "Actions", keymap.WithFooter(5, "copy", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithFooter(6, "copy all", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("enter", fmt.Sprintf("Expand %s", actions.itemName), "Actions", keymap.WithFooter(1, "expand", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("esc", "Close panel", "Navigation", keymap.WithFooter(9, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 	}
-
-	entries = append(entries, keymap.Bind("home", "Jump to first", "Navigation", keymap.WithGate(func() bool {
-		return !inInputMode()
-	}),
-	))
-
-	entries = append(entries,
-		keymap.Bind("a", fmt.Sprintf("Add %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("n", fmt.Sprintf("Add %s", actions.itemName), "Actions", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("e", fmt.Sprintf("Edit %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("d", fmt.Sprintf("Delete %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("x", fmt.Sprintf("Delete %s", actions.itemName), "Actions", keymap.AsHidden(), keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("y", fmt.Sprintf("Copy %s text", actions.itemName), "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-
-		keymap.Bind("enter", fmt.Sprintf("Expand %s", actions.itemName), "Actions", keymap.WithGate(func() bool {
-			return !inInputMode()
-		}),
-		),
-	)
 
 	entries = append(entries, extraEntries...)
 
-	return &keymap.KeyMap{
-		Entries: entries,
-	}
+	return &keymap.KeyMap{Entries: entries}
 }
 
 // commitTaskItemMutation commits an already-applied local panel mutation

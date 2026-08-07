@@ -16,7 +16,7 @@
     { "type": "key", "label": "cycle to Backlog", "key": "tab" },
     { "type": "key", "label": "cycle to Due", "key": "tab" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "◆ Due" },
+    { "type": "assert", "assert": "contains", "value": "Outliner · Active Projects · Due" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

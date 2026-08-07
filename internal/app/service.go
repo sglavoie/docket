@@ -181,10 +181,12 @@ func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision strin
 		return TaskResult{}, err
 	}
 	revision := ""
+	transactionID := ""
 	if len(results) > 0 && results[0] != nil {
 		revision = results[0].Revision
+		transactionID = results[0].TransactionID
 	}
-	return newTaskResult(ref, revision), nil
+	return newTaskResult(ref, revision, transactionID), nil
 }
 
 // projectCommit pairs a mutated project with the revision it was loaded at, so a
@@ -243,6 +245,16 @@ func revisionAt(results []*storage.CommitResult, i int) string {
 		return ""
 	}
 	return results[i].Revision
+}
+
+// transactionIDAt returns the transaction identity reported for the changeset
+// at index i, or "" when the repository could not provide one. Every result in
+// a grouped commit should carry the same ID.
+func transactionIDAt(results []*storage.CommitResult, i int) string {
+	if i < 0 || i >= len(results) || results[i] == nil {
+		return ""
+	}
+	return results[i].TransactionID
 }
 
 // applyPostMutationHooks runs post-mutation reconciliation:

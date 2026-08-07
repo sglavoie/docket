@@ -14,14 +14,14 @@ const appStatusBarHeight = 2
 
 // clampHelpBoxToHeight renders a help box for bodyLines, budgeting the rows
 // against viewHeight minus the height already consumed by preHelp (everything
-// the view rendered above the box) and the app status bar. A non-positive
-// viewHeight (an unsized view) renders the box unclamped. It returns "" when
+// above the box), postHelp (the adaptive guidance below it), and the app status
+// bar. A non-positive viewHeight renders the box unclamped. It returns "" when
 // there is no room for the box, signaling the caller to omit it.
-func clampHelpBoxToHeight(bodyLines []string, viewHeight int, preHelp string) string {
+func clampHelpBoxToHeight(bodyLines []string, viewHeight int, preHelp, postHelp string) string {
 	if viewHeight <= 0 {
 		return BoxStyle.Render(strings.Join(bodyLines, "\n"))
 	}
-	budget := viewHeight - lipgloss.Height(preHelp) - appStatusBarHeight
+	budget := viewHeight - lipgloss.Height(preHelp) - lipgloss.Height(postHelp) - appStatusBarHeight
 	return renderClampedHelpBox(bodyLines, budget)
 }
 

@@ -25,10 +25,16 @@ type outlinerJumpPosition struct {
 // outlinerRelocationCapture travels with a mutation until its committed rows
 // are visible. Failed commands never surface the capture to the refresh path.
 type outlinerRelocationCapture struct {
-	Task       TaskIdentity
-	Origin     outlinerJumpPosition
-	Projection string
+	Task          TaskIdentity
+	Origin        outlinerJumpPosition
+	Projection    string
+	TransactionID string
 }
+
+// outlinerOriginRecordedMsg reports that a committed relocation actually added
+// an origin to jump history. The shell uses the transaction ID to decorate only
+// the still-active matching recovery toast.
+type outlinerOriginRecordedMsg struct{ TransactionID string }
 
 type outlinerRelocationHistory struct {
 	back       []outlinerJumpPosition
@@ -131,33 +137,38 @@ func (m *OutlinerModel) finishPendingOutlinerRelocation() tea.Cmd {
 	}
 	capture := m.relocationHistory.pending
 	m.relocationHistory.pending = nil
-	return m.finishOutlinerRelocation(capture, false)
+	jumpCmd, recorded := m.finishOutlinerRelocation(capture, false)
+	if !recorded {
+		return jumpCmd
+	}
+	originCmd := func() tea.Msg { return outlinerOriginRecordedMsg{TransactionID: capture.TransactionID} }
+	return tea.Batch(jumpCmd, originCmd)
 }
 
 // finishOutlinerRelocation follows the committed task and records its vacated
 // origin only when it remains visible at a different row in the same projection.
 // Synchronous planning operations set forceFollow because no user input can have
 // occurred between capture and commit.
-func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapture, forceFollow bool) tea.Cmd {
+func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapture, forceFollow bool) (tea.Cmd, bool) {
 	if m == nil || capture == nil {
-		return nil
+		return nil, false
 	}
 	m.syncJumpProjection()
 	if capture.Projection != m.relocationHistory.projection {
-		return nil
+		return nil, false
 	}
 	if !forceFollow && m.currentTaskIdentity() != capture.Task {
-		return nil
+		return nil, false
 	}
 	destination, ok := m.rowIndexForTask(capture.Task)
 	if !ok || destination == capture.Origin.RowIndex {
-		return nil
+		return nil, false
 	}
 	oldCursor := m.cursor
 	m.cursor = destination
 	m.pushJumpBack(capture.Origin)
 	m.relocationHistory.forward = nil
-	return flashIfJumped(oldCursor, destination, &m.cursorFlash)
+	return flashIfJumped(oldCursor, destination, &m.cursorFlash), true
 }
 
 func (m *OutlinerModel) rowIndexForTask(identity TaskIdentity) (int, bool) {
@@ -348,23 +359,29 @@ func withOutlinerRelocationCapture(cmd tea.Cmd, capture *outlinerRelocationCaptu
 	}
 	return func() tea.Msg {
 		msg := cmd()
-		batch, ok := msg.(BatchTransactionResultMsg)
-		if !ok {
+		switch result := msg.(type) {
+		case BatchTransactionResultMsg:
+			copy := *capture
+			copy.TransactionID = result.TransactionID
+			result.outlinerRelocation = &copy
+			return result
+		case TransactionResultMsg:
+			copy := *capture
+			copy.TransactionID = result.Result.TransactionID
+			result.outlinerRelocation = &copy
+			return result
+		default:
 			return msg
 		}
-		copy := *capture
-		batch.outlinerRelocation = &copy
-		return batch
 	}
 }
 
-func (m *AppModel) finishSynchronousOutlinerRelocation(cmd tea.Cmd, capture *outlinerRelocationCapture) tea.Cmd {
-	if m == nil || m.crossOutliner == nil || capture == nil {
-		return cmd
+func (m *AppModel) finishSynchronousOutlinerRelocation(cmd tea.Cmd, capture *outlinerRelocationCapture, successMessage, transactionID string) tea.Cmd {
+	recorded := false
+	var jumpCmd tea.Cmd
+	if m != nil && m.crossOutliner != nil && capture != nil {
+		jumpCmd, recorded = m.crossOutliner.finishOutlinerRelocation(capture, true)
 	}
-	jumpCmd := m.crossOutliner.finishOutlinerRelocation(capture, true)
-	if jumpCmd == nil {
-		return cmd
-	}
-	return tea.Batch(cmd, jumpCmd)
+	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, recorded)
+	return tea.Batch(cmd, jumpCmd, feedbackCmd)
 }

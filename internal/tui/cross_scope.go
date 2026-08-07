@@ -75,8 +75,8 @@ func LoadCrossScopeTasks(runtime *config.RuntimeState, service *ProjectService, 
 // loadCrossScopeSelection loads an already-selected project set into an immutable
 // workspace snapshot and returns the flat task union, the successfully loaded
 // projects, and any load-failure details. It is the source-agnostic core shared
-// by the config-facade LoadCrossScopeTasks and the domain-snapshot open-loops
-// counter, so both select projects from their own domain source and load them
+// by the config-facade LoadCrossScopeTasks and the domain-snapshot workspace
+// pulse, so both select projects from their own domain source and load them
 // identically.
 func loadCrossScopeSelection(selected []*models.Project, loader *workspace.Loader) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
 	if loader == nil {

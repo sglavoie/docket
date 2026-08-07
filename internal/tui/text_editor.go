@@ -5,6 +5,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -13,10 +14,12 @@ import (
 // TextEditorModel handles editing a single text field in a popup overlay.
 // Used for task title and description editing in task creator/editor forms.
 type TextEditorModel struct {
+	workspacePulseState
 	textarea     textarea.Model
 	fieldName    string // "title" or "description"
 	initialValue string // for cancel restoration
 	width        int
+	externalEdit bool
 
 	discardConfirmState
 }
@@ -44,11 +47,10 @@ func (m *TextEditorModel) SetSize(width, height int) {
 	m.width = width
 	// Use same resize logic as other forms for consistent width
 	formFactory.ResizeTextarea(&m.textarea, width)
-	// Expand textarea to fill available vertical space.
-	// Reserve lines for: title (2), spacing (1), footer (1) = 4 lines overhead.
-	if taHeight := height - 4; taHeight > 5 {
-		m.textarea.SetHeight(taHeight)
-	}
+	// Expand the textarea into the rows left after the title/spacing and the
+	// currently rendered one- or two-row guidance footer.
+	footerHeight := lipgloss.Height(renderGuidance(m.guidanceSpec(), width))
+	m.textarea.SetHeight(max(height-2-footerHeight, 1))
 }
 
 func (m *TextEditorModel) Init() tea.Cmd {
@@ -80,6 +82,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TextEditorExternalDoneMsg:
 		// External editor finished - update textarea with result
+		m.externalEdit = false
 		if !msg.Canceled {
 			m.textarea.SetValue(msg.Value)
 		}
@@ -119,6 +122,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+e":
 			// Open external editor
+			m.externalEdit = true
 			return m, func() tea.Msg {
 				return TextEditorExternalMsg{
 					FieldName:    m.fieldName,
@@ -147,16 +151,28 @@ func (m *TextEditorModel) View() tea.View {
 		title = "Edit Description"
 	}
 
-	b.WriteString(renderFullscreenTitle(title, ""))
+	b.WriteString(renderFullscreenTitleWithPulse(title, "", m.currentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	applyThemedTextarea(&m.textarea)
 	b.WriteString(m.textarea.View())
 	b.WriteString("\n")
 
-	left := HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel")
-	b.WriteString(renderStatusBarFooter(left, "", m.width))
+	b.WriteString(renderGuidance(m.guidanceSpec(), m.width))
 
 	return tea.NewView(b.String())
+}
+
+func (m *TextEditorModel) guidanceSpec() GuidanceSpec {
+	if m.confirmDiscard {
+		return confirmationGuidanceSpec()
+	}
+	spec := requiredActionGuidanceSpec(
+		"Ctrl+S save", "Ctrl+E external editor", "Shift+Enter new line",
+	)
+	if m.externalEdit {
+		spec.Supplemental = "External editor open"
+	}
+	return spec
 }
 
 // HasTextInput returns true because the text editor uses a textarea input.

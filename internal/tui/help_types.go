@@ -42,6 +42,7 @@ func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
 
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
+	workspacePulseState
 	items          []HelpItem
 	filteredItems  []filteredHelpItem
 	viewport       viewport.Model

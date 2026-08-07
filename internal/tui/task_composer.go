@@ -92,6 +92,7 @@ type lineError struct {
 }
 
 type TaskComposerModel struct {
+	workspacePulseState
 	quickCaptureInput
 	preset             TaskComposerPreset
 	runtime            *config.RuntimeState
@@ -168,6 +169,13 @@ func (m *TaskComposerModel) SetSize(width, height int) {
 		m.input.SetWidth(max(min(width-4, 90), 20))
 		m.input.SetHeight(3)
 		m.setSyntaxViewportWidth(max(width-2, 1))
+	}
+}
+
+func (m *TaskComposerModel) setWorkspacePulse(pulse WorkspacePulse) {
+	m.workspacePulseState.setWorkspacePulse(pulse)
+	if m.expanded != nil {
+		m.expanded.setWorkspacePulse(pulse)
 	}
 }
 
@@ -595,8 +603,8 @@ func renderComposerDestination(destination app.CaptureDestination) string {
 // pane budget before the shell performs its final safety clip.
 func (m *TaskComposerModel) compactContentHeight() int {
 	contentHeight := m.height
-	if spec, ok := m.ContextualFooter(); ok {
-		footerRows := lipgloss.Height(renderContextualFooter(spec, m.width))
+	if spec, ok := m.ContextualGuidance(); ok {
+		footerRows := lipgloss.Height(renderGuidance(spec, m.width))
 		contentHeight -= max(footerRows-2, 0)
 	}
 	return max(contentHeight, 1)
@@ -610,7 +618,7 @@ func (m *TaskComposerModel) View() tea.View {
 	contentHeight := m.compactContentHeight()
 	project, destination := m.effectiveRouteHeader()
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitle("Task Composer", m.preset.label()))
+	b.WriteString(renderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.currentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	b.WriteString(SubtitleStyle.Render("Project: ") + truncateToVisualWidth(project, max(m.width-12, 1)))
 	b.WriteString("\n")
@@ -701,25 +709,32 @@ func (m *TaskComposerModel) GetConfirmDialog() *ConfirmDialog {
 	return m.discardConfirmState.GetConfirmDialog()
 }
 
-func (m *TaskComposerModel) ContextualFooter() (StatusBarFooterSpec, bool) {
+func (m *TaskComposerModel) ContextualGuidance() (GuidanceSpec, bool) {
 	if m.mode == ComposerExpanded {
-		return StatusBarFooterSpec{}, false
+		return GuidanceSpec{}, false
 	}
-	spec := captureFooterSpecFull(
+	spec := captureGuidanceSpec(
 		m.confirmDiscard,
 		m.isAutocompleteActive(),
 		m.helpExpanded,
 		m.helpExpanded && m.syntaxOverflows(),
 		m.syntaxScrollPercent(),
 	)
+	if len(m.errors) > 0 && !m.confirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
+		spec = requiredActionGuidanceSpec(
+			"Enter retry", "Ctrl+D retry & edit", "Ctrl+V paste", "? syntax",
+		)
+	}
 	if !m.confirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
-		spec.Left += " · Shift+Enter new line · Ctrl+F expand"
+		spec.Hints = append(spec.Hints, optionalGuidanceHints(100,
+			"Shift+Enter new line", "Ctrl+F expand",
+		)...)
 		if m.preset.AllowProjectSwitch && len(m.preset.AllProjects) > 1 {
-			spec.Left += " · Ctrl+P project"
+			spec.Hints = append(spec.Hints, optionalGuidanceHints(102, "Ctrl+P project")...)
 		}
 	}
-	if spec.Right == "" {
-		spec.Right = m.preset.label()
+	if spec.Supplemental == "" {
+		spec.Supplemental = m.preset.label()
 	}
 	return spec, true
 }

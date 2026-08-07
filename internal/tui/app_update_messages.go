@@ -79,6 +79,11 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, tea.Batch(cmd, returnCmd)
 		}
 		return true, cmd
+	case outlinerOriginRecordedMsg:
+		if msg.TransactionID == "" || msg.TransactionID != m.statusTransactionID || m.statusUndoCb == nil || !time.Now().Before(m.statusExpiresAt) {
+			return true, nil
+		}
+		return true, m.setRecoveryFeedback(m.statusRecoveryFallback, msg.TransactionID, true)
 	default:
 		return false, nil
 	}
@@ -133,11 +138,16 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // runs, keeping every open view consistent with the committed transaction.
 func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 	m.reloadProjectByID(msg.Result.ProjectID)
+	if m.crossOutliner != nil {
+		m.crossOutliner.armOutlinerRelocation(msg.outlinerRelocation)
+	}
 	if msg.PlanningChanged && m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
 	}
 	m.refreshLoadedTaskWorkspace()
-	return m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
+	saveCmd := m.handleSaveComplete(SaveCompleteMsg{})
+	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
+	return tea.Batch(saveCmd, feedbackCmd)
 }
 
 // handleBatchTransactionResult routes a committed project-scoped or multi-task
@@ -167,8 +177,13 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	if m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
 	}
-	saveCmd := m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: msg.SuccessMessage()})
-	return saveCmd
+	successMessage := msg.SuccessMessage()
+	if successMessage == "" {
+		successMessage = m.statusMessage
+	}
+	saveCmd := m.handleSaveComplete(SaveCompleteMsg{})
+	feedbackCmd := m.setRecoveryFeedback(successMessage, msg.TransactionID, false)
+	return tea.Batch(saveCmd, feedbackCmd)
 }
 
 func (m *AppModel) refreshLoadedTaskWorkspace() {
@@ -196,8 +211,8 @@ func (m *AppModel) reloadProjectByID(projectID string) {
 
 func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg.(type) {
-	case RefreshOpenLoopsMsg:
-		m.openLoops = ComputeOpenLoops(m.runtime, m.todayIDs)
+	case RefreshWorkspacePulseMsg:
+		m.refreshWorkspacePulseAt(time.Now())
 		return true, nil
 	case TodayClearedBannerClearMsg:
 		m.todayClearedBanner = ""
@@ -267,7 +282,7 @@ func (m *AppModel) refreshTaskViewsAfterRestore(runtimeReloaded bool) []tea.Cmd 
 }
 
 func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject bool) []tea.Cmd {
-	m.openLoops = ComputeOpenLoops(m.runtime, m.todayIDs)
+	m.refreshWorkspacePulseAt(time.Now())
 	m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
 	var saveCmds []tea.Cmd
 	if reloadCrossProject {
@@ -292,6 +307,10 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 		}
 	}
 	return saveCmds
+}
+
+func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
+	m.workspacePulse = ComputeWorkspacePulse(m.runtime, m.todayIDs, now)
 }
 
 func (m *AppModel) refreshProjectViewAfterTaskMutation(persistProjectTreeState bool) {

@@ -55,7 +55,7 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Change State", string(target))
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Change State", models.WorkflowStateGroupForState(target).Label())
 	if err != nil {
 		return TaskResult{}, err
 	}

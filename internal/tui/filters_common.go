@@ -154,6 +154,46 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Pinned
 }
 
+// commonFilterFacetCount reports independently clearable task facets. The
+// terminal-state predicate installed by a completion-age choice is part of
+// that one cleanup facet, not a second state facet in the clear count.
+func commonFilterFacetCount(f *CommonFilterState) int {
+	if f == nil {
+		return 0
+	}
+	count := 0
+	if f.hasStateFilter() && !completionAgeOwnsTerminalStates(f) {
+		count++
+	}
+	if f.hasCompletionAgeFilter() {
+		count++
+	}
+	if f.Priority != 0 {
+		count++
+	}
+	if len(f.Tags) > 0 {
+		count++
+	}
+	if f.DueDate != DueDateAll {
+		count++
+	}
+	if f.Snoozed {
+		count++
+	}
+	if f.Pinned {
+		count++
+	}
+	return count
+}
+
+func completionAgeOwnsTerminalStates(f *CommonFilterState) bool {
+	if f == nil || !f.hasCompletionAgeFilter() || !f.hasStateFilter() {
+		return false
+	}
+	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
+	return err == nil && f.States.Equal(terminal)
+}
+
 // clearCommonFilters resets all common filters to defaults.
 func clearCommonFilters(f *CommonFilterState) {
 	f.States = models.WorkflowStateSet{}

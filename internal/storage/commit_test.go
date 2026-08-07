@@ -75,7 +75,7 @@ func onDiskRevision(t *testing.T, project *models.Project) string {
 // TestCommitService_WritesProjectAndArtifact confirms a changeset commits the
 // project markdown and an associated configuration artifact atomically, and
 // reports the new revision.
-func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
+func TestCommitResultTransactionIDAndWritesProjectAndArtifact(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	project := newCommitTestProject(t, dataDir, "alpha", "write me")
 
@@ -89,6 +89,9 @@ func TestCommitService_WritesProjectAndArtifact(t *testing.T) {
 	}
 	if result.Revision == "" {
 		t.Fatal("expected a non-empty revision")
+	}
+	if result.TransactionID == "" {
+		t.Fatal("expected a non-empty transaction ID")
 	}
 
 	// The project markdown was written and parses back to the committed task.
@@ -308,7 +311,7 @@ func assertJournalClean(t *testing.T, dataDir string) {
 // artifacts (a config store, a note, a blocker record, an archive file, and a
 // derived index) atomically in one transaction, returning one result per
 // changeset that all share the same transaction id.
-func TestCommitService_CommitMulti_WritesAllProjectsAndArtifacts(t *testing.T) {
+func TestCommitResultTransactionIDSharedByCommitMulti(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha task")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta task")
@@ -338,6 +341,9 @@ func TestCommitService_CommitMulti_WritesAllProjectsAndArtifacts(t *testing.T) {
 	}
 	if results[0].Revision == "" || results[1].Revision == "" {
 		t.Fatalf("expected non-empty revisions, got %+v", results)
+	}
+	if results[0].TransactionID == "" || results[0].TransactionID != results[1].TransactionID {
+		t.Fatalf("grouped commit transaction IDs = %q and %q, want one shared non-empty ID", results[0].TransactionID, results[1].TransactionID)
 	}
 
 	// Both projects' markdown parses back to the committed task.

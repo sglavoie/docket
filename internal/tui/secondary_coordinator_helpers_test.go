@@ -52,7 +52,7 @@ func (r *testAppRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.Commit
 				return nil, err
 			}
 		}
-		results[i] = &storage.CommitResult{Revision: "test-revision"}
+		results[i] = &storage.CommitResult{Revision: "test-revision", TransactionID: "test-transaction"}
 	}
 	return results, nil
 }

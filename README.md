@@ -38,6 +38,27 @@ The Outliner is the only primary task presentation:
 Together, these operations form one capture, triage, plan, execute, and
 complete loop.
 
+## Presentation grammar
+
+Every full-screen presentation keeps one operational title row. Its left side
+names the surface, scope, and mode once; active selection, search, filters,
+zoom, or editor context occupies the middle; and the right side reports the
+workspace pulse as `workspace: inbox 3 · today 0 · overdue 1`. Today is shown
+even at zero whenever the pulse region fits. Zero Inbox and overdue counts
+disappear, and narrow terminals drop Inbox, then overdue, then Today before
+shortening required interaction context.
+
+Contextual guidance is made of complete `key action` entries. Browse states use
+one row; editing, adding, confirming, autocomplete, expanded detail, and pending
+chords may use two. Required commit and cancellation controls survive before
+optional hints. Transient pickers and action sheets own their local guidance
+while leaving the host title and workspace pulse visible.
+
+After a commit, recovery feedback advertises `u undo` only when the newest
+workspace-ledger entry is that exact transaction. A task relocation adds
+`Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
+relocated task.
+
 `Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due, and `Shift+Tab`
 reverses that cycle.
 
@@ -68,8 +89,8 @@ and snoozed work stay hidden unless a filter explicitly asks for them.
 | Selection | `v` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `p` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
-The operation descriptors are the single source for dispatch, the compact
-footer, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
+The operation descriptors are the single source for dispatch, contextual
+guidance, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
 actions and comma state prefix have no compatibility action; neither do removed
 keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
 
@@ -135,7 +156,7 @@ members, and Unpark all members across every project carrying it, as one undo
 entry. Removing a tag that is a project's only tag asks where those projects
 should land first.
 
-Pressing a chord prefix shows its valid continuations above the footer. `Esc`
+Pressing a chord prefix shows its valid continuations in the guidance region. `Esc`
 cancels that unfinished chord, and a second key the chord does not offer says so
 instead of doing nothing.
 

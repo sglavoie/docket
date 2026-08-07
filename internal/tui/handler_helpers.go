@@ -1,13 +1,14 @@
 package tui
 
 import (
-	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // activeCrossProjectOutliner returns the sole Outliner model.
@@ -129,7 +130,9 @@ func (m *AppModel) setSuccessStatus(msg string) {
 	m.statusUpdatedAt = time.Now()
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
-	m.openLoops = ComputeOpenLoops(m.runtime, m.todayIDs)
+	m.statusTransactionID = ""
+	m.statusRecoveryFallback = ""
+	m.refreshWorkspacePulseAt(time.Now())
 }
 
 // setInfoStatus sets a status message with informational styling (neutral color, no checkmark).
@@ -141,6 +144,8 @@ func (m *AppModel) setInfoStatus(msg string) {
 	m.statusUpdatedAt = time.Now()
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
+	m.statusTransactionID = ""
+	m.statusRecoveryFallback = ""
 }
 
 // setWarningStatus sets a non-fatal warning while preserving the committed
@@ -151,6 +156,8 @@ func (m *AppModel) setWarningStatus(msg string) {
 	m.statusUpdatedAt = time.Now()
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
+	m.statusTransactionID = ""
+	m.statusRecoveryFallback = ""
 }
 
 // UndoToastTimeout is how long a transient undo-available toast remains
@@ -182,13 +189,58 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 	})
 }
 
-// formatUndoToast renders the canonical "<action> '<context>' · u to undo"
-// toast string. The context is omitted if empty, producing "<action> · u to undo".
-func formatUndoToast(action, context string) string {
-	if context == "" {
-		return fmt.Sprintf("%s · u to undo", action)
+// setRecoveryFeedback installs the canonical recovery feedback only when the
+// just-committed transaction is still the newest global ledger entry. Missing,
+// unreadable, or superseded correlation degrades to the ordinary two-second
+// success status without leaving an undo callback armed.
+func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, originRecorded bool) tea.Cmd {
+	transactionID = strings.TrimSpace(transactionID)
+	if transactionID == "" {
+		m.setSuccessStatus(successMessage)
+		return defaultStatusTimeout()
 	}
-	return fmt.Sprintf("%s '%s' · u to undo", action, context)
+	entry, ok, err := workspaceLedgerFromConfig(m.runtime).SelectNewestUndo(storage.GlobalScope())
+	if err != nil || !ok || entry.TransactionID != transactionID {
+		m.setSuccessStatus(successMessage)
+		return defaultStatusTimeout()
+	}
+	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
+	cmd := m.setUndoableStatus(formatRecoveryFeedback(entry.Action, entry.Context, originRecorded), undoCb)
+	m.statusTransactionID = transactionID
+	m.statusRecoveryFallback = successMessage
+	return cmd
+}
+
+// formatRecoveryFeedback renders the canonical recovery grammar. Context is
+// omitted when absent; origin is advertised only after jump history records it.
+func formatRecoveryFeedback(action, context string, originRecorded bool) string {
+	message := strings.TrimSpace(action)
+	if context = strings.TrimSpace(context); context != "" {
+		message += ": " + context
+	}
+	message += " · u undo"
+	if originRecorded {
+		message += " · Ctrl+O origin"
+	}
+	return message
+}
+
+// appendRecoveryFeedbackDetail adds domain-specific consequence text while
+// keeping recovery controls in their canonical trailing order. It is a no-op
+// for ordinary fallback statuses because unverified feedback must not resemble
+// a correlated recovery toast.
+func (m *AppModel) appendRecoveryFeedbackDetail(detail string) {
+	detail = strings.TrimSpace(detail)
+	if detail == "" || m.statusUndoCb == nil {
+		return
+	}
+	origin := strings.HasSuffix(m.statusMessage, " · Ctrl+O origin")
+	m.statusMessage = strings.TrimSuffix(m.statusMessage, " · Ctrl+O origin")
+	m.statusMessage = strings.TrimSuffix(m.statusMessage, " · u undo")
+	m.statusMessage += " · " + detail + " · u undo"
+	if origin {
+		m.statusMessage += " · Ctrl+O origin"
+	}
 }
 
 // clearStatus clears the status message and resets the info flag.
@@ -198,6 +250,8 @@ func (m *AppModel) clearStatus() {
 	m.statusUpdatedAt = time.Time{}
 	m.statusUndoCb = nil
 	m.statusExpiresAt = time.Time{}
+	m.statusTransactionID = ""
+	m.statusRecoveryFallback = ""
 	m.err = nil
 }
 

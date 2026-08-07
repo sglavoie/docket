@@ -197,8 +197,9 @@ func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
 	if !ok || selected.ProjectID != "beta" {
 		t.Fatalf("Enter after search navigation emitted %#v, want beta", cmd())
 	}
-	if help := hub.footerHelp(120); !strings.Contains(help, "↑↓/Ctrl+j/k move") {
-		t.Fatalf("search footer does not advertise navigation: %q", help)
+	spec, ok := hub.ContextualGuidance()
+	if help := guidanceEntryText(spec); !ok || !strings.Contains(help, "↑/↓ or Ctrl+J/K navigate") {
+		t.Fatalf("search guidance does not advertise navigation: %q", help)
 	}
 }
 

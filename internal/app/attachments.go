@@ -271,8 +271,10 @@ func (s *Service) commitTaskWithSideEffects(ref TaskRef, expectedRevision string
 		return TaskResult{}, err
 	}
 	revision := ""
+	transactionID := ""
 	if len(results) > 0 && results[0] != nil {
 		revision = results[0].Revision
+		transactionID = results[0].TransactionID
 	}
-	return newTaskResult(ref, revision), nil
+	return newTaskResult(ref, revision, transactionID), nil
 }

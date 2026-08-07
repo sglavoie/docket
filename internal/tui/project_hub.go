@@ -13,8 +13,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-const projectHubFooterLabel = "Projects"
-
 // ShowProjectHubMsg opens the searchable project selection and administration
 // surface.
 type ShowProjectHubMsg struct{}
@@ -625,12 +623,12 @@ func (m *ProjectHubModel) View() tea.View {
 	if search := m.renderSearchBar(); search != "" {
 		header = lipgloss.JoinVertical(lipgloss.Left, title, search)
 	}
-	footer := renderStatusBarFooter(
-		HelpStyle.Render(m.footerHelp(width)),
-		MutedStyle.Render(projectHubFooterLabel),
-		width,
-		m.AccentColor(),
-	)
+	footer := ""
+	if m.actions == nil {
+		if guidance, ok := m.ContextualGuidance(); ok {
+			footer = renderGuidance(guidance, width, m.AccentColor())
+		}
+	}
 	contentHeight := fullscreenContentHeightForBlocks(height, header, footer)
 	var content string
 	if m.actions != nil {
@@ -671,21 +669,15 @@ func (m *ProjectHubModel) subtitle() string {
 	return subtitle
 }
 
-// renderProjectHubTitle degrades the title from the full subtitle to nothing, so
-// a narrow Hub loses workspace counts rather than overflowing.
+// renderProjectHubTitle delegates pulse and context fitting to the shared
+// operational title renderer.
 func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
-	heading := "Select Project"
-	subtitles := []string{m.subtitle(), ""}
-	for _, subtitle := range subtitles {
-		title := renderFullscreenTitle(heading, subtitle, m.AccentColor())
-		if lipgloss.Width(title) <= width {
-			return title
-		}
-	}
-	return fitStyledChromeToWidth(
-		"project hub title",
-		renderFullscreenTitle(heading, "", m.AccentColor()),
+	return renderFullscreenTitleWithPulse(
+		"Select Project",
+		m.subtitle(),
+		m.currentWorkspacePulse(),
 		width,
+		m.AccentColor(),
 	)
 }
 
@@ -697,43 +689,6 @@ func (m *ProjectHubModel) renderSearchBar() string {
 		return ""
 	}
 	return "/" + m.SearchQuery() + MutedStyle.Render(fmt.Sprintf("  (%d matches)", len(m.surface.Matches())))
-}
-
-func (m *ProjectHubModel) footerHelp(width int) string {
-	var variants []string
-	switch {
-	case m.actions != nil && m.actions.searching:
-		variants = []string{"Type to filter · Enter keep · Esc clear"}
-	case m.actions != nil:
-		variants = []string{"j/k choose · Enter run · / search · Esc back", "Enter run · Esc back"}
-	case m.HasActiveSearch():
-		variants = []string{
-			"Type to filter · ↑↓/Ctrl+j/k move · Ctrl+d/u half page · Enter select · Esc clear and browse",
-			"↑↓/Ctrl+j/k move · Enter select · Esc browse",
-			"Enter select · Esc browse",
-		}
-	case m.selectionCount() > 0:
-		variants = []string{
-			fmt.Sprintf("%d selected · v toggle · a/A all/none · Space bulk tag actions", m.selectionCount()),
-			fmt.Sprintf("%d selected · v · a/A · Space bulk", m.selectionCount()),
-			"v · a/A · Space bulk",
-		}
-	case m.SearchQuery() != "":
-		variants = []string{"j/k choose · Enter select · v select · Space actions · Esc clear", "Enter · v · Space · Esc clear"}
-	default:
-		variants = []string{
-			"j/k choose · Enter select · v select · a/A all/none · Space actions · n new · / search",
-			"j/k · Enter · v · a/A · Space · n · /",
-			"Enter · v · Space · /",
-		}
-	}
-	budget := width - lipgloss.Width(projectHubFooterLabel) - 1
-	for _, variant := range variants {
-		if lipgloss.Width(variant) <= budget {
-			return variant
-		}
-	}
-	return variants[len(variants)-1]
 }
 
 // HasTextInput reports the action sheet as text input because it owns the Hub's

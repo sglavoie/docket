@@ -171,14 +171,12 @@ func (m *ParentSelectorModel) View() tea.View {
 	// Render the list
 	b.WriteString(m.renderList())
 
-	// Footer
-	footer := "↑/↓ navigate · Enter select · Esc cancel"
+	extra := []GuidanceHint(nil)
 	if m.allowNone {
-		footer = "↑/↓ navigate · Enter select · Ctrl+X no parent · Esc cancel"
+		extra = append(extra, newGuidanceHint("Ctrl+X no parent", 3, false))
 	}
-	left := HelpStyle.Render(footer)
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.FilteredItems())))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+	guidance, _ := m.alwaysSearchGuidanceSpec("select", extra...)
+	b.WriteString(renderGuidance(guidance, m.Width()))
 
 	return tea.NewView(b.String())
 }

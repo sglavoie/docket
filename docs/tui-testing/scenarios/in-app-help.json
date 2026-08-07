@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "open generated Outliner help", "key": "?" },
     { "type": "assert", "assert": "view", "value": "Help" },
-    { "type": "assert", "assert": "contains", "value": "Help - Outliner" },
+    { "type": "assert", "assert": "contains", "value": "Help  Outliner" },
     { "type": "assert", "assert": "contains", "value": "Capture" },
     { "type": "assert", "assert": "contains", "value": "Set State" },
     { "type": "assert", "assert": "contains", "value": "Move to Backlog" },

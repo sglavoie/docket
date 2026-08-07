@@ -101,25 +101,24 @@ func (registry *OperationRegistry) HandledKeysForInputStrategy(id InputStrategyI
 	return keys
 }
 
-// FooterHintPairsForInputStrategy returns complete "key action" pairs for
-// ranked bindings and chord groups. Entries are ordered by the established
-// footer rank and filtered through the same applicability checks as dispatch
-// and help. Renderers can therefore fit whole pairs without parsing or clipping
-// the operation metadata string.
-func (registry *OperationRegistry) FooterHintPairsForInputStrategy(
+// GuidanceHintsForInputStrategy projects ranked bindings and chord groups into
+// structured guidance. Entries use the same descriptor applicability and chord
+// subtree checks as dispatch and Help, so unavailable operations cannot leak
+// into presentation chrome.
+func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 	id InputStrategyID,
 	ctx CommandContext,
-) []string {
+) []GuidanceHint {
 	strategy, ok := registry.InputStrategy(id)
 	if !ok {
 		return nil
 	}
 	type rankedHint struct {
-		rank int
-		text string
+		index int
+		hint  GuidanceHint
 	}
 	var hints []rankedHint
-	for _, binding := range strategy.Bindings {
+	for index, binding := range strategy.Bindings {
 		if binding.FooterRank <= 0 {
 			continue
 		}
@@ -132,11 +131,15 @@ func (registry *OperationRegistry) FooterHintPairsForInputStrategy(
 			label = strings.ToLower(descriptor.Label)
 		}
 		hints = append(hints, rankedHint{
-			rank: binding.FooterRank,
-			text: binding.DisplayKey + " " + label,
+			index: index,
+			hint: GuidanceHint{
+				Key:      binding.DisplayKey,
+				Label:    label,
+				Priority: binding.FooterRank,
+			},
 		})
 	}
-	for _, group := range strategy.ChordGroups {
+	for index, group := range strategy.ChordGroups {
 		if group.FooterRank <= 0 {
 			continue
 		}
@@ -148,31 +151,25 @@ func (registry *OperationRegistry) FooterHintPairsForInputStrategy(
 			label = group.HintLabel
 		}
 		hints = append(hints, rankedHint{
-			rank: group.FooterRank,
-			text: strings.Join(group.Sequence, "") + " " + label,
+			index: len(strategy.Bindings) + index,
+			hint: GuidanceHint{
+				Key:      strings.Join(group.Sequence, ""),
+				Label:    label,
+				Priority: group.FooterRank,
+			},
 		})
 	}
-	sort.SliceStable(hints, func(i, j int) bool { return hints[i].rank < hints[j].rank })
-	parts := make([]string, len(hints))
+	sort.SliceStable(hints, func(i, j int) bool {
+		if hints[i].hint.Priority != hints[j].hint.Priority {
+			return hints[i].hint.Priority < hints[j].hint.Priority
+		}
+		return hints[i].index < hints[j].index
+	})
+	structured := make([]GuidanceHint, len(hints))
 	for i := range hints {
-		parts[i] = hints[i].text
+		structured[i] = hints[i].hint
 	}
-	return parts
-}
-
-// FooterHintsForInputStrategy generates compact "key action" hints for ranked
-// bindings and ranked chord groups. A positive limit keeps the first N ranked
-// hints; zero includes every ranked hint.
-func (registry *OperationRegistry) FooterHintsForInputStrategy(
-	id InputStrategyID,
-	ctx CommandContext,
-	limit int,
-) string {
-	parts := registry.FooterHintPairsForInputStrategy(id, ctx)
-	if limit > 0 && len(parts) > limit {
-		parts = parts[:limit]
-	}
-	return strings.Join(parts, footerHelpSeparator)
+	return structured
 }
 
 // InputShortcutForOperation returns a strategy's display key for one operation.
@@ -216,6 +213,22 @@ func (registry *OperationRegistry) ChordHintsForPrefix(
 	prefix []string,
 	ctx CommandContext,
 ) []ChordHint {
+	return registry.DecoratedChordHintsForPrefix(id, prefix, ctx, nil)
+}
+
+// ChordHintDecorator enriches a live which-key entry without replacing the
+// registry's authoritative key path, applicability, or declaration order.
+type ChordHintDecorator func(path []string, hint ChordHint) ChordHint
+
+// DecoratedChordHintsForPrefix is the state-aware form of
+// ChordHintsForPrefix. The registry still decides which entries exist; the
+// caller may only decorate the projected label with effective runtime state.
+func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
+	id InputStrategyID,
+	prefix []string,
+	ctx CommandContext,
+	decorate ChordHintDecorator,
+) []ChordHint {
 	strategy, ok := registry.InputStrategy(id)
 	if !ok {
 		return nil
@@ -236,27 +249,14 @@ func (registry *OperationRegistry) ChordHintsForPrefix(
 		} else {
 			label = chordGroupHintLabel(strategy, append(append([]string(nil), prefix...), key))
 		}
-		hints = append(hints, ChordHint{Key: key, Label: label})
+		hint := ChordHint{Key: key, Label: label}
+		if decorate != nil {
+			path := append(append([]string(nil), prefix...), key)
+			hint = decorate(path, hint)
+		}
+		hints = append(hints, hint)
 	}
 	return hints
-}
-
-// ChordHintRowForPrefix renders the pending chord's which-key footer row.
-func (registry *OperationRegistry) ChordHintRowForPrefix(
-	id InputStrategyID,
-	prefix []string,
-	ctx CommandContext,
-) string {
-	hints := registry.ChordHintsForPrefix(id, prefix, ctx)
-	if len(hints) == 0 {
-		return ""
-	}
-	parts := make([]string, 0, len(hints)+1)
-	parts = append(parts, strings.Join(prefix, "")+"…")
-	for _, hint := range hints {
-		parts = append(parts, hint.Key+" "+hint.Label)
-	}
-	return strings.Join(parts, " · ")
 }
 
 // chordTerminalHintLabel names a terminal child by the binding the current

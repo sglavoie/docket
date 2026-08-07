@@ -14,6 +14,7 @@ import (
 
 // SnoozeInputModel handles setting a snooze date for a task.
 type SnoozeInputModel struct {
+	workspacePulseState
 	task         *models.Task
 	project      *models.Project
 	input        textinput.Model
@@ -125,10 +126,11 @@ func snoozeDateChangedCmd(task *models.Task, project *models.Project, snoozedUnt
 func (m *SnoozeInputModel) View() tea.View {
 	var b strings.Builder
 
-	b.WriteString(renderTaskScopedFullscreenTitle(
+	b.WriteString(renderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Snooze Task #%d  ", m.task.ShortID),
 		m.task,
 		"",
+		m.currentWorkspacePulse(),
 		m.width))
 	b.WriteString("\n\n")
 
@@ -150,6 +152,8 @@ func (m *SnoozeInputModel) View() tea.View {
 		b.WriteString("\n\n")
 	}
 
+	guidance := renderGuidance(m.guidanceSpec(), m.width)
+
 	// Help text. The box is clamped against the remaining terminal height so it
 	// degrades gracefully (collapsing to "… N more") instead of overflowing on
 	// short screens; the fixed-size render otherwise pushes past the terminal.
@@ -165,18 +169,29 @@ func (m *SnoozeInputModel) View() tea.View {
 		"  dec 15         Dec 15 (next year if past)",
 		"  next year      1 year from today",
 		"  none           Clear snooze",
-		"",
-		BoldStyle.Render("Controls"),
-		"  Enter          Save",
-		"  Esc            Cancel",
 	}
-	if help := clampHelpBoxToHeight(bodyLines, m.height, b.String()); help != "" {
+	if help := clampHelpBoxToHeight(bodyLines, m.height, b.String(), guidance); help != "" {
 		b.WriteString(help)
 	} else {
-		return tea.NewView(strings.TrimRight(b.String(), "\n"))
+		trimmed := strings.TrimRight(b.String(), "\n")
+		b.Reset()
+		b.WriteString(trimmed)
 	}
+	b.WriteString("\n")
+	b.WriteString(guidance)
 
 	return tea.NewView(b.String())
+}
+
+func (m *SnoozeInputModel) guidanceSpec() GuidanceSpec {
+	if m.confirmDiscard {
+		return confirmationGuidanceSpec()
+	}
+	commit := "Enter save"
+	if m.err != nil {
+		commit = "Enter retry"
+	}
+	return requiredActionGuidanceSpec(commit)
 }
 
 // HasTextInput returns true because the snooze input is always active.

@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // ListItemID is the stable identity used for cursor and selection preservation.
@@ -32,6 +33,21 @@ type ListEmptyKind uint8
 const (
 	ListEmptySource ListEmptyKind = iota + 1
 	ListEmptyNoMatches
+)
+
+// ListGuidanceProfile identifies the mutually exclusive interaction profile a
+// list surface presents. Callers still own their keys and action registries;
+// this shared state vocabulary keeps browse, search, selection, empty, and
+// disabled guidance decisions consistent across renderers.
+type ListGuidanceProfile uint8
+
+const (
+	ListGuidanceBrowse ListGuidanceProfile = iota
+	ListGuidanceSearchEditing
+	ListGuidanceSearchApplied
+	ListGuidanceSelection
+	ListGuidanceEmpty
+	ListGuidanceDisabled
 )
 
 // ListRowKind distinguishes selectable item rows from category headers.
@@ -167,6 +183,16 @@ type ListViewport struct {
 type ListEmptyContext struct {
 	Kind  ListEmptyKind
 	State ListEmptyState
+}
+
+// ListGuidanceState carries profile-specific supplemental context without
+// embedding presentation strings or key choices in the headless list model.
+type ListGuidanceState struct {
+	Profile        ListGuidanceProfile
+	Query          string
+	SelectionCount int
+	Empty          ListEmptyContext
+	DisabledReason string
 }
 
 // ListActionState describes the operations common to the active item set.
@@ -525,6 +551,75 @@ func (model *ListSurfaceModel) EmptyContext() (ListEmptyContext, bool) {
 		Kind:  ListEmptyNoMatches,
 		State: model.config.NoMatchState,
 	}, true
+}
+
+// GuidanceState selects one shared profile from live list state. Active search
+// editing wins because it owns input; causal empty results then take precedence
+// over hidden selections, followed by disabled and selected item states.
+func (model *ListSurfaceModel) GuidanceState(searchEditing bool) ListGuidanceState {
+	state := ListGuidanceState{}
+	if model == nil {
+		state.Profile = ListGuidanceEmpty
+		return state
+	}
+	state.Query = model.query.Normalized
+	state.SelectionCount = len(model.selected)
+	if searchEditing {
+		state.Profile = ListGuidanceSearchEditing
+		return state
+	}
+	if empty, ok := model.EmptyContext(); ok {
+		state.Profile = ListGuidanceEmpty
+		state.Empty = empty
+		return state
+	}
+	action := model.ActionState()
+	if action.DisabledReason != "" {
+		state.Profile = ListGuidanceDisabled
+		state.DisabledReason = action.DisabledReason
+		return state
+	}
+	if state.SelectionCount > 0 {
+		state.Profile = ListGuidanceSelection
+		return state
+	}
+	if state.Query != "" {
+		state.Profile = ListGuidanceSearchApplied
+		return state
+	}
+	state.Profile = ListGuidanceBrowse
+	return state
+}
+
+// listSurfaceGuidanceSpec combines live gated navigation bindings with already
+// applicable operation guidance. The list profile owns only row budgeting and
+// supplemental state; keys remain authoritative in the keymap or registry that
+// produced each hint.
+func listSurfaceGuidanceSpec(
+	state ListGuidanceState,
+	km *keymap.KeyMap,
+	actionHints []GuidanceHint,
+) (GuidanceSpec, bool) {
+	rows := 1
+	if state.Profile == ListGuidanceSearchEditing {
+		rows = 2
+	}
+	spec, _ := guidanceSpecFromKeyMap(km, rows)
+	spec.Rows = rows
+	spec.Hints = append(spec.Hints, actionHints...)
+	switch state.Profile {
+	case ListGuidanceBrowse, ListGuidanceSearchEditing, ListGuidanceEmpty:
+		// These profiles need no supplemental context.
+	case ListGuidanceSearchApplied:
+		if state.Query != "" {
+			spec.Supplemental = "search: " + state.Query
+		}
+	case ListGuidanceSelection:
+		spec.Supplemental = fmt.Sprintf("%d selected", state.SelectionCount)
+	case ListGuidanceDisabled:
+		spec.Supplemental = state.DisabledReason
+	}
+	return spec, len(spec.Hints) > 0 || strings.TrimSpace(spec.Supplemental) != ""
 }
 
 // SelectCurrent stores the enabled cursor item. Single selection replaces the

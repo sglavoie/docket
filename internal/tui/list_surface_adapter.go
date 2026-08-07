@@ -6,6 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // PickerItem is the typed payload contract used by specialized ListSurface
@@ -226,17 +228,85 @@ func (adapter *ListSurfaceAdapter[T]) RenderSearchBar() string {
 	return "Filter: " + adapter.SearchInputView() + "\n\n"
 }
 
-func (adapter *ListSurfaceAdapter[T]) RenderFooter() string {
-	if adapter.IsSearchMode() {
-		return MutedStyle.Render("enter done · esc clear")
+func (adapter *ListSurfaceAdapter[T]) guidanceSpec(extraHints ...GuidanceHint) (GuidanceSpec, bool) {
+	if adapter == nil || adapter.surface == nil {
+		return GuidanceSpec{}, false
 	}
-	if len(adapter.FilteredItems()) == 0 {
-		return MutedStyle.Render("esc cancel")
-	}
+	searching := adapter.IsSearchMode()
+	hasItems := func() bool { return len(adapter.FilteredItems()) > 0 }
+	hasSelections := func() bool { return adapter.SelectedCount() > 0 }
+	browsing := func() bool { return !searching }
+	enterLabel := "select"
 	if adapter.Config.MultiSelect {
-		return MutedStyle.Render("space toggle · / search · c clear · enter apply · esc cancel")
+		enterLabel = "apply"
 	}
-	return MutedStyle.Render("enter select · / search · esc cancel")
+	if searching {
+		enterLabel = "apply search"
+	}
+	escapeLabel := "cancel"
+	if searching {
+		escapeLabel = "cancel search"
+		if adapter.SearchQuery() != "" {
+			escapeLabel = "clear search"
+		}
+	}
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind("j", "Move selection", "Navigation",
+			keymap.WithGate(func() bool { return browsing() && hasItems() }),
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k")),
+		keymap.Bind("space", "Toggle selection", "Actions",
+			keymap.WithGate(func() bool { return browsing() && adapter.Config.MultiSelect && hasItems() }),
+			keymap.WithFooter(3, "toggle", false), keymap.WithFooterKey("Space")),
+		keymap.Bind("/", "Search", "Filters", keymap.WithGate(browsing),
+			keymap.WithFooter(20, "search", false)),
+		keymap.Bind("c", "Clear selection", "Actions",
+			keymap.WithGate(func() bool { return browsing() && adapter.Config.MultiSelect && hasSelections() }),
+			keymap.WithFooter(4, "clear selection", false)),
+		keymap.Bind("enter", "Apply current state", "Actions",
+			keymap.WithGate(func() bool { return searching || hasItems() }),
+			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
+		keymap.Bind("esc", "Unwind picker", "Navigation",
+			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
+	}}
+	return listSurfaceGuidanceSpec(adapter.surface.GuidanceState(searching), km, extraHints)
+}
+
+func (adapter *ListSurfaceAdapter[T]) alwaysSearchGuidanceSpec(
+	selectLabel string,
+	extraHints ...GuidanceHint,
+) (GuidanceSpec, bool) {
+	if adapter == nil || adapter.surface == nil {
+		return GuidanceSpec{}, false
+	}
+	count := len(adapter.FilteredItems())
+	escapeLabel := "cancel"
+	if adapter.SearchQuery() != "" {
+		escapeLabel = "clear search"
+	}
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind("up", "Move selection", "Navigation",
+			keymap.WithGate(func() bool { return count > 0 }),
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("↑/↓ or Ctrl+J/K")),
+		keymap.Bind("enter", "Apply selection", "Actions",
+			keymap.WithGate(func() bool { return count > 0 }),
+			keymap.WithFooter(1, selectLabel, true), keymap.WithFooterKey("Enter")),
+		keymap.Bind("esc", "Unwind picker", "Navigation",
+			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
+	}}
+	spec, ok := listSurfaceGuidanceSpec(adapter.surface.GuidanceState(true), km, extraHints)
+	if !ok {
+		return GuidanceSpec{}, false
+	}
+	spec.Supplemental = fmt.Sprintf("%d %s", count, pluralize(count, "item", "items"))
+	return spec, true
+}
+
+func (adapter *ListSurfaceAdapter[T]) RenderFooter() string {
+	spec, ok := adapter.guidanceSpec()
+	if !ok {
+		return ""
+	}
+	return strings.Join(guidanceLines(spec, max(adapter.Width(), 1)), "\n")
 }
 
 func (adapter *ListSurfaceAdapter[T]) RenderInBox(titleContent, headerContent string, maxVisible int) string {
@@ -258,9 +328,8 @@ func (adapter *ListSurfaceAdapter[T]) RenderInBox(titleContent, headerContent st
 		}
 	}
 	content.WriteString(adapter.RenderList(maxVisible))
-	left := HelpStyle.Render(adapter.RenderFooter())
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(adapter.FilteredItems())))
-	content.WriteString(renderStatusBarFooter(left, right, adapter.Width()))
+	guidance, _ := adapter.guidanceSpec()
+	content.WriteString(renderGuidance(guidance, adapter.Width()))
 	return content.String()
 }
 

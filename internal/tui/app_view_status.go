@@ -40,8 +40,8 @@ func (m *AppModel) renderStatusBar() string {
 
 	// An unfinished chord owns the footer: the which-key row is live input
 	// feedback, so it outranks banners and transient status text.
-	if lines := m.pendingChordHintLines(m.width); len(lines) > 0 {
-		return renderPendingChordFooter(lines, m.width, m.currentAccentColor())
+	if spec, ok := m.pendingChordGuidance(); ok {
+		return renderGuidance(spec, m.width, m.currentAccentColor())
 	}
 
 	// Today-cleared banner takes precedence over the regular status message
@@ -62,16 +62,16 @@ func (m *AppModel) renderStatusBar() string {
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 
-	// Show the current view's contextual footer if it provides one (e.g. the
+	// Show the current view's contextual guidance if it provides any (e.g. the
 	// capture views). This sits above the pinned-task bar and generic breadcrumb
 	// but below the transient loading/error/status overlays handled above, so a
 	// temporary status message still replaces capture controls and the controls
-	// return once it clears. renderContextualFooter emits its own separator, so
+	// return once it clears. renderGuidance emits its own separator, so
 	// return it directly rather than prefixing the local one.
 	if view := m.activeView(); view != nil {
-		if provider, ok := view.(ContextualFooterProvider); ok {
-			if spec, ok := provider.ContextualFooter(); ok {
-				return renderContextualFooter(spec, m.width, m.currentAccentColor())
+		if provider, ok := view.(ContextualGuidanceProvider); ok {
+			if spec, ok := provider.ContextualGuidance(); ok {
+				return renderGuidance(spec, m.width, m.currentAccentColor())
 			}
 		}
 	}
@@ -97,7 +97,7 @@ func (m *AppModel) renderStatusBar() string {
 		if hint := pipelineNextHint(currentView); hint != "" {
 			help = hint
 		} else {
-			help = FooterEscapeHints
+			help = strings.Join(guidanceLines(escapeGuidanceSpec(), m.width), footerHelpSeparator)
 		}
 	}
 

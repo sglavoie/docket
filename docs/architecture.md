@@ -91,6 +91,35 @@ The six modes are All, Inbox, Today, Next, Backlog, and Due.
 `Tab`/`Shift+Tab` cycle only that ordered catalog. A project focus is a scope
 frame in the same Outliner, never a second root.
 
+### Presentation chrome
+
+`WorkspacePulse` is app-owned workspace state with Inbox, Today, and overdue
+counts. Full-screen presentations receive it through the exhaustive
+`presentationChromePolicy`; transient selectors and pickers remain pulse-free
+and preserve the host's title row. There are no presentation exemptions: every
+reachable presentation has shell, surface, or overlay guidance ownership.
+
+`renderOperationalTitle` is the one-line title fitter. Identity on the left
+contains surface, scope, and mode exactly once; selection, search, filters,
+zoom, or editor state forms the interaction context; and the workspace pulse is
+the right region. Today is normally mandatory. When width is constrained, the
+fitter removes Inbox, overdue, and Today in that order before truncating required
+interaction context.
+
+`GuidanceHint` and `GuidanceSpec` are the persistent control grammar. Providers
+emit complete key/label entries with priority and required status. Browse states
+have a one-row budget; edit, add, confirm, autocomplete, expanded-detail, and
+pending-chord states may use two. The renderer reserves required entries first,
+preserves provider order, and drops supplemental state before controls.
+Operation descriptors, gated keymaps, and `ListSurface` state remain the
+authorities for keys and applicability.
+
+Recovery feedback is transaction-correlated. `storage.CommitResult.TransactionID`
+flows through application results and TUI messages, and `u undo` appears only
+when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
+only after jump history records an origin; `Ctrl+I` returns to the relocated
+task.
+
 All mode projects open, unsnoozed work as Pinned, Today, Doing, Review, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 grouped by project: groups sort by their newest pin and tasks within each group
@@ -107,7 +136,7 @@ applicability, target cardinality, risk, value provider, and capabilities.
 confirmation, and invokes the bound handler.
 
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
-handled-key metadata, chord hints, footer hints, `?` help, and harness discovery
+handled-key metadata, chord hints, guidance hints, `?` help, and harness discovery
 all project from that strategy. The task operation manifest separately orders
 the exact six `Space` actions:
 
@@ -248,7 +277,7 @@ carries exactly one `TargetSource` and one `OperationCategory`, so a single
 polymorphic operation would have to branch on runtime context inside
 `defaultOperationTargetSource`. Instead the trie node holds both bindings and
 resolves the first *applicable* one in declaration order, which lets the cursor
-decide the meaning while `?` help and the footer keep two honest labels. A key
+decide the meaning while `?` help and contextual guidance keep two honest labels. A key
 declared twice without `SharedKey` is still a hard registration error.
 
 Setting the reserved tag is the one project tag edit that confirms first. The

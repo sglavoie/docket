@@ -123,10 +123,10 @@ type AppModel struct {
 	today    []PlanningTask
 	todayIDs map[TaskIdentity]bool
 
-	// openLoops caches the cross-project counts surfaced in the title row
-	// (Zeigarnik). Recomputed via RefreshOpenLoopsMsg after every mutation,
-	// so paint paths can read it without an extra full-tree walk.
-	openLoops OpenLoops
+	// workspacePulse caches the cross-project operational counts surfaced in the
+	// title row. It is recomputed after committed count-changing mutations so
+	// paint paths can read it without an extra full-tree walk.
+	workspacePulse WorkspacePulse
 
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind
@@ -156,6 +156,11 @@ type AppModel struct {
 	statusUpdatedAt time.Time      // Guards newer status text from stale clear timers
 	statusUndoCb    func() tea.Cmd // When non-nil and not expired, pressing `u` invokes this callback
 	statusExpiresAt time.Time      // Deadline after which statusUndoCb is no longer valid
+	// statusTransactionID correlates the active recovery toast with a committed
+	// workspace transaction so delayed origin-history feedback cannot decorate a
+	// newer status.
+	statusTransactionID    string
+	statusRecoveryFallback string
 
 	// Today-cleared banner: shown for ~5s after the last planned Today task
 	// is marked done for the first time on a given day. Takes precedence over

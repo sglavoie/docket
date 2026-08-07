@@ -13,7 +13,7 @@
     { "type": "key", "label": "run Add tag", "key": "enter" },
     { "type": "text", "label": "give both projects a shared descriptive tag", "text": "focus" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "status_contains", "value": "Tagged 2 projects #focus" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Project Tag: 2 projects · #focus · u undo" },
     { "type": "key", "label": "back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
@@ -23,7 +23,7 @@
     { "type": "assert", "assert": "contains", "value": "Filter Projects by Tag" },
     { "type": "assert", "label": "the vocabulary is listed, not just the loaded tags", "assert": "contains", "value": "focus" },
     { "type": "assert", "label": "the legal empty tag set is a facet of its own", "assert": "contains", "value": "Untagged" },
-    { "type": "assert", "assert": "contains", "value": "v toggle · Space tag actions · Enter apply · Esc back" },
+    { "type": "assert", "assert": "contains", "value": "Enter apply · Esc back · v toggle · Space tag actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "step off the behavioral tag onto #focus", "key": "j" },
@@ -42,9 +42,9 @@
     { "type": "assert", "label": "a tag-wide park names its impact before it happens", "assert": "contains", "value": "Park 2 projects? Their 2 tasks leave Active" },
     { "type": "key", "key": "y" },
 
-    { "type": "assert", "assert": "status_contains", "value": "Parked 2 projects · 2 tasks hidden · Fp to show · u to undo" },
+    { "type": "assert", "assert": "status_contains", "value": "Park Projects: 2 projects · 2 tasks hidden · Fp to show · u undo" },
     { "type": "wait" },
-    { "type": "assert", "label": "both members left the base task workspace in one edit", "assert": "contains", "value": "[Active Projects · 2 parked]" },
+    { "type": "assert", "label": "both members left the base task workspace in one edit", "assert": "contains", "value": "Active Projects · 2 parked" },
     { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "Beta rollout checklist" },
     { "type": "assert", "label": "the untagged projects are untouched", "assert": "contains", "value": "Renew passport" },

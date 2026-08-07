@@ -25,6 +25,14 @@ func registeredSimplifiedOperationRegistry(t *testing.T) *OperationRegistry {
 	return registry
 }
 
+func guidanceHintsText(hints []GuidanceHint) string {
+	parts := make([]string, 0, len(hints))
+	for _, hint := range hints {
+		parts = append(parts, guidanceHintText(hint))
+	}
+	return strings.Join(parts, footerHelpSeparator)
+}
+
 // simplifiedTaskActionDescriptors supplies the task-scoped and filter
 // descriptors the simplified strategy binds directly, for tests that assemble a
 // registry without a fully initialized AppModel.
@@ -93,11 +101,9 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 	if len(help) != len(documented) {
 		t.Fatalf("help items = %d, applicable bound operations = %d", len(help), len(documented))
 	}
-	footer := registry.FooterHintsForInputStrategy(
-		InputStrategySimplified,
-		simplifiedOperationContext(),
-		0,
-	)
+	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
+		InputStrategySimplified, simplifiedOperationContext(),
+	))
 	for _, want := range []string{"a capture", "s workflow", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
@@ -247,7 +253,7 @@ func TestSimplifiedNavigationAliasesShareOneOperationAndDisplayKey(t *testing.T)
 		}
 	}
 
-	footer := registry.FooterHintsForInputStrategy(InputStrategySimplified, ctx, 0)
+	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(InputStrategySimplified, ctx))
 	for _, alias := range aliases {
 		if strings.Contains(footer, alias.display) {
 			t.Errorf("compact footer spends its hint budget on %q", alias.display)
@@ -418,17 +424,17 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	if !slices.Equal(hints, want) {
 		t.Errorf("which-key hints = %v, want %v", hints, want)
 	}
-	row := registry.ChordHintRowForPrefix("chords", []string{"p"}, ctx)
+	row := guidanceHintsText(pendingChordGuidanceSpec("p", hints).Hints)
 	for _, fragment := range []string{"p…", "1 critical", "2 high"} {
 		if !strings.Contains(row, fragment) {
 			t.Errorf("which-key row %q omits %q", row, fragment)
 		}
 	}
-	if registry.ChordHintRowForPrefix("chords", []string{"p", "1"}, ctx) != "" {
+	if hints := registry.ChordHintsForPrefix("chords", []string{"p", "1"}, ctx); len(hints) != 0 {
 		t.Error("a terminal chord still produced a which-key row")
 	}
 
-	footer := registry.FooterHintsForInputStrategy("chords", ctx, 0)
+	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy("chords", ctx))
 	for _, fragment := range []string{"a capture", "p priority"} {
 		if !strings.Contains(footer, fragment) {
 			t.Errorf("footer %q omits %q", footer, fragment)

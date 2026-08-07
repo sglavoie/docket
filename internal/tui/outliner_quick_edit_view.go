@@ -6,7 +6,8 @@ import (
 
 // ActiveFilterCount returns the number of active filters for the status bar pill.
 func (m *OutlinerModel) ActiveFilterCount() int {
-	return len(m.activeFilterParts())
+	return commonFilterFacetCount(&m.filter.CommonFilterState) +
+		projectFilterFacetCount(&m.projectFilter)
 }
 
 // activeFilterParts returns the list of active filter description strings
@@ -43,12 +44,6 @@ func (m *OutlinerModel) renderQuickEditBar() string {
 			}
 		}
 	}
-
-	helpHint := MutedStyle.Render("Enter=save  Esc=cancel")
-	if !m.quickEdit.IsRenameOnly() {
-		helpHint = MutedStyle.Render("!0-3=priority #tag @date $state · Enter=save Esc=cancel")
-	}
-	lines = append(lines, helpHint)
 
 	return strings.Join(lines, "\n")
 }

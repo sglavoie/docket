@@ -106,7 +106,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 
 	ApplyTheme(NewThemeConfig(runtime.Machine()))
 
-	app.openLoops = ComputeOpenLoops(app.runtime, app.todayIDs)
+	app.workspacePulse = ComputeWorkspacePulse(app.runtime, app.todayIDs, time.Now())
 
 	// The Outliner is the sole root: construct and register the global
 	// (Active Projects) Outliner in All so the first frame renders the root even
@@ -244,7 +244,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 				if m.runtime.DataDir() == "" {
 					planning = reconciled
 				} else if err := m.runtime.CommitPlanning(reconciled); err != nil {
-					logging.Warn("failed to persist reconciled focus queue: %v", err)
+					logging.Warn("failed to persist reconciled Next order: %v", err)
 				} else {
 					planning = m.runtime.Planning()
 				}

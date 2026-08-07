@@ -301,6 +301,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		results[i] = newTaskResult(
 			TaskRef{Task: item.task, Project: item.project},
 			revisionAt(outcome.results, projectIndex[item.project.ID]),
+			transactionIDAt(outcome.results, projectIndex[item.project.ID]),
 		)
 	}
 	return results, nil

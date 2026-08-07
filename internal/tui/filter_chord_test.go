@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -79,6 +80,54 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		if !strings.Contains(row, want) {
 			t.Errorf("fp which-key row %q omits %q", row, want)
 		}
+	}
+}
+
+func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	taskFilter := &app.crossOutliner.filter.CommonFilterState
+	taskFilter.Priority = models.PriorityHigh
+	taskFilter.DueDate = DueDateToday
+	taskFilter.Tags = map[string]bool{reviewTaskTag: true, "deep": true}
+	taskFilter.Snoozed = true
+	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskFilter.setStateFilter(terminal, true)
+	taskFilter.setCompletionAgeFilter(CompletionAge90Days)
+
+	if handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'f', Text: "f"}); !handled {
+		t.Fatal("f did not open its pending chord")
+	}
+	row := pendingChordHintRowForTest(app)
+	for _, want := range []string{
+		"p priority:high+", "s states:2", "c completed:90d+", "d due:today",
+		"t tags:2", "r review:on", "z snoozed:on", "x clear:5",
+	} {
+		if !strings.Contains(row, want) {
+			t.Errorf("decorated f row %q omits %q", row, want)
+		}
+	}
+	if got := app.crossOutliner.ActiveFilterCount(); got != 5 {
+		t.Errorf("task filter count = %d, want 5 independently clearable facets", got)
+	}
+
+	app.pendingChord = []string{"F"}
+	projectFilter := &app.crossOutliner.projectFilter
+	projectFilter.Tags = map[string]bool{"client": true, models.ParkedProjectTag: true}
+	projectFilter.Untagged = true
+	projectFilter.IncludeArchived = true
+	row = pendingChordHintRowForTest(app)
+	for _, want := range []string{
+		"t project tags:3", "p parked:on", "a archived:on", "x clear:3",
+	} {
+		if !strings.Contains(row, want) {
+			t.Errorf("decorated F row %q omits %q", row, want)
+		}
+	}
+	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {
+		t.Errorf("combined filter count = %d, want 8 independent task/project facets", got)
 	}
 }
 
@@ -513,10 +562,10 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 	}
 }
 
-func TestFilterCompletionAgeChordAppliesWithoutChoosingLifecycleState(t *testing.T) {
+func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
-	states, err := models.NewWorkflowStateSet(models.StateDone)
+	states, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,8 +593,15 @@ func TestFilterCompletionAgeChordAppliesWithoutChoosingLifecycleState(t *testing
 	if !filter.hasCompletionAgeFilter() || filter.CompletionAge != CompletionAge90Days {
 		t.Errorf("completion-age filter = active %v value %v, want active 90 days", filter.hasCompletionAgeFilter(), filter.CompletionAge)
 	}
-	if !filter.States.Equal(states) {
-		t.Errorf("fc changed explicit lifecycle states to %v, want Done", filter.States.Values())
+	wantStates, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filter.States.Equal(wantStates) {
+		t.Errorf("fc lifecycle states = %v, want Done and Canceled", filter.States.Values())
+	}
+	if got := commonFilterParts(filter); !slices.Equal(got, []string{"state:done,canceled", "completed:90d+"}) {
+		t.Errorf("fc badge parts = %v, want terminal states and completion age", got)
 	}
 
 	pressFilterChord(t, app, "fx")

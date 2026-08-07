@@ -19,7 +19,7 @@
     { "type": "assert", "assert": "contains", "value": "tag name" },
     { "type": "text", "label": "name the tag", "text": "focus" },
     { "type": "key", "label": "apply it across the selection", "key": "enter" },
-    { "type": "assert", "assert": "status_contains", "value": "Tagged 2 projects #focus" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Project Tag: 2 projects · #focus · u undo" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "contains", "value": "#focus" },
     { "type": "assert", "assert": "no_layout_issues" }

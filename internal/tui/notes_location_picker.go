@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 type notesLocationPickerPurpose uint8
@@ -187,14 +188,11 @@ func (picker *notesLocationPicker) View() tea.View {
 	width := max(picker.Width(), 1)
 	height := max(picker.Height(), 1)
 	title := "Select scope"
-	verb := "apply"
 	switch picker.purpose {
 	case notesLocationPickerCreation:
 		title = "Create note in"
-		verb = "choose"
 	case notesLocationPickerMove:
 		title = "Move note to"
-		verb = "move"
 	case notesLocationPickerScope:
 	}
 	header := lipgloss.JoinVertical(
@@ -202,16 +200,8 @@ func (picker *notesLocationPicker) View() tea.View {
 		renderFullscreenTitle(title, "Notes", picker.AccentColor()),
 		"Search: "+picker.SearchInputView(),
 	)
-	footer := renderStatusBarFooter(
-		HelpStyle.Render(fmt.Sprintf("↑/↓ or Ctrl+J/K navigate · Enter %s · Esc cancel", verb)),
-		MutedStyle.Render(fmt.Sprintf(
-			"%d %s",
-			len(picker.FilteredItems()),
-			pluralize(len(picker.FilteredItems()), "location", "locations"),
-		)),
-		width,
-		picker.AccentColor(),
-	)
+	guidance, _ := picker.guidanceSpec()
+	footer := renderGuidance(guidance, width, picker.AccentColor())
 	contentHeight := fullscreenContentHeightForBlocks(height, header, footer)
 	content := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:    width,
@@ -225,6 +215,33 @@ func (picker *notesLocationPicker) View() tea.View {
 		fitBlockHeight(content, contentHeight),
 		footer,
 	))
+}
+
+func (picker *notesLocationPicker) guidanceSpec() (GuidanceSpec, bool) {
+	count := len(picker.FilteredItems())
+	hasSelection := func() bool { return count > 0 }
+	verb := "apply"
+	switch picker.purpose {
+	case notesLocationPickerCreation:
+		verb = "choose"
+	case notesLocationPickerMove:
+		verb = "move"
+	case notesLocationPickerScope:
+	}
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind("up", "Move selection", "Navigation",
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("↑/↓ or Ctrl+J/K")),
+		keymap.Bind("enter", "Apply selection", "Actions",
+			keymap.WithGate(hasSelection), keymap.WithFooter(1, verb, true), keymap.WithFooterKey("Enter")),
+		keymap.Bind("esc", "Cancel picker", "Navigation",
+			keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc")),
+	}}
+	spec, ok := listSurfaceGuidanceSpec(picker.surface.GuidanceState(true), km, nil)
+	if !ok {
+		return GuidanceSpec{}, false
+	}
+	spec.Supplemental = fmt.Sprintf("%d %s", count, pluralize(count, "location", "locations"))
+	return spec, true
 }
 
 func (picker *notesLocationPicker) GetHelpItems() []HelpItem {

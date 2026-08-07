@@ -11,16 +11,24 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
 	for _, renderer := range m.dimmedOverlayRenderers() {
 		if popup := renderOverlayWithin(renderer, m.width, h); popup != "" {
-			content = OverlayPopupDimmed(content, popup, m.width, h)
+			content = overlayPopupBelowPersistentTitle(content, popup, m.width, h)
 		}
 	}
 
 	// Overlay confirm dialog last so it renders on top of all other popups
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
-		content = OverlayPopupDimmed(content, popup, m.width, h)
+		content = overlayPopupBelowPersistentTitle(content, popup, m.width, h)
 	}
 
 	return content
+}
+
+// overlayPopupBelowPersistentTitle reserves the host's first row before
+// fitting a transient popup. Full-screen hosts keep their workspace pulse
+// visible while the popup owns only its local interaction chrome.
+func overlayPopupBelowPersistentTitle(base, popup string, width, height int) string {
+	popup = fitOverlayPopupHeight(popup, max(height-1, 1))
+	return OverlayPopupDimmed(base, popup, width, height)
 }
 
 // widthRenderer is satisfied by all overlay pickers/popups that render given a width.

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 func TestListSurfaceValidatesStableIDsAndAllowsDuplicateLabels(t *testing.T) {
@@ -450,6 +452,90 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 	})
 	if !errors.Is(result.Err, ErrListActionUnavailable) {
 		t.Fatalf("non-common action error = %v, want %v", result.Err, ErrListActionUnavailable)
+	}
+}
+
+func TestListSurfaceGuidanceProfilesCoverLiveInteractionStates(t *testing.T) {
+	model := mustListSurface(t, []ListItem{{ID: "a", PrimaryText: "Alpha"}}, nil, ListSurfaceConfig{
+		EmptyState:   ListEmptyState{Title: "Empty source"},
+		NoMatchState: ListEmptyState{Title: "No matches"},
+	})
+	if got := model.GuidanceState(false).Profile; got != ListGuidanceBrowse {
+		t.Fatalf("browse profile = %v", got)
+	}
+
+	model.SetQuery("alpha")
+	if got := model.GuidanceState(false); got.Profile != ListGuidanceSearchApplied || got.Query != "alpha" {
+		t.Fatalf("applied-search profile = %+v", got)
+	}
+	if got := model.GuidanceState(true).Profile; got != ListGuidanceSearchEditing {
+		t.Fatalf("editing-search profile = %v", got)
+	}
+
+	model.SetQuery("")
+	if err := model.SelectCurrent(); err != nil {
+		t.Fatalf("select current: %v", err)
+	}
+	if got := model.GuidanceState(false); got.Profile != ListGuidanceSelection || got.SelectionCount != 1 {
+		t.Fatalf("selection profile = %+v", got)
+	}
+
+	disabled := mustListSurface(t, []ListItem{{
+		ID:             "disabled",
+		PrimaryText:    "Disabled",
+		DisabledReason: "requires another project",
+	}}, nil, ListSurfaceConfig{})
+	if got := disabled.GuidanceState(false); got.Profile != ListGuidanceDisabled || got.DisabledReason != "requires another project" {
+		t.Fatalf("disabled profile = %+v", got)
+	}
+
+	empty := mustListSurface(t, nil, nil, ListSurfaceConfig{
+		EmptyState:   ListEmptyState{Title: "Empty source"},
+		NoMatchState: ListEmptyState{Title: "No matches"},
+	})
+	if got := empty.GuidanceState(false); got.Profile != ListGuidanceEmpty || got.Empty.Kind != ListEmptySource {
+		t.Fatalf("empty-source profile = %+v", got)
+	}
+	model.ClearSelection()
+	model.SetQuery("missing")
+	if got := model.GuidanceState(false); got.Profile != ListGuidanceEmpty || got.Empty.Kind != ListEmptyNoMatches {
+		t.Fatalf("empty-results profile = %+v", got)
+	}
+}
+
+func TestListSurfaceGuidanceUsesLiveKeymapAndApplicableActionHints(t *testing.T) {
+	liveSearch := true
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind("/", "Search items", "Filters", keymap.WithFooter(2, "search", false), keymap.WithGate(func() bool {
+			return liveSearch
+		})),
+		keymap.Bind("Esc", "Clear search", "Navigation", keymap.WithFooter(1, "clear", true)),
+		keymap.Bind("x", "Hidden alias", "Actions", keymap.AsHidden(), keymap.WithFooter(3, "delete", false)),
+	}}
+	state := ListGuidanceState{
+		Profile:        ListGuidanceSelection,
+		SelectionCount: 2,
+	}
+	actions := []GuidanceHint{{Key: "Space", Label: "actions", Priority: 3}}
+	spec, ok := listSurfaceGuidanceSpec(state, km, actions)
+	if !ok {
+		t.Fatal("list guidance adapter returned no guidance")
+	}
+	got := make([]string, 0, len(spec.Hints))
+	for _, hint := range spec.Hints {
+		got = append(got, guidanceHintText(hint))
+	}
+	if !slices.Equal(got, []string{"Esc clear", "/ search", "Space actions"}) {
+		t.Fatalf("list guidance hints = %v", got)
+	}
+	if spec.Supplemental != "2 selected" || spec.Rows != 1 {
+		t.Fatalf("selection guidance metadata = %+v", spec)
+	}
+
+	liveSearch = false
+	spec, ok = listSurfaceGuidanceSpec(ListGuidanceState{Profile: ListGuidanceSearchEditing}, km, nil)
+	if !ok || len(spec.Hints) != 1 || spec.Hints[0].Key != "Esc" || spec.Rows != 2 {
+		t.Fatalf("editing guidance with closed gate = (%+v, %v)", spec, ok)
 	}
 }
 

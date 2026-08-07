@@ -1,0 +1,135 @@
+package tui
+
+import (
+	"errors"
+	"strings"
+	"testing"
+
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
+	form := newTestTaskForm()
+	assertRequiredGuidance(t, "task form", form.guidanceSpec(), true, "Ctrl+S save", "Esc cancel")
+	form.err = errors.New("title is required")
+	assertRequiredGuidance(t, "invalid task form", form.guidanceSpec(), true, "Ctrl+S retry", "Esc cancel")
+
+	creator := &ProjectCreatorModel{}
+	assertRequiredGuidance(t, "project creator", creator.guidanceSpec(), true, "Enter create", "Esc cancel")
+	creator.confirmDiscard = true
+	assertRequiredGuidance(t, "project creator discard", creator.guidanceSpec(), true, "y confirm", "n/Esc cancel")
+
+	editor := &ProjectEditorModel{hasChanges: true}
+	assertRequiredGuidance(t, "dirty project editor", editor.guidanceSpec(), true, "Ctrl+S save", "Esc cancel")
+	editor.err = errors.New("invalid project")
+	assertRequiredGuidance(t, "invalid project editor", editor.guidanceSpec(), true, "Ctrl+S retry", "Esc cancel")
+
+	textEditor := NewTextEditorModel("description", "")
+	assertRequiredGuidance(t, "text editor", textEditor.guidanceSpec(), true, "Ctrl+S save", "Esc cancel")
+	textEditor.externalEdit = true
+	if got := textEditor.guidanceSpec().Supplemental; got != "External editor open" {
+		t.Fatalf("external-editor supplemental = %q", got)
+	}
+
+	dateInput := &DateInputModel{err: errors.New("invalid date")}
+	assertRequiredGuidance(t, "invalid date input", dateInput.guidanceSpec(), true, "Enter retry", "Esc cancel")
+	snoozeInput := &SnoozeInputModel{err: errors.New("invalid snooze")}
+	assertRequiredGuidance(t, "invalid snooze input", snoozeInput.guidanceSpec(), true, "Enter retry", "Esc cancel")
+
+	composer := &TaskComposerModel{errors: []lineError{{line: 1, message: "invalid capture"}}}
+	spec, ok := composer.ContextualGuidance()
+	assertRequiredGuidance(t, "invalid capture", spec, ok, "Enter retry", "Esc cancel")
+}
+
+func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
+	form := newTestTaskForm()
+	form.activeTab = formTabChildren
+	form.err = errors.New("invalid task")
+
+	specs := []GuidanceSpec{
+		form.guidanceSpec(),
+		(&ProjectCreatorModel{}).guidanceSpec(),
+		(&ProjectEditorModel{hasChanges: true}).guidanceSpec(),
+		NewTextEditorModel("description", "").guidanceSpec(),
+		(&DateInputModel{err: errors.New("invalid date")}).guidanceSpec(),
+		(&SnoozeInputModel{err: errors.New("invalid snooze")}).guidanceSpec(),
+	}
+	for index, spec := range specs {
+		if spec.Rows != 2 {
+			t.Errorf("spec %d row budget = %d, want 2", index, spec.Rows)
+		}
+		assertGuidanceFits(t, spec, 24)
+	}
+}
+
+func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
+	task := &models.Task{ID: "task", ShortID: 1, Title: "Task"}
+
+	form := newTestTaskForm()
+	form.err = errors.New("title is required")
+	form.SetSize(formMinWidth, formMinHeight)
+	assertFitsWithin(t, form.View().Content, formMinWidth, formMinHeight)
+
+	textEditor := NewTextEditorModel("description", "draft")
+	textEditor.SetSize(minTerminalWidth, formMinHeight)
+	textView := textEditor.View().Content
+	assertFitsWithin(t, textView, minTerminalWidth, formMinHeight)
+	if !strings.Contains(ansi.Strip(textView), "Ctrl+S save") || !strings.Contains(ansi.Strip(textView), "Esc cancel") {
+		t.Fatalf("text editor minimum layout lost required guidance:\n%s", ansi.Strip(textView))
+	}
+
+	dateInput := NewDateInputModel(task, project, "sun")
+	dateInput.err = errors.New("invalid date")
+	dateInput.SetSize(formMinWidth, formMinHeight)
+	assertFitsWithin(t, dateInput.View().Content, formMinWidth, formMinHeight)
+
+	snoozeInput := NewSnoozeInputModel(task, project)
+	snoozeInput.err = errors.New("invalid snooze")
+	snoozeInput.SetSize(formMinWidth, formMinHeight)
+	assertFitsWithin(t, snoozeInput.View().Content, formMinWidth, formMinHeight)
+}
+
+func TestTaskFormInlinePickersRenderStructuredRequiredGuidance(t *testing.T) {
+	form := newTestTaskForm()
+	form.SetSize(formMinWidth, formMinHeight)
+
+	renders := map[string]string{
+		"priority":  newFormPriorityPicker(form.draft.priority).render(formMinWidth, form.draft.priority),
+		"state":     newFormStatePicker(form.draft.state).render(formMinWidth, form.draft.state),
+		"flags":     newFormFlagsPicker(form.draft.pinned).render(formMinWidth),
+		"due date":  newFormDueDatePicker(form.draft.dueDate).render(formMinWidth, form.draft.dueDate),
+		"checklist": form.renderChecklistEditOverlay(),
+		"subtask":   form.renderSubtaskEditOverlay(),
+	}
+	for name, rendered := range renders {
+		plain := ansi.Strip(rendered)
+		if !strings.Contains(plain, "Esc cancel") {
+			t.Errorf("%s picker lost required cancellation guidance:\n%s", name, plain)
+		}
+		if !strings.Contains(plain, "Enter") {
+			t.Errorf("%s picker lost required commit guidance:\n%s", name, plain)
+		}
+	}
+}
+
+func TestQuickEditGuidanceOwnsGrammarAndLocalBarDoesNotDuplicateIt(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Task", WorkflowState: models.StateBacklog}
+	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
+	out := NewOutlinerModel(project, nil, nil)
+	out.quickEdit.Enter(task, false)
+
+	spec, ok := out.ContextualGuidance()
+	assertRequiredGuidance(t, "quick edit", spec, ok, "Enter save", "Esc cancel")
+	got := guidanceEntryText(spec)
+	for _, want := range []string{"!0-3 priority", "#tag tags", "@date due", "$state state"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("quick-edit guidance = %q, want %q", got, want)
+		}
+	}
+	if local := ansi.Strip(out.renderQuickEditBar()); strings.Contains(local, "Enter") || strings.Contains(local, "Esc") {
+		t.Fatalf("quick-edit bar duplicates shell guidance:\n%s", local)
+	}
+}

@@ -2,13 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	"charm.land/lipgloss/v2"
-
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // TitleParams holds optional filter/sort info to display inline on the title line.
@@ -19,37 +14,6 @@ type TitleParams struct {
 	// Width is the room the title line owns, already net of any right-side
 	// reservation the caller makes (such as a counter). 0 = no truncation.
 	Width int
-}
-
-// renderProjectTitle renders the project title line with the notes indicator,
-// filter badges, and archived status. Shared across all project-level views.
-// When params is non-nil, filter/sort info is appended inline, truncated to fit
-// within params.Width.
-func renderProjectTitle(project *models.Project, params *TitleParams) string {
-	var b strings.Builder
-	title := fmt.Sprintf("%s - Tasks", project.Name)
-	b.WriteString(TitleStyle.Render(title))
-	if storage.NotesExist(project) {
-		b.WriteString(" ✎ Notes")
-	}
-	if project.Archived {
-		b.WriteString(" ")
-		b.WriteString(ArchivedBadgeStyle.Render("ARCHIVED"))
-		if project.ArchivedAt != nil {
-			b.WriteString(" ")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("since %s", project.ArchivedAt.Format(util.DateFormat))))
-		}
-	}
-
-	// Append inline filter/sort info if provided
-	if params != nil {
-		filterSuffix := buildTitleFilterSuffix(params, lipgloss.Width(b.String()))
-		if filterSuffix != "" {
-			b.WriteString(filterSuffix)
-		}
-	}
-
-	return b.String()
 }
 
 // buildTitleFilterSuffix builds the filter+sort suffix for the title line.

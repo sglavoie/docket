@@ -43,11 +43,12 @@ func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 func (p *formFlagsPicker) render(width int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set Flags")
-	footerText := HelpStyle.Render("j/k: navigate · Space/x: toggle · Enter: confirm · Esc: cancel")
 
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(width*2/5, 40), width-4)
-	innerWidth := min(max(maxWidth, footerMinInner), max(width-4, 1))
+	innerWidth := min(maxWidth, max(width-4, 1))
+	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+		"Enter confirm", "Space/x toggle",
+	), max(innerWidth-4, 1))
 
 	type row struct {
 		label string

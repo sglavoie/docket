@@ -73,15 +73,22 @@ func (s *Service) bulkTransition(taskIDs []string, locators []TaskLocator, targe
 		return BulkResult{}, planningErr
 	}
 
-	outcome, err := s.commitProjects(commits, "Bulk Change State", string(target))
+	outcome, err := s.commitProjects(commits, "Bulk Change State", models.WorkflowStateGroupForState(target).Label())
 	if err != nil {
 		return BulkResult{}, err
 	}
 	committed = true
 
-	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	result := BulkResult{
+		Tasks:         make([]TaskResult, 0, len(refs)),
+		TransactionID: transactionIDAt(outcome.results, 0),
+	}
 	for _, ref := range refs {
-		result.Tasks = append(result.Tasks, newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])))
+		result.Tasks = append(result.Tasks, newTaskResult(
+			ref,
+			revisionAt(outcome.results, indexes[ref.Project.ID]),
+			transactionIDAt(outcome.results, indexes[ref.Project.ID]),
+		))
 	}
 	for _, commit := range commits {
 		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)

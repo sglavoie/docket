@@ -328,7 +328,8 @@ type AttachmentOp struct {
 // revision of the committed project and the id of the transaction that applied
 // it.
 type CommitResult struct {
-	Revision string
+	Revision      string
+	TransactionID string
 }
 
 // CommitService is the mutation commit boundary. It drives one or more
@@ -1675,7 +1676,8 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 	results := make([]*CommitResult, len(changesets))
 	for i := range changesets {
 		results[i] = &CommitResult{
-			Revision: committedDocs[i].Revision,
+			Revision:      committedDocs[i].Revision,
+			TransactionID: manifest.ID,
 		}
 	}
 	return results, nil

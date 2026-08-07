@@ -344,7 +344,8 @@ func (s *Service) mutateHierarchyTaskSelection(taskID string, locator TaskLocato
 // MoveResult reports the outcome of a cross-project subtree move.
 type MoveResult struct {
 	// MovedCount is the number of tasks relocated (the root plus its descendants).
-	MovedCount int
+	MovedCount    int
+	TransactionID string
 }
 
 // BulkMoveRequest asks to move several task subtrees into one destination
@@ -361,6 +362,7 @@ type BulkMoveRequest struct {
 type BulkMoveResult struct {
 	MovedCount        int
 	TouchedProjectIDs []string
+	TransactionID     string
 }
 
 // MoveToProject moves a task and its whole subtree to another project, committing
@@ -492,7 +494,7 @@ func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.Ar
 	commits[0].artifacts = artifacts
 	commits[0].attachmentOps = attachmentOps
 
-	_, err = s.commitProjects(
+	outcome, err := s.commitProjects(
 		commits,
 		"Move Tasks to Project",
 		fmt.Sprintf("%d tasks → %s", len(roots), destination.Slug),
@@ -504,6 +506,7 @@ func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.Ar
 	return BulkMoveResult{
 		MovedCount:        movedCount,
 		TouchedProjectIDs: touchedIDs,
+		TransactionID:     transactionIDAt(outcome.results, 0),
 	}, nil
 }
 
@@ -607,13 +610,14 @@ func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectI
 		{project: src, expectedRevision: srcRev, base: ref.Base, artifacts: artifacts, attachmentOps: attachmentOps},
 		{project: dest, expectedRevision: destRev, base: snap.Document(dest.ID)},
 	}
-	_, err = s.commitProjects(commits, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
+	outcome, err := s.commitProjects(commits, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
 	if err != nil {
 		restore()
 		return MoveResult{}, err
 	}
 
 	return MoveResult{
-		MovedCount: len(moveRes.MovedTasks),
+		MovedCount:    len(moveRes.MovedTasks),
+		TransactionID: transactionIDAt(outcome.results, 0),
 	}, nil
 }

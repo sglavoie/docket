@@ -65,6 +65,9 @@ type TransactionResultMsg struct {
 	// PlanningChanged reports that the same ChangeSet carried a checked planning
 	// artifact. The shell advances its planning snapshot before refreshing the Outliner.
 	PlanningChanged bool
+	// outlinerRelocation is an internal navigation capture attached only to a
+	// successful operation that may move the followed task between rows.
+	outlinerRelocation *outlinerRelocationCapture
 }
 
 // SuccessMessage renders the status line shown when the transaction commits.

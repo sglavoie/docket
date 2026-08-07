@@ -14,6 +14,18 @@ func renderFullscreenTitle(title, subtitle string, accent ...color.Color) string
 	return renderFullscreenTitleContent(fullscreenTitleStyle(accent...).Render(title), subtitle)
 }
 
+// renderFullscreenTitleWithPulse renders the shared one-row full-screen title
+// with the workspace-wide pulse right-aligned. Transient presentations use
+// renderFullscreenTitle instead and therefore never duplicate the host pulse.
+func renderFullscreenTitleWithPulse(title, subtitle string, pulse WorkspacePulse, width int, accent ...color.Color) string {
+	return renderFullscreenTitleContentWithPulse(
+		fullscreenTitleStyle(accent...).Render(title),
+		subtitle,
+		pulse,
+		width,
+	)
+}
+
 func fullscreenTitleStyle(accent ...color.Color) lipgloss.Style {
 	if len(accent) > 0 && accent[0] != nil {
 		return lipgloss.NewStyle().Bold(true).Foreground(accent[0])
@@ -29,26 +41,28 @@ func renderFullscreenTitleContent(titleContent, subtitle string) string {
 	return t
 }
 
-func renderTaskScopedFullscreenTitle(prefix string, task *models.Task, subtitle string, width int, accent ...color.Color) string {
-	titleStyle := fullscreenTitleStyle(accent...)
-	if task == nil {
-		return fitStyledChromeToWidth("fullscreen title", renderFullscreenTitleContent(titleStyle.Render(prefix), subtitle), width)
-	}
+func renderFullscreenTitleContentWithPulse(titleContent, subtitle string, pulse WorkspacePulse, width int) string {
 	if width <= 0 {
-		titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
 		return renderFullscreenTitleContent(titleContent, subtitle)
 	}
-
-	taskTitleWidth := width - lipgloss.Width(titleStyle.Render(prefix))
+	context := ""
 	if subtitle != "" {
-		taskTitleWidth -= lipgloss.Width("  " + MutedStyle.Render(subtitle))
+		context = MutedStyle.Render(subtitle)
 	}
-	// The task title is dense data: clip it intentionally to its own budget.
-	taskTitle := truncateToVisualWidth(task.Title, max(taskTitleWidth, 0))
-	titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(taskTitle)
-	// The composed title line is chrome; once the data title is pre-fit, any
-	// residual clip here means the prefix/subtitle chrome did not fit — audit it.
-	return fitStyledChromeToWidth("fullscreen title", renderFullscreenTitleContent(titleContent, subtitle), width)
+	return renderOperationalTitle(operationalTitleSpec{
+		Surface: titleContent,
+		Context: []string{context},
+		Pulse:   &pulse,
+	}, width)
+}
+
+func renderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, subtitle string, pulse WorkspacePulse, width int, accent ...color.Color) string {
+	titleStyle := fullscreenTitleStyle(accent...)
+	if task == nil {
+		return renderFullscreenTitleContentWithPulse(titleStyle.Render(prefix), subtitle, pulse, width)
+	}
+	titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
+	return renderFullscreenTitleContentWithPulse(titleContent, subtitle, pulse, width)
 }
 
 // renderPriorityBadge renders a priority indicator with color styling. An unset

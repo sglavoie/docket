@@ -25,7 +25,7 @@ func (m *NotesViewModel) View() tea.View {
 		subtitle = truncateToVisualWidth(subtitle, max(width-titleWidth-2, 1))
 	}
 	header := []string{
-		renderFullscreenTitle("Notes", subtitle, m.AccentColor()),
+		renderFullscreenTitleWithPulse("Notes", subtitle, m.currentWorkspacePulse(), width, m.AccentColor()),
 		MutedStyle.Render(truncateToVisualWidth(m.scopeCountLabel(), width)),
 	}
 	if search := m.renderSearchLine(); search != "" {
@@ -39,16 +39,9 @@ func (m *NotesViewModel) View() tea.View {
 	var footer []string
 	if m.renaming {
 		footer = append(footer, fitStyledLineToWidth("Rename: "+m.renameInput.View(), width))
-	} else if m.searchEditing {
-		help := "Enter: apply · Esc: cancel · ↑/↓ or Ctrl+J/K: navigate"
-		footer = append(footer, HelpStyle.Render(renderWrappingHelpLine(help, width)))
-	} else {
-		escHelp := "Esc: close"
-		if m.searchApplied != "" {
-			escHelp = "Esc: clear search"
-		}
-		help := "Enter: open/edit · n/a: new · v: scope · s: search · r: rename · m: move · x: delete · u: undo · Ctrl+R: redo · " + escHelp
-		footer = append(footer, HelpStyle.Render(renderWrappingHelpLine(help, width)))
+	}
+	if guidance, ok := m.ContextualGuidance(); ok {
+		footer = append(footer, renderGuidance(guidance, width, m.AccentColor()))
 	}
 	if m.statusMessage != "" {
 		footer = append(footer, fitStyledLineToWidth(m.renderStatusBar(), width))
@@ -213,9 +206,6 @@ func (m *NotesViewModel) locationLabel(location app.NoteLocation) string {
 }
 
 func (m *NotesViewModel) renderStatusBar() string {
-	if m.renaming {
-		return "Rename: " + m.renameInput.View()
-	}
 	if m.statusMessage == "" {
 		return ""
 	}

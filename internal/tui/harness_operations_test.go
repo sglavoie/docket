@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 const CapabilityHarness Capability = "surface:test-harness"
@@ -21,6 +23,7 @@ const (
 	operationHarnessTaskAttachments OperationID = "tui.harness.task-attachments"
 	operationHarnessTaskComments    OperationID = "tui.harness.task-comments"
 	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
+	operationHarnessConflict        OperationID = "tui.harness.conflict"
 )
 
 type harnessOperationSpec struct {
@@ -81,6 +84,20 @@ func (m *AppModel) registerHarnessOperations() error {
 				return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
 			}
 			return ShowNotesManagerMsg{Scope: AllNotesScope()}
+		}},
+		{operationHarnessConflict, "resolve conflict", OperationCategorySystem, func() tea.Msg {
+			retryRequired := true
+			return ShowConflictResolutionMsg{Bundle: &storage.ConflictBundle{
+				Record: storage.ConflictRecord{
+					ProjectName:            "Rich Project",
+					Action:                 "task edit",
+					RequiresOperationRetry: &retryRequired,
+					Conflicts: []storage.MergeConflict{{
+						Kind: storage.MergeConflictFieldEdit, TaskTitle: "Build login form",
+						Field: "title", Base: "Build login", Local: "Build secure login", Current: "Build sign-in",
+					}},
+				},
+			}}
 		}},
 	}
 

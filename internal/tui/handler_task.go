@@ -151,8 +151,20 @@ func (m *AppModel) maybeFireTodayCleared() tea.Cmd {
 	if m.runtime == nil {
 		return nil
 	}
-	loops := m.openLoops
-	if loops.TodayTotal == 0 || loops.TodayDone != loops.TodayTotal {
+	if len(m.today) == 0 {
+		return nil
+	}
+	foundTask := false
+	for _, planned := range m.today {
+		if planned.Task == nil {
+			continue
+		}
+		foundTask = true
+		if !planned.Task.State().IsTerminal() {
+			return nil
+		}
+	}
+	if !foundTask {
 		return nil
 	}
 	m.todayClearedBanner = "Today cleared."

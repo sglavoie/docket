@@ -13,7 +13,7 @@
     { "type": "assert", "label": "the Tags field explains the one behavioral tag", "assert": "contains", "value": "Parks this project" },
     { "type": "assert", "label": "the form wraps the complete explanation inline", "assert": "contains", "value": "attachments, hides them from Active Projects." },
     { "type": "assert", "label": "the app status bar keeps its normal breadcrumb", "assert": "contains", "value": "Triage: Outliner" },
-    { "type": "assert", "label": "the form's own control row is left intact", "assert": "contains", "value": "Tab/Shift+Tab switch · Ctrl+S save · Esc cancel" },
+    { "type": "assert", "label": "the form's own control row is left intact", "assert": "contains", "value": "Ctrl+S save · Esc cancel · Tab next · Shift+Tab previous" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

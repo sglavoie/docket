@@ -125,11 +125,12 @@ func (s *Service) ApplyPlanning(req PlanningRequest) (TaskResult, error) {
 		succeeded = true
 		return result, nil
 	}
-	if err := s.commitPlanningOnly(artifacts, []string{ref.Project.ID}, action, ref.Task.Title); err != nil {
+	transactionID, err := s.commitPlanningOnly(artifacts, []string{ref.Project.ID}, action, ref.Task.Title)
+	if err != nil {
 		return TaskResult{}, err
 	}
 	succeeded = true
-	return newTaskResult(ref, revision), nil
+	return newTaskResult(ref, revision, transactionID), nil
 }
 
 // ApplyPlanningBulk validates the complete selection before mutation, applies
@@ -204,12 +205,16 @@ func (s *Service) ApplyPlanningBulk(req PlanningBulkRequest) (BulkResult, error)
 	}
 	committed = true
 
-	result := BulkResult{Tasks: make([]TaskResult, 0, len(refs))}
+	result := BulkResult{
+		Tasks:         make([]TaskResult, 0, len(refs)),
+		TransactionID: transactionIDAt(outcome.results, 0),
+	}
 	for _, ref := range refs {
-		result.Tasks = append(
-			result.Tasks,
-			newTaskResult(ref, revisionAt(outcome.results, indexes[ref.Project.ID])),
-		)
+		result.Tasks = append(result.Tasks, newTaskResult(
+			ref,
+			revisionAt(outcome.results, indexes[ref.Project.ID]),
+			transactionIDAt(outcome.results, indexes[ref.Project.ID]),
+		))
 	}
 	for _, commit := range commits {
 		result.TouchedProjectIDs = append(result.TouchedProjectIDs, commit.project.ID)
@@ -318,7 +323,7 @@ func (s *Service) ReconcilePlanning() (bool, error) {
 	if len(artifacts) == 0 {
 		return false, nil
 	}
-	if err := s.commitPlanningOnly(artifacts, nil, "Reconcile Planning", "Today and Next"); err != nil {
+	if _, err := s.commitPlanningOnly(artifacts, nil, "Reconcile Planning", "Today and Next"); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -361,7 +366,8 @@ func (s *Service) applyPlanningOrder(req PlanningReconcileRequest, undoAction st
 	if err != nil {
 		return err
 	}
-	return s.commitPlanningOnly(artifacts, nil, undoAction, "")
+	_, err = s.commitPlanningOnly(artifacts, nil, undoAction, "")
+	return err
 }
 
 // planningTargetsForSnapshot enumerates every task the snapshot can see, which
@@ -407,16 +413,15 @@ func planningArtifactsForRequest(req PlanningReconcileRequest, builder PlanningA
 	return artifacts, nil
 }
 
-func (s *Service) commitPlanningOnly(artifacts []storage.ArtifactChange, projectIDs []string, undoAction, undoContext string) error {
+func (s *Service) commitPlanningOnly(artifacts []storage.ArtifactChange, projectIDs []string, undoAction, undoContext string) (string, error) {
 	if len(artifacts) == 0 {
-		return nil
+		return "", nil
 	}
 	committer, ok := s.repo.(ArtifactCommitter)
 	if !ok {
-		return fmt.Errorf("app: repository does not support artifact-only planning commits")
+		return "", fmt.Errorf("app: repository does not support artifact-only planning commits")
 	}
-	_, err := committer.CommitArtifactTransaction(storage.ArtifactCommitRequest{
+	return committer.CommitArtifactTransaction(storage.ArtifactCommitRequest{
 		Artifacts: artifacts, ProjectIDs: projectIDs, UndoAction: undoAction, UndoContext: undoContext,
 	})
-	return err
 }

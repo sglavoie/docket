@@ -13,6 +13,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -436,6 +437,65 @@ func operationValuePickerExplainerWidth(width int) int {
 	return operationValuePickerInnerWidth(width) - 4
 }
 
+func (model *OperationValuePickerModel) guidanceSpec() (GuidanceSpec, bool) {
+	if model == nil || model.surface == nil {
+		return GuidanceSpec{}, false
+	}
+	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
+		return GuidanceSpec{
+			Hints: requiredGuidanceHints("Enter add tag", "Esc cancel"),
+			Rows:  2,
+		}, true
+	}
+	count := len(model.surface.Matches())
+	searching := model.searching
+	enterLabel := "choose"
+	if model.multi {
+		enterLabel = "apply"
+	}
+	if searching {
+		enterLabel = "apply search"
+	}
+	escapeLabel := "back"
+	if searching {
+		escapeLabel = "cancel search"
+		if model.surface.Query().Raw != "" {
+			escapeLabel = "clear search"
+		}
+	}
+	km := &keymap.KeyMap{Entries: []keymap.Entry{
+		keymap.Bind("j", "Move selection", "Navigation",
+			keymap.WithGate(func() bool { return count > 0 }),
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k or ↑/↓")),
+		keymap.Bind("/", "Search values", "Filters",
+			keymap.WithGate(func() bool { return !searching }), keymap.WithFooter(20, "search", false)),
+		keymap.Bind("enter", "Apply current state", "Actions",
+			keymap.WithGate(func() bool { return searching || count > 0 }),
+			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
+		keymap.Bind("esc", "Unwind value picker", "Navigation",
+			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
+	}}
+	add := func(key, description, label string, rank int, gate keymap.Gate) {
+		options := []keymap.BindOption{
+			keymap.WithGate(gate), keymap.WithFooter(rank, label, false),
+		}
+		if key == "space" {
+			options = append(options, keymap.WithFooterKey("Space"))
+		}
+		km.Entries = append(km.Entries, keymap.Bind(key, description, "Actions", options...))
+	}
+	if model.provider == ValueProviderFilterProjectTags {
+		add("v", "Toggle current facet", "toggle", 3, func() bool { return !searching && count > 0 })
+		add("space", "Open tag actions", "tag actions", 4, func() bool { return !searching && count > 0 })
+	} else if model.multi {
+		add("space", "Toggle current value", "toggle", 3, func() bool { return !searching && count > 0 })
+	}
+	if model.provider.tagEntry() {
+		add("a", "Add a tag", "add tag", 4, func() bool { return !searching })
+	}
+	return listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
+}
+
 func (model *OperationValuePickerModel) render(width int) string {
 	return model.renderWithin(width, 0)
 }
@@ -457,11 +517,12 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.tagAdder.AddTagError)
 		}
 		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Add New Tag")
+		guidance, _ := model.guidanceSpec()
 		return renderOverlayBox(
 			content,
 			innerWidth,
 			title,
-			HelpStyle.Render("Enter add tag · Esc cancel"),
+			HelpStyle.Render(strings.Join(guidanceLines(guidance, max(innerWidth-4, 1)), "\n")),
 			lipgloss.NewStyle().Foreground(ColorPrimary),
 		)
 	}
@@ -486,7 +547,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		listHeight = min(listHeight, max(height-reservedRows, 1))
 	}
 	query := model.surface.Query().Raw
-	search := "Press / to search"
+	search := ""
 	if model.searching || query != "" {
 		cursor := ""
 		if model.searching {
@@ -494,8 +555,10 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		}
 		search = "Search: " + query + cursor
 	}
-	content := MutedStyle.Render(search) + "\n\n" +
-		RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	content := RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	if search != "" {
+		content = MutedStyle.Render(search) + "\n\n" + content
+	}
 	if explainerBlock != "" {
 		content += "\n\n" + explainerBlock
 	}
@@ -504,21 +567,12 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		titleText += ": " + truncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
-	help := "Enter choose · / search · Esc back"
-	if model.multi {
-		help = "Space toggle · Enter apply · Esc back"
-	}
-	if model.provider.tagEntry() {
-		help = "Space toggle · a add tag · Enter apply · Esc back"
-	}
-	if model.provider == ValueProviderFilterProjectTags {
-		help = "v toggle · Space tag actions · Enter apply · Esc back"
-	}
+	guidance, _ := model.guidanceSpec()
 	return renderOverlayBox(
 		content,
 		innerWidth,
 		title,
-		HelpStyle.Render(help),
+		HelpStyle.Render(strings.Join(guidanceLines(guidance, max(innerWidth-4, 1)), "\n")),
 		lipgloss.NewStyle().Foreground(ColorPrimary),
 	)
 }
@@ -1005,6 +1059,10 @@ func (m *AppModel) executeSingleTaskOperation(
 	cmdResult := func(cmd tea.Cmd) OperationHandlerResult {
 		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
 	}
+	relocationResult := func(cmd tea.Cmd) OperationHandlerResult {
+		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
+		return cmdResult(withOutlinerRelocationCapture(cmd, capture))
+	}
 
 	switch invocation.Descriptor.ID {
 	case operationTaskSetState:
@@ -1050,21 +1108,22 @@ func (m *AppModel) executeSingleTaskOperation(
 			return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
 		}
 		return OperationHandlerResult{Message: MoveTaskToProjectMsg{
-			Task:          task,
-			SourceProject: project,
-			DestProjectID: destination,
-			FromGlobal:    true,
+			Task:               task,
+			SourceProject:      project,
+			DestProjectID:      destination,
+			FromGlobal:         true,
+			outlinerRelocation: m.captureOutlinerRelocationForTargets(invocation.Targets),
 		}}
 	case operationTaskSetParent:
 		parent, ok := invocation.Value.(OperationParentValue)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid parent value")}
 		}
-		return cmdResult(m.secondaryFeatures.TaskItem.Reparent(identity, parent.ParentID))
+		return relocationResult(m.secondaryFeatures.TaskItem.Reparent(identity, parent.ParentID))
 	case operationTaskIndent:
-		return cmdResult(m.secondaryFeatures.TaskItem.Indent(identity))
+		return relocationResult(m.secondaryFeatures.TaskItem.Indent(identity))
 	case operationTaskOutdent:
-		return cmdResult(m.secondaryFeatures.TaskItem.Outdent(identity))
+		return relocationResult(m.secondaryFeatures.TaskItem.Outdent(identity))
 	default:
 		return m.executeAuxiliaryTaskOperation(invocation, identity)
 	}
@@ -1133,7 +1192,11 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		if !ok || strings.TrimSpace(destination) == "" {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid destination project")}
 		}
-		return cmdResult(m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, destination))
+		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
+		return cmdResult(withOutlinerRelocationCapture(
+			m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, destination),
+			capture,
+		))
 	default:
 		return OperationHandlerResult{
 			Err: fmt.Errorf("operation %s is not available for %d selected tasks", invocation.Descriptor.ID, count),

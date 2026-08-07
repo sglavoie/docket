@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -27,6 +26,12 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 		return true, errorCmd("destination project not found")
 	}
 	oldShortID := sourceTask.ShortID
+	relocation := msg.outlinerRelocation
+	if relocation == nil && m.crossOutliner != nil {
+		relocation = m.crossOutliner.captureOutlinerRelocation([]TaskIdentity{
+			taskIdentityFor(sourceTask, msg.SourceProject),
+		})
+	}
 	m.appService.WithPlanningArtifacts(shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager))
 
 	// Build the moved set (root + descendants) from the loaded source project so the
@@ -63,11 +68,13 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	movedTask := destProject.GetTaskByID(sourceTask.ID)
 	return true, func() tea.Msg {
 		return TaskMovedToProjectMsg{
-			Task:        movedTask,
-			DestProject: destProject,
-			MovedCount:  res.MovedCount,
-			OldShortID:  oldShortID,
-			FromGlobal:  msg.FromGlobal,
+			Task:               movedTask,
+			DestProject:        destProject,
+			MovedCount:         res.MovedCount,
+			OldShortID:         oldShortID,
+			FromGlobal:         msg.FromGlobal,
+			TransactionID:      res.TransactionID,
+			outlinerRelocation: relocation,
 		}
 	}
 }
@@ -81,10 +88,19 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 		popCmd = m.popView() // Close project selector (not needed for global flow)
 	}
 	m.refreshAllViews()
+	recordedOrigin := false
+	var jumpCmd tea.Cmd
+	if msg.outlinerRelocation != nil && msg.Task != nil && msg.DestProject != nil && m.crossOutliner != nil {
+		capture := *msg.outlinerRelocation
+		capture.Task = taskIdentityFor(msg.Task, msg.DestProject)
+		jumpCmd, recordedOrigin = m.crossOutliner.finishOutlinerRelocation(&capture, true)
+	}
 	// The cross-project move folded a checked config artifact (durable planning-ref
 	// reassignment) into its transaction; advance the shared domain snapshot now
 	// that it is committed so views reading it stay consistent.
-	m.refreshRuntime()
+	if m.refreshRuntime() {
+		m.rebuildPlanningFromRuntime()
+	}
 	// A parked destination is named with its tag: the move committed, but the
 	// task leaves every base projection, so the status has to say where it went.
 	destination := m.parkedOwnerLabel(msg.DestProject)
@@ -97,10 +113,9 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	} else {
 		statusMsg = fmt.Sprintf("Moved #%d to %s", msg.OldShortID, destination)
 	}
-	m.setSuccessStatus(statusMsg)
 	reloadCmd := m.requestCrossProjectOutlinerReload()
 	m.preserveMovedOutlinerTarget(msg)
-	return true, tea.Batch(popCmd, reloadCmd, statusTimeout(3*time.Second))
+	return true, tea.Batch(popCmd, reloadCmd, jumpCmd, m.setRecoveryFeedback(statusMsg, msg.TransactionID, recordedOrigin))
 }
 
 func (m *AppModel) preserveMovedOutlinerTarget(msg TaskMovedToProjectMsg) {

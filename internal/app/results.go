@@ -14,16 +14,21 @@ type TaskResult struct {
 	Title string
 	// Revision is the project's new canonical revision after the commit.
 	Revision string
+	// TransactionID identifies the atomic durable transaction that produced this
+	// result. Adapters use it to correlate recovery affordances with the newest
+	// workspace-ledger entry.
+	TransactionID string
 }
 
 // newTaskResult builds a TaskResult from a resolved task/project pair and the
 // revision the commit produced.
-func newTaskResult(ref TaskRef, revision string) TaskResult {
+func newTaskResult(ref TaskRef, revision, transactionID string) TaskResult {
 	return TaskResult{
-		TaskID:    ref.Task.ID,
-		ShortID:   ref.Task.ShortID,
-		ProjectID: ref.Project.ID,
-		Title:     ref.Task.Title,
-		Revision:  revision,
+		TaskID:        ref.Task.ID,
+		ShortID:       ref.Task.ShortID,
+		ProjectID:     ref.Project.ID,
+		Title:         ref.Task.Title,
+		Revision:      revision,
+		TransactionID: transactionID,
 	}
 }

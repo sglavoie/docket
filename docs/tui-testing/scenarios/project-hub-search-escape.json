@@ -9,7 +9,7 @@
     { "type": "assert", "assert": "contains", "value": "Select Project" },
     { "type": "assert", "assert": "contains", "value": "ACTIVE PROJECTS" },
     { "type": "text", "label": "fuzzy-search Rich Project", "text": "rprj" },
-    { "type": "assert", "assert": "contains", "value": "Enter select" },
+    { "type": "assert", "assert": "contains", "value": "Enter open project" },
     { "type": "key", "label": "leave search without closing Projects", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "not_contains", "value": "/rprj" },

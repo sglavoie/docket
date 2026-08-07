@@ -11,7 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-func TestCaptureCreatesTaskAndEmitsOneChangeSet(t *testing.T) {
+func TestTaskResultTransactionIDPropagationFromFakeRepository(t *testing.T) {
 	project := newProject("proj-1", "Alpha")
 	repo := newFakeRepo(project)
 	expectedRev := repo.revisions[project.ID]
@@ -36,6 +36,9 @@ func TestCaptureCreatesTaskAndEmitsOneChangeSet(t *testing.T) {
 	}
 	if res.Revision == "" || res.Revision == expectedRev {
 		t.Errorf("Revision = %q, want a new non-empty revision (was %q)", res.Revision, expectedRev)
+	}
+	if res.TransactionID == "" {
+		t.Fatal("TransactionID is empty; fake repository result was not propagated")
 	}
 
 	if got := len(project.Tasks); got != 1 {

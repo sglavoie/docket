@@ -69,17 +69,6 @@ func (m *OutlinerModel) isSectionRowCollapsed(row outlinerRow) bool {
 	return m.collapsedSections[row.effectiveCollapseKey()]
 }
 
-// projectNameByID looks up a project name from m.loadedProjects by ID.
-// Returns the ID itself as a fallback if the project is not found.
-func (m *OutlinerModel) projectNameByID(id string) string {
-	for _, p := range m.loadedProjects {
-		if p.ID == id {
-			return p.Name
-		}
-	}
-	return id
-}
-
 // buildTreePrefix computes the connector prefix string from the ancestor
 // is-last-child boolean stack. Each true entry means that ancestor was the
 // last child of its parent (so we render spaces), while false means we need

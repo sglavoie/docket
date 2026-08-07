@@ -61,7 +61,8 @@ type TaskUpdatedMsg struct {
 // the task was deleted from so the post-delete handler can wire an undo
 // toast that targets the correct project's snapshot history.
 type TaskDeletedMsg struct {
-	Project *models.Project
+	Project       *models.Project
+	TransactionID string
 }
 
 // TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
@@ -213,13 +214,13 @@ type ShowTaskCommentsMsg struct {
 type CloseTaskCommentsMsg struct{ PopViewMsg }
 
 // CommentAddedMsg signals a comment was added.
-type CommentAddedMsg struct{}
+type CommentAddedMsg struct{ TransactionID string }
 
 // CommentDeletedMsg signals a comment was deleted.
-type CommentDeletedMsg struct{}
+type CommentDeletedMsg struct{ TransactionID string }
 
 // CommentEditedMsg signals a comment was edited.
-type CommentEditedMsg struct{}
+type CommentEditedMsg struct{ TransactionID string }
 
 // =============================================================================
 // Task Checklist Messages (Show/Close Pattern)
@@ -235,16 +236,16 @@ type ShowTaskChecklistMsg struct {
 type CloseTaskChecklistMsg struct{ PopViewMsg }
 
 // ChecklistItemAddedMsg signals a checklist item was added.
-type ChecklistItemAddedMsg struct{}
+type ChecklistItemAddedMsg struct{ TransactionID string }
 
 // ChecklistItemEditedMsg signals a checklist item was edited.
-type ChecklistItemEditedMsg struct{}
+type ChecklistItemEditedMsg struct{ TransactionID string }
 
 // ChecklistItemDeletedMsg signals a checklist item was deleted.
-type ChecklistItemDeletedMsg struct{}
+type ChecklistItemDeletedMsg struct{ TransactionID string }
 
 // ChecklistItemToggledMsg signals a checklist item was toggled.
-type ChecklistItemToggledMsg struct{}
+type ChecklistItemToggledMsg struct{ TransactionID string }
 
 // =============================================================================
 // Task Attachments Messages (Show/Close Pattern)
@@ -280,17 +281,20 @@ type CloseProjectSelectorMsg struct{ PopViewMsg }
 
 // MoveTaskToProjectMsg requests moving a task to another project.
 type MoveTaskToProjectMsg struct {
-	Task          *models.Task
-	SourceProject *models.Project
-	DestProjectID string
-	FromGlobal    bool // true when triggered from a global move workflow (skip popView)
+	Task               *models.Task
+	SourceProject      *models.Project
+	DestProjectID      string
+	FromGlobal         bool // true when triggered from a global move workflow (skip popView)
+	outlinerRelocation *outlinerRelocationCapture
 }
 
 // TaskMovedToProjectMsg signals a task was moved to another project.
 type TaskMovedToProjectMsg struct {
-	Task        *models.Task
-	DestProject *models.Project
-	MovedCount  int  // Number of tasks moved (including descendants)
-	OldShortID  int  // Original short ID before move
-	FromGlobal  bool // true when triggered from a global move workflow (skip popView)
+	Task               *models.Task
+	DestProject        *models.Project
+	MovedCount         int  // Number of tasks moved (including descendants)
+	OldShortID         int  // Original short ID before move
+	FromGlobal         bool // true when triggered from a global move workflow (skip popView)
+	TransactionID      string
+	outlinerRelocation *outlinerRelocationCapture
 }

@@ -3,30 +3,33 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
 )
 
-// TestFullscreenTitleChromeTruncationRecordsAudit verifies that fullscreen title
-// chrome routes through required-text auditing: when the title line cannot fit
-// its width, the render audit records a required_text_truncated issue. Title
-// chrome is not dense data, so a clip there should be surfaced as suspicious.
-func TestFullscreenTitleChromeTruncationRecordsAudit(t *testing.T) {
+// TestFullscreenTitleChromeFittingStaysWithinWidth verifies that the semantic
+// title renderer keeps full-screen chrome on one bounded row at both narrow and
+// wide terminal sizes.
+func TestFullscreenTitleChromeFittingStaysWithinWidth(t *testing.T) {
 	longPrefix := strings.Repeat("Fullscreen Title Prefix ", 6)
-
-	// Clip: a wide title in a narrow terminal must record an audit issue.
-	_, issues := withRenderAudit(func() string {
-		return renderTaskScopedFullscreenTitle(longPrefix, nil, "", 20)
-	})
-	if !hasIssueKind(issues, requiredTextTruncatedKind) {
-		t.Fatalf("expected %s issue when fullscreen title chrome is clipped, got %+v",
-			requiredTextTruncatedKind, issues)
-	}
-
-	// Fits: a short title with ample width must not record any audit issue.
-	_, issues = withRenderAudit(func() string {
-		return renderTaskScopedFullscreenTitle("Tasks", nil, "", 120)
-	})
-	if hasIssueKind(issues, requiredTextTruncatedKind) {
-		t.Fatalf("expected no audit issue when fullscreen title fits, got %+v", issues)
+	for _, tc := range []struct {
+		name  string
+		title string
+		width int
+		pulse WorkspacePulse
+	}{
+		{name: "narrow", title: longPrefix, width: 20, pulse: WorkspacePulse{}},
+		{name: "wide", title: "Tasks", width: 120, pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rendered := renderTaskScopedFullscreenTitleWithPulse(tc.title, nil, "", tc.pulse, tc.width)
+			if strings.Contains(rendered, "\n") {
+				t.Fatalf("fullscreen title wrapped onto multiple rows: %q", rendered)
+			}
+			if got := lipgloss.Width(rendered); got > tc.width {
+				t.Fatalf("fullscreen title width = %d, want <= %d: %q", got, tc.width, rendered)
+			}
+		})
 	}
 }
 

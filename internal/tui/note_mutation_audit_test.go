@@ -21,7 +21,6 @@ var allowedNoteStorageReads = map[string]string{
 	"GlobalNotesDir":   "derives the canonical global collection path without changing it",
 	"NoteFilePathIn":   "validates and derives a path for read-only editor/reference input",
 	"NotesDir":         "derives a project note collection path without changing it",
-	"NotesExist":       "checks whether a project has notes",
 	"ParseNoteContent": "parses temporary editor bytes without writing canonical storage",
 	"RenderNoteContent": "renders a copied note for temporary editor input without writing " +
 		"canonical storage",

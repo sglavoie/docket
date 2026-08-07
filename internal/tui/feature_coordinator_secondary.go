@@ -157,6 +157,7 @@ type BatchTransactionResultMsg struct {
 	Action            string
 	TouchedProjectIDs []string
 	Summary           string
+	TransactionID     string
 	// outlinerRelocation is an internal navigation capture attached only to a
 	// successful state/planning/metadata mutation.
 	outlinerRelocation *outlinerRelocationCapture
@@ -234,13 +235,15 @@ func runTask(action string, mutate func() (app.TaskResult, error)) tea.Cmd {
 
 // runBatch wraps a project-scoped or multi-task mutation as an async command
 // resolving to a BatchTransactionResultMsg (or TransactionErrorMsg on rejection).
-func runBatch(action string, mutate func() ([]string, string, error)) tea.Cmd {
+func runBatch(action string, mutate func() ([]string, string, string, error)) tea.Cmd {
 	return func() tea.Msg {
-		touched, summary, err := mutate()
+		touched, summary, transactionID, err := mutate()
 		if err != nil {
 			return TransactionErrorMsg{Err: err}
 		}
-		return BatchTransactionResultMsg{Action: action, TouchedProjectIDs: touched, Summary: summary}
+		return BatchTransactionResultMsg{
+			Action: action, TouchedProjectIDs: touched, Summary: summary, TransactionID: transactionID,
+		}
 	}
 }
 
@@ -253,12 +256,12 @@ type BulkCoordinator struct {
 
 // Transition moves every selected task to the target state as one transaction.
 func (c BulkCoordinator) Transition(taskIDs []string, target models.WorkflowState) tea.Cmd {
-	return runBatch("Bulk Transition", func() ([]string, string, error) {
+	return runBatch("Bulk Transition", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkTransition(taskIDs, target)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s) to %s", len(res.Tasks), target), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s) to %s", len(res.Tasks), models.WorkflowStateGroupForState(target).Label()), res.TransactionID, nil
 	})
 }
 
@@ -277,6 +280,7 @@ func (c BulkCoordinator) TransitionLocators(locators []app.TaskLocator, target m
 			Action:            "Bulk Transition",
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           msg,
+			TransactionID:     res.TransactionID,
 		}
 	}
 }
@@ -308,34 +312,35 @@ func (c BulkCoordinator) delete(req app.BulkDeleteRequest, artifacts ...storage.
 			Action:            "Bulk Delete",
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           fmt.Sprintf("Deleted %d task(s)", removedCount),
+			TransactionID:     res.TransactionID,
 		}
 	}
 }
 
 func (c BulkCoordinator) SetPriorityLocators(locators []app.TaskLocator, priority int) tea.Cmd {
-	return runBatch("Bulk Set Priority", func() ([]string, string, error) {
+	return runBatch("Bulk Set Priority", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSetPriorityByLocators(locators, priority)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 // SetPriority sets one priority on every selected task as one transaction.
 func (c BulkCoordinator) SetPriority(taskIDs []string, priority int) tea.Cmd {
-	return runBatch("Bulk Set Priority", func() ([]string, string, error) {
+	return runBatch("Bulk Set Priority", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSetPriority(taskIDs, priority)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 // SetDueDate sets one due date on every selected task as one transaction.
 func (c BulkCoordinator) SetDueDate(taskIDs []string, due time.Time) tea.Cmd {
-	return runBatch("Bulk Set Due Date", func() ([]string, string, error) {
+	return runBatch("Bulk Set Due Date", func() ([]string, string, string, error) {
 		var (
 			res app.BulkResult
 			err error
@@ -346,14 +351,14 @@ func (c BulkCoordinator) SetDueDate(taskIDs []string, due time.Time) tea.Cmd {
 			res, err = c.bulk.BulkSetDueDate(taskIDs, due)
 		}
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time.Time) tea.Cmd {
-	return runBatch("Bulk Set Due Date", func() ([]string, string, error) {
+	return runBatch("Bulk Set Due Date", func() ([]string, string, string, error) {
 		var (
 			res app.BulkResult
 			err error
@@ -364,81 +369,81 @@ func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time
 			res, err = c.bulk.BulkSetDueDateByLocators(locators, due)
 		}
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 // ClearDueDate removes the due date from every selected task as one transaction.
 func (c BulkCoordinator) ClearDueDate(taskIDs []string) tea.Cmd {
-	return runBatch("Bulk Clear Due Date", func() ([]string, string, error) {
+	return runBatch("Bulk Clear Due Date", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkClearDueDate(taskIDs)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 func (c BulkCoordinator) ClearDueDateLocators(locators []app.TaskLocator) tea.Cmd {
-	return runBatch("Bulk Clear Due Date", func() ([]string, string, error) {
+	return runBatch("Bulk Clear Due Date", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkClearDueDateByLocators(locators)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 // Snooze hides every selected task until until, or clears the snooze when until
 // is nil, as one transaction.
 func (c BulkCoordinator) Snooze(taskIDs []string, until *time.Time) tea.Cmd {
-	return runBatch("Bulk Snooze", func() ([]string, string, error) {
+	return runBatch("Bulk Snooze", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSnooze(taskIDs, until)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
 		verb := "Snoozed"
 		if until == nil {
 			verb = "Cleared snooze on"
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 func (c BulkCoordinator) SnoozeLocators(locators []app.TaskLocator, until *time.Time) tea.Cmd {
-	return runBatch("Bulk Snooze", func() ([]string, string, error) {
+	return runBatch("Bulk Snooze", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSnoozeByLocators(locators, until)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
 		verb := "Snoozed"
 		if until == nil {
 			verb = "Cleared snooze on"
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 // SetTags replaces the tag set on every selected task as one transaction.
 func (c BulkCoordinator) SetTags(taskIDs []string, tags []string) tea.Cmd {
-	return runBatch("Bulk Set Tags", func() ([]string, string, error) {
+	return runBatch("Bulk Set Tags", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSetTags(taskIDs, tags)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []string) tea.Cmd {
-	return runBatch("Bulk Set Tags", func() ([]string, string, error) {
+	return runBatch("Bulk Set Tags", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSetTagsByLocators(locators, tags)
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
@@ -446,15 +451,15 @@ func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []stri
 // single transaction. Selection is intentionally preserved after success, like
 // every non-delete bulk operation.
 func (c BulkCoordinator) MoveToProjectLocators(locators []app.TaskLocator, destinationProjectID string) tea.Cmd {
-	return runBatch("Bulk Move Project", func() ([]string, string, error) {
+	return runBatch("Bulk Move Project", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkMoveToProject(app.BulkMoveRequest{
 			TaskLocators:         locators,
 			DestinationProjectID: destinationProjectID,
 		})
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s)", res.MovedCount), nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s)", res.MovedCount), res.TransactionID, nil
 	})
 }
 
@@ -465,18 +470,18 @@ func (c BulkCoordinator) ApplyPlanningLocators(
 	action app.PlanningAction,
 	summary string,
 ) tea.Cmd {
-	return runBatch("Bulk Planning", func() ([]string, string, error) {
+	return runBatch("Bulk Planning", func() ([]string, string, string, error) {
 		res, err := c.bulk.ApplyPlanningBulk(app.PlanningBulkRequest{
 			Targets: locators,
 			Action:  action,
 		})
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
 		if summary == "" {
 			summary = fmt.Sprintf("Updated %d task(s)", len(res.Tasks))
 		}
-		return res.TouchedProjectIDs, summary, nil
+		return res.TouchedProjectIDs, summary, res.TransactionID, nil
 	})
 }
 
@@ -517,6 +522,7 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 			Action:            action,
 			TouchedProjectIDs: result.TouchedProjectIDs,
 			Summary:           summary,
+			TransactionID:     result.TransactionID,
 		}
 	}
 }
@@ -525,48 +531,48 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 // transaction, emitting a BatchTransactionResultMsg so the touched project is
 // reloaded through the shared batch path.
 func (c TaskItemCoordinator) MoveToTop(task TaskIdentity) tea.Cmd {
-	return runBatch("Move to Top", func() ([]string, string, error) {
+	return runBatch("Move to Top", func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskToTopByLocator(task.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d to top", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d to top", res.ShortID), res.TransactionID, nil
 	})
 }
 
 // MoveToBottom moves one task to the bottom of its siblings as one project-scoped
 // transaction (see MoveToTop).
 func (c TaskItemCoordinator) MoveToBottom(task TaskIdentity) tea.Cmd {
-	return runBatch("Move to Bottom", func() ([]string, string, error) {
+	return runBatch("Move to Bottom", func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskToBottomByLocator(task.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d to bottom", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d to bottom", res.ShortID), res.TransactionID, nil
 	})
 }
 
 // MoveUp swaps one task with its previous model-order sibling as one
 // project-scoped transaction (see MoveToTop for the reload path).
 func (c TaskItemCoordinator) MoveUp(task TaskIdentity) tea.Cmd {
-	return runBatch("Move Up", func() ([]string, string, error) {
+	return runBatch("Move Up", func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskUpByLocator(task.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d up", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d up", res.ShortID), res.TransactionID, nil
 	})
 }
 
 // MoveDown swaps one task with its next model-order sibling as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) MoveDown(task TaskIdentity) tea.Cmd {
-	return runBatch("Move Down", func() ([]string, string, error) {
+	return runBatch("Move Down", func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskDownByLocator(task.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d down", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d down", res.ShortID), res.TransactionID, nil
 	})
 }
 
@@ -574,36 +580,36 @@ func (c TaskItemCoordinator) MoveDown(task TaskIdentity) tea.Cmd {
 // project-scoped transaction. Passing the adjacent visible target lets filtered
 // and collapsed Outliner projections preserve hidden siblings' relative order.
 func (c TaskItemCoordinator) ReorderSiblings(task, target TaskIdentity) tea.Cmd {
-	return runBatch("Reorder Siblings", func() ([]string, string, error) {
+	return runBatch("Reorder Siblings", func() ([]string, string, string, error) {
 		res, err := c.task.ReorderSiblingTasksByLocator(task.Locator(), target.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Reordered #%d", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Reordered #%d", res.ShortID), res.TransactionID, nil
 	})
 }
 
 // Indent nests one task under the task model-above it as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) Indent(task TaskIdentity) tea.Cmd {
-	return runBatch("Indent", func() ([]string, string, error) {
+	return runBatch("Indent", func() ([]string, string, string, error) {
 		res, err := c.task.IndentTaskByLocator(task.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Indented #%d", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Indented #%d", res.ShortID), res.TransactionID, nil
 	})
 }
 
 // Outdent moves one task to become a sibling of its parent as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) Outdent(task TaskIdentity) tea.Cmd {
-	return runBatch("Outdent", func() ([]string, string, error) {
+	return runBatch("Outdent", func() ([]string, string, string, error) {
 		res, err := c.task.OutdentTaskByLocator(task.Locator())
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		return []string{res.ProjectID}, fmt.Sprintf("Outdented #%d", res.ShortID), nil
+		return []string{res.ProjectID}, fmt.Sprintf("Outdented #%d", res.ShortID), res.TransactionID, nil
 	})
 }
 
@@ -715,6 +721,7 @@ func (c TaskItemCoordinator) DeleteTask(task TaskIdentity, artifacts []storage.A
 			Action:            "Delete Task",
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           msg,
+			TransactionID:     res.TransactionID,
 		}
 	}
 }
@@ -739,6 +746,7 @@ func (c TaskItemCoordinator) CommitProject(project *models.Project, opts app.Pro
 		return BatchTransactionResultMsg{
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           summary,
+			TransactionID:     res.TransactionID,
 		}
 	}
 }
@@ -867,10 +875,40 @@ func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int
 // refresh behavior) while the durable write flows through the application layer.
 func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
 	return func() tea.Msg {
-		if msg, ok := commit().(TransactionErrorMsg); ok {
+		outcome := commit()
+		if msg, ok := outcome.(TransactionErrorMsg); ok {
 			return ErrorMsg(msg)
 		}
-		return success()
+		msg := success()
+		result, ok := outcome.(TransactionResultMsg)
+		if !ok {
+			return msg
+		}
+		switch msg := msg.(type) {
+		case CommentAddedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case CommentDeletedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case CommentEditedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case ChecklistItemAddedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case ChecklistItemDeletedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case ChecklistItemEditedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case ChecklistItemToggledMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		default:
+			return msg
+		}
 	}
 }
 

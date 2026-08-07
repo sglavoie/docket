@@ -26,24 +26,32 @@ type ViewCapabilities interface {
 	IsFullHeight() bool
 }
 
-// StatusBarFooterSpec describes a view's contextual footer as plain, unstyled
-// strings. Left is the multi-item help cluster (items joined by " · " so the
-// shared renderer can wrap on those boundaries); Right is a short
-// indicator/label. Styling is applied once by renderContextualFooter, so
-// providers must return unstyled text.
-type StatusBarFooterSpec struct {
-	Left  string
-	Right string
+// GuidanceHint is one complete key/action entry in contextual guidance.
+// Lower Priority values are retained before higher values. Required hints are
+// reserved before any optional hint is considered, regardless of priority.
+type GuidanceHint struct {
+	Key      string
+	Label    string
+	Priority int
+	Required bool
 }
 
-// ContextualFooterProvider is implemented by views that supply their own
-// contextual footer content for the app shell to compose. The app-shell status
-// bar renders this spec at a priority above the pinned-task bar and the generic
-// breadcrumb, but below transient loading/error/status overlays. Returning
-// ok=false means the view has no contextual footer for its current state, so
-// the app shell falls through to the lower-priority footers.
-type ContextualFooterProvider interface {
-	ContextualFooter() (spec StatusBarFooterSpec, ok bool)
+// GuidanceSpec describes the persistent controls for one interaction state.
+// Hints retain declaration order when rendered. Supplemental is optional
+// state data (for example a scroll percentage), not an action. Rows is clamped
+// to the product's one- or two-row guidance budget; zero means one row.
+type GuidanceSpec struct {
+	Hints        []GuidanceHint
+	Supplemental string
+	Rows         int
+}
+
+// ContextualGuidanceProvider is implemented by views that supply structured
+// guidance for the app shell. The shell renders it above the pinned-task bar
+// and generic breadcrumb but below transient loading/error/status overlays.
+// Returning ok=false lets the shell fall through to lower-priority chrome.
+type ContextualGuidanceProvider interface {
+	ContextualGuidance() (spec GuidanceSpec, ok bool)
 }
 
 // StatusBarLabeler is implemented by views that provide their own status bar label.

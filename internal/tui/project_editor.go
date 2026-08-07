@@ -28,6 +28,7 @@ const (
 
 // ProjectEditorModel handles editing an existing project via TUI.
 type ProjectEditorModel struct {
+	workspacePulseState
 	project           *models.Project
 	configManager     *config.Manager
 	runtime           *config.RuntimeState
@@ -347,7 +348,7 @@ func (s *projectEditorSave) commit() tea.Msg {
 		return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
 	}
 
-	if err := s.appService.RenameProject(app.RenameProjectRequest{
+	transactionID, err := s.appService.RenameProjectResult(app.RenameProjectRequest{
 		Project:                &updated,
 		SystemUnfiledProjectID: s.runtime.Catalog().SystemUnfiledProjectID,
 		DataDir:                s.runtime.DataDir(),
@@ -357,7 +358,8 @@ func (s *projectEditorSave) commit() tea.Msg {
 		TasksMarkdown:          tasksMarkdown,
 		TasksExpectedRevision:  tasksExpectedRevision,
 		Config:                 configArts,
-	}); err != nil {
+	})
+	if err != nil {
 		return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 	}
 	if err := s.runtime.RefreshAfterCommit(); err != nil {
@@ -365,7 +367,7 @@ func (s *projectEditorSave) commit() tea.Msg {
 	}
 
 	copyCatalogMetadata(project, &updated)
-	return ProjectUpdatedMsg{Project: project, Parked: s.parks}
+	return ProjectUpdatedMsg{Project: project, Parked: s.parks, TransactionID: transactionID}
 }
 
 func (m *ProjectEditorModel) View() tea.View {
@@ -423,18 +425,31 @@ func (m *ProjectEditorModel) View() tea.View {
 		title += " *"
 	}
 
-	// Footer
-	left := HelpStyle.Render("Tab/Shift+Tab switch · Ctrl+S save · Esc cancel")
-	right := MutedStyle.Render(title)
+	guidance := renderGuidance(m.guidanceSpec(), m.width)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitle(title, ""))
+	out.WriteString(renderFullscreenTitleWithPulse(title, "", m.currentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
 	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(left, right, m.width))
+	out.WriteString(guidance)
 
 	return tea.NewView(out.String())
+}
+
+func (m *ProjectEditorModel) guidanceSpec() GuidanceSpec {
+	if m.confirmDiscard {
+		return confirmationGuidanceSpec()
+	}
+	commit := "Ctrl+S save"
+	if m.err != nil {
+		commit = "Ctrl+S retry"
+	}
+	spec := requiredActionGuidanceSpec(commit, "Tab next", "Shift+Tab previous", "Enter next/save")
+	if m.hasChanges {
+		spec.Supplemental = "Unsaved changes"
+	}
+	return spec
 }
 
 // projectEditorExplainerWidth is the width the Tags explainer is fitted to: the

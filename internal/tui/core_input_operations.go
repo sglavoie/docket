@@ -61,8 +61,8 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
 		withTaskTarget(core(operationCoreExternalEditor, "Open in External Editor", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task externally", "external editor")),
 		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "backlog"),
-		core(operationCoreToday, "Toggle Today", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "daily plan"),
-		core(operationCoreNext, "Toggle Next", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "on deck"),
+		core(operationCoreToday, "Toggle Today", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "today"),
+		core(operationCoreNext, "Toggle Next", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "next"),
 		core(operationCoreActions, "Task Actions", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskReadOnly, "action sheet"),
 		core(operationCoreCursorDown, "Move Cursor Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorUp, "Move Cursor Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -201,6 +201,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreActions:
 		if actionErr := m.openTaskActionSheet(invocation.Context); actionErr != nil {
 			m.setInfoStatus(actionErr.Error())
+			message = commandMessage(defaultStatusTimeout())
 		}
 	case operationCoreCursorDown:
 		message = commandMessage(m.coreMoveCursor("j"))
@@ -390,13 +391,13 @@ func (m *AppModel) coreMoveToBacklogSingle(capture *outlinerRelocationCapture) t
 	if task == nil || project == nil {
 		return nil
 	}
-	fresh, _, err := m.applyTaskPlanningAction(task.ID, project.ID, app.PlanningBacklog)
+	fresh, _, transactionID, err := m.applyTaskPlanningAction(task.ID, project.ID, app.PlanningBacklog)
 	if err != nil {
 		m.err = err
 		return errorCmd("%s", err)
 	}
-	m.setInfoStatus(fmt.Sprintf("Moved to Backlog: %s", taskTitleOrFallback(fresh, task)))
-	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture)
+	successMessage := fmt.Sprintf("Moved to Backlog: %s", taskTitleOrFallback(fresh, task))
+	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
 }
 
 func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {

@@ -281,18 +281,20 @@ type NoteBatchRequest struct {
 
 // NoteResult is the path-free presentation-neutral outcome of one note mutation.
 type NoteResult struct {
-	Kind      NoteMutationKind
-	Location  NoteLocation
-	ProjectID string // compatibility convenience; mirrors Location.ProjectID
-	Filename  string
-	Title     string
-	Note      *models.Note
+	Kind          NoteMutationKind
+	Location      NoteLocation
+	ProjectID     string // compatibility convenience; mirrors Location.ProjectID
+	Filename      string
+	Title         string
+	Note          *models.Note
+	TransactionID string
 }
 
 // NoteBatchResult reports every operation in request order and the shared
 // transaction ID proving the batch committed atomically.
 type NoteBatchResult struct {
-	Results []NoteResult
+	Results       []NoteResult
+	TransactionID string
 }
 
 // CreateNote commits one project or global note create.
@@ -325,7 +327,11 @@ func (s *Service) singleNoteMutation(req NoteBatchRequest) (NoteResult, error) {
 	if err != nil {
 		return NoteResult{}, err
 	}
-	return result.Results[0], nil
+	single := result.Results[0]
+	if single.TransactionID == "" {
+		single.TransactionID = result.TransactionID
+	}
+	return single, nil
 }
 
 // SaveNote is the project-scoped compatibility wrapper. A note with no observed
@@ -427,7 +433,7 @@ func (s *Service) ApplyNoteBatch(req NoteBatchRequest) (NoteBatchResult, error) 
 			}
 		}
 		action, context := noteUndoMetadata(req, results)
-		_, commitErr := committer.CommitArtifactTransaction(storage.ArtifactCommitRequest{
+		transactionID, commitErr := committer.CommitArtifactTransaction(storage.ArtifactCommitRequest{
 			Artifacts:     artifactChanges(artifacts),
 			Preconditions: preconditions,
 			ProjectIDs:    projectIDs,
@@ -435,7 +441,10 @@ func (s *Service) ApplyNoteBatch(req NoteBatchRequest) (NoteBatchResult, error) 
 			UndoContext:   context,
 		})
 		if commitErr == nil {
-			return NoteBatchResult{Results: results}, nil
+			for i := range results {
+				results[i].TransactionID = transactionID
+			}
+			return NoteBatchResult{Results: results, TransactionID: transactionID}, nil
 		}
 		var conflict *storage.ArtifactConflictError
 		if !errors.As(commitErr, &conflict) || conflict.Expected != "" || !advanceCollision(prepared, artifacts, conflict.Path) {
@@ -751,8 +760,13 @@ func noteUndoMetadata(req NoteBatchRequest, results []NoteResult) (string, strin
 		}
 	}
 	context := strings.TrimSpace(req.UndoContext)
-	if context == "" && len(results) == 1 {
-		context = results[0].Title
+	if context == "" {
+		switch len(results) {
+		case 1:
+			context = results[0].Title
+		default:
+			context = fmt.Sprintf("%d notes", len(results))
+		}
 	}
 	return action, context
 }

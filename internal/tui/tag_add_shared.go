@@ -135,8 +135,10 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 		b.WriteString("\n")
 	}
 
-	left := HelpStyle.Render("enter add tag · esc cancel")
-	b.WriteString(renderStatusBarFooter(left, "", width))
+	b.WriteString(renderGuidance(GuidanceSpec{
+		Hints: requiredGuidanceHints("Enter add tag", "Esc cancel"),
+		Rows:  2,
+	}, width))
 
 	return b.String()
 }
@@ -168,22 +170,17 @@ func RenderTagSelectorView(picker *ListSurfaceAdapter[TagInfo], adder *TagAdder,
 	}
 	b.WriteString(picker.RenderList(maxVisible))
 
-	footerText := renderTagSelectorFooter(picker)
-	itemCount := MutedStyle.Render(fmt.Sprintf("%d items", len(picker.FilteredItems())))
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(footerText, width)))
-	b.WriteString("\n")
-	b.WriteString(itemCount)
+	guidance, _ := tagSelectorGuidanceSpec(picker)
+	b.WriteString(renderGuidance(guidance, width))
 
 	return b.String()
 }
 
 // renderTagSelectorFooter renders the standard footer with 'a' key for adding tags.
-func renderTagSelectorFooter(picker *ListSurfaceAdapter[TagInfo]) string {
+func tagSelectorGuidanceSpec(picker *ListSurfaceAdapter[TagInfo]) (GuidanceSpec, bool) {
 	if picker.IsSearchMode() {
-		return "enter done · esc clear"
+		return picker.guidanceSpec()
 	}
-	if len(picker.FilteredItems()) == 0 {
-		return "a add tag · esc cancel"
-	}
-	return "space toggle · a add tag · / search · c clear · enter apply · esc cancel"
+	add := newGuidanceHint("a add tag", 5, len(picker.FilteredItems()) == 0 && !picker.IsSearchMode())
+	return picker.guidanceSpec(add)
 }

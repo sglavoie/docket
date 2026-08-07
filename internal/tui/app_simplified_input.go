@@ -131,17 +131,22 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 	}
 }
 
-func (m *AppModel) pendingChordHintLines(width int) []string {
+func (m *AppModel) pendingChordGuidance() (GuidanceSpec, bool) {
 	if m == nil || m.operationRegistry == nil || len(m.pendingChord) == 0 {
-		return nil
+		return GuidanceSpec{}, false
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	hints := m.operationRegistry.ChordHintsForPrefix(InputStrategySimplified, m.pendingChord, ctx)
+	hints := m.operationRegistry.DecoratedChordHintsForPrefix(
+		InputStrategySimplified,
+		m.pendingChord,
+		ctx,
+		m.crossOutliner.decoratePendingChordHint,
+	)
 	if len(hints) == 0 {
-		return nil
+		return GuidanceSpec{}, false
 	}
-	return fitPendingChordLines(strings.Join(m.pendingChord, ""), hints, width)
+	return pendingChordGuidanceSpec(strings.Join(m.pendingChord, ""), hints), true
 }
 
 func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {

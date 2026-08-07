@@ -1,0 +1,64 @@
+{
+  "name": "presentation-size-matrix",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "label": "60x20 covers the Outliner", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "minimum Outliner title and one-row browse guidance fit", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "60x20 opens Help", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "label": "Help fits at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "key": "?" },
+
+    { "type": "key", "label": "60x20 opens workspace Notes", "key": "N" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "label": "Notes fit at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "60x20 opens the Project Hub", "key": "p" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "Project Hub fits at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leave Project search", "key": "esc" },
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+
+    { "type": "key", "label": "move onto the first project", "key": "j" },
+    { "type": "key", "label": "move onto its first task", "key": "j" },
+    { "type": "command", "label": "60x20 opens a task tool", "command": "task comments" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "label": "task comments fit at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "wait", "label": "clear the task-tool close feedback before checking Outliner guidance" },
+
+    { "type": "key", "label": "start a no-match search", "key": "/" },
+    { "type": "text", "text": "no-such-task" },
+    { "type": "assert", "assert": "contains", "value": "No tasks match search" },
+    { "type": "assert", "label": "search editing keeps its two-row budget at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 72, "height": 20 },
+    { "type": "assert", "label": "72x20 covers the Outliner", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "open filter guidance", "key": "f" },
+    { "type": "assert", "assert": "contains", "value": "Esc cancel" },
+    { "type": "assert", "label": "pending chord keeps its two-row budget at 72x20", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "assert", "label": "100x35 covers Outliner Peek and visual selection", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "open Peek", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Enter close Peek" },
+    { "type": "assert", "label": "Peek title and guidance fit at 100x35", "assert": "no_layout_issues" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "start visual selection", "key": "v" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "freeze visual selection", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "selected" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 160, "height": 55 },
+    { "type": "key", "label": "open generated Help", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "label": "full presentation title and one-row browse guidance fit at 160x55", "assert": "no_layout_issues" }
+  ]
+}

@@ -1,6 +1,10 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/textgrammar"
+import (
+	"strings"
+
+	"github.com/sglavoie/tt/internal/textgrammar"
+)
 
 func captureDestinationNamesForTest() []string {
 	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
@@ -16,7 +20,17 @@ func pendingChordHintRowForTest(m *AppModel) string {
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	return m.operationRegistry.ChordHintRowForPrefix(InputStrategySimplified, m.pendingChord, ctx)
+	hints := m.operationRegistry.DecoratedChordHintsForPrefix(
+		InputStrategySimplified,
+		m.pendingChord,
+		ctx,
+		m.crossOutliner.decoratePendingChordHint,
+	)
+	parts := []string{strings.Join(m.pendingChord, "") + "…"}
+	for _, hint := range hints {
+		parts = append(parts, hint.Key+" "+hint.Label)
+	}
+	return strings.Join(parts, " · ")
 }
 
 func jumpToOutlinerRootForTest(m *AppModel) {

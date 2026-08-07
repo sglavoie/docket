@@ -70,12 +70,13 @@ func (p *formPriorityPicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 func (p *formPriorityPicker) render(width, current int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set Priority")
-	footerText := HelpStyle.Render("j/k · 0-3: pick · Enter: select · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
-	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(width-4, 1))
+	innerWidth := min(max(maxWidth, titleMinInner), max(width-4, 1))
+	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+		"Enter select", "j/k navigate", "0-3 pick",
+	), max(innerWidth-4, 1))
 
 	var content strings.Builder
 	for i, e := range formPriorityEntries {

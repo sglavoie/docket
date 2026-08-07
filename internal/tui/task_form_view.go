@@ -56,7 +56,7 @@ func (m *TaskFormModel) View() tea.View {
 	if m.hostTitle != "" {
 		titleText = m.hostTitle
 	}
-	title := renderFullscreenTitle(titleText, subtitle)
+	title := renderFullscreenTitleWithPulse(titleText, subtitle, m.currentWorkspacePulse(), m.width)
 
 	// ── Tab bar ───────────────────────────────────────────────────────────────
 	tabBar := RenderTabBar(formTabNames, m.activeTab, m.width-CreatorTabBarPadding, 1)
@@ -98,28 +98,14 @@ func (m *TaskFormModel) View() tea.View {
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────
-	helpText := "[]: tabs · Tab: next · Ctrl+S: save · Esc: cancel"
-	if m.activeTab == formTabChildren {
-		showSubtasks := m.mode == FormModeCreate
-		helpText = "[]: tabs · Tab: next · c: checklist"
-		if showSubtasks {
-			helpText += " · S: subtasks"
-		}
-		helpText += " · Ctrl+A: add item"
-		if showSubtasks {
-			helpText += " · Ctrl+T: add subtask"
-		}
-		helpText += " · Enter: edit/save item · Ctrl+D: delete · Ctrl+J/K: reorder · Ctrl+S: save task · Esc: cancel"
-	}
-	separator := MutedStyle.Render(strings.Repeat("─", m.width))
-	helpLine := HelpStyle.Render(renderWrappingHelpLine(helpText, m.width))
+	guidance := renderGuidance(m.guidanceSpec(), m.width)
 
 	// Clamp the interior body so the fullscreen title, tab bar, and footer stay
 	// visible even when the body is inherently taller than the allotted height.
-	// Chrome = title + tab bar + two structural blank rows + separator + help,
+	// Chrome = title + tab bar + two structural blank rows + rendered guidance,
 	// plus the error banner when present (it occupies the pre-separator slot).
 	chrome := lipgloss.Height(title) + lipgloss.Height(tabBar) + 2 +
-		lipgloss.Height(separator) + lipgloss.Height(helpLine)
+		lipgloss.Height(guidance)
 	if m.err != nil {
 		chrome += lipgloss.Height(errBanner)
 	}
@@ -138,11 +124,24 @@ func (m *TaskFormModel) View() tea.View {
 		out.WriteString("\n")
 	}
 	out.WriteString("\n")
-	out.WriteString(separator)
-	out.WriteString("\n")
-	out.WriteString(helpLine)
+	out.WriteString(guidance)
 
 	return tea.NewView(out.String())
+}
+
+func (m *TaskFormModel) guidanceSpec() GuidanceSpec {
+	commit := "Ctrl+S save"
+	if m.err != nil {
+		commit = "Ctrl+S retry"
+	}
+	optional := []string{"[/] tabs", "Tab next", "Shift+Tab previous"}
+	if m.activeTab == formTabChildren {
+		optional = []string{"c checklist", "Ctrl+A add item", "Enter edit item", "Space toggle", "Ctrl+D delete", "Ctrl+J/K reorder"}
+		if m.mode == FormModeCreate {
+			optional = append([]string{"S subtasks", "Ctrl+T add subtask"}, optional...)
+		}
+	}
+	return requiredActionGuidanceSpec(commit, optional...)
 }
 
 // clampFormBody limits the form body to maxRows lines so the surrounding

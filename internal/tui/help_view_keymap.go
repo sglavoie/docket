@@ -6,15 +6,23 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for HelpViewModel.
 func (m *HelpViewModel) buildKeyMap() *keymap.KeyMap {
-	var entries []keymap.Entry
-
-	entries = append(entries,
-		keymap.Bind("/", "Search keybindings", "Help"),
-		keymap.Bind(`\`, "Search and focus tab", "Help"),
-		keymap.Bind("backspace", "Clear search filter", "Help"),
-		keymap.Bind("shift+left", "Previous category tab", "Help"),
+	browsing := func() bool { return !m.searchMode && !m.tabSearchMode }
+	hasFilter := func() bool { return m.searchQuery != "" }
+	entries := []keymap.Entry{
+		keymap.Bind("/", "Search keybindings", "Help",
+			keymap.WithGate(browsing), keymap.WithFooter(20, "filter", false)),
+		keymap.Bind(`\`, "Search and focus tab", "Help",
+			keymap.WithGate(browsing), keymap.WithFooter(20, "find tab", false)),
+		keymap.Bind("backspace", "Clear search filter", "Help",
+			keymap.WithGate(func() bool { return browsing() && hasFilter() }),
+			keymap.WithFooter(2, "clear filter", true), keymap.WithFooterKey("Bksp")),
+		keymap.Bind("shift+left", "Previous category tab", "Help",
+			keymap.WithGate(browsing), keymap.WithFooter(10, "tabs", false),
+			keymap.WithFooterKey("Shift+←/→")),
 		keymap.Bind("shift+right", "Next category tab", "Help"),
-		keymap.Bind("j", "Scroll down", "Help", keymap.AsHidden()),
+		keymap.Bind("j", "Scroll down", "Help",
+			keymap.WithGate(browsing), keymap.WithFooter(10, "scroll", false),
+			keymap.WithFooterKey("j/k")),
 		keymap.Bind("k", "Scroll up", "Help", keymap.AsHidden()),
 		keymap.Bind("up", "Scroll up", "Help", keymap.AsHidden()),
 		keymap.Bind("down", "Scroll down", "Help", keymap.AsHidden()),
@@ -22,9 +30,12 @@ func (m *HelpViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("G", "Go to bottom", "Help"),
 		keymap.Bind("ctrl+u", "Page up", "Help"),
 		keymap.Bind("ctrl+d", "Page down", "Help"),
-		keymap.Bind("?", "Close help", "Help"),
-		keymap.Bind("esc", "Clear search / close", "Help"),
-	)
+		keymap.Bind("?", "Close help", "Help",
+			keymap.WithGate(browsing), keymap.WithFooter(1, "close", true)),
+		keymap.Bind("esc", "Clear search / close", "Help",
+			keymap.WithGate(func() bool { return browsing() && hasFilter() }),
+			keymap.WithFooter(1, "clear filter", true), keymap.WithFooterKey("Esc")),
+	}
 
 	return &keymap.KeyMap{
 		Entries: entries,

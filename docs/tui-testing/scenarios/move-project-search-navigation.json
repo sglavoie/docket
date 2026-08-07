@@ -20,7 +20,7 @@
     { "type": "assert", "assert": "contains", "value": "[reading-list] (2)" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "[client-alpha]" },
-    { "type": "assert", "assert": "status_contains", "value": "Moved" },
+    { "type": "assert", "assert": "status_contains", "value": "Move Task to Project" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -10,7 +10,7 @@
     { "type": "key", "label": "create the task", "key": "enter" },
     { "type": "wait", "label": "wait for capture commit" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Created in Inbox" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Triage the welcome checklist · u undo" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

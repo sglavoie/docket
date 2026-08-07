@@ -32,12 +32,13 @@ func (m *TaskFormModel) handleChecklistEditKey(msg tea.KeyPressMsg) (tea.Cmd, bo
 func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Checklist Item")
-	footerText := HelpStyle.Render("Enter: save · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(m.width-4, 1))
+	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
+	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+		"Enter save",
+	), max(innerWidth-4, 1))
 
 	m.checklistItemInput.SetWidth(max(innerWidth-5, 1))
 	applyThemedTextInput(&m.checklistItemInput)
@@ -76,12 +77,13 @@ func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Subtask")
-	footerText := HelpStyle.Render("Enter: save · Ctrl+D: save & edit desc · Esc: cancel")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
-	footerMinInner := lipgloss.Width(footerText) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := min(max(maxWidth, max(titleMinInner, footerMinInner)), max(m.width-4, 1))
+	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
+	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+		"Enter save", "Ctrl+D save & edit description",
+	), max(innerWidth-4, 1))
 
 	m.subtaskItemInput.SetWidth(max(innerWidth-6, 1))
 	applyThemedTextInput(&m.subtaskItemInput)

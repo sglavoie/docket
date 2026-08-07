@@ -58,8 +58,8 @@ func NewBulkTagSelectorModel(taskRefs []TaskProjectRef) *BulkTagSelectorModel {
 	title := fmt.Sprintf("Tags for %d tasks", len(taskRefs))
 	picker := NewListSurfaceAdapter(tags, PickerConfig{
 		Title:          title,
-		EmptyMessage:   "No tags in project (press 'a' to add).",
-		NoMatchMessage: "No matching tags (press 'a' to add).",
+		EmptyMessage:   "No tags in project · a add tag.",
+		NoMatchMessage: "No matching tags · a add tag.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})
@@ -131,6 +131,12 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "esc":
+			if m.IsSearchMode() {
+				handled, cmd := m.HandleKeyMsg(msg)
+				if handled {
+					return m, cmd
+				}
+			}
 			return m, func() tea.Msg {
 				return BulkTagSelectorDoneMsg{
 					TaskRefs: m.taskRefs,
@@ -139,6 +145,12 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
+			if m.IsSearchMode() {
+				handled, cmd := m.HandleKeyMsg(msg)
+				if handled {
+					return m, cmd
+				}
+			}
 			selectedTags := m.SelectedIDs()
 			sort.Strings(selectedTags)
 			return m, func() tea.Msg {
@@ -150,6 +162,10 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
+			if m.IsSearchMode() {
+				_, cmd := m.HandleKeyMsg(msg)
+				return m, cmd
+			}
 			return m, m.EnterAddMode()
 
 		case "space":
@@ -185,8 +201,8 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 
 	picker := NewListSurfaceAdapter(tags, PickerConfig{
 		Title:          title,
-		EmptyMessage:   "No tags in project (press 'a' to add).",
-		NoMatchMessage: "No matching tags (press 'a' to add).",
+		EmptyMessage:   "No tags in project · a add tag.",
+		NoMatchMessage: "No matching tags · a add tag.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})
@@ -232,6 +248,12 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "esc":
+			if m.IsSearchMode() {
+				handled, cmd := m.HandleKeyMsg(msg)
+				if handled {
+					return m, cmd
+				}
+			}
 			return m, func() tea.Msg {
 				return TagSelectorDoneMsg{
 					Task:     m.task,
@@ -240,6 +262,12 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
+			if m.IsSearchMode() {
+				handled, cmd := m.HandleKeyMsg(msg)
+				if handled {
+					return m, cmd
+				}
+			}
 			selectedTags := m.SelectedIDs()
 			sort.Strings(selectedTags)
 			return m, func() tea.Msg {
@@ -251,6 +279,10 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
+			if m.IsSearchMode() {
+				_, cmd := m.HandleKeyMsg(msg)
+				return m, cmd
+			}
 			return m, m.EnterAddMode()
 
 		case "space":
