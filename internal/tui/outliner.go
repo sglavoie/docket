@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -68,6 +70,12 @@ type OutlinerModel struct {
 	// relocationHistory is a session-only Vim-style jump list for task updates
 	// that automatically move the followed task to another visible row.
 	relocationHistory outlinerRelocationHistory
+
+	// recencyKeys freezes Recent mode's ordering timestamps against the
+	// projection they were taken in, so triaging a row from Recent does not
+	// reshuffle the list the user is reading.
+	recencyKeys       map[TaskIdentity]time.Time
+	recencyProjection string
 
 	// searchProjection preserves the ordinary Outliner projection while slash
 	// search temporarily replaces it with every matching nonterminal task in

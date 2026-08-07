@@ -65,11 +65,12 @@ const (
 	OutlinerModeNext    = "next"
 	OutlinerModeBacklog = "backlog"
 	OutlinerModeDue     = "due"
+	OutlinerModeRecent  = "recent"
 )
 
 // NormalizeOutlinerRouteState returns a defensive, canonical copy of state.
 // Missing and unknown modes fall back to All. Retired mode names are translated
-// to one of the six modes plus the smallest canonical predicate that preserves
+// to one of the seven modes plus the smallest canonical predicate that preserves
 // their meaning.
 func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	state.FilterStates = cloneWorkflowStateSet(state.FilterStates)
@@ -106,7 +107,8 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	case "pinned":
 		state.Mode = OutlinerModeAll
 		state.FilterPinned = true
-	case "recent", "recently-visited", "recent-tasks":
+	// The retired visited-task surfaces are not the Recent activity mode.
+	case "recently-visited", "recent-tasks":
 		state.Mode = OutlinerModeAll
 	case "daily-review":
 		state.Mode = OutlinerModeAll
@@ -119,7 +121,8 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		OutlinerModeToday,
 		OutlinerModeNext,
 		OutlinerModeBacklog,
-		OutlinerModeDue:
+		OutlinerModeDue,
+		OutlinerModeRecent:
 		state.Mode = mode
 	default:
 		state.Mode = OutlinerModeAll

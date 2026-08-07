@@ -1,5 +1,5 @@
 {
-  "name": "six-mode-cycle",
+  "name": "seven-mode-cycle",
   "fixture": "rich",
   "size": "100x35",
   "actions": [
@@ -14,13 +14,32 @@
     { "type": "assert", "assert": "contains", "value": "Active Projects · Backlog" },
     { "type": "key", "label": "cycle to Due", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Due" },
+    { "type": "key", "label": "cycle to Recent", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
     { "type": "key", "label": "wrap to All", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "key", "label": "reverse-wrap to Due", "key": "shift+tab" },
+    { "type": "key", "label": "reverse-wrap to Recent", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
+
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Due", "key": "d" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Due" },
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to All", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "key", "label": "step down before the top jump", "key": "j" },
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "gg returns to the first row", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
     { "type": "key", "label": "retired mode-picker key does nothing", "key": "m" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "Active Projects · Due" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "not_contains", "value": "Switch mode" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

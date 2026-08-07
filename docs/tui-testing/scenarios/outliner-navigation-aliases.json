@@ -10,6 +10,7 @@
     { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
     { "type": "key", "label": "close the sheet", "key": "esc" },
 
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump to the first row with the vim alias", "key": "g" },
     { "type": "key", "label": "step down with the arrow key", "key": "down" },
     { "type": "key", "label": "step down with the arrow key", "key": "down" },

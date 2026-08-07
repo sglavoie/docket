@@ -28,10 +28,14 @@ type OutlinerModeInput struct {
 	// project. A missing project entry falls back to Project.Tasks.
 	CandidateTasks map[string][]*models.Task
 	// TodayOrder and NextOrder are the durable project-qualified planning orders.
-	TodayOrder      []PlanningTask
-	NextOrder       []config.ProjectTaskLocator
-	TaskFilter      func(task *models.Task, project *models.Project) bool
-	TaskExclude     func(task *models.Task, project *models.Project) bool
+	TodayOrder  []PlanningTask
+	NextOrder   []config.ProjectTaskLocator
+	TaskFilter  func(task *models.Task, project *models.Project) bool
+	TaskExclude func(task *models.Task, project *models.Project) bool
+	// RecencyKeys freezes each task's Recent ordering timestamp so triaging a row
+	// does not move it out from under the cursor. A task the map does not name
+	// orders by its live UpdatedAt.
+	RecencyKeys     map[TaskIdentity]time.Time
 	Now             time.Time
 	IncludeSnoozed  bool
 	IncludeTerminal bool
@@ -42,6 +46,13 @@ func (in OutlinerModeInput) now() time.Time {
 		return time.Now()
 	}
 	return in.Now
+}
+
+func (in OutlinerModeInput) recencyKey(task *models.Task, project *models.Project) time.Time {
+	if frozen, ok := in.RecencyKeys[taskIdentityFor(task, project)]; ok {
+		return frozen
+	}
+	return task.UpdatedAt
 }
 
 // BuildTodayModeRows realizes the explicit ordered Today projection. Every row

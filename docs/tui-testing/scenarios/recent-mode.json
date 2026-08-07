@@ -1,0 +1,33 @@
+{
+  "name": "recent-mode",
+  "fixture": "workflow",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Recent", "key": "r" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "assert", "label": "activity groups by calendar day", "assert": "contains", "value": "Today" },
+    { "type": "assert", "label": "Recent owns terminal membership", "assert": "contains", "value": "Review release notes" },
+    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+
+    { "type": "key", "label": "step onto the first activity row", "key": "j" },
+    { "type": "key", "label": "open the workflow chord", "key": "s" },
+    { "type": "key", "label": "triage the row from Recent", "key": "i" },
+    { "type": "assert", "label": "the triaged row holds its frozen slot", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "contains", "value": "Review release notes" },
+
+    { "type": "key", "label": "undo the triage", "key": "u" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "resize", "label": "narrow terminal degrades the recency chip", "width": 60, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": "Recent" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave Recent for All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "All" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -4,10 +4,15 @@ import (
 	"cmp"
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+// recentModeCutoffDays bounds Recent: activity older than this is no longer
+// something the user is triaging.
+const recentModeCutoffDays = 30
 
 // OutlinerModeSection is the representation-neutral grouped output for Due.
 type OutlinerModeSection struct {
@@ -18,14 +23,19 @@ type OutlinerModeSection struct {
 
 const canonicalModeCollapseKeyPrefix = "_mode:"
 
-func canonicalModeCollapseKey(bucket string) string {
-	return canonicalModeCollapseKeyPrefix + string(ModeDue) + ":" + bucket
+func canonicalModeCollapseKey(mode OutlinerModeID, bucket string) string {
+	return canonicalModeCollapseKeyPrefix + string(mode) + ":" + bucket
 }
 
 type orderedModeTask struct {
 	row          OutlinerModeRow
 	projectOrder int
 	taskOrder    int
+}
+
+type recentModeTask struct {
+	orderedModeTask
+	key time.Time
 }
 
 // orderedModeTasks collects the in-scope candidate tasks in the caller's
@@ -90,10 +100,10 @@ func isComputedOpenWork(task *models.Task, in OutlinerModeInput) bool {
 func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 	in.Now = in.now()
 	sections := []OutlinerModeSection{
-		{Name: "Overdue", CollapseKey: canonicalModeCollapseKey("overdue")},
-		{Name: "Today", CollapseKey: canonicalModeCollapseKey("today")},
-		{Name: "Next Seven Days", CollapseKey: canonicalModeCollapseKey("next-seven-days")},
-		{Name: "Later", CollapseKey: canonicalModeCollapseKey("later")},
+		{Name: "Overdue", CollapseKey: canonicalModeCollapseKey(ModeDue, "overdue")},
+		{Name: "Today", CollapseKey: canonicalModeCollapseKey(ModeDue, "today")},
+		{Name: "Next Seven Days", CollapseKey: canonicalModeCollapseKey(ModeDue, "next-seven-days")},
+		{Name: "Later", CollapseKey: canonicalModeCollapseKey(ModeDue, "later")},
 	}
 	now := in.now()
 
@@ -123,6 +133,62 @@ func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 				return days > 0
 			}
 			return compareOrderedModeTasks(l, r) < 0
+		})
+		for _, candidate := range buckets[i] {
+			candidate.row.Breadcrumb = taskAncestorBreadcrumb(candidate.row.Task)
+			sections[i].Rows = append(sections[i].Rows, candidate.row)
+		}
+		if len(sections[i].Rows) > 0 {
+			result = append(result, sections[i])
+		}
+	}
+	return result
+}
+
+// BuildRecentModeSections returns tasks touched within the cutoff, newest first,
+// in local calendar-day buckets. Terminal and snoozed membership is the caller's
+// decision through IncludeTerminal and IncludeSnoozed.
+func BuildRecentModeSections(in OutlinerModeInput) []OutlinerModeSection {
+	in.Now = in.now()
+	sections := []OutlinerModeSection{
+		{Name: "Today", CollapseKey: canonicalModeCollapseKey(ModeRecent, "today")},
+		{Name: "Yesterday", CollapseKey: canonicalModeCollapseKey(ModeRecent, "yesterday")},
+		{Name: "Last 7 Days", CollapseKey: canonicalModeCollapseKey(ModeRecent, "last-seven-days")},
+		{Name: "Last 30 Days", CollapseKey: canonicalModeCollapseKey(ModeRecent, "last-thirty-days")},
+	}
+	now := in.now()
+
+	buckets := make([][]recentModeTask, len(sections))
+	for _, candidate := range orderedModeTasks(in) {
+		task := candidate.row.Task
+		if !isComputedOpenWork(task, in) {
+			continue
+		}
+		key := in.recencyKey(task, candidate.row.Project)
+		age := util.DaysBetween(key, now)
+		if age > recentModeCutoffDays {
+			continue
+		}
+		bucket := 3
+		switch {
+		case age <= 0:
+			bucket = 0
+		case age == 1:
+			bucket = 1
+		case age <= 7:
+			bucket = 2
+		}
+		buckets[bucket] = append(buckets[bucket], recentModeTask{orderedModeTask: candidate, key: key})
+	}
+
+	var result []OutlinerModeSection
+	for i := range sections {
+		sort.SliceStable(buckets[i], func(left, right int) bool {
+			l, r := buckets[i][left], buckets[i][right]
+			if !l.key.Equal(r.key) {
+				return l.key.After(r.key)
+			}
+			return compareOrderedModeTasks(l.orderedModeTask, r.orderedModeTask) < 0
 		})
 		for _, candidate := range buckets[i] {
 			candidate.row.Breadcrumb = taskAncestorBreadcrumb(candidate.row.Task)

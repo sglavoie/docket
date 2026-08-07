@@ -205,30 +205,32 @@ func navigationAliasTestApp(t *testing.T) *AppModel {
 
 func TestSingleOutlinerNavigationAliasesMatchTheirPairedKeys(t *testing.T) {
 	tests := []struct {
-		name  string
-		keys  []string
-		start int
-		want  int
+		name      string
+		spellings [][]string
+		start     int
+		want      int
 	}{
-		{name: "half page down", keys: []string{"ctrl+d", "pgdown"}, start: 1, want: 6},
-		{name: "half page up", keys: []string{"ctrl+u", "pgup"}, start: 10, want: 5},
-		{name: "first navigable row", keys: []string{"g", "home"}, start: 6, want: 1},
-		{name: "last navigable row", keys: []string{"G", "end"}, start: 1, want: 10},
+		{name: "half page down", spellings: [][]string{{"ctrl+d"}, {"pgdown"}}, start: 1, want: 6},
+		{name: "half page up", spellings: [][]string{{"ctrl+u"}, {"pgup"}}, start: 10, want: 5},
+		{name: "first navigable row", spellings: [][]string{{"g", "g"}, {"home"}}, start: 6, want: 1},
+		{name: "last navigable row", spellings: [][]string{{"G"}, {"end"}}, start: 1, want: 10},
 	}
 	for _, test := range tests {
-		for _, key := range test.keys {
-			t.Run(test.name+"/"+key, func(t *testing.T) {
+		for _, spelling := range test.spellings {
+			t.Run(test.name+"/"+strings.Join(spelling, ""), func(t *testing.T) {
 				app := navigationAliasTestApp(t)
 				app.crossOutliner.cursor = test.start
-				msg, err := parseUITestKey(key)
-				if err != nil {
-					t.Fatalf("parse %q: %v", key, err)
-				}
-				if handled, _ := app.handleGlobalKeyPress(msg); !handled {
-					t.Fatalf("key %q was not handled", key)
+				for _, key := range spelling {
+					msg, err := parseUITestKey(key)
+					if err != nil {
+						t.Fatalf("parse %q: %v", key, err)
+					}
+					if handled, _ := app.handleGlobalKeyPress(msg); !handled {
+						t.Fatalf("key %q was not handled", key)
+					}
 				}
 				if got := app.crossOutliner.cursor; got != test.want {
-					t.Fatalf("cursor after %q = %d, want %d", key, got, test.want)
+					t.Fatalf("cursor after %v = %d, want %d", spelling, got, test.want)
 				}
 			})
 		}

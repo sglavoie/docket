@@ -25,7 +25,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Today and Next are mutually exclusive",
 		"resulting subtree depth above six",
 		"## TUI architecture",
-		"The six modes are All, Inbox, Today, Next, Backlog, and Due",
+		"The seven modes are All, Inbox, Today, Next, Backlog, Due, and Recent",
 		"### One operation grammar",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
 		"the exact six `Space` actions",
@@ -103,7 +103,9 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
-		"eight-state, six-mode, Outliner-only product",
+		"eight-state, seven-mode, Outliner-only product",
+		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
+		"Recent is the activity-ordered mode",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix must remain unbound",
 		"The `Space` menu is exactly",
 		"!1-3 #tag @date $destination %project >parent",

@@ -1,6 +1,6 @@
 package tui
 
-// This file establishes the final six-mode Outliner catalog.
+// This file establishes the final seven-mode Outliner catalog.
 
 // OutlinerModeID is the stable identifier for a catalog mode.
 type OutlinerModeID string
@@ -14,6 +14,7 @@ const (
 	ModeNext    OutlinerModeID = "next"
 	ModeBacklog OutlinerModeID = "backlog"
 	ModeDue     OutlinerModeID = "due"
+	ModeRecent  OutlinerModeID = "recent"
 )
 
 // OutlinerOrderPolicy declares how a mode orders its rows. Only OrderPolicyTree
@@ -26,6 +27,7 @@ const (
 	OrderPolicyTodayOrder                            // Today: durable planning order
 	OrderPolicyNextOrder                             // Next: focus-queue order
 	OrderPolicyDueDate                               // Due: calendar-date order
+	OrderPolicyRecency                               // Recent: newest activity first
 )
 
 // OutlinerReorderPolicy declares whether J/K may mutate the active sequence.
@@ -48,6 +50,7 @@ const (
 	RowStrategyNext
 	RowStrategyBacklog
 	RowStrategyDue
+	RowStrategyRecent
 )
 
 // OutlinerMode is one catalog entry.
@@ -79,6 +82,7 @@ var outlinerModes = []OutlinerMode{
 	{ID: ModeNext, Label: "Next", OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext},
 	{ID: ModeBacklog, Label: "Backlog", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog},
 	{ID: ModeDue, Label: "Due", OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue},
+	{ID: ModeRecent, Label: "Recent", OrderPolicy: OrderPolicyRecency, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyRecent},
 }
 
 // outlinerModeIndex maps each mode ID to its catalog entry for O(1) lookup.
@@ -104,7 +108,7 @@ func OutlinerModeByID(id OutlinerModeID) (OutlinerMode, bool) {
 	return mode, ok
 }
 
-// OutlinerTabModes returns the six descriptors in exact Tab order.
+// OutlinerTabModes returns the seven descriptors in exact Tab order.
 func OutlinerTabModes() []OutlinerMode {
 	return OutlinerModeCatalog()
 }

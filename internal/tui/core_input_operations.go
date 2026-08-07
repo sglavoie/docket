@@ -92,6 +92,34 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreQuit, "Quit", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "exit"),
 		core(operationCoreNextWorkMode, "Next Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCorePreviousWorkMode, "Previous Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreGotoAll, "Go to All", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "all mode"),
+		core(operationCoreGotoInbox, "Go to Inbox", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "inbox mode"),
+		core(operationCoreGotoToday, "Go to Today", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "today mode"),
+		core(operationCoreGotoNext, "Go to Next", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "next mode"),
+		core(operationCoreGotoBacklog, "Go to Backlog", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "backlog mode"),
+		core(operationCoreGotoDue, "Go to Due", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "due mode"),
+		core(operationCoreGotoRecent, "Go to Recent", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "recent mode", "recent activity"),
+	}
+}
+
+// coreInputOperationRefusesSearchProjection names the outliner navigation
+// operations whose projection the temporary search replacement owns, so they
+// refuse instead of reshaping a projection the user has not exited.
+func coreInputOperationRefusesSearchProjection(id OperationID) bool {
+	if _, ok := gotoModeOperations[id]; ok {
+		return true
+	}
+	switch id { //nolint:exhaustive // Only outliner navigation operations override applicability.
+	case operationCoreNextWorkMode,
+		operationCorePreviousWorkMode,
+		operationCoreCollapseParent,
+		operationCoreExpand,
+		operationCoreToggleSections,
+		operationCoreReorderDown,
+		operationCoreReorderUp:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -102,14 +130,7 @@ func (m *AppModel) registerCoreInputOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range coreInputOperationDescriptors() {
-		switch descriptor.ID { //nolint:exhaustive // Only outliner navigation operations override applicability.
-		case operationCoreNextWorkMode,
-			operationCorePreviousWorkMode,
-			operationCoreCollapseParent,
-			operationCoreExpand,
-			operationCoreToggleSections,
-			operationCoreReorderDown,
-			operationCoreReorderUp:
+		if coreInputOperationRefusesSearchProjection(descriptor.ID) {
 			descriptor.Applicability = func(ctx CommandContext) bool {
 				return coreOutlinerApplicability(ctx) &&
 					(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
@@ -298,6 +319,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			_, _ = out.cycleWorkMode(-1)
 		}
 	default:
+		if mode, ok := gotoModeOperations[invocation.Descriptor.ID]; ok {
+			if out, outlinerOK := m.outlinerPrimary(); outlinerOK {
+				_, _ = out.selectOutlinerMode(mode)
+			}
+		}
 	}
 	return OperationHandlerResult{Message: message, Err: err}
 }

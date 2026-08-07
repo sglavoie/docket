@@ -8,8 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestOutlinerModeCatalogIsExactSixModeCycle(t *testing.T) {
-	want := []OutlinerModeID{ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue}
+func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
+	want := []OutlinerModeID{ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue, ModeRecent}
 	catalog := OutlinerModeCatalog()
 	tabModes := OutlinerTabModes()
 	if len(catalog) != len(want) {
@@ -42,12 +42,12 @@ func TestOutlinerModeCatalogIsExactSixModeCycle(t *testing.T) {
 	}
 }
 
-func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSixModes(t *testing.T) {
+func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T) {
 	project := primaryRowsProject("alpha")
 	outliner := NewOutlinerModel(project, nil, nil)
 
 	for _, want := range []OutlinerModeID{
-		ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue, ModeAll,
+		ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue, ModeRecent, ModeAll,
 	} {
 		outliner.cycleWorkMode(1)
 		if got := outliner.activeOutlinerMode(); got != want {
@@ -55,7 +55,7 @@ func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSixModes(t *testing.T) {
 		}
 	}
 	for _, want := range []OutlinerModeID{
-		ModeDue, ModeBacklog, ModeNext, ModeToday, ModeInbox, ModeAll,
+		ModeRecent, ModeDue, ModeBacklog, ModeNext, ModeToday, ModeInbox, ModeAll,
 	} {
 		outliner.cycleWorkMode(-1)
 		if got := outliner.activeOutlinerMode(); got != want {

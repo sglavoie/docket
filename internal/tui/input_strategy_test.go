@@ -221,7 +221,7 @@ func TestSimplifiedNavigationAliasesShareOneOperationAndDisplayKey(t *testing.T)
 		want    OperationID
 		display string
 	}{
-		{keys: []string{"g", "home"}, want: operationCoreCursorTop, display: "g/Home"},
+		{keys: []string{"home"}, want: operationCoreCursorTop, display: "gg/Home"},
 		{keys: []string{"G", "end"}, want: operationCoreCursorBottom, display: "G/End"},
 		{keys: []string{"ctrl+u", "pgup"}, want: operationCoreCursorPageUp, display: "Ctrl+U/PgUp"},
 		{keys: []string{"ctrl+d", "pgdown"}, want: operationCoreCursorPageDown, display: "Ctrl+D/PgDn"},
@@ -500,17 +500,6 @@ func TestChordStrategyRegistrationRejectsAmbiguousAndUnlabeledGrammars(t *testin
 			want: "one-key chord sequence",
 		},
 		{
-			name: "direct keys and a sequence together",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{{
-					OperationID: operationCoreCapture,
-					Keys:        []string{"a"},
-					Sequence:    []string{",", "a"},
-				}},
-			},
-			want: "declares both direct keys and a chord sequence",
-		},
-		{
 			name: "repeated operation without presets",
 			strategy: InputStrategy{
 				Bindings: []OperationKeyBinding{
@@ -725,18 +714,77 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 		t.Fatalf("removed Finder key = handled %v cmd %v; want consumed no-op", handled, cmd)
 	}
 
-	binding, _, ok := app.operationRegistry.InputBindingForKey(
+	binding, _, resolution := app.operationRegistry.InputBindingForSequence(
 		InputStrategySimplified,
-		"g",
+		[]string{"g", "g"},
 		app.operationCommandContext(),
 	)
-	if !ok || binding.OperationID != operationCoreCursorTop {
-		t.Fatalf("g resolved to %s (found %v), want %s", binding.OperationID, ok, operationCoreCursorTop)
+	if resolution != ChordTerminal || binding.OperationID != operationCoreCursorTop {
+		t.Fatalf("gg resolved to %s (resolution %v), want %s", binding.OperationID, resolution, operationCoreCursorTop)
 	}
 
 	handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'F', Text: "F"})
 	if !handled || cmd != nil {
 		t.Fatalf("retired legacy key F = handled %v cmd %v; want consumed no-op", handled, cmd)
+	}
+}
+
+// TestGoToChordResolvesTopJumpAndEveryMode covers the one binding that declares
+// direct keys and a chord sequence together, and keeps the g subtree prefix-free
+// with cursor-top sitting beside the seven mode jumps.
+func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+
+	paths := map[string][]string{
+		"gg": {"g", "g"},
+		"ga": {"g", "a"},
+		"gi": {"g", "i"},
+		"gt": {"g", "t"},
+		"gn": {"g", "n"},
+		"gb": {"g", "b"},
+		"gd": {"g", "d"},
+		"gr": {"g", "r"},
+	}
+	want := map[string]OperationID{
+		"gg": operationCoreCursorTop,
+		"ga": operationCoreGotoAll,
+		"gi": operationCoreGotoInbox,
+		"gt": operationCoreGotoToday,
+		"gn": operationCoreGotoNext,
+		"gb": operationCoreGotoBacklog,
+		"gd": operationCoreGotoDue,
+		"gr": operationCoreGotoRecent,
+	}
+	for spelling, path := range paths {
+		binding, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
+		if resolution != ChordTerminal {
+			t.Errorf("%s resolution = %v, want ChordTerminal", spelling, resolution)
+			continue
+		}
+		if binding.OperationID != want[spelling] {
+			t.Errorf("%s resolved to %s, want %s", spelling, binding.OperationID, want[spelling])
+		}
+	}
+
+	if _, _, resolution := registry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"g"},
+		ctx,
+	); resolution != ChordPending {
+		t.Errorf("bare g resolution = %v, want ChordPending", resolution)
+	}
+
+	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "home", ctx)
+	if !ok || binding.OperationID != operationCoreCursorTop {
+		t.Errorf("Home resolved to %s (found %v), want %s", binding.OperationID, ok, operationCoreCursorTop)
+	}
+
+	if label, ok := registry.ChordGroupLabelForPrefix(
+		InputStrategySimplified,
+		[]string{"g", "q"},
+	); !ok || label != "go to" {
+		t.Errorf("abandoned g chord label = %q (found %v), want %q", label, ok, "go to")
 	}
 }
 

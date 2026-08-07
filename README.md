@@ -59,8 +59,9 @@ workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
 relocated task.
 
-`Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due, and `Shift+Tab`
-reverses that cycle.
+`Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due → Recent, and
+`Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode:
+`ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent.
 
 All mode shows open, unsnoozed work in this order:
 
@@ -77,12 +78,18 @@ preserve workspace-wide planning order. Review is the sparse set of open tasks
 tagged `review`; pinned tasks still appear only in Pinned. Due is date ordered. Done, Canceled,
 and snoozed work stay hidden unless a filter explicitly asks for them.
 
+Recent answers "what did I touch lately". It lists every task updated in the
+last 30 days newest-first under Today, Yesterday, Last 7 Days, and Last 30 Days,
+and includes Done, Canceled, and snoozed work because all of it is activity. The
+order freezes when you enter the mode, so triaging a row from there leaves it
+exactly where you are reading it; `gr` re-enters and re-reads activity.
+
 ## Outliner grammar
 
 | Area | Keys |
 | --- | --- |
-| Modes | `Tab` / `Shift+Tab` cycle the six modes |
-| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `g`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
+| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
+| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
 | Workflow | `s` opens the workflow chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sr` toggle Review, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |

@@ -88,8 +88,9 @@ parallel key router, palette, or view-specific copy.
 The direct grammar is:
 
 ```text
-Tab / Shift+Tab                 six modes
-j/k, arrows, h/l, S, Home/End  navigation
+Tab / Shift+Tab                 seven modes
+ga gi gt gn gb gd gr           go-to chord, one mode each
+j/k, arrows, h/l, S, gg/Home, G/End  navigation
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
 a/A, e/E                       capture/edit
 si sb sn st sg sr sw sp sm sd sc  workflow chord
@@ -102,6 +103,21 @@ p N T / ? u Ctrl+R Esc Ctrl+C  global
 
 Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
 `PinnedAt` values inside one project group, in every mode including Due.
+
+`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
+second keys jump straight to one mode, so a seventh mode never costs six Tab
+presses. That binding is the one place a single operation declares both `Keys`
+and a `Sequence`; prefix-freeness is still fully enforced by the chord trie.
+
+Recent is the activity-ordered mode. It lists tasks touched within the last 30
+days newest first, grouped into Today, Yesterday, Last 7 Days, and Last 30 Days,
+and anything older is dropped. It is the one mode that owns terminal and snoozed
+membership itself rather than waiting for an explicit filter, because a task you
+just finished or just deferred is exactly the activity being reviewed. Ordering
+freezes on entry so triaging a row does not move it out from under the cursor;
+the snapshot is keyed to `jumpProjectionFingerprint()`, so it invalidates on the
+same events that clear relocation jump history, and `gr` while already in Recent
+is the manual refresh.
 
 Pressing `s` shows the workflow chord. Its second keys are `i` Inbox, `b`
 Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m`
@@ -325,7 +341,7 @@ records nothing.
 
 ## Documentation and scenarios
 
-User-facing docs must describe only the eight-state, six-mode, Outliner-only
+User-facing docs must describe only the eight-state, seven-mode, Outliner-only
 product and maintenance-only CLI. Historical fields may appear only in clearly
 identified migration sections.
 

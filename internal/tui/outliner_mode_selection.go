@@ -116,6 +116,12 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	anchor := m.captureModeCursor()
 	defer m.restoreModeCursor(anchor)
 
+	// Entering Recent re-reads activity, so gr over an already-open Recent is the
+	// manual refresh.
+	if mode.ID == ModeRecent {
+		m.recencyKeys = nil
+		m.recencyProjection = ""
+	}
 	m.applyOutlinerModeTransition(mode)
 	m.primaryMode = mode.ID
 	m.crossForceRebuild = true
@@ -123,7 +129,7 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	return m, nil
 }
 
-// cycleWorkMode advances the active mode by delta within the exact six-item
+// cycleWorkMode advances the active mode by delta within the exact seven-item
 // cycle.
 func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 	current := m.activeOutlinerMode()
@@ -171,7 +177,7 @@ func (m *OutlinerModel) orderingUnavailableStatus() {
 	))
 }
 
-// workModeScopeProjects returns the projects the six modes range over: the
+// workModeScopeProjects returns the projects the seven modes range over: the
 // range over: the single project when scoped, otherwise the loaded projects
 // admitted by the active Context.
 func (m *OutlinerModel) workModeScopeProjects() []*models.Project {

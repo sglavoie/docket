@@ -73,13 +73,19 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	input := m.buildOutlinerModeInput(projects)
-	input.IncludeSnoozed = m.hasExplicitSnoozedFilter()
-	input.IncludeTerminal = m.hasExplicitTerminalFilter()
+	recent := mode.ID == ModeRecent
+	// Recent reports what happened, so it owns terminal and snoozed membership
+	// instead of waiting for an explicit facet to admit them.
+	input.IncludeSnoozed = recent || m.hasExplicitSnoozedFilter()
+	input.IncludeTerminal = recent || m.hasExplicitTerminalFilter()
 	input.CandidateTasks = make(map[string][]*models.Task, len(projects))
 	for _, project := range projects {
 		if project != nil {
 			input.CandidateTasks[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
 		}
+	}
+	if recent {
+		input.RecencyKeys = m.freezeRecencyKeys(input.CandidateTasks, projects)
 	}
 	pinned := m.buildPinnedSection(input)
 	m.appendPinnedSection(pinned)
@@ -90,12 +96,45 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 		m.buildPrimaryModeRowsWithInput(projects, input, pinned.projected)
 	case RowStrategyDue:
 		m.appendFilteredModeSections(BuildDueModeSections(input), pinned.projected, input.TaskFilter)
+	case RowStrategyRecent:
+		m.appendFilteredModeSections(BuildRecentModeSections(input), pinned.projected, input.TaskFilter)
 	default:
 		return
 	}
 	m.separatePinnedSection(pinnedBoundary)
 	m.pruneInvisibleSelections()
 	m.clampCursor()
+}
+
+// freezeRecencyKeys returns Recent's ordering timestamps, recording each task's
+// UpdatedAt the first time it is seen. The keys are held against the projection
+// fingerprint that already invalidates relocation jump history, so a scope,
+// filter, search, sort, or fold change re-reads the world while ordinary
+// mutations leave the list the user is triaging in place.
+func (m *OutlinerModel) freezeRecencyKeys(
+	candidates map[string][]*models.Task,
+	projects []*models.Project,
+) map[TaskIdentity]time.Time {
+	projection := m.jumpProjectionFingerprint()
+	if m.recencyProjection != projection || m.recencyKeys == nil {
+		m.recencyKeys = make(map[TaskIdentity]time.Time)
+		m.recencyProjection = projection
+	}
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range candidates[project.ID] {
+			identity := taskIdentityFor(task, project)
+			if !identity.Valid() {
+				continue
+			}
+			if _, frozen := m.recencyKeys[identity]; !frozen {
+				m.recencyKeys[identity] = task.UpdatedAt
+			}
+		}
+	}
+	return m.recencyKeys
 }
 
 // separatePinnedSection closes Pinned with a rule so the promoted rows never

@@ -22,8 +22,8 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"space":  operationCoreActions,
 		"j":      operationCoreCursorDown, "down": operationCoreCursorDown,
 		"k": operationCoreCursorUp, "up": operationCoreCursorUp,
-		"g": operationCoreCursorTop, "home": operationCoreCursorTop,
-		"G": operationCoreCursorBottom, "end": operationCoreCursorBottom,
+		"home": operationCoreCursorTop,
+		"G":    operationCoreCursorBottom, "end": operationCoreCursorBottom,
 		"ctrl+u": operationCoreCursorPageUp, "pgup": operationCoreCursorPageUp,
 		"ctrl+d": operationCoreCursorPageDown, "pgdown": operationCoreCursorPageDown,
 		"ctrl+o": operationCoreJumpBackward, "ctrl+i": operationCoreJumpForward,
@@ -77,8 +77,9 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		}
 	}
 
+	// g became the go-to chord prefix, so cursor-top answers to gg and Home only.
 	for _, removed := range []string{
-		"b", "c", "d", "n", "t", ",", "m", ":", "C", "R", "ctrl+esc", "ctrl+n",
+		"b", "c", "d", "g", "n", "t", ",", "m", ":", "C", "R", "ctrl+esc", "ctrl+n",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {
 			t.Errorf("removed key %q still resolves to %s", removed, owners[0])

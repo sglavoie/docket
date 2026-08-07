@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -157,7 +158,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 			tagSegment = " " + rendered
 		}
 	}
-	indicatorSegments := m.renderTaskIndicatorSegments(task)
+	indicatorSegments := m.renderTaskIndicatorSegments(row)
 	indicators := indicatorSegments.render()
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands
@@ -232,15 +233,38 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	return line
 }
 
+// rowIdentity resolves a row's project-qualified task identity, supplying the
+// scoped project ID that single-project rows omit.
+func (m *OutlinerModel) rowIdentity(row outlinerRow) TaskIdentity {
+	identity := TaskIdentity{ProjectID: row.ProjectID}
+	if row.task != nil {
+		identity.TaskID = row.task.ID
+	}
+	if identity.ProjectID == "" && m.project != nil {
+		identity.ProjectID = m.project.ID
+	}
+	return identity
+}
+
+// rowRecencyKey returns the frozen Recent ordering timestamp so the chip agrees
+// with the bucket the row was placed in, falling back to live activity for a
+// task the snapshot does not name.
+func (m *OutlinerModel) rowRecencyKey(row outlinerRow) time.Time {
+	if frozen, ok := m.recencyKeys[m.rowIdentity(row)]; ok {
+		return frozen
+	}
+	if row.task == nil {
+		return time.Time{}
+	}
+	return row.task.UpdatedAt
+}
+
 func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
 	task := row.task
 	if task == nil || !row.hasVisibleChildren {
 		return ""
 	}
-	identity := TaskIdentity{ProjectID: row.ProjectID, TaskID: task.ID}
-	if identity.ProjectID == "" && m.project != nil {
-		identity.ProjectID = m.project.ID
-	}
+	identity := m.rowIdentity(row)
 	if m.isExpanded(identity) {
 		return MutedStyle.Render(IconExpanded) + " "
 	}
@@ -258,6 +282,7 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 }
 
 type taskIndicatorSegments struct {
+	recency     string
 	due         string
 	snooze      string
 	checklist   string
@@ -267,6 +292,7 @@ type taskIndicatorSegments struct {
 
 func (segments taskIndicatorSegments) render() string {
 	rendered := JoinGroupParts(
+		segments.recency,
 		segments.due,
 		segments.snooze,
 		segments.checklist,
@@ -283,10 +309,14 @@ func (segments taskIndicatorSegments) render() string {
 // activity counts into the row. Rich content stays in Peek. The caller
 // progressively drops checklist only when
 // preserving all signals would leave an unreadably small title.
-func (m *OutlinerModel) renderTaskIndicatorSegments(task *models.Task) taskIndicatorSegments {
+func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicatorSegments {
 	var segments taskIndicatorSegments
+	task := row.task
 	if task == nil {
 		return segments
+	}
+	if m.primaryMode == ModeRecent && m.columnConfig.IsVisible(ColRecency) {
+		segments.recency = formatRecencyChip(m.rowRecencyKey(row), time.Now())
 	}
 	if m.columnConfig.IsVisible(ColDueDate) {
 		segments.due = formatDueDate(task)

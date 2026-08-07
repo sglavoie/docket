@@ -18,10 +18,11 @@ const (
 	InputStrategySimplified InputStrategyID = "simplified"
 )
 
-// OperationKeyBinding assigns one operation either one or more equivalent direct
-// key events (Keys) or exactly one multi-key chord path (Sequence). Every
-// element is a physical Bubble Tea key name; a direct key is a length-1
-// sequence, so both spellings resolve through one dispatch path. DisplayKey is
+// OperationKeyBinding assigns one operation any number of equivalent direct key
+// events (Keys) and at most one multi-key chord path (Sequence). Every element
+// is a physical Bubble Tea key name; a direct key is a length-1 sequence, so
+// both spellings resolve through one dispatch path, and a binding may declare
+// both when an operation answers to a direct key and a chord alike. DisplayKey is
 // the compact help spelling. FooterRank zero excludes an operation from compact
 // footer hints. HintLabel names the binding in the which-key row shown while its
 // chord prefix is pending. A preset value supplies the operation's value without
@@ -78,14 +79,16 @@ const (
 )
 
 // paths returns every key path that resolves this binding. Direct keys are
-// length-1 paths, so a chord and a direct key are the same kind of value.
+// length-1 paths, so a chord and a direct key are the same kind of value, and a
+// binding may declare both when one operation genuinely answers to a direct key
+// and a chord alike.
 func (binding OperationKeyBinding) paths() [][]string {
-	if len(binding.Sequence) > 0 {
-		return [][]string{binding.Sequence}
-	}
-	paths := make([][]string, 0, len(binding.Keys))
+	paths := make([][]string, 0, len(binding.Keys)+1)
 	for _, key := range binding.Keys {
 		paths = append(paths, []string{key})
+	}
+	if len(binding.Sequence) > 0 {
+		paths = append(paths, binding.Sequence)
 	}
 	return paths
 }
@@ -245,7 +248,27 @@ const (
 	operationCoreQuit             OperationID = "tui.core.quit"
 	operationCoreNextWorkMode     OperationID = "tui.core.next-work-mode"
 	operationCorePreviousWorkMode OperationID = "tui.core.previous-work-mode"
+	operationCoreGotoAll          OperationID = "tui.core.goto-all"
+	operationCoreGotoInbox        OperationID = "tui.core.goto-inbox"
+	operationCoreGotoToday        OperationID = "tui.core.goto-today"
+	operationCoreGotoNext         OperationID = "tui.core.goto-next"
+	operationCoreGotoBacklog      OperationID = "tui.core.goto-backlog"
+	operationCoreGotoDue          OperationID = "tui.core.goto-due"
+	operationCoreGotoRecent       OperationID = "tui.core.goto-recent"
 )
+
+// gotoModeOperations maps each direct mode-jump operation to the mode it
+// selects. Seven descriptors rather than one preset-valued operation, so the
+// grammar never needs a mode value provider and cannot resurrect a mode picker.
+var gotoModeOperations = map[OperationID]OutlinerModeID{
+	operationCoreGotoAll:     ModeAll,
+	operationCoreGotoInbox:   ModeInbox,
+	operationCoreGotoToday:   ModeToday,
+	operationCoreGotoNext:    ModeNext,
+	operationCoreGotoBacklog: ModeBacklog,
+	operationCoreGotoDue:     ModeDue,
+	operationCoreGotoRecent:  ModeRecent,
+}
 
 // SimplifiedInputStrategy returns a fresh copy of the accepted daily-loop
 // grammar. Direct keys and chord sequences are declared here and nowhere else.
@@ -261,7 +284,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
-			{OperationID: operationCoreCursorTop, Keys: []string{"g", "home"}, DisplayKey: "g/Home"},
+			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
 			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
 			{OperationID: operationCoreCursorPageUp, Keys: []string{"ctrl+u", "pgup"}, DisplayKey: "Ctrl+U/PgUp"},
 			{OperationID: operationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn"},
@@ -330,6 +353,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "show parked"},
 			{OperationID: operationFilterIncludeArchived, Sequence: []string{"F", "a"}, DisplayKey: "Fa", HintLabel: "include archived"},
 			{OperationID: operationFilterProjectClear, Sequence: []string{"F", "x"}, DisplayKey: "Fx", HintLabel: "clear project filters"},
+			{OperationID: operationCoreGotoAll, Sequence: []string{"g", "a"}, DisplayKey: "ga", HintLabel: "all"},
+			{OperationID: operationCoreGotoInbox, Sequence: []string{"g", "i"}, DisplayKey: "gi", HintLabel: "inbox"},
+			{OperationID: operationCoreGotoToday, Sequence: []string{"g", "t"}, DisplayKey: "gt", HintLabel: "today"},
+			{OperationID: operationCoreGotoNext, Sequence: []string{"g", "n"}, DisplayKey: "gn", HintLabel: "next"},
+			{OperationID: operationCoreGotoBacklog, Sequence: []string{"g", "b"}, DisplayKey: "gb", HintLabel: "backlog"},
+			{OperationID: operationCoreGotoDue, Sequence: []string{"g", "d"}, DisplayKey: "gd", HintLabel: "due"},
+			{OperationID: operationCoreGotoRecent, Sequence: []string{"g", "r"}, DisplayKey: "gr", HintLabel: "recent"},
 		},
 		ChordGroups: []OperationChordGroup{
 			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 2, FooterLabel: "priority"},
@@ -337,6 +367,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "p"}, HintLabel: "priority threshold"},
 			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},
+			{Sequence: []string{"g"}, HintLabel: "go to", FooterRank: 26, FooterLabel: "go to"},
 		},
 	}
 }
@@ -377,13 +408,6 @@ func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy)
 		}
 		if len(binding.Keys) == 0 && len(binding.Sequence) == 0 {
 			return fmt.Errorf("input strategy %s operation %s has no keys", strategy.ID, binding.OperationID)
-		}
-		if len(binding.Keys) > 0 && len(binding.Sequence) > 0 {
-			return fmt.Errorf(
-				"input strategy %s operation %s declares both direct keys and a chord sequence",
-				strategy.ID,
-				binding.OperationID,
-			)
 		}
 		if len(binding.Sequence) == 1 {
 			return fmt.Errorf(

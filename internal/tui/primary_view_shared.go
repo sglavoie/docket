@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -96,4 +99,25 @@ func formatDueDate(task *models.Task) string {
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)
 	return style.Render(icons.Get("date") + " " + dateStr)
+}
+
+// formatRecencyChip renders an age as a single-token indicator such as 5m, 2h,
+// or 3d. Prose relative time is too wide for a row, and the day bucket header
+// already carries the coarse grouping; the chip only disambiguates within it.
+func formatRecencyChip(key, now time.Time) string {
+	if key.IsZero() {
+		return ""
+	}
+	elapsed := now.Sub(key)
+	if elapsed < time.Minute {
+		return MutedStyle.Render("now")
+	}
+	switch {
+	case elapsed < time.Hour:
+		return MutedStyle.Render(fmt.Sprintf("%dm", int(elapsed.Minutes())))
+	case elapsed < 24*time.Hour:
+		return MutedStyle.Render(fmt.Sprintf("%dh", int(elapsed.Hours())))
+	default:
+		return MutedStyle.Render(fmt.Sprintf("%dd", int(elapsed.Hours())/24))
+	}
 }

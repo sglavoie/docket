@@ -189,7 +189,7 @@ func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style 
 	}
 }
 
-// GetOutlinerModeStyle resolves one of the final six mode identities to its
+// GetOutlinerModeStyle resolves one of the final seven mode identities to its
 // static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
 func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 	switch mode {
@@ -203,6 +203,8 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 		return GetWorkflowStateGroupStyle(models.StateGroupNext)
 	case ModeBacklog:
 		return GetWorkflowStateGroupStyle(models.StateGroupBacklog)
+	case ModeRecent:
+		return GetWorkflowStateGroupStyle(models.StateGroupDoing)
 	default:
 		return ViewModeAllStyle
 	}

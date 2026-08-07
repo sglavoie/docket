@@ -19,6 +19,7 @@ const (
 	ColChecklist   = "checklist"
 	ColProgress    = "progress"
 	ColSnooze      = "snooze"
+	ColRecency     = "recency"
 )
 
 // DefaultOutlinerColumns defines which columns are visible by default in the outliner view.
@@ -31,6 +32,7 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColChecklist:   true,
 	ColProgress:    true,
 	ColSnooze:      true,
+	ColRecency:     true,
 }
 
 // ColumnConfig controls which indicator columns are visible in a view.

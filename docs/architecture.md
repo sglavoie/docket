@@ -66,9 +66,9 @@ cycles, cross-project parents, and a resulting subtree depth above six.
 
 All, Inbox, and Backlog retain project hierarchy and manual sibling order.
 Today and Next have workspace-wide durable order. Due is automatically date
-ordered. `J`/`K` therefore dispatches by row context: sibling reorder for a
-hierarchical row, planning reorder for Today or Next, and no mutation for
-Pinned or Due.
+ordered and Recent is automatically activity ordered. `J`/`K` therefore
+dispatches by row context: sibling reorder for a hierarchical row, planning
+reorder for Today or Next, and no mutation for Pinned, Due, or Recent.
 
 ### Rich records
 
@@ -87,9 +87,18 @@ scope are session state and are not restored. Typed navigation permits that one
 root, at most one subordinate tool, and typed overlays. Covered Outliner state
 receives no key or reload dispatch.
 
-The six modes are All, Inbox, Today, Next, Backlog, and Due.
-`Tab`/`Shift+Tab` cycle only that ordered catalog. A project focus is a scope
-frame in the same Outliner, never a second root.
+The seven modes are All, Inbox, Today, Next, Backlog, Due, and Recent.
+`Tab`/`Shift+Tab` cycle only that ordered catalog, and the `g` chord jumps
+straight to one of them. A project focus is a scope frame in the same Outliner,
+never a second root.
+
+Recent is the activity review projection. It groups tasks touched within the
+last 30 days into Today, Yesterday, Last 7 Days, and Last 30 Days buckets,
+newest first, and owns terminal and snoozed membership rather than waiting for a
+facet to admit them. Its ordering timestamps freeze on entry against the same
+projection fingerprint that invalidates relocation jump history, so triaging a
+row does not move it out from under the cursor; re-entering with `gr` re-reads
+activity.
 
 ### Presentation chrome
 
