@@ -131,7 +131,7 @@ scroll, and folds exactly.
 | --- | --- |
 | `fp0`, `fp1`–`fp3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
 | `fs` | Pick workflow states with OR semantics, including terminal states |
-| `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; does not choose states |
+| `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
 | `ft` | Pick tags with AND semantics |
 | `fr` | Toggle the `review` tag facet |
 | `fd` | Open the due-date facet picker: overdue, today, this week, or no due date |
@@ -160,8 +160,9 @@ Pressing a chord prefix shows its valid continuations in the guidance region. `E
 cancels that unfinished chord, and a second key the chord does not offer says so
 instead of doing nothing.
 
-For intentional cleanup, use `fs` to choose Done, Canceled, or both, then `fc`
-to choose an age, `Ctrl+A` to select the visible matches, and `Space` → Delete.
+For intentional cleanup, use `fc` to choose an age — it filters states to Done
+and Canceled for you — then `Ctrl+A` to select the visible matches, and
+`Space` → Delete. Use `fs` afterwards to narrow to Done or Canceled alone.
 The confirmation freezes root, descendant, visible/hidden, and attachment counts;
 the entire deletion is one undoable transaction.
 

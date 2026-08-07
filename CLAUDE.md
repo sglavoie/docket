@@ -108,8 +108,11 @@ behavior, and Backlog removes both planning memberships.
 Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fr`, `fd`, `fz`, and `fx`. `fp1`–`fp3`
 are cumulative High/Medium/Low thresholds and exclude Unset. `fd` opens
 the due-date facet picker for overdue, today, this week, or no due date. `fc`
-opens the completion-age picker without choosing Done/Canceled states; cleanup
-uses `fs` → `fc` → `Ctrl+A` → `Space` Delete. `fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
+opens the completion-age picker and installs the Done/Canceled state predicate
+with the chosen age, so the matches are visible without a separate `fs` step;
+cleanup uses `fc` → `Ctrl+A` → `Space` Delete. That terminal-state predicate
+belongs to the one cleanup facet and is not counted as a second state facet.
+`fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
 comma state prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and
 `Ctrl+Esc`.
 

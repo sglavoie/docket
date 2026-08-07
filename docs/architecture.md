@@ -167,8 +167,10 @@ project metadata matches, then by fuzzy score and stable project/task order;
 during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
 Ordinary filter facets compose as priority threshold, OR states, AND tags, due
 bucket, completion age, and snoozed-only and remain session-only. Completion
-age uses local calendar days, requires a valid `CompletedAt`, and never chooses
-Done or Canceled implicitly; `doctor` reports malformed lifecycle timestamps.
+age uses local calendar days, requires a valid `CompletedAt`, and installs the
+Done/Canceled state predicate alongside the age so the matches are visible; that
+predicate belongs to the one cleanup facet in the clear count. `doctor` reports
+malformed lifecycle timestamps.
 
 Population facets are a separate chord because they answer a different question.
 The lowercase `f` facets refine the rows a projection already holds and rebuild
