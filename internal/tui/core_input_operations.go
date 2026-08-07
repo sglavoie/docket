@@ -464,6 +464,9 @@ func (m *AppModel) coreReorder(delta int) tea.Cmd {
 		}
 		return nil
 	}
+	if out.isPinnedReorderRow() {
+		return out.pinnedReorderMove(delta)
+	}
 	if out.isPlanningReorderMode() {
 		_, cmd := out.planningReorderMove(delta)
 		return cmd

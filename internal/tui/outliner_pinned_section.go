@@ -28,6 +28,8 @@ type pinnedSectionBuild struct {
 // time, and session filters as the active mode. Projected relatives form a
 // section-local tree; roots whose parent is outside Pinned keep their ancestor
 // breadcrumb. Project groups get a synthetic header in the unscoped Outliner.
+// A root ranks by its own pin position rather than its subtree's earliest one,
+// so J/K swapping two adjacent rows moves exactly those rows.
 func (m *OutlinerModel) buildPinnedSection(input OutlinerModeInput) pinnedSectionBuild {
 	if input.TaskFilter == nil {
 		input.TaskFilter = m.workModeTaskFilterAt(input.Now)
@@ -58,7 +60,7 @@ func (m *OutlinerModel) buildPinnedSection(input OutlinerModeInput) pinnedSectio
 	}
 	for groupIndex := range result.groups {
 		group := &result.groups[groupIndex]
-		group.forest = m.buildSectionRowForest(group.rows)
+		group.forest = m.buildSectionRowForestWith(group.rows, sectionForestOptions{})
 		group.rows = nil
 	}
 	return result

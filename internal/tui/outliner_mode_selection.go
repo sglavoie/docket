@@ -164,10 +164,6 @@ func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
 // orderingUnavailableStatus explains why J/K cannot reorder rows in the active
 // mode.
 func (m *OutlinerModel) orderingUnavailableStatus() {
-	if m != nil && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsPinnedSection {
-		m.setStatus("Pinned order is newest first — J/K is unavailable")
-		return
-	}
 	mode := m.activeOutlinerModeEntry()
 	m.setStatus(fmt.Sprintf(
 		"Ordering is automatic in %s mode — J/K reorder hierarchical or planning rows only",

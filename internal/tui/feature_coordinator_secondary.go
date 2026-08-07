@@ -589,6 +589,19 @@ func (c TaskItemCoordinator) ReorderSiblings(task, target TaskIdentity) tea.Cmd 
 	})
 }
 
+// ReorderPinned swaps the pin order of two pinned tasks as one transaction.
+// task is the identity that must end up displayed first, because the pinned
+// order is PinnedAt-descending and equal timestamps resolve in its favor.
+func (c TaskItemCoordinator) ReorderPinned(task, target TaskIdentity) tea.Cmd {
+	return runBatch("Reorder Pinned", func() ([]string, string, string, error) {
+		res, err := c.task.ReorderPinnedTasksByLocator(task.Locator(), target.Locator())
+		if err != nil {
+			return nil, "", "", err
+		}
+		return res.ProjectIDs, fmt.Sprintf("Reordered pinned #%d", res.ShortID), res.TransactionID, nil
+	})
+}
+
 // Indent nests one task under the task model-above it as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) Indent(task TaskIdentity) tea.Cmd {

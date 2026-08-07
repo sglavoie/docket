@@ -122,9 +122,12 @@ task.
 
 All mode projects open, unsnoozed work as Pinned, Today, Doing, Review, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
-grouped by project: groups sort by their newest pin and tasks within each group
-remain newest-first. It retains parent breadcrumbs and an identity suppression
-set, so promoted tasks appear only once.
+grouped by project: groups sort by their newest pin, tasks inside a group start
+newest-first, and `J`/`K` reorder them manually within their group. A pinned
+subtree ranks by its own root's pin, so a swap moves exactly the rows it
+displaces. A pinned reorder swaps both tasks' `PinnedAt` values in one
+transaction spanning at most two projects. It retains parent breadcrumbs and an
+identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the ordinary `review` tag, after
 Doing. Pinned wins, and the projection does not change lifecycle or planning.
 

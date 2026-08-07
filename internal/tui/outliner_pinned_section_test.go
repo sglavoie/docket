@@ -131,7 +131,7 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	}
 }
 
-func TestPinnedSectionNestsRelativesAtEarliestPinRank(t *testing.T) {
+func TestPinnedSectionRanksSubtreesByRootPinOrder(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	parentTime := now.Add(-time.Hour)
 	otherTime := now.Add(-30 * time.Minute)
@@ -147,8 +147,10 @@ func TestPinnedSectionNestsRelativesAtEarliestPinRank(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(project)
 	outliner.selectOutlinerMode(ModeAll)
 
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, other.ID}) {
-		t.Fatalf("Pinned rows = %v, want child-ranked subtree before other task", got)
+	// The child holds the newest pin, but a subtree ranks by its own root so the
+	// order J/K manipulates is the order the rows display in.
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{other.ID, parent.ID, child.ID}) {
+		t.Fatalf("Pinned rows = %v, want subtrees ranked by their root's pin", got)
 	}
 	parentRow, parentFound := findPlanningTaskRow(outliner, parent.ID)
 	childRow, childFound := findPlanningTaskRow(outliner, child.ID)
@@ -160,7 +162,7 @@ func TestPinnedSectionNestsRelativesAtEarliestPinRank(t *testing.T) {
 
 	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
 	outliner.rebuildRows()
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, other.ID}) {
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{other.ID, parent.ID}) {
 		t.Fatalf("collapsed Pinned rows = %v, want nested child hidden", got)
 	}
 	if outliner.rows[0].SectionCount != 3 {

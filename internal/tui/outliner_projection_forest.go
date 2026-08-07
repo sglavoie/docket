@@ -21,11 +21,24 @@ type sectionRowNode struct {
 	subtreeCount  int
 }
 
+// sectionForestOptions selects how a section ranks its roots.
+type sectionForestOptions struct {
+	// rankRootsBySubtree hoists a root to the earliest source position any member
+	// of its subtree holds. Sections whose order is manual rank a root by its own
+	// source position instead, so a swap of two adjacent rows is exactly the swap
+	// the user saw.
+	rankRootsBySubtree bool
+}
+
 // buildSectionRowForest converts an ordered projection into a section-local
 // tree. Roots are ranked by the earliest source member in their subtree so a
 // child that ranks before its parent keeps the subtree at that earlier position.
 // Direct siblings retain their source order.
 func (m *OutlinerModel) buildSectionRowForest(rows []outlinerRow) sectionRowForest {
+	return m.buildSectionRowForestWith(rows, sectionForestOptions{rankRootsBySubtree: true})
+}
+
+func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts sectionForestOptions) sectionRowForest {
 	forest := sectionRowForest{}
 	nodes := make([]*sectionRowNode, 0, len(rows))
 	byIdentity := make(map[TaskIdentity]*sectionRowNode, len(rows))
@@ -80,7 +93,10 @@ func (m *OutlinerModel) buildSectionRowForest(rows []outlinerRow) sectionRowFore
 		forest.count += count
 	}
 	sort.SliceStable(forest.roots, func(i, j int) bool {
-		return forest.roots[i].earliestIndex < forest.roots[j].earliestIndex
+		if opts.rankRootsBySubtree {
+			return forest.roots[i].earliestIndex < forest.roots[j].earliestIndex
+		}
+		return forest.roots[i].sourceIndex < forest.roots[j].sourceIndex
 	})
 	return forest
 }

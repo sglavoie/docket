@@ -263,8 +263,9 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(
 }
 
 // simplifiedReorderEligible dispatches J/K by the selected row's ordering
-// context. Pinned and Due are automatic; Today and Next use durable planning
-// order; All, Inbox, and Backlog use same-project sibling order.
+// context. Pinned uses manual pin order in every mode; Due is automatic; Today
+// and Next use durable planning order; All, Inbox, and Backlog use same-project
+// sibling order.
 func (m *OutlinerModel) simplifiedReorderEligible() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
@@ -276,8 +277,10 @@ func (m *OutlinerModel) simplifiedReorderEligible() bool {
 	if !row.isTaskRow() || row.task == nil {
 		return false
 	}
-	if row.IsPinnedSection {
-		return false
+	// Pinned renders above every mode, including the automatically ordered Due,
+	// so it answers before the active mode's reorder policy.
+	if m.isPinnedReorderRow() {
+		return true
 	}
 	mode, ok := OutlinerModeByID(m.activeOutlinerMode())
 	if !ok || mode.ReorderPolicy == ReorderPolicyNone {

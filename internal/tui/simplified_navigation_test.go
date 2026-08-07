@@ -269,6 +269,12 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 	if m.simplifiedReorderEligible() {
 		t.Fatal("computed Due mode allowed manual reorder")
 	}
+	// Pinned renders above every mode and carries its own manual order.
+	m.rows[0].IsPinnedSection = true
+	if !m.simplifiedReorderEligible() {
+		t.Fatal("Pinned row in Due mode refused manual reorder")
+	}
+	m.rows[0].IsPinnedSection = false
 
 	m.project = nil
 	m.primaryMode = ModeAll
@@ -278,8 +284,8 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 		t.Fatal("base all-project hierarchy did not allow same-project sibling reorder")
 	}
 	m.rows[0].IsPinnedSection = true
-	if m.simplifiedReorderEligible() {
-		t.Fatal("automatic Pinned section allowed manual reorder")
+	if !m.simplifiedReorderEligible() {
+		t.Fatal("cross-project Pinned row refused manual reorder")
 	}
 	m.rows[0].IsPinnedSection = false
 	m.multiSelectMode = true

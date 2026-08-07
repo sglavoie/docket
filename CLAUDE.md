@@ -100,6 +100,9 @@ v Ctrl+A Space                 selection/actions (`V` unbound)
 p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
+Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
+`PinnedAt` values inside one project group, in every mode including Due.
+
 Pressing `s` shows the workflow chord. Its second keys are `i` Inbox, `b`
 Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m`
 Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
