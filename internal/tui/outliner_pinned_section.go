@@ -25,7 +25,8 @@ type pinnedSectionBuild struct {
 }
 
 // buildPinnedSection realizes Pinned from the same scoped candidates, reference
-// time, and session filters as the active mode. Projected relatives form a
+// time, and session filters as the active mode. Only modes declaring
+// ShowsPinned call it. Projected relatives form a
 // section-local tree; roots whose parent is outside Pinned keep their ancestor
 // breadcrumb. Project groups get a synthetic header in the unscoped Outliner.
 // A root ranks by its own pin position rather than its subtree's earliest one,

@@ -131,6 +131,9 @@ task.
 
 All mode projects open, unsnoozed work as Pinned, Today, Doing, Review, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
+the mode catalog admits through `ShowsPinned`, set on All, Inbox, and Today
+only; Next, Backlog, Due, and Recent own one narrow ordered answer that a
+promoted group would split. It is
 grouped by project: groups sort by their newest pin, tasks inside a group start
 newest-first, and `J`/`K` reorder them manually within their group. A pinned
 subtree ranks by its own root's pin, so a swap moves exactly the rows it

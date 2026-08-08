@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -140,29 +141,32 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		assertOrder(t, "committed pin", diskPinOrder(t, project), []string{"Alpha", "Bravo"})
 	})
 
-	t.Run("Pinned reorders while automatically ordered Due mode is active", func(t *testing.T) {
-		project, tasks := pinnedOrderProject(t, "p-due", "due",
+	t.Run("Pinned reorders while durably ordered Today mode is active", func(t *testing.T) {
+		project, tasks := pinnedOrderProject(t, "p-today", "today",
 			pinSpec{title: "Alpha", pinnedAt: base},
 			pinSpec{title: "Bravo", pinnedAt: base.Add(-time.Hour)},
 		)
-		due := seedTask(t, 3, "Deadline", models.StateBacklog)
-		dueDate := base.Add(24 * time.Hour)
-		due.DueDate = &dueDate
-		project.Tasks = append(project.Tasks, due)
+		planned := seedTask(t, 3, "Planned", models.StateBacklog)
+		project.Tasks = append(project.Tasks, planned)
 		project.NextShortID = 4
 		project.BuildTaskTree()
 
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
-		enterCrossMode(cross, ModeDue)
+		seedTodayOrder(t, m,
+			config.ProjectTaskLocator{ProjectID: project.ID, TaskID: tasks["Alpha"].ID},
+			config.ProjectTaskLocator{ProjectID: project.ID, TaskID: tasks["Bravo"].ID},
+			config.ProjectTaskLocator{ProjectID: project.ID, TaskID: planned.ID},
+		)
+		enterCrossMode(cross, ModeToday)
 		if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
-			t.Fatal("cursor did not land on Alpha in Due mode")
+			t.Fatal("cursor did not land on Alpha in Today mode")
 		}
 
 		if !pressReorderKey(t, m, 'J') {
-			t.Fatal("J on a pinned row in Due mode produced no reorder command")
+			t.Fatal("J on a pinned row in Today mode produced no reorder command")
 		}
-		assertOrder(t, "Due mode rows", visibleTaskTitles(cross), []string{"Bravo", "Alpha", "Deadline"})
+		assertOrder(t, "Today mode rows", visibleTaskTitles(cross), []string{"Bravo", "Alpha", "Planned"})
 	})
 
 	t.Run("J stops at the project group boundary", func(t *testing.T) {

@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestPinnedSectionAppearsAboveEveryModeAndDeduplicatesQualifiedTasks(t *testing.T) {
+func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	older := now.Add(-time.Hour)
 	newer := now.Add(-time.Minute)
@@ -33,7 +34,7 @@ func TestPinnedSectionAppearsAboveEveryModeAndDeduplicatesQualifiedTasks(t *test
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.loadedProjects = []*models.Project{beta, alpha} // catalog order resolves equal pin times.
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue} {
+	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if len(outliner.rows) < 3 || !outliner.rows[0].IsSectionHeader ||
@@ -79,6 +80,34 @@ func TestPinnedSectionAppearsAboveEveryModeAndDeduplicatesQualifiedTasks(t *test
 			if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: alpha.ID, TaskID: child.ID}) != 1 ||
 				countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: beta.ID, TaskID: sameID.ID}) != 1 {
 				t.Fatalf("mode %s duplicated a promoted pinned identity", mode)
+			}
+		})
+	}
+}
+
+// TestPinnedSectionIsAbsentFromNarrowModes proves Next, Backlog, Due, and
+// Recent keep their own answer whole: no Pinned header, and a pinned task still
+// appears exactly once wherever the mode itself places it.
+func TestPinnedSectionIsAbsentFromNarrowModes(t *testing.T) {
+	now := time.Now()
+	pinned := primaryRowsTask("pinned", models.StateBacklog)
+	pinned.Pinned, pinned.PinnedAt, pinned.DueDate = true, &now, &now
+	plain := primaryRowsTask("plain", models.StateBacklog)
+	project := primaryRowsProject("alpha", pinned, plain)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: pinned.ID}})
+
+	for _, mode := range []OutlinerModeID{ModeNext, ModeBacklog, ModeDue, ModeRecent} {
+		t.Run(string(mode), func(t *testing.T) {
+			outliner.selectOutlinerMode(mode)
+			for _, row := range outliner.rows {
+				if row.IsPinnedSection {
+					t.Fatalf("%s rendered a Pinned row: %+v", mode, row)
+				}
+			}
+			if got := countTaskRowsForIdentity(outliner,
+				TaskIdentity{ProjectID: project.ID, TaskID: pinned.ID}); got != 1 {
+				t.Fatalf("%s rendered the pinned task %d times, want 1", mode, got)
 			}
 		})
 	}
@@ -208,7 +237,7 @@ func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 	outliner := NewOutlinerModel(nil, nil, runtime)
 	outliner.loadedProjects = []*models.Project{alpha, beta}
 
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(ModeAll)
 	if got := visibleQualifiedTaskIDs(outliner); !slices.Equal(got, []string{
 		"beta/beta-a",
 		"alpha/alpha-a",
@@ -220,7 +249,7 @@ func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 	for _, task := range []*models.Task{alphaA, alphaB, betaA} {
 		task.Pinned, task.PinnedAt = false, nil
 	}
-	rebuildOutlinerPreservingCursor(outliner)
+	outliner.selectOutlinerMode(ModeDue)
 	if got := visibleQualifiedTaskIDs(outliner); !slices.Equal(got, []string{
 		"beta/beta-a",
 		"alpha/alpha-a",
@@ -237,7 +266,7 @@ func TestPinnedPromotionRebuildKeepsCrossProjectCursorIdentity(t *testing.T) {
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(ModeAll)
 	if !outliner.moveCursorToProjectTask(betaTask.ID, beta.ID) {
 		t.Fatal("cursor did not land on beta/shared")
 	}
@@ -284,14 +313,14 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 	}
 }
 
-func TestPinnedSectionEndsWithSeparatorInEveryMode(t *testing.T) {
+func TestPinnedSectionEndsWithSeparatorInEveryPromotingMode(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	pinned := primaryRowsTask("pinned", models.StateBacklog)
 	pinned.Pinned, pinned.PinnedAt = true, &now
-	plain := primaryRowsTask("plain", models.StateBacklog)
+	plain := primaryRowsTask("plain", models.StateInbox)
 	outliner, _ := primaryRowsOutliner(primaryRowsProject("alpha", pinned, plain))
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeBacklog} {
+	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			boundary := slices.IndexFunc(outliner.rows, func(row outlinerRow) bool { return row.IsSeparator })

@@ -54,12 +54,18 @@ const (
 )
 
 // OutlinerMode is one catalog entry.
+//
+// ShowsPinned marks the modes that promote pinned work into a leading Pinned
+// section. Only the modes a user reads to decide what to work on carry it; Next,
+// Backlog, Due, and Recent each answer one narrow question already, so a
+// promoted group there only splits the answer the mode was opened for.
 type OutlinerMode struct {
 	ID            OutlinerModeID
 	Label         string
 	OrderPolicy   OutlinerOrderPolicy
 	ReorderPolicy OutlinerReorderPolicy
 	RowStrategy   OutlinerRowStrategy
+	ShowsPinned   bool
 }
 
 // SupportsManualSort reports whether the user's manual sort applies. Only
@@ -76,9 +82,9 @@ func (mode OutlinerMode) FixedOrder() bool {
 
 // outlinerModes is the ordered catalog and the exact Tab/Shift+Tab cycle.
 var outlinerModes = []OutlinerMode{
-	{ID: ModeAll, Label: "All", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll},
-	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox},
-	{ID: ModeToday, Label: "Today", OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday},
+	{ID: ModeAll, Label: "All", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, ShowsPinned: true},
+	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox, ShowsPinned: true},
+	{ID: ModeToday, Label: "Today", OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday, ShowsPinned: true},
 	{ID: ModeNext, Label: "Next", OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext},
 	{ID: ModeBacklog, Label: "Backlog", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog},
 	{ID: ModeDue, Label: "Due", OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue},

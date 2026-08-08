@@ -5,8 +5,8 @@ import (
 )
 
 // isPinnedReorderRow reports whether J/K reorders the pin order rather than
-// task hierarchy or a durable planning list. Pinned renders above every mode,
-// so this context ignores the active mode's reorder policy.
+// task hierarchy or a durable planning list. A pinned row answers before the
+// active mode's own ordering, so Today's durable plan order does not claim it.
 func (m *OutlinerModel) isPinnedReorderRow() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false

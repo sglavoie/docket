@@ -69,6 +69,8 @@ All mode shows open, unsnoozed work in this order:
 Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
+Pinned leads All, Inbox, and Today. Next, Backlog, Due, and Recent each answer
+one narrow question and show no Pinned section, so their own order stays whole.
 Pinned tasks appear once in project groups, with parent breadcrumbs. Groups
 sort by their newest pin. Tasks inside a group start newest-first and `J`/`K`
 reorder them manually; a pinned subtree ranks by its own root's pin, and `J`/`K`

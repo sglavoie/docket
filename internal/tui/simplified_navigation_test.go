@@ -271,10 +271,11 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 	if m.simplifiedReorderEligible() {
 		t.Fatal("computed Due mode allowed manual reorder")
 	}
-	// Pinned renders above every mode and carries its own manual order.
+	// A pinned row carries its own manual order ahead of the mode's ordering.
+	m.primaryMode = ModeToday
 	m.rows[0].IsPinnedSection = true
 	if !m.simplifiedReorderEligible() {
-		t.Fatal("Pinned row in Due mode refused manual reorder")
+		t.Fatal("Pinned row in Today mode refused manual reorder")
 	}
 	m.rows[0].IsPinnedSection = false
 

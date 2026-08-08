@@ -87,8 +87,11 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	if recent {
 		input.RecencyKeys = m.freezeRecencyKeys(input.CandidateTasks, projects)
 	}
-	pinned := m.buildPinnedSection(input)
-	m.appendPinnedSection(pinned)
+	var pinned pinnedSectionBuild
+	if mode.ShowsPinned {
+		pinned = m.buildPinnedSection(input)
+		m.appendPinnedSection(pinned)
+	}
 	pinnedBoundary := len(m.rows)
 
 	switch mode.RowStrategy {

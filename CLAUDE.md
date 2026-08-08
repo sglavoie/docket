@@ -101,8 +101,12 @@ v V Ctrl+A Space               selection/actions
 p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
+Pinned renders in All, Inbox, and Today only, declared by `ShowsPinned` on the
+mode catalog entry. Next, Backlog, Due, and Recent each answer one narrow
+question, so a promoted group there splits the answer the mode was opened for.
 Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
-`PinnedAt` values inside one project group, in every mode including Due.
+`PinnedAt` values inside one project group, including inside durably ordered
+Today.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
 second keys jump straight to one mode, so a seventh mode never costs six Tab
