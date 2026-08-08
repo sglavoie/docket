@@ -10,21 +10,6 @@ import (
 	"time"
 )
 
-func TestLogDir(t *testing.T) {
-	original := logDirPath
-	defer func() { logDirPath = original }()
-
-	logDirPath = "/some/test/path"
-	if got := LogDir(); got != "/some/test/path" {
-		t.Errorf("LogDir() = %q, want %q", got, "/some/test/path")
-	}
-
-	logDirPath = ""
-	if got := LogDir(); got != "" {
-		t.Errorf("LogDir() = %q, want empty string", got)
-	}
-}
-
 func TestWarn(t *testing.T) {
 	var buf bytes.Buffer
 	originalOutput := log.Writer()
@@ -529,8 +514,8 @@ func TestInitClearsLogFilePathOnOpenFailure(t *testing.T) {
 
 func TestInitClearsLogDirPathOnMkdirFailure(t *testing.T) {
 	// Regression: Init used to assign logDirPath before creating the
-	// directory. If MkdirAll failed, LogDir returned a path that did not
-	// exist and was not usable for logging.
+	// directory. If MkdirAll failed, the retained path did not exist and was
+	// not usable for logging.
 	origDir := logDirPath
 	origFile := logFile
 	origPath := logFilePath
@@ -680,9 +665,8 @@ func TestConcurrentInitCloseNoRace(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 10 {
-		wg.Add(3)
+		wg.Add(2)
 		go func() { defer wg.Done(); Init() }()
-		go func() { defer wg.Done(); _ = LogDir() }()
 		go func() { defer wg.Done(); Close() }()
 	}
 	wg.Wait()

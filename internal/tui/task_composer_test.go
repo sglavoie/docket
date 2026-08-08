@@ -550,7 +550,7 @@ func TestDailyTaskEditsUseNarrowTypedOverlays(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 
-	appModel.Update(EditTaskMsg{Project: project, Task: task})
+	appModel.Update(ShowTaskTextEditorMsg{Project: project, Task: task, Operation: app.TaskOperationEditTitle})
 	if appModel.currentView() != ViewTextEditor {
 		t.Fatalf("title edit view = %v, want TextEditor", appModel.currentView())
 	}

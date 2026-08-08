@@ -131,10 +131,7 @@ func TestNotesWorkspaceRefreshNormalizesInvalidScopeAndTypedRouteImmediately(t *
 			_, _ = notes.Update(syntheticKey('n'))
 
 			setTestAppProjects(shell, tc.projects(project)...)
-			handled, _ := shell.handleGlobalRefreshMessage(NotesRefreshMsg{})
-			if !handled {
-				t.Fatal("Notes workspace refresh was not handled")
-			}
+			_ = shell.refreshActiveNotesManager()
 
 			params := shell.CurrentRoute().Params().(ManageParams)
 			notes = shell.getActiveNotesView()
@@ -184,10 +181,7 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 	renamed := *beta
 	renamed.Name = "Renamed Destination"
 	setTestAppProjects(shell, alpha, &renamed)
-	handled, _ := shell.handleGlobalRefreshMessage(NotesRefreshMsg{})
-	if !handled {
-		t.Fatal("Notes workspace refresh was not handled")
-	}
+	_ = shell.refreshActiveNotesManager()
 
 	notes = shell.getActiveNotesView()
 	filtered := notes.locationPicker.FilteredItems()

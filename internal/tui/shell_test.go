@@ -42,7 +42,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 	}
 
 	// Overlays do not replace the typed primary route.
-	overlay, err := NewOverlay(OverlaySearch, "test:search")
+	overlay, err := NewOverlay(OverlayForm, "test:search")
 	if err != nil {
 		t.Fatalf("NewOverlay: %v", err)
 	}

@@ -117,36 +117,6 @@ func ResolveNoteEditor() (string, error) {
 	return "", fmt.Errorf("no notes editor configured: set TT_EDITOR, VISUAL, or EDITOR to an editor command")
 }
 
-// stripWaitFlags removes blocking wait flags from a list of pre-configured
-// editor arguments. This ensures OpenFolderCommand is always fire-and-forget,
-// even when the editor is configured as e.g. "code --wait" or "subl -w".
-// Only the unambiguous GUI-editor wait flags are stripped: --wait and -w.
-func stripWaitFlags(args []string) []string {
-	var out []string
-	for _, a := range args {
-		if a == "--wait" || a == "-w" {
-			continue
-		}
-		out = append(out, a)
-	}
-	return out
-}
-
-// OpenFolderCommand builds an exec.Cmd for opening a folder in the given editor.
-// Unlike EditorCommand, this never blocks: it does not add --wait and strips any
-// blocking wait flags that may be present in the pre-configured editor string
-// (e.g. "code --wait" → the folder opens fire-and-forget).
-// Other pre-configured flags (e.g. "nvim -u NORC") are preserved.
-func OpenFolderCommand(editor, path string) *exec.Cmd {
-	exe, extraArgs := SplitEditorString(editor)
-	args := extraArgs
-	if needsWaitFlag(exe) {
-		args = stripWaitFlags(extraArgs)
-	}
-	args = append(args, path)
-	return exec.Command(exe, args...)
-}
-
 // EditorCommand builds an exec.Cmd for the given editor and file path,
 // adding --wait for editors that need it (VS Code, Sublime Text, Zed).
 // The editor string may contain pre-configured flags (e.g. "nvim -u NORC");
@@ -174,37 +144,4 @@ func needsWaitFlag(editor string) bool {
 		return true
 	}
 	return false
-}
-
-// EditInExternalEditor opens content in an external editor and returns the modified content.
-func EditInExternalEditor(editor string, content string, extension string) (string, error) {
-	resolvedEditor, resolveErr := ResolveEditor(editor)
-	if resolveErr != nil {
-		return "", resolveErr
-	}
-	editor = resolvedEditor
-
-	tmpPath, err := CreateTempFileWithContent(content, "tt-edit-", extension)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = os.Remove(tmpPath) }()
-
-	cmd := EditorCommand(editor, tmpPath)
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if runErr := cmd.Run(); runErr != nil {
-		return "", fmt.Errorf("editor failed: %w", runErr)
-	}
-
-	// Read modified content
-	modified, err := os.ReadFile(tmpPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read modified file: %w", err)
-	}
-
-	return string(modified), nil
 }

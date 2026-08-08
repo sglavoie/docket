@@ -12,7 +12,6 @@ var (
 	ErrNoCurrentProject = errors.New("no current project selected")
 	ErrParseError       = errors.New("failed to parse markdown")
 	ErrSaveFailed       = errors.New("failed to save project")
-	ErrCanceled         = errors.New("canceled")
 )
 
 func NewProjectNotFoundError(projectID any) error {

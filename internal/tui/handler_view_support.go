@@ -16,9 +16,6 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.secondaryFeatures.Attachment,
 		)
 		return m.showViewInit(ViewTaskAttachments, view)
-
-	case AttachmentAddedMsg, AttachmentDeletedMsg:
-		return true, nil
 	}
 
 	return false, nil

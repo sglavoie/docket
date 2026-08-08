@@ -114,14 +114,6 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 	}
 }
 
-func (e *appBulkPickerEnv) refs(idx int, tasks ...*models.Task) []TaskProjectRef {
-	refs := make([]TaskProjectRef, 0, len(tasks))
-	for _, task := range tasks {
-		refs = append(refs, TaskProjectRef{Task: task, Project: e.projects[idx]})
-	}
-	return refs
-}
-
 func (e *appBulkPickerEnv) reload(t *testing.T, idx int) *models.Project {
 	t.Helper()
 	project := e.projects[idx]

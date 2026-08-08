@@ -22,39 +22,13 @@ func (m *AppModel) saveOutlinerFilterState() {
 }
 
 // applyTagsToTask applies selected tags to a single task as one asynchronous
-// transaction through the BulkCoordinator, mirroring the multi-task
-// applyTagsToTaskRefs sibling. Setting tags is an attribute mutation (no workflow
-// rules run); the shell owns reload and toast via the batch result, and the
-// durable write records through the workspace undo ledger.
+// transaction through the BulkCoordinator. Setting tags is an attribute
+// mutation (no workflow rules run); the shell owns reload and toast via the
+// batch result, and the durable write records through the workspace undo ledger.
 func (m *AppModel) applyTagsToTask(task *models.Task, selectedTags []string) tea.Cmd {
 	if task == nil {
 		return nil
 	}
 	cmd := m.secondaryFeatures.Bulk.SetTags([]string{task.ID}, selectedTags)
 	return finalizeBatchResult(cmd, fmt.Sprintf("Tagged #%d", task.ShortID))
-}
-
-// applyTagsToTaskRefs applies selected tags to multiple task refs as one
-// asynchronous cross-project transaction through the BulkCoordinator. Setting
-// tags is an attribute mutation; the shell owns reload while preserving visual
-// selection.
-func (m *AppModel) applyTagsToTaskRefs(refs []TaskProjectRef, selectedTags []string) tea.Cmd {
-	refs = validTaskProjectRefs(refs)
-	locators := taskLocatorsFromTaskRefs(refs)
-	if len(locators) == 0 {
-		return nil
-	}
-	cmd := m.secondaryFeatures.Bulk.SetTagsLocators(locators, selectedTags)
-	return finalizeBatchResult(cmd, fmt.Sprintf("Tagged %d tasks", len(locators)))
-}
-
-func validTaskProjectRefs(refs []TaskProjectRef) []TaskProjectRef {
-	valid := make([]TaskProjectRef, 0, len(refs))
-	for _, ref := range refs {
-		if ref.Task == nil || ref.Project == nil {
-			continue
-		}
-		valid = append(valid, ref)
-	}
-	return valid
 }

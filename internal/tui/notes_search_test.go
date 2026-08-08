@@ -233,7 +233,7 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 		service.byLocation[app.ProjectNoteLocation(project.ID)],
 		&models.Note{Title: "Another", Filename: "another.md", Body: "needle"},
 	)
-	_, _ = view.Update(NotesRefreshMsg{})
+	view.RefreshWorkspace(project)
 	if view.SearchQuery() != "needle" || len(view.visibleRows) != 2 {
 		t.Fatalf("refresh lost accepted search: query=%q rows=%d", view.SearchQuery(), len(view.visibleRows))
 	}

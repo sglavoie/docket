@@ -52,7 +52,6 @@ package tui
 //   - XxxSelectMsg: Navigate to or highlight the specified entity
 //
 // Examples:
-//   - SelectProjectMsg: Switch to a project scope
 //   - GlobalSearchSelectMsg: Navigate to search result
 //
 // # Action Pattern (Command Execution)
@@ -65,7 +64,7 @@ package tui
 //
 // Examples:
 //   - ContextActionSheetResultMsg{Request: ..., Result: ...}
-//   - RefreshMsg, BackMsg, QuitMsg
+//   - BackMsg, QuitMsg
 //
 // # File Organization
 //
@@ -81,11 +80,6 @@ package tui
 //   3. Include doc comments explaining purpose
 //   4. For Show/Close pairs, keep them together
 //
-
-// GlowViewDoneMsg signals that glow pager has exited and views should refresh.
-// This is needed because tea.ExecProcess suspends the TUI, and views may need
-// to re-render their layout after returning from an external process.
-type GlowViewDoneMsg struct{}
 
 // ViewDidAppearMsg is dispatched by popView() when the view being revealed is
 // ViewCrossProjectOutliner. The outliner handles this by triggering an eager

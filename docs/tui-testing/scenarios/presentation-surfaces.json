@@ -43,11 +43,6 @@
     { "type": "key", "label": "open Help", "key": "?" },
     { "type": "assert", "assert": "view", "value": "Help" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "key": "?" },
-
-    { "type": "command", "label": "open conflict resolution", "command": "resolve conflict" },
-    { "type": "assert", "assert": "view", "value": "ConflictResolution" },
-    { "type": "assert", "assert": "contains", "value": "clear and retry operation" },
-    { "type": "assert", "assert": "no_layout_issues" }
+    { "type": "key", "key": "?" }
   ]
 }

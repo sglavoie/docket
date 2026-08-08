@@ -291,9 +291,9 @@ discovered; `ft` stays usage-derived, because a filter row nothing carries can
 only empty the projection. The explainer states the precedence instead of
 leaving it silently applied.
 
-The legacy `internal/tui/tag_selector.go` path reached from `handler_tag.go`
-(`ShowTagSelectorMsg`, `ShowBulkTagSelectorMsg`) was deliberately left alone and
-carries no semantic tier, as were the task row and Peek tag chips.
+The retained `internal/tui/tag_selector.go` path reached from `handler_tag.go`
+(`ShowTagSelectorMsg`) carries no semantic tier, as do the task row and Peek tag
+chips. The obsolete bulk-selector message path has been removed.
 
 ## Capture grammar
 

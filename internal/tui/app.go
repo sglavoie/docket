@@ -18,13 +18,10 @@ const (
 	ViewProjectCreator
 	ViewProjectEditor
 	ViewHelp
-	ViewTagFilterSelector
 	ViewPriorityPicker
 	ViewParentSelector
 	ViewTagSelector
-	ViewBulkTagSelector
 	ViewTaskComments
-	ViewProjectSelector
 	ViewTextEditor
 	ViewTaskAttachments
 	ViewNotes
@@ -33,7 +30,6 @@ const (
 	ViewCrossProjectOutliner
 	ViewTaskForm
 	ViewTaskComposer
-	ViewConflictResolution
 	ViewProjectHub
 )
 
@@ -160,25 +156,9 @@ type AppModel struct {
 	statusTransactionID    string
 	statusRecoveryFallback string
 
-	// Today-cleared banner: shown for ~5s after the last planned Today task
-	// is marked done for the first time on a given day. Takes precedence over
-	// statusMessage within its TTL.
-	todayClearedBanner string
-
-	// Loading state for async operations
-	isLoading      bool
-	loadingMessage string
-	spinner        SpinnerModel
-
 	// Pending create-project continuation from system Inbox triage.
 	pendingProjectMoveTask   *models.Task
 	pendingProjectMoveSource *models.Project
-
-	// Pending description edit context (for text editor popup flow)
-	pendingDescEdit *struct {
-		Task    *models.Task
-		Project *models.Project
-	}
 
 	// Pending narrow daily task edit. Stable identity is captured when the editor
 	// opens so cursor movement or a view rebuild cannot retarget the save.
@@ -229,10 +209,6 @@ type AppModel struct {
 	// Keys already pressed toward an unfinished chord. A non-empty prefix owns
 	// the footer as a which-key row until the chord completes or is abandoned.
 	pendingChord []string
-
-	// Export state for repeat-press clipboard behavior.
-	lastExportPath string
-	lastExportAt   time.Time
 }
 
 // AppOption is a functional option for configuring AppModel.

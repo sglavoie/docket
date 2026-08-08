@@ -15,12 +15,6 @@ type CreateTaskMsg struct {
 	Project    *models.Project // Optional: when set, creates in this project instead of currentProject
 }
 
-// EditTaskMsg opens the task editor for the given task.
-type EditTaskMsg struct {
-	Task    *models.Task
-	Project *models.Project // Optional: when set, uses this project instead of currentProject
-}
-
 // TaskCreatedMsg signals a new task was created.
 //
 // Result, when non-nil, is the committed application-layer outcome from a capture
@@ -57,28 +51,6 @@ type TaskUpdatedMsg struct {
 	PlanningChanged bool
 }
 
-// TaskDeletedMsg signals a task was deleted. Project carries the project
-// the task was deleted from so the post-delete handler can wire an undo
-// toast that targets the correct project's snapshot history.
-type TaskDeletedMsg struct {
-	Project       *models.Project
-	TransactionID string
-}
-
-// TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
-type TaskStatusChangedMsg struct{ Task *models.Task }
-
-// TaskPropertyChangedMsg signals an in-place task property change
-// (active, pinned, section, etc.) that should refresh without popping.
-// When NeedsSave is true, the handler will trigger an async project save.
-// This is used by adapters that mutate tasks in memory without going through
-// the coordinator pipeline.
-type TaskPropertyChangedMsg struct {
-	NeedsSave   bool
-	UndoAction  string
-	UndoContext string
-}
-
 // =============================================================================
 // External Editor Messages
 // =============================================================================
@@ -98,23 +70,6 @@ type TaskContentEditedMsg struct {
 	Err            error
 }
 
-// GlowViewMsg opens glow viewer for task markdown.
-type GlowViewMsg struct{ Task *models.Task }
-
-// =============================================================================
-// Undo Messages
-// =============================================================================
-
-// UndoPerformedMsg signals an undo operation completed.
-type UndoPerformedMsg struct {
-	Action string
-}
-
-// RedoPerformedMsg signals a redo operation completed.
-type RedoPerformedMsg struct {
-	Action string
-}
-
 // =============================================================================
 // Clipboard Messages
 // =============================================================================
@@ -125,17 +80,8 @@ type CopyTaskTitleMsg struct{ Task *models.Task }
 // CopyTaskDetailsMsg copies a single task's full details to clipboard.
 type CopyTaskDetailsMsg struct{ Task *models.Task }
 
-// CopyTasksTitleMsg copies multiple tasks' titles to clipboard.
-type CopyTasksTitleMsg struct{ Tasks []*models.Task }
-
-// CopyTasksDetailsMsg copies multiple tasks' full details to clipboard.
-type CopyTasksDetailsMsg struct{ Tasks []*models.Task }
-
 // CopyTaskTitleAndDescMsg copies a single task's title and description to clipboard.
 type CopyTaskTitleAndDescMsg struct{ Task *models.Task }
-
-// CopyTasksTitleAndDescMsg copies multiple tasks' title and description to clipboard.
-type CopyTasksTitleAndDescMsg struct{ Tasks []*models.Task }
 
 // TaskClipboardProjectedMsg carries application-owned clipboard text back to
 // the TUI adapter, which performs the platform clipboard write.
@@ -238,31 +184,11 @@ type ShowTaskAttachmentsMsg struct {
 // CloseTaskAttachmentsMsg closes the attachments view.
 type CloseTaskAttachmentsMsg struct{ PopViewMsg }
 
-// AttachmentAddedMsg signals an attachment was added.
-type AttachmentAddedMsg struct{}
-
-// AttachmentDeletedMsg signals an attachment was deleted.
-type AttachmentDeletedMsg struct{}
-
-// =============================================================================
-// Cross-Project Move Messages (Show/Close/Done Pattern)
-// =============================================================================
-
-// ShowProjectSelectorForMoveMsg opens the project selector for moving a task.
-type ShowProjectSelectorForMoveMsg struct {
-	Task          *models.Task
-	SourceProject *models.Project
-}
-
-// CloseProjectSelectorMsg closes the project selector without selection.
-type CloseProjectSelectorMsg struct{ PopViewMsg }
-
 // MoveTaskToProjectMsg requests moving a task to another project.
 type MoveTaskToProjectMsg struct {
 	Task               *models.Task
 	SourceProject      *models.Project
 	DestProjectID      string
-	FromGlobal         bool // true when triggered from a global move workflow (skip popView)
 	outlinerRelocation *outlinerRelocationCapture
 }
 
@@ -270,9 +196,8 @@ type MoveTaskToProjectMsg struct {
 type TaskMovedToProjectMsg struct {
 	Task               *models.Task
 	DestProject        *models.Project
-	MovedCount         int  // Number of tasks moved (including descendants)
-	OldShortID         int  // Original short ID before move
-	FromGlobal         bool // true when triggered from a global move workflow (skip popView)
+	MovedCount         int // Number of tasks moved (including descendants)
+	OldShortID         int // Original short ID before move
 	TransactionID      string
 	outlinerRelocation *outlinerRelocationCapture
 }

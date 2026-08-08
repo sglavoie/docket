@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -118,14 +117,11 @@ func NewTestTask(title string) *models.Task {
 	return task
 }
 
-// TestDeps holds mock external dependencies plus caller-owned test state. The
-// state is generic so this support package does not depend on the application
+// TestDeps holds caller-owned test state and a mock repository. The state is
+// generic so this support package does not depend on the application
 // configuration facade; callers may supply domain fixtures, RuntimeState, or a
 // compatibility value local to their _test.go package.
 type TestDeps[T any] struct {
-	Selector   *MockSelector
-	Renderer   *MockRenderer
-	Editor     *MockEditor
 	Repository *MockRepository
 	Config     T
 	DataDir    string
@@ -159,41 +155,19 @@ func SetupTestDeps[T any](t *testing.T, newState func(dataDir string) T) *TestDe
 
 	configPath := filepath.Join(tempDir, "config.json")
 
-	// Store original defaults to restore later
-	origSelector := external.DefaultSelector
-	origRenderer := external.DefaultRenderer
-	origEditor := external.DefaultEditor
-
-	// Create mocks
-	selector := &MockSelector{Available_: true}
-	renderer := &MockRenderer{Available_: true}
-	editor := &MockEditor{Available_: true}
 	repository := NewMockRepository()
-
-	// Replace defaults with mocks
-	external.DefaultSelector = selector
-	external.DefaultRenderer = renderer
-	external.DefaultEditor = editor
 
 	state := newState(tempDir)
 
 	var cleanupOnce sync.Once
 	cleanup := func() {
 		cleanupOnce.Do(func() {
-			// Restore original defaults
-			external.DefaultSelector = origSelector
-			external.DefaultRenderer = origRenderer
-			external.DefaultEditor = origEditor
-			// Remove temp directory
 			_ = os.RemoveAll(tempDir)
 		})
 	}
 	t.Cleanup(cleanup)
 
 	return &TestDeps[T]{
-		Selector:   selector,
-		Renderer:   renderer,
-		Editor:     editor,
 		Repository: repository,
 		Config:     state,
 		DataDir:    tempDir,

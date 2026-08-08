@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 )
 
 func TestBuildGotoArgument(t *testing.T) {
@@ -255,37 +253,6 @@ func TestEditorCommandWithFlags(t *testing.T) {
 	}
 }
 
-func TestOpenFolderCommandStripsWaitFlagsForGUIEditors(t *testing.T) {
-	cmd := OpenFolderCommand("code --wait -w --reuse-window", "/tmp/project")
-
-	for _, arg := range cmd.Args {
-		if arg == "--wait" || arg == "-w" {
-			t.Fatalf("OpenFolderCommand should strip GUI wait flags, got args: %v", cmd.Args)
-		}
-	}
-	if got := cmd.Args[len(cmd.Args)-1]; got != "/tmp/project" {
-		t.Fatalf("expected folder path as last arg, got %q (args: %v)", got, cmd.Args)
-	}
-}
-
-func TestOpenFolderCommandPreservesNonGUIEditorDashWFlag(t *testing.T) {
-	cmd := OpenFolderCommand("nvim -w /tmp/scriptout", "/tmp/project")
-	args := cmd.Args
-
-	if len(args) != 4 {
-		t.Fatalf("expected nvim args to preserve -w flag and value, got %v", args)
-	}
-	if args[1] != "-w" {
-		t.Errorf("expected args[1] = '-w', got %q (args: %v)", args[1], args)
-	}
-	if args[2] != "/tmp/scriptout" {
-		t.Errorf("expected args[2] = '/tmp/scriptout', got %q (args: %v)", args[2], args)
-	}
-	if args[3] != "/tmp/project" {
-		t.Errorf("expected folder path after preserved args, got %q (args: %v)", args[3], args)
-	}
-}
-
 func TestEditorCommandReturnsNilStdio(t *testing.T) {
 	// EditorCommand returns an exec.Cmd with nil Stdin/Stdout/Stderr.
 	// Callers that run terminal editors (vim, nano) must set these to
@@ -300,59 +267,6 @@ func TestEditorCommandReturnsNilStdio(t *testing.T) {
 	}
 	if cmd.Stderr != nil {
 		t.Error("expected EditorCommand to return cmd with nil Stderr")
-	}
-}
-
-func TestEditInExternalEditor_NoEditorAvailable(t *testing.T) {
-	// Reset env so ResolveEditor only sees impossible binaries.
-	origPath := os.Getenv("PATH")
-	origVisual := os.Getenv("VISUAL")
-	origEditor := os.Getenv("EDITOR")
-	t.Cleanup(func() {
-		_ = os.Setenv("PATH", origPath)
-		_ = os.Setenv("VISUAL", origVisual)
-		_ = os.Setenv("EDITOR", origEditor)
-	})
-	if err := os.Setenv("PATH", ""); err != nil {
-		t.Fatalf("setenv PATH: %v", err)
-	}
-	if err := os.Unsetenv("VISUAL"); err != nil {
-		t.Fatalf("unsetenv VISUAL: %v", err)
-	}
-	if err := os.Unsetenv("EDITOR"); err != nil {
-		t.Fatalf("unsetenv EDITOR: %v", err)
-	}
-
-	// Snapshot the temp dir contents before the call so we can detect
-	// whether a temp file was created and leaked.
-	dir := os.TempDir()
-	before, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read tempdir: %v", err)
-	}
-	beforeNames := make(map[string]bool, len(before))
-	for _, e := range before {
-		beforeNames[e.Name()] = true
-	}
-
-	_, err = EditInExternalEditor("tt-nonexistent-editor-xyz", "hello", ".md")
-	if err == nil {
-		t.Fatal("expected error when no editor is available")
-	}
-
-	after, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read tempdir after: %v", err)
-	}
-	for _, e := range after {
-		if beforeNames[e.Name()] {
-			continue
-		}
-		// New entries with our prefix indicate a leaked temp file created
-		// before the editor-resolution failure.
-		if filepath.Ext(e.Name()) == ".md" && len(e.Name()) > len("tt-edit-") && e.Name()[:len("tt-edit-")] == "tt-edit-" {
-			t.Errorf("leaked temp file %q — editor should be resolved before creating temp file", e.Name())
-		}
 	}
 }
 
@@ -410,130 +324,5 @@ func TestResolveEditor_FlaggedEditorString(t *testing.T) {
 	}
 	if result != "nvim -u NORC" {
 		t.Errorf("ResolveEditor returned %q, want %q", result, "nvim -u NORC")
-	}
-}
-
-// TestStripWaitFlags verifies that stripWaitFlags removes --wait and -w
-// but preserves all other flags.
-func TestStripWaitFlags(t *testing.T) {
-	cases := []struct {
-		input []string
-		want  []string
-	}{
-		{nil, nil},
-		{[]string{}, nil},
-		{[]string{"--wait"}, nil},
-		{[]string{"-w"}, nil},
-		{[]string{"-u", "NORC"}, []string{"-u", "NORC"}},
-		{[]string{"--wait", "-u", "NORC"}, []string{"-u", "NORC"}},
-		{[]string{"-u", "NORC", "--wait"}, []string{"-u", "NORC"}},
-		{[]string{"-w", "--some-flag"}, []string{"--some-flag"}},
-		{[]string{"--wait", "-w", "--other"}, []string{"--other"}},
-	}
-	for _, tc := range cases {
-		got := stripWaitFlags(tc.input)
-		if len(got) != len(tc.want) {
-			t.Errorf("stripWaitFlags(%v) = %v, want %v", tc.input, got, tc.want)
-			continue
-		}
-		for i, v := range got {
-			if v != tc.want[i] {
-				t.Errorf("stripWaitFlags(%v)[%d] = %q, want %q", tc.input, i, v, tc.want[i])
-			}
-		}
-	}
-}
-
-// even for VS Code-family editors that EditorCommand would normally block.
-func TestOpenFolderCommand(t *testing.T) {
-	cases := []struct {
-		editor string
-		path   string
-	}{
-		{"code", "/home/user/project"},
-		{"cursor", "/home/user/project"},
-		{"subl", "/home/user/project"},
-		{"zed", "/home/user/project"},
-		{"vim", "/home/user/project"},
-		{"nvim -u NORC", "/home/user/project"},
-		{"code-insiders", "/home/user/project"},
-		// Regression: user-configured "code --wait" must not block folder-open.
-		{"code --wait", "/home/user/project"},
-		{"cursor --wait", "/home/user/project"},
-		{"subl -w", "/home/user/project"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.editor, func(t *testing.T) {
-			cmd := OpenFolderCommand(tc.editor, tc.path)
-			for _, arg := range cmd.Args {
-				if arg == "--wait" || arg == "-w" {
-					t.Errorf("OpenFolderCommand(%q, ...) must not include blocking wait flag %q, got args: %v", tc.editor, arg, cmd.Args)
-				}
-			}
-			// Path must appear as an argument.
-			last := cmd.Args[len(cmd.Args)-1]
-			if last != tc.path {
-				t.Errorf("OpenFolderCommand(%q, %q) last arg = %q, want path", tc.editor, tc.path, last)
-			}
-		})
-	}
-}
-
-// TestOpenFolderCommandWithFlags verifies that pre-configured flags in the
-// editor string are preserved in the correct position (before the path).
-func TestOpenFolderCommandWithFlags(t *testing.T) {
-	cmd := OpenFolderCommand("nvim -u NORC", "/data/project")
-	args := cmd.Args
-	// Args[0] is the resolved executable path; args[1..] are the logical args.
-	if len(args) < 4 {
-		t.Fatalf("expected ≥4 args (nvim, -u, NORC, path), got %v", args)
-	}
-	if args[1] != "-u" {
-		t.Errorf("args[1] = %q, want '-u'", args[1])
-	}
-	if args[2] != "NORC" {
-		t.Errorf("args[2] = %q, want 'NORC'", args[2])
-	}
-	if args[3] != "/data/project" {
-		t.Errorf("args[3] = %q, want '/data/project'", args[3])
-	}
-}
-
-func TestVSCodeEditorOpenFileAtLineNonPositiveLineOpensFileOnly(t *testing.T) {
-	dir := t.TempDir()
-	argFile := filepath.Join(dir, "args.txt")
-	fakeCode := filepath.Join(dir, "code")
-	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + argFile + "\nexit 0\n"
-	if err := os.WriteFile(fakeCode, []byte(script), 0o755); err != nil {
-		t.Fatalf("write fake code: %v", err)
-	}
-
-	origPath := os.Getenv("PATH")
-	t.Cleanup(func() { _ = os.Setenv("PATH", origPath) })
-	if err := os.Setenv("PATH", dir); err != nil {
-		t.Fatalf("setenv PATH: %v", err)
-	}
-	codeCache = cachedPath{}
-	t.Cleanup(func() { codeCache = cachedPath{} })
-
-	filePath := filepath.Join(dir, "test.go")
-	if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
-		t.Fatalf("write test file: %v", err)
-	}
-
-	editor := NewVSCodeEditor()
-	if err := editor.OpenFileAtLine(filePath, 0); err != nil {
-		t.Fatalf("OpenFileAtLine(..., 0) failed: %v", err)
-	}
-
-	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(data []byte) bool {
-		return strings.TrimSpace(string(data)) == filePath
-	})
-	if err != nil {
-		t.Fatalf("read arg file: %v", err)
-	}
-	args := strings.Split(strings.TrimSpace(string(recorded)), "\n")
-	if len(args) != 1 || args[0] != filePath {
-		t.Fatalf("expected only file path argument, got %v", args)
 	}
 }

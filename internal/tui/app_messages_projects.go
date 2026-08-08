@@ -8,9 +8,6 @@ import (
 // Project CRUD Messages
 // =============================================================================
 
-// SelectProjectMsg switches the current project view.
-type SelectProjectMsg struct{ Project *models.Project }
-
 // CreateProjectMsg opens the project creator view. MoveTask/SourceProject are
 // optional triage continuation data: after creation the selected Inbox item is
 // moved into the new project without a second picker step.

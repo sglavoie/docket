@@ -31,18 +31,11 @@ func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 	switch view {
 	case ViewTaskForm:
 		return OverlayComposer, true
-	case ViewProjectSelector:
-		return OverlayProjectPicker, true
-	case ViewTagFilterSelector:
-		return OverlaySearch, true
 	case ViewProjectCreator, ViewProjectEditor, ViewTextEditor:
 		return OverlayForm, true
-	case ViewConflictResolution:
-		return OverlayConfirmation, true
 	case ViewTaskChecklist, ViewTaskComments, ViewTaskAttachments:
 		return OverlayTaskTool, true
-	case ViewPriorityPicker, ViewParentSelector, ViewTagSelector,
-		ViewBulkTagSelector:
+	case ViewPriorityPicker, ViewParentSelector, ViewTagSelector:
 		return OverlayPicker, true
 	default:
 		return 0, false

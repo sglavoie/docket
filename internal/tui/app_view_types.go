@@ -4,13 +4,10 @@ var viewTypeNames = map[PresentationID]string{
 	ViewProjectCreator:       "ProjectCreator",
 	ViewProjectEditor:        "ProjectEditor",
 	ViewHelp:                 "Help",
-	ViewTagFilterSelector:    "TagFilterSelector",
 	ViewPriorityPicker:       "PriorityPicker",
 	ViewParentSelector:       "ParentSelector",
 	ViewTagSelector:          "TagSelector",
-	ViewBulkTagSelector:      "BulkTagSelector",
 	ViewTaskComments:         "TaskComments",
-	ViewProjectSelector:      "ProjectSelector",
 	ViewTextEditor:           "TextEditor",
 	ViewTaskAttachments:      "TaskAttachments",
 	ViewNotes:                "Notes",
@@ -19,7 +16,6 @@ var viewTypeNames = map[PresentationID]string{
 	ViewCrossProjectOutliner: "CrossProjectOutliner",
 	ViewTaskForm:             "TaskForm",
 	ViewTaskComposer:         "TaskComposer",
-	ViewConflictResolution:   "ConflictResolution",
 	ViewProjectHub:           "ProjectHub",
 }
 

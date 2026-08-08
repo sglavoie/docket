@@ -42,7 +42,7 @@ func (d *UITestDriver) SetDrainTimeout(timeout time.Duration) {
 // NewUITestDriver wraps an AppModel (typically built via NewAppModel, or by the
 // fixture helpers added in session 3) and applies an initial terminal size.
 func NewUITestDriver(app *AppModel, width, height int) *UITestDriver {
-	if _, registered := app.operationRegistry.Descriptor(operationHarnessExportProject); !registered {
+	if _, registered := app.operationRegistry.Descriptor(operationHarnessNewProject); !registered {
 		if err := app.registerHarnessOperations(); err != nil {
 			panic("register TUI test operations: " + err.Error())
 		}

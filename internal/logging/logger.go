@@ -87,13 +87,6 @@ func pruneOldLogs() {
 	}
 }
 
-// LogDir returns the log directory path.
-func LogDir() string {
-	mu.Lock()
-	defer mu.Unlock()
-	return logDirPath
-}
-
 func logFileName(now time.Time) string {
 	return fmt.Sprintf("tt-%s.log", now.Format("2006-01-02-150405.000000000"))
 }

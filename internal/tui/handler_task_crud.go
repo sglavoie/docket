@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -15,9 +14,6 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case CreateTaskMsg:
 		return m.handleCreateTask(msg)
-
-	case EditTaskMsg:
-		return m.handleEditTask(msg)
 
 	case TaskCreatedMsg:
 		return m.handleTaskCreated(msg)
@@ -29,8 +25,6 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.handleTaskDeleteRequested(msg)
 		return true, nil
 
-	case TaskDeletedMsg:
-		return m.handleTaskDeleted(msg)
 	}
 	return false, nil
 }
@@ -46,20 +40,6 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 	}
 
 	return true, m.openTaskComposer(m.createComposerPreset(project, msg.ParentTask))
-}
-
-// handleEditTask handles the EditTaskMsg.
-func (m *AppModel) handleEditTask(msg EditTaskMsg) (bool, tea.Cmd) {
-	project := msg.Project
-	if project == nil {
-		project = m.currentProject
-	}
-	if project != nil && msg.Task != nil {
-		return m.handleEditorMessages(ShowTaskTextEditorMsg{
-			Task: msg.Task, Project: project, Operation: app.TaskOperationEditTitle,
-		})
-	}
-	return true, nil
 }
 
 // handleTaskCreated handles the TaskCreatedMsg.
@@ -187,20 +167,4 @@ func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
 	}
 	feedbackCmd := m.setRecoveryFeedback("Updated task", transactionID, false)
 	return true, tea.Batch(refreshCmd, cmd, feedbackCmd)
-}
-
-// handleTaskDeleted handles the TaskDeletedMsg.
-func (m *AppModel) handleTaskDeleted(msg TaskDeletedMsg) (bool, tea.Cmd) {
-	m.pruneDeletedTaskRefs()
-	refreshCmd := m.handleWithRefresh(false, false)
-
-	project := msg.Project
-	if project == nil {
-		project = m.currentProject
-	}
-	if project == nil {
-		return true, refreshCmd
-	}
-
-	return true, tea.Batch(refreshCmd, m.setRecoveryFeedback("Deleted task", msg.TransactionID, false))
 }

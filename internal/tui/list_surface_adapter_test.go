@@ -19,17 +19,6 @@ func (t testItem) DisplayText() string { return t.text }
 func (t testItem) CountValue() int     { return t.count }
 func (t testItem) ItemID() string      { return t.id }
 
-// usePickerItemMethods silences deadcode false positives for interface methods
-// that are only called through generic type constraints.
-func usePickerItemMethods(p PickerItem) {
-	_ = p.DisplayText()
-	_ = p.CountValue()
-}
-
-func init() {
-	usePickerItemMethods(testItem{})
-}
-
 func TestNewListSurfaceAdapter(t *testing.T) {
 	items := []testItem{
 		{id: "1", text: "Alpha", count: 5},

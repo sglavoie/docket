@@ -21,8 +21,4 @@ var (
 
 	FocusIndicatorStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	FocusIndicator      = FocusIndicatorStyle.Render("▐")
-
-	// TodayClearedBannerStyle styles the Peak-End "Today cleared" banner with
-	// a warm accent that matches the Today streak badge.
-	TodayClearedBannerStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorOrange)
 )

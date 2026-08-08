@@ -167,7 +167,7 @@ The committed suite exercises the product contracts directly:
 | Responsive and large-catalog rendering | `baseline-layout.json`, `resize-stress.json` |
 | Integrated title, guidance, and terminal-size matrix | `presentation-size-matrix.json` |
 | Workspace-pulse composition and transient-overlay ownership | `workspace-pulse-presentation-grammar.json` |
-| Projects, Notes, forms, task tools, Help, conflicts, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
+| Projects, Notes, forms, task tools, Help, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
 | Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
 
 The full shell gate also runs snapshot, failure-injection, collision,

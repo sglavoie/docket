@@ -23,9 +23,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.clearOperationValueStep()
 			m.operationConfirm.Cancel()
 			m.pendingOperationRequest = OperationExecutionRequest{}
-			m.isLoading = false
 			m.statusMessage = ""
-			m.loadingMessage = ""
 			outModel = m
 			outCmd = nil
 		}
@@ -67,9 +65,5 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	if handled, cmd := m.handleClipboardMessages(msg); handled {
 		return m, cmd
 	}
-	if handled, cmd := m.handleExportMessages(msg); handled {
-		return m, cmd
-	}
-
 	return m, tea.Batch(m.delegateToCurrentView(msg))
 }

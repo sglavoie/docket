@@ -22,6 +22,9 @@ type Finding struct {
 }
 
 func (f Finding) String() string {
+	if f.Kind == "message" {
+		return fmt.Sprintf("%s: production-consumed message %s has no production emitter", f.Position, f.Symbol)
+	}
 	return fmt.Sprintf("%s: production-unused %s %s", f.Position, f.Kind, f.Symbol)
 }
 
@@ -33,9 +36,18 @@ type declaration struct {
 	exempt   bool
 }
 
+type messageUsage struct {
+	position token.Position
+	symbol   string
+	consumed bool
+	produced bool
+	exempt   bool
+}
+
 // Run loads patterns without test variants and returns production-unused
-// package declarations and concrete struct fields. Tagged and migration DTO
-// fields are indirect serialization inputs and are intentionally exempt.
+// package declarations and concrete struct fields, plus TUI messages that are
+// consumed in production without a production emitter. Tagged and migration
+// DTO fields are indirect serialization inputs and are intentionally exempt.
 func Run(dir string, patterns ...string) ([]Finding, error) {
 	if len(patterns) == 0 {
 		patterns = []string{"./..."}
@@ -65,9 +77,14 @@ func Run(dir string, patterns ...string) ([]Finding, error) {
 	declarations := make(map[types.Object]*declaration)
 	reads := make(map[types.Object]bool)
 	readKeys := make(map[string]bool)
+	messages := make(map[string]*messageUsage)
 	for _, pkg := range modulePackages {
 		collectDeclarations(pkg, declarations)
 		collectReads(pkg, reads, readKeys)
+		collectMessageDeclarations(pkg, messages)
+	}
+	for _, pkg := range modulePackages {
+		collectMessageUsage(pkg, messages)
 	}
 
 	findings := make([]Finding, 0)
@@ -79,6 +96,16 @@ func Run(dir string, patterns ...string) ([]Finding, error) {
 			Position: decl.position,
 			Symbol:   decl.symbol,
 			Kind:     decl.kind,
+		})
+	}
+	for _, message := range messages {
+		if message.exempt || !message.consumed || message.produced {
+			continue
+		}
+		findings = append(findings, Finding{
+			Position: message.position,
+			Symbol:   message.symbol,
+			Kind:     "message",
 		})
 	}
 	sort.Slice(findings, func(i, j int) bool {
@@ -117,7 +144,7 @@ func collectMainModulePackages(roots []*packages.Package) []*packages.Package {
 }
 
 func collectDeclarations(pkg *packages.Package, out map[types.Object]*declaration) {
-	if strings.HasSuffix(pkg.PkgPath, "/internal/testutil") {
+	if isTestSupportPackage(pkg) {
 		return
 	}
 	parents := parentMap(pkg.Syntax)
@@ -256,6 +283,9 @@ func commentGroupContains(group *ast.CommentGroup, directive string) bool {
 }
 
 func collectReads(pkg *packages.Package, reads map[types.Object]bool, readKeys map[string]bool) {
+	if isTestSupportPackage(pkg) {
+		return
+	}
 	parents := parentMap(pkg.Syntax)
 	for ident, object := range pkg.TypesInfo.Uses {
 		field, isField := object.(*types.Var)
@@ -264,6 +294,105 @@ func collectReads(pkg *packages.Package, reads map[types.Object]bool, readKeys m
 			readKeys[objectReadKey(object)] = true
 		}
 	}
+}
+
+func isTestSupportPackage(pkg *packages.Package) bool {
+	return pkg != nil && strings.HasSuffix(pkg.PkgPath, "/internal/testutil")
+}
+
+func collectMessageDeclarations(pkg *packages.Package, out map[string]*messageUsage) {
+	if pkg == nil || isTestSupportPackage(pkg) || !strings.HasSuffix(pkg.PkgPath, "/internal/tui") {
+		return
+	}
+	parents := parentMap(pkg.Syntax)
+	for ident, object := range pkg.TypesInfo.Defs {
+		typeName, ok := object.(*types.TypeName)
+		if !ok || ident == nil || object.Parent() != pkg.Types.Scope() || !strings.HasSuffix(typeName.Name(), "Msg") {
+			continue
+		}
+		if _, isInterface := typeName.Type().Underlying().(*types.Interface); isInterface {
+			continue
+		}
+		key := objectReadKey(object)
+		out[key] = &messageUsage{
+			position: pkg.Fset.Position(ident.Pos()),
+			symbol:   typeName.Name(),
+			exempt:   typeSpecHasMessageDirective(parents[ident], parents),
+		}
+	}
+}
+
+func collectMessageUsage(pkg *packages.Package, messages map[string]*messageUsage) {
+	if pkg == nil || isTestSupportPackage(pkg) || !strings.HasSuffix(pkg.PkgPath, "/internal/tui") {
+		return
+	}
+	for _, file := range pkg.Syntax {
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch typed := node.(type) {
+			case *ast.TypeSwitchStmt:
+				for _, statement := range typed.Body.List {
+					clause, ok := statement.(*ast.CaseClause)
+					if !ok {
+						continue
+					}
+					for _, expression := range clause.List {
+						markMessageType(pkg, messages, expression, func(message *messageUsage) {
+							message.consumed = true
+						})
+					}
+				}
+			case *ast.CompositeLit:
+				markMessageType(pkg, messages, typed.Type, func(message *messageUsage) {
+					message.produced = true
+				})
+			case *ast.CallExpr:
+				markMessageType(pkg, messages, typed.Fun, func(message *messageUsage) {
+					message.produced = true
+				})
+			}
+			return true
+		})
+	}
+}
+
+func markMessageType(
+	pkg *packages.Package,
+	messages map[string]*messageUsage,
+	expression ast.Expr,
+	mark func(*messageUsage),
+) {
+	var object types.Object
+	switch typed := expression.(type) {
+	case *ast.Ident:
+		object = pkg.TypesInfo.Uses[typed]
+	case *ast.SelectorExpr:
+		object = pkg.TypesInfo.Uses[typed.Sel]
+	case *ast.StarExpr:
+		markMessageType(pkg, messages, typed.X, mark)
+		return
+	default:
+		return
+	}
+	typeName, ok := object.(*types.TypeName)
+	if !ok {
+		return
+	}
+	if message := messages[objectReadKey(typeName)]; message != nil {
+		mark(message)
+	}
+}
+
+func typeSpecHasMessageDirective(node ast.Node, parents map[ast.Node]ast.Node) bool {
+	spec, _ := node.(*ast.TypeSpec)
+	if spec == nil {
+		return false
+	}
+	const directive = "deadcodeaudit:external-message"
+	if commentGroupContains(spec.Doc, directive) {
+		return true
+	}
+	declaration, _ := parents[spec].(*ast.GenDecl)
+	return declaration != nil && commentGroupContains(declaration.Doc, directive)
 }
 
 func writeOnlyFieldUse(ident *ast.Ident, parents map[ast.Node]ast.Node) bool {

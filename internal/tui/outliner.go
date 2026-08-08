@@ -240,9 +240,6 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)
-	case outlinerRefreshMsg:
-		m.rebuildRows()
-		return m, nil
 	case ViewDidAppearMsg:
 		return m, m.handleViewDidAppear()
 	case crossProjectsLoadedMsg:

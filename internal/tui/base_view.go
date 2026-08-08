@@ -2,43 +2,7 @@ package tui
 
 import (
 	"image/color"
-
-	"github.com/sglavoie/tt/internal/config"
 )
-
-// ViewBundle groups the domain runtime and application-layer coordinators shared
-// by secondary views. It deliberately carries no Config facade.
-type ViewBundle struct {
-	// runtime is the startup-loaded snapshot of the owned configuration domains.
-	// Machine-local layout consumers (project-view state, outliner/tree columns,
-	// split/info-panel state, cross-outliner state, and tab order read it via
-	// runtime.Machine() and persist through the machine-local committer instead of
-	// the config.Config facade. A nil runtime (isolated render tests) is tolerated
-	// by the config accessors, which default to an empty machine snapshot.
-	runtime *config.RuntimeState
-
-	// bulk routes multiselect mutations through the application layer. The shell
-	// wires it via SetBulkCoordinator when the view is shown; a zero value (nil
-	// mutator) means the view was built in isolation (e.g. a render-only test) and
-	// its bulk handlers are not exercised.
-
-	// taskItem routes single-task outliner mutations through the application
-	// layer, parallel to bulk. The shell wires it via SetTaskItemCoordinator; a
-	// zero value (nil mutator) means the view was built in isolation. No caller
-	// routes through it yet — it is the migration seam for the cross-project
-	// single-task raw-save family.
-}
-
-// SetBulkCoordinator injects the application-layer bulk coordinator. It is
-// promoted to every view that embeds ViewBundle, so the shell wires all bulk
-// views from a single site (showView/replaceView) through the bulkWireable
-// interface.
-func (b *ViewBundle) SetBulkCoordinator(BulkCoordinator) {}
-
-// SetTaskItemCoordinator injects the application-layer single-task coordinator,
-// promoted to every view that embeds ViewBundle so the shell wires it from the
-// same showView/replaceView site as the bulk coordinator (via taskItemWireable).
-func (b *ViewBundle) SetTaskItemCoordinator(TaskItemCoordinator) {}
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.

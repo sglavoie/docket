@@ -71,6 +71,69 @@ func Decode() string {
 	}
 }
 
+func TestRunIgnoresReadsFromTestSupportPackages(t *testing.T) {
+	root := writeFixtureModule(t, map[string]string{
+		"sample/sample.go": `package sample
+
+type TestSupportType struct{}
+var TestSupportValue = 1
+`,
+		"internal/testutil/support.go": `package testutil
+import "example.com/auditfixture/sample"
+var _ = sample.TestSupportType{}
+var _ = sample.TestSupportValue
+`,
+	})
+
+	findings, err := Run(root, "./...")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := findingSymbols(findings)
+	for _, want := range []string{"TestSupportType", "TestSupportValue"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("findings %v missing %q", got, want)
+		}
+	}
+}
+
+func TestRunFindsProductionConsumedMessagesWithoutProductionEmitters(t *testing.T) {
+	root := writeFixtureModule(t, map[string]string{
+		"internal/tui/messages.go": `package tui
+
+type OrphanMsg struct{}
+type LiveMsg struct{}
+// deadcodeaudit:external-message emitted by an external adapter.
+type ExternalMsg struct{}
+
+func handle(msg any) {
+	switch msg.(type) {
+	case OrphanMsg, LiveMsg, ExternalMsg:
+	}
+}
+
+func emit() any { return LiveMsg{} }
+`,
+		"internal/tui/messages_test.go": `package tui
+func emitOnlyInTests() any { return OrphanMsg{} }
+`,
+	})
+
+	findings, err := Run(root, "./...")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := findingSymbols(findings)
+	if !slices.Contains(got, "OrphanMsg") {
+		t.Fatalf("findings %v missing OrphanMsg", got)
+	}
+	for _, exempt := range []string{"LiveMsg", "ExternalMsg"} {
+		if slices.Contains(got, exempt) {
+			t.Errorf("findings %v unexpectedly contain %q", got, exempt)
+		}
+	}
+}
+
 func findingSymbols(findings []Finding) []string {
 	result := make([]string, 0, len(findings))
 	for _, finding := range findings {

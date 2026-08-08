@@ -123,28 +123,3 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		}
 	})
 }
-
-func TestTaskDeletedMsgCleansConfigRefs(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
-
-	// Set up a task that will be "deleted"
-	deletedTask := &models.Task{ID: "will-be-deleted", Title: "Ghost"}
-	app.nextOrder = []PlanningTask{{Task: deletedTask, Project: project}}
-	app.nextOrderIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
-	app.today = []PlanningTask{{Task: deletedTask, Project: project}}
-	app.todayIDs = map[TaskIdentity]bool{taskIdentityFor(deletedTask, project): true}
-
-	msg := TaskDeletedMsg{}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Fatal("TaskDeletedMsg should be handled")
-	}
-	if len(app.nextOrder) != 0 {
-		t.Errorf("expected focus queue to be pruned, got %d entries", len(app.nextOrder))
-	}
-	if len(app.today) != 0 {
-		t.Errorf("expected daily plan to be pruned, got %d entries", len(app.today))
-	}
-}

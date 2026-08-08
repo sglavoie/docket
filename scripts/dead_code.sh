@@ -41,7 +41,7 @@ if [ -s "$test_output" ]; then
 fi
 
 if ! go run ./scripts/deadcodeaudit ./... >"$declaration_output" 2>&1; then
-	echo "production declaration/field dead code detected:" >&2
+	echo "production declaration/field/message dead code detected:" >&2
 	cat "$declaration_output" >&2
 	exit 1
 fi

@@ -82,14 +82,3 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 		t.Errorf("currentView should be Outliner after text editor done, got %v", app.currentView())
 	}
 }
-
-func TestHandleViewMessagesAttachmentAdded(t *testing.T) {
-	app, _ := newTestAppModelWithProject()
-
-	msg := AttachmentAddedMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("AttachmentAddedMsg should be handled")
-	}
-}

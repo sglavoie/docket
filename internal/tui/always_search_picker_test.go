@@ -10,35 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestProjectSelectorUpdate_ReturnsMoveMessage(t *testing.T) {
-	sourceProject, err := models.NewProject("source", "Source", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject source: %v", err)
-	}
-	destProject, err := models.NewProject("dest", "Destination", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject dest: %v", err)
-	}
-	task, err := models.NewGenericTask("task-1", 7, "Move me")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-
-	m := NewProjectSelectorModel([]*models.Project{sourceProject, destProject}, task, sourceProject)
-	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd == nil {
-		t.Fatal("enter should return a move command")
-	}
-
-	msg, ok := cmd().(MoveTaskToProjectMsg)
-	if !ok {
-		t.Fatalf("expected MoveTaskToProjectMsg, got %T", cmd())
-	}
-	if msg.Task != task || msg.SourceProject != sourceProject || msg.DestProjectID != destProject.ID {
-		t.Fatalf("unexpected move message: %#v", msg)
-	}
-}
-
 func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 	parent, err := models.NewGenericTask("parent-1", 11, "Parent task")
 	if err != nil {

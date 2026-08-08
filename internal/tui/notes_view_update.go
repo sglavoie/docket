@@ -128,8 +128,6 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
-	case NotesRefreshMsg:
-		m.loadNotes()
 	}
 	return m, nil
 }

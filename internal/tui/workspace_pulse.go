@@ -36,11 +36,6 @@ func (s *workspacePulseState) currentWorkspacePulse() WorkspacePulse {
 	return s.workspacePulse
 }
 
-// RefreshWorkspacePulseMsg requests a recompute and cache update of
-// AppModel.workspacePulse. Mutation paths normally refresh through the shared
-// post-commit fan-out; the message remains the explicit asynchronous seam.
-type RefreshWorkspacePulseMsg struct{}
-
 // workspacePulseAware is implemented by views that render the workspace pulse.
 // AppModel injects the latest cached value before each render.
 type workspacePulseAware interface {

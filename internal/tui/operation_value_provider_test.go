@@ -534,7 +534,7 @@ func TestMovedTaskMenuOperationRetargetsAsyncReloadAnchor(t *testing.T) {
 	destination := &models.Project{ID: "destination"}
 
 	model.preserveMovedOutlinerTarget(TaskMovedToProjectMsg{
-		Task: task, DestProject: destination, FromGlobal: true,
+		Task: task, DestProject: destination,
 	})
 	if outliner.crossReloadProjectID != destination.ID || outliner.crossReloadTaskID != task.ID {
 		t.Fatalf("reload anchor = %s/%s, want %s/%s",

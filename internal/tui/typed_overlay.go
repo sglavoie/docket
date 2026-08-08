@@ -8,28 +8,16 @@ type OverlayKind uint8
 
 const (
 	OverlayComposer OverlayKind = iota
-	OverlayProjectPicker
-	_
-	OverlaySearch
-	_
 	OverlayForm
 	OverlayPicker
-	OverlayConfirmation
-	_
 	OverlayTaskTool
 	OverlayReference
 )
 
 var overlayKindNames = [...]string{
 	"Composer",
-	"ProjectPicker",
-	"ViewMenu",
-	"Search",
-	"TaskJump",
 	"Form",
 	"Picker",
-	"Confirmation",
-	"ProjectDrilldown",
 	"TaskTool",
 	"Reference",
 }

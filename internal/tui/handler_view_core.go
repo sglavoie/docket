@@ -16,13 +16,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		}
 		return true, m.popView()
 
-	case RefreshMsg:
-		m.refreshLoadedTaskWorkspace()
-		return true, nil
-
 	case ErrorMsg:
-		m.isLoading = false
-		m.loadingMessage = ""
 		m.err = msg.Err
 		return true, tea.Batch(m.delegateToCurrentView(msg), statusTimeout(5*time.Second))
 

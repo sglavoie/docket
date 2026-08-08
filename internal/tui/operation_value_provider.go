@@ -1159,7 +1159,6 @@ func (m *AppModel) executeSingleTaskOperation(
 			Task:               task,
 			SourceProject:      project,
 			DestProjectID:      destination,
-			FromGlobal:         true,
 			outlinerRelocation: m.captureOutlinerRelocationForTargets(invocation.Targets),
 		}}
 	case operationTaskSetParent:

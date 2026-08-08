@@ -218,18 +218,4 @@ type TextEditorExternalDoneMsg struct {
 	Canceled  bool
 }
 
-// ShowDescriptionEditorMsg triggers showing the text editor popup for task description.
-type ShowDescriptionEditorMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// DescriptionEditorDoneMsg signals the description editor has finished.
-type DescriptionEditorDoneMsg struct {
-	Task           *models.Task
-	Project        *models.Project
-	NewDescription string
-	Canceled       bool
-}
-
 func (m *TextEditorModel) StatusBarLabel() string { return "Edit Text" }

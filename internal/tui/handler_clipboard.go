@@ -11,8 +11,6 @@ import (
 
 // handleClipboardMessages handles clipboard-related messages (copy task title/details).
 // Returns true if the message was handled.
-//
-//nolint:gocyclo // Clipboard message dispatch owns one typed response path for every retained payload.
 func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TaskClipboardProjectedMsg:
@@ -58,43 +56,6 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return TaskCopiedMsg{Count: 1, FullDetail: true}
 		}
 
-	case CopyTasksTitleMsg:
-		if len(msg.Tasks) == 0 {
-			return true, nil
-		}
-		_, err := external.CopyTaskTitles(msg.Tasks)
-		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
-		}
-		count := len(msg.Tasks)
-		return true, func() tea.Msg {
-			return TaskCopiedMsg{Count: count, FullDetail: false}
-		}
-
-	case CopyTasksDetailsMsg:
-		if len(msg.Tasks) == 0 {
-			return true, nil
-		}
-		hasDescription := false
-		for _, task := range msg.Tasks {
-			if task.Description != "" {
-				hasDescription = true
-				break
-			}
-		}
-		if !hasDescription {
-			m.setInfoStatus("No descriptions to copy")
-			return true, defaultStatusTimeout()
-		}
-		_, err := external.CopyTasksDetails(msg.Tasks)
-		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
-		}
-		count := len(msg.Tasks)
-		return true, func() tea.Msg {
-			return TaskCopiedMsg{Count: count, FullDetail: true}
-		}
-
 	case CopyTaskTitleAndDescMsg:
 		if msg.Task == nil {
 			return true, nil
@@ -105,19 +66,6 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, TitleAndDesc: true}
-		}
-
-	case CopyTasksTitleAndDescMsg:
-		if len(msg.Tasks) == 0 {
-			return true, nil
-		}
-		_, err := external.CopyTasksTitleAndDescription(msg.Tasks)
-		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
-		}
-		count := len(msg.Tasks)
-		return true, func() tea.Msg {
-			return TaskCopiedMsg{Count: count, TitleAndDesc: true}
 		}
 
 	case TaskCopiedMsg:

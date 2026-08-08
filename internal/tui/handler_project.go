@@ -14,12 +14,6 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case SelectProjectMsg:
-		if msg.Project != nil && msg.Project.Archived {
-			return true, m.showProjectArchiveConfirm(msg.Project, false)
-		}
-		return true, m.selectProjectNow(msg.Project)
-
 	case CreateProjectMsg:
 		m.pendingProjectMoveTask = msg.MoveTask
 		m.pendingProjectMoveSource = msg.SourceProject
@@ -47,7 +41,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 					Task:          moveTask,
 					SourceProject: moveSource,
 					DestProjectID: msg.Project.ID,
-					FromGlobal:    true,
 				}
 			}
 			return true, tea.Batch(popCmd, moveCmd, reloadCmd, notesCmd, feedbackCmd)
@@ -173,12 +166,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	}
 	return false, nil
-}
-
-func (m *AppModel) selectProjectNow(project *models.Project) tea.Cmd {
-	m.switchToProject(project, true)
-	_, cmd := m.handleProjectViewMessages(ShowOutlinerMsg{Project: project})
-	return cmd
 }
 
 func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bool) tea.Cmd {

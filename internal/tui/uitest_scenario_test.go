@@ -510,28 +510,6 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 	}
 }
 
-func TestUITestScenarioExportProjectStatusLayoutNoOverflow(t *testing.T) {
-	sc := UITestScenario{
-		Name:    "export project status layout",
-		Fixture: "rich",
-		Size:    "100x35",
-		Actions: []UITestAction{
-			{Type: UITestActionCommand, Command: "export project"},
-			{Type: UITestActionAssert, Assert: "no_layout_issues"},
-		},
-	}
-
-	result, ws, err := RunScenarioFixture(sc, RunScenarioOptions{})
-	if err != nil {
-		t.Fatalf("RunScenarioFixture error: %v", err)
-	}
-	t.Cleanup(func() { _ = ws.Cleanup() })
-
-	if !result.OK {
-		t.Fatalf("export project status layout should pass, got error: %+v", result.Error)
-	}
-}
-
 func TestUITestScenarioRunFixtureDefaults(t *testing.T) {
 	// No fixture or size in the scenario: RunScenarioFixture falls back to the
 	// package defaults (rich fixture at 100x30).

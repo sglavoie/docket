@@ -124,8 +124,6 @@ func (m *AppModel) registerManageModulePresentation(params ManageParams, view Vi
 
 func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowManageHubMsg:
-		return true, m.activateManageHub(msg.Params)
 	case ManageHubModuleSelectedMsg:
 		return true, m.activateManageHub(msg.Params)
 	default:

@@ -10,8 +10,7 @@ import (
 
 // Standard date format constants for consistent formatting across the codebase.
 const (
-	DateFormat     = "2006-01-02"       // Date only (YYYY-MM-DD)
-	DateTimeFormat = "2006-01-02 15:04" // Date and time (YYYY-MM-DD HH:MM)
+	DateFormat = "2006-01-02" // Date only (YYYY-MM-DD)
 )
 
 // Common time durations for date arithmetic and comparisons.

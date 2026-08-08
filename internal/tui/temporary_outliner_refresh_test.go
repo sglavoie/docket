@@ -23,7 +23,7 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 
 	// The Outliner is the sole root and already open on launch; ensure its
 	// cross-project cache is loaded before drilling into a single project scope.
-	driver.dispatch(ShowGlobalOutlinerMsg{})
+	driver.dispatch(launchOutlinerMsg{})
 	driver.drain()
 
 	cross := driver.App().crossOutliner

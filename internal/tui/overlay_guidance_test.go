@@ -6,9 +6,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 func session8GuidanceText(spec GuidanceSpec) string {
@@ -58,32 +56,6 @@ func TestHelpGuidanceTracksBrowseSearchTabAndEmptyStates(t *testing.T) {
 	model.filteredItems = nil
 	spec, ok = model.ContextualGuidance()
 	assertSession8Guidance(t, "empty", spec, ok, "no matching help items", "? close")
-}
-
-func TestConflictGuidanceGatesProjectOnlyAndRetryResolution(t *testing.T) {
-	retry := false
-	bundle := &storage.ConflictBundle{Record: storage.ConflictRecord{
-		ProjectName:            "Project One",
-		RequiresOperationRetry: &retry,
-		Conflicts:              []storage.MergeConflict{{}, {}},
-	}}
-	model := NewConflictResolutionModel(config.EmptyRuntimeState(""), bundle)
-
-	spec, ok := model.ContextualGuidance()
-	assertSession8Guidance(t, "project-only", spec, ok,
-		"l keep local", "r adopt remote", "e hand-merge", "j/k navigate", "Esc close")
-
-	retry = true
-	spec, ok = model.ContextualGuidance()
-	assertSession8Guidance(t, "retry", spec, ok, "r clear and retry operation", "j/k navigate", "Esc close")
-	text := session8GuidanceText(spec)
-	if strings.Contains(text, "keep local") || strings.Contains(text, "hand-merge") {
-		t.Fatalf("retry guidance advertises disabled resolutions: %s", text)
-	}
-
-	empty := NewConflictResolutionModel(config.EmptyRuntimeState(""), nil)
-	spec, ok = empty.ContextualGuidance()
-	assertSession8Guidance(t, "missing conflict", spec, ok, "Esc close")
 }
 
 func TestContextActionSheetGuidanceTracksBrowseSearchEmptyAndFailure(t *testing.T) {
@@ -229,17 +201,13 @@ func TestTransientSelectorsRenderGuidanceWithoutWorkspacePulse(t *testing.T) {
 		t.Fatalf("NewGenericTask: %v", err)
 	}
 	source := &models.Project{ID: "source", Name: "Source", Slug: "source"}
-	destination := &models.Project{ID: "destination", Name: "Destination", Slug: "destination"}
 
 	views := []struct {
 		name string
 		view View
 	}{
-		{name: "tag filter", view: NewTagFilterSelectorModel(ShowTagFilterMsg{Tags: []TagInfo{{Name: "alpha"}}})},
 		{name: "tag selector", view: NewTagSelectorModel(task, source, nil)},
-		{name: "bulk tag selector", view: NewBulkTagSelectorModel(nil)},
 		{name: "parent selector", view: NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewCrossProjectOutliner)},
-		{name: "project selector", view: NewProjectSelectorModel([]*models.Project{source, destination}, task, source)},
 	}
 	for _, test := range views {
 		t.Run(test.name, func(t *testing.T) {
@@ -256,21 +224,6 @@ func TestTransientSelectorsRenderGuidanceWithoutWorkspacePulse(t *testing.T) {
 }
 
 func TestTagSelectorSearchControlsMatchGuidanceBeforeCommitOrCancel(t *testing.T) {
-	t.Run("filter selector", func(t *testing.T) {
-		model := NewTagFilterSelectorModel(ShowTagFilterMsg{Tags: []TagInfo{{Name: "alpha"}}})
-		model.Update(syntheticKeyStr("/"))
-		model.Update(syntheticKey('z'))
-		if !model.IsSearchMode() || model.SearchQuery() != "z" {
-			t.Fatalf("filter selector did not enter search: active=%v query=%q", model.IsSearchMode(), model.SearchQuery())
-		}
-		if _, cmd := model.Update(syntheticKeyStr("esc")); cmd != nil || model.IsSearchMode() {
-			t.Fatalf("first Esc should clear search without canceling: active=%v cmd=%T", model.IsSearchMode(), cmd)
-		}
-		if _, cmd := model.Update(syntheticKeyStr("esc")); cmd == nil {
-			t.Fatal("second Esc should cancel the filter selector")
-		}
-	})
-
 	t.Run("single tag selector", func(t *testing.T) {
 		model := NewTagSelectorModel(nil, &models.Project{ID: "project", Name: "Project"}, nil)
 		model.Update(syntheticKeyStr("/"))
@@ -280,18 +233,6 @@ func TestTagSelectorSearchControlsMatchGuidanceBeforeCommitOrCancel(t *testing.T
 		}
 		if _, cmd := model.Update(syntheticKeyStr("enter")); cmd != nil || model.IsSearchMode() {
 			t.Fatalf("search Enter should apply the query without committing: active=%v cmd=%T", model.IsSearchMode(), cmd)
-		}
-	})
-
-	t.Run("bulk tag selector", func(t *testing.T) {
-		model := NewBulkTagSelectorModel(nil)
-		model.Update(syntheticKeyStr("/"))
-		model.Update(syntheticKey('a'))
-		if model.AddTagMode || model.SearchQuery() != "a" {
-			t.Fatalf("search text opened bulk add-tag mode: add=%v query=%q", model.AddTagMode, model.SearchQuery())
-		}
-		if _, cmd := model.Update(syntheticKeyStr("esc")); cmd != nil || model.IsSearchMode() {
-			t.Fatalf("search Esc should clear without canceling: active=%v cmd=%T", model.IsSearchMode(), cmd)
 		}
 	})
 }

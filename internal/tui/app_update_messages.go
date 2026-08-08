@@ -1,10 +1,8 @@
 package tui
 
 import (
-	"fmt"
 	"time"
 
-	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -53,13 +51,6 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.saveOutlinerFilterState()
 		m.quitting = true
 		return true, tea.Quit
-	case spinner.TickMsg:
-		if !m.isLoading {
-			return false, nil
-		}
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return true, cmd
 	case crossProjectsLoadedMsg:
 		// Cross-project loads belong to the sole authoritative Outliner, not to
 		// whichever child presentation happens to be visible when the async
@@ -97,33 +88,13 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		})
-	case outlinerFilterStateChangedMsg:
-		m.persistOutlinerFilterState()
-		return true, nil
-	case SaveStartMsg:
-		m.isLoading = true
-		m.loadingMessage = msg.Message
-		m.err = nil
-		return true, tea.Batch(
-			m.spinner.Tick(),
-			tea.Tick(10*time.Second, func(time.Time) tea.Msg { return SaveTimeoutMsg{} }),
-		)
-	case SaveTimeoutMsg:
-		return true, m.handleSaveTimeout()
 	case SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
-	case SaveErrorMsg:
-		m.isLoading = false
-		m.loadingMessage = ""
-		m.err = msg.Err
-		return true, statusTimeout(5 * time.Second)
 	case TransactionResultMsg:
 		return true, m.handleTransactionResult(msg)
 	case BatchTransactionResultMsg:
 		return true, m.handleBatchTransactionResult(msg)
 	case TransactionErrorMsg:
-		m.isLoading = false
-		m.loadingMessage = ""
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
 	default:
@@ -209,51 +180,13 @@ func (m *AppModel) reloadProjectByID(projectID string) {
 	}
 }
 
-func (m *AppModel) handleGlobalRefreshMessage(msg tea.Msg) (bool, tea.Cmd) {
-	switch msg.(type) {
-	case RefreshWorkspacePulseMsg:
-		m.refreshWorkspacePulseAt(time.Now())
-		return true, nil
-	case TodayClearedBannerClearMsg:
-		m.todayClearedBanner = ""
-		return true, nil
-	case NotesRefreshMsg:
-		return true, m.refreshActiveNotesManager()
-	default:
-		return false, nil
-	}
-}
-
-func (m *AppModel) persistOutlinerFilterState() {
-	// Persist filter state immediately so navigation (e.g. go drill-down
-	// from cross-outliner) reads the up-to-date cleared/changed values.
-	m.saveOutlinerFilterState()
-}
-
-func (m *AppModel) handleSaveTimeout() tea.Cmd {
-	if !m.isLoading {
-		return nil
-	}
-	loadMsg := m.loadingMessage
-	m.isLoading = false
-	m.loadingMessage = ""
-	if loadMsg != "" {
-		m.err = fmt.Errorf("save timed out — %s", loadMsg)
-	} else {
-		m.err = fmt.Errorf("save timed out")
-	}
-	return statusTimeout(5 * time.Second)
-}
+func (m *AppModel) handleGlobalRefreshMessage(tea.Msg) (bool, tea.Cmd) { return false, nil }
 
 func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
-	m.isLoading = false
-	m.loadingMessage = ""
 	m.clearToggleHistory()
 	// An empty success message means the mutation carried no status of its own
 	// (e.g. a ProjectTree/Outliner reorder committed through CommitProjectWorkflow):
-	// leave any status the view set synchronously intact rather than blanking it,
-	// matching the legacy treeRefreshMsg/outlinerRefreshMsg path that never touched
-	// the status line.
+	// leave any status the view set synchronously intact rather than blanking it.
 	if msg.SuccessMessage != "" {
 		m.setSuccessStatus(msg.SuccessMessage)
 	}

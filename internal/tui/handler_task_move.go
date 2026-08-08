@@ -72,7 +72,6 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 			DestProject:        destProject,
 			MovedCount:         res.MovedCount,
 			OldShortID:         oldShortID,
-			FromGlobal:         msg.FromGlobal,
 			TransactionID:      res.TransactionID,
 			outlinerRelocation: relocation,
 		}
@@ -81,12 +80,6 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 
 // handleTaskMovedToProject handles the result of a cross-project task move.
 func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, tea.Cmd) {
-	m.isLoading = false
-	m.loadingMessage = ""
-	var popCmd tea.Cmd
-	if !msg.FromGlobal {
-		popCmd = m.popView() // Close project selector (not needed for global flow)
-	}
 	m.refreshAllViews()
 	recordedOrigin := false
 	var jumpCmd tea.Cmd
@@ -115,11 +108,11 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	}
 	reloadCmd := m.requestCrossProjectOutlinerReload()
 	m.preserveMovedOutlinerTarget(msg)
-	return true, tea.Batch(popCmd, reloadCmd, jumpCmd, m.setRecoveryFeedback(statusMsg, msg.TransactionID, recordedOrigin))
+	return true, tea.Batch(reloadCmd, jumpCmd, m.setRecoveryFeedback(statusMsg, msg.TransactionID, recordedOrigin))
 }
 
 func (m *AppModel) preserveMovedOutlinerTarget(msg TaskMovedToProjectMsg) {
-	if !msg.FromGlobal || m.crossOutliner == nil || msg.Task == nil || msg.DestProject == nil {
+	if m.crossOutliner == nil || msg.Task == nil || msg.DestProject == nil {
 		return
 	}
 	// reloadCrossProjects captured the old project-qualified cursor before

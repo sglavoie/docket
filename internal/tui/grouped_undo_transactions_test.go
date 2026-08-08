@@ -281,15 +281,13 @@ func (e *moveHandlerEnv) reloadProject(t *testing.T, p *models.Project) *models.
 	return fresh
 }
 
-// assertMoveMsg drains the handler command, fails on a SaveErrorMsg, and returns
-// the TaskMovedToProjectMsg it must emit.
+// assertMoveMsg drains the handler command and returns the
+// TaskMovedToProjectMsg it must emit.
 func assertMoveMsg(t *testing.T, cmd tea.Cmd) TaskMovedToProjectMsg {
 	t.Helper()
 	msgs := drainTUITestCmd(t, cmd)
 	for _, msg := range msgs {
 		switch msg := msg.(type) {
-		case SaveErrorMsg:
-			t.Fatalf("move save failed: %v", msg.Err)
 		case ErrorMsg:
 			t.Fatalf("move failed: %v", msg.Err)
 		case TaskMovedToProjectMsg:

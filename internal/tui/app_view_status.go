@@ -25,13 +25,6 @@ func (m *AppModel) renderStatusBar() string {
 		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
 
-	// Show loading spinner if active.
-	if m.isLoading {
-		spinnerView := m.spinner.View()
-		msg := LoadingStyle.Render(spinnerView + " " + m.loadingMessage)
-		return separator + "\n" + renderLeftAlignedMsg(msg)
-	}
-
 	// Show error message if present.
 	if m.err != nil {
 		msg := ErrorStatusStyle.Render(icons.Get("error") + " " + m.err.Error())
@@ -42,13 +35,6 @@ func (m *AppModel) renderStatusBar() string {
 	// feedback, so it outranks banners and transient status text.
 	if spec, ok := m.pendingChordGuidance(); ok {
 		return renderGuidance(spec, m.width, m.currentAccentColor())
-	}
-
-	// Today-cleared banner takes precedence over the regular status message
-	// for the duration of its TTL — Peak-End Rule punctuation for daily completion.
-	if m.todayClearedBanner != "" {
-		msg := TodayClearedBannerStyle.Render(m.todayClearedBanner)
-		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 
 	// Show temporary status message if present.

@@ -102,7 +102,7 @@ func TestTaskWorkspaceRejectsProjectRouteScope(t *testing.T) {
 
 func TestOverlayStackNestingAndCancellation(t *testing.T) {
 	var canceled []string
-	first, _ := NewOverlay(OverlaySearch, "search")
+	first, _ := NewOverlay(OverlayForm, "search")
 	second, _ := NewOverlay(OverlayPicker, "status")
 	stack := OverlayStack{}
 	stack.Push(first, func() {

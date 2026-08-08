@@ -72,29 +72,18 @@ func TestGuidancePreservesShellPrecedenceAndRestores(t *testing.T) {
 		}
 	}
 
-	app.isLoading = true
-	app.loadingMessage = "loading workspace"
-	assertOwnsStatus("loading", "loading workspace")
-	app.isLoading = false
-
 	app.err = errors.New("storage failed")
 	assertOwnsStatus("error", "storage failed")
 	app.err = nil
-
-	app.todayClearedBanner = "Today complete"
-	assertOwnsStatus("Today banner", "Today complete")
-	app.todayClearedBanner = ""
 
 	app.statusMessage = "task saved"
 	assertOwnsStatus("transient status", "task saved")
 	app.statusMessage = ""
 
 	app.pendingChord = []string{"s"}
-	app.todayClearedBanner = "hidden banner"
 	app.statusMessage = "hidden status"
 	assertOwnsStatus("pending chord", "Esc cancel")
 	app.pendingChord = nil
-	app.todayClearedBanner = ""
 	app.statusMessage = ""
 
 	if restored := ansi.Strip(app.renderStatusBar()); restored != baseline {

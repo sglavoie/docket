@@ -40,11 +40,11 @@ func TestHandleTaskMessagesEditTask(t *testing.T) {
 	model, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 
-	msg := EditTaskMsg{Project: project, Task: task}
-	handled, _ := model.handleTaskMessages(msg)
+	msg := ShowTaskTextEditorMsg{Project: project, Task: task, Operation: taskapp.TaskOperationEditTitle}
+	handled, _ := model.handleEditorMessages(msg)
 
 	if !handled {
-		t.Error("EditTaskMsg should be handled")
+		t.Error("ShowTaskTextEditorMsg should be handled")
 	}
 	if model.currentView() != ViewTextEditor {
 		t.Errorf("currentView should be TextEditor, got %v", model.currentView())
@@ -76,29 +76,5 @@ func TestHandleTaskMessagesTaskCreated(t *testing.T) {
 	}
 	if app.currentView() != ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after task created, got %v", app.currentView())
-	}
-}
-
-func TestHandleTaskMessagesTaskDeleted(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
-
-	msg := TaskDeletedMsg{}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("TaskDeletedMsg should be handled")
-	}
-}
-
-func TestHandleTaskMessagesTaskStatusChanged(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.crossOutliner = NewOutlinerModel(project, nil, app.runtime)
-
-	msg := TaskStatusChangedMsg{Task: project.Tasks[0]}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("TaskStatusChangedMsg should be handled")
 	}
 }

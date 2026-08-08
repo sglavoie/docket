@@ -58,7 +58,6 @@ func chromePolicyForPresentation(view PresentationID) (presentationChromePolicy,
 		ViewGlobalNotes,
 		ViewTaskChecklist,
 		ViewTaskForm,
-		ViewConflictResolution,
 		ViewProjectHub:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeFullscreen,
@@ -70,12 +69,9 @@ func chromePolicyForPresentation(view PresentationID) (presentationChromePolicy,
 			kind:     presentationChromeFullscreen,
 			guidance: presentationGuidanceShell,
 		}
-	case ViewTagFilterSelector,
-		ViewPriorityPicker,
+	case ViewPriorityPicker,
 		ViewParentSelector,
-		ViewTagSelector,
-		ViewBulkTagSelector,
-		ViewProjectSelector:
+		ViewTagSelector:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeTransient,
 			guidance: presentationGuidanceOverlay,

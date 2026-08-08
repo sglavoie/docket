@@ -8,17 +8,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
 	transient := map[PresentationID]bool{
-		ViewTagFilterSelector: true,
-		ViewPriorityPicker:    true,
-		ViewParentSelector:    true,
-		ViewTagSelector:       true,
-		ViewBulkTagSelector:   true,
-		ViewProjectSelector:   true,
+		ViewPriorityPicker: true,
+		ViewParentSelector: true,
+		ViewTagSelector:    true,
 	}
 
 	for _, presentation := range allPresentations() {
@@ -93,7 +89,6 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 		t.Fatalf("new task: %v", err)
 	}
 	project := &models.Project{ID: "project-1", Name: "Project One", Slug: "project-one"}
-	retryRequired := false
 
 	tests := []struct {
 		name string
@@ -143,14 +138,6 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 		}},
 		{name: "help", view: func(pulse WorkspacePulse) string {
 			m := NewHelpViewModel(nil, ViewCrossProjectOutliner, "Outliner")
-			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
-			return m.View().Content
-		}},
-		{name: "conflict resolution", view: func(pulse WorkspacePulse) string {
-			m := NewConflictResolutionModel(config.EmptyRuntimeState(""), &storage.ConflictBundle{
-				Record: storage.ConflictRecord{ProjectName: "Project One", RequiresOperationRetry: &retryRequired},
-			})
 			m.SetSize(140, 30)
 			m.setWorkspacePulse(pulse)
 			return m.View().Content

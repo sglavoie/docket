@@ -89,9 +89,6 @@ func copyBoolMap[K comparable](src map[K]bool) map[K]bool {
 	return dst
 }
 
-// outlinerRefreshMsg signals that the outliner should refresh its rows.
-type outlinerRefreshMsg struct{}
-
 // saveProject persists the project's current in-memory state through the
 // application layer and grouped ledger undo. The caller has already
 // applied its structural mutation (swap/indent/outdent/section move/paste) to

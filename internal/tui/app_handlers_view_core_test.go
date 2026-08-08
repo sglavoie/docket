@@ -55,17 +55,6 @@ func TestHandleViewMessagesStatusClear(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesRefresh(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := RefreshMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("RefreshMsg should be handled")
-	}
-}
-
 func TestHandleViewMessagesStatusMsg(t *testing.T) {
 	app := newTestAppModel()
 

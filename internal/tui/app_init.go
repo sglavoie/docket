@@ -35,7 +35,6 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		height:            24,
 		views:             NewViewRegistry(),
 		operationRegistry: NewOperationRegistry(),
-		spinner:           NewSpinner(),
 		nextOrder:         []PlanningTask{},
 		nextOrderIDs:      make(map[TaskIdentity]bool),
 		today:             []PlanningTask{},

@@ -65,15 +65,16 @@ func newQuickCaptureInterruptFixture(t *testing.T) (*UITestDriver, *uitestWorksp
 
 func openFixtureOutliner(t *testing.T, driver *UITestDriver, project *models.Project) {
 	t.Helper()
-	driver.pendingCmd = driver.App().selectProjectNow(project)
+	cross := driver.App().crossOutliner
+	if cross == nil {
+		t.Fatal("cross-project outliner should be registered")
+	}
+	cross.pushProjectScope(project.ID)
+	cross.NavigateToTaskInProject(project.Tasks[0], project)
 	driver.drain()
 	obs := driver.Observe(ObserveOptions{})
 	if obs.CurrentView != ViewCrossProjectOutliner.String() {
 		t.Fatalf("current view = %q, want %q", obs.CurrentView, ViewCrossProjectOutliner.String())
-	}
-	cross := driver.App().crossOutliner
-	if cross == nil {
-		t.Fatal("cross-project outliner should be registered after selecting fixture project")
 	}
 	if cross.scopedProjectID != project.ID {
 		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.scopedProjectID)

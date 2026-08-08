@@ -4,8 +4,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // =============================================================================
@@ -39,9 +37,6 @@ func (PopViewMsg) closePopStyle() popStyle { return popOne }
 // BackMsg requests navigation back to the previous view.
 type BackMsg struct{}
 
-// RefreshMsg requests a refresh of the current view's data.
-type RefreshMsg struct{}
-
 // QuitMsg requests application termination.
 type QuitMsg struct{}
 
@@ -61,17 +56,8 @@ type UndoToastTimeoutMsg struct{}
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
-// TodayClearedBannerClearMsg dismisses the Today-cleared banner once its TTL
-// elapses. Distinct from StatusClearMsg so a normal status message coming in
-// later does not get wiped by the banner timer.
-type TodayClearedBannerClearMsg struct{}
-
 // periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
 type periodicSaveMsg struct{}
-
-// outlinerFilterStateChangedMsg signals that the outliner's filter state was
-// modified (e.g. Fx clear) and should be persisted to config immediately.
-type outlinerFilterStateChangedMsg struct{}
 
 // StatusMsg sets a temporary status message.
 type StatusMsg string
@@ -79,40 +65,10 @@ type StatusMsg string
 // InfoStatusMsg sets a temporary informational status message (neutral styling, no checkmark).
 type InfoStatusMsg string
 
-// =============================================================================
-// Misc Messages
-// =============================================================================
-
-// OpenDataFolderMsg opens the data folder in the configured editor.
-// If Project is nil, opens root data directory. Otherwise opens project directory.
-type OpenDataFolderMsg struct {
-	Project *models.Project
-}
-
-// OpenLogDirMsg opens the log directory in Finder.
-type OpenLogDirMsg struct{}
-
-// =============================================================================
-// Async Save Messages
-// =============================================================================
-
-// SaveStartMsg signals that an async save operation is starting.
-type SaveStartMsg struct {
-	Message string
-}
-
 // SaveCompleteMsg signals that an async save completed successfully.
 type SaveCompleteMsg struct {
 	SuccessMessage string
 }
-
-// SaveErrorMsg signals that an async save failed.
-type SaveErrorMsg struct {
-	Err error
-}
-
-// SaveTimeoutMsg is sent when a save operation has not completed within the timeout window.
-type SaveTimeoutMsg struct{}
 
 // =============================================================================
 // Helper Functions
@@ -141,16 +97,5 @@ const CursorFlashDuration = 150 * time.Millisecond
 func cursorFlashTimeout() tea.Cmd {
 	return tea.Tick(CursorFlashDuration, func(time.Time) tea.Msg {
 		return CursorFlashClearMsg{}
-	})
-}
-
-// TodayClearedBannerTimeout is how long the Today-cleared banner stays visible.
-const TodayClearedBannerTimeout = 5 * time.Second
-
-// todayClearedBannerTimeout returns a command that dismisses the Today-cleared
-// banner after TodayClearedBannerTimeout.
-func todayClearedBannerTimeout() tea.Cmd {
-	return tea.Tick(TodayClearedBannerTimeout, func(time.Time) tea.Msg {
-		return TodayClearedBannerClearMsg{}
 	})
 }

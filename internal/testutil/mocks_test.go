@@ -1,95 +1,10 @@
 package testutil
 
 import (
-	"errors"
-	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
-
-func TestMockEditorEditContentReturnsConfiguredEmptyContent(t *testing.T) {
-	editor := &MockEditor{ReturnContentSet: true}
-
-	got, err := editor.EditContent("original", ".md")
-	if err != nil {
-		t.Fatalf("EditContent() error = %v", err)
-	}
-
-	if got != "" {
-		t.Fatalf("EditContent() = %q, want empty string", got)
-	}
-	if editor.EditedContent != "original" {
-		t.Fatalf("EditedContent = %q, want original", editor.EditedContent)
-	}
-}
-
-func TestMockEditorEditContentDefaultsToOriginalContent(t *testing.T) {
-	editor := &MockEditor{}
-
-	got, err := editor.EditContent("original", ".md")
-	if err != nil {
-		t.Fatalf("EditContent() error = %v", err)
-	}
-
-	if got != "original" {
-		t.Fatalf("EditContent() = %q, want original", got)
-	}
-}
-
-func TestMockEditorEditContentReturnsError(t *testing.T) {
-	wantErr := errors.New("edit failed")
-	editor := &MockEditor{EditError: wantErr}
-
-	got, err := editor.EditContent("original", ".md")
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("EditContent() error = %v, want %v", err, wantErr)
-	}
-	if got != "" {
-		t.Fatalf("EditContent() = %q, want empty string on error", got)
-	}
-}
-
-func TestSetupTestDepsRegistersCleanup(t *testing.T) {
-	origSelector := external.DefaultSelector
-	origRenderer := external.DefaultRenderer
-	origEditor := external.DefaultEditor
-	t.Cleanup(func() {
-		external.DefaultSelector = origSelector
-		external.DefaultRenderer = origRenderer
-		external.DefaultEditor = origEditor
-	})
-
-	sentinelSelector := &MockSelector{}
-	sentinelRenderer := &MockRenderer{}
-	sentinelEditor := &MockEditor{}
-	external.DefaultSelector = sentinelSelector
-	external.DefaultRenderer = sentinelRenderer
-	external.DefaultEditor = sentinelEditor
-
-	var tempDir string
-	t.Run("caller does not manually clean up", func(t *testing.T) {
-		deps := SetupTestDeps(t, func(dataDir string) string { return dataDir })
-		tempDir = deps.DataDir
-
-		if external.DefaultSelector != deps.Selector {
-			t.Fatal("SetupTestDeps() did not install mock selector")
-		}
-		if _, err := os.Stat(tempDir); err != nil {
-			t.Fatalf("temp dir was not created: %v", err)
-		}
-	})
-
-	if external.DefaultSelector != sentinelSelector ||
-		external.DefaultRenderer != sentinelRenderer ||
-		external.DefaultEditor != sentinelEditor {
-		t.Fatal("SetupTestDeps() did not restore external defaults through t.Cleanup")
-	}
-	if _, err := os.Stat(tempDir); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("temp dir still exists after t.Cleanup; stat error = %v", err)
-	}
-}
 
 func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {
 	repo := NewMockRepository()

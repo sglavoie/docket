@@ -110,52 +110,6 @@ func TestHandleEscKey_NopAtOutlinerRoot(t *testing.T) {
 	}
 }
 
-func TestProjectSelectorEscClearsQueryBeforeClosing(t *testing.T) {
-	sourceProject, err := models.NewProject("source", "Source", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject source: %v", err)
-	}
-	destProject, err := models.NewProject("dest", "Destination", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject dest: %v", err)
-	}
-	task, err := models.NewGenericTask("task-1", 7, "Move me")
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-
-	app := newTestAppModel()
-	selector := NewProjectSelectorModel([]*models.Project{sourceProject, destProject}, task, sourceProject)
-	app.showView(ViewProjectSelector, selector)
-
-	app.Update(syntheticKey('d'))
-	if selector.SearchQuery() != "d" {
-		t.Fatalf("expected search query %q, got %q", "d", selector.SearchQuery())
-	}
-
-	_, cmd := app.Update(syntheticSpecialKey(tea.KeyEsc))
-	if cmd != nil {
-		t.Fatal("first esc with a query should clear search, not close the selector")
-	}
-	if app.currentView() != ViewProjectSelector {
-		t.Fatalf("expected selector to remain open after first esc, got %v", app.currentView())
-	}
-	if selector.SearchQuery() != "" {
-		t.Fatalf("expected cleared search query, got %q", selector.SearchQuery())
-	}
-	if len(selector.FilteredItems()) != 1 {
-		t.Fatalf("expected full project list to be restored, got %d item(s)", len(selector.FilteredItems()))
-	}
-
-	_, cmd = app.Update(syntheticSpecialKey(tea.KeyEsc))
-	if cmd != nil {
-		app.Update(cmd())
-	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
-	}
-}
-
 func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	parentA, err := models.NewGenericTask("parent-a", 1, "Alpha parent")
 	if err != nil {

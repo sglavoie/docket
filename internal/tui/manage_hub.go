@@ -17,12 +17,6 @@ type ManageHubModuleSelectedMsg struct {
 	Params ManageParams
 }
 
-// ShowManageHubMsg is the typed entry point used by startup routing and direct
-// Manage deep links.
-type ShowManageHubMsg struct {
-	Params ManageParams
-}
-
 var manageModuleNames = [...]string{
 	"Notes",
 	"Projects",

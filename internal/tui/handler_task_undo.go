@@ -10,40 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// handleTaskUndoMessages handles task undo/redo messages.
-// Returns true if the message was handled.
-func (m *AppModel) handleTaskUndoMessages(msg tea.Msg) (bool, tea.Cmd) {
-	switch msg := msg.(type) {
-	case UndoPerformedMsg:
-		return m.handleUndoPerformed(msg)
-
-	case RedoPerformedMsg:
-		return m.handleRedoPerformed(msg)
-	}
-	return false, nil
-}
-
-// handleUndoPerformed handles the UndoPerformedMsg.
-func (m *AppModel) handleUndoPerformed(msg UndoPerformedMsg) (bool, tea.Cmd) {
-	undoMsg := fmt.Sprintf("Undid: %s", msg.Action)
-	return m.handleUndoRedoPerformed(undoMsg)
-}
-
-// handleRedoPerformed handles the RedoPerformedMsg.
-func (m *AppModel) handleRedoPerformed(msg RedoPerformedMsg) (bool, tea.Cmd) {
-	redoMsg := fmt.Sprintf("Redo: %s", msg.Action)
-	return m.handleUndoRedoPerformed(redoMsg)
-}
-
-func (m *AppModel) handleUndoRedoPerformed(statusMsg string) (bool, tea.Cmd) {
-	m.clearToggleHistory()
-	m.setSuccessStatus(statusMsg)
-	m.refreshLoadedTaskWorkspace()
-	cmds := m.refreshTaskViewsAfterSave()
-	cmds = append(cmds, defaultStatusTimeout())
-	return true, tea.Batch(cmds...)
-}
-
 // workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
 // holds a reversible transaction for the applicable action.
 func (m *AppModel) workspaceLedgerRestoreIsNewest(redo bool) bool {

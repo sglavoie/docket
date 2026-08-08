@@ -4,14 +4,11 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 const CapabilityHarness Capability = "surface:test-harness"
 
 const (
-	operationHarnessExportProject   OperationID = "tui.harness.export-project"
 	operationHarnessNewProject      OperationID = "tui.harness.new-project"
 	operationHarnessOutliner        OperationID = "tui.harness.outliner"
 	operationHarnessOutlinerRoot    OperationID = "tui.harness.outliner-root"
@@ -23,7 +20,6 @@ const (
 	operationHarnessTaskAttachments OperationID = "tui.harness.task-attachments"
 	operationHarnessTaskComments    OperationID = "tui.harness.task-comments"
 	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
-	operationHarnessConflict        OperationID = "tui.harness.conflict"
 )
 
 type harnessOperationSpec struct {
@@ -39,10 +35,9 @@ type harnessOperationSpec struct {
 // links never appear in help, footers, or available-command output.
 func (m *AppModel) registerHarnessOperations() error {
 	specs := []harnessOperationSpec{
-		{operationHarnessExportProject, "export project", OperationCategoryProject, func() tea.Msg { return ExportProjectMsg{} }},
 		{operationHarnessNewProject, "new project", OperationCategoryProject, func() tea.Msg { return CreateProjectMsg{} }},
-		{operationHarnessOutliner, "outliner", OperationCategoryNavigation, func() tea.Msg { return ShowGlobalOutlinerMsg{} }},
-		{operationHarnessOutlinerRoot, "outliner root", OperationCategoryNavigation, func() tea.Msg { return ShowGlobalOutlinerMsg{} }},
+		{operationHarnessOutliner, "outliner", OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
+		{operationHarnessOutlinerRoot, "outliner root", OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
 		{operationHarnessReference, "reference", OperationCategorySystem, func() tea.Msg {
 			return ShowHelpMsg{
 				SourceView: m.currentView(),
@@ -52,10 +47,10 @@ func (m *AppModel) registerHarnessOperations() error {
 		}},
 		{operationHarnessScope, "choose scope", OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},
 		{operationHarnessInbox, "global inbox mode", OperationCategoryMode, func() tea.Msg {
-			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeInbox}}
+			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: ModeInbox})
 		}},
 		{operationHarnessProjectInbox, "project inbox mode", OperationCategoryMode, func() tea.Msg {
-			return ShowGlobalOutlinerMsg{Options: OutlinerOpenOptions{SetMode: true, Mode: ModeInbox}}
+			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: ModeInbox})
 		}},
 		{operationHarnessRenameProject, "rename project", OperationCategoryProject, func() tea.Msg {
 			_, project := m.outlinerTarget()
@@ -85,20 +80,6 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return ShowNotesManagerMsg{Scope: AllNotesScope()}
 		}},
-		{operationHarnessConflict, "resolve conflict", OperationCategorySystem, func() tea.Msg {
-			retryRequired := true
-			return ShowConflictResolutionMsg{Bundle: &storage.ConflictBundle{
-				Record: storage.ConflictRecord{
-					ProjectName:            "Rich Project",
-					Action:                 "task edit",
-					RequiresOperationRetry: &retryRequired,
-					Conflicts: []storage.MergeConflict{{
-						Kind: storage.MergeConflictFieldEdit, TaskTitle: "Build login form",
-						Field: "title", Base: "Build login", Local: "Build secure login", Current: "Build sign-in",
-					}},
-				},
-			}}
-		}},
 	}
 
 	for _, spec := range specs {
@@ -126,4 +107,14 @@ func (m *AppModel) registerHarnessOperations() error {
 		}
 	}
 	return nil
+}
+
+func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {
+	presentationCmd := m.prepareCrossProjectOutliner()
+	m.crossOutliner.ApplyOpenOptions(options)
+	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+	if err != nil {
+		return ErrorMsg{Err: err}
+	}
+	return OperationCommandResultMsg{Cmd: tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)}
 }

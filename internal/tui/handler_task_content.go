@@ -109,30 +109,3 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	}
 	return true, nil
 }
-
-// handleDescriptionEditorDone handles result from the description text editor popup.
-func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bool, tea.Cmd) {
-	if msg.Canceled {
-		return true, nil
-	}
-
-	if msg.Task == nil || msg.Project == nil {
-		return true, nil
-	}
-
-	// Check if description actually changed
-	if msg.NewDescription == msg.Task.Description {
-		return true, nil
-	}
-
-	res, err := m.appService.Edit(app.EditRequest{
-		Locator:     taskIdentityFor(msg.Task, msg.Project).Locator(),
-		Description: &msg.NewDescription,
-	})
-	if err != nil {
-		return true, errorCmd("%s", err)
-	}
-	m.reloadProjectByID(res.ProjectID)
-	m.refreshAllViews()
-	return true, m.handleSaveComplete(SaveCompleteMsg{SuccessMessage: "Description updated"})
-}
