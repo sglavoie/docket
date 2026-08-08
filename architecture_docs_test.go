@@ -42,7 +42,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"### Project tags",
 		"`models.ParkedProjectTag` (`parked`) is the sole behavioral project tag",
 		"`Runtime.TaskWorkspaceProjects()` returns non-archived projects that are not parked",
-		"the uppercase `F` facets — `Ft` project tags, `Fp` parked, `Fa` archived, `Fx` clear — decide which projects the snapshot contains at all",
+		"the uppercase `F` facets — `Ft` project tags, `Fp`/`FP` parked, `Fa`/`FA` archived, `Fx` clear — decide which projects the snapshot contains at all",
+		"Each axis is exclude, include, or only, the lowercase key owns include and the uppercase key owns only",
 		"`Space` on a tag row opens a sheet closed over Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
 		"filtered at read time instead of being cleared",
 		"`v` opens the searchable scope picker",
@@ -117,8 +118,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`m` atomically moves one note between active owners",
 		"Task workflow state, project tags, and project archive lifecycle are three independent axes",
 		"`Runtime.TaskWorkspaceProjects()` is non-archived and not parked, and is the only population the base Outliner reads",
-		"Project filter chords are `Ft`, `Fp`, `Fa`, and `Fx`",
-		"`Fp` and the `parked` row inside `Ft` write the same `ProjectFilterState` entry",
+		"Project filter chords are `Ft`, `Fp`, `FP`, `Fa`, `FA`, and `Fx`",
+		"The parked and archived populations are axes, not switches",
+		"`Fp`, `FP`, and the `parked` row inside `Ft` write the same `ProjectFilterState.ParkedMode` field",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)

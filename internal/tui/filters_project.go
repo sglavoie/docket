@@ -14,6 +14,17 @@ import (
 // tag filter could never name the projects the vocabulary does not cover.
 const untaggedProjectFilterKey = "\x00untagged"
 
+// projectPopulationMode is how one population axis answers a lifecycle question.
+// Exclude is the base workspace, Include widens it, and Only isolates it, so a
+// population the base scope hides can be audited without being mixed back in.
+type projectPopulationMode int
+
+const (
+	projectPopulationExclude projectPopulationMode = iota
+	projectPopulationInclude
+	projectPopulationOnly
+)
+
 // ProjectFilterState is the Outliner's population facet: which projects the task
 // projection reads at all. It is not a row predicate. A project this state drops
 // never enters the loaded snapshot, so no mode, section, or planning projection
@@ -21,24 +32,46 @@ const untaggedProjectFilterKey = "\x00untagged"
 type ProjectFilterState struct {
 	// Tags restricts the population to projects carrying one of these tags. The
 	// facets compose with OR, unlike the AND semantics of the task tag filter,
-	// because a project belongs to its whole tag set at once.
-	//
-	// Membership of models.ParkedProjectTag is the single population override:
-	// it is what Fp toggles and what selecting parked inside Ft sets, so the two
-	// routes cannot disagree. Parking is the one behavioral tag, so that entry
-	// widens the population rather than restricting it; every other tag is
-	// descriptive and restricts.
+	// because a project belongs to its whole tag set at once. Every tag here is
+	// descriptive; the reserved parked tag decides a population instead and
+	// lives in ParkedMode.
 	Tags map[string]bool
 
 	// Untagged admits projects whose tag set is empty.
 	Untagged bool
 
-	// IncludeArchived adds the archived population beneath the active one.
-	IncludeArchived bool
+	// ParkedMode is the parked population axis. Fp, FP, and the parked row inside
+	// Ft all write this one field, so the routes cannot disagree.
+	ParkedMode projectPopulationMode
+
+	// ArchivedMode is the archived population axis. It composes with ParkedMode
+	// by AND, like every other facet.
+	ArchivedMode projectPopulationMode
 }
 
 func newProjectFilterState() ProjectFilterState {
 	return ProjectFilterState{Tags: make(map[string]bool)}
+}
+
+// toggleProjectPopulation gives each key one state to own: pressing it selects
+// that mode, pressing it again while it already holds clears the axis.
+func toggleProjectPopulation(current, target projectPopulationMode) projectPopulationMode {
+	if current == target {
+		return projectPopulationExclude
+	}
+	return target
+}
+
+// projectPopulationAdmits applies one axis to one candidate.
+func projectPopulationAdmits(mode projectPopulationMode, carries bool) bool {
+	switch mode {
+	case projectPopulationOnly:
+		return carries
+	case projectPopulationInclude:
+		return true
+	default:
+		return !carries
+	}
 }
 
 // clone detaches the tag set so an async load reads the facets as they were when
@@ -48,44 +81,32 @@ func (f ProjectFilterState) clone() ProjectFilterState {
 	return f
 }
 
-// showsParked reports the shared population override. Fp and the parked row
-// inside Ft both read and write it here.
+// showsParked reports whether the parked population is loaded at all, under
+// either Include or Only.
 func (f *ProjectFilterState) showsParked() bool {
-	return f.Tags[models.ParkedProjectTag]
-}
-
-func (f *ProjectFilterState) setShowsParked(show bool) {
-	if f.Tags == nil {
-		f.Tags = make(map[string]bool)
-	}
-	if show {
-		f.Tags[models.ParkedProjectTag] = true
-		return
-	}
-	delete(f.Tags, models.ParkedProjectTag)
+	return f.ParkedMode != projectPopulationExclude
 }
 
 // restrictionTags returns the descriptive tags the filter narrows by, sorted.
-// The reserved parked tag is excluded because it decides the population instead.
 func (f *ProjectFilterState) restrictionTags() []string {
 	tags := make([]string, 0, len(f.Tags))
 	for tag := range f.Tags {
-		if tag != models.ParkedProjectTag {
-			tags = append(tags, tag)
-		}
+		tags = append(tags, tag)
 	}
 	sort.Strings(tags)
 	return tags
 }
 
 func hasActiveProjectFilters(f *ProjectFilterState) bool {
-	return len(f.Tags) > 0 || f.Untagged || f.IncludeArchived
+	return len(f.Tags) > 0 ||
+		f.Untagged ||
+		f.ParkedMode != projectPopulationExclude ||
+		f.ArchivedMode != projectPopulationExclude
 }
 
 // projectFilterFacetCount reports independently clearable population facets.
-// Descriptive tags and Untagged share one picker and therefore count once;
-// parked and archived are separate toggles even though parked is stored in the
-// tag map so the picker and Fp cannot disagree.
+// Descriptive tags and Untagged share one picker and therefore count once; the
+// parked and archived axes are one facet each however many keys reach them.
 func projectFilterFacetCount(f *ProjectFilterState) int {
 	if f == nil {
 		return 0
@@ -94,10 +115,10 @@ func projectFilterFacetCount(f *ProjectFilterState) int {
 	if len(f.restrictionTags()) > 0 || f.Untagged {
 		count++
 	}
-	if f.showsParked() {
+	if f.ParkedMode != projectPopulationExclude {
 		count++
 	}
-	if f.IncludeArchived {
+	if f.ArchivedMode != projectPopulationExclude {
 		count++
 	}
 	return count
@@ -106,17 +127,21 @@ func projectFilterFacetCount(f *ProjectFilterState) int {
 func clearProjectFilters(f *ProjectFilterState) {
 	f.Tags = make(map[string]bool)
 	f.Untagged = false
-	f.IncludeArchived = false
+	f.ParkedMode = projectPopulationExclude
+	f.ArchivedMode = projectPopulationExclude
 }
 
-// projectFilterAdmits applies the facets to one candidate project. Archival is
-// decided by which population the candidate came from, so this predicate only
-// enforces the parked override and the descriptive restriction.
+// projectFilterAdmits applies the facets to one candidate project. Both
+// lifecycle axes are enforced here, so the candidate populations only decide
+// presentation order and how much is loaded, never what is admitted.
 func projectFilterAdmits(project *models.Project, f ProjectFilterState) bool {
 	if project == nil {
 		return false
 	}
-	if models.ProjectTagsParked(project.Tags) && !f.showsParked() {
+	if !projectPopulationAdmits(f.ParkedMode, models.ProjectTagsParked(project.Tags)) {
+		return false
+	}
+	if !projectPopulationAdmits(f.ArchivedMode, project.Archived) {
 		return false
 	}
 	restriction := f.restrictionTags()
@@ -134,9 +159,9 @@ func projectFilterAdmits(project *models.Project, f ProjectFilterState) bool {
 	return false
 }
 
-// projectFilterParts renders the active facets as scope chrome chips. Parked and
-// archived read as inclusions because they widen a population the base scope
-// name already claims to exclude.
+// projectFilterParts renders the active facets as scope chrome chips. An
+// included population reads as an addition to the base scope name; an isolated
+// one reads as a replacement, because the base name no longer describes it.
 func projectFilterParts(f *ProjectFilterState) []string {
 	var parts []string
 	for _, tag := range f.restrictionTags() {
@@ -145,21 +170,31 @@ func projectFilterParts(f *ProjectFilterState) []string {
 	if f.Untagged {
 		parts = append(parts, "untagged")
 	}
-	if f.showsParked() {
-		parts = append(parts, "+parked")
-	}
-	if f.IncludeArchived {
-		parts = append(parts, "+archived")
-	}
+	parts = append(parts, projectPopulationPart(f.ParkedMode, "parked")...)
+	parts = append(parts, projectPopulationPart(f.ArchivedMode, "archived")...)
 	return parts
 }
 
+func projectPopulationPart(mode projectPopulationMode, name string) []string {
+	switch mode {
+	case projectPopulationOnly:
+		return []string{name + ":only"}
+	case projectPopulationInclude:
+		return []string{"+" + name}
+	default:
+		return nil
+	}
+}
+
 // projectFilterSelection returns the picker row IDs the current facets select,
-// including the untagged pseudo-entry.
+// including the parked behavioral row and the untagged pseudo-entry.
 func projectFilterSelection(f *ProjectFilterState) []ListItemID {
-	selected := make([]ListItemID, 0, len(f.Tags)+1)
+	selected := make([]ListItemID, 0, len(f.Tags)+2)
 	for tag := range f.Tags {
 		selected = append(selected, ListItemID("tag:"+tag))
+	}
+	if f.showsParked() {
+		selected = append(selected, ListItemID("tag:"+models.ParkedProjectTag))
 	}
 	if f.Untagged {
 		selected = append(selected, ListItemID("tag:"+untaggedProjectFilterKey))
@@ -168,20 +203,32 @@ func projectFilterSelection(f *ProjectFilterState) []ListItemID {
 }
 
 // applyProjectTagFilterValue replaces the tag facets from one picker result. The
-// untagged pseudo-entry travels in the same list of names so the picker needs no
-// second value channel.
+// parked row and the untagged pseudo-entry travel in the same list of names so
+// the picker needs no second value channel. A checked parked row that is already
+// isolating keeps Only, because the picker offers no way to say Include instead
+// and silently widening the population would answer a question nobody asked.
 func applyProjectTagFilterValue(f *ProjectFilterState, names []string) {
 	tags := make(map[string]bool, len(names))
 	untagged := false
+	parked := false
 	for _, name := range names {
-		if name == untaggedProjectFilterKey {
+		switch name {
+		case untaggedProjectFilterKey:
 			untagged = true
-			continue
+		case models.ParkedProjectTag:
+			parked = true
+		default:
+			tags[name] = true
 		}
-		tags[name] = true
 	}
 	f.Tags = tags
 	f.Untagged = untagged
+	switch {
+	case !parked:
+		f.ParkedMode = projectPopulationExclude
+	case f.ParkedMode == projectPopulationExclude:
+		f.ParkedMode = projectPopulationInclude
+	}
 }
 
 // projectTagFilterStatus names the resulting population rather than the count of

@@ -68,7 +68,7 @@ func newArchivedGuardEnv(t *testing.T) *archivedGuardEnv {
 	env := &archivedGuardEnv{workspace: workspace, driver: driver, active: active, archived: archived}
 	env.press(t, "F", "a")
 	out := env.outliner(t)
-	if !out.projectFilter.IncludeArchived {
+	if out.projectFilter.ArchivedMode != projectPopulationInclude {
 		t.Fatal("Fa did not turn on the archived population facet")
 	}
 	if !visibleOutlinerTaskIDs(out)[env.taskID(t, archived, archivedGuardArchivedTaskTitle)] {

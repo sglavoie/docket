@@ -139,16 +139,23 @@ belongs to the one cleanup facet and is not counted as a second state facet.
 comma state prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and
 `Ctrl+Esc`.
 
-Project filter chords are `Ft`, `Fp`, `Fa`, and `Fx`. Lowercase `f` refines the
-rows a projection holds; uppercase `F` decides which projects load, so every `F`
-facet reloads the population. `Ft` is a multi-select picker over the whole
-cataloged project tag vocabulary plus an Untagged pseudo-entry, so a facet can
-always be widened back out from inside the picker. `Space` on one of its tag
+Project filter chords are `Ft`, `Fp`, `FP`, `Fa`, `FA`, and `Fx`. Lowercase `f`
+refines the rows a projection holds; uppercase `F` decides which projects load,
+so every `F` facet reloads the population. `Ft` is a multi-select picker over the
+whole cataloged project tag vocabulary plus an Untagged pseudo-entry, so a facet
+can always be widened back out from inside the picker. `Space` on one of its tag
 rows offers Rename everywhere, Remove everywhere, Park all members, and
 Unpark all members through the ordinary project bulk-tag transaction; a removal
-that would strand a project asks for a destination tag first. `Fp` and the
-`parked` row inside `Ft` write the same `ProjectFilterState` entry, so the two
-routes can never claim different populations.
+that would strand a project asks for a destination tag first.
+
+The parked and archived populations are axes, not switches. Each is exclude,
+include, or only: the lowercase key owns include, the uppercase key owns only,
+and pressing the key that already holds clears that axis. The two axes compose
+with AND, so `FP` with `FA` names the projects that are both archived and
+parked. `Fp`, `FP`, and the `parked` row inside `Ft` write the same
+`ProjectFilterState.ParkedMode` field, so the routes can never claim different
+populations; the picker cannot express only, so a checked parked row that is
+already isolating keeps it rather than silently widening back to include.
 
 A chord prefix that a second key abandons sets a brief warning status naming the
 path it left, such as `sq is not a state / planning action`. An unbound root key

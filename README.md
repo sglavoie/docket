@@ -160,11 +160,18 @@ The lowercase `f` chord refines the rows a projection already holds. Uppercase
 | Keys | Effect |
 | --- | --- |
 | `Ft` | Pick project tags with AND semantics, plus an `Untagged` entry for projects carrying none |
-| `Fp` | Show or hide parked projects |
-| `Fa` | Show or hide archived projects |
+| `Fp` | Add parked projects to the population |
+| `FP` | Isolate the parked projects |
+| `Fa` | Add archived projects to the population |
+| `FA` | Isolate the archived projects |
 | `Fx` | Clear every project filter |
 
-`Fp` and selecting `parked` inside `Ft` are the same switch, so the two can
+Each population axis has three states — excluded, included, isolated — and the
+key that selects a state also clears it when pressed again. The two axes compose
+with AND, so `FP` with `FA` names the projects that are both archived and
+parked.
+
+`Fp`, `FP`, and selecting `parked` inside `Ft` are the same switch, so they can
 never disagree about which population is loaded. Inside `Ft`, `v` toggles a tag
 and `Space` over a tag row offers Rename everywhere, Remove everywhere, Park all
 members, and Unpark all members across every project carrying it, as one undo

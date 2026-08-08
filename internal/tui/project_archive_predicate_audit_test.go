@@ -35,6 +35,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/app_init.go:NewAppModel":                                       "lifecycle: a restored current project that was archived is dropped",
 	"internal/tui/app_projects.go:activeProjectByID":                             "availability: shell cache lookup admits parked projects",
 	"internal/tui/app_projects.go:ensureSystemUnfiledProject":                    "lifecycle: bootstrap repair un-archives protected Unfiled",
+	"internal/tui/filters_project.go:projectFilterAdmits":                        "lifecycle: the archived population axis decides exclude, include, or only",
 	"internal/tui/handler_project.go:handleProjectMessages":                      "lifecycle: selecting an archived project asks to restore it",
 	"internal/tui/handler_project_bulk_tags.go:planProjectBulkTags":              "lifecycle: an archived project refuses a tag edit",
 	"internal/tui/list_surface_adapters.go:ListSourceFromProjects":               "lifecycle: archived rows are bucketed into their own category",

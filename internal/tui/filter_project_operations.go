@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -15,7 +16,9 @@ import (
 const (
 	operationFilterProjectTags     OperationID = "tui.filter.project-tags"
 	operationFilterShowParked      OperationID = "tui.filter.show-parked"
+	operationFilterOnlyParked      OperationID = "tui.filter.only-parked"
 	operationFilterIncludeArchived OperationID = "tui.filter.include-archived"
+	operationFilterOnlyArchived    OperationID = "tui.filter.only-archived"
 	operationFilterProjectClear    OperationID = "tui.filter.project-clear"
 )
 
@@ -23,8 +26,10 @@ func projectFilterOperationDescriptors() []OperationDescriptor {
 	descriptor := filterOperationDescriptor
 	return []OperationDescriptor{
 		descriptor(operationFilterProjectTags, "Filter Projects by Tag", ValueProviderFilterProjectTags, "project tag filter"),
-		descriptor(operationFilterShowParked, "Show Parked Projects", "", "parked projects"),
+		descriptor(operationFilterShowParked, "Include Parked Projects", "", "parked projects"),
+		descriptor(operationFilterOnlyParked, "Only Parked Projects", "", "isolate parked projects"),
 		descriptor(operationFilterIncludeArchived, "Include Archived Projects", "", "archived projects"),
+		descriptor(operationFilterOnlyArchived, "Only Archived Projects", "", "isolate archived projects"),
 		descriptor(operationFilterProjectClear, "Clear Project Filters", "", "reset project filters"),
 	}
 }
@@ -52,19 +57,19 @@ func (m *AppModel) executeProjectFilterOperation(invocation OperationInvocation)
 		applyProjectTagFilterValue(filter, names)
 		status = projectTagFilterStatus(filter)
 	case operationFilterShowParked:
-		// Fp writes the same map entry the Ft picker's parked row writes, so the
-		// two routes cannot leave the population claiming different things.
-		filter.setShowsParked(!filter.showsParked())
-		status = "Parked projects hidden"
-		if filter.showsParked() {
-			status = "Showing parked projects"
-		}
+		// Fp, FP, and the Ft picker's parked row all write this one field, so the
+		// routes cannot leave the population claiming different things.
+		filter.ParkedMode = toggleProjectPopulation(filter.ParkedMode, projectPopulationInclude)
+		status = projectPopulationStatus(filter.ParkedMode, "Parked")
+	case operationFilterOnlyParked:
+		filter.ParkedMode = toggleProjectPopulation(filter.ParkedMode, projectPopulationOnly)
+		status = projectPopulationStatus(filter.ParkedMode, "Parked")
 	case operationFilterIncludeArchived:
-		filter.IncludeArchived = !filter.IncludeArchived
-		status = "Archived projects hidden"
-		if filter.IncludeArchived {
-			status = "Showing archived projects"
-		}
+		filter.ArchivedMode = toggleProjectPopulation(filter.ArchivedMode, projectPopulationInclude)
+		status = projectPopulationStatus(filter.ArchivedMode, "Archived")
+	case operationFilterOnlyArchived:
+		filter.ArchivedMode = toggleProjectPopulation(filter.ArchivedMode, projectPopulationOnly)
+		status = projectPopulationStatus(filter.ArchivedMode, "Archived")
 	case operationFilterProjectClear:
 		if !hasActiveProjectFilters(filter) {
 			return OperationHandlerResult{Status: "No project filters are active"}
@@ -76,6 +81,19 @@ func (m *AppModel) executeProjectFilterOperation(invocation OperationInvocation)
 	}
 
 	return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(status)}}
+}
+
+// projectPopulationStatus names the population one axis now loads rather than
+// the key that was pressed, because two keys reach the same three modes.
+func projectPopulationStatus(mode projectPopulationMode, name string) string {
+	switch mode {
+	case projectPopulationOnly:
+		return "Showing only " + strings.ToLower(name) + " projects"
+	case projectPopulationInclude:
+		return "Showing " + strings.ToLower(name) + " projects"
+	default:
+		return name + " projects hidden"
+	}
 }
 
 // projectFilterReloadCmd reloads the population and reports the new facets. The

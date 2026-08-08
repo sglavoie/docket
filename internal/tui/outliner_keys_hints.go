@@ -230,24 +230,40 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 			}
 		}
 	case "F":
-		filter := &m.projectFilter
-		switch path[1] {
-		case "t":
-			if selected := projectFilterSelection(filter); len(selected) > 0 {
-				hint.Label = fmt.Sprintf("project tags:%d", len(selected))
-			}
-		case "p":
-			if filter.showsParked() {
-				hint.Label = "parked:on"
-			}
-		case "a":
-			if filter.IncludeArchived {
-				hint.Label = "archived:on"
-			}
-		case "x":
-			if count := projectFilterFacetCount(filter); count > 0 {
-				hint.Label = fmt.Sprintf("clear:%d", count)
-			}
+		return m.decorateProjectFilterChordHint(path[1], hint)
+	}
+	return hint
+}
+
+// decorateProjectFilterChordHint decorates one F continuation. Each population
+// key only reports the mode it owns, so the other key of the same axis keeps
+// its static affordance instead of both rows naming one state.
+func (m *OutlinerModel) decorateProjectFilterChordHint(key string, hint ChordHint) ChordHint {
+	filter := &m.projectFilter
+	switch key {
+	case "t":
+		if selected := projectFilterSelection(filter); len(selected) > 0 {
+			hint.Label = fmt.Sprintf("project tags:%d", len(selected))
+		}
+	case "p":
+		if filter.ParkedMode == projectPopulationInclude {
+			hint.Label = "parked:on"
+		}
+	case "P":
+		if filter.ParkedMode == projectPopulationOnly {
+			hint.Label = "parked:only"
+		}
+	case "a":
+		if filter.ArchivedMode == projectPopulationInclude {
+			hint.Label = "archived:on"
+		}
+	case "A":
+		if filter.ArchivedMode == projectPopulationOnly {
+			hint.Label = "archived:only"
+		}
+	case "x":
+		if count := projectFilterFacetCount(filter); count > 0 {
+			hint.Label = fmt.Sprintf("clear:%d", count)
 		}
 	}
 	return hint

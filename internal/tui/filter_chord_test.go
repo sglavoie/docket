@@ -115,15 +115,28 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 
 	app.pendingChord = []string{"F"}
 	projectFilter := &app.crossOutliner.projectFilter
-	projectFilter.Tags = map[string]bool{"client": true, models.ParkedProjectTag: true}
+	projectFilter.Tags = map[string]bool{"client": true}
 	projectFilter.Untagged = true
-	projectFilter.IncludeArchived = true
+	projectFilter.ParkedMode = projectPopulationInclude
+	projectFilter.ArchivedMode = projectPopulationInclude
 	row = pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"t project tags:3", "p parked:on", "a archived:on", "x clear:3",
+		"t project tags:3", "p parked:on", "P only parked",
+		"a archived:on", "A only archived", "x clear:3",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated F row %q omits %q", row, want)
+		}
+	}
+
+	projectFilter.ParkedMode = projectPopulationOnly
+	projectFilter.ArchivedMode = projectPopulationOnly
+	row = pendingChordHintRowForTest(app)
+	for _, want := range []string{
+		"p include parked", "P parked:only", "a include archived", "A archived:only",
+	} {
+		if !strings.Contains(row, want) {
+			t.Errorf("isolated F row %q omits %q", row, want)
 		}
 	}
 	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {

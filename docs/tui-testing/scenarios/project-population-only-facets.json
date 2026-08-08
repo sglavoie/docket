@@ -1,0 +1,50 @@
+{
+  "name": "project-population-only-facets",
+  "fixture": "parked",
+  "size": "80x24",
+  "actions": [
+    { "type": "assert", "label": "the base scope hides the parked project", "assert": "contains", "value": "Active Projects · 1 parked" },
+    { "type": "assert", "assert": "not_contains", "value": "Revisit the paused migration" },
+
+    { "type": "key", "label": "the population chord offers both states of both axes", "key": "F" },
+    { "type": "assert", "assert": "contains", "value": "p include parked" },
+    { "type": "assert", "assert": "contains", "value": "P only parked" },
+    { "type": "assert", "assert": "contains", "value": "a include archived" },
+    { "type": "assert", "assert": "contains", "value": "A only archived" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "isolate the parked population", "key": "P" },
+    { "type": "assert", "assert": "status_contains", "value": "Showing only parked projects" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the scope names the population it replaced", "assert": "contains", "value": "Active Projects · parked:only" },
+    { "type": "assert", "assert": "contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "label": "the base workspace is gone rather than merged in", "assert": "not_contains", "value": "Ship the delivery checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the isolated state is what the same key reports", "key": "F" },
+    { "type": "assert", "assert": "contains", "value": "P parked:only" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "the two axes compose with AND", "key": "F" },
+    { "type": "key", "key": "A" },
+    { "type": "assert", "assert": "status_contains", "value": "Showing only archived projects" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "archived:only" },
+    { "type": "assert", "assert": "contains", "value": "No projects match project filters" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the key that already holds a state clears its axis", "key": "F" },
+    { "type": "key", "key": "A" },
+    { "type": "assert", "assert": "status_contains", "value": "Archived projects hidden" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Revisit the paused migration" },
+
+    { "type": "key", "label": "clear every project filter", "key": "F" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Project filters cleared" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · 1 parked" },
+    { "type": "assert", "assert": "not_contains", "value": "Revisit the paused migration" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

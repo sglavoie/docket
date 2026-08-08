@@ -189,15 +189,21 @@ malformed lifecycle timestamps.
 
 Population facets are a separate chord because they answer a different question.
 The lowercase `f` facets refine the rows a projection already holds and rebuild
-in place; the uppercase `F` facets — `Ft` project tags, `Fp` parked, `Fa`
-archived, `Fx` clear — decide which projects the snapshot contains at all, so
-each one reloads. `ProjectFilterState` carries the tag restriction, an
-`Untagged` entry for the legal empty tag set, and the archived switch, and
-`filteredProjectPopulation` applies it between the runtime population and the
-scope. `Fp` and the `parked` row inside the `Ft` picker toggle the same map
-entry, so the two routes cannot disagree about which population is loaded. The
-`Ft` picker sources the whole cataloged vocabulary rather than the loaded
-projects, otherwise a facet could never be widened back out from inside it.
+in place; the uppercase `F` facets — `Ft` project tags, `Fp`/`FP` parked,
+`Fa`/`FA` archived, `Fx` clear — decide which projects the snapshot contains at
+all, so each one reloads. `ProjectFilterState` carries the tag restriction, an
+`Untagged` entry for the legal empty tag set, and one `projectPopulationMode`
+per lifecycle axis, and `filteredProjectPopulation` applies it between the
+runtime population and the scope. Each axis is exclude, include, or only, the
+lowercase key owns include and the uppercase key owns only, and pressing the key
+that already holds clears the axis. The two axes compose with AND, like every
+other facet. `Fp`, `FP`, and the `parked` row inside the `Ft` picker write the
+same `ParkedMode` field, so the routes cannot disagree about which population is
+loaded; a checked parked row that is already isolating keeps Only, because the
+picker cannot express the difference and widening it would answer a question
+nobody asked. The `Ft` picker sources the whole cataloged vocabulary rather than
+the loaded projects, otherwise a facet could never be widened back out from
+inside it.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
 operational scan signals directly: workflow state, conditional high priority,

@@ -122,8 +122,12 @@ func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts)
 // active projects keep their pinned-first presentation order ahead of them.
 func filteredProjectPopulation(runtime *config.RuntimeState, filter ProjectFilterState) []*models.Project {
 	candidates := runtime.AvailableProjects()
-	if filter.IncludeArchived {
+	switch filter.ArchivedMode {
+	case projectPopulationOnly:
+		candidates = runtime.ArchivedProjects()
+	case projectPopulationInclude:
 		candidates = append(candidates, runtime.ArchivedProjects()...)
+	default:
 	}
 	selected := make([]*models.Project, 0, len(candidates))
 	for _, project := range candidates {
