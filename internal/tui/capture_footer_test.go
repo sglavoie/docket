@@ -21,7 +21,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 	}{
 		{
 			name:     "normal",
-			required: []string{"Enter create", "Ctrl+D create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"},
+			required: []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"},
 		},
 		{
 			name:               "autocomplete",
@@ -31,7 +31,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 		{
 			name:         "help",
 			helpExpanded: true,
-			required:     []string{"Enter create", "Ctrl+D create & edit", "Ctrl+V paste", "? close syntax", "Esc close syntax"},
+			required:     []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "? close syntax", "Esc close syntax"},
 		},
 		{
 			name:           "confirmation",
@@ -106,7 +106,7 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	}
 
 	plain := ansi.Strip(content)
-	for _, action := range []string{"Enter create", "Ctrl+D create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"} {
+	for _, action := range []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"} {
 		if !strings.Contains(plain, action) {
 			t.Fatalf("expected capture action %q at 60 columns, got:\n%s", action, plain)
 		}

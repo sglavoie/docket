@@ -163,9 +163,9 @@ func TestRenderedGuidanceColorsKeysAndPreservesPlainText(t *testing.T) {
 }
 
 func TestGuidanceSegmentFitToWidthKeepsKeyAndClipsLabel(t *testing.T) {
-	segment := guidanceSegment{Key: "Ctrl+D", Label: "create & edit"}
+	segment := guidanceSegment{Key: "Ctrl+E", Label: "create & edit"}
 	fitted := segment.fitToWidth(10)
-	if fitted.Key != "Ctrl+D" {
+	if fitted.Key != "Ctrl+E" {
 		t.Fatalf("fitted key = %q, want the keystroke intact", fitted.Key)
 	}
 	if got := lipgloss.Width(fitted.text()); got > 10 {

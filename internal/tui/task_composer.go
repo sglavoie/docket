@@ -260,7 +260,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ac.Mode == acModeNone {
 				return m, m.createCompact(false)
 			}
-		case "ctrl+d":
+		case "ctrl+e":
 			if m.ac.Mode == acModeNone {
 				return m, m.createCompact(true)
 			}
@@ -722,7 +722,7 @@ func (m *TaskComposerModel) ContextualGuidance() (GuidanceSpec, bool) {
 	)
 	if len(m.errors) > 0 && !m.confirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
 		spec = requiredActionGuidanceSpec(
-			"Enter retry", "Ctrl+D retry & edit", "Ctrl+V paste", "? syntax",
+			"Enter retry", "Ctrl+E retry & edit", "Ctrl+V paste", "? syntax",
 		)
 	}
 	if !m.confirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
@@ -743,5 +743,5 @@ func (m *TaskComposerModel) HandledKeys() []string {
 	if m.mode == ComposerExpanded && m.expanded != nil {
 		return m.expanded.HandledKeys()
 	}
-	return []string{"enter", "ctrl+s", "shift+enter", "ctrl+f", "ctrl+p", "ctrl+d", "?", "esc"}
+	return []string{"enter", "ctrl+s", "shift+enter", "ctrl+f", "ctrl+p", "ctrl+e", "?", "esc"}
 }

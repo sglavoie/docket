@@ -57,12 +57,12 @@ type TaskFormSubtaskEditedMsg struct {
 // handleSubtaskEditKey handles key events for the subtask edit overlay.
 func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	switch msg.String() {
-	case "enter", "ctrl+d":
+	case "enter", "ctrl+e":
 		title := strings.TrimSpace(m.subtaskItemInput.Value())
 		return nil, true, TaskFormSubtaskEditedMsg{
 			Idx:         m.childrenEditIdx,
 			Title:       title,
-			OpenContent: msg.String() == "ctrl+d",
+			OpenContent: msg.String() == "ctrl+e",
 		}
 	case "esc":
 		return nil, true, nil // cancel
@@ -82,7 +82,7 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
 	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
 	footerText := renderGuidanceText(requiredActionGuidanceSpec(
-		"Enter save", "Ctrl+D save & edit description",
+		"Enter save", "Ctrl+E save & edit description",
 	), max(innerWidth-4, 1))
 
 	m.subtaskItemInput.SetWidth(max(innerWidth-6, 1))

@@ -29,7 +29,7 @@ func captureGuidanceSpec(confirmDiscard, autocompleteActive, helpExpanded, synta
 	case helpExpanded && syntaxOverflow:
 		spec.Hints = []GuidanceHint{
 			newGuidanceHint("Enter create", 0, true),
-			newGuidanceHint("Ctrl+D create & edit", 1, false),
+			newGuidanceHint("Ctrl+E create & edit", 1, false),
 			newGuidanceHint("Ctrl+V paste", 2, false),
 			newGuidanceHint("Ctrl+J/K scroll", 3, false),
 			newGuidanceHint("PgUp/PgDn page", 4, false),
@@ -40,7 +40,7 @@ func captureGuidanceSpec(confirmDiscard, autocompleteActive, helpExpanded, synta
 	case helpExpanded:
 		spec.Hints = []GuidanceHint{
 			newGuidanceHint("Enter create", 0, true),
-			newGuidanceHint("Ctrl+D create & edit", 1, false),
+			newGuidanceHint("Ctrl+E create & edit", 1, false),
 			newGuidanceHint("Ctrl+V paste", 2, false),
 			newGuidanceHint("? close syntax", 0, true),
 			newGuidanceHint("Esc close syntax", 0, true),
@@ -48,7 +48,7 @@ func captureGuidanceSpec(confirmDiscard, autocompleteActive, helpExpanded, synta
 	default:
 		spec.Hints = []GuidanceHint{
 			newGuidanceHint("Enter create", 0, true),
-			newGuidanceHint("Ctrl+D create & edit", 1, false),
+			newGuidanceHint("Ctrl+E create & edit", 1, false),
 			newGuidanceHint("Ctrl+V paste", 2, false),
 			newGuidanceHint("? syntax", 3, false),
 			newGuidanceHint("Esc cancel", 0, true),
