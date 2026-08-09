@@ -130,7 +130,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 	}
 }
 
-func TestToggleVisibleSectionsKeepsUngroupedPrimaryTaskFocused(t *testing.T) {
+func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 	now := time.Now()
 	pinned := primaryRowsTask("pinned", models.StateInbox)
 	pinned.Pinned = true

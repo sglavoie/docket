@@ -9,6 +9,7 @@
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 1" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
     { "type": "key", "label": "open state and planning actions", "key": "s" },
     { "type": "key", "label": "triage the first Inbox task to Next", "key": "n" },
     { "type": "assert", "assert": "status_contains", "value": "Move to Next: Untriaged inbox item 1 · u undo" },

@@ -121,6 +121,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"Project filter chords are `Ft`, `Fp`, `FP`, `Fa`, `FA`, and `Fx`",
 		"The parked and archived populations are axes, not switches",
 		"`Fp`, `FP`, and the `parked` row inside `Ft` write the same `ProjectFilterState.ParkedMode` field",
+		"Project grouping is universal, not per-mode",
+		"Emit those headers through the shared `appendProjectGroupHeader` kernel; do not add a per-mode copy",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)

@@ -23,7 +23,7 @@ func (m *OutlinerModel) isPinnedReorderRow() bool {
 
 // pinnedSectionParentAt returns the section-local parent of the pinned row at
 // index, or the zero identity when the row sits at the section's root level.
-// It reproduces the edge rule buildSectionRowForest applies: a parent link is
+// It reproduces the edge rule buildSectionRowForestWith applies: a parent link is
 // retained only when the parent is itself projected into the same group. The
 // backward scan is sufficient because the flattener always emits a parent above
 // its children and only descends into expanded parents.

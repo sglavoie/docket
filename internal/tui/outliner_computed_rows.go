@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -25,6 +26,26 @@ const canonicalModeCollapseKeyPrefix = "_mode:"
 
 func canonicalModeCollapseKey(mode OutlinerModeID, bucket string) string {
 	return canonicalModeCollapseKeyPrefix + string(mode) + ":" + bucket
+}
+
+// canonicalModeProjectCollapseKeyPrefix namespaces the project groups a
+// canonical mode owns. Each grouping surface keeps a disjoint key namespace so a
+// fold left behind in one mode can never bind to a row in the mode you enter
+// next; collapsedSections is one map that survives every mode change.
+const canonicalModeProjectCollapseKeyPrefix = "_mode_project:"
+
+// modeProjectCollapseKey identifies one project's group in a mode that emits no
+// bucket header of its own.
+func modeProjectCollapseKey(mode OutlinerModeID, projectID string) string {
+	return canonicalModeProjectCollapseKeyPrefix + string(mode) + ":" + projectID
+}
+
+// modeSectionProjectCollapseKey identifies one project's group inside one bucket
+// of a computed mode. It derives from the section's own key so the bucket
+// vocabulary lives in exactly one place.
+func modeSectionProjectCollapseKey(sectionCollapseKey, projectID string) string {
+	return canonicalModeProjectCollapseKeyPrefix +
+		strings.TrimPrefix(sectionCollapseKey, canonicalModeCollapseKeyPrefix) + ":" + projectID
 }
 
 type orderedModeTask struct {

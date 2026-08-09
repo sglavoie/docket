@@ -4,6 +4,7 @@
   "size": "72x20",
   "actions": [
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
     { "type": "key", "label": "open the due-date picker with its direct key", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "no_layout_issues" }

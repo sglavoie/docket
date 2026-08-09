@@ -108,6 +108,14 @@ Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
 `PinnedAt` values inside one project group, including inside durably ordered
 Today.
 
+Project grouping is universal, not per-mode: whenever the Outliner shows more
+than one project, every mode emits a foldable `IsProjectHeader` row per project,
+and project groups appear in the order the mode's own order first names them.
+Grouping never reorders a mode's primary sort. Emit those headers through the
+shared `appendProjectGroupHeader` kernel; do not add a per-mode copy. Each
+grouping surface owns a disjoint `collapsedSections` key namespace, because that
+map is never cleared on a mode change.
+
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
 second keys jump straight to one mode, so a seventh mode never costs six Tab
 presses. That binding is the one place a single operation declares both `Keys`

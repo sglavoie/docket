@@ -27,11 +27,6 @@ type primaryProjectTree struct {
 	roots   []*models.Task
 }
 
-type primaryTaskRoot struct {
-	project *models.Project
-	task    *models.Task
-}
-
 type stateGroupProjectForest struct {
 	project *models.Project
 	forest  *sectionTaskForest
@@ -110,14 +105,12 @@ func (m *OutlinerModel) buildPrimaryModeRowsWithInput(
 		return
 	}
 
-	trees := m.buildPrimaryProjectTrees(projects, mode, input, pinned)
-	roots := flattenPrimaryProjectRoots(trees)
 	switch mode {
 	case ModeInbox, ModeBacklog:
 	default:
 		return
 	}
-	m.flattenPrimaryRoots(roots)
+	m.flattenPrimaryProjectTrees(m.buildPrimaryProjectTrees(projects, mode, input, pinned), mode)
 }
 
 func (m *OutlinerModel) buildAllPrimaryRows(
@@ -391,17 +384,10 @@ func (m *OutlinerModel) appendStateGroupForests(
 		if m.project == nil {
 			projectID = item.project.ID
 		}
-		if m.project == nil && !m.isProjectScoped() {
-			projectHeader := outlinerRow{
-				IsProjectHeader: true,
-				ProjectID:       projectID,
-				SectionCount:    item.forest.count,
-				CollapseKey:     projectSectionCollapseKey(projectID, group),
-			}
-			m.rows = append(m.rows, projectHeader)
-			if m.isSectionRowCollapsed(projectHeader) {
-				continue
-			}
+		if !m.appendProjectGroupHeader(
+			outlinerRow{}, projectID, item.forest.count, projectSectionCollapseKey(projectID, group),
+		) {
+			continue
 		}
 		m.flattenSectionForest(item.forest, projectID, &m.rows)
 	}
@@ -451,21 +437,24 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 	return sorted
 }
 
-func flattenPrimaryProjectRoots(trees []primaryProjectTree) []primaryTaskRoot {
-	var roots []primaryTaskRoot
+// flattenPrimaryProjectTrees renders one project group per tree. Trees arrive in
+// catalog order and each keeps its own tree-prefix run, so the last root of a
+// group closes with the terminal connector rather than continuing into the next
+// project.
+func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode OutlinerModeID) {
 	for _, tree := range trees {
-		for _, task := range tree.roots {
-			if task != nil {
-				roots = append(roots, primaryTaskRoot{project: tree.project, task: task})
-			}
+		if tree.project == nil {
+			continue
 		}
-	}
-	return roots
-}
-
-func (m *OutlinerModel) flattenPrimaryRoots(roots []primaryTaskRoot) {
-	for i, root := range roots {
-		m.flattenPrimaryTask(root.task, root.project, nil, i == len(roots)-1)
+		count := len(flattenTaskPointers(tree.roots))
+		if !m.appendProjectGroupHeader(
+			outlinerRow{}, tree.project.ID, count, modeProjectCollapseKey(mode, tree.project.ID),
+		) {
+			continue
+		}
+		for i, task := range tree.roots {
+			m.flattenPrimaryTask(task, tree.project, nil, i == len(tree.roots)-1)
+		}
 	}
 }
 

@@ -18,7 +18,6 @@ type sectionRowNode struct {
 	children      []*sectionRowNode
 	sourceIndex   int
 	earliestIndex int
-	subtreeCount  int
 }
 
 // sectionForestOptions selects how a section ranks its roots.
@@ -30,14 +29,10 @@ type sectionForestOptions struct {
 	rankRootsBySubtree bool
 }
 
-// buildSectionRowForest converts an ordered projection into a section-local
-// tree. Roots are ranked by the earliest source member in their subtree so a
-// child that ranks before its parent keeps the subtree at that earlier position.
-// Direct siblings retain their source order.
-func (m *OutlinerModel) buildSectionRowForest(rows []outlinerRow) sectionRowForest {
-	return m.buildSectionRowForestWith(rows, sectionForestOptions{rankRootsBySubtree: true})
-}
-
+// buildSectionRowForestWith converts an ordered projection into a section-local
+// tree. Under rankRootsBySubtree a root is ranked by the earliest source member
+// in its subtree, so a child that ranks before its parent keeps the subtree at
+// that earlier position. Direct siblings retain their source order.
 func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts sectionForestOptions) sectionRowForest {
 	forest := sectionRowForest{}
 	nodes := make([]*sectionRowNode, 0, len(rows))
@@ -51,7 +46,6 @@ func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts secti
 			row:           row,
 			sourceIndex:   sourceIndex,
 			earliestIndex: sourceIndex,
-			subtreeCount:  1,
 		}
 		nodes = append(nodes, node)
 		identity := m.sectionRowIdentity(row)
@@ -85,7 +79,6 @@ func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts secti
 			count += childCount
 		}
 		node.earliestIndex = earliest
-		node.subtreeCount = count
 		return earliest, count
 	}
 	for _, root := range forest.roots {
@@ -112,12 +105,76 @@ func (m *OutlinerModel) sectionRowIdentity(row outlinerRow) TaskIdentity {
 	return TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
 }
 
-func sectionRowNodesCount(roots []*sectionRowNode) int {
-	count := 0
-	for _, root := range roots {
-		count += root.subtreeCount
+// projectRowGroup is one project's portion of a section, already assembled into
+// a section-local forest.
+type projectRowGroup struct {
+	projectID string
+	forest    sectionRowForest
+}
+
+// groupSectionRowsByProject splits an ordered section projection into
+// per-project forests. Groups appear in the order the caller's own sort first
+// names each project, so grouping never outranks the order the section exists
+// to provide. No parent/child edge can cross a group boundary because a parent
+// identity is always project-local, so splitting before building the forests is
+// equivalent to building one forest over the whole section.
+func (m *OutlinerModel) groupSectionRowsByProject(
+	rows []outlinerRow,
+	opts sectionForestOptions,
+) []projectRowGroup {
+	groups := make([]projectRowGroup, 0, len(rows))
+	indexes := make(map[string]int, len(rows))
+	grouped := make([][]outlinerRow, 0, len(rows))
+	for _, row := range rows {
+		index, ok := indexes[row.ProjectID]
+		if !ok {
+			index = len(groups)
+			indexes[row.ProjectID] = index
+			groups = append(groups, projectRowGroup{projectID: row.ProjectID})
+			grouped = append(grouped, nil)
+		}
+		grouped[index] = append(grouped[index], row)
 	}
-	return count
+	for index := range groups {
+		groups[index].forest = m.buildSectionRowForestWith(grouped[index], opts)
+	}
+	return groups
+}
+
+// appendProjectGroupHeader emits one synthetic project sub-header and reports
+// whether the group's rows should follow. A project-scoped Outliner emits no
+// header because its chrome already names the project.
+func (m *OutlinerModel) appendProjectGroupHeader(
+	template outlinerRow,
+	projectID string,
+	count int,
+	collapseKey string,
+) bool {
+	if m.project != nil || m.isProjectScoped() {
+		return true
+	}
+	header := template
+	header.IsProjectHeader = true
+	header.ProjectID = projectID
+	header.SectionCount = count
+	header.CollapseKey = collapseKey
+	m.rows = append(m.rows, header)
+	return !m.isSectionRowCollapsed(header)
+}
+
+// appendProjectGroupedForests emits every project group of one section.
+func (m *OutlinerModel) appendProjectGroupedForests(
+	groups []projectRowGroup,
+	template outlinerRow,
+	collapseKeyFor func(projectID string) string,
+) {
+	for _, group := range groups {
+		if m.appendProjectGroupHeader(
+			template, group.projectID, group.forest.count, collapseKeyFor(group.projectID),
+		) {
+			m.flattenSectionRowForest(group.forest, &m.rows)
+		}
+	}
 }
 
 func (m *OutlinerModel) flattenSectionRowForest(forest sectionRowForest, rows *[]outlinerRow) {

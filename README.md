@@ -80,9 +80,20 @@ preserve workspace-wide planning order. Review is the sparse set of open tasks
 tagged `review`; pinned tasks still appear only in Pinned. Due is date ordered. Done, Canceled,
 and snoozed work stay hidden unless a filter explicitly asks for them.
 
+Every mode groups its tasks by project when you are looking at more than one
+project. A project group is a foldable `[slug] (count)` header; focus a single
+project and the headers disappear because the header line already names it.
+Project groups appear in the order the mode's own order first names them, so
+grouping never outranks the order the mode exists to provide: Pinned groups sort
+by their newest pin, Due groups by their earliest due date, Recent groups by
+their most recent activity, and All, Inbox, and Backlog groups in project
+catalog order. Tasks inside a group keep hierarchy, parent breadcrumbs, and the
+mode's own sort; `J`/`K` never move a task across a project group.
+
 Recent answers "what did I touch lately". It lists every task updated in the
 last 30 days newest-first under Today, Yesterday, Last 7 Days, and Last 30 Days,
-and includes Done, Canceled, and snoozed work because all of it is activity. The
+grouped by project inside each bucket, and includes Done, Canceled, and snoozed
+work because all of it is activity. The
 order freezes when you enter the mode, so triaging a row from there leaves it
 exactly where you are reading it; `gr` re-enters and re-reads activity.
 

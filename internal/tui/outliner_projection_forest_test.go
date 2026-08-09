@@ -17,12 +17,12 @@ func TestSectionRowForestUsesEarliestMemberRankAndSourceSiblingOrder(t *testing.
 	project := primaryRowsProject("project", parent, firstChild, secondChild, unrelated)
 	outliner := NewOutlinerModel(project, nil, nil)
 
-	forest := outliner.buildSectionRowForest([]outlinerRow{
+	forest := outliner.buildSectionRowForestWith([]outlinerRow{
 		{task: secondChild},
 		{task: unrelated},
 		{task: firstChild},
 		{task: parent},
-	})
+	}, sectionForestOptions{rankRootsBySubtree: true})
 	var rows []outlinerRow
 	outliner.flattenSectionRowForest(forest, &rows)
 
@@ -50,10 +50,10 @@ func TestSectionRowForestDoesNotLinkDuplicateTaskIDsAcrossProjects(t *testing.T)
 	beta := primaryRowsProject("beta", betaParent)
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 
-	forest := outliner.buildSectionRowForest([]outlinerRow{
+	forest := outliner.buildSectionRowForestWith([]outlinerRow{
 		{task: alphaChild, ProjectID: alpha.ID, Breadcrumb: taskAncestorBreadcrumb(alphaChild)},
 		{task: betaParent, ProjectID: beta.ID},
-	})
+	}, sectionForestOptions{rankRootsBySubtree: true})
 	var rows []outlinerRow
 	outliner.flattenSectionRowForest(forest, &rows)
 

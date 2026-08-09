@@ -4,6 +4,7 @@
   "size": "72x20",
   "actions": [
     { "type": "key", "label": "cycle from All to Inbox", "key": "tab" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
     { "type": "assert", "label": "snooze earns a footer slot at the minimum width", "assert": "contains", "value": "z snooze" },
     { "type": "key", "label": "open direct snooze values", "key": "z" },
     { "type": "assert", "assert": "contains", "value": "Set Snooze" },

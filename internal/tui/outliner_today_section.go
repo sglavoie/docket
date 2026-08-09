@@ -104,39 +104,17 @@ func (m *OutlinerModel) appendPlanningRows(rows []outlinerRow, group models.Work
 	if len(rows) == 0 {
 		return
 	}
-	forest := m.buildSectionRowForest(rows)
-	if m.project != nil || m.isProjectScoped() {
-		m.flattenSectionRowForest(forest, &m.rows)
-		return
-	}
-
-	isToday := group == models.StateGroupToday
-	isNext := group == models.StateGroupNext
-	projectOrder := make([]string, 0, len(forest.roots))
-	projectRoots := make(map[string][]*sectionRowNode, len(forest.roots))
-	for _, root := range forest.roots {
-		projectID := root.row.ProjectID
-		if _, exists := projectRoots[projectID]; !exists {
-			projectOrder = append(projectOrder, projectID)
-		}
-		projectRoots[projectID] = append(projectRoots[projectID], root)
-	}
-	for _, projectID := range projectOrder {
-		roots := projectRoots[projectID]
-		header := outlinerRow{
-			IsProjectHeader: true,
-			IsTodaySection:  isToday,
-			IsNextSection:   isNext,
-			StateGroup:      group,
-			ProjectID:       projectID,
-			SectionCount:    sectionRowNodesCount(roots),
-			CollapseKey:     planningProjectCollapseKey(projectID, group),
-		}
-		m.rows = append(m.rows, header)
-		if !m.isSectionRowCollapsed(header) {
-			m.flattenSectionRowRoots(roots, &m.rows)
-		}
-	}
+	m.appendProjectGroupedForests(
+		m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}),
+		outlinerRow{
+			IsTodaySection: group == models.StateGroupToday,
+			IsNextSection:  group == models.StateGroupNext,
+			StateGroup:     group,
+		},
+		func(projectID string) string {
+			return planningProjectCollapseKey(projectID, group)
+		},
+	)
 }
 
 func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {

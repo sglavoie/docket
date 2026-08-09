@@ -172,18 +172,24 @@ func (m *OutlinerModel) appendFilteredModeSections(
 		for _, row := range rows {
 			projectedRows = append(projectedRows, m.outlinerRowFromModeRow(row))
 		}
-		forest := m.buildSectionRowForest(projectedRows)
+		groups := m.groupSectionRowsByProject(projectedRows, sectionForestOptions{rankRootsBySubtree: true})
+		total := 0
+		for _, group := range groups {
+			total += group.forest.count
+		}
 		m.rows = append(m.rows, outlinerRow{
 			IsSectionHeader:  true,
 			IsComputedHeader: true,
 			SectionName:      section.Name,
-			SectionCount:     forest.count,
+			SectionCount:     total,
 			CollapseKey:      section.CollapseKey,
 		})
 		if m.collapsedSections[section.CollapseKey] {
 			continue
 		}
-		m.flattenSectionRowForest(forest, &m.rows)
+		m.appendProjectGroupedForests(groups, outlinerRow{}, func(projectID string) string {
+			return modeSectionProjectCollapseKey(section.CollapseKey, projectID)
+		})
 	}
 }
 
