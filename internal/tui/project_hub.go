@@ -128,6 +128,10 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if m.HasActiveSearch() {
 		switch key.String() {
+		case "esc":
+			// Leaving the input keeps the query so the matches stay browsable.
+			m.ConfirmSearch()
+			return m, nil
 		case "enter":
 			return m, m.activateProjectHubCurrent()
 		case "up", "ctrl+k":
@@ -152,11 +156,6 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "/":
 		return m, m.ActivateSearch()
-	case "esc":
-		if m.SearchQuery() != "" {
-			m.ClearSearch()
-			m.applyProjectFilter()
-		}
 	case "j", "down":
 		m.surface.MoveCursor(1)
 	case "k", "up":
@@ -699,7 +698,7 @@ func (m *ProjectHubModel) HasTextInput() bool {
 }
 
 func (m *ProjectHubModel) ShouldCaptureEsc() bool {
-	return m.actions != nil || m.SearchShouldCaptureEsc() || m.SearchQuery() != ""
+	return m.actions != nil || m.SearchShouldCaptureEsc()
 }
 
 func (m *ProjectHubModel) IsFullHeight() bool { return true }
@@ -716,7 +715,7 @@ func (m *ProjectHubModel) GetHelpItems() []HelpItem {
 		{Key: "v", Description: "Select or deselect the project under the cursor", Category: "Selection"},
 		{Key: "a/A", Description: "Select or deselect every matching project", Category: "Selection"},
 		{Key: "/", Description: "Search projects", Category: "Filters"},
-		{Key: "Esc", Description: "Clear search, then close", Category: "Navigation"},
+		{Key: "Esc", Description: "Leave search, then close", Category: "Navigation"},
 	}
 }
 

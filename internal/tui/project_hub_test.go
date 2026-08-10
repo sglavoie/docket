@@ -100,7 +100,7 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 	}
 }
 
-func TestProjectHubStartsInSearchAndEscReturnsToBrowse(t *testing.T) {
+func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
 	if !hub.HasActiveSearch() || !hub.HasTextInput() || !hub.ShouldCaptureEsc() {
@@ -119,19 +119,19 @@ func TestProjectHubStartsInSearchAndEscReturnsToBrowse(t *testing.T) {
 	}
 
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if hub.HasActiveSearch() || hub.SearchQuery() != "" {
+	if hub.HasActiveSearch() || hub.SearchQuery() != "bet" {
 		t.Fatalf("Esc left search active=%v query=%q", hub.HasActiveSearch(), hub.SearchQuery())
 	}
 	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != ViewProjectHub {
 		t.Fatalf("first Esc closed Project Hub: %s/%s", app.CurrentRoute().ID(), app.currentView())
 	}
-	if len(hub.surface.Matches()) != len(hub.surface.Items()) {
-		t.Fatalf("Esc restored %d/%d project rows", len(hub.surface.Matches()), len(hub.surface.Items()))
+	if len(hub.surface.Matches()) != 1 {
+		t.Fatalf("Esc left %d matches, want the filter intact", len(hub.surface.Matches()))
 	}
 
 	handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if !handled || app.CurrentRoute().ID() != TaskWorkspace {
-		t.Fatalf("clean browse Esc handled=%v route=%s, want Outliner", handled, app.CurrentRoute().ID())
+		t.Fatalf("filtered browse Esc handled=%v route=%s, want Outliner", handled, app.CurrentRoute().ID())
 	}
 }
 

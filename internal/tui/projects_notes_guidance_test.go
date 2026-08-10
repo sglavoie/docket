@@ -17,7 +17,7 @@ func TestProjectHubGuidanceFollowsSearchBrowseSelectionAndActions(t *testing.T) 
 
 	spec, ok := hub.ContextualGuidance()
 	assertGuidanceContains(t, "project search editing", spec, ok,
-		"Enter open project", "Esc clear and browse", "↑/↓ or Ctrl+J/K navigate")
+		"Enter open project", "Esc browse matches", "↑/↓ or Ctrl+J/K navigate")
 	if spec.Rows != 2 {
 		t.Fatalf("search-edit guidance rows = %d, want 2", spec.Rows)
 	}
@@ -36,7 +36,10 @@ func TestProjectHubGuidanceFollowsSearchBrowseSelectionAndActions(t *testing.T) 
 	hub.SetSearchQuery("alpha")
 	hub.applyProjectFilter()
 	spec, ok = hub.ContextualGuidance()
-	assertGuidanceContains(t, "project applied search", spec, ok, "Esc clear search")
+	assertGuidanceContains(t, "project applied search", spec, ok, "/ search")
+	if strings.Contains(guidanceEntryText(spec), "Esc") {
+		t.Fatalf("applied-search guidance advertises Esc: %q", guidanceEntryText(spec))
+	}
 	if !strings.Contains(spec.Supplemental, "search: alpha") {
 		t.Fatalf("applied-search supplemental = %q", spec.Supplemental)
 	}

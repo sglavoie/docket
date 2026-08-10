@@ -243,7 +243,10 @@ selection but preserves the active mode, search, and filters. `p` opens Select
 Project with search focused, over active and archived projects, each row
 carrying its task count and its tag chips. Project
 administration supports create, edit, pin, archive, restore, and project Notes.
-The catalog-owned Unfiled ID is the protection authority.
+The catalog-owned Unfiled ID is the protection authority. `Esc` leaves the search
+input with the query and its matches intact, so a search result set is browsable
+with the full browse grammar; `Esc` from browse closes Select Project, and `/`
+reopens search with the previous query still editable.
 
 Select Project is a `ListSelectionMulti` surface: `v` toggles the row under the
 cursor, `a`/`A` select or clear every match, and `Space` over a non-empty

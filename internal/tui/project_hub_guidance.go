@@ -43,16 +43,8 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 		return hasRows && profile != ListGuidanceSearchEditing && profile != ListGuidanceEmpty
 	}
 	searchEditing := func() bool { return profile == ListGuidanceSearchEditing }
-	searchApplied := func() bool {
-		return profile == ListGuidanceSearchApplied ||
-			(profile == ListGuidanceEmpty && state.Empty.Kind == ListEmptyNoMatches)
-	}
 	selection := func() bool { return profile == ListGuidanceSelection }
 
-	escapeLabel := "clear search"
-	if profile == ListGuidanceSearchEditing {
-		escapeLabel = "clear and browse"
-	}
 	return &keymap.KeyMap{Entries: []keymap.Entry{
 		keymap.Bind("j", "Move selection", "Navigation",
 			keymap.WithGate(browseList), keymap.WithFooter(20, "navigate", false),
@@ -69,9 +61,9 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 					(profile != ListGuidanceEmpty || state.Empty.Kind == ListEmptyNoMatches)
 			}),
 			keymap.WithFooter(12, "search", false)),
-		keymap.Bind("esc", "Clear project search", "Navigation",
-			keymap.WithGate(func() bool { return searchEditing() || searchApplied() }),
-			keymap.WithFooter(1, escapeLabel, true), keymap.WithFooterKey("Esc")),
+		keymap.Bind("esc", "Browse the current matches", "Navigation",
+			keymap.WithGate(searchEditing),
+			keymap.WithFooter(1, "browse matches", true), keymap.WithFooterKey("Esc")),
 		keymap.Bind("v", "Toggle project selection", "Selection",
 			keymap.WithGate(browseList), keymap.WithFooter(8, "toggle", false)),
 		keymap.Bind("a", "Select every match", "Selection",
