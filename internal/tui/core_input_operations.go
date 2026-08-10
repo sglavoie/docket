@@ -55,7 +55,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 	peek.Applicability = func(ctx CommandContext) bool {
 		return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
 	}
-	return []OperationDescriptor{
+	descriptors := []OperationDescriptor{
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
 		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
@@ -100,6 +100,20 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreGotoDue, "Go to Due", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "due mode"),
 		core(operationCoreGotoRecent, "Go to Recent", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "recent mode", "recent activity"),
 	}
+	// A cursor that positively names a project belongs to the project grammar, so
+	// a core operation that consumes a task must not bind there. Without this the
+	// s chord would still pend on a project header, because its three planning
+	// children stayed applicable and kept the whole subtree alive.
+	for i := range descriptors {
+		if !coreInputOperationRequiresTask(descriptors[i].ID) {
+			continue
+		}
+		inner := descriptors[i].Applicability
+		descriptors[i].Applicability = func(ctx CommandContext) bool {
+			return inner(ctx) && (ctx.Selection.Visual || !commandContextNamesNonTaskEntity(ctx))
+		}
+	}
+	return descriptors
 }
 
 // coreInputOperationRefusesSearchProjection names the outliner navigation

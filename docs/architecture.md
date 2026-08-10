@@ -179,7 +179,9 @@ A chord prefix that its second key abandons is explained rather than swallowed.
 through, and the miss sets a warning status such as `sq is not a state /
 planning action`. An unbound root key stays silent because it never showed a
 which-key row, and a key the cursor's entity turned off keeps its own target
-rejection sentence instead.
+rejection sentence instead. A chord prefix whose whole subtree that entity turned
+off refuses at the prefix, so a project header row never opens a which-key row
+that could not complete.
 
 ### Search, filters, and Peek
 
