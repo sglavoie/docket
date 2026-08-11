@@ -96,8 +96,9 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
-		"`N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
-		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix have no compatibility action",
+		"`Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
+		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
+		"The old standalone `b`, `d`, and `t` actions and comma state prefix have no compatibility action",
 		"`a` creates and selects a new tag",
 	})
 }
@@ -168,18 +169,19 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"`N` opens All Notes",
+		"`Ctrl+N` opens All Notes",
 		"Global plus every unarchived project, including the protected Unfiled project and every parked project",
 		"`v` opens a searchable All, Global, or single-project scope picker",
 		"`s` applies a persistent title/body search",
 		"`m` moves the selected note to another such owner as one atomic workspace transaction",
 		"Notes support open/edit, create, rename, move, delete, undo, and redo",
-		"Note tags, task links, pins, bulk actions, previews, archived-project ownership, and a `Ctrl+N` alias remain excluded",
+		"Note tags, task links, pins, bulk actions, previews, and archived-project ownership remain excluded",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Global notes and, when a project is focused",
 		"focused-project Notes",
 		"search and moving are removed",
+		"a `Ctrl+N` alias remain excluded",
 	})
 }
 

@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open All Notes", "key": "N" },
+    { "type": "key", "label": "open All Notes", "key": "ctrl+n" },
     { "type": "key", "label": "open creation destination picker", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "Create note in" },
     { "type": "assert", "assert": "contains", "value": "Global" },

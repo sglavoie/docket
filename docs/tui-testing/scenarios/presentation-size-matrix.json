@@ -11,7 +11,7 @@
     { "type": "assert", "label": "Help fits at 60x20", "assert": "no_layout_issues" },
     { "type": "key", "key": "?" },
 
-    { "type": "key", "label": "60x20 opens workspace Notes", "key": "N" },
+    { "type": "key", "label": "60x20 opens workspace Notes", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "label": "Notes fit at 60x20", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },

@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open workspace-wide Notes", "key": "N" },
+    { "type": "key", "label": "open workspace-wide Notes", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "contains", "value": "Notes" },
     { "type": "assert", "assert": "contains", "value": "All Notes" },

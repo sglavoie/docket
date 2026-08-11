@@ -19,7 +19,7 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 		return false
 	}
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader || row.IsProjectHeader {
+	if row.isHeaderRow() {
 		if m.isSectionRowCollapsed(row) {
 			return false
 		}
@@ -66,7 +66,7 @@ func (m *OutlinerModel) expandAtCursor() bool {
 		return false
 	}
 	row := m.rows[m.cursor]
-	if row.IsSectionHeader || row.IsProjectHeader {
+	if row.isHeaderRow() {
 		if !m.isSectionRowCollapsed(row) {
 			return false
 		}
@@ -92,6 +92,28 @@ func (m *OutlinerModel) expandAtCursor() bool {
 	m.rebuildRows()
 	m.moveCursorToIdentity(identity)
 	return true
+}
+
+// moveCursorToAdjacentHeader steps the cursor to the next (delta 1) or previous
+// (delta -1) grouping header, wrapping at either end. It reports false only when
+// the projection holds no header at all, which is what lets the caller say so
+// instead of leaving the key silent. A projection with exactly one header parks
+// the cursor there.
+func (m *OutlinerModel) moveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
+	if m == nil || len(m.rows) == 0 {
+		return nil, false
+	}
+	previous := m.cursor
+	for step := 1; step <= len(m.rows); step++ {
+		index := ((m.cursor+delta*step)%len(m.rows) + len(m.rows)) % len(m.rows)
+		if !m.rows[index].isHeaderRow() {
+			continue
+		}
+		m.cursor = index
+		m.updateRangeSelection()
+		return flashIfJumped(previous, m.cursor, &m.cursorFlash), true
+	}
+	return nil, false
 }
 
 // toggleVisibleSections expands every visible top-level section when any is

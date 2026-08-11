@@ -1,0 +1,31 @@
+{
+  "name": "outliner-header-jump",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "the cursor opens on the Backlog section header", "assert": "contains", "value": "S sections" },
+
+    { "type": "key", "label": "n steps onto the first project header", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "# project tags" },
+    { "type": "assert", "assert": "not_contains", "value": "S sections" },
+
+    { "type": "key", "label": "n walks the remaining three project headers", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "# project tags" },
+
+    { "type": "key", "label": "n past the last header wraps to the section header", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "S sections" },
+
+    { "type": "key", "label": "N from the first header wraps to the last", "key": "N" },
+    { "type": "assert", "assert": "contains", "value": "# project tags" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the flat search projection holds no header", "key": "/" },
+    { "type": "text", "text": "Alpha" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "key": "n" },
+    { "type": "assert", "assert": "status_contains", "value": "No sections to jump between" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -28,6 +28,8 @@ const (
 	operationCoreCursorBottom     OperationID = "tui.core.cursor-bottom"
 	operationCoreCursorPageUp     OperationID = "tui.core.cursor-page-up"
 	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
+	operationCoreNextHeader       OperationID = "tui.core.next-header"
+	operationCorePreviousHeader   OperationID = "tui.core.previous-header"
 	operationCoreJumpBackward     OperationID = "tui.core.jump-backward"
 	operationCoreJumpForward      OperationID = "tui.core.jump-forward"
 	operationCoreFocusLatest      OperationID = "tui.core.focus-latest"
@@ -136,6 +138,8 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorBottom, "Go to Last Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageUp, "Half Page Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreNextHeader, "Next Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to next section", "next group"),
+		core(operationCorePreviousHeader, "Previous Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to previous section", "previous group"),
 		core(operationCoreJumpBackward, "Jump to Older Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreJumpForward, "Jump to Newer Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreFocusLatest, "Focus Latest Activity", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "latest activity", "last touched"),
@@ -331,6 +335,18 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreMoveCursor("ctrl+u"))
 	case operationCoreCursorPageDown:
 		message = commandMessage(m.coreMoveCursor("ctrl+d"))
+	case operationCoreNextHeader, operationCorePreviousHeader:
+		delta := 1
+		if invocation.Descriptor.ID == operationCorePreviousHeader {
+			delta = -1
+		}
+		if out, ok := m.outlinerPrimary(); ok {
+			cmd, moved := out.moveCursorToAdjacentHeader(delta)
+			if !moved {
+				return OperationHandlerResult{Status: "No sections to jump between"}
+			}
+			message = commandMessage(cmd)
+		}
 	case operationCoreJumpBackward:
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.jumpBackward())

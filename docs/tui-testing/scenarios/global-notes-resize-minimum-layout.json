@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x40",
   "actions": [
-    { "type": "key", "label": "open All Notes", "key": "N" },
+    { "type": "key", "label": "open All Notes", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "contains", "value": "2 notes across 3 owners" },
     { "type": "assert", "assert": "no_layout_issues" },

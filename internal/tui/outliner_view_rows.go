@@ -61,6 +61,14 @@ func (r outlinerRow) isNavigable() bool {
 	return !r.IsSeparator
 }
 
+// isHeaderRow reports whether the row is one of the two cursorable grouping
+// headers. Both fold under h/l and both are what n/N step between. Section
+// headers alone would leave n/N dead in the four modes that group by project
+// only.
+func (r outlinerRow) isHeaderRow() bool {
+	return r.IsSectionHeader || r.IsProjectHeader
+}
+
 // collapseKey returns the effective key for collapsedSections lookups.
 // Cross-project headers set CollapseKey to "projectID:sectionName"; single-project
 // headers leave it empty and fall back to SectionName.

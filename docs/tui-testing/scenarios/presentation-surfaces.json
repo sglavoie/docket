@@ -9,7 +9,7 @@
     { "type": "key", "label": "leave the Project search interaction", "key": "esc" },
     { "type": "key", "label": "return to the Outliner", "key": "esc" },
 
-    { "type": "key", "label": "open Notes", "key": "N" },
+    { "type": "key", "label": "open Notes", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },

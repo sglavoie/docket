@@ -99,6 +99,7 @@ The direct grammar is:
 Tab / Shift+Tab                 seven modes
 ga gi gt gn gb gd gr           go-to chord, one mode each
 j/k, arrows, h/l, S, gg/Home, G/End  navigation
+n / N                          next/previous grouping header, wrapping
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
 Ctrl+L                         Recent, focused on the newest activity
 a/A, e/E, Ctrl+E, O            capture/edit
@@ -109,7 +110,7 @@ od op oc ou ot ox              sort chord, one order axis each
 y Y Ctrl+Y                     clipboard
 v V Ctrl+A Space               selection/actions
 x                              tick a checklist item, or start one from a task row
-p N T / ? u Ctrl+R Esc Ctrl+C  global
+p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
 Pinned renders in All and Today only, declared by `ShowsPinned` on the
@@ -126,6 +127,17 @@ Grouping never reorders a mode's primary sort. Emit those headers through the
 shared `appendProjectGroupHeader` kernel; do not add a per-mode copy. Each
 grouping surface owns a disjoint `collapsedSections` key namespace, because that
 map is never cleared on a mode change.
+
+`n`/`N` step the cursor between grouping headers, and their stop set is
+`isHeaderRow()` — section headers and project headers both — because the header
+kind is not uniform across modes: All, Due, and Recent emit section headers while
+Inbox, Backlog, Today, and Next group by project only, so a section-only stop set
+would leave the keys dead in four of the seven modes. That predicate is the same
+one `h`/`l` fold on and the same one the header guidance reads. The walk wraps at
+either end, and a projection holding no header at all — a project-scoped view or
+a search projection — reports so through `OperationHandlerResult.Status` rather
+than leaving the key silent. `S` keeps its own narrower `visibleSectionHeaders()`
+scan, which deliberately excludes project headers.
 
 Checklist items render as ordinary rows folded beneath their owner task, emitted
 by the one `expandChecklistRows` post-pass so no mode strategy carries a copy.
@@ -239,7 +251,7 @@ opens the completion-age picker and installs the Done/Canceled state predicate
 with the chosen age, so the matches are visible without a separate `fs` step;
 cleanup uses `fc` → `Ctrl+A` → `Space` Delete. That terminal-state predicate
 belongs to the one cleanup facet and is not counted as a second state facet.
-`fx` clears every facet. The old standalone `b`, `d`, `n`, and `t` actions and
+`fx` clears every facet. The old standalone `b`, `d`, and `t` actions and
 comma state prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and
 `Ctrl+Esc`.
 
@@ -445,14 +457,14 @@ mode survives at zero selected members and only `Esc` leaves it.
 project administration. It lists `Runtime.AvailableProjects()` with each
 project's tag chips, `v` selects a row, `a`/`A` select or clear every matching
 row, and `Space` over a selection offers Add tag, Remove tag, Park and Unpark
-across the whole selection in one transaction. `N` always
+across the whole selection in one transaction. `Ctrl+N` always
 opens All Notes across Global and every project returned by
 `Runtime.AvailableProjects()`. Inside Notes, `v` chooses All, Global, or one active
 project, `s` persistently searches titles and bodies, and `m` atomically moves
 one note between active owners. Creation with `n` or its `a` alias always asks
 for a destination; the remaining mutation grammar is open/edit, rename,
 delete, undo, and redo. Keep
-note identity location-qualified, keep archived projects and `Ctrl+N` excluded,
+note identity location-qualified, keep archived projects excluded,
 and do not restore note tags, task links, pins, bulk actions, or previews. `T`
 toggles only dark/light.
 

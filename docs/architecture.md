@@ -483,8 +483,8 @@ all refresh the affected canonical collections through the workspace ledger;
 move commits its destination write and revision-checked source delete as one
 artifact transaction. Malformed notes remain available for raw editing and
 deletion but cannot be renamed or moved until repaired. Search and scope are
-session-only. Note tags, task links, pins, bulk actions, previews, archived
-owners, and `Ctrl+N` remain outside the product. Editor resolution is
+session-only. Note tags, task links, pins, bulk actions, previews, and archived
+owners remain outside the product. Editor resolution is
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`.
 
 ## Persistence layout

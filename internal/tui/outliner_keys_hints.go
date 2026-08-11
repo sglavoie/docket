@@ -109,8 +109,7 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 	if m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
-	return row.IsSectionHeader || row.IsProjectHeader
+	return m.rows[m.cursor].isHeaderRow()
 }
 
 func (m *OutlinerModel) headerGuidance() GuidanceSpec {

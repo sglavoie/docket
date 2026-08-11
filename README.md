@@ -112,7 +112,7 @@ when that task would otherwise be hidden.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` inspects |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
@@ -120,14 +120,14 @@ when that task would otherwise be hidden.
 | Sorting | `o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `p` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `p` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 Inside the `@` and `z` pickers, `a` opens a typed-date input for any date the
 relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
 `next mon`, or `dec 15`. Inside the `#` picker the same key adds a new tag.
 
 The operation descriptors are the single source for dispatch, contextual
-guidance, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
+guidance, chord hints, and `?` help. The old standalone `b`, `d`, and `t`
 actions and comma state prefix have no compatibility action; neither do removed
 keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
 
@@ -465,7 +465,7 @@ to the Active base with nothing left behind.
 Archiving is separate. It preserves a project's tags and restoring returns
 them unchanged.
 
-`N` opens All Notes, a workspace-wide manager that scans Global plus every
+`Ctrl+N` opens All Notes, a workspace-wide manager that scans Global plus every
 unarchived project, including the protected Unfiled project and every parked
 project. Rows are ordered by most recent
 modification and carry an owner label. `v` opens a searchable All, Global, or
@@ -478,8 +478,8 @@ another such owner as one atomic workspace transaction. `Enter` opens and edits 
 note in
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
 configure one. Notes support open/edit, create, rename, move, delete, undo, and
-redo. Note tags, task links, pins, bulk actions, previews, archived-project
-ownership, and a `Ctrl+N` alias remain excluded.
+redo. Note tags, task links, pins, bulk actions, previews, and archived-project
+ownership remain excluded.
 
 `T` toggles exactly two maintained machine-local themes: dark and light.
 

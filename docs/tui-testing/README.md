@@ -91,7 +91,7 @@ Accepted key names include printable public keys plus:
 ```text
 tab shift+tab enter space esc
 up down left right home end pgup pgdown
-ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+y ctrl+c
+ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+y ctrl+c
 ```
 
 The final public grammar is:
@@ -99,6 +99,7 @@ The final public grammar is:
 ```text
 Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
+n/N                              next/previous grouping header, wrapping
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
 a/A e/E Ctrl+E O                 capture and edit
@@ -108,11 +109,11 @@ wi wb wn wt wg wr ww wp wm wd wc    workflow chord
 y Y Ctrl+Y                      clipboard
 v V Ctrl+A Space Enter          selection, actions, Peek
 x                               tick the checklist item under the cursor
-p N T / ? u Ctrl+R Esc Ctrl+C   global
+p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-3 fs fc ft fd fz fx         filters
 ```
 
-The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix are
+The old standalone `b`, `d`, and `t` actions and comma state prefix are
 intentionally unbound, as are `c`, `m`, `:`, `R`, and `Ctrl+Esc`.
 
 The presentation grammar is also part of the scenario contract. Full-screen
@@ -152,6 +153,7 @@ The committed suite exercises the product contracts directly:
 | Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
 | Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
+| Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
 | Priority, workflow, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
