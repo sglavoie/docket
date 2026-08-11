@@ -129,6 +129,53 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	return m, nil
 }
 
+// focusLatestActivity enters Recent and lands the cursor on the newest task it
+// admits. Entry re-reads activity, so the landing row is the task you touched
+// last rather than the one that led the snapshot you have been triaging.
+func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
+	m.selectOutlinerMode(ModeRecent)
+	task, project, sectionKey, ok := m.recentActivityLead()
+	if !ok {
+		m.setStatus("No activity in the last 30 days")
+		return nil
+	}
+	identity := taskIdentityFor(task, project)
+	index, found := m.rowIndexForTask(identity)
+	if !found {
+		m.revealRecentActivityLead(task, identity, sectionKey)
+		m.rebuildRows()
+		if index, found = m.rowIndexForTask(identity); !found {
+			m.setStatus("Latest activity is unavailable in this projection")
+			return nil
+		}
+	}
+	oldCursor := m.cursor
+	// The mode transition carries the origin's scroll offset over, which would
+	// seat the lead against the viewport edge with the section and project
+	// headers naming it scrolled off. Recent puts the lead near the top, so
+	// reading the window from row zero keeps those headers on screen.
+	m.viewScrollOffset = 0
+	m.cursor = index
+	m.setStatus("Latest activity: " + task.Title)
+	return flashIfJumped(oldCursor, index, &m.cursorFlash)
+}
+
+// revealRecentActivityLead opens the three things that can hide the lead: its
+// bucket, its project group inside that bucket, and its ancestor chain. It runs
+// only after a first attempt failed, so an unrelated fold is never disturbed.
+func (m *OutlinerModel) revealRecentActivityLead(
+	task *models.Task,
+	identity TaskIdentity,
+	sectionKey string,
+) {
+	delete(m.collapsedSections, sectionKey)
+	delete(m.collapsedSections, modeSectionProjectCollapseKey(sectionKey, identity.ProjectID))
+	m.ensureExpandedNodes()
+	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
+		m.expandedNodes[TaskIdentity{ProjectID: identity.ProjectID, TaskID: ancestor.ID}] = true
+	}
+}
+
 // cycleWorkMode advances the active mode by delta within the exact seven-item
 // cycle.
 func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {

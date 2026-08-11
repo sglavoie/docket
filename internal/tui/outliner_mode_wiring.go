@@ -73,21 +73,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	}
 
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
-	input := m.buildOutlinerModeInput(projects)
-	recent := mode.ID == ModeRecent
-	// Recent reports what happened, so it owns terminal and snoozed membership
-	// instead of waiting for an explicit facet to admit them.
-	input.IncludeSnoozed = recent || m.hasExplicitSnoozedFilter()
-	input.IncludeTerminal = recent || m.hasExplicitTerminalFilter()
-	input.CandidateTasks = make(map[string][]*models.Task, len(projects))
-	for _, project := range projects {
-		if project != nil {
-			input.CandidateTasks[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
-		}
-	}
-	if recent {
-		input.RecencyKeys = m.freezeRecencyKeys(input.CandidateTasks, projects)
-	}
+	input := m.buildModeCandidateInput(mode.ID, projects)
 	var pinned pinnedSectionBuild
 	if mode.ShowsPinned {
 		pinned = m.buildPinnedSection(input)
@@ -109,6 +95,53 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	m.expandChecklistRows()
 	m.pruneInvisibleSelections()
 	m.clampCursor()
+}
+
+// buildModeCandidateInput completes the shared mode input with the zoom-narrowed
+// candidates and the membership a mode owns rather than filters for.
+func (m *OutlinerModel) buildModeCandidateInput(
+	mode OutlinerModeID,
+	projects []*models.Project,
+) OutlinerModeInput {
+	input := m.buildOutlinerModeInput(projects)
+	recent := mode == ModeRecent
+	// Recent reports what happened, so it owns terminal and snoozed membership
+	// instead of waiting for an explicit facet to admit them.
+	input.IncludeSnoozed = recent || m.hasExplicitSnoozedFilter()
+	input.IncludeTerminal = recent || m.hasExplicitTerminalFilter()
+	input.CandidateTasks = make(map[string][]*models.Task, len(projects))
+	for _, project := range projects {
+		if project != nil {
+			input.CandidateTasks[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
+		}
+	}
+	if recent {
+		input.RecencyKeys = m.freezeRecencyKeys(input.CandidateTasks, projects)
+	}
+	return input
+}
+
+// recentActivityLead returns the newest task Recent admits, along with the
+// collapse key of the section holding it. The lead is read from the flat
+// section order rather than from the built rows, because grouping later nests a
+// promoted child under an older parent and the first row on screen is then not
+// the newest task. Returning the section's own key keeps the bucket vocabulary
+// in one place.
+func (m *OutlinerModel) recentActivityLead() (*models.Task, *models.Project, string, bool) {
+	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
+	input := m.buildModeCandidateInput(ModeRecent, projects)
+	for _, section := range BuildRecentModeSections(input) {
+		for _, row := range section.Rows {
+			if row.Task == nil || row.Project == nil {
+				continue
+			}
+			if input.TaskFilter != nil && !input.TaskFilter(row.Task, row.Project) {
+				continue
+			}
+			return row.Task, row.Project, section.CollapseKey, true
+		}
+	}
+	return nil, nil, "", false
 }
 
 // freezeRecencyKeys returns Recent's ordering timestamps, recording each task's

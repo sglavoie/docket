@@ -102,14 +102,17 @@ last 30 days newest-first under Today, Yesterday, Last 7 Days, and Last 30 Days,
 grouped by project inside each bucket, and includes Done, Canceled, and snoozed
 work because all of it is activity. The
 order freezes when you enter the mode, so triaging a row from there leaves it
-exactly where you are reading it; `gr` re-enters and re-reads activity.
+exactly where you are reading it; `gr` re-enters and re-reads activity. `Ctrl+L`
+does both from any mode in one press: it re-reads activity and puts the cursor on
+the task you touched last, opening a collapsed section or a folded parent only
+when that task would otherwise be hidden.
 
 ## Outliner grammar
 
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
+| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `s` opens the workflow chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sr` toggle Review, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled; `sw` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |

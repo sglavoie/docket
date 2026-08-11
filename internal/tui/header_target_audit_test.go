@@ -44,6 +44,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.core.edit-description":       "reject",
 	"tui.core.expand":                 "target-free",
 	"tui.core.external-editor":        "reject",
+	"tui.core.focus-latest":           "target-free",
 	"tui.core.goto-all":               "target-free",
 	"tui.core.goto-backlog":           "target-free",
 	"tui.core.goto-due":               "target-free",

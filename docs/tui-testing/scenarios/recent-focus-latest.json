@@ -1,0 +1,26 @@
+{
+  "name": "recent-focus-latest",
+  "fixture": "workflow",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "key", "label": "capture the newest task", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "text": "Ship the recency probe" },
+    { "type": "key", "label": "create the task", "key": "enter" },
+    { "type": "wait", "label": "wait for capture commit" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "focus the latest activity from All", "key": "ctrl+l" },
+    { "type": "assert", "label": "Ctrl+L enters Recent", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "assert", "label": "the cursor lands on the newest task", "assert": "contains", "value": "Latest activity: Ship the recency probe" },
+    { "type": "assert", "label": "the bucket naming the landing row stays on screen", "assert": "contains", "value": "◷ Today" },
+    { "type": "assert", "label": "the project header naming the landing row stays on screen", "assert": "contains", "value": "[unfiled]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "narrow terminal keeps the landing row", "width": 60, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": "Recent" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

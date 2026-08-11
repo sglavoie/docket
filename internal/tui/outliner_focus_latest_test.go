@@ -1,0 +1,117 @@
+package tui
+
+import (
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// cursorTaskID returns the task ID under the cursor, or "" when the cursor does
+// not name a task row.
+func cursorTaskID(m *OutlinerModel) string {
+	if m.cursor < 0 || m.cursor >= len(m.rows) {
+		return ""
+	}
+	row := m.rows[m.cursor]
+	if !row.isTaskRow() || row.task == nil {
+		return ""
+	}
+	return row.task.ID
+}
+
+func TestFocusLatestActivityLandsOnTheNewestTaskNotTheFirstRow(t *testing.T) {
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.ParentID = &parent.ID
+	parent.UpdatedAt = time.Now().Add(-2 * time.Hour)
+	project := primaryRowsProject("alpha", parent, child)
+	outliner, _ := primaryRowsOutliner(project)
+
+	outliner.focusLatestActivity()
+
+	// Both tasks land in Today, where grouping nests the newer child under the
+	// older parent, so the first row is not the newest task.
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID}) {
+		t.Fatalf("Recent rows = %v, want the child nested under its parent", got)
+	}
+	if got := cursorTaskID(outliner); got != child.ID {
+		t.Fatalf("cursor task = %q, want %q", got, child.ID)
+	}
+}
+
+func TestFocusLatestActivityReadsTheViewportFromTheTop(t *testing.T) {
+	newest := recentTask("newest", models.StateBacklog, 0)
+	project := primaryRowsProject("alpha", newest)
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.viewScrollOffset = 12
+
+	outliner.focusLatestActivity()
+
+	if outliner.viewScrollOffset != 0 {
+		t.Fatalf("scroll offset = %d, want 0 so the lead's headers stay on screen", outliner.viewScrollOffset)
+	}
+	if got := cursorTaskID(outliner); got != newest.ID {
+		t.Fatalf("cursor task = %q, want %q", got, newest.ID)
+	}
+}
+
+func TestFocusLatestActivityRereadsActivityOnEveryPress(t *testing.T) {
+	older := recentTask("older", models.StateBacklog, 3)
+	newer := recentTask("newer", models.StateBacklog, 2)
+	project := primaryRowsProject("alpha", older, newer)
+	outliner, _ := primaryRowsOutliner(project)
+
+	outliner.focusLatestActivity()
+	if got := cursorTaskID(outliner); got != newer.ID {
+		t.Fatalf("cursor task = %q, want %q", got, newer.ID)
+	}
+
+	older.UpdatedAt = time.Now()
+	outliner.focusLatestActivity()
+	if got := cursorTaskID(outliner); got != older.ID {
+		t.Fatalf("cursor task after re-read = %q, want %q", got, older.ID)
+	}
+}
+
+func TestFocusLatestActivityOpensOnlyTheFoldsHidingTheTarget(t *testing.T) {
+	today := recentTask("today", models.StateBacklog, 0)
+	yesterday := recentTask("yesterday", models.StateBacklog, 1)
+	project := primaryRowsProject("alpha", today, yesterday)
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.selectOutlinerMode(ModeRecent)
+
+	todayKey := canonicalModeCollapseKey(ModeRecent, "today")
+	yesterdayKey := canonicalModeCollapseKey(ModeRecent, "yesterday")
+	outliner.collapsedSections[todayKey] = true
+	outliner.collapsedSections[yesterdayKey] = true
+
+	outliner.focusLatestActivity()
+
+	if got := cursorTaskID(outliner); got != today.ID {
+		t.Fatalf("cursor task = %q, want %q", got, today.ID)
+	}
+	if outliner.collapsedSections[todayKey] {
+		t.Error("the section hiding the newest task stayed collapsed")
+	}
+	if !outliner.collapsedSections[yesterdayKey] {
+		t.Error("a fold that hid nothing was opened")
+	}
+}
+
+func TestFocusLatestActivityReportsAnEmptyRecent(t *testing.T) {
+	stale := recentTask("stale", models.StateBacklog, recentModeCutoffDays+1)
+	project := primaryRowsProject("alpha", stale)
+	outliner, _ := primaryRowsOutliner(project)
+
+	outliner.focusLatestActivity()
+
+	if got := visibleTaskIDs(outliner); len(got) != 0 {
+		t.Fatalf("Recent rows = %v, want none past the cutoff", got)
+	}
+	if !strings.Contains(outliner.statusMessage, "No activity") {
+		t.Fatalf("status = %q, want it to report an empty Recent", outliner.statusMessage)
+	}
+}

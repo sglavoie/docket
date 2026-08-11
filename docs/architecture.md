@@ -127,7 +127,10 @@ newest first, and owns terminal and snoozed membership rather than waiting for a
 facet to admit them. Its ordering timestamps freeze on entry against the same
 projection fingerprint that invalidates relocation jump history, so triaging a
 row does not move it out from under the cursor; re-entering with `gr` re-reads
-activity.
+activity. `Ctrl+L` enters it with that same fresh read and focuses the newest
+task, taken from the section builder's flat output rather than from the built
+rows, because per-project forest grouping can render a promoted child beneath an
+older parent.
 
 ### Presentation chrome
 

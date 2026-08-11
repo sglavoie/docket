@@ -91,7 +91,7 @@ Accepted key names include printable public keys plus:
 ```text
 tab shift+tab enter space esc
 up down left right home end pgup pgdown
-ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+y ctrl+c
+ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+y ctrl+c
 ```
 
 The final public grammar is:
@@ -100,6 +100,7 @@ The final public grammar is:
 Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
+Ctrl+L                           Recent, focused on the newest activity
 a/A e/E Ctrl+E O                 capture and edit
 si sb sn st sg sr sw sp sm sd sc    workflow chord
 !0-3 @ # z P                    metadata

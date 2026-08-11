@@ -30,6 +30,7 @@ const (
 	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
 	operationCoreJumpBackward     OperationID = "tui.core.jump-backward"
 	operationCoreJumpForward      OperationID = "tui.core.jump-forward"
+	operationCoreFocusLatest      OperationID = "tui.core.focus-latest"
 	operationCoreCollapseParent   OperationID = "tui.core.collapse-parent"
 	operationCoreExpand           OperationID = "tui.core.expand"
 	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
@@ -137,6 +138,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreJumpBackward, "Jump to Older Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreJumpForward, "Jump to Newer Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreFocusLatest, "Focus Latest Activity", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "latest activity", "last touched"),
 		core(operationCoreCollapseParent, "Collapse or Go to Parent", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -191,6 +193,7 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 	switch id { //nolint:exhaustive // Only outliner navigation operations override applicability.
 	case operationCoreNextWorkMode,
 		operationCorePreviousWorkMode,
+		operationCoreFocusLatest,
 		operationCoreCollapseParent,
 		operationCoreExpand,
 		operationCoreToggleSections,
@@ -335,6 +338,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreJumpForward:
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.jumpForward())
+		}
+	case operationCoreFocusLatest:
+		if out, ok := m.outlinerPrimary(); ok {
+			message = commandMessage(out.focusLatestActivity())
 		}
 	case operationCoreCollapseParent:
 		if out, ok := m.outlinerPrimary(); ok {

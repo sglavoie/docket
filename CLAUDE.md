@@ -100,6 +100,7 @@ Tab / Shift+Tab                 seven modes
 ga gi gt gn gb gd gr           go-to chord, one mode each
 j/k, arrows, h/l, S, gg/Home, G/End  navigation
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
+Ctrl+L                         Recent, focused on the newest activity
 a/A, e/E, Ctrl+E, O            capture/edit
 si sb sn st sg sr sw sp sm sd sc  workflow chord
 !0-3 @ # z P                   metadata
@@ -210,6 +211,21 @@ freezes on entry so triaging a row does not move it out from under the cursor;
 the snapshot is keyed to `jumpProjectionFingerprint()`, so it invalidates on the
 same events that clear relocation jump history, and `gr` while already in Recent
 is the manual refresh.
+
+`Ctrl+L` is the one key that reaches the newest task from anywhere. It enters
+Recent, which re-reads activity exactly as `gr` does, and lands the cursor on the
+newest row Recent admits. That target is read from `BuildRecentModeSections`
+before grouping runs, never from `m.rows[0]`: inside a section
+`groupSectionRowsByProject` reshapes the flat newest-first order into a
+per-project forest, so a promoted child renders beneath an older parent and the
+top screen row is then not the newest task. The landing disturbs no folds — only
+when the target has no row does it open that row's section, its project group,
+and its ancestor chain, then rebuild and retry, the same try-reveal-retry shape
+as `NavigateToTaskInProject`. It does reset `viewScrollOffset`, because
+`restoreModeCursor` carries the origin mode's offset across the transition and
+would seat the lead against the viewport edge with the section and project
+headers naming it scrolled off. An empty Recent reports the 30-day window and
+moves nothing.
 
 Pressing `s` shows the workflow chord. Its second keys are `i` Inbox, `b`
 Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m`
