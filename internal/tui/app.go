@@ -26,11 +26,11 @@ const (
 	ViewTaskAttachments
 	ViewNotes
 	ViewGlobalNotes
-	ViewTaskChecklist
 	ViewCrossProjectOutliner
 	ViewTaskForm
 	ViewTaskComposer
 	ViewProjectHub
+	ViewOutlineErrors
 )
 
 // AppModel is the main TUI model.

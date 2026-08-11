@@ -17,6 +17,7 @@ const (
 	OperationCategoryMode       OperationCategory = "mode"
 	OperationCategoryScope      OperationCategory = "scope"
 	OperationCategoryFilter     OperationCategory = "filter"
+	OperationCategorySort       OperationCategory = "sort"
 	OperationCategoryProject    OperationCategory = "project"
 	OperationCategoryNote       OperationCategory = "note"
 	OperationCategoryTag        OperationCategory = "tag"
@@ -73,6 +74,11 @@ const (
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
 
+	// ValueProviderChecklistItem is the typed text of one checklist item. It is
+	// a separate provider from the note title because the prompt prefills the
+	// item under the cursor rather than a note's own name.
+	ValueProviderChecklistItem ValueProviderID = "checklist-item"
+
 	// ValueProviderProjectTags edits a project's own tag set, which is a
 	// different vocabulary and a different target from the task tags on
 	// ValueProviderTags.
@@ -100,7 +106,9 @@ const (
 // textEntry reports whether the provider's value is typed rather than picked
 // from a list, so the value step opens the text prompt instead of the picker.
 func (id ValueProviderID) textEntry() bool {
-	return id == ValueProviderNoteTitle || id == ValueProviderTagName
+	return id == ValueProviderNoteTitle ||
+		id == ValueProviderTagName ||
+		id == ValueProviderChecklistItem
 }
 
 // tagEntry reports whether the picker offers "a" to mint a tag the vocabulary
@@ -144,8 +152,15 @@ type OperationDescriptor struct {
 }
 
 // Applicable reports whether the descriptor can be offered in ctx.
+//
+// The checklist rule lives here rather than in the Applicability field so that
+// a descriptor written without a predicate stays unconditional, which is what
+// Register reads when it refuses a static direct-key collision.
 func (descriptor OperationDescriptor) Applicable(ctx CommandContext) bool {
 	if !ctx.Capabilities.HasAll(descriptor.RequiredCapabilities) {
+		return false
+	}
+	if ctx.Entity.HasChecklistCursor && operationRefusedOnChecklistRow(descriptor) {
 		return false
 	}
 	return descriptor.Applicability == nil || descriptor.Applicability(ctx)
@@ -361,6 +376,7 @@ func validOperationCategory(category OperationCategory) bool {
 		OperationCategoryMode,
 		OperationCategoryScope,
 		OperationCategoryFilter,
+		OperationCategorySort,
 		OperationCategoryProject,
 		OperationCategoryNote,
 		OperationCategoryTag,
@@ -417,14 +433,16 @@ func operationCategoryRank(category OperationCategory) int {
 		return 3
 	case OperationCategoryFilter:
 		return 4
-	case OperationCategoryProject:
+	case OperationCategorySort:
 		return 5
-	case OperationCategoryNote:
+	case OperationCategoryProject:
 		return 6
-	case OperationCategoryTag:
+	case OperationCategoryNote:
 		return 7
-	default:
+	case OperationCategoryTag:
 		return 8
+	default:
+		return 9
 	}
 }
 

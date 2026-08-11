@@ -42,6 +42,27 @@ const (
 	FixtureMultiProject = "multi-project"
 	FixtureRelease      = "release"
 	FixtureParked       = "parked"
+	FixtureSignals      = "signals"
+	FixtureChecklist    = "checklist"
+)
+
+// Checklist fixture identities. Scenarios assert on these titles and item texts,
+// so the builder and the committed JSON agree through these constants.
+const (
+	checklistFixtureProjectName = "Checklist Delivery"
+	checklistFixtureFoldTitle   = "Draft the launch runbook"
+	checklistFixtureParentTitle = "Coordinate the rollout window"
+	checklistFixturePlainTitle  = "Retire the legacy runbook"
+	checklistFixtureFirstItem   = "Outline the rollback steps"
+	checklistFixtureSecondItem  = "Name the on-call owner"
+	checklistFixtureThirdItem   = "Attach the comms draft"
+)
+
+// Signals fixture identities. Scenarios assert on the project slug and on task
+// titles, so the builder and the committed JSON agree through these constants.
+const (
+	signalsFixtureProjectName = "Signal Delivery Coordination Track"
+	signalsFixtureOtherName   = "Signal Beta"
 )
 
 // Parked fixture identities. Scenarios assert on these strings, and
@@ -65,6 +86,8 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureMultiProject: buildMultiProjectFixture,
 	FixtureRelease:      buildReleaseFixture,
 	FixtureParked:       buildParkedFixture,
+	FixtureSignals:      buildSignalsFixture,
+	FixtureChecklist:    buildChecklistFixture,
 }
 
 // BuiltinFixtureNames returns the sorted list of built-in fixture names.
@@ -675,6 +698,91 @@ func buildParkedFixture(w *uitestWorkspace) error {
 		return err
 	}
 	w.setCurrentProject(active.ID)
+	return nil
+}
+
+// buildSignalsFixture carries the time signals no other fixture holds: a snooze
+// that has already lapsed beside one still pending, overdue work concentrated
+// in one project, and a durable Today membership. Its project name is
+// deliberately long so a project header's pressure suffix has to degrade at
+// narrow widths.
+func buildSignalsFixture(w *uitestWorkspace) error {
+	var triage *models.Task
+	project, err := w.addProject(signalsFixtureProjectName, func(p *models.Project) {
+		audit := newFixtureTask(p, "Alpha overdue audit")
+		audit.ApplyWorkflowState(models.StateBacklog)
+		setDue(audit, -3*24*time.Hour)
+
+		rollout := newFixtureTask(p, "Alpha overdue rollout")
+		rollout.ApplyWorkflowState(models.StateBacklog)
+		setDue(rollout, -24*time.Hour)
+
+		woke := newFixtureTask(p, "Alpha back from snooze")
+		woke.ApplyWorkflowState(models.StateBacklog)
+		lapsed := time.Now().AddDate(0, 0, -1)
+		woke.SnoozedUntil = &lapsed
+
+		pending := newFixtureTask(p, "Alpha still deferred")
+		pending.ApplyWorkflowState(models.StateBacklog)
+		deferred := time.Now().AddDate(0, 0, 5)
+		pending.SnoozedUntil = &deferred
+
+		triage = newFixtureTask(p, "Alpha overdue intake")
+		triage.ApplyWorkflowState(models.StateInbox)
+		setDue(triage, -2*24*time.Hour)
+
+		// The two extra hours keep the day bucket at 12 after the clock
+		// round-trips through the schema-8 writer's second-precision timestamp.
+		blocked := newFixtureTask(p, "Alpha waiting on vendor")
+		blocked.ApplyWorkflowState(models.StateWaiting)
+		blocked.StateChangedAt = time.Now().Add(-12*24*time.Hour - 2*time.Hour)
+	})
+	if err != nil {
+		return err
+	}
+	if _, err = w.addProject(signalsFixtureOtherName, func(p *models.Project) {
+		steady := newFixtureTask(p, "Beta steady work")
+		steady.ApplyWorkflowState(models.StateBacklog)
+	}); err != nil {
+		return err
+	}
+	w.Runtime.Planning().AddToToday(triage.ID, project.ID)
+	w.setCurrentProject(project.ID)
+	return nil
+}
+
+// buildChecklistFixture is the one fixture whose tasks carry checklist items, so
+// the inline checklist rows and their fold glyph can be exercised without
+// shifting any other fixture's projection. It holds three shapes the fold ladder
+// distinguishes: a checklist with no children, a checklist beneath a task that
+// also has a child, and a task with neither.
+func buildChecklistFixture(w *uitestWorkspace) error {
+	project, err := w.addProject(checklistFixtureProjectName, func(p *models.Project) {
+		runbook := newFixtureTask(p, checklistFixtureFoldTitle)
+		runbook.ApplyWorkflowState(models.StateBacklog)
+		runbook.Checklist = []models.ChecklistItem{
+			{Text: checklistFixtureFirstItem, Done: true},
+			{Text: checklistFixtureSecondItem},
+			{Text: checklistFixtureThirdItem},
+		}
+
+		rollout := newFixtureTask(p, checklistFixtureParentTitle)
+		rollout.ApplyWorkflowState(models.StateBacklog)
+		rollout.Checklist = []models.ChecklistItem{
+			{Text: "Book the maintenance window"},
+			{Text: "Notify the support rota", Done: true},
+		}
+		soak := newFixtureTask(p, "Confirm the staging soak")
+		soak.ApplyWorkflowState(models.StateBacklog)
+		soak.ParentID = &rollout.ID
+
+		plain := newFixtureTask(p, checklistFixturePlainTitle)
+		plain.ApplyWorkflowState(models.StateBacklog)
+	})
+	if err != nil {
+		return err
+	}
+	w.setCurrentProject(project.ID)
 	return nil
 }
 

@@ -61,6 +61,7 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 func (m *OutlinerModel) buildCanonicalModeRows() {
 	if m.hasSearchProjection() {
 		m.buildSearchProjectionRows()
+		m.expandChecklistRows()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return
@@ -105,6 +106,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 		return
 	}
 	m.separatePinnedSection(pinnedBoundary)
+	m.expandChecklistRows()
 	m.pruneInvisibleSelections()
 	m.clampCursor()
 }

@@ -19,10 +19,6 @@ func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap
 	return guidanceSpecFromKeyMap(km, rows)
 }
 
-func (m *TaskChecklistModel) guidanceSpec() (GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.confirm.IsActive(), m.addMode || m.editMode, m.buildKeyMap())
-}
-
 func (m *TaskCommentsModel) guidanceSpec() (GuidanceSpec, bool) {
 	return taskToolGuidanceSpec(m.confirm.IsActive(), m.addMode || m.editMode || m.expandedView, m.buildKeyMap())
 }

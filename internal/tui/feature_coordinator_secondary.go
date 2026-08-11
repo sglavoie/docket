@@ -907,18 +907,6 @@ func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
 		case CommentEditedMsg:
 			msg.TransactionID = result.Result.TransactionID
 			return msg
-		case ChecklistItemAddedMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
-		case ChecklistItemDeletedMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
-		case ChecklistItemEditedMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
-		case ChecklistItemToggledMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
 		default:
 			return msg
 		}

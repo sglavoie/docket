@@ -1,0 +1,34 @@
+{
+  "name": "sort-project-group-order",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "count_contains", "value": "▾ [", "count": 4 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },
+
+    { "type": "key", "label": "sort by title descending", "key": "o" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↓" },
+    { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
+
+    { "type": "assert", "label": "every project group survives the sort", "assert": "count_contains", "value": "▾ [", "count": 4 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
+    { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },
+    { "type": "assert", "label": "each group keeps its own single task", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "Finish the distributed systems book" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clearing the sort leaves the groups untouched", "key": "o" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "count_contains", "value": "▾ [", "count": 4 },
+    { "type": "assert", "assert": "not_contains", "value": "Sort: " },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

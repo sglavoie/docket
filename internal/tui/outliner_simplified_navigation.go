@@ -11,8 +11,9 @@ type sectionToggleRestoreAnchor struct {
 }
 
 // collapseOrMoveToParent gives h/Left one deterministic tree behavior: collapse
-// an expanded section, project header, or task first; otherwise move to the
-// visible parent task.
+// an expanded section, project header, checklist, or task first; otherwise move
+// to the visible parent task. A checklist row is one rung further down, so it
+// returns to its owner and leaves the collapse to the next press.
 func (m *OutlinerModel) collapseOrMoveToParent() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
@@ -26,11 +27,20 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 		m.rebuildRows()
 		return true
 	}
+	if row.IsChecklistItem {
+		return m.moveCursorToIdentity(m.taskIdentityForRow(row))
+	}
 	if !row.isTaskRow() || row.task == nil {
 		return false
 	}
 
 	identity := m.taskIdentityForRow(row)
+	if m.isChecklistExpanded(identity) {
+		m.setChecklistExpanded(identity, false)
+		m.rebuildRows()
+		m.moveCursorToIdentity(identity)
+		return true
+	}
 	if row.hasVisibleChildren && m.isExpanded(identity) {
 		m.ensureExpandedNodes()
 		m.expandedNodes[identity] = false
@@ -47,8 +57,10 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 }
 
 // expandAtCursor gives l/Right one behavior: expand the current collapsed
-// section, project header, or task. Indent/outdent remain legacy-only until
-// they move into the action sheet.
+// section, project header, task, or checklist. Children come before the
+// checklist, which is the exact reverse of the order h collapses them in. A
+// checklist row has nothing left to expand, so it is a no-op there.
+// Indent/outdent remain legacy-only until they move into the action sheet.
 func (m *OutlinerModel) expandAtCursor() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
@@ -62,15 +74,21 @@ func (m *OutlinerModel) expandAtCursor() bool {
 		m.rebuildRows()
 		return true
 	}
-	if !row.isTaskRow() || row.task == nil || !row.hasVisibleChildren {
+	if !row.isTaskRow() || row.task == nil {
 		return false
 	}
 	identity := m.taskIdentityForRow(row)
-	if m.isExpanded(identity) {
+	if row.hasVisibleChildren && !m.isExpanded(identity) {
+		m.ensureExpandedNodes()
+		m.expandedNodes[identity] = true
+		m.rebuildRows()
+		m.moveCursorToIdentity(identity)
+		return true
+	}
+	if len(row.task.Checklist) == 0 || m.isChecklistExpanded(identity) {
 		return false
 	}
-	m.ensureExpandedNodes()
-	m.expandedNodes[identity] = true
+	m.setChecklistExpanded(identity, true)
 	m.rebuildRows()
 	m.moveCursorToIdentity(identity)
 	return true
@@ -155,7 +173,8 @@ func (m *OutlinerModel) visibleSectionHeaders() []outlinerRow {
 // topLevelSectionAtCursor returns the visible section that owns the cursor's
 // current row. Pinned and Today task rows have explicit membership markers;
 // those avoid treating the ungrouped Inbox/Next/Backlog rows after Pinned as
-// Pinned content.
+// Pinned content. A checklist row carries its owner's markers, so it answers
+// the same membership question its owner does.
 func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (outlinerRow, bool) {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return outlinerRow{}, false
@@ -169,7 +188,7 @@ func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (ou
 		if !sectionKeys[header.effectiveCollapseKey()] {
 			return outlinerRow{}, false
 		}
-		if selected.isTaskRow() {
+		if selected.isTaskRow() || selected.IsChecklistItem {
 			if header.IsPinnedSection && !selected.IsPinnedSection {
 				return outlinerRow{}, false
 			}

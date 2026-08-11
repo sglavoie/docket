@@ -8,9 +8,13 @@
     { "type": "key", "label": "select the task with additive detail", "key": "end" },
     { "type": "key", "label": "enable cursor-following Peek", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
+    { "type": "assert", "label": "Peek carries the task clock the row has no width for", "assert": "contains", "value": "created" },
+    { "type": "assert", "assert": "contains", "value": "· updated" },
+    { "type": "assert", "label": "Peek never restates the checklist the rows already carry", "assert": "not_contains", "value": "Checklist:" },
     { "type": "assert", "assert": "not_contains", "value": "#7" },
     { "type": "key", "label": "toggle Peek off", "key": "enter" },
     { "type": "assert", "assert": "not_contains", "value": "Description: Google / GitHub OAuth." },
+    { "type": "assert", "assert": "not_contains", "value": "· updated" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

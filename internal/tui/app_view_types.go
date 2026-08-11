@@ -12,11 +12,11 @@ var viewTypeNames = map[PresentationID]string{
 	ViewTaskAttachments:      "TaskAttachments",
 	ViewNotes:                "Notes",
 	ViewGlobalNotes:          "GlobalNotes",
-	ViewTaskChecklist:        "TaskChecklist",
 	ViewCrossProjectOutliner: "CrossProjectOutliner",
 	ViewTaskForm:             "TaskForm",
 	ViewTaskComposer:         "TaskComposer",
 	ViewProjectHub:           "ProjectHub",
+	ViewOutlineErrors:        "OutlineErrors",
 }
 
 // String returns the name of the PresentationID for readable test output.

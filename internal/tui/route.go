@@ -29,7 +29,7 @@ func presentationScope(view PresentationID) RouteScope {
 	switch view {
 	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewProjectHub:
 		return ScopeApp
-	case ViewTaskComments, ViewTaskChecklist, ViewTaskAttachments:
+	case ViewTaskComments, ViewTaskAttachments:
 		return ScopeTask
 	default:
 		return ScopeProject
@@ -69,8 +69,8 @@ func accentColorForCategory(category AccentCategory) color.Color {
 
 // allPresentations returns the contiguous renderer inventory.
 func allPresentations() []PresentationID {
-	presentations := make([]PresentationID, 0, int(ViewProjectHub))
-	for presentation := ViewProjectCreator; presentation <= ViewProjectHub; presentation++ {
+	presentations := make([]PresentationID, 0, int(ViewOutlineErrors))
+	for presentation := ViewProjectCreator; presentation <= ViewOutlineErrors; presentation++ {
 		presentations = append(presentations, presentation)
 	}
 	return presentations

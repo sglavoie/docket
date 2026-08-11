@@ -90,6 +90,13 @@ their most recent activity, and All, Inbox, and Backlog groups in project
 catalog order. Tasks inside a group keep hierarchy, parent breadcrumbs, and the
 mode's own sort; `J`/`K` never move a task across a project group.
 
+A project header also names the pressure its group holds, as `overdue 2` and
+`today 3` after the count, so folding the group does not hide what is urgent
+inside it. A Today group omits its own `today` count because every row there is
+already planned for today. When the header is too narrow for the whole suffix
+the counts degrade rather than clip: `today` drops first, then `overdue`, so a
+count you can read is always the real number.
+
 Recent answers "what did I touch lately". It lists every task updated in the
 last 30 days newest-first under Today, Yesterday, Last 7 Days, and Last 30 Days,
 grouped by project inside each bucket, and includes Done, Canceled, and snoozed
@@ -102,11 +109,12 @@ exactly where you are reading it; `gr` re-enters and re-reads activity.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right collapse/expand; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
-| Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor |
-| Workflow | `s` opens the workflow chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sr` toggle Review, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled |
+| Navigation | `j`/`k` or arrows move; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Enter` inspects |
+| Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
+| Workflow | `s` opens the workflow chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sr` toggle Review, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled; `sw` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
+| Sorting | `o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `p` Select Project, `N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
@@ -132,19 +140,54 @@ fallback there.
 overlay, `Space` toggles tags, `a` creates and selects a new tag, and `Enter`
 applies the pending changes.
 
+### Outline editing
+
+`O` writes the cursor's project out as one indented outline, opens it in
+`$EDITOR`, and applies the whole tree when you save and quit. Indentation is
+parentage: two spaces per level, up to the usual depth of six. Every line
+otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `@friday`, and
+`$backlog` all work, while `>parent` is rejected because the indentation already
+said it.
+
+```text
+# Sonar
+- Ship the release [[tt:4f2a9c11]] $doing !1
+  - Cut the changelog [[tt:9b31de07]] @friday
+  - Tag the build
+- Draft the migration notes $backlog #docs
+```
+
+The `[[tt:...]]` markers identify tasks that already exist. Keep one and the
+task is updated in place, wherever you moved it; drop it, or write a new line
+without one, and a new task is created. Deleting a line deletes nothing — a
+truncated file cannot destroy work, and removing tasks stays an explicit
+operation.
+
+The buffer holds the project's entire task tree rather than the rows currently
+on screen, which is why `O` refuses in Today, Next, Due, and Recent: those modes
+order rows by something other than the tree, so the indentation you would be
+editing is not the parentage you would be saving. It also refuses while a visual
+selection is open, since a selection names rows and the outline names a project.
+
+Nothing is written until the whole buffer validates. If any line is wrong you
+get every problem at once, numbered by line, and the file is kept so you can
+reopen it, fix the named lines, and run `O` again. A successful apply is one
+undoable transaction.
+
 ### Task actions
 
 `Space` contains exactly:
 
 1. Move Project
 2. Set Parent
-3. Checklist
-4. Comments
-5. Attachments
-6. Delete
+3. Comments
+4. Attachments
+5. Delete
 
 The list filters as soon as printable text is typed. Frequent direct operations
-do not repeat in this menu. Delete always asks for confirmation.
+do not repeat in this menu. Delete always asks for confirmation. The checklist
+is absent because it is edited on its own rows, and a second route to the same
+mutations is the shape this menu exists to avoid.
 
 ### Filters and search
 
@@ -193,11 +236,72 @@ Pressing a chord prefix shows its valid continuations in the guidance region. `E
 cancels that unfinished chord, and a second key the chord does not offer says so
 instead of doing nothing.
 
+### Sorting
+
+Lowercase `f` decides which rows a projection holds and uppercase `F` decides
+which projects load, so the third axis, `o`, decides the order those rows are
+read in:
+
+| Keys | Effect |
+| --- | --- |
+| `od` | Order by due date |
+| `op` | Order by priority |
+| `oc` | Order by creation date |
+| `ou` | Order by last touch |
+| `ot` | Order alphabetically by title |
+| `ox` | Clear the sort and restore the mode's own order |
+
+A field key installs its order ascending, and pressing the same key again
+reverses it, so there is no separate reverse key. The active order joins the
+title row as a `Sort: <field> ↑` badge.
+
+Sorting is a session-only refinement, like a filter. It orders tasks inside the
+group they already belong to, so it never changes which project group comes
+first and never touches an order you built by hand: Pinned, Today, and Next keep
+their manual sequence whatever the axis says.
+
+Today, Next, Due, and Recent each own their order — a plan you arranged, a due
+date, an activity clock — so a sort key there records your choice and reports
+that the mode keeps its own order. The recorded order installs itself as soon as
+you return to All, Inbox, or Backlog.
+
 For intentional cleanup, use `fc` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and
 `Space` → Delete. Use `fs` afterwards to narrow to Done or Canceled alone.
 The confirmation freezes root, descendant, visible/hidden, and attachment counts;
 the entire deletion is one undoable transaction.
+
+### Inline checklist rows
+
+A task that carries checklist items folds them open beneath itself, as `[ ]` and
+`[x]` rows indented one level past the task. There is no new key: `l` and `h`
+walk a single ladder, so on a task holding both children and a checklist `l`
+opens the children first and then the items, and `h` closes the items first and
+then the children. `h` on a checklist row returns to the owning task rather than
+folding anything, since the item is one rung below it. Checklists start
+collapsed, and the task row keeps its `1/3` progress badge either way.
+
+A checklist row is not a task row. Every task action refuses there with one
+sentence — "move the cursor to a task row to use this action" — instead of
+quietly applying to the owner.
+
+What a checklist row does own is six actions of its own, five of which reuse the
+key their task-row counterpart holds:
+
+| Key | Action |
+| --- | --- |
+| `x` | Tick or untick the item |
+| `e` | Rewrite the item |
+| `J` / `K` | Swap the item with the one below or above it |
+| `A` | Append an item to this checklist |
+| `Space` | Open the item menu: Edit Item and Delete Item |
+
+Delete has no direct key. It is reachable only from the `Space` menu and
+confirms before it removes anything.
+
+Visual selection is one of the actions a checklist row refuses, because a
+selection names task rows. Entering it from a task row hides any open checklist
+items, and `Esc` brings back exactly the rows that were open.
 
 ### Peek and multi-select
 
@@ -205,10 +309,32 @@ The Outliner uses the full terminal width at every supported size. Task rows
 show workflow state, conditional high priority, due and snooze dates, and
 checklist progress; short task IDs are hidden.
 
+A snooze reads as `zzz <date>` only while it is still pending. Once the date
+passes the row says `woke <age>` for three days, because a task that came back
+is work again and a past-dated `zzz` would read as still deferred. After that
+the marker disappears and the task is ordinary work.
+
+A Waiting task reads as `waiting <age>`, measured from the moment it entered
+Waiting rather than from the last time anything touched it, so recording a chase
+in the comments does not reset how long the work has been blocked. If it also
+carries a due date, that date is the check-back, so the row replaces the plain
+date with `check <age>` counting down to chasing it, `check today`, or an
+overdue `check +<age>`. Moving a task to Waiting with `sw` therefore asks for the
+check-back date immediately; `Esc` there declines the date and the Waiting move
+still stands.
+
+A row that cannot fit every indicator sheds them in a fixed order rather than
+squeezing the title: checklist, comment, and attachment counts go first because
+the checklist rows and Peek still carry them, then the recency and snooze
+markers, then the waiting age, and the check-back date goes last.
+
 `Enter` toggles a session-only Peek directly beneath the cursor task. Peek
-follows navigation and shows at most five lines of additive detail:
-description, tags, attachment names, comment counts, and checklist items. `Esc`
-closes Peek before unwinding Outliner navigation.
+follows navigation and shows at most five lines of additive detail: up to three
+lines of description, a dates line reading
+`created 12d · updated 2d · due 2026-08-14 · woke 1d` with empty fields omitted,
+attachment names, comment counts, and tags. Checklist items are not among them,
+because they are already rows of their own beneath the task. `Esc` closes Peek
+before unwinding Outliner navigation.
 
 State, Today/Next/Review, priority, due, tags, snooze, and pin actions apply atomically
 to the complete project-qualified selection, including hidden members. `v`
@@ -248,6 +374,14 @@ validated before one atomic transaction is committed.
 rejected with replacement guidance. Other aliases such as `priority:`, `due:`,
 `state:`, and `proj:` are literal title text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
+
+`a` at base scope captures into Unfiled: a task cursor never lends capture its
+project. A project header row is the one exception, because it names a project
+explicitly rather than incidentally, so `a` there captures into that project.
+The composer header names whichever destination it resolved — `Capture →
+Unfiled` or `Capture → Client Alpha` — so the two never look alike, and
+`%project` still overrides both. `A` on a project header row keeps refusing: a
+project has no task to parent a child under.
 
 Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags color
 task titles in that precedence order. Namespaced values such as `type:bug` and
@@ -385,20 +519,22 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-7 Markdown and generic `Task` headings.
+Project task files use strict schema-8 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-7 workspaces to schema 8, supported schema-6
-workspaces through schema 7 and then schema 8, and supported schema-4/5
-workspaces through the whole chain. Each step validates the complete candidate
-before mutation and publishes its own immutable rollback archive and audit
-first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
+Startup migrates supported schema-8 workspaces to schema 9, supported schema-6
+and schema-7 workspaces through the intermediate boundaries, and supported
+schema-4/5 workspaces through the whole chain. Each step validates the complete
+candidate before mutation and publishes its own immutable rollback archive and
+audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
 `pre-consolidation-v6-<UTC>.tar.gz` for v5→v6, `pre-scope-v7-<UTC>.tar.gz`
-for v6→v7, and `pre-tag-v8-<UTC>.tar.gz` for v7→v8. The schema-6 conversion preserves notes and attachment bytes,
+for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8, and
+`pre-state-clock-v9-<UTC>.tar.gz` for v8→v9. The schema-6 conversion preserves
+notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
 incompatible pre-v6 undo ledger. The schema-7 conversion folds the retired
@@ -407,6 +543,11 @@ project tags, keeping `parked` as the sole behavioral project tag.
 Schema 8 canonicalizes all task and project tags to lowercase ASCII kebab form,
 audits renames and collisions, upgrades task Markdown to schema 7, and clears
 undo/redo history whose retained bytes predate that canonicalization.
+Schema 9 upgrades task Markdown to schema 8 by giving every task a durable
+`state_changed` clock, backfilled from `updated`. The audit states that the
+backfill is an approximation which self-corrects on the task's next state
+transition, and undo/redo history is cleared again because its retained bytes
+predate the new field.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication

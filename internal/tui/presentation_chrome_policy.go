@@ -56,7 +56,6 @@ func chromePolicyForPresentation(view PresentationID) (presentationChromePolicy,
 		ViewTaskAttachments,
 		ViewNotes,
 		ViewGlobalNotes,
-		ViewTaskChecklist,
 		ViewTaskForm,
 		ViewProjectHub:
 		policy = presentationChromePolicy{
@@ -71,7 +70,8 @@ func chromePolicyForPresentation(view PresentationID) (presentationChromePolicy,
 		}
 	case ViewPriorityPicker,
 		ViewParentSelector,
-		ViewTagSelector:
+		ViewTagSelector,
+		ViewOutlineErrors:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeTransient,
 			guidance: presentationGuidanceOverlay,

@@ -6,12 +6,9 @@ package tui
 func overlayForPresentation(view PresentationID) (Overlay, bool, error) {
 	switch view {
 	case ViewHelp:
-		route, err := NewRoute(Reference, ReferenceParams{Kind: ReferenceHelp})
-		if err != nil {
-			return Overlay{}, true, err
-		}
-		overlay, err := NewReferenceOverlay(route)
-		return overlay, true, err
+		return referenceOverlayFor(ReferenceHelp)
+	case ViewOutlineErrors:
+		return referenceOverlayFor(ReferenceOutlineErrors)
 	default:
 	}
 
@@ -27,13 +24,25 @@ func overlayForPresentation(view PresentationID) (Overlay, bool, error) {
 	return overlay, true, nil
 }
 
+// referenceOverlayFor builds the read-only overlay class: content the user
+// reads and dismisses, whose identity lives on a typed Reference route rather
+// than on the renderer ID.
+func referenceOverlayFor(kind ReferenceKind) (Overlay, bool, error) {
+	route, err := NewRoute(Reference, ReferenceParams{Kind: kind})
+	if err != nil {
+		return Overlay{}, true, err
+	}
+	overlay, err := NewReferenceOverlay(route)
+	return overlay, true, err
+}
+
 func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 	switch view {
 	case ViewTaskForm:
 		return OverlayComposer, true
 	case ViewProjectCreator, ViewProjectEditor, ViewTextEditor:
 		return OverlayForm, true
-	case ViewTaskChecklist, ViewTaskComments, ViewTaskAttachments:
+	case ViewTaskComments, ViewTaskAttachments:
 		return OverlayTaskTool, true
 	case ViewPriorityPicker, ViewParentSelector, ViewTagSelector:
 		return OverlayPicker, true

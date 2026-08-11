@@ -225,7 +225,6 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 	}
 	if m.views != nil {
 		for _, viewType := range []PresentationID{
-			ViewTaskChecklist,
 			ViewTaskComments,
 			ViewTaskAttachments,
 		} {

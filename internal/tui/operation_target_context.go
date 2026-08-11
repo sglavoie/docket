@@ -31,7 +31,10 @@ func (m *AppModel) operationCommandContext() CommandContext {
 
 	task, project := m.getCurrentCursorTaskAndProject()
 	header := m.cursorProjectHeaderProject()
+	checklist, onChecklistRow := m.cursorChecklistItem()
 	switch {
+	case onChecklistRow:
+		ctx.Entity = checklistOperationEntity(checklist)
 	case task != nil && project != nil:
 		ctx.Entity = EntityContext{
 			ProjectID: project.ID,
@@ -112,7 +115,9 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	task, project := m.getTaskRef()
-	if task != nil && project != nil {
+	if checklist, onChecklistRow := m.cursorChecklistItem(); onChecklistRow {
+		ctx.Entity = checklistOperationEntity(checklist)
+	} else if task != nil && project != nil {
 		ctx.Entity = EntityContext{
 			ProjectID: project.ID,
 			TaskID:    task.ID,
@@ -173,6 +178,16 @@ func (m *OutlinerModel) taskAndProjectForIdentity(identity TaskIdentity) (*model
 		return nil, nil
 	}
 	return project.GetTaskByID(identity.TaskID), project
+}
+
+// checklistOperationEntity names the checklist item under the cursor while
+// keeping the owner task and project filled, so the archived-project guard and
+// the checklist operations' own target resolution both keep working.
+func checklistOperationEntity(cursor checklistCursor) EntityContext {
+	entity := taskOperationEntity(cursor.Task, cursor.Project)
+	entity.HasChecklistCursor = true
+	entity.ChecklistIndex = cursor.Index
+	return entity
 }
 
 func taskOperationEntity(task *models.Task, project *models.Project) EntityContext {

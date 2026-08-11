@@ -62,22 +62,22 @@ func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, note
 }
 
 // resolveProject loads a snapshot and resolves a project by its ID, returning the
-// snapshot, the project, and the revision it was loaded at. Project-scoped
-// mutations and queries (notes and workspace metadata) use it the way
-// resolveTask serves single-task mutations.
-func (s *Service) resolveProject(projectID string) (Snapshot, *models.Project, string, error) {
+// project and the revision it was loaded at. Project-scoped mutations and
+// queries (notes and workspace metadata) use it the way resolveTask serves
+// single-task mutations.
+func (s *Service) resolveProject(projectID string) (*models.Project, string, error) {
 	if strings.TrimSpace(projectID) == "" {
-		return nil, nil, "", invalidInput("project", "id is required")
+		return nil, "", invalidInput("project", "id is required")
 	}
 	snap, err := s.repo.Snapshot()
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 	project := snap.ProjectByID(projectID)
 	if project == nil {
-		return nil, nil, "", fmt.Errorf("%w: %s", ErrProjectNotFound, projectID)
+		return nil, "", fmt.Errorf("%w: %s", ErrProjectNotFound, projectID)
 	}
-	return snap, project, snap.Revision(project.ID), nil
+	return project, snap.Revision(project.ID), nil
 }
 
 // resolveTaskSelection validates and resolves either an unqualified task UUID or

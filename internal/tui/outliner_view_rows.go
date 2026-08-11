@@ -33,15 +33,22 @@ type outlinerRow struct {
 	CollapseKey        string                    // Stable identity for shared or project-owned grouping headers
 	ProjectID          string                    // Project that owns task/project-header rows; empty for shared section headers
 	IsSeparator        bool                      // True if this row is a non-navigable horizontal rule between blocks
+	OverdueCount       int                       // Overdue tasks inside the group a project header names
+	TodayCount         int                       // Today-planned tasks inside the group a project header names
+	IsChecklistItem    bool                      // True for one expanded checklist item beneath its owner task row
+	ChecklistIndex     int                       // Position of the item inside the owner task's checklist
+	ChecklistDone      bool                      // Ticked state of the item this row names
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a
-// section header, project sub-header, or separator). Use this in place of the
-// historical `!IsSectionHeader && !IsSeparator` pattern so that newly
-// introduced row kinds (e.g. project sub-headers) are consistently excluded
-// from task-only logic.
+// section header, project sub-header, separator, or checklist item). Use this
+// in place of the historical `!IsSectionHeader && !IsSeparator` pattern so that
+// newly introduced row kinds (e.g. project sub-headers) are consistently
+// excluded from task-only logic. A checklist row carries its owner task pointer
+// for rendering, so excluding it here is what stops every task operation from
+// silently falling through to that owner.
 func (r outlinerRow) isTaskRow() bool {
-	return !r.IsSectionHeader && !r.IsProjectHeader && !r.IsSeparator
+	return !r.IsSectionHeader && !r.IsProjectHeader && !r.IsSeparator && !r.IsChecklistItem
 }
 
 // isNavigable reports whether the cursor is allowed to rest on this row.

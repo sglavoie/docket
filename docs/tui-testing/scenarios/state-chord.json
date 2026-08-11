@@ -21,6 +21,8 @@
 
     { "type": "key", "label": "send the cursored task to Waiting", "key": "w" },
     { "type": "wait" },
+    { "type": "assert", "label": "waiting chains straight into the check-back date", "assert": "contains", "value": "Set Due Date" },
+    { "type": "key", "label": "decline the check-back", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change State" },
     { "type": "assert", "assert": "contains", "value": "@ Waiting  (2)" },

@@ -1,0 +1,39 @@
+{
+  "name": "sort-fixed-order-modes",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "home" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "move to Triage support inbox", "key": "down" },
+    { "type": "key", "label": "open the workflow chord", "key": "s" },
+    { "type": "key", "label": "put the task in Today", "key": "t" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "go to Today", "key": "g" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+
+    { "type": "key", "label": "ask Today for a due-date order", "key": "o" },
+    { "type": "key", "key": "d" },
+    { "type": "assert", "label": "a fixed-order mode keeps its own order and says so", "assert": "status_contains", "value": "Today owns its order" },
+    { "type": "assert", "assert": "status_contains", "value": "sort applies in All, Inbox, Backlog" },
+    { "type": "assert", "label": "no badge, because Today did not change order", "assert": "not_contains", "value": "Sort: due date" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "go to All, where the recorded axis installs", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Sort: due date ↑" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the sort from a tree-order mode", "key": "o" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Sort cleared" },
+    { "type": "assert", "assert": "not_contains", "value": "Sort: " },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

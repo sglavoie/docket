@@ -26,11 +26,11 @@ func ValidateV7ProjectDocument(document V7ProjectDocument) error {
 }
 
 func ParseV7ProjectDocument(content string) (V7ProjectDocument, error) {
-	const current = "<!-- tt-schema: 7 -->"
+	current := schemaMarker(SchemaVersionV7)
 	if strings.Count(content, current) != 1 {
 		return V7ProjectDocument{}, fmt.Errorf("v7 task document requires exactly one schema marker")
 	}
-	legacyShape := strings.Replace(content, current, "<!-- tt-schema: 6 -->", 1)
+	legacyShape := strings.Replace(content, current, schemaMarker(SchemaVersionV6), 1)
 	document, err := ParseV6ProjectDocument(legacyShape)
 	if err != nil {
 		return V7ProjectDocument{}, fmt.Errorf("parse v7 task document: %w", err)
@@ -49,5 +49,9 @@ func WriteV7ProjectDocument(document V7ProjectDocument) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Replace(legacy, "<!-- tt-schema: 6 -->", "<!-- tt-schema: 7 -->", 1), nil
+	return strings.Replace(legacy, schemaMarker(SchemaVersionV6), schemaMarker(SchemaVersionV7), 1), nil
+}
+
+func schemaMarker(schema int) string {
+	return fmt.Sprintf("<!-- tt-schema: %d -->", schema)
 }

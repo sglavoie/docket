@@ -100,16 +100,15 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	wantIDs := []OperationID{
 		operationTaskMoveProject,
 		operationTaskSetParent,
-		operationTaskChecklist,
 		operationTaskComments,
 		operationTaskAttachments,
 		operationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("action sheet IDs = %v, want exact six %v", ids, wantIDs)
+		t.Fatalf("action sheet IDs = %v, want exact five %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Move Project", "Set Parent", "Checklist", "Comments", "Attachments", "Delete",
+		"Move Project", "Set Parent", "Comments", "Attachments", "Delete",
 	}
 	for index, descriptor := range descriptors {
 		if descriptor.Label != wantLabels[index] {
@@ -175,13 +174,20 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 
 	// Printable letters filter immediately. This query includes k, which is no
 	// longer a navigation alias inside the task menu.
-	for _, letter := range "check" {
+	for _, letter := range "task" {
 		_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
 	}
 	matches := sheet.surface.Matches()
-	wantChecklist := ListItemID("task-action:" + string(operationTaskChecklist))
-	if len(matches) != 1 || matches[0].Item.ID != wantChecklist {
-		t.Fatalf("immediate filter results = %+v, want only %s", matches, wantChecklist)
+	wantAliasMatches := []ListItemID{
+		ListItemID("task-action:" + string(operationTaskMoveProject)),
+		ListItemID("task-action:" + string(operationTaskDelete)),
+	}
+	gotMatches := make([]ListItemID, 0, len(matches))
+	for _, match := range matches {
+		gotMatches = append(gotMatches, match.Item.ID)
+	}
+	if !slices.Equal(gotMatches, wantAliasMatches) {
+		t.Fatalf("immediate filter results = %v, want the alias matches %v", gotMatches, wantAliasMatches)
 	}
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'd', Text: "d"})

@@ -385,7 +385,7 @@ func (m *OutlinerModel) appendStateGroupForests(
 			projectID = item.project.ID
 		}
 		if !m.appendProjectGroupHeader(
-			outlinerRow{}, projectID, item.forest.count, projectSectionCollapseKey(projectID, group),
+			outlinerRow{}, projectID, item.forest.tasks(), projectSectionCollapseKey(projectID, group),
 		) {
 			continue
 		}
@@ -446,9 +446,8 @@ func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, m
 		if tree.project == nil {
 			continue
 		}
-		count := len(flattenTaskPointers(tree.roots))
 		if !m.appendProjectGroupHeader(
-			outlinerRow{}, tree.project.ID, count, modeProjectCollapseKey(mode, tree.project.ID),
+			outlinerRow{}, tree.project.ID, flattenTaskPointers(tree.roots), modeProjectCollapseKey(mode, tree.project.ID),
 		) {
 			continue
 		}

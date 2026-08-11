@@ -14,14 +14,15 @@ import (
 func mergeTestTask(id, title string) *models.Task {
 	stamp := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 	return &models.Task{
-		ID:            id,
-		ShortID:       1,
-		Title:         title,
-		WorkflowState: models.StateBacklog,
-		Priority:      models.PriorityUnset,
-		Tags:          []string{},
-		CreatedAt:     stamp,
-		UpdatedAt:     stamp,
+		ID:             id,
+		ShortID:        1,
+		Title:          title,
+		WorkflowState:  models.StateBacklog,
+		Priority:       models.PriorityUnset,
+		Tags:           []string{},
+		CreatedAt:      stamp,
+		UpdatedAt:      stamp,
+		StateChangedAt: stamp,
 	}
 }
 
@@ -29,7 +30,7 @@ func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         tasks,
-		SchemaVersion: SchemaVersionV7,
+		SchemaVersion: SchemaVersionV8,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc

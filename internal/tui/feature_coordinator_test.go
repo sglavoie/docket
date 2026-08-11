@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // stubMutator is a hand-rolled FeatureMutator recording the last call and
@@ -14,6 +15,10 @@ type stubMutator struct {
 	result app.TaskResult
 	err    error
 	calls  int
+	// project is what ProjectAtRevision hands back, paired with result.Revision.
+	project *models.Project
+	// outline records the last outline plan the coordinator submitted.
+	outline app.OutlinePlanRequest
 }
 
 func (s *stubMutator) Capture(app.CaptureRequest) (app.TaskResult, error) {
@@ -46,6 +51,18 @@ func (s *stubMutator) Complete(string) (app.TaskResult, error) {
 func (s *stubMutator) SetPriority(string, int) (app.TaskResult, error) {
 	s.calls++
 	return s.result, s.err
+}
+func (s *stubMutator) ApplyOutlinePlan(req app.OutlinePlanRequest) (app.OutlinePlanResult, error) {
+	s.calls++
+	s.outline = req
+	if s.err != nil {
+		return app.OutlinePlanResult{}, s.err
+	}
+	return app.OutlinePlanResult{Updated: []app.TaskResult{s.result}}, nil
+}
+func (s *stubMutator) ProjectAtRevision(string) (*models.Project, string, error) {
+	s.calls++
+	return s.project, s.result.Revision, s.err
 }
 
 func TestFeatureCoordinatorRunEmitsResult(t *testing.T) {

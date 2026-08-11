@@ -22,6 +22,12 @@ import (
 // A new or retargeted operation must be classified here deliberately, so a task
 // mutation can never silently acquire a project target from a header cursor.
 var headerTargetAudit = map[OperationID]string{
+	"tui.checklist.actions":           "reject",
+	"tui.checklist.add-item":          "reject",
+	"tui.checklist.edit-item":         "reject",
+	"tui.checklist.move-down":         "reject",
+	"tui.checklist.move-up":           "reject",
+	"tui.checklist.toggle-item":       "reject",
 	"tui.core.actions":                "reject",
 	"tui.core.back":                   "target-free",
 	"tui.core.backlog":                "reject",
@@ -51,6 +57,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.core.next":                   "reject",
 	"tui.core.next-work-mode":         "target-free",
 	"tui.core.notes":                  "target-free",
+	"tui.core.outline-editor":         "target-free",
 	"tui.core.peek":                   "target-free",
 	"tui.core.previous-work-mode":     "target-free",
 	"tui.core.quit":                   "target-free",
@@ -80,6 +87,12 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.filter.states":               "target-free",
 	"tui.filter.tags":                 "target-free",
 	"tui.project.set-tags":            "project",
+	"tui.sort.clear":                  "target-free",
+	"tui.sort.created":                "target-free",
+	"tui.sort.due":                    "target-free",
+	"tui.sort.priority":               "target-free",
+	"tui.sort.title":                  "target-free",
+	"tui.sort.updated":                "target-free",
 	"tui.task.copy-details":           "reject",
 	"tui.task.copy-title":             "reject",
 	"tui.task.copy-title-description": "reject",

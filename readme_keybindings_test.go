@@ -95,6 +95,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
+		"`o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
 		"`N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix have no compatibility action",
 		"`a` creates and selects a new tag",
@@ -104,9 +105,10 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"1. Move Project 2. Set Parent 3. Checklist 4. Comments 5. Attachments 6. Delete",
+		"1. Move Project 2. Set Parent 3. Comments 4. Attachments 5. Delete",
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
+		"The checklist is absent because it is edited on its own rows",
 	})
 }
 
@@ -204,12 +206,14 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-7 Markdown and generic `Task` headings",
+		"schema-8 Markdown and generic `Task` headings",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme choice",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>",
 		"pre-scope-v7-<UTC>.tar.gz",
 		"pre-tag-v8-<UTC>.tar.gz",
+		"pre-state-clock-v9-<UTC>.tar.gz",
+		"durable `state_changed` clock, backfilled from `updated`",
 		"schema-4/5 workspaces through the whole chain",
 		"folds the retired per-project grouping fields",
 		"existing `unfiled` project or directory also aborts before snapshot publication",

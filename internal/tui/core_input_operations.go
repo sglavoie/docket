@@ -10,6 +10,55 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// Stable core operation IDs let the final grammar remain independent of dormant
+// legacy command adapters and their retired shortcuts or prefix chords.
+const (
+	operationCoreCapture          OperationID = "tui.core.capture"
+	operationCoreEdit             OperationID = "tui.core.edit"
+	operationCoreEditDescription  OperationID = "tui.core.edit-description"
+	operationCoreExternalEditor   OperationID = "tui.core.external-editor"
+	operationCoreOutlineEditor    OperationID = "tui.core.outline-editor"
+	operationCoreBacklog          OperationID = "tui.core.backlog"
+	operationCoreToday            OperationID = "tui.core.today"
+	operationCoreNext             OperationID = "tui.core.next"
+	operationCoreActions          OperationID = "tui.core.actions"
+	operationCoreCursorDown       OperationID = "tui.core.cursor-down"
+	operationCoreCursorUp         OperationID = "tui.core.cursor-up"
+	operationCoreCursorTop        OperationID = "tui.core.cursor-top"
+	operationCoreCursorBottom     OperationID = "tui.core.cursor-bottom"
+	operationCoreCursorPageUp     OperationID = "tui.core.cursor-page-up"
+	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
+	operationCoreJumpBackward     OperationID = "tui.core.jump-backward"
+	operationCoreJumpForward      OperationID = "tui.core.jump-forward"
+	operationCoreCollapseParent   OperationID = "tui.core.collapse-parent"
+	operationCoreExpand           OperationID = "tui.core.expand"
+	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
+	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
+	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
+	operationCorePeek             OperationID = "tui.core.peek"
+	operationCoreScopeSearch      OperationID = "tui.core.scope-search"
+	operationCoreSelectProject    OperationID = "tui.core.select-project"
+	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
+	operationCoreRangeSelect      OperationID = "tui.core.range-select"
+	operationCoreSelectAll        OperationID = "tui.core.select-all"
+	operationCoreNotes            OperationID = "tui.core.notes"
+	operationCoreToggleTheme      OperationID = "tui.core.toggle-theme"
+	operationCoreUndo             OperationID = "tui.core.undo"
+	operationCoreRedo             OperationID = "tui.core.redo"
+	operationCoreBack             OperationID = "tui.core.back"
+	operationCoreHelp             OperationID = "tui.core.help"
+	operationCoreQuit             OperationID = "tui.core.quit"
+	operationCoreNextWorkMode     OperationID = "tui.core.next-work-mode"
+	operationCorePreviousWorkMode OperationID = "tui.core.previous-work-mode"
+	operationCoreGotoAll          OperationID = "tui.core.goto-all"
+	operationCoreGotoInbox        OperationID = "tui.core.goto-inbox"
+	operationCoreGotoToday        OperationID = "tui.core.goto-today"
+	operationCoreGotoNext         OperationID = "tui.core.goto-next"
+	operationCoreGotoBacklog      OperationID = "tui.core.goto-backlog"
+	operationCoreGotoDue          OperationID = "tui.core.goto-due"
+	operationCoreGotoRecent       OperationID = "tui.core.goto-recent"
+)
+
 func coreOutlinerApplicability(ctx CommandContext) bool {
 	return ctx.View == ViewCrossProjectOutliner
 }
@@ -55,11 +104,27 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 	peek.Applicability = func(ctx CommandContext) bool {
 		return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
 	}
+	// The outline editor restructures a whole project tree, so it names no task
+	// target and refuses a visual selection: the buffer's scope is the project the
+	// cursor sits in, and a selection would claim a narrower one it cannot honor.
+	outlineEditor := core(
+		operationCoreOutlineEditor,
+		"Outline Edit Project",
+		OperationCategoryProject,
+		TargetCardinalityNone,
+		OperationRiskMutation,
+		"bulk restructure",
+		"outline buffer",
+	)
+	outlineEditor.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
+	}
 	descriptors := []OperationDescriptor{
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
 		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
 		withTaskTarget(core(operationCoreExternalEditor, "Open in External Editor", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task externally", "external editor")),
+		outlineEditor,
 		core(operationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "backlog"),
 		core(operationCoreToday, "Toggle Today", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "today"),
 		core(operationCoreNext, "Toggle Next", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "next"),
@@ -213,6 +278,18 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
 			message = EditTaskContentMsg{Task: task, Project: project}
 		}
+	case operationCoreOutlineEditor:
+		project, _, refusal := m.outlineEditorRequest()
+		switch {
+		case refusal != "":
+			m.setWarningStatus(refusal)
+			message = commandMessage(defaultStatusTimeout())
+		case project == nil:
+			m.setWarningStatus("No project under the cursor to outline")
+			message = commandMessage(defaultStatusTimeout())
+		default:
+			message = OpenOutlineEditorMsg{Project: project}
+		}
 	case operationCoreBacklog:
 		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		if invocation.Context.Selection.Visual {
@@ -351,7 +428,10 @@ func commandMessage(cmd tea.Cmd) tea.Msg {
 
 // coreCaptureMessage routes base capture to the workspace-owned System Inbox
 // and project-focus capture to that focused project. Cursor project identity is
-// deliberately ignored at base scope.
+// deliberately ignored at base scope, with one exception: a project header row
+// names a project explicitly rather than incidentally, so capture there lands in
+// it. cursorProjectHeaderProject returns nil on every task row, so the invariant
+// holds verbatim everywhere else.
 func (m *AppModel) coreCaptureMessage() tea.Msg {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
@@ -362,6 +442,9 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 		project = out.project
 	} else if out.isProjectScoped() {
 		project = out.scopedProject()
+	}
+	if project == nil {
+		project = out.cursorProjectHeaderProject()
 	}
 	if project == nil {
 		// Resolve through RuntimeState's canonical workspace-owned Unfiled

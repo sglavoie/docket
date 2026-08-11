@@ -13,7 +13,7 @@ import (
 
 func TestUITestFixtureNames(t *testing.T) {
 	got := BuiltinFixtureNames()
-	want := []string{"busy", "empty", "fresh", "multi-project", "narrow", "parked", "release", "rich", "workflow"}
+	want := []string{"busy", "checklist", "empty", "fresh", "multi-project", "narrow", "parked", "release", "rich", "signals", "workflow"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuiltinFixtureNames() = %v, want %v", got, want)
 	}

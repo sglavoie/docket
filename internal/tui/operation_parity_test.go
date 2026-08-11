@@ -179,13 +179,19 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	handled := registry.HandledKeysForInputStrategy(InputStrategySimplified)
 	expectedKeys := make([]string, 0, len(handled))
 	for _, binding := range strategy.Bindings {
+		// A checklist row operation only exists under a checklist cursor, so its
+		// keys are audited from the row the user is on when they press them.
+		bindingCtx := ctx
+		if checklistRowGrammar[binding.OperationID] {
+			bindingCtx.Entity.HasChecklistCursor = true
+		}
 		for _, path := range binding.paths() {
 			for _, key := range path {
 				if !slices.Contains(expectedKeys, key) {
 					expectedKeys = append(expectedKeys, key)
 				}
 			}
-			resolved, descriptor, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
+			resolved, descriptor, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, bindingCtx)
 			if resolution != ChordTerminal {
 				t.Errorf("key path %v does not resolve to an operation in the Outliner context", path)
 				continue
@@ -203,7 +209,7 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 			}
 			// A chord's own prefixes must wait for the next key rather than run.
 			for depth := 1; depth < len(path); depth++ {
-				_, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path[:depth], ctx)
+				_, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path[:depth], bindingCtx)
 				if resolution != ChordPending {
 					t.Errorf("chord prefix %v resolution = %v, want pending", path[:depth], resolution)
 				}

@@ -36,20 +36,24 @@ type Task struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	// WorkflowState is the single lifecycle source of truth.
-	WorkflowState WorkflowState   `json:"workflow_state,omitempty"`
-	Priority      int             `json:"priority"`
-	ParentID      *string         `json:"parent_id,omitempty"`
-	Tags          []string        `json:"tags,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-	CompletedAt   *time.Time      `json:"completed_at,omitempty"`
-	DueDate       *time.Time      `json:"due_date,omitempty"`
-	Pinned        bool            `json:"pinned,omitempty"`    // Whether the task is pinned
-	PinnedAt      *time.Time      `json:"pinned_at,omitempty"` // When the task was pinned
-	Comments      []*Comment      `json:"comments,omitempty"`  // Timestamped comments/notes
-	Attachments   []Attachment    `json:"attachments,omitempty"`
-	SnoozedUntil  *time.Time      `json:"snoozed_until,omitempty"` // Task hidden until this date
-	Checklist     []ChecklistItem `json:"checklist,omitempty"`     // Checklist items for subtasks
+	WorkflowState WorkflowState `json:"workflow_state,omitempty"`
+	Priority      int           `json:"priority"`
+	ParentID      *string       `json:"parent_id,omitempty"`
+	Tags          []string      `json:"tags,omitempty"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+	// StateChangedAt is the state clock: the instant WorkflowState last became
+	// its current value. UpdatedAt cannot answer "in this state since" because
+	// comments, tags, attachments, reparenting, and manual reordering bump it.
+	StateChangedAt time.Time       `json:"state_changed_at"`
+	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
+	DueDate        *time.Time      `json:"due_date,omitempty"`
+	Pinned         bool            `json:"pinned,omitempty"`    // Whether the task is pinned
+	PinnedAt       *time.Time      `json:"pinned_at,omitempty"` // When the task was pinned
+	Comments       []*Comment      `json:"comments,omitempty"`  // Timestamped comments/notes
+	Attachments    []Attachment    `json:"attachments,omitempty"`
+	SnoozedUntil   *time.Time      `json:"snoozed_until,omitempty"` // Task hidden until this date
+	Checklist      []ChecklistItem `json:"checklist,omitempty"`     // Checklist items for subtasks
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`
@@ -96,14 +100,15 @@ func newTask(id string, shortID int, title string) (*Task, error) {
 	}
 	now := time.Now()
 	return &Task{
-		ID:            id,
-		ShortID:       shortID,
-		Title:         title,
-		WorkflowState: StateBacklog,
-		Priority:      PriorityUnset,
-		Tags:          []string{},
-		CreatedAt:     now,
-		UpdatedAt:     now,
-		Children:      []*Task{},
+		ID:             id,
+		ShortID:        shortID,
+		Title:          title,
+		WorkflowState:  StateBacklog,
+		Priority:       PriorityUnset,
+		Tags:           []string{},
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		StateChangedAt: now,
+		Children:       []*Task{},
 	}, nil
 }

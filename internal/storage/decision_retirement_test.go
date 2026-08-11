@@ -42,13 +42,13 @@ func TestConvertedDecisionCommentUsesOrdinaryLivePaths(t *testing.T) {
 		t.Fatal("live Task still exposes decision records")
 	}
 
-	projectDocument := V6ProjectDocument{
+	projectDocument := V8ProjectDocumentFromV7(V7ProjectDocument{
 		ProjectName: "Converted",
 		Tasks:       []format.V6TaskRecord{converted.Task},
-	}
-	tasks, err := modelsFromV6ProjectDocument(projectDocument, time.UTC)
+	})
+	tasks, err := modelsFromV8ProjectDocument(projectDocument, time.UTC)
 	if err != nil {
-		t.Fatalf("modelsFromV6ProjectDocument: %v", err)
+		t.Fatalf("modelsFromV8ProjectDocument: %v", err)
 	}
 	if len(tasks) != 1 || len(tasks[0].Comments) != 2 {
 		t.Fatalf("converted live comments = %+v", tasks)
@@ -113,9 +113,9 @@ func testConvertedCommentUndoRedo(t *testing.T, record format.V6TaskRecord, orig
 	ledger := NewWorkspaceLedger(ledgerDir, []string{dataDir})
 	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	project := newCommitTestProject(t, dataDir, "converted", record.Title)
-	tasks, err := modelsFromV6ProjectDocument(V6ProjectDocument{ProjectName: project.Name, Tasks: []format.V6TaskRecord{record}}, time.UTC)
+	tasks, err := modelsFromV8ProjectDocument(V8ProjectDocumentFromV7(V7ProjectDocument{ProjectName: project.Name, Tasks: []format.V6TaskRecord{record}}), time.UTC)
 	if err != nil {
-		t.Fatalf("modelsFromV6ProjectDocument: %v", err)
+		t.Fatalf("modelsFromV8ProjectDocument: %v", err)
 	}
 	project.Tasks = tasks
 	project.BuildTaskTree()

@@ -46,7 +46,12 @@ type TaskComposerSharedAttributes struct {
 // TaskComposerPreset is the complete typed launch contract for compact create,
 // expanded create/edit, children, and links.
 type TaskComposerPreset struct {
-	Kind               TaskComposerPresetKind
+	Kind TaskComposerPresetKind
+	// HeaderLabel overrides the kind's generic subtitle. Capture uses it to name
+	// the destination project it resolved, because base capture and header-row
+	// capture reach the same overlay with the same kind and would otherwise be
+	// indistinguishable until the task landed somewhere unexpected.
+	HeaderLabel        string
 	Project            *models.Project
 	AllProjects        []*models.Project
 	Task               *models.Task
@@ -57,6 +62,9 @@ type TaskComposerPreset struct {
 }
 
 func (p TaskComposerPreset) label() string {
+	if p.HeaderLabel != "" {
+		return p.HeaderLabel
+	}
 	switch p.Kind {
 	case ComposerGlobal:
 		return "Global capture"

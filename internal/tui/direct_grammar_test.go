@@ -16,10 +16,11 @@ import (
 func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	direct := map[string]OperationID{
-		"a": operationCoreCapture, "A": operationTaskNewChild,
-		"e": operationCoreEdit, "E": operationCoreEditDescription,
+		"a":      operationCoreCapture,
+		"E":      operationCoreEditDescription,
 		"ctrl+e": operationCoreExternalEditor,
-		"space":  operationCoreActions,
+		"O":      operationCoreOutlineEditor,
+		"x":      operationChecklistToggleItem,
 		"j":      operationCoreCursorDown, "down": operationCoreCursorDown,
 		"k": operationCoreCursorUp, "up": operationCoreCursorUp,
 		"home": operationCoreCursorTop,
@@ -30,7 +31,6 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"h": operationCoreCollapseParent, "left": operationCoreCollapseParent,
 		"l": operationCoreExpand, "right": operationCoreExpand,
 		"S": operationCoreToggleSections,
-		"J": operationCoreReorderDown, "K": operationCoreReorderUp,
 		"<": operationTaskOutdent, ">": operationTaskIndent,
 		"enter": operationCorePeek,
 		"/":     operationCoreScopeSearch,
@@ -47,11 +47,18 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"ctrl+y": operationTaskCopyTitleDescription,
 	}
 
-	// # is the one deliberately shared key: the cursor decides whether it tags the
-	// task or the project, and each meaning keeps its own descriptor so help and
-	// the footer can name both honestly.
+	// A shared key is one the cursor disambiguates, and each meaning keeps its own
+	// descriptor so help and the footer can name both honestly. # asks whether the
+	// cursor names a task or a project; the rest ask whether it names a checklist
+	// item, and the checklist meaning is listed first because resolution takes the
+	// first applicable binding.
 	shared := map[string][]OperationID{
-		"#": {operationTaskSetTags, operationProjectSetTags},
+		"#":     {operationTaskSetTags, operationProjectSetTags},
+		"e":     {operationChecklistEditItem, operationCoreEdit},
+		"A":     {operationChecklistAddItem, operationTaskNewChild},
+		"space": {operationChecklistActions, operationCoreActions},
+		"J":     {operationChecklistMoveDown, operationCoreReorderDown},
+		"K":     {operationChecklistMoveUp, operationCoreReorderUp},
 	}
 
 	owners := make(map[string][]OperationID)

@@ -3,6 +3,9 @@ package tui
 import (
 	"slices"
 	"sort"
+	"time"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // sectionRowForest is a presentation-only hierarchy over rows that already
@@ -147,7 +150,7 @@ func (m *OutlinerModel) groupSectionRowsByProject(
 func (m *OutlinerModel) appendProjectGroupHeader(
 	template outlinerRow,
 	projectID string,
-	count int,
+	tasks []*models.Task,
 	collapseKey string,
 ) bool {
 	if m.project != nil || m.isProjectScoped() {
@@ -156,10 +159,50 @@ func (m *OutlinerModel) appendProjectGroupHeader(
 	header := template
 	header.IsProjectHeader = true
 	header.ProjectID = projectID
-	header.SectionCount = count
+	header.SectionCount = len(tasks)
 	header.CollapseKey = collapseKey
+	header.OverdueCount, header.TodayCount = m.projectGroupPressure(tasks, projectID)
+	// A Today group is today-planned by construction, so the count there could
+	// only restate the group's own size.
+	if header.IsTodaySection {
+		header.TodayCount = 0
+	}
 	m.rows = append(m.rows, header)
 	return !m.isSectionRowCollapsed(header)
+}
+
+// projectGroupPressure counts the overdue and Today-planned work one project
+// group holds, so a header still names that pressure once the group is folded.
+func (m *OutlinerModel) projectGroupPressure(tasks []*models.Task, projectID string) (overdue, today int) {
+	now := time.Now()
+	planned := m.todayPlanIdentities()
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		if taskIsOverdueAt(task, now) {
+			overdue++
+		}
+		if planned[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
+			today++
+		}
+	}
+	return overdue, today
+}
+
+// todayPlanIdentities reads the durable Today membership directly, so a header
+// counts the same plan every projection resolves from without threading the
+// mode input through the row appenders.
+func (m *OutlinerModel) todayPlanIdentities() map[TaskIdentity]bool {
+	if m.runtime == nil {
+		return nil
+	}
+	plan := m.runtime.Planning().GetToday()
+	identities := make(map[TaskIdentity]bool, len(plan))
+	for _, item := range plan {
+		identities[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+	}
+	return identities
 }
 
 // appendProjectGroupedForests emits every project group of one section.
@@ -170,11 +213,25 @@ func (m *OutlinerModel) appendProjectGroupedForests(
 ) {
 	for _, group := range groups {
 		if m.appendProjectGroupHeader(
-			template, group.projectID, group.forest.count, collapseKeyFor(group.projectID),
+			template, group.projectID, group.forest.tasks(), collapseKeyFor(group.projectID),
 		) {
 			m.flattenSectionRowForest(group.forest, &m.rows)
 		}
 	}
+}
+
+// tasks returns every task the forest holds, in flattened render order.
+func (f sectionRowForest) tasks() []*models.Task {
+	tasks := make([]*models.Task, 0, f.count)
+	var walk func([]*sectionRowNode)
+	walk = func(nodes []*sectionRowNode) {
+		for _, node := range nodes {
+			tasks = append(tasks, node.row.task)
+			walk(node.children)
+		}
+	}
+	walk(f.roots)
+	return tasks
 }
 
 func (m *OutlinerModel) flattenSectionRowForest(forest sectionRowForest, rows *[]outlinerRow) {

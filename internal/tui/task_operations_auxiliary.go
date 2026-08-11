@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	operationTaskChecklist            OperationID = "tui.task.checklist"
 	operationTaskComments             OperationID = "tui.task.comments"
 	operationTaskAttachments          OperationID = "tui.task.attachments"
 	operationTaskCopyTitle            OperationID = "tui.task.copy-title"
@@ -79,8 +78,6 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 
 	//nolint:exhaustive // Only auxiliary task operations reach this switch.
 	switch invocation.Descriptor.ID {
-	case operationTaskChecklist:
-		return message(ShowTaskChecklistMsg{Task: task, Project: project})
 	case operationTaskComments:
 		return message(ShowTaskCommentsMsg{Task: task, Project: project})
 	case operationTaskAttachments:

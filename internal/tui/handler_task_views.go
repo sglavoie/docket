@@ -11,9 +11,6 @@ func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowTaskCommentsMsg:
 		return m.handleShowTaskComments(msg)
 
-	case ShowTaskChecklistMsg:
-		return m.handleShowTaskChecklist(msg)
-
 	}
 	return false, nil
 }
@@ -30,18 +27,4 @@ func (m *AppModel) handleShowTaskComments(msg ShowTaskCommentsMsg) (bool, tea.Cm
 		m.secondaryFeatures.Subview,
 	)
 	return m.showViewInit(ViewTaskComments, view)
-}
-
-// handleShowTaskChecklist handles the ShowTaskChecklistMsg.
-func (m *AppModel) handleShowTaskChecklist(msg ShowTaskChecklistMsg) (bool, tea.Cmd) {
-	if msg.Task == nil || msg.Project == nil {
-		return true, nil
-	}
-	view := NewTaskChecklistModelWithEditor(
-		msg.Task,
-		msg.Project,
-		"",
-		m.secondaryFeatures.Subview,
-	)
-	return m.showViewInit(ViewTaskChecklist, view)
 }

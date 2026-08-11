@@ -20,6 +20,7 @@ const (
 	operationHarnessTaskAttachments OperationID = "tui.harness.task-attachments"
 	operationHarnessTaskComments    OperationID = "tui.harness.task-comments"
 	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
+	operationHarnessOutlineErrors   OperationID = "tui.harness.outline-errors"
 )
 
 type harnessOperationSpec struct {
@@ -80,6 +81,18 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return ShowNotesManagerMsg{Scope: AllNotesScope()}
 		}},
+		{operationHarnessOutlineErrors, "outline errors", OperationCategorySystem, func() tea.Msg {
+			// The outline refusal surface is only reachable through an external
+			// editor round trip, which no harness action can replay: editors are
+			// disabled and the `command` action carries no buffer payload. Scenarios
+			// therefore install it directly with a canned problem list.
+			m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(
+				"Rich Project",
+				"/tmp/tt-outline-scenario.md",
+				harnessOutlineProblems(),
+			))
+			return nil
+		}},
 	}
 
 	for _, spec := range specs {
@@ -107,6 +120,19 @@ func (m *AppModel) registerHarnessOperations() error {
 		}
 	}
 	return nil
+}
+
+// harnessOutlineProblems is one rejected buffer's worth of problems, holding
+// both validation phases and a message long enough to need wrapping at narrow
+// widths.
+func harnessOutlineProblems() []lineError {
+	return []lineError{
+		{line: 4, message: "indent of 3 spaces is not a multiple of 2"},
+		{line: 6, message: "marker [[tt:deadbeef]] does not name a task in this project"},
+		{line: 9, message: "indent jumps from level 0 to level 2; indent one level at a time"},
+		{line: 11, message: "task title cannot be empty"},
+		{line: 12, message: "indentation sets parentage here; remove the >parent sigil"},
+	}
 }
 
 func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {

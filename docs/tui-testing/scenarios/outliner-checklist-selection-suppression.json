@@ -1,0 +1,24 @@
+{
+  "name": "outliner-checklist-selection-suppression",
+  "fixture": "checklist",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "move onto the project header", "key": "j" },
+    { "type": "key", "label": "move onto the checklist-only task", "key": "j" },
+    { "type": "key", "label": "expand its checklist", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
+    { "type": "key", "label": "v enters visual selection from the owner task row", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "label": "selection names task rows only", "assert": "not_contains", "value": "Outline the rollback steps" },
+    { "type": "assert", "assert": "not_contains", "value": "Attach the comms draft" },
+    { "type": "assert", "label": "the cursor re-seats on the owner task", "assert": "contains", "value": "Draft the launch runbook" },
+    { "type": "assert", "assert": "contains", "value": "1 total · 1 visible · 0 hidden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Esc leaves selection", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "label": "the fold state survived, so the same rows come back", "assert": "contains", "value": "[x] Outline the rollback steps" },
+    { "type": "assert", "assert": "contains", "value": "[ ] Attach the comms draft" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

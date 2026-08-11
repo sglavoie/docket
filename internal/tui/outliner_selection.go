@@ -75,6 +75,7 @@ func (m *OutlinerModel) toggleCursorSelection() {
 	m.peekMode = false
 	m.multiSelectMode = true
 	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.cursor]))
+	m.syncChecklistSelectionRows()
 	m.updateVisualSelectionStatus()
 }
 
@@ -92,6 +93,7 @@ func (m *OutlinerModel) startCursorRangeSelection() {
 	}
 	m.peekMode = false
 	m.StartRangeSelection(m.taskIdentityForRow(m.rows[m.cursor]))
+	m.syncChecklistSelectionRows()
 	m.updateVisualSelectionStatus()
 }
 
@@ -116,11 +118,13 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 	m.multiSelectMode = !m.multiSelectMode
 	if !m.multiSelectMode {
 		m.ClearSelection()
+		m.syncChecklistSelectionRows()
 		m.clearStatus()
 		return
 	}
 
 	m.peekMode = false
+	m.syncChecklistSelectionRows()
 	m.updateVisualSelectionStatus()
 }
 
@@ -171,6 +175,7 @@ func (m *OutlinerModel) selectionCounts() SelectionCounts {
 func (m *OutlinerModel) selectAllVisible() {
 	m.peekMode = false
 	m.ReplaceSelection(m.visibleTaskIdentities())
+	m.syncChecklistSelectionRows()
 }
 
 // updateRangeSelection recalculates the inclusive anchor-to-cursor range using

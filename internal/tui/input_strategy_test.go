@@ -40,6 +40,8 @@ func guidanceHintsText(hints []GuidanceHint) string {
 func simplifiedTaskActionDescriptors() []OperationDescriptor {
 	descriptors := append((&AppModel{}).taskActionOperationDescriptors(), filterOperationDescriptors()...)
 	descriptors = append(descriptors, projectFilterOperationDescriptors()...)
+	descriptors = append(descriptors, sortAxisOperationDescriptors()...)
+	descriptors = append(descriptors, checklistRowOperationDescriptors()...)
 	return append(descriptors, projectOperationDescriptors()...)
 }
 
@@ -650,8 +652,14 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	if err := app.registerFilterOperations(); err != nil {
 		t.Fatalf("registerFilterOperations: %v", err)
 	}
+	if err := app.registerSortOperations(); err != nil {
+		t.Fatalf("registerSortOperations: %v", err)
+	}
 	if err := app.registerProjectOperations(); err != nil {
 		t.Fatalf("registerProjectOperations: %v", err)
+	}
+	if err := app.registerChecklistRowOperations(); err != nil {
+		t.Fatalf("registerChecklistRowOperations: %v", err)
 	}
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("RegisterInputStrategy: %v", err)
@@ -659,7 +667,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
 	for _, retired := range []string{
-		"q", "w", "i", "x", "|", "ctrl+n", "ctrl+x",
+		"q", "w", "i", "|", "ctrl+n", "ctrl+x",
 		":", "R", "ctrl+esc", "m", "b", "d", "n", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)

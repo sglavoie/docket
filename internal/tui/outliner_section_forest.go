@@ -56,6 +56,25 @@ func buildTaskForestsByStateGroup(
 	return forests
 }
 
+// tasks returns every task the forest holds. It walks the forest's own child
+// index rather than Task.Children so descendants belonging to another state
+// group stay out.
+func (f *sectionTaskForest) tasks() []*models.Task {
+	if f == nil {
+		return nil
+	}
+	tasks := make([]*models.Task, 0, f.count)
+	var walk func([]*models.Task)
+	walk = func(nodes []*models.Task) {
+		for _, task := range nodes {
+			tasks = append(tasks, task)
+			walk(f.children[task.ID])
+		}
+	}
+	walk(f.roots)
+	return tasks
+}
+
 func flattenTaskPointers(tasks []*models.Task) []*models.Task {
 	var result []*models.Task
 	var walk func([]*models.Task)

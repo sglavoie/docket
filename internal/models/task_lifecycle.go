@@ -56,9 +56,9 @@ func (t *Task) ApplyStateTransition(state WorkflowState) error {
 }
 
 // ApplyStateTransitionAt is the canonical task-state mutation primitive. It
-// owns terminal completion timestamps, reopen cleanup, snooze clearing, and the
-// update timestamp. Supplying now lets application services use their injected
-// clock.
+// owns terminal completion timestamps, reopen cleanup, snooze clearing, the
+// state clock, and the update timestamp. Supplying now lets application
+// services use their injected clock.
 //
 // This method validates the target but deliberately does not enforce
 // CanTransitionState: reconciliation may perform explicit overrides.
@@ -68,6 +68,12 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 		return fmt.Errorf("invalid workflow state %q", state)
 	}
 
+	// Re-applying the state a task already holds is not a transition, so the
+	// state clock must survive it: `sw` on a task that has waited twelve days
+	// still reads twelve days.
+	if t.State() != state {
+		t.StateChangedAt = now
+	}
 	t.ApplyWorkflowState(state)
 	t.SnoozedUntil = nil
 	if state.IsTerminal() {

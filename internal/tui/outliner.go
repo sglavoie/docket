@@ -63,6 +63,12 @@ type OutlinerModel struct {
 
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool       // Section collapse state for All mode
+	// expandedChecklists is the project-qualified checklist fold state, and it
+	// defaults to collapsed: an absent key hides the owner's items. It is
+	// deliberately separate from expandedNodes, which defaults to expanded, and
+	// from collapsedSections, whose string keys are shared with grouping headers
+	// and are never cleared on a mode change.
+	expandedChecklists map[TaskIdentity]bool
 	// sectionToggleRestore preserves a task focus across one S-driven
 	// collapse/expand cycle. It is deliberately session-only.
 	sectionToggleRestore *sectionToggleRestoreAnchor
@@ -182,19 +188,20 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
 	_ = cfgManager
 	m := &OutlinerModel{
-		runtime:           runtime,
-		projectService:    NewProjectService(),
-		quickEdit:         NewQuickEditComponent(),
-		project:           project,
-		primaryMode:       ModeAll,
-		expandedNodes:     make(map[TaskIdentity]bool),
-		collapsedSections: make(map[string]bool),
-		filter:            NewFilterState(),
-		projectFilter:     newProjectFilterState(),
-		sort:              NewSortState(),
-		treeSort:          NewSortState(),
-		MultiSelectState:  MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
-		columnConfig:      NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
+		runtime:            runtime,
+		projectService:     NewProjectService(),
+		quickEdit:          NewQuickEditComponent(),
+		project:            project,
+		primaryMode:        ModeAll,
+		expandedNodes:      make(map[TaskIdentity]bool),
+		collapsedSections:  make(map[string]bool),
+		expandedChecklists: make(map[TaskIdentity]bool),
+		filter:             NewFilterState(),
+		projectFilter:      newProjectFilterState(),
+		sort:               NewSortState(),
+		treeSort:           NewSortState(),
+		MultiSelectState:   MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
+		columnConfig:       NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
 	return m

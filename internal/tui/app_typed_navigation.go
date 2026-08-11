@@ -79,6 +79,8 @@ func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
 		switch params.Kind {
 		case ReferenceHelp:
 			return ViewHelp, true
+		case ReferenceOutlineErrors:
+			return ViewOutlineErrors, true
 		}
 	}
 	return 0, false

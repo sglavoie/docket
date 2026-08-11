@@ -2,13 +2,13 @@ package storage
 
 import "github.com/sglavoie/tt/internal/models"
 
-// WriteTasksMarkdown renders the strict schema-6 project document.
+// WriteTasksMarkdown renders the strict live project document.
 func WriteTasksMarkdown(projectName string, tasks []*models.Task) (string, error) {
-	v6, err := v6ProjectDocumentFromModel(&models.Project{Name: projectName, Tasks: tasks})
+	v8, err := v8ProjectDocumentFromModel(&models.Project{Name: projectName, Tasks: tasks})
 	if err != nil {
 		return "", err
 	}
-	return WriteV6ProjectDocument(v6)
+	return WriteV8ProjectDocument(v8)
 }
 
 type taskHierarchyIndex struct {

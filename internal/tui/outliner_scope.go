@@ -274,6 +274,7 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.crossZoomStack = nil
 	m.collapsedSections = make(map[string]bool)
 	m.expandedNodes = make(map[TaskIdentity]bool)
+	m.expandedChecklists = make(map[TaskIdentity]bool)
 	m.sectionToggleRestore = nil
 	clearCommonFilters(&m.filter.CommonFilterState)
 	m.sort.Reset()

@@ -126,6 +126,15 @@ type EntityContext struct {
 	TaskID    string
 	State     string
 	Archived  bool
+	// HasChecklistCursor reports that the cursor rests on a checklist row owned
+	// by the task TaskID names. The owner's task and project stay filled beside
+	// it so the archived-project guard still fires, which is exactly why the
+	// checklist cursor needs a flag of its own: nothing else distinguishes it
+	// from the owner row whose pointer it carries.
+	HasChecklistCursor bool
+	// ChecklistIndex is the item's position inside the owner's checklist. It is
+	// meaningful only while HasChecklistCursor holds.
+	ChecklistIndex int
 }
 
 // CommandContext is the complete input to capability-based command

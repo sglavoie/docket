@@ -1,0 +1,42 @@
+{
+  "name": "sort-manual-order-preserved",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "move to the last task", "key": "end" },
+    { "type": "key", "label": "pin Explore social login", "key": "P" },
+    { "type": "wait" },
+    { "type": "key", "label": "return to the top of the projection", "key": "home" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "move to Build login form", "key": "down" },
+    { "type": "key", "label": "pin Build login form", "key": "P" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "@ Pinned  (2)" },
+    { "type": "assert", "label": "the newest pin leads the manual order", "assert": "contains", "value": "├── ▶   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "└── ¿   Explore social login" },
+
+    { "type": "key", "label": "sort by title descending", "key": "o" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↓" },
+    { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
+    { "type": "assert", "label": "the sort axis never reaches the manual Pinned order", "assert": "contains", "value": "├── ▶   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "└── ¿   Explore social login" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the cursor still reorders Pinned by hand", "key": "home" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "J" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "├── ¿   Explore social login" },
+    { "type": "assert", "assert": "contains", "value": "└── ▶   Build login form" },
+    { "type": "assert", "assert": "status_contains", "value": "Reorder Pinned" },
+    { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

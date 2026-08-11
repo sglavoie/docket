@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -33,38 +32,6 @@ func assertGuidanceExcludes(t *testing.T, state string, spec GuidanceSpec, exclu
 			t.Errorf("%s guidance = %q, unexpectedly contains %q", state, got, entry)
 		}
 	}
-}
-
-func TestChecklistGuidanceTracksBrowseEmptyInputAndConfirmation(t *testing.T) {
-	project, task := newTaskToolGuidanceFixture(t)
-	task.Checklist = []models.ChecklistItem{{Text: "one"}, {Text: "two"}}
-	model := NewTaskChecklistModel(task, project)
-
-	spec, ok := model.guidanceSpec()
-	assertGuidanceContains(t, "checklist browse", spec, ok,
-		"Space/Enter toggle", "a add", "e edit", "d delete", "J/K reorder", "Esc close")
-	if spec.Rows != 1 {
-		t.Fatalf("checklist browse rows = %d, want 1", spec.Rows)
-	}
-
-	task.Checklist = nil
-	spec, ok = model.guidanceSpec()
-	assertGuidanceContains(t, "checklist empty", spec, ok, "a add", "Esc close")
-	assertGuidanceExcludes(t, "checklist empty", spec, "toggle", "edit", "delete", "copy", "reorder", "navigate")
-
-	model.addMode = true
-	spec, ok = model.guidanceSpec()
-	assertRequiredGuidance(t, "checklist add", spec, ok, "Enter save", "Esc cancel")
-	if spec.Rows != 2 {
-		t.Fatalf("checklist add rows = %d, want 2", spec.Rows)
-	}
-	model.err = errors.New("item is empty")
-	spec, ok = model.guidanceSpec()
-	assertRequiredGuidance(t, "checklist invalid add", spec, ok, "Enter retry", "Esc cancel")
-
-	model.confirm.Show("discard-add", "Discard item?")
-	spec, ok = model.guidanceSpec()
-	assertRequiredGuidance(t, "checklist confirmation", spec, ok, "y confirm", "n/Esc cancel")
 }
 
 func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testing.T) {
@@ -140,7 +107,6 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 	project, task := newTaskToolGuidanceFixture(t)
 	for i := 0; i < 20; i++ {
-		task.Checklist = append(task.Checklist, models.ChecklistItem{Text: "checklist item"})
 		task.Comments = append(task.Comments, &models.Comment{Text: "comment", CreatedAt: time.Now()})
 		task.Attachments = append(task.Attachments, models.Attachment{
 			Filename:     "https://example.com",
@@ -149,9 +115,6 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 		})
 	}
 
-	checklist := NewTaskChecklistModel(task, project)
-	checklist.SetSize(36, 12)
-	checklist.cursor = len(task.Checklist) - 1
 	comments := NewTaskCommentsModel(task, project)
 	comments.SetSize(36, 16)
 	comments.cursor = len(task.Comments) - 1
@@ -160,15 +123,10 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 	attachments.cursor = len(task.Attachments) - 1
 
 	for name, rendered := range map[string]string{
-		"checklist":   checklist.View().Content,
 		"comments":    comments.View().Content,
 		"attachments": attachments.View().Content,
 	} {
-		height := 16
-		if name == "checklist" {
-			height = 12
-		}
-		assertFitsWithin(t, rendered, 36, height)
+		assertFitsWithin(t, rendered, 36, 16)
 		plain := ansi.Strip(rendered)
 		if strings.Contains(plain, "Press 'a'") || strings.Contains(plain, "Enter:") || strings.Contains(plain, "Esc:") {
 			t.Errorf("%s retained quoted-key or colon footer grammar:\n%s", name, plain)
@@ -179,7 +137,6 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 		name string
 		spec GuidanceSpec
 	}{
-		{"checklist", func() GuidanceSpec { spec, _ := checklist.guidanceSpec(); return spec }()},
 		{"comments", func() GuidanceSpec { spec, _ := comments.guidanceSpec(); return spec }()},
 		{"attachments", func() GuidanceSpec { spec, _ := attachments.guidanceSpec(); return spec }()},
 	} {

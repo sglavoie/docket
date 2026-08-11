@@ -34,6 +34,9 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerFilterOperations(); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
+	if err := model.registerSortOperations(); err != nil {
+		t.Fatalf("register sort operations: %v", err)
+	}
 	if err := model.registerProjectHubOperations(); err != nil {
 		t.Fatalf("register project hub operations: %v", err)
 	}
@@ -45,6 +48,9 @@ func typedTestApp(t *testing.T) *AppModel {
 	}
 	if err := model.registerNoteOperations(); err != nil {
 		t.Fatalf("register note operations: %v", err)
+	}
+	if err := model.registerChecklistRowOperations(); err != nil {
+		t.Fatalf("register checklist row operations: %v", err)
 	}
 	if err := model.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)

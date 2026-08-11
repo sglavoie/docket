@@ -52,9 +52,6 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 	context := taskOperationTestContext(task, project)
 
 	checks := map[OperationID]func(*testing.T, any){
-		operationTaskChecklist: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowTaskChecklistMsg).Task, task)
-		},
 		operationTaskComments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskCommentsMsg).Task, task)
 		},

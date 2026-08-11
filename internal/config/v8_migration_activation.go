@@ -157,6 +157,12 @@ func buildV8MigrationPlan(dataDir string) (v8MigrationPlan, error) {
 }
 
 func readV8SourceCatalog(path string) ([]byte, WorkspaceCatalog, error) {
+	return readMigrationSourceCatalog(path, V7ConfigSchemaVersion)
+}
+
+// readMigrationSourceCatalog strictly decodes the catalog a migration consumes
+// and refuses anything that is not exactly the expected predecessor schema.
+func readMigrationSourceCatalog(path string, expected int) ([]byte, WorkspaceCatalog, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, WorkspaceCatalog{}, err
@@ -165,25 +171,25 @@ func readV8SourceCatalog(path string) ([]byte, WorkspaceCatalog, error) {
 	decoder.DisallowUnknownFields()
 	var envelope domainEnvelope
 	if err := decoder.Decode(&envelope); err != nil {
-		return nil, WorkspaceCatalog{}, fmt.Errorf("decode schema-7 workspace envelope: %w", err)
+		return nil, WorkspaceCatalog{}, fmt.Errorf("decode schema-%d workspace envelope: %w", expected, err)
 	}
 	if err := requireJSONEOF(decoder); err != nil {
 		return nil, WorkspaceCatalog{}, err
 	}
 	if envelope.SchemaVersion != CurrentDomainSchemaVersion || envelope.Kind != domainCatalog.name() {
-		return nil, WorkspaceCatalog{}, fmt.Errorf("schema-7 workspace envelope has invalid schema or kind")
+		return nil, WorkspaceCatalog{}, fmt.Errorf("schema-%d workspace envelope has invalid schema or kind", expected)
 	}
 	payload := json.NewDecoder(bytes.NewReader(envelope.Data))
 	payload.DisallowUnknownFields()
 	var catalog WorkspaceCatalog
 	if err := payload.Decode(&catalog); err != nil {
-		return nil, WorkspaceCatalog{}, fmt.Errorf("decode schema-7 workspace payload: %w", err)
+		return nil, WorkspaceCatalog{}, fmt.Errorf("decode schema-%d workspace payload: %w", expected, err)
 	}
 	if err := requireJSONEOF(payload); err != nil {
 		return nil, WorkspaceCatalog{}, err
 	}
-	if catalog.SchemaVersion != V7ConfigSchemaVersion || catalog.WorkspaceID != envelope.WorkspaceID {
-		return nil, WorkspaceCatalog{}, fmt.Errorf("schema-7 workspace payload has invalid schema or identity")
+	if catalog.SchemaVersion != expected || catalog.WorkspaceID != envelope.WorkspaceID {
+		return nil, WorkspaceCatalog{}, fmt.Errorf("schema-%d workspace payload has invalid schema or identity", expected)
 	}
 	return data, catalog, nil
 }
@@ -216,12 +222,19 @@ func normalizeV8Tags(projectID, taskID string, tags []string, sorted bool, audit
 }
 
 func v8UndoCleanupOps(root string) ([]transaction.Op, error) {
+	return undoHistoryCleanupOps(root, V8ConfigSchemaVersion)
+}
+
+// undoHistoryCleanupOps deletes the whole undo ledger. Every schema boundary
+// that changes the retained artifact bytes has to drop it: an entry replayed
+// after the boundary would restore a document the new loader rejects.
+func undoHistoryCleanupOps(root string, schema int) ([]transaction.Op, error) {
 	info, err := os.Lstat(root)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-		return nil, fmt.Errorf("inspect undo history before schema-8 migration: %w", err)
+		return nil, fmt.Errorf("inspect undo history before schema-%d migration: %w", schema, err)
 	}
 	var files, dirs []string
 	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -229,7 +242,7 @@ func v8UndoCleanupOps(root string) ([]transaction.Op, error) {
 			return walkErr
 		}
 		if entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("schema-8 migration refuses symlink in undo history: %s", path)
+			return fmt.Errorf("schema-%d migration refuses symlink in undo history: %s", schema, path)
 		}
 		if entry.IsDir() {
 			dirs = append(dirs, path)

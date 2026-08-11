@@ -11,7 +11,7 @@
     { "type": "assert", "assert": "contains", "value": "ORGANIZE" },
     { "type": "assert", "assert": "contains", "value": "Move Project" },
     { "type": "assert", "assert": "contains", "value": "CONTENT" },
-    { "type": "assert", "assert": "contains", "value": "Checklist" },
+    { "type": "assert", "label": "the checklist lives on its own rows, never in the task menu", "assert": "not_contains", "value": "Checklist" },
     { "type": "assert", "assert": "contains", "value": "Comments" },
     { "type": "assert", "assert": "not_contains", "value": "Decisions" },
     { "type": "assert", "assert": "contains", "value": "Attachments" },

@@ -320,6 +320,8 @@ func operationCategoryLabel(category OperationCategory) string {
 		return "Scope"
 	case OperationCategoryFilter:
 		return "Discovery"
+	case OperationCategorySort:
+		return "Sorting"
 	case OperationCategoryProject:
 		return "Projects"
 	case OperationCategoryNote:

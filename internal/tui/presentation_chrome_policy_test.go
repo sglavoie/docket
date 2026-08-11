@@ -15,6 +15,7 @@ func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
 		ViewPriorityPicker: true,
 		ViewParentSelector: true,
 		ViewTagSelector:    true,
+		ViewOutlineErrors:  true,
 	}
 
 	for _, presentation := range allPresentations() {

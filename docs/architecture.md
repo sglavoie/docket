@@ -13,7 +13,7 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-7 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-8 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
   machine-local theme, workspace selection, and the v4→v5→v6→v7 migration chain.
@@ -100,6 +100,27 @@ through the shared `appendProjectGroupHeader` kernel, and each grouping surface
 owns a disjoint `collapsedSections` key namespace, because that map is never
 cleared on a mode change.
 
+Checklist items are a fourth row kind, emitted by one `expandChecklistRows`
+post-pass rather than by each mode strategy. `IsChecklistItem` takes a row out of
+`isTaskRow()` but leaves it navigable, so the cursor can reach an item while
+every task operation refuses there rather than acting on the owner task whose
+pointer the row carries for rendering. Their fold state is `expandedChecklists`,
+kept apart from `expandedNodes` and `collapsedSections` because it defaults
+collapsed; `h`/`l` walk children and checklist as one ladder, and entering visual
+selection from a task row suppresses the items without discarding the state.
+
+A checklist row owns six operations of its own — Toggle, Edit, Move Down, Move
+Up, Add, and an actions menu holding Edit and Delete — registered in
+`checklist_row_operations.go` as ordinary descriptors that apply only under a
+checklist cursor. Five reuse the key their task-row counterpart holds, which
+works because resolution takes the first applicable binding and the two are
+disjoint by cursor. The refusal that keeps them disjoint is one predicate,
+`operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable` for
+key resolution, help, and footer hints, and again by `OperationExecutor.Execute`
+so a non-keyboard route refuses identically. It stays out of the descriptor's
+`Applicability` field so an unconditional descriptor keeps looking
+unconditional to the registry's static direct-key collision check.
+
 Recent is the activity review projection. It groups tasks touched within the
 last 30 days into Today, Yesterday, Last 7 Days, and Last 30 Days buckets,
 newest first, and owns terminal and snoozed membership rather than waiting for a
@@ -158,21 +179,33 @@ applicability, target cardinality, risk, value provider, and capabilities.
 `OperationExecutor` freezes and resolves typed targets, requests values, gates
 confirmation, and invokes the bound handler.
 
+One operation may chain into a second one by following its committed command with
+an `OperationValueRequestMsg`, which is how `sw` asks for the check-back date it
+has just made relevant. The chain keys off the first operation's own resolved
+value, not runtime context, and it reuses the frozen command context, so the
+second step targets the same tasks even though the transition moved the cursor.
+Because the first transaction has already committed, cancelling the second step
+cancels only the second step.
+
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
 handled-key metadata, chord hints, guidance hints, `?` help, and harness discovery
 all project from that strategy. The task operation manifest separately orders
-the exact six `Space` actions:
+the exact five `Space` actions:
 
 1. Move Project
 2. Set Parent
-3. Checklist
-4. Comments
-5. Attachments
-6. Delete
+3. Comments
+4. Attachments
+5. Delete
 
-Startup validation rejects an operation that appears in both the direct grammar
-and the task menu. Destructive descriptors require confirmation before any
-transaction begins.
+The checklist is absent because its rows own the whole mutation set; a menu
+entry would be a second route to it.
+
+Startup validation rejects an operation that appears in both that task menu and
+the direct grammar. The checklist row's own menu is outside that manifest and
+deliberately lists Edit Item, which also answers `e`, because the menu is the
+only route to Delete Item. Destructive descriptors require confirmation before
+any transaction begins.
 
 A chord prefix that its second key abandons is explained rather than swallowed.
 `ChordGroupLabelForPrefix` names the longest declared group the path passed
@@ -182,6 +215,46 @@ which-key row, and a key the cursor's entity turned off keeps its own target
 rejection sentence instead. A chord prefix whose whole subtree that entity turned
 off refuses at the prefix, so a project header row never opens a which-key row
 that could not complete.
+
+### Outline editor
+
+`O` is the one operation that leaves the TUI to collect its input. It dumps the
+cursor's project as an indented buffer, hands it to `$EDITOR` through
+`external.ResolveEditor`/`external.EditorCommand`/`external.CreateTempFileWithContent`,
+and submits the parsed result to the single `ApplyOutlinePlan` use case, which
+resolves one snapshot and commits one checked transaction like every other
+mutation.
+
+The dump is a complete model subtree of one project, not the rendered
+projection: folds and filters are ignored, because indentation in the buffer is
+parentage and a partial dump would reparent whatever it omitted. The same
+reasoning refuses the operation in every mode that is not `OrderPolicyTree` —
+Today, Next, Due, and Recent promote rows across section boundaries — and under
+a visual selection, which names rows rather than a project.
+
+Each dumped task carries a trailing `[[tt:<first 8 hex of task.ID>]]` marker,
+asserted unique at dump time so a collision aborts before the editor opens. The
+outline layer strips that marker before the remainder of the line reaches
+`parseQuickCapture` with `skipProject=true`, which is what keeps one capture
+parser true for the whole product and makes a `>parent` sigil an error rather
+than a competing parentage channel. The buffer is declarative: the dump emits
+current values, so an omitted sigil clears that value. A line without a marker
+creates a task, and a task whose line disappeared is left untouched — the
+outline never deletes.
+
+Validation runs in two phases, both before any mutation. The outline phase
+checks marker syntax, unknown and duplicate markers, indent multiples and jumps,
+`models.MaxNestingDepth`, and children orphaned by a rejected parent; the line
+phase validates each stripped remainder. Every problem is collected rather than
+reported one at a time, and a rejection renders the line-numbered `lineError`
+list the multiline composer already uses, on its own scrollable
+`OutlineErrorsViewModel` surface because a status bar is one truncated line. The
+temp file is kept on every refusal so the reported line numbers still resolve.
+
+The project revision captured at dump time is re-checked on return. A revision
+that moved aborts without committing and keeps the buffer, because stale user
+intent is not storage-level divergence and the conflict-bundle machinery would
+be answering a different question.
 
 ### Search, filters, and Peek
 
@@ -222,9 +295,11 @@ Outliner rows omit short task IDs.
 
 `Enter` toggles a session-only, project-qualified Peek below the cursor task.
 Peek follows cursor, mode, and scope navigation and is capped at five additive
-lines: up to two description lines plus tags, attachment names, comment counts,
-and compact checklist items. `Esc` dismisses Peek before other
-Outliner navigation. Entering visual selection disables Peek.
+lines: up to three description lines plus a dates line, attachment names,
+comment counts, and tags. It carries no checklist line, because checklist items
+are rows and the task row's progress badge covers the folded case. `Esc`
+dismisses Peek before other Outliner navigation. Entering visual selection
+disables Peek.
 
 ### Selection and subordinate tools
 
@@ -400,7 +475,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-7 generic Task Markdown
+        ├── tasks.md         # strict schema-8 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -467,10 +542,11 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 8 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 9 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
-schema-6 consolidation path, and a schema-6 workspace finishes on the schema-7
-scope-folding path:
+schema-6 consolidation path, a schema-6 workspace crosses the schema-7
+scope-folding path, and a schema-8 workspace finishes on the schema-9 state-clock
+path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -515,8 +591,16 @@ scope-folding path:
 11. Publish `pre-tag-v8-<UTC>.tar.gz` plus its audit, atomically activate catalog
    schema 8 and task Markdown schema 7 across active and archived projects, and
    clear undo/redo history that retains pre-canonical bytes.
+12. Validate every schema-7 project document, then lift it to schema 8 by
+   backfilling each task's `state_changed` clock from its `updated` timestamp.
+13. Publish `pre-state-clock-v9-<UTC>.tar.gz` plus its audit, atomically activate
+   catalog schema 9 and task Markdown schema 8 across active and archived
+   projects, and clear undo/redo history whose retained bytes predate the new
+   field. The audit records that the backfill is an approximation, because
+   `updated` is the last touch of any field; it self-corrects on the task's next
+   state transition.
 
-Each boundary is idempotent: repeated schema-8 startup neither reconverts data
+Each boundary is idempotent: repeated schema-9 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

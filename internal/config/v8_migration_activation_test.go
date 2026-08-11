@@ -72,7 +72,7 @@ func TestManagerMigratesAllTagsToSchema8AtomicallyAndClearsHistory(t *testing.T)
 	if migrateErr := manager.MigrateWorkspaceToV8(); migrateErr != nil {
 		t.Fatalf("migrate schema 8: %v", migrateErr)
 	}
-	_, migrated, err := readV8PublishedCatalog(catalogPath)
+	migrated, err := readV8PublishedCatalog(catalogPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,19 +114,19 @@ func TestManagerMigratesAllTagsToSchema8AtomicallyAndClearsHistory(t *testing.T)
 	}
 }
 
-func readV8PublishedCatalog(path string) ([]byte, WorkspaceCatalog, error) {
+func readV8PublishedCatalog(path string) (WorkspaceCatalog, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, WorkspaceCatalog{}, err
+		return WorkspaceCatalog{}, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	var envelope domainEnvelope
 	if err := decoder.Decode(&envelope); err != nil {
-		return nil, WorkspaceCatalog{}, err
+		return WorkspaceCatalog{}, err
 	}
 	var catalog WorkspaceCatalog
 	if err := json.Unmarshal(envelope.Data, &catalog); err != nil {
-		return nil, WorkspaceCatalog{}, err
+		return WorkspaceCatalog{}, err
 	}
-	return data, catalog, nil
+	return catalog, nil
 }

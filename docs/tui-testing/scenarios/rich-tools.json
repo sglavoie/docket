@@ -6,14 +6,6 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select Build login form", "key": "j" },
 
-    { "type": "key", "label": "open task actions for checklist", "key": "space" },
-    { "type": "text", "text": "checklist" },
-    { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "view", "value": "TaskChecklist" },
-    { "type": "assert", "assert": "contains", "value": "Checklist" },
-    { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "return to Outliner", "key": "esc" },
-
     { "type": "key", "label": "open task actions for comments", "key": "space" },
     { "type": "text", "text": "comments" },
     { "type": "key", "key": "enter" },

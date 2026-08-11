@@ -361,7 +361,7 @@ func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
 		sheet.config.Completion != ContextActionCompleteCloseSheet {
 		t.Fatalf("task sheet lifecycle = %+v", sheet.config)
 	}
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskChecklist))) {
+	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskComments))) {
 		t.Fatal("task sheet lost its stable task-action item IDs")
 	}
 }

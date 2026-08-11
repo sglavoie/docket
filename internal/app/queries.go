@@ -15,7 +15,7 @@ type NoteCollectionResult struct {
 
 // ProjectTags returns a project's derived tag vocabulary from the snapshot.
 func (s *Service) ProjectTags(projectID string) ([]string, error) {
-	_, project, _, err := s.resolveProject(projectID)
+	project, _, err := s.resolveProject(projectID)
 	if err != nil {
 		return nil, err
 	}

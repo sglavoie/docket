@@ -230,6 +230,21 @@ func WriteV6TaskMetadata(task V6TaskRecord) (string, error) {
 	if err := validateV6TaskRecord(task, false); err != nil {
 		return "", err
 	}
+	return wrapTaskMetadata(v6MetadataParts(task)), nil
+}
+
+func wrapTaskMetadata(parts []string) string {
+	return "<!-- " + strings.Join(parts, ", ") + " -->"
+}
+
+func v6MetadataParts(task V6TaskRecord) []string {
+	return taskMetadataParts(task, nil)
+}
+
+// taskMetadataParts renders the shared metadata fields. afterUpdated carries
+// fields a later schema inserts next to the other timestamps rather than at the
+// end of the comment.
+func taskMetadataParts(task V6TaskRecord, afterUpdated []string) []string {
 	parts := []string{
 		"id: " + task.ID,
 		"short_id: " + strconv.Itoa(task.ShortID),
@@ -246,6 +261,7 @@ func WriteV6TaskMetadata(task V6TaskRecord) (string, error) {
 		"created: "+formatV6Time(task.CreatedAt),
 		"updated: "+formatV6Time(task.UpdatedAt),
 	)
+	parts = append(parts, afterUpdated...)
 	if task.CompletedAt != nil {
 		parts = append(parts, "completed: "+formatV6Time(*task.CompletedAt))
 	}
@@ -267,38 +283,61 @@ func WriteV6TaskMetadata(task V6TaskRecord) (string, error) {
 	if len(task.Checklist) > 0 {
 		parts = append(parts, "checklist: "+encodeV6Checklist(task.Checklist))
 	}
-	return "<!-- " + strings.Join(parts, ", ") + " -->", nil
+	return parts
 }
 
 // ParseV6TaskMetadata strictly parses one schema-6 metadata comment. Unknown
 // fields, including every field retired from schema 5, are rejected.
 func ParseV6TaskMetadata(comment string) (V6TaskRecord, error) {
+	values, err := parseTaskMetadataFields("v6", comment, v6MetadataKeys, v6RequiredMetadataKeys)
+	if err != nil {
+		return V6TaskRecord{}, err
+	}
+	task, err := v6RecordFromMetadataValues(values)
+	if err != nil {
+		return V6TaskRecord{}, err
+	}
+	if err := validateV6TaskRecord(task, false); err != nil {
+		return V6TaskRecord{}, err
+	}
+	return task, nil
+}
+
+var v6RequiredMetadataKeys = []string{"id", "short_id", "state", "priority", "created", "updated"}
+
+// parseTaskMetadataFields strictly splits one metadata comment into its
+// key/value pairs. schema names the schema in every error so a later schema
+// reusing this kernel reports its own version.
+func parseTaskMetadataFields(schema, comment string, allowed map[string]bool, required []string) (map[string]string, error) {
 	match := MetadataRegex().FindStringSubmatch(strings.TrimSpace(comment))
 	if match == nil {
-		return V6TaskRecord{}, fmt.Errorf("invalid v6 task metadata comment")
+		return nil, fmt.Errorf("invalid %s task metadata comment", schema)
 	}
 	values := make(map[string]string)
 	for _, pair := range strings.Split(match[1], ", ") {
 		key, value, ok := strings.Cut(pair, ":")
 		if !ok {
-			return V6TaskRecord{}, fmt.Errorf("invalid v6 metadata pair %q", pair)
+			return nil, fmt.Errorf("invalid %s metadata pair %q", schema, pair)
 		}
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		if !v6MetadataKeys[key] {
-			return V6TaskRecord{}, fmt.Errorf("unknown v6 metadata field %q", key)
+		if !allowed[key] {
+			return nil, fmt.Errorf("unknown %s metadata field %q", schema, key)
 		}
 		if _, duplicate := values[key]; duplicate {
-			return V6TaskRecord{}, fmt.Errorf("duplicate v6 metadata field %q", key)
+			return nil, fmt.Errorf("duplicate %s metadata field %q", schema, key)
 		}
 		values[key] = value
 	}
-	for _, required := range []string{"id", "short_id", "state", "priority", "created", "updated"} {
-		if values[required] == "" {
-			return V6TaskRecord{}, fmt.Errorf("missing required v6 metadata field %q", required)
+	for _, key := range required {
+		if values[key] == "" {
+			return nil, fmt.Errorf("missing required %s metadata field %q", schema, key)
 		}
 	}
+	return values, nil
+}
 
+func v6RecordFromMetadataValues(values map[string]string) (V6TaskRecord, error) {
 	shortID, err := strconv.Atoi(values["short_id"])
 	if err != nil {
 		return V6TaskRecord{}, fmt.Errorf("parse v6 short_id: %w", err)
@@ -359,9 +398,6 @@ func ParseV6TaskMetadata(comment string) (V6TaskRecord, error) {
 		if err != nil {
 			return V6TaskRecord{}, err
 		}
-	}
-	if err := validateV6TaskRecord(task, false); err != nil {
-		return V6TaskRecord{}, err
 	}
 	return task, nil
 }
@@ -483,24 +519,28 @@ func WriteV6TaskBody(task V6TaskRecord) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return writeTaskBody(metadata, task.Description, task.Comments), nil
+}
+
+func writeTaskBody(metadata, description string, comments []V6TaskComment) string {
 	var builder strings.Builder
 	builder.WriteString(metadata)
 	builder.WriteString("\n")
-	if task.Description != "" {
+	if description != "" {
 		builder.WriteString("<!-- DESCRIPTION -->\n")
-		builder.WriteString(escapeBlockText(task.Description))
+		builder.WriteString(escapeBlockText(description))
 		builder.WriteString("\n<!-- /DESCRIPTION -->\n")
 	}
-	if len(task.Comments) > 0 {
+	if len(comments) > 0 {
 		builder.WriteString("<!-- COMMENTS -->\n")
-		for _, comment := range task.Comments {
+		for _, comment := range comments {
 			fmt.Fprintf(&builder, "<!-- comment: %s -->\n", formatV6Time(comment.CreatedAt))
 			builder.WriteString(escapeBlockText(comment.Text))
 			builder.WriteString("\n")
 		}
 		builder.WriteString("<!-- /COMMENTS -->\n")
 	}
-	return builder.String(), nil
+	return builder.String()
 }
 
 // ParseV6TaskBody parses the body below one generic Task heading.
@@ -515,7 +555,25 @@ func ParseV6TaskBody(title, body string) (V6TaskRecord, error) {
 	}
 	task.Title = title
 
-	var descriptionSeen, commentsSeen bool
+	task.Description, task.Comments, err = parseTaskBodyBlocks("v6", title, lines)
+	if err != nil {
+		return V6TaskRecord{}, err
+	}
+	if err := ValidateV6TaskRecord(task); err != nil {
+		return V6TaskRecord{}, err
+	}
+	return task, nil
+}
+
+// parseTaskBodyBlocks reads the optional DESCRIPTION and COMMENTS blocks that
+// follow the metadata line. lines includes the metadata line at index 0.
+func parseTaskBodyBlocks(schema, title string, lines []string) (string, []V6TaskComment, error) {
+	var (
+		description                   string
+		comments                      []V6TaskComment
+		descriptionSeen, commentsSeen bool
+		err                           error
+	)
 	for i := 1; i < len(lines); {
 		if strings.TrimSpace(lines[i]) == "" {
 			i++
@@ -524,37 +582,34 @@ func ParseV6TaskBody(title, body string) (V6TaskRecord, error) {
 		switch {
 		case descriptionStartRegex.MatchString(strings.TrimSpace(lines[i])):
 			if descriptionSeen {
-				return V6TaskRecord{}, fmt.Errorf("v6 task %q has duplicate DESCRIPTION blocks", title)
+				return "", nil, fmt.Errorf("%s task %q has duplicate DESCRIPTION blocks", schema, title)
 			}
 			var block []string
 			block, i, err = readV6Block(lines, i, descriptionEndRegex, "DESCRIPTION")
 			if err != nil {
-				return V6TaskRecord{}, fmt.Errorf("v6 task %q: %w", title, err)
+				return "", nil, fmt.Errorf("%s task %q: %w", schema, title, err)
 			}
-			task.Description = unescapeBlockText(strings.Join(block, "\n"))
+			description = unescapeBlockText(strings.Join(block, "\n"))
 			descriptionSeen = true
 		case commentsStartRegex.MatchString(strings.TrimSpace(lines[i])):
 			if commentsSeen {
-				return V6TaskRecord{}, fmt.Errorf("v6 task %q has duplicate COMMENTS blocks", title)
+				return "", nil, fmt.Errorf("%s task %q has duplicate COMMENTS blocks", schema, title)
 			}
 			var block []string
 			block, i, err = readV6Block(lines, i, commentsEndRegex, "COMMENTS")
 			if err != nil {
-				return V6TaskRecord{}, fmt.Errorf("v6 task %q: %w", title, err)
+				return "", nil, fmt.Errorf("%s task %q: %w", schema, title, err)
 			}
-			task.Comments, err = parseV6Comments(block)
+			comments, err = parseV6Comments(block)
 			if err != nil {
-				return V6TaskRecord{}, fmt.Errorf("v6 task %q: %w", title, err)
+				return "", nil, fmt.Errorf("%s task %q: %w", schema, title, err)
 			}
 			commentsSeen = true
 		default:
-			return V6TaskRecord{}, fmt.Errorf("v6 task %q has unexpected body line %q", title, lines[i])
+			return "", nil, fmt.Errorf("%s task %q has unexpected body line %q", schema, title, lines[i])
 		}
 	}
-	if err := ValidateV6TaskRecord(task); err != nil {
-		return V6TaskRecord{}, err
-	}
-	return task, nil
+	return description, comments, nil
 }
 
 func readV6Block(lines []string, start int, end interface{ MatchString(string) bool }, name string) ([]string, int, error) {

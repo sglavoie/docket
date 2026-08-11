@@ -321,6 +321,15 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 	sort.Strings(folded)
 	fmt.Fprintf(&b, "folded=%q|", strings.Join(folded, "\x1f"))
 
+	checklists := make([]string, 0, len(m.expandedChecklists))
+	for identity, expanded := range m.expandedChecklists {
+		if expanded {
+			checklists = append(checklists, identity.ProjectID+"\x1e"+identity.TaskID)
+		}
+	}
+	sort.Strings(checklists)
+	fmt.Fprintf(&b, "checklists=%q|", strings.Join(checklists, "\x1f"))
+
 	for _, entry := range m.zoomStack {
 		fmt.Fprintf(&b, "zoom=%s:%d|", entry.TaskID, entry.CursorIndex)
 	}

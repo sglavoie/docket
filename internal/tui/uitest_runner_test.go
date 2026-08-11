@@ -279,10 +279,10 @@ func (d *UITestDriver) processCmds(queue []tea.Cmd, opts drainOptions) {
 	}
 }
 
-// handleMsg turns a drained message into any follow-up commands. A BatchMsg is
-// unpacked into its child commands (nested batches are handled by re-queuing);
-// every other message is dispatched through Update, whose returned command is
-// queued for further draining.
+// handleMsg turns a drained message into any follow-up commands. A BatchMsg or a
+// tea.Sequence message is unpacked into its child commands (nested groups are
+// handled by re-queuing); every other message is dispatched through Update, whose
+// returned command is queued for further draining.
 func (d *UITestDriver) handleMsg(msg tea.Msg) []tea.Cmd {
 	switch m := msg.(type) {
 	case nil:
@@ -290,7 +290,10 @@ func (d *UITestDriver) handleMsg(msg tea.Msg) []tea.Cmd {
 	case tea.BatchMsg:
 		return []tea.Cmd(m)
 	default:
-		model, cmd := d.app.Update(msg)
+		if cmds, ok := commandGroupMessage(msg); ok {
+			return cmds
+		}
+		model, cmd := d.app.Update(m)
 		if app, ok := model.(*AppModel); ok {
 			d.app = app
 		}
@@ -299,6 +302,30 @@ func (d *UITestDriver) handleMsg(msg tea.Msg) []tea.Cmd {
 		}
 		return []tea.Cmd{cmd}
 	}
+}
+
+// commandGroupMessage unpacks a message that is really a list of commands to run.
+// tea.Sequence emits an unexported message type, so the only way to recognize it
+// from outside the package is structurally: a slice whose elements are tea.Cmd.
+// Draining the children in order matches what the real runtime does closely
+// enough for scenarios, which never depend on a sequence step blocking.
+func commandGroupMessage(msg tea.Msg) ([]tea.Cmd, bool) {
+	value := reflect.ValueOf(msg)
+	if value.Kind() != reflect.Slice {
+		return nil, false
+	}
+	if value.Type().Elem() != reflect.TypeOf(tea.Cmd(nil)) {
+		return nil, false
+	}
+	cmds := make([]tea.Cmd, 0, value.Len())
+	for index := range value.Len() {
+		cmd, ok := value.Index(index).Interface().(tea.Cmd)
+		if !ok {
+			return nil, false
+		}
+		cmds = append(cmds, cmd)
+	}
+	return cmds, true
 }
 
 // Wait resolves previously abandoned commands, blocking up to the given total

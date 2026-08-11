@@ -110,6 +110,7 @@ type ReferenceKind uint8
 
 const (
 	ReferenceHelp ReferenceKind = iota
+	ReferenceOutlineErrors
 )
 
 type ReferenceParams struct{ Kind ReferenceKind }
@@ -206,7 +207,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 		if !ok {
 			return nil, paramsTypeError(id, params)
 		}
-		if p.Kind > ReferenceHelp {
+		if p.Kind > ReferenceOutlineErrors {
 			return nil, invalidParams(id, "unknown reference kind")
 		}
 		return p, nil

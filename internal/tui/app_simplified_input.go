@@ -80,6 +80,17 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 // inapplicable there, and an inapplicable terminal resolves to ChordNoMatch, so
 // without this the key would silently do nothing instead of saying why.
 func (m *AppModel) entityScopedKeyRejection(sequence []string, ctx CommandContext) tea.Cmd {
+	// A checklist cursor found its owner task, so the shared sentence would tell
+	// the user to do what they already did. It names the row kind instead, and it
+	// asks whether the path reaches a refused operation rather than what category
+	// they share, because a shared key's two meanings need not agree.
+	if ctx.Entity.HasChecklistCursor {
+		if !m.operationRegistry.InputPrefixRefusedOnChecklistRow(InputStrategySimplified, sequence) {
+			return nil
+		}
+		rejection := errors.New(checklistRowRejectionMessage)
+		return func() tea.Msg { return ErrorMsg{Err: rejection} }
+	}
 	if !commandContextNamesNonTaskEntity(ctx) {
 		return nil
 	}

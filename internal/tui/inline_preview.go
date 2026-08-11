@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -11,7 +12,7 @@ import (
 
 const (
 	inlinePeekMaxLines        = 5
-	inlinePeekDescriptionRows = 2
+	inlinePeekDescriptionRows = 3
 )
 
 type inlinePeekOptions struct {
@@ -37,8 +38,8 @@ func (m *OutlinerModel) inlinePeekLineCount(row outlinerRow, width int) int {
 
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
-// contains only richer content plus tags: description, attachment names,
-// comments, and checklist items.
+// contains only richer content plus tags: description, dates, attachment names,
+// comments, and tags.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
@@ -47,6 +48,10 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
 	lines := make([]string, 0, inlinePeekMaxLines)
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
+
+	if dates := inlinePeekDatesLine(opts.Task, time.Now(), available); dates != "" {
+		lines = append(lines, opts.Indent+MutedStyle.Render(dates))
+	}
 
 	if attachments := inlinePeekAttachmentsLine(opts.Task, available); attachments != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(attachments))
@@ -60,10 +65,6 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 		lines = append(lines, opts.Indent+tags)
 	}
 
-	if checklist := inlinePeekChecklistLine(opts.Task, available); checklist != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(checklist))
-	}
-
 	if len(lines) == 0 {
 		lines = append(lines, opts.Indent+MutedStyle.Render("No additional details"))
 	}
@@ -71,6 +72,33 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 		lines = lines[:inlinePeekMaxLines]
 	}
 	return lines
+}
+
+// inlinePeekDatesLine names the task clock the row has no width for: how long
+// ago it was created and last touched, when it is due, and whether it recently
+// came back from a snooze.
+func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
+	if task == nil || width <= 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, 4)
+	if age := formatRecencyAge(task.CreatedAt, now); age != "" {
+		parts = append(parts, "created "+age)
+	}
+	if age := formatRecencyAge(task.UpdatedAt, now); age != "" {
+		parts = append(parts, "updated "+age)
+	}
+	if task.DueDate != nil {
+		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
+	}
+	if taskWokeRecently(task, now) {
+		parts = append(parts, "woke "+formatRecencyAge(*task.SnoozedUntil, now))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return truncateIntentional(strings.Join(parts, " · "), width, "…")
 }
 
 func inlinePeekAttachmentsLine(task *models.Task, width int) string {
@@ -149,25 +177,4 @@ func inlinePeekDescriptionLines(description, indent string, width int) []string 
 		))
 	}
 	return lines
-}
-
-func inlinePeekChecklistLine(task *models.Task, width int) string {
-	if task == nil || len(task.Checklist) == 0 || width <= 0 {
-		return ""
-	}
-
-	const maxItems = 2
-	parts := make([]string, 0, maxItems+1)
-	for i, item := range task.Checklist {
-		if i >= maxItems {
-			parts = append(parts, fmt.Sprintf("+%d more", len(task.Checklist)-maxItems))
-			break
-		}
-		marker := "[ ]"
-		if item.Done {
-			marker = "[x]"
-		}
-		parts = append(parts, marker+" "+strings.TrimSpace(item.Text))
-	}
-	return truncateIntentional("Checklist: "+strings.Join(parts, " · "), width, "…")
 }

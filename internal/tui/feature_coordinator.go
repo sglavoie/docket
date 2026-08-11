@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // This file introduces the feature-coordinator seam for the primary TUI views.
@@ -40,6 +41,12 @@ type FeatureMutator interface {
 	AddTaskWithChildren(req app.AddTaskRequest) (app.FormCreateResult, error)
 	// Edit applies a full or partial edit to a task (the edit task form).
 	Edit(req app.EditRequest) (app.TaskResult, error)
+	// ApplyOutlinePlan commits one edited outline buffer as one transaction (the
+	// external outline editor).
+	ApplyOutlinePlan(req app.OutlinePlanRequest) (app.OutlinePlanResult, error)
+	// ProjectAtRevision returns a project and the revision it was loaded at from
+	// one snapshot, so the outline editor dumps the same tree its buffer claims.
+	ProjectAtRevision(projectID string) (*models.Project, string, error)
 }
 
 // Compile-time assurance that the application service satisfies the mutation
@@ -227,11 +234,30 @@ func (c TaskFormCoordinator) EditForm(task TaskIdentity, req app.EditRequest) te
 	}
 }
 
+// OutlineCoordinator backs the external outline editor.
+//
+// Its two methods are synchronous rather than tea.Cmd-returning because the
+// commit runs inside the tea.ExecProcess callback that closes the editor: it has
+// to happen on the buffer that just came back, and the adapter needs the typed
+// outcome inline to decide between a success status and a kept-buffer refusal.
+type OutlineCoordinator struct{ FeatureCoordinator }
+
+// Project loads the project to dump and the revision it was loaded at.
+func (c OutlineCoordinator) Project(projectID string) (*models.Project, string, error) {
+	return c.mutator.ProjectAtRevision(projectID)
+}
+
+// Apply commits one edited outline buffer as one transaction.
+func (c OutlineCoordinator) Apply(req app.OutlinePlanRequest) (app.OutlinePlanResult, error) {
+	return c.mutator.ApplyOutlinePlan(req)
+}
+
 // FeatureCoordinators aggregates the primary-view coordinators the AppModel
 // hands to feature views as they migrate onto the application layer.
 type FeatureCoordinators struct {
 	Capture  CaptureCoordinator
 	TaskForm TaskFormCoordinator
+	Outline  OutlineCoordinator
 }
 
 // newFeatureCoordinators builds the primary coordinators over a shared
@@ -240,5 +266,6 @@ func newFeatureCoordinators(mutator FeatureMutator) FeatureCoordinators {
 	return FeatureCoordinators{
 		Capture:  CaptureCoordinator{newFeatureCoordinator("capture", mutator)},
 		TaskForm: TaskFormCoordinator{newFeatureCoordinator("task-form", mutator)},
+		Outline:  OutlineCoordinator{newFeatureCoordinator("outline", mutator)},
 	}
 }

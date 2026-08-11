@@ -126,6 +126,14 @@ func (m *AppModel) newOperationTextPrompt(
 		// A tag name applies across a whole selection, so there is no single
 		// current value to prefill or show.
 		return newOperationTextPromptModel(request, label, "", "", "tag name"), nil
+	case ValueProviderChecklistItem:
+		// Adding appends a new item, so only an edit has a current value; the
+		// request's own operation decides which, not the cursor.
+		current := ""
+		if request.ID == operationChecklistEditItem {
+			current = m.checklistItemTextForContext(request.Context)
+		}
+		return newOperationTextPromptModel(request, label, current, current, "checklist item"), nil
 	default:
 		return nil, fmt.Errorf("unknown operation text value provider %q", provider)
 	}

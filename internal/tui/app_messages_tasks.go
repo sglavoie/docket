@@ -70,6 +70,28 @@ type TaskContentEditedMsg struct {
 	Err            error
 }
 
+// OpenOutlineEditorMsg dumps one project's task tree to an external editor for
+// bulk restructuring. The Outliner emits it; the shell owns the round trip.
+// Project names which project to outline: the shell reloads it from an
+// application snapshot before dumping, so the cursor's own copy is never what
+// reaches the buffer.
+type OpenOutlineEditorMsg struct {
+	Project *models.Project
+}
+
+// OutlineEditedMsg returns one edited outline buffer. Project and Revision are
+// the snapshot pair the buffer was dumped from, and the revision travels into
+// the apply so a workspace that moved while the editor was open is refused
+// instead of merged. Path is kept so a refused buffer can be named in the status
+// rather than silently discarded.
+type OutlineEditedMsg struct {
+	Project  *models.Project
+	Revision string
+	Path     string
+	Buffer   string
+	Err      error
+}
+
 // =============================================================================
 // Clipboard Messages
 // =============================================================================
@@ -145,31 +167,6 @@ type CommentDeletedMsg struct{ TransactionID string }
 
 // CommentEditedMsg signals a comment was edited.
 type CommentEditedMsg struct{ TransactionID string }
-
-// =============================================================================
-// Task Checklist Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowTaskChecklistMsg opens the checklist view for a task.
-type ShowTaskChecklistMsg struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
-// CloseTaskChecklistMsg closes the checklist view.
-type CloseTaskChecklistMsg struct{ PopViewMsg }
-
-// ChecklistItemAddedMsg signals a checklist item was added.
-type ChecklistItemAddedMsg struct{ TransactionID string }
-
-// ChecklistItemEditedMsg signals a checklist item was edited.
-type ChecklistItemEditedMsg struct{ TransactionID string }
-
-// ChecklistItemDeletedMsg signals a checklist item was deleted.
-type ChecklistItemDeletedMsg struct{ TransactionID string }
-
-// ChecklistItemToggledMsg signals a checklist item was toggled.
-type ChecklistItemToggledMsg struct{ TransactionID string }
 
 // =============================================================================
 // Task Attachments Messages (Show/Close Pattern)

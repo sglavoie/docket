@@ -62,6 +62,7 @@ func (m *AppModel) captureComposerPreset(
 	}
 	return TaskComposerPreset{
 		Kind:               kind,
+		HeaderLabel:        "Capture → " + project.Name,
 		Project:            project,
 		AllProjects:        projects,
 		InitialText:        strings.Join(parts, " "),

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"cmp"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -96,6 +97,12 @@ func compareTasksPrimary(a, b *models.Task, field SortField) int {
 
 	case SortByStatus:
 		return cmp.Compare(StateOrder(a.State()), StateOrder(b.State()))
+
+	case SortByUpdatedAt:
+		return a.UpdatedAt.Compare(b.UpdatedAt)
+
+	case SortByTitle:
+		return cmp.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title))
 
 	default:
 	}

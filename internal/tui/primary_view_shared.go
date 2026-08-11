@@ -22,6 +22,8 @@ const (
 	SortByDueDate                    // earliest due date first
 	SortByCreatedAt                  // by creation date
 	SortByStatus                     // by workflow status order
+	SortByUpdatedAt                  // by last touch time
+	SortByTitle                      // case-insensitive alphabetical
 )
 
 // ShortString returns an abbreviated label for compact display (e.g. column headers).
@@ -35,6 +37,10 @@ func (s SortField) ShortString() string {
 		return "new"
 	case SortByStatus:
 		return "sts"
+	case SortByUpdatedAt:
+		return "upd"
+	case SortByTitle:
+		return "ttl"
 	default:
 		return ""
 	}
@@ -50,6 +56,10 @@ func (s SortField) String() string {
 		return "created"
 	case SortByStatus:
 		return "status"
+	case SortByUpdatedAt:
+		return "updated"
+	case SortByTitle:
+		return "title"
 	default:
 		return "default"
 	}
@@ -101,23 +111,38 @@ func formatDueDate(task *models.Task) string {
 	return style.Render(icons.Get("date") + " " + dateStr)
 }
 
+// snoozeWakeWindow bounds how long a lapsed snooze keeps announcing that the
+// task came back. Past it the task is ordinary work again, not news.
+const snoozeWakeWindow = 72 * time.Hour
+
 // formatRecencyChip renders an age as a single-token indicator such as 5m, 2h,
 // or 3d. Prose relative time is too wide for a row, and the day bucket header
 // already carries the coarse grouping; the chip only disambiguates within it.
 func formatRecencyChip(key, now time.Time) string {
+	age := formatRecencyAge(key, now)
+	if age == "" {
+		return ""
+	}
+	return MutedStyle.Render(age)
+}
+
+// formatRecencyAge is the unstyled age token. Peek composes several of them into
+// one styled line, so it needs the token without the chip's own styling; two
+// formatters would let the same age read two ways on adjacent lines.
+func formatRecencyAge(key, now time.Time) string {
 	if key.IsZero() {
 		return ""
 	}
 	elapsed := now.Sub(key)
 	if elapsed < time.Minute {
-		return MutedStyle.Render("now")
+		return "now"
 	}
 	switch {
 	case elapsed < time.Hour:
-		return MutedStyle.Render(fmt.Sprintf("%dm", int(elapsed.Minutes())))
+		return fmt.Sprintf("%dm", int(elapsed.Minutes()))
 	case elapsed < 24*time.Hour:
-		return MutedStyle.Render(fmt.Sprintf("%dh", int(elapsed.Hours())))
+		return fmt.Sprintf("%dh", int(elapsed.Hours()))
 	default:
-		return MutedStyle.Render(fmt.Sprintf("%dd", int(elapsed.Hours())/24))
+		return fmt.Sprintf("%dd", int(elapsed.Hours())/24)
 	}
 }

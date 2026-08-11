@@ -17,15 +17,16 @@ import (
 // active project/context scope owns the search candidate set and may be changed
 // independently, while mode, facets, folds, ordering, and viewport are restored.
 type outlinerSearchSnapshot struct {
-	mode              OutlinerModeID
-	filter            FilterState
-	sort              SortState
-	treeSort          SortState
-	expandedNodes     map[TaskIdentity]bool
-	collapsedSections map[string]bool
-	zoomStack         []ZoomEntry
-	crossZoomStack    []CrossProjectZoomEntry
-	cursor            modeCursorAnchor
+	mode               OutlinerModeID
+	filter             FilterState
+	sort               SortState
+	treeSort           SortState
+	expandedNodes      map[TaskIdentity]bool
+	expandedChecklists map[TaskIdentity]bool
+	collapsedSections  map[string]bool
+	zoomStack          []ZoomEntry
+	crossZoomStack     []CrossProjectZoomEntry
+	cursor             modeCursorAnchor
 }
 
 type outlinerSearchMatch struct {
@@ -49,15 +50,16 @@ func (m *OutlinerModel) beginSearchProjection() {
 		return
 	}
 	snapshot := &outlinerSearchSnapshot{
-		mode:              m.primaryMode,
-		filter:            copyFilterState(m.filter),
-		sort:              m.sort,
-		treeSort:          m.treeSort,
-		expandedNodes:     copyBoolMap(m.expandedNodes),
-		collapsedSections: copyBoolMap(m.collapsedSections),
-		zoomStack:         append([]ZoomEntry(nil), m.zoomStack...),
-		crossZoomStack:    append([]CrossProjectZoomEntry(nil), m.crossZoomStack...),
-		cursor:            m.captureModeCursor(),
+		mode:               m.primaryMode,
+		filter:             copyFilterState(m.filter),
+		sort:               m.sort,
+		treeSort:           m.treeSort,
+		expandedNodes:      copyBoolMap(m.expandedNodes),
+		expandedChecklists: copyBoolMap(m.expandedChecklists),
+		collapsedSections:  copyBoolMap(m.collapsedSections),
+		zoomStack:          append([]ZoomEntry(nil), m.zoomStack...),
+		crossZoomStack:     append([]CrossProjectZoomEntry(nil), m.crossZoomStack...),
+		cursor:             m.captureModeCursor(),
 	}
 	m.searchProjection = snapshot
 	m.crossForceRebuild = true
@@ -101,6 +103,7 @@ func (m *OutlinerModel) ClearSearch() {
 	m.sort = snapshot.sort
 	m.treeSort = snapshot.treeSort
 	m.expandedNodes = copyBoolMap(snapshot.expandedNodes)
+	m.expandedChecklists = copyBoolMap(snapshot.expandedChecklists)
 	m.collapsedSections = copyBoolMap(snapshot.collapsedSections)
 	m.zoomStack = append([]ZoomEntry(nil), snapshot.zoomStack...)
 	m.crossZoomStack = append([]CrossProjectZoomEntry(nil), snapshot.crossZoomStack...)

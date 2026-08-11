@@ -44,6 +44,8 @@ The full script is the acceptance gate.
 | `multi-project` | Several distinctly named projects, each holding one backlog task. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
 | `parked` | One project in the base task workspace and one tagged `parked`. |
+| `signals` | Lapsed and pending snoozes, concentrated overdue work, and a durable Today membership. |
+| `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
 Only `parked` splits the base task workspace from the catalog. Every other
 fixture leaves all of its projects untagged, so parked behavior is
@@ -98,12 +100,13 @@ The final public grammar is:
 Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
-a/A e/E Ctrl+E                   capture and edit
+a/A e/E Ctrl+E O                 capture and edit
 si sb sn st sg sr sw sp sm sd sc    workflow chord
 !0-3 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
 v V Ctrl+A Space Enter          selection, actions, Peek
+x                               tick the checklist item under the cursor
 p N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-3 fs fc ft fd fz fx         filters
 ```
@@ -151,8 +154,9 @@ The committed suite exercises the product contracts directly:
 | Priority, workflow, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
-| Checklist, comments, and attachments | `rich-tools.json` |
-| Exact six-item `Space` menu | `outliner-space-action-catalog.json` |
+| Comments and attachments | `rich-tools.json` |
+| Checklist row grammar and its central task-key refusal | `outliner-checklist-row-actions.json`, `outliner-checklist-row-rejects-task-keys.json` |
+| Exact five-item `Space` menu | `outliner-space-action-catalog.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |

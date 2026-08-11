@@ -47,13 +47,6 @@ func taskOperationManifest() []taskOperationManifestEntry {
 			Risk:     OperationRiskMutation,
 		},
 		{
-			ID:       operationTaskChecklist,
-			Label:    "Checklist",
-			Aliases:  []string{"checklist", "checklist items"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
 			ID:       operationTaskComments,
 			Label:    "Comments",
 			Aliases:  []string{"add comment"},
@@ -79,7 +72,7 @@ func taskOperationManifest() []taskOperationManifestEntry {
 }
 
 // taskDirectOperationManifest keeps the direct grammar descriptors registered
-// without making them task-menu rows. The task menu itself is exactly the six
+// without making them task-menu rows. The task menu itself is exactly the five
 // entries returned by taskOperationManifest.
 func taskDirectOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{

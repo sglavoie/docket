@@ -18,6 +18,14 @@ func (m *AppModel) cursorProjectHeaderProject() *models.Project {
 	return nil
 }
 
+// cursorChecklistItem returns the checklist item the Outliner cursor names.
+func (m *AppModel) cursorChecklistItem() (checklistCursor, bool) {
+	if out := m.activeOutliner(); out != nil {
+		return out.cursorChecklistItem()
+	}
+	return checklistCursor{}, false
+}
+
 // anchorOutlinerCursorAfterProjectPark points the cursor at the project header
 // that will sit where the parked projects' rows were. It self-guards on the
 // active Outliner, so a park committed from the Project Hub — where parked rows

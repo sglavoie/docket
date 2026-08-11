@@ -192,7 +192,7 @@ func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 	outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	plain := ansi.Strip(outliner.View().Content)
-	for _, want := range []string{"Operational task", due.Format("Jan 2"), "zzz", "1/2"} {
+	for _, want := range []string{"Operational task", due.Format("Jan 2"), "woke", "1/2"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("row missing %q:\n%s", want, plain)
 		}
@@ -229,7 +229,7 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 
 	const width = 60
 	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, true, width, width, 0, nil))
-	for _, want := range []string{"Readable", "Today", "zzz"} {
+	for _, want := range []string{"Readable", "Today", "woke"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("narrow urgency row missing %q:\n%s", want, plain)
 		}

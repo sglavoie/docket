@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
@@ -46,6 +47,8 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 			rowBuilder.WriteString(m.renderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsProjectHeader:
 			rowBuilder.WriteString(m.renderOutlinerProjectHeaderRow(row, selected, viewport.rowWidth, i))
+		case row.IsChecklistItem:
+			rowBuilder.WriteString(m.renderOutlinerChecklistRow(row, selected, viewport.rowWidth, i))
 		default:
 			rowBuilder.WriteString(m.renderOutlinerTaskRow(row, selected, viewport.rowWidth, viewport.rowWidth, i, colLayout))
 		}
@@ -131,6 +134,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	if row.SectionCount > 0 {
 		line += " " + MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
 	}
+	line = appendProjectHeaderPressure(line, row, rowWidth)
 	line = truncateToVisualWidth(line, rowWidth)
 
 	if selected {
@@ -140,6 +144,56 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 		return SelectedLine(line, rowWidth)
 	}
 
+	return ZebraLine(line, rowWidth, rowIndex)
+}
+
+// appendProjectHeaderPressure names the overdue and Today-planned work a
+// project group holds, so folding the group does not hide what is urgent in it.
+// The suffix degrades before the row is truncated — today drops first, then
+// overdue — because a clipped count reads as a different number.
+func appendProjectHeaderPressure(line string, row outlinerRow, rowWidth int) string {
+	var parts []string
+	if row.OverdueCount > 0 {
+		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", row.OverdueCount)))
+	}
+	if row.TodayCount > 0 {
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("today %d", row.TodayCount)))
+	}
+	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
+		suffix := "  " + strings.Join(parts, MutedStyle.Render(" · "))
+		if lipgloss.Width(line)+lipgloss.Width(suffix) <= rowWidth {
+			return line + suffix
+		}
+	}
+	return line
+}
+
+// renderOutlinerChecklistRow renders one expanded checklist item beneath its
+// owner task. It reuses the overlay's `[ ]`/`[x]` box and muted done text so the
+// same item reads the same way wherever it is shown.
+func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
+	text := ""
+	if row.task != nil && row.ChecklistIndex < len(row.task.Checklist) {
+		text = strings.ReplaceAll(row.task.Checklist[row.ChecklistIndex].Text, "\n", " ")
+	}
+	box := "[ ] "
+	if row.ChecklistDone {
+		box = "[x] "
+		text = MutedStyle.Render(text)
+	}
+	prefixBudget := max(min(rowWidth/3, 12), 4)
+	line := RenderCursorPrefix() +
+		MutedStyle.Render(compactOutlinerTreePrefix(row.prefix, prefixBudget)) +
+		MutedStyle.Render(box) +
+		text
+	line = truncateToVisualWidth(line, rowWidth)
+
+	if selected {
+		if m.cursorFlash {
+			return SelectedFlashLine(line, rowWidth)
+		}
+		return SelectedLine(line, rowWidth)
+	}
 	return ZebraLine(line, rowWidth, rowIndex)
 }
 
@@ -189,8 +243,11 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	if availableTitleWidth() < titleTarget {
 		tagSegment = ""
 	}
-	if availableTitleWidth() < titleTarget {
-		indicatorSegments.checklist = ""
+	for _, dropSegment := range indicatorDropLadder {
+		if availableTitleWidth() >= titleTarget {
+			break
+		}
+		dropSegment(&indicatorSegments)
 		indicators = indicatorSegments.render()
 	}
 	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators)
@@ -259,13 +316,26 @@ func (m *OutlinerModel) rowRecencyKey(row outlinerRow) time.Time {
 	return row.task.UpdatedAt
 }
 
+// renderTaskFoldIndicator reports the fold `h`/`l` would act on next. Children
+// answer first because the ladder collapses the checklist before them, so a task
+// whose only foldable content is its checklist is the one that reports the
+// checklist's own state.
 func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
 	task := row.task
-	if task == nil || !row.hasVisibleChildren {
+	if task == nil {
 		return ""
 	}
 	identity := m.rowIdentity(row)
-	if m.isExpanded(identity) {
+	var expanded bool
+	switch {
+	case row.hasVisibleChildren:
+		expanded = m.isExpanded(identity)
+	case len(task.Checklist) > 0:
+		expanded = m.isChecklistExpanded(identity)
+	default:
+		return ""
+	}
+	if expanded {
 		return MutedStyle.Render(IconExpanded) + " "
 	}
 	return MutedStyle.Render(IconCollapsed) + " "
@@ -283,6 +353,8 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 
 type taskIndicatorSegments struct {
 	recency     string
+	waiting     string
+	check       string
 	due         string
 	snooze      string
 	checklist   string
@@ -293,6 +365,8 @@ type taskIndicatorSegments struct {
 func (segments taskIndicatorSegments) render() string {
 	rendered := JoinGroupParts(
 		segments.recency,
+		segments.waiting,
+		segments.check,
 		segments.due,
 		segments.snooze,
 		segments.checklist,
@@ -305,24 +379,48 @@ func (segments taskIndicatorSegments) render() string {
 	return " " + rendered
 }
 
+// indicatorDropLadder orders which indicators a narrow row sheds, shallowest
+// signal first. Counts go early because the row's own badges and Peek still
+// carry them; the check-back date goes last because it is the one indicator
+// naming work that has already gone quiet on someone else's desk.
+var indicatorDropLadder = []func(*taskIndicatorSegments){
+	func(segments *taskIndicatorSegments) { segments.checklist = "" },
+	func(segments *taskIndicatorSegments) { segments.comments = "" },
+	func(segments *taskIndicatorSegments) { segments.attachments = "" },
+	func(segments *taskIndicatorSegments) { segments.recency = "" },
+	func(segments *taskIndicatorSegments) { segments.snooze = "" },
+	func(segments *taskIndicatorSegments) { segments.waiting = "" },
+	func(segments *taskIndicatorSegments) { segments.due = "" },
+	func(segments *taskIndicatorSegments) { segments.check = "" },
+}
+
 // renderTaskIndicatorSegments promotes operational task state and concise
-// activity counts into the row. Rich content stays in Peek. The caller
-// progressively drops checklist only when
-// preserving all signals would leave an unreadably small title.
+// activity counts into the row. Rich content stays in Peek. The caller drops
+// segments along indicatorDropLadder when preserving all signals would leave an
+// unreadably small title.
 func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicatorSegments {
 	var segments taskIndicatorSegments
 	task := row.task
 	if task == nil {
 		return segments
 	}
+	now := time.Now()
 	if m.primaryMode == ModeRecent && m.columnConfig.IsVisible(ColRecency) {
-		segments.recency = formatRecencyChip(m.rowRecencyKey(row), time.Now())
+		segments.recency = formatRecencyChip(m.rowRecencyKey(row), now)
 	}
-	if m.columnConfig.IsVisible(ColDueDate) {
+	if task.IsInState(models.StateWaiting) {
+		segments.waiting = formatWaitingAgeIndicator(task, now)
+		if m.columnConfig.IsVisible(ColDueDate) {
+			segments.check = formatCheckBackIndicator(task, now)
+		}
+	}
+	// A waiting task's due date is its check-back date, so the countdown replaces
+	// the plain date rather than restating it beside itself.
+	if segments.check == "" && m.columnConfig.IsVisible(ColDueDate) {
 		segments.due = formatDueDate(task)
 	}
 	if task.SnoozedUntil != nil && m.columnConfig.IsVisible(ColSnooze) {
-		segments.snooze = MutedStyle.Render("zzz " + formatSnoozeDate(*task.SnoozedUntil))
+		segments.snooze = formatSnoozeIndicator(task, now)
 	}
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)
@@ -334,6 +432,64 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 		segments.attachments = renderAttachmentIndicator(task)
 	}
 	return segments
+}
+
+// formatWaitingAgeIndicator reads the state clock rather than UpdatedAt, so
+// commenting on a blocked task does not reset how long it has been blocked.
+func formatWaitingAgeIndicator(task *models.Task, now time.Time) string {
+	if !task.IsInState(models.StateWaiting) {
+		return ""
+	}
+	age := formatRecencyChip(task.StateChangedAt, now)
+	if age == "" {
+		return ""
+	}
+	return MutedStyle.Render("waiting") + " " + age
+}
+
+// formatCheckBackIndicator renders a waiting task's due date as the countdown to
+// chasing it, which is the actionable reading of that date once the work is out
+// of your hands. Comparison is by calendar day because a due date is a day, not
+// an instant.
+func formatCheckBackIndicator(task *models.Task, now time.Time) string {
+	if task.DueDate == nil || task.IsComplete() {
+		return ""
+	}
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*task.DueDate)
+	switch {
+	case dueDay.Before(today):
+		return OverdueStyle.Render("check +" + formatRecencyAge(dueDay, today))
+	case dueDay.Equal(today):
+		return DueTodayStyle.Render("check today")
+	default:
+		return MutedStyle.Render("check " + formatRecencyAge(today, dueDay))
+	}
+}
+
+// formatSnoozeIndicator separates a pending snooze from one that has lapsed. A
+// woken task still wearing a past-dated `zzz` reads as deferred, so the row
+// says it came back and how long ago, then falls silent once the wake window
+// closes and the task is ordinary work again.
+func formatSnoozeIndicator(task *models.Task, now time.Time) string {
+	if task.IsSnoozedAt(now) {
+		return MutedStyle.Render("zzz " + formatSnoozeDate(*task.SnoozedUntil))
+	}
+	if !taskWokeRecently(task, now) {
+		return ""
+	}
+	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.SnoozedUntil, now)
+}
+
+// taskWokeRecently reports whether a lapsed snooze is still inside the wake
+// window. The row indicator and the Peek dates line both ask before announcing
+// that a task came back, and a second copy of the predicate would let one
+// surface keep saying `woke` after the other went quiet.
+func taskWokeRecently(task *models.Task, now time.Time) bool {
+	if task == nil || task.SnoozedUntil == nil || task.IsSnoozedAt(now) {
+		return false
+	}
+	return now.Sub(*task.SnoozedUntil) < snoozeWakeWindow
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {

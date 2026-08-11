@@ -210,6 +210,20 @@ func archivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandCont
 	return nil
 }
 
+// checklistCursorRejection refuses every operation that would act on the owner
+// task while the cursor rests on one of its checklist items. The row carries
+// the owner's pointer, so ordinary target resolution finds a perfectly valid
+// task and the whole task grammar would otherwise mutate one level up from
+// where the user is pointing. It runs beside archivedTaskTargetRejection,
+// before resolution, because delegated bindings swallow resolver errors and
+// target-free operations resolve no target for a resolver guard to inspect.
+func checklistCursorRejection(descriptor OperationDescriptor, ctx CommandContext) error {
+	if !ctx.Entity.HasChecklistCursor || !operationRefusedOnChecklistRow(descriptor) {
+		return nil
+	}
+	return errors.New(checklistRowRejectionMessage)
+}
+
 // entityContextNamesArchivedTask keys on the task identity so project lifecycle
 // operations, which legitimately act on archived projects, stay untouched.
 func entityContextNamesArchivedTask(entity EntityContext) bool {

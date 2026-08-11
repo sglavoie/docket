@@ -209,54 +209,6 @@ func chordPathString(path []string) string {
 	return strings.Join(path, " ")
 }
 
-// Stable core operation IDs let the final grammar remain independent of dormant
-// legacy command adapters and their retired shortcuts or prefix chords.
-const (
-	operationCoreCapture          OperationID = "tui.core.capture"
-	operationCoreEdit             OperationID = "tui.core.edit"
-	operationCoreEditDescription  OperationID = "tui.core.edit-description"
-	operationCoreExternalEditor   OperationID = "tui.core.external-editor"
-	operationCoreBacklog          OperationID = "tui.core.backlog"
-	operationCoreToday            OperationID = "tui.core.today"
-	operationCoreNext             OperationID = "tui.core.next"
-	operationCoreActions          OperationID = "tui.core.actions"
-	operationCoreCursorDown       OperationID = "tui.core.cursor-down"
-	operationCoreCursorUp         OperationID = "tui.core.cursor-up"
-	operationCoreCursorTop        OperationID = "tui.core.cursor-top"
-	operationCoreCursorBottom     OperationID = "tui.core.cursor-bottom"
-	operationCoreCursorPageUp     OperationID = "tui.core.cursor-page-up"
-	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
-	operationCoreJumpBackward     OperationID = "tui.core.jump-backward"
-	operationCoreJumpForward      OperationID = "tui.core.jump-forward"
-	operationCoreCollapseParent   OperationID = "tui.core.collapse-parent"
-	operationCoreExpand           OperationID = "tui.core.expand"
-	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
-	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
-	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
-	operationCorePeek             OperationID = "tui.core.peek"
-	operationCoreScopeSearch      OperationID = "tui.core.scope-search"
-	operationCoreSelectProject    OperationID = "tui.core.select-project"
-	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
-	operationCoreRangeSelect      OperationID = "tui.core.range-select"
-	operationCoreSelectAll        OperationID = "tui.core.select-all"
-	operationCoreNotes            OperationID = "tui.core.notes"
-	operationCoreToggleTheme      OperationID = "tui.core.toggle-theme"
-	operationCoreUndo             OperationID = "tui.core.undo"
-	operationCoreRedo             OperationID = "tui.core.redo"
-	operationCoreBack             OperationID = "tui.core.back"
-	operationCoreHelp             OperationID = "tui.core.help"
-	operationCoreQuit             OperationID = "tui.core.quit"
-	operationCoreNextWorkMode     OperationID = "tui.core.next-work-mode"
-	operationCorePreviousWorkMode OperationID = "tui.core.previous-work-mode"
-	operationCoreGotoAll          OperationID = "tui.core.goto-all"
-	operationCoreGotoInbox        OperationID = "tui.core.goto-inbox"
-	operationCoreGotoToday        OperationID = "tui.core.goto-today"
-	operationCoreGotoNext         OperationID = "tui.core.goto-next"
-	operationCoreGotoBacklog      OperationID = "tui.core.goto-backlog"
-	operationCoreGotoDue          OperationID = "tui.core.goto-due"
-	operationCoreGotoRecent       OperationID = "tui.core.goto-recent"
-)
-
 // gotoModeOperations maps each direct mode-jump operation to the mode it
 // selects. Seven descriptors rather than one preset-valued operation, so the
 // grammar never needs a mode value provider and cannot resurrect a mode picker.
@@ -277,11 +229,19 @@ func SimplifiedInputStrategy() InputStrategy {
 		ID: InputStrategySimplified,
 		Bindings: []OperationKeyBinding{
 			{OperationID: operationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 8, FooterLabel: "capture"},
-			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "title"},
+			// The five keys a checklist row shares with a task row are declared
+			// checklist-first: shared-key resolution takes the first applicable
+			// descriptor, and only one of each pair applies to any given cursor.
+			{OperationID: operationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "item", SharedKey: true},
+			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "title", SharedKey: true},
 			{OperationID: operationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
 			{OperationID: operationCoreExternalEditor, Keys: []string{"ctrl+e"}, DisplayKey: "Ctrl+E", FooterRank: 21, FooterLabel: "editor"},
-			{OperationID: operationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
-			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions"},
+			{OperationID: operationCoreOutlineEditor, Keys: []string{"O"}, DisplayKey: "O", FooterRank: 23, FooterLabel: "outline"},
+			{OperationID: operationChecklistAddItem, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "item", SharedKey: true},
+			{OperationID: operationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child", SharedKey: true},
+			{OperationID: operationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "tick"},
+			{OperationID: operationChecklistActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
+			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
 			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
@@ -293,8 +253,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
 			{OperationID: operationCoreToggleSections, Keys: []string{"S"}, DisplayKey: "S"},
-			{OperationID: operationCoreReorderDown, Keys: []string{"J"}, DisplayKey: "J"},
-			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K"},
+			{OperationID: operationChecklistMoveDown, Keys: []string{"J"}, DisplayKey: "J", SharedKey: true},
+			{OperationID: operationCoreReorderDown, Keys: []string{"J"}, DisplayKey: "J", SharedKey: true},
+			{OperationID: operationChecklistMoveUp, Keys: []string{"K"}, DisplayKey: "K", SharedKey: true},
+			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K", SharedKey: true},
 			{OperationID: operationTaskOutdent, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: operationTaskIndent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationCorePeek, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "peek"},
@@ -355,6 +317,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterIncludeArchived, Sequence: []string{"F", "a"}, DisplayKey: "Fa", HintLabel: "include archived"},
 			{OperationID: operationFilterOnlyArchived, Sequence: []string{"F", "A"}, DisplayKey: "FA", HintLabel: "only archived"},
 			{OperationID: operationFilterProjectClear, Sequence: []string{"F", "x"}, DisplayKey: "Fx", HintLabel: "clear project filters"},
+			{OperationID: operationSortDueDate, Sequence: []string{"o", "d"}, DisplayKey: "od", HintLabel: "due date"},
+			{OperationID: operationSortPriority, Sequence: []string{"o", "p"}, DisplayKey: "op", HintLabel: "priority"},
+			{OperationID: operationSortCreatedAt, Sequence: []string{"o", "c"}, DisplayKey: "oc", HintLabel: "created"},
+			{OperationID: operationSortUpdatedAt, Sequence: []string{"o", "u"}, DisplayKey: "ou", HintLabel: "updated"},
+			{OperationID: operationSortTitle, Sequence: []string{"o", "t"}, DisplayKey: "ot", HintLabel: "title"},
+			{OperationID: operationSortClear, Sequence: []string{"o", "x"}, DisplayKey: "ox", HintLabel: "clear sort"},
 			{OperationID: operationCoreGotoAll, Sequence: []string{"g", "a"}, DisplayKey: "ga", HintLabel: "all"},
 			{OperationID: operationCoreGotoInbox, Sequence: []string{"g", "i"}, DisplayKey: "gi", HintLabel: "inbox"},
 			{OperationID: operationCoreGotoToday, Sequence: []string{"g", "t"}, DisplayKey: "gt", HintLabel: "today"},
@@ -369,6 +337,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "p"}, HintLabel: "priority threshold"},
 			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},
+			{Sequence: []string{"o"}, HintLabel: "sort", FooterRank: 23, FooterLabel: "sort"},
 			{Sequence: []string{"g"}, HintLabel: "go to", FooterRank: 26, FooterLabel: "go to"},
 		},
 	}
@@ -607,6 +576,38 @@ func (registry *OperationRegistry) InputBindingForSequence(
 		return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
 	}
 	return OperationKeyBinding{}, OperationDescriptor{}, ChordPending
+}
+
+// InputPrefixRefusedOnChecklistRow reports whether a key path reaches any
+// operation the checklist rule turns off. It answers the question a category
+// cannot when the path's operations disagree, which is what `#` does: one of
+// its two meanings needs the owner task and the other needs a project header,
+// so neither category alone explains why the key did nothing.
+func (registry *OperationRegistry) InputPrefixRefusedOnChecklistRow(
+	id InputStrategyID,
+	sequence []string,
+) bool {
+	strategy, ok := registry.InputStrategy(id)
+	if !ok {
+		return false
+	}
+	var walk func(node *inputChordNode) bool
+	walk = func(node *inputChordNode) bool {
+		for _, index := range node.bindings {
+			descriptor, exists := registry.Descriptor(strategy.Bindings[index].OperationID)
+			if exists && operationRefusedOnChecklistRow(descriptor) {
+				return true
+			}
+		}
+		for _, key := range node.childOrder {
+			if walk(node.children[key]) {
+				return true
+			}
+		}
+		return false
+	}
+	node := registry.chordNodeForPrefix(id, sequence)
+	return node != nil && walk(node)
 }
 
 // InputCategoryForPrefix returns the category every operation still reachable

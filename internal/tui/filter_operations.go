@@ -422,6 +422,7 @@ func prospectiveOutlinerStateCounts(
 	projection.OpenAtTask = nil
 	projection.expandedNodes = make(map[TaskIdentity]bool)
 	projection.collapsedSections = make(map[string]bool)
+	projection.expandedChecklists = make(map[TaskIdentity]bool)
 	projection.zoomStack = append([]ZoomEntry(nil), outliner.zoomStack...)
 	projection.crossZoomStack = append(
 		[]CrossProjectZoomEntry(nil),

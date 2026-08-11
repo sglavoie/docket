@@ -19,13 +19,8 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// View-opening messages (detail, comments, checklist)
+	// View-opening messages (detail, comments)
 	if handled, cmd := m.handleTaskViewMessages(msg); handled {
-		return handled, cmd
-	}
-
-	// Checklist item messages
-	if handled, cmd := m.handleTaskChecklistMessages(msg); handled {
 		return handled, cmd
 	}
 
@@ -57,6 +52,12 @@ func (m *AppModel) handleTaskContentMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TaskContentEditedMsg:
 		return m.handleTaskContentEdited(msg)
+
+	case OpenOutlineEditorMsg:
+		return true, m.handleOpenOutlineEditor(msg)
+
+	case OutlineEditedMsg:
+		return true, m.handleOutlineEdited(msg)
 
 	}
 	return false, nil

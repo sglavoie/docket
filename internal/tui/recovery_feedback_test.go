@@ -128,9 +128,6 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 		{name: "note", fallback: "Updated note", deliver: func(model *AppModel, transactionID string) {
 			model.reconcileNoteResult(ProjectNoteMutationResultMsg{Result: app.NoteBatchResult{TransactionID: transactionID}, SuccessMessage: "Updated note"})
 		}},
-		{name: "checklist", fallback: "Checklist item updated", deliver: func(model *AppModel, transactionID string) {
-			model.handleChecklistItemEdited(ChecklistItemEditedMsg{TransactionID: transactionID})
-		}},
 		{name: "comment", fallback: "Comment updated", deliver: func(model *AppModel, transactionID string) {
 			model.handleCommentEdited(CommentEditedMsg{TransactionID: transactionID})
 		}},
@@ -172,7 +169,7 @@ func TestSubviewAdapterPreservesTransactionCorrelation(t *testing.T) {
 		id      func(tea.Msg) string
 	}{
 		{name: "comment", success: func() tea.Msg { return CommentAddedMsg{} }, id: func(msg tea.Msg) string { return msg.(CommentAddedMsg).TransactionID }},
-		{name: "checklist", success: func() tea.Msg { return ChecklistItemAddedMsg{} }, id: func(msg tea.Msg) string { return msg.(ChecklistItemAddedMsg).TransactionID }},
+		{name: "comment edited", success: func() tea.Msg { return CommentEditedMsg{} }, id: func(msg tea.Msg) string { return msg.(CommentEditedMsg).TransactionID }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

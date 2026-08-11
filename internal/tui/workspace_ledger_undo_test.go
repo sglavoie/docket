@@ -212,8 +212,14 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	if err := appModel.registerFilterOperations(); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
+	if err := appModel.registerSortOperations(); err != nil {
+		t.Fatalf("register sort operations: %v", err)
+	}
 	if err := appModel.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
+	}
+	if err := appModel.registerChecklistRowOperations(); err != nil {
+		t.Fatalf("register checklist row operations: %v", err)
 	}
 	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)

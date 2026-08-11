@@ -353,6 +353,41 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 	}
 }
 
+// TestSimplifiedCaptureFollowsAProjectHeaderCursor covers the one cursor row
+// that names a project explicitly. Every other row keeps base capture in the
+// system Inbox, and both destinations are named in the composer header.
+func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
+	app := newUITestApp()
+	inbox := scopeTestProject("inbox", "Unfiled", "one")
+	project := scopeTestProject("project", "Project", "one")
+	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
+	app.projects[inbox.ID] = inbox
+	app.projects[project.ID] = project
+	app.crossOutliner.loadedProjects = []*models.Project{inbox, project}
+	app.crossOutliner.rows = []outlinerRow{
+		{IsProjectHeader: true, ProjectID: project.ID},
+		{task: project.Tasks[0], ProjectID: project.ID},
+	}
+
+	app.crossOutliner.cursor = 0
+	header, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
+	if !ok || header.Preset.Project != project {
+		t.Fatalf("header capture = %#v, want project %v", header, project)
+	}
+	if header.Preset.HeaderLabel != "Capture → Project" {
+		t.Fatalf("header capture label = %q", header.Preset.HeaderLabel)
+	}
+
+	app.crossOutliner.cursor = 1
+	task, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
+	if !ok || task.Preset.Project != inbox {
+		t.Fatalf("task-row capture = %#v, want system Inbox %v", task, inbox)
+	}
+	if task.Preset.HeaderLabel != "Capture → Unfiled" {
+		t.Fatalf("task-row capture label = %q", task.Preset.HeaderLabel)
+	}
+}
+
 func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 	project := scopeTestProject("project", "Project", "task")
 	m := scopeTestOutliner(project)

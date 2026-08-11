@@ -308,6 +308,12 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	if !ok {
 		return executor.failure(fmt.Errorf("%w: %s", ErrOperationNotRegistered, request.ID))
 	}
+	// Refused ahead of availability so any route into an operation the checklist
+	// cursor turned off reports the one sentence rather than the generic
+	// unavailable error.
+	if err := checklistCursorRejection(descriptor, request.Context); err != nil {
+		return executor.failure(err)
+	}
 	binding, ok := executor.bindingFor(request.ID, request.Context)
 	if !ok {
 		return executor.failure(

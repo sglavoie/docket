@@ -1,0 +1,27 @@
+{
+  "name": "waiting-age-honest",
+  "fixture": "signals",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "a blocked task says how long it has been blocked", "assert": "contains", "value": "Alpha waiting on vendor waiting 12d" },
+    { "type": "assert", "label": "the age is not the touch time", "assert": "not_contains", "value": "waiting now" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "put the cursor on the waiting task", "key": "end" },
+    { "type": "key", "label": "open task actions", "key": "space" },
+    { "type": "text", "text": "comments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "key", "label": "start a comment", "key": "a" },
+    { "type": "text", "text": "chased the vendor again" },
+    { "type": "key", "label": "save the comment", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "chased the vendor again" },
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "assert", "label": "commenting bumps UpdatedAt, not the state clock", "assert": "contains", "value": "Alpha waiting on vendor waiting 12d" },
+    { "type": "assert", "assert": "not_contains", "value": "waiting now" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

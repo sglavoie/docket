@@ -19,7 +19,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	content := normalizedDocumentation(t, "docs/architecture.md")
 	required := []string{
 		"## Runtime layers",
-		"strict schema-7 Markdown",
+		"strict schema-8 Markdown",
 		"## Task model",
 		"Waiting is an explicit lifecycle state with no derived relationship semantics",
 		"Today and Next are mutually exclusive",
@@ -28,7 +28,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"The seven modes are All, Inbox, Today, Next, Backlog, Due, and Recent",
 		"### One operation grammar",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
-		"the exact six `Space` actions",
+		"the exact five `Space` actions",
+		"The checklist is absent because its rows own the whole mutation set",
+		"It carries no checklist line",
 		"The Outliner remains full-width at every supported terminal size",
 		"`Enter` toggles a session-only, project-qualified Peek below the cursor task",
 		"Entering visual selection disables Peek",
@@ -62,6 +64,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"pre-consolidation-v6-<UTC>.tar.gz",
 		"pre-scope-v7-<UTC>.tar.gz",
 		"pre-tag-v8-<UTC>.tar.gz",
+		"pre-state-clock-v9-<UTC>.tar.gz",
+		"backfilling each task's `state_changed` clock from its `updated` timestamp",
 		"folds the two retired per-project grouping fields",
 		"restore-and-reactivate path",
 		"prepared activation journal",
@@ -108,7 +112,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
 		"Recent is the activity-ordered mode",
 		"The old standalone `b`, `d`, `n`, and `t` actions and comma state prefix must remain unbound",
-		"The `Space` menu is exactly",
+		"The `Space` menu on a task row is exactly",
+		"A checklist row owns six operations",
+		"one predicate, `operationRefusedOnChecklistRow`, read in exactly two places",
 		"!1-3 #tag @date $destination %project >parent",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
@@ -123,6 +129,10 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`Fp`, `FP`, and the `parked` row inside `Ft` write the same `ProjectFilterState.ParkedMode` field",
 		"Project grouping is universal, not per-mode",
 		"Emit those headers through the shared `appendProjectGroupHeader` kernel; do not add a per-mode copy",
+		"The sort axis is the `o` chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, and `ox` clear",
+		"Repeating a field key reverses that field",
+		"Manual order is never touched",
+		"Group order never changes",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)
