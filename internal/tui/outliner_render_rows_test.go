@@ -47,8 +47,8 @@ func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
 		rowWidth int
 		want     string
 	}{
-		{"both counts fit", 60, "▾ [project] (4)  overdue 2 · today 3"},
-		{"today drops first", 30, "▾ [project] (4)  overdue 2"},
+		{"both counts fit", 60, "▾ [project] (4)  ! overdue 2 · ◷ today 3"},
+		{"today drops first", 30, "▾ [project] (4)  ! overdue 2"},
 		{"both drop", 20, "▾ [project] (4)"},
 	}
 	for _, tc := range cases {

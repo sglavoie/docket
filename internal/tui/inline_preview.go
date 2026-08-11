@@ -50,7 +50,7 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
 
 	if dates := inlinePeekDatesLine(opts.Task, time.Now(), available); dates != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(dates))
+		lines = append(lines, opts.Indent+dates)
 	}
 
 	if attachments := inlinePeekAttachmentsLine(opts.Task, available); attachments != "" {
@@ -76,29 +76,33 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 
 // inlinePeekDatesLine names the task clock the row has no width for: how long
 // ago it was created and last touched, when it is due, and whether it recently
-// came back from a snooze.
+// came back from a snooze. Labels stay muted and values take the footer's key
+// color, so the durations read as data rather than as prose.
 func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	if task == nil || width <= 0 {
 		return ""
 	}
 
 	parts := make([]string, 0, 4)
+	field := func(label, value string) {
+		parts = append(parts, HelpStyle.Render(label+" ")+HelpKeyStyle.Render(value))
+	}
 	if age := formatRecencyAge(task.CreatedAt, now); age != "" {
-		parts = append(parts, "created "+age)
+		field("created", age)
 	}
 	if age := formatRecencyAge(task.UpdatedAt, now); age != "" {
-		parts = append(parts, "updated "+age)
+		field("updated", age)
 	}
 	if task.DueDate != nil {
-		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
+		field("due", task.DueDate.Format("2006-01-02"))
 	}
 	if taskWokeRecently(task, now) {
-		parts = append(parts, "woke "+formatRecencyAge(*task.SnoozedUntil, now))
+		field("woke", formatRecencyAge(*task.SnoozedUntil, now))
 	}
 	if len(parts) == 0 {
 		return ""
 	}
-	return truncateIntentional(strings.Join(parts, " · "), width, "…")
+	return truncateIntentional(strings.Join(parts, HelpStyle.Render(" · ")), width, "…")
 }
 
 func inlinePeekAttachmentsLine(task *models.Task, width int) string {

@@ -96,6 +96,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		}
 		line += "  " + projectColorStyle(project).Render("["+projectName+"]")
 	}
+	line = appendManualOrderMarker(line, row, m.sort.Field, rowWidth)
 
 	if selected {
 		if m.cursorFlash {
@@ -105,6 +106,30 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	return ZebraLine(line, rowWidth, rowIndex)
+}
+
+// rowKeepsManualOrder reports whether the section a row belongs to is one the
+// sort never touches. Pinned, Today and Next carry an order the user built by
+// hand, and Review is ordered by the projection that promoted it.
+func rowKeepsManualOrder(row outlinerRow) bool {
+	return row.IsPinnedSection ||
+		row.IsTodaySection ||
+		row.IsNextSection ||
+		row.PromotedTag == reviewTaskTag
+}
+
+// appendManualOrderMarker names an exempt section while a sort is active, so a
+// lane that did not move says why instead of reading as a broken key. It is
+// dropped rather than allowed to overflow, exactly as the pressure chips are.
+func appendManualOrderMarker(line string, row outlinerRow, field SortField, rowWidth int) string {
+	if field == SortByDefault || !rowKeepsManualOrder(row) {
+		return line
+	}
+	suffix := MutedStyle.Render("  · manual")
+	if lipgloss.Width(line)+lipgloss.Width(suffix) > rowWidth {
+		return line
+	}
+	return line + suffix
 }
 
 // renderOutlinerProjectHeaderRow renders a synthetic project sub-header row
@@ -150,14 +175,15 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 // appendProjectHeaderPressure names the overdue and Today-planned work a
 // project group holds, so folding the group does not hide what is urgent in it.
 // The suffix degrades before the row is truncated — today drops first, then
-// overdue — because a clipped count reads as a different number.
+// overdue — because a clipped count reads as a different number. Each chip
+// carries a glyph so it cannot be mistaken for the bare group size beside it.
 func appendProjectHeaderPressure(line string, row outlinerRow, rowWidth int) string {
 	var parts []string
 	if row.OverdueCount > 0 {
-		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", row.OverdueCount)))
+		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
 	}
 	if row.TodayCount > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("today %d", row.TodayCount)))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("◷ today %d", row.TodayCount)))
 	}
 	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
 		suffix := "  " + strings.Join(parts, MutedStyle.Render(" · "))

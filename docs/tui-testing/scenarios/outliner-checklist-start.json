@@ -1,0 +1,46 @@
+{
+  "name": "outliner-checklist-start",
+  "fixture": "checklist",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "move onto the project header", "key": "j" },
+    { "type": "key", "label": "move onto the checklist-only task", "key": "j" },
+    { "type": "key", "label": "move onto the task that also has a child", "key": "j" },
+    { "type": "key", "label": "move onto that child", "key": "j" },
+    { "type": "key", "label": "move onto the task with no checklist", "key": "j" },
+
+    { "type": "key", "label": "x starts a checklist from a task row", "key": "x" },
+    { "type": "assert", "assert": "contains", "value": "Start Checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "text", "text": "Confirm the archive location" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the first item lands expanded beneath its owner", "assert": "contains", "value": "[ ] Confirm the archive location" },
+    { "type": "assert", "assert": "contains", "value": "0/1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the row grammar takes over from here", "key": "j" },
+    { "type": "key", "key": "A" },
+    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "text", "text": "Record the retirement date" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[ ] Record the retirement date" },
+    { "type": "assert", "assert": "contains", "value": "0/2" },
+
+    { "type": "key", "label": "x on an item ticks it instead of starting anything", "key": "x" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[x] Confirm the archive location" },
+    { "type": "assert", "assert": "contains", "value": "1/2" },
+    { "type": "assert", "assert": "not_contains", "value": "Start Checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "back on the owner, x no longer offers to start one", "key": "k" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Start Checklist" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -107,7 +107,7 @@ od op oc ou ot ox              sort chord, one order axis each
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
 v V Ctrl+A Space               selection/actions
-x                              tick a checklist item
+x                              tick a checklist item, or start one from a task row
 p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
@@ -152,7 +152,17 @@ mutating, which is the one place the direct-only-or-menu-only rule bends: Edit
 Item answers both `e` and the menu, because the menu is the only route to Delete
 and a menu holding a single destructive row explains nothing.
 
-Five of those keys are shared with a task-row operation, and the refusal that
+A checklist row exists only once the checklist does, so `tui.checklist.start`
+holds the one case no row can cover: `x` on a task row whose checklist is empty
+prompts for the first item and expands it, and the row grammar owns every item
+after that. Its applicability is `len(task.Checklist) == 0`, which makes it
+disjoint from Add Item rather than a second route to it, and that gate is why it
+belongs outside both task manifests — the `DirectOnly` branch of
+`taskActionOperationApplicable` returns before any live-state check. The task
+composer's Children tab remains the full editor for a task not yet in a
+projection.
+
+Six of those keys are shared with a task-row operation, and the refusal that
 makes the sharing safe is one predicate, `operationRefusedOnChecklistRow`, read
 in exactly two places. `OperationDescriptor.Applicable` consults it so a refused
 operation is inapplicable under a checklist cursor, which is what lets a shared
@@ -176,6 +186,15 @@ input down to the row appenders. A Today section suppresses its `today` count,
 which could only restate the group's size. `appendProjectHeaderPressure` renders
 the suffix and degrades it before `truncateToVisualWidth` sees the line, dropping
 `today` and then `overdue`, because a clipped count reads as a different number.
+
+Three numbers can sit on one project header and they answer different questions.
+`(N)` is the group's size and always renders. `! overdue N` appears wherever the
+group holds a non-terminal task due before today. `◷ today N` is much narrower
+than it looks: All lifts Today rows into the Today section before the state
+groups are built, the Today section suppresses its own count, Next is mutually
+exclusive with Today, and Backlog clears planning, so it can only appear in
+Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a second
+bare count.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
 second keys jump straight to one mode, so a seventh mode never costs six Tab
@@ -219,9 +238,16 @@ unbound.
 Two rulings bound what the sort axis may reach.
 
 Manual order is never touched. `buildPinnedModeProjection` and the planning
-sections never read `m.sort`, so Pinned, Today, and Next keep the sequence the
-user built by hand under any active sort. That holds by construction rather than
-by a guard, so do not add one; the scenario and unit test are what keep it true.
+sections never read `m.sort`, and `buildAllPrimaryRows` lifts Pinned, Today, Next
+and Review out of the lifecycle forest before `sortPrimaryTaskTree` runs, so all
+four keep the sequence they were given under any active sort. That holds by
+construction rather than by a guard, so do not add one; the scenario and unit
+test are what keep it true.
+
+An exemption the user cannot see reads as a broken key, so while a sort is active
+those section headers carry a ` · manual` marker and the toggle's status names
+the exempt sections the rebuilt projection actually holds. Both read one
+predicate, `rowKeepsManualOrder`; neither changes what the sort reaches.
 
 Group order never changes. `appendStateGroupForests` walks projects in catalog
 order and sorts inside each project, so a sort reorders tasks within their group

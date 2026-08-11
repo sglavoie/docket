@@ -27,6 +27,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.checklist.edit-item":         "reject",
 	"tui.checklist.move-down":         "reject",
 	"tui.checklist.move-up":           "reject",
+	"tui.checklist.start":             "reject",
 	"tui.checklist.toggle-item":       "reject",
 	"tui.core.actions":                "reject",
 	"tui.core.back":                   "target-free",

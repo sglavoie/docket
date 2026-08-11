@@ -23,7 +23,9 @@
     { "type": "key", "key": "o" },
     { "type": "key", "key": "t" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↓" },
+    { "type": "assert", "label": "the status names the lanes the sort skipped", "assert": "status_contains", "value": "keep manual order" },
     { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
+    { "type": "assert", "label": "the exempt header says so on screen", "assert": "contains", "value": "@ Pinned  (2)  · manual" },
     { "type": "assert", "label": "the sort axis never reaches the manual Pinned order", "assert": "contains", "value": "├── ▶   Build login form" },
     { "type": "assert", "assert": "contains", "value": "└── ¿   Explore social login" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -37,6 +39,12 @@
     { "type": "assert", "assert": "contains", "value": "└── ▶   Build login form" },
     { "type": "assert", "assert": "status_contains", "value": "Reorder Pinned" },
     { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clearing the sort retires the marker", "key": "o" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Sort cleared" },
+    { "type": "assert", "assert": "not_contains", "value": "· manual" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

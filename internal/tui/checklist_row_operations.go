@@ -20,6 +20,11 @@ const (
 	operationChecklistDeleteItem OperationID = "tui.checklist.delete-item"
 )
 
+// operationChecklistStart is the one checklist operation a task row owns. A
+// checklist row only exists once the checklist does, so without it the whole
+// row grammar is unreachable until an item is minted somewhere else.
+const operationChecklistStart OperationID = "tui.checklist.start"
+
 // checklistRowGrammar is the set of operations a checklist cursor owns. It is
 // what operationRefusedOnChecklistRow exempts, so the refusal rule stays one
 // question — does this operation belong to the checklist row? — instead of a
@@ -130,6 +135,60 @@ func checklistRowOperationDescriptors() []OperationDescriptor {
 	}
 }
 
+// checklistStartOperationDescriptor admits the cursor's task only while that
+// task holds no checklist at all, which is exactly the case no checklist row can
+// cover. The gate is disjoint from operationChecklistAddItem rather than a
+// second route to it, so the row grammar keeps owning every later item.
+func (m *AppModel) checklistStartOperationDescriptor() OperationDescriptor {
+	return withValueProvider(OperationDescriptor{
+		ID:                   operationChecklistStart,
+		Label:                "Start Checklist",
+		Description:          "Add the first checklist item to this task",
+		Category:             OperationCategoryTask,
+		TargetSource:         OperationTargetCurrentTask,
+		TargetCardinality:    TargetCardinalityOne,
+		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Applicability:        m.checklistStartApplicable,
+		Risk:                 OperationRiskMutation,
+	}, ValueProviderChecklistItem)
+}
+
+func (m *AppModel) checklistStartApplicable(ctx CommandContext) bool {
+	if ctx.View != ViewCrossProjectOutliner ||
+		ctx.Entity.HasChecklistCursor ||
+		ctx.Selection.Visual ||
+		commandContextNamesNonTaskEntity(ctx) {
+		return false
+	}
+	identity := currentTaskIdentity(ctx)
+	if !identity.Valid() {
+		return false
+	}
+	task, _ := m.taskAndProjectForIdentity(identity)
+	return task != nil && len(task.Checklist) == 0
+}
+
+// executeChecklistStart appends the first item through the same coordinator the
+// row grammar uses, then expands the checklist so the item it just created is
+// visible and the row keys take over from here.
+func (m *AppModel) executeChecklistStart(
+	invocation OperationInvocation,
+) OperationHandlerResult {
+	identity := currentTaskIdentity(invocation.Context)
+	task, _ := m.taskAndProjectForIdentity(identity)
+	if task == nil {
+		return OperationHandlerResult{Err: errors.New("task is no longer available")}
+	}
+	text, err := checklistItemText(invocation)
+	if err != nil {
+		return OperationHandlerResult{Err: err}
+	}
+	if out, ok := m.outlinerPrimary(); ok && out != nil {
+		out.setChecklistExpanded(identity, true)
+	}
+	return checklistCommandResult(m.secondaryFeatures.Subview.AddChecklistItem(identity, text))
+}
+
 func (m *AppModel) registerChecklistRowOperations() error {
 	if m == nil || m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
@@ -152,7 +211,13 @@ func (m *AppModel) registerChecklistRowOperations() error {
 			return err
 		}
 	}
-	return nil
+	start := m.checklistStartOperationDescriptor()
+	return m.registerOperation(start, OperationBinding{
+		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Applicability:        start.Applicability,
+		Handler:              m.executeChecklistStart,
+		DelegateTransaction:  true,
+	})
 }
 
 // executeChecklistRowOperation resolves the frozen owner task and item index,

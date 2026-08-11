@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 )
 
 const (
@@ -111,7 +113,31 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	out.treeSort = out.sort
 	out.crossForceRebuild = true
 	rebuildOutlinerPreservingCursor(out)
-	return OperationHandlerResult{Status: "Sorting by " + sortStateLabel(out.sort)}
+	status := "Sorting by " + sortStateLabel(out.sort)
+	if exempt := out.manualOrderSectionNames(); len(exempt) > 0 {
+		status += " · " + strings.Join(exempt, ", ") + " keep manual order"
+	}
+	return OperationHandlerResult{Status: status}
+}
+
+// manualOrderSectionNames names the sections the freshly rebuilt projection
+// holds that the sort deliberately skipped. It reads the rows rather than the
+// mode catalog, so the status can never promise an exemption the screen does
+// not show.
+func (m *OutlinerModel) manualOrderSectionNames() []string {
+	if m == nil {
+		return nil
+	}
+	names := make([]string, 0, 4)
+	for _, row := range m.rows {
+		if !row.IsSectionHeader || !rowKeepsManualOrder(row) || row.SectionName == "" {
+			continue
+		}
+		if !slices.Contains(names, row.SectionName) {
+			names = append(names, row.SectionName)
+		}
+	}
+	return names
 }
 
 func sortStateLabel(state SortState) string {

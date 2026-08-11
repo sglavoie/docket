@@ -116,7 +116,7 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := inlinePeekDatesLine(tc.task, now, 80); got != tc.want {
+			if got := ansi.Strip(inlinePeekDatesLine(tc.task, now, 80)); got != tc.want {
 				t.Fatalf("dates line = %q, want %q", got, tc.want)
 			}
 		})

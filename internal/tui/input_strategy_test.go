@@ -42,6 +42,7 @@ func simplifiedTaskActionDescriptors() []OperationDescriptor {
 	descriptors = append(descriptors, projectFilterOperationDescriptors()...)
 	descriptors = append(descriptors, sortAxisOperationDescriptors()...)
 	descriptors = append(descriptors, checklistRowOperationDescriptors()...)
+	descriptors = append(descriptors, (&AppModel{}).checklistStartOperationDescriptor())
 	return append(descriptors, projectOperationDescriptors()...)
 }
 

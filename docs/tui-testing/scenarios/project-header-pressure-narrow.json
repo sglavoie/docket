@@ -5,12 +5,12 @@
   "actions": [
     { "type": "key", "label": "go to Inbox", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "assert", "label": "the suffix degrades instead of being truncated", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  overdue 1" },
+    { "type": "assert", "label": "the suffix degrades instead of being truncated", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
     { "type": "assert", "label": "today drops first and only the pulse still says it", "assert": "count_contains", "value": "today 1", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "widen back out", "width": 100, "height": 35 },
-    { "type": "assert", "label": "the dropped count returns when it fits", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  overdue 1 · today 1" },
+    { "type": "assert", "label": "the dropped count returns when it fits", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1 · ◷ today 1" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
