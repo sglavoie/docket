@@ -97,7 +97,7 @@ ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+y ctrl+c
 The final public grammar is:
 
 ```text
-Tab/Shift+Tab                    All, Inbox, Today, Next, Backlog, Due
+Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity

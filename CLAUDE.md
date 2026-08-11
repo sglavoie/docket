@@ -112,8 +112,8 @@ x                              tick a checklist item, or start one from a task r
 p N T / ? u Ctrl+R Esc Ctrl+C  global
 ```
 
-Pinned renders in All, Inbox, and Today only, declared by `ShowsPinned` on the
-mode catalog entry. Next, Backlog, Due, and Recent each answer one narrow
+Pinned renders in All and Today only, declared by `ShowsPinned` on the
+mode catalog entry. Inbox, Next, Backlog, Due, and Recent each answer one narrow
 question, so a promoted group there splits the answer the mode was opened for.
 Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
 `PinnedAt` values inside one project group, including inside durably ordered

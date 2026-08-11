@@ -87,7 +87,7 @@ scope are session state and are not restored. Typed navigation permits that one
 root, at most one subordinate tool, and typed overlays. Covered Outliner state
 receives no key or reload dispatch.
 
-The seven modes are All, Inbox, Today, Next, Backlog, Due, and Recent.
+The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent.
 `Tab`/`Shift+Tab` cycle only that ordered catalog, and the `g` chord jumps
 straight to one of them. A project focus is a scope frame in the same Outliner,
 never a second root.
@@ -163,8 +163,8 @@ task.
 
 All mode projects open, unsnoozed work as Pinned, Today, Doing, Review, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
-the mode catalog admits through `ShowsPinned`, set on All, Inbox, and Today
-only; Next, Backlog, Due, and Recent own one narrow ordered answer that a
+the mode catalog admits through `ShowsPinned`, set on All and Today
+only; Inbox, Next, Backlog, Due, and Recent own one narrow ordered answer that a
 promoted group would split. It is
 grouped by project: groups sort by their newest pin, tasks inside a group start
 newest-first, and `J`/`K` reorder them manually within their group. A pinned

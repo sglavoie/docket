@@ -25,7 +25,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Today and Next are mutually exclusive",
 		"resulting subtree depth above six",
 		"## TUI architecture",
-		"The seven modes are All, Inbox, Today, Next, Backlog, Due, and Recent",
+		"The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent",
 		"### One operation grammar",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
 		"the exact five `Space` actions",

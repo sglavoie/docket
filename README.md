@@ -29,7 +29,7 @@ project.
 The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
-2. `Tab` moves to Inbox for triage.
+2. `gi` moves to Inbox for triage.
 3. `w` opens the shared workflow chord.
 4. `wb`, `wn`, `wt`, and `wr` organize work; `wg` starts it and `wd` completes it.
 5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
@@ -59,7 +59,7 @@ workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
 relocated task.
 
-`Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due → Recent, and
+`Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due → Recent, and
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode:
 `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent.
 
@@ -69,7 +69,7 @@ All mode shows open, unsnoozed work in this order:
 Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
-Pinned leads All, Inbox, and Today. Next, Backlog, Due, and Recent each answer
+Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole.
 Pinned tasks appear once in project groups, with parent breadcrumbs. Groups
 sort by their newest pin. Tasks inside a group start newest-first and `J`/`K`

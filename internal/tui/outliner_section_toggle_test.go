@@ -132,26 +132,30 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 
 func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 	now := time.Now()
-	pinned := primaryRowsTask("pinned", models.StateInbox)
+	pinned := primaryRowsTask("pinned", models.StateBacklog)
 	pinned.Pinned = true
 	pinned.PinnedAt = &now
-	regular := primaryRowsTask("regular", models.StateInbox)
+	regular := primaryRowsTask("regular", models.StateBacklog)
 	project := primaryRowsProject("alpha", pinned, regular)
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
+		ProjectID: project.ID,
+		TaskID:    regular.ID,
+	}})
+	outliner.selectOutlinerMode(ModeToday)
 
 	regularIdentity := TaskIdentity{ProjectID: project.ID, TaskID: regular.ID}
 	if !outliner.moveCursorToIdentity(regularIdentity) {
-		t.Fatal("regular Inbox task is missing before bulk toggle")
+		t.Fatal("planned Today task is missing before bulk toggle")
 	}
 	if !outliner.toggleVisibleSections() {
-		t.Fatal("Pinned section did not collapse in Inbox mode")
+		t.Fatal("Pinned section did not collapse in Today mode")
 	}
 	if task, _ := outliner.getTaskRef(); task == nil || task.ID != regular.ID {
 		t.Fatalf("cursor task after Pinned collapse = %v, want %s", task, regular.ID)
 	}
 	if outliner.sectionToggleRestore != nil {
-		t.Fatal("ungrouped Inbox task incorrectly received a hidden-task restore anchor")
+		t.Fatal("ungrouped Today task incorrectly received a hidden-task restore anchor")
 	}
 }
 

@@ -68,7 +68,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"The Outliner is the only primary task presentation",
-		"`Tab` cycles exactly All → Inbox → Today → Next → Backlog → Due",
+		"`Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due",
 		"capture, triage, plan, execute, and complete",
 	})
 	// The final section catalog is intentionally checked as one ordered string.

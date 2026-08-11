@@ -34,7 +34,7 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.loadedProjects = []*models.Project{beta, alpha} // catalog order resolves equal pin times.
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeToday} {
+	for _, mode := range []OutlinerModeID{ModeAll, ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if len(outliner.rows) < 3 || !outliner.rows[0].IsSectionHeader ||
@@ -85,29 +85,40 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 	}
 }
 
-// TestPinnedSectionIsAbsentFromNarrowModes proves Next, Backlog, Due, and
+// TestPinnedSectionIsAbsentFromNarrowModes proves Inbox, Next, Backlog, Due, and
 // Recent keep their own answer whole: no Pinned header, and a pinned task still
 // appears exactly once wherever the mode itself places it.
 func TestPinnedSectionIsAbsentFromNarrowModes(t *testing.T) {
 	now := time.Now()
 	pinned := primaryRowsTask("pinned", models.StateBacklog)
 	pinned.Pinned, pinned.PinnedAt, pinned.DueDate = true, &now, &now
+	pinnedInbox := primaryRowsTask("pinned-inbox", models.StateInbox)
+	pinnedInbox.Pinned, pinnedInbox.PinnedAt = true, &now
 	plain := primaryRowsTask("plain", models.StateBacklog)
-	project := primaryRowsProject("alpha", pinned, plain)
+	project := primaryRowsProject("alpha", pinned, pinnedInbox, plain)
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: pinned.ID}})
 
-	for _, mode := range []OutlinerModeID{ModeNext, ModeBacklog, ModeDue, ModeRecent} {
-		t.Run(string(mode), func(t *testing.T) {
-			outliner.selectOutlinerMode(mode)
+	for _, testCase := range []struct {
+		mode    OutlinerModeID
+		counted *models.Task
+	}{
+		{ModeInbox, pinnedInbox},
+		{ModeNext, pinned},
+		{ModeBacklog, pinned},
+		{ModeDue, pinned},
+		{ModeRecent, pinned},
+	} {
+		t.Run(string(testCase.mode), func(t *testing.T) {
+			outliner.selectOutlinerMode(testCase.mode)
 			for _, row := range outliner.rows {
 				if row.IsPinnedSection {
-					t.Fatalf("%s rendered a Pinned row: %+v", mode, row)
+					t.Fatalf("%s rendered a Pinned row: %+v", testCase.mode, row)
 				}
 			}
 			if got := countTaskRowsForIdentity(outliner,
-				TaskIdentity{ProjectID: project.ID, TaskID: pinned.ID}); got != 1 {
-				t.Fatalf("%s rendered the pinned task %d times, want 1", mode, got)
+				TaskIdentity{ProjectID: project.ID, TaskID: testCase.counted.ID}); got != 1 {
+				t.Fatalf("%s rendered the pinned task %d times, want 1", testCase.mode, got)
 			}
 		})
 	}
@@ -317,10 +328,12 @@ func TestPinnedSectionEndsWithSeparatorInEveryPromotingMode(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	pinned := primaryRowsTask("pinned", models.StateBacklog)
 	pinned.Pinned, pinned.PinnedAt = true, &now
-	plain := primaryRowsTask("plain", models.StateInbox)
-	outliner, _ := primaryRowsOutliner(primaryRowsProject("alpha", pinned, plain))
+	plain := primaryRowsTask("plain", models.StateBacklog)
+	project := primaryRowsProject("alpha", pinned, plain)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: plain.ID}})
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox} {
+	for _, mode := range []OutlinerModeID{ModeAll, ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			boundary := slices.IndexFunc(outliner.rows, func(row outlinerRow) bool { return row.IsSeparator })
