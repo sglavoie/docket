@@ -108,7 +108,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
 		InputStrategySimplified, simplifiedOperationContext(),
 	))
-	for _, want := range []string{"a capture", "s workflow", "/ search", "T theme", "? help"} {
+	for _, want := range []string{"a capture", "w workflow", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
 		}
@@ -668,7 +668,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
 	for _, retired := range []string{
-		"q", "w", "i", "|", "ctrl+n", "ctrl+x",
+		"q", "s", "i", "|", "ctrl+n", "ctrl+x",
 		":", "R", "ctrl+esc", "m", "b", "d", "n", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)
@@ -696,7 +696,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 		keys[item.Key] = true
 	}
 	for _, retired := range []string{
-		"q", "w", "i", "x", "|", "Ctrl+N", "Ctrl+X",
+		"q", "s", "i", "x", "|", "Ctrl+N", "Ctrl+X",
 		":", "R", "Ctrl+Esc", "m",
 	} {
 		if keys[retired] {

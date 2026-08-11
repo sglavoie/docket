@@ -74,7 +74,7 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		{Key: "c", Label: "canceled"},
 	}
 
-	spec := pendingChordGuidanceSpec("s", hints)
+	spec := pendingChordGuidanceSpec("w", hints)
 	lines := guidanceLines(spec, minTerminalWidth)
 	if len(lines) == 0 || len(lines) > 2 {
 		t.Fatalf("pending chord lines = %d, want 1..2: %q", len(lines), lines)
@@ -113,7 +113,7 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 }
 
 func TestGuidanceSegmentsKeepKeysApartFromLabelsAndSupplemental(t *testing.T) {
-	spec := pendingChordGuidanceSpec("s", []ChordHint{{Key: "i", Label: "inbox"}})
+	spec := pendingChordGuidanceSpec("w", []ChordHint{{Key: "i", Label: "inbox"}})
 	spec.Supplemental = "search: alpha · location: Global"
 
 	lines := guidanceSegmentLines(spec, 80)
@@ -121,7 +121,7 @@ func TestGuidanceSegmentsKeepKeysApartFromLabelsAndSupplemental(t *testing.T) {
 		t.Fatalf("segment lines = %d, want 1: %v", len(lines), lines)
 	}
 	want := []guidanceSegment{
-		{Key: "s…"},
+		{Key: "w…"},
 		{Key: "i", Label: "inbox"},
 		{Key: "Esc", Label: "cancel"},
 		{Verbatim: "search: alpha · location: Global"},
@@ -129,7 +129,7 @@ func TestGuidanceSegmentsKeepKeysApartFromLabelsAndSupplemental(t *testing.T) {
 	if !slices.Equal(lines[0], want) {
 		t.Fatalf("segments = %v, want %v", lines[0], want)
 	}
-	plain := "s… · i inbox · Esc cancel · search: alpha · location: Global"
+	plain := "w… · i inbox · Esc cancel · search: alpha · location: Global"
 	if got := strings.Join(guidanceLines(spec, 80), "\n"); got != plain {
 		t.Fatalf("plain guidance = %q, want %q", got, plain)
 	}
@@ -246,7 +246,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 		pairs = append(pairs, guidanceHintText(hint))
 	}
 	wantWorkflow := []string{
-		"s workflow", "! priority", "@ date", "# tags", "Space actions",
+		"w workflow", "! priority", "@ date", "# tags", "Space actions",
 		"z snooze", "v select", "a capture", "Enter peek", "/ search", "? help",
 	}
 	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {

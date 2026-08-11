@@ -227,10 +227,10 @@ func TestHeaderTargetCoreOperationsRefuseInsteadOfNoOp(t *testing.T) {
 // the keys one at a time from a clean shell instead.
 func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 	for _, sequence := range [][]string{
-		// Every operation under s and under ! is a task mutation, so both chords
+		// Every operation under w and under ! is a task mutation, so both chords
 		// refuse at the prefix rather than waiting for a second key that can never
 		// resolve.
-		{"s"},
+		{"w"},
 		{"!"},
 		{"@"},
 		{"z"},

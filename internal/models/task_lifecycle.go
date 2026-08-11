@@ -69,7 +69,7 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 	}
 
 	// Re-applying the state a task already holds is not a transition, so the
-	// state clock must survive it: `sw` on a task that has waited twelve days
+	// state clock must survive it: `ww` on a task that has waited twelve days
 	// still reads twelve days.
 	if t.State() != state {
 		t.StateChangedAt = now

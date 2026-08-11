@@ -12,7 +12,7 @@
     { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
 
     { "type": "key", "label": "step onto the first activity row", "key": "j" },
-    { "type": "key", "label": "open the workflow chord", "key": "s" },
+    { "type": "key", "label": "open the workflow chord", "key": "w" },
     { "type": "key", "label": "triage the row from Recent", "key": "i" },
     { "type": "assert", "label": "the triaged row holds its frozen slot", "assert": "contains", "value": "Active Projects · Recent" },
     { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },

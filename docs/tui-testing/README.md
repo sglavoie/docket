@@ -102,7 +102,7 @@ j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
 a/A e/E Ctrl+E O                 capture and edit
-si sb sn st sg sr sw sp sm sd sc    workflow chord
+wi wb wn wt wg wr ww wp wm wd wc    workflow chord
 !0-3 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard

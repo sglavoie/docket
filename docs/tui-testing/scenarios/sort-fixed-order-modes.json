@@ -9,7 +9,7 @@
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },
     { "type": "key", "label": "move to Triage support inbox", "key": "down" },
-    { "type": "key", "label": "open the workflow chord", "key": "s" },
+    { "type": "key", "label": "open the workflow chord", "key": "w" },
     { "type": "key", "label": "put the task in Today", "key": "t" },
     { "type": "wait" },
 

@@ -49,13 +49,13 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
 		{path: []string{"!", "1"}, want: operationTaskSetPriority, value: 1},
 		{path: []string{"!", "3"}, want: operationTaskSetPriority, value: 3},
-		{path: []string{"s", "i"}, want: operationTaskSetState, value: models.StateInbox},
-		{path: []string{"s", "g"}, want: operationTaskSetState, value: models.StateDoing},
-		{path: []string{"s", "w"}, want: operationTaskSetState, value: models.StateWaiting},
-		{path: []string{"s", "p"}, want: operationTaskSetState, value: models.StatePaused},
-		{path: []string{"s", "m"}, want: operationTaskSetState, value: models.StateSomeday},
-		{path: []string{"s", "d"}, want: operationTaskSetState, value: models.StateDone},
-		{path: []string{"s", "c"}, want: operationTaskSetState, value: models.StateCanceled},
+		{path: []string{"w", "i"}, want: operationTaskSetState, value: models.StateInbox},
+		{path: []string{"w", "g"}, want: operationTaskSetState, value: models.StateDoing},
+		{path: []string{"w", "w"}, want: operationTaskSetState, value: models.StateWaiting},
+		{path: []string{"w", "p"}, want: operationTaskSetState, value: models.StatePaused},
+		{path: []string{"w", "m"}, want: operationTaskSetState, value: models.StateSomeday},
+		{path: []string{"w", "d"}, want: operationTaskSetState, value: models.StateDone},
+		{path: []string{"w", "c"}, want: operationTaskSetState, value: models.StateCanceled},
 	}
 
 	for _, preset := range presets {
@@ -95,9 +95,9 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		path []string
 		want OperationID
 	}{
-		{path: []string{"s", "b"}, want: operationCoreBacklog},
-		{path: []string{"s", "n"}, want: operationCoreNext},
-		{path: []string{"s", "t"}, want: operationCoreToday},
+		{path: []string{"w", "b"}, want: operationCoreBacklog},
+		{path: []string{"w", "n"}, want: operationCoreNext},
+		{path: []string{"w", "t"}, want: operationCoreToday},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
@@ -185,9 +185,9 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 	t.Run("state prefix shows every action and dispatches a transition", func(t *testing.T) {
 		app := newApp(t)
-		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 's', Text: "s"})
+		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		if !handled || cmd != nil {
-			t.Fatalf("s = handled %v cmd %T; want a pending prefix", handled, cmd)
+			t.Fatalf("w = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
 		row := pendingChordHintRowForTest(app)
 		for _, want := range []string{
@@ -209,7 +209,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 		handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		if !handled || cmd == nil {
-			t.Fatalf("sw = handled %v cmd %T; want the waiting transition", handled, cmd)
+			t.Fatalf("ww = handled %v cmd %T; want the waiting transition", handled, cmd)
 		}
 	})
 

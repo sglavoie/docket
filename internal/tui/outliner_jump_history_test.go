@@ -322,7 +322,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 		HasValue: true,
 	})
 	if result.Err != nil {
-		t.Fatalf("execute sg state update: %v", result.Err)
+		t.Fatalf("execute wg state update: %v", result.Err)
 	}
 	command, ok := result.Message.(OperationCommandResultMsg)
 	if !ok {

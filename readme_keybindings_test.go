@@ -89,10 +89,10 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"`a` capture, `A` child, `e` title, `E` description",
-		"`s` opens the workflow chord",
-		"`si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing",
-		"`sr` toggle Review",
-		"`sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled",
+		"`w` opens the workflow chord",
+		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
+		"`wr` toggle Review",
+		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",

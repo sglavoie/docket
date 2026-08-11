@@ -102,7 +102,7 @@ j/k, arrows, h/l, S, gg/Home, G/End  navigation
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
 Ctrl+L                         Recent, focused on the newest activity
 a/A, e/E, Ctrl+E, O            capture/edit
-si sb sn st sg sr sw sp sm sd sc  workflow chord
+wi wb wn wt wg wr ww wp wm wd wc  workflow chord
 !0-3 @ # z P                   metadata
 od op oc ou ot ox              sort chord, one order axis each
 < > J K                        structure
@@ -227,7 +227,7 @@ would seat the lead against the viewport edge with the section and project
 headers naming it scrolled off. An empty Recent reports the 30-day window and
 moves nothing.
 
-Pressing `s` shows the workflow chord. Its second keys are `i` Inbox, `b`
+Pressing `w` shows the workflow chord. Its second keys are `i` Inbox, `b`
 Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m`
 Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
 behavior, and Backlog removes both planning memberships.
@@ -295,7 +295,7 @@ populations; the picker cannot express only, so a checked parked row that is
 already isolating keeps it rather than silently widening back to include.
 
 A chord prefix that a second key abandons sets a brief warning status naming the
-path it left, such as `sq is not a state / planning action`. An unbound root key
+path it left, such as `wq is not a workflow action`. An unbound root key
 stays silent because it never promised anything.
 
 `#` is the one shared key: two descriptors declare it, `tui.task.set-tags` and
@@ -412,7 +412,7 @@ state one fact twice. It compares calendar days through `util.StartOfDay`, like
 `ClassifyDueDate`, because a due date is a day and not an instant, and it is the
 one indicator that styles an overdue reading (`check +<age>`) as pressure.
 
-`withWaitingCheckBackStep` is why `sw` asks for the check-back at all. It runs
+`withWaitingCheckBackStep` is why `ww` asks for the check-back at all. It runs
 the set-state command, and only a committed result — the `transactionCommitted`
 gate — is followed through `tea.Sequence` by an `OperationValueRequestMsg` for
 `operationTaskSetDueDate`. A rejected move returns its `TransactionErrorMsg`

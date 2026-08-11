@@ -74,7 +74,7 @@ func TestOutlinerHeaderGuidanceDoesNotAdvertiseTaskWorkflow(t *testing.T) {
 	if !strings.Contains(got, "collapse") && !strings.Contains(got, "expand") {
 		t.Fatalf("header guidance omits its live fold action: %q", got)
 	}
-	for _, taskOnly := range []string{"s workflow", "! priority", "Enter peek"} {
+	for _, taskOnly := range []string{"w workflow", "! priority", "Enter peek"} {
 		if strings.Contains(got, taskOnly) {
 			t.Errorf("header guidance exposes task-only hint %q: %q", taskOnly, got)
 		}

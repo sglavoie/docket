@@ -152,7 +152,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	gotDisplay := make(map[string]string)
 	gotOrder := make([]string, 0, 10)
 	for _, binding := range strategy.Bindings {
-		if len(binding.Sequence) != 2 || binding.Sequence[0] != "s" {
+		if len(binding.Sequence) != 2 || binding.Sequence[0] != "w" {
 			continue
 		}
 		key := binding.Sequence[1]
@@ -185,10 +185,10 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	}
 	for key, terminal := range want {
 		if !reflect.DeepEqual(got[key], terminal) {
-			t.Errorf("s%s = %+v, want %+v", key, got[key], terminal)
+			t.Errorf("w%s = %+v, want %+v", key, got[key], terminal)
 		}
-		if gotDisplay[key] != "s"+key {
-			t.Errorf("s%s display key = %q, want %q", key, gotDisplay[key], "s"+key)
+		if gotDisplay[key] != "w"+key {
+			t.Errorf("w%s display key = %q, want %q", key, gotDisplay[key], "w"+key)
 		}
 	}
 	for _, binding := range strategy.Bindings {

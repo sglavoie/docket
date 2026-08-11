@@ -183,7 +183,7 @@ applicability, target cardinality, risk, value provider, and capabilities.
 confirmation, and invokes the bound handler.
 
 One operation may chain into a second one by following its committed command with
-an `OperationValueRequestMsg`, which is how `sw` asks for the check-back date it
+an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
 has just made relevant. The chain keys off the first operation's own resolved
 value, not runtime context, and it reuses the frozen command context, so the
 second step targets the same tasks even though the transition moved the cursor.

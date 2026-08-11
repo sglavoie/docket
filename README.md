@@ -30,8 +30,8 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `Tab` moves to Inbox for triage.
-3. `s` opens the shared workflow chord.
-4. `sb`, `sn`, `st`, and `sr` organize work; `sg` starts it and `sd` completes it.
+3. `w` opens the shared workflow chord.
+4. `wb`, `wn`, `wt`, and `wr` organize work; `wg` starts it and `wd` completes it.
 5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
 6. `Space` opens the six occasional task tools.
 
@@ -114,7 +114,7 @@ when that task would otherwise be hidden.
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
 | Navigation | `j`/`k` or arrows move; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` inspects |
 | Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
-| Workflow | `s` opens the workflow chord: `si` Inbox, `sb` Backlog, `sn` toggle Next, `st` toggle Today, `sg` Doing, `sr` toggle Review, `sw` Waiting, `sp` Paused, `sm` Someday, `sd` Done, `sc` Canceled; `sw` then asks for a check-back date |
+| Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Sorting | `o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
@@ -131,7 +131,7 @@ guidance, chord hints, and `?` help. The old standalone `b`, `d`, `n`, and `t`
 actions and comma state prefix have no compatibility action; neither do removed
 keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
 
-Task updates that move the focused task—such as `sg` moving it into In
+Task updates that move the focused task—such as `wg` moving it into In
 Progress—add a session-only jump entry. `Ctrl+O` returns to the task that
 followed its old position (or the preceding/nearest surviving row), and
 `Ctrl+I` returns to the relocated task. Changing mode, scope, search, filters,
@@ -322,7 +322,7 @@ Waiting rather than from the last time anything touched it, so recording a chase
 in the comments does not reset how long the work has been blocked. If it also
 carries a due date, that date is the check-back, so the row replaces the plain
 date with `check <age>` counting down to chasing it, `check today`, or an
-overdue `check +<age>`. Moving a task to Waiting with `sw` therefore asks for the
+overdue `check +<age>`. Moving a task to Waiting with `ww` therefore asks for the
 check-back date immediately; `Esc` there declines the date and the Waiting move
 still stands.
 

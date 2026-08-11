@@ -17,13 +17,13 @@
     { "type": "assert", "assert": "contains", "value": "Space toggle" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
     { "type": "assert", "label": "the complete explanation wraps inside the overlay", "assert": "contains", "value": "highest one a task carries colors its title." },
-    { "type": "assert", "label": "the picker preserves workflow-first task guidance beneath the overlay", "assert": "contains", "value": "s workflow · ! priority · @ date · # tags · Space actions" },
+    { "type": "assert", "label": "the picker preserves workflow-first task guidance beneath the overlay", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "enter add-tag mode, which replaces the explainer entirely", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Add New Tag" },
     { "type": "assert", "label": "add mode replaces the inline explainer", "assert": "not_contains", "value": "highest one a task carries colors its title." },
-    { "type": "assert", "assert": "contains", "value": "s workflow · ! priority · @ date · # tags · Space actions" },
+    { "type": "assert", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "back to the tag list", "key": "esc" },
@@ -38,7 +38,7 @@
     { "type": "resize", "label": "minimum layout wraps the explainer and shrinks the scrollable list", "width": 72, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "bug › epic" },
     { "type": "assert", "assert": "contains", "value": "its title." },
-    { "type": "assert", "label": "the status bar remains independent from the inline explainer", "assert": "contains", "value": "s workflow · ! priority · @ date · # tags · Space actions" },
+    { "type": "assert", "label": "the status bar remains independent from the inline explainer", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "width": 100, "height": 35 },

@@ -12,7 +12,7 @@
     { "type": "assert", "label": "no fixture task carries a semantic tag, so the filter offers no section", "assert": "not_contains", "value": "SEMANTIC" },
     { "type": "assert", "label": "the locked precedence is stated even with no semantic row", "assert": "contains", "value": "bug › epic" },
     { "type": "assert", "label": "the filter picker wraps the complete explanation inline", "assert": "contains", "value": "highest one a task carries colors its title." },
-    { "type": "assert", "assert": "contains", "value": "s workflow · ! priority · @ date · # tags · Space actions" },
+    { "type": "assert", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
