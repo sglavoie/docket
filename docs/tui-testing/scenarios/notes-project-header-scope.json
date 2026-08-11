@@ -1,0 +1,23 @@
+{
+  "name": "notes-project-header-scope",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "step onto the first project header", "key": "j" },
+    { "type": "key", "label": "open Notes from a project header row", "key": "ctrl+n" },
+    { "type": "assert", "assert": "view", "value": "Notes" },
+    { "type": "assert", "label": "the header names the scope it opened", "assert": "contains", "value": "1 notes in Rich Project" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
+    { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close Notes", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "step onto the task beneath the header", "key": "j" },
+    { "type": "key", "label": "open Notes from a task row", "key": "ctrl+n" },
+    { "type": "assert", "label": "a task cursor never narrows the manager", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "contains", "value": "All Notes" },
+    { "type": "assert", "assert": "contains", "value": "Workspace launch brief" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

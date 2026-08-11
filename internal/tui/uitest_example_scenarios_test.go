@@ -33,6 +33,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"mode-catalog.json",
 		"notes-tool.json",
 		"notes-scope-picker.json",
+		"notes-project-header-scope.json",
 		"notes-search.json",
 		"notes-location-pickers.json",
 		"global-notes-resize-minimum-layout.json",

@@ -399,7 +399,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			out.updateVisualSelectionStatus()
 		}
 	case operationCoreNotes:
-		message = ShowNotesManagerMsg{Scope: AllNotesScope()}
+		message = ShowNotesManagerMsg{Scope: m.coreNotesScope()}
 	case operationCoreToggleTheme:
 		err = m.coreToggleTheme()
 		if err == nil {
@@ -447,6 +447,24 @@ func commandMessage(cmd tea.Cmd) tea.Msg {
 		return nil
 	}
 	return OperationCommandResultMsg{Cmd: cmd}
+}
+
+// coreNotesScope keeps Ctrl+N on All Notes everywhere except a project header
+// row, which names one project explicitly rather than incidentally — the same
+// exception coreCaptureMessage makes, read through the same predicate, so no
+// task cursor can narrow the manager. The header is re-resolved against the
+// shell's note-owner population, since an archived project the archived facet
+// loaded is never an owner and would only bounce back to All Notes.
+func (m *AppModel) coreNotesScope() NotesScope {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return AllNotesScope()
+	}
+	header := out.cursorProjectHeaderProject()
+	if header == nil || m.activeProjectByID(header.ID) == nil {
+		return AllNotesScope()
+	}
+	return ProjectNotesScope(header.ID)
 }
 
 // coreCaptureMessage routes base capture to the workspace-owned System Inbox

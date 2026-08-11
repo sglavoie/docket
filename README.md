@@ -467,7 +467,8 @@ them unchanged.
 
 `Ctrl+N` opens All Notes, a workspace-wide manager that scans Global plus every
 unarchived project, including the protected Unfiled project and every parked
-project. Rows are ordered by most recent
+project. On a project header row it opens that project's notes instead. Rows
+are ordered by most recent
 modification and carry an owner label. `v` opens a searchable All, Global, or
 single-project scope picker, while `s` applies a persistent title/body search
 inside the selected scope.

@@ -7,27 +7,70 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestPromotedToolNotesAlwaysOpenAllNotes(t *testing.T) {
+func TestPromotedToolNotesScope(t *testing.T) {
 	workA := &models.Project{ID: "work-a", Name: "Work A", Slug: "work-a"}
 	workB := &models.Project{ID: "work-b", Name: "Work B", Slug: "work-b"}
 	home := &models.Project{ID: "home", Name: "Home", Slug: "home"}
+	archived := &models.Project{
+		ID: "old", Name: "Old", Slug: "old", Archived: true,
+	}
 
 	tests := []struct {
 		name           string
-		configure      func(*OutlinerModel)
+		configure      func(*AppModel)
 		wantProjectIDs []string
+		wantScope      NotesScope
 	}{
 		{
 			name:           "all",
-			configure:      func(*OutlinerModel) {},
+			configure:      func(*AppModel) {},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
+			wantScope:      AllNotesScope(),
 		},
 		{
 			name: "project focus",
-			configure: func(out *OutlinerModel) {
-				out.scopedProjectID = workB.ID
+			configure: func(app *AppModel) {
+				app.crossOutliner.scopedProjectID = workB.ID
 			},
 			wantProjectIDs: []string{workB.ID},
+			wantScope:      AllNotesScope(),
+		},
+		{
+			name: "task row cursor",
+			configure: func(app *AppModel) {
+				app.crossOutliner.rows = []outlinerRow{
+					{task: &models.Task{ID: "t1"}, ProjectID: workA.ID},
+				}
+				app.crossOutliner.cursor = 0
+			},
+			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
+			wantScope:      AllNotesScope(),
+		},
+		{
+			name: "project header cursor",
+			configure: func(app *AppModel) {
+				app.crossOutliner.rows = []outlinerRow{
+					{IsProjectHeader: true, ProjectID: workA.ID},
+					{IsProjectHeader: true, ProjectID: workB.ID},
+				}
+				app.crossOutliner.cursor = 1
+			},
+			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
+			wantScope:      ProjectNotesScope(workB.ID),
+		},
+		{
+			name: "archived project header cursor",
+			configure: func(app *AppModel) {
+				setTestAppProjects(app, workA, workB, home, archived)
+				app.crossOutliner.loadedProjects = append(
+					app.crossOutliner.loadedProjects, archived)
+				app.crossOutliner.rows = []outlinerRow{
+					{IsProjectHeader: true, ProjectID: archived.ID},
+				}
+				app.crossOutliner.cursor = 0
+			},
+			wantProjectIDs: []string{home.ID, archived.ID, workA.ID, workB.ID},
+			wantScope:      AllNotesScope(),
 		},
 	}
 
@@ -36,7 +79,7 @@ func TestPromotedToolNotesAlwaysOpenAllNotes(t *testing.T) {
 			app := newUITestApp()
 			setTestAppProjects(app, workA, workB, home)
 			app.crossOutliner.loadedProjects = []*models.Project{workA, workB, home}
-			test.configure(app.crossOutliner)
+			test.configure(app)
 			app.operationRegistry = NewOperationRegistry()
 			app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 			if err := app.registerCoreInputOperations(); err != nil {
@@ -50,8 +93,8 @@ func TestPromotedToolNotesAlwaysOpenAllNotes(t *testing.T) {
 
 			notes := executePromotedTool(t, app, operationCoreNotes, context)
 			msg, ok := notes.(ShowNotesManagerMsg)
-			if !ok || msg.Scope != AllNotesScope() || msg.Focus != (NoteRowIdentity{}) {
-				t.Fatalf("Notes message = %#v, want an unfocused All Notes manager", notes)
+			if !ok || msg.Scope != test.wantScope || msg.Focus != (NoteRowIdentity{}) {
+				t.Fatalf("Notes message = %#v, want unfocused %#v", notes, test.wantScope)
 			}
 		})
 	}

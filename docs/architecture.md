@@ -467,8 +467,9 @@ restores the plan untouched. Archiving preserves a project's tags and restoring
 returns them unchanged.
 
 The workspace-wide Notes manager carries an explicit `NoteLocation` plus
-filename identity with every row and always opens in All Notes. One workspace
-snapshot loads Global plus every project returned by
+filename identity with every row and opens in All Notes unless the Outliner
+cursor names one active project header, which opens that project's scope. One
+workspace snapshot loads Global plus every project returned by
 `Runtime.AvailableProjects()`; archived projects are not owners, but a parked
 project remains one. Successfully
 loaded rows form one canonical collection, then the selected All, Global, or

@@ -457,9 +457,13 @@ mode survives at zero selected members and only `Esc` leaves it.
 project administration. It lists `Runtime.AvailableProjects()` with each
 project's tag chips, `v` selects a row, `a`/`A` select or clear every matching
 row, and `Space` over a selection offers Add tag, Remove tag, Park and Unpark
-across the whole selection in one transaction. `Ctrl+N` always
-opens All Notes across Global and every project returned by
-`Runtime.AvailableProjects()`. Inside Notes, `v` chooses All, Global, or one active
+across the whole selection in one transaction. `Ctrl+N` opens All Notes across
+Global and every project returned by `Runtime.AvailableProjects()`, except on a
+project header row, which opens that project's scope. That is the same
+explicit-naming exception `coreCaptureMessage` makes, read through the same
+`cursorProjectHeaderProject` predicate, so no task cursor can narrow the
+manager; an archived header stays on All Notes because an archived project is
+never a note owner. Inside Notes, `v` chooses All, Global, or one active
 project, `s` persistently searches titles and bodies, and `m` atomically moves
 one note between active owners. Creation with `n` or its `a` alias always asks
 for a destination; the remaining mutation grammar is open/edit, rename,

@@ -170,6 +170,7 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
 		"`Ctrl+N` opens All Notes",
+		"On a project header row it opens that project's notes instead",
 		"Global plus every unarchived project, including the protected Unfiled project and every parked project",
 		"`v` opens a searchable All, Global, or single-project scope picker",
 		"`s` applies a persistent title/body search",
