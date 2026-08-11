@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -21,7 +22,13 @@ const (
 	operationHarnessTaskComments    OperationID = "tui.harness.task-comments"
 	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
 	operationHarnessOutlineErrors   OperationID = "tui.harness.outline-errors"
+	operationHarnessOutlineDelete   OperationID = "tui.harness.outline-delete-confirm"
 )
+
+// harnessOutlineScenarioPath is the buffer path the outline scenarios name. No
+// file is written: the scenarios only assert that a refusal points back at the
+// buffer the user still has.
+const harnessOutlineScenarioPath = "/tmp/tt-outline-scenario.md"
 
 type harnessOperationSpec struct {
 	id       OperationID
@@ -88,10 +95,17 @@ func (m *AppModel) registerHarnessOperations() error {
 			// therefore install it directly with a canned problem list.
 			m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(
 				"Rich Project",
-				"/tmp/tt-outline-scenario.md",
+				harnessOutlineScenarioPath,
 				harnessOutlineProblems(),
 			))
 			return nil
+		}},
+		{operationHarnessOutlineDelete, "outline delete confirm", OperationCategorySystem, func() tea.Msg {
+			// Same reason as the refusal surface: the round trip cannot be replayed,
+			// so the harness dumps the cursor's project, drops the buffer's last line,
+			// and hands the result to the real handler. Everything the prompt shows is
+			// therefore produced by the production path.
+			return m.harnessOutlineDeleteConfirm()
 		}},
 	}
 
@@ -133,6 +147,29 @@ func harnessOutlineProblems() []lineError {
 		{line: 11, message: "task title cannot be empty"},
 		{line: 12, message: "indentation sets parentage here; remove the >parent sigil"},
 	}
+}
+
+// harnessOutlineDeleteConfirm replays the returned half of the round trip. The
+// dropped line is the buffer's last, which depth-first order guarantees is a
+// leaf, so the remaining buffer is still a valid tree.
+func (m *AppModel) harnessOutlineDeleteConfirm() tea.Msg {
+	target, label, refusal := m.outlineEditorRequest()
+	if target == nil || refusal != "" {
+		return nil
+	}
+	project, revision, buffer, scopeTaskIDs, err := m.outlineDumpSource(target.ID, label)
+	if err != nil {
+		return nil
+	}
+	lines := strings.Split(strings.TrimRight(buffer, "\n"), "\n")
+	m.handleOutlineEdited(OutlineEditedMsg{
+		Project:      project,
+		Revision:     revision,
+		ScopeTaskIDs: scopeTaskIDs,
+		Path:         harnessOutlineScenarioPath,
+		Buffer:       strings.Join(lines[:len(lines)-1], "\n"),
+	})
+	return nil
 }
 
 func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {

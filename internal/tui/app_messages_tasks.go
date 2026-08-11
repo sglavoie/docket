@@ -82,14 +82,16 @@ type OpenOutlineEditorMsg struct {
 // OutlineEditedMsg returns one edited outline buffer. Project and Revision are
 // the snapshot pair the buffer was dumped from, and the revision travels into
 // the apply so a workspace that moved while the editor was open is refused
-// instead of merged. Path is kept so a refused buffer can be named in the status
-// rather than silently discarded.
+// instead of merged. ScopeTaskIDs are the tasks the dump actually printed, which
+// is what makes absence readable as deletion. Path is kept so a refused buffer
+// can be named in the status rather than silently discarded.
 type OutlineEditedMsg struct {
-	Project  *models.Project
-	Revision string
-	Path     string
-	Buffer   string
-	Err      error
+	Project      *models.Project
+	Revision     string
+	ScopeTaskIDs []string
+	Path         string
+	Buffer       string
+	Err          error
 }
 
 // =============================================================================

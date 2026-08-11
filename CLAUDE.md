@@ -327,12 +327,31 @@ stripped before the rest of the line reaches `parseQuickCapture`, so one line
 speaks the ordinary capture grammar and nothing else. A `>parent` sigil is
 therefore an error rather than a second parentage channel.
 
-Three rules bound it. It refuses under a visual selection, since a selection
-names rows and the outline names a project. It refuses in every mode that is not
+Two rules bound it. It refuses under a visual selection, since a selection names
+rows and the outline names a project. And it refuses in every mode that is not
 `OrderPolicyTree` with `Outline edit needs All, Inbox, or Backlog`, because a
 promoted or fixed-order mode's row sequence is not the tree the buffer claims to
-be. And it never deletes: a task missing from the buffer is left alone, so a
-truncated file cannot destroy work.
+be.
+
+The buffer is declarative about existence too: a dumped task whose line is gone
+is deleted, and the deletion rides the same transaction and the same undo entry
+as the edits beside it. There is no `$delete` sigil, because the dump is the
+complete tree and absence already says it. One confirmation gates it, armed
+after `$EDITOR` returns and before anything is applied, naming the removed tasks
+and the attachments they destroy. The counts cannot go stale, because the apply
+re-enforces the revision the buffer was dumped at, and `ApplyOutlinePlan`
+refuses any confirmed list that disagrees with the buffer's absences in either
+direction. Declining cancels the whole apply, edits included, and keeps the temp
+file so the same buffer can be resubmitted. Scope is what the dump actually
+printed, never `project.Tasks`: a task unreachable from any root never reached
+the buffer, so absence cannot speak for it.
+
+An emptied buffer is that rule at its limit, not an exception to it: every line
+removed deletes every task in the scope, gated by the same confirmation. `the
+buffer holds no tasks` is refused only when the emptiness also deletes nothing,
+since that buffer asks for no change at all and is likelier a truncated file. The
+parser never rules on this; emptiness is a question about scope, and only
+`handleOutlineEdited` and `ApplyOutlinePlan` hold one.
 
 Both validation phases collect every problem before anything is written, and a
 rejected buffer keeps its temp file so the named line numbers still resolve. A

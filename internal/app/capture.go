@@ -177,6 +177,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
 	artifacts, err := planningArtifactsForTargets(
 		[]PlanningReconcileTarget{prepared.destination.planningTarget(task.ID, project.ID)},
+		nil,
 		s.defaultedPlanningArtifacts(nil),
 	)
 	if err != nil {
@@ -272,7 +273,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	for i, item := range items {
 		targets[i] = item.prepared.destination.planningTarget(item.task.ID, item.project.ID)
 	}
-	artifacts, err := planningArtifactsForTargets(targets, planningBuilder)
+	artifacts, err := planningArtifactsForTargets(targets, nil, planningBuilder)
 	if err != nil {
 		return nil, err
 	}
@@ -316,13 +317,18 @@ func captureRequestError(req CaptureRequest, index int, err error) error {
 }
 
 // planningArtifactsForTargets renders one checked planning artifact set for a
-// capture batch. Calling the builder once is important: every created task must
-// be added to Today/Next in the same planning snapshot and the same ChangeSet.
-func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {
-	if len(targets) == 0 {
+// capture batch, dropping the memberships of any task the same transaction
+// removes. Calling the builder once is important: every created task must be
+// added to Today/Next in the same planning snapshot and the same ChangeSet, and
+// a removal has to leave from that same snapshot.
+func planningArtifactsForTargets(targets []PlanningReconcileTarget, remove []TaskLocator, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {
+	if len(targets) == 0 && len(remove) == 0 {
 		return nil, nil
 	}
 	if builder == nil {
+		// Only an add refuses here. A removal without a builder falls through the
+		// way Delete and BulkDelete already do: the membership is left to read-time
+		// filtering rather than failing a deletion the user confirmed.
 		for _, target := range targets {
 			if target.Today == PlanningTodayAdd || target.Next == PlanningNextAdd {
 				return nil, invalidInput("destination", "planning persistence is unavailable")
@@ -330,7 +336,7 @@ func planningArtifactsForTargets(targets []PlanningReconcileTarget, builder Plan
 		}
 		return nil, nil
 	}
-	artifacts, err := builder(PlanningReconcileRequest{Targets: targets})
+	artifacts, err := builder(PlanningReconcileRequest{Targets: targets, Remove: remove})
 	if err != nil {
 		return nil, err
 	}

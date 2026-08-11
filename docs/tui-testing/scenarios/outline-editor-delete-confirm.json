@@ -1,0 +1,35 @@
+{
+  "name": "outline-editor-delete-confirm",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "assert", "label": "nothing is pending yet", "assert": "not_contains", "value": "Confirm" },
+
+    { "type": "key", "label": "step onto the project header", "key": "j" },
+    { "type": "key", "label": "move onto the first visible task", "key": "j" },
+
+    { "type": "command", "label": "return a buffer with its last line removed", "command": "outline delete confirm" },
+    { "type": "assert", "label": "the removal prompts before anything is applied", "assert": "contains", "value": "Confirm" },
+    { "type": "assert", "label": "the prompt names the task and the project", "assert": "contains", "value": "Delete task #8 from Rich Project?" },
+    { "type": "assert", "label": "the removed line is listed, not just counted", "assert": "contains", "value": "#8 Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "1 task deleted" },
+    { "type": "assert", "label": "the attachment consequence is spelled out", "assert": "contains", "value": "attachments: 0 stored" },
+    { "type": "assert", "assert": "contains", "value": "URL/code reference(s)" },
+    { "type": "assert", "label": "the deletion is reversible", "assert": "contains", "value": "Undo available (u)" },
+    { "type": "assert", "label": "the Outliner stays underneath", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the prompt survives the minimum terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Confirm" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "key", "label": "declining cancels the whole apply", "key": "esc" },
+    { "type": "assert", "assert": "status_contains", "value": "Outline not applied" },
+    { "type": "assert", "label": "the buffer is kept so the edits can be resubmitted", "assert": "status_contains", "value": "/tmp/tt-outline-scenario.md" },
+    { "type": "assert", "assert": "not_contains", "value": "Undo available (u)" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

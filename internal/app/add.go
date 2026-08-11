@@ -101,6 +101,7 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 	ref := built.ref
 	planning, err := planningArtifactsForTargets(
 		[]PlanningReconcileTarget{addTaskPlanningTarget(ref, built.destination)},
+		nil,
 		s.defaultedPlanningArtifacts(req.PlanningArtifacts),
 	)
 	if err != nil {
@@ -305,6 +306,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 
 	planning, err := planningArtifactsForTargets(
 		[]PlanningReconcileTarget{addTaskPlanningTarget(ref, built.destination)},
+		nil,
 		s.defaultedPlanningArtifacts(req.PlanningArtifacts),
 	)
 	if err != nil {

@@ -47,9 +47,18 @@ type OutlinePlanRequest struct {
 	// a buffer describes one exact tree, so an apply that cannot name the tree it
 	// was authored against has nothing to be atomic with respect to.
 	ExpectedRevision string
-	// ScopeTaskIDs are the tasks the buffer was dumped from. Any of them missing
-	// from Lines is reported unchanged rather than deleted.
+	// ScopeTaskIDs are the tasks the buffer was dumped from, and therefore the
+	// only tasks absence can speak about. A task the dump never printed is
+	// invisible to the buffer and must not be reachable by removing a line.
 	ScopeTaskIDs []string
+	// DeleteTaskIDs are the scope tasks the returned buffer no longer holds,
+	// exactly as the adapter presented them for confirmation. It must name the
+	// same set the buffer leaves absent, so what was confirmed and what is
+	// removed are provably the same list.
+	DeleteTaskIDs []string
+	// ConfirmDeletions records explicit destructive intent for DeleteTaskIDs, the
+	// way DeleteRequest.Confirm does for a single delete.
+	ConfirmDeletions bool
 	// Lines are the buffer's nonblank lines in their final order.
 	Lines []OutlinePlanLine
 	// PlanningArtifacts overrides the service planning builder.
@@ -57,19 +66,18 @@ type OutlinePlanRequest struct {
 }
 
 // OutlinePlanResult reports what one applied buffer did: the tasks it created,
-// the existing tasks it actually changed, and the dumped tasks the buffer no
-// longer mentioned and therefore left alone.
+// the existing tasks it actually changed, and the dumped tasks it removed.
 type OutlinePlanResult struct {
-	Created   []TaskResult
-	Updated   []TaskResult
-	Unchanged []TaskResult
+	Created []TaskResult
+	Updated []TaskResult
+	Deleted []TaskResult
 }
 
 // Summary is the one-line report an adapter shows after applying a buffer. It
-// names the tasks that vanished from the buffer explicitly, because silence
-// there would read as a delete the transaction deliberately refused.
+// names the deletions separately from the edits, because a removed line and an
+// edited line are the two things the buffer cannot tell apart on its own.
 func (r OutlinePlanResult) Summary() string {
-	return outlinePlanSummary(len(r.Created)+len(r.Updated), len(r.Unchanged))
+	return outlinePlanSummary(len(r.Created)+len(r.Updated), len(r.Deleted))
 }
 
 // ProjectAtRevision returns a project together with the revision it was loaded
@@ -86,16 +94,20 @@ func (s *Service) ProjectAtRevision(projectID string) (*models.Project, string, 
 // from one snapshot, apply in memory against the single scope project, reconcile
 // planning once, and reach storage through one project commit.
 //
-// The buffer is declarative and complete for the scope it was dumped from, but
-// deletion is refused: a marked line the buffer no longer holds is reported
-// unchanged. The Delete guard must present frozen root, descendant, hidden and
-// attachment counts at the moment of decision, and a buffer authored minutes
-// earlier cannot.
+// The buffer is declarative and complete for the scope it was dumped from, so a
+// scope task whose line the buffer no longer holds is deleted. The Delete guard
+// still owns the decision: the adapter counts the removals when the editor
+// returns, presents them, and sends the confirmed list back as DeleteTaskIDs.
+// Those counts cannot go stale between the prompt and the write, because the
+// revision check below refuses any buffer whose project moved in the meantime.
 func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, error) {
 	if strings.TrimSpace(req.ProjectID) == "" {
 		return OutlinePlanResult{}, invalidInput("project", "project is required")
 	}
-	if len(req.Lines) == 0 {
+	// An empty buffer is a legitimate request to empty the project, so it is
+	// refused only when it also removes nothing: that buffer asks for no change at
+	// all and is far more likely to be a truncated file than an intent.
+	if len(req.Lines) == 0 && len(req.DeleteTaskIDs) == 0 {
 		return OutlinePlanResult{}, invalidInput("outline", "the buffer holds no tasks")
 	}
 	if strings.TrimSpace(req.ExpectedRevision) == "" {
@@ -129,6 +141,10 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 	if err != nil {
 		return OutlinePlanResult{}, err
 	}
+	deleted, err := outlineDeletions(project, req, prepared)
+	if err != nil {
+		return OutlinePlanResult{}, err
+	}
 
 	before, err := cloneSnapshot(snap)
 	if err != nil {
@@ -142,28 +158,29 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 		}
 	}()
 
+	attachmentOps, removedLocators := removeOutlineTasks(project, deleted)
 	targets, err := s.applyOutlinePlan(project, base, prepared)
 	if err != nil {
 		return OutlinePlanResult{}, err
 	}
 	created, updated := partitionOutlineChanges(before.ProjectByID(project.ID), prepared)
-	unchanged := absentScopeTasks(project, req.ScopeTaskIDs, prepared)
 	// Only a task the buffer really changed is touched. A line that restated a
 	// task verbatim must not move it to the top of Recent.
 	for _, task := range updated {
 		task.UpdatedAt = s.clock.Now()
 	}
 
-	artifacts, err := planningArtifactsForTargets(targets, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
+	artifacts, err := planningArtifactsForTargets(targets, removedLocators, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return OutlinePlanResult{}, err
 	}
-	summary := outlinePlanSummary(len(created)+len(updated), len(unchanged))
+	summary := outlinePlanSummary(len(created)+len(updated), len(deleted))
 	outcome, err := s.commitProjects([]projectCommit{{
 		project:          project,
 		expectedRevision: snap.Revision(project.ID),
 		base:             base,
 		artifacts:        artifacts,
+		attachmentOps:    attachmentOps,
 	}}, "Apply Outline", summary)
 	if err != nil {
 		return OutlinePlanResult{}, err
@@ -173,9 +190,9 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 	revision := revisionAt(outcome.results, 0)
 	transactionID := transactionIDAt(outcome.results, 0)
 	return OutlinePlanResult{
-		Created:   outlineTaskResults(project, created, revision, transactionID),
-		Updated:   outlineTaskResults(project, updated, revision, transactionID),
-		Unchanged: outlineTaskResults(project, unchanged, revision, transactionID),
+		Created: outlineTaskResults(project, created, revision, transactionID),
+		Updated: outlineTaskResults(project, updated, revision, transactionID),
+		Deleted: outlineTaskResults(project, deleted, revision, transactionID),
 	}, nil
 }
 
@@ -530,28 +547,85 @@ func sameOptionalDate(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-// absentScopeTasks names the dumped tasks the buffer no longer mentions. They
-// are left exactly as they were: an outline plan never deletes.
-func absentScopeTasks(project *models.Project, scopeTaskIDs []string, prepared []preparedOutlineLine) []*models.Task {
-	if len(scopeTaskIDs) == 0 {
-		return nil
-	}
-	buffered := make(map[string]bool, len(prepared))
+// outlineDeletions resolves the tasks the buffer removed, in dump order, and
+// refuses anything the request cannot account for.
+//
+// The absent set is derived here rather than trusted from DeleteTaskIDs, and the
+// two must agree exactly. That equality is the whole guarantee: it proves the
+// list the adapter counted and showed is the list this transaction removes.
+func outlineDeletions(project *models.Project, req OutlinePlanRequest, prepared []preparedOutlineLine) ([]*models.Task, error) {
+	buffered := make(map[string]int, len(prepared))
 	for _, item := range prepared {
-		buffered[item.task.ID] = true
+		if !item.creates() {
+			buffered[item.task.ID] = item.line.SourceLine
+		}
 	}
-	seen := make(map[string]bool, len(scopeTaskIDs))
-	var absent []*models.Task
-	for _, taskID := range scopeTaskIDs {
-		if taskID == "" || buffered[taskID] || seen[taskID] {
+	confirmed := make(map[string]bool, len(req.DeleteTaskIDs))
+	for _, taskID := range req.DeleteTaskIDs {
+		if taskID == "" {
+			return nil, invalidInput("delete", "task id is required")
+		}
+		if project.GetTaskByID(taskID) == nil {
+			return nil, fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+		}
+		if line, held := buffered[taskID]; held {
+			return nil, invalidInput("delete", fmt.Sprintf("task %s is on line %d and cannot also be deleted", taskID, line))
+		}
+		confirmed[taskID] = true
+	}
+
+	seen := make(map[string]bool, len(req.ScopeTaskIDs))
+	deleted := make([]*models.Task, 0, len(confirmed))
+	for _, taskID := range req.ScopeTaskIDs {
+		if taskID == "" {
+			return nil, invalidInput("scope", "task id is required")
+		}
+		task := project.GetTaskByID(taskID)
+		if task == nil {
+			return nil, fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
+		}
+		if _, held := buffered[taskID]; held || seen[taskID] {
 			continue
 		}
 		seen[taskID] = true
-		if task := project.GetTaskByID(taskID); task != nil {
-			absent = append(absent, task)
+		if !confirmed[taskID] {
+			return nil, invalidInput("delete", fmt.Sprintf("task %s is missing from the buffer but was not confirmed for deletion", taskID))
+		}
+		deleted = append(deleted, task)
+	}
+	for taskID := range confirmed {
+		if !seen[taskID] {
+			return nil, invalidInput("delete", fmt.Sprintf("task %s was confirmed for deletion but the buffer still holds it", taskID))
 		}
 	}
-	return absent
+	if len(deleted) > 0 && !req.ConfirmDeletions {
+		return nil, fmt.Errorf("%w: deleting %d tasks the buffer no longer holds", ErrDestructiveConfirmationRequired, len(deleted))
+	}
+	return deleted, nil
+}
+
+// removeOutlineTasks drops the deleted tasks from the project and returns the
+// side effects the same transaction has to carry. It runs before the buffer's
+// own parentage is applied, so a survivor whose parent line vanished is
+// re-parented by its own indentation rather than by the removal.
+func removeOutlineTasks(project *models.Project, deleted []*models.Task) ([]storage.AttachmentOp, []TaskLocator) {
+	if len(deleted) == 0 {
+		return nil, nil
+	}
+	removed := make(map[string]bool, len(deleted))
+	ops := make([]storage.AttachmentOp, 0, len(deleted))
+	locators := make([]TaskLocator, 0, len(deleted))
+	for _, task := range deleted {
+		removed[task.ID] = true
+		ops = append(ops, storage.AttachmentOp{
+			Kind:          storage.AttachmentDelete,
+			Task:          task,
+			SourceProject: project,
+		})
+		locators = append(locators, TaskLocator{ProjectID: project.ID, TaskID: task.ID})
+	}
+	project.Tasks = filterOutTasks(project.Tasks, removed)
+	return ops, locators
 }
 
 func outlineTaskResults(project *models.Project, tasks []*models.Task, revision, transactionID string) []TaskResult {
@@ -565,18 +639,18 @@ func outlineTaskResults(project *models.Project, tasks []*models.Task, revision,
 	return results
 }
 
-func outlinePlanSummary(changes, absent int) string {
+func outlinePlanSummary(changes, deleted int) string {
 	unit := "changes"
 	if changes == 1 {
 		unit = "change"
 	}
 	summary := fmt.Sprintf("Applied %d %s", changes, unit)
-	if absent > 0 {
+	if deleted > 0 {
 		noun := "tasks"
-		if absent == 1 {
+		if deleted == 1 {
 			noun = "task"
 		}
-		summary += fmt.Sprintf(" · %d %s not in buffer, unchanged", absent, noun)
+		summary += fmt.Sprintf(" · %d %s deleted", deleted, noun)
 	}
 	return summary
 }

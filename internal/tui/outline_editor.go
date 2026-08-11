@@ -72,17 +72,24 @@ func (m *AppModel) outlineEditorRequest() (*models.Project, string, string) {
 	return out.cursorProject(), mode.Label, ""
 }
 
-// dumpOutlineBuffer renders a project's complete task tree.
+// dumpOutlineBuffer renders a project's complete task tree and names every task
+// it printed.
 //
 // The walk follows project.Tasks order rather than the built child lists,
 // because that is the order the application layer reads sibling sequence back
 // from; a dump that reordered siblings would report a change nobody made.
-func dumpOutlineBuffer(project *models.Project, modeLabel string, now time.Time) (string, error) {
+//
+// The printed IDs are returned from the same walk rather than read off
+// project.Tasks, because absence is a deletion now. A task whose ParentID names
+// a task that no longer exists is neither a root nor anyone's child, so it never
+// reaches the buffer — and a scope built from project.Tasks would let a line the
+// user never saw be deleted by a line they never removed.
+func dumpOutlineBuffer(project *models.Project, modeLabel string, now time.Time) (string, []string, error) {
 	if project == nil {
-		return "", fmt.Errorf("no project to outline")
+		return "", nil, fmt.Errorf("no project to outline")
 	}
 	if err := assertOutlineMarkersUnique(project); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	var builder strings.Builder
@@ -100,10 +107,12 @@ func dumpOutlineBuffer(project *models.Project, modeLabel string, now time.Time)
 		}
 	}
 
+	dumped := make([]string, 0, len(project.Tasks))
 	var walk func(task *models.Task, depth int)
 	walk = func(task *models.Task, depth int) {
 		builder.WriteString(outlineDumpLine(task, depth))
 		builder.WriteString("\n")
+		dumped = append(dumped, task.ID)
 		for _, child := range children[task.ID] {
 			walk(child, depth+1)
 		}
@@ -111,7 +120,7 @@ func dumpOutlineBuffer(project *models.Project, modeLabel string, now time.Time)
 	for _, root := range roots {
 		walk(root, 0)
 	}
-	return builder.String(), nil
+	return builder.String(), dumped, nil
 }
 
 // outlineBufferHeader is the comment block every dump opens with. It states the
@@ -127,7 +136,7 @@ func outlineBufferHeader(projectName, modeLabel string, now time.Time) string {
 		fmt.Sprintf("# Indent = parentage (%d spaces). Sigils: !1-3 #tag @date $destination", outlineIndentWidth),
 		"# Lines are declarative: an omitted sigil clears that value.",
 		fmt.Sprintf("# Keep %sxxxxxxxx%s to edit a task. No marker = new task.", outlineMarkerPrefix, outlineMarkerSuffix),
-		"# Removing a line changes nothing. Delete with Space > Delete.",
+		"# Removing a line deletes that task; you confirm the list on return.",
 		"",
 		"",
 	}, "\n")
@@ -182,16 +191,16 @@ func assertOutlineMarkersUnique(project *models.Project) error {
 // editor and the revision the apply is bound to are read together, so a cursor
 // holding a project the shell loaded minutes ago cannot dump a stale tree under
 // a current revision.
-func (m *AppModel) outlineDumpSource(projectID, modeLabel string) (*models.Project, string, string, error) {
+func (m *AppModel) outlineDumpSource(projectID, modeLabel string) (*models.Project, string, string, []string, error) {
 	project, revision, err := m.features.Outline.Project(projectID)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", nil, err
 	}
-	buffer, err := dumpOutlineBuffer(project, modeLabel, time.Now())
+	buffer, scopeTaskIDs, err := dumpOutlineBuffer(project, modeLabel, time.Now())
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", nil, err
 	}
-	return project, revision, buffer, nil
+	return project, revision, buffer, scopeTaskIDs, nil
 }
 
 // handleOpenOutlineEditor dumps the project and hands the terminal to $EDITOR.
@@ -205,7 +214,7 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 			modeLabel = mode.Label
 		}
 	}
-	project, revision, buffer, err := m.outlineDumpSource(msg.Project.ID, modeLabel)
+	project, revision, buffer, scopeTaskIDs, err := m.outlineDumpSource(msg.Project.ID, modeLabel)
 	if err != nil {
 		return errorCmd("%s", err)
 	}
@@ -219,7 +228,7 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 		return errorCmd("%s", editorErr)
 	}
 	return tea.ExecProcess(external.EditorCommand(editor, path), func(execErr error) tea.Msg {
-		edited := OutlineEditedMsg{Project: project, Revision: revision, Path: path}
+		edited := OutlineEditedMsg{Project: project, Revision: revision, ScopeTaskIDs: scopeTaskIDs, Path: path}
 		if execErr != nil {
 			edited.Err = execErr
 			return edited
@@ -234,11 +243,12 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 	})
 }
 
-// handleOutlineEdited validates and applies one returned buffer.
+// handleOutlineEdited validates one returned buffer and either applies it or
+// asks about the tasks it removed.
 //
 // The temp file survives every outcome the user might still want to act on — a
-// stale workspace, a rejected buffer — and is removed only once the edit has
-// either committed or become unusable.
+// stale workspace, a rejected buffer, a declined deletion — and is removed only
+// once the edit has either committed or become unusable.
 func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 	if msg.Err != nil {
 		removeOutlineBuffer(msg.Path)
@@ -255,49 +265,179 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 		return nil
 	}
 
+	pending := outlineApplyPending{
+		project:      msg.Project,
+		revision:     msg.Revision,
+		path:         msg.Path,
+		scopeTaskIDs: msg.ScopeTaskIDs,
+		lines:        lines,
+		deletions:    outlineDeletedTasks(msg.Project, msg.ScopeTaskIDs, lines),
+	}
+	// Emptiness is ruled on here rather than in the parser, because only this side
+	// knows the scope. An emptied buffer over a scope that held tasks deletes them
+	// all; over a scope that held none it deleted nothing, so it is the truncation
+	// accident the parser used to assume.
+	if len(lines) == 0 && len(pending.deletions) == 0 {
+		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []lineError{{line: 1, message: "the buffer holds no tasks"}}))
+		return nil
+	}
+	if len(pending.deletions) == 0 {
+		return m.applyOutlineBuffer(pending)
+	}
+	// The counts are read here, from the project the buffer was dumped from, and
+	// the apply refuses any revision that moved since. What the prompt names is
+	// therefore still exactly what the commit removes.
+	m.pendingOutlineApply = pending
+	m.outlineDeleteConfirm.ShowWithDetail(
+		outlineDeleteConfirmAction,
+		outlineDeletePrompt(pending.project, pending.deletions),
+		outlineDeleteConfirmDetail(pending.deletions),
+	)
+	return nil
+}
+
+// outlineApplyPending is one parsed buffer held while its deletions await
+// confirmation. It carries the path so a declined apply can still name the file.
+type outlineApplyPending struct {
+	project      *models.Project
+	revision     string
+	path         string
+	scopeTaskIDs []string
+	lines        []app.OutlinePlanLine
+	deletions    []*models.Task
+}
+
+const outlineDeleteConfirmAction = "outline-delete"
+
+// applyOutlineBuffer submits one parsed buffer. Both routes into it — a buffer
+// that deleted nothing and a confirmed deletion — run this same code, so the
+// confirmation decides whether the apply happens and never what it does.
+func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 	// The dump revision travels with the request rather than being re-read here:
 	// a check on this side of the call could only ever be a check-then-apply, and
 	// the apply is where the tasks are actually mutated.
 	result, err := m.features.Outline.Apply(app.OutlinePlanRequest{
-		ProjectID:        msg.Project.ID,
-		ExpectedRevision: msg.Revision,
-		ScopeTaskIDs:     outlineScopeTaskIDs(msg.Project),
-		Lines:            lines,
+		ProjectID:        pending.project.ID,
+		ExpectedRevision: pending.revision,
+		ScopeTaskIDs:     pending.scopeTaskIDs,
+		DeleteTaskIDs:    taskIDsOf(pending.deletions),
+		ConfirmDeletions: len(pending.deletions) > 0,
+		Lines:            pending.lines,
 	})
 	if errors.Is(err, storage.ErrStaleRevision) {
-		m.setWarningStatus("Workspace changed while the editor was open · buffer kept at " + msg.Path)
+		m.setWarningStatus("Workspace changed while the editor was open · buffer kept at " + pending.path)
 		return defaultStatusTimeout()
 	}
 	if err != nil {
-		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []lineError{outlineApplyError(err)}))
+		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []lineError{outlineApplyError(err)}))
 		return nil
 	}
 
-	removeOutlineBuffer(msg.Path)
+	removeOutlineBuffer(pending.path)
 	return tea.Batch(
 		m.setRecoveryFeedback(result.Summary(), outlineTransactionID(result), false),
 		func() tea.Msg { return SaveCompleteMsg{} },
 	)
 }
 
-// outlineScopeTaskIDs names every task the buffer was dumped from, so a marked
-// task the user removed from the buffer is reported as unchanged instead of
-// being read as a deletion.
-func outlineScopeTaskIDs(project *models.Project) []string {
-	ids := make([]string, 0, len(project.Tasks))
-	for _, task := range project.Tasks {
-		if task != nil && task.ID != "" {
-			ids = append(ids, task.ID)
+// handleOutlineDeleteConfirmKey gives the outline deletion the same modal key
+// priority as the canonical task delete: while it is active it consumes every
+// key, so nothing leaks into the Outliner underneath.
+func (m *AppModel) handleOutlineDeleteConfirmKey(key string) (bool, tea.Cmd) {
+	if !m.outlineDeleteConfirm.IsActive() {
+		return false, nil
+	}
+	confirmed, handled := m.outlineDeleteConfirm.HandleKey(key)
+	if !handled {
+		return false, nil
+	}
+	if confirmed {
+		pending := m.pendingOutlineApply
+		m.clearPendingOutlineApply()
+		return true, m.applyOutlineBuffer(pending)
+	}
+	switch key {
+	case "n", "N", "esc":
+		path := m.pendingOutlineApply.path
+		m.clearPendingOutlineApply()
+		// Declining cancels the whole apply, edits included: a buffer that half
+		// landed would leave the user guessing which half. The file stays, so the
+		// same edits can be resubmitted after the removals are put back.
+		m.setWarningStatus("Outline not applied · buffer kept at " + path)
+		return true, defaultStatusTimeout()
+	}
+	return true, nil
+}
+
+func (m *AppModel) clearPendingOutlineApply() {
+	m.pendingOutlineApply = outlineApplyPending{}
+	m.outlineDeleteConfirm.Cancel()
+}
+
+// outlineDeletedTasks names the dumped tasks no line claims, in dump order.
+func outlineDeletedTasks(project *models.Project, scopeTaskIDs []string, lines []app.OutlinePlanLine) []*models.Task {
+	buffered := make(map[string]bool, len(lines))
+	for _, line := range lines {
+		if line.TaskID != "" {
+			buffered[line.TaskID] = true
 		}
+	}
+	deleted := make([]*models.Task, 0, len(scopeTaskIDs))
+	for _, taskID := range scopeTaskIDs {
+		if buffered[taskID] {
+			continue
+		}
+		if task := project.GetTaskByID(taskID); task != nil {
+			deleted = append(deleted, task)
+		}
+	}
+	return deleted
+}
+
+func outlineDeletePrompt(project *models.Project, deletions []*models.Task) string {
+	if len(deletions) == 1 {
+		return fmt.Sprintf("Delete task #%d from %s?", deletions[0].ShortID, project.Name)
+	}
+	return fmt.Sprintf("Delete %d tasks from %s?", len(deletions), project.Name)
+}
+
+// outlineDeleteConfirmDetail describes the removal the buffer asked for. It
+// carries no root/descendant split: every deletion here is a line the user
+// removed themselves, so there is no cascade to warn about.
+func outlineDeleteConfirmDetail(deletions []*models.Task) *ConfirmDetail {
+	items := make([]string, 0, min(len(deletions), 5))
+	for _, task := range deletions {
+		if len(items) == 5 {
+			break
+		}
+		items = append(items, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	}
+	stored, linked := countAttachmentImpact(deletions)
+	noun := "tasks"
+	if len(deletions) == 1 {
+		noun = "task"
+	}
+	return &ConfirmDetail{
+		Items:       items,
+		TotalCount:  len(deletions),
+		CascadeNote: fmt.Sprintf("%d %s deleted · %s", len(deletions), noun, attachmentImpactNote(stored, linked)),
+		UndoHint:    true,
+	}
+}
+
+func taskIDsOf(tasks []*models.Task) []string {
+	ids := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		ids = append(ids, task.ID)
 	}
 	return ids
 }
 
 // outlineTransactionID reads the committed transaction off any result the
-// commit produced. Created, updated, and unchanged results all carry the same
+// commit produced. Created, updated, and deleted results all carry the same
 // one, because the whole buffer is a single transaction.
 func outlineTransactionID(result app.OutlinePlanResult) string {
-	for _, group := range [][]app.TaskResult{result.Created, result.Updated, result.Unchanged} {
+	for _, group := range [][]app.TaskResult{result.Created, result.Updated, result.Deleted} {
 		for _, task := range group {
 			if task.TransactionID != "" {
 				return task.TransactionID

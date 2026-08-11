@@ -179,16 +179,36 @@ func calculateTaskDeleteImpact(roots []TaskProjectRef, selection SelectionCounts
 		selection:     selection,
 	}
 	impact.descendants = max(impact.totalTasks-impact.selectedRoots, 0)
+	tasks := make([]*models.Task, 0, len(removed))
 	for _, task := range removed {
+		tasks = append(tasks, task)
+	}
+	impact.storedAttachments, impact.linkedAttachments = countAttachmentImpact(tasks)
+	return impact
+}
+
+// countAttachmentImpact splits the attachments a deletion destroys from the ones
+// it merely forgets. Every surface that warns about a delete reads this, so a
+// stored file and a link can never be counted differently in two places.
+func countAttachmentImpact(tasks []*models.Task) (stored, linked int) {
+	for _, task := range tasks {
 		for _, attachment := range task.Attachments {
 			if attachment.IsURL || attachment.IsCodeRef {
-				impact.linkedAttachments++
+				linked++
 			} else {
-				impact.storedAttachments++
+				stored++
 			}
 		}
 	}
-	return impact
+	return stored, linked
+}
+
+func attachmentImpactNote(stored, linked int) string {
+	return fmt.Sprintf(
+		"attachments: %d stored file(s) deleted · %d URL/code reference(s) removed",
+		stored,
+		linked,
+	)
 }
 
 func taskDeleteRootAncestor(
@@ -220,11 +240,7 @@ func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *C
 		}
 		items = append(items, fmt.Sprintf("%s:#%d %s", root.Project.Slug, root.Task.ShortID, root.Task.Title))
 	}
-	attachmentImpact := fmt.Sprintf(
-		"attachments: %d stored file(s) deleted · %d URL/code reference(s) removed",
-		impact.storedAttachments,
-		impact.linkedAttachments,
-	)
+	attachmentImpact := attachmentImpactNote(impact.storedAttachments, impact.linkedAttachments)
 	return &ConfirmDetail{
 		Items:      items,
 		TotalCount: len(roots),

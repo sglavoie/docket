@@ -46,6 +46,10 @@ type outlineBufferLine struct {
 // first failure, because a buffer edited outside the TUI is usually wrong in
 // several places at once, and reopening the editor once per error is not a
 // workflow.
+//
+// An empty result is not an error here. Since absence deletes, a buffer holding
+// no lines is a request to empty the project, and only the caller knows the
+// scope that request would remove.
 func parseOutlineBuffer(buffer string, project *models.Project) ([]app.OutlinePlanLine, []lineError) {
 	structural, errs := parseOutlineStructure(buffer, project)
 	lines, lineErrs := parseOutlineBodies(structural, project)
@@ -53,9 +57,6 @@ func parseOutlineBuffer(buffer string, project *models.Project) ([]app.OutlinePl
 	sort.SliceStable(errs, func(i, j int) bool { return errs[i].line < errs[j].line })
 	if len(errs) > 0 {
 		return nil, errs
-	}
-	if len(lines) == 0 {
-		return nil, []lineError{{line: 1, message: "the buffer holds no tasks"}}
 	}
 	return lines, nil
 }

@@ -239,8 +239,30 @@ outline layer strips that marker before the remainder of the line reaches
 parser true for the whole product and makes a `>parent` sigil an error rather
 than a competing parentage channel. The buffer is declarative: the dump emits
 current values, so an omitted sigil clears that value. A line without a marker
-creates a task, and a task whose line disappeared is left untouched — the
-outline never deletes.
+creates a task, and a dumped task whose line disappeared is deleted.
+
+Deletion is the one thing the buffer cannot decide on its own, because a file
+authored minutes ago cannot present the counts a destructive action has to show.
+The decision therefore moves to the return leg: the adapter reads the removals
+off the project the buffer was dumped from, arms one `ConfirmDialog` naming the
+tasks and the attachments they destroy, and only a confirmation reaches
+`ApplyOutlinePlan`, as `DeleteTaskIDs` plus `ConfirmDeletions`. The use case
+refuses any list that disagrees with the buffer's absences in either direction,
+so what was shown and what is removed are provably the same set. Removal,
+attachment deletion, planning-ref cleanup, and the edits beside them commit as
+one transaction under the `Apply Outline` undo entry; a survivor whose parent
+line vanished is re-parented by its own indentation rather than cascaded away.
+Declining cancels the whole apply and keeps the temp file. Scope is the list of
+IDs the dump walk actually printed, not `project.Tasks`, because a task with a
+dangling `ParentID` is unreachable from any root and so never appears in the
+buffer that would have to speak for it.
+
+Emptiness follows from the same rule rather than being a syntax error: a buffer
+with every line removed deletes every task in the scope, and it is refused only
+when it also removes nothing, which is the truncated-file case. That ruling
+belongs to `handleOutlineEdited` and to `ApplyOutlinePlan`, never to
+`parseOutlineBuffer`, because only the two of them know the scope the emptiness
+is being read against.
 
 Validation runs in two phases, both before any mutation. The outline phase
 checks marker syntax, unknown and duplicate markers, indent multiples and jumps,
@@ -254,7 +276,10 @@ temp file is kept on every refusal so the reported line numbers still resolve.
 The project revision captured at dump time is re-checked on return. A revision
 that moved aborts without committing and keeps the buffer, because stale user
 intent is not storage-level divergence and the conflict-bundle machinery would
-be answering a different question.
+be answering a different question. That check is also what makes the deletion
+counts safe to present: it is enforced inside `ApplyOutlinePlan` before a single
+title is overwritten, so nothing can change between the prompt the user answered
+and the write it authorized.
 
 ### Search, filters, and Peek
 

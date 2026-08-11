@@ -38,6 +38,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if handled, cmd := m.handleTaskDeleteConfirmKey(key); handled {
 			return true, cmd
 		}
+		if handled, cmd := m.handleOutlineDeleteConfirmKey(key); handled {
+			return true, cmd
+		}
 		if handled, cmd := m.handleOperationConfirmKey(key); handled {
 			return true, cmd
 		}
@@ -58,6 +61,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	if handled, cmd := m.handleTaskDeleteConfirmKey(key); handled {
+		return true, cmd
+	}
+
+	if handled, cmd := m.handleOutlineDeleteConfirmKey(key); handled {
 		return true, cmd
 	}
 

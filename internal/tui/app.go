@@ -193,6 +193,12 @@ type AppModel struct {
 	pendingTaskDelete taskDeletePending
 	taskDeleteConfirm ConfirmDialog
 
+	// Pending outline apply held while its deletions await confirmation. The
+	// buffer is parsed and the removals counted before the prompt opens, so the
+	// numbers on screen are the ones the transaction will act on.
+	pendingOutlineApply  outlineApplyPending
+	outlineDeleteConfirm ConfirmDialog
+
 	// The contextual action flow is the only generic two-level overlay:
 	// action sheet -> value step. The sheet is host-agnostic; the host it was
 	// opened for travels on every message it emits. The value step is a
