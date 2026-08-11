@@ -45,3 +45,29 @@ func TestMachineStateAndPIDLockPathsRemainDistinct(t *testing.T) {
 		t.Fatalf("machine state and PID lock unexpectedly share directory %q", filepath.Dir(lock))
 	}
 }
+
+func TestTUIEnvironmentIgnoresOnlyInheritedNoColor(t *testing.T) {
+	environ := []string{
+		"TERM=xterm-kitty",
+		"NO_COLOR=1",
+		"COLORTERM=truecolor",
+	}
+
+	got := tuiEnvironment(environ, false)
+	want := []string{"TERM=xterm-kitty", "COLORTERM=truecolor"}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("tuiEnvironment() = %q, want %q", got, want)
+	}
+	if environ[1] != "NO_COLOR=1" {
+		t.Fatalf("tuiEnvironment mutated its input: %q", environ)
+	}
+}
+
+func TestTUIEnvironmentPreservesNoColorWhenExplicitlyDisabled(t *testing.T) {
+	environ := []string{"TERM=xterm-kitty", "NO_COLOR=1"}
+
+	got := tuiEnvironment(environ, true)
+	if strings.Join(got, "\n") != strings.Join(environ, "\n") {
+		t.Fatalf("tuiEnvironment() = %q, want %q", got, environ)
+	}
+}

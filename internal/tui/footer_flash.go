@@ -11,13 +11,18 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// The footer divider takes a severity color the moment status text changes and
-// blends back to the view accent, so a message replaced at the bottom of a busy
-// screen is not missed. Named flash, not pulse: workspacePulse is the title
-// row's Inbox/Today/Overdue chip.
+// The footer divider takes a severity color the moment status text changes,
+// lands as a full-width impact, then sweeps and dissolves back into the view
+// accent so a message replaced at the bottom of a busy screen is not missed.
+// Named flash, not pulse: workspacePulse is the title row's counts chip.
 const (
-	footerFlashFrames        = 5
-	footerFlashFrameInterval = 60 * time.Millisecond
+	footerFlashFrames        = 20
+	footerFlashFrameInterval = 25 * time.Millisecond
+	footerFlashImpactFrames  = 4
+	footerFlashSweepFrames   = 13
+	footerFlashSettleFrames  = footerFlashFrames - footerFlashImpactFrames - footerFlashSweepFrames
+	footerFlashTrailFade     = 0.8
+	footerFlashBackgroundMix = 0.14
 )
 
 type footerFlashSeverity int
@@ -158,4 +163,33 @@ func rgba8(c color.Color) (r, g, b, a uint8) {
 
 func lerp8(from, to uint8, t float64) uint8 {
 	return uint8(math.Round(float64(from) + (float64(to)-float64(from))*t))
+}
+
+// easeInOutCubic gives the sweep a deliberate start and soft landing instead
+// of moving a fixed number of cells on every frame.
+func easeInOutCubic(t float64) float64 {
+	t = min(max(t, 0), 1)
+	if t < 0.5 {
+		return 4 * t * t * t
+	}
+	return 1 - math.Pow(-2*t+2, 3)/2
+}
+
+func footerFlashSegmentWidth(width int) int {
+	return min(max(width/6, 12), min(20, width))
+}
+
+// footerFlashBackgroundColor adds a restrained severity wash beneath the
+// footer content. It arrives with the divider impact and eases all the way back
+// to the theme background, leaving the moving divider as the dominant cue.
+func (m *AppModel) footerFlashBackgroundColor() color.Color {
+	background := ColorBackground
+	if !m.footerFlash.active() {
+		return background
+	}
+
+	frame := min(max(m.footerFlash.frame, 0), footerFlashFrames-1)
+	progress := float64(frame) / float64(footerFlashFrames-1)
+	mix := footerFlashBackgroundMix * (1 - easeInOutCubic(progress))
+	return blendColor(background, m.footerFlash.severity.color(), mix)
 }

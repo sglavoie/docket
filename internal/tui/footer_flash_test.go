@@ -5,8 +5,10 @@ import (
 	"image/color"
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func flashTestApp(t *testing.T) *AppModel {
@@ -63,6 +65,13 @@ func TestFooterFlashDoesNotArmOnStatusClear(t *testing.T) {
 }
 
 func TestFooterFlashAdvancesThroughFramesThenClears(t *testing.T) {
+	if got := time.Duration(footerFlashFrames) * footerFlashFrameInterval; got != 500*time.Millisecond {
+		t.Fatalf("flash duration = %s, want 500ms", got)
+	}
+	if got := footerFlashImpactFrames + footerFlashSweepFrames + footerFlashSettleFrames; got != footerFlashFrames {
+		t.Fatalf("phase frames = %d, want %d", got, footerFlashFrames)
+	}
+
 	app := flashTestApp(t)
 	app.Update(StatusMsg("task saved"))
 	seq := app.footerFlash.seq
@@ -153,38 +162,152 @@ func TestSetWarningStatusRecordsWarningSeverity(t *testing.T) {
 	}
 }
 
-func TestFooterDividerColorFadesBackToAccent(t *testing.T) {
+func TestFooterDividerAnimationPhases(t *testing.T) {
 	app := flashTestApp(t)
-	accent := app.currentAccentColor()
+	segmentWidth := footerFlashSegmentWidth(app.width)
 
-	if got := app.footerDividerColor(); !sameColor(got, accent) {
-		t.Fatalf("idle divider = %v, want the accent %v", got, accent)
+	glyphsAt := func(frame int) []rune {
+		t.Helper()
+		app.footerFlash = footerFlashState{severity: flashError, seq: 1, frame: frame}
+		glyphs := []rune(ansi.Strip(app.renderFooterDivider(app.width)))
+		if len(glyphs) != app.width {
+			t.Fatalf("frame %d divider width = %d, want %d", frame, len(glyphs), app.width)
+		}
+		return glyphs
+	}
+	countHeavy := func(glyphs []rune) int {
+		count := 0
+		for _, glyph := range glyphs {
+			if glyph == footerDividerFlashGlyph {
+				count++
+			}
+		}
+		return count
 	}
 
-	app.footerFlash = footerFlashState{severity: flashError, seq: 1}
-	if got := app.footerDividerColor(); !sameColor(got, ColorError) {
-		t.Fatalf("frame 0 divider = %v, want %v", got, ColorError)
+	app.footerFlash = footerFlashState{}
+	idle := []rune(ansi.Strip(app.renderFooterDivider(app.width)))
+	if countHeavy(idle) != 0 || idle[0] != footerDividerIdleGlyph || idle[len(idle)-1] != footerDividerIdleGlyph {
+		t.Fatalf("idle divider glyphs = %q, want all thin", string(idle))
 	}
 
-	app.footerFlash.frame = footerFlashFrames - 1
-	if got := app.footerDividerColor(); !sameColor(got, accent) {
-		t.Fatalf("final frame divider = %v, want the accent %v", got, accent)
+	impact := glyphsAt(0)
+	if got := countHeavy(impact); got != app.width {
+		t.Fatalf("impact heavy cells = %d, want %d", got, app.width)
+	}
+	wantImpact := renderHorizontalDivider(
+		app.width,
+		WithDividerColor(ColorError),
+		WithDividerGlyph(footerDividerFlashGlyph),
+	)
+	if got := app.renderFooterDivider(app.width); got != wantImpact {
+		t.Fatalf("impact divider = %q, want %q", got, wantImpact)
+	}
+
+	sweepStart := glyphsAt(footerFlashImpactFrames)
+	if got := countHeavy(sweepStart); got != segmentWidth || sweepStart[0] != footerDividerFlashGlyph || sweepStart[len(sweepStart)-1] != footerDividerIdleGlyph {
+		t.Fatalf("sweep start heavy=%d endpoints=%q/%q, want %d heavy at left", got, sweepStart[0], sweepStart[len(sweepStart)-1], segmentWidth)
+	}
+
+	sweepMid := glyphsAt(footerFlashImpactFrames + footerFlashSweepFrames/2)
+	if got := countHeavy(sweepMid); got != segmentWidth || sweepMid[0] != footerDividerIdleGlyph || sweepMid[len(sweepMid)-1] != footerDividerIdleGlyph {
+		t.Fatalf("sweep midpoint heavy=%d endpoints=%q/%q, want %d heavy in middle", got, sweepMid[0], sweepMid[len(sweepMid)-1], segmentWidth)
+	}
+
+	sweepEnd := glyphsAt(footerFlashImpactFrames + footerFlashSweepFrames - 1)
+	if got := countHeavy(sweepEnd); got != segmentWidth || sweepEnd[0] != footerDividerIdleGlyph || sweepEnd[len(sweepEnd)-1] != footerDividerFlashGlyph {
+		t.Fatalf("sweep end heavy=%d endpoints=%q/%q, want %d heavy at right", got, sweepEnd[0], sweepEnd[len(sweepEnd)-1], segmentWidth)
+	}
+
+	settleStart := glyphsAt(footerFlashImpactFrames + footerFlashSweepFrames)
+	settleEnd := glyphsAt(footerFlashFrames - 1)
+	if startHeavy, endHeavy := countHeavy(settleStart), countHeavy(settleEnd); startHeavy >= segmentWidth || endHeavy >= startHeavy || endHeavy < 1 {
+		t.Fatalf("settle heavy cells %d -> %d, want shrinking positive trail below %d", startHeavy, endHeavy, segmentWidth)
+	}
+	if settleStart[len(settleStart)-1] != footerDividerFlashGlyph || settleEnd[len(settleEnd)-1] != footerDividerFlashGlyph {
+		t.Fatal("settle trail must stay anchored to the right edge")
+	}
+
+	app.footerFlash = footerFlashState{}
+	cleared := []rune(ansi.Strip(app.renderFooterDivider(app.width)))
+	if countHeavy(cleared) != 0 {
+		t.Fatalf("cleared divider glyphs = %q, want all thin", string(cleared))
 	}
 }
 
-func TestStatusBarDividerCarriesFlashColorOnEveryPath(t *testing.T) {
+func TestFooterBackgroundFlashFadesBackToTheme(t *testing.T) {
 	app := flashTestApp(t)
-	wantDivider := renderHorizontalDivider(app.width, WithDividerColor(ColorError))
+	background := ColorBackground
 
-	assertDivider := func(name string) {
-		t.Helper()
-		got, _, _ := strings.Cut(app.renderStatusBar(), "\n")
-		if got != wantDivider {
-			t.Fatalf("%s divider = %q, want the flash color %q", name, got, wantDivider)
-		}
+	if got := app.footerFlashBackgroundColor(); !sameColor(got, background) {
+		t.Fatalf("idle background = %v, want theme background %v", got, background)
 	}
 
 	app.footerFlash = footerFlashState{severity: flashError, seq: 1}
+	wantImpact := blendColor(background, ColorError, footerFlashBackgroundMix)
+	if got := app.footerFlashBackgroundColor(); !sameColor(got, wantImpact) {
+		t.Fatalf("impact background = %v, want %v", got, wantImpact)
+	}
+
+	app.footerFlash.frame = footerFlashFrames / 2
+	mid := app.footerFlashBackgroundColor()
+	if sameColor(mid, wantImpact) || sameColor(mid, background) {
+		t.Fatalf("midpoint background = %v, want a partial fade", mid)
+	}
+
+	app.footerFlash.frame = footerFlashFrames - 1
+	if got := app.footerFlashBackgroundColor(); !sameColor(got, background) {
+		t.Fatalf("final background = %v, want theme background %v", got, background)
+	}
+}
+
+func TestFooterBackgroundFlashFillsRowsAndSurvivesChildResets(t *testing.T) {
+	app := flashTestApp(t)
+	app.width = 24
+	app.footerFlash = footerFlashState{severity: flashSuccess, seq: 1}
+
+	content := SuccessStyle.Render("saved") + " plain\n" + HelpStyle.Render("Esc close")
+	got := app.renderFooterContent(content, app.width)
+	lines := strings.Split(got, "\n")
+	if len(lines) != 2 {
+		t.Fatalf("rendered rows = %d, want 2", len(lines))
+	}
+
+	prefix, _ := footerBackgroundStyleParts(app.footerFlashBackgroundColor())
+	for index, line := range lines {
+		if width := lipgloss.Width(line); width != app.width {
+			t.Fatalf("row %d width = %d, want %d", index, width, app.width)
+		}
+		if occurrences := strings.Count(line, prefix); occurrences < 2 {
+			t.Fatalf("row %d restored background %d times, want at least 2 in %q", index, occurrences, line)
+		}
+	}
+	if plain := ansi.Strip(got); plain != "saved plain             \nEsc close               " {
+		t.Fatalf("plain footer = %q", plain)
+	}
+}
+
+func TestStatusBarDividerCarriesFlashAppearanceOnEveryPath(t *testing.T) {
+	app := flashTestApp(t)
+	app.footerFlash = footerFlashState{
+		severity: flashError,
+		seq:      1,
+		frame:    footerFlashImpactFrames + footerFlashSweepFrames/2,
+	}
+	wantDivider := app.renderFooterDivider(app.width)
+
+	assertDivider := func(name string) {
+		t.Helper()
+		got, content, _ := strings.Cut(app.renderStatusBar(), "\n")
+		if got != wantDivider {
+			t.Fatalf("%s divider = %q, want the flash appearance %q", name, got, wantDivider)
+		}
+		for index, line := range strings.Split(content, "\n") {
+			if width := lipgloss.Width(line); width != app.width {
+				t.Fatalf("%s content row %d width = %d, want %d", name, index, width, app.width)
+			}
+		}
+	}
 
 	app.statusMessage = "task saved"
 	assertDivider("status message")

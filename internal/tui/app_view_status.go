@@ -3,28 +3,133 @@ package tui
 import (
 	"fmt"
 	"image/color"
+	"math"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/icons"
 )
 
-// footerDividerColor is the accent, or the flash color blending back toward it
-// while a status change is still fading. Every divider the footer emits reads
-// it; the breadcrumb keeps the plain accent so only the bar moves.
-func (m *AppModel) footerDividerColor() color.Color {
+const (
+	footerDividerIdleGlyph  = '─'
+	footerDividerFlashGlyph = '━'
+)
+
+// renderFooterDivider turns a status change into three visible phases: a brief
+// full-width impact, an eased severity sweep, and a shrinking dissolve. The
+// glyph motion remains visible when the explicit --no-color flag is active.
+func (m *AppModel) renderFooterDivider(width int) string {
+	if width <= 0 {
+		width = 80
+	}
 	accent := m.currentAccentColor()
 	if !m.footerFlash.active() {
-		return accent
+		return renderHorizontalDivider(width, WithDividerColor(accent))
 	}
-	progress := float64(m.footerFlash.frame) / float64(footerFlashFrames-1)
-	return blendColor(m.footerFlash.severity.color(), accent, progress)
+
+	highlight := m.footerFlash.severity.color()
+	frame := min(max(m.footerFlash.frame, 0), footerFlashFrames-1)
+	if frame < footerFlashImpactFrames {
+		return renderHorizontalDivider(
+			width,
+			WithDividerColor(highlight),
+			WithDividerGlyph(footerDividerFlashGlyph),
+		)
+	}
+
+	segmentWidth := footerFlashSegmentWidth(width)
+	if frame < footerFlashImpactFrames+footerFlashSweepFrames {
+		sweepFrame := frame - footerFlashImpactFrames
+		progress := float64(sweepFrame) / float64(footerFlashSweepFrames-1)
+		start := int(math.Round(easeInOutCubic(progress) * float64(width-segmentWidth)))
+		return renderFooterSweep(width, start, segmentWidth, accent, highlight)
+	}
+
+	settleFrame := frame - footerFlashImpactFrames - footerFlashSweepFrames
+	progress := float64(settleFrame+1) / float64(footerFlashSettleFrames+1)
+	eased := easeInOutCubic(progress)
+	segmentWidth = max(int(math.Round(float64(segmentWidth)*(1-eased))), 1)
+	start := width - segmentWidth
+	highlight = blendColor(highlight, accent, eased)
+	return renderFooterSweep(width, start, segmentWidth, accent, highlight)
+}
+
+func renderFooterSweep(width, start, segmentWidth int, accent, highlight color.Color) string {
+	start = min(max(start, 0), width)
+	segmentWidth = min(max(segmentWidth, 0), width-start)
+
+	var divider strings.Builder
+	divider.Grow(width * 4)
+	writeFooterDividerRun(&divider, footerDividerIdleGlyph, start, accent)
+	for index := range segmentWidth {
+		headProgress := 1.0
+		if segmentWidth > 1 {
+			headProgress = float64(index) / float64(segmentWidth-1)
+		}
+		trailFade := footerFlashTrailFade * (1 - easeInOutCubic(headProgress))
+		cellColor := blendColor(highlight, accent, trailFade)
+		writeFooterDividerRun(&divider, footerDividerFlashGlyph, 1, cellColor)
+	}
+	writeFooterDividerRun(&divider, footerDividerIdleGlyph, width-start-segmentWidth, accent)
+	return divider.String()
+}
+
+func writeFooterDividerRun(builder *strings.Builder, glyph rune, count int, foreground color.Color) {
+	if count <= 0 {
+		return
+	}
+	style := lipgloss.NewStyle().Foreground(foreground)
+	builder.WriteString(style.Render(strings.Repeat(string(glyph), count)))
+}
+
+// renderFooterContent fills each footer content row with the active flash wash.
+// Child foreground and badge styles remain intact; after a child style resets,
+// the wash is restored so unstyled text and trailing cells do not develop holes.
+func (m *AppModel) renderFooterContent(content string, width int) string {
+	if !m.footerFlash.active() || content == "" {
+		return content
+	}
+	if width <= 0 {
+		width = 80
+	}
+
+	background := m.footerFlashBackgroundColor()
+	prefix, suffix := footerBackgroundStyleParts(background)
+	if prefix == "" {
+		return content
+	}
+
+	lines := strings.Split(content, "\n")
+	for index, line := range lines {
+		line = truncateToVisualWidth(line, width)
+		if gap := width - lipgloss.Width(line); gap > 0 {
+			line += strings.Repeat(" ", gap)
+		}
+		line = strings.ReplaceAll(line, ansi.ResetStyle, ansi.ResetStyle+prefix)
+		line = strings.ReplaceAll(line, "\x1b[0m", "\x1b[0m"+prefix)
+		lines[index] = prefix + line + suffix
+	}
+	return strings.Join(lines, "\n")
+}
+
+func footerBackgroundStyleParts(background color.Color) (prefix, suffix string) {
+	const marker = "x"
+	styled := lipgloss.NewStyle().Background(background).Render(marker)
+	prefix, suffix, ok := strings.Cut(styled, marker)
+	if !ok || prefix == "" {
+		return "", ""
+	}
+	return prefix, suffix
 }
 
 func (m *AppModel) renderStatusBar() string {
 	// Top border separator for visual distinction; tinted with current view accent.
-	separator := renderHorizontalDivider(m.width, WithDividerColor(m.footerDividerColor()))
+	separator := m.renderFooterDivider(m.width)
+	renderFooter := func(content string) string {
+		return separator + "\n" + m.renderFooterContent(content, m.width)
+	}
 
 	// Helper to render left-aligned message with spacer.
 	renderLeftAlignedMsg := func(msg string) string {
@@ -34,20 +139,23 @@ func (m *AppModel) renderStatusBar() string {
 		}
 		msg = truncateToVisualWidth(msg, width)
 		gap := max(width-lipgloss.Width(msg), 0)
-		spacer := ThemeSpacer(gap)
+		spacer := lipgloss.NewStyle().
+			Width(gap).
+			Background(m.footerFlashBackgroundColor()).
+			Render("")
 		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
 
 	// Show error message if present.
 	if m.err != nil {
 		msg := ErrorStatusStyle.Render(icons.Get("error") + " " + m.err.Error())
-		return separator + "\n" + renderLeftAlignedMsg(msg)
+		return renderFooter(renderLeftAlignedMsg(msg))
 	}
 
 	// An unfinished chord owns the footer: the which-key row is live input
 	// feedback, so it outranks banners and transient status text.
 	if spec, ok := m.pendingChordGuidance(); ok {
-		return renderGuidance(spec, m.width, m.footerDividerColor())
+		return renderFooter(renderGuidanceText(spec, m.width))
 	}
 
 	// Show temporary status message if present.
@@ -58,7 +166,7 @@ func (m *AppModel) renderStatusBar() string {
 		} else {
 			msg = SuccessStyle.Render(icons.Get("success") + " " + m.statusMessage)
 		}
-		return separator + "\n" + renderLeftAlignedMsg(msg)
+		return renderFooter(renderLeftAlignedMsg(msg))
 	}
 
 	// Show the current view's contextual guidance if it provides any (e.g. the
@@ -70,14 +178,14 @@ func (m *AppModel) renderStatusBar() string {
 	if view := m.activeView(); view != nil {
 		if provider, ok := view.(ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
-				return renderGuidance(spec, m.width, m.footerDividerColor())
+				return renderFooter(renderGuidanceText(spec, m.width))
 			}
 		}
 	}
 
 	// Show pinned tasks bar if any tasks are pinned.
 	if pinnedBar := m.renderPinnedTasksBar(m.width); pinnedBar != "" {
-		return separator + "\n" + pinnedBar
+		return renderFooter(pinnedBar)
 	}
 
 	status := m.buildBreadcrumb()
@@ -106,7 +214,7 @@ func (m *AppModel) renderStatusBar() string {
 	accent := m.currentAccentColor()
 	accentBarStyle := lipgloss.NewStyle().
 		Foreground(accent).
-		Background(ColorBackground).
+		Background(m.footerFlashBackgroundColor()).
 		Padding(0, 1)
 
 	left := accentBarStyle.Render(status)
@@ -142,9 +250,12 @@ func (m *AppModel) renderStatusBar() string {
 	right := help
 	left, right = fitStatusBarSegments(left, right, m.width)
 	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
-	spacer := ThemeSpacer(gap)
+	spacer := lipgloss.NewStyle().
+		Width(gap).
+		Background(m.footerFlashBackgroundColor()).
+		Render("")
 
-	return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
+	return renderFooter(lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
 }
 
 func fitStatusBarSegments(left, right string, width int) (string, string) {

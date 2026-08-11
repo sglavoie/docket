@@ -56,6 +56,7 @@ type DividerOption func(*dividerConfig)
 
 type dividerConfig struct {
 	color color.Color
+	glyph rune
 }
 
 // WithDividerColor overrides the default muted color.
@@ -65,8 +66,15 @@ func WithDividerColor(c color.Color) DividerOption {
 	}
 }
 
+// WithDividerGlyph overrides the default thin horizontal line glyph.
+func WithDividerGlyph(glyph rune) DividerOption {
+	return func(cfg *dividerConfig) {
+		cfg.glyph = glyph
+	}
+}
+
 // renderHorizontalDivider renders a full-width ─── line with optional styling.
-// Use WithDividerColor to change the color.
+// Use WithDividerColor and WithDividerGlyph to change its appearance.
 func renderHorizontalDivider(width int, opts ...DividerOption) string {
 	if width <= 0 {
 		width = 80
@@ -74,6 +82,7 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 
 	cfg := dividerConfig{
 		color: ColorMuted,
+		glyph: '─',
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -81,7 +90,7 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 
 	style := lipgloss.NewStyle().Foreground(cfg.color)
 
-	return style.Render(strings.Repeat("─", width))
+	return style.Render(strings.Repeat(string(cfg.glyph), width))
 }
 
 // Spacing rule: 1 blank line between sections, 0 blank lines between rows

@@ -131,7 +131,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	tui.AppVersion = Version
-	return tui.RunApp(workspace.Runtime, workspace.Manager)
+	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.RunOptions{DisableColor: noColor})
 }
 
 func printVersion() {

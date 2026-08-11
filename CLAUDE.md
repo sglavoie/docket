@@ -311,9 +311,17 @@ path it left, such as `wq is not a workflow action`. An unbound root key
 stays silent because it never promised anything.
 
 Changed status text flashes the footer divider: the bar takes a severity color
-and blends back to the view accent over `footerFlashFrames` (5) frames of
-`footerFlashFrameInterval` (60ms). It is a flash, not a pulse — `workspacePulse`
-is the title row's counts chip. The trigger is status text only. The three
+and runs a 500ms impact–sweep–settle animation over `footerFlashFrames` (20)
+frames of `footerFlashFrameInterval` (25ms): 100ms of full-width `━`, an eased
+heavy segment with a severity head and accent-fading trail, then a short dissolve
+back to the thin `─` accent bar. The footer content rows simultaneously take a
+14% severity-tinted background wash that eases back to the theme background over
+the same 500ms; existing badge backgrounds remain intact. It is a flash, not a
+pulse — `workspacePulse` is the title row's counts chip. The interactive TUI
+ignores an inherited
+`NO_COLOR`, while the explicit `--no-color` flag still disables color; the moving
+heavy glyph segment keeps the flash visible even then. Non-interactive commands
+retain the inherited environment. The trigger is status text only. The three
 `AppModel` setters advance `statusSeq`, `m.err` is compared by text because it
 has no clock, and `InteractiveViewState.setStatus` advances its own stamp; a
 breadcrumb, mode badge, or which-key change moves on nearly every keystroke and
@@ -322,9 +330,10 @@ the auto-clear timers advance a sequence. Arming happens in exactly one place,
 the deferred closure in `AppModel.Update`, which is what lets ~50 void setter
 call sites stay untouched; it must remain that one defer, since a second would
 run first under LIFO and see neither the recovery nor the assigned command.
-`footerDividerColor` feeds all three dividers `renderStatusBar` can emit — its
-own separator and both `renderGuidance` calls — or the flash dies whenever a
-which-key row is up. The breadcrumb keeps the plain accent so only the bar moves.
+The footer divider appearance feeds all three dividers `renderStatusBar` can
+emit — its own separator and both guidance calls — or the flash dies whenever a
+which-key row is up. The breadcrumb keeps its plain foreground accent while its
+background participates in the footer wash.
 
 `#` is the one shared key: two descriptors declare it, `tui.task.set-tags` and
 `tui.project.set-tags`, and the cursor decides which applies. Keep them two

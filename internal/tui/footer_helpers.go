@@ -381,6 +381,16 @@ func renderGuidanceLines(spec GuidanceSpec, width int) []string {
 // contextual controls and pending chords. It emits one divider plus at most the
 // spec's one- or two-row budget.
 func renderGuidance(spec GuidanceSpec, width int, accent ...color.Color) string {
+	var dividerOpts []DividerOption
+	if len(accent) > 0 && accent[0] != nil {
+		dividerOpts = append(dividerOpts, WithDividerColor(accent[0]))
+	}
+	return renderGuidanceWithSeparator(spec, width, renderHorizontalDivider(width, dividerOpts...))
+}
+
+// renderGuidanceWithSeparator keeps shared guidance packing while allowing a
+// shell-owned footer to supply a divider containing multiple styled runs.
+func renderGuidanceWithSeparator(spec GuidanceSpec, width int, separator string) string {
 	if width <= 0 {
 		width = 80
 	}
@@ -388,13 +398,7 @@ func renderGuidance(spec GuidanceSpec, width int, accent ...color.Color) string 
 	if len(lines) == 0 {
 		return ""
 	}
-	var separatorStyle lipgloss.Style
-	if len(accent) > 0 && accent[0] != nil {
-		separatorStyle = lipgloss.NewStyle().Foreground(accent[0])
-	} else {
-		separatorStyle = MutedStyle
-	}
-	return separatorStyle.Render(strings.Repeat("─", width)) + "\n" + strings.Join(lines, "\n")
+	return separator + "\n" + strings.Join(lines, "\n")
 }
 
 // renderGuidanceText renders structured guidance without a divider. Inline
