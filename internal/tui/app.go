@@ -155,6 +155,10 @@ type AppModel struct {
 	// newer status.
 	statusTransactionID    string
 	statusRecoveryFallback string
+	statusSeq              uint64              // Bumped by every status setter; drives the footer divider flash
+	statusSeverity         footerFlashSeverity // Severity of the newest status text
+	footerFlash            footerFlashState
+	footerFlashSeq         uint64
 
 	// Pending create-project continuation from system Inbox triage.
 	pendingProjectMoveTask   *models.Task

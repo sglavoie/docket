@@ -310,6 +310,22 @@ A chord prefix that a second key abandons sets a brief warning status naming the
 path it left, such as `wq is not a workflow action`. An unbound root key
 stays silent because it never promised anything.
 
+Changed status text flashes the footer divider: the bar takes a severity color
+and blends back to the view accent over `footerFlashFrames` (5) frames of
+`footerFlashFrameInterval` (60ms). It is a flash, not a pulse — `workspacePulse`
+is the title row's counts chip. The trigger is status text only. The three
+`AppModel` setters advance `statusSeq`, `m.err` is compared by text because it
+has no clock, and `InteractiveViewState.setStatus` advances its own stamp; a
+breadcrumb, mode badge, or which-key change moves on nearly every keystroke and
+must never arm it. Cleared text arms nothing, because neither `clearStatus` nor
+the auto-clear timers advance a sequence. Arming happens in exactly one place,
+the deferred closure in `AppModel.Update`, which is what lets ~50 void setter
+call sites stay untouched; it must remain that one defer, since a second would
+run first under LIFO and see neither the recovery nor the assigned command.
+`footerDividerColor` feeds all three dividers `renderStatusBar` can emit — its
+own separator and both `renderGuidance` calls — or the flash dies whenever a
+which-key row is up. The breadcrumb keeps the plain accent so only the bar moves.
+
 `#` is the one shared key: two descriptors declare it, `tui.task.set-tags` and
 `tui.project.set-tags`, and the cursor decides which applies. Keep them two
 operations so the footer and `?` help carry two honest labels; never branch one

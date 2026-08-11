@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -9,9 +10,21 @@ import (
 	"github.com/sglavoie/tt/internal/icons"
 )
 
+// footerDividerColor is the accent, or the flash color blending back toward it
+// while a status change is still fading. Every divider the footer emits reads
+// it; the breadcrumb keeps the plain accent so only the bar moves.
+func (m *AppModel) footerDividerColor() color.Color {
+	accent := m.currentAccentColor()
+	if !m.footerFlash.active() {
+		return accent
+	}
+	progress := float64(m.footerFlash.frame) / float64(footerFlashFrames-1)
+	return blendColor(m.footerFlash.severity.color(), accent, progress)
+}
+
 func (m *AppModel) renderStatusBar() string {
 	// Top border separator for visual distinction; tinted with current view accent.
-	separator := renderHorizontalDivider(m.width, WithDividerColor(m.currentAccentColor()))
+	separator := renderHorizontalDivider(m.width, WithDividerColor(m.footerDividerColor()))
 
 	// Helper to render left-aligned message with spacer.
 	renderLeftAlignedMsg := func(msg string) string {
@@ -34,7 +47,7 @@ func (m *AppModel) renderStatusBar() string {
 	// An unfinished chord owns the footer: the which-key row is live input
 	// feedback, so it outranks banners and transient status text.
 	if spec, ok := m.pendingChordGuidance(); ok {
-		return renderGuidance(spec, m.width, m.currentAccentColor())
+		return renderGuidance(spec, m.width, m.footerDividerColor())
 	}
 
 	// Show temporary status message if present.
@@ -57,7 +70,7 @@ func (m *AppModel) renderStatusBar() string {
 	if view := m.activeView(); view != nil {
 		if provider, ok := view.(ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
-				return renderGuidance(spec, m.width, m.currentAccentColor())
+				return renderGuidance(spec, m.width, m.footerDividerColor())
 			}
 		}
 	}

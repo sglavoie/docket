@@ -10,6 +10,11 @@ import (
 )
 
 func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //nolint:gocyclo
+	// Every branch below returns early, so the one deferred closure is also the
+	// single place the footer divider flash can compare status text before and
+	// after dispatch. It must stay one defer: a second one would run first
+	// under LIFO, before recovery and before outCmd is assigned.
+	statusBefore := m.captureFooterFlashProbe()
 	defer func() {
 		if r := recover(); r != nil {
 			stack := debug.Stack()
@@ -26,6 +31,12 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.statusMessage = ""
 			outModel = m
 			outCmd = nil
+			// The recovery already rebuilt navigation; probing it again here
+			// would risk a second panic with no recover left above it.
+			return
+		}
+		if flash := m.armFooterFlashSince(statusBefore); flash != nil {
+			outCmd = tea.Batch(outCmd, flash)
 		}
 	}()
 

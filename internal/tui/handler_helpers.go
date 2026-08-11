@@ -132,6 +132,7 @@ func (m *AppModel) setSuccessStatus(msg string) {
 	m.statusExpiresAt = time.Time{}
 	m.statusTransactionID = ""
 	m.statusRecoveryFallback = ""
+	m.recordStatusSeverity(flashSuccess)
 	m.refreshWorkspacePulseAt(time.Now())
 }
 
@@ -146,6 +147,7 @@ func (m *AppModel) setInfoStatus(msg string) {
 	m.statusExpiresAt = time.Time{}
 	m.statusTransactionID = ""
 	m.statusRecoveryFallback = ""
+	m.recordStatusSeverity(flashInfo)
 }
 
 // setWarningStatus sets a non-fatal warning while preserving the committed
@@ -158,6 +160,16 @@ func (m *AppModel) setWarningStatus(msg string) {
 	m.statusExpiresAt = time.Time{}
 	m.statusTransactionID = ""
 	m.statusRecoveryFallback = ""
+	// Severity is a separate axis from statusIsInfo: the text keeps the neutral
+	// surface while the divider flash still distinguishes a warning.
+	m.recordStatusSeverity(flashWarning)
+}
+
+// recordStatusSeverity advances the status generation the footer flash arms on.
+// Only the setters call it, so a cleared status never flashes.
+func (m *AppModel) recordStatusSeverity(severity footerFlashSeverity) {
+	m.statusSeverity = severity
+	m.statusSeq++
 }
 
 // UndoToastTimeout is how long a transient undo-available toast remains
@@ -252,6 +264,7 @@ func (m *AppModel) clearStatus() {
 	m.statusExpiresAt = time.Time{}
 	m.statusTransactionID = ""
 	m.statusRecoveryFallback = ""
+	m.statusSeverity = flashNone
 	m.err = nil
 }
 

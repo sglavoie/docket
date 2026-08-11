@@ -11,12 +11,20 @@ type InteractiveViewState struct {
 	viewScrollOffset int
 	cursorFlash      bool
 	statusMessage    string
+	statusSeq        uint64
 	confirm          ConfirmDialog
 }
 
 // setStatus sets the status message.
 func (s *InteractiveViewState) setStatus(msg string) {
 	s.statusMessage = msg
+	s.statusSeq++
+}
+
+// StatusStamp reports the generation of this view's own status line so the
+// shell can flash the footer divider when it changes.
+func (s *InteractiveViewState) StatusStamp() uint64 {
+	return s.statusSeq
 }
 
 // clearStatus clears the status message.

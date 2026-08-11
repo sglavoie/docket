@@ -56,6 +56,10 @@ type UndoToastTimeoutMsg struct{}
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
+// FooterFlashTickMsg advances the footer divider flash one frame. Seq
+// identifies the flash generation so a tick from a superseded flash is ignored.
+type FooterFlashTickMsg struct{ Seq uint64 }
+
 // periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
 type periodicSaveMsg struct{}
 
@@ -97,5 +101,12 @@ const CursorFlashDuration = 150 * time.Millisecond
 func cursorFlashTimeout() tea.Cmd {
 	return tea.Tick(CursorFlashDuration, func(time.Time) tea.Msg {
 		return CursorFlashClearMsg{}
+	})
+}
+
+// footerFlashTick schedules the next frame of the footer divider flash.
+func footerFlashTick(seq uint64) tea.Cmd {
+	return tea.Tick(footerFlashFrameInterval, func(time.Time) tea.Msg {
+		return FooterFlashTickMsg{Seq: seq}
 	})
 }
