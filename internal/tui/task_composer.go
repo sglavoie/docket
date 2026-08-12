@@ -23,7 +23,6 @@ const (
 	ComposerGlobal TaskComposerPresetKind = iota
 	ComposerProject
 	ComposerChild
-	ComposerEdit
 )
 
 type TaskComposerMode uint8
@@ -54,7 +53,6 @@ type TaskComposerPreset struct {
 	HeaderLabel        string
 	Project            *models.Project
 	AllProjects        []*models.Project
-	Task               *models.Task
 	Shared             TaskComposerSharedAttributes
 	InitialText        string
 	AllowProjectSwitch bool
@@ -72,8 +70,6 @@ func (p TaskComposerPreset) label() string {
 		return "Project task"
 	case ComposerChild:
 		return "Child task"
-	case ComposerEdit:
-		return "Edit task"
 	default:
 		return "Task"
 	}
@@ -91,9 +87,8 @@ func (p TaskComposerPreset) defaultDestination(
 	return app.CaptureDestinationInbox
 }
 
-// TaskComposerModel is the sole live task creation/editing overlay. Compact
-// mode owns one-or-many capture lines; expanded mode embeds the full form for
-// exactly one task.
+// TaskComposerModel is the sole live task creation overlay. Compact mode owns
+// one-or-many capture lines; expanded mode embeds the full form for one task.
 type lineError struct {
 	line    int
 	message string
@@ -124,18 +119,7 @@ func NewTaskComposerModel(preset TaskComposerPreset, runtime *config.RuntimeStat
 		height:  22,
 	}
 
-	switch preset.Kind {
-	case ComposerEdit:
-		m.mode = ComposerExpanded
-		if preset.Project != nil && preset.Task != nil {
-			m.expanded = NewTaskFormModelEdit(preset.Project, preset.Task, runtime)
-			m.expanded.hostTitle = "Task Composer · Edit"
-		} else {
-			m.errors = []lineError{{line: 1, message: "edit preset requires a task and project"}}
-		}
-	default:
-		m.initCompactInput()
-	}
+	m.initCompactInput()
 	return m
 }
 

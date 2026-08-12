@@ -214,8 +214,8 @@ type captureWireable interface {
 	SetCaptureCoordinator(CaptureCoordinator)
 }
 
-// taskFormWireable is implemented by the create/edit task form, which routes its
-// create and edit mutations through the application-layer TaskFormCoordinator.
+// taskFormWireable is implemented by the expanded create form, which routes its
+// mutation through the application-layer TaskFormCoordinator.
 type taskFormWireable interface {
 	SetTaskFormCoordinator(TaskFormCoordinator)
 }

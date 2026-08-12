@@ -142,7 +142,7 @@ reachable presentation has shell, surface, or overlay guidance ownership.
 
 `renderOperationalTitle` is the one-line title fitter. Identity on the left
 contains surface, scope, and mode exactly once; selection, search, filters,
-zoom, or editor state forms the interaction context; and the workspace pulse is
+focus, or editor state forms the interaction context; and the workspace pulse is
 the right region. Today is normally mandatory. When width is constrained, the
 fitter removes Inbox, overdue, and Today in that order before truncating required
 interaction context.
@@ -193,13 +193,15 @@ cancels only the second step.
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
 handled-key metadata, chord hints, guidance hints, `?` help, and harness discovery
 all project from that strategy. The task operation manifest separately orders
-the exact five `Space` actions:
+the exact three `Space` actions:
 
-1. Move Project
-2. Set Parent
-3. Comments
-4. Attachments
-5. Delete
+1. Comments
+2. Attachments
+3. Delete
+
+Project moves and reparenting are expressed in the inline `e` editor with
+`%project` and `>parent`/`>0`, so structural edits share the same atomic task-line
+transaction as title and metadata changes.
 
 The checklist is absent because its rows own the whole mutation set; a menu
 entry would be a second route to it.
@@ -321,7 +323,11 @@ operational scan signals directly: workflow state, conditional high priority,
 due, snooze, and checklist progress.
 Outliner rows omit short task IDs.
 
-`Enter` toggles a session-only, project-qualified Peek below the cursor task.
+`Enter` pushes a project-qualified Focus frame and projects only the selected
+task's descendants. Nested Focus frames retain the exact parent cursor and
+scroll offset; `Esc` restores one frame at a time. A leaf reports
+`No children to focus`. `Shift+Enter` toggles a session-only, project-qualified
+Peek below the cursor task.
 Peek follows cursor, mode, and scope navigation and is capped at five additive
 lines: up to three description lines plus a dates line, attachment names,
 comment counts, and tags. It carries no checklist line, because checklist items
@@ -456,7 +462,7 @@ The two project populations stay separate by name.
 `Runtime.TaskWorkspaceProjects()` returns non-archived projects that are not
 parked and is the only population the base Outliner reads.
 `Runtime.AvailableProjects()` returns every non-archived project, so a parked
-project remains reachable for Notes, capture `%project`, Move Project
+project remains reachable for Notes, capture and inline-edit `%project`
 destinations, Select Project, and one explicit project focus. Focusing a parked
 project anchors the Outliner with the `parked` tag appended to the project name,
 and leaving that focus returns to the base workspace with no parked rows behind.

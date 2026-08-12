@@ -107,7 +107,8 @@ wi wb wn wt wg wr ww wp wm wd wc    workflow chord
 !0-3 @ # z P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
-v V Ctrl+A Space Enter          selection, actions, Peek
+v V Ctrl+A Space                selection and actions
+Enter Shift+Enter               Focus and Peek
 x                               tick the checklist item under the cursor
 p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-3 fs fc ft fd fz fx         filters
@@ -159,7 +160,9 @@ The committed suite exercises the product contracts directly:
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Comments and attachments | `rich-tools.json` |
 | Checklist row grammar and its central task-key refusal | `outliner-checklist-row-actions.json`, `outliner-checklist-row-rejects-task-keys.json` |
-| Exact five-item `Space` menu | `outliner-space-action-catalog.json` |
+| Exact three-item `Space` menu | `outliner-space-action-catalog.json` |
+| Inline edit validation, autocomplete, atomic cross-project relocation, resize, undo, and redo | `outliner-inline-edit-transaction.json`, `recovery-origin-guidance.json` |
+| Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `textgrammar_consumer_contract_test.go`, `quick_edit_test.go`, `outline_editor_test.go` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
@@ -176,6 +179,7 @@ The committed suite exercises the product contracts directly:
 | Workspace-pulse composition and transient-overlay ownership | `workspace-pulse-presentation-grammar.json` |
 | Projects, Notes, forms, task tools, Help, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
 | Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
+| Nested Focus, bounded search, Esc priority, modes, filters, reload, and external-change recovery | `outliner-focus-esc-priority.json`, `outliner_focus_test.go`, `filter_facets_projection_test.go` |
 
 The full shell gate also runs snapshot, failure-injection, collision,
 idempotence, prepared-activation recovery, restore-and-reactivate, and

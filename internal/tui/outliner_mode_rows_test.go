@@ -110,7 +110,7 @@ func TestNextModeUsesQualifiedDurableOrderAndDirectFilters(t *testing.T) {
 	}
 }
 
-func TestPlanningModesHonorZoomCandidatesWithoutAddingAncestors(t *testing.T) {
+func TestPlanningModesHonorFocusCandidatesWithoutAddingAncestors(t *testing.T) {
 	parent := primaryRowsTask("parent", models.StateBacklog)
 	child := primaryRowsTask("child", models.StateBacklog)
 	child.ParentID = &parent.ID
@@ -130,9 +130,9 @@ func TestPlanningModesHonorZoomCandidatesWithoutAddingAncestors(t *testing.T) {
 		},
 	}
 	if got := modeRowQualifiedIDs(BuildTodayModeRows(input)); !slices.Equal(got, []string{"project/child"}) {
-		t.Fatalf("zoomed Today = %v, want only explicit child", got)
+		t.Fatalf("focused Today = %v, want only explicit child", got)
 	}
 	if got := modeRowQualifiedIDs(BuildNextModeRows(input)); !slices.Equal(got, []string{"project/child"}) {
-		t.Fatalf("zoomed Next = %v, want only explicit child", got)
+		t.Fatalf("focused Next = %v, want only explicit child", got)
 	}
 }

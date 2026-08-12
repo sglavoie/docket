@@ -14,6 +14,7 @@ import (
 
 // getTagSuggestions returns matching tags for the partial query.
 func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
 	type scoredTag struct {
 		tag   string
 		score int
@@ -36,7 +37,7 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		suggestions = append(suggestions, ACSuggestion{
-			Display: "#" + s.tag,
+			Display: def.Trigger + s.tag,
 			Value:   s.tag,
 		})
 	}
@@ -45,21 +46,16 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 
 // getPrioritySuggestions returns matching priority options for the partial query.
 func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
-	descriptions := map[string]string{
-		"1": "High",
-		"2": "Medium",
-		"3": "Low",
-	}
 	var suggestions []ACSuggestion
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
 	for _, value := range def.Values {
-		desc, canonical := descriptions[value]
-		if !canonical {
+		priorities, ok := textgrammar.ParsePriority(value, false)
+		if !ok || len(priorities) != 1 {
 			continue
 		}
 		if partial == "" || strings.HasPrefix(value, partial) {
 			suggestions = append(suggestions, ACSuggestion{
-				Display: fmt.Sprintf("!%s (%s)", value, desc),
+				Display: fmt.Sprintf("%s%s (%s)", def.Trigger, value, models.PriorityName(priorities[0])),
 				Value:   value,
 			})
 		}
@@ -75,7 +71,7 @@ func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	for _, value := range def.Values {
 		if partial == "" || strings.Contains(value, partialLower) {
 			suggestions = append(suggestions, ACSuggestion{
-				Display: "@" + value,
+				Display: def.Trigger + value,
 				Value:   value,
 			})
 		}
@@ -103,7 +99,7 @@ func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSugges
 		default:
 			// Lifecycle destinations use the shared state description above.
 		}
-		display := fmt.Sprintf("$%s %s (%s)", name, destination.WorkflowState().Icon(), description)
+		display := fmt.Sprintf("%s%s %s (%s)", def.Trigger, name, destination.WorkflowState().Icon(), description)
 		suggestions = append(suggestions, ACSuggestion{Display: display, Value: name})
 	}
 	return suggestions
@@ -148,6 +144,7 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 
 // getProjectSuggestions returns matching projects for the partial query.
 func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldProject)
 	type scoredProject struct {
 		project *models.Project
 		score   int
@@ -173,7 +170,7 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 		nameLimit := max(q.width-20, 10)
 		name := truncateToVisualWidth(project.Name, nameLimit)
 		suggestions = append(suggestions, ACSuggestion{
-			Display: "%" + name,
+			Display: def.Trigger + name,
 			Value:   project.Slug,
 		})
 	}

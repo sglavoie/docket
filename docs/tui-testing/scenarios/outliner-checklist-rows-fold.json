@@ -26,10 +26,10 @@
     { "type": "key", "label": "the second h closes the child subtree", "key": "h" },
     { "type": "assert", "assert": "not_contains", "value": "Confirm the staging soak" },
     { "type": "assert", "label": "a task with neither never offers a fold", "assert": "contains", "value": "Retire the legacy runbook" },
-    { "type": "key", "label": "open Peek over a task that does carry checklist items", "key": "enter" },
+    { "type": "key", "label": "open Peek over a task that does carry checklist items", "key": "shift+enter" },
     { "type": "assert", "label": "Peek leaves the checklist to the rows and the badge", "assert": "not_contains", "value": "Checklist:" },
     { "type": "assert", "assert": "contains", "value": "1/2" },
-    { "type": "key", "label": "close Peek", "key": "enter" },
+    { "type": "key", "label": "close Peek", "key": "shift+enter" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

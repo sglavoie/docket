@@ -98,17 +98,15 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		ids = append(ids, descriptor.ID)
 	}
 	wantIDs := []OperationID{
-		operationTaskMoveProject,
-		operationTaskSetParent,
 		operationTaskComments,
 		operationTaskAttachments,
 		operationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("action sheet IDs = %v, want exact five %v", ids, wantIDs)
+		t.Fatalf("action sheet IDs = %v, want exact three %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Move Project", "Set Parent", "Comments", "Attachments", "Delete",
+		"Comments", "Attachments", "Delete",
 	}
 	for index, descriptor := range descriptors {
 		if descriptor.Label != wantLabels[index] {
@@ -162,8 +160,6 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		}
 	}
 	for _, category := range []ListCategoryID{
-		taskActionCategoryOrganize,
-		taskActionCategoryRelationships,
 		taskActionCategoryContent,
 		taskActionCategoryDanger,
 	} {
@@ -178,10 +174,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
 	}
 	matches := sheet.surface.Matches()
-	wantAliasMatches := []ListItemID{
-		ListItemID("task-action:" + string(operationTaskMoveProject)),
-		ListItemID("task-action:" + string(operationTaskDelete)),
-	}
+	wantAliasMatches := []ListItemID{ListItemID("task-action:" + string(operationTaskDelete))}
 	gotMatches := make([]ListItemID, 0, len(matches))
 	for _, match := range matches {
 		gotMatches = append(gotMatches, match.Item.ID)
@@ -281,8 +274,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	if !slices.Equal(ids, []OperationID{operationTaskMoveProject, operationTaskDelete}) {
-		t.Fatalf("bulk action sheet IDs = %v, want Move Project and Delete", ids)
+	if !slices.Equal(ids, []OperationID{operationTaskDelete}) {
+		t.Fatalf("bulk action sheet IDs = %v, want Delete", ids)
 	}
 	for _, excluded := range []OperationID{
 		// Snooze is bulk-capable but the in-progress member removes it.
@@ -292,7 +285,6 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
-		operationTaskSetParent,
 		operationTaskIndent,
 		operationTaskOutdent,
 		operationCoreEdit,

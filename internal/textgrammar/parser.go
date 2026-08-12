@@ -1,7 +1,9 @@
 package textgrammar
 
 import (
+	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -14,8 +16,16 @@ type Token struct {
 
 // Result contains recognized tokens and the normalized free-text remainder.
 type Result struct {
-	Text   string
-	Tokens []Token
+	Text        string
+	Tokens      []Token
+	Diagnostics []Diagnostic
+}
+
+// Diagnostic describes a precise parser validation failure without coupling
+// the grammar package to any one UI's error type.
+type Diagnostic struct {
+	Field   Field
+	Message string
 }
 
 // TokensFor returns the recognized tokens for one field in input order.
@@ -32,22 +42,18 @@ func (r Result) TokensFor(field Field) []Token {
 var whitespaceRE = regexp.MustCompile(`\s+`)
 
 type tokenPattern struct {
-	re      *regexp.Regexp
-	field   Field
-	form    string
-	surface Surface
+	re   *regexp.Regexp
+	spec definitionSpec
 }
 
-var tokenPatterns = []tokenPattern{
-	{regexp.MustCompile(`(?:^|\s)\^(\S+)`), FieldTaskType, "^", SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)!([^\s]+)`), FieldPriority, "!", SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)#([\w][\w.:-]*)`), FieldTag, "#", SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`), FieldDue, "@", SurfaceCapture | SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)~(\S+)`), FieldRecurrence, "~", SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldDestination, "$", SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)\$(\w+)`), FieldState, "$", SurfaceEdit},
-	{regexp.MustCompile(`(?:^|\s)%(\S+)`), FieldProject, "%", SurfaceCapture},
-	{regexp.MustCompile(`(?:^|\s)>(\S+)`), FieldParent, ">", SurfaceCapture},
+var tokenPatterns = buildTokenPatterns()
+
+func buildTokenPatterns() []tokenPattern {
+	result := make([]tokenPattern, len(registry))
+	for i, spec := range registry {
+		result[i] = tokenPattern{re: regexp.MustCompile(spec.pattern), spec: spec}
+	}
+	return result
 }
 
 // Parse extracts every token enabled for surface using the one shared grammar.
@@ -55,7 +61,7 @@ func Parse(input string, surface Surface) Result {
 	result := Result{}
 	remaining := input
 	for _, pattern := range tokenPatterns {
-		if pattern.surface&surface == 0 {
+		if pattern.spec.Surfaces&surface == 0 {
 			continue
 		}
 		var tokens []Token
@@ -63,6 +69,7 @@ func Parse(input string, surface Surface) Result {
 		result.Tokens = append(result.Tokens, tokens...)
 	}
 	result.Text = NormalizeText(remaining)
+	result.Diagnostics = duplicateSingletonDiagnostics(result.Tokens)
 	return result
 }
 
@@ -80,21 +87,16 @@ func extractTokens(input string, pattern tokenPattern, surface Surface) (string,
 		}
 		rebuilt.WriteString(input[last:match[0]])
 		value := input[match[2]:match[3]]
-		if pattern.field == FieldPriority && !validPriorityTokenValue(value, surface) {
-			rebuilt.WriteString(input[match[0]:match[1]])
-			last = match[1]
-			continue
-		}
-		if (pattern.field == FieldTag || pattern.field == FieldRemoveTag) && !validTagTokenValue(value) {
+		if !validTokenValue(pattern.spec, value, surface) {
 			rebuilt.WriteString(input[match[0]:match[1]])
 			last = match[1]
 			continue
 		}
 		rebuilt.WriteByte(' ')
 		tokens = append(tokens, Token{
-			Field: pattern.field,
+			Field: pattern.spec.Field,
 			Value: value,
-			Form:  pattern.form,
+			Form:  pattern.spec.Trigger,
 		})
 		last = match[1]
 	}
@@ -102,18 +104,69 @@ func extractTokens(input string, pattern tokenPattern, surface Surface) (string,
 	return rebuilt.String(), tokens
 }
 
-func validPriorityTokenValue(value string, surface Surface) bool {
-	minimum := byte('1')
-	// !0 is mutation-only. A combined surface retains the stricter capture
-	// grammar so capture can never silently turn an omitted priority into an
-	// explicit clear operation.
-	if surface == SurfaceEdit {
-		minimum = '0'
+func duplicateSingletonDiagnostics(tokens []Token) []Diagnostic {
+	first := make(map[Field]Token)
+	diagnosed := make(map[Field]bool)
+	var result []Diagnostic
+	for _, token := range tokens {
+		spec, ok := registrySpecFor(token.Field)
+		if !ok || spec.Cardinality != CardinalitySingleton {
+			continue
+		}
+		previous, exists := first[token.Field]
+		if !exists {
+			first[token.Field] = token
+			continue
+		}
+		if diagnosed[token.Field] {
+			continue
+		}
+		diagnosed[token.Field] = true
+		result = append(result, Diagnostic{
+			Field: token.Field,
+			Message: fmt.Sprintf(
+				"duplicate %s: %s%s conflicts with earlier %s%s; only one %s value is allowed",
+				token.Field,
+				token.Form,
+				token.Value,
+				previous.Form,
+				previous.Value,
+				spec.forms[0].Text,
+			),
+		})
 	}
-	// Retired 4-5 values are still tokenized so surface parsers can return
-	// actionable replacement guidance. Canonical definitions and ParsePriority
-	// continue to advertise and accept only 1-3.
-	return len(value) == 1 && value[0] >= minimum && value[0] <= '5'
+	return result
+}
+
+func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
+	switch spec.validation {
+	case validateAny:
+		return true
+	case validatePriority:
+		// Keep invalid priority-like tokens in the parsed token stream so every
+		// consumer can return the registry-backed diagnostic instead of silently
+		// folding a typo such as !9 into the task title.
+		if slices.Contains(spec.Values, value) || slices.Contains(spec.RetiredValues, value) {
+			return true
+		}
+		if value == clearValue && surface != SurfaceEdit {
+			return false
+		}
+		// Clear operations are enabled only on their exact surface. A combined
+		// surface retains capture's stricter grammar.
+		if surface == SurfaceEdit {
+			for _, clear := range spec.Clears {
+				if clear.Surfaces&surface != 0 && clear.Value == value {
+					return true
+				}
+			}
+		}
+		return surface == SurfaceEdit && value != ""
+	case validateTag:
+		return validTagTokenValue(value)
+	default:
+		return false
+	}
 }
 
 func validTagTokenValue(value string) bool {

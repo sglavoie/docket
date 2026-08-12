@@ -49,6 +49,8 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 			rowBuilder.WriteString(m.renderOutlinerProjectHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsChecklistItem:
 			rowBuilder.WriteString(m.renderOutlinerChecklistRow(row, selected, viewport.rowWidth, i))
+		case selected && m.isQuickEditRow(row):
+			rowBuilder.WriteString(m.renderOutlinerQuickEditRow(row, viewport.rowWidth))
 		default:
 			rowBuilder.WriteString(m.renderOutlinerTaskRow(row, selected, viewport.rowWidth, viewport.rowWidth, i, colLayout))
 		}

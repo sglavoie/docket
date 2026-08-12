@@ -32,23 +32,28 @@ type TaskCreatedMsg struct {
 	OpenContent     bool            // open description editor after creation
 }
 
-// TaskUpdatedMsg signals a task was modified.
-//
-// Contract: Task points at the post-reload pointer in Project.Tasks at emit
-// time; consumers may use it directly without re-resolving via GetTaskByID.
-// May be nil only if the task was concurrently deleted (rare); handlers must
-// nil-check before dereferencing. Empty TaskUpdatedMsg{} (Task=nil) is used
-// in tests to exercise the no-op path.
-//
-// Result, when non-nil, is the committed application-layer outcome from the
-// task-form edit coordinator. handleTaskUpdated reloads the committed project by
-// Result.ProjectID and re-resolves the live Task pointer before delegating, so
-// the coordinator path and the legacy in-place path share one handler.
-// PlanningChanged asks the shell to advance its planning snapshot before views
-// rebuild (for example after a task-form due-today edit).
-type TaskUpdatedMsg struct {
-	Result          *app.TaskResult
-	PlanningChanged bool
+// StartTaskLineEditMsg activates the selected Outliner row editor. Task and
+// Project are the frozen operation target so shell dispatch cannot retarget the
+// edit if the cursor moves before the message is delivered.
+type StartTaskLineEditMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// TaskLineEditedMsg returns one successful atomic inline edit to the shell.
+// Source and relocation preserve the origin until the committed workspace has
+// been reloaded and the result's final qualified identity can be followed.
+type TaskLineEditedMsg struct {
+	Result     app.TaskLineEditResult
+	Source     TaskIdentity
+	Relocation *outlinerRelocationCapture
+}
+
+// TaskLineEditFailedMsg keeps the row editor open with its original draft when
+// application validation or persistence rejects an atomic edit.
+type TaskLineEditFailedMsg struct {
+	Source TaskIdentity
+	Err    error
 }
 
 // =============================================================================
@@ -182,21 +187,3 @@ type ShowTaskAttachmentsMsg struct {
 
 // CloseTaskAttachmentsMsg closes the attachments view.
 type CloseTaskAttachmentsMsg struct{ PopViewMsg }
-
-// MoveTaskToProjectMsg requests moving a task to another project.
-type MoveTaskToProjectMsg struct {
-	Task               *models.Task
-	SourceProject      *models.Project
-	DestProjectID      string
-	outlinerRelocation *outlinerRelocationCapture
-}
-
-// TaskMovedToProjectMsg signals a task was moved to another project.
-type TaskMovedToProjectMsg struct {
-	Task               *models.Task
-	DestProject        *models.Project
-	MovedCount         int // Number of tasks moved (including descendants)
-	OldShortID         int // Original short ID before move
-	TransactionID      string
-	outlinerRelocation *outlinerRelocationCapture
-}

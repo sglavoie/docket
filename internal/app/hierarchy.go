@@ -341,283 +341,50 @@ func (s *Service) mutateHierarchyTaskSelection(taskID string, locator TaskLocato
 	return result, nil
 }
 
-// MoveResult reports the outcome of a cross-project subtree move.
-type MoveResult struct {
-	// MovedCount is the number of tasks relocated (the root plus its descendants).
-	MovedCount    int
-	TransactionID string
+// crossProjectSubtreeMove is the application-owned delta shared by every
+// cross-project task move. The model performs the structural transfer and this
+// value carries the qualified planning rewrites and attachment relocations that
+// must commit beside the two project documents.
+type crossProjectSubtreeMove struct {
+	MovedTasks    []*models.Task
+	PlanningMoves []PlanningProjectMove
+	AttachmentOps []storage.AttachmentOp
 }
 
-// BulkMoveRequest asks to move several task subtrees into one destination
-// project. Project-qualified locators are required because a cross-project
-// selection cannot rely on workspace-wide task-ID uniqueness.
-type BulkMoveRequest struct {
-	TaskLocators         []TaskLocator
-	DestinationProjectID string
-}
-
-// BulkMoveResult reports one result per selected root plus the total number of
-// relocated tasks, including descendants. Every touched source project and the
-// destination are committed together.
-type BulkMoveResult struct {
-	MovedCount        int
-	TouchedProjectIDs []string
-	TransactionID     string
-}
-
-// MoveToProject moves a task and its whole subtree to another project, committing
-// the source removal and the destination insertion as ONE transaction (two
-// ChangeSets). Short IDs are regenerated in the destination while the stable UUID is kept, so each moved
-// task's attachment directory is relocated (via an AttachmentMove op) in the
-// same transaction as the metadata that references it. The service requalifies
-// every moved subtree member's Today/Next identity in a revision-checked planning
-// artifact; additional caller artifacts ride beside it. Machine-local UI state
-// (recent visits) is deliberately NOT part of this transaction; the adapter
-// updates it separately after a successful commit.
-func (s *Service) MoveToProject(taskID, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	return s.moveToProject(taskID, TaskLocator{}, destProjectID, artifacts)
-}
-
-func (s *Service) MoveToProjectByLocator(locator TaskLocator, destProjectID string, artifacts ...storage.ArtifactChange) (MoveResult, error) {
-	return s.moveToProject("", locator, destProjectID, artifacts)
-}
-
-// BulkMoveToProject moves every selected root and its subtree into one project
-// as a single transaction. The complete target set, destination collisions,
-// planning reconciliation, and attachment moves are validated before commit;
-// any failure restores every in-memory project snapshot.
-func (s *Service) BulkMoveToProject(req BulkMoveRequest, artifacts ...storage.ArtifactChange) (BulkMoveResult, error) {
-	destinationID := strings.TrimSpace(req.DestinationProjectID)
-	if destinationID == "" {
-		return BulkMoveResult{}, invalidInput("destination", "project id is required")
-	}
-	if len(req.TaskLocators) == 0 {
-		return BulkMoveResult{}, invalidInput("tasks", "at least one task locator is required")
-	}
-
-	snap, err := s.repo.Snapshot()
+// moveTaskSubtreeBetweenProjects performs the in-memory portion of a
+// cross-project move. Callers own rollback until their grouped commit succeeds.
+// An optional destination parent is applied only after the complete subtree is
+// present in the destination, so ReparentTask can validate the final depth and
+// canonical ownership before either project document is committed.
+func moveTaskSubtreeBetweenProjects(source *models.Project, task *models.Task, destination *models.Project, parent *models.Task) (crossProjectSubtreeMove, error) {
+	moveResult, err := source.MoveTaskToProject(task, destination)
 	if err != nil {
-		return BulkMoveResult{}, err
+		return crossProjectSubtreeMove{}, err
 	}
-	refs, err := resolveRequestedTasks(snap, nil, req.TaskLocators)
-	if err != nil {
-		return BulkMoveResult{}, err
-	}
-	destination := snap.ProjectByID(destinationID)
-	if destination == nil {
-		return BulkMoveResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, destinationID)
-	}
-	for _, ref := range refs {
-		if ref.Project.ID == destinationID {
-			return BulkMoveResult{}, invalidInput("destination", "every selected task must be outside the destination project")
+	if parent != nil {
+		if err := destination.ReparentTask(task, parent); err != nil {
+			return crossProjectSubtreeMove{}, err
 		}
 	}
 
-	roots := bulkMoveRoots(refs)
-	seenMoved := make(map[string]bool)
-	for _, ref := range roots {
-		for taskID := range collectSubtreeIDs(ref.Task) {
-			if seenMoved[taskID] || destination.GetTaskByID(taskID) != nil {
-				return BulkMoveResult{}, invalidInput("move", fmt.Sprintf("destination already contains task %s", taskID))
-			}
-			seenMoved[taskID] = true
-		}
+	result := crossProjectSubtreeMove{
+		MovedTasks:    moveResult.MovedTasks,
+		PlanningMoves: make([]PlanningProjectMove, 0, len(moveResult.MovedTasks)),
+		AttachmentOps: make([]storage.AttachmentOp, 0, len(moveResult.MovedTasks)),
 	}
-
-	touchedProjects := make([]*models.Project, 0, len(roots)+1)
-	touchedIDs := make([]string, 0, len(roots)+1)
-	seenProjects := make(map[string]bool)
-	for _, ref := range roots {
-		if seenProjects[ref.Project.ID] {
+	for _, moved := range moveResult.MovedTasks {
+		if moved == nil {
 			continue
 		}
-		seenProjects[ref.Project.ID] = true
-		touchedProjects = append(touchedProjects, ref.Project)
-		touchedIDs = append(touchedIDs, ref.Project.ID)
-	}
-	touchedProjects = append(touchedProjects, destination)
-	touchedIDs = append(touchedIDs, destination.ID)
-
-	backups := make([]hierarchyProjectBackup, 0, len(touchedProjects))
-	for _, project := range touchedProjects {
-		backups = append(backups, captureHierarchyProject(project))
-	}
-	restore := func() {
-		for i := len(backups) - 1; i >= 0; i-- {
-			backups[i].restore()
-		}
-	}
-
-	planningMoves := make([]PlanningProjectMove, 0, len(seenMoved))
-	attachmentOps := make([]storage.AttachmentOp, 0, len(seenMoved))
-	movedCount := 0
-	for _, ref := range roots {
-		moveRes, moveErr := ref.Project.MoveTaskToProject(ref.Task, destination)
-		if moveErr != nil {
-			restore()
-			return BulkMoveResult{}, invalidInput("move", moveErr.Error())
-		}
-		movedCount += len(moveRes.MovedTasks)
-		for _, moved := range moveRes.MovedTasks {
-			if moved == nil {
-				continue
-			}
-			planningMoves = append(planningMoves, PlanningProjectMove{
-				TaskID: moved.ID, FromProjectID: ref.Project.ID, ToProjectID: destination.ID,
-			})
-			attachmentOps = append(attachmentOps, storage.AttachmentOp{
-				Kind:          storage.AttachmentMove,
-				Task:          moved,
-				SourceProject: ref.Project,
-				DestProject:   destination,
-			})
-		}
-	}
-
-	planningArtifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
-		Moves: planningMoves,
-	}, s.defaultedPlanningArtifacts(nil))
-	if err != nil {
-		restore()
-		return BulkMoveResult{}, err
-	}
-	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
-
-	commits := make([]projectCommit, 0, len(touchedProjects))
-	for _, project := range touchedProjects {
-		commits = append(commits, projectCommit{
-			project:          project,
-			expectedRevision: snap.Revision(project.ID),
-			base:             snap.Document(project.ID),
+		result.PlanningMoves = append(result.PlanningMoves, PlanningProjectMove{
+			TaskID: moved.ID, FromProjectID: source.ID, ToProjectID: destination.ID,
 		})
-	}
-	commits[0].artifacts = artifacts
-	commits[0].attachmentOps = attachmentOps
-
-	outcome, err := s.commitProjects(
-		commits,
-		"Move Tasks to Project",
-		fmt.Sprintf("%d tasks → %s", len(roots), destination.Slug),
-	)
-	if err != nil {
-		restore()
-		return BulkMoveResult{}, err
-	}
-	return BulkMoveResult{
-		MovedCount:        movedCount,
-		TouchedProjectIDs: touchedIDs,
-		TransactionID:     transactionIDAt(outcome.results, 0),
-	}, nil
-}
-
-// bulkMoveRoots drops a selected descendant when one of its ancestors is also
-// selected in the same project. The ancestor move already carries that whole
-// subtree, so executing the descendant again would be both redundant and
-// invalid after the first move.
-func bulkMoveRoots(refs []TaskRef) []TaskRef {
-	selected := make(map[TaskLocator]bool, len(refs))
-	for _, ref := range refs {
-		selected[TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID}] = true
-	}
-	roots := make([]TaskRef, 0, len(refs))
-	for _, ref := range refs {
-		ancestorSelected := false
-		seen := make(map[string]bool)
-		parentID := ref.Task.ParentID
-		for parentID != nil && !seen[*parentID] {
-			seen[*parentID] = true
-			if selected[TaskLocator{ProjectID: ref.Project.ID, TaskID: *parentID}] {
-				ancestorSelected = true
-				break
-			}
-			parent := ref.Project.GetTaskByID(*parentID)
-			if parent == nil {
-				break
-			}
-			parentID = parent.ParentID
-		}
-		if !ancestorSelected {
-			roots = append(roots, ref)
-		}
-	}
-	return roots
-}
-
-func (s *Service) moveToProject(taskID string, locator TaskLocator, destProjectID string, artifacts []storage.ArtifactChange) (MoveResult, error) {
-	if strings.TrimSpace(destProjectID) == "" {
-		return MoveResult{}, invalidInput("destination", "project id is required")
-	}
-	ref, snap, srcRev, err := s.loadTaskSelection(taskID, locator)
-	if err != nil {
-		return MoveResult{}, err
-	}
-	src := ref.Project
-	if src.ID == destProjectID {
-		return MoveResult{}, invalidInput("destination", "task is already in that project")
-	}
-	dest := snap.ProjectByID(destProjectID)
-	if dest == nil {
-		return MoveResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, destProjectID)
-	}
-	destRev := snap.Revision(dest.ID)
-	srcBackup := captureHierarchyProject(src)
-	destBackup := captureHierarchyProject(dest)
-	backups := []hierarchyProjectBackup{srcBackup, destBackup}
-	restore := func() {
-		for i := len(backups) - 1; i >= 0; i-- {
-			backups[i].restore()
-		}
-	}
-
-	moveRes, err := src.MoveTaskToProject(ref.Task, dest)
-	if err != nil {
-		restore()
-		return MoveResult{}, invalidInput("move", err.Error())
-	}
-	planningMoves := make([]PlanningProjectMove, 0, len(moveRes.MovedTasks))
-	for _, moved := range moveRes.MovedTasks {
-		if moved != nil {
-			planningMoves = append(planningMoves, PlanningProjectMove{
-				TaskID: moved.ID, FromProjectID: src.ID, ToProjectID: dest.ID,
-			})
-		}
-	}
-	planningArtifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
-		Moves: planningMoves,
-	}, s.defaultedPlanningArtifacts(nil))
-	if err != nil {
-		restore()
-		return MoveResult{}, err
-	}
-	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
-
-	// Relocate every moved task's attachment directory in the same transaction. The
-	// stable UUID is preserved across the move, so the destination metadata keeps
-	// referencing the same filenames; without the move op those files would be
-	// orphaned in the source project's tree. A move is a no-op when the task has no
-	// attachments directory (resolveAttachmentMove handles that).
-	attachmentOps := make([]storage.AttachmentOp, 0, len(moveRes.MovedTasks))
-	for _, mt := range moveRes.MovedTasks {
-		attachmentOps = append(attachmentOps, storage.AttachmentOp{
+		result.AttachmentOps = append(result.AttachmentOps, storage.AttachmentOp{
 			Kind:          storage.AttachmentMove,
-			Task:          mt,
-			SourceProject: src,
-			DestProject:   dest,
+			Task:          moved,
+			SourceProject: source,
+			DestProject:   destination,
 		})
 	}
-
-	commits := []projectCommit{
-		{project: src, expectedRevision: srcRev, base: ref.Base, artifacts: artifacts, attachmentOps: attachmentOps},
-		{project: dest, expectedRevision: destRev, base: snap.Document(dest.ID)},
-	}
-	outcome, err := s.commitProjects(commits, "Move Task to Project", fmt.Sprintf("#%d → %s", ref.Task.ShortID, dest.Slug))
-	if err != nil {
-		restore()
-		return MoveResult{}, err
-	}
-
-	return MoveResult{
-		MovedCount:    len(moveRes.MovedTasks),
-		TransactionID: transactionIDAt(outcome.results, 0),
-	}, nil
+	return result, nil
 }

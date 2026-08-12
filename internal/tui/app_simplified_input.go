@@ -50,6 +50,9 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		// A complete strategy consumes unknown root keys instead of allowing a
 		// retired legacy key or an abandoned chord to run in the view beneath it.
 		m.pendingChord = nil
+		if cmd := m.focusSearchProjectionRejection(sequence, ctx); cmd != nil {
+			return true, cmd
+		}
 		if cmd := m.entityScopedKeyRejection(sequence, ctx); cmd != nil {
 			return true, cmd
 		}
@@ -73,6 +76,24 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	default:
 		return true, func() tea.Msg { return typed }
 	}
+}
+
+// focusSearchProjectionRejection explains why the otherwise-bound Enter key
+// cannot replace a temporary search projection with Focus. Keep this at the
+// input seam: search deliberately makes the Focus descriptor inapplicable, so
+// the operation executor cannot provide the refusal after resolution fails.
+func (m *AppModel) focusSearchProjectionRejection(sequence []string, ctx CommandContext) tea.Cmd {
+	if len(sequence) != 1 ||
+		normalizeOperationKey(sequence[0]) != "enter" ||
+		m.crossOutliner == nil ||
+		!m.crossOutliner.hasSearchProjection() ||
+		ctx.Selection.Visual ||
+		ctx.Entity.HasChecklistCursor ||
+		!currentTaskIdentity(ctx).Valid() {
+		return nil
+	}
+	m.setWarningStatus("Focus is unavailable during search; press Esc to clear search first")
+	return defaultStatusTimeout()
 }
 
 // entityScopedKeyRejection explains a bound key that a non-task cursor turned

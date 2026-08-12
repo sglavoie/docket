@@ -23,7 +23,7 @@ actions have one direct binding, occasional task actions live only under
 | --- | --- |
 | Modes and Tab cycle | All → Inbox → Today → Next → Backlog → Due |
 | States | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
-| Task `Space` menu | Move Project, Set Parent, Checklist, Comments, Attachments, Delete |
+| Task `Space` menu | Comments, Attachments, Delete |
 | Configuration domains | `workspace` (lean catalog, exclusive regular contexts, and protected Unfiled ID), `planning` (Today and Next order), `machine` (dark/light theme only) |
 | Public CLI | `tt`, `doctor`, `conflict`, `workspace`, `completion`, `project export`, help, `--version` |
 | Global flags | `--data-dir`, `--no-color` |
@@ -33,7 +33,7 @@ The direct interaction grammar is:
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab`, `Shift+Tab` |
-| Navigation | `j`/Down, `k`/Up, `h`/Left, `l`/Right, Home, End, PageUp, PageDown, `Enter` |
+| Navigation | `j`/Down, `k`/Up, `h`/Left, `l`/Right, Home, End, PageUp, PageDown, `Enter` Focus, `Shift+Enter` Peek |
 | Capture and edit | `a`, `A`, `e`, `E`, `Ctrl+E` |
 | Workflow chord | `si`, `sb`, `sn`, `st`, `sg`, `sr`, `sw`, `sp`, `sm`, `sd`, `sc` |
 | Metadata | `!0`, `!1`–`!3`, `@`, `#`, `z`, `P` |

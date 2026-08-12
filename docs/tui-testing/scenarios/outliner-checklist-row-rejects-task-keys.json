@@ -51,7 +51,7 @@
     { "type": "key", "label": "Outdent has no item meaning", "key": "<" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Peek has no item meaning", "key": "enter" },
+    { "type": "key", "label": "Peek has no item meaning", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "capture never borrows an item cursor", "key": "a" },

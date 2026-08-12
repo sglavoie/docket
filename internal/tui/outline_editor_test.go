@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func outlineTestProject(t *testing.T) *models.Project {
@@ -192,7 +193,7 @@ func TestOutlineParseBuildsPlanLinesForNewAndEditedTasks(t *testing.T) {
 	if lines[2].Destination != "" {
 		t.Errorf("omitted destination became %q", lines[2].Destination)
 	}
-	if lines[0].Destination != app.CaptureDestinationDoing {
+	if lines[0].Destination != textgrammar.DestinationDoing {
 		t.Errorf("destination = %q, want doing", lines[0].Destination)
 	}
 }
@@ -293,6 +294,12 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 			buffer:  "Ship auth rewrite >2  [[tt:4f2a9c11]]",
 			line:    1,
 			message: "indentation sets parentage here; remove the >parent sigil",
+		},
+		{
+			name:    "project sigil",
+			buffer:  "Ship auth rewrite %other  [[tt:4f2a9c11]]",
+			line:    1,
+			message: "the outline buffer owns the project; remove the %project sigil",
 		},
 		{
 			name:   "unknown destination",

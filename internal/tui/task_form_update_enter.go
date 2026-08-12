@@ -57,7 +57,7 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 				ValidParents: parents,
 				CurrentID:    m.draft.parentID,
 				AllowNone:    true,
-				Source:       ViewTaskForm,
+				Source:       ViewTaskComposer,
 			}
 		}
 

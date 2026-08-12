@@ -24,7 +24,7 @@ func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 	if !ok || spec.Rows != 2 {
 		t.Fatalf("Peek guidance = (%+v, %v), want two-row profile", spec, ok)
 	}
-	if got := guidanceEntryText(spec); !strings.Contains(got, "Enter close Peek") || !strings.Contains(got, "Esc close Peek") {
+	if got := guidanceEntryText(spec); !strings.Contains(got, "Shift+Enter close Peek") || !strings.Contains(got, "Esc close Peek") {
 		t.Fatalf("Peek guidance = %q", got)
 	}
 
@@ -74,7 +74,7 @@ func TestOutlinerHeaderGuidanceDoesNotAdvertiseTaskWorkflow(t *testing.T) {
 	if !strings.Contains(got, "collapse") && !strings.Contains(got, "expand") {
 		t.Fatalf("header guidance omits its live fold action: %q", got)
 	}
-	for _, taskOnly := range []string{"w workflow", "! priority", "Enter peek"} {
+	for _, taskOnly := range []string{"w workflow", "! priority", "Shift+Enter peek"} {
 		if strings.Contains(got, taskOnly) {
 			t.Errorf("header guidance exposes task-only hint %q: %q", taskOnly, got)
 		}
@@ -136,15 +136,15 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			wantHint:    "Esc clear search",
 		},
 		{
-			name: "zoom empty",
+			name: "Focus empty",
 			configure: func(out *OutlinerModel) {
 				out.project = project
 				out.loadedProjects = []*models.Project{project}
-				out.zoomStack = []ZoomEntry{{TaskID: "missing"}}
+				out.focusStack = []FocusEntry{{TaskID: "missing"}}
 				out.rows = nil
 			},
-			wantMessage: "No tasks are visible in this zoom. Press Esc to zoom out.",
-			wantHint:    "Esc zoom out",
+			wantMessage: "No tasks are visible in this Focus. Press Esc to return.",
+			wantHint:    "Esc return",
 		},
 	}
 

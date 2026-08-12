@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // TestService_Capture_ExtendedFields exercises the capture-family surface the TUI
@@ -26,7 +27,7 @@ func TestService_Capture_ExtendedFields(t *testing.T) {
 		Priority:    2,
 		Tags:        []string{"keep", "drop"},
 		RemoveTags:  []string{"drop"},
-		Destination: app.CaptureDestinationDoing,
+		Destination: textgrammar.DestinationDoing,
 		Prepend:     true,
 	})
 	if err != nil {

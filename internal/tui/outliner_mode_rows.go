@@ -19,7 +19,7 @@ type OutlinerModeRow struct {
 }
 
 // OutlinerModeInput bundles the scoped data a canonical row strategy needs.
-// CandidateTasks optionally narrows eligibility to the current zoom projection;
+// CandidateTasks optionally narrows eligibility to the current focus projection;
 // a present project entry, including an empty one, is authoritative.
 type OutlinerModeInput struct {
 	Projects []*models.Project

@@ -1,13 +1,10 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/testutil"
 )
 
 func TestTaskForm_TabSwitchForward(t *testing.T) {
@@ -145,43 +142,6 @@ func TestTaskForm_HelpPaneHiddenDuringOverlay(t *testing.T) {
 	}
 }
 
-func TestTaskForm_EditTitle_ContainsShortID(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.ShortID = 42
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	view := m.View().Content
-	if !strings.Contains(view, "#42") {
-		t.Errorf("Edit view should contain '#42'; got:\n%s", view)
-	}
-	if !strings.Contains(view, "Edit Task") {
-		t.Errorf("Edit view should contain 'Edit Task'; got:\n%s", view)
-	}
-}
-
-func TestTaskForm_EditTitle_DirtyMarker(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.ShortID = 7
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	m.hasChanges = true
-	view := m.View().Content
-	expected := fmt.Sprintf("#%d*", task.ShortID)
-	if !strings.Contains(view, expected) {
-		t.Errorf("dirty Edit view should contain %q; got:\n%s", expected, view)
-	}
-}
-
 func TestTaskForm_EscWithoutChanges_EmitsBackMsg(t *testing.T) {
 	m := newTestTaskForm()
 	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEscape))
@@ -227,35 +187,6 @@ func TestTaskForm_ConfirmDiscard_NCancels(t *testing.T) {
 	}
 }
 
-func TestTaskForm_EditModeEscNoChanges_EmitsBackMsg(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-
-	if m.activeTab != formTabBasics || m.focusIndex != 0 {
-		t.Fatalf("expected focus on Basics/0, got tab=%d focus=%d", m.activeTab, m.focusIndex)
-	}
-	if m.hasChanges {
-		t.Fatal("hasChanges should be false initially in edit mode")
-	}
-
-	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEscape))
-	if cmd == nil {
-		t.Fatal("expected a Cmd from Esc without changes in edit mode, got nil")
-	}
-	msg := cmd()
-	if _, ok := msg.(BackMsg); !ok {
-		t.Errorf("expected BackMsg from Esc in edit mode with no changes, got %T", msg)
-	}
-	if m.confirmDiscard {
-		t.Error("confirmDiscard should be false when Esc is pressed in edit mode without changes")
-	}
-}
-
 func TestTaskForm_CreateModeEscWithTitle_ShowsConfirmDiscard(t *testing.T) {
 	m := newTestTaskForm()
 	m.titleInput.SetValue("Some title")
@@ -269,11 +200,5 @@ func TestTaskForm_ShouldCaptureEsc(t *testing.T) {
 	m := newTestTaskForm()
 	if !m.ShouldCaptureEsc() {
 		t.Error("TaskFormModel.ShouldCaptureEsc() should return true")
-	}
-}
-
-func TestTaskForm_ViewIDString(t *testing.T) {
-	if ViewTaskForm.String() != "TaskForm" {
-		t.Errorf("expected 'TaskForm', got %q", ViewTaskForm.String())
 	}
 }

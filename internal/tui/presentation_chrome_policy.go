@@ -56,7 +56,6 @@ func chromePolicyForPresentation(view PresentationID) (presentationChromePolicy,
 		ViewTaskAttachments,
 		ViewNotes,
 		ViewGlobalNotes,
-		ViewTaskForm,
 		ViewProjectHub:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeFullscreen,

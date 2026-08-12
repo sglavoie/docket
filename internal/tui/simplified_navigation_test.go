@@ -145,7 +145,7 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 	}
 }
 
-func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
+func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "parent")
 	task := project.Tasks[0]
@@ -169,18 +169,18 @@ func TestSimplifiedEnterTogglesPeekAtEveryWidth(t *testing.T) {
 			Context: app.operationCommandContext(),
 		})
 		if result.Err != nil || result.Message != nil {
-			t.Fatalf("width %d Enter result = message %T err %v", width, result.Message, result.Err)
+			t.Fatalf("width %d Shift+Enter result = message %T err %v", width, result.Message, result.Err)
 		}
 		if !app.crossOutliner.peekMode {
-			t.Fatalf("width %d Enter did not enable Peek", width)
+			t.Fatalf("width %d Shift+Enter did not enable Peek", width)
 		}
 		plain := ansi.Strip(app.crossOutliner.View().Content)
 		if !strings.Contains(plain, "Tags: #backend #security") {
-			t.Fatalf("width %d Enter Peek missing selected task tags:\n%s", width, plain)
+			t.Fatalf("width %d Shift+Enter Peek missing selected task tags:\n%s", width, plain)
 		}
 	}
-	if len(app.crossOutliner.crossZoomStack) != 0 || len(app.crossOutliner.zoomStack) != 0 {
-		t.Fatal("Enter unexpectedly changed task zoom")
+	if len(app.crossOutliner.crossFocusStack) != 0 || len(app.crossOutliner.focusStack) != 0 {
+		t.Fatal("Shift+Enter unexpectedly changed task Focus")
 	}
 }
 
@@ -397,18 +397,15 @@ func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 	}
 	m.confirm.Show("delete", "Delete?")
 	m.quickEdit.Enter(tasks[0], false)
-	m.crossQuickEditProject = m.loadedProjects[0]
 
 	m.resetToGlobalAll()
 
 	if m.confirm.IsActive() ||
-		m.quickEdit.IsActive() ||
-		m.crossQuickEditProject != nil {
+		m.quickEdit.IsActive() {
 		t.Fatalf(
-			"reset left inline state: confirm=%v edit=%v editProject=%v",
+			"reset left inline state: confirm=%v edit=%v",
 			m.confirm.IsActive(),
 			m.quickEdit.IsActive(),
-			m.crossQuickEditProject,
 		)
 	}
 }

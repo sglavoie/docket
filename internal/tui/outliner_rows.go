@@ -2,79 +2,105 @@ package tui
 
 import "github.com/sglavoie/tt/internal/models"
 
-// validateCrossZoomStack walks the cross-project zoom stack from top to bottom,
-// popping entries whose task no longer exists in their owning project. It
-// branches on CrossProjectZoomEntry.ProjectID to scope each lookup to the
-// correct project, preventing UUID collisions across projects from causing
-// incorrect resolution (per ac-d348683eb1a3e343887e804dbc6a719c).
-func (m *OutlinerModel) validateCrossZoomStack() {
-	if len(m.crossZoomStack) == 0 {
+// validateCrossFocusStack keeps only the contiguous prefix that still describes
+// one real ancestry branch in one owning project. Existence alone is not
+// sufficient: an inline edit can reparent a nested Focus root while leaving its
+// task ID alive, and keeping that frame would escape the branch above it.
+func (m *OutlinerModel) validateCrossFocusStack() {
+	if len(m.crossFocusStack) == 0 {
 		return
 	}
 
-	taskExists := func(entry CrossProjectZoomEntry) bool {
-		for _, proj := range m.loadedProjects {
-			if proj.ID == entry.ProjectID {
-				return proj.GetTaskByID(entry.TaskID) != nil
-			}
+	projects := make(map[string]*models.Project, len(m.loadedProjects))
+	for _, project := range m.loadedProjects {
+		if project != nil {
+			projects[project.ID] = project
 		}
-		return false
 	}
 
-	validDepth := -1
-	for i := len(m.crossZoomStack) - 1; i >= 0; i-- {
-		if taskExists(m.crossZoomStack[i]) {
-			validDepth = i
+	invalidIndex := len(m.crossFocusStack)
+	var previous *models.Task
+	previousProjectID := ""
+	for index, entry := range m.crossFocusStack {
+		project := projects[entry.ProjectID]
+		task := (*models.Task)(nil)
+		if project != nil {
+			task = project.GetTaskByID(entry.TaskID)
+		}
+		if task == nil || (index > 0 &&
+			(entry.ProjectID != previousProjectID || !focusTaskDescendsFrom(project, task, previous.ID))) {
+			invalidIndex = index
 			break
 		}
+		previous = task
+		previousProjectID = entry.ProjectID
 	}
-
-	if validDepth == len(m.crossZoomStack)-1 {
+	if invalidIndex == len(m.crossFocusStack) {
 		return
 	}
 
-	if validDepth < 0 {
-		m.crossZoomStack = m.crossZoomStack[:0]
-		m.cursor = 0
-		m.zoomNotice = "Zoom target was removed — returned to root"
-		return
-	}
-
-	m.cursor = m.crossZoomStack[validDepth].CursorIndex
-	m.crossZoomStack = m.crossZoomStack[:validDepth+1]
-	m.zoomNotice = "Zoom target was removed — returned to parent"
+	restore := m.crossFocusStack[invalidIndex]
+	m.cursor = restore.CursorIndex
+	m.viewScrollOffset = restore.ScrollOffset
+	m.crossFocusStack = m.crossFocusStack[:invalidIndex]
+	m.setFocusRecoveryNotice(invalidIndex)
 }
 
-// validateZoomStack walks the zoom stack from top to bottom, popping entries
-// whose task no longer exists in the project. If any entries were removed, it
-// sets a transient notice so the user knows their zoom target was deleted.
-func (m *OutlinerModel) validateZoomStack() {
-	if m.project == nil || len(m.zoomStack) == 0 {
+// validateFocusStack applies the same contiguous-branch rule to the
+// single-project stack.
+func (m *OutlinerModel) validateFocusStack() {
+	if m.project == nil || len(m.focusStack) == 0 {
 		return
 	}
 
-	validDepth := -1
-	for i := len(m.zoomStack) - 1; i >= 0; i-- {
-		if m.project.GetTaskByID(m.zoomStack[i].TaskID) != nil {
-			validDepth = i
+	invalidIndex := len(m.focusStack)
+	var previous *models.Task
+	for index, entry := range m.focusStack {
+		task := m.project.GetTaskByID(entry.TaskID)
+		if task == nil || (index > 0 && !focusTaskDescendsFrom(m.project, task, previous.ID)) {
+			invalidIndex = index
 			break
 		}
+		previous = task
 	}
-
-	if validDepth == len(m.zoomStack)-1 {
+	if invalidIndex == len(m.focusStack) {
 		return
 	}
 
-	if validDepth < 0 {
-		m.zoomStack = m.zoomStack[:0]
-		m.cursor = 0
-		m.zoomNotice = "Zoom target was removed — returned to root"
-		return
-	}
+	restore := m.focusStack[invalidIndex]
+	m.cursor = restore.CursorIndex
+	m.viewScrollOffset = restore.ScrollOffset
+	m.focusStack = m.focusStack[:invalidIndex]
+	m.setFocusRecoveryNotice(invalidIndex)
+}
 
-	m.cursor = m.zoomStack[validDepth].CursorIndex
-	m.zoomStack = m.zoomStack[:validDepth+1]
-	m.zoomNotice = "Zoom target was removed — returned to parent"
+// focusTaskDescendsFrom follows canonical ParentID links rather than transient
+// projection pointers. It therefore stays correct after a reload or reparent.
+func focusTaskDescendsFrom(project *models.Project, task *models.Task, ancestorID string) bool {
+	if project == nil || task == nil || ancestorID == "" {
+		return false
+	}
+	seen := make(map[string]bool)
+	for current := task; current != nil && current.ParentID != nil; {
+		parentID := *current.ParentID
+		if parentID == ancestorID {
+			return true
+		}
+		if seen[parentID] {
+			return false
+		}
+		seen[parentID] = true
+		current = project.GetTaskByID(parentID)
+	}
+	return false
+}
+
+func (m *OutlinerModel) setFocusRecoveryNotice(retainedDepth int) {
+	destination := "root"
+	if retainedDepth > 0 {
+		destination = "parent"
+	}
+	m.focusNotice = "Focus target left this branch — returned to " + destination
 }
 
 // rebuildRows flattens the current task tree into the rows slice, applying the
@@ -97,7 +123,7 @@ func (m *OutlinerModel) rebuildRows() {
 	m.OpenAtTask = nil
 	m.rows = m.rows[:0]
 
-	m.validateZoomStack()
+	m.validateFocusStack()
 
 	m.buildCanonicalModeRows()
 
@@ -169,7 +195,7 @@ func (m *OutlinerModel) clampCursor() {
 }
 
 // contentHeight returns the number of task rows visible on screen after the
-// one-row operational title. Zoom and scope context are part of that title and
+// one-row operational title. Focus and scope context are part of that title and
 // never consume a second breadcrumb row.
 func (m *OutlinerModel) contentHeight() int {
 	height := m.height - 1

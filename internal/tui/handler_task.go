@@ -35,11 +35,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// Move operations (already in separate file)
-	if handled, cmd := m.handleTaskMoveMessages(msg); handled {
-		return handled, cmd
-	}
-
 	return false, nil
 }
 
@@ -59,19 +54,12 @@ func (m *AppModel) handleTaskContentMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case OutlineEditedMsg:
 		return true, m.handleOutlineEdited(msg)
 
-	}
-	return false, nil
-}
+	case TaskLineEditedMsg:
+		return true, m.handleTaskLineEdited(msg)
 
-// handleTaskMoveMessages handles task move messages.
-// Returns true if the message was handled.
-func (m *AppModel) handleTaskMoveMessages(msg tea.Msg) (bool, tea.Cmd) {
-	switch msg := msg.(type) {
-	case MoveTaskToProjectMsg:
-		return m.handleMoveTaskToProject(msg)
+	case TaskLineEditFailedMsg:
+		return true, m.handleTaskLineEditFailed(msg)
 
-	case TaskMovedToProjectMsg:
-		return m.handleTaskMovedToProject(msg)
 	}
 	return false, nil
 }

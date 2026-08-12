@@ -69,7 +69,7 @@ func TestScopeWideSearchRanksFieldsFuzzyScoreAndStableSourceOrder(t *testing.T) 
 	project := primaryRowsProject("alpha", titleWeak, metadataFirst, metadataTie, titleStrong)
 	project.Slug = "alpha"
 
-	matches := searchProjectionMatches([]*models.Project{project}, "needle")
+	matches := searchProjectionMatchesWithin([]*models.Project{project}, "needle", nil)
 	got := searchMatchTaskIDs(matches)
 	want := []string{titleStrong.ID, titleWeak.ID, metadataFirst.ID, metadataTie.ID}
 	if !slices.Equal(got, want) {
@@ -80,10 +80,10 @@ func TestScopeWideSearchRanksFieldsFuzzyScoreAndStableSourceOrder(t *testing.T) 
 	exact.ShortID = 7
 	exact.Title = "No shared words"
 	project.Tasks = append(project.Tasks, exact)
-	if got := searchMatchTaskIDs(searchProjectionMatches([]*models.Project{project}, "alpha#7")); !slices.Equal(got, []string{exact.ID}) {
+	if got := searchMatchTaskIDs(searchProjectionMatchesWithin([]*models.Project{project}, "alpha#7", nil)); !slices.Equal(got, []string{exact.ID}) {
 		t.Fatalf("exact alpha#7 lookup = %v, want %s", got, exact.ID)
 	}
-	if got := searchProjectionMatches([]*models.Project{project}, "alpha#999"); len(got) != 0 {
+	if got := searchProjectionMatchesWithin([]*models.Project{project}, "alpha#999", nil); len(got) != 0 {
 		t.Fatalf("missing exact qualifier returned %v", searchMatchTaskIDs(got))
 	}
 }

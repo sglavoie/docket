@@ -15,7 +15,7 @@
     { "type": "assert", "assert": "contains", "value": "Bulk Actions · 2 selected" },
 
     { "type": "assert", "assert": "contains", "value": "Delete" },
-    { "type": "assert", "assert": "contains", "value": "Move Project" },
+    { "type": "assert", "assert": "not_contains", "value": "Move Project" },
 
     { "type": "assert", "label": "metadata reaches a selection through its direct key, not a bulk row", "assert": "not_contains", "value": "Set State" },
     { "type": "assert", "assert": "not_contains", "value": "Set Priority" },

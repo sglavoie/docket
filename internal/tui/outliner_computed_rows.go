@@ -62,7 +62,7 @@ type recentModeTask struct {
 // orderedModeTasks collects the in-scope candidate tasks in the caller's
 // authoritative project-catalog order while retaining each project's stable
 // document order as an explicit deterministic tie-break. CandidateTasks
-// optionally narrows a zoomed scope.
+// optionally narrows a focused scope.
 func orderedModeTasks(in OutlinerModeInput) []orderedModeTask {
 	projects := slices.Clone(in.Projects)
 

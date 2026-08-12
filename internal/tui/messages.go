@@ -41,7 +41,7 @@ package tui
 //
 // Examples:
 //   - ProjectCreatedMsg, ProjectUpdatedMsg
-//   - TaskCreatedMsg, TaskUpdatedMsg, TaskDeletedMsg
+//   - TaskCreatedMsg, TaskDeletedMsg
 //   - CommentAddedMsg, CommentEditedMsg, CommentDeletedMsg
 //
 // # Select Pattern (Navigation)

@@ -2,17 +2,27 @@ package tui
 
 import (
 	"fmt"
-	"strings"
+	"slices"
 	"time"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-// quickEditResult holds the parsed result of inline task editing.
+type quickEditParentMode uint8
+
+const (
+	quickEditParentPreserve quickEditParentMode = iota
+	quickEditParentRoot
+	quickEditParentSet
+)
+
+// quickEditResult is a validated patch plus its pure, overlaid preview. Omitted
+// fields preserve the current task. Structural references are resolved against
+// the effective project, but neither project nor task is mutated by parsing.
 type quickEditResult struct {
-	title    string
-	titleSet bool
+	title string
 
 	priority    int
 	prioritySet bool
@@ -24,166 +34,482 @@ type quickEditResult struct {
 	dueDateSet   bool
 	dueDateClear bool
 
-	state    models.WorkflowState
-	stateSet bool
+	destination    textgrammar.Destination
+	destinationSet bool
+	state          models.WorkflowState
+	stateSet       bool
+
+	targetProject *models.Project
+	parentMode    quickEditParentMode
+	parent        *models.Task
+
+	// preview is a detached task value reflecting every accepted root patch.
+	// Descendants and workspace collections are deliberately never rewritten.
+	preview models.Task
 }
 
-// parseQuickEdit parses inline task edits through the shared metadata grammar.
-func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*quickEditResult, error) {
-	result, errMsg := parseQuickEditShared(input, project, true)
+// parseQuickEdit parses and validates inline task edits. The optional project
+// slice supplies exact-slug cross-project resolution without widening legacy
+// callers that only edit within one project.
+func parseQuickEdit(input string, task *models.Task, project *models.Project, projectSets ...[]*models.Project) (*quickEditResult, error) {
+	result, errMsg := parseQuickEditShared(input, task, project, flattenProjectSets(project, projectSets), true)
 	if errMsg != "" {
 		return nil, fmt.Errorf("%s", errMsg)
 	}
 	return result, nil
 }
 
-// parseQuickEditForPreview parses input without failing, for live preview.
-func parseQuickEditForPreview(input string, _ *models.Task, project *models.Project) (*quickEditResult, string) {
-	return parseQuickEditShared(input, project, false)
+// parseQuickEditForPreview returns the same pure overlay as strict parsing while
+// preserving the first validation error for live feedback.
+func parseQuickEditForPreview(input string, task *models.Task, project *models.Project, projectSets ...[]*models.Project) (*quickEditResult, string) {
+	return parseQuickEditShared(input, task, project, flattenProjectSets(project, projectSets), false)
 }
 
-func parseQuickEditShared(input string, _ *models.Project, strict bool) (*quickEditResult, string) {
-	parsed := textgrammar.Parse(input, textgrammar.SurfaceEdit)
-	result := &quickEditResult{}
-	var errMsg string
-	setError := func(message string) bool {
-		if errMsg == "" {
-			errMsg = message
+func flattenProjectSets(current *models.Project, sets [][]*models.Project) []*models.Project {
+	projects := []*models.Project{}
+	if len(sets) > 0 {
+		projects = append(projects, sets[0]...)
+	}
+	if current != nil && !slices.ContainsFunc(projects, func(candidate *models.Project) bool {
+		return candidate != nil && candidate.ID == current.ID
+	}) {
+		projects = append(projects, current)
+	}
+	return projects
+}
+
+func parseQuickEditShared(input string, task *models.Task, project *models.Project, allProjects []*models.Project, strict bool) (*quickEditResult, string) {
+	parser := quickEditParser{
+		parsed:           textgrammar.Parse(input, textgrammar.SurfaceEdit),
+		result:           &quickEditResult{parentMode: quickEditParentPreserve},
+		task:             task,
+		project:          project,
+		allProjects:      allProjects,
+		effectiveProject: project,
+		strict:           strict,
+	}
+	if parser.applyDiagnostics() || parser.applyPriority() || parser.applyTags() ||
+		parser.applyDueDate() || parser.applyDestination() || parser.applyProject() ||
+		parser.applyParent() {
+		return parser.result, parser.errMsg
+	}
+	return parser.finish()
+}
+
+type quickEditParser struct {
+	parsed           textgrammar.Result
+	result           *quickEditResult
+	task             *models.Task
+	project          *models.Project
+	allProjects      []*models.Project
+	effectiveProject *models.Project
+	strict           bool
+	errMsg           string
+}
+
+func (p *quickEditParser) setError(message string) bool {
+	if p.errMsg == "" {
+		p.errMsg = message
+	}
+	return p.strict
+}
+
+func (p *quickEditParser) applyDiagnostics() bool {
+	for _, diagnostic := range p.parsed.Diagnostics {
+		if p.setError(diagnostic.Message) {
+			return true
 		}
-		return strict
 	}
+	return false
+}
 
-	if tokens := parsed.TokensFor(textgrammar.FieldPriority); len(tokens) > 0 {
-		if tokens[0].Value == "0" {
-			result.priority = models.PriorityUnset
-			result.prioritySet = true
-		} else {
-			values, ok := textgrammar.ParsePriority(tokens[0].Value, false)
-			if !ok {
-				if setError(fmt.Sprintf("invalid priority: %s (use 0-3)", tokens[0].Value)) {
-					return result, errMsg
-				}
-			} else {
-				result.priority = values[0]
-				result.prioritySet = true
-			}
-		}
+func (p *quickEditParser) applyPriority() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldPriority)
+	if len(tokens) == 0 {
+		return false
 	}
+	token := tokens[0]
+	if token.Value == "0" {
+		p.result.priority = models.PriorityUnset
+		p.result.prioritySet = true
+		return false
+	}
+	values, ok := textgrammar.ParsePriority(token.Value, false)
+	if !ok {
+		return p.setError(textgrammar.InvalidPriorityError(token.Value).Error())
+	}
+	p.result.priority = values[0]
+	p.result.prioritySet = true
+	return false
+}
 
-	for _, token := range parsed.TokensFor(textgrammar.FieldRemoveTag) {
-		result.tagsToRemove = append(result.tagsToRemove, token.Value)
-	}
-	for _, token := range parsed.TokensFor(textgrammar.FieldTag) {
-		result.tagsToAdd = append(result.tagsToAdd, token.Value)
-	}
-
-	if tokens := aliasFirst(parsed.TokensFor(textgrammar.FieldDue), "@"); len(tokens) > 0 {
-		token := tokens[len(tokens)-1]
-		if token.Value == "0" {
-			result.dueDateClear = true
-			result.dueDateSet = true
-		} else {
-			date, err := ParseDate(token.Value)
-			if err != nil {
-				if setError(fmt.Sprintf("invalid date: %s", token.Value)) {
-					return result, errMsg
-				}
-			} else {
-				result.dueDate = &date
-				result.dueDateSet = true
-			}
-		}
-	}
-
-	for _, token := range aliasFirst(parsed.TokensFor(textgrammar.FieldState), "$") {
-		match, ok := textgrammar.ParseState(textgrammar.SurfaceEdit, token.Value)
-		if !ok {
-			if setError(textgrammar.InvalidStateError(token.Value).Error()) {
-				return result, errMsg
+func (p *quickEditParser) applyTags() bool {
+	for _, token := range p.parsed.TokensFor(textgrammar.FieldRemoveTag) {
+		tag, err := models.NormalizeTaskTag(token.Value)
+		if err != nil {
+			if p.setError(fmt.Sprintf("invalid tag -#%s: %s", token.Value, err)) {
+				return true
 			}
 			continue
 		}
-		result.state = match.States[0]
-		result.stateSet = true
+		p.result.tagsToRemove = appendUnique(p.result.tagsToRemove, tag)
 	}
-
-	result.title = parsed.Text
-	result.titleSet = true
-	if result.title == "" && errMsg == "" {
-		errMsg = "task title cannot be empty"
+	for _, token := range p.parsed.TokensFor(textgrammar.FieldTag) {
+		tag, err := models.NormalizeTaskTag(token.Value)
+		if err != nil {
+			if p.setError(fmt.Sprintf("invalid tag #%s: %s", token.Value, err)) {
+				return true
+			}
+			continue
+		}
+		if slices.Contains(p.result.tagsToRemove, tag) {
+			if p.setError(fmt.Sprintf("conflicting tag patch: #%s and -#%s", tag, tag)) {
+				return true
+			}
+			continue
+		}
+		p.result.tagsToAdd = appendUnique(p.result.tagsToAdd, tag)
 	}
-	return result, errMsg
+	return false
 }
 
-// applyQuickEdit applies parsed changes atomically in memory after validating
-// the exact canonical state transition.
-func applyQuickEdit(task *models.Task, project *models.Project, result *quickEditResult) string {
-	targetState, hasTargetState := result.state, result.stateSet
-	if hasTargetState {
-		if msg := models.CanTransitionState(task.State(), targetState); msg != "" {
-			return msg
+func (p *quickEditParser) applyDueDate() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldDue)
+	if len(tokens) == 0 {
+		return false
+	}
+	token := tokens[0]
+	p.result.dueDateSet = true
+	if token.Value == "0" {
+		p.result.dueDateClear = true
+		return false
+	}
+	date, err := ParseDate(token.Value)
+	if err != nil {
+		return p.setError(fmt.Sprintf("invalid date: %s", token.Value))
+	}
+	p.result.dueDate = &date
+	return false
+}
+
+func (p *quickEditParser) applyDestination() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldDestination)
+	if len(tokens) == 0 {
+		return false
+	}
+	destination, ok := textgrammar.ParseDestination(tokens[0].Value)
+	if !ok {
+		return p.setError(textgrammar.InvalidDestinationError(tokens[0].Value).Error())
+	}
+	p.result.destination = destination
+	p.result.destinationSet = true
+	p.result.state = destination.WorkflowState()
+	p.result.stateSet = true
+	return false
+}
+
+func (p *quickEditParser) applyProject() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldProject)
+	if len(tokens) == 0 {
+		return false
+	}
+	target := resolveProject(tokens[0].Value, p.allProjects)
+	if target == nil {
+		return p.setError(fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value))
+	}
+	p.result.targetProject = target
+	p.effectiveProject = target
+	// A project move without an explicit parent always lands at root.
+	p.result.parentMode = quickEditParentRoot
+	return false
+}
+
+func (p *quickEditParser) applyParent() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldParent)
+	if len(tokens) == 0 {
+		return false
+	}
+	token := tokens[0]
+	if token.Value == "0" {
+		p.result.parentMode = quickEditParentRoot
+		return false
+	}
+	parent, err := resolveParent(token.Value, p.effectiveProject)
+	if err != nil {
+		return p.setError(err.Error())
+	}
+	if parent == nil {
+		return p.setError(fmt.Sprintf("parent not found: %q in project %q", token.Value, projectLabel(p.effectiveProject)))
+	}
+	if reason := invalidQuickEditParent(p.task, p.project, p.effectiveProject, parent); reason != "" {
+		return p.setError(reason)
+	}
+	p.result.parentMode = quickEditParentSet
+	p.result.parent = parent
+	return false
+}
+
+func (p *quickEditParser) finish() (*quickEditResult, string) {
+	p.result.title = p.parsed.Text
+	if err := models.ValidateTaskTitle(p.result.title); err != nil {
+		p.setError(err.Error())
+	}
+	if p.task == nil {
+		p.setError("task is required for inline edit")
+	}
+	if p.project == nil || p.task == nil || (p.project.Tasks != nil && p.project.GetTaskByID(p.task.ID) != p.task) {
+		p.setError("edited task is stale or is not in the source project")
+	}
+	if p.errMsg == "" {
+		if err := buildQuickEditPreview(p.result, p.task, p.project); err != nil {
+			p.setError(err.Error())
 		}
 	}
+	return p.result, p.errMsg
+}
 
-	project.MutateTask(task.ID, func(t *models.Task) {
-		if result.titleSet && result.title != "" && models.ValidateTaskTitle(result.title) == nil {
-			t.Title = result.title
+func appendUnique(values []string, value string) []string {
+	if !slices.Contains(values, value) {
+		return append(values, value)
+	}
+	return values
+}
+
+func projectLabel(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	if project.Slug != "" {
+		return project.Slug
+	}
+	return project.Name
+}
+
+// validQuickEditParents is also the dynamic completion source for the row
+// editor: it derives candidates from the effective project and applies the same
+// cycle and depth checks as strict parsing.
+func validQuickEditParents(task *models.Task, source, effective *models.Project) []*models.Task {
+	if effective == nil {
+		return nil
+	}
+	result := make([]*models.Task, 0, len(effective.Tasks))
+	for _, candidate := range effective.Tasks {
+		if candidate == nil || candidate.IsComplete() {
+			continue
 		}
-		if result.prioritySet {
-			t.Priority = result.priority
+		if invalidQuickEditParent(task, source, effective, candidate) == "" {
+			result = append(result, candidate)
 		}
-		for _, tag := range result.tagsToRemove {
-			t.RemoveTag(tag)
+	}
+	return result
+}
+
+// quickEditParentCandidates resolves the effective project from the current
+// draft before producing parent completion candidates. It intentionally ignores
+// the draft's parent token: completion is about the choices that may replace it.
+func quickEditParentCandidates(input string, task *models.Task, source *models.Project, allProjects []*models.Project) ([]*models.Task, string) {
+	parsed := textgrammar.Parse(input, textgrammar.SurfaceEdit)
+	for _, diagnostic := range parsed.Diagnostics {
+		if diagnostic.Field == textgrammar.FieldProject {
+			return nil, diagnostic.Message
 		}
-		for _, tag := range result.tagsToAdd {
-			t.AddTag(tag)
+	}
+	effective := source
+	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
+		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		if effective == nil {
+			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
 		}
-		if result.dueDateSet {
-			if result.dueDateClear {
-				t.DueDate = nil
-			} else {
-				t.DueDate = result.dueDate
-			}
-		}
-		if hasTargetState {
-			_ = t.ApplyStateTransition(targetState)
-		}
-	})
+	}
+	return validQuickEditParents(task, source, effective), ""
+}
+
+func invalidQuickEditParent(task *models.Task, source, effective *models.Project, parent *models.Task) string {
+	if task == nil || source == nil || effective == nil || parent == nil {
+		return "task and parent must belong to loaded projects"
+	}
+	if effective.GetTaskByID(parent.ID) != parent {
+		return fmt.Sprintf("parent #%d is stale or not in project %q", parent.ShortID, projectLabel(effective))
+	}
+	if parent.ID == task.ID {
+		return "task cannot be its own parent"
+	}
+	if descendantIDs(task, source)[parent.ID] {
+		return fmt.Sprintf("parent #%d is inside the edited task's subtree", parent.ShortID)
+	}
+	parentDepth, err := hierarchyDepth(effective, parent.ID)
+	if err != nil {
+		return err.Error()
+	}
+	height, err := subtreeHeight(source, task.ID)
+	if err != nil {
+		return err.Error()
+	}
+	if parentDepth+1+height > models.MaxNestingDepth {
+		return fmt.Sprintf("parent #%d would make the subtree exceed maximum nesting depth of %d levels", parent.ShortID, models.MaxNestingDepth)
+	}
 	return ""
 }
 
-// renderQuickEditPreview renders canonical metadata chips for changed fields.
-func renderQuickEditPreview(result *quickEditResult, original *quickEditResult) string {
-	if result == nil {
-		return ""
+func descendantIDs(task *models.Task, project *models.Project) map[string]bool {
+	result := map[string]bool{}
+	if task == nil || project == nil {
+		return result
 	}
+	children := make(map[string][]string)
+	for _, candidate := range project.Tasks {
+		if candidate != nil && candidate.ParentID != nil {
+			children[*candidate.ParentID] = append(children[*candidate.ParentID], candidate.ID)
+		}
+	}
+	var walk func(string)
+	walk = func(id string) {
+		for _, child := range children[id] {
+			if result[child] {
+				continue
+			}
+			result[child] = true
+			walk(child)
+		}
+	}
+	walk(task.ID)
+	return result
+}
 
-	var parts []string
-	if result.prioritySet && result.priority != original.priority {
-		parts = append(parts, fmt.Sprintf("!%d", result.priority))
+func hierarchyDepth(project *models.Project, taskID string) (int, error) {
+	depth := 0
+	seen := map[string]bool{}
+	for taskID != "" {
+		if seen[taskID] {
+			return 0, fmt.Errorf("task %q has a circular parent reference", taskID)
+		}
+		seen[taskID] = true
+		task := project.GetTaskByID(taskID)
+		if task == nil {
+			return 0, fmt.Errorf("task %q is missing from project %q", taskID, projectLabel(project))
+		}
+		if task.ParentID == nil {
+			return depth, nil
+		}
+		depth++
+		taskID = *task.ParentID
 	}
-	for _, tag := range result.tagsToAdd {
-		parts = append(parts, "+#"+tag)
+	return depth, nil
+}
+
+func subtreeHeight(project *models.Project, taskID string) (int, error) {
+	children := make(map[string][]string)
+	for _, task := range project.Tasks {
+		if task != nil && task.ParentID != nil {
+			children[*task.ParentID] = append(children[*task.ParentID], task.ID)
+		}
+	}
+	var walk func(string, map[string]bool) (int, error)
+	walk = func(id string, visiting map[string]bool) (int, error) {
+		if visiting[id] {
+			return 0, fmt.Errorf("task %q has a circular child reference", id)
+		}
+		visiting[id] = true
+		defer delete(visiting, id)
+		height := 0
+		for _, child := range children[id] {
+			childHeight, err := walk(child, visiting)
+			if err != nil {
+				return 0, err
+			}
+			height = max(height, childHeight+1)
+		}
+		return height, nil
+	}
+	return walk(taskID, map[string]bool{})
+}
+
+func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *models.Project) error {
+	preview := *task
+	preview.Tags = slices.Clone(task.Tags)
+	preview.Children = slices.Clone(task.Children)
+	preview.Comments = slices.Clone(task.Comments)
+	preview.Attachments = slices.Clone(task.Attachments)
+	preview.Checklist = slices.Clone(task.Checklist)
+	preview.Title = result.title
+	if result.prioritySet {
+		preview.Priority = result.priority
 	}
 	for _, tag := range result.tagsToRemove {
-		parts = append(parts, "-#"+tag)
+		preview.Tags = slices.DeleteFunc(preview.Tags, func(existing string) bool {
+			normalized, err := models.NormalizeTaskTag(existing)
+			return err == nil && normalized == tag
+		})
+	}
+	for _, tag := range result.tagsToAdd {
+		if !preview.HasTag(tag) {
+			preview.Tags = append(preview.Tags, tag)
+		}
 	}
 	if result.dueDateSet {
+		preview.DueDate = result.dueDate
 		if result.dueDateClear {
-			parts = append(parts, "@clear")
-		} else if result.dueDate != nil {
-			parts = append(parts, "@"+result.dueDate.Format("Jan 2"))
+			preview.DueDate = nil
 		}
 	}
-	if result.stateSet && result.state != original.state {
-		parts = append(parts, "$"+result.state.String())
+	switch result.parentMode {
+	case quickEditParentRoot:
+		preview.ParentID = nil
+		preview.Parent = nil
+	case quickEditParentSet:
+		parentID := result.parent.ID
+		preview.ParentID = &parentID
+		preview.Parent = result.parent
+	case quickEditParentPreserve:
 	}
+	if result.destinationSet {
+		switch result.destination {
+		case textgrammar.DestinationToday:
+			_, _, err := app.ApplyPlanningActionToTask(&preview, project.ID, app.PlanningAddToday, time.Now())
+			if err != nil {
+				return err
+			}
+		case textgrammar.DestinationNext:
+			_, _, err := app.ApplyPlanningActionToTask(&preview, project.ID, app.PlanningAddNext, time.Now())
+			if err != nil {
+				return err
+			}
+		case textgrammar.DestinationBacklog:
+			_, _, err := app.ApplyPlanningActionToTask(&preview, project.ID, app.PlanningBacklog, time.Now())
+			if err != nil {
+				return err
+			}
+		default:
+			if preview.State() != result.state {
+				if reason := models.CanTransitionState(preview.State(), result.state); reason != "" {
+					return fmt.Errorf("%s", reason)
+				}
+				if result.state.IsTerminal() && hasIncompleteDirectChildren(task, project) {
+					return fmt.Errorf("task #%d has incomplete children and cannot move to %s", task.ShortID, result.state)
+				}
+				if err := preview.ApplyStateTransition(result.state); err != nil {
+					return err
+				}
+			}
+		}
+	} else if result.stateSet && preview.State() != result.state {
+		if reason := models.CanTransitionState(preview.State(), result.state); reason != "" {
+			return fmt.Errorf("%s", reason)
+		}
+		if err := preview.ApplyStateTransition(result.state); err != nil {
+			return err
+		}
+	}
+	result.state = preview.State()
+	result.preview = preview
+	return nil
+}
 
-	if len(parts) == 0 {
-		if result.titleSet && result.title != original.title {
-			return "(title changed)"
+func hasIncompleteDirectChildren(task *models.Task, project *models.Project) bool {
+	for _, candidate := range project.Tasks {
+		if candidate != nil && candidate.ParentID != nil && *candidate.ParentID == task.ID && !candidate.IsTerminalState() {
+			return true
 		}
-		return "(no changes)"
 	}
-	return "-> " + strings.Join(parts, " ")
+	return false
 }

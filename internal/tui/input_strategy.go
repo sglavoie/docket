@@ -233,7 +233,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// checklist-first: shared-key resolution takes the first applicable
 			// descriptor, and only one of each pair applies to any given cursor.
 			{OperationID: operationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "item", SharedKey: true},
-			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "title", SharedKey: true},
+			{OperationID: operationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "edit", SharedKey: true},
 			{OperationID: operationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
 			{OperationID: operationCoreExternalEditor, Keys: []string{"ctrl+e"}, DisplayKey: "Ctrl+E", FooterRank: 21, FooterLabel: "editor"},
 			{OperationID: operationCoreOutlineEditor, Keys: []string{"O"}, DisplayKey: "O", FooterRank: 23, FooterLabel: "outline"},
@@ -263,7 +263,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K", SharedKey: true},
 			{OperationID: operationTaskOutdent, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: operationTaskIndent, Keys: []string{">"}, DisplayKey: ">"},
-			{OperationID: operationCorePeek, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "peek"},
+			{OperationID: operationCoreFocusSubtree, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "focus", SharedKey: true},
+			{OperationID: operationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open", SharedKey: true},
+			{OperationID: operationCorePeek, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter", FooterRank: 10, FooterLabel: "peek"},
 			{OperationID: operationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 10, FooterLabel: "search"},
 			{OperationID: operationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 7, FooterLabel: "select"},
 			{OperationID: operationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
@@ -614,12 +616,13 @@ func (registry *OperationRegistry) InputPrefixRefusedOnChecklistRow(
 	return node != nil && walk(node)
 }
 
-// InputCategoryForPrefix returns the category every operation still reachable
-// from a key path shares, whether or not any of them is currently applicable. It
-// is how a refused key still names what it needed, including a chord prefix
-// abandoned because its whole subtree turned off. A path that ends nowhere, or
-// whose reachable operations disagree, reports false and stays silent rather
-// than guessing at a sentence.
+// InputCategoryForPrefix returns the target-rejection category every operation
+// still reachable from a key path shares, whether or not any of them is currently
+// applicable. It is how a refused key still names what it needed, including a
+// navigation operation that targets a task and a chord prefix abandoned because
+// its whole subtree turned off. A path that ends nowhere, or whose reachable
+// operations disagree, reports false and stays silent rather than guessing at a
+// sentence.
 func (registry *OperationRegistry) InputCategoryForPrefix(
 	id InputStrategyID,
 	sequence []string,
@@ -636,10 +639,11 @@ func (registry *OperationRegistry) InputCategoryForPrefix(
 			if !exists {
 				return false
 			}
-			if resolved && descriptor.Category != category {
+			rejectionCategory := operationTargetRejectionCategory(descriptor)
+			if resolved && rejectionCategory != category {
 				return false
 			}
-			category, resolved = descriptor.Category, true
+			category, resolved = rejectionCategory, true
 		}
 		for _, key := range node.childOrder {
 			if !walk(node.children[key]) {

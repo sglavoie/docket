@@ -23,16 +23,6 @@ func NewThemeConfig(machine *config.MachineState) ThemeConfig {
 	return ThemeConfig{Name: "dark"}
 }
 
-// ThemeSpacer renders an empty block of the given width, filled with the theme
-// background color when set. Used to plug "holes" in horizontal joins.
-func ThemeSpacer(width int) string {
-	s := lipgloss.NewStyle().Width(width)
-	if themeBgColor != "" {
-		s = s.Background(lipgloss.Color(themeBgColor))
-	}
-	return s.Render("")
-}
-
 // rebuildStyles reassigns every style variable using the current palette colors.
 // This must be called after rebuildPalette so styles pick up user overrides.
 func rebuildStyles() {

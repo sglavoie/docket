@@ -18,9 +18,6 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TaskCreatedMsg:
 		return m.handleTaskCreated(msg)
 
-	case TaskUpdatedMsg:
-		return m.handleTaskUpdated(msg)
-
 	case TaskDeleteRequestedMsg:
 		m.handleTaskDeleteRequested(msg)
 		return true, nil
@@ -142,29 +139,4 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 		}
 	}
 	return taskStateGroupLabel(task)
-}
-
-// handleTaskUpdated handles the TaskUpdatedMsg.
-func (m *AppModel) handleTaskUpdated(msg TaskUpdatedMsg) (bool, tea.Cmd) {
-	// Coordinator path: the edit committed one atomic ChangeSet through the
-	// application layer, so reload the committed project from disk before the
-	// shared refresh runs.
-	if msg.Result != nil {
-		m.reloadProjectByID(msg.Result.ProjectID)
-	}
-	if msg.PlanningChanged && m.refreshRuntime() {
-		m.rebuildPlanningFromRuntime()
-	}
-
-	// Common pattern: pop view, reload, refresh
-	refreshCmd := m.handleWithRefresh(true, true)
-
-	// Delegate to the current view so it can reload its state
-	cmd := m.views.Update(m.currentView(), msg)
-	transactionID := ""
-	if msg.Result != nil {
-		transactionID = msg.Result.TransactionID
-	}
-	feedbackCmd := m.setRecoveryFeedback("Updated task", transactionID, false)
-	return true, tea.Batch(refreshCmd, cmd, feedbackCmd)
 }

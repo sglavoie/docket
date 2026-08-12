@@ -217,43 +217,6 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 			},
 		},
 		{
-			name: "create with task move",
-			run: func(t *testing.T) {
-				source := newSession4Project(t, "Inbox")
-				fixture := newSession4LifecycleFixture(t, source)
-				liveSource := fixture.app.projectByID(source.ID)
-				moved := liveSource.Tasks[0]
-				created := newSession4EmptyProject(t, fixture.dataDir, "Moved")
-				session4CommitCatalogProject(t, fixture.app, created)
-				fixture.app.pendingProjectMoveTask = moved
-				fixture.app.pendingProjectMoveSource = liveSource
-				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(
-					fixture.app.runtime,
-					fixture.app.configManager,
-					fixture.app.appService,
-				))
-
-				_, cmd := fixture.app.handleProjectMessages(ProjectCreatedMsg{Project: created})
-				runSession2AppCommand(t, fixture.app, cmd)
-
-				loadedDest := session4LoadedProject(t, fixture.cross, created.ID)
-				if loadedDest.GetTaskByID(moved.ID) == nil || !session4HasTaskRow(fixture.cross, created.ID, moved.ID) {
-					t.Fatal("create-with-move result was not visible in the destination rows")
-				}
-				loadedSource := session4LoadedProject(t, fixture.cross, source.ID)
-				if loadedSource.GetTaskByID(moved.ID) != nil {
-					t.Fatal("create-with-move left the task visible in the source project")
-				}
-				freshDest := &models.Project{ID: created.ID, Name: created.Name, Slug: created.Slug, Path: created.Path}
-				if err := storage.LoadProject(freshDest); err != nil {
-					t.Fatalf("load created destination: %v", err)
-				}
-				if freshDest.GetTaskByID(moved.ID) == nil {
-					t.Fatal("create-with-move did not persist the destination task")
-				}
-			},
-		},
-		{
 			name: "rename and description edit",
 			run: func(t *testing.T) {
 				project := newSession4Project(t, "Original")

@@ -9,42 +9,45 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// ZoomEntry records the state at a single zoom level so cursor position can
-// be restored when zooming back out.
-type ZoomEntry struct {
-	TaskID      string // UUID of the task that was zoomed into
-	CursorIndex int    // Cursor position at the moment of zoom-in
+// FocusEntry is the retained internal focus-frame representation. It records
+// the complete viewport state needed to restore the parent view exactly.
+type FocusEntry struct {
+	TaskID       string // UUID of the task that was focused
+	CursorIndex  int    // Cursor position at the moment of focus
+	ScrollOffset int    // Persistent viewport offset at the moment of focus
 }
 
-// CrossProjectZoomEntry records the state at a single zoom level for the
-// cross-project outliner. It extends ZoomEntry with a ProjectID field to
-// scope zoom resolution to the correct project, preventing UUID collisions
-// across projects from causing incorrect zoom resolution.
-type CrossProjectZoomEntry struct {
-	TaskID      string // UUID of the task that was zoomed into
-	ProjectID   string // ID of the project owning the task
-	CursorIndex int    // Cursor position at the moment of zoom-in
+// CrossProjectFocusEntry records the state at a single focus level for the
+// cross-project outliner. It extends FocusEntry with a ProjectID field to
+// scope focus resolution to the correct project, preventing UUID collisions
+// across projects from causing incorrect focus resolution.
+type CrossProjectFocusEntry struct {
+	TaskID       string // UUID of the task that was focused
+	ProjectID    string // ID of the project owning the task
+	CursorIndex  int    // Cursor position at the moment of focus
+	ScrollOffset int    // Persistent viewport offset at the moment of focus
 }
 
 // OutlinerModel is the outliner view for navigating tasks in a hierarchical,
-// zoomable tree. It is the sole per-project primary view and implements the
+// focusable tree. It is the sole per-project primary view and implements the
 // View interface as a standalone struct, owning its own navigation semantics,
-// sort modes, and zoom-stack behavior.
+// sort modes, and focus-stack behavior.
 type OutlinerModel struct {
 	BaseSearchableView
 	InteractiveViewState
 	MultiSelectState
 
 	runtime        *config.RuntimeState
+	configManager  *config.Manager
 	taskItem       TaskItemCoordinator
 	projectService *ProjectService
 	quickEdit      *QuickEditComponent
 
 	project *models.Project
 
-	zoomStack      []ZoomEntry             // Zoom stack for single-project mode
-	crossZoomStack []CrossProjectZoomEntry // Zoom stack for cross-project mode (m.project == nil)
-	zoomNotice     string                  // Transient message shown when zoom target is removed
+	focusStack      []FocusEntry             // Focus stack for single-project mode
+	crossFocusStack []CrossProjectFocusEntry // Focus stack for cross-project mode (m.project == nil)
+	focusNotice     string                   // Transient message shown when focus target is removed
 
 	rows []outlinerRow // Flattened rows, rebuilt on each render
 	// primaryMode is the authoritative canonical row-strategy identity.
@@ -88,8 +91,6 @@ type OutlinerModel struct {
 	// the active project scope.
 	searchProjection *outlinerSearchSnapshot
 
-	undo UndoContext // Action label and context for next undo snapshot
-
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
 
@@ -101,16 +102,15 @@ type OutlinerModel struct {
 	OpenAtTask *models.Task
 
 	// Cross-project mode fields (used when m.project == nil)
-	loadedProjects        []*models.Project // Successfully loaded projects
-	crossSnapshotReady    bool              // True after the first cross-project snapshot has been accepted
-	crossLoading          bool              // True while cross-project load is in progress
-	crossSpinnerVisible   bool              // True once the 200ms delay has elapsed during an initial load
-	crossLoadGen          int               // Generation counter; discards stale load results
-	crossSpinner          SpinnerModel      // View-local spinner, independent of global save spinner
-	crossQuickEditProject *models.Project   // Resolved project for quick edit in cross-project mode
-	crossReloadProjectID  string            // Project owning the cursor task captured before an async reload
-	crossReloadTaskID     string            // Cursor task captured before an async reload; restored after rows rebuild
-	crossReloadFromTop    bool              // One-shot scope-change guard that suppresses stale cursor restoration
+	loadedProjects       []*models.Project // Successfully loaded projects
+	crossSnapshotReady   bool              // True after the first cross-project snapshot has been accepted
+	crossLoading         bool              // True while cross-project load is in progress
+	crossSpinnerVisible  bool              // True once the 200ms delay has elapsed during an initial load
+	crossLoadGen         int               // Generation counter; discards stale load results
+	crossSpinner         SpinnerModel      // View-local spinner, independent of global save spinner
+	crossReloadProjectID string            // Project owning the cursor task captured before an async reload
+	crossReloadTaskID    string            // Cursor task captured before an async reload; restored after rows rebuild
+	crossReloadFromTop   bool              // One-shot scope-change guard that suppresses stale cursor restoration
 
 	// crossReloadHeaderProjectID lands the cursor on one project sub-header after
 	// the next reload. Parking a project deletes every row the cursor was on, and
@@ -119,7 +119,7 @@ type OutlinerModel struct {
 
 	// Memoization guard for crossProjectRebuildRows
 	crossLastRowsFingerprint string
-	crossLastZoomDepth       int
+	crossLastFocusDepth      int
 	crossLastTaskCount       int
 	crossForceRebuild        bool // When true, bypasses the memoization guard on next rebuild
 
@@ -147,7 +147,7 @@ type OutlinerModel struct {
 
 	// scopeStack records the state to restore when a project scope is popped.
 	// Each push saves the previous scope's cursor, scroll, mode, multi-project
-	// filter, and zoom so Esc returns exactly where the user left off. The
+	// filter, and focus so Esc returns exactly where the user left off. The
 	// bottom of the stack is the base all-projects frame.
 	scopeStack []outlinerScopeFrame
 
@@ -186,9 +186,9 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
-	_ = cfgManager
 	m := &OutlinerModel{
 		runtime:            runtime,
+		configManager:      cfgManager,
 		projectService:     NewProjectService(),
 		quickEdit:          NewQuickEditComponent(),
 		project:            project,
@@ -245,8 +245,19 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.taskItem.Reparent(msg.ReparentTask, msg.ParentID)
 
+	case StartTaskLineEditMsg:
+		if msg.Task == nil || msg.Project == nil || msg.Project.GetTaskByID(msg.Task.ID) != msg.Task {
+			return m, nil
+		}
+		return m, m.quickEdit.EnterWithContext(msg.Task, msg.Project, m.quickEditProjects(), false)
+
 	case tea.KeyPressMsg:
 		return m.handleKeyMsg(msg)
+	case tea.PasteMsg:
+		if m.quickEdit.IsActive() {
+			return m.handleQuickEditMode(msg)
+		}
+		return m, nil
 	case ViewDidAppearMsg:
 		return m, m.handleViewDidAppear()
 	case crossProjectsLoadedMsg:

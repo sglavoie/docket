@@ -20,7 +20,6 @@ func NewTaskFormModelCreate(
 	draft.parentID = formNearestValidParentID(suggestedParent)
 
 	m := &TaskFormModel{
-		mode:       FormModeCreate,
 		project:    project,
 		draft:      draft,
 		activeTab:  formTabBasics,
@@ -45,42 +44,6 @@ func formNearestValidParentID(suggestedParent *models.Task) *string {
 		}
 	}
 	return nil
-}
-
-// NewTaskFormModelEdit creates a TaskFormModel for editing an existing task.
-func NewTaskFormModelEdit(
-	project *models.Project,
-	task *models.Task,
-	runtime *config.RuntimeState,
-) *TaskFormModel {
-	draft := taskFormDraft{
-		priority:  task.Priority,
-		parentID:  task.ParentID,
-		state:     task.State(),
-		pinned:    task.Pinned,
-		tags:      append([]string{}, task.Tags...),
-		dueDate:   cloneTime(task.DueDate),
-		dueInput:  formatDateInput(task.DueDate),
-		desc:      task.Description,
-		title:     task.Title,
-		checklist: append([]models.ChecklistItem(nil), task.Checklist...),
-	}
-
-	m := &TaskFormModel{
-		mode:       FormModeEdit,
-		project:    project,
-		task:       task,
-		draft:      draft,
-		activeTab:  formTabBasics,
-		focusIndex: 0,
-		width:      80,
-		height:     24,
-	}
-	m.initTitleInput(draft.title)
-	m.initDueInput(draft.dueInput)
-	m.initChecklistItemInput("")
-	m.initSubtaskItemInput("")
-	return m
 }
 
 // cloneTime returns a deep copy of a *time.Time, or nil if the input is nil.

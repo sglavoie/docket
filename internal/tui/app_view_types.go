@@ -13,7 +13,6 @@ var viewTypeNames = map[PresentationID]string{
 	ViewNotes:                "Notes",
 	ViewGlobalNotes:          "GlobalNotes",
 	ViewCrossProjectOutliner: "CrossProjectOutliner",
-	ViewTaskForm:             "TaskForm",
 	ViewTaskComposer:         "TaskComposer",
 	ViewProjectHub:           "ProjectHub",
 	ViewOutlineErrors:        "OutlineErrors",

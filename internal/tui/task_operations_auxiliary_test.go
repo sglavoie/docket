@@ -186,7 +186,7 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 	out.cursor = 0
 
 	edit := executeTaskOperationForTest(t, model, operationCoreEdit, context)
-	if got := edit.Message.(ShowTaskTextEditorMsg).Task; got != task {
+	if got := edit.Message.(StartTaskLineEditMsg).Task; got != task {
 		t.Errorf("edit target = %v, want the frozen task %v", got, task)
 	}
 	externalEdit := executeTaskOperationForTest(t, model, operationCoreExternalEditor, context)

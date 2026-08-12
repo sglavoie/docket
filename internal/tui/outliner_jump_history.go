@@ -171,6 +171,38 @@ func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapt
 	return flashIfJumped(oldCursor, destination, &m.cursorFlash), true
 }
 
+// finishTaskLineEditRelocation resolves the final project-qualified identity
+// after an atomic row edit. A visible result is followed and records the vacated
+// origin; a result hidden by the unchanged search/mode/filter/scope projection
+// leaves history intact and lands on the nearest surviving origin neighbor.
+func (m *OutlinerModel) finishTaskLineEditRelocation(capture *outlinerRelocationCapture, final TaskIdentity) (tea.Cmd, bool) {
+	if m == nil || capture == nil || !final.Valid() {
+		return nil, false
+	}
+	m.syncJumpProjection()
+	if capture.Projection != m.relocationHistory.projection {
+		return nil, false
+	}
+	if destination, ok := m.rowIndexForTask(final); ok {
+		oldCursor := m.cursor
+		m.cursor = destination
+		if destination == capture.Origin.RowIndex {
+			return flashIfJumped(oldCursor, destination, &m.cursorFlash), false
+		}
+		m.pushJumpBack(capture.Origin)
+		m.relocationHistory.forward = nil
+		return flashIfJumped(oldCursor, destination, &m.cursorFlash), true
+	}
+	nearest, ok := m.resolveJumpPosition(capture.Origin)
+	if !ok {
+		return nil, false
+	}
+	oldCursor := m.cursor
+	m.cursor = nearest
+	m.viewScrollOffset = capture.Origin.ScrollOffset
+	return flashIfJumped(oldCursor, nearest, &m.cursorFlash), false
+}
+
 func (m *OutlinerModel) rowIndexForTask(identity TaskIdentity) (int, bool) {
 	if !identity.Valid() {
 		return 0, false
@@ -330,11 +362,11 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 	sort.Strings(checklists)
 	fmt.Fprintf(&b, "checklists=%q|", strings.Join(checklists, "\x1f"))
 
-	for _, entry := range m.zoomStack {
-		fmt.Fprintf(&b, "zoom=%s:%d|", entry.TaskID, entry.CursorIndex)
+	for _, entry := range m.focusStack {
+		fmt.Fprintf(&b, "focus=%s:%d:%d|", entry.TaskID, entry.CursorIndex, entry.ScrollOffset)
 	}
-	for _, entry := range m.crossZoomStack {
-		fmt.Fprintf(&b, "cross-zoom=%s:%s:%d|", entry.ProjectID, entry.TaskID, entry.CursorIndex)
+	for _, entry := range m.crossFocusStack {
+		fmt.Fprintf(&b, "cross-focus=%s:%s:%d:%d|", entry.ProjectID, entry.TaskID, entry.CursorIndex, entry.ScrollOffset)
 	}
 	return b.String()
 }

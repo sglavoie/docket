@@ -13,15 +13,7 @@ func (m *TaskFormModel) renderChildrenTab() string {
 	var b strings.Builder
 
 	b.WriteString(m.renderChildrenChecklistSection())
-
-	switch m.mode {
-	case FormModeCreate:
-		b.WriteString(m.renderChildrenSubtasksSection())
-	case FormModeEdit:
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("Subtasks exist as independent tasks — edit via Parent field."))
-		b.WriteString("\n")
-	}
+	b.WriteString(m.renderChildrenSubtasksSection())
 
 	return b.String()
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
@@ -48,14 +47,18 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 			t.Errorf("capture help does not contain %q", token)
 		}
 	}
-	for _, name := range textgrammar.StateNames() {
+	for _, state := range models.AllWorkflowStates() {
+		name := state.String()
 		token := "$" + name
-		preview := renderQuickEditPreview(
-			&quickEditResult{title: "Task", titleSet: true, state: models.WorkflowState(name), stateSet: true},
-			&quickEditResult{title: "Task", state: differentState(models.WorkflowState(name))},
-		)
-		if !strings.Contains(preview, token) {
-			t.Errorf("quick-edit preview %q does not contain %q", preview, token)
+		task := &models.Task{ID: "task", Title: "Old", WorkflowState: models.StateInbox}
+		project := &models.Project{ID: "grammar", Name: "Grammar", Tasks: []*models.Task{task}}
+		result, err := parseQuickEdit("Task "+token, task, project)
+		if err != nil {
+			t.Fatalf("quick-edit parse %q: %v", token, err)
+		}
+		req := taskLineEditRequest(TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+		if req.Destination == nil || string(*req.Destination) != name {
+			t.Errorf("quick-edit request destination = %v, want %q", req.Destination, name)
 		}
 	}
 
@@ -69,11 +72,4 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 	if parsed, err := parseQuickCapture("Task $today", project, nil, true); err != nil || parsed.destination != app.CaptureDestinationToday {
 		t.Fatalf("Today destination = %+v, %v", parsed, err)
 	}
-}
-
-func differentState(state models.WorkflowState) models.WorkflowState {
-	if state != models.StateBacklog {
-		return models.StateBacklog
-	}
-	return models.StateInbox
 }

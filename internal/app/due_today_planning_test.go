@@ -44,31 +44,6 @@ func TestBulkSetDueDateAndPlanTodayCommitsOnePlanningTransaction(t *testing.T) {
 	}
 }
 
-func TestEditPlanForTodayIncludesFormDueDateAndPlanning(t *testing.T) {
-	task := newTask("form-due-today", 1, "Form task")
-	project := newProject("project", "Project", task)
-	repo := newFakeRepo(project)
-	planning := config.NewPlanningState()
-	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
-	due := time.Date(2026, time.July, 10, 0, 0, 0, 0, time.UTC)
-	state := models.StateBacklog
-
-	_, err := svc.Edit(app.EditRequest{
-		Locator:       app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
-		WorkflowState: &state,
-		Form: &app.FormEdit{
-			Title: task.Title, DueDate: &due,
-		},
-		PlanForToday: true,
-	})
-	if err != nil {
-		t.Fatalf("Edit: %v", err)
-	}
-	if task.DueDate == nil || len(planning.GetToday()) != 1 || len(repo.commits) != 1 {
-		t.Fatalf("due/planning/commits = %v / %+v / %d", task.DueDate, planning.GetToday(), len(repo.commits))
-	}
-}
-
 func TestTaskOperationDueTodayCarriesPlanningIntent(t *testing.T) {
 	task := newTask("operation-due-today", 1, "Operation task")
 	project := newProject("project", "Project", task)

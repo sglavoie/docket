@@ -17,8 +17,8 @@ type outlinerViewport struct {
 // renderOutlinerTreeContent renders the full-width Outliner tree constrained to
 // the given width.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
-	notice := m.zoomNotice
-	m.zoomNotice = ""
+	notice := m.focusNotice
+	m.focusNotice = ""
 
 	if len(m.rows) == 0 {
 		return m.renderOutlinerEmptyState(width, notice)
@@ -32,7 +32,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		extraFooter += 2
 	}
 	if m.quickEdit.IsActive() {
-		extraFooter += 1 + lipgloss.Height(m.renderQuickEditBar())
+		extraFooter += m.quickEditExtraLineCount()
 		if spec, ok := m.ContextualGuidance(); ok {
 			extraFooter += max(lipgloss.Height(renderGuidance(spec, width))-2, 0)
 		}
@@ -50,12 +50,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	if notice != "" {
 		b.WriteString("\n")
 		b.WriteString(PreviewWarningStyle.Render(notice))
-		b.WriteString("\n")
-	}
-
-	if m.quickEdit.IsActive() {
-		b.WriteString("\n")
-		b.WriteString(m.renderQuickEditBar())
 		b.WriteString("\n")
 	}
 
@@ -77,11 +71,11 @@ func wrappedLineCount(s string, width int) int {
 	return lipgloss.Height(lipgloss.NewStyle().Width(width).Render(s))
 }
 
-func (m *OutlinerModel) outlinerZoomContext() string {
+func (m *OutlinerModel) outlinerFocusContext() string {
 	if m.project == nil {
-		return m.crossProjectZoomContext()
+		return m.crossProjectFocusContext()
 	}
-	return m.projectZoomContext()
+	return m.projectFocusContext()
 }
 
 func (m *OutlinerModel) buildOutlinerSearchIndicator() string {
@@ -130,8 +124,8 @@ func (m *OutlinerModel) buildOutlinerInteractionContext() []string {
 	if filter := m.buildOutlinerFilterContext(); filter != "" {
 		context = append(context, filter)
 	}
-	if zoom := m.outlinerZoomContext(); zoom != "" {
-		context = append(context, MutedStyle.Render(zoom))
+	if focus := m.outlinerFocusContext(); focus != "" {
+		context = append(context, MutedStyle.Render(focus))
 	}
 	return context
 }
@@ -175,8 +169,8 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
 	case outlinerEmptyFiltered:
 		return EmptyStateFiltered
-	case outlinerEmptyZoom:
-		return "No tasks are visible in this zoom. Press Esc to zoom out."
+	case outlinerEmptyFocus:
+		return "No tasks are visible in this Focus. Press Esc to return."
 	case outlinerEmptyMode:
 		mode := m.activeOutlinerModeEntry()
 		if mode.ID == ModeInbox {

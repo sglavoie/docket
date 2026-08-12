@@ -80,7 +80,7 @@ func TestTaskForm_FlagsPicker_EscCancels(t *testing.T) {
 func TestTaskForm_ParentSelectedMsg_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
 	parentID := "some-parent-id"
-	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: ViewTaskForm})
+	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: ViewTaskComposer})
 	if m.draft.parentID == nil || *m.draft.parentID != parentID {
 		t.Errorf("expected draft.parentID=%q, got %v", parentID, m.draft.parentID)
 	}

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 type outlinerEmptyCause uint8
@@ -16,7 +17,7 @@ const (
 	outlinerEmptyFiltered
 	outlinerEmptyProjectFiltered
 	outlinerEmptySearch
-	outlinerEmptyZoom
+	outlinerEmptyFocus
 )
 
 func (m *OutlinerModel) HandledKeys() []string {
@@ -50,9 +51,7 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 	case m.quickEdit.IsActive():
 		hints := requiredGuidanceHints("Enter save", "Esc cancel")
 		if !m.quickEdit.IsRenameOnly() {
-			hints = append(hints, optionalGuidanceHints(10,
-				"!0-3 priority", "#tag tags", "@date due", "$state state",
-			)...)
+			hints = append(hints, optionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
 		}
 		return GuidanceSpec{Hints: hints, Rows: 2}, true
 	case m.IsSearchMode():
@@ -62,9 +61,15 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 	case m.multiSelectMode:
 		return m.multiSelectGuidance(), true
 	case m.peekMode:
+		peekKey := "Shift+Enter"
+		if m.operationRegistry != nil {
+			if key := m.operationRegistry.InputShortcutForOperation(InputStrategySimplified, operationCorePeek); key != "" {
+				peekKey = key
+			}
+		}
 		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Enter close Peek", "Esc close Peek"),
-				optionalGuidanceHints(10, "Space actions", "e title", "? help")...),
+			Hints: append(requiredGuidanceHints(peekKey+" close Peek", "Esc close Peek"),
+				optionalGuidanceHints(10, "Space actions", "e edit", "? help")...),
 			Rows: 2,
 		}, true
 	case m.hasSearchProjection():
@@ -87,6 +92,27 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		return GuidanceSpec{}, false
 	}
 	return GuidanceSpec{Hints: hints, Rows: 1}, true
+}
+
+func quickEditGrammarGuidance() []string {
+	labels := map[textgrammar.Field]string{
+		textgrammar.FieldPriority:    "priority",
+		textgrammar.FieldTag:         "add tag",
+		textgrammar.FieldRemoveTag:   "remove tag",
+		textgrammar.FieldDue:         "due",
+		textgrammar.FieldDestination: "destination",
+		textgrammar.FieldProject:     "move project",
+		textgrammar.FieldParent:      "parent",
+	}
+	entries := make([]string, 0, len(labels))
+	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceEdit) {
+		label, ok := labels[definition.Field]
+		if !ok || len(definition.Forms) == 0 {
+			continue
+		}
+		entries = append(entries, strings.Join(definition.Forms, "/")+" "+label)
+	}
+	return entries
 }
 
 func (m *OutlinerModel) multiSelectGuidance() GuidanceSpec {
@@ -114,7 +140,17 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 
 func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 	row := m.rows[m.cursor]
-	hints := make([]GuidanceHint, 0, 6)
+	hints := make([]GuidanceHint, 0, 8)
+	if m.operationRegistry != nil {
+		for _, hint := range m.operationRegistry.GuidanceHintsForInputStrategy(
+			InputStrategySimplified,
+			m.operationCommandContext(),
+		) {
+			if hint.Key == "Enter" || hint.Key == "Shift+Enter" {
+				hints = append(hints, hint)
+			}
+		}
+	}
 	if m.isSectionRowCollapsed(row) {
 		hints = append(hints, newGuidanceHint("l/Right expand", 1, false))
 	} else {
@@ -146,8 +182,8 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 		required = "Fx clear project filters"
 	case outlinerEmptySearch:
 		required = "Esc clear search"
-	case outlinerEmptyZoom:
-		required = "Esc zoom out"
+	case outlinerEmptyFocus:
+		required = "Esc return"
 	default:
 		required = "a capture"
 	}
@@ -172,8 +208,8 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		return outlinerEmptyFiltered
 	}
-	if len(m.zoomStack) > 0 || len(m.crossZoomStack) > 0 {
-		return outlinerEmptyZoom
+	if len(m.focusStack) > 0 || len(m.crossFocusStack) > 0 {
+		return outlinerEmptyFocus
 	}
 	if m.primaryMode != ModeAll {
 		return outlinerEmptyMode

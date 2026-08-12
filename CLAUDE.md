@@ -99,6 +99,7 @@ The direct grammar is:
 Tab / Shift+Tab                 seven modes
 ga gi gt gn gb gd gr           go-to chord, one mode each
 j/k, arrows, h/l, S, gg/Home, G/End  navigation
+Enter / Shift+Enter             focus descendants / toggle Peek
 n / N                          next/previous grouping header, wrapping
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
 Ctrl+L                         Recent, focused on the newest activity
@@ -341,17 +342,15 @@ operations so the footer and `?` help carry two honest labels; never branch one
 descriptor's target source on runtime context.
 
 Relocation jump history is session-only and scoped to the current projection;
-changing mode, scope, search, filters, sorting, folds, or zoom clears it. A
+changing mode, scope, search, filters, sorting, folds, or focus clears it. A
 legacy terminal may encode `Ctrl+I` as `Tab`; enhanced keyboard reporting is
 required to distinguish forward-jump from next-mode cycling.
 
 The `Space` menu on a task row is exactly:
 
-1. Move Project
-2. Set Parent
-3. Comments
-4. Attachments
-5. Delete
+1. Comments
+2. Attachments
+3. Delete
 
 The checklist is not among them. Its rows own the whole mutation set, so a menu
 entry here would be a second route to it — the shape this rule exists to forbid.
@@ -362,6 +361,9 @@ third surface that edits a task not yet in a projection.
 A task operation is direct-only or menu-only, never both, and
 `validateTaskOperationOnePath` enforces it over that manifest. Delete has no
 direct key and confirms before mutation.
+
+Project moves and reparenting belong only to the inline `e` grammar:
+`%project`, `>parent`, and `>0` are applied by the atomic task-line transaction.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain
@@ -411,10 +413,18 @@ rejected buffer keeps its temp file so the named line numbers still resolve. A
 project revision that moved while the editor was open aborts the apply for the
 same reason.
 
-The Outliner stays full-width at every supported size. `Enter` toggles a
-session-only, five-line Peek beneath the cursor for description, dates,
-attachment names, comment counts, and tags. Rows carry operational metadata
-directly and omit short IDs.
+The Outliner stays full-width at every supported size. `Enter` focuses the
+cursor task's descendants and `Shift+Enter` toggles Peek. Focus projects only
+descendants; nested `Enter` pushes another project-qualified Focus frame, and
+`Esc` pops exactly one Focus level and restores that frame's prior cursor and
+scroll position. A leaf refuses with `No children to focus` instead of falling
+through to Peek. Focus is also refused while a temporary search projection is
+active; clear search first.
+
+An active inline row editor consumes `Esc` first and cancels the draft. The
+ordinary Outliner `Esc` priority is Peek, live range, frozen selection,
+temporary search projection, one Focus frame, then the existing project/base
+escape behavior. Rows carry operational metadata directly and omit short IDs.
 
 Peek holds no checklist line. Checklist items are rows, so restating them there
 would spend the tightest budget in the Outliner on content already on screen,
@@ -536,7 +546,7 @@ there.
 Keep the two populations named apart. `Runtime.TaskWorkspaceProjects()` is
 non-archived and not parked, and is the only population the base Outliner reads;
 `Runtime.AvailableProjects()` is every non-archived project and keeps parked
-projects reachable for Notes, capture `%project`, Move Project destinations,
+projects reachable for Notes, capture and inline-edit `%project` destinations,
 Select Project, and one explicit project focus. A parked focus anchors on the
 project name plus the `parked` tag, and leaving it must leave no parked rows or
 scope chrome behind.

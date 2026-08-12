@@ -41,7 +41,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	outliner.rebuildRows()
 	outliner.multiSelectMode = true
 	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
-	outliner.zoomStack = []ZoomEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
+	outliner.focusStack = []FocusEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
 	outliner.SetSearchQuery(project.Tasks[0].Title)
 	app.showView(ViewCrossProjectOutliner, outliner)
 	wireInvariantSimplifiedOutliner(t, app, outliner)
@@ -56,8 +56,8 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	if outliner.SearchQuery() == "" {
 		t.Fatal("first esc should not clear search query")
 	}
-	if len(outliner.zoomStack) != 1 {
-		t.Fatalf("first esc should not change zoom stack, got %d entries", len(outliner.zoomStack))
+	if len(outliner.focusStack) != 1 {
+		t.Fatalf("first esc should not change focus stack, got %d entries", len(outliner.focusStack))
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
@@ -67,16 +67,16 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	if outliner.SearchQuery() != "" {
 		t.Fatalf("second esc should clear search query, got %q", outliner.SearchQuery())
 	}
-	if len(outliner.zoomStack) != 1 {
-		t.Fatalf("second esc should not change zoom stack, got %d entries", len(outliner.zoomStack))
+	if len(outliner.focusStack) != 1 {
+		t.Fatalf("second esc should not change focus stack, got %d entries", len(outliner.focusStack))
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
 	if app.currentView() != ViewCrossProjectOutliner {
-		t.Fatalf("zoom esc should stay in outliner, got %v", app.currentView())
+		t.Fatalf("focus esc should stay in outliner, got %v", app.currentView())
 	}
-	if len(outliner.zoomStack) != 0 {
-		t.Fatalf("third esc should clear zoom stack, got %d entries", len(outliner.zoomStack))
+	if len(outliner.focusStack) != 0 {
+		t.Fatalf("third esc should clear focus stack, got %d entries", len(outliner.focusStack))
 	}
 	if outliner.ShouldCaptureEsc() {
 		t.Fatal("outliner should release esc ownership once internal layers are cleared")

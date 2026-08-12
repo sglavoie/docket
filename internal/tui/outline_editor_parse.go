@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // This file owns the outline buffer's own syntax: the two-space indent ladder
@@ -144,29 +145,41 @@ func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBuf
 }
 
 // parseOutlineBodies is the line phase. The body left after the marker strip is
-// ordinary capture text, so it goes through the same parser the composer uses
-// with %project disabled: an outline buffer is scoped to one project and never
-// moves a task out of it.
+// parsed through the shared outline surface. Structural capture tokens receive
+// explicit guidance because the buffer owns project and parent placement.
 func parseOutlineBodies(structural []outlineBufferLine, project *models.Project) ([]app.OutlinePlanLine, []lineError) {
 	var (
 		lines []app.OutlinePlanLine
 		errs  []lineError
 	)
 	for _, item := range structural {
-		parsed, err := parseQuickCapture(item.body, project, nil, true)
+		structuralTokens := textgrammar.Parse(item.body, textgrammar.SurfaceCapture)
+		forbidden := false
+		if len(structuralTokens.TokensFor(textgrammar.FieldProject)) > 0 {
+			errs = append(errs, lineError{
+				line:    item.sourceLine,
+				message: "the outline buffer owns the project; remove the %project sigil",
+			})
+			forbidden = true
+		}
+		if len(structuralTokens.TokensFor(textgrammar.FieldParent)) > 0 {
+			errs = append(errs, lineError{
+				line:    item.sourceLine,
+				message: "indentation sets parentage here; remove the >parent sigil",
+			})
+			forbidden = true
+		}
+		if forbidden {
+			continue
+		}
+
+		parsed, err := parseQuickCaptureSurface(item.body, project, nil, true, textgrammar.SurfaceOutline)
 		if err != nil {
 			errs = append(errs, lineError{line: item.sourceLine, message: err.Error()})
 			continue
 		}
 		if err := models.ValidateTaskTitle(parsed.title); err != nil {
 			errs = append(errs, lineError{line: item.sourceLine, message: err.Error()})
-			continue
-		}
-		if parsed.parentID != nil {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "indentation sets parentage here; remove the >parent sigil",
-			})
 			continue
 		}
 		line := app.OutlinePlanLine{

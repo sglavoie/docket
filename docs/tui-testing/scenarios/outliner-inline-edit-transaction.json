@@ -1,0 +1,31 @@
+{
+  "name": "outliner-inline-edit-transaction",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "move below the first project header", "key": "j" },
+    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
+    { "type": "key", "label": "edit the selected row", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "text", "label": "enter an invalid singleton value", "text": " !9" },
+    { "type": "key", "label": "attempt the invalid commit", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "invalid priority" },
+    { "type": "key", "label": "cancel the invalid draft", "key": "esc" },
+    { "type": "key", "label": "reopen inline edit", "key": "e" },
+    { "type": "text", "label": "open project autocomplete", "text": " %u" },
+    { "type": "assert", "assert": "contains", "value": "unfiled" },
+    { "type": "resize", "label": "retain the edit row and suggestions at minimum width", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "accept the exact project slug", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "%unfiled" },
+    { "type": "key", "label": "commit the atomic cross-project edit", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "u undo" },
+    { "type": "key", "label": "undo the transaction", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid" },
+    { "type": "key", "label": "redo the transaction", "key": "ctrl+r" },
+    { "type": "assert", "assert": "status_contains", "value": "Redo: Edit Task Line" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

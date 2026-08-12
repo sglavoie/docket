@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // makePreviewInput builds a quickCaptureInput pre-populated with the given
@@ -149,7 +150,7 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		priority:          1,
 		tags:              []string{"backend", "urgent"},
 		dueDate:           &due,
-		destination:       app.CaptureDestinationDoing,
+		destination:       textgrammar.DestinationDoing,
 		destinationSet:    true,
 		targetProjectName: "Web App",
 	}, "", 0)

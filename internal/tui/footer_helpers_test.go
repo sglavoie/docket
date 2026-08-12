@@ -247,7 +247,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	}
 	wantWorkflow := []string{
 		"w workflow", "! priority", "@ date", "# tags", "Space actions",
-		"z snooze", "v select", "a capture", "Enter peek", "/ search", "? help",
+		"z snooze", "v select", "a capture", "Enter focus", "Shift+Enter peek", "/ search", "? help",
 	}
 	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {
 		t.Fatalf("ranked footer prefix = %v, want workflow-first task guidance %v", pairs, wantWorkflow)
@@ -283,7 +283,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 		allHints = append(allHints, guidanceHintText(hint))
 	}
 	joined := strings.Join(allHints, "\n")
-	for _, unavailable := range []string{"e title", "E description", "Ctrl+E editor"} {
+	for _, unavailable := range []string{"e edit", "E description", "Ctrl+E editor"} {
 		if strings.Contains(joined, unavailable) {
 			t.Errorf("selected guidance exposes unavailable operation %q: %q", unavailable, joined)
 		}

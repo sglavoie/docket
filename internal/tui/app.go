@@ -27,7 +27,6 @@ const (
 	ViewNotes
 	ViewGlobalNotes
 	ViewCrossProjectOutliner
-	ViewTaskForm
 	ViewTaskComposer
 	ViewProjectHub
 	ViewOutlineErrors
@@ -159,10 +158,6 @@ type AppModel struct {
 	statusSeverity         footerFlashSeverity // Severity of the newest status text
 	footerFlash            footerFlashState
 	footerFlashSeq         uint64
-
-	// Pending create-project continuation from system Inbox triage.
-	pendingProjectMoveTask   *models.Task
-	pendingProjectMoveSource *models.Project
 
 	// Pending narrow daily task edit. Stable identity is captured when the editor
 	// opens so cursor movement or a view rebuild cannot retarget the save.

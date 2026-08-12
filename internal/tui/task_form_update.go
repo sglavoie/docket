@@ -12,7 +12,7 @@ import (
 func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// ── External overlay results ───────────────────────────────────────────────
-	case TaskCreatedMsg, TaskUpdatedMsg:
+	case TaskCreatedMsg:
 		m.submissionInFlight = false
 		return m, nil
 
@@ -22,7 +22,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ParentSelectedMsg:
-		if msg.Source == ViewTaskForm {
+		if msg.Source == ViewTaskComposer {
 			m.draft.parentID = msg.ParentID
 			m.hasChanges = true
 			m.err = nil
@@ -39,7 +39,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case TextEditorDoneMsg:
-		// Routed here from handler_view_editors.go when ViewTaskForm is current.
+		// Routed here from handler_view_editors.go when the composer is current.
 		if !msg.Canceled {
 			m.applyTextEditorResult(msg.FieldName, msg.Value)
 		}
@@ -111,10 +111,9 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.draft.title = m.titleInput.Value()
 				m.titleInput.Blur()
-				// In create mode, a non-empty title counts as unsaved work even
-				// if hasChanges hasn't been set yet. In edit mode, only hasChanges
-				// matters since the title was pre-filled from the existing task.
-				dirty := m.hasChanges || (m.mode == FormModeCreate && m.draft.title != "")
+				// A non-empty title counts as unsaved work even if hasChanges has
+				// not been set yet (for example an expanded compact draft).
+				dirty := m.hasChanges || m.draft.title != ""
 				if dirty {
 					m.confirmDiscard = true
 				} else {

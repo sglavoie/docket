@@ -289,25 +289,25 @@ func removeProjectedRowsFromTree(
 }
 
 // primaryModeRoots applies the active single-project or qualified cross-project
-// zoom without changing the surrounding project/context scope.
+// focus without changing the surrounding project/context scope.
 func (m *OutlinerModel) primaryModeRoots(project *models.Project) []*models.Task {
 	if project == nil {
 		return nil
 	}
 	roots := project.GetRootTasks()
 	if m.project != nil {
-		if len(m.zoomStack) == 0 {
+		if len(m.focusStack) == 0 {
 			return roots
 		}
-		if task := project.GetTaskByID(m.zoomStack[len(m.zoomStack)-1].TaskID); task != nil {
+		if task := project.GetTaskByID(m.focusStack[len(m.focusStack)-1].TaskID); task != nil {
 			return task.Children
 		}
 		return nil
 	}
-	if len(m.crossZoomStack) == 0 {
+	if len(m.crossFocusStack) == 0 {
 		return roots
 	}
-	top := m.crossZoomStack[len(m.crossZoomStack)-1]
+	top := m.crossFocusStack[len(m.crossFocusStack)-1]
 	if top.ProjectID != project.ID {
 		return nil
 	}
@@ -457,23 +457,23 @@ func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, m
 	}
 }
 
-// primaryModeZoomBoundary returns the task whose children form the current
+// primaryModeFocusBoundary returns the task whose children form the current
 // hierarchical mode root. Breadcrumbs for promoted descendants stop at this
-// boundary because the Outliner header already renders the zoom path.
-func (m *OutlinerModel) primaryModeZoomBoundary(project *models.Project) string {
+// boundary because the Outliner header already renders the focus path.
+func (m *OutlinerModel) primaryModeFocusBoundary(project *models.Project) string {
 	if m == nil || project == nil {
 		return ""
 	}
 	if m.project != nil {
-		if len(m.zoomStack) > 0 && m.project.ID == project.ID {
-			return m.zoomStack[len(m.zoomStack)-1].TaskID
+		if len(m.focusStack) > 0 && m.project.ID == project.ID {
+			return m.focusStack[len(m.focusStack)-1].TaskID
 		}
 		return ""
 	}
-	if len(m.crossZoomStack) == 0 {
+	if len(m.crossFocusStack) == 0 {
 		return ""
 	}
-	top := m.crossZoomStack[len(m.crossZoomStack)-1]
+	top := m.crossFocusStack[len(m.crossFocusStack)-1]
 	if top.ProjectID == project.ID {
 		return top.TaskID
 	}
@@ -495,7 +495,7 @@ func (m *OutlinerModel) flattenPrimaryTask(
 	}
 	breadcrumb := ""
 	if len(ancestorIsLast) == 0 && task.ParentID != nil {
-		breadcrumb = taskAncestorBreadcrumbAfter(task, m.primaryModeZoomBoundary(project))
+		breadcrumb = taskAncestorBreadcrumbAfter(task, m.primaryModeFocusBoundary(project))
 	}
 	m.rows = append(m.rows, outlinerRow{
 		task:               task,

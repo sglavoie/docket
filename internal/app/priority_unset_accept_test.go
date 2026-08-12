@@ -92,25 +92,3 @@ func TestBulkSetPriorityZeroSurvivesReloadFromDisk(t *testing.T) {
 	assertReloadedPriority(t, alpha, alpha.Tasks[1].ID)
 	assertReloadedPriority(t, beta, beta.Tasks[0].ID)
 }
-
-// TestFormEditKeepsAnUnsetPriority proves the full edit form can open and save a
-// task that carries no priority, instead of rejecting the unchanged zero or
-// quietly promoting it to P3.
-func TestFormEditKeepsAnUnsetPriority(t *testing.T) {
-	dataDir := t.TempDir()
-	project := prioritizedProject(t, dataDir, "alpha", models.PriorityUnset, "Build login form")
-	svc := newUnsetPriorityService(t, dataDir, project)
-	task := project.Tasks[0]
-
-	if _, err := svc.Edit(app.EditRequest{
-		TaskID: task.ID,
-		Form: &app.FormEdit{
-			Title:    "Build login form",
-			Priority: task.Priority,
-			Tags:     []string{},
-		},
-	}); err != nil {
-		t.Fatalf("Edit with an unset priority: %v", err)
-	}
-	assertReloadedPriority(t, project, task.ID)
-}

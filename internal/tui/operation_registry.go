@@ -69,8 +69,6 @@ const (
 	ValueProviderDueDate   ValueProviderID = "due-date"
 	ValueProviderSnooze    ValueProviderID = "snooze"
 	ValueProviderTags      ValueProviderID = "tags"
-	ValueProviderProject   ValueProviderID = "project"
-	ValueProviderParent    ValueProviderID = "parent"
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
 

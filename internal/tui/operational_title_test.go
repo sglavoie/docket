@@ -98,9 +98,9 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 	}{
 		{name: "Active Projects", configure: func(*OutlinerModel) {}, wantNarrow: []string{activeProjectsScopeLabel}, wantWide: []string{activeProjectsScopeLabel, "All"}},
 		{name: "focused project", configure: func(m *OutlinerModel) { m.scopedProjectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{project.Name, "All"}},
-		{name: "zoom", configure: func(m *OutlinerModel) {
-			m.crossZoomStack = []CrossProjectZoomEntry{{ProjectID: project.ID, TaskID: task.ID}}
-		}, wantNarrow: []string{"Zoom:"}, wantWide: []string{"Zoom: " + task.Title}},
+		{name: "focus", configure: func(m *OutlinerModel) {
+			m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
+		}, wantNarrow: []string{"Focus:"}, wantWide: []string{"Focus: [Alpha] › " + task.Title}},
 		{name: "search", configure: func(m *OutlinerModel) { m.SetSearchQuery("needle") }, wantNarrow: []string{"Search:"}, wantWide: []string{"Search: \"needle\""}},
 		{name: "filters", configure: func(m *OutlinerModel) {
 			m.filter = NewFilterState()
@@ -116,8 +116,8 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.SetSearchQuery("needle")
 			m.filter = NewFilterState()
 			m.filter.Priority = 1
-			m.crossZoomStack = []CrossProjectZoomEntry{{ProjectID: project.ID, TaskID: task.ID}}
-		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected", "Search: \"needle\"", "Filters:", "Zoom: Launch"}},
+			m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
+		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
 	}
 
 	for _, mode := range OutlinerModeCatalog() {
@@ -205,23 +205,23 @@ func TestOperationalTitleModeSegmentSpelling(t *testing.T) {
 	}
 }
 
-func TestOutlinerZoomContextStaysOnHeaderRow(t *testing.T) {
+func TestOutlinerFocusContextStaysOnHeaderRow(t *testing.T) {
 	project := scopeTestProject("alpha", "Alpha", "launch")
 	project.Tasks[0].Title = "Launch"
 	project.BuildTaskTree()
 	m := scopeTestOutliner(project)
 	m.SetSize(100, 20)
-	m.crossZoomStack = []CrossProjectZoomEntry{{ProjectID: project.ID, TaskID: "launch"}}
+	m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: "launch"}}
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 
 	rendered := m.renderOutlinerTreeContent(100)
 	plain := ansi.Strip(rendered)
 	lines := strings.Split(plain, "\n")
-	if len(lines) == 0 || !strings.Contains(lines[0], "Zoom: Launch") {
-		t.Fatalf("zoom context is not on the operational title row:\n%s", plain)
+	if len(lines) == 0 || !strings.Contains(lines[0], "Focus: [Alpha] › Launch") {
+		t.Fatalf("Focus context is not on the operational title row:\n%s", plain)
 	}
-	if strings.Count(plain, "Zoom: Launch") != 1 {
-		t.Fatalf("zoom context was duplicated into a breadcrumb row:\n%s", plain)
+	if strings.Count(plain, "Focus: [Alpha] › Launch") != 1 {
+		t.Fatalf("Focus context was duplicated into a breadcrumb row:\n%s", plain)
 	}
 }

@@ -11,16 +11,11 @@ const (
 	taskActionCategoryOrganize      ListCategoryID = "task-actions:organize"
 	taskActionCategoryContent       ListCategoryID = "task-actions:content"
 	taskActionCategoryRelationships ListCategoryID = "task-actions:relationships"
-	taskActionCategoryMore          ListCategoryID = "task-actions:more"
 	taskActionCategoryDanger        ListCategoryID = "task-actions:danger"
 )
 
 var taskActionCategories = []ListCategory{
-	{ID: taskActionCategoryPlan, Label: "Plan"},
-	{ID: taskActionCategoryOrganize, Label: "Organize"},
-	{ID: taskActionCategoryRelationships, Label: "Relationships"},
 	{ID: taskActionCategoryContent, Label: "Content"},
-	{ID: taskActionCategoryMore, Label: "More"},
 	{ID: taskActionCategoryDanger, Label: "Danger"},
 }
 
@@ -135,7 +130,7 @@ func taskActionDescriptorApplicableToEveryTarget(
 
 func taskActionSheetEligible(descriptor OperationDescriptor) bool {
 	// The task manifest is an allowlist, not merely an ordering hint. Keeping
-	// eligibility closed over its six menu entries prevents newly registered
+	// eligibility closed over its three menu entries prevents newly registered
 	// task operations from silently expanding the Space menu.
 	entry, manifested := taskOperationManifestEntryFor(descriptor.ID)
 	return manifested && !entry.DirectOnly
@@ -148,28 +143,7 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 	if entry, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
 		return entry.Category
 	}
-	label := strings.ToLower(descriptor.Label)
-	switch {
-	case strings.Contains(label, "linked"),
-		strings.Contains(label, "subtask"),
-		strings.Contains(label, "parent"):
-		return taskActionCategoryRelationships
-	case strings.Contains(label, "edit"),
-		strings.Contains(label, "rename"),
-		strings.Contains(label, "copy"),
-		strings.Contains(label, "comment"),
-		strings.Contains(label, "attachment"),
-		strings.Contains(label, "detail"),
-		strings.Contains(label, "note"):
-		return taskActionCategoryContent
-	case strings.Contains(label, "move"),
-		strings.Contains(label, "tag"),
-		strings.Contains(label, "dim"),
-		strings.Contains(label, "pin"):
-		return taskActionCategoryOrganize
-	default:
-		return taskActionCategoryMore
-	}
+	return taskActionCategoryContent
 }
 
 func operationActionSecondaryText(descriptor OperationDescriptor) string {
@@ -195,9 +169,7 @@ func taskActionDisabledReason(
 			return "terminal tasks cannot be snoozed"
 		}
 	}
-	if descriptor.Risk == OperationRiskMutation &&
-		context.Entity.Archived &&
-		descriptor.ID != operationTaskMoveProject {
+	if descriptor.Risk == OperationRiskMutation && context.Entity.Archived {
 		return "project is archived"
 	}
 	return ""

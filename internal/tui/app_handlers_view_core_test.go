@@ -12,7 +12,7 @@ import (
 func TestHandleViewMessagesBack(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(ViewCrossProjectOutliner)
-	app.pushView(ViewTaskForm)
+	app.pushView(ViewTaskComposer)
 
 	msg := BackMsg{}
 	handled, _ := app.handleViewMessages(msg)

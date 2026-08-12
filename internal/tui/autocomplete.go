@@ -174,6 +174,19 @@ func (ac *AutocompleteState) BuildAcceptedInput(input string, triggerChar byte) 
 	return input[:ac.TriggerPos] + string(triggerChar) + selected.Value + " "
 }
 
+// BuildAcceptedInputAt is the cursor-aware form used by single-line editors.
+// It replaces the active token only through cursorByte and preserves any text
+// after the cursor, so accepting a completion in the middle of a draft never
+// discards trailing tokens.
+func (ac *AutocompleteState) BuildAcceptedInputAt(input string, cursorByte int, triggerChar byte) string {
+	if !ac.IsActive() {
+		return input
+	}
+	cursorByte = max(ac.TriggerPos, min(cursorByte, len(input)))
+	selected := ac.Selected()
+	return input[:ac.TriggerPos] + string(triggerChar) + selected.Value + " " + input[cursorByte:]
+}
+
 // TriggerCharForMode returns the trigger character for the given autocomplete mode,
 // using the provided trigger definitions. Returns 0 if mode is not found.
 func TriggerCharForMode(mode int, triggers []ACTrigger) byte {

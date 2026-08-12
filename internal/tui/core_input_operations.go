@@ -38,6 +38,8 @@ const (
 	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
 	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
+	operationCoreFocusSubtree     OperationID = "tui.core.focus-subtree"
+	operationCoreActivateGroup    OperationID = "tui.core.activate-group"
 	operationCorePeek             OperationID = "tui.core.peek"
 	operationCoreScopeSearch      OperationID = "tui.core.scope-search"
 	operationCoreSelectProject    OperationID = "tui.core.select-project"
@@ -95,17 +97,50 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		}
 		return descriptor
 	}
-	peek := core(
+	peek := withTaskTarget(core(
 		operationCorePeek,
 		"Toggle Task Peek",
 		OperationCategoryNavigation,
-		TargetCardinalityNone,
+		TargetCardinalityOne,
 		OperationRiskReadOnly,
 		"peek task",
 		"task preview",
-	)
+	))
 	peek.Applicability = func(ctx CommandContext) bool {
-		return coreOutlinerApplicability(ctx) && !ctx.Selection.Visual
+		return coreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual &&
+			!ctx.Entity.HasChecklistCursor &&
+			currentTaskIdentity(ctx).Valid()
+	}
+	focusSubtree := withTaskTarget(core(
+		operationCoreFocusSubtree,
+		"Focus Subtree",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"focus task",
+		"focus descendants",
+	))
+	focusSubtree.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual &&
+			!ctx.Entity.HasChecklistCursor &&
+			currentTaskIdentity(ctx).Valid()
+	}
+	activateGroup := core(
+		operationCoreActivateGroup,
+		"Activate Group",
+		OperationCategoryNavigation,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
+		"toggle section",
+		"focus project",
+	)
+	activateGroup.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual &&
+			!ctx.Entity.HasChecklistCursor &&
+			!currentTaskIdentity(ctx).Valid()
 	}
 	// The outline editor restructures a whole project tree, so it names no task
 	// target and refuses a visual selection: the buffer's scope is the project the
@@ -124,7 +159,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 	}
 	descriptors := []OperationDescriptor{
 		core(operationCoreCapture, "Capture", OperationCategoryTask, TargetCardinalityNone, OperationRiskMutation, "add task", "inbox capture"),
-		withTaskTarget(core(operationCoreEdit, "Edit Title", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "rename task", "change title")),
+		withTaskTarget(core(operationCoreEdit, "Edit Task", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task line", "rename task", "change title")),
 		withTaskTarget(core(operationCoreEditDescription, "Edit Description", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "change description", "edit body")),
 		withTaskTarget(core(operationCoreExternalEditor, "Open in External Editor", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task externally", "external editor")),
 		outlineEditor,
@@ -148,6 +183,8 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
+		focusSubtree,
+		activateGroup,
 		peek,
 		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
 		core(operationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
@@ -202,7 +239,8 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 		operationCoreExpand,
 		operationCoreToggleSections,
 		operationCoreReorderDown,
-		operationCoreReorderUp:
+		operationCoreReorderUp,
+		operationCoreFocusSubtree:
 		return true
 	default:
 		return false
@@ -217,8 +255,9 @@ func (m *AppModel) registerCoreInputOperations() error {
 	}
 	for _, descriptor := range coreInputOperationDescriptors() {
 		if coreInputOperationRefusesSearchProjection(descriptor.ID) {
+			inner := descriptor.Applicability
 			descriptor.Applicability = func(ctx CommandContext) bool {
-				return coreOutlinerApplicability(ctx) &&
+				return (inner == nil || inner(ctx)) &&
 					(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
 			}
 		}
@@ -248,7 +287,9 @@ func coreInputOperationRequiresTask(id OperationID) bool {
 		operationCoreExternalEditor,
 		operationCoreBacklog,
 		operationCoreToday,
-		operationCoreNext:
+		operationCoreNext,
+		operationCoreFocusSubtree,
+		operationCorePeek:
 		return true
 	default:
 		return false
@@ -271,9 +312,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = m.coreCaptureMessage()
 	case operationCoreEdit:
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
-			message = ShowTaskTextEditorMsg{
-				Task: task, Project: project, Operation: app.TaskOperationEditTitle,
-			}
+			message = StartTaskLineEditMsg{Task: task, Project: project}
 		}
 	case operationCoreEditDescription:
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
@@ -375,6 +414,14 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreReorder(1))
 	case operationCoreReorderUp:
 		message = commandMessage(m.coreReorder(-1))
+	case operationCoreFocusSubtree:
+		if out, ok := m.outlinerPrimary(); ok && !out.focusSubtreeAtCursor() {
+			return OperationHandlerResult{Status: "No children to focus"}
+		}
+	case operationCoreActivateGroup:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.activateGroupAtCursor()
+		}
 	case operationCorePeek:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.togglePeek()

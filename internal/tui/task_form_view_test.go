@@ -8,8 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// TestTaskFormEditMinimumLayout is the regression guard for Finding 1: the
-// edit-form height guard (formMinHeight = 24) blocked the very common 80x24
+// TestTaskFormMinimumLayout guards the expanded form at the common 80x24
 // terminal, where the form is allotted 80x22 (terminalHeight-2). The guard now
 // derives from the app floor (formMinHeight = minTerminalHeight - 2 = 18) and
 // the body is clamped to the available rows, so the form must actually render
@@ -21,7 +20,7 @@ import (
 // form body is fixed-width, so width genuinely cannot go below it and the
 // min-size notice still (correctly) appears below formMinWidth. Only the height
 // floor changed.
-func TestTaskFormEditMinimumLayout(t *testing.T) {
+func TestTaskFormMinimumLayout(t *testing.T) {
 	sizes := []struct {
 		w, h int
 	}{
@@ -29,28 +28,25 @@ func TestTaskFormEditMinimumLayout(t *testing.T) {
 		{formMinWidth, minTerminalHeight - 2},
 	}
 	for _, sz := range sizes {
-		m, cleanup := newSaveableEditForm(t)
+		m := newTestTaskForm()
 		m.SetSize(sz.w, sz.h)
 
 		rendered := m.View().Content
 		if strings.Contains(ansi.Strip(rendered), "Terminal too small") {
-			cleanup()
 			t.Fatalf("form should render (not show the min-size notice) at %dx%d:\n\n%s",
 				sz.w, sz.h, ansi.Strip(rendered))
 		}
 		assertFitsWithin(t, rendered, sz.w, sz.h)
-		cleanup()
 	}
 }
 
-// TestTaskFormEditFitsWidthWhenRendered verifies the primary width fix: when the
+// TestTaskFormFitsWidthWhenRendered verifies the primary width fix: when the
 // terminal is tall enough for the form to render (height >= formMinHeight) but
 // too narrow for the two-column help pane, the form falls back to a single
 // column instead of overflowing to width 95. Before the fix this rendered at
 // width 95 at any width >= 60.
-func TestTaskFormEditFitsWidthWhenRendered(t *testing.T) {
-	m, cleanup := newSaveableEditForm(t)
-	defer cleanup()
+func TestTaskFormFitsWidthWhenRendered(t *testing.T) {
+	m := newTestTaskForm()
 	m.SetSize(72, 30)
 
 	rendered := m.View().Content

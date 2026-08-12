@@ -89,7 +89,7 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outliner.cursor != 0 || outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
 		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outliner.cursor, outliner.IsMultiSelectActive(), outliner.SelectedCount())
 	}
-	if len(outliner.collapsedSections) != 0 || len(outliner.expandedNodes) != 0 || len(outliner.zoomStack) != 0 || len(outliner.crossZoomStack) != 0 {
-		t.Fatalf("launch retained folds/zoom: sections=%v nodes=%v zoom=%v crossZoom=%v", outliner.collapsedSections, outliner.expandedNodes, outliner.zoomStack, outliner.crossZoomStack)
+	if len(outliner.collapsedSections) != 0 || len(outliner.expandedNodes) != 0 || len(outliner.focusStack) != 0 || len(outliner.crossFocusStack) != 0 {
+		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outliner.collapsedSections, outliner.expandedNodes, outliner.focusStack, outliner.crossFocusStack)
 	}
 }

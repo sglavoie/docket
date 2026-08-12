@@ -387,7 +387,7 @@ func (m *AppModel) newFilterStatesPicker(
 // prospectiveStateFilterCounts returns the matching-task buckets available to
 // the state facet. The existing state selection is replaced because workflow
 // states compose with OR; every other active facet, search, mode,
-// Context/project scope, and zoom remain in force.
+// Context/project scope, and focus remain in force.
 func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 	counts := make(map[models.WorkflowState]int, len(models.AllWorkflowStates()))
 	if m == nil || m.crossOutliner == nil {
@@ -423,10 +423,10 @@ func prospectiveOutlinerStateCounts(
 	projection.expandedNodes = make(map[TaskIdentity]bool)
 	projection.collapsedSections = make(map[string]bool)
 	projection.expandedChecklists = make(map[TaskIdentity]bool)
-	projection.zoomStack = append([]ZoomEntry(nil), outliner.zoomStack...)
-	projection.crossZoomStack = append(
-		[]CrossProjectZoomEntry(nil),
-		outliner.crossZoomStack...,
+	projection.focusStack = append([]FocusEntry(nil), outliner.focusStack...)
+	projection.crossFocusStack = append(
+		[]CrossProjectFocusEntry(nil),
+		outliner.crossFocusStack...,
 	)
 	projection.crossForceRebuild = true
 	projection.rebuildRows()

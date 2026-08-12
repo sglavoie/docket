@@ -15,8 +15,6 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case CreateProjectMsg:
-		m.pendingProjectMoveTask = msg.MoveTask
-		m.pendingProjectMoveSource = msg.SourceProject
 		m.showView(ViewProjectCreator, NewProjectCreatorModel(m.runtime, m.configManager, m.appService))
 		return true, nil
 
@@ -25,26 +23,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.syncProjectCache()
 		m.refreshProjectHubIfActive()
 		notesCmd := m.refreshActiveNotesManager()
-		moveTask := m.pendingProjectMoveTask
-		moveSource := m.pendingProjectMoveSource
-		m.pendingProjectMoveTask = nil
-		m.pendingProjectMoveSource = nil
 		reloadCmd := m.requestCrossProjectOutlinerReload()
 		projectName := "project"
 		if msg.Project != nil {
 			projectName = msg.Project.Name
 		}
 		feedbackCmd := m.setRecoveryFeedback("Created "+projectName, msg.TransactionID, false)
-		if moveTask != nil && moveSource != nil && msg.Project != nil {
-			moveCmd := func() tea.Msg {
-				return MoveTaskToProjectMsg{
-					Task:          moveTask,
-					SourceProject: moveSource,
-					DestProjectID: msg.Project.ID,
-				}
-			}
-			return true, tea.Batch(popCmd, moveCmd, reloadCmd, notesCmd, feedbackCmd)
-		}
 		return true, tea.Batch(popCmd, reloadCmd, notesCmd, feedbackCmd)
 
 	case ProjectArchiveRequestMsg:

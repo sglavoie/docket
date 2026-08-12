@@ -55,7 +55,7 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 }
 
 // buildCanonicalModeRows is the single row-pipeline entry point for all six
-// canonical modes. Scope, zoom candidates, common filters, search, and fixed
+// canonical modes. Scope, focus candidates, common filters, search, and fixed
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
 func (m *OutlinerModel) buildCanonicalModeRows() {
@@ -97,7 +97,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	m.clampCursor()
 }
 
-// buildModeCandidateInput completes the shared mode input with the zoom-narrowed
+// buildModeCandidateInput completes the shared mode input with the focus-narrowed
 // candidates and the membership a mode owns rather than filters for.
 func (m *OutlinerModel) buildModeCandidateInput(
 	mode OutlinerModeID,

@@ -7,103 +7,31 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // CaptureDestination is the unified creation destination accepted by every
 // capture adapter. Today and Next are planning memberships; the remaining
 // values are canonical lifecycle states.
-type CaptureDestination string
+type CaptureDestination = textgrammar.Destination
 
 const (
-	CaptureDestinationInbox    CaptureDestination = "inbox"
-	CaptureDestinationBacklog  CaptureDestination = "backlog"
-	CaptureDestinationToday    CaptureDestination = "today"
-	CaptureDestinationNext     CaptureDestination = "next"
-	CaptureDestinationDoing    CaptureDestination = "doing"
-	CaptureDestinationWaiting  CaptureDestination = "waiting"
-	CaptureDestinationPaused   CaptureDestination = "paused"
-	CaptureDestinationSomeday  CaptureDestination = "someday"
-	CaptureDestinationDone     CaptureDestination = "done"
-	CaptureDestinationCanceled CaptureDestination = "canceled"
+	CaptureDestinationInbox   = textgrammar.DestinationInbox
+	CaptureDestinationBacklog = textgrammar.DestinationBacklog
+	CaptureDestinationToday   = textgrammar.DestinationToday
+	CaptureDestinationNext    = textgrammar.DestinationNext
 )
-
-var captureDestinations = []CaptureDestination{
-	CaptureDestinationInbox,
-	CaptureDestinationBacklog,
-	CaptureDestinationToday,
-	CaptureDestinationNext,
-	CaptureDestinationDoing,
-	CaptureDestinationWaiting,
-	CaptureDestinationPaused,
-	CaptureDestinationSomeday,
-	CaptureDestinationDone,
-	CaptureDestinationCanceled,
-}
 
 // ParseCaptureDestination resolves one exact case-insensitive destination.
 func ParseCaptureDestination(raw string) (CaptureDestination, bool) {
-	destination := CaptureDestination(strings.ToLower(strings.TrimSpace(raw)))
-	for _, candidate := range captureDestinations {
-		if destination == candidate {
-			return candidate, true
-		}
-	}
-	return "", false
+	return textgrammar.ParseDestination(raw)
 }
 
 // InvalidCaptureDestinationError gives capture adapters one actionable error
 // vocabulary, including explicit replacements for retired state names users
 // are most likely to enter.
 func InvalidCaptureDestinationError(raw string) error {
-	value := strings.ToLower(strings.TrimSpace(raw))
-	switch value {
-	case "ready":
-		return fmt.Errorf("destination $ready was removed (use $backlog)")
-	case "in_progress":
-		return fmt.Errorf("destination $in_progress was removed (use $doing)")
-	case "todo":
-		return fmt.Errorf("destination $todo was removed (use $inbox or $backlog)")
-	case "active":
-		return fmt.Errorf("destination $active was removed (use $backlog)")
-	case "start", "started", "progress":
-		return fmt.Errorf("destination $%s was removed (use $doing)", value)
-	case "blocked":
-		return fmt.Errorf("destination $blocked was removed (use $waiting)")
-	case "standby", "hold":
-		return fmt.Errorf("destination $%s was removed (use $paused)", value)
-	case "review":
-		return fmt.Errorf("destination $review is not a state (use #review)")
-	case "maybe":
-		return fmt.Errorf("destination $maybe was removed (use $someday)")
-	case "complete", "completed":
-		return fmt.Errorf("destination $%s was removed (use $done)", value)
-	case "cancel", "cancelled": //nolint:misspell // Intentional rejected-input alias.
-		return fmt.Errorf("destination $%s was removed (use $canceled)", value)
-	default:
-		values := make([]string, len(captureDestinations))
-		for i, destination := range captureDestinations {
-			values[i] = "$" + string(destination)
-		}
-		return fmt.Errorf("invalid destination: $%s (use %s)", raw, strings.Join(values, ", "))
-	}
-}
-
-// WorkflowState returns the lifecycle state created for the destination. Today
-// and Next both create Backlog tasks and add their explicit planning directive.
-func (d CaptureDestination) WorkflowState() models.WorkflowState {
-	switch d {
-	case CaptureDestinationToday, CaptureDestinationNext:
-		return models.StateBacklog
-	default:
-		state, _ := models.ParseWorkflowState(string(d))
-		return state
-	}
-}
-
-// IsPlanning reports whether creation must also persist an ordered planning
-// membership.
-func (d CaptureDestination) IsPlanning() bool {
-	return d == CaptureDestinationToday || d == CaptureDestinationNext
+	return textgrammar.InvalidDestinationError(raw)
 }
 
 // CaptureRequest describes a new task to create in a project. Only ProjectID and

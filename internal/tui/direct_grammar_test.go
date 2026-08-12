@@ -33,9 +33,9 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"S": operationCoreToggleSections,
 		"n": operationCoreNextHeader, "N": operationCorePreviousHeader,
 		"<": operationTaskOutdent, ">": operationTaskIndent,
-		"enter": operationCorePeek,
-		"/":     operationCoreScopeSearch,
-		"v":     operationCoreMultiSelect, "V": operationCoreRangeSelect,
+		"shift+enter": operationCorePeek,
+		"/":           operationCoreScopeSearch,
+		"v":           operationCoreMultiSelect, "V": operationCoreRangeSelect,
 		"ctrl+a": operationCoreSelectAll,
 		"p":      operationCoreSelectProject,
 		"ctrl+n": operationCoreNotes, "T": operationCoreToggleTheme,
@@ -61,6 +61,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"space": {operationChecklistActions, operationCoreActions},
 		"J":     {operationChecklistMoveDown, operationCoreReorderDown},
 		"K":     {operationChecklistMoveUp, operationCoreReorderUp},
+		"enter": {operationCoreFocusSubtree, operationCoreActivateGroup},
 	}
 
 	owners := make(map[string][]OperationID)
@@ -247,7 +248,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	t.Run("duplicate placement", func(t *testing.T) {
 		candidate := cloneInputStrategy(strategy)
 		candidate.Bindings = append(candidate.Bindings, OperationKeyBinding{
-			OperationID: operationTaskMoveProject,
+			OperationID: operationTaskComments,
 			Keys:        []string{"M"},
 		})
 		err := validateTaskOperationOnePath(candidate)

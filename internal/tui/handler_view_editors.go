@@ -22,9 +22,6 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		var fieldName, currentValue string
 		switch msg.Operation {
-		case app.TaskOperationEditTitle:
-			fieldName = "title"
-			currentValue = msg.Task.Title
 		case app.TaskOperationEditDescription:
 			fieldName = "description"
 			currentValue = msg.Task.Description
@@ -50,12 +47,8 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if msg.Canceled || msg.Value == pending.Original {
 				return true, nil
 			}
-			action := "Edit Title"
-			summary := "Title updated"
-			if pending.Operation == app.TaskOperationEditDescription {
-				action = "Edit Description"
-				summary = "Description updated"
-			}
+			action := "Edit Description"
+			summary := "Description updated"
 			return true, m.secondaryFeatures.TaskItem.ExecuteOperation(app.TaskOperationRequest{
 				Operation: pending.Operation,
 				Targets:   []app.TaskLocator{pending.Identity.Locator()},

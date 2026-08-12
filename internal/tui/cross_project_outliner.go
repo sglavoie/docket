@@ -260,7 +260,7 @@ func parkedFocusFailureDetail(msg crossProjectsLoadedMsg, projectID string) (str
 // canonical mode pipeline. Called by rebuildRows() when m.project == nil.
 //
 // A memoization guard short-circuits rebuilding when mode, search/filter state,
-// zoom stack depth, and total task count are all unchanged from
+// focus stack depth, and total task count are all unchanged from
 // the previous call. The guard is bypassed when crossForceRebuild is true (set
 // after mutations) or when a fresh load completes.
 func (m *OutlinerModel) crossProjectRebuildRows() {
@@ -271,32 +271,34 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		taskCount += len(proj.Tasks)
 	}
 	currentFingerprint := m.crossProjectRowsFingerprint()
-	currentZoomDepth := len(m.crossZoomStack)
+	currentFocusDepth := len(m.crossFocusStack)
 
 	// Short-circuit when all guard inputs match the previous call and no force
 	// rebuild has been requested. This prevents redundant rebuilds on no-op
 	// events like window resize or view reactivation.
 	if !m.crossForceRebuild &&
 		currentFingerprint == m.crossLastRowsFingerprint &&
-		currentZoomDepth == m.crossLastZoomDepth &&
+		currentFocusDepth == m.crossLastFocusDepth &&
 		taskCount == m.crossLastTaskCount {
 		return
 	}
 
 	// Update guard state and consume the force flag.
 	m.crossLastRowsFingerprint = currentFingerprint
-	m.crossLastZoomDepth = currentZoomDepth
+	m.crossLastFocusDepth = currentFocusDepth
 	m.crossLastTaskCount = taskCount
 	m.crossForceRebuild = false
 
 	m.rows = m.rows[:0]
+	m.validateCrossFocusStack()
+	// Validation may have shortened the stack after the guard captured its old
+	// depth. Record the repaired depth so the next render remains a no-op.
+	m.crossLastFocusDepth = len(m.crossFocusStack)
 	if len(m.loadedProjects) == 0 {
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return
 	}
-
-	m.validateCrossZoomStack()
 
 	m.buildCanonicalModeRows()
 }

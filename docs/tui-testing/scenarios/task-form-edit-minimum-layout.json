@@ -8,7 +8,8 @@
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "command", "label": "open project Inbox mode", "command": "project inbox mode" },
     { "type": "key", "key": "e" },
-    { "type": "assert", "assert": "view", "value": "TextEditor" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

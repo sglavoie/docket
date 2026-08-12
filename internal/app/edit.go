@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // EditRequest describes an in-place edit of a task's core content. Each pointer
@@ -22,46 +21,11 @@ type EditRequest struct {
 	Title *string
 	// Description, when non-nil, replaces the task description.
 	Description *string
-	// Form, when non-nil, replaces the task's complete editable field set from the
-	// task form. Unlike the granular pointer fields above (used by `tt task edit`),
-	// the task form always writes every editable field, so full replacement — not
-	// per-field optionality — is the faithful semantics. Form and the granular
-	// fields are mutually exclusive in practice.
-	Form *FormEdit
-	// WorkflowState, when non-nil, preserves or changes the canonical lifecycle
-	// state after applying either a form or granular edit.
-	WorkflowState *models.WorkflowState
-	// PlanningArtifacts, when set, folds the durable planning reconciliation the
-	// edit implies (Today/Next exclusivity) into the same ledger transaction as the
-	// task write, so a state-changing form edit undoes atomically. Nil uses
-	// the service default planning builder (installed by the TUI); when neither is
-	// set the edit is a bare task write.
-	PlanningArtifacts PlanningArtifactBuilder
-	// PlanForToday adds the edited task to Today in the same transaction. TUI
-	// task forms set this when their due-date field resolves to today's calendar
-	// date; other edit adapters retain attribute-only due-date semantics.
-	PlanForToday bool
-}
-
-// FormEdit is the task form's full editable field set. Every field is applied
-// unconditionally, mirroring the form's legacy in-place mutation: the draft holds
-// the complete post-edit state, so the use case replaces rather than patches.
-type FormEdit struct {
-	Title       string
-	Priority    int
-	ParentID    *string
-	Description string
-	Tags        []string
-	DueDate     *time.Time
-	Pinned      bool
-	Checklist   []models.ChecklistItem
 }
 
 // Edit applies content changes to a task and commits them as one ChangeSet. A
 // request that changes nothing is still valid and re-commits the project
-// unchanged; validation of a non-nil title runs before any mutation. When
-// req.Form is set, the full task-form field set is applied instead of the
-// granular pointer fields.
+// unchanged; validation of a non-nil title runs before any mutation.
 func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	ref, snap, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
 	if err != nil {
@@ -78,38 +42,10 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 			restoreSnapshotProjects(snap, before)
 		}
 	}()
-	if guardErr := validateEditStateTransition(ref, req.WorkflowState); guardErr != nil {
-		return TaskResult{}, guardErr
-	}
 	if applyErr := s.applyEdit(ref.Task, req); applyErr != nil {
 		return TaskResult{}, applyErr
 	}
-	// Fold Today/Next reconciliation into the same transaction. A content-only
-	// edit reconciles to no planning change, while a due-today edit carries an
-	// explicit Today add and its canonical lifecycle/snooze side effects.
-	stateChanged := req.WorkflowState != nil && *req.WorkflowState != before.ProjectByID(ref.Project.ID).GetTaskByID(ref.Task.ID).State()
-	planningBuilder := s.defaultedPlanningArtifacts(req.PlanningArtifacts)
-	var artifacts []storage.ArtifactChange
-	if req.PlanForToday {
-		if planningBuilder == nil {
-			return TaskResult{}, fmt.Errorf("app: planning mutations require a planning artifact builder")
-		}
-		target, _, planningErr := ApplyPlanningActionToTask(
-			ref.Task, ref.Project.ID, PlanningAddToday, s.clock.Now(),
-		)
-		if planningErr != nil {
-			return TaskResult{}, planningErr
-		}
-		artifacts, err = planningArtifactsForRequest(PlanningReconcileRequest{
-			Targets: []PlanningReconcileTarget{target},
-		}, planningBuilder)
-	} else {
-		artifacts, err = s.transitionPlanningArtifacts(ref, planningBuilder, stateChanged)
-	}
-	if err != nil {
-		return TaskResult{}, err
-	}
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Edit Task", "")
+	result, err := s.commitProject(ref, revision, "Edit Task", "")
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -117,10 +53,10 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	return result, nil
 }
 
-// validateEditStateTransition makes a state-changing edit obey the same guards
-// as the canonical Transition use case. Content-only edits and explicit
+// validateEditStateTransition makes a state-changing mutation obey the same
+// guards as the canonical Transition use case. Content-only edits and explicit
 // same-state writes remain valid; a real transition checks the state graph and
-// incomplete children before any edit fields are applied.
+// incomplete children before mutation.
 func validateEditStateTransition(ref TaskRef, target *models.WorkflowState) error {
 	if target == nil {
 		return nil
@@ -137,76 +73,15 @@ func validateEditStateTransition(ref TaskRef, target *models.WorkflowState) erro
 
 // applyEdit is the shared validation and mutation seam for task edits.
 func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
-	originalState := task.State()
-	if req.WorkflowState != nil {
-		if !req.WorkflowState.IsValid() {
-			return invalidInput("workflow state", fmt.Sprintf("%q is not a valid workflow state", *req.WorkflowState))
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if err := models.ValidateTaskTitle(title); err != nil {
+			return invalidInput("title", err.Error())
 		}
+		task.Title = title
 	}
-	if req.Form != nil {
-		if err := s.applyFormEdit(task, *req.Form); err != nil {
-			return err
-		}
-	} else {
-		if req.Title != nil {
-			title := strings.TrimSpace(*req.Title)
-			if err := models.ValidateTaskTitle(title); err != nil {
-				return invalidInput("title", err.Error())
-			}
-			task.Title = title
-		}
-		if req.Description != nil {
-			task.Description = *req.Description
-		}
-	}
-	if req.WorkflowState != nil {
-		if *req.WorkflowState == originalState {
-			task.ApplyWorkflowState(originalState)
-		} else {
-			if err := applyState(task, *req.WorkflowState, s.clock.Now()); err != nil {
-				return invalidInput("workflow state", err.Error())
-			}
-		}
-	}
-	task.UpdatedAt = s.clock.Now()
-	return nil
-}
-
-// applyFormEdit replaces a task's editable fields from the task form's draft,
-// validating title, priority, and tags before mutating so a
-// rejected edit never persists. It mirrors the field-application order the form
-// used before the migration (title/type/priority/parent, then dates,
-// tags, flags, links, description, checklist, type attrs, pinned).
-func (s *Service) applyFormEdit(task *models.Task, f FormEdit) error {
-	title := strings.TrimSpace(f.Title)
-	if err := models.ValidateTaskTitle(title); err != nil {
-		return invalidInput("title", err.Error())
-	}
-	if err := models.ValidatePriority(f.Priority, true); err != nil {
-		return invalidInput("priority", err.Error())
-	}
-	normalizedTags, err := normalizeTags(f.Tags)
-	if err != nil {
-		return err
-	}
-
-	task.Title = title
-	task.Priority = f.Priority
-	task.ParentID = f.ParentID
-	task.DueDate = cloneCalendarDatePtr(f.DueDate)
-	task.Tags = append([]string{}, normalizedTags...)
-	task.Description = strings.TrimSpace(f.Description)
-	task.Checklist = filterChecklist(f.Checklist)
-	// Update PinnedAt only when the pinned flag actually changes, matching the
-	// form's legacy behavior.
-	if f.Pinned != task.Pinned {
-		task.Pinned = f.Pinned
-		if f.Pinned {
-			now := s.clock.Now()
-			task.PinnedAt = &now
-		} else {
-			task.PinnedAt = nil
-		}
+	if req.Description != nil {
+		task.Description = *req.Description
 	}
 	task.UpdatedAt = s.clock.Now()
 	return nil

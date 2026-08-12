@@ -30,23 +30,6 @@ type taskOperationManifestEntry struct {
 func taskOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{
 		{
-			ID:       operationTaskMoveProject,
-			Label:    "Move Project",
-			Aliases:  []string{"transfer task"},
-			Provider: ValueProviderProject,
-			Category: taskActionCategoryOrganize,
-			Risk:     OperationRiskMutation,
-			Bulk:     true,
-		},
-		{
-			ID:       operationTaskSetParent,
-			Label:    "Set Parent",
-			Aliases:  []string{"reparent", "clear parent"},
-			Provider: ValueProviderParent,
-			Category: taskActionCategoryRelationships,
-			Risk:     OperationRiskMutation,
-		},
-		{
 			ID:       operationTaskComments,
 			Label:    "Comments",
 			Aliases:  []string{"add comment"},
@@ -72,7 +55,7 @@ func taskOperationManifest() []taskOperationManifestEntry {
 }
 
 // taskDirectOperationManifest keeps the direct grammar descriptors registered
-// without making them task-menu rows. The task menu itself is exactly the five
+// without making them task-menu rows. The task menu itself is exactly the three
 // entries returned by taskOperationManifest.
 func taskDirectOperationManifest() []taskOperationManifestEntry {
 	return []taskOperationManifestEntry{

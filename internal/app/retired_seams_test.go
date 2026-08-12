@@ -17,7 +17,6 @@ func TestRecurrenceIsAbsentFromLiveTypes(t *testing.T) {
 	}{
 		{"task", models.Task{}},
 		{"add request", app.AddTaskRequest{}},
-		{"form edit", app.FormEdit{}},
 		{"task result", app.TaskResult{}},
 	}
 	for _, item := range types {

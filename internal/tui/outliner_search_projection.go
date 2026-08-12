@@ -24,8 +24,8 @@ type outlinerSearchSnapshot struct {
 	expandedNodes      map[TaskIdentity]bool
 	expandedChecklists map[TaskIdentity]bool
 	collapsedSections  map[string]bool
-	zoomStack          []ZoomEntry
-	crossZoomStack     []CrossProjectZoomEntry
+	focusStack         []FocusEntry
+	crossFocusStack    []CrossProjectFocusEntry
 	cursor             modeCursorAnchor
 }
 
@@ -57,8 +57,8 @@ func (m *OutlinerModel) beginSearchProjection() {
 		expandedNodes:      copyBoolMap(m.expandedNodes),
 		expandedChecklists: copyBoolMap(m.expandedChecklists),
 		collapsedSections:  copyBoolMap(m.collapsedSections),
-		zoomStack:          append([]ZoomEntry(nil), m.zoomStack...),
-		crossZoomStack:     append([]CrossProjectZoomEntry(nil), m.crossZoomStack...),
+		focusStack:         append([]FocusEntry(nil), m.focusStack...),
+		crossFocusStack:    append([]CrossProjectFocusEntry(nil), m.crossFocusStack...),
 		cursor:             m.captureModeCursor(),
 	}
 	m.searchProjection = snapshot
@@ -105,8 +105,8 @@ func (m *OutlinerModel) ClearSearch() {
 	m.expandedNodes = copyBoolMap(snapshot.expandedNodes)
 	m.expandedChecklists = copyBoolMap(snapshot.expandedChecklists)
 	m.collapsedSections = copyBoolMap(snapshot.collapsedSections)
-	m.zoomStack = append([]ZoomEntry(nil), snapshot.zoomStack...)
-	m.crossZoomStack = append([]CrossProjectZoomEntry(nil), snapshot.crossZoomStack...)
+	m.focusStack = append([]FocusEntry(nil), snapshot.focusStack...)
+	m.crossFocusStack = append([]CrossProjectFocusEntry(nil), snapshot.crossFocusStack...)
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.restoreSearchCursor(snapshot.cursor)
@@ -145,7 +145,7 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 func (m *OutlinerModel) buildSearchProjectionRows() {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	query := strings.TrimSpace(m.SearchQuery())
-	matches := searchProjectionMatches(projects, query)
+	matches := searchProjectionMatchesWithin(projects, query, m.searchFocusCandidates(projects))
 	for _, match := range matches {
 		m.rows = append(m.rows, m.outlinerRowFromModeRow(OutlinerModeRow{
 			Task:       match.task,
@@ -155,9 +155,33 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	}
 }
 
-func searchProjectionMatches(projects []*models.Project, query string) []outlinerSearchMatch {
+// searchFocusCandidates returns an authoritative per-project candidate set only
+// while task Focus is active. Search intentionally ignores the current mode,
+// facets, sort, and folds, but it must never escape the descendants-only branch
+// the user entered.
+func (m *OutlinerModel) searchFocusCandidates(projects []*models.Project) map[string][]*models.Task {
+	if m == nil || (len(m.focusStack) == 0 && len(m.crossFocusStack) == 0) {
+		return nil
+	}
+	candidates := make(map[string][]*models.Task, len(projects))
+	for _, project := range projects {
+		if project != nil {
+			candidates[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
+		}
+	}
+	return candidates
+}
+
+// searchProjectionMatchesWithin applies an optional authoritative candidate
+// boundary. A present empty entry means that project contributes no matches;
+// a missing entry retains the scope-wide behavior used outside Focus.
+func searchProjectionMatchesWithin(
+	projects []*models.Project,
+	query string,
+	candidates map[string][]*models.Task,
+) []outlinerSearchMatch {
 	if projectRef, shortID, exact := parseProjectShortIDQuery(query); exact {
-		return exactProjectShortIDMatches(projects, projectRef, shortID)
+		return exactProjectShortIDMatchesWithin(projects, projectRef, shortID, candidates)
 	}
 
 	matches := make([]outlinerSearchMatch, 0)
@@ -166,7 +190,11 @@ func searchProjectionMatches(projects []*models.Project, query string) []outline
 		if project == nil {
 			continue
 		}
-		for _, task := range project.Tasks {
+		tasks := project.Tasks
+		if bounded, ok := candidates[project.ID]; ok {
+			tasks = bounded
+		}
+		for _, task := range tasks {
 			if task == nil || task.IsTerminalState() {
 				sourceIndex++
 				continue
@@ -228,16 +256,21 @@ func parseProjectShortIDQuery(query string) (string, int, bool) {
 	return projectRef, shortID, projectRef != ""
 }
 
-func exactProjectShortIDMatches(
+func exactProjectShortIDMatchesWithin(
 	projects []*models.Project,
 	projectRef string,
 	shortID int,
+	candidates map[string][]*models.Task,
 ) []outlinerSearchMatch {
 	for _, project := range projects {
 		if project == nil || !projectSearchRefMatches(project, projectRef) {
 			continue
 		}
-		for sourceIndex, task := range project.Tasks {
+		tasks := project.Tasks
+		if bounded, ok := candidates[project.ID]; ok {
+			tasks = bounded
+		}
+		for sourceIndex, task := range tasks {
 			if task != nil && !task.IsTerminalState() && task.ShortID == shortID {
 				return []outlinerSearchMatch{{
 					task: task, project: project, fieldRank: 0,

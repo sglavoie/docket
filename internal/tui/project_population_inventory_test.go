@@ -18,7 +18,7 @@ import (
 //   - AvailableProjects (and the AppModel availableProjects wrapper) is every
 //     non-archived project regardless of its tags. A surface that must keep
 //     admitting a parked project — Notes owners, capture and %project
-//     resolution, task-move destinations, project administration — reads it.
+//     resolution, and project administration — reads it.
 //   - TaskWorkspaceProjects (and the AppModel taskWorkspaceProjects wrapper) is
 //     the base task workspace: non-archived and not parked. Every task
 //     projection and context scope reads it, which is what leaves a parked
@@ -48,7 +48,6 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/manage_hub.go:AvailableProjects":                   "Notes owners and project-note command scope",
 	"internal/tui/workspace_pulse.go:TaskWorkspaceProjects":          "workspace pulse counting is a task projection",
 	"internal/tui/operation_target_context.go:taskWorkspaceProjects": "operation command scope IDs follow the context scope",
-	"internal/tui/operation_value_provider.go:availableProjects":     "single and bulk task-move destinations",
 	"internal/tui/outliner_scope.go:TaskWorkspaceProjects":           "a focus needs the parked exception only while the task projection excludes it",
 	"internal/tui/project_hub.go:AvailableProjects":                  "project administration rows and project-level search",
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func TestOutlinePlanCommitsEditsCreatesAndReparentsAsOneTransaction(t *testing.T) {
@@ -29,7 +30,7 @@ func TestOutlinePlanCommitsEditsCreatesAndReparentsAsOneTransaction(t *testing.T
 		ExpectedRevision: repo.revisions[project.ID],
 		ScopeTaskIDs:     []string{alpha.ID, beta.ID, gamma.ID},
 		Lines: []app.OutlinePlanLine{
-			{SourceLine: 1, TaskID: beta.ID, Depth: 0, Title: "Beta renamed", Priority: 1, Tags: []string{"work"}, Destination: app.CaptureDestinationDoing},
+			{SourceLine: 1, TaskID: beta.ID, Depth: 0, Title: "Beta renamed", Priority: 1, Tags: []string{"work"}, Destination: textgrammar.DestinationDoing},
 			{SourceLine: 2, TaskID: alpha.ID, Depth: 1, Title: "Alpha"},
 			{SourceLine: 3, Depth: 1, Title: "Delta"},
 			{SourceLine: 4, TaskID: gamma.ID, Depth: 0, Title: "Gamma"},
@@ -488,7 +489,7 @@ func TestOutlinePlanRejectsDoneWithNonterminalChild(t *testing.T) {
 		ExpectedRevision: repo.revisions[project.ID],
 		ScopeTaskIDs:     []string{parent.ID, child.ID},
 		Lines: []app.OutlinePlanLine{
-			{SourceLine: 1, TaskID: parent.ID, Depth: 0, Title: "Parent", Destination: app.CaptureDestinationDone},
+			{SourceLine: 1, TaskID: parent.ID, Depth: 0, Title: "Parent", Destination: textgrammar.DestinationDone},
 			{SourceLine: 2, TaskID: child.ID, Depth: 1, Title: "Child"},
 		},
 	})

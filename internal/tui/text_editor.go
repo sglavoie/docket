@@ -190,8 +190,8 @@ type ShowTextEditorMsg struct {
 	CurrentValue string
 }
 
-// ShowTaskTextEditorMsg opens the narrow daily editor for exactly one task
-// field. Operation must be EditTitle or EditDescription.
+// ShowTaskTextEditorMsg opens the retained narrow description editor for one
+// task. Title editing is owned exclusively by the Outliner row editor.
 type ShowTaskTextEditorMsg struct {
 	Task      *models.Task
 	Project   *models.Project

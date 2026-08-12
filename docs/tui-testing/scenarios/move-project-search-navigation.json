@@ -5,22 +5,17 @@
   "actions": [
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move onto the Client Alpha task", "key": "j" },
-    { "type": "key", "label": "open the task action sheet", "key": "space" },
-    { "type": "key", "label": "search task actions", "key": "/" },
-    { "type": "text", "label": "find Move Project", "text": "move project" },
-    { "type": "key", "label": "open the destination picker", "key": "enter" },
-    { "type": "key", "label": "search destinations", "key": "/" },
-    { "type": "text", "label": "retain several destination matches", "text": "e" },
-    { "type": "key", "label": "navigate within filtered destinations", "key": "down" },
-    { "type": "assert", "assert": "contains", "value": "› Reading List" },
-    { "type": "key", "label": "finish destination search", "key": "enter" },
-    { "type": "key", "label": "move to the selected project", "key": "enter" },
+    { "type": "key", "label": "edit the task inline", "key": "e" },
+    { "type": "text", "label": "append the exact destination-project token", "text": " %reading-list" },
+    { "type": "assert", "assert": "contains", "value": "[reading-list] › root" },
+    { "type": "key", "label": "accept the open project suggestion", "key": "enter" },
+    { "type": "key", "label": "commit the atomic subtree move", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "[reading-list] (2)" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "[client-alpha]" },
-    { "type": "assert", "assert": "status_contains", "value": "Move Task to Project" },
+    { "type": "assert", "label": "the atomic edit exposes its correlated transaction", "assert": "status_contains", "value": "Edit Task Line" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

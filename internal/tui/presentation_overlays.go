@@ -38,8 +38,6 @@ func referenceOverlayFor(kind ReferenceKind) (Overlay, bool, error) {
 
 func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
 	switch view {
-	case ViewTaskForm:
-		return OverlayComposer, true
 	case ViewProjectCreator, ViewProjectEditor, ViewTextEditor:
 		return OverlayForm, true
 	case ViewTaskComments, ViewTaskAttachments:

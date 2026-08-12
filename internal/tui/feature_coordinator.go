@@ -179,7 +179,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 	}
 }
 
-// TaskFormCoordinator backs the create/edit task forms.
+// TaskFormCoordinator backs the expanded create form.
 type TaskFormCoordinator struct{ FeatureCoordinator }
 
 // CreateForm runs the task-form create use case (parent + optional subtasks +
@@ -214,24 +214,6 @@ func captureRequestsChangePlanning(reqs []app.CaptureRequest) bool {
 		}
 	}
 	return false
-}
-
-// EditForm runs the task-form edit use case for a qualified task (full field
-// replacement) and emits a TaskUpdatedMsg carrying the committed result, so the
-// shell reloads the project and re-resolves the live task pointer. A rejected
-// edit surfaces an ErrorMsg, leaving the form open with the pre-mutation draft.
-func (c TaskFormCoordinator) EditForm(task TaskIdentity, req app.EditRequest) tea.Cmd {
-	req.TaskID = ""
-	req.Locator = task.Locator()
-	mutator := c.mutator
-	return func() tea.Msg {
-		res, err := mutator.Edit(req)
-		if err != nil {
-			return ErrorMsg{Err: err}
-		}
-		result := res
-		return TaskUpdatedMsg{Result: &result, PlanningChanged: req.PlanForToday}
-	}
 }
 
 // OutlineCoordinator backs the external outline editor.

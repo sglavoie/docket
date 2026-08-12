@@ -14,10 +14,8 @@ func (m *TaskFormModel) handleChildrenTabKey(msg tea.KeyPressMsg) (tea.Model, bo
 		m.checklistExpanded = !m.checklistExpanded
 		m.clampChildrenFocusIndex()
 	case "S":
-		if m.mode == FormModeCreate {
-			m.subtasksExpanded = !m.subtasksExpanded
-			m.clampChildrenFocusIndex()
-		}
+		m.subtasksExpanded = !m.subtasksExpanded
+		m.clampChildrenFocusIndex()
 	case "ctrl+a":
 		m.handleChildrenCtrlA()
 		return m, true
@@ -89,9 +87,6 @@ func (m *TaskFormModel) handleChildrenCtrlA() {
 
 // handleChildrenCtrlT adds a new subtask draft and opens the edit overlay for it.
 func (m *TaskFormModel) handleChildrenCtrlT() {
-	if m.mode != FormModeCreate {
-		return
-	}
 	m.draft.subtasks = append(m.draft.subtasks, formSubtaskDraft{})
 	m.subtasksExpanded = true
 	m.childrenEditIdx = len(m.draft.subtasks) - 1

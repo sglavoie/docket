@@ -26,9 +26,9 @@ type outlinerScopeFrame struct {
 	sort     SortState
 	treeSort SortState
 
-	// Zoom stacks (single-project and cross-project).
-	zoomStack      []ZoomEntry
-	crossZoomStack []CrossProjectZoomEntry
+	// Focus stacks (single-project and cross-project).
+	focusStack      []FocusEntry
+	crossFocusStack []CrossProjectFocusEntry
 }
 
 // captureScopeFrame snapshots the current restorable state into a frame. Every
@@ -42,8 +42,8 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		primaryMode:      m.primaryMode,
 		sort:             m.sort,
 		treeSort:         m.treeSort,
-		zoomStack:        slices.Clone(m.zoomStack),
-		crossZoomStack:   slices.Clone(m.crossZoomStack),
+		focusStack:       slices.Clone(m.focusStack),
+		crossFocusStack:  slices.Clone(m.crossFocusStack),
 	}
 }
 
@@ -57,8 +57,8 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.primaryMode = f.primaryMode
 	m.sort = f.sort
 	m.treeSort = f.treeSort
-	m.zoomStack = slices.Clone(f.zoomStack)
-	m.crossZoomStack = slices.Clone(f.crossZoomStack)
+	m.focusStack = slices.Clone(f.focusStack)
+	m.crossFocusStack = slices.Clone(f.crossFocusStack)
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.clampCursor()
@@ -211,7 +211,7 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 		}
 	}
 	m.scopedProjectID = projectID
-	m.crossZoomStack = nil
+	m.crossFocusStack = nil
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true
@@ -260,18 +260,17 @@ func (m *OutlinerModel) clearProjectScope() bool {
 // resetToGlobalAll returns the cross-project Outliner to a clean, unscoped
 // global All root: it drops any project scope, clears every narrowing and ordering
 // axis (search, saved criteria, common filters and manual sort), clears
-// zoom/selection, activates All, and parks the cursor at the top. It is the state
+// focus/selection, activates All, and parks the cursor at the top. It is the state
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
 // leave the root silently narrowed by a stale filter, tag, or sort.
 func (m *OutlinerModel) resetToGlobalAll() {
 	m.confirm.Cancel()
 	m.quickEdit.Exit()
-	m.crossQuickEditProject = nil
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.dropParkedProjectFocus()
-	m.zoomStack = nil
-	m.crossZoomStack = nil
+	m.focusStack = nil
+	m.crossFocusStack = nil
 	m.collapsedSections = make(map[string]bool)
 	m.expandedNodes = make(map[TaskIdentity]bool)
 	m.expandedChecklists = make(map[TaskIdentity]bool)
@@ -314,7 +313,7 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	}
 	// No captured frame remained; fall back to the active context base in place.
 	m.scopedProjectID = ""
-	m.crossZoomStack = nil
+	m.crossFocusStack = nil
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true

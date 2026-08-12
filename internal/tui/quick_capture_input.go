@@ -43,16 +43,6 @@ type quickCaptureResult struct {
 	targetProjectName string  // Target project name (for preview display)
 }
 
-// quickCaptureTriggers defines the trigger characters for quick capture autocomplete.
-var quickCaptureTriggers = []ACTrigger{
-	{'#', acModeTag},
-	{'>', acModeParent},
-	{'!', acModePriority},
-	{'@', acModeDate},
-	{'$', acModeDestination},
-	{'%', acModeProject},
-}
-
 // quickCaptureInput encapsulates the compact Task Composer's autocomplete,
 // preview, and parsing infrastructure.
 type quickCaptureInput struct {
@@ -98,15 +88,7 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	input.Focus()
 	applyThemedTextarea(&input)
 
-	triggers := quickCaptureTriggers
-	if skipProject {
-		triggers = make([]ACTrigger, 0, len(quickCaptureTriggers)-1)
-		for _, t := range quickCaptureTriggers {
-			if t.Mode != acModeProject {
-				triggers = append(triggers, t)
-			}
-		}
-	}
+	triggers := quickCaptureTriggers(skipProject)
 
 	qci := quickCaptureInput{
 		input:             input,
@@ -117,6 +99,44 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	}
 	qci.initCaches()
 	return qci
+}
+
+// quickCaptureTriggers projects the canonical capture definitions into the
+// autocomplete engine's presentation-specific modes. The registry owns which
+// triggers exist; this switch owns only the TUI behavior attached to each field.
+func quickCaptureTriggers(skipProject bool) []ACTrigger {
+	definitions := textgrammar.Definitions(textgrammar.SurfaceCapture)
+	triggers := make([]ACTrigger, 0, len(definitions))
+	for _, definition := range definitions {
+		if skipProject && definition.Field == textgrammar.FieldProject {
+			continue
+		}
+		mode := autocompleteModeForField(definition.Field)
+		if mode == acModeNone || len(definition.Trigger) != 1 {
+			continue
+		}
+		triggers = append(triggers, ACTrigger{Char: definition.Trigger[0], Mode: mode})
+	}
+	return triggers
+}
+
+func autocompleteModeForField(field textgrammar.Field) int {
+	switch field {
+	case textgrammar.FieldTag:
+		return acModeTag
+	case textgrammar.FieldParent:
+		return acModeParent
+	case textgrammar.FieldPriority:
+		return acModePriority
+	case textgrammar.FieldDue:
+		return acModeDate
+	case textgrammar.FieldDestination:
+		return acModeDestination
+	case textgrammar.FieldProject:
+		return acModeProject
+	default:
+		return acModeNone
+	}
 }
 
 // initCaches builds tag, parent, and project caches for autocomplete.
@@ -265,7 +285,8 @@ func (q *quickCaptureInput) autocompleteLiteralComplete() bool {
 	}
 	switch mode {
 	case acModeTag:
-		parsed := textgrammar.Parse("#"+partial, textgrammar.SurfaceCapture)
+		definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
+		parsed := textgrammar.Parse(definition.Trigger+partial, textgrammar.SurfaceCapture)
 		return parsed.Text == "" && len(parsed.TokensFor(textgrammar.FieldTag)) == 1
 	default:
 		return false
@@ -396,16 +417,20 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	taskTitle := TaskTitleStyleFor(previewTask, TaskTitleStyleOptions{}).Render(q.preview.title)
 	taskChunks := []string{taskTitle}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
+	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
+	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
+	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
+	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
 
 	destination := app.CaptureDestinationInbox
-	destinationLabel := "$" + string(destination) + " (default)"
+	destinationLabel := destinationDefinition.Trigger + string(destination) + " (default)"
 	if q.preview.parentID != nil {
 		destination = app.CaptureDestinationBacklog
-		destinationLabel = "$" + string(destination) + " (default)"
+		destinationLabel = destinationDefinition.Trigger + string(destination) + " (default)"
 	}
 	if q.preview.destinationSet {
 		destination = q.preview.destination
-		destinationLabel = "$" + string(destination)
+		destinationLabel = destinationDefinition.Trigger + string(destination)
 	}
 	routeChunks := []string{destination.WorkflowState().Icon() + " " + destinationLabel}
 	if q.preview.targetProjectName != "" {
@@ -415,19 +440,19 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 
 	var scheduleChunks []string
 	if q.preview.dueDate != nil {
-		scheduleChunks = append(scheduleChunks, "@"+q.preview.dueDate.Format("Jan 2"))
+		scheduleChunks = append(scheduleChunks, dueDefinition.Trigger+q.preview.dueDate.Format("Jan 2"))
 	}
 	if len(scheduleChunks) > 0 {
 		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})
 	}
 
 	if q.preview.priority != models.PriorityUnset {
-		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("!%d", q.preview.priority)}})
+		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("%s%d", priorityDefinition.Trigger, q.preview.priority)}})
 	}
 	if len(q.preview.tags) > 0 {
 		tagStrs := make([]string, len(q.preview.tags))
 		for i, t := range q.preview.tags {
-			tagStrs[i] = "#" + t
+			tagStrs[i] = tagDefinition.Trigger + t
 		}
 		groups = append(groups, previewGroup{label: "Tags", chunks: []string{strings.Join(tagStrs, " ")}})
 	}
@@ -597,38 +622,22 @@ type syntaxGuideGroup struct {
 // only included when %project capture is enabled, so the Linked Task Creator
 // (which skips project syntax) never advertises it.
 func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
-	groupOrder := []string{"Priority & Tags", "Schedule", "Destination", "Project Routing", "Placement"}
+	var groupOrder []string
 	byGroup := make(map[string][]syntaxGuideEntry)
 	for _, def := range textgrammar.Definitions(textgrammar.SurfaceCapture) {
 		if def.Legacy || (q.skipProjectSyntax && def.Field == textgrammar.FieldProject) {
 			continue
+		}
+		if _, exists := byGroup[def.Group]; !exists {
+			groupOrder = append(groupOrder, def.Group)
 		}
 		entry := syntaxGuideEntry{
 			forms:    strings.Join(def.Forms, " · "),
 			desc:     def.Description,
 			examples: strings.Join(def.Examples, "  "),
 		}
-		switch def.Field {
-		case textgrammar.FieldPriority:
-			for _, value := range def.Values {
-				entry.validation = append(entry.validation, "Task !"+value)
-			}
-		case textgrammar.FieldTag:
-			entry.validation = []string{"Task #backend", "Task #urgent #api", "Task #bug"}
-		case textgrammar.FieldDue:
-			entry.validation = []string{
-				"Task @tomorrow", "Task @friday", "Task @+3d", "Task @next monday",
-				"Task @in 2 weeks", "Task @2025-12-31",
-			}
-		case textgrammar.FieldParent:
-			entry.validation = []string{"Subtask >1", "Subtask >Login"}
-		case textgrammar.FieldDestination:
-			for _, value := range def.Values {
-				entry.validation = append(entry.validation, "Task $"+value)
-			}
-		case textgrammar.FieldProject:
-			entry.validation = []string{"Task %" + syntaxGuideProjectSlug}
-		default:
+		for _, example := range def.Examples {
+			entry.validation = append(entry.validation, "Task "+example)
 		}
 		byGroup[def.Group] = append(byGroup[def.Group], entry)
 	}
@@ -641,11 +650,6 @@ func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 	}
 	return groups
 }
-
-// syntaxGuideProjectSlug is the placeholder project slug used by the Project
-// Routing group's parser-validation inputs. Tests that parse those inputs must
-// supply a non-archived project with this slug in their allProjects fixture.
-const syntaxGuideProjectSlug = "myproj"
 
 // Layout constants for the syntax guide's measured responsive rendering.
 const (

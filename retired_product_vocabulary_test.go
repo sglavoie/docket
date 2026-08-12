@@ -112,6 +112,28 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 	}
 }
 
+func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
+	err := filepath.WalkDir("internal", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".go" {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		if strings.Contains(strings.ToLower(string(data)), "zoom") {
+			t.Errorf("%s contains retired Focus-stack vocabulary %q", filepath.ToSlash(path), "zoom")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 	paths := []string{"README.md", "CLAUDE.md", "docs/architecture.md", "docs/tui-testing/README.md"}
 	err := filepath.WalkDir("docs/tui-testing/scenarios", func(path string, entry fs.DirEntry, walkErr error) error {

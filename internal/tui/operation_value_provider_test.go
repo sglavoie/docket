@@ -391,158 +391,6 @@ func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	}
 }
 
-func TestContextActionSheetValuePickerCancelReturnsToSheet(t *testing.T) {
-	model := newUITestApp()
-	task := &models.Task{
-		ID:            "task",
-		Title:         "Task",
-		WorkflowState: models.StateBacklog,
-	}
-	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
-	other := &models.Project{ID: "other", Name: "Other", Slug: "other"}
-	project.BuildTaskTree()
-	setTestAppProjects(model, project, other)
-	model.operationRegistry = NewOperationRegistry()
-	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
-	if err := model.registerTaskActionOperations(); err != nil {
-		t.Fatalf("registerTaskActionOperations: %v", err)
-	}
-	sheet, err := NewTaskActionSheetModel(
-		model.operationRegistry,
-		model.operationExecutor,
-		taskOperationTestContext(task, project),
-		"Task",
-	)
-	if err != nil {
-		t.Fatalf("NewTaskActionSheetModel: %v", err)
-	}
-	model.contextActionSheet = sheet
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operationTaskMoveProject))) {
-		t.Fatal("task sheet is missing the move-project action")
-	}
-
-	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if dismissed {
-		t.Fatal("a pending value picker dismissed the sheet")
-	}
-	handled, cmd := model.handleOperationOverlayMessage(raw)
-	if !handled || cmd != nil {
-		t.Fatalf("sheet selection = handled %v, cmd %T; want picker opened synchronously", handled, cmd)
-	}
-	if model.operationValuePicker == nil {
-		t.Fatal("move-project action did not open its ListSurface value picker")
-	}
-	if model.contextActionSheet == nil {
-		t.Fatal("opening a value picker discarded the action sheet beneath it")
-	}
-
-	handled, cmd = model.handleOperationOverlayMessage(OperationValueCanceledMsg{})
-	if !handled || cmd != nil {
-		t.Fatalf("picker cancel = handled %v, cmd %T; want handled with no command", handled, cmd)
-	}
-	if model.operationValuePicker != nil {
-		t.Fatal("cancel did not close the value picker")
-	}
-	if model.contextActionSheet == nil {
-		t.Fatal("cancel did not return to the action sheet")
-	}
-}
-
-func TestRelationValuePickerEscUnwindsSearchBeforeCancel(t *testing.T) {
-	source := ListSource{Items: []ListItem{{
-		ID: "parent:none", PrimaryText: "No parent", Data: OperationParentValue{},
-	}}}
-	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{ID: operationTaskSetParent},
-		ValueProviderParent,
-		"Set Parent",
-		"Task",
-		source,
-		false,
-		nil,
-	)
-	if err != nil {
-		t.Fatalf("newOperationValuePickerModel: %v", err)
-	}
-	_, dismissed, _ := picker.handleKey(tea.KeyPressMsg{Code: '/'})
-	if dismissed || !picker.searching {
-		t.Fatal("search entry unexpectedly dismissed relation picker")
-	}
-	_, dismissed, _ = picker.handleKey(tea.KeyPressMsg{Code: 'x', Text: "x"})
-	if dismissed || picker.surface.Query().Raw != "x" {
-		t.Fatalf("search query = %q dismissed=%v", picker.surface.Query().Raw, dismissed)
-	}
-	_, dismissed, _ = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
-	if dismissed || picker.surface.Query().Raw != "" || !picker.searching {
-		t.Fatal("first Esc did not clear the active relation query")
-	}
-	_, dismissed, _ = picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
-	if dismissed || picker.searching {
-		t.Fatal("second Esc did not leave relation search mode")
-	}
-	_, dismissed, result := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEsc})
-	if !dismissed {
-		t.Fatal("third Esc did not cancel the relation picker")
-	}
-	if _, ok := result.(OperationValueCanceledMsg); !ok {
-		t.Fatalf("cancel result = %T, want OperationValueCanceledMsg", result)
-	}
-}
-
-func TestOperationValuePickerArrowNavigationRemainsActiveDuringSearch(t *testing.T) {
-	source := ListSource{Items: []ListItem{
-		{ID: "project:alpha", PrimaryText: "Alpha Project", Data: "alpha"},
-		{ID: "project:beta", PrimaryText: "Beta Project", Data: "beta"},
-		{ID: "project:gamma", PrimaryText: "Gamma Project", Data: "gamma"},
-	}}
-	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{ID: operationTaskMoveProject},
-		ValueProviderProject,
-		"Move Project",
-		"Task",
-		source,
-		false,
-		nil,
-	)
-	if err != nil {
-		t.Fatalf("newOperationValuePickerModel: %v", err)
-	}
-
-	picker.handleKey(tea.KeyPressMsg{Code: '/'})
-	picker.handleKey(tea.KeyPressMsg{Code: 'p', Text: "p"})
-	if !picker.searching || picker.surface.Query().Raw != "p" {
-		t.Fatalf("search state = active %v query %q, want active query p", picker.searching, picker.surface.Query().Raw)
-	}
-
-	picker.handleKey(tea.KeyPressMsg{Code: tea.KeyDown})
-	if current, ok := picker.surface.CurrentItem(); !ok || current.ID != "project:beta" {
-		t.Fatalf("current item after Down = %+v, %v; want project:beta", current, ok)
-	}
-	if !picker.searching || picker.surface.Query().Raw != "p" {
-		t.Fatalf("Down changed search state = active %v query %q", picker.searching, picker.surface.Query().Raw)
-	}
-
-	picker.handleKey(tea.KeyPressMsg{Code: tea.KeyUp})
-	if current, ok := picker.surface.CurrentItem(); !ok || current.ID != "project:alpha" {
-		t.Fatalf("current item after Up = %+v, %v; want project:alpha", current, ok)
-	}
-}
-
-func TestMovedTaskMenuOperationRetargetsAsyncReloadAnchor(t *testing.T) {
-	outliner := &OutlinerModel{crossReloadProjectID: "source", crossReloadTaskID: "task"}
-	model := &AppModel{crossOutliner: outliner}
-	task := &models.Task{ID: "task"}
-	destination := &models.Project{ID: "destination"}
-
-	model.preserveMovedOutlinerTarget(TaskMovedToProjectMsg{
-		Task: task, DestProject: destination,
-	})
-	if outliner.crossReloadProjectID != destination.ID || outliner.crossReloadTaskID != task.ID {
-		t.Fatalf("reload anchor = %s/%s, want %s/%s",
-			outliner.crossReloadProjectID, outliner.crossReloadTaskID, destination.ID, task.ID)
-	}
-}
-
 func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T) {
 	taskA := newBulkPickerTestTask(t, 1, "alpha")
 	taskB := newBulkPickerTestTask(t, 1, "beta")
@@ -607,7 +455,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	}
 }
 
-func TestNarrowTaskEditorsCommitThroughCommonApplicationOperation(t *testing.T) {
+func TestNarrowDescriptionEditorCommitsThroughCommonApplicationOperation(t *testing.T) {
 	task := newBulkPickerTestTask(t, 1, "Before")
 	task.Description = "Old body"
 	env := newAppBulkPickerEnv(t, []*models.Task{task})
@@ -617,10 +465,7 @@ func TestNarrowTaskEditorsCommitThroughCommonApplicationOperation(t *testing.T) 
 	for _, testCase := range []struct {
 		operation app.TaskOperation
 		value     string
-	}{
-		{operation: app.TaskOperationEditTitle, value: "After"},
-		{operation: app.TaskOperationEditDescription, value: "New body"},
-	} {
+	}{{operation: app.TaskOperationEditDescription, value: "New body"}} {
 		handled, _ := model.handleEditorMessages(ShowTaskTextEditorMsg{
 			Task: task, Project: project, Operation: testCase.operation,
 		})
@@ -635,7 +480,7 @@ func TestNarrowTaskEditorsCommitThroughCommonApplicationOperation(t *testing.T) 
 	}
 
 	fresh := env.reload(t, 0).GetTaskByID(task.ID)
-	if fresh == nil || fresh.Title != "After" || fresh.Description != "New body" {
+	if fresh == nil || fresh.Title != "Before" || fresh.Description != "New body" {
 		t.Fatalf("persisted narrow edits = %+v", fresh)
 	}
 }
@@ -711,33 +556,6 @@ func TestDirectIndentAndOutdentRemainResolvableAcrossHierarchyPositions(t *testi
 	}
 }
 
-func TestTaskOperationParentAndMoveApplicabilityRequireCandidates(t *testing.T) {
-	model := newUITestApp()
-	project := newTaskStructureTestProject()
-	setTestAppProjects(model, project)
-	loose := project.GetTaskByID("loose")
-	epic := project.GetTaskByID("epic")
-
-	if !taskOperationApplicable(t, model, operationTaskSetParent, loose, project) {
-		t.Error("set-parent is unavailable for a task with valid parent candidates")
-	}
-	if !taskOperationApplicable(t, model, operationTaskSetParent, epic, project) {
-		t.Error("set-parent is unavailable for a generic task with valid lean parent candidates")
-	}
-	if taskOperationApplicable(t, model, operationTaskMoveProject, loose, project) {
-		t.Error("move-project is offered with no other active project")
-	}
-
-	other := &models.Project{ID: "beta", Name: "Beta", Slug: "beta"}
-	setTestAppProjects(model, project, other)
-	if !taskOperationApplicable(t, model, operationTaskMoveProject, loose, project) {
-		t.Error("move-project stayed unavailable after a destination project appeared")
-	}
-	if got := model.moveProjectCandidates(project); len(got) != 1 || got[0].ID != other.ID {
-		t.Errorf("move destinations = %v, want only the other project", got)
-	}
-}
-
 func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 	model := newUITestApp()
 	project := newTaskStructureTestProject()
@@ -755,10 +573,8 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 		}
 	}
 	// Every direct and retired operation is absent. The remaining projection is
-	// the exact five-item task menu in its canonical order.
+	// the exact three-item task menu in its canonical order.
 	want := []OperationID{
-		operationTaskMoveProject,
-		operationTaskSetParent,
 		operationTaskComments,
 		operationTaskAttachments,
 		operationTaskDelete,

@@ -46,11 +46,10 @@ func TestCrossProjectCapture(t *testing.T) {
 			wantTargetName: "Other Project",
 		},
 		{
-			name:           "target project by fuzzy name",
-			input:          "%other Task in other project",
-			wantTitle:      "Task in other project",
-			wantTargetID:   strPtr("other-project"),
-			wantTargetName: "Other Project",
+			name:        "target project requires exact slug",
+			input:       "%other Task in other project",
+			wantErr:     true,
+			errContains: "exact %project-slug",
 		},
 		{
 			name:           "project resolves before earlier parent token",

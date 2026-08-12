@@ -214,7 +214,6 @@ func TestTaskComposerPresetModes(t *testing.T) {
 		{"global", TaskComposerPreset{Kind: ComposerGlobal, Project: project}, ComposerCompact, ComposerGlobal, false},
 		{"project", TaskComposerPreset{Kind: ComposerProject, Project: project}, ComposerCompact, ComposerProject, false},
 		{"child", TaskComposerPreset{Kind: ComposerChild, Project: project, Shared: TaskComposerSharedAttributes{ParentID: &parentID}}, ComposerCompact, ComposerChild, true},
-		{"edit", TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: task}, ComposerExpanded, ComposerEdit, false},
 	}
 
 	for _, tt := range tests {
@@ -226,17 +225,7 @@ func TestTaskComposerPresetModes(t *testing.T) {
 			if tt.wantParent && (composer.preset.Shared.ParentID == nil || *composer.preset.Shared.ParentID != task.ID) {
 				t.Fatal("child preset lost its typed parent")
 			}
-			if tt.wantMode == ComposerExpanded && composer.expanded == nil {
-				t.Fatal("expanded preset did not construct the full form")
-			}
 		})
-	}
-
-	editComposer := NewTaskComposerModel(tests[3].preset, appModel.runtime)
-	editComposer.expanded.titleInput.SetValue("one\ntwo")
-	editComposer.expanded.commitAllTextInputs()
-	if editComposer.expanded.draft.title != "one two" {
-		t.Fatalf("edit interpreted multiple lines as tasks: %q", editComposer.expanded.draft.title)
 	}
 }
 
@@ -539,30 +528,28 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 		t.Fatal("dirty compact cancellation did not expose its confirmation")
 	}
 
-	edit := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerEdit, Project: project, Task: project.Tasks[0]}, appModel.runtime)
-	edit.SetSize(60, 18)
-	if !strings.Contains(edit.View().Content, "Terminal too small") {
+	expanded := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, appModel.runtime)
+	expanded.expandRequest(app.CaptureRequest{ProjectID: project.ID})
+	expanded.SetSize(60, 18)
+	if !strings.Contains(expanded.View().Content, "Terminal too small") {
 		t.Fatal("narrow expanded composer did not use the safe responsive guard")
 	}
 }
 
-func TestDailyTaskEditsUseNarrowTypedOverlays(t *testing.T) {
+func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
+	appModel.crossOutliner = NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
+	appModel.crossOutliner.loadedProjects = []*models.Project{project}
+	appModel.views.Register(ViewCrossProjectOutliner, appModel.crossOutliner)
+	appModel.navigation.ResetRoot()
 
-	appModel.Update(ShowTaskTextEditorMsg{Project: project, Task: task, Operation: app.TaskOperationEditTitle})
-	if appModel.currentView() != ViewTextEditor {
-		t.Fatalf("title edit view = %v, want TextEditor", appModel.currentView())
-	}
-	if appModel.activeTaskComposer() || appModel.taskComposer != nil {
-		t.Fatal("title edit opened the full Task Composer")
-	}
-	if appModel.pendingTaskTextEdit == nil ||
-		appModel.pendingTaskTextEdit.Operation != app.TaskOperationEditTitle {
-		t.Fatalf("title edit pending operation = %+v", appModel.pendingTaskTextEdit)
+	appModel.Update(StartTaskLineEditMsg{Project: project, Task: task})
+	if appModel.currentView() != ViewCrossProjectOutliner || appModel.crossOutliner == nil || !appModel.crossOutliner.quickEdit.IsActive() {
+		t.Fatalf("title edit did not remain in the inline Outliner: view=%v", appModel.currentView())
 	}
 
-	appModel.popView()
+	appModel.crossOutliner.quickEdit.Exit()
 	appModel.Update(ShowTaskTextEditorMsg{
 		Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 	})

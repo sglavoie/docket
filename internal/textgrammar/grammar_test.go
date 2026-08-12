@@ -2,47 +2,9 @@ package textgrammar
 
 import (
 	"reflect"
+	"strings"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/models"
 )
-
-func TestCanonicalStatesComeFromModelOrder(t *testing.T) {
-	got := StateNames()
-	want := make([]string, 0, len(models.AllWorkflowStates()))
-	for _, state := range models.AllWorkflowStates() {
-		want = append(want, state.String())
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("StateNames() = %v, want %v", got, want)
-	}
-}
-
-func TestParseStateCanonicalParity(t *testing.T) {
-	for _, state := range models.AllWorkflowStates() {
-		got, ok := ParseState(SurfaceEdit, state.String())
-		if !ok || !reflect.DeepEqual(got.States, []models.WorkflowState{state}) {
-			t.Errorf("ParseState(%q) = %+v, %v", state, got, ok)
-		}
-	}
-}
-
-func TestParseStateRejectsLegacyAliases(t *testing.T) {
-	for _, legacy := range []string{
-		"ready", "next", "in_progress", "todo", "start", "blocked", "standby", "hold", "review", "maybe", "reopen",
-	} {
-		if got, ok := ParseState(SurfaceEdit, legacy); ok {
-			t.Errorf("ParseState(%q) = %+v, true; want rejection", legacy, got)
-		}
-	}
-}
-
-func TestInvalidStateErrorExplainsRetiredReviewReplacement(t *testing.T) {
-	const want = "state $review was removed (use #review)"
-	if got := InvalidStateError("review").Error(); got != want {
-		t.Fatalf("InvalidStateError(Review) = %q, want %q", got, want)
-	}
-}
 
 func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	parsed := Parse(
@@ -64,7 +26,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 
 func TestSharedParserAdvertisesExactlySixCaptureSigils(t *testing.T) {
 	parsed := Parse(
-		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 state:ready -#old has:due no:tag is:pinned",
+		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
 	)
 	if len(parsed.Tokens) != 0 {
@@ -200,5 +162,158 @@ func TestCaptureDestinationNamesAreExactAndOrdered(t *testing.T) {
 	}
 	if got := definition.Values; !reflect.DeepEqual(got, want) {
 		t.Fatalf("capture destination values = %v, want %v", got, want)
+	}
+}
+
+func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
+	tests := []struct {
+		name    string
+		surface Surface
+		want    map[Field][]string
+	}{
+		{
+			name: "capture", surface: SurfaceCapture,
+			want: map[Field][]string{
+				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
+				FieldDestination: {"$destination"}, FieldProject: {"%project"}, FieldParent: {">parent"},
+			},
+		},
+		{
+			name: "edit", surface: SurfaceEdit,
+			want: map[Field][]string{
+				FieldPriority: {"!1-3", "!0"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
+				FieldDue: {"@date", "@0"}, FieldDestination: {"$destination"},
+				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
+			},
+		},
+		{
+			name: "outline", surface: SurfaceOutline,
+			want: map[Field][]string{
+				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
+				FieldDestination: {"$destination"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defs := Definitions(tt.surface)
+			if len(defs) != len(tt.want) {
+				t.Fatalf("definitions = %d, want %d: %+v", len(defs), len(tt.want), defs)
+			}
+			for _, def := range defs {
+				forms, ok := tt.want[def.Field]
+				if !ok {
+					t.Errorf("unexpected field %s", def.Field)
+					continue
+				}
+				if !reflect.DeepEqual(def.Forms, forms) {
+					t.Errorf("%s forms = %v, want %v", def.Field, def.Forms, forms)
+				}
+				if def.Trigger == "" || def.Description == "" {
+					t.Errorf("%s is missing trigger/help metadata: %+v", def.Field, def)
+				}
+			}
+		})
+	}
+}
+
+func TestParseRecognizesOnlyRegistryFormsForEachSurface(t *testing.T) {
+	const input = "Task !1 #add -#old @tomorrow $next %core >1"
+	tests := []struct {
+		name     string
+		surface  Surface
+		wantText string
+		fields   []Field
+	}{
+		{"capture", SurfaceCapture, "Task -#old", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldProject, FieldParent}},
+		{"edit", SurfaceEdit, "Task", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldProject, FieldParent}},
+		{"outline", SurfaceOutline, "Task -#old %core >1", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed := Parse(input, tt.surface)
+			if parsed.Text != tt.wantText {
+				t.Fatalf("Text = %q, want %q", parsed.Text, tt.wantText)
+			}
+			for _, field := range tt.fields {
+				if len(parsed.TokensFor(field)) == 0 {
+					t.Errorf("missing %s token in %+v", field, parsed.Tokens)
+				}
+			}
+		})
+	}
+}
+
+func TestRegistryClearSemanticsAreSurfaceSpecific(t *testing.T) {
+	for _, field := range []Field{FieldPriority, FieldDue, FieldParent} {
+		capture, ok := DefinitionFor(SurfaceCapture, field)
+		if !ok || len(capture.Clears) != 0 {
+			t.Errorf("capture %s clears = %+v, want none", field, capture.Clears)
+		}
+		edit, ok := DefinitionFor(SurfaceEdit, field)
+		if !ok || len(edit.Clears) != 1 || edit.Clears[0].Value != "0" {
+			t.Errorf("edit %s clears = %+v, want one zero clear", field, edit.Clears)
+		}
+	}
+}
+
+func TestDuplicateSingletonDiagnosticsComeFromCardinality(t *testing.T) {
+	parsed := Parse(
+		"Task !1 !2 #one #two -#old -#older @today @tomorrow $today $next %one %two >1 >2",
+		SurfaceEdit,
+	)
+	want := []Field{FieldPriority, FieldDue, FieldDestination, FieldProject, FieldParent}
+	got := make([]Field, len(parsed.Diagnostics))
+	for i, diagnostic := range parsed.Diagnostics {
+		got[i] = diagnostic.Field
+		if diagnostic.Message == "" {
+			t.Errorf("diagnostic = %+v", diagnostic)
+		}
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("duplicate fields = %v, want %v (diagnostics=%+v)", got, want, parsed.Diagnostics)
+	}
+}
+
+func TestRegistryInvariantsAndDestinationCoverage(t *testing.T) {
+	if err := validateRegistry(); err != nil {
+		t.Fatalf("validateRegistry: %v", err)
+	}
+	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "someday", "done", "canceled"}
+	definition, ok := DefinitionFor(SurfaceEdit, FieldDestination)
+	if !ok || !reflect.DeepEqual(definition.Values, want) {
+		t.Fatalf("destination values = %v, want %v", definition.Values, want)
+	}
+	edit := definition
+	if !ok || !reflect.DeepEqual(edit.Forms, []string{"$destination"}) {
+		t.Fatalf("edit destination definition = %+v, %v", edit, ok)
+	}
+}
+
+func TestDefinitionsReturnDefensiveCopies(t *testing.T) {
+	defs := Definitions(SurfaceEdit)
+	defs[0].Forms[0] = "mutated"
+	defs[0].Values[0] = "mutated"
+	defs[0].RetiredValues[0] = "mutated"
+	defs[0].Examples[0] = "mutated"
+	defs[0].Clears[0].Value = "mutated"
+
+	fresh, ok := DefinitionFor(SurfaceEdit, FieldPriority)
+	if !ok || fresh.Forms[0] != "!1-3" || fresh.Values[0] != "1" || fresh.RetiredValues[0] != "4" || fresh.Examples[0] != "!1" || fresh.Clears[0].Value != "0" {
+		t.Fatalf("registry projection was mutated: %+v", fresh)
+	}
+}
+
+func TestInvalidPriorityErrorUsesCanonicalValues(t *testing.T) {
+	definition, ok := DefinitionFor(SurfaceCapture, FieldPriority)
+	if !ok {
+		t.Fatal("priority definition is missing")
+	}
+	err := InvalidPriorityError("5")
+	for _, value := range definition.Values {
+		if token := definition.Trigger + value; !strings.Contains(err.Error(), token) {
+			t.Errorf("priority guidance %q does not contain %q", err, token)
+		}
 	}
 }

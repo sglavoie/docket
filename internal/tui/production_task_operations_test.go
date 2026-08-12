@@ -130,7 +130,6 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 	)
 
 	values := map[OperationID]any{
-		operationTaskMoveProject: "beta",
 		operationTaskSetState:    models.StateBacklog,
 		operationTaskSetPriority: 2,
 		operationTaskSetDueDate:  OperationDateValue{},

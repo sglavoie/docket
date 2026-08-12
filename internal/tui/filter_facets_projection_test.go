@@ -148,27 +148,27 @@ func TestHierarchicalModesPromoteMatchingChildPastFacetMismatch(t *testing.T) {
 	}
 }
 
-func TestPromotedFacetBreadcrumbStopsAtZoomBoundary(t *testing.T) {
-	zoomRoot := filterFacetTask("zoom-root", models.StateBacklog, 0, []string{"other"}, nil, nil)
-	zoomRoot.Title = "Zoom root"
+func TestPromotedFacetBreadcrumbStopsAtFocusBoundary(t *testing.T) {
+	focusRoot := filterFacetTask("focus-root", models.StateBacklog, 0, []string{"other"}, nil, nil)
+	focusRoot.Title = "Focus root"
 	hiddenParent := filterFacetTask("hidden-parent", models.StateBacklog, 0, []string{"other"}, nil, nil)
 	hiddenParent.Title = "Hidden parent"
-	hiddenParent.ParentID = &zoomRoot.ID
+	hiddenParent.ParentID = &focusRoot.ID
 	match := filterFacetTask("match", models.StateBacklog, 0, []string{"bug"}, nil, nil)
 	match.ParentID = &hiddenParent.ID
-	project := primaryRowsProject("project", zoomRoot, hiddenParent, match)
+	project := primaryRowsProject("project", focusRoot, hiddenParent, match)
 	outliner := scopeTestOutliner(project)
 	outliner.selectOutlinerMode(ModeBacklog)
-	outliner.crossZoomStack = []CrossProjectZoomEntry{{ProjectID: project.ID, TaskID: zoomRoot.ID}}
+	outliner.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
 	outliner.filter.Tags = map[string]bool{"bug": true}
 	outliner.rebuildRows()
 
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{match.ID}) {
-		t.Fatalf("zoomed #bug rows = %v, want only the tagged descendant", got)
+		t.Fatalf("focused #bug rows = %v, want only the tagged descendant", got)
 	}
 	row, ok := findPlanningTaskRow(outliner, match.ID)
 	if !ok || row.Breadcrumb != hiddenParent.Title+" ›" {
-		t.Fatalf("zoomed promoted row = %+v found=%t, want breadcrumb below zoom boundary", row, ok)
+		t.Fatalf("focused promoted row = %+v found=%t, want breadcrumb below focus boundary", row, ok)
 	}
 }
 

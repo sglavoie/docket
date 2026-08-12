@@ -143,44 +143,6 @@ func projectTaskCountLabel(project *models.Project) string {
 	return strconv.Itoa(project.CountTasks())
 }
 
-// ListSourceFromProjects adapts project catalogs while retaining archived and
-// pinned presentation groups.
-func ListSourceFromProjects(projects []*models.Project) ListSource {
-	categories := []ListCategory{
-		{ID: "project:pinned", Label: "Pinned"},
-		{ID: "project:active", Label: "Projects"},
-		{ID: "project:archived", Label: "Archived"},
-	}
-	items := make([]ListItem, 0, len(projects))
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		category := ListCategoryID("project:active")
-		if project.Archived {
-			category = "project:archived"
-		} else if project.Pinned {
-			category = "project:pinned"
-		}
-		items = append(items, ListItem{
-			ID:            ListItemID("project:" + project.ID),
-			CategoryID:    category,
-			PrimaryText:   projectPickerDisplayText(project),
-			SecondaryText: fmt.Sprintf("%s tasks", projectTaskCountLabel(project)),
-			Aliases:       []string{project.Name, project.Slug},
-			Preview: ListPreview{
-				Title:   project.Name,
-				Summary: project.Description,
-				Fields: []ListPreviewField{
-					{Label: "Tasks", Value: projectTaskCountLabel(project)},
-				},
-			},
-			Data: project,
-		})
-	}
-	return ListSource{Items: items, Categories: categories}
-}
-
 // ListSourceFromTags adapts task-tag picker sources.
 func ListSourceFromTags(tags []TagInfo) ListSource {
 	categories := []ListCategory{

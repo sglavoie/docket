@@ -61,7 +61,7 @@ func (p *quickCaptureParser) parsePriorityTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		values, ok := textgrammar.ParsePriority(token.Value, false)
 		if !ok {
-			if p.failf("priority !%s was removed (use !1, !2, or !3)", token.Value) {
+			if p.failf("%s", textgrammar.InvalidPriorityError(token.Value)) {
 				return
 			}
 			continue
@@ -115,7 +115,7 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		targetProject := resolveProject(token.Value, p.allProjects)
 		if targetProject == nil {
-			if p.failf("project not found: '%s' (use %%project-slug or name)", token.Value) {
+			if p.failf("project not found: '%s' (use an exact %%project-slug)", token.Value) {
 				return
 			}
 			continue
@@ -128,7 +128,13 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 
 func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		parent := resolveParent(token.Value, p.project)
+		parent, err := resolveParent(token.Value, p.project)
+		if err != nil {
+			if p.failf("%s", err) {
+				return
+			}
+			continue
+		}
 		switch parent {
 		case nil:
 			if p.failf("parent not found: '%s' (use >short-id or title prefix)", token.Value) {
@@ -151,19 +157,4 @@ func (p *quickCaptureParser) parseDestinationTokens(tokens []textgrammar.Token) 
 		p.result.destination = destination
 		p.result.destinationSet = true
 	}
-}
-
-func aliasFirst(tokens []textgrammar.Token, primaryForm string) []textgrammar.Token {
-	result := make([]textgrammar.Token, 0, len(tokens))
-	for _, token := range tokens {
-		if token.Form != primaryForm {
-			result = append(result, token)
-		}
-	}
-	for _, token := range tokens {
-		if token.Form == primaryForm {
-			result = append(result, token)
-		}
-	}
-	return result
 }

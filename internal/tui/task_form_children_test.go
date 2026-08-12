@@ -310,42 +310,6 @@ func TestTaskForm_Children_RendersSubtasksSection(t *testing.T) {
 	}
 }
 
-func TestTaskForm_EditMode_LoadsChecklist(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	task.Checklist = []models.ChecklistItem{{Text: "do this", Done: false}, {Text: "done that", Done: true}}
-
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	if len(m.draft.checklist) != 2 {
-		t.Fatalf("expected 2 checklist items loaded from task, got %d", len(m.draft.checklist))
-	}
-	if m.draft.checklist[0].Text != "do this" {
-		t.Errorf("expected first item 'do this', got %q", m.draft.checklist[0].Text)
-	}
-	if !m.draft.checklist[1].Done {
-		t.Error("expected second item Done=true")
-	}
-}
-
-func TestTaskForm_EditMode_SubtasksHiddenWithHint(t *testing.T) {
-	project := testutil.NewTestProjectWithTasks("Test Project")
-	cfg := newTestConfig()
-	if len(project.Tasks) == 0 {
-		t.Skip("test project has no tasks")
-	}
-	task := project.Tasks[0]
-	m := NewTaskFormModelEdit(project, task, testRuntimeAt(cfg.DataDir(), cfg))
-	m.activeTab = formTabChildren
-	view := m.View().Content
-	if !strings.Contains(view, "Parent") {
-		t.Errorf("Edit mode Children tab should contain hint about Parent field; got:\n%s", view)
-	}
-}
-
 func TestSubtaskEditEmptyTitleRemovesSubtask(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test")
 	cfg := newTestConfig()

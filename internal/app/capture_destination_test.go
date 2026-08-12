@@ -8,20 +8,21 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func TestCaptureDestinationsApplyLifecyclePlanningAndTerminalTimestamps(t *testing.T) {
 	wantState := map[app.CaptureDestination]models.WorkflowState{
-		app.CaptureDestinationInbox:    models.StateInbox,
-		app.CaptureDestinationBacklog:  models.StateBacklog,
-		app.CaptureDestinationToday:    models.StateBacklog,
-		app.CaptureDestinationNext:     models.StateBacklog,
-		app.CaptureDestinationDoing:    models.StateDoing,
-		app.CaptureDestinationWaiting:  models.StateWaiting,
-		app.CaptureDestinationPaused:   models.StatePaused,
-		app.CaptureDestinationSomeday:  models.StateSomeday,
-		app.CaptureDestinationDone:     models.StateDone,
-		app.CaptureDestinationCanceled: models.StateCanceled,
+		app.CaptureDestinationInbox:     models.StateInbox,
+		app.CaptureDestinationBacklog:   models.StateBacklog,
+		app.CaptureDestinationToday:     models.StateBacklog,
+		app.CaptureDestinationNext:      models.StateBacklog,
+		textgrammar.DestinationDoing:    models.StateDoing,
+		textgrammar.DestinationWaiting:  models.StateWaiting,
+		textgrammar.DestinationPaused:   models.StatePaused,
+		textgrammar.DestinationSomeday:  models.StateSomeday,
+		textgrammar.DestinationDone:     models.StateDone,
+		textgrammar.DestinationCanceled: models.StateCanceled,
 	}
 	wantNow := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 
@@ -46,7 +47,7 @@ func TestCaptureDestinationsApplyLifecyclePlanningAndTerminalTimestamps(t *testi
 			if task.UpdatedAt != wantNow {
 				t.Errorf("UpdatedAt = %v, want %v", task.UpdatedAt, wantNow)
 			}
-			if destination == app.CaptureDestinationDone || destination == app.CaptureDestinationCanceled {
+			if destination == textgrammar.DestinationDone || destination == textgrammar.DestinationCanceled {
 				if task.CompletedAt == nil || *task.CompletedAt != wantNow {
 					t.Errorf("CompletedAt = %v, want %v", task.CompletedAt, wantNow)
 				}
@@ -117,7 +118,7 @@ func TestCaptureManyCommitsMixedDestinationsAndPlanningOnce(t *testing.T) {
 	results, err := svc.CaptureMany([]app.CaptureRequest{
 		{SourceLine: 1, ProjectID: project.ID, Title: "Today", Destination: app.CaptureDestinationToday},
 		{SourceLine: 2, ProjectID: project.ID, Title: "Next", Destination: app.CaptureDestinationNext},
-		{SourceLine: 3, ProjectID: project.ID, Title: "Done", Destination: app.CaptureDestinationDone},
+		{SourceLine: 3, ProjectID: project.ID, Title: "Done", Destination: textgrammar.DestinationDone},
 	})
 	if err != nil {
 		t.Fatalf("CaptureMany: %v", err)

@@ -1,150 +1,94 @@
 package tui
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func handleQuickEditKey(
-	msg tea.KeyPressMsg,
-	qe *QuickEditComponent,
-	project *models.Project,
-	onSave func() tea.Cmd,
-	onUndo func(action, detail string),
-) tea.Cmd {
-	switch msg.String() {
-	case "esc":
-		qe.Exit()
-		return nil
-	case "enter":
-		input := strings.TrimSpace(qe.GetInput().Value())
-		if input == "" {
-			qe.Exit()
-			return nil
-		}
-		task := project.GetTaskByID(qe.GetTask().ID)
-		if task == nil {
-			qe.Exit()
-			return nil
-		}
-		if qe.IsRenameOnly() {
-			if models.ValidateTaskTitle(input) != nil {
-				qe.Exit()
-				return nil
-			}
-			oldTitle := task.Title
-			project.MutateTask(task.ID, func(task *models.Task) { task.Title = input })
-			if onUndo != nil {
-				onUndo("Rename Task", oldTitle)
-			}
-		} else {
-			result, err := parseQuickEdit(input, task, project)
-			if err != nil {
-				return nil
-			}
-			if applyQuickEdit(task, project, result) != "" {
-				qe.Exit()
-				return nil
-			}
-			if onUndo != nil {
-				onUndo("Quick Edit", task.Title)
-			}
-		}
-		qe.Exit()
-		return onSave()
-	default:
-		input := qe.GetInput()
-		input, cmd := input.Update(msg)
-		qe.UpdateInput(input)
-		if !qe.IsRenameOnly() {
-			preview, _ := parseQuickEditForPreview(qe.GetInput().Value(), qe.GetTask(), project)
-			qe.SetPreview(preview)
-		}
-		return cmd
-	}
-}
-
 // handleQuickEditMode handles input while in quick edit mode.
-//
-// handleQuickEditKey applies the parsed rename/quick-edit to the loaded project's
-// task in memory, then calls onSave. In single-project mode onSave runs the
-// project persist pipeline; in cross-project mode onSave routes the now-mutated
-// task through the app-layer Edit seam (a full-form EditRequest that replaces the
-// task's editable fields), committing one ledger transaction so the shell reloads
-// and toasts. The onUndo callback is retired in cross mode — the ledger owns undo.
-func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	proj := m.project
-	// Name the quick-edited task as the planning-reconcile target so a single-project
-	// quick edit that changes the task's section (and therefore its state) folds
-	// Today/Next exclusivity into the same whole-project transaction.
-	var editTaskID string
-	if t := m.quickEdit.GetTask(); t != nil {
-		editTaskID = t.ID
+func (m *OutlinerModel) handleQuickEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.quickEdit.SetContext(m.quickEdit.project, m.quickEditProjects())
+	transition, result, cmd := m.quickEdit.Handle(msg)
+	if transition != quickEditCommit || result == nil {
+		return m, cmd
 	}
-	saveFn := func() tea.Cmd {
-		if editTaskID != "" {
-			m.undo.TaskIDs = []string{editTaskID}
-		}
-		return m.saveProject()
+	project := m.quickEdit.project
+	task := m.quickEdit.GetTask()
+	if project == nil || task == nil || project.GetTaskByID(task.ID) != task {
+		m.quickEdit.RejectCommit("task edit context is unavailable")
+		return m, nil
 	}
-	undoFn := m.setUndoContext
-	if proj == nil && m.crossQuickEditProject != nil {
-		proj = m.crossQuickEditProject
-		editTask := m.quickEdit.GetTask()
-		saveFn = func() tea.Cmd {
-			m.crossQuickEditProject = nil
-			if editTask == nil {
-				return nil
-			}
-			mutated := proj.GetTaskByID(editTask.ID)
-			if mutated == nil {
-				return nil
-			}
-			state := mutated.State()
-			return m.taskItem.Edit(taskIdentityFor(mutated, proj), app.EditRequest{
-				Form:          formEditFromTask(mutated),
-				WorkflowState: &state,
-			})
-		}
-		undoFn = func(string, string) {}
-	}
-
-	if msg.String() == "enter" && proj != nil && m.quickEdit.GetTask() != nil {
-		if proj.GetTaskByID(m.quickEdit.GetTask().ID) == nil {
-			m.quickEdit.Exit()
-			m.crossQuickEditProject = nil
-			return m, func() tea.Msg { return StatusMsg("task was deleted") }
-		}
-	}
-
-	cmd := handleQuickEditKey(msg, m.quickEdit, proj, saveFn, undoFn)
-	return m, cmd
+	source := taskIdentityFor(task, project)
+	relocation := m.captureOutlinerRelocation([]TaskIdentity{source})
+	m.quickEdit.BeginCommit()
+	return m, m.taskItem.EditTaskLine(m.taskLineEditRequest(source, result), relocation)
 }
 
-// formEditFromTask captures a task's full editable field set as an app.FormEdit,
-// so a cross-project quick edit — which has already applied its parsed changes to
-// the loaded task in memory — can replay the complete post-edit state through the
-// app-layer Edit seam. The form's replace-everything semantics mirror the task
-// form's own save path (task_form_save.go).
-func formEditFromTask(t *models.Task) *app.FormEdit {
-	return &app.FormEdit{
-		Title:       t.Title,
-		Priority:    t.Priority,
-		ParentID:    t.ParentID,
-		Description: t.Description,
-		Tags:        append([]string{}, t.Tags...),
-		DueDate:     t.DueDate,
-		Pinned:      t.Pinned,
-		Checklist:   append([]models.ChecklistItem(nil), t.Checklist...),
+func (m *OutlinerModel) quickEditProjects() []*models.Project {
+	if m.project != nil {
+		return []*models.Project{m.project}
 	}
+	return m.loadedProjects
+}
+
+func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
+	req := app.TaskLineEditRequest{
+		Source:               source.Locator(),
+		Title:                result.title,
+		DueSet:               result.dueDateSet,
+		TagsToAdd:            append([]string(nil), result.tagsToAdd...),
+		TagsToRemove:         append([]string(nil), result.tagsToRemove...),
+		DestinationProjectID: source.ProjectID,
+		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
+	}
+	if result.prioritySet {
+		priority := result.priority
+		req.Priority = &priority
+	}
+	if result.dueDateSet && !result.dueDateClear {
+		req.Due = result.dueDate
+	}
+	if result.destinationSet {
+		destination := result.destination
+		req.Destination = &destination
+	}
+	if result.targetProject != nil {
+		req.DestinationProjectID = result.targetProject.ID
+	}
+	switch result.parentMode {
+	case quickEditParentPreserve:
+		// Preserve is already the request default.
+	case quickEditParentRoot:
+		req.Parent.Mode = app.TaskLineParentRoot
+	case quickEditParentSet:
+		req.Parent.Mode = app.TaskLineParentSet
+		if result.parent != nil {
+			req.Parent.Parent = app.TaskLocator{
+				ProjectID: req.DestinationProjectID,
+				TaskID:    result.parent.ID,
+			}
+		}
+	}
+	return req
+}
+
+// taskLineEditRequest binds every live inline edit to an explicit planning
+// builder instead of inheriting whichever default a prior service call left
+// installed. Cross-project edits carry a complete planning-move delta, so they
+// use the structural builder that reconciles against the newest on-disk state.
+func (m *OutlinerModel) taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
+	req := taskLineEditRequest(source, result)
+	req.PlanningArtifacts = shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
+	if req.DestinationProjectID != source.ProjectID {
+		req.PlanningArtifacts = shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager)
+	}
+	return req
 }
 
 // escSteps defines the Esc dismissal cascade for Outliner:
-// Peek → active range → frozen selection → search query → zoom stack.
+// Peek → active range → frozen selection → search query → Focus stack.
 func (m *OutlinerModel) escSteps() []EscStep {
 	return []EscStep{
 		{Active: func() bool { return m.peekMode }, Clear: func() {
@@ -160,19 +104,13 @@ func (m *OutlinerModel) escSteps() []EscStep {
 		{Active: func() bool { return m.hasSearchProjection() }, Clear: func() {
 			m.ClearSearch()
 		}},
-		{Active: func() bool { return len(m.zoomStack) > 0 }, Clear: func() {
-			top := m.zoomStack[len(m.zoomStack)-1]
-			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
-			m.cursor = top.CursorIndex
-			m.resetViewScrollOffset()
+		{Active: func() bool { return len(m.focusStack) > 0 }, Clear: func() {
+			m.popFocusLevel()
 		}},
-		{Active: func() bool { return len(m.crossZoomStack) > 0 }, Clear: func() {
-			top := m.crossZoomStack[len(m.crossZoomStack)-1]
-			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
-			m.cursor = top.CursorIndex
-			m.resetViewScrollOffset()
+		{Active: func() bool { return len(m.crossFocusStack) > 0 }, Clear: func() {
+			m.popFocusLevel()
 		}},
-		// Task zoom unwinds before project scope: Esc pops one scope frame,
+		// Task focus unwinds before project scope: Esc pops one scope frame,
 		// restoring the previous scope's mode, filter, cursor, and scroll.
 		{Active: func() bool { return m.isProjectScoped() }, Clear: func() {
 			m.popProjectScope()

@@ -180,7 +180,34 @@ func (OperationTargetResolver) Resolve(
 // operations both return it, so a task key pressed on a project header row reads
 // the same however it entered the grammar.
 func operationTargetRejection(descriptor OperationDescriptor) error {
-	return errors.New(operationTargetRejectionMessage(descriptor.Category))
+	return errors.New(operationTargetRejectionMessage(operationTargetRejectionCategory(descriptor)))
+}
+
+// operationTargetRejectionCategory describes the entity a failed target
+// resolution needed, independently of the operation's help grouping. Navigation
+// operations such as Focus and Peek still require a task, while navigation
+// operations such as Reorder can resolve a project under the cursor.
+func operationTargetRejectionCategory(descriptor OperationDescriptor) OperationCategory {
+	switch descriptor.Category {
+	case OperationCategoryTask, OperationCategoryTag, OperationCategoryProject:
+		return descriptor.Category
+	case OperationCategoryNavigation, OperationCategoryMode, OperationCategoryScope,
+		OperationCategoryFilter, OperationCategorySort, OperationCategoryNote,
+		OperationCategorySystem:
+		// Neutral help categories derive their target wording from the source.
+	}
+	source := descriptor.TargetSource
+	if source == "" {
+		source = defaultOperationTargetSource(descriptor.Category, descriptor.TargetCardinality)
+	}
+	switch source {
+	case OperationTargetCurrentTask, OperationTargetSelectedTasks:
+		return OperationCategoryTask
+	case OperationTargetCurrentProject, OperationTargetScopedProjects:
+		return OperationCategoryProject
+	default:
+		return descriptor.Category
+	}
 }
 
 // archivedTaskTargetRejection refuses any operation that would change a task an

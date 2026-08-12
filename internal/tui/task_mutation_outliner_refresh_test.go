@@ -40,6 +40,99 @@ func outlinerHasTask(outliner *OutlinerModel, projectID, taskID string) bool {
 	return false
 }
 
+func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.T) {
+	dataDir := t.TempDir()
+	source := newSession2Project(t, dataDir, "line edit source")
+	destination := newSession2Project(t, dataDir, "line edit destination")
+	moving := source.Tasks[0]
+	neighbor, err := models.NewGenericTask("line-edit-neighbor", source.GetNextShortID(), "Origin neighbor")
+	if err != nil {
+		t.Fatalf("create origin neighbor: %v", err)
+	}
+	neighbor.WorkflowState = models.StateBacklog
+	neighbor.Project = source
+	source.Tasks = append(source.Tasks, neighbor)
+	source.BuildTaskTree()
+	if err := storage.SaveProject(source); err != nil {
+		t.Fatalf("save source fixture: %v", err)
+	}
+
+	model, outliner := newSession2OutlinerApp(t, dataDir, source, destination)
+	installDistinctOutlinerSnapshot(t, model, outliner)
+	sourceIdentity := TaskIdentity{ProjectID: source.ID, TaskID: moving.ID}
+	for index, row := range outliner.rows {
+		if row.isTaskRow() && row.ProjectID == source.ID && row.task.ID == moving.ID {
+			outliner.cursor = index
+			break
+		}
+	}
+	outliner.syncJumpProjection()
+	capture := outliner.captureOutlinerRelocation([]TaskIdentity{sourceIdentity})
+	if capture == nil {
+		t.Fatal("capture task-line relocation: nil")
+	}
+
+	committedSource := &models.Project{ID: source.ID, Slug: source.Slug, Name: source.Name, Path: source.Path}
+	committedDestination := &models.Project{ID: destination.ID, Slug: destination.Slug, Name: destination.Name, Path: destination.Path}
+	if err := storage.LoadProject(committedSource); err != nil {
+		t.Fatalf("load committed source: %v", err)
+	}
+	if err := storage.LoadProject(committedDestination); err != nil {
+		t.Fatalf("load committed destination: %v", err)
+	}
+	committedMoving := committedSource.GetTaskByID(moving.ID)
+	if committedMoving == nil {
+		t.Fatalf("load moving task %q: missing", moving.ID)
+	}
+	committedSource.Tasks = slices.DeleteFunc(committedSource.Tasks, func(task *models.Task) bool {
+		return task != nil && task.ID == moving.ID
+	})
+	committedMoving.ShortID = committedDestination.GetNextShortID()
+	committedMoving.Project = committedDestination
+	committedMoving.Parent = nil
+	committedDestination.Tasks = append(committedDestination.Tasks, committedMoving)
+	committedSource.BuildTaskTree()
+	committedDestination.BuildTaskTree()
+	if err := storage.SaveProject(committedSource); err != nil {
+		t.Fatalf("save committed source: %v", err)
+	}
+	if err := storage.SaveProject(committedDestination); err != nil {
+		t.Fatalf("save committed destination: %v", err)
+	}
+	if outlinerHasTask(outliner, destination.ID, moving.ID) {
+		t.Fatal("Outliner snapshot was pre-mutated before handler refresh")
+	}
+
+	finalIdentity := TaskIdentity{ProjectID: destination.ID, TaskID: moving.ID}
+	model.handleTaskLineEdited(TaskLineEditedMsg{
+		Result: domainapp.TaskLineEditResult{
+			Task:               domainapp.TaskLocator{ProjectID: destination.ID, TaskID: moving.ID},
+			ShortID:            committedMoving.ShortID,
+			Title:              committedMoving.Title,
+			AffectedProjectIDs: []string{source.ID, destination.ID},
+			TransactionID:      "line-edit-relocation",
+			Changed:            true,
+		},
+		Source:     sourceIdentity,
+		Relocation: capture,
+	})
+	if got := outliner.currentTaskIdentity(); got != finalIdentity {
+		t.Fatalf("post-edit cursor = %+v, want destination %+v", got, finalIdentity)
+	}
+	if len(outliner.relocationHistory.back) != 1 {
+		t.Fatalf("post-edit origin history = %d, want 1", len(outliner.relocationHistory.back))
+	}
+
+	outliner.jumpBackward()
+	if got := outliner.currentTaskIdentity(); got != (TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
+		t.Fatalf("Ctrl+O destination = %+v, want origin neighbor", got)
+	}
+	outliner.jumpForward()
+	if got := outliner.currentTaskIdentity(); got != finalIdentity {
+		t.Fatalf("Ctrl+I destination = %+v, want moved task", got)
+	}
+}
+
 func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "created refresh")
@@ -67,7 +160,7 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 		t.Fatalf("save created task: %v", err)
 	}
 
-	model.pushView(ViewTaskForm)
+	model.pushView(ViewTaskComposer)
 	result := domainapp.TaskResult{ProjectID: project.ID, TaskID: task.ID}
 	_, cmd := model.Update(TaskCreatedMsg{Result: &result})
 	runSession2AppCommand(t, model, cmd)

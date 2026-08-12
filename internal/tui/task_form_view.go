@@ -43,16 +43,6 @@ func (m *TaskFormModel) View() tea.View {
 	// ── Title ────────────────────────────────────────────────────────────────
 	titleText := "Create Task"
 	subtitle := ""
-	if m.mode == FormModeEdit {
-		titleText = "Edit Task"
-		if m.task != nil {
-			marker := ""
-			if m.hasChanges {
-				marker = "*"
-			}
-			subtitle = fmt.Sprintf("#%d%s", m.task.ShortID, marker)
-		}
-	}
 	if m.hostTitle != "" {
 		titleText = m.hostTitle
 	}
@@ -137,9 +127,7 @@ func (m *TaskFormModel) guidanceSpec() GuidanceSpec {
 	optional := []string{"[/] tabs", "Tab next", "Shift+Tab previous"}
 	if m.activeTab == formTabChildren {
 		optional = []string{"c checklist", "Ctrl+A add item", "Enter edit item", "Space toggle", "Ctrl+D delete", "Ctrl+J/K reorder"}
-		if m.mode == FormModeCreate {
-			optional = append([]string{"S subtasks", "Ctrl+T add subtask"}, optional...)
-		}
+		optional = append([]string{"S subtasks", "Ctrl+T add subtask"}, optional...)
 	}
 	return requiredActionGuidanceSpec(commit, optional...)
 }

@@ -6,11 +6,15 @@ import (
 )
 
 // parseQuickCapture extracts metadata from the input string.
-// Syntax: "Task title !1 #backend @tomorrow $inbox %projectname >3"
+// Canonical token forms come from textgrammar.SurfaceCapture.
 // When skipProject is true, %project syntax is ignored (treated as literal text).
 func parseQuickCapture(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, error) {
+	return parseQuickCaptureSurface(input, project, allProjects, skipProject, textgrammar.SurfaceCapture)
+}
+
+func parseQuickCaptureSurface(input string, project *models.Project, allProjects []*models.Project, skipProject bool, surface textgrammar.Surface) (*quickCaptureResult, error) {
 	parser := newQuickCaptureParser(input, project, allProjects, skipProject, true)
-	parser.parse()
+	parser.parse(surface)
 	if parser.err != nil {
 		return nil, parser.err
 	}
@@ -21,12 +25,12 @@ func parseQuickCapture(input string, project *models.Project, allProjects []*mod
 // Returns partial results and any validation error string.
 func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project, skipProject bool) (*quickCaptureResult, string) {
 	parser := newQuickCaptureParser(input, project, allProjects, skipProject, false)
-	parser.parse()
+	parser.parse(textgrammar.SurfaceCapture)
 	return parser.result, parser.errMsg
 }
 
-func (p *quickCaptureParser) parse() {
-	p.applySharedTokens(textgrammar.Parse(p.input, textgrammar.SurfaceCapture))
+func (p *quickCaptureParser) parse(surface textgrammar.Surface) {
+	p.applySharedTokens(textgrammar.Parse(p.input, surface))
 	if p.err != nil {
 		return
 	}

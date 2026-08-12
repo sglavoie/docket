@@ -148,21 +148,17 @@ func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T)
 func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 	t.Parallel()
 
-	alpha := &models.Project{ID: "alpha", Name: "Alpha"}
-
 	states := ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	if len(states.Items) != len(models.AllWorkflowStates()) ||
 		states.Items[2].ID != "state:doing" {
 		t.Fatalf("state adapter = %+v", states.Items)
 	}
 	priorities := ListSourceFromPriorities([]PriorityInfo{{Priority: 1, Description: "Critical"}})
-	projects := ListSourceFromProjects([]*models.Project{alpha})
 	tags := ListSourceFromTags([]TagInfo{{Name: "focus", TaskCount: 2}})
 	if priorities.Items[0].ID != "priority:1" ||
-		projects.Items[0].ID != "project:alpha" ||
 		tags.Items[0].CategoryID != "tag:other" {
-		t.Fatalf("priority/project/tag adapters are not stable: %+v %+v %+v",
-			priorities.Items, projects.Items, tags.Items)
+		t.Fatalf("priority/tag adapters are not stable: %+v %+v",
+			priorities.Items, tags.Items)
 	}
 }
 

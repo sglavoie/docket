@@ -20,10 +20,7 @@ func (m *TaskFormModel) HasTextInput() bool { return true }
 func (m *TaskFormModel) IsFullHeight() bool { return false }
 
 func (m *TaskFormModel) StatusBarLabel() string {
-	if m.mode == FormModeCreate {
-		return "New Task"
-	}
-	return "Edit Task"
+	return "New Task"
 }
 
 // SupportsHelpShortcut is false while the form is a scaffold.
@@ -65,11 +62,9 @@ func (m *TaskFormModel) fieldCountForChildren() int {
 	if m.checklistExpanded {
 		count += len(m.draft.checklist)
 	}
-	if m.mode == FormModeCreate {
-		count++ // subtasks section header
-		if m.subtasksExpanded {
-			count += len(m.draft.subtasks)
-		}
+	count++ // subtasks section header
+	if m.subtasksExpanded {
+		count += len(m.draft.subtasks)
 	}
 	return count
 }
@@ -94,7 +89,7 @@ func (m *TaskFormModel) focusedChildItem() (childFocusKind, int) {
 		}
 	}
 
-	if m.mode == FormModeCreate && m.subtasksExpanded {
+	if m.subtasksExpanded {
 		stStart := m.childrenSubtasksHeaderIdx() + 1
 		stEnd := stStart + len(m.draft.subtasks)
 		if m.focusIndex >= stStart && m.focusIndex < stEnd {

@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 // The outline editor is the bulk-restructuring escape hatch: one project's task
@@ -133,7 +134,7 @@ func outlineBufferHeader(projectName, modeLabel string, now time.Time) string {
 	}
 	return strings.Join([]string{
 		fmt.Sprintf("# tt outline · %s · %s", scope, now.Format("2006-01-02 15:04")),
-		fmt.Sprintf("# Indent = parentage (%d spaces). Sigils: !1-3 #tag @date $destination", outlineIndentWidth),
+		fmt.Sprintf("# Indent = parentage (%d spaces). Sigils: %s", outlineIndentWidth, outlineGrammarForms()),
 		"# Lines are declarative: an omitted sigil clears that value.",
 		fmt.Sprintf("# Keep %sxxxxxxxx%s to edit a task. No marker = new task.", outlineMarkerPrefix, outlineMarkerSuffix),
 		"# Removing a line deletes that task; you confirm the list on return.",
@@ -142,25 +143,37 @@ func outlineBufferHeader(projectName, modeLabel string, now time.Time) string {
 	}, "\n")
 }
 
+func outlineGrammarForms() string {
+	var forms []string
+	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceOutline) {
+		forms = append(forms, definition.Forms...)
+	}
+	return strings.Join(forms, " ")
+}
+
 // outlineDumpLine renders one task as its complete current value, so an omitted
 // sigil on the way back in is a deliberate clear rather than an absent
 // instruction.
 func outlineDumpLine(task *models.Task, depth int) string {
 	segments := []string{task.Title}
+	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPriority)
+	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDue)
+	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldTag)
+	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDestination)
 	if task.Priority != models.PriorityUnset {
-		segments = append(segments, fmt.Sprintf("!%d", task.Priority))
+		segments = append(segments, fmt.Sprintf("%s%d", priorityDefinition.Trigger, task.Priority))
 	}
 	if task.DueDate != nil {
-		segments = append(segments, "@"+task.DueDate.Format("2006-01-02"))
+		segments = append(segments, dueDefinition.Trigger+task.DueDate.Format("2006-01-02"))
 	}
 	for _, tag := range task.Tags {
-		segments = append(segments, "#"+tag)
+		segments = append(segments, tagDefinition.Trigger+tag)
 	}
 	// The lifecycle state is dumped, but Today and Next membership is not: an
 	// omitted $today cannot remove a membership (the application layer preserves
 	// planning on omission), so printing one would promise a symmetry the buffer
 	// does not have. Planning survives the round trip untouched.
-	segments = append(segments, "$"+string(task.State()))
+	segments = append(segments, destinationDefinition.Trigger+string(task.State()))
 
 	line := strings.Repeat(" ", depth*outlineIndentWidth) + strings.Join(segments, " ")
 	return line + "  " + outlineMarkerPrefix + outlineMarkerFor(task.ID) + outlineMarkerSuffix

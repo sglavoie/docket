@@ -131,19 +131,6 @@ func TestCaptureCoordinatorsReportPlanningChanges(t *testing.T) {
 	}
 }
 
-func TestTaskFormEditReportsDueTodayPlanningChange(t *testing.T) {
-	stub := &stubMutator{result: app.TaskResult{ProjectID: "project", TaskID: "task"}}
-	features := newFeatureCoordinators(stub)
-
-	msg, ok := features.TaskForm.EditForm(
-		TaskIdentity{ProjectID: "project", TaskID: "task"},
-		app.EditRequest{PlanForToday: true},
-	)().(TaskUpdatedMsg)
-	if !ok || !msg.PlanningChanged {
-		t.Fatalf("EditForm message = %#v, want PlanningChanged", msg)
-	}
-}
-
 func TestFeatureCoordinatorRunEmitsError(t *testing.T) {
 	sentinel := errors.New("boom")
 	stub := &stubMutator{err: sentinel}

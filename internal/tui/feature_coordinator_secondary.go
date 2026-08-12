@@ -27,8 +27,7 @@ import (
 // with the same use-case semantics. Splitting the ports per feature keeps a
 // bulk-only view from depending on attachment methods it never calls.
 
-// BulkMutator is the narrow port the bulk-operation overlays depend on. Both
-// methods commit their whole batch as ONE atomic cross-project transaction.
+// BulkMutator is the narrow port the bulk-operation overlays depend on.
 type BulkMutator interface {
 	// BulkTransition moves every task to the target workflow state, aborting the
 	// whole batch on the first invalid transition.
@@ -37,9 +36,6 @@ type BulkMutator interface {
 	// BulkDelete permanently removes every requested subtree, folding any durable
 	// artifact and cross-project reference cleanup into the same transaction.
 	BulkDelete(req app.BulkDeleteRequest, artifacts ...storage.ArtifactChange) (app.BulkDeleteResult, error)
-	// BulkMoveToProject moves every selected subtree into one destination as a
-	// single cross-project transaction.
-	BulkMoveToProject(req app.BulkMoveRequest, artifacts ...storage.ArtifactChange) (app.BulkMoveResult, error)
 	// BulkSetPriority sets one priority on every selected task.
 	BulkSetPriority(taskIDs []string, priority int) (app.BulkResult, error)
 	BulkSetPriorityByLocators(locators []app.TaskLocator, priority int) (app.BulkResult, error)
@@ -90,6 +86,9 @@ type TaskItemMutator interface {
 	Transition(req app.StateRequest) (app.TaskResult, error)
 	// Edit applies content changes to one task.
 	Edit(req app.EditRequest) (app.TaskResult, error)
+	// EditTaskLine applies a parsed inline patch and optional subtree move as one
+	// atomic workspace transaction.
+	EditTaskLine(req app.TaskLineEditRequest) (app.TaskLineEditResult, error)
 	// Capture creates a new task in a project and commits it as one ChangeSet.
 	Capture(req app.CaptureRequest) (app.TaskResult, error)
 	// SetPriority sets one task's Unset/High/Medium/Low priority.
@@ -447,22 +446,6 @@ func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []stri
 	})
 }
 
-// MoveToProjectLocators moves every selected subtree into one destination in a
-// single transaction. Selection is intentionally preserved after success, like
-// every non-delete bulk operation.
-func (c BulkCoordinator) MoveToProjectLocators(locators []app.TaskLocator, destinationProjectID string) tea.Cmd {
-	return runBatch("Bulk Move Project", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkMoveToProject(app.BulkMoveRequest{
-			TaskLocators:         locators,
-			DestinationProjectID: destinationProjectID,
-		})
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s)", res.MovedCount), res.TransactionID, nil
-	})
-}
-
 // ApplyPlanningLocators applies one planning intent to every selected task as a
 // single transaction.
 func (c BulkCoordinator) ApplyPlanningLocators(
@@ -650,6 +633,20 @@ func (c TaskItemCoordinator) Edit(task TaskIdentity, req app.EditRequest) tea.Cm
 	return runTask("Edit Task", func() (app.TaskResult, error) {
 		return c.task.Edit(req)
 	})
+}
+
+// EditTaskLine commits one parsed row edit without mutating any view-owned task
+// first. A rejected command returns the source identity so the shell can restore
+// input immediately on the still-active editor.
+func (c TaskItemCoordinator) EditTaskLine(req app.TaskLineEditRequest, relocation *outlinerRelocationCapture) tea.Cmd {
+	return func() tea.Msg {
+		result, err := c.task.EditTaskLine(req)
+		source := TaskIdentity{ProjectID: req.Source.ProjectID, TaskID: req.Source.TaskID}
+		if err != nil {
+			return TaskLineEditFailedMsg{Source: source, Err: err}
+		}
+		return TaskLineEditedMsg{Result: result, Source: source, Relocation: relocation}
+	}
 }
 
 // Capture creates a new task in a project as one transaction.

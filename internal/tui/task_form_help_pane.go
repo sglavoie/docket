@@ -129,8 +129,6 @@ func (m *TaskFormModel) childrenHelpEntries() []helpEntry {
 		{key: "Ctrl+J/K", desc: "reorder"},
 		{key: "Ctrl+S", desc: "save task"},
 	}
-	if m.mode == FormModeCreate {
-		entries = append([]helpEntry{{key: "Ctrl+T", desc: "add subtask"}}, entries...)
-	}
+	entries = append([]helpEntry{{key: "Ctrl+T", desc: "add subtask"}}, entries...)
 	return entries
 }

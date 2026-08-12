@@ -34,7 +34,10 @@ func TestResolveParent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := resolveParent(tt.ref, project)
+			result, err := resolveParent(tt.ref, project)
+			if err != nil {
+				t.Fatalf("resolveParent: %v", err)
+			}
 
 			if tt.wantNil {
 				if result != nil {
@@ -69,9 +72,9 @@ func TestResolveProject(t *testing.T) {
 		wantNil bool
 	}{
 		{name: "exact slug match", ref: "project-alpha", wantID: "proj-1"},
-		{name: "exact slug match case insensitive", ref: "Project-Alpha", wantID: "proj-1"},
-		{name: "fuzzy name match", ref: "alpha", wantID: "proj-1"},
-		{name: "fuzzy name match my-app", ref: "myapp", wantID: "proj-2"},
+		{name: "slug lookup requires canonical spelling", ref: "Project-Alpha", wantNil: true},
+		{name: "partial name is not a slug", ref: "alpha", wantNil: true},
+		{name: "fuzzy text is not a slug", ref: "myapp", wantNil: true},
 		{name: "archived project should not match", ref: "archived-proj", wantNil: true},
 		{name: "nonexistent project", ref: "doesnotexist", wantNil: true},
 	}

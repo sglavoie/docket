@@ -88,7 +88,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"`a` capture, `A` child, `e` title, `E` description",
+		"`a` capture, `A` child, `e` inline task edit, `E` description",
 		"`w` opens the workflow chord",
 		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
 		"`wr` toggle Review",
@@ -106,10 +106,11 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"1. Move Project 2. Set Parent 3. Comments 4. Attachments 5. Delete",
+		"1. Comments 2. Attachments 3. Delete",
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
 		"The checklist is absent because it is edited on its own rows",
+		"Append `%project` to move its subtree, `>parent` to reparent it, or `>0` to move it to the project root",
 	})
 }
 
@@ -135,7 +136,8 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`Space` over a tag row offers Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
 		"a second key the chord does not offer says so instead of doing nothing",
 		"The Outliner uses the full terminal width at every supported size",
-		"`Enter` toggles a session-only Peek directly beneath the cursor task",
+		"`Enter` focuses the cursor task's descendants",
+		"`Shift+Enter` toggles a session-only Peek directly beneath the cursor task",
 		"Entering multi-select closes Peek",
 		"`v` toggles the cursor task in or out of the selection",
 		"`V` starts a fresh inclusive range at the cursor",
@@ -193,7 +195,7 @@ func TestREADMEDocumentsProjectTags(t *testing.T) {
 		"A project carries any number of tags",
 		"tag a project `parked` and it leaves the base Outliner entirely",
 		"Today and Next entries are kept exactly as they were",
-		"still accepts `%project` during capture, and is still a valid Move Project destination",
+		"still accepts `%project` during capture and inline editing",
 		"anchored with the `parked` tag",
 		"The protected Unfiled project cannot be parked",
 		"It preserves a project's tags and restoring returns them unchanged",

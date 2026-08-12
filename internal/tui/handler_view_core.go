@@ -10,10 +10,6 @@ import (
 func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case BackMsg:
-		if m.currentView() == ViewProjectCreator {
-			m.pendingProjectMoveTask = nil
-			m.pendingProjectMoveSource = nil
-		}
 		return true, m.popView()
 
 	case ErrorMsg:

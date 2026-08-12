@@ -2,8 +2,6 @@ package tui
 
 import (
 	"testing"
-
-	taskapp "github.com/sglavoie/tt/internal/app"
 )
 
 func TestHandleTaskMessagesCreateTask(t *testing.T) {
@@ -37,36 +35,19 @@ func TestHandleTaskMessagesCreateTaskWithParent(t *testing.T) {
 }
 
 func TestHandleTaskMessagesEditTask(t *testing.T) {
-	model, project := newTestAppModelWithProject()
+	_, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
+	out := NewOutlinerModel(project, nil, nil)
 
-	msg := ShowTaskTextEditorMsg{Project: project, Task: task, Operation: taskapp.TaskOperationEditTitle}
-	handled, _ := model.handleEditorMessages(msg)
-
-	if !handled {
-		t.Error("ShowTaskTextEditorMsg should be handled")
-	}
-	if model.currentView() != ViewTextEditor {
-		t.Errorf("currentView should be TextEditor, got %v", model.currentView())
-	}
-	if model.activeTaskComposer() || model.taskComposer != nil {
-		t.Error("daily title edit opened the full Task Composer")
-	}
-	if model.pendingTaskTextEdit == nil {
-		t.Fatal("daily title edit did not retain its stable task identity")
-	}
-	if model.pendingTaskTextEdit.Operation != taskapp.TaskOperationEditTitle {
-		t.Errorf("operation = %q, want title edit", model.pendingTaskTextEdit.Operation)
-	}
-	if model.pendingTaskTextEdit.Identity.ProjectID != project.ID ||
-		model.pendingTaskTextEdit.Identity.TaskID != task.ID {
-		t.Errorf("pending identity = %+v, want %s/%s", model.pendingTaskTextEdit.Identity, project.ID, task.ID)
+	updated, _ := out.Update(StartTaskLineEditMsg{Project: project, Task: task})
+	if updated != out || !out.quickEdit.IsActive() || out.quickEdit.GetTask() != task {
+		t.Fatalf("inline title edit was not activated for %s/%s", project.ID, task.ID)
 	}
 }
 
 func TestHandleTaskMessagesTaskCreated(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
-	app.pushView(ViewTaskForm)
+	app.pushView(ViewTaskComposer)
 
 	msg := TaskCreatedMsg{}
 	handled, _ := app.handleTaskMessages(msg)

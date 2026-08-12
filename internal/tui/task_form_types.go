@@ -11,18 +11,10 @@ import (
 )
 
 // formSubtaskDraft is a draft subtask entry on the Children tab.
-// Only used in FormModeCreate.
+// Used for child tasks created alongside the parent task.
 type formSubtaskDraft struct {
 	title string
 }
-
-// FormMode controls whether TaskFormModel is creating or editing a task (D1).
-type FormMode int
-
-const (
-	FormModeCreate FormMode = iota
-	FormModeEdit
-)
 
 // taskFormDraft holds all editable state for the form, independent of mode.
 // Populated from a new task (create) or an existing task (edit).
@@ -42,12 +34,10 @@ type taskFormDraft struct {
 	subtasks  []formSubtaskDraft
 }
 
-// TaskFormModel drives both Create and Edit flows (D1, D11).
+// TaskFormModel drives expanded task creation.
 type TaskFormModel struct {
 	workspacePulseState
-	mode              FormMode
 	project           *models.Project
-	task              *models.Task // non-nil in FormModeEdit
 	draft             taskFormDraft
 	taskForm          TaskFormCoordinator
 	presetDestination app.CaptureDestination

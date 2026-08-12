@@ -23,8 +23,6 @@ const (
 	operationTaskSetDueDate  OperationID = "tui.task.set-due-date"
 	operationTaskSetSnooze   OperationID = "tui.task.set-snooze"
 	operationTaskSetTags     OperationID = "tui.task.set-tags"
-	operationTaskMoveProject OperationID = "tui.task.move-project"
-	operationTaskSetParent   OperationID = "tui.task.set-parent"
 	operationTaskIndent      OperationID = "tui.task.indent"
 	operationTaskOutdent     OperationID = "tui.task.outdent"
 )
@@ -32,11 +30,6 @@ const (
 // OperationDateValue is the picker-neutral due/snooze payload. Nil clears the field.
 type OperationDateValue struct {
 	Date *time.Time
-}
-
-// OperationParentValue distinguishes "no parent" from an invalid/missing value.
-type OperationParentValue struct {
-	ParentID *string
 }
 
 // OperationTagsValue is the tri-state bulk tag edit emitted by the value
@@ -683,13 +676,6 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		}
 		entities = context.Selection.Entities
 	}
-	if id == operationTaskMoveProject && len(m.moveProjectCandidatesForEntities(
-		context.Selection.Visual,
-		context.Entity,
-		context.Selection.Entities,
-	)) == 0 {
-		return false
-	}
 	for _, entity := range entities {
 		if entity.TaskID == "" || entity.ProjectID == "" {
 			return false
@@ -721,13 +707,12 @@ func taskStateAllowsSnooze(state string) bool {
 }
 
 // taskStructureAllowsOperation hides destination-dependent actions that the
-// domain would reject: an indent with no legal parent above, an outdent at root,
-// a reparent with no candidate, or a move with no other active project. A target
+// domain would reject: an indent with no legal parent above or an outdent at root. A target
 // that no longer resolves stays applicable so the handler reports the single
 // authoritative "no longer available" error instead of the row vanishing.
 func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityContext) bool {
 	switch id {
-	case operationTaskMoveProject, operationTaskSetParent, operationTaskIndent, operationTaskOutdent:
+	case operationTaskIndent, operationTaskOutdent:
 	default:
 		return true
 	}
@@ -739,10 +724,6 @@ func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityCon
 		return true
 	}
 	switch id {
-	case operationTaskMoveProject:
-		return len(m.moveProjectCandidates(project)) > 0
-	case operationTaskSetParent:
-		return task.ParentID != nil || len(buildReparentValidParents(project, task)) > 0
 	case operationTaskIndent:
 		above := project.GetTaskAbove(task)
 		if above == nil {
@@ -757,44 +738,6 @@ func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityCon
 		return true
 	}
 }
-
-// moveProjectCandidates is the single destination set shared by move-project
-// applicability and its value picker.
-func (m *AppModel) moveProjectCandidates(source *models.Project) []*models.Project {
-	if source == nil {
-		return m.moveProjectCandidatesForSourceIDs(nil)
-	}
-	return m.moveProjectCandidatesForSourceIDs(map[string]bool{source.ID: true})
-}
-
-func (m *AppModel) moveProjectCandidatesForEntities(visual bool, entity EntityContext, selected []EntityContext) []*models.Project {
-	sourceIDs := make(map[string]bool)
-	if visual {
-		for _, selectedEntity := range selected {
-			if selectedEntity.ProjectID != "" {
-				sourceIDs[selectedEntity.ProjectID] = true
-			}
-		}
-	} else if entity.ProjectID != "" {
-		sourceIDs[entity.ProjectID] = true
-	}
-	return m.moveProjectCandidatesForSourceIDs(sourceIDs)
-}
-
-func (m *AppModel) moveProjectCandidatesForSourceIDs(sourceIDs map[string]bool) []*models.Project {
-	candidates := make([]*models.Project, 0)
-	for _, candidate := range m.availableProjects() {
-		if candidate == nil || candidate.Archived {
-			continue
-		}
-		if sourceIDs[candidate.ID] {
-			continue
-		}
-		candidates = append(candidates, candidate)
-	}
-	return candidates
-}
-
 func (m *AppModel) registerTaskActionOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
@@ -806,8 +749,6 @@ func (m *AppModel) registerTaskActionOperations() error {
 		ValueProviderDueDate,
 		ValueProviderSnooze,
 		ValueProviderTags,
-		ValueProviderProject,
-		ValueProviderParent,
 	} {
 		if err := executor.RegisterValueProvider(provider, func(OperationInvocation) OperationValueProviderResult {
 			// Returning no immediate value asks the shell to construct the
@@ -869,11 +810,8 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		}
 		_, ok := value.(OperationTagsValue)
 		return ok
-	case ValueProviderProject, ValueProviderNoteTitle, ValueProviderTagName:
+	case ValueProviderNoteTitle, ValueProviderTagName:
 		_, ok := value.(string)
-		return ok
-	case ValueProviderParent:
-		_, ok := value.(OperationParentValue)
 		return ok
 	default:
 		return false
@@ -1193,27 +1131,6 @@ func (m *AppModel) executeSingleTaskOperation(
 			[]app.TaskLocator{identity.Locator()},
 			tags,
 		))
-	case operationTaskMoveProject:
-		destination, ok := invocation.Value.(string)
-		if !ok || strings.TrimSpace(destination) == "" {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid destination project")}
-		}
-		task, project := m.taskAndProjectForIdentity(identity)
-		if task == nil || project == nil {
-			return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
-		}
-		return OperationHandlerResult{Message: MoveTaskToProjectMsg{
-			Task:               task,
-			SourceProject:      project,
-			DestProjectID:      destination,
-			outlinerRelocation: m.captureOutlinerRelocationForTargets(invocation.Targets),
-		}}
-	case operationTaskSetParent:
-		parent, ok := invocation.Value.(OperationParentValue)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid parent value")}
-		}
-		return relocationResult(m.secondaryFeatures.TaskItem.Reparent(identity, parent.ParentID))
 	case operationTaskIndent:
 		return relocationResult(m.secondaryFeatures.TaskItem.Indent(identity))
 	case operationTaskOutdent:
@@ -1281,16 +1198,6 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			return OperationHandlerResult{Err: fmt.Errorf("invalid tag value")}
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.SetTagsLocators(locators, tags))
-	case operationTaskMoveProject:
-		destination, ok := invocation.Value.(string)
-		if !ok || strings.TrimSpace(destination) == "" {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid destination project")}
-		}
-		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
-		return cmdResult(withOutlinerRelocationCapture(
-			m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, destination),
-			capture,
-		))
 	default:
 		return OperationHandlerResult{
 			Err: fmt.Errorf("operation %s is not available for %d selected tasks", invocation.Descriptor.ID, count),
@@ -1347,7 +1254,7 @@ func (m *AppModel) newOperationValuePicker(
 	if err != nil {
 		return nil, err
 	}
-	task, project := refs[0].Task, refs[0].Project
+	task := refs[0].Task
 	subtitle := task.Title
 	if len(refs) > 1 || request.Context.Selection.Visual {
 		subtitle = fmt.Sprintf("%d selected task(s)", len(refs))
@@ -1443,29 +1350,6 @@ func (m *AppModel) newOperationValuePicker(
 			}
 		}
 		return picker, nil
-	case ValueProviderProject:
-		sourceIDs := make(map[string]bool, len(refs))
-		for _, ref := range refs {
-			sourceIDs[ref.Project.ID] = true
-		}
-		source := ListSourceFromProjects(m.moveProjectCandidatesForSourceIDs(sourceIDs))
-		for index := range source.Items {
-			candidate, _ := source.Items[index].Data.(*models.Project)
-			if candidate != nil {
-				source.Items[index].Data = candidate.ID
-			}
-		}
-		return newOperationValuePickerModel(
-			request, provider, "Move Project", subtitle, source, false, nil,
-		)
-	case ValueProviderParent:
-		if len(refs) != 1 {
-			return nil, fmt.Errorf("reparenting is available for one task at a time")
-		}
-		source, selected := parentOperationListSource(task, project)
-		return newOperationValuePickerModel(
-			request, provider, "Set Parent", subtitle, source, false, selected,
-		)
 	default:
 		return nil, fmt.Errorf("unknown operation value provider %q", provider)
 	}
@@ -1628,33 +1512,6 @@ func relativeDateSelectedID(date *time.Time, snooze bool) []ListItemID {
 		return []ListItemID{"date:month"}
 	}
 	return nil
-}
-
-func parentOperationListSource(
-	task *models.Task,
-	project *models.Project,
-) (ListSource, []ListItemID) {
-	items := []ListItem{{
-		ID:            "parent:none",
-		PrimaryText:   "No parent",
-		SecondaryText: "top level",
-		Data:          OperationParentValue{},
-	}}
-	for _, parent := range buildReparentValidParents(project, task) {
-		parentID := parent.ID
-		items = append(items, ListItem{
-			ID:            ListItemID("parent:" + parent.ID),
-			PrimaryText:   fmt.Sprintf("#%d %s", parent.ShortID, parent.Title),
-			SecondaryText: workflowStateListLabel(parent.State()),
-			Aliases:       []string{parent.Title, parent.State().String()},
-			Data:          OperationParentValue{ParentID: &parentID},
-		})
-	}
-	selected := []ListItemID{"parent:none"}
-	if task.ParentID != nil {
-		selected = []ListItemID{ListItemID("parent:" + *task.ParentID)}
-	}
-	return ListSource{Items: items}, selected
 }
 
 func (m *AppModel) executeOperationOverlayRequest(

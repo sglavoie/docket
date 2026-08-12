@@ -42,7 +42,7 @@ complete loop.
 
 Every full-screen presentation keeps one operational title row. Its left side
 names the surface, scope, and mode once; active selection, search, filters,
-zoom, or editor context occupies the middle; and the right side reports the
+focus, or editor context occupies the middle; and the right side reports the
 workspace pulse as `workspace: inbox 3 · today 0 · overdue 1`. Today is shown
 even at zero whenever the pulse region fits. Zero Inbox and overdue counts
 disappear, and narrow terminals drop Inbox, then overdue, then Today before
@@ -112,8 +112,8 @@ when that task would otherwise be hidden.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` inspects |
-| Capture and edit | `a` capture, `A` child, `e` title, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
+| Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
@@ -129,13 +129,13 @@ relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
 The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and `?` help. The old standalone `b`, `d`, and `t`
 actions and comma state prefix have no compatibility action; neither do removed
-keys such as `m`, `:`, `R`, `p`, and `Ctrl+Esc`.
+keys such as `m`, `:`, `R`, and `Ctrl+Esc`.
 
 Task updates that move the focused task—such as `wg` moving it into In
 Progress—add a session-only jump entry. `Ctrl+O` returns to the task that
 followed its old position (or the preceding/nearest surviving row), and
 `Ctrl+I` returns to the relocated task. Changing mode, scope, search, filters,
-sorting, folds, or zoom clears this history. Terminals that do not report
+sorting, folds, or focus clears this history. Terminals that do not report
 enhanced keyboard events encode `Ctrl+I` as `Tab`, so mode cycling remains the
 fallback there.
 
@@ -181,16 +181,18 @@ undoable transaction.
 
 `Space` contains exactly:
 
-1. Move Project
-2. Set Parent
-3. Comments
-4. Attachments
-5. Delete
+1. Comments
+2. Attachments
+3. Delete
 
 The list filters as soon as printable text is typed. Frequent direct operations
 do not repeat in this menu. Delete always asks for confirmation. The checklist
 is absent because it is edited on its own rows, and a second route to the same
 mutations is the shape this menu exists to avoid.
+
+Press `e` to edit the selected task in place. Append `%project` to move its
+subtree, `>parent` to reparent it, or `>0` to move it to the project root; these
+structural changes commit atomically with title and metadata edits.
 
 ### Filters and search
 
@@ -331,7 +333,9 @@ squeezing the title: checklist, comment, and attachment counts go first because
 the checklist rows and Peek still carry them, then the recency and snooze
 markers, then the waiting age, and the check-back date goes last.
 
-`Enter` toggles a session-only Peek directly beneath the cursor task. Peek
+`Enter` focuses the cursor task's descendants and `Esc` restores the exact
+parent cursor and scroll position. A leaf reports `No children to focus`.
+`Shift+Enter` toggles a session-only Peek directly beneath the cursor task. Peek
 follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d` with empty fields omitted,
@@ -457,8 +461,8 @@ wherever the vanished rows left it, and the Outliner scope reads
 `Active Projects · 1 parked` so the hidden work is never silent.
 
 A parked project is not hidden away. It still appears in Select Project, still
-owns its Notes, still accepts `%project` during capture, and is still a valid
-Move Project destination. `Enter` on it in Select Project opens it as an
+owns its Notes, and still accepts `%project` during capture and inline editing.
+`Enter` on it in Select Project opens it as an
 explicit one-project focus, anchored with the `parked` tag, and `Esc` returns
 to the Active base with nothing left behind.
 
