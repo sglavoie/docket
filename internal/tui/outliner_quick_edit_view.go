@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -58,8 +59,8 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	inputPrefix := RenderCursorPrefix() + prefix + fold + status + " "
 	indentWidth := lipgloss.Width(inputPrefix)
 	m.quickEdit.SetInputWidth(max(rowWidth-indentWidth, 1))
-	inputLine := truncateToVisualWidth(inputPrefix+m.quickEdit.GetInput().View(), rowWidth)
-	inputLine = SelectedLine(inputLine, rowWidth)
+	selectedPrefix := SelectedStyle.Render(ansi.Strip(inputPrefix))
+	inputLine := truncateToVisualWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
 
 	lines := []string{metadata, inputLine}
 	if suggestions := m.quickEdit.RenderSuggestions(strings.Repeat(" ", indentWidth), m.quickEditSuggestionBudget()); suggestions != "" {

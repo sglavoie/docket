@@ -9,6 +9,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -117,6 +118,26 @@ func (q *QuickEditComponent) GetAutocomplete() *AutocompleteState { return &q.ac
 
 func (q *QuickEditComponent) SetInputWidth(width int) {
 	q.input.SetWidth(max(width, 1))
+}
+
+// renderSelectedInput keeps the inline editor visually inside the selected row
+// without letting the row-level ANSI normalization erase the input cursor.
+// Quick edit deliberately uses a static virtual cursor: the insertion point is
+// an essential affordance here, so it must remain visible between keystrokes.
+func (q *QuickEditComponent) renderSelectedInput() string {
+	styles := ThemedTextInputStyles
+	selected := lipgloss.NewStyle().
+		Foreground(ColorSelectedFg).
+		Background(ColorSelectedBg).
+		Bold(true)
+	styles.Focused.Text = selected
+	styles.Focused.Prompt = selected
+	styles.Focused.Placeholder = selected
+	styles.Focused.Suggestion = selected
+	styles.Cursor.Color = ColorSelectedFg
+	styles.Cursor.Blink = false
+	q.input.SetStyles(styles)
+	return q.input.View()
 }
 
 func (q *QuickEditComponent) SetContext(project *models.Project, projects []*models.Project) {

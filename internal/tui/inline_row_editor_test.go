@@ -215,6 +215,39 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	}
 }
 
+func TestInlineRowEditorKeepsSelectedCursorVisibleAtEveryPositionAndTheme(t *testing.T) {
+	for _, theme := range []string{"dark", "light"} {
+		t.Run(theme, func(t *testing.T) {
+			ApplyTheme(ThemeConfig{Name: theme})
+			t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+			out, project, _, child := inlineEditorFixture(t)
+			out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+			row := out.rows[out.cursor]
+			positions := []int{0, len([]rune(child.Title)) / 2, len([]rune(child.Title))}
+
+			for _, position := range positions {
+				out.quickEdit.input.SetCursor(position)
+				rendered := out.renderOutlinerQuickEditRow(row, 80)
+				if !strings.Contains(rendered, "\x1b[7;") {
+					t.Errorf("cursor at position %d has no reverse-video block: %q", position, rendered)
+				}
+
+				styles := out.quickEdit.input.Styles()
+				if styles.Cursor.Blink {
+					t.Errorf("cursor at position %d is blinking, want steady", position)
+				}
+				if got := styles.Focused.Text.GetForeground(); got != ColorSelectedFg {
+					t.Errorf("selected input foreground at position %d = %v, want %v", position, got, ColorSelectedFg)
+				}
+				if got := styles.Focused.Text.GetBackground(); got != ColorSelectedBg {
+					t.Errorf("selected input background at position %d = %v, want %v", position, got, ColorSelectedBg)
+				}
+			}
+		})
+	}
+}
+
 func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.T) {
 	tasks := make([]*models.Task, 0, 14)
 	for i := 0; i < 14; i++ {
