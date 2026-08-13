@@ -106,23 +106,39 @@ func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSugges
 }
 
 // getParentSuggestions returns matching parent tasks for the partial query.
-func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion {
-	type scoredParent struct {
+func (q *quickCaptureInput) getParentSuggestions(partial string, candidates []*models.Task) []ACSuggestion {
+	return q.structuralSuggestions(partial, candidates, "#")
+}
+
+// getChildSuggestions returns matching adoptable tasks for the partial query,
+// rendered with the child sigil so a suggestion reads as the token it inserts.
+func (q *quickCaptureInput) getChildSuggestions(partial string, candidates []*models.Task) []ACSuggestion {
+	definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldChild)
+	return q.structuralSuggestions(partial, candidates, definition.Trigger)
+}
+
+// structuralSuggestions ranks candidate tasks for a >parent or <child reference.
+// Both families score one search text, so the two relationships can never rank
+// the same project differently; only the rendered prefix distinguishes them.
+func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*models.Task, displayPrefix string) []ACSuggestion {
+	type scoredTask struct {
 		task  *models.Task
 		score int
 	}
 
-	var scored []scoredParent
-	for _, task := range q.parentCache {
+	var scored []scoredTask
+	for _, task := range candidates {
 		searchText := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
 		score := fuzzy.Score(searchText, partial)
 		if score > 0 {
-			scored = append(scored, scoredParent{task: task, score: score})
+			scored = append(scored, scoredTask{task: task, score: score})
 		}
 	}
 
-	// Sort by score descending
-	sort.Slice(scored, func(i, j int) bool {
+	// Sort by score descending. The sort is stable because an empty partial
+	// scores every candidate identically, and an unordered list of tied tasks
+	// would reshuffle itself between keystrokes.
+	sort.SliceStable(scored, func(i, j int) bool {
 		return scored[i].score > scored[j].score
 	})
 
@@ -135,7 +151,7 @@ func (q *quickCaptureInput) getParentSuggestions(partial string) []ACSuggestion 
 		title := truncateToVisualWidth(task.Title, titleLimit)
 		titleRendered := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)
 		suggestions = append(suggestions, ACSuggestion{
-			Display: fmt.Sprintf("#%d %s", task.ShortID, titleRendered),
+			Display: fmt.Sprintf("%s%d %s", displayPrefix, task.ShortID, titleRendered),
 			Value:   strconv.Itoa(task.ShortID),
 		})
 	}

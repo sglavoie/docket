@@ -59,8 +59,13 @@ type CaptureRequest struct {
 	// ParentID, when non-nil, nests the new task under an existing task in the
 	// same project. The parent must exist and leave the child within the nesting cap.
 	ParentID *string
+	// ChildIDs names existing tasks in the same project the new task adopts.
+	// Each keeps its own subtree and the project's task order is untouched.
+	// Repeated IDs collapse to their first occurrence.
+	ChildIDs []string
 	// Destination is the typed lifecycle/planning destination. Empty defaults to
-	// Backlog when ParentID is set and Inbox otherwise.
+	// Backlog when ParentID is set and Inbox otherwise. Adopting children alone
+	// does not select the child default.
 	Destination CaptureDestination
 	// Prepend inserts the new task at the front of the project's task slice so it
 	// is prominently visible (Quick/Bulk Capture), rather than appended at the end.
@@ -101,6 +106,12 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 		return TaskResult{}, err
 	}
 	insertCapturedTask(project, task, req.Prepend)
+	if edgeErr := applyCapturedTaskEdges(project, task, prepared); edgeErr != nil {
+		return TaskResult{}, edgeErr
+	}
+	if guardErr := captureDestinationChildrenGuard(project, task, prepared); guardErr != nil {
+		return TaskResult{}, guardErr
+	}
 
 	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
 	artifacts, err := planningArtifactsForTargets(
@@ -141,6 +152,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	items := make([]batchItem, len(reqs))
 	projectOrder := make([]*models.Project, 0)
 	seenProjects := make(map[string]bool)
+	claimedChildren := make(map[string]int)
 	for i, req := range reqs {
 		project := snap.ProjectByID(req.ProjectID)
 		if project == nil {
@@ -149,6 +161,18 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		prepared, prepareErr := s.prepareCapturedTask(project, req)
 		if prepareErr != nil {
 			return nil, captureRequestError(req, i, prepareErr)
+		}
+		// A child has exactly one parent, so two lines claiming it describe an
+		// unresolvable batch. Rejecting here keeps the whole batch unmutated
+		// instead of letting the later assignment silently win.
+		for _, child := range prepared.children {
+			key := project.ID + "\x00" + child.ID
+			first, claimed := claimedChildren[key]
+			if claimed {
+				return nil, captureRequestError(req, i, invalidInput("child", fmt.Sprintf(
+					"child #%d is already adopted on line %d", child.ShortID, captureRequestLine(reqs[first], first))))
+			}
+			claimedChildren[key] = i
 		}
 		items[i] = batchItem{project: project, prepared: prepared}
 		if !seenProjects[project.ID] {
@@ -188,6 +212,16 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	for _, project := range projectOrder {
 		if prepended := prependedByProject[project.ID]; len(prepended) > 0 {
 			project.Tasks = append(prepended, project.Tasks...)
+		}
+	}
+	// Every new task is in its project before any edge is applied, so an adopted
+	// child is validated against the batch's final task set.
+	for i, item := range items {
+		if edgeErr := applyCapturedTaskEdges(item.project, item.task, item.prepared); edgeErr != nil {
+			return nil, captureRequestError(reqs[i], i, edgeErr)
+		}
+		if guardErr := captureDestinationChildrenGuard(item.project, item.task, item.prepared); guardErr != nil {
+			return nil, captureRequestError(reqs[i], i, guardErr)
 		}
 	}
 
@@ -237,11 +271,17 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 }
 
 func captureRequestError(req CaptureRequest, index int, err error) error {
-	line := req.SourceLine
-	if line <= 0 {
-		line = index + 1
+	return fmt.Errorf("line %d: %w", captureRequestLine(req, index), err)
+}
+
+// captureRequestLine is the line number a batch failure is attributed to,
+// falling back to the request's position when the request did not come from a
+// multiline composer.
+func captureRequestLine(req CaptureRequest, index int) int {
+	if req.SourceLine > 0 {
+		return req.SourceLine
 	}
-	return fmt.Errorf("line %d: %w", line, err)
+	return index + 1
 }
 
 // planningArtifactsForTargets renders one checked planning artifact set for a
@@ -284,6 +324,8 @@ type preparedCapture struct {
 	priority    int
 	tags        []string
 	removeTags  []string
+	parent      *models.Task
+	children    []*models.Task
 	destination captureDestinationEffect
 }
 
@@ -307,10 +349,18 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		return preparedCapture{}, err
 	}
 
+	var parent *models.Task
 	if req.ParentID != nil {
-		if _, parentErr := resolveChildParent(project, *req.ParentID); parentErr != nil {
+		resolvedParent, parentErr := resolveChildParent(project, *req.ParentID)
+		if parentErr != nil {
 			return preparedCapture{}, parentErr
 		}
+		parent = resolvedParent
+	}
+
+	children, err := resolveAdoptedChildren(project, req.ChildIDs)
+	if err != nil {
+		return preparedCapture{}, err
 	}
 
 	destination, err := normalizeCaptureDestination(req.Destination, req.ParentID != nil)
@@ -324,8 +374,43 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		priority:    priority,
 		tags:        normalizedTags,
 		removeTags:  removeTags,
+		parent:      parent,
+		children:    children,
 		destination: destination,
 	}, nil
+}
+
+// applyCapturedTaskEdges applies the new task's own parent edge together with
+// every child it adopts, so cycles and nesting depth are validated against the
+// hierarchy the capture actually produces rather than an intermediate one. With
+// no adopted children the parent edge is already set and already validated, so
+// the capture keeps the error vocabulary resolveChildParent produced.
+func applyCapturedTaskEdges(project *models.Project, task *models.Task, prepared preparedCapture) error {
+	if len(prepared.children) == 0 {
+		return nil
+	}
+	assignments := make([]models.ParentAssignment, 0, len(prepared.children)+1)
+	if prepared.parent != nil {
+		assignments = append(assignments, models.ParentAssignment{Task: task, Parent: prepared.parent})
+	}
+	for _, child := range prepared.children {
+		assignments = append(assignments, models.ParentAssignment{Task: child, Parent: task})
+	}
+	if _, err := project.ApplyParentAssignments(assignments); err != nil {
+		return invalidInput("child", err.Error())
+	}
+	return nil
+}
+
+// captureDestinationChildrenGuard is capture's half of the one terminal-adoption
+// policy, run after the hierarchy patch so the destination is judged against the
+// children the capture produced. Only an adoption can reach it, because a task
+// created without children has none, and it is the same rule and the same error
+// taskLineDestinationChildrenGuard applies on the inline-edit surface. Without it
+// a $done or $canceled capture would land illegally and be silently reopened by
+// the post-mutation reconciliation.
+func captureDestinationChildrenGuard(project *models.Project, task *models.Task, prepared preparedCapture) error {
+	return childrenCompletionGuard(task, project, prepared.destination.state)
 }
 
 func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared preparedCapture) (*models.Task, error) {

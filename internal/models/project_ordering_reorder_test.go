@@ -132,6 +132,49 @@ func TestReorderRootTasksByCompletionWithChildren(t *testing.T) {
 	}
 }
 
+// TestReorderRootTasksByCompletionKeepsNonContiguousSubtreeInPlace pins the
+// stable partition: a subtree split by an unrelated root is left split rather
+// than gathered, because gathering it would move the bystander.
+func TestReorderRootTasksByCompletionKeepsNonContiguousSubtreeInPlace(t *testing.T) {
+	project, err := NewProject("test", "Test", "/tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parent, err := NewGenericTask("parent", 1, "Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bystander, err := NewGenericTask("bystander", 2, "Bystander")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := NewGenericTask("child", 3, "Child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parentID := parent.ID
+	child.ParentID = &parentID
+
+	project.Tasks = []*Task{parent, bystander, child}
+	project.ReorderRootTasksByCompletion()
+
+	want := []string{"parent", "bystander", "child"}
+	for i, id := range want {
+		if project.Tasks[i].ID != id {
+			t.Fatalf("task order = %v, want %v", taskIDs(project.Tasks), want)
+		}
+	}
+}
+
+func taskIDs(tasks []*Task) []string {
+	ids := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		ids = append(ids, task.ID)
+	}
+	return ids
+}
+
 func TestReorderRootTasksByCompletionEmptyProject(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
 	if err != nil {

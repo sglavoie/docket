@@ -306,8 +306,8 @@ func (s *Service) materializeOutlineTasks(project *models.Project, prepared []pr
 }
 
 // applyOutlineParentage derives parentage from indentation alone. Indentation is
-// the buffer's only parentage channel, which is why >parent stays deferred: two
-// channels would need a precedence rule nobody can see in the text.
+// the buffer's only parentage channel, which is why >parent and <child are both
+// rejected: two channels would need a precedence rule nobody can see in the text.
 func applyOutlineParentage(prepared []preparedOutlineLine) {
 	deepestAt := make(map[int]string, len(prepared))
 	for _, item := range prepared {

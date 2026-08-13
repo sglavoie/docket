@@ -296,6 +296,12 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 			message: "indentation sets parentage here; remove the >parent sigil",
 		},
 		{
+			name:    "child sigil",
+			buffer:  "Ship auth rewrite <2  [[tt:4f2a9c11]]",
+			line:    1,
+			message: "indentation sets parentage here; remove the <child sigil",
+		},
+		{
 			name:    "project sigil",
 			buffer:  "Ship auth rewrite %other  [[tt:4f2a9c11]]",
 			line:    1,
@@ -335,6 +341,19 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 // TestOutlineParseCollectsEveryProblemInOnePass is the contract that makes the
 // error surface worth having: a buffer wrong in several places reports all of
 // them, in line order, instead of one reopen per mistake.
+// TestOutlineAcceptsEmbeddedComparisonText keeps the child rejection anchored to
+// the whitespace-delimited sigil: a comparison inside a title is not a <child.
+func TestOutlineAcceptsEmbeddedComparisonText(t *testing.T) {
+	project := outlineTestProject(t)
+	lines, problems := parseOutlineBuffer("Keep a<b under 5 ms  [[tt:4f2a9c11]]", project)
+	if len(problems) > 0 {
+		t.Fatalf("buffer was rejected: %v", problems)
+	}
+	if len(lines) != 1 || lines[0].Title != "Keep a<b under 5 ms" {
+		t.Fatalf("plan = %+v, want the comparison preserved in the title", lines)
+	}
+}
+
 func TestOutlineParseCollectsEveryProblemInOnePass(t *testing.T) {
 	project := outlineTestProject(t)
 	buffer := strings.Join([]string{

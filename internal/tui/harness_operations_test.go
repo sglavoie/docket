@@ -146,6 +146,7 @@ func harnessOutlineProblems() []lineError {
 		{line: 9, message: "indent jumps from level 0 to level 2; indent one level at a time"},
 		{line: 11, message: "task title cannot be empty"},
 		{line: 12, message: "indentation sets parentage here; remove the >parent sigil"},
+		{line: 14, message: "indentation sets parentage here; remove the <child sigil"},
 	}
 }
 

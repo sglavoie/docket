@@ -330,10 +330,10 @@ func (q *QuickEditComponent) refreshAutocomplete() {
 		q.ac.Clear()
 		return
 	}
-	q.ac.UpdateSuggestions(mode, pos, q.suggestions(mode, partial, parsedPrefix))
+	q.ac.UpdateSuggestions(mode, pos, q.suggestions(mode, pos, partial, parsedPrefix))
 }
 
-func (q *QuickEditComponent) suggestions(mode int, partial string, parsedPrefix textgrammar.Result) []ACSuggestion {
+func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, parsedPrefix textgrammar.Result) []ACSuggestion {
 	switch mode {
 	case acModeTag:
 		project := q.effectiveProject()
@@ -350,7 +350,14 @@ func (q *QuickEditComponent) suggestions(mode int, partial string, parsedPrefix 
 	case acModeParent:
 		parents, _ := quickEditParentCandidates(q.input.Value(), q.task, q.project, q.projects)
 		items := quickEditClearSuggestions(textgrammar.FieldParent, partial)
-		return append(items, quickEditParentSuggestions(parents, partial)...)
+		return append(items, quickEditStructuralSuggestions(parents, partial, textgrammar.FieldParent)...)
+	case acModeChild:
+		// The token under the cursor is removed before the draft is read, so an
+		// in-progress alias cannot withhold the very task it is naming. Child
+		// declares no clear operation, so no <0 row is offered.
+		draft := quickEditDraftWithoutToken(q.input.Value(), triggerPos)
+		children, _ := quickEditChildCandidates(draft, q.task, q.project, q.projects)
+		return quickEditStructuralSuggestions(children, partial, textgrammar.FieldChild)
 	case acModeProject:
 		return quickEditProjectSuggestions(q.projects, partial)
 	case acModePriority, acModeDate, acModeDestination:
@@ -412,13 +419,21 @@ func quickEditTagSuggestions(values []string, partial, prefix string) []ACSugges
 	})
 }
 
-func quickEditParentSuggestions(parents []*models.Task, partial string) []ACSuggestion {
+// quickEditStructuralSuggestions ranks candidates for a >parent or <child
+// reference. Both families score one search text, so the two relationships can
+// never rank the same task differently; the field decides only which sigil the
+// row is rendered with, read from the registry rather than spelled here.
+func quickEditStructuralSuggestions(tasks []*models.Task, partial string, field textgrammar.Field) []ACSuggestion {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, field)
+	if !ok {
+		return nil
+	}
 	type candidate struct {
 		task  *models.Task
 		score int
 	}
-	items := make([]candidate, 0, len(parents))
-	for _, task := range parents {
+	items := make([]candidate, 0, len(tasks))
+	for _, task := range tasks {
 		search := fmt.Sprintf("%d %s", task.ShortID, task.Title)
 		score := fuzzy.Score(search, partial)
 		if partial == "" || score > 0 {
@@ -428,9 +443,26 @@ func quickEditParentSuggestions(parents []*models.Task, partial string) []ACSugg
 	sort.SliceStable(items, func(i, j int) bool { return items[i].score > items[j].score })
 	result := make([]ACSuggestion, 0, len(items))
 	for _, item := range items {
-		result = append(result, ACSuggestion{Display: fmt.Sprintf(">%d %s", item.task.ShortID, item.task.Title), Value: strconv.Itoa(item.task.ShortID)})
+		result = append(result, ACSuggestion{
+			Display: fmt.Sprintf("%s%d %s", definition.Trigger, item.task.ShortID, item.task.Title),
+			Value:   strconv.Itoa(item.task.ShortID),
+		})
 	}
 	return result
+}
+
+// quickEditDraftWithoutToken removes the token the cursor is completing so the
+// rest of the line reads as settled facts. A repeatable field needs every other
+// token of its own family visible, and needs its own in-progress token hidden.
+func quickEditDraftWithoutToken(value string, triggerPos int) string {
+	if triggerPos < 0 || triggerPos >= len(value) {
+		return value
+	}
+	end := strings.IndexAny(value[triggerPos:], " \t\n")
+	if end < 0 {
+		return value[:triggerPos]
+	}
+	return value[:triggerPos] + value[triggerPos+end:]
 }
 
 func quickEditProjectSuggestions(projects []*models.Project, partial string) []ACSuggestion {

@@ -200,8 +200,18 @@ the exact three `Space` actions:
 3. Delete
 
 Project moves and reparenting are expressed in the inline `e` editor with
-`%project` and `>parent`/`>0`, so structural edits share the same atomic task-line
-transaction as title and metadata changes.
+`%project`, `>parent`/`>0`, and the repeatable `<child`, so structural edits
+share the same atomic task-line transaction as title and metadata changes. The
+edited task's own parent edge and every adopted child edge are submitted as one
+`models.ApplyParentAssignments` batch, which is what lets a hierarchy inversion
+commit: cycles and depth are measured on the graph the edit produces rather than
+on the one it replaced. Adoption is additive and reaches only the effective
+project, so unmentioned children keep their parent, an adopted task keeps its
+subtree, and no reference can move a subtree across a project boundary. Capture
+and inline edit share one terminal-adoption policy: each judges a `$done` or
+`$canceled` destination after its hierarchy patch lands and refuses it while an
+adopted child is still open, so neither surface reaches the completed-above-open
+shape the post-mutation reconciliation would have to undo.
 
 The checklist is absent because its rows own the whole mutation set; a menu
 entry would be a second route to it.
@@ -241,8 +251,10 @@ Each dumped task carries a trailing `[[tt:<first 8 hex of task.ID>]]` marker,
 asserted unique at dump time so a collision aborts before the editor opens. The
 outline layer strips that marker before the remainder of the line reaches
 `parseQuickCapture` with `skipProject=true`, which is what keeps one capture
-parser true for the whole product and makes a `>parent` sigil an error rather
-than a competing parentage channel. The buffer is declarative: the dump emits
+parser true for the whole product and makes a `>parent` or `<child` sigil an
+error rather than a competing parentage channel. `FieldChild` is absent from
+`SurfaceOutline`, so the rejection is what stops the sigil from surviving inside
+an outline title. The buffer is declarative: the dump emits
 current values, so an omitted sigil clears that value. A line without a marker
 creates a task, and a dumped task whose line disappeared is deleted.
 

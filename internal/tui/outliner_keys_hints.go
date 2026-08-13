@@ -103,6 +103,7 @@ func quickEditGrammarGuidance() []string {
 		textgrammar.FieldDestination: "destination",
 		textgrammar.FieldProject:     "move project",
 		textgrammar.FieldParent:      "parent",
+		textgrammar.FieldChild:       "adopt",
 	}
 	entries := make([]string, 0, len(labels))
 	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceEdit) {

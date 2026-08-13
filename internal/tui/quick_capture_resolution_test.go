@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -55,6 +56,41 @@ func TestResolveParent(t *testing.T) {
 				t.Errorf("got task ID %q, want %q", result.ID, tt.wantID)
 			}
 		})
+	}
+}
+
+func TestStructuralReferencesShareMatchingAndNameTheirRelationship(t *testing.T) {
+	project := &models.Project{
+		ID:   "test-project",
+		Name: "Test Project",
+		Tasks: []*models.Task{
+			{ID: "task-1", ShortID: 1, Title: "Login flow"},
+			{ID: "task-2", ShortID: 2, Title: "Login form"},
+		},
+	}
+
+	for _, relationship := range []string{"parent", "child"} {
+		byShortID, err := resolveStructuralReference("2", project, relationship)
+		if err != nil || byShortID == nil || byShortID.ID != "task-2" {
+			t.Errorf("%s reference 2 = %v, %v; want task-2", relationship, byShortID, err)
+		}
+		byPrefix, err := resolveStructuralReference("login fl", project, relationship)
+		if err != nil || byPrefix == nil || byPrefix.ID != "task-1" {
+			t.Errorf("%s reference 'login fl' = %v, %v; want task-1", relationship, byPrefix, err)
+		}
+
+		task, err := resolveStructuralReference("Login", project, relationship)
+		if task != nil || err == nil {
+			t.Fatalf("%s reference Login = %v, %v; want an ambiguity error", relationship, task, err)
+		}
+		if !strings.Contains(err.Error(), relationship+" reference") {
+			t.Errorf("%s ambiguity error %q does not name the relationship", relationship, err)
+		}
+		for _, label := range []string{"#1 Login flow", "#2 Login form"} {
+			if !strings.Contains(err.Error(), label) {
+				t.Errorf("%s ambiguity error %q is missing %q", relationship, err, label)
+			}
+		}
 	}
 }
 

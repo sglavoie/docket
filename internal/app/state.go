@@ -112,10 +112,22 @@ func validateLifecycleTransition(ref TaskRef, target models.WorkflowState) error
 // captured before the task was mutated. Project-scoped UI commits use this form
 // because they submit an already-edited project together with its immutable base.
 func validateLifecycleTransitionFrom(from models.WorkflowState, ref TaskRef, target models.WorkflowState) error {
+	if err := validateLifecycleStateEdge(from, target); err != nil {
+		return err
+	}
+	return childrenCompletionGuard(ref.Task, ref.Project, target)
+}
+
+// validateLifecycleStateEdge validates only the state-graph half of the policy.
+// An entry point that builds hierarchy as part of the same request uses it while
+// parsing and runs childrenCompletionGuard separately once the final direct
+// children are known, so a terminal destination cannot be judged against a
+// hierarchy the request itself is about to replace.
+func validateLifecycleStateEdge(from, target models.WorkflowState) error {
 	if reason := models.CanTransitionState(from, target); reason != "" {
 		return &TransitionError{From: string(from), To: string(target), Reason: reason}
 	}
-	return childrenCompletionGuard(ref.Task, ref.Project, target)
+	return nil
 }
 
 // applyLifecycleTransition validates and applies one transition with the service

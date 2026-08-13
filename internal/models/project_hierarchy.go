@@ -18,6 +18,13 @@ const MaxNestingDepth = 6
 // involve taskID (e.g. A->B->C->A). Without it, walking such a chain when
 // proposedParentID is part of the cycle would loop forever.
 func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string) bool {
+	return wouldCreateCycle(taskMap, nil, taskID, proposedParentID)
+}
+
+// wouldCreateCycle is WouldCreateCycle over a projected parent graph. Entries in
+// overrides replace a task's stored ParentID, where a present nil value means
+// the task is projected as a root; a nil map projects the graph unchanged.
+func wouldCreateCycle(taskMap map[string]*Task, overrides map[string]*string, taskID, proposedParentID string) bool {
 	if taskID == proposedParentID {
 		return true
 	}
@@ -29,15 +36,28 @@ func WouldCreateCycle(taskMap map[string]*Task, taskID, proposedParentID string)
 		}
 		visited[current] = true
 		parent, ok := taskMap[current]
-		if !ok || parent.ParentID == nil {
+		if !ok {
 			return false
 		}
-		current = *parent.ParentID
+		parentID := projectedParentID(parent, overrides)
+		if parentID == nil {
+			return false
+		}
+		current = *parentID
 		if current == taskID {
 			return true
 		}
 	}
 	return false
+}
+
+// projectedParentID returns the parent the task would have once overrides are
+// applied. A present nil override projects the task as a root.
+func projectedParentID(task *Task, overrides map[string]*string) *string {
+	if override, ok := overrides[task.ID]; ok {
+		return override
+	}
+	return task.ParentID
 }
 
 // BuildTaskTree organizes flat tasks into a tree structure.
@@ -299,76 +319,201 @@ func (p *Project) OutdentTask(task *Task) error {
 // this project. Validation is completed before mutation so a rejected request
 // cannot partially rewrite the tree.
 func (p *Project) ReparentTask(task, newParent *Task) error {
+	_, err := p.ApplyParentAssignments([]ParentAssignment{{Task: task, Parent: newParent}})
+	return err
+}
+
+// ParentAssignment names one parent edge: Task becomes a child of Parent, or a
+// root when Parent is nil. Both non-nil tasks must be the canonical objects
+// owned by the project the assignment is applied to.
+type ParentAssignment struct {
+	Task   *Task
+	Parent *Task
+}
+
+// ApplyParentAssignments validates every requested parent edge against the one
+// hierarchy the whole batch would produce, then applies it atomically. Repeated
+// assignments naming the same parent for a task collapse to the first; two
+// assignments naming different parents for one task are rejected. Because
+// cycles and nesting depth are measured on the projected graph rather than the
+// current one, a hierarchy inversion that is only legal once every edge lands is
+// accepted. A rejected batch mutates nothing.
+//
+// Returns the number of tasks whose parent actually changed. Project task order
+// is never touched, so ordering stays with the caller.
+func (p *Project) ApplyParentAssignments(assignments []ParentAssignment) (int, error) {
 	if p == nil {
-		return fmt.Errorf("project is nil")
-	}
-	if task == nil {
-		return fmt.Errorf("task is nil")
-	}
-	canonicalTask := p.GetTaskByID(task.ID)
-	if canonicalTask == nil {
-		return fmt.Errorf("task %q is not in project", task.ID)
-	}
-	if canonicalTask != task {
-		return fmt.Errorf("task %q does not match project task", task.ID)
+		return 0, fmt.Errorf("project is nil")
 	}
 
 	taskMap := make(map[string]*Task, len(p.Tasks))
+	for _, candidate := range p.Tasks {
+		if candidate == nil {
+			continue
+		}
+		if _, duplicate := taskMap[candidate.ID]; !duplicate {
+			taskMap[candidate.ID] = candidate
+		}
+	}
+
+	requests, err := canonicalParentAssignments(taskMap, assignments)
+	if err != nil {
+		return 0, err
+	}
+	if len(requests) == 0 {
+		return 0, nil
+	}
+
+	overrides := make(map[string]*string, len(requests))
+	for _, request := range requests {
+		if request.Parent == nil {
+			overrides[request.Task.ID] = nil
+			continue
+		}
+		parentID := request.Parent.ID
+		overrides[request.Task.ID] = &parentID
+	}
+
+	// Every cycle the batch could introduce runs through at least one assigned
+	// edge, so walking upward from each new parent finds all of them. A cycle
+	// among untouched edges is left to the depth and height walks below, which
+	// report it exactly as a single reparent always has.
+	for _, request := range requests {
+		if request.Parent == nil {
+			continue
+		}
+		if wouldCreateCycle(taskMap, overrides, request.Task.ID, request.Parent.ID) {
+			return 0, fmt.Errorf("would create a circular parent reference")
+		}
+	}
+
 	children := make(map[string][]string, len(p.Tasks))
 	for _, candidate := range p.Tasks {
 		if candidate == nil {
 			continue
 		}
-		taskMap[candidate.ID] = candidate
-		if candidate.ParentID != nil {
-			children[*candidate.ParentID] = append(children[*candidate.ParentID], candidate.ID)
+		if parentID := projectedParentID(candidate, overrides); parentID != nil {
+			children[*parentID] = append(children[*parentID], candidate.ID)
 		}
 	}
 
-	newDepth := 0
-	if newParent != nil {
-		canonicalParent := p.GetTaskByID(newParent.ID)
-		if canonicalParent == nil {
-			return fmt.Errorf("parent %q is not in project", newParent.ID)
+	if err := validateProjectedAssignmentDepth(taskMap, overrides, children, requests); err != nil {
+		return 0, err
+	}
+
+	changed := 0
+	now := time.Now()
+	for _, request := range requests {
+		if taskHasParent(request.Task, request.Parent) {
+			continue
 		}
-		if canonicalParent != newParent {
-			return fmt.Errorf("parent %q does not match project task", newParent.ID)
+		if request.Parent == nil {
+			request.Task.ParentID = nil
+		} else {
+			parentID := request.Parent.ID
+			request.Task.ParentID = &parentID
 		}
-		if task.ID == newParent.ID {
-			return fmt.Errorf("task cannot be its own parent")
+		request.Task.UpdatedAt = now
+		changed++
+	}
+	p.BuildTaskTree()
+	return changed, nil
+}
+
+// canonicalParentAssignments rejects any assignment naming a task or parent the
+// project does not own, then collapses repeated assignments for one task to the
+// first. Two assignments naming different parents for the same task are a
+// conflict rather than a last-writer-wins overwrite.
+func canonicalParentAssignments(taskMap map[string]*Task, assignments []ParentAssignment) ([]ParentAssignment, error) {
+	requests := make([]ParentAssignment, 0, len(assignments))
+	requestIndex := make(map[string]int, len(assignments))
+	for _, assignment := range assignments {
+		task := assignment.Task
+		if task == nil {
+			return nil, fmt.Errorf("task is nil")
 		}
-		if WouldCreateCycle(taskMap, task.ID, newParent.ID) {
-			return fmt.Errorf("would create a circular parent reference")
+		if err := requireCanonicalTask(taskMap, task, "task"); err != nil {
+			return nil, err
 		}
-		parentDepth, err := taskHierarchyDepth(taskMap, newParent.ID)
+		if parent := assignment.Parent; parent != nil {
+			if err := requireCanonicalTask(taskMap, parent, "parent"); err != nil {
+				return nil, err
+			}
+			if task.ID == parent.ID {
+				return nil, fmt.Errorf("task cannot be its own parent")
+			}
+		}
+		if at, seen := requestIndex[task.ID]; seen {
+			if !sameAssignedParent(requests[at].Parent, assignment.Parent) {
+				return nil, fmt.Errorf("task %q was assigned two different parents", task.ID)
+			}
+			continue
+		}
+		requestIndex[task.ID] = len(requests)
+		requests = append(requests, assignment)
+	}
+	return requests, nil
+}
+
+// requireCanonicalTask reports whether the project owns this exact task object,
+// since a copy carrying the same ID would mutate a graph nothing else reads.
+func requireCanonicalTask(taskMap map[string]*Task, task *Task, role string) error {
+	switch canonical := taskMap[task.ID]; {
+	case canonical == nil:
+		return fmt.Errorf("%s %q is not in project", role, task.ID)
+	case canonical != task:
+		return fmt.Errorf("%s %q does not match project task", role, task.ID)
+	}
+	return nil
+}
+
+// validateProjectedAssignmentDepth measures each moved subtree against the graph
+// the whole batch produces, so an inversion that is only legal once every edge
+// lands is judged on its final depth rather than an intermediate one.
+func validateProjectedAssignmentDepth(taskMap map[string]*Task, overrides map[string]*string, children map[string][]string, requests []ParentAssignment) error {
+	for _, request := range requests {
+		newDepth := 0
+		if request.Parent != nil {
+			parentDepth, err := taskHierarchyDepth(taskMap, overrides, request.Parent.ID)
+			if err != nil {
+				return err
+			}
+			newDepth = parentDepth + 1
+		}
+		height, err := taskSubtreeHeight(request.Task.ID, children, make(map[string]bool))
 		if err != nil {
 			return err
 		}
-		newDepth = parentDepth + 1
+		if newDepth+height > MaxNestingDepth {
+			return fmt.Errorf("subtree would exceed maximum nesting depth of %d levels", MaxNestingDepth)
+		}
 	}
-
-	height, err := taskSubtreeHeight(task.ID, children, make(map[string]bool))
-	if err != nil {
-		return err
-	}
-	if newDepth+height > MaxNestingDepth {
-		return fmt.Errorf("subtree would exceed maximum nesting depth of %d levels", MaxNestingDepth)
-	}
-
-	if newParent == nil {
-		task.ParentID = nil
-	} else {
-		parentID := newParent.ID
-		task.ParentID = &parentID
-	}
-	task.UpdatedAt = time.Now()
-	p.BuildTaskTree()
 	return nil
+}
+
+// sameAssignedParent reports whether two assignments for one task name the same
+// parent.
+func sameAssignedParent(a, b *Task) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.ID == b.ID
+}
+
+// taskHasParent reports whether the task already holds the assigned parent edge.
+func taskHasParent(task *Task, parent *Task) bool {
+	if parent == nil {
+		return task.ParentID == nil
+	}
+	return task.ParentID != nil && *task.ParentID == parent.ID
 }
 
 // taskHierarchyDepth returns the root-relative depth of taskID without relying
 // on computed Level fields, which may be stale before a project rebuild.
-func taskHierarchyDepth(taskMap map[string]*Task, taskID string) (int, error) {
+// Entries in overrides replace a task's stored ParentID, where a present nil
+// value means the task is projected as a root; a nil map measures the stored
+// graph.
+func taskHierarchyDepth(taskMap map[string]*Task, overrides map[string]*string, taskID string) (int, error) {
 	depth := 0
 	seen := make(map[string]bool)
 	currentID := taskID
@@ -381,14 +526,15 @@ func taskHierarchyDepth(taskMap map[string]*Task, taskID string) (int, error) {
 		if current == nil {
 			return 0, fmt.Errorf("task %q is not in project", currentID)
 		}
-		if current.ParentID == nil {
+		parentID := projectedParentID(current, overrides)
+		if parentID == nil {
 			return depth, nil
 		}
-		if taskMap[*current.ParentID] == nil {
-			return 0, fmt.Errorf("task %q references missing parent %q", current.ID, *current.ParentID)
+		if taskMap[*parentID] == nil {
+			return 0, fmt.Errorf("task %q references missing parent %q", current.ID, *parentID)
 		}
 		depth++
-		currentID = *current.ParentID
+		currentID = *parentID
 	}
 }
 
@@ -413,9 +559,13 @@ func taskSubtreeHeight(taskID string, children map[string][]string, visiting map
 	return height, nil
 }
 
-// ReorderRootTasksByCompletion reorganizes the Tasks slice so that uncompleted
-// root tasks appear before completed root tasks. Child tasks move with their
-// parent root task. The relative order within each group is preserved.
+// ReorderRootTasksByCompletion reorganizes the Tasks slice so that every task
+// belonging to an uncompleted root appears before every task belonging to a
+// completed root. It is a stable partition: within each of the two groups the
+// existing slice order is kept untouched, so a reparent that does not cross the
+// completion boundary leaves the persisted order exactly as it was. Gathering
+// each root's descendants into one contiguous run would instead resequence
+// tasks that the mutation never named.
 func (p *Project) ReorderRootTasksByCompletion() {
 	if len(p.Tasks) == 0 {
 		return
@@ -423,11 +573,6 @@ func (p *Project) ReorderRootTasksByCompletion() {
 
 	// Build the tree to ensure parent-child relationships are set
 	p.BuildTaskTree()
-
-	// Collect root tasks with their subtrees (all descendants).
-	type rootSubtree struct {
-		tasks []*Task // root + all descendants in original slice order
-	}
 
 	// Index every task by its root once. The previous implementation built a
 	// descendant set for each root and then rescanned the full task slice per
@@ -444,15 +589,16 @@ func (p *Project) ReorderRootTasksByCompletion() {
 		}
 	}
 
-	var roots []*Task
+	completedRoot := make(map[string]bool)
 	for _, task := range p.Tasks {
 		if task != nil && task.IsRoot() {
-			roots = append(roots, task)
 			indexSubtree(task.ID, task)
+			completedRoot[task.ID] = task.IsComplete()
 		}
 	}
 
-	subtrees := make(map[string][]*Task, len(roots))
+	uncompleted := make([]*Task, 0, len(p.Tasks))
+	var completed []*Task
 	for _, task := range p.Tasks {
 		if task == nil {
 			continue
@@ -461,30 +607,14 @@ func (p *Project) ReorderRootTasksByCompletion() {
 		if rootID == "" {
 			rootID = task.ID
 		}
-		subtrees[rootID] = append(subtrees[rootID], task)
-	}
-
-	var uncompletedSubtrees []rootSubtree
-	var completedSubtrees []rootSubtree
-	for _, root := range roots {
-		subtree := rootSubtree{tasks: subtrees[root.ID]}
-		if root.IsComplete() {
-			completedSubtrees = append(completedSubtrees, subtree)
-		} else {
-			uncompletedSubtrees = append(uncompletedSubtrees, subtree)
+		if completedRoot[rootID] {
+			completed = append(completed, task)
+			continue
 		}
+		uncompleted = append(uncompleted, task)
 	}
 
-	// Rebuild the Tasks slice: uncompleted subtrees first, then completed
-	newTasks := make([]*Task, 0, len(p.Tasks))
-	for _, subtree := range uncompletedSubtrees {
-		newTasks = append(newTasks, subtree.tasks...)
-	}
-	for _, subtree := range completedSubtrees {
-		newTasks = append(newTasks, subtree.tasks...)
-	}
-
-	p.Tasks = newTasks
+	p.Tasks = append(uncompleted, completed...)
 }
 
 // ReconcileParentCompletion uncompletes any completed task that has an

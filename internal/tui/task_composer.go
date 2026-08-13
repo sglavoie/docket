@@ -357,6 +357,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 			Tags:        mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
 			Due:         due,
 			ParentID:    parentID,
+			ChildIDs:    parsed.childIDs(),
 			Destination: destination,
 			Prepend:     true,
 		}
@@ -447,6 +448,12 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 	}
 	if len(reqs) != 1 {
 		m.errors = []lineError{{line: 1, message: "expanded mode requires exactly one nonblank task"}}
+		return nil
+	}
+	// The expanded form has no adoption channel, so expanding would drop the
+	// references silently rather than carry them.
+	if len(reqs[0].ChildIDs) > 0 {
+		m.errors = []lineError{{line: 1, message: "expanded mode cannot adopt children; submit the line with Enter instead"}}
 		return nil
 	}
 	return m.expandRequest(reqs[0])

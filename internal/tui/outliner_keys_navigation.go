@@ -71,6 +71,14 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 			}
 		}
 	}
+	// Children resolve in the effective project, which is the destination
+	// whenever the edit also crosses a boundary.
+	for _, child := range result.children {
+		req.Children = append(req.Children, app.TaskLocator{
+			ProjectID: req.DestinationProjectID,
+			TaskID:    child.ID,
+		})
+	}
 	return req
 }
 

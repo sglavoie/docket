@@ -110,7 +110,7 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
 		"The checklist is absent because it is edited on its own rows",
-		"Append `%project` to move its subtree, `>parent` to reparent it, or `>0` to move it to the project root",
+		"Append `%project` to move its subtree, `>parent` to reparent it, `>0` to move it to the project root, or `<child` once per task you want to adopt",
 	})
 }
 
@@ -149,7 +149,13 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"!1-3 #tag @date $destination %project >parent",
+		"!1-3 #tag @date $destination %project >parent <child",
+		"`<child` adopts a task that already exists, and may be repeated",
+		"both resolve in the effective project",
+		"Adoption is additive",
+		"There is no clear form: `<0` is an ordinary reference that resolves to nothing",
+		"Aliases that name the same task collapse to one adoption, keeping the first occurrence",
+		"two lines cannot adopt the same task",
 		"`^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress`",
 		"`#tag` creates and sets a lowercase ASCII kebab tag on the fly",
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",

@@ -20,6 +20,7 @@ const (
 	acModeNone        = iota // No autocomplete active
 	acModeTag                // Completing a #tag
 	acModeParent             // Completing a >parent
+	acModeChild              // Completing a <child
 	acModePriority           // Completing a !priority
 	acModeDate               // Completing a @date
 	acModeDestination        // Completing a $destination
@@ -29,6 +30,17 @@ const (
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
 const acVisibleCount = 7
 
+// capturedChildRef is one resolved <child reference. The identifying fields are
+// copied out of the task the reference named rather than kept as a pointer, so a
+// parse result can be previewed and mapped into a request without holding a
+// handle on a view-owned task.
+type capturedChildRef struct {
+	id       string
+	shortID  int
+	title    string
+	terminal bool
+}
+
 // quickCaptureResult holds parsed metadata from quick capture input.
 type quickCaptureResult struct {
 	title             string
@@ -37,10 +49,24 @@ type quickCaptureResult struct {
 	tags              []string
 	dueDate           *time.Time
 	parentID          *string
+	children          []capturedChildRef
 	destination       app.CaptureDestination
 	destinationSet    bool
 	targetProjectID   *string // Target project ID for cross-project capture
 	targetProjectName string  // Target project name (for preview display)
+}
+
+// childIDs projects the resolved children into the stable IDs a CaptureRequest
+// carries, in reference order.
+func (r *quickCaptureResult) childIDs() []string {
+	if len(r.children) == 0 {
+		return nil
+	}
+	ids := make([]string, len(r.children))
+	for i, child := range r.children {
+		ids[i] = child.id
+	}
+	return ids
 }
 
 // quickCaptureInput encapsulates the compact Task Composer's autocomplete,
@@ -52,7 +78,6 @@ type quickCaptureInput struct {
 	// Autocomplete state
 	ac           AutocompleteState
 	tagCache     []string
-	parentCache  []*models.Task
 	projectCache []*models.Project
 	triggers     []ACTrigger // Active triggers (may exclude %project)
 
@@ -126,6 +151,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeTag
 	case textgrammar.FieldParent:
 		return acModeParent
+	case textgrammar.FieldChild:
+		return acModeChild
 	case textgrammar.FieldPriority:
 		return acModePriority
 	case textgrammar.FieldDue:
@@ -139,18 +166,13 @@ func autocompleteModeForField(field textgrammar.Field) int {
 	}
 }
 
-// initCaches builds tag, parent, and project caches for autocomplete.
+// initCaches builds tag and project caches for autocomplete. Parent and child
+// candidates are deliberately absent: they follow the draft's effective
+// %project, which changes while the user types, so caching them here is what
+// made parent completion offer the source project's tasks after a route.
 func (q *quickCaptureInput) initCaches() {
 	// Cache all tags from the project
 	q.tagCache = CollectTagNamesForProject(q.project)
-
-	// Cache potential parent tasks (non-completed).
-	q.parentCache = make([]*models.Task, 0)
-	for _, task := range q.project.Tasks {
-		if !task.IsComplete() {
-			q.parentCache = append(q.parentCache, task)
-		}
-	}
 
 	// Cache non-archived projects for cross-project capture
 	q.projectCache = make([]*models.Project, 0)
@@ -326,7 +348,13 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getTagSuggestions(partial)
 		items = filterUsedTagSuggestions(items, parsedLine.TokensFor(textgrammar.FieldTag))
 	case acModeParent:
-		items = q.getParentSuggestions(partial)
+		items = q.getParentSuggestions(partial, structuralCandidates(q.effectiveProject(parsedLine)))
+	case acModeChild:
+		effective := q.effectiveProject(parsedLine)
+		candidates := filterAdoptedChildCandidates(
+			structuralCandidates(effective), effective, parsedLine.TokensFor(textgrammar.FieldChild),
+		)
+		items = q.getChildSuggestions(partial, candidates)
 	case acModePriority:
 		items = q.getPrioritySuggestions(partial)
 	case acModeDate:
@@ -354,6 +382,70 @@ func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 	default:
 		return "", false
 	}
+}
+
+// effectiveProject resolves the project the drafted line's >parent and <child
+// references address, so completion offers the tasks the parse will actually
+// match instead of the composer's source project. The scope is the drafted line
+// rather than the whole buffer because every nonblank line becomes its own
+// request with its own route.
+func (q *quickCaptureInput) effectiveProject(draftedLine textgrammar.Result) *models.Project {
+	if q.skipProjectSyntax {
+		return q.project
+	}
+	tokens := draftedLine.TokensFor(textgrammar.FieldProject)
+	if len(tokens) == 0 {
+		return q.project
+	}
+	// The parser lets the last %project token win, so completion must too.
+	if target := resolveProject(tokens[len(tokens)-1].Value, q.allProjects); target != nil {
+		return target
+	}
+	return q.project
+}
+
+// structuralCandidates returns the tasks a >parent or <child completion offers.
+// Completed tasks are withheld from the suggestion list only; a manually typed
+// reference still resolves against every task in the project, so an intentional
+// reference to finished work is never blocked by this policy.
+func structuralCandidates(project *models.Project) []*models.Task {
+	if project == nil {
+		return nil
+	}
+	candidates := make([]*models.Task, 0, len(project.Tasks))
+	for _, task := range project.Tasks {
+		if task != nil && !task.IsComplete() {
+			candidates = append(candidates, task)
+		}
+	}
+	return candidates
+}
+
+// filterAdoptedChildCandidates drops candidates an earlier <child token already
+// names. Tokens are resolved before comparison, so a short ID and a title prefix
+// naming one task remove it once rather than letting the alias reappear.
+func filterAdoptedChildCandidates(candidates []*models.Task, project *models.Project, tokens []textgrammar.Token) []*models.Task {
+	if len(tokens) == 0 {
+		return candidates
+	}
+	adopted := make(map[string]bool, len(tokens))
+	for _, token := range tokens {
+		task, err := resolveChild(token.Value, project)
+		if err != nil || task == nil {
+			continue
+		}
+		adopted[task.ID] = true
+	}
+	if len(adopted) == 0 {
+		return candidates
+	}
+	filtered := make([]*models.Task, 0, len(candidates))
+	for _, task := range candidates {
+		if !adopted[task.ID] {
+			filtered = append(filtered, task)
+		}
+	}
+	return filtered
 }
 
 func filterUsedTagSuggestions(items []ACSuggestion, tokens []textgrammar.Token) []ACSuggestion {
@@ -386,14 +478,14 @@ func (q *quickCaptureInput) updatePreview() {
 }
 
 // previewGroupLabelWidth is the padded width used for the leading group label
-// column ("Task", "Route", "Schedule", "Priority", "Tags"). Sized to the
-// longest label plus a trailing space so the body column lines up.
+// column ("Task", "Route", "Children", "Schedule", "Priority", "Tags"). Sized to
+// the longest label plus a trailing space so the body column lines up.
 const previewGroupLabelWidth = 9
 
 // previewGroup is one labeled cluster of parsed attributes (Task, Route,
-// Schedule, Priority, Tags). Both the full grouped preview and the compact
-// two-row fallback are built from the same groups so they can never disagree
-// about what the parser understood.
+// Children, Schedule, Priority, Tags). Both the full grouped preview and the
+// compact two-row fallback are built from the same groups so they can never
+// disagree about what the parser understood.
 type previewGroup struct {
 	label  string
 	chunks []string
@@ -401,7 +493,7 @@ type previewGroup struct {
 
 // previewGroups builds the populated preview groups from the parsed result, or
 // reports ok=false when there is nothing to preview. It is the single source of
-// the recognized task, route, schedule, state, priority, tag, project, and
+// the recognized task, route, child, schedule, state, priority, tag, and project
 // information shown by both preview renderers.
 func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if q.preview == nil || q.preview.title == "" {
@@ -421,6 +513,7 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
 	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
+	childDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldChild)
 
 	destination := app.CaptureDestinationInbox
 	destinationLabel := destinationDefinition.Trigger + string(destination) + " (default)"
@@ -437,6 +530,17 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		routeChunks = append(routeChunks, "→ "+q.preview.targetProjectName)
 	}
 	groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
+
+	// Children sits directly after Route because both answer where the task lands.
+	// The parser already deduped aliases in first-reference order, so one chunk per
+	// entry both survives the compact fallback's flattening and states the count.
+	if len(q.preview.children) > 0 {
+		childChunks := make([]string, len(q.preview.children))
+		for i, child := range q.preview.children {
+			childChunks[i] = fmt.Sprintf("%s%d %s", childDefinition.Trigger, child.shortID, child.title)
+		}
+		groups = append(groups, previewGroup{label: "Children", chunks: childChunks})
+	}
 
 	var scheduleChunks []string
 	if q.preview.dueDate != nil {
@@ -461,9 +565,9 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 }
 
 // renderPreview formats the parsed preview for display. The output is chunked
-// into labeled groups (Task / Route / Schedule / Priority / Tags) so the user can
-// scan what the parser understood without parsing a separator-soup. Only
-// populated groups are shown.
+// into labeled groups (Task / Route / Children / Schedule / Priority / Tags) so
+// the user can scan what the parser understood without parsing a
+// separator-soup. Only populated groups are shown.
 func (q *quickCaptureInput) renderPreview() string {
 	if q.previewErr != "" {
 		return ValidationErrorStyle.Render(q.previewErr)

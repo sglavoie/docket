@@ -43,11 +43,11 @@ The direct interaction grammar is:
 | Global | `c`, `C`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
 
 Filters use `fp0`, `fp1`–`fp3`, `fs`, `fc`, `ft`, `fd`, `fz`, and `fx`.
-Quick capture accepts `!1-3`, `#tag`, `@date`, `$destination`, `%project`, and
-`>parent`. Destinations are Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
-Someday, Done, and Canceled. `#tag` creates valid tags on the fly. Retired type
-and recurrence sigils, priorities 4–5, `$ready`, and `$in_progress` are
-recognized errors with concise replacement guidance.
+Quick capture accepts `!1-3`, `#tag`, `@date`, `$destination`, `%project`,
+`>parent`, and the repeatable `<child`. Destinations are Inbox, Backlog, Today,
+Next, Doing, Waiting, Paused, Someday, Done, and Canceled. `#tag` creates valid
+tags on the fly. Retired type and recurrence sigils, priorities 4–5, `$ready`,
+and `$in_progress` are recognized errors with concise replacement guidance.
 
 The removal contract covers alternate primary views and duplicate commands;
 mode picker, command palette, Finder, and recent destinations; AI and Ask;

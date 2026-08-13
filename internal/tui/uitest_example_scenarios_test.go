@@ -15,6 +15,7 @@ const exampleScenariosDir = "../../docs/tui-testing/scenarios"
 func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	required := []string{
 		"capture-grammar.json",
+		"capture-child-adoption.json",
 		"capture-project-header-destination.json",
 		"cleanup-undo-redo.json",
 		"daily-loop.json",
@@ -43,6 +44,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"outliner-bulk-action-intersection.json",
 		"outliner-checklist-rows-fold.json",
 		"outliner-checklist-selection-suppression.json",
+		"outliner-inline-edit-child-adoption.json",
 		"outliner-range-selection.json",
 		"outliner-space-action-catalog.json",
 		"outline-editor-guard.json",

@@ -1,0 +1,46 @@
+{
+  "name": "outliner-inline-edit-child-adoption",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "go to Backlog", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
+    { "type": "key", "label": "step onto User authentication", "key": "j" },
+    { "type": "key", "label": "edit the row in place", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "assert", "label": "the edit grammar advertises the seventh sigil", "assert": "contains", "value": "<child adopt" },
+
+    { "type": "text", "label": "<0 is an ordinary unresolvable reference, never a clear", "text": " <0" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "child not found: \"0\"" },
+    { "type": "key", "label": "cancel the rejected draft", "key": "esc" },
+
+    { "type": "key", "label": "reopen inline edit", "key": "e" },
+    { "type": "text", "label": "adopt two tasks named three ways", "text": " <8 <7 <Explore" },
+    { "type": "key", "label": "commit one atomic edit", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #2 User authentication" },
+
+    { "type": "key", "label": "back to All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "label": "the unmentioned children stayed put", "assert": "contains", "value": "Build login form  ‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹ Launch platform › User authentication" },
+    { "type": "assert", "label": "the short id and the title prefix adopted one task once", "assert": "count_contains", "value": "Explore social login", "count": 1 },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo the adoption", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox  ‹" },
+    { "type": "assert", "assert": "not_contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "label": "the flat project order is unchanged", "assert": "contains", "value": "Build login form  ‹ Launch platform › User authentication" },
+
+    { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -149,8 +149,8 @@ applies the pending changes.
 `$EDITOR`, and applies the whole tree when you save and quit. Indentation is
 parentage: two spaces per level, up to the usual depth of six. Every line
 otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `@friday`, and
-`$backlog` all work, while `>parent` is rejected because the indentation already
-said it.
+`$backlog` all work, while `>parent` and `<child` are rejected because the
+indentation already said it.
 
 ```text
 # Sonar
@@ -191,8 +191,9 @@ is absent because it is edited on its own rows, and a second route to the same
 mutations is the shape this menu exists to avoid.
 
 Press `e` to edit the selected task in place. Append `%project` to move its
-subtree, `>parent` to reparent it, or `>0` to move it to the project root; these
-structural changes commit atomically with title and metadata edits.
+subtree, `>parent` to reparent it, `>0` to move it to the project root, or
+`<child` once per task you want to adopt; these structural changes commit
+atomically with title and metadata edits.
 
 ### Filters and search
 
@@ -362,7 +363,7 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  @date  $destination  %project  >parent
+!1-3  #tag  @date  $destination  %project  >parent  <child
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
@@ -376,6 +377,34 @@ validated before one atomic transaction is committed.
   Backlog tasks with an explicit planning membership.
 - `%project` overrides scope routing.
 - `>parent` resolves inside the selected project after project routing.
+- `<child` adopts a task that already exists, and may be repeated. `>parent`
+  stays singleton because a task has one parent, while a task can gain many
+  children at once.
+
+Both structural sigils name a task by exact short ID or by a unique
+case-insensitive title prefix, and both resolve in the effective project — the
+one `%project` selected, not the one the cursor was in. `<child` is therefore
+never a way to pull a task across a project boundary: a reference that names a
+task outside the effective project is rejected, and adopting a task never moves
+it or its subtree between projects.
+
+Adoption is additive. Children you do not mention keep their parent, an adopted
+task keeps its own subtree, and every task already in the project keeps its
+place: an adoption re-nests a task, it does not resequence the project. The one
+move you can still see is the standing rule that finished work sinks below open
+work, so adopting a finished task under an open one lifts it out of the finished
+block, and reopening a finished parent lifts it and its subtree with it.
+A `$done` or `$canceled` line cannot adopt unfinished work: capture and inline
+edit both refuse it and name the open task, because a finished parent above an
+open child is the one shape the completion rule forbids. Adopting work that is
+already finished is fine. A task that is already done and gains an open child
+some other way is reopened rather than left in that shape.
+There is no clear form: `<0` is an ordinary reference that resolves to nothing
+and is reported as such, and a task is detached by giving it a new `>parent` or
+`>0` instead. Aliases that name the same task collapse to one adoption, keeping
+the first occurrence, so `<2 <Login` adopts task 2 once. A task cannot be both
+`>parent` and `<child` of the same line, and across a multiline capture two
+lines cannot adopt the same task; both are reported before anything is written.
 
 `^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress` are
 rejected with replacement guidance. Other aliases such as `priority:`, `due:`,

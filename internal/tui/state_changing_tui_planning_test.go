@@ -74,8 +74,8 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 	// A live Today mutation installs the runtime-bound reconciliation builder as
 	// the service default. The inline project move must not inherit that mutable
 	// default after planning.json advances independently of the shell snapshot.
-	if _, _, _, err := model.applyTaskPlanningAction(moving.ID, source.ID, app.PlanningAddToday); err != nil {
-		t.Fatalf("add moving task to Today: %v", err)
+	if _, _, _, todayErr := model.applyTaskPlanningAction(moving.ID, source.ID, app.PlanningAddToday); todayErr != nil {
+		t.Fatalf("add moving task to Today: %v", todayErr)
 	}
 	external := config.NewManager(filepath.Join(env.dataDir, ".tt.json"))
 	planning, err := external.DomainCoordinator().LoadPlanning()
@@ -83,8 +83,8 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		t.Fatalf("load planning for external update: %v", err)
 	}
 	planning.AddToToday(kept.ID, destination.ID)
-	if err := external.CommitPlanning(planning); err != nil {
-		t.Fatalf("commit external planning update: %v", err)
+	if commitErr := external.CommitPlanning(planning); commitErr != nil {
+		t.Fatalf("commit external planning update: %v", commitErr)
 	}
 	if got := len(runtime.Planning().GetToday()); got != 1 {
 		t.Fatalf("stale shell Today entries = %d, want 1", got)

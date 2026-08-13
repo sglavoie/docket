@@ -169,6 +169,13 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			})
 			forbidden = true
 		}
+		if len(structuralTokens.TokensFor(textgrammar.FieldChild)) > 0 {
+			errs = append(errs, lineError{
+				line:    item.sourceLine,
+				message: "indentation sets parentage here; remove the <child sigil",
+			})
+			forbidden = true
+		}
 		if forbidden {
 			continue
 		}

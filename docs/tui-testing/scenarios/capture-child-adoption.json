@@ -1,0 +1,38 @@
+{
+  "name": "capture-child-adoption",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "User authentication starts under Launch platform", "assert": "contains", "value": "‹ Launch platform › User authentication" },
+
+    { "type": "key", "label": "capture from a section header row", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "label": "no cursor lends capture its project", "assert": "contains", "value": "Capture → Unfiled" },
+
+    { "type": "text", "label": "route the line, then adopt two tasks named three ways", "text": "Consolidate follow-ups %rich-project <2 <6 <Fix" },
+    { "type": "assert", "label": "children resolve in the routed project", "assert": "contains", "value": "→ Rich Project" },
+    { "type": "assert", "label": "the short id and the title prefix collapse to one child", "assert": "contains", "value": "Children <2 User authentication · <6 Fix redirect loop after logout" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "commit one atomic capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Task: #9 Consolidate follow-ups" },
+    { "type": "assert", "label": "the adopted task kept its own subtree", "assert": "contains", "value": "‹ Consolidate follow-ups › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "User authentication  ‹ Consolidate follow-ups" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout  ‹ Consolidate follow-ups" },
+    { "type": "assert", "label": "the previous parent no longer owns it", "assert": "not_contains", "value": "‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo the capture and every adoption with it", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "not_contains", "value": "‹ Consolidate follow-ups" },
+
+    { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "‹ Consolidate follow-ups › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout  ‹ Consolidate follow-ups" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

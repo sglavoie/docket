@@ -163,6 +163,8 @@ The committed suite exercises the product contracts directly:
 | Exact three-item `Space` menu | `outliner-space-action-catalog.json` |
 | Inline edit validation, autocomplete, atomic cross-project relocation, resize, undo, and redo | `outliner-inline-edit-transaction.json`, `recovery-origin-guidance.json` |
 | Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `textgrammar_consumer_contract_test.go`, `quick_edit_test.go`, `outline_editor_test.go` |
+| Repeatable `<child` adoption, alias dedupe, additive children, and undo/redo on both surfaces | `capture-child-adoption.json`, `outliner-inline-edit-child-adoption.json` |
+| Outline editing refusing both structural sigils as competing parentage channels | `outline-editor-guard.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |

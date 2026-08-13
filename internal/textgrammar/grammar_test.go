@@ -8,7 +8,7 @@ import (
 
 func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	parsed := Parse(
-		"Build API ^bug !1 #backend @tomorrow ~weekly >1 %core $backlog",
+		"Build API ^bug !1 #backend @tomorrow ~weekly >1 <2 %core $backlog",
 		SurfaceCapture,
 	)
 	if parsed.Text != "Build API" {
@@ -16,7 +16,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 	for _, field := range []Field{
 		FieldTaskType, FieldPriority, FieldTag, FieldDue, FieldRecurrence, FieldParent,
-		FieldProject, FieldDestination,
+		FieldChild, FieldProject, FieldDestination,
 	} {
 		if len(parsed.TokensFor(field)) == 0 {
 			t.Errorf("missing %s token in %+v", field, parsed.Tokens)
@@ -24,9 +24,9 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlySixCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlySevenCaptureSigils(t *testing.T) {
 	parsed := Parse(
-		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 state:ready has:due no:tag is:pinned",
+		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
 	)
 	if len(parsed.Tokens) != 0 {
@@ -37,10 +37,10 @@ func TestSharedParserAdvertisesExactlySixCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 6 {
-		t.Fatalf("capture definitions = %d, want 6: %+v", len(defs), defs)
+	if len(defs) != 7 {
+		t.Fatalf("capture definitions = %d, want 7: %+v", len(defs), defs)
 	}
-	wantForms := []string{"!1-3", "#tag", "@date", "$destination", "%project", ">parent"}
+	wantForms := []string{"!1-3", "#tag", "@date", "$destination", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -176,6 +176,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
 				FieldDestination: {"$destination"}, FieldProject: {"%project"}, FieldParent: {">parent"},
+				FieldChild: {"<child"},
 			},
 		},
 		{
@@ -184,6 +185,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldPriority: {"!1-3", "!0"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
 				FieldDue: {"@date", "@0"}, FieldDestination: {"$destination"},
 				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
+				FieldChild: {"<child"},
 			},
 		},
 		{
@@ -219,16 +221,16 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 }
 
 func TestParseRecognizesOnlyRegistryFormsForEachSurface(t *testing.T) {
-	const input = "Task !1 #add -#old @tomorrow $next %core >1"
+	const input = "Task !1 #add -#old @tomorrow $next %core >1 <2"
 	tests := []struct {
 		name     string
 		surface  Surface
 		wantText string
 		fields   []Field
 	}{
-		{"capture", SurfaceCapture, "Task -#old", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldProject, FieldParent}},
-		{"edit", SurfaceEdit, "Task", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldProject, FieldParent}},
-		{"outline", SurfaceOutline, "Task -#old %core >1", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination}},
+		{"capture", SurfaceCapture, "Task -#old", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldProject, FieldParent, FieldChild}},
+		{"edit", SurfaceEdit, "Task", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldProject, FieldParent, FieldChild}},
+		{"outline", SurfaceOutline, "Task -#old %core >1 <2", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -260,7 +262,7 @@ func TestRegistryClearSemanticsAreSurfaceSpecific(t *testing.T) {
 
 func TestDuplicateSingletonDiagnosticsComeFromCardinality(t *testing.T) {
 	parsed := Parse(
-		"Task !1 !2 #one #two -#old -#older @today @tomorrow $today $next %one %two >1 >2",
+		"Task !1 !2 #one #two -#old -#older @today @tomorrow $today $next %one %two >1 >2 <3 <4",
 		SurfaceEdit,
 	)
 	want := []Field{FieldPriority, FieldDue, FieldDestination, FieldProject, FieldParent}
@@ -273,6 +275,65 @@ func TestDuplicateSingletonDiagnosticsComeFromCardinality(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("duplicate fields = %v, want %v (diagnostics=%+v)", got, want, parsed.Diagnostics)
+	}
+}
+
+func TestChildTokensRepeatOnCaptureAndEditSurfaces(t *testing.T) {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit} {
+		parsed := Parse("Ship release <12 <Login <12", surface)
+		tokens := parsed.TokensFor(FieldChild)
+		got := make([]string, len(tokens))
+		for i, token := range tokens {
+			got[i] = token.Value
+		}
+		if want := []string{"12", "Login", "12"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("child values on surface %d = %v, want %v", surface, got, want)
+		}
+		if parsed.Text != "Ship release" {
+			t.Errorf("Text on surface %d = %q, want Ship release", surface, parsed.Text)
+		}
+		if len(parsed.Diagnostics) != 0 {
+			t.Errorf("repeated children produced diagnostics on surface %d: %+v", surface, parsed.Diagnostics)
+		}
+	}
+}
+
+func TestChildIsAbsentFromOutlineSurface(t *testing.T) {
+	const input = "Ship release <12"
+	parsed := Parse(input, SurfaceOutline)
+	if len(parsed.Tokens) != 0 || parsed.Text != input {
+		t.Fatalf("outline parse = %+v, want literal text", parsed)
+	}
+	if _, ok := DefinitionFor(SurfaceOutline, FieldChild); ok {
+		t.Fatal("outline surface advertises the child definition")
+	}
+}
+
+func TestChildZeroIsAnOrdinaryReferenceNotAClear(t *testing.T) {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit} {
+		definition, ok := DefinitionFor(surface, FieldChild)
+		if !ok {
+			t.Fatalf("child definition is missing on surface %d", surface)
+		}
+		if len(definition.Clears) != 0 {
+			t.Errorf("child clears on surface %d = %+v, want none", surface, definition.Clears)
+		}
+		if !reflect.DeepEqual(definition.Forms, []string{"<child"}) {
+			t.Errorf("child forms on surface %d = %v, want [<child]", surface, definition.Forms)
+		}
+		tokens := Parse("Ship release <0", surface).TokensFor(FieldChild)
+		if len(tokens) != 1 || tokens[0].Value != "0" {
+			t.Errorf("<0 tokens on surface %d = %+v, want one ordinary reference", surface, tokens)
+		}
+	}
+}
+
+func TestEmbeddedComparisonTextStaysLiteral(t *testing.T) {
+	for _, input := range []string{"Keep a<b stable", "Keep x < y stable", "Keep 5<3 stable", "Keep <"} {
+		parsed := Parse(input, SurfaceCapture)
+		if len(parsed.TokensFor(FieldChild)) != 0 || parsed.Text != input {
+			t.Errorf("Parse(%q) = %+v, want literal text", input, parsed)
+		}
 	}
 }
 

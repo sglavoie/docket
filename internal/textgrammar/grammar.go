@@ -33,6 +33,7 @@ const (
 	FieldRecurrence  Field = "recurrence"
 	FieldTaskType    Field = "type"
 	FieldParent      Field = "parent"
+	FieldChild       Field = "child"
 	FieldProject     Field = "project"
 	FieldDestination Field = "destination"
 )
@@ -180,6 +181,21 @@ var registry = []definitionSpec{
 			{Text: ">0", Surfaces: SurfaceEdit},
 		},
 		pattern: `(?:^|\s)>(\S+)`,
+	},
+	// Child declares no clear operation, which is what makes <0 an ordinary
+	// reference that never resolves rather than a clear. Its pattern requires the
+	// same leading whitespace boundary as parent's, so embedded comparison text
+	// such as a<b stays literal. The description carries the repeatability hint
+	// because child sits beside singleton parent in one group with a near-identical
+	// form, so the two would otherwise read as the same cardinality.
+	{
+		Definition: Definition{
+			Field: FieldChild, Group: "Placement", Trigger: "<",
+			Description: "Adopt existing task as child (repeatable)", Examples: []string{"<1", "<Login"},
+			Surfaces: SurfaceCapture | SurfaceEdit, Cardinality: CardinalityRepeatable,
+		},
+		forms:   []surfaceForm{{Text: "<child", Surfaces: SurfaceCapture | SurfaceEdit}},
+		pattern: `(?:^|\s)<(\S+)`,
 	},
 	// Retired sigils remain recognized only so capture can provide actionable
 	// migration errors. Legacy entries are not advertised by Definitions.

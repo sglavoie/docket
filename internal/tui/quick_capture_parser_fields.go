@@ -41,7 +41,15 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
+	p.parseChildTokens(parsed.TokensFor(textgrammar.FieldChild))
+	if p.err != nil {
+		return
+	}
 	p.parseDestinationTokens(parsed.TokensFor(textgrammar.FieldDestination))
+	if p.err != nil {
+		return
+	}
+	p.parseTerminalAdoption()
 }
 
 func (p *quickCaptureParser) parseRetiredTaskTypeTokens(tokens []textgrammar.Token) {
@@ -142,6 +150,63 @@ func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 			}
 		default:
 			p.result.parentID = &parent.ID
+		}
+	}
+}
+
+// parseChildTokens resolves every <child reference against the effective project,
+// which parseProjectTokens has already settled, and against the parent
+// parseParentTokens has already settled. Children are additive and repeatable, so
+// aliases naming one task collapse to their first occurrence instead of failing.
+func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
+	seen := make(map[string]bool, len(tokens))
+	for _, token := range tokens {
+		child, err := resolveChild(token.Value, p.project)
+		if err != nil {
+			if p.failf("%s", err) {
+				return
+			}
+			continue
+		}
+		if child == nil {
+			if p.failf("child not found: '%s' (use <short-id or title prefix)", token.Value) {
+				return
+			}
+			continue
+		}
+		if p.result.parentID != nil && *p.result.parentID == child.ID {
+			if p.failf("#%d cannot be both the parent and a child", child.ShortID) {
+				return
+			}
+			continue
+		}
+		if seen[child.ID] {
+			continue
+		}
+		seen[child.ID] = true
+		p.result.children = append(p.result.children, capturedChildRef{
+			id:       child.ID,
+			shortID:  child.ShortID,
+			title:    child.Title,
+			terminal: child.IsTerminalState(),
+		})
+	}
+}
+
+// parseTerminalAdoption applies the terminal-adoption policy to the draft, so the
+// composer refuses the line the application layer would refuse instead of
+// previewing a Done task above open work. It runs after the destination is
+// settled because the destination is what makes an adoption illegal.
+func (p *quickCaptureParser) parseTerminalAdoption() {
+	if !p.result.destinationSet || !p.result.destination.WorkflowState().IsTerminal() {
+		return
+	}
+	for _, child := range p.result.children {
+		if child.terminal {
+			continue
+		}
+		if p.failf("cannot capture as %s: adopted #%d is incomplete", p.result.destination, child.shortID) {
+			return
 		}
 	}
 }

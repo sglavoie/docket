@@ -57,7 +57,7 @@ func auditTaskHierarchy(task *Task, taskMap map[string]*Task) error {
 		return fmt.Errorf("%s has cyclic parent chain through %s", auditTaskLabel(task), auditTaskLabel(parent))
 	}
 
-	depth, err := taskHierarchyDepth(taskMap, task.ID)
+	depth, err := taskHierarchyDepth(taskMap, nil, task.ID)
 	if err != nil {
 		return fmt.Errorf("%s has invalid parent chain: %w", auditTaskLabel(task), err)
 	}

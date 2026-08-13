@@ -363,7 +363,10 @@ A task operation is direct-only or menu-only, never both, and
 direct key and confirms before mutation.
 
 Project moves and reparenting belong only to the inline `e` grammar:
-`%project`, `>parent`, and `>0` are applied by the atomic task-line transaction.
+`%project`, `>parent`, `>0`, and `<child` are applied by the atomic task-line
+transaction. The task's own parent edge and every adopted child edge are
+submitted as one `ApplyParentAssignments` batch, so cycles and depth are
+measured on the graph the edit produces rather than on the one it replaced.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain
@@ -379,8 +382,10 @@ the visible projection, because indentation in the buffer *is* parentage and a
 filtered dump would reparent whatever it hid. Existing tasks carry a
 `[[tt:<8 hex>]]` marker that identifies them across a rewrite; the marker is
 stripped before the rest of the line reaches `parseQuickCapture`, so one line
-speaks the ordinary capture grammar and nothing else. A `>parent` sigil is
-therefore an error rather than a second parentage channel.
+speaks the ordinary capture grammar and nothing else. A `>parent` or `<child`
+sigil is therefore an error rather than a second parentage channel; `FieldChild`
+is absent from `SurfaceOutline`, and `parseOutlineBodies` reports the sigil in
+the `>parent` voice so the two refusals stay one vocabulary.
 
 Two rules bound it. It refuses under a visual selection, since a selection names
 rows and the outline names a project. And it refuses in every mode that is not
@@ -587,7 +592,7 @@ chips. The obsolete bulk-selector message path has been removed.
 Canonical capture sigils are:
 
 ```text
-!1-3  #tag  @date  $destination  %project  >parent
+!1-3  #tag  @date  $destination  %project  >parent  <child
 ```
 
 `$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
@@ -596,8 +601,54 @@ Someday, Done, or Canceled. `#tag` creates valid tags on the fly. `^type`,
 recognized errors with replacement guidance. Do not reintroduce aliases such as
 `priority:`, `due:`, `state:`, or `proj:`. Multiline capture validates every
 nonblank line before committing one transaction. Resolve the target project
-before the project-local parent; omitted destinations default roots to Inbox and
-children to Backlog.
+before the project-local parent and the project-local children; omitted
+destinations default roots to Inbox and children to Backlog, and adopting
+children changes neither default because `normalizeCaptureDestination` reads
+only `ParentID`.
+
+`<child` is the one repeatable structural sigil. `>parent` stays
+`CardinalitySingleton` because a task has one parent, while `FieldChild` is
+`CardinalityRepeatable`; that declaration is the entire mechanism, since
+`duplicateSingletonDiagnostics` already skips a non-singleton field. Both
+sigils name a task by exact short ID or unique case-insensitive title prefix
+through the one `resolveStructuralReference` matcher, which differs between them
+only in the relationship word its ambiguity message carries.
+
+Adoption is additive and has no clear form. Unmentioned children keep their
+parent, an adopted task keeps its own subtree, and the flat `p.Tasks` order of
+every pre-existing task survives the adoption: `ApplyParentAssignments` never
+touches the slice, and `ReorderRootTasksByCompletion` is a stable partition that
+moves a task only when its root crosses the completed/uncompleted boundary. That
+hook deliberately does not gather each root's descendants into one contiguous
+run, because gathering resequences tasks the mutation never named — adopting a
+task that sits before an unrelated root would otherwise push it past that root.
+`FieldChild` declares no `Clears`,
+which is what makes `<0` an ordinary unresolvable reference rather than a
+detach: a task leaves its parent through `>parent` or `>0` and nowhere else.
+`resolveChild` reserves that token before any lookup runs, so a title beginning
+with a zero can never make `<0` succeed on either surface.
+Aliases resolving to the same stable task ID collapse to the first occurrence,
+in the parser and again in the application layer, and both must stay
+first-occurrence or the preview and the commit will disagree about order.
+
+A terminal destination refuses an open adopted child, and both surfaces state it
+the same way. `captureDestinationChildrenGuard` and
+`taskLineDestinationChildrenGuard` each run after the hierarchy patch lands, so
+`$done` and `$canceled` are judged against the children the mutation produces,
+and both raise the same `ChildrenBlockedError` the ordinary lifecycle guard
+raises. Capture therefore cannot land terminal above open work and be silently
+reopened by `ReconcileParentCompletion`; the composer refuses that draft the way
+the inline editor already does. Reconciliation still owns the one case no
+destination names: an already-terminal task that adopts an open child is reopened
+to Doing.
+
+Children resolve only in the effective project, so `<child` can never pull a
+subtree across a project boundary: capture resolves against the `%project`
+target and inline edit refuses a locator outside the destination project with
+`invalid child: child must belong to the effective project`. A task named as
+both `>parent` and `<child` on one line is refused, and across a multiline
+capture two lines claiming the same child are refused before any mutation, with
+the message naming both the failing line and the first claiming one.
 
 `coreCaptureMessage` resolves the destination project from the focused or scoped
 project, then from `cursorProjectHeaderProject()`, then from Unfiled. That middle

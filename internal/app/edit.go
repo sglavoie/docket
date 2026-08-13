@@ -97,17 +97,3 @@ func cloneCalendarDatePtr(t *time.Time) *time.Time {
 	value := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 	return &value
 }
-
-// filterChecklist copies a checklist skipping blank-text items, matching the
-// form and markdown parser, which both drop empty entries.
-func filterChecklist(items []models.ChecklistItem) []models.ChecklistItem {
-	var out []models.ChecklistItem
-	for _, item := range items {
-		text := strings.TrimSpace(item.Text)
-		if text == "" {
-			continue
-		}
-		out = append(out, models.ChecklistItem{Text: text, Done: item.Done})
-	}
-	return out
-}

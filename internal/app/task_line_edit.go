@@ -10,9 +10,10 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// TaskLineParentMode describes the structural portion of an inline task edit.
-// Preserve is the zero value so omitted parent syntax cannot accidentally move a
-// task. Root clears the parent, while Set requires a project-qualified Parent.
+// TaskLineParentMode describes the parent edge of an inline task edit. Preserve
+// is the zero value so omitted parent syntax cannot accidentally move a task.
+// Root clears the parent, while Set requires a project-qualified Parent. Adopted
+// children ride the separate additive Children field, which has no clear mode.
 type TaskLineParentMode uint8
 
 const (
@@ -35,6 +36,10 @@ type TaskLineParentPatch struct {
 //
 // DestinationProjectID selects the final owner. A different project moves the
 // complete subtree while applying content and planning patches only to its root.
+//
+// Children is additive: every locator names an existing task in the effective
+// project that the edited task adopts, keeping its own subtree. Unmentioned
+// children are untouched and repeated locators collapse to the first occurrence.
 type TaskLineEditRequest struct {
 	Source               TaskLocator
 	Title                string
@@ -46,6 +51,7 @@ type TaskLineEditRequest struct {
 	TagsToRemove         []string
 	DestinationProjectID string
 	Parent               TaskLineParentPatch
+	Children             []TaskLocator
 	PlanningArtifacts    PlanningArtifactBuilder
 }
 
@@ -72,6 +78,7 @@ type preparedTaskLineEdit struct {
 	parentMode         TaskLineParentMode
 	parent             *models.Task
 	parentChanged      bool
+	children           []*models.Task
 	destinationProject *models.Project
 }
 
@@ -118,14 +125,25 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		return result, nil
 	}
 
-	changed := applyPreparedTaskLineFields(ref.Task, prepared, s.clock.Now())
+	// The edited task's own subtree is measured before any adoption, so an
+	// adopted child never inflates the count of descendants this edit relocated.
+	movedSubtreeSize := 0
 	if prepared.parentChanged {
-		if reparentErr := ref.Project.ReparentTask(ref.Task, prepared.parent); reparentErr != nil {
-			return TaskLineEditResult{}, invalidInput("parent", reparentErr.Error())
-		}
-		changed = true
+		movedSubtreeSize = len(collectSubtreeIDs(ref.Task))
 	}
 
+	changed := applyPreparedTaskLineFields(ref.Task, prepared, s.clock.Now())
+	structuralChanges, err := applyTaskLineEditEdges(ref.Project, ref.Task, prepared.parent, prepared.parentChanged, prepared.children)
+	if err != nil {
+		return TaskLineEditResult{}, err
+	}
+	changed = changed || structuralChanges > 0
+
+	// Hierarchy lands before the lifecycle move so a terminal destination is
+	// refused against the children this edit produced, not the ones it replaced.
+	if guardErr := taskLineDestinationChildrenGuard(ref, prepared.destination); guardErr != nil {
+		return TaskLineEditResult{}, guardErr
+	}
 	planningTargets, destinationChanged, err := s.applyTaskLineDestination(ref, prepared.destination)
 	if err != nil {
 		return TaskLineEditResult{}, err
@@ -161,10 +179,38 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 	}
 	committed = true
 	result = taskLineEditResult(ref, committedResult.TransactionID, true)
-	if prepared.parentChanged {
-		result.MovedDescendantCount = max(0, len(collectSubtreeIDs(ref.Task))-1)
-	}
+	result.MovedDescendantCount = max(0, movedSubtreeSize-1)
 	return result, nil
+}
+
+// applyTaskLineEditEdges submits the edited task's own parent change together
+// with every child it adopts as one checked hierarchy patch, so cycles and
+// nesting depth are measured on the graph the edit actually produces rather than
+// an intermediate one. It returns the number of tasks whose parent really moved,
+// which is what makes an already-direct child a no-op. With no adopted children
+// the singleton reparent keeps the error vocabulary it has always produced.
+func applyTaskLineEditEdges(project *models.Project, task, parent *models.Task, parentChanged bool, children []*models.Task) (int, error) {
+	if len(children) == 0 {
+		if !parentChanged {
+			return 0, nil
+		}
+		if err := project.ReparentTask(task, parent); err != nil {
+			return 0, invalidInput("parent", err.Error())
+		}
+		return 1, nil
+	}
+	assignments := make([]models.ParentAssignment, 0, len(children)+1)
+	if parentChanged {
+		assignments = append(assignments, models.ParentAssignment{Task: task, Parent: parent})
+	}
+	for _, child := range children {
+		assignments = append(assignments, models.ParentAssignment{Task: child, Parent: task})
+	}
+	changed, err := project.ApplyParentAssignments(assignments)
+	if err != nil {
+		return 0, invalidInput("child", err.Error())
+	}
+	return changed, nil
 }
 
 func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, prepared preparedTaskLineEdit, builder PlanningArtifactBuilder) (TaskLineEditResult, error) {
@@ -189,12 +235,27 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 	if prepared.parentMode == TaskLineParentSet {
 		destinationParent = prepared.parent
 	}
-	move, err := moveTaskSubtreeBetweenProjects(sourceRef.Project, sourceRef.Task, destination, destinationParent)
+	adopting := len(prepared.children) > 0
+	moveParent := destinationParent
+	if adopting {
+		// The one structural batch below owns the parent edge so the new parent
+		// and every adopted child are validated as a single hierarchy.
+		moveParent = nil
+	}
+	// The subtree lands first, so an adopted child is judged against the task set
+	// the destination actually ends up with.
+	move, err := moveTaskSubtreeBetweenProjects(sourceRef.Project, sourceRef.Task, destination, moveParent)
 	if err != nil {
 		return TaskLineEditResult{}, invalidInput("move", err.Error())
 	}
+	if _, edgeErr := applyTaskLineEditEdges(destination, sourceRef.Task, destinationParent, adopting && destinationParent != nil, prepared.children); edgeErr != nil {
+		return TaskLineEditResult{}, edgeErr
+	}
 
 	finalRef := TaskRef{Task: sourceRef.Task, Project: destination, Base: snap.Document(destination.ID)}
+	if guardErr := taskLineDestinationChildrenGuard(finalRef, prepared.destination); guardErr != nil {
+		return TaskLineEditResult{}, guardErr
+	}
 	planningTargets, _, err := s.applyTaskLineDestination(finalRef, prepared.destination)
 	if err != nil {
 		return TaskLineEditResult{}, err
@@ -323,6 +384,12 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 		return preparedTaskLineEdit{}, invalidInput("parent", fmt.Sprintf("unknown parent mode %d", req.Parent.Mode))
 	}
 
+	children, err := resolveTaskLineChildren(snap, req.Children, effectiveProjectID)
+	if err != nil {
+		return preparedTaskLineEdit{}, err
+	}
+	prepared.children = children
+
 	if req.Destination != nil {
 		destination, ok := ParseCaptureDestination(string(*req.Destination))
 		if !ok {
@@ -334,6 +401,51 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 		}
 	}
 	return prepared, nil
+}
+
+// resolveTaskLineChildren resolves every adopted child against the same fresh
+// snapshot the rest of the request is resolved from. A child belongs to the
+// effective project — the destination when the edit crosses a boundary — so a
+// referenced subtree is never dragged between projects by an adoption. Repeated
+// locators collapse to their first occurrence. Depth and cycles are deliberately
+// left to the single hierarchy patch, which measures them on the final graph.
+func resolveTaskLineChildren(snap Snapshot, locators []TaskLocator, effectiveProjectID string) ([]*models.Task, error) {
+	if len(locators) == 0 {
+		return nil, nil
+	}
+	children := make([]*models.Task, 0, len(locators))
+	seen := make(map[string]bool, len(locators))
+	for _, locator := range locators {
+		childRef, err := resolveTaskSelection(snap, "", locator)
+		if err != nil {
+			return nil, err
+		}
+		if childRef.Project.ID != effectiveProjectID {
+			return nil, invalidInput("child", "child must belong to the effective project")
+		}
+		if seen[childRef.Task.ID] {
+			continue
+		}
+		seen[childRef.Task.ID] = true
+		children = append(children, childRef.Task)
+	}
+	return children, nil
+}
+
+// taskLineDestinationChildrenGuard is the incomplete-child half of the lifecycle
+// policy, run after the edit's hierarchy patch has landed. Splitting it away from
+// the parse-time state-edge check is what stops a $done or $canceled destination
+// from being cleared against the children the same edit is replacing.
+//
+// It deliberately carries no equal-state shortcut. A destination the task already
+// holds is still an explicit terminal claim, and skipping it would let $done on an
+// already-done task adopt an open child and be silently reopened by
+// ReconcileParentCompletion, which is exactly the outcome the policy forbids.
+func taskLineDestinationChildrenGuard(ref TaskRef, destination *CaptureDestination) error {
+	if destination == nil {
+		return nil
+	}
+	return childrenCompletionGuard(ref.Task, ref.Project, destination.WorkflowState())
 }
 
 func validateTaskLineDestination(ref TaskRef, destination CaptureDestination) error {
@@ -358,7 +470,7 @@ func validateTaskLineDestination(ref TaskRef, destination CaptureDestination) er
 	if target == ref.Task.State() {
 		return nil
 	}
-	return validateLifecycleTransition(ref, target)
+	return validateLifecycleStateEdge(ref.Task.State(), target)
 }
 
 func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdit, now time.Time) bool {

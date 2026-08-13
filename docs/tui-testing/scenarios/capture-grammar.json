@@ -14,6 +14,8 @@
     { "type": "assert", "assert": "contains", "value": "$destination" },
     { "type": "assert", "assert": "contains", "value": "%project" },
     { "type": "assert", "assert": "contains", "value": ">parent" },
+    { "type": "assert", "assert": "contains", "value": "<child" },
+    { "type": "assert", "label": "the seventh sigil advertises its repeatability", "assert": "contains", "value": "Adopt existing task as child (repeatable)" },
     { "type": "assert", "assert": "not_contains", "value": "^type" },
     { "type": "assert", "assert": "not_contains", "value": "~interval" },
     { "type": "assert", "assert": "not_contains", "value": "priority:" },

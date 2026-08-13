@@ -22,6 +22,36 @@ func resolveChildParent(project *models.Project, parentID string) (*models.Task,
 	return parent, nil
 }
 
+// resolveAdoptedChildren resolves every requested child to the canonical task
+// object the project owns. Repeated IDs collapse to their first occurrence, so
+// a caller that already deduplicated aliases and one that did not produce the
+// same edge set. Depth and cycles are deliberately not checked here: an adopted
+// child is only legal in combination with the new task's own parent edge, which
+// the single ApplyParentAssignments call validates as one graph.
+func resolveAdoptedChildren(project *models.Project, childIDs []string) ([]*models.Task, error) {
+	if len(childIDs) == 0 {
+		return nil, nil
+	}
+	children := make([]*models.Task, 0, len(childIDs))
+	seen := make(map[string]bool, len(childIDs))
+	for _, raw := range childIDs {
+		childID := strings.TrimSpace(raw)
+		if childID == "" {
+			return nil, invalidInput("child", "child id is required")
+		}
+		if seen[childID] {
+			continue
+		}
+		child := project.GetTaskByID(childID)
+		if child == nil {
+			return nil, fmt.Errorf("%w: child %s", ErrTaskNotFound, childID)
+		}
+		seen[childID] = true
+		children = append(children, child)
+	}
+	return children, nil
+}
+
 // Reparent changes a task's parent within its owning project. A nil newParentID
 // promotes the task to a root. The new parent must exist in the same project and
 // and the change must not create a circular
