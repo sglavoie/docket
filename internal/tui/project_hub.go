@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // ShowProjectHubMsg opens the searchable project selection and administration
@@ -71,6 +72,7 @@ type ProjectHubModel struct {
 	executor         *OperationExecutor
 	focusedProjectID string
 	notice           string
+	onlyWithTasks    bool
 }
 
 func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
@@ -103,13 +105,7 @@ func (m *ProjectHubModel) SetProjectFocus(projectID string) {
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
-func (m *ProjectHubModel) SetLoadedProjects(projects []*models.Project) {
-	counts := make(map[string]int, len(projects))
-	for _, project := range projects {
-		if project != nil {
-			counts[project.ID] = project.CountTasks()
-		}
-	}
+func (m *ProjectHubModel) SetTaskCounts(counts map[string]int) {
 	if len(counts) == 0 {
 		m.taskCounts = nil
 	} else {
@@ -125,6 +121,14 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if m.actions != nil {
 		return m.updateProjectHubActions(key)
+	}
+	// Above the search branch, so the toggle answers from the query input and
+	// from browse alike; the action sheet above still owns its whole key stream.
+	if key.String() == "ctrl+t" {
+		m.notice = ""
+		m.onlyWithTasks = !m.onlyWithTasks
+		m.rebuildProjectSurface(m.currentProjectHubItemID())
+		return m, nil
 	}
 	if m.HasActiveSearch() {
 		switch key.String() {
@@ -263,6 +267,7 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
 		m.notice = err.Error()
 		return
 	}
+	m.refreshProjectHubEmptyStates()
 	m.surface.SetQuery(m.SearchQuery())
 	if prefer != "" {
 		m.surface.SetCursorToID(prefer)
@@ -281,7 +286,7 @@ func (m *ProjectHubModel) projectHubCategories() []ListCategory {
 func (m *ProjectHubModel) projectHubItems() []ListItem {
 	items := make([]ListItem, 0, len(m.runtime.AllProjects()))
 	for _, project := range m.runtime.AvailableProjects() {
-		if project == nil {
+		if project == nil || m.projectHubFilterHides(project) {
 			continue
 		}
 		label := project.Name
@@ -307,7 +312,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 		})
 	}
 	for _, project := range m.runtime.ArchivedProjects() {
-		if project == nil {
+		if project == nil || m.projectHubFilterHides(project) {
 			continue
 		}
 		items = append(items, ListItem{
@@ -326,6 +331,17 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 		})
 	}
 	return items
+}
+
+// projectHubFilterHides reports the Ctrl+T filter hiding a project. It hides a
+// known zero only: a project whose tasks could not be read is absent from the
+// counts and is not known to be empty.
+func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
+	if !m.onlyWithTasks {
+		return false
+	}
+	count, ok := m.taskCounts[project.ID]
+	return ok && count == 0
 }
 
 func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) ListPreview {
@@ -386,7 +402,24 @@ func projectTagChips(tags []string) string {
 	return strings.Join(chips, " ")
 }
 
+// refreshProjectHubEmptyStates keeps the empty copy naming whichever narrowing
+// emptied the list. The Ctrl+T filter runs at item-build time, so a list it
+// empties is source-empty rather than unmatched, and the stock "create a
+// project" copy would be a lie there.
+func (m *ProjectHubModel) refreshProjectHubEmptyStates() {
+	if m.surface == nil {
+		return
+	}
+	m.surface.SetEmptyStates(m.projectHubEmptyState(), m.projectHubNoMatchState())
+}
+
 func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
+	if m.onlyWithTasks {
+		return ListEmptyState{
+			Title:  "No projects hold tasks.",
+			Detail: "Press Ctrl+T to show every project.",
+		}
+	}
 	return ListEmptyState{
 		Title:  "No projects are available.",
 		Detail: "Press n to create a project.",
@@ -394,9 +427,13 @@ func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
 }
 
 func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
+	detail := "Press Esc to clear the query and browse every project."
+	if m.onlyWithTasks {
+		detail = "Press Esc to clear the query, or Ctrl+T to show every project."
+	}
 	return ListEmptyState{
 		Title:  "No projects match this search.",
-		Detail: "Press Esc to clear the query and browse every project.",
+		Detail: detail,
 	}
 }
 
@@ -662,6 +699,11 @@ func (m *ProjectHubModel) subtitle() string {
 		len(m.runtime.AvailableProjects()),
 		len(m.runtime.ArchivedProjects()),
 	)
+	// The counts above stay workspace truth; the marker names the narrowing the
+	// list is under rather than restating it as a smaller total.
+	if m.onlyWithTasks {
+		subtitle += " · with tasks"
+	}
 	if count := m.selectionCount(); count > 0 {
 		subtitle += fmt.Sprintf(" · %d selected", count)
 	}
@@ -715,6 +757,7 @@ func (m *ProjectHubModel) GetHelpItems() []HelpItem {
 		{Key: "v", Description: "Select or deselect the project under the cursor", Category: "Selection"},
 		{Key: "a/A", Description: "Select or deselect every matching project", Category: "Selection"},
 		{Key: "/", Description: "Search projects", Category: "Filters"},
+		{Key: "Ctrl+T", Description: "Show only projects that hold tasks", Category: "Filters"},
 		{Key: "Esc", Description: "Leave search, then close", Category: "Navigation"},
 	}
 }
@@ -766,8 +809,63 @@ func (m *AppModel) refreshProjectHubIfActive() {
 		return
 	}
 	hub.RefreshProjectHub()
+	hub.SetTaskCounts(m.projectHubTaskCounts())
 	if m.crossOutliner != nil {
-		hub.SetLoadedProjects(m.crossOutliner.loadedProjects)
 		hub.SetProjectFocus(m.crossOutliner.scopedProjectID)
 	}
+}
+
+// projectHubTaskCounts counts tasks for every cataloged project, not just the
+// base workspace the Outliner loads, so the Hub can report parked and archived
+// rows on a real number instead of an unknown. The projects the Outliner already
+// parsed seed the map for free; the remainder is loaded through the Outliner's
+// own retained loader, which serves an unchanged project from its cache rather
+// than reparsing it on every Hub open.
+//
+// A project that fails to load is absent from the map rather than counted zero,
+// and its diagnostic is dropped: the Hub is a picker, and a project it cannot
+// parse still needs to be listed and selectable.
+func (m *AppModel) projectHubTaskCounts() map[string]int {
+	counts := make(map[string]int)
+	if m == nil {
+		return counts
+	}
+	var loader *workspace.Loader
+	if m.crossOutliner != nil {
+		for _, project := range m.crossOutliner.loadedProjects {
+			if project != nil {
+				counts[project.ID] = project.CountTasks()
+			}
+		}
+		if m.crossOutliner.projectService != nil {
+			loader = m.crossOutliner.projectService.workspaceLoader
+		}
+	}
+	if m.runtime == nil {
+		return counts
+	}
+
+	seen := make(map[string]bool, len(counts))
+	for id := range counts {
+		seen[id] = true
+	}
+	cataloged := append(m.runtime.AvailableProjects(), m.runtime.ArchivedProjects()...)
+	remainder := make([]*models.Project, 0, len(cataloged))
+	for _, project := range cataloged {
+		if project == nil || seen[project.ID] {
+			continue
+		}
+		seen[project.ID] = true
+		remainder = append(remainder, project)
+	}
+	if len(remainder) == 0 {
+		return counts
+	}
+	_, loaded, _ := loadCrossScopeSelection(remainder, loader)
+	for _, project := range loaded {
+		if project != nil {
+			counts[project.ID] = project.CountTasks()
+		}
+	}
+	return counts
 }

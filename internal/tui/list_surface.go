@@ -412,6 +412,17 @@ func (model *ListSurfaceModel) Reload(
 	return nil
 }
 
+// SetEmptyStates replaces the contextual copy shown while the result set is
+// empty. A surface whose own filtering can empty the source needs to say why,
+// and the reason is not known at construction time.
+func (model *ListSurfaceModel) SetEmptyStates(empty, noMatch ListEmptyState) {
+	if model == nil {
+		return
+	}
+	model.config.EmptyState = empty
+	model.config.NoMatchState = noMatch
+}
+
 // Cursor returns the selectable match index, or -1 when no items match.
 func (model *ListSurfaceModel) Cursor() int {
 	if model == nil {

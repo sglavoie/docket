@@ -110,6 +110,57 @@ func TestListSurfaceContextualEmptyStates(t *testing.T) {
 	}
 }
 
+func TestListSurfaceSetEmptyStatesReplacesCopyOnly(t *testing.T) {
+	t.Parallel()
+
+	model := mustListSurface(t, []ListItem{
+		{ID: "one", PrimaryText: "Alpha"},
+		{ID: "two", PrimaryText: "Bravo"},
+	}, nil, ListSurfaceConfig{
+		SelectionMode: ListSelectionMulti,
+		EmptyState:    ListEmptyState{Title: "Nothing here", Detail: "Create one."},
+		NoMatchState:  ListEmptyState{Title: "No matches", Detail: "Clear the query."},
+	})
+	if !model.SetCursorToID("two") {
+		t.Fatal("failed to set the initial cursor")
+	}
+	if err := model.SetSelectedIDs([]ListItemID{"one"}); err != nil {
+		t.Fatalf("SetSelectedIDs() error = %v", err)
+	}
+
+	empty := ListEmptyState{Title: "No projects hold tasks.", Detail: "Press Ctrl+T to show every project."}
+	noMatch := ListEmptyState{Title: "No projects match this search.", Detail: "Press Esc to clear the query, or Ctrl+T to show every project."}
+	model.SetEmptyStates(empty, noMatch)
+
+	if got := model.Config().EmptyState; got != empty {
+		t.Fatalf("empty state = %+v, want %+v", got, empty)
+	}
+	if got := model.Config().NoMatchState; got != noMatch {
+		t.Fatalf("no-match state = %+v, want %+v", got, noMatch)
+	}
+	if got := model.Items(); len(got) != 2 || got[0].ID != "one" || got[1].ID != "two" {
+		t.Fatalf("items after SetEmptyStates = %+v, want them untouched", got)
+	}
+	assertCurrentListItem(t, model, "two")
+	if got := model.SelectedIDs(); len(got) != 1 || got[0] != "one" {
+		t.Fatalf("selected IDs after SetEmptyStates = %v, want [one]", got)
+	}
+
+	model.SetQuery("zzzz")
+	if context, ok := model.EmptyContext(); !ok || context.Kind != ListEmptyNoMatches || context.State != noMatch {
+		t.Fatalf("no-match context = (%+v, %v), want the replaced copy", context, ok)
+	}
+	if err := model.SetItems(nil); err != nil {
+		t.Fatalf("SetItems() error = %v", err)
+	}
+	if context, ok := model.EmptyContext(); !ok || context.Kind != ListEmptySource || context.State != empty {
+		t.Fatalf("source empty context = (%+v, %v), want the replaced copy", context, ok)
+	}
+
+	var absent *ListSurfaceModel
+	absent.SetEmptyStates(empty, noMatch)
+}
+
 func TestListSurfaceFuzzyRanksAliasesWithinStableCategories(t *testing.T) {
 	t.Parallel()
 

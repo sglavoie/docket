@@ -4,7 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -33,12 +32,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 			}
 			return m.crossOutliner.scopedProjectID
 		},
-		LoadedProjects: func() []*models.Project {
-			if m.crossOutliner == nil {
-				return nil
-			}
-			return m.crossOutliner.loadedProjects
-		},
+		TaskCounts:        m.projectHubTaskCounts,
 		OperationRegistry: m.operationRegistry,
 		OperationExecutor: m.operationExecutor,
 	}

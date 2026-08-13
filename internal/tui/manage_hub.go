@@ -39,7 +39,7 @@ type ManageHubDependencies struct {
 	Wire               func(View)
 	ResolveProject     func(string) *models.Project
 	ActiveProjectFocus func() string
-	LoadedProjects     func() []*models.Project
+	TaskCounts         func() map[string]int
 	OperationRegistry  *OperationRegistry
 	OperationExecutor  *OperationExecutor
 }
@@ -149,8 +149,8 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		if m.deps.ActiveProjectFocus != nil {
 			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
 		}
-		if m.deps.LoadedProjects != nil {
-			hub.SetLoadedProjects(m.deps.LoadedProjects())
+		if m.deps.TaskCounts != nil {
+			hub.SetTaskCounts(m.deps.TaskCounts())
 		}
 		view = hub
 	default:

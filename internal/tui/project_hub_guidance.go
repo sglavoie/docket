@@ -44,6 +44,10 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 	}
 	searchEditing := func() bool { return profile == ListGuidanceSearchEditing }
 	selection := func() bool { return profile == ListGuidanceSelection }
+	filterFooterLabel := "with tasks"
+	if m.onlyWithTasks {
+		filterFooterLabel = "all projects"
+	}
 
 	return &keymap.KeyMap{Entries: []keymap.Entry{
 		keymap.Bind("j", "Move selection", "Navigation",
@@ -61,6 +65,12 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 					(profile != ListGuidanceEmpty || state.Empty.Kind == ListEmptyNoMatches)
 			}),
 			keymap.WithFooter(12, "search", false)),
+		// Deliberately ungated: the filter can empty the list itself, and this is
+		// then the only way back, so it must survive ListGuidanceEmpty where the
+		// '/' hint above does not. The label names the result, not the state.
+		keymap.Bind("ctrl+t", "Show only projects that hold tasks", "Filters",
+			keymap.WithFooter(13, filterFooterLabel, false),
+			keymap.WithFooterKey("Ctrl+T")),
 		keymap.Bind("esc", "Browse the current matches", "Navigation",
 			keymap.WithGate(searchEditing),
 			keymap.WithFooter(1, "browse matches", true), keymap.WithFooterKey("Esc")),
