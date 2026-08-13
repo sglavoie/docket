@@ -480,3 +480,59 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 		t.Fatalf("hidden relocation = current %+v recorded=%t history=%d", out.currentTaskIdentity(), recorded, len(out.relocationHistory.back))
 	}
 }
+
+// longestVisibleSuffix reports how many trailing runes of value the rendered line
+// still shows, which is what distinguishes a horizontally scrolled window from a
+// window computed for a stale width.
+func longestVisibleSuffix(line, value string) int {
+	runes := []rune(value)
+	for index := range runes {
+		if strings.Contains(line, string(runes[index:])) {
+			return len(runes) - index
+		}
+	}
+	return 0
+}
+
+func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *testing.T) {
+	out, project, _, child := inlineEditorFixture(t)
+	out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+	row := out.rows[out.cursor]
+
+	// The first frame is what installs the row width, so the value has to land
+	// afterwards for the scroll window to be the one an editing session sees.
+	out.renderOutlinerQuickEditRow(row, 80)
+	value := strings.Repeat("overflowing title ", 8) + "ZZEND"
+	out.quickEdit.input.SetValue(value)
+	out.quickEdit.input.CursorEnd()
+	out.quickEdit.refreshDraft()
+
+	lines := strings.Split(out.renderOutlinerQuickEditRow(row, 80), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("quick edit rendered %d lines, want the metadata and input lines only", len(lines))
+	}
+	for _, line := range lines {
+		if got := lipgloss.Width(ansi.Strip(line)); got > 80 {
+			t.Fatalf("quick edit line is %d columns, want at most 80: %q", got, ansi.Strip(line))
+		}
+	}
+
+	inputLine := ansi.Strip(lines[1])
+	if !strings.Contains(inputLine, "ZZEND") {
+		t.Errorf("tail at the cursor is not visible: %q", inputLine)
+	}
+	if strings.Contains(inputLine, "…") {
+		t.Errorf("input line is ellipsized instead of horizontally scrolled: %q", inputLine)
+	}
+	if !strings.Contains(lines[1], "\x1b[7;") {
+		t.Errorf("overflowing input line has no reverse-video cursor block: %q", lines[1])
+	}
+
+	narrow := ansi.Strip(strings.Split(out.renderOutlinerQuickEditRow(row, 40), "\n")[1])
+	wide := ansi.Strip(strings.Split(out.renderOutlinerQuickEditRow(row, 120), "\n")[1])
+	narrowVisible := longestVisibleSuffix(narrow, value)
+	wideVisible := longestVisibleSuffix(wide, value)
+	if wideVisible <= narrowVisible {
+		t.Errorf("widening the row without a keystroke revealed %d of %d runes, narrow showed %d", wideVisible, len([]rune(value)), narrowVisible)
+	}
+}

@@ -1,0 +1,19 @@
+{
+  "name": "outliner-inline-edit-overflow",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "move below the first project header", "key": "j" },
+    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
+    { "type": "key", "label": "edit the selected row", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "text", "label": "type past the width of the row", "text": " overflowing edit line that is far wider than the row can ever show at once ZZEND" },
+    { "type": "assert", "assert": "contains", "value": "ZZEND" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "keep the cursor tail visible at minimum width", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "ZZEND" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "cancel the draft", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "EDIT TASK" }
+  ]
+}

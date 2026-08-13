@@ -117,7 +117,14 @@ func (q *QuickEditComponent) GetPreviewError() string { return q.previewErr }
 func (q *QuickEditComponent) GetAutocomplete() *AutocompleteState { return &q.ac }
 
 func (q *QuickEditComponent) SetInputWidth(width int) {
-	q.input.SetWidth(max(width, 1))
+	width = max(width, 1)
+	if q.input.Width() == width {
+		return
+	}
+	q.input.SetWidth(width)
+	// bubbles recomputes the horizontal scroll window from SetValue, SetCursor and
+	// Update only, so a width change would otherwise keep drawing the old window.
+	q.input.SetCursor(q.input.Position())
 }
 
 // renderSelectedInput keeps the inline editor visually inside the selected row

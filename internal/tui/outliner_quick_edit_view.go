@@ -58,9 +58,11 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	fold := m.renderTaskFoldIndicator(row)
 	inputPrefix := RenderCursorPrefix() + prefix + fold + status + " "
 	indentWidth := lipgloss.Width(inputPrefix)
-	m.quickEdit.SetInputWidth(max(rowWidth-indentWidth, 1))
+	// textinput.View() renders Width()+1 cells: the horizontal scroll window plus
+	// the cursor cell after it, so the window must leave that column free.
+	m.quickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
 	selectedPrefix := SelectedStyle.Render(ansi.Strip(inputPrefix))
-	inputLine := truncateToVisualWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
+	inputLine := fitStyledLineToWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
 
 	lines := []string{metadata, inputLine}
 	if suggestions := m.quickEdit.RenderSuggestions(strings.Repeat(" ", indentWidth), m.quickEditSuggestionBudget()); suggestions != "" {
