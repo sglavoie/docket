@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -49,7 +50,43 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
+	p.parsePinTokens(parsed.TokensFor(textgrammar.FieldPinned))
+	if p.err != nil {
+		return
+	}
 	p.parseTerminalAdoption()
+}
+
+// parsePinTokens reads the pin token both surfaces of this parser tokenize. The
+// clear value reaches here on purpose: neither surface advertises it, so the
+// refusal has to name the surface rather than let the word fold into the title.
+func (p *quickCaptureParser) parsePinTokens(tokens []textgrammar.Token) {
+	setValues := pinSetValues()
+	for _, token := range tokens {
+		if slices.Contains(setValues, token.Value) {
+			p.result.pinned = true
+			continue
+		}
+		if p.surface == textgrammar.SurfaceOutline {
+			if p.failf("omit *pin to unpin here") {
+				return
+			}
+			continue
+		}
+		if p.failf("*unpin is not available when capturing; a new task starts unpinned") {
+			return
+		}
+	}
+}
+
+// pinSetValues is the advertised pin vocabulary, read from the registry so the
+// accepted value stays owned by the definition instead of spelled out here.
+func pinSetValues() []string {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
+	if !ok {
+		return nil
+	}
+	return definition.Values
 }
 
 func (p *quickCaptureParser) parseRetiredTaskTypeTokens(tokens []textgrammar.Token) {

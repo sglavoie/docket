@@ -1,0 +1,31 @@
+{
+  "name": "capture-pin",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "pin the task as it is created", "text": "Pinned task *pin " },
+    { "type": "assert", "label": "the preview names the pin group", "assert": "contains", "value": "Pinned" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Pinned task" },
+    { "type": "assert", "label": "the new task renders in the All-mode Pinned section", "assert": "contains", "value": "@ Pinned  (1)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Pinned section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the pinned row", "key": "j" },
+    { "type": "key", "label": "edit the row in place", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "text", "label": "the clear form exists only on the edit surface", "text": " *unpin " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #1 Pinned task" },
+    { "type": "assert", "label": "the Pinned section is gone", "assert": "not_contains", "value": "@ Pinned" },
+    { "type": "assert", "label": "the task itself survived the unpin", "assert": "contains", "value": "Pinned task" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

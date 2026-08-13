@@ -164,6 +164,16 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 		return surface == SurfaceEdit && value != ""
 	case validateTag:
 		return validTagTokenValue(value)
+	case validatePin:
+		// The clear value tokenizes on every surface, including the ones that do
+		// not advertise it: the consumer refuses it with a message, where the
+		// tokenizer could only fold the word silently into the title.
+		if slices.Contains(spec.Values, value) {
+			return true
+		}
+		return slices.ContainsFunc(spec.Clears, func(clear ClearOperation) bool {
+			return clear.Value == value
+		})
 	default:
 		return false
 	}

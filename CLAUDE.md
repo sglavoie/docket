@@ -121,6 +121,12 @@ Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
 `PinnedAt` values inside one project group, including inside durably ordered
 Today.
 
+Pin has two routes: the `P` key on an existing row and the `*pin` sigil in the
+capture, inline-edit, and outline grammars. That is not a direct-only/menu-only
+violation, because that rule governs which task operations reach the `Space`
+menu, not whether an attribute is also expressible in the text grammar: `!`, `@`,
+`#`, and the `w` chord already sit beside the sigils that say the same things.
+
 Project grouping is universal, not per-mode: whenever the Outliner shows more
 than one project, every mode emits a foldable `IsProjectHeader` row per project,
 and project groups appear in the order the mode's own order first names them.
@@ -603,7 +609,7 @@ chips. The obsolete bulk-selector message path has been removed.
 Canonical capture sigils are:
 
 ```text
-!1-3  #tag  @date  $destination  %project  >parent  <child
+!1-3  #tag  @date  $destination  *pin  %project  >parent  <child
 ```
 
 `$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
@@ -616,6 +622,24 @@ before the project-local parent and the project-local children; omitted
 destinations default roots to Inbox and children to Backlog, and adopting
 children changes neither default because `normalizeCaptureDestination` reads
 only `ParentID`.
+
+`*pin` is the one attribute sigil whose clear form is not available everywhere.
+`*unpin` is edit-only, because a new task starts unpinned and a capture line has
+nothing to clear; capture refuses it by name. The outline surface refuses it too,
+for the opposite reason: the dump is declarative, so a pinned task's line carries
+`*pin` and deleting that token is what unpins, exactly as a deleted line is what
+deletes the task. A second clear form there would be a second route to the same
+state.
+
+The value set is closed to `pin` and `unpin`, and an unrecognized value is not
+consumed: `Refactor *args handling` keeps `*args` in its title. That is the tag
+rejection behavior rather than priority's, and the asymmetry is deliberate.
+Priority captures `!9` in order to diagnose a typo, because `!` followed by a
+digit is not something a title says by accident; `*` occurs in ordinary prose and
+in code identifiers, so pin would diagnose far more real titles than typos.
+Re-pinning an already-pinned task preserves `PinnedAt`, since that field is the
+pinned section's manual order and every outline apply would otherwise reshuffle
+it.
 
 `<child` is the one repeatable structural sigil. `>parent` stays
 `CardinalitySingleton` because a task has one parent, while `FieldChild` is

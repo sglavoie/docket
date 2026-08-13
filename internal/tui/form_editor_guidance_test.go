@@ -104,7 +104,7 @@ func TestQuickEditGuidanceOwnsGrammarAndLocalBarDoesNotDuplicateIt(t *testing.T)
 	spec, ok := out.ContextualGuidance()
 	assertRequiredGuidance(t, "quick edit", spec, ok, "Enter save", "Esc cancel")
 	got := guidanceEntryText(spec)
-	for _, want := range []string{"!1-3/!0 priority", "#tag add tag", "@date/@0 due", "$destination destination", "%project move project", ">parent/>0 parent", "<child adopt"} {
+	for _, want := range []string{"!1-3/!0 priority", "#tag add tag", "@date/@0 due", "$destination destination", "*pin/*unpin pin", "%project move", ">parent/>0 parent", "<child adopt"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("quick-edit guidance = %q, want %q", got, want)
 		}

@@ -197,6 +197,7 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			Priority:   parsed.priority,
 			Tags:       parsed.tags,
 			Due:        parsed.dueDate,
+			Pinned:     parsed.pinned,
 		}
 		if parsed.destinationSet {
 			line.Destination = parsed.destination

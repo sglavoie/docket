@@ -24,7 +24,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlySevenCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlyEightCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -37,10 +37,10 @@ func TestSharedParserAdvertisesExactlySevenCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 7 {
-		t.Fatalf("capture definitions = %d, want 7: %+v", len(defs), defs)
+	if len(defs) != 8 {
+		t.Fatalf("capture definitions = %d, want 8: %+v", len(defs), defs)
 	}
-	wantForms := []string{"!1-3", "#tag", "@date", "$destination", "%project", ">parent", "<child"}
+	wantForms := []string{"!1-3", "#tag", "@date", "$destination", "*pin", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -175,7 +175,8 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			name: "capture", surface: SurfaceCapture,
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
-				FieldDestination: {"$destination"}, FieldProject: {"%project"}, FieldParent: {">parent"},
+				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
+				FieldProject: {"%project"}, FieldParent: {">parent"},
 				FieldChild: {"<child"},
 			},
 		},
@@ -184,6 +185,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			want: map[Field][]string{
 				FieldPriority: {"!1-3", "!0"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
 				FieldDue: {"@date", "@0"}, FieldDestination: {"$destination"},
+				FieldPinned:  {"*pin", "*unpin"},
 				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
 				FieldChild: {"<child"},
 			},
@@ -192,7 +194,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			name: "outline", surface: SurfaceOutline,
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
-				FieldDestination: {"$destination"},
+				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 			},
 		},
 	}
@@ -221,16 +223,16 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 }
 
 func TestParseRecognizesOnlyRegistryFormsForEachSurface(t *testing.T) {
-	const input = "Task !1 #add -#old @tomorrow $next %core >1 <2"
+	const input = "Task !1 #add -#old @tomorrow $next *pin %core >1 <2"
 	tests := []struct {
 		name     string
 		surface  Surface
 		wantText string
 		fields   []Field
 	}{
-		{"capture", SurfaceCapture, "Task -#old", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldProject, FieldParent, FieldChild}},
-		{"edit", SurfaceEdit, "Task", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldProject, FieldParent, FieldChild}},
-		{"outline", SurfaceOutline, "Task -#old %core >1 <2", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination}},
+		{"capture", SurfaceCapture, "Task -#old", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldPinned, FieldProject, FieldParent, FieldChild}},
+		{"edit", SurfaceEdit, "Task", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldPinned, FieldProject, FieldParent, FieldChild}},
+		{"outline", SurfaceOutline, "Task -#old %core >1 <2", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldPinned}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -262,10 +264,10 @@ func TestRegistryClearSemanticsAreSurfaceSpecific(t *testing.T) {
 
 func TestDuplicateSingletonDiagnosticsComeFromCardinality(t *testing.T) {
 	parsed := Parse(
-		"Task !1 !2 #one #two -#old -#older @today @tomorrow $today $next %one %two >1 >2 <3 <4",
+		"Task !1 !2 #one #two -#old -#older @today @tomorrow $today $next *pin *unpin %one %two >1 >2 <3 <4",
 		SurfaceEdit,
 	)
-	want := []Field{FieldPriority, FieldDue, FieldDestination, FieldProject, FieldParent}
+	want := []Field{FieldPriority, FieldDue, FieldDestination, FieldPinned, FieldProject, FieldParent}
 	got := make([]Field, len(parsed.Diagnostics))
 	for i, diagnostic := range parsed.Diagnostics {
 		got[i] = diagnostic.Field
@@ -332,6 +334,53 @@ func TestEmbeddedComparisonTextStaysLiteral(t *testing.T) {
 	for _, input := range []string{"Keep a<b stable", "Keep x < y stable", "Keep 5<3 stable", "Keep <"} {
 		parsed := Parse(input, SurfaceCapture)
 		if len(parsed.TokensFor(FieldChild)) != 0 || parsed.Text != input {
+			t.Errorf("Parse(%q) = %+v, want literal text", input, parsed)
+		}
+	}
+}
+
+func TestUnpinTokenizesEverywhereButIsAdvertisedOnlyOnEdit(t *testing.T) {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline} {
+		parsed := Parse("Ship release *unpin", surface)
+		tokens := parsed.TokensFor(FieldPinned)
+		if len(tokens) != 1 || tokens[0].Value != "unpin" {
+			t.Errorf("*unpin tokens on surface %d = %+v, want one unpin token", surface, tokens)
+		}
+		if parsed.Text != "Ship release" {
+			t.Errorf("Text on surface %d = %q, want Ship release", surface, parsed.Text)
+		}
+		definition, ok := DefinitionFor(surface, FieldPinned)
+		if !ok {
+			t.Fatalf("pin definition is missing on surface %d", surface)
+		}
+		want := []string{"*pin"}
+		if surface == SurfaceEdit {
+			want = []string{"*pin", "*unpin"}
+		}
+		if !reflect.DeepEqual(definition.Forms, want) {
+			t.Errorf("pin forms on surface %d = %v, want %v", surface, definition.Forms, want)
+		}
+	}
+}
+
+func TestPinClearValueIsUnpinRatherThanZero(t *testing.T) {
+	capture, ok := DefinitionFor(SurfaceCapture, FieldPinned)
+	if !ok || len(capture.Clears) != 0 {
+		t.Errorf("capture pin clears = %+v, want none", capture.Clears)
+	}
+	edit, ok := DefinitionFor(SurfaceEdit, FieldPinned)
+	if !ok || len(edit.Clears) != 1 || edit.Clears[0].Value != "unpin" {
+		t.Fatalf("edit pin clears = %+v, want one unpin clear", edit.Clears)
+	}
+	if !reflect.DeepEqual(edit.Values, []string{"pin"}) {
+		t.Errorf("edit pin values = %v, want [pin]; the clear value is never advertised", edit.Values)
+	}
+}
+
+func TestUnrecognizedPinValuesStayLiteral(t *testing.T) {
+	for _, input := range []string{"Refactor *args handling", "Keep 2*3 stable", "Keep *", "Keep *pinned stable"} {
+		parsed := Parse(input, SurfaceEdit)
+		if len(parsed.TokensFor(FieldPinned)) != 0 || parsed.Text != input {
 			t.Errorf("Parse(%q) = %+v, want literal text", input, parsed)
 		}
 	}

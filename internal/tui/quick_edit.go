@@ -39,6 +39,9 @@ type quickEditResult struct {
 	state          models.WorkflowState
 	stateSet       bool
 
+	pinned    bool
+	pinnedSet bool
+
 	targetProject *models.Project
 	parentMode    quickEditParentMode
 	parent        *models.Task
@@ -93,8 +96,11 @@ func parseQuickEditShared(input string, task *models.Task, project *models.Proje
 		strict:           strict,
 	}
 	if parser.applyDiagnostics() || parser.applyPriority() || parser.applyTags() ||
-		parser.applyDueDate() || parser.applyDestination() || parser.applyProject() ||
-		parser.applyParent() || parser.applyChildren() {
+		parser.applyDueDate() || parser.applyDestination() {
+		return parser.result, parser.errMsg
+	}
+	parser.applyPin()
+	if parser.applyProject() || parser.applyParent() || parser.applyChildren() {
 		return parser.result, parser.errMsg
 	}
 	return parser.finish()
@@ -210,6 +216,19 @@ func (p *quickEditParser) applyDestination() bool {
 	p.result.state = destination.WorkflowState()
 	p.result.stateSet = true
 	return false
+}
+
+// applyPin reads the one pin token this surface tokenizes. The vocabulary is
+// closed and already validated, so the advertised set value is pinning and the
+// only other possibility is the clear value; there is nothing left to reject,
+// which is why it is the one apply step that cannot fail the parse.
+func (p *quickEditParser) applyPin() {
+	tokens := p.parsed.TokensFor(textgrammar.FieldPinned)
+	if len(tokens) == 0 {
+		return
+	}
+	p.result.pinned = slices.Contains(pinSetValues(), tokens[0].Value)
+	p.result.pinnedSet = true
 }
 
 func (p *quickEditParser) applyProject() bool {
@@ -746,6 +765,9 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 		if result.dueDateClear {
 			preview.DueDate = nil
 		}
+	}
+	if result.pinnedSet {
+		preview.Pinned = result.pinned
 	}
 	switch result.parentMode {
 	case quickEditParentRoot:

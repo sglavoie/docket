@@ -32,6 +32,9 @@ type OutlinePlanLine struct {
 	Tags []string
 	// Due replaces the calendar due date; nil clears it.
 	Due *time.Time
+	// Pinned replaces the task's pinned state outright. The dump is always
+	// complete, so an omitted *pin is an unpin rather than an absent instruction.
+	Pinned bool
 	// Destination is the typed lifecycle/planning destination. Empty preserves an
 	// existing task's state and defaults a new task the way capture does.
 	Destination CaptureDestination
@@ -281,13 +284,15 @@ func (s *Service) applyOutlinePlan(project *models.Project, base *storage.Projec
 	if err := validateOutlineNesting(project, prepared); err != nil {
 		return nil, err
 	}
+	now := s.clock.Now()
 	for _, item := range prepared {
 		item.task.Title = item.title
 		item.task.Priority = item.priority
 		item.task.Tags = append([]string{}, item.tags...)
 		item.task.DueDate = cloneCalendarDatePtr(item.line.Due)
+		item.task.ApplyPinned(item.line.Pinned, now)
 	}
-	return s.applyOutlineDestinations(project, base, prepared, s.clock.Now())
+	return s.applyOutlineDestinations(project, base, prepared, now)
 }
 
 func (s *Service) materializeOutlineTasks(project *models.Project, prepared []preparedOutlineLine) error {
@@ -527,6 +532,7 @@ func outlineTaskChanged(base, task *models.Task, baseRank, rank int) bool {
 	return base.Title != task.Title ||
 		base.Priority != task.Priority ||
 		base.State() != task.State() ||
+		base.Pinned != task.Pinned ||
 		baseRank != rank ||
 		!slices.Equal(base.Tags, task.Tags) ||
 		!sameOptionalID(base.ParentID, task.ParentID) ||

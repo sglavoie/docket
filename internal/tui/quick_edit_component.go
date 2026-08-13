@@ -360,7 +360,7 @@ func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, p
 		return quickEditStructuralSuggestions(children, partial, textgrammar.FieldChild)
 	case acModeProject:
 		return quickEditProjectSuggestions(q.projects, partial)
-	case acModePriority, acModeDate, acModeDestination:
+	case acModePriority, acModeDate, acModeDestination, acModePin:
 		return quickEditStaticSuggestions(mode, partial)
 	default:
 		return nil

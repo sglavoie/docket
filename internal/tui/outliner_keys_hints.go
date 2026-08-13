@@ -101,7 +101,8 @@ func quickEditGrammarGuidance() []string {
 		textgrammar.FieldRemoveTag:   "remove tag",
 		textgrammar.FieldDue:         "due",
 		textgrammar.FieldDestination: "destination",
-		textgrammar.FieldProject:     "move project",
+		textgrammar.FieldPinned:      "pin",
+		textgrammar.FieldProject:     "move",
 		textgrammar.FieldParent:      "parent",
 		textgrammar.FieldChild:       "adopt",
 	}

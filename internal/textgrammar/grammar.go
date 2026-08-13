@@ -36,6 +36,7 @@ const (
 	FieldChild       Field = "child"
 	FieldProject     Field = "project"
 	FieldDestination Field = "destination"
+	FieldPinned      Field = "pinned"
 )
 
 // Cardinality describes whether a field may occur once or many times in one
@@ -83,6 +84,7 @@ const (
 	validateAny tokenValidation = iota
 	validatePriority
 	validateTag
+	validatePin
 )
 
 type definitionSpec struct {
@@ -159,6 +161,24 @@ var registry = []definitionSpec{
 		},
 		forms:   []surfaceForm{{Text: "$destination", Surfaces: allSurfaces}},
 		pattern: `(?:^|\s)\$(\w+)`,
+	},
+	// Pin advertises only the set value. Definitions does not filter Values by
+	// surface, so listing the clear value there would offer it while capturing,
+	// exactly as priority keeps its 0 out of Values. An unrecognized value is not
+	// consumed, because * occurs in ordinary prose and in code identifiers.
+	{
+		Definition: Definition{
+			Field: FieldPinned, Group: "Pinning", Trigger: "*",
+			Description: "Pin task", Values: []string{"pin"},
+			Examples: []string{"*pin"}, Surfaces: allSurfaces,
+			Cardinality: CardinalitySingleton,
+			Clears:      []ClearOperation{{Value: "unpin", Description: "Unpin task", Surfaces: SurfaceEdit}},
+		},
+		forms: []surfaceForm{
+			{Text: "*pin", Surfaces: allSurfaces},
+			{Text: "*unpin", Surfaces: SurfaceEdit},
+		},
+		pattern: `(?:^|\s)\*(\S+)`, validation: validatePin,
 	},
 	{
 		Definition: Definition{

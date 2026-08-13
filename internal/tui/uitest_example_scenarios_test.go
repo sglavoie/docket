@@ -16,6 +16,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	required := []string{
 		"capture-grammar.json",
 		"capture-child-adoption.json",
+		"capture-pin.json",
 		"capture-project-header-destination.json",
 		"cleanup-undo-redo.json",
 		"daily-loop.json",

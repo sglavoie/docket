@@ -255,7 +255,9 @@ parser true for the whole product and makes a `>parent` or `<child` sigil an
 error rather than a competing parentage channel. `FieldChild` is absent from
 `SurfaceOutline`, so the rejection is what stops the sigil from surviving inside
 an outline title. The buffer is declarative: the dump emits
-current values, so an omitted sigil clears that value. A line without a marker
+current values, so an omitted sigil clears that value. A pinned task's line
+therefore carries `*pin` and deleting that token is what unpins it; `*unpin`
+does not exist here, because omission already says it. A line without a marker
 creates a task, and a dumped task whose line disappeared is deleted.
 
 Deletion is the one thing the buffer cannot decide on its own, because a file

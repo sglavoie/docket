@@ -40,12 +40,16 @@ type TaskLineParentPatch struct {
 // Children is additive: every locator names an existing task in the effective
 // project that the edited task adopts, keeping its own subtree. Unmentioned
 // children are untouched and repeated locators collapse to the first occurrence.
+//
+// Pinned is preserve-on-nil like Priority, and re-declaring the state the task
+// already holds is a no-op that keeps PinnedAt.
 type TaskLineEditRequest struct {
 	Source               TaskLocator
 	Title                string
 	Priority             *int
 	DueSet               bool
 	Due                  *time.Time
+	Pinned               *bool
 	Destination          *CaptureDestination
 	TagsToAdd            []string
 	TagsToRemove         []string
@@ -73,6 +77,7 @@ type preparedTaskLineEdit struct {
 	priority           *int
 	dueSet             bool
 	due                *time.Time
+	pinned             *bool
 	tags               []string
 	destination        *CaptureDestination
 	parentMode         TaskLineParentMode
@@ -334,6 +339,10 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 		priority := *req.Priority
 		prepared.priority = &priority
 	}
+	if req.Pinned != nil {
+		pinned := *req.Pinned
+		prepared.pinned = &pinned
+	}
 
 	add, err := normalizeTagList(req.TagsToAdd)
 	if err != nil {
@@ -489,6 +498,9 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 	}
 	if !slices.Equal(task.Tags, prepared.tags) {
 		task.Tags = slices.Clone(prepared.tags)
+		changed = true
+	}
+	if prepared.pinned != nil && task.ApplyPinned(*prepared.pinned, now) {
 		changed = true
 	}
 	if changed {

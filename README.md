@@ -148,9 +148,11 @@ applies the pending changes.
 `O` writes the cursor's project out as one indented outline, opens it in
 `$EDITOR`, and applies the whole tree when you save and quit. Indentation is
 parentage: two spaces per level, up to the usual depth of six. Every line
-otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `@friday`, and
-`$backlog` all work, while `>parent` and `<child` are rejected because the
-indentation already said it.
+otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `@friday`,
+`$backlog`, and `*pin` all work, while `>parent` and `<child` are rejected
+because the indentation already said it. The dump prints the values a task
+currently holds, so a pinned task arrives carrying `*pin` and deleting that
+token unpins it; there is no `*unpin` here.
 
 ```text
 # Sonar
@@ -193,7 +195,9 @@ mutations is the shape this menu exists to avoid.
 Press `e` to edit the selected task in place. Append `%project` to move its
 subtree, `>parent` to reparent it, `>0` to move it to the project root, or
 `<child` once per task you want to adopt; these structural changes commit
-atomically with title and metadata edits.
+atomically with title and metadata edits. The edit surface is also the only one
+that accepts `*unpin`: capture has nothing to clear, and the outline buffer
+unpins by dropping the `*pin` token from the line.
 
 ### Filters and search
 
@@ -363,7 +367,7 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  @date  $destination  %project  >parent  <child
+!1-3  #tag  @date  $destination  *pin  %project  >parent  <child
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
@@ -375,6 +379,9 @@ validated before one atomic transaction is committed.
 - `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,
   `waiting`, `paused`, `someday`, `done`, or `canceled`. Today and Next create
   Backlog tasks with an explicit planning membership.
+- `*pin` pins the task, exactly as the `P` key does on an existing row. Only
+  `pin` and `unpin` are recognized, and any other value stays in the title, so
+  `Refactor *args handling` keeps its `*args`.
 - `%project` overrides scope routing.
 - `>parent` resolves inside the selected project after project routing.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`

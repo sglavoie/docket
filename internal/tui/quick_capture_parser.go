@@ -30,6 +30,7 @@ func parseQuickCaptureForPreview(input string, project *models.Project, allProje
 }
 
 func (p *quickCaptureParser) parse(surface textgrammar.Surface) {
+	p.surface = surface
 	p.applySharedTokens(textgrammar.Parse(p.input, surface))
 	if p.err != nil {
 		return

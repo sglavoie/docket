@@ -50,6 +50,7 @@ func TestStaticAutocompleteValuesComeFromCanonicalRegistry(t *testing.T) {
 		{textgrammar.FieldPriority, q.getPrioritySuggestions("")},
 		{textgrammar.FieldDue, q.getDateSuggestions("")},
 		{textgrammar.FieldDestination, q.getDestinationSuggestions("")},
+		{textgrammar.FieldPinned, q.getPinSuggestions("")},
 	}
 	for _, tt := range tests {
 		definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, tt.field)

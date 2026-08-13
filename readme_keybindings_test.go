@@ -149,7 +149,10 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"!1-3 #tag @date $destination %project >parent <child",
+		"!1-3 #tag @date $destination *pin %project >parent <child",
+		"`*pin` pins the task, exactly as the `P` key does on an existing row",
+		"The edit surface is also the only one that accepts `*unpin`",
+		"a pinned task arrives carrying `*pin` and deleting that token unpins it",
 		"`<child` adopts a task that already exists, and may be repeated",
 		"both resolve in the effective project",
 		"Adoption is additive",

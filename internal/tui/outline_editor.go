@@ -160,6 +160,7 @@ func outlineDumpLine(task *models.Task, depth int) string {
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDue)
 	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldTag)
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDestination)
+	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPinned)
 	if task.Priority != models.PriorityUnset {
 		segments = append(segments, fmt.Sprintf("%s%d", priorityDefinition.Trigger, task.Priority))
 	}
@@ -174,6 +175,9 @@ func outlineDumpLine(task *models.Task, depth int) string {
 	// planning on omission), so printing one would promise a symmetry the buffer
 	// does not have. Planning survives the round trip untouched.
 	segments = append(segments, destinationDefinition.Trigger+string(task.State()))
+	if task.Pinned {
+		segments = append(segments, pinnedDefinition.Trigger+"pin")
+	}
 
 	line := strings.Repeat(" ", depth*outlineIndentWidth) + strings.Join(segments, " ")
 	return line + "  " + outlineMarkerPrefix + outlineMarkerFor(task.ID) + outlineMarkerSuffix

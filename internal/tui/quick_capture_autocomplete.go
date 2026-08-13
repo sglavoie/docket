@@ -63,6 +63,23 @@ func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestio
 	return suggestions
 }
 
+// getPinSuggestions returns the pin options for the partial query.
+func (q *quickCaptureInput) getPinSuggestions(partial string) []ACSuggestion {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
+	suggestions := make([]ACSuggestion, 0, len(def.Values))
+	partialLower := strings.ToLower(partial)
+	for _, value := range def.Values {
+		if partial != "" && !strings.HasPrefix(value, partialLower) {
+			continue
+		}
+		suggestions = append(suggestions, ACSuggestion{
+			Display: def.Trigger + value,
+			Value:   value,
+		})
+	}
+	return suggestions
+}
+
 // getDateSuggestions returns common due date options for the partial query.
 func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion

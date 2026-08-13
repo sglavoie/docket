@@ -70,6 +70,9 @@ type CaptureRequest struct {
 	// Prepend inserts the new task at the front of the project's task slice so it
 	// is prominently visible (Quick/Bulk Capture), rather than appended at the end.
 	Prepend bool
+	// Pinned pins the new task; the pinned section still filters terminal tasks,
+	// so a terminal destination pins without rendering a row.
+	Pinned bool
 }
 
 // Capture creates a new task in the target project and commits it as one
@@ -101,7 +104,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	task, err := s.buildPreparedCapturedTask(project, prepared)
+	task, err := s.buildPreparedCapturedTask(project, prepared, s.clock.Now())
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -193,8 +196,12 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		}
 	}()
 
+	// One clock read for the whole batch: PinnedAt is the pinned section's sort
+	// key, so per-line reads would order the lines newest-first and reverse the
+	// order they were written in.
+	now := s.clock.Now()
 	for i := range items {
-		task, buildErr := s.buildPreparedCapturedTask(items[i].project, items[i].prepared)
+		task, buildErr := s.buildPreparedCapturedTask(items[i].project, items[i].prepared, now)
 		if buildErr != nil {
 			return nil, captureRequestError(reqs[i], i, buildErr)
 		}
@@ -413,7 +420,7 @@ func captureDestinationChildrenGuard(project *models.Project, task *models.Task,
 	return childrenCompletionGuard(task, project, prepared.destination.state)
 }
 
-func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared preparedCapture) (*models.Task, error) {
+func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared preparedCapture, now time.Time) (*models.Task, error) {
 	req := prepared.req
 	task, err := newTaskForCreation(s.ids.NewID(), project.GetNextShortID(), prepared.title)
 	if err != nil {
@@ -429,6 +436,9 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	}
 	if req.Due != nil {
 		task.DueDate = cloneCalendarDatePtr(req.Due)
+	}
+	if req.Pinned {
+		task.ApplyPinned(true, now)
 	}
 	if req.ParentID != nil {
 		parentID := *req.ParentID

@@ -13,6 +13,7 @@ type quickCaptureParser struct {
 	allProjects []*models.Project
 	skipProject bool
 	strict      bool
+	surface     textgrammar.Surface
 	result      *quickCaptureResult
 	err         error
 	errMsg      string

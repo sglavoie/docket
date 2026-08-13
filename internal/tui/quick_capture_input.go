@@ -25,6 +25,7 @@ const (
 	acModeDate               // Completing a @date
 	acModeDestination        // Completing a $destination
 	acModeProject            // Completing a %project
+	acModePin                // Completing a *pin
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -52,6 +53,7 @@ type quickCaptureResult struct {
 	children          []capturedChildRef
 	destination       app.CaptureDestination
 	destinationSet    bool
+	pinned            bool
 	targetProjectID   *string // Target project ID for cross-project capture
 	targetProjectName string  // Target project name (for preview display)
 }
@@ -161,6 +163,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeDestination
 	case textgrammar.FieldProject:
 		return acModeProject
+	case textgrammar.FieldPinned:
+		return acModePin
 	default:
 		return acModeNone
 	}
@@ -363,6 +367,8 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getDestinationSuggestions(partial)
 	case acModeProject:
 		items = q.getProjectSuggestions(partial)
+	case acModePin:
+		items = q.getPinSuggestions(partial)
 	}
 	q.ac.UpdateSuggestions(mode, pos, items)
 }
@@ -379,6 +385,8 @@ func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 		return textgrammar.FieldDestination, true
 	case acModeProject:
 		return textgrammar.FieldProject, true
+	case acModePin:
+		return textgrammar.FieldPinned, true
 	default:
 		return "", false
 	}
@@ -514,6 +522,7 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
 	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
 	childDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldChild)
+	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
 
 	destination := app.CaptureDestinationInbox
 	destinationLabel := destinationDefinition.Trigger + string(destination) + " (default)"
@@ -552,6 +561,9 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 
 	if q.preview.priority != models.PriorityUnset {
 		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("%s%d", priorityDefinition.Trigger, q.preview.priority)}})
+	}
+	if q.preview.pinned {
+		groups = append(groups, previewGroup{label: "Pinned", chunks: []string{pinnedDefinition.Trigger + "pin"}})
 	}
 	if len(q.preview.tags) > 0 {
 		tagStrs := make([]string, len(q.preview.tags))

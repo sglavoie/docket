@@ -101,6 +101,25 @@ func (t *Task) Pin() {
 	t.UpdatedAt = now
 }
 
+// ApplyPinned moves the task to the requested pinned state and reports whether
+// anything changed. Re-pinning an already pinned task preserves PinnedAt, which
+// is what keeps the manual J/K pinned order stable across a re-declaring
+// outline buffer or a repeated *pin edit.
+func (t *Task) ApplyPinned(pinned bool, now time.Time) bool {
+	if t.Pinned == pinned {
+		return false
+	}
+	t.Pinned = pinned
+	if pinned {
+		pinnedAt := now
+		t.PinnedAt = &pinnedAt
+	} else {
+		t.PinnedAt = nil
+	}
+	t.UpdatedAt = now
+	return true
+}
+
 // Unpin removes the pinned status.
 func (t *Task) Unpin() {
 	t.Pinned = false

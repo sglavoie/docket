@@ -282,6 +282,18 @@ type fixedClock struct{ t time.Time }
 
 func (c fixedClock) Now() time.Time { return c.t }
 
+// advancingClock returns a later instant on every read, so a mutation expected to
+// stamp one shared timestamp fails the assertion if it reads the clock per item.
+type advancingClock struct {
+	t    time.Time
+	step time.Duration
+}
+
+func (c *advancingClock) Now() time.Time {
+	c.t = c.t.Add(c.step)
+	return c.t
+}
+
 // seqIDs generates deterministic sequential task IDs.
 type seqIDs struct{ n int }
 
@@ -295,6 +307,12 @@ func (s *seqIDs) NewID() string {
 func newTestService(repo *fakeRepo) *app.Service {
 	artifacts := repo.artifactPort()
 	return app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, artifacts)
+}
+
+// newTestServiceWithClock wires a Service over the fake repo with an explicit
+// clock and the deterministic ID generator.
+func newTestServiceWithClock(repo *fakeRepo, clock app.Clock) *app.Service {
+	return app.NewServiceWithArtifacts(repo, clock, &seqIDs{}, repo.artifactPort())
 }
 
 // newProject builds an in-memory project with the given tasks appended and the
