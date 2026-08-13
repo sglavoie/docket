@@ -42,6 +42,7 @@ const (
 	FixtureMultiProject = "multi-project"
 	FixtureRelease      = "release"
 	FixtureParked       = "parked"
+	FixtureProjectMix   = "project-mix"
 	FixtureSignals      = "signals"
 	FixtureChecklist    = "checklist"
 )
@@ -73,6 +74,16 @@ const (
 	parkedFixtureParkedName    = "Parked Work"
 )
 
+// Project-mix fixture identities. The Select Project task filter asserts on
+// presence and absence of these exact names, so no name may be a substring of
+// another.
+const (
+	projectMixActiveName   = "Mix Active Delivery"
+	projectMixEmptyName    = "Mix Quiet Planning"
+	projectMixParkedName   = "Mix Parked Migration"
+	projectMixArchivedName = "Mix Retired Pilot"
+)
+
 // builtinFixtures maps each fixture name to the builder that populates its
 // workspace. The workspace is already created (empty temp data dir + config)
 // when the builder runs; the builder only adds projects and sets config state.
@@ -86,6 +97,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureMultiProject: buildMultiProjectFixture,
 	FixtureRelease:      buildReleaseFixture,
 	FixtureParked:       buildParkedFixture,
+	FixtureProjectMix:   buildProjectMixFixture,
 	FixtureSignals:      buildSignalsFixture,
 	FixtureChecklist:    buildChecklistFixture,
 }
@@ -694,6 +706,41 @@ func buildParkedFixture(w *uitestWorkspace) error {
 
 		vendor := newFixtureTask(p, "Reopen the vendor conversation")
 		vendor.ApplyWorkflowState(models.StateInbox)
+	}); err != nil {
+		return err
+	}
+	w.setCurrentProject(active.ID)
+	return nil
+}
+
+// buildProjectMixFixture holds the four project shapes the Select Project task
+// filter distinguishes: active with a task, active with none, parked with a
+// task, and archived with none. It is the only fixture carrying an archived
+// project, and the only one where "holds tasks" and "reaches the base task
+// workspace" disagree in both directions.
+func buildProjectMixFixture(w *uitestWorkspace) error {
+	active, err := w.addProject(projectMixActiveName, func(p *models.Project) {
+		rollout := newFixtureTask(p, "Mix rollout plan")
+		rollout.ApplyWorkflowState(models.StateBacklog)
+	})
+	if err != nil {
+		return err
+	}
+	if _, err = w.addProject(projectMixEmptyName, nil); err != nil {
+		return err
+	}
+	if _, err = w.addProject(projectMixParkedName, func(p *models.Project) {
+		p.Tags = []string{models.ParkedProjectTag}
+
+		migration := newFixtureTask(p, "Mix migration audit")
+		migration.ApplyWorkflowState(models.StateBacklog)
+	}); err != nil {
+		return err
+	}
+	// Archiving happens inside the mutator because catalog.UpsertProject runs
+	// after it, so the flag is what the catalog records.
+	if _, err = w.addProject(projectMixArchivedName, func(p *models.Project) {
+		p.Archive()
 	}); err != nil {
 		return err
 	}

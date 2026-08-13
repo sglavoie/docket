@@ -380,6 +380,19 @@ value, leaving the executor's central value-provider step free to open the tag
 prompt. `ListSurfaceModel.ActionState()` intersects operation IDs across the
 selection, so an archived row in it offers no bulk action at all.
 
+`Ctrl+T` is the surface's other axis: it toggles the list between every project
+and only the projects holding at least one task, in both Hub modes, so the key
+works while the search input owns keys and while browsing matches. The filter
+runs at item-build time, so `ListSurfaceModel.Reload` prunes hidden rows from the
+selection and rebuilds matches against the retained query. Its data is
+`ProjectHubModel.taskCounts`, which now covers every cataloged project —
+available, parked, and archived — rather than only the base task workspace, so
+the filter and the count the row prints can never disagree and `tasks not loaded`
+leaves the Hub in the ordinary case. A project whose count is unknown stays
+visible: the filter hides what is known to hold zero tasks, never what could not
+be read. The axis is session state on a Hub that `ManageHubModel.prepareActive`
+rebuilds on every `p`, so it resets on every open.
+
 ### Project tags
 
 Three orthogonal axes describe where work sits, and none of them substitutes for

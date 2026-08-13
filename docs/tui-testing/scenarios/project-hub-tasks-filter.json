@@ -1,0 +1,18 @@
+{
+  "name": "project-hub-tasks-filter",
+  "fixture": "project-mix",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
+    { "type": "key", "label": "filter to projects holding tasks without leaving the search input", "key": "ctrl+t" },
+    { "type": "assert", "assert": "not_contains", "value": "Mix Quiet Planning" },
+    { "type": "assert", "assert": "contains", "value": "Mix Parked Migration" },
+    { "type": "assert", "assert": "contains", "value": "· with tasks" },
+    { "type": "key", "label": "leave the search input for the browse grammar", "key": "esc" },
+    { "type": "key", "label": "toggle the filter back off while browsing", "key": "ctrl+t" },
+    { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

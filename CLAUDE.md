@@ -497,7 +497,15 @@ mode survives at zero selected members and only `Esc` leaves it.
 project administration. It lists `Runtime.AvailableProjects()` with each
 project's tag chips, `v` selects a row, `a`/`A` select or clear every matching
 row, and `Space` over a selection offers Add tag, Remove tag, Park and Unpark
-across the whole selection in one transaction. `Ctrl+N` opens All Notes across
+across the whole selection in one transaction. `Ctrl+T` inside the picker
+narrows the list to the projects holding at least one task and toggles back out,
+and it answers the key in both Hub modes, so the search input keeps its live
+query while filtering. It applies to the Active and Archived sections alike,
+because the row counts now cover every cataloged project rather than the base
+task workspace. A project whose count could not be read stays visible: the
+filter hides a known zero, never an unknown. The axis is Hub session state and
+resets on every `p`. The task composer's own `Ctrl+T` is Add subtask, a
+different view with its own key router. `Ctrl+N` opens All Notes across
 Global and every project returned by `Runtime.AvailableProjects()`, except on a
 project header row, which opens that project's scope. That is the same
 explicit-naming exception `coreCaptureMessage` makes, read through the same

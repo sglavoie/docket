@@ -44,12 +44,15 @@ The full script is the acceptance gate.
 | `multi-project` | Several distinctly named projects, each holding one backlog task. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
 | `parked` | One project in the base task workspace and one tagged `parked`. |
+| `project-mix` | An active project with a task, an active project with none, a parked project with a task, and an archived project with none. |
 | `signals` | Lapsed and pending snoozes, concentrated overdue work, and a durable Today membership. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
-Only `parked` splits the base task workspace from the catalog. Every other
-fixture leaves all of its projects untagged, so parked behavior is
-indistinguishable from an empty catalog there.
+Only `parked` and `project-mix` split the base task workspace from the catalog.
+Every other fixture leaves all of its projects untagged, so parked behavior is
+indistinguishable from an empty catalog there. `project-mix` is also the only
+fixture carrying an archived project, so the archived Select Project section is
+observable nowhere else.
 
 ## Scenario format
 
