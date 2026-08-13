@@ -62,7 +62,7 @@ func WriteV8TaskMetadata(task V8TaskRecord) (string, error) {
 		return "", err
 	}
 	extra := []string{"state_changed: " + formatV6Time(task.StateChangedAt)}
-	return wrapTaskMetadata(taskMetadataParts(task.V6TaskRecord, extra)), nil
+	return wrapTaskMetadata(taskMetadataParts(task.V6TaskRecord, metadataKeyDeferredLegacy, extra)), nil
 }
 
 // ParseV8TaskMetadata strictly parses one schema-8 metadata comment.
@@ -71,7 +71,7 @@ func ParseV8TaskMetadata(comment string) (V8TaskRecord, error) {
 	if err != nil {
 		return V8TaskRecord{}, err
 	}
-	base, err := v6RecordFromMetadataValues(values)
+	base, err := v6RecordFromMetadataValues(values, metadataKeyDeferredLegacy)
 	if err != nil {
 		return V8TaskRecord{}, err
 	}

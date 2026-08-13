@@ -12,6 +12,12 @@ import (
 
 const v6DateFormat = "2006-01-02"
 
+// metadataKeyDeferredLegacy is the durable metadata key schema 8 and every
+// earlier schema use for the deferral date. It is a parameter of the shared
+// codec rather than a literal so schema 9 can spell the same fact differently
+// without forking the one place durable key order lives.
+const metadataKeyDeferredLegacy = "snoozed"
+
 var v6MetadataKeys = map[string]bool{
 	"id": true, "short_id": true, "state": true, "priority": true,
 	"parent": true, "tags": true, "created": true, "updated": true,
@@ -238,13 +244,14 @@ func wrapTaskMetadata(parts []string) string {
 }
 
 func v6MetadataParts(task V6TaskRecord) []string {
-	return taskMetadataParts(task, nil)
+	return taskMetadataParts(task, metadataKeyDeferredLegacy, nil)
 }
 
-// taskMetadataParts renders the shared metadata fields. afterUpdated carries
-// fields a later schema inserts next to the other timestamps rather than at the
-// end of the comment.
-func taskMetadataParts(task V6TaskRecord, afterUpdated []string) []string {
+// taskMetadataParts renders the shared metadata fields. deferKey names the
+// deferral-date key in the caller's own schema. afterUpdated carries fields a
+// later schema inserts next to the other timestamps rather than at the end of
+// the comment.
+func taskMetadataParts(task V6TaskRecord, deferKey string, afterUpdated []string) []string {
 	parts := []string{
 		"id: " + task.ID,
 		"short_id: " + strconv.Itoa(task.ShortID),
@@ -269,7 +276,7 @@ func taskMetadataParts(task V6TaskRecord, afterUpdated []string) []string {
 		parts = append(parts, "due: "+task.DueDate)
 	}
 	if task.SnoozedUntil != "" {
-		parts = append(parts, "snoozed: "+task.SnoozedUntil)
+		parts = append(parts, deferKey+": "+task.SnoozedUntil)
 	}
 	if task.Pinned {
 		parts = append(parts, "pinned: true")
@@ -293,7 +300,7 @@ func ParseV6TaskMetadata(comment string) (V6TaskRecord, error) {
 	if err != nil {
 		return V6TaskRecord{}, err
 	}
-	task, err := v6RecordFromMetadataValues(values)
+	task, err := v6RecordFromMetadataValues(values, metadataKeyDeferredLegacy)
 	if err != nil {
 		return V6TaskRecord{}, err
 	}
@@ -337,7 +344,9 @@ func parseTaskMetadataFields(schema, comment string, allowed map[string]bool, re
 	return values, nil
 }
 
-func v6RecordFromMetadataValues(values map[string]string) (V6TaskRecord, error) {
+// v6RecordFromMetadataValues decodes the shared metadata fields. deferKey names
+// the deferral-date key in the caller's own schema.
+func v6RecordFromMetadataValues(values map[string]string, deferKey string) (V6TaskRecord, error) {
 	shortID, err := strconv.Atoi(values["short_id"])
 	if err != nil {
 		return V6TaskRecord{}, fmt.Errorf("parse v6 short_id: %w", err)
@@ -365,7 +374,7 @@ func v6RecordFromMetadataValues(values map[string]string) (V6TaskRecord, error) 
 		CreatedAt:    created,
 		UpdatedAt:    updated,
 		DueDate:      values["due"],
-		SnoozedUntil: values["snoozed"],
+		SnoozedUntil: values[deferKey],
 	}
 	if values["completed"] != "" {
 		parsed, parseErr := parseV6Time(values["completed"])
