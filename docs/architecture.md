@@ -380,18 +380,26 @@ value, leaving the executor's central value-provider step free to open the tag
 prompt. `ListSurfaceModel.ActionState()` intersects operation IDs across the
 selection, so an archived row in it offers no bulk action at all.
 
-`Ctrl+T` is the surface's other axis: it toggles the list between every project
-and only the projects holding at least one task, in both Hub modes, so the key
-works while the search input owns keys and while browsing matches. The filter
-runs at item-build time, so `ListSurfaceModel.Reload` prunes hidden rows from the
-selection and rebuilds matches against the retained query. Its data is
-`ProjectHubModel.taskCounts`, which now covers every cataloged project —
-available, parked, and archived — rather than only the base task workspace, so
-the filter and the count the row prints can never disagree and `tasks not loaded`
-leaves the Hub in the ordinary case. A project whose count is unknown stays
-visible: the filter hides what is known to hold zero tasks, never what could not
-be read. The axis is session state on a Hub that `ManageHubModel.prepareActive`
-rebuilds on every `p`, so it resets on every open.
+`Ctrl+T` is the surface's other axis: `projectHubTaskFilter` cycles the list
+through every project, only the projects holding at least one task, and only the
+projects holding none, in both Hub modes, so the key works while the search input
+owns keys and while browsing matches. The two narrowings are one cycling axis
+rather than two toggles because they are mutually exclusive readings of the same
+count. The filter runs at item-build time, so `ListSurfaceModel.Reload` prunes
+hidden rows from the selection and rebuilds matches against the retained query.
+Its data is `ProjectHubModel.taskCounts`, which now covers every cataloged
+project — available, parked, and archived — rather than only the base task
+workspace, so the filter and the count the row prints can never disagree and
+`tasks not loaded` leaves the Hub in the ordinary case. A project whose count is
+unknown stays visible in all three states: `projectHubFilterHides` returns early
+on an absent count, so neither narrowing may claim a project it could not read.
+
+The footer hint and the two empty-list lines all read through
+`projectHubTaskFilter.next()`, naming the state the next press installs rather
+than the one the axis holds: with three states a single press no longer returns
+to the whole list, so copy describing the current narrowing would leave the way
+back unsaid. The axis is session state on a Hub that
+`ManageHubModel.prepareActive` rebuilds on every `p`, so it resets on every open.
 
 ### Project tags
 

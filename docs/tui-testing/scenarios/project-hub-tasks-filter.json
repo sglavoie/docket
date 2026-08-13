@@ -11,8 +11,14 @@
     { "type": "assert", "assert": "contains", "value": "Mix Parked Migration" },
     { "type": "assert", "assert": "contains", "value": "· with tasks" },
     { "type": "key", "label": "leave the search input for the browse grammar", "key": "esc" },
-    { "type": "key", "label": "toggle the filter back off while browsing", "key": "ctrl+t" },
+    { "type": "key", "label": "cycle to the projects holding no tasks", "key": "ctrl+t" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
+    { "type": "assert", "assert": "not_contains", "value": "Mix Parked Migration" },
+    { "type": "assert", "assert": "contains", "value": "· without tasks" },
+    { "type": "key", "label": "cycle back to every project", "key": "ctrl+t" },
+    { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
+    { "type": "assert", "assert": "contains", "value": "Mix Parked Migration" },
+    { "type": "assert", "assert": "not_contains", "value": "· without tasks" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

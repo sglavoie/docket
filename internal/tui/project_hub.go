@@ -49,6 +49,62 @@ const (
 	projectHubEntryArchived
 )
 
+// projectHubTaskFilter is the Ctrl+T axis: every project, only the projects
+// known to hold tasks, or only the projects known to hold none. It is one
+// cycling axis rather than two independent toggles because the two narrowings
+// are mutually exclusive readings of the same count.
+type projectHubTaskFilter uint8
+
+const (
+	projectHubTaskFilterAll projectHubTaskFilter = iota
+	projectHubTaskFilterWithTasks
+	projectHubTaskFilterWithoutTasks
+)
+
+func (f projectHubTaskFilter) next() projectHubTaskFilter {
+	switch f {
+	case projectHubTaskFilterWithTasks:
+		return projectHubTaskFilterWithoutTasks
+	case projectHubTaskFilterWithoutTasks:
+		return projectHubTaskFilterAll
+	default:
+		return projectHubTaskFilterWithTasks
+	}
+}
+
+// shortLabel names the state for the footer hint, which reads as what the next
+// press produces rather than as the state the axis currently holds.
+func (f projectHubTaskFilter) shortLabel() string {
+	switch f {
+	case projectHubTaskFilterWithTasks:
+		return "with tasks"
+	case projectHubTaskFilterWithoutTasks:
+		return "without tasks"
+	default:
+		return "all projects"
+	}
+}
+
+// phrase names the state in prose, for the empty-list copy that has to explain
+// where the next press lands.
+func (f projectHubTaskFilter) phrase() string {
+	switch f {
+	case projectHubTaskFilterWithTasks:
+		return "projects that hold tasks"
+	case projectHubTaskFilterWithoutTasks:
+		return "projects without tasks"
+	default:
+		return "every project"
+	}
+}
+
+func (f projectHubTaskFilter) subtitleMarker() string {
+	if f == projectHubTaskFilterAll {
+		return ""
+	}
+	return f.shortLabel()
+}
+
 type projectHubEntry struct {
 	Kind    projectHubEntryKind
 	Project *models.Project
@@ -72,7 +128,7 @@ type ProjectHubModel struct {
 	executor         *OperationExecutor
 	focusedProjectID string
 	notice           string
-	onlyWithTasks    bool
+	taskFilter       projectHubTaskFilter
 }
 
 func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
@@ -122,11 +178,11 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.actions != nil {
 		return m.updateProjectHubActions(key)
 	}
-	// Above the search branch, so the toggle answers from the query input and
+	// Above the search branch, so the cycle answers from the query input and
 	// from browse alike; the action sheet above still owns its whole key stream.
 	if key.String() == "ctrl+t" {
 		m.notice = ""
-		m.onlyWithTasks = !m.onlyWithTasks
+		m.taskFilter = m.taskFilter.next()
 		m.rebuildProjectSurface(m.currentProjectHubItemID())
 		return m, nil
 	}
@@ -334,14 +390,22 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 }
 
 // projectHubFilterHides reports the Ctrl+T filter hiding a project. It hides a
-// known zero only: a project whose tasks could not be read is absent from the
-// counts and is not known to be empty.
+// known count only: a project whose tasks could not be read is absent from the
+// counts and is not known to be empty or to hold work, so neither narrowing may
+// claim it.
 func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
-	if !m.onlyWithTasks {
+	count, ok := m.taskCounts[project.ID]
+	if !ok {
 		return false
 	}
-	count, ok := m.taskCounts[project.ID]
-	return ok && count == 0
+	switch m.taskFilter {
+	case projectHubTaskFilterWithTasks:
+		return count == 0
+	case projectHubTaskFilterWithoutTasks:
+		return count > 0
+	default:
+		return false
+	}
 }
 
 func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) ListPreview {
@@ -414,22 +478,29 @@ func (m *ProjectHubModel) refreshProjectHubEmptyStates() {
 }
 
 func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
-	if m.onlyWithTasks {
+	switch m.taskFilter {
+	case projectHubTaskFilterWithTasks:
+		return ListEmptyState{Title: "No projects hold tasks.", Detail: m.projectHubFilterAdvice()}
+	case projectHubTaskFilterWithoutTasks:
+		return ListEmptyState{Title: "Every project holds tasks.", Detail: m.projectHubFilterAdvice()}
+	default:
 		return ListEmptyState{
-			Title:  "No projects hold tasks.",
-			Detail: "Press Ctrl+T to show every project.",
+			Title:  "No projects are available.",
+			Detail: "Press n to create a project.",
 		}
 	}
-	return ListEmptyState{
-		Title:  "No projects are available.",
-		Detail: "Press n to create a project.",
-	}
+}
+
+// projectHubFilterAdvice names where the next press lands, so a three-state
+// cycle never claims one press returns to the whole list.
+func (m *ProjectHubModel) projectHubFilterAdvice() string {
+	return "Press Ctrl+T to show " + m.taskFilter.next().phrase() + "."
 }
 
 func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
 	detail := "Press Esc to clear the query and browse every project."
-	if m.onlyWithTasks {
-		detail = "Press Esc to clear the query, or Ctrl+T to show every project."
+	if m.taskFilter != projectHubTaskFilterAll {
+		detail = "Press Esc to clear the query, or Ctrl+T to show " + m.taskFilter.next().phrase() + "."
 	}
 	return ListEmptyState{
 		Title:  "No projects match this search.",
@@ -701,8 +772,8 @@ func (m *ProjectHubModel) subtitle() string {
 	)
 	// The counts above stay workspace truth; the marker names the narrowing the
 	// list is under rather than restating it as a smaller total.
-	if m.onlyWithTasks {
-		subtitle += " · with tasks"
+	if marker := m.taskFilter.subtitleMarker(); marker != "" {
+		subtitle += " · " + marker
 	}
 	if count := m.selectionCount(); count > 0 {
 		subtitle += fmt.Sprintf(" · %d selected", count)
@@ -757,7 +828,7 @@ func (m *ProjectHubModel) GetHelpItems() []HelpItem {
 		{Key: "v", Description: "Select or deselect the project under the cursor", Category: "Selection"},
 		{Key: "a/A", Description: "Select or deselect every matching project", Category: "Selection"},
 		{Key: "/", Description: "Search projects", Category: "Filters"},
-		{Key: "Ctrl+T", Description: "Show only projects that hold tasks", Category: "Filters"},
+		{Key: "Ctrl+T", Description: "Cycle every project, only those holding tasks, only those holding none", Category: "Filters"},
 		{Key: "Esc", Description: "Leave search, then close", Category: "Navigation"},
 	}
 }
