@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage/format"
 )
 
-// ProjectDocument is the strict live schema-8 storage representation of tasks.md.
+// ProjectDocument is the strict live schema-9 storage representation of tasks.md.
 type ProjectDocument struct {
 	ProjectName   string
 	Tasks         []*models.Task
@@ -21,15 +21,15 @@ type ProjectDocument struct {
 }
 
 func ParseProjectDocument(content string) (*ProjectDocument, error) {
-	v8, err := ParseV8ProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
+	v9, err := ParseV9ProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
 	if err != nil {
 		return nil, err
 	}
-	tasks, err := modelsFromV8ProjectDocument(v8, time.Local)
+	tasks, err := modelsFromV9ProjectDocument(v9, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	doc := &ProjectDocument{ProjectName: v8.ProjectName, Tasks: tasks, SchemaVersion: SchemaVersionV8}
+	doc := &ProjectDocument{ProjectName: v9.ProjectName, Tasks: tasks, SchemaVersion: SchemaVersionV9}
 	doc.Revision = doc.ComputeRevision()
 	return doc, nil
 }
@@ -40,7 +40,7 @@ func (d *ProjectDocument) ComputeRevision() string {
 }
 
 func (d *ProjectDocument) canonicalContent() string {
-	content, err := d.writeV8()
+	content, err := d.writeV9()
 	if err != nil {
 		return ""
 	}
@@ -48,22 +48,22 @@ func (d *ProjectDocument) canonicalContent() string {
 }
 
 func (d *ProjectDocument) WriteCurrent() (string, error) {
-	if d.SchemaVersion != SchemaVersionV8 {
+	if d.SchemaVersion != SchemaVersionV9 {
 		return "", fmt.Errorf("unsupported project schema %d", d.SchemaVersion)
 	}
-	return d.writeV8()
+	return d.writeV9()
 }
 
-func (d *ProjectDocument) writeV8() (string, error) {
-	v8, err := v8ProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
+func (d *ProjectDocument) writeV9() (string, error) {
+	v9, err := v9ProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
 	if err != nil {
 		return "", err
 	}
-	return WriteV8ProjectDocument(v8)
+	return WriteV9ProjectDocument(v9)
 }
 
 func ToProjectDocument(project *models.Project) *ProjectDocument {
-	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: SchemaVersionV8}
+	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: SchemaVersionV9}
 	doc.Revision = doc.ComputeRevision()
 	return doc
 }
@@ -88,7 +88,7 @@ func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*
 func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
-		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: SchemaVersionV8}
+		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: SchemaVersionV9}
 		doc.Revision = doc.ComputeRevision()
 		return doc, nil
 	}
@@ -98,7 +98,7 @@ func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	return ParseProjectDocument(string(content))
 }
 
-func modelsFromV8ProjectDocument(document V8ProjectDocument, location *time.Location) ([]*models.Task, error) {
+func modelsFromV9ProjectDocument(document V9ProjectDocument, location *time.Location) ([]*models.Task, error) {
 	if location == nil {
 		location = time.Local
 	}
@@ -106,7 +106,7 @@ func modelsFromV8ProjectDocument(document V8ProjectDocument, location *time.Loca
 	for _, record := range document.Tasks {
 		state, ok := models.ParseWorkflowState(record.State)
 		if !ok {
-			return nil, fmt.Errorf("v8 task %q has invalid live workflow state %q", record.ID, record.State)
+			return nil, fmt.Errorf("v9 task %q has invalid live workflow state %q", record.ID, record.State)
 		}
 		task := &models.Task{
 			ID: record.ID, ShortID: record.ShortID, Title: record.Title,
@@ -125,13 +125,13 @@ func modelsFromV8ProjectDocument(document V8ProjectDocument, location *time.Loca
 		if record.DueDate != "" {
 			task.DueDate, err = parseProjectDocumentDate(record.DueDate, location)
 			if err != nil {
-				return nil, fmt.Errorf("v8 task %q due date: %w", record.ID, err)
+				return nil, fmt.Errorf("v9 task %q due date: %w", record.ID, err)
 			}
 		}
 		if record.SnoozedUntil != "" {
 			task.SnoozedUntil, err = parseProjectDocumentDate(record.SnoozedUntil, location)
 			if err != nil {
-				return nil, fmt.Errorf("v8 task %q snooze date: %w", record.ID, err)
+				return nil, fmt.Errorf("v9 task %q snooze date: %w", record.ID, err)
 			}
 		}
 		for _, attachment := range record.Attachments {
@@ -156,39 +156,39 @@ func modelsFromV8ProjectDocument(document V8ProjectDocument, location *time.Loca
 	return tasks, nil
 }
 
-func v8ProjectDocumentFromModel(project *models.Project) (V8ProjectDocument, error) {
+func v9ProjectDocumentFromModel(project *models.Project) (V9ProjectDocument, error) {
 	if project == nil {
-		return V8ProjectDocument{}, fmt.Errorf("project is required")
+		return V9ProjectDocument{}, fmt.Errorf("project is required")
 	}
-	document := V8ProjectDocument{ProjectName: project.Name}
+	document := V9ProjectDocument{ProjectName: project.Name}
 	if len(project.Tasks) > 0 {
-		document.Tasks = make([]format.V8TaskRecord, 0, len(project.Tasks))
+		document.Tasks = make([]format.V9TaskRecord, 0, len(project.Tasks))
 	}
 	for _, task := range project.Tasks {
-		record, err := v8TaskRecordFromModel(task)
+		record, err := v9TaskRecordFromModel(task)
 		if err != nil {
-			return V8ProjectDocument{}, err
+			return V9ProjectDocument{}, err
 		}
 		document.Tasks = append(document.Tasks, record)
 	}
-	if err := ValidateV8ProjectDocument(document); err != nil {
-		return V8ProjectDocument{}, err
+	if err := ValidateV9ProjectDocument(document); err != nil {
+		return V9ProjectDocument{}, err
 	}
 	return document, nil
 }
 
-func v8TaskRecordFromModel(task *models.Task) (format.V8TaskRecord, error) {
+func v9TaskRecordFromModel(task *models.Task) (format.V9TaskRecord, error) {
 	if task == nil {
-		return format.V8TaskRecord{}, fmt.Errorf("schema-8 writer cannot persist a nil task")
+		return format.V9TaskRecord{}, fmt.Errorf("schema-9 writer cannot persist a nil task")
 	}
 	if !task.State().IsValid() {
-		return format.V8TaskRecord{}, fmt.Errorf("schema-8 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)
+		return format.V9TaskRecord{}, fmt.Errorf("schema-9 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)
 	}
 	if err := models.ValidatePriority(task.Priority, true); err != nil {
-		return format.V8TaskRecord{}, fmt.Errorf("schema-8 writer refuses task %q priority: %w", task.ID, err)
+		return format.V9TaskRecord{}, fmt.Errorf("schema-9 writer refuses task %q priority: %w", task.ID, err)
 	}
 	if task.StateChangedAt.IsZero() {
-		return format.V8TaskRecord{}, fmt.Errorf("schema-8 writer refuses task %q without a state clock", task.ID)
+		return format.V9TaskRecord{}, fmt.Errorf("schema-9 writer refuses task %q without a state clock", task.ID)
 	}
 	record := format.V6TaskRecord{
 		ID: task.ID, ShortID: task.ShortID, Title: task.Title, Description: task.Description,
@@ -232,11 +232,11 @@ func v8TaskRecordFromModel(task *models.Task) (format.V8TaskRecord, error) {
 		}
 		record.Comments = append(record.Comments, format.V6TaskComment{Text: comment.Text, CreatedAt: comment.CreatedAt})
 	}
-	v8 := format.V8TaskRecord{V6TaskRecord: record, StateChangedAt: task.StateChangedAt}
-	if err := format.ValidateV8TaskRecord(v8); err != nil {
-		return format.V8TaskRecord{}, err
+	v9 := format.V9TaskRecord{V6TaskRecord: record, StateChangedAt: task.StateChangedAt}
+	if err := format.ValidateV9TaskRecord(v9); err != nil {
+		return format.V9TaskRecord{}, err
 	}
-	return v8, nil
+	return v9, nil
 }
 
 func parseProjectDocumentDate(value string, location *time.Location) (*time.Time, error) {

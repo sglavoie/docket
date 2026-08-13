@@ -163,8 +163,8 @@ func (m *Manager) RecoverWorkspace() error {
 	// complete split-domain workspace is eligible; partial state remains the
 	// load path's explicit corruption error.
 	if state, _ := m.classifyDomainState(store); state == domainStateComplete {
-		if err := m.MigrateWorkspaceToV9(); err != nil {
-			return fmt.Errorf("failed to activate workspace schema v9: %w", err)
+		if err := m.MigrateWorkspaceToV10(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v10: %w", err)
 		}
 	}
 	return nil
@@ -302,7 +302,7 @@ func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (stora
 	if repairErr := catalog.RepairSystemUnfiledProject(project); repairErr != nil {
 		return storage.ArtifactChange{}, repairErr
 	}
-	document, err := storage.WriteV8ProjectDocument(storage.V8ProjectDocument{
+	document, err := storage.WriteV9ProjectDocument(storage.V9ProjectDocument{
 		ProjectName: project.Name,
 	})
 	if err != nil {

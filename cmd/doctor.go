@@ -146,7 +146,7 @@ func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {
 	case schema < config.CurrentConfigVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is pre-v8; startup migration remains pending", schema),
+			detail:  fmt.Sprintf("workspace schema %d is pre-v%d; startup migration remains pending", schema, config.CurrentConfigVersion),
 		})
 	default:
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
