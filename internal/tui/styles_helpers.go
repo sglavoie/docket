@@ -128,7 +128,7 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 		return CanceledStyle
 	}
 	if entry, ok := models.SemanticTaskTagForTags(task.Tags); ok {
-		return semanticTaskTitleStyle(entry.Role, task.Priority, opts.CursorSelected, task.IsSnoozed())
+		return semanticTaskTitleStyle(entry.Role, task.Priority, opts.CursorSelected, task.IsDeferred())
 	}
 	if opts.CursorSelected {
 		return SelectedTaskTitleStyle

@@ -1,6 +1,6 @@
 // Package app is the presentation-neutral application service layer for tt. It
 // exposes narrow task-mutation use cases (capture, edit, state transition, due
-// date, priority, tag, pin, snooze, park, completion) that validate input,
+// date, priority, tag, pin, deferral, park, completion) that validate input,
 // apply domain rules through the models package, and emit exactly one storage
 // ChangeSet committed through the repository boundary. It imports neither Cobra
 // nor Bubble Tea. The CLI and TUI adapters drive these use cases and translate
@@ -46,7 +46,7 @@ type ArtifactCommitter interface {
 }
 
 // Clock supplies wall-clock time to the use cases. Injecting it keeps
-// time-derived behavior (snooze targets, due dates) deterministic under test.
+// time-derived behavior (deferral targets, due dates) deterministic under test.
 type Clock interface {
 	Now() time.Time
 }

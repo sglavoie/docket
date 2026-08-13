@@ -41,7 +41,7 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 	sameID := primaryRowsTask("child", models.StatePaused)
 	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
 	future := time.Now().AddDate(0, 0, 2)
-	snoozed.SnoozedUntil = &future
+	snoozed.DeferredUntil = &future
 	beta := primaryRowsProject("beta", sameID, snoozed)
 
 	rows := BuildTodayModeRows(OutlinerModeInput{

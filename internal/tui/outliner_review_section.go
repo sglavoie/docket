@@ -18,7 +18,7 @@ func (m *OutlinerModel) buildReviewSection(input OutlinerModeInput, pinned map[T
 	var rows []outlinerRow
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
-		if task == nil || project == nil || task.IsTerminalState() || task.IsSnoozedAt(input.now()) ||
+		if task == nil || project == nil || task.IsTerminalState() || task.IsDeferredAt(input.now()) ||
 			!task.HasTag(reviewTaskTag) || pinned[taskIdentityFor(task, project)] {
 			continue
 		}

@@ -113,7 +113,7 @@ func isComputedOpenWork(task *models.Task, in OutlinerModeInput) bool {
 	if task == nil || (task.IsTerminalState() && !in.IncludeTerminal) {
 		return false
 	}
-	return in.IncludeSnoozed || !task.IsSnoozedAt(in.now())
+	return in.IncludeSnoozed || !task.IsDeferredAt(in.now())
 }
 
 // BuildDueModeSections returns dated open work in the accepted local

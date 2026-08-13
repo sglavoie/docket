@@ -22,7 +22,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the picker chrome is gone; only its status remains", "assert": "not_contains", "value": "Esc back" },
-    { "type": "assert", "assert": "status_contains", "value": "Snooze" },
+    { "type": "assert", "assert": "status_contains", "value": "Defer" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

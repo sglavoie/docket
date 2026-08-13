@@ -66,9 +66,9 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 			if task := project.GetTaskByID(taskID); task != nil {
 				switch action {
 				case app.PlanningAddToday:
-					stateChanged = (task.State() != models.StateDoing && task.State() != models.StateBacklog) || task.SnoozedUntil != nil
+					stateChanged = (task.State() != models.StateDoing && task.State() != models.StateBacklog) || task.DeferredUntil != nil
 				case app.PlanningAddNext:
-					stateChanged = task.State() != models.StateBacklog || task.SnoozedUntil != nil
+					stateChanged = task.State() != models.StateBacklog || task.DeferredUntil != nil
 				case app.PlanningRemoveToday:
 				case app.PlanningRemoveNext:
 				case app.PlanningBacklog:

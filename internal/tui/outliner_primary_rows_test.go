@@ -46,7 +46,7 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 		primaryRowsTask("snoozed", models.StateBacklog),
 	}
 	future := time.Now().AddDate(0, 0, 2)
-	tasks[len(tasks)-1].SnoozedUntil = &future
+	tasks[len(tasks)-1].DeferredUntil = &future
 	project := primaryRowsProject("alpha", tasks...)
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{
@@ -142,7 +142,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndSnoozedDefaults(t *testing.
 	canceled := primaryRowsTask("canceled", models.StateCanceled)
 	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
 	future := time.Now().AddDate(0, 0, 2)
-	snoozed.SnoozedUntil = &future
+	snoozed.DeferredUntil = &future
 	project := primaryRowsProject("alpha", done, canceled, snoozed)
 	outliner, runtime := primaryRowsOutliner(project)
 	// Stale planning references must not make explicit terminal/snoozed facets

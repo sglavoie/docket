@@ -206,7 +206,7 @@ func TestTransitionMovesThroughNonterminalStates(t *testing.T) {
 func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	staleCompletion := now.Add(-24 * time.Hour)
-	snoozedUntil := now.Add(24 * time.Hour)
+	deferredUntil := now.Add(24 * time.Hour)
 
 	for _, target := range models.AllWorkflowStates() {
 		target := target
@@ -217,7 +217,7 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 				task.WorkflowState = models.StateInbox
 			}
 			task.CompletedAt = &staleCompletion
-			task.SnoozedUntil = &snoozedUntil
+			task.DeferredUntil = &deferredUntil
 			project := newProject("proj-1", "Alpha", task)
 			repo := newFakeRepo(project)
 			svc := newTestService(repo)
@@ -232,8 +232,8 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 			if !task.UpdatedAt.Equal(now) {
 				t.Errorf("UpdatedAt = %v, want injected time %v", task.UpdatedAt, now)
 			}
-			if task.SnoozedUntil != nil {
-				t.Errorf("SnoozedUntil = %v, want nil", task.SnoozedUntil)
+			if task.DeferredUntil != nil {
+				t.Errorf("DeferredUntil = %v, want nil", task.DeferredUntil)
 			}
 			if target.IsTerminal() {
 				if task.CompletedAt == nil || !task.CompletedAt.Equal(now) {
@@ -398,29 +398,29 @@ func TestSetPinnedTogglesPin(t *testing.T) {
 	}
 }
 
-func TestSnoozeAndClear(t *testing.T) {
+func TestDeferAndClear(t *testing.T) {
 	task := newTask("t1", 1, "task")
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	if _, err := svc.Snooze("t1", &until); err != nil {
-		t.Fatalf("Snooze: %v", err)
+	if _, err := svc.Defer("t1", &until); err != nil {
+		t.Fatalf("Defer: %v", err)
 	}
-	if task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(until) {
-		t.Fatalf("SnoozedUntil = %v, want %v", task.SnoozedUntil, until)
+	if task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
+		t.Fatalf("DeferredUntil = %v, want %v", task.DeferredUntil, until)
 	}
-	if _, err := svc.Snooze("t1", nil); err != nil {
-		t.Fatalf("clear Snooze: %v", err)
+	if _, err := svc.Defer("t1", nil); err != nil {
+		t.Fatalf("clear Defer: %v", err)
 	}
-	if task.SnoozedUntil != nil {
-		t.Errorf("SnoozedUntil = %v, want cleared", task.SnoozedUntil)
+	if task.DeferredUntil != nil {
+		t.Errorf("DeferredUntil = %v, want cleared", task.DeferredUntil)
 	}
 }
 
-// TestSnoozeRejectsCompletedAndBacklogsDoing proves terminal work is rejected
+// TestDeferRejectsCompletedAndBacklogsDoing proves terminal work is rejected
 // while active work is normalized to Backlog before being hidden.
-func TestSnoozeRejectsCompletedAndBacklogsDoing(t *testing.T) {
+func TestDeferRejectsCompletedAndBacklogsDoing(t *testing.T) {
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 
 	done := newTask("t1", 1, "task")
@@ -430,17 +430,17 @@ func TestSnoozeRejectsCompletedAndBacklogsDoing(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", done, inProgress))
 	svc := newTestService(repo)
 
-	if _, err := svc.Snooze("t1", &until); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("snooze done: err = %v, want ErrInvalidInput", err)
+	if _, err := svc.Defer("t1", &until); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("deferral done: err = %v, want ErrInvalidInput", err)
 	}
-	if done.SnoozedUntil != nil {
-		t.Error("completed task should not be snoozed")
+	if done.DeferredUntil != nil {
+		t.Error("completed task should not be deferred")
 	}
-	if _, err := svc.Snooze("t2", &until); err != nil {
-		t.Fatalf("snooze Doing: %v", err)
+	if _, err := svc.Defer("t2", &until); err != nil {
+		t.Fatalf("deferral Doing: %v", err)
 	}
-	if inProgress.State() != models.StateBacklog || inProgress.SnoozedUntil == nil {
-		t.Fatalf("snoozed Doing task = state %s date %v, want Backlog with date", inProgress.State(), inProgress.SnoozedUntil)
+	if inProgress.State() != models.StateBacklog || inProgress.DeferredUntil == nil {
+		t.Fatalf("deferred Doing task = state %s date %v, want Backlog with date", inProgress.State(), inProgress.DeferredUntil)
 	}
 }
 

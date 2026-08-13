@@ -91,10 +91,10 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 		{
 			"every field",
 			&models.Task{
-				CreatedAt:    now.Add(-12 * 24 * time.Hour),
-				UpdatedAt:    now.Add(-2 * 24 * time.Hour),
-				DueDate:      &due,
-				SnoozedUntil: &woke,
+				CreatedAt:     now.Add(-12 * 24 * time.Hour),
+				UpdatedAt:     now.Add(-2 * 24 * time.Hour),
+				DueDate:       &due,
+				DeferredUntil: &woke,
 			},
 			"created 12d · updated 2d · due 2026-08-14 · woke 1d",
 		},
@@ -105,12 +105,12 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 		},
 		{
 			"a pending snooze is not a wake-up",
-			&models.Task{CreatedAt: now.Add(-24 * time.Hour), SnoozedUntil: &pending},
+			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &pending},
 			"created 1d",
 		},
 		{
 			"a lapsed snooze past the wake window falls silent",
-			&models.Task{CreatedAt: now.Add(-24 * time.Hour), SnoozedUntil: &stale},
+			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &stale},
 			"created 1d",
 		},
 	}

@@ -151,7 +151,7 @@ func TestWriteProjectMarkdownClean_DueDate(t *testing.T) {
 func TestWriteProjectMarkdownClean_SnoozedUntil(t *testing.T) {
 	task := mustTask("t1", 1, "Snoozed")
 	snooze := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
-	task.SnoozedUntil = &snooze
+	task.DeferredUntil = &snooze
 	task.Priority = 0
 	p := newProject("Snooze", task)
 	out := WriteProjectMarkdownClean(p)

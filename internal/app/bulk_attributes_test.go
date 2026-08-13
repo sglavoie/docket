@@ -139,7 +139,7 @@ func TestBulkClearDueDateClearsAndIsNoOpWhenAbsent(t *testing.T) {
 	}
 }
 
-func TestBulkSnoozeSetsSnoozeOnAll(t *testing.T) {
+func TestBulkDeferSetsDeferOnAll(t *testing.T) {
 	t1 := newTask("t1", 1, "first")
 	t2 := newTask("t2", 2, "second")
 	projA := newProject("proj-a", "Alpha", t1, t2)
@@ -147,20 +147,20 @@ func TestBulkSnoozeSetsSnoozeOnAll(t *testing.T) {
 	svc := newTestService(repo)
 
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	if _, err := svc.BulkSnooze([]string{"t1", "t2"}, &until); err != nil {
-		t.Fatalf("BulkSnooze: %v", err)
+	if _, err := svc.BulkDefer([]string{"t1", "t2"}, &until); err != nil {
+		t.Fatalf("BulkDefer: %v", err)
 	}
 	for _, task := range []*models.Task{t1, t2} {
-		if task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(until) {
-			t.Errorf("task %s snoozed = %v, want %v", task.ID, task.SnoozedUntil, until)
+		if task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
+			t.Errorf("task %s deferred = %v, want %v", task.ID, task.DeferredUntil, until)
 		}
 	}
-	if t1.SnoozedUntil == t2.SnoozedUntil {
-		t.Error("tasks share the same snooze pointer; each must hold its own copy")
+	if t1.DeferredUntil == t2.DeferredUntil {
+		t.Error("tasks share the same deferral pointer; each must hold its own copy")
 	}
 }
 
-func TestBulkSnoozeRejectsTerminalOrInProgress(t *testing.T) {
+func TestBulkDeferRejectsTerminalOrInProgress(t *testing.T) {
 	t1 := newTask("t1", 1, "ready")
 	t2 := newTask("t2", 2, "done")
 	t2.ApplyWorkflowState(models.StateDone)
@@ -169,31 +169,31 @@ func TestBulkSnoozeRejectsTerminalOrInProgress(t *testing.T) {
 	svc := newTestService(repo)
 
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BulkSnooze([]string{"t1", "t2"}, &until)
+	_, err := svc.BulkDefer([]string{"t1", "t2"}, &until)
 	if !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("err = %v, want ErrInvalidInput (terminal task cannot be snoozed)", err)
+		t.Fatalf("err = %v, want ErrInvalidInput (terminal task cannot be deferred)", err)
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("Commit called %d times, want 0 (batch aborts before commit)", len(repo.commits))
 	}
-	if t1.SnoozedUntil != nil {
-		t.Error("t1 snoozed despite the batch aborting")
+	if t1.DeferredUntil != nil {
+		t.Error("t1 deferred despite the batch aborting")
 	}
 }
 
-func TestBulkSnoozeClearClearsSnooze(t *testing.T) {
-	snoozed := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	t1 := newTask("t1", 1, "snoozed")
-	t1.SnoozedUntil = &snoozed
+func TestBulkDeferClearClearsDefer(t *testing.T) {
+	deferred := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	t1 := newTask("t1", 1, "deferred")
+	t1.DeferredUntil = &deferred
 	projA := newProject("proj-a", "Alpha", t1)
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.BulkSnooze([]string{"t1"}, nil); err != nil {
-		t.Fatalf("BulkSnooze clear: %v", err)
+	if _, err := svc.BulkDefer([]string{"t1"}, nil); err != nil {
+		t.Fatalf("BulkDefer clear: %v", err)
 	}
-	if t1.SnoozedUntil != nil {
-		t.Errorf("t1 snoozed = %v, want nil after clear", t1.SnoozedUntil)
+	if t1.DeferredUntil != nil {
+		t.Errorf("t1 deferred = %v, want nil after clear", t1.DeferredUntil)
 	}
 }
 

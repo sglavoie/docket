@@ -13,31 +13,31 @@ func (t *Task) Complete() {
 }
 
 // Start marks the task as Doing.
-// Snooze is cleared since a Doing task should always be visible.
+// Deferral is cleared since a Doing task should always be visible.
 func (t *Task) Start() {
 	_ = t.ApplyStateTransition(StateDoing)
 }
 
 // Standby puts the task on hold (the paused state).
-// Snooze is cleared since paused tasks should remain visible.
+// Deferral is cleared since paused tasks should remain visible.
 func (t *Task) Standby() {
 	_ = t.ApplyStateTransition(StatePaused)
 }
 
 // Maybe marks the task as a tentative consideration (the someday state).
-// Snooze is cleared since maybe tasks should remain visible for review.
+// Deferral is cleared since maybe tasks should remain visible for review.
 func (t *Task) Maybe() {
 	_ = t.ApplyStateTransition(StateSomeday)
 }
 
 // Wait marks the task as explicitly waiting.
-// Snooze is cleared since waiting work should remain visible.
+// Deferral is cleared since waiting work should remain visible.
 func (t *Task) Wait() {
 	_ = t.ApplyStateTransition(StateWaiting)
 }
 
 // Cancel marks the task as canceled (terminal).
-// Snooze is cleared since hiding a canceled task is meaningless.
+// Deferral is cleared since hiding a canceled task is meaningless.
 func (t *Task) Cancel() {
 	_ = t.ApplyStateTransition(StateCanceled)
 }
@@ -56,7 +56,7 @@ func (t *Task) ApplyStateTransition(state WorkflowState) error {
 }
 
 // ApplyStateTransitionAt is the canonical task-state mutation primitive. It
-// owns terminal completion timestamps, reopen cleanup, snooze clearing, the
+// owns terminal completion timestamps, reopen cleanup, deferral clearing, the
 // state clock, and the update timestamp. Supplying now lets application
 // services use their injected clock.
 //
@@ -75,7 +75,7 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 		t.StateChangedAt = now
 	}
 	t.ApplyWorkflowState(state)
-	t.SnoozedUntil = nil
+	t.DeferredUntil = nil
 	if state.IsTerminal() {
 		completedAt := now
 		t.CompletedAt = &completedAt
@@ -136,30 +136,30 @@ func (t *Task) TogglePinned() {
 	}
 }
 
-// IsSnoozed returns true if the task is snoozed (SnoozedUntil is set and after today).
-func (t *Task) IsSnoozed() bool {
-	return t.IsSnoozedAt(time.Now())
+// IsDeferred returns true if the task is deferred (DeferredUntil is set and after today).
+func (t *Task) IsDeferred() bool {
+	return t.IsDeferredAt(time.Now())
 }
 
-// IsSnoozedAt returns true if the task is snoozed relative to the given time.
-// Use this instead of IsSnoozed when the reference time is not time.Now().
-func (t *Task) IsSnoozedAt(now time.Time) bool {
-	if t.SnoozedUntil == nil {
+// IsDeferredAt returns true if the task is deferred relative to the given time.
+// Use this instead of IsDeferred when the reference time is not time.Now().
+func (t *Task) IsDeferredAt(now time.Time) bool {
+	if t.DeferredUntil == nil {
 		return false
 	}
-	// SnoozedUntil is a calendar date, not an instant. Normalize both dates
+	// DeferredUntil is a calendar date, not an instant. Normalize both dates
 	// onto the same neutral location before comparing so equal local dates do
 	// not compare differently merely because their time.Location values differ.
 	nowYear, nowMonth, nowDay := now.Date()
-	snoozeYear, snoozeMonth, snoozeDayOfMonth := t.SnoozedUntil.Date()
+	deferYear, deferMonth, deferDayOfMonth := t.DeferredUntil.Date()
 	today := time.Date(nowYear, nowMonth, nowDay, 0, 0, 0, 0, time.UTC)
-	snoozeDay := time.Date(snoozeYear, snoozeMonth, snoozeDayOfMonth, 0, 0, 0, 0, time.UTC)
-	return snoozeDay.After(today)
+	deferDay := time.Date(deferYear, deferMonth, deferDayOfMonth, 0, 0, 0, 0, time.UTC)
+	return deferDay.After(today)
 }
 
-// ClearSnooze removes the snooze date from the task.
-func (t *Task) ClearSnooze() {
-	t.SnoozedUntil = nil
+// ClearDefer removes the deferral date from the task.
+func (t *Task) ClearDefer() {
+	t.DeferredUntil = nil
 	t.UpdatedAt = time.Now()
 }
 

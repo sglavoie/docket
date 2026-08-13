@@ -129,7 +129,7 @@ func modelsFromV9ProjectDocument(document V9ProjectDocument, location *time.Loca
 			}
 		}
 		if record.SnoozedUntil != "" {
-			task.SnoozedUntil, err = parseProjectDocumentDate(record.SnoozedUntil, location)
+			task.DeferredUntil, err = parseProjectDocumentDate(record.SnoozedUntil, location)
 			if err != nil {
 				return nil, fmt.Errorf("v9 task %q snooze date: %w", record.ID, err)
 			}
@@ -203,8 +203,8 @@ func v9TaskRecordFromModel(task *models.Task) (format.V9TaskRecord, error) {
 	if task.DueDate != nil {
 		record.DueDate = task.DueDate.Format("2006-01-02")
 	}
-	if task.SnoozedUntil != nil {
-		record.SnoozedUntil = task.SnoozedUntil.Format("2006-01-02")
+	if task.DeferredUntil != nil {
+		record.SnoozedUntil = task.DeferredUntil.Format("2006-01-02")
 	}
 	for _, attachment := range task.Attachments {
 		kind := "file"

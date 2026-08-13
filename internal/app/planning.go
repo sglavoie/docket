@@ -232,7 +232,7 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 	targetState := task.State()
 	today := PlanningTodayPreserve
 	next := PlanningNextPreserve
-	clearSnooze := false
+	clearDefer := false
 	switch action {
 	case PlanningAddToday:
 		if targetState.IsTerminal() {
@@ -243,7 +243,7 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 		}
 		today = PlanningTodayAdd
 		next = PlanningNextRemove
-		clearSnooze = true
+		clearDefer = true
 	case PlanningRemoveToday:
 		today = PlanningTodayRemove
 	case PlanningAddNext:
@@ -253,7 +253,7 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 		targetState = models.StateBacklog
 		today = PlanningTodayRemove
 		next = PlanningNextAdd
-		clearSnooze = true
+		clearDefer = true
 	case PlanningRemoveNext:
 		next = PlanningNextRemove
 	case PlanningBacklog:
@@ -273,8 +273,8 @@ func ApplyPlanningActionToTask(task *models.Task, projectID string, action Plann
 			return PlanningReconcileTarget{}, false, invalidInput("state", err.Error())
 		}
 	}
-	if clearSnooze && task.SnoozedUntil != nil {
-		task.SnoozedUntil = nil
+	if clearDefer && task.DeferredUntil != nil {
+		task.DeferredUntil = nil
 		task.UpdatedAt = now
 		stateChanged = true
 	}

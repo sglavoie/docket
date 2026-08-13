@@ -87,7 +87,7 @@ func TestBuildRecentModeSectionsAdmitsTerminalAndSnoozedWork(t *testing.T) {
 	canceled := recentTask("canceled", models.StateCanceled, 0)
 	snoozed := recentTask("snoozed", models.StateBacklog, 0)
 	future := time.Now().AddDate(0, 0, 3)
-	snoozed.SnoozedUntil = &future
+	snoozed.DeferredUntil = &future
 	// One shared key so the assertion reads document order, not creation jitter.
 	touched := time.Now()
 	for _, task := range []*models.Task{open, done, canceled, snoozed} {

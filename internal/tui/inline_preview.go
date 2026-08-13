@@ -97,7 +97,7 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 		field("due", task.DueDate.Format("2006-01-02"))
 	}
 	if taskWokeRecently(task, now) {
-		field("woke", formatRecencyAge(*task.SnoozedUntil, now))
+		field("woke", formatRecencyAge(*task.DeferredUntil, now))
 	}
 	if len(parts) == 0 {
 		return ""

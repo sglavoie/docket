@@ -24,7 +24,7 @@ func filterFacetTask(
 		Priority:      priority,
 		Tags:          tags,
 		DueDate:       dueDate,
-		SnoozedUntil:  snoozedUntil,
+		DeferredUntil: snoozedUntil,
 	}
 }
 

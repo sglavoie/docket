@@ -76,7 +76,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 			continue
 		}
 		seen[identity] = true
-		if !planningTodayEligible(task) || (task.IsSnoozedAt(now) && !in.IncludeSnoozed) {
+		if !planningTodayEligible(task) || (task.IsDeferredAt(now) && !in.IncludeSnoozed) {
 			continue
 		}
 		if in.TaskExclude != nil && in.TaskExclude(task, project) {
@@ -109,7 +109,7 @@ func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 		}
 		task := project.GetTaskByID(locator.TaskID)
 		if task == nil || !task.State().IsValid() || task.IsTerminalState() ||
-			(task.IsSnoozedAt(now) && !in.IncludeSnoozed) {
+			(task.IsDeferredAt(now) && !in.IncludeSnoozed) {
 			continue
 		}
 		if in.TaskExclude != nil && in.TaskExclude(task, project) {

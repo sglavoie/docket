@@ -22,7 +22,7 @@ func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
 	child.ParentID = &parent.ID
 	snoozed := primaryRowsTask("snoozed", models.StateSomeday)
 	snoozed.Title = "Needle snoozed"
-	snoozed.SnoozedUntil = &tomorrow
+	snoozed.DeferredUntil = &tomorrow
 	inbox := primaryRowsTask("inbox", models.StateInbox)
 	inbox.Title = "Needle inbox"
 	inbox.Priority = models.PriorityLow

@@ -146,7 +146,7 @@ func TestTaskOperationsUseOneAtomicPathForSingleAndBulkMetadata(t *testing.T) {
 	}
 }
 
-func TestTaskOperationsCoverDateSnoozeAndTagValues(t *testing.T) {
+func TestTaskOperationsCoverDateDeferAndTagValues(t *testing.T) {
 	task := newTask("task", 1, "Plan")
 	project := newProject("project", "Project", task)
 	repo := newFakeRepo(project)
@@ -175,14 +175,14 @@ func TestTaskOperationsCoverDateSnoozeAndTagValues(t *testing.T) {
 	}
 
 	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
-		Operation: app.TaskOperationSetSnooze,
+		Operation: app.TaskOperationSetDefer,
 		Targets:   target,
 		Date:      &date,
 	}); err != nil {
-		t.Fatalf("set snooze: %v", err)
+		t.Fatalf("set deferral: %v", err)
 	}
-	if task.SnoozedUntil == nil || task.SnoozedUntil.Day() != 12 {
-		t.Fatalf("snooze = %v, want 2026-07-12", task.SnoozedUntil)
+	if task.DeferredUntil == nil || task.DeferredUntil.Day() != 12 {
+		t.Fatalf("deferral = %v, want 2026-07-12", task.DeferredUntil)
 	}
 
 	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{

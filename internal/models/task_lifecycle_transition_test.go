@@ -105,14 +105,14 @@ func TestApplyStateTransition(t *testing.T) {
 func TestApplyStateTransitionAtOwnsLifecycleSideEffectsForEveryState(t *testing.T) {
 	now := time.Date(2026, 7, 25, 9, 30, 0, 0, time.UTC)
 	staleCompletion := now.Add(-24 * time.Hour)
-	snoozedUntil := now.Add(24 * time.Hour)
+	deferredUntil := now.Add(24 * time.Hour)
 
 	for _, state := range AllWorkflowStates() {
 		state := state
 		t.Run(state.String(), func(t *testing.T) {
 			task := newLifecycleTestTask(t, "t1", 1)
 			task.CompletedAt = &staleCompletion
-			task.SnoozedUntil = &snoozedUntil
+			task.DeferredUntil = &deferredUntil
 
 			if err := task.ApplyStateTransitionAt(state, now); err != nil {
 				t.Fatalf("ApplyStateTransitionAt(%q): %v", state, err)
@@ -123,8 +123,8 @@ func TestApplyStateTransitionAtOwnsLifecycleSideEffectsForEveryState(t *testing.
 			if !task.UpdatedAt.Equal(now) {
 				t.Errorf("UpdatedAt = %v, want %v", task.UpdatedAt, now)
 			}
-			if task.SnoozedUntil != nil {
-				t.Errorf("SnoozedUntil = %v, want nil", task.SnoozedUntil)
+			if task.DeferredUntil != nil {
+				t.Errorf("DeferredUntil = %v, want nil", task.DeferredUntil)
 			}
 			if state.IsTerminal() {
 				if task.CompletedAt == nil || !task.CompletedAt.Equal(now) {
@@ -141,10 +141,10 @@ func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 	now := time.Date(2026, 7, 25, 9, 30, 0, 0, time.UTC)
 	completedAt := now.Add(-time.Hour)
-	snoozedUntil := now.Add(time.Hour)
+	deferredUntil := now.Add(time.Hour)
 	task.WorkflowState = StateBacklog
 	task.CompletedAt = &completedAt
-	task.SnoozedUntil = &snoozedUntil
+	task.DeferredUntil = &deferredUntil
 	task.UpdatedAt = completedAt
 
 	if err := task.ApplyStateTransitionAt(WorkflowState("todo"), now); err == nil {
@@ -153,7 +153,7 @@ func TestApplyStateTransitionAtRejectsInvalidWithoutMutation(t *testing.T) {
 	if task.State() != StateBacklog {
 		t.Errorf("State() = %q, want unchanged next", task.State())
 	}
-	if task.CompletedAt != &completedAt || task.SnoozedUntil != &snoozedUntil {
+	if task.CompletedAt != &completedAt || task.DeferredUntil != &deferredUntil {
 		t.Error("invalid transition changed lifecycle timestamps")
 	}
 	if !task.UpdatedAt.Equal(completedAt) {

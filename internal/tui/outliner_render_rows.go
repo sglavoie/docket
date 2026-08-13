@@ -447,7 +447,7 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	if segments.check == "" && m.columnConfig.IsVisible(ColDueDate) {
 		segments.due = formatDueDate(task)
 	}
-	if task.SnoozedUntil != nil && m.columnConfig.IsVisible(ColSnooze) {
+	if task.DeferredUntil != nil && m.columnConfig.IsVisible(ColSnooze) {
 		segments.snooze = formatSnoozeIndicator(task, now)
 	}
 	if m.columnConfig.IsVisible(ColChecklist) {
@@ -500,13 +500,13 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 // says it came back and how long ago, then falls silent once the wake window
 // closes and the task is ordinary work again.
 func formatSnoozeIndicator(task *models.Task, now time.Time) string {
-	if task.IsSnoozedAt(now) {
-		return MutedStyle.Render("zzz " + formatSnoozeDate(*task.SnoozedUntil))
+	if task.IsDeferredAt(now) {
+		return MutedStyle.Render("zzz " + formatSnoozeDate(*task.DeferredUntil))
 	}
 	if !taskWokeRecently(task, now) {
 		return ""
 	}
-	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.SnoozedUntil, now)
+	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
 }
 
 // taskWokeRecently reports whether a lapsed snooze is still inside the wake
@@ -514,10 +514,10 @@ func formatSnoozeIndicator(task *models.Task, now time.Time) string {
 // that a task came back, and a second copy of the predicate would let one
 // surface keep saying `woke` after the other went quiet.
 func taskWokeRecently(task *models.Task, now time.Time) bool {
-	if task == nil || task.SnoozedUntil == nil || task.IsSnoozedAt(now) {
+	if task == nil || task.DeferredUntil == nil || task.IsDeferredAt(now) {
 		return false
 	}
-	return now.Sub(*task.SnoozedUntil) < snoozeWakeWindow
+	return now.Sub(*task.DeferredUntil) < snoozeWakeWindow
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {

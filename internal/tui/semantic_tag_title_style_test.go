@@ -120,7 +120,7 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 					if got := selected.GetForeground(); got != lipgloss.Color(role.selected) || !selected.GetBold() {
 						t.Errorf("selected style foreground/bold = %v/%v, want %s/true", got, selected.GetBold(), role.selected)
 					}
-					base.SnoozedUntil = &tomorrow
+					base.DeferredUntil = &tomorrow
 					snoozed := TaskTitleStyleFor(base, TaskTitleStyleOptions{})
 					if got := snoozed.GetForeground(); got != lipgloss.Color(role.snoozed) || !snoozed.GetFaint() {
 						t.Errorf("snoozed style foreground/faint = %v/%v, want %s/true", got, snoozed.GetFaint(), role.snoozed)

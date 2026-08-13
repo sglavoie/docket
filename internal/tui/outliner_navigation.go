@@ -80,7 +80,7 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 		states, _ := models.NewWorkflowStateSet(task.State())
 		m.filter.setStateFilter(states, true)
 	}
-	if task.IsSnoozed() {
+	if task.IsDeferred() {
 		m.filter.Snoozed = true
 	}
 	m.selectOutlinerMode(ModeAll)

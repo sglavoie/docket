@@ -30,7 +30,7 @@ func TestPinnedModeProjectionIsNewestFirstAndProjectionOwned(t *testing.T) {
 	betaSameID := primaryRowsTask("shared", models.StateBacklog)
 	betaSameID.Pinned, betaSameID.PinnedAt = true, &older
 	betaSnoozed := primaryRowsTask("snoozed", models.StateBacklog)
-	betaSnoozed.Pinned, betaSnoozed.PinnedAt, betaSnoozed.SnoozedUntil = true, &newest, &tomorrow
+	betaSnoozed.Pinned, betaSnoozed.PinnedAt, betaSnoozed.DeferredUntil = true, &newest, &tomorrow
 	betaDone := primaryRowsTask("done", models.StateDone)
 	betaDone.Pinned, betaDone.PinnedAt = true, &newest
 	beta := primaryRowsProject("beta", betaTie, betaSameID, betaSnoozed, betaDone)
@@ -80,11 +80,11 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 
 	sameDayTask := primaryRowsTask("same-day", models.StateBacklog)
 	sameDayTask.Pinned = true
-	sameDayTask.SnoozedUntil = &sameDay
+	sameDayTask.DeferredUntil = &sameDay
 	sameDayTask.DueDate = &sameDay
 	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
 	snoozed.Pinned = true
-	snoozed.SnoozedUntil = &nextDay
+	snoozed.DeferredUntil = &nextDay
 	done := primaryRowsTask("done", models.StateDone)
 	done.Pinned = true
 	project := primaryRowsProject("project", sameDayTask, snoozed, done)

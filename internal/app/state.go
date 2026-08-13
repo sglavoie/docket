@@ -131,7 +131,7 @@ func validateLifecycleStateEdge(from, target models.WorkflowState) error {
 }
 
 // applyLifecycleTransition validates and applies one transition with the service
-// clock. Model state, terminal/reopen timestamps, snooze cleanup, and UpdatedAt
+// clock. Model state, terminal/reopen timestamps, deferral cleanup, and UpdatedAt
 // therefore change through the same primitive for every application entry point.
 func (s *Service) applyLifecycleTransition(ref TaskRef, target models.WorkflowState) error {
 	if err := validateLifecycleTransition(ref, target); err != nil {
@@ -193,7 +193,7 @@ func newChildrenBlockedError(task *models.Task, children []*models.Task) error {
 }
 
 // applyState is the application-layer state mutation seam. It supplies the
-// service clock to the canonical model primitive so state, completion, snooze,
+// service clock to the canonical model primitive so state, completion, deferral,
 // and update timestamps change together deterministically. Callers validate
 // transition policy before reaching this helper.
 func applyState(task *models.Task, target models.WorkflowState, now time.Time) error {

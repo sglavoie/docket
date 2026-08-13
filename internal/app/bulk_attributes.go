@@ -241,22 +241,22 @@ func (s *Service) bulkClearDueDate(taskIDs []string, locators []TaskLocator) (Bu
 	})
 }
 
-// BulkSnooze hides every selected task until the given date, or clears the
-// snooze when until is nil. Snoozing moves each nonterminal task to Backlog and
+// BulkDefer hides every selected task until the given date, or clears the
+// deferral when until is nil. Deferring moves each nonterminal task to Backlog and
 // removes it from Today and Next atomically with the task writes. A terminal
 // task rejects the complete batch. Clearing preserves lifecycle and planning.
-func (s *Service) BulkSnooze(taskIDs []string, until *time.Time) (BulkResult, error) {
-	return s.bulkSnooze(taskIDs, nil, until)
+func (s *Service) BulkDefer(taskIDs []string, until *time.Time) (BulkResult, error) {
+	return s.bulkDefer(taskIDs, nil, until)
 }
 
-func (s *Service) BulkSnoozeByLocators(locators []TaskLocator, until *time.Time) (BulkResult, error) {
-	return s.bulkSnooze(nil, locators, until)
+func (s *Service) BulkDeferByLocators(locators []TaskLocator, until *time.Time) (BulkResult, error) {
+	return s.bulkDefer(nil, locators, until)
 }
 
-func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *time.Time) (BulkResult, error) {
+func (s *Service) bulkDefer(taskIDs []string, locators []TaskLocator, until *time.Time) (BulkResult, error) {
 	if until == nil {
-		return s.bulkAttribute(taskIDs, locators, "Snooze Tasks", "clear", nil, func(t *models.Task) {
-			t.SnoozedUntil = nil
+		return s.bulkAttribute(taskIDs, locators, "Defer Tasks", "clear", nil, func(t *models.Task) {
+			t.DeferredUntil = nil
 			t.UpdatedAt = s.clock.Now()
 		})
 	}
@@ -273,7 +273,7 @@ func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *ti
 	}
 	before, err := cloneSnapshot(snap)
 	if err != nil {
-		return BulkResult{}, fmt.Errorf("capture bulk snooze rollback state: %w", err)
+		return BulkResult{}, fmt.Errorf("capture bulk deferral rollback state: %w", err)
 	}
 	useRollbackDocuments(before)
 	committed := false
@@ -284,16 +284,16 @@ func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *ti
 	}()
 	for _, ref := range refs {
 		if ref.Task.IsTerminalState() {
-			return BulkResult{}, invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", ref.Task.State()))
+			return BulkResult{}, invalidInput("defer", fmt.Sprintf("cannot defer a %s task", ref.Task.State()))
 		}
 	}
 	now := s.clock.Now()
 	for _, ref := range refs {
 		if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
-			return BulkResult{}, invalidInput("snooze", stateErr.Error())
+			return BulkResult{}, invalidInput("defer", stateErr.Error())
 		}
 		u := *until
-		ref.Task.SnoozedUntil = &u
+		ref.Task.DeferredUntil = &u
 	}
 
 	commits, indexes := distinctProjectCommits(refs, snap)
@@ -308,7 +308,7 @@ func (s *Service) bulkSnooze(taskIDs []string, locators []TaskLocator, until *ti
 	); planningErr != nil {
 		return BulkResult{}, planningErr
 	}
-	outcome, err := s.commitProjects(commits, "Snooze Tasks", "snooze")
+	outcome, err := s.commitProjects(commits, "Defer Tasks", "defer")
 	if err != nil {
 		return BulkResult{}, err
 	}

@@ -195,19 +195,19 @@ func TestBulkSnoozeScenario(t *testing.T) {
 	env, features := newSecondaryEnv(t, "bulk-snooze", a, b)
 
 	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.Local)
-	runBatchResult(t, features.Bulk.Snooze([]string{a.ID, b.ID}, &until))
+	runBatchResult(t, features.Bulk.Defer([]string{a.ID, b.ID}, &until))
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.SnoozedUntil == nil || got.SnoozedUntil.Format("2006-01-02") != "2026-08-10" {
+		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2026-08-10" {
 			t.Fatalf("task %s snoozed = %v, want 2026-08-10", id, got)
 		}
 	}
 
-	runBatchResult(t, features.Bulk.Snooze([]string{a.ID, b.ID}, nil))
+	runBatchResult(t, features.Bulk.Defer([]string{a.ID, b.ID}, nil))
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.SnoozedUntil != nil {
+		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil != nil {
 			t.Fatalf("task %s snooze not cleared: %v", id, got)
 		}
 	}
@@ -215,7 +215,7 @@ func TestBulkSnoozeScenario(t *testing.T) {
 	env.undo(t)
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.SnoozedUntil == nil || got.SnoozedUntil.Format("2006-01-02") != "2026-08-10" {
+		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2026-08-10" {
 			t.Fatalf("undo did not restore snooze for %s: %v", id, got)
 		}
 	}

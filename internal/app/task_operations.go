@@ -24,7 +24,7 @@ const (
 	TaskOperationSetState             TaskOperation = "set_state"
 	TaskOperationSetPriority          TaskOperation = "set_priority"
 	TaskOperationSetDueDate           TaskOperation = "set_due_date"
-	TaskOperationSetSnooze            TaskOperation = "set_snooze"
+	TaskOperationSetDefer             TaskOperation = "set_defer"
 	TaskOperationSetTags              TaskOperation = "set_tags"
 	TaskOperationToggleTag            TaskOperation = "toggle_tag"
 	TaskOperationSetPinned            TaskOperation = "set_pinned"
@@ -33,7 +33,7 @@ const (
 // TaskOperationRequest carries one operation and its value. Targets are always
 // project-qualified so a cross-project presentation never depends on
 // workspace-wide task-ID uniqueness. Text is used by title/description edit and
-// child creation; Date is nil to clear due date or snooze.
+// child creation; Date is nil to clear due date or deferral.
 type TaskOperationRequest struct {
 	Operation TaskOperation
 	Targets   []TaskLocator
@@ -148,8 +148,8 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		}
 		return bulkTaskOperationResult(result, err)
 
-	case TaskOperationSetSnooze:
-		result, err := s.BulkSnoozeByLocators(req.Targets, req.Date)
+	case TaskOperationSetDefer:
+		result, err := s.BulkDeferByLocators(req.Targets, req.Date)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetTags:

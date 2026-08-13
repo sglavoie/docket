@@ -91,7 +91,7 @@ func passesCommonFiltersAt(
 	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
 		return false
 	}
-	if f.Snoozed && !task.IsSnoozedAt(now) {
+	if f.Snoozed && !task.IsDeferredAt(now) {
 		return false
 	}
 	if f.Pinned && !task.Pinned {

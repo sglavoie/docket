@@ -171,7 +171,7 @@ func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 	due := time.Now().AddDate(0, 0, 5)
 	snooze := time.Now().AddDate(0, 0, -2)
 	task.DueDate = &due
-	task.SnoozedUntil = &snooze
+	task.DeferredUntil = &snooze
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.SetSize(100, 22)
@@ -199,7 +199,7 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 	due := time.Now()
 	snooze := time.Now().AddDate(0, 0, -1)
 	task.DueDate = &due
-	task.SnoozedUntil = &snooze
+	task.DeferredUntil = &snooze
 	project := renderFixtureProject(
 		t,
 		"project",

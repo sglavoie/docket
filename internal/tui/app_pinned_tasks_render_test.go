@@ -54,7 +54,7 @@ func TestCollectPinnedTasksUsesVisibleNewestFirstProjection(t *testing.T) {
 	tomorrow := now.AddDate(0, 0, 1)
 	oldTask := &models.Task{ID: "old", Title: "old", ShortID: 1, Pinned: true, PinnedAt: &older, WorkflowState: models.StateBacklog}
 	newTask := &models.Task{ID: "new", Title: "new", ShortID: 2, Pinned: true, PinnedAt: &newer, WorkflowState: models.StateBacklog}
-	snoozed := &models.Task{ID: "snoozed", Title: "snoozed", ShortID: 3, Pinned: true, PinnedAt: &newer, SnoozedUntil: &tomorrow, WorkflowState: models.StateBacklog}
+	snoozed := &models.Task{ID: "snoozed", Title: "snoozed", ShortID: 3, Pinned: true, PinnedAt: &newer, DeferredUntil: &tomorrow, WorkflowState: models.StateBacklog}
 	done := &models.Task{ID: "done", Title: "done", ShortID: 4, Pinned: true, PinnedAt: &newer, WorkflowState: models.StateDone}
 	project.Tasks = []*models.Task{oldTask, snoozed, done, newTask}
 

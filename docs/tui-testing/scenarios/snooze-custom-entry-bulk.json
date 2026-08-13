@@ -21,7 +21,7 @@
     { "type": "wait" },
 
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Snooze" },
+    { "type": "assert", "assert": "status_contains", "value": "Defer" },
     { "type": "assert", "label": "one transaction snoozed both selected tasks out of the projection", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
     { "type": "assert", "assert": "no_layout_issues" }

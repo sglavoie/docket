@@ -46,9 +46,9 @@ func TestPlanningLifecycleTransitionMatrix(t *testing.T) {
 	}
 }
 
-func TestPlanningAddActionsNormalizeLifecycleAndSnooze(t *testing.T) {
+func TestPlanningAddActionsNormalizeLifecycleAndDefer(t *testing.T) {
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
-	snooze := now.AddDate(0, 0, 2)
+	deferUntil := now.AddDate(0, 0, 2)
 	for _, initial := range []models.WorkflowState{
 		models.StateInbox,
 		models.StateBacklog,
@@ -60,7 +60,7 @@ func TestPlanningAddActionsNormalizeLifecycleAndSnooze(t *testing.T) {
 		t.Run("today_"+string(initial), func(t *testing.T) {
 			task := newTask("task", 1, "task")
 			task.WorkflowState = initial
-			task.SnoozedUntil = &snooze
+			task.DeferredUntil = &deferUntil
 			target, changed, err := app.ApplyPlanningActionToTask(task, "project", app.PlanningAddToday, now)
 			if err != nil {
 				t.Fatal(err)
@@ -69,8 +69,8 @@ func TestPlanningAddActionsNormalizeLifecycleAndSnooze(t *testing.T) {
 			if initial == models.StateDoing {
 				wantState = models.StateDoing
 			}
-			if task.State() != wantState || task.SnoozedUntil != nil || !changed {
-				t.Fatalf("Today result = state:%s snooze:%v changed:%t, want %s nil true", task.State(), task.SnoozedUntil, changed, wantState)
+			if task.State() != wantState || task.DeferredUntil != nil || !changed {
+				t.Fatalf("Today result = state:%s deferUntil:%v changed:%t, want %s nil true", task.State(), task.DeferredUntil, changed, wantState)
 			}
 			if target.Today != app.PlanningTodayAdd || target.Next != app.PlanningNextRemove {
 				t.Fatalf("Today directives = %+v", target)
@@ -80,13 +80,13 @@ func TestPlanningAddActionsNormalizeLifecycleAndSnooze(t *testing.T) {
 		t.Run("next_"+string(initial), func(t *testing.T) {
 			task := newTask("task", 1, "task")
 			task.WorkflowState = initial
-			task.SnoozedUntil = &snooze
+			task.DeferredUntil = &deferUntil
 			target, changed, err := app.ApplyPlanningActionToTask(task, "project", app.PlanningAddNext, now)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if task.State() != models.StateBacklog || task.SnoozedUntil != nil || !changed {
-				t.Fatalf("Next result = state:%s snooze:%v changed:%t, want backlog nil true", task.State(), task.SnoozedUntil, changed)
+			if task.State() != models.StateBacklog || task.DeferredUntil != nil || !changed {
+				t.Fatalf("Next result = state:%s deferUntil:%v changed:%t, want backlog nil true", task.State(), task.DeferredUntil, changed)
 			}
 			if target.Today != app.PlanningTodayRemove || target.Next != app.PlanningNextAdd {
 				t.Fatalf("Next directives = %+v", target)
@@ -144,7 +144,7 @@ func TestPlanningReorderCannotConferMembership(t *testing.T) {
 	}
 }
 
-func TestSnoozeCommitsLifecycleAndPlanningTogether(t *testing.T) {
+func TestDeferCommitsLifecycleAndPlanningTogether(t *testing.T) {
 	task := newTask("task", 1, "planned")
 	task.WorkflowState = models.StateDoing
 	project := newProject("project", "Project", task)
@@ -154,17 +154,17 @@ func TestSnoozeCommitsLifecycleAndPlanningTogether(t *testing.T) {
 	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 	until := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
 
-	if _, err := svc.SnoozeByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, &until); err != nil {
+	if _, err := svc.DeferByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, &until); err != nil {
 		t.Fatal(err)
 	}
-	if task.State() != models.StateBacklog || task.SnoozedUntil == nil || !task.SnoozedUntil.Equal(until) {
-		t.Fatalf("task after snooze = state:%s snooze:%v", task.State(), task.SnoozedUntil)
+	if task.State() != models.StateBacklog || task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
+		t.Fatalf("task after deferUntil = state:%s deferUntil:%v", task.State(), task.DeferredUntil)
 	}
 	if len(planning.GetToday()) != 0 || len(planning.GetNext()) != 0 {
-		t.Fatalf("planning after snooze = Today:%+v Next:%+v", planning.GetToday(), planning.GetNext())
+		t.Fatalf("planning after deferUntil = Today:%+v Next:%+v", planning.GetToday(), planning.GetNext())
 	}
 	if len(repo.commits) != 1 || len(repo.commits[0]) != 1 || len(repo.commits[0][0].Artifacts) != 1 {
-		t.Fatalf("snooze commits = %+v, want one project-plus-planning transaction", repo.commits)
+		t.Fatalf("deferUntil commits = %+v, want one project-plus-planning transaction", repo.commits)
 	}
 }
 

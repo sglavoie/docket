@@ -767,12 +767,12 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 		woke := newFixtureTask(p, "Alpha back from snooze")
 		woke.ApplyWorkflowState(models.StateBacklog)
 		lapsed := time.Now().AddDate(0, 0, -1)
-		woke.SnoozedUntil = &lapsed
+		woke.DeferredUntil = &lapsed
 
 		pending := newFixtureTask(p, "Alpha still deferred")
 		pending.ApplyWorkflowState(models.StateBacklog)
 		deferred := time.Now().AddDate(0, 0, 5)
-		pending.SnoozedUntil = &deferred
+		pending.DeferredUntil = &deferred
 
 		triage = newFixtureTask(p, "Alpha overdue intake")
 		triage.ApplyWorkflowState(models.StateInbox)

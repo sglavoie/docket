@@ -33,7 +33,7 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 			if task == nil {
 				continue
 			}
-			if task.Pinned && !task.IsTerminalState() && !task.IsSnoozedAt(now) {
+			if task.Pinned && !task.IsTerminalState() && !task.IsDeferredAt(now) {
 				info := pinnedTaskInfo{
 					Title:       task.Title,
 					ShortID:     task.ShortID,

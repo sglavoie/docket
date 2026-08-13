@@ -327,7 +327,7 @@ func (m *OutlinerModel) primaryDefaultExclusion(mode OutlinerModeID, now time.Ti
 		if task == nil || !task.State().IsValid() {
 			return true
 		}
-		if task.IsSnoozedAt(now) && !includeSnoozed {
+		if task.IsDeferredAt(now) && !includeSnoozed {
 			return true
 		}
 		return task.IsTerminalState() && !includeTerminal

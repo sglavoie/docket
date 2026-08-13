@@ -5,71 +5,71 @@ import (
 	"time"
 )
 
-func TestIsSnoozed(t *testing.T) {
+func TestIsDeferred(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 
-	if task.IsSnoozed() {
-		t.Error("expected not snoozed when SnoozedUntil is nil")
+	if task.IsDeferred() {
+		t.Error("expected not deferred when DeferredUntil is nil")
 	}
 
 	future := time.Now().AddDate(0, 0, 7)
-	task.SnoozedUntil = &future
-	if !task.IsSnoozed() {
-		t.Error("expected snoozed when SnoozedUntil is in the future")
+	task.DeferredUntil = &future
+	if !task.IsDeferred() {
+		t.Error("expected deferred when DeferredUntil is in the future")
 	}
 
 	past := time.Now().AddDate(0, 0, -1)
-	task.SnoozedUntil = &past
-	if task.IsSnoozed() {
-		t.Error("expected not snoozed when SnoozedUntil is in the past")
+	task.DeferredUntil = &past
+	if task.IsDeferred() {
+		t.Error("expected not deferred when DeferredUntil is in the past")
 	}
 }
 
-func TestIsSnoozedAt(t *testing.T) {
+func TestIsDeferredAt(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
 
-	// nil SnoozedUntil => not snoozed at any time
+	// nil DeferredUntil => not deferred at any time
 	refTime := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
-	if task.IsSnoozedAt(refTime) {
-		t.Error("expected not snoozed when SnoozedUntil is nil")
+	if task.IsDeferredAt(refTime) {
+		t.Error("expected not deferred when DeferredUntil is nil")
 	}
 
-	// Snoozed until March 10; reference time is Feb 28 => snoozed
-	snooze := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
-	task.SnoozedUntil = &snooze
+	// Deferred until March 10; reference time is Feb 28 => deferred
+	deferUntil := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	task.DeferredUntil = &deferUntil
 	ref := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	if !task.IsSnoozedAt(ref) {
-		t.Error("expected snoozed when reference time is before snooze date")
+	if !task.IsDeferredAt(ref) {
+		t.Error("expected deferred when reference time is before deferral date")
 	}
 
-	// Same snooze date; reference time is March 15 => not snoozed
+	// Same deferral date; reference time is March 15 => not deferred
 	ref = time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	if task.IsSnoozedAt(ref) {
-		t.Error("expected not snoozed when reference time is after snooze date")
+	if task.IsDeferredAt(ref) {
+		t.Error("expected not deferred when reference time is after deferral date")
 	}
 
-	// Snooze day equals reference day => not snoozed (snooze expires on that day)
+	// Deferral day equals reference day => not deferred (deferral expires on that day)
 	ref = time.Date(2026, 3, 10, 10, 0, 0, 0, time.UTC)
-	if task.IsSnoozedAt(ref) {
-		t.Error("expected not snoozed when reference time equals snooze date")
+	if task.IsDeferredAt(ref) {
+		t.Error("expected not deferred when reference time equals deferral date")
 	}
 }
 
-func TestIsSnoozedAtComparesCalendarDatesAcrossLocations(t *testing.T) {
+func TestIsDeferredAtComparesCalendarDatesAcrossLocations(t *testing.T) {
 	task := newLifecycleTestTask(t, "t1", 1)
-	snoozeLocation := time.FixedZone("snooze", -8*60*60)
+	deferLocation := time.FixedZone("defer", -8*60*60)
 	referenceLocation := time.FixedZone("reference", 9*60*60)
-	snooze := time.Date(2026, 3, 10, 0, 0, 0, 0, snoozeLocation)
-	task.SnoozedUntil = &snooze
+	deferUntil := time.Date(2026, 3, 10, 0, 0, 0, 0, deferLocation)
+	task.DeferredUntil = &deferUntil
 
 	sameCalendarDate := time.Date(2026, 3, 10, 0, 30, 0, 0, referenceLocation)
-	if task.IsSnoozedAt(sameCalendarDate) {
-		t.Fatal("same calendar date remained snoozed because locations encoded different instants")
+	if task.IsDeferredAt(sameCalendarDate) {
+		t.Fatal("same calendar date remained deferred because locations encoded different instants")
 	}
 
 	previousCalendarDate := time.Date(2026, 3, 9, 23, 30, 0, 0, referenceLocation)
-	if !task.IsSnoozedAt(previousCalendarDate) {
-		t.Fatal("previous calendar date should remain snoozed regardless of location")
+	if !task.IsDeferredAt(previousCalendarDate) {
+		t.Fatal("previous calendar date should remain deferred regardless of location")
 	}
 }
 

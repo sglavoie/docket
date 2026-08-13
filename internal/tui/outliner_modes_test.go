@@ -84,7 +84,7 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 	betaLater := dueTask("beta-later", 8)
 	betaSnoozed := dueTask("beta-snoozed", 1)
 	snooze := now.AddDate(0, 0, 2)
-	betaSnoozed.SnoozedUntil = &snooze
+	betaSnoozed.DeferredUntil = &snooze
 	beta := primaryRowsProject("beta", betaOverdue, betaLater, betaSnoozed)
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)

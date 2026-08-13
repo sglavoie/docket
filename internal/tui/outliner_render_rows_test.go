@@ -23,7 +23,7 @@ func TestSnoozeIndicatorSeparatesPendingFromWoken(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{ID: "task", Title: "Task", SnoozedUntil: &tc.snoozed}
+			task := &models.Task{ID: "task", Title: "Task", DeferredUntil: &tc.snoozed}
 			plain := ansi.Strip(formatSnoozeIndicator(task, now))
 			if tc.want == "" {
 				if plain != "" {

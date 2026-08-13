@@ -26,7 +26,7 @@ func inlineEditorFixture(t *testing.T) (*OutlinerModel, *models.Project, *models
 	}
 	due := time.Date(2030, time.January, 2, 0, 0, 0, 0, time.UTC)
 	snooze := due.Add(-24 * time.Hour)
-	child.DueDate, child.SnoozedUntil = &due, &snooze
+	child.DueDate, child.DeferredUntil = &due, &snooze
 	project := &models.Project{ID: "project", Slug: "project", Name: "Project", Tasks: []*models.Task{parent, child}}
 	project.BuildTaskTree()
 	out := NewOutlinerModel(project, nil, nil)

@@ -47,10 +47,10 @@ type BulkMutator interface {
 	// BulkClearDueDate removes the due date from every selected task.
 	BulkClearDueDate(taskIDs []string) (app.BulkResult, error)
 	BulkClearDueDateByLocators(locators []app.TaskLocator) (app.BulkResult, error)
-	// BulkSnooze hides every selected task until until, or clears the snooze when
+	// BulkDefer hides every selected task until until, or clears the snooze when
 	// until is nil.
-	BulkSnooze(taskIDs []string, until *time.Time) (app.BulkResult, error)
-	BulkSnoozeByLocators(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
+	BulkDefer(taskIDs []string, until *time.Time) (app.BulkResult, error)
+	BulkDeferByLocators(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
 	// BulkSetTags replaces the tag set on every selected task with tags.
 	BulkSetTags(taskIDs []string, tags []string) (app.BulkResult, error)
 	BulkSetTagsByLocators(locators []app.TaskLocator, tags []string) (app.BulkResult, error)
@@ -97,7 +97,7 @@ type TaskItemMutator interface {
 	SetDueDateByLocator(locator app.TaskLocator, due *time.Time) (app.TaskResult, error)
 	SetDueDateAndPlanTodayByLocator(locator app.TaskLocator, due time.Time) (app.TaskResult, error)
 	// Snooze hides one task until the given date, or clears the snooze when nil.
-	SnoozeByLocator(locator app.TaskLocator, until *time.Time) (app.TaskResult, error)
+	DeferByLocator(locator app.TaskLocator, until *time.Time) (app.TaskResult, error)
 	// SetPinned pins or unpins one task.
 	SetPinnedByLocator(locator app.TaskLocator, pinned bool) (app.TaskResult, error)
 	// ReorderPinnedTasks swaps two pinned tasks' PinnedAt ordering as one
@@ -395,11 +395,11 @@ func (c BulkCoordinator) ClearDueDateLocators(locators []app.TaskLocator) tea.Cm
 	})
 }
 
-// Snooze hides every selected task until until, or clears the snooze when until
+// Defer hides every selected task until until, or clears the snooze when until
 // is nil, as one transaction.
-func (c BulkCoordinator) Snooze(taskIDs []string, until *time.Time) tea.Cmd {
+func (c BulkCoordinator) Defer(taskIDs []string, until *time.Time) tea.Cmd {
 	return runBatch("Bulk Snooze", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkSnooze(taskIDs, until)
+		res, err := c.bulk.BulkDefer(taskIDs, until)
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -411,9 +411,9 @@ func (c BulkCoordinator) Snooze(taskIDs []string, until *time.Time) tea.Cmd {
 	})
 }
 
-func (c BulkCoordinator) SnoozeLocators(locators []app.TaskLocator, until *time.Time) tea.Cmd {
+func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.Time) tea.Cmd {
 	return runBatch("Bulk Snooze", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkSnoozeByLocators(locators, until)
+		res, err := c.bulk.BulkDeferByLocators(locators, until)
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -692,11 +692,11 @@ func (c TaskItemCoordinator) SetDueDate(task TaskIdentity, due *time.Time) tea.C
 	}
 }
 
-// Snooze hides one task until until, or clears the snooze when until is nil, as
+// Defer hides one task until until, or clears the snooze when until is nil, as
 // one transaction.
-func (c TaskItemCoordinator) Snooze(task TaskIdentity, until *time.Time) tea.Cmd {
+func (c TaskItemCoordinator) Defer(task TaskIdentity, until *time.Time) tea.Cmd {
 	return runTask("Snooze", func() (app.TaskResult, error) {
-		return c.task.SnoozeByLocator(task.Locator(), until)
+		return c.task.DeferByLocator(task.Locator(), until)
 	})
 }
 

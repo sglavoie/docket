@@ -342,7 +342,7 @@ func TestQuickEditPreviewIsPureAndUsesCanonicalDestinationEffects(t *testing.T) 
 	future := time.Now().AddDate(0, 0, 7)
 	task := &models.Task{
 		ID: "task", ShortID: 1, Title: "Original", Priority: models.PriorityLow,
-		Tags: []string{"old"}, WorkflowState: models.StateWaiting, SnoozedUntil: &future,
+		Tags: []string{"old"}, WorkflowState: models.StateWaiting, DeferredUntil: &future,
 	}
 	project := &models.Project{ID: "project", Slug: "project", Tasks: []*models.Task{task}}
 	originalUpdated := task.UpdatedAt
@@ -351,11 +351,11 @@ func TestQuickEditPreviewIsPureAndUsesCanonicalDestinationEffects(t *testing.T) 
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
-	if task.Title != "Original" || task.Priority != models.PriorityLow || !slices.Equal(task.Tags, []string{"old"}) || task.State() != models.StateWaiting || task.SnoozedUntil != &future || task.UpdatedAt != originalUpdated {
+	if task.Title != "Original" || task.Priority != models.PriorityLow || !slices.Equal(task.Tags, []string{"old"}) || task.State() != models.StateWaiting || task.DeferredUntil != &future || task.UpdatedAt != originalUpdated {
 		t.Fatalf("source task mutated during preview: %+v", task)
 	}
 	preview := result.preview
-	if preview.Title != "Preview" || preview.Priority != models.PriorityHigh || !slices.Equal(preview.Tags, []string{"new"}) || preview.DueDate == nil || preview.State() != models.StateBacklog || preview.SnoozedUntil != nil || preview.ParentID != nil {
+	if preview.Title != "Preview" || preview.Priority != models.PriorityHigh || !slices.Equal(preview.Tags, []string{"new"}) || preview.DueDate == nil || preview.State() != models.StateBacklog || preview.DeferredUntil != nil || preview.ParentID != nil {
 		t.Fatalf("preview = %+v", preview)
 	}
 }

@@ -246,8 +246,8 @@ func quickEditOptionalMetadata(task *models.Task) []string {
 		}
 		parts = append(parts, prefix+task.DueDate.Format("Jan 2"))
 	}
-	if task.SnoozedUntil != nil {
-		parts = append(parts, "zzz "+formatSnoozeDate(*task.SnoozedUntil))
+	if task.DeferredUntil != nil {
+		parts = append(parts, "zzz "+formatSnoozeDate(*task.DeferredUntil))
 	}
 	if task.Pinned {
 		parts = append(parts, "pin")

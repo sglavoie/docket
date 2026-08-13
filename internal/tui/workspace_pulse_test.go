@@ -53,7 +53,7 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 	terminal.DueDate = &yesterday
 	snoozed := primaryRowsTask("snoozed", models.StateInbox)
 	snoozed.DueDate = &yesterday
-	snoozed.SnoozedUntil = &tomorrow
+	snoozed.DeferredUntil = &tomorrow
 
 	active := primaryRowsProject("active", parent, child, today, overdue, sameDayDue, terminal, snoozed)
 	nilTasks := primaryRowsProject("nil-tasks", nil)

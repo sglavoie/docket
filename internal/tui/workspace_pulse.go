@@ -66,7 +66,7 @@ func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[TaskIdentity]bo
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.State().IsTerminal() || task.IsSnoozedAt(now) {
+			if task == nil || task.State().IsTerminal() || task.IsDeferredAt(now) {
 				continue
 			}
 

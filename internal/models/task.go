@@ -52,8 +52,8 @@ type Task struct {
 	PinnedAt       *time.Time      `json:"pinned_at,omitempty"` // When the task was pinned
 	Comments       []*Comment      `json:"comments,omitempty"`  // Timestamped comments/notes
 	Attachments    []Attachment    `json:"attachments,omitempty"`
-	SnoozedUntil   *time.Time      `json:"snoozed_until,omitempty"` // Task hidden until this date
-	Checklist      []ChecklistItem `json:"checklist,omitempty"`     // Checklist items for subtasks
+	DeferredUntil  *time.Time      `json:"deferred_until,omitempty"` // Task hidden until this date
+	Checklist      []ChecklistItem `json:"checklist,omitempty"`      // Checklist items for subtasks
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

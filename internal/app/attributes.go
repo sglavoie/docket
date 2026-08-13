@@ -215,25 +215,25 @@ func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID 
 	}, nil
 }
 
-// Snooze hides a task until the given date, or clears the snooze when until is
-// nil. Snoozing a nonterminal task moves it to Backlog and removes it from both
-// planning horizons in the same transaction. Terminal tasks cannot be snoozed.
-func (s *Service) Snooze(taskID string, until *time.Time) (TaskResult, error) {
-	return s.snooze(taskID, TaskLocator{}, until)
+// Defer hides a task until the given date, or clears the deferral when until is
+// nil. Deferring a nonterminal task moves it to Backlog and removes it from both
+// planning horizons in the same transaction. Terminal tasks cannot be deferred.
+func (s *Service) Defer(taskID string, until *time.Time) (TaskResult, error) {
+	return s.deferTask(taskID, TaskLocator{}, until)
 }
 
-func (s *Service) SnoozeByLocator(locator TaskLocator, until *time.Time) (TaskResult, error) {
-	return s.snooze("", locator, until)
+func (s *Service) DeferByLocator(locator TaskLocator, until *time.Time) (TaskResult, error) {
+	return s.deferTask("", locator, until)
 }
 
-func (s *Service) snooze(taskID string, locator TaskLocator, until *time.Time) (TaskResult, error) {
+func (s *Service) deferTask(taskID string, locator TaskLocator, until *time.Time) (TaskResult, error) {
 	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
 	before, err := cloneSnapshot(snap)
 	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture snooze rollback state: %w", err)
+		return TaskResult{}, fmt.Errorf("capture deferral rollback state: %w", err)
 	}
 	useRollbackDocuments(before)
 	committed := false
@@ -245,9 +245,9 @@ func (s *Service) snooze(taskID string, locator TaskLocator, until *time.Time) (
 
 	now := s.clock.Now()
 	if until == nil {
-		ref.Task.SnoozedUntil = nil
+		ref.Task.DeferredUntil = nil
 		ref.Task.UpdatedAt = now
-		result, commitErr := s.commitProject(ref, revision, "Snooze Task", "clear")
+		result, commitErr := s.commitProject(ref, revision, "Defer Task", "clear")
 		if commitErr != nil {
 			return TaskResult{}, commitErr
 		}
@@ -255,20 +255,20 @@ func (s *Service) snooze(taskID string, locator TaskLocator, until *time.Time) (
 		return result, nil
 	}
 	if ref.Task.IsTerminalState() {
-		return TaskResult{}, invalidInput("snooze", fmt.Sprintf("cannot snooze a %s task", ref.Task.State()))
+		return TaskResult{}, invalidInput("defer", fmt.Sprintf("cannot defer a %s task", ref.Task.State()))
 	}
 	if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
-		return TaskResult{}, invalidInput("snooze", stateErr.Error())
+		return TaskResult{}, invalidInput("defer", stateErr.Error())
 	}
 	u := *until
-	ref.Task.SnoozedUntil = &u
+	ref.Task.DeferredUntil = &u
 	artifacts, err := s.transitionPlanningArtifacts(
 		ref, s.defaultedPlanningArtifacts(nil), true,
 	)
 	if err != nil {
 		return TaskResult{}, err
 	}
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Snooze Task", "snooze")
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Defer Task", "defer")
 	if err != nil {
 		return TaskResult{}, err
 	}

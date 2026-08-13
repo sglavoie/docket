@@ -1033,7 +1033,7 @@ func applicationTaskOperationRequest(
 		if !ok {
 			return request, "", "", true, fmt.Errorf("invalid snooze value")
 		}
-		request.Operation = app.TaskOperationSetSnooze
+		request.Operation = app.TaskOperationSetDefer
 		request.Date = cloneOperationDate(value.Date)
 		verb := "Snoozed"
 		if value.Date == nil {
@@ -1121,7 +1121,7 @@ func (m *AppModel) executeSingleTaskOperation(
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid snooze value")}
 		}
-		return cmdResult(m.secondaryFeatures.TaskItem.Snooze(identity, cloneOperationDate(value.Date)))
+		return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, cloneOperationDate(value.Date)))
 	case operationTaskSetTags:
 		tags, ok := invocation.Value.([]string)
 		if !ok {
@@ -1191,7 +1191,7 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid snooze value")}
 		}
-		return cmdResult(m.secondaryFeatures.Bulk.SnoozeLocators(locators, cloneOperationDate(value.Date)))
+		return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, cloneOperationDate(value.Date)))
 	case operationTaskSetTags:
 		tags, ok := invocation.Value.([]string)
 		if !ok {
@@ -1398,7 +1398,7 @@ func commonTaskDate(refs []TaskProjectRef, snooze bool) (*time.Time, bool) {
 	}
 	dateFor := func(task *models.Task) *time.Time {
 		if snooze {
-			return task.SnoozedUntil
+			return task.DeferredUntil
 		}
 		return task.DueDate
 	}

@@ -17,8 +17,8 @@ func TestTaskLineEditAppliesSameProjectPatchInOneTransaction(t *testing.T) {
 	task.Priority = models.PriorityLow
 	task.Tags = []string{"keep", "remove"}
 	task.ApplyWorkflowState(models.StateWaiting)
-	snooze := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
-	task.SnoozedUntil = &snooze
+	deferUntil := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
+	task.DeferredUntil = &deferUntil
 	child := newTask("child", 2, "Child")
 	child.ParentID = &task.ID
 	parent := newTask("parent", 3, "New parent")
@@ -89,8 +89,8 @@ func assertSameProjectTaskLineEdit(
 	if child.ParentID == nil || *child.ParentID != task.ID {
 		t.Fatalf("descendant hierarchy changed: child parent = %v", child.ParentID)
 	}
-	if task.State() != models.StateBacklog || task.SnoozedUntil != nil {
-		t.Fatalf("Next destination state/snooze = %s/%v", task.State(), task.SnoozedUntil)
+	if task.State() != models.StateBacklog || task.DeferredUntil != nil {
+		t.Fatalf("Next destination state/deferUntil = %s/%v", task.State(), task.DeferredUntil)
 	}
 	if len(planning.Targets) != 1 || planning.Targets[0].Next != app.PlanningNextAdd || planning.Targets[0].Today != app.PlanningTodayRemove {
 		t.Fatalf("planning request = %+v, want canonical Next directives", planning)
