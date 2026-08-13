@@ -3,20 +3,20 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "a lapsed snooze says the task came back", "assert": "contains", "value": "Alpha back from snooze woke" },
-    { "type": "assert", "label": "no row wears a stale past-dated zzz", "assert": "not_contains", "value": "zzz" },
+    { "type": "assert", "label": "a lapsed deferral says the task came back", "assert": "contains", "value": "Alpha back from a break woke" },
+    { "type": "assert", "label": "no row wears a stale past-dated defer marker", "assert": "not_contains", "value": "Alpha back from a break defer" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open the filter chord", "key": "f" },
-    { "type": "key", "label": "isolate the still-pending snoozes", "key": "z" },
-    { "type": "assert", "label": "a pending snooze keeps zzz and its wake date", "assert": "contains", "value": "Alpha still deferred zzz" },
-    { "type": "assert", "label": "the woken task is not snoozed any more", "assert": "not_contains", "value": "woke" },
+    { "type": "key", "label": "isolate the still-pending deferrals", "key": "z" },
+    { "type": "assert", "label": "a pending deferral keeps its marker and wake date", "assert": "contains", "value": "Alpha still hidden defer" },
+    { "type": "assert", "label": "the woken task is not deferred any more", "assert": "not_contains", "value": "Alpha back from a break woke" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "reopen the filter chord", "key": "f" },
     { "type": "key", "label": "clear every facet", "key": "x" },
-    { "type": "assert", "assert": "contains", "value": "Alpha back from snooze woke" },
-    { "type": "assert", "assert": "not_contains", "value": "zzz" },
+    { "type": "assert", "assert": "contains", "value": "Alpha back from a break woke" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha back from a break defer" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

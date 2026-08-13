@@ -43,7 +43,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
 		"tab": operationCoreNextWorkMode, "shift+tab": operationCorePreviousWorkMode,
 		"@": operationTaskSetDueDate,
-		"z": operationTaskSetSnooze, "P": operationTaskTogglePin,
+		"z": operationTaskSetDefer, "P": operationTaskTogglePin,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 	}
@@ -260,7 +260,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	t.Run("unreachable direct-only operation", func(t *testing.T) {
 		candidate := cloneInputStrategy(strategy)
 		candidate.Bindings = slices.DeleteFunc(candidate.Bindings, func(binding OperationKeyBinding) bool {
-			return binding.OperationID == operationTaskSetSnooze
+			return binding.OperationID == operationTaskSetDefer
 		})
 		err := validateTaskOperationOnePath(candidate)
 		if err == nil || !strings.Contains(err.Error(), "direct-only but has no direct binding") {

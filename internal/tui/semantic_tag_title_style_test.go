@@ -69,7 +69,7 @@ func TestSemanticTagTitleStylesIgnoreFormerMarkersAndPartialMatches(t *testing.T
 	}
 }
 
-func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T) {
+func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.T) {
 	tomorrow := time.Now().AddDate(0, 0, 1)
 	themes := []struct {
 		name  string
@@ -77,32 +77,32 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 			tag      string
 			base     string
 			selected string
-			snoozed  string
+			deferred string
 		}
 	}{
 		{name: "dark", roles: []struct {
 			tag      string
 			base     string
 			selected string
-			snoozed  string
+			deferred string
 		}{
-			{tag: "bug", base: "#ff9e9e", selected: "#ffd1d1", snoozed: "#c97b7b"},
-			{tag: "epic", base: "#bb9af7", selected: "#dccbff", snoozed: "#8d73bd"},
-			{tag: "story", base: "#7dcfff", selected: "#b6e5ff", snoozed: "#5f9bbf"},
-			{tag: "feature", base: "#b9f27c", selected: "#d7f7b5", snoozed: "#8bb65f"},
-			{tag: "idea", base: "#ff9e64", selected: "#ffd0b5", snoozed: "#b97852"},
+			{tag: "bug", base: "#ff9e9e", selected: "#ffd1d1", deferred: "#c97b7b"},
+			{tag: "epic", base: "#bb9af7", selected: "#dccbff", deferred: "#8d73bd"},
+			{tag: "story", base: "#7dcfff", selected: "#b6e5ff", deferred: "#5f9bbf"},
+			{tag: "feature", base: "#b9f27c", selected: "#d7f7b5", deferred: "#8bb65f"},
+			{tag: "idea", base: "#ff9e64", selected: "#ffd0b5", deferred: "#b97852"},
 		}},
 		{name: "light", roles: []struct {
 			tag      string
 			base     string
 			selected string
-			snoozed  string
+			deferred string
 		}{
-			{tag: "bug", base: "#b42318", selected: "#7f1d1d", snoozed: "#9f5656"},
-			{tag: "epic", base: "#6d28d9", selected: "#4c1d95", snoozed: "#8b6bb7"},
-			{tag: "story", base: "#0e7490", selected: "#155e75", snoozed: "#5f8793"},
-			{tag: "feature", base: "#237a3b", selected: "#14532d", snoozed: "#5f8f6c"},
-			{tag: "idea", base: "#c2410c", selected: "#9a3412", snoozed: "#9a6a55"},
+			{tag: "bug", base: "#b42318", selected: "#7f1d1d", deferred: "#9f5656"},
+			{tag: "epic", base: "#6d28d9", selected: "#4c1d95", deferred: "#8b6bb7"},
+			{tag: "story", base: "#0e7490", selected: "#155e75", deferred: "#5f8793"},
+			{tag: "feature", base: "#237a3b", selected: "#14532d", deferred: "#5f8f6c"},
+			{tag: "idea", base: "#c2410c", selected: "#9a3412", deferred: "#9a6a55"},
 		}},
 	}
 	for _, theme := range themes {
@@ -121,9 +121,9 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndSnoozedVariants(t *testing.T
 						t.Errorf("selected style foreground/bold = %v/%v, want %s/true", got, selected.GetBold(), role.selected)
 					}
 					base.DeferredUntil = &tomorrow
-					snoozed := TaskTitleStyleFor(base, TaskTitleStyleOptions{})
-					if got := snoozed.GetForeground(); got != lipgloss.Color(role.snoozed) || !snoozed.GetFaint() {
-						t.Errorf("snoozed style foreground/faint = %v/%v, want %s/true", got, snoozed.GetFaint(), role.snoozed)
+					deferred := TaskTitleStyleFor(base, TaskTitleStyleOptions{})
+					if got := deferred.GetForeground(); got != lipgloss.Color(role.deferred) || !deferred.GetFaint() {
+						t.Errorf("deferred style foreground/faint = %v/%v, want %s/true", got, deferred.GetFaint(), role.deferred)
 					}
 				})
 			}

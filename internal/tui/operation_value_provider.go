@@ -21,13 +21,13 @@ const (
 	operationTaskSetState    OperationID = "tui.task.set-state"
 	operationTaskSetPriority OperationID = "tui.task.set-priority"
 	operationTaskSetDueDate  OperationID = "tui.task.set-due-date"
-	operationTaskSetSnooze   OperationID = "tui.task.set-snooze"
+	operationTaskSetDefer    OperationID = "tui.task.set-defer"
 	operationTaskSetTags     OperationID = "tui.task.set-tags"
 	operationTaskIndent      OperationID = "tui.task.indent"
 	operationTaskOutdent     OperationID = "tui.task.outdent"
 )
 
-// OperationDateValue is the picker-neutral due/snooze payload. Nil clears the field.
+// OperationDateValue is the picker-neutral due/defer payload. Nil clears the field.
 type OperationDateValue struct {
 	Date *time.Time
 }
@@ -683,7 +683,7 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		if entity.Archived && entry.Risk != OperationRiskReadOnly {
 			return false
 		}
-		if context.Selection.Visual && id == operationTaskSetSnooze && !taskStateAllowsSnooze(entity.State) {
+		if context.Selection.Visual && id == operationTaskSetDefer && !taskStateAllowsDefer(entity.State) {
 			return false
 		}
 		if !m.taskStructureAllowsOperation(id, entity) {
@@ -696,7 +696,7 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 	return true
 }
 
-func taskStateAllowsSnooze(state string) bool {
+func taskStateAllowsDefer(state string) bool {
 	switch models.WorkflowState(state) {
 	case models.StateInbox, models.StateBacklog, models.StateDoing,
 		models.StateWaiting, models.StatePaused, models.StateSomeday:
@@ -747,7 +747,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		ValueProviderState,
 		ValueProviderPriority,
 		ValueProviderDueDate,
-		ValueProviderSnooze,
+		ValueProviderDefer,
 		ValueProviderTags,
 	} {
 		if err := executor.RegisterValueProvider(provider, func(OperationInvocation) OperationValueProviderResult {
@@ -801,7 +801,7 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 	case ValueProviderProjectTagDestination:
 		_, ok := value.(string)
 		return ok
-	case ValueProviderDueDate, ValueProviderSnooze:
+	case ValueProviderDueDate, ValueProviderDefer:
 		_, ok := value.(OperationDateValue)
 		return ok
 	case ValueProviderTags:
@@ -1028,19 +1028,19 @@ func applicationTaskOperationRequest(
 		return request, "Set Due Date",
 			fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
 
-	case operationTaskSetSnooze:
+	case operationTaskSetDefer:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
-			return request, "", "", true, fmt.Errorf("invalid snooze value")
+			return request, "", "", true, fmt.Errorf("invalid defer value")
 		}
 		request.Operation = app.TaskOperationSetDefer
 		request.Date = cloneOperationDate(value.Date)
-		verb := "Snoozed"
+		verb := "Deferred"
 		if value.Date == nil {
-			verb = "Cleared snooze on"
+			verb = "Cleared defer on"
 		}
-		return request, "Set Snooze",
-			fmt.Sprintf("Set Snooze · %s %d task(s)", verb, count), true, nil
+		return request, "Set Defer",
+			fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
 
 	case operationTaskSetTags:
 		switch value := invocation.Value.(type) {
@@ -1116,10 +1116,10 @@ func (m *AppModel) executeSingleTaskOperation(
 			return OperationHandlerResult{Err: fmt.Errorf("invalid due-date value")}
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date)))
-	case operationTaskSetSnooze:
+	case operationTaskSetDefer:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid snooze value")}
+			return OperationHandlerResult{Err: fmt.Errorf("invalid defer value")}
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, cloneOperationDate(value.Date)))
 	case operationTaskSetTags:
@@ -1186,10 +1186,10 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			locators,
 			*cloneOperationDate(value.Date),
 		))
-	case operationTaskSetSnooze:
+	case operationTaskSetDefer:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid snooze value")}
+			return OperationHandlerResult{Err: fmt.Errorf("invalid defer value")}
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, cloneOperationDate(value.Date)))
 	case operationTaskSetTags:
@@ -1301,15 +1301,15 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			selected,
 		)
-	case ValueProviderSnooze:
+	case ValueProviderDefer:
 		selected := []ListItemID(nil)
 		if date, ok := commonTaskDate(refs, true); ok {
-			selected = snoozeSelectedID(date)
+			selected = deferSelectedID(date)
 		}
 		return newOperationValuePickerModel(
 			request,
 			provider,
-			"Set Snooze",
+			"Set Defer",
 			subtitle,
 			operationDateListSource(true),
 			false,
@@ -1392,12 +1392,12 @@ func commonTaskPriority(refs []TaskProjectRef) (int, bool) {
 	return priority, true
 }
 
-func commonTaskDate(refs []TaskProjectRef, snooze bool) (*time.Time, bool) {
+func commonTaskDate(refs []TaskProjectRef, deferred bool) (*time.Time, bool) {
 	if len(refs) == 0 || refs[0].Task == nil {
 		return nil, false
 	}
 	dateFor := func(task *models.Task) *time.Time {
-		if snooze {
+		if deferred {
 			return task.DeferredUntil
 		}
 		return task.DueDate
@@ -1439,7 +1439,7 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership 
 	return membership
 }
 
-func operationDateListSource(snooze bool) ListSource {
+func operationDateListSource(deferred bool) ListSource {
 	today := util.StartOfDay(time.Now())
 	type preset struct {
 		id    string
@@ -1454,9 +1454,9 @@ func operationDateListSource(snooze bool) ListSource {
 		{id: "week", label: "In one week", days: 7},
 		{id: "month", label: "In one month", days: 30},
 	}
-	if snooze {
+	if deferred {
 		presets = []preset{
-			{id: "clear", label: "Clear snooze", clear: true},
+			{id: "clear", label: "Clear defer", clear: true},
 			{id: "tomorrow", label: "Until tomorrow", days: 1},
 			{id: "week", label: "For one week", days: 7},
 			{id: "month", label: "For one month", days: 30},
@@ -1489,19 +1489,19 @@ func dueDateSelectedID(date *time.Time) []ListItemID {
 	return relativeDateSelectedID(date, false)
 }
 
-func snoozeSelectedID(date *time.Time) []ListItemID {
+func deferSelectedID(date *time.Time) []ListItemID {
 	if date == nil {
 		return []ListItemID{"date:clear"}
 	}
 	return relativeDateSelectedID(date, true)
 }
 
-func relativeDateSelectedID(date *time.Time, snooze bool) []ListItemID {
+func relativeDateSelectedID(date *time.Time, deferred bool) []ListItemID {
 	today := util.StartOfDay(time.Now())
 	days := int(util.StartOfDay(*date).Sub(today).Hours() / 24)
 	switch days {
 	case 0:
-		if !snooze {
+		if !deferred {
 			return []ListItemID{"date:today"}
 		}
 	case 1:

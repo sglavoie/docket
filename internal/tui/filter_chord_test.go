@@ -89,7 +89,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	taskFilter.Priority = models.PriorityHigh
 	taskFilter.DueDate = DueDateToday
 	taskFilter.Tags = map[string]bool{reviewTaskTag: true, "deep": true}
-	taskFilter.Snoozed = true
+	taskFilter.Deferred = true
 	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +223,7 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	filter.Priority = 2
 	filter.DueDate = DueDateToday
 	filter.Tags = map[string]bool{"deep": true}
-	filter.Snoozed = true
+	filter.Deferred = true
 	set, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
@@ -305,20 +305,20 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	}
 }
 
-func TestFilterChordSnoozedFacet(t *testing.T) {
+func TestFilterChordDeferredFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
 
 	if cmd := pressFilterChord(t, app, "fz"); cmd == nil {
 		t.Fatal("fz produced no status command")
 	}
-	if !filter.Snoozed {
-		t.Fatal("fz did not enable the snoozed-only facet")
+	if !filter.Deferred {
+		t.Fatal("fz did not enable the deferred-only facet")
 	}
 
 	pressFilterChord(t, app, "fx")
-	if filter.Snoozed {
-		t.Fatalf("fx left snoozed enabled: %+v", filter)
+	if filter.Deferred {
+		t.Fatalf("fx left deferred enabled: %+v", filter)
 	}
 }
 

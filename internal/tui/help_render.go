@@ -33,7 +33,7 @@ var helpCategoryIntent = map[string]string{
 	"Status":          "Resolve",
 	"Priority":        "Resolve",
 	"Due Date":        "Route & Schedule",
-	"Snooze":          "Route & Schedule",
+	"Defer":           "Route & Schedule",
 	"Linked Tasks":    "Refine",
 	"Folds":           "View Controls",
 	"Filters":         "View Controls",

@@ -26,7 +26,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Set Snooze has no item meaning", "key": "z" },
+    { "type": "key", "label": "Set Defer has no item meaning", "key": "z" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "Toggle Pin has no item meaning", "key": "P" },

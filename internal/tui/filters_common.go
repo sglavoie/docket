@@ -18,7 +18,7 @@ type CommonFilterState struct {
 	Tags          map[string]bool         // filter by tag names (AND logic)
 	DueDate       DueDateFilter           // filter by due date
 	CompletionAge CompletionAgeFilter     // local-calendar age threshold for completed tasks
-	Snoozed       bool                    // only show currently snoozed tasks
+	Deferred      bool                    // only show currently deferred tasks
 	Pinned        bool                    // only show pinned tasks
 
 	// statesSet distinguishes no state predicate from an explicit empty
@@ -36,7 +36,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		Priority:         src.Priority,
 		DueDate:          src.DueDate,
 		CompletionAge:    src.CompletionAge,
-		Snoozed:          src.Snoozed,
+		Deferred:         src.Deferred,
 		Pinned:           src.Pinned,
 		statesSet:        src.statesSet,
 		completionAgeSet: src.completionAgeSet,
@@ -91,7 +91,7 @@ func passesCommonFiltersAt(
 	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
 		return false
 	}
-	if f.Snoozed && !task.IsDeferredAt(now) {
+	if f.Deferred && !task.IsDeferredAt(now) {
 		return false
 	}
 	if f.Pinned && !task.Pinned {
@@ -150,7 +150,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Priority != 0 ||
 		len(f.Tags) > 0 ||
 		f.DueDate != DueDateAll ||
-		f.Snoozed ||
+		f.Deferred ||
 		f.Pinned
 }
 
@@ -177,7 +177,7 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 	if f.DueDate != DueDateAll {
 		count++
 	}
-	if f.Snoozed {
+	if f.Deferred {
 		count++
 	}
 	if f.Pinned {
@@ -203,7 +203,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.DueDate = DueDateAll
 	f.CompletionAge = CompletionAgeAll
 	f.completionAgeSet = false
-	f.Snoozed = false
+	f.Deferred = false
 	f.Pinned = false
 }
 
@@ -255,8 +255,8 @@ func commonFilterParts(f *CommonFilterState) []string {
 		parts = append(parts, "due:none")
 	default:
 	}
-	if f.Snoozed {
-		parts = append(parts, "snoozed")
+	if f.Deferred {
+		parts = append(parts, "deferred")
 	}
 	if f.Pinned {
 		parts = append(parts, "pinned")

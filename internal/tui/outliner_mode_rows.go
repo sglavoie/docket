@@ -37,7 +37,7 @@ type OutlinerModeInput struct {
 	// orders by its live UpdatedAt.
 	RecencyKeys     map[TaskIdentity]time.Time
 	Now             time.Time
-	IncludeSnoozed  bool
+	IncludeDeferred bool
 	IncludeTerminal bool
 }
 
@@ -76,7 +76,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 			continue
 		}
 		seen[identity] = true
-		if !planningTodayEligible(task) || (task.IsDeferredAt(now) && !in.IncludeSnoozed) {
+		if !planningTodayEligible(task) || (task.IsDeferredAt(now) && !in.IncludeDeferred) {
 			continue
 		}
 		if in.TaskExclude != nil && in.TaskExclude(task, project) {
@@ -109,7 +109,7 @@ func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 		}
 		task := project.GetTaskByID(locator.TaskID)
 		if task == nil || !task.State().IsValid() || task.IsTerminalState() ||
-			(task.IsDeferredAt(now) && !in.IncludeSnoozed) {
+			(task.IsDeferredAt(now) && !in.IncludeDeferred) {
 			continue
 		}
 		if in.TaskExclude != nil && in.TaskExclude(task, project) {

@@ -258,7 +258,7 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 				hint.Label = "review:on"
 			}
 		case "z":
-			if filter.Snoozed {
+			if filter.Deferred {
 				hint.Label = "snoozed:on"
 			}
 		case "x":

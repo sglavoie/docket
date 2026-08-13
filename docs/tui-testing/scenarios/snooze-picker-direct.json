@@ -6,19 +6,19 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
-    { "type": "key", "label": "open the snooze picker with its direct key", "key": "z" },
-    { "type": "assert", "assert": "contains", "value": "Set Snooze: Build login form" },
+    { "type": "key", "label": "open the defer picker with its direct key", "key": "z" },
+    { "type": "assert", "assert": "contains", "value": "Set Defer: Build login form" },
     { "type": "assert", "assert": "contains", "value": "Clear" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "not_contains", "value": "Set Snooze" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Defer" },
 
     { "type": "key", "label": "reopen the picker", "key": "z" },
     { "type": "key", "label": "highlight the first relative preset", "key": "j" },
-    { "type": "key", "label": "commit the snooze", "key": "enter" },
+    { "type": "key", "label": "commit the deferral", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the picker chrome is gone; only its status remains", "assert": "not_contains", "value": "Esc back" },

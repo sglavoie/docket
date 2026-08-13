@@ -105,9 +105,9 @@ func (m *OutlinerModel) buildModeCandidateInput(
 ) OutlinerModeInput {
 	input := m.buildOutlinerModeInput(projects)
 	recent := mode == ModeRecent
-	// Recent reports what happened, so it owns terminal and snoozed membership
+	// Recent reports what happened, so it owns terminal and deferred membership
 	// instead of waiting for an explicit facet to admit them.
-	input.IncludeSnoozed = recent || m.hasExplicitSnoozedFilter()
+	input.IncludeDeferred = recent || m.hasExplicitDeferredFilter()
 	input.IncludeTerminal = recent || m.hasExplicitTerminalFilter()
 	input.CandidateTasks = make(map[string][]*models.Task, len(projects))
 	for _, project := range projects {

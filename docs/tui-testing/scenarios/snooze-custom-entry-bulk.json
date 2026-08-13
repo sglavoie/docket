@@ -12,8 +12,8 @@
     { "type": "key", "label": "select a second, non-adjacent task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
 
-    { "type": "key", "label": "open the snooze picker over the selection", "key": "z" },
-    { "type": "assert", "assert": "contains", "value": "Set Snooze" },
+    { "type": "key", "label": "open the defer picker over the selection", "key": "z" },
+    { "type": "assert", "assert": "contains", "value": "Set Defer" },
     { "type": "key", "label": "typed entry is reachable on the bulk path too", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
     { "type": "text", "text": "2027-04-20" },
@@ -22,7 +22,7 @@
 
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Defer" },
-    { "type": "assert", "label": "one transaction snoozed both selected tasks out of the projection", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "label": "one transaction deferred both selected tasks out of the projection", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

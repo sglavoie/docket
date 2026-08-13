@@ -39,10 +39,10 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 	alpha := primaryRowsProject("alpha", parent, child, unplannedDescendant, terminal)
 
 	sameID := primaryRowsTask("child", models.StatePaused)
-	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
+	deferred := primaryRowsTask("deferred", models.StateBacklog)
 	future := time.Now().AddDate(0, 0, 2)
-	snoozed.DeferredUntil = &future
-	beta := primaryRowsProject("beta", sameID, snoozed)
+	deferred.DeferredUntil = &future
+	beta := primaryRowsProject("beta", sameID, deferred)
 
 	rows := BuildTodayModeRows(OutlinerModeInput{
 		Projects: []*models.Project{alpha, beta},
@@ -50,7 +50,7 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 			{Task: child, Project: alpha},
 			{Task: sameID, Project: beta},
 			{Task: parent, Project: alpha},
-			{Task: snoozed, Project: beta},
+			{Task: deferred, Project: beta},
 			{Task: terminal, Project: alpha},
 		},
 	})
@@ -69,12 +69,12 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 	}
 
 	rows = BuildTodayModeRows(OutlinerModeInput{
-		Projects:       []*models.Project{alpha, beta},
-		TodayOrder:     []PlanningTask{{Task: snoozed, Project: beta}},
-		IncludeSnoozed: true,
+		Projects:        []*models.Project{alpha, beta},
+		TodayOrder:      []PlanningTask{{Task: deferred, Project: beta}},
+		IncludeDeferred: true,
 	})
-	if got := modeRowQualifiedIDs(rows); !slices.Equal(got, []string{"beta/snoozed"}) {
-		t.Fatalf("explicit snoozed Today projection = %v", got)
+	if got := modeRowQualifiedIDs(rows); !slices.Equal(got, []string{"beta/deferred"}) {
+		t.Fatalf("explicit deferred Today projection = %v", got)
 	}
 }
 

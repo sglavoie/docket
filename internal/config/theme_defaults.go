@@ -35,11 +35,11 @@ func DefaultLightTheme() Theme {
 			SemanticStorySelectedTitle:   "#155e75",
 			SemanticFeatureSelectedTitle: "#14532d",
 			SemanticIdeaSelectedTitle:    "#9a3412",
-			SemanticBugSnoozedTitle:      "#9f5656",
-			SemanticEpicSnoozedTitle:     "#8b6bb7",
-			SemanticStorySnoozedTitle:    "#5f8793",
-			SemanticFeatureSnoozedTitle:  "#5f8f6c",
-			SemanticIdeaSnoozedTitle:     "#9a6a55",
+			SemanticBugDeferredTitle:     "#9f5656",
+			SemanticEpicDeferredTitle:    "#8b6bb7",
+			SemanticStoryDeferredTitle:   "#5f8793",
+			SemanticFeatureDeferredTitle: "#5f8f6c",
+			SemanticIdeaDeferredTitle:    "#9a6a55",
 		},
 	}
 }
@@ -79,11 +79,11 @@ func DefaultDarkTheme() Theme {
 			SemanticStorySelectedTitle:   "#b6e5ff",
 			SemanticFeatureSelectedTitle: "#d7f7b5",
 			SemanticIdeaSelectedTitle:    "#ffd0b5",
-			SemanticBugSnoozedTitle:      "#c97b7b",
-			SemanticEpicSnoozedTitle:     "#8d73bd",
-			SemanticStorySnoozedTitle:    "#5f9bbf",
-			SemanticFeatureSnoozedTitle:  "#8bb65f",
-			SemanticIdeaSnoozedTitle:     "#b97852",
+			SemanticBugDeferredTitle:     "#c97b7b",
+			SemanticEpicDeferredTitle:    "#8d73bd",
+			SemanticStoryDeferredTitle:   "#5f9bbf",
+			SemanticFeatureDeferredTitle: "#8bb65f",
+			SemanticIdeaDeferredTitle:    "#b97852",
 		},
 	}
 }

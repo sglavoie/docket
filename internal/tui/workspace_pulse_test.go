@@ -51,11 +51,11 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 	sameDayDue.DueDate = &now
 	terminal := primaryRowsTask("terminal", models.StateDone)
 	terminal.DueDate = &yesterday
-	snoozed := primaryRowsTask("snoozed", models.StateInbox)
-	snoozed.DueDate = &yesterday
-	snoozed.DeferredUntil = &tomorrow
+	deferred := primaryRowsTask("deferred", models.StateInbox)
+	deferred.DueDate = &yesterday
+	deferred.DeferredUntil = &tomorrow
 
-	active := primaryRowsProject("active", parent, child, today, overdue, sameDayDue, terminal, snoozed)
+	active := primaryRowsProject("active", parent, child, today, overdue, sameDayDue, terminal, deferred)
 	nilTasks := primaryRowsProject("nil-tasks", nil)
 	parked := primaryRowsProject("parked", primaryRowsTask("parked-inbox", models.StateInbox))
 	parked.Tags = []string{models.ParkedProjectTag}
@@ -67,7 +67,7 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 	todayIDs := map[TaskIdentity]bool{
 		taskIdentityFor(today, active):                 true,
 		taskIdentityFor(terminal, active):              true,
-		taskIdentityFor(snoozed, active):               true,
+		taskIdentityFor(deferred, active):              true,
 		{ProjectID: active.ID, TaskID: "stale"}:        true,
 		{ProjectID: parked.ID, TaskID: "parked-inbox"}: true,
 	}

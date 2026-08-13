@@ -76,7 +76,7 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 
 // inlinePeekDatesLine names the task clock the row has no width for: how long
 // ago it was created and last touched, when it is due, and whether it recently
-// came back from a snooze. Labels stay muted and values take the footer's key
+// came back from a deferral. Labels stay muted and values take the footer's key
 // color, so the durations read as data rather than as prose.
 func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	if task == nil || width <= 0 {

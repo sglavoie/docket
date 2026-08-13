@@ -57,7 +57,7 @@ func semanticTaskTitleStyle(
 	role models.SemanticTaskTagRole,
 	priority int,
 	selected bool,
-	snoozed bool,
+	deferred bool,
 ) lipgloss.Style {
 	style := GetTitlePriorityStyle(priority)
 	var foreground color.Color
@@ -78,21 +78,21 @@ func semanticTaskTitleStyle(
 		case models.SemanticTaskTagIdea:
 			foreground = ColorSemanticIdeaSelectedTitle
 		}
-	case snoozed:
+	case deferred:
 		style = style.Faint(true)
 		switch role {
 		case models.SemanticTaskTagNone:
 			return style
 		case models.SemanticTaskTagBug:
-			foreground = ColorSemanticBugSnoozedTitle
+			foreground = ColorSemanticBugDeferredTitle
 		case models.SemanticTaskTagEpic:
-			foreground = ColorSemanticEpicSnoozedTitle
+			foreground = ColorSemanticEpicDeferredTitle
 		case models.SemanticTaskTagStory:
-			foreground = ColorSemanticStorySnoozedTitle
+			foreground = ColorSemanticStoryDeferredTitle
 		case models.SemanticTaskTagFeature:
-			foreground = ColorSemanticFeatureSnoozedTitle
+			foreground = ColorSemanticFeatureDeferredTitle
 		case models.SemanticTaskTagIdea:
-			foreground = ColorSemanticIdeaSnoozedTitle
+			foreground = ColorSemanticIdeaDeferredTitle
 		}
 	default:
 		switch role {

@@ -18,7 +18,7 @@ const (
 	ColAttachments = "attachments"
 	ColChecklist   = "checklist"
 	ColProgress    = "progress"
-	ColSnooze      = "snooze"
+	ColDefer       = "defer"
 	ColRecency     = "recency"
 )
 
@@ -31,7 +31,7 @@ var DefaultOutlinerColumns = map[string]bool{
 	ColAttachments: true,
 	ColChecklist:   true,
 	ColProgress:    true,
-	ColSnooze:      true,
+	ColDefer:       true,
 	ColRecency:     true,
 }
 

@@ -113,7 +113,7 @@ func isComputedOpenWork(task *models.Task, in OutlinerModeInput) bool {
 	if task == nil || (task.IsTerminalState() && !in.IncludeTerminal) {
 		return false
 	}
-	return in.IncludeSnoozed || !task.IsDeferredAt(in.now())
+	return in.IncludeDeferred || !task.IsDeferredAt(in.now())
 }
 
 // BuildDueModeSections returns dated open work in the accepted local
@@ -167,8 +167,8 @@ func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 }
 
 // BuildRecentModeSections returns tasks touched within the cutoff, newest first,
-// in local calendar-day buckets. Terminal and snoozed membership is the caller's
-// decision through IncludeTerminal and IncludeSnoozed.
+// in local calendar-day buckets. Terminal and deferred membership is the caller's
+// decision through IncludeTerminal and IncludeDeferred.
 func BuildRecentModeSections(in OutlinerModeInput) []OutlinerModeSection {
 	in.Now = in.now()
 	sections := []OutlinerModeSection{

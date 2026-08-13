@@ -20,9 +20,9 @@ func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
 	child.Title = "Child title"
 	child.Description = "contains Needle"
 	child.ParentID = &parent.ID
-	snoozed := primaryRowsTask("snoozed", models.StateSomeday)
-	snoozed.Title = "Needle snoozed"
-	snoozed.DeferredUntil = &tomorrow
+	deferred := primaryRowsTask("deferred", models.StateSomeday)
+	deferred.Title = "Needle deferred"
+	deferred.DeferredUntil = &tomorrow
 	inbox := primaryRowsTask("inbox", models.StateInbox)
 	inbox.Title = "Needle inbox"
 	inbox.Priority = models.PriorityLow
@@ -30,7 +30,7 @@ func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
 	done.Title = "Needle done"
 	canceled := primaryRowsTask("canceled", models.StateCanceled)
 	canceled.Title = "Needle canceled"
-	alpha := primaryRowsProject("alpha", parent, child, snoozed, inbox, done, canceled)
+	alpha := primaryRowsProject("alpha", parent, child, deferred, inbox, done, canceled)
 
 	other := primaryRowsTask("other", models.StateBacklog)
 	other.Title = "Needle other project"
@@ -45,7 +45,7 @@ func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
 
 	got := qualifiedVisibleTaskIDs(outliner)
 	want := []TaskIdentity{
-		{ProjectID: alpha.ID, TaskID: snoozed.ID},
+		{ProjectID: alpha.ID, TaskID: deferred.ID},
 		{ProjectID: alpha.ID, TaskID: inbox.ID},
 		{ProjectID: alpha.ID, TaskID: child.ID},
 	}

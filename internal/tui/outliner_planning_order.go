@@ -148,7 +148,7 @@ func (m *OutlinerModel) globalNextOrder() []config.ProjectTaskLocator {
 	input.CandidateTasks = nil
 	input.TaskFilter = nil
 	input.TaskExclude = nil
-	input.IncludeSnoozed = true
+	input.IncludeDeferred = true
 	rows := BuildNextModeRows(input)
 	order := make([]config.ProjectTaskLocator, 0, len(rows))
 	for _, r := range rows {

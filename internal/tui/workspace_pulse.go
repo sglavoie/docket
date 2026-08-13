@@ -12,7 +12,7 @@ import (
 )
 
 // WorkspacePulse is the compact operational readout shared by task-workspace
-// presentations. Every component counts actionable work: terminal and snoozed
+// presentations. Every component counts actionable work: terminal and deferred
 // tasks are excluded from Inbox, Today, and Overdue.
 type WorkspacePulse struct {
 	Inbox   int

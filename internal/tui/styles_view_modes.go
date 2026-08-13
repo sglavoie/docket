@@ -12,7 +12,7 @@ var (
 	ViewModeSomedayStyle   = makeViewModeStyle("#3d2a5c", "#6d28d9")
 	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
 	ViewModeStandbyStyle   = makeViewModeStyle("#4a2e6a", "#7c3aed")
-	ViewModeSnoozedStyle   = makeViewModeStyle("#4a2e3a", "#7c2d12")
+	ViewModeDeferredStyle  = makeViewModeStyle("#4a2e3a", "#7c2d12")
 	ViewModeCanceledStyle  = makeViewModeStyle("#4a2430", "#991b1b")
 	ViewModeAllStyle       = makeViewModeStyle("#283352", "#0369a1")
 

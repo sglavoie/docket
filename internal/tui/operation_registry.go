@@ -67,7 +67,7 @@ const (
 	ValueProviderState     ValueProviderID = "state"
 	ValueProviderPriority  ValueProviderID = "priority"
 	ValueProviderDueDate   ValueProviderID = "due-date"
-	ValueProviderSnooze    ValueProviderID = "snooze"
+	ValueProviderDefer     ValueProviderID = "defer"
 	ValueProviderTags      ValueProviderID = "tags"
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
@@ -120,7 +120,7 @@ func (id ValueProviderID) tagEntry() bool {
 // presets cannot express. The calendar is not a closed enumeration either, so
 // both date providers need the same escape hatch.
 func (id ValueProviderID) dateEntry() bool {
-	return id == ValueProviderDueDate || id == ValueProviderSnooze
+	return id == ValueProviderDueDate || id == ValueProviderDefer
 }
 
 func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {

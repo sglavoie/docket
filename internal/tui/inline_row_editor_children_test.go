@@ -223,7 +223,7 @@ func TestInlineRowEditorChildAcceptanceRepeatsWhileParentStaysSingleton(t *testi
 
 func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 	out, project, child := inlineEditorChildFixture(t)
-	// The shared fixture snoozes the edited task, which the default projection
+	// The shared fixture defers the edited task, which the default projection
 	// hides; the row has to exist before the editor can be rendered into it.
 	child.DeferredUntil = nil
 	out.SetSize(minTerminalWidth, 14)

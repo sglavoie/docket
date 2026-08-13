@@ -384,7 +384,7 @@ type taskIndicatorSegments struct {
 	waiting     string
 	check       string
 	due         string
-	snooze      string
+	deferred    string
 	checklist   string
 	comments    string
 	attachments string
@@ -396,7 +396,7 @@ func (segments taskIndicatorSegments) render() string {
 		segments.waiting,
 		segments.check,
 		segments.due,
-		segments.snooze,
+		segments.deferred,
 		segments.checklist,
 		segments.comments,
 		segments.attachments,
@@ -416,7 +416,7 @@ var indicatorDropLadder = []func(*taskIndicatorSegments){
 	func(segments *taskIndicatorSegments) { segments.comments = "" },
 	func(segments *taskIndicatorSegments) { segments.attachments = "" },
 	func(segments *taskIndicatorSegments) { segments.recency = "" },
-	func(segments *taskIndicatorSegments) { segments.snooze = "" },
+	func(segments *taskIndicatorSegments) { segments.deferred = "" },
 	func(segments *taskIndicatorSegments) { segments.waiting = "" },
 	func(segments *taskIndicatorSegments) { segments.due = "" },
 	func(segments *taskIndicatorSegments) { segments.check = "" },
@@ -447,8 +447,8 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	if segments.check == "" && m.columnConfig.IsVisible(ColDueDate) {
 		segments.due = formatDueDate(task)
 	}
-	if task.DeferredUntil != nil && m.columnConfig.IsVisible(ColSnooze) {
-		segments.snooze = formatSnoozeIndicator(task, now)
+	if task.DeferredUntil != nil && m.columnConfig.IsVisible(ColDefer) {
+		segments.deferred = formatDeferIndicator(task, now)
 	}
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)
@@ -495,13 +495,13 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 	}
 }
 
-// formatSnoozeIndicator separates a pending snooze from one that has lapsed. A
-// woken task still wearing a past-dated `zzz` reads as deferred, so the row
+// formatDeferIndicator separates a pending deferral from one that has lapsed. A
+// woken task still wearing a past-dated `defer` reads as deferred, so the row
 // says it came back and how long ago, then falls silent once the wake window
 // closes and the task is ordinary work again.
-func formatSnoozeIndicator(task *models.Task, now time.Time) string {
+func formatDeferIndicator(task *models.Task, now time.Time) string {
 	if task.IsDeferredAt(now) {
-		return MutedStyle.Render("zzz " + formatSnoozeDate(*task.DeferredUntil))
+		return MutedStyle.Render("defer " + formatDeferDate(*task.DeferredUntil))
 	}
 	if !taskWokeRecently(task, now) {
 		return ""
@@ -509,7 +509,7 @@ func formatSnoozeIndicator(task *models.Task, now time.Time) string {
 	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
 }
 
-// taskWokeRecently reports whether a lapsed snooze is still inside the wake
+// taskWokeRecently reports whether a lapsed deferral is still inside the wake
 // window. The row indicator and the Peek dates line both ask before announcing
 // that a task came back, and a second copy of the predicate would let one
 // surface keep saying `woke` after the other went quiet.
@@ -517,7 +517,7 @@ func taskWokeRecently(task *models.Task, now time.Time) bool {
 	if task == nil || task.DeferredUntil == nil || task.IsDeferredAt(now) {
 		return false
 	}
-	return now.Sub(*task.DeferredUntil) < snoozeWakeWindow
+	return now.Sub(*task.DeferredUntil) < deferWakeWindow
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {

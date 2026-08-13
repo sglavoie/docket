@@ -14,10 +14,10 @@ import (
 // while this value remembers only the mode and the three predicates needed to
 // migrate retired modes without losing their meaning.
 type OutlinerRouteState struct {
-	Mode          string                  `json:"mode,omitempty"`
-	FilterStates  models.WorkflowStateSet `json:"filter_states,omitzero"`
-	FilterSnoozed bool                    `json:"filter_snoozed,omitempty"`
-	FilterPinned  bool                    `json:"filter_pinned,omitempty"`
+	Mode           string                  `json:"mode,omitempty"`
+	FilterStates   models.WorkflowStateSet `json:"filter_states,omitzero"`
+	FilterDeferred bool                    `json:"filter_snoozed,omitempty"`
+	FilterPinned   bool                    `json:"filter_pinned,omitempty"`
 }
 
 // UnmarshalJSON keeps legacy route persistence readable without making retired
@@ -25,10 +25,10 @@ type OutlinerRouteState struct {
 // Backlog, matching task-state conversion; unknown values remain hard errors.
 func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Mode          string                 `json:"mode,omitempty"`
-		FilterStates  []models.WorkflowState `json:"filter_states,omitempty"`
-		FilterSnoozed bool                   `json:"filter_snoozed,omitempty"`
-		FilterPinned  bool                   `json:"filter_pinned,omitempty"`
+		Mode           string                 `json:"mode,omitempty"`
+		FilterStates   []models.WorkflowState `json:"filter_states,omitempty"`
+		FilterDeferred bool                   `json:"filter_snoozed,omitempty"`
+		FilterPinned   bool                   `json:"filter_pinned,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -50,10 +50,10 @@ func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*s = OutlinerRouteState{
-		Mode:          raw.Mode,
-		FilterStates:  filterStates,
-		FilterSnoozed: raw.FilterSnoozed,
-		FilterPinned:  raw.FilterPinned,
+		Mode:           raw.Mode,
+		FilterStates:   filterStates,
+		FilterDeferred: raw.FilterDeferred,
+		FilterPinned:   raw.FilterPinned,
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.FilterStates = mustWorkflowStateSet(models.StateBacklog)
 	case "snoozed":
 		state.Mode = OutlinerModeAll
-		state.FilterSnoozed = true
+		state.FilterDeferred = true
 	case "completed", "complete", "done":
 		state.Mode = OutlinerModeAll
 		state.FilterStates = mustWorkflowStateSet(models.StateDone, models.StateCanceled)

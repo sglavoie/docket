@@ -17,7 +17,7 @@ func (m *OutlinerModel) ActiveFilterCount() int {
 }
 
 // activeFilterParts returns the list of active filter description strings
-// (state, priority, tags, due date, completion age, snoozed, and pinned).
+// (state, priority, tags, due date, completion age, deferred, and pinned).
 func (m *OutlinerModel) activeFilterParts() []string {
 	return commonFilterParts(&m.filter.CommonFilterState)
 }
@@ -230,7 +230,7 @@ func quickEditWorkflowLabel(row outlinerRow, task *models.Task, preview *quickEd
 
 // quickEditOptionalMetadata is ordered from strongest to weakest. Appending
 // until the first width miss yields the required reverse degradation ladder:
-// tags, pin, snooze, due/check-back, then priority disappear as width shrinks.
+// tags, pin, deferral, due/check-back, then priority disappear as width shrinks.
 func quickEditOptionalMetadata(task *models.Task) []string {
 	if task == nil {
 		return nil
@@ -247,7 +247,7 @@ func quickEditOptionalMetadata(task *models.Task) []string {
 		parts = append(parts, prefix+task.DueDate.Format("Jan 2"))
 	}
 	if task.DeferredUntil != nil {
-		parts = append(parts, "zzz "+formatSnoozeDate(*task.DeferredUntil))
+		parts = append(parts, "defer "+formatDeferDate(*task.DeferredUntil))
 	}
 	if task.Pinned {
 		parts = append(parts, "pin")

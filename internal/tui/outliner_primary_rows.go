@@ -321,21 +321,21 @@ func (m *OutlinerModel) primaryDefaultExclusion(mode OutlinerModeID, now time.Ti
 	if now.IsZero() {
 		now = time.Now()
 	}
-	includeSnoozed := m.hasExplicitSnoozedFilter()
+	includeDeferred := m.hasExplicitDeferredFilter()
 	includeTerminal := mode == ModeAll && m.hasExplicitTerminalFilter()
 	return func(task *models.Task) bool {
 		if task == nil || !task.State().IsValid() {
 			return true
 		}
-		if task.IsDeferredAt(now) && !includeSnoozed {
+		if task.IsDeferredAt(now) && !includeDeferred {
 			return true
 		}
 		return task.IsTerminalState() && !includeTerminal
 	}
 }
 
-func (m *OutlinerModel) hasExplicitSnoozedFilter() bool {
-	return m.filter.Snoozed
+func (m *OutlinerModel) hasExplicitDeferredFilter() bool {
+	return m.filter.Deferred
 }
 
 func (m *OutlinerModel) hasExplicitTerminalFilter() bool {

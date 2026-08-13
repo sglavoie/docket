@@ -186,13 +186,13 @@ func TestBulkDueDateScenario(t *testing.T) {
 	}
 }
 
-// TestBulkSnoozeScenario covers the transactional bulk snooze overlay: snoozing
-// two tasks commits one batch, clearing the snooze commits another, and undo
-// restores the snooze.
-func TestBulkSnoozeScenario(t *testing.T) {
+// TestBulkDeferScenario covers the transactional bulk defer overlay: deferring
+// two tasks commits one batch, clearing the deferral commits another, and undo
+// restores the deferral.
+func TestBulkDeferScenario(t *testing.T) {
 	a := seedTask(t, 1, "First", models.StateBacklog)
 	b := seedTask(t, 2, "Second", models.StateBacklog)
-	env, features := newSecondaryEnv(t, "bulk-snooze", a, b)
+	env, features := newSecondaryEnv(t, "bulk-defer", a, b)
 
 	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.Local)
 	runBatchResult(t, features.Bulk.Defer([]string{a.ID, b.ID}, &until))
@@ -200,7 +200,7 @@ func TestBulkSnoozeScenario(t *testing.T) {
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
 		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2026-08-10" {
-			t.Fatalf("task %s snoozed = %v, want 2026-08-10", id, got)
+			t.Fatalf("task %s deferred = %v, want 2026-08-10", id, got)
 		}
 	}
 
@@ -208,7 +208,7 @@ func TestBulkSnoozeScenario(t *testing.T) {
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
 		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil != nil {
-			t.Fatalf("task %s snooze not cleared: %v", id, got)
+			t.Fatalf("task %s deferral not cleared: %v", id, got)
 		}
 	}
 
@@ -216,7 +216,7 @@ func TestBulkSnoozeScenario(t *testing.T) {
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
 		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2026-08-10" {
-			t.Fatalf("undo did not restore snooze for %s: %v", id, got)
+			t.Fatalf("undo did not restore deferral for %s: %v", id, got)
 		}
 	}
 }

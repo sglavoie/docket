@@ -133,7 +133,7 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 		operationTaskSetState:    models.StateBacklog,
 		operationTaskSetPriority: 2,
 		operationTaskSetDueDate:  OperationDateValue{},
-		operationTaskSetSnooze:   OperationDateValue{},
+		operationTaskSetDefer:    OperationDateValue{},
 		operationTaskSetTags:     []string{"release"},
 	}
 	for _, entry := range taskOperationManifest() {

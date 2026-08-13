@@ -169,9 +169,9 @@ func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 		Checklist:     []models.ChecklistItem{{Text: "done", Done: true}, {Text: "open"}},
 	}
 	due := time.Now().AddDate(0, 0, 5)
-	snooze := time.Now().AddDate(0, 0, -2)
+	deferUntil := time.Now().AddDate(0, 0, -2)
 	task.DueDate = &due
-	task.DeferredUntil = &snooze
+	task.DeferredUntil = &deferUntil
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.SetSize(100, 22)
@@ -197,9 +197,9 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 		Checklist:     []models.ChecklistItem{{Text: "one"}, {Text: "two"}},
 	}
 	due := time.Now()
-	snooze := time.Now().AddDate(0, 0, -1)
+	deferUntil := time.Now().AddDate(0, 0, -1)
 	task.DueDate = &due
-	task.DeferredUntil = &snooze
+	task.DeferredUntil = &deferUntil
 	project := renderFixtureProject(
 		t,
 		"project",

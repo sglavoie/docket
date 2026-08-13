@@ -51,7 +51,7 @@ func TestBuildRecentModeSectionsBucketsByCalendarDayAndDropsStaleActivity(t *tes
 	sections := BuildRecentModeSections(OutlinerModeInput{
 		Projects:        []*models.Project{project},
 		IncludeTerminal: true,
-		IncludeSnoozed:  true,
+		IncludeDeferred: true,
 	})
 
 	if got := recentSectionNames(sections); !slices.Equal(got, []string{
@@ -81,29 +81,29 @@ func TestBuildRecentModeSectionsBucketsByCalendarDayAndDropsStaleActivity(t *tes
 	}
 }
 
-func TestBuildRecentModeSectionsAdmitsTerminalAndSnoozedWork(t *testing.T) {
+func TestBuildRecentModeSectionsAdmitsTerminalAndDeferredWork(t *testing.T) {
 	open := recentTask("open", models.StateBacklog, 0)
 	done := recentTask("done", models.StateDone, 0)
 	canceled := recentTask("canceled", models.StateCanceled, 0)
-	snoozed := recentTask("snoozed", models.StateBacklog, 0)
+	deferred := recentTask("deferred", models.StateBacklog, 0)
 	future := time.Now().AddDate(0, 0, 3)
-	snoozed.DeferredUntil = &future
+	deferred.DeferredUntil = &future
 	// One shared key so the assertion reads document order, not creation jitter.
 	touched := time.Now()
-	for _, task := range []*models.Task{open, done, canceled, snoozed} {
+	for _, task := range []*models.Task{open, done, canceled, deferred} {
 		task.UpdatedAt = touched
 	}
-	project := primaryRowsProject("alpha", open, done, canceled, snoozed)
+	project := primaryRowsProject("alpha", open, done, canceled, deferred)
 
 	admitted := BuildRecentModeSections(OutlinerModeInput{
 		Projects:        []*models.Project{project},
 		IncludeTerminal: true,
-		IncludeSnoozed:  true,
+		IncludeDeferred: true,
 	})
 	if got := recentSectionTaskIDs(admitted, "Today"); !slices.Equal(got, []string{
-		open.ID, done.ID, canceled.ID, snoozed.ID,
+		open.ID, done.ID, canceled.ID, deferred.ID,
 	}) {
-		t.Fatalf("Recent rows = %v, want terminal and snoozed work included", got)
+		t.Fatalf("Recent rows = %v, want terminal and deferred work included", got)
 	}
 
 	excluded := BuildRecentModeSections(OutlinerModeInput{Projects: []*models.Project{project}})

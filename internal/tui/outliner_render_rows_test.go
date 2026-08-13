@@ -10,29 +10,29 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestSnoozeIndicatorSeparatesPendingFromWoken(t *testing.T) {
+func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
-		name    string
-		snoozed time.Time
-		want    string
+		name     string
+		deferred time.Time
+		want     string
 	}{
-		{"pending", now.AddDate(0, 0, 3), "zzz "},
+		{"pending", now.AddDate(0, 0, 3), "defer "},
 		{"woken inside the window", now.Add(-30 * time.Hour), "woke "},
-		{"woken past the window", now.Add(-snoozeWakeWindow - time.Hour), ""},
+		{"woken past the window", now.Add(-deferWakeWindow - time.Hour), ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			task := &models.Task{ID: "task", Title: "Task", DeferredUntil: &tc.snoozed}
-			plain := ansi.Strip(formatSnoozeIndicator(task, now))
+			task := &models.Task{ID: "task", Title: "Task", DeferredUntil: &tc.deferred}
+			plain := ansi.Strip(formatDeferIndicator(task, now))
 			if tc.want == "" {
 				if plain != "" {
-					t.Fatalf("lapsed snooze past the wake window still rendered %q", plain)
+					t.Fatalf("lapsed deferral past the wake window still rendered %q", plain)
 				}
 				return
 			}
 			if !strings.HasPrefix(plain, tc.want) {
-				t.Fatalf("snooze indicator %q does not start with %q", plain, tc.want)
+				t.Fatalf("defer indicator %q does not start with %q", plain, tc.want)
 			}
 		})
 	}

@@ -81,7 +81,7 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 		m.filter.setStateFilter(states, true)
 	}
 	if task.IsDeferred() {
-		m.filter.Snoozed = true
+		m.filter.Deferred = true
 	}
 	m.selectOutlinerMode(ModeAll)
 	for i, row := range m.rows {

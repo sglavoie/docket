@@ -23,7 +23,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
     { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "not_contains", "value": "Set Tags" },
-    { "type": "assert", "assert": "not_contains", "value": "Set Snooze" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Defer" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "scroll to the end of the catalog", "key": "end" },

@@ -286,7 +286,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// two honest labels rather than one that branches on runtime context.
 			{OperationID: operationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 4, FooterLabel: "tags", SharedKey: true},
 			{OperationID: operationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 4, FooterLabel: "project tags", SharedKey: true},
-			{OperationID: operationTaskSetSnooze, Keys: []string{"z"}, DisplayKey: "z", FooterRank: 6, FooterLabel: "snooze"},
+			{OperationID: operationTaskSetDefer, Keys: []string{"z"}, DisplayKey: "z", FooterRank: 6, FooterLabel: "snooze"},
 			{OperationID: operationTaskTogglePin, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 24, FooterLabel: "pin"},
 			{OperationID: operationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: operationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
@@ -315,7 +315,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterStates, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "states"},
 			{OperationID: operationFilterTags, Sequence: []string{"f", "t"}, DisplayKey: "ft", HintLabel: "tags"},
 			{OperationID: operationFilterReview, Sequence: []string{"f", "r"}, DisplayKey: "fr", HintLabel: "review"},
-			{OperationID: operationFilterSnoozed, Sequence: []string{"f", "z"}, DisplayKey: "fz", HintLabel: "snoozed"},
+			{OperationID: operationFilterDeferred, Sequence: []string{"f", "z"}, DisplayKey: "fz", HintLabel: "snoozed"},
 			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
 			{OperationID: operationFilterProjectTags, Sequence: []string{"F", "t"}, DisplayKey: "Ft", HintLabel: "project tags"},
 			{OperationID: operationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "include parked"},

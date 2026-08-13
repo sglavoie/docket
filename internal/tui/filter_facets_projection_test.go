@@ -15,7 +15,7 @@ func filterFacetTask(
 	priority int,
 	tags []string,
 	dueDate *time.Time,
-	snoozedUntil *time.Time,
+	deferredUntil *time.Time,
 ) *models.Task {
 	return &models.Task{
 		ID:            id,
@@ -24,7 +24,7 @@ func filterFacetTask(
 		Priority:      priority,
 		Tags:          tags,
 		DueDate:       dueDate,
-		DeferredUntil: snoozedUntil,
+		DeferredUntil: deferredUntil,
 	}
 }
 
@@ -42,7 +42,7 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 		filterFacetTask("wrong-priority", models.StateBacklog, 5, commonTags, &today, &tomorrow),
 		filterFacetTask("missing-tag", models.StateBacklog, 2, []string{"alpha"}, &today, &tomorrow),
 		filterFacetTask("wrong-due", models.StateBacklog, 2, commonTags, &tomorrow, &tomorrow),
-		filterFacetTask("not-snoozed", models.StateBacklog, 2, commonTags, &today, nil),
+		filterFacetTask("not-deferred", models.StateBacklog, 2, commonTags, &today, nil),
 	)
 
 	outliner := scopeTestOutliner(work)
@@ -54,7 +54,7 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 	outliner.filter.Priority = 3
 	outliner.filter.Tags = map[string]bool{"alpha": true, "beta": true}
 	outliner.filter.DueDate = DueDateToday
-	outliner.filter.Snoozed = true
+	outliner.filter.Deferred = true
 	outliner.rebuildRows()
 
 	visible := visibleOutlinerTaskIDs(outliner)
@@ -68,7 +68,7 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 		"wrong-priority",
 		"missing-tag",
 		"wrong-due",
-		"not-snoozed",
+		"not-deferred",
 	} {
 		if visible[id] {
 			t.Errorf("composed facets retained %q; visible = %v", id, visible)
@@ -323,10 +323,10 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	outliner.filter.Tags = map[string]bool{"alpha": true}
 	outliner.filter.DueDate = DueDateNone
 	outliner.filter.setCompletionAgeFilter(CompletionAge30Days)
-	outliner.filter.Snoozed = true
+	outliner.filter.Deferred = true
 
 	outliner.selectOutlinerMode(ModeDue)
-	if outliner.filter.Priority != 2 || !outliner.filter.Snoozed {
+	if outliner.filter.Priority != 2 || !outliner.filter.Deferred {
 		t.Fatalf("mode change reset facets: %+v", outliner.filter.CommonFilterState)
 	}
 
@@ -337,7 +337,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 		outliner.filter.DueDate != DueDateNone ||
 		!outliner.filter.hasCompletionAgeFilter() ||
 		outliner.filter.CompletionAge != CompletionAge30Days ||
-		!outliner.filter.Snoozed {
+		!outliner.filter.Deferred {
 		t.Fatalf("project scope entry reset facets: %+v", outliner.filter.CommonFilterState)
 	}
 
@@ -375,10 +375,10 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 		t.Fatal(err)
 	}
 	outliner.applyOutlinerRouteState(config.OutlinerRouteState{
-		Mode:          config.OutlinerModeDue,
-		FilterStates:  legacyStates,
-		FilterSnoozed: true,
-		FilterPinned:  true,
+		Mode:           config.OutlinerModeDue,
+		FilterStates:   legacyStates,
+		FilterDeferred: true,
+		FilterPinned:   true,
 	})
 	if outliner.activeOutlinerMode() != ModeDue {
 		t.Fatalf("route mode = %s, want Due", outliner.activeOutlinerMode())
@@ -388,7 +388,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 		!outliner.filter.Tags["live"] ||
 		!outliner.filter.hasCompletionAgeFilter() ||
 		outliner.filter.CompletionAge != CompletionAge7Days ||
-		outliner.filter.Snoozed ||
+		outliner.filter.Deferred ||
 		outliner.filter.Pinned {
 		t.Fatalf("legacy route restored session-only facets: %+v", outliner.filter.CommonFilterState)
 	}

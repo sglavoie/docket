@@ -748,7 +748,7 @@ func buildProjectMixFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildSignalsFixture carries the time signals no other fixture holds: a snooze
+// buildSignalsFixture carries the time signals no other fixture holds: a deferral
 // that has already lapsed beside one still pending, overdue work concentrated
 // in one project, and a durable Today membership. Its project name is
 // deliberately long so a project header's pressure suffix has to degrade at
@@ -764,12 +764,12 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 		rollout.ApplyWorkflowState(models.StateBacklog)
 		setDue(rollout, -24*time.Hour)
 
-		woke := newFixtureTask(p, "Alpha back from snooze")
+		woke := newFixtureTask(p, "Alpha back from a break")
 		woke.ApplyWorkflowState(models.StateBacklog)
 		lapsed := time.Now().AddDate(0, 0, -1)
 		woke.DeferredUntil = &lapsed
 
-		pending := newFixtureTask(p, "Alpha still deferred")
+		pending := newFixtureTask(p, "Alpha still hidden")
 		pending.ApplyWorkflowState(models.StateBacklog)
 		deferred := time.Now().AddDate(0, 0, 5)
 		pending.DeferredUntil = &deferred

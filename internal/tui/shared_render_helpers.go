@@ -10,11 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func formatSnoozeDate(snoozedUntil time.Time) string {
-	if snoozedUntil.Year() != time.Now().Year() {
-		return snoozedUntil.Format("Jan 2 '06")
+func formatDeferDate(deferredUntil time.Time) string {
+	if deferredUntil.Year() != time.Now().Year() {
+		return deferredUntil.Format("Jan 2 '06")
 	}
-	return snoozedUntil.Format("Jan 2")
+	return deferredUntil.Format("Jan 2")
 }
 
 // JoinGroupParts joins non-empty parts within one indicator group with a space.

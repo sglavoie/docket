@@ -29,11 +29,11 @@ func TestPinnedModeProjectionIsNewestFirstAndProjectionOwned(t *testing.T) {
 	betaTie.Pinned, betaTie.PinnedAt = true, &older
 	betaSameID := primaryRowsTask("shared", models.StateBacklog)
 	betaSameID.Pinned, betaSameID.PinnedAt = true, &older
-	betaSnoozed := primaryRowsTask("snoozed", models.StateBacklog)
-	betaSnoozed.Pinned, betaSnoozed.PinnedAt, betaSnoozed.DeferredUntil = true, &newest, &tomorrow
+	betaDeferred := primaryRowsTask("deferred", models.StateBacklog)
+	betaDeferred.Pinned, betaDeferred.PinnedAt, betaDeferred.DeferredUntil = true, &newest, &tomorrow
 	betaDone := primaryRowsTask("done", models.StateDone)
 	betaDone.Pinned, betaDone.PinnedAt = true, &newest
-	beta := primaryRowsProject("beta", betaTie, betaSameID, betaSnoozed, betaDone)
+	beta := primaryRowsProject("beta", betaTie, betaSameID, betaDeferred, betaDone)
 	beta.Name = "Beta"
 
 	projection := buildPinnedModeProjection(OutlinerModeInput{
@@ -62,7 +62,7 @@ func TestPinnedModeProjectionIsNewestFirstAndProjectionOwned(t *testing.T) {
 		t.Fatalf("qualified projected identities = %v, want both same-ID tasks for later-section deduplication", projection.projected)
 	}
 	for _, hidden := range []TaskIdentity{
-		{ProjectID: "beta", TaskID: "snoozed"},
+		{ProjectID: "beta", TaskID: "deferred"},
 		{ProjectID: "beta", TaskID: "done"},
 	} {
 		if projection.projected[hidden] {
@@ -82,29 +82,29 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 	sameDayTask.Pinned = true
 	sameDayTask.DeferredUntil = &sameDay
 	sameDayTask.DueDate = &sameDay
-	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
-	snoozed.Pinned = true
-	snoozed.DeferredUntil = &nextDay
+	deferred := primaryRowsTask("deferred", models.StateBacklog)
+	deferred.Pinned = true
+	deferred.DeferredUntil = &nextDay
 	done := primaryRowsTask("done", models.StateDone)
 	done.Pinned = true
-	project := primaryRowsProject("project", sameDayTask, snoozed, done)
+	project := primaryRowsProject("project", sameDayTask, deferred, done)
 
 	defaultProjection := buildPinnedModeProjection(OutlinerModeInput{
 		Projects: []*models.Project{project},
 		Now:      now,
 	})
 	if got := projectedTaskIDs(defaultProjection); !slices.Equal(got, []string{"same-day"}) {
-		t.Fatalf("default projection = %v, want only open work whose snooze expires on the reference date", got)
+		t.Fatalf("default projection = %v, want only open work whose deferral expires on the reference date", got)
 	}
 
 	explicitProjection := buildPinnedModeProjection(OutlinerModeInput{
 		Projects:        []*models.Project{project},
 		Now:             now,
-		IncludeSnoozed:  true,
+		IncludeDeferred: true,
 		IncludeTerminal: true,
 	})
-	if got := projectedTaskIDs(explicitProjection); !slices.Equal(got, []string{"same-day", "snoozed", "done"}) {
-		t.Fatalf("explicit projection = %v, want snoozed and terminal opt-in", got)
+	if got := projectedTaskIDs(explicitProjection); !slices.Equal(got, []string{"same-day", "deferred", "done"}) {
+		t.Fatalf("explicit projection = %v, want deferred and terminal opt-in", got)
 	}
 
 	if TaskMatchesSearch(sameDayTask, "@today") {
@@ -115,12 +115,12 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 		t.Fatal("scope search did not match case-insensitive description text")
 	}
 
-	common := CommonFilterState{DueDate: DueDateToday, Snoozed: true}
+	common := CommonFilterState{DueDate: DueDateToday, Deferred: true}
 	if passesCommonFiltersAt(sameDayTask, &common, now) {
-		t.Fatal("same-day task incorrectly matched the snoozed facet")
+		t.Fatal("same-day task incorrectly matched the deferred facet")
 	}
-	if !passesCommonFiltersAt(snoozed, &CommonFilterState{Snoozed: true}, now) {
-		t.Fatal("future-date task did not match the snoozed facet at the shared reference time")
+	if !passesCommonFiltersAt(deferred, &CommonFilterState{Deferred: true}, now) {
+		t.Fatal("future-date task did not match the deferred facet at the shared reference time")
 	}
 }
 

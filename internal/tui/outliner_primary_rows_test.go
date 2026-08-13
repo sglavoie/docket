@@ -43,7 +43,7 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 		primaryRowsTask("someday", models.StateSomeday),
 		primaryRowsTask("done", models.StateDone),
 		primaryRowsTask("canceled", models.StateCanceled),
-		primaryRowsTask("snoozed", models.StateBacklog),
+		primaryRowsTask("deferred", models.StateBacklog),
 	}
 	future := time.Now().AddDate(0, 0, 2)
 	tasks[len(tasks)-1].DeferredUntil = &future
@@ -79,7 +79,7 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	if row, ok := findPlanningTaskRow(outliner, "next"); !ok || !row.IsNextSection {
 		t.Fatalf("Next task row = %+v found=%t, want synthetic Next membership", row, ok)
 	}
-	for _, hidden := range []string{"done", "canceled", "snoozed"} {
+	for _, hidden := range []string{"done", "canceled", "deferred"} {
 		if got := countTaskRows(outliner, hidden); got != 0 {
 			t.Errorf("default All rendered %q %d time(s), want hidden", hidden, got)
 		}
@@ -137,19 +137,19 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	}
 }
 
-func TestPrimaryAllExplicitFiltersOverrideTerminalAndSnoozedDefaults(t *testing.T) {
+func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing.T) {
 	done := primaryRowsTask("done", models.StateDone)
 	canceled := primaryRowsTask("canceled", models.StateCanceled)
-	snoozed := primaryRowsTask("snoozed", models.StateBacklog)
+	deferred := primaryRowsTask("deferred", models.StateBacklog)
 	future := time.Now().AddDate(0, 0, 2)
-	snoozed.DeferredUntil = &future
-	project := primaryRowsProject("alpha", done, canceled, snoozed)
+	deferred.DeferredUntil = &future
+	project := primaryRowsProject("alpha", done, canceled, deferred)
 	outliner, runtime := primaryRowsOutliner(project)
-	// Stale planning references must not make explicit terminal/snoozed facets
+	// Stale planning references must not make explicit terminal/deferred facets
 	// lose rows. The application invariant will normally clean these references,
 	// but the projection remains defensive while a refresh is in flight.
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: done.ID}})
-	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: snoozed.ID}})
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: deferred.ID}})
 	outliner.selectOutlinerMode(ModeAll)
 
 	outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled), true)
@@ -168,13 +168,13 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndSnoozedDefaults(t *testing.
 	}
 
 	clearCommonFilters(&outliner.filter.CommonFilterState)
-	outliner.filter.Snoozed = true
+	outliner.filter.Deferred = true
 	outliner.rebuildRows()
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"snoozed"}) {
-		t.Fatalf("snoozed-filter rows = %v, want explicit snoozed Today task", got)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"deferred"}) {
+		t.Fatalf("deferred-filter rows = %v, want explicit deferred Today task", got)
 	}
-	if row, ok := findPlanningTaskRow(outliner, snoozed.ID); !ok || !row.IsTodaySection {
-		t.Fatalf("snoozed Today row = %+v found=%t, want explicit planning projection", row, ok)
+	if row, ok := findPlanningTaskRow(outliner, deferred.ID); !ok || !row.IsTodaySection {
+		t.Fatalf("deferred Today row = %+v found=%t, want explicit planning projection", row, ok)
 	}
 }
 

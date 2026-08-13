@@ -16,7 +16,7 @@ const (
 	operationFilterReview        OperationID = "tui.filter.review"
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
-	operationFilterSnoozed       OperationID = "tui.filter.snoozed"
+	operationFilterDeferred      OperationID = "tui.filter.deferred"
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
 
@@ -50,7 +50,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterReview, "Filter Review", "", "review tag filter"),
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
-		descriptor(operationFilterSnoozed, "Filter Snoozed Tasks", "", "snoozed only"),
+		descriptor(operationFilterDeferred, "Filter Deferred Tasks", "", "deferred only"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }
@@ -201,9 +201,9 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 			filter.Tags[reviewTaskTag] = true
 			status = "Filtering Review"
 		}
-	case operationFilterSnoozed:
-		filter.Snoozed = true
-		status = "Filtering snoozed tasks"
+	case operationFilterDeferred:
+		filter.Deferred = true
+		status = "Filtering deferred tasks"
 	case operationFilterClear:
 		clearCommonFilters(filter)
 		status = "Filters cleared"

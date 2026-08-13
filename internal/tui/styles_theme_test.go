@@ -205,11 +205,11 @@ func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
 		{"ColorSemanticStorySelectedTitle", ColorSemanticStorySelectedTitle, "#b6e5ff"},
 		{"ColorSemanticFeatureSelectedTitle", ColorSemanticFeatureSelectedTitle, "#d7f7b5"},
 		{"ColorSemanticIdeaSelectedTitle", ColorSemanticIdeaSelectedTitle, "#ffd0b5"},
-		{"ColorSemanticBugSnoozedTitle", ColorSemanticBugSnoozedTitle, "#c97b7b"},
-		{"ColorSemanticEpicSnoozedTitle", ColorSemanticEpicSnoozedTitle, "#8d73bd"},
-		{"ColorSemanticStorySnoozedTitle", ColorSemanticStorySnoozedTitle, "#5f9bbf"},
-		{"ColorSemanticFeatureSnoozedTitle", ColorSemanticFeatureSnoozedTitle, "#8bb65f"},
-		{"ColorSemanticIdeaSnoozedTitle", ColorSemanticIdeaSnoozedTitle, "#b97852"},
+		{"ColorSemanticBugDeferredTitle", ColorSemanticBugDeferredTitle, "#c97b7b"},
+		{"ColorSemanticEpicDeferredTitle", ColorSemanticEpicDeferredTitle, "#8d73bd"},
+		{"ColorSemanticStoryDeferredTitle", ColorSemanticStoryDeferredTitle, "#5f9bbf"},
+		{"ColorSemanticFeatureDeferredTitle", ColorSemanticFeatureDeferredTitle, "#8bb65f"},
+		{"ColorSemanticIdeaDeferredTitle", ColorSemanticIdeaDeferredTitle, "#b97852"},
 	}
 	for _, c := range checks {
 		if c.got != lipgloss.Color(c.want) {
@@ -227,8 +227,8 @@ func TestRebuildPaletteSemanticHierarchyOverrides(t *testing.T) {
 		SemanticStoryTitle:         "#222222",
 		SemanticEpicSelectedTitle:  "#333333",
 		SemanticStorySelectedTitle: "#444444",
-		SemanticEpicSnoozedTitle:   "#555555",
-		SemanticStorySnoozedTitle:  "#666666",
+		SemanticEpicDeferredTitle:  "#555555",
+		SemanticStoryDeferredTitle: "#666666",
 	})
 
 	checks := []struct {
@@ -240,8 +240,8 @@ func TestRebuildPaletteSemanticHierarchyOverrides(t *testing.T) {
 		{"ColorSemanticStoryTitle", ColorSemanticStoryTitle, "#222222"},
 		{"ColorSemanticEpicSelectedTitle", ColorSemanticEpicSelectedTitle, "#333333"},
 		{"ColorSemanticStorySelectedTitle", ColorSemanticStorySelectedTitle, "#444444"},
-		{"ColorSemanticEpicSnoozedTitle", ColorSemanticEpicSnoozedTitle, "#555555"},
-		{"ColorSemanticStorySnoozedTitle", ColorSemanticStorySnoozedTitle, "#666666"},
+		{"ColorSemanticEpicDeferredTitle", ColorSemanticEpicDeferredTitle, "#555555"},
+		{"ColorSemanticStoryDeferredTitle", ColorSemanticStoryDeferredTitle, "#666666"},
 	}
 	for _, check := range checks {
 		if check.got != lipgloss.Color(check.want) {

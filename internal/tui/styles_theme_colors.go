@@ -26,11 +26,11 @@ const (
 	defaultColorSemanticStorySelectedTitle   = "#b6e5ff"
 	defaultColorSemanticFeatureSelectedTitle = "#d7f7b5"
 	defaultColorSemanticIdeaSelectedTitle    = "#ffd0b5"
-	defaultColorSemanticBugSnoozedTitle      = "#c97b7b"
-	defaultColorSemanticEpicSnoozedTitle     = "#8d73bd"
-	defaultColorSemanticStorySnoozedTitle    = "#5f9bbf"
-	defaultColorSemanticFeatureSnoozedTitle  = "#8bb65f"
-	defaultColorSemanticIdeaSnoozedTitle     = "#b97852"
+	defaultColorSemanticBugDeferredTitle     = "#c97b7b"
+	defaultColorSemanticEpicDeferredTitle    = "#8d73bd"
+	defaultColorSemanticStoryDeferredTitle   = "#5f9bbf"
+	defaultColorSemanticFeatureDeferredTitle = "#8bb65f"
+	defaultColorSemanticIdeaDeferredTitle    = "#b97852"
 )
 
 // Priority title foreground colors, user-overridable via PaletteColors.
@@ -49,11 +49,11 @@ var (
 	ColorSemanticStorySelectedTitle   = lipgloss.Color(defaultColorSemanticStorySelectedTitle)
 	ColorSemanticFeatureSelectedTitle = lipgloss.Color(defaultColorSemanticFeatureSelectedTitle)
 	ColorSemanticIdeaSelectedTitle    = lipgloss.Color(defaultColorSemanticIdeaSelectedTitle)
-	ColorSemanticBugSnoozedTitle      = lipgloss.Color(defaultColorSemanticBugSnoozedTitle)
-	ColorSemanticEpicSnoozedTitle     = lipgloss.Color(defaultColorSemanticEpicSnoozedTitle)
-	ColorSemanticStorySnoozedTitle    = lipgloss.Color(defaultColorSemanticStorySnoozedTitle)
-	ColorSemanticFeatureSnoozedTitle  = lipgloss.Color(defaultColorSemanticFeatureSnoozedTitle)
-	ColorSemanticIdeaSnoozedTitle     = lipgloss.Color(defaultColorSemanticIdeaSnoozedTitle)
+	ColorSemanticBugDeferredTitle     = lipgloss.Color(defaultColorSemanticBugDeferredTitle)
+	ColorSemanticEpicDeferredTitle    = lipgloss.Color(defaultColorSemanticEpicDeferredTitle)
+	ColorSemanticStoryDeferredTitle   = lipgloss.Color(defaultColorSemanticStoryDeferredTitle)
+	ColorSemanticFeatureDeferredTitle = lipgloss.Color(defaultColorSemanticFeatureDeferredTitle)
+	ColorSemanticIdeaDeferredTitle    = lipgloss.Color(defaultColorSemanticIdeaDeferredTitle)
 )
 
 // darkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
@@ -159,11 +159,11 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorSemanticStorySelectedTitle = fallback(p.SemanticStorySelectedTitle, d.SemanticStorySelectedTitle)
 	ColorSemanticFeatureSelectedTitle = fallback(p.SemanticFeatureSelectedTitle, d.SemanticFeatureSelectedTitle)
 	ColorSemanticIdeaSelectedTitle = fallback(p.SemanticIdeaSelectedTitle, d.SemanticIdeaSelectedTitle)
-	ColorSemanticBugSnoozedTitle = fallback(p.SemanticBugSnoozedTitle, d.SemanticBugSnoozedTitle)
-	ColorSemanticEpicSnoozedTitle = fallback(p.SemanticEpicSnoozedTitle, d.SemanticEpicSnoozedTitle)
-	ColorSemanticStorySnoozedTitle = fallback(p.SemanticStorySnoozedTitle, d.SemanticStorySnoozedTitle)
-	ColorSemanticFeatureSnoozedTitle = fallback(p.SemanticFeatureSnoozedTitle, d.SemanticFeatureSnoozedTitle)
-	ColorSemanticIdeaSnoozedTitle = fallback(p.SemanticIdeaSnoozedTitle, d.SemanticIdeaSnoozedTitle)
+	ColorSemanticBugDeferredTitle = fallback(p.SemanticBugDeferredTitle, d.SemanticBugDeferredTitle)
+	ColorSemanticEpicDeferredTitle = fallback(p.SemanticEpicDeferredTitle, d.SemanticEpicDeferredTitle)
+	ColorSemanticStoryDeferredTitle = fallback(p.SemanticStoryDeferredTitle, d.SemanticStoryDeferredTitle)
+	ColorSemanticFeatureDeferredTitle = fallback(p.SemanticFeatureDeferredTitle, d.SemanticFeatureDeferredTitle)
+	ColorSemanticIdeaDeferredTitle = fallback(p.SemanticIdeaDeferredTitle, d.SemanticIdeaDeferredTitle)
 
 	if p.NormalText != "" {
 		colorNormalText = p.NormalText

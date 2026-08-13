@@ -111,9 +111,9 @@ func formatDueDate(task *models.Task) string {
 	return style.Render(icons.Get("date") + " " + dateStr)
 }
 
-// snoozeWakeWindow bounds how long a lapsed snooze keeps announcing that the
+// deferWakeWindow bounds how long a lapsed deferral keeps announcing that the
 // task came back. Past it the task is ordinary work again, not news.
-const snoozeWakeWindow = 72 * time.Hour
+const deferWakeWindow = 72 * time.Hour
 
 // formatRecencyChip renders an age as a single-token indicator such as 5m, 2h,
 // or 3d. Prose relative time is too wide for a row, and the day bucket header
