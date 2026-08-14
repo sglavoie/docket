@@ -669,7 +669,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 	for _, retired := range []string{
 		"q", "s", "i", "|", "ctrl+x",
-		":", "R", "ctrl+esc", "m", "b", "d", "t", ",",
+		":", "R", "ctrl+esc", "m", "b", "z", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
@@ -752,7 +752,7 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		"gt": {"g", "t"},
 		"gn": {"g", "n"},
 		"gb": {"g", "b"},
-		"gd": {"g", "d"},
+		"g@": {"g", "@"},
 		"gr": {"g", "r"},
 	}
 	want := map[string]OperationID{
@@ -762,7 +762,7 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		"gt": operationCoreGotoToday,
 		"gn": operationCoreGotoNext,
 		"gb": operationCoreGotoBacklog,
-		"gd": operationCoreGotoDue,
+		"g@": operationCoreGotoDue,
 		"gr": operationCoreGotoRecent,
 	}
 	for spelling, path := range paths {

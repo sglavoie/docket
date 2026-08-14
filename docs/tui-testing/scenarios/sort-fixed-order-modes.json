@@ -19,7 +19,7 @@
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
 
     { "type": "key", "label": "ask Today for a due-date order", "key": "o" },
-    { "type": "key", "key": "d" },
+    { "type": "key", "key": "@" },
     { "type": "assert", "label": "a fixed-order mode keeps its own order and says so", "assert": "status_contains", "value": "Today owns its order" },
     { "type": "assert", "assert": "status_contains", "value": "sort applies in All, Inbox, Backlog" },
     { "type": "assert", "label": "no badge, because Today did not change order", "assert": "not_contains", "value": "Sort: due date" },

@@ -7,7 +7,7 @@
     { "type": "assert", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage" },
 
     { "type": "key", "label": "hold the sort prefix", "key": "o" },
-    { "type": "assert", "assert": "contains", "value": "d due date" },
+    { "type": "assert", "assert": "contains", "value": "@ due date" },
     { "type": "assert", "assert": "contains", "value": "p priority" },
     { "type": "assert", "assert": "contains", "value": "c created" },
     { "type": "assert", "assert": "contains", "value": "u updated" },
@@ -31,7 +31,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "switch the axis to due date", "key": "o" },
-    { "type": "key", "key": "d" },
+    { "type": "key", "key": "@" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by due date ↑" },
     { "type": "assert", "assert": "contains", "value": "Sort: due date ↑" },
 

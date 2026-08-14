@@ -20,7 +20,7 @@
     { "type": "assert", "label": "the due picker never opens", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "Set Defer has no task here", "key": "z" },
+    { "type": "key", "label": "Set Defer has no task here", "key": "d" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 

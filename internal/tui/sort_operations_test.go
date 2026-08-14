@@ -76,7 +76,7 @@ func TestSortAxisInstallsAndReversesOnRepeat(t *testing.T) {
 		{[]string{"o", "t"}, SortByTitle, true},
 		{[]string{"o", "t"}, SortByTitle, false},
 		{[]string{"o", "t"}, SortByTitle, true},
-		{[]string{"o", "d"}, SortByDueDate, true},
+		{[]string{"o", "@"}, SortByDueDate, true},
 		{[]string{"o", "p"}, SortByPriority, true},
 		{[]string{"o", "c"}, SortByCreatedAt, true},
 		{[]string{"o", "u"}, SortByUpdatedAt, true},
@@ -120,7 +120,7 @@ func TestSortAxisNeverReordersProjectGroups(t *testing.T) {
 	driver := sortDriver(t, FixtureMultiProject)
 	before := sortProjectHeaderOrder(t, driver)
 
-	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "p"}, {"o", "d"}, {"o", "u"}} {
+	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "p"}, {"o", "@"}, {"o", "u"}} {
 		sortPressKeys(t, driver, keys...)
 		if after := sortProjectHeaderOrder(t, driver); !equalStringSlices(before, after) {
 			t.Fatalf("%s reordered the project groups: %v, want %v", strings.Join(keys, ""), after, before)
@@ -159,7 +159,7 @@ func TestSortAxisNeverReachesManualOrder(t *testing.T) {
 // the mode keeps its own order, says so, and the recorded axis installs on the
 // return to a tree-order mode.
 func TestSortAxisRecordsTheChoiceInAFixedOrderMode(t *testing.T) {
-	driver := sortDriver(t, FixtureRich, "g", "t", "o", "d")
+	driver := sortDriver(t, FixtureRich, "g", "t", "o", "@")
 	outliner := driver.App().crossOutliner
 
 	if outliner.sort.Field != SortByDefault {

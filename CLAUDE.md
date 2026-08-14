@@ -97,7 +97,7 @@ The direct grammar is:
 
 ```text
 Tab / Shift+Tab                 seven modes
-ga gi gt gn gb gd gr           go-to chord, one mode each
+ga gi gt gn gb g@ gr           go-to chord, one mode each
 j/k, arrows, h/l, S, gg/Home, G/End  navigation
 Enter / Shift+Enter             focus descendants / toggle Peek
 n / N                          next/previous grouping header, wrapping
@@ -105,8 +105,8 @@ Ctrl+O / Ctrl+I                older/newer relocated-task positions
 Ctrl+L                         Recent, focused on the newest activity
 a/A, e/E, Ctrl+E, O            capture/edit
 wi wb wn wt wg wr ww wp wm wd wc  workflow chord
-!0-3 @ # z P                   metadata
-od op oc ou ot ox              sort chord, one order axis each
+!0-3 @ # d P                   metadata
+o@ op oc ou ot ox              sort chord, one order axis each
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
 v V Ctrl+A Space               selection/actions
@@ -251,18 +251,20 @@ Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m
 Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
 behavior, and Backlog removes both planning memberships.
 
-Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fr`, `fd`, `fz`, and `fx`. `fp1`–`fp3`
-are cumulative High/Medium/Low thresholds and exclude Unset. `fd` opens
-the due-date facet picker for overdue, today, this week, or no due date. `fc`
+Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fr`, `f@`, `fd`, and `fx`. `fp1`–`fp3`
+are cumulative High/Medium/Low thresholds and exclude Unset. `f@` opens the
+due-date facet picker for overdue, today, this week, or no due date, and `fd`
+isolates the deferred tasks. `fc`
 opens the completion-age picker and installs the Done/Canceled state predicate
 with the chosen age, so the matches are visible without a separate `fs` step;
 cleanup uses `fc` → `Ctrl+A` → `Space` Delete. That terminal-state predicate
 belongs to the one cleanup facet and is not counted as a second state facet.
-`fx` clears every facet. The old standalone `b`, `d`, and `t` actions and
-comma state prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and
-`Ctrl+Esc`.
+`fx` clears every facet. The old standalone `b` and `t` actions and comma state
+prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`.
+`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, no
+`d`-means-done alias may return, and root `z` must now stay unbound.
 
-The sort axis is the `o` chord: `od` due date, `op` priority, `oc` created, `ou`
+The sort axis is the `o` chord: `o@` due date, `op` priority, `oc` created, `ou`
 updated, `ot` title, and `ox` clear. It is the third axis alongside `f` and `F`.
 Lowercase `f` decides which rows a projection holds, uppercase `F` decides which
 projects load, and `o` decides the order those rows are read in. Repeating a

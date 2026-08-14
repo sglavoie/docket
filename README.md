@@ -61,7 +61,7 @@ relocated task.
 
 `Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due → Recent, and
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode:
-`ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent.
+`ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent.
 
 All mode shows open, unsnoozed work in this order:
 
@@ -111,25 +111,26 @@ when that task would otherwise be hidden.
 
 | Area | Keys |
 | --- | --- |
-| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `gd` Due, `gr` Recent |
+| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `d` defer; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
-| Sorting | `o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
+| Sorting | `o` opens the sort chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `p` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
-Inside the `@` and `z` pickers, `a` opens a typed-date input for any date the
+Inside the `@` and `d` pickers, `a` opens a typed-date input for any date the
 relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
 `next mon`, or `dec 15`. Inside the `#` picker the same key adds a new tag.
 
 The operation descriptors are the single source for dispatch, contextual
-guidance, chord hints, and `?` help. The old standalone `b`, `d`, and `t`
+guidance, chord hints, and `?` help. The old standalone `b` and `t`
 actions and comma state prefix have no compatibility action; neither do removed
-keys such as `m`, `:`, `R`, and `Ctrl+Esc`.
+keys such as `m`, `:`, `R`, and `Ctrl+Esc`. `d` is bound again, but to Set Defer
+and never to Done: Done stays `wd` alone, and root `z` is now unbound.
 
 Task updates that move the focused task—such as `wg` moving it into In
 Progress—add a session-only jump entry. `Ctrl+O` returns to the task that
@@ -213,8 +214,8 @@ scroll, and folds exactly.
 | `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
 | `ft` | Pick tags with AND semantics |
 | `fr` | Toggle the `review` tag facet |
-| `fd` | Open the due-date facet picker: overdue, today, this week, or no due date |
-| `fz` | Snoozed-only |
+| `f@` | Open the due-date facet picker: overdue, today, this week, or no due date |
+| `fd` | Deferred-only |
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task |
 
@@ -254,7 +255,7 @@ read in:
 
 | Keys | Effect |
 | --- | --- |
-| `od` | Order by due date |
+| `o@` | Order by due date |
 | `op` | Order by priority |
 | `oc` | Order by creation date |
 | `ou` | Order by last touch |

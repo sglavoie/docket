@@ -43,7 +43,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
 		"tab": operationCoreNextWorkMode, "shift+tab": operationCorePreviousWorkMode,
 		"@": operationTaskSetDueDate,
-		"z": operationTaskSetDefer, "P": operationTaskTogglePin,
+		"d": operationTaskSetDefer, "P": operationTaskTogglePin,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 	}
@@ -89,7 +89,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 	// g became the go-to chord prefix, so cursor-top answers to gg and Home only.
 	for _, removed := range []string{
-		"b", "c", "d", "g", "t", ",", "m", ":", "C", "R", "ctrl+esc",
+		"b", "c", "g", "t", "z", ",", "m", ":", "C", "R", "ctrl+esc",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {
 			t.Errorf("removed key %q still resolves to %s", removed, owners[0])
@@ -210,7 +210,7 @@ func TestDirectTaskGrammarRemainsDocumentedWithoutACursorTarget(t *testing.T) {
 	for _, item := range items {
 		keys[item.Key] = true
 	}
-	for _, key := range []string{"A", "@", "#", "z", "P", "<", ">", "y", "Y", "Ctrl+Y"} {
+	for _, key := range []string{"A", "@", "#", "d", "P", "<", ">", "y", "Y", "Ctrl+Y"} {
 		if !keys[key] {
 			t.Errorf("target-free help omits documented direct key %q", key)
 		}

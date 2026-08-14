@@ -22,7 +22,7 @@
     { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
 
     { "type": "key", "label": "open the go-to chord", "key": "g" },
-    { "type": "key", "label": "jump straight to Due", "key": "d" },
+    { "type": "key", "label": "jump straight to Due", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Due" },
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },

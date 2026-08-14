@@ -10,7 +10,7 @@
     { "type": "assert", "assert": "contains", "value": "priority:Medium+" },
 
     { "type": "key", "label": "stack a due facet on top", "key": "f" },
-    { "type": "key", "key": "d" },
+    { "type": "key", "key": "@" },
     { "type": "assert", "label": "the due facet opens its picker", "assert": "contains", "value": "Filter by Due Date" },
     { "type": "assert", "assert": "contains", "value": "Overdue" },
     { "type": "assert", "assert": "contains", "value": "Today" },

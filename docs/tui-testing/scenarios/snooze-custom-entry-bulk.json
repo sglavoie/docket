@@ -12,7 +12,7 @@
     { "type": "key", "label": "select a second, non-adjacent task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
 
-    { "type": "key", "label": "open the defer picker over the selection", "key": "z" },
+    { "type": "key", "label": "open the defer picker over the selection", "key": "d" },
     { "type": "assert", "assert": "contains", "value": "Set Defer" },
     { "type": "key", "label": "typed entry is reachable on the bulk path too", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },

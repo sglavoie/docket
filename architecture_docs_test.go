@@ -112,7 +112,10 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"eight-state, seven-mode, Outliner-only product",
 		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
 		"Recent is the activity-ordered mode",
-		"The old standalone `b`, `d`, and `t` actions and comma state prefix must remain unbound",
+		"The old standalone `b` and `t` actions and comma state prefix must remain unbound, " +
+			"along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`. `d` is bound again, but to Set " +
+			"Defer and never to Done: Done stays `wd` alone, no `d`-means-done alias may return, " +
+			"and root `z` must now stay unbound.",
 		"`n`/`N` step the cursor between grouping headers, and their stop set is `isHeaderRow()`",
 		"The walk wraps at either end",
 		"`Enter` focuses the cursor task's descendants and `Shift+Enter` toggles Peek",
@@ -143,7 +146,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`Fp`, `FP`, and the `parked` row inside `Ft` write the same `ProjectFilterState.ParkedMode` field",
 		"Project grouping is universal, not per-mode",
 		"Emit those headers through the shared `appendProjectGroupHeader` kernel; do not add a per-mode copy",
-		"The sort axis is the `o` chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, and `ox` clear",
+		"The sort axis is the `o` chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, and `ox` clear",
 		"Repeating a field key reverses that field",
 		"Manual order is never touched",
 		"Group order never changes",

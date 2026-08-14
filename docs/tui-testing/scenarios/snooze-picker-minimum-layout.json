@@ -6,8 +6,8 @@
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
-    { "type": "assert", "label": "defer earns a footer slot at the minimum width", "assert": "contains", "value": "z snooze" },
-    { "type": "key", "label": "open direct defer values", "key": "z" },
+    { "type": "assert", "label": "defer earns a footer slot at the minimum width", "assert": "contains", "value": "d defer" },
+    { "type": "key", "label": "open direct defer values", "key": "d" },
     { "type": "assert", "assert": "contains", "value": "Set Defer" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

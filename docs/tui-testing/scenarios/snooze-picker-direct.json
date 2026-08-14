@@ -6,7 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
-    { "type": "key", "label": "open the defer picker with its direct key", "key": "z" },
+    { "type": "key", "label": "open the defer picker with its direct key", "key": "d" },
     { "type": "assert", "assert": "contains", "value": "Set Defer: Build login form" },
     { "type": "assert", "assert": "contains", "value": "Clear" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
@@ -16,7 +16,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Set Defer" },
 
-    { "type": "key", "label": "reopen the picker", "key": "z" },
+    { "type": "key", "label": "reopen the picker", "key": "d" },
     { "type": "key", "label": "highlight the first relative preset", "key": "j" },
     { "type": "key", "label": "commit the deferral", "key": "enter" },
     { "type": "wait" },

@@ -30,7 +30,7 @@
     { "type": "assert", "label": "the typed date reaches the row through the ordinary payload", "assert": "contains", "value": "Mar 15 '27" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "the same shared predicate gates the defer picker", "key": "z" },
+    { "type": "key", "label": "the same shared predicate gates the defer picker", "key": "d" },
     { "type": "key", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
     { "type": "text", "label": "a relative offset the presets do not carry", "text": "+3d" },

@@ -237,7 +237,7 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 		{"w"},
 		{"!"},
 		{"@"},
-		{"z"},
+		{"d"},
 		{"P"},
 		{"y"},
 		{"e"},

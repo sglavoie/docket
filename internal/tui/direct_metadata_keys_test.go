@@ -121,7 +121,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	}{
 		{key: "@", want: operationTaskSetDueDate, provider: ValueProviderDueDate},
 		{key: "#", want: operationTaskSetTags, provider: ValueProviderTags},
-		{key: "z", want: operationTaskSetDefer, provider: ValueProviderDefer},
+		{key: "d", want: operationTaskSetDefer, provider: ValueProviderDefer},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		result := executeDirectPath(t, model, ctx, []string{picker.key})
@@ -219,7 +219,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 	}{
 		{key: '@', provider: ValueProviderDueDate},
 		{key: '#', provider: ValueProviderTags},
-		{key: 'z', provider: ValueProviderDefer},
+		{key: 'd', provider: ValueProviderDefer},
 	} {
 		t.Run(string(picker.key)+" opens its picker", func(t *testing.T) {
 			app := newApp(t)

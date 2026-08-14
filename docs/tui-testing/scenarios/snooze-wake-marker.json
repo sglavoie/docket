@@ -8,7 +8,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open the filter chord", "key": "f" },
-    { "type": "key", "label": "isolate the still-pending deferrals", "key": "z" },
+    { "type": "key", "label": "isolate the still-pending deferrals", "key": "d" },
     { "type": "assert", "label": "a pending deferral keeps its marker and wake date", "assert": "contains", "value": "Alpha still hidden defer" },
     { "type": "assert", "label": "the woken task is not deferred any more", "assert": "not_contains", "value": "Alpha back from a break woke" },
     { "type": "assert", "assert": "no_layout_issues" },

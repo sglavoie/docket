@@ -93,13 +93,19 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
 		"`wr` toggle Review",
 		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
-		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `z` snooze; `P` pin",
+		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `d` defer; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
-		"`o` opens the sort chord: `od` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
+		"`o` opens the sort chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
 		"`Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
-		"The old standalone `b`, `d`, and `t` actions and comma state prefix have no compatibility action",
+		"The old standalone `b` and `t` actions and comma state prefix have no compatibility action",
+		"`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, and root `z` is now unbound",
 		"`a` creates and selects a new tag",
+	})
+	rejectDocumentationText(t, content, []string{
+		"`z` snooze",
+		"`fz`",
+		"Snoozed-only",
 	})
 }
 
@@ -122,8 +128,8 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`fs` | Pick workflow states with OR semantics",
 		"`ft` | Pick tags with AND semantics",
 		"`fr` | Toggle the `review` tag facet",
-		"`fd` | Open the due-date facet picker: overdue, today, this week, or no due date",
-		"`fz` | Snoozed-only",
+		"`f@` | Open the due-date facet picker: overdue, today, this week, or no due date",
+		"`fd` | Deferred-only",
 		"`fx` | Clear every facet",
 		"`Ft` | Pick project tags with AND semantics",
 		"`Fp` | Add parked projects to the population",

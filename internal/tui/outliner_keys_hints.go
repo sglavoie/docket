@@ -245,7 +245,7 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 					hint.Label = fmt.Sprintf("completed:%dd+", days)
 				}
 			}
-		case "d":
+		case "@":
 			if filter.DueDate != DueDateAll {
 				hint.Label = "due:" + dueDateFilterLabel(filter.DueDate)
 			}
@@ -257,9 +257,9 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 			if filter.Tags[reviewTaskTag] {
 				hint.Label = "review:on"
 			}
-		case "z":
+		case "d":
 			if filter.Deferred {
-				hint.Label = "snoozed:on"
+				hint.Label = "deferred:on"
 			}
 		case "x":
 			if count := commonFilterFacetCount(filter); count > 0 {

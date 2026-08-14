@@ -60,11 +60,11 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 	for _, want := range []string{
 		"p priority threshold",
 		"c completion age",
-		"d due",
+		"@ due",
 		"s states",
 		"t tags",
 		"r review",
-		"z snoozed",
+		"d deferred",
 		"x clear all",
 	} {
 		if !strings.Contains(row, want) {
@@ -102,8 +102,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	}
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"p priority:high+", "s states:2", "c completed:90d+", "d due:today",
-		"t tags:2", "r review:on", "z snoozed:on", "x clear:5",
+		"p priority:high+", "s states:2", "c completed:90d+", "@ due:today",
+		"t tags:2", "r review:on", "d deferred:on", "x clear:5",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated f row %q omits %q", row, want)
@@ -309,11 +309,11 @@ func TestFilterChordDeferredFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
 
-	if cmd := pressFilterChord(t, app, "fz"); cmd == nil {
-		t.Fatal("fz produced no status command")
+	if cmd := pressFilterChord(t, app, "fd"); cmd == nil {
+		t.Fatal("fd produced no status command")
 	}
 	if !filter.Deferred {
-		t.Fatal("fz did not enable the deferred-only facet")
+		t.Fatal("fd did not enable the deferred-only facet")
 	}
 
 	pressFilterChord(t, app, "fx")
@@ -323,17 +323,17 @@ func TestFilterChordDeferredFacet(t *testing.T) {
 }
 
 func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
-	t.Run("fd due date", func(t *testing.T) {
+	t.Run("f@ due date", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.filter.DueDate = DueDateThisWeek
 
-		cmd := pressFilterChord(t, app, "fd")
+		cmd := pressFilterChord(t, app, "f@")
 		if cmd == nil {
-			t.Fatal("fd produced no value-request command")
+			t.Fatal("f@ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
 		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterDue {
-			t.Fatalf("fd did not open the due-date picker: %#v", app.operationValuePicker)
+			t.Fatalf("f@ did not open the due-date picker: %#v", app.operationValuePicker)
 		}
 		items := app.operationValuePicker.surface.Items()
 		wantIDs := []ListItemID{
@@ -512,12 +512,12 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			app := newFilterChordTestApp(t)
-			cmd := pressFilterChord(t, app, "fd")
+			cmd := pressFilterChord(t, app, "f@")
 			if cmd == nil {
-				t.Fatal("fd produced no value-request command")
+				t.Fatal("f@ produced no value-request command")
 			}
 			if handled, overlayCmd := app.handleOperationOverlayMessage(cmd()); !handled || overlayCmd != nil {
-				t.Fatalf("fd request = handled %v cmd %T; want picker opened synchronously", handled, overlayCmd)
+				t.Fatalf("f@ request = handled %v cmd %T; want picker opened synchronously", handled, overlayCmd)
 			}
 			picker := app.operationValuePicker
 			if picker == nil || !picker.surface.SetCursorToID(test.itemID) {
@@ -544,30 +544,30 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 
 	binding, descriptor, resolution := registry.InputBindingForSequence(
 		InputStrategySimplified,
-		[]string{"f", "d"},
+		[]string{"f", "@"},
 		ctx,
 	)
 	if resolution != ChordTerminal || descriptor.ID != operationFilterDue {
-		t.Fatalf("fd = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterDue)
+		t.Fatalf("f@ = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterDue)
 	}
-	if binding.HasPresetValue || binding.DisplayKey != "fd" {
-		t.Errorf("fd binding = preset %v display %q, want picker display fd", binding.HasPresetValue, binding.DisplayKey)
+	if binding.HasPresetValue || binding.DisplayKey != "f@" {
+		t.Errorf("f@ binding = preset %v display %q, want picker display f@", binding.HasPresetValue, binding.DisplayKey)
 	}
-	helpDocumentsFD := false
+	helpDocumentsDueFacet := false
 	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
-		if item.Key == "fd" && item.Description == "Filter by Due Date" {
-			helpDocumentsFD = true
+		if item.Key == "f@" && item.Description == "Filter by Due Date" {
+			helpDocumentsDueFacet = true
 			break
 		}
 	}
-	if !helpDocumentsFD {
-		t.Error("derived help omits the terminal fd due-date picker")
+	if !helpDocumentsDueFacet {
+		t.Error("derived help omits the terminal f@ due-date picker")
 	}
 	for _, retired := range [][]string{
-		{"f", "d", "t"},
-		{"f", "d", "w"},
-		{"f", "d", "o"},
-		{"f", "d", "n"},
+		{"f", "@", "t"},
+		{"f", "@", "w"},
+		{"f", "@", "o"},
+		{"f", "@", "n"},
 	} {
 		if _, _, got := registry.InputBindingForSequence(InputStrategySimplified, retired, ctx); got != ChordNoMatch {
 			t.Errorf("retired due path %v resolution = %v, want no match", retired, got)
