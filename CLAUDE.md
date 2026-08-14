@@ -453,13 +453,37 @@ Peek holds no checklist line. Checklist items are rows, so restating them there
 would spend the tightest budget in the Outliner on content already on screen,
 and the task row's progress badge answers the folded case unconditionally.
 
-The five-line cap is a hard budget, because `computeOutlinerViewport` subtracts
-the Peek height plus a guard row from an already-tight one. `inlinePeekLines`
-therefore owns a drop order, not a set: the description spends up to
-`inlinePeekDescriptionRows` (3) lines because it is what actually truncates,
-`inlinePeekDatesLine` is appended directly after it, and the tail cut sheds from
-the end. A new Peek line takes a deliberate position in that order, or the cap
-silently starts eating something else.
+The five-line cap is a hard budget for the additive lines, because
+`computeOutlinerViewport` subtracts the Peek height plus a guard row from an
+already-tight one. `inlinePeekLines` therefore owns a drop order, not a set: the
+description spends up to `inlinePeekDescriptionRows` (3) lines because it is what
+actually truncates, `inlinePeekDatesLine` is appended directly after it, and the
+tail cut sheds from the end. A new Peek line takes a deliberate position in that
+order, or the cap silently starts eating something else.
+
+The title continuation is the one block outside that budget. Peek is the surface
+whose job is to show what the row had no width for, so a title the row clipped is
+completed there rather than restated: `inlinePeekTitleLines` renders `title` minus
+exactly the prefix the row rendered — no label, no ellipsis within
+`inlinePeekTitleRows` (3), and no repetition of the visible head — styled through
+`TaskTitleStyleFor` so it reads as the same title. The row keeps its `…`, which
+now reads as "continues below". It renders only when the row actually clipped, it
+is first in the order, and the effective cap becomes
+`inlinePeekMaxLines + len(titleLines)`, so it displaces nothing.
+`visualWidthOverflow` is the counterpart to `truncateToVisualWidth` and must
+subtract the same ellipsis column, or the two disagree about the cut and a
+character is duplicated or lost.
+
+Both paths derive the title budget from one formula, `buildTaskRowSegments` plus
+`taskRowSegments.titleWidth`, because the measurement path cannot have the real
+`ColumnLayout`: `ComputeOutlinerColumnLayout` reads the row window
+`computeOutlinerViewport` is still deriving. `inlinePeekLineCount` therefore
+substitutes `worstCaseColumnLayout` and passes the row's real indent. Padding only
+ever widens a badge and every status/priority glyph is single-width, so the
+substitution over-reserves by at most two columns of title budget instead of
+under-reserving the Peek height; the guard row covers the residue. A measurement
+that under-reserves overflows terminal height and the scenario harness reports
+`height_overflow`.
 
 A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
 renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>` for

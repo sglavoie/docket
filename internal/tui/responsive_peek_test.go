@@ -84,6 +84,70 @@ func TestPeekIndentDoesNotRenderTreeGlyphs(t *testing.T) {
 	}
 }
 
+// TestPeekContinuationCompletesTheRowTitleAtEveryWidth is the reconciliation
+// test: the row's visible title minus its ellipsis, plus the Peek continuation,
+// must equal the whole title. A cut the two paths disagree about shows up here
+// as a duplicated or missing character.
+func TestPeekContinuationCompletesTheRowTitleAtEveryWidth(t *testing.T) {
+	title := "Investigate intermittent timeout when syncing very large project archives " +
+		"over slow connections and report which retry policy the transport eventually settled on"
+	task := &models.Task{ID: "task", Title: title, WorkflowState: models.StateBacklog}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	outliner.peekMode = true
+	outliner.cursor = 0
+
+	for _, width := range []int{60, 100} {
+		row := outlinerRow{task: task, ProjectID: project.ID}
+		colLayout := worstCaseColumnLayout(width)
+		overflow := outliner.taskRowTitleOverflow(row, width, colLayout)
+		if overflow == "" || !strings.HasSuffix(title, overflow) {
+			t.Fatalf("width %d overflow %q is not the title's own tail", width, overflow)
+		}
+		head := strings.TrimSuffix(title, overflow)
+
+		lines := strings.Split(ansi.Strip(outliner.renderOutlinerTaskRow(row, true, width, width, 0, colLayout)), "\n")
+		if len(lines) < 2 {
+			t.Fatalf("width %d rendered no Peek continuation:\n%s", width, strings.Join(lines, "\n"))
+		}
+		if !strings.Contains(lines[0], head+"…") {
+			t.Fatalf("width %d row did not render exactly the head %q:\n%s", width, head, lines[0])
+		}
+		// The wrap drops the space it breaks on, so the continuation is compared
+		// word by word; the cut itself is already exact through head+overflow.
+		continuation := strings.Join(strings.Fields(strings.Join(lines[1:], " ")), " ")
+		if want := strings.Join(strings.Fields(overflow), " "); continuation != want {
+			t.Fatalf("width %d continuation = %q, want %q", width, continuation, want)
+		}
+		if strings.Contains(strings.Join(lines[1:], "\n"), strings.TrimSpace(head)) {
+			t.Fatalf("width %d Peek restated the head:\n%s", width, strings.Join(lines[1:], "\n"))
+		}
+		for lineNumber, line := range lines {
+			if got := lipgloss.Width(line); got > width {
+				t.Fatalf("width %d line %d overflowed to %d", width, lineNumber, got)
+			}
+		}
+	}
+}
+
+// TestPeekRendersNoContinuationForAVisibleTitle keeps the block conditional: a
+// title the row showed in full is never restated beneath it.
+func TestPeekRendersNoContinuationForAVisibleTitle(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Short title", WorkflowState: models.StateBacklog}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	outliner.peekMode = true
+	outliner.cursor = 0
+
+	row := outlinerRow{task: task, ProjectID: project.ID}
+	lines := strings.Split(ansi.Strip(outliner.renderOutlinerTaskRow(row, true, 120, 120, 0, nil)), "\n")
+	for _, line := range lines[1:] {
+		if strings.Contains(line, "title") {
+			t.Fatalf("Peek restated a fully visible title: %q", line)
+		}
+	}
+}
+
 func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, ViewCrossProjectOutliner)

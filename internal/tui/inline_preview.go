@@ -13,40 +13,53 @@ import (
 const (
 	inlinePeekMaxLines        = 5
 	inlinePeekDescriptionRows = 3
+	inlinePeekTitleRows       = 3
 )
 
 type inlinePeekOptions struct {
-	Task   *models.Task
-	Indent string
-	Width  int
+	Task          *models.Task
+	Indent        string
+	Width         int
+	TitleOverflow string
 }
 
-func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, width int) []string {
+func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, rowWidth int, colLayout *ColumnLayout) []string {
 	if m == nil || !row.isTaskRow() {
 		return nil
 	}
 	return inlinePeekLines(inlinePeekOptions{
-		Task:   row.task,
-		Indent: indent,
-		Width:  width,
+		Task:          row.task,
+		Indent:        indent,
+		Width:         rowWidth,
+		TitleOverflow: m.taskRowTitleOverflow(row, rowWidth, colLayout),
 	})
 }
 
+// inlinePeekLineCount measures the Peek height computeOutlinerViewport must
+// reserve. It reconstructs the row's real indent and substitutes the worst-case
+// column layout, because the title continuation now sits outside the additive
+// cap and a measurement that assumed neither would diverge without bound on a
+// deep row.
 func (m *OutlinerModel) inlinePeekLineCount(row outlinerRow, width int) int {
-	return len(m.inlinePeekLinesForRow(row, "", max(width, 1)))
+	width = max(width, 1)
+	indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
+	return len(m.inlinePeekLinesForRow(row, indent, width, worstCaseColumnLayout(width)))
 }
 
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
 // contains only richer content plus tags: description, dates, attachment names,
-// comments, and tags.
+// comments, and tags. A title the row had to clip is completed above them, and
+// those continuation rows raise the cap rather than displacing anything.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
 	}
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
-	lines := make([]string, 0, inlinePeekMaxLines)
+	titleLines := inlinePeekTitleLines(opts.Task, opts.TitleOverflow, opts.Indent, available)
+	lines := make([]string, 0, inlinePeekMaxLines+len(titleLines))
+	lines = append(lines, titleLines...)
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
 
 	if dates := inlinePeekDatesLine(opts.Task, time.Now(), available); dates != "" {
@@ -68,8 +81,34 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	if len(lines) == 0 {
 		lines = append(lines, opts.Indent+MutedStyle.Render("No additional details"))
 	}
-	if len(lines) > inlinePeekMaxLines {
-		lines = lines[:inlinePeekMaxLines]
+	if maxLines := inlinePeekMaxLines + len(titleLines); len(lines) > maxLines {
+		lines = lines[:maxLines]
+	}
+	return lines
+}
+
+// inlinePeekTitleLines completes a title the row clipped rather than restating
+// it: the row keeps its ellipsis, which now reads as "continues below", and Peek
+// carries only the remainder. No label and the task's own title styling, so it
+// reads as the same title instead of as another Label: value line.
+func inlinePeekTitleLines(task *models.Task, overflow, indent string, width int) []string {
+	if task == nil || overflow == "" || width <= 0 {
+		return nil
+	}
+
+	wrapped := wrapText(overflow, width)
+	if len(wrapped) == 0 {
+		return nil
+	}
+	if len(wrapped) > inlinePeekTitleRows {
+		wrapped = wrapped[:inlinePeekTitleRows]
+		wrapped[len(wrapped)-1] = truncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
+	}
+
+	style := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
+	lines := make([]string, 0, len(wrapped))
+	for _, line := range wrapped {
+		lines = append(lines, indent+style.Render(truncateIntentional(line, width, "…")))
 	}
 	return lines
 }

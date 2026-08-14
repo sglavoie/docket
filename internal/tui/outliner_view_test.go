@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -85,6 +87,49 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 				t.Fatalf("first rendered row = %q, want %q", got, firstTitle)
 			}
 		})
+	}
+}
+
+// TestViewportReservesTheTitleContinuationRows is the measurement-path contract:
+// the continuation sits outside the additive cap, so computeOutlinerViewport
+// must reserve those rows too or the list overflows the bottom of the terminal.
+func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
+	const (
+		width  = 60
+		height = 20
+	)
+	long := &models.Task{
+		ID: "long", ShortID: 1, WorkflowState: models.StateBacklog,
+		Title: "Investigate intermittent timeout when syncing very large project " +
+			"archives over slow connections and report which retry policy the " +
+			"transport eventually settled on before the deadline",
+	}
+	short := &models.Task{ID: "short", ShortID: 2, Title: "Short", WorkflowState: models.StateBacklog}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{long, short})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	outliner.SetSize(width, height)
+	outliner.rebuildRows()
+	outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
+
+	outliner.peekMode = true
+	row := outliner.rows[outliner.cursor]
+	indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
+	reserved := outliner.inlinePeekLineCount(row, width-1)
+	bare := len(inlinePeekLines(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}))
+	if reserved <= bare {
+		t.Fatalf("reserved %d Peek rows, want more than the %d the block holds without a continuation", reserved, bare)
+	}
+	if drawn := len(outliner.inlinePeekLinesForRow(row, indent, width, nil)); drawn > reserved {
+		t.Fatalf("render drew %d Peek rows, more than the %d reserved", drawn, reserved)
+	}
+
+	for lineNumber, line := range strings.Split(outliner.View().Content, "\n") {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("line %d overflowed to %d columns", lineNumber, got)
+		}
+	}
+	if got := lipgloss.Height(outliner.View().Content); got > height {
+		t.Fatalf("view height = %d, want <= %d", got, height)
 	}
 }
 

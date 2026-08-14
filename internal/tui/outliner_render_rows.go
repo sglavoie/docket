@@ -225,14 +225,28 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 	return ZebraLine(line, rowWidth, rowIndex)
 }
 
-func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {
+// taskRowSegments holds every rendered piece of a task row except the title, so
+// the render path and the viewport measurement path derive the title budget from
+// one formula instead of two that can drift apart.
+type taskRowSegments struct {
+	cursorPrefix, checkbox, prefixStr, foldIndicator    string
+	statusIcon, prioritySegment, tagSegment, indicators string
+}
+
+func (s taskRowSegments) titleWidth(rowWidth int) int {
+	return max(rowWidth-outlinerNonTitleWidth(
+		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
+		s.statusIcon, s.prioritySegment, s.tagSegment, s.indicators,
+	), 1)
+}
+
+func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout) taskRowSegments {
 	task := row.task
 	foldIndicator := m.renderTaskFoldIndicator(row)
 	statusIcon := m.renderTaskStatusIcon(task)
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
 	}
-	titleStyle := m.renderTaskTitleStyle(task, selected)
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
 	tagSegment := ""
 	if m.columnConfig.IsVisible(ColTags) {
@@ -241,7 +255,6 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		}
 	}
 	indicatorSegments := m.renderTaskIndicatorSegments(row)
-	indicators := indicatorSegments.render()
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands
 	// out.
@@ -256,40 +269,63 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 			}
 		}
 	}
-	cursorPrefix := RenderCursorPrefix()
-	checkbox := m.renderTaskCheckbox(row)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
 	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator)
+
+	segments := taskRowSegments{
+		cursorPrefix:    RenderCursorPrefix(),
+		checkbox:        m.renderTaskCheckbox(row),
+		prefixStr:       prefixStr,
+		foldIndicator:   foldIndicator,
+		statusIcon:      statusIcon,
+		prioritySegment: prioritySegment,
+		tagSegment:      tagSegment,
+		indicators:      indicatorSegments.render(),
+	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
 	// Queue membership, multi-select state, tree position, and workflow state
 	// remain; lower-priority badges are progressively removed as space tightens.
 	titleTarget := min(8, max(rowWidth/4, 4))
-	availableTitleWidth := func() int {
-		return rowWidth - outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators)
-	}
-	if availableTitleWidth() < titleTarget {
-		tagSegment = ""
+	if segments.titleWidth(rowWidth) < titleTarget {
+		segments.tagSegment = ""
 	}
 	for _, dropSegment := range indicatorDropLadder {
-		if availableTitleWidth() >= titleTarget {
+		if segments.titleWidth(rowWidth) >= titleTarget {
 			break
 		}
 		dropSegment(&indicatorSegments)
-		indicators = indicatorSegments.render()
+		segments.indicators = indicatorSegments.render()
 	}
-	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators)
+	return segments
+}
+
+// taskRowTitleOverflow returns the title text the row itself could not show, so
+// Peek can complete it rather than restate it.
+func (m *OutlinerModel) taskRowTitleOverflow(row outlinerRow, rowWidth int, colLayout *ColumnLayout) string {
+	if m == nil || row.task == nil {
+		return ""
+	}
+	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
+	return visualWidthOverflow(row.task.Title, segments.titleWidth(rowWidth))
+}
+
+func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {
+	task := row.task
+	titleStyle := m.renderTaskTitleStyle(task, selected)
+	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
+	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, segments)
 
 	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s",
-		cursorPrefix,
-		checkbox,
-		prefixStr,
-		foldIndicator,
-		statusIcon,
-		prioritySegment,
+		segments.cursorPrefix,
+		segments.checkbox,
+		segments.prefixStr,
+		segments.foldIndicator,
+		segments.statusIcon,
+		segments.prioritySegment,
 		title,
-		tagSegment,
-		indicators,
+		segments.tagSegment,
+		segments.indicators,
 	)
 
 	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
@@ -308,7 +344,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		// Peek belongs to the selected task but is not another tree node. Preserve
 		// the nesting width for alignment without repeating connector glyphs.
 		indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
-		for _, previewLine := range m.inlinePeekLinesForRow(row, indent, width) {
+		for _, previewLine := range m.inlinePeekLinesForRow(row, indent, width, colLayout) {
 			b.WriteString("\n")
 			b.WriteString(previewLine)
 		}
@@ -565,9 +601,8 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators string) string {
-	nonTitleWidth := outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators)
-	availableWidth := max(rowWidth-nonTitleWidth, 1)
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
+	availableWidth := segments.titleWidth(rowWidth)
 	title := task.Title
 	remainingWidth := availableWidth - lipgloss.Width(title)
 	if remainingWidth < 0 {

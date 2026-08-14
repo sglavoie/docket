@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -16,6 +18,26 @@ func truncateToVisualWidth(text string, width int) string {
 		return ansi.Truncate(text, width, "")
 	}
 	return ansi.Truncate(text, width-1, "") + "…"
+}
+
+// visualWidthOverflow returns the text truncateToVisualWidth drops at this
+// width, so a caller can render the clipped tail elsewhere. It must subtract the
+// same ellipsis column truncateToVisualWidth reserves, or the two disagree about
+// the cut and a character is duplicated or lost. A prefix mismatch returns "" so
+// the failure hides the tail rather than repeating the visible head.
+func visualWidthOverflow(text string, width int) string {
+	if width <= 0 || lipgloss.Width(text) <= width {
+		return ""
+	}
+	kept := width
+	if width >= 2 {
+		kept = width - 1
+	}
+	tail, ok := strings.CutPrefix(text, ansi.Truncate(text, kept, ""))
+	if !ok {
+		return ""
+	}
+	return tail
 }
 
 func fitStyledLineToWidth(line string, width int) string {

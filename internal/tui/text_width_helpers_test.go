@@ -73,6 +73,51 @@ func TestTextWidthRequiredTruncationRecordsAudit(t *testing.T) {
 	}
 }
 
+// TestVisualWidthOverflowCompletesTheTruncatedHead verifies that the head
+// truncateToVisualWidth keeps, minus its ellipsis, concatenated with the tail
+// visualWidthOverflow returns, reconstructs the input exactly. The two must
+// agree about the cut or Peek would duplicate or lose a character.
+func TestVisualWidthOverflowCompletesTheTruncatedHead(t *testing.T) {
+	cases := []struct {
+		name  string
+		text  string
+		width int
+	}{
+		{"ascii", "abcdefghijklmnopqrstuvwxyz", 10},
+		{"wide runes on the boundary", strings.Repeat("界", 12), 9},
+		{"mixed wide and narrow", "ab界cd界ef界gh", 7},
+		{"width below the ellipsis reserve", "abcdef", 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			head := strings.TrimSuffix(truncateToVisualWidth(tc.text, tc.width), "…")
+			tail := visualWidthOverflow(tc.text, tc.width)
+			if tail == "" {
+				t.Fatalf("visualWidthOverflow(%q, %d) = \"\", want the clipped tail", tc.text, tc.width)
+			}
+			if got := head + tail; got != tc.text {
+				t.Fatalf("head+tail = %q, want %q", got, tc.text)
+			}
+		})
+	}
+}
+
+func TestVisualWidthOverflowIsEmptyWhenTextFits(t *testing.T) {
+	for _, tc := range []struct {
+		text  string
+		width int
+	}{
+		{"short", 40},
+		{"exact fit", len("exact fit")},
+		{strings.Repeat("界", 4), 8},
+		{"anything", 0},
+	} {
+		if got := visualWidthOverflow(tc.text, tc.width); got != "" {
+			t.Fatalf("visualWidthOverflow(%q, %d) = %q, want \"\"", tc.text, tc.width, got)
+		}
+	}
+}
+
 // TestTextWidthIntentionalTruncationNoAudit verifies that truncateIntentional
 // clips dense data without recording a render-audit issue, even inside an audit.
 func TestTextWidthIntentionalTruncationNoAudit(t *testing.T) {

@@ -156,6 +156,99 @@ func TestInlinePeekSpendsTheCapOnDescriptionAndDates(t *testing.T) {
 	}
 }
 
+// TestInlinePeekCompletesAClippedTitle locks the continuation block: it is bare
+// (no label), it carries no ellipsis while it fits inside inlinePeekTitleRows,
+// and it never repeats the head the row already showed.
+func TestInlinePeekCompletesAClippedTitle(t *testing.T) {
+	const head = "Investigate intermittent timeout when syncing "
+	const tail = "very large project archives over slow connections"
+	task := &models.Task{ID: "task", Title: head + tail}
+
+	rendered := inlinePeekLines(inlinePeekOptions{
+		Task: task, TitleOverflow: tail, Indent: "  ", Width: 80,
+	})
+	plain := ansi.Strip(strings.Join(rendered, "\n"))
+	if !strings.Contains(plain, tail) {
+		t.Fatalf("Peek missing the title continuation:\n%s", plain)
+	}
+	if strings.Contains(plain, head) {
+		t.Fatalf("Peek restated the head the row already showed:\n%s", plain)
+	}
+	for _, banned := range []string{"Title:", "…", "No additional details"} {
+		if strings.Contains(plain, banned) {
+			t.Fatalf("continuation rendered %q:\n%s", banned, plain)
+		}
+	}
+	for lineNumber, line := range rendered {
+		if got := lipgloss.Width(line); got > 80 {
+			t.Fatalf("line %d width = %d, want <= 80", lineNumber, got)
+		}
+	}
+}
+
+// TestInlinePeekTitleContinuationRaisesTheCap proves the continuation displaces
+// nothing: with a three-row description beside it, the dates line still renders
+// because the cap grew by the continuation rows rather than absorbing them.
+func TestInlinePeekTitleContinuationRaisesTheCap(t *testing.T) {
+	task := &models.Task{
+		ID:          "task",
+		Title:       "Long title",
+		Description: strings.Repeat("Wrapped description content ", 12),
+		CreatedAt:   time.Now().Add(-5 * 24 * time.Hour),
+		UpdatedAt:   time.Now().Add(-time.Hour),
+		Attachments: []models.Attachment{{Filename: "spec.pdf"}},
+		Comments:    []*models.Comment{{Text: "Decision"}},
+	}
+
+	const overflow = "the remainder the row had no width for"
+	rendered := inlinePeekLines(inlinePeekOptions{Task: task, TitleOverflow: overflow, Width: 80})
+	if len(rendered) != inlinePeekMaxLines+1 {
+		t.Fatalf("Peek line count = %d, want %d", len(rendered), inlinePeekMaxLines+1)
+	}
+	plain := ansi.Strip(strings.Join(rendered, "\n"))
+	if !strings.HasPrefix(plain, overflow) {
+		t.Fatalf("continuation is not the first Peek row:\n%s", plain)
+	}
+	for _, want := range []string{"created 5d · updated 1h", "Attachments: spec.pdf"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("continuation displaced %q:\n%s", want, plain)
+		}
+	}
+}
+
+func TestInlinePeekTitleContinuationEllipsizesPastItsBound(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Long title"}
+	overflow := strings.Repeat("continuation ", 40)
+
+	rendered := inlinePeekLines(inlinePeekOptions{Task: task, TitleOverflow: overflow, Width: 40})
+	if len(rendered) != inlinePeekTitleRows {
+		t.Fatalf("continuation rows = %d, want %d", len(rendered), inlinePeekTitleRows)
+	}
+	if plain := ansi.Strip(rendered[len(rendered)-1]); !strings.HasSuffix(plain, "…") {
+		t.Fatalf("bounded continuation missing ellipsis: %q", plain)
+	}
+}
+
+// TestInlinePeekWithoutOverflowIsUnchanged pins the no-clip case: a fully
+// visible title adds no block, so Peek renders exactly what it did before.
+func TestInlinePeekWithoutOverflowIsUnchanged(t *testing.T) {
+	task := &models.Task{
+		ID:          "task",
+		Title:       "Short",
+		Description: "Some detail",
+		Tags:        []string{"backend"},
+	}
+	opts := inlinePeekOptions{Task: task, Indent: "  ", Width: 60}
+	withEmpty := inlinePeekLines(opts)
+	opts.TitleOverflow = ""
+	if got := inlinePeekLines(opts); strings.Join(got, "\n") != strings.Join(withEmpty, "\n") {
+		t.Fatalf("empty overflow changed the Peek block")
+	}
+	if strings.Contains(ansi.Strip(strings.Join(withEmpty, "\n")), "Short") {
+		t.Fatalf("Peek restated a title the row could show in full")
+	}
+}
+
 func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
 	task := &models.Task{
 		ID:   "task",
