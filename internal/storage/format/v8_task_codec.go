@@ -39,15 +39,15 @@ func V8TaskRecordFromV7(task V6TaskRecord) V8TaskRecord {
 
 // ValidateV8TaskRecord validates a complete schema-8 task record.
 func ValidateV8TaskRecord(task V8TaskRecord) error {
-	return validateV8TaskRecord(task, true)
+	return validateV8TaskRecord(task, true, metadataKeyDeferredLegacy)
 }
 
-func validateV8TaskRecord(task V8TaskRecord, requireTitle bool) error {
+func validateV8TaskRecord(task V8TaskRecord, requireTitle bool, deferKey string) error {
 	if requireTitle {
-		if err := ValidateV7TaskRecord(task.V6TaskRecord); err != nil {
+		if err := validateV7TaskRecord(task.V6TaskRecord, deferKey); err != nil {
 			return err
 		}
-	} else if err := validateV6TaskRecord(task.V6TaskRecord, false); err != nil {
+	} else if err := validateV6TaskRecord(task.V6TaskRecord, false, deferKey); err != nil {
 		return err
 	}
 	if task.StateChangedAt.IsZero() {
@@ -58,7 +58,7 @@ func validateV8TaskRecord(task V8TaskRecord, requireTitle bool) error {
 
 // WriteV8TaskMetadata writes the canonical schema-8 metadata comment.
 func WriteV8TaskMetadata(task V8TaskRecord) (string, error) {
-	if err := validateV8TaskRecord(task, false); err != nil {
+	if err := validateV8TaskRecord(task, false, metadataKeyDeferredLegacy); err != nil {
 		return "", err
 	}
 	extra := []string{"state_changed: " + formatV6Time(task.StateChangedAt)}
@@ -80,7 +80,7 @@ func ParseV8TaskMetadata(comment string) (V8TaskRecord, error) {
 		return V8TaskRecord{}, fmt.Errorf("parse v8 state_changed: %w", err)
 	}
 	task := V8TaskRecord{V6TaskRecord: base, StateChangedAt: stateChangedAt}
-	if err := validateV8TaskRecord(task, false); err != nil {
+	if err := validateV8TaskRecord(task, false, metadataKeyDeferredLegacy); err != nil {
 		return V8TaskRecord{}, err
 	}
 	return task, nil

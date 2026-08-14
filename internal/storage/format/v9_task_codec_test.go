@@ -101,6 +101,58 @@ func TestV9TaskMetadataOmitsAnUndeferredTask(t *testing.T) {
 	}
 }
 
+// The write, parse, and full-record paths all reach one validator, and only the
+// key it is handed says which metadata field the user must repair.
+func TestV9TaskDeferralDateErrorsNameTheDeferredKey(t *testing.T) {
+	invalid := v9TestRecord()
+	invalid.SnoozedUntil = "2026-5-14"
+
+	assertDeferredVocabulary := func(t *testing.T, label string, err error) {
+		t.Helper()
+		if err == nil {
+			t.Fatalf("%s accepted a noncanonical deferral date", label)
+		}
+		if !strings.Contains(err.Error(), `deferred date "2026-5-14" is not canonical`) {
+			t.Fatalf("%s error = %v, want the deferred key named", label, err)
+		}
+		if strings.Contains(err.Error(), "snoozed") {
+			t.Fatalf("%s error = %v, want no retired vocabulary", label, err)
+		}
+	}
+
+	_, err := WriteV9TaskMetadata(invalid)
+	assertDeferredVocabulary(t, "WriteV9TaskMetadata", err)
+	_, err = WriteV9TaskBody(invalid)
+	assertDeferredVocabulary(t, "WriteV9TaskBody", err)
+	assertDeferredVocabulary(t, "ValidateV9TaskRecord", ValidateV9TaskRecord(invalid))
+
+	valid, err := WriteV9TaskMetadata(v9TestRecord())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = ParseV9TaskMetadata(strings.Replace(valid, "deferred: 2026-05-14", "deferred: 2026-5-14", 1))
+	assertDeferredVocabulary(t, "ParseV9TaskMetadata", err)
+}
+
+// Schema 6 and schema 8 write `snoozed` on disk, so their errors keep naming it.
+func TestLegacyDeferralDateErrorsKeepTheSnoozedKey(t *testing.T) {
+	invalid := v9TestRecord()
+	invalid.SnoozedUntil = "2026-5-14"
+
+	for _, testCase := range []struct {
+		name  string
+		write func() (string, error)
+	}{
+		{"WriteV8TaskMetadata", func() (string, error) { return WriteV8TaskMetadata(invalid) }},
+		{"WriteV6TaskMetadata", func() (string, error) { return WriteV6TaskMetadata(invalid.V6TaskRecord) }},
+	} {
+		_, err := testCase.write()
+		if err == nil || !strings.Contains(err.Error(), `snoozed date "2026-5-14" is not canonical`) {
+			t.Fatalf("%s error = %v, want the legacy snoozed key named", testCase.name, err)
+		}
+	}
+}
+
 func TestV9TaskMetadataRequiresTheStateClock(t *testing.T) {
 	record := v9TestRecord()
 	record.StateChangedAt = time.Time{}

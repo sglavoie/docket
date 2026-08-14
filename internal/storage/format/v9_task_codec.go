@@ -37,14 +37,15 @@ func v9TaskMetadataKeys() map[string]bool {
 var v9RequiredMetadataKeys = v8RequiredMetadataKeys
 
 // ValidateV9TaskRecord validates a complete schema-9 task record. Schema 9
-// changes a durable key and no invariant, so the schema-8 rules apply verbatim.
+// changes a durable key and no invariant, so the schema-8 rules apply verbatim
+// apart from the key a rejected deferral date is named by.
 func ValidateV9TaskRecord(task V9TaskRecord) error {
-	return ValidateV8TaskRecord(task)
+	return validateV8TaskRecord(task, true, metadataKeyDeferred)
 }
 
 // WriteV9TaskMetadata writes the canonical schema-9 metadata comment.
 func WriteV9TaskMetadata(task V9TaskRecord) (string, error) {
-	if err := validateV8TaskRecord(task, false); err != nil {
+	if err := validateV8TaskRecord(task, false, metadataKeyDeferred); err != nil {
 		return "", err
 	}
 	extra := []string{"state_changed: " + formatV6Time(task.StateChangedAt)}
@@ -66,7 +67,7 @@ func ParseV9TaskMetadata(comment string) (V9TaskRecord, error) {
 		return V9TaskRecord{}, fmt.Errorf("parse v9 state_changed: %w", err)
 	}
 	task := V9TaskRecord{V6TaskRecord: base, StateChangedAt: stateChangedAt}
-	if err := validateV8TaskRecord(task, false); err != nil {
+	if err := validateV8TaskRecord(task, false, metadataKeyDeferred); err != nil {
 		return V9TaskRecord{}, err
 	}
 	return task, nil

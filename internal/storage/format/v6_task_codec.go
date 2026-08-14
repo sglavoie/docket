@@ -71,11 +71,14 @@ type V6TaskComment struct {
 
 // ValidateV6TaskRecord validates a complete schema-6 task record.
 func ValidateV6TaskRecord(task V6TaskRecord) error {
-	return validateV6TaskRecord(task, true)
+	return validateV6TaskRecord(task, true, metadataKeyDeferredLegacy)
 }
 
+// deferKey names the deferral-date key in the caller's own schema, so a
+// rejected date is reported under the key that schema actually writes.
+//
 //nolint:gocyclo // Keeping all durable field invariants together makes the schema boundary auditable.
-func validateV6TaskRecord(task V6TaskRecord, requireTitle bool) error {
+func validateV6TaskRecord(task V6TaskRecord, requireTitle bool, deferKey string) error {
 	if strings.TrimSpace(task.ID) == "" || task.ID != strings.TrimSpace(task.ID) {
 		return fmt.Errorf("v6 task id is required and must be trimmed")
 	}
@@ -111,7 +114,7 @@ func validateV6TaskRecord(task V6TaskRecord, requireTitle bool) error {
 	if err := validateV6Date("due", task.DueDate); err != nil {
 		return fmt.Errorf("v6 task %q: %w", task.ID, err)
 	}
-	if err := validateV6Date("snoozed", task.SnoozedUntil); err != nil {
+	if err := validateV6Date(deferKey, task.SnoozedUntil); err != nil {
 		return fmt.Errorf("v6 task %q: %w", task.ID, err)
 	}
 	if task.ParentID != "" {
@@ -199,7 +202,11 @@ func validateCanonicalV6Tags(taskID string, tags []string) error {
 // ValidateV7TaskRecord applies the schema-7 lowercase-kebab tag contract to
 // the otherwise unchanged schema-6 task record shape.
 func ValidateV7TaskRecord(task V6TaskRecord) error {
-	if err := validateV6TaskRecord(task, true); err != nil {
+	return validateV7TaskRecord(task, metadataKeyDeferredLegacy)
+}
+
+func validateV7TaskRecord(task V6TaskRecord, deferKey string) error {
+	if err := validateV6TaskRecord(task, true, deferKey); err != nil {
 		return err
 	}
 	for _, tag := range task.Tags {
@@ -233,7 +240,7 @@ func validateV6Attachment(attachment V6TaskAttachment) error {
 
 // WriteV6TaskMetadata writes the canonical schema-6 metadata comment.
 func WriteV6TaskMetadata(task V6TaskRecord) (string, error) {
-	if err := validateV6TaskRecord(task, false); err != nil {
+	if err := validateV6TaskRecord(task, false, metadataKeyDeferredLegacy); err != nil {
 		return "", err
 	}
 	return wrapTaskMetadata(v6MetadataParts(task)), nil
@@ -304,7 +311,7 @@ func ParseV6TaskMetadata(comment string) (V6TaskRecord, error) {
 	if err != nil {
 		return V6TaskRecord{}, err
 	}
-	if err := validateV6TaskRecord(task, false); err != nil {
+	if err := validateV6TaskRecord(task, false, metadataKeyDeferredLegacy); err != nil {
 		return V6TaskRecord{}, err
 	}
 	return task, nil
