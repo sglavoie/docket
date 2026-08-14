@@ -131,7 +131,7 @@ func modelsFromV9ProjectDocument(document V9ProjectDocument, location *time.Loca
 		if record.SnoozedUntil != "" {
 			task.DeferredUntil, err = parseProjectDocumentDate(record.SnoozedUntil, location)
 			if err != nil {
-				return nil, fmt.Errorf("v9 task %q snooze date: %w", record.ID, err)
+				return nil, fmt.Errorf("v9 task %q deferral date: %w", record.ID, err)
 			}
 		}
 		for _, attachment := range record.Attachments {

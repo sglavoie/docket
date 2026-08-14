@@ -184,7 +184,7 @@ func buildExportBadge(task *models.Task) string {
 		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
 	}
 	if task.DeferredUntil != nil {
-		parts = append(parts, "snoozed until "+task.DeferredUntil.Format("2006-01-02"))
+		parts = append(parts, "deferred until "+task.DeferredUntil.Format("2006-01-02"))
 	}
 
 	if len(parts) == 0 {

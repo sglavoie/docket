@@ -1,5 +1,5 @@
 {
-  "name": "snooze-wake-marker",
+  "name": "defer-wake-marker",
   "fixture": "signals",
   "size": "100x35",
   "actions": [

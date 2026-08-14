@@ -148,16 +148,16 @@ func TestWriteProjectMarkdownClean_DueDate(t *testing.T) {
 	}
 }
 
-func TestWriteProjectMarkdownClean_SnoozedUntil(t *testing.T) {
-	task := mustTask("t1", 1, "Snoozed")
-	snooze := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
-	task.DeferredUntil = &snooze
+func TestWriteProjectMarkdownClean_DeferredUntil(t *testing.T) {
+	task := mustTask("t1", 1, "Deferred")
+	deferUntil := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	task.DeferredUntil = &deferUntil
 	task.Priority = 0
-	p := newProject("Snooze", task)
+	p := newProject("Defer", task)
 	out := WriteProjectMarkdownClean(p)
 
-	if !strings.Contains(out, "snoozed until 2026-05-01") {
-		t.Errorf("expected snooze date in badge: %q", out)
+	if !strings.Contains(out, "deferred until 2026-05-01") {
+		t.Errorf("expected deferral date in badge: %q", out)
 	}
 }
 

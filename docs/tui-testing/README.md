@@ -45,7 +45,7 @@ The full script is the acceptance gate.
 | `release` | A large Unicode catalog for viewport and resize stress. |
 | `parked` | One project in the base task workspace and one tagged `parked`. |
 | `project-mix` | An active project with a task, an active project with none, a parked project with a task, and an archived project with none. |
-| `signals` | Lapsed and pending snoozes, concentrated overdue work, and a durable Today membership. |
+| `signals` | Lapsed and pending deferrals, concentrated overdue work, and a durable Today membership. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
 Only `parked` and `project-mix` split the base task workspace from the catalog.
@@ -158,7 +158,7 @@ The committed suite exercises the product contracts directly:
 | Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
-| Priority, workflow, snoozed, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
+| Priority, workflow, deferred, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | Scope and project administration | `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Comments and attachments | `rich-tools.json` |

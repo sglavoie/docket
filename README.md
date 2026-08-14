@@ -32,7 +32,7 @@ The Outliner is the only primary task presentation:
 2. `gi` moves to Inbox for triage.
 3. `w` opens the shared workflow chord.
 4. `wb`, `wn`, `wt`, and `wr` organize work; `wg` starts it and `wd` completes it.
-5. Direct metadata keys handle priority, state, due date, tags, snooze, and pin.
+5. Direct metadata keys handle priority, state, due date, tags, defer, and pin.
 6. `Space` opens the six occasional task tools.
 
 Together, these operations form one capture, triage, plan, execute, and
@@ -63,7 +63,7 @@ relocated task.
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode:
 `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent.
 
-All mode shows open, unsnoozed work in this order:
+All mode shows open, undeferred work in this order:
 
 ```text
 Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
@@ -78,7 +78,7 @@ never move a task across a project group. All,
 Inbox, and Backlog preserve hierarchy and manual sibling order. Today and Next
 preserve workspace-wide planning order. Review is the sparse set of open tasks
 tagged `review`; pinned tasks still appear only in Pinned. Due is date ordered. Done, Canceled,
-and snoozed work stay hidden unless a filter explicitly asks for them.
+and deferred work stay hidden unless a filter explicitly asks for them.
 
 Every mode groups its tasks by project when you are looking at more than one
 project. A project group is a foldable `[slug] (count)` header; focus a single
@@ -99,7 +99,7 @@ count you can read is always the real number.
 
 Recent answers "what did I touch lately". It lists every task updated in the
 last 30 days newest-first under Today, Yesterday, Last 7 Days, and Last 30 Days,
-grouped by project inside each bucket, and includes Done, Canceled, and snoozed
+grouped by project inside each bucket, and includes Done, Canceled, and deferred
 work because all of it is activity. The
 order freezes when you enter the mode, so triaging a row from there leaves it
 exactly where you are reading it; `gr` re-enters and re-reads activity. `Ctrl+L`
@@ -204,7 +204,7 @@ unpins by dropping the `*pin` token from the line.
 
 Filters are session-only refinements of ordinary mode rows. Slash search is a
 temporary projection over every nonterminal task in the active project scope,
-including snoozed work; Esc restores the prior mode, facets, cursor,
+including deferred work; Esc restores the prior mode, facets, cursor,
 scroll, and folds exactly.
 
 | Keys | Effect |
@@ -317,12 +317,12 @@ items, and `Esc` brings back exactly the rows that were open.
 ### Peek and multi-select
 
 The Outliner uses the full terminal width at every supported size. Task rows
-show workflow state, conditional high priority, due and snooze dates, and
+show workflow state, conditional high priority, due and defer dates, and
 checklist progress; short task IDs are hidden.
 
-A snooze reads as `zzz <date>` only while it is still pending. Once the date
+A deferral reads as `defer <date>` only while it is still pending. Once the date
 passes the row says `woke <age>` for three days, because a task that came back
-is work again and a past-dated `zzz` would read as still deferred. After that
+is work again and a past-dated `defer` would read as still hidden. After that
 the marker disappears and the task is ordinary work.
 
 A Waiting task reads as `waiting <age>`, measured from the moment it entered
@@ -336,7 +336,7 @@ still stands.
 
 A row that cannot fit every indicator sheds them in a fixed order rather than
 squeezing the title: checklist, comment, and attachment counts go first because
-the checklist rows and Peek still carry them, then the recency and snooze
+the checklist rows and Peek still carry them, then the recency and defer
 markers, then the waiting age, and the check-back date goes last.
 
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
@@ -349,7 +349,7 @@ attachment names, comment counts, and tags. Checklist items are not among them,
 because they are already rows of their own beneath the task. `Esc` closes Peek
 before unwinding Outliner navigation.
 
-State, Today/Next/Review, priority, due, tags, snooze, and pin actions apply atomically
+State, Today/Next/Review, priority, due, tags, defer, and pin actions apply atomically
 to the complete project-qualified selection, including hidden members. `v`
 toggles the cursor task in or out of the selection, so a selection can name rows
 that are not adjacent; movement never changes what `v` picked. `V` starts a
@@ -564,21 +564,22 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-8 Markdown and generic `Task` headings.
+Project task files use strict schema-9 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-8 workspaces to schema 9, supported schema-6
-and schema-7 workspaces through the intermediate boundaries, and supported
+Startup migrates supported schema-9 workspaces to schema 10, supported schema-6
+through schema-8 workspaces through the intermediate boundaries, and supported
 schema-4/5 workspaces through the whole chain. Each step validates the complete
 candidate before mutation and publishes its own immutable rollback archive and
 audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
 `pre-consolidation-v6-<UTC>.tar.gz` for v5→v6, `pre-scope-v7-<UTC>.tar.gz`
-for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8, and
-`pre-state-clock-v9-<UTC>.tar.gz` for v8→v9. The schema-6 conversion preserves
+for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
+`pre-state-clock-v9-<UTC>.tar.gz` for v8→v9, and
+`pre-defer-rename-v10-<UTC>.tar.gz` for v9→v10. The schema-6 conversion preserves
 notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
@@ -593,13 +594,20 @@ Schema 9 upgrades task Markdown to schema 8 by giving every task a durable
 backfill is an approximation which self-corrects on the task's next state
 transition, and undo/redo history is cleared again because its retained bytes
 predate the new field.
+Schema 10 upgrades task Markdown to schema 9 by renaming the durable deferral
+metadata key from `snoozed` to `deferred`, and clears undo/redo history once
+more because the retained bytes are raw pre-rename Markdown.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
 with rename/move guidance. Interrupted activation is recovered before ordinary
-loading, and repeated startup is idempotent. To downgrade or retry from the old
-format, restore the complete matching archive into a separate workspace and use
-a compatible build; migration snapshots themselves are never modified.
+loading, and repeated startup is idempotent.
+
+There is no down-migration. An older `tt` refuses a migrated workspace as newer
+than its supported schema, and no build converts a workspace back. Recovery is
+manual: extract the matching archive — `pre-defer-rename-v10-<UTC>.tar.gz` for
+the schema-10 boundary — into a separate directory and open that copy with a
+compatible build. Migration snapshots themselves are never modified.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
 explicitly supported repairs. Migration snapshots are never modified.

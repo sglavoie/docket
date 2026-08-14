@@ -19,7 +19,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	content := normalizedDocumentation(t, "docs/architecture.md")
 	required := []string{
 		"## Runtime layers",
-		"strict schema-8 Markdown",
+		"strict schema-9 Markdown",
 		"## Task model",
 		"Waiting is an explicit lifecycle state with no derived relationship semantics",
 		"Today and Next are mutually exclusive",
@@ -66,7 +66,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"pre-scope-v7-<UTC>.tar.gz",
 		"pre-tag-v8-<UTC>.tar.gz",
 		"pre-state-clock-v9-<UTC>.tar.gz",
+		"pre-defer-rename-v10-<UTC>.tar.gz",
 		"backfilling each task's `state_changed` clock from its `updated` timestamp",
+		"renaming each task's durable deferral metadata key from `snoozed` to `deferred`",
 		"folds the two retired per-project grouping fields",
 		"restore-and-reactivate path",
 		"prepared activation journal",

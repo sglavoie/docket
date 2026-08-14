@@ -1,5 +1,5 @@
 {
-  "name": "snooze-picker-direct",
+  "name": "defer-picker-direct",
   "fixture": "rich",
   "size": "100x35",
   "actions": [

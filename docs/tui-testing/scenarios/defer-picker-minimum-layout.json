@@ -1,5 +1,5 @@
 {
-  "name": "snooze-picker-minimum-layout",
+  "name": "defer-picker-minimum-layout",
   "fixture": "rich",
   "size": "72x20",
   "actions": [

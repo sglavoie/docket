@@ -35,10 +35,10 @@ surface; Cobra contains only the TUI launcher and maintenance commands.
   workflow invariants.
 - `internal/app` owns use cases, project-qualified target resolution, planning
   reconciliation, and atomic mutation policy.
-- `internal/storage` owns strict schema-8 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-9 Markdown, attachments, transactions,
   conflicts, recovery, and the workspace undo ledger.
 - `internal/config` owns the lean catalog/planning domains, project tags,
-  machine-local theme, workspace selection, and v4→v5→v6→v7→v8→v9 migration.
+  machine-local theme, workspace selection, and v4→v5→v6→v7→v8→v9→v10 migration.
 - `internal/tui` owns the sole Outliner root, typed subordinate tools and
   overlays, the operation registry/executor, and deterministic scenarios.
 - `internal/textgrammar` owns canonical capture/edit sigils.
@@ -50,7 +50,7 @@ behavior with independent `SaveProject` calls. Direct storage writes are limited
 to narrowly audited maintenance, migration, restore, and transaction
 infrastructure.
 
-## Canonical schema-8 task contract
+## Canonical schema-9 task contract
 
 The live states are:
 
@@ -61,7 +61,7 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 Review is not a lifecycle state: it is the ordinary canonical `review` tag with
 a promoted All-mode lane. Other retired states or fields may appear only in
 explicitly named migration DTOs and audit code. Ordinary task Markdown uses
-schema 8, generic `Task` headings, a project-local ShortID, and the retained fields.
+schema 9, generic `Task` headings, a project-local ShortID, and the retained fields.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock, and
@@ -223,7 +223,7 @@ and a `Sequence`; prefix-freeness is still fully enforced by the chord trie.
 
 Recent is the activity-ordered mode. It lists tasks touched within the last 30
 days newest first, grouped into Today, Yesterday, Last 7 Days, and Last 30 Days,
-and anything older is dropped. It is the one mode that owns terminal and snoozed
+and anything older is dropped. It is the one mode that owns terminal and deferred
 membership itself rather than waiting for an explicit filter, because a task you
 just finished or just deferred is exactly the activity being reviewed. Ordering
 freezes on entry so triaging a row does not move it out from under the cursor;
@@ -451,11 +451,11 @@ therefore owns a drop order, not a set: the description spends up to
 the end. A new Peek line takes a deliberate position in that order, or the cap
 silently starts eating something else.
 
-A snooze indicator is state-dependent, not a field dump. `formatSnoozeIndicator`
-renders `zzz <date>` only while `IsSnoozedAt(now)` holds, then `woke <age>` for
-`snoozeWakeWindow` (72h, defined in `primary_view_shared.go`), then nothing. The
-age reuses `formatRecencyChip` so a lapsed snooze is not formatted a second way.
-`taskWokeRecently` is the one lapsed-snooze predicate and `formatRecencyAge` is
+A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
+renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>` for
+`deferWakeWindow` (72h, defined in `primary_view_shared.go`), then nothing. The
+age reuses `formatRecencyChip` so a lapsed deferral is not formatted a second way.
+`taskWokeRecently` is the one lapsed-deferral predicate and `formatRecencyAge` is
 the one age token; the Peek dates line reads both rather than re-deriving either,
 so the row and the line beneath it can never disagree.
 The workspace pulse deliberately carries no `woke` component: its degradation
@@ -722,12 +722,19 @@ dark/light theme. Workspace paths are derived below approved
 roots; preserve symlink-aware containment, checked revisions, deterministic
 locks, and recovery manifests.
 
-The supported v4→v5→v6→v7 migration validates each complete candidate first,
-publishes immutable pre-simplification-v5, pre-consolidation-v6, and
-pre-scope-v7 archive/audit pairs, then atomically activates the next schema and
+The supported v4→v5→v6→v7→v8→v9→v10 migration validates each complete candidate
+first, publishes immutable pre-simplification-v5, pre-consolidation-v6,
+pre-scope-v7, pre-tag-v8, pre-state-clock-v9, and pre-defer-rename-v10
+archive/audit pairs, then atomically activates the next schema and
 removes retired storage. The v7 boundary folds the retired per-project grouping
 fields and the retired workspace scope table into ordinary project tags, and
-deletes the stale schema-6 catalog sidecar. v4/v5/v6 decoders are
+deletes the stale schema-6 catalog sidecar. The v10 boundary lifts task Markdown
+to schema 9 by renaming the durable deferral metadata key from `snoozed` to
+`deferred`; the key is optional, so its audit counts only the tasks that carry a
+date, and undo/redo history is cleared because its retained bytes are raw
+pre-rename Markdown. There is no down-migration: an older `tt` refuses a
+schema-10 workspace, and recovery is manual extraction of
+`pre-defer-rename-v10-<UTC>.tar.gz`. v4/v5/v6 decoders are
 migration-only. Do not let ordinary runtime code import them or publish partial
 output before any snapshot boundary.
 

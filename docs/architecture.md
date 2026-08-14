@@ -13,7 +13,7 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-8 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-9 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
   machine-local theme, workspace selection, and the v4→v5→v6→v7 migration chain.
@@ -36,13 +36,13 @@ Schema 6 stores generic tasks with these supported fields:
 | Identity | stable ID and project-local ShortID |
 | Content | title and description |
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
-| Planning metadata | priority, due date, dated snooze, pin, pin timestamp |
+| Planning metadata | priority, due date, dated deferral, pin, pin timestamp |
 | Organization | project-local parent and tags |
 | Rich records | checklist, comments, attachments |
 | Lifecycle | created, updated, completed timestamps |
 
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
-records, not a catalog. Due and snooze values are calendar dates.
+records, not a catalog. Due and deferral values are calendar dates.
 
 ### Workflow and planning
 
@@ -123,7 +123,7 @@ unconditional to the registry's static direct-key collision check.
 
 Recent is the activity review projection. It groups tasks touched within the
 last 30 days into Today, Yesterday, Last 7 Days, and Last 30 Days buckets,
-newest first, and owns terminal and snoozed membership rather than waiting for a
+newest first, and owns terminal and deferred membership rather than waiting for a
 facet to admit them. Its ordering timestamps freeze on entry against the same
 projection fingerprint that invalidates relocation jump history, so triaging a
 row does not move it out from under the cursor; re-entering with `gr` re-reads
@@ -161,7 +161,7 @@ when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
 only after jump history records an origin; `Ctrl+I` returns to the relocated
 task.
 
-All mode projects open, unsnoozed work as Pinned, Today, Doing, Review, Inbox,
+All mode projects open, undeferred work as Pinned, Today, Doing, Review, Inbox,
 Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 the mode catalog admits through `ShowsPinned`, set on All and Today
 only; Inbox, Next, Backlog, Due, and Recent own one narrow ordered answer that a
@@ -303,12 +303,12 @@ and the write it authorized.
 ### Search, filters, and Peek
 
 Slash search temporarily replaces mode rows with every scoped nonterminal task,
-including snoozed work. It ranks title matches before description, tag, and
+including deferred work. It ranks title matches before description, tag, and
 project metadata matches, then by fuzzy score and stable project/task order;
 `project#shortID` is an exact qualifier. Mode and facet changes are unavailable
 during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
 Ordinary filter facets compose as priority threshold, OR states, AND tags, due
-bucket, completion age, and snoozed-only and remain session-only. Completion
+bucket, completion age, and deferred-only and remain session-only. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
 predicate belongs to the one cleanup facet in the clear count. `doctor` reports
@@ -334,7 +334,7 @@ inside it.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
 operational scan signals directly: workflow state, conditional high priority,
-due, snooze, and checklist progress.
+due, deferral, and checklist progress.
 Outliner rows omit short task IDs.
 
 `Enter` pushes a project-qualified Focus frame and projects only the selected
@@ -358,7 +358,7 @@ movement never reshapes it. `V` starts a fresh inclusive task-row range and
 movement recalculates it while skipping headers; `V` or `Esc` freezes the
 result, and `v` freezes it while dropping the cursor row. `Ctrl+A` replaces the
 selection with every visible task row. Bulk lifecycle, planning, priority, due,
-tags, snooze, and pin requests validate the complete selection before one
+tags, defer, and pin requests validate the complete selection before one
 transaction. Structural and relation operations, edits, inspection, and
 clipboard actions reject visual selection rather than falling back to the
 cursor. Only a committed Delete clears selection.
@@ -545,7 +545,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-8 generic Task Markdown
+        ├── tasks.md         # strict schema-9 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -612,11 +612,11 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 9 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 10 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
-scope-folding path, and a schema-8 workspace finishes on the schema-9 state-clock
-path:
+scope-folding path, a schema-8 workspace crosses the schema-9 state-clock path,
+and a schema-9 workspace finishes on the schema-10 defer-rename path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -669,8 +669,17 @@ path:
    field. The audit records that the backfill is an approximation, because
    `updated` is the last touch of any field; it self-corrects on the task's next
    state transition.
+14. Validate every schema-8 project document, then lift it to schema 9 by
+   renaming each task's durable deferral metadata key from `snoozed` to
+   `deferred`. The key is optional, so the audit counts only the tasks that
+   actually carry a date.
+15. Publish `pre-defer-rename-v10-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 10 and task Markdown schema 9 across active and
+   archived projects, and clear undo/redo history whose retained bytes are raw
+   pre-rename Markdown. No down-migration exists: recovery is manual extraction
+   of that archive into a separate workspace.
 
-Each boundary is idempotent: repeated schema-9 startup neither reconverts data
+Each boundary is idempotent: repeated schema-10 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

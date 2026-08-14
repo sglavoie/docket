@@ -1,5 +1,5 @@
 {
-  "name": "snooze-custom-entry-bulk",
+  "name": "defer-custom-entry-bulk",
   "fixture": "rich",
   "size": "100x35",
   "actions": [

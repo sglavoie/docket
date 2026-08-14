@@ -36,13 +36,6 @@ func v9TaskMetadataKeys() map[string]bool {
 // absent from a task that was never deferred.
 var v9RequiredMetadataKeys = v8RequiredMetadataKeys
 
-// V9TaskRecordFromV8 lifts a schema-8 record to schema 9. The lift is an
-// identity, and it exists so a migration call site reads like every other
-// schema boundary rather than special-casing this one.
-func V9TaskRecordFromV8(task V8TaskRecord) V9TaskRecord {
-	return task
-}
-
 // ValidateV9TaskRecord validates a complete schema-9 task record. Schema 9
 // changes a durable key and no invariant, so the schema-8 rules apply verbatim.
 func ValidateV9TaskRecord(task V9TaskRecord) error {

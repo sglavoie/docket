@@ -101,16 +101,6 @@ func TestV9TaskMetadataOmitsAnUndeferredTask(t *testing.T) {
 	}
 }
 
-func TestV9TaskRecordFromV8IsAnIdentity(t *testing.T) {
-	source := v9TestRecord()
-	lifted := V9TaskRecordFromV8(source)
-	if lifted.SnoozedUntil != source.SnoozedUntil ||
-		!lifted.StateChangedAt.Equal(source.StateChangedAt) ||
-		!lifted.UpdatedAt.Equal(source.UpdatedAt) {
-		t.Fatalf("lift changed the record: %+v", lifted)
-	}
-}
-
 func TestV9TaskMetadataRequiresTheStateClock(t *testing.T) {
 	record := v9TestRecord()
 	record.StateChangedAt = time.Time{}

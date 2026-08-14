@@ -34,7 +34,7 @@ func StartOfDay(t time.Time) time.Time {
 // AddMonthsClamped adds months to t, clamping the day to the target month's
 // last day when t.Day() exceeds it. This avoids Go's default AddDate
 // overflow (Jan 31 + 1 month → Mar 3) which is surprising for date-picker
-// and snooze UX where users expect "+1m" to land in the next calendar month.
+// and defer UX where users expect "+1m" to land in the next calendar month.
 // Negative months are supported. Time-of-day, sub-second precision, and
 // location are preserved.
 func AddMonthsClamped(t time.Time, months int) time.Time {

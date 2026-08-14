@@ -44,6 +44,15 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 		"ContextScopeSummaries":    true,
 		"ContextHubModel":          true,
 		"ShowContextHubMsg":        true,
+		"IsSnoozed":                true,
+		"IsSnoozedAt":              true,
+		"ClearSnooze":              true,
+		"formatSnoozeIndicator":    true,
+		"snoozeWakeWindow":         true,
+		"ColSnooze":                true,
+		"operationTaskSetSnooze":   true,
+		"BulkSnooze":               true,
+		"SnoozedUntil":             true,
 	}
 	migrationIdentifierAllowlist := map[string]map[string]bool{
 		"SystemInboxProjectID": {
@@ -53,6 +62,18 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 		},
 		"BoundaryID": {
 			"internal/config/v7_conversion_dry_run.go": true,
+		},
+		// The v4/v5/v6 DTOs keep SnoozedUntil because their on-disk key genuinely
+		// is `snoozed`, and frozen golden fixtures name it. The v10 migration and
+		// the live model-to-document seam read those DTOs, so they are the only
+		// callers outside the codecs themselves.
+		"SnoozedUntil": {
+			"internal/storage/format/legacy_v4_task_convert.go": true,
+			"internal/storage/format/v5_task_codec.go":          true,
+			"internal/storage/format/v6_task_codec.go":          true,
+			"internal/storage/format/v6_task_convert.go":        true,
+			"internal/storage/project_document.go":              true,
+			"internal/config/v10_migration_activation.go":       true,
 		},
 	}
 	rejectedInputAllowlist := map[string]bool{
