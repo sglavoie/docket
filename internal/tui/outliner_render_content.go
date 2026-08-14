@@ -203,10 +203,26 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 		rowWidth = width - 1
 	}
 
-	return outlinerViewport{
+	m.lastViewport = outlinerViewport{
 		visibleRows: visibleRows,
 		startIdx:    startIdx,
 		endIdx:      endIdx,
 		rowWidth:    rowWidth,
 	}
+	return m.lastViewport
+}
+
+// visibleRowWindow returns the half-open row range the last render drew,
+// clamped to the current row count. computeOutlinerViewport is the single
+// window authority and mutates viewScrollOffset, so a key handler consumes its
+// cached result here instead of calling it again.
+func (m *OutlinerModel) visibleRowWindow() (int, int) {
+	start, end := m.lastViewport.startIdx, m.lastViewport.endIdx
+	if m.lastViewport.visibleRows <= 0 {
+		start = m.viewScrollOffset
+		end = start + m.contentHeight()
+	}
+	start = min(max(start, 0), len(m.rows))
+	end = min(max(end, start), len(m.rows))
+	return start, end
 }

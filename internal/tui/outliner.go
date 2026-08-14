@@ -50,6 +50,10 @@ type OutlinerModel struct {
 	focusNotice     string                   // Transient message shown when focus target is removed
 
 	rows []outlinerRow // Flattened rows, rebuilt on each render
+	// lastViewport is the window the last render actually drew. H/M/L read it
+	// rather than recomputing the window, which would re-derive it from a
+	// different footer state and move viewScrollOffset.
+	lastViewport outlinerViewport
 	// primaryMode is the authoritative canonical row-strategy identity.
 	primaryMode OutlinerModeID
 

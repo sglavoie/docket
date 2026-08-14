@@ -26,6 +26,9 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"G":    operationCoreCursorBottom, "end": operationCoreCursorBottom,
 		"ctrl+u": operationCoreCursorPageUp, "pgup": operationCoreCursorPageUp,
 		"ctrl+d": operationCoreCursorPageDown, "pgdown": operationCoreCursorPageDown,
+		"H":      operationCoreCursorScreenTop,
+		"M":      operationCoreCursorScreenMiddle,
+		"L":      operationCoreCursorScreenBottom,
 		"ctrl+o": operationCoreJumpBackward, "ctrl+i": operationCoreJumpForward,
 		"ctrl+l": operationCoreFocusLatest,
 		"h":      operationCoreCollapseParent, "left": operationCoreCollapseParent,
@@ -249,7 +252,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 		candidate := cloneInputStrategy(strategy)
 		candidate.Bindings = append(candidate.Bindings, OperationKeyBinding{
 			OperationID: operationTaskComments,
-			Keys:        []string{"M"},
+			Keys:        []string{"Z"},
 		})
 		err := validateTaskOperationOnePath(candidate)
 		if err == nil || !strings.Contains(err.Error(), "bound directly and listed") {

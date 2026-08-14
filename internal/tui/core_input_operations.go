@@ -13,55 +13,58 @@ import (
 // Stable core operation IDs let the final grammar remain independent of dormant
 // legacy command adapters and their retired shortcuts or prefix chords.
 const (
-	operationCoreCapture          OperationID = "tui.core.capture"
-	operationCoreEdit             OperationID = "tui.core.edit"
-	operationCoreEditDescription  OperationID = "tui.core.edit-description"
-	operationCoreExternalEditor   OperationID = "tui.core.external-editor"
-	operationCoreOutlineEditor    OperationID = "tui.core.outline-editor"
-	operationCoreBacklog          OperationID = "tui.core.backlog"
-	operationCoreToday            OperationID = "tui.core.today"
-	operationCoreNext             OperationID = "tui.core.next"
-	operationCoreActions          OperationID = "tui.core.actions"
-	operationCoreCursorDown       OperationID = "tui.core.cursor-down"
-	operationCoreCursorUp         OperationID = "tui.core.cursor-up"
-	operationCoreCursorTop        OperationID = "tui.core.cursor-top"
-	operationCoreCursorBottom     OperationID = "tui.core.cursor-bottom"
-	operationCoreCursorPageUp     OperationID = "tui.core.cursor-page-up"
-	operationCoreCursorPageDown   OperationID = "tui.core.cursor-page-down"
-	operationCoreNextHeader       OperationID = "tui.core.next-header"
-	operationCorePreviousHeader   OperationID = "tui.core.previous-header"
-	operationCoreJumpBackward     OperationID = "tui.core.jump-backward"
-	operationCoreJumpForward      OperationID = "tui.core.jump-forward"
-	operationCoreFocusLatest      OperationID = "tui.core.focus-latest"
-	operationCoreCollapseParent   OperationID = "tui.core.collapse-parent"
-	operationCoreExpand           OperationID = "tui.core.expand"
-	operationCoreToggleSections   OperationID = "tui.core.toggle-sections"
-	operationCoreReorderDown      OperationID = "tui.core.reorder-down"
-	operationCoreReorderUp        OperationID = "tui.core.reorder-up"
-	operationCoreFocusSubtree     OperationID = "tui.core.focus-subtree"
-	operationCoreActivateGroup    OperationID = "tui.core.activate-group"
-	operationCorePeek             OperationID = "tui.core.peek"
-	operationCoreScopeSearch      OperationID = "tui.core.scope-search"
-	operationCoreSelectProject    OperationID = "tui.core.select-project"
-	operationCoreMultiSelect      OperationID = "tui.core.multi-select"
-	operationCoreRangeSelect      OperationID = "tui.core.range-select"
-	operationCoreSelectAll        OperationID = "tui.core.select-all"
-	operationCoreNotes            OperationID = "tui.core.notes"
-	operationCoreToggleTheme      OperationID = "tui.core.toggle-theme"
-	operationCoreUndo             OperationID = "tui.core.undo"
-	operationCoreRedo             OperationID = "tui.core.redo"
-	operationCoreBack             OperationID = "tui.core.back"
-	operationCoreHelp             OperationID = "tui.core.help"
-	operationCoreQuit             OperationID = "tui.core.quit"
-	operationCoreNextWorkMode     OperationID = "tui.core.next-work-mode"
-	operationCorePreviousWorkMode OperationID = "tui.core.previous-work-mode"
-	operationCoreGotoAll          OperationID = "tui.core.goto-all"
-	operationCoreGotoInbox        OperationID = "tui.core.goto-inbox"
-	operationCoreGotoToday        OperationID = "tui.core.goto-today"
-	operationCoreGotoNext         OperationID = "tui.core.goto-next"
-	operationCoreGotoBacklog      OperationID = "tui.core.goto-backlog"
-	operationCoreGotoDue          OperationID = "tui.core.goto-due"
-	operationCoreGotoRecent       OperationID = "tui.core.goto-recent"
+	operationCoreCapture            OperationID = "tui.core.capture"
+	operationCoreEdit               OperationID = "tui.core.edit"
+	operationCoreEditDescription    OperationID = "tui.core.edit-description"
+	operationCoreExternalEditor     OperationID = "tui.core.external-editor"
+	operationCoreOutlineEditor      OperationID = "tui.core.outline-editor"
+	operationCoreBacklog            OperationID = "tui.core.backlog"
+	operationCoreToday              OperationID = "tui.core.today"
+	operationCoreNext               OperationID = "tui.core.next"
+	operationCoreActions            OperationID = "tui.core.actions"
+	operationCoreCursorDown         OperationID = "tui.core.cursor-down"
+	operationCoreCursorUp           OperationID = "tui.core.cursor-up"
+	operationCoreCursorTop          OperationID = "tui.core.cursor-top"
+	operationCoreCursorBottom       OperationID = "tui.core.cursor-bottom"
+	operationCoreCursorPageUp       OperationID = "tui.core.cursor-page-up"
+	operationCoreCursorPageDown     OperationID = "tui.core.cursor-page-down"
+	operationCoreCursorScreenTop    OperationID = "tui.core.cursor-screen-top"
+	operationCoreCursorScreenMiddle OperationID = "tui.core.cursor-screen-middle"
+	operationCoreCursorScreenBottom OperationID = "tui.core.cursor-screen-bottom"
+	operationCoreNextHeader         OperationID = "tui.core.next-header"
+	operationCorePreviousHeader     OperationID = "tui.core.previous-header"
+	operationCoreJumpBackward       OperationID = "tui.core.jump-backward"
+	operationCoreJumpForward        OperationID = "tui.core.jump-forward"
+	operationCoreFocusLatest        OperationID = "tui.core.focus-latest"
+	operationCoreCollapseParent     OperationID = "tui.core.collapse-parent"
+	operationCoreExpand             OperationID = "tui.core.expand"
+	operationCoreToggleSections     OperationID = "tui.core.toggle-sections"
+	operationCoreReorderDown        OperationID = "tui.core.reorder-down"
+	operationCoreReorderUp          OperationID = "tui.core.reorder-up"
+	operationCoreFocusSubtree       OperationID = "tui.core.focus-subtree"
+	operationCoreActivateGroup      OperationID = "tui.core.activate-group"
+	operationCorePeek               OperationID = "tui.core.peek"
+	operationCoreScopeSearch        OperationID = "tui.core.scope-search"
+	operationCoreSelectProject      OperationID = "tui.core.select-project"
+	operationCoreMultiSelect        OperationID = "tui.core.multi-select"
+	operationCoreRangeSelect        OperationID = "tui.core.range-select"
+	operationCoreSelectAll          OperationID = "tui.core.select-all"
+	operationCoreNotes              OperationID = "tui.core.notes"
+	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
+	operationCoreUndo               OperationID = "tui.core.undo"
+	operationCoreRedo               OperationID = "tui.core.redo"
+	operationCoreBack               OperationID = "tui.core.back"
+	operationCoreHelp               OperationID = "tui.core.help"
+	operationCoreQuit               OperationID = "tui.core.quit"
+	operationCoreNextWorkMode       OperationID = "tui.core.next-work-mode"
+	operationCorePreviousWorkMode   OperationID = "tui.core.previous-work-mode"
+	operationCoreGotoAll            OperationID = "tui.core.goto-all"
+	operationCoreGotoInbox          OperationID = "tui.core.goto-inbox"
+	operationCoreGotoToday          OperationID = "tui.core.goto-today"
+	operationCoreGotoNext           OperationID = "tui.core.goto-next"
+	operationCoreGotoBacklog        OperationID = "tui.core.goto-backlog"
+	operationCoreGotoDue            OperationID = "tui.core.goto-due"
+	operationCoreGotoRecent         OperationID = "tui.core.goto-recent"
 )
 
 func coreOutlinerApplicability(ctx CommandContext) bool {
@@ -173,6 +176,9 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorBottom, "Go to Last Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageUp, "Half Page Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		core(operationCoreCursorScreenTop, "Go to Top of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen top", "highest visible row"),
+		core(operationCoreCursorScreenMiddle, "Go to Middle of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen middle", "middle visible row"),
+		core(operationCoreCursorScreenBottom, "Go to Bottom of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen bottom", "lowest visible row"),
 		core(operationCoreNextHeader, "Next Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to next section", "next group"),
 		core(operationCorePreviousHeader, "Previous Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to previous section", "previous group"),
 		core(operationCoreJumpBackward, "Jump to Older Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -374,6 +380,12 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreMoveCursor("ctrl+u"))
 	case operationCoreCursorPageDown:
 		message = commandMessage(m.coreMoveCursor("ctrl+d"))
+	case operationCoreCursorScreenTop:
+		return m.coreMoveCursorScreen(screenJumpTop)
+	case operationCoreCursorScreenMiddle:
+		return m.coreMoveCursorScreen(screenJumpMiddle)
+	case operationCoreCursorScreenBottom:
+		return m.coreMoveCursorScreen(screenJumpBottom)
 	case operationCoreNextHeader, operationCorePreviousHeader:
 		delta := 1
 		if invocation.Descriptor.ID == operationCorePreviousHeader {
@@ -670,6 +682,48 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	_, cmd = out.crossSkipNonNavigableRows(previous, cmd)
 	out.updateRangeSelection()
 	return cmd
+}
+
+// screenJumpPosition names the three screen-relative landings H/M/L ask for.
+type screenJumpPosition int
+
+const (
+	screenJumpTop screenJumpPosition = iota
+	screenJumpMiddle
+	screenJumpBottom
+)
+
+// coreMoveCursorScreen lands the cursor on a position in the window the last
+// render drew. It deliberately bypasses handleListNavigation, which is shared
+// with Notes and knows nothing about a scroll window, and it never touches
+// viewScrollOffset: the landing stays inside the window, so the next render
+// leaves the scroll where it was.
+func (m *AppModel) coreMoveCursorScreen(position screenJumpPosition) OperationHandlerResult {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return OperationHandlerResult{}
+	}
+	start, end := out.visibleRowWindow()
+	if start >= end {
+		return OperationHandlerResult{Status: "No row to jump to on screen"}
+	}
+	target, preferred := start, 1
+	switch position {
+	case screenJumpMiddle:
+		target = start + (end-start-1)/2
+	case screenJumpBottom:
+		target, preferred = end-1, -1
+	case screenJumpTop:
+	}
+	landing, found := out.nearestNavigableInWindow(target, start, end, preferred)
+	if !found {
+		return OperationHandlerResult{Status: "No row to jump to on screen"}
+	}
+	previous := out.cursor
+	out.cursor = landing
+	cmd := flashIfJumped(previous, out.cursor, &out.cursorFlash)
+	out.updateRangeSelection()
+	return OperationHandlerResult{Message: commandMessage(cmd)}
 }
 
 func (m *AppModel) coreReorder(delta int) tea.Cmd {

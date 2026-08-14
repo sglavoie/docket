@@ -98,7 +98,7 @@ The direct grammar is:
 ```text
 Tab / Shift+Tab                 seven modes
 ga gi gt gn gb g@ gr           go-to chord, one mode each
-j/k, arrows, h/l, S, gg/Home, G/End  navigation
+j/k, arrows, h/l, S, gg/Home, G/End, H/M/L  navigation
 Enter / Shift+Enter             focus descendants / toggle Peek
 n / N                          next/previous grouping header, wrapping
 Ctrl+O / Ctrl+I                older/newer relocated-task positions
@@ -215,6 +215,16 @@ groups are built, the Today section suppresses its own count, Next is mutually
 exclusive with Today, and Backlog clears planning, so it can only appear in
 Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a second
 bare count.
+
+`H`, `M`, and `L` are the screen-relative jumps, the third kind beside the
+list-relative `gg`/`G` and the half-page `Ctrl+U`/`Ctrl+D`. They read the window
+the last render drew, cached on `lastViewport` by `computeOutlinerViewport`,
+which is the single window authority and the one place `viewScrollOffset` moves:
+a key handler that recomputed the window would re-derive it from a different
+footer state and scroll. The landing is the nearest navigable row inside that
+window and never outside it — separators are skipped, headers and checklist items
+are valid landings — so the scroll offset is deliberately left untouched and a
+window holding no navigable row reports rather than moving the cursor.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
 second keys jump straight to one mode, so a seventh mode never costs six Tab

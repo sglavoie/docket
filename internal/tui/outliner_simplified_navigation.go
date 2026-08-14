@@ -303,6 +303,21 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(
 	return m, cmd
 }
 
+// nearestNavigableInWindow returns the navigable row nearest target, searching
+// preferred (1 down, -1 up) first. It never leaves [start, end-1] the way
+// crossSkipNonNavigableRows can, because a landing outside the drawn window
+// would scroll — which is the one thing a screen-relative jump must not do.
+func (m *OutlinerModel) nearestNavigableInWindow(target, start, end, preferred int) (int, bool) {
+	for _, step := range []int{preferred, -preferred} {
+		for i := target; i >= start && i < end; i += step {
+			if m.rows[i].isNavigable() {
+				return i, true
+			}
+		}
+	}
+	return 0, false
+}
+
 // simplifiedReorderEligible dispatches J/K by the selected row's ordering
 // context. Pinned uses manual pin order wherever it renders; Due is automatic;
 // Today and Next use durable planning order; All, Inbox, and Backlog use

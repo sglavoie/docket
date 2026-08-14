@@ -337,6 +337,11 @@ operational scan signals directly: workflow state, conditional high priority,
 due, deferral, and checklist progress.
 Outliner rows omit short task IDs.
 
+`computeOutlinerViewport` is the single authority for the visible row window and
+the one place the persistent scroll offset moves, so the screen-relative jumps
+`H`, `M`, and `L` consume its cached result rather than re-deriving the window,
+and they land inside it without scrolling.
+
 `Enter` pushes a project-qualified Focus frame and projects only the selected
 task's descendants. Nested Focus frames retain the exact parent cursor and
 scroll offset; `Esc` restores one frame at a time. A leaf reports
