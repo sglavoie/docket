@@ -4,6 +4,40 @@
 surface; Cobra exposes only maintenance commands. Both use the same application
 services and revision-checked storage boundaries.
 
+## Contents
+
+- [Runtime layers](#runtime-layers)
+- [Task model](#task-model) — [Workflow and planning](#workflow-and-planning),
+  [Hierarchy and ordering](#hierarchy-and-ordering),
+  [Rich records](#rich-records)
+- [TUI architecture](#tui-architecture) — modes, project grouping, `n`/`N`
+  header walk, checklist rows, Recent and `Ctrl+L`
+  - [Presentation chrome](#presentation-chrome) — pulse, title fitter, guidance,
+    Pinned and Review, [Row indicators](#row-indicators),
+    [Status flash](#status-flash)
+  - [One operation grammar](#one-operation-grammar) — registry and executor,
+    value providers, operation chaining, `Space` manifest, chord misses
+  - [Capture and inline-edit grammar](#capture-and-inline-edit-grammar) — sigil
+    resolution order, pin values, structural references, adoption
+  - [Outline editor](#outline-editor) — dump scope, markers, declarative
+    deletion, validation phases
+  - [Search, filters, and Peek](#search-filters-and-peek) — facets, `F`
+    populations, `H`/`M`/`L` and `zt`/`zz`/`zb`, Focus and `Esc`, Peek budget
+  - [Sorting axis](#sorting-axis) — manual-order exemption, group order,
+    fixed-order modes
+  - [Selection and subordinate tools](#selection-and-subordinate-tools) —
+    visual selection, Select Project, `Ctrl+T` axis
+  - [Project tags](#project-tags) — the three axes, registries, park
+    confirmation, the two populations, Notes
+- [Persistence layout](#persistence-layout)
+- [Transactions and recovery](#transactions-and-recovery)
+- [Concurrent edits and conflicts](#concurrent-edits-and-conflicts)
+- [Snapshot-first schema migration](#snapshot-first-schema-migration)
+- [Workspace location and cloud consent](#workspace-location-and-cloud-consent)
+- [Backup and restore](#backup-and-restore)
+- [Maintenance CLI and platform support](#maintenance-cli-and-platform-support)
+- [Verification](#verification)
+
 ## Runtime layers
 
 The repository is divided by responsibility:
@@ -16,7 +50,8 @@ The repository is divided by responsibility:
 - `internal/storage` owns strict schema-9 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7 migration chain.
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10
+  migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
 - `cmd` owns only the TUI launcher and maintenance CLI adapters.
@@ -29,20 +64,30 @@ not reproduce these checks with independent saves.
 
 ## Task model
 
-Schema 6 stores generic tasks with these supported fields:
+Schema 9 task Markdown stores generic tasks with these supported fields:
 
 | Group | Fields |
 | --- | --- |
 | Identity | stable ID and project-local ShortID |
 | Content | title and description |
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
-| Planning metadata | priority, due date, dated deferral, pin, pin timestamp |
+| Planning metadata | priority, due date, dated deferral (`deferred`), pin, pin timestamp |
 | Organization | project-local parent and tags |
 | Rich records | checklist, comments, attachments |
-| Lifecycle | created, updated, completed timestamps |
+| Lifecycle | created, updated, `state_changed`, completed timestamps |
 
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
 records, not a catalog. Due and deferral values are calendar dates.
+
+`StateChangedAt` (`state_changed`) is the state clock and `UpdatedAt` is the
+touch time. Only the lifecycle transitions in
+`internal/models/task_lifecycle.go` write the clock, and only when the state
+actually changes, so re-applying a state a task already holds preserves its age.
+Comments, tags, attachments, reparenting, and manual reordering bump
+`UpdatedAt` alone, which is exactly why it cannot answer "in this state since".
+The storage boundary is strict rather than forgiving: a task reaching
+`WriteV8ProjectDocument` without a clock is rejected, never silently
+backfilled.
 
 ### Workflow and planning
 
@@ -100,26 +145,79 @@ through the shared `appendProjectGroupHeader` kernel, and each grouping surface
 owns a disjoint `collapsedSections` key namespace, because that map is never
 cleared on a mode change.
 
+That kernel takes the group's tasks rather than a count, because it computes the
+header's own `OverdueCount` and `TodayCount` from them; the Today membership
+comes from `Planning().GetToday()` directly, so no projection has to thread its
+input down to the row appenders. A Today section suppresses its `today` count,
+which could only restate the group's size. `appendProjectHeaderPressure` renders
+the suffix and degrades it before `truncateToVisualWidth` sees the line,
+dropping `today` and then `overdue`, because a clipped count reads as a
+different number.
+
+Three numbers can sit on one project header and they answer different
+questions. `(N)` is the group's size and always renders. `! overdue N` appears
+wherever the group holds a non-terminal task due before today. `◷ today N` is
+much narrower than it looks: All lifts Today rows into the Today section before
+the state groups are built, the Today section suppresses its own count, Next is
+mutually exclusive with Today, and Backlog clears planning, so it can only
+appear in Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a
+second bare count.
+
+`n`/`N` step the cursor between grouping headers, and their stop set is
+`isHeaderRow()` — section headers and project headers both — because the header
+kind is not uniform across modes: All, Due, and Recent emit section headers
+while Inbox, Backlog, Today, and Next group by project only, so a section-only
+stop set would leave the keys dead in four of the seven modes. That predicate is
+the same one `h`/`l` fold on and the same one the header guidance reads. The
+walk wraps at either end, and a projection holding no header at all — a
+project-scoped view or a search projection — reports so through
+`OperationHandlerResult.Status` rather than leaving the key silent. `S` keeps
+its own narrower `visibleSectionHeaders()` scan, which deliberately excludes
+project headers.
+
 Checklist items are a fourth row kind, emitted by one `expandChecklistRows`
 post-pass rather than by each mode strategy. `IsChecklistItem` takes a row out of
 `isTaskRow()` but leaves it navigable, so the cursor can reach an item while
 every task operation refuses there rather than acting on the owner task whose
-pointer the row carries for rendering. Their fold state is `expandedChecklists`,
-kept apart from `expandedNodes` and `collapsedSections` because it defaults
-collapsed; `h`/`l` walk children and checklist as one ladder, and entering visual
-selection from a task row suppresses the items without discarding the state.
+pointer the row carries for rendering. `h`/`l` therefore form one ladder with no
+new key — children before checklist on the way out, checklist first on the way
+back — and `h` on an item returns to its owner.
+
+Their fold state is `expandedChecklists`, a third map that is not merged into
+either of the other two: `expandedNodes` defaults expanded, `collapsedSections`
+is string-keyed and shared with grouping headers, and `expandedChecklists`
+defaults collapsed so an absent key hides the items. It is cleared wherever
+`expandedNodes` is and joins `jumpProjectionFingerprint()`, because a fold
+change clears relocation jump history. Visual selection names task rows only, so
+a checklist cursor refuses `v`, `V`, and `Ctrl+A`, and entering selection from a
+task row suppresses any open checklist rows while leaving the map untouched,
+which is what lets `Esc` restore the same rows.
 
 A checklist row owns six operations of its own — Toggle, Edit, Move Down, Move
 Up, Add, and an actions menu holding Edit and Delete — registered in
 `checklist_row_operations.go` as ordinary descriptors that apply only under a
-checklist cursor. Five reuse the key their task-row counterpart holds, which
+checklist cursor. All six reuse the key their task-row counterpart holds, which
 works because resolution takes the first applicable binding and the two are
 disjoint by cursor. The refusal that keeps them disjoint is one predicate,
 `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable` for
 key resolution, help, and footer hints, and again by `OperationExecutor.Execute`
 so a non-keyboard route refuses identically. It stays out of the descriptor's
 `Applicability` field so an unconditional descriptor keeps looking
-unconditional to the registry's static direct-key collision check.
+unconditional to the registry's static direct-key collision check. The predicate
+refuses every Task and Tag operation by category, then names the core
+operations individually, because the core family mixes navigation — which is how
+the cursor leaves the row and therefore stays — with operations that would reach
+through the item to the owner task whose pointer it carries.
+
+A checklist row exists only once the checklist does, so `tui.checklist.start`
+holds the one case no row can cover: `x` on a task row whose checklist is empty
+prompts for the first item and expands it, and the row grammar owns every item
+after that. Its applicability is `len(task.Checklist) == 0`, which makes it
+disjoint from Add Item rather than a second route to it, and that gate is why it
+belongs outside both task manifests — the `DirectOnly` branch of
+`taskActionOperationApplicable` returns before any live-state check. The task
+composer's Children tab remains the full editor for a task not yet in a
+projection.
 
 Recent is the activity review projection. It groups tasks touched within the
 last 30 days into Today, Yesterday, Last 7 Days, and Last 30 Days buckets,
@@ -127,10 +225,21 @@ newest first, and owns terminal and deferred membership rather than waiting for 
 facet to admit them. Its ordering timestamps freeze on entry against the same
 projection fingerprint that invalidates relocation jump history, so triaging a
 row does not move it out from under the cursor; re-entering with `gr` re-reads
-activity. `Ctrl+L` enters it with that same fresh read and focuses the newest
-task, taken from the section builder's flat output rather than from the built
-rows, because per-project forest grouping can render a promoted child beneath an
-older parent.
+activity.
+
+`Ctrl+L` is the one key that reaches the newest task from anywhere. It enters
+Recent with that same fresh read and lands the cursor on the newest row Recent
+admits. That target is read from `BuildRecentModeSections` before grouping runs,
+never from `m.rows[0]`: inside a section `groupSectionRowsByProject` reshapes the
+flat newest-first order into a per-project forest, so a promoted child renders
+beneath an older parent and the top screen row is then not the newest task. The
+landing disturbs no folds — only when the target has no row does it open that
+row's section, its project group, and its ancestor chain, then rebuild and
+retry, the same try-reveal-retry shape as `NavigateToTaskInProject`. It does
+reset `viewScrollOffset`, because `restoreModeCursor` carries the origin mode's
+offset across the transition and would seat the lead against the viewport edge
+with the section and project headers naming it scrolled off. An empty Recent
+reports the 30-day window and moves nothing.
 
 ### Presentation chrome
 
@@ -175,6 +284,63 @@ identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the ordinary `review` tag, after
 Doing. Pinned wins, and the projection does not change lifecycle or planning.
 
+#### Row indicators
+
+A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
+renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>`
+for `deferWakeWindow` (72h, defined in `primary_view_shared.go`), then nothing.
+The age reuses `formatRecencyChip` so a lapsed deferral is not formatted a
+second way. `taskWokeRecently` is the one lapsed-deferral predicate and
+`formatRecencyAge` is the one age token; the Peek dates line reads both rather
+than re-deriving either, so the row and the line beneath it can never disagree.
+The workspace pulse deliberately carries no `woke` component: its degradation
+ladder in `formatWorkspacePulseComponents` has exactly three steps, and a fourth
+metric there names work you cannot act on without navigating to it anyway.
+
+Waiting age reads the state clock, never the touch time.
+`formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
+formats `StateChangedAt` through `formatRecencyChip`, so a comment, a tag, or a
+reparent on a blocked task cannot reset how long it has been blocked. A waiting
+task's due date is its check-back date, so `formatCheckBackIndicator` replaces
+the plain `formatDueDate` segment rather than sitting beside it: rendering both
+would state one fact twice. It compares calendar days through `util.StartOfDay`,
+like `ClassifyDueDate`, because a due date is a day and not an instant, and it is
+the one indicator that styles an overdue reading (`check +<age>`) as pressure.
+
+`indicatorDropLadder` is the row's drop order, and it is a list rather than a set
+because eight segments cannot all fit at minimum width. Counts go first, since
+the row's own badges and Peek still carry them; the check-back goes last, because
+it is the one indicator naming work that has gone quiet on someone else's desk. A
+new indicator gets a position in that list, not an append.
+
+#### Status flash
+
+Changed status text flashes the footer divider: the bar takes a severity color
+and runs a 500ms impact–sweep–settle animation over `footerFlashFrames` (20)
+frames of `footerFlashFrameInterval` (25ms): 100ms of full-width `━`, an eased
+heavy segment with a severity head and accent-fading trail, then a short dissolve
+back to the thin `─` accent bar. The footer content rows simultaneously take a
+14% severity-tinted background wash that eases back to the theme background over
+the same 500ms; existing badge backgrounds remain intact. It is a flash, not a
+pulse — `workspacePulse` is the title row's counts chip. The interactive TUI
+ignores an inherited `NO_COLOR`, while the explicit `--no-color` flag still
+disables color; the moving heavy glyph segment keeps the flash visible even then.
+Non-interactive commands retain the inherited environment.
+
+The trigger is status text only. The three `AppModel` setters advance
+`statusSeq`, `m.err` is compared by text because it has no clock, and
+`InteractiveViewState.setStatus` advances its own stamp; a breadcrumb, mode
+badge, or which-key change moves on nearly every keystroke and must never arm it.
+Cleared text arms nothing, because neither `clearStatus` nor the auto-clear
+timers advance a sequence. Arming happens in exactly one place, the deferred
+closure in `AppModel.Update`, which is what lets ~50 void setter call sites stay
+untouched; it must remain that one defer, since a second would run first under
+LIFO and see neither the recovery nor the assigned command. The footer divider
+appearance feeds all three dividers `renderStatusBar` can emit — its own
+separator and both guidance calls — or the flash dies whenever a which-key row is
+up. The breadcrumb keeps its plain foreground accent while its background
+participates in the footer wash.
+
 ### One operation grammar
 
 `OperationRegistry` stores stable operation descriptors: label, category,
@@ -182,13 +348,37 @@ applicability, target cardinality, risk, value provider, and capabilities.
 `OperationExecutor` freezes and resolves typed targets, requests values, gates
 confirmation, and invokes the bound handler.
 
+A value provider is exactly one of `textEntry()` (a separate overlay),
+`tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list.
+Inline modes bind `a` inside `OperationValuePickerModel` and must emit the same
+value type the provider's preset rows carry, so the executor and the single and
+bulk handlers stay untouched. A value the presets cannot express belongs in an
+inline mode on the one picker, never in a standalone form.
+
 One operation may chain into a second one by following its committed command with
 an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
-has just made relevant. The chain keys off the first operation's own resolved
-value, not runtime context, and it reuses the frozen command context, so the
-second step targets the same tasks even though the transition moved the cursor.
-Because the first transaction has already committed, cancelling the second step
-cancels only the second step.
+has just made relevant. `withWaitingCheckBackStep` runs the set-state command,
+and only a committed result — the `transactionCommitted` gate — is followed
+through `tea.Sequence` by the value request for `operationTaskSetDueDate`. A
+rejected move returns its `TransactionErrorMsg` untouched, so a task that never
+reached Waiting can never be given a check-back date. The chain keys off
+`invocation.Value` rather than runtime context, and it sits on the one shared
+`applicationTaskOperationRequest` path, so single and bulk moves chain
+identically and the second step targets the same tasks even though the transition
+moved the cursor. Because the first transaction has already committed,
+cancelling the second step cancels the date alone and leaves the Waiting move
+standing.
+
+`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its second
+keys jump straight to one mode, so a seventh mode never costs six `Tab` presses.
+That binding is the one place a single operation declares both `Keys` and a
+`Sequence`; prefix-freeness is still fully enforced by the chord trie.
+
+Pin has two routes: the `P` key on an existing row and the `*pin` sigil in the
+capture, inline-edit, and outline grammars. That is not a direct-only/menu-only
+violation, because that rule governs which task operations reach the `Space`
+menu, not whether an attribute is also expressible in the text grammar: `!`, `@`,
+`#`, and the `w` chord already sit beside the sigils that say the same things.
 
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
 handled-key metadata, chord hints, guidance hints, `?` help, and harness discovery
@@ -230,6 +420,70 @@ which-key row, and a key the cursor's entity turned off keeps its own target
 rejection sentence instead. A chord prefix whose whole subtree that entity turned
 off refuses at the prefix, so a project header row never opens a which-key row
 that could not complete.
+
+### Capture and inline-edit grammar
+
+One parser in `internal/textgrammar` serves capture, inline edit, and the outline
+buffer; the surface decides which fields it admits. Capture resolves the target
+project first, then the project-local parent, then the project-local children.
+Omitted destinations default roots to Inbox and children to Backlog, and adopting
+children changes neither default, because `normalizeCaptureDestination` reads
+only `ParentID`.
+
+`coreCaptureMessage` resolves the destination project from the focused or scoped
+project, then from `cursorProjectHeaderProject()`, then from Unfiled. That middle
+step is the only place capture reads the cursor, and it is safe because the
+function returns nil on every task row: capture still never borrows a task
+cursor's project. The composer names whichever destination it resolved through
+`TaskComposerPreset.HeaderLabel`, set once in `captureComposerPreset`, so base
+capture and header capture are never told apart only by where the task landed.
+`A` on a project header row keeps rejecting, since a project has no task to
+parent under.
+
+`*pin`'s value set is closed to `pin` and `unpin`, and an unrecognized value is
+not consumed: `Refactor *args handling` keeps `*args` in its title. That is the
+tag rejection behavior rather than priority's, and the asymmetry is deliberate.
+Priority captures `!9` in order to diagnose a typo, because `!` followed by a
+digit is not something a title says by accident; `*` occurs in ordinary prose and
+in code identifiers, so pin would diagnose far more real titles than typos.
+Re-pinning an already-pinned task preserves `PinnedAt`, since that field is the
+pinned section's manual order and every outline apply would otherwise reshuffle
+it.
+
+`<child` is the one repeatable structural sigil. `>parent` stays
+`CardinalitySingleton` because a task has one parent, while `FieldChild` is
+`CardinalityRepeatable`; that declaration is the entire mechanism, since
+`duplicateSingletonDiagnostics` already skips a non-singleton field. Both sigils
+name a task by exact short ID or unique case-insensitive title prefix through the
+one `resolveStructuralReference` matcher, which differs between them only in the
+relationship word its ambiguity message carries. A task named as both `>parent`
+and `<child` on one line is refused, and across a multiline capture two lines
+claiming the same child are refused before any mutation, with the message naming
+both the failing line and the first claiming one. Aliases resolving to the same
+stable task ID collapse to the first occurrence, in the parser and again in the
+application layer, and both must stay first-occurrence or the preview and the
+commit will disagree about order.
+
+Adoption keeps the flat `p.Tasks` order of every pre-existing task:
+`ApplyParentAssignments` never touches the slice, and
+`ReorderRootTasksByCompletion` is a stable partition that moves a task only when
+its root crosses the completed/uncompleted boundary. That hook deliberately does
+not gather each root's descendants into one contiguous run, because gathering
+resequences tasks the mutation never named — adopting a task that sits before an
+unrelated root would otherwise push it past that root. `FieldChild` declares no
+`Clears`, which is what makes `<0` an ordinary unresolvable reference rather than
+a detach: a task leaves its parent through `>parent` or `>0` and nowhere else.
+`resolveChild` reserves that token before any lookup runs, so a title beginning
+with a zero can never make `<0` succeed on either surface.
+
+The terminal-adoption refusal is one policy stated the same way on both surfaces.
+`captureDestinationChildrenGuard` and `taskLineDestinationChildrenGuard` each run
+after the hierarchy patch lands, so `$done` and `$canceled` are judged against the
+children the mutation produces, and both raise the same `ChildrenBlockedError`
+the ordinary lifecycle guard raises. Reconciliation still owns the one case no
+destination names: an already-terminal task that adopts an open child is reopened
+to Doing. Inline edit refuses a child locator outside the destination project
+with `invalid child: child must belong to the effective project`.
 
 ### Outline editor
 
@@ -337,26 +591,111 @@ operational scan signals directly: workflow state, conditional high priority,
 due, deferral, and checklist progress.
 Outliner rows omit short task IDs.
 
-`computeOutlinerViewport` is the single authority for the visible row window and
-the one place a render moves the persistent scroll offset, so the screen-relative
-jumps `H`, `M`, and `L` consume its cached result rather than re-deriving the
-window, and they land inside it without scrolling. The `zt`/`zz`/`zb` scroll
-chord is the inverse family: it reads the same cached window and moves the offset
-under a cursor it leaves alone. That chord is the one key press that writes the
-offset, and it is safe because the offset it writes still contains the cursor,
-which is exactly what the shared clamp leaves untouched on the next render.
+`H`, `M`, and `L` are the screen-relative jumps, the third kind beside the
+list-relative `gg`/`G` and the half-page `Ctrl+U`/`Ctrl+D`. They read the window
+the last render drew, cached on `lastViewport` by `computeOutlinerViewport`,
+which is the single window authority and the one place a render moves
+`viewScrollOffset`: a key handler that recomputed the window would re-derive it
+from a different footer state and scroll. The landing is the nearest navigable
+row inside that window and never outside it — separators are skipped, headers and
+checklist items are valid landings — so the scroll offset is deliberately left
+untouched and a window holding no navigable row reports rather than moving the
+cursor.
+
+`zt`, `zz`, and `zb` are the inverse family: they move the window under the
+cursor and leave the cursor alone. Both families read that one cached window and
+share `windowMiddleIndex`, so `M` and `zz` can never disagree about "middle". The
+chord is the one key press outside `computeOutlinerViewport` that writes
+`viewScrollOffset`, and that is safe because the offset it writes still contains
+the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the
+offset only when the cursor falls outside the window, so the next render leaves
+the write standing. The handler clamps to `len(rows)-height` rather than
+scrolling past the end, because that clamp is shared by every index-window view
+and the scrollbar math; `zt` near the end of the list therefore scrolls as far as
+it can and stops. Success is silent, since a status would arm the footer flash
+for a change already fully on screen.
 
 `Enter` pushes a project-qualified Focus frame and projects only the selected
 task's descendants. Nested Focus frames retain the exact parent cursor and
 scroll offset; `Esc` restores one frame at a time. A leaf reports
-`No children to focus`. `Shift+Enter` toggles a session-only, project-qualified
-Peek below the cursor task.
-Peek follows cursor, mode, and scope navigation and is capped at five additive
-lines: up to three description lines plus a dates line, attachment names,
-comment counts, and tags. It carries no checklist line, because checklist items
-are rows and the task row's progress badge covers the folded case. `Esc`
-dismisses Peek before other Outliner navigation. Entering visual selection
-disables Peek.
+`No children to focus` instead of falling through to Peek. Focus is also refused
+while a temporary search projection is active; clear search first.
+
+An active inline row editor consumes `Esc` first and cancels the draft. The
+ordinary Outliner `Esc` priority is Peek, live range, frozen selection,
+temporary search projection, one Focus frame, then the existing project/base
+escape behavior.
+
+`Shift+Enter` toggles a session-only, project-qualified Peek below the cursor
+task. Peek follows cursor, mode, and scope navigation. It carries no checklist
+line, because checklist items are rows and restating them would spend the
+tightest budget in the Outliner on content already on screen, while the task
+row's progress badge covers the folded case. Entering visual selection disables
+Peek.
+
+The five-line cap is a hard budget for the additive lines, because
+`computeOutlinerViewport` subtracts the Peek height plus a guard row from an
+already-tight one. `inlinePeekLines` therefore owns a drop order, not a set: the
+description spends up to `inlinePeekDescriptionRows` (3) lines because it is what
+actually truncates, `inlinePeekDatesLine` is appended directly after it, then
+attachment names, comment counts, and tags, and the tail cut sheds from the end.
+A new Peek line takes a deliberate position in that order, or the cap silently
+starts eating something else.
+
+The title continuation is the one block outside that budget. Peek is the surface
+whose job is to show what the row had no width for, so a title the row clipped is
+completed there rather than restated: `inlinePeekTitleLines` renders `title` minus
+exactly the prefix the row rendered — no label, no ellipsis within
+`inlinePeekTitleRows` (3), and no repetition of the visible head — styled through
+`TaskTitleStyleFor` so it reads as the same title. The row keeps its `…`, which
+now reads as "continues below". It renders only when the row actually clipped, it
+is first in the order, and the effective cap becomes
+`inlinePeekMaxLines + len(titleLines)`, so it displaces nothing.
+`visualWidthOverflow` is the counterpart to `truncateToVisualWidth` and must
+subtract the same ellipsis column, or the two disagree about the cut and a
+character is duplicated or lost.
+
+Both paths derive the title budget from one formula, `buildTaskRowSegments` plus
+`taskRowSegments.titleWidth`, because the measurement path cannot have the real
+`ColumnLayout`: `ComputeOutlinerColumnLayout` reads the row window
+`computeOutlinerViewport` is still deriving. `inlinePeekLineCount` therefore
+substitutes `worstCaseColumnLayout` and passes the row's real indent. Padding only
+ever widens a badge and every status/priority glyph is single-width, so the
+substitution over-reserves by at most two columns of title budget instead of
+under-reserving the Peek height; the guard row covers the residue. A measurement
+that under-reserves overflows terminal height and the scenario harness reports
+`height_overflow`.
+
+### Sorting axis
+
+The `o` chord is the third axis beside `f` and `F`: lowercase `f` decides which
+rows a projection holds, uppercase `F` decides which projects load, and `o`
+decides the order those rows are read in. Repeating a field key reverses that
+field, because `SortState.Toggle` flips direction on an unchanged field, so there
+is no separate reverse binding.
+
+Two rulings bound what the axis may reach.
+
+Manual order is never touched. `buildPinnedModeProjection` and the planning
+sections never read `m.sort`, and `buildAllPrimaryRows` lifts Pinned, Today, Next
+and Review out of the lifecycle forest before `sortPrimaryTaskTree` runs, so all
+four keep the sequence they were given under any active sort. That holds by
+construction rather than by a guard; the scenario and unit test are what keep it
+true. An exemption the user cannot see reads as a broken key, so while a sort is
+active those section headers carry a ` · manual` marker and the toggle's status
+names the exempt sections the rebuilt projection actually holds. Both read one
+predicate, `rowKeepsManualOrder`; neither changes what the sort reaches.
+
+Group order never changes. `appendStateGroupForests` walks projects in catalog
+order and sorts inside each project, so a sort reorders tasks within their group
+and never the sequence of the groups themselves.
+
+A fixed-order mode owns its order, so `o` there records the field on the durable
+`treeSort` and reports that the mode keeps its own order rather than silently
+doing nothing. The recorded field installs on the next transition into All,
+Inbox, or Backlog. The descriptors stay applicable in those modes on purpose: an
+inapplicable terminal collapses the whole `o` prefix to `ChordNoMatch`, which
+would falsely report `od is not a sort action`.
 
 ### Selection and subordinate tools
 
@@ -457,6 +796,13 @@ because its entries are independent, and `SemanticTaskTags` is an ordered slice
 because the `bug` > `epic` > `story` > `feature` > `idea` precedence is part of
 what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
 the `#` and `ft` pickers read the slice order to build their `SEMANTIC` section.
+Their seeding is asymmetric on purpose: `#` offers all five whether or not any
+task carries them, because offering an unused tag is how it gets discovered,
+while `ft` stays usage-derived, because a filter row nothing carries can only
+empty the projection. The retained `internal/tui/tag_selector.go` path reached
+from `handler_tag.go` (`ShowTagSelectorMsg`) carries no semantic tier, as do the
+task row and Peek tag chips; the obsolete bulk-selector message path has been
+removed.
 Those explaining surfaces wrap complete summaries inline; focusable picker
 lists give up viewport rows and scroll when the explainer needs more height.
 Focusable rows use the registry's compact `RowSummary`; previews and the inline
@@ -607,7 +953,7 @@ workspace, not an independent backup.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-6 content. A stale writer is compared
+Project revisions hash canonical schema-9 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a

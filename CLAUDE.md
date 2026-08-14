@@ -1,6 +1,9 @@
 # CLAUDE.md
 
-Contributor guidance for this repository.
+Contributor rules only: invariants, forbidden patterns, forwarding addresses.
+Behavior lives in [`README.md`](README.md), mechanism in
+[`docs/architecture.md`](docs/architecture.md); the table at the end names the
+section for each topic.
 
 ## Build and verification
 
@@ -22,26 +25,20 @@ go test ./internal/tui -run TestFinalDirectGrammar
 ```
 
 Go accepts packages, not individual test files, as test targets.
-`cmd/cli-reference.md` is generated from Cobra help; change the command help and
-run `./scripts/check_generated_docs.sh` instead of editing the generated file by
-hand.
+`cmd/cli-reference.md` is generated from Cobra help: change the command help and
+run `./scripts/check_generated_docs.sh` rather than editing it by hand.
 
 ## Architecture
 
 `tt` is an Outliner-first local task manager. The Bubble Tea TUI is the product
 surface; Cobra contains only the TUI launcher and maintenance commands.
 
-- `internal/models` owns pure task, project, note, hierarchy, and
-  workflow invariants.
-- `internal/app` owns use cases, project-qualified target resolution, planning
-  reconciliation, and atomic mutation policy.
-- `internal/storage` owns strict schema-9 Markdown, attachments, transactions,
-  conflicts, recovery, and the workspace undo ledger.
-- `internal/config` owns the lean catalog/planning domains, project tags,
-  machine-local theme, workspace selection, and v4→v5→v6→v7→v8→v9→v10 migration.
-- `internal/tui` owns the sole Outliner root, typed subordinate tools and
-  overlays, the operation registry/executor, and deterministic scenarios.
-- `internal/textgrammar` owns canonical capture/edit sigils.
+Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
+cases and mutation policy, `internal/storage` schema-9 Markdown, transactions,
+conflicts and the undo ledger, `internal/config` the catalog/planning domains
+and migration, `internal/tui` the sole Outliner root and operation
+registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
+concern in its layer.
 
 A mutation resolves targets from one immutable workspace snapshot, validates in
 the application layer, and submits every project, domain, note, and attachment
@@ -50,7 +47,7 @@ behavior with independent `SaveProject` calls. Direct storage writes are limited
 to narrowly audited maintenance, migration, restore, and transaction
 infrastructure.
 
-## Canonical schema-9 task contract
+## Task and planning invariants
 
 The live states are:
 
@@ -59,604 +56,162 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
 Review is not a lifecycle state: it is the ordinary canonical `review` tag with
-a promoted All-mode lane. Other retired states or fields may appear only in
+a promoted All-mode lane. Retired states and fields may appear only in
 explicitly named migration DTOs and audit code. Ordinary task Markdown uses
-schema 9, generic `Task` headings, a project-local ShortID, and the retained fields.
+schema 9, generic `Task` headings, a project-local ShortID, and the retained
+fields.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
-lifecycle transitions in `internal/models/task_lifecycle.go` write the clock, and
-only when the state actually changes, so re-applying a state a task already holds
-preserves its age. Comments, tags, attachments, reparenting, and manual reordering
-bump `UpdatedAt` alone, which is exactly why it cannot answer "in this state
-since". The storage boundary is strict rather than forgiving: a task reaching
-`WriteV8ProjectDocument` without a clock is rejected, never silently backfilled.
+lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
+and only when the state actually changes. A task reaching
+`WriteV8ProjectDocument` without a clock is rejected, never backfilled.
 
-Planning invariants:
-
-- Next membership is an explicit project-qualified planning collection, never a lifecycle state.
+- Next membership is an explicit project-qualified planning collection, never a
+  lifecycle state.
 - Today is project-qualified and mutually exclusive with Next.
 - Backlog removes Today/Next references.
 - Starting sets Doing; completing sets Done and clears planning.
 - Waiting is an explicit lifecycle state.
 - Done and Canceled reject a direct nonterminal child.
+- Parents are project-local with maximum depth six.
 
-Parents are project-local with maximum depth six.
+## TUI invariants
 
-## TUI grammar and operations
+The AppModel owns exactly one scope-aware Outliner, and every launch starts
+Active Projects, All, with no restored navigation, search, filters, or
+selection.
 
-The AppModel owns exactly one scope-aware Outliner. Every launch starts Active
-Projects, All, with no restored navigation, search, filters, or selection.
+`OperationRegistry` is the descriptor authority, `OperationExecutor` the single
+invocation pipeline, and `SimplifiedInputStrategy` the source of direct
+dispatch, handled keys, footer and chord hints, `?` help, and scenario
+discovery. Register an operation once and let those projections consume it; do
+not add a parallel key router, palette, or view-specific copy.
 
-`OperationRegistry` is the descriptor authority and `OperationExecutor` is the
-single invocation pipeline. `SimplifiedInputStrategy` drives direct dispatch,
-handled keys, footer hints, chord hints, `?` help, and scenario discovery.
-Register an operation once, then let those projections consume it. Do not add a
-parallel key router, palette, or view-specific copy.
+A task operation is direct-only or menu-only, never both, enforced by
+`validateTaskOperationOnePath`. The task-row `Space` menu is exactly Comments,
+Attachments, Delete; the bulk menu is Delete only; Delete has no direct key and
+confirms first.
 
-The direct grammar is:
+`#` is the one shared key, declared by `tui.task.set-tags` and
+`tui.project.set-tags` with the cursor deciding. Keep them two operations so the
+footer and `?` help carry two honest labels; never branch one descriptor's
+target source on runtime context.
 
-```text
-Tab / Shift+Tab                 seven modes
-ga gi gt gn gb g@ gr           go-to chord, one mode each
-j/k, arrows, h/l, S, gg/Home, G/End, H/M/L  navigation
-Enter / Shift+Enter             focus descendants / toggle Peek
-n / N                          next/previous grouping header, wrapping
-Ctrl+O / Ctrl+I                older/newer relocated-task positions
-Ctrl+L                         Recent, focused on the newest activity
-a/A, e/E, Ctrl+E, O            capture/edit
-wi wb wn wt wg wr ww wp wm wd wc  workflow chord
-!0-3 @ # d P                   metadata
-o@ op oc ou ot ox              sort chord, one order axis each
-zt zz zb                       scroll chord, cursor row to top/middle/bottom
-< > J K                        structure
-y Y Ctrl+Y                     clipboard
-v V Ctrl+A Space               selection/actions
-x                              tick a checklist item, or start one from a task row
-p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
-```
+Checklist rules:
 
-Pinned renders in All and Today only, declared by `ShowsPinned` on the
-mode catalog entry. Inbox, Next, Backlog, Due, and Recent each answer one narrow
-question, so a promoted group there splits the answer the mode was opened for.
-Pinned ordering is manual and group-bounded: `J`/`K` swap two pinned tasks'
-`PinnedAt` values inside one project group, including inside durably ordered
-Today.
+- The checklist is absent from the task `Space` menu; its rows own the whole
+  mutation set, so an entry there would be a second route.
+- The checklist row's own menu lists Edit Item, which also answers `e`, because
+  the menu is the only route to Delete Item — the one place the
+  direct-only-or-menu-only rule bends.
+- Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability`
+  field: a descriptor written without a predicate must stay unconditional, since
+  that is what `Register` reads to refuse a static direct-key collision.
 
-Pin has two routes: the `P` key on an existing row and the `*pin` sigil in the
-capture, inline-edit, and outline grammars. That is not a direct-only/menu-only
-violation, because that rule governs which task operations reach the `Space`
-menu, not whether an attribute is also expressible in the text grammar: `!`, `@`,
-`#`, and the `w` chord already sit beside the sigils that say the same things.
+Emit project group headers through the shared `appendProjectGroupHeader` kernel,
+never a per-mode copy. Each grouping surface owns a disjoint `collapsedSections`
+namespace, because that map is never cleared on a mode change, and grouping
+never reorders a mode's primary sort.
 
-Project grouping is universal, not per-mode: whenever the Outliner shows more
-than one project, every mode emits a foldable `IsProjectHeader` row per project,
-and project groups appear in the order the mode's own order first names them.
-Grouping never reorders a mode's primary sort. Emit those headers through the
-shared `appendProjectGroupHeader` kernel; do not add a per-mode copy. Each
-grouping surface owns a disjoint `collapsedSections` key namespace, because that
-map is never cleared on a mode change.
+`computeOutlinerViewport` is the single window authority and the only place a
+render moves `viewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
+that may write it, and only because the offset it writes still contains the
+cursor. Never recompute the window in a key handler.
 
-`n`/`N` step the cursor between grouping headers, and their stop set is
-`isHeaderRow()` — section headers and project headers both — because the header
-kind is not uniform across modes: All, Due, and Recent emit section headers while
-Inbox, Backlog, Today, and Next group by project only, so a section-only stop set
-would leave the keys dead in four of the seven modes. That predicate is the same
-one `h`/`l` fold on and the same one the header guidance reads. The walk wraps at
-either end, and a projection holding no header at all — a project-scoped view or
-a search projection — reports so through `OperationHandlerResult.Status` rather
-than leaving the key silent. `S` keeps its own narrower `visibleSectionHeaders()`
-scan, which deliberately excludes project headers.
+Manual order is never touched by the sort axis, and that holds by construction
+rather than by a guard — do not add one. Group order never changes: a sort
+reorders tasks within their group only.
 
-Checklist items render as ordinary rows folded beneath their owner task, emitted
-by the one `expandChecklistRows` post-pass so no mode strategy carries a copy.
-They are a fourth row kind: `IsChecklistItem` excludes a row from `isTaskRow()`
-while leaving it navigable, which is exactly what makes every task operation
-refuse there instead of falling through to the owner whose pointer the row
-carries. `h`/`l` therefore form one ladder with no new key — children before
-checklist on the way out, checklist first on the way back — and `h` on an item
-returns to its owner.
-
-The fold state is `expandedChecklists`, a third map that is not merged into
-either of the other two: `expandedNodes` defaults expanded, `collapsedSections`
-is string-keyed and shared with grouping headers, and `expandedChecklists`
-defaults collapsed so an absent key hides the items. It is cleared wherever
-`expandedNodes` is and joins `jumpProjectionFingerprint()`, because a fold change
-clears relocation jump history. Visual selection names task rows only, so a
-checklist cursor refuses `v`, `V`, and `Ctrl+A`, and entering selection from a
-task row suppresses any open checklist rows while leaving the map untouched,
-which is what lets `Esc` restore the same rows.
-
-A checklist row owns six operations: `x` Toggle Item, `e` Edit Item, `J`/`K`
-Move Item Down/Up, `A` Add Item, and `Space` Checklist Actions, whose menu is
-exactly Edit Item and Delete Item. Delete has no direct key and confirms before
-mutating, which is the one place the direct-only-or-menu-only rule bends: Edit
-Item answers both `e` and the menu, because the menu is the only route to Delete
-and a menu holding a single destructive row explains nothing.
-
-A checklist row exists only once the checklist does, so `tui.checklist.start`
-holds the one case no row can cover: `x` on a task row whose checklist is empty
-prompts for the first item and expands it, and the row grammar owns every item
-after that. Its applicability is `len(task.Checklist) == 0`, which makes it
-disjoint from Add Item rather than a second route to it, and that gate is why it
-belongs outside both task manifests — the `DirectOnly` branch of
-`taskActionOperationApplicable` returns before any live-state check. The task
-composer's Children tab remains the full editor for a task not yet in a
-projection.
-
-Six of those keys are shared with a task-row operation, and the refusal that
-makes the sharing safe is one predicate, `operationRefusedOnChecklistRow`, read
-in exactly two places. `OperationDescriptor.Applicable` consults it so a refused
-operation is inapplicable under a checklist cursor, which is what lets a shared
-key resolve to the checklist descriptor declared beside it and what makes an
-abandoned prefix report the refusal instead of opening a which-key row it cannot
-complete. `OperationExecutor.Execute` consults it again, so a route that reaches
-an operation without going through key resolution refuses there too. Keep the
-rule out of the `Applicability` field: a descriptor written without a predicate
-must stay unconditional, because that is what `Register` reads when it refuses a
-static direct-key collision.
-
-The predicate refuses every Task and Tag operation by category, then names the
-core operations individually, because the core family mixes navigation — which
-is how the cursor leaves the row and therefore stays — with operations that
-would reach through the item to the owner task whose pointer it carries.
-
-That kernel takes the group's tasks rather than a count, because it computes the
-header's own `OverdueCount` and `TodayCount` from them; the Today membership
-comes from `Planning().GetToday()` directly, so no projection has to thread its
-input down to the row appenders. A Today section suppresses its `today` count,
-which could only restate the group's size. `appendProjectHeaderPressure` renders
-the suffix and degrades it before `truncateToVisualWidth` sees the line, dropping
-`today` and then `overdue`, because a clipped count reads as a different number.
-
-Three numbers can sit on one project header and they answer different questions.
-`(N)` is the group's size and always renders. `! overdue N` appears wherever the
-group holds a non-terminal task due before today. `◷ today N` is much narrower
-than it looks: All lifts Today rows into the Today section before the state
-groups are built, the Today section suppresses its own count, Next is mutually
-exclusive with Today, and Backlog clears planning, so it can only appear in
-Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a second
-bare count.
-
-`H`, `M`, and `L` are the screen-relative jumps, the third kind beside the
-list-relative `gg`/`G` and the half-page `Ctrl+U`/`Ctrl+D`. They read the window
-the last render drew, cached on `lastViewport` by `computeOutlinerViewport`,
-which is the single window authority and the one place a render moves
-`viewScrollOffset`: a key handler that recomputed the window would re-derive it
-from a different footer state and scroll. The landing is the nearest navigable
-row inside that window and never outside it — separators are skipped, headers and
-checklist items are valid landings — so the scroll offset is deliberately left
-untouched and a window holding no navigable row reports rather than moving the
-cursor.
-
-`zt`, `zz`, and `zb` are the inverse family: they move the window under the
-cursor and leave the cursor alone. Both families read that one cached window and
-share `windowMiddleIndex`, so `M` and `zz` can never disagree about "middle".
-The chord is the one key press outside `computeOutlinerViewport` that writes
-`viewScrollOffset`, and that is safe because the offset it writes still contains
-the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the
-offset only when the cursor falls outside the window, so the next render leaves
-the write standing. The handler clamps to `len(rows)-height` rather than
-scrolling past the end, because that clamp is shared by every index-window view
-and the scrollbar math; `zt` near the end of the list therefore scrolls as far as
-it can and stops. Success is silent, since a status would arm the footer flash
-for a change already fully on screen.
-
-`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
-second keys jump straight to one mode, so a seventh mode never costs six Tab
-presses. That binding is the one place a single operation declares both `Keys`
-and a `Sequence`; prefix-freeness is still fully enforced by the chord trie.
-
-Recent is the activity-ordered mode. It lists tasks touched within the last 30
-days newest first, grouped into Today, Yesterday, Last 7 Days, and Last 30 Days,
-and anything older is dropped. It is the one mode that owns terminal and deferred
-membership itself rather than waiting for an explicit filter, because a task you
-just finished or just deferred is exactly the activity being reviewed. Ordering
-freezes on entry so triaging a row does not move it out from under the cursor;
-the snapshot is keyed to `jumpProjectionFingerprint()`, so it invalidates on the
-same events that clear relocation jump history, and `gr` while already in Recent
-is the manual refresh.
-
-`Ctrl+L` is the one key that reaches the newest task from anywhere. It enters
-Recent, which re-reads activity exactly as `gr` does, and lands the cursor on the
-newest row Recent admits. That target is read from `BuildRecentModeSections`
-before grouping runs, never from `m.rows[0]`: inside a section
-`groupSectionRowsByProject` reshapes the flat newest-first order into a
-per-project forest, so a promoted child renders beneath an older parent and the
-top screen row is then not the newest task. The landing disturbs no folds — only
-when the target has no row does it open that row's section, its project group,
-and its ancestor chain, then rebuild and retry, the same try-reveal-retry shape
-as `NavigateToTaskInProject`. It does reset `viewScrollOffset`, because
-`restoreModeCursor` carries the origin mode's offset across the transition and
-would seat the lead against the viewport edge with the section and project
-headers naming it scrolled off. An empty Recent reports the 30-day window and
-moves nothing.
-
-Pressing `w` shows the workflow chord. Its second keys are `i` Inbox, `b`
-Backlog, `n` Next, `t` Today, `g` Doing, `r` Review, `w` Waiting, `p` Paused, `m`
-Someday, `d` Done, and `c` Canceled. Next and Today retain their toggle
-behavior, and Backlog removes both planning memberships.
-
-Filter chords are `fp0-3`, `fs`, `fc`, `ft`, `fr`, `f@`, `fd`, and `fx`. `fp1`–`fp3`
-are cumulative High/Medium/Low thresholds and exclude Unset. `f@` opens the
-due-date facet picker for overdue, today, this week, or no due date, and `fd`
-isolates the deferred tasks. `fc`
-opens the completion-age picker and installs the Done/Canceled state predicate
-with the chosen age, so the matches are visible without a separate `fs` step;
-cleanup uses `fc` → `Ctrl+A` → `Space` Delete. That terminal-state predicate
-belongs to the one cleanup facet and is not counted as a second state facet.
-`fx` clears every facet. The old standalone `b` and `t` actions and comma state
-prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`.
-`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, no
-`d`-means-done alias may return, and root `z` is a chord prefix rather than a
-direct key: it never means snooze or defer.
-
-The sort axis is the `o` chord: `o@` due date, `op` priority, `oc` created, `ou`
-updated, `ot` title, and `ox` clear. It is the third axis alongside `f` and `F`.
-Lowercase `f` decides which rows a projection holds, uppercase `F` decides which
-projects load, and `o` decides the order those rows are read in. Repeating a
-field key reverses that field, because `SortState.Toggle` flips direction on an
-unchanged field; there is no separate reverse binding and `SortByStatus` stays
-unbound.
-
-Two rulings bound what the sort axis may reach.
-
-Manual order is never touched. `buildPinnedModeProjection` and the planning
-sections never read `m.sort`, and `buildAllPrimaryRows` lifts Pinned, Today, Next
-and Review out of the lifecycle forest before `sortPrimaryTaskTree` runs, so all
-four keep the sequence they were given under any active sort. That holds by
-construction rather than by a guard, so do not add one; the scenario and unit
-test are what keep it true.
-
-An exemption the user cannot see reads as a broken key, so while a sort is active
-those section headers carry a ` · manual` marker and the toggle's status names
-the exempt sections the rebuilt projection actually holds. Both read one
-predicate, `rowKeepsManualOrder`; neither changes what the sort reaches.
-
-Group order never changes. `appendStateGroupForests` walks projects in catalog
-order and sorts inside each project, so a sort reorders tasks within their group
-and never the sequence of the groups themselves.
-
-A fixed-order mode owns its order, so `o` there records the field on the durable
-`treeSort` and reports that the mode keeps its own order rather than silently
-doing nothing. The recorded field installs on the next transition into All,
-Inbox, or Backlog. The descriptors stay applicable in those modes on purpose: an
-inapplicable terminal collapses the whole `o` prefix to `ChordNoMatch`, which
-would falsely report `od is not a sort action`.
-
-Project filter chords are `Ft`, `Fp`, `FP`, `Fa`, `FA`, and `Fx`. Lowercase `f`
-refines the rows a projection holds; uppercase `F` decides which projects load,
-so every `F` facet reloads the population. `Ft` is a multi-select picker over the
-whole cataloged project tag vocabulary plus an Untagged pseudo-entry, so a facet
-can always be widened back out from inside the picker. `Space` on one of its tag
-rows offers Rename everywhere, Remove everywhere, Park all members, and
-Unpark all members through the ordinary project bulk-tag transaction; a removal
-that would strand a project asks for a destination tag first.
-
-The parked and archived populations are axes, not switches. Each is exclude,
-include, or only: the lowercase key owns include, the uppercase key owns only,
-and pressing the key that already holds clears that axis. The two axes compose
-with AND, so `FP` with `FA` names the projects that are both archived and
-parked. `Fp`, `FP`, and the `parked` row inside `Ft` write the same
-`ProjectFilterState.ParkedMode` field, so the routes can never claim different
-populations; the picker cannot express only, so a checked parked row that is
-already isolating keeps it rather than silently widening back to include.
-
-A chord prefix that a second key abandons sets a brief warning status naming the
-path it left, such as `wq is not a workflow action`. An unbound root key
-stays silent because it never promised anything.
-
-Changed status text flashes the footer divider: the bar takes a severity color
-and runs a 500ms impact–sweep–settle animation over `footerFlashFrames` (20)
-frames of `footerFlashFrameInterval` (25ms): 100ms of full-width `━`, an eased
-heavy segment with a severity head and accent-fading trail, then a short dissolve
-back to the thin `─` accent bar. The footer content rows simultaneously take a
-14% severity-tinted background wash that eases back to the theme background over
-the same 500ms; existing badge backgrounds remain intact. It is a flash, not a
-pulse — `workspacePulse` is the title row's counts chip. The interactive TUI
-ignores an inherited
-`NO_COLOR`, while the explicit `--no-color` flag still disables color; the moving
-heavy glyph segment keeps the flash visible even then. Non-interactive commands
-retain the inherited environment. The trigger is status text only. The three
-`AppModel` setters advance `statusSeq`, `m.err` is compared by text because it
-has no clock, and `InteractiveViewState.setStatus` advances its own stamp; a
-breadcrumb, mode badge, or which-key change moves on nearly every keystroke and
-must never arm it. Cleared text arms nothing, because neither `clearStatus` nor
-the auto-clear timers advance a sequence. Arming happens in exactly one place,
-the deferred closure in `AppModel.Update`, which is what lets ~50 void setter
-call sites stay untouched; it must remain that one defer, since a second would
-run first under LIFO and see neither the recovery nor the assigned command.
-The footer divider appearance feeds all three dividers `renderStatusBar` can
-emit — its own separator and both guidance calls — or the flash dies whenever a
-which-key row is up. The breadcrumb keeps its plain foreground accent while its
-background participates in the footer wash.
-
-`#` is the one shared key: two descriptors declare it, `tui.task.set-tags` and
-`tui.project.set-tags`, and the cursor decides which applies. Keep them two
-operations so the footer and `?` help carry two honest labels; never branch one
-descriptor's target source on runtime context.
-
-Relocation jump history is session-only and scoped to the current projection;
-changing mode, scope, search, filters, sorting, folds, or focus clears it. A
-legacy terminal may encode `Ctrl+I` as `Tab`; enhanced keyboard reporting is
-required to distinguish forward-jump from next-mode cycling.
-
-The `Space` menu on a task row is exactly:
-
-1. Comments
-2. Attachments
-3. Delete
-
-The checklist is not among them. Its rows own the whole mutation set, so a menu
-entry here would be a second route to it — the shape this rule exists to forbid.
-The checklist row's own `Space` menu is a different menu on a different row kind
-and does not recreate the duplication, and the composer's checklist section is a
-third surface that edits a task not yet in a projection.
-
-A task operation is direct-only or menu-only, never both, and
-`validateTaskOperationOnePath` enforces it over that manifest. Delete has no
-direct key and confirms before mutation.
-
-Project moves and reparenting belong only to the inline `e` grammar:
-`%project`, `>parent`, `>0`, and `<child` are applied by the atomic task-line
-transaction. The task's own parent edge and every adopted child edge are
-submitted as one `ApplyParentAssignments` batch, so cycles and depth are
-measured on the graph the edit produces rather than on the one it replaced.
+The footer flash is armed by status text only, never by a breadcrumb, mode badge
+or which-key change, and cleared text arms nothing. Arming stays in the one
+deferred closure in `AppModel.Update`, since a second would run first under LIFO
+and see neither the recovery nor the assigned command. The divider appearance
+must feed all three dividers `renderStatusBar` can emit, or the flash dies
+whenever a which-key row is up. The interactive TUI ignores an inherited
+`NO_COLOR`; `--no-color` still disables color and non-interactive commands
+retain the inherited environment.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
-`tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain
-list. Inline modes bind `a` inside `OperationValuePickerModel` and must emit the
-same value type the provider's preset rows carry, so the executor and the
-single and bulk handlers stay untouched. A value the presets cannot express
-belongs in an inline mode on the one picker, never in a standalone form.
+`tagEntry()` or `dateEntry()` (inline add modes), or a plain list. A value the
+presets cannot express belongs in an inline mode on the one picker, never in a
+standalone form.
 
-`O` is the outline editor: it dumps the cursor's project as one indented buffer,
-opens `$EDITOR`, and submits the whole edited tree through the single
-`ApplyOutlinePlan` use case. The scope is one project's complete task model, not
-the visible projection, because indentation in the buffer *is* parentage and a
-filtered dump would reparent whatever it hid. Existing tasks carry a
-`[[tt:<8 hex>]]` marker that identifies them across a rewrite; the marker is
-stripped before the rest of the line reaches `parseQuickCapture`, so one line
-speaks the ordinary capture grammar and nothing else. A `>parent` or `<child`
-sigil is therefore an error rather than a second parentage channel; `FieldChild`
-is absent from `SurfaceOutline`, and `parseOutlineBodies` reports the sigil in
-the `>parent` voice so the two refusals stay one vocabulary.
+Row and Peek budget:
 
-Two rules bound it. It refuses under a visual selection, since a selection names
-rows and the outline names a project. And it refuses in every mode that is not
-`OrderPolicyTree` with `Outline edit needs All, Inbox, or Backlog`, because a
-promoted or fixed-order mode's row sequence is not the tree the buffer claims to
-be.
+- `inlinePeekLines` owns a drop order, not a set; a new line takes a deliberate
+  position or the five-line cap starts eating something else. Peek holds no
+  checklist line.
+- `visualWidthOverflow` must subtract the same ellipsis column as
+  `truncateToVisualWidth`, or a character is duplicated or lost.
+- `indicatorDropLadder` is a list: a new indicator gets a position, not an
+  append.
+- Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
+  plain due segment rather than sitting beside it.
+- The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps
+  and no `woke` component.
 
-The buffer is declarative about existence too: a dumped task whose line is gone
-is deleted, and the deletion rides the same transaction and the same undo entry
-as the edits beside it. There is no `$delete` sigil, because the dump is the
-complete tree and absence already says it. One confirmation gates it, armed
-after `$EDITOR` returns and before anything is applied, naming the removed tasks
-and the attachments they destroy. The counts cannot go stale, because the apply
-re-enforces the revision the buffer was dumped at, and `ApplyOutlinePlan`
-refuses any confirmed list that disagrees with the buffer's absences in either
-direction. Declining cancels the whole apply, edits included, and keeps the temp
-file so the same buffer can be resubmitted. Scope is what the dump actually
-printed, never `project.Tasks`: a task unreachable from any root never reached
-the buffer, so absence cannot speak for it.
+`O` refuses under a visual selection and in every mode that is not
+`OrderPolicyTree`; its scope is what the dump actually printed, never
+`project.Tasks`. There is no `$delete` sigil: a dumped task whose line is gone
+is deleted, under one confirmation, in the same transaction and undo entry as
+the edits beside it.
 
-An emptied buffer is that rule at its limit, not an exception to it: every line
-removed deletes every task in the scope, gated by the same confirmation. `the
-buffer holds no tasks` is refused only when the emptiness also deletes nothing,
-since that buffer asks for no change at all and is likelier a truncated file. The
-parser never rules on this; emptiness is a question about scope, and only
-`handleOutlineEdited` and `ApplyOutlinePlan` hold one.
+Entering visual selection closes Peek, and while a selection exists structural,
+edit, Peek, relation, and clipboard operations must reject it rather than fall
+back to the cursor. Focus is refused during a temporary search projection.
+Relocation jump history is session-only and scoped to the current projection.
 
-Both validation phases collect every problem before anything is written, and a
-rejected buffer keeps its temp file so the named line numbers still resolve. A
-project revision that moved while the editor was open aborts the apply for the
-same reason.
+Notes stay location-qualified, exclude archived projects, and do not regain
+tags, task links, pins, bulk actions, or previews. `T` toggles only dark/light.
 
-The Outliner stays full-width at every supported size. `Enter` focuses the
-cursor task's descendants and `Shift+Enter` toggles Peek. Focus projects only
-descendants; nested `Enter` pushes another project-qualified Focus frame, and
-`Esc` pops exactly one Focus level and restores that frame's prior cursor and
-scroll position. A leaf refuses with `No children to focus` instead of falling
-through to Peek. Focus is also refused while a temporary search projection is
-active; clear search first.
+## Key bindings
 
-An active inline row editor consumes `Esc` first and cancels the draft. The
-ordinary Outliner `Esc` priority is Peek, live range, frozen selection,
-temporary search projection, one Focus frame, then the existing project/base
-escape behavior. Rows carry operational metadata directly and omit short IDs.
+The old standalone `b` and `t` actions and the comma state prefix stay unbound,
+along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`. `SortByStatus` stays
+unbound; repeating a sort field key is the only reverse route.
 
-Peek holds no checklist line. Checklist items are rows, so restating them there
-would spend the tightest budget in the Outliner on content already on screen,
-and the task row's progress badge answers the folded case unconditionally.
+`d` is Set Defer and never Done — Done stays `wd` alone and no `d`-means-done
+alias may return. Root `z` and `g` are chord prefixes, not direct keys: `z`
+never means snooze or defer, and cursor-top is `gg` or `Home`.
 
-The five-line cap is a hard budget for the additive lines, because
-`computeOutlinerViewport` subtracts the Peek height plus a guard row from an
-already-tight one. `inlinePeekLines` therefore owns a drop order, not a set: the
-description spends up to `inlinePeekDescriptionRows` (3) lines because it is what
-actually truncates, `inlinePeekDatesLine` is appended directly after it, and the
-tail cut sheds from the end. A new Peek line takes a deliberate position in that
-order, or the cap silently starts eating something else.
+Pin's two routes, the `P` key and the `*pin` sigil, are not a
+direct-only/menu-only violation: that rule governs which task operations reach
+the `Space` menu, not whether an attribute is also expressible in text.
 
-The title continuation is the one block outside that budget. Peek is the surface
-whose job is to show what the row had no width for, so a title the row clipped is
-completed there rather than restated: `inlinePeekTitleLines` renders `title` minus
-exactly the prefix the row rendered — no label, no ellipsis within
-`inlinePeekTitleRows` (3), and no repetition of the visible head — styled through
-`TaskTitleStyleFor` so it reads as the same title. The row keeps its `…`, which
-now reads as "continues below". It renders only when the row actually clipped, it
-is first in the order, and the effective cap becomes
-`inlinePeekMaxLines + len(titleLines)`, so it displaces nothing.
-`visualWidthOverflow` is the counterpart to `truncateToVisualWidth` and must
-subtract the same ellipsis column, or the two disagree about the cut and a
-character is duplicated or lost.
+An abandoned chord prefix sets a warning status naming the path it left (`wq is
+not a workflow action`); an unbound root key stays silent.
 
-Both paths derive the title budget from one formula, `buildTaskRowSegments` plus
-`taskRowSegments.titleWidth`, because the measurement path cannot have the real
-`ColumnLayout`: `ComputeOutlinerColumnLayout` reads the row window
-`computeOutlinerViewport` is still deriving. `inlinePeekLineCount` therefore
-substitutes `worstCaseColumnLayout` and passes the row's real indent. Padding only
-ever widens a badge and every status/priority glyph is single-width, so the
-substitution over-reserves by at most two columns of title budget instead of
-under-reserving the Peek height; the guard row covers the residue. A measurement
-that under-reserves overflows terminal height and the scenario harness reports
-`height_overflow`.
-
-A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
-renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>` for
-`deferWakeWindow` (72h, defined in `primary_view_shared.go`), then nothing. The
-age reuses `formatRecencyChip` so a lapsed deferral is not formatted a second way.
-`taskWokeRecently` is the one lapsed-deferral predicate and `formatRecencyAge` is
-the one age token; the Peek dates line reads both rather than re-deriving either,
-so the row and the line beneath it can never disagree.
-The workspace pulse deliberately carries no `woke` component: its degradation
-ladder in `formatWorkspacePulseComponents` has exactly three steps, and a fourth
-metric there names work you cannot act on without navigating to it anyway.
-
-Waiting age reads the state clock, never the touch time.
-`formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
-formats `StateChangedAt` through `formatRecencyChip`, so a comment, a tag, or a
-reparent on a blocked task cannot reset how long it has been blocked. A waiting
-task's due date is its check-back date, so `formatCheckBackIndicator` replaces the
-plain `formatDueDate` segment rather than sitting beside it: rendering both would
-state one fact twice. It compares calendar days through `util.StartOfDay`, like
-`ClassifyDueDate`, because a due date is a day and not an instant, and it is the
-one indicator that styles an overdue reading (`check +<age>`) as pressure.
-
-`withWaitingCheckBackStep` is why `ww` asks for the check-back at all. It runs
-the set-state command, and only a committed result — the `transactionCommitted`
-gate — is followed through `tea.Sequence` by an `OperationValueRequestMsg` for
-`operationTaskSetDueDate`. A rejected move returns its `TransactionErrorMsg`
-untouched, so a task that never reached Waiting can never be given a check-back
-date. The chain is keyed off `invocation.Value` rather than runtime context, and
-it sits on the one shared `applicationTaskOperationRequest` path so single and
-bulk moves chain identically. The transition has already committed when the
-picker opens, which is exactly what makes `Esc` there cancel the date alone and
-leave the Waiting move standing.
-
-`indicatorDropLadder` is the row's drop order, and it is a list rather than a set
-because eight segments cannot all fit at minimum width. Counts go first, since
-the row's own badges and Peek still carry them; the check-back goes last, because
-it is the one indicator naming work that has gone quiet on someone else's desk. A
-new indicator gets a position in that list, not an append.
-
-Entering visual selection
-closes Peek; while selection exists, structural, edit, Peek, relation, and
-clipboard operations must reject it instead of falling back to the cursor.
-The bulk `Space` menu contains Delete only.
-
-Visual selection has two keys. `v` toggles the cursor task, so a selection can
-name rows that are not adjacent and cursor movement never reshapes it. `V`
-anchors an inclusive range that movement recalculates over task rows only, and a
-second `V` freezes it; a fresh `V` replaces the whole selection. `v` over a live
-range freezes it first, then toggles, so the cursor row leaves the range. The
-mode survives at zero selected members and only `Esc` leaves it.
-
-`p` opens the search-first project picker, which owns project focus and lean
-project administration. It lists `Runtime.AvailableProjects()` with each
-project's tag chips, `v` selects a row, `a`/`A` select or clear every matching
-row, and `Space` over a selection offers Add tag, Remove tag, Park and Unpark
-across the whole selection in one transaction. `Ctrl+T` inside the picker cycles
-one three-state axis: every project, only the projects holding at least one task,
-then only the projects holding none. It answers the key in both Hub modes, so the
-search input keeps its live query while filtering. It applies to the Active and
-Archived sections alike, because the row counts now cover every cataloged project
-rather than the base task workspace. A project whose count could not be read
-stays visible in all three states: the filter hides a known count, never an
-unknown, so neither narrowing may claim it. Every footer hint and empty-list line
-names what the next press shows rather than the state the axis holds, because one
-press no longer returns to the whole list. The axis is Hub session state and
-resets on every `p`. The task composer's own `Ctrl+T` is Add subtask, a
-different view with its own key router. `Ctrl+N` opens All Notes across
-Global and every project returned by `Runtime.AvailableProjects()`, except on a
-project header row, which opens that project's scope. That is the same
-explicit-naming exception `coreCaptureMessage` makes, read through the same
-`cursorProjectHeaderProject` predicate, so no task cursor can narrow the
-manager; an archived header stays on All Notes because an archived project is
-never a note owner. Inside Notes, `v` chooses All, Global, or one active
-project, `s` persistently searches titles and bodies, and `m` atomically moves
-one note between active owners. Creation with `n` or its `a` alias always asks
-for a destination; the remaining mutation grammar is open/edit, rename,
-delete, undo, and redo. Keep
-note identity location-qualified, keep archived projects excluded,
-and do not restore note tags, task links, pins, bulk actions, or previews. `T`
-toggles only dark/light.
-
-## Project tags
+## Project and task tags
 
 Task workflow state, project tags, and project archive lifecycle are three
 independent axes. Never express one with another.
 
-A cataloged project carries a set of tags validated by the ordinary tag rules,
-then lowercased, deduped, and sorted by `NormalizeProjectTags`. Load validation
-applies the same normalization, so a persisted tag set the write APIs could not
-have minted fails closed instead of loading. The protected Unfiled project may
-never carry the reserved `parked` tag.
+`parked` is the one behavioral project tag, reserved in the project-tag
+namespace only, so a task may still carry an ordinary `parked` tag. Unfiled may
+never carry it, and every other project tag is descriptive and decides nothing.
+`NormalizeProjectTags` lowercases, dedupes, and sorts; load validation applies
+the same normalization so an unmintable persisted set fails closed.
 
-`parked` is the one behavioral tag: a non-archived project carrying it is
-parked. It is reserved in the project-tag namespace only, so a task may still
-carry an ordinary `parked` tag. Every other project tag is descriptive and
-decides nothing about which projections a project reaches.
+`models.BehavioralProjectTags` and `models.SemanticTaskTags` are metadata
+registries carrying no effect: an entry explains a tag, it does not make one
+decide anything. The parking effect stays one hardcoded predicate behind
+`TaskWorkspaceProjects()`, and the semantic precedence `bug` > `epic` > `story`
+> `feature` > `idea` only colors the title — a semantic tag is ordinary in
+storage, capture, filtering, and every workflow rule.
 
-`models.BehavioralProjectTags` is the metadata registry every surface that
-explains a behavioral tag reads: the picker explainer, the badge, the project
-editor Tags field. It carries no effect — the parking effect stays one
-hardcoded predicate behind `TaskWorkspaceProjects()`.
-Explainers are non-focusable reading content, so they wrap inline at word
-boundaries instead of clipping or moving fragments into the status bar. Picker
-lists yield viewport rows and scroll when the wrapped block needs more height.
-Focusable semantic and behavioral tag rows use their compact `RowSummary`;
-previews and the wrapped explainer retain the complete `Summary`.
-
-Parking is the one project tag edit that confirms, because it is the one whose
-effect the user cannot see coming. The prompt names the impact ("Park Sonar? Its
-14 tasks leave Active Projects."), the success status names both recovery routes
-("Fp to show · u to undo"), the cursor moves deliberately to the surviving
-project header instead of clamping into whatever survived, and the base scope
-chrome reads `Active Projects · N parked` while anything is parked. Every park
-committed over the Outliner captures that anchor, single or bulk; a park
-committed from the Project Hub captures none, because parked rows stay visible
-there.
-
-Keep the two populations named apart. `Runtime.TaskWorkspaceProjects()` is
-non-archived and not parked, and is the only population the base Outliner reads;
+Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is
+non-archived and not parked and is the only one the base Outliner reads, while
 `Runtime.AvailableProjects()` is every non-archived project and keeps parked
-projects reachable for Notes, capture and inline-edit `%project` destinations,
-Select Project, and one explicit project focus. A parked focus anchors on the
-project name plus the `parked` tag, and leaving it must leave no parked rows or
-scope chrome behind.
+projects reachable for Notes, `%project`, Select Project, and one explicit
+focus.
 
-Tagging a project `parked` keeps its Today and Next references. They stay
-durable and are filtered at read time, so unparking restores the plan untouched.
-Archiving preserves the project's tags and restoring returns them unchanged.
+Parking is the one project tag edit that confirms, and it keeps the project's
+Today and Next references durable, filtered at read time, so unparking restores
+the plan untouched; archiving likewise preserves tags. Tag explainers wrap
+inline rather than clipping or spilling into the status bar; focusable rows use
+the compact `RowSummary` and explainers the full `Summary`.
 
-## Task tags
-
-`bug`, `epic`, `story`, `feature`, and `idea` are presentation metadata with a
-locked precedence, `bug` > `epic` > `story` > `feature` > `idea`, matched
-exactly and case-insensitively so `type:bug` and `bugfix` stay ordinary. They
-color the task title and decide nothing else: a semantic tag is an ordinary tag
-in storage, in capture, in filtering, and in every workflow rule.
-`models.SemanticTaskTags` is the registry every explaining surface reads. Like
-`BehavioralProjectTags` it carries no effect, and it is an ordered slice rather
-than a map because the precedence is part of what it publishes.
-Explainers are non-focusable reading content, so they wrap inline at word
-boundaries instead of clipping or moving fragments into the status bar. Picker
-lists yield viewport rows and scroll when the wrapped block needs more height.
-Focusable semantic and behavioral tag rows use their compact `RowSummary`;
-previews and the wrapped explainer retain the complete `Summary`.
-
-Both tag pickers group the five under `SEMANTIC` above the descriptive `TAGS`
-section, and the seeding is asymmetric on purpose. `#` offers all five whether
-or not any task carries them, because offering an unused tag is how it gets
-discovered; `ft` stays usage-derived, because a filter row nothing carries can
-only empty the projection. The explainer states the precedence instead of
-leaving it silently applied.
-
-The retained `internal/tui/tag_selector.go` path reached from `handler_tag.go`
-(`ShowTagSelectorMsg`) carries no semantic tier, as do the task row and Peek tag
-chips. The obsolete bulk-selector message path has been removed.
-
-## Capture grammar
+## Capture and edit grammar
 
 Canonical capture sigils are:
 
@@ -665,87 +220,29 @@ Canonical capture sigils are:
 ```
 
 `$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
-Someday, Done, or Canceled. `#tag` creates valid tags on the fly. `^type`,
-`~recurrence`, priorities 4–5, `$ready`, and `$in_progress` must remain
-recognized errors with replacement guidance. Do not reintroduce aliases such as
-`priority:`, `due:`, `state:`, or `proj:`. Multiline capture validates every
-nonblank line before committing one transaction. Resolve the target project
-before the project-local parent and the project-local children; omitted
-destinations default roots to Inbox and children to Backlog, and adopting
-children changes neither default because `normalizeCaptureDestination` reads
-only `ParentID`.
+Someday, Done, or Canceled. `^type`, `~recurrence`, priorities 4–5, `$ready`,
+and `$in_progress` stay recognized errors with replacement guidance, and aliases
+such as `priority:`, `due:`, `state:`, `proj:` stay unimplemented. Multiline
+capture validates every nonblank line before committing one transaction.
 
-`*pin` is the one attribute sigil whose clear form is not available everywhere.
-`*unpin` is edit-only, because a new task starts unpinned and a capture line has
-nothing to clear; capture refuses it by name. The outline surface refuses it too,
-for the opposite reason: the dump is declarative, so a pinned task's line carries
-`*pin` and deleting that token is what unpins, exactly as a deleted line is what
-deletes the task. A second clear form there would be a second route to the same
-state.
-
-The value set is closed to `pin` and `unpin`, and an unrecognized value is not
-consumed: `Refactor *args handling` keeps `*args` in its title. That is the tag
-rejection behavior rather than priority's, and the asymmetry is deliberate.
-Priority captures `!9` in order to diagnose a typo, because `!` followed by a
-digit is not something a title says by accident; `*` occurs in ordinary prose and
-in code identifiers, so pin would diagnose far more real titles than typos.
-Re-pinning an already-pinned task preserves `PinnedAt`, since that field is the
-pinned section's manual order and every outline apply would otherwise reshuffle
-it.
-
-`<child` is the one repeatable structural sigil. `>parent` stays
-`CardinalitySingleton` because a task has one parent, while `FieldChild` is
-`CardinalityRepeatable`; that declaration is the entire mechanism, since
-`duplicateSingletonDiagnostics` already skips a non-singleton field. Both
-sigils name a task by exact short ID or unique case-insensitive title prefix
-through the one `resolveStructuralReference` matcher, which differs between them
-only in the relationship word its ambiguity message carries.
-
-Adoption is additive and has no clear form. Unmentioned children keep their
-parent, an adopted task keeps its own subtree, and the flat `p.Tasks` order of
-every pre-existing task survives the adoption: `ApplyParentAssignments` never
-touches the slice, and `ReorderRootTasksByCompletion` is a stable partition that
-moves a task only when its root crosses the completed/uncompleted boundary. That
-hook deliberately does not gather each root's descendants into one contiguous
-run, because gathering resequences tasks the mutation never named — adopting a
-task that sits before an unrelated root would otherwise push it past that root.
-`FieldChild` declares no `Clears`,
-which is what makes `<0` an ordinary unresolvable reference rather than a
-detach: a task leaves its parent through `>parent` or `>0` and nowhere else.
-`resolveChild` reserves that token before any lookup runs, so a title beginning
-with a zero can never make `<0` succeed on either surface.
-Aliases resolving to the same stable task ID collapse to the first occurrence,
-in the parser and again in the application layer, and both must stay
-first-occurrence or the preview and the commit will disagree about order.
-
-A terminal destination refuses an open adopted child, and both surfaces state it
-the same way. `captureDestinationChildrenGuard` and
-`taskLineDestinationChildrenGuard` each run after the hierarchy patch lands, so
-`$done` and `$canceled` are judged against the children the mutation produces,
-and both raise the same `ChildrenBlockedError` the ordinary lifecycle guard
-raises. Capture therefore cannot land terminal above open work and be silently
-reopened by `ReconcileParentCompletion`; the composer refuses that draft the way
-the inline editor already does. Reconciliation still owns the one case no
-destination names: an already-terminal task that adopts an open child is reopened
-to Doing.
-
-Children resolve only in the effective project, so `<child` can never pull a
-subtree across a project boundary: capture resolves against the `%project`
-target and inline edit refuses a locator outside the destination project with
-`invalid child: child must belong to the effective project`. A task named as
-both `>parent` and `<child` on one line is refused, and across a multiline
-capture two lines claiming the same child are refused before any mutation, with
-the message naming both the failing line and the first claiming one.
-
-`coreCaptureMessage` resolves the destination project from the focused or scoped
-project, then from `cursorProjectHeaderProject()`, then from Unfiled. That middle
-step is the only place capture reads the cursor, and it is safe because the
-function returns nil on every task row: capture still never borrows a task
-cursor's project. The composer names whichever destination it resolved through
-`TaskComposerPreset.HeaderLabel`, set once in `captureComposerPreset`, so base
-capture and header capture are never told apart only by where the task landed.
-`A` on a project header row keeps rejecting, since a project has no task to
-parent under.
+- Project moves and reparenting belong only to the inline `e` grammar
+  (`%project`, `>parent`, `>0`, `<child`), applied as one
+  `ApplyParentAssignments` batch so cycles and depth are measured on the graph
+  the edit produces.
+- `*unpin` is edit-only: capture has nothing to clear and refuses it by name,
+  and the outline surface refuses it because dropping the `*pin` token says it.
+- `FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable
+  reference rather than a detach. A task leaves its parent through `>parent` or
+  `>0` and nowhere else.
+- Aliases resolving to the same task ID collapse to the first occurrence, in the
+  parser and again in the application layer; both must stay first-occurrence or
+  preview and commit disagree about order.
+- Children resolve only in the effective project, so `<child` can never pull a
+  subtree across a project boundary.
+- A terminal destination refuses an open adopted child, stated the same way on
+  both surfaces.
+- A `>parent` or `<child` sigil in the outline buffer is an error, not a second
+  parentage channel: indentation is parentage there.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.
@@ -767,28 +264,18 @@ projects/<slug>/notes/
 projects/<slug>/.attachments/
 ```
 
-Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme. Workspace paths are derived below approved
-roots; preserve symlink-aware containment, checked revisions, deterministic
-locks, and recovery manifests.
+Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds only the
+dark/light theme. Workspace paths derive below approved roots; preserve
+symlink-aware containment, checked revisions, deterministic locks, and recovery
+manifests.
 
-The supported v4→v5→v6→v7→v8→v9→v10 migration validates each complete candidate
-first, publishes immutable pre-simplification-v5, pre-consolidation-v6,
-pre-scope-v7, pre-tag-v8, pre-state-clock-v9, and pre-defer-rename-v10
-archive/audit pairs, then atomically activates the next schema and
-removes retired storage. The v7 boundary folds the retired per-project grouping
-fields and the retired workspace scope table into ordinary project tags, and
-deletes the stale schema-6 catalog sidecar. The v10 boundary lifts task Markdown
-to schema 9 by renaming the durable deferral metadata key from `snoozed` to
-`deferred`; the key is optional, so its audit counts only the tasks that carry a
-date, and undo/redo history is cleared because its retained bytes are raw
-pre-rename Markdown. There is no down-migration: an older `tt` refuses a
-schema-10 workspace, and recovery is manual extraction of
-`pre-defer-rename-v10-<UTC>.tar.gz`. v4/v5/v6 decoders are
-migration-only. Do not let ordinary runtime code import them or publish partial
-output before any snapshot boundary.
+The v4→v5→v6→v7→v8→v9→v10 migration validates each complete candidate first,
+publishes an immutable archive/audit pair, then atomically activates the next
+schema and removes retired storage. Nothing may publish partial output before a
+snapshot boundary. v4/v5/v6 decoders are migration-only: ordinary runtime code
+must not import them. There is no down-migration.
 
-Undo/redo is one 50-entry workspace ledger covering task, project, note, and
+Undo/redo is one 50-entry workspace ledger over task, project, note, and
 attachment transactions. A successful forward mutation clears redo; failure
 records nothing.
 
@@ -800,7 +287,27 @@ identified migration sections.
 
 Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product
 contract replayed by `./scripts/run_tui_scenarios.sh`. Prefer public keys for
-behavior and harness operations only for setup that has no public shortcut.
-Include `no_layout_issues` for important narrow and resized states. The full
-scenario gate also runs focused snapshot-first migration and interrupted
-activation recovery tests.
+behavior and harness operations only for setup with no public shortcut. Include
+`no_layout_issues` for important narrow and resized states. The full gate also
+runs focused snapshot-first migration and interrupted activation recovery tests.
+Harness format and authoring rules live in
+[`docs/tui-testing/README.md`](docs/tui-testing/README.md).
+
+## Where the details live
+
+| Topic | `README.md` § | `docs/architecture.md` § |
+| --- | --- | --- |
+| Modes, key table, grouping, checklist, Recent | Outliner grammar; Inline checklist rows | TUI architecture |
+| Pinned, Review, title fitter, guidance | Presentation grammar | Presentation chrome |
+| Defer, waiting, check-back, drop ladder | Peek and multi-select | Row indicators |
+| Footer flash | — | Status flash |
+| Registry, executor, providers, chaining | Task actions | One operation grammar |
+| Capture sigils, adoption, destinations | Capture grammar | Capture and inline-edit grammar |
+| Outline editor, declarative deletion | Outline editing | Outline editor |
+| Filters, `F`, search, jumps, Focus, Peek | Filters and search; Peek and multi-select | Search, filters, and Peek |
+| Sort axis, manual-order exemption | Sorting | Sorting axis |
+| Selection, Select Project, `Ctrl+T` | Peek and multi-select | Selection and subordinate tools |
+| Project tags, parking, populations, Notes | Project tags; Scope, projects, and Notes | Project tags |
+| Storage layout, migration chain | Schema 10 storage and migration | Persistence layout; Snapshot-first schema migration |
+| Transactions, undo ledger, conflicts | Undo, recovery, and conflicts | Transactions and recovery |
+| Maintenance CLI, platform support | Maintenance CLI | Maintenance CLI and platform support |

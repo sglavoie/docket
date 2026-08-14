@@ -18,23 +18,56 @@ func normalizedDocumentation(t *testing.T, path string) string {
 func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	content := normalizedDocumentation(t, "docs/architecture.md")
 	required := []string{
+		"## Contents",
 		"## Runtime layers",
 		"strict schema-9 Markdown",
 		"## Task model",
+		"| Lifecycle | created, updated, `state_changed`, completed timestamps |",
+		"`StateChangedAt` (`state_changed`) is the state clock and `UpdatedAt` is the touch time",
+		"a task reaching `WriteV8ProjectDocument` without a clock is rejected, never silently backfilled",
 		"Waiting is an explicit lifecycle state with no derived relationship semantics",
 		"Today and Next are mutually exclusive",
 		"resulting subtree depth above six",
 		"## TUI architecture",
 		"The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent",
+		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
+		"Project grouping is universal, not per-mode",
+		"through the shared `appendProjectGroupHeader` kernel",
+		"`n`/`N` step the cursor between grouping headers, and their stop set is `isHeaderRow()`",
+		"The walk wraps at either end",
+		"A checklist row owns six operations",
+		"All six reuse the key their task-row counterpart holds",
+		"one predicate, `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable`",
+		"Recent is the activity review projection",
+		"`Ctrl+L` is the one key that reaches the newest task from anywhere",
+		"#### Row indicators",
+		"#### Status flash",
 		"### One operation grammar",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
 		"the exact three `Space` actions",
 		"The checklist is absent because its rows own the whole mutation set",
+		"Pin has two routes",
+		"### Capture and inline-edit grammar",
+		"`*pin`'s value set is closed to `pin` and `unpin`",
+		"That is the tag rejection behavior rather than priority's",
+		"deleting that token is what unpins it",
+		"`<child` is the one repeatable structural sigil",
+		"Adoption is additive and reaches only the effective project",
+		"which is what makes `<0` an ordinary unresolvable reference rather than a detach",
 		"It carries no checklist line",
+		"`inlinePeekLines` therefore owns a drop order, not a set",
 		"The Outliner remains full-width at every supported terminal size",
+		"`H`, `M`, and `L` are the screen-relative jumps",
+		"`zt`, `zz`, and `zb` are the inverse family",
 		"`Enter` pushes a project-qualified Focus frame",
+		"`Esc` restores one frame at a time",
 		"`Shift+Enter` toggles a session-only, project-qualified Peek below the cursor task",
 		"Entering visual selection disables Peek",
+		"### Sorting axis",
+		"The `o` chord is the third axis beside `f` and `F`",
+		"Repeating a field key reverses that field",
+		"Manual order is never touched",
+		"Group order never changes",
 		"`v` toggles the cursor task, so a selection can name rows that are not adjacent",
 		"`V` starts a fresh inclusive task-row range",
 		"`Ctrl+A` replaces the selection with every visible task row",
@@ -47,6 +80,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`Runtime.TaskWorkspaceProjects()` returns non-archived projects that are not parked",
 		"the uppercase `F` facets — `Ft` project tags, `Fp`/`FP` parked, `Fa`/`FA` archived, `Fx` clear — decide which projects the snapshot contains at all",
 		"Each axis is exclude, include, or only, the lowercase key owns include and the uppercase key owns only",
+		"`Fp`, `FP`, and the `parked` row inside the `Ft` picker write the same `ParkedMode` field",
 		"`Space` on a tag row opens a sheet closed over Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
 		"filtered at read time instead of being cleared",
 		"`v` opens the searchable scope picker",
@@ -108,50 +142,64 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 	}
 }
 
+func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
+	data, err := os.ReadFile("CLAUDE.md")
+	if err != nil {
+		t.Fatalf("read CLAUDE.md: %v", err)
+	}
+	const budget = 15000
+	if len(data) > budget {
+		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
+			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
+	}
+}
+
 func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
+		"Contributor rules only: invariants, forbidden patterns, forwarding addresses",
 		"eight-state, seven-mode, Outliner-only product",
-		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
-		"Recent is the activity-ordered mode",
-		"The old standalone `b` and `t` actions and comma state prefix must remain unbound, " +
-			"along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`. `d` is bound again, but to Set " +
-			"Defer and never to Done: Done stays `wd` alone, no `d`-means-done alias may return, " +
-			"and root `z` is a chord prefix rather than a direct key: it never means snooze or defer.",
-		"`n`/`N` step the cursor between grouping headers, and their stop set is `isHeaderRow()`",
-		"The walk wraps at either end",
-		"`Enter` focuses the cursor task's descendants and `Shift+Enter` toggles Peek",
-		"`Esc` pops exactly one Focus level and restores that frame's prior cursor and scroll position",
-		"The `Space` menu on a task row is exactly",
-		"A checklist row owns six operations",
-		"one predicate, `operationRefusedOnChecklistRow`, read in exactly two places",
+		"Do not recreate cross-project behavior with independent `SaveProject` calls",
+		"`StateChangedAt` is the state clock and `UpdatedAt` is the touch time",
+		"A task reaching `WriteV8ProjectDocument` without a clock is rejected, never backfilled",
+		"do not add a parallel key router, palette, or view-specific copy",
+		"A task operation is direct-only or menu-only, never both, enforced by `validateTaskOperationOnePath`",
+		"The task-row `Space` menu is exactly Comments, Attachments, Delete; the bulk menu is Delete only; " +
+			"Delete has no direct key and confirms first",
+		"never branch one descriptor's target source on runtime context",
+		"Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability` field",
+		"Emit project group headers through the shared `appendProjectGroupHeader` kernel, never a per-mode copy",
+		"`computeOutlinerViewport` is the single window authority",
+		"Never recompute the window in a key handler",
+		"Manual order is never touched by the sort axis, and that holds by construction rather than by a guard " +
+			"— do not add one. Group order never changes",
+		"Arming stays in the one deferred closure in `AppModel.Update`",
+		"The interactive TUI ignores an inherited `NO_COLOR`",
+		"A value provider is exactly one of `textEntry()`",
+		"`inlinePeekLines` owns a drop order, not a set",
+		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
+		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
+		"The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps",
+		"There is no `$delete` sigil",
+		"The old standalone `b` and `t` actions and the comma state prefix stay unbound, " +
+			"along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`. `SortByStatus` stays unbound",
+		"`d` is Set Defer and never Done — Done stays `wd` alone and no `d`-means-done alias may return. " +
+			"Root `z` and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +
+			"and cursor-top is `gg` or `Home`",
+		"Task workflow state, project tags, and project archive lifecycle are three independent axes",
+		"`parked` is the one behavioral project tag",
+		"Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is non-archived and not " +
+			"parked and is the only one the base Outliner reads",
 		"!1-3 #tag @date $destination *pin %project >parent <child",
-		"`*pin` is the one attribute sigil whose clear form is not available everywhere",
 		"`*unpin` is edit-only",
-		"deleting that token is what unpins",
-		"That is the tag rejection behavior rather than priority's",
-		"Pin has two routes",
-		"`<child` is the one repeatable structural sigil",
-		"Adoption is additive and has no clear form",
-		"which is what makes `<0` an ordinary unresolvable reference rather than a detach",
+		"`FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable reference rather than a detach",
 		"Children resolve only in the effective project",
+		"When changing the grammar, update parser definitions, completion, syntax guide, scenarios, and parity tests together",
+		"v4→v5→v6→v7→v8→v9→v10",
+		"v4/v5/v6 decoders are migration-only",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
-		"`Ctrl+N` opens All Notes across Global and every project returned by `Runtime.AvailableProjects()`, except on a project header row, which opens that project's scope",
-		"`v` chooses All, Global, or one active project",
-		"`s` persistently searches titles and bodies",
-		"`m` atomically moves one note between active owners",
-		"Task workflow state, project tags, and project archive lifecycle are three independent axes",
-		"`Runtime.TaskWorkspaceProjects()` is non-archived and not parked, and is the only population the base Outliner reads",
-		"Project filter chords are `Ft`, `Fp`, `FP`, `Fa`, `FA`, and `Fx`",
-		"The parked and archived populations are axes, not switches",
-		"`Fp`, `FP`, and the `parked` row inside `Ft` write the same `ProjectFilterState.ParkedMode` field",
-		"Project grouping is universal, not per-mode",
-		"Emit those headers through the shared `appendProjectGroupHeader` kernel; do not add a per-mode copy",
-		"The sort axis is the `o` chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, and `ox` clear",
-		"Repeating a field key reverses that field",
-		"Manual order is never touched",
-		"Group order never changes",
+		"## Where the details live",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {
 			t.Errorf("CLAUDE.md missing %q", required)

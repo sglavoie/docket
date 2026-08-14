@@ -165,9 +165,14 @@ token unpins it; there is no `*unpin` here.
 
 The `[[tt:...]]` markers identify tasks that already exist. Keep one and the
 task is updated in place, wherever you moved it; drop it, or write a new line
-without one, and a new task is created. Deleting a line deletes nothing — a
-truncated file cannot destroy work, and removing tasks stays an explicit
-operation.
+without one, and a new task is created. Delete a line and the task is deleted:
+the buffer is the project's whole tree, so absence is how you remove work and
+there is no `$delete` sigil. Before anything is applied, `tt` names the tasks
+that would go and the attachments that would go with them and asks you to
+confirm. Declining cancels the entire apply, edits included, and keeps the file
+so you can reopen it. An emptied buffer is the same rule at its limit and
+deletes every task in the project; it is refused only when it would delete
+nothing at all, which is the truncated-file case.
 
 The buffer holds the project's entire task tree rather than the rows currently
 on screen, which is why `O` refuses in Today, Next, Due, and Recent: those modes
@@ -296,8 +301,8 @@ A checklist row is not a task row. Every task action refuses there with one
 sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
 
-What a checklist row does own is six actions of its own, five of which reuse the
-key their task-row counterpart holds:
+What a checklist row does own is six actions of its own, each reusing the key
+its task-row counterpart holds:
 
 | Key | Action |
 | --- | --- |
@@ -544,7 +549,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## Schema 6 storage and migration
+## Schema 10 storage and migration
 
 The live portable layout is deliberately small:
 
