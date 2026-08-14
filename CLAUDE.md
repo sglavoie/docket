@@ -107,6 +107,7 @@ a/A, e/E, Ctrl+E, O            capture/edit
 wi wb wn wt wg wr ww wp wm wd wc  workflow chord
 !0-3 @ # d P                   metadata
 o@ op oc ou ot ox              sort chord, one order axis each
+zt zz zb                       scroll chord, cursor row to top/middle/bottom
 < > J K                        structure
 y Y Ctrl+Y                     clipboard
 v V Ctrl+A Space               selection/actions
@@ -219,12 +220,26 @@ bare count.
 `H`, `M`, and `L` are the screen-relative jumps, the third kind beside the
 list-relative `gg`/`G` and the half-page `Ctrl+U`/`Ctrl+D`. They read the window
 the last render drew, cached on `lastViewport` by `computeOutlinerViewport`,
-which is the single window authority and the one place `viewScrollOffset` moves:
-a key handler that recomputed the window would re-derive it from a different
-footer state and scroll. The landing is the nearest navigable row inside that
-window and never outside it — separators are skipped, headers and checklist items
-are valid landings — so the scroll offset is deliberately left untouched and a
-window holding no navigable row reports rather than moving the cursor.
+which is the single window authority and the one place a render moves
+`viewScrollOffset`: a key handler that recomputed the window would re-derive it
+from a different footer state and scroll. The landing is the nearest navigable
+row inside that window and never outside it — separators are skipped, headers and
+checklist items are valid landings — so the scroll offset is deliberately left
+untouched and a window holding no navigable row reports rather than moving the
+cursor.
+
+`zt`, `zz`, and `zb` are the inverse family: they move the window under the
+cursor and leave the cursor alone. Both families read that one cached window and
+share `windowMiddleIndex`, so `M` and `zz` can never disagree about "middle".
+The chord is the one key press outside `computeOutlinerViewport` that writes
+`viewScrollOffset`, and that is safe because the offset it writes still contains
+the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the
+offset only when the cursor falls outside the window, so the next render leaves
+the write standing. The handler clamps to `len(rows)-height` rather than
+scrolling past the end, because that clamp is shared by every index-window view
+and the scrollbar math; `zt` near the end of the list therefore scrolls as far as
+it can and stops. Success is silent, since a status would arm the footer flash
+for a change already fully on screen.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its
 second keys jump straight to one mode, so a seventh mode never costs six Tab
@@ -272,7 +287,8 @@ belongs to the one cleanup facet and is not counted as a second state facet.
 `fx` clears every facet. The old standalone `b` and `t` actions and comma state
 prefix must remain unbound, along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`.
 `d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, no
-`d`-means-done alias may return, and root `z` must now stay unbound.
+`d`-means-done alias may return, and root `z` is a chord prefix rather than a
+direct key: it never means snooze or defer.
 
 The sort axis is the `o` chord: `o@` due date, `op` priority, `oc` created, `ou`
 updated, `ot` title, and `ox` clear. It is the third axis alongside `f` and `F`.

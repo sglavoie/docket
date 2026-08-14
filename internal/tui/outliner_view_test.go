@@ -203,6 +203,107 @@ func TestScreenRelativeJumpsSkipSeparatorsInsideTheWindow(t *testing.T) {
 	}
 }
 
+func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
+	app, out, start, end := screenJumpApp(t)
+	height := end - start
+	cursor := out.cursor
+
+	for _, tc := range []struct {
+		key  string
+		want int
+	}{
+		{key: "t", want: cursor},
+		{key: "z", want: cursor - windowMiddleIndex(height)},
+		{key: "b", want: cursor - height + 1},
+	} {
+		out.cursor = cursor
+		out.viewScrollOffset = start
+		out.computeOutlinerViewport(100, 0)
+
+		result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", tc.key})
+		if result.Err != nil {
+			t.Fatalf("z%s: %v", tc.key, result.Err)
+		}
+		if result.Status != "" {
+			t.Errorf("z%s status = %q, want silence", tc.key, result.Status)
+		}
+		if out.cursor != cursor {
+			t.Errorf("z%s cursor = %d, want %d unchanged", tc.key, out.cursor, cursor)
+		}
+		if out.viewScrollOffset != tc.want {
+			t.Errorf("z%s scroll offset = %d, want %d", tc.key, out.viewScrollOffset, tc.want)
+		}
+		// The written offset still contains the cursor, so the next render's
+		// clamp leaves it exactly where the key put it.
+		out.computeOutlinerViewport(100, 0)
+		if out.viewScrollOffset != tc.want {
+			t.Errorf("z%s scroll offset after render = %d, want %d", tc.key, out.viewScrollOffset, tc.want)
+		}
+	}
+}
+
+func TestScrollAnchorTopClampsAtTheLastRow(t *testing.T) {
+	app, out, start, end := screenJumpApp(t)
+	height := end - start
+	out.cursor = len(out.rows) - 1
+	out.computeOutlinerViewport(100, 0)
+
+	if result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", "t"}); result.Err != nil {
+		t.Fatalf("zt: %v", result.Err)
+	}
+	want := len(out.rows) - height
+	if out.viewScrollOffset != want {
+		t.Fatalf("zt scroll offset = %d, want %d with the last row still visible", out.viewScrollOffset, want)
+	}
+	if _, last := out.visibleRowWindow(); last != len(out.rows) {
+		t.Fatalf("window end = %d, want %d", last, len(out.rows))
+	}
+}
+
+func TestScrollAnchorMiddleAndScreenMiddleAgree(t *testing.T) {
+	app, out, _, _ := screenJumpApp(t)
+	ctx := app.operationCommandContext()
+
+	// zz then M: the window moved under the cursor, so M lands back on it.
+	if result := executeDirectPath(t, app, ctx, []string{"z", "z"}); result.Err != nil {
+		t.Fatalf("zz: %v", result.Err)
+	}
+	out.computeOutlinerViewport(100, 0)
+	cursor, offset := out.cursor, out.viewScrollOffset
+	if result := executeDirectPath(t, app, ctx, []string{"M"}); result.Err != nil {
+		t.Fatalf("M: %v", result.Err)
+	}
+	if out.cursor != cursor {
+		t.Errorf("M after zz moved the cursor to %d, want %d", out.cursor, cursor)
+	}
+
+	// M then zz: the cursor already sits mid-window, so zz leaves the offset.
+	if result := executeDirectPath(t, app, ctx, []string{"z", "z"}); result.Err != nil {
+		t.Fatalf("zz: %v", result.Err)
+	}
+	if out.viewScrollOffset != offset {
+		t.Errorf("zz after M moved the offset to %d, want %d", out.viewScrollOffset, offset)
+	}
+}
+
+func TestScrollAnchorsLeaveAnEmptyWindowAlone(t *testing.T) {
+	app, out, _, _ := screenJumpApp(t)
+	out.rows = nil
+	out.cursor = 0
+	out.viewScrollOffset = 0
+
+	result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", "b"})
+	if result.Err != nil {
+		t.Fatalf("zb: %v", result.Err)
+	}
+	if result.Status != "" {
+		t.Errorf("zb status = %q, want silence", result.Status)
+	}
+	if out.cursor != 0 || out.viewScrollOffset != 0 {
+		t.Fatalf("cursor = %d offset = %d, want both left at 0", out.cursor, out.viewScrollOffset)
+	}
+}
+
 func TestScreenRelativeJumpsReportAWindowWithNoNavigableRow(t *testing.T) {
 	app, out, start, end := screenJumpApp(t)
 	for i := start; i < end; i++ {

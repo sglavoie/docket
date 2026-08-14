@@ -99,7 +99,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
 		"The old standalone `b` and `t` actions and comma state prefix have no compatibility action",
-		"`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, and root `z` is now unbound",
+		"`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, and root `z` is now the scroll chord prefix",
 		"`a` creates and selects a new tag",
 	})
 	rejectDocumentationText(t, content, []string{

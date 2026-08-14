@@ -669,7 +669,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 	for _, retired := range []string{
 		"q", "s", "i", "|", "ctrl+x",
-		":", "R", "ctrl+esc", "m", "b", "z", "t", ",",
+		":", "R", "ctrl+esc", "m", "b", "t", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
@@ -794,6 +794,44 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		[]string{"g", "q"},
 	); !ok || label != "go to" {
 		t.Errorf("abandoned g chord label = %q (found %v), want %q", label, ok, "go to")
+	}
+}
+
+// TestScrollChordResolvesEveryAnchor keeps z a chord prefix rather than the
+// retired snooze key, with the three scroll anchors under it.
+func TestScrollChordResolvesEveryAnchor(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+
+	for spelling, want := range map[string]OperationID{
+		"zt": operationCoreScrollCursorTop,
+		"zz": operationCoreScrollCursorMiddle,
+		"zb": operationCoreScrollCursorBottom,
+	} {
+		path := []string{"z", spelling[1:]}
+		binding, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
+		if resolution != ChordTerminal {
+			t.Errorf("%s resolution = %v, want ChordTerminal", spelling, resolution)
+			continue
+		}
+		if binding.OperationID != want {
+			t.Errorf("%s resolved to %s, want %s", spelling, binding.OperationID, want)
+		}
+	}
+
+	if _, _, resolution := registry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"z"},
+		ctx,
+	); resolution != ChordPending {
+		t.Errorf("bare z resolution = %v, want ChordPending", resolution)
+	}
+
+	if label, ok := registry.ChordGroupLabelForPrefix(
+		InputStrategySimplified,
+		[]string{"z", "q"},
+	); !ok || label != "scroll" {
+		t.Errorf("abandoned z chord label = %q (found %v), want %q", label, ok, "scroll")
 	}
 }
 

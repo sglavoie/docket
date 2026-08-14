@@ -31,6 +31,9 @@ const (
 	operationCoreCursorScreenTop    OperationID = "tui.core.cursor-screen-top"
 	operationCoreCursorScreenMiddle OperationID = "tui.core.cursor-screen-middle"
 	operationCoreCursorScreenBottom OperationID = "tui.core.cursor-screen-bottom"
+	operationCoreScrollCursorTop    OperationID = "tui.core.scroll-cursor-top"
+	operationCoreScrollCursorMiddle OperationID = "tui.core.scroll-cursor-middle"
+	operationCoreScrollCursorBottom OperationID = "tui.core.scroll-cursor-bottom"
 	operationCoreNextHeader         OperationID = "tui.core.next-header"
 	operationCorePreviousHeader     OperationID = "tui.core.previous-header"
 	operationCoreJumpBackward       OperationID = "tui.core.jump-backward"
@@ -179,6 +182,9 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorScreenTop, "Go to Top of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen top", "highest visible row"),
 		core(operationCoreCursorScreenMiddle, "Go to Middle of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen middle", "middle visible row"),
 		core(operationCoreCursorScreenBottom, "Go to Bottom of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen bottom", "lowest visible row"),
+		core(operationCoreScrollCursorTop, "Scroll Cursor to Top of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "scroll top", "row to top"),
+		core(operationCoreScrollCursorMiddle, "Scroll Cursor to Middle of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "scroll middle", "row to middle"),
+		core(operationCoreScrollCursorBottom, "Scroll Cursor to Bottom of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "scroll bottom", "row to bottom"),
 		core(operationCoreNextHeader, "Next Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to next section", "next group"),
 		core(operationCorePreviousHeader, "Previous Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to previous section", "previous group"),
 		core(operationCoreJumpBackward, "Jump to Older Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -386,6 +392,12 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		return m.coreMoveCursorScreen(screenJumpMiddle)
 	case operationCoreCursorScreenBottom:
 		return m.coreMoveCursorScreen(screenJumpBottom)
+	case operationCoreScrollCursorTop:
+		return m.coreScrollCursorTo(viewScrollAnchorTop)
+	case operationCoreScrollCursorMiddle:
+		return m.coreScrollCursorTo(viewScrollAnchorMiddle)
+	case operationCoreScrollCursorBottom:
+		return m.coreScrollCursorTo(viewScrollAnchorBottom)
 	case operationCoreNextHeader, operationCorePreviousHeader:
 		delta := 1
 		if invocation.Descriptor.ID == operationCorePreviousHeader {
@@ -710,7 +722,7 @@ func (m *AppModel) coreMoveCursorScreen(position screenJumpPosition) OperationHa
 	target, preferred := start, 1
 	switch position {
 	case screenJumpMiddle:
-		target = start + (end-start-1)/2
+		target = start + windowMiddleIndex(end-start)
 	case screenJumpBottom:
 		target, preferred = end-1, -1
 	case screenJumpTop:
@@ -724,6 +736,48 @@ func (m *AppModel) coreMoveCursorScreen(position screenJumpPosition) OperationHa
 	cmd := flashIfJumped(previous, out.cursor, &out.cursorFlash)
 	out.updateRangeSelection()
 	return OperationHandlerResult{Message: commandMessage(cmd)}
+}
+
+// windowMiddleIndex is the offset of the middle row inside a window of the given
+// height. M and zz read the same formula so the two families agree on "middle".
+func windowMiddleIndex(height int) int { return (height - 1) / 2 }
+
+// viewScrollAnchor names where in the window zt/zz/zb park the cursor's row. It
+// is the inverse of screenJumpPosition, which names where in the window H/M/L
+// park the cursor itself.
+type viewScrollAnchor int
+
+const (
+	viewScrollAnchorTop viewScrollAnchor = iota
+	viewScrollAnchorMiddle
+	viewScrollAnchorBottom
+)
+
+// coreScrollCursorTo moves the window so the cursor's row sits at the requested
+// position, leaving the cursor itself alone. The written offset still contains
+// the cursor, which is exactly what adjustPersistentScrollOffset leaves
+// untouched on the next render. Success is silent: a status here would arm the
+// footer flash for a change already fully visible on screen.
+func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) OperationHandlerResult {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return OperationHandlerResult{}
+	}
+	start, end := out.visibleRowWindow()
+	if start >= end {
+		return OperationHandlerResult{}
+	}
+	height := end - start
+	desired := out.cursor
+	switch anchor {
+	case viewScrollAnchorMiddle:
+		desired -= windowMiddleIndex(height)
+	case viewScrollAnchorBottom:
+		desired -= height - 1
+	case viewScrollAnchorTop:
+	}
+	out.viewScrollOffset = min(max(desired, 0), max(len(out.rows)-height, 0))
+	return OperationHandlerResult{}
 }
 
 func (m *AppModel) coreReorder(delta int) tea.Cmd {

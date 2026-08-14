@@ -102,19 +102,21 @@ The final public grammar is:
 ```text
 Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due
 j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
+H/M/L                            cursor to top/middle/bottom of screen
+zt zz zb                         cursor row to top/middle/bottom of screen
 n/N                              next/previous grouping header, wrapping
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
 a/A e/E Ctrl+E O                 capture and edit
 wi wb wn wt wg wr ww wp wm wd wc    workflow chord
-!0-3 @ # z P                    metadata
+!0-3 @ # d P                    metadata
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
 v V Ctrl+A Space                selection and actions
 Enter Shift+Enter               Focus and Peek
 x                               tick the checklist item under the cursor
 p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
-fp0-3 fs fc ft fd fz fx         filters
+fp0-3 fs fc ft fr f@ fd fx      filters
 ```
 
 The old standalone `b`, `d`, and `t` actions and comma state prefix are

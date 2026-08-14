@@ -1,0 +1,37 @@
+{
+  "name": "outliner-scroll-anchor",
+  "fixture": "release",
+  "size": "100x24",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "wait", "label": "the 241-task catalog finishes loading" },
+    { "type": "key", "label": "scroll the cursor to the bottom of a long list", "key": "ctrl+d" },
+    { "type": "key", "key": "ctrl+d" },
+    { "type": "key", "key": "ctrl+d" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 053" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 200" },
+
+    { "type": "key", "label": "zt puts the cursor row at the top", "key": "z" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 200" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 053" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "zz centers the same row", "key": "z" },
+    { "type": "key", "key": "z" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 123" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 200" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 116" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "zb puts the same row at the bottom", "key": "z" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 053" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 200" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "an abandoned z prefix names the group it left", "key": "z" },
+    { "type": "key", "key": "q" },
+    { "type": "assert", "assert": "status_contains", "value": "zq is not a scroll action" }
+  ]
+}

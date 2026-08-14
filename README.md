@@ -112,7 +112,7 @@ when that task would otherwise be hidden.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `d` defer; `P` pin |
@@ -129,8 +129,8 @@ relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
 The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and `?` help. The old standalone `b` and `t`
 actions and comma state prefix have no compatibility action; neither do removed
-keys such as `m`, `:`, `R`, and `Ctrl+Esc`. `d` is bound again, but to Set Defer
-and never to Done: Done stays `wd` alone, and root `z` is now unbound.
+keys such as `m`, `:`, `R`, and `Ctrl+Esc`.
+`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, and root `z` is now the scroll chord prefix.
 
 Task updates that move the focused task—such as `wg` moving it into In
 Progress—add a session-only jump entry. `Ctrl+O` returns to the task that

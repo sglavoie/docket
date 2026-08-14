@@ -117,7 +117,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"The old standalone `b` and `t` actions and comma state prefix must remain unbound, " +
 			"along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`. `d` is bound again, but to Set " +
 			"Defer and never to Done: Done stays `wd` alone, no `d`-means-done alias may return, " +
-			"and root `z` must now stay unbound.",
+			"and root `z` is a chord prefix rather than a direct key: it never means snooze or defer.",
 		"`n`/`N` step the cursor between grouping headers, and their stop set is `isHeaderRow()`",
 		"The walk wraps at either end",
 		"`Enter` focuses the cursor task's descendants and `Shift+Enter` toggles Peek",

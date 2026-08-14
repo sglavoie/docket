@@ -338,9 +338,13 @@ due, deferral, and checklist progress.
 Outliner rows omit short task IDs.
 
 `computeOutlinerViewport` is the single authority for the visible row window and
-the one place the persistent scroll offset moves, so the screen-relative jumps
-`H`, `M`, and `L` consume its cached result rather than re-deriving the window,
-and they land inside it without scrolling.
+the one place a render moves the persistent scroll offset, so the screen-relative
+jumps `H`, `M`, and `L` consume its cached result rather than re-deriving the
+window, and they land inside it without scrolling. The `zt`/`zz`/`zb` scroll
+chord is the inverse family: it reads the same cached window and moves the offset
+under a cursor it leaves alone. That chord is the one key press that writes the
+offset, and it is safe because the offset it writes still contains the cursor,
+which is exactly what the shared clamp leaves untouched on the next render.
 
 `Enter` pushes a project-qualified Focus frame and projects only the selected
 task's descendants. Nested Focus frames retain the exact parent cursor and

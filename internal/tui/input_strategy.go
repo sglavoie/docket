@@ -339,6 +339,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreGotoBacklog, Sequence: []string{"g", "b"}, DisplayKey: "gb", HintLabel: "backlog"},
 			{OperationID: operationCoreGotoDue, Sequence: []string{"g", "@"}, DisplayKey: "g@", HintLabel: "due"},
 			{OperationID: operationCoreGotoRecent, Sequence: []string{"g", "r"}, DisplayKey: "gr", HintLabel: "recent"},
+			{OperationID: operationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
+			{OperationID: operationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},
+			{OperationID: operationCoreScrollCursorBottom, Sequence: []string{"z", "b"}, DisplayKey: "zb", HintLabel: "row to bottom"},
 		},
 		ChordGroups: []OperationChordGroup{
 			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 2, FooterLabel: "priority"},
@@ -348,6 +351,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},
 			{Sequence: []string{"o"}, HintLabel: "sort", FooterRank: 23, FooterLabel: "sort"},
 			{Sequence: []string{"g"}, HintLabel: "go to", FooterRank: 26, FooterLabel: "go to"},
+			{Sequence: []string{"z"}, HintLabel: "scroll"},
 		},
 	}
 }
