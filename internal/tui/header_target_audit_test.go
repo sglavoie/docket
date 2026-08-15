@@ -49,6 +49,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.core.expand":                 "target-free",
 	"tui.core.external-editor":        "reject",
 	"tui.core.focus-latest":           "target-free",
+	"tui.core.focus-parent":           "reject",
 	"tui.core.focus-subtree":          "reject",
 	"tui.core.goto-all":               "target-free",
 	"tui.core.goto-backlog":           "target-free",
@@ -251,6 +252,7 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 		{"E"},
 		{"ctrl+e"},
 		{"shift+enter"},
+		{"ctrl+enter"},
 		{">"},
 		{"<"},
 	} {

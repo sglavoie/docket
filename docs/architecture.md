@@ -717,12 +717,27 @@ scroll offset; `Esc` restores one frame at a time. A leaf reports
 `No children to focus` instead of falling through to Peek. Focus is also refused
 while a temporary search projection is active; clear search first.
 
+`Shift+Enter` widens by exactly one level. Outside Focus it pushes a frame rooted
+at the cursor task's parent. Inside Focus it climbs from the focus root rather
+than from the cursor, and that choice is what terminates: the focus root is
+always an ancestor of the cursor, so each press moves strictly up a finite
+chain, whereas widening toward the cursor's parent would push a nested frame
+back down whenever the cursor sat deeper than a direct child and the following
+press would climb out of it again forever. The climb pops the top frame before
+it decides what to push, because a focus stack must descend strictly and the
+focus root's own parent cannot sit above it. Popping alone already lands on that
+parent when the frame beneath is the parent; otherwise the popped frame spanned
+more than one level and the parent is pushed back, which still descends from the
+frame beneath it. Climbing off a root task empties the stack and leaves Focus.
+Either way the cursor is restored to the task the key was pressed from, so the
+widened level shows that task among its siblings.
+
 An active inline row editor consumes `Esc` first and cancels the draft. The
 ordinary Outliner `Esc` priority is Peek, live range, frozen selection,
 temporary search projection, one Focus frame, then the existing project/base
 escape behavior.
 
-`Shift+Enter` toggles a session-only, project-qualified Peek below the cursor
+`Ctrl+Enter` toggles a session-only, project-qualified Peek below the cursor
 task. Peek follows cursor, mode, and scope navigation. It carries no checklist
 line, because checklist items are rows and restating them would spend the
 tightest budget in the Outliner on content already on screen, while the task

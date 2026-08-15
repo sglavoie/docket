@@ -78,14 +78,21 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	}
 }
 
-// focusSearchProjectionRejection explains why the otherwise-bound Enter key
-// cannot replace a temporary search projection with Focus. Keep this at the
-// input seam: search deliberately makes the Focus descriptor inapplicable, so
-// the operation executor cannot provide the refusal after resolution fails.
+// focusSearchProjectionRejection explains why the otherwise-bound Enter and
+// Shift+Enter keys cannot replace a temporary search projection with Focus. Keep
+// this at the input seam: search deliberately makes the Focus descriptors
+// inapplicable, so the operation executor cannot provide the refusal after
+// resolution fails.
 func (m *AppModel) focusSearchProjectionRejection(sequence []string, ctx CommandContext) tea.Cmd {
-	if len(sequence) != 1 ||
-		normalizeOperationKey(sequence[0]) != "enter" ||
-		m.crossOutliner == nil ||
+	if len(sequence) != 1 {
+		return nil
+	}
+	switch normalizeOperationKey(sequence[0]) {
+	case "enter", "shift+enter":
+	default:
+		return nil
+	}
+	if m.crossOutliner == nil ||
 		!m.crossOutliner.hasSearchProjection() ||
 		ctx.Selection.Visual ||
 		ctx.Entity.HasChecklistCursor ||

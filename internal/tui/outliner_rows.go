@@ -169,7 +169,7 @@ func filterTaskTreePromotingChildren(tasks []*models.Task, predicate func(*model
 // clampCursor ensures the cursor stays within [0, len(rows)-1] and never
 // rests on a non-navigable row (a separator). The cursor is allowed to settle
 // on section headers (which act as collapse toggles), project sub-headers
-// (Enter scopes, Shift+Enter administers), and task rows. Separators are
+// (Enter scopes), and task rows. Separators are
 // visual-only and must never be selected after a rebuild, filter, collapse,
 // paging, or mode change.
 func (m *OutlinerModel) clampCursor() {

@@ -26,7 +26,8 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 		want OperationID
 	}{
 		{key: "enter", want: operationCoreFocusSubtree},
-		{key: "shift+enter", want: operationCorePeek},
+		{key: "shift+enter", want: operationCoreFocusParent},
+		{key: "ctrl+enter", want: operationCorePeek},
 	} {
 		binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, test.key, ctx)
 		if !ok || binding.OperationID != test.want {
@@ -38,7 +39,8 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(InputStrategySimplified, ctx))
 	for key, description := range map[string]string{
 		"Enter":       "Focus Subtree",
-		"Shift+Enter": "Toggle Task Peek",
+		"Shift+Enter": "Focus Parent",
+		"Ctrl+Enter":  "Toggle Task Peek",
 	} {
 		found := false
 		for _, item := range help {
@@ -51,7 +53,7 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 			t.Errorf("generated help omits %s %s", key, description)
 		}
 	}
-	for _, want := range []string{"Enter focus", "Shift+Enter peek"} {
+	for _, want := range []string{"Enter focus", "Ctrl+Enter peek"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("generated footer %q omits %q", footer, want)
 		}
@@ -116,6 +118,170 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	if !out.popFocusLevel() || out.cursor != rootCursor || out.viewScrollOffset != 4 ||
 		out.currentTaskIdentity() != (TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
 		t.Fatalf("root restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.currentTaskIdentity())
+	}
+}
+
+func TestFocusParentWidensOneLevelAndClimbsOutOfFocus(t *testing.T) {
+	newFixture := func() (*OutlinerModel, *models.Project) {
+		root := primaryRowsTask("root", models.StateBacklog)
+		child := primaryRowsTask("child", models.StateBacklog)
+		child.ParentID = &root.ID
+		grandchild := primaryRowsTask("grandchild", models.StateBacklog)
+		grandchild.ParentID = &child.ID
+		greatGrandchild := primaryRowsTask("great-grandchild", models.StateBacklog)
+		greatGrandchild.ParentID = &grandchild.ID
+		sibling := primaryRowsTask("sibling", models.StateBacklog)
+		project := primaryRowsProject("project", root, child, grandchild, greatGrandchild, sibling)
+		return scopeTestOutliner(project), project
+	}
+
+	for _, test := range []struct {
+		name       string
+		seedFocus  []string
+		cursor     string
+		wantStack  []string
+		wantHidden []string
+	}{
+		{
+			name:       "unfocused press focuses the cursor's parent",
+			cursor:     "grandchild",
+			wantStack:  []string{"child"},
+			wantHidden: []string{"root", "sibling"},
+		},
+		{
+			name:      "climbing out of a root focus leaves Focus",
+			seedFocus: []string{"root"},
+			cursor:    "grandchild",
+			wantStack: nil,
+		},
+		{
+			name:      "climbing replaces the only frame with its parent",
+			seedFocus: []string{"child"},
+			cursor:    "grandchild",
+			wantStack: []string{"root"},
+		},
+		{
+			name:      "climbing pops when the frame beneath is already the parent",
+			seedFocus: []string{"root", "child"},
+			cursor:    "grandchild",
+			wantStack: []string{"root"},
+		},
+		{
+			name:      "climbing re-pushes when the popped frame spanned more than one level",
+			seedFocus: []string{"root", "grandchild"},
+			cursor:    "great-grandchild",
+			wantStack: []string{"root", "child"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			out, project := newFixture()
+			identity := func(taskID string) TaskIdentity {
+				return TaskIdentity{ProjectID: project.ID, TaskID: taskID}
+			}
+			for _, taskID := range test.seedFocus {
+				if !out.moveCursorToIdentity(identity(taskID)) || !out.focusSubtreeAtCursor() {
+					t.Fatalf("could not seed Focus on %q", taskID)
+				}
+			}
+			if !out.moveCursorToIdentity(identity(test.cursor)) {
+				t.Fatalf("cursor task %q is not listed", test.cursor)
+			}
+			if !out.focusParentAtCursor() {
+				t.Fatal("Focus Parent refused a task that has a parent")
+			}
+
+			assertStack := func(step string) {
+				t.Helper()
+				got := make([]string, 0, len(out.crossFocusStack))
+				for _, frame := range out.crossFocusStack {
+					got = append(got, frame.TaskID)
+				}
+				if !slices.Equal(got, test.wantStack) {
+					t.Fatalf("%s focus stack = %v, want %v", step, got, test.wantStack)
+				}
+			}
+			assertStack("after widening")
+			if got := out.currentTaskIdentity(); got != identity(test.cursor) {
+				t.Fatalf("cursor = %+v, want the task the press came from", got)
+			}
+			visible := visibleOutlinerTaskIDs(out)
+			for _, taskID := range test.wantHidden {
+				if visible[taskID] {
+					t.Fatalf("widened projection still lists %q: %v", taskID, visible)
+				}
+			}
+
+			// A frame that did not descend from the one before it would be
+			// truncated here with a recovery notice instead of surviving.
+			out.crossForceRebuild = true
+			out.crossProjectRebuildRows()
+			assertStack("after rebuild")
+			if out.focusNotice != "" {
+				t.Fatalf("rebuild rejected the widened stack: %q", out.focusNotice)
+			}
+		})
+	}
+}
+
+func TestFocusParentClimbsTheAncestorChainAndLeavesFocus(t *testing.T) {
+	root := primaryRowsTask("root", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.ParentID = &root.ID
+	grandchild := primaryRowsTask("grandchild", models.StateBacklog)
+	grandchild.ParentID = &child.ID
+	project := primaryRowsProject("project", root, child, grandchild)
+	out := scopeTestOutliner(project)
+
+	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: grandchild.ID}) {
+		t.Fatal("grandchild row is unavailable")
+	}
+	for _, want := range [][]string{{child.ID}, {root.ID}, {}} {
+		if !out.focusParentAtCursor() {
+			t.Fatalf("Focus Parent refused while climbing toward %v", want)
+		}
+		got := make([]string, 0, len(out.crossFocusStack))
+		for _, frame := range out.crossFocusStack {
+			got = append(got, frame.TaskID)
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("climb step = %v, want %v", got, want)
+		}
+	}
+	// Leaving Focus restores the base projection, where the next press is an
+	// ordinary entry on the cursor's parent rather than a further climb.
+	if !out.focusParentAtCursor() || len(out.crossFocusStack) != 1 ||
+		out.crossFocusStack[0].TaskID != child.ID {
+		t.Fatalf("press after leaving Focus = %+v, want a fresh parent Focus", out.crossFocusStack)
+	}
+}
+
+func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
+	model := typedTestApp(t)
+	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	out := model.crossOutliner
+	out.crossForceRebuild = true
+	out.crossProjectRebuildRows()
+	rooted := false
+	for index, row := range out.rows {
+		if row.isTaskRow() && row.task != nil && row.task.ParentID == nil {
+			out.cursor = index
+			rooted = true
+			break
+		}
+	}
+	if !rooted {
+		t.Fatal("fixture exposed no root task row")
+	}
+
+	result := model.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      operationCoreFocusParent,
+		Context: model.operationCommandContext(),
+	})
+	if result.Err != nil || result.Status != "No parent to focus" {
+		t.Fatalf("root task Focus Parent = status %q err %v", result.Status, result.Err)
+	}
+	if len(out.crossFocusStack) != 0 {
+		t.Fatalf("refused Focus Parent pushed frames: %+v", out.crossFocusStack)
 	}
 }
 

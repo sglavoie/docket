@@ -32,7 +32,7 @@
     { "type": "key", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "Peek names the parent every marker points at", "key": "shift+enter" },
+    { "type": "key", "label": "Peek names the parent every marker points at", "key": "ctrl+enter" },
     { "type": "assert", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close Peek", "key": "esc" },

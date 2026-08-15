@@ -6,7 +6,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "select the row whose title the width clips", "key": "end" },
     { "type": "assert", "label": "the reserved context shortens but does not erase the row title", "assert": "contains", "value": "[distributed…] Investigate …" },
-    { "type": "key", "label": "open Peek on the clipped title", "key": "shift+enter" },
+    { "type": "key", "label": "open Peek on the clipped title", "key": "ctrl+enter" },
     { "type": "assert", "label": "Peek completes the title from the character the row dropped", "assert": "contains", "value": "intermittent timeout when syncing very large project" },
     { "type": "assert", "assert": "contains", "value": "slow connections" },
     { "type": "assert", "label": "the continuation never restates the head the row showed", "assert": "not_contains", "value": "Investigate intermittent timeout" },

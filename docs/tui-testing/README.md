@@ -95,6 +95,7 @@ Accepted key names include printable public keys plus:
 tab shift+tab enter space esc
 up down left right home end pgup pgdown
 ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+p ctrl+y ctrl+c
+ctrl+enter
 ```
 
 The final public grammar is:
@@ -114,7 +115,7 @@ wi wb wn wt wg wr ww wp wm wd wc    workflow chord
 < > J K                          structure
 y Y Ctrl+Y                      clipboard
 v V Ctrl+A Space                selection and actions
-Enter Shift+Enter               Focus and Peek
+Enter Shift+Enter Ctrl+Enter    Focus, widen focus, and Peek
 x                               tick the checklist item under the cursor
 p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
 fp0-3 fs fc ft fr f@ fd fx      filters

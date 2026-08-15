@@ -71,8 +71,8 @@ func TestMatcherPositionsIndexOriginalRunes(t *testing.T) {
 	if want := []int{5, 6, 7, 8, 9}; !slices.Equal(positions, want) {
 		t.Fatalf("positions = %v, want %v", positions, want)
 	}
-	if score, _ := NewMatcher(true).ScoreWithPositions("Ship OAuth Login", "oauth"); score != 0 {
-		t.Fatalf("case-sensitive ScoreWithPositions on a folded pattern = %d, want 0", score)
+	if folded, _ := NewMatcher(true).ScoreWithPositions("Ship OAuth Login", "oauth"); folded != 0 {
+		t.Fatalf("case-sensitive ScoreWithPositions on a folded pattern = %d, want 0", folded)
 	}
 
 	score, positions = NewMatcher(true).ScoreTermsWithPositions("Ship OAuth Login", "OAuth Ship")

@@ -139,8 +139,8 @@ func appendManualOrderMarker(line string, row outlinerRow, field SortField, rowW
 // modes. In All these rows sit beneath shared state-group headers. The header
 // reuses the persisted project color and slug
 // text so the inline `[slug]` badges on individual task rows can be suppressed.
-// They use the same fold indicator as built-in sections, while Enter and
-// Shift+Enter retain their project scope and administration behavior.
+// They use the same fold indicator as built-in sections, while Enter retains
+// its project scope behavior.
 func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
 	project := m.resolveProjectForRow(row)
 	projectSlug := row.ProjectID

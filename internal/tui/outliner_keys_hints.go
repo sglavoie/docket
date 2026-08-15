@@ -61,7 +61,7 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 	case m.multiSelectMode:
 		return m.multiSelectGuidance(), true
 	case m.peekMode:
-		peekKey := "Shift+Enter"
+		peekKey := "Ctrl+Enter"
 		if m.operationRegistry != nil {
 			if key := m.operationRegistry.InputShortcutForOperation(InputStrategySimplified, operationCorePeek); key != "" {
 				peekKey = key
@@ -148,7 +148,7 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 			InputStrategySimplified,
 			m.operationCommandContext(),
 		) {
-			if hint.Key == "Enter" || hint.Key == "Shift+Enter" {
+			if hint.Key == "Enter" || hint.Key == "Ctrl+Enter" {
 				hints = append(hints, hint)
 			}
 		}

@@ -46,6 +46,7 @@ const (
 	operationCoreReorderDown        OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp          OperationID = "tui.core.reorder-up"
 	operationCoreFocusSubtree       OperationID = "tui.core.focus-subtree"
+	operationCoreFocusParent        OperationID = "tui.core.focus-parent"
 	operationCoreActivateGroup      OperationID = "tui.core.activate-group"
 	operationCorePeek               OperationID = "tui.core.peek"
 	operationCoreScopeSearch        OperationID = "tui.core.scope-search"
@@ -134,6 +135,16 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Entity.HasChecklistCursor &&
 			currentTaskIdentity(ctx).Valid()
 	}
+	focusParent := withTaskTarget(core(
+		operationCoreFocusParent,
+		"Focus Parent",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"focus parent",
+		"widen focus",
+	))
+	focusParent.Applicability = focusSubtree.Applicability
 	gotoTaskProject := withTaskTarget(core(
 		operationCoreGotoTaskProject,
 		"Go to Task's Project",
@@ -212,6 +223,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		focusSubtree,
+		focusParent,
 		gotoTaskProject,
 		activateGroup,
 		peek,
@@ -269,7 +281,8 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 		operationCoreToggleSections,
 		operationCoreReorderDown,
 		operationCoreReorderUp,
-		operationCoreFocusSubtree:
+		operationCoreFocusSubtree,
+		operationCoreFocusParent:
 		return true
 	default:
 		return false
@@ -318,6 +331,7 @@ func coreInputOperationRequiresTask(id OperationID) bool {
 		operationCoreToday,
 		operationCoreNext,
 		operationCoreFocusSubtree,
+		operationCoreFocusParent,
 		operationCoreGotoTaskProject,
 		operationCorePeek:
 		return true
@@ -461,6 +475,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreFocusSubtree:
 		if out, ok := m.outlinerPrimary(); ok && !out.focusSubtreeAtCursor() {
 			return OperationHandlerResult{Status: "No children to focus"}
+		}
+	case operationCoreFocusParent:
+		if out, ok := m.outlinerPrimary(); ok && !out.focusParentAtCursor() {
+			return OperationHandlerResult{Status: "No parent to focus"}
 		}
 	case operationCoreActivateGroup:
 		if out, ok := m.outlinerPrimary(); ok {

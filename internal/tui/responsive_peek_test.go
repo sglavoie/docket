@@ -173,11 +173,11 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 
 	invokePeek()
 	if !outliner.peekMode {
-		t.Fatal("Shift+Enter did not enable Peek")
+		t.Fatal("Ctrl+Enter did not enable Peek")
 	}
 	invokePeek()
 	if outliner.peekMode {
-		t.Fatal("Shift+Enter did not disable Peek")
+		t.Fatal("Ctrl+Enter did not disable Peek")
 	}
 	invokePeek()
 	outliner.crossFocusStack = append(outliner.crossFocusStack, CrossProjectFocusEntry{TaskID: "task"})
