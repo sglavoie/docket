@@ -290,7 +290,7 @@ grouped by project: groups sort by their newest pin, tasks inside a group start
 newest-first, and `J`/`K` reorder them manually within their group. A pinned
 subtree ranks by its own root's pin, so a swap moves exactly the rows it
 displaces. A pinned reorder swaps both tasks' `PinnedAt` values in one
-transaction spanning at most two projects. It retains parent breadcrumbs and an
+transaction spanning at most two projects. It retains the ancestor marker and an
 identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the ordinary `review` tag, after
 Doing. Pinned wins, and the projection does not change lifecycle or planning.
@@ -350,6 +350,16 @@ because eight segments cannot all fit at minimum width. Counts go first, since
 the row's own badges and Peek still carry them; the check-back goes last, because
 it is the one indicator naming work that has gone quiet on someone else's desk. A
 new indicator gets a position in that list, not an append.
+
+The ancestor marker is not in that ladder and never drops. A promoted section
+root's row carries `promotedAncestorMarker`, a fixed `  ‹` reserved as a
+`taskRowSegments` field, so `titleWidth` subtracts its three columns before the
+title is cut instead of offering it whatever the title left over. Offering it the
+remainder is what made it a 40-column path on a short row, a `‹ Re…` stub on a
+medium one, and nothing at all on a long one — vanishing exactly where a child
+row most needed distinguishing from a root row. Its meaning is now the same at
+every width: this row has a parent the outline above it does not show. Which
+parent is Peek's line to name.
 
 #### Status flash
 
@@ -694,18 +704,25 @@ attachment names, comment counts, and tags, and the tail cut sheds from the end.
 A new Peek line takes a deliberate position in that order, or the cap silently
 starts eating something else.
 
-The title continuation is the one block outside that budget. Peek is the surface
-whose job is to show what the row had no width for, so a title the row clipped is
-completed there rather than restated: `inlinePeekTitleLines` renders `title` minus
-exactly the prefix the row rendered — no label, no ellipsis within
-`inlinePeekTitleRows` (3), and no repetition of the visible head — styled through
-`TaskTitleStyleFor` so it reads as the same title. The row keeps its `…`, which
-now reads as "continues below". It renders only when the row actually clipped, it
-is first in the order, and the effective cap becomes
-`inlinePeekMaxLines + len(titleLines)`, so it displaces nothing.
-`visualWidthOverflow` is the counterpart to `truncateToVisualWidth` and must
-subtract the same ellipsis column, or the two disagree about the cut and a
+Two blocks sit outside that budget, both because the row deliberately elided them
+and Peek is the surface whose job is to show what the row had no width for.
+
+The first is the title continuation. A title the row clipped is completed there
+rather than restated: `inlinePeekTitleLines` renders `title` minus exactly the
+prefix the row rendered — no label, no ellipsis within `inlinePeekTitleRows` (3),
+and no repetition of the visible head — styled through `TaskTitleStyleFor` so it
+reads as the same title. The row keeps its `…`, which now reads as "continues
+below". It renders only when the row actually clipped and it is first in the
+order. `visualWidthOverflow` is the counterpart to `truncateToVisualWidth` and
+must subtract the same ellipsis column, or the two disagree about the cut and a
 character is duplicated or lost.
+
+The second is the parent line. A promoted section root's row is reduced to a bare
+`‹`, so `inlinePeekParentLine` names the ancestor chain in full, root-first and
+uncompacted, directly beneath the continuation. The effective cap is
+`inlinePeekMaxLines` plus the continuation rows plus that line, so neither
+displaces anything, and a bare adopted child no longer falls through to `No
+additional details`.
 
 Both paths derive the title budget from one formula, `buildTaskRowSegments` plus
 `taskRowSegments.titleWidth`, because the measurement path cannot have the real

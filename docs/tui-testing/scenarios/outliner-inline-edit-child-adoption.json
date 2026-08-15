@@ -24,23 +24,29 @@
 
     { "type": "key", "label": "back to All", "key": "g" },
     { "type": "key", "key": "a" },
-    { "type": "assert", "label": "the unmentioned children stayed put", "assert": "contains", "value": "Build login form  ‹ Launch platform › User authentication" },
+    { "type": "assert", "label": "the unmentioned children stayed put", "assert": "contains", "value": "Build login form  ‹" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
-    { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹ Launch platform › User authentication" },
-    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹" },
     { "type": "assert", "label": "the short id and the title prefix adopted one task once", "assert": "count_contains", "value": "Explore social login", "count": 1 },
+    { "type": "key", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "Peek names the parent every marker points at", "key": "shift+enter" },
+    { "type": "assert", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close Peek", "key": "esc" },
 
     { "type": "key", "label": "undo the adoption", "key": "u" },
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox  ‹" },
     { "type": "assert", "assert": "not_contains", "value": "Explore social login  ‹" },
-    { "type": "assert", "label": "the flat project order is unchanged", "assert": "contains", "value": "Build login form  ‹ Launch platform › User authentication" },
+    { "type": "assert", "label": "the flat project order is unchanged", "assert": "contains", "value": "Build login form  ‹" },
 
     { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹ Launch platform › User authentication" },
-    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹ Launch platform › User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

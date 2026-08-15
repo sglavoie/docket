@@ -71,7 +71,8 @@ Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole.
-Pinned tasks appear once in project groups, with parent breadcrumbs. Groups
+Pinned tasks appear once in project groups, each promoted child wearing the bare
+`‹` parent marker whose chain Peek names. Groups
 sort by their newest pin. Tasks inside a group start newest-first and `J`/`K`
 reorder them manually; a pinned subtree ranks by its own root's pin, and `J`/`K`
 never move a task across a project group. All,
@@ -87,7 +88,7 @@ Project groups appear in the order the mode's own order first names them, so
 grouping never outranks the order the mode exists to provide: Pinned groups sort
 by their newest pin, Due groups by their earliest due date, Recent groups by
 their most recent activity, and All, Inbox, and Backlog groups in project
-catalog order. Tasks inside a group keep hierarchy, parent breadcrumbs, and the
+catalog order. Tasks inside a group keep hierarchy, the parent marker, and the
 mode's own sort; `J`/`K` never move a task across a project group.
 
 A project header also names the pressure its group holds, as `overdue 2` and
@@ -368,6 +369,13 @@ squeezing the title: checklist, comment, and attachment counts go first because
 the checklist rows and Peek still carry them, then the recency and defer
 markers, then the waiting age, and the check-back date goes last.
 
+A task shown under a section it did not root — a child promoted into Doing,
+Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
+that the row has a parent the outline above it does not show. The marker is
+three fixed columns reserved before the title, so it neither eats the title on a
+wide row nor disappears on a crowded one. Nested rows carry nothing, because
+their tree connector already states parentage.
+
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
 parent cursor and scroll position. A leaf reports `No children to focus`.
 `Shift+Enter` toggles a session-only Peek directly beneath the cursor task. Peek
@@ -375,8 +383,11 @@ follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d` with empty fields omitted,
 attachment names, comment counts, and tags. Checklist items are not among them,
-because they are already rows of their own beneath the task. `Esc` closes Peek
-before unwinding Outliner navigation.
+because they are already rows of their own beneath the task. A promoted row's
+ancestor chain is named there in full, root-first, as
+`Parent: Launch platform › User authentication`; it and a clipped title's
+continuation are the two blocks that raise the five-line cap rather than spend
+it. `Esc` closes Peek before unwinding Outliner navigation.
 
 State, Today/Next/Review, priority, due, tags, defer, and pin actions apply atomically
 to the complete project-qualified selection, including hidden members. `v`

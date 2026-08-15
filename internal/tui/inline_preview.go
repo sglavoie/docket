@@ -21,6 +21,7 @@ type inlinePeekOptions struct {
 	Indent        string
 	Width         int
 	TitleOverflow string
+	Breadcrumb    string
 }
 
 func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, rowWidth int, colLayout *ColumnLayout) []string {
@@ -32,6 +33,7 @@ func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, ro
 		Indent:        indent,
 		Width:         rowWidth,
 		TitleOverflow: m.taskRowTitleOverflow(row, rowWidth, colLayout),
+		Breadcrumb:    row.Breadcrumb,
 	})
 }
 
@@ -49,8 +51,9 @@ func (m *OutlinerModel) inlinePeekLineCount(row outlinerRow, width int) int {
 // inlinePeekLines renders the additive, cursor-following task preview. The
 // selected row already owns task identity and operational metadata, so Peek
 // contains only richer content plus tags: description, dates, attachment names,
-// comments, and tags. A title the row had to clip is completed above them, and
-// those continuation rows raise the cap rather than displacing anything.
+// comments, and tags. A title the row had to clip is completed above them and a
+// promoted root's ancestor chain follows it; both raise the cap rather than
+// displacing anything.
 func inlinePeekLines(opts inlinePeekOptions) []string {
 	if opts.Task == nil || opts.Width <= 0 {
 		return nil
@@ -58,8 +61,12 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
 	titleLines := inlinePeekTitleLines(opts.Task, opts.TitleOverflow, opts.Indent, available)
-	lines := make([]string, 0, inlinePeekMaxLines+len(titleLines))
+	parentLine := inlinePeekParentLine(opts.Breadcrumb, available)
+	lines := make([]string, 0, inlinePeekMaxLines+len(titleLines)+1)
 	lines = append(lines, titleLines...)
+	if parentLine != "" {
+		lines = append(lines, opts.Indent+parentLine)
+	}
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
 
 	if dates := inlinePeekDatesLine(opts.Task, time.Now(), available); dates != "" {
@@ -81,10 +88,29 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	if len(lines) == 0 {
 		lines = append(lines, opts.Indent+MutedStyle.Render("No additional details"))
 	}
-	if maxLines := inlinePeekMaxLines + len(titleLines); len(lines) > maxLines {
+	maxLines := inlinePeekMaxLines + len(titleLines)
+	if parentLine != "" {
+		maxLines++
+	}
+	if len(lines) > maxLines {
 		lines = lines[:maxLines]
 	}
 	return lines
+}
+
+// inlinePeekParentLine names the ancestor chain the row reduced to a bare `‹`.
+// It raises the cap like the title continuation and for the same reason: the row
+// deliberately elided it, and Peek is the surface that shows what the row had no
+// width for. Root-first and uncompacted — Peek has the width the row did not.
+func inlinePeekParentLine(breadcrumb string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	chain := strings.TrimSuffix(strings.TrimSpace(breadcrumb), " ›")
+	if chain == "" {
+		return ""
+	}
+	return truncateIntentional(MutedStyle.Render("Parent: ")+chain, width, "…")
 }
 
 // inlinePeekTitleLines completes a title the row clipped rather than restating

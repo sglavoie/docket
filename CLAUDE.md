@@ -101,18 +101,17 @@ Checklist rules:
   the menu is the only route to Delete Item — the one place the
   direct-only-or-menu-only rule bends.
 - Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability`
-  field: a descriptor written without a predicate must stay unconditional, since
-  that is what `Register` reads to refuse a static direct-key collision.
+  field: an unconditional descriptor must keep looking unconditional to
+  `Register`'s static direct-key collision check.
 
 Emit project group headers through the shared `appendProjectGroupHeader` kernel,
 never a per-mode copy. Each grouping surface owns a disjoint `collapsedSections`
-namespace, because that map is never cleared on a mode change, and grouping
-never reorders a mode's primary sort.
+namespace, since that map is never cleared on a mode change, and grouping never
+reorders a mode's primary sort.
 
 `computeOutlinerViewport` is the single window authority and the only place a
 render moves `viewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
-that may write it, and only because the offset it writes still contains the
-cursor. Never recompute the window in a key handler.
+that may write it. Never recompute the window in a key handler.
 
 Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort
@@ -120,8 +119,7 @@ reorders tasks within their group only.
 
 The footer flash is armed by status text only, never by a breadcrumb, mode badge
 or which-key change, and cleared text arms nothing. Arming stays in the one
-deferred closure in `AppModel.Update`, since a second would run first under LIFO
-and see neither the recovery nor the assigned command. The divider appearance
+deferred closure in `AppModel.Update`. The divider appearance
 must feed all three dividers `renderStatusBar` can emit, or the flash dies
 whenever a which-key row is up. The interactive TUI ignores an inherited
 `NO_COLOR`; `--no-color` still disables color and non-interactive commands
@@ -137,11 +135,13 @@ Row and Peek budget:
 
 - `inlinePeekLines` owns a drop order, not a set; a new line takes a deliberate
   position or the five-line cap starts eating something else. Peek holds no
-  checklist line.
+  checklist line, and the title continuation and the parent line are its only
+  cap-raisers.
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append.
+  append; the ancestor marker is not in it — `taskRowSegments` reserves its
+  three columns, so the bare `‹` survives every width and Peek names the chain.
 - `formatDeferDate` reads against `now`: a midnight deferral is a whole day and
   still renders bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
 - Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
@@ -177,8 +177,7 @@ never means snooze or defer, and cursor-top is `gg` or `Home`.
 must precede the mode switch, since the push captures the frame `Esc` restores.
 
 Pin's two routes, `P` and the `*pin` sigil, are not a direct-only/menu-only
-violation: that rule governs the `Space` menu, not whether an attribute is also
-expressible in text.
+violation: that rule governs the `Space` menu, not the text grammar.
 
 An abandoned chord prefix warns, naming the path it left (`wq is not a workflow
 action`); an unbound root key stays silent.

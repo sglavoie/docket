@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -148,8 +149,11 @@ func TestOutlinerTaskRowShowsAncestorMarkerOnlyForPromotedRoot(t *testing.T) {
 	promoted := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
 		task: task, Breadcrumb: "Parent ›",
 	}, false, 120, 120, 0, nil))
-	if !strings.Contains(promoted, "Child  ‹ Parent") {
+	if !strings.Contains(promoted, "Child  ‹") {
 		t.Fatalf("promoted task row omitted ancestor marker: %q", promoted)
+	}
+	if strings.Contains(promoted, "Parent") {
+		t.Fatalf("task row spent title width on the ancestor path: %q", promoted)
 	}
 
 	nested := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
@@ -157,6 +161,31 @@ func TestOutlinerTaskRowShowsAncestorMarkerOnlyForPromotedRoot(t *testing.T) {
 	}, false, 120, 120, 0, nil))
 	if strings.Contains(nested, "‹") {
 		t.Fatalf("nested task row retained ancestor marker: %q", nested)
+	}
+}
+
+// TestOutlinerTaskRowKeepsTheAncestorMarkerOnACrowdedRow is the regression: the
+// marker is reserved width, so a title that overruns the row clips against it
+// instead of pushing it off the line and reading as a root task.
+func TestOutlinerTaskRowKeepsTheAncestorMarkerOnACrowdedRow(t *testing.T) {
+	task := &models.Task{
+		ID:            "child",
+		Title:         strings.Repeat("Overlong child title ", 8),
+		WorkflowState: models.StateBacklog,
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+
+	for _, width := range []int{60, 72, 100} {
+		plain := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+			task: task, Breadcrumb: "Grandparent › Parent ›",
+		}, false, width, width, 0, nil))
+		if !strings.Contains(plain, "…  ‹") {
+			t.Fatalf("width %d dropped the marker from a clipped title: %q", width, plain)
+		}
+		if got := lipgloss.Width(plain); got > width {
+			t.Fatalf("width %d row assembled %d columns: %q", width, got, plain)
+		}
 	}
 }
 

@@ -231,13 +231,26 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator    string
 	statusIcon, prioritySegment, tagSegment, indicators string
+	ancestorMarker                                      string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
 		s.statusIcon, s.prioritySegment, s.tagSegment, s.indicators,
+		s.ancestorMarker,
 	), 1)
+}
+
+// promotedAncestorMarker is the fixed three-column mark a promoted section root
+// wears in place of its ancestor path. It is reserved in taskRowSegments rather
+// than offered the title's leftover columns, so it survives every width instead
+// of vanishing exactly when the row is most crowded. The path itself is Peek's.
+func promotedAncestorMarker(row outlinerRow) string {
+	if row.Breadcrumb == "" {
+		return ""
+	}
+	return MutedStyle.Render("  ‹")
 }
 
 func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout) taskRowSegments {
@@ -281,6 +294,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		prioritySegment: prioritySegment,
 		tagSegment:      tagSegment,
 		indicators:      indicatorSegments.render(),
+		ancestorMarker:  promotedAncestorMarker(row),
 	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
@@ -314,9 +328,9 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	task := row.task
 	titleStyle := m.renderTaskTitleStyle(task, selected)
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
-	title := m.renderTaskTitle(task, row.Breadcrumb, titleStyle, rowWidth, segments)
+	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
 
-	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s",
 		segments.cursorPrefix,
 		segments.checkbox,
 		segments.prefixStr,
@@ -324,6 +338,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		segments.statusIcon,
 		segments.prioritySegment,
 		title,
+		segments.ancestorMarker,
 		segments.tagSegment,
 		segments.indicators,
 	)
@@ -601,62 +616,27 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 	return MutedStyle.Render(prefix), foldIndicator
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, breadcrumb string, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
+func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
-	title := task.Title
-	remainingWidth := availableWidth - lipgloss.Width(title)
-	if remainingWidth < 0 {
-		title = truncateToVisualWidth(title, availableWidth)
-		remainingWidth = 0
-	}
+	title := truncateToVisualWidth(task.Title, availableWidth)
 	query := strings.TrimSpace(m.SearchQuery())
-	var titleRendered string
 	if query == "" {
-		titleRendered = titleStyle.Render(title)
-	} else {
-		positions := searchSubstringPositions(title, query)
-		if len(positions) == 0 {
-			titleRendered = titleStyle.Render(title)
-		} else {
-			titleRendered = HighlightText(title, positions, titleStyle)
-		}
+		return titleStyle.Render(title)
 	}
-
-	suffix := compactPromotedAncestorSuffix(breadcrumb, remainingWidth)
-	if suffix == "" {
-		return titleRendered
+	positions := searchSubstringPositions(title, query)
+	if len(positions) == 0 {
+		return titleStyle.Render(title)
 	}
-	return titleRendered + MutedStyle.Render(suffix)
+	return HighlightText(title, positions, titleStyle)
 }
 
-func compactPromotedAncestorSuffix(breadcrumb string, maxWidth int) string {
-	if breadcrumb == "" || maxWidth < 5 {
-		return ""
-	}
-
-	trimmed := strings.TrimSuffix(strings.TrimSpace(breadcrumb), " ›")
-	if trimmed == "" {
-		return ""
-	}
-	ancestors := strings.Split(trimmed, " › ")
-	full := "  ‹ " + strings.Join(ancestors, " › ")
-	if lipgloss.Width(full) <= maxWidth {
-		return full
-	}
-
-	compacted := full
-	if len(ancestors) > 1 {
-		compacted = "  ‹ … › " + ancestors[len(ancestors)-1]
-	}
-	return truncateToVisualWidth(compacted, maxWidth)
-}
-
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators, ancestorMarker string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) +
-		lipgloss.Width(tagSegment) + lipgloss.Width(indicators)
+		lipgloss.Width(tagSegment) + lipgloss.Width(indicators) +
+		lipgloss.Width(ancestorMarker)
 }
 
 func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, selected bool, rowWidth, rowIndex int) string {

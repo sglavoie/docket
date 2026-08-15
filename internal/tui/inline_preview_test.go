@@ -216,6 +216,54 @@ func TestInlinePeekTitleContinuationRaisesTheCap(t *testing.T) {
 	}
 }
 
+// TestInlinePeekNamesThePromotedAncestorChain locks the surface the row's bare
+// `‹` points at: the full chain, root-first, only when the row is a promoted
+// section root.
+func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Child"}
+
+	withParent := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{
+		Task: task, Breadcrumb: "Launch platform › User authentication ›", Width: 80,
+	}), "\n"))
+	if withParent != "Parent: Launch platform › User authentication" {
+		t.Fatalf("parent line = %q", withParent)
+	}
+
+	withoutParent := inlinePeekLines(inlinePeekOptions{Task: task, Width: 80})
+	if got := ansi.Strip(strings.Join(withoutParent, "\n")); got != "No additional details" {
+		t.Fatalf("root task Peek gained a parent line: %q", got)
+	}
+}
+
+// TestInlinePeekParentLineRaisesTheCap proves the parent line displaces nothing:
+// beside a three-row description the tags line still renders, because the cap
+// grew by the parent row exactly as it does for the title continuation.
+func TestInlinePeekParentLineRaisesTheCap(t *testing.T) {
+	task := &models.Task{
+		ID:          "task",
+		Title:       "Child",
+		Description: strings.Repeat("Wrapped description content ", 12),
+		CreatedAt:   time.Now().Add(-5 * 24 * time.Hour),
+		UpdatedAt:   time.Now().Add(-time.Hour),
+		Attachments: []models.Attachment{{Filename: "spec.pdf"}},
+		Comments:    []*models.Comment{{Text: "Decision"}},
+	}
+
+	rendered := inlinePeekLines(inlinePeekOptions{Task: task, Breadcrumb: "Parent ›", Width: 80})
+	if len(rendered) != inlinePeekMaxLines+1 {
+		t.Fatalf("Peek line count = %d, want %d", len(rendered), inlinePeekMaxLines+1)
+	}
+	plain := ansi.Strip(strings.Join(rendered, "\n"))
+	if !strings.HasPrefix(plain, "Parent: Parent\n") {
+		t.Fatalf("parent line is not the first Peek row:\n%s", plain)
+	}
+	for _, want := range []string{"created 5d · updated 1h", "Attachments: spec.pdf"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("the parent line displaced %q:\n%s", want, plain)
+		}
+	}
+}
+
 func TestInlinePeekTitleContinuationEllipsizesPastItsBound(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Long title"}
 	overflow := strings.Repeat("continuation ", 40)
