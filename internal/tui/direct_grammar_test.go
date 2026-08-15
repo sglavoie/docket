@@ -31,6 +31,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"L":      operationCoreCursorScreenBottom,
 		"ctrl+o": operationCoreJumpBackward, "ctrl+i": operationCoreJumpForward,
 		"ctrl+l": operationCoreFocusLatest,
+		"ctrl+p": operationCoreGotoTaskProject,
 		"h":      operationCoreCollapseParent, "left": operationCoreCollapseParent,
 		"l": operationCoreExpand, "right": operationCoreExpand,
 		"S": operationCoreToggleSections,

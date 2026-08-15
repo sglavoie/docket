@@ -242,6 +242,16 @@ offset across the transition and would seat the lead against the viewport edge
 with the section and project headers naming it scrolled off. An empty Recent
 reports the 30-day window and moves nothing.
 
+`Ctrl+P` is the task-row counterpart to `Enter` on a project header: it reaches
+the project from a task instead of the task list from a project. The scope push
+precedes the All switch, because `pushProjectScope` captures the frame `Esc`
+restores and the reverse order would name All as the origin mode. All is forced
+rather than inherited, so the destination lists the project's whole tree instead
+of the origin mode's narrowing; when All does not admit the task — a terminal
+task reached from Recent — the origin mode is reselected and the status says
+why. A live search projection refuses from the handler rather than through
+applicability, so the key stays documented while the projection is up.
+
 ### Presentation chrome
 
 `WorkspacePulse` is app-owned workspace state with Inbox, Today, and overdue

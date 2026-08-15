@@ -1,0 +1,24 @@
+{
+  "name": "goto-task-project",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "jump to the Client Alpha group header", "key": "n" },
+    { "type": "key", "label": "jump to the Client Beta group header", "key": "n" },
+    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
+
+    { "type": "key", "label": "open the cursor task's project", "key": "ctrl+p" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Project: Client Beta" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "unwind the scope the jump pushed", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

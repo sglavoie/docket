@@ -94,7 +94,7 @@ Accepted key names include printable public keys plus:
 ```text
 tab shift+tab enter space esc
 up down left right home end pgup pgdown
-ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+y ctrl+c
+ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+p ctrl+y ctrl+c
 ```
 
 The final public grammar is:
@@ -107,6 +107,7 @@ zt zz zb                         cursor row to top/middle/bottom of screen
 n/N                              next/previous grouping header, wrapping
 Ctrl+O/Ctrl+I                     older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
+Ctrl+P                           the cursor task's project, in All
 a/A e/E Ctrl+E O                 capture and edit
 wi wb wn wt wg wr ww wp wm wd wc    workflow chord
 !0-3 @ # d P                    metadata

@@ -39,6 +39,7 @@ const (
 	operationCoreJumpBackward       OperationID = "tui.core.jump-backward"
 	operationCoreJumpForward        OperationID = "tui.core.jump-forward"
 	operationCoreFocusLatest        OperationID = "tui.core.focus-latest"
+	operationCoreGotoTaskProject    OperationID = "tui.core.goto-task-project"
 	operationCoreCollapseParent     OperationID = "tui.core.collapse-parent"
 	operationCoreExpand             OperationID = "tui.core.expand"
 	operationCoreToggleSections     OperationID = "tui.core.toggle-sections"
@@ -133,6 +134,21 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Entity.HasChecklistCursor &&
 			currentTaskIdentity(ctx).Valid()
 	}
+	gotoTaskProject := withTaskTarget(core(
+		operationCoreGotoTaskProject,
+		"Go to Task's Project",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"open task project",
+		"scope to task project",
+	))
+	gotoTaskProject.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual &&
+			!ctx.Entity.HasChecklistCursor &&
+			currentTaskIdentity(ctx).Valid()
+	}
 	activateGroup := core(
 		operationCoreActivateGroup,
 		"Activate Group",
@@ -196,6 +212,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		focusSubtree,
+		gotoTaskProject,
 		activateGroup,
 		peek,
 		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
@@ -301,6 +318,7 @@ func coreInputOperationRequiresTask(id OperationID) bool {
 		operationCoreToday,
 		operationCoreNext,
 		operationCoreFocusSubtree,
+		operationCoreGotoTaskProject,
 		operationCorePeek:
 		return true
 	default:
@@ -422,6 +440,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.focusLatestActivity())
 		}
+	case operationCoreGotoTaskProject:
+		return m.coreGotoTaskProject(invocation.Targets)
 	case operationCoreCollapseParent:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.collapseOrMoveToParent()
@@ -778,6 +798,47 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) OperationHandlerR
 	}
 	out.viewScrollOffset = min(max(desired, 0), max(len(out.rows)-height, 0))
 	return OperationHandlerResult{}
+}
+
+// coreGotoTaskProject is the task-row counterpart to Enter on a project header:
+// it scopes the Outliner to the cursor task's project and forces All so the
+// whole tree is listed rather than the origin mode's narrowing. The scope push
+// captures the frame Esc restores, so the mode switch must follow it — reversed,
+// Esc would return to All instead of the mode the jump was pressed from. A mode
+// that lists the task where All does not (a Done task reached from Recent) keeps
+// the origin instead, and says so.
+func (m *AppModel) coreGotoTaskProject(targets ResolvedOperationTargets) OperationHandlerResult {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return OperationHandlerResult{}
+	}
+	if out.hasSearchProjection() {
+		return OperationHandlerResult{Status: "Exit search before jumping to a project"}
+	}
+	task, project := m.taskAndProjectForTargets(targets)
+	if task == nil || project == nil {
+		return OperationHandlerResult{}
+	}
+	origin := out.activeOutlinerModeEntry()
+	previous := out.cursor
+
+	out.pushProjectScope(project.ID)
+	out.selectOutlinerMode(ModeAll)
+	out.NavigateToTaskInProject(task, project)
+
+	status := "Project: " + project.Name
+	if _, found := out.rowIndexForTask(taskIdentityFor(task, project)); !found && origin.ID != ModeAll {
+		out.selectOutlinerMode(origin.ID)
+		out.NavigateToTaskInProject(task, project)
+		status += " — kept " + origin.Label + ", the task is not listed in All"
+	}
+	m.setInfoStatus(status)
+	return OperationHandlerResult{
+		Message: commandMessage(tea.Batch(
+			flashIfJumped(previous, out.cursor, &out.cursorFlash),
+			defaultStatusTimeout(),
+		)),
+	}
 }
 
 func (m *AppModel) coreReorder(delta int) tea.Cmd {

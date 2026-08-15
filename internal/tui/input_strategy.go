@@ -255,6 +255,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreJumpBackward, Keys: []string{"ctrl+o"}, DisplayKey: "Ctrl+O"},
 			{OperationID: operationCoreJumpForward, Keys: []string{"ctrl+i"}, DisplayKey: "Ctrl+I"},
 			{OperationID: operationCoreFocusLatest, Keys: []string{"ctrl+l"}, DisplayKey: "Ctrl+L"},
+			{OperationID: operationCoreGotoTaskProject, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
 			{OperationID: operationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
 			{OperationID: operationCoreToggleSections, Keys: []string{"S"}, DisplayKey: "S"},

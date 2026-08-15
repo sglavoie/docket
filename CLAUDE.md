@@ -173,6 +173,9 @@ unbound; repeating a sort field key is the only reverse route.
 alias may return. Root `z` and `g` are chord prefixes, not direct keys: `z`
 never means snooze or defer, and cursor-top is `gg` or `Home`.
 
+`Ctrl+P` forces All rather than inheriting the origin mode, and its scope push
+must precede the mode switch, since the push captures the frame `Esc` restores.
+
 Pin's two routes, `P` and the `*pin` sigil, are not a direct-only/menu-only
 violation: that rule governs the `Space` menu, not whether an attribute is also
 expressible in text.

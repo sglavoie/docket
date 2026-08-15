@@ -107,12 +107,19 @@ does both from any mode in one press: it re-reads activity and puts the cursor o
 the task you touched last, opening a collapsed section or a folded parent only
 when that task would otherwise be hidden.
 
+`Ctrl+P` goes the other way, from a task to the project holding it. It scopes the
+Outliner to the cursor task's project, switches to All so the project's whole
+tree is listed, and leaves the cursor on the task you pressed it from. `Esc`
+unwinds it and returns to the mode, row and scroll position you left. A task All
+would not list — a Done task you reached from Recent, say — keeps the mode you
+were in and says so.
+
 ## Outliner grammar
 
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `d` defer; `P` pin |
