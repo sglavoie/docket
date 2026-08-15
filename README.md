@@ -123,7 +123,7 @@ were in and says so.
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` focuses descendants; `Shift+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `d` defer; `P` pin |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `##` context; `d` defer; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder |
 | Sorting | `o` opens the sort chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
@@ -165,7 +165,7 @@ applies the pending changes.
 `O` writes the cursor's project out as one indented outline, opens it in
 `$EDITOR`, and applies the whole tree when you save and quit. Indentation is
 parentage: two spaces per level, up to the usual depth of six. Every line
-otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `@friday`,
+otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `##context`, `@friday`,
 `$backlog`, and `*pin` all work, while `>parent` and `<child` are rejected
 because the indentation already said it. The dump prints the values a task
 currently holds, so a pinned task arrives carrying `*pin` and deleting that
@@ -233,7 +233,7 @@ scroll, and folds exactly.
 | `fp0`, `fp1`–`fp3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
 | `fs` | Pick workflow states with OR semantics, including terminal states |
 | `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
-| `ft` | Pick tags with AND semantics |
+| `ft` | Pick tags and task contexts with AND semantics; each selected value matches either field |
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the due-date facet picker: overdue, today, this week, or no due date |
 | `fd` | Deferred-only |
@@ -341,6 +341,11 @@ The Outliner uses the full terminal width at every supported size. Task rows
 show workflow state, conditional high priority, due and defer dates, and
 checklist progress; short task IDs are hidden.
 
+The bold `[context]` segment is reserved like the ancestor marker: it never
+drops when a row narrows. Its value uses at most 12 columns in the row, while
+Peek shows the complete value when truncation was necessary. Tags remain a
+separate, lower-salience segment and may drop first.
+
 A deferral reads as `defer <date>` only while it is still pending, and the date
 carries a clock whenever the task comes back partway through a day. A deferral
 to a whole day stays a bare `defer Sep 2`; one that returns later today reads as
@@ -408,13 +413,18 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  @date  $destination  *pin  %project  >parent  <child
+!1-3  #tag  ##context  @date  $destination  *pin  %project  >parent  <child
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
 - `#tag` creates and sets a lowercase ASCII kebab tag on the fly. Input is
   canonicalized (`#Needs / Review` becomes `needs-review`); `#review` feeds the
   Review lane.
+- `##context` sets one optional task-level context, normalized by the same rules
+  as a tag. It is distinct from the retired v4 project-level context. `##0`
+  clears the value only during inline editing; outline editing clears it by
+  omission. Therefore `"0"` is permanently reserved as a context name, unlike
+  the otherwise legal clearing/reference forms `!0`, `@0`, and `>0`.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
 - `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,
@@ -584,7 +594,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## Schema 11 storage and migration
+## Schema 12 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -604,15 +614,15 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-10 Markdown and generic `Task` headings.
+Project task files use strict schema-11 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-10 workspaces to schema 11, supported schema-6
-through schema-9 workspaces through the intermediate boundaries, and supported
+Startup migrates supported schema-11 workspaces to schema 12, supported schema-6
+through schema-10 workspaces through the intermediate boundaries, and supported
 schema-4/5 workspaces through the whole chain. Each step validates the complete
 candidate before mutation and publishes its own immutable rollback archive and
 audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
@@ -620,7 +630,8 @@ audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
 for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-state-clock-v9-<UTC>.tar.gz` for v8→v9,
 `pre-defer-rename-v10-<UTC>.tar.gz` for v9→v10, and
-`pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11. The schema-6 conversion preserves
+`pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11, and
+`pre-context-v12-<UTC>.tar.gz` for v11→v12. The schema-6 conversion preserves
 notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
@@ -645,6 +656,12 @@ where it was read, so each one lifts to exactly that instant and every existing
 deferral wakes when it always would have; the due date stays a calendar date.
 Undo/redo history is cleared again because the retained bytes are raw
 calendar-date Markdown.
+Schema 12 upgrades task Markdown to schema 11 by adding the optional,
+single-valued task-level `context` field. Existing tasks receive an empty value,
+so the rewrite preserves their meaning; this field is unrelated to the retired
+v4 project-level context that schema 7 folded into project tags. Undo/redo
+history is cleared because its retained raw Markdown carries the schema-10
+marker that the schema-11 reader rejects.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -653,8 +670,8 @@ loading, and repeated startup is idempotent.
 
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
-manual: extract the matching archive — `pre-defer-instant-v11-<UTC>.tar.gz` for
-the schema-11 boundary — into a separate directory and open that copy with a
+manual: extract the matching archive — `pre-context-v12-<UTC>.tar.gz` for the
+schema-12 boundary — into a separate directory and open that copy with a
 compatible build. Migration snapshots themselves are never modified.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for

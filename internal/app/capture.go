@@ -49,6 +49,8 @@ type CaptureRequest struct {
 	Priority int
 	// Tags are normalized and validated; a malformed tag aborts the capture.
 	Tags []string
+	// Context is the optional single-valued task context. Empty leaves it unset.
+	Context string
 	// RemoveTags are normalized tags to strip from the new task after Tags are
 	// applied (the focus-board quick-add supports "-tag" removal directives).
 	RemoveTags []string
@@ -330,6 +332,7 @@ type preparedCapture struct {
 	title       string
 	priority    int
 	tags        []string
+	context     string
 	removeTags  []string
 	parent      *models.Task
 	children    []*models.Task
@@ -350,6 +353,13 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 	normalizedTags, err := normalizeTags(req.Tags)
 	if err != nil {
 		return preparedCapture{}, err
+	}
+	context := ""
+	if req.Context != "" {
+		context, err = models.NormalizeTaskContext(req.Context)
+		if err != nil {
+			return preparedCapture{}, invalidInput("context", err.Error())
+		}
 	}
 	removeTags, err := normalizeTagList(req.RemoveTags)
 	if err != nil {
@@ -380,6 +390,7 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		title:       title,
 		priority:    priority,
 		tags:        normalizedTags,
+		context:     context,
 		removeTags:  removeTags,
 		parent:      parent,
 		children:    children,
@@ -427,6 +438,7 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 		return nil, invalidInput("title", err.Error())
 	}
 	task.Priority = prepared.priority
+	task.Context = prepared.context
 	task.Description = req.Description
 	for _, tag := range prepared.tags {
 		task.AddTag(tag)

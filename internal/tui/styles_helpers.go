@@ -113,6 +113,14 @@ func semanticTaskTitleStyle(
 	return style.Foreground(foreground)
 }
 
+func taskContextBadgeStyle(task *models.Task) lipgloss.Style {
+	style := ContextBadgeStyle
+	if task != nil && task.IsDeferred() {
+		style = style.Foreground(ColorTaskContextDeferred).Faint(true)
+	}
+	return style
+}
+
 // TaskTitleStyleFor returns the canonical style for a rendered task title.
 func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.Style {
 	if task == nil {

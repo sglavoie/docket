@@ -29,6 +29,7 @@ const (
 	FieldPriority    Field = "priority"
 	FieldTag         Field = "tag"
 	FieldRemoveTag   Field = "remove_tag"
+	FieldContext     Field = "context"
 	FieldDue         Field = "due"
 	FieldRecurrence  Field = "recurrence"
 	FieldTaskType    Field = "type"
@@ -133,6 +134,19 @@ var registry = []definitionSpec{
 		forms:      []surfaceForm{{Text: "-#tag", Surfaces: SurfaceEdit}},
 		pattern:    `(?:^|\s)-#([\w][\w.:-]*)`,
 		validation: validateTag,
+	},
+	{
+		Definition: Definition{
+			Field: FieldContext, Group: "Context", Trigger: "##",
+			Description: "Set context", Examples: []string{"##frontend", "##client-acme"},
+			Surfaces: allSurfaces, Cardinality: CardinalitySingleton,
+			Clears: []ClearOperation{{Value: clearValue, Description: "Clear context", Surfaces: SurfaceEdit}},
+		},
+		forms: []surfaceForm{
+			{Text: "##context", Surfaces: allSurfaces},
+			{Text: "##0", Surfaces: SurfaceEdit},
+		},
+		pattern: `(?:^|\s)##([\w][\w.:-]*)`, validation: validateTag,
 	},
 	{
 		Definition: Definition{

@@ -51,6 +51,49 @@ func TestQuickCaptureDestinationSuggestionsFilterByPartial(t *testing.T) {
 	}
 }
 
+func TestDetectTriggerPrefersLongestMatchingText(t *testing.T) {
+	tests := []struct {
+		name     string
+		triggers []ACTrigger
+	}{
+		{
+			name: "short trigger first",
+			triggers: []ACTrigger{
+				{Text: "#", Mode: acModeTag},
+				{Text: "##", Mode: acModeProject},
+			},
+		},
+		{
+			name: "long trigger first",
+			triggers: []ACTrigger{
+				{Text: "##", Mode: acModeProject},
+				{Text: "#", Mode: acModeTag},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mode, pos, partial := DetectTrigger("title ##frontend", tt.triggers)
+			if mode != acModeProject || pos != len("title ") || partial != "frontend" {
+				t.Fatalf("DetectTrigger() = (%d, %d, %q), want (%d, %d, %q)", mode, pos, partial, acModeProject, len("title "), "frontend")
+			}
+		})
+	}
+}
+
+func TestAutocompleteAcceptsMultiByteTriggerText(t *testing.T) {
+	ac := AutocompleteState{
+		Mode:       acModeProject,
+		TriggerPos: len("title "),
+		Items:      []ACSuggestion{{Value: "frontend"}},
+	}
+
+	if got, want := ac.BuildAcceptedInput("title ##fro", "##"), "title ##frontend "; got != want {
+		t.Fatalf("BuildAcceptedInput() = %q, want %q", got, want)
+	}
+}
+
 func TestBoundedAutocompleteUsesEveryAvailableRow(t *testing.T) {
 	items := make([]ACSuggestion, 10)
 	for i := range items {

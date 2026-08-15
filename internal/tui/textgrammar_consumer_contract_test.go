@@ -22,7 +22,7 @@ func TestCaptureAutocompleteProjectsCanonicalRegistry(t *testing.T) {
 		t.Fatalf("autocomplete triggers = %d, want %d registry definitions", len(triggers), len(definitions))
 	}
 	for i, definition := range definitions {
-		if got, want := triggers[i].Char, definition.Trigger[0]; got != want {
+		if got, want := triggers[i].Text, definition.Trigger; got != want {
 			t.Errorf("trigger %d = %q, want %q for %s", i, got, want, definition.Field)
 		}
 		if got, want := triggers[i].Mode, autocompleteModeForField(definition.Field); got != want {
@@ -193,13 +193,17 @@ func inlineFormTriggerCount(literal string, triggers map[string]bool) int {
 	found := make(map[string]bool)
 	for _, word := range strings.Fields(literal) {
 		normalized := strings.Trim(word, "\t\n\r ,.;:!?()[]{}\"'")
+		longest := ""
 		for trigger := range triggers {
 			if trigger == "%" && isFormattingDirective(normalized) {
 				continue
 			}
-			if len(normalized) > len(trigger) && strings.HasPrefix(normalized, trigger) {
-				found[trigger] = true
+			if len(normalized) > len(trigger) && len(trigger) > len(longest) && strings.HasPrefix(normalized, trigger) {
+				longest = trigger
 			}
+		}
+		if longest != "" {
+			found[longest] = true
 		}
 	}
 	return len(found)

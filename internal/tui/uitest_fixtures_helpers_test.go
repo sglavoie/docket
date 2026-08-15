@@ -471,6 +471,7 @@ func buildRichFixture(w *uitestWorkspace) error {
 		validate := newFixtureTask(p, "Add password validation")
 		validate.ParentID = &story.ID
 		validate.Tags = []string{"backend", "security"}
+		validate.Context = "platform"
 
 		mockup := newFixtureTask(p, "Design login mockup")
 		mockup.ParentID = &story.ID
@@ -600,6 +601,7 @@ func buildNarrowFixture(w *uitestWorkspace) error {
 
 		long.Priority = 1
 		long.Tags = []string{"infrastructure", "reliability", "sync"}
+		long.Context = "distributed-systems"
 		long.ApplyWorkflowState(models.StateBacklog)
 
 		another := newFixtureTask(p,

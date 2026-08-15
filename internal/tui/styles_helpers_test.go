@@ -3,6 +3,7 @@ package tui
 import (
 	"image/color"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -52,6 +53,19 @@ func TestGetTitlePriorityStyleOutOfRange(t *testing.T) {
 			s.GetFaint() != normal.GetFaint() || s.GetForeground() != normal.GetForeground() {
 			t.Errorf("priority %d: expected normal style, got different style", priority)
 		}
+	}
+}
+
+func TestTaskContextBadgeStyleUsesDeferredVariant(t *testing.T) {
+	normal := taskContextBadgeStyle(&models.Task{})
+	if !normal.GetBold() || normal.GetFaint() || normal.GetForeground() != ColorTaskContext {
+		t.Fatalf("normal context style bold/faint/foreground = %v/%v/%v", normal.GetBold(), normal.GetFaint(), normal.GetForeground())
+	}
+
+	future := time.Now().Add(time.Hour)
+	deferred := taskContextBadgeStyle(&models.Task{DeferredUntil: &future})
+	if !deferred.GetBold() || !deferred.GetFaint() || deferred.GetForeground() != ColorTaskContextDeferred {
+		t.Fatalf("deferred context style bold/faint/foreground = %v/%v/%v", deferred.GetBold(), deferred.GetFaint(), deferred.GetForeground())
 	}
 }
 

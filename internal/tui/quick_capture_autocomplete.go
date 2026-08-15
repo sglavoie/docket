@@ -44,6 +44,35 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
+// getContextSuggestions returns matching task contexts for the partial query.
+func (q *quickCaptureInput) getContextSuggestions(partial string) []ACSuggestion {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
+	type scoredContext struct {
+		context string
+		score   int
+	}
+
+	var scored []scoredContext
+	for _, context := range q.contextCache {
+		score := fuzzy.Score(context, partial)
+		if score > 0 {
+			scored = append(scored, scoredContext{context: context, score: score})
+		}
+	}
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	suggestions := make([]ACSuggestion, 0, len(scored))
+	for _, item := range scored {
+		suggestions = append(suggestions, ACSuggestion{
+			Display: def.Trigger + item.context,
+			Value:   item.context,
+		})
+	}
+	return suggestions
+}
+
 // getPrioritySuggestions returns matching priority options for the partial query.
 func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
@@ -216,8 +245,8 @@ func (q *quickCaptureInput) acceptSuggestion() {
 		return
 	}
 
-	triggerChar := TriggerCharForMode(q.ac.Mode, q.triggers)
-	newInput := q.ac.BuildAcceptedInput(q.input.Value(), triggerChar)
+	triggerText := TriggerCharForMode(q.ac.Mode, q.triggers)
+	newInput := q.ac.BuildAcceptedInput(q.input.Value(), triggerText)
 
 	q.input.SetValue(newInput)
 	// Move cursor to end

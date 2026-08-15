@@ -30,10 +30,19 @@ func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         tasks,
-		SchemaVersion: SchemaVersionV10,
+		SchemaVersion: SchemaVersionV11,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
+}
+
+func TestMergeableTaskFieldsIncludesContext(t *testing.T) {
+	for _, field := range mergeableTaskFields {
+		if field.jsonName == "context" {
+			return
+		}
+	}
+	t.Fatal("merge field inventory does not include context")
 }
 
 func mergeTaskIDs(tasks []*models.Task) []string {

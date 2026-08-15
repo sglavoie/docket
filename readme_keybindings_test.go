@@ -93,7 +93,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
 		"`wr` toggle Review",
 		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
-		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `d` defer; `P` pin",
+		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `##` context; `d` defer; `P` pin",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
 		"`Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
@@ -126,7 +126,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`fp0`, `fp1`–`fp3`",
 		"Unset never matches",
 		"`fs` | Pick workflow states with OR semantics",
-		"`ft` | Pick tags with AND semantics",
+		"`ft` | Pick tags and task contexts with AND semantics; each selected value matches either field",
 		"`fr` | Toggle the `review` tag facet",
 		"`f@` | Open the due-date facet picker: overdue, today, this week, or no due date",
 		"`fd` | Deferred-only",
@@ -142,6 +142,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`Space` over a tag row offers Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
 		"a second key the chord does not offer says so instead of doing nothing",
 		"The Outliner uses the full terminal width at every supported size",
+		"The bold `[context]` segment is reserved like the ancestor marker",
 		"`Enter` focuses the cursor task's descendants",
 		"`Shift+Enter` toggles a session-only Peek directly beneath the cursor task",
 		"Entering multi-select closes Peek",
@@ -155,7 +156,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	content := readFileForContractTest(t, "README.md")
 	requireDocumentationText(t, content, []string{
-		"!1-3 #tag @date $destination *pin %project >parent <child",
+		"!1-3 #tag ##context @date $destination *pin %project >parent <child",
 		"`*pin` pins the task, exactly as the `P` key does on an existing row",
 		"The edit surface is also the only one that accepts `*unpin`",
 		"a pinned task arrives carrying `*pin` and deleting that token unpins it",
@@ -226,7 +227,7 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-10 Markdown and generic `Task` headings",
+		"schema-11 Markdown and generic `Task` headings",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme choice",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>",
@@ -235,6 +236,7 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 		"pre-state-clock-v9-<UTC>.tar.gz",
 		"pre-defer-rename-v10-<UTC>.tar.gz",
 		"pre-defer-instant-v11-<UTC>.tar.gz",
+		"pre-context-v12-<UTC>.tar.gz",
 		"durable `state_changed` clock, backfilled from `updated`",
 		"There is no down-migration",
 		"schema-4/5 workspaces through the whole chain",

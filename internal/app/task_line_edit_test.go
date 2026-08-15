@@ -16,6 +16,7 @@ func TestTaskLineEditAppliesSameProjectPatchInOneTransaction(t *testing.T) {
 	task := newTask("task", 1, "Before")
 	task.Priority = models.PriorityLow
 	task.Tags = []string{"keep", "remove"}
+	task.Context = "legacy"
 	task.ApplyWorkflowState(models.StateWaiting)
 	deferUntil := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
 	task.DeferredUntil = &deferUntil
@@ -29,6 +30,7 @@ func TestTaskLineEditAppliesSameProjectPatchInOneTransaction(t *testing.T) {
 	priority := models.PriorityHigh
 	due := time.Date(2026, 8, 14, 17, 30, 0, 0, time.UTC)
 	destination := app.CaptureDestinationNext
+	context := " Client-Acme "
 	var planning app.PlanningReconcileRequest
 	expected := ""
 	result, err := svc.EditTaskLine(app.TaskLineEditRequest{
@@ -37,6 +39,7 @@ func TestTaskLineEditAppliesSameProjectPatchInOneTransaction(t *testing.T) {
 		Priority:     &priority,
 		DueSet:       true,
 		Due:          &due,
+		Context:      &context,
 		Destination:  &destination,
 		TagsToAdd:    []string{"added"},
 		TagsToRemove: []string{"remove"},
@@ -83,6 +86,9 @@ func assertSameProjectTaskLineEdit(
 	if !slices.Equal(task.Tags, []string{"keep", "added"}) {
 		t.Fatalf("tags = %v, want [keep added]", task.Tags)
 	}
+	if task.Context != "client-acme" {
+		t.Fatalf("context = %q, want client-acme", task.Context)
+	}
 	if task.ParentID == nil || *task.ParentID != parent.ID {
 		t.Fatalf("parent = %v, want %q", task.ParentID, parent.ID)
 	}
@@ -124,6 +130,32 @@ func TestTaskLineEditSemanticNoOpDoesNotTransact(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Fatalf("no-op committed %d transaction(s)", len(repo.commits))
+	}
+}
+
+func TestTaskLineEditContextPointerPreservesSetsAndClears(t *testing.T) {
+	task := newTask("task", 1, "Same")
+	task.Context = "legacy"
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	result, err := svc.EditTaskLine(app.TaskLineEditRequest{
+		Source: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Title:  task.Title,
+	})
+	if err != nil || result.Changed || task.Context != "legacy" {
+		t.Fatalf("preserve result=%+v context=%q err=%v", result, task.Context, err)
+	}
+
+	clear := ""
+	result, err = svc.EditTaskLine(app.TaskLineEditRequest{
+		Source:  app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Title:   task.Title,
+		Context: &clear,
+	})
+	if err != nil || !result.Changed || task.Context != "" {
+		t.Fatalf("clear result=%+v context=%q err=%v", result, task.Context, err)
 	}
 }
 

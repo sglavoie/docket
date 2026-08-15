@@ -29,6 +29,19 @@ func BuildProjectsTagList(projects []*models.Project, excludeCompleted bool) []T
 	return BuildCatalogTagList(projects, tasks, excludeCompleted)
 }
 
+// BuildTagFacetList builds the filter-only union of task tags and contexts.
+// Counts are additive when one task carries the same value on both axes.
+func BuildTagFacetList(projects []*models.Project, excludeCompleted bool) []TagInfo {
+	var tasks []*models.Task
+	for _, project := range uniqueProjects(projects) {
+		tasks = append(tasks, project.Tasks...)
+	}
+	tagCounts := make(map[string]int)
+	addTaskTagCounts(tagCounts, tasks, excludeCompleted)
+	addTaskContextCounts(tagCounts, tasks, excludeCompleted)
+	return tagInfosFromCounts(tagCounts)
+}
+
 // BuildCatalogTagList is a compatibility wrapper over task-derived tag counts.
 func BuildCatalogTagList(projects []*models.Project, tasks []*models.Task, excludeCompleted bool) []TagInfo {
 	tagCounts := make(map[string]int)
@@ -47,6 +60,21 @@ func addTaskTagCounts(tagCounts map[string]int, tasks []*models.Task, excludeCom
 		}
 		for _, tag := range models.DedupeTags(task.Tags) {
 			tagCounts[tag]++
+		}
+	}
+}
+
+func addTaskContextCounts(tagCounts map[string]int, tasks []*models.Task, excludeCompleted bool) {
+	for _, task := range tasks {
+		if task == nil || task.Context == "" {
+			continue
+		}
+		if excludeCompleted && task.IsComplete() {
+			continue
+		}
+		context, err := models.NormalizeTaskContext(task.Context)
+		if err == nil {
+			tagCounts[context]++
 		}
 	}
 }

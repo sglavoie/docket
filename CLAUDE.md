@@ -1,9 +1,8 @@
 # CLAUDE.md
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
-Behavior lives in [`README.md`](README.md), mechanism in
-[`docs/architecture.md`](docs/architecture.md); the end table names each topic's
-section.
+Behavior: [`README.md`](README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
+The end table names each topic's section.
 
 ## Build and verification
 
@@ -25,11 +24,11 @@ Go accepts packages, not files, as test targets.
 
 ## Architecture
 
-`tt` is an Outliner-first local task manager. The Bubble Tea TUI is the product
-surface; Cobra contains only the TUI launcher and maintenance commands.
+`tt` is an Outliner-first local task manager: Bubble Tea is the product; Cobra
+contains only the launcher and maintenance commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-10 Markdown, transactions,
+cases and mutation policy, `internal/storage` schema-11 Markdown, transactions,
 conflicts and the undo ledger, `internal/config` the catalog/planning domains
 and migration, `internal/tui` the sole Outliner root and operation
 registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
@@ -51,11 +50,11 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
 Review is not a lifecycle state: it is the ordinary canonical `review` tag with
-a promoted All-mode lane. Retired states and fields may appear only in
-explicitly named migration DTOs and audit code. Ordinary task Markdown uses
-schema 10, generic `Task` headings, a project-local ShortID, and the retained
-fields. `DueDate` is a calendar date; `DeferredUntil` is an RFC3339Nano
-instant that can expire later the same day.
+a promoted All-mode lane. Retired states and fields may appear only in named
+migration DTOs and audit code. Ordinary task Markdown is schema 11 with generic
+`Task` headings, a project-local ShortID, retained fields, and optional
+single-valued task-level `Context`. `DueDate` is a calendar date;
+`DeferredUntil` is an RFC3339Nano instant that can expire later the same day.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
@@ -140,8 +139,8 @@ Row and Peek budget:
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append; the ancestor marker is not in it — `taskRowSegments` reserves its
-  three columns, so the bare `‹` survives every width and Peek names the chain.
+  append; neither the ancestor marker nor the task context segment belongs in
+  it. `taskRowSegments` reserves both at every width; Peek names full values.
 - `formatDeferDate` reads against `now`: a midnight deferral is a whole day and
   still renders bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
 - Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
@@ -193,12 +192,9 @@ never carry it, and every other project tag is descriptive and decides nothing.
 `NormalizeProjectTags` lowercases, dedupes, and sorts; load validation applies
 the same normalization so an unmintable persisted set fails closed.
 
-`models.BehavioralProjectTags` and `models.SemanticTaskTags` are metadata
-registries carrying no effect: an entry explains a tag, it does not make one
-decide anything. The parking effect stays one hardcoded predicate behind
-`TaskWorkspaceProjects()`, and the semantic precedence `bug` > `epic` > `story`
-> `feature` > `idea` only colors the title — a semantic tag is ordinary in
-storage, capture, filtering, and every workflow rule.
+`models.BehavioralProjectTags` and `models.SemanticTaskTags` are effect-free
+metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
+`bug` > `epic` > `story` > `feature` > `idea` only colors titles.
 
 Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is
 non-archived and not parked and is the only one the base Outliner reads, while
@@ -206,19 +202,22 @@ non-archived and not parked and is the only one the base Outliner reads, while
 projects reachable for Notes, `%project`, Select Project, and one explicit
 focus.
 
-Parking is the one project tag edit that confirms, and it keeps the project's
-Today and Next references durable, filtered at read time, so unparking restores
-the plan untouched; archiving likewise preserves tags. Tag explainers wrap
-inline rather than clipping; focusable rows use `RowSummary` and explainers the
-full `Summary`.
+Parking is the one project tag edit that confirms. It preserves Today/Next refs;
+archiving preserves tags. Both filter at read time. Tag explainers wrap;
+focusable rows use `RowSummary`, explainers the full `Summary`.
 
 ## Capture and edit grammar
 
 Canonical capture sigils are:
 
 ```text
-!1-3  #tag  @date  $destination  *pin  %project  >parent  <child
+!1-3  #tag  ##context  @date  $destination  *pin  %project  >parent  <child
 ```
+
+`##context` sets the optional singleton task context with tag normalization; it
+is unrelated to the retired v4 project context. Inline `##0` clears it; outline
+omission clears it. `##0` permanently reserves `"0"` as a context name, unlike
+legal `!0`, `@0`, and `>0` values.
 
 `$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
 Someday, Done, or Canceled. `^type`, `~recurrence`, priorities 4–5, `$ready`,
@@ -270,7 +269,8 @@ dark/light theme. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-The v4→v5→v6→v7→v8→v9→v10→v11 migration validates each complete candidate first,
+Schema-12 catalogs hold schema-11 task Markdown.
+The v4→v5→v6→v7→v8→v9→v10→v11→v12 migration validates each complete candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6 decoders are migration-only: ordinary runtime code

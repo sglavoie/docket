@@ -50,6 +50,8 @@ func TestDefaultDarkTheme_KeyFields(t *testing.T) {
 		{"Priority1Title", d.Palette.Priority1Title, "#f7768e"},
 		{"Priority2Title", d.Palette.Priority2Title, "#e0af68"},
 		{"Priority3Title", d.Palette.Priority3Title, "#7aa2f7"},
+		{"TaskContext", d.Palette.TaskContext, "#73daca"},
+		{"TaskContextDeferred", d.Palette.TaskContextDeferred, "#4f948f"},
 		{"SemanticBugTitle", d.Palette.SemanticBugTitle, "#ff9e9e"},
 		{"SemanticEpicTitle", d.Palette.SemanticEpicTitle, "#bb9af7"},
 		{"SemanticStoryTitle", d.Palette.SemanticStoryTitle, "#7dcfff"},
@@ -117,6 +119,8 @@ func TestDefaultDarkTheme_ForegroundTokensAvoidPureWhite(t *testing.T) {
 		"Priority1Title":               d.Palette.Priority1Title,
 		"Priority2Title":               d.Palette.Priority2Title,
 		"Priority3Title":               d.Palette.Priority3Title,
+		"TaskContext":                  d.Palette.TaskContext,
+		"TaskContextDeferred":          d.Palette.TaskContextDeferred,
 		"SemanticBugTitle":             d.Palette.SemanticBugTitle,
 		"SemanticEpicTitle":            d.Palette.SemanticEpicTitle,
 		"SemanticStoryTitle":           d.Palette.SemanticStoryTitle,
@@ -161,6 +165,8 @@ func TestDefaultLightTheme_AllFieldsPopulated(t *testing.T) {
 		"Priority1Title":               l.Palette.Priority1Title,
 		"Priority2Title":               l.Palette.Priority2Title,
 		"Priority3Title":               l.Palette.Priority3Title,
+		"TaskContext":                  l.Palette.TaskContext,
+		"TaskContextDeferred":          l.Palette.TaskContextDeferred,
 		"SemanticBugTitle":             l.Palette.SemanticBugTitle,
 		"SemanticEpicTitle":            l.Palette.SemanticEpicTitle,
 		"SemanticStoryTitle":           l.Palette.SemanticStoryTitle,
@@ -198,6 +204,29 @@ func TestDefaultLightTheme_AllFieldsPopulated(t *testing.T) {
 	}
 	if l.CursorTextColor != "#1f1b35" {
 		t.Errorf("CursorTextColor = %q, want #1f1b35", l.CursorTextColor)
+	}
+}
+
+func TestDefaultTaskContextColorsContrastWithRowAlerts(t *testing.T) {
+	cases := []struct {
+		name       string
+		foreground string
+		background string
+		minimum    float64
+	}{
+		{"dark waiting", DefaultDarkTheme().Palette.TaskContext, "#2e1515", 4.5},
+		{"dark overdue", DefaultDarkTheme().Palette.TaskContext, "#2d1f0e", 4.5},
+		{"dark deferred waiting", DefaultDarkTheme().Palette.TaskContextDeferred, "#2e1515", 4.5},
+		{"dark deferred overdue", DefaultDarkTheme().Palette.TaskContextDeferred, "#2d1f0e", 4.5},
+		{"light waiting", DefaultLightTheme().Palette.TaskContext, "#fde8e8", 4.5},
+		{"light overdue", DefaultLightTheme().Palette.TaskContext, "#fef3e2", 4.5},
+		{"light deferred waiting", DefaultLightTheme().Palette.TaskContextDeferred, "#fde8e8", 3.0},
+		{"light deferred overdue", DefaultLightTheme().Palette.TaskContextDeferred, "#fef3e2", 3.0},
+	}
+	for _, tc := range cases {
+		if got := wcagContrastRatio(t, tc.foreground, tc.background); got < tc.minimum {
+			t.Errorf("%s contrast = %.2f:1, want at least %.1f:1", tc.name, got, tc.minimum)
+		}
 	}
 }
 

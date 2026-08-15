@@ -1,0 +1,13 @@
+{
+  "name": "task-context-reserved-segment-narrow",
+  "fixture": "narrow",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "an over-budget context keeps its reserved row segment", "assert": "contains", "value": "[distributed…]" },
+    { "type": "key", "label": "select the long-context task", "key": "end" },
+    { "type": "key", "label": "Peek reveals the complete context beyond the row budget", "key": "shift+enter" },
+    { "type": "assert", "assert": "contains", "value": "[distributed-systems]" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

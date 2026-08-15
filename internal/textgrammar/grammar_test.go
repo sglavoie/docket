@@ -28,7 +28,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlyEightCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlyNineCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -41,10 +41,10 @@ func TestSharedParserAdvertisesExactlyEightCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 8 {
-		t.Fatalf("capture definitions = %d, want 8: %+v", len(defs), defs)
+	if len(defs) != 9 {
+		t.Fatalf("capture definitions = %d, want 9: %+v", len(defs), defs)
 	}
-	wantForms := []string{"!1-3", "#tag", "@date", "$destination", "*pin", "%project", ">parent", "<child"}
+	wantForms := []string{"!1-3", "#tag", "##context", "@date", "$destination", "*pin", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -106,6 +106,26 @@ func TestParseNamespacedTagsAcrossSupportedSurfaces(t *testing.T) {
 				t.Fatalf("Text = %q, want Fix parser", parsed.Text)
 			}
 		})
+	}
+}
+
+func TestParseContextDoesNotCollideWithTagTrigger(t *testing.T) {
+	parsed := Parse("##frontend Fix bug #ui", SurfaceCapture)
+	if parsed.Text != "Fix bug" {
+		t.Fatalf("Text = %q, want Fix bug", parsed.Text)
+	}
+	contexts := parsed.TokensFor(FieldContext)
+	tags := parsed.TokensFor(FieldTag)
+	if len(contexts) != 1 || contexts[0].Value != "frontend" {
+		t.Fatalf("context tokens = %+v, want frontend", contexts)
+	}
+	if len(tags) != 1 || tags[0].Value != "ui" {
+		t.Fatalf("tag tokens = %+v, want ui", tags)
+	}
+
+	parsed = Parse("Keep a##b and ## bare", SurfaceCapture)
+	if len(parsed.TokensFor(FieldContext)) != 0 || parsed.Text != "Keep a##b and ## bare" {
+		t.Fatalf("non-token context forms were consumed: %+v", parsed)
 	}
 }
 
@@ -178,7 +198,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 		{
 			name: "capture", surface: SurfaceCapture,
 			want: map[Field][]string{
-				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
+				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldContext: {"##context"}, FieldDue: {"@date"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 				FieldProject: {"%project"}, FieldParent: {">parent"},
 				FieldChild: {"<child"},
@@ -188,7 +208,8 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			name: "edit", surface: SurfaceEdit,
 			want: map[Field][]string{
 				FieldPriority: {"!1-3", "!0"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
-				FieldDue: {"@date", "@0"}, FieldDestination: {"$destination"},
+				FieldContext: {"##context", "##0"},
+				FieldDue:     {"@date", "@0"}, FieldDestination: {"$destination"},
 				FieldPinned:  {"*pin", "*unpin"},
 				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
 				FieldChild: {"<child"},
@@ -197,7 +218,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 		{
 			name: "outline", surface: SurfaceOutline,
 			want: map[Field][]string{
-				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldDue: {"@date"},
+				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldContext: {"##context"}, FieldDue: {"@date"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 			},
 		},

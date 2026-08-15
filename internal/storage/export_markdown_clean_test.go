@@ -102,6 +102,18 @@ func TestWriteProjectMarkdownClean_Tags(t *testing.T) {
 	}
 }
 
+func TestWriteProjectMarkdownClean_ContextBesideTags(t *testing.T) {
+	task := mustTask("t1", 1, "Contextual")
+	task.Context = "platform-api"
+	task.Tags = []string{"backend"}
+	p := newProject("Context", task)
+	out := WriteProjectMarkdownClean(p)
+
+	if !strings.Contains(out, "context: platform-api\ntags: backend") {
+		t.Errorf("expected context before tags: %q", out)
+	}
+}
+
 func TestWriteProjectMarkdownClean_NoTagsWhenEmpty(t *testing.T) {
 	task := mustTask("t1", 1, "No Tags")
 	task.Tags = []string{}

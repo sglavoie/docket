@@ -470,7 +470,7 @@ func renderProspectiveFilterCount(count int) string {
 }
 
 // newFilterTagsPicker is the ft multi-select picker over the active scope's
-// tags, seeded from the active tag filter facet.
+// tag-and-context vocabulary, seeded from the active tag filter facet.
 func (m *AppModel) newFilterTagsPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
@@ -478,7 +478,7 @@ func (m *AppModel) newFilterTagsPicker(
 	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
 		projects = m.crossOutliner.workModeScopeProjects()
 	}
-	tagList := BuildProjectsTagList(projects, false)
+	tagList := BuildTagFacetList(projects, false)
 	source := taskTagListSource(tagList, false)
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {

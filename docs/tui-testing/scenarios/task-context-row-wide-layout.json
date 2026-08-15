@@ -1,0 +1,11 @@
+{
+  "name": "task-context-row-wide-layout",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the task-level context is a dedicated badge before the title", "assert": "contains", "value": "[platform] Add password validation" },
+    { "type": "assert", "label": "wide rows retain the task's independent tag axis", "assert": "contains", "value": "#backend #security" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

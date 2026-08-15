@@ -426,6 +426,8 @@ func TestTaskLineEditRequestMapsValidatedPatch(t *testing.T) {
 		prioritySet:  true,
 		tagsToAdd:    []string{"new"},
 		tagsToRemove: []string{"old"},
+		contextValue: "platform",
+		contextSet:   true,
 		dueDate:      &tomorrow,
 		dueDateSet:   true,
 		state:        models.StateDoing,
@@ -441,6 +443,9 @@ func TestTaskLineEditRequestMapsValidatedPatch(t *testing.T) {
 	}
 	if !req.DueSet || req.Due == nil || !req.Due.Equal(tomorrow) {
 		t.Fatalf("request due patch = set %v due %v", req.DueSet, req.Due)
+	}
+	if req.Context == nil || *req.Context != "platform" {
+		t.Fatalf("request context patch = %v, want platform", req.Context)
 	}
 }
 

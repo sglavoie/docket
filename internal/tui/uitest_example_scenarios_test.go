@@ -52,6 +52,10 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"outline-editor-guard.json",
 		"search-restoration.json",
 		"state-chord.json",
+		"task-context-reserved-segment-narrow.json",
+		"task-context-row-narrow-layout.json",
+		"task-context-row-wide-layout.json",
+		"task-context-tag-facet.json",
 		"theme-toggle.json",
 		"in-app-help.json",
 	}

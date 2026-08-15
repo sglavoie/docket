@@ -12,9 +12,11 @@ import (
 
 // Default hex colors for priority title styling (Tokyo Night palette).
 const (
-	defaultColorPriority1Title = "#f7768e"
-	defaultColorPriority2Title = "#e0af68"
-	defaultColorPriority3Title = "#7aa2f7"
+	defaultColorPriority1Title      = "#f7768e"
+	defaultColorPriority2Title      = "#e0af68"
+	defaultColorPriority3Title      = "#7aa2f7"
+	defaultColorTaskContext         = "#73daca"
+	defaultColorTaskContextDeferred = "#4f948f"
 
 	defaultColorSemanticBugTitle             = "#ff9e9e"
 	defaultColorSemanticEpicTitle            = "#bb9af7"
@@ -35,9 +37,11 @@ const (
 
 // Priority title foreground colors, user-overridable via PaletteColors.
 var (
-	ColorPriority1Title = lipgloss.Color(defaultColorPriority1Title)
-	ColorPriority2Title = lipgloss.Color(defaultColorPriority2Title)
-	ColorPriority3Title = lipgloss.Color(defaultColorPriority3Title)
+	ColorPriority1Title      = lipgloss.Color(defaultColorPriority1Title)
+	ColorPriority2Title      = lipgloss.Color(defaultColorPriority2Title)
+	ColorPriority3Title      = lipgloss.Color(defaultColorPriority3Title)
+	ColorTaskContext         = lipgloss.Color(defaultColorTaskContext)
+	ColorTaskContextDeferred = lipgloss.Color(defaultColorTaskContextDeferred)
 
 	ColorSemanticBugTitle             = lipgloss.Color(defaultColorSemanticBugTitle)
 	ColorSemanticEpicTitle            = lipgloss.Color(defaultColorSemanticEpicTitle)
@@ -148,6 +152,8 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorPriority1Title = fallback(p.Priority1Title, d.Priority1Title)
 	ColorPriority2Title = fallback(p.Priority2Title, d.Priority2Title)
 	ColorPriority3Title = fallback(p.Priority3Title, d.Priority3Title)
+	ColorTaskContext = fallback(p.TaskContext, d.TaskContext)
+	ColorTaskContextDeferred = fallback(p.TaskContextDeferred, d.TaskContextDeferred)
 
 	ColorSemanticBugTitle = fallback(p.SemanticBugTitle, d.SemanticBugTitle)
 	ColorSemanticEpicTitle = fallback(p.SemanticEpicTitle, d.SemanticEpicTitle)

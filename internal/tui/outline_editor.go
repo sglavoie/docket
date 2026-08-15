@@ -159,6 +159,7 @@ func outlineDumpLine(task *models.Task, depth int) string {
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPriority)
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDue)
 	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldTag)
+	contextDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldContext)
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDestination)
 	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPinned)
 	if task.Priority != models.PriorityUnset {
@@ -169,6 +170,9 @@ func outlineDumpLine(task *models.Task, depth int) string {
 	}
 	for _, tag := range task.Tags {
 		segments = append(segments, tagDefinition.Trigger+tag)
+	}
+	if task.Context != "" {
+		segments = append(segments, contextDefinition.Trigger+task.Context)
 	}
 	// The lifecycle state is dumped, but Today and Next membership is not: an
 	// omitted $today cannot remove a membership (the application layer preserves

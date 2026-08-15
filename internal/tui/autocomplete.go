@@ -37,9 +37,9 @@ type ACSuggestion struct {
 	Value   string
 }
 
-// ACTrigger maps a trigger character to an autocomplete mode constant.
+// ACTrigger maps trigger text to an autocomplete mode constant.
 type ACTrigger struct {
-	Char byte
+	Text string
 	Mode int
 }
 
@@ -106,27 +106,31 @@ func (ac *AutocompleteState) Selected() ACSuggestion {
 }
 
 // DetectTrigger scans the input string backward from the end to find the most
-// recent trigger character. Triggers only activate at the start of input or
-// after whitespace. Returns the mode, trigger position, and partial text typed
-// after the trigger. Returns acModeNone if no trigger is found.
+// recent trigger. Triggers only activate at the start of input or after
+// whitespace. When triggers share a prefix, the longest matching trigger wins.
+// Returns the mode, trigger position, and partial text typed after the trigger.
+// Returns acModeNone if no trigger is found.
 func DetectTrigger(input string, triggers []ACTrigger) (mode int, pos int, partial string) {
 	if len(input) == 0 {
 		return acModeNone, 0, ""
 	}
 
 	for i := len(input) - 1; i >= 0; i-- {
-		ch := input[i]
-		if ch == ' ' || ch == '\n' {
+		if input[i] == ' ' || input[i] == '\n' {
 			break
 		}
 		atStartOrAfterSpace := i == 0 || input[i-1] == ' ' || input[i-1] == '\n'
 		if !atStartOrAfterSpace {
 			continue
 		}
+		var longest ACTrigger
 		for _, t := range triggers {
-			if ch == t.Char {
-				return t.Mode, i, input[i+1:]
+			if t.Text != "" && len(t.Text) > len(longest.Text) && strings.HasPrefix(input[i:], t.Text) {
+				longest = t
 			}
+		}
+		if longest.Text != "" {
+			return longest.Mode, i, input[i+len(longest.Text):]
 		}
 	}
 	return acModeNone, 0, ""
@@ -165,37 +169,37 @@ func (ac *AutocompleteState) ClampCursor() {
 
 // BuildAcceptedInput constructs the new input value after accepting a suggestion.
 // It replaces from the trigger position to the end of the input with
-// triggerChar + selected.Value + " ".
-func (ac *AutocompleteState) BuildAcceptedInput(input string, triggerChar byte) string {
+// triggerText + selected.Value + " ".
+func (ac *AutocompleteState) BuildAcceptedInput(input, triggerText string) string {
 	if !ac.IsActive() {
 		return input
 	}
 	selected := ac.Selected()
-	return input[:ac.TriggerPos] + string(triggerChar) + selected.Value + " "
+	return input[:ac.TriggerPos] + triggerText + selected.Value + " "
 }
 
 // BuildAcceptedInputAt is the cursor-aware form used by single-line editors.
 // It replaces the active token only through cursorByte and preserves any text
 // after the cursor, so accepting a completion in the middle of a draft never
 // discards trailing tokens.
-func (ac *AutocompleteState) BuildAcceptedInputAt(input string, cursorByte int, triggerChar byte) string {
+func (ac *AutocompleteState) BuildAcceptedInputAt(input string, cursorByte int, triggerText string) string {
 	if !ac.IsActive() {
 		return input
 	}
 	cursorByte = max(ac.TriggerPos, min(cursorByte, len(input)))
 	selected := ac.Selected()
-	return input[:ac.TriggerPos] + string(triggerChar) + selected.Value + " " + input[cursorByte:]
+	return input[:ac.TriggerPos] + triggerText + selected.Value + " " + input[cursorByte:]
 }
 
-// TriggerCharForMode returns the trigger character for the given autocomplete mode,
-// using the provided trigger definitions. Returns 0 if mode is not found.
-func TriggerCharForMode(mode int, triggers []ACTrigger) byte {
+// TriggerCharForMode returns the trigger text for the given autocomplete mode,
+// using the provided trigger definitions. Returns an empty string if mode is not found.
+func TriggerCharForMode(mode int, triggers []ACTrigger) string {
 	for _, t := range triggers {
 		if t.Mode == mode {
-			return t.Char
+			return t.Text
 		}
 	}
-	return 0
+	return ""
 }
 
 // RenderDropdownWithLimit renders the dropdown constrained to at most rowBudget

@@ -5,15 +5,15 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "select the row whose title the width clips", "key": "end" },
-    { "type": "assert", "label": "the row itself clips the title", "assert": "contains", "value": "Investigate intermittent ti…" },
+    { "type": "assert", "label": "the reserved context shortens but does not erase the row title", "assert": "contains", "value": "[distributed…] Investigate …" },
     { "type": "key", "label": "open Peek on the clipped title", "key": "shift+enter" },
-    { "type": "assert", "label": "Peek completes the title from the character the row dropped", "assert": "contains", "value": "meout when syncing very large project archives over" },
+    { "type": "assert", "label": "Peek completes the title from the character the row dropped", "assert": "contains", "value": "intermittent timeout when syncing very large project" },
     { "type": "assert", "assert": "contains", "value": "slow connections" },
     { "type": "assert", "label": "the continuation never restates the head the row showed", "assert": "not_contains", "value": "Investigate intermittent timeout" },
     { "type": "assert", "label": "the continuation raises the cap instead of displacing the dates line", "assert": "contains", "value": "created" },
-    { "type": "assert", "assert": "contains", "value": "Tags: #infrastructure #reliability #sync" },
+    { "type": "assert", "label": "Peek expands the context before the independently truncated tags", "assert": "contains", "value": "Tags: [distributed-systems] #infrastructure #reliab…" },
     { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },
-    { "type": "assert", "assert": "not_contains", "value": "meout when syncing very large project archives over" },
+    { "type": "assert", "assert": "not_contains", "value": "intermittent timeout when syncing very large project" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

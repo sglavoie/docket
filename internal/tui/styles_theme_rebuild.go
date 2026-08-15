@@ -214,6 +214,7 @@ func rebuildMiscStyles() {
 	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(highlightFg).Bold(true)
 	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
 	TagInlineStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
+	ContextBadgeStyle = lipgloss.NewStyle().Foreground(ColorTaskContext).Bold(true)
 	CheckmarkStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	WarningIconStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	ErrorIconStyle = lipgloss.NewStyle().Foreground(ColorError)

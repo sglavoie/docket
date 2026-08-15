@@ -30,6 +30,8 @@ type OutlinePlanLine struct {
 	// Tags replace the task's tag set outright. The dump is always complete, so
 	// an omitted tag is a removal rather than an absent instruction.
 	Tags []string
+	// Context replaces the single-valued task context; empty clears it.
+	Context string
 	// Due replaces the calendar due date; nil clears it.
 	Due *time.Time
 	// Pinned replaces the task's pinned state outright. The dump is always
@@ -208,6 +210,7 @@ type preparedOutlineLine struct {
 	title    string
 	priority int
 	tags     []string
+	context  string
 	task     *models.Task
 }
 
@@ -252,12 +255,19 @@ func prepareOutlineLine(snap Snapshot, project *models.Project, line OutlinePlan
 	if err != nil {
 		return preparedOutlineLine{}, err
 	}
+	context := ""
+	if line.Context != "" {
+		context, err = models.NormalizeTaskContext(line.Context)
+		if err != nil {
+			return preparedOutlineLine{}, invalidInput("context", err.Error())
+		}
+	}
 	if line.Destination != "" {
 		if _, ok := ParseCaptureDestination(string(line.Destination)); !ok {
 			return preparedOutlineLine{}, invalidInput("destination", InvalidCaptureDestinationError(string(line.Destination)).Error())
 		}
 	}
-	item := preparedOutlineLine{line: line, title: title, priority: line.Priority, tags: tags}
+	item := preparedOutlineLine{line: line, title: title, priority: line.Priority, tags: tags, context: context}
 	if line.TaskID == "" {
 		return item, nil
 	}
@@ -289,6 +299,7 @@ func (s *Service) applyOutlinePlan(project *models.Project, base *storage.Projec
 		item.task.Title = item.title
 		item.task.Priority = item.priority
 		item.task.Tags = append([]string{}, item.tags...)
+		item.task.Context = item.context
 		item.task.DueDate = cloneCalendarDatePtr(item.line.Due)
 		item.task.ApplyPinned(item.line.Pinned, now)
 	}
@@ -531,6 +542,7 @@ func outlineTaskChanged(base, task *models.Task, baseRank, rank int) bool {
 	}
 	return base.Title != task.Title ||
 		base.Priority != task.Priority ||
+		base.Context != task.Context ||
 		base.State() != task.State() ||
 		base.Pinned != task.Pinned ||
 		baseRank != rank ||

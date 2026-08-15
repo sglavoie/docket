@@ -26,6 +26,10 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
+	p.parseContextTokens(parsed.TokensFor(textgrammar.FieldContext))
+	if p.err != nil {
+		return
+	}
 	p.parseDueTokens(parsed.TokensFor(textgrammar.FieldDue))
 	if p.err != nil {
 		return
@@ -55,6 +59,32 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 		return
 	}
 	p.parseTerminalAdoption()
+}
+
+func (p *quickCaptureParser) parseContextTokens(tokens []textgrammar.Token) {
+	definition, ok := textgrammar.DefinitionFor(p.surface, textgrammar.FieldContext)
+	if !ok {
+		p.failf("context grammar is unavailable")
+		return
+	}
+	for _, token := range tokens {
+		if token.Value == "0" {
+			if p.surface == textgrammar.SurfaceOutline {
+				p.failf("omit %s to clear the context here", definition.Forms[0])
+				return
+			}
+			p.failf("%s is not available when capturing; a new task starts without a context", definition.Trigger+token.Value)
+			return
+		}
+		context, err := models.NormalizeTaskContext(token.Value)
+		if err != nil {
+			if p.failf("invalid context %s%s: %s", definition.Trigger, token.Value, err) {
+				return
+			}
+			continue
+		}
+		p.result.context = context
+	}
 }
 
 // parsePinTokens reads the pin token both surfaces of this parser tokenize. The

@@ -1,0 +1,18 @@
+{
+  "name": "task-context-tag-facet",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the tag-and-context filter facet", "key": "f" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Tags" },
+    { "type": "assert", "label": "the context joins the usage-derived facet vocabulary", "assert": "contains", "value": "[ ] platform" },
+    { "type": "key", "label": "move from backend to platform", "key": "down" },
+    { "type": "key", "label": "select the context value", "key": "space" },
+    { "type": "key", "label": "apply the facet", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "a selected facet value matches the task's context", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "label": "unrelated tasks are filtered out", "assert": "not_contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

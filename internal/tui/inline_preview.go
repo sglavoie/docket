@@ -200,7 +200,7 @@ func inlinePeekCommentsLine(task *models.Task, width int) string {
 }
 
 func inlinePeekTagsLine(task *models.Task, width int) string {
-	if task == nil || len(task.Tags) == 0 || width <= 0 {
+	if task == nil || width <= 0 {
 		return ""
 	}
 
@@ -210,11 +210,18 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 			tags = append(tags, "#"+tag)
 		}
 	}
-	if len(tags) == 0 {
+	showFullContext := lipgloss.Width(task.Context) > 12
+	if len(tags) == 0 && !showFullContext {
 		return ""
 	}
-	line := MutedStyle.Render("Tags: ") +
-		TagInlineStyle.Bold(true).Render(strings.Join(tags, " "))
+	parts := make([]string, 0, 2)
+	if showFullContext {
+		parts = append(parts, taskContextBadgeStyle(task).Render("["+task.Context+"]"))
+	}
+	if len(tags) > 0 {
+		parts = append(parts, TagInlineStyle.Bold(true).Render(strings.Join(tags, " ")))
+	}
+	line := MutedStyle.Render("Tags: ") + strings.Join(parts, " ")
 	return truncateIntentional(line, width, "…")
 }
 

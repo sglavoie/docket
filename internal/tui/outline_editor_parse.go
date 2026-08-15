@@ -196,6 +196,7 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			Title:      parsed.title,
 			Priority:   parsed.priority,
 			Tags:       parsed.tags,
+			Context:    parsed.context,
 			Due:        parsed.dueDate,
 			Pinned:     parsed.pinned,
 		}

@@ -47,10 +47,10 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-10 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-11 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -64,7 +64,7 @@ not reproduce these checks with independent saves.
 
 ## Task model
 
-Schema 10 task Markdown stores generic tasks with these supported fields:
+Schema 11 task Markdown stores generic tasks with these supported fields:
 
 | Group | Fields |
 | --- | --- |
@@ -72,12 +72,14 @@ Schema 10 task Markdown stores generic tasks with these supported fields:
 | Content | title and description |
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
 | Planning metadata | priority, due date, deferral instant (`deferred`), pin, pin timestamp |
-| Organization | project-local parent and tags |
+| Organization | project-local parent, single-valued task context, and tags |
 | Rich records | checklist, comments, attachments |
 | Lifecycle | created, updated, `state_changed`, completed timestamps |
 
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
-records, not a catalog. The due value is a calendar date; the deferral value is
+records, not a catalog. Context is an optional task-level label validated like a
+tag; it is unrelated to the retired v4 project-level context folded into
+project tags during schema 7 migration. The due value is a calendar date; the deferral value is
 an RFC3339Nano instant, so a deferral can expire later the same day.
 
 `StateChangedAt` (`state_changed`) is the state clock and `UpdatedAt` is the
@@ -502,6 +504,13 @@ capture and header capture are never told apart only by where the task landed.
 `A` on a project header row keeps rejecting, since a project has no task to
 parent under.
 
+`##context` is the singleton task-context sigil. It shares tag normalization,
+but projects one optional field rather than a repeatable tag set. Capture and
+outline input reject `##0`; inline edit consumes it as the explicit clear while
+the outline buffer clears context by omitting the token. That permanently
+reserves `"0"` as a context name even though `!0`, `@0`, and `>0` retain their
+ordinary meanings.
+
 `*pin`'s value set is closed to `pin` and `unpin`, and an unrecognized value is
 not consumed: `Refactor *args handling` keeps `*args` in its title. That is the
 tag rejection behavior rather than priority's, and the asymmetry is deliberate.
@@ -623,8 +632,11 @@ including deferred work. It ranks title matches before description, tag, and
 project metadata matches, then by fuzzy score and stable project/task order;
 `project#shortID` is an exact qualifier. Mode and facet changes are unavailable
 during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
-Ordinary filter facets compose as priority threshold, OR states, AND tags, due
-bucket, completion age, and deferred-only and remain session-only. Completion
+Ordinary filter facets compose as priority threshold, OR states, AND tag/context
+values, due bucket, completion age, and deferred-only and remain session-only.
+The `ft` vocabulary is the union of task tags and task contexts; each selected
+value matches either field while different selected values still compose with
+AND. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
 predicate belongs to the one cleanup facet in the clear count. `doctor` reports
@@ -651,6 +663,9 @@ inside it.
 The Outliner remains full-width at every supported terminal size. Rows carry
 operational scan signals directly: workflow state, conditional high priority,
 due, deferral, and checklist progress.
+The task context badge is reserved beside the ancestor marker: neither enters
+the drop ladder at narrow widths. Context values use at most 12 columns in the
+row and move to Peek in full when longer.
 Outliner rows omit short task IDs.
 
 `H`, `M`, and `L` are the screen-relative jumps, the third kind beside the
@@ -969,7 +984,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-10 generic Task Markdown
+        ├── tasks.md         # strict schema-11 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -1022,7 +1037,7 @@ workspace, not an independent backup.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-10 content. A stale writer is compared
+Project revisions hash canonical schema-11 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -1036,12 +1051,13 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 11 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 12 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-8 workspace crosses the schema-9 state-clock path,
-a schema-9 workspace crosses the schema-10 defer-rename path, and a schema-10
-workspace finishes on the schema-11 defer-instant path:
+a schema-9 workspace crosses the schema-10 defer-rename path, a schema-10
+workspace crosses the schema-11 defer-instant path, and a schema-11 workspace
+finishes on the schema-12 task-context path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -1114,8 +1130,16 @@ workspace finishes on the schema-11 defer-instant path:
    is frozen into the file, so a workspace synced across timezones stops waking
    at each machine's own midnight. No down-migration exists: recovery is manual
    extraction of that archive into a separate workspace.
+18. Validate every schema-10 project document, then lift it to schema 11 by
+   adding the optional task-level `context` field with an empty value on every
+   existing task. This new field is distinct from the retired v4 project-level
+   context that schema 7 folded into project tags.
+19. Publish `pre-context-v12-<UTC>.tar.gz` plus its audit, atomically activate
+   catalog schema 12 and task Markdown schema 11 across active and archived
+   projects, and clear undo/redo history whose retained bytes carry the
+   schema-10 task-document marker.
 
-Each boundary is idempotent: repeated schema-11 startup neither reconverts data
+Each boundary is idempotent: repeated schema-12 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

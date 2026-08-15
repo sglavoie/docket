@@ -49,6 +49,7 @@ type TaskLineEditRequest struct {
 	Priority             *int
 	DueSet               bool
 	Due                  *time.Time
+	Context              *string
 	Pinned               *bool
 	Destination          *CaptureDestination
 	TagsToAdd            []string
@@ -77,6 +78,7 @@ type preparedTaskLineEdit struct {
 	priority           *int
 	dueSet             bool
 	due                *time.Time
+	context            *string
 	pinned             *bool
 	tags               []string
 	destination        *CaptureDestination
@@ -343,6 +345,17 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 		pinned := *req.Pinned
 		prepared.pinned = &pinned
 	}
+	if req.Context != nil {
+		context := ""
+		if *req.Context != "" {
+			var err error
+			context, err = models.NormalizeTaskContext(*req.Context)
+			if err != nil {
+				return preparedTaskLineEdit{}, invalidInput("context", err.Error())
+			}
+		}
+		prepared.context = &context
+	}
 
 	add, err := normalizeTagList(req.TagsToAdd)
 	if err != nil {
@@ -494,6 +507,10 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 	}
 	if prepared.dueSet && !calendarDatePtrsEqual(task.DueDate, prepared.due) {
 		task.DueDate = cloneCalendarDatePtr(prepared.due)
+		changed = true
+	}
+	if prepared.context != nil && task.Context != *prepared.context {
+		task.Context = *prepared.context
 		changed = true
 	}
 	if !slices.Equal(task.Tags, prepared.tags) {

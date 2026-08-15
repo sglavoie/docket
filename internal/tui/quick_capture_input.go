@@ -26,6 +26,7 @@ const (
 	acModeDestination        // Completing a $destination
 	acModeProject            // Completing a %project
 	acModePin                // Completing a *pin
+	acModeContext            // Completing a ##context
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -48,6 +49,7 @@ type quickCaptureResult struct {
 	priority          int
 	prioritySet       bool
 	tags              []string
+	context           string
 	dueDate           *time.Time
 	parentID          *string
 	children          []capturedChildRef
@@ -80,6 +82,7 @@ type quickCaptureInput struct {
 	// Autocomplete state
 	ac           AutocompleteState
 	tagCache     []string
+	contextCache []string
 	projectCache []*models.Project
 	triggers     []ACTrigger // Active triggers (may exclude %project)
 
@@ -139,10 +142,10 @@ func quickCaptureTriggers(skipProject bool) []ACTrigger {
 			continue
 		}
 		mode := autocompleteModeForField(definition.Field)
-		if mode == acModeNone || len(definition.Trigger) != 1 {
+		if mode == acModeNone {
 			continue
 		}
-		triggers = append(triggers, ACTrigger{Char: definition.Trigger[0], Mode: mode})
+		triggers = append(triggers, ACTrigger{Text: definition.Trigger, Mode: mode})
 	}
 	return triggers
 }
@@ -151,6 +154,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 	switch field {
 	case textgrammar.FieldTag:
 		return acModeTag
+	case textgrammar.FieldContext:
+		return acModeContext
 	case textgrammar.FieldParent:
 		return acModeParent
 	case textgrammar.FieldChild:
@@ -177,6 +182,7 @@ func autocompleteModeForField(field textgrammar.Field) int {
 func (q *quickCaptureInput) initCaches() {
 	// Cache all tags from the project
 	q.tagCache = CollectTagNamesForProject(q.project)
+	q.contextCache = CollectContextNamesForProject(q.project)
 
 	// Cache non-archived projects for cross-project capture
 	q.projectCache = make([]*models.Project, 0)
@@ -310,10 +316,14 @@ func (q *quickCaptureInput) autocompleteLiteralComplete() bool {
 		return false
 	}
 	switch mode {
-	case acModeTag:
-		definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
+	case acModeTag, acModeContext:
+		field := textgrammar.FieldTag
+		if mode == acModeContext {
+			field = textgrammar.FieldContext
+		}
+		definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, field)
 		parsed := textgrammar.Parse(definition.Trigger+partial, textgrammar.SurfaceCapture)
-		return parsed.Text == "" && len(parsed.TokensFor(textgrammar.FieldTag)) == 1
+		return parsed.Text == "" && len(parsed.TokensFor(field)) == 1
 	default:
 		return false
 	}
@@ -351,6 +361,8 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 	case acModeTag:
 		items = q.getTagSuggestions(partial)
 		items = filterUsedTagSuggestions(items, parsedLine.TokensFor(textgrammar.FieldTag))
+	case acModeContext:
+		items = q.getContextSuggestions(partial)
 	case acModeParent:
 		items = q.getParentSuggestions(partial, structuralCandidates(q.effectiveProject(parsedLine)))
 	case acModeChild:
@@ -377,6 +389,8 @@ func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 	switch mode {
 	case acModeParent:
 		return textgrammar.FieldParent, true
+	case acModeContext:
+		return textgrammar.FieldContext, true
 	case acModePriority:
 		return textgrammar.FieldPriority, true
 	case acModeDate:

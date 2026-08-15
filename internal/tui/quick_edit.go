@@ -30,6 +30,10 @@ type quickEditResult struct {
 	tagsToAdd    []string
 	tagsToRemove []string
 
+	contextValue string
+	contextSet   bool
+	contextClear bool
+
 	dueDate      *time.Time
 	dueDateSet   bool
 	dueDateClear bool
@@ -95,7 +99,7 @@ func parseQuickEditShared(input string, task *models.Task, project *models.Proje
 		effectiveProject: project,
 		strict:           strict,
 	}
-	if parser.applyDiagnostics() || parser.applyPriority() || parser.applyTags() ||
+	if parser.applyDiagnostics() || parser.applyPriority() || parser.applyTags() || parser.applyContext() ||
 		parser.applyDueDate() || parser.applyDestination() {
 		return parser.result, parser.errMsg
 	}
@@ -104,6 +108,25 @@ func parseQuickEditShared(input string, task *models.Task, project *models.Proje
 		return parser.result, parser.errMsg
 	}
 	return parser.finish()
+}
+
+func (p *quickEditParser) applyContext() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldContext)
+	if len(tokens) == 0 {
+		return false
+	}
+	p.result.contextSet = true
+	if tokens[0].Value == "0" {
+		p.result.contextClear = true
+		return false
+	}
+	context, err := models.NormalizeTaskContext(tokens[0].Value)
+	if err != nil {
+		definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldContext)
+		return p.setError(fmt.Sprintf("invalid context %s%s: %s", definition.Trigger, tokens[0].Value, err))
+	}
+	p.result.contextValue = context
+	return false
 }
 
 type quickEditParser struct {
@@ -758,6 +781,12 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 	for _, tag := range result.tagsToAdd {
 		if !preview.HasTag(tag) {
 			preview.Tags = append(preview.Tags, tag)
+		}
+	}
+	if result.contextSet {
+		preview.Context = result.contextValue
+		if result.contextClear {
+			preview.Context = ""
 		}
 	}
 	if result.dueDateSet {

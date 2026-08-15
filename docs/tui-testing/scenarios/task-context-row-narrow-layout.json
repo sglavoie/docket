@@ -1,0 +1,11 @@
+{
+  "name": "task-context-row-narrow-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the reserved context badge survives at minimum width", "assert": "contains", "value": "[platform]" },
+    { "type": "assert", "assert": "contains", "value": "Add password" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

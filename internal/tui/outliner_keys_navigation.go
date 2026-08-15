@@ -47,6 +47,13 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 		priority := result.priority
 		req.Priority = &priority
 	}
+	if result.contextSet {
+		context := result.contextValue
+		if result.contextClear {
+			context = ""
+		}
+		req.Context = &context
+	}
 	if result.dueDateSet && !result.dueDateClear {
 		req.Due = result.dueDate
 	}

@@ -99,6 +99,9 @@ func TestRebuildPaletteLightEmptyUsesDefaults(t *testing.T) {
 	if ColorMuted != lipgloss.Color("#4b5563") {
 		t.Errorf("light empty palette: ColorMuted = %v, want #4b5563", ColorMuted)
 	}
+	if ColorTaskContext != lipgloss.Color("#0f766e") || ColorTaskContextDeferred != lipgloss.Color("#5f8782") {
+		t.Errorf("light context palette = %v/%v", ColorTaskContext, ColorTaskContextDeferred)
+	}
 	if colorNormalText != "#111827" {
 		t.Errorf("light empty palette: colorNormalText = %q, want #111827", colorNormalText)
 	}
@@ -115,6 +118,9 @@ func TestRebuildPaletteDarkEmptyUsesDefaults(t *testing.T) {
 	}
 	if ColorMuted != lipgloss.Color("#8f98c7") {
 		t.Errorf("dark empty palette: ColorMuted = %v, want #8f98c7", ColorMuted)
+	}
+	if ColorTaskContext != lipgloss.Color("#73daca") || ColorTaskContextDeferred != lipgloss.Color("#4f948f") {
+		t.Errorf("dark context palette = %v/%v", ColorTaskContext, ColorTaskContextDeferred)
 	}
 	if colorNormalText != "#c0caf5" {
 		t.Errorf("dark empty palette: colorNormalText = %q, want #c0caf5", colorNormalText)
@@ -195,6 +201,8 @@ func TestAllPaletteColorVarsSetAfterDarkTheme(t *testing.T) {
 		{"ColorPriority1Title", ColorPriority1Title, "#f7768e"},
 		{"ColorPriority2Title", ColorPriority2Title, "#e0af68"},
 		{"ColorPriority3Title", ColorPriority3Title, "#7aa2f7"},
+		{"ColorTaskContext", ColorTaskContext, "#73daca"},
+		{"ColorTaskContextDeferred", ColorTaskContextDeferred, "#4f948f"},
 		{"ColorSemanticBugTitle", ColorSemanticBugTitle, "#ff9e9e"},
 		{"ColorSemanticEpicTitle", ColorSemanticEpicTitle, "#bb9af7"},
 		{"ColorSemanticStoryTitle", ColorSemanticStoryTitle, "#7dcfff"},
@@ -247,5 +255,18 @@ func TestRebuildPaletteSemanticHierarchyOverrides(t *testing.T) {
 		if check.got != lipgloss.Color(check.want) {
 			t.Errorf("%s = %v, want %s", check.name, check.got, check.want)
 		}
+	}
+}
+
+func TestRebuildPaletteTaskContextOverrides(t *testing.T) {
+	ApplyTheme(ThemeConfig{Name: "dark"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	rebuildPalette(config.PaletteColors{
+		TaskContext:         "#111111",
+		TaskContextDeferred: "#222222",
+	})
+	if ColorTaskContext != lipgloss.Color("#111111") || ColorTaskContextDeferred != lipgloss.Color("#222222") {
+		t.Fatalf("context override = %v/%v", ColorTaskContext, ColorTaskContextDeferred)
 	}
 }

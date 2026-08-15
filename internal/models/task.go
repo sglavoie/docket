@@ -40,6 +40,7 @@ type Task struct {
 	Priority      int           `json:"priority"`
 	ParentID      *string       `json:"parent_id,omitempty"`
 	Tags          []string      `json:"tags,omitempty"`
+	Context       string        `json:"context,omitempty"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
 	// StateChangedAt is the state clock: the instant WorkflowState last became

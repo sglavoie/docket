@@ -96,21 +96,24 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	reviewed.AddTag(reviewTaskTag)
 	reviewedToday := primaryRowsTask("reviewed-today", models.StateBacklog)
 	reviewedToday.AddTag(reviewTaskTag)
+	contextReviewed := primaryRowsTask("context-reviewed", models.StateBacklog)
+	contextReviewed.Context = reviewTaskTag
 	doing := primaryRowsTask("doing", models.StateDoing)
 	pinned := primaryRowsTask("pinned-review", models.StateDoing)
 	pinned.AddTag(reviewTaskTag)
 	pinned.Pinned = true
 	now := time.Now()
 	pinned.PinnedAt = &now
-	project := primaryRowsProject("alpha", reviewed, reviewedToday, doing, pinned)
+	project := primaryRowsProject("alpha", reviewed, reviewedToday, contextReviewed, doing, pinned)
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedToday.ID}})
 	outliner.selectOutlinerMode(ModeAll)
 
-	if countTaskRows(outliner, reviewed.ID) != 1 || countTaskRows(outliner, reviewedToday.ID) != 1 || countTaskRows(outliner, pinned.ID) != 1 {
+	if countTaskRows(outliner, reviewed.ID) != 1 || countTaskRows(outliner, reviewedToday.ID) != 1 ||
+		countTaskRows(outliner, contextReviewed.ID) != 1 || countTaskRows(outliner, pinned.ID) != 1 {
 		t.Fatalf("Review/Today/Pinned projections were not deduplicated: %v", visibleTaskIDs(outliner))
 	}
-	for _, id := range []string{reviewed.ID, reviewedToday.ID} {
+	for _, id := range []string{reviewed.ID, reviewedToday.ID, contextReviewed.ID} {
 		row, ok := findPlanningTaskRow(outliner, id)
 		if !ok || row.PromotedTag != reviewTaskTag {
 			t.Fatalf("task %q row = %+v found=%t, want Review lane", id, row, ok)
@@ -134,6 +137,9 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	}
 	if reviewed.State() != models.StateBacklog || !reviewed.HasTag(reviewTaskTag) {
 		t.Fatalf("Review projection mutated durable task: state=%s tags=%v", reviewed.State(), reviewed.Tags)
+	}
+	if contextReviewed.Context != reviewTaskTag || len(contextReviewed.Tags) != 0 {
+		t.Fatalf("Review projection mutated context task: context=%q tags=%v", contextReviewed.Context, contextReviewed.Tags)
 	}
 }
 

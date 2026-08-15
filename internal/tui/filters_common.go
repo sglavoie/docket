@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -99,7 +100,7 @@ func passesCommonFiltersAt(
 	}
 	if len(f.Tags) > 0 {
 		for tag := range f.Tags {
-			if !task.HasTag(tag) {
+			if !taskMatchesTagFacet(task, tag) {
 				return false
 			}
 		}
@@ -108,6 +109,12 @@ func passesCommonFiltersAt(
 		return false
 	}
 	return true
+}
+
+// taskMatchesTagFacet keeps the task model's tag and context axes distinct
+// while letting the existing filter facet match either vocabulary.
+func taskMatchesTagFacet(task *models.Task, value string) bool {
+	return task != nil && (task.HasTag(value) || task.HasContext(value))
 }
 
 func passesCompletionAgeFilterAt(task *models.Task, filter CompletionAgeFilter, now time.Time) bool {
@@ -268,6 +275,26 @@ func commonFilterParts(f *CommonFilterState) []string {
 // catalog and task usage.
 func CollectTagNamesForProject(project *models.Project) []string {
 	return tagNamesFromInfos(BuildProjectTagList(project, false))
+}
+
+// CollectContextNamesForProject returns the sorted unique task contexts used in
+// a project. Context has no project catalog, so task usage is its full vocabulary.
+func CollectContextNamesForProject(project *models.Project) []string {
+	if project == nil {
+		return nil
+	}
+	contexts := make(map[string]bool)
+	for _, task := range project.Tasks {
+		if task == nil || task.Context == "" {
+			continue
+		}
+		normalized, err := models.NormalizeTaskContext(task.Context)
+		if err == nil {
+			contexts[normalized] = true
+		}
+	}
+	result := maps.Keys(contexts)
+	return slices.Sorted(result)
 }
 
 func tagNamesFromInfos(infos []TagInfo) []string {

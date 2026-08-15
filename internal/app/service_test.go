@@ -22,6 +22,7 @@ func TestTaskResultTransactionIDPropagationFromFakeRepository(t *testing.T) {
 		Title:       "Write the report",
 		Priority:    1,
 		Tags:        []string{"#work", "urgent"},
+		Context:     " Client-Acme ",
 		Destination: app.CaptureDestinationBacklog,
 	})
 	if err != nil {
@@ -50,6 +51,9 @@ func TestTaskResultTransactionIDPropagationFromFakeRepository(t *testing.T) {
 	}
 	if !task.HasTag("work") || !task.HasTag("urgent") {
 		t.Errorf("tags = %v, want work+urgent", task.Tags)
+	}
+	if task.Context != "client-acme" {
+		t.Errorf("context = %q, want client-acme", task.Context)
 	}
 
 	cs, ok := repo.lastCommit()

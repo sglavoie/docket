@@ -355,6 +355,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 			Title:       parsed.title,
 			Priority:    priority,
 			Tags:        mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
+			Context:     parsed.context,
 			Due:         due,
 			ParentID:    parentID,
 			ChildIDs:    parsed.childIDs(),
@@ -461,6 +462,12 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 	// silently rather than carry it.
 	if reqs[0].Pinned {
 		m.errors = []lineError{{line: 1, message: "expanded mode cannot pin; submit the line with Enter instead"}}
+		return nil
+	}
+	// The expanded form has no context control, so expanding would drop the value
+	// silently rather than carry it.
+	if reqs[0].Context != "" {
+		m.errors = []lineError{{line: 1, message: "expanded mode cannot set context; submit the line with Enter instead"}}
 		return nil
 	}
 	return m.expandRequest(reqs[0])

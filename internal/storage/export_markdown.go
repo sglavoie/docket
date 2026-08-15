@@ -110,6 +110,10 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 
 	fmt.Fprintf(builder, "%s Task: %s\n", hashes, title)
 
+	if task.Context != "" {
+		fmt.Fprintf(builder, "context: %s\n", task.Context)
+	}
+
 	if len(task.Tags) > 0 {
 		fmt.Fprintf(builder, "tags: %s\n", strings.Join(task.Tags, ", "))
 	}

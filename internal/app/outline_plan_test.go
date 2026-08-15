@@ -30,7 +30,7 @@ func TestOutlinePlanCommitsEditsCreatesAndReparentsAsOneTransaction(t *testing.T
 		ExpectedRevision: repo.revisions[project.ID],
 		ScopeTaskIDs:     []string{alpha.ID, beta.ID, gamma.ID},
 		Lines: []app.OutlinePlanLine{
-			{SourceLine: 1, TaskID: beta.ID, Depth: 0, Title: "Beta renamed", Priority: 1, Tags: []string{"work"}, Destination: textgrammar.DestinationDoing},
+			{SourceLine: 1, TaskID: beta.ID, Depth: 0, Title: "Beta renamed", Priority: 1, Tags: []string{"work"}, Context: " Client-Acme ", Destination: textgrammar.DestinationDoing},
 			{SourceLine: 2, TaskID: alpha.ID, Depth: 1, Title: "Alpha"},
 			{SourceLine: 3, Depth: 1, Title: "Delta"},
 			{SourceLine: 4, TaskID: gamma.ID, Depth: 0, Title: "Gamma"},
@@ -59,6 +59,9 @@ func TestOutlinePlanCommitsEditsCreatesAndReparentsAsOneTransaction(t *testing.T
 	}
 	if len(beta.Tags) != 1 || beta.Tags[0] != "work" {
 		t.Errorf("beta tags = %v, want [work]", beta.Tags)
+	}
+	if beta.Context != "client-acme" {
+		t.Errorf("beta context = %q, want client-acme", beta.Context)
 	}
 	if alpha.ParentID == nil || *alpha.ParentID != beta.ID {
 		t.Errorf("alpha parent = %v, want %s", alpha.ParentID, beta.ID)
@@ -134,6 +137,28 @@ func TestOutlinePlanReconcilesPlanningOnce(t *testing.T) {
 	// have produced planning-2 and overwritten the first.
 	if got := string(changeset.Artifacts[0].Data); got != "planning-1" {
 		t.Errorf("planning artifact = %q, want the single first build", got)
+	}
+}
+
+func TestOutlinePlanCountsAContextOnlyEdit(t *testing.T) {
+	alpha := newTask("t1", 1, "Alpha")
+	alpha.Context = "legacy"
+	project := newProject("p1", "Alpha Project", alpha)
+	repo := newFakeRepo(project)
+
+	result, err := newTestService(repo).ApplyOutlinePlan(app.OutlinePlanRequest{
+		ProjectID:        project.ID,
+		ExpectedRevision: repo.revisions[project.ID],
+		ScopeTaskIDs:     []string{alpha.ID},
+		Lines: []app.OutlinePlanLine{
+			{SourceLine: 1, TaskID: alpha.ID, Depth: 0, Title: alpha.Title, Context: "platform"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("ApplyOutlinePlan: %v", err)
+	}
+	if alpha.Context != "platform" || len(result.Updated) != 1 || result.Updated[0].TaskID != alpha.ID {
+		t.Fatalf("context-only result = context %q updated %+v", alpha.Context, result.Updated)
 	}
 }
 

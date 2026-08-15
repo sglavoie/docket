@@ -72,7 +72,7 @@ func quickEditTriggers() []ACTrigger {
 		if mode == acModeNone || len(definition.Trigger) != 1 {
 			continue
 		}
-		triggers = append(triggers, ACTrigger{Char: definition.Trigger[0], Mode: mode})
+		triggers = append(triggers, ACTrigger{Text: definition.Trigger, Mode: mode})
 	}
 	return triggers
 }
@@ -391,15 +391,10 @@ func (q *QuickEditComponent) acceptSuggestion() {
 	cursorByte := q.cursorByteOffset()
 	triggerText := q.triggerText
 	if triggerText == "" {
-		triggerText = string(TriggerCharForMode(q.ac.Mode, q.triggers))
+		triggerText = TriggerCharForMode(q.ac.Mode, q.triggers)
 	}
 	selected := q.ac.Selected()
-	var value string
-	if len(triggerText) == 1 {
-		value = q.ac.BuildAcceptedInputAt(q.input.Value(), cursorByte, triggerText[0])
-	} else {
-		value = q.input.Value()[:q.ac.TriggerPos] + triggerText + selected.Value + " " + q.input.Value()[cursorByte:]
-	}
+	value := q.ac.BuildAcceptedInputAt(q.input.Value(), cursorByte, triggerText)
 	insertedPrefix := q.input.Value()[:q.ac.TriggerPos] + triggerText + selected.Value + " "
 	q.input.SetValue(value)
 	q.input.SetCursor(utf8.RuneCountInString(insertedPrefix))
@@ -417,7 +412,7 @@ func detectQuickEditTrigger(input string, triggers []ACTrigger) (mode, pos int, 
 	if mode == acModeNone {
 		return mode, pos, partial, "", false
 	}
-	return mode, pos, partial, string(input[pos]), false
+	return mode, pos, partial, TriggerCharForMode(mode, triggers), false
 }
 
 func quickEditTagSuggestions(values []string, partial, prefix string) []ACSuggestion {

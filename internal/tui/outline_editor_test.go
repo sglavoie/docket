@@ -49,6 +49,7 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 	due := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
 	project.Tasks[0].DueDate = &due
 	project.Tasks[0].Tags = []string{"epic"}
+	project.Tasks[0].Context = "platform"
 	project.Tasks[1].Tags = []string{"backend"}
 
 	now := time.Date(2026, 8, 10, 14, 2, 0, 0, time.UTC)
@@ -59,7 +60,7 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 
 	want := []string{
 		"# tt outline · project: Sonar · mode: Backlog · 2026-08-10 14:02",
-		"Ship auth rewrite !1 @2026-08-20 #epic $doing  [[tt:4f2a9c11]]",
+		"Ship auth rewrite !1 @2026-08-20 #epic ##platform $doing  [[tt:4f2a9c11]]",
 		"  Token refresh path #backend $backlog  [[tt:9b31de07]]",
 		"    Retry budget $backlog  [[tt:c0184aa2]]",
 		"Sweep dead flags $inbox  [[tt:71f0b3d5]]",
@@ -113,6 +114,7 @@ func TestOutlineRoundTripOfAnUneditedBufferIsFaithful(t *testing.T) {
 	project := outlineTestProject(t)
 	project.Tasks[0].Priority = 2
 	project.Tasks[0].Tags = []string{"epic", "auth"}
+	project.Tasks[0].Context = "platform"
 	// The due date is a calendar day, so the round trip has to be faithful at the
 	// instant the parser mints for that day; anything else would report an edit
 	// nobody made.
@@ -150,6 +152,9 @@ func TestOutlineRoundTripOfAnUneditedBufferIsFaithful(t *testing.T) {
 	}
 	if strings.Join(lines[0].Tags, ",") != "epic,auth" {
 		t.Errorf("round trip tags = %v, want [epic auth]", lines[0].Tags)
+	}
+	if lines[0].Context != "platform" {
+		t.Errorf("round trip context = %q, want platform", lines[0].Context)
 	}
 	if lines[1].Depth != 1 || lines[2].Depth != 2 {
 		t.Errorf("round trip depths = %d/%d, want 1/2", lines[1].Depth, lines[2].Depth)

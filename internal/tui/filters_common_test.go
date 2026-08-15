@@ -51,6 +51,44 @@ func TestBuildProjectsTagListMergesTaskCounts(t *testing.T) {
 	}
 }
 
+func TestBuildTagFacetListUnionsTagsAndContexts(t *testing.T) {
+	project := &models.Project{
+		Tasks: []*models.Task{
+			{Tags: []string{"shared", "tag-only"}, Context: "shared"},
+			{Context: "context-only"},
+			{WorkflowState: models.StateDone, Context: "done-context"},
+		},
+	}
+
+	got := summarizeTagInfos(BuildTagFacetList([]*models.Project{project}, false))
+	want := []string{"context-only:1", "done-context:1", "shared:2", "tag-only:1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildTagFacetList() = %v, want %v", got, want)
+	}
+
+	got = summarizeTagInfos(BuildTagFacetList([]*models.Project{project}, true))
+	want = []string{"context-only:1", "shared:2", "tag-only:1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildTagFacetList(excludeCompleted) = %v, want %v", got, want)
+	}
+
+	if got := summarizeTagInfos(BuildProjectTagList(project, false)); !reflect.DeepEqual(got, []string{"shared:1", "tag-only:1"}) {
+		t.Fatalf("BuildProjectTagList() leaked contexts into the tag editor vocabulary: %v", got)
+	}
+}
+
+func TestTaskMatchesTagFacetMatchesEitherAxis(t *testing.T) {
+	task := &models.Task{Tags: []string{"bug"}, Context: "platform"}
+	for _, value := range []string{"bug", "platform"} {
+		if !taskMatchesTagFacet(task, value) {
+			t.Errorf("taskMatchesTagFacet(%q) = false, want true", value)
+		}
+	}
+	if taskMatchesTagFacet(task, "other") {
+		t.Error("taskMatchesTagFacet(other) = true, want false")
+	}
+}
+
 func TestCollectTagNamesForProjectUsesTaskTags(t *testing.T) {
 	project := &models.Project{
 		Tasks: []*models.Task{

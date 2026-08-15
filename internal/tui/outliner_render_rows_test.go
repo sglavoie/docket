@@ -39,6 +39,38 @@ func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
 	}
 }
 
+func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
+	task := &models.Task{
+		ID:      "task",
+		Title:   "Readable title",
+		Context: "abcdefghijklmnop",
+		Tags:    []string{"secondary"},
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := outlinerRow{task: task, ProjectID: project.ID}
+
+	segments := outliner.buildTaskRowSegments(row, 60, nil)
+	if got := ansi.Strip(segments.contextSegment); got != "[abcdefghijk…] " {
+		t.Fatalf("context segment = %q, want a 12-column value budget", got)
+	}
+	if got := lipgloss.Width(segments.contextSegment); got != 15 {
+		t.Fatalf("context segment width = %d, want 15", got)
+	}
+	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
+		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
+		segments.statusIcon, segments.prioritySegment, segments.contextSegment, segments.tagSegment,
+		segments.indicators, segments.ancestorMarker,
+	) {
+		t.Fatal("context segment drifted between titleWidth and outlinerNonTitleWidth")
+	}
+
+	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 24, 24, 0, nil))
+	if !strings.Contains(plain, "[abcde…]") {
+		t.Fatalf("narrow row dropped its reserved context badge: %q", plain)
+	}
+}
+
 func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
 	const line = "▾ [project] (4)"
 	row := outlinerRow{OverdueCount: 2, TodayCount: 3}

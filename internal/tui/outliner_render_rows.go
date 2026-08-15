@@ -229,16 +229,16 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 // the render path and the viewport measurement path derive the title budget from
 // one formula instead of two that can drift apart.
 type taskRowSegments struct {
-	cursorPrefix, checkbox, prefixStr, foldIndicator    string
-	statusIcon, prioritySegment, tagSegment, indicators string
-	ancestorMarker                                      string
+	cursorPrefix, checkbox, prefixStr, foldIndicator string
+	statusIcon, prioritySegment, contextSegment      string
+	tagSegment, indicators, ancestorMarker           string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
-		s.statusIcon, s.prioritySegment, s.tagSegment, s.indicators,
-		s.ancestorMarker,
+		s.statusIcon, s.prioritySegment, s.contextSegment, s.tagSegment,
+		s.indicators, s.ancestorMarker,
 	), 1)
 }
 
@@ -261,6 +261,12 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
 	}
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
+	contextSegment := ""
+	if task.Context != "" {
+		contextBudget := max(min(rowWidth/5, 12), 6)
+		display := truncateToVisualWidth(task.Context, contextBudget)
+		contextSegment = taskContextBadgeStyle(task).Render("["+display+"]") + " "
+	}
 	tagSegment := ""
 	if m.columnConfig.IsVisible(ColTags) {
 		if rendered := renderTruncatedTags(task.Tags, 2, 8); rendered != "" {
@@ -292,6 +298,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		foldIndicator:   foldIndicator,
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
+		contextSegment:  contextSegment,
 		tagSegment:      tagSegment,
 		indicators:      indicatorSegments.render(),
 		ancestorMarker:  promotedAncestorMarker(row),
@@ -330,13 +337,14 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
 	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
 
-	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s%s",
 		segments.cursorPrefix,
 		segments.checkbox,
 		segments.prefixStr,
 		segments.foldIndicator,
 		segments.statusIcon,
 		segments.prioritySegment,
+		segments.contextSegment,
 		title,
 		segments.ancestorMarker,
 		segments.tagSegment,
@@ -630,11 +638,11 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	return HighlightText(title, positions, titleStyle)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, tagSegment, indicators, ancestorMarker string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, contextSegment, tagSegment, indicators, ancestorMarker string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
-		lipgloss.Width(prioritySegment) +
+		lipgloss.Width(prioritySegment) + lipgloss.Width(contextSegment) +
 		lipgloss.Width(tagSegment) + lipgloss.Width(indicators) +
 		lipgloss.Width(ancestorMarker)
 }

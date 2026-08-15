@@ -327,6 +327,19 @@ func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
 	}
 }
 
+func TestInlinePeekFoldsOnlyTruncatedContextIntoTagsLine(t *testing.T) {
+	short := &models.Task{Context: "platform"}
+	if line := inlinePeekTagsLine(short, 80); line != "" {
+		t.Fatalf("short context was duplicated in Peek: %q", ansi.Strip(line))
+	}
+
+	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
+	plain := ansi.Strip(inlinePeekTagsLine(long, 80))
+	if plain != "Tags: [platform-core] #bug" {
+		t.Fatalf("long context Peek line = %q", plain)
+	}
+}
+
 func TestInlinePeekShowsAttachmentNames(t *testing.T) {
 	task := &models.Task{
 		Attachments: []models.Attachment{
