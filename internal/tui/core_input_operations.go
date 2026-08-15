@@ -559,21 +559,35 @@ func (m *AppModel) coreNotesScope() NotesScope {
 }
 
 // coreCaptureMessage routes base capture to the workspace-owned System Inbox
-// and project-focus capture to that focused project. Cursor project identity is
-// deliberately ignored at base scope, with one exception: a project header row
-// names a project explicitly rather than incidentally, so capture there lands in
-// it. cursorProjectHeaderProject returns nil on every task row, so the invariant
-// holds verbatim everywhere else.
+// and project-focus capture to that focused project. A task Focus wins first
+// and captures a direct child of the focus root, which is an explicit
+// projection anchor pushed by Enter rather than the cursor. At the nesting cap
+// it degrades to plain capture into the focus root's project. Cursor project
+// identity is deliberately ignored at base scope, with one exception: a project
+// header row names a project explicitly rather than incidentally, so capture
+// there lands in it. cursorProjectHeaderProject returns nil on every task row,
+// so the invariant holds verbatim everywhere else.
 func (m *AppModel) coreCaptureMessage() tea.Msg {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return m.captureComposerMessage(nil, nil)
 	}
 	var project *models.Project
-	if out.project != nil {
-		project = out.project
-	} else if out.isProjectScoped() {
-		project = out.scopedProject()
+	if identity, focused := out.focusRootIdentity(); focused {
+		if task, focusProject := m.taskAndProjectForIdentity(identity); task != nil && focusProject != nil {
+			if taskAcceptsDeeperChild(task) {
+				return ShowTaskComposerMsg{Preset: m.focusChildComposerPreset(focusProject, task)}
+			}
+			project = focusProject
+		}
+	}
+	if project == nil {
+		switch {
+		case out.project != nil:
+			project = out.project
+		case out.isProjectScoped():
+			project = out.scopedProject()
+		}
 	}
 	if project == nil {
 		project = out.cursorProjectHeaderProject()

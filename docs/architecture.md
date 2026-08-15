@@ -494,13 +494,18 @@ Omitted destinations default roots to Inbox and children to Backlog, and adoptin
 children changes neither default, because `normalizeCaptureDestination` reads
 only `ParentID`.
 
-`coreCaptureMessage` resolves the destination project from the focused or scoped
-project, then from `cursorProjectHeaderProject()`, then from Unfiled. That middle
-step is the only place capture reads the cursor, and it is safe because the
-function returns nil on every task row: capture still never borrows a task
-cursor's project. The composer names whichever destination it resolved through
-`TaskComposerPreset.HeaderLabel`, set once in `captureComposerPreset`, so base
-capture and header capture are never told apart only by where the task landed.
+`coreCaptureMessage` resolves the destination from the task Focus root, then the
+scoped project, then `cursorProjectHeaderProject()`, then Unfiled. A Focus root
+that `taskAcceptsDeeperChild` admits opens the child preset built by
+`focusChildComposerPreset`; at the nesting cap only its project survives the
+step. Focus is not the cursor — it is the explicit projection anchor `Enter`
+pushed — so it precedes the header row. The header step is the only place
+capture reads the cursor, and it is safe because the function returns nil on
+every task row: capture still never borrows a task cursor's project. The
+composer names whichever destination it resolved through
+`TaskComposerPreset.HeaderLabel`, set in `captureComposerPreset` and
+`focusChildComposerPreset`, so the three routes are never told apart only by
+where the task landed.
 `A` on a project header row keeps rejecting, since a project has no task to
 parent under.
 

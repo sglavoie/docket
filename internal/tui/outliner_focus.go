@@ -40,6 +40,27 @@ func (m *OutlinerModel) focusSubtreeAtCursor() bool {
 	return true
 }
 
+// focusRootIdentity names the task the current Focus projection is rooted at.
+// Rebuild-time focus-stack validation keeps the frame live, so a caller still
+// resolves the identity against loaded state before acting on it.
+func (m *OutlinerModel) focusRootIdentity() (TaskIdentity, bool) {
+	if m == nil {
+		return TaskIdentity{}, false
+	}
+	var identity TaskIdentity
+	switch {
+	case len(m.crossFocusStack) > 0:
+		top := m.crossFocusStack[len(m.crossFocusStack)-1]
+		identity = TaskIdentity{ProjectID: top.ProjectID, TaskID: top.TaskID}
+	case m.project != nil && len(m.focusStack) > 0:
+		top := m.focusStack[len(m.focusStack)-1]
+		identity = TaskIdentity{ProjectID: m.project.ID, TaskID: top.TaskID}
+	default:
+		return TaskIdentity{}, false
+	}
+	return identity, identity.Valid()
+}
+
 // popFocusLevel restores one Focus frame. It is deliberately one-level-at-a-
 // time so Esc remains a predictable inverse of nested Enter operations.
 func (m *OutlinerModel) popFocusLevel() bool {

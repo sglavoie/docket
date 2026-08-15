@@ -94,3 +94,11 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 	}
 	return preset
 }
+
+// focusChildComposerPreset names the focused task in the composer header, so
+// capture inside a Focus is never mistaken for capture into the project root.
+func (m *AppModel) focusChildComposerPreset(project *models.Project, parent *models.Task) TaskComposerPreset {
+	preset := m.createComposerPreset(project, parent)
+	preset.HeaderLabel = "Capture → child of " + parent.Title
+	return preset
+}

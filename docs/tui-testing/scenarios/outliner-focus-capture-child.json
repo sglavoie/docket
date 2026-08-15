@@ -1,0 +1,27 @@
+{
+  "name": "outliner-focus-capture-child",
+  "fixture": "rich",
+  "size": "80x24",
+  "actions": [
+    { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
+    { "type": "key", "label": "cycle from All to Backlog", "key": "tab" },
+    { "type": "key", "key": "tab" },
+    { "type": "key", "key": "tab" },
+    { "type": "key", "key": "tab" },
+    { "type": "key", "label": "land on the first Backlog task after its section and project headers", "key": "home" },
+    { "type": "key", "key": "down" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "key", "label": "focus the Launch platform descendants", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "key", "label": "capture inside the focused branch", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "label": "the header names the focus root it parents under", "assert": "contains", "value": "Capture → child of Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Capture → Unfiled" },
+    { "type": "text", "text": "Write launch checklist" },
+    { "type": "key", "label": "commit the child capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the new child appears in the focused projection", "assert": "contains", "value": "Write launch checklist" },
+    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

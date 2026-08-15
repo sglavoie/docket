@@ -389,7 +389,9 @@ wide row nor disappears on a crowded one. Nested rows carry nothing, because
 their tree connector already states parentage.
 
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
-parent cursor and scroll position. A leaf reports `No children to focus`.
+parent cursor and scroll position. A leaf reports `No children to focus`. While
+focused, `a` captures a direct child of the focus root rather than a root task
+elsewhere.
 `Shift+Enter` toggles a session-only Peek directly beneath the cursor task. Peek
 follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
@@ -483,6 +485,13 @@ The composer header names whichever destination it resolved — `Capture →
 Unfiled` or `Capture → Client Alpha` — so the two never look alike, and
 `%project` still overrides both. `A` on a project header row keeps refusing: a
 project has no task to parent a child under.
+
+Inside a task Focus, `a` captures a direct child of the focused task and the
+header names it, as `Capture → child of Launch platform`, so the new task shows
+up in the focused projection immediately. Focus wins over a project header row
+under the cursor. A focus root already at the nesting cap degrades to plain
+capture into its project, `Capture → Rich Project`, rather than refusing. `A` is
+unchanged and still means a child of the cursor task, one level deeper.
 
 Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags color
 task titles in that precedence order. Namespaced values such as `type:bug` and

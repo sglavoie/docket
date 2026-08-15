@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	appservice "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -385,6 +386,62 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	}
 	if task.Preset.HeaderLabel != "Capture → Unfiled" {
 		t.Fatalf("task-row capture label = %q", task.Preset.HeaderLabel)
+	}
+}
+
+// TestSimplifiedCaptureFollowsTaskFocus covers the explicit projection anchor:
+// inside a Focus, capture parents the new task under the focus root instead of
+// landing a root task somewhere the focused projection cannot show it.
+func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
+	shell := newUITestApp()
+	inbox := scopeTestProject("inbox", "Unfiled", "one")
+	project := scopeTestProject("project", "Project", "story")
+	story := project.Tasks[0]
+	story.Title = "Launch platform"
+	shell.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
+	shell.projects[inbox.ID] = inbox
+	shell.projects[project.ID] = project
+	shell.crossOutliner.loadedProjects = []*models.Project{inbox, project}
+	shell.crossOutliner.rows = []outlinerRow{
+		{IsProjectHeader: true, ProjectID: inbox.ID},
+	}
+	shell.crossOutliner.cursor = 0
+	shell.crossOutliner.crossFocusStack = []CrossProjectFocusEntry{
+		{ProjectID: project.ID, TaskID: story.ID},
+	}
+
+	focused, ok := shell.coreCaptureMessage().(ShowTaskComposerMsg)
+	if !ok {
+		t.Fatalf("focus capture returned %T", shell.coreCaptureMessage())
+	}
+	if focused.Preset.Kind != ComposerChild {
+		t.Fatalf("focus capture kind = %v, want ComposerChild", focused.Preset.Kind)
+	}
+	if focused.Preset.Shared.ParentID == nil || *focused.Preset.Shared.ParentID != story.ID {
+		t.Fatalf("focus capture parent = %v, want %s", focused.Preset.Shared.ParentID, story.ID)
+	}
+	if focused.Preset.Project != project {
+		t.Fatalf("focus capture project = %v, want %v", focused.Preset.Project, project)
+	}
+	if focused.Preset.Shared.Destination != appservice.CaptureDestinationBacklog {
+		t.Fatalf("focus capture destination = %q, want backlog", focused.Preset.Shared.Destination)
+	}
+	if focused.Preset.HeaderLabel != "Capture → child of Launch platform" {
+		t.Fatalf("focus capture label = %q", focused.Preset.HeaderLabel)
+	}
+
+	// At the nesting cap a child would be detached back to the root, so capture
+	// degrades to the focus root's project rather than refusing.
+	story.Level = models.MaxNestingDepth
+	capped, ok := shell.coreCaptureMessage().(ShowTaskComposerMsg)
+	if !ok || capped.Preset.Project != project {
+		t.Fatalf("capped focus capture = %#v, want project %v", capped, project)
+	}
+	if capped.Preset.Shared.ParentID != nil {
+		t.Fatalf("capped focus capture kept parent %v", capped.Preset.Shared.ParentID)
+	}
+	if capped.Preset.HeaderLabel != "Capture → Project" {
+		t.Fatalf("capped focus capture label = %q", capped.Preset.HeaderLabel)
 	}
 }
 
