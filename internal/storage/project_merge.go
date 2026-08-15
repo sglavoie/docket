@@ -150,7 +150,7 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 	merged := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
-		SchemaVersion: SchemaVersionV9,
+		SchemaVersion: SchemaVersionV10,
 	}
 
 	// Re-run audits and state invariants on the merged model. A merge that is

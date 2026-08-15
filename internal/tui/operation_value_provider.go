@@ -119,7 +119,11 @@ func newOperationValuePickerModel(
 		model.tagAdder = NewTagAdder()
 	}
 	if provider.dateEntry() {
-		model.dateAdder = NewDateAdder()
+		if provider.instantEntry() {
+			model.dateAdder = NewInstantDateAdder()
+		} else {
+			model.dateAdder = NewDateAdder()
+		}
 	}
 	return model, nil
 }
@@ -553,7 +557,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	}
 	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
 		content := model.dateAdder.AddDateInput.View() + "\n\n" +
-			MutedStyle.Render(strings.Join(dateAdderFormats(), "\n"))
+			MutedStyle.Render(strings.Join(model.dateAdder.dateAdderFormats(), "\n"))
 		if model.dateAdder.AddDateError != "" {
 			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.dateAdder.AddDateError)
 		}
@@ -1439,37 +1443,74 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership 
 	return membership
 }
 
-func operationDateListSource(deferred bool) ListSource {
-	today := util.StartOfDay(time.Now())
-	type preset struct {
-		id    string
-		label string
-		days  int
-		clear bool
+// datePreset is one row of a date picker's vocabulary. The list the picker
+// renders and the resolver that decides which row is highlighted both read
+// this table, so the two cannot describe different presets.
+type datePreset struct {
+	id, label string
+	clear     bool
+	value     func() time.Time
+}
+
+// operationDatePresets returns the preset rows for one date picker. A due date
+// is a calendar day, so every one of its rows lands on local midnight; a
+// deferral is an instant, so it also offers hour offsets and a morning row.
+func operationDatePresets(deferred bool, now time.Time) []datePreset {
+	dayOffset := func(n int) func() time.Time {
+		return func() time.Time { return util.StartOfDay(now).AddDate(0, 0, n) }
 	}
-	presets := []preset{
-		{id: "clear", label: "Clear", clear: true},
-		{id: "today", label: "Today"},
-		{id: "tomorrow", label: "Tomorrow", days: 1},
-		{id: "week", label: "In one week", days: 7},
-		{id: "month", label: "In one month", days: 30},
+	hourOffset := func(n int) func() time.Time {
+		return func() time.Time { return now.Add(time.Duration(n) * time.Hour) }
 	}
-	if deferred {
-		presets = []preset{
-			{id: "clear", label: "Clear defer", clear: true},
-			{id: "tomorrow", label: "Until tomorrow", days: 1},
-			{id: "week", label: "For one week", days: 7},
-			{id: "month", label: "For one month", days: 30},
+	// The morning row is a wall clock, not an elapsed duration: nine hours after
+	// midnight reads 08:00 or 10:00 on the two days a year the offset shifts.
+	morning := func(n int) func() time.Time {
+		return func() time.Time {
+			year, month, day := now.Date()
+			return time.Date(year, month, day+n, 9, 0, 0, 0, now.Location())
 		}
 	}
+	if deferred {
+		return []datePreset{
+			{id: "clear", label: "Clear defer", clear: true},
+			{id: "1h", label: "In 1 hour", value: hourOffset(1)},
+			{id: "4h", label: "In 4 hours", value: hourOffset(4)},
+			{id: "8h", label: "In 8 hours", value: hourOffset(8)},
+			{id: "morning", label: "Tomorrow morning", value: morning(1)},
+			{id: "tomorrow", label: "Until tomorrow", value: dayOffset(1)},
+			{id: "week", label: "For one week", value: dayOffset(7)},
+			{id: "month", label: "For one month", value: dayOffset(30)},
+		}
+	}
+	return []datePreset{
+		{id: "clear", label: "Clear", clear: true},
+		{id: "today", label: "Today", value: dayOffset(0)},
+		{id: "tomorrow", label: "Tomorrow", value: dayOffset(1)},
+		{id: "week", label: "In one week", value: dayOffset(7)},
+		{id: "month", label: "In one month", value: dayOffset(30)},
+	}
+}
+
+// operationDateSecondaryText names an instant the way a picker row and a search
+// alias both need it. A bare clock is never enough: "+8h" at 20:00 lands
+// tomorrow, and a lone "04:00" would silently claim today.
+func operationDateSecondaryText(value time.Time) string {
+	if value.Equal(util.StartOfDay(value)) {
+		return value.Format("Mon Jan 2")
+	}
+	return value.Format("Mon Jan 2 15:04")
+}
+
+func operationDateListSource(deferred bool) ListSource {
+	presets := operationDatePresets(deferred, time.Now())
 	items := make([]ListItem, 0, len(presets))
 	for _, preset := range presets {
 		var date *time.Time
 		secondary := "remove date"
 		if !preset.clear {
-			value := today.AddDate(0, 0, preset.days)
+			value := preset.value()
 			date = &value
-			secondary = value.Format("Mon Jan 2")
+			secondary = operationDateSecondaryText(value)
 		}
 		items = append(items, ListItem{
 			ID:            ListItemID("date:" + preset.id),
@@ -1496,20 +1537,18 @@ func deferSelectedID(date *time.Time) []ListItemID {
 	return relativeDateSelectedID(date, true)
 }
 
+// relativeDateSelectedID highlights a preset only when the stored value is
+// reproducible from now alone, so the hour rows never match: four hours from
+// when some earlier picker opened is a different fact than four hours from now,
+// and a tolerance window would conflate the two.
 func relativeDateSelectedID(date *time.Time, deferred bool) []ListItemID {
-	today := util.StartOfDay(time.Now())
-	days := int(util.StartOfDay(*date).Sub(today).Hours() / 24)
-	switch days {
-	case 0:
-		if !deferred {
-			return []ListItemID{"date:today"}
+	for _, preset := range operationDatePresets(deferred, time.Now()) {
+		if preset.clear {
+			continue
 		}
-	case 1:
-		return []ListItemID{"date:tomorrow"}
-	case 7:
-		return []ListItemID{"date:week"}
-	case 30:
-		return []ListItemID{"date:month"}
+		if preset.value().Equal(*date) {
+			return []ListItemID{ListItemID("date:" + preset.id)}
+		}
 	}
 	return nil
 }

@@ -2,8 +2,12 @@ package textgrammar
 
 import (
 	"reflect"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
@@ -425,5 +429,30 @@ func TestInvalidPriorityErrorUsesCanonicalValues(t *testing.T) {
 		if token := definition.Trigger + value; !strings.Contains(err.Error(), token) {
 			t.Errorf("priority guidance %q does not contain %q", err, token)
 		}
+	}
+}
+
+func TestDueSigilStaysDayOnlyAndRefusesHourOffsets(t *testing.T) {
+	hourForm := regexp.MustCompile(`^\+\d+h$`)
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline} {
+		for _, def := range Definitions(surface) {
+			if def.Field != FieldDue {
+				continue
+			}
+			advertised := slices.Concat(def.Values, def.Examples, def.Forms)
+			for _, value := range advertised {
+				if hourForm.MatchString(strings.TrimPrefix(value, "@")) {
+					t.Errorf("@ advertises the hour form %q; hours are defer-only", value)
+				}
+			}
+		}
+	}
+
+	tokens := Parse("Ship it @+1h", SurfaceCapture).TokensFor(FieldDue)
+	if len(tokens) != 1 {
+		t.Fatalf("@+1h due tokens = %+v, want exactly one", tokens)
+	}
+	if _, err := util.ParseCalendarDate(tokens[0].Value); err == nil {
+		t.Fatalf("@%s resolved to a due date; hours are defer-only", tokens[0].Value)
 	}
 }

@@ -136,25 +136,20 @@ func (t *Task) TogglePinned() {
 	}
 }
 
-// IsDeferred returns true if the task is deferred (DeferredUntil is set and after today).
+// IsDeferred returns true if the task is deferred (DeferredUntil is set and after now).
 func (t *Task) IsDeferred() bool {
 	return t.IsDeferredAt(time.Now())
 }
 
 // IsDeferredAt returns true if the task is deferred relative to the given time.
 // Use this instead of IsDeferred when the reference time is not time.Now().
+// DeferredUntil is an instant, not a calendar date, so the comparison is
+// location-independent by construction and a deferral can expire mid-day.
 func (t *Task) IsDeferredAt(now time.Time) bool {
 	if t.DeferredUntil == nil {
 		return false
 	}
-	// DeferredUntil is a calendar date, not an instant. Normalize both dates
-	// onto the same neutral location before comparing so equal local dates do
-	// not compare differently merely because their time.Location values differ.
-	nowYear, nowMonth, nowDay := now.Date()
-	deferYear, deferMonth, deferDayOfMonth := t.DeferredUntil.Date()
-	today := time.Date(nowYear, nowMonth, nowDay, 0, 0, 0, 0, time.UTC)
-	deferDay := time.Date(deferYear, deferMonth, deferDayOfMonth, 0, 0, 0, 0, time.UTC)
-	return deferDay.After(today)
+	return t.DeferredUntil.After(now)
 }
 
 // ClearDefer removes the deferral date from the task.

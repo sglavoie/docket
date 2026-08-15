@@ -2,8 +2,8 @@
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
 Behavior lives in [`README.md`](README.md), mechanism in
-[`docs/architecture.md`](docs/architecture.md); the table at the end names the
-section for each topic.
+[`docs/architecture.md`](docs/architecture.md); the end table names each topic's
+section.
 
 ## Build and verification
 
@@ -18,15 +18,10 @@ just tidy
 just ci
 ```
 
-Run a focused Go test by package, for example:
+Go accepts packages, not files, as test targets.
 
-```bash
-go test ./internal/tui -run TestFinalDirectGrammar
-```
-
-Go accepts packages, not individual test files, as test targets.
-`cmd/cli-reference.md` is generated from Cobra help: change the command help and
-run `./scripts/check_generated_docs.sh` rather than editing it by hand.
+`cmd/cli-reference.md` is generated from Cobra help: change the help and rerun
+`./scripts/check_generated_docs.sh` rather than editing by hand.
 
 ## Architecture
 
@@ -34,7 +29,7 @@ run `./scripts/check_generated_docs.sh` rather than editing it by hand.
 surface; Cobra contains only the TUI launcher and maintenance commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-9 Markdown, transactions,
+cases and mutation policy, `internal/storage` schema-10 Markdown, transactions,
 conflicts and the undo ledger, `internal/config` the catalog/planning domains
 and migration, `internal/tui` the sole Outliner root and operation
 registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
@@ -58,8 +53,9 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 Review is not a lifecycle state: it is the ordinary canonical `review` tag with
 a promoted All-mode lane. Retired states and fields may appear only in
 explicitly named migration DTOs and audit code. Ordinary task Markdown uses
-schema 9, generic `Task` headings, a project-local ShortID, and the retained
-fields.
+schema 10, generic `Task` headings, a project-local ShortID, and the retained
+fields. `DueDate` is a calendar date; `DeferredUntil` is an RFC3339Nano
+instant that can expire later the same day.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
@@ -134,7 +130,8 @@ retain the inherited environment.
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` or `dateEntry()` (inline add modes), or a plain list. A value the
 presets cannot express belongs in an inline mode on the one picker, never in a
-standalone form.
+standalone form. `instantEntry()` narrows the date mode to defer, the only
+place `+Nh` parses.
 
 Row and Peek budget:
 
@@ -145,8 +142,10 @@ Row and Peek budget:
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
   append.
+- `formatDeferDate` reads against `now`: a midnight deferral is a whole day and
+  still renders bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
 - Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
-  plain due segment rather than sitting beside it.
+  plain due segment rather than joining it.
 - The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps
   and no `woke` component.
 
@@ -174,12 +173,12 @@ unbound; repeating a sort field key is the only reverse route.
 alias may return. Root `z` and `g` are chord prefixes, not direct keys: `z`
 never means snooze or defer, and cursor-top is `gg` or `Home`.
 
-Pin's two routes, the `P` key and the `*pin` sigil, are not a
-direct-only/menu-only violation: that rule governs which task operations reach
-the `Space` menu, not whether an attribute is also expressible in text.
+Pin's two routes, `P` and the `*pin` sigil, are not a direct-only/menu-only
+violation: that rule governs the `Space` menu, not whether an attribute is also
+expressible in text.
 
-An abandoned chord prefix sets a warning status naming the path it left (`wq is
-not a workflow action`); an unbound root key stays silent.
+An abandoned chord prefix warns, naming the path it left (`wq is not a workflow
+action`); an unbound root key stays silent.
 
 ## Project and task tags
 
@@ -208,8 +207,8 @@ focus.
 Parking is the one project tag edit that confirms, and it keeps the project's
 Today and Next references durable, filtered at read time, so unparking restores
 the plan untouched; archiving likewise preserves tags. Tag explainers wrap
-inline rather than clipping or spilling into the status bar; focusable rows use
-the compact `RowSummary` and explainers the full `Summary`.
+inline rather than clipping; focusable rows use `RowSummary` and explainers the
+full `Summary`.
 
 ## Capture and edit grammar
 
@@ -269,7 +268,7 @@ dark/light theme. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-The v4→v5→v6→v7→v8→v9→v10 migration validates each complete candidate first,
+The v4→v5→v6→v7→v8→v9→v10→v11 migration validates each complete candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6 decoders are migration-only: ordinary runtime code
@@ -308,6 +307,6 @@ Harness format and authoring rules live in
 | Sort axis, manual-order exemption | Sorting | Sorting axis |
 | Selection, Select Project, `Ctrl+T` | Peek and multi-select | Selection and subordinate tools |
 | Project tags, parking, populations, Notes | Project tags; Scope, projects, and Notes | Project tags |
-| Storage layout, migration chain | Schema 10 storage and migration | Persistence layout; Snapshot-first schema migration |
+| Storage layout, migration chain | Schema 11 storage and migration | Persistence layout; Snapshot-first schema migration |
 | Transactions, undo ledger, conflicts | Undo, recovery, and conflicts | Transactions and recovery |
 | Maintenance CLI, platform support | Maintenance CLI | Maintenance CLI and platform support |

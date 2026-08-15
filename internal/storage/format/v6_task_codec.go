@@ -18,6 +18,23 @@ const v6DateFormat = "2006-01-02"
 // without forking the one place durable key order lives.
 const metadataKeyDeferredLegacy = "snoozed"
 
+// metadataKeyDeferred is the schema-9 spelling of the deferral-date metadata
+// key. It is the whole schema-9 change: the record shape, the field set, and
+// every invariant are schema 8's.
+const metadataKeyDeferred = "deferred"
+
+// deferEncoding is how one schema spells its deferral value on disk: the
+// metadata key it writes and the layout its value is canonical in. The shared
+// codec takes it as a value rather than a key so a schema changing either half
+// stays one declaration here.
+type deferEncoding struct{ key, layout string }
+
+var (
+	deferDateLegacy  = deferEncoding{key: metadataKeyDeferredLegacy, layout: v6DateFormat}
+	deferDateRenamed = deferEncoding{key: metadataKeyDeferred, layout: v6DateFormat}
+	deferInstant     = deferEncoding{key: metadataKeyDeferred, layout: time.RFC3339Nano}
+)
+
 var v6MetadataKeys = map[string]bool{
 	"id": true, "short_id": true, "state": true, "priority": true,
 	"parent": true, "tags": true, "created": true, "updated": true,
@@ -71,14 +88,15 @@ type V6TaskComment struct {
 
 // ValidateV6TaskRecord validates a complete schema-6 task record.
 func ValidateV6TaskRecord(task V6TaskRecord) error {
-	return validateV6TaskRecord(task, true, metadataKeyDeferredLegacy)
+	return validateV6TaskRecord(task, true, deferDateLegacy)
 }
 
-// deferKey names the deferral-date key in the caller's own schema, so a
-// rejected date is reported under the key that schema actually writes.
+// deferral spells the deferral value the way the caller's own schema does, so a
+// rejected value is checked against that schema's layout and reported under the
+// key that schema actually writes.
 //
 //nolint:gocyclo // Keeping all durable field invariants together makes the schema boundary auditable.
-func validateV6TaskRecord(task V6TaskRecord, requireTitle bool, deferKey string) error {
+func validateV6TaskRecord(task V6TaskRecord, requireTitle bool, deferral deferEncoding) error {
 	if strings.TrimSpace(task.ID) == "" || task.ID != strings.TrimSpace(task.ID) {
 		return fmt.Errorf("v6 task id is required and must be trimmed")
 	}
@@ -114,7 +132,7 @@ func validateV6TaskRecord(task V6TaskRecord, requireTitle bool, deferKey string)
 	if err := validateV6Date("due", task.DueDate); err != nil {
 		return fmt.Errorf("v6 task %q: %w", task.ID, err)
 	}
-	if err := validateV6Date(deferKey, task.SnoozedUntil); err != nil {
+	if err := validateDeferValue(deferral, task.SnoozedUntil); err != nil {
 		return fmt.Errorf("v6 task %q: %w", task.ID, err)
 	}
 	if task.ParentID != "" {
@@ -172,6 +190,27 @@ func validateV6Date(field, value string) error {
 	return nil
 }
 
+// validateDeferValue rejects a deferral value the encoding's layout cannot
+// round-trip, which is the same canonicality bar validateV6Date and parseV6Time
+// enforce for their one fixed layout.
+func validateDeferValue(enc deferEncoding, value string) error {
+	if value == "" {
+		return nil
+	}
+	parsed, err := time.Parse(enc.layout, value)
+	if err != nil || parsed.Format(enc.layout) != value {
+		canonical := enc.layout
+		switch enc.layout {
+		case v6DateFormat:
+			canonical = "YYYY-MM-DD"
+		case time.RFC3339Nano:
+			canonical = "RFC3339Nano"
+		}
+		return fmt.Errorf("%s date %q is not canonical %s", enc.key, value, canonical)
+	}
+	return nil
+}
+
 func validateV6Reference(field, value string) error {
 	if value == "" || value != strings.TrimSpace(value) {
 		return fmt.Errorf("%s reference is empty or untrimmed", field)
@@ -202,11 +241,11 @@ func validateCanonicalV6Tags(taskID string, tags []string) error {
 // ValidateV7TaskRecord applies the schema-7 lowercase-kebab tag contract to
 // the otherwise unchanged schema-6 task record shape.
 func ValidateV7TaskRecord(task V6TaskRecord) error {
-	return validateV7TaskRecord(task, metadataKeyDeferredLegacy)
+	return validateV7TaskRecord(task, deferDateLegacy)
 }
 
-func validateV7TaskRecord(task V6TaskRecord, deferKey string) error {
-	if err := validateV6TaskRecord(task, true, deferKey); err != nil {
+func validateV7TaskRecord(task V6TaskRecord, deferral deferEncoding) error {
+	if err := validateV6TaskRecord(task, true, deferral); err != nil {
 		return err
 	}
 	for _, tag := range task.Tags {
@@ -240,7 +279,7 @@ func validateV6Attachment(attachment V6TaskAttachment) error {
 
 // WriteV6TaskMetadata writes the canonical schema-6 metadata comment.
 func WriteV6TaskMetadata(task V6TaskRecord) (string, error) {
-	if err := validateV6TaskRecord(task, false, metadataKeyDeferredLegacy); err != nil {
+	if err := validateV6TaskRecord(task, false, deferDateLegacy); err != nil {
 		return "", err
 	}
 	return wrapTaskMetadata(v6MetadataParts(task)), nil
@@ -251,14 +290,14 @@ func wrapTaskMetadata(parts []string) string {
 }
 
 func v6MetadataParts(task V6TaskRecord) []string {
-	return taskMetadataParts(task, metadataKeyDeferredLegacy, nil)
+	return taskMetadataParts(task, deferDateLegacy, nil)
 }
 
-// taskMetadataParts renders the shared metadata fields. deferKey names the
+// taskMetadataParts renders the shared metadata fields. deferral names the
 // deferral-date key in the caller's own schema. afterUpdated carries fields a
 // later schema inserts next to the other timestamps rather than at the end of
 // the comment.
-func taskMetadataParts(task V6TaskRecord, deferKey string, afterUpdated []string) []string {
+func taskMetadataParts(task V6TaskRecord, deferral deferEncoding, afterUpdated []string) []string {
 	parts := []string{
 		"id: " + task.ID,
 		"short_id: " + strconv.Itoa(task.ShortID),
@@ -283,7 +322,7 @@ func taskMetadataParts(task V6TaskRecord, deferKey string, afterUpdated []string
 		parts = append(parts, "due: "+task.DueDate)
 	}
 	if task.SnoozedUntil != "" {
-		parts = append(parts, deferKey+": "+task.SnoozedUntil)
+		parts = append(parts, deferral.key+": "+task.SnoozedUntil)
 	}
 	if task.Pinned {
 		parts = append(parts, "pinned: true")
@@ -307,11 +346,11 @@ func ParseV6TaskMetadata(comment string) (V6TaskRecord, error) {
 	if err != nil {
 		return V6TaskRecord{}, err
 	}
-	task, err := v6RecordFromMetadataValues(values, metadataKeyDeferredLegacy)
+	task, err := v6RecordFromMetadataValues(values, deferDateLegacy)
 	if err != nil {
 		return V6TaskRecord{}, err
 	}
-	if err := validateV6TaskRecord(task, false, metadataKeyDeferredLegacy); err != nil {
+	if err := validateV6TaskRecord(task, false, deferDateLegacy); err != nil {
 		return V6TaskRecord{}, err
 	}
 	return task, nil
@@ -351,9 +390,9 @@ func parseTaskMetadataFields(schema, comment string, allowed map[string]bool, re
 	return values, nil
 }
 
-// v6RecordFromMetadataValues decodes the shared metadata fields. deferKey names
+// v6RecordFromMetadataValues decodes the shared metadata fields. deferral names
 // the deferral-date key in the caller's own schema.
-func v6RecordFromMetadataValues(values map[string]string, deferKey string) (V6TaskRecord, error) {
+func v6RecordFromMetadataValues(values map[string]string, deferral deferEncoding) (V6TaskRecord, error) {
 	shortID, err := strconv.Atoi(values["short_id"])
 	if err != nil {
 		return V6TaskRecord{}, fmt.Errorf("parse v6 short_id: %w", err)
@@ -381,7 +420,7 @@ func v6RecordFromMetadataValues(values map[string]string, deferKey string) (V6Ta
 		CreatedAt:    created,
 		UpdatedAt:    updated,
 		DueDate:      values["due"],
-		SnoozedUntil: values[deferKey],
+		SnoozedUntil: values[deferral.key],
 	}
 	if values["completed"] != "" {
 		parsed, parseErr := parseV6Time(values["completed"])

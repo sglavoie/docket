@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // This file builds the reliable data surfaces the LLM-driven review harness
@@ -749,8 +750,9 @@ func buildProjectMixFixture(w *uitestWorkspace) error {
 }
 
 // buildSignalsFixture carries the time signals no other fixture holds: a deferral
-// that has already lapsed beside one still pending, overdue work concentrated
-// in one project, and a durable Today membership. Its project name is
+// that has already lapsed beside a whole-day and an hour-valued one still
+// pending, overdue work concentrated in one project, and a durable Today
+// membership. Its project name is
 // deliberately long so a project header's pressure suffix has to degrade at
 // narrow widths.
 func buildSignalsFixture(w *uitestWorkspace) error {
@@ -771,8 +773,16 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 
 		pending := newFixtureTask(p, "Alpha still hidden")
 		pending.ApplyWorkflowState(models.StateBacklog)
-		deferred := time.Now().AddDate(0, 0, 5)
+		deferred := util.StartOfDay(time.Now()).AddDate(0, 0, 5)
 		pending.DeferredUntil = &deferred
+
+		// A midnight deferral renders bare, so the clock ladder needs one row
+		// whose wake time is a fixed hour rather than an offset from now.
+		morning := newFixtureTask(p, "Alpha waking at nine")
+		morning.ApplyWorkflowState(models.StateBacklog)
+		tomorrow := time.Now().AddDate(0, 0, 1)
+		wake := time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 9, 0, 0, 0, time.Local)
+		morning.DeferredUntil = &wake
 
 		triage = newFixtureTask(p, "Alpha overdue intake")
 		triage.ApplyWorkflowState(models.StateInbox)

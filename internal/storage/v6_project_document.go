@@ -27,45 +27,56 @@ type V6ProjectDocument struct {
 // ValidateV6ProjectDocument validates task records plus project-local identity
 // and hierarchy invariants without consulting runtime models or schema 5.
 func ValidateV6ProjectDocument(document V6ProjectDocument) error {
-	if strings.TrimSpace(document.ProjectName) == "" ||
-		document.ProjectName != strings.TrimSpace(document.ProjectName) {
+	return validateTaskProjectDocument(document.ProjectName, document.Tasks, func(i int) error {
+		return format.ValidateV6TaskRecord(document.Tasks[i])
+	})
+}
+
+// validateTaskProjectDocument validates the project-local identity and
+// hierarchy invariants every task schema shares. records carries the layout
+// fields every schema shares; validateTask validates one task record in the
+// caller's own schema, which is what keeps a schema free to spell a durable
+// value differently without forking these invariants.
+func validateTaskProjectDocument(projectName string, records []format.V6TaskRecord, validateTask func(int) error) error {
+	if strings.TrimSpace(projectName) == "" ||
+		projectName != strings.TrimSpace(projectName) {
 		return fmt.Errorf("v6 project name is required and must be trimmed")
 	}
-	if len(document.ProjectName) > models.MaxProjectNameLength {
+	if len(projectName) > models.MaxProjectNameLength {
 		return fmt.Errorf("v6 project name exceeds %d characters", models.MaxProjectNameLength)
 	}
-	if strings.ContainsAny(document.ProjectName, "\n\r") {
+	if strings.ContainsAny(projectName, "\n\r") {
 		return fmt.Errorf("v6 project name cannot contain newlines")
 	}
 
-	byID := make(map[string]format.V6TaskRecord, len(document.Tasks))
-	shortIDs := make(map[int]bool, len(document.Tasks))
-	for _, task := range document.Tasks {
-		if err := format.ValidateV6TaskRecord(task); err != nil {
+	byID := make(map[string]format.V6TaskRecord, len(records))
+	shortIDs := make(map[int]bool, len(records))
+	for i, task := range records {
+		if err := validateTask(i); err != nil {
 			return err
 		}
 		if _, duplicate := byID[task.ID]; duplicate {
-			return fmt.Errorf("v6 project %q has duplicate task id %q", document.ProjectName, task.ID)
+			return fmt.Errorf("v6 project %q has duplicate task id %q", projectName, task.ID)
 		}
 		if shortIDs[task.ShortID] {
-			return fmt.Errorf("v6 project %q has duplicate short id %d", document.ProjectName, task.ShortID)
+			return fmt.Errorf("v6 project %q has duplicate short id %d", projectName, task.ShortID)
 		}
 		byID[task.ID] = task
 		shortIDs[task.ShortID] = true
 	}
-	for _, task := range document.Tasks {
+	for _, task := range records {
 		if task.ParentID != "" {
 			if _, ok := byID[task.ParentID]; !ok {
 				return fmt.Errorf("v6 task %q references missing project-local parent %q", task.ID, task.ParentID)
 			}
 		}
 	}
-	for _, task := range document.Tasks {
+	for _, task := range records {
 		seen := map[string]bool{task.ID: true}
 		depth := 0
 		for parentID := task.ParentID; parentID != ""; parentID = byID[parentID].ParentID {
 			if seen[parentID] {
-				return fmt.Errorf("v6 project %q contains a parent cycle at task %q", document.ProjectName, task.ID)
+				return fmt.Errorf("v6 project %q contains a parent cycle at task %q", projectName, task.ID)
 			}
 			seen[parentID] = true
 			depth++

@@ -66,14 +66,18 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 		// The v4/v5/v6 DTOs keep SnoozedUntil because their on-disk key genuinely
 		// is `snoozed`, and frozen golden fixtures name it. The v10 migration and
 		// the live model-to-document seam read those DTOs, so they are the only
-		// callers outside the codecs themselves.
+		// callers outside the codecs themselves. The schema-10 document lift is
+		// one of them: it is the only place the deferral value is rewritten from
+		// a calendar day to an instant, so it must name the DTO field.
 		"SnoozedUntil": {
 			"internal/storage/format/legacy_v4_task_convert.go": true,
 			"internal/storage/format/v5_task_codec.go":          true,
 			"internal/storage/format/v6_task_codec.go":          true,
 			"internal/storage/format/v6_task_convert.go":        true,
 			"internal/storage/project_document.go":              true,
+			"internal/storage/v10_project_document.go":          true,
 			"internal/config/v10_migration_activation.go":       true,
+			"internal/config/v11_migration_activation.go":       true,
 		},
 	}
 	rejectedInputAllowlist := map[string]bool{

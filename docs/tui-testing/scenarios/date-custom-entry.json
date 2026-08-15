@@ -17,6 +17,14 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "label": "a parse failure keeps the input open instead of committing", "assert": "contains", "value": "Set a Specific Date" },
 
+    { "type": "key", "label": "drop the rejected text", "key": "esc" },
+    { "type": "key", "label": "re-enter typed entry on an empty input", "key": "a" },
+    { "type": "text", "label": "an hour offset, which only a deferral can store", "text": "+4h" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the due date stays a calendar day, so the input stays open", "assert": "contains", "value": "Set a Specific Date" },
+    { "type": "assert", "label": "the refusal names the rule instead of reporting an unrecognized format", "assert": "contains", "value": "hours are defer-only" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "leave typed entry for the preset list", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Set a Specific Date" },
     { "type": "assert", "assert": "contains", "value": "Set Due Date: Build login form" },

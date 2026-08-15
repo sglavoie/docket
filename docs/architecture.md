@@ -47,10 +47,10 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-9 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-10 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -64,20 +64,21 @@ not reproduce these checks with independent saves.
 
 ## Task model
 
-Schema 9 task Markdown stores generic tasks with these supported fields:
+Schema 10 task Markdown stores generic tasks with these supported fields:
 
 | Group | Fields |
 | --- | --- |
 | Identity | stable ID and project-local ShortID |
 | Content | title and description |
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
-| Planning metadata | priority, due date, dated deferral (`deferred`), pin, pin timestamp |
+| Planning metadata | priority, due date, deferral instant (`deferred`), pin, pin timestamp |
 | Organization | project-local parent and tags |
 | Rich records | checklist, comments, attachments |
 | Lifecycle | created, updated, `state_changed`, completed timestamps |
 
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
-records, not a catalog. Due and deferral values are calendar dates.
+records, not a catalog. The due value is a calendar date; the deferral value is
+an RFC3339Nano instant, so a deferral can expire later the same day.
 
 `StateChangedAt` (`state_changed`) is the state clock and `UpdatedAt` is the
 touch time. Only the lifecycle transitions in
@@ -297,6 +298,33 @@ The workspace pulse deliberately carries no `woke` component: its degradation
 ladder in `formatWorkspacePulseComponents` has exactly three steps, and a fourth
 metric there names work you cannot act on without navigating to it anyway.
 
+`formatDeferDate` renders the pending half of that ladder against `now`, because
+a deferral is an instant and the row has to say when the task comes back. It
+resolves the value into `now`'s zone first — instants read from disk keep the
+fixed-offset zone `parseProjectDocumentInstant` preserves for byte-stable
+revisions — and then reads one clock for all three decisions. A midnight-valued
+deferral is a whole day and keeps the bare `Jan 2` it has always had; one
+returning later today is `15:04`, since the day is already on screen everywhere
+else; anything further out is `Jan 2 15:04`, with a `'06` suffix off-year. The
+midnight test is `value.Equal(util.StartOfDay(value))` rather than a call into
+`operationDateSecondaryText`, which shares only that predicate and disagrees on
+every other token.
+
+A deferral that lapses while the Outliner is open has to bring its row back
+without a key press, and it does so on the existing 60-second `periodicSaveMsg`
+tick rather than a second scheduler. Each row rebuild stores `nextDeferWake`,
+the `earliestDeferWake` min-scan over the flat `project.Tasks` of the scoped
+projects, which already contains every nested child, so no tree walk is needed.
+`wakeDeferredRows` compares that clock against the tick and, once it is past,
+clears it and sets `crossForceRebuild` and nothing else, leaving the render pass
+Bubble Tea runs next as the single rebuild authority and
+`computeOutlinerViewport` as sole owner of `viewScrollOffset`.
+`safeToRebuildForWake` refuses while an overlay, picker, inline row editor,
+visual selection, or search projection is live, because rebuilding underneath
+one of those moves ground the user is standing on. A refusal leaves the clock
+standing so the next tick retries; the wake is deferred, never dropped, at a
+cost of at most one tick.
+
 Waiting age reads the state clock, never the touch time.
 `formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
 formats `StateChangedAt` through `formatRecencyChip`, so a comment, a tag, or a
@@ -354,6 +382,20 @@ Inline modes bind `a` inside `OperationValuePickerModel` and must emit the same
 value type the provider's preset rows carry, so the executor and the single and
 bulk handlers stay untouched. A value the presets cannot express belongs in an
 inline mode on the one picker, never in a standalone form.
+
+`instantEntry()` is `dateEntry()` narrowed to the granularity a deferral stores.
+`ValueProviderDefer` is its only member, so it alone builds the inline mode with
+`NewInstantDateAdder`, and `allowsTime` is what makes `+Nh` parse there and be
+refused by name everywhere a calendar day is stored. The same case passes
+`deferred` to `operationDatePresets`, which is what puts the three hour rows and
+the morning row on the defer list alone. A preset is reported as the current
+value only when the stored instant is reproducible from the clock, which is why
+the hour rows never highlight: they inherit `time.Now()`'s monotonic reading,
+while the day and morning rows are built with `time.Date` and compare cleanly
+against a value parsed from disk. The morning row names 09:00 in the target
+calendar day's location rather than nine hours after that day's midnight, so it
+stays 09:00 across both daylight-saving transitions instead of drifting to 10:00
+or 08:00.
 
 One operation may chain into a second one by following its committed command with
 an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
@@ -900,7 +942,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-9 generic Task Markdown
+        ├── tasks.md         # strict schema-10 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -953,7 +995,7 @@ workspace, not an independent backup.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-9 content. A stale writer is compared
+Project revisions hash canonical schema-10 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -967,11 +1009,12 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 10 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 11 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-8 workspace crosses the schema-9 state-clock path,
-and a schema-9 workspace finishes on the schema-10 defer-rename path:
+a schema-9 workspace crosses the schema-10 defer-rename path, and a schema-10
+workspace finishes on the schema-11 defer-instant path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -1031,10 +1074,21 @@ and a schema-9 workspace finishes on the schema-10 defer-rename path:
 15. Publish `pre-defer-rename-v10-<UTC>.tar.gz` plus its audit, atomically
    activate catalog schema 10 and task Markdown schema 9 across active and
    archived projects, and clear undo/redo history whose retained bytes are raw
-   pre-rename Markdown. No down-migration exists: recovery is manual extraction
-   of that archive into a separate workspace.
+   pre-rename Markdown.
+16. Validate every schema-9 project document, then lift it to schema 10 by
+   rewriting each task's durable deferral value from a `YYYY-MM-DD` calendar day
+   to the canonical RFC3339Nano instant that day began at in the migrating
+   machine's local timezone, which is the location a bare date was always
+   implicitly read in, so no deferral changes the moment it expires.
+17. Publish `pre-defer-instant-v11-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 11 and task Markdown schema 10 across active and
+   archived projects, and clear undo/redo history whose retained bytes carry the
+   old calendar-day value. The audit states that the migrating machine's offset
+   is frozen into the file, so a workspace synced across timezones stops waking
+   at each machine's own midnight. No down-migration exists: recovery is manual
+   extraction of that archive into a separate workspace.
 
-Each boundary is idempotent: repeated schema-10 startup neither reconverts data
+Each boundary is idempotent: repeated schema-11 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

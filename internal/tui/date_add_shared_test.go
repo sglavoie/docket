@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -63,5 +64,61 @@ func TestDateAdderEscapeReturnsToThePresetList(t *testing.T) {
 	})
 	if adder.AddDateMode || adder.AddDateError != "" {
 		t.Errorf("escape left mode %v error %q, want a clean preset list", adder.AddDateMode, adder.AddDateError)
+	}
+}
+
+func TestInstantDateAdderAcceptsTheHourForm(t *testing.T) {
+	adder := NewInstantDateAdder()
+	adder.EnterAddMode()
+	adder.AddDateInput.SetValue("+4h")
+
+	before := time.Now()
+	var got *time.Time
+	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(date time.Time) error {
+		got = &date
+		return nil
+	})
+	if got == nil {
+		t.Fatalf("the instant adder refused +4h with %q", adder.AddDateError)
+	}
+	offset := got.Sub(before)
+	if offset < 4*time.Hour-time.Minute || offset > 4*time.Hour+time.Minute {
+		t.Errorf("+4h resolved %s from now, want about 4h", offset)
+	}
+	if adder.AddDateMode {
+		t.Error("a committed instant left typed-date mode active")
+	}
+}
+
+func TestDayDateAdderRefusesTheHourFormByName(t *testing.T) {
+	adder := NewDateAdder()
+	adder.EnterAddMode()
+	adder.AddDateInput.SetValue("+4h")
+
+	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(time.Time) error {
+		t.Fatal("the day adder submitted an hour offset")
+		return nil
+	})
+	if !strings.Contains(adder.AddDateError, "hours are defer-only") {
+		t.Errorf("day adder refused +4h with %q, want the defer-only explanation", adder.AddDateError)
+	}
+}
+
+func TestInstantDateAdderFormatsAddExactlyTheHoursLine(t *testing.T) {
+	day := NewDateAdder()
+	instant := NewInstantDateAdder()
+
+	dayFormats := day.dateAdderFormats()
+	instantFormats := instant.dateAdderFormats()
+	if len(instantFormats) != len(dayFormats)+1 {
+		t.Fatalf("instant formats = %d lines, want one more than the day adder's %d", len(instantFormats), len(dayFormats))
+	}
+	for i, line := range dayFormats {
+		if instantFormats[i] != line {
+			t.Errorf("format line %d = %q, want the shared %q", i, instantFormats[i], line)
+		}
+	}
+	if want := "+4h           Hours from now (defer only)"; instantFormats[len(dayFormats)] != want {
+		t.Errorf("extra format line = %q, want %q", instantFormats[len(dayFormats)], want)
 	}
 }

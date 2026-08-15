@@ -8,13 +8,30 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
-func formatDeferDate(deferredUntil time.Time) string {
-	if deferredUntil.Year() != time.Now().Year() {
-		return deferredUntil.Format("Jan 2 '06")
+// formatDeferDate renders a deferral against now. A midnight-valued deferral is
+// a whole day and keeps the bare date it has always had; any other instant
+// carries the clock, because the row has to say when the task comes back. The
+// value is resolved into now's zone first, so the midnight and same-day tests
+// and the rendered text all read against one clock.
+func formatDeferDate(deferredUntil, now time.Time) string {
+	value := deferredUntil.In(now.Location())
+	offYear := value.Year() != now.Year()
+	switch {
+	case value.Equal(util.StartOfDay(value)):
+		if offYear {
+			return value.Format("Jan 2 '06")
+		}
+		return value.Format("Jan 2")
+	case util.StartOfDay(value).Equal(util.StartOfDay(now)):
+		return value.Format("15:04")
+	case offYear:
+		return value.Format("Jan 2 '06 15:04")
+	default:
+		return value.Format("Jan 2 15:04")
 	}
-	return deferredUntil.Format("Jan 2")
 }
 
 // JoinGroupParts joins non-empty parts within one indicator group with a space.

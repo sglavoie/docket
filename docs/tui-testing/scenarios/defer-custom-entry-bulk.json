@@ -16,7 +16,8 @@
     { "type": "assert", "assert": "contains", "value": "Set Defer" },
     { "type": "key", "label": "typed entry is reachable on the bulk path too", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
-    { "type": "text", "text": "2027-04-20" },
+    { "type": "assert", "label": "the defer entry advertises the hour form the due entry refuses", "assert": "contains", "value": "Hours from now" },
+    { "type": "text", "label": "an offset no preset carries and no calendar day can express", "text": "+4h" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
 

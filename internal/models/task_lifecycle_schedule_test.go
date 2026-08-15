@@ -55,21 +55,66 @@ func TestIsDeferredAt(t *testing.T) {
 	}
 }
 
-func TestIsDeferredAtComparesCalendarDatesAcrossLocations(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-	deferLocation := time.FixedZone("defer", -8*60*60)
-	referenceLocation := time.FixedZone("reference", 9*60*60)
-	deferUntil := time.Date(2026, 3, 10, 0, 0, 0, 0, deferLocation)
-	task.DeferredUntil = &deferUntil
+// calendarDayIsDeferredAt is the predicate schema 9 shipped, kept verbatim so the
+// instant comparison that replaced it can be measured against it.
+func calendarDayIsDeferredAt(deferredUntil, now time.Time) bool {
+	nowYear, nowMonth, nowDay := now.Date()
+	deferYear, deferMonth, deferDayOfMonth := deferredUntil.Date()
+	today := time.Date(nowYear, nowMonth, nowDay, 0, 0, 0, 0, time.UTC)
+	deferDay := time.Date(deferYear, deferMonth, deferDayOfMonth, 0, 0, 0, 0, time.UTC)
+	return deferDay.After(today)
+}
 
-	sameCalendarDate := time.Date(2026, 3, 10, 0, 30, 0, 0, referenceLocation)
-	if task.IsDeferredAt(sameCalendarDate) {
-		t.Fatal("same calendar date remained deferred because locations encoded different instants")
+// TestIsDeferredAtMatchesTheCalendarDayPredicateItReplaced is the one behavioral
+// equivalence the schema-10 bump rests on. Every deferral schema 9 could store is
+// the instant some day began in the reader's own location, and the migration
+// lifts each one there, so for those values the instant comparison must answer
+// exactly what the calendar-day comparison answered. The weeks below each span a
+// DST transition, including a zone whose transition lands on midnight itself.
+func TestIsDeferredAtMatchesTheCalendarDayPredicateItReplaced(t *testing.T) {
+	weeks := []struct {
+		zone  string
+		year  int
+		month time.Month
+		day   int
+	}{
+		{"America/Los_Angeles", 2026, time.March, 5},    // spring forward at 02:00
+		{"America/Los_Angeles", 2026, time.October, 29}, // fall back at 02:00
+		{"Asia/Beirut", 2026, time.March, 26},           // spring forward at 00:00
+		{"Australia/Lord_Howe", 2026, time.April, 2},    // 30-minute transition
+		{"UTC", 2026, time.March, 5},
 	}
+	hours := []int{0, 1, 2, 3, 12, 23}
+	task := newLifecycleTestTask(t, "t1", 1)
 
-	previousCalendarDate := time.Date(2026, 3, 9, 23, 30, 0, 0, referenceLocation)
-	if !task.IsDeferredAt(previousCalendarDate) {
-		t.Fatal("previous calendar date should remain deferred regardless of location")
+	for _, week := range weeks {
+		location, err := time.LoadLocation(week.zone)
+		if err != nil {
+			t.Fatalf("load %s: %v", week.zone, err)
+		}
+		for deferOffset := range 7 {
+			// A schema-9 deferral always denoted the start of a day in the location
+			// the bare date was read in, which is what the v11 lift writes down.
+			deferredUntil := time.Date(week.year, week.month, week.day+deferOffset, 0, 0, 0, 0, location)
+			task.DeferredUntil = &deferredUntil
+			for nowOffset := range 7 {
+				for _, hour := range hours {
+					now := time.Date(week.year, week.month, week.day+nowOffset, hour, 30, 0, 0, location)
+					want := calendarDayIsDeferredAt(deferredUntil, now)
+					got := task.IsDeferredAt(now)
+					if got != want {
+						t.Fatalf("%s: IsDeferredAt(%s) with deferral %s = %v, want %v",
+							week.zone, now.Format(time.RFC3339), deferredUntil.Format(time.RFC3339), got, want)
+					}
+					// The same instant read in another location is still the same
+					// instant, which is what makes the comparison portable.
+					if elsewhere := task.IsDeferredAt(now.In(time.UTC)); elsewhere != got {
+						t.Fatalf("%s: IsDeferredAt(%s) changed to %v when the reference time moved location",
+							week.zone, now.Format(time.RFC3339), elsewhere)
+					}
+				}
+			}
+		}
 	}
 }
 

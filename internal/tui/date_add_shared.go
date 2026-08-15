@@ -5,6 +5,8 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DateAdder provides the inline typed-date mode for the value pickers whose
@@ -14,6 +16,8 @@ type DateAdder struct {
 	AddDateMode  bool
 	AddDateInput textinput.Model
 	AddDateError string
+
+	allowsTime bool
 }
 
 // NewDateAdder creates a DateAdder with a configured text input.
@@ -23,6 +27,16 @@ func NewDateAdder() DateAdder {
 	input.Placeholder = "e.g., 2026-01-15, dec 15, +3d, fri"
 	applyThemedTextInput(&input)
 	return DateAdder{AddDateInput: input}
+}
+
+// NewInstantDateAdder creates a DateAdder whose value may carry a time of day,
+// so the hour form parses instead of being refused as a due-date vocabulary.
+func NewInstantDateAdder() DateAdder {
+	input := textinput.New()
+	input.CharLimit = 30
+	input.Placeholder = "e.g., +4h, tomorrow, 2026-01-15, fri"
+	applyThemedTextInput(&input)
+	return DateAdder{AddDateInput: input, allowsTime: true}
 }
 
 // HasTextInput returns true when the typed-date input is active.
@@ -60,7 +74,7 @@ func (a *DateAdder) handleAddDateInputKey(
 		return nil
 
 	case "enter":
-		date, err := ParseDate(a.AddDateInput.Value())
+		date, err := a.parse(a.AddDateInput.Value())
 		if err != nil {
 			a.AddDateError = err.Error()
 			return nil
@@ -79,13 +93,26 @@ func (a *DateAdder) handleAddDateInputKey(
 	}
 }
 
+// parse resolves the typed expression against the granularity this adder
+// stores, so the hour form is accepted or refused by name from one fact.
+func (a *DateAdder) parse(input string) (time.Time, error) {
+	if a.allowsTime {
+		return util.ParseDeferInstant(input)
+	}
+	return ParseDate(input)
+}
+
 // dateAdderFormats is the accepted-format reference shown beneath the input.
-func dateAdderFormats() []string {
-	return []string{
+func (a *DateAdder) dateAdderFormats() []string {
+	formats := []string{
 		"2026-01-15    Exact date (YYYY-MM-DD)",
 		"tomorrow      Tomorrow's date",
 		"+3d, +1w      Relative offset",
 		"mon, next fri Next occurrence of weekday",
 		"dec 15        Month day (next year if past)",
 	}
+	if a.allowsTime {
+		formats = append(formats, "+4h           Hours from now (defer only)")
+	}
+	return formats
 }

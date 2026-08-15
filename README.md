@@ -124,7 +124,15 @@ when that task would otherwise be hidden.
 
 Inside the `@` and `d` pickers, `a` opens a typed-date input for any date the
 relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
-`next mon`, or `dec 15`. Inside the `#` picker the same key adds a new tag.
+`next mon`, or `dec 15`. `+4h` and the other `+Nh` hour offsets work in the `d`
+picker alone, because a deferral is an instant and a due date is a calendar day;
+`@` refuses them by name. Inside the `#` picker the same key adds a new tag.
+
+The `d` presets are Clear defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow
+morning, Until tomorrow, For one week, and For one month. Tomorrow morning is
+09:00 on the local wall clock, on daylight-saving transition days too. A preset
+is highlighted as the current value only when it is reproducible from the clock
+alone, so the three hour rows never highlight.
 
 The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and `?` help. The old standalone `b` and `t`
@@ -325,10 +333,19 @@ The Outliner uses the full terminal width at every supported size. Task rows
 show workflow state, conditional high priority, due and defer dates, and
 checklist progress; short task IDs are hidden.
 
-A deferral reads as `defer <date>` only while it is still pending. Once the date
-passes the row says `woke <age>` for three days, because a task that came back
-is work again and a past-dated `defer` would read as still hidden. After that
-the marker disappears and the task is ordinary work.
+A deferral reads as `defer <date>` only while it is still pending, and the date
+carries a clock whenever the task comes back partway through a day. A deferral
+to a whole day stays a bare `defer Sep 2`; one that returns later today reads as
+`defer 15:04`, and one on another day as `defer Sep 2 15:04`, with the year
+added when it falls outside this one. Once the deferral lapses the row says
+`woke <age>` for three days, because a task that came back is work again and a
+past-dated `defer` would read as still hidden. After that the marker disappears
+and the task is ordinary work.
+
+A row that wakes while the Outliner is open returns on its own within a minute,
+without a key press. The return waits if an overlay, picker, inline row editor,
+visual selection, or search is open, because rebuilding the rows underneath one
+of those would move the ground the user is standing on.
 
 A Waiting task reads as `waiting <age>`, measured from the moment it entered
 Waiting rather than from the last time anything touched it, so recording a chase
@@ -549,7 +566,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## Schema 10 storage and migration
+## Schema 11 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -569,22 +586,23 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-9 Markdown and generic `Task` headings.
+Project task files use strict schema-10 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-9 workspaces to schema 10, supported schema-6
-through schema-8 workspaces through the intermediate boundaries, and supported
+Startup migrates supported schema-10 workspaces to schema 11, supported schema-6
+through schema-9 workspaces through the intermediate boundaries, and supported
 schema-4/5 workspaces through the whole chain. Each step validates the complete
 candidate before mutation and publishes its own immutable rollback archive and
 audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
 `pre-consolidation-v6-<UTC>.tar.gz` for v5→v6, `pre-scope-v7-<UTC>.tar.gz`
 for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
-`pre-state-clock-v9-<UTC>.tar.gz` for v8→v9, and
-`pre-defer-rename-v10-<UTC>.tar.gz` for v9→v10. The schema-6 conversion preserves
+`pre-state-clock-v9-<UTC>.tar.gz` for v8→v9,
+`pre-defer-rename-v10-<UTC>.tar.gz` for v9→v10, and
+`pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11. The schema-6 conversion preserves
 notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
@@ -602,6 +620,13 @@ predate the new field.
 Schema 10 upgrades task Markdown to schema 9 by renaming the durable deferral
 metadata key from `snoozed` to `deferred`, and clears undo/redo history once
 more because the retained bytes are raw pre-rename Markdown.
+Schema 11 upgrades task Markdown to schema 10 by rewriting each deferral value
+from a calendar date to an RFC3339Nano instant, which is what lets a deferral
+expire later the same day. A bare date always meant the moment that day began
+where it was read, so each one lifts to exactly that instant and every existing
+deferral wakes when it always would have; the due date stays a calendar date.
+Undo/redo history is cleared again because the retained bytes are raw
+calendar-date Markdown.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -610,8 +635,8 @@ loading, and repeated startup is idempotent.
 
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
-manual: extract the matching archive — `pre-defer-rename-v10-<UTC>.tar.gz` for
-the schema-10 boundary — into a separate directory and open that copy with a
+manual: extract the matching archive — `pre-defer-instant-v11-<UTC>.tar.gz` for
+the schema-11 boundary — into a separate directory and open that copy with a
 compatible build. Migration snapshots themselves are never modified.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for

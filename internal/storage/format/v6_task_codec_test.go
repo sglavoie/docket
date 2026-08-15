@@ -222,3 +222,53 @@ func TestValidateV6TaskRecordRequiresCanonicalGenericTags(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateDeferValueRejectsValuesTheLayoutCannotRoundTrip(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		encoding deferEncoding
+		value    string
+		wantErr  string
+	}{
+		{name: "empty is absent", encoding: deferDateLegacy, value: ""},
+		{name: "canonical date", encoding: deferDateLegacy, value: "2026-05-14"},
+		{
+			name:     "unpadded date",
+			encoding: deferDateLegacy,
+			value:    "2026-5-14",
+			wantErr:  `snoozed date "2026-5-14" is not canonical YYYY-MM-DD`,
+		},
+		{
+			name:     "renamed key names itself",
+			encoding: deferDateRenamed,
+			value:    "2026-05-14T09:00:00Z",
+			wantErr:  `deferred date "2026-05-14T09:00:00Z" is not canonical YYYY-MM-DD`,
+		},
+		{name: "canonical instant", encoding: deferInstant, value: "2026-05-14T09:00:00Z"},
+		{
+			name:     "instant layout refuses a bare date",
+			encoding: deferInstant,
+			value:    "2026-05-14",
+			wantErr:  `deferred date "2026-05-14" is not canonical RFC3339Nano`,
+		},
+		{
+			name:     "instant layout refuses a trailing zero nanosecond",
+			encoding: deferInstant,
+			value:    "2026-05-14T09:00:00.000Z",
+			wantErr:  `deferred date "2026-05-14T09:00:00.000Z" is not canonical RFC3339Nano`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateDeferValue(tc.encoding, tc.value)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validateDeferValue(%+v, %q) = %v, want nil", tc.encoding, tc.value, err)
+				}
+				return
+			}
+			if err == nil || err.Error() != tc.wantErr {
+				t.Fatalf("validateDeferValue(%+v, %q) = %v, want %q", tc.encoding, tc.value, err, tc.wantErr)
+			}
+		})
+	}
+}

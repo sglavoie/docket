@@ -123,6 +123,13 @@ func (id ValueProviderID) dateEntry() bool {
 	return id == ValueProviderDueDate || id == ValueProviderDefer
 }
 
+// instantEntry reports whether the inline date mode resolves to an instant
+// rather than a calendar day, which is what makes the hour form typeable.
+// Deferral is the only value that can land later the same day.
+func (id ValueProviderID) instantEntry() bool {
+	return id == ValueProviderDefer
+}
+
 func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {
 	descriptor.ValueProviderID = provider
 	return descriptor

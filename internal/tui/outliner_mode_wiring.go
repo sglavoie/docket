@@ -59,6 +59,10 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
 func (m *OutlinerModel) buildCanonicalModeRows() {
+	// Assigned above the search-projection return so both branches leave a live
+	// wake clock behind: a projection the user leaves must not resume with a
+	// stale one.
+	m.nextDeferWake = earliestDeferWake(m.workModeScopeProjects(), time.Now())
 	if m.hasSearchProjection() {
 		m.buildSearchProjectionRows()
 		m.expandChecklistRows()
@@ -95,6 +99,26 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	m.expandChecklistRows()
 	m.pruneInvisibleSelections()
 	m.clampCursor()
+}
+
+// earliestDeferWake returns the soonest instant at which a still-pending
+// deferral in the given projects lapses, or the zero time when none is pending.
+func earliestDeferWake(projects []*models.Project, now time.Time) time.Time {
+	var earliest time.Time
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil || !task.IsDeferredAt(now) {
+				continue
+			}
+			if earliest.IsZero() || task.DeferredUntil.Before(earliest) {
+				earliest = *task.DeferredUntil
+			}
+		}
+	}
+	return earliest
 }
 
 // buildModeCandidateInput completes the shared mode input with the focus-narrowed

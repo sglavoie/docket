@@ -85,6 +85,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case periodicSaveMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
+		m.wakeDeferredRows(time.Now())
 		return true, tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		})
@@ -100,6 +101,39 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	default:
 		return false, nil
 	}
+}
+
+// wakeDeferredRows returns a lapsed deferral to the outline on the first tick
+// past it. It flips the memoization bypass instead of rebuilding, so the render
+// pass Bubble Tea runs right after Update stays the single rebuild authority
+// and computeOutlinerViewport keeps sole ownership of viewScrollOffset. A
+// refusal leaves nextDeferWake standing, so the next tick retries.
+func (m *AppModel) wakeDeferredRows(now time.Time) {
+	out := m.crossOutliner
+	if out == nil || out.nextDeferWake.IsZero() || now.Before(out.nextDeferWake) {
+		return
+	}
+	if !m.safeToRebuildForWake() {
+		return
+	}
+	out.nextDeferWake = time.Time{}
+	out.crossForceRebuild = true
+}
+
+// safeToRebuildForWake refuses while a new row would invalidate what the user
+// is already in the middle of: an overlay or value picker holds a pending
+// operation's resolved refs, an inline row editor and a visual selection both
+// name rows the rebuild would renumber, and a search projection is a frozen
+// answer to a query the woken task was never matched against.
+func (m *AppModel) safeToRebuildForWake() bool {
+	out := m.crossOutliner
+	if out == nil {
+		return false
+	}
+	return !m.Overlays().Active() &&
+		!out.quickEdit.IsActive() &&
+		!out.IsMultiSelectActive() &&
+		!out.hasSearchProjection()
 }
 
 // handleTransactionResult routes a committed feature-coordinator mutation back

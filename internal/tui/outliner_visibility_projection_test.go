@@ -77,10 +77,13 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 	now := time.Date(2026, 3, 10, 0, 30, 0, 0, referenceLocation)
 	sameDay := time.Date(2026, 3, 10, 0, 0, 0, 0, dateLocation)
 	nextDay := time.Date(2026, 3, 11, 0, 0, 0, 0, dateLocation)
+	// A deferral that expired earlier on the reference day is what schema 10
+	// made representable, and it must project as ordinary open work.
+	sameDayExpiry := time.Date(2026, 3, 10, 0, 0, 0, 0, referenceLocation)
 
 	sameDayTask := primaryRowsTask("same-day", models.StateBacklog)
 	sameDayTask.Pinned = true
-	sameDayTask.DeferredUntil = &sameDay
+	sameDayTask.DeferredUntil = &sameDayExpiry
 	sameDayTask.DueDate = &sameDay
 	deferred := primaryRowsTask("deferred", models.StateBacklog)
 	deferred.Pinned = true
@@ -94,7 +97,7 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 		Now:      now,
 	})
 	if got := projectedTaskIDs(defaultProjection); !slices.Equal(got, []string{"same-day"}) {
-		t.Fatalf("default projection = %v, want only open work whose deferral expires on the reference date", got)
+		t.Fatalf("default projection = %v, want only open work whose deferral already expired at the reference time", got)
 	}
 
 	explicitProjection := buildPinnedModeProjection(OutlinerModeInput{

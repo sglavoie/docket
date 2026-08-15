@@ -9,6 +9,10 @@
     { "type": "key", "label": "open the defer picker with its direct key", "key": "d" },
     { "type": "assert", "assert": "contains", "value": "Set Defer: Build login form" },
     { "type": "assert", "assert": "contains", "value": "Clear" },
+    { "type": "assert", "label": "a deferral is an instant, so the picker offers hour offsets", "assert": "contains", "value": "In 1 hour" },
+    { "type": "assert", "assert": "contains", "value": "In 4 hours" },
+    { "type": "assert", "assert": "contains", "value": "In 8 hours" },
+    { "type": "assert", "assert": "contains", "value": "Tomorrow morning" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -17,12 +21,13 @@
     { "type": "assert", "assert": "not_contains", "value": "Set Defer" },
 
     { "type": "key", "label": "reopen the picker", "key": "d" },
-    { "type": "key", "label": "highlight the first relative preset", "key": "j" },
-    { "type": "key", "label": "commit the deferral", "key": "enter" },
+    { "type": "key", "label": "highlight In 1 hour, the first row below Clear defer", "key": "j" },
+    { "type": "key", "label": "commit the one-hour deferral", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the picker chrome is gone; only its status remains", "assert": "not_contains", "value": "Esc back" },
     { "type": "assert", "assert": "status_contains", "value": "Defer" },
+    { "type": "assert", "label": "an hour-granular deferral hides the row today, not tomorrow", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

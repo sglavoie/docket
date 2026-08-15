@@ -95,6 +95,11 @@ type OutlinerModel struct {
 	// the active project scope.
 	searchProjection *outlinerSearchSnapshot
 
+	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
+	// and zero means none is pending. It is a refresh clock read by the periodic
+	// tick; what a row shows stays isComputedOpenWork's decision.
+	nextDeferWake time.Time
+
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
 

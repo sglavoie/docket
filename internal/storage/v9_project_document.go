@@ -9,8 +9,9 @@ import (
 // clock, and generic Markdown headings.
 const SchemaVersionV9 = 9
 
-// schemaMarkerV9 pins the exact marker line live task Markdown carries, so a
-// change to the marker format helper cannot silently rewrite what is on disk.
+// schemaMarkerV9 pins the exact marker line schema-9 task Markdown carries, so a
+// change to the marker format helper cannot silently rewrite what the v11
+// migration reads.
 const schemaMarkerV9 = "<!-- tt-schema: 9 -->"
 
 // V9ProjectDocument is one project task file in schema 9. The schema-9 change is

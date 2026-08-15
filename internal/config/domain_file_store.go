@@ -281,6 +281,26 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 			return nil, fmt.Errorf("invalid machine state: %w", err)
 		}
 	}
+	return marshalDomainEnvelope(kind, workspaceID, payload)
+}
+
+// encodeMigrationCatalogEnvelope renders the catalog a schema migration is about
+// to activate. It validates against the schema the migration targets rather than
+// the schema this build loads, which is the one thing encodeDomainEnvelope
+// cannot do: an activation publishes its target schema before that target is
+// loadable. It shares marshalDomainEnvelope so the bytes stay identical to an
+// ordinary save.
+func encodeMigrationCatalogEnvelope(catalog *WorkspaceCatalog, targetSchema int) ([]byte, error) {
+	if err := validateWorkspaceID(catalog.WorkspaceID); err != nil {
+		return nil, err
+	}
+	if err := catalog.validateAtSchema(targetSchema); err != nil {
+		return nil, fmt.Errorf("invalid workspace catalog: %w", err)
+	}
+	return marshalDomainEnvelope(domainCatalog, catalog.WorkspaceID, catalog)
+}
+
+func marshalDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]byte, error) {
 	rawPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %s payload: %w", kind.name(), err)

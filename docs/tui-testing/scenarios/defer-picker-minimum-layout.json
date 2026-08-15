@@ -9,6 +9,9 @@
     { "type": "assert", "label": "defer earns a footer slot at the minimum width", "assert": "contains", "value": "d defer" },
     { "type": "key", "label": "open direct defer values", "key": "d" },
     { "type": "assert", "assert": "contains", "value": "Set Defer" },
+    { "type": "assert", "label": "the eight-row list fits whole at the minimum width", "assert": "contains", "value": "In 1 hour" },
+    { "type": "assert", "assert": "contains", "value": "Tomorrow morning" },
+    { "type": "assert", "label": "the last row is on screen, so nothing is scrolled away", "assert": "contains", "value": "For one month" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

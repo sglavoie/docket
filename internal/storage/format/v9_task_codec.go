@@ -5,11 +5,6 @@ import (
 	"strings"
 )
 
-// metadataKeyDeferred is the schema-9 spelling of the deferral-date metadata
-// key. It is the whole schema-9 change: the record shape, the field set, and
-// every invariant are schema 8's.
-const metadataKeyDeferred = "deferred"
-
 // V9TaskRecord is the complete schema-9 storage shape. Schema 9 renames a
 // durable metadata key and adds no field, so it is an alias rather than a new
 // struct: a DeferredUntil field beside the inherited SnoozedUntil would let two
@@ -40,16 +35,16 @@ var v9RequiredMetadataKeys = v8RequiredMetadataKeys
 // changes a durable key and no invariant, so the schema-8 rules apply verbatim
 // apart from the key a rejected deferral date is named by.
 func ValidateV9TaskRecord(task V9TaskRecord) error {
-	return validateV8TaskRecord(task, true, metadataKeyDeferred)
+	return validateV8TaskRecord(task, true, deferDateRenamed)
 }
 
 // WriteV9TaskMetadata writes the canonical schema-9 metadata comment.
 func WriteV9TaskMetadata(task V9TaskRecord) (string, error) {
-	if err := validateV8TaskRecord(task, false, metadataKeyDeferred); err != nil {
+	if err := validateV8TaskRecord(task, false, deferDateRenamed); err != nil {
 		return "", err
 	}
 	extra := []string{"state_changed: " + formatV6Time(task.StateChangedAt)}
-	return wrapTaskMetadata(taskMetadataParts(task.V6TaskRecord, metadataKeyDeferred, extra)), nil
+	return wrapTaskMetadata(taskMetadataParts(task.V6TaskRecord, deferDateRenamed, extra)), nil
 }
 
 // ParseV9TaskMetadata strictly parses one schema-9 metadata comment.
@@ -58,7 +53,7 @@ func ParseV9TaskMetadata(comment string) (V9TaskRecord, error) {
 	if err != nil {
 		return V9TaskRecord{}, err
 	}
-	base, err := v6RecordFromMetadataValues(values, metadataKeyDeferred)
+	base, err := v6RecordFromMetadataValues(values, deferDateRenamed)
 	if err != nil {
 		return V9TaskRecord{}, err
 	}
@@ -67,7 +62,7 @@ func ParseV9TaskMetadata(comment string) (V9TaskRecord, error) {
 		return V9TaskRecord{}, fmt.Errorf("parse v9 state_changed: %w", err)
 	}
 	task := V9TaskRecord{V6TaskRecord: base, StateChangedAt: stateChangedAt}
-	if err := validateV8TaskRecord(task, false, metadataKeyDeferred); err != nil {
+	if err := validateV8TaskRecord(task, false, deferDateRenamed); err != nil {
 		return V9TaskRecord{}, err
 	}
 	return task, nil

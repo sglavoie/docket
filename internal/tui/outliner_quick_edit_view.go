@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -106,7 +107,7 @@ func (m *OutlinerModel) quickEditMetadataLine(row outlinerRow, project *models.P
 	}
 
 	segments := append([]string(nil), mandatory...)
-	for _, optional := range quickEditOptionalMetadata(task) {
+	for _, optional := range quickEditOptionalMetadata(task, time.Now()) {
 		if lipgloss.Width(strings.Join(append(segments, optional), " · ")) > width {
 			break
 		}
@@ -231,7 +232,7 @@ func quickEditWorkflowLabel(row outlinerRow, task *models.Task, preview *quickEd
 // quickEditOptionalMetadata is ordered from strongest to weakest. Appending
 // until the first width miss yields the required reverse degradation ladder:
 // tags, pin, deferral, due/check-back, then priority disappear as width shrinks.
-func quickEditOptionalMetadata(task *models.Task) []string {
+func quickEditOptionalMetadata(task *models.Task, now time.Time) []string {
 	if task == nil {
 		return nil
 	}
@@ -247,7 +248,7 @@ func quickEditOptionalMetadata(task *models.Task) []string {
 		parts = append(parts, prefix+task.DueDate.Format("Jan 2"))
 	}
 	if task.DeferredUntil != nil {
-		parts = append(parts, "defer "+formatDeferDate(*task.DeferredUntil))
+		parts = append(parts, "defer "+formatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.Pinned {
 		parts = append(parts, "pin")

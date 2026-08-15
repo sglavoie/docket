@@ -45,7 +45,7 @@ The full script is the acceptance gate.
 | `release` | A large Unicode catalog for viewport and resize stress. |
 | `parked` | One project in the base task workspace and one tagged `parked`. |
 | `project-mix` | An active project with a task, an active project with none, a parked project with a task, and an archived project with none. |
-| `signals` | Lapsed and pending deferrals, concentrated overdue work, and a durable Today membership. |
+| `signals` | A lapsed deferral beside a whole-day and an hour-valued pending one, concentrated overdue work, and a durable Today membership. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
 Only `parked` and `project-mix` split the base task workspace from the catalog.
@@ -161,6 +161,7 @@ The committed suite exercises the product contracts directly:
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
 | Priority, workflow, deferred, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
+| Hour-granular deferral presets, `+Nh` typed entry, and the defer-only refusal | `defer-hour-presets.json`, `defer-picker-direct.json`, `defer-custom-entry-bulk.json`, `date-custom-entry.json`, `defer-wake-marker.json` |
 | Scope and project administration | `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Comments and attachments | `rich-tools.json` |

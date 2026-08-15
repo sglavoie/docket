@@ -1,0 +1,49 @@
+{
+  "name": "defer-hour-presets",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
+
+    { "type": "key", "label": "open the defer picker", "key": "d" },
+    { "type": "assert", "assert": "contains", "value": "Set Defer: Triage support inbox" },
+    { "type": "assert", "label": "the hour offsets lead, because a deferral is an instant", "assert": "contains", "value": "In 1 hour" },
+    { "type": "assert", "assert": "contains", "value": "In 4 hours" },
+    { "type": "assert", "assert": "contains", "value": "In 8 hours" },
+    { "type": "assert", "assert": "contains", "value": "Tomorrow morning" },
+    { "type": "assert", "label": "the whole-day rows survive beside them", "assert": "contains", "value": "Until tomorrow" },
+    { "type": "assert", "assert": "contains", "value": "For one week" },
+    { "type": "assert", "assert": "contains", "value": "For one month" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "highlight In 4 hours, three rows below Clear defer", "key": "j" },
+    { "type": "key", "label": "commit the four-hour deferral", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Defer" },
+    { "type": "assert", "label": "a same-day deferral hides the row now rather than at midnight", "assert": "not_contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "deferring also backlogs the task, so look for it in All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "key", "label": "open the filter chord", "key": "f" },
+    { "type": "key", "label": "isolate the pending deferrals", "key": "d" },
+    { "type": "assert", "label": "the hidden task is still there, wearing its wake marker", "assert": "contains", "value": "Triage support inbox defer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reopen the filter chord", "key": "f" },
+    { "type": "key", "label": "clear every facet", "key": "x" },
+    { "type": "key", "label": "undo the deferral", "key": "u" },
+    { "type": "wait" },
+    { "type": "key", "label": "back to Inbox, where the task started", "key": "g" },
+    { "type": "key", "key": "i" },
+    { "type": "assert", "label": "undo restores the row to ordinary triage", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox defer" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

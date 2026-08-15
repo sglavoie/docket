@@ -151,7 +151,7 @@ func NewWorkspaceCatalog() *WorkspaceCatalog {
 // non-empty ID and canonical safe slug, IDs and slugs must be unique, and the
 // protected Unfiled reference must point at a cataloged project when set.
 func (w *WorkspaceCatalog) Validate() error {
-	return w.validate(false)
+	return w.validate(false, CurrentConfigVersion)
 }
 
 // validateForLoad is the single seam every catalog-loading path validates
@@ -159,18 +159,26 @@ func (w *WorkspaceCatalog) Validate() error {
 // with EnsureProjectColorSlots; save paths continue to use Validate, which
 // rejects them.
 func (w *WorkspaceCatalog) validateForLoad() error {
-	return w.validate(true)
+	return w.validate(true, CurrentConfigVersion)
 }
 
-func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool) error {
+// validateAtSchema measures a catalog against the schema a migration is
+// activating rather than the schema this build loads, because an activation
+// publishes its target schema before that target becomes the loadable one.
+// Every ordinary save and load keeps measuring against CurrentConfigVersion.
+func (w *WorkspaceCatalog) validateAtSchema(supported int) error {
+	return w.validate(false, supported)
+}
+
+func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool, supported int) error {
 	if w.SchemaVersion <= 0 {
 		return fmt.Errorf("workspace catalog: schema version must be positive, got %d", w.SchemaVersion)
 	}
-	if w.SchemaVersion > CurrentConfigVersion {
+	if w.SchemaVersion > supported {
 		return fmt.Errorf(
 			"workspace catalog: schema version %d is newer than supported version %d; upgrade tt",
 			w.SchemaVersion,
-			CurrentConfigVersion,
+			supported,
 		)
 	}
 	seenID := make(map[string]bool, len(w.Projects))

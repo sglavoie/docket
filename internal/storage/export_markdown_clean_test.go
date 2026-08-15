@@ -148,9 +148,12 @@ func TestWriteProjectMarkdownClean_DueDate(t *testing.T) {
 	}
 }
 
+// TestWriteProjectMarkdownClean_DeferredUntil pins the export decision the
+// schema-10 deferral instant forced: the badge stays day-only, and the day it
+// names is the reader's, not the one carried by the offset another machine wrote.
 func TestWriteProjectMarkdownClean_DeferredUntil(t *testing.T) {
 	task := mustTask("t1", 1, "Deferred")
-	deferUntil := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	deferUntil := time.Date(2026, 5, 1, 16, 30, 0, 0, time.Local)
 	task.DeferredUntil = &deferUntil
 	task.Priority = 0
 	p := newProject("Defer", task)
@@ -158,6 +161,15 @@ func TestWriteProjectMarkdownClean_DeferredUntil(t *testing.T) {
 
 	if !strings.Contains(out, "deferred until 2026-05-01") {
 		t.Errorf("expected deferral date in badge: %q", out)
+	}
+	if strings.Contains(out, "16:30") {
+		t.Errorf("clean export badge should stay day-only: %q", out)
+	}
+
+	elsewhere := deferUntil.In(time.FixedZone("elsewhere", 12*60*60))
+	task.DeferredUntil = &elsewhere
+	if again := WriteProjectMarkdownClean(p); again != out {
+		t.Errorf("same instant in another location changed the badge:\n%q\nwant\n%q", again, out)
 	}
 }
 

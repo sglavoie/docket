@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -184,7 +185,10 @@ func buildExportBadge(task *models.Task) string {
 		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
 	}
 	if task.DeferredUntil != nil {
-		parts = append(parts, "deferred until "+task.DeferredUntil.Format("2006-01-02"))
+		// The deferral is a durable instant, but this export stays day-only so the
+		// badge keeps one granularity beside the due date. The instant carries the
+		// offset of whichever machine wrote it, so the day is resolved locally.
+		parts = append(parts, "deferred until "+task.DeferredUntil.In(time.Local).Format("2006-01-02"))
 	}
 
 	if len(parts) == 0 {

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -73,6 +74,7 @@ var (
 	relativeDaysRe   = regexp.MustCompile(`^\+(\d+)d$`)
 	relativeWeeksRe  = regexp.MustCompile(`^\+(\d+)w$`)
 	relativeMonthsRe = regexp.MustCompile(`^\+(\d+)m$`)
+	relativeHoursRe  = regexp.MustCompile(`^\+(\d+)h$`)
 	nextWeekdayRe    = regexp.MustCompile(`^next\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
 	thisWeekdayRe    = regexp.MustCompile(`^this\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
 	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)$`)
@@ -130,6 +132,38 @@ func isoWeekdayNum(wd time.Weekday) int {
 func ParseRelativeDate(input string) (time.Time, error) {
 	return ParseRelativeDateWithConfig(input, "sun")
 }
+
+// ParseDeferInstantAt parses a deferral target relative to now. It accepts
+// everything ParseRelativeDate accepts plus the hour form "+Nh", which is the
+// only form that can resolve later the same day; every other form still lands
+// on local midnight of a calendar day.
+func ParseDeferInstantAt(input string, now time.Time) (time.Time, error) {
+	input = normalizeDateInput(input)
+	if instant, ok, err := parseMatchedOffset(relativeHoursRe.FindStringSubmatch(input), input, "hours", func(n int) time.Time {
+		return now.Add(time.Duration(n) * time.Hour)
+	}); ok || err != nil {
+		return instant, err
+	}
+	return ParseRelativeDate(input)
+}
+
+// ParseDeferInstant parses a deferral target relative to the current time.
+func ParseDeferInstant(input string) (time.Time, error) {
+	return ParseDeferInstantAt(input, time.Now())
+}
+
+// ParseCalendarDate parses a day-granular date. It is ParseRelativeDate with
+// the hour form refused by name, so a surface that stores a calendar day says
+// why "+4h" is rejected instead of reporting an unrecognized format.
+func ParseCalendarDate(input string) (time.Time, error) {
+	input = normalizeDateInput(input)
+	if relativeHoursRe.MatchString(input) {
+		return time.Time{}, errHoursAreDeferOnly
+	}
+	return ParseRelativeDate(input)
+}
+
+var errHoursAreDeferOnly = errors.New("hours are defer-only; a due date is a calendar day — try +1d")
 
 func normalizeDateInput(input string) string {
 	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(input))), " ")

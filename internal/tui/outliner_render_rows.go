@@ -537,7 +537,7 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 // closes and the task is ordinary work again.
 func formatDeferIndicator(task *models.Task, now time.Time) string {
 	if task.IsDeferredAt(now) {
-		return MutedStyle.Render("defer " + formatDeferDate(*task.DeferredUntil))
+		return MutedStyle.Render("defer " + formatDeferDate(*task.DeferredUntil, now))
 	}
 	if !taskWokeRecently(task, now) {
 		return ""

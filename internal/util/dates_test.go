@@ -258,3 +258,84 @@ func TestDaysBetween(t *testing.T) {
 		t.Errorf("DaysBetween(same day) = %d, want 0", got)
 	}
 }
+
+func TestParseDeferInstantAtAcceptsHourOffsets(t *testing.T) {
+	now := time.Date(2026, 8, 14, 15, 30, 0, 0, time.Local)
+
+	got, err := ParseDeferInstantAt("+4h", now)
+	if err != nil {
+		t.Fatalf("ParseDeferInstantAt(%q) error = %v", "+4h", err)
+	}
+	if want := now.Add(4 * time.Hour); !got.Equal(want) {
+		t.Errorf("ParseDeferInstantAt(%q) = %v, want %v", "+4h", got, want)
+	}
+
+	got, err = ParseDeferInstantAt("  +12H  ", now)
+	if err != nil {
+		t.Fatalf("ParseDeferInstantAt(%q) error = %v", "  +12H  ", err)
+	}
+	if want := now.Add(12 * time.Hour); !got.Equal(want) {
+		t.Errorf("ParseDeferInstantAt(%q) = %v, want %v", "  +12H  ", got, want)
+	}
+
+	got, err = ParseDeferInstantAt("+1000000h", now)
+	if err != nil {
+		t.Fatalf("ParseDeferInstantAt at the offset bound error = %v", err)
+	}
+	if want := now.Add(1_000_000 * time.Hour); !got.Equal(want) {
+		t.Errorf("ParseDeferInstantAt at the offset bound = %v, want %v", got, want)
+	}
+
+	if _, err := ParseDeferInstantAt("+1000001h", now); err == nil {
+		t.Fatal("ParseDeferInstantAt past the offset bound did not error")
+	} else if !strings.Contains(err.Error(), "out of range") {
+		t.Errorf("offset bound error = %q, want it to name the range", err)
+	}
+}
+
+func TestParseDeferInstantAtKeepsCalendarFormsDayGranular(t *testing.T) {
+	now := time.Date(2026, 8, 14, 15, 30, 0, 0, time.Local)
+	today := StartOfDay(time.Now())
+
+	got, err := ParseDeferInstantAt("+3m", now)
+	if err != nil {
+		t.Fatalf("ParseDeferInstantAt(%q) error = %v", "+3m", err)
+	}
+	if want := AddMonthsClamped(today, 3); !got.Equal(want) {
+		t.Errorf("ParseDeferInstantAt(%q) = %v, want three months at %v", "+3m", got, want)
+	}
+
+	got, err = ParseDeferInstant("tomorrow")
+	if err != nil {
+		t.Fatalf("ParseDeferInstant(%q) error = %v", "tomorrow", err)
+	}
+	if want := today.AddDate(0, 0, 1); !got.Equal(want) {
+		t.Errorf("ParseDeferInstant(%q) = %v, want %v", "tomorrow", got, want)
+	}
+}
+
+func TestHourOffsetsStayOutOfTheCalendarDayParsers(t *testing.T) {
+	if _, err := ParseRelativeDate("+4h"); err == nil {
+		t.Fatal("ParseRelativeDate(\"+4h\") accepted an hour offset")
+	}
+
+	if got, err := ParseRelativeDate("+3m"); err != nil {
+		t.Fatalf("ParseRelativeDate(%q) error = %v", "+3m", err)
+	} else if want := AddMonthsClamped(StartOfDay(time.Now()), 3); !got.Equal(want) {
+		t.Errorf("ParseRelativeDate(%q) = %v, want three months at %v", "+3m", got, want)
+	}
+
+	_, err := ParseCalendarDate("+4h")
+	if err == nil {
+		t.Fatal("ParseCalendarDate(\"+4h\") accepted an hour offset")
+	}
+	if !strings.Contains(err.Error(), "defer-only") || !strings.Contains(err.Error(), "+1d") {
+		t.Errorf("ParseCalendarDate(\"+4h\") error = %q, want the defer-only rule named with the +1d replacement", err)
+	}
+
+	if got, err := ParseCalendarDate("+3d"); err != nil {
+		t.Fatalf("ParseCalendarDate(%q) error = %v", "+3d", err)
+	} else if want := StartOfDay(time.Now()).AddDate(0, 0, 3); !got.Equal(want) {
+		t.Errorf("ParseCalendarDate(%q) = %v, want %v", "+3d", got, want)
+	}
+}
