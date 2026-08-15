@@ -146,6 +146,34 @@ func TestScoreRanking(t *testing.T) {
 			pattern:     "fb",
 			want1Higher: true,
 		},
+		{
+			name:        "prefix beats longer-text interior run",
+			text1:       "Analytics",
+			text2:       "Katana",
+			pattern:     "ana",
+			want1Higher: true,
+		},
+		{
+			name:        "prefix beats short interior run",
+			text1:       "Analytics",
+			text2:       "Xana",
+			pattern:     "ana",
+			want1Higher: true,
+		},
+		{
+			name:        "exact length beats longer prefix",
+			text1:       "auth",
+			text2:       "authentication",
+			pattern:     "auth",
+			want1Higher: true,
+		},
+		{
+			name:        "shorter equal-quality prefix wins",
+			text1:       "impl",
+			text2:       "implx",
+			pattern:     "impl",
+			want1Higher: true,
+		},
 	}
 
 	for _, tt := range tests {

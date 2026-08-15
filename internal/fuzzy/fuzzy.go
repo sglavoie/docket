@@ -7,16 +7,23 @@ import (
 	"unicode"
 )
 
-// Score returns a match score for the pattern against the text.
+// Score returns a case-insensitive match score for the pattern against the text.
 // Returns 0 if there is no match.
 // Higher scores indicate better matches based on:
 //   - Consecutive character matches (+3 bonus)
 //   - Word boundary matches (+2 bonus)
-//   - Match at start of text (+1 bonus)
+//   - Match at start of text (+2 bonus, plus +1 when the pattern's first
+//     character lands there)
 //   - Base score of 1 per matched character
 //
-// The score is also adjusted to prefer shorter texts.
+// Shorter texts are then preferred as a tie-break worth at most 3.
 func Score(text, pattern string) int {
+	return Matcher{}.Score(text, pattern)
+}
+
+// Score returns a match score for the pattern against the text under the
+// matcher's case sensitivity. Returns 0 if there is no match.
+func (m Matcher) Score(text, pattern string) int {
 	if pattern == "" {
 		return 1 // Empty pattern matches everything with minimal score
 	}
@@ -24,20 +31,25 @@ func Score(text, pattern string) int {
 		return 0
 	}
 
-	textLower := strings.ToLower(text)
-	patternLower := strings.ToLower(pattern)
-
 	textOriginalRunes := []rune(text)
-	textRunes := []rune(textLower)
-	patternRunes := []rune(patternLower)
+	textRunes := []rune(m.fold(text))
+	patternRunes := []rune(m.fold(pattern))
 
 	return scoreSubsequence(textRunes, textOriginalRunes, patternRunes)
 }
 
 // ScoreTerms splits the query into whitespace-separated terms and returns
-// a combined score if ALL terms match the text. Returns 0 if any term fails to match.
+// a combined case-insensitive score if ALL terms match the text. Returns 0 if
+// any term fails to match.
 // This preserves AND logic for multi-word queries like "need way".
 func ScoreTerms(text, query string) int {
+	return Matcher{}.ScoreTerms(text, query)
+}
+
+// ScoreTerms splits the query into whitespace-separated terms and returns a
+// combined score if ALL terms match the text under the matcher's case
+// sensitivity. Returns 0 if any term fails to match.
+func (m Matcher) ScoreTerms(text, query string) int {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return 1
@@ -50,7 +62,7 @@ func ScoreTerms(text, query string) int {
 
 	totalScore := 0
 	for _, term := range terms {
-		score := Score(text, term)
+		score := m.Score(text, term)
 		if score == 0 {
 			return 0 // All terms must match
 		}
@@ -60,17 +72,28 @@ func ScoreTerms(text, query string) int {
 	return totalScore
 }
 
-// ScoreWithPositions returns both a match score and the indices in text where matches occurred.
+// ScoreWithPositions returns both a case-insensitive match score and the indices
+// in text where matches occurred.
 // Returns 0 score and nil positions if there is no match.
-// Positions are 0-indexed rune positions in the lowercased text. Go's
-// strings.ToLower performs a 1:1 rune mapping (it does not apply locale-specific
-// SpecialCase tables that expand a rune into multiple runes), so the lowercased
-// rune sequence has the same length as []rune(text) for all default inputs.
-// Callers can therefore safely use these indices on []rune(text). If a caller
-// pre-applies a locale-specific case mapping (e.g. Turkish) before calling this
-// function, that 1:1 invariant no longer holds and positions should be
-// interpreted as indices into the (already-lowercased) rune sequence passed in.
+// See Matcher.ScoreWithPositions for how positions map onto []rune(text).
 func ScoreWithPositions(text, pattern string) (int, []int) {
+	return Matcher{}.ScoreWithPositions(text, pattern)
+}
+
+// ScoreWithPositions returns both a match score and the indices in text where
+// matches occurred, under the matcher's case sensitivity.
+// Returns 0 score and nil positions if there is no match.
+// Positions are 0-indexed rune positions in the folded text. A case-sensitive
+// matcher folds nothing, so the indices are positions in []rune(text) directly.
+// Otherwise Go's strings.ToLower performs a 1:1 rune mapping (it does not apply
+// locale-specific SpecialCase tables that expand a rune into multiple runes), so
+// the lowercased rune sequence has the same length as []rune(text) for all
+// default inputs. Callers can therefore safely use these indices on
+// []rune(text). If a caller pre-applies a locale-specific case mapping (e.g.
+// Turkish) before calling this function, that 1:1 invariant no longer holds and
+// positions should be interpreted as indices into the (already-lowercased) rune
+// sequence passed in.
+func (m Matcher) ScoreWithPositions(text, pattern string) (int, []int) {
 	if pattern == "" {
 		return 1, nil
 	}
@@ -78,20 +101,26 @@ func ScoreWithPositions(text, pattern string) (int, []int) {
 		return 0, nil
 	}
 
-	textLower := strings.ToLower(text)
-	patternLower := strings.ToLower(pattern)
-
 	textOriginalRunes := []rune(text)
-	textRunes := []rune(textLower)
-	patternRunes := []rune(patternLower)
+	textRunes := []rune(m.fold(text))
+	patternRunes := []rune(m.fold(pattern))
 
 	return scoreSubsequenceWithPositions(textRunes, textOriginalRunes, patternRunes)
 }
 
-// ScoreTermsWithPositions splits the query into whitespace-separated terms and returns
-// a combined score and merged match positions if ALL terms match the text.
+// ScoreTermsWithPositions splits the query into whitespace-separated terms and
+// returns a combined case-insensitive score and merged match positions if ALL
+// terms match the text.
 // Returns 0 and nil if any term fails to match.
 func ScoreTermsWithPositions(text, query string) (int, []int) {
+	return Matcher{}.ScoreTermsWithPositions(text, query)
+}
+
+// ScoreTermsWithPositions splits the query into whitespace-separated terms and
+// returns a combined score and merged match positions if ALL terms match the
+// text under the matcher's case sensitivity.
+// Returns 0 and nil if any term fails to match.
+func (m Matcher) ScoreTermsWithPositions(text, query string) (int, []int) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return 1, nil
@@ -106,7 +135,7 @@ func ScoreTermsWithPositions(text, query string) (int, []int) {
 	positionSet := make(map[int]struct{})
 
 	for _, term := range terms {
-		score, positions := ScoreWithPositions(text, term)
+		score, positions := m.ScoreWithPositions(text, term)
 		if score == 0 {
 			return 0, nil // All terms must match
 		}
@@ -303,15 +332,10 @@ func scoreConsecutiveFrom(text, originalText, pattern []rune, startIdx int, want
 	return addLengthBonus(score, len(text), len(pattern)), positions, true
 }
 
+// The maximum swing here (3) stays strictly below the advantage a start-of-text
+// match already earns, so a shorter text can never outrank an earlier match.
 func addLengthBonus(score, textLen, patternLen int) int {
-	lengthDiff := textLen - patternLen
-	if lengthDiff == 0 {
-		score += 10
-	} else if lengthDiff <= 3 {
-		score += 5
-	}
-
-	return score
+	return score + max(0, 3-(textLen-patternLen))
 }
 
 func matchScore(text []rune, textIdx, patternIdx, prevMatchIdx int) int {

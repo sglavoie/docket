@@ -631,7 +631,7 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	if query == "" {
 		return titleStyle.Render(title)
 	}
-	positions := searchSubstringPositions(title, query)
+	positions := searchSubstringPositions(title, query, m.searchCaseSensitive())
 	if len(positions) == 0 {
 		return titleStyle.Render(title)
 	}

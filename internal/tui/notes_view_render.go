@@ -169,11 +169,16 @@ func (m *NotesViewModel) scopeLabel() string {
 func (m *NotesViewModel) scopeCountLabel() string {
 	count := len(m.visibleRows)
 	if query := strings.TrimSpace(m.activeSearchQuery()); query != "" {
+		caseNote := ""
+		if m.searchCaseRelaxed {
+			caseNote = " (case ignored)"
+		}
 		return fmt.Sprintf(
-			"%d of %d notes match %q in %s",
+			"%d of %d notes match %q%s in %s",
 			count,
 			m.scopedRowCount(),
 			query,
+			caseNote,
 			m.scopeLabel(),
 		)
 	}

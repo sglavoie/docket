@@ -29,7 +29,7 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	}
 
 	// Sort by score descending
-	sort.Slice(scored, func(i, j int) bool {
+	sort.SliceStable(scored, func(i, j int) bool {
 		return scored[i].score > scored[j].score
 	})
 
@@ -59,7 +59,7 @@ func (q *quickCaptureInput) getContextSuggestions(partial string) []ACSuggestion
 			scored = append(scored, scoredContext{context: context, score: score})
 		}
 	}
-	sort.Slice(scored, func(i, j int) bool {
+	sort.SliceStable(scored, func(i, j int) bool {
 		return scored[i].score > scored[j].score
 	})
 
@@ -221,7 +221,7 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	}
 
 	// Sort by score descending
-	sort.Slice(scored, func(i, j int) bool {
+	sort.SliceStable(scored, func(i, j int) bool {
 		return scored[i].score > scored[j].score
 	})
 

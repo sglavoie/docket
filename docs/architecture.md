@@ -632,6 +632,20 @@ including deferred work. It ranks title matches before description, tag, and
 project metadata matches, then by fuzzy score and stable project/task order;
 `project#shortID` is an exact qualifier. Mode and facet changes are unavailable
 during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
+
+Case is a narrowing signal rather than a syntax. `fuzzy.Matcher` carries one
+case-sensitivity bit, `fuzzy.CaseSensitiveQuery` is the single detection rule
+(`strings.ToLower(query) != query`), and the zero-value matcher is
+case-insensitive so every non-search scorer keeps its behavior. A surface runs
+its scoring pass under `fuzzy.SmartCase(query)`; if a case-sensitive pass yields
+nothing it repeats the pass case-insensitively and records `searchCaseRelaxed`,
+which drives both the `(case ignored)` chrome and the highlight positions, so
+what matched and what is marked can never disagree. An empty relaxed pass leaves
+the ordinary empty state. The rule stops at the four search surfaces — Outliner
+slash search, Notes, and the help `/` and `\` searches. Autocomplete, pickers,
+the action sheet, and the Project Hub stay case-insensitive because tag and
+context values are normalized lowercase, and `project#shortID` stays `EqualFold`
+because it is an exact ID lookup rather than a text search.
 Ordinary filter facets compose as priority threshold, OR states, AND tag/context
 values, due bucket, completion age, and deferred-only and remain session-only.
 The `ft` vocabulary is the union of task tags and task contexts; each selected
@@ -955,7 +969,9 @@ project remains one. Successfully
 loaded rows form one canonical collection, then the selected All, Global, or
 project scope and persistent title/body search derive the visible list. Rows
 sort by modified time unless a search is active, when relevance leads and
-modified time breaks ties, and every row renders its owner label.
+modified time breaks ties, and every row renders its owner label. Title and body
+search follow the same smart-case rule as the Outliner, and a relaxed retry says
+so in the count label.
 
 `v` opens the searchable scope picker, `s` edits the accepted search, `n`
 chooses a creation destination, and `m` moves one parsed note to another Global

@@ -35,20 +35,25 @@ func (m *HelpViewModel) matchTab(query string) {
 		m.viewport.GotoTop()
 		return
 	}
-	bestIdx := 0
-	bestScore := 0
-	for i, cat := range m.categories {
-		score, _ := fuzzy.ScoreTermsWithPositions(cat, query)
-		if score > bestScore {
-			bestScore = score
-			bestIdx = i + 1 // +1 because tab 0 is "All"
+	bestTab := func(matcher fuzzy.Matcher) int {
+		bestIdx := 0
+		bestScore := 0
+		for i, cat := range m.categories {
+			score, _ := matcher.ScoreTermsWithPositions(cat, query)
+			if score > bestScore {
+				bestScore = score
+				bestIdx = i + 1 // +1 because tab 0 is "All"
+			}
 		}
+		return bestIdx
 	}
-	if bestScore > 0 {
-		m.activeTab = bestIdx
-	} else {
-		m.activeTab = 0
+
+	matcher := fuzzy.SmartCase(query)
+	tab := bestTab(matcher)
+	if tab == 0 && matcher.CaseSensitive() {
+		tab = bestTab(fuzzy.NewMatcher(false))
 	}
+	m.activeTab = tab
 	m.filterItems()
 	m.viewport.SetContent(m.renderContent())
 	m.viewport.GotoTop()
@@ -68,6 +73,7 @@ func (m *HelpViewModel) filterItems() {
 		}
 	}
 
+	m.searchCaseRelaxed = false
 	if m.searchQuery == "" {
 		m.filteredItems = make([]filteredHelpItem, len(source))
 		for i, item := range source {
@@ -76,20 +82,29 @@ func (m *HelpViewModel) filterItems() {
 		return
 	}
 
-	var filtered []filteredHelpItem
+	match := func(matcher fuzzy.Matcher) []filteredHelpItem {
+		var filtered []filteredHelpItem
+		for _, item := range source {
+			keyScore, keyPos := matcher.ScoreTermsWithPositions(item.Key, m.searchQuery)
+			descScore, descPos := matcher.ScoreTermsWithPositions(item.Description, m.searchQuery)
+			catScore, _ := matcher.ScoreTermsWithPositions(item.Category, m.searchQuery)
 
-	for _, item := range source {
-		keyScore, keyPos := fuzzy.ScoreTermsWithPositions(item.Key, m.searchQuery)
-		descScore, descPos := fuzzy.ScoreTermsWithPositions(item.Description, m.searchQuery)
-		catScore, _ := fuzzy.ScoreTermsWithPositions(item.Category, m.searchQuery)
-
-		if keyScore > 0 || descScore > 0 || catScore > 0 {
-			filtered = append(filtered, filteredHelpItem{
-				HelpItem:      item,
-				keyPositions:  keyPos,
-				descPositions: descPos,
-			})
+			if keyScore > 0 || descScore > 0 || catScore > 0 {
+				filtered = append(filtered, filteredHelpItem{
+					HelpItem:      item,
+					keyPositions:  keyPos,
+					descPositions: descPos,
+				})
+			}
 		}
+		return filtered
+	}
+
+	matcher := fuzzy.SmartCase(m.searchQuery)
+	filtered := match(matcher)
+	if len(filtered) == 0 && matcher.CaseSensitive() {
+		filtered = match(fuzzy.NewMatcher(false))
+		m.searchCaseRelaxed = len(filtered) > 0
 	}
 
 	m.filteredItems = filtered

@@ -1,0 +1,29 @@
+{
+  "name": "outliner-search-smart-case",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open scope-wide search", "key": "/" },
+    { "type": "text", "label": "lowercase query matches any casing", "text": "l" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "(case ignored)" },
+    { "type": "key", "label": "drop the lowercase query", "key": "backspace" },
+    { "type": "text", "label": "uppercase query narrows to exact casing", "text": "L" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "(case ignored)" },
+    { "type": "key", "label": "drop the uppercase query", "key": "backspace" },
+    { "type": "text", "label": "capitalized word that exists only in lowercase", "text": "Login" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login" },
+    { "type": "assert", "assert": "contains", "value": "(case ignored)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "narrow the terminal during the relaxed search", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "clear search", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "(case ignored)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

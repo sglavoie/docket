@@ -78,14 +78,27 @@ func (m *OutlinerModel) outlinerFocusContext() string {
 	return m.projectFocusContext()
 }
 
-func (m *OutlinerModel) buildOutlinerSearchIndicator() string {
-	if m.IsSearchMode() {
-		return MutedStyle.Render("Search: ") + m.SearchInputView()
+// buildOutlinerSearchIndicator renders the search chrome, appending the
+// case-fallback badge only when the title row can hold it: at narrow widths the
+// query itself is the more useful half of the segment.
+func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
+	var indicator string
+	switch {
+	case m.IsSearchMode():
+		indicator = MutedStyle.Render("Search: ") + m.SearchInputView()
+	case m.SearchQuery() != "":
+		indicator = MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery()))
+	default:
+		return ""
 	}
-	if m.SearchQuery() != "" {
-		return MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery()))
+	if !m.searchCaseRelaxed {
+		return indicator
 	}
-	return ""
+	badge := MutedStyle.Render(" (case ignored)")
+	if lipgloss.Width(indicator)+lipgloss.Width(badge) > width {
+		return indicator
+	}
+	return indicator + badge
 }
 
 func (m *OutlinerModel) outlinerScopeLabel() string {
@@ -113,12 +126,12 @@ func (m *OutlinerModel) buildOutlinerFilterContext() string {
 	return strings.TrimPrefix(suffix, "  ")
 }
 
-func (m *OutlinerModel) buildOutlinerInteractionContext() []string {
+func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 	context := make([]string, 0, 4)
 	if m.multiSelectMode {
 		context = append(context, SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d selected", m.SelectedCount())))
 	}
-	if search := m.buildOutlinerSearchIndicator(); search != "" {
+	if search := m.buildOutlinerSearchIndicator(width); search != "" {
 		context = append(context, search)
 	}
 	if filter := m.buildOutlinerFilterContext(); filter != "" {
@@ -135,7 +148,7 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 	return renderOperationalTitle(operationalTitleSpec{
 		Scope:   TitleStyle.Render(m.outlinerScopeLabel()),
 		Mode:    operationalTitleModeSegment(m.activeOutlinerModeEntry()),
-		Context: m.buildOutlinerInteractionContext(),
+		Context: m.buildOutlinerInteractionContext(max(width, 1)),
 		Pulse:   &m.workspacePulse,
 	}, max(width, 1))
 }

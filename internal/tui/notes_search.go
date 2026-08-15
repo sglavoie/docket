@@ -18,18 +18,18 @@ type noteSearchMatch struct {
 	bodyMatched    bool
 }
 
-func scoreNoteSearch(note *models.Note, query string) (noteSearchMatch, bool) {
+func scoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (noteSearchMatch, bool) {
 	if note == nil {
 		return noteSearchMatch{}, false
 	}
 
-	titleScore, titlePositions := fuzzy.ScoreTermsWithPositions(note.Title, query)
+	titleScore, titlePositions := matcher.ScoreTermsWithPositions(note.Title, query)
 	if titleScore > 0 {
 		titleScore *= noteTitleSearchWeight
 	} else {
 		titlePositions = nil
 	}
-	bodyScore := scoreNoteBodyTerms(note.Body, query)
+	bodyScore := scoreNoteBodyTerms(note.Body, query, matcher)
 	score := max(titleScore, bodyScore)
 	if score == 0 {
 		return noteSearchMatch{}, false
@@ -42,29 +42,31 @@ func scoreNoteSearch(note *models.Note, query string) (noteSearchMatch, bool) {
 }
 
 // scoreNoteBodyTerms checks each term independently so a multi-term query can
-// match terms in different parts of a long note body. Contiguous,
-// case-insensitive matches receive a predictable score; the fuzzy scorer is a
-// fallback for terms that are present as a sufficiently dense subsequence.
-func scoreNoteBodyTerms(body, query string) int {
+// match terms in different parts of a long note body. Contiguous matches under
+// the matcher's case sensitivity receive a predictable score; the fuzzy scorer
+// is a fallback for terms that are present as a sufficiently dense subsequence.
+func scoreNoteBodyTerms(body, query string, matcher fuzzy.Matcher) int {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return 1
 	}
 
-	terms := strings.Fields(strings.ToLower(query))
+	haystack, terms := strings.ToLower(body), strings.Fields(strings.ToLower(query))
+	if matcher.CaseSensitive() {
+		haystack, terms = body, strings.Fields(query)
+	}
 	if len(terms) == 0 {
 		return 1
 	}
 
-	lowerBody := strings.ToLower(body)
 	total := 0
 	for _, term := range terms {
-		if strings.Contains(lowerBody, term) {
+		if strings.Contains(haystack, term) {
 			total += len([]rune(term)) * 4
 			continue
 		}
 
-		score := fuzzy.Score(body, term)
+		score := matcher.Score(body, term)
 		if score == 0 {
 			return 0
 		}

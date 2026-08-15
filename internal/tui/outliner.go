@@ -95,6 +95,12 @@ type OutlinerModel struct {
 	// the active project scope.
 	searchProjection *outlinerSearchSnapshot
 
+	// searchCaseRelaxed records that the last projection rebuild found nothing
+	// under the query's smart-case reading and fell back to a case-insensitive
+	// pass. Highlighting and the chrome badge both read it, so what matched and
+	// what is shown can never disagree.
+	searchCaseRelaxed bool
+
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic
 	// tick; what a row shows stays isComputedOpenWork's decision.

@@ -240,6 +240,13 @@ scroll, and folds exactly.
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task |
 
+Search reads case as a narrowing signal. An all-lowercase query matches any
+casing; a query carrying an uppercase letter matches case-sensitively, so `API`
+finds `API` and not `capitalize`. When a case-sensitive query matches nothing,
+the search retries case-insensitively and marks the result `(case ignored)`. The
+rule covers the Outliner's `/`, Notes search, and both help searches; the
+`project#42` shorthand, autocomplete, and pickers stay case-insensitive.
+
 The lowercase `f` chord refines the rows a projection already holds. Uppercase
 `F` decides which projects load at all, so each of its facets reloads:
 

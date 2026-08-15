@@ -161,7 +161,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 				if strings.Contains(plain, operationalTitleSeparator+" "+modeLabel) {
 					t.Fatalf("width %d mode identity has incidental leading chip padding: %q", width, plain)
 				}
-				if len(m.buildOutlinerInteractionContext()) > 0 &&
+				if len(m.buildOutlinerInteractionContext(width)) > 0 &&
 					strings.Contains(plain, modeLabel+operationalTitleContextGap+" ") {
 					t.Fatalf("width %d mode identity has incidental trailing chip padding: %q", width, plain)
 				}

@@ -43,18 +43,21 @@ func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
 	workspacePulseState
-	items          []HelpItem
-	filteredItems  []filteredHelpItem
-	viewport       viewport.Model
-	searchInput    textinput.Model
-	searchMode     bool
-	searchQuery    string
-	width          int
-	sourceView     PresentationID
-	viewName       string
-	ready          bool
-	activeTab      int      // Current tab (category) index
-	categories     []string // Ordered list of categories derived from items
-	tabSearchMode  bool     // True when tab search input is active
-	tabSearchInput textinput.Model
+	items         []HelpItem
+	filteredItems []filteredHelpItem
+	viewport      viewport.Model
+	searchInput   textinput.Model
+	searchMode    bool
+	searchQuery   string
+	// searchCaseRelaxed records that the filtered items came from a
+	// case-insensitive retry after the query's smart-case reading matched nothing.
+	searchCaseRelaxed bool
+	width             int
+	sourceView        PresentationID
+	viewName          string
+	ready             bool
+	activeTab         int      // Current tab (category) index
+	categories        []string // Ordered list of categories derived from items
+	tabSearchMode     bool     // True when tab search input is active
+	tabSearchInput    textinput.Model
 }

@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -80,6 +81,11 @@ type NotesViewModel struct {
 	searchApplied    string
 	searchBeforeEdit string
 	searchInput      textinput.Model
+
+	// searchCaseRelaxed records that the current visible rows came from a
+	// case-insensitive retry after the query's smart-case reading matched
+	// nothing.
+	searchCaseRelaxed bool
 
 	cursor       int
 	scrollOffset int
@@ -305,26 +311,39 @@ func (m *NotesViewModel) SetScope(scope NotesScope) {
 func (m *NotesViewModel) deriveVisibleRows() {
 	m.visibleRows = m.visibleRows[:0]
 	m.searchMatches = nil
+	m.searchCaseRelaxed = false
 	if !m.scope.valid() {
 		return
 	}
 	query := strings.TrimSpace(m.activeSearchQuery())
-	if query != "" {
-		m.searchMatches = make(map[NoteRowIdentity]noteSearchMatch)
-	}
-	for _, row := range m.loadedRows {
-		if !m.scope.matches(row.Location) {
-			continue
-		}
+
+	collect := func(matcher fuzzy.Matcher) {
+		m.visibleRows = m.visibleRows[:0]
 		if query != "" {
-			match, ok := scoreNoteSearch(row.Note, query)
-			if !ok {
+			m.searchMatches = make(map[NoteRowIdentity]noteSearchMatch)
+		}
+		for _, row := range m.loadedRows {
+			if !m.scope.matches(row.Location) {
 				continue
 			}
-			m.searchMatches[row.Identity()] = match
+			if query != "" {
+				match, ok := scoreNoteSearch(row.Note, query, matcher)
+				if !ok {
+					continue
+				}
+				m.searchMatches[row.Identity()] = match
+			}
+			m.visibleRows = append(m.visibleRows, row)
 		}
-		m.visibleRows = append(m.visibleRows, row)
 	}
+
+	matcher := fuzzy.SmartCase(query)
+	collect(matcher)
+	if len(m.visibleRows) == 0 && matcher.CaseSensitive() {
+		collect(fuzzy.NewMatcher(false))
+		m.searchCaseRelaxed = len(m.visibleRows) > 0
+	}
+
 	sort.Slice(m.visibleRows, func(i, j int) bool {
 		left, right := m.visibleRows[i], m.visibleRows[j]
 		if query != "" {

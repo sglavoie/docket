@@ -97,6 +97,7 @@ func (m *OutlinerModel) ClearSearch() {
 	}
 	snapshot := m.searchProjection
 	m.searchProjection = nil
+	m.searchCaseRelaxed = false
 	m.BaseSearchableView.ClearSearch()
 	m.primaryMode = snapshot.mode
 	m.filter = copyFilterState(snapshot.filter)
@@ -139,13 +140,32 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 		return
 	}
 	m.searchProjection = nil
+	m.searchCaseRelaxed = false
 	m.BaseSearchableView.ClearSearch()
+}
+
+// searchCaseSensitive reports the case mode the visible result set was actually
+// produced under, so highlighting and predicates never disagree with the rows.
+func (m *OutlinerModel) searchCaseSensitive() bool {
+	if m == nil || m.searchCaseRelaxed {
+		return false
+	}
+	return fuzzy.CaseSensitiveQuery(strings.TrimSpace(m.SearchQuery()))
 }
 
 func (m *OutlinerModel) buildSearchProjectionRows() {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	query := strings.TrimSpace(m.SearchQuery())
-	matches := searchProjectionMatchesWithin(projects, query, m.searchFocusCandidates(projects))
+	candidates := m.searchFocusCandidates(projects)
+
+	m.searchCaseRelaxed = false
+	matcher := fuzzy.SmartCase(query)
+	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher)
+	if len(matches) == 0 && matcher.CaseSensitive() {
+		matches = searchProjectionMatchesWithin(projects, query, candidates, fuzzy.NewMatcher(false))
+		m.searchCaseRelaxed = len(matches) > 0
+	}
+
 	for _, match := range matches {
 		m.rows = append(m.rows, m.outlinerRowFromModeRow(OutlinerModeRow{
 			Task:       match.task,
@@ -179,6 +199,7 @@ func searchProjectionMatchesWithin(
 	projects []*models.Project,
 	query string,
 	candidates map[string][]*models.Task,
+	matcher fuzzy.Matcher,
 ) []outlinerSearchMatch {
 	if projectRef, shortID, exact := parseProjectShortIDQuery(query); exact {
 		return exactProjectShortIDMatchesWithin(projects, projectRef, shortID, candidates)
@@ -199,7 +220,7 @@ func searchProjectionMatchesWithin(
 				sourceIndex++
 				continue
 			}
-			fieldRank, score, ok := scoreSearchProjectionTask(task, project, query)
+			fieldRank, score, ok := scoreSearchProjectionTask(task, project, query, matcher)
 			if ok {
 				matches = append(matches, outlinerSearchMatch{
 					task: task, project: project, fieldRank: fieldRank,
@@ -221,11 +242,16 @@ func searchProjectionMatchesWithin(
 	return matches
 }
 
-func scoreSearchProjectionTask(task *models.Task, project *models.Project, query string) (int, int, bool) {
+func scoreSearchProjectionTask(
+	task *models.Task,
+	project *models.Project,
+	query string,
+	matcher fuzzy.Matcher,
+) (int, int, bool) {
 	if query == "" {
 		return 0, 1, true
 	}
-	if score := fuzzy.ScoreTerms(task.Title, query); score > 0 {
+	if score := matcher.ScoreTerms(task.Title, query); score > 0 {
 		return 0, score, true
 	}
 	secondary := strings.Join([]string{
@@ -236,7 +262,7 @@ func scoreSearchProjectionTask(task *models.Task, project *models.Project, query
 		project.Description,
 		fmt.Sprintf("%s#%d", project.Slug, task.ShortID),
 	}, " ")
-	if score := fuzzy.ScoreTerms(secondary, query); score > 0 {
+	if score := matcher.ScoreTerms(secondary, query); score > 0 {
 		return 1, score, true
 	}
 	return 0, 0, false

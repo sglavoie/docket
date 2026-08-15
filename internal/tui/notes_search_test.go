@@ -10,19 +10,27 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestNotesSearchBodyMatchingIsCaseInsensitiveAndRequiresEveryTerm(t *testing.T) {
 	body := "The ALPHA decision is documented here.\nLater, beta shipped."
-	if score := scoreNoteBodyTerms(body, "alpha BETA"); score <= 0 {
+	if score := scoreNoteBodyTerms(body, "alpha BETA", fuzzy.Matcher{}); score <= 0 {
 		t.Fatalf("case-insensitive multi-term body score = %d, want a match", score)
 	}
-	if score := scoreNoteBodyTerms(body, "alpha missing"); score != 0 {
+	if score := scoreNoteBodyTerms(body, "alpha missing", fuzzy.Matcher{}); score != 0 {
 		t.Fatalf("body score with a missing term = %d, want no match", score)
 	}
-	if score := scoreNoteBodyTerms("release roadmap", "rls rmap"); score <= 0 {
+	if score := scoreNoteBodyTerms("release roadmap", "rls rmap", fuzzy.Matcher{}); score <= 0 {
 		t.Fatalf("dense fuzzy body fallback score = %d, want a match", score)
+	}
+	sensitive := fuzzy.NewMatcher(true)
+	if score := scoreNoteBodyTerms(body, "alpha BETA", sensitive); score != 0 {
+		t.Fatalf("case-sensitive body score on folded terms = %d, want no match", score)
+	}
+	if score := scoreNoteBodyTerms(body, "ALPHA beta", sensitive); score <= 0 {
+		t.Fatalf("case-sensitive body score on exact-case terms = %d, want a match", score)
 	}
 }
 
@@ -75,6 +83,52 @@ func TestNotesSearchRankingPrefersTitlesAndUsesDeterministicTies(t *testing.T) {
 	}
 	if match := view.searchMatches[titleMatchIdentity(titleMatch)]; len(match.titlePositions) == 0 {
 		t.Fatal("title match did not retain fuzzy highlight positions")
+	}
+}
+
+func TestNotesSearchSmartCaseNarrowsThenFallsBackWithLabel(t *testing.T) {
+	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
+	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
+		app.GlobalNoteLocation(): {
+			{Title: "API rollout", Filename: "upper.md", ModifiedAt: time.Unix(2, 0)},
+			{Title: "api cleanup", Filename: "lower.md", ModifiedAt: time.Unix(1, 0)},
+		},
+	}}
+	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view.SetSize(120, 24)
+
+	view.searchApplied = "api"
+	view.rederiveVisibleRows()
+	if len(view.visibleRows) != 2 || view.searchCaseRelaxed {
+		t.Fatalf("lowercase search = %d rows relaxed=%v, want both notes unrelaxed",
+			len(view.visibleRows), view.searchCaseRelaxed)
+	}
+
+	view.searchApplied = "API"
+	view.rederiveVisibleRows()
+	if len(view.visibleRows) != 1 || view.visibleRows[0].Note.Filename != "upper.md" || view.searchCaseRelaxed {
+		t.Fatalf("uppercase search = %#v relaxed=%v, want only upper.md unrelaxed",
+			view.visibleRows, view.searchCaseRelaxed)
+	}
+
+	view.searchApplied = "Cleanup"
+	view.rederiveVisibleRows()
+	if len(view.visibleRows) != 1 || view.visibleRows[0].Note.Filename != "lower.md" || !view.searchCaseRelaxed {
+		t.Fatalf("fallback search = %#v relaxed=%v, want lower.md via a relaxed retry",
+			view.visibleRows, view.searchCaseRelaxed)
+	}
+	if got := view.scopeCountLabel(); !strings.Contains(got, `"Cleanup" (case ignored) in`) {
+		t.Fatalf("relaxed count label = %q, want a case-ignored badge", got)
+	}
+
+	view.searchApplied = "Zebra"
+	view.rederiveVisibleRows()
+	if len(view.visibleRows) != 0 || view.searchCaseRelaxed {
+		t.Fatalf("unmatchable search = %d rows relaxed=%v, want an ordinary empty state",
+			len(view.visibleRows), view.searchCaseRelaxed)
+	}
+	if got := view.scopeCountLabel(); strings.Contains(got, "case ignored") {
+		t.Fatalf("empty retry count label = %q, want no badge", got)
 	}
 }
 

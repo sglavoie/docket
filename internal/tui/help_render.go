@@ -204,15 +204,22 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 		b.WriteString("\n\n")
 	}
 
+	caseNote := ""
+	if m.searchCaseRelaxed {
+		caseNote = MutedStyle.Render(" (case ignored)")
+	}
+
 	if m.searchMode {
 		b.WriteString(pad)
 		b.WriteString(SubtitleStyle.Render("Filter: "))
 		b.WriteString(m.searchInput.View())
+		b.WriteString(caseNote)
 		b.WriteString("\n\n")
 	} else if m.searchQuery != "" {
 		filterInfo := fmt.Sprintf("Filter: \"%s\"", m.searchQuery)
 		b.WriteString(pad)
 		b.WriteString(HelpFilterActiveStyle.Render(filterInfo))
+		b.WriteString(caseNote)
 		b.WriteString("\n\n")
 	}
 

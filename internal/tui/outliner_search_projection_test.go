@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -69,7 +70,7 @@ func TestScopeWideSearchRanksFieldsFuzzyScoreAndStableSourceOrder(t *testing.T) 
 	project := primaryRowsProject("alpha", titleWeak, metadataFirst, metadataTie, titleStrong)
 	project.Slug = "alpha"
 
-	matches := searchProjectionMatchesWithin([]*models.Project{project}, "needle", nil)
+	matches := searchProjectionMatchesWithin([]*models.Project{project}, "needle", nil, fuzzy.Matcher{})
 	got := searchMatchTaskIDs(matches)
 	want := []string{titleStrong.ID, titleWeak.ID, metadataFirst.ID, metadataTie.ID}
 	if !slices.Equal(got, want) {
@@ -80,10 +81,10 @@ func TestScopeWideSearchRanksFieldsFuzzyScoreAndStableSourceOrder(t *testing.T) 
 	exact.ShortID = 7
 	exact.Title = "No shared words"
 	project.Tasks = append(project.Tasks, exact)
-	if got := searchMatchTaskIDs(searchProjectionMatchesWithin([]*models.Project{project}, "alpha#7", nil)); !slices.Equal(got, []string{exact.ID}) {
+	if got := searchMatchTaskIDs(searchProjectionMatchesWithin([]*models.Project{project}, "alpha#7", nil, fuzzy.Matcher{})); !slices.Equal(got, []string{exact.ID}) {
 		t.Fatalf("exact alpha#7 lookup = %v, want %s", got, exact.ID)
 	}
-	if got := searchProjectionMatchesWithin([]*models.Project{project}, "alpha#999", nil); len(got) != 0 {
+	if got := searchProjectionMatchesWithin([]*models.Project{project}, "alpha#999", nil, fuzzy.Matcher{}); len(got) != 0 {
 		t.Fatalf("missing exact qualifier returned %v", searchMatchTaskIDs(got))
 	}
 }
@@ -188,6 +189,62 @@ func TestScopeWideSearchRefreshesAfterMutationsAndShowsNoMatches(t *testing.T) {
 	}
 	if got := outliner.outlinerEmptyMessage(); got != `No tasks match search "needle". Press Esc to clear.` {
 		t.Fatalf("no-match message = %q", got)
+	}
+}
+
+func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
+	upper := primaryRowsTask("upper", models.StateBacklog)
+	upper.Title = "Ship API client"
+	lower := primaryRowsTask("lower", models.StateBacklog)
+	lower.Title = "Rework api docs"
+	exact := primaryRowsTask("exact", models.StateBacklog)
+	exact.ShortID = 42
+	exact.Title = "Nothing in common"
+	project := primaryRowsProject("alpha", upper, lower, exact)
+	outliner := scopeTestOutliner(project)
+
+	outliner.SetSearchQuery("api")
+	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{upper.ID, lower.ID}) {
+		t.Fatalf("lowercase search = %v, want both casings", got)
+	}
+	if outliner.searchCaseRelaxed || outliner.searchCaseSensitive() {
+		t.Fatal("lowercase query was treated as case-sensitive")
+	}
+
+	outliner.SetSearchQuery("API")
+	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{upper.ID}) {
+		t.Fatalf("uppercase search = %v, want only the exact-case title", got)
+	}
+	if outliner.searchCaseRelaxed || !outliner.searchCaseSensitive() {
+		t.Fatalf("narrowing search relaxed=%v sensitive=%v, want a case-sensitive pass",
+			outliner.searchCaseRelaxed, outliner.searchCaseSensitive())
+	}
+
+	outliner.SetSearchQuery("Docs")
+	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{lower.ID}) {
+		t.Fatalf("fallback search = %v, want the case-insensitive retry to match", got)
+	}
+	if !outliner.searchCaseRelaxed || outliner.searchCaseSensitive() {
+		t.Fatalf("fallback search relaxed=%v sensitive=%v, want a relaxed pass",
+			outliner.searchCaseRelaxed, outliner.searchCaseSensitive())
+	}
+
+	outliner.SetSearchQuery("Zebra")
+	if len(outliner.rows) != 0 {
+		t.Fatalf("unmatchable query kept rows %v", searchVisibleTaskIDs(outliner))
+	}
+	if outliner.searchCaseRelaxed {
+		t.Fatal("an empty insensitive retry still claimed the case was ignored")
+	}
+
+	outliner.SetSearchQuery("Alpha#42")
+	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{exact.ID}) {
+		t.Fatalf("capitalized project#id shorthand = %v, want %s", got, exact.ID)
+	}
+
+	outliner.ClearSearch()
+	if outliner.searchCaseRelaxed {
+		t.Fatal("ClearSearch left the relaxed flag set")
 	}
 }
 

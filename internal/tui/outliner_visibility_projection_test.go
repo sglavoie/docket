@@ -110,11 +110,11 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 		t.Fatalf("explicit projection = %v, want deferred and terminal opt-in", got)
 	}
 
-	if TaskMatchesSearch(sameDayTask, "@today") {
+	if TaskMatchesSearch(sameDayTask, "@today", false) {
 		t.Fatal("scope search interpreted due syntax instead of matching literal text")
 	}
 	sameDayTask.Description = "Discuss @today syntax"
-	if !TaskMatchesSearch(sameDayTask, "@TODAY") {
+	if !TaskMatchesSearch(sameDayTask, "@TODAY", false) {
 		t.Fatal("scope search did not match case-insensitive description text")
 	}
 
