@@ -182,6 +182,7 @@ The committed suite exercises the product contracts directly:
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
 | Semantic task tag split, seeded in `#` and usage-derived in `ft` | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
+| Planning membership outranking the Review lane, so `wn` moves one row | `review-lane-planning-precedence.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |

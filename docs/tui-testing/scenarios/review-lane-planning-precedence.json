@@ -1,0 +1,33 @@
+{
+  "name": "review-lane-planning-precedence",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "label": "no review lane before anything is tagged", "assert": "not_contains", "value": "@ Review" },
+
+    { "type": "key", "label": "step past the Backlog group header", "key": "j" },
+    { "type": "key", "label": "step past the project group header onto the first task", "key": "j" },
+    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
+    { "type": "key", "label": "tag the cursored task for review", "key": "r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Tag: review" },
+    { "type": "assert", "label": "the cursor was on the intended task", "assert": "contains", "value": "Alpha migration kickoff #review" },
+    { "type": "assert", "assert": "contains", "value": "@ Review" },
+    { "type": "assert", "label": "the review tag draws exactly one row", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
+    { "type": "key", "label": "plan the review-tagged task into Next", "key": "n" },
+    { "type": "wait" },
+    { "type": "assert", "label": "planning moves the row instead of copying it", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
+    { "type": "assert", "label": "Next outranks the descriptive tag, emptying the lane", "assert": "not_contains", "value": "@ Review" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
+    { "type": "key", "label": "leave Next again", "key": "n" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the tag was never mutated, so Review reclaims the row", "assert": "contains", "value": "@ Review" },
+    { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 }
+  ]
+}

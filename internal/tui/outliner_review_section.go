@@ -12,14 +12,21 @@ type reviewSectionBuild struct {
 }
 
 // buildReviewSection promotes ordinary open tasks carrying #review into the
-// sparse All-mode Review lane. Pinned remains the stronger projection.
-func (m *OutlinerModel) buildReviewSection(input OutlinerModeInput, pinned map[TaskIdentity]bool) reviewSectionBuild {
+// sparse All-mode Review lane. Pinning and explicit Today/Next membership are
+// stronger claims: a deliberate planning commitment outranks a descriptive tag,
+// so planning a review-tagged task moves its row instead of duplicating it.
+func (m *OutlinerModel) buildReviewSection(
+	input OutlinerModeInput,
+	pinned, today, next map[TaskIdentity]bool,
+) reviewSectionBuild {
 	result := reviewSectionBuild{projected: make(map[TaskIdentity]bool)}
 	var rows []outlinerRow
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
+		identity := taskIdentityFor(task, project)
 		if task == nil || project == nil || task.IsTerminalState() || task.IsDeferredAt(input.now()) ||
-			!taskMatchesTagFacet(task, reviewTaskTag) || pinned[taskIdentityFor(task, project)] {
+			!taskMatchesTagFacet(task, reviewTaskTag) ||
+			pinned[identity] || today[identity] || next[identity] {
 			continue
 		}
 		if input.TaskExclude != nil && input.TaskExclude(task, project) {
@@ -32,7 +39,7 @@ func (m *OutlinerModel) buildReviewSection(input OutlinerModeInput, pinned map[T
 		row.PromotedTag = reviewTaskTag
 		row.Breadcrumb = taskAncestorBreadcrumb(task)
 		row.hasVisibleChildren = false
-		result.projected[taskIdentityFor(task, project)] = true
+		result.projected[identity] = true
 		result.count++
 		rows = append(rows, row)
 	}

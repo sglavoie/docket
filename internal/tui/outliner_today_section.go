@@ -20,7 +20,6 @@ type planningSectionBuild struct {
 func (m *OutlinerModel) buildTodaySection(
 	input OutlinerModeInput,
 	pinned map[TaskIdentity]bool,
-	promoted map[TaskIdentity]bool,
 ) planningSectionBuild {
 	result := planningSectionBuild{
 		suppressed: make(map[TaskIdentity]bool, len(input.TodayIDs)),
@@ -42,8 +41,7 @@ func (m *OutlinerModel) buildTodaySection(
 
 	previousExclude := input.TaskExclude
 	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
-		identity := taskIdentityFor(task, project)
-		return pinned[identity] || promoted[identity] ||
+		return pinned[taskIdentityFor(task, project)] ||
 			(previousExclude != nil && previousExclude(task, project))
 	}
 	for _, modeRow := range BuildTodayModeRows(input) {

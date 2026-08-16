@@ -118,9 +118,9 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 	input OutlinerModeInput,
 	pinned map[TaskIdentity]bool,
 ) {
-	review := m.buildReviewSection(input, pinned)
-	today := m.buildTodaySection(input, pinned, review.projected)
+	today := m.buildTodaySection(input, pinned)
 	next := m.buildNextSection(input, pinned, today.suppressed)
+	review := m.buildReviewSection(input, pinned, today.suppressed, next.suppressed)
 
 	grouped := make(map[models.WorkflowStateGroup][]stateGroupProjectForest)
 	for _, project := range projects {

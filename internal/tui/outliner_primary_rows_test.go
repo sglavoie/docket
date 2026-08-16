@@ -96,6 +96,8 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	reviewed.AddTag(reviewTaskTag)
 	reviewedToday := primaryRowsTask("reviewed-today", models.StateBacklog)
 	reviewedToday.AddTag(reviewTaskTag)
+	reviewedNext := primaryRowsTask("reviewed-next", models.StateBacklog)
+	reviewedNext.AddTag(reviewTaskTag)
 	contextReviewed := primaryRowsTask("context-reviewed", models.StateBacklog)
 	contextReviewed.Context = reviewTaskTag
 	doing := primaryRowsTask("doing", models.StateDoing)
@@ -104,39 +106,65 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	pinned.Pinned = true
 	now := time.Now()
 	pinned.PinnedAt = &now
-	project := primaryRowsProject("alpha", reviewed, reviewedToday, contextReviewed, doing, pinned)
+	project := primaryRowsProject("alpha", reviewed, reviewedToday, reviewedNext, contextReviewed, doing, pinned)
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedToday.ID}})
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedNext.ID}})
 	outliner.selectOutlinerMode(ModeAll)
 
-	if countTaskRows(outliner, reviewed.ID) != 1 || countTaskRows(outliner, reviewedToday.ID) != 1 ||
-		countTaskRows(outliner, contextReviewed.ID) != 1 || countTaskRows(outliner, pinned.ID) != 1 {
-		t.Fatalf("Review/Today/Pinned projections were not deduplicated: %v", visibleTaskIDs(outliner))
+	lanes := []struct {
+		id          string
+		want        string
+		promotedTag string
+		today       bool
+		next        bool
+		pinned      bool
+	}{
+		{id: reviewed.ID, want: "Review lane", promotedTag: reviewTaskTag},
+		{id: contextReviewed.ID, want: "Review lane", promotedTag: reviewTaskTag},
+		{id: reviewedToday.ID, want: "Today precedence", today: true},
+		{id: reviewedNext.ID, want: "Next precedence", next: true},
+		{id: pinned.ID, want: "Pinned precedence", pinned: true},
 	}
-	for _, id := range []string{reviewed.ID, reviewedToday.ID, contextReviewed.ID} {
-		row, ok := findPlanningTaskRow(outliner, id)
-		if !ok || row.PromotedTag != reviewTaskTag {
-			t.Fatalf("task %q row = %+v found=%t, want Review lane", id, row, ok)
+	for _, lane := range lanes {
+		if countTaskRows(outliner, lane.id) != 1 {
+			t.Fatalf("task %q was not deduplicated: %v", lane.id, visibleTaskIDs(outliner))
+		}
+		row, ok := findPlanningTaskRow(outliner, lane.id)
+		if !ok || row.PromotedTag != lane.promotedTag || row.IsTodaySection != lane.today ||
+			row.IsNextSection != lane.next || row.IsPinnedSection != lane.pinned {
+			t.Fatalf("task %q row = %+v found=%t, want %s", lane.id, row, ok, lane.want)
 		}
 	}
-	pinnedRow, ok := findPlanningTaskRow(outliner, pinned.ID)
-	if !ok || !pinnedRow.IsPinnedSection || pinnedRow.PromotedTag != "" {
-		t.Fatalf("pinned Review task = %+v found=%t, want Pinned precedence", pinnedRow, ok)
-	}
-	doingIndex, reviewIndex := -1, -1
+	doingIndex, reviewIndex, reviewCount := -1, -1, 0
 	for index, row := range outliner.rows {
 		if row.IsSectionHeader && row.StateGroup == models.StateGroupDoing {
 			doingIndex = index
 		}
 		if row.IsSectionHeader && row.PromotedTag == reviewTaskTag {
 			reviewIndex = index
+			reviewCount = row.SectionCount
 		}
 	}
 	if doingIndex < 0 || reviewIndex <= doingIndex {
 		t.Fatalf("Doing index=%d Review index=%d, want Review after Doing", doingIndex, reviewIndex)
 	}
+	if reviewCount != 2 {
+		t.Fatalf("Review section count = %d, want 2 unplanned review tasks", reviewCount)
+	}
 	if reviewed.State() != models.StateBacklog || !reviewed.HasTag(reviewTaskTag) {
 		t.Fatalf("Review projection mutated durable task: state=%s tags=%v", reviewed.State(), reviewed.Tags)
+	}
+	if !reviewedToday.HasTag(reviewTaskTag) || !reviewedNext.HasTag(reviewTaskTag) {
+		t.Fatalf("planning precedence stripped the review tag: today=%v next=%v", reviewedToday.Tags, reviewedNext.Tags)
+	}
+	today := runtime.Planning().GetToday()
+	if len(today) != 1 || today[0].TaskID != reviewedToday.ID {
+		t.Fatalf("Today membership = %+v, want only %q", today, reviewedToday.ID)
+	}
+	next := runtime.Planning().GetNext()
+	if len(next) != 1 || next[0].TaskID != reviewedNext.ID {
+		t.Fatalf("Next membership = %+v, want only %q", next, reviewedNext.ID)
 	}
 	if contextReviewed.Context != reviewTaskTag || len(contextReviewed.Tags) != 0 {
 		t.Fatalf("Review projection mutated context task: context=%q tags=%v", contextReviewed.Context, contextReviewed.Tags)

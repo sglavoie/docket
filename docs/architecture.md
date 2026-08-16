@@ -295,7 +295,11 @@ displaces. A pinned reorder swaps both tasks' `PinnedAt` values in one
 transaction spanning at most two projects. It retains the ancestor marker and an
 identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the ordinary `review` tag, after
-Doing. Pinned wins, and the projection does not change lifecycle or planning.
+Doing. Claim order and draw order are different things: the Review lane draws
+after Doing, but claims a row only after Pinned, Today, and Next have taken
+theirs. A deliberate planning commitment outranks a descriptive tag, so `wn` on
+a review-tagged row visibly moves it into Next rather than appearing to copy it.
+The projection does not change lifecycle or planning.
 
 #### Row indicators
 

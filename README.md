@@ -78,7 +78,9 @@ reorder them manually; a pinned subtree ranks by its own root's pin, and `J`/`K`
 never move a task across a project group. All,
 Inbox, and Backlog preserve hierarchy and manual sibling order. Today and Next
 preserve workspace-wide planning order. Review is the sparse set of open tasks
-tagged `review`; pinned tasks still appear only in Pinned. Due is date ordered. Done, Canceled,
+tagged `review`. That list is draw order, not claim order: a pinned task or one
+you have planned into Today or Next claims its row there and never also appears
+under Review. Due is date ordered. Done, Canceled,
 and deferred work stay hidden unless a filter explicitly asks for them.
 
 Every mode groups its tasks by project when you are looking at more than one
