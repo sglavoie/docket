@@ -246,7 +246,7 @@ scroll, and folds exactly.
 | `fp0`, `fp1`–`fp3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
 | `fs` | Pick workflow states with OR semantics, including terminal states |
 | `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
-| `ft` | Pick tags and task contexts with AND semantics; each selected value matches either field |
+| `ft` | Pick tags and task contexts with AND semantics; each selected value matches either field, and a value used as a context is listed under `CONTEXTS` above `TAGS` |
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the due-date facet picker: overdue, today, this week, or no due date |
 | `fd` | Deferred-only |
@@ -537,6 +537,14 @@ pickers group those five under a `SEMANTIC` section above the rest: `#` Set Tags
 always offers all five with a one-line summary each, whether or not any task
 carries them, while `ft` Filter by Tags stays usage-derived and lists only the
 ones in use.
+
+`ft` also gives task contexts their own `CONTEXTS` section above `TAGS`; a value
+carried as both a tag and a context is one row there, with the combined count,
+because the facet matches either field. In both tag pickers `w`, `s`, `c`, and
+`t` jump the cursor to the first `WORKFLOW`, `SEMANTIC`, `CONTEXTS`, and `TAGS`
+row, and a hint line inside the overlay names the sections that picker actually
+has. `#` Set Tags has no context vocabulary, so `c` there reports the empty
+section and leaves the cursor alone.
 
 ## Workflow and hierarchy
 

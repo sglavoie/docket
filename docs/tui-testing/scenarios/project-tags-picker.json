@@ -12,7 +12,8 @@
     { "type": "assert", "label": "behavioral tags are pinned above the vocabulary", "assert": "contains", "value": "BEHAVIORAL" },
     { "type": "assert", "label": "the focusable row uses its concise description", "assert": "contains", "value": "parked  Parks this project" },
     { "type": "assert", "label": "the effect is on screen the whole time the choice is open", "assert": "contains", "value": "Parks this project" },
-    { "type": "assert", "label": "the non-focusable effect wraps completely inside the overlay", "assert": "contains", "value": "attachments, hides them from Active Projects." },
+    { "type": "assert", "label": "the non-focusable effect wraps completely inside the overlay", "assert": "contains", "value": "notes and attachments, hides them from" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects." },
     { "type": "assert", "label": "the picker preserves the header-row guidance beneath the overlay", "assert": "contains", "value": "# project tags · Tab next mode" },
     { "type": "assert", "assert": "contains", "value": "Enter apply · Esc back · Space toggle · a add tag" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -20,7 +21,7 @@
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Project Tags: Client Alpha" },
-    { "type": "assert", "label": "the inline explainer leaves with its picker", "assert": "not_contains", "value": "attachments, hides them from Active Projects." },
+    { "type": "assert", "label": "the inline explainer leaves with its picker", "assert": "not_contains", "value": "hides them from" },
     { "type": "assert", "label": "the Outliner keeps its own header-row hints", "assert": "contains", "value": "# project tags · Tab next mode" },
 
     { "type": "key", "label": "reopen the picker", "key": "#" },
@@ -47,7 +48,7 @@
     { "type": "key", "label": "open the project-tag filter facet, which carries no explainer", "key": "F" },
     { "type": "key", "key": "t" },
     { "type": "assert", "assert": "contains", "value": "Filter Projects by Tag" },
-    { "type": "assert", "label": "a picker that clipped nothing leaves the footer to the Outliner", "assert": "not_contains", "value": "attachments, hides them from Active Projects." },
+    { "type": "assert", "label": "a picker that clipped nothing leaves the footer to the Outliner", "assert": "not_contains", "value": "hides them from" },
     { "type": "assert", "assert": "contains", "value": "Space tag actions" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

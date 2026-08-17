@@ -12,11 +12,39 @@ import (
 const (
 	taskTagWorkflowCategory ListCategoryID = "task-tag:workflow"
 	taskTagSemanticCategory ListCategoryID = "task-tag:semantic"
+	taskContextCategory     ListCategoryID = "task-tag:context"
 
 	semanticTaskTagExplainerLabel     = "semantic"
 	semanticTaskTagExplainerSeparator = " › "
 	semanticTaskTagExplainerSummary   = "— the highest one a task carries colors its title."
+
+	taskTagJumpHintLabel     = "jump"
+	taskTagJumpHintSeparator = " · "
 )
+
+// taskTagJumpSections is the one table the jump keys, the hint line, and the
+// refusal status all read, so a section can never answer a key it is not named
+// by. The order is the order the picker renders the sections in.
+var taskTagJumpSections = []struct {
+	Key      string
+	Label    string
+	Category ListCategoryID
+}{
+	{Key: "w", Label: "workflow", Category: taskTagWorkflowCategory},
+	{Key: "s", Label: "semantic", Category: taskTagSemanticCategory},
+	{Key: "c", Label: "contexts", Category: taskContextCategory},
+	{Key: "t", Label: "tags", Category: tagDescriptiveCategory},
+}
+
+// taskTagJumpCategory resolves one section jump key.
+func taskTagJumpCategory(key string) (ListCategoryID, string, bool) {
+	for _, section := range taskTagJumpSections {
+		if section.Key == key {
+			return section.Category, section.Label, true
+		}
+	}
+	return "", "", false
+}
 
 // semanticTaskTagProvider reports whether a picker draws the task tag
 // vocabulary. The project namespace has its own two tiers and reserves parked,
@@ -83,15 +111,26 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 		return descriptive[i].Name < descriptive[j].Name
 	})
 	for _, tag := range descriptive {
+		// One facet is one row: a value carried on both axes matches either
+		// field, so it belongs under CONTEXTS with the merged count rather than
+		// appearing twice under a shared ID.
+		category := tagDescriptiveCategory
+		aliases := []string{tag.Name, "#" + tag.Name}
+		fields := []ListPreviewField{{Label: "Tasks", Value: strconv.Itoa(tag.TaskCount)}}
+		if tag.ContextCount > 0 {
+			category = taskContextCategory
+			aliases = append(aliases, "##"+tag.Name)
+			fields = append(fields, ListPreviewField{Label: "Context", Value: "##" + tag.Name})
+		}
 		items = append(items, ListItem{
 			ID:            ListItemID("tag:" + tag.Name),
-			CategoryID:    tagDescriptiveCategory,
+			CategoryID:    category,
 			PrimaryText:   tag.Name,
 			SecondaryText: fmt.Sprintf("%d tasks", tag.TaskCount),
-			Aliases:       []string{tag.Name, "#" + tag.Name},
+			Aliases:       aliases,
 			Preview: ListPreview{
 				Title:  tag.Name,
-				Fields: []ListPreviewField{{Label: "Tasks", Value: strconv.Itoa(tag.TaskCount)}},
+				Fields: fields,
 			},
 			Data: tag.Name,
 		})
@@ -102,6 +141,7 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 		Categories: []ListCategory{
 			{ID: taskTagWorkflowCategory, Label: "Workflow"},
 			{ID: taskTagSemanticCategory, Label: "Semantic"},
+			{ID: taskContextCategory, Label: "Contexts"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},
 	}
@@ -144,6 +184,36 @@ func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 		strings.Join(names, MutedStyle.Render(semanticTaskTagExplainerSeparator))
 	return strings.Join(wrapStyled(
 		head+" "+MutedStyle.Render(semanticTaskTagExplainerSummary),
+		width,
+	), "\n")
+}
+
+// taskTagCategoryJumpHint names the section jump keys inside the overlay, since
+// the footer's browse profile has one row and four more hints would evict Enter
+// and Esc. It lists only the sections the source populates, so a key it names
+// always lands somewhere.
+func taskTagCategoryJumpHint(provider ValueProviderID, items []ListItem, width int) string {
+	if !semanticTaskTagProvider(provider) {
+		return ""
+	}
+	populated := make(map[ListCategoryID]bool, len(items))
+	for _, item := range items {
+		populated[item.CategoryID] = true
+	}
+	hints := make([]string, 0, len(taskTagJumpSections))
+	for _, section := range taskTagJumpSections {
+		if populated[section.Category] {
+			// The key wears the footer's key color, so one hint reads the same
+			// whether the reader met it in the footer or in the overlay.
+			hints = append(hints, HelpKeyStyle.Render(section.Key)+MutedStyle.Render(" "+section.Label))
+		}
+	}
+	if len(hints) == 0 {
+		return ""
+	}
+	return strings.Join(wrapStyled(
+		MutedStyle.Render(taskTagJumpHintLabel+"  ")+
+			strings.Join(hints, MutedStyle.Render(taskTagJumpHintSeparator)),
 		width,
 	), "\n")
 }

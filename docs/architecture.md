@@ -738,7 +738,11 @@ values, due bucket, completion age, hierarchy position, and deferred-only and
 remain session-only.
 The `ft` vocabulary is the union of task tags and task contexts; each selected
 value matches either field while different selected values still compose with
-AND. Completion
+AND. `BuildTagFacetList` stamps `TagInfo.ContextCount` on the values the context
+axis contributed, which routes them into the picker's `CONTEXTS` section without
+splitting the `tag:<name>` ID namespace: a value carried on both axes stays one
+row with the summed count, and the promoted workflow and semantic sections keep
+precedence over it. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
 predicate belongs to the one cleanup facet in the clear count. The `fh`

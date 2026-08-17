@@ -11,7 +11,8 @@
     { "type": "assert", "assert": "contains", "value": "Filter by Tags" },
     { "type": "assert", "label": "no fixture task carries a semantic tag, so the filter offers no section", "assert": "not_contains", "value": "SEMANTIC" },
     { "type": "assert", "label": "the locked precedence is stated even with no semantic row", "assert": "contains", "value": "bug › epic" },
-    { "type": "assert", "label": "the filter picker wraps the complete explanation inline", "assert": "contains", "value": "highest one a task carries colors its title." },
+    { "type": "assert", "label": "the filter picker wraps the complete explanation inline", "assert": "contains", "value": "highest one a task carries colors" },
+    { "type": "assert", "assert": "contains", "value": "its title." },
     { "type": "assert", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -29,7 +30,8 @@
     { "type": "assert", "assert": "contains", "value": "[ ] idea" },
     { "type": "assert", "label": "the tags in use keep their own section below", "assert": "contains", "value": "TAGS" },
     { "type": "assert", "assert": "contains", "value": "bug › epic" },
-    { "type": "assert", "label": "the overlay wraps the complete summary inline", "assert": "contains", "value": "colors its title." },
+    { "type": "assert", "label": "the overlay wraps the complete summary inline", "assert": "contains", "value": "its title." },
+    { "type": "assert", "label": "the editor has no context vocabulary, so the hint omits that section", "assert": "not_contains", "value": "c contexts" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the explainer wraps instead of disappearing at narrow widths", "width": 80, "height": 24 },

@@ -6,10 +6,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TagInfo holds a task tag name and its usage count.
+// TagInfo holds a task tag name and its usage count. ContextCount is the share
+// of that count contributed by the task context axis, and stays zero for every
+// builder that reads tags alone.
 type TagInfo struct {
-	Name      string
-	TaskCount int
+	Name         string
+	TaskCount    int
+	ContextCount int
 }
 
 // BuildProjectTagList builds a sorted task-used tag list for a project.
@@ -37,9 +40,17 @@ func BuildTagFacetList(projects []*models.Project, excludeCompleted bool) []TagI
 		tasks = append(tasks, project.Tasks...)
 	}
 	tagCounts := make(map[string]int)
+	contextCounts := make(map[string]int)
 	addTaskTagCounts(tagCounts, tasks, excludeCompleted)
-	addTaskContextCounts(tagCounts, tasks, excludeCompleted)
-	return tagInfosFromCounts(tagCounts)
+	addTaskContextCounts(contextCounts, tasks, excludeCompleted)
+	for name, count := range contextCounts {
+		tagCounts[name] += count
+	}
+	facets := tagInfosFromCounts(tagCounts)
+	for index := range facets {
+		facets[index].ContextCount = contextCounts[facets[index].Name]
+	}
+	return facets
 }
 
 // BuildCatalogTagList is a compatibility wrapper over task-derived tag counts.

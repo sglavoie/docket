@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -150,6 +151,145 @@ func TestTaskTagListSourceKeepsDescriptiveRowsAlphabeticalWithCounts(t *testing.
 			t.Fatalf("row %q data = %#v, want the tag name", item.PrimaryText, item.Data)
 		}
 	}
+}
+
+func TestTaskTagListSourceGivesContextValuesTheirOwnSection(t *testing.T) {
+	source := taskTagListSource([]TagInfo{
+		{Name: "backend", TaskCount: 2},
+		{Name: "platform", TaskCount: 3, ContextCount: 2},
+	}, false)
+
+	assertRowIDs(t, taskTagRowIDs(source.Items, taskContextCategory), []string{"tag:platform"})
+	assertRowIDs(t, taskTagRowIDs(source.Items, tagDescriptiveCategory), []string{"tag:backend"})
+
+	for _, item := range source.Items {
+		if item.ID != "tag:platform" {
+			continue
+		}
+		if item.SecondaryText != "3 tasks" {
+			t.Fatalf("context row secondary text = %q, want the merged count", item.SecondaryText)
+		}
+		if !slices.Contains(item.Aliases, "##platform") {
+			t.Fatalf("context row aliases = %v, want the ## sigil spelling", item.Aliases)
+		}
+		if !slices.ContainsFunc(item.Preview.Fields, func(field ListPreviewField) bool {
+			return field.Label == "Context" && field.Value == "##platform"
+		}) {
+			t.Fatalf("context row preview = %v, want a Context field", item.Preview.Fields)
+		}
+	}
+}
+
+func TestTaskTagListSourceKeepsAPromotedContextInItsPromotedSection(t *testing.T) {
+	source := taskTagListSource([]TagInfo{
+		{Name: "bug", TaskCount: 1, ContextCount: 1},
+		{Name: "review", TaskCount: 1, ContextCount: 1},
+	}, false)
+
+	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagWorkflowCategory), []string{"tag:review"})
+	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagSemanticCategory), []string{"tag:bug"})
+	if rows := taskTagRowIDs(source.Items, taskContextCategory); len(rows) != 0 {
+		t.Fatalf("context rows = %v, want none", rows)
+	}
+}
+
+func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
+	picker := newFilterTagPickerForTest(t, []TagInfo{
+		{Name: "backend", TaskCount: 1},
+		{Name: "platform", TaskCount: 1, ContextCount: 1},
+		{Name: "review", TaskCount: 1},
+	})
+
+	for key, want := range map[string]ListItemID{"t": "tag:backend", "c": "tag:platform", "w": "tag:review"} {
+		if _, dismissed, msg := picker.handleKey(keyPress(key)); dismissed || msg != nil {
+			t.Fatalf("jump %q dismissed = %v, msg = %#v", key, dismissed, msg)
+		}
+		item, ok := picker.surface.CurrentItem()
+		if !ok || item.ID != want {
+			t.Fatalf("jump %q landed on %v, want %s", key, item.ID, want)
+		}
+	}
+
+	_, dismissed, msg := picker.handleKey(keyPress("s"))
+	if dismissed {
+		t.Fatal("a refused jump dismissed the picker")
+	}
+	if status, ok := msg.(StatusMsg); !ok || string(status) != "No SEMANTIC rows" {
+		t.Fatalf("refused jump message = %#v, want the empty-section status", msg)
+	}
+	if item, ok := picker.surface.CurrentItem(); !ok || item.ID != "tag:review" {
+		t.Fatalf("a refused jump moved the cursor to %v", item.ID)
+	}
+}
+
+func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
+	picker, err := newOperationValuePickerModel(
+		OperationExecutionRequest{ID: operationTaskSetPriority},
+		ValueProviderPriority,
+		"Set Priority",
+		"Task",
+		ListSourceFromPriorities([]PriorityInfo{
+			{Priority: 0, Description: "Unset"},
+			{Priority: 1, Description: "High"},
+		}),
+		false,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("newOperationValuePickerModel: %v", err)
+	}
+	before, _ := picker.surface.CurrentItem()
+	if _, dismissed, msg := picker.handleKey(keyPress("c")); dismissed || msg != nil {
+		t.Fatalf("priority picker consumed a jump key: dismissed = %v, msg = %#v", dismissed, msg)
+	}
+	if after, _ := picker.surface.CurrentItem(); after.ID != before.ID {
+		t.Fatalf("priority picker cursor moved to %v", after.ID)
+	}
+}
+
+func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
+	source := taskTagListSource([]TagInfo{
+		{Name: "backend", TaskCount: 1},
+		{Name: "platform", TaskCount: 1, ContextCount: 1},
+	}, false)
+
+	styled := taskTagCategoryJumpHint(ValueProviderFilterTags, source.Items, 120)
+	hint := ansi.Strip(styled)
+	if got := strings.Join(strings.Fields(hint), " "); got != "jump c contexts · t tags" {
+		t.Fatalf("hint = %q, want only the populated sections", got)
+	}
+	for _, key := range []string{"c", "t"} {
+		if !strings.Contains(styled, HelpKeyStyle.Render(key)) {
+			t.Fatalf("hint key %q does not wear the guidance key color: %q", key, styled)
+		}
+	}
+	seeded := taskTagListSource([]TagInfo{{Name: "backend", TaskCount: 1}}, true)
+	hint = ansi.Strip(taskTagCategoryJumpHint(ValueProviderTags, seeded.Items, 120))
+	if got := strings.Join(strings.Fields(hint), " "); got != "jump w workflow · s semantic · t tags" {
+		t.Fatalf("seeded hint = %q, want the editor's three sections", got)
+	}
+	for _, provider := range []ValueProviderID{ValueProviderProjectTags, ValueProviderFilterProjectTags} {
+		if got := taskTagCategoryJumpHint(provider, source.Items, 120); got != "" {
+			t.Fatalf("provider %q hint = %q, want none", provider, got)
+		}
+	}
+}
+
+func newFilterTagPickerForTest(t *testing.T, tags []TagInfo) *OperationValuePickerModel {
+	t.Helper()
+	picker, err := newOperationValuePickerModel(
+		OperationExecutionRequest{},
+		ValueProviderFilterTags,
+		"Filter by Tags",
+		"keep matching tasks",
+		taskTagListSource(tags, false),
+		true,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("newOperationValuePickerModel: %v", err)
+	}
+	return picker
 }
 
 func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *testing.T) {

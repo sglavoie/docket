@@ -247,6 +247,10 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			Request: model.request,
 			Value:   value,
 		}
+	case "w", "s", "t", "c":
+		if semanticTaskTagProvider(model.provider) {
+			return nil, false, model.jumpToTagCategory(key)
+		}
 	default:
 		if model.provider == ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
 			if model.surface.SetCursorToID(ListItemID("priority:" + key)) {
@@ -260,6 +264,23 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		}
 	}
 	return nil, false, nil
+}
+
+// jumpToTagCategory moves the cursor to the first row of one tag section. It
+// reads the matches rather than the items so a jump under an active search
+// lands on a row that is actually on screen.
+func (model *OperationValuePickerModel) jumpToTagCategory(key string) tea.Msg {
+	category, label, ok := taskTagJumpCategory(key)
+	if !ok {
+		return nil
+	}
+	for _, match := range model.surface.Matches() {
+		if match.Item.CategoryID == category {
+			model.surface.SetCursorToID(match.Item.ID)
+			return nil
+		}
+	}
+	return StatusMsg(fmt.Sprintf("No %s rows", strings.ToUpper(label)))
 }
 
 func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
@@ -448,7 +469,7 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 // operationValuePickerInnerWidth is the overlay box width the picker claims out
 // of the terminal.
 func operationValuePickerInnerWidth(width int) int {
-	return min(max(width*3/5, 46), max(width-6, 24))
+	return min(max(width*9/10, 46), max(width-6, 24))
 }
 
 // operationValuePickerExplainerWidth is the width the explainers are rendered
@@ -572,12 +593,17 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		)
 	}
 	explainerWidth := operationValuePickerExplainerWidth(width)
-	explainers := make([]string, 0, 2)
+	explainers := make([]string, 0, 3)
 	if explainer := behavioralProjectTagExplainer(model.provider, explainerWidth); explainer != "" {
 		explainers = append(explainers, explainer)
 	}
 	if explainer := semanticTaskTagExplainer(model.provider, explainerWidth); explainer != "" {
 		explainers = append(explainers, explainer)
+	}
+	if hint := taskTagCategoryJumpHint(
+		model.provider, model.surface.Items(), explainerWidth,
+	); hint != "" {
+		explainers = append(explainers, hint)
 	}
 	explainerBlock := strings.Join(explainers, "\n\n")
 

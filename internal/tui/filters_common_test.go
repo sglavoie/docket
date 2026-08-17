@@ -75,6 +75,21 @@ func TestBuildTagFacetListUnionsTagsAndContexts(t *testing.T) {
 	if got := summarizeTagInfos(BuildProjectTagList(project, false)); !reflect.DeepEqual(got, []string{"shared:1", "tag-only:1"}) {
 		t.Fatalf("BuildProjectTagList() leaked contexts into the tag editor vocabulary: %v", got)
 	}
+
+	contextCounts := make(map[string]int)
+	for _, tag := range BuildTagFacetList([]*models.Project{project}, false) {
+		contextCounts[tag.Name] = tag.ContextCount
+	}
+	wantContexts := map[string]int{"context-only": 1, "done-context": 1, "shared": 1, "tag-only": 0}
+	if !reflect.DeepEqual(contextCounts, wantContexts) {
+		t.Fatalf("BuildTagFacetList() context counts = %v, want %v", contextCounts, wantContexts)
+	}
+
+	for _, tag := range BuildProjectTagList(project, false) {
+		if tag.ContextCount != 0 {
+			t.Fatalf("BuildProjectTagList() stamped a context count on %q", tag.Name)
+		}
+	}
 }
 
 func TestTaskMatchesTagFacetMatchesEitherAxis(t *testing.T) {
