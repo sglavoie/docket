@@ -91,7 +91,7 @@ func TestExecuteCommandReturnsCobraValidationError(t *testing.T) {
 }
 
 func TestRemovedCommandsFailAsUnknown(t *testing.T) {
-	root := RootCmd()
+	root := rootCmd
 	previousSilenceErrors := root.SilenceErrors
 	previousSilenceUsage := root.SilenceUsage
 	root.SilenceErrors = true

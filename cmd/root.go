@@ -52,11 +52,6 @@ Examples:
 	RunE: runRoot,
 }
 
-// RootCmd returns the root cobra command for use by code generators.
-func RootCmd() *cobra.Command {
-	return rootCmd
-}
-
 // Execute runs the root command and returns any error. The caller is
 // responsible for printing the error and terminating the process on failure.
 func Execute() error {

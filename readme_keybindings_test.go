@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func readFileForContractTest(t *testing.T, path string) string {
+func readREADMEForContractTest(t *testing.T) string {
 	t.Helper()
 
 	_, file, _, ok := runtime.Caller(0)
@@ -16,14 +16,15 @@ func readFileForContractTest(t *testing.T, path string) string {
 		t.Fatal("failed to resolve caller path")
 	}
 
-	data, err := os.ReadFile(filepath.Join(filepath.Dir(file), path))
+	path := filepath.Join(filepath.Dir(file), "README.md")
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return string(data)
 }
 
-func TestReadFileForContractTestUsesStableBaseDir(t *testing.T) {
+func TestReadREADMEForContractTestUsesStableBaseDir(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
@@ -38,7 +39,7 @@ func TestReadFileForContractTestUsesStableBaseDir(t *testing.T) {
 		t.Fatalf("chdir to cmd: %v", err)
 	}
 
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	if !strings.Contains(content, "# tt — Terminal Tasks") {
 		t.Fatal("expected README content to load regardless of cwd")
 	}
@@ -65,7 +66,7 @@ func rejectDocumentationText(t *testing.T, content string, forbidden []string) {
 }
 
 func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"The Outliner is the only primary task presentation",
 		"`Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due",
@@ -86,7 +87,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 }
 
 func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"`a` capture, `A` child, `e` inline task edit, `E` description",
 		"`w` opens the workflow chord",
@@ -110,7 +111,7 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 }
 
 func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"1. Comments 2. Attachments 3. Delete",
 		"The list filters as soon as printable text is typed",
@@ -121,7 +122,7 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 }
 
 func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"`fp0`, `fp1`–`fp3`",
 		"Unset never matches",
@@ -155,7 +156,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 }
 
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"!1-3 #tag ##context @date $destination *pin %project >parent <child",
 		"`*pin` pins the task, exactly as the `P` key does on an existing row",
@@ -186,7 +187,7 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 }
 
 func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"`Ctrl+N` opens All Notes",
 		"On a project header row it opens that project's notes instead",
@@ -206,7 +207,7 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 }
 
 func TestREADMEDocumentsProjectTags(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"### Project tags",
 		"A project carries any number of tags",
@@ -224,7 +225,7 @@ func TestREADMEDocumentsProjectTags(t *testing.T) {
 }
 
 func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
-	content := readFileForContractTest(t, "README.md")
+	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
@@ -252,52 +253,5 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 		"Configuration is stored at `~/.tt.json`",
 		"## Settings",
 		"## Finder",
-	})
-}
-
-func TestCLIReferenceContractStaysCurrent(t *testing.T) {
-	content := readFileForContractTest(t, "cmd/cli-reference.md")
-
-	rejectDocumentationText(t, content, []string{
-		"## tt add",
-		"## tt attach",
-		"## tt context",
-		"## tt dash",
-		"## tt focus",
-		"## tt note",
-		"## tt redo",
-		"## tt sandbox",
-		"## tt search",
-		"## tt select",
-		"## tt task",
-		"## tt theme",
-		"## tt tui-test",
-		"## tt undo",
-		"## tt project archive",
-		"## tt project delete",
-		"## tt project edit",
-		"## tt project list",
-		"## tt project new",
-		"## tt project restore",
-		"--config",
-		"--verbose",
-	})
-
-	requireDocumentationText(t, content, []string{
-		"Startup validates schema-6 data before loading",
-		"immutable snapshot-first boundaries",
-		"workspace data directory (env TT_DATA_DIR; default: ~/.tt",
-		"## tt completion",
-		"## tt conflict",
-		"## tt conflict list",
-		"## tt conflict resolve",
-		"## tt conflict show",
-		"## tt doctor",
-		"## tt project",
-		"## tt project export",
-		"## tt workspace",
-		"## tt workspace location",
-		"Usage: tt workspace move <destination> [flags]",
-		"--no-color bool",
 	})
 }

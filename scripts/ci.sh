@@ -12,8 +12,8 @@ require_tool() {
 require_tool golangci-lint
 require_tool deadcode
 
-echo "Generating and checking documentation..."
-./scripts/check_generated_docs.sh
+echo "Checking documentation..."
+./scripts/check_docs.sh
 
 echo "Running race tests and collecting coverage..."
 go test -race -count=1 -coverprofile=coverage.out ./...

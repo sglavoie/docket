@@ -714,14 +714,14 @@ tt project export [slug-or-id]
 tt --version
 ```
 
-Global flags are `--data-dir` and `--no-color`. See
-[`cmd/cli-reference.md`](cmd/cli-reference.md) for generated syntax.
+Global flags are `--data-dir` and `--no-color`. Run `tt help <command>` for
+per-command syntax.
 
 ## Development
 
 ```bash
 just test
-./scripts/check_generated_docs.sh
+./scripts/check_docs.sh
 ./scripts/run_tui_scenarios.sh
 just ci
 ```

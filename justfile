@@ -13,14 +13,8 @@ ldflags := "-ldflags \"-X github.com/sglavoie/tt/cmd.Version=" + version + " -X 
 help:
     @just --list
 
-# Generate CLI reference for embedding
-docs:
-    @echo "Generating CLI reference..."
-    go run ./scripts/gen-api-ref > cmd/cli-reference.md
-    @echo "Generated cmd/cli-reference.md"
-
 # Build the binary in the current directory
-build: docs
+build:
     @echo "Building {{ binary_name }}..."
     go build {{ ldflags }} -o {{ binary_name }} .
     @echo "Built {{ binary_name }}"
@@ -100,7 +94,7 @@ dead:
     ./scripts/dead_code.sh
 
 # Build release binaries for darwin/linux × amd64/arm64
-release: docs
+release:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p dist

@@ -10,10 +10,9 @@ import (
 
 // TestNoTabsInLongHelp ensures that the Long help text of every command uses
 // consistent space indentation. Stray tab characters in Long strings render as
-// misaligned blocks in terminal help output (and in the embedded
-// cli-reference.md document).
+// misaligned blocks in terminal help output.
 func TestNoTabsInLongHelp(t *testing.T) {
-	root := RootCmd()
+	root := rootCmd
 	var offenders []string
 	visit(root, func(c *cobra.Command) {
 		if strings.Contains(c.Long, "\t") {
@@ -33,7 +32,7 @@ func visit(c *cobra.Command, fn func(*cobra.Command)) {
 }
 
 func TestPublicCommandTreeIsMaintenanceOnly(t *testing.T) {
-	root := RootCmd()
+	root := rootCmd
 	root.InitDefaultHelpCmd()
 
 	var paths []string

@@ -1255,7 +1255,7 @@ or provider integrations.
 ## Verification
 
 ```bash
-./scripts/check_generated_docs.sh
+./scripts/check_docs.sh
 ./scripts/run_tui_scenarios.sh
 just ci
 ```

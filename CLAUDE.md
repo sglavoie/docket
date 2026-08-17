@@ -12,15 +12,12 @@ just test
 just fmt
 just vet
 just tidy
-./scripts/check_generated_docs.sh
+./scripts/check_docs.sh
 ./scripts/run_tui_scenarios.sh
 just ci
 ```
 
 Go accepts packages, not files, as test targets.
-
-`cmd/cli-reference.md` is generated from Cobra help: change the help and rerun
-`./scripts/check_generated_docs.sh` rather than editing by hand.
 
 ## Architecture
 
