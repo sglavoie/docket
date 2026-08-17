@@ -412,6 +412,15 @@ raises, how much work hangs off the row; `‹` stays bare because a task has one
 parent. Only `IncompleteChildren` count, since a parent whose children are all
 terminal hides no open work.
 
+The pin marker is the third reserved `taskRowSegments` field rather than a
+ladder entry, for the same reason: a pin that disappears at 60 columns is a pin
+the user cannot trust anywhere. `taskPinnedMarker` renders a bold `*` when
+`task.Pinned && !row.IsPinnedSection`. The predicate is the row's lane, not the
+mode's `ShowsPinned` flag, so a search projection — which returns before any
+Pinned section is built — and a filter-admitted terminal or deferred pinned row
+inside All or Today all get the mark, while the lane's own rows stay bare
+because the section header above them already states it.
+
 The trigger is zero rendered children rather than a rendered-child count: when
 some children are shown the connectors and fold indicator already say "parent",
 and the arithmetic would have to account for
@@ -755,9 +764,9 @@ inside it.
 The Outliner remains full-width at every supported terminal size. Rows carry
 operational scan signals directly: workflow state, priority,
 due, deferral, and checklist progress.
-The task context badge is reserved beside the ancestor marker: neither enters
-the drop ladder at narrow widths. Context values use at most 12 columns in the
-row and move to Peek in full when longer.
+The task context badge is reserved beside the ancestor and pin markers: none of
+them enter the drop ladder at narrow widths. Context values use at most 12
+columns in the row and move to Peek in full when longer.
 Outliner rows omit short task IDs.
 
 `H`, `M`, and `L` are the screen-relative jumps, the third kind beside the

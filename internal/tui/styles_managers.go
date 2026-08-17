@@ -20,6 +20,10 @@ var (
 				Foreground(ColorWarning).
 				Bold(true)
 
+	PinnedMarkerStyle = lipgloss.NewStyle().
+				Foreground(ColorAccent).
+				Bold(true)
+
 	ActiveStyle = lipgloss.NewStyle().
 			Foreground(ColorAccent)
 

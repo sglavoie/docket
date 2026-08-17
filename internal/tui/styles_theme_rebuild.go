@@ -49,6 +49,7 @@ func rebuildTaskStyles() {
 	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	PinnedProjectStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
 	PinnedNumberStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
+	PinnedMarkerStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 	ActiveStyle = lipgloss.NewStyle().Foreground(ColorAccent)
 	TriagedBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning).Italic(true)
 	PriorityWaitingHeaderStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true).MarginTop(1)

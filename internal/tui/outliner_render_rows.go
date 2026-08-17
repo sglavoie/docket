@@ -230,15 +230,16 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 // one formula instead of two that can drift apart.
 type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
-	statusIcon, prioritySegment, contextSegment      string
-	tagSegment, indicators, relationMarker           string
+	statusIcon, prioritySegment, pinMarker           string
+	contextSegment, tagSegment                       string
+	indicators, relationMarker                       string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
-		s.statusIcon, s.prioritySegment, s.contextSegment, s.tagSegment,
-		s.indicators, s.relationMarker,
+		s.statusIcon, s.prioritySegment, s.pinMarker, s.contextSegment,
+		s.tagSegment, s.indicators, s.relationMarker,
 	), 1)
 }
 
@@ -265,6 +266,16 @@ func (m *OutlinerModel) taskRelationMarker(row outlinerRow) string {
 		return ""
 	}
 	return MutedStyle.Render("  " + marker)
+}
+
+// taskPinnedMarker names a pin the surrounding rows cannot: the Pinned lane's
+// own rows carry the header instead, exactly as a row showing its child carries
+// no child count.
+func (m *OutlinerModel) taskPinnedMarker(row outlinerRow) string {
+	if row.task == nil || !row.task.Pinned || row.IsPinnedSection {
+		return ""
+	}
+	return PinnedMarkerStyle.Render("*") + " "
 }
 
 func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout) taskRowSegments {
@@ -312,6 +323,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		foldIndicator:   foldIndicator,
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
+		pinMarker:       m.taskPinnedMarker(row),
 		contextSegment:  contextSegment,
 		tagSegment:      tagSegment,
 		indicators:      indicatorSegments.render(),
@@ -351,13 +363,14 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
 	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
 
-	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s%s",
+	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s%s%s",
 		segments.cursorPrefix,
 		segments.checkbox,
 		segments.prefixStr,
 		segments.foldIndicator,
 		segments.statusIcon,
 		segments.prioritySegment,
+		segments.pinMarker,
 		segments.contextSegment,
 		title,
 		segments.relationMarker,
@@ -649,11 +662,12 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	return HighlightText(title, positions, titleStyle)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, contextSegment, tagSegment, indicators, relationMarker string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, contextSegment, tagSegment, indicators, relationMarker string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
-		lipgloss.Width(prioritySegment) + lipgloss.Width(contextSegment) +
+		lipgloss.Width(prioritySegment) + lipgloss.Width(pinMarker) +
+		lipgloss.Width(contextSegment) +
 		lipgloss.Width(tagSegment) + lipgloss.Width(indicators) +
 		lipgloss.Width(relationMarker)
 }

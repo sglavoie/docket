@@ -80,7 +80,8 @@ Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
-one narrow question and show no Pinned section, so their own order stays whole.
+one narrow question and show no Pinned section, so their own order stays whole;
+a pinned task there wears a bold `*` left of its context badge and title.
 Pinned tasks appear once in project groups, each promoted child wearing the bare
 `‹` parent marker whose chain Peek names. Groups
 sort by their newest pin. Tasks inside a group start newest-first and `J`/`K`
@@ -409,6 +410,13 @@ and a detached parent reads `‹›N`.
 
 Both marks share one segment of fixed columns reserved before the title, so
 they neither eat the title on a wide row nor disappear on a crowded one.
+
+The pin marker reads the same way. A pinned task drawn anywhere but the Pinned
+lane — Inbox, Next, Backlog, Due, Recent, a search projection, or a filter that
+admits a terminal or deferred pinned row into All or Today — wears a bold `*`
+before its context badge and title. Rows inside the Pinned lane wear nothing,
+because the section header already says it. The marker is reserved columns like
+the relation mark and is never dropped.
 
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
 parent cursor and scroll position. A leaf reports `No children to focus`. While

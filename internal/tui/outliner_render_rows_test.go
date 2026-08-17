@@ -59,8 +59,8 @@ func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 	}
 	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
 		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
-		segments.statusIcon, segments.prioritySegment, segments.contextSegment, segments.tagSegment,
-		segments.indicators, segments.relationMarker,
+		segments.statusIcon, segments.prioritySegment, segments.pinMarker, segments.contextSegment,
+		segments.tagSegment, segments.indicators, segments.relationMarker,
 	) {
 		t.Fatal("context segment drifted between titleWidth and outlinerNonTitleWidth")
 	}
@@ -295,6 +295,46 @@ func TestOutlinerTaskRowKeepsTheAncestorMarkerOnACrowdedRow(t *testing.T) {
 		if got := lipgloss.Width(plain); got > width {
 			t.Fatalf("width %d row assembled %d columns: %q", width, got, plain)
 		}
+	}
+}
+
+// TestPinnedMarkerNamesAPinOutsideThePinnedLane pins the asymmetry: the lane's
+// header already says it, so only rows drawn elsewhere wear the mark, and the
+// mark is reserved width rather than a ladder entry.
+func TestPinnedMarkerNamesAPinOutsideThePinnedLane(t *testing.T) {
+	task := &models.Task{
+		ID:            "pinned",
+		Title:         "Pinned work",
+		WorkflowState: models.StateInbox,
+		Pinned:        true,
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+
+	elsewhere := outlinerRow{task: task, ProjectID: project.ID}
+	for _, width := range []int{120, 24} {
+		plain := ansi.Strip(outliner.renderOutlinerTaskRow(elsewhere, false, width, width, 0, nil))
+		if !strings.Contains(plain, "* Pinne") {
+			t.Fatalf("width %d dropped the pin marker: %q", width, plain)
+		}
+		if got := lipgloss.Width(plain); got > width {
+			t.Fatalf("width %d row assembled %d columns: %q", width, got, plain)
+		}
+	}
+
+	lane := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: task, ProjectID: project.ID, IsPinnedSection: true,
+	}, false, 120, 120, 0, nil))
+	if strings.Contains(lane, "* Pinned work") {
+		t.Fatalf("Pinned lane row restated its own section header: %q", lane)
+	}
+
+	unpinned := &models.Task{ID: "plain", Title: "Plain work", WorkflowState: models.StateInbox}
+	quiet := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: unpinned, ProjectID: project.ID,
+	}, false, 120, 120, 0, nil))
+	if strings.Contains(quiet, "*") {
+		t.Fatalf("unpinned row wore the marker: %q", quiet)
 	}
 }
 
