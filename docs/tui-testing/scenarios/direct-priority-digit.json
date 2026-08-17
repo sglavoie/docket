@@ -22,14 +22,15 @@
     { "type": "key", "label": "drop it to Low priority", "key": "!" },
     { "type": "key", "key": "3" },
     { "type": "wait" },
-    { "type": "assert", "label": "an explicit P3 reloads without a high-priority badge", "assert": "not_contains", "value": "▶ ◉ Build login form" },
-    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "label": "an explicit P3 shows the low-priority badge", "assert": "contains", "value": "▶ ◆ Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "▶ ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "clear the priority", "key": "!" },
     { "type": "key", "key": "0" },
     { "type": "wait" },
     { "type": "assert", "label": "an unset priority borrows no badge", "assert": "not_contains", "value": "▶ ◉ Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "▶ ◆ Build login form" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 

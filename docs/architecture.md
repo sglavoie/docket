@@ -703,7 +703,7 @@ the loaded projects, otherwise a facet could never be widened back out from
 inside it.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
-operational scan signals directly: workflow state, conditional high priority,
+operational scan signals directly: workflow state, priority,
 due, deferral, and checklist progress.
 The task context badge is reserved beside the ancestor marker: neither enters
 the drop ladder at narrow widths. Context values use at most 12 columns in the

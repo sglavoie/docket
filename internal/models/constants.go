@@ -6,10 +6,9 @@ import "fmt"
 //
 // PriorityUnset is the one canonical "no priority assigned" value. It is a
 // durable state, not a placeholder: it persists as `priority: 0`, parses back as
-// zero, renders no badge, and never counts as high priority. Every path that
-// needs a number instead of a presence answer resolves it through
-// EffectivePriority, so an unset task neither outranks critical work nor sorts
-// below the scale.
+// zero, and is the only priority that renders no badge. Every path that needs a
+// number instead of a presence answer resolves it through EffectivePriority, so
+// an unset task neither outranks critical work nor sorts below the scale.
 const (
 	PriorityUnset  = 0 // Unset — no priority assigned
 	PriorityHigh   = 1 // High
@@ -40,12 +39,6 @@ func EffectivePriority(value int) int {
 		return PriorityLow + 1
 	}
 	return value
-}
-
-// IsHighPriority reports whether a priority is the High bucket.
-// An unset priority is not high priority.
-func IsHighPriority(value int) bool {
-	return value == PriorityHigh
 }
 
 // PriorityName returns the canonical display vocabulary for a stored priority.

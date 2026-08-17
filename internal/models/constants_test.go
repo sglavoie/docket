@@ -54,25 +54,6 @@ func TestEffectivePrioritySortsUnsetAndOffScaleAfterLow(t *testing.T) {
 	}
 }
 
-func TestIsHighPriorityExcludesUnset(t *testing.T) {
-	tests := []struct {
-		value int
-		want  bool
-	}{
-		{PriorityUnset, false},
-		{1, true},
-		{2, false},
-		{PriorityMax, false},
-		{PriorityMax + 1, false},
-	}
-
-	for _, tt := range tests {
-		if got := IsHighPriority(tt.value); got != tt.want {
-			t.Errorf("IsHighPriority(%d) = %v, want %v", tt.value, got, tt.want)
-		}
-	}
-}
-
 func TestPriorityNameUsesCanonicalVocabulary(t *testing.T) {
 	want := map[int]string{
 		PriorityUnset:  "Unset",

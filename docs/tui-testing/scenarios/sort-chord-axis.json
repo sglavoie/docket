@@ -19,7 +19,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↑" },
     { "type": "assert", "label": "the sort badge joins the title row", "assert": "contains", "value": "Sort: title ↑" },
-    { "type": "assert", "assert": "contains", "value": "├── □   Due soon: renew certificate" },
+    { "type": "assert", "assert": "contains", "value": "├── □ ● Due soon: renew certificate" },
     { "type": "assert", "assert": "contains", "value": "├── ⊘   Waiting on vendor response" },
     { "type": "assert", "assert": "no_layout_issues" },
 

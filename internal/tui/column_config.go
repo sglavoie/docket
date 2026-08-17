@@ -1,14 +1,5 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
-
-// Priority display mode constants.
-const (
-	PriorityModeAll         = "all"
-	PriorityModeConditional = "conditional"
-	PriorityModeHidden      = "hidden"
-)
-
 // Column name constants for configurable column visibility.
 const (
 	ColPriority    = "priority"
@@ -41,33 +32,15 @@ type ColumnConfig struct {
 	toggles        map[string]bool // per-project overrides
 	globalDefaults map[string]bool // global settings defaults
 	defaults       map[string]bool // hardcoded defaults
-	priorityMode   string          // "all", "conditional", "hidden" (empty = conditional)
 }
 
 // NewColumnConfig creates a ColumnConfig with a 3-tier resolution chain.
-// Any argument may be nil. priorityMode controls priority badge display.
-func NewColumnConfig(toggles, globalDefaults, defaults map[string]bool, priorityMode string) *ColumnConfig {
+// Any argument may be nil.
+func NewColumnConfig(toggles, globalDefaults, defaults map[string]bool) *ColumnConfig {
 	return &ColumnConfig{
 		toggles:        toggles,
 		globalDefaults: globalDefaults,
 		defaults:       defaults,
-		priorityMode:   priorityMode,
-	}
-}
-
-// ShouldShowPriority returns whether a priority badge should be displayed for
-// the given priority level, based on the configured priority display mode.
-func (c *ColumnConfig) ShouldShowPriority(priority int) bool {
-	if c == nil {
-		return models.IsHighPriority(priority)
-	}
-	switch c.priorityMode {
-	case PriorityModeAll:
-		return true
-	case PriorityModeHidden:
-		return false
-	default:
-		return models.IsHighPriority(priority)
 	}
 }
 
@@ -77,17 +50,6 @@ func (c *ColumnConfig) Toggles() map[string]bool {
 		return nil
 	}
 	return c.toggles
-}
-
-// PriorityMode returns the current priority display mode string.
-func (c *ColumnConfig) PriorityMode() string {
-	if c == nil {
-		return PriorityModeConditional
-	}
-	if c.priorityMode == "" {
-		return PriorityModeConditional
-	}
-	return c.priorityMode
 }
 
 // IsVisible returns whether the named column should be rendered.

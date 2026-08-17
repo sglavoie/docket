@@ -216,7 +216,7 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		sort:               NewSortState(),
 		treeSort:           NewSortState(),
 		MultiSelectState:   MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
-		columnConfig:       NewColumnConfig(nil, nil, DefaultOutlinerColumns, PriorityModeConditional),
+		columnConfig:       NewColumnConfig(nil, nil, DefaultOutlinerColumns),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
 	return m

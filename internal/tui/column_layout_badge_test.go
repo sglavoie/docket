@@ -60,22 +60,6 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 	}
 }
 
-func TestComputeBadgeWidthsHideLowPriority(t *testing.T) {
-	t1 := &models.Task{Priority: models.PriorityLow, WorkflowState: models.StateBacklog}
-	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
-		HideLowPriority: true,
-	})
-	if cl == nil {
-		t.Fatal("expected non-nil layout")
-	}
-	if cl.HasPriority {
-		t.Error("HasPriority should be false when low priority is hidden and all tasks are low priority")
-	}
-	if cl.PriorityWidth != 0 {
-		t.Errorf("PriorityWidth = %d, want 0", cl.PriorityWidth)
-	}
-}
-
 func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	// No options enabled → only priority is measured.
 	t1 := &models.Task{Priority: 1, WorkflowState: models.StateBacklog}

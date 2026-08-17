@@ -14,7 +14,7 @@ import (
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	var colLayout *ColumnLayout
 	if viewport.rowWidth >= MinColumnAlignWidth {
-		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx], m.columnConfig)
+		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx])
 		// Augment with status widths from the same row set.
 		var visibleTasks []*models.Task
 		for _, row := range m.rows[viewport.startIdx:viewport.endIdx] {
@@ -580,10 +580,7 @@ func taskWokeRecently(task *models.Task, now time.Time) bool {
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
-	priorityBadge := ""
-	if m.columnConfig.ShouldShowPriority(task.Priority) {
-		priorityBadge = renderPriorityBadge(task.Priority)
-	}
+	priorityBadge := renderPriorityBadge(task.Priority)
 	if colLayout != nil && colLayout.HasPriority {
 		return PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
 	}

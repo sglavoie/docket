@@ -348,7 +348,7 @@ items, and `Esc` brings back exactly the rows that were open.
 ### Peek and multi-select
 
 The Outliner uses the full terminal width at every supported size. Task rows
-show workflow state, conditional high priority, due and defer dates, and
+show workflow state, priority, due and defer dates, and
 checklist progress; short task IDs are hidden.
 
 The bold `[context]` segment is reserved like the ancestor marker: it never

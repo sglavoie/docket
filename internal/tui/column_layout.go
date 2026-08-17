@@ -12,7 +12,7 @@ import (
 // visible outliner rows. Non-task rows (section headers, project sub-headers,
 // separators) are skipped via isTaskRow(). Returns nil when no task rows are
 // present.
-func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig) *ColumnLayout {
+func ComputeOutlinerColumnLayout(rows []outlinerRow) *ColumnLayout {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -26,13 +26,11 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 		task := row.task
 
 		// Priority (pre-title in outliner)
-		if columnConfig.ShouldShowPriority(task.Priority) {
-			badge := renderPriorityBadge(task.Priority)
-			if w := lipgloss.Width(badge); w > 0 {
-				cl.HasPriority = true
-				if w > cl.PriorityWidth {
-					cl.PriorityWidth = w
-				}
+		badge := renderPriorityBadge(task.Priority)
+		if w := lipgloss.Width(badge); w > 0 {
+			cl.HasPriority = true
+			if w > cl.PriorityWidth {
+				cl.PriorityWidth = w
 			}
 		}
 	}
@@ -46,10 +44,6 @@ func ComputeOutlinerColumnLayout(rows []outlinerRow, columnConfig *ColumnConfig)
 // measure. Consumers explicitly enable each column so the helper can serve
 // both single-project (no Project column) and cross-project surfaces.
 type BadgeWidthOpts struct {
-	// HideLowPriority mirrors TaskLine.HideLowPriority. When true, priorities
-	// > 2 do not contribute to HasPriority/PriorityWidth.
-	HideLowPriority bool
-
 	// IncludeStatus measures the status badge column width.
 	IncludeStatus bool
 
@@ -63,8 +57,6 @@ type BadgeWidthOpts struct {
 
 // ComputeBadgeWidths walks tasks once and records the max rendered visual
 // width per badge column requested by opts. Returns nil when tasks is empty.
-// Session 7 will adopt the returned layout in list-row renderers; Session 6
-// only provides the infrastructure.
 func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout {
 	if len(tasks) == 0 {
 		return nil
@@ -81,14 +73,11 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		}
 		hasTasks = true
 
-		showPriority := !opts.HideLowPriority || models.IsHighPriority(task.Priority)
-		if showPriority {
-			badge := renderPriorityBadge(task.Priority)
-			if w := lipgloss.Width(badge); w > 0 {
-				cl.HasPriority = true
-				if w > cl.PriorityWidth {
-					cl.PriorityWidth = w
-				}
+		badge := renderPriorityBadge(task.Priority)
+		if w := lipgloss.Width(badge); w > 0 {
+			cl.HasPriority = true
+			if w > cl.PriorityWidth {
+				cl.PriorityWidth = w
 			}
 		}
 
