@@ -293,6 +293,19 @@ preserves provider order, and drops supplemental state before controls.
 Operation descriptors, gated keymaps, and `ListSurface` state remain the
 authorities for keys and applicability.
 
+`ViewStatusStripProvider` is the bottom status strip. `renderStatusBar` composes
+the active view's strip on top of `renderFooterChrome` under a static dim `─`
+divider, so the strip is the top of the status bar rather than the end of the
+view. Growing the status bar is what pins it: `AppModel.View` sizes and pads
+content against the bar's measured height, so the strip sits directly above the
+footer with no blank padding, at any guidance height, and is never the line
+`clipContentHeight` eats. The Outliner is the one provider. Its focus notice and
+its own status message are the strip's two lines, `statusStripHeight` reserves
+the divider plus their wrapped height from `computeOutlinerViewport`'s row
+budget, and `ViewStatusStrip` consumes the one-shot focus notice — safe because
+`AppModel.View` renders the view before the status bar, so the reservation and
+the strip see one frame's inputs.
+
 Recovery feedback is transaction-correlated. `storage.CommitResult.TransactionID`
 flows through application results and TUI messages, and `u undo` appears only
 when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
@@ -409,10 +422,23 @@ timers advance a sequence. Arming happens in exactly one place, the deferred
 closure in `AppModel.Update`, which is what lets ~50 void setter call sites stay
 untouched; it must remain that one defer, since a second would run first under
 LIFO and see neither the recovery nor the assigned command. The footer divider
-appearance feeds all three dividers `renderStatusBar` can emit — its own
+appearance feeds all three dividers `renderFooterChrome` can emit — its own
 separator and both guidance calls — or the flash dies whenever a which-key row is
-up. The breadcrumb keeps its plain foreground accent while its background
-participates in the footer wash.
+up. The status strip's divider is the fourth divider and deliberately not one of
+them: the strip is view content, so it takes neither the moving glyph nor the
+footer content wash. The breadcrumb keeps its plain foreground accent while its
+background participates in the footer wash.
+
+A view-owned status message is transient by default and expires like the
+shell's own. `setTransientStatus` marks it, `scheduleViewStatusExpiry` reads the
+same before/after probe the flash arms on and batches a `ViewStatusClearMsg`
+inside that one deferred closure, and the handler clears only when the message's
+view and `StatusStamp` still match, so an older tick can never dismiss a newer
+message. `setStatus` stays sticky for a live state descriptor such as the
+multi-select summary, which would otherwise leave an active selection unlabeled.
+Clearing arms no flash, since `clearStatus` advances no sequence. A mode
+transition clears the view status outright rather than waiting for the tick,
+because a message naming its mode misreports the next one.
 
 ### One operation grammar
 

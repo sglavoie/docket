@@ -2,7 +2,6 @@
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
 Behavior: [`README.md`](README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
-The end table names each topic's section.
 
 ## Build and verification
 
@@ -21,8 +20,8 @@ Go accepts packages, not files, as test targets.
 
 ## Architecture
 
-`tt` is an Outliner-first local task manager: Bubble Tea is the product; Cobra
-contains only the launcher and maintenance commands.
+Bubble Tea is the product; Cobra contains only the launcher and maintenance
+commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
 cases and mutation policy, `internal/storage` schema-11 Markdown, transactions,
@@ -113,13 +112,17 @@ Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort
 reorders tasks within their group only.
 
+The Outliner's notice and status render only in the shell-pinned strip;
+`statusStripHeight` reserves its height from `computeOutlinerViewport`. A view
+status is transient except the multi-select summary.
+
 The footer flash is armed by status text only, never by a breadcrumb, mode badge
 or which-key change, and cleared text arms nothing. Arming stays in the one
-deferred closure in `AppModel.Update`. The divider appearance
-must feed all three dividers `renderStatusBar` can emit, or the flash dies
-whenever a which-key row is up. The interactive TUI ignores an inherited
-`NO_COLOR`; `--no-color` still disables color and non-interactive commands
-retain the inherited environment.
+deferred closure in `AppModel.Update`. The divider appearance must feed all
+three dividers `renderFooterChrome` emits, or the flash dies under a which-key
+row; the strip's divider stays outside it. The interactive TUI ignores an
+inherited `NO_COLOR`; `--no-color` still disables color and non-interactive
+commands retain the inherited environment.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` or `dateEntry()` (inline add modes), or a plain list. A value the
@@ -298,7 +301,7 @@ Harness format and authoring rules live in
 | Modes, key table, grouping, checklist, Recent | Outliner grammar; Inline checklist rows | TUI architecture |
 | Pinned, Review, title fitter, guidance | Presentation grammar | Presentation chrome |
 | Defer, waiting, check-back, drop ladder | Peek and multi-select | Row indicators |
-| Footer flash | — | Status flash |
+| Status strip, footer flash | Presentation grammar | Status flash |
 | Registry, executor, providers, chaining | Task actions | One operation grammar |
 | Capture sigils, adoption, destinations | Capture grammar | Capture and inline-edit grammar |
 | Outline editor, declarative deletion | Outline editing | Outline editor |

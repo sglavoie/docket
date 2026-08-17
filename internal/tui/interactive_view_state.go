@@ -12,13 +12,28 @@ type InteractiveViewState struct {
 	cursorFlash      bool
 	statusMessage    string
 	statusSeq        uint64
+	statusTransient  bool
 	confirm          ConfirmDialog
 }
 
-// setStatus sets the status message.
+// setStatus sets the status message. The message is sticky: it stays until the
+// view replaces or clears it.
 func (s *InteractiveViewState) setStatus(msg string) {
 	s.statusMessage = msg
 	s.statusSeq++
+	s.statusTransient = false
+}
+
+// setTransientStatus sets a status message that auto-clears like the shell's own.
+func (s *InteractiveViewState) setTransientStatus(msg string) {
+	s.setStatus(msg)
+	s.statusTransient = true
+}
+
+// StatusIsTransient reports whether a live status message should expire on the
+// shell's timer.
+func (s *InteractiveViewState) StatusIsTransient() bool {
+	return s.statusTransient && s.statusMessage != ""
 }
 
 // StatusStamp reports the generation of this view's own status line so the
@@ -30,6 +45,7 @@ func (s *InteractiveViewState) StatusStamp() uint64 {
 // clearStatus clears the status message.
 func (s *InteractiveViewState) clearStatus() {
 	s.statusMessage = ""
+	s.statusTransient = false
 }
 
 // DefaultShouldCaptureEsc returns true if a confirm dialog is active.

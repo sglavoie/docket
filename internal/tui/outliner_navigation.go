@@ -90,7 +90,7 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 			return
 		}
 	}
-	m.setStatus("Task is unavailable in this project")
+	m.setTransientStatus("Task is unavailable in this project")
 }
 
 // NavigateToTaskInProject navigates to a task in the cross-project outliner.
@@ -118,7 +118,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 		}
 	}
 	if projectID == "" {
-		m.setStatus("Task project not found")
+		m.setTransientStatus("Task project not found")
 		return
 	}
 
@@ -136,7 +136,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	m.rebuildRows()
 
 	if !m.moveCursorToProjectTask(task.ID, projectID) {
-		m.setStatus("Task is hidden by current filters")
+		m.setTransientStatus("Task is hidden by current filters")
 	}
 }
 

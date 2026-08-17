@@ -15,9 +15,9 @@ import (
 // sets a long status line and appends a "[MULTI-SELECT: n selected]" badge to
 // the title. In a narrow tree pane both wrap to extra rows; the height budget
 // used to reserve a fixed 2 lines for the status and 1 line for the title, so
-// the wrapped rows pushed the render past the pane height. The tree content
-// must never render more rows than the pane height, and no rendered line may
-// exceed the render width.
+// the wrapped rows pushed the render past the pane height. The status now
+// renders in the shell-pinned strip, so the tree content plus the strip must
+// still fit the pane height, and no rendered line may exceed the render width.
 func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: ""})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
@@ -53,10 +53,11 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	// cols, which forces both the status line and the title badge to wrap.
 	const treeWidth = 39
 	rendered := m.renderOutlinerTreeContent(treeWidth)
+	strip := m.ViewStatusStrip(treeWidth)
 
 	// The status line must actually wrap here, otherwise the test would pass
 	// vacuously and not guard the regression.
-	if got := wrappedLineCount(m.statusMessage, treeWidth); got < 2 {
+	if got := lipgloss.Height(strip); got < 2 {
 		t.Fatalf("precondition: status did not wrap at width %d (got %d line(s)); test would not guard the bug", treeWidth, got)
 	}
 
@@ -65,9 +66,11 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	wrapped := lipgloss.NewStyle().Width(treeWidth).Render(rendered)
 	lines := strings.Split(strings.TrimRight(wrapped, "\n"), "\n")
 
-	if len(lines) > paneHeight {
-		t.Fatalf("multi-select tree content rendered %d lines, exceeds pane height %d:\n%s",
-			len(lines), paneHeight, ansi.Strip(wrapped))
+	// The strip and its divider come out of the same pane budget.
+	stripHeight := 1 + lipgloss.Height(strip)
+	if len(lines)+stripHeight > paneHeight {
+		t.Fatalf("multi-select tree content rendered %d lines plus a %d-line strip, exceeds pane height %d:\n%s",
+			len(lines), stripHeight, paneHeight, ansi.Strip(wrapped))
 	}
 	for i, line := range lines {
 		if w := lipgloss.Width(line); w > treeWidth {
@@ -80,7 +83,7 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	if !strings.Contains(plain, "MULTI-SELECT") {
 		t.Errorf("multi-select badge missing from render:\n%s", plain)
 	}
-	if !strings.Contains(plain, "Space=toggle") {
-		t.Errorf("multi-select status hint missing from render:\n%s", plain)
+	if !strings.Contains(ansi.Strip(strip), "Space=toggle") {
+		t.Errorf("multi-select status hint missing from strip:\n%s", ansi.Strip(strip))
 	}
 }

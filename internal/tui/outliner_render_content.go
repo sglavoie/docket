@@ -17,58 +17,60 @@ type outlinerViewport struct {
 // renderOutlinerTreeContent renders the full-width Outliner tree constrained to
 // the given width.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
-	notice := m.focusNotice
-	m.focusNotice = ""
-
 	if len(m.rows) == 0 {
-		return m.renderOutlinerEmptyState(width, notice)
+		return m.renderOutlinerEmptyState(width)
 	}
 
 	var b strings.Builder
 	m.writeOutlinerHeader(&b, width)
 
-	extraFooter := 0
-	if notice != "" {
-		extraFooter += 2
-	}
+	extraFooter := m.statusStripHeight(width)
 	if m.quickEdit.IsActive() {
 		extraFooter += m.quickEditExtraLineCount()
 		if spec, ok := m.ContextualGuidance(); ok {
 			extraFooter += max(lipgloss.Height(renderGuidance(spec, width))-2, 0)
 		}
 	}
-	if m.statusMessage != "" {
-		// One blank separator line plus the status text's own wrapped height.
-		// A long status wraps to multiple lines at narrow widths, so reserving
-		// a fixed 2 lines under-counts and overflows terminal height.
-		extraFooter += 1 + max(wrappedLineCount(m.statusMessage, width), 1)
-	}
 
 	viewport := m.computeOutlinerViewport(width, extraFooter)
 	b.WriteString(m.renderOutlinerRows(viewport))
 
-	if notice != "" {
-		b.WriteString("\n")
-		b.WriteString(PreviewWarningStyle.Render(notice))
-		b.WriteString("\n")
-	}
-
-	if m.statusMessage != "" {
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Width(width).Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
 	return b.String()
 }
 
-// wrappedLineCount reports how many terminal rows s occupies once wrapped to
-// width. Returns 0 for an empty string or a non-positive width.
-func wrappedLineCount(s string, width int) int {
-	if s == "" || width <= 0 {
+// statusStripBody builds the focus notice and status message the shell pins
+// above the footer. It is pure: the height reservation and the strip itself
+// must measure the same string.
+func (m *OutlinerModel) statusStripBody(width int) string {
+	width = max(width, 1)
+	lines := make([]string, 0, 2)
+	if m.focusNotice != "" {
+		lines = append(lines, PreviewWarningStyle.Width(width).Render(m.focusNotice))
+	}
+	if m.statusMessage != "" {
+		lines = append(lines, MutedStyle.Width(width).Render(m.statusMessage))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// statusStripHeight is the strip's divider plus its wrapped lines. The Outliner
+// reserves it from its own row budget, so the strip takes rows from the list
+// rather than pushing the footer off screen.
+func (m *OutlinerModel) statusStripHeight(width int) int {
+	body := m.statusStripBody(width)
+	if body == "" {
 		return 0
 	}
-	return lipgloss.Height(lipgloss.NewStyle().Width(width).Render(s))
+	return 1 + lipgloss.Height(body)
+}
+
+// ViewStatusStrip hands the strip to the shell and consumes the one-shot focus
+// notice. AppModel.View renders the view before the status bar, so the
+// reservation above and this call see the same inputs in the same frame.
+func (m *OutlinerModel) ViewStatusStrip(width int) string {
+	body := m.statusStripBody(width)
+	m.focusNotice = ""
+	return body
 }
 
 func (m *OutlinerModel) outlinerFocusContext() string {
@@ -158,17 +160,11 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int) {
 	b.WriteString("\n")
 }
 
-func (m *OutlinerModel) renderOutlinerEmptyState(width int, notice string) string {
+func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	var b strings.Builder
 	b.WriteString(m.buildOutlinerTitleLine(width))
 	b.WriteString("\n")
-
-	emptyMsg := m.outlinerEmptyMessage()
-	b.WriteString(MutedStyle.Render(emptyMsg))
-	if notice != "" {
-		b.WriteString("\n\n")
-		b.WriteString(PreviewWarningStyle.Render(notice))
-	}
+	b.WriteString(MutedStyle.Render(m.outlinerEmptyMessage()))
 	return b.String()
 }
 

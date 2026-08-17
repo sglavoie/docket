@@ -65,6 +65,15 @@ type statusStamper interface {
 	StatusStamp() uint64
 }
 
+// viewStatusOwner is that same status line seen by the expiry timer: it stamps
+// generations, declares whether the current message is transient, and clears
+// itself when its tick comes back.
+type viewStatusOwner interface {
+	statusStamper
+	StatusIsTransient() bool
+	clearStatus()
+}
+
 // footerFlashProbe is the status identity compared across one Update. The
 // shell's own message carries a sequence, but m.err has ~87 assignment sites
 // and no clock, so it is compared by text. The view stamp is only meaningful
@@ -112,6 +121,22 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 	m.footerFlashSeq++
 	m.footerFlash = footerFlashState{severity: severity, seq: m.footerFlashSeq}
 	return footerFlashTick(m.footerFlashSeq)
+}
+
+// scheduleViewStatusExpiry arms the auto-clear for a view-owned status message
+// this Update introduced. It reads the same before/after comparison as the
+// flash, since a new message is exactly what both react to; a sticky message
+// (the multi-select summary) schedules nothing and stays until its view clears it.
+func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
+	after := m.captureFooterFlashProbe()
+	if after.view != before.view || after.viewStatusSeq == before.viewStatusSeq {
+		return nil
+	}
+	owner, ok := m.activeView().(viewStatusOwner)
+	if !ok || !owner.StatusIsTransient() {
+		return nil
+	}
+	return viewStatusTimeout(after.view, after.viewStatusSeq)
 }
 
 // advanceFooterFlash steps one frame and reports the command that schedules the

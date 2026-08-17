@@ -53,6 +53,14 @@ type StatusClearMsg struct{ ScheduledAt time.Time }
 // destructive actions do not cancel each other prematurely.
 type UndoToastTimeoutMsg struct{}
 
+// ViewStatusClearMsg clears a view-owned status message after a timeout. View
+// and Seq identify the message generation, so an older tick can never dismiss a
+// newer message or a message belonging to a different view.
+type ViewStatusClearMsg struct {
+	View PresentationID
+	Seq  uint64
+}
+
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
@@ -92,6 +100,14 @@ func statusTimeout(d time.Duration) tea.Cmd {
 // defaultStatusTimeout returns a command that clears the status message after the default timeout.
 func defaultStatusTimeout() tea.Cmd {
 	return statusTimeout(StatusUpdateTimeout)
+}
+
+// viewStatusTimeout returns a command that clears one generation of a
+// view-owned status message after the default timeout.
+func viewStatusTimeout(view PresentationID, seq uint64) tea.Cmd {
+	return tea.Tick(StatusUpdateTimeout, func(time.Time) tea.Msg {
+		return ViewStatusClearMsg{View: view, Seq: seq}
+	})
 }
 
 // CursorFlashDuration is how long the cursor flash highlight stays visible.

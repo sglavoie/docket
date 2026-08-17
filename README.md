@@ -54,6 +54,16 @@ chords may use two. Required commit and cancellation controls survive before
 optional hints. Transient pickers and action sheets own their local guidance
 while leaving the host title and workspace pulse visible.
 
+The Outliner's own feedback — a focus notice, or a line such as
+`Latest activity: …` — renders in a status strip pinned directly above the
+footer, introduced by a dim thin divider. The strip never floats mid-screen on a
+short list and never leaves blank padding under itself: it takes its rows from
+the task list, and in a narrow terminal it wraps rather than pushing the footer
+off screen. It clears itself after a couple of seconds, and immediately on a
+mode change, so a message naming a mode can never misreport the one you switched
+to. A live visual selection is the exception: its summary stays for as long as
+the selection does.
+
 After a commit, recovery feedback advertises `u undo` only when the newest
 workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the

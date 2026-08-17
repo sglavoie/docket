@@ -124,7 +124,26 @@ func footerBackgroundStyleParts(background color.Color) (prefix, suffix string) 
 	return prefix, suffix
 }
 
+// renderStatusBar composes the shell-owned bottom bar: the active view's status
+// strip, when it has one, sits on top of the footer chrome under a static dim
+// divider. Growing the status bar is what pins the strip directly above the
+// footer, since AppModel.View sizes and pads content against its height.
 func (m *AppModel) renderStatusBar() string {
+	footer := m.renderFooterChrome()
+	provider, ok := m.activeView().(ViewStatusStripProvider)
+	if !ok {
+		return footer
+	}
+	strip := provider.ViewStatusStrip(m.width)
+	if strip == "" {
+		return footer
+	}
+	// Deliberately static: the strip is view content, so it is neither one of
+	// the flash-capable dividers nor a taker of the footer content wash.
+	return renderHorizontalDivider(m.width) + "\n" + strip + "\n" + footer
+}
+
+func (m *AppModel) renderFooterChrome() string {
 	// Top border separator for visual distinction; tinted with current view accent.
 	separator := m.renderFooterDivider(m.width)
 	renderFooter := func(content string) string {

@@ -54,6 +54,14 @@ type ContextualGuidanceProvider interface {
 	ContextualGuidance() (spec GuidanceSpec, ok bool)
 }
 
+// ViewStatusStripProvider is implemented by views that own a status strip the
+// shell pins directly above the footer, under its own dim divider. The view
+// reserves the strip's height in its own layout budget; the shell only
+// composes it. An empty return suppresses the strip and its divider.
+type ViewStatusStripProvider interface {
+	ViewStatusStrip(width int) string
+}
+
 // StatusBarLabeler is implemented by views that provide their own status bar label.
 // Views without this interface show an empty label in the status bar.
 type StatusBarLabeler interface {

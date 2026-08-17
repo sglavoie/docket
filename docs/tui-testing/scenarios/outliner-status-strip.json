@@ -1,0 +1,22 @@
+{
+  "name": "outliner-status-strip",
+  "fixture": "workflow",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "key", "label": "enter a mode that owns its own ordering", "key": "ctrl+l" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "key", "label": "attempt a reorder the mode refuses", "key": "J" },
+    { "type": "assert", "label": "the refusal renders in the pinned strip", "assert": "contains", "value": "Ordering is automatic in Recent mode" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "a narrow terminal wraps the strip instead of clipping the footer", "width": 60, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": "Ordering is automatic in Recent mode" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "change modes", "key": "tab" },
+    { "type": "assert", "label": "the status naming the old mode is gone, not renaming the new one", "assert": "not_contains", "value": "Ordering is automatic" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

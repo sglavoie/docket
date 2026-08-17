@@ -106,13 +106,17 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 // eligible task keeps focus and scroll position across the reshape.
 func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cmd) {
 	if m.hasSearchProjection() {
-		m.setStatus("Exit search before changing modes")
+		m.setTransientStatus("Exit search before changing modes")
 		return m, nil
 	}
 	mode, ok := OutlinerModeByID(id)
 	if !ok {
 		return m, nil
 	}
+	// A status naming the mode it was raised in would otherwise outlive the
+	// transition and misreport the new mode, up to a tick before it expires.
+	m.clearStatus()
+	m.updateVisualSelectionStatus()
 	anchor := m.captureModeCursor()
 	defer m.restoreModeCursor(anchor)
 
@@ -136,7 +140,7 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 	m.selectOutlinerMode(ModeRecent)
 	task, project, sectionKey, ok := m.recentActivityLead()
 	if !ok {
-		m.setStatus("No activity in the last 30 days")
+		m.setTransientStatus("No activity in the last 30 days")
 		return nil
 	}
 	identity := taskIdentityFor(task, project)
@@ -145,7 +149,7 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 		m.revealRecentActivityLead(task, identity, sectionKey)
 		m.rebuildRows()
 		if index, found = m.rowIndexForTask(identity); !found {
-			m.setStatus("Latest activity is unavailable in this projection")
+			m.setTransientStatus("Latest activity is unavailable in this projection")
 			return nil
 		}
 	}
@@ -156,7 +160,7 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 	// reading the window from row zero keeps those headers on screen.
 	m.viewScrollOffset = 0
 	m.cursor = index
-	m.setStatus("Latest activity: " + task.Title)
+	m.setTransientStatus("Latest activity: " + task.Title)
 	return flashIfJumped(oldCursor, index, &m.cursorFlash)
 }
 
@@ -218,7 +222,7 @@ func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
 // rows in the active mode.
 func (m *OutlinerModel) orderingUnavailableStatus() {
 	mode := m.activeOutlinerModeEntry()
-	m.setStatus(fmt.Sprintf(
+	m.setTransientStatus(fmt.Sprintf(
 		"Ordering is automatic in %s mode — J/K and Ctrl+J/Ctrl+K reorder hierarchical or planning rows only",
 		mode.Label,
 	))

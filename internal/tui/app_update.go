@@ -38,6 +38,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if flash := m.armFooterFlashSince(statusBefore); flash != nil {
 			outCmd = tea.Batch(outCmd, flash)
 		}
+		if expiry := m.scheduleViewStatusExpiry(statusBefore); expiry != nil {
+			outCmd = tea.Batch(outCmd, expiry)
+		}
 	}()
 
 	// Handle all trivial close-view messages via the closeViewMsg interface.

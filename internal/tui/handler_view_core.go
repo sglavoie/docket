@@ -35,6 +35,15 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.clearStatus()
 		return true, nil
 
+	case ViewStatusClearMsg:
+		if m.currentView() != msg.View {
+			return true, nil
+		}
+		if owner, ok := m.activeView().(viewStatusOwner); ok && owner.StatusStamp() == msg.Seq {
+			owner.clearStatus()
+		}
+		return true, nil
+
 	case FooterFlashTickMsg:
 		return true, m.advanceFooterFlash(msg.Seq)
 
