@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -65,6 +66,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		"t tags",
 		"r review",
 		"d deferred",
+		"h hierarchy",
 		"x clear all",
 	} {
 		if !strings.Contains(row, want) {
@@ -90,6 +92,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	taskFilter.DueDate = DueDateToday
 	taskFilter.Tags = map[string]bool{reviewTaskTag: true, "deep": true}
 	taskFilter.Deferred = true
+	taskFilter.Hierarchy = HierarchyParent
 	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	if err != nil {
 		t.Fatal(err)
@@ -103,14 +106,14 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"p priority:high+", "s states:2", "c completed:90d+", "@ due:today",
-		"t tags:2", "r review:on", "d deferred:on", "x clear:5",
+		"t tags:2", "r review:on", "d deferred:on", "h hierarchy:parent", "x clear:6",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated f row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 5 {
-		t.Errorf("task filter count = %d, want 5 independently clearable facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 6 {
+		t.Errorf("task filter count = %d, want 6 independently clearable facets", got)
 	}
 
 	app.pendingChord = []string{"F"}
@@ -139,8 +142,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 			t.Errorf("isolated F row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {
-		t.Errorf("combined filter count = %d, want 8 independent task/project facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 9 {
+		t.Errorf("combined filter count = %d, want 9 independent task/project facets", got)
 	}
 }
 
@@ -690,6 +693,121 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	}
 }
 
+// newHierarchyFilterTestApp builds one project covering every hierarchy
+// position, including a parent whose only child is done.
+func newHierarchyFilterTestApp(t *testing.T) *AppModel {
+	t.Helper()
+	app := newUITestApp()
+	epicID := "epic"
+	storyID := "story"
+	closedID := "closed-parent"
+	project := &models.Project{
+		ID:   "project",
+		Name: "Project",
+		Slug: "project",
+		Tasks: []*models.Task{
+			{ID: epicID, ShortID: 1, Title: "Epic", WorkflowState: models.StateBacklog},
+			{ID: storyID, ShortID: 2, Title: "Story", WorkflowState: models.StateBacklog, ParentID: &epicID},
+			{ID: "open-leaf", ShortID: 3, Title: "Open leaf", WorkflowState: models.StateBacklog, ParentID: &storyID},
+			{ID: "done-leaf", ShortID: 4, Title: "Done leaf", WorkflowState: models.StateDone, ParentID: &storyID},
+			{ID: closedID, ShortID: 5, Title: "Closed parent", WorkflowState: models.StateBacklog},
+			{ID: "only-done-child", ShortID: 6, Title: "Only done child", WorkflowState: models.StateDone, ParentID: &closedID},
+			{ID: "solo", ShortID: 7, Title: "Solo", WorkflowState: models.StateBacklog},
+		},
+	}
+	project.BuildTaskTree()
+	setTestAppProjects(app, project)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.rebuildRows()
+	return app
+}
+
+func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
+	for _, tc := range []struct {
+		value HierarchyFilter
+		want  map[string]bool
+	}{
+		{
+			value: HierarchyParent,
+			want:  map[string]bool{"epic": true, "story": true},
+		},
+		{
+			value: HierarchyChild,
+			want:  map[string]bool{"story": true, "open-leaf": true},
+		},
+		{
+			value: HierarchyRoot,
+			want:  map[string]bool{"epic": true, "closed-parent": true, "solo": true},
+		},
+		{
+			value: HierarchyLeaf,
+			want:  map[string]bool{"open-leaf": true, "closed-parent": true, "solo": true},
+		},
+	} {
+		t.Run(hierarchyFilterLabel(tc.value), func(t *testing.T) {
+			app := newHierarchyFilterTestApp(t)
+			result := app.operationExecutor.Execute(OperationExecutionRequest{
+				ID:       operationFilterHierarchy,
+				Context:  simplifiedOperationContext(),
+				Value:    tc.value,
+				HasValue: true,
+			})
+			if result.Err != nil {
+				t.Fatalf("hierarchy filter error: %v", result.Err)
+			}
+			want := "Filtering hierarchy: " + hierarchyFilterLabel(tc.value)
+			if result.Status != want {
+				t.Errorf("Status = %q, want %q", result.Status, want)
+			}
+			if got := visibleOutlinerTaskIDs(app.crossOutliner); !maps.Equal(got, tc.want) {
+				t.Errorf("visible = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
+	app := newHierarchyFilterTestApp(t)
+	filter := &app.crossOutliner.filter.CommonFilterState
+
+	result := app.operationExecutor.Execute(OperationExecutionRequest{
+		ID:       operationFilterHierarchy,
+		Context:  simplifiedOperationContext(),
+		Value:    HierarchyLeaf,
+		HasValue: true,
+	})
+	if result.Err != nil {
+		t.Fatalf("hierarchy filter error: %v", result.Err)
+	}
+	if got := commonFilterParts(filter); !slices.Equal(got, []string{"hierarchy:leaf"}) {
+		t.Errorf("badge parts = %v, want the hierarchy facet alone", got)
+	}
+	if got := commonFilterFacetCount(filter); got != 1 {
+		t.Errorf("facet count = %d, want 1", got)
+	}
+
+	pressFilterChord(t, app, "fx")
+	if filter.Hierarchy != HierarchyAll {
+		t.Errorf("fx left hierarchy = %v, want HierarchyAll", filter.Hierarchy)
+	}
+}
+
+func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
+	app := newHierarchyFilterTestApp(t)
+	for _, value := range []HierarchyFilter{HierarchyAll, HierarchyLeaf + 1} {
+		result := app.operationExecutor.Execute(OperationExecutionRequest{
+			ID:       operationFilterHierarchy,
+			Context:  simplifiedOperationContext(),
+			Value:    value,
+			HasValue: true,
+		})
+		if result.Err == nil {
+			t.Errorf("hierarchy value %d should be rejected", value)
+		}
+	}
+}
+
 // TestFilterOperationsStayChordOnly locks the direct-grammar contract: the
 // filter family refines the view in place through the f chords.
 func TestFilterOperationsStayChordOnly(t *testing.T) {
@@ -697,8 +815,8 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 8 {
-		t.Fatalf("filter family declares %d operations, want 8", len(descriptors))
+	if len(descriptors) != 9 {
+		t.Fatalf("filter family declares %d operations, want 9", len(descriptors))
 	}
 	for _, declared := range descriptors {
 		_, ok := registry.Descriptor(declared.ID)

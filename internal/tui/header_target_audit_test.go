@@ -93,6 +93,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.filter.clear":                "target-free",
 	"tui.filter.completion-age":       "target-free",
 	"tui.filter.due":                  "target-free",
+	"tui.filter.hierarchy":            "target-free",
 	"tui.filter.include-archived":     "target-free",
 	"tui.filter.only-archived":        "target-free",
 	"tui.filter.only-parked":          "target-free",

@@ -131,6 +131,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`fr` | Toggle the `review` tag facet",
 		"`f@` | Open the due-date facet picker: overdue, today, this week, or no due date",
 		"`fd` | Deferred-only",
+		"`fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children",
 		"`fx` | Clear every facet",
 		"`Ft` | Pick project tags with AND semantics",
 		"`Fp` | Add parked projects to the population",

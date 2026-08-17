@@ -1244,6 +1244,8 @@ func (m *AppModel) newOperationValuePicker(
 		return m.newFilterDuePicker(request)
 	case ValueProviderFilterCompletionAge:
 		return m.newFilterCompletionAgePicker(request)
+	case ValueProviderFilterHierarchy:
+		return m.newFilterHierarchyPicker(request)
 	case ValueProviderFilterProjectTags:
 		return m.newFilterProjectTagsPicker(request)
 	case ValueProviderProjectTagDestination:

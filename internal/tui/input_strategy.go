@@ -325,6 +325,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterTags, Sequence: []string{"f", "t"}, DisplayKey: "ft", HintLabel: "tags"},
 			{OperationID: operationFilterReview, Sequence: []string{"f", "r"}, DisplayKey: "fr", HintLabel: "review"},
 			{OperationID: operationFilterDeferred, Sequence: []string{"f", "d"}, DisplayKey: "fd", HintLabel: "deferred"},
+			{OperationID: operationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy"},
 			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
 			{OperationID: operationFilterProjectTags, Sequence: []string{"F", "t"}, DisplayKey: "Ft", HintLabel: "project tags"},
 			{OperationID: operationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "include parked"},

@@ -76,6 +76,19 @@ const (
 	DueDateNone                          // tasks with no due date
 )
 
+// HierarchyFilter represents the hierarchy-position filter options. The parent
+// and leaf axes read the scope's open-direct-child census rather than a task's
+// own Children, which the All-mode promotion pass rewrites.
+type HierarchyFilter int
+
+const (
+	HierarchyAll    HierarchyFilter = iota // show all tasks
+	HierarchyParent                        // tasks with at least one open direct child
+	HierarchyChild                         // tasks that sit under a parent
+	HierarchyRoot                          // tasks with no parent
+	HierarchyLeaf                          // tasks with no open direct child
+)
+
 // CompletionAgeFilter represents the local-calendar age threshold selected by
 // the completion-cleanup facet. CompletionAgeAll removes the age bound while
 // the facet remains active, so malformed records without a valid CompletedAt

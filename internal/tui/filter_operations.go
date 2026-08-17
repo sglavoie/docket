@@ -16,6 +16,7 @@ const (
 	operationFilterReview        OperationID = "tui.filter.review"
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
+	operationFilterHierarchy     OperationID = "tui.filter.hierarchy"
 	operationFilterDeferred      OperationID = "tui.filter.deferred"
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
@@ -50,6 +51,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterReview, "Filter Review", "", "review tag filter"),
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
+		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
 		descriptor(operationFilterDeferred, "Filter Deferred Tasks", "", "deferred only"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
@@ -74,6 +76,7 @@ func (m *AppModel) registerFilterOperations() error {
 		ValueProviderFilterTags,
 		ValueProviderFilterDue,
 		ValueProviderFilterCompletionAge,
+		ValueProviderFilterHierarchy,
 		ValueProviderFilterProjectTags,
 	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
@@ -112,6 +115,7 @@ func (m *AppModel) registerFilterOperations() error {
 	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation)
 }
 
+//nolint:gocyclo // The facet handler keeps every filter mutation in one auditable switch.
 func (m *AppModel) executeFilterOperation(invocation OperationInvocation) OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
@@ -154,6 +158,13 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		filter.setStateFilter(completedStates, true)
 		filter.setCompletionAgeFilter(age)
 		status = "Filtering completed: " + completionAgeFilterLabel(age)
+	case operationFilterHierarchy:
+		hierarchy, ok := invocation.Value.(HierarchyFilter)
+		if !ok || hierarchy < HierarchyParent || hierarchy > HierarchyLeaf {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid hierarchy filter value")}
+		}
+		filter.Hierarchy = hierarchy
+		status = "Filtering hierarchy: " + hierarchyFilterLabel(hierarchy)
 	case operationFilterStates:
 		names, ok := invocation.Value.([]string)
 		if !ok {
@@ -244,6 +255,21 @@ func dueDateFilterLabel(filter DueDateFilter) string {
 	}
 }
 
+func hierarchyFilterLabel(filter HierarchyFilter) string {
+	switch filter {
+	case HierarchyParent:
+		return "parent"
+	case HierarchyChild:
+		return "child"
+	case HierarchyRoot:
+		return "root"
+	case HierarchyLeaf:
+		return "leaf"
+	default:
+		return "all"
+	}
+}
+
 func completionAgeFilterLabel(filter CompletionAgeFilter) string {
 	if days := filter.days(); days > 0 {
 		return fmt.Sprintf("at least %d days ago", days)
@@ -296,6 +322,58 @@ func (m *AppModel) newFilterDuePicker(
 		request,
 		ValueProviderFilterDue,
 		"Filter by Due Date",
+		"keep matching tasks",
+		ListSource{Items: items},
+		false,
+		selected,
+	)
+}
+
+// newFilterHierarchyPicker is the fh single-select picker over the four
+// hierarchy positions, seeded from the active facet when one is set.
+func (m *AppModel) newFilterHierarchyPicker(
+	request OperationExecutionRequest,
+) (*OperationValuePickerModel, error) {
+	options := []struct {
+		id        string
+		label     string
+		secondary string
+		value     HierarchyFilter
+	}{
+		{id: "parent", label: "Parent", secondary: "has open children", value: HierarchyParent},
+		{id: "child", label: "Child", secondary: "sits under a parent", value: HierarchyChild},
+		{id: "root", label: "Root", secondary: "has no parent", value: HierarchyRoot},
+		{id: "leaf", label: "Leaf", secondary: "has no open children", value: HierarchyLeaf},
+	}
+	items := make([]ListItem, 0, len(options))
+	for _, option := range options {
+		items = append(items, ListItem{
+			ID:            ListItemID("filter-hierarchy:" + option.id),
+			PrimaryText:   option.label,
+			SecondaryText: option.secondary,
+			Aliases:       []string{option.id, option.label, option.secondary},
+			Data:          option.value,
+		})
+	}
+	selected := []ListItemID(nil)
+	if m.crossOutliner != nil {
+		switch m.crossOutliner.filter.Hierarchy {
+		case HierarchyAll:
+			selected = nil
+		case HierarchyParent:
+			selected = []ListItemID{"filter-hierarchy:parent"}
+		case HierarchyChild:
+			selected = []ListItemID{"filter-hierarchy:child"}
+		case HierarchyRoot:
+			selected = []ListItemID{"filter-hierarchy:root"}
+		case HierarchyLeaf:
+			selected = []ListItemID{"filter-hierarchy:leaf"}
+		}
+	}
+	return newOperationValuePickerModel(
+		request,
+		ValueProviderFilterHierarchy,
+		"Filter by Hierarchy",
 		"keep matching tasks",
 		ListSource{Items: items},
 		false,

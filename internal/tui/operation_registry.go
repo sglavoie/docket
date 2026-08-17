@@ -90,6 +90,7 @@ const (
 	ValueProviderFilterTags          ValueProviderID = "filter-tags"
 	ValueProviderFilterDue           ValueProviderID = "filter-due"
 	ValueProviderFilterCompletionAge ValueProviderID = "filter-completion-age"
+	ValueProviderFilterHierarchy     ValueProviderID = "filter-hierarchy"
 
 	// ValueProviderFilterProjectTags feeds the population facet: a different
 	// vocabulary from ValueProviderFilterTags, and a different question. It picks

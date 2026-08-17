@@ -250,6 +250,7 @@ scroll, and folds exactly.
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the due-date facet picker: overdue, today, this week, or no due date |
 | `fd` | Deferred-only |
+| `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task |
 

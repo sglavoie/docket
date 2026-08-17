@@ -24,6 +24,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"fresh-install-default.json",
 		"filter-chord-priority.json",
 		"filter-chord-states.json",
+		"filter-chord-hierarchy.json",
 		"filter-chord-clear.json",
 		"sort-chord-axis.json",
 		"sort-manual-order-preserved.json",

@@ -19,6 +19,7 @@ type CommonFilterState struct {
 	Tags          map[string]bool         // filter by tag names (AND logic)
 	DueDate       DueDateFilter           // filter by due date
 	CompletionAge CompletionAgeFilter     // local-calendar age threshold for completed tasks
+	Hierarchy     HierarchyFilter         // filter by hierarchy position
 	Deferred      bool                    // only show currently deferred tasks
 	Pinned        bool                    // only show pinned tasks
 
@@ -37,6 +38,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		Priority:         src.Priority,
 		DueDate:          src.DueDate,
 		CompletionAge:    src.CompletionAge,
+		Hierarchy:        src.Hierarchy,
 		Deferred:         src.Deferred,
 		Pinned:           src.Pinned,
 		statesSet:        src.statesSet,
@@ -78,6 +80,12 @@ func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter) {
 // passesCommonFiltersAt checks whether a task passes the shared filter facets
 // at one fixed instant. Workflow-state filtering is explicit and derives only
 // from the task's canonical lifecycle state.
+//
+// The hierarchy facet is deliberately absent: it needs the scope's
+// open-direct-child census, and the task arriving here can be a promotion-pass
+// clone whose Children were rewritten. Evaluating it here would make "parent"
+// mean one thing in All and another in a flat mode. It lives in
+// passesHierarchyFilter instead.
 func passesCommonFiltersAt(
 	task *models.Task,
 	f *CommonFilterState,
@@ -157,6 +165,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Priority != 0 ||
 		len(f.Tags) > 0 ||
 		f.DueDate != DueDateAll ||
+		f.Hierarchy != HierarchyAll ||
 		f.Deferred ||
 		f.Pinned
 }
@@ -182,6 +191,9 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 		count++
 	}
 	if f.DueDate != DueDateAll {
+		count++
+	}
+	if f.Hierarchy != HierarchyAll {
 		count++
 	}
 	if f.Deferred {
@@ -210,6 +222,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.DueDate = DueDateAll
 	f.CompletionAge = CompletionAgeAll
 	f.completionAgeSet = false
+	f.Hierarchy = HierarchyAll
 	f.Deferred = false
 	f.Pinned = false
 }
@@ -261,6 +274,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	case DueDateNone:
 		parts = append(parts, "due:none")
 	default:
+	}
+	if f.Hierarchy != HierarchyAll {
+		parts = append(parts, "hierarchy:"+hierarchyFilterLabel(f.Hierarchy))
 	}
 	if f.Deferred {
 		parts = append(parts, "deferred")

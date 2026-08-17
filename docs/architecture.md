@@ -734,14 +734,19 @@ the action sheet, and the Project Hub stay case-insensitive because tag and
 context values are normalized lowercase, and `project#shortID` stays `EqualFold`
 because it is an exact ID lookup rather than a text search.
 Ordinary filter facets compose as priority threshold, OR states, AND tag/context
-values, due bucket, completion age, and deferred-only and remain session-only.
+values, due bucket, completion age, hierarchy position, and deferred-only and
+remain session-only.
 The `ft` vocabulary is the union of task tags and task contexts; each selected
 value matches either field while different selected values still compose with
 AND. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
-predicate belongs to the one cleanup facet in the clear count. `doctor` reports
-malformed lifecycle timestamps.
+predicate belongs to the one cleanup facet in the clear count. The `fh`
+hierarchy facet is split across two sources: parent and leaf read the same
+open-direct-child census the `›N` marker reads, so the facet and the marker
+cannot disagree, while child and root read the stored `ParentID`, which survives
+the All-mode promotion clone. Parents are project-local, so the per-project
+census is complete. `doctor` reports malformed lifecycle timestamps.
 
 Population facets are a separate chord because they answer a different question.
 The lowercase `f` facets refine the rows a projection already holds and rebuild

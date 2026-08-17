@@ -184,6 +184,10 @@ func (m *OutlinerModel) buildModeCandidateInput(
 // in one place.
 func (m *OutlinerModel) recentActivityLead() (*models.Task, *models.Project, string, bool) {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
+	// This is the one mode input built outside buildCanonicalModeRows, so the
+	// census the hierarchy facet reads would otherwise be whichever scope ran
+	// last.
+	m.openChildCounts = openChildCounts(projects)
 	input := m.buildModeCandidateInput(ModeRecent, projects)
 	for _, section := range BuildRecentModeSections(input) {
 		for _, row := range section.Rows {
@@ -336,9 +340,37 @@ func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []Planning
 
 func (m *OutlinerModel) workModeTaskFilterAt(now time.Time) func(*models.Task, *models.Project) bool {
 	predicate := m.workModeFilterPredicateAt(now)
-	return func(t *models.Task, _ *models.Project) bool {
-		return predicate(t)
+	return func(t *models.Task, project *models.Project) bool {
+		return predicate(t) && m.passesHierarchyFilter(t, project)
 	}
+}
+
+// passesHierarchyFilter evaluates the hierarchy facet. The parent and leaf axes
+// read the scope's open-direct-child census, the same source the ›N marker
+// reads, so the facet and the marker agree by construction. The child and root
+// axes read the stored ParentID, which survives cloning.
+func (m *OutlinerModel) passesHierarchyFilter(task *models.Task, project *models.Project) bool {
+	switch m.filter.Hierarchy {
+	case HierarchyChild:
+		return task.ParentID != nil
+	case HierarchyRoot:
+		return task.ParentID == nil
+	case HierarchyParent:
+		return m.openChildCountFor(task, project) > 0
+	case HierarchyLeaf:
+		return m.openChildCountFor(task, project) == 0
+	default:
+		return true
+	}
+}
+
+// openChildCountFor resolves a task's census entry, falling back to the scoped
+// project the way rowIdentity does. A census miss is 0, which reads as leaf.
+func (m *OutlinerModel) openChildCountFor(task *models.Task, project *models.Project) int {
+	if project == nil {
+		project = m.project
+	}
+	return m.openChildCounts[taskIdentityFor(task, project)]
 }
 
 // outlinerRowFromModeRow adapts a representation-neutral OutlinerModeRow to a
