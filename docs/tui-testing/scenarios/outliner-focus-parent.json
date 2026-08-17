@@ -26,6 +26,15 @@
     { "type": "assert", "assert": "not_contains", "value": "Focus:" },
     { "type": "assert", "assert": "contains", "value": "[rich-project] (3)" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "key", "label": "focus the cursor task's parent again", "key": "shift+enter" },
+    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform › User authe" },
+    { "type": "key", "label": "h reaches the rowless focus root by leaving that one frame", "key": "left" },
+    { "type": "assert", "assert": "not_contains", "value": "Focus:" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "key", "label": "the cursor sits on the former focus root, so its parent focuses next", "key": "shift+enter" },
+    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "› User authe" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project] (2)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

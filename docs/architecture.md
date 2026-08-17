@@ -200,7 +200,9 @@ post-pass rather than by each mode strategy. `IsChecklistItem` takes a row out o
 every task operation refuses there rather than acting on the owner task whose
 pointer the row carries for rendering. `h`/`l` therefore form one ladder with no
 new key — children before checklist on the way out, checklist first on the way
-back — and `h` on an item returns to its owner.
+back — and `h` on an item returns to its owner. The ladder's last rung is the
+focus root: from a direct child of it `h` pops that one Focus frame, since the
+root is the one parent that renders no row.
 
 Their fold state is `expandedChecklists`, a third map that is not merged into
 either of the other two: `expandedNodes` defaults expanded, `collapsedSections`
@@ -802,6 +804,12 @@ more than one level and the parent is pushed back, which still descends from the
 frame beneath it. Climbing off a root task empties the stack and leaves Focus.
 Either way the cursor is restored to the task the key was pressed from, so the
 widened level shows that task among its siblings.
+
+Because Focus projects descendants only, the focus root is the one parent with
+no row, which is why `h`/`←` on a direct child of it pops that frame and selects
+the root instead of going dead. A row promoted past a merely filtered-out parent
+fails the same lookup, so the pop is gated on the parent actually being the
+focus root and that row stays silent.
 
 An active inline row editor consumes `Esc` first and cancels the draft. The
 ordinary Outliner `Esc` priority is Peek, live range, frozen selection,

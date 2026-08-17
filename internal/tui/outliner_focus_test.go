@@ -255,6 +255,90 @@ func TestFocusParentClimbsTheAncestorChainAndLeavesFocus(t *testing.T) {
 	}
 }
 
+func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
+	newFixture := func() (*OutlinerModel, *models.Project, *models.Task) {
+		root := primaryRowsTask("root", models.StateBacklog)
+		child := primaryRowsTask("child", models.StateBacklog)
+		child.ParentID = &root.ID
+		grandchild := primaryRowsTask("grandchild", models.StateBacklog)
+		grandchild.ParentID = &child.ID
+		project := primaryRowsProject("project", root, child, grandchild)
+		return scopeTestOutliner(project), project, grandchild
+	}
+
+	for _, test := range []struct {
+		name       string
+		seedFocus  []string
+		promoteTag bool
+		wantMoved  bool
+		wantStack  []string
+		wantCursor string
+	}{
+		{
+			name:       "a direct child of the only focus root pops it and selects it",
+			seedFocus:  []string{"child"},
+			wantMoved:  true,
+			wantStack:  nil,
+			wantCursor: "child",
+		},
+		{
+			name:       "a nested stack pops exactly one frame",
+			seedFocus:  []string{"root", "child"},
+			wantMoved:  true,
+			wantStack:  []string{"root"},
+			wantCursor: "child",
+		},
+		{
+			name:       "a row promoted past a filtered parent stays silent",
+			seedFocus:  []string{"root"},
+			promoteTag: true,
+			wantMoved:  false,
+			wantStack:  []string{"root"},
+			wantCursor: "grandchild",
+		},
+		{
+			name:       "an unfocused view still moves to the rendered parent",
+			wantMoved:  true,
+			wantStack:  nil,
+			wantCursor: "child",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			out, project, grandchild := newFixture()
+			identity := func(taskID string) TaskIdentity {
+				return TaskIdentity{ProjectID: project.ID, TaskID: taskID}
+			}
+			for _, taskID := range test.seedFocus {
+				if !out.moveCursorToIdentity(identity(taskID)) || !out.focusSubtreeAtCursor() {
+					t.Fatalf("could not seed Focus on %q", taskID)
+				}
+			}
+			if test.promoteTag {
+				grandchild.Tags = []string{"promote"}
+				out.filter.Tags = map[string]bool{"promote": true}
+				out.rebuildRows()
+			}
+			if !out.moveCursorToIdentity(identity("grandchild")) {
+				t.Fatal("grandchild row is not listed")
+			}
+
+			if got := out.collapseOrMoveToParent(); got != test.wantMoved {
+				t.Fatalf("collapseOrMoveToParent() = %t, want %t", got, test.wantMoved)
+			}
+			stack := make([]string, 0, len(out.crossFocusStack))
+			for _, frame := range out.crossFocusStack {
+				stack = append(stack, frame.TaskID)
+			}
+			if !slices.Equal(stack, test.wantStack) {
+				t.Fatalf("focus stack = %v, want %v", stack, test.wantStack)
+			}
+			if got := out.currentTaskIdentity(); got != identity(test.wantCursor) {
+				t.Fatalf("cursor = %+v, want %s", got, test.wantCursor)
+			}
+		})
+	}
+}
+
 func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, ViewCrossProjectOutliner)

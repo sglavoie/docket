@@ -13,7 +13,9 @@ type sectionToggleRestoreAnchor struct {
 // collapseOrMoveToParent gives h/Left one deterministic tree behavior: collapse
 // an expanded section, project header, checklist, or task first; otherwise move
 // to the visible parent task. A checklist row is one rung further down, so it
-// returns to its owner and leaves the collapse to the next press.
+// returns to its owner and leaves the collapse to the next press. From a direct
+// child of a focus root the parent has no row, so the ladder pops that one
+// frame to reach it.
 func (m *OutlinerModel) collapseOrMoveToParent() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
@@ -53,7 +55,17 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 		return false
 	}
 	parent := TaskIdentity{ProjectID: identity.ProjectID, TaskID: parentID}
-	return m.moveCursorToIdentity(parent)
+	if m.moveCursorToIdentity(parent) {
+		return true
+	}
+	// The focus root is the one parent that is deliberately rowless, so h leaves
+	// exactly that frame to reach it. A promoted row whose parent is merely
+	// filtered out fails the comparison and stays silent.
+	if root, focused := m.focusRootIdentity(); focused && root == parent {
+		m.popFocusLevel()
+		return m.moveCursorToIdentity(parent)
+	}
+	return false
 }
 
 // expandAtCursor gives l/Right one behavior: expand the current collapsed
