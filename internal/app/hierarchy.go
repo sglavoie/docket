@@ -312,6 +312,56 @@ func (s *Service) reorderSiblingTasks(taskID string, taskLocator TaskLocator, ta
 	return result, nil
 }
 
+// ReorderSiblingOrderByLocator permutes an explicitly named set of siblings into
+// the given top-to-bottom order as one checked project transaction. It is what a
+// multi-step move collapses to: the presentation layer names the visible peers in
+// their final order and only the slots those peers already hold are rewritten, so
+// siblings a filter or a collapsed parent hides keep their positions. moved names
+// the task the request is about, which the order alone cannot say, and the
+// transaction is recorded against it.
+func (s *Service) ReorderSiblingOrderByLocator(moved TaskLocator, order []TaskLocator) (TaskResult, error) {
+	if len(order) < 2 {
+		return TaskResult{}, invalidInput("order", "reordering needs at least two tasks")
+	}
+	ref, snap, revision, err := s.loadTaskSelection("", moved)
+	if err != nil {
+		return TaskResult{}, err
+	}
+	tasks := make([]*models.Task, 0, len(order))
+	seen := make(map[string]bool, len(order))
+	inOrder := false
+	for _, locator := range order {
+		peer, resolveErr := resolveTaskSelection(snap, "", locator)
+		if resolveErr != nil {
+			return TaskResult{}, resolveErr
+		}
+		if peer.Project.ID != ref.Project.ID {
+			return TaskResult{}, invalidInput("order", "tasks must belong to the same project")
+		}
+		if seen[peer.Task.ID] {
+			return TaskResult{}, invalidInput("order", "a task may appear only once in the reorder order")
+		}
+		seen[peer.Task.ID] = true
+		inOrder = inOrder || peer.Task.ID == ref.Task.ID
+		tasks = append(tasks, peer.Task)
+	}
+	if !inOrder {
+		return TaskResult{}, invalidInput("order", "the moved task must appear in the reorder order")
+	}
+
+	backup := captureHierarchyProject(ref.Project)
+	if reorderErr := ref.Project.ReorderSiblingTasks(tasks); reorderErr != nil {
+		backup.restore()
+		return TaskResult{}, invalidInput("order", reorderErr.Error())
+	}
+	result, err := s.commitProject(ref, revision, "Reorder Siblings", fmt.Sprintf("#%d", ref.Task.ShortID))
+	if err != nil {
+		backup.restore()
+		return TaskResult{}, err
+	}
+	return result, nil
+}
+
 // hierarchyProjectBackup preserves repository-owned pointers while recording
 // pre-mutation values. It makes hierarchy atomicity observable even for
 // in-memory repositories whose snapshots share objects with their callers.

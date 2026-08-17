@@ -52,29 +52,43 @@ func (m *OutlinerModel) pinnedSectionParentAt(index int) TaskIdentity {
 	return TaskIdentity{}
 }
 
-// adjacentVisiblePinnedSibling returns the index of the nearest visible pinned
-// row in the delta direction that shares the cursor's section-local parent.
-// Rows belonging to a sibling's expanded subtree are stepped over; a section
-// header, project header, separator, non-pinned row, or foreign project bounds
-// the search, so a move can never leave the cursor's project group.
-func (m *OutlinerModel) adjacentVisiblePinnedSibling(delta int) (int, bool) {
+// visiblePinnedSiblings returns every visible pinned row index in the delta
+// direction that shares the cursor's section-local parent, nearest first. Rows
+// belonging to a sibling's expanded subtree are stepped over; a section header,
+// project header, separator, non-pinned row, or foreign project bounds the
+// search, so a move can never leave the cursor's project group.
+func (m *OutlinerModel) visiblePinnedSiblings(delta int) []int {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return nil
+	}
 	step := 1
 	if delta < 0 {
 		step = -1
 	}
 	cursorRow := m.rows[m.cursor]
 	cursorParent := m.pinnedSectionParentAt(m.cursor)
+	var siblings []int
 	for i := m.cursor + step; i >= 0 && i < len(m.rows); i += step {
 		row := m.rows[i]
 		if !row.IsPinnedSection || !row.isTaskRow() ||
 			row.task == nil || row.ProjectID != cursorRow.ProjectID {
-			return 0, false
+			break
 		}
 		if m.pinnedSectionParentAt(i) == cursorParent {
-			return i, true
+			siblings = append(siblings, i)
 		}
 	}
-	return 0, false
+	return siblings
+}
+
+// adjacentVisiblePinnedSibling returns the index of the nearest visible pinned
+// sibling in the delta direction.
+func (m *OutlinerModel) adjacentVisiblePinnedSibling(delta int) (int, bool) {
+	siblings := m.visiblePinnedSiblings(delta)
+	if len(siblings) == 0 {
+		return 0, false
+	}
+	return siblings[0], true
 }
 
 // pinnedReorderMove swaps the cursor's pin order with the adjacent visible
@@ -98,4 +112,30 @@ func (m *OutlinerModel) pinnedReorderMove(delta int) tea.Cmd {
 		return m.taskItem.ReorderPinned(cursor, target)
 	}
 	return m.taskItem.ReorderPinned(target, cursor)
+}
+
+// pinnedReorderEdge sends the cursor's pin to the far end of its visible pinned
+// siblings in one transaction. The order handed down is display order, and it
+// names only the peers the cursor would have swapped past one at a time, so the
+// redistributed timestamps stay inside that run.
+func (m *OutlinerModel) pinnedReorderEdge(delta int) tea.Cmd {
+	if !m.isPinnedReorderRow() || m.taskItem.task == nil {
+		return nil
+	}
+	rows := m.visiblePinnedSiblings(delta)
+	if len(rows) == 0 {
+		return nil
+	}
+	peers := make([]TaskIdentity, 0, len(rows))
+	for _, index := range rows {
+		peers = append(peers, m.taskIdentityForRow(m.rows[index]))
+	}
+	moved := m.taskIdentityForRow(m.rows[m.cursor])
+	order := edgeMoveOrder(moved, peers, delta)
+	for _, identity := range order {
+		if !identity.Valid() {
+			return nil
+		}
+	}
+	return m.taskItem.ReorderPinnedOrder(moved, order, reorderEdgeLabel(delta))
 }

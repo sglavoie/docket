@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -211,6 +212,89 @@ func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID 
 	return PinnedReorderResult{
 		ProjectIDs:    projectIDs,
 		ShortID:       refA.Task.ShortID,
+		TransactionID: transactionIDAt(outcome.results, 0),
+	}, nil
+}
+
+// ReorderPinnedTasksOrderByLocator rewrites the pin order of an explicitly named
+// chain of pinned tasks so they display in the given top-to-bottom order, as ONE
+// transaction over every project the chain touches. Only the chain's own PinnedAt
+// values are redistributed, which is what stops a rotated pin from crossing a pin
+// outside the chain. Ties are broken by nudging the earlier-displayed task one
+// second upward, the same rule and direction the two-task seam applies. moved
+// names the task the request is about, which the order alone cannot say, and the
+// transaction is recorded against it.
+func (s *Service) ReorderPinnedTasksOrderByLocator(moved TaskLocator, order []TaskLocator) (PinnedReorderResult, error) {
+	if len(order) < 2 {
+		return PinnedReorderResult{}, invalidInput("pin", "reordering needs at least two pinned tasks")
+	}
+	subject, snap, subjectRevision, err := s.loadTaskSelection("", moved)
+	if err != nil {
+		return PinnedReorderResult{}, err
+	}
+	refs := make([]TaskRef, 0, len(order))
+	seen := make(map[string]bool, len(order))
+	inOrder := false
+	for _, locator := range order {
+		ref, resolveErr := resolveTaskSelection(snap, "", locator)
+		if resolveErr != nil {
+			return PinnedReorderResult{}, resolveErr
+		}
+		if seen[ref.Task.ID] {
+			return PinnedReorderResult{}, invalidInput("pin", "a task may appear only once in the reorder order")
+		}
+		seen[ref.Task.ID] = true
+		inOrder = inOrder || ref.Task.ID == subject.Task.ID
+		refs = append(refs, ref)
+	}
+	if !inOrder {
+		return PinnedReorderResult{}, invalidInput("pin", "the moved task must appear in the reorder order")
+	}
+
+	times := make([]time.Time, 0, len(refs))
+	for _, ref := range refs {
+		if !ref.Task.Pinned {
+			return PinnedReorderResult{}, invalidInput("pin", "every task must be pinned to reorder")
+		}
+		var at time.Time
+		if ref.Task.PinnedAt != nil {
+			at = *ref.Task.PinnedAt
+		}
+		times = append(times, at)
+	}
+	slices.SortFunc(times, func(a, b time.Time) int { return b.Compare(a) })
+	for i := len(times) - 2; i >= 0; i-- {
+		if !times[i].After(times[i+1]) {
+			times[i] = times[i+1].Add(time.Second)
+		}
+	}
+
+	commits := []projectCommit{{project: subject.Project, expectedRevision: subjectRevision, base: subject.Base}}
+	committed := map[string]bool{subject.Project.ID: true}
+	for i, ref := range refs {
+		assigned := times[i]
+		ref.Task.PinnedAt = &assigned
+		if committed[ref.Project.ID] {
+			continue
+		}
+		committed[ref.Project.ID] = true
+		commits = append(commits, projectCommit{
+			project:          ref.Project,
+			expectedRevision: snap.Revision(ref.Project.ID),
+			base:             snap.Document(ref.Project.ID),
+		})
+	}
+	outcome, err := s.commitProjects(commits, "Reorder Pinned", fmt.Sprintf("#%d", subject.Task.ShortID))
+	if err != nil {
+		return PinnedReorderResult{}, err
+	}
+	projectIDs := make([]string, 0, len(commits))
+	for _, commit := range commits {
+		projectIDs = append(projectIDs, commit.project.ID)
+	}
+	return PinnedReorderResult{
+		ProjectIDs:    projectIDs,
+		ShortID:       subject.Task.ShortID,
 		TransactionID: transactionIDAt(outcome.results, 0),
 	}, nil
 }

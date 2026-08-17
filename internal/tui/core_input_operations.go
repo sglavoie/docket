@@ -45,6 +45,8 @@ const (
 	operationCoreToggleSections     OperationID = "tui.core.toggle-sections"
 	operationCoreReorderDown        OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp          OperationID = "tui.core.reorder-up"
+	operationCoreReorderBottom      OperationID = "tui.core.reorder-bottom"
+	operationCoreReorderTop         OperationID = "tui.core.reorder-top"
 	operationCoreFocusSubtree       OperationID = "tui.core.focus-subtree"
 	operationCoreFocusParent        OperationID = "tui.core.focus-parent"
 	operationCoreActivateGroup      OperationID = "tui.core.activate-group"
@@ -222,6 +224,8 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
+		core(operationCoreReorderBottom, "Reorder to Bottom", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
+		core(operationCoreReorderTop, "Reorder to Top", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		focusSubtree,
 		focusParent,
 		gotoTaskProject,
@@ -281,6 +285,8 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 		operationCoreToggleSections,
 		operationCoreReorderDown,
 		operationCoreReorderUp,
+		operationCoreReorderBottom,
+		operationCoreReorderTop,
 		operationCoreFocusSubtree,
 		operationCoreFocusParent:
 		return true
@@ -472,6 +478,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreReorder(1))
 	case operationCoreReorderUp:
 		message = commandMessage(m.coreReorder(-1))
+	case operationCoreReorderBottom:
+		message = commandMessage(m.coreReorderEdge(1))
+	case operationCoreReorderTop:
+		message = commandMessage(m.coreReorderEdge(-1))
 	case operationCoreFocusSubtree:
 		if out, ok := m.outlinerPrimary(); ok && !out.focusSubtreeAtCursor() {
 			return OperationHandlerResult{Status: "No children to focus"}
@@ -889,6 +899,27 @@ func (m *AppModel) coreReorder(delta int) tea.Cmd {
 		return cmd
 	}
 	return out.reorderTask(delta)
+}
+
+// coreReorderEdge is the single-press equivalent of repeating coreReorder until
+// the row can move no further, and takes the same ordering-context dispatch so
+// the two families can never disagree about which durable order a row belongs to.
+func (m *AppModel) coreReorderEdge(delta int) tea.Cmd {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil || !out.simplifiedReorderEligible() {
+		if out != nil {
+			out.orderingUnavailableStatus()
+		}
+		return nil
+	}
+	if out.isPinnedReorderRow() {
+		return out.pinnedReorderEdge(delta)
+	}
+	if out.isPlanningReorderMode() {
+		_, cmd := out.planningReorderEdge(delta)
+		return cmd
+	}
+	return out.reorderTaskEdge(delta)
 }
 
 func (m *AppModel) coreUndo() tea.Cmd {

@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -199,7 +201,18 @@ func assertOrder(t *testing.T, label string, got, want []string) {
 // production dispatch end to end. It returns whether a reorder command fired.
 func pressReorderKey(t *testing.T, m *AppModel, key rune) bool {
 	t.Helper()
-	handled, cmd := m.handleGlobalKeyPress(syntheticKey(key))
+	return pressReorderMsg(t, m, syntheticKey(key))
+}
+
+// pressReorderCtrlKey is pressReorderKey for the Ctrl+J/Ctrl+K edge moves.
+func pressReorderCtrlKey(t *testing.T, m *AppModel, key rune) bool {
+	t.Helper()
+	return pressReorderMsg(t, m, syntheticCtrlKey(key))
+}
+
+func pressReorderMsg(t *testing.T, m *AppModel, key tea.KeyPressMsg) bool {
+	t.Helper()
+	handled, cmd := m.handleGlobalKeyPress(key)
 	if !handled || cmd == nil {
 		return false
 	}
@@ -285,6 +298,31 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		// Moving B down therefore swaps it with D in the durable interleaved list.
 		want := []string{t1[0].ID, t2[1].ID, t1[1].ID, t2[0].ID}
 		assertOrder(t, "grouped focus queue", diskNextOrderIDs(t, dataDir), want)
+	})
+
+	// A planning group's display position follows the durable order, so a swap
+	// across the header would carry the cursor's whole project above its
+	// neighbor instead of reordering tasks inside it.
+	t.Run("K stops at the planning project group", func(t *testing.T) {
+		dir := t.TempDir()
+		p1, t1 := planningOrderProject(t, dir, "jk-group-1", "one", "A", "C")
+		p2, t2 := planningOrderProject(t, dir, "jk-group-2", "two", "B", "D")
+		m, cross, dataDir := newPlanningOrderApp(t, p1, p2)
+		seeded := []config.ProjectTaskLocator{
+			locatorOf(p1, t1[0]), locatorOf(p2, t2[0]), locatorOf(p1, t1[1]), locatorOf(p2, t2[1]),
+		}
+		seedNextOrderOrder(t, m, seeded...)
+		enterCrossMode(cross, ModeNext)
+		if !cross.moveCursorToProjectTask(t2[0].ID, p2.ID) {
+			t.Fatal("cursor did not land on B")
+		}
+
+		if pressReorderKey(t, m, 'K') {
+			t.Fatal("K lifted the second project's group above the first")
+		}
+
+		assertOrder(t, "grouped focus queue", diskNextOrderIDs(t, dataDir),
+			[]string{t1[0].ID, t2[0].ID, t1[1].ID, t2[1].ID})
 	})
 
 	t.Run("Today J reorders the durable daily plan without changing hierarchy", func(t *testing.T) {

@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -145,6 +146,48 @@ func (p *Project) SwapSiblingTasks(task1, task2 *Task) error {
 	now := time.Now()
 	moved1.UpdatedAt = now
 	moved2.UpdatedAt = now
+	p.BuildTaskTree()
+	return nil
+}
+
+// ReorderSiblingTasks permutes an explicitly named set of siblings into the
+// given top-to-bottom order. Only the slots those tasks already occupy are
+// rewritten, so a sibling the caller did not name — hidden by a filter, a
+// collapsed parent, or another section — keeps its own position. It is the
+// n-task generalization of SwapSiblingTasks and refuses the same cross-parent
+// set.
+func (p *Project) ReorderSiblingTasks(order []*Task) error {
+	if len(order) < 2 {
+		return nil
+	}
+	slots := make([]int, 0, len(order))
+	tasks := make([]*Task, 0, len(order))
+	seen := make(map[int]bool, len(order))
+	for _, requested := range order {
+		if requested == nil {
+			return fmt.Errorf("reorder order contains a nil task")
+		}
+		index := p.findTaskIndex(requested)
+		if index == -1 {
+			return fmt.Errorf("task %q is not in this project", requested.ID)
+		}
+		if seen[index] {
+			return fmt.Errorf("task %q appears more than once in the reorder order", requested.ID)
+		}
+		seen[index] = true
+		resolved := p.Tasks[index]
+		if len(tasks) > 0 && !sameParent(tasks[0], resolved) {
+			return fmt.Errorf("tasks %q and %q are not siblings", tasks[0].ID, resolved.ID)
+		}
+		slots = append(slots, index)
+		tasks = append(tasks, resolved)
+	}
+	slices.Sort(slots)
+	now := time.Now()
+	for i, slot := range slots {
+		p.Tasks[slot] = tasks[i]
+		tasks[i].UpdatedAt = now
+	}
 	p.BuildTaskTree()
 	return nil
 }

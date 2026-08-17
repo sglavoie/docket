@@ -78,6 +78,9 @@ type TaskItemMutator interface {
 	MoveTaskDownByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// ReorderSiblingTasks swaps two explicit same-project same-parent tasks.
 	ReorderSiblingTasksByLocator(task, target app.TaskLocator) (app.TaskResult, error)
+	// ReorderSiblingOrder permutes an explicit same-project same-parent set into
+	// the given top-to-bottom order.
+	ReorderSiblingOrderByLocator(moved app.TaskLocator, order []app.TaskLocator) (app.TaskResult, error)
 	// IndentTask nests one task under the task visually/model above it.
 	IndentTaskByLocator(locator app.TaskLocator) (app.TaskResult, error)
 	// OutdentTask moves one task to become a sibling of its current parent.
@@ -103,6 +106,9 @@ type TaskItemMutator interface {
 	// ReorderPinnedTasks swaps two pinned tasks' PinnedAt ordering as one
 	// (possibly cross-project) transaction.
 	ReorderPinnedTasksByLocator(taskA, taskB app.TaskLocator) (app.PinnedReorderResult, error)
+	// ReorderPinnedTasksOrder rewrites a whole pinned chain's PinnedAt ordering
+	// into the given top-to-bottom order as one transaction.
+	ReorderPinnedTasksOrderByLocator(moved app.TaskLocator, order []app.TaskLocator) (app.PinnedReorderResult, error)
 	// Reparent changes one task's parent within its owning project.
 	ReparentByLocator(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
 	// Delete permanently removes one task's subtree, folding any caller-supplied
@@ -137,6 +143,7 @@ type SubviewMutator interface {
 	RemoveChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
 	ToggleChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
 	ReorderChecklistItemByLocator(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
+	MoveChecklistItemByLocator(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
 }
 
 // Compile-time assurance that the production services satisfy every secondary
@@ -572,6 +579,40 @@ func (c TaskItemCoordinator) ReorderSiblings(task, target TaskIdentity) tea.Cmd 
 	})
 }
 
+// ReorderSiblingOrder permutes the named siblings into the given top-to-bottom
+// order as one project-scoped transaction. It is the whole-chain form of
+// ReorderSiblings: the caller lists exactly the visible peers, so hidden
+// siblings between them keep their durable slots.
+func (c TaskItemCoordinator) ReorderSiblingOrder(moved TaskIdentity, order []TaskIdentity, edge string) tea.Cmd {
+	return runBatch("Reorder Siblings", func() ([]string, string, string, error) {
+		res, err := c.task.ReorderSiblingOrderByLocator(moved.Locator(), taskIdentityLocators(order))
+		if err != nil {
+			return nil, "", "", err
+		}
+		return []string{res.ProjectID}, fmt.Sprintf("Moved #%d to %s", res.ShortID, edge), res.TransactionID, nil
+	})
+}
+
+// ReorderPinnedOrder rewrites the named pinned chain into the given
+// top-to-bottom display order as one transaction, which may span projects.
+func (c TaskItemCoordinator) ReorderPinnedOrder(moved TaskIdentity, order []TaskIdentity, edge string) tea.Cmd {
+	return runBatch("Reorder Pinned", func() ([]string, string, string, error) {
+		res, err := c.task.ReorderPinnedTasksOrderByLocator(moved.Locator(), taskIdentityLocators(order))
+		if err != nil {
+			return nil, "", "", err
+		}
+		return res.ProjectIDs, fmt.Sprintf("Moved pinned #%d to %s", res.ShortID, edge), res.TransactionID, nil
+	})
+}
+
+func taskIdentityLocators(order []TaskIdentity) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(order))
+	for _, identity := range order {
+		locators = append(locators, identity.Locator())
+	}
+	return locators
+}
+
 // ReorderPinned swaps the pin order of two pinned tasks as one transaction.
 // task is the identity that must end up displayed first, because the pinned
 // order is PinnedAt-descending and equal timestamps resolve in its favor.
@@ -872,6 +913,15 @@ func (c SubviewCoordinator) ToggleChecklistItem(task TaskIdentity, index int) te
 func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
 	return runTask("Reorder Checklist", func() (app.TaskResult, error) {
 		res, err := c.sub.ReorderChecklistItemByLocator(task.Locator(), from, to)
+		return res.Task, err
+	})
+}
+
+// MoveChecklistItem splices the checklist item at from out and reinserts it at
+// to, so an edge move is one transaction rather than one per adjacent swap.
+func (c SubviewCoordinator) MoveChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
+	return runTask("Move Checklist Item", func() (app.TaskResult, error) {
+		res, err := c.sub.MoveChecklistItemByLocator(task.Locator(), from, to)
 		return res.Task, err
 	})
 }

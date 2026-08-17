@@ -1,0 +1,54 @@
+{
+  "name": "outliner-reorder-edge",
+  "fixture": "checklist",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "move onto the project header", "key": "j" },
+    { "type": "key", "label": "move onto the first root task", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "├── ▸ □ Draft the launch runbook" },
+    { "type": "assert", "assert": "contains", "value": "└── □ Retire the legacy runbook" },
+
+    { "type": "key", "label": "Ctrl+J sends the task past every visible sibling at once", "key": "ctrl+j" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "├── ▾ □ Coordinate the rollout window" },
+    { "type": "assert", "assert": "contains", "value": "├── □ Retire the legacy runbook" },
+    { "type": "assert", "assert": "contains", "value": "└── ▸ □ Draft the launch runbook" },
+    { "type": "assert", "assert": "status_contains", "value": "Reorder Siblings" },
+    { "type": "assert", "assert": "status_contains", "value": "u undo" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Ctrl+J at the bottom edge changes nothing", "key": "ctrl+j" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "└── ▸ □ Draft the launch runbook" },
+
+    { "type": "key", "label": "one undo restores the whole move", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "├── ▸ □ Draft the launch runbook" },
+    { "type": "assert", "assert": "contains", "value": "├── ▾ □ Coordinate the rollout window" },
+    { "type": "assert", "assert": "contains", "value": "└── □ Retire the legacy runbook" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "return to the first root task", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "expand its checklist", "key": "l" },
+    { "type": "key", "label": "move onto the first checklist item", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "├── [x] Outline the rollback steps" },
+    { "type": "assert", "assert": "contains", "value": "└── [ ] Attach the comms draft" },
+
+    { "type": "key", "label": "Ctrl+J sends the item to the end of its checklist", "key": "ctrl+j" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "├── [ ] Name the on-call owner" },
+    { "type": "assert", "assert": "contains", "value": "├── [ ] Attach the comms draft" },
+    { "type": "assert", "assert": "contains", "value": "└── [x] Outline the rollback steps" },
+    { "type": "assert", "assert": "status_contains", "value": "Move Checklist Item" },
+
+    { "type": "key", "label": "Ctrl+K sends it back to the top", "key": "ctrl+k" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "├── [x] Outline the rollback steps" },
+    { "type": "assert", "assert": "contains", "value": "├── [ ] Name the on-call owner" },
+    { "type": "assert", "assert": "contains", "value": "└── [ ] Attach the comms draft" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

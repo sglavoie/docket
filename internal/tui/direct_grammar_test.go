@@ -59,14 +59,16 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// item, and the checklist meaning is listed first because resolution takes the
 	// first applicable binding.
 	shared := map[string][]OperationID{
-		"#":     {operationTaskSetTags, operationProjectSetTags},
-		"e":     {operationChecklistEditItem, operationCoreEdit},
-		"A":     {operationChecklistAddItem, operationTaskNewChild},
-		"x":     {operationChecklistToggleItem, operationChecklistStart},
-		"space": {operationChecklistActions, operationCoreActions},
-		"J":     {operationChecklistMoveDown, operationCoreReorderDown},
-		"K":     {operationChecklistMoveUp, operationCoreReorderUp},
-		"enter": {operationCoreFocusSubtree, operationCoreActivateGroup},
+		"#":      {operationTaskSetTags, operationProjectSetTags},
+		"e":      {operationChecklistEditItem, operationCoreEdit},
+		"A":      {operationChecklistAddItem, operationTaskNewChild},
+		"x":      {operationChecklistToggleItem, operationChecklistStart},
+		"space":  {operationChecklistActions, operationCoreActions},
+		"J":      {operationChecklistMoveDown, operationCoreReorderDown},
+		"K":      {operationChecklistMoveUp, operationCoreReorderUp},
+		"ctrl+j": {operationChecklistMoveBottom, operationCoreReorderBottom},
+		"ctrl+k": {operationChecklistMoveTop, operationCoreReorderTop},
+		"enter":  {operationCoreFocusSubtree, operationCoreActivateGroup},
 	}
 
 	owners := make(map[string][]OperationID)

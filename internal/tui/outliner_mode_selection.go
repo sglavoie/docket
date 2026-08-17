@@ -214,12 +214,12 @@ func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
 	}
 }
 
-// orderingUnavailableStatus explains why J/K cannot reorder rows in the active
-// mode.
+// orderingUnavailableStatus explains why J/K and Ctrl+J/Ctrl+K cannot reorder
+// rows in the active mode.
 func (m *OutlinerModel) orderingUnavailableStatus() {
 	mode := m.activeOutlinerModeEntry()
 	m.setStatus(fmt.Sprintf(
-		"Ordering is automatic in %s mode — J/K reorder hierarchical or planning rows only",
+		"Ordering is automatic in %s mode — J/K and Ctrl+J/Ctrl+K reorder hierarchical or planning rows only",
 		mode.Label,
 	))
 }

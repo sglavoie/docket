@@ -75,9 +75,9 @@ Pinned tasks appear once in project groups, each promoted child wearing the bare
 `‹` parent marker whose chain Peek names. Groups
 sort by their newest pin. Tasks inside a group start newest-first and `J`/`K`
 reorder them manually; a pinned subtree ranks by its own root's pin, and `J`/`K`
-never move a task across a project group. All,
-Inbox, and Backlog preserve hierarchy and manual sibling order. Today and Next
-preserve workspace-wide planning order. Review is the sparse set of open tasks
+never move a task across a project group. `Ctrl+J`/`Ctrl+K` take the same route
+in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
+manual sibling order. Today and Next preserve workspace-wide planning order. Review is the sparse set of open tasks
 tagged `review`. That list is draw order, not claim order: a pinned task or one
 you have planned into Today or Next claims its row there and never also appears
 under Review. Due is date ordered. Done, Canceled,
@@ -126,7 +126,7 @@ were in and says so.
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `##` context; `d` defer; `P` pin |
-| Structure | `<` outdent, `>` indent, `J`/`K` reorder |
+| Structure | `<` outdent, `>` indent, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
@@ -326,7 +326,7 @@ A checklist row is not a task row. Every task action refuses there with one
 sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
 
-What a checklist row does own is six actions of its own, each reusing the key
+What a checklist row does own is eight actions of its own, each reusing the key
 its task-row counterpart holds:
 
 | Key | Action |
@@ -334,6 +334,7 @@ its task-row counterpart holds:
 | `x` | Tick or untick the item |
 | `e` | Rewrite the item |
 | `J` / `K` | Swap the item with the one below or above it |
+| `Ctrl+J` / `Ctrl+K` | Send the item to the end or the start of the checklist |
 | `A` | Append an item to this checklist |
 | `Space` | Open the item menu: Edit Item and Delete Item |
 

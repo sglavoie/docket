@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -151,6 +152,32 @@ func (s *Service) reorderChecklistItemSelection(taskID string, locator TaskLocat
 			return err
 		}
 		ref.Task.Checklist[from], ref.Task.Checklist[to] = ref.Task.Checklist[to], ref.Task.Checklist[from]
+		ref.Task.UpdatedAt = s.clock.Now()
+		return nil
+	})
+	if err != nil {
+		return ChecklistResult{}, err
+	}
+	out.Task = res
+	return out, nil
+}
+
+// MoveChecklistItemByLocator lifts the item at from out of the checklist and
+// reinserts it at to, which is what repeated adjacent swaps produce on a
+// contiguous slice. ReorderChecklistItem swaps and so cannot express an edge
+// move across more than one position.
+func (s *Service) MoveChecklistItemByLocator(locator TaskLocator, from, to int) (ChecklistResult, error) {
+	var out ChecklistResult
+	res, err := s.mutateRichRecordSelection("", locator, "Move Checklist Item", func(ref TaskRef) error {
+		if err := validChecklistIndex(from, len(ref.Task.Checklist)); err != nil {
+			return err
+		}
+		if err := validChecklistIndex(to, len(ref.Task.Checklist)); err != nil {
+			return err
+		}
+		item := ref.Task.Checklist[from]
+		remaining := slices.Delete(slices.Clone(ref.Task.Checklist), from, from+1)
+		ref.Task.Checklist = slices.Insert(remaining, to, item)
 		ref.Task.UpdatedAt = s.clock.Now()
 		return nil
 	})

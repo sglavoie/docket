@@ -15,6 +15,8 @@ const (
 	operationChecklistEditItem   OperationID = "tui.checklist.edit-item"
 	operationChecklistMoveDown   OperationID = "tui.checklist.move-down"
 	operationChecklistMoveUp     OperationID = "tui.checklist.move-up"
+	operationChecklistMoveBottom OperationID = "tui.checklist.move-bottom"
+	operationChecklistMoveTop    OperationID = "tui.checklist.move-top"
 	operationChecklistAddItem    OperationID = "tui.checklist.add-item"
 	operationChecklistActions    OperationID = "tui.checklist.actions"
 	operationChecklistDeleteItem OperationID = "tui.checklist.delete-item"
@@ -34,6 +36,8 @@ var checklistRowGrammar = map[OperationID]bool{
 	operationChecklistEditItem:   true,
 	operationChecklistMoveDown:   true,
 	operationChecklistMoveUp:     true,
+	operationChecklistMoveBottom: true,
+	operationChecklistMoveTop:    true,
 	operationChecklistAddItem:    true,
 	operationChecklistActions:    true,
 	operationChecklistDeleteItem: true,
@@ -65,6 +69,8 @@ var coreOperationsRefusedOnChecklistRow = map[OperationID]bool{
 	operationCorePeek:            true,
 	operationCoreReorderDown:     true,
 	operationCoreReorderUp:       true,
+	operationCoreReorderBottom:   true,
+	operationCoreReorderTop:      true,
 	operationCoreMultiSelect:     true,
 	operationCoreRangeSelect:     true,
 	operationCoreSelectAll:       true,
@@ -128,6 +134,8 @@ func checklistRowOperationDescriptors() []OperationDescriptor {
 		),
 		item(operationChecklistMoveDown, "Move Item Down", "Swap this item with the one below it", OperationRiskMutation),
 		item(operationChecklistMoveUp, "Move Item Up", "Swap this item with the one above it", OperationRiskMutation),
+		item(operationChecklistMoveBottom, "Move Item to Bottom", "Send this item past every item below it", OperationRiskMutation),
+		item(operationChecklistMoveTop, "Move Item to Top", "Send this item past every item above it", OperationRiskMutation),
 		withValueProvider(
 			item(operationChecklistAddItem, "Add Item", "Append an item to this checklist", OperationRiskMutation),
 			ValueProviderChecklistItem,
@@ -267,6 +275,19 @@ func (m *AppModel) executeChecklistRowOperation(
 		}
 		m.followReorderedChecklistItem(-1)
 		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index-1))
+	case operationChecklistMoveBottom:
+		last := len(task.Checklist) - 1
+		if index == last {
+			return OperationHandlerResult{Err: errors.New("this item is already last")}
+		}
+		m.followReorderedChecklistItem(last - index)
+		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, last))
+	case operationChecklistMoveTop:
+		if index == 0 {
+			return OperationHandlerResult{Err: errors.New("this item is already first")}
+		}
+		m.followReorderedChecklistItem(-index)
+		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, 0))
 	case operationChecklistAddItem:
 		text, err := checklistItemText(invocation)
 		if err != nil {

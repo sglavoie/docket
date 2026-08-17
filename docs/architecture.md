@@ -115,8 +115,24 @@ cycles, cross-project parents, and a resulting subtree depth above six.
 All, Inbox, and Backlog retain project hierarchy and manual sibling order.
 Today and Next have workspace-wide durable order. Due is automatically date
 ordered and Recent is automatically activity ordered. `J`/`K` therefore
-dispatches by row context: sibling reorder for a hierarchical row, planning
-reorder for Today or Next, and no mutation for Pinned, Due, or Recent.
+dispatches by row context into four ordering domains: the checklist slice for a
+checklist row, `PinnedAt` for a pinned row, durable planning order for Today or
+Next, and sibling order for a hierarchical row. Due and Recent mutate nothing.
+
+All four domains bound a move at its project group. Today and Next need that
+bound stated rather than inherited from hierarchy, because their durable order is
+workspace-wide while their group order follows that same order: a move past a
+project header would lift the cursor's whole project above its neighbor instead
+of reordering tasks within it.
+
+`Ctrl+J`/`Ctrl+K` are the same four domains reached in one press: they send the
+row to the far end of its visible peers as one transaction and one undo entry.
+Both keys step only through peers the current projection actually shows, so a
+filter or a collapsed parent bounds the move exactly as it bounds a single step.
+Repeating an adjacent swap through visible peers is a rotation of the slots those
+peers occupy, so a sibling the projection hides keeps its own slot; the
+presentation layer names the visible peers in their final top-to-bottom order and
+the application layer rewrites only the slots that run already holds.
 
 ### Rich records
 
@@ -292,7 +308,10 @@ grouped by project: groups sort by their newest pin, tasks inside a group start
 newest-first, and `J`/`K` reorder them manually within their group. A pinned
 subtree ranks by its own root's pin, so a swap moves exactly the rows it
 displaces. A pinned reorder swaps both tasks' `PinnedAt` values in one
-transaction spanning at most two projects. It retains the ancestor marker and an
+transaction spanning at most two projects. `Ctrl+J`/`Ctrl+K` extend that to the
+whole run between the cursor and its group's edge, redistributing only the
+timestamps that run already carries so pins outside it keep their instants.
+It retains the ancestor marker and an
 identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the ordinary `review` tag, after
 Doing. Claim order and draw order are different things: the Review lane draws

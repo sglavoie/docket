@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"slices"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -79,7 +81,7 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	// Resolve the target from the adjacent *visible* reorderable planning row, not
 	// from the neighbor in the unfiltered durable order — otherwise a scope or
 	// filter could swap the cursor with an invisible task.
-	target, _, ok := m.adjacentVisiblePlanningMember(order, delta)
+	target, ok := m.adjacentVisiblePlanningMember(order, delta)
 	if !ok {
 		return m, nil // visible boundary: nothing to swap with.
 	}
@@ -96,13 +98,18 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg { return msg }
 }
 
-// adjacentVisiblePlanningMember returns the locator and task of the nearest
-// visible row — scanning m.rows from the cursor in the direction of delta — whose
-// task is a durable planning member (present in order). Separators and top-level
-// section headers bound the active planning section; planning project headers
-// are transparent because they do not partition the durable order. It reports
-// false at a visible boundary when no such row exists.
-func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTaskLocator, delta int) (config.ProjectTaskLocator, *models.Task, bool) {
+// visiblePlanningMembers returns every durable planning member (present in
+// order) reachable by scanning m.rows from the cursor in the direction of delta,
+// nearest first. Separators, section headers, and project headers bound the
+// active planning run. The list is empty at a visible boundary.
+//
+// A project header stops the scan even though it does not partition the durable
+// order, because a planning group's display position follows that order: a move
+// reaching past the header would lift the cursor's whole project above its
+// neighbor rather than reorder tasks within it.
+func (m *OutlinerModel) visiblePlanningMembers(
+	order []config.ProjectTaskLocator, delta int,
+) []config.ProjectTaskLocator {
 	members := make(map[config.ProjectTaskLocator]bool, len(order))
 	for _, loc := range order {
 		members[loc] = true
@@ -111,19 +118,10 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 	if delta < 0 {
 		step = -1
 	}
+	var visible []config.ProjectTaskLocator
 	for i := m.cursor + step; i >= 0 && i < len(m.rows); i += step {
 		row := m.rows[i]
-		if row.IsSectionHeader || row.IsSeparator || row.IsPinnedSection {
-			break
-		}
-		// Planning project headers provide context without partitioning the
-		// workspace-wide order. Skip them so J/K can still swap adjacent visible
-		// Today/Next members from different projects. Other project headers
-		// continue to delimit hierarchy reorder buckets.
-		if row.IsProjectHeader {
-			if row.IsTodaySection || row.IsNextSection {
-				continue
-			}
+		if row.IsSectionHeader || row.IsSeparator || row.IsPinnedSection || row.IsProjectHeader {
 			break
 		}
 		if !row.isTaskRow() || row.task == nil {
@@ -132,10 +130,71 @@ func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTask
 		identity := m.taskIdentityForRow(row)
 		loc := config.ProjectTaskLocator{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
 		if members[loc] {
-			return loc, row.task, true
+			visible = append(visible, loc)
 		}
 	}
-	return config.ProjectTaskLocator{}, nil, false
+	return visible
+}
+
+// adjacentVisiblePlanningMember returns the nearest visible planning member in
+// the delta direction, reporting false at a visible boundary.
+func (m *OutlinerModel) adjacentVisiblePlanningMember(order []config.ProjectTaskLocator, delta int) (config.ProjectTaskLocator, bool) {
+	visible := m.visiblePlanningMembers(order, delta)
+	if len(visible) == 0 {
+		return config.ProjectTaskLocator{}, false
+	}
+	return visible[0], true
+}
+
+// planningReorderEdge sends the cursor's planning member to the far end of the
+// visible planning run in one commit. Only the global-order positions the run's
+// members already occupy are rewritten, so a member the scope or a filter hides
+// keeps its own position.
+func (m *OutlinerModel) planningReorderEdge(delta int) (tea.Model, tea.Cmd) {
+	if !m.isPlanningReorderMode() {
+		return m, nil
+	}
+	task, project := m.getTaskRef()
+	if task == nil || project == nil {
+		return m, nil
+	}
+
+	kind := reorderToday
+	order := m.globalTodayOrder()
+	row := m.rows[m.cursor]
+	if m.primaryMode == ModeNext || row.IsNextSection {
+		kind = reorderNextOrder
+		order = m.globalNextOrder()
+	}
+
+	moved := config.ProjectTaskLocator{ProjectID: project.ID, TaskID: task.ID}
+	if locatorIndex(order, moved) < 0 {
+		// The cursor task is no longer a member of the planning list.
+		return m, nil
+	}
+	peers := m.visiblePlanningMembers(order, delta)
+	if len(peers) == 0 {
+		return m, nil // visible boundary: nothing to move past.
+	}
+
+	positions := make([]int, 0, len(peers)+1)
+	for _, loc := range append([]config.ProjectTaskLocator{moved}, peers...) {
+		position := locatorIndex(order, loc)
+		if position < 0 {
+			return m, nil
+		}
+		positions = append(positions, position)
+	}
+	slices.Sort(positions)
+	for i, member := range edgeMoveOrder(moved, peers, delta) {
+		order[positions[i]] = member
+	}
+
+	msg := OutlinerPlanningReorderMsg{
+		Kind:  kind,
+		Order: order,
+	}
+	return m, func() tea.Msg { return msg }
 }
 
 // globalNextOrder returns the workspace-wide Next sequence as project-qualified

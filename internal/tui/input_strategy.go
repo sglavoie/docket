@@ -229,7 +229,7 @@ func SimplifiedInputStrategy() InputStrategy {
 		ID: InputStrategySimplified,
 		Bindings: []OperationKeyBinding{
 			{OperationID: operationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 8, FooterLabel: "capture"},
-			// The six keys a checklist row shares with a task row are declared
+			// The eight keys a checklist row shares with a task row are declared
 			// checklist-first: shared-key resolution takes the first applicable
 			// descriptor, and only one of each pair applies to any given cursor.
 			{OperationID: operationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "item", SharedKey: true},
@@ -265,6 +265,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreReorderDown, Keys: []string{"J"}, DisplayKey: "J", SharedKey: true},
 			{OperationID: operationChecklistMoveUp, Keys: []string{"K"}, DisplayKey: "K", SharedKey: true},
 			{OperationID: operationCoreReorderUp, Keys: []string{"K"}, DisplayKey: "K", SharedKey: true},
+			{OperationID: operationChecklistMoveBottom, Keys: []string{"ctrl+j"}, DisplayKey: "Ctrl+J", SharedKey: true},
+			{OperationID: operationCoreReorderBottom, Keys: []string{"ctrl+j"}, DisplayKey: "Ctrl+J", SharedKey: true},
+			{OperationID: operationChecklistMoveTop, Keys: []string{"ctrl+k"}, DisplayKey: "Ctrl+K", SharedKey: true},
+			{OperationID: operationCoreReorderTop, Keys: []string{"ctrl+k"}, DisplayKey: "Ctrl+K", SharedKey: true},
 			{OperationID: operationTaskOutdent, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: operationTaskIndent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationCoreFocusSubtree, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "focus", SharedKey: true},
