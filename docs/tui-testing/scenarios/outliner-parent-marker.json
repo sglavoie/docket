@@ -1,0 +1,39 @@
+{
+  "name": "outliner-parent-marker",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "a parent showing its child carries no count", "assert": "not_contains", "value": "User authentication  ›" },
+
+    { "type": "key", "label": "step onto the last open child in Backlog", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "start it, so every open child of the story now sits in Doing", "key": "w" },
+    { "type": "key", "key": "g" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
+
+    { "type": "assert", "label": "the emptied parent counts the children placed elsewhere", "assert": "contains", "value": "User authentication  ›2" },
+    { "type": "assert", "label": "the promoted children still name their hidden parent", "assert": "contains", "value": "Build login form  ‹" },
+    { "type": "assert", "label": "a parent whose child is still rendered beneath it stays quiet", "assert": "not_contains", "value": "Launch platform  ›" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "narrow until the indicators start dropping", "width": 60, "height": 24 },
+    { "type": "assert", "label": "the reserved marker survives what the ladder sheds", "assert": "contains", "value": "›2" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "key", "label": "undo the state change", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the child is back under the parent, so the count goes", "assert": "not_contains", "value": "User authentication  ›" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

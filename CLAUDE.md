@@ -139,8 +139,10 @@ Row and Peek budget:
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append; neither the ancestor marker nor the task context segment belongs in
+  append; neither the relation marker nor the task context segment belongs in
   it. `taskRowSegments` reserves both at every width; Peek names full values.
+  `taskRelationMarker` is one segment both ways: `‹` up, `›N` down only when the
+  row renders no child.
 - `formatDeferDate` reads against `now`: a midnight deferral is a whole day and
   still renders bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
 - Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the

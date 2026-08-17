@@ -60,9 +60,11 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 // and grouping.
 func (m *OutlinerModel) buildCanonicalModeRows() {
 	// Assigned above the search-projection return so both branches leave a live
-	// wake clock behind: a projection the user leaves must not resume with a
-	// stale one.
-	m.nextDeferWake = earliestDeferWake(m.workModeScopeProjects(), time.Now())
+	// wake clock and child census behind: a projection the user leaves must not
+	// resume with a stale one.
+	scope := m.workModeScopeProjects()
+	m.nextDeferWake = earliestDeferWake(scope, time.Now())
+	m.openChildCounts = openChildCounts(scope)
 	if m.hasSearchProjection() {
 		m.buildSearchProjectionRows()
 		m.expandChecklistRows()
@@ -119,6 +121,35 @@ func earliestDeferWake(projects []*models.Project, now time.Time) time.Time {
 		}
 	}
 	return earliest
+}
+
+// openChildCounts censuses each task's open direct children across the scope.
+// It reads the authoritative flat project.Tasks, which already holds every
+// nested child, because a row's own task can be a filter-pipeline clone whose
+// Children were rewritten — the marker would then mean one thing in All and
+// another in a flat mode.
+func openChildCounts(projects []*models.Project) map[TaskIdentity]int {
+	counts := make(map[TaskIdentity]int)
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
+			open := len(task.IncompleteChildren())
+			if open == 0 {
+				continue
+			}
+			identity := taskIdentityFor(task, project)
+			if !identity.Valid() {
+				continue
+			}
+			counts[identity] = open
+		}
+	}
+	return counts
 }
 
 // buildModeCandidateInput completes the shared mode input with the focus-narrowed

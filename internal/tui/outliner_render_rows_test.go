@@ -60,7 +60,7 @@ func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
 		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
 		segments.statusIcon, segments.prioritySegment, segments.contextSegment, segments.tagSegment,
-		segments.indicators, segments.ancestorMarker,
+		segments.indicators, segments.relationMarker,
 	) {
 		t.Fatal("context segment drifted between titleWidth and outlinerNonTitleWidth")
 	}
@@ -193,6 +193,83 @@ func TestOutlinerTaskRowShowsAncestorMarkerOnlyForPromotedRoot(t *testing.T) {
 	}, false, 120, 120, 0, nil))
 	if strings.Contains(nested, "‹") {
 		t.Fatalf("nested task row retained ancestor marker: %q", nested)
+	}
+}
+
+// TestOutlinerTaskRowCountsChildrenPlacedElsewhere covers the mirror mark: a
+// parent whose open children are all seated in other sections otherwise renders
+// with no connector beneath it and reads exactly like a leaf.
+func TestOutlinerTaskRowCountsChildrenPlacedElsewhere(t *testing.T) {
+	parentID := "parent"
+	newChild := func(id string, state models.WorkflowState) *models.Task {
+		return &models.Task{ID: id, Title: id, WorkflowState: state, ParentID: &parentID}
+	}
+	parent := &models.Task{ID: parentID, Title: "Parent", WorkflowState: models.StateDoing}
+	tasks := []*models.Task{
+		parent,
+		newChild("open-a", models.StateBacklog),
+		newChild("open-b", models.StateWaiting),
+		newChild("finished", models.StateDone),
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", tasks)
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	outliner.openChildCounts = openChildCounts([]*models.Project{project})
+
+	detached := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: parent,
+	}, false, 120, 120, 0, nil))
+	if !strings.Contains(detached, "Parent  ›2") {
+		t.Fatalf("detached parent row omitted the child count: %q", detached)
+	}
+
+	combined := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: tasks[1], Breadcrumb: "Parent ›",
+	}, false, 120, 120, 0, nil))
+	if !strings.Contains(combined, "open-a  ‹") {
+		t.Fatalf("promoted child row omitted the ancestor marker: %q", combined)
+	}
+	if strings.Contains(combined, "›") {
+		t.Fatalf("childless row carried a down marker: %q", combined)
+	}
+
+	rendered := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: parent, hasVisibleChildren: true,
+	}, false, 120, 120, 0, nil))
+	if strings.Contains(rendered, "›") {
+		t.Fatalf("row showing its children restated parenthood: %q", rendered)
+	}
+
+	terminal := &models.Task{ID: "terminal-parent", Title: "Terminal parent"}
+	terminalParentID := terminal.ID
+	closedChild := &models.Task{ID: "closed", Title: "closed", WorkflowState: models.StateCanceled, ParentID: &terminalParentID}
+	closedProject := renderFixtureProject(t, "closed", "closed", "Closed", []*models.Task{terminal, closedChild})
+	closedOutliner := NewOutlinerModel(closedProject, nil, newTestConfig())
+	closedOutliner.openChildCounts = openChildCounts([]*models.Project{closedProject})
+	quiet := ansi.Strip(closedOutliner.renderOutlinerTaskRow(outlinerRow{task: terminal}, false, 120, 120, 0, nil))
+	if strings.Contains(quiet, "›") {
+		t.Fatalf("parent with only terminal children carried a marker: %q", quiet)
+	}
+}
+
+// TestOutlinerTaskRowCombinesBothRelationDirections pins the shared segment: a
+// row that is both a promoted child and a detached parent reads `‹›N`.
+func TestOutlinerTaskRowCombinesBothRelationDirections(t *testing.T) {
+	rootID := "root"
+	midID := "mid"
+	tasks := []*models.Task{
+		{ID: rootID, Title: "Root"},
+		{ID: midID, Title: "Mid", WorkflowState: models.StateDoing, ParentID: &rootID},
+		{ID: "leaf", Title: "Leaf", WorkflowState: models.StateBacklog, ParentID: &midID},
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", tasks)
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	outliner.openChildCounts = openChildCounts([]*models.Project{project})
+
+	plain := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
+		task: tasks[1], Breadcrumb: "Root ›",
+	}, false, 120, 120, 0, nil))
+	if !strings.Contains(plain, "Mid  ‹›1") {
+		t.Fatalf("row missing the combined relation marker: %q", plain)
 	}
 }
 

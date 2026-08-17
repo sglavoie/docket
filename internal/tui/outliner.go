@@ -106,6 +106,11 @@ type OutlinerModel struct {
 	// tick; what a row shows stays isComputedOpenWork's decision.
 	nextDeferWake time.Time
 
+	// openChildCounts holds each task's open direct-child count, read from the
+	// authoritative project trees rather than from a row's own task, whose
+	// Children the filter pipeline may have rewritten.
+	openChildCounts map[TaskIdentity]int
+
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
 

@@ -231,26 +231,40 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, contextSegment      string
-	tagSegment, indicators, ancestorMarker           string
+	tagSegment, indicators, relationMarker           string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
 		s.statusIcon, s.prioritySegment, s.contextSegment, s.tagSegment,
-		s.indicators, s.ancestorMarker,
+		s.indicators, s.relationMarker,
 	), 1)
 }
 
-// promotedAncestorMarker is the fixed three-column mark a promoted section root
-// wears in place of its ancestor path. It is reserved in taskRowSegments rather
-// than offered the title's leftover columns, so it survives every width instead
-// of vanishing exactly when the row is most crowded. The path itself is Peek's.
-func promotedAncestorMarker(row outlinerRow) string {
-	if row.Breadcrumb == "" {
+// taskRelationMarker names the family the outline placed elsewhere: `‹` for a
+// promoted root whose parent is not shown above it, `›N` for a row whose N open
+// children are all seated somewhere else. It is reserved in taskRowSegments
+// rather than offered the title's leftover columns, so it survives every width
+// instead of vanishing exactly when the row is most crowded. Both marks share
+// one segment so a row that is both keeps the reserve near three columns. The
+// ancestor path itself, and the children, stay Peek's.
+func (m *OutlinerModel) taskRelationMarker(row outlinerRow) string {
+	marker := ""
+	if row.Breadcrumb != "" {
+		marker = "‹"
+	}
+	// A row showing any child already says it is a parent through its connectors
+	// and fold indicator; the count would only restate them.
+	if !row.hasVisibleChildren {
+		if open := m.openChildCounts[m.rowIdentity(row)]; open > 0 {
+			marker += fmt.Sprintf("›%d", open)
+		}
+	}
+	if marker == "" {
 		return ""
 	}
-	return MutedStyle.Render("  ‹")
+	return MutedStyle.Render("  " + marker)
 }
 
 func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout) taskRowSegments {
@@ -301,7 +315,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		contextSegment:  contextSegment,
 		tagSegment:      tagSegment,
 		indicators:      indicatorSegments.render(),
-		ancestorMarker:  promotedAncestorMarker(row),
+		relationMarker:  m.taskRelationMarker(row),
 	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
@@ -346,7 +360,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 		segments.prioritySegment,
 		segments.contextSegment,
 		title,
-		segments.ancestorMarker,
+		segments.relationMarker,
 		segments.tagSegment,
 		segments.indicators,
 	)
@@ -635,13 +649,13 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	return HighlightText(title, positions, titleStyle)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, contextSegment, tagSegment, indicators, ancestorMarker string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, contextSegment, tagSegment, indicators, relationMarker string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(contextSegment) +
 		lipgloss.Width(tagSegment) + lipgloss.Width(indicators) +
-		lipgloss.Width(ancestorMarker)
+		lipgloss.Width(relationMarker)
 }
 
 func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, selected bool, rowWidth, rowIndex int) string {

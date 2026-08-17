@@ -361,7 +361,7 @@ The Outliner uses the full terminal width at every supported size. Task rows
 show workflow state, priority, due and defer dates, and
 checklist progress; short task IDs are hidden.
 
-The bold `[context]` segment is reserved like the ancestor marker: it never
+The bold `[context]` segment is reserved like the relation marker: it never
 drops when a row narrows. Its value uses at most 12 columns in the row, while
 Peek shows the complete value when truncation was necessary. Tags remain a
 separate, lower-salience segment and may drop first.
@@ -396,10 +396,19 @@ markers, then the waiting age, and the check-back date goes last.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
-that the row has a parent the outline above it does not show. The marker is
-three fixed columns reserved before the title, so it neither eats the title on a
-wide row nor disappears on a crowded one. Nested rows carry nothing, because
-their tree connector already states parentage.
+that the row has a parent the outline above it does not show. Nested rows carry
+nothing, because their tree connector already states parentage.
+
+The mirror mark reads the other way: a row whose open children are all placed
+somewhere else ends with `›N`, naming how many are hidden — a parent that
+started work and sits in Doing while its children wait in Backlog. Only open
+children count, so a task whose children are all done or canceled stays quiet,
+and a row that shows even one child carries nothing because its connectors and
+fold indicator already say it is a parent. A row that is both a promoted child
+and a detached parent reads `‹›N`.
+
+Both marks share one segment of fixed columns reserved before the title, so
+they neither eat the title on a wide row nor disappear on a crowded one.
 
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
 parent cursor and scroll position. A leaf reports `No children to focus`. While

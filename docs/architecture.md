@@ -389,15 +389,37 @@ the row's own badges and Peek still carry them; the check-back goes last, becaus
 it is the one indicator naming work that has gone quiet on someone else's desk. A
 new indicator gets a position in that list, not an append.
 
-The ancestor marker is not in that ladder and never drops. A promoted section
-root's row carries `promotedAncestorMarker`, a fixed `  ‹` reserved as a
-`taskRowSegments` field, so `titleWidth` subtracts its three columns before the
+The relation marker is not in that ladder and never drops.
+`taskRelationMarker` writes both directions of the hidden-family relation into
+one `taskRowSegments` field, so `titleWidth` subtracts its columns before the
 title is cut instead of offering it whatever the title left over. Offering it the
-remainder is what made it a 40-column path on a short row, a `‹ Re…` stub on a
-medium one, and nothing at all on a long one — vanishing exactly where a child
-row most needed distinguishing from a root row. Its meaning is now the same at
-every width: this row has a parent the outline above it does not show. Which
-parent is Peek's line to name.
+remainder is what made the ancestor mark a 40-column path on a short row, a
+`‹ Re…` stub on a medium one, and nothing at all on a long one — vanishing
+exactly where a child row most needed distinguishing from a root row. Its
+meaning is now the same at every width. One segment rather than two also keeps
+the reserve near three columns on a row that is both a promoted child and a
+detached parent.
+
+Upward, a promoted section root carries `  ‹`: this row has a parent the outline
+above it does not show. Which parent is Peek's line to name. Downward, a row
+carries `  ›N` when `hasVisibleChildren` is false and the task has N open
+children — the parent that entered Doing while its children stayed in Backlog,
+whose row otherwise has no connector beneath it, no fold indicator, and reads
+exactly like a leaf. It is counted because `›` alone leaves open the question it
+raises, how much work hangs off the row; `‹` stays bare because a task has one
+parent. Only `IncompleteChildren` count, since a parent whose children are all
+terminal hides no open work.
+
+The trigger is zero rendered children rather than a rendered-child count: when
+some children are shown the connectors and fold indicator already say "parent",
+and the arithmetic would have to account for
+`excludeTaskTreePromotingChildren` seating a grandchild in a clone's `Children`.
+For the same reason the count comes from `openChildCounts`, a per-rebuild census
+of the authoritative flat `project.Tasks` assigned in `buildCanonicalModeRows`
+above the search-projection return, and never from `row.task.Children`: All,
+Inbox, and Backlog rows carry filter-pipeline clones with rewritten children
+while flat-mode rows carry authoritative pointers, so reading the row's own task
+would give the marker two meanings depending on the mode.
 
 #### Status flash
 

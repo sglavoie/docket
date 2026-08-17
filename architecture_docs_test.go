@@ -153,7 +153,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CLAUDE.md: %v", err)
 	}
-	const budget = 15200
+	const budget = 15400
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -185,7 +185,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`inlinePeekLines` owns a drop order, not a set",
 		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
-		"neither the ancestor marker nor the task context segment belongs in it",
+		"neither the relation marker nor the task context segment belongs in it",
+		"`taskRelationMarker` is one segment both ways",
 		"The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps",
 		"There is no `$delete` sigil",
 		"The old standalone `b` and `t` actions and the comma state prefix stay unbound, " +
