@@ -86,7 +86,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		m.wakeDeferredRows(time.Now())
-		return true, tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
+		return true, tickCmd(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		})
 	case SaveCompleteMsg:

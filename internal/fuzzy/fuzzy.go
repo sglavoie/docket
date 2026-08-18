@@ -72,14 +72,6 @@ func (m Matcher) ScoreTerms(text, query string) int {
 	return totalScore
 }
 
-// ScoreWithPositions returns both a case-insensitive match score and the indices
-// in text where matches occurred.
-// Returns 0 score and nil positions if there is no match.
-// See Matcher.ScoreWithPositions for how positions map onto []rune(text).
-func ScoreWithPositions(text, pattern string) (int, []int) {
-	return Matcher{}.ScoreWithPositions(text, pattern)
-}
-
 // ScoreWithPositions returns both a match score and the indices in text where
 // matches occurred, under the matcher's case sensitivity.
 // Returns 0 score and nil positions if there is no match.
@@ -106,14 +98,6 @@ func (m Matcher) ScoreWithPositions(text, pattern string) (int, []int) {
 	patternRunes := []rune(m.fold(pattern))
 
 	return scoreSubsequenceWithPositions(textRunes, textOriginalRunes, patternRunes)
-}
-
-// ScoreTermsWithPositions splits the query into whitespace-separated terms and
-// returns a combined case-insensitive score and merged match positions if ALL
-// terms match the text.
-// Returns 0 and nil if any term fails to match.
-func ScoreTermsWithPositions(text, query string) (int, []int) {
-	return Matcher{}.ScoreTermsWithPositions(text, query)
 }
 
 // ScoreTermsWithPositions splits the query into whitespace-separated terms and

@@ -299,11 +299,12 @@ product and maintenance-only CLI. Historical fields may appear only in clearly
 identified migration sections.
 
 Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product
-contract replayed by `./scripts/run_tui_scenarios.sh`. Prefer public keys for
-behavior and harness operations only for setup with no public shortcut. Include
-`no_layout_issues` for important narrow and resized states. The full gate also
-runs focused snapshot-first migration and interrupted activation recovery tests.
-Harness format and authoring rules live in
+contract replayed by the ordinary test suite, which also runs the focused
+snapshot-first migration and interrupted activation recovery tests. Prefer
+public keys for behavior and harness operations only for setup with no public
+shortcut. Include `no_layout_issues` for important narrow and resized states.
+App timers go through `tickCmd`, never `tea.Tick`. Harness format and authoring
+rules live in
 [`docs/tui-testing/README.md`](docs/tui-testing/README.md).
 
 ## Where the details live

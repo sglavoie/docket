@@ -209,6 +209,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"v4/v5/v6 decoders are migration-only",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
+		"App timers go through `tickCmd`, never `tea.Tick`",
 		"## Where the details live",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {

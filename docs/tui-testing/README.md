@@ -29,7 +29,14 @@ During authoring, replay one JSON file:
 
 Every `*.json` file in `docs/tui-testing/scenarios/` is discovered by
 `TestExampleScenariosPass`; there is no separate scenario manifest to update.
-The full script is the acceptance gate.
+The script only re-selects tests the ordinary suite already runs, so `just ci`
+covers the same ground without invoking it.
+
+A scenario never sleeps out one of the app's timers. Each driver owns a virtual
+clock, a timer scheduled through `tickCmd` reports itself instead of firing, and
+a `wait` action advances that clock. Schedule a new timer through `tea.Tick`
+directly and a scenario pays its real duration, which is both slow and a race
+against the drain budget.
 
 ## Fixtures
 
@@ -80,7 +87,7 @@ assertions, and trailing JSON are rejected before execution.
 | `key` | `key` | Send one parsed key press. |
 | `text` | `text` | Type literal runes into the active input. |
 | `resize` | `width`, `height` | Resize the simulated terminal. |
-| `wait` | none | Drain pending asynchronous work within the test budget. |
+| `wait` | none | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. |
 | `command` | `command` | Invoke a stable harness or production operation ID. |
 | `assert` | `assert`, optional `value` | Check a fresh normalized observation. |
 

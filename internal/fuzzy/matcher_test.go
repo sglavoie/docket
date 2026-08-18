@@ -92,15 +92,5 @@ func TestPackageFunctionsRemainCaseInsensitive(t *testing.T) {
 		if got, want := ScoreTerms("Ship API client", pattern), insensitive.ScoreTerms("Ship API client", pattern); got != want {
 			t.Errorf("ScoreTerms(_, %q) = %d, want %d", pattern, got, want)
 		}
-		gotScore, gotPositions := ScoreWithPositions("Ship OAuth Login", pattern)
-		wantScore, wantPositions := insensitive.ScoreWithPositions("Ship OAuth Login", pattern)
-		if gotScore != wantScore || !slices.Equal(gotPositions, wantPositions) {
-			t.Errorf("ScoreWithPositions(_, %q) = %d %v, want %d %v", pattern, gotScore, gotPositions, wantScore, wantPositions)
-		}
-		gotScore, gotPositions = ScoreTermsWithPositions("Ship OAuth Login", pattern)
-		wantScore, wantPositions = insensitive.ScoreTermsWithPositions("Ship OAuth Login", pattern)
-		if gotScore != wantScore || !slices.Equal(gotPositions, wantPositions) {
-			t.Errorf("ScoreTermsWithPositions(_, %q) = %d %v, want %d %v", pattern, gotScore, gotPositions, wantScore, wantPositions)
-		}
 	}
 }

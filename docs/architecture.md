@@ -1366,4 +1366,5 @@ just ci
 ```
 
 The scenario script replays every committed TUI JSON workflow and the focused
-snapshot-first migration and interrupted-recovery scenarios.
+snapshot-first migration and interrupted-recovery scenarios. It selects a subset
+of the ordinary suite, which `just ci` runs in full.

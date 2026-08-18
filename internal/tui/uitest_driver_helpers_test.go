@@ -29,8 +29,15 @@ type UITestDriver struct {
 	pendingFutures []<-chan tea.Msg
 
 	// drainTimeout overrides the per-command drain budget when positive. Zero
-	// falls back to defaultDrainTimeout. The CLI wires this from --drain-timeout.
+	// falls back to defaultDrainTimeout.
 	drainTimeout time.Duration
+
+	// now is this driver's virtual clock and timers the ticks waiting on it. A
+	// "wait" action advances the clock rather than sleeping; see
+	// uitest_clock_helpers_test.go.
+	now      time.Time
+	timers   []uitestTimer
+	timerSeq uint64
 }
 
 // SetDrainTimeout sets the per-command drain budget. A non-positive value
@@ -47,7 +54,7 @@ func NewUITestDriver(app *AppModel, width, height int) *UITestDriver {
 			panic("register TUI test operations: " + err.Error())
 		}
 	}
-	d := &UITestDriver{app: app}
+	d := &UITestDriver{app: app, now: time.Now()}
 	d.Resize(width, height)
 	return d
 }

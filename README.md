@@ -803,8 +803,10 @@ just test
 just ci
 ```
 
-The scenario gate replays the committed final-product TUI workflows plus the
-snapshot-first migration and interrupted-activation recovery scenarios. See
+The scenario script replays the committed final-product TUI workflows plus the
+snapshot-first migration and interrupted-activation recovery scenarios. It
+re-selects tests `just test` and `just ci` already run, for a faster loop while
+authoring one. See
 [docs/tui-testing/README.md](docs/tui-testing/README.md).
 
 For data boundaries, transaction mechanics, migration details, and platform

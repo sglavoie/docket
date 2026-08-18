@@ -196,7 +196,7 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 	m.setInfoStatus(msg)
 	m.statusUndoCb = undoCb
 	m.statusExpiresAt = time.Now().Add(UndoToastTimeout)
-	return tea.Tick(UndoToastTimeout, func(time.Time) tea.Msg {
+	return tickCmd(UndoToastTimeout, func(time.Time) tea.Msg {
 		return UndoToastTimeoutMsg{}
 	})
 }

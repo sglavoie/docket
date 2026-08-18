@@ -8,7 +8,7 @@ import (
 // TestScoreWithPositions_BasicMatch verifies that the returned positions
 // align with the matched characters in the (lowercased) text.
 func TestScoreWithPositions_BasicMatch(t *testing.T) {
-	score, positions := ScoreWithPositions("hello world", "hlo")
+	score, positions := NewMatcher(false).ScoreWithPositions("hello world", "hlo")
 	if score == 0 {
 		t.Fatalf("expected non-zero score for matching pattern")
 	}
@@ -33,7 +33,7 @@ func TestScoreWithPositions_BasicMatch(t *testing.T) {
 }
 
 func TestScoreWithPositions_EmptyPattern(t *testing.T) {
-	score, positions := ScoreWithPositions("anything", "")
+	score, positions := NewMatcher(false).ScoreWithPositions("anything", "")
 	if score != 1 {
 		t.Errorf("empty pattern: expected score=1, got %d", score)
 	}
@@ -43,7 +43,7 @@ func TestScoreWithPositions_EmptyPattern(t *testing.T) {
 }
 
 func TestScoreWithPositions_NoMatch(t *testing.T) {
-	score, positions := ScoreWithPositions("hello", "xyz")
+	score, positions := NewMatcher(false).ScoreWithPositions("hello", "xyz")
 	if score != 0 {
 		t.Errorf("no match: expected score=0, got %d", score)
 	}
@@ -53,7 +53,7 @@ func TestScoreWithPositions_NoMatch(t *testing.T) {
 }
 
 func TestScoreWithPositions_EmptyText(t *testing.T) {
-	score, positions := ScoreWithPositions("", "pattern")
+	score, positions := NewMatcher(false).ScoreWithPositions("", "pattern")
 	if score != 0 {
 		t.Errorf("empty text: expected score=0, got %d", score)
 	}
@@ -63,7 +63,7 @@ func TestScoreWithPositions_EmptyText(t *testing.T) {
 }
 
 func TestScoreWithPositionsPrefersLaterWordBoundaryMatch(t *testing.T) {
-	score, positions := ScoreWithPositions("axb-b", "ab")
+	score, positions := NewMatcher(false).ScoreWithPositions("axb-b", "ab")
 	if score == 0 {
 		t.Fatalf("expected non-zero score for matching pattern")
 	}
@@ -74,7 +74,7 @@ func TestScoreWithPositionsPrefersLaterWordBoundaryMatch(t *testing.T) {
 }
 
 func TestScoreTermsWithPositions_AllTermsMatch(t *testing.T) {
-	score, positions := ScoreTermsWithPositions("need a way to go", "need way")
+	score, positions := NewMatcher(false).ScoreTermsWithPositions("need a way to go", "need way")
 	if score == 0 {
 		t.Fatalf("expected non-zero score when both terms match")
 	}
@@ -90,7 +90,7 @@ func TestScoreTermsWithPositions_AllTermsMatch(t *testing.T) {
 }
 
 func TestScoreTermsWithPositions_OneTermMissing(t *testing.T) {
-	score, positions := ScoreTermsWithPositions("hello world", "hello xyz")
+	score, positions := NewMatcher(false).ScoreTermsWithPositions("hello world", "hello xyz")
 	if score != 0 {
 		t.Errorf("expected score=0 when a term is missing, got %d", score)
 	}
@@ -100,7 +100,7 @@ func TestScoreTermsWithPositions_OneTermMissing(t *testing.T) {
 }
 
 func TestScoreTermsWithPositions_EmptyQuery(t *testing.T) {
-	score, positions := ScoreTermsWithPositions("anything", "")
+	score, positions := NewMatcher(false).ScoreTermsWithPositions("anything", "")
 	if score != 1 {
 		t.Errorf("expected score=1 for empty query, got %d", score)
 	}
@@ -108,7 +108,7 @@ func TestScoreTermsWithPositions_EmptyQuery(t *testing.T) {
 		t.Errorf("expected nil positions for empty query, got %v", positions)
 	}
 
-	score, positions = ScoreTermsWithPositions("anything", "   ")
+	score, positions = NewMatcher(false).ScoreTermsWithPositions("anything", "   ")
 	if score != 1 {
 		t.Errorf("expected score=1 for whitespace query, got %d", score)
 	}
@@ -120,7 +120,7 @@ func TestScoreTermsWithPositions_EmptyQuery(t *testing.T) {
 func TestScoreTermsWithPositions_DeduplicatesOverlap(t *testing.T) {
 	// "aa" and "ab" both match in "aabc"; their positions overlap at index 0.
 	// The merged result must not contain duplicates.
-	_, positions := ScoreTermsWithPositions("aabc", "aa ab")
+	_, positions := NewMatcher(false).ScoreTermsWithPositions("aabc", "aa ab")
 	seen := make(map[int]struct{})
 	for _, p := range positions {
 		if _, exists := seen[p]; exists {

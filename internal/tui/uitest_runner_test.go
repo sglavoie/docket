@@ -11,20 +11,24 @@ import (
 
 // This file makes scenarios executable in-process. It drives the AppModel one
 // action at a time (key/text/resize/wait/assert), draining the tea.Cmd values
-// each action produces with a bounded budget so a blocking command (e.g. a
-// tea.Tick status timeout) cannot hang the review harness. Commands that do not
-// complete within the timeout are recorded as pending async work and can be
-// drained later by a "wait" action.
+// each action produces with a bounded budget so a blocking command cannot hang
+// the review harness. Commands that do not complete within the timeout are
+// recorded as pending async work and can be drained later by a "wait" action.
+// A timer is not such a command: it is virtualized onto the driver's clock (see
+// uitest_clock_helpers_test.go) and costs a scenario nothing.
 
 const (
 	// defaultDrainTimeout bounds how long a single command may run before it is
-	// abandoned to the pending-async set and draining moves on.
-	defaultDrainTimeout = 25 * time.Millisecond
+	// abandoned to the pending-async set and draining moves on. Timers are
+	// virtual, so what is drained here is real work — a load, a save — that
+	// finishes in milliseconds. The budget is loose on purpose: a tight one lets
+	// a busy machine, rather than the app, decide what a scenario observes.
+	defaultDrainTimeout = 2 * time.Second
 	// maxDrainSteps bounds how many commands a single action may drain, guarding
 	// against a command that keeps producing follow-up commands forever.
 	maxDrainSteps = 64
-	// defaultWaitTimeout bounds how long a "wait" action blocks while resolving
-	// previously abandoned commands.
+	// defaultWaitTimeout is how far a "wait" action advances the virtual clock,
+	// and how long it blocks on commands that were abandoned as still-running.
 	defaultWaitTimeout = 2 * time.Second
 )
 
@@ -126,7 +130,11 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 		d.Resize(a.Width, a.Height)
 		d.drain()
 	case UITestActionWait:
+		// A scenario waits to let time pass, which is two things: async work
+		// lands, and the timers the next assertion is waiting on — a transient
+		// status expiring, a flash running out — come due on the virtual clock.
 		d.Wait(defaultWaitTimeout)
+		d.advanceClock(defaultWaitTimeout)
 	case UITestActionAssert:
 		return d.runAssert(a)
 	case UITestActionCommand:
@@ -262,7 +270,7 @@ func (d *UITestDriver) processCmds(queue []tea.Cmd, opts drainOptions) {
 	for len(queue) > 0 && steps < opts.maxSteps {
 		cmd := queue[0]
 		queue = queue[1:]
-		if cmd == nil {
+		if cmd == nil || isAnimationCmd(cmd) {
 			continue
 		}
 		steps++
@@ -289,6 +297,9 @@ func (d *UITestDriver) handleMsg(msg tea.Msg) []tea.Cmd {
 		return nil
 	case tea.BatchMsg:
 		return []tea.Cmd(m)
+	case uitestScheduledTick:
+		d.schedule(m)
+		return nil
 	default:
 		if cmds, ok := commandGroupMessage(msg); ok {
 			return cmds
@@ -331,6 +342,8 @@ func commandGroupMessage(msg tea.Msg) ([]tea.Cmd, bool) {
 // Wait resolves previously abandoned commands, blocking up to the given total
 // timeout across all of them. Commands that resolve have their messages drained
 // normally; commands still running when the budget is exhausted remain pending.
+// It settles async work only and does not move the virtual clock, so a caller
+// checking a transient status still sees it.
 func (d *UITestDriver) Wait(timeout time.Duration) {
 	futures := d.pendingFutures
 	d.pendingFutures = nil

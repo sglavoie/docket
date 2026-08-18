@@ -407,7 +407,7 @@ func TestMatchUnicodeCaseFolding(t *testing.T) {
 func TestScoreWithPositionsUnicode(t *testing.T) {
 	// "İstanbul" has 8 runes; "İ" is 2 bytes in UTF-8.
 	text := "İstanbul"
-	score, positions := ScoreWithPositions(text, "ist")
+	score, positions := NewMatcher(false).ScoreWithPositions(text, "ist")
 	if score == 0 {
 		t.Fatalf("expected non-zero score for %q matching %q", text, "ist")
 	}
@@ -456,7 +456,7 @@ func TestScoreParityWithPositions(t *testing.T) {
 	}
 	for _, c := range cases {
 		s1 := Score(c.text, c.pattern)
-		s2, _ := ScoreWithPositions(c.text, c.pattern)
+		s2, _ := NewMatcher(false).ScoreWithPositions(c.text, c.pattern)
 		if s1 != s2 {
 			t.Errorf("Score(%q,%q)=%d but ScoreWithPositions=%d (must agree)",
 				c.text, c.pattern, s1, s2)
@@ -477,9 +477,9 @@ func TestScoreDeterminism(t *testing.T) {
 		{"foo-bar baz", "fbb"},
 	}
 	for _, c := range cases {
-		first, firstPos := ScoreWithPositions(c.text, c.pattern)
+		first, firstPos := NewMatcher(false).ScoreWithPositions(c.text, c.pattern)
 		for i := range 20 {
-			s, p := ScoreWithPositions(c.text, c.pattern)
+			s, p := NewMatcher(false).ScoreWithPositions(c.text, c.pattern)
 			if s != first {
 				t.Fatalf("score drift for Score(%q,%q): first=%d run=%d got=%d",
 					c.text, c.pattern, first, i, s)
@@ -489,9 +489,9 @@ func TestScoreDeterminism(t *testing.T) {
 					c.text, c.pattern, firstPos, i, p)
 			}
 		}
-		termScore, termPos := ScoreTermsWithPositions(c.text, c.pattern)
+		termScore, termPos := NewMatcher(false).ScoreTermsWithPositions(c.text, c.pattern)
 		for i := range 20 {
-			s, p := ScoreTermsWithPositions(c.text, c.pattern)
+			s, p := NewMatcher(false).ScoreTermsWithPositions(c.text, c.pattern)
 			if s != termScore {
 				t.Fatalf("ScoreTerms drift for (%q,%q): first=%d run=%d got=%d",
 					c.text, c.pattern, termScore, i, s)
@@ -528,9 +528,9 @@ func TestNoPanicOnPathologicalInput(t *testing.T) {
 			}()
 			_ = Score(in.text, in.pattern)
 			_ = Score(in.text, in.pattern)
-			_, _ = ScoreWithPositions(in.text, in.pattern)
+			_, _ = NewMatcher(false).ScoreWithPositions(in.text, in.pattern)
 			_ = ScoreTerms(in.text, in.pattern)
-			_, _ = ScoreTermsWithPositions(in.text, in.pattern)
+			_, _ = NewMatcher(false).ScoreTermsWithPositions(in.text, in.pattern)
 			_ = ScoreTerms(in.text, in.pattern)
 		}()
 	}
@@ -550,7 +550,7 @@ func TestPositionsAreValidRuneIndices(t *testing.T) {
 		{"Σοφία", "σ"},
 	}
 	for _, c := range cases {
-		score, positions := ScoreWithPositions(c.text, c.pattern)
+		score, positions := NewMatcher(false).ScoreWithPositions(c.text, c.pattern)
 		if score == 0 {
 			t.Fatalf("expected match for (%q,%q)", c.text, c.pattern)
 		}
@@ -582,8 +582,8 @@ func TestEmptyPatternBehavior(t *testing.T) {
 		if Score(text, "") == 0 {
 			t.Errorf("Match(%q, \"\") = false, want true", text)
 		}
-		if s, p := ScoreWithPositions(text, ""); s != 1 || p != nil {
-			t.Errorf("ScoreWithPositions(%q, \"\") = (%d, %v), want (1, nil)", text, s, p)
+		if s, p := NewMatcher(false).ScoreWithPositions(text, ""); s != 1 || p != nil {
+			t.Errorf("NewMatcher(false).ScoreWithPositions(%q, \"\") = (%d, %v), want (1, nil)", text, s, p)
 		}
 	}
 }
@@ -601,8 +601,8 @@ func TestPatternLongerThanText(t *testing.T) {
 		if s := Score(c.text, c.pattern); s != 0 {
 			t.Errorf("Score(%q,%q) = %d, want 0 (pattern longer)", c.text, c.pattern, s)
 		}
-		if s, p := ScoreWithPositions(c.text, c.pattern); s != 0 || p != nil {
-			t.Errorf("ScoreWithPositions(%q,%q) = (%d,%v), want (0,nil)",
+		if s, p := NewMatcher(false).ScoreWithPositions(c.text, c.pattern); s != 0 || p != nil {
+			t.Errorf("NewMatcher(false).ScoreWithPositions(%q,%q) = (%d,%v), want (0,nil)",
 				c.text, c.pattern, s, p)
 		}
 	}

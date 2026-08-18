@@ -15,15 +15,13 @@ require_tool deadcode
 echo "Checking documentation..."
 ./scripts/check_docs.sh
 
+# This pass already replays the committed TUI scenarios and the focused
+# migration/recovery tests; run_tui_scenarios.sh only re-selects them for
+# standalone use. golangci-lint runs govet with enable-all, so `go vet` here
+# would be a third pass over the same analyzers.
 echo "Running race tests and collecting coverage..."
 go test -race -count=1 -coverprofile=coverage.out ./...
 ./scripts/check_coverage.sh coverage.out
-
-echo "Running committed TUI scenarios..."
-./scripts/run_tui_scenarios.sh
-
-echo "Running vet..."
-go vet ./...
 
 echo "Running golangci-lint..."
 golangci-lint run

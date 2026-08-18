@@ -312,7 +312,7 @@ const periodicSaveInterval = 60 * time.Second
 
 func (m *AppModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
-		tea.Tick(periodicSaveInterval, func(time.Time) tea.Msg {
+		tickCmd(periodicSaveInterval, func(time.Time) tea.Msg {
 			return periodicSaveMsg{}
 		}),
 	}

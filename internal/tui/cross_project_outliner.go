@@ -30,7 +30,12 @@ type crossProjectsLoadedMsg struct {
 	retainedFocusProjectID string
 }
 
-// crossSpinnerDelayMsg fires after 200ms to animate the initial-load spinner.
+// crossSpinnerDelay is how long an initial load runs before it animates a
+// spinner, so a fast load never flashes one.
+const crossSpinnerDelay = 200 * time.Millisecond
+
+// crossSpinnerDelayMsg fires after crossSpinnerDelay to animate the initial-load
+// spinner.
 type crossSpinnerDelayMsg struct{}
 
 // crossSpinnerTickMsg wraps a spinner tick so it can be distinguished from
@@ -61,10 +66,9 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 	m.crossLoadGen++
 	return tea.Batch(
 		m.loadCrossProjectsCmd(),
-		func() tea.Msg {
-			time.Sleep(200 * time.Millisecond)
+		tickCmd(crossSpinnerDelay, func(time.Time) tea.Msg {
 			return crossSpinnerDelayMsg{}
-		},
+		}),
 	)
 }
 

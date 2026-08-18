@@ -92,7 +92,7 @@ const StatusUpdateTimeout = 2 * time.Second
 // statusTimeout returns a command that clears the status message after the given duration.
 func statusTimeout(d time.Duration) tea.Cmd {
 	scheduledAt := time.Now()
-	return tea.Tick(d, func(time.Time) tea.Msg {
+	return tickCmd(d, func(time.Time) tea.Msg {
 		return StatusClearMsg{ScheduledAt: scheduledAt}
 	})
 }
@@ -105,7 +105,7 @@ func defaultStatusTimeout() tea.Cmd {
 // viewStatusTimeout returns a command that clears one generation of a
 // view-owned status message after the default timeout.
 func viewStatusTimeout(view PresentationID, seq uint64) tea.Cmd {
-	return tea.Tick(StatusUpdateTimeout, func(time.Time) tea.Msg {
+	return tickCmd(StatusUpdateTimeout, func(time.Time) tea.Msg {
 		return ViewStatusClearMsg{View: view, Seq: seq}
 	})
 }
@@ -115,14 +115,14 @@ const CursorFlashDuration = 150 * time.Millisecond
 
 // cursorFlashTimeout returns a command that clears the cursor flash after CursorFlashDuration.
 func cursorFlashTimeout() tea.Cmd {
-	return tea.Tick(CursorFlashDuration, func(time.Time) tea.Msg {
+	return tickCmd(CursorFlashDuration, func(time.Time) tea.Msg {
 		return CursorFlashClearMsg{}
 	})
 }
 
 // footerFlashTick schedules the next frame of the footer divider flash.
 func footerFlashTick(seq uint64) tea.Cmd {
-	return tea.Tick(footerFlashFrameInterval, func(time.Time) tea.Msg {
+	return tickCmd(footerFlashFrameInterval, func(time.Time) tea.Msg {
 		return FooterFlashTickMsg{Seq: seq}
 	})
 }
