@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Token is one recognized inline metadata token.
@@ -141,6 +143,9 @@ func duplicateSingletonDiagnostics(tokens []Token) []Diagnostic {
 func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 	switch spec.validation {
 	case validateAny:
+		if surface == SurfaceSearch {
+			return searchValueViable(spec, value)
+		}
 		return true
 	case validatePriority:
 		// Keep invalid priority-like tokens in the parsed token stream so every
@@ -151,6 +156,11 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 		}
 		if value == clearValue && surface != SurfaceEdit {
 			return false
+		}
+		// Search tokenizes any numeric priority so !9 can be diagnosed, and
+		// leaves !important as prose.
+		if surface == SurfaceSearch {
+			return isAllDigits(value)
 		}
 		// Clear operations are enabled only on their exact surface. A combined
 		// surface retains capture's stricter grammar.
@@ -177,6 +187,42 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 	default:
 		return false
 	}
+}
+
+// searchValueViable decides whether a free-form token shape is a search
+// predicate at all. Search runs over prose the user may simply be looking for,
+// so an unresolvable value stays in the text rather than becoming a gate that
+// matches nothing.
+func searchValueViable(spec definitionSpec, value string) bool {
+	switch spec.Field {
+	case FieldDestination:
+		if _, ok := ParseDestination(value); ok {
+			return true
+		}
+		return IsRetiredDestination(value)
+	case FieldDue:
+		if slices.Contains(searchDuePresetNames, strings.ToLower(strings.TrimSpace(value))) {
+			return true
+		}
+		_, err := util.ParseCalendarDate(value)
+		return err == nil
+	case FieldProject:
+		return strings.TrimSpace(value) != ""
+	default:
+		return true
+	}
+}
+
+func isAllDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func validTagTokenValue(value string) bool {

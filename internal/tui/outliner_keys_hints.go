@@ -17,6 +17,7 @@ const (
 	outlinerEmptyFiltered
 	outlinerEmptyProjectFiltered
 	outlinerEmptySearch
+	outlinerEmptySearchInvalid
 	outlinerEmptyFocus
 )
 
@@ -182,7 +183,7 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 		required = "fx clear filters"
 	case outlinerEmptyProjectFiltered:
 		required = "Fx clear project filters"
-	case outlinerEmptySearch:
+	case outlinerEmptySearch, outlinerEmptySearchInvalid:
 		required = "Esc clear search"
 	case outlinerEmptyFocus:
 		required = "Esc return"
@@ -199,6 +200,9 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 
 func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if m.hasSearchProjection() && m.SearchQuery() != "" {
+		if m.searchGate.invalid() {
+			return outlinerEmptySearchInvalid
+		}
 		return outlinerEmptySearch
 	}
 	if m.project == nil && len(m.loadedProjects) == 0 {

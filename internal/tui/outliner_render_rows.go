@@ -651,7 +651,7 @@ func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
 	title := truncateToVisualWidth(task.Title, availableWidth)
-	query := strings.TrimSpace(m.SearchQuery())
+	query := m.searchTextQuery()
 	if query == "" {
 		return titleStyle.Render(title)
 	}

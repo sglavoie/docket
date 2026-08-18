@@ -101,6 +101,13 @@ type OutlinerModel struct {
 	// what is shown can never disagree.
 	searchCaseRelaxed bool
 
+	// searchRemainder is the free text left after the sigil gate was lifted out
+	// of the query, and searchGate is that gate. Scoring, smart-case, highlighting
+	// and the work-mode predicate all read the remainder, so a predicate token is
+	// never scored or highlighted as prose.
+	searchRemainder string
+	searchGate      *searchPredicates
+
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic
 	// tick; what a row shows stays isComputedOpenWork's decision.

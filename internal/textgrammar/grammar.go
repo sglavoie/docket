@@ -18,9 +18,10 @@ const (
 	SurfaceCapture Surface = 1 << iota
 	SurfaceEdit
 	SurfaceOutline
+	SurfaceSearch
 )
 
-const allSurfaces = SurfaceCapture | SurfaceEdit | SurfaceOutline
+const allSurfaces = SurfaceCapture | SurfaceEdit | SurfaceOutline | SurfaceSearch
 
 // Field identifies one family of inline metadata tokens.
 type Field string
@@ -88,11 +89,15 @@ const (
 	validatePin
 )
 
+// definitionSpec adds the search wording beside the mutation wording because
+// the same token is a command on capture/edit/outline and a predicate on search.
 type definitionSpec struct {
 	Definition
-	forms      []surfaceForm
-	pattern    string
-	validation tokenValidation
+	forms             []surfaceForm
+	pattern           string
+	validation        tokenValidation
+	searchDescription string
+	searchClearText   map[string]string
 }
 
 var priorityNames = []string{"1", "2", "3"}
@@ -114,6 +119,7 @@ var registry = []definitionSpec{
 			{Text: "!0", Surfaces: SurfaceEdit},
 		},
 		pattern: `(?:^|\s)!([^\s]+)`, validation: validatePriority,
+		searchDescription: "Match priority exactly",
 	},
 	{
 		Definition: Definition{
@@ -121,19 +127,21 @@ var registry = []definitionSpec{
 			Description: "Add tag", Examples: []string{"#backend", "#bug", "#source:github"},
 			Surfaces: allSurfaces, Cardinality: CardinalityRepeatable,
 		},
-		forms:      []surfaceForm{{Text: "#tag", Surfaces: allSurfaces}},
-		pattern:    `(?:^|\s)#([\w][\w.:-]*)`,
-		validation: validateTag,
+		forms:             []surfaceForm{{Text: "#tag", Surfaces: allSurfaces}},
+		pattern:           `(?:^|\s)#([\w][\w.:-]*)`,
+		validation:        validateTag,
+		searchDescription: "Match a tag prefix",
 	},
 	{
 		Definition: Definition{
 			Field: FieldRemoveTag, Group: "Priority & Tags", Trigger: "-#",
 			Description: "Remove tag", Examples: []string{"-#old", "-#source:github"},
-			Surfaces: SurfaceEdit, Cardinality: CardinalityRepeatable,
+			Surfaces: SurfaceEdit | SurfaceSearch, Cardinality: CardinalityRepeatable,
 		},
-		forms:      []surfaceForm{{Text: "-#tag", Surfaces: SurfaceEdit}},
-		pattern:    `(?:^|\s)-#([\w][\w.:-]*)`,
-		validation: validateTag,
+		forms:             []surfaceForm{{Text: "-#tag", Surfaces: SurfaceEdit | SurfaceSearch}},
+		pattern:           `(?:^|\s)-#([\w][\w.:-]*)`,
+		validation:        validateTag,
+		searchDescription: "Exclude a tag prefix",
 	},
 	{
 		Definition: Definition{
@@ -147,6 +155,7 @@ var registry = []definitionSpec{
 			{Text: "##0", Surfaces: SurfaceEdit},
 		},
 		pattern: `(?:^|\s)##([\w][\w.:-]*)`, validation: validateTag,
+		searchDescription: "Match a context prefix",
 	},
 	{
 		Definition: Definition{
@@ -164,7 +173,8 @@ var registry = []definitionSpec{
 			{Text: "@date", Surfaces: allSurfaces},
 			{Text: "@0", Surfaces: SurfaceEdit},
 		},
-		pattern: `(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
+		pattern:           `(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
+		searchDescription: "Match a due bucket or exact due day",
 	},
 	{
 		Definition: Definition{
@@ -173,8 +183,9 @@ var registry = []definitionSpec{
 			Examples: prefixed(destinationNames, "$"), Surfaces: allSurfaces,
 			Cardinality: CardinalitySingleton,
 		},
-		forms:   []surfaceForm{{Text: "$destination", Surfaces: allSurfaces}},
-		pattern: `(?:^|\s)\$(\w+)`,
+		forms:             []surfaceForm{{Text: "$destination", Surfaces: allSurfaces}},
+		pattern:           `(?:^|\s)\$(\w+)`,
+		searchDescription: "Match a lifecycle state or planning list",
 	},
 	// Pin advertises only the set value. Definitions does not filter Values by
 	// surface, so listing the clear value there would offer it while capturing,
@@ -186,22 +197,27 @@ var registry = []definitionSpec{
 			Description: "Pin task", Values: []string{"pin"},
 			Examples: []string{"*pin"}, Surfaces: allSurfaces,
 			Cardinality: CardinalitySingleton,
-			Clears:      []ClearOperation{{Value: "unpin", Description: "Unpin task", Surfaces: SurfaceEdit}},
+			Clears: []ClearOperation{
+				{Value: "unpin", Description: "Unpin task", Surfaces: SurfaceEdit | SurfaceSearch},
+			},
 		},
 		forms: []surfaceForm{
 			{Text: "*pin", Surfaces: allSurfaces},
-			{Text: "*unpin", Surfaces: SurfaceEdit},
+			{Text: "*unpin", Surfaces: SurfaceEdit | SurfaceSearch},
 		},
 		pattern: `(?:^|\s)\*(\S+)`, validation: validatePin,
+		searchDescription: "Match pinned tasks",
+		searchClearText:   map[string]string{"unpin": "Match unpinned tasks"},
 	},
 	{
 		Definition: Definition{
 			Field: FieldProject, Group: "Project Routing", Trigger: "%",
 			Description: "Move to project", Examples: []string{"%project-slug"},
-			Surfaces: SurfaceCapture | SurfaceEdit, Cardinality: CardinalitySingleton,
+			Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch, Cardinality: CardinalitySingleton,
 		},
-		forms:   []surfaceForm{{Text: "%project", Surfaces: SurfaceCapture | SurfaceEdit}},
-		pattern: `(?:^|\s)%(\S+)`,
+		forms:             []surfaceForm{{Text: "%project", Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch}},
+		pattern:           `(?:^|\s)%(\S+)`,
+		searchDescription: "Narrow to matching scope projects",
 	},
 	{
 		Definition: Definition{
@@ -262,12 +278,15 @@ func Definitions(surface Surface) []Definition {
 			continue
 		}
 		def := spec.Definition
+		if surface == SurfaceSearch {
+			def.Description = spec.searchDescription
+		}
 		def.Forms = formsForSurface(spec.forms, surface)
 		def.Forms = slices.Clone(def.Forms)
 		def.Values = slices.Clone(def.Values)
 		def.RetiredValues = slices.Clone(def.RetiredValues)
 		def.Examples = slices.Clone(def.Examples)
-		def.Clears = clearsForSurface(def.Clears, surface)
+		def.Clears = clearsForSurface(def.Clears, surface, spec.searchClearText)
 		result = append(result, def)
 	}
 	return result
@@ -293,12 +312,16 @@ func formsForSurface(forms []surfaceForm, surface Surface) []string {
 	return result
 }
 
-func clearsForSurface(clears []ClearOperation, surface Surface) []ClearOperation {
+func clearsForSurface(clears []ClearOperation, surface Surface, searchText map[string]string) []ClearOperation {
 	result := make([]ClearOperation, 0, len(clears))
 	for _, clear := range clears {
-		if clear.Surfaces&surface != 0 {
-			result = append(result, clear)
+		if clear.Surfaces&surface == 0 {
+			continue
 		}
+		if surface == SurfaceSearch {
+			clear.Description = searchText[clear.Value]
+		}
+		result = append(result, clear)
 	}
 	return result
 }
@@ -326,6 +349,9 @@ func validateRegistry() error {
 			return err
 		}
 		if err := validateDefinitionClears(spec); err != nil {
+			return err
+		}
+		if err := validateDefinitionDescriptions(spec); err != nil {
 			return err
 		}
 	}
@@ -397,6 +423,35 @@ func validateDefinitionClears(spec definitionSpec) error {
 		})
 		if !found {
 			return fmt.Errorf("grammar field %s clear value %q has no matching form", spec.Field, clear.Value)
+		}
+	}
+	return nil
+}
+
+// validateDefinitionDescriptions keeps the search projection from advertising a
+// mutation sentence: a field reaching search must carry predicate wording, and
+// so must every clear value that reaches it.
+func validateDefinitionDescriptions(spec definitionSpec) error {
+	if spec.Surfaces&SurfaceSearch != 0 && !spec.Legacy && spec.searchDescription == "" {
+		return fmt.Errorf("grammar field %s has no search description", spec.Field)
+	}
+	if spec.Surfaces&SurfaceSearch == 0 && spec.searchDescription != "" {
+		return fmt.Errorf("grammar field %s declares a search description off the search surface", spec.Field)
+	}
+	for value, text := range spec.searchClearText {
+		if text == "" {
+			return fmt.Errorf("grammar field %s has empty search text for clear %q", spec.Field, value)
+		}
+		found := slices.ContainsFunc(spec.Clears, func(clear ClearOperation) bool {
+			return clear.Value == value && clear.Surfaces&SurfaceSearch != 0
+		})
+		if !found {
+			return fmt.Errorf("grammar field %s search text %q names no search clear", spec.Field, value)
+		}
+	}
+	for _, clear := range spec.Clears {
+		if clear.Surfaces&SurfaceSearch != 0 && spec.searchClearText[clear.Value] == "" {
+			return fmt.Errorf("grammar field %s search clear %q has no search text", spec.Field, clear.Value)
 		}
 	}
 	return nil

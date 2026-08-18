@@ -176,6 +176,14 @@ func TestPriorityTokenSurfaceBoundary(t *testing.T) {
 	if edit.Text != "Task" {
 		t.Fatalf("edit text = %q, want priority tokens extracted", edit.Text)
 	}
+
+	search := Parse("Task !0 !1 !9 !important", SurfaceSearch)
+	if got := search.TokensFor(FieldPriority); len(got) != 2 || got[0].Value != "1" || got[1].Value != "9" {
+		t.Fatalf("search priority tokens = %+v, want !1 plus numeric !9 for guidance", got)
+	}
+	if search.Text != "Task !0 !important" {
+		t.Fatalf("search text = %q, want the clear form and the prose word left literal", search.Text)
+	}
 }
 
 func TestCaptureDestinationNamesAreExactAndOrdered(t *testing.T) {
@@ -222,6 +230,15 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 			},
 		},
+		{
+			name: "search", surface: SurfaceSearch,
+			want: map[Field][]string{
+				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
+				FieldContext: {"##context"}, FieldDue: {"@date"},
+				FieldDestination: {"$destination"}, FieldPinned: {"*pin", "*unpin"},
+				FieldProject: {"%project"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -258,6 +275,7 @@ func TestParseRecognizesOnlyRegistryFormsForEachSurface(t *testing.T) {
 		{"capture", SurfaceCapture, "Task -#old", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldPinned, FieldProject, FieldParent, FieldChild}},
 		{"edit", SurfaceEdit, "Task", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldPinned, FieldProject, FieldParent, FieldChild}},
 		{"outline", SurfaceOutline, "Task -#old %core >1 <2", []Field{FieldPriority, FieldTag, FieldDue, FieldDestination, FieldPinned}},
+		{"search", SurfaceSearch, "Task >1 <2", []Field{FieldPriority, FieldTag, FieldRemoveTag, FieldDue, FieldDestination, FieldPinned, FieldProject}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -284,6 +302,34 @@ func TestRegistryClearSemanticsAreSurfaceSpecific(t *testing.T) {
 		if !ok || len(edit.Clears) != 1 || edit.Clears[0].Value != "0" {
 			t.Errorf("edit %s clears = %+v, want one zero clear", field, edit.Clears)
 		}
+	}
+	for _, field := range []Field{FieldPriority, FieldDue, FieldContext} {
+		search, ok := DefinitionFor(SurfaceSearch, field)
+		if !ok || len(search.Clears) != 0 {
+			t.Errorf("search %s clears = %+v, want none; a clear is a mutation", field, search.Clears)
+		}
+	}
+	if _, ok := DefinitionFor(SurfaceSearch, FieldParent); ok {
+		t.Error("search advertises parent; placement is not a search predicate")
+	}
+	if _, ok := DefinitionFor(SurfaceSearch, FieldChild); ok {
+		t.Error("search advertises child; placement is not a search predicate")
+	}
+}
+
+func TestSearchDefinitionsDescribePredicatesRatherThanMutations(t *testing.T) {
+	for _, def := range Definitions(SurfaceSearch) {
+		mutation, ok := DefinitionFor(SurfaceEdit, def.Field)
+		if !ok {
+			t.Fatalf("search field %s is missing from edit", def.Field)
+		}
+		if def.Description == "" || def.Description == mutation.Description {
+			t.Errorf("search %s description = %q, want predicate wording", def.Field, def.Description)
+		}
+	}
+	pinned, ok := DefinitionFor(SurfaceSearch, FieldPinned)
+	if !ok || len(pinned.Clears) != 1 || pinned.Clears[0].Description != "Match unpinned tasks" {
+		t.Fatalf("search pin clears = %+v, want the unpin predicate wording", pinned.Clears)
 	}
 }
 
@@ -364,8 +410,8 @@ func TestEmbeddedComparisonTextStaysLiteral(t *testing.T) {
 	}
 }
 
-func TestUnpinTokenizesEverywhereButIsAdvertisedOnlyOnEdit(t *testing.T) {
-	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline} {
+func TestUnpinTokenizesEverywhereButIsAdvertisedOnlyOnEditAndSearch(t *testing.T) {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline, SurfaceSearch} {
 		parsed := Parse("Ship release *unpin", surface)
 		tokens := parsed.TokensFor(FieldPinned)
 		if len(tokens) != 1 || tokens[0].Value != "unpin" {
@@ -379,7 +425,7 @@ func TestUnpinTokenizesEverywhereButIsAdvertisedOnlyOnEdit(t *testing.T) {
 			t.Fatalf("pin definition is missing on surface %d", surface)
 		}
 		want := []string{"*pin"}
-		if surface == SurfaceEdit {
+		if surface == SurfaceEdit || surface == SurfaceSearch {
 			want = []string{"*pin", "*unpin"}
 		}
 		if !reflect.DeepEqual(definition.Forms, want) {
@@ -455,7 +501,7 @@ func TestInvalidPriorityErrorUsesCanonicalValues(t *testing.T) {
 
 func TestDueSigilStaysDayOnlyAndRefusesHourOffsets(t *testing.T) {
 	hourForm := regexp.MustCompile(`^\+\d+h$`)
-	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline} {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline, SurfaceSearch} {
 		for _, def := range Definitions(surface) {
 			if def.Field != FieldDue {
 				continue

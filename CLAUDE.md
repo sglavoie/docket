@@ -232,8 +232,9 @@ capture validates every nonblank line before committing one transaction.
   (`%project`, `>parent`, `>0`, `<child`), applied as one
   `ApplyParentAssignments` batch so cycles and depth are measured on the graph
   the edit produces.
-- `*unpin` is edit-only: capture has nothing to clear and refuses it by name,
-  and the outline surface refuses it because dropping the `*pin` token says it.
+- `*unpin` belongs to edit and search: capture has nothing to clear and refuses
+  it by name, and the outline surface refuses it because dropping the `*pin`
+  token says it.
 - `FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable
   reference rather than a detach. A task leaves its parent through `>parent` or
   `>0` and nowhere else.
@@ -246,6 +247,14 @@ capture validates every nonblank line before committing one transaction.
   both surfaces.
 - A `>parent` or `<child` sigil in the outline buffer is an error, not a second
   parentage channel: indentation is parentage there.
+
+Slash search is the fourth surface of the same registry, not a parallel query
+language. Its sigil set is the capture set minus `>parent` and `<child`, which
+refuse by name because parentage is not a predicate. Sigils compile to an AND
+gate applied before scoring; the free-text remainder is the only string the
+matcher sees, so a predicate is never scored or highlighted, and the case-relaxed
+retry re-runs the same gate rather than widening it. Only a recognized value the
+grammar cannot honor blocks a query — everything else stays prose.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.

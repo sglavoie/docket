@@ -239,7 +239,7 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 }
 
 func (m *OutlinerModel) workModeFilterPredicateAt(now time.Time) func(*models.Task) bool {
-	query := m.SearchQuery()
+	query := m.searchTextQuery()
 	caseSensitive := m.searchCaseSensitive()
 	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
 

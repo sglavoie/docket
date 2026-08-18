@@ -80,9 +80,10 @@ func (m *OutlinerModel) outlinerFocusContext() string {
 	return m.projectFocusContext()
 }
 
-// buildOutlinerSearchIndicator renders the search chrome, appending the
-// case-fallback badge only when the title row can hold it: at narrow widths the
-// query itself is the more useful half of the segment.
+// buildOutlinerSearchIndicator renders the search chrome, appending a badge only
+// when the title row can hold it: at narrow widths the query itself is the more
+// useful half of the segment. A refused sigil wins over the case badge, because a
+// query that cannot run explains an empty list better than how it was matched.
 func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	var indicator string
 	switch {
@@ -93,10 +94,17 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	default:
 		return ""
 	}
+	if guidance := m.searchGate.guidanceText(); guidance != "" {
+		return appendSearchBadge(indicator, " "+guidance, width)
+	}
 	if !m.searchCaseRelaxed {
 		return indicator
 	}
-	badge := MutedStyle.Render(" (case ignored)")
+	return appendSearchBadge(indicator, " (case ignored)", width)
+}
+
+func appendSearchBadge(indicator, text string, width int) string {
+	badge := MutedStyle.Render(text)
 	if lipgloss.Width(indicator)+lipgloss.Width(badge) > width {
 		return indicator
 	}
@@ -176,6 +184,8 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return "No projects match project filters. Press Fx to clear project filters."
 	case outlinerEmptySearch:
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
+	case outlinerEmptySearchInvalid:
+		return fmt.Sprintf("%s. Press Esc to clear.", m.searchGate.guidanceText())
 	case outlinerEmptyFiltered:
 		return EmptyStateFiltered
 	case outlinerEmptyFocus:

@@ -29,7 +29,41 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 			if !edited.stateSet || edited.state != state {
 				t.Fatalf("edit state = %q (set=%v), want %q", edited.state, edited.stateSet, state)
 			}
+
+			outliner := scopeTestOutliner(project)
+			outliner.SetSearchQuery(input)
+			gate := outliner.searchGate
+			if gate == nil || !gate.hasDestination || gate.destination.WorkflowState() != state {
+				t.Fatalf("search destination = %+v, want state %q", gate, state)
+			}
+			if want := state.IsTerminal(); gate.admitsTerminal != want {
+				t.Fatalf("search $%s admitsTerminal = %v, want %v", state, gate.admitsTerminal, want)
+			}
 		})
+	}
+}
+
+func TestSearchPlanningDestinationsAreMembershipRatherThanState(t *testing.T) {
+	project := &models.Project{Name: "Grammar", ID: "grammar", Slug: "grammar"}
+	for _, name := range []string{"today", "next"} {
+		outliner := scopeTestOutliner(project)
+		outliner.SetSearchQuery("Task $" + name)
+		gate := outliner.searchGate
+		if gate == nil || !gate.hasDestination {
+			t.Fatalf("$%s produced no destination gate", name)
+		}
+		if gate.destination.WorkflowState() != models.StateBacklog {
+			t.Fatalf("$%s state = %q, want backlog", name, gate.destination.WorkflowState())
+		}
+		if gate.admitsTerminal {
+			t.Errorf("$%s relaxed the nonterminal rule", name)
+		}
+		if name == "today" && gate.todayIDs == nil {
+			t.Error("$today did not resolve a planning membership set")
+		}
+		if name == "next" && gate.nextIDs == nil {
+			t.Error("$next did not resolve a planning membership set")
+		}
 	}
 }
 

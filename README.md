@@ -258,14 +258,47 @@ reordering — still asks you to exit search first.
 | `fd` | Deferred-only |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fx` | Clear every facet |
-| `/` | Ranked title, description, tag, and project search over every scoped nonterminal task |
+| `/` | Ranked title, description, tag, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
 
-Search reads case as a narrowing signal. An all-lowercase query matches any
-casing; a query carrying an uppercase letter matches case-sensitively, so `API`
-finds `API` and not `capitalize`. When a case-sensitive query matches nothing,
-the search retries case-insensitively and marks the result `(case ignored)`. The
-rule covers the Outliner's `/`, Notes search, and both help searches; the
-`project#42` shorthand, autocomplete, and pickers stay case-insensitive.
+The search box speaks the capture and edit grammar. Sigil tokens are lifted out
+of the query and become an AND gate over the candidate set; whatever text is
+left keeps the ordinary fuzzy ranking. A query made only of sigils is a pure
+filter, and a query with no sigils behaves exactly as it did before:
+
+| Token | Effect |
+| --- | --- |
+| `!1`–`!3` | Match that priority exactly, unlike `fp`'s threshold; Unset never matches |
+| `#tag` | Match a tag by normalized-name prefix; repeatable, combined with AND |
+| `-#tag` | Exclude every task carrying a tag with that prefix |
+| `##context` | Match the task context by prefix, a separate axis from tags |
+| `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |
+| `@2026-03-05` | Match that exact calendar due day |
+| `$state` | Match a lifecycle state exactly |
+| `$today`, `$next` | Match membership in the durable planning list |
+| `*pin`, `*unpin` | Match pinned or unpinned tasks |
+| `%project` | Narrow the search to matching projects within the active scope |
+
+Search still hides terminal work, so `$done` and `$canceled` are the two tokens
+that relax the rule and reveal it. `$today` and `$next` read planning
+membership rather than a state, so a planned task also answers `$backlog`.
+`%project` can only narrow the scope that is already loaded; it never reaches a
+project the current scope or Focus excluded.
+
+Only a token the grammar recognizes but cannot honor blocks the query: an
+out-of-range priority such as `!9`, a retired destination such as `$ready`, the
+reserved `##0`, and the structural `>parent` and `<child` sigils that belong to
+inline editing alone. Those refuse by name in the search chrome and list
+nothing. Everything else stays prose, so `find @sarah`, `!important`, and
+`$100` search for the words you typed.
+
+Search reads case as a narrowing signal, applied to the free text after the
+sigils are lifted out. An all-lowercase query matches any casing; a query
+carrying an uppercase letter matches case-sensitively, so `API` finds `API` and
+not `capitalize`. When a case-sensitive query matches nothing, the search
+retries case-insensitively and marks the result `(case ignored)`; the retry
+relaxes case alone and never widens the sigil gate. The rule covers the
+Outliner's `/`, Notes search, and both help searches; the `project#42`
+shorthand, autocomplete, and pickers stay case-insensitive.
 
 The lowercase `f` chord refines the rows a projection already holds. Uppercase
 `F` decides which projects load at all, so each of its facets reloads:

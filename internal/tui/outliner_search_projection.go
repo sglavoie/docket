@@ -97,7 +97,7 @@ func (m *OutlinerModel) ClearSearch() {
 	}
 	snapshot := m.searchProjection
 	m.searchProjection = nil
-	m.searchCaseRelaxed = false
+	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
 	m.primaryMode = snapshot.mode
 	m.filter = copyFilterState(snapshot.filter)
@@ -180,8 +180,27 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 		return
 	}
 	m.searchProjection = nil
-	m.searchCaseRelaxed = false
+	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
+}
+
+func (m *OutlinerModel) resetSearchCompilation() {
+	m.searchCaseRelaxed = false
+	m.searchRemainder = ""
+	m.searchGate = nil
+}
+
+// searchTextQuery is the free-text remainder every consumer of the query must
+// read: scoring, smart case, highlighting, and the work-mode predicate. Reading
+// the raw query instead would score and highlight the sigils as prose.
+func (m *OutlinerModel) searchTextQuery() string {
+	if m == nil {
+		return ""
+	}
+	if m.hasSearchProjection() {
+		return m.searchRemainder
+	}
+	return strings.TrimSpace(m.SearchQuery())
 }
 
 // searchCaseSensitive reports the case mode the visible result set was actually
@@ -190,19 +209,22 @@ func (m *OutlinerModel) searchCaseSensitive() bool {
 	if m == nil || m.searchCaseRelaxed {
 		return false
 	}
-	return fuzzy.CaseSensitiveQuery(strings.TrimSpace(m.SearchQuery()))
+	return fuzzy.CaseSensitiveQuery(m.searchTextQuery())
 }
 
 func (m *OutlinerModel) buildSearchProjectionRows() {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
-	query := strings.TrimSpace(m.SearchQuery())
 	candidates := m.searchFocusCandidates(projects)
+
+	query, predicates := m.compileSearchQuery(projects)
+	m.searchRemainder = query
+	m.searchGate = predicates
 
 	m.searchCaseRelaxed = false
 	matcher := fuzzy.SmartCase(query)
-	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher)
+	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates)
 	if len(matches) == 0 && matcher.CaseSensitive() {
-		matches = searchProjectionMatchesWithin(projects, query, candidates, fuzzy.NewMatcher(false))
+		matches = searchProjectionMatchesWithin(projects, query, candidates, fuzzy.NewMatcher(false), predicates)
 		m.searchCaseRelaxed = len(matches) > 0
 	}
 
@@ -240,15 +262,19 @@ func searchProjectionMatchesWithin(
 	query string,
 	candidates map[string][]*models.Task,
 	matcher fuzzy.Matcher,
+	predicates *searchPredicates,
 ) []outlinerSearchMatch {
+	if predicates.invalid() {
+		return nil
+	}
 	if projectRef, shortID, exact := parseProjectShortIDQuery(query); exact {
-		return exactProjectShortIDMatchesWithin(projects, projectRef, shortID, candidates)
+		return exactProjectShortIDMatchesWithin(projects, projectRef, shortID, candidates, predicates)
 	}
 
 	matches := make([]outlinerSearchMatch, 0)
 	sourceIndex := 0
 	for _, project := range projects {
-		if project == nil {
+		if project == nil || !predicates.admitsProject(project) {
 			continue
 		}
 		tasks := project.Tasks
@@ -256,7 +282,11 @@ func searchProjectionMatchesWithin(
 			tasks = bounded
 		}
 		for _, task := range tasks {
-			if task == nil || task.IsTerminalState() {
+			if task == nil || (!predicates.allowsTerminal() && task.IsTerminalState()) {
+				sourceIndex++
+				continue
+			}
+			if !predicates.admits(task, project) {
 				sourceIndex++
 				continue
 			}
@@ -327,17 +357,27 @@ func exactProjectShortIDMatchesWithin(
 	projectRef string,
 	shortID int,
 	candidates map[string][]*models.Task,
+	predicates *searchPredicates,
 ) []outlinerSearchMatch {
 	for _, project := range projects {
 		if project == nil || !projectSearchRefMatches(project, projectRef) {
 			continue
+		}
+		if !predicates.admitsProject(project) {
+			return nil
 		}
 		tasks := project.Tasks
 		if bounded, ok := candidates[project.ID]; ok {
 			tasks = bounded
 		}
 		for sourceIndex, task := range tasks {
-			if task != nil && !task.IsTerminalState() && task.ShortID == shortID {
+			if task == nil || task.ShortID != shortID {
+				continue
+			}
+			if !predicates.allowsTerminal() && task.IsTerminalState() {
+				continue
+			}
+			if predicates.admits(task, project) {
 				return []outlinerSearchMatch{{
 					task: task, project: project, fieldRank: 0,
 					fuzzyScore: 1, sourceIndex: sourceIndex,

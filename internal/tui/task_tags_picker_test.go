@@ -200,13 +200,22 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 		{Name: "review", TaskCount: 1},
 	})
 
-	for key, want := range map[string]ListItemID{"t": "tag:backend", "c": "tag:platform", "w": "tag:review"} {
-		if _, dismissed, msg := picker.handleKey(keyPress(key)); dismissed || msg != nil {
-			t.Fatalf("jump %q dismissed = %v, msg = %#v", key, dismissed, msg)
+	// The order is part of the assertion: the refused jump below reads the cursor
+	// the last successful jump left behind.
+	for _, jump := range []struct {
+		key  string
+		want ListItemID
+	}{
+		{"t", "tag:backend"},
+		{"c", "tag:platform"},
+		{"w", "tag:review"},
+	} {
+		if _, dismissed, msg := picker.handleKey(keyPress(jump.key)); dismissed || msg != nil {
+			t.Fatalf("jump %q dismissed = %v, msg = %#v", jump.key, dismissed, msg)
 		}
 		item, ok := picker.surface.CurrentItem()
-		if !ok || item.ID != want {
-			t.Fatalf("jump %q landed on %v, want %s", key, item.ID, want)
+		if !ok || item.ID != jump.want {
+			t.Fatalf("jump %q landed on %v, want %s", jump.key, item.ID, jump.want)
 		}
 	}
 

@@ -721,6 +721,19 @@ project metadata matches, then by fuzzy score and stable project/task order;
 `project#shortID` is an exact qualifier. Mode and facet changes are unavailable
 during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
 
+The query is not a single fuzzy string. `compileSearchQuery` parses it against
+`textgrammar.SurfaceSearch` — the fourth surface of the same registry that
+serves capture, inline edit, and the outline buffer — and splits it into a
+compiled `searchPredicates` gate and a free-text remainder. The gate is applied
+before scoring, as a hard AND filter over candidate projects and tasks; the
+remainder is the only string the matcher ever sees. Every consumer reads it
+through `searchTextQuery()`, so a sigil is never scored, never smart-cased, and
+never highlighted as prose. `$today` and `$next` resolve to project-qualified
+locator sets read from the durable plan rather than to a workflow state, which
+is why a planned task also answers `$backlog`. A recognized-but-unhonorable
+token compiles to an invalid gate that matches nothing and carries the
+registry's own error text into the search chrome and the empty-state message.
+
 Case is a narrowing signal rather than a syntax. `fuzzy.Matcher` carries one
 case-sensitivity bit, `fuzzy.CaseSensitiveQuery` is the single detection rule
 (`strings.ToLower(query) != query`), and the zero-value matcher is
@@ -728,8 +741,10 @@ case-insensitive so every non-search scorer keeps its behavior. A surface runs
 its scoring pass under `fuzzy.SmartCase(query)`; if a case-sensitive pass yields
 nothing it repeats the pass case-insensitively and records `searchCaseRelaxed`,
 which drives both the `(case ignored)` chrome and the highlight positions, so
-what matched and what is marked can never disagree. An empty relaxed pass leaves
-the ordinary empty state. The rule stops at the four search surfaces — Outliner
+what matched and what is marked can never disagree. The retry re-runs the same
+gate, so relaxing case can never admit a task a sigil excluded. An empty relaxed
+pass leaves the ordinary empty state. The rule stops at the four search
+surfaces — Outliner
 slash search, Notes, and the help `/` and `\` searches. Autocomplete, pickers,
 the action sheet, and the Project Hub stay case-insensitive because tag and
 context values are normalized lowercase, and `project#shortID` stays `EqualFold`

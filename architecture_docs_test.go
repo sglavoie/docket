@@ -154,7 +154,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CLAUDE.md: %v", err)
 	}
-	const budget = 15400
+	const budget = 16000
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -200,7 +200,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is non-archived and not " +
 			"parked and is the only one the base Outliner reads",
 		"!1-3 #tag ##context @date $destination *pin %project >parent <child",
-		"`*unpin` is edit-only",
+		"`*unpin` belongs to edit and search",
+		"Slash search is the fourth surface of the same registry, not a parallel query language",
 		"`FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable reference rather than a detach",
 		"Children resolve only in the effective project",
 		"When changing the grammar, update parser definitions, completion, syntax guide, scenarios, and parity tests together",

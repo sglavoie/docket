@@ -47,40 +47,48 @@ func ParseDestination(raw string) (Destination, bool) {
 	return Destination(value), true
 }
 
+// retiredDestinationMessages names every destination that is recognized and
+// wrong. Membership is also what lets search tokenize a retired name so it can
+// show this guidance instead of searching for the word as prose. Each message
+// takes the rejected name so the retired token never appears as a literal.
+var retiredDestinationMessages = map[string]string{
+	"ready":       "destination $%s was removed (use $backlog)",
+	"in_progress": "destination $%s was removed (use $doing)",
+	"todo":        "destination $%s was removed (use $inbox or $backlog)",
+	"active":      "destination $%s was removed (use $backlog)",
+	"start":       "destination $%s was removed (use $doing)",
+	"started":     "destination $%s was removed (use $doing)",
+	"progress":    "destination $%s was removed (use $doing)",
+	"blocked":     "destination $%s was removed (use $waiting)",
+	"standby":     "destination $%s was removed (use $paused)",
+	"hold":        "destination $%s was removed (use $paused)",
+	"review":      "destination $%s is not a state (use #review)",
+	"maybe":       "destination $%s was removed (use $someday)",
+	"complete":    "destination $%s was removed (use $done)",
+	"completed":   "destination $%s was removed (use $done)",
+	"cancel":      "destination $%s was removed (use $canceled)",
+	"cancelled":   "destination $%s was removed (use $canceled)", //nolint:misspell // Intentional rejected-input alias.
+}
+
+// IsRetiredDestination reports whether a destination name is recognized and
+// wrong rather than unknown.
+func IsRetiredDestination(raw string) bool {
+	_, retired := retiredDestinationMessages[strings.ToLower(strings.TrimSpace(raw))]
+	return retired
+}
+
 // InvalidDestinationError returns shared actionable guidance for an invalid
 // lifecycle/planning destination.
 func InvalidDestinationError(raw string) error {
 	value := strings.ToLower(strings.TrimSpace(raw))
-	switch value {
-	case "ready":
-		return fmt.Errorf("destination $%s was removed (use $backlog)", value)
-	case "in_progress":
-		return fmt.Errorf("destination $%s was removed (use $doing)", value)
-	case "todo":
-		return fmt.Errorf("destination $todo was removed (use $inbox or $backlog)")
-	case "active":
-		return fmt.Errorf("destination $active was removed (use $backlog)")
-	case "start", "started", "progress":
-		return fmt.Errorf("destination $%s was removed (use $doing)", value)
-	case "blocked":
-		return fmt.Errorf("destination $blocked was removed (use $waiting)")
-	case "standby", "hold":
-		return fmt.Errorf("destination $%s was removed (use $paused)", value)
-	case "review":
-		return fmt.Errorf("destination $%s is not a state (use #review)", value)
-	case "maybe":
-		return fmt.Errorf("destination $maybe was removed (use $someday)")
-	case "complete", "completed":
-		return fmt.Errorf("destination $%s was removed (use $done)", value)
-	case "cancel", "cancelled": //nolint:misspell // Intentional rejected-input alias.
-		return fmt.Errorf("destination $%s was removed (use $canceled)", value)
-	default:
-		return fmt.Errorf(
-			"invalid destination: $%s (use %s)",
-			raw,
-			strings.Join(prefixed(destinationNames, "$"), ", "),
-		)
+	if message, retired := retiredDestinationMessages[value]; retired {
+		return fmt.Errorf(message, value) //nolint:govet // Every message takes exactly the rejected name.
 	}
+	return fmt.Errorf(
+		"invalid destination: $%s (use %s)",
+		raw,
+		strings.Join(prefixed(destinationNames, "$"), ", "),
+	)
 }
 
 // WorkflowState returns the lifecycle state represented by the destination.
