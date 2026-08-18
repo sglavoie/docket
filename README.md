@@ -239,7 +239,13 @@ unpins by dropping the `*pin` token from the line.
 Filters are session-only refinements of ordinary mode rows. Slash search is a
 temporary projection over every nonterminal task in the active project scope,
 including deferred work; Esc restores the prior mode, facets, cursor,
-scroll, and folds exactly.
+scroll, and folds exactly. Search is also the fastest way to jump anywhere:
+`Enter`, `Shift+Enter`, and `Ctrl+P` on a result leave search on that task
+instead of refusing, so the restored projection lands on the row you searched
+for. A mode that cannot list the result falls back to All; a facet that still
+excludes it says `Task is hidden by the active facets` and focuses nothing.
+Every other operation the projection owns — mode switches, folds, and
+reordering — still asks you to exit search first.
 
 | Keys | Effect |
 | --- | --- |
@@ -422,7 +428,9 @@ the relation mark and is never dropped.
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
 parent cursor and scroll position. A leaf reports `No children to focus`. While
 focused, `a` captures a direct child of the focus root rather than a root task
-elsewhere.
+elsewhere. Pressed on a search result, `Enter` dismisses search first and lands
+the ordinary projection on that task, so `Esc` unwinds onto its own row; a leaf
+still reports `No children to focus`, with the jump already made.
 `Shift+Enter` widens in the other direction. Outside Focus it opens Focus on the
 cursor task's parent, so the task's own siblings come into view; a root task
 reports `No parent to focus`. Inside Focus it climbs one level from the focus

@@ -159,7 +159,7 @@ the edits beside it.
 
 Entering visual selection closes Peek, and while a selection exists structural,
 edit, Peek, relation, and clipboard operations must reject it rather than fall
-back to the cursor. Focus is refused during a temporary search projection.
+back to the cursor. Only Focus and `Ctrl+P` exit search onto the result.
 Relocation jump history is session-only and scoped to the current projection.
 
 Notes stay location-qualified, exclude archived projects, and do not regain

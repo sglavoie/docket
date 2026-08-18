@@ -271,7 +271,9 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 
 // coreInputOperationRefusesSearchProjection names the outliner navigation
 // operations whose projection the temporary search replacement owns, so they
-// refuse instead of reshaping a projection the user has not exited.
+// refuse instead of reshaping a projection the user has not exited. The two
+// Focus jumps and Go to Task's Project are deliberately absent: leaving the
+// projection is what they are for, so they exit search onto the result instead.
 func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 	if _, ok := gotoModeOperations[id]; ok {
 		return true
@@ -286,9 +288,7 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 		operationCoreReorderDown,
 		operationCoreReorderUp,
 		operationCoreReorderBottom,
-		operationCoreReorderTop,
-		operationCoreFocusSubtree,
-		operationCoreFocusParent:
+		operationCoreReorderTop:
 		return true
 	default:
 		return false
@@ -483,12 +483,22 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreReorderTop:
 		message = commandMessage(m.coreReorderEdge(-1))
 	case operationCoreFocusSubtree:
-		if out, ok := m.outlinerPrimary(); ok && !out.focusSubtreeAtCursor() {
-			return OperationHandlerResult{Status: "No children to focus"}
+		if out, ok := m.outlinerPrimary(); ok {
+			if status, landed := out.exitSearchOntoCursorTask(); !landed {
+				return OperationHandlerResult{Status: status}
+			}
+			if !out.focusSubtreeAtCursor() {
+				return OperationHandlerResult{Status: "No children to focus"}
+			}
 		}
 	case operationCoreFocusParent:
-		if out, ok := m.outlinerPrimary(); ok && !out.focusParentAtCursor() {
-			return OperationHandlerResult{Status: "No parent to focus"}
+		if out, ok := m.outlinerPrimary(); ok {
+			if status, landed := out.exitSearchOntoCursorTask(); !landed {
+				return OperationHandlerResult{Status: status}
+			}
+			if !out.focusParentAtCursor() {
+				return OperationHandlerResult{Status: "No parent to focus"}
+			}
 		}
 	case operationCoreActivateGroup:
 		if out, ok := m.outlinerPrimary(); ok {
@@ -854,9 +864,10 @@ func (m *AppModel) coreGotoTaskProject(targets ResolvedOperationTargets) Operati
 	if !ok || out == nil {
 		return OperationHandlerResult{}
 	}
-	if out.hasSearchProjection() {
-		return OperationHandlerResult{Status: "Exit search before jumping to a project"}
-	}
+	// Search is dismissed before the origin mode is read and before the scope
+	// push, since that push captures the frame Esc restores and it must be the
+	// pre-search one.
+	out.ClearSearch()
 	task, project := m.taskAndProjectForTargets(targets)
 	if task == nil || project == nil {
 		return OperationHandlerResult{}

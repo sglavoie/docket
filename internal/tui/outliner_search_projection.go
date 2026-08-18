@@ -113,6 +113,46 @@ func (m *OutlinerModel) ClearSearch() {
 	m.restoreSearchCursor(snapshot.cursor)
 }
 
+// exitSearchOntoCursorTask dismisses the temporary projection and lands the
+// ordinary one on the result the cursor named, so a jump reached through search
+// is not a dead end. The restored projection can hide the result behind the mode
+// it was searched out of, so a hidden result forces All once before it reports
+// that a facet still excludes it.
+func (m *OutlinerModel) exitSearchOntoCursorTask() (string, bool) {
+	if !m.hasSearchProjection() {
+		return "", true
+	}
+	identity := m.currentTaskIdentity()
+	m.ClearSearch()
+	if !identity.Valid() || m.landOnSearchResult(identity) {
+		return "", true
+	}
+	m.selectOutlinerMode(ModeAll)
+	if m.landOnSearchResult(identity) {
+		return "", true
+	}
+	return "Task is hidden by the active facets", false
+}
+
+func (m *OutlinerModel) landOnSearchResult(identity TaskIdentity) bool {
+	task, project := m.taskAndProjectForIdentity(identity)
+	if task == nil {
+		return false
+	}
+	if m.project != nil {
+		m.NavigateToTask(task)
+	} else {
+		m.NavigateToTaskInProject(task, project)
+	}
+	if !m.moveCursorToIdentity(identity) {
+		return false
+	}
+	// The navigation kernels report a hidden target themselves, and that sentence
+	// would outlive a landing the forced mode went on to make.
+	m.clearStatus()
+	return true
+}
+
 func (m *OutlinerModel) restoreSearchCursor(anchor modeCursorAnchor) {
 	m.viewScrollOffset = anchor.scrollOffset
 	if anchor.hasTask {

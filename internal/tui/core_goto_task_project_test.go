@@ -185,22 +185,31 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 		}
 	})
 
-	t.Run("search projection", func(t *testing.T) {
-		driver := gotoProjectDriver(t)
-		outliner := gotoProjectOutliner(t, driver)
-		outliner.SetSearchQuery("Beta rollout")
-		gotoProjectCursorOnTask(t, outliner)
+}
 
-		app := driver.App()
-		ctx := app.operationCommandContext()
-		ctx.View = ViewCrossProjectOutliner
-		result := executeDirectPath(t, app, ctx, []string{"ctrl+p"})
+func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
+	driver := gotoProjectDriver(t)
+	outliner := gotoProjectOutliner(t, driver)
+	outliner.SetSearchQuery("Beta rollout")
+	gotoProjectCursorOnTask(t, outliner)
+	identity := outliner.currentTaskIdentity()
+	_, project := outliner.taskAndProjectForIdentity(identity)
+	if project == nil {
+		t.Fatalf("search result %+v resolved no project", identity)
+	}
 
-		if result.Status != "Exit search before jumping to a project" {
-			t.Fatalf("status = %q, want the search refusal", result.Status)
-		}
-		if outliner.scopedProjectID != "" {
-			t.Fatalf("a search projection still scoped to %q", outliner.scopedProjectID)
-		}
-	})
+	app := driver.App()
+	ctx := app.operationCommandContext()
+	ctx.View = ViewCrossProjectOutliner
+	executeDirectPath(t, app, ctx, []string{"ctrl+p"})
+
+	if outliner.hasSearchProjection() {
+		t.Fatal("the jump kept the temporary search projection")
+	}
+	if outliner.scopedProjectID != project.ID {
+		t.Fatalf("scoped to %q, want the result's project %q", outliner.scopedProjectID, project.ID)
+	}
+	if want := "Project: " + project.Name; app.statusMessage != want {
+		t.Fatalf("status = %q, want %q", app.statusMessage, want)
+	}
 }

@@ -269,8 +269,9 @@ restores and the reverse order would name All as the origin mode. All is forced
 rather than inherited, so the destination lists the project's whole tree instead
 of the origin mode's narrowing; when All does not admit the task — a terminal
 task reached from Recent — the origin mode is reselected and the status says
-why. A live search projection refuses from the handler rather than through
-applicability, so the key stays documented while the projection is up.
+why. A live search projection is dismissed from the handler before either step,
+so the jump works from a search result and the frame `Esc` restores is the
+pre-search one.
 
 ### Presentation chrome
 
@@ -805,8 +806,23 @@ for a change already fully on screen.
 `Enter` pushes a project-qualified Focus frame and projects only the selected
 task's descendants. Nested Focus frames retain the exact parent cursor and
 scroll offset; `Esc` restores one frame at a time. A leaf reports
-`No children to focus` instead of falling through to Peek. Focus is also refused
-while a temporary search projection is active; clear search first.
+`No children to focus` instead of falling through to Peek.
+
+Pressed on a search result, `Enter` and `Shift+Enter` exit the temporary
+projection first rather than refusing it, which makes search the fastest way to
+reach an arbitrary task. `exitSearchOntoCursorTask` reads the result's identity,
+runs the ordinary `ClearSearch` restoration, and lands the restored projection on
+it through `NavigateToTask` or `NavigateToTaskInProject`. The restored projection
+need not list the result — a Backlog task searched out of Today, say — so a
+cursor that still does not name it forces `ModeAll` and retries once; a result an
+active facet excludes then reports `Task is hidden by the active facets` and
+focuses nothing. Focus applies afterward exactly as it does on an ordinary row,
+so a leaf still reports `No children to focus` with the jump already made, and
+the frame it pushes carries the post-landing cursor, which is what makes `Esc`
+unwind onto the result's own row. `Ctrl+P` takes the same exit, clearing search
+before it reads the origin mode and pushes the project scope. Every other
+operation the projection owns — mode switches, folds, and the reorder keys —
+still refuses.
 
 `Shift+Enter` widens by exactly one level. Outside Focus it pushes a frame rooted
 at the cursor task's parent. Inside Focus it climbs from the focus root rather

@@ -1,0 +1,19 @@
+{
+  "name": "outliner-search-focus-jump",
+  "fixture": "rich",
+  "size": "80x24",
+  "actions": [
+    { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
+    { "type": "key", "label": "search the entire active scope", "key": "/" },
+    { "type": "text", "text": "launch" },
+    { "type": "key", "label": "accept the temporary search projection", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "key", "label": "leave search on the result and focus it", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+    { "type": "key", "label": "unwind onto the result's own ordinary row", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
