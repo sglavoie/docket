@@ -570,8 +570,9 @@ that could not complete.
 
 ### Capture and inline-edit grammar
 
-One parser in `internal/textgrammar` serves capture, inline edit, and the outline
-buffer; the surface decides which fields it admits. Capture resolves the target
+One parser in `internal/textgrammar` serves capture, inline edit, the external
+editor's title line, and the outline buffer; the surface decides which fields it
+admits. Capture resolves the target
 project first, then the project-local parent, then the project-local children.
 Omitted destinations default roots to Inbox and children to Backlog, and adopting
 children changes neither default, because `normalizeCaptureDestination` reads
@@ -643,6 +644,29 @@ the ordinary lifecycle guard raises. Reconciliation still owns the one case no
 destination names: an already-terminal task that adopts an open child is reopened
 to Doing. Inline edit refuses a child locator outside the destination project
 with `invalid child: child must belong to the effective project`.
+
+`Ctrl+E` is the second surface that speaks the edit grammar. Its buffer's `# `
+heading is a title line, so `handleTaskContentEdited` routes it through the same
+`parseQuickEdit` and `taskLineEditRequest` the inline editor uses, then rides the
+edited body on that request's `Description` field. One `Service.EditTaskLine`
+call therefore commits title, sigils, structure, and body as one transaction and
+one undo entry; a second call would record two. The title is compared against the
+one written into the buffer and parsed only when it differs, so a literal sigil
+character the user never touched cannot be consumed. Because the composer batches
+its create-and-open beside a reload, the handler re-resolves the project and task
+by ID before parsing: `parseQuickEdit` compares task pointers by identity, and a
+stale pointer would make the edited task look like a stranger.
+
+A recognized value the grammar cannot honor refuses the whole save. Nothing is
+written, and the handler returns an `EditTaskContentMsg` naming the same buffer
+path, the rejected title, the refusal, and the description the user typed but has
+not committed, which reopens the editor on the file still on disk. The refusal
+is rendered into the buffer's single instruction comment; that comment stays one
+physical line and any `-->` inside a quoted user value is neutralized, since
+`parseTaskContent` consumes only the first comment line and would keep a second
+one as description text. Saving the reopened buffer with the title unchanged is
+the loop guard: it abandons the edit, reports the original refusal, and removes
+the buffer.
 
 ### Outline editor
 
@@ -722,8 +746,8 @@ project metadata matches, then by fuzzy score and stable project/task order;
 during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
 
 The query is not a single fuzzy string. `compileSearchQuery` parses it against
-`textgrammar.SurfaceSearch` — the fourth surface of the same registry that
-serves capture, inline edit, and the outline buffer — and splits it into a
+`textgrammar.SurfaceSearch` — the fourth surface of the same registry, beside
+capture, edit, and the outline buffer — and splits it into a
 compiled `searchPredicates` gate and a free-text remainder. The gate is applied
 before scoring, as a hard AND filter over candidate projects and tasks; the
 remainder is the only string the matcher ever sees. Every consumer reads it

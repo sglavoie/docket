@@ -134,7 +134,7 @@ were in and says so.
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` focuses descendants; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
-| Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, `O` outline edit the cursor's project |
+| Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `##` context; `d` defer; `P` pin |
 | Structure | `<` outdent, `>` indent, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
@@ -230,9 +230,19 @@ mutations is the shape this menu exists to avoid.
 Press `e` to edit the selected task in place. Append `%project` to move its
 subtree, `>parent` to reparent it, `>0` to move it to the project root, or
 `<child` once per task you want to adopt; these structural changes commit
-atomically with title and metadata edits. The edit surface is also the only one
-that accepts `*unpin`: capture has nothing to clear, and the outline buffer
-unpins by dropping the `*pin` token from the line.
+atomically with title and metadata edits. `Ctrl+E` opens the same task in an
+external editor and reads its title line with the same grammar, so the title,
+its sigils, and the body below commit as one transaction and one undo step. The
+edit surface is also the only one that accepts `*unpin`: capture has nothing to
+clear, and the outline buffer unpins by dropping the `*pin` token from the line.
+
+A title `Ctrl+E` returns is parsed only when it differs from the one the buffer
+was opened with, so a literal `Fix bug #123` saved untouched keeps its `#123`. A
+title whose value the grammar recognizes but cannot honor — an unknown
+`$destination`, a `%project` that does not exist, a reparenting that would make
+a cycle — commits nothing and reopens the same buffer with the refusal in its
+instruction comment and the description you already typed still in place. Saving
+that buffer again unchanged abandons the edit and reports the refusal.
 
 ### Filters and search
 
@@ -287,7 +297,7 @@ project the current scope or Focus excluded.
 Only a token the grammar recognizes but cannot honor blocks the query: an
 out-of-range priority such as `!9`, a retired destination such as `$ready`, the
 reserved `##0`, and the structural `>parent` and `<child` sigils that belong to
-inline editing alone. Those refuse by name in the search chrome and list
+the edit grammar alone. Those refuse by name in the search chrome and list
 nothing. Everything else stays prose, so `find @sarah`, `!important`, and
 `$100` search for the words you typed.
 
@@ -509,7 +519,7 @@ validated before one atomic transaction is committed.
   Review lane.
 - `##context` sets one optional task-level context, normalized by the same rules
   as a tag. It is distinct from the retired v4 project-level context. `##0`
-  clears the value only during inline editing; outline editing clears it by
+  clears the value on the edit surfaces only; outline editing clears it by
   omission. Therefore `"0"` is permanently reserved as a context name, unlike
   the otherwise legal clearing/reference forms `!0`, `@0`, and `>0`.
 - `@date` accepts the supported date expressions and stores a local calendar
@@ -539,8 +549,8 @@ place: an adoption re-nests a task, it does not resequence the project. The one
 move you can still see is the standing rule that finished work sinks below open
 work, so adopting a finished task under an open one lifts it out of the finished
 block, and reopening a finished parent lifts it and its subtree with it.
-A `$done` or `$canceled` line cannot adopt unfinished work: capture and inline
-edit both refuse it and name the open task, because a finished parent above an
+A `$done` or `$canceled` line cannot adopt unfinished work: capture and the edit
+grammar both refuse it and name the open task, because a finished parent above an
 open child is the one shape the completion rule forbids. Adopting work that is
 already finished is fine. A task that is already done and gains an open child
 some other way is reopened rather than left in that shape.

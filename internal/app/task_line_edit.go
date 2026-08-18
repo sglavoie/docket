@@ -43,9 +43,13 @@ type TaskLineParentPatch struct {
 //
 // Pinned is preserve-on-nil like Priority, and re-declaring the state the task
 // already holds is a no-op that keeps PinnedAt.
+//
+// Description is preserve-on-nil too, and carries the body an external-editor
+// round trip returns so title and description land in the same transaction.
 type TaskLineEditRequest struct {
 	Source               TaskLocator
 	Title                string
+	Description          *string
 	Priority             *int
 	DueSet               bool
 	Due                  *time.Time
@@ -75,6 +79,7 @@ type TaskLineEditResult struct {
 
 type preparedTaskLineEdit struct {
 	title              string
+	description        *string
 	priority           *int
 	dueSet             bool
 	due                *time.Time
@@ -322,6 +327,38 @@ func taskLineCrossProjectPlanningArtifacts(targets []PlanningReconcileTarget, mo
 	return planningArtifactsForRequest(PlanningReconcileRequest{Targets: targets, Moves: moves}, builder)
 }
 
+// prepareTaskLineScalars copies the preserve-on-nil scalar fields, which are the
+// ones needing no snapshot lookup.
+func prepareTaskLineScalars(prepared *preparedTaskLineEdit, req TaskLineEditRequest) error {
+	if req.Description != nil {
+		description := *req.Description
+		prepared.description = &description
+	}
+	if req.Priority != nil {
+		if err := models.ValidatePriority(*req.Priority, true); err != nil {
+			return invalidInput("priority", err.Error())
+		}
+		priority := *req.Priority
+		prepared.priority = &priority
+	}
+	if req.Pinned != nil {
+		pinned := *req.Pinned
+		prepared.pinned = &pinned
+	}
+	if req.Context != nil {
+		context := ""
+		if *req.Context != "" {
+			normalized, err := models.NormalizeTaskContext(*req.Context)
+			if err != nil {
+				return invalidInput("context", err.Error())
+			}
+			context = normalized
+		}
+		prepared.context = &context
+	}
+	return nil
+}
+
 func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (preparedTaskLineEdit, error) {
 	title := strings.TrimSpace(req.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
@@ -334,27 +371,8 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 		parentMode:         req.Parent.Mode,
 		destinationProject: ref.Project,
 	}
-	if req.Priority != nil {
-		if err := models.ValidatePriority(*req.Priority, true); err != nil {
-			return preparedTaskLineEdit{}, invalidInput("priority", err.Error())
-		}
-		priority := *req.Priority
-		prepared.priority = &priority
-	}
-	if req.Pinned != nil {
-		pinned := *req.Pinned
-		prepared.pinned = &pinned
-	}
-	if req.Context != nil {
-		context := ""
-		if *req.Context != "" {
-			var err error
-			context, err = models.NormalizeTaskContext(*req.Context)
-			if err != nil {
-				return preparedTaskLineEdit{}, invalidInput("context", err.Error())
-			}
-		}
-		prepared.context = &context
+	if err := prepareTaskLineScalars(&prepared, req); err != nil {
+		return preparedTaskLineEdit{}, err
 	}
 
 	add, err := normalizeTagList(req.TagsToAdd)
@@ -499,6 +517,10 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 	changed := false
 	if task.Title != prepared.title {
 		task.Title = prepared.title
+		changed = true
+	}
+	if prepared.description != nil && task.Description != *prepared.description {
+		task.Description = *prepared.description
 		changed = true
 	}
 	if prepared.priority != nil && task.Priority != *prepared.priority {

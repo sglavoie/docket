@@ -44,6 +44,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/filter_project_operations.go:availableProjects":    "the project tag vocabulary must name parked projects so a facet can widen back out",
 	"internal/tui/project_tag_vocabulary.go:availableProjects":       "a tag's editable membership includes its parked projects",
 	"internal/tui/handler_helpers.go:availableProjects":              "planning prune must not drop references owned by a parked project",
+	"internal/tui/handler_task_content.go:availableProjects":         "external-editor %project resolution matches inline edit",
 	"internal/tui/handler_view_notes.go:availableProjects":           "Notes owner refresh when reopening the manager",
 	"internal/tui/manage_hub.go:AvailableProjects":                   "Notes owners and project-note command scope",
 	"internal/tui/workspace_pulse.go:TaskWorkspaceProjects":          "workspace pulse counting is a task projection",

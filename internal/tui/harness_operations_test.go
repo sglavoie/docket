@@ -23,6 +23,15 @@ const (
 	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
 	operationHarnessOutlineErrors   OperationID = "tui.harness.outline-errors"
 	operationHarnessOutlineDelete   OperationID = "tui.harness.outline-delete-confirm"
+	operationHarnessEditorSigils    OperationID = "tui.harness.external-editor-sigils"
+	operationHarnessEditorRefusal   OperationID = "tui.harness.external-editor-refusal"
+)
+
+// Canned external-editor titles. A scenario command carries no arguments, so
+// each title the harness can return needs its own operation.
+const (
+	harnessEditorSigilTitle   = "Harness edited title !1 #urgent $next"
+	harnessEditorRefusedTitle = "Harness edited title $invalid"
 )
 
 // harnessOutlineScenarioPath is the buffer path the outline scenarios name. No
@@ -107,6 +116,12 @@ func (m *AppModel) registerHarnessOperations() error {
 			// therefore produced by the production path.
 			return m.harnessOutlineDeleteConfirm()
 		}},
+		{operationHarnessEditorSigils, "external editor sigils", OperationCategorySystem, func() tea.Msg {
+			return m.harnessTaskContentEdited(harnessEditorSigilTitle, false)
+		}},
+		{operationHarnessEditorRefusal, "external editor refusal", OperationCategorySystem, func() tea.Msg {
+			return m.harnessTaskContentEdited(harnessEditorRefusedTitle, true)
+		}},
 	}
 
 	for _, spec := range specs {
@@ -171,6 +186,33 @@ func (m *AppModel) harnessOutlineDeleteConfirm() tea.Msg {
 		Buffer:       strings.Join(lines[:len(lines)-1], "\n"),
 	})
 	return nil
+}
+
+// harnessTaskContentEdited replays the returned half of the Ctrl+E round trip.
+// The editor half cannot run under a scenario, so a canned buffer result is
+// injected and the production handler does the rest. retry marks the message as
+// a reopened buffer the user saved without fixing, which is the one refusal
+// outcome a scenario can observe: the reopen itself would launch an editor.
+func (m *AppModel) harnessTaskContentEdited(title string, retry bool) tea.Msg {
+	task, project := m.outlinerTarget()
+	if task == nil || project == nil {
+		return nil
+	}
+	msg := TaskContentEditedMsg{
+		Task:           task,
+		Project:        project,
+		NewTitle:       title,
+		NewDescription: "Body written in the external editor.",
+	}
+	if retry {
+		_, err := parseQuickEdit(title, task, project, m.availableProjects())
+		if err == nil {
+			return nil
+		}
+		msg.RejectedTitle = title
+		msg.Notice = err.Error()
+	}
+	return msg
 }
 
 func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {

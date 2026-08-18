@@ -1,0 +1,29 @@
+{
+  "name": "external-editor-grammar",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "step onto the project header", "key": "j" },
+    { "type": "key", "label": "move onto the first visible task", "key": "j" },
+
+    { "type": "command", "label": "return a reopened buffer the user saved without fixing", "command": "external editor refusal" },
+    { "type": "assert", "label": "the refusal that reopened the buffer is reported", "assert": "contains", "value": "invalid destination: $invalid" },
+    { "type": "assert", "label": "the refused title was never stored", "assert": "not_contains", "value": "Harness edited title" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "command", "label": "return a buffer whose title carries capture sigils", "command": "external editor sigils" },
+    { "type": "assert", "label": "the edit committed as one task-line transaction", "assert": "status_contains", "value": "Edit Task Line: #3 Harness edited title" },
+    { "type": "assert", "label": "that one transaction is undoable as a whole", "assert": "status_contains", "value": "u undo" },
+    { "type": "assert", "label": "the destination sigil placed the task in Next", "assert": "contains", "value": "@ Next  (1)" },
+    { "type": "assert", "label": "the sigils were consumed, not stored", "assert": "contains", "value": "Harness edited title" },
+    { "type": "assert", "assert": "not_contains", "value": "$next" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the committed edit survives the minimum terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Harness edited title" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

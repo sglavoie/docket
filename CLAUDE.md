@@ -218,9 +218,9 @@ Canonical capture sigils are:
 ```
 
 `##context` sets the optional singleton task context with tag normalization; it
-is unrelated to the retired v4 project context. Inline `##0` clears it; outline
-omission clears it. `##0` permanently reserves `"0"` as a context name, unlike
-legal `!0`, `@0`, and `>0` values.
+is unrelated to the retired v4 project context. `##0` clears it on the edit
+surfaces; outline omission clears it. `##0` permanently reserves `"0"` as a
+context name, unlike legal `!0`, `@0`, and `>0`.
 
 `$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
 Someday, Done, or Canceled. `^type`, `~recurrence`, priorities 4–5, `$ready`,
@@ -228,10 +228,12 @@ and `$in_progress` stay recognized errors with replacement guidance, and aliases
 such as `priority:`, `due:`, `state:`, `proj:` stay unimplemented. Multiline
 capture validates every nonblank line before committing one transaction.
 
-- Project moves and reparenting belong only to the inline `e` grammar
-  (`%project`, `>parent`, `>0`, `<child`), applied as one
-  `ApplyParentAssignments` batch so cycles and depth are measured on the graph
-  the edit produces.
+- Project moves and reparenting belong only to the edit grammar (`%project`,
+  `>parent`, `>0`, `<child`), applied as one `ApplyParentAssignments` batch so
+  cycles and depth are measured on the graph the edit produces.
+- Inline `e` and the `Ctrl+E` title share `parseQuickEdit`, which reads that
+  title only when it changed. A refusal reopens the buffer; saving it unchanged
+  abandons the edit.
 - `*unpin` belongs to edit and search: capture has nothing to clear and refuses
   it by name, and the outline surface refuses it because dropping the `*pin`
   token says it.
@@ -250,11 +252,9 @@ capture validates every nonblank line before committing one transaction.
 
 Slash search is the fourth surface of the same registry, not a parallel query
 language. Its sigil set is the capture set minus `>parent` and `<child`, which
-refuse by name because parentage is not a predicate. Sigils compile to an AND
-gate applied before scoring; the free-text remainder is the only string the
-matcher sees, so a predicate is never scored or highlighted, and the case-relaxed
-retry re-runs the same gate rather than widening it. Only a recognized value the
-grammar cannot honor blocks a query — everything else stays prose.
+refuse by name. Sigils compile to an AND gate applied before scoring, and the
+case-relaxed retry re-runs that same gate.
+Only a recognized value the grammar cannot honor blocks a query.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.
