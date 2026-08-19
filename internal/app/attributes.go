@@ -351,11 +351,10 @@ func (s *Service) deferTask(taskID string, locator TaskLocator, until *time.Time
 	if refusal := deferralRefusesState(ref.Task.State()); refusal != nil {
 		return TaskResult{}, refusal
 	}
-	if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
+	u := *until
+	if stateErr := ref.Task.ApplyDeferAt(u, now); stateErr != nil {
 		return TaskResult{}, invalidInput("defer", stateErr.Error())
 	}
-	u := *until
-	ref.Task.DeferredUntil = &u
 	artifacts, err := s.transitionPlanningArtifacts(
 		ref, s.defaultedPlanningArtifacts(nil), true,
 	)

@@ -774,6 +774,11 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 		woke.ApplyWorkflowState(models.StateBacklog)
 		lapsed := time.Now().AddDate(0, 0, -1)
 		woke.DeferredUntil = &lapsed
+		woke.DeferCount = 3
+		woke.Context = "difficult-review"
+		woke.Checklist = []models.ChecklistItem{{Text: "Review the concern"}}
+		woke.Comments = []*models.Comment{{Text: "Deferred before", CreatedAt: time.Now()}}
+		woke.Attachments = []models.Attachment{{Filename: "brief.md", AddedAt: time.Now()}}
 
 		pending := newFixtureTask(p, "Alpha still hidden")
 		pending.ApplyWorkflowState(models.StateBacklog)

@@ -254,7 +254,8 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-11 Markdown and generic `Task` headings",
+		"schema-12 Markdown and generic `Task` headings",
+		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme choice",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>",
@@ -264,6 +265,8 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 		"pre-defer-rename-v10-<UTC>.tar.gz",
 		"pre-defer-instant-v11-<UTC>.tar.gz",
 		"pre-context-v12-<UTC>.tar.gz",
+		"pre-defer-count-v13-<UTC>.tar.gz",
+		"Schema 13 upgrades task Markdown to schema 12",
 		"durable `state_changed` clock, backfilled from `updated`",
 		"There is no down-migration",
 		"schema-4/5 workspaces through the whole chain",

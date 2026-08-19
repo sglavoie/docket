@@ -509,11 +509,16 @@ entered Doing rather than from its last touch. The neutral age remains beside a
 due date when both apply; it reports how long work has stayed active without
 turning age alone into another urgency badge.
 
+From the third deferral onward, a row also reads `deferred ×N`. Moving the date
+of a still-pending deferral does not add to the count; deferring the task again
+after it woke does. This supporting count drops before every other row indicator
+under width pressure, while Peek keeps the same token on its existing dates line.
+
 A row that cannot fit every indicator sheds them in a fixed order rather than
-squeezing the title: checklist, comment, and attachment counts go first because
-the checklist rows and Peek still carry them, then the recency and defer
-markers, then the waiting age, due date, and Doing age; the check-back date goes
-last.
+squeezing the title: the repeated-deferral count goes first, then checklist,
+comment, and attachment counts because the checklist rows and Peek still carry
+them, then the recency and defer markers, then the waiting age, due date, and
+Doing age; the check-back date goes last.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
@@ -553,7 +558,7 @@ entry once more, focusing the cursor task's parent.
 `Ctrl+Enter` toggles a session-only Peek directly beneath the cursor task. Peek
 follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
-`created 12d · updated 2d · due 2026-08-14 · woke 1d` with empty fields omitted,
+`created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
 attachment names, comment counts, and tags. Checklist items are not among them,
 because they are already rows of their own beneath the task. A promoted row's
 ancestor chain is named there in full, root-first, as
@@ -783,7 +788,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## Schema 12 storage and migration
+## Schema 13 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -803,15 +808,16 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-11 Markdown and generic `Task` headings.
+Project task files use strict schema-12 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
+Each task may carry an optional non-negative `defer_count`; zero is omitted.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-11 workspaces to schema 12, supported schema-6
-through schema-10 workspaces through the intermediate boundaries, and supported
+Startup migrates supported schema-12 workspaces to schema 13, supported schema-6
+through schema-11 workspaces through the intermediate boundaries, and supported
 schema-4/5 workspaces through the whole chain. Each step validates the complete
 candidate before mutation and publishes its own immutable rollback archive and
 audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
@@ -820,7 +826,8 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-state-clock-v9-<UTC>.tar.gz` for v8→v9,
 `pre-defer-rename-v10-<UTC>.tar.gz` for v9→v10, and
 `pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11, and
-`pre-context-v12-<UTC>.tar.gz` for v11→v12. The schema-6 conversion preserves
+`pre-context-v12-<UTC>.tar.gz` for v11→v12, and
+`pre-defer-count-v13-<UTC>.tar.gz` for v12→v13. The schema-6 conversion preserves
 notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
@@ -851,6 +858,10 @@ so the rewrite preserves their meaning; this field is unrelated to the retired
 v4 project-level context that schema 7 folded into project tags. Undo/redo
 history is cleared because its retained raw Markdown carries the schema-10
 marker that the schema-11 reader rejects.
+Schema 13 upgrades task Markdown to schema 12 by adding the optional
+`defer_count` field. Existing tasks begin at zero, represented by the field's
+absence, and undo/redo history is cleared because its retained Markdown predates
+the new schema marker.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -860,8 +871,9 @@ loading, and repeated startup is idempotent.
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
 manual: extract the matching archive — `pre-context-v12-<UTC>.tar.gz` for the
-schema-12 boundary — into a separate directory and open that copy with a
-compatible build. Migration snapshots themselves are never modified.
+schema-12 boundary or `pre-defer-count-v13-<UTC>.tar.gz` for schema 13 — into a
+separate directory and open that copy with a compatible build. Migration
+snapshots themselves are never modified.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
 explicitly supported repairs. Migration snapshots are never modified.

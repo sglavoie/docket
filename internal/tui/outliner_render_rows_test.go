@@ -39,6 +39,22 @@ func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
 	}
 }
 
+func TestDeferCountIndicatorStartsAtThirdDeferral(t *testing.T) {
+	for _, tc := range []struct {
+		count int
+		want  string
+	}{
+		{count: 2, want: ""},
+		{count: 3, want: "deferred ×3"},
+		{count: 12, want: "deferred ×12"},
+	} {
+		task := &models.Task{DeferCount: tc.count}
+		if got := ansi.Strip(formatDeferCountIndicator(task)); got != tc.want {
+			t.Errorf("count %d indicator = %q, want %q", tc.count, got, tc.want)
+		}
+	}
+}
+
 func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 	task := &models.Task{
 		ID:      "task",
@@ -392,6 +408,7 @@ func TestDoingAgeIndicatorReadsTheStateClock(t *testing.T) {
 
 func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 	segments := taskIndicatorSegments{
+		deferCount:  "deferCount",
 		recency:     "recency",
 		waiting:     "waiting",
 		doing:       "doing",
@@ -428,28 +445,30 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 		attachments: "attachments",
 	}
 	want := segments
-	if got := len(indicatorDropLadder); got != 9 {
-		t.Fatalf("indicator drop ladder has %d entries, want 9", got)
+	if got := len(indicatorDropLadder); got != 10 {
+		t.Fatalf("indicator drop ladder has %d entries, want 10", got)
 	}
 	for index, drop := range indicatorDropLadder {
 		switch index {
 		case 0:
-			want.checklist = ""
+			want.deferCount = ""
 		case 1:
-			want.comments = ""
+			want.checklist = ""
 		case 2:
-			want.attachments = ""
+			want.comments = ""
 		case 3:
-			want.recency = ""
+			want.attachments = ""
 		case 4:
-			want.deferred = ""
+			want.recency = ""
 		case 5:
-			want.waiting = ""
+			want.deferred = ""
 		case 6:
-			want.due = ""
+			want.waiting = ""
 		case 7:
-			want.doing = ""
+			want.due = ""
 		case 8:
+			want.doing = ""
+		case 9:
 			want.check = ""
 		}
 		drop(&segments)

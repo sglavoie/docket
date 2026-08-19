@@ -150,6 +150,9 @@ func TestManagerLoadOrCreateDomains_EmptyWorkspaceStillBootstraps(t *testing.T) 
 	if err != nil {
 		t.Fatalf("parse protected Inbox tasks: %v", err)
 	}
+	if document.SchemaVersion != storage.SchemaVersionV12 {
+		t.Fatalf("fresh protected Inbox schema = %d, want %d", document.SchemaVersion, storage.SchemaVersionV12)
+	}
 	if len(document.Tasks) != 0 {
 		t.Fatalf("fresh protected Inbox has %d tasks", len(document.Tasks))
 	}

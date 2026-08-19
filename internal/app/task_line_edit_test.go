@@ -12,6 +12,46 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+func TestTaskLineEditRepeatDeferCountsButPendingDateEditDoesNot(t *testing.T) {
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	pending := now.Add(24 * time.Hour)
+	task := newTask("task", 1, "Deferred")
+	task.ApplyWorkflowState(models.StateBacklog)
+	task.DeferredUntil = &pending
+	task.DeferCount = 1
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestServiceWithClock(repo, fixedClock{t: now})
+
+	edited := now.Add(48 * time.Hour)
+	if _, err := svc.EditTaskLine(app.TaskLineEditRequest{
+		Source:   app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Title:    task.Title,
+		DeferSet: true,
+		Defer:    &edited,
+	}); err != nil {
+		t.Fatalf("pending date edit: %v", err)
+	}
+	if task.DeferCount != 1 {
+		t.Fatalf("pending date edit count = %d, want 1", task.DeferCount)
+	}
+
+	afterWake := edited.Add(time.Hour)
+	repeated := afterWake.Add(24 * time.Hour)
+	svc = newTestServiceWithClock(repo, fixedClock{t: afterWake})
+	if _, err := svc.EditTaskLine(app.TaskLineEditRequest{
+		Source:   app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
+		Title:    task.Title,
+		DeferSet: true,
+		Defer:    &repeated,
+	}); err != nil {
+		t.Fatalf("repeat defer: %v", err)
+	}
+	if task.DeferCount != 2 {
+		t.Fatalf("repeat defer count = %d, want 2", task.DeferCount)
+	}
+}
+
 func TestTaskLineEditAppliesSameProjectPatchInOneTransaction(t *testing.T) {
 	task := newTask("task", 1, "Before")
 	task.Priority = models.PriorityLow

@@ -289,11 +289,10 @@ func (s *Service) bulkDefer(taskIDs []string, locators []TaskLocator, until *tim
 	}
 	now := s.clock.Now()
 	for _, ref := range refs {
-		if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
+		u := *until
+		if stateErr := ref.Task.ApplyDeferAt(u, now); stateErr != nil {
 			return BulkResult{}, invalidInput("defer", stateErr.Error())
 		}
-		u := *until
-		ref.Task.DeferredUntil = &u
 	}
 
 	commits, indexes := distinctProjectCommits(refs, snap)

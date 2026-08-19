@@ -154,6 +154,9 @@ func TestBulkDeferSetsDeferOnAll(t *testing.T) {
 		if task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
 			t.Errorf("task %s deferred = %v, want %v", task.ID, task.DeferredUntil, until)
 		}
+		if task.DeferCount != 1 {
+			t.Errorf("task %s defer count = %d, want 1", task.ID, task.DeferCount)
+		}
 	}
 	if t1.DeferredUntil == t2.DeferredUntil {
 		t.Error("tasks share the same deferral pointer; each must hold its own copy")

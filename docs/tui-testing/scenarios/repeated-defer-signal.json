@@ -1,0 +1,19 @@
+{
+  "name": "repeated-defer-signal",
+  "fixture": "signals",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "the third deferral surfaces the avoidance count on a wide row", "assert": "contains", "value": "deferred ×3" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "narrow rows drop the supporting count before stronger operational signals", "width": 60, "height": 24 },
+    { "type": "assert", "label": "the repeated task title remains readable under pressure", "assert": "contains", "value": "Alpha back" },
+    { "type": "assert", "label": "the first ladder position leaves the crowded row", "assert": "not_contains", "value": "deferred ×3" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "search for the repeatedly deferred task", "key": "/" },
+    { "type": "text", "text": "Alpha back from a break" },
+    { "type": "key", "label": "land on the ordinary task row", "key": "enter" },
+    { "type": "key", "label": "Peek keeps the count on its existing dates line", "key": "ctrl+enter" },
+    { "type": "assert", "assert": "contains", "value": "deferred ×3" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

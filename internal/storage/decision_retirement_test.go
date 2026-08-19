@@ -46,9 +46,9 @@ func TestConvertedDecisionCommentUsesOrdinaryLivePaths(t *testing.T) {
 		ProjectName: "Converted",
 		Tasks:       []format.V6TaskRecord{converted.Task},
 	})
-	tasks, err := modelsFromV11ProjectDocument(V11ProjectDocumentFromV10(projectDocument), time.UTC)
+	tasks, err := modelsFromV12ProjectDocument(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(projectDocument)), time.UTC)
 	if err != nil {
-		t.Fatalf("modelsFromV11ProjectDocument: %v", err)
+		t.Fatalf("modelsFromV12ProjectDocument: %v", err)
 	}
 	if len(tasks) != 1 || len(tasks[0].Comments) != 2 {
 		t.Fatalf("converted live comments = %+v", tasks)
@@ -114,9 +114,9 @@ func testConvertedCommentUndoRedo(t *testing.T, record format.V6TaskRecord, orig
 	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	project := newCommitTestProject(t, dataDir, "converted", record.Title)
 	v10 := V8ProjectDocumentFromV7(V7ProjectDocument{ProjectName: project.Name, Tasks: []format.V6TaskRecord{record}})
-	tasks, err := modelsFromV11ProjectDocument(V11ProjectDocumentFromV10(v10), time.UTC)
+	tasks, err := modelsFromV12ProjectDocument(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(v10)), time.UTC)
 	if err != nil {
-		t.Fatalf("modelsFromV11ProjectDocument: %v", err)
+		t.Fatalf("modelsFromV12ProjectDocument: %v", err)
 	}
 	project.Tasks = tasks
 	project.BuildTaskTree()

@@ -24,8 +24,8 @@ Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-11 Markdown, transactions,
-conflicts and the undo ledger, `internal/config` the catalog/planning domains
+cases and mutation policy, `internal/storage` schema-12 Markdown, transactions,
+conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/tui` the sole Outliner root and operation
 registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
 concern in its layer.
@@ -46,7 +46,7 @@ Review is not a lifecycle state and has no key of its own: `review` promotes an
 All-mode lane. Stale: inclusive 90-local-day `UpdatedAt`; terminal/deferred
 excluded; after Review; below Pinned/Today/Next/Review/Doing.
 Retired fields/states: migration DTOs/audits only. Task Markdown schema
-11 uses generic `Task` headings, project-local ShortID, retained fields, and
+12 uses generic `Task` headings, project-local ShortID, retained fields, and
 optional single-valued task `Context`. `DueDate` is a
 calendar date; `DeferredUntil` is an RFC3339Nano instant that can expire later
 the same day.
@@ -138,8 +138,9 @@ Row and Peek budget:
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append; the relation marker, the task context segment, and the pin marker stay
-  out of it. Tail: waiting, due, doing, check. `taskRowSegments`
+  append; defer count is first; the relation marker, the task context segment,
+  and the pin marker stay out of it.
+  Tail: waiting, due, doing, check. `taskRowSegments`
   reserves all three; Peek names full values. `taskRelationMarker` is one
   segment both ways: `‹` up and `›N` down, only when no child renders.
   `taskPinnedMarker` reads
@@ -281,11 +282,11 @@ dark/light theme. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-12 catalogs hold schema-11 task Markdown.
-The v4→v5→v6→v7→v8→v9→v10→v11→v12 migration validates each complete candidate first,
+Schema-13 catalogs hold schema-12 task Markdown.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
-snapshot boundary. v4/v5/v6 decoders are migration-only: ordinary runtime code
+snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code
 must not import them. There is no down-migration.
 
 Undo/redo is one 50-entry workspace ledger over task, project, note, and
@@ -322,6 +323,6 @@ rules live in
 | Sort axis, manual-order exemption | Sorting | Sorting axis |
 | Selection, Select Project, `Ctrl+T` | Peek and multi-select | Selection and subordinate tools |
 | Project tags, parking, populations, Notes | Project tags; Scope, projects, and Notes | Project tags |
-| Storage layout, migration chain | Schema 11 storage and migration | Persistence layout; Snapshot-first schema migration |
+| Storage layout, migration chain | Schema 13 storage and migration | Persistence layout; Snapshot-first schema migration |
 | Transactions, undo ledger, conflicts | Undo, recovery, and conflicts | Transactions and recovery |
 | Maintenance CLI, platform support | Maintenance CLI | Maintenance CLI and platform support |

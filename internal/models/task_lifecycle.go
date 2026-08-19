@@ -152,6 +152,24 @@ func (t *Task) IsDeferredAt(now time.Time) bool {
 	return t.DeferredUntil.After(now)
 }
 
+// ApplyDeferAt is the canonical defer lifecycle transition. Deferring always
+// claims Backlog, and only a new claim increments DeferCount: moving an
+// unexpired wake instant is an edit to the pending deferral, while setting a
+// new instant after the previous one lapsed is a repeat deferral. The passage
+// of time itself never calls this method and therefore never changes the count.
+func (t *Task) ApplyDeferAt(until, now time.Time) error {
+	wasPending := t.IsDeferredAt(now)
+	if err := t.ApplyStateTransitionAt(StateBacklog, now); err != nil {
+		return err
+	}
+	deferredUntil := until
+	t.DeferredUntil = &deferredUntil
+	if !wasPending {
+		t.DeferCount++
+	}
+	return nil
+}
+
 // ClearDefer removes the deferral date from the task.
 func (t *Task) ClearDefer() {
 	t.DeferredUntil = nil

@@ -148,7 +148,7 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 		return ""
 	}
 
-	parts := make([]string, 0, 4)
+	parts := make([]string, 0, 5)
 	field := func(label, value string) {
 		parts = append(parts, HelpStyle.Render(label+" ")+HelpKeyStyle.Render(value))
 	}
@@ -163,6 +163,9 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	}
 	if taskWokeRecently(task, now) {
 		field("woke", formatRecencyAge(*task.DeferredUntil, now))
+	}
+	if task.DeferCount >= 3 {
+		field("deferred", fmt.Sprintf("×%d", task.DeferCount))
 	}
 	if len(parts) == 0 {
 		return ""

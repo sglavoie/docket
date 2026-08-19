@@ -414,11 +414,38 @@ func TestDeferAndClear(t *testing.T) {
 	if task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
 		t.Fatalf("DeferredUntil = %v, want %v", task.DeferredUntil, until)
 	}
+	if task.DeferCount != 1 {
+		t.Fatalf("DeferCount = %d, want 1", task.DeferCount)
+	}
 	if _, err := svc.Defer("t1", nil); err != nil {
 		t.Fatalf("clear Defer: %v", err)
 	}
 	if task.DeferredUntil != nil {
 		t.Errorf("DeferredUntil = %v, want cleared", task.DeferredUntil)
+	}
+	if task.DeferCount != 1 {
+		t.Errorf("clear changed DeferCount to %d, want 1", task.DeferCount)
+	}
+}
+
+func TestCaptureWithDeferralStartsTheCount(t *testing.T) {
+	project := newProject("proj-1", "Alpha")
+	repo := newFakeRepo(project)
+	until := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+
+	if _, err := newTestService(repo).Capture(app.CaptureRequest{
+		ProjectID: project.ID,
+		Title:     "Later",
+		DeferSet:  true,
+		Defer:     &until,
+	}); err != nil {
+		t.Fatalf("Capture deferred task: %v", err)
+	}
+	if len(project.Tasks) != 1 {
+		t.Fatalf("captured tasks = %d, want 1", len(project.Tasks))
+	}
+	if project.Tasks[0].DeferCount != 1 {
+		t.Fatalf("captured defer count = %d, want 1", project.Tasks[0].DeferCount)
 	}
 }
 

@@ -95,8 +95,9 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 				UpdatedAt:     now.Add(-2 * 24 * time.Hour),
 				DueDate:       &due,
 				DeferredUntil: &woke,
+				DeferCount:    3,
 			},
-			"created 12d · updated 2d · due 2026-08-14 · woke 1d",
+			"created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3",
 		},
 		{
 			"created only",
@@ -112,6 +113,11 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 			"a lapsed deferral past the wake window falls silent",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &stale},
 			"created 1d",
+		},
+		{
+			"repeat count keeps the existing dates line without a wake marker",
+			&models.Task{DeferCount: 4},
+			"deferred ×4",
 		},
 	}
 	for _, tc := range cases {

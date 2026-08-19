@@ -472,7 +472,9 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	// clears it: a captured deferral is the destination's companion, not a value
 	// the transition should wipe.
 	if req.DeferSet && req.Defer != nil {
-		task.DeferredUntil = cloneInstantPtr(req.Defer)
+		if err := task.ApplyDeferAt(*req.Defer, now); err != nil {
+			return nil, invalidInput("defer", err.Error())
+		}
 	}
 	return task, nil
 }

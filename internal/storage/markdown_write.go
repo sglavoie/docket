@@ -4,11 +4,11 @@ import "github.com/sglavoie/tt/internal/models"
 
 // WriteTasksMarkdown renders the strict live project document.
 func WriteTasksMarkdown(projectName string, tasks []*models.Task) (string, error) {
-	v11, err := v11ProjectDocumentFromModel(&models.Project{Name: projectName, Tasks: tasks})
+	v12, err := v12ProjectDocumentFromModel(&models.Project{Name: projectName, Tasks: tasks})
 	if err != nil {
 		return "", err
 	}
-	return WriteV11ProjectDocument(v11)
+	return WriteV12ProjectDocument(v12)
 }
 
 type taskHierarchyIndex struct {

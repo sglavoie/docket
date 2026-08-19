@@ -47,10 +47,10 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-11 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-12 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -64,14 +64,14 @@ not reproduce these checks with independent saves.
 
 ## Task model
 
-Schema 11 task Markdown stores generic tasks with these supported fields:
+Schema 12 task Markdown stores generic tasks with these supported fields:
 
 | Group | Fields |
 | --- | --- |
 | Identity | stable ID and project-local ShortID |
 | Content | title and description |
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
-| Planning metadata | priority, due date, deferral instant (`deferred`), pin, pin timestamp |
+| Planning metadata | priority, due date, deferral instant (`deferred`), deferral count (`defer_count`), pin, pin timestamp |
 | Organization | project-local parent, single-valued task context, and tags |
 | Rich records | checklist, comments, attachments |
 | Lifecycle | created, updated, `state_changed`, completed timestamps |
@@ -81,6 +81,13 @@ records, not a catalog. Context is an optional task-level label validated like a
 tag; it is unrelated to the retired v4 project-level context folded into
 project tags during schema 7 migration. The due value is a calendar date; the deferral value is
 an RFC3339Nano instant, so a deferral can expire later the same day.
+
+`DeferCount` is a lifecycle signal rather than a count of field writes. An
+initial deferral increments it, changing the instant of a still-pending deferral
+does not, and deferring again after the prior instant lapsed increments it. Wake
+is only the passage of time and never mutates the count. `Task.ApplyDeferAt`
+owns this distinction before it replaces the instant, and every application
+surface—single, bulk, capture, and inline edit—uses that primitive.
 
 `StateChangedAt` (`state_changed`) is the state clock and `UpdatedAt` is the
 touch time. Only the lifecycle transitions in
@@ -419,8 +426,14 @@ Doing age follows the same state-clock contract.
 reset how long it has remained in Doing. It stays neutral and renders alongside
 a due date rather than competing with the row's one hero attribute.
 
+Repeated deferral starts at `DeferCount >= 3`. The row renders the supporting
+segment as `deferred ×N`; Peek appends the identical token to
+`inlinePeekDatesLine`, so it consumes no new line in the five-line drop order.
+The row segment is the first `indicatorDropLadder` entry and therefore yields
+before every operational date or age signal under width pressure.
+
 `indicatorDropLadder` is the row's drop order, and it is a list rather than a set
-because nine segments cannot all fit at minimum width. Counts go first, since
+because ten segments cannot all fit at minimum width. Counts go first, since
 the row's own badges and Peek still carry them, followed by recency, defer,
 Waiting age, due date, and Doing age; check-back goes last because it is the one
 indicator naming work that has gone quiet on someone else's desk. A new
@@ -1345,7 +1358,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-11 generic Task Markdown
+        ├── tasks.md         # strict schema-12 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -1398,7 +1411,7 @@ workspace, not an independent backup.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-11 content. A stale writer is compared
+Project revisions hash canonical schema-12 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -1412,13 +1425,15 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 12 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 13 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
-scope-folding path, a schema-8 workspace crosses the schema-9 state-clock path,
+scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
+schema-8 workspace crosses the schema-9 state-clock path,
 a schema-9 workspace crosses the schema-10 defer-rename path, a schema-10
 workspace crosses the schema-11 defer-instant path, and a schema-11 workspace
-finishes on the schema-12 task-context path:
+crosses the schema-12 task-context path before schema 12 finishes on the
+schema-13 defer-count path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -1499,8 +1514,15 @@ finishes on the schema-12 task-context path:
    catalog schema 12 and task Markdown schema 11 across active and archived
    projects, and clear undo/redo history whose retained bytes carry the
    schema-10 task-document marker.
+20. Validate every schema-11 project document, then lift it to schema 12 by
+   adding the optional `defer_count` field. Existing tasks begin at zero, whose
+   canonical representation omits the field.
+21. Publish `pre-defer-count-v13-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 13 and task Markdown schema 12 across active and
+   archived projects, and clear undo/redo history whose retained bytes predate
+   the new task-document marker.
 
-Each boundary is idempotent: repeated schema-12 startup neither reconverts data
+Each boundary is idempotent: repeated schema-13 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

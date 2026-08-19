@@ -466,6 +466,7 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 }
 
 type taskIndicatorSegments struct {
+	deferCount  string
 	recency     string
 	waiting     string
 	doing       string
@@ -485,6 +486,7 @@ func (segments taskIndicatorSegments) render() string {
 		segments.check,
 		segments.due,
 		segments.deferred,
+		segments.deferCount,
 		segments.checklist,
 		segments.comments,
 		segments.attachments,
@@ -500,6 +502,7 @@ func (segments taskIndicatorSegments) render() string {
 // carry them; the check-back date goes last because it is the one indicator
 // naming work that has already gone quiet on someone else's desk.
 var indicatorDropLadder = []func(*taskIndicatorSegments){
+	func(segments *taskIndicatorSegments) { segments.deferCount = "" },
 	func(segments *taskIndicatorSegments) { segments.checklist = "" },
 	func(segments *taskIndicatorSegments) { segments.comments = "" },
 	func(segments *taskIndicatorSegments) { segments.attachments = "" },
@@ -539,8 +542,11 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	if segments.check == "" && m.columnConfig.IsVisible(ColDueDate) {
 		segments.due = formatDueDate(task)
 	}
-	if task.DeferredUntil != nil && m.columnConfig.IsVisible(ColDefer) {
-		segments.deferred = formatDeferIndicator(task, now)
+	if m.columnConfig.IsVisible(ColDefer) {
+		if task.DeferredUntil != nil {
+			segments.deferred = formatDeferIndicator(task, now)
+		}
+		segments.deferCount = formatDeferCountIndicator(task)
 	}
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)
@@ -612,6 +618,13 @@ func formatDeferIndicator(task *models.Task, now time.Time) string {
 		return ""
 	}
 	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
+}
+
+func formatDeferCountIndicator(task *models.Task) string {
+	if task == nil || task.DeferCount < 3 {
+		return ""
+	}
+	return MutedStyle.Render(fmt.Sprintf("deferred ×%d", task.DeferCount))
 }
 
 // taskWokeRecently reports whether a lapsed deferral is still inside the wake

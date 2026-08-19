@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage/format"
 )
 
-// ProjectDocument is the strict live schema-11 storage representation of tasks.md.
+// ProjectDocument is the strict live schema-12 storage representation of tasks.md.
 type ProjectDocument struct {
 	ProjectName   string
 	Tasks         []*models.Task
@@ -21,15 +21,15 @@ type ProjectDocument struct {
 }
 
 func ParseProjectDocument(content string) (*ProjectDocument, error) {
-	v11, err := ParseV11ProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
+	v12, err := ParseV12ProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
 	if err != nil {
 		return nil, err
 	}
-	tasks, err := modelsFromV11ProjectDocument(v11, time.Local)
+	tasks, err := modelsFromV12ProjectDocument(v12, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	doc := &ProjectDocument{ProjectName: v11.ProjectName, Tasks: tasks, SchemaVersion: SchemaVersionV11}
+	doc := &ProjectDocument{ProjectName: v12.ProjectName, Tasks: tasks, SchemaVersion: SchemaVersionV12}
 	doc.Revision = doc.ComputeRevision()
 	return doc, nil
 }
@@ -40,7 +40,7 @@ func (d *ProjectDocument) ComputeRevision() string {
 }
 
 func (d *ProjectDocument) canonicalContent() string {
-	content, err := d.writeV11()
+	content, err := d.writeV12()
 	if err != nil {
 		return ""
 	}
@@ -48,22 +48,22 @@ func (d *ProjectDocument) canonicalContent() string {
 }
 
 func (d *ProjectDocument) WriteCurrent() (string, error) {
-	if d.SchemaVersion != SchemaVersionV11 {
+	if d.SchemaVersion != SchemaVersionV12 {
 		return "", fmt.Errorf("unsupported project schema %d", d.SchemaVersion)
 	}
-	return d.writeV11()
+	return d.writeV12()
 }
 
-func (d *ProjectDocument) writeV11() (string, error) {
-	v11, err := v11ProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
+func (d *ProjectDocument) writeV12() (string, error) {
+	v12, err := v12ProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
 	if err != nil {
 		return "", err
 	}
-	return WriteV11ProjectDocument(v11)
+	return WriteV12ProjectDocument(v12)
 }
 
 func ToProjectDocument(project *models.Project) *ProjectDocument {
-	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: SchemaVersionV11}
+	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: SchemaVersionV12}
 	doc.Revision = doc.ComputeRevision()
 	return doc
 }
@@ -88,7 +88,7 @@ func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*
 func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
-		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: SchemaVersionV11}
+		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: SchemaVersionV12}
 		doc.Revision = doc.ComputeRevision()
 		return doc, nil
 	}
@@ -98,10 +98,10 @@ func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	return ParseProjectDocument(string(content))
 }
 
-// modelsFromV11ProjectDocument builds live tasks from a schema-11 document.
+// modelsFromV12ProjectDocument builds live tasks from a schema-12 document.
 // location resolves the bare due date only: the deferral value carries its own
 // offset and is read as the instant it names.
-func modelsFromV11ProjectDocument(document V11ProjectDocument, location *time.Location) ([]*models.Task, error) {
+func modelsFromV12ProjectDocument(document V12ProjectDocument, location *time.Location) ([]*models.Task, error) {
 	if location == nil {
 		location = time.Local
 	}
@@ -109,12 +109,13 @@ func modelsFromV11ProjectDocument(document V11ProjectDocument, location *time.Lo
 	for _, record := range document.Tasks {
 		state, ok := models.ParseWorkflowState(record.State)
 		if !ok {
-			return nil, fmt.Errorf("v11 task %q has invalid live workflow state %q", record.ID, record.State)
+			return nil, fmt.Errorf("v12 task %q has invalid live workflow state %q", record.ID, record.State)
 		}
 		task := &models.Task{
 			ID: record.ID, ShortID: record.ShortID, Title: record.Title,
 			Description: record.Description, WorkflowState: state, Priority: record.Priority,
-			Tags: append([]string(nil), record.Tags...), Context: record.Context, CreatedAt: record.CreatedAt,
+			Tags: append([]string(nil), record.Tags...), Context: record.Context, DeferCount: record.DeferCount,
+			CreatedAt: record.CreatedAt,
 			UpdatedAt: record.UpdatedAt, StateChangedAt: record.StateChangedAt,
 			CompletedAt: cloneProjectDocumentTime(record.CompletedAt),
 			Pinned:      record.Pinned, PinnedAt: cloneProjectDocumentTime(record.PinnedAt),
@@ -128,13 +129,13 @@ func modelsFromV11ProjectDocument(document V11ProjectDocument, location *time.Lo
 		if record.DueDate != "" {
 			task.DueDate, err = parseProjectDocumentDate(record.DueDate, location)
 			if err != nil {
-				return nil, fmt.Errorf("v11 task %q due date: %w", record.ID, err)
+				return nil, fmt.Errorf("v12 task %q due date: %w", record.ID, err)
 			}
 		}
 		if record.SnoozedUntil != "" {
 			task.DeferredUntil, err = parseProjectDocumentInstant(record.SnoozedUntil)
 			if err != nil {
-				return nil, fmt.Errorf("v11 task %q deferral instant: %w", record.ID, err)
+				return nil, fmt.Errorf("v12 task %q deferral instant: %w", record.ID, err)
 			}
 		}
 		for _, attachment := range record.Attachments {
@@ -159,39 +160,39 @@ func modelsFromV11ProjectDocument(document V11ProjectDocument, location *time.Lo
 	return tasks, nil
 }
 
-func v11ProjectDocumentFromModel(project *models.Project) (V11ProjectDocument, error) {
+func v12ProjectDocumentFromModel(project *models.Project) (V12ProjectDocument, error) {
 	if project == nil {
-		return V11ProjectDocument{}, fmt.Errorf("project is required")
+		return V12ProjectDocument{}, fmt.Errorf("project is required")
 	}
-	document := V11ProjectDocument{ProjectName: project.Name}
+	document := V12ProjectDocument{ProjectName: project.Name}
 	if len(project.Tasks) > 0 {
-		document.Tasks = make([]format.V11TaskRecord, 0, len(project.Tasks))
+		document.Tasks = make([]format.V12TaskRecord, 0, len(project.Tasks))
 	}
 	for _, task := range project.Tasks {
-		record, err := v11TaskRecordFromModel(task)
+		record, err := v12TaskRecordFromModel(task)
 		if err != nil {
-			return V11ProjectDocument{}, err
+			return V12ProjectDocument{}, err
 		}
 		document.Tasks = append(document.Tasks, record)
 	}
-	if err := ValidateV11ProjectDocument(document); err != nil {
-		return V11ProjectDocument{}, err
+	if err := ValidateV12ProjectDocument(document); err != nil {
+		return V12ProjectDocument{}, err
 	}
 	return document, nil
 }
 
-func v11TaskRecordFromModel(task *models.Task) (format.V11TaskRecord, error) {
+func v12TaskRecordFromModel(task *models.Task) (format.V12TaskRecord, error) {
 	if task == nil {
-		return format.V11TaskRecord{}, fmt.Errorf("schema-11 writer cannot persist a nil task")
+		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer cannot persist a nil task")
 	}
 	if !task.State().IsValid() {
-		return format.V11TaskRecord{}, fmt.Errorf("schema-11 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)
+		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)
 	}
 	if err := models.ValidatePriority(task.Priority, true); err != nil {
-		return format.V11TaskRecord{}, fmt.Errorf("schema-11 writer refuses task %q priority: %w", task.ID, err)
+		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer refuses task %q priority: %w", task.ID, err)
 	}
 	if task.StateChangedAt.IsZero() {
-		return format.V11TaskRecord{}, fmt.Errorf("schema-11 writer refuses task %q without a state clock", task.ID)
+		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer refuses task %q without a state clock", task.ID)
 	}
 	record := format.V6TaskRecord{
 		ID: task.ID, ShortID: task.ShortID, Title: task.Title, Description: task.Description,
@@ -235,14 +236,17 @@ func v11TaskRecordFromModel(task *models.Task) (format.V11TaskRecord, error) {
 		}
 		record.Comments = append(record.Comments, format.V6TaskComment{Text: comment.Text, CreatedAt: comment.CreatedAt})
 	}
-	v11 := format.V11TaskRecord{
-		V10TaskRecord: format.V10TaskRecord{V6TaskRecord: record, StateChangedAt: task.StateChangedAt},
-		Context:       task.Context,
+	v12 := format.V12TaskRecord{
+		V11TaskRecord: format.V11TaskRecord{
+			V10TaskRecord: format.V10TaskRecord{V6TaskRecord: record, StateChangedAt: task.StateChangedAt},
+			Context:       task.Context,
+		},
+		DeferCount: task.DeferCount,
 	}
-	if err := format.ValidateV11TaskRecord(v11); err != nil {
-		return format.V11TaskRecord{}, err
+	if err := format.ValidateV12TaskRecord(v12); err != nil {
+		return format.V12TaskRecord{}, err
 	}
-	return v11, nil
+	return v12, nil
 }
 
 func parseProjectDocumentDate(value string, location *time.Location) (*time.Time, error) {

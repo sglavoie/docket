@@ -171,7 +171,11 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		return TaskLineEditResult{}, err
 	}
 	changed = changed || destinationChanged
-	changed = applyPreparedTaskLineDeferral(ref.Task, prepared, s.clock.Now()) || changed
+	deferChanged, err := applyPreparedTaskLineDeferral(ref.Task, prepared, s.clock.Now())
+	if err != nil {
+		return TaskLineEditResult{}, err
+	}
+	changed = deferChanged || changed
 	artifacts, err := planningArtifactsForTargets(
 		planningTargets,
 		nil,
@@ -283,7 +287,9 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 	if err != nil {
 		return TaskLineEditResult{}, err
 	}
-	applyPreparedTaskLineDeferral(sourceRef.Task, prepared, s.clock.Now())
+	if _, deferErr := applyPreparedTaskLineDeferral(sourceRef.Task, prepared, s.clock.Now()); deferErr != nil {
+		return TaskLineEditResult{}, deferErr
+	}
 	artifacts, err := taskLineCrossProjectPlanningArtifacts(
 		planningTargets,
 		move.PlanningMoves,
@@ -596,13 +602,19 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 // applyPreparedTaskLineDeferral writes the deferral after the lifecycle move,
 // because entering a state clears DeferredUntil. A line that defers always moves
 // to Backlog, so writing it alongside the other scalars would lose it.
-func applyPreparedTaskLineDeferral(task *models.Task, prepared preparedTaskLineEdit, now time.Time) bool {
+func applyPreparedTaskLineDeferral(task *models.Task, prepared preparedTaskLineEdit, now time.Time) (bool, error) {
 	if !prepared.deferSet || instantPtrsEqual(task.DeferredUntil, prepared.deferUntil) {
-		return false
+		return false, nil
 	}
-	task.DeferredUntil = cloneInstantPtr(prepared.deferUntil)
+	if prepared.deferUntil != nil {
+		if err := task.ApplyDeferAt(*prepared.deferUntil, now); err != nil {
+			return false, invalidInput("defer", err.Error())
+		}
+		return true, nil
+	}
+	task.DeferredUntil = nil
 	task.UpdatedAt = now
-	return true
+	return true, nil
 }
 
 func patchedTaskLineTags(existing, add, remove []string) []string {

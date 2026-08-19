@@ -30,7 +30,7 @@ func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         tasks,
-		SchemaVersion: SchemaVersionV11,
+		SchemaVersion: SchemaVersionV12,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
@@ -43,6 +43,15 @@ func TestMergeableTaskFieldsIncludesContext(t *testing.T) {
 		}
 	}
 	t.Fatal("merge field inventory does not include context")
+}
+
+func TestMergeableTaskFieldsIncludesDeferCount(t *testing.T) {
+	for _, field := range mergeableTaskFields {
+		if field.jsonName == "defer_count" {
+			return
+		}
+	}
+	t.Fatal("merge field inventory does not include defer_count")
 }
 
 func mergeTaskIDs(tasks []*models.Task) []string {

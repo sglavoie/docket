@@ -166,6 +166,9 @@ func (m *Manager) RecoverWorkspace() error {
 		if err := m.MigrateWorkspaceToV12(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v12: %w", err)
 		}
+		if err := m.MigrateWorkspaceToV13(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v13: %w", err)
+		}
 	}
 	return nil
 }
@@ -302,7 +305,7 @@ func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (stora
 	if repairErr := catalog.RepairSystemUnfiledProject(project); repairErr != nil {
 		return storage.ArtifactChange{}, repairErr
 	}
-	document, err := storage.WriteV11ProjectDocument(storage.V11ProjectDocument{
+	document, err := storage.WriteV12ProjectDocument(storage.V12ProjectDocument{
 		ProjectName: project.Name,
 	})
 	if err != nil {

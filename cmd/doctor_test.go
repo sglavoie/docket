@@ -327,7 +327,7 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedUnfiledIdempotently(t *testin
 		t.Fatalf("doctor stderr = %q, want empty", stderr)
 	}
 	if !strings.Contains(stdout, "Workspace integrity issues: 0") ||
-		!strings.Contains(stdout, "[Migration] workspace schema 12 is current") ||
+		!strings.Contains(stdout, "[Migration] workspace schema 13 is current") ||
 		!strings.Contains(stdout, "[Undo] workspace ledger is valid (0 undo entries, 0 redo entries)") ||
 		!strings.Contains(stdout, "[Migration] clean schema-6 workspace; no pre-v6 snapshot recorded") ||
 		!strings.Contains(stdout, "[Migration] clean schema-7 workspace; no pre-v7 snapshot recorded") ||
