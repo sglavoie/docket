@@ -3,13 +3,20 @@
   "fixture": "busy",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "the full-screen title carries the nonzero workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · today 0 · overdue 1" },
-    { "type": "assert", "label": "Today remains visible at zero", "assert": "contains", "value": "today 0" },
-    { "type": "key", "label": "move onto the first project", "key": "j" },
-    { "type": "key", "label": "move onto its first task", "key": "j" },
-    { "type": "key", "label": "open a transient task action overlay", "key": "space" },
-    { "type": "assert", "assert": "contains", "value": "Task Actions" },
-    { "type": "assert", "label": "the overlay preserves exactly one host workspace pulse", "assert": "count_contains", "value": "workspace:", "count": 1 },
+    { "type": "assert", "label": "the full-screen title carries the four-component workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · today 0 · overdue 1 · done 0" },
+    { "type": "resize", "label": "Done drops first under title pressure", "width": 71, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": "workspace: inbox 5 · today 0 · overdue 1" },
+    { "type": "assert", "assert": "not_contains", "value": "done 0" },
+    { "type": "resize", "label": "Inbox drops after Done", "width": 62, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": "workspace: today 0 · overdue 1" },
+    { "type": "resize", "label": "required search context pressures out overdue next", "width": 60, "height": 24 },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "x" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "workspace: today 0" },
+    { "type": "assert", "assert": "not_contains", "value": "overdue 1" },
+    { "type": "key", "label": "Today is the last pulse component to drop", "key": "/" },
+    { "type": "assert", "assert": "not_contains", "value": "workspace:" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

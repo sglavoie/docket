@@ -19,7 +19,7 @@ func TestFullscreenTitleChromeFittingStaysWithinWidth(t *testing.T) {
 		pulse WorkspacePulse
 	}{
 		{name: "narrow", title: longPrefix, width: 20, pulse: WorkspacePulse{}},
-		{name: "wide", title: "Tasks", width: 120, pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1}},
+		{name: "wide", title: "Tasks", width: 120, pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rendered := renderTaskScopedFullscreenTitleWithPulse(tc.title, nil, "", tc.pulse, tc.width)
@@ -28,6 +28,9 @@ func TestFullscreenTitleChromeFittingStaysWithinWidth(t *testing.T) {
 			}
 			if got := lipgloss.Width(rendered); got > tc.width {
 				t.Fatalf("fullscreen title width = %d, want <= %d: %q", got, tc.width, rendered)
+			}
+			if tc.name == "wide" && !strings.Contains(rendered, "done 4") {
+				t.Fatalf("wide fullscreen title omitted Done progress: %q", rendered)
 			}
 		})
 	}

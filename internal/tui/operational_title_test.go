@@ -12,7 +12,7 @@ import (
 )
 
 func TestOperationalTitlePulseFittingOrder(t *testing.T) {
-	pulse := WorkspacePulse{Inbox: 12, Today: 0, Overdue: 4}
+	pulse := WorkspacePulse{Inbox: 12, Today: 0, Overdue: 4, Done: 6}
 	allMode, _ := OutlinerModeByID(ModeAll)
 	spec := operationalTitleSpec{
 		Surface: TitleStyle.Render("Outliner"),
@@ -20,17 +20,23 @@ func TestOperationalTitlePulseFittingOrder(t *testing.T) {
 		Mode:    operationalTitleModeSegment(allMode),
 		Pulse:   &pulse,
 	}
+	base := joinOperationalTitleRegions(renderOperationalIdentity(spec, 200), "")
+	variants := operationalPulseVariants(pulse)
+	fit := func(variant string) int {
+		return lipgloss.Width(base) + operationalTitlePulseGap + lipgloss.Width(variant)
+	}
 	tests := []struct {
 		width       int
 		wantInbox   bool
 		wantToday   bool
 		wantOverdue bool
+		wantDone    bool
 	}{
-		{width: 40},
-		{width: 60, wantToday: true},
-		{width: 72, wantToday: true, wantOverdue: true},
-		{width: 100, wantInbox: true, wantToday: true, wantOverdue: true},
-		{width: 160, wantInbox: true, wantToday: true, wantOverdue: true},
+		{width: lipgloss.Width(base)},
+		{width: fit(variants[3]), wantToday: true},
+		{width: fit(variants[2]), wantToday: true, wantOverdue: true},
+		{width: fit(variants[1]), wantInbox: true, wantToday: true, wantOverdue: true},
+		{width: fit(variants[0]), wantInbox: true, wantToday: true, wantOverdue: true, wantDone: true},
 	}
 
 	for _, tt := range tests {
@@ -47,6 +53,7 @@ func TestOperationalTitlePulseFittingOrder(t *testing.T) {
 				"inbox 12":  tt.wantInbox,
 				"today 0":   tt.wantToday,
 				"overdue 4": tt.wantOverdue,
+				"done 6":    tt.wantDone,
 			} {
 				if got := strings.Contains(plain, token); got != want {
 					t.Errorf("width %d token %q present = %v, want %v: %q", tt.width, token, got, want, plain)

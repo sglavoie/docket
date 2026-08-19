@@ -149,8 +149,7 @@ Row and Peek budget:
   bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
 - Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
   plain due segment rather than joining it.
-- The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps
-  and no `woke` component.
+- The four-step pulse ladder drops done, inbox, overdue, then today; no `woke`.
 
 `O` refuses under a visual selection and in every mode that is not
 `OrderPolicyTree`; its scope is what the dump actually printed, never

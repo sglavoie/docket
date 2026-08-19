@@ -12,13 +12,24 @@ import (
 )
 
 // WorkspacePulse is the compact operational readout shared by task-workspace
-// presentations. Every component counts actionable work: terminal and deferred
-// tasks are excluded from Inbox, Today, and Overdue.
+// presentations. Inbox, Today, and Overdue count actionable work and exclude
+// terminal and deferred tasks; Done is the current local day's progress count.
 type WorkspacePulse struct {
 	Inbox   int
 	Today   int
 	Overdue int
+	Done    int
 }
+
+type workspacePulseLevel uint8
+
+const (
+	workspacePulseFull workspacePulseLevel = iota
+	workspacePulseWithoutDone
+	workspacePulseWithoutInbox
+	workspacePulseTodayOnly
+	workspacePulseHidden
+)
 
 // workspacePulseState is embedded by full-screen presentations that own a
 // workspace-pulse title. The app shell refreshes it immediately before paint.
@@ -97,20 +108,24 @@ func taskIsOverdueAt(task *models.Task, now time.Time) bool {
 	return due.Before(today)
 }
 
-// formatWorkspacePulseComponents is the title-fitting seam for progressively
-// removing passive pulse components. Callers keep the semantic order stable;
-// Today remains present even when its count is zero.
-func formatWorkspacePulseComponents(pulse WorkspacePulse, includeInbox, includeOverdue bool) string {
-	parts := make([]string, 0, 3)
-	if includeInbox && pulse.Inbox > 0 {
+// formatWorkspacePulseComponents is the title-fitting seam for the fixed
+// pressure ladder: Done, Inbox, Overdue, then Today. The full form keeps the
+// semantic component order stable, and Today and Done render even at zero.
+func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLevel) string {
+	if level >= workspacePulseHidden {
+		return ""
+	}
+
+	parts := make([]string, 0, 4)
+	if level < workspacePulseWithoutInbox && pulse.Inbox > 0 {
 		parts = append(parts, fmt.Sprintf("inbox %d", pulse.Inbox))
 	}
 	parts = append(parts, fmt.Sprintf("today %d", pulse.Today))
-	if includeOverdue && pulse.Overdue > 0 {
+	if level < workspacePulseTodayOnly && pulse.Overdue > 0 {
 		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", pulse.Overdue)))
 	}
-	if len(parts) == 0 {
-		return ""
+	if level < workspacePulseWithoutDone {
+		parts = append(parts, fmt.Sprintf("done %d", pulse.Done))
 	}
 	return "workspace: " + strings.Join(parts, " · ")
 }

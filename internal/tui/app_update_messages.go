@@ -279,10 +279,12 @@ func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	m.workspacePulse = ComputeWorkspacePulse(m.runtime, m.todayIDs, now)
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
-		logging.Warn("refresh Today completion activity: %v", err)
+		logging.Warn("refresh completion activity: %v", err)
+		m.workspacePulse.Done = m.completionActivity.CompletedToday()
 		return
 	}
 	m.completionActivity = activity
+	m.workspacePulse.Done = activity.CompletedToday()
 }
 
 func (m *AppModel) refreshProjectViewAfterTaskMutation(persistProjectTreeState bool) {

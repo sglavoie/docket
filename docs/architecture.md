@@ -280,18 +280,19 @@ pre-search one.
 
 ### Presentation chrome
 
-`WorkspacePulse` is app-owned workspace state with Inbox, Today, and overdue
-counts. Full-screen presentations receive it through the exhaustive
-`presentationChromePolicy`; transient selectors and pickers remain pulse-free
-and preserve the host's title row. There are no presentation exemptions: every
-reachable presentation has shell, surface, or overlay guidance ownership.
+`WorkspacePulse` is app-owned workspace state with Inbox, Today, overdue, and
+current-local-day Done counts. Full-screen presentations receive it through the
+exhaustive `presentationChromePolicy`; transient selectors and pickers remain
+pulse-free and preserve the host's title row. There are no presentation
+exemptions: every reachable presentation has shell, surface, or overlay guidance
+ownership.
 
 `renderOperationalTitle` is the one-line title fitter. Identity on the left
 contains surface, scope, and mode exactly once; selection, search, filters,
 focus, or editor state forms the interaction context; and the workspace pulse is
 the right region. Today is normally mandatory. When width is constrained, the
-fitter removes Inbox, overdue, and Today in that order before truncating required
-interaction context.
+fitter removes Done, Inbox, overdue, and Today in that order before truncating
+required interaction context.
 
 Today mode adds a reference-class pace comparison to the middle region:
 `today 9 · median 3/day (30d)`. `ActivityCoordinator` refreshes one cached
@@ -362,9 +363,10 @@ The age reuses `formatRecencyChip` so a lapsed deferral is not formatted a
 second way. `taskWokeRecently` is the one lapsed-deferral predicate and
 `formatRecencyAge` is the one age token; the Peek dates line reads both rather
 than re-deriving either, so the row and the line beneath it can never disagree.
-The workspace pulse deliberately carries no `woke` component: its degradation
-ladder in `formatWorkspacePulseComponents` has exactly three steps, and a fourth
-metric there names work you cannot act on without navigating to it anyway.
+The workspace pulse deliberately carries no `woke` component: lapsed deferrals
+name work that requires navigation before action. Its fourth component is instead
+the current local day's Done count, a non-deficit progress signal, and the ladder
+in `formatWorkspacePulseComponents` drops Done, Inbox, overdue, then Today.
 
 `formatDeferDate` renders the pending half of that ladder against `now`, because
 a deferral is an instant and the row has to say when the task comes back. It

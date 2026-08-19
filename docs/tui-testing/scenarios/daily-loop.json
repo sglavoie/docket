@@ -4,7 +4,7 @@
   "size": "99x35",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "assert", "label": "the full-screen title carries the nonzero workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · today 0 · overdue 1" },
+    { "type": "assert", "label": "the full-screen title carries the workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · today 0 · overdue 1 · done 0" },
     { "type": "assert", "label": "Today remains visible at zero", "assert": "contains", "value": "today 0" },
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
@@ -28,6 +28,7 @@
     { "type": "key", "label": "complete the fourth Inbox task", "key": "d" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Bulk Change State: Done · u undo" },
+    { "type": "assert", "label": "same-day completion advances the non-deficit pulse count", "assert": "contains", "value": "done 1" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 5" },
     { "type": "key", "label": "open workflow actions", "key": "$" },
     { "type": "key", "label": "plan the final Inbox task for Today", "key": "t" },

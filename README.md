@@ -44,10 +44,10 @@ complete loop.
 Every full-screen presentation keeps one operational title row. Its left side
 names the surface, scope, and mode once; active selection, search, filters,
 focus, or editor context occupies the middle; and the right side reports the
-workspace pulse as `workspace: inbox 3 · today 0 · overdue 1`. Today is shown
-even at zero whenever the pulse region fits. Zero Inbox and overdue counts
-disappear, and narrow terminals drop Inbox, then overdue, then Today before
-shortening required interaction context.
+workspace pulse as `workspace: inbox 3 · today 0 · overdue 1 · done 4`. Today
+and the current local day's Done count are shown even at zero whenever the pulse
+region fits; zero Inbox and overdue counts disappear. Narrow terminals drop
+Done, Inbox, overdue, then Today before shortening required interaction context.
 
 Today mode also compares its open load with the workspace's 30-day completion
 pace in the middle region, for example `today 9 · median 3/day (30d)`. A fresh

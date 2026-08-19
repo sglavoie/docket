@@ -29,7 +29,7 @@ type operationalTitleSpec struct {
 
 // renderOperationalTitle composes identity, interaction context, and passive
 // workspace state onto exactly one non-wrapping row. Passive pulse components
-// are removed in the product-wide precedence order (Inbox, Overdue, Today)
+// are removed in the product-wide precedence order (Done, Inbox, Overdue, Today)
 // before required interaction context is shortened.
 func renderOperationalTitle(spec operationalTitleSpec, width int) string {
 	if width <= 0 {
@@ -158,14 +158,9 @@ func joinOperationalTitleRegions(identity, context string) string {
 }
 
 func operationalPulseVariants(pulse WorkspacePulse) []string {
-	candidates := []string{
-		formatWorkspacePulseComponents(pulse, true, true),
-		formatWorkspacePulseComponents(pulse, false, true),
-		formatWorkspacePulseComponents(pulse, false, false),
-		"",
-	}
-	variants := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
+	variants := make([]string, 0, int(workspacePulseHidden)+1)
+	for level := workspacePulseFull; level <= workspacePulseHidden; level++ {
+		candidate := formatWorkspacePulseComponents(pulse, level)
 		rendered := ""
 		if candidate != "" {
 			rendered = MutedStyle.Render(candidate)

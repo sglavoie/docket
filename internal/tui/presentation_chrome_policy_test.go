@@ -80,8 +80,8 @@ func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) 
 		pulse WorkspacePulse
 		want  string
 	}{
-		{name: "zero", pulse: WorkspacePulse{}, want: "workspace: today 0"},
-		{name: "nonzero", pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1}, want: "workspace: inbox 3 · today 2 · overdue 1"},
+		{name: "zero", pulse: WorkspacePulse{}, want: "workspace: today 0 · done 0"},
+		{name: "nonzero", pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, want: "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -218,9 +218,9 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, pulse := range []WorkspacePulse{{}, {Inbox: 3, Today: 2, Overdue: 1}} {
+			for _, pulse := range []WorkspacePulse{{}, {Inbox: 3, Today: 2, Overdue: 1, Done: 4}} {
 				plain := ansi.Strip(tt.view(pulse))
-				want := ansi.Strip(formatWorkspacePulseComponents(pulse, true, true))
+				want := ansi.Strip(formatWorkspacePulseComponents(pulse, workspacePulseFull))
 				if !strings.Contains(plain, want) {
 					t.Fatalf("view missing workspace pulse %q:\n%s", want, plain)
 				}
@@ -234,11 +234,11 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 
 func TestPresentationChromeTransientPopupPreservesHostPulse(t *testing.T) {
 	const width, height = 100, 8
-	hostTitle := renderFullscreenTitleWithPulse("Notes", "All Notes", WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1}, width)
+	hostTitle := renderFullscreenTitleWithPulse("Notes", "All Notes", WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, width)
 	host := hostTitle + strings.Repeat("\n", height-1)
 	tallPopup := strings.Repeat("transient action\n", height*2) + "last action"
 	rendered := ansi.Strip(overlayPopupBelowPersistentTitle(host, tallPopup, width, height))
-	if !strings.Contains(rendered, "workspace: inbox 3 · today 2 · overdue 1") {
+	if !strings.Contains(rendered, "workspace: inbox 3 · today 2 · overdue 1 · done 4") {
 		t.Fatalf("transient popup obscured the host pulse:\n%s", rendered)
 	}
 	if strings.Count(rendered, "workspace:") != 1 {

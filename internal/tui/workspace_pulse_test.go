@@ -2,10 +2,12 @@ package tui
 
 import (
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -114,14 +116,46 @@ func TestWorkspacePulseNilRuntimeAndRefreshSeam(t *testing.T) {
 	}
 }
 
-func TestWorkspacePulseFormattingAlwaysIncludesToday(t *testing.T) {
-	if got := formatWorkspacePulseComponents(WorkspacePulse{}, true, true); got != "workspace: today 0" {
-		t.Fatalf("zero pulse = %q, want %q", got, "workspace: today 0")
+func TestWorkspacePulseRefreshUsesSameDayCompletionActivity(t *testing.T) {
+	now := time.Now()
+	done := primaryRowsTask("done-today", models.StateDone)
+	done.CompletedAt = &now
+	project := primaryRowsProject("completed", done)
+	runtime := testConfigWithProjects(project)
+	installPulseRepository(t, project)
+	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
+	shell := &AppModel{
+		runtime: runtime,
+		features: FeatureCoordinators{
+			Activity: ActivityCoordinator{reader: service},
+		},
 	}
-	got := formatWorkspacePulseComponents(WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1}, true, true)
-	for _, want := range []string{"inbox 3", "today 2", "overdue 1"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("formatted pulse %q is missing %q", got, want)
+
+	shell.refreshWorkspacePulseAt(now)
+
+	if shell.workspacePulse.Done != 1 {
+		t.Fatalf("refreshed Done = %d, want the current-local-day completion count", shell.workspacePulse.Done)
+	}
+}
+
+func TestWorkspacePulseFormattingFollowsFourStepLadder(t *testing.T) {
+	pulse := WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}
+	for _, tt := range []struct {
+		level workspacePulseLevel
+		want  string
+	}{
+		{workspacePulseFull, "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
+		{workspacePulseWithoutDone, "workspace: inbox 3 · today 2 · overdue 1"},
+		{workspacePulseWithoutInbox, "workspace: today 2 · overdue 1"},
+		{workspacePulseTodayOnly, "workspace: today 2"},
+		{workspacePulseHidden, ""},
+	} {
+		if got := ansi.Strip(formatWorkspacePulseComponents(pulse, tt.level)); got != tt.want {
+			t.Errorf("level %d pulse = %q, want %q", tt.level, got, tt.want)
 		}
+	}
+
+	if got := formatWorkspacePulseComponents(WorkspacePulse{}, workspacePulseFull); got != "workspace: today 0 · done 0" {
+		t.Fatalf("zero pulse = %q, want Today and Done zeroes", got)
 	}
 }

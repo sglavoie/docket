@@ -192,7 +192,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"the relation marker, the task context segment, and the pin marker stay out of it",
 		"`taskRelationMarker` is one segment both ways",
-		"The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps",
+		"The four-step pulse ladder drops done, inbox, overdue, then today",
 		"There is no `$delete` sigil",
 		"The old `b`, `c`, `d`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, `Ctrl+Esc`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
