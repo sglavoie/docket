@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -21,6 +23,7 @@ type operationalTitleSpec struct {
 	Scope   string
 	Mode    string
 	Context []string
+	Pace    *todayPaceReadout
 	Pulse   *WorkspacePulse
 }
 
@@ -37,7 +40,33 @@ func renderOperationalTitle(spec operationalTitleSpec, width int) string {
 	context := joinOperationalTitleSegments(spec.Context)
 	base := joinOperationalTitleRegions(identity, context)
 
-	if spec.Pulse != nil {
+	// Today pace is middle-region context, but it remains optional relative to
+	// active interaction state. Its full form outranks the passive workspace
+	// pulse; once the pulse ladder is exhausted, pace shortens without restoring
+	// a lower-priority pulse.
+	if spec.Pace != nil {
+		paceVariants := operationalPaceVariants(*spec.Pace)
+		fullPaceBase := joinOperationalTitleRegions(base, paceVariants[0])
+		if spec.Pulse != nil {
+			for _, pulse := range operationalPulseVariants(*spec.Pulse) {
+				if pulse == "" {
+					break
+				}
+				if rendered, ok := rightAlignOperationalPulse(fullPaceBase, pulse, width); ok {
+					return rendered
+				}
+			}
+		}
+		if lipgloss.Width(fullPaceBase) <= width {
+			return fullPaceBase
+		}
+		for _, pace := range paceVariants[1:] {
+			candidate := joinOperationalTitleRegions(base, pace)
+			if lipgloss.Width(candidate) <= width {
+				return candidate
+			}
+		}
+	} else if spec.Pulse != nil {
 		for _, pulse := range operationalPulseVariants(*spec.Pulse) {
 			if pulse == "" {
 				break
@@ -144,6 +173,20 @@ func operationalPulseVariants(pulse WorkspacePulse) []string {
 		if len(variants) == 0 || rendered != variants[len(variants)-1] {
 			variants = append(variants, rendered)
 		}
+	}
+	return variants
+}
+
+func operationalPaceVariants(pace todayPaceReadout) []string {
+	rate := strconv.FormatFloat(pace.medianPerDay, 'f', -1, 64)
+	candidates := []string{
+		fmt.Sprintf("today %d · median %s/day (30d)", pace.openCount, rate),
+		fmt.Sprintf("today %d · median %s/day", pace.openCount, rate),
+		fmt.Sprintf("today %d · %s/day", pace.openCount, rate),
+	}
+	variants := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		variants = append(variants, MutedStyle.Render(candidate))
 	}
 	return variants
 }

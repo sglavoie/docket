@@ -293,6 +293,15 @@ the right region. Today is normally mandatory. When width is constrained, the
 fitter removes Inbox, overdue, and Today in that order before truncating required
 interaction context.
 
+Today mode adds a reference-class pace comparison to the middle region:
+`today 9 · median 3/day (30d)`. `ActivityCoordinator` refreshes one cached
+`app.CompletionActivity` snapshot alongside operational chrome updates; the
+shell injects that cache immediately before the Outliner paints, while the open
+count comes from the separately injected `WorkspacePulse`. No history means no
+comparison. The full pace candidate outranks the passive pulse; after the pulse
+ladder is exhausted, pace degrades through the no-window and no-label forms,
+then disappears before required interaction context is truncated.
+
 `GuidanceHint` and `GuidanceSpec` are the persistent control grammar. Providers
 emit complete key/label entries with priority and required status. Browse states
 have a one-row budget; edit, add, confirm, autocomplete, expanded-detail, and

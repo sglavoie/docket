@@ -3,12 +3,24 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
+
+type staticCompletionActivityReader struct {
+	activity app.CompletionActivity
+	calls    int
+}
+
+func (r *staticCompletionActivityReader) CompletionActivity() (app.CompletionActivity, error) {
+	r.calls++
+	return r.activity, nil
+}
 
 func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
 	transient := map[PresentationID]bool{
@@ -81,6 +93,59 @@ func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) 
 				t.Fatalf("workspace pulse count = %d, want one:\n%s", strings.Count(rendered, "workspace:"), rendered)
 			}
 		})
+	}
+}
+
+func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
+	project := scopeTestProject("alpha", "Alpha", "launch")
+	outliner := scopeTestOutliner(project)
+	outliner.workspacePulse = WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1}
+	outliner.setCompletionActivity(app.CompletionActivity{
+		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
+	})
+
+	for _, mode := range OutlinerModeCatalog() {
+		outliner.primaryMode = mode.ID
+		plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
+		if mode.ID == ModeToday {
+			if !strings.Contains(plain, "today 9 · median 0/day (30d)") {
+				t.Fatalf("Today title missing pace readout: %q", plain)
+			}
+			if !strings.Contains(plain, "workspace:") {
+				t.Fatalf("Today pace replaced the separate pulse region: %q", plain)
+			}
+			continue
+		}
+		if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
+			t.Fatalf("%s title rendered Today-only pace: %q", mode.Label, plain)
+		}
+	}
+
+	outliner.primaryMode = ModeToday
+	outliner.setCompletionActivity(app.CompletionActivity{})
+	plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
+	if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
+		t.Fatalf("history-free workspace rendered a zero pace: %q", plain)
+	}
+}
+
+func TestAppViewRefreshesCompletionActivityImmediatelyBeforePaint(t *testing.T) {
+	model := typedTestApp(t)
+	reader := &staticCompletionActivityReader{activity: app.CompletionActivity{
+		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
+	}}
+	model.features.Activity = ActivityCoordinator{reader: reader}
+	model.crossOutliner.primaryMode = ModeToday
+	model.refreshWorkspacePulseAt(time.Now())
+	model.crossOutliner.setCompletionActivity(app.CompletionActivity{})
+
+	_ = model.View()
+
+	if reader.calls != 1 {
+		t.Fatalf("completion activity queries = %d, want one cached refresh and no render-time read", reader.calls)
+	}
+	if !model.crossOutliner.completionActivity.HasHistory() {
+		t.Fatal("active Outliner did not receive refreshed completion activity")
 	}
 }
 

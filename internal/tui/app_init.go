@@ -105,7 +105,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 
 	ApplyTheme(NewThemeConfig(runtime.Machine()))
 
-	app.workspacePulse = ComputeWorkspacePulse(app.runtime, app.todayIDs, time.Now())
+	app.refreshWorkspacePulseAt(time.Now())
 
 	// The Outliner is the sole root: construct and register the global
 	// (Active Projects) Outliner in All so the first frame renders the root even

@@ -36,6 +36,7 @@ type OutlinerModel struct {
 	BaseSearchableView
 	InteractiveViewState
 	MultiSelectState
+	todayPaceState
 
 	runtime        *config.RuntimeState
 	configManager  *config.Manager

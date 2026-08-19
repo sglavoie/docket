@@ -49,6 +49,13 @@ type FeatureMutator interface {
 	ProjectAtRevision(projectID string) (*models.Project, string, error)
 }
 
+// CompletionActivityReader is the read-only application query used by the
+// Today title. It stays separate from FeatureMutator so mutation-only test
+// doubles and feature adapters do not acquire an unrelated read obligation.
+type CompletionActivityReader interface {
+	CompletionActivity() (app.CompletionActivity, error)
+}
+
 // Compile-time assurance that the application service satisfies the mutation
 // surface, so a production coordinator can be built from one *app.Service.
 var (
@@ -234,20 +241,39 @@ func (c OutlineCoordinator) Apply(req app.OutlinePlanRequest) (app.OutlinePlanRe
 	return c.mutator.ApplyOutlinePlan(req)
 }
 
+// ActivityCoordinator carries the completion-history query through the same
+// application boundary as primary feature mutations.
+type ActivityCoordinator struct {
+	reader CompletionActivityReader
+}
+
+func (c ActivityCoordinator) CompletionActivity() (app.CompletionActivity, error) {
+	if c.reader == nil {
+		return app.CompletionActivity{}, nil
+	}
+	return c.reader.CompletionActivity()
+}
+
 // FeatureCoordinators aggregates the primary-view coordinators the AppModel
 // hands to feature views as they migrate onto the application layer.
 type FeatureCoordinators struct {
 	Capture  CaptureCoordinator
 	TaskForm TaskFormCoordinator
 	Outline  OutlineCoordinator
+	Activity ActivityCoordinator
 }
 
 // newFeatureCoordinators builds the primary coordinators over a shared
 // application mutation surface.
 func newFeatureCoordinators(mutator FeatureMutator) FeatureCoordinators {
+	var activity ActivityCoordinator
+	if reader, ok := mutator.(CompletionActivityReader); ok {
+		activity.reader = reader
+	}
 	return FeatureCoordinators{
 		Capture:  CaptureCoordinator{newFeatureCoordinator("capture", mutator)},
 		TaskForm: TaskFormCoordinator{newFeatureCoordinator("task-form", mutator)},
 		Outline:  OutlineCoordinator{newFeatureCoordinator("outline", mutator)},
+		Activity: activity,
 	}
 }

@@ -120,6 +120,10 @@ type AppModel struct {
 	// title row. It is recomputed after committed count-changing mutations so
 	// paint paths can read it without an extra full-tree walk.
 	workspacePulse WorkspacePulse
+	// completionActivity is refreshed through the application query alongside
+	// other operational title state, then injected into the Outliner before paint.
+	// Keeping the snapshot out of View avoids render-time filesystem reads.
+	completionActivity app.CompletionActivity
 
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind

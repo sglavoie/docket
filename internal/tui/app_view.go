@@ -45,6 +45,9 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		if injector, ok := current.(workspacePulseAware); classified && policy.workspacePulseEligible() && ok {
 			injector.setWorkspacePulse(m.workspacePulse)
 		}
+		if injector, ok := current.(completionActivityAware); classified && policy.workspacePulseEligible() && ok {
+			injector.setCompletionActivity(m.completionActivity)
+		}
 	}
 	resultView := tea.NewView("")
 	if current := m.activeView(); current != nil {

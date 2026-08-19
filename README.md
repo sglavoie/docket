@@ -49,6 +49,12 @@ even at zero whenever the pulse region fits. Zero Inbox and overdue counts
 disappear, and narrow terminals drop Inbox, then overdue, then Today before
 shortening required interaction context.
 
+Today mode also compares its open load with the workspace's 30-day completion
+pace in the middle region, for example `today 9 · median 3/day (30d)`. A fresh
+workspace with no completion history shows no comparison. Under pressure the
+workspace pulse disappears first; the comparison then sheds `(30d)`, then
+`median`, and finally disappears before required interaction context shortens.
+
 Contextual guidance is made of complete `key action` entries. Browse states use
 one row; editing, adding, confirming, autocomplete, expanded detail, and pending
 chords may use two. Required commit and cancellation controls survive before

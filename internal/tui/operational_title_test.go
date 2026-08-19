@@ -63,6 +63,7 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 		Scope:   activeProjectsScopeLabel,
 		Mode:    "All",
 		Context: []string{SelectionCountStyle.Render("MULTI-SELECT: 3 selected")},
+		Pace:    &todayPaceReadout{openCount: 8, medianPerDay: 3},
 		Pulse:   &pulse,
 	}, 40)
 	plain := ansi.Strip(rendered)
@@ -75,6 +76,61 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 	}
 	if strings.Contains(plain, "workspace:") {
 		t.Fatalf("passive pulse survived ahead of interaction context: %q", plain)
+	}
+	if strings.Contains(plain, "median") || strings.Contains(plain, "/day") {
+		t.Fatalf("Today pace survived ahead of interaction context: %q", plain)
+	}
+}
+
+func TestOperationalTitleTodayPaceFittingOrder(t *testing.T) {
+	pulse := WorkspacePulse{Inbox: 9, Today: 8, Overdue: 7}
+	pace := todayPaceReadout{openCount: 8, medianPerDay: 1.5}
+	spec := operationalTitleSpec{Scope: activeProjectsScopeLabel, Mode: "Today", Pace: &pace, Pulse: &pulse}
+	identity := renderOperationalIdentity(spec, 200)
+	paceVariants := operationalPaceVariants(pace)
+	fullBase := joinOperationalTitleRegions(identity, paceVariants[0])
+	mediumBase := joinOperationalTitleRegions(identity, paceVariants[1])
+	shortBase := joinOperationalTitleRegions(identity, paceVariants[2])
+	fullPulse := operationalPulseVariants(pulse)[0]
+
+	tests := []struct {
+		name          string
+		width         int
+		want          string
+		forbid        []string
+		wantWorkspace bool
+	}{
+		{
+			name:          "full pace and pulse",
+			width:         lipgloss.Width(fullBase) + operationalTitlePulseGap + lipgloss.Width(fullPulse),
+			want:          "today 8 · median 1.5/day (30d)",
+			wantWorkspace: true,
+		},
+		{name: "full pace after pulse", width: lipgloss.Width(fullBase), want: "today 8 · median 1.5/day (30d)", forbid: []string{"workspace:"}},
+		{name: "shorten window", width: lipgloss.Width(mediumBase), want: "today 8 · median 1.5/day", forbid: []string{"(30d)", "workspace:"}},
+		{name: "shorten label", width: lipgloss.Width(shortBase), want: "today 8 · 1.5/day", forbid: []string{"median", "workspace:"}},
+		{name: "omit pace", width: lipgloss.Width(identity), want: "Active Projects · Today", forbid: []string{"/day", "workspace:"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rendered := renderOperationalTitle(spec, tt.width)
+			plain := ansi.Strip(rendered)
+			if got := lipgloss.Width(rendered); got > tt.width {
+				t.Fatalf("title width = %d, exceeds %d: %q", got, tt.width, plain)
+			}
+			if !strings.Contains(plain, tt.want) {
+				t.Fatalf("title missing %q: %q", tt.want, plain)
+			}
+			if got := strings.Contains(plain, "workspace:"); got != tt.wantWorkspace {
+				t.Fatalf("workspace pulse present = %v, want %v: %q", got, tt.wantWorkspace, plain)
+			}
+			for _, forbidden := range tt.forbid {
+				if strings.Contains(plain, forbidden) {
+					t.Fatalf("title contains forbidden %q: %q", forbidden, plain)
+				}
+			}
+		})
 	}
 }
 

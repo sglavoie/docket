@@ -23,6 +23,7 @@ import (
 // A new or moved predicate must be classified here deliberately, so narrowing an
 // availability check to the base task workspace can never happen by accident.
 var archivePredicateAudit = map[string]string{
+	"internal/app/activity.go:completionActivityFromSnapshot":                "availability: completion activity mirrors the base task workspace population",
 	"internal/app/notes.go:ProjectLocationPrecondition":                      "lifecycle: a note transaction refuses an owner archived since the snapshot",
 	"internal/config/domain.go:validate":                                     "lifecycle: protected Unfiled can never be archived",
 	"internal/config/domain.go:RepairSystemUnfiledProject":                   "lifecycle: protected Unfiled can never be archived",
